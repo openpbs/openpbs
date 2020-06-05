@@ -1374,7 +1374,7 @@ initialize(void)
 	if (job_launch_delay == -1)
 		job_launch_delay = DEFAULT_JOB_LAUNCH_DELAY;
 
-	time_delta(MOM_DELTA_RESET);
+	time_delta_hellosvr(MOM_DELTA_RESET);
 }
 
 /**
@@ -8074,13 +8074,13 @@ net_down_handler(void *data)
  * @retval 0 : only in case of reset mode.
  */
 int
-time_delta(int mode)
+time_delta_hellosvr(int mode)
 {
 	static int delta = 1;
 	static int cnt = 1;
 	int max_delta = 1 << 6;	/* max interval will be 64s */
 
-	DBPRT(("time_delta: mode: %d, delta: %d, cnt: %d", mode, delta, cnt))
+	DBPRT(("%s: mode= %d, delta= %d, cnt= %d", __func__, mode, delta, cnt))
 
 	if (mode == MOM_DELTA_RESET) {
 		delta = 1;
@@ -9608,7 +9608,7 @@ main(int argc, char *argv[])
 		if (server_stream == -1) {
 			if (time_now > time_next_hello) {
 				send_hellosvr(server_stream);
-				time_next_hello = time_now + time_delta(MOM_DELTA_NORMAL);
+				time_next_hello = time_now + time_delta_hellosvr(MOM_DELTA_NORMAL);
 			}
 		}
 

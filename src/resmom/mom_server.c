@@ -690,10 +690,9 @@ process_rpp_values(int stream) {
 	*/
 	DBPRT(("rpp_retry: %d: rpp_highwater:%d\n", new_retry, new_water))
 	if (new_retry >= 0 && rpp_retry != new_retry) {
-		sprintf(log_buffer, "rpp_retry changed from %d to %d",
-			rpp_retry, new_retry);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+				msg_daemonname, "rpp_retry changed from %d to %d",
+				rpp_retry, new_retry);
 		rpp_retry = new_retry;
 	}
 	/*
@@ -702,11 +701,9 @@ process_rpp_values(int stream) {
 	** at any given time.
 	*/
 	if (new_water > 0 && rpp_highwater != new_water) {
-		sprintf(log_buffer,
-			"rpp_highwater changed from %d to %d",
-			rpp_highwater, new_water);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+				msg_daemonname, "rpp_highwater changed from %d to %d",
+				rpp_highwater, new_water);
 		rpp_highwater = new_water;
 	}
 	return 0;
@@ -732,7 +729,7 @@ process_cluster_addrs(int stream)
 	u_long	ipdepth = 0;
 	u_long	counter = 0;
 
-	DBPRT(("%s: IS_CLUSTER_ADDRS2\n", __func__))
+	DBPRT(("%s: IS_CLUSTER_ADDRS\n", __func__))
 	enable_exechost2 = 1;
 
 	tot = disrui(stream, &ret);
@@ -835,7 +832,7 @@ is_request(int stream, int version)
 		case IS_REPLYHELLO:	/* servers return greeting to IS_HELLOSVR */
 			DBPRT(("%s: IS_REPLYHELLO, state=0x%x stream=%d\n", __func__,
 				internal_state, stream))
-			time_delta(MOM_DELTA_RESET);
+			time_delta_hellosvr(MOM_DELTA_RESET);
 			need_inv = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
 				goto err;
@@ -883,7 +880,7 @@ is_request(int stream, int version)
 			mom_recvd_ip_cluster_addrs = 1;
 			break;
 
-		case IS_CLUSTER_ADDRS2:
+		case IS_CLUSTER_ADDRS:
 			ret = process_cluster_addrs(stream);
 			if (ret != 0 && ret != DIS_EOD)
 				goto err;

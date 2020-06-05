@@ -784,7 +784,7 @@ effective_node_delete(struct pbsnode *pnode)
  *	setup_notification -  Sets up the  mechanism for notifying
  *	other members of the server's node pool that a new node was added
  *	manually via qmgr.
- *	The IS_CLUSTER_ADDRS2 message is only sent to the existing Moms.
+ *	The IS_CLUSTER_ADDRS message is only sent to the existing Moms.
  * @see
  * 		mgr_node_create
  *
@@ -795,6 +795,7 @@ setup_notification()
 {
 	int	i;
 	int	nmom;
+	static	time_t addr_send_tm = 0;
 
 	/* CLUSTERADDR2 is not enabled for multi-server case, hence bailing-out. */
 	if (get_max_servers() > 1)
@@ -812,11 +813,10 @@ setup_notification()
 	}
 
 	/* send IS_CLUSTERADDR2 to happen in next 2 seconds */
-	static	time_t addr_send_tm = 0;
 	if (addr_send_tm <= time_now) {
-		addr_send_tm = time_now + 2;
+		addr_send_tm = time_now + MCAST_WAIT_TM;
 		struct work_task *ptask = set_task(WORK_Timed, addr_send_tm, mcast_moms, NULL);
-		ptask->wt_aux = IS_CLUSTER_ADDRS2;
+		ptask->wt_aux = IS_CLUSTER_ADDRS;
 	}
 }
 
@@ -1297,7 +1297,7 @@ setup_nodes()
 				if (pmom &&
 				    (np == ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[0])) {
 					/* natural vnode being recovered, add to pool */
-					(void)add_mom_to_pool(np->nd_moms[0]);
+					add_mom_to_pool(np->nd_moms[0]);
 				}
 			}
 		}

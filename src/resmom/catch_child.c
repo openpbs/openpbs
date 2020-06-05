@@ -1933,8 +1933,6 @@ send_hellosvr(int stream)
 	char		*svr = NULL;
 	unsigned int	port = default_server_port;
 
-	DBPRT(("Sending hellosvr"))
-
 	if (stream < 0) {
 		if ((svr = get_servername_random(&port)) == NULL) {
 			log_err(errno, msg_daemonname, "get_servername_random() failed");
@@ -1943,8 +1941,7 @@ send_hellosvr(int stream)
 
 		stream = tpp_open(svr, port);
 		if (stream < 0) {
-			sprintf(log_buffer, "tpp_open(%s, %d) failed", svr, port);
-			log_err(errno, msg_daemonname, log_buffer);
+			log_errf(errno, msg_daemonname, "tpp_open(%s, %d) failed", svr, port);
 			return;
 		}
 	}
@@ -1968,8 +1965,7 @@ send_hellosvr(int stream)
 	return;
 
 err:
-	sprintf(log_buffer, "Failed to send IS_HELLOSVR message");
-	log_err(errno, msg_daemonname, log_buffer);
+	log_err(errno, msg_daemonname, "Failed to send IS_HELLOSVR message");
 	tpp_close(stream);
 	return;
 }

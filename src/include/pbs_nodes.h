@@ -149,7 +149,7 @@ struct mom_svrinfo {
 	int		msr_jbinxsz;  /* size of job index array */
 	struct job	**msr_jobindx;  /* index array of jobs on this Mom */
 	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
-	int		reporting_mom; /* Tells whether mom is an inventory reporting mom */
+	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 
@@ -218,6 +218,7 @@ typedef struct mominfo_time mominfo_time_t;
 extern momvmap_t **mommap_array;
 extern int	   mommap_array_size;
 extern mominfo_time_t	   mominfo_time;
+extern vnpool_mom_t *vnode_pool_mom_list;
 
 
 struct	prop {

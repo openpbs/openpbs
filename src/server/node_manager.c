@@ -222,7 +222,6 @@ extern void free_prov_vnode(struct pbsnode *);
 extern void fail_vnode_job(struct prov_vnode_info *, int);
 extern struct prov_tracking * get_prov_record_by_vnode(char *);
 extern int parse_prov_vnode(char *,exec_vnode_listtype *);
-extern vnpool_mom_t *vnode_pool_mom_list;
 
 static void check_and_set_multivnode(struct pbsnode *);
 int write_single_node_mom_attr(struct pbsnode *np);
@@ -245,6 +244,8 @@ extern long node_fail_requeue;
 
 #define GLOB_SZ 511
 #define STR_TIME_SZ 20
+
+#define MAX_NODE_WAIT 600
 
 /*
  * Tree search generalized from Knuth (6.2.2) Algorithm T just like
@@ -371,7 +372,7 @@ tinsert2(const u_long key1, const u_long key2, mominfo_t *momp, struct tree **ro
  *
  */
 static int
-send_ISNULL(int mtfd, int combine_msg)
+send_rpp_values(int mtfd, int combine_msg)
 {
 	int	ret;
 
@@ -395,7 +396,7 @@ send_ISNULL(int mtfd, int combine_msg)
 }
 
 /**
- * @brief Send the IS_CLUSTER_ADDRS2 message to Mom so she has the
+ * @brief Send the IS_CLUSTER_ADDRS message to Mom so she has the
  *      latest list of IP addresses of the all the Moms in the complex.
  *
  * @param[in] stream - the open stream to the Mom
@@ -417,7 +418,7 @@ send_ip_addrs_to_mom(int stream, int combine_msg)
 		return -1;
 
 	if (!combine_msg)
-		if ((ret = is_compose(stream, IS_CLUSTER_ADDRS2)) != DIS_SUCCESS)
+		if ((ret = is_compose(stream, IS_CLUSTER_ADDRS)) != DIS_SUCCESS)
 			return (ret);
 
 	if ((ret = diswui(stream, pbs_iplist->li_nrowsused)) != DIS_SUCCESS)
@@ -471,7 +472,7 @@ reply_hellosvr(int stream, int need_inv)
 
 	if ((ret = diswsi(stream, need_inv)) != DIS_SUCCESS)
 		return ret;
-	if ((ret = send_ISNULL(stream, 1)) != DIS_SUCCESS)
+	if ((ret = send_rpp_values(stream, 1)) != DIS_SUCCESS)
 		return ret;
 
 	if (get_max_servers() > 1) {
@@ -3099,53 +3100,56 @@ mcast_moms(struct work_task *ptask)
 
 	switch (cmd)
 	{
-	case IS_NULL:
-		for (i = 0; i < mominfo_array_size; i++) {
-			if (mominfo_array[i]) {
-				add_mom_mcast(mominfo_array[i], &mtfd);
+		case IS_NULL:
+			for (i = 0; i < mominfo_array_size; i++) {
+				if (mominfo_array[i])
+					add_mom_mcast(mominfo_array[i], &mtfd);
 			}
-		}
-		if ((ret = send_ISNULL(mtfd, 0)) != DIS_SUCCESS)
-			close_streams(mtfd, ret);
-		break;
 
-	case IS_CLUSTER_ADDRS2:
-		for (i = 0; i < mominfo_array_size; i++) {
-			if (!mominfo_array[i])
-				continue;
-			psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);
-			if ((psvrmom->msr_state & INUSE_NEED_ADDRS) && ((mom_svrinfo_t *)(mominfo_array[i]->mi_data))->msr_stream >= 0) {
-				add_mom_mcast(mominfo_array[i], &mtfd);
-				if (psvrmom->msr_state & INUSE_MARKEDDOWN)
-					psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
-				set_all_state(mominfo_array[i], 0, INUSE_DOWN | INUSE_NEED_ADDRS,
-									NULL, Set_All_State_Regardless);
+			if ((ret = send_rpp_values(mtfd, 0)) != DIS_SUCCESS)
+				close_streams(mtfd, ret);
+
+			tpp_mcast_close(mtfd);
+			break;
+
+		case IS_CLUSTER_ADDRS:
+			for (i = 0; i < mominfo_array_size; i++) {
+
+				if (!mominfo_array[i])
+					continue;
+
+				psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);
+				if ((psvrmom->msr_state & INUSE_NEED_ADDRS) && psvrmom->msr_stream >= 0) {
+					add_mom_mcast(mominfo_array[i], &mtfd);
+					if (psvrmom->msr_state & INUSE_MARKEDDOWN)
+						psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
+					set_all_state(mominfo_array[i], 0, INUSE_DOWN | INUSE_NEED_ADDRS,
+										NULL, Set_All_State_Regardless);
+				}
 			}
-		}
-		if ((ret = send_ip_addrs_to_mom(mtfd, 0)) != DIS_SUCCESS)
-			close_streams(mtfd, ret);
-		break;
 
-	case IS_REPLYHELLO:
-		if (mtfd_replyhello != -1)
-			if ((ret = reply_hellosvr(mtfd_replyhello, 1)) != DIS_SUCCESS)
-				close_streams(mtfd_replyhello, ret);
-		if (mtfd_replyhello_noinv != -1)
-			if ((ret = reply_hellosvr(mtfd_replyhello_noinv, 0)) != DIS_SUCCESS)
-				close_streams(mtfd_replyhello_noinv, ret);
-		break;
-	
-	default:
-		break;
-	}
+			if ((ret = send_ip_addrs_to_mom(mtfd, 0)) != DIS_SUCCESS)
+				close_streams(mtfd, ret);
 
-	if (cmd == IS_REPLYHELLO) {
-		tpp_mcast_close(mtfd_replyhello);
-		tpp_mcast_close(mtfd_replyhello_noinv);
-		mtfd_replyhello = -1;
-		mtfd_replyhello_noinv = -1;
-	} else {
-		tpp_mcast_close(mtfd);
+			tpp_mcast_close(mtfd);
+			break;
+
+		case IS_REPLYHELLO:
+			if (mtfd_replyhello != -1)
+				if ((ret = reply_hellosvr(mtfd_replyhello, 1)) != DIS_SUCCESS)
+					close_streams(mtfd_replyhello, ret);	
+			if (mtfd_replyhello_noinv != -1)
+				if ((ret = reply_hellosvr(mtfd_replyhello_noinv, 0)) != DIS_SUCCESS)
+					close_streams(mtfd_replyhello_noinv, ret);
+
+			tpp_mcast_close(mtfd_replyhello);
+			tpp_mcast_close(mtfd_replyhello_noinv);
+			mtfd_replyhello = -1;
+			mtfd_replyhello_noinv = -1;
+			break;
+		
+		default:
+			break;
 	}
 }
 
@@ -4301,6 +4305,7 @@ is_request(int stream, int version)
 	char			*hname = NULL;
 	unsigned long		hook_rescdef_checksum;
 	unsigned long		chksum_rescdef;
+	static int		reply_send_tm = 0;
 
 	CLEAR_HEAD(reported_hooks);
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -4335,8 +4340,8 @@ is_request(int stream, int version)
 		if ((pmom = tfind2(ipaddr, port, &ipaddrs)) == NULL)
 			goto badcon;
 
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_NOTICE, pmom->mi_host, "Received IS_HELLOSVR from Mom");
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
+			LOG_NOTICE, pmom->mi_host, "Hello from MoM on port=%lu", port);
 
 		psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 		psvrmom->msr_state |= INUSE_UNKNOWN;
@@ -4345,16 +4350,12 @@ is_request(int stream, int version)
 				__func__, stream, pmom->mi_host,
 				ntohs(addr->sin_port), psvrmom->msr_stream))
 			tpp_close(psvrmom->msr_stream);
-#ifdef NAS /* localmod 005 */
 			tdelete2((u_long)psvrmom->msr_stream, 0ul, &streams);
-#else
-			tdelete2((u_long)psvrmom->msr_stream, 0, &streams);
-#endif /* localmod 005 */
 		}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		if (((mom_svrinfo_t *)(pmom->mi_data))->msr_numjobs > 0)
-			((mom_svrinfo_t *)(pmom->mi_data))->msr_state |= INUSE_NEED_CREDENTIALS;
+		if (psvrmom->msr_numjobs > 0)
+			psvrmom->msr_state |= INUSE_NEED_CREDENTIALS;
 #endif
 
 		if (psvrmom->msr_vnode_pool != 0) {
@@ -4367,7 +4368,7 @@ is_request(int stream, int version)
 			if (ppool != NULL) {
 				if (ppool->vnpm_inventory_mom == NULL) {
 					ppool->vnpm_inventory_mom = pmom;
-					psvrmom->reporting_mom = 1;
+					psvrmom->msr_has_inventory = 1;
 					sprintf(log_buffer,
 						msg_new_inventory_mom,
 						ppool->vnpm_vnode_pool,
@@ -4382,18 +4383,11 @@ is_request(int stream, int version)
 		psvrmom->msr_stream = stream;
 		psvrmom->msr_state |= INUSE_INIT;
 		psvrmom->msr_state &= ~INUSE_NEEDS_HELLOSVR;
-#ifdef NAS /* localmod 005 */
 		tinsert2((u_long)stream, 0ul, pmom, &streams);
-#else
-		tinsert2((u_long)stream, 0, pmom, &streams);
-#endif /* localmod 005 */
-
 		tpp_eom(stream);
 
-		static int reply_send_tm = 0;
-
 		/* mcast reply togethor */
-		if (psvrmom->msr_vnode_pool <= 0 || psvrmom->reporting_mom)
+		if (psvrmom->msr_vnode_pool <= 0 || psvrmom->msr_has_inventory)
 			add_mom_mcast(pmom, &mtfd_replyhello);
 		else
 			add_mom_mcast(pmom, &mtfd_replyhello_noinv);
@@ -4402,7 +4396,7 @@ is_request(int stream, int version)
 			struct work_task *ptask;
 
 			/* time to wait depends on the no of moms server knows */
-			reply_send_tm = time_now + (mominfo_array_size > 1024 ? 2 : 0);
+			reply_send_tm = time_now + (mominfo_array_size > 1024 ? MCAST_WAIT_TM : 0);
 			ptask = set_task(WORK_Timed, reply_send_tm, mcast_moms, NULL);
 			ptask->wt_aux = IS_REPLYHELLO;
 		}
@@ -4454,7 +4448,7 @@ found:
 			 * all addresses of all Moms
 			 */
 			command_orig = command;
-			if (psvrmom->msr_vnode_pool <= 0 || psvrmom->reporting_mom)
+			if (psvrmom->msr_vnode_pool <= 0 || psvrmom->msr_has_inventory)
 				command = IS_UPDATE2;
 			else
 				command = IS_UPDATE;
@@ -4900,14 +4894,14 @@ found:
 
 		case IS_RESCUSED:
 		case IS_RESCUSED_FROM_HOOK:
-#ifdef  DEBUG
-			if (command == IS_RESCUSED)
-				DBPRT(("%s: IS_RESCUSED\n", __func__))
-				else
-					DBPRT(("%s: IS_RESCUSED_FROM_HOOK\n", __func__))
-#endif	/* DEBUG */
 
-					stat_update(stream);
+			if (command == IS_RESCUSED) {
+				DBPRT(("%s: IS_RESCUSED\n", __func__))
+			} else {
+				DBPRT(("%s: IS_RESCUSED_FROM_HOOK\n", __func__))
+			}
+
+			stat_update(stream);
 			break;
 
 		case IS_JOBOBIT:
@@ -8157,10 +8151,8 @@ degrade_offlined_nodes_reservations(void)
 			vnode_unavailable(pn, 0);
 		}
 	}
-	/* create a task to check for vnodes that don't report back up after
-	 * two server ping cycles
-	 */
-	(void) set_task(WORK_Timed, time_now + (2 * svr_ping_rate),
+	/* create a task to check for vnodes that don't report back up after MAX_NODE_WAIT */
+	(void) set_task(WORK_Timed, time_now + MAX_NODE_WAIT,
 		degrade_downed_nodes_reservations, NULL);
 
 }

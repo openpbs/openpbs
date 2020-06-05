@@ -258,7 +258,6 @@ char	       *mom_host = server_host;
 long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
-int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
 pbs_list_head	svr_deferred_req;
 pbs_list_head	svr_queues;            /* list of queues                   */
 pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
@@ -998,13 +997,6 @@ main(int argc, char **argv)
 				if (get_port(optarg, &pbs_scheduler_port,
 					&pbs_scheduler_addr)) {
 					(void)fprintf(stderr, "%s: bad -S %s\n", argv[0], optarg);
-					return (1);
-				}
-				break;
-			case 'P':	/* set node ping frequency (seconds between) */
-				svr_ping_rate = atoi(optarg);
-				if (svr_ping_rate < 1) {
-					(void)fprintf(stderr, "%s: bad -P %s\n", argv[0], optarg);
 					return (1);
 				}
 				break;
