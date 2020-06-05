@@ -548,7 +548,7 @@ mem_sum(job *pjob)
 			nps = ji.TotalProcesses;
 		else
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"QueryInformationJobObject for job %d, handle %d failed to get number of processes with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
+				"QueryInformationJobObject for job %s, handle %d failed to get number of processes with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
 	}
 
 	if (nps == 0) {
@@ -576,7 +576,7 @@ mem_sum(job *pjob)
 			JobObjectBasicProcessIdList,
 			pProcessList, pidlistsize, NULL))
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"QueryInformationJobObject for job %d, handle %d failed to get processe ID list with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
+				"QueryInformationJobObject for job %s, handle %d failed to get processe ID list with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
 	}
 	/*
 	 * Traverse through each process and find the
@@ -610,7 +610,7 @@ mem_sum(job *pjob)
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+					"IsProcessInJob failed for %s job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/* account for processes that are not part of the Windows job object */
 			if (is_process_in_job == FALSE) {
@@ -659,7 +659,7 @@ cput_sum(job *pjob)
 			nps = ji.TotalProcesses;
 		} else
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"QueryInformationJobObject for job %d, handle %d failed to get number of processes with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
+				"QueryInformationJobObject for job %s, handle %d failed to get number of processes with error %lu", pjob->ji_qs.ji_jobid, pjob->ji_hJob, GetLastError());
 	}
 
 	for (ptask = (task *)GET_NEXT(pjob->ji_tasks); ptask; ptask = (task *)GET_NEXT(ptask->ti_jobtask)) {
@@ -668,7 +668,7 @@ cput_sum(job *pjob)
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+					"IsProcessInJob failed for %s job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
 			 * check if the processes is not part of the Windows job object due to pbs_attach
@@ -1165,7 +1165,7 @@ cput_job(char *jobid)
 	if (!QueryInformationJobObject(hjob,
 		JobObjectBasicAccountingInformation,
 		&ji, sizeof(ji), NULL)) {
-		log_errf(-1, __func__, "QueryInformationJobObject for job %d, handle %d failed to get number of processes", jobid, hjob);
+		log_errf(-1, __func__, "QueryInformationJobObject for job %s, handle %d failed to get number of processes", jobid, hjob);
 		cputime = 0.0;
 	}
 	else {
@@ -1183,7 +1183,7 @@ cput_job(char *jobid)
 			ret = IsProcessInJob(ptask->ti_hProc, pjob->ji_hJob, &is_process_in_job);
 			if (!ret)
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"IsProcessInJob failed for %d job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
+					"IsProcessInJob failed for %s job %d process with errno %lu", pjob->ji_hJob, ptask->ti_hProc, GetLastError());
 
 			/*
 			 * check if the processes is not part of the job object due to pbs_attach,
