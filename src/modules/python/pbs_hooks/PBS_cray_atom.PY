@@ -177,13 +177,14 @@ class HookHelper(object):
         log_with_caller(pbs.EVENT_DEBUG4, 'path is %s' % path)
         return path
 
+    @staticmethod
     def is_it_exclusive(job):
         """
         check to see if the job requested exclusive, or if the
         nodes are marked exclusive.  This needs to be passed
         to ATOM.
         """
-        place = job.Resource_List["place"]
+        place = str(job.Resource_List["place"])
         log_with_caller(pbs.EVENT_DEBUG4, "place is %s" % place)
 
         # See if the node sharing value has exclusive
@@ -199,26 +200,9 @@ class HookHelper(object):
         if (sharing == pbs.ND_IGNORE_EXCL):
             return False
 
-        excls = re.findall(r'excl', str(place))
-        totalexcls = len(excls)
-        if totalexcls > 0:
-            if "group" in str(place):
-                # A group is in the place statement, is it excl 
-                output = re.search(r'(?<=group=)[^:$]*', str(place))
-                if output:
-                    groupv = output.group()
-                    log_with_caller(pbs.EVENT_DEBUG4, "The groupv is = %s" % str(groupv))
-                    groups = re.findall(r'excl', groupv)
-                    gcount = len(groups)
-                    if gcount != totalexcls:
-                        # Found excl and it wasn't in group
-                        log_with_caller(pbs.EVENT_DEBUG4, "Found excl not as group - sending true")
-                        return True
-            else:
-                # The 'excl' found is the sharing part of place not the group
-                return True
-
-        if "shared" in str(place):
+        if any(s.startswith('excl') for s in place.split(':')):
+            return True
+        if any(s.startswith('shared') for s in place.split(':')):
             return False
 
         if ((sharing == pbs.ND_DEFAULT_EXCL) or
@@ -228,8 +212,7 @@ class HookHelper(object):
         if (sharing == pbs.ND_DEFAULT_SHARED):
             return False
 
-        pbs.logmsg(pbs.LOG_DEBUG, "It was none of the above cases,"
-                   "return not exclusive")
+        # It was none of the above cases return not exclusive
         return False
 
 def post(url, json=None, **kwargs):
