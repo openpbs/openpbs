@@ -524,9 +524,9 @@ find_vnode_pool(mominfo_t *pmom)
 
 	if (psvrmom->msr_vnode_pool != 0) {
 		while (ppool != NULL) {
-			if (ppool->vnpm_vnode_pool == psvrmom->msr_vnode_pool) {
-				return(ppool);
-			}
+			if (ppool->vnpm_vnode_pool == psvrmom->msr_vnode_pool)
+				return (ppool);
+
 			ppool = ppool->vnpm_next;
 		}
 	}
@@ -544,11 +544,11 @@ find_vnode_pool(mominfo_t *pmom)
 void
 reset_pool_inventory_mom(mominfo_t *pmom)
 {
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
+	int           i;
 	vnpool_mom_t  *ppool;
 	mominfo_t     *pxmom;
 	mom_svrinfo_t *pxsvrmom;
-	int           i;
+	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 
 	/* If this Mom is in a vnode pool and is the inventory Mom for that */
 	/* pool remove her from that role and if another Mom in the pool and */
@@ -566,16 +566,15 @@ reset_pool_inventory_mom(mominfo_t *pmom)
 			psvrmom->msr_has_inventory = 0;
 
 			/* see if another Mom is up to become "the one" */
-			for (i=0; i<ppool->vnpm_nummoms; ++i) {
+			for (i = 0; i < ppool->vnpm_nummoms; ++i) {
 				pxmom = ppool->vnpm_moms[i];
 				pxsvrmom = (mom_svrinfo_t *)pxmom->mi_data;
 				if ((pxsvrmom->msr_state & INUSE_DOWN) == 0) {
 					ppool->vnpm_inventory_mom = pxmom;
 					pxsvrmom->msr_has_inventory = 1;
-					sprintf(log_buffer, msg_new_inventory_mom,
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+						LOG_DEBUG, msg_daemonname, msg_new_inventory_mom,
 						ppool->vnpm_vnode_pool, pxmom->mi_host);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-						LOG_DEBUG, msg_daemonname, log_buffer);
 				}
 			}
 		}
@@ -597,11 +596,11 @@ reset_pool_inventory_mom(mominfo_t *pmom)
 int
 add_mom_to_pool(mominfo_t *pmom)
 {
-	vnpool_mom_t *ppool;
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	int		added_pool = 0;
-	int		i;
-	mominfo_t    **tmplst;
+	int             i;
+	vnpool_mom_t    *ppool;
+	mominfo_t       **tmplst;
+	int             added_pool = 0;
+	mom_svrinfo_t   *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 
 	if (psvrmom->msr_vnode_pool == 0)
 		return PBSE_NONE;	/* Mom not in a pool */
@@ -611,11 +610,11 @@ add_mom_to_pool(mominfo_t *pmom)
 		/* Found existing pool. Is Mom already in it? */
 		for (i = 0; i < ppool->vnpm_nummoms; ++i) {
 			if (ppool->vnpm_moms[i] == pmom) {
-				sprintf(log_buffer, "POOL: add_mom_to_pool - "
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
+					LOG_INFO, pmom->mi_host,
+					"POOL: add_mom_to_pool - "
 					"Mom already in pool %ld",
 					psvrmom->msr_vnode_pool);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-					LOG_INFO, pmom->mi_host,log_buffer);
 				return PBSE_NONE; /* she is already there */
 			}
 		}
@@ -623,12 +622,11 @@ add_mom_to_pool(mominfo_t *pmom)
 
 	/* The pool doesn't exist yet, we need to add a pool entry */
 	if (ppool == NULL) {
-		ppool = (vnpool_mom_t *)calloc(1, (size_t)sizeof(struct vnpool_mom));
+		ppool = (vnpool_mom_t *) calloc(1, (size_t)sizeof(struct vnpool_mom));
 		if (ppool == NULL) {
 			/* no memory */
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR,
-				  pmom->mi_host,
-				  "Failed to expand vnode_pool_mom_list");
+				  pmom->mi_host, "Failed to expand vnode_pool_mom_list");
 			return PBSE_SYSTEM;
 		}
 		added_pool = 1;
@@ -638,11 +636,10 @@ add_mom_to_pool(mominfo_t *pmom)
 	/* now add Mom to pool list, expanding list if need be */
 
 	/* expand the array, perhaps from nothingness */
-	tmplst = (mominfo_t **)realloc(ppool->vnpm_moms, (ppool->vnpm_nummoms+1)*sizeof(mominfo_t *));
+	tmplst = (mominfo_t **) realloc(ppool->vnpm_moms, (ppool->vnpm_nummoms + 1) * sizeof(mominfo_t *));
 	if (tmplst == NULL) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
-			  LOG_ERR, pmom->mi_host,
-			  "unable to add mom to pool, no memory");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR,
+                          pmom->mi_host, "unable to add mom to pool, no memory");
 
 		if (added_pool)
 			free(ppool);
@@ -651,15 +648,14 @@ add_mom_to_pool(mominfo_t *pmom)
 	ppool->vnpm_moms = tmplst;
 	ppool->vnpm_moms[ppool->vnpm_nummoms++] = pmom;
 
-	sprintf(log_buffer, "Mom %s added to vnode_pool %ld", pmom->mi_host, psvrmom->msr_vnode_pool);
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname,
+			"Mom %s added to vnode_pool %ld", pmom->mi_host, psvrmom->msr_vnode_pool);
 	if (ppool->vnpm_inventory_mom == NULL) {
 		ppool->vnpm_inventory_mom = pmom;
 		psvrmom->msr_has_inventory = 1;
-		sprintf(log_buffer, msg_new_inventory_mom, psvrmom->msr_vnode_pool, pmom->mi_host);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname,
+				msg_new_inventory_mom, psvrmom->msr_vnode_pool, pmom->mi_host);
 	}
-
 
 	if (vnode_pool_mom_list == NULL) {
 		vnode_pool_mom_list = ppool;
@@ -667,6 +663,7 @@ add_mom_to_pool(mominfo_t *pmom)
 		ppool->vnpm_next = vnode_pool_mom_list;
 		vnode_pool_mom_list = ppool;
 	}
+
 	return PBSE_NONE;
 }
 
@@ -681,10 +678,10 @@ add_mom_to_pool(mominfo_t *pmom)
  */
 void remove_mom_from_pool(mominfo_t *pmom)
 {
-	vnpool_mom_t *ppool;
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	int			   i;
-	int			   j;
+	int             i;
+	int             j;
+	vnpool_mom_t    *ppool;
+	mom_svrinfo_t   *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 
 	if (psvrmom->msr_vnode_pool == 0)
 		return;	/* Mom not in a pool */

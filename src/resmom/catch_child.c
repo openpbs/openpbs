@@ -1957,15 +1957,18 @@ send_hellosvr(int stream)
 	server_stream = stream;
 
 	if (svr)
-		sprintf(log_buffer, "HELLOSVR sent to server at %s:%d", svr, port);
+		sprintf(log_buffer, "HELLO sent to server at %s:%d", svr, port);
 	else
-		sprintf(log_buffer, "HELLOSVR sent to server at stream:%d", stream);
+		sprintf(log_buffer, "HELLO sent to server at stream:%d", stream);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 		msg_daemonname, log_buffer);
 	return;
 
 err:
-	log_err(errno, msg_daemonname, "Failed to send IS_HELLOSVR message");
+	if (svr)
+		log_errf(errno, msg_daemonname, "Failed to send HELLO at %s:%d", svr, port);
+	else
+		log_errf(errno, msg_daemonname, "Failed to send HELLO at stream:%d", stream);
 	tpp_close(stream);
 	return;
 }
