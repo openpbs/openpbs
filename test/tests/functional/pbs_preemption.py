@@ -357,6 +357,9 @@ exit 1
         a = {ATTR_rescavail + '.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
+        a = {'preempt_sort': 'min_time_since_start'}	
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
         jid1, jid2, jid3 = self.submit_jobs()
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid2)
