@@ -205,8 +205,8 @@ class HookHelper(object):
         if any(s.startswith('shared') for s in place.split(':')):
             return False
 
-        if sharing == pbs.ND_DEFAULT_EXCL or
-            sharing == pbs.ND_DEFAULT_EXCLHOST:
+        if (sharing == pbs.ND_DEFAULT_EXCL or
+            sharing == pbs.ND_DEFAULT_EXCLHOST):
             return True
 
         if sharing == pbs.ND_DEFAULT_SHARED:
