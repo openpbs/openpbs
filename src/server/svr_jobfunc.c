@@ -4984,15 +4984,14 @@ update_eligible_time(long newaccruetype, job *pjob)
 	switch ((int)oldaccruetype) {
 		case JOB_ELIGIBLE:
 			pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += accrued_time;
+			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
 		case JOB_INELIGIBLE:
 		case JOB_RUNNING:
 		case JOB_INITIAL:
 		case JOB_EXIT:
 			pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
 			pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = timestamp;
-
 			pjob->ji_wattr[JOB_ATR_accrue_type].at_flags |= flags;
-			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
 			pjob->ji_wattr[JOB_ATR_sample_starttime].at_flags |= flags;
 			break;
 
