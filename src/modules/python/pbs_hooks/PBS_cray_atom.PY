@@ -194,10 +194,10 @@ class HookHelper(object):
                         (str(sharing), str(type(sharing))))
 
         # Uses the same logic as the scheduler (is_excl())
-        if ((sharing == pbs.ND_FORCE_EXCL) or (sharing == pbs.ND_FORCE_EXCLHOST)):
+        if sharing == pbs.ND_FORCE_EXCL or sharing == pbs.ND_FORCE_EXCLHOST:
             return True
 
-        if (sharing == pbs.ND_IGNORE_EXCL):
+        if sharing == pbs.ND_IGNORE_EXCL:
             return False
 
         if any(s.startswith('excl') for s in place.split(':')):
@@ -205,14 +205,13 @@ class HookHelper(object):
         if any(s.startswith('shared') for s in place.split(':')):
             return False
 
-        if ((sharing == pbs.ND_DEFAULT_EXCL) or
-            (sharing == pbs.ND_DEFAULT_EXCLHOST)):
+        if sharing == pbs.ND_DEFAULT_EXCL or
+            sharing == pbs.ND_DEFAULT_EXCLHOST:
             return True
 
-        if (sharing == pbs.ND_DEFAULT_SHARED):
+        if sharing == pbs.ND_DEFAULT_SHARED:
             return False
 
-        # It was none of the above cases return not exclusive
         return False
 
 def post(url, json=None, **kwargs):
