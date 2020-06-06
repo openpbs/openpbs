@@ -112,15 +112,16 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 		(server.sv_attr[(int)SRV_ATR_show_hidden_attribs].at_val.at_long == 0)) {
 		return;
 	}
-
-	if (resc_access_perm & PRIV_READ)
-		encoded = pat->at_priv_encoded;
-	else
-		encoded = pat->at_user_encoded;
-
-	if (pat->at_flags & ATR_VFLAG_MODCACHE)
+	if (pat->at_flags & ATR_VFLAG_MODCACHE) {
 		/* free old cache value if the value has changed */
 		free_svrcache(pat);
+		encoded = NULL;
+	} else {
+		if (resc_access_perm & PRIV_READ)
+			encoded = pat->at_priv_encoded;
+		else
+			encoded = pat->at_user_encoded;
+	}
 
 	if ((encoded == NULL) || (pat->at_flags & ATR_VFLAG_MODCACHE)) {
 		if (pat->at_flags & ATR_VFLAG_SET) {

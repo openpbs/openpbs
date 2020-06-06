@@ -194,17 +194,15 @@
 #include "pbs_sched.h"
 
 extern struct python_interpreter_data  svr_interp_data;
+extern pbs_list_head svr_runjob_hooks;
 
 extern time_t time_now;
 extern char  *resc_in_err;
 extern char  *msg_daemonname;
-extern pbs_list_head task_list_event;
-extern pbs_list_head task_list_timed;
 extern char   server_name[];
 extern char   server_host[];
 
 extern pbs_list_head svr_allconns;
-extern int max_connection;
 
 #define ERR_MSG_SIZE 256
 #define MAXNLINE 2048
@@ -215,11 +213,8 @@ extern int max_connection;
  */
 #define APP_PROV_SUCCESS 1
 
-extern char *msg_internal;
-extern char *msg_job_prov_failed;
 extern char *path_hooks_workdir;
 extern char *path_priv;
-extern char *pbs_server_name;
 
 char *path_prov_track;
 int max_concurrent_prov = PBS_MAX_CONCURRENT_PROV;
@@ -262,7 +257,6 @@ extern int sync_mom_hookfiles_proc_running;
 /*
  * Miscellaneous server functions
  */
-extern void db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr);
 #ifdef NAS /* localmod 005 */
 extern int write_single_node_state(struct pbsnode *np);
 #endif /* localmod 005 */
@@ -7081,28 +7075,6 @@ enum failover_state are_we_primary(void)
 		return FAILOVER_SECONDARY;  /* we are the secondary */
 
 	return FAILOVER_CONFIG_ERROR;	    /* cannot be neither */
-}
-
-/* action function for opt_backfill_fuzzy -- only allow the correct values */
-int
-action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode)
-{
-	char *str = pattr->at_val.at_str;
-
-	if (str == NULL)
-		return PBSE_BADATVAL;
-
-	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		if (!strcasecmp(str, "off") ||
-		    !strcasecmp(str, "low")  ||
-		    !strcasecmp(str, "medium") || !strcasecmp(str, "med") ||
-		    !strcasecmp(str, "high"))
-			return PBSE_NONE;
-		else
-			return PBSE_BADATVAL;
-	}
-
-	return PBSE_NONE;
 }
 
 /**

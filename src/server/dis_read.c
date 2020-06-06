@@ -583,6 +583,7 @@ dis_request_read(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_RunJob:
 		case PBS_BATCH_AsyrunJob:
+		case PBS_BATCH_AsyrunJob_ack:
 		case PBS_BATCH_StageIn:
 		case PBS_BATCH_ConfirmResv:
 			rc = decode_DIS_Run(sfds, request);

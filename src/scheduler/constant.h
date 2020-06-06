@@ -616,6 +616,12 @@ enum sort_info_type {
 	NON_PRIME_NODE_SORT
 };
 
+enum runjob_mode {
+	RJ_NOWAIT,
+	RJ_RUNJOB_HOOK,
+	RJ_EXECJOB_HOOK
+};
+
 #ifdef	__cplusplus
 }
 #endif

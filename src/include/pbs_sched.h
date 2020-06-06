@@ -82,6 +82,7 @@ enum sched_atr {
 	SCHED_ATR_preempt_targets_enable,
 	SCHED_ATR_job_sort_formula_threshold,
 	SCHED_ATR_throughput_mode,
+	SCHED_ATR_job_run_wait,
 	SCHED_ATR_opt_backfill_fuzzy,
 	SCHED_ATR_sched_port,
 	SCHED_ATR_partition,
