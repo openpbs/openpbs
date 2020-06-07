@@ -5,7 +5,17 @@ How to install PBS using the configure script.
 
 1. Install the prerequisite packages for building PBS.
 
-  For CentOS systems you should run the following command as root:
+  For CentOS-8 systems you should run the following command as root:
+
+    Configure and enable PowerTools repo for hwloc-devel and libedit-devel packages
+
+    dnf install -y gcc make rpm-build libtool hwloc-devel \
+      libX11-devel libXt-devel libedit-devel libical-devel \
+      ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
+      tk-devel swig expat-devel openssl-devel libXext libXft \
+      autoconf automake
+
+  For CentOS-7 systems you should run the following command as root:
 
     yum install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
@@ -41,7 +51,7 @@ How to install PBS using the configure script.
   For openSUSE systems you should run the following command as root:
 
     zypper install expat libedit postgresql-server postgresql-contrib python3 \
-      sendmail sudo tcl tk libical1
+      sendmail sudo tcl tk libical2
 
   For Debian (jessie) systems you should run the following command as root:
 
