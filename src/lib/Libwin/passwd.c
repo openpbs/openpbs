@@ -66,6 +66,7 @@
 #endif
 #include <Security.h>
 
+/* Global variable */
 char    winlog_buffer[WINLOG_BUF_SIZE] = {'\0'};
 
 #define DESKTOP_ALL (	DESKTOP_CREATEMENU      | DESKTOP_CREATEWINDOW  | \
@@ -580,7 +581,7 @@ get_full_username(char *username,
 	DWORD		domain_sz;
 	char		tryname[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
 	char		actual_name[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
-	DWORD ret = 0;
+	DWORD		ret = 0;
 
 	if (username == NULL)
 		return NULL;
@@ -1040,7 +1041,7 @@ getusersid2(char *uname,
 
 			/* get the size of the memory buffer needed for the SID */
 			ret = GetTokenInformation(hToken, TokenUser, NULL, 0, &dwBufferSize);
-			if ((ret ==0) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
+			if ((ret == 0) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
 
 				pTokenUser = (PTOKEN_USER)malloc(dwBufferSize);
 				if (pTokenUser == NULL) {
@@ -1679,7 +1680,7 @@ isMember(char *user, char *group)
 	char		realuser[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
 	SID_NAME_USE	sid_type;
 	SID		*sid = NULL;
-	NET_API_STATUS nBufferStat;
+	NET_API_STATUS 	nBufferStat;
 
 	sid = get_full_username(user, realuser, &sid_type);
 
@@ -2499,7 +2500,7 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 	int		token_created_here = 0;
 	PROFILEINFO	pi;
 	HANDLE		ht = NULL;
-	HRESULT res;
+	HRESULT 	res;
 
 	pi.dwSize = sizeof(PROFILEINFO);
 	pi.dwFlags = PI_NOUI;
@@ -2533,7 +2534,7 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 		} else {
 			userlogin = LogonUserNoPass(username);
 			if (userlogin == 0) {
-				log_errf(-1, __func__, "failed in LogonUserNoPass for %s", username);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LogonUserNoPass for %s", username);
 			}
 		}
 		token_created_here = 1;
@@ -2611,7 +2612,7 @@ map_unc_path(char *path, struct passwd *pw)
 	NETRESOURCE nr;
 	static char local_drive[MAXPATHLEN+1] = {'\0'};
 	int	    lsize = MAXPATHLEN+1;
-	char *tmp = NULL;
+	char        *tmp = NULL;
 
 	strcpy(local_drive, "");
 	if (path == NULL)
@@ -2849,7 +2850,7 @@ getAssignedHomeDirectory(char *user)
 /* The Algorithm is as follows:						   */
 /* 	if [HOME DIRECTORY] is set, use it.                                */
 /*      else                                                               */
-/*          use [PROFILE PATH]\My Documents\PBS                            */
+/*          use [PROFILE PATH]\My Documents\PBS                        */
 /*									   */
 /* NOTE: The returned path may not exist yet, so better to pass result to  */
 /*        CreateDirectory() under user context.                            */
@@ -2967,7 +2968,7 @@ ena_privilege(char *privname)
 
 	if (!LookupPrivilegeValue(NULL, privname, &luid)) {
 		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, 
-					"failed in LookupPrivilegeValue for %s with errno %lu", privname, GetLastError());
+			"failed in LookupPrivilegeValue for %s with errno %lu", privname, GetLastError());
 		goto ena_privilege_end;
 	}
 
@@ -3567,267 +3568,6 @@ print_dacl(ACL *pdacl)
 	return (strdup(bigbuf));
 }
 
-/* get_token_info: if token is INVALID_HANDLE_VALUE, then determines the
- security token of the current thread or current process */
-void
-get_token_info(HANDLE token,
-	char **user,
-	char **owner,
-	char **prigrp,
-	char **altgrps,
-	char **privs,
-	char **dacl,
-	char **source,
-	char **type)
-{
-	char *buf = NULL;
-	int cb = sizeof(buf);
-
-	cb = 0;
-
-	if (token == INVALID_HANDLE_VALUE) {
-
-		if (OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS,
-			TRUE, &token)  == 0)
-			if (OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS,
-					&token) == 0) {
-				log_err(-1, __func__, "failed in OpenProcessToken");
-			}
-
-	}
-
-	if ( !GetTokenInformation(token, TokenUser, buf, cb, &cb)) {
-		/* User: 1st GetTokenInformation failed! */
-
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-		if (GetTokenInformation(token, TokenUser, buf, cb, &cb)) {
-
-			TOKEN_USER      *ptu = (TOKEN_USER *)buf;
-
-			*user = getusername(ptu->User.Sid);
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (user) with errno %lu", GetLastError());
-		}
-	}
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenOwner, buf, cb, &cb)) {
-		/* Owner: 1st GetTokenInformation failed! */
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-		if (GetTokenInformation(token, TokenOwner, buf, cb, &cb)) {
-
-			TOKEN_OWNER	*ptu = (TOKEN_OWNER *)buf;
-
-			*owner = getusername(ptu->Owner);
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (owner) with errno %lu", GetLastError());
-		}
-	}
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenPrimaryGroup, buf, cb, &cb)) {
-		/* Group: 1st GetTokenInformation failed! */
-
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-		if (GetTokenInformation(token, TokenPrimaryGroup, buf, cb, &cb)) {
-
-			TOKEN_PRIMARY_GROUP *ptu = (TOKEN_PRIMARY_GROUP *)buf;
-
-			*prigrp= getgrpname(ptu->PrimaryGroup);
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (group) with errno %lu", GetLastError());
-		}
-	}
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenGroups, buf, cb, &cb)) {
-		/* Groups: 1st GetTokenInformation failed! */
-		int l;
-		char	bigbuf[512];
-		char	*gname;
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-
-		if (GetTokenInformation(token, TokenGroups, buf, cb, &cb)) {
-
-			TOKEN_GROUPS *ptu = (TOKEN_GROUPS *)buf;
-			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, __func__,
-				"get_token_info: # of groups=%d", ptu->GroupCount);
-			strcpy(bigbuf, "");
-			for (l=0; l < (int)ptu->GroupCount; l++) {
-				gname = getgrpname(ptu->Groups[l].Sid);
-				if (gname == NULL)
-					gname = getusername(ptu->Groups[l].Sid);
-				if (gname) {
-					strcat(bigbuf, gname);
-					strcat(bigbuf, " ");
-				}
-			}
-			if ((*altgrps = strdup(bigbuf)) == NULL) {
-				free(buf);
-				fprintf(stderr, "Unable to allocate memory!\n");
-				return;
-			}
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (groups) with errno %lu", GetLastError());
-		}
-	}
-
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenPrivileges, buf, cb, &cb)) {
-		
-		int l;
-		char	bigbuf[3000];
-		char	buf2[1040];
-		char	buf3[512];
-		char	buf4[80];
-		int	cb3;
-		LUID	luid;
-		DWORD	att;
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-
-		if (GetTokenInformation(token, TokenPrivileges, buf, cb, &cb)) {
-			/* Groups: 1st GetTokenInformation failed! */
-			TOKEN_PRIVILEGES *ptu = (TOKEN_PRIVILEGES *)buf;
-			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, __func__,
-				"get_token_info: # of privs=%d", ptu->PrivilegeCount);
-			strcpy(bigbuf, "");
-			for (l=0; l < (int)ptu->PrivilegeCount; l++) {
-				cb3 = 512;
-				luid = ptu->Privileges[l].Luid;
-				if (LookupPrivilegeName(NULL,
-					&luid,
-					buf3,
-					&cb3) == 0) {
-					log_err(-1, __func__, "failed in LookupPrivilegeName");
-					continue;
-				}
-
-				sprintf(buf2, "(%s[%d] =", buf3, luid);
-				att = ptu->Privileges[l].Attributes;
-				if (att & SE_PRIVILEGE_ENABLED_BY_DEFAULT)
-					strcat(buf2, "SE_PRIVILEGE_ENABLED_BY_DEFAULT,");
-				if (att & SE_PRIVILEGE_ENABLED)
-					strcat(buf2, "SE_PRIVILEGE_ENABLED,");
-
-				if (att & SE_PRIVILEGE_USED_FOR_ACCESS)
-					strcat(buf2, "SE_USED_FOR_ACCESS,");
-				sprintf(buf4, "%d", att);
-				strcat(buf2, buf4);
-				strcat(buf2, ")");
-				strcat(bigbuf, buf2);
-				strcat(bigbuf, " ");
-			}
-			strcat(bigbuf, "<END>");
-			if ((*privs = strdup(bigbuf)) == NULL) {
-				free(buf);
-				fprintf(stderr, "Unable to allocate memory!\n");
-				return;
-			}
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (privs) with errno %lu", GetLastError());
-		}
-	}
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenDefaultDacl, buf, cb, &cb)) {
-		/* DACL: 1st GetTokenInformation failed! */
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-
-		if (GetTokenInformation(token, TokenDefaultDacl, buf, cb, &cb)) {
-
-			TOKEN_DEFAULT_DACL *ptu = (TOKEN_DEFAULT_DACL *)buf;
-			*dacl = print_dacl(ptu->DefaultDacl);
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (DACL) with errno %lu", GetLastError());
-		}
-	}
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenSource, buf, cb, &cb)) {
-		/* Source: 1st GetTokenInformation failed! */
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-
-		if (GetTokenInformation(token, TokenSource, buf, cb, &cb)) {
-
-			TOKEN_SOURCE *ptu = (TOKEN_SOURCE *)buf;
-			if ((*source = strdup(ptu->SourceName)) == NULL) {
-				fprintf(stderr, "Unable to allocate memory!\n");
-				free(buf);
-				return;
-			}
-			free(buf);
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"failed in GetTokenInformation (source) with errno %lu", GetLastError());
-		}
-	}
-	cb = 0;
-	if ( !GetTokenInformation(token, TokenType, buf, cb, &cb)) {
-		/* Source: 1st GetTokenInformation failed! */
-		buf = (char *) malloc(cb);
-		if (buf == NULL) {
-			fprintf(stderr, "Unable to allocate memory!\n");
-			return;
-		}
-
-		if (GetTokenInformation(token, TokenType, buf, cb, &cb)) {
-			TOKEN_TYPE *ptu = (TOKEN_TYPE *)buf;
-			if (*ptu == TokenPrimary) {
-				if ((*type = strdup("TokenPrimary")) == NULL) {
-					fprintf(stderr, "Unable to allocate memory!\n");
-					free(buf);
-					return;
-				}
-			} else if (*ptu == TokenImpersonation) {
-				if ((*type = strdup("TokenImpersonation")) == NULL) {
-					fprintf(stderr, "Unable to allocate memory!\n");
-					free(buf);
-					return;
-				}
-			}
-		} else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				"Source: GetTokenInformation failed with errno %lu", GetLastError());
-		}
-	}
-	CloseHandle(token);
-}
-
 /* returns the handle value to the impersonation security token that can be
  passed on to ImpersonateLoggedOnUser(). */
 HANDLE
@@ -4050,7 +3790,7 @@ setuser(char *user)
 
 	setuser_hdle = LogonUserNoPass(user);
 	if (setuser_hdle == 0) {
-		log_errf(-1, __func__, "failed in LogonUserNoPass for %s", user);
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LogonUserNoPass for %s", user);
 	}
 	if (setuser_hdle != INVALID_HANDLE_VALUE) {
 		if (!impersonate_user(setuser_hdle)) {
@@ -4075,7 +3815,7 @@ setuser_close_handle(HANDLE setuser_hdle)
 		passwd_cache_init = 1;
 	}
 
-	if (setuser_hdle != INVALID_HANDLE_VALUE) {
+	if ((setuser_hdle != INVALID_HANDLE_VALUE) && (setuser_hdle != 0)) {
 		CloseHandle(setuser_hdle);
 
 		/* look in internal cache for saved usertoken handle */
@@ -4129,17 +3869,17 @@ int
 wsystem(char *cmdline, HANDLE user_handle)
 {
 
-	STARTUPINFO             si = { 0 };
-	PROCESS_INFORMATION     pi = { 0 };
-	int			flags = CREATE_DEFAULT_ERROR_MODE| CREATE_NEW_PROCESS_GROUP;
-	int			rc = 0;
-	int			run_exit = 0;
-	char			cmd[PBS_CMDLINE_LENGTH] = {'\0'};
-	char			cmd_shell[MAX_PATH + 1] = {'\0'};
-	char			current_dir[MAX_PATH+1] = {'\0'};
-	char			*temp_dir = NULL;
-	int			changed_dir = 0;
-	DWORD		stat;
+	STARTUPINFO  si = { 0 };
+	PROCESS_INFORMATION  pi = { 0 };
+	int  flags = CREATE_DEFAULT_ERROR_MODE| CREATE_NEW_PROCESS_GROUP;
+	int  rc = 0;
+	int  run_exit = 0;
+	char  cmd[PBS_CMDLINE_LENGTH] = {'\0'};
+	char  cmd_shell[MAX_PATH + 1] = {'\0'};
+	char  current_dir[MAX_PATH+1] = {'\0'};
+	char  *temp_dir = NULL;
+	int  changed_dir = 0;
+	DWORD  stat;
 	LPVOID  user_env = NULL;
 
 	si.cb = sizeof(si);
@@ -4170,7 +3910,9 @@ wsystem(char *cmdline, HANDLE user_handle)
 	} else {
 		flags = flags|CREATE_UNICODE_ENVIRONMENT;
 		if (!CreateEnvironmentBlock(&user_env, user_handle, FALSE)) {
+			run_exit = GetLastError();
 			log_err(-1, __func__, "failed in CreateEnvironmentBlock");
+			goto end;
 		}
 		rc=CreateProcessAsUser(user_handle, NULL, cmd,
 			NULL, NULL, TRUE, flags,
@@ -4206,7 +3948,7 @@ wsystem(char *cmdline, HANDLE user_handle)
 
 	if (user_env)
 		DestroyEnvironmentBlock(user_env);
-
+end:
 	return (run_exit);
 }
 
@@ -4727,7 +4469,7 @@ add_pwentry(char *name,
 		log_err(errno, __func__, "failed in memory allocation of pwdn");
 		return NULL;
 	}
-
+	
 	if ((pwdn->pw_name = strdup(name)) == NULL) {
 		goto err;
 	}
@@ -4858,7 +4600,7 @@ logon_pw(char *username,
 		strcat(msg, msg2);
 		return NULL;
 	}
-
+	
 	if (passwd_cache_init == 0) {
 		CLEAR_HEAD(passwd_cache_ll);
 		passwd_cache_init = 1;
@@ -4958,7 +4700,7 @@ logon_pw(char *username,
 			LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT,
 			&pwdp->pw_userlogin) == 0) {
 			if (LogonUser(pwdp->pw_name, domain, thepass,
-					LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
+				LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
 					&pwdp->pw_userlogin) == 0) {
 				log_errf(-1, __func__, "failed in LogonUser for %s", pwdp->pw_name);
 			}
@@ -4973,8 +4715,7 @@ logon_pw(char *username,
 				pwdp->pw_dir = getHomedir(username);
 				(void)revert_impersonated_user();
 			} else {
-				if (pwdp->pw_name)
-					log_errf(-1, __func__, "failed to impersonate user %s", pwdp->pw_name);
+				log_errf(-1, __func__, "failed to impersonate user %s", pwdp->pw_name);
 			}
 		}
 
@@ -4986,7 +4727,7 @@ logon_pw(char *username,
 				CloseHandle(pwdp->pw_userlogin);
 				pwdp->pw_userlogin = LogonUserNoPass(username);
 				if (pwdp->pw_userlogin == 0) {
-					log_errf(-1, __func__, "failed in LogonUserNoPass for %s", username);
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in LogonUserNoPass for %s", username);
 				}
 
 			} else {
@@ -5411,6 +5152,8 @@ has_read_access_domain_users(wchar_t dctrlw[PBS_MAXHOSTNAME+1])
 			(netst == ERROR_LOGON_FAILURE)) {
 			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in NetUserGetInfo, with errno %d", netst);
 			goto has_read_access_domain_users_end;
+		} else {
+				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "failed in NetUserGetInfo, with errno %d", netst);
 		}
 		ncheck++;
 	}
@@ -5448,7 +5191,7 @@ has_read_access_domain_users_end:
  * @retval	2 	if (b) is not satisfied, and
  * @retval	3	if (c) is not satisfied.
  *	     		and 'winlog_buffer" will be filled with the
- *           	message that can be used to output to some log file
+ *              message that can be used to output to some log file
  * Idea is based on return value, execution of PBS service account would
  * either proceed or abort.
  */
@@ -5487,7 +5230,7 @@ check_executor(void)
 
 		if (stricmp(exec_dname, dname) != 0) {
 			sprintf(winlog_buffer,
-				"Executing user %s must be a domain account in domain %s", __func__, exec_uname, dname);
+				"Executing user %s must be a domain account in domain %s", exec_uname, dname);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
 			return (2);
 		}
@@ -5509,7 +5252,7 @@ check_executor(void)
 		if (!has_read_access_domain_users(dctrlw)) {
 			if ((strlen(dname_a) > 0) && (strlen(dctrl) > 0)) {
 				sprintf(winlog_buffer,
-					"%s: executing user %s cannot read all users info in %s (DC is %S)", __func__, exec_uname, dname, dctrl);
+					"%s: executing user %s cannot read all users info in %s (DC is %s)", __func__, exec_uname, dname, dctrl);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, winlog_buffer);
 			}
 			return (3);
