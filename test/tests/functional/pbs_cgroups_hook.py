@@ -4120,7 +4120,7 @@ sleep 300
         ehjd1 = self.get_cgroup_job_dir('cpuset', jid, ehost1)
         self.assertTrue(self.is_dir(ehjd1, ehost1), "job cpuset dir not found")
         self.server.delete(id=jid, wait=True)
-        self.assertFalse(self.is_dir(ehjd1, ehost1))
+        self.assertFalse(self.is_dir(ehjd1, ehost1), "job cpuset dir found")
 
     def tearDown(self):
         TestFunctional.tearDown(self)
