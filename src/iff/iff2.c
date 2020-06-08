@@ -98,8 +98,6 @@ main(int argc, char *argv[], char *envp[])
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	pbs_loadconf(0);
-
 	cln_hostaddr = getenv(PBS_IFF_CLIENT_ADDR);
 
 	/* Need to unset LOCALDOMAIN if set, want local host name */
@@ -239,7 +237,7 @@ main(int argc, char *argv[], char *envp[])
 		parentport = ntohs(parentsock_port);
 
 	pbs_errno = 0;
-	err = tcp_send_auth_req(sock, parentport, pwent->pw_name);
+	err = tcp_send_auth_req(sock, parentport, pwent->pw_name, AUTH_RESVPORT_NAME, getenv(PBS_CONF_ENCRYPT_METHOD));
 	if (err != 0 && pbs_errno != PBSE_BADCRED)
 		return 2;
 
