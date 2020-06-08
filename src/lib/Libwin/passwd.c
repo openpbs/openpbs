@@ -5153,10 +5153,7 @@ has_read_access_domain_users(wchar_t dctrlw[PBS_MAXHOSTNAME+1])
 			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "failed in NetUserGetInfo, with errno %d", netst);
 			goto has_read_access_domain_users_end;
 		} else {
-			if ((netst == ERROR_BAD_NETPATH) || (netst == ERROR_INVALID_LEVEL) ||
-				(netst == NERR_InvalidComputer) || (netst == NERR_UserNotFound)) {
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "failed in NetUserGetInfo, with errno %d", netst);
-			}
+				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "failed in NetUserGetInfo, with errno %d", netst);
 		}
 		ncheck++;
 	}
