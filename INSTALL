@@ -8,6 +8,8 @@ How to install PBS using the configure script.
   For CentOS-8 systems you should run the following command as root:
 
     Configure and enable PowerTools repo for hwloc-devel and libedit-devel packages
+      dnf install -y dnf-plugins-core
+      dnf config-manager --set-enabled PowerTools
 
     dnf install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
