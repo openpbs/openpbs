@@ -1374,8 +1374,7 @@ pbsd_init_job(job *pjob, int type)
 					 * receiving sock number though
 					 */
 					pjob->ji_qs.ji_un.ji_newt.ji_fromsock = -1;
-					append_link(&svr_newjobs,
-						&pjob->ji_alljobs, pjob);
+					append_link(&svr_newjobs, &pjob->ji_alljobs, pjob);
 
 				}
 				break;
@@ -1515,11 +1514,11 @@ pbsd_init_job(job *pjob, int type)
 		/* update entity limit sums for this job */
 		(void)account_entity_limit_usages(pjob, NULL, NULL, INCR, ETLIM_ACC_ALL);
 
-		/* if job has IP address of Mom, it may have changed */
-		/* reset based on hostname                           */
+		/* if job has exec host of Mom, set addr and port based on hostname */
 
-		if ((pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) &&
-			(pjob->ji_qs.ji_un.ji_exect.ji_momaddr != 0)) {
+		if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) {
+			pjob->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
+			pjob->ji_qs.ji_un.ji_exect.ji_momport = 0;
 
 			if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
 				pbs_net_t new_momaddr;
@@ -1538,9 +1537,6 @@ pbsd_init_job(job *pjob, int type)
 						LOG_INFO, pjob->ji_qs.ji_jobid,
 						"Failed to update mom address. Mom address not changed.");
 				}
-			} else {
-				pjob->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
-				pjob->ji_qs.ji_un.ji_exect.ji_momport = 0;
 			}
 		}
 	}

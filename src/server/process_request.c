@@ -155,36 +155,25 @@ static void close_quejob(int sfds);
 int
 get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
-	int	ret;
-
-	switch (jobp->ji_extended.ji_ext.ji_credtype) {
-
-		default:
+	int ret;
 
 #ifndef PBS_MOM
+	/*
+	 * ensure job's euser exists as this can be called
+	 * from pbs_send_job who is moving a job from a routing
+	 * queue which doesn't have euser set
+	 */
+	if ((jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
+		ret = user_read_password(jobp->ji_wattr[(int) JOB_ATR_euser].at_val.at_str, data, dsize);
 
-			/*   ensure job's euser exists as this can be called */
-			/*   from pbs_send_job who is moving a job from a routing */
-			/*   queue which doesn't have euser set */
-			if ( (jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
-		         && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
-				ret = user_read_password(
-					jobp->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-					data, dsize);
-
-				/* we have credential but type is NONE, force DES */
-				if( ret == 0 && \
-		  	    (jobp->ji_extended.ji_ext.ji_credtype == \
-							PBS_CREDTYPE_NONE) )
-				jobp->ji_extended.ji_ext.ji_credtype = \
-							PBS_CREDTYPE_AES;
-			} else
-				ret = read_cred(jobp, data, dsize);
+		/* we have credential but type is NONE, force DES */
+		if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
+			jobp->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_AES;
+	} else
+		ret = read_cred(jobp, data, dsize);
 #else
-			ret = read_cred(jobp, data, dsize);
+	ret = read_cred(jobp, data, dsize);
 #endif
-			break;
-	}
 	return ret;
 }
 

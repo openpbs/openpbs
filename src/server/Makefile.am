@@ -126,7 +126,6 @@ pbs_server_bin_SOURCES = \
 	sched_func.c \
 	setup_resc.c \
 	stat_job.c \
-	svr_attr.c \
 	svr_chk_owner.c \
 	svr_connect.c \
 	svr_func.c \

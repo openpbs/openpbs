@@ -1409,20 +1409,6 @@ scan_for_exiting(void)
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 					LOG_INFO,
 					pjob->ji_qs.ji_jobid, "Terminated");
-#if	MOM_BGL
-				(void)job_bgl_delete(pjob);
-#endif	/* MOM_BGL */
-
-				/*
-				 ** Other places where
-				 ** job_bgl_delete is called, the
-				 ** function job_clean_extra would
-				 ** also be called.  That is not done
-				 ** here because the cleanup would
-				 ** be done twice -- once here and
-				 ** again when the job is deleted in
-				 ** del_job_resc.
-				 */
 
 				if (send_sisters(pjob, IM_KILL_JOB, NULL)
 					== 0) {
@@ -1693,14 +1679,6 @@ end_loop:
 		 */
 		if (job_end_final != NULL)
 			job_end_final(pjob);
-#if MOM_CSA
-		/*
-		 ** if capability present, cause a workload management
-		 ** record to be created for this phase of the job
-		 */
-
-		write_wkmg_record(WM_TERM, WM_TERM_EXIT, pjob);
-#endif	/* MOM_CSA */
 #endif
 		if (mock_run || !has_epilog) {
 			send_obit(pjob, 0);
@@ -2166,13 +2144,6 @@ del_job_hw(job *pjob)
 	pid_t	pid;
 	int	sconn = -1;
 	struct work_task *wtask = NULL;
-#endif
-
-#if	MOM_BGL
-	(void)job_bgl_delete(pjob);
-#endif	/* MOM_BGL */
-
-#if MOM_ALPS
 
 	/*
 	 * Try to cancel the reservation once as 'main MOM'.

@@ -2575,10 +2575,6 @@ req_resvSub(struct batch_request *preq)
 	}
 
 
-	presv->ri_qs.ri_un_type = RESV_UNION_TYPE_NEW;
-	presv->ri_qs.ri_un.ri_newt.ri_fromsock = sock;
-	presv->ri_qs.ri_un.ri_newt.ri_fromaddr = get_connectaddr(sock);
-
 	/* save resv and server structure */
 	if (resv_save_db(presv)) {
 		(void)resv_purge(presv);

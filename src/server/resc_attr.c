@@ -227,8 +227,6 @@ decode_place(struct attribute *patr, char *name, char *rescn, char *val)
 	char *px;
 	struct resource_def *pres;
 
-	extern int have_blue_gene_nodes;	/* BLUE GENE only */
-
 	pc = val;
 
 	while (1) {
@@ -290,12 +288,6 @@ decode_place(struct attribute *patr, char *name, char *rescn, char *val)
 		pc++;
 	}
 
-	/* BLUE GENE only  - cannot have bgl nodes and jobs with "group=" */
-
-	if (have_blue_gene_nodes != 0) {
-		if (strstr(val, "group=") != NULL)
-			return PBSE_NGBLUEGENE;
-	}
 #endif	/* not PBS_MOM */
 
 	return (decode_str(patr, name, rescn, val));

@@ -265,8 +265,6 @@ void *sched_attr_idx;
 
 sigset_t	allsigs;
 
-int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
-
 /* private data */
 static char    *suffix_slash = "/";
 static int	brought_up_alt_sched = 0;
@@ -533,7 +531,6 @@ pbs_close_stdfiles(void)
  *		shut down may have there exec_vnode left to assist in HOT start.
  *		If left set, the job is trapped into requiring those nodes.
  *		Clear on any job not running and without a restart file.
- *		Also clear "pset" for BlueGene
  */
 static void
 clear_exec_vnode()

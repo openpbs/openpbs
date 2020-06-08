@@ -207,7 +207,6 @@ extern int   do_mom_action_script(int, job *, pbs_task *, char *,
 extern enum  Action_Verb chk_mom_action(enum Action_Event);
 extern void  mom_freenodes(job *);
 extern void  unset_job(job *, int);
-extern int   set_mach_vars(job *, struct var_table *);
 struct passwd	*check_pwd(job *);
 extern char *set_shell(job *, struct passwd *);
 extern void  start_exec(job *);
@@ -252,7 +251,6 @@ typedef enum {
 #ifdef	_LIBPBS_H
 extern int	open_std_file(job *, enum job_file, int, gid_t);
 extern char	*std_file_name(job *, enum job_file, int *keeping);
-extern void	end_proc(void);
 extern int	task_recov(job *pjob);
 extern int	send_sisters(job *pjob, int com, pbs_jobndstm_t);
 extern int	send_sisters_inner(job *pjob, int com, pbs_jobndstm_t, char *);
@@ -266,11 +264,12 @@ extern pre_finish_results_t pre_finish_exec(job *pjob, int do_job_setup_send);
 extern void	finish_exec(job *pjob);
 extern void	exec_bail(job *pjob, int code, char *txt);
 extern int	generate_pbs_nodefile(job *pjob, char *nodefile,
-			int nodefile_sz, char *err_msg, int err_msg_sz);
+	int nodefile_sz, char *err_msg, int err_msg_sz);
 extern int	job_nodes_inner(struct job *pjob, hnodent **mynp);
 extern int	job_nodes(job *pjob);
 extern int	tm_reply(int stream, int version, int com, tm_event_t event);
 #ifdef WIN32
+extern void	end_proc(void);
 extern int      dep_procinfo(pid_t pid, pid_t *psid, uid_t *puid, char *puname, size_t uname_len, char *comm, size_t comm_len);
 #else
 extern int	dep_procinfo(pid_t, pid_t *, uid_t *, char *, size_t);
@@ -285,11 +284,7 @@ extern int	dep_attach(pbs_task *ptask);
 extern u_long	gettime(resource *pres);
 extern u_long	getsize(resource *pres);
 extern int   local_gettime(resource *, unsigned long *ret);
-#if (defined(_SYS_RESOURCE_H) || defined(_H_RESOURCE) ) && (defined(__sgi) )
-extern int   local_getsize(resource *, rlim64_t *ret);
-#else
 extern int   local_getsize(resource *, unsigned long *ret);
-#endif	/* __sgi */
 #endif /* _RESOURCE_H */
 
 #ifdef	_BATCH_REQUEST_H

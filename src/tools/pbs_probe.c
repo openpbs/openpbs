@@ -449,7 +449,7 @@ static char exinc[][80] = {
 
 static char exlib[][80] = {
 	/* 00 */ "lib/libattr.a",
-	/* 01 */ "lib/libcmds.a",	/* this library no longer exists */
+	/* 01 */ "SLOT_AVAILABLE",
 	/* 02 */ "lib/liblog.a",
 	/* 03 */ "lib/libnet.a",
 	/* 04 */ "lib/libpbs.a",
@@ -465,7 +465,7 @@ static char exlib[][80] = {
 	/* 14 */ "lib/MPI/pbsrun.mx_mpd.init.in",
 	/* 15 */ "lib/MPI/pbsrun.mpich2.init.in",
 	/* 16 */ "lib/MPI/pbsrun.intelmpi.init.in",
-	/* 17 */ "lib/MPI/pbsrun.bgl.init.in",
+	/* 17 */ "SLOT_AVAILABLE",
 	/* 18 */ "lib/python",
 	/* 19 */ "lib/python/altair",
 	/* 20 */ "lib/python/altair/pbs",
@@ -814,9 +814,8 @@ static MPUG	lib_mpugs[] = {
 	 */
 	{1, 0, 0, drwxrxrx,    tgwow, &dflt_pbs_ug, exec[3],    NULL},
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 0], NULL }, /* libattr.a */
-	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 1], NULL }, /* libcmds.a */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 1], NULL }, /* SLOT_AVAILABLE */
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 2], NULL }, /* liblog.a */
-
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 3], NULL }, /* libnet.a */
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 4], NULL }, /* libpbs.a */
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[ 5], NULL }, /* libsite.a */
@@ -831,7 +830,7 @@ static MPUG	lib_mpugs[] = {
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[14], NULL}, /* pbsrun.mx_mpd.init.in */
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[15], NULL}, /* pbsrun.mpich2.init.in */
 	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[16], NULL},  /* pbsrun.intelmpi.init.in */
-	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[17], NULL},  /* pbsrun.bgl.init.in */
+	{1, 1, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exlib[17], NULL},  /* SLOT_AVAILABLE */
 	{1, 6, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[18], NULL},  /* lib/python */
 	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[19], NULL},  /* lib/python/altair */
 	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[20], NULL},  /* lib/python/altair/pbs */
@@ -840,7 +839,7 @@ static MPUG	lib_mpugs[] = {
 	/__init__.cpython-3?.pyc */
 	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[23], NULL},  /* lib/python/altair/pbs/__init__.py */
 	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[24], NULL},  /* lib/python/altair/pbs/v1 */
-    {1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[25], NULL},  /* lib/python/altair/pbs/v1/__pycache__ */
+	{1, 2, 0,    drwxrxrx,   tgwow, &dflt_pbs_ug, exlib[25], NULL},  /* lib/python/altair/pbs/v1/__pycache__ */
 	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[26], NULL},  /* lib/python/altair/pbs/v1/__pycache__
 	/__init__.cpython-3?.pyc */
 	{1, 2, 0,    frgror,  sgswxowx, &dflt_pbs_ug, exlib[27], NULL},  /* lib/python/altair/pbs/v1/__init__.py */

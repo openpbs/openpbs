@@ -8583,7 +8583,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "PBS_HOOK",SWIG_FromCharPtr("pbshook"));
   SWIG_Python_SetConstant(d, "MSG_OUT",SWIG_From_int((int)(1)));
   SWIG_Python_SetConstant(d, "MSG_ERR",SWIG_From_int((int)(2)));
-  SWIG_Python_SetConstant(d, "BLUEGENE",SWIG_FromCharPtr("bluegene"));
   SWIG_Python_SetConstant(d, "PBS_MAXHOSTNAME",SWIG_From_int((int)(255)));
   SWIG_Python_SetConstant(d, "MAXPATHLEN",SWIG_From_int((int)(1024)));
   SWIG_Python_SetConstant(d, "MAXNAMLEN",SWIG_From_int((int)(255)));
