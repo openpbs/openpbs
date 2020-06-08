@@ -3869,18 +3869,18 @@ int
 wsystem(char *cmdline, HANDLE user_handle)
 {
 
-	STARTUPINFO             si = { 0 };
-	PROCESS_INFORMATION     pi = { 0 };
-	int			flags = CREATE_DEFAULT_ERROR_MODE| CREATE_NEW_PROCESS_GROUP;
-	int			rc = 0;
-	int			run_exit = 0;
-	char			cmd[PBS_CMDLINE_LENGTH] = {'\0'};
-	char			cmd_shell[MAX_PATH + 1] = {'\0'};
-	char			current_dir[MAX_PATH+1] = {'\0'};
-	char			*temp_dir = NULL;
-	int			changed_dir = 0;
-	DWORD			stat;
-	LPVOID			user_env = NULL;
+	STARTUPINFO  si = { 0 };
+	PROCESS_INFORMATION  pi = { 0 };
+	int  flags = CREATE_DEFAULT_ERROR_MODE| CREATE_NEW_PROCESS_GROUP;
+	int  rc = 0;
+	int  run_exit = 0;
+	char  cmd[PBS_CMDLINE_LENGTH] = {'\0'};
+	char  cmd_shell[MAX_PATH + 1] = {'\0'};
+	char  current_dir[MAX_PATH+1] = {'\0'};
+	char  *temp_dir = NULL;
+	int  changed_dir = 0;
+	DWORD  stat;
+	LPVOID  user_env = NULL;
 
 	si.cb = sizeof(si);
 	si.lpDesktop = NULL;
