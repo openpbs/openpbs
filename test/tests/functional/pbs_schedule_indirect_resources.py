@@ -70,7 +70,7 @@ class TestIndirectResources(TestFunctional):
 
         return (jobid, job)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_node_grouping_with_indirect_res(self):
         """
         Test node grouping with indirect resources set on some nodes

@@ -51,7 +51,7 @@ class TestSchedAllPart(TestFunctional):
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '1gb'}
         self.server.create_vnodes('vn', a, 2, self.mom, usenatvnode=True)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_free_nodes(self):
         """
         Test that if there aren't enough free nodes available, it is reported
@@ -69,7 +69,7 @@ class TestSchedAllPart(TestFunctional):
              'Not Running: Not enough free nodes available'}
         self.server.expect(JOB, a, id=jid2)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_vscatter(self):
         """
         Test that we determine we can't run a job when there aren't enough
@@ -91,7 +91,7 @@ class TestSchedAllPart(TestFunctional):
              'Not Running: Not enough free nodes available'}
         self.server.expect(JOB, a, id=jid2)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_vscatter2(self):
         """
         Test that we can determine a job can never run if it is requesting
@@ -108,7 +108,7 @@ class TestSchedAllPart(TestFunctional):
              'Can Never Run: Not enough total nodes available'}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_rassn(self):
         """
         Test rassn resource (ncpus) is unavailable and the comment is shown
@@ -130,7 +130,7 @@ class TestSchedAllPart(TestFunctional):
         a = {'job_state': 'Q', 'comment': m}
         self.server.expect(JOB, a, id=jid2)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_nonexistent_non_consumable(self):
         """
         Test that a nonexistent non-consumable value is caught as 'Never Run'
@@ -143,7 +143,7 @@ class TestSchedAllPart(TestFunctional):
         a = {'job_state': 'Q', 'comment': (MATCH_RE, m)}
         self.server.expect(JOB, a, id=jid)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_too_many_ncpus(self):
         """
         test that a job is marked as can never run if it requests more cpus

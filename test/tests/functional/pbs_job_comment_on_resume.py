@@ -47,7 +47,7 @@ class TestJobComment(TestFunctional):
     Testing job comment is accurate
     """
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_job_comment_on_resume(self):
         """
         Testing whether job comment is accurate

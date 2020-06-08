@@ -48,7 +48,7 @@ class TestCalendaring(TestFunctional):
     This test suite tests if PBS scheduler calendars events correctly
     """
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_topjob_start_time(self):
         """
         In this test we test that the top job which gets added to the
@@ -106,7 +106,7 @@ class TestCalendaring(TestFunctional):
         # Third subjob should set estimated.start_time in future.
         self.assertGreater(est_epoch1, time_now)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_topjob_start_time_of_subjob(self):
         """
         In this test we test that the subjob which gets added to the
@@ -143,7 +143,7 @@ class TestCalendaring(TestFunctional):
         errmsg = jid + ";Error in calculation of start time of top job"
         self.scheduler.log_match(errmsg, existence=False, max_attempts=10)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_topjob_fail(self):
         """
         Test that when we fail to add a job to the calendar it doesn't

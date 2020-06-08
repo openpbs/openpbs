@@ -41,6 +41,7 @@
 from tests.functional import *
 
 
+@skipOnCpuSet()
 class TestEquivClass(TestFunctional):
 
     """
@@ -48,12 +49,6 @@ class TestEquivClass(TestFunctional):
     """
 
     def setUp(self):
-        # Skip the test on cgroup cpuset system
-        hpe_file1 = "/etc/sgi-compute-node-release"
-        hpe_file2 = "/etc/sgi-known-distributions"
-        if os.path.isfile(hpe_file1) or os.path.isfile(hpe_file2):
-            msg = 'test is not supported on cgroup cpuset system'
-            raise SkipTest(msg)
         TestFunctional.setUp(self)
         a = {'resources_available.ncpus': 8}
         self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)

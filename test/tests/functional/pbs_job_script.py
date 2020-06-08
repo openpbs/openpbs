@@ -65,7 +65,7 @@ class TestPbsJobScript(TestFunctional):
         jid = self.server.submit(j)
         return jid
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_long_select_spec(self):
         """
         Test that PBS is able to accept jobs scripts with very long select
@@ -79,7 +79,7 @@ class TestPbsJobScript(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R', 'exec_vnode': execvnode},
                            id=jid)
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     def test_long_select_spec_extend(self):
         """
         Test that PBS is able to accept jobs scripts with very long select

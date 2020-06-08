@@ -189,7 +189,7 @@ class TestPbsnodes(TestFunctional):
         self.assertEqual(prev.strip(), now.strip(),
                          'Last used time mismatch after server restart')
 
-    @skipOnCpuSet
+    @skipOnCpuSet()
     @skipOnCray
     def test_pbsnodes_as_user(self):
         """
@@ -219,7 +219,7 @@ class TestPbsnodes(TestFunctional):
                                      attr_dict['resources_available.mem'])
 
     @tags('smoke')
-    @skipOnCpuSet
+    @skipOnCpuSet()
     @skipOnCray
     def test_pbsnodes_as_root(self):
         """
