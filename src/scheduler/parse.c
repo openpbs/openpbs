@@ -946,6 +946,7 @@ init_config()
 		sizeof(struct sort_info));
 
 	/* set any defaults other then OFF */
+	conf.preempt_min_wt_used = 1;
 
 	/* for backwards compatibility */
 	conf.update_comments = 1;
