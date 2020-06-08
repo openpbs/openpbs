@@ -4110,16 +4110,15 @@ sleep 300
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
-        a = {'job_state': 'R'}
-        self.server.expect(JOB, a, jid)
-        err_msg = "write_value: Permission denied.*%s.*memsw" % (jid,)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+        err_msg = "write_value: Permission denied.*%s.*memsw" % (jid)
         self.mom.log_match(err_msg, max_attempts=3, interval=1, n=100,
                            regexp=True, existence=False)
         self.server.status(JOB, ['exec_host'], jid)
         ehost = j.attributes['exec_host']
         ehost1 = ehost.split('/')[0]
         ehjd1 = self.get_cgroup_job_dir('cpuset', jid, ehost1)
-        self.assertTrue(self.is_dir(ehjd1, ehost1))
+        self.assertTrue(self.is_dir(ehjd1, ehost1), "job cpuset dir not found")
         self.server.delete(id=jid, wait=True)
         self.assertFalse(self.is_dir(ehjd1, ehost1))
 
