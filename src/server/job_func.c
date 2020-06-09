@@ -137,6 +137,8 @@
 #include "renew_creds.h"
 #endif
 
+extern int time_now;
+
 /* External functions */
 
 #ifdef WIN32
@@ -346,10 +348,6 @@ job_alloc(void)
 {
 	job	*pj;
 
-#ifndef PBS_MOM
-	time_t 	ctm;
-#endif
-
 	pj = (job *)malloc(sizeof(job));
 	if (pj == NULL) {
 		log_err(errno, "job_alloc", "no memory");
@@ -424,21 +422,17 @@ job_alloc(void)
 
 
 #ifndef PBS_MOM
-	/* mark as JOB_INITIAL, set accrue times to zero */
-	pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = JOB_INITIAL;
-	pj->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = 0;
 	/* start accruing time from the time job was created */
-	time(&ctm);
-	pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = (long)ctm;
+	pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = (long) time_now;
+	pj->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = 0;
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
-	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
-		pj->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |= ATR_VFLAG_SET;
+	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
+		server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+		int elig_val;
 
-		pj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
-
-
-		pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_flags |= ATR_VFLAG_SET;
+		elig_val = determine_accruetype(pj);
+		update_eligible_time(elig_val, pj);
 	}
 #endif
 

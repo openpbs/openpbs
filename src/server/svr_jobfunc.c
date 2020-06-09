@@ -686,11 +686,8 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		long newaccruetype;
 
-		/* determine accrue type */
 		newaccruetype = determine_accruetype(pjob);
-
-		/* calculate eligible time */
-		(void)update_eligible_time(newaccruetype, pjob);
+		update_eligible_time(newaccruetype, pjob);
 	}
 
 	/* update the job file */
@@ -4544,43 +4541,33 @@ convert_long_to_time(long l)
  * @retval	JOB_INELIGIBLE	-	when job is ineligible to accrue eligible_time
  * @retval	JOB_RUNNING	-	when job is running or provisioning
  * @retval	JOB_EXIT	-	when job is exiting
- * @retval	-1	-	when this function is not able to determine accruetype
+ * @retval	-1	- when accrue type couldn'tbe determined
  */
 long
 determine_accruetype(job* pjob)
 {
 	struct pbs_queue *pque;
-	long	temphold;
-	long newaccruetype = -1;
-
+	long temphold;
 
 	/* have to determine accrue type */
 
 	/* if job is truely running or provisioning */
 	if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING &&
 		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING ||
-		pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
-		newaccruetype = (long)JOB_RUNNING;
-		return newaccruetype;
-	}
+		pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))
+		return JOB_RUNNING;
 
 	/* if job exit */
-	if (pjob->ji_qs.ji_state == JOB_STATE_EXITING) {
-		newaccruetype = (long)JOB_EXIT;
-		return newaccruetype;
-	}
+	if (pjob->ji_qs.ji_state == JOB_STATE_EXITING)
+		return JOB_EXIT;
 
 	/* handling qsub -a, waiting with substate 30 ; accrue ineligible time */
-	if (pjob->ji_wattr[(int)JOB_ATR_exectime].at_val.at_long) {
-		newaccruetype = (long)JOB_INELIGIBLE;
-		return newaccruetype;
-	}
+	if (pjob->ji_wattr[(int)JOB_ATR_exectime].at_val.at_long)
+		return JOB_INELIGIBLE;
 
 	/* 'user' hold applied ; accrue ineligible time */
-	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long & HOLD_u) {
-		newaccruetype = (long)JOB_INELIGIBLE;
-		return newaccruetype;
-	}
+	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long & HOLD_u)
+		return JOB_INELIGIBLE;
 
 	/* other than 'user' hold applied */
 	/* accrue type is set to JOB_INELIGIBLE incase a job has dependency */
@@ -4589,36 +4576,32 @@ determine_accruetype(job* pjob)
 	temphold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
 	if (temphold & HOLD_o || temphold & HOLD_bad_password || temphold & HOLD_s) {
 		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)
-			&& (temphold & HOLD_s)) {
-			newaccruetype = (long)JOB_INELIGIBLE;
-		} else {
-			newaccruetype = (long)JOB_ELIGIBLE;
-		}
-		return newaccruetype;
+			&& (temphold & HOLD_s))
+			return JOB_INELIGIBLE;
+
+		return JOB_ELIGIBLE;
 	}
 
 	/* scheduler suspend job ; accrue eligible time */
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP) {
-		newaccruetype = (long)JOB_ELIGIBLE;
-		return newaccruetype;
-	}
+	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)
+		return JOB_ELIGIBLE;
 
 	/* qsig suspended job ; accrue eligible time */
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) {
-		newaccruetype = (long)JOB_ELIGIBLE;
-		return newaccruetype;
-	}
+	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND)
+		return JOB_ELIGIBLE;
 
 	/* check for stopped queue: routing and execute ; accrue eligible time */
 	pque = find_queuebyname(pjob->ji_qs.ji_queue);
 	if (pque != NULL)
-		if (pque->qu_attr[(int)QA_ATR_Started].at_val.at_long == 0) {
-			newaccruetype = (long)JOB_ELIGIBLE;
-			return newaccruetype;
-		}
+		if (pque->qu_attr[(int)QA_ATR_Started].at_val.at_long == 0)
+			return JOB_ELIGIBLE;
 
-	/* return */
-	return newaccruetype;
+	/* The job doesn't have any reason to not accrue eligible time (e.g. on hold), so it should accrue it */
+	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT &&
+		pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSIN)
+		return JOB_ELIGIBLE;
+
+	return -1;
 }
 
 /**
@@ -4645,44 +4628,31 @@ update_eligible_time(long newaccruetype, job *pjob)
 	char str[256];
 	long accrued_time;			/* accrued time */
 	long oldaccruetype = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
-	long timestamp = (long)time_now; 	/* time since accrual begins */
+	long timestamp = (long) time_now; 	/* time since accrual begins */
+	unsigned int flags = (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
 
 	/* check if updating same accrue type or do nothing */
 	if (newaccruetype == oldaccruetype || newaccruetype == -1)
 		return 1;
 
 	/* time since accrue type last changed  */
-	accrued_time = timestamp - pjob->ji_wattr[(int) JOB_ATR_sample_starttime].at_val.at_long;
+	accrued_time = timestamp - pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long;
 
 	/* time since accrue type last changed is accrued */
 	/* change type to new accrue type,  update start time to mark */
 	/* change of accrue type */
 	switch ((int)oldaccruetype) {
 		case JOB_ELIGIBLE:
-			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += accrued_time;
-			pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
-			pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = timestamp;
-
-			pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_flags |=
-				(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-			pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |=
-				(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |=
-				(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-			break;
+			pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += accrued_time;
+			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
 		case JOB_INELIGIBLE:
 		case JOB_RUNNING:
 		case JOB_INITIAL:
 		case JOB_EXIT:
-			pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
-			pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = timestamp;
-
-			pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_flags |=
-				(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-			pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |=
-				(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |=
-				(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+			pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
+			pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = timestamp;
+			pjob->ji_wattr[JOB_ATR_accrue_type].at_flags |= flags;
+			pjob->ji_wattr[JOB_ATR_sample_starttime].at_flags |= flags;
 			break;
 
 		default:
@@ -4691,7 +4661,7 @@ update_eligible_time(long newaccruetype, job *pjob)
 	}  /*switch end*/
 
 	/* Prepare and print log message */
-	strtime = convert_long_to_time(pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long);
+	strtime = convert_long_to_time(pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long);
 	if (strtime == NULL)
 		strtime = errtime;
 

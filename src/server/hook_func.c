@@ -3566,6 +3566,11 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
 		}
 	}
 
+	/* update the eligible time to JOB_INITIAL */
+	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET)
+		&& server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1)
+		update_eligible_time(JOB_INITIAL, pjob);
+
 	/*
 	 * Don't let the values in runjob_reject_attrlist (a_map) linger.
 	 * When resources get deleted and recreated between job runs, the

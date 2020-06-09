@@ -202,3 +202,44 @@ class TestEligibleTime(TestFunctional):
 
         self.server.expect(JOB, {'accrue_type': self.accrue['ineligible']},
                            id=jid2)
+
+    def test_default_accrue_type(self):
+        """
+        Test that the default accrue_type for jobs is "eligible time"
+        """
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, SCHED, {"scheduling": "false"})
+
+        jid1 = self.server.submit(Job())
+
+        # Check that the job's accrue_type is set to eligible time
+        a = {"accrue_type": self.accrue['eligible']}
+        self.server.expect(JOB, a, id=jid1)
+
+    def test_delayed_ineligible(self):
+        """
+        Test that jobs are still correctly marked ineligible by sched
+        even if server thinks that they are eligible
+        """
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 2},
+                            id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, SCHED, {"scheduling": "false"})
+
+        a = {"max_run_res.ncpus": "[u:PBS_GENERIC=1]"}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        jid1 = self.server.submit(Job(attrs={"Resource_List.ncpus": 2}))
+
+        # Check that server sets job's accrue_type to eligible time
+        a = {"accrue_type": self.accrue['eligible']}
+        self.server.expect(JOB, a, id=jid1)
+
+        self.scheduler.run_scheduling_cycle()
+
+        # Check that scheduler corrects the accrue_type to ineligible
+        a = {"accrue_type": self.accrue['ineligible']}
+        self.server.expect(JOB, a, id=jid1)
