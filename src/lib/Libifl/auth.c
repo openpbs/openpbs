@@ -488,12 +488,20 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 	/* for compatibility with 12.0 pbs_iff */
 	(void)snprintf(cmd[1], sizeof(cmd[1]) - 1, "%s -i %s %s %u %d %u", pbs_conf.iff_path, pbs_client_addr, server_name, server_port, psock, psock_port);
 #ifdef WIN32
-	if (pbs_conf.encrypt_method[0] != '\0')
-		SetEnvironmentVariable(PBS_CONF_ENCRYPT_METHOD, pbs_conf.encrypt_method);
+	if (pbs_conf.encrypt_method[0] != '\0') {
+		if (!SetEnvironmentVariable(PBS_CONF_ENCRYPT_METHOD, pbs_conf.encrypt_method)) {
+			fprintf(stderr, "Failed to set %s=%s with errno: %ld", PBS_CONF_ENCRYPT_METHOD, pbs_conf.encrypt_method, GetLastError());
+			return -1;
+		}
+	}
 	(void)snprintf(cmd[0], sizeof(cmd[0]) - 1, "%s %s %u %d %u", pbs_conf.iff_path, server_name, server_port, psock, psock_port);
 	for (k = 0; k < 2; k++) {
 		rc = 0;
-		SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, pbs_client_addr);
+		if (!SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, pbs_client_addr)) {
+			fprintf(stderr, "Failed to set %s=%s with errno: %ld", PBS_IFF_CLIENT_ADDR, pbs_client_addr, GetLastError());
+			rc = -1;
+			break;
+		}
 		if (!win_popen(cmd[k], "r", &pio, NULL)) {
 			fprintf(stderr, "failed to execute %s\n", cmd[k]);
 			SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, NULL);
