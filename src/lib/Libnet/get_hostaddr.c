@@ -201,10 +201,9 @@ comp_svraddr(pbs_net_t svr_addr, char *hostname)
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-	int		err;
 	pbs_net_t	res;
 
-	if ((hostname == 0) || (*hostname == '\0')) {
+	if ((hostname == NULL) || (*hostname == '\0')) {
 		return (2);
 	}
 
@@ -212,7 +211,7 @@ comp_svraddr(pbs_net_t svr_addr, char *hostname)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	if ((err = getaddrinfo(hostname, NULL, &hints, &pai)) != 0) {
+	if (getaddrinfo(hostname, NULL, &hints, &pai) != 0) {
 		return (2);
 	}
 	for (aip = pai; aip != NULL; aip = aip->ai_next) {
