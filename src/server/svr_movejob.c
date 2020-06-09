@@ -160,7 +160,6 @@ extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, voi
 int
 svr_movejob(job	*jobp, char *destination, struct batch_request *req)
 {
-	pbs_net_t destaddr;
 	unsigned int port = pbs_server_port_dis;
 	char	*toserver;
 
@@ -178,11 +177,14 @@ svr_movejob(job	*jobp, char *destination, struct batch_request *req)
 
 	if ((toserver = strchr(destination, '@')) != NULL) {
 		/* check to see if the part after '@' is this server */
-		destaddr = get_hostaddr(parse_servername(++toserver, &port));
-		if ((destaddr != pbs_server_addr) ||
+		int comp = -1;
+		comp = comp_svraddr(pbs_server_addr, parse_servername(++toserver, &port));
+		if ((comp == 1) ||
 			(port != pbs_server_port_dis)) {
 			return (net_move(jobp, req));	/* not a local dest */
 		}
+		else if (comp == 2)
+			return -1;
 	}
 
 	/* if get to here, it is a local destination */
