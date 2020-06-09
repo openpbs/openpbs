@@ -55,8 +55,6 @@
 #include "tpp.h"
 #include "net_connect.h"
 
-#define	IS_PROTOCOL	4
-#define	IS_PROTOCOL_VER	3
 
 /**
  * @brief - Start a standard inter-server message.

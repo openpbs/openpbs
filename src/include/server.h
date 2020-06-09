@@ -217,8 +217,6 @@ struct server {
 extern struct server	server;
 extern	pbs_list_head	svr_alljobs;
 extern	pbs_list_head	svr_allresvs;	/* all reservations in server */
-extern  int		svr_ping_rate;	/* time between rounds of ping */
-extern  int 		ping_nodes_rate; /* time between ping nodes as determined from server_init_type */
 
 /* degraded reservations globals */
 extern	long	resv_retry_time;
@@ -255,7 +253,7 @@ extern	long	resv_retry_time;
 #define MIN_WALLTIME "min_walltime"
 #define MAX_WALLTIME "max_walltime"
 #define SOFT_WALLTIME "soft_walltime"
-#define SVR_DEFAULT_PING_RATE 300
+#define MCAST_WAIT_TM	2
 
 /*
  * Server failover role

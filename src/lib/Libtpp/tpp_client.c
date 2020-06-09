@@ -2373,6 +2373,9 @@ tpp_mcast_close(int mtfd)
 {
 	stream_t *strm;
 
+	if (mtfd < 0)
+		return 0;
+
 	strm = get_strm_atomic(mtfd);
 	if (!strm) {
 		return -1;

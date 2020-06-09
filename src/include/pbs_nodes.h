@@ -131,26 +131,25 @@ typedef struct mominfo mominfo_t;
  */
 
 struct mom_svrinfo {
-	unsigned long msr_state;   /* Mom's state */
-	long	      msr_pcpus;   /* number of physical cpus reported by Mom */
-	long	      msr_acpus;   /* number of avail    cpus reported by Mom */
-	u_Long	      msr_pmem;	   /* amount of physical mem  reported by Mom */
-	int	      msr_numjobs; /* number of jobs on this node */
-	char	     *msr_arch;	    /* reported "arch" */
-	char	     *msr_pbs_ver;  /* mom's reported "pbs_version" */
-	int	      msr_stream;   /* TPP stream to Mom */
-	time_t	      msr_timedown; /* time Mom marked down */
-	time_t	      msr_timeinit; /* time Mom marked initializing */
-	time_t        msr_timepinged; /* time Mom was last pinged */
+	unsigned long	msr_state;   /* Mom's state */
+	long		msr_pcpus;   /* number of physical cpus reported by Mom */
+	long		msr_acpus;   /* number of avail    cpus reported by Mom */
+	u_Long		msr_pmem;	   /* amount of physical mem  reported by Mom */
+	int		msr_numjobs; /* number of jobs on this node */
+	char		*msr_arch;	    /* reported "arch" */
+	char		*msr_pbs_ver;  /* mom's reported "pbs_version" */
+	int		msr_stream;   /* TPP stream to Mom */
+	time_t		msr_timedown; /* time Mom marked down */
 	struct work_task *msr_wktask;	/* work task for reque jobs */
 	pbs_list_head	msr_deferred_cmds;	/* links to svr work_task list for TPP replies */
-	unsigned long *msr_addrs;   /* IP addresses of host */
-	int	      msr_numvnds;  /* number of vnodes */
-	int	      msr_numvslots; /* number of slots in msr_children */
-	struct pbsnode **msr_children;  /* array of vnodes supported by Mom */
-	int	      msr_jbinxsz;  /* size of job index array */
-	struct job  **msr_jobindx;  /* index array of jobs on this Mom */
-	long	      msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
+	unsigned long	*msr_addrs;   /* IP addresses of host */
+	int		msr_numvnds;  /* number of vnodes */
+	int		msr_numvslots; /* number of slots in msr_children */
+	struct pbsnode	**msr_children;  /* array of vnodes supported by Mom */
+	int		msr_jbinxsz;  /* size of job index array */
+	struct job	**msr_jobindx;  /* index array of jobs on this Mom */
+	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
+	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 
@@ -219,6 +218,7 @@ typedef struct mominfo_time mominfo_time_t;
 extern momvmap_t **mommap_array;
 extern int	   mommap_array_size;
 extern mominfo_time_t	   mominfo_time;
+extern vnpool_mom_t *vnode_pool_mom_list;
 
 
 struct	prop {
@@ -319,7 +319,7 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 #define INUSE_JOBEXCL	 0x40	/* Node is used by one job (exclusive)	*/
 #define	INUSE_BUSY	 0x80	/* Node is busy (high loadave)		*/
 #define INUSE_UNKNOWN	 0x100	/* Node has not been heard from yet	*/
-#define INUSE_NEEDS_HELLO_PING	0x200	/* Fresh hello sequence needs to be initiated */
+#define INUSE_NEEDS_HELLOSVR	0x200	/* Fresh hello sequence needs to be initiated */
 #define INUSE_INIT	 0x400	/* Node getting vnode map info		*/
 #define INUSE_PROV	 0x800	/* Node is being provisioned		*/
 #define INUSE_WAIT_PROV	 0x1000	/* Node is being provisioned		*/
@@ -501,7 +501,7 @@ extern int add_mom_to_pool(mominfo_t *);
 extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);
 extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
-extern int  send_ip_addrs_to_mom(int);
+extern void mcast_moms();
 #endif
 
 extern  int	   recover_vmap(void);
@@ -515,10 +515,8 @@ extern int		create_vmap(void **);
 extern void		destroy_vmap(void *);
 extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
+extern  int		open_momstream(mominfo_t *);
 
-#ifdef	_WORK_TASK_H
-extern  void ping_nodes(struct work_task *);
-#endif	/* _WORK_TASK_H */
 #ifdef	__cplusplus
 }
 #endif

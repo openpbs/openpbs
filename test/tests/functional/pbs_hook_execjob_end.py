@@ -340,10 +340,8 @@ class TestPbsExecjobEnd(TestFunctional):
             NODE, a, id=self.momB.shortname)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
 
-        # Wait for job to be in E state
-        time.sleep(15)
         hook_execution_time = time.time()
-        self.server.expect(JOB, {'job_state': "E"}, id=jid, offset=10)
+        self.server.expect(JOB, {'job_state': "E"}, id=jid, max_attempts=300)
 
         # Following message should be logged on momA after job delete request
         # received
