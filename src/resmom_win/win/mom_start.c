@@ -105,7 +105,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 	 * If we fail to get cmd shell(unlikely), use "cmd.exe" as shell
 	 */
 	if (0 != get_cmd_shell(shell, sizeof(shell)))
-		(void)snprintf(shell, sizeof(shell) - 1, "cmd.exe");
+		strncpy(shell, "cmd.exe", sizeof(shell) - 1);
 	if ((pjob->ji_wattr[(int)JOB_ATR_shell].at_flags & ATR_VFLAG_SET) &&
 		(vstrs = pjob->ji_wattr[(int)JOB_ATR_shell].at_val.at_arst)) {
 		for (i = 0; i < vstrs->as_usedptr; ++i) {
@@ -113,11 +113,11 @@ set_shell(job *pjob, struct passwd *pwdp)
 			if (cp) {
 				if (!strncmp(mom_host, cp+1, strlen(cp+1))) {
 					*cp = '\0';	/* host name matches */
-					strncpy(shell, vstrs->as_string[i], PBS_CMDLINE_LENGTH - 1);
+					strncpy(shell, vstrs->as_string[i], sizeof(shell) - 1);
 					break;
 				}
 			} else {
-				strncpy(shell, vstrs->as_string[i], PBS_CMDLINE_LENGTH - 1);	/* wildcard */
+				strncpy(shell, vstrs->as_string[i], sizeof(shell) - 1);	/* wildcard */
 			}
 		}
 	}
