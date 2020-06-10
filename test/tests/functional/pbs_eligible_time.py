@@ -55,12 +55,13 @@ class TestEligibleTime(TestFunctional):
 
     def test_eligible_time_updated(self):
         """
-        Test that eligible time gets updated when a job has accrue_type eligible
+        Test that eligible time gets updated when a job is eligible
         """
         a = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {"eligible_time_enable": "True"})
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {"eligible_time_enable": "True"})
 
         jid1 = self.server.submit(Job())
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
