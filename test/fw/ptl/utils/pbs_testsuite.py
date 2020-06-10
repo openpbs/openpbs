@@ -171,7 +171,7 @@ def skipOnShasta(function):
     return wrapper
 
 
-def skipOnCpuSet(obj):
+def skipOnCpuSet(test_item):
     """
     Decorator to skip a test on cgroup cpuset system.
     """
