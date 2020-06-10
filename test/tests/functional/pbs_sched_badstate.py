@@ -44,7 +44,7 @@ from tests.functional import *
 
 class TestSchedBadstate(TestFunctional):
 
-    @skipOnCpuSet()
+    @skipOnCpuSet
     def test_sched_badstate_subjob(self):
         """
         This test case tests if scheduler goes into infinite loop

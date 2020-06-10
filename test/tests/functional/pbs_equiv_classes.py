@@ -41,7 +41,7 @@
 from tests.functional import *
 
 
-@skipOnCpuSet()
+@skipOnCpuSet
 class TestEquivClass(TestFunctional):
 
     """

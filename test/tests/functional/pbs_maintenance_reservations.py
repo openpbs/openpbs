@@ -201,7 +201,7 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.assertEqual("pbs_rsub: Duplicate host: foo", msg)
 
-    @skipOnCpuSet()
+    @skipOnCpuSet
     def test_maintenance_confirm(self):
         """
         Test if the maintenance (prefixed with 'M') is immediately

@@ -412,7 +412,7 @@ class TestQstatFormats(TestFunctional):
         except ValueError:
             self.assertTrue(False)
 
-    @skipOnCpuSet()
+    @skipOnCpuSet
     def test_qstat_json_valid_multiple_jobs_p(self):
         """
         Test json output of qstat -f is in valid format when multiple jobs are

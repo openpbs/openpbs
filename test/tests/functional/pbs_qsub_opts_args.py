@@ -144,7 +144,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
         self.assertEqual(rv['rc'], 0, 'qsub failed')
 
-    @skipOnCpuSet()
+    @skipOnCpuSet
     def test_qsub_with_option_a(self):
         """
         Test submission of job with execution time(future and past)

@@ -171,25 +171,16 @@ def skipOnShasta(function):
     return wrapper
 
 
-def skipOnCpuSet(reason="skip on cpuset system"):
+def skipOnCpuSet(obj):
     """
     Decorator to skip a test on cgroup cpuset system.
-
-    :param reason: Reason for the skip
-    :type reason: str or None
     """
-    skip_cset = False
-    # Skip the test on cgroup cpuset system
     hpe_file1 = "/etc/sgi-compute-node-release"
     hpe_file2 = "/etc/sgi-known-distributions"
     if os.path.isfile(hpe_file1) or os.path.isfile(hpe_file2):
-        skip_cset = True
-
-    def wrapper(test_item):
-        test_item.__unittest_skip__ = skip_cset
-        test_item.__unittest_skip_why__ = reason
-        return test_item
-    return wrapper
+        test_item.__unittest_skip__ = True
+        test_item.__unittest_skip_why__ = "skip on cpuset system"
+    return test_item
 
 
 def requirements(*args, **kwargs):

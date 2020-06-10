@@ -59,7 +59,7 @@ class TestResourceMultiChunk(TestFunctional):
              'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
-    @skipOnCpuSet()
+    @skipOnCpuSet
     def test_resource_float_type(self):
         """
         Test to check the value of custom resource
