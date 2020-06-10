@@ -881,7 +881,7 @@ sleep 300
     "periodic_resc_update"  : true,
     "vnode_per_numa_node"   : false,
     "online_offlined_nodes" : true,
-    "use_hyperthreads"      : false,
+    "use_hyperthreads"      : true,
     "ncpus_are_cores"       : true,
     "cgroup":
     {
