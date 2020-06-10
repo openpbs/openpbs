@@ -143,6 +143,12 @@ else:
     else:
         PYTHON2 = False
 
+    try:
+        bytearray
+        BYTEARRAY_EXISTS = True
+    except Exception:
+        BYTEARRAY_EXISTS = False
+
 # Define some globals that get set in main
 PBS_EXEC = ''
 PBS_HOME = ''
@@ -410,12 +416,10 @@ def decode_list(data):
         elif PYTHON2:
             if isinstance(item, unicode):
                 item = item.encode('utf-8')
-            else:
+            elif BYTEARRAY_EXISTS and isinstance(item, bytearray):
                 item = str(item)
         elif isinstance(item, (bytes, bytearray)):
             item = str(item, 'utf-8')
-        else:
-            item = str(item)
         ret.append(item)
     return ret
 
@@ -432,12 +436,10 @@ def decode_dict(data):
         elif PYTHON2:
             if isinstance(key, unicode):
                 key = key.encode('utf-8')
-            else:
+            elif BYTEARRAY_EXISTS and isinstance(key, bytearray):
                 key = str(key)
         elif isinstance(key, (bytes, bytearray)):
             key = str(key, 'utf-8')
-        else:
-            key = str(key)
 
         # now the value
         if isinstance(value, str):
@@ -449,12 +451,10 @@ def decode_dict(data):
         elif PYTHON2:
             if isinstance(value, unicode):
                 value = value.encode('utf-8')
-            else:
+            elif BYTEARRAY_EXISTS and isinstance(key, bytearray):
                 value = str(value)
         elif isinstance(value, (bytes, bytearray)):
             value = str(value, 'utf-8')
-        else:
-            value = str(value)
 
         # add stringified (key, value) pair to result
         ret[key] = value
