@@ -234,10 +234,6 @@ upgrade_pbs_database() {
 	elif [ -d "${PBS_HOME}/pgsql.forupgrade" ]; then
 		old_inst_dir="${PBS_HOME}/pgsql.forupgrade"
 		old_data_dir="${PBS_HOME}/datastore.forupgrade"
-	else
-		echo "Data service directory from previous PBS installation not found,"
-		echo "Datastore upgrade cannot continue"
-		return 1
 	fi
 
 	if [ ! -f "${data_dir}/PG_VERSION" ]; then
@@ -289,6 +285,12 @@ upgrade_db() {
 
 	if [ ! -x "${inst_dir}/bin/pg_upgrade" ]; then
 		echo "${inst_dir}/bin/pg_upgrade not found"
+		return 1
+	fi
+
+	if [ -z "${old_inst_dir}" ]; then
+		echo "Data service directory from previous PBS installation not found,"
+		echo "Datastore upgrade cannot continue"
 		return 1
 	fi
 
