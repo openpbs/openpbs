@@ -4641,8 +4641,7 @@ update_eligible_time(long newaccruetype, job *pjob)
 	if (oldaccruetype == JOB_ELIGIBLE && accrued_time > 0) {
 		pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += accrued_time;
 		pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
-	} else
-		pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
+	}
 
 	/* change type to new accrue type, update start time to mark change of accrue type */
 	pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
