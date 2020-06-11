@@ -1372,24 +1372,25 @@ if %s e.job.in_ms_mom():
         #
         # Entries for older hooks deleted. I am leaving them as comments should
         # this be used to test old hooks, but DO NOT put them at the top
-        # when testing newer hooks, or you will run into race conditions with
-        # some of the hardcoded test timings
+        # of the list when testing newer hooks, or you will run into
+        # race conditions with some of the hardcoded test timings
         #
-        # Assumes cgroup_prefix is always pbs_jobs,
+        # Add these if needed:
+        # os.path.join(basedir, 'pbs.slice',
+        #             'pbs-%s.slice' % systemd_escape(jobid)),
+        # os.path.join(basedir, 'pbs_jobs.slice',
+        #             'pbs_jobs-%s.slice' % systemd_escape(jobid)),
+        # os.path.join(basedir, 'pbs', jobid),
+        # os.path.join(basedir, 'pbs_jobs', jobid),
+        # os.path.join(basedir, 'pbs.service/jobid', jobid),
+        #
+        #
+        # This cleaned version assumes cgroup_prefix is always pbs_jobs,
         # i.e. cgroup_prefix is not changed
         #
         # Separate test for different "sbp" prefix should use
         # its own script instead; that will not support multi-host jobs
-        jobdirs = [
-                   # os.path.join(basedir, 'pbs.slice',
-                   #             'pbs-%s.slice' % systemd_escape(jobid)),
-                   # os.path.join(basedir, 'pbs_jobs.slice',
-                   #             'pbs_jobs-%s.slice' % systemd_escape(jobid)),
-                   # os.path.join(basedir, 'pbs', jobid),
-                   # os.path.join(basedir, 'pbs_jobs', jobid),
-                   # os.path.join(basedir, 'pbs.service/jobid', jobid),
-                   os.path.join(basedir, 'pbs_jobs.service/jobid', jobid)
-                  ]
+        jobdirs = [os.path.join(basedir, 'pbs_jobs.service/jobid', jobid)]
         for jdir in jobdirs:
             if self.du.isdir(hostname=host, path=jdir, sudo=True):
                 return jdir
