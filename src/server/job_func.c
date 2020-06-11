@@ -424,9 +424,9 @@ job_alloc(void)
 #ifndef PBS_MOM
 	/* start accruing time from the time job was created */
 	pj->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = (long) time_now;
+	pj->ji_wattr[JOB_ATR_sample_starttime].at_flags |= ATR_VFLAG_SET;
 	pj->ji_wattr[JOB_ATR_eligible_time].at_val.at_long = 0;
 	pj->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
-	pj->ji_wattr[JOB_ATR_sample_starttime].at_flags |= ATR_VFLAG_SET;
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
