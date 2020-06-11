@@ -4626,7 +4626,7 @@ update_eligible_time(long newaccruetype, job *pjob)
 	char *strtime;
 	static char errtime[] = "00:00:00";
 	char str[256];
-	long accrued_time;			/* accrued time */
+	long accrued_time = 0;			/* accrued time */
 	long oldaccruetype = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
 	long timestamp = (long) time_now; 	/* time since accrual begins */
 	unsigned int flags = (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
@@ -4638,27 +4638,16 @@ update_eligible_time(long newaccruetype, job *pjob)
 	/* time since accrue type last changed  */
 	accrued_time = timestamp - pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long;
 
-	/* time since accrue type last changed is accrued */
-	/* change type to new accrue type,  update start time to mark */
-	/* change of accrue type */
-	switch ((int)oldaccruetype) {
-		case JOB_ELIGIBLE:
-			pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += accrued_time;
-			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
-		case JOB_INELIGIBLE:
-		case JOB_RUNNING:
-		case JOB_INITIAL:
-		case JOB_EXIT:
-			pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
-			pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = timestamp;
-			pjob->ji_wattr[JOB_ATR_accrue_type].at_flags |= flags;
-			pjob->ji_wattr[JOB_ATR_sample_starttime].at_flags |= flags;
-			break;
+	if (oldaccruetype == JOB_ELIGIBLE && accrued_time > 0) {
+		pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += accrued_time;
+		pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
+	}
 
-		default:
-			break;
-
-	}  /*switch end*/
+	/* change type to new accrue type, update start time to mark change of accrue type */
+	pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
+	pjob->ji_wattr[JOB_ATR_accrue_type].at_flags |= flags;
+	pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = timestamp;
+	pjob->ji_wattr[JOB_ATR_sample_starttime].at_flags |= flags;
 
 	/* Prepare and print log message */
 	strtime = convert_long_to_time(pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long);

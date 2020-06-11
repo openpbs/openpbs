@@ -53,6 +53,25 @@ class TestEligibleTime(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.accrue = {'ineligible': 1, 'eligible': 2, 'run': 3, 'exit': 4}
 
+    def test_eligible_time_updated(self):
+        """
+        Test that eligible time gets updated when a job is eligible
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {"eligible_time_enable": "True"})
+
+        jid1 = self.server.submit(Job())
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        jid2 = self.server.submit(Job())
+        a = {ATTR_state: 'Q', "accrue_type": "2"}
+        self.server.expect(JOB, a, id=jid2)
+
+        self.server.expect(JOB, {"eligible_time": "00:00:00"}, op=NE, id=jid2)
+
     def test_qsub_a(self):
         """
         Test that jobs requsting qsub -a <time> do not accrue

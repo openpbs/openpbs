@@ -79,6 +79,7 @@ extern attribute_def job_attr_def[];
 extern int	     resc_access_perm; /* see encode_resc() in attr_fn_resc.c */
 extern struct server server;
 extern char	     statechars[];
+extern time_t time_now;
 
 /**
  * @brief
@@ -249,7 +250,6 @@ int
 status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *pstathd, int *bad)
 {
 	struct brp_status *pstat;
-	time_t tm;
 	long oldtime = 0;
 	int old_elig_flags = 0;
 	int old_atyp_flags = 0;
@@ -267,12 +267,11 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	}
 
 	/* calc eligible time on the fly and return, don't save. */
-	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long != 0) {
-		if (pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) {
-			time(&tm);
-			oldtime = pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long;
-			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += ((long)tm - pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long);
-			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_MODCACHE;
+	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
+		if (pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) {
+			oldtime = pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long;
+			pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += (time_now - pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long);
+			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= (ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
 
 			/* Note: ATR_VFLAG_MODCACHE must be set because of svr_cached() does */
 			/* 	 not correctly check ATR_VFLAG_SET */
