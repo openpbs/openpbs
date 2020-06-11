@@ -369,31 +369,41 @@ is_valid_encrypt_method(char *method)
  *	tcp_send_auth_req - encodes and sends PBS_BATCH_Authenticate request
  *
  * @param[in] sock - socket descriptor
+ * @param[in] port - parent port in pbs_iff (only used in resvport auth) else 0
+ * @param[in] user - authenticating user name
+ * @param[in] auth_method - auth method name
+ * @param[in] encrypt_method - encrypt method name
  *
  * @return	int
  * @retval	0 on success
  * @retval	-1 on error
  */
 int
-tcp_send_auth_req(int sock, unsigned int port, char *user)
+tcp_send_auth_req(int sock, unsigned int port, char *user, char *auth_method, char *encrypt_method)
 {
 	struct batch_reply *reply;
 	int rc;
-	int am_len = strlen(pbs_conf.auth_method);
-	int em_len = strlen(pbs_conf.encrypt_method);
+	int am_len;
+	int em_len = encrypt_method ? strlen(encrypt_method) : 0;
 
+	if (auth_method == NULL || *auth_method == '\0') {
+		/* auth method can't be null or empty string */
+		pbs_errno = PBSE_INTERNAL;
+		return -1;
+	}
+	am_len = strlen(auth_method);
 	set_conn_errno(sock, 0);
 	set_conn_errtxt(sock, NULL);
 
 	if (encode_DIS_ReqHdr(sock, PBS_BATCH_Authenticate, user) ||
 		diswui(sock, am_len) || /* auth method length */
-		diswcs(sock, pbs_conf.auth_method, am_len) || /* auth method */
+		diswcs(sock, auth_method, am_len) || /* auth method */
 		diswui(sock, em_len)) { /* encrypt method length */
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 
-	if (em_len > 0 && diswcs(sock, pbs_conf.encrypt_method, em_len)) { /* encrypt method */
+	if (em_len > 0 && diswcs(sock, encrypt_method, em_len)) { /* encrypt method */
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -478,10 +488,20 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 	/* for compatibility with 12.0 pbs_iff */
 	(void)snprintf(cmd[1], sizeof(cmd[1]) - 1, "%s -i %s %s %u %d %u", pbs_conf.iff_path, pbs_client_addr, server_name, server_port, psock, psock_port);
 #ifdef WIN32
+	if (pbs_conf.encrypt_method[0] != '\0') {
+		if (!SetEnvironmentVariable(PBS_CONF_ENCRYPT_METHOD, pbs_conf.encrypt_method)) {
+			fprintf(stderr, "Failed to set %s=%s with errno: %ld", PBS_CONF_ENCRYPT_METHOD, pbs_conf.encrypt_method, GetLastError());
+			return -1;
+		}
+	}
 	(void)snprintf(cmd[0], sizeof(cmd[0]) - 1, "%s %s %u %d %u", pbs_conf.iff_path, server_name, server_port, psock, psock_port);
 	for (k = 0; k < 2; k++) {
 		rc = 0;
-		SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, pbs_client_addr);
+		if (!SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, pbs_client_addr)) {
+			fprintf(stderr, "Failed to set %s=%s with errno: %ld", PBS_IFF_CLIENT_ADDR, pbs_client_addr, GetLastError());
+			rc = -1;
+			break;
+		}
 		if (!win_popen(cmd[k], "r", &pio, NULL)) {
 			fprintf(stderr, "failed to execute %s\n", cmd[k]);
 			SetEnvironmentVariable(PBS_IFF_CLIENT_ADDR, NULL);
@@ -508,7 +528,18 @@ _invoke_pbs_iff(int psock, char *server_name, int server_port, char *ebuf, size_
 	}
 
 #else	/* UNIX code here */
-	(void)snprintf(cmd[0], sizeof(cmd[0]) - 1, "%s=%s %s %s %u %d %u", PBS_IFF_CLIENT_ADDR, pbs_client_addr, pbs_conf.iff_path, server_name, server_port, psock, psock_port);
+	if (pbs_conf.encrypt_method[0] != '\0') {
+		snprintf(cmd[0], sizeof(cmd[0]) - 1, "%s=%s %s=%s %s %s %u %d %u",
+				PBS_IFF_CLIENT_ADDR, pbs_client_addr,
+				PBS_CONF_ENCRYPT_METHOD, pbs_conf.encrypt_method,
+				pbs_conf.iff_path, server_name, server_port,
+				psock, psock_port);
+	} else {
+		snprintf(cmd[0], sizeof(cmd[0]) - 1, "%s=%s %s %s %u %d %u",
+				PBS_IFF_CLIENT_ADDR, pbs_client_addr,
+				pbs_conf.iff_path, server_name, server_port,
+				psock, psock_port);
+	}
 
 	for (k = 0; k < 2; k++) {
 		rc = -1;
@@ -772,7 +803,7 @@ engage_client_auth(int fd, char *hostname, int port, char *ebuf, size_t ebufsz)
 			}
 		}
 	} else {
-		if (tcp_send_auth_req(fd, 0, pbs_current_user) != 0) {
+		if (tcp_send_auth_req(fd, 0, pbs_current_user, pbs_conf.auth_method, pbs_conf.encrypt_method) != 0) {
 			snprintf(ebuf, ebufsz, "Failed to send auth request");
 			free_auth_config(config);
 			return -1;

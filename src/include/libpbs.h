@@ -363,7 +363,7 @@ extern int tcp_pre_process(conn_t *);
 extern char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 extern int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 
-int tcp_send_auth_req(int, unsigned int, char *);
+extern int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 
 #ifdef __cplusplus
 }
