@@ -130,7 +130,7 @@ tcp_recv(int fd, void *data, int len)
 				break;
 		}
 #ifdef WIN32
-		while (i == -1 && errno == WSAEINTR);
+		while (i == -1 && ((errno = WSAGetLastError()) == WSAEINTR));
 #else
 		while (i == -1 && errno == EINTR);
 #endif
