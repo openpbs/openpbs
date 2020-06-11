@@ -375,9 +375,8 @@ parse_pkt(void *pkt, size_t pkt_len, int *type, void **data_out, size_t *len_out
 		*data_out = NULL;
 		*len_out = 0;
 		return -1;
-	} else {
+	} else
 		pos += PKT_MAGIC_SZ;
-	}
 	*type = *((unsigned char *)pos);
 	pos++;
 	*len_out = ntohl(*((int *)pos));
@@ -458,9 +457,8 @@ transport_send_pkt(int fd, int type, void *data_in, size_t len_in)
 		}
 		free(data_out);
 	} else {
-		if (create_pkt(type, data_in, len_in, &pkt, &pktlen) != 0) {
+		if (create_pkt(type, data_in, len_in, &pkt, &pktlen) != 0)
 			return -1;
-		}
 	}
 
 	i = transport_send(fd, pkt, pktlen);
@@ -520,9 +518,8 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 			*/
 			transport_chan_set_old_client(fd);
 			data_in = malloc(i);
-			if (data_in == NULL) {
+			if (data_in == NULL)
 				return -1;
-			}
 			memcpy(data_in, (void *)pkt_magic, i);
 			*data_out = data_in;
 			*len_out = i;
@@ -546,9 +543,8 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 	}
 
 	data_in = malloc(data_in_sz);
-	if (data_in == NULL) {
+	if (data_in == NULL)
 		return -1;
-	}
 	i = transport_recv(fd, data_in, data_in_sz);
 	if (i != data_in_sz) {
 		free(data_in);
