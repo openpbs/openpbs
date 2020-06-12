@@ -1133,6 +1133,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			rc = copy_file(dir, rmtflag, owner, matched,
 				pair, conn, stage_inout, prmt);
 			if (rc != 0) {
+				(void)closedir(dirp);
 				snprintf(log_buffer, sizeof(log_buffer), "Pattern matched:%s stage%s failed for %s from %s to %s",
 					(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
 					(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);

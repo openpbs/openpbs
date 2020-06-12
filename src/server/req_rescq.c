@@ -586,7 +586,7 @@ req_confirmresv(struct batch_request *preq)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 			}
 		} else {
-			if ((presv->rep_sched_count >= presv->req_sched_count) && !is_confirmed) {
+			if (presv->rep_sched_count >= presv->req_sched_count) {
 				/* Clients waiting on an interactive request must be
 				* notified of the failure to confirm
 				*/
@@ -600,7 +600,7 @@ req_confirmresv(struct batch_request *preq)
 						PBSE_NONE, buf);
 					presv->ri_brp = NULL;
 				}
-				if (!is_being_altered) {
+				if (!is_being_altered && !is_confirmed) {
 					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
 						LOG_INFO, presv->ri_qs.ri_resvID,
 						"Reservation denied");
@@ -826,6 +826,8 @@ req_confirmresv(struct batch_request *preq)
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
+		/* Reservation is not degraded anymore */
+		is_degraded = 0;
 
 	}
 	if (state == RESV_CONFIRMED && partition_name != NULL) {

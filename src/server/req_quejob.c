@@ -1819,8 +1819,8 @@ req_commit(struct batch_request *preq)
 	 */
 
 	(void)reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit);
-	start_exec(pj);
 	job_or_resv_save((void *)pj, SAVEJOB_NEW, JOB_OBJECT);
+	start_exec(pj);
 
 	/* The ATR_VFLAG_MODIFY bit for several attributes used to be
 	 * set here. Now we rely on these bits to be set when and where

@@ -183,7 +183,7 @@ job_save_fs(job *pjob, int updatetype)
 		openflags =  O_WRONLY;
 		fds = open(namebuf1, openflags, pmode);
 		if (fds < 0) {
-			log_err(errno, "job_save", "error on open");
+			log_errf(errno, __func__, "Failed to open %s file", namebuf1);
 			return (-1);
 		}
 #ifdef WIN32

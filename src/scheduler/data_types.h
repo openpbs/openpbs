@@ -381,11 +381,12 @@ struct server_info
 	unsigned node_group_enable:1;	/* is node grouping enabled */
 	unsigned has_nodes_assoc_queue:1; /* nodes are associates with queues */
 	unsigned has_multi_vnode:1;	/* server has at least one multi-vnoded MOM  */
+	unsigned has_runjob_hook:1;	/* server has at least 1 runjob hook enabled */
 	unsigned eligible_time_enable:1;/* controls if we accrue eligible_time  */
 	unsigned provision_enable:1;	/* controls if provisioning occurs */
 	unsigned power_provisioning:1;	/* controls if power provisioning occurs */
 	unsigned dont_span_psets:1;	/* dont_span_psets sched object attribute */
-	unsigned throughput_mode:1;	/* scheduler set to throughput mode */
+	enum runjob_mode runjob_mode;	/* set to a numeric version of job_run_wait attribute value */
 	unsigned has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
 	unsigned enforce_prmptd_job_resumption:1;/* If set, preempted jobs will resume after the preemptor finishes */
 	unsigned preempt_targets_enable:1;/* if preemptable limit targets are enabled */

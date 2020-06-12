@@ -104,6 +104,7 @@ extern time_t	     time_now;
 extern char	    *msg_init_norerun;
 extern int resc_access_perm;
 extern long svr_history_enable;
+extern pbs_list_head svr_runjob_hooks;
 
 /* Extern Functions */
 
@@ -691,8 +692,36 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 	return (rc);
 }
 
+/**
+ * @brief
+ * 	update_isrunhook - update the value is has_runjob_hook
+ *
+ * @param[in]	pattr - ptr to the server attribute object
+ *
+ * @return	void
+ */
+static void
+update_isrunhook(attribute *pattr)
+{
+	hook *phook = NULL;
+	long old_val = pattr->at_val.at_long;
+	long new_val = 0;
 
+	/* Check if there are any valid runjob hooks */
+	for (phook = (hook *) GET_NEXT(svr_runjob_hooks);
+	     phook != NULL;
+	     phook = (hook *) GET_NEXT(phook->hi_runjob_hooks)) {
+		if (phook->enabled) {
+			new_val = 1;
+			break;
+		}
+	}
 
+	if (new_val != old_val) {
+		pattr->at_val.at_long = new_val;
+		pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	}
+}
 
 /**
  * @brief
@@ -706,10 +735,10 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 void
 req_stat_svr(struct batch_request *preq)
 {
-	svrattrl	   *pal;
+	svrattrl *pal;
 	struct batch_reply *preply;
-	struct brp_status  *pstat;
-
+	struct brp_status *pstat;
+	conn_t *conn;
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 
@@ -721,6 +750,12 @@ req_stat_svr(struct batch_request *preq)
 
 	update_license_ct(&server.sv_attr[(int)SRV_ATR_license_count],
 		server.sv_license_ct_buf);
+
+	conn = get_conn(preq->rq_conn);
+	if (conn->cn_authen & PBS_NET_CONN_TO_SCHED) {
+		/* Request is from sched so update "has_runjob_hook" */
+		update_isrunhook(&server.sv_attr[SRV_ATR_has_runjob_hook]);
+	}
 
 	/* allocate a reply structure and a status sub-structure */
 

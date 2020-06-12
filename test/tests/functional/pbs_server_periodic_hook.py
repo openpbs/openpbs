@@ -100,7 +100,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
                 time_expected = time_logged = self.get_timestamp(msg[1])
             else:
                 time_logged = self.get_timestamp(msg[1])
-                self.assertFalse((time_logged - time_expected) > 1)
+                self.assertFalse(time_logged - time_expected > 1)
 
             if check_for_hook_end is True:
                 time_expected = time_logged + hook_run_time
@@ -129,7 +129,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
 
             # we just matched hook start/end message, next start message is
             # surely after time_expected.
-            search_after = time_expected
+            search_after = time_expected + 1
             time_expected = time_logged + intr
             occurance += 1
 

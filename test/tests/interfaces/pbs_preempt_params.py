@@ -198,4 +198,5 @@ class TestPreemptParamsQmgr(TestInterfaces):
         self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
 
         self.server.manager(MGR_CMD_UNSET, SCHED, param, runas=ROOT_USER)
+        self.server.expect(SCHED, a, runas=ROOT_USER)
         self.server.manager(MGR_CMD_LIST, SCHED, a, runas=ROOT_USER)

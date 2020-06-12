@@ -278,6 +278,7 @@ struct batch_reply
 #define PBS_BATCH_Cred			94
 #define PBS_BATCH_Authenticate		95
 #define PBS_BATCH_ModifyJob_Async	96
+#define PBS_BATCH_AsyrunJob_ack	97
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -362,7 +363,7 @@ extern int tcp_pre_process(conn_t *);
 extern char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 extern int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 
-int tcp_send_auth_req(int, unsigned int, char *);
+extern int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 
 #ifdef __cplusplus
 }

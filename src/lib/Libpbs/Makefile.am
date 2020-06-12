@@ -232,7 +232,6 @@ libpbs_la_SOURCES = \
 	../Libifl/pbs_quote_parse.c \
 	../Libifl/pbs_statfree.c \
 	../Libifl/pbsD_alterjo.c \
-	../Libifl/pbsD_asyrun.c \
 	../Libifl/pbsD_connect.c \
 	../Libifl/pbsD_deljob.c \
 	../Libifl/pbsD_holdjob.c \

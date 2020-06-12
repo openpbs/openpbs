@@ -125,7 +125,6 @@
 #define PERM_MANAGER (ATR_DFLAG_MGWR | ATR_DFLAG_MGRD)
 #define PERM_OPorMGR (ATR_DFLAG_MGWR | ATR_DFLAG_MGRD | ATR_DFLAG_OPRD | ATR_DFLAG_OPWR)
 
-struct work_task *global_ping_task = NULL;
 pntPBS_IP_LIST pbs_iplist = NULL;
 
 AVL_IX_DESC *node_tree = NULL;
@@ -162,11 +161,9 @@ extern unsigned int pbs_mom_port;
 extern char server_host[];
 extern char *path_hooks;
 extern 	int max_concurrent_prov;
-extern char *msg_new_inventory_mom;
 extern char *msg_cannot_set_route_que;
 extern int check_req_aoe_available(struct pbsnode *, char *);
 int resize_prov_table(int);
-vnpool_mom_t    *vnode_pool_mom_list = NULL;
 
 /* private data */
 
@@ -1912,206 +1909,6 @@ mgr_queue_unset(struct batch_request *preq)
 
 /**
  * @brief
- *	Find the pool that matches what is set on the node
- *
- * @param[in]	pmom - pointer to the mom
- * @param[out]	ppool - pointer to the matching pool structure
- *
- * @return	vnpool_mom_t *
- * @retval	pointer to the matching pool structure
- * @retval	NULL - if there is no match
- */
-vnpool_mom_t *
-find_vnode_pool(mominfo_t *pmom)
-{
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
-	vnpool_mom_t *ppool = vnode_pool_mom_list;
-
-	if (psvrmom->msr_vnode_pool != 0) {
-		while (ppool != NULL) {
-			if (ppool->vnpm_vnode_pool == psvrmom->msr_vnode_pool) {
-				return(ppool);
-			}
-			ppool = ppool->vnpm_next;
-		}
-	}
-	return NULL;
-}
-
-/**
- * @brief
- *	Reset the "inventory Mom" for a vnode_pool if the specified Mom is the
- *	current inventory Mom.  Done when she is down or deleted from the pool.
- *
- * @param[in] pmom - Pointer to the Mom (mominfo_t) structure of the Mom
- *	being removed/marked down.
- */
-void
-reset_pool_inventory_mom(mominfo_t *pmom)
-{
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
-	vnpool_mom_t  *ppool;
-	mominfo_t     *pxmom;
-	mom_svrinfo_t *pxsvrmom;
-	int           i;
-
-	/* If this Mom is in a vnode pool and is the inventory Mom for that */
-	/* pool remove her from that role and if another Mom in the pool and */
-	/* is up, make that Mom the new inventory Mom */
-
-	if (psvrmom->msr_vnode_pool != 0) {
-		ppool = find_vnode_pool(pmom);
-		if (ppool != NULL) {
-			if (ppool->vnpm_inventory_mom != pmom)
-				return;	/* in the pool but is not the inventory mom */
-
-			/* this newly down/deleted Mom was the inventory Mom, */
-			/* clear her as the inventory mom in the pool */
-			ppool->vnpm_inventory_mom = NULL;
-
-			/* see if another Mom is up to become "the one" */
-			for (i=0; i<ppool->vnpm_nummoms; ++i) {
-				pxmom = ppool->vnpm_moms[i];
-				pxsvrmom = (mom_svrinfo_t *)pxmom->mi_data;
-				if ((pxsvrmom->msr_state & INUSE_DOWN) == 0) {
-					ppool->vnpm_inventory_mom = pxmom;
-					sprintf(log_buffer, msg_new_inventory_mom,
-						ppool->vnpm_vnode_pool, pxmom->mi_host);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-						LOG_DEBUG, msg_daemonname, log_buffer);
-				}
-			}
-		}
-	}
-}
-
-/**
- * @brief
- *	Add a Mom (mominfo_t) to the list of Moms associated with managing
- *	a vnode pool.  Create the pool if need be (not yet exists).
- *
- * @param[in] pmom - Pointer to the mominfo_t for the Mom
- * @return Error code
- * @retval - 0 - Success
- * @retval - pbs_errno - Failure code
- *
- * @par MT-safe: No
- */
-int
-add_mom_to_pool(mominfo_t *pmom)
-{
-	vnpool_mom_t *ppool;
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	int		added_pool = 0;
-	int		i;
-	mominfo_t    **tmplst;
-
-	if (psvrmom->msr_vnode_pool == 0)
-		return PBSE_NONE;	/* Mom not in a pool */
-
-	ppool = find_vnode_pool(pmom);
-	if (ppool != NULL) {
-		/* Found existing pool. Is Mom already in it? */
-		for (i = 0; i < ppool->vnpm_nummoms; ++i) {
-			if (ppool->vnpm_moms[i] == pmom) {
-				sprintf(log_buffer, "POOL: add_mom_to_pool - "
-					"Mom already in pool %ld",
-					psvrmom->msr_vnode_pool);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-					LOG_INFO, pmom->mi_host,log_buffer);
-				return PBSE_NONE; /* she is already there */
-			}
-		}
-	}
-
-	/* The pool doesn't exist yet, we need to add a pool entry */
-	if (ppool == NULL) {
-		ppool = (vnpool_mom_t *)calloc(1, (size_t)sizeof(struct vnpool_mom));
-		if (ppool == NULL) {
-			/* no memory */
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR,
-				  pmom->mi_host,
-				  "Failed to expand vnode_pool_mom_list");
-			return PBSE_SYSTEM;
-		}
-		added_pool = 1;
-		ppool->vnpm_vnode_pool = psvrmom->msr_vnode_pool;
-	}
-
-	/* now add Mom to pool list, expanding list if need be */
-
-	/* expand the array, perhaps from nothingness */
-	tmplst = (mominfo_t **)realloc(ppool->vnpm_moms, (ppool->vnpm_nummoms+1)*sizeof(mominfo_t *));
-	if (tmplst == NULL) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
-			  LOG_ERR, pmom->mi_host,
-			  "unable to add mom to pool, no memory");
-
-		if (added_pool)
-			free(ppool);
-		return PBSE_SYSTEM;
-	}
-	ppool->vnpm_moms = tmplst;
-	ppool->vnpm_moms[ppool->vnpm_nummoms++] = pmom;
-
-	sprintf(log_buffer, "Mom %s added to vnode_pool %ld", pmom->mi_host, psvrmom->msr_vnode_pool);
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
-	if (ppool->vnpm_inventory_mom == NULL) {
-		ppool->vnpm_inventory_mom = pmom;
-		sprintf(log_buffer, msg_new_inventory_mom, psvrmom->msr_vnode_pool, pmom->mi_host);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
-	}
-
-
-	if (vnode_pool_mom_list == NULL) {
-		vnode_pool_mom_list = ppool;
-	} else if (added_pool == 1) {
-		ppool->vnpm_next = vnode_pool_mom_list;
-		vnode_pool_mom_list = ppool;
-	}
-	return PBSE_NONE;
-}
-
-/**
- * @brief
- *	remove a Mom (mominfo_t) from the list of Moms associated with managing
- *	a vnode pool.
- *
- * @param[in] pmom - Pointer to the mominfo_t for the Mom
- *
- * @par MT-safe: No
- */
-void remove_mom_from_pool(mominfo_t *pmom)
-{
-	vnpool_mom_t *ppool;
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	int			   i;
-	int			   j;
-
-	if (psvrmom->msr_vnode_pool == 0)
-		return;	/* Mom not in a pool */
-
-	ppool = find_vnode_pool(pmom);
-	if (ppool != NULL) {
-		/* found existing pool, if Mom is in it remove her */
-		/* from it.  If not, nothing to do. */
-		for (i = 0; i < ppool->vnpm_nummoms; ++i) {
-			if (ppool->vnpm_moms[i] == pmom) {
-				ppool->vnpm_moms[i] = NULL;
-				for (j = i+1; j < ppool->vnpm_nummoms; ++j) {
-					ppool->vnpm_moms[j-1] = ppool->vnpm_moms[j];
-				}
-				--ppool->vnpm_nummoms;
-				/* find someone else to be the inventory Mom if need be */
-				reset_pool_inventory_mom(pmom);
-				psvrmom->msr_vnode_pool = 0;
-			}
-		}
-	}
-}
-
-/**
- * @brief
  *		Set vnode attributes
  *
  * 		Finds the set of vnodes, either one specified, all for a host or all.
@@ -2138,6 +1935,7 @@ mgr_node_set(struct batch_request *preq)
 	svrattrl	*plist;
 	char		*nodename;
 	mominfo_t	*pmom = NULL;
+	mom_svrinfo_t	*psvrmom = NULL;
 	struct pbsnode  *pnode;
 	int		rc;
 
@@ -2191,9 +1989,10 @@ mgr_node_set(struct batch_request *preq)
 		}
 		pmom = find_mom_entry(hostname, port);
 		if (pmom) {
-			numnodes = ((mom_svrinfo_t *)(pmom->mi_data))->msr_numvnds;
+			psvrmom = (mom_svrinfo_t *)pmom->mi_data;
+			numnodes = psvrmom->msr_numvnds;
 			momidx = 0;
-			pnode = ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[momidx];
+			pnode = psvrmom->msr_children[momidx];
 		} else {
 			/* no such Mom */
 			req_reject(PBSE_UNKNODE, 0, preq);
@@ -2306,9 +2105,9 @@ mgr_node_set(struct batch_request *preq)
 			int update_mom_only = 0;
 
 			/* next vnode under the Mom */
-			if (++momidx >= ((mom_svrinfo_t *)(pmom->mi_data))->msr_numvnds)
+			if (++momidx >= psvrmom->msr_numvnds)
 				break;	/* all down */
-			pnode = ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[momidx];
+			pnode = psvrmom->msr_children[momidx];
 			if ((strcmp(plist->al_name, ATTR_NODE_state) == 0) && (plist->al_op == INCR)) {
 				/* Marking nodes offline.  We should only mark the children vnodes
 				 * as offline if no other mom that reports the vnodes are up.
@@ -2430,6 +2229,7 @@ mgr_node_unset(struct batch_request *preq)
 	svrattrl	*plist;
 	char		*nodename;
 	mominfo_t	*pmom = NULL;
+	mom_svrinfo_t *psvrmom = NULL;
 	struct pbsnode  *pnode;
 	int		 rc;
 	int		 unset_que = 0;
@@ -2470,9 +2270,10 @@ mgr_node_unset(struct batch_request *preq)
 		pmom = find_mom_entry(hostname, port);
 		if (pmom) {
 			/* found mom, set number of and first vnode */
-			numnodes = ((mom_svrinfo_t *)(pmom->mi_data))->msr_numvnds;
+			psvrmom = (mom_svrinfo_t *)pmom->mi_data;
+			numnodes = psvrmom->msr_numvnds;
 			momidx = 0;
-			pnode = ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[momidx];
+			pnode = psvrmom->msr_children[momidx];
 		} else {
 			/* no such Mom */
 			req_reject(PBSE_UNKNODE, 0, preq);
@@ -2650,9 +2451,9 @@ mgr_node_unset(struct batch_request *preq)
 		if (numnodes == 1)
 			break;
 		if (preq->rq_ind.rq_manager.rq_objtype == MGR_OBJ_HOST) {
-			if (++momidx >= ((mom_svrinfo_t *)(pmom->mi_data))->msr_numvnds)
+			if (++momidx >= psvrmom->msr_numvnds)
 				break;
-			pnode =((mom_svrinfo_t *)(pmom->mi_data))->msr_children[momidx];
+			pnode = psvrmom->msr_children[momidx];
 		} else {
 			if (++i == svr_totnodes)
 				break;
@@ -3157,7 +2958,6 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			if ((rc == PBSE_UNKNODE) && (server.sv_attr[(int)SRV_ATR_State].at_val.at_long == SV_STATE_INIT)) {
 				/*
 				 * mark node as INUSE_UNRESOLVABLE, pbsnodes will show unresolvable state
-				 * flag INUSE_UNRESOLVABLE will ensure ping_a_mom will never ping for this node
 				 */
 				set_vnode_state(pnode, INUSE_UNRESOLVABLE | INUSE_DOWN, Nd_State_Set);
 
@@ -3553,25 +3353,7 @@ struct batch_request *preq;
 	}
 	have_blue_gene_nodes = rc;
 
-
-
 	reply_ack(preq);		/*request completely successful*/
-}
-/**
- * @brief
- * 		setup_ping	- set up a task to ping nodes.
- *
- * @param[in] delay - delay after which to ping.
- *
- */
-void
-setup_ping(int delay)
-{
-	/* remove existing ping task since we are adding new, delayed one */
-	if (global_ping_task)
-		delete_task(global_ping_task);
-
-	global_ping_task = set_task(WORK_Timed, time_now + delay, ping_nodes, NULL);
 }
 
 /**
@@ -3744,8 +3526,6 @@ struct batch_request *preq;
 		svr_chngNodesfile = 0;
 
 	reply_ack(preq);	    /*create completely successful*/
-
-	setup_ping(2); /* adjust ping to happen in next 2 seconds */
 }
 
 /**

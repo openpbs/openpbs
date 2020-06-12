@@ -194,17 +194,15 @@
 #include "pbs_sched.h"
 
 extern struct python_interpreter_data  svr_interp_data;
+extern pbs_list_head svr_runjob_hooks;
 
 extern time_t time_now;
 extern char  *resc_in_err;
 extern char  *msg_daemonname;
-extern pbs_list_head task_list_event;
-extern pbs_list_head task_list_timed;
 extern char   server_name[];
 extern char   server_host[];
 
 extern pbs_list_head svr_allconns;
-extern int max_connection;
 
 #define ERR_MSG_SIZE 256
 #define MAXNLINE 2048
@@ -215,11 +213,8 @@ extern int max_connection;
  */
 #define APP_PROV_SUCCESS 1
 
-extern char *msg_internal;
-extern char *msg_job_prov_failed;
 extern char *path_hooks_workdir;
 extern char *path_priv;
-extern char *pbs_server_name;
 
 char *path_prov_track;
 int max_concurrent_prov = PBS_MAX_CONCURRENT_PROV;
@@ -262,7 +257,6 @@ extern int sync_mom_hookfiles_proc_running;
 /*
  * Miscellaneous server functions
  */
-extern void db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr);
 #ifdef NAS /* localmod 005 */
 extern int write_single_node_state(struct pbsnode *np);
 #endif /* localmod 005 */
@@ -733,6 +727,8 @@ action_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
 int
 set_rpp_retry(attribute *pattr, void *pobj, int actmode)
 {
+	int old_rpp_retry = rpp_retry;
+
 	if (actmode == ATR_ACTION_ALTER ||
 		actmode == ATR_ACTION_RECOV) {
 		/*
@@ -750,6 +746,12 @@ set_rpp_retry(attribute *pattr, void *pobj, int actmode)
 				LOG_DEBUG, msg_daemonname, log_buffer);
 		}
 	}
+
+	if (actmode == ATR_ACTION_ALTER && old_rpp_retry != rpp_retry) {
+		struct work_task *ptask = set_task(WORK_Immed, 0, mcast_moms, NULL);
+		ptask->wt_aux = IS_NULL;
+	}
+
 	return PBSE_NONE;
 }
 
@@ -769,6 +771,8 @@ set_rpp_retry(attribute *pattr, void *pobj, int actmode)
 int
 set_rpp_highwater(attribute *pattr, void *pobj, int actmode)
 {
+	int old_rpp_highwater = rpp_highwater;
+
 	if (actmode == ATR_ACTION_ALTER ||
 		actmode == ATR_ACTION_RECOV) {
 		/*
@@ -781,6 +785,12 @@ set_rpp_highwater(attribute *pattr, void *pobj, int actmode)
 
 		rpp_highwater = (int)pattr->at_val.at_long;
 	}
+
+	if (actmode == ATR_ACTION_ALTER && old_rpp_highwater != rpp_highwater) {
+		struct work_task *ptask = set_task(WORK_Immed, 0, mcast_moms, NULL);
+		ptask->wt_aux = IS_NULL;
+	}
+
 	return PBSE_NONE;
 }
 
@@ -1538,26 +1548,8 @@ eligibletime_action(attribute *pattr, void *pobject, int actmode)
 
 		pj = (job *)GET_NEXT(svr_alljobs);
 		while (pj != NULL) {
-			/*
-			 * try to determine accruetype for
-			 * jobs submitted when eligible_time_enable was 'off'
-			 * if unable to determine now, wait for scheduling cycle
-			 */
-			if ((pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_INITIAL) ||
-				((pj->ji_wattr[(int)JOB_ATR_accrue_type].at_flags & ATR_VFLAG_SET) == 0)) {
-				accruetype = determine_accruetype(pj);
-				if (accruetype == -1)
-					pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = JOB_INITIAL;
-				else
-					pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long = accruetype;
-
-				pj->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |=
-					(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-				pj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |=
-					(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-				pj->ji_wattr[(int)JOB_ATR_sample_starttime].at_flags |=
-					(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
-			}
+			accruetype = determine_accruetype(pj);
+			update_eligible_time(accruetype, pj);
 
 			pj = (job *)GET_NEXT(pj->ji_alljobs);
 		}
@@ -7081,28 +7073,6 @@ enum failover_state are_we_primary(void)
 		return FAILOVER_SECONDARY;  /* we are the secondary */
 
 	return FAILOVER_CONFIG_ERROR;	    /* cannot be neither */
-}
-
-/* action function for opt_backfill_fuzzy -- only allow the correct values */
-int
-action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode)
-{
-	char *str = pattr->at_val.at_str;
-
-	if (str == NULL)
-		return PBSE_BADATVAL;
-
-	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		if (!strcasecmp(str, "off") ||
-		    !strcasecmp(str, "low")  ||
-		    !strcasecmp(str, "medium") || !strcasecmp(str, "med") ||
-		    !strcasecmp(str, "high"))
-			return PBSE_NONE;
-		else
-			return PBSE_BADATVAL;
-	}
-
-	return PBSE_NONE;
 }
 
 /**

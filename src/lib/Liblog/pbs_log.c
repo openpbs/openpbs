@@ -763,8 +763,13 @@ log_err(int errnum, const char *routine, const char *text)
 	if (log_opened == 0)
 		(void)log_open("/dev/console", log_directory);
 
-	if (isatty(2))
-		(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
+	if (isatty(2)) {
+		if (msg_daemonname == NULL) {
+			(void)fprintf(stderr, "%s\n", buf);
+		} else {
+			(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
+		}
+	}
 
 	(void)log_record(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_ERR, msg_daemonname, buf);

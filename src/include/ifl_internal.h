@@ -49,6 +49,8 @@ extern "C" {
 
 extern int __pbs_asyrunjob(int, char *, char *, char *);
 
+extern int __pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend);
+
 extern int __pbs_alterjob(int, char *, struct attrl *, char *);
 
 extern int __pbs_asyalterjob(int, char *, struct attrl *, char *);

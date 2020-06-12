@@ -1465,7 +1465,7 @@ if %s e.job.in_ms_mom():
              'content-encoding': 'default',
              'input-file': self.config_file}
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        if not mom_checks or self.moms_list[0].is_cpuset_mom():
+        if not mom_checks:
             return
         self.moms_list[0].log_match('pbs_cgroups.CF;copy hook-related '
                                     'file request received',
@@ -3444,6 +3444,7 @@ event.accept()
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
 
+    @timeout(1800)
     def test_big_cgroup_cpuset(self):
         """
         With vnodes_per_numa and use_hyperthreads set to "true",
@@ -4093,9 +4094,40 @@ sleep 300
         b1 = {'job_state': 'Q'}
         self.server.expect(JOB, b1, jid2)
 
+    def test_cgroup_default_config(self):
+        """
+        Test to make sure using the default hook config file
+        still run a basic job, and cleans up cpuset upon qdel.
+        """
+        # The default hook config has 'memory' subsystem enabled
+        if not self.paths['memory']:
+            self.skipTest('Test requires memory subystem mounted')
+        self.load_default_config()
+        # Reduce the noise in mom_logs for existence=False matching
+        c = {'$logevent': '511'}
+        self.mom.add_config(c)
+        a = {'Resource_List.select': 'ncpus=1:mem=100mb'}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+        err_msg = "write_value: Permission denied.*%s.*memsw" % (jid)
+        self.mom.log_match(err_msg, max_attempts=3, interval=1, n=100,
+                           regexp=True, existence=False)
+        self.server.status(JOB, ['exec_host'], jid)
+        ehost = j.attributes['exec_host']
+        ehost1 = ehost.split('/')[0]
+        ehjd1 = self.get_cgroup_job_dir('cpuset', jid, ehost1)
+        self.assertTrue(self.is_dir(ehjd1, ehost1), "job cpuset dir not found")
+        self.server.delete(id=jid, wait=True)
+        self.assertFalse(self.is_dir(ehjd1, ehost1), "job cpuset dir found")
+
     def tearDown(self):
         TestFunctional.tearDown(self)
-        self.load_default_config()
+        mom_checks = True
+        if self.moms_list[0].is_cpuset_mom():
+            mom_checks = False
+        self.load_default_config(mom_checks=mom_checks)
         if not self.iscray:
             self.remove_vntype()
         events = ['execjob_begin', 'execjob_launch', 'execjob_attach',

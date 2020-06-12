@@ -225,6 +225,7 @@ typedef struct pbs_tcp_auth_data {
 typedef struct pbs_tcp_chan {
 	pbs_dis_buf_t readbuf;
 	pbs_dis_buf_t writebuf;
+	int is_old_client; /* This is just for backward compatibility */
 	pbs_tcp_auth_data_t auths[2];
 } pbs_tcp_chan_t;
 

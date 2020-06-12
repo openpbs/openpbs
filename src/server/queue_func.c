@@ -441,7 +441,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 					oldtype != JOB_ELIGIBLE) {
 
 					newaccruetype = determine_accruetype(pj);
-					(void)update_eligible_time(newaccruetype, pj);
+					update_eligible_time(newaccruetype, pj);
 				}
 
 				pj = (job*)GET_NEXT(pj->ji_jobque);

@@ -149,6 +149,7 @@
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"
+#include "hook.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -656,6 +657,11 @@ query_server_info(status *pol, struct batch_status *server)
 				policy->rel_on_susp = resstr_to_resdef(resl);
 				free_string_array(resl);
 			}
+		} else if(!strcmp(attrp->name, ATTR_has_runjob_hook)) {
+			if (!strcmp(attrp->value, ATR_TRUE))
+				sinfo->has_runjob_hook = 1;
+			else
+				sinfo->has_runjob_hook = 0;
 		}
 		attrp = attrp->next;
 	}
@@ -869,9 +875,6 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 
 	attrp = sched->attribs;
 
-	/* set throughput mode to 1 by default */
-	sinfo->throughput_mode = 1;
-
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
 			sinfo->sched_cycle_len = res_to_num(attrp->value, NULL);
@@ -894,8 +897,19 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 		} else if (!strcmp(attrp->name, ATTR_job_sort_formula_threshold)) {
 			policy->job_form_threshold_set = 1;
 			policy->job_form_threshold = res_to_num(attrp->value, NULL);
-		} else if (!strcmp(attrp->name, ATTR_throughput_mode)) {
-			sinfo->throughput_mode = res_to_num(attrp->value, NULL);
+		} else if (!strcmp(attrp->name, ATTR_job_run_wait)) {
+			if (!strcmp(attrp->value, RUN_WAIT_NONE))
+				sinfo->runjob_mode = RJ_NOWAIT;
+			else if (!strcmp(attrp->value, RUN_WAIT_RUNJOB_HOOK)) {
+				/* If no runjob hooks, then use RJ_NOWAIT */
+				if (!sinfo->has_runjob_hook) {
+					sinfo->runjob_mode = RJ_NOWAIT;
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
+						"No runjob hooks found, will use job_run_wait=none for better performance");
+				} else
+					sinfo->runjob_mode = RJ_RUNJOB_HOOK;
+			} else
+				sinfo->runjob_mode = RJ_EXECJOB_HOOK;
 		} else if (!strcmp(attrp->name, ATTR_opt_backfill_fuzzy)) {
 			if (!strcasecmp(attrp->value, "off"))
 				sinfo->opt_backfill_fuzzy_time = BF_OFF;
@@ -982,10 +996,7 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 				free_string_array(list);
 			}
 		} else if (!strcmp(attrp->name, ATTR_sched_preempt_sort)) {
-			if (strcasecmp(attrp->value, "min_time_since_start") == 0)
-				conf.preempt_min_wt_used = 1;
-			else
-				conf.preempt_min_wt_used = 0;
+			conf.preempt_min_wt_used = 1;
 		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
 			if (sinfo->job_formula != NULL)
 				free(sinfo->job_formula);
@@ -1313,12 +1324,13 @@ new_server_info(int limallocflag)
 	sinfo->has_nonprime_queue = 0;
 	sinfo->has_nodes_assoc_queue = 0;
 	sinfo->has_ded_queue = 0;
+	sinfo->has_runjob_hook = 0;
 	sinfo->node_group_enable = 0;
 	sinfo->eligible_time_enable = 0;
 	sinfo->provision_enable = 0;
 	sinfo->power_provisioning = 0;
 	sinfo->dont_span_psets = 0;
-	sinfo->throughput_mode = 0;
+	sinfo->runjob_mode = RJ_RUNJOB_HOOK;
 	sinfo->has_nonCPU_licenses = 0;
 	sinfo->enforce_prmptd_job_resumption = 0;
 	sinfo->use_hard_duration = 0;
@@ -4029,7 +4041,7 @@ create_resource_assn_for_node(node_info *ninfo)
 	}
 
 	if (ncpus_res != NULL && ncpus_res->assigned < ncpus_res->avail)
-		set_node_info_state(ninfo, ND_free);
+		remove_node_state(ninfo, ND_jobbusy);
 
 	return 1;
 }
