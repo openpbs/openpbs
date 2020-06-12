@@ -117,38 +117,42 @@ tcp_recv(int fd, void *data, int len)
 	int timeout;
 #endif
 
-	/*
-	 * we don't want to be locked out by an attack on the port to
-	 * deny service, so we time out the read, the network had better
-	 * deliver promptly
-	 */
-	do {
 #ifdef WIN32
-		timeout.tv_sec = (long) pbs_tcp_timeout;
-		timeout.tv_usec = 0;
-		FD_ZERO(&readset);
-		FD_SET((unsigned int)fd, &readset);
-		i = select(FD_SETSIZE, &readset, NULL, NULL, &timeout);
+	timeout.tv_sec = (long) pbs_tcp_timeout;
+	timeout.tv_usec = 0;
 #else
-		timeout = pbs_tcp_timeout;
-		pollfds[0].fd = fd;
-		pollfds[0].events = POLLIN;
-		pollfds[0].revents = 0;
-		i = poll(pollfds, 1, timeout * 1000);
+	timeout = pbs_tcp_timeout;
+	pollfds[0].fd = fd;
+	pollfds[0].events = POLLIN;
+	pollfds[0].revents = 0;
 #endif
-		if (pbs_tcp_interrupt)
-			break;
-	}
-#ifdef WIN32
-	while (i == -1 && errno == WSAEINTR);
-#else
-	while (i == -1 && errno == EINTR);
-#endif
-
-	if (i == 0 || i < 0)
-		return i;
 
 	while (torecv > 0) {
+		/*
+		 * we don't want to be locked out by an attack on the port to
+		 * deny service, so we time out the read, the network had better
+		 * deliver promptly
+		 */
+		do {
+#ifdef WIN32
+			FD_ZERO(&readset);
+			FD_SET((unsigned int)fd, &readset);
+			i = select(FD_SETSIZE, &readset, NULL, NULL, &timeout);
+#else
+			i = poll(pollfds, 1, timeout * 1000);
+#endif
+			if (pbs_tcp_interrupt)
+				break;
+		}
+#ifdef WIN32
+		while (i == -1 && ((errno = WSAGetLastError()) == WSAEINTR));
+#else
+		while (i == -1 && errno == EINTR);
+#endif
+
+		if (i <= 0)
+			return i;
+
 #ifdef WIN32
 		i = recv(fd, pb, torecv, 0);
 		errno = WSAGetLastError();
