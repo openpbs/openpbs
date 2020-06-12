@@ -5043,6 +5043,7 @@ daemon_submit(char *qsub_exe, int *do_regular_submit)
 	char cmd_line[2 * MAXPATHLEN + 1];
 	int created = 0;
 	HANDLE h_event;
+	int flags = CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_PROCESS_GROUP;
 
 	/* determine pipe name */
 	get_comm_filename(fl);
@@ -5090,12 +5091,13 @@ again:
 
 			/* launch new qsub process, connect 2 server */
 			sa.bInheritHandle = FALSE;
+			si.lpDesktop = NULL;
 			sprintf(cmd_line, "%s --daemon %s %d %s",
 					qsub_exe, fl,
 					h_event, server_out);
 			if (!CreateProcess(NULL, cmd_line, &sa, &sa,
-						TRUE, CREATE_NEW_PROCESS_GROUP, NULL,
-						NULL, &si, &pi)) {
+						TRUE, flags,
+						NULL, NULL, &si, &pi)) {
 				CloseHandle(h_event);
 				return rc;
 			}
