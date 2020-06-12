@@ -143,7 +143,7 @@ else:
     try:
         bytearray
         BYTEARRAY_EXISTS = True
-    except Exception:
+    except NameError:
         BYTEARRAY_EXISTS = False
 
 # Define some globals that get set in main

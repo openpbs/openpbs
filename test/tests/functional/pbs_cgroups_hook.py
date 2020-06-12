@@ -1368,28 +1368,26 @@ if %s e.job.in_ms_mom():
         Returns path of subsystem for jobid
         """
         basedir = self.paths[subsys]
-        # One of these should exist depending on platform.
-        #
-        # Entries for older hooks deleted. I am leaving them as comments should
-        # this be used to test old hooks, but DO NOT put them at the top
-        # of the list when testing newer hooks, or you will run into
-        # race conditions with some of the hardcoded test timings
-        #
-        # Add these if needed:
-        # os.path.join(basedir, 'pbs.slice',
-        #             'pbs-%s.slice' % systemd_escape(jobid)),
-        # os.path.join(basedir, 'pbs_jobs.slice',
-        #             'pbs_jobs-%s.slice' % systemd_escape(jobid)),
-        # os.path.join(basedir, 'pbs', jobid),
-        # os.path.join(basedir, 'pbs_jobs', jobid),
-        # os.path.join(basedir, 'pbs.service/jobid', jobid),
-        #
+        # One of the entries in the following list should exist
         #
         # This cleaned version assumes cgroup_prefix is always pbs_jobs,
-        # i.e. cgroup_prefix is not changed
+        # i.e. that cgroup_prefix is not changed if you use this routine
         #
-        # Separate test for different "sbp" prefix should use
-        # its own script instead; that will not support multi-host jobs
+        # The separate test for a different prefix ("sbp") uses its own
+        # script instead; that script need not support multi-host jobs
+        #
+        # Older possible per job paths (relative to the basedir) looked:
+        # 1) <prefix>.slice/<prefix>-<jobid>.slice
+        #     (and <jobid> needs to be passed through systemd_escape)
+        # 2) <prefix>/<jobid>
+        #
+        # Some older hooks used either depending on the OS platform
+        # which was the reason to support a list in the first place
+        #
+        # If you need to add paths to make the tests support older hooks,
+        # put the least likely paths at the end of the list, to avoid
+        # changing test timings too much.
+        #
         jobdirs = [os.path.join(basedir, 'pbs_jobs.service/jobid', jobid)]
         for jdir in jobdirs:
             if self.du.isdir(hostname=host, path=jdir, sudo=True):
