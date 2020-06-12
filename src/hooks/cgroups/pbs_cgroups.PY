@@ -3800,8 +3800,9 @@ class CgroupUtils(object):
             if self.cfg['use_hyperthreads'] and self.cfg['ncpus_are_cores']:
                 needed *= node.cpuinfo['hyperthreads_per_core']
             if needed > avail:
-                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Insufficient ncpus: %s/%s' %
-                           (caller_name(), needed, avail))
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s: insufficient ncpus: %s needed, %s available'
+                           % (caller_name(), needed, avail))
                 return {}
             if self.cfg['use_hyperthreads']:
                 # Find cores that are fully available
@@ -3838,8 +3839,10 @@ class CgroupUtils(object):
                 corelist = sorted(cores)
                 assigned['cpuset.cpus'] += corelist[:needed]
             else:
-                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
-                           (caller_name(), len(cores) - needed))
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s: in final pass, '
+                           '%d more ncpus needed than available'
+                           % (caller_name(), needed - len(cores)))
                 return {}
 
             # Set cpuset.mems to the socketlist for now even though
