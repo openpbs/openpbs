@@ -1764,7 +1764,8 @@ finish_exec(job *pjob)
 	}
 
 	/* Later on, the following needs to be replaced by set_credential() */
-	if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
+	if ((pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE)
+			&& (pjob->ji_user->pw_userlogin != NULL)) {
 		if (!impersonate_user(pjob->ji_user->pw_userlogin)) {
 			sprintf(log_buffer,
 				"failed to ImpersonateLoggedOnUser on %s, error=%ld", mom_host, GetLastError());
