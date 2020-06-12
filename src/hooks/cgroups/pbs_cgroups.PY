@@ -3339,7 +3339,7 @@ class CgroupUtils(object):
             # before calling splitlines
             # should not happen since we pass universal_newlines True
             out_split = stringified_output(out).splitlines()
-            ver = int(re.sub(r'Version=([0-9]+)', r'\1', out_split[0]))
+            ver = int(re.sub(r'Version=\D*(\d+)', r'\1', out_split[0]))
         except Exception:
             # Note we also get here if we can't decode an int version
             return 0
@@ -3835,12 +3835,12 @@ class CgroupUtils(object):
                 # and ncpus_are_cores are both True)
                 pass
             elif needed <= len(cores):
-                    corelist = sorted(cores)
-                    assigned['cpuset.cpus'] += corelist[:needed]
+                corelist = sorted(cores)
+                assigned['cpuset.cpus'] += corelist[:needed]
             else:
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
-                               (caller_name(), len(cores) - needed))
-                    return {}
+                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
+                           (caller_name(), len(cores) - needed))
+                return {}
 
             # Set cpuset.mems to the socketlist for now even though
             # there may not be sufficient memory. Memory gets
