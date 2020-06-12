@@ -1397,16 +1397,16 @@ if %s e.job.in_ms_mom():
         return None
 
     def find_main_cpath(self, cdir):
-        cpath = None
         if os.path.isdir(cdir):
-            cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
-            if not os.path.isdir(cpath):
-                cpath = os.path.join(cdir, 'pbs.service/jobid')
-            if not os.path.isdir(cpath):
-                cpath = os.path.join(cdir, 'pbs.slice')
-            if not os.path.isdir(cpath):
-                cpath = os.path.join(cdir, 'pbs')
-        return cpath
+            paths = ['pbs_jobs.service/jobid',
+                     'pbs.service/jobid',
+                     'pbs.slice',
+                     'pbs']
+            for p in paths:
+                cpath = os.path.join(cdir, p)
+                if os.path.isdir(cpath):
+                    return cpath
+        return None
 
     def load_hook(self, filename, mom_checks=True):
         """
@@ -2678,27 +2678,16 @@ if %s e.job.in_ms_mom():
             if (any([x in subsys for x in enabled_subsys])):
                 continue
             if path:
+                # Following code only works with recent hooks
+                # and default cgroup_prefix
+                # change the path if testing with older hooks
+                # see comments in get_cgroup_job_dir()
                 filename = os.path.join(path,
                                         'pbs_jobs.service',
                                         'jobid', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
-            #   filename = os.path.join(path, 'pbs.service',
-            #                           'jobid', str(jid))
-            #    self.logger.info('Checking that file %s should not exist'
-            #                     % filename)
-            #    self.assertFalse(os.path.isfile(filename))
-            #    filename = os.path.join(path, 'pbs.slice', 'pbs-%s.slice'
-            #                            % systemd_escape(jid))
-            #    self.logger.info('Checking that file %s should not exist'
-            #                     % filename)
-            #    self.assertFalse(os.path.isfile(filename))
-            #    filename = os.path.join(path, 'pbs.slice', 'pbs-%s.slice'
-            #                            % systemd_escape(jid))
-            #    self.logger.info('Checking that file %s should not exist'
-            #                     % filename)
-            #    self.assertFalse(os.path.isfile(filename))
 
     @skipOnCray
     def test_cgroup_assign_resources_mem_only_vnode(self):

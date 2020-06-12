@@ -138,10 +138,7 @@ else:
     import fcntl
     import pwd
 
-    if sys.version_info[0] < 3:
-        PYTHON2 = True
-    else:
-        PYTHON2 = False
+    PYTHON2 = sys.version_info[0] < 3
 
     try:
         bytearray
@@ -621,29 +618,28 @@ def printjob_info(jobid, include_attributes=False):
         cmd.append('-a')
     cmd.append(jobfile)
     try:
-        err_nonsplit = ''
         pbs.logmsg(pbs.EVENT_DEBUG4, 'Running: %s' % cmd)
         process = subprocess.Popen(cmd, shell=False,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
                                    universal_newlines=True)
-        out_nonsplit, err_nonsplit = process.communicate()
+        out, err = process.communicate()
         if process.returncode != 0:
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        'command return code non-zero: %s'
                        % str(process.returncode))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        'command stderr: %s'
-                       % stringified_output(err_nonsplit))
+                       % stringified_output(err))
     except Exception as exc:
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Error running command: %s' % cmd)
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Exception: %s' % exc)
         return {}
     # if we get a non-str type then convert before calling splitlines
     # should not happen since we pass universal_newlines True
-    out = stringified_output(out_nonsplit).splitlines()
+    out_split = stringified_output(out).splitlines()
     pattern = re.compile(r'^(\w.*):\s*(\S+)')
-    for line in out:
+    for line in out_split:
         result = re.match(pattern, line)
         if not result:
             continue
@@ -1781,7 +1777,7 @@ class NodeUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        universal_newlines=True)
-            out_nonsplit = process.communicate()[0]
+            out = process.communicate()[0]
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
                        " ".join(cmd))
@@ -1797,7 +1793,7 @@ class NodeUtils(object):
         try:
             # Try parsing the output
             import xml.etree.ElementTree as xmlet
-            root = xmlet.fromstring(stringified_output(out_nonsplit))
+            root = xmlet.fromstring(stringified_output(out))
             pbs.logmsg(pbs.EVENT_DEBUG4, 'root.tag: %s' % root.tag)
             for child in root:
                 if child.tag == 'gpu':
@@ -3067,7 +3063,7 @@ class CgroupUtils(object):
                                            stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE,
                                            universal_newlines=True)
-                out_nonsplit = process.communicate()[0]
+                out = process.communicate()[0]
                 if (process.returncode == 0):
                     # service is already active -- no need to create it
                     return
@@ -3106,13 +3102,12 @@ class CgroupUtils(object):
                        % (caller_name(), servicefile))
             raise
         try:
-            err_nonsplit = ''
             cmd = ['systemctl', 'start', os.path.basename(servicefile)]
             process = subprocess.Popen(cmd, shell=False,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        universal_newlines=True)
-            out_nonsplit, err_nonsplit = process.communicate()
+            out, err = process.communicate()
             if (process.returncode == 0):
                 pbs.logmsg(pbs.EVENT_DEBUG,
                            '%s: Started systemd service with file %s'
@@ -3123,7 +3118,7 @@ class CgroupUtils(object):
                            % (caller_name(), process.returncode))
                 pbs.logmsg(pbs.EVENT_ERROR, '%s: stderr of systemctl was: %s'
                            % (caller_name(),
-                              stringified_output(err_nonsplit)))
+                              stringified_output(err)))
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Failed to start systemd service: %s'
@@ -3339,12 +3334,12 @@ class CgroupUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        universal_newlines=True)
-            out_nonsplit = process.communicate()[0]
+            out = process.communicate()[0]
             # if we get a non-str type then convert
             # before calling splitlines
             # should not happen since we pass universal_newlines True
-            out = stringified_output(out_nonsplit).splitlines()
-            ver = int(re.sub(r'Version=([0-9]+)', r'\1', out[0]))
+            out_split = stringified_output(out).splitlines()
+            ver = int(re.sub(r'Version=([0-9]+)', r'\1', out_split[0]))
         except Exception:
             # Note we also get here if we can't decode an int version
             return 0
@@ -3835,14 +3830,18 @@ class CgroupUtils(object):
             # assigned all of the fully avaiable cores. There still may
             # be cores to assign. When use_hyperthreads is disabled, we
             # assign all the cores here.
-            if needed >= 1:
-                if needed > len(cores):
+            if needed <= 0:
+                # we're done (will always hold if use_hyperthreads
+                # and ncpus_are_cores are both True)
+                pass
+            elif needed <= len(cores):
+                    corelist = sorted(cores)
+                    assigned['cpuset.cpus'] += corelist[:needed]
+            else:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
                                (caller_name(), len(cores) - needed))
                     return {}
-                else:
-                    corelist = sorted(cores)
-                    assigned['cpuset.cpus'] += corelist[:needed]
+
             # Set cpuset.mems to the socketlist for now even though
             # there may not be sufficient memory. Memory gets
             # checked later in this method.
@@ -4657,7 +4656,7 @@ class CgroupUtils(object):
                 except Exception:
                     jobdict = dict()
                     pbs.logmsg(pbs.EVENT_DEBUG2,
-                               '%s: Failed gathering local job data' %
+                               '%s: Failed to gather local job data' %
                                caller_name())
                 # There may not be a .JB file present for this job yet
                 if jobid not in jobdict:
@@ -5251,15 +5250,15 @@ class CgroupUtils(object):
             proc = subprocess.Popen(['dmesg'], shell=False,
                                     stdout=subprocess.PIPE,
                                     universal_newlines=True)
-            out_nonsplit = proc.communicate()[0]
+            out = proc.communicate()[0]
             # if we get a non-str type then convert before calling splitlines
             # should not happen since we pass universal_newlines True
-            out = stringified_output(out_nonsplit).splitlines()
+            out_split = stringified_output(out).splitlines()
         except Exception:
             return ''
-        out.reverse()
+        out_split.reverse()
         # Check to see if the job id is found in dmesg output
-        for line in out:
+        for line in out_split:
             start = line.find('Killed process ')
             if start < 0:
                 start = line.find('Task in /%s' % self.cfg['cgroup_prefix'])
