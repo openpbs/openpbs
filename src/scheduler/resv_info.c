@@ -1945,7 +1945,7 @@ release_running_resv_nodes(resource_resv *resv, node_info **all_nodes)
 	if (resv == NULL || all_nodes == NULL )
 		return;
 	degraded = resv->resv->resv_state == RESV_RUNNING && resv->resv->resv_substate == RESV_DEGRADED;
-	being_altered = resv->resv->resv_state == RESV_RUNNING && resv->resv->resv_substate == RESV_DEGRADED;
+	being_altered = resv->resv->resv_state == RESV_BEING_ALTERED && resv->resv->resv_substate == RESV_RUNNING;
 	if (degraded || being_altered) {
 		resv_nodes = resv->ninfo_arr;
 		for (i = 0; resv_nodes[i] != NULL; i++) {
