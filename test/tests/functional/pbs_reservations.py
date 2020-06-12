@@ -114,20 +114,21 @@ class TestReservations(TestFunctional):
         self.scheduler.add_resource('color')
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=3, mom=self.mom,
+        self.server.create_vnodes('vn', a, num=5, mom=self.mom,
                                   attrfunc=self.cust_attr)
 
         now = int(time.time())
 
         rid = self.submit_reservation(user=TEST_USER,
-                                      select='1:ncpus=1:color=red',
+                                      select='2:ncpus=1:color=red',
                                       rrule=rrule, start=start, end=end)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
 
         self.server.status(RESV, 'resv_nodes', id=rid)
-        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        resv_node_list = self.server.reservations[rid].get_vnodes()
+        resv_node = resv_node_list[0]
 
         if run:
             resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
@@ -149,15 +150,19 @@ class TestReservations(TestFunctional):
         free_nodes = self.server.filter(NODE, a)
         nodes = list(free_nodes.values())[0]
 
-        other_node = [nodes[0], nodes[1]][resv_node == nodes[0]]
+        other_node = [x for x in nodes if x not in resv_node_list][0]
 
         if run:
             a = {'reserve_substate': 5}
         else:
             a = {'reserve_substate': 2}
-        a.update({'resv_nodes': (MATCH_RE, re.escape(other_node))})
 
         self.server.expect(RESV, a, id=rid, interval=1)
+
+        self.server.status(RESV)
+        self.assertEquals(set(self.server.reservations[rid].get_vnodes()),
+                          {resv_node_list[1], other_node},
+                          "Node not replaced correctly")
 
     def degraded_resv_failed_reconfirm(self, start, end, rrule=None,
                                        run=False, resume=False):
