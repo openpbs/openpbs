@@ -5094,7 +5094,7 @@ again:
 					qsub_exe, fl,
 					h_event, server_out);
 			if (!CreateProcess(NULL, cmd_line, &sa, &sa,
-						TRUE, CREATE_NO_WINDOW, NULL,
+						TRUE, CREATE_NEW_PROCESS_GROUP, NULL,
 						NULL, &si, &pi)) {
 				CloseHandle(h_event);
 				return rc;
@@ -5681,6 +5681,9 @@ main(int argc, char **argv, char **envp) /* qsub */
 	if ((argc == 4 || argc == 5) && (strcasecmp(argv[1], "--daemon") == 0)) {
 		/* set when background qsub is running */
 		is_background = 1;
+		(void)fclose(stdin);
+		(void)fclose(stdout);
+		(void)fclose(stderr);
 		if (argc == 4)
 			do_daemon_stuff(argv[2], argv[3], NULL);
 		else
