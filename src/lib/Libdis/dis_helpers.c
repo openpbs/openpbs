@@ -508,7 +508,7 @@ transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 
 	i = transport_recv(fd, (void *)&pkt_magic, PKT_MAGIC_SZ);
 	if (i <= 0)
-		return -1;
+		return i;
 	if (strncmp(pkt_magic, PKT_MAGIC, PKT_MAGIC_SZ) != 0) {
 		if (pkt_magic[0] == DIS_HDR_FSTCHR) {
 			/*
