@@ -98,11 +98,11 @@ class TestQsub_direct_write(TestFunctional):
                 (but is a gid that the user is a member of)
         3) not accessible via other permissions
         """
-        j = Job(TEST_USER4, attrs={ATTR_k: 'doe'})
+        j = Job(TEST_USER2, attrs={ATTR_k: 'doe'})
         j.set_sleep_time(10)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER5)
         mapping_dir = self.du.create_temp_dir(
-            asuser=TEST_USER4, asgroup=TSTGRP5, mode=0o770)
+            asuser=TEST_USER2, asgroup=TSTGRP0, mode=0o770)
         self.mom.add_config(
             {'$usecp': self.mom.hostname + ':' + sub_dir +
              ' ' + mapping_dir})
