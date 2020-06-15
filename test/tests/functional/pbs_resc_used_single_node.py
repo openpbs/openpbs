@@ -147,7 +147,7 @@ e.job.resources_used["stra"] = '"glad,elated","happy"'
 """
 
         hook_name = "epi"
-        a = {'event': "execjob_epilogue", 'enabled': 'True'}
+        a = {'event': "execjob_epilogue", 'enabled': 'True', 'order': '200'}
         rv = self.server.create_import_hook(
             hook_name,
             a,
