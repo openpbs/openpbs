@@ -8147,8 +8147,6 @@ main(int argc, char *argv[])
 	char			path_hooks_rescdef[MAXPATHLEN+1];
 	int			sock_bind_rm;
 	int			sock_bind_mom;
-	struct			sockaddr_in check_ip;
-	int			is_mom_host_ip;
 #ifdef	WIN32
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
