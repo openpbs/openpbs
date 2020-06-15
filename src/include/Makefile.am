@@ -83,6 +83,7 @@ noinst_HEADERS = \
 	pbs_db.h \
 	pbs_ecl.h \
 	pbs_entlim.h \
+	pbs_idx.h \
 	pbs_internal.h \
 	pbs_reliable.h \
 	pbs_json.h \
