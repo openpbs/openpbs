@@ -128,5 +128,6 @@ class TestMovedJob(TestFunctional):
         jid = self.server.submit(j)
 
         err = "Access from host not allowed, or unknown host " + jid
-        with self.assertRaises(PbsMoveError, msg=err):
+        with self.assertRaises(PbsMoveError) as e:
             self.server.movejob(jid, 'workq@unknownserver')
+        self.assertIn(err, e.exception.msg[0])
