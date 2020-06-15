@@ -43,6 +43,14 @@ How to install PBS using the configure script.
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
       automake
 
+  For Ubuntu-18.04 systems you should run the following command as root:
+
+    sudo apt-get install gcc make libtool libhwloc-dev libx11-dev \
+      libxt-dev libedit-dev libical-dev ncurses-dev perl \
+      postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
+      libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
+      automake
+
 2. Install the prerequisite packages for running PBS. In addition
   to the commands below, you should also install a text editor of
   your choosing (vim, emacs, gedit, etc.).
@@ -72,6 +80,10 @@ How to install PBS using the configure script.
     apt-get install expat libedit2 postgresql python3 postgresql-contrib sendmail-bin \
       sudo tcl tk libical3
 
+  For Ubuntu-18.04 systems you should run the following command as root:
+
+    apt-get install expat libedit2 postgresql python3 postgresql-contrib sendmail-bin \
+      sudo tcl tk libical3 postgresql-server-dev-all
 
 3. Open a terminal as a normal (non-root) user, unpack the PBS
   tarball, and cd to the package directory.
