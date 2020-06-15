@@ -798,6 +798,7 @@ class TestNodeBuckets(TestFunctional):
              'Resource_List.place': 'scatter:excl'}
         for _ in range(7):
             j = Job(TEST_USER, a)
+            j.set_sleep_time(1000)
             jid = self.server.submit(j)
             self.server.expect(JOB, {'job_state': 'R'}, id=jid)
             self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
@@ -824,6 +825,7 @@ class TestNodeBuckets(TestFunctional):
         a = {'Resource_List.select': chunk, 'queue': 'workq2',
              'Resource_List.place': 'scatter:excl'}
         j = Job(TEST_USER, a)
+        j.set_sleep_time(1000)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
