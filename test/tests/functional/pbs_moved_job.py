@@ -114,3 +114,19 @@ class TestMovedJob(TestFunctional):
             qstat = ""
 
         self.assertEqual(qstat, "")
+
+    def test_movejob_to_unknown_host(self):
+        """
+        This test verifies the error message qmove gives when user tries to
+        move a job to an unknown server
+        """
+
+        attr = {'scheduling': 'false'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+
+        err = "Access from host not allowed, or unknown host " + jid
+        with self.assertRaises(PbsMoveError, msg=err):
+            self.server.movejob(jid, 'workq@unknownserver')

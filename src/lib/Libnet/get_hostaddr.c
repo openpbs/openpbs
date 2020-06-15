@@ -212,6 +212,7 @@ comp_svraddr(pbs_net_t svr_addr, char *hostname)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	if (getaddrinfo(hostname, NULL, &hints, &pai) != 0) {
+		pbs_errno = PBSE_BADHOST;
 		return (2);
 	}
 	for (aip = pai; aip != NULL; aip = aip->ai_next) {
