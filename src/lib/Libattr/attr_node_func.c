@@ -291,7 +291,7 @@ str_to_vnode_state(char *vnstate)
  *
  * @return 	int
  * @retval	<0	an error encountered; value is negative of an error code
- * @retval	0       ok, encode happened and svrattrl created and linked in,
+ * @retval	>=0 ok, encode happened and number of svrattrl created and linked in,
  *		     	or nothing to encode.
  */
 

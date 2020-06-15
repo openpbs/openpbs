@@ -527,9 +527,11 @@ pg_db_load_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	if (rc == 0) {
 		/* in case of multi-server, also read NOSAVM attributes from distributed cache */
 		/* call in this functions since all call paths lead to this before decode */
-		//if (use_dist_cache) {
-		//	dist_cache_recov_attrs(pj->ji_jobid, &pj->sv_savetm, &pj->cache_attr_list);
-		//}
+		/* 
+		 if (use_dist_cache) {
+			dist_cache_recov_attrs(pj->ji_jobid, &pj->sv_savetm, &pj->cache_attr_list);
+		}
+		*/
 	}
 
 	return rc;

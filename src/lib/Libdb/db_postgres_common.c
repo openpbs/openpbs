@@ -79,6 +79,8 @@ extern unsigned char pbs_aes_iv[][16];
  *			functionality.
  * @param[in]	msg - Custom string added to the error message. This can be
  *			used to provide a failure message.
+ * @param[in]	msg2 - Additional diagnostic message from the resultset, if any
+ *
  */
 void
 pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2)

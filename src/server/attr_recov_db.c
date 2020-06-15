@@ -75,9 +75,9 @@ extern struct attribute_def	que_attr_def[];
  * @brief
  *	Compute and check whether the quick save area has been modified
  *
- * @param[in]	qs  - pointer to the quick save area
- * @param[in]	len - length of the quick save area
- * @param[in]   oh  - pointer to a opaque value of current quick save area signature/hash
+ * @param[in] 	    qs       - pointer to the quick save area
+ * @param[in]	    len      - length of the quick save area
+ * @param[in/out]   oldhash  - pointer to a opaque value of current quick save area signature/hash
  *
  * @return      Error code
  * @retval	 0 - quick save area was not changed
@@ -88,9 +88,8 @@ obj_qs_modified(void *qs, int len, void *oldhash)
 {
 	char hash[DIGEST_LENGTH];
 
-	if (SHA1((const unsigned char *) qs, len, (unsigned char *) &hash) == NULL) {
+	if (SHA1((const unsigned char *) qs, len, (unsigned char *) &hash) == NULL)
 		exit(-1);
-	}
 
 	if (memcmp(hash, oldhash, DIGEST_LENGTH) != 0) {
 		memcpy(oldhash, hash, DIGEST_LENGTH); /* update the signature */
@@ -106,6 +105,8 @@ obj_qs_modified(void *qs, int len, void *oldhash)
  *
  * @param[in]	padef - Address of parent's attribute definition array
  * @param[in]	pattr - Address of the parent objects attribute array
+ * @param[out]	cache_attr_list - pointer to the structure of type pbs_db_attr_list_t for storing in cache
+ * @param[out]	db_attr_list - pointer to the structure of type pbs_db_attr_list_t for storing in DB
  *
  * @return  error code
  * @retval   -1 - Failure
@@ -113,30 +114,29 @@ obj_qs_modified(void *qs, int len, void *oldhash)
  *
  */
 int 
-encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, int all)
+encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list)
 {
 	pbs_list_head *lhead;
 	int rc = 0;
-	int chkflag = 0;
+	int is_nosavm = (padef->at_flags & ATR_DFLAG_NOSAVM);
+
+	if (is_nosavm && (get_max_servers() == 1)) /* optimization for single server, keep in heap only */
+		return 0;
+
+	if (is_nosavm)
+		lhead = &cache_attr_list->attrs; /* only in Multi-server case */
+	else
+		lhead = &db_attr_list->attrs;
+
+	rc = padef->at_encode(pattr, lhead, padef->at_name, (char *)0, ATR_ENCODE_DB, NULL);
+	if (rc < 0)
+		return -1;
 	
-	if (!all) // && (pbs_conf.pbs_max_servers == 1) /* to be implemented later */
-		chkflag |= ATR_DFLAG_NOSAVM; /* skip all NOSAVM attributes for single server case, so it stays in process memory */
+	if (is_nosavm)
+		cache_attr_list->attr_count += rc; /* happens only in Multi-server case */
+	else
+		db_attr_list->attr_count += rc;
 
-	if (!(padef->at_flags & chkflag)) {
-		if (padef->at_flags & chkflag)
-			lhead = &cache_attr_list->attrs; /* happens only in Multi-server case */
-		else
-			lhead = &db_attr_list->attrs;
-
-		rc = padef->at_encode(pattr, lhead, padef->at_name, (char *)0, ATR_ENCODE_DB, NULL);
-		if (rc < 0)
-			return -1;
-		
-		if (padef->at_flags & chkflag)
-			cache_attr_list->attr_count += rc; /* happens only in Multi-server case */
-		else
-			db_attr_list->attr_count += rc;
-	}
 	return 0;
 }
 
@@ -172,7 +172,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 		if (!((all == 1) || ((pattr+i)->at_flags & ATR_VFLAG_MODIFY)))
 			continue;
 		
-		if (encode_single_attr_db((padef + i), (pattr + i), cache_attr_list, db_attr_list, all) != 0)
+		if (encode_single_attr_db((padef + i), (pattr + i), cache_attr_list, db_attr_list) != 0)
 			return -1;
 		
 		(pattr+i)->at_flags &= ~ATR_VFLAG_MODIFY;

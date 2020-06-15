@@ -96,7 +96,7 @@ extern void  clear_node_offline_by_mom(char *, char *);
 extern void  mark_which_queues_have_nodes(void);
 extern void  set_sched_sock(int, pbs_sched *);
 extern void  pbs_close_stdfiles(void);
-extern int   is_job_array(char *id);
+extern int   is_job_array(char *);
 extern int   get_queued_subjobs_ct(job *pjob);
 extern char *get_index_from_jid(char *newjid);
 extern int      parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct);

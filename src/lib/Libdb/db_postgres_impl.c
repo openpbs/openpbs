@@ -825,7 +825,8 @@ pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
  * @param[in]	conn - Connected database handle
  * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
  * @param[in]	id - Object id
- * @param[in]	attr_list - list of attributes to delete
+ * @param[in]	cache_attr_list - pointer to the structure of type pbs_db_attr_list_t for deleting from cache
+ * @param[in]	db_attr_list - pointer to the structure of type pbs_db_attr_list_t for deleting from DB
  *
  * @return      Error code
  * @retval      0  - success
@@ -835,7 +836,6 @@ pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 int
 pbs_db_delete_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, char *sv_time, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list) 
 {
-
 	/* are there attributes to remove from memory / local cache? */
 	if (cache_attr_list->attr_count > 0) {
 		if (dist_cache_del_attrs(obj_id, cache_attr_list) != 0)
