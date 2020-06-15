@@ -203,7 +203,6 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_li
 	int index;
 	svrattrl *pal = (svrattrl *)0;
 	svrattrl *tmp_pal = (svrattrl *)0;
-	int j, l;
 	void **palarray = NULL;
 	pbs_list_head *attr_list;
 
@@ -218,49 +217,47 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_li
 
 	resc_access_perm = ATR_DFLAG_ACCESS;
 
-	l = 1; /* single server; loop only once to load from db attributes */
-	
-	for (j = 0; j < l; j++) {
-		if (j == 0) {
-			attr_list = &db_attr_list->attrs;
-		} else {
-			attr_list = &cache_attr_list->attrs;
+	if (cache_attr_list && db_attr_list && (cache_attr_list->attr_count > 0)) {
+		list_move(&cache_attr_list->attrs, &db_attr_list->attrs);
+		cache_attr_list->attr_count = 0; /* list_move clears the from list */
+	}
+
+	attr_list = &db_attr_list->attrs;
+
+	for (pal = (svrattrl *)GET_NEXT(*attr_list); pal != NULL; pal = (svrattrl *) GET_NEXT(pal->al_link)) {
+		/* find the attribute definition based on the name */
+		index = find_attr(padef, pal->al_name, limit);
+		if (index < 0) {
+
+			/*
+			* There are two ways this could happen:
+			* 1. if the (job) attribute is in the "unknown" list -
+			*    keep it there;
+			* 2. if the server was rebuilt and an attribute was
+			*    deleted, -  the fact is logged and the attribute
+			*    is discarded (system,queue) or kept (job)
+			*/
+			if (unknown > 0) {
+				index = unknown;
+			} else {
+				snprintf(log_buffer,LOG_BUF_SIZE, "unknown attribute \"%s\" discarded", pal->al_name);
+				log_err(-1, __func__, log_buffer);
+				(void)free(pal);
+				continue;
+			}
 		}
+		if (palarray[index] == NULL)
+			palarray[index] = pal;
+		else {
+			tmp_pal = palarray[index];
+			while (tmp_pal->al_sister)
+				tmp_pal = tmp_pal->al_sister;
 
-		for (pal = (svrattrl *)GET_NEXT(*attr_list); pal != NULL; pal = (svrattrl *) GET_NEXT(pal->al_link)) {
-			/* find the attribute definition based on the name */
-			index = find_attr(padef, pal->al_name, limit);
-			if (index < 0) {
-
-				/*
-				* There are two ways this could happen:
-				* 1. if the (job) attribute is in the "unknown" list -
-				*    keep it there;
-				* 2. if the server was rebuilt and an attribute was
-				*    deleted, -  the fact is logged and the attribute
-				*    is discarded (system,queue) or kept (job)
-				*/
-				if (unknown > 0) {
-					index = unknown;
-				} else {
-					snprintf(log_buffer,LOG_BUF_SIZE, "unknown attribute \"%s\" discarded", pal->al_name);
-					log_err(-1, __func__, log_buffer);
-					(void)free(pal);
-					continue;
-				}
-			}
-			if (palarray[index] == NULL)
-				palarray[index] = pal;
-			else {
-				tmp_pal = palarray[index];
-				while (tmp_pal->al_sister)
-					tmp_pal = tmp_pal->al_sister;
-
-				/* this is the end of the list of attributes */
-				tmp_pal->al_sister = pal;
-			}
+			/* this is the end of the list of attributes */
+			tmp_pal->al_sister = pal;
 		}
 	}
+
 
 	/* now do the decoding */
 	for (index = 0; index < limit; index++) {

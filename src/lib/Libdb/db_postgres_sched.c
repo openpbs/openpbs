@@ -146,11 +146,6 @@ pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	SET_PARAM_STR(conn, psch->sched_name, 0);
 
 	/* sched does not have a QS area, so ignoring that */
-	
-	/* are there attributes to save to memory or local cache? */
-	if (psch->cache_attr_list.attr_count > 0) {
-		dist_cache_save_attrs(psch->sched_name, &psch->cache_attr_list);
-	}
 
 	if ((psch->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		int len = 0;
@@ -249,15 +244,7 @@ pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	rc = load_sched(res, psch, 0);
 
 	PQclear(res);
-
-	if (rc == 0) {
-		/* in case of multi-server, also read NOSAVM attributes from distributed cache */
-		/* call in this functions since all call paths lead to this before decode */
-		//if (use_dist_cache) {
-		//	dist_cache_recov_attrs(psch->sched_name, &psch->sched_savetm, &psch->cache_attr_list);
-		//}
-	}
-
+	
 	return rc;
 }
 

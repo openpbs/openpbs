@@ -815,6 +815,53 @@ pbs_db_destroy_connection(pbs_db_conn_t *conn)
 int
 pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
+	pbs_db_attr_list_t *cache_attrs = NULL;
+	pbs_db_attr_list_t *db_attrs = NULL;
+
+	switch (obj->pbs_db_obj_type) {
+		case PBS_DB_SVR:
+				cache_attrs = &((pbs_db_svr_info_t *) obj->pbs_db_un.pbs_db_svr)->cache_attr_list;
+				db_attrs    = &((pbs_db_svr_info_t *) obj->pbs_db_un.pbs_db_svr)->db_attr_list;
+				break;
+
+		case PBS_DB_SCHED:
+				cache_attrs = &((pbs_db_sched_info_t *) obj->pbs_db_un.pbs_db_sched)->cache_attr_list;
+				db_attrs    = &((pbs_db_sched_info_t *) obj->pbs_db_un.pbs_db_sched)->db_attr_list;
+				break;
+
+		case PBS_DB_QUEUE:
+				cache_attrs = &((pbs_db_que_info_t *) obj->pbs_db_un.pbs_db_que)->cache_attr_list;
+				db_attrs    = &((pbs_db_que_info_t *) obj->pbs_db_un.pbs_db_que)->db_attr_list;
+				break;
+
+		case PBS_DB_NODE:
+				cache_attrs = &((pbs_db_node_info_t *) obj->pbs_db_un.pbs_db_node)->cache_attr_list;
+				db_attrs    = &((pbs_db_node_info_t *) obj->pbs_db_un.pbs_db_node)->db_attr_list;
+				break;
+
+		case PBS_DB_MOMINFO_TIME:
+				break;
+
+		case PBS_DB_JOB:
+				cache_attrs = &((pbs_db_job_info_t *) obj->pbs_db_un.pbs_db_job)->cache_attr_list;
+				db_attrs    = &((pbs_db_job_info_t *) obj->pbs_db_un.pbs_db_job)->db_attr_list;
+				break;
+
+		case PBS_DB_JOBSCR:
+				break;
+
+		case PBS_DB_RESV:
+				cache_attrs = &((pbs_db_resv_info_t *) obj->pbs_db_un.pbs_db_resv)->cache_attr_list;
+				db_attrs    = &((pbs_db_resv_info_t *) obj->pbs_db_un.pbs_db_resv)->db_attr_list;
+				break;
+	}
+
+	/*  for postgres, implement distributed cache by saving to database */
+	if (cache_attrs && db_attrs && (cache_attrs->attr_count > 0)) {
+		list_move(&cache_attrs->attrs, &db_attrs->attrs);
+		db_attrs->attr_count += cache_attrs->attr_count;
+		cache_attrs->attr_count = 0;
+	}
 	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_save_obj(conn, obj, savetype));
 }
 
@@ -836,68 +883,12 @@ pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 int
 pbs_db_delete_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, char *sv_time, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list) 
 {
-	/* are there attributes to remove from memory / local cache? */
-	if (cache_attr_list->attr_count > 0) {
-		if (dist_cache_del_attrs(obj_id, cache_attr_list) != 0)
-			return -1;
+	/*  for postgres, implment distributed cache by saving to database */
+	if (cache_attr_list && db_attr_list && (cache_attr_list->attr_count > 0)) {
+		list_move(&cache_attr_list->attrs, &db_attr_list->attrs);
+		db_attr_list->attr_count += cache_attr_list->attr_count;
+		cache_attr_list->attr_count = 0;
 	}
 	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_del_attr_obj(conn, obj_id, sv_time, db_attr_list));
 }
 
-/**
- * @brief
- *	recover all attributes from the distribute cache for the object id provided
- *
- * @param[in]	id  - string object id
- * @param[in]	last_savetm - load attributes that changed from the provided time 
- * @param[out]   attr_list  - return the list of retrieved attributes
- *
- * @return      Error code
- * @retval	 0 - success
- * @retval	-1 - failure
- */
-int 
-dist_cache_recov_attrs(char *id, char *last_savetm, pbs_db_attr_list_t *attr_list)
-{
-	attr_list->attr_count = 0;
-	CLEAR_HEAD(attr_list->attrs);
-	return 0;
-}
-
-
-/**
- * @brief
- *	save specified attributes to the distribute cache for the object id provided
- *
- * @param[in]	id  - string object id
- * @param[in]   attr_list  -  list of retrieved attributes to be saved
- *
- * @return      Error code
- * @retval	 0 - success
- * @retval	-1 - failure
- */
-int 
-dist_cache_save_attrs(char *id, pbs_db_attr_list_t *attr_list)
-{
-	return 0;
-}
-
-
-/**
- * @brief
- *	delete specified attributes to the distribute cache for the object id provided
- *
- * @param[in]	id  - string object id
- * @param[in]   attr_list  -  list of retrieved attributes to be deleted
- *
- * @return      Error code
- * @retval	 0 - success
- * @retval	-1 - failure
- */
-int
-dist_cache_del_attrs(char *id, pbs_db_attr_list_t *attr_list)
-{
-	attr_list->attr_count = 0;
-	CLEAR_HEAD(attr_list->attrs);
-	return 0;
-}

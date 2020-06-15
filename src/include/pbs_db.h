@@ -888,46 +888,6 @@ int obj_qs_modified(void *qs, int len, void *oldhash);
 
 /**
  * @brief
- *	recover all attributes from the distribute cache for the object id provided
- *
- * @param[in]	id  - string object id
- * @param[in]	last_savetm - load attributes that changed from the provided time 
- * @param[out]   attr_list  - return the list of retrieved attributes
- *
- * @return      Error code
- * @retval	 0 - success
- * @retval	-1 - failure
- */
-int dist_cache_recov_attrs(char *id, char *last_savetm, pbs_db_attr_list_t *attr_list);
-
-/**
- * @brief
- *	save specified attributes to the distribute cache for the object id provided
- *
- * @param[in]	id  - string object id
- * @param[in]   attr_list  -  list of retrieved attributes to be saved
- *
- * @return      Error code
- * @retval	 0 - success
- * @retval	-1 - failure
- */
-int dist_cache_save_attrs(char *id, pbs_db_attr_list_t *attr_list);
-
-/**
- * @brief
- *	delete specified attributes to the distribute cache for the object id provided
- *
- * @param[in]	id  - string object id
- * @param[in]   attr_list  -  list of retrieved attributes to be deleted
- *
- * @return      Error code
- * @retval	 0 - success
- * @retval	-1 - failure
- */
-int dist_cache_del_attrs(char *id, pbs_db_attr_list_t *attr_list);
-
-/**
- * @brief
  *	Frees attribute list memory
  *
  * @param[in]	attr_list - List of pbs_db_attr_list_t objects

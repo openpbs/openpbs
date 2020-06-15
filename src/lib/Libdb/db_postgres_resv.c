@@ -309,11 +309,6 @@ pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 		params = 14;
 	}
 
-	/* are there attributes to save to memory or local cache? */
-	if (presv->cache_attr_list.attr_count > 0) {
-		dist_cache_save_attrs(presv->ri_resvid, &presv->cache_attr_list);
-	}
-
 	if ((presv->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
@@ -379,14 +374,6 @@ pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	rc = load_resv(res, presv, 0);
 
 	PQclear(res);
-
-	if (rc == 0) {
-		/* in case of multi-server, also read NOSAVM attributes from distributed cache */
-		/* call in this functions since all call paths lead to this before decode */
-		//if (use_dist_cache) {
-		//	dist_cache_recov_attrs(presv->ri_resvid, &presv->ri_savetm, &presv->cache_attr_list);
-		//}
-	}
 
 	return rc;
 }
