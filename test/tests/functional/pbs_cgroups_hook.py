@@ -532,6 +532,10 @@ fi
 #PBS -joe
 sleep 15
 """
+        self.sleep30_job = """#!/bin/bash
+#PBS -joe
+sleep 30
+"""
         self.sleep5_job = """#!/bin/bash
 #PBS -joe
 sleep 5
@@ -560,7 +564,6 @@ cat $PBS_NODEFILE
 sleep 300
 """
         self.cfg0 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -591,7 +594,6 @@ sleep 300
 }
 """
         self.cfg1 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [%s],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [%s],
@@ -691,7 +693,6 @@ sleep 300
 }
 """
         self.cfg3 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
@@ -741,7 +742,6 @@ sleep 300
 }
 """
         self.cfg4 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -830,7 +830,6 @@ sleep 300
 }
 """
         self.cfg7 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -874,14 +873,13 @@ sleep 300
 }
 """
         self.cfg8 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
     "periodic_resc_update"  : true,
     "vnode_per_numa_node"   : false,
     "online_offlined_nodes" : true,
-    "use_hyperthreads"      : false,
+    "use_hyperthreads"      : true,
     "ncpus_are_cores"       : true,
     "cgroup":
     {
@@ -925,7 +923,6 @@ sleep 300
 }
 """
         self.cfg9 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
@@ -969,7 +966,6 @@ sleep 300
 }
 """
         self.cfg10 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1024,7 +1020,6 @@ sleep 300
 }
 """
         self.cfg11 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1081,7 +1076,6 @@ sleep 300
 }
 """
         self.cfg12 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1137,7 +1131,6 @@ sleep 300
 }
 """
         self.cfg13 = """{
-    "cgroup_prefix"         : "pbs",
     "exclude_hosts"         : [],
     "exclude_vntypes"       : ["no_cgroups"],
     "run_only_on_hosts"     : [],
@@ -1300,7 +1293,12 @@ if %s e.job.in_ms_mom():
                  'memsw': None,
                  'cpuacct': None,
                  'devices': None,
-                 'cpu': None}
+                 'cpu': None,
+                 'hugetlb': None,
+                 'perf_event': None,
+                 'freezer': None,
+                 'net_cls': None,
+                 'net_prio': None}
         # Loop through the mounts and collect the ones for cgroups
         fd = self.du.cat(host, '/proc/mounts')
         for line in fd['out']:
@@ -1321,6 +1319,26 @@ if %s e.job.in_ms_mom():
                 paths['devices'] = paths[subsys]
             if 'cpu' in flags:
                 paths['cpu'] = paths[subsys]
+            # Add these to support future unified hierarchy
+            # (everything in one dir)
+            if paths['pids'] is None and 'pids' in flags:
+                paths['pids'] = paths[subsys]
+            if paths['blkio'] is None and 'blkio' in flags:
+                paths['blkio'] = paths[subsys]
+            if paths['systemd'] is None and 'systemd' in flags:
+                paths['systemd'] = paths[subsys]
+            if paths['cpuset'] is None and 'cpuset' in flags:
+                paths['cpuset'] = paths[subsys]
+            if paths['hugetlb'] is None and 'hugetlb' in flags:
+                paths['hugetlb'] = paths[subsys]
+            if paths['perf_event'] is None and 'perf_event' in flags:
+                paths['perf_event'] = paths[subsys]
+            if paths['freezer'] is None and 'freezer' in flags:
+                paths['freezer'] = paths[subsys]
+            if paths['net_cls'] is None and 'net_cls' in flags:
+                paths['net_cls'] = paths[subsys]
+            if paths['net_prio'] is None and 'net_prio' in flags:
+                paths['net_prio'] = paths[subsys]
         return paths
 
     def is_dir(self, cpath, host):
@@ -1350,19 +1368,42 @@ if %s e.job.in_ms_mom():
         Returns path of subsystem for jobid
         """
         basedir = self.paths[subsys]
-        # one of these should exist depending on platform
-        # That last option should never exist, but let us
-        # leave it in there
-        jobdirs = [os.path.join(basedir, 'pbs', jobid),
-                   os.path.join(basedir, 'pbs.service/jobid', jobid),
-                   os.path.join(basedir, 'pbs_jobs.service/jobid', jobid),
-                   os.path.join(basedir, 'pbs.slice',
-                                'pbs-%s.slice' % systemd_escape(jobid)),
-                   os.path.join(basedir, 'pbs',
-                                'pbs-%s.slice' % systemd_escape(jobid))]
+        # One of the entries in the following list should exist
+        #
+        # This cleaned version assumes cgroup_prefix is always pbs_jobs,
+        # i.e. that cgroup_prefix is not changed if you use this routine
+        #
+        # The separate test for a different prefix ("sbp") uses its own
+        # script instead; that script need not support multi-host jobs
+        #
+        # Older possible per job paths (relative to the basedir) looked:
+        # 1) <prefix>.slice/<prefix>-<jobid>.slice
+        #     (and <jobid> needs to be passed through systemd_escape)
+        # 2) <prefix>/<jobid>
+        #
+        # Some older hooks used either depending on the OS platform
+        # which was the reason to support a list in the first place
+        #
+        # If you need to add paths to make the tests support older hooks,
+        # put the least likely paths at the end of the list, to avoid
+        # changing test timings too much.
+        #
+        jobdirs = [os.path.join(basedir, 'pbs_jobs.service/jobid', jobid)]
         for jdir in jobdirs:
-            if self.du.isdir(hostname=host, path=jdir):
+            if self.du.isdir(hostname=host, path=jdir, sudo=True):
                 return jdir
+        return None
+
+    def find_main_cpath(self, cdir):
+        if os.path.isdir(cdir):
+            paths = ['pbs_jobs.service/jobid',
+                     'pbs.service/jobid',
+                     'pbs.slice',
+                     'pbs']
+            for p in paths:
+                cpath = os.path.join(cdir, p)
+                if os.path.isdir(cpath):
+                    return cpath
         return None
 
     def load_hook(self, filename, mom_checks=True):
@@ -2497,7 +2538,7 @@ if %s e.job.in_ms_mom():
         a = {'Resource_List.select': '2:ncpus=1:mem=100mb',
              'Resource_List.place': 'scatter', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep15_job)
+        j.create_script(self.sleep30_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
@@ -2510,10 +2551,11 @@ if %s e.job.in_ms_mom():
                         'Missing memory subdirectory: %s' % ehjd1)
         ehost2 = tmp_host[1].split('/')[0]
         ehjd2 = self.get_cgroup_job_dir('memory', jid, ehost2)
-        self.assertTrue(self.is_dir(ehjd2, ehost2))
+        self.assertTrue(self.is_dir(ehjd2, ehost2),
+                        'Missing memory subdirectory: %s' % ehjd2)
         # Wait for job to finish and make sure that cgroup directories
         # has been cleaned up by the hook
-        self.server.expect(JOB, 'queue', op=UNSET, offset=15, interval=1,
+        self.server.expect(JOB, 'queue', op=UNSET, offset=30, interval=1,
                            id=jid)
         self.assertFalse(self.is_dir(ehjd1, ehost1),
                          'Directory still present: %s' % ehjd1)
@@ -2627,24 +2669,20 @@ if %s e.job.in_ms_mom():
         self.server.expect(JOB, 'queue', id=jid, op=UNSET,
                            interval=1, offset=1)
         # verify that cgroup files for this job are gone even if
-        # epilogue and periodic events are not disabled
+        # epilogue and periodic events are disabled
         for subsys, path in self.paths.items():
             # only check under subsystems that are enabled
             enabled_subsys = ['cpuacct', 'cpuset', 'memory', 'memsw']
             if (any([x in subsys for x in enabled_subsys])):
                 continue
             if path:
-                # Apparently cgroup_prefix for this test is pbs
-                filename = os.path.join(path, 'pbs', str(jid))
-                self.logger.info('Checking that file %s should not exist'
-                                 % filename)
-                self.assertFalse(os.path.isfile(filename))
-                filename = os.path.join(path, 'pbs.slice', 'pbs-%s.slice'
-                                        % systemd_escape(jid))
-                self.logger.info('Checking that file %s should not exist'
-                                 % filename)
-                self.assertFalse(os.path.isfile(filename))
-                filename = os.path.join(path, 'pbs.service', str(jid))
+                # Following code only works with recent hooks
+                # and default cgroup_prefix
+                # change the path if testing with older hooks
+                # see comments in get_cgroup_job_dir()
+                filename = os.path.join(path,
+                                        'pbs_jobs.service',
+                                        'jobid', str(jid))
                 self.logger.info('Checking that file %s should not exist'
                                  % filename)
                 self.assertFalse(os.path.isfile(filename))
@@ -2968,14 +3006,7 @@ if %s e.job.in_ms_mom():
         cpath = None
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
-            if os.path.isdir(cdir):
-                cpath = os.path.join(cdir, 'pbs')
-                if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbs.slice')
-                if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbs.service/jobid')
-                if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
+            cpath = self.find_main_cpath(cdir)
         else:
             self.skipTest(
                 "memory subsystem is not enabled for cgroups")
@@ -2994,14 +3025,7 @@ if %s e.job.in_ms_mom():
         cpath = None
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
-            if os.path.isdir(cdir):
-                cpath = os.path.join(cdir, 'pbs')
-                if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbs.slice')
-                if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbs.service/jobid')
-                if not os.path.isdir(cpath):
-                    cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
+            cpath = self.find_main_cpath(cdir)
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
         self.logger.info("looking for file %s" % fpath)
@@ -3610,7 +3634,7 @@ sleep 300
         for m in self.moms.values():
             # add checkpoint script
             m.add_checkpoint_abort_script(body=chk_script)
-            m.add_restart_script(body=restart_script)
+            m.add_restart_script(body=restart_script, abort_time=300)
             self.server.manager(MGR_CMD_SET, NODE, a, id=m.shortname)
 
         # submit multi-node job
@@ -4169,21 +4193,16 @@ sleep 300
                             self.du.run_cmd(cmd=cmd, sudo=True)
                         self.du.rm(hostname=self.hosts_list[0], path=fpath)
         # Remove the jobdir if any under other cgroups
-        cgroup_subsys = ('cpuset', 'memory', 'blkio', 'devices', 'cpuacct',
-                         'pids', 'systemd')
+        cgroup_subsys = ('systemd', 'cpu', 'cpuacct', 'cpuset', 'devices',
+                         'memory', 'hugetlb', 'perf_event', 'freezer',
+                         'blkio', 'pids', 'net_cls', 'net_prio')
         for subsys in cgroup_subsys:
             if subsys in self.paths and self.paths[subsys]:
                 self.logger.info('Looking for orphaned jobdir in %s' % subsys)
                 cdir = self.paths[subsys]
                 if os.path.isdir(cdir):
-                    cpath = os.path.join(cdir, 'pbs')
-                    if not os.path.isdir(cpath):
-                        cpath = os.path.join(cdir, 'pbs.slice')
-                    if not os.path.isdir(cpath):
-                        cpath = os.path.join(cdir, 'pbs.service/jobid')
-                    if not os.path.isdir(cpath):
-                        cpath = os.path.join(cdir, 'pbs_jobs.service/jobid')
-                    if os.path.isdir(cpath):
+                    cpath = self.find_main_cpath(cdir)
+                    if cpath is not None and os.path.isdir(cpath):
                         for jdir in glob.glob(os.path.join(cpath, '*', '')):
                             if not os.path.isdir(jdir):
                                 continue
