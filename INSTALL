@@ -37,7 +37,7 @@ How to install PBS using the configure script.
 
   For Debian systems you should run the following command as root:
 
-    sudo apt-get install gcc make libtool libhwloc-dev libx11-dev \
+    apt-get install gcc make libtool libhwloc-dev libx11-dev \
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
@@ -45,7 +45,7 @@ How to install PBS using the configure script.
 
   For Ubuntu-18.04 systems you should run the following command as root:
 
-    sudo apt-get install gcc make libtool libhwloc-dev libx11-dev \
+    apt-get install gcc make libtool libhwloc-dev libx11-dev \
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
