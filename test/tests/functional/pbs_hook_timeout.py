@@ -178,7 +178,7 @@ class TestHookTimeout(TestFunctional):
         self.server.expect(JOB, a, op=PTL_AND, id=j1id)
 
         self.server.log_match(
-            "%s;vnode %s's parent mom.*has a pending copy hook "
+            "%s;vnode %s.*parent mom.*has a pending copy hook "
             "or delete hook request.*" % (j1id, self.hostB),
             max_attempts=5, interval=1, regexp=True,
             starttime=start_time)
