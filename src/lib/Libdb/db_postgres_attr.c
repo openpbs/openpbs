@@ -172,6 +172,8 @@ dbarray_2_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list)
 	int i;
 	int j;
 	int rows;
+	int flags;
+	char *endp;
 	char *attr_name;
 	char *attr_value;
 	char *attr_flags;
@@ -212,7 +214,11 @@ dbarray_2_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list)
 			attr_value++;
 		}
 
-		if (!(pal = make_attr(attr_name, attr_resc, attr_value, atol(attr_flags))))
+		flags = strtol(attr_flags, &endp, 10);
+		if (*endp != '\0')
+			return -1;
+
+		if (!(pal = make_attr(attr_name, attr_resc, attr_value, flags)))
 			return -1;
 		
 		append_link(&(attr_list->attrs), &pal->al_link, pal);
