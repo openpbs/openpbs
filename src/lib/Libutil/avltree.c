@@ -67,42 +67,35 @@
  * subject to Altair's trademark licensing policies.
  */
 
-/**
- * @file	avltree.c
- */
 #include "avltree.h"
-
-#include <stdlib.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
 #include <limits.h>
 #include <pthread.h>
-
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*
  **	'inner' avl stuff
  */
 /* way3.h */
 
-typedef char	way3; /* -1, 0, 1 */
+typedef char way3; /* -1, 0, 1 */
 
-#define way3stop  ((way3)0)
-#define way3left ((way3)-1)
-#define way3right ((way3)1)
+#define way3stop  ((way3) 0)
+#define way3left  ((way3) -1)
+#define way3right ((way3) 1)
 
-#define way3sum(x, y) ((x)+(y))
-/* assume x!=y */
+#define way3sum(x, y) ((x) + (y)) /* assume x!=y */
 
 #define way3opp(x) (-(x))
-
 
 /* node.h */
 
 typedef struct _node {
-	struct _node 	*ptr[2]; /* left, right */
-	way3 		balance, trace;
-	rectype 	data;
+	struct _node *ptr[2]; /* left, right */
+	way3 balance, trace;
+	rectype data;
 } node;
 
 #define stepway(n, x) (((n)->ptr)[way3ix(x)])
@@ -114,14 +107,14 @@ typedef struct _node {
 #define SRF_FINDLESS  2
 #define SRF_FINDGREAT 4
 #define SRF_SETMARK   8
-#define SRF_FROMMARK 16
+#define SRF_FROMMARK  16
 
-#define avltree_init(x) (*(x)=NULL)
+#define avltree_init(x) (*(x) = NULL)
 
 typedef struct {
 	int __ix_keylength;
-	int __ix_dupkeys;	/* set from AVL_IX_DESC */
-	int __rec_keylength;		/* set from actual key */
+	int __ix_dupkeys;    /* set from AVL_IX_DESC */
+	int __rec_keylength; /* set from actual key */
 	int __node_overhead;
 
 	node **__t;
@@ -169,35 +162,20 @@ get_avl_tls(void)
 			fprintf(stderr, "Out of memory creating avl_tls\n");
 			return NULL;
 		}
-		p_avl_tls->__node_overhead = sizeof(node)-AVL_DEFAULTKEYLEN;
+		p_avl_tls->__node_overhead = sizeof(node) - AVL_DEFAULTKEYLEN;
 		pthread_setspecific(avl_tls_key, (void *) p_avl_tls);
 	}
 	return p_avl_tls;
 }
 
-#define ix_keylength     (((avl_tls_t *) get_avl_tls())->__ix_keylength)
-#define ix_dupkeys 	     (((avl_tls_t *) get_avl_tls())->__ix_dupkeys)
-#define rec_keylength 	 (((avl_tls_t *) get_avl_tls())->__rec_keylength)
-#define node_overhead 	 (((avl_tls_t *) get_avl_tls())->__node_overhead)
-
-#define avl_t 	         (((avl_tls_t *) get_avl_tls())->__t)
-#define avl_r            (((avl_tls_t *) get_avl_tls())->__r)
-#define avl_s 	 		 (((avl_tls_t *) get_avl_tls())->__s)
-#define avl_wayhand 	 (((avl_tls_t *) get_avl_tls())->__wayhand)
-
-/*
-avl_tls_t avl;
-#define ix_keylength     (avl.__ix_keylength)
-#define ix_dupkeys 	     (avl.__ix_dupkeys)
-#define rec_keylength 	 (avl.__rec_keylength)
-#define node_overhead 	 (avl.__node_overhead)
-
-#define avl_t 	         (avl.__t)
-#define avl_r            (avl.__r)
-#define avl_s 	 		 (avl.__s)
-#define avl_wayhand 	 (avl.__wayhand)
-*/
-
+#define ix_keylength  (((avl_tls_t *) get_avl_tls())->__ix_keylength)
+#define ix_dupkeys    (((avl_tls_t *) get_avl_tls())->__ix_dupkeys)
+#define rec_keylength (((avl_tls_t *) get_avl_tls())->__rec_keylength)
+#define node_overhead (((avl_tls_t *) get_avl_tls())->__node_overhead)
+#define avl_t	      (((avl_tls_t *) get_avl_tls())->__t)
+#define avl_r	      (((avl_tls_t *) get_avl_tls())->__r)
+#define avl_s	      (((avl_tls_t *) get_avl_tls())->__s)
+#define avl_wayhand   (((avl_tls_t *) get_avl_tls())->__wayhand)
 
 /******************************************************************************
  WAY3
@@ -205,23 +183,14 @@ avl_tls_t avl;
 static way3
 makeway3(int n)
 {
-	return n>0 ? way3right : n<0 ? way3left : way3stop;
+	return n > 0 ? way3right : n < 0 ? way3left : way3stop;
 }
 
 static way3
 way3opp2(way3 x, way3 y)
 {
-	return x==y ? way3opp(x) : way3stop;
+	return x == y ? way3opp(x) : way3stop;
 }
-
-#if	0
-static way3
-way3random()
-{
-	return rand()>rand() ? way3left : way3right;
-}
-#endif
-
 
 /*****************************************************************************/
 
@@ -234,7 +203,6 @@ freenode(node *n)
 {
 	free(n);
 }
-
 
 /**
  * @brief
@@ -251,10 +219,8 @@ freenode(node *n)
 static int
 compkey(rectype *r1, rectype *r2)
 {
-	int n= ix_keylength ?
-		memcmp(r1->key, r2->key, ix_keylength) :
-		strcmp(r1->key, r2->key);
-	if (n  ||  ix_dupkeys == AVL_NO_DUP_KEYS)
+	int n = ix_keylength ? memcmp(r1->key, r2->key, ix_keylength) : strcmp(r1->key, r2->key);
+	if (n || ix_dupkeys == AVL_NO_DUP_KEYS)
 		return n;
 	return memcmp(&(r1->recptr), &(r2->recptr), sizeof(AVL_RECPOS));
 }
@@ -281,24 +247,6 @@ copydata(rectype *r1, rectype *r2)
 
 /**
  * @brief
- *	check for duplicate records.
- *
- * @return	error code
- * @retval	1	True
- * @retval	0	False
- */
-static int
-duprec(rectype *r)
-{
-	if (r->count++==UINT_MAX) {
-		fprintf(stderr, "avltrees: repeat count exceeded\n");
-		return 1;
-	}
-	return 0;
-}
-
-/**
- * @brief
  *	allocate  memory for new node.
  *
  * @return	structure handle
@@ -308,18 +256,16 @@ duprec(rectype *r)
 static node *
 allocnode()
 {
-	int size=(ix_keylength ? ix_keylength : rec_keylength);
-	node *n=(node *)malloc(size+node_overhead);
-	if (n==NULL) {
+	int size = (ix_keylength ? ix_keylength : rec_keylength);
+	node *n = (node *) malloc(size + node_overhead);
+	if (n == NULL) {
 		fprintf(stderr, "avltrees: out of memory\n");
 		return NULL;
 	}
 	if (ix_dupkeys != AVL_NO_DUP_KEYS)
-		n->data.count=1;
+		n->data.count = 1;
 	return n;
 }
-
-
 
 /******************************************************************************
  NODE
@@ -338,15 +284,15 @@ allocnode()
 static node *
 swapptr(node **ptrptr, node *new)
 {
-	node *old=*ptrptr;
-	*ptrptr=new;
+	node *old = *ptrptr;
+	*ptrptr = new;
 	return old;
 }
 
 static int
-way3ix(way3 x) /* assume x!=0 */
+way3ix(way3 x) /* assume x != 0 */
 {
-	return x==way3right ? 1 : 0;
+	return x == way3right ? 1 : 0;
 }
 
 /******************************************************************************
@@ -369,33 +315,21 @@ typedef int bool;
 static bool
 restruct(bool op_del)
 {
-	way3 n=avl_r->balance, c;
+	way3 n = avl_r->balance, c;
 	node *p;
-	bool g= n==way3stop ? op_del : n==avl_wayhand;
-	if (g) p=avl_r;
+	bool g = n == way3stop ? op_del : n == avl_wayhand;
+	if (g)
+		p = avl_r;
 	else {
-		p=stepopp(avl_r, avl_wayhand);
-		stepopp(avl_r, avl_wayhand)=swapptr(&stepway(p, avl_wayhand), avl_r);
-		c=p->balance;
-		avl_s->balance= way3opp2(c, avl_wayhand);
-		avl_r->balance= way3opp2(c, way3opp(avl_wayhand));
-		p->balance= way3stop;
+		p = stepopp(avl_r, avl_wayhand);
+		stepopp(avl_r, avl_wayhand) = swapptr(&stepway(p, avl_wayhand), avl_r);
+		c = p->balance;
+		avl_s->balance = way3opp2(c, avl_wayhand);
+		avl_r->balance = way3opp2(c, way3opp(avl_wayhand));
+		p->balance = way3stop;
 	}
-	stepway(avl_s, avl_wayhand)=swapptr(&stepopp(p, avl_wayhand), avl_s);
-	*avl_t=p;
-#ifdef TESTING
-	if (op_del) {
-		if (g)
-			rstd1++;
-		else
-			rstd2++;
-	} else {
-		if (g)
-			rsti1++;
-		else
-			rsti2++;
-	}
-#endif
+	stepway(avl_s, avl_wayhand) = swapptr(&stepopp(p, avl_wayhand), avl_s);
+	*avl_t = p;
 	return g;
 }
 
@@ -415,49 +349,47 @@ restruct(bool op_del)
 static rectype *
 avltree_search(node **tt, rectype *key, unsigned short searchflags)
 {
-	node	*p, *q, *pp;
-	way3	aa, waydir, wayopp;
+	node *p, *q, *pp;
+	way3 aa, waydir, wayopp;
 
-	if (!(~searchflags & (SRF_FINDGREAT|SRF_FINDLESS)))
+	if (!(~searchflags & (SRF_FINDGREAT | SRF_FINDLESS)))
 		return NULL;
-	if (!(searchflags & (SRF_FINDGREAT|SRF_FINDEQUAL|SRF_FINDLESS)))
+	if (!(searchflags & (SRF_FINDGREAT | SRF_FINDEQUAL | SRF_FINDLESS)))
 		return NULL;
-	waydir=searchflags & SRF_FINDGREAT ? way3right :
-		searchflags & SRF_FINDLESS ? way3left : way3stop;
-	wayopp=way3opp(waydir);
-	p=q=NULL;
-	while ((pp=*tt)!=NULL) {
-		aa= searchflags & SRF_FROMMARK ? pp->trace :
-			makeway3(compkey(key, &(pp->data)));
+	waydir = searchflags & SRF_FINDGREAT ? way3right : searchflags & SRF_FINDLESS ? way3left : way3stop;
+	wayopp = way3opp(waydir);
+	p = q = NULL;
+	while ((pp = *tt) != NULL) {
+		aa = searchflags & SRF_FROMMARK ? pp->trace : makeway3(compkey(key, &(pp->data)));
 		if (searchflags & SRF_SETMARK)
-			pp->trace=aa;
-		if (aa==way3stop) {
+			pp->trace = aa;
+		if (aa == way3stop) {
 			if (searchflags & SRF_FINDEQUAL)
 				return &(pp->data);
-			if ((q=stepway(pp, waydir))==NULL)
+			if ((q = stepway(pp, waydir)) == NULL)
 				break;
 			if (searchflags & SRF_SETMARK)
-				pp->trace=waydir;
+				pp->trace = waydir;
 			while (1) {
-				if ((pp=stepway(q, wayopp))==NULL) {
+				if ((pp = stepway(q, wayopp)) == NULL) {
 					if (searchflags & SRF_SETMARK)
-						q->trace=way3stop;
+						q->trace = way3stop;
 					return &(q->data);
 				}
 				if (searchflags & SRF_SETMARK)
-					q->trace=wayopp;
-				q=pp;
+					q->trace = wayopp;
+				q = pp;
 			}
 		}
 		/* remember the point where we can change direction to waydir */
-		if (aa==wayopp)
-			p=pp;
-		tt=&stepway(pp, aa);
+		if (aa == wayopp)
+			p = pp;
+		tt = &stepway(pp, aa);
 	}
-	if (p==NULL || !(searchflags & (SRF_FINDLESS|SRF_FINDGREAT)))
+	if (p == NULL || !(searchflags & (SRF_FINDLESS | SRF_FINDGREAT)))
 		return NULL;
 	if (searchflags & SRF_SETMARK)
-		p->trace=way3stop;
+		p->trace = way3stop;
 	return &(p->data);
 }
 
@@ -473,28 +405,9 @@ static void
 avltree_first(node **tt)
 {
 	node *pp;
-	while ((pp=*tt)!=NULL) {
-		pp->trace=way3left;
-		tt=&stepway(pp, way3left);
-	}
-}
-
-/**
- * @brief
- *      return the address of last node.
- *
- * @param[out] tt - pointer to root node of tree.
- *
- * @erturn      Void
- */
-
-static void
-avltree_last(node **tt)
-{
-	node *pp;
-	while ((pp=*tt)!=NULL) {
-		pp->trace=way3right;
-		tt=&stepway(pp, way3right);
+	while ((pp = *tt) != NULL) {
+		pp->trace = way3left;
+		tt = &stepway(pp, way3left);
 	}
 }
 
@@ -516,34 +429,35 @@ avltree_insert(node **tt, rectype *key)
 	way3 aa, b;
 	node *p, *q, *pp;
 
-	avl_t=tt;
-	p=*tt;
-	while ((pp=*tt)!=NULL) {
-		aa= makeway3(compkey(key, &(pp->data)));
-		if (aa==way3stop) {
-			if (ix_dupkeys == AVL_COUNT_DUPS)
-				duprec(&(pp->data));
+	avl_t = tt;
+	p = *tt;
+	while ((pp = *tt) != NULL) {
+		aa = makeway3(compkey(key, &(pp->data)));
+		if (aa == way3stop) {
 			return NULL;
 		}
-		if (pp->balance!=way3stop)
-			avl_t=tt; /* t-> the last disbalanced node */
-		pp->trace=aa;
-		tt=&stepway(pp, aa);
+		if (pp->balance != way3stop)
+			avl_t = tt; /* t-> the last disbalanced node */
+		pp->trace = aa;
+		tt = &stepway(pp, aa);
 	}
-	*tt=q=allocnode();
-	q->balance=q->trace=way3stop;
-	stepway(q, way3left)=stepway(q, way3right)=NULL;
+	*tt = q = allocnode();
+	q->balance = q->trace = way3stop;
+	stepway(q, way3left) = stepway(q, way3right) = NULL;
 	key->count = 1;
 	copydata(&(q->data), key);
 	/* balancing */
-	avl_s=*avl_t; avl_wayhand=avl_s->trace;
-	if (avl_wayhand!=way3stop) {
-		avl_r=stepway(avl_s, avl_wayhand);
-		for (p=avl_r; p!=NULL; p=stepway(p, b))
-			b=p->balance=p->trace;
-		b=avl_s->balance;
-		if (b!=avl_wayhand) avl_s->balance=way3sum(avl_wayhand, b);
-		else if (restruct(0)) avl_s->balance=avl_r->balance=way3stop;
+	avl_s = *avl_t;
+	avl_wayhand = avl_s->trace;
+	if (avl_wayhand != way3stop) {
+		avl_r = stepway(avl_s, avl_wayhand);
+		for (p = avl_r; p != NULL; p = stepway(p, b))
+			b = p->balance = p->trace;
+		b = avl_s->balance;
+		if (b != avl_wayhand)
+			avl_s->balance = way3sum(avl_wayhand, b);
+		else if (restruct(0))
+			avl_s->balance = avl_r->balance = way3stop;
 	}
 	return &(q->data);
 }
@@ -560,65 +474,68 @@ avltree_insert(node **tt, rectype *key)
  * @retval      NULL                            error
  *
  */
-
 static rectype *
 avltree_delete(node **tt, rectype *key, unsigned short searchflags)
 {
 	way3 aa, aaa, b, bb;
 	node *p, *q, *pp, *p1;
-	node **t1, **tt1, **qq1, **rr=tt;
+	node **t1, **tt1, **qq1, **rr = tt;
 
-	avl_t=t1=tt1=qq1=tt;
-	p=*tt; q=NULL;
-	aaa=way3stop;
+	avl_t = t1 = tt1 = qq1 = tt;
+	p = *tt;
+	q = NULL;
+	aaa = way3stop;
 
-	while ((pp=*tt)!=NULL) {
-		aa= aaa!=way3stop ? aaa :
-			searchflags & SRF_FROMMARK ? pp->trace :
-		makeway3(compkey(key, &(pp->data)));
-		b=pp->balance;
-		if (aa==way3stop) {
-			qq1=tt; q=pp; rr=t1;
-			aa= b!=way3stop ? b : way3left;
-			aaa=way3opp(aa); /* will move opposite to aa */
+	while ((pp = *tt) != NULL) {
+		aa = aaa != way3stop ? aaa : searchflags & SRF_FROMMARK ? pp->trace : makeway3(compkey(key, &(pp->data)));
+		b = pp->balance;
+		if (aa == way3stop) {
+			qq1 = tt;
+			q = pp;
+			rr = t1;
+			aa = b != way3stop ? b : way3left;
+			aaa = way3opp(aa); /* will move opposite to aa */
 		}
-		avl_t=t1;
-		if (b==way3stop || (b!=aa && stepopp(pp, aa)->balance==way3stop))
-			t1=tt;
-		tt1=tt;
-		tt=&stepway(pp, aa);
-		pp->trace=aa;
+		avl_t = t1;
+		if (b == way3stop || (b != aa && stepopp(pp, aa)->balance == way3stop))
+			t1 = tt;
+		tt1 = tt;
+		tt = &stepway(pp, aa);
+		pp->trace = aa;
 	}
-	if (aaa==way3stop)
+	if (aaa == way3stop)
 		return NULL;
 	copydata(key, &(q->data));
-	p=*tt1;
-	*tt1=p1=stepopp(p, p->trace);
-	if (p!=q) {
-		*qq1=p; memcpy(p->ptr, q->ptr, sizeof(p->ptr));
-		p->balance=q->balance;
-		avl_wayhand=p->trace=q->trace;
-		if (avl_t==&stepway(q, avl_wayhand)) avl_t=&stepway(p, avl_wayhand);
+	p = *tt1;
+	*tt1 = p1 = stepopp(p, p->trace);
+	if (p != q) {
+		*qq1 = p;
+		memcpy(p->ptr, q->ptr, sizeof(p->ptr));
+		p->balance = q->balance;
+		avl_wayhand = p->trace = q->trace;
+		if (avl_t == &stepway(q, avl_wayhand))
+			avl_t = &stepway(p, avl_wayhand);
 	}
-	while ((avl_s=*avl_t)!=p1) {
-		avl_wayhand=way3opp(avl_s->trace);
-		b=avl_s->balance;
-		if (b!=avl_wayhand) {
-			avl_s->balance=way3sum(avl_wayhand, b);
+	while ((avl_s = *avl_t) != p1) {
+		avl_wayhand = way3opp(avl_s->trace);
+		b = avl_s->balance;
+		if (b != avl_wayhand) {
+			avl_s->balance = way3sum(avl_wayhand, b);
 		} else {
-			avl_r=stepway(avl_s, avl_wayhand);
+			avl_r = stepway(avl_s, avl_wayhand);
 			if (restruct(1)) {
-				if ((bb=avl_r->balance)!=way3stop)
-					avl_s->balance=way3stop;
-				avl_r->balance=way3sum(way3opp(avl_wayhand), bb);
+				if ((bb = avl_r->balance) != way3stop)
+					avl_s->balance = way3stop;
+				avl_r->balance = way3sum(way3opp(avl_wayhand), bb);
 			}
 		}
-		avl_t=&stepopp(avl_s, avl_wayhand);
+		avl_t = &stepopp(avl_s, avl_wayhand);
 	}
-	while ((p=*rr)!=NULL) {
+	while ((p = *rr) != NULL) {
 		/* adjusting trace */
-		aa= makeway3(compkey(&(q->data), &(p->data)));
-		p->trace=aa; rr=&stepway(p, aa);
+		aa = makeway3(compkey(&(q->data), &(p->data)));
+		p->trace = aa;
+		rr = &stepway(p, aa);
 	}
 	freenode(q);
 	return key;
@@ -636,22 +553,29 @@ avltree_delete(node **tt, rectype *key, unsigned short searchflags)
 static void
 avltree_clear(node **tt)
 {
-	long nodecount=0L;
-	node *p=*tt, *q=NULL, *x, **xx;
+	long nodecount = 0L;
+	node *p = *tt, *q = NULL, *x, **xx;
 
 	if (p != NULL) {
 		while (1) {
-			if ((x=stepway(p, way3left))!=NULL ||
-				(x=stepway(p, way3right))!=NULL) {
-				stepway(p, way3left)=q;
-				q=p; p=x; continue;
+			if ((x = stepway(p, way3left)) != NULL ||
+			    (x = stepway(p, way3right)) != NULL) {
+				stepway(p, way3left) = q;
+				q = p;
+				p = x;
+				continue;
 			}
-			freenode(p); nodecount++;
-			if (q==NULL) break;
-			if (*(xx=&stepway(q, way3right))==p) *xx=NULL;
-			p=q; q=*(xx=&stepway(p, way3left)); *xx=NULL;
+			freenode(p);
+			nodecount++;
+			if (q == NULL)
+				break;
+			if (*(xx = &stepway(q, way3right)) == p)
+				*xx = NULL;
+			p = q;
+			q = *(xx = &stepway(p, way3left));
+			*xx = NULL;
 		}
-		*tt=NULL;
+		*tt = NULL;
 	}
 }
 
@@ -675,22 +599,17 @@ avltree_clear(node **tt)
 int
 avl_create_index(AVL_IX_DESC *pix, int dup, int keylength)
 {
-	if (dup != AVL_NO_DUP_KEYS  &&
-		dup != AVL_DUP_KEYS_OK  &&
-		dup != AVL_COUNT_DUPS) {
-		fprintf(stderr,
-			"create_index 'dup'=%d: programming error\n", dup);
+	if (dup != AVL_NO_DUP_KEYS && dup != AVL_DUP_KEYS_OK) {
+		fprintf(stderr, "create_index 'dup'=%d: programming error\n", dup);
 		return 1;
 	}
 	if (keylength < 0) {
-		fprintf(stderr,
-			"create_index 'keylength'=%d: programming error\n",
-			keylength);
+		fprintf(stderr, "create_index 'keylength'=%d: programming error\n", keylength);
 		return 1;
 	}
 	pix->root = NULL;
 	pix->keylength = keylength;
-	pix->dup_keys=dup;
+	pix->dup_keys = dup;
 
 	return 0;
 }
@@ -707,7 +626,7 @@ void
 avl_destroy_index(AVL_IX_DESC *pix)
 {
 	ix_keylength = pix->keylength;
-	avltree_clear((node **)&(pix->root));
+	avltree_clear((node **) &(pix->root));
 	pix->root = NULL;
 }
 
@@ -723,53 +642,25 @@ avl_destroy_index(AVL_IX_DESC *pix)
  * @retval      AVL_IX_FAIL(0)  error
  *
  */
-
 int
 avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 {
 	rectype *ptr;
 
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
+	ix_keylength = pix->keylength;
+	ix_dupkeys = pix->dup_keys;
 
-	memset((void *)&(pe->recptr), 0, sizeof(AVL_RECPOS));
-	ptr=avltree_search((node **)&(pix->root), pe,
-		SRF_FINDEQUAL|SRF_SETMARK|SRF_FINDGREAT);
+	memset((void *) &(pe->recptr), 0, sizeof(AVL_RECPOS));
+	ptr = avltree_search((node **) &(pix->root), pe,
+			     SRF_FINDEQUAL | SRF_SETMARK | SRF_FINDGREAT);
 	if (ptr == NULL)
 		return AVL_IX_FAIL;
 
-	pe->recptr=ptr->recptr;
+	pe->recptr = ptr->recptr;
 	pe->count = ptr->count;
 	if (compkey(pe, ptr))
 		return AVL_IX_FAIL;
 	return AVL_IX_OK;
-}
-/**
- * @brief
- *	search the avl tree for given record .
- *
- * @param[in] pe - record to be searched
- * @param[in] pix - pointer to root node of tree
- *
- * @retval      AVL_IX_OK(1)    success
- * @retval      AVL_IX_FAIL(0)  error
- * @retval	AVL_EOIX(-2)	error
- *
- */
-int
-avl_locate_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
-{
-	rectype	*ptr;
-	int	ret;
-
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
-	memset((void *)&(pe->recptr), 0, sizeof(AVL_RECPOS));
-	ptr=avltree_search((node **)&(pix->root), pe,
-		SRF_FINDEQUAL|SRF_SETMARK|SRF_FINDGREAT);
-	if (ptr==NULL)
-		return AVL_EOIX;
-	ret= compkey(pe, ptr) ? AVL_IX_FAIL : AVL_IX_OK;
-	copydata(pe, ptr);
-	return ret;
 }
 
 /**
@@ -784,15 +675,14 @@ avl_locate_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
  * @retval      AVL_IX_FAIL(0)  error
  *
  */
-
 int
 avl_add_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 {
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
+	ix_keylength = pix->keylength;
+	ix_dupkeys = pix->dup_keys;
 	if (ix_keylength == 0)
 		rec_keylength = strlen(pe->key) + 1;
-	if (avltree_insert((node **)&(pix->root), pe)==NULL  &&
-		ix_dupkeys != AVL_COUNT_DUPS)
+	if (avltree_insert((node **) &(pix->root), pe) == NULL)
 		return AVL_IX_FAIL;
 	return AVL_IX_OK;
 }
@@ -814,14 +704,13 @@ avl_delete_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 {
 	rectype *ptr;
 
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
+	ix_keylength = pix->keylength;
+	ix_dupkeys = pix->dup_keys;
 
-	ptr=avltree_search((node **)&(pix->root), pe, SRF_FINDEQUAL|SRF_SETMARK);
-	if (ptr==NULL)
+	ptr = avltree_search((node **) &(pix->root), pe, SRF_FINDEQUAL | SRF_SETMARK);
+	if (ptr == NULL)
 		return AVL_IX_FAIL;
-	if (ix_dupkeys==AVL_COUNT_DUPS && --pe->count)
-		return AVL_IX_OK;
-	avltree_delete((node **)&(pix->root), pe, SRF_FROMMARK);
+	avltree_delete((node **) &(pix->root), pe, SRF_FROMMARK);
 	return AVL_IX_OK;
 }
 
@@ -836,21 +725,7 @@ avl_delete_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 void
 avl_first_key(AVL_IX_DESC *pix)
 {
-	avltree_first((node **)&(pix->root));
-}
-
-/**
- * @brief
- *	return the last record in tree.
- *
- * @param[out] pix - pointer to root node of tree
- *
- * @return 	Void
- */
-void
-avl_last_key(AVL_IX_DESC *pix)
-{
-	avltree_last((node **)&(pix->root));
+	avltree_first((node **) &(pix->root));
 }
 
 /**
@@ -865,65 +740,18 @@ avl_last_key(AVL_IX_DESC *pix)
  * @retval      AVL_IX_OK(1)    success
  *
  */
-
 int
 avl_next_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 {
 	rectype *ptr;
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
-	if ((ptr=avltree_search((node **)&(pix->root), pe, /* pe not used */
-		SRF_FROMMARK|SRF_SETMARK|SRF_FINDGREAT))==NULL)
+	ix_keylength = pix->keylength;
+	ix_dupkeys = pix->dup_keys;
+
+	if ((ptr = avltree_search((node **) &(pix->root),
+				  pe, /* pe not used */
+				  SRF_FROMMARK | SRF_SETMARK | SRF_FINDGREAT)) == NULL)
 		return AVL_EOIX;
 	copydata(pe, ptr);
-	return AVL_IX_OK;
-}
-
-/**
- * @brief
- *	copies and returns  the previous node index.
- *
- * @param[out] pe - place to hold copied node data
- * @param[in] pix - pointer to root node of tree
- *
- * @return	int
- * @retval	AVL_EOIX(-2)	error
- * @retval	AVL_IX_OK(1)	success
- *
- */
-int
-avl_prev_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
-{
-	rectype *ptr;
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
-	if ((ptr=avltree_search((node **)&(pix->root), pe, /* pe not used */
-		SRF_FROMMARK|SRF_SETMARK|SRF_FINDLESS))==NULL)
-		return AVL_EOIX;
-	copydata(pe, ptr);
-	return AVL_IX_OK;
-}
-
-/**
- * @brief
- *	find exact record in the tree by searching.
- *
- * @param[in] pe - key value
- * @param[in] pix - root node
- *
- * @return	int
- * @retval	AVL_IX_OK(1)	success
- * @retval	AVL_IX_FAIL(0)	error
- */
-int
-avl_find_exact(AVL_IX_REC *pe, AVL_IX_DESC *pix)
-{
-	rectype *ptr;
-	ix_keylength=pix->keylength; ix_dupkeys=pix->dup_keys;
-	ptr=avltree_search((node **)&(pix->root), pe,
-		SRF_FINDEQUAL|SRF_FINDGREAT|SRF_SETMARK);
-	if (ptr==NULL)
-		return AVL_IX_FAIL;
-	if (ix_dupkeys != AVL_NO_DUP_KEYS  &&  pe->recptr!=ptr->recptr)
-		return AVL_IX_FAIL;
 	return AVL_IX_OK;
 }
 
@@ -952,11 +780,10 @@ avlkey_create(AVL_IX_DESC *tree, void *key)
 	if (tree->keylength != 0)
 		keylen = sizeof(AVL_IX_REC) - AVL_DEFAULTKEYLEN + tree->keylength;
 	else {
-		if (key == NULL ) {
+		if (key == NULL)
 			keylen = sizeof(AVL_IX_REC) + MAX_AVLKEY_LEN + 1;
-		} else {
+		else
 			keylen = sizeof(AVL_IX_REC) + strlen(key) + 1;
-		}
 	}
 	pkey = calloc(1, keylen);
 	if (pkey == NULL)
@@ -970,123 +797,4 @@ avlkey_create(AVL_IX_DESC *tree, void *key)
 	}
 
 	return (pkey);
-}
-
-/**
- * @brief
- *	Create an empty AVL tree
- *
- * @param[in] - dups - Whether duplicates are allowed or not
- *
- * @return	The AVL trees root
- * @retval	NULL - Failure (out of memory)
- * @retval	!NULL - Success - The AVL tree root
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-AVL_IX_DESC *
-create_tree(int dups, int keylen)
-{
-	AVL_IX_DESC *AVL_p = NULL;
-
-	AVL_p = (AVL_IX_DESC *) malloc(sizeof(AVL_IX_DESC));
-	if (AVL_p == NULL)
-		return NULL;
-
-	if (avl_create_index(AVL_p, dups, keylen)) {
-		free(AVL_p);
-		return NULL;
-	}
-
-	return AVL_p;
-}
-
-/**
- * @brief
- *	Find a node from the AVL tree based on the supplied key
- *
- * @param[in] - root   - The root of the AVL tree to search
- * @param[in] - key - String to be used as the key
- *
- * @return	The data part of the node if found
- * @retval	NULL - Failure (no node found matching key)
- * @retval	!NULL - Success - The record pointer (data) from the node
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-void *
-find_tree(AVL_IX_DESC *root, void *key)
-{
-	AVL_IX_REC *pkey;
-	void *p = NULL;
-
-	pkey = (AVL_IX_REC *) avlkey_create(root, key);
-	if (pkey == NULL)
-		return NULL;
-
-	/* find leaf in the leaf tree */
-	if (avl_find_key(pkey, root) == AVL_IX_OK)
-		p = pkey->recptr;
-
-	free(pkey);
-	return p;
-}
-
-/**
- * @brief
- *	Add or delete a key (and record) to a AVL tree
- *
- * @param[in] - root   - Root ptr identifying the AVL tree
- * @param[in] - key - String to be used as the key
- * @param[in] - data   - Data to add to the record (not required for delete)
- * @param[in] - op     - Operation to be performed
- *		 0 - TREE_OP_ADD
- *		 1 - TREE_OP_DEL
- *
- * @return	Error code
- * @retval	-1    - Failure
- * @retval	 0    - Success
- * @retval	 1    - Not found (in case of delete)
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-int
-tree_add_del(AVL_IX_DESC *root, void *key, void *data, int op)
-{
-	AVL_IX_REC *pkey;
-	int rc = 0;
-
-	pkey = (AVL_IX_REC *) avlkey_create(root, key);
-	if (pkey == NULL) {
-		return -1;
-	}
-
-	pkey->recptr = data;
-	if (op == TREE_OP_ADD) {
-		rc = avl_add_key((AVL_IX_REC *) pkey, (AVL_IX_DESC *) root);
-		if (rc != AVL_IX_OK)
-			rc = -1;
-		else
-			rc = 0;
-	} else {
-		rc = avl_delete_key(pkey, root);
-		if (rc != AVL_IX_OK)
-			rc = 1;
-		else
-			rc = 0;
-	}
-	free(pkey);
-	return rc;
 }

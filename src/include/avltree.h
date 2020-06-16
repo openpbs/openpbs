@@ -47,65 +47,51 @@
 
 #ifndef _AVLTREE_H
 #define _AVLTREE_H
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#define AVL_DEFAULTKEYLEN (4 * sizeof(int))	/* size of default key */
+#define AVL_DEFAULTKEYLEN (4 * sizeof(int)) /* size of default key */
 
-typedef void		*AVL_RECPOS;
+typedef void *AVL_RECPOS;
 
 typedef struct {
-	AVL_RECPOS	recptr;
-	unsigned int	count;
-	char		key[AVL_DEFAULTKEYLEN];
+	AVL_RECPOS recptr;
+	unsigned int count;
+	char key[AVL_DEFAULTKEYLEN];
 	/* actually can be of any length */
 } rectype;
 
-typedef rectype		AVL_IX_REC;
-
+typedef rectype AVL_IX_REC;
 
 typedef struct {
-	void		*root;
-	int		keylength; /* zero for null-terminated strings */
-	int		dup_keys;
+	void *root;
+	int keylength; /* zero for null-terminated strings */
+	int dup_keys;
 } AVL_IX_DESC;
 
 /*  return codes  */
-#define AVL_IX_OK	1
-#define AVL_IX_FAIL	0
-#define AVL_EOIX	(-2)
+#define AVL_IX_OK   1
+#define AVL_IX_FAIL 0
+#define AVL_EOIX    -2
 
-/*  'dup' args of avl_create_index()  */
-#define AVL_NO_DUP_KEYS	0	/* repeated key causes an error message */
-#define AVL_DUP_KEYS_OK	1	/* repeated key & rec cause an error message */
-#define AVL_COUNT_DUPS	2	/* complete dups allowed, count repetitions */
+/* 'dup' args of avl_create_index() */
+#define AVL_NO_DUP_KEYS 0 /* repeated key causes an error message */
+#define AVL_DUP_KEYS_OK 1 /* repeated key & rec cause an error message */
 
 extern void *get_avl_tls(void);
-extern int	avl_create_index(AVL_IX_DESC *pix, int dup, int keylength);
-extern void	avl_destroy_index(AVL_IX_DESC *pix);
-extern int	avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
-extern int	avl_locate_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
-extern int	avl_add_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
-extern int	avl_delete_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
-extern void	avl_first_key(AVL_IX_DESC *pix);
-extern void	avl_last_key(AVL_IX_DESC *pix);
-extern int	avl_next_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
-extern int	avl_prev_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
-extern int	avl_find_exact(AVL_IX_REC *pe, AVL_IX_DESC *pix);
+extern int avl_create_index(AVL_IX_DESC *pix, int dup, int keylength);
+extern void avl_destroy_index(AVL_IX_DESC *pix);
+extern int avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
+extern int avl_add_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
+extern int avl_delete_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
+extern void avl_first_key(AVL_IX_DESC *pix);
+extern int avl_next_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
 
 /* Added by Altair */
-int tree_add_del(AVL_IX_DESC *root, void *key, void *data, int op);
-void *find_tree(AVL_IX_DESC *root, void *key);
-AVL_IX_DESC *create_tree(int dups, int keylen);
 AVL_IX_REC *avlkey_create(AVL_IX_DESC *tree, void *key);
 
-/* Operation types for addition/deletion from AVL tree */
-#define TREE_OP_ADD	0
-#define TREE_OP_DEL	1
-
-
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif  /* _AVLTREE_H */
+#endif /* _AVLTREE_H */
