@@ -107,6 +107,7 @@ obj_qs_modified(void *qs, int len, void *oldhash)
  * @param[in]	pattr - Address of the parent objects attribute array
  * @param[out]	cache_attr_list - pointer to the structure of type pbs_db_attr_list_t for storing in cache
  * @param[out]	db_attr_list - pointer to the structure of type pbs_db_attr_list_t for storing in DB
+ * @param[in]   ignore_nosavm - ignore the nosavm flag and save the attribute to database
  *
  * @return  error code
  * @retval   -1 - Failure
@@ -114,11 +115,11 @@ obj_qs_modified(void *qs, int len, void *oldhash)
  *
  */
 int 
-encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list)
+encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, int ignore_nosavm)
 {
 	pbs_list_head *lhead;
 	int rc = 0;
-	int is_nosavm = (padef->at_flags & ATR_DFLAG_NOSAVM);
+	int is_nosavm = (ignore_nosavm) ? 0 : (padef->at_flags & ATR_DFLAG_NOSAVM);
 
 	if (is_nosavm && (get_max_servers() == 1)) /* optimization for single server, keep in heap only */
 		return 0;
@@ -172,7 +173,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 		if (!((all == 1) || ((pattr+i)->at_flags & ATR_VFLAG_MODIFY)))
 			continue;
 		
-		if (encode_single_attr_db((padef + i), (pattr + i), cache_attr_list, db_attr_list) != 0)
+		if (encode_single_attr_db((padef + i), (pattr + i), cache_attr_list, db_attr_list, all) != 0)
 			return -1;
 		
 		(pattr+i)->at_flags &= ~ATR_VFLAG_MODIFY;

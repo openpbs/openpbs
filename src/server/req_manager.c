@@ -1059,7 +1059,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 	while (plist) {
 		index = find_attr(pdef, plist->al_name, limit);
 
-		if (encode_single_attr_db((pdef + index), (pattr + index), &cache_attr_list, &db_attr_list) != 0)
+		if (encode_single_attr_db((pdef + index), (pattr + index), &cache_attr_list, &db_attr_list, 0) != 0)
 			return (PBSE_NOATTR);
 
 		if (((pdef+index)->at_type == ATR_TYPE_RESC) &&

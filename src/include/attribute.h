@@ -594,7 +594,7 @@ extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 
 
 /* Functions used to save and recover the attributes from the database */
-extern int encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list);
+extern int encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, int ignore_nosavm);
 extern int encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr, 
 	pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, int all);
 extern int decode_attr_db(void *parent, pbs_db_attr_list_t *cache_attr_list, pbs_db_attr_list_t *db_attr_list, 
