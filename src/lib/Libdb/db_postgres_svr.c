@@ -320,6 +320,7 @@ pg_db_del_attr_svr(pbs_db_conn_t *conn, void *obj_id, char *sv_time, pbs_db_attr
 
 	if (pg_db_cmd(conn, STMT_REMOVE_SVRATTRS, 1) != 0) {
 		PQclear(conn->conn_resultset);
+		free(raw_array);
 		return -1;
 	}
 

@@ -106,6 +106,9 @@ pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2)
 	if (!conn->conn_db_err)
 		return;
 
+	if (!msg2)
+		msg2 = "";
+
 	sprintf((char *) conn->conn_db_err, fmt, fnc, msg, str, msg2);
 #ifdef DEBUG
 	printf("%s\n", (char *) conn->conn_db_err);

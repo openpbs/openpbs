@@ -185,29 +185,29 @@ extern long svr_history_duration;
 
 struct server {
 	struct server_qs {
-		int sv_numjobs;			  /* number of job owned by server   */
-		int sv_numque;			  /* nuber of queues managed          */
+		int sv_numjobs;		  /* number of job owned by server   */
+		int sv_numque;		  /* number of queues managed  */
 		long long sv_jobidnumber; /* next number to use in new jobid  */
 		long long sv_lastid;	  /* block increment to avoid many saves */
 	} sv_qs;
-	attribute sv_attr[SRV_ATR_LAST]; /* the server attributes 	    */
+	attribute sv_attr[SRV_ATR_LAST]; /* the server attributes */
 	char sv_savetm[DB_TIMESTAMP_LEN + 1];
-	time_t sv_started;				   /* time server started */
-	time_t sv_hotcycle;				   /* if RECOV_HOT,time of last restart */
-	time_t sv_next_schedule;		   /* when to next run scheduler cycle */
+	time_t sv_started;		       /* time server started */
+	time_t sv_hotcycle;		       /* if RECOV_HOT,time of last restart */
+	time_t sv_next_schedule;	   /* when to next run scheduler cycle */
 	int sv_jobstates[PBS_NUMJOBSTATE]; /* # of jobs per state */
 	char sv_jobstbuf[150];
 	char sv_license_ct_buf[150]; /* license_count buffer */
-	int sv_nseldft;				 /* num of elems in sv_seldft	    */
-	key_value_pair *sv_seldft;	 /* defelts for job's -l select	    */
+	int sv_nseldft;		         /* num of elems in sv_seldft */
+	key_value_pair *sv_seldft;   /* defelts for job's -l select	*/
 
-	int sv_trackmodifed;				 /* 1 if tracking list modified	    */
-	int sv_tracksize;					 /* total number of sv_track entries */
-	struct tracking *sv_track;			 /* array of track job records	    */
-	int sv_provtrackmodifed;			 /* 1 if prov_tracking list modified */
-	int sv_provtracksize;				 /* total number of sv_prov_track entries */
+	int sv_trackmodifed;		     /* 1 if tracking list modified	    */
+	int sv_tracksize;		         /* total number of sv_track entries */
+	struct tracking *sv_track;	     /* array of track job records	    */
+	int sv_provtrackmodifed;	     /* 1 if prov_tracking list modified */
+	int sv_provtracksize;		     /* total number of sv_prov_track entries */
 	struct prov_tracking *sv_prov_track; /* array of provision records */
-	int sv_cur_prov_records;			 /* number of provisiong requests currently running */
+	int sv_cur_prov_records;	     /* number of provisiong requests currently running */
 };
 
 extern struct server	server;

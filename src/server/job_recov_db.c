@@ -365,9 +365,8 @@ job_recov_db(char *jid, job *pjob)
 	if (rc == -2)
 		return pjob; /* no change in job, return the same job */
 
-	if (rc == 0) {
+	if (rc == 0)
 		pjob = job_recov_db_spl(&dbjob, pjob);
-	}
 		
 	free_db_attr_list(&dbjob.db_attr_list);
 	free_db_attr_list(&dbjob.cache_attr_list);

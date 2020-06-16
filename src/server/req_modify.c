@@ -119,9 +119,8 @@ post_modify_req(struct work_task *pwt)
 	preq->rq_conn = preq->rq_orgconn;  /* restore socket to client */
 
 	if (preq->rq_reply.brp_code) {
-		(void)sprintf(log_buffer, msg_mombadmodify, preq->rq_reply.brp_code);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			preq->rq_ind.rq_modify.rq_objname, log_buffer);
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			preq->rq_ind.rq_modify.rq_objname, msg_mombadmodify, preq->rq_reply.brp_code);
 		req_reject(preq->rq_reply.brp_code, 0, preq);
 	} else
 		reply_ack(preq);
@@ -309,13 +308,11 @@ req_modifyjob(struct batch_request *preq)
 			((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) &&
 		(atol(plist->al_value) < \
 		    pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long)) {
-			sprintf(log_buffer,
-				"regular user %s@%s cannot decrease '%s' attribute value from %ld to %ld",
+			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
+				pjob->ji_qs.ji_jobid, "regular user %s@%s cannot decrease '%s' attribute value from %ld to %ld",
 				preq->rq_user, preq->rq_host, ATTR_runcount,
 				pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long,
 				atol(plist->al_value));
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
-				pjob->ji_qs.ji_jobid, log_buffer);
 			req_reject(PBSE_PERM, 0, preq);
 			return;
 		}
@@ -401,8 +398,7 @@ req_modifyjob(struct batch_request *preq)
 	
 	job_save_db(pjob); /* we must save the updates anyway, if any */
 	
-	(void)sprintf(log_buffer, msg_manager, msg_jobmod, preq->rq_user, preq->rq_host);
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_manager, msg_jobmod, preq->rq_user, preq->rq_host);
 
 	/* if a resource limit changed for a running job, send to MOM */
 	if (sendmom) {
@@ -818,9 +814,8 @@ req_modifyReservation(struct batch_request *preq)
 							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
 						} else {
 							resv_revert_alter_times(presv);
-							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
-							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-								preq->rq_ind.rq_modify.rq_objname, log_buffer);
+							log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+								preq->rq_ind.rq_modify.rq_objname, "%s", msg_stdg_resv_occr_conflict);
 							req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 							return;
 						}
@@ -847,9 +842,8 @@ req_modifyReservation(struct batch_request *preq)
 					presv->ri_alter_flags |= RESV_END_TIME_MODIFIED;
 				} else {
 					resv_revert_alter_times(presv);
-					snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
-					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-						preq->rq_ind.rq_modify.rq_objname, log_buffer);
+					log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+						preq->rq_ind.rq_modify.rq_objname, "%s", msg_stdg_resv_occr_conflict);
 					req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 					return;
 				}

@@ -398,7 +398,7 @@ done:
 	free_db_attr_list(&dbsched.cache_attr_list);
 
 	if (rc != 0) {
-		sprintf(log_buffer, "Failed to save sched %s ", ps->sc_name);
+		snprintf(log_buffer,sizeof(log_buffer),  "Failed to save sched %s ", ps->sc_name);
 		if (conn->conn_db_err != NULL)
 			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
 		log_err(-1, __func__, log_buffer);

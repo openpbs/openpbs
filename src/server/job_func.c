@@ -1591,7 +1591,7 @@ resc_resv_alloc(void)
 {
 	resc_resv	*resvp;
 
-	resvp = (resc_resv *) calloc(1, sizeof(resc_resv));
+	resvp = (resc_resv *) malloc(sizeof(resc_resv));
 	if (resvp == NULL) {
 		log_err(errno, __func__, "no memory");
 		return NULL;

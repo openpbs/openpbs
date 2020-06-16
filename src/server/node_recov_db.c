@@ -107,7 +107,7 @@ db_2_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	else
 		pnode->nd_name = NULL;
 
-	if (pdbnd->nd_hostname && pdbnd->nd_hostname[0]!=0) {
+	if (pdbnd->nd_hostname && (pdbnd->nd_hostname[0] != 0)) {
 		pnode->nd_hostname = strdup(pdbnd->nd_hostname);
 		if (pnode->nd_hostname == NULL)
 			return -1;

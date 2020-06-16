@@ -271,27 +271,27 @@ struct	devices {
 /*
  * Vnode structure
  */
-struct	pbsnode {
-	char			*nd_name;	/* vnode's name */
-	struct mominfo		**nd_moms;	/* array of parent Moms */
-	int			 nd_nummoms;	/* number of Moms */
-	int			 nd_nummslots;	/* number of slots in nd_moms */
-	int			 nd_index;	/* global node index */
-	int			 nd_arr_index;	/* index of myself in the svr node array, only in mem, not db */
-	char			*nd_hostname;	/* ptr to hostname */
-	struct pbssubn		*nd_psn;	/* ptr to list of virt cpus */
-	struct resvinfo		*nd_resvp;
-	long			 nd_nsn;	/* number of VPs  */
-	long			 nd_nsnfree;	/* number of VPs free */
-	long			 nd_ncpus;	/* number of phy cpus on node */
-	short			 nd_written;	/* written to nodes file */
-	unsigned long		 nd_state;	/* state of node */
-	unsigned short	 	 nd_ntype;	/* node type */
-	unsigned short		 nd_accted;	/* resc recorded in job acct */
-	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
-	struct 				devices device;
-	attribute		 	nd_attr[ND_ATR_LAST];
-	char    			nd_savetm[DB_TIMESTAMP_LEN + 1];
+struct pbsnode {
+	char *nd_name;		  /* vnode's name */
+	struct mominfo **nd_moms; /* array of parent Moms */
+	int nd_nummoms;		  /* number of Moms */
+	int nd_nummslots;	  /* number of slots in nd_moms */
+	int nd_index;		  /* global node index */
+	int nd_arr_index;	  /* index of myself in the svr node array, only in mem, not db */
+	char *nd_hostname;	  /* ptr to hostname */
+	struct pbssubn *nd_psn;	  /* ptr to list of virt cpus */
+	struct resvinfo *nd_resvp;
+	long nd_nsn;		   /* number of VPs  */
+	long nd_nsnfree;	   /* number of VPs free */
+	long nd_ncpus;		   /* number of phy cpus on node */
+	short nd_written;	   /* written to nodes file */
+	unsigned long nd_state;	   /* state of node */
+	unsigned short nd_ntype;   /* node type */
+	unsigned short nd_accted;  /* resc recorded in job acct */
+	struct pbs_queue *nd_pque; /* queue to which it belongs */
+	struct devices device;
+	attribute nd_attr[ND_ATR_LAST];
+	char nd_savetm[DB_TIMESTAMP_LEN + 1];
 };
 
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };
