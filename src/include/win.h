@@ -451,9 +451,6 @@ extern void save_env(void);
 extern int _setenv_win(char *key, char *value, int overwrite);
 extern char *_getenv_win(char *key);
 extern char *get_saved_env(char *e);
-extern int create_env_avltree();
-extern void update_env_avltree();
-extern void destroy_env_avltree();
 
 /* Privileges */
 extern int has_privilege(char *);

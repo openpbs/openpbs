@@ -124,7 +124,7 @@
 #include "pbs_entlim.h"
 
 #ifndef PBS_MOM
-#include "avltree.h"
+#include "pbs_idx.h"
 #endif
 
 #include "svrfunc.h"
@@ -1087,7 +1087,6 @@ find_job(char *jobid)
 {
 #ifndef PBS_MOM
 	size_t len;
-	AVL_IX_REC *pkey;
 	char *host_dot;
 	char *serv_dot;
 	char *host;
@@ -1172,12 +1171,8 @@ find_job(char *jobid)
 		strcat(buf, server_name);
 	}
 
-	if ((AVL_jctx != NULL) && ((pkey = svr_avlkey_create(buf)) != NULL)) {
-		if (avl_find_key(pkey, AVL_jctx) == AVL_IX_OK)
-			pj = (job *) pkey->recptr;
-		free(pkey);
-		return (pj);
-	}
+	if (jobs_idx != NULL && pbs_idx_find(jobs_idx, buf, (void **)&pj, NULL) == PBS_IDX_ERR_OK)
+		return pj;
 #endif
 	pj = (job *)GET_NEXT(svr_alljobs);
 	while (pj != NULL) {

@@ -121,7 +121,7 @@
 #include "pbs_error.h"
 #include "log.h"
 #include "acct.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "sched_cmds.h"
@@ -245,7 +245,7 @@ tickle_for_reply(void)
  * @param[in]	pjob	-	The job to be enqueued.
  *
  * @return	int
- * @retavl	0	: on success
+ * @retval	0	: on success
  * @retval	PBSE	: specified error number.
  *
  * @par MT-Safe:	no
@@ -5256,67 +5256,16 @@ svr_chk_histjob(job *pjob)
 	return rc;
 }
 
-
 /**
  * @brief
- *		Creates the avl key from jobid string.
- *
- * @param[in]	keystr	-	jobid string
- *
- * @see
- * 		svr_enquejob()
- *		svr_dequejob()
- *		find_job()
- *
- * @return	Pointer to AVL_IX_REC record for success.
- * @retval	NULL	: failure.
- *
- * @par	Reentrancy:
- *		MT-unsafe
- *
- */
-AVL_IX_REC *
-svr_avlkey_create(const char *keystr)
-{
-	size_t keylen;
-	AVL_IX_REC *pkey;
-
-	if (keystr == NULL)
-		return NULL;
-
-	keylen = sizeof(AVL_IX_REC) + strlen(keystr) + 1;
-	pkey = malloc(keylen);
-	if (pkey == NULL)
-		return NULL;
-
-	memset((void *)pkey, 0, keylen);
-	(void)strcpy(pkey->key, keystr);
-	return (pkey);
-
-}
-
-/**
- * @brief
- *		Add/Delete the job to/from the AVL tree for faster lookup based
+ *		Add/Delete the job to/from the jobs index for faster lookup based
  *		on the boolean value of "delkey" parameter.
  *
- * @par Functionality:
- *		Create the key for the avl record using svr_avlkey_create() and call
- *		avl_add_key()/avl_delete_key() based on the boolean value parameter
- *		i.e. "delkey" to add/delete the job to the AVL tree for faster lookup.
- *		If it fails in the AVL operation, then it destroys the AVL tree and
- *		turns off the global avl switch AVL_jctx, so that SERVER falls back
- *		to regular doubly linked list for lookup.
- *
  * @param[in]	pjob	-	job structure to be operated on.
- * @param[in]	delkey	-	0 to add the key.
- *							1 to delete the key.
+ * @param[in]	delkey	-	0 to add the key, 1 to delete the key.
  *
- * @par	Linkage scope:
- *		static (local)
- *
- * @see	svr_enquejob()
- *		svr_dequejob()
+ * @see
+ * 	svr_enquejob(), svr_dequejob()
  *
  * @return	void
  *
@@ -5327,53 +5276,31 @@ svr_avlkey_create(const char *keystr)
 static void
 svr_avljob_oper(job *pjob, int delkey)
 {
-	int rc = AVL_IX_OK;
-	AVL_IX_REC *pkey;
+	int rc = PBS_IDX_ERR_OK;
 
-	if ((AVL_jctx == NULL) || (pjob == NULL))
+	if ((jobs_idx == NULL) || (pjob == NULL))
 		return;
 
-	/** create the avl key using jobid */
-	pkey = svr_avlkey_create(pjob->ji_qs.ji_jobid);
-	if (pkey == NULL) { /** key creation failed */
-		(void) sprintf(log_buffer, "AVL: failed to create job key.");
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			pjob->ji_qs.ji_jobid, log_buffer);
-		goto AVL_OP_FAIL;
-	}
-
-	/** call avl interface based on the delkey */
+	/** call index interface based on the delkey */
 	if (delkey == 0) {
-		pkey->recptr = pjob;
-		rc = avl_add_key(pkey, AVL_jctx);
+		rc = pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob);
 	} else {
-		rc = avl_delete_key(pkey, AVL_jctx);
+		rc = pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid);
 	}
-	if (rc != AVL_IX_OK) /** avl operation failed */
-		goto AVL_OP_FAIL;
+	if (rc != PBS_IDX_ERR_OK)
+		goto op_err;
 
-	/** everything went fine, free() the pkey and return */
-	free(pkey);
 	return;
 
-AVL_OP_FAIL:
-	if (pkey) /** free the pkey if valid */
-		free(pkey);
+op_err:
 	/**
-	 * AVL operation failed, free the AVL tree context which was created
-	 * by avl_create_index(), and turn off the AVL context i.e. AVL_jctx
-	 * [global switch] so that SERVER will fall back to use linked list
-	 * for job lookup.
+	 * index operation failed, destroy job index so it will fallback to serial lookup
 	 */
-	if (AVL_jctx != NULL) {
-		(void) sprintf(log_buffer,
-			"AVL: %s failed, using LinkedList.",
-			delkey ? "delete" : "insert");
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-			msg_daemonname, log_buffer);
-		avl_destroy_index(AVL_jctx);
-		free(AVL_jctx);
-		AVL_jctx = NULL;
+	if (jobs_idx != NULL) {
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname,
+				"INDEX: %s failed, using LinkedList.", delkey ? "delete" : "insert");
+		pbs_idx_destroy(jobs_idx);
+		jobs_idx = NULL;
 	}
 }
 

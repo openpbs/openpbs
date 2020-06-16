@@ -51,7 +51,6 @@
 #include "log.h"
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
-#include <avltree.h>
 
 #define TIME_SIZE 26 /*String length of time string is 26*/
 #ifndef PATH_MAX
@@ -59,7 +58,6 @@
 #endif
 
 static BOOL is_user_impersonated = FALSE;
-static AVL_IX_DESC *env_avltree = NULL;
 typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
 
 /**
@@ -536,148 +534,6 @@ win_freopen(const char *path, const char *mode, FILE *stream)
 }
 
 /**
- * @brief	Create and initilize AVL tree for environment variables
- *			in global variable called "env_avltree"
- *
- * @return	error code
- * @retval	1	Failure
- * @retval	0	Success
- */
-int
-create_env_avltree()
-{
-	int i = 0;
-	char varname_tmp[_MAX_ENV] = {'\0'};
-	char *name = NULL;
-	char *value = NULL;
-	AVL_IX_REC *pe = NULL;
-	extern char **environ;
-
-	if (env_avltree == NULL) {
-		if ((env_avltree = malloc(sizeof(AVL_IX_DESC))) != NULL) {
-			if (avl_create_index(env_avltree, AVL_NO_DUP_KEYS, 0))
-				return 1;
-		} else {
-			log_err(errno, __func__, "malloc failed for env_avltree");
-		}
-	}
-
-	if (env_avltree != NULL) {
-		for (i=0; environ[i] != NULL; i++) {
-			(void)strncpy_s(varname_tmp, sizeof(varname_tmp), environ[i], _TRUNCATE);
-			if ((name = strtok_s(varname_tmp, "=", &value)) != NULL) {
-				if ((pe = malloc(sizeof(AVL_IX_REC) + WINLOG_BUF_SIZE + 1)) != NULL) {
-					strncpy(pe->key, name, WINLOG_BUF_SIZE);
-					if ((pe->recptr = (void *)strdup(value)) != NULL)
-						avl_add_key(pe, env_avltree);
-					free(pe);
-					pe = NULL;
-				} else {
-					log_err(errno, __func__, "malloc failed for pe");
-				}
-			}
-		}
-	}
-	return 0;
-}
-
-/**
- * @brief	Update the AVL tree in global variable
- *			called "env_avltree" for environment variables
- *
- * @return	void
- *
- * @retval	None
- */
-void
-update_env_avltree()
-{
-	int i = 0;
-	int found = 0;
-	int ret = 0;
-	char varname_tmp[_MAX_ENV] = {'\0'};
-	char *name = NULL;
-	char *value = NULL;
-	AVL_IX_REC *pe = NULL;
-	extern char **environ;
-
-	if (env_avltree != NULL) {
-		avl_first_key(env_avltree);
-		if ((pe = malloc(sizeof(AVL_IX_REC) + WINLOG_BUF_SIZE + 1)) != NULL) {
-			while ((ret = avl_next_key(pe, env_avltree)) == AVL_IX_OK) {
-				found = 0;
-				for (i=0; environ[i] != NULL; i++) {
-					if (!strncmp(environ[i], pe->key, strlen(pe->key))) {
-						found = 1;
-						break;
-					}
-				}
-				if (!found) {
-					free(pe->recptr);
-					pe->recptr = NULL;
-					avl_delete_key(pe, env_avltree);
-				}
-			}
-			free(pe);
-			pe = NULL;
-		} else {
-			log_err(errno, __func__, "malloc failed for pe");
-		}
-
-		for (i=0; environ[i] != NULL; i++) {
-			(void)strncpy_s(varname_tmp, sizeof(varname_tmp), environ[i], _TRUNCATE);
-			if ((name = strtok_s(varname_tmp, "=", &value)) != NULL) {
-				if ((pe = malloc(sizeof(AVL_IX_REC) + WINLOG_BUF_SIZE + 1)) != NULL) {
-					strncpy(pe->key, name, WINLOG_BUF_SIZE);
-					if (avl_find_key(pe, env_avltree) != AVL_IX_OK) {
-						if ((pe->recptr = (void *)strdup(value)) != NULL)
-							avl_add_key(pe, env_avltree);
-					}
-					free(pe);
-					pe = NULL;
-				} else {
-					log_err(errno, __func__, "malloc failed for pe (inside for)");
-				}
-			}
-		}
-	}
-}
-
-/**
- * @brief	Destroy the global AVL tree of environment  variables created by
- *			create_env_avltree in global variable called "env_avltree"
- *
- * @return	void
- *
- * @retval	None
- */
-void
-destroy_env_avltree()
-{
-	AVL_IX_REC *pe = NULL;
-	int ret = 0;
-
-	if (env_avltree != NULL) {
-		avl_first_key(env_avltree);
-		if ((pe = malloc(sizeof(AVL_IX_REC) + WINLOG_BUF_SIZE + 1)) != NULL) {
-			while ((ret = avl_next_key(pe, env_avltree)) == AVL_IX_OK) {
-				free(pe->recptr);
-				pe->recptr = NULL;
-				avl_delete_key(pe, env_avltree);
-			}
-			free(pe);
-			pe = NULL;
-		} else {
-			log_err(errno, __func__, "malloc failed for pe");
-		}
-		avl_destroy_index(env_avltree);
-		free(env_avltree);
-		env_avltree = NULL;
-	}
-}
-
-
-/**
  * @brief A secure version of Windows open.
  *
  * @param[in] filename - File name.
@@ -926,7 +782,7 @@ impersonate_user(HANDLE hlogintoken)
 /* @brief
  *  	Revert an impersonated user, an error loggin wrapper to RevertToSelf() API
  *  	If revert fails, sets the errno.
- * 
+ *
  * @param[in]   funcname : function name where API was invoked
  * @param[in]   lineno : line number of API invocation
  *

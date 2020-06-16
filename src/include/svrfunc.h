@@ -141,9 +141,8 @@ extern long long get_next_svr_sequence_id(void);
 extern int find_prov_vnode_list(job *, exec_vnode_listtype *, char **);
 #endif /* _PROVISION_H */
 
-#if !defined(PBS_MOM) && defined(_AVLTREE_H)
-extern AVL_IX_DESC *AVL_jctx;
-extern AVL_IX_REC *svr_avlkey_create(const char *);
+#if !defined(PBS_MOM)
+extern void *jobs_idx;
 #endif
 
 #ifdef _RESERVATION_H

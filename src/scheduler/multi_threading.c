@@ -48,7 +48,7 @@
 #include <signal.h>
 
 #include "log.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 
 #include "constant.h"
 #include "misc.h"
@@ -341,7 +341,7 @@ worker(void *tid)
 		}
 	}
 
-	ts = get_avl_tls();
+	ts = pbs_idx_get_tls();
 	if (ts != NULL)
 		free(ts);
 

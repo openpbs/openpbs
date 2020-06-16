@@ -1802,16 +1802,16 @@ action_entlim_chk(attribute *pattr, void *pobject, int actmode)
 static void
 entlim_resum(struct work_task *pwt)
 {
-	void		  *ctx;
-	int		   is_resc;
-	attribute	  *pattr;
-	attribute	  *pattr2;
-	pbs_entlim_key_t  *pkey;
+	void *ctx;
+	int is_resc;
+	attribute *pattr;
+	attribute *pattr2;
+	char *key;
 	svr_entlim_leaf_t *plf;
-	job		  *pj;
-	void		  *pobject;
-	pbs_queue	  *pque;
-	extern  pbs_list_head  svr_alljobs;
+	job *pj;
+	void *pobject;
+	pbs_queue *pque;
+	extern pbs_list_head svr_alljobs;
 
 	pobject = pwt->wt_parm1;    /* pointer to parent object */
 	is_resc = pwt->wt_aux;	    /* 1=resource, 0-count */
@@ -1847,31 +1847,25 @@ entlim_resum(struct work_task *pwt)
 	/* Next, walk the limit tree and clear all current values */
 
 	ctx = pattr->at_val.at_enty.ae_tree;
-	pkey = NULL;
+	plf = entlim_get_first(ctx, (void **)&key);
+	while (plf) {
 
-	pkey = entlim_get_next(NULL, ctx);
-	while (pkey) {
-
-		plf = pkey->recptr;
 		if ((plf->slf_sum.at_flags & ATR_VFLAG_SET) != 0) {
 			plf->slf_rescd->rs_free(&plf->slf_sum);
-			DBPRT(("clearing %s\n", pkey->key))
+			DBPRT(("clearing %s\n", key))
 		}
-		pkey = entlim_get_next(pkey, ctx);
+		plf = entlim_get_next(ctx, (void **)&key);
 	}
 
 	ctx = pattr2->at_val.at_enty.ae_tree;
-	pkey = NULL;
+	plf = entlim_get_first(ctx, (void **)&key);
+	while (plf) {
 
-	pkey = entlim_get_next(NULL, ctx);
-	while (pkey) {
-
-		plf = pkey->recptr;
 		if ((plf->slf_sum.at_flags & ATR_VFLAG_SET) != 0) {
 			plf->slf_rescd->rs_free(&plf->slf_sum);
-			DBPRT(("clearing %s\n", pkey->key))
+			DBPRT(("clearing %s\n", key))
 		}
-		pkey = entlim_get_next(pkey, ctx);
+		plf = entlim_get_next(ctx, (void **)&key);
 	}
 
 	/* then for each job in the parent object, sum up its count/resource */

@@ -67,7 +67,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #endif
-#include "avltree.h"
 #include "pbs_error.h"
 #include "tpp_internal.h"
 #include "dis.h"

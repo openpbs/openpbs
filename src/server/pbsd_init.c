@@ -104,7 +104,7 @@
 #include "pbs_nodes.h"
 #include "tracking.h"
 #include "provision.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 #include "svrfunc.h"
 #include "acct.h"
 #include "pbs_version.h"
@@ -808,14 +808,12 @@ pbsd_init(int type)
 	/*
 	 * 9. If not "create" or "clean" recovery, recover the jobs.
 	 *    If a create or clean recovery, delete any jobs.
-	 *    Before job creation/recovery, create the AVL tree.
+	 *    Before job creation/recovery, create the jobs index.
 	 */
-	AVL_jctx = (AVL_IX_DESC *) malloc(sizeof(AVL_IX_DESC));
-	if (AVL_jctx == NULL) {
-		log_err(-1, __func__, "Creating AVL tree for job-lookup failed!");
+	if ((jobs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating jobs index failed!");
 		return (-1);
 	}
-	avl_create_index(AVL_jctx, AVL_NO_DUP_KEYS, 0);
 
 	server.sv_qs.sv_numjobs = 0;
 
