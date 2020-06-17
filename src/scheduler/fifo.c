@@ -1306,7 +1306,7 @@ send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
 {
 	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)
 		return pbs_runjob(pbs_sd, jobid, execvnode, NULL);
-	else if (sc_attrs.runjob_mode == RJ_RUNJOB_HOOK && has_runjob_hook)
+	else if ((sc_attrs.runjob_mode == RJ_RUNJOB_HOOK) && has_runjob_hook)
 		return pbs_asyrunjob_ack(pbs_sd, jobid, execvnode, NULL);
 	else
 		return pbs_asyrunjob(pbs_sd, jobid, execvnode, NULL);
@@ -1321,7 +1321,7 @@ send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
  * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
  * @param[in]	rjob	-	the job to run
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
- * @param[in]	has_runjob_hook	- does server have a runjob hook?
+ * @param[in]	has_runjob_hook	-	does server have a runjob hook?
  * @param[out]	err	-	error struct to return errors
  *
  * @retval	0	: success
@@ -1625,7 +1625,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
-					    ret = translate_runjob_return_code(pbsrc, resresv);
+					ret = translate_runjob_return_code(pbsrc, resresv);
 #else
 					if (!pbsrc)
 						ret = 1;
