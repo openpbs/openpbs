@@ -3468,7 +3468,8 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 		if (became_admin) {   /* go back to being user */
 			if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
 				if (impersonate_user(pjob->ji_user->pw_userlogin) == FALSE)
-					log_joberr(-1, __func__, "impersonate_user() failed", pjob->ji_qs.ji_jobid);
+					sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pjob->ji_user->pw_name);
+					log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			}
 		}
 

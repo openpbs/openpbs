@@ -520,7 +520,8 @@ job_free(job *pj)
 				(pwdp = getpwnam(pj->ji_wattr[JOB_ATR_euser].at_val.at_str))) {
 				if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 					if (impersonate_user(pwdp->pw_userlogin) == 0) {
-						log_joberr(-1, __func__, "impersonate_user() failed", pj->ji_qs.ji_jobid);
+						sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pwdp->pw_name);
+						log_joberr(-1, __func__, log_buffer, pj->ji_qs.ji_jobid);
 						return;
 					}
 				}
