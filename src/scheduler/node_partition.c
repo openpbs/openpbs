@@ -899,7 +899,7 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	if (npc == NULL) {
 		int flags = NP_NO_ADD_NP_ARR;
 
-		if (policy->only_explicit_psets == 0)
+		if (sc_attrs.only_explicit_psets == 0)
 			flags |= NP_CREATE_REST;
 
 		/* didn't find node partition cache, need to allocate and create */
@@ -1223,7 +1223,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
-			resstr, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
+			resstr, sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
 		if (sinfo->hostsets != NULL) {
 			sinfo->num_hostsets = num;
 			for (i = 0; sinfo->nodes[i] != NULL; i++) {
@@ -1253,7 +1253,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
 		sinfo->nodepart = create_node_partitions(policy, sinfo->unassoc_nodes,
 			sinfo->node_group_key,
-			policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
+			sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
 			&sinfo->num_parts);
 
 		if (sinfo->nodepart != NULL) {
@@ -1287,7 +1287,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 				ngkey = sinfo->node_group_key;
 
 			qinfo->nodepart = create_node_partitions(policy, ngroup_nodes,
-				ngkey, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
+				ngkey, sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
 				&(qinfo->num_parts));
 			if (qinfo->nodepart != NULL) {
 				qsort(qinfo->nodepart, qinfo->num_parts,

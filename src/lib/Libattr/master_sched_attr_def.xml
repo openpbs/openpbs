@@ -168,7 +168,7 @@
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -487,7 +487,7 @@
         <member_at_set>set_l</member_at_set>
         <member_at_comp>comp_l</member_at_comp>
         <member_at_free>free_null</member_at_free>
-        <member_at_action>action_sched_log_events</member_at_action>
+        <member_at_action>NULL_FUNC</member_at_action>
         <member_at_flags><both>NO_USER_SET</both></member_at_flags>
         <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
         <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
@@ -519,7 +519,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>action_sched_server_dyn_res_alarm</member_at_action>
+	<member_at_action>NULL_FUNC</member_at_action>
 	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
@@ -527,6 +527,22 @@
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
+   </attributes>
+   <attributes> /* attr_update_period */
+    <member_name><both>ATTR_attr_update_period</both></member_name> <!-- "attr_update_period" -->
+    <member_at_decode>decode_l</member_at_decode>
+    <member_at_encode>encode_l</member_at_encode>
+    <member_at_set>set_l</member_at_set>
+    <member_at_comp>comp_l</member_at_comp>
+    <member_at_free>free_null</member_at_free>
+    <member_at_action>NULL_FUNC</member_at_action>
+    <member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+    <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+    <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+    <member_verify_function>
+    <ECL>verify_datatype_long</ECL>
+    <ECL>verify_value_zero_or_positive</ECL>
+    </member_verify_function>
    </attributes>
 
     <tail>

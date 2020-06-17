@@ -750,7 +750,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 		}
 
 		if (ns == NULL) /* event can not run */
-			ret = simulate_events(sinfo->policy, sinfo, SIM_NEXT_EVENT, &(sinfo->opt_backfill_fuzzy_time), &event_time);
+			ret = simulate_events(sinfo->policy, sinfo, SIM_NEXT_EVENT, &sc_attrs.opt_backfill_fuzzy, &event_time);
 
 #ifdef NAS /* localmod 030 */
 		if (check_for_cycle_interrupt(0)) {

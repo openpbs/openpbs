@@ -1119,7 +1119,7 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 		}
 		/* If we can't fit in any placement set, span over all of them */
 		if (can_run == 0) {
-			if (sinfo->dont_span_psets) {
+			if (sc_attrs.do_not_span_psets) {
 				set_schd_error_codes(err, NEVER_RUN, CANT_SPAN_PSET);
 				return NULL;
 			}

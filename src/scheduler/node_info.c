@@ -204,7 +204,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 			return;
 		}
 
-		if (node_in_partition(ninfo, sinfo->partition)) {
+		if (node_in_partition(ninfo, sc_attrs.partition)) {
 			if (first_talk_with_mom) {	/* need to acquire a lock for talk_with_mom the first time */
 				pthread_mutex_lock(&general_lock);
 				if (!first_talk_with_mom)
@@ -2702,7 +2702,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	}
 
 	if (!can_fit) {
-		if (!resresv->server->dont_span_psets) {
+		if (!sc_attrs.do_not_span_psets) {
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Request won't fit into any placement sets, will use all nodes");
 			resresv->can_not_fit = 1;

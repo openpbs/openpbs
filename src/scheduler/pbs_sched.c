@@ -1336,6 +1336,7 @@ main(int argc, char *argv[])
 	pthread_mutex_init(&cleanup_lock, &attr);
 
 	FD_ZERO(&fdset);
+
 	for (go=1; go;) {
 		int	cmd;
 

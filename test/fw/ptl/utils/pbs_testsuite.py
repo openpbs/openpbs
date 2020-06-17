@@ -516,6 +516,14 @@ class PBSTestSuite(unittest.TestCase):
             self.revert_pbsconf()
             self.revert_schedulers()
             self.revert_moms()
+
+        # turn off opt_backfill_fuzzy to avoid unexpected calendaring behavior
+        # as many tests assume that scheduler will simulate each event
+        a = {'opt_backfill_fuzzy': 'off'}
+        for schedinfo in self.schedulers.values():
+            for schedname in schedinfo.keys():
+                self.server.manager(MGR_CMD_SET, SCHED, a, id=schedname)
+
         self.revert_comms()
         self.log_end_setup()
         self.measurements = []

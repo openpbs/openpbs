@@ -622,6 +622,12 @@ enum runjob_mode {
 	RJ_EXECJOB_HOOK
 };
 
+enum preempt_sort_vals {
+	PS_MIN_T_SINCE_START,
+	PS_PREEMPT_PRIORITY,
+	PS_HIGH
+};
+
 #ifdef	__cplusplus
 }
 #endif

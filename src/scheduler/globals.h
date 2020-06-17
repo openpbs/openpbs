@@ -97,9 +97,16 @@ extern char *sc_name;
 extern int sched_port;
 extern char *logfile;
 
+extern int preempt_normal;			/* preempt priority of normal_jobs */
+
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;
-extern int server_dyn_res_alarm;
+
+extern struct schedattrs sc_attrs;
+
+extern time_t last_attr_updates;    /* timestamp of the last time attr updates were sent */
+
+extern int send_job_attr_updates;
 
 /**
  * @brief

@@ -623,7 +623,7 @@ pbsd_init(int type)
 			/* Create and save default to DB*/
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
 			set_sched_default(dflt_scheduler, 0);
-			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
+			sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 		} else {
 			while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
 				/* recover sched */
@@ -635,6 +635,7 @@ pbsd_init(int type)
 					}
 					psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
 					psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
+					set_scheduler_flag(SCH_CONFIGURE, psched);
 				}
 				pbs_db_reset_obj(&obj);
 			}
@@ -666,7 +667,7 @@ pbsd_init(int type)
 		svr_save_db(&server, SVR_SAVE_NEW);
 		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
 		set_sched_default(dflt_scheduler, 0);
-		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
+		sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 	}
 
 	/* 4. Check License information */
