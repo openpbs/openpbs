@@ -1767,8 +1767,10 @@ finish_exec(job *pjob)
 	if ((pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE)
 			&& (pjob->ji_user->pw_userlogin != NULL)) {
 		if (!impersonate_user(pjob->ji_user->pw_userlogin)) {
+			sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pjob->ji_user->pw_name);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			sprintf(log_buffer,
-				"failed to ImpersonateLoggedOnUser on %s, error=%ld", mom_host, GetLastError());
+				"failed to ImpersonateLoggedOnUser on %s", mom_host);
 			(void)decode_str(&pjob->ji_wattr[JOB_ATR_Comment],
 				ATTR_comment, NULL, log_buffer);
 			exec_bail(pjob, JOB_EXEC_FAIL_PASSWORD, log_buffer);
