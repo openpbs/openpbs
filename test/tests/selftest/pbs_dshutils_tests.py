@@ -40,6 +40,9 @@
 
 from tests.selftest import *
 from ptl.utils.pbs_dshutils import PbsConfigError
+import pwd
+import getpass
+import grp
 
 
 class TestDshUtils(TestSelf):
@@ -86,3 +89,38 @@ class TestDshUtils(TestSelf):
         self.du.unset_pbs_environment(environ=['pbs_foo'])
         environ = self.du.parse_pbs_environment()
         self.assertNotIn('pbs_foo', environ, msg)
+
+    def check_access(self, path, mode=0o700, user=None, group=None):
+        """
+        Helper function to check user, group and mode of given path
+        """
+        result = os.stat(path)
+        self.assertEqual(oct(result.st_mode & 0o777), oct(mode))
+        if user is not None:
+            uid = pwd.getpwnam(str(user)).pw_uid
+            self.assertEqual(result.st_uid, uid)
+        if group is not None:
+            gid = grp.getgrnam(str(group))[2]
+            self.assertEqual(result.st_gid, gid)
+
+    def test_create_dir_as_user(self):
+        """
+        Test creating a directory as user
+        """
+
+        # check default configurations
+        tmpdir = self.du.create_temp_dir()
+        self.check_access(tmpdir, user=getpass.getuser())
+
+        # create a directory as a specific user
+        tmpdir = self.du.create_temp_dir(asuser=TEST_USER2)
+        self.check_access(tmpdir, user=TEST_USER2, mode=0o755)
+
+        # create a directory as a specific user and permissions
+        tmpdir = self.du.create_temp_dir(asuser=TEST_USER2, mode=0o765)
+        self.check_access(tmpdir, mode=0o765, user=TEST_USER2)
+
+        # create a directory as a specific user, group and permissions
+        tmpdir = self.du.create_temp_dir(asuser=TEST_USER2, mode=0o770,
+                                         asgroup=TSTGRP2)
+        self.check_access(tmpdir, mode=0o770, user=TEST_USER2, group=TSTGRP2)

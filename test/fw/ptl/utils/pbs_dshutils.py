@@ -2042,10 +2042,10 @@ class DshUtils(object):
         :type suffix: str
         :param prefix: the directory name will begin with this prefix
         :type prefix: str
-        :param dir: the directory will be created in this directory
-        :type dir: str or None
-        :param uid: Optional username or uid of temp directory owner
-        :param gid: Optional group name or gid of temp directory
+        :param dirname: the directory will be created in this directory
+        :type dirname: str or None
+        :param asuser: Optional username of temp directory owner
+        :param asgroup: Optional group name of temp directory
                     group owner
         :param mode: Optional mode bits to assign to the temporary
                      directory
@@ -2053,50 +2053,73 @@ class DshUtils(object):
         """
         preserve = False
         if mode is not None:
-            preserve = True
-        else:
-            mode = 0o755
+            if asuser is None:
+                preserve = True
+            else:
+                preserve = False
+        current_user_info = self.get_id_info(self.get_current_user())
+        uid = current_user_info['uid']
+        gid = current_user_info['gid']
+        if asuser is not None:
+            uid = self.get_id_info(str(asuser))['uid']
+        if asgroup is not None:
+            gid = grp.getgrnam(str(asgroup))[2]
         # create a temp dir as current user
         tmpdir = tempfile.mkdtemp(suffix, prefix)
         if dirname is not None:
             dirname = str(dirname)
-            self.chmod(path=tmpdir, mode=mode)
+            self.chmod(path=tmpdir, mode=0o755)
             self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
-                          recursive=True,
+                          recursive=True, gid=gid, uid=uid,
                           preserve_permission=preserve, level=level)
+            if mode is not None:
+                self.chmod(hostname, path=dirname, mode=mode, runas=asuser)
+            else:
+                self.chmod(hostname, path=dirname, mode=0o755, runas=asuser)
+
             tmpdir = dirname + tmpdir[4:]
 
         # if temp dir to be created on remote host
         if not self.is_localhost(hostname):
             if asuser is not None:
-                # by default mkstemp creates dir with 0600 permission
+                # by default mkstemp creates dir with 0700 permission
                 # to create dir as different user first change the dir
                 # permission to 0755 so that other user has read permission
-                self.chmod(path=tmpdir, mode=mode)
+                self.chmod(path=tmpdir, mode=0o755)
                 # copy temp dir created on local host to remote host
                 # as different user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir, runas=asuser,
-                              recursive=True,
+                              recursive=True, uid=uid, gid=gid,
                               preserve_permission=preserve, level=level)
+                if mode is not None:
+                    self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
+                else:
+                    self.chmod(hostname, path=tmpdir, mode=0o755, runas=asuser)
             else:
+                self.chmod(path=tmpdir, mode=0o755)
                 # copy temp dir created on localhost to remote as current user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir,
-                              preserve_permission=preserve, level=level)
+                              preserve_permission=True, level=level,
+                              uid=uid, gid=gid)
             # remove local temp dir
             os.rmdir(tmpdir)
         if asuser is not None:
-            # by default mkdtemp creates dir with 0600 permission
+            # by default mkdtemp creates dir with 0700 permission
             # to create dir as different user first change the dir
             # permission to 0755 so that other user has read permission
-            self.chmod(path=tmpdir, mode=mode)
+            self.chmod(path=tmpdir, mode=0o755)
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
             tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
             os.rmdir(tmpdir2)
             # copy the orginal temp as new temp dir
             self.run_copy(hostname, src=tmpdir, dest=tmpdir2, runas=asuser,
-                          recursive=True,
+                          recursive=True, uid=uid, gid=gid,
                           preserve_permission=preserve, level=level)
+            if mode is not None:
+                self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
+            else:
+                self.chmod(hostname, path=tmpdir2, mode=0o755, runas=asuser)
             # remove original temp dir
             os.rmdir(tmpdir)
             self.tmpdirlist.append(tmpdir2)

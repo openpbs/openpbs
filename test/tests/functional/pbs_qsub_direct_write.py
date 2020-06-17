@@ -100,8 +100,7 @@ class TestQsub_direct_write(TestFunctional):
         j.set_sleep_time(10)
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER5)
         mapping_dir = self.du.create_temp_dir(
-            asuser=TEST_USER2, asgroup=TSTGRP5)
-        self.du.chmod(path=mapping_dir, mode=0o770, runas=TEST_USER2)
+            asuser=TEST_USER2, asgroup=TSTGRP0, mode=0o770)
         self.mom.add_config(
             {'$usecp': self.server.hostname + ':' + sub_dir +
              ' ' + mapping_dir})
