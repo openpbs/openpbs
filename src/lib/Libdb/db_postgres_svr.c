@@ -194,8 +194,8 @@ pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 		}
 		GET_PARAM_STR(conn->conn_resultset, 0, ps->sv_savetm, sv_savetm_fnum);
 		PQclear(conn->conn_resultset);
-		free(raw_array);
 	}
+	free(raw_array);
 
 	return 0;
 }

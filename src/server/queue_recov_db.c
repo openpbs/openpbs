@@ -139,16 +139,12 @@ db_2_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
  *	Save a queue to the database
  *
  * @param[in]	pque  - Pointer to the queue to save
- * @param[in]	mode:
- *		QUE_SAVE_FULL - Save full queue information (update)
- *		QUE_SAVE_NEW  - Save new queue information (insert)
  *
  * @return      Error code
  * @retval	0 - Success
  * @retval	1 - Failure
  *
  */
-
 int
 que_save_db(pbs_queue *pque)
 {
@@ -174,11 +170,7 @@ done:
 	free_db_attr_list(&dbque.cache_attr_list);
 	
 	if (rc != 0) {
-		strcpy(log_buffer, "que_save failed ");
-		if (conn->conn_db_err != NULL)
-			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-		log_err(-1, __func__, log_buffer);
-
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save queue %s %s", pque->qu_qs.qu_name, (conn->conn_db_err)? conn->conn_db_err : "");
 		panic_stop_db(log_buffer);
 	}
 	return rc;
@@ -224,10 +216,11 @@ que_recov_db(char *qname, pbs_queue	*pq)
 	if (rc == -2)
 		return pq; /* no change in que, return the same pq */
 
-	if (rc == 0) {
+	if (rc == 0)
 		rc = db_2_que(pq, &dbque);
-	}
-	
+	else
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load queue %s %s", qname, (conn->conn_db_err)? conn->conn_db_err : "");
+		
 	free_db_attr_list(&dbque.db_attr_list);
 	free_db_attr_list(&dbque.cache_attr_list);
 

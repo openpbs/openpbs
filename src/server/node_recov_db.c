@@ -172,6 +172,8 @@ node_recov_db(char *nd_name, struct pbsnode *pnode)
 
 	if (rc == 0)
 		rc = db_2_node(pnode, &dbnode);
+	else
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load node %s %s", nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
 	
 	free_db_attr_list(&dbnode.db_attr_list);
 	free_db_attr_list(&dbnode.cache_attr_list);
@@ -236,7 +238,7 @@ node_2_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	/* MSTODO: how can we optimize this loop - eliminate this? */
 	psvrl = (svrattrl *) GET_NEXT(pdbnd->db_attr_list.attrs);
 	while (psvrl != NULL) {
-		if ((strcmp(psvrl->al_name, ATTR_rescavail) == 0) && (strcmp(psvrl->al_resc, "ncpus") == 0)) {
+		if ((!wrote_np) && (strcmp(psvrl->al_name, ATTR_rescavail) == 0) && (strcmp(psvrl->al_resc, "ncpus") == 0)) {
 			wrote_np = 1;
 			psvrl = (svrattrl *)GET_NEXT(psvrl->al_link);
 			continue;
@@ -344,10 +346,7 @@ done:
 	free_db_attr_list(&dbnode.cache_attr_list);
 	
 	if (rc != 0) {
-		strcpy(log_buffer, "node_save failed ");
-		if (conn->conn_db_err != NULL)
-			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-		log_err(-1, __func__, log_buffer);
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save node %s %s", pnode->nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
 		panic_stop_db(log_buffer);
 	}
 	return rc;
@@ -377,8 +376,9 @@ node_delete_db(struct pbsnode *pnode)
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
 
-	if (pbs_db_delete_obj(conn, &obj) == -1)
+	if (pbs_db_delete_obj(conn, &obj) == -1) {
+		log_errf(PBSE_INTERNAL, __func__, "Failed to delete node %s %s", pnode->nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
 		return (-1);
-	else
+	} else
 		return (0);	/* "success" or "success but rows deleted" */
 }

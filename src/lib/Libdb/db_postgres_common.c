@@ -101,13 +101,13 @@ pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2)
 	p = str + strlen(str) - 1;
 	while ((p >= str) && (*p == '\r' || *p == '\n'))
 		*p-- = 0; /* supress the last newline */
+	
+	if (!msg2)
+		msg2 = "";
 
 	conn->conn_db_err = malloc(strlen(fnc) + strlen(msg) + strlen(msg2) + strlen(str) + sizeof(fmt) + 1);
 	if (!conn->conn_db_err)
 		return;
-
-	if (!msg2)
-		msg2 = "";
 
 	sprintf((char *) conn->conn_db_err, fmt, fnc, msg, str, msg2);
 #ifdef DEBUG

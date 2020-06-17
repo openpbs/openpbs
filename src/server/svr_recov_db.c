@@ -236,10 +236,14 @@ svr_recov_db(void)
 	
 	strcpy(dbsvr.sv_savetm, server.sv_savetm);
 
-	if (pbs_db_load_obj(conn, &obj) == 0) {
-		if (db_2_svr(&server, &dbsvr) == 0)
-			rc = 0;
-	}
+	rc = pbs_db_load_obj(conn, &obj);
+	if (rc == -2)
+		return 0; /* no change in server, return 0 */
+
+	if (rc == 0)
+		rc = db_2_svr(&server, &dbsvr);
+	else
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load server %s", (conn->conn_db_err)? conn->conn_db_err : "");
 
 	free_db_attr_list(&dbsvr.db_attr_list);
 	free_db_attr_list(&dbsvr.cache_attr_list);
@@ -292,11 +296,7 @@ done:
 	free_db_attr_list(&dbsvr.cache_attr_list);
 
 	if (rc != 0) {
-		strcpy(log_buffer, msg_svdbnosv);
-		if (conn->conn_db_err != NULL)
-			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-		log_err(-1, __func__, log_buffer);
-
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save server %s", (conn->conn_db_err)? conn->conn_db_err : "");
 		panic_stop_db(log_buffer);
 	}
 
@@ -317,6 +317,7 @@ done:
 pbs_sched *
 sched_recov_db(char *sname, pbs_sched *ps)
 {
+	pbs_sched *psched  = NULL;
 	pbs_db_sched_info_t	dbsched = {{0}};
 	pbs_db_obj_info_t	obj;
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
@@ -326,10 +327,11 @@ sched_recov_db(char *sname, pbs_sched *ps)
 		strcpy(dbsched.sched_savetm, ps->sc_savetm);
 	else {
 		dbsched.sched_savetm[0] = '\0';
-		if ((ps = sched_alloc(sname)) == NULL) {
+		if ((psched = sched_alloc(sname)) == NULL) {
 			log_err(-1, __func__, "sched_alloc failed");
 			return NULL;
 		}
+		ps = psched;
 	}
 
 	obj.pbs_db_obj_type = PBS_DB_SCHED;
@@ -342,21 +344,22 @@ sched_recov_db(char *sname, pbs_sched *ps)
 	if (rc == -2)
 		return ps; /* no change in sched */
 
-	if (rc == 0) {
-		rc = db_2_sched(ps, &dbsched);
+	if (rc == 0)
+		rc = db_2_sched(ps, &dbsched);	
+	else
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load sched %s %s", sname, (conn->conn_db_err)? conn->conn_db_err : "");
+
+	free_db_attr_list(&dbsched.db_attr_list);
+	free_db_attr_list(&dbsched.cache_attr_list);
+
+	if (rc != 0) {
+		ps = NULL; /* so we return NULL */
+
+		if (psched)
+			sched_free(psched); /* free if we allocated here */
 		
-		free_db_attr_list(&dbsched.db_attr_list);
-		free_db_attr_list(&dbsched.cache_attr_list);
-
-		if (rc == 0)
-			return (ps);
 	}
-
-	/* error */
-	if (ps)
-		sched_free(ps);
-	
-	return NULL;
+	return ps;
 }
 
 
@@ -398,11 +401,7 @@ done:
 	free_db_attr_list(&dbsched.cache_attr_list);
 
 	if (rc != 0) {
-		snprintf(log_buffer,sizeof(log_buffer),  "Failed to save sched %s ", ps->sc_name);
-		if (conn->conn_db_err != NULL)
-			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-		log_err(-1, __func__, log_buffer);
-
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save sched %s %s", ps->sc_name, (conn->conn_db_err)? conn->conn_db_err : "");
 		panic_stop_db(log_buffer);
 	}
 

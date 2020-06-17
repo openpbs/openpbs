@@ -246,8 +246,7 @@ db_2_job(job *pjob,  pbs_db_job_info_t *dbjob)
  *		Save job to database
  *
  * @param[in]	pjob - The job to save
- * @param[in]   updatetype:
- *				- bitwise operator to speficy what part to save. OBJ_SAVE_QS, OBJ_SAVE_ATTRS
+ *
  * @return      Error code
  * @retval	 0 - Success
  * @retval	-1 - Failure
@@ -274,7 +273,7 @@ job_save_db(job *pjob)
 
 		/* don't save mtime, set it from ji_savetm - TODO */
 		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
-		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_VFLAG_MODCACHE;
+		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	}
 
 done:
@@ -282,11 +281,7 @@ done:
 	free_db_attr_list(&dbjob.cache_attr_list);
 
 	if (rc != 0) {
-		sprintf(log_buffer, "Failed to save job %s ", pjob->ji_qs.ji_jobid);
-		if (conn->conn_db_err != NULL)
-			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-		log_err(-1, __func__, log_buffer);
-
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save job %s %s", pjob->ji_qs.ji_jobid, (conn->conn_db_err)? conn->conn_db_err : "");
 		if (conn->conn_db_err) {
 			if (savetype == OBJ_SAVE_NEW && strstr(conn->conn_db_err, "duplicate key value"))
 				rc = 1;
@@ -304,6 +299,7 @@ done:
  *	Utility function called inside job_recov_db
  *
  * @param[in]	dbjob - Pointer to the database structure of a job
+ * @param[in]   pjob  - Pointer to job structure to populate
  *
  * @retval	 NULL - Failure
  * @retval	!NULL - Success, pointer to job structure recovered
@@ -328,8 +324,7 @@ job_recov_db_spl(pbs_db_job_info_t *dbjob, job *pjob)
 	if (pj)
 		job_free(pj); /* free if we allocated here */
 
-	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to decode job %s", dbjob->ji_jobid);
-	log_err(-1, __func__, log_buffer);
+	log_errf(PBSE_INTERNAL, __func__,  "Failed to decode job %s", dbjob->ji_jobid);
 
 	return (NULL);
 }
@@ -367,6 +362,8 @@ job_recov_db(char *jid, job *pjob)
 
 	if (rc == 0)
 		pjob = job_recov_db_spl(&dbjob, pjob);
+	else
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load job %s %s", jid, (conn->conn_db_err)? conn->conn_db_err : "");
 		
 	free_db_attr_list(&dbjob.db_attr_list);
 	free_db_attr_list(&dbjob.cache_attr_list);
@@ -435,32 +432,32 @@ resv_2_db(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
  * @retval   0    Success
  */
 static int
-db_2_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
+db_2_resv(resc_resv *presv, pbs_db_resv_info_t *dbresv)
 {
-	strcpy(presv->ri_qs.ri_resvID, pdresv->ri_resvid);
-	strcpy(presv->ri_qs.ri_queue, pdresv->ri_queue);
-	presv->ri_qs.ri_duration = pdresv->ri_duration;
-	presv->ri_qs.ri_etime = pdresv->ri_etime;
-	presv->ri_qs.ri_un_type = pdresv->ri_un_type;
-	if (pdresv->ri_un_type == RESV_UNION_TYPE_NEW) {
-		presv->ri_qs.ri_un.ri_newt.ri_fromaddr = pdresv->ri_fromaddr;
-		presv->ri_qs.ri_un.ri_newt.ri_fromsock = pdresv->ri_fromsock;
+	strcpy(presv->ri_qs.ri_resvID, dbresv->ri_resvid);
+	strcpy(presv->ri_qs.ri_queue, dbresv->ri_queue);
+	presv->ri_qs.ri_duration = dbresv->ri_duration;
+	presv->ri_qs.ri_etime = dbresv->ri_etime;
+	presv->ri_qs.ri_un_type = dbresv->ri_un_type;
+	if (dbresv->ri_un_type == RESV_UNION_TYPE_NEW) {
+		presv->ri_qs.ri_un.ri_newt.ri_fromaddr = dbresv->ri_fromaddr;
+		presv->ri_qs.ri_un.ri_newt.ri_fromsock = dbresv->ri_fromsock;
 	}
-	presv->ri_qs.ri_numattr = pdresv->ri_numattr;
-	presv->ri_qs.ri_resvTag = pdresv->ri_resvTag;
-	presv->ri_qs.ri_state = pdresv->ri_state;
-	presv->ri_qs.ri_stime = pdresv->ri_stime;
-	presv->ri_qs.ri_substate = pdresv->ri_substate;
-	presv->ri_qs.ri_svrflags = pdresv->ri_svrflags;
-	presv->ri_qs.ri_tactive = pdresv->ri_tactive;
-	strcpy(presv->ri_savetm, pdresv->ri_savetm);
+	presv->ri_qs.ri_numattr = dbresv->ri_numattr;
+	presv->ri_qs.ri_resvTag = dbresv->ri_resvTag;
+	presv->ri_qs.ri_state = dbresv->ri_state;
+	presv->ri_qs.ri_stime = dbresv->ri_stime;
+	presv->ri_qs.ri_substate = dbresv->ri_substate;
+	presv->ri_qs.ri_svrflags = dbresv->ri_svrflags;
+	presv->ri_qs.ri_tactive = dbresv->ri_tactive;
+	strcpy(presv->ri_savetm, dbresv->ri_savetm);
 
-	if ((decode_attr_db(presv, &pdresv->cache_attr_list, &pdresv->db_attr_list, resv_attr_def, presv->ri_wattr, (int) RESV_ATR_LAST, (int) RESV_ATR_UNKN)) != 0)
+	if ((decode_attr_db(presv, &dbresv->cache_attr_list, &dbresv->db_attr_list, resv_attr_def, presv->ri_wattr, (int) RESV_ATR_LAST, (int) RESV_ATR_UNKN)) != 0)
 		return -1;
 
 	obj_qs_modified(&presv->ri_qs, sizeof(presv->ri_qs), presv->qs_hash);
 
-	strcpy(presv->ri_savetm, pdresv->ri_savetm);
+	strcpy(presv->ri_savetm, dbresv->ri_savetm);
 
 	return 0;
 
@@ -502,7 +499,7 @@ resv_save_db(resc_resv *presv)
 
 		/* don't save mtime, set it from ji_savetm - TODO */
 		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = time_now;
-		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
+		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 		
 		rc = 0;
 	}
@@ -512,11 +509,7 @@ done:
 	free_db_attr_list(&dbresv.cache_attr_list);
 
 	if (rc != 0) {
-		sprintf(log_buffer, "Failed to save resv %s ", presv->ri_qs.ri_resvID);
-		if (conn->conn_db_err != NULL)
-			strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-		log_err(-1, __func__, log_buffer);
-
+		log_errf(PBSE_INTERNAL, __func__, "Failed to save resv %s %s", presv->ri_qs.ri_resvID, (conn->conn_db_err)? conn->conn_db_err : "");
 		if(conn->conn_db_err) {
 			if (savetype == OBJ_SAVE_NEW && strstr(conn->conn_db_err, "duplicate key value"))
 				rc = 1;
@@ -578,7 +571,8 @@ resv_recov_db(char *resvid, resc_resv *presv)
 
 	if (rc != 0) {
 		presv = NULL; /* so we return NULL */
-
+		
+		log_errf(PBSE_INTERNAL, __func__, "Failed to load resv %s %s", resvid, (conn->conn_db_err)? conn->conn_db_err : "");
 		if (pr)
 			resv_free(pr); /* free if we allocated here */
 	}
