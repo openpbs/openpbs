@@ -1214,10 +1214,16 @@ class SmokeTest(PBSTestSuite):
         attr = {'Resources_available.foo': True}
         self.server.manager(MGR_CMD_SET, SERVER, attr,
                             id=self.server.shortname)
+
+        vnode_val = self.mom.shortname
+        if self.mom.is_cpuset_mom():
+            nodeinfo = self.server.status(NODE)
+            if len(nodeinfo) > 1:
+                vnode_val = nodeinfo[1]['id']
         attr = {'Resources_available.foo3': '2gb'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=vnode_val)
         attr = {'Resources_available.foo1': 3}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=vnode_val)
 
         now = time.time()
         r = Reservation(TEST_USER)
