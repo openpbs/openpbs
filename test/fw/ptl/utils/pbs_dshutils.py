@@ -1485,24 +1485,25 @@ class DshUtils(object):
         :param level: Logging level.
         :type level: int
         :returns: A list containing the names of the entries in
-                  the directory
+                  the directory or an empty list in case no files exist
         """
+        retvalerr = []
 
         if path is None:
-            return None
+            return retvalerr
 
         if (self.is_localhost(hostname) and (not sudo) and (runas is None)):
             try:
                 files = os.listdir(path)
             except OSError:
-                return None
+                return retvalerr
         else:
             ret = self.run_cmd(hostname, cmd=['ls', path], sudo=sudo,
                                runas=runas, logerr=False, level=level)
             if ret['rc'] == 0:
                 files = ret['out']
             else:
-                return None
+                return retvalerr
         if fullpath is True:
             return [os.path.join(path, p.strip()) for p in files]
         else:
