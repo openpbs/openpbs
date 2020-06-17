@@ -519,8 +519,11 @@ job_free(job *pj)
 			if ((pj->ji_wattr[JOB_ATR_euser].at_val.at_str) &&
 				(pwdp = getpwnam(pj->ji_wattr[JOB_ATR_euser].at_val.at_str))) {
 				if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
-					if (impersonate_user(pwdp->pw_userlogin) == 0)
+					if (impersonate_user(pwdp->pw_userlogin) == 0) {
+						sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pwdp->pw_name);
+						log_joberr(-1, __func__, log_buffer, pj->ji_qs.ji_jobid);
 						return;
+					}
 				}
 				/* p+14 is the string after HomeDirectory= */
 				unmap_unc_path(p+14);

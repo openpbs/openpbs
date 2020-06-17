@@ -2590,7 +2590,8 @@ default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 
 		/* The following must be done last */
 		if (became_admin)
-			(void)impersonate_user(userlogin);
+			if (impersonate_user(userlogin) == FALSE)
+				log_errf(-1, __func__, "failed in impersonate_user for user %s", username);
 	}
 
 	return (homestr);

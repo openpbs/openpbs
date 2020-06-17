@@ -315,7 +315,11 @@ extern int	get_dcinfo(char *net_name, char domain_name[], char domain_ctrl[]);
 extern SID*	create_everyone_sid(void);
 extern HANDLE LogonUserNoPass(char *username);
 extern BOOL impersonate_user(HANDLE hlogintoken);
-extern BOOL revert_impersonated_user();
+
+/* wrap revert_impersonated_user to log in case of error */
+#define revert_impersonated_user() _log_wrap_revert_impersonated_user(__func__, __LINE__)
+extern BOOL _log_wrap_revert_impersonated_user(LPCSTR, INT);
+
 extern HANDLE setuser(char *username);
 extern void setuser_close_handle(HANDLE user_handle);
 extern int setuid(uid_t uid);	/* mimics UNIX call */
@@ -418,7 +422,6 @@ extern char *lpath2short(char *str);	/* static area returned */
 extern void lpath2short_B(char *str);
 extern char *shorten_and_cleanup_path(char *path);
 
-extern void fix_temp_path(char tmp_name[]);
 /* stuff that makes life easier for creating the daemons into a service */
 
 struct arg_param {
@@ -431,7 +434,6 @@ extern char *get_win_rootdir(void);
 extern void ErrorMessage(char *str);
 extern struct arg_param *create_arg_param(void);
 extern void free_arg_param(struct arg_param *p);
-extern void print_arg_param(struct arg_param *p);
 
 /* win_alarm: calls func() after specified # of timeout_secs have expired.
  Specify 0 for timeout_secs to reset alarm */
