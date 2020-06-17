@@ -96,7 +96,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 {
 	char	*cp;
 	int	i;
-	static char	shell[MAX_PATH + 1] = {'\0'};
+	static char	shell[MAX_PATH + 1];
 	char    *temp_dir = NULL;
 	struct array_strings *vstrs;
 
@@ -121,6 +121,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 			}
 		}
 	}
+	shell[sizeof(shell) - 1] = '\0';
 	for (i=0; shell[i] != '\0'; i++) {
 		if (shell[i] == '/')
 			shell[i] = '\\';
