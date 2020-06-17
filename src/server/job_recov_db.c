@@ -186,7 +186,7 @@ svr_to_db_job(job *pjob, pbs_db_job_info_t *dbjob, int updatetype)
 	if (updatetype != PBS_UPDATE_DB_QUICK) {
 		if ((encode_attr_db(job_attr_def,
 			pjob->ji_wattr,
-			(int)JOB_ATR_LAST, &dbjob->attr_list, 0)) != 0)
+			JOB_ATR_LAST, &dbjob->attr_list, 0)) != 0)
 			return -1;
 	}
 
@@ -293,12 +293,11 @@ svr_to_db_resv(resc_resv *presv,  pbs_db_resv_info_t *dbresv, int updatetype)
 	dbresv->ri_substate = presv->ri_qs.ri_substate;
 	dbresv->ri_svrflags = presv->ri_qs.ri_svrflags;
 	dbresv->ri_tactive = presv->ri_qs.ri_tactive;
-	dbresv->ri_type = presv->ri_qs.ri_type;
 
 	if (updatetype != PBS_UPDATE_DB_QUICK) {
 		if ((encode_attr_db(resv_attr_def,
 				presv->ri_wattr,
-				(int)RESV_ATR_LAST, &dbresv->attr_list, 0)) != 0)
+				RESV_ATR_LAST, &dbresv->attr_list, 0)) != 0)
 			return -1;
 	}
 	return 0;
@@ -336,7 +335,6 @@ db_to_svr_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
 	presv->ri_qs.ri_substate = pdresv->ri_substate;
 	presv->ri_qs.ri_svrflags = pdresv->ri_svrflags;
 	presv->ri_qs.ri_tactive = pdresv->ri_tactive;
-	presv->ri_qs.ri_type = pdresv->ri_type;
 
 	if ((decode_attr_db(presv, &pdresv->attr_list, resv_attr_def,
 		presv->ri_wattr,
@@ -729,7 +727,7 @@ db_err:
  *			     and resv_save_db
  *				0=quick, 1=full existing, 2=full new
  * @param[in]	objtype	- Type of the object, job or resv
- *			JOB_OBJECT, RESC_RESV_OBJECT, RESV_JOB_OBJECT
+ *			JOB_OBJECT or RESC_RESV_OBJECT
  *
  * @return      Error code
  * @retval	 0 - Success
@@ -741,7 +739,7 @@ job_or_resv_save_db(void *pobj, int updatetype, int objtype)
 {
 	int rc = 0;
 
-	if (objtype == RESC_RESV_OBJECT || objtype == RESV_JOB_OBJECT) {
+	if (objtype == RESC_RESV_OBJECT) {
 		resc_resv *presv;
 		presv = (resc_resv *) pobj;
 
@@ -751,20 +749,7 @@ job_or_resv_save_db(void *pobj, int updatetype, int objtype)
 			return (rc);
 	} else if (objtype == JOB_OBJECT) {
 		job *pj = (job *) pobj;
-		if (pj->ji_resvp) {
-			if (updatetype == SAVEJOB_QUICK)
-				rc = job_or_resv_save((void *) pj->ji_resvp,
-					SAVERESV_QUICK,
-					RESC_RESV_OBJECT);
-			else if ((updatetype == SAVEJOB_FULL) ||
-				(updatetype == SAVEJOB_FULLFORCE) ||
-				(updatetype == SAVEJOB_NEW))
-				rc = job_or_resv_save((void *) pj->ji_resvp,
-					SAVERESV_FULL,
-					RESC_RESV_OBJECT);
-			if (rc)
-				return (rc);
-		}
+
 		rc = job_save_db(pj, updatetype);
 		if (rc)
 			return (rc);

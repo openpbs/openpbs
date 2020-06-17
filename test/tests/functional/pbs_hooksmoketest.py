@@ -454,17 +454,15 @@ print_attribs(j)"""
         # Verify server logs
         self.logger.info("Verifying logs in server")
         msg_1 = "Server@.*;Hook;%s;started" % \
-                (self.hook_name)
+                (re.escape(self.hook_name))
         msg_2 = "Hook;Server@.*;requestor = Scheduler"
         msg_3 = "Hook;Server@.*;hook_name = %s" % \
-                (self.hook_name)
+                (re.escape(self.hook_name))
         msg_4 = "Hook;Server@.*;exec_vnode = %s" % \
-                (ev)
+                (re.escape(ev))
         # Character escaping '()' as the log_match is regexp
-        msg_4 = msg_4.replace("(", "\(")
-        msg_4 = msg_4.replace(")", "\)")
         msg_5 = "Server@.*;Hook;%s;finished" % \
-                (self.hook_name)
+                (re.escape(self.hook_name))
         msg = [msg_1, msg_2, msg_3, msg_4, msg_5]
         for i in msg:
             self.server.log_match(i, starttime=now, regexp=True)

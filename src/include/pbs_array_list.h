@@ -44,7 +44,7 @@
 /*
  * The data structures, macros and functions in this header file are used for
  * compressing the list of IP addresses sent across from the
- * server to the MOM(s) as part of the IS_CLUSTER_ADDRS2 message.
+ * server to the MOM(s) as part of the IS_CLUSTER_ADDRS message.
  *
  * The high-level algorithm is to reduce a given set of IP addresses to range(s)
  * E.g.: Given: 1,2,3,4,5,8,9,10,11 => {1-5},{8,11}

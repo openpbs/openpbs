@@ -151,7 +151,6 @@ extern int chk_and_update_db_svrhost();
 #endif /* localmod 005 */
 
 extern int put_sched_cmd(int sock, int cmd, char *jobid);
-extern void setup_ping(int delay);
 
 /* External data items */
 extern  pbs_list_head svr_requests;
@@ -259,14 +258,11 @@ char	       *mom_host = server_host;
 long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
-int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
-int             ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
 pbs_list_head	svr_deferred_req;
 pbs_list_head	svr_queues;            /* list of queues                   */
 pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
 pbs_list_head	svr_allresvs;          /* all reservations in server */
-pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
 pbs_list_head	task_list_immed;
 pbs_list_head	task_list_timed;
 pbs_list_head	task_list_event;
@@ -311,7 +307,6 @@ static char    *suffix_slash = "/";
 static int	brought_up_alt_sched = 0;
 void stop_db();
 char *db_err_msg = NULL;
-extern void		ping_nodes(struct work_task *ptask);
 extern void mark_nodes_unknown(int);
 
 /*
@@ -337,7 +332,6 @@ net_restore_handler(void *data)
 	if (tpp_log_func)
 		tpp_log_func(LOG_INFO, NULL, "net restore handler called");
 	tpp_network_up = 1;
-	ping_nodes(NULL);
 }
 
 /**
@@ -421,6 +415,7 @@ do_tpp(int stream)
 	DIS_tpp_funcs();
 	proto = disrsi(stream, &ret);
 	if (ret != DIS_SUCCESS) {
+		DBPRT(("tpp read failure: ret: %d, proto: %d\n", ret, proto));
 		stream_eof(stream, ret, NULL);
 		return;
 	}
@@ -769,7 +764,6 @@ main(int argc, char **argv)
 	int			do_mlockall = 0;
 #endif	/* _POSIX_MEMLOCK */
 	extern char		**environ;
-	extern void		ping_nodes(struct work_task *ptask);
 
 	static struct {
 		char *it_name;
@@ -1006,13 +1000,6 @@ main(int argc, char **argv)
 					return (1);
 				}
 				break;
-			case 'P':	/* set node ping frequency (seconds between) */
-				svr_ping_rate = atoi(optarg);
-				if (svr_ping_rate < 1) {
-					(void)fprintf(stderr, "%s: bad -P %s\n", argv[0], optarg);
-					return (1);
-				}
-				break;
 
 			case '-':
 				(void)fprintf(stderr, "%s: bad - mistyped or specified more than --version\n", argv[0]);
@@ -1063,7 +1050,6 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_alljobs);
 	CLEAR_HEAD(svr_newjobs);
 	CLEAR_HEAD(svr_allresvs);
-	CLEAR_HEAD(svr_newresvs);
 	CLEAR_HEAD(svr_deferred_req);
 	CLEAR_HEAD(svr_allhooks);
 	CLEAR_HEAD(svr_queuejob_hooks);
@@ -1322,13 +1308,6 @@ try_db_again:
 #endif	/* DEBUG is defined */
 		try_db ++;
 	}
-
-    /* determine the rate of calling the ping_nodes functionality based on server_init_type */
-    if (server_init_type == RECOV_HOT) {
-            /* rapid ping rate while hot restart */
-            ping_nodes_rate = HOT_START_PING_RATE < svr_ping_rate ? HOT_START_PING_RATE : svr_ping_rate;
-    } else
-            ping_nodes_rate = svr_ping_rate; /* normal ping rate for normal run */
 
 	if (!pbs_conf.pbs_data_service_host) {
 		/*
@@ -1619,9 +1598,6 @@ try_db_again:
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, msg_daemonname, log_buffer);
 
-
-	/* setup the periodic ping_nodes functionality */
-	setup_ping(0);
 
 	/*
 	 * Now at last, we are read to do some batch work, the

@@ -50,7 +50,7 @@
             "reserve_amount"     : "64MB"
         },
         "memsw" : {
-            "enabled"            : true,
+            "enabled"            : false,
             "exclude_hosts"      : [],
             "exclude_vntypes"    : [],
             "default"            : "256MB",

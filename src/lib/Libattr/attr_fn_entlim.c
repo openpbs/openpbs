@@ -416,7 +416,7 @@ decode_entlim_res(struct attribute *patr, char *name, char *rescn, char *val)
  */
 
 int
-encode_entlim_db(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	void *ctx;
 	int grandtotal = 0;
@@ -622,7 +622,7 @@ err:
  *
  */
 int
-encode_entlim(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	void	   *ctx;
 	int	    grandtotal = 0;

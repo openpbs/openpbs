@@ -385,7 +385,7 @@ class TestJobArray(TestFunctional):
         for _ in range(5):
             self.kill_and_restart_svr()
             self.server.expect(
-                JOB, a, subjid_1, attrop=PTL_AND, max_attempts=1)
+                JOB, a, subjid_1, attrop=PTL_AND)
 
     @skipOnCpuSet
     def test_job_array_history_duration(self):
@@ -400,7 +400,7 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER, attrs={
             ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
-        j.set_sleep_time(5)
+        j.set_sleep_time(15)
         j_id = self.server.submit(j)
         subjid_1 = j.create_subjob_id(j_id, 1)
         subjid_2 = j.create_subjob_id(j_id, 2)

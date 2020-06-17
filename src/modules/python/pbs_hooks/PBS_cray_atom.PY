@@ -62,6 +62,7 @@ if True:
     import pbs
     import pwd
     import copy
+    import re
 
 requests_unixsocket.monkeypatch()
 
@@ -176,6 +177,42 @@ class HookHelper(object):
         log_with_caller(pbs.EVENT_DEBUG4, 'path is %s' % path)
         return path
 
+    @staticmethod
+    def is_it_exclusive(job):
+        """
+        check to see if the job requested exclusive, or if the
+        nodes are marked exclusive.  This needs to be passed
+        to ATOM.
+        """
+        place = str(job.Resource_List["place"])
+        log_with_caller(pbs.EVENT_DEBUG4, "place is %s" % place)
+
+        # See if the node sharing value has exclusive
+        vn = pbs.server().vnode(pbs.get_local_nodename())
+        sharing = vn.sharing
+        log_with_caller(pbs.EVENT_DEBUG4, "The sharing value is %s type %s" %
+                        (str(sharing), str(type(sharing))))
+
+        # Uses the same logic as the scheduler (is_excl())
+        if sharing == pbs.ND_FORCE_EXCL or sharing == pbs.ND_FORCE_EXCLHOST:
+            return True
+
+        if sharing == pbs.ND_IGNORE_EXCL:
+            return False
+
+        if any(s.startswith('excl') for s in place.split(':')):
+            return True
+        if any(s.startswith('shared') for s in place.split(':')):
+            return False
+
+        if (sharing == pbs.ND_DEFAULT_EXCL or
+            sharing == pbs.ND_DEFAULT_EXCLHOST):
+            return True
+
+        if sharing == pbs.ND_DEFAULT_SHARED:
+            return False
+
+        return False
 
 def post(url, json=None, **kwargs):
     """
@@ -338,9 +375,11 @@ def handle_execjob_begin():
     jid = event.job.id
     uid = pwd.getpwnam(event.job.euser).pw_uid
     log_with_caller(pbs.EVENT_DEBUG4, 'UID is %d' % uid)
+    excl = HookHelper.is_it_exclusive(event.job)
     data = {
         'jobid': jid,
-        'uid': uid
+        'uid': uid,
+        'exclusive': excl
     }
     url = HookHelper.build_path(resource='job')
     timeout = HookHelper.get_config()['post_timeout']

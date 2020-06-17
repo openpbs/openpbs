@@ -169,7 +169,7 @@ vnode_state_to_str(int state_bit)
 
 	/* Now clear any internal states */
 	if (state_bit_tmp != 0)
-		state_bit_tmp &= ~(INUSE_DELETED|INUSE_NEEDS_HELLO_PING|INUSE_INIT);
+		state_bit_tmp &= ~(INUSE_DELETED|INUSE_NEEDS_HELLOSVR|INUSE_INIT);
 
 	if (state_bit_tmp != 0)
 		return ("");	/* found an unknown state bit set! */
@@ -296,7 +296,7 @@ str_to_vnode_state(char *vnstate)
  */
 
 int
-encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_state(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	int	  i;
 	svrattrl *pal;
@@ -435,7 +435,7 @@ vnode_ntype_to_str(int vntype)
  *
  */
 int
-encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_ntype(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	short	 ntype;
@@ -500,7 +500,7 @@ encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  */
 
 int
-encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 
 {
 	svrattrl	*pal;
@@ -606,7 +606,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
  */
 
 int
-encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_resvs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	svrattrl	*pal;
 	struct resvinfo *rip;
@@ -687,7 +687,7 @@ encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  */
 
 int
-encode_sharing(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_sharing(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	int       n;
 	svrattrl *pal;

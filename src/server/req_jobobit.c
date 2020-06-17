@@ -125,7 +125,7 @@ extern time_t time_now;
 /* External Functions called */
 
 extern void set_resc_assigned(void *, int,  enum batch_op);
-extern long get_walltime(job *, int);
+extern long get_walltime(const job *, int);
 
 /* Local public functions  */
 
@@ -1556,7 +1556,7 @@ setrerun(job *pjob)
  * @param[in]		pjob - job structure for additional info
  */
 int
-concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob)
+concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, const job *pjob)
 {
 	int val_len;
 
@@ -1761,6 +1761,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			/* tell mom to trash job		    */
 			DBPRT(("%s: job %s not in exiting state!\n",
 				__func__, pruu->ru_pjobid))
+			pjob->ji_discarding = 0;
 			reject_obit(stream, pruu->ru_pjobid);
 
 			(void)sprintf(log_buffer, "%s", msg_obitnotrun);

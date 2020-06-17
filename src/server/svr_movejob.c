@@ -160,7 +160,6 @@ extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, voi
 int
 svr_movejob(job	*jobp, char *destination, struct batch_request *req)
 {
-	pbs_net_t destaddr;
 	unsigned int port = pbs_server_port_dis;
 	char	*toserver;
 
@@ -178,11 +177,14 @@ svr_movejob(job	*jobp, char *destination, struct batch_request *req)
 
 	if ((toserver = strchr(destination, '@')) != NULL) {
 		/* check to see if the part after '@' is this server */
-		destaddr = get_hostaddr(parse_servername(++toserver, &port));
-		if ((destaddr != pbs_server_addr) ||
+		int comp = -1;
+		comp = comp_svraddr(pbs_server_addr, parse_servername(++toserver, &port));
+		if ((comp == 1) ||
 			(port != pbs_server_port_dis)) {
 			return (net_move(jobp, req));	/* not a local dest */
 		}
+		else if (comp == 2)
+			return -1;
 	}
 
 	/* if get to here, it is a local destination */
@@ -282,21 +284,14 @@ local_move(job *jobp, struct batch_request *req)
 	}
 
 	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
-
 		newtype = determine_accruetype(jobp);
-		if (newtype == -1)
-			/* unable to determine accruetype, set it to NEW */
-			(void)update_eligible_time(JOB_INITIAL, jobp);
-		else
-			/* found suiting accruetype, update to this */
-			(void)update_eligible_time(newtype, jobp);
-
+		update_eligible_time(newtype, jobp);
 	}
 
 
 	if ((pbs_errno = svr_enquejob(jobp)) != 0)
 		return -1;		/* should never ever get here */
-	account_jobstr2(jobp, PBS_ACCT_QUEUE);
+	account_jobstr(jobp, PBS_ACCT_QUEUE);
 
 	jobp->ji_lastdest = 0;	/* reset in case of another route */
 

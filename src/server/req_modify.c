@@ -758,15 +758,7 @@ req_modifyReservation(struct batch_request *preq)
 		return;
 
 	rid = preq->rq_ind.rq_modify.rq_objname;
-	if ((presv = find_resv(rid)) == NULL) {
-		/* Not on "all_resvs" list try "new_resvs" list */
-		presv = (resc_resv *)GET_NEXT(svr_newresvs);
-		while (presv) {
-			if (!strcmp(presv->ri_qs.ri_resvID, rid))
-				break;
-			presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-		}
-	}
+	presv = find_resv(rid);
 
 	if (presv == NULL) {
 		req_reject(PBSE_UNKRESVID, 0, preq);
@@ -929,7 +921,7 @@ req_modifyReservation(struct batch_request *preq)
 	if (send_to_scheduler) {
 		resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
 		/*"start", "end","duration", and "wall"; derive and check */
-		if (start_end_dur_wall(presv, RESC_RESV_OBJECT)) {
+		if (start_end_dur_wall(presv)) {
 			req_reject(PBSE_BADTSPEC, 0, preq);
 			resv_revert_alter_times(presv);
 			return;

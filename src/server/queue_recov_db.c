@@ -114,8 +114,9 @@ svr_to_db_que(pbs_queue *pque, pbs_db_que_info_t *pdbque, int updatetype)
 
 	if (updatetype != PBS_UPDATE_DB_QUICK) {
 		if ((encode_attr_db(que_attr_def, pque->qu_attr,
-			(int)QA_ATR_LAST, &pdbque->attr_list, 1)) != 0) /* encode all attributes */
+			QA_ATR_LAST, &pdbque->attr_list, 1)) != 0) /* encode all attributes */
 			return -1;
+		unset_attr_array_flags(pque->qu_attr, ATR_VFLAG_MODIFY, QA_ATR_LAST);
 	}
 
 	return 0;

@@ -546,6 +546,7 @@ process_request(int sfds)
 	if (server.sv_attr[(int)SRV_ATR_State].at_val.at_long > SV_STATE_RUN) {
 		switch (request->rq_type) {
 			case PBS_BATCH_AsyrunJob:
+			case PBS_BATCH_AsyrunJob_ack:
 			case PBS_BATCH_JobCred:
 			case PBS_BATCH_UserCred:
 			case PBS_BATCH_MoveJob:
@@ -845,6 +846,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_RunJob:
 		case PBS_BATCH_AsyrunJob:
+		case PBS_BATCH_AsyrunJob_ack:
 			req_runjob(request);
 			break;
 
@@ -929,7 +931,9 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_StatusHook:
-			if (!is_local_root(request->rq_user, request->rq_host)) {
+			/* Scheduler is allowed to make the request */
+			if ((find_sched_from_sock(request->rq_conn) == NULL) &&
+					!is_local_root(request->rq_user, request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
 					"access hooks data from server %s",
 					request->rq_user, request->rq_host, server_host);
@@ -1389,6 +1393,7 @@ free_br(struct batch_request *preq)
 
 		case PBS_BATCH_RunJob:
 		case PBS_BATCH_AsyrunJob:
+		case PBS_BATCH_AsyrunJob_ack:
 		case PBS_BATCH_StageIn:
 		case PBS_BATCH_ConfirmResv:
 			if (preq->rq_ind.rq_run.rq_destin)
@@ -1587,3 +1592,4 @@ get_servername(unsigned int *port)
 
 	return name;
 }
+

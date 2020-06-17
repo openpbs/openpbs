@@ -301,4 +301,5 @@ class TestPbsExecutePrologue(TestFunctional):
         held_cmt = "job held, too many failed attempts to run"
         criteria = {'job_state': 'H', 'comment': held_cmt}
         for jid in job_list:
-            self.server.expect(JOB, criteria, attrop=PTL_AND, id=jid)
+            self.server.expect(JOB, criteria, id=jid, max_attempts=100,
+                               interval=2)

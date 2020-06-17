@@ -250,10 +250,23 @@ upgrade_pbs_schema_from_v1_3_0() {
 	fi
 }
 
+upgrade_pbs_schema_from_v1_4_0() {
+	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
+		ALTER TABLE pbs.resv DROP COLUMN ri_type;
+		UPDATE pbs.info SET pbs_schema_version = '1.5.0';
+	EOF
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "Error deleting ri_type during upgrade"
+		echo "Please check dataservice logs"
+		return $ret
+	fi
+}
+
 # start of the upgrade schema script
 
 tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
-PBS_CURRENT_SCHEMA_VER='1.4.0'
+PBS_CURRENT_SCHEMA_VER='1.5.0'
 conf=${PBS_CONF_FILE:-/etc/pbs.conf}
 PBS_DATA_SERVICE_PORT="$1"
 PBS_DATA_SERVICE_USER="$2"
@@ -365,6 +378,15 @@ if [ "$ver" = "1.3.0" ]; then
         exit $ret
     fi
     ver="1.4.0"
+fi
+
+if [ "$ver" = "1.4.0" ]; then
+    upgrade_pbs_schema_from_v1_4_0
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        exit $ret
+    fi
+    ver="1.5.0"
 else
     echo "Cannot upgrade PBS datastore version $ver"
     ret=$?

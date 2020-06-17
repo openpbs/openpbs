@@ -1232,8 +1232,7 @@ becomeuser(job *pjob)
 		if (!impersonate_user(pwdp->pw_userlogin)) {
 			sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser job: %s and user: %s", 
 				pjob->ji_qs.ji_jobid, pjob->ji_user);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, log_buffer);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			return -1;
 		}
 	}else{
@@ -1765,8 +1764,11 @@ finish_exec(job *pjob)
 	}
 
 	/* Later on, the following needs to be replaced by set_credential() */
-	if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
+	if ((pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE)
+			&& (pjob->ji_user->pw_userlogin != NULL)) {
 		if (!impersonate_user(pjob->ji_user->pw_userlogin)) {
+			sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pjob->ji_user->pw_name);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			sprintf(log_buffer,
 				"failed to ImpersonateLoggedOnUser on %s", mom_host);
 			(void)decode_str(&pjob->ji_wattr[JOB_ATR_Comment],
@@ -3465,7 +3467,9 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 
 		if (became_admin) {   /* go back to being user */
 			if (pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE) {
-				(void)impersonate_user(pjob->ji_user->pw_userlogin);
+				if (impersonate_user(pjob->ji_user->pw_userlogin) == FALSE)
+					sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pjob->ji_user->pw_name);
+					log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			}
 		}
 
@@ -4176,9 +4180,8 @@ start_exec(job *pjob)
 	int			mtfd = -1;
 
 	/* make sure we have an open tpp stream back to the server */
-
 	if (server_stream == -1)
-		send_restart();
+		send_hellosvr(server_stream);
 
 	/* The following may not be needed for Windows! */
 	if (pjob->ji_mompost) {         /* fail until activity is done */
@@ -4352,8 +4355,6 @@ start_exec(job *pjob)
 		}
 
 		finish_exec(pjob);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
 	}
 	return;
 }

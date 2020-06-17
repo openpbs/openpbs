@@ -121,7 +121,6 @@ pbs_server_bin_SOURCES = \
 	req_track.c \
 	req_cred.c \
 	resc_attr.c \
-	resv_attr.c \
 	run_sched.c \
 	sched_func.c \
 	setup_resc.c \

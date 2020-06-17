@@ -137,7 +137,7 @@ decode_str(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_str(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_str(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 
 {
 	svrattrl *pal;

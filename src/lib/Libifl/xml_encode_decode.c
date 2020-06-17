@@ -202,7 +202,6 @@ decode_argument(char *encoded_arg, char *original_arg)
 #ifdef WIN32
 	int	quotes_flag = 0;
 #endif
-	DBPRT(("%s: encoded arg= %s\n", __func__, encoded_arg))
 
 #ifdef	WIN32
 	/*
@@ -262,7 +261,6 @@ decode_argument(char *encoded_arg, char *original_arg)
 #endif	/* WIN32 */
 
 	original_arg[k] = '\0';
-	DBPRT(("%s: decoded_arg= %s\n", __func__, original_arg))
 	return k;
 }
 

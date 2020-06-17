@@ -1585,3 +1585,25 @@ void free_attrl_list(struct attrl *at_list)
 	}
 
 }
+
+/**
+ * @brief	Helper function to remove flag(s) from an array of attributes
+ *
+ * @param[in]	pattr - pointer to the attribute list
+ * @param[in]	flags - the flags to unset
+ * @param[in]	numattrs - number of attributes
+ *
+ * @return void
+ */
+void
+unset_attr_array_flags(attribute *pattr, int flags, int numattrs)
+{
+	int i;
+
+	if (pattr == NULL || numattrs < 1)
+		return;
+
+	for (i = 0; i < numattrs; i++) {
+		(pattr + i)->at_flags &= ~flags;
+	}
+}

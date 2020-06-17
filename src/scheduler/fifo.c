@@ -1285,6 +1285,28 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 }
 
 /**
+ * @brief	Send the relevant runjob request to server
+ *
+ * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
+ * @param[in]	rj_mode	-	runjob mode to use
+ * @param[in]	jobid	-	id of the job to run
+ * @param[in]	execvnode	-	the execvnode to run the job on
+ *
+ * @return	int
+ * @retval	return value of the runjob call
+ */
+static int
+send_runjob(int pbs_sd, enum runjob_mode rj_mode, char *jobid, char *execvnode)
+{
+	if (rj_mode == RJ_NOWAIT)
+		return pbs_asyrunjob(pbs_sd, jobid, execvnode, NULL);
+	else if (rj_mode == RJ_RUNJOB_HOOK)
+		return pbs_asyrunjob_ack(pbs_sd, jobid, execvnode, NULL);
+	else
+		return pbs_runjob(pbs_sd, jobid, execvnode, NULL);
+}
+
+/**
  * @brief
  * 		run_job - handle the running of a pbs job.  If it's a peer job
  *	       first move it to the local server and then run it.
@@ -1293,7 +1315,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
  * @param[in]	rjob	-	the job to run
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
- * @param[in]	throughput	-	thoughput mode enabled?
+ * @param[in]	rj_mode	-	runjob mode to use
  * @param[out]	err	-	error struct to return errors
  *
  * @retval	0	: success
@@ -1301,7 +1323,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @retval -1	: error
  */
 int
-run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_error *err)
+run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int rj_mode, schd_error *err)
 {
 	char buf[100];	/* used to assemble queue@localserver */
 	char *errbuf;		/* comes from pbs_geterrmsg() */
@@ -1354,17 +1376,10 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_e
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
-				if (throughput)
-					rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
-				else
-					rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
+				rc = send_runjob(pbs_sd, rj_mode, rjob->name, execvnode);
 			}
-		} else {
-			if (throughput)
-				rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
-			else
-				rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
-		}
+		} else
+			rc = send_runjob(pbs_sd, rj_mode, rjob->name, execvnode);
 	}
 
 	if (rc) {
@@ -1601,7 +1616,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					fflush(stdout);
 #endif /* localmod 031 */
 
-					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->throughput_mode, err);
+					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->runjob_mode, err);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);

@@ -135,7 +135,7 @@ decode_ll(struct attribute *patr, char *name, char *rescn, char *val)
 
 
 int
-encode_ll(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_ll(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	  ct;
 	const char *cvn;

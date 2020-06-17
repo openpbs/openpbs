@@ -202,7 +202,6 @@ struct pbs_db_resv_info {
 	char    ri_queue[PBS_MAXQUEUENAME + 1];
 	INTEGER ri_state;
 	INTEGER ri_substate;
-	INTEGER ri_type;
 	BIGINT  ri_stime;
 	BIGINT  ri_etime;
 	BIGINT  ri_duration;

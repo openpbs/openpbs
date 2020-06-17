@@ -58,11 +58,10 @@
 #define PATH_MAX 4096
 #endif
 
-BOOL is_user_impersonated = FALSE;
+static BOOL is_user_impersonated = FALSE;
 static AVL_IX_DESC *env_avltree = NULL;
 typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
 
-LPFN_ISWOW64PROCESS fnIsWow64Process;
 /**
  * @file	util.c
  */
@@ -86,7 +85,7 @@ is_64bit_Windows(void)
 	 * and GetProcAddress to get a pointer to the function if available.
 	 */
 
-	fnIsWow64Process = (LPFN_ISWOW64PROCESS) GetProcAddress(
+	LPFN_ISWOW64PROCESS fnIsWow64Process = (LPFN_ISWOW64PROCESS) GetProcAddress(
 		GetModuleHandle("kernel32"), "IsWow64Process");
 
 	if (NULL != fnIsWow64Process) {
@@ -149,11 +148,14 @@ struct arg_param *create_arg_param(void)
 
 	pap = (struct arg_param *)malloc(sizeof(struct arg_param));
 
-	if (pap == NULL)
+	if (pap == NULL) {
+		log_err(errno, __func__, "malloc failed for pap");
 		return NULL;
+	}
 
 	pap->argv = (char **)malloc(50 * sizeof(char *));	/* should be sufficient */
 	if (pap->argv == NULL) {
+		log_err(errno, __func__, "malloc failed for pap->argv");
 		(void)free(pap);
 		return NULL;
 	}
@@ -184,32 +186,6 @@ free_arg_param(struct arg_param *p)
 
 	(void)free(p->argv);
 	(void)free(p);
-}
-
-/**
- * @brief
- *	prints the argument parameters.
- *
- * @param[in] p - pointer to arg_param structure
- *
- * @return      Void
- *
- */
-
-void
-print_arg_param(struct arg_param *p)
-{
-	int	i;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
-
-	if (p == NULL)
-		return;
-
-	for (i=0; i < p->argc; i++) {
-		sprintf(logb, "print_arg_param: p->argv[%d]=%s", i, p->argv[i]);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", logb);
-	}
-
 }
 
 /**
@@ -310,36 +286,6 @@ lstat(const char *file_name, struct stat *buf)
 
 /**
  * @brief
- *	fix_temp_path: given a dynamically generated temporary filename 'tmp_name',
- *	if this refers to a file that is located in top-level dir
- *	"\", then modify the input string so that the location
- *	is in TMP as specified in environment.
- *
- * @param[in] tmp_name - temporary file name.
- *
- */
-void
-fix_temp_path(char tmp_name[MAXPATHLEN+1])
-{
-	char *p, *p2;
-	char tmp_name2[MAXPATHLEN+1];
-
-	if (p = strrchr(tmp_name, '\\')) {
-		*p = '\0';
-		if (strlen(tmp_name) == 0) { /* dir prefix is root slash */
-			*p = '\\';
-			p2 = getenv("TMP");
-			_snprintf(tmp_name2, MAXPATHLEN, "%s%s", (p2?p2:""),
-				tmp_name);
-			strncpy(tmp_name, tmp_name2, MAXPATHLEN);
-		} else {
-			*p = '\\';
-		}
-	}
-}
-
-/**
- * @brief
  *	function to open a file .
  *
  * @param[in] filename - filename to be opened
@@ -364,18 +310,22 @@ my_fopen(const char *filename, const char *mode)
 	}
 
 	if ((fd=open(filename, O_RDONLY|O_TEXT)) == -1) {
+		log_errf(errno, __func__, "open(%s) failed", filename);
 		return NULL;
 	}
 
 	if (fstat(fd, &sbuf) == -1) {
+		log_errf(errno, __func__, "fstat() failed for %s", filename);
 		return NULL;
 	}
 
 	if ((content=(char *)malloc((size_t)sbuf.st_size+1)) == NULL) {
+		log_err(errno, __func__, "malloc failed for content");
 		return NULL;
 	}
 
 	if ((mfp=(MY_FILE *)malloc(sizeof(MY_FILE))) == NULL) {
+		log_err(errno, __func__, "malloc failed for mfp");
 		(void)free(content);
 		return NULL;
 	}
@@ -607,6 +557,8 @@ create_env_avltree()
 		if ((env_avltree = malloc(sizeof(AVL_IX_DESC))) != NULL) {
 			if (avl_create_index(env_avltree, AVL_NO_DUP_KEYS, 0))
 				return 1;
+		} else {
+			log_err(errno, __func__, "malloc failed for env_avltree");
 		}
 	}
 
@@ -620,6 +572,8 @@ create_env_avltree()
 						avl_add_key(pe, env_avltree);
 					free(pe);
 					pe = NULL;
+				} else {
+					log_err(errno, __func__, "malloc failed for pe");
 				}
 			}
 		}
@@ -666,6 +620,8 @@ update_env_avltree()
 			}
 			free(pe);
 			pe = NULL;
+		} else {
+			log_err(errno, __func__, "malloc failed for pe");
 		}
 
 		for (i=0; environ[i] != NULL; i++) {
@@ -679,6 +635,8 @@ update_env_avltree()
 					}
 					free(pe);
 					pe = NULL;
+				} else {
+					log_err(errno, __func__, "malloc failed for pe (inside for)");
 				}
 			}
 		}
@@ -709,6 +667,8 @@ destroy_env_avltree()
 			}
 			free(pe);
 			pe = NULL;
+		} else {
+			log_err(errno, __func__, "malloc failed for pe");
 		}
 		avl_destroy_index(env_avltree);
 		free(env_avltree);
@@ -744,7 +704,6 @@ win_open(const char *filename, int oflag, ...)
 	va_end(vl);
 
 	if ((err) || (fd == -1)) {
-		errno = err;
 		return (-1);
 	}
 
@@ -951,32 +910,41 @@ impersonate_user(HANDLE hlogintoken)
 {
 	is_user_impersonated = FALSE;
 
-	if (hlogintoken == NULL || hlogintoken == INVALID_HANDLE_VALUE)
+	if (hlogintoken == NULL || hlogintoken == INVALID_HANDLE_VALUE) {
+		errno = ERROR_INVALID_PARAMETER;
+		SetLastError(ERROR_INVALID_PARAMETER);
 		return FALSE;
+	}
 
 	is_user_impersonated = ImpersonateLoggedOnUser(hlogintoken);
 	if (is_user_impersonated == FALSE)
 		errno = GetLastError();
+	/* error logging to be done by the caller */
 	return is_user_impersonated;
 }
 
 /* @brief
- *  	Revert an impersonated user, a wrapper to RevertToSelf() API
+ *  	Revert an impersonated user, an error loggin wrapper to RevertToSelf() API
  *  	If revert fails, sets the errno.
+ * 
+ * @param[in]   funcname : function name where API was invoked
+ * @param[in]   lineno : line number of API invocation
  *
  *  @return     BOOL
  *  @retval     whether revert succeded, return value of RevertToSelf() API
  */
 BOOL
-revert_impersonated_user()
+_log_wrap_revert_impersonated_user(LPCSTR funcname, INT lineno)
 {
 	BOOL result = FALSE;
 	if (is_user_impersonated == TRUE) {
 		result = RevertToSelf();
 		if (result == TRUE)
 			is_user_impersonated = FALSE;
-		else
+		else {
 			errno = GetLastError();
+			log_errf(-1, funcname, "revert_impersonated_user() failed at line %d", lineno);
+		}
 	}
 	return result;
 }

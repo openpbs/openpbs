@@ -146,6 +146,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_runcount,
 	JOB_ATR_pset,
 	JOB_ATR_eligible_time,
+	JOB_ATR_sample_starttime,
 	JOB_ATR_executable,
 	JOB_ATR_Arglist,
 	JOB_ATR_reserve_ID,
@@ -156,7 +157,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_cred_id,
 #endif
 	JOB_ATR_submit_host,
-	JOB_ATR_LAST		/* This MUST be LAST	*/
+	JOB_ATR_LAST /* This MUST be LAST	*/
 };
 
 /**
@@ -884,7 +885,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
 	parent->ji_ajtrk->tkm_tbl[indx].trk_psubjob = subj;
 	subj->ji_qhdr     = parent->ji_qhdr;
-	subj->ji_resvp    = parent->ji_resvp;
 	subj->ji_myResv   = parent->ji_myResv;
 	subj->ji_parentaj = parent;
 	strcpy(subj->ji_qs.ji_jobid, newjid);	/* replace job id */

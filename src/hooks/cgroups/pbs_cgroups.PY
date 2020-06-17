@@ -86,6 +86,7 @@ rel = list(map(int, (platform.release().split('-')[0].split('.'))))
 pbs.logmsg(pbs.EVENT_DEBUG4,
            'Cgroup hook: detected Linux kernel version %d.%d.%d' %
            (rel[0], rel[1], rel[2]))
+
 supported = False
 if rel[0] > 2:
     supported = True
@@ -95,6 +96,7 @@ elif rel[0] == 2:
     elif rel[1] == 6:
         if rel[2] >= 28:
             supported = True
+
 if not supported:
     pbs.logmsg(pbs.EVENT_DEBUG,
                'Cgroup hook: kernel %s.%s.%s < 2.6.28; not supported'
@@ -135,6 +137,14 @@ else:
         pass
     import fcntl
     import pwd
+
+    PYTHON2 = sys.version_info[0] < 3
+
+    try:
+        bytearray
+        BYTEARRAY_EXISTS = True
+    except NameError:
+        BYTEARRAY_EXISTS = False
 
 # Define some globals that get set in main
 PBS_EXEC = ''
@@ -215,6 +225,26 @@ class TimeoutError(ProcessingError):
 # ============================================================================
 
 #
+# FUNCTION stringified_output
+#
+def stringified_output(out):
+    if PYTHON2:
+        if isinstance(out, str):
+            return(out)
+        elif isinstance(out, unicode):
+            return(out.encode('utf-8'))
+        else:
+            return(str(out))
+    else:
+        if isinstance(out, str):
+            return(out)
+        elif isinstance(out, (bytes, bytearray)):
+            return(out.decode('utf-8'))
+        else:
+            return(str(out))
+
+
+#
 # FUNCTION caller_name
 #
 def caller_name():
@@ -238,7 +268,7 @@ def systemd_escape(buf):
     ret = ''
     for i, char in enumerate(buf):
         if i < 1 and char == '.':
-            if (sys.version_info[0] < 3):
+            if PYTHON2:
                 ret += '\\x' + '.'.encode('hex')
             else:
                 ret += '\\x' + b'.'.hex()
@@ -248,7 +278,7 @@ def systemd_escape(buf):
             ret += '-'
         else:
             # Will turn non-ASCII into UTF-8 hex sequence on both Py2/3
-            if (sys.version_info[0] < 3):
+            if PYTHON2:
                 hexval = char.encode('hex')
             else:
                 hexval = char.encode('utf-8').hex()
@@ -376,17 +406,17 @@ def decode_list(data):
     for item in data:
         if isinstance(item, str):
             pass
-        elif (sys.version_info[0] < 3) and isinstance(item, unicode):
-            item = item.encode('utf-8')
-        elif isinstance(item, (bytes, bytearray)):
-            if sys.version_info[0] >= 3:
-                item = str(item, 'utf-8')
-            else:
-                item = str(item)
-        elif isinstance(item, list):
+        if isinstance(item, list):
             item = decode_list(item)
         elif isinstance(item, dict):
             item = decode_dict(item)
+        elif PYTHON2:
+            if isinstance(item, unicode):
+                item = item.encode('utf-8')
+            elif BYTEARRAY_EXISTS and isinstance(item, bytearray):
+                item = str(item)
+        elif isinstance(item, (bytes, bytearray)):
+            item = str(item, 'utf-8')
         ret.append(item)
     return ret
 
@@ -400,29 +430,28 @@ def decode_dict(data):
         # first the key
         if isinstance(key, str):
             pass
-        elif (sys.version_info[0] < 3) and isinstance(key, unicode):
-            key = key.encode('utf-8')
-        elif isinstance(key, (bytes, bytearray)):
-            if sys.version_info[0] >= 3:
-                key = str(key, 'utf-8')
-            else:
+        elif PYTHON2:
+            if isinstance(key, unicode):
+                key = key.encode('utf-8')
+            elif BYTEARRAY_EXISTS and isinstance(key, bytearray):
                 key = str(key)
+        elif isinstance(key, (bytes, bytearray)):
+            key = str(key, 'utf-8')
 
         # now the value
         if isinstance(value, str):
             pass
-        elif (sys.version_info[0] < 3) and isinstance(value, unicode):
-            value = value.encode('utf-8')
-        elif isinstance(value, (bytes, bytearray)):
-            if sys.version_info[0] >= 3:
-                value = str(value, 'utf-8')
-            else:
-                key = str(value)
-
-        elif isinstance(value, list):
+        if isinstance(value, list):
             value = decode_list(value)
         elif isinstance(value, dict):
             value = decode_dict(value)
+        elif PYTHON2:
+            if isinstance(value, unicode):
+                value = value.encode('utf-8')
+            elif BYTEARRAY_EXISTS and isinstance(key, bytearray):
+                value = str(value)
+        elif isinstance(value, (bytes, bytearray)):
+            value = str(value, 'utf-8')
 
         # add stringified (key, value) pair to result
         ret[key] = value
@@ -592,22 +621,25 @@ def printjob_info(jobid, include_attributes=False):
         pbs.logmsg(pbs.EVENT_DEBUG4, 'Running: %s' % cmd)
         process = subprocess.Popen(cmd, shell=False,
                                    stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+                                   stderr=subprocess.PIPE,
+                                   universal_newlines=True)
         out, err = process.communicate()
+        if process.returncode != 0:
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       'command return code non-zero: %s'
+                       % str(process.returncode))
+            pbs.logmsg(pbs.EVENT_DEBUG4,
+                       'command stderr: %s'
+                       % stringified_output(err))
     except Exception as exc:
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Error running command: %s' % cmd)
-        pbs.logmsg(pbs.EVENT_DEBUG2, 'Error message: %s' % err)
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Exception: %s' % exc)
-        return info
+        return {}
+    # if we get a non-str type then convert before calling splitlines
+    # should not happen since we pass universal_newlines True
+    out_split = stringified_output(out).splitlines()
     pattern = re.compile(r'^(\w.*):\s*(\S+)')
-    if (not isinstance(out, str)
-            and isinstance(out, (bytes, bytearray))):
-        if sys.version_info[0] >= 3:
-            out = out.decode('utf-8')
-        else:
-            out = str(out)
-
-    for line in out.splitlines():
+    for line in out_split:
         result = re.match(pattern, line)
         if not result:
             continue
@@ -1743,8 +1775,9 @@ class NodeUtils(object):
             # Try running the nvidia-smi command
             process = subprocess.Popen(cmd, shell=False,
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            out, err = process.communicate()
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0]
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
                        " ".join(cmd))
@@ -1755,10 +1788,12 @@ class NodeUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: nvidia-smi call took %f seconds' %
                        (caller_name(), elapsed_time))
+        # if we get a non-str type then convert before calling xmlet
+        # should not happen since we passed universal_newlines True
         try:
             # Try parsing the output
             import xml.etree.ElementTree as xmlet
-            root = xmlet.fromstring(out)
+            root = xmlet.fromstring(stringified_output(out))
             pbs.logmsg(pbs.EVENT_DEBUG4, 'root.tag: %s' % root.tag)
             for child in root:
                 if child.tag == 'gpu':
@@ -1852,8 +1887,8 @@ class NodeUtils(object):
                     or 'AuthenticAMD' in cpuinfo['cpu'][0]['vendor_id']):
                 if 'ht' in cpuinfo['cpu'][0]['flags']:
                     cpuinfo['hyperthreads_per_core'] = \
-                        (cpuinfo['cpu'][0]['siblings']
-                         / cpuinfo['cpu'][0]['cpu cores'])
+                        int(cpuinfo['cpu'][0]['siblings']
+                            // cpuinfo['cpu'][0]['cpu cores'])
                     # Map hyperthreads to physical cores
                     if cpuinfo['hyperthreads_per_core'] > 1:
                         pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -1888,8 +1923,8 @@ class NodeUtils(object):
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Hyperthreading check failed' %
                        caller_name())
-        cpuinfo['physical_cpus'] = cpuinfo['logical_cpus'] / \
-            cpuinfo['hyperthreads_per_core']
+        cpuinfo['physical_cpus'] = int(cpuinfo['logical_cpus']
+                                       // cpuinfo['hyperthreads_per_core'])
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s returning: %s' %
                    (caller_name(), cpuinfo))
         return cpuinfo
@@ -2247,11 +2282,13 @@ class NodeUtils(object):
                     if not self.cfg['use_hyperthreads']:
                         # Do not treat a hyperthread as a core when
                         # use_hyperthreads is false.
-                        threads /= self.cpuinfo['hyperthreads_per_core']
+                        threads = int(threads
+                                      // self.cpuinfo['hyperthreads_per_core'])
                     elif self.cfg['ncpus_are_cores']:
                         # use_hyperthreads and ncpus_are_cores are both true,
                         # advertise only one thread per core
-                        threads /= self.cpuinfo['hyperthreads_per_core']
+                        threads = int(threads
+                                      // self.cpuinfo['hyperthreads_per_core'])
                     if vnodes:
                         # set the value on the host to 0
                         host_resc_avail['ncpus'] = 0
@@ -2699,10 +2736,10 @@ class CgroupUtils(object):
         except NameError:
             basestring = str
         # We want a view/iterator object, not something that creates copied
-        # lists. Unfortunately, iteritems/viewitems() no longer exists in Py3
+        # lists. iteritems/viewitems() no longer exists in Py3
         # since items() itself is now implemented as a view object.
-        dict_iter_object = (config_dict.items() if sys.version_info[0] >= 3
-                            else config_dict.iteritems())
+        dict_iter_object = (config_dict.iteritems() if PYTHON2
+                            else config_dict.items())
         for key_found, value_found in dict_iter_object:
             if isinstance(value_found, dict):
                 # subsection found
@@ -3024,16 +3061,20 @@ class CgroupUtils(object):
                 cmd = ['systemctl', 'is-active', self.cfg['cgroup_prefix']]
                 process = subprocess.Popen(cmd, shell=False,
                                            stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-                out, err = process.communicate()
+                                           stderr=subprocess.PIPE,
+                                           universal_newlines=True)
+                out = process.communicate()[0]
                 if (process.returncode == 0):
                     # service is already active -- no need to create it
                     return
                 else:
                     pbs.logmsg(pbs.EVENT_DEBUG,
-                               '%s: systemctl is-active <service> returned %s'
-                               % (caller_name(), cmd.returncode))
+                               '%s: systemctl is-active <svc> return code %s'
+                               % (caller_name(), process.returncode))
             except Exception:
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s: Failed to call systemctl is-active'
+                           % caller_name())
                 # was worth a try -- try to create service now
                 # and see if that fails
                 pass
@@ -3064,15 +3105,25 @@ class CgroupUtils(object):
             cmd = ['systemctl', 'start', os.path.basename(servicefile)]
             process = subprocess.Popen(cmd, shell=False,
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
             out, err = process.communicate()
+            if (process.returncode == 0):
+                pbs.logmsg(pbs.EVENT_DEBUG,
+                           '%s: Started systemd service with file %s'
+                           % (caller_name(), servicefile))
+            else:
+                pbs.logmsg(pbs.EVENT_ERROR,
+                           '%s: systemctl start <svc> return code %s'
+                           % (caller_name(), process.returncode))
+                pbs.logmsg(pbs.EVENT_ERROR, '%s: stderr of systemctl was: %s'
+                           % (caller_name(),
+                              stringified_output(err)))
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
-                       '%s: Failed to start systemd service: %s' %
-                       (caller_name(), os.path.basename(servicefile)))
+                       '%s: Failed to start systemd service: %s'
+                       % (caller_name(), os.path.basename(servicefile)))
             raise
-        pbs.logmsg(pbs.EVENT_DEBUG, '%s: Started systemd service with file %s'
-                   % (caller_name(), servicefile))
 
     def create_paths(self):
         """
@@ -3281,9 +3332,14 @@ class CgroupUtils(object):
                                         '--property=Version'],
                                        shell=False,
                                        stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            out, err = process.communicate()
-            ver = int(re.sub(r'Version=([0-9]+)', r'\1', out.splitlines()[0]))
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0]
+            # if we get a non-str type then convert
+            # before calling splitlines
+            # should not happen since we pass universal_newlines True
+            out_split = stringified_output(out).splitlines()
+            ver = int(re.sub(r'Version=\D*(\d+)', r'\1', out_split[0]))
         except Exception:
             # Note we also get here if we can't decode an int version
             return 0
@@ -3744,8 +3800,9 @@ class CgroupUtils(object):
             if self.cfg['use_hyperthreads'] and self.cfg['ncpus_are_cores']:
                 needed *= node.cpuinfo['hyperthreads_per_core']
             if needed > avail:
-                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Insufficient ncpus: %s/%s' %
-                           (caller_name(), needed, avail))
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s: insufficient ncpus: %s needed, %s available'
+                           % (caller_name(), needed, avail))
                 return {}
             if self.cfg['use_hyperthreads']:
                 # Find cores that are fully available
@@ -3774,12 +3831,20 @@ class CgroupUtils(object):
             # assigned all of the fully avaiable cores. There still may
             # be cores to assign. When use_hyperthreads is disabled, we
             # assign all the cores here.
-            corelist = sorted(cores)
-            if needed > len(corelist):
-                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
-                           (caller_name(), len(corelist) - needed))
+            if needed <= 0:
+                # we're done (will always hold if use_hyperthreads
+                # and ncpus_are_cores are both True)
+                pass
+            elif needed <= len(cores):
+                corelist = sorted(cores)
+                assigned['cpuset.cpus'] += corelist[:needed]
+            else:
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           '%s: in final pass, '
+                           '%d more ncpus needed than available'
+                           % (caller_name(), needed - len(cores)))
                 return {}
-            assigned['cpuset.cpus'] += corelist[:needed]
+
             # Set cpuset.mems to the socketlist for now even though
             # there may not be sufficient memory. Memory gets
             # checked later in this method.
@@ -4363,10 +4428,10 @@ class CgroupUtils(object):
                         cput = 0
                 # Calculate cpupercent based on the reported values
                 if walltime > 0:
-                    cpupercent = 100 * cput / walltime
+                    cpupercent = (100.0 * cput) / walltime
                 else:
                     cpupercent = 0
-                resc_used['cpupercent'] = pbs.pbs_int(cpupercent)
+                resc_used['cpupercent'] = pbs.pbs_int(int(cpupercent))
                 pbs.logjobmsg(jobid, '%s: CPU percent: %d' %
                               (caller_name(), cpupercent))
                 # Now update cput
@@ -4502,11 +4567,16 @@ class CgroupUtils(object):
                             'vmem limit (%s) exceeds vmem requested (%s)' %
                             (vmem_limit, vmem_requested))
                 if size_as_int(vmem_limit) > size_as_int(mem_limit):
-                    # This job may utilize swap
+                    # This job may try to utilize swap
                     if size_as_int(vmem_avail) <= size_as_int(mem_avail):
                         # No swap available
-                        raise CgroupLimitError('Job might utilize swap '
-                                               'and no swap space available')
+                        if vmem_requested is not None:
+                            raise CgroupLimitError('Job might utilize swap'
+                                                   ' and no swap on host')
+                        else:
+                            # It got its impossible vmem>mem from a default
+                            # undo that since there is no swap
+                            vmem_limit = mem_limit
             # Assign mem and vmem
             if mem_enabled:
                 if mem_requested is None:
@@ -4589,7 +4659,7 @@ class CgroupUtils(object):
                 except Exception:
                     jobdict = dict()
                     pbs.logmsg(pbs.EVENT_DEBUG2,
-                               '%s: Failed to resyncing local job data' %
+                               '%s: Failed to gather local job data' %
                                caller_name())
                 # There may not be a .JB file present for this job yet
                 if jobid not in jobdict:
@@ -5181,22 +5251,17 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         try:
             proc = subprocess.Popen(['dmesg'], shell=False,
-                                    stdout=subprocess.PIPE)
-            if (sys.version_info[0] < 3):
-                # string returned is a raw byte array in Py2, we don't care
-                # about what happens to special characters here as long as we
-                # can match the job cgroups-- assume no one is foolish
-                # enough to use non-ASCII in the cgroup prefix ot server name
-                out = proc.communicate()[0].splitlines()
-            else:
-                # Python 3 gets a UTF-8 encoded byte array,
-                # convert to normal Py3 string
-                out = proc.communicate()[0].decode('utf-8').splitlines()
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True)
+            out = proc.communicate()[0]
+            # if we get a non-str type then convert before calling splitlines
+            # should not happen since we pass universal_newlines True
+            out_split = stringified_output(out).splitlines()
         except Exception:
             return ''
-        out.reverse()
+        out_split.reverse()
         # Check to see if the job id is found in dmesg output
-        for line in out:
+        for line in out_split:
             start = line.find('Killed process ')
             if start < 0:
                 start = line.find('Task in /%s' % self.cfg['cgroup_prefix'])

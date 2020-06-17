@@ -1100,27 +1100,6 @@ req_quejob(struct batch_request *preq)
 	pj->ji_wattr[(int)JOB_ATR_substate].at_flags |=
 		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
-
-	/* If this is a reservation job", "reserve_start", "reserve_end",
-	 * and "reserve_duration" need to be consistent and determined,
-	 * if yet to be determined.  Also, the reservation state needs to
-	 * be initialized (to UNCONFIRMED) and a "resc_resv" structure
-	 * associated to the job
-	 */
-
-	if (start_end_dur_wall((void*)pj, JOB_OBJECT) == -1) {
-		job_purge(pj);
-		req_reject(PBSE_BADTSPEC, 0, preq);
-		return;
-	}
-
-	Update_Resvstate_if_resv(pj);
-	if (add_resc_resv_if_resvJob(pj) != 0) {
-		job_purge(pj);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		return;
-	}
-
 	/* action routine for select does not have reservation data hence
 	 * returns without doing checks. Checks are called now.
 	 */
@@ -1773,7 +1752,6 @@ req_commit(struct batch_request *preq)
 #ifndef	PBS_MOM
 	int			newstate;
 	int			newsub;
-	resc_resv	*presv;
 	pbs_queue	*pque;
 	int			rc;
 	pbs_db_jobscr_info_t	jobscr;
@@ -1841,8 +1819,8 @@ req_commit(struct batch_request *preq)
 	 */
 
 	(void)reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit);
-	start_exec(pj);
 	job_or_resv_save((void *)pj, SAVEJOB_NEW, JOB_OBJECT);
+	start_exec(pj);
 
 	/* The ATR_VFLAG_MODIFY bit for several attributes used to be
 	 * set here. Now we rely on these bits to be set when and where
@@ -1888,34 +1866,7 @@ req_commit(struct batch_request *preq)
 		req_reject(rc, 0, preq);
 		return;
 	}
-	account_jobstr2(pj, PBS_ACCT_QUEUE);
-
-	if (pj->ji_resvp) {
-		/*we are supposedly dealing with a reservation job:
-		 *1. make sure pointer is still valid - thoretically, there is a
-		 *   tiny chance that the reservation structure went away
-		 *	automatically, e.g. reservation window expired and the stucture
-		 *	was removed prior to being at this point in the code
-		 *2. remove resevation's link from list "svr_newresvs" and place
-		 *	it on list "svr_allresvs"
-		 */
-		presv = (resc_resv *)GET_NEXT(svr_newresvs);
-		while (presv) {
-			if (presv == pj->ji_resvp &&
-				presv->ri_qs.ri_type == RESV_JOB_OBJECT)
-				break;
-			presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-		}
-		if (presv == NULL) {
-			(void)job_purge(pj);
-			req_reject(PBSE_SYSTEM, 0, preq);
-			return;
-		}
-		delete_link(&presv->ri_allresvs);
-		append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-		set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
-		Update_Resvstate_if_resv(pj);
-	}
+	account_jobstr(pj, PBS_ACCT_QUEUE);
 
 	/* save job and job script within single transaction */
 	pbs_db_begin_trx(conn, 0, 0);
@@ -2260,16 +2211,7 @@ req_resvSub(struct batch_request *preq)
 	 * server to fulfill or reject;  we may or may not want
 	 * this capability, but will have this code here
 	 */
-
-	if ((presv = find_resv(rid)) == NULL) {
-		/* Not on "all_resvs" list try "new_resvs" list */
-		presv = (resc_resv *)GET_NEXT(svr_newresvs);
-		while (presv) {
-			if (!strcmp(presv->ri_qs.ri_resvID, rid))
-				break;
-			presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-		}
-	}
+	presv = find_resv(rid);
 
 	if (presv != NULL) {
 
@@ -2434,7 +2376,7 @@ req_resvSub(struct batch_request *preq)
 
 	/*"start", "end","duration", and "wall"; derive and check*/
 
-	if (start_end_dur_wall(presv, RESC_RESV_OBJECT)) {
+	if (start_end_dur_wall(presv)) {
 		resv_free(presv);
 		req_reject(PBSE_BADTSPEC, 0, preq);
 		return;
@@ -2489,7 +2431,6 @@ req_resvSub(struct batch_request *preq)
 	presv->ri_modified = 1;
 	if (created_here) {
 		presv->ri_qs.ri_svrflags = created_here;
-		presv->ri_qs.ri_type = RESC_RESV_OBJECT;
 	}
 
 	/*
@@ -2695,12 +2636,6 @@ req_resvSub(struct batch_request *preq)
 	}
 
 	/* set remaining resc_resv structure elements */
-
-	presv->ri_wattr[(int)RESV_ATR_resv_type]
-	.at_val.at_long = presv->ri_qs.ri_type;
-	presv->ri_wattr[(int)RESV_ATR_resv_type].at_flags |= ATR_VFLAG_SET |
-		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-
 	presv->ri_qs.ri_state = RESV_UNCONFIRMED;
 	presv->ri_qs.ri_substate = RESV_UNCONFIRMED;
 

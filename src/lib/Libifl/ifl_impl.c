@@ -72,6 +72,25 @@ pbs_asyrunjob(int c, char *jobid, char *location, char *extend) {
 
 /**
  * @brief
+ *	-Pass-through call to send async run job batch request with ack
+ *
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] location - string of vnodes/resources to be allocated to the job
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ *
+ */
+int pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend)
+{
+	return (*pfn_pbs_asyrunjob_ack)(c, jobid, location, extend);
+}
+
+/**
+ * @brief
  *	-Pass-through call to send alter Job request
  *	really an instance of the "manager" request.
  *
