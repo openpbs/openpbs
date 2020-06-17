@@ -1217,7 +1217,9 @@ class SmokeTest(PBSTestSuite):
 
         vnode_val = self.mom.shortname
         if self.mom.is_cpuset_mom():
-            vnode_val = self.server.status(NODE)[1]['id']
+            nodeinfo = self.server.status(NODE)
+            if len(nodeinfo) > 1:
+                vnode_val = nodeinfo[1]['id']
         attr = {'Resources_available.foo3': '2gb'}
         self.server.manager(MGR_CMD_SET, NODE, attr, id=vnode_val)
         attr = {'Resources_available.foo1': 3}
