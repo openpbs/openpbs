@@ -4297,6 +4297,8 @@ start_end_dur_wall(resc_resv *presv)
 					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					pduration->at_val.at_long;
+				atemp.at_val.at_long = pduration->at_val.at_long;
+				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
@@ -4307,6 +4309,10 @@ start_end_dur_wall(resc_resv *presv)
 				((petime->at_val.at_long - pstime->at_val.at_long) !=
 					pduration->at_val.at_long))
 				rc = -1;
+			else {
+				atemp.at_val.at_long = pduration->at_val.at_long;
+				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
+			}
 			break;
 
 		case  6:
@@ -4321,6 +4327,8 @@ start_end_dur_wall(resc_resv *presv)
 					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
 					pduration->at_val.at_long;
+				atemp.at_val.at_long = pduration->at_val.at_long;
+				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 

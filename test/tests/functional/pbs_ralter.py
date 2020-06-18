@@ -252,8 +252,7 @@ class TestPbsResvAlter(TestFunctional):
     def alter_a_reservation(self, r, start, end, shift=0,
                             alter_s=False, alter_e=False,
                             whichMessage=1, confirm=True, check_log=True,
-                            interactive=0, sequence=1, alter_d=False,
-                            a_duration=None):
+                            interactive=0, sequence=1, a_duration=None):
         """
         Helper method for altering a reservation.
         This method also checks for the server and accounting logs.
@@ -300,6 +299,9 @@ class TestPbsResvAlter(TestFunctional):
                         to alter.
                         Default: 1
         :type  sequence: int.
+
+        :param a_duration: The duration to modify
+        :type a_duration: int
         """
         new_start = start
         new_end = end
@@ -324,6 +326,15 @@ class TestPbsResvAlter(TestFunctional):
                 new_duration_conv = self.bu.convert_duration(a_duration)
             else:
                 new_duration_conv = a_duration
+
+            if not alter_s and not alter_e:
+                new_end = start + a_duration + shift
+            elif alter_s and not alter_e:
+                new_end = new_start + a_duration
+            elif not alter_s and alter_e:
+                new_start = new_end - a_duration
+            # else new_start and new_end have already been calculated
+
         else:
             new_duration_conv = new_end - new_start
 
@@ -2004,3 +2015,32 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_end, end)
         self.assertEqual(t_start, start)
         self.assertEqual(t_duration, duration)
+
+    def test_duration_walltime(self):
+        """
+        Check when ralter changes duration, it also changes walltime
+        """
+
+        rid, start, end = self.submit_and_confirm_reservation(3600, 600)
+
+        self.server.expect(RESV, {'Resource_List.walltime': 600}, id=rid)
+
+        # Alter start + end
+        self.alter_a_reservation(rid, start, end, shift=30, alter_s=True,
+                                 alter_e=True)
+        self.server.expect(RESV, {'Resource_List.walltime': 600}, id=rid)
+
+        # Alter start + duration
+        self.alter_a_reservation(rid, start, end, shift=30, alter_s=True,
+                                 a_duration=300, sequence=2)
+        self.server.expect(RESV, {'Resource_List.walltime': 300}, id=rid)
+
+        # Alter end + duration
+        self.alter_a_reservation(rid, start, end, shift=30, alter_e=True,
+                                 a_duration=450, sequence=3)
+        self.server.expect(RESV, {'Resource_List.walltime': 450}, id=rid)
+
+        # Alter start + end + duration
+        self.alter_a_reservation(rid, start, end, shift=30, alter_e=True,
+                                 alter_s=True, a_duration=600, sequence=4)
+        self.server.expect(RESV, {'Resource_List.walltime': 600}, id=rid)
