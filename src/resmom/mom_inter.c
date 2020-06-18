@@ -106,8 +106,7 @@ int    amt;
 		} else if (got == 0)
 			break;
 		else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-						"CS_read failed with errno %d", errno);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "CS_read failed with errno %d", errno);
 			return (-1);
 		}
 	}
@@ -229,7 +228,7 @@ int sock;
 		return (-1);
 	if (sscanf(buf, "WINSIZE %hu,%hu,%hu,%hu", &wsz.ws_row, &wsz.ws_col,
 		&wsz.ws_xpixel, &wsz.ws_ypixel) != 4)
-			return (-1);
+		return (-1);
 	return 0;
 }
 
@@ -286,8 +285,7 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 				if (errno == EINTR) {
 					continue;
 				}
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-							"Write failed with errno %d", errno);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Write failed with errno %d", errno);
 				return (-1);
 			}
 			c -= wc;
@@ -307,8 +305,7 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 					if (errno == EINTR) {
 						continue;
 					}
-					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-								"Write to ptc failed with errno %d", errno);
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Write to ptc failed with errno %d", errno);
 					return (-1);
 				}
 				c -= wc;
@@ -320,8 +317,7 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 			if (errno == EINTR)
 				continue;
 			else {
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-							"CS_read failed with errno %d", errno);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "CS_read failed with errno %d", errno);
 				return (-1);
 			}
 		}
@@ -357,8 +353,7 @@ setcurrentworkdir(char *command)
 				if (errno == EINTR) {
 					continue;
 				}
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-							"Write failed with errno %d", errno);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Write failed with errno %d", errno);
 				return (-1);
 			}
 			c -= wc;
@@ -396,8 +391,7 @@ mom_reader_Xjob(int s)
 				if (errno == EINTR) {
 					continue;
 				}
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-							"Write to ptc failed with errno %d", errno);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Write to ptc failed with errno %d", errno);
 				return (-1);
 			}
 			c -= wc;
@@ -413,8 +407,7 @@ mom_reader_Xjob(int s)
 			return (0);
 		}
 		else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-						"CS_read failed with errno %d", errno);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "CS_read failed with errno %d", errno);
 			return (-1);
 		}
 	}
@@ -455,8 +448,7 @@ int ptc;
 					if (errno == EINTR) {
 						continue;
 					}
-					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-								"Write failed with errno %d", errno);
+					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Write failed with errno %d", errno);
 					return (-1);
 				}
 				c -= wc;
@@ -468,8 +460,7 @@ int ptc;
 			if (errno == EINTR)
 				continue;
 			else {
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-							"read failed with errno %d", errno);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "read failed with errno %d", errno);
 				return (-1);
 			}
 		}

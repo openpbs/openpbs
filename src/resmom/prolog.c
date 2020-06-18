@@ -82,10 +82,9 @@ static void
 pelog_timeout(void)
 {
 	if (pelog_handle != INVALID_HANDLE_VALUE) {
-		if (!TerminateJobObject(pelog_handle, 2)) {
-			log_err(-1, __func__, "TerminateJobObject failed : Could not terminate pelog object");
-		}
-		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "terminated pelog object");
+		if (!TerminateJobObject(pelog_handle, 2))
+			log_err(-1, __func__, "TerminateJobObject failed: Could not terminate pelog object");
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, __func__, "terminated pelog object");
 	}
 }
 #endif
@@ -306,18 +305,16 @@ int   pe_io_type;
 		if (fd_out != -1) {
 			hOut = (HANDLE)_get_osfhandle(fd_out);
 			DWORD dwPtr = SetFilePointer(hOut, (LONG)NULL, (PLONG)NULL, FILE_END);
-			if (dwPtr == INVALID_SET_FILE_POINTER) {
+			if (dwPtr == INVALID_SET_FILE_POINTER)
 				log_err(-1, __func__, "SetFilePointer failed for out file handle");
-			}
 		}
 		fd_err = open_std_file(pjob, StdErr, O_APPEND|O_WRONLY,
 			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 		if (fd_err != -1) {
 			hErr = (HANDLE)_get_osfhandle(fd_err);
 			DWORD dwPtr = SetFilePointer(hErr, (LONG)NULL, (PLONG)NULL, FILE_END);
-			if (dwPtr == INVALID_SET_FILE_POINTER) {
+			if (dwPtr == INVALID_SET_FILE_POINTER)
 				log_err(-1, __func__, "SetFilePointer failed for error file handle");
-			}
 		}
 		if (fd_out == -1 || fd_err == -1) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING,
@@ -406,12 +403,11 @@ int   pe_io_type;
 			if (!SetEnvironmentVariable("PBS_JOBDIR",
 				jobdirname(pjob->ji_qs.ji_jobid,
 				pjob->ji_grpcache->gc_homedir)))
-				log_err(-1, __func__, "set environment variable failed in setting PBS_JOBDIR to per-job "
-						"staging and execution directory");
+				log_err(-1, __func__, "Unable to set PBS_JOBDIR for sandbox=PRIVATE");
 		} else {
 			/* set PBS_JOBDIR to user HOME*/
 			if (!SetEnvironmentVariable("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir))
-				log_err(-1, __func__, "set environment variable failed in setting PBS_JOBDIR to user HOME");
+				log_err(-1, __func__, "Unable to set PBS_JOBDIR for user HOME");
 		}
 	}
 
