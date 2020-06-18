@@ -418,6 +418,8 @@ class ObfuscateSnapshot(object):
         attrs_to_obf += acct_extras
 
         acct_path = os.path.join(snap_dir, "server_priv", "accounting")
+        if not os.path.isdir(acct_path):
+            return
         acct_fnames = self.du.listdir(path=acct_path, sudo=sudo_val)
         for acct_fname in acct_fnames:
             acct_fpath = os.path.join(acct_path, acct_fname)
