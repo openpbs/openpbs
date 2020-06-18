@@ -104,8 +104,10 @@ set_shell(job *pjob, struct passwd *pwdp)
 	 * Find which shell to use, one specified or the login shell
 	 * If we fail to get cmd shell(unlikely), use "cmd.exe" as shell
 	 */
-	if (0 != get_cmd_shell(shell, sizeof(shell)))
+	if (0 != get_cmd_shell(shell, sizeof(shell))) {
 		strncpy(shell, "cmd.exe", sizeof(shell) - 1);
+		shell[sizeof(shell) - 1] = '\0';
+	}
 	if ((pjob->ji_wattr[(int)JOB_ATR_shell].at_flags & ATR_VFLAG_SET) &&
 		(vstrs = pjob->ji_wattr[(int)JOB_ATR_shell].at_val.at_arst)) {
 		for (i = 0; i < vstrs->as_usedptr; ++i) {
@@ -114,14 +116,15 @@ set_shell(job *pjob, struct passwd *pwdp)
 				if (!strncmp(mom_host, cp+1, strlen(cp+1))) {
 					*cp = '\0';	/* host name matches */
 					strncpy(shell, vstrs->as_string[i], sizeof(shell) - 1);
+					shell[sizeof(shell) - 1] = '\0';
 					break;
 				}
 			} else {
 				strncpy(shell, vstrs->as_string[i], sizeof(shell) - 1);	/* wildcard */
+				shell[sizeof(shell) - 1] = '\0';
 			}
 		}
 	}
-	shell[sizeof(shell) - 1] = '\0';
 	for (i=0; shell[i] != '\0'; i++) {
 		if (shell[i] == '/')
 			shell[i] = '\\';
