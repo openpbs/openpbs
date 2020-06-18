@@ -8833,7 +8833,7 @@ main(int argc, char *argv[])
 		(void)strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, (sizeof(mom_short_name) - 1));
 		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
 	} else {
-		/* use gethostname(), trucated to first dot */
+		/* use gethostname(), truncated to first dot */
 		(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
 		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
 		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
