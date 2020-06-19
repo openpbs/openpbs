@@ -1054,7 +1054,7 @@ setup_nodes()
 	int       perm = ATR_DFLAG_ACCESS | ATR_PERM_ALLOW_INDIRECT;
 	pbs_db_obj_info_t   obj;
 	pbs_db_node_info_t dbnode = {{0}};
-	pbs_db_mominfo_time_t mom_tm;
+	pbs_db_mominfo_time_t mom_tm = {0, 0};
 	void *state;
 	int rc;
 	time_t	  mom_modtime = 0;
