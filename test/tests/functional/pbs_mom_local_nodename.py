@@ -42,8 +42,16 @@ from ptl.lib.pbs_testlib import BatchUtils
 
 
 class TestMomLocalNodeName(TestFunctional):
+    """
+    This test suite tests that mom sets its short name correctly
+    and that mom.get_local_nodename() returns the correct value
+    """
 
     def test_url_nodename_not_truncated(self):
+        """
+        This test case tests that mom does not truncate the value of
+        PBS_MOM_NODE_NAME when it contains dots
+        """
         self.du.set_pbs_config(confs={'PBS_MOM_NODE_NAME': 'a.b.c.d'})
         # Restart PBS for changes
         self.server.restart()
@@ -63,6 +71,10 @@ pbs.logmsg(pbs.LOG_DEBUG,
         self.mom.log_match("my local nodename is a.b.c.d")
 
     def test_ip_nodename_not_truncated(self):
+        """
+        This test case tests that mom does not truncate the value of
+        PBS_MOM_NODE_NAME when it is an ipaddress
+        """
         ipaddr = socket.gethostbyname(self.mom.hostname)
         self.du.set_pbs_config(confs={'PBS_MOM_NODE_NAME': ipaddr})
         # Restart PBS for changes
