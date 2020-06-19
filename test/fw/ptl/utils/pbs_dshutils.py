@@ -2045,10 +2045,13 @@ class DshUtils(object):
         :param dirname: the directory will be created in this directory
         :type dirname: str or None
         :param asuser: Optional username of temp directory owner
+        :type asuser: str
         :param asgroup: Optional group name of temp directory
                     group owner
+        :type asgroup: str
         :param mode: Optional mode bits to assign to the temporary
                      directory
+        :type mode: octal integer
         :param level: logging level, defaults to INFOCLI2
         """
         current_user_info = self.get_id_info(self.get_current_user())
@@ -2076,9 +2079,9 @@ class DshUtils(object):
         # if temp dir to be created on remote host
         if not self.is_localhost(hostname):
             if asuser is not None:
-                # by default mkstemp creates dir with 0700 permission
+                # by default mkstemp creates dir with 0o700 permission
                 # to create dir as different user first change the dir
-                # permission to 0755 so that other user has read permission
+                # permission to 0o755 so that other user has read permission
                 self.chmod(path=tmpdir, mode=0o755)
                 # copy temp dir created on local host to remote host
                 # as different user
@@ -2098,9 +2101,9 @@ class DshUtils(object):
             # remove local temp dir
             os.rmdir(tmpdir)
         if asuser is not None:
-            # by default mkdtemp creates dir with 0700 permission
+            # by default mkdtemp creates dir with 0o700 permission
             # to create dir as different user first change the dir
-            # permission to 0755 so that other user has read permission
+            # permission to 0o755 so that other user has read permission
             self.chmod(path=tmpdir, mode=0o755)
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
