@@ -1715,7 +1715,9 @@ mgr_sched_set(struct batch_request *preq)
 
 	set_scheduler_flag(SCH_CONFIGURE, psched);
 
-	sched_save_db(psched, SVR_SAVE_FULL);
+	sched_save_db(psched);
+
+done:
 	sprintf(log_buffer, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);
 	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
@@ -1776,7 +1778,7 @@ mgr_sched_unset(struct batch_request *preq)
 
 	set_sched_default(psched, 0);
 
-	sched_save_db(psched, SVR_SAVE_FULL);
+	sched_save_db(psched);
 	sprintf(log_buffer, msg_manager, msg_man_uns, preq->rq_user, preq->rq_host);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);
 	mgr_log_attr(msg_man_uns, plist, PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
@@ -3399,7 +3401,7 @@ mgr_sched_create(struct batch_request *preq)
 
 	set_sched_default(psched, 0);
 
-	sched_save_db(psched, SVR_SAVE_FULL);
+	sched_save_db(psched);
 	snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);
 	mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
