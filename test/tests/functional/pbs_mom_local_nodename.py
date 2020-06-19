@@ -39,6 +39,7 @@
 
 from tests.functional import *
 from ptl.lib.pbs_testlib import BatchUtils
+import socket
 
 
 class TestMomLocalNodeName(TestFunctional):
