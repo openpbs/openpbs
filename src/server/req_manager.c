@@ -983,6 +983,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 	int do_indirect_check = 0;
 	int index;
 	int ord;
+	int rc;
 	svrattrl *pl;
 	resource_def *prsdef;
 	resource *presc;
@@ -1168,7 +1169,11 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 				break;
 		}
 
-		if (pbs_db_delete_attr_obj(conn, &obj, parent_id, sv_time, &cache_attr_list, &db_attr_list) != 0)
+		rc = pbs_db_delete_attr_obj(conn, &obj, parent_id, sv_time, &cache_attr_list, &db_attr_list);
+		free_db_attr_list(&cache_attr_list);
+		free_db_attr_list(&db_attr_list);
+
+		if (rc != 0)
 			return -1;
 
 	if (do_indirect_check)
