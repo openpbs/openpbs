@@ -70,7 +70,7 @@ class TestPbsResvAlter(TestFunctional):
             self.logger.info('Timezone not set, using Asia/Kolkata')
             self.tzone = 'Asia/Kolkata'
 
-        a = {'resources_available.ncpus': 4}
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
         self.server.create_vnodes('vnode', a, num=2, mom=self.mom,
                                   usenatvnode=True)
 
@@ -2084,6 +2084,7 @@ class TestPbsResvAlter(TestFunctional):
                                                               select=select)
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), 8)
+        {'Resource_List.ncpus': 6, 'Resource_List.nodect': 6}
 
         self.alter_a_reservation(rid, start, end, select=new_select1)
 

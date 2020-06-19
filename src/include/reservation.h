@@ -153,13 +153,14 @@ typedef struct pbsnode_list_ {
 	struct pbsnode_list_ *next;
 } pbsnode_list_t;
 
-/* Misc structures dealing with altering reservations */
+/* Structure used to revert standing reservations back to original values for susequent occurrences*/
 struct resv_alter_revert {
 	time_t rr_stime;
 	long rr_duration;
 	char *rr_select;
 };
 
+/* Structure used to revert reservation back if the ralter failed */
 struct resv_alter {
 	time_t ra_stime;
 	time_t ra_etime;
