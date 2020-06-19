@@ -2032,8 +2032,8 @@ class DshUtils(object):
         return tmpfile
 
     def create_temp_dir(self, hostname=None, suffix='', prefix='PtlPbs',
-                        dirname=None, asuser=None, asgroup=None, mode=None,
-                        level=logging.INFOCLI2, sudo=False):
+                        dirname=None, asuser=None, asgroup=None, mode=0o755,
+                        level=logging.INFOCLI2):
         """
         Create a temp dir by calling ``tempfile.mkdtemp``
         :param hostname: the hostname on which to query tempdir from
@@ -2063,26 +2063,23 @@ class DshUtils(object):
             gid = grp.getgrnam(str(asgroup))[2]
         # create a temp dir as current user
         tmpdir = tempfile.mkdtemp(suffix, prefix)
+        # By default mkdtemp creates dir according to usmask.
+        # To create dir as different user first change the dir
+        # permission to 0755 so that other user has read permission
+        self.chmod(path=tmpdir, mode=0o755)
         if dirname is not None:
             dirname = str(dirname)
-            self.chmod(path=tmpdir, mode=0o755)
             self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
                           recursive=True, gid=gid, uid=uid,
                           level=level)
             if mode is not None:
                 self.chmod(hostname, path=dirname, mode=mode, runas=asuser)
-            else:
-                self.chmod(hostname, path=dirname, mode=0o755, runas=asuser)
 
             tmpdir = dirname + tmpdir[4:]
 
         # if temp dir to be created on remote host
         if not self.is_localhost(hostname):
             if asuser is not None:
-                # by default mkstemp creates dir with 0o700 permission
-                # to create dir as different user first change the dir
-                # permission to 0o755 so that other user has read permission
-                self.chmod(path=tmpdir, mode=0o755)
                 # copy temp dir created on local host to remote host
                 # as different user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir, runas=asuser,
@@ -2090,10 +2087,7 @@ class DshUtils(object):
                               level=level)
                 if mode is not None:
                     self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
-                else:
-                    self.chmod(hostname, path=tmpdir, mode=0o755, runas=asuser)
             else:
-                self.chmod(path=tmpdir, mode=0o755)
                 # copy temp dir created on localhost to remote as current user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir,
                               level=level, preserve_permission=True,
@@ -2101,10 +2095,6 @@ class DshUtils(object):
             # remove local temp dir
             os.rmdir(tmpdir)
         if asuser is not None:
-            # by default mkdtemp creates dir with 0o700 permission
-            # to create dir as different user first change the dir
-            # permission to 0o755 so that other user has read permission
-            self.chmod(path=tmpdir, mode=0o755)
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
             tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
@@ -2114,8 +2104,6 @@ class DshUtils(object):
                           recursive=True, uid=uid, gid=gid, level=level)
             if mode is not None:
                 self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
-            else:
-                self.chmod(hostname, path=tmpdir2, mode=0o755, runas=asuser)
             # remove original temp dir
             os.rmdir(tmpdir)
             self.tmpdirlist.append(tmpdir2)

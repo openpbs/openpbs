@@ -90,7 +90,7 @@ class TestDshUtils(TestSelf):
         environ = self.du.parse_pbs_environment()
         self.assertNotIn('pbs_foo', environ, msg)
 
-    def check_access(self, path, mode=0o700, user=None, group=None):
+    def check_access(self, path, mode=0o755, user=None, group=None):
         """
         Helper function to check user, group and mode of given path
         """
