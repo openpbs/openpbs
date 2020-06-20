@@ -1025,6 +1025,7 @@ resv_revert_alter(resc_resv *presv)
 		presv->ri_alter.ra_select = NULL;
 		job_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
 		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
+		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	}
 
 	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;

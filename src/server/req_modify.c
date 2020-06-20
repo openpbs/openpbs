@@ -928,7 +928,7 @@ req_modifyReservation(struct batch_request *preq)
 					req_reject(PBSE_BADATVAL, 0, preq);
 					return;
 				}
-				
+
 				resv_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 				if (resv_state != RESV_CONFIRMED && resv_state != RESV_DEGRADED) {
 					resv_revert_alter(presv);
@@ -1015,7 +1015,7 @@ req_modifyReservation(struct batch_request *preq)
 			resv_revert_alter(presv);
 			return;
 		}
-		rc = set_chunk_sum(&presc->rs_value, &presv->ri_wattr[JOB_ATR_resource]);
+		rc = set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 		if (rc) {
 			req_reject(rc, 0, preq);
 			resv_revert_alter(presv);

@@ -3046,7 +3046,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
 		presv->ri_alter.ra_revert.rr_select = NULL;
 		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], presc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
-		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[JOB_ATR_resource]);
+		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	}
 
 	if (presv->ri_alter.ra_revert.rr_duration) {

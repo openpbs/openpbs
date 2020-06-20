@@ -2084,18 +2084,23 @@ class TestPbsResvAlter(TestFunctional):
                                                               select=select)
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), 8)
-        {'Resource_List.ncpus': 6, 'Resource_List.nodect': 6}
+        a = {'Resource_List.ncpus': 8, 'Resource_List.nodect': 8}
+        self.server.expect(RESV, a, id=rid)
 
         self.alter_a_reservation(rid, start, end, select=new_select1)
 
         st2 = self.server.status(RESV)
         self.assertEquals(len(st2[0]['resv_nodes'].split('+')), 4)
+        a = {'Resource_List.ncpus': 4, 'Resource_List.nodect': 4}
+        self.server.expect(RESV, a, id=rid)
 
         self.alter_a_reservation(rid, start, end, sequence=2,
                                  select=new_select2)
 
         st2 = self.server.status(RESV)
         self.assertEquals(len(st2[0]['resv_nodes'].split('+')), 2)
+        a = {'Resource_List.ncpus': 2, 'Resource_List.nodect': 2}
+        self.server.expect(RESV, a, id=rid)
 
     def test_alter_select_with_times(self):
         """
@@ -2215,3 +2220,27 @@ class TestPbsResvAlter(TestFunctional):
                            id=rid, offset=t)
 
         self.check_standing_resv_second_occurrence(rid, start, end, select)
+
+    def test_select_fail_revert(self):
+        """
+        Test that when a ralter fails, the select is reverted properly
+        """
+        offset = 3600
+        offset2 = 7200
+        shift = 1800
+        dur = 3600
+        select = "8:ncpus=1"
+        select2 = "4:ncpus=1"
+
+        rid, start, end = \
+            self.submit_and_confirm_reservation(offset, dur, select=select)
+
+        rid2, start2, end2 = \
+            self.submit_and_confirm_reservation(offset2, dur, select=select)
+
+        self.alter_a_reservation(rid, start, end, alter_s=True, alter_e=True,
+                                 shift=shift, select=select2, whichMessage=3)
+
+        a = {'Resource_List.select': '8:ncpus=1', 'Resource_List.ncpus': 8,
+             'Resource_List.nodect': 8}
+        self.server.expect(RESV, a, id=rid)
