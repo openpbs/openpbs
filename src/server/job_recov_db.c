@@ -530,7 +530,7 @@ resv_recov_db(char *resvid, resc_resv *presv)
 	int rc = -1;
 
 	if (!presv) {
-		if ((pr = resv_alloc()) == NULL) {
+		if ((pr = resv_alloc(resvid)) == NULL) {
 			log_err(-1, __func__, "resv_alloc failed");
 			return NULL;
 		}

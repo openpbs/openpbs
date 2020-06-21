@@ -1539,10 +1539,11 @@ update_resources_list_error:
  */
 
 resc_resv *
-resv_alloc(void)
+resv_alloc(char *resvid)
 {
 	int i;
 	resc_resv *resvp;
+	char *dot = NULL;
 
 	resvp = (resc_resv *) calloc(1, sizeof(resc_resv));
 	if (resvp == NULL) {
@@ -1562,6 +1563,18 @@ resv_alloc(void)
 	for (i = 0; i < RESV_ATR_LAST; i++) {
 		clear_attr(&resvp->ri_wattr[i], &resv_attr_def[i]);
 	}
+
+	if ((dot = strchr(resvid, (int)'.')) != 0)
+		*dot = '\0';
+
+	if (pbs_idx_insert(resvs_idx, (void *)(resvid + 1), (void *)resvp) != PBS_IDX_ERR_OK) {
+		*dot = '.';
+		log_errf(-1, __func__, "Failed to add resv %s into index", resvid);
+		free(resvp);
+		return NULL;
+	}
+	if (dot)
+		*dot = '.';
 
 	return (resvp);
 }
@@ -1585,6 +1598,8 @@ resv_free(resc_resv *presv)
 	int			 i;
 	struct work_task	*pwt;
 	badplace		*bp;
+	char *dot = NULL;
+	char *resvid = presv->ri_qs.ri_resvID;
 
 	/* remove any malloc working attribute space */
 
@@ -1612,41 +1627,20 @@ resv_free(resc_resv *presv)
 	if (presv->ri_brp)
 		free_br(presv->ri_brp);
 
+	if ((dot = strchr(resvid, (int)'.')) != 0)
+		*dot = '\0';
+
+	if (pbs_idx_delete(resvs_idx, (void *)(resvid + 1)) != PBS_IDX_ERR_OK) {
+		if (dot)
+			*dot = '.';
+		dot = NULL;
+		log_errf(-1, __func__, "Failed to delete resv %s from index", resvid);
+	}
+	if (dot)
+		*dot = '.';
+
 	/* now free the main structure */
 	free(presv);
-}
-
-/**
- * @brief
- * 		find_resv() - find resc_resv struct by reservation ID
- *
- *		Search list of all server resc_resv structs for one with same
- *		reservation ID as input "resvID"
- *
- * @param[in]	resvID - reservation ID
- *
- * @return	pointer to resc_resv struct
- * @retval	NULL	- not found
- */
-
-resc_resv *
-find_resv(char *resvID)
-{
-	char *at;
-	resc_resv  *presv;
-
-	if ((at = strchr(resvID, (int)'@')) != 0)
-		*at = '\0';	/* strip of @server_name */
-	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	while (presv != NULL) {
-		if (!strcmp(resvID, presv->ri_qs.ri_resvID))
-			return (presv);
-		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
-	}
-	if (at)
-		*at = '@';	/* restore @server_name */
-
-	return (presv);		/* pointer value is null */
 }
 
 

@@ -298,6 +298,7 @@ int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
 void *jobs_idx = NULL;
 void *queues_idx = NULL;
+void *resvs_idx = NULL;
 sigset_t	allsigs;
 
 int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
@@ -1868,6 +1869,7 @@ try_db_again:
 	 */
 	pbs_idx_destroy(jobs_idx);
 	pbs_idx_destroy(queues_idx);
+	pbs_idx_destroy(resvs_idx);
 
 	{
 		int csret;

@@ -131,8 +131,6 @@ extern void reply_preempt_jobs_request(int, int, struct job *);
 extern int copy_params_from_job(char *, resc_resv *);
 extern int confirm_resv_locally(resc_resv *, struct batch_request *, char *);
 extern int set_select_and_place(int, void *, attribute *);
-extern pbs_queue *find_resvqueuebyname(char *);
-extern resc_resv *find_resv_by_quename(char *);
 extern int make_schedselect(attribute *, resource *, pbs_queue *, attribute *);
 extern long long get_next_svr_sequence_id(void);
 

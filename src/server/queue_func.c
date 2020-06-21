@@ -339,37 +339,36 @@ find_resvqueuebyname(char *quename)
 
 /**
  * @brief
- * 		find_resv_by_quename() - find a reservation by the name of its queue
+ * 	find_resv() - find reservation resc_resv struct by its ID or queue name
  *
- * @param[in]	quename	- queue name.
+ *	Search list of all server resc_resv structs for one with given
+ *	reservation id or reservation queue name
  *
- * @return	resc_resv *
+ * @param[in]	id_or_quename - reservation ID or queue name
+ *
+ * @return	pointer to resc_resv struct
+ * @retval	NULL	- not found
  */
-
 resc_resv *
-find_resv_by_quename(char *quename)
+find_resv(char *id_or_quename)
 {
-	char *pc;
+	char *dot = NULL;
 	resc_resv *presv = NULL;
-	char qname[PBS_MAXQUEUENAME + 1];
 
-	if (quename == NULL || *quename == '\0')
+	if (id_or_quename == NULL || id_or_quename[0] == '\0')
 		return NULL;
 
-	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
-	qname[PBS_MAXQUEUENAME] = '\0';
-	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
-	if (pc)
-		*pc = '\0';
-	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	while (presv != NULL) {
-		if (strcmp(qname, presv->ri_qp->qu_qs.qu_name) == 0)
-			break;
-		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+	if ((dot = strchr(id_or_quename, (int)'.')) != 0)
+		*dot = '\0';
+
+	if (pbs_idx_find(resvs_idx, (void *)(id_or_quename + 1), (void **)&presv, NULL) != PBS_IDX_ERR_OK) {
+		if (dot)
+			*dot = '.';
+		return NULL;
 	}
-	if (pc)
-		*pc = '@';	/* restore '@' server portion */
-	return (presv);
+	if (dot)
+		*dot = '.';
+	return presv;
 }
 
 /**

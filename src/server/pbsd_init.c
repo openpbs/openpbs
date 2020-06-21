@@ -771,6 +771,10 @@ pbsd_init(int type)
 		return (-1);
 
 	/* load reservations */
+	if ((resvs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating reservations index failed!");
+		return (-1);
+	}
 	obj.pbs_db_obj_type = PBS_DB_RESV;
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
 	state = pbs_db_cursor_init(conn, &obj, NULL);

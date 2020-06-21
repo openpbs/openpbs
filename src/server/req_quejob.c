@@ -650,7 +650,7 @@ req_quejob(struct batch_request *preq)
 		if (index == JOB_ATR_create_resv_from_job) {
 			if (qname != NULL && *qname != '\0') {
 				resc_resv *presv;
-				presv = find_resv_by_quename(qname);
+				presv = find_resv(qname);
 
 				if (presv) {
 					job_purge(pj);
@@ -2194,7 +2194,7 @@ req_resvSub(struct batch_request *preq)
 	 * reservation get assigned
 	 */
 
-	if ((presv = resv_alloc()) == NULL) {
+	if ((presv = resv_alloc(rid)) == NULL) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
