@@ -861,6 +861,8 @@ job_purge(job *pjob)
 	delete_link(&pjob->ji_jobque);
 	delete_link(&pjob->ji_alljobs);
 	delete_link(&pjob->ji_unlicjobs);
+	if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+		log_joberr(PBSE_INTERNAL, __func__, "Failed to remove job from index", pjob->ji_qs.ji_jobid);
 
 	if (pjob->ji_preq != NULL) {
 		log_joberr(PBSE_INTERNAL, __func__, "request outstanding",
@@ -1095,7 +1097,7 @@ find_job(char *jobid)
 	job  *pj = NULL;
 	char buf[PBS_MAXSVRJOBID + 1];
 
-	if (jobid == NULL)
+	if (jobid == NULL || jobid[0] == '\0')
 		return NULL;
 
 	/* Make a copy of the job ID string before we modify it. */
@@ -1111,7 +1113,7 @@ find_job(char *jobid)
 
 #ifndef PBS_MOM
 	/*
-	 * Avl tree search cannot find partially formed jobid's.
+	 * index search cannot find partially formed jobid's.
 	 * While storing we supplied the full jobid.
 	 * So while retrieving also we have to provide
 	 * the exact key that was used while storing the job
@@ -1171,16 +1173,10 @@ find_job(char *jobid)
 		strcat(buf, server_name);
 	}
 
-	if (jobs_idx != NULL && pbs_idx_find(jobs_idx, buf, (void **)&pj, NULL) == PBS_IDX_ERR_OK)
-		return pj;
 #endif
-	pj = (job *)GET_NEXT(svr_alljobs);
-	while (pj != NULL) {
-		if (!strncasecmp(jobid, pj->ji_qs.ji_jobid, sizeof(pj->ji_qs.ji_jobid)))
-			break;
-		pj = (job *)GET_NEXT(pj->ji_alljobs);
-	}
-	return (pj);  /* may be a null pointer */
+	if (pbs_idx_find(jobs_idx, buf, (void **)&pj, NULL) == PBS_IDX_ERR_OK)
+		return pj;
+	return NULL;
 }
 
 /**

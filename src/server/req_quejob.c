@@ -529,9 +529,10 @@ req_quejob(struct batch_request *preq)
 		if (pj->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
 			int prot = preq->prot;
-			if (reply_jobid(preq, pj->ji_qs.ji_jobid,
-				BATCH_REPLY_CHOICE_Queue) == 0) {
+			if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
+				if (pbs_idx_delete(jobs_idx, pj->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+					log_joberr(PBSE_INTERNAL, __func__, "Failed to remove checkpointed job from index", pj->ji_qs.ji_jobid);
 				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 				pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
@@ -550,6 +551,8 @@ req_quejob(struct batch_request *preq)
 		}
 		/* unlink job from svr_alljobs since will be place on newjobs */
 		delete_link(&pj->ji_alljobs);
+		if (pbs_idx_delete(jobs_idx, pj->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+			log_joberr(PBSE_INTERNAL, __func__, "Failed to remove job from index", pj->ji_qs.ji_jobid);
 	} else {
 		char *namebuf;
 		char basename[MAXPATHLEN + 1] = {0};
@@ -1748,14 +1751,19 @@ req_commit(struct batch_request *preq)
 #ifdef PBS_MOM	/* MOM only */
 
 	/* move job from new job list to "all" job list, set to running state */
-
 	delete_link(&pj->ji_alljobs);
+	if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_ERR_OK) {
+		log_joberr(PBSE_INTERNAL, __func__, "Failed insert job in index", pj->ji_qs.ji_jobid);
+		req_reject(PBSE_INTERNAL, 0, preq);
+		job_purge(pj);
+		return;
+
+	}
 	append_link(&svr_alljobs, &pj->ji_alljobs, pj);
 	/*
 	 ** Set JOB_SVFLG_HERE to indicate that this is Mother Superior.
 	 */
 	pj->ji_qs.ji_svrflags |= JOB_SVFLG_HERE;
-
 	pj->ji_qs.ji_state = JOB_STATE_RUNNING;
 	pj->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_VFLAG_MODIFY;
 	pj->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;

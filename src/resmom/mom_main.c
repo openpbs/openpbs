@@ -335,6 +335,8 @@ typedef struct kp kp;
 pbs_list_head	killed_procs;		/* procs killed by dorestrict_user() */
 #endif /* localmod 011 */
 
+void *jobs_idx = NULL;
+
 unsigned long	hook_action_id = 0;
 
 pbs_list_head	svr_allhooks;
@@ -1047,8 +1049,9 @@ die(int sig)
 			"abnormal termination");
 
 	cleanup();
-	log_close(1);
+	pbs_idx_destroy(jobs_idx);
 	unload_auths();
+	log_close(1);
 #ifdef	WIN32
 	ExitThread(1);
 #else
@@ -9107,6 +9110,12 @@ main(int argc, char *argv[])
 
 	/* initialize variables */
 
+	if ((jobs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating jobs index failed!");
+		fprintf(stderr, "Creating jobs index failed!\n");
+		return (-1);
+	}
+
 
 	CLEAR_HEAD(svr_newjobs);
 	CLEAR_HEAD(svr_alljobs);
@@ -10088,6 +10097,8 @@ main(int argc, char *argv[])
 
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, "Is down");
+	pbs_idx_destroy(jobs_idx);
+	unload_auths();
 	log_close(1);
 #ifdef	WIN32
 	mom_lock(lockfds, F_UNLCK);     /* unlock  */
@@ -10100,7 +10111,6 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	Py_Finalize();
 #endif
-	unload_auths();
 	return (0);
 }
 

@@ -141,9 +141,7 @@ extern long long get_next_svr_sequence_id(void);
 extern int find_prov_vnode_list(job *, exec_vnode_listtype *, char **);
 #endif /* _PROVISION_H */
 
-#if !defined(PBS_MOM)
 extern void *jobs_idx;
-#endif
 
 #ifdef _RESERVATION_H
 extern int set_nodes(void *, int, char *, char **, char **, char **, int, int);

@@ -154,10 +154,6 @@ static void delete_occurrence_jobs(resc_resv *presv);
 static void Time4occurrenceFinish(resc_resv *);
 static void running_jobs_count(struct work_task *);
 
-
-/** For faster job lookup through AVL tree */
-static void svr_avljob_oper(job *pjob, int delkey);
-
 /* Global Data Items: */
 extern char *msg_noloopbackif;
 extern char *msg_mombadmodify;
@@ -279,12 +275,11 @@ svr_enquejob(job *pjob)
 			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
 
 			if (is_linked(&svr_alljobs, &pjob->ji_alljobs) == 0) {
+				if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_ERR_OK) {
+					log_joberr(PBSE_INTERNAL, __func__, "Failed add history job in index", pjob->ji_qs.ji_jobid);
+					return PBSE_INTERNAL;
+				}
 				append_link(&svr_alljobs, &pjob->ji_alljobs, pjob);
-				/**
-				 * Add to AVL tree so that find_job() can return
-				 * faster compared to linked list traverse.
-				 */
-				svr_avljob_oper(pjob, 0);
 			}
 			server.sv_qs.sv_numjobs++;
 			server.sv_jobstates[pjob->ji_qs.ji_state]++;
@@ -313,6 +308,11 @@ svr_enquejob(job *pjob)
 		pjob->ji_qs.ji_jobid, log_buffer);
 #endif	/* NDEBUG */
 
+	if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_ERR_OK) {
+		log_joberr(PBSE_INTERNAL, __func__, "Failed add job in index", pjob->ji_qs.ji_jobid);
+		return PBSE_INTERNAL;
+	}
+
 	pjcur = (job *)GET_PRIOR(svr_alljobs);
 	while (pjcur) {
 		if ((unsigned long)pjob->ji_wattr[(int)JOB_ATR_qrank].
@@ -331,12 +331,6 @@ svr_enquejob(job *pjob)
 		insert_link(&pjcur->ji_alljobs, &pjob->ji_alljobs, pjob,
 			LINK_INSET_AFTER);
 	}
-
-	/**
-	 * Add to AVL tree so that find_job() can return
-	 * faster compared to linked list traverse.
-	 */
-	svr_avljob_oper(pjob, 0);
 
 	server.sv_qs.sv_numjobs++;
 	server.sv_jobstates[pjob->ji_qs.ji_state]++;
@@ -525,13 +519,8 @@ svr_dequejob(job *pjob)
 	if (is_linked(&svr_alljobs, &pjob->ji_alljobs)) {
 		delete_link(&pjob->ji_alljobs);
 		delete_link(&pjob->ji_unlicjobs);
-
-		/**
-		 * Remove the key from the AVL tree which was
-		 * added for faster job search i.e. find_job().
-		 */
-		svr_avljob_oper(pjob, 1);
-
+		if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+			log_joberr(PBSE_INTERNAL, __func__, "Failed to delete job from index", pjob->ji_qs.ji_jobid);
 		if (--server.sv_qs.sv_numjobs < 0)
 			bad_ct = 1;
 
@@ -5254,54 +5243,6 @@ svr_chk_histjob(job *pjob)
 		}
 	}
 	return rc;
-}
-
-/**
- * @brief
- *		Add/Delete the job to/from the jobs index for faster lookup based
- *		on the boolean value of "delkey" parameter.
- *
- * @param[in]	pjob	-	job structure to be operated on.
- * @param[in]	delkey	-	0 to add the key, 1 to delete the key.
- *
- * @see
- * 	svr_enquejob(), svr_dequejob()
- *
- * @return	void
- *
- * @par	Reentrancy:
- *		MT-unsafe
- *
- */
-static void
-svr_avljob_oper(job *pjob, int delkey)
-{
-	int rc = PBS_IDX_ERR_OK;
-
-	if ((jobs_idx == NULL) || (pjob == NULL))
-		return;
-
-	/** call index interface based on the delkey */
-	if (delkey == 0) {
-		rc = pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob);
-	} else {
-		rc = pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid);
-	}
-	if (rc != PBS_IDX_ERR_OK)
-		goto op_err;
-
-	return;
-
-op_err:
-	/**
-	 * index operation failed, destroy job index so it will fallback to serial lookup
-	 */
-	if (jobs_idx != NULL) {
-		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname,
-				"INDEX: %s failed, using LinkedList.", delkey ? "delete" : "insert");
-		pbs_idx_destroy(jobs_idx);
-		jobs_idx = NULL;
-	}
 }
 
 /**

@@ -1865,8 +1865,7 @@ try_db_again:
 	/*
 	 * SERVER is going to be shutdown, destroy indexes
 	 */
-	if (jobs_idx != NULL)
-		pbs_idx_destroy(jobs_idx);
+	pbs_idx_destroy(jobs_idx);
 
 	{
 		int csret;
