@@ -37,26 +37,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_QUEUE_H
-#define	_QUEUE_H
-#ifdef	__cplusplus
+#ifndef _QUEUE_H
+#define _QUEUE_H
+#ifdef __cplusplus
 extern "C" {
 #endif
-
-/*
- * queue.h - struture definations for queue objects
- *
- * Include Files Requried:
- *
- *	<sys/types.h>
- *	"attribute.h"
- *	"list_link.h"
- *      "server_limits.h"
- *      "resource.h"
- *      "reservation.h"
- *
- * Queue Types
- */
 
 #define QTYPE_Unset	0
 #define QTYPE_Execution 1
@@ -130,58 +115,59 @@ enum queueattr {
 	QR_ATR_RouteLifeTime,
 
 #include "site_que_attr_enum.h"
-	QA_ATR_Enabled,	/* these are last for qmgr print function   */
+	QA_ATR_Enabled, /* these are last for qmgr print function   */
 	QA_ATR_Started,
 	QA_ATR_queued_jobs_threshold,
 	QA_ATR_queued_jobs_threshold_res,
 	QA_ATR_partition,
-	QA_ATR_LAST	/* WARNING: Must be the highest valued enum */
+	QA_ATR_LAST /* WARNING: Must be the highest valued enum */
 };
 
 extern attribute_def que_attr_def[];
 
-
 /* at last we come to the queue definition itself	*/
 
 struct pbs_queue {
-	pbs_list_link qu_link;		/* forward/backward links */
-	pbs_list_head qu_jobs;		/* jobs in this queue */
-	resc_resv *qu_resvp;		/* != NULL if que established */
+	pbs_list_link qu_link; /* forward/backward links */
+	pbs_list_head qu_jobs; /* jobs in this queue */
+	resc_resv *qu_resvp;   /* != NULL if que established */
 	/* to support a reservation */
-	int qu_nseldft;		/* number of elm in qu_seldft */
-	key_value_pair  *qu_seldft;		/* defaults for job -l select */
+	int qu_nseldft;		   /* number of elm in qu_seldft */
+	key_value_pair *qu_seldft; /* defaults for job -l select */
 
 	char qs_hash[DIGEST_LENGTH];
 	struct queuefix {
-		int	qu_type;		/* queue type: exec, route */
+		int qu_type;			    /* queue type: exec, route */
 		char qu_name[PBS_MAXQUEUENAME + 1]; /* queue name */
 	} qu_qs;
 
-	int qu_numjobs;			/* current numb jobs in queue */
-	int qu_njstate[PBS_NUMJOBSTATE];	/* # of jobs per state */
+	int qu_numjobs;			 /* current numb jobs in queue */
+	int qu_njstate[PBS_NUMJOBSTATE]; /* # of jobs per state */
 	char qu_jobstbuf[150];
 
 	/* the queue attributes */
 
-	attribute	qu_attr[QA_ATR_LAST];
+	attribute qu_attr[QA_ATR_LAST];
 	short newobj;
 };
 typedef struct pbs_queue pbs_queue;
+
+extern void *queues_idx;
 
 extern pbs_queue *find_queuebyname(char *);
 #ifdef NAS /* localmod 075 */
 extern pbs_queue *find_resvqueuebyname(char *);
 #endif /* localmod 075 */
 extern pbs_queue *get_dfltque(void);
-extern pbs_queue *que_alloc(char *name);
-extern pbs_queue *que_recov_db(char *, pbs_queue	*pq);
-extern void      que_free(pbs_queue *);
-extern int       que_save_db(pbs_queue *);
+extern pbs_queue *que_alloc(char *);
+extern pbs_queue *que_recov_db(char *, pbs_queue *);
+extern void que_free(pbs_queue *);
+extern int que_save_db(pbs_queue *);
 
 #define QUE_SAVE_FULL 0
 #define QUE_SAVE_NEW  1
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _QUEUE_H */
+#endif /* _QUEUE_H */
