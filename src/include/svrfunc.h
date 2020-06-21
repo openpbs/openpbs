@@ -115,7 +115,6 @@ extern int recreate_exec_vnode(job *, char *, char *, char *, int);
 extern void unset_extra_attributes(job *);
 extern int node_delete_db(struct pbsnode *);
 extern int pbsd_init(int);
-extern int resv_save_db(resc_resv *);
 extern int svr_chk_histjob(job *);
 extern int chk_and_update_db_svrhost(void);
 extern int apply_aoe_inchunk_rules(resource *, attribute *, void *, int);

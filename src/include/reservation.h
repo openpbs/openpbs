@@ -335,7 +335,9 @@ struct resc_resv {
 #define	Q_CHNG_START		1
 
 extern resc_resv  *find_resv(char *);
-extern resc_resv  *resc_resv_alloc(void);
+extern resc_resv  *resv_alloc(void);
+extern int resv_save(resc_resv *, int);
+extern resc_resv *resv_recov(char *);
 extern void  resv_purge(resc_resv *);
 extern int start_end_dur_wall(resc_resv *);
 

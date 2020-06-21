@@ -2194,7 +2194,7 @@ req_resvSub(struct batch_request *preq)
 	 * reservation get assigned
 	 */
 
-	if ((presv = resc_resv_alloc()) == NULL) {
+	if ((presv = resv_alloc()) == NULL) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
@@ -3227,7 +3227,7 @@ validate_place_req_of_job_in_reservation(job *pj)
  * @retval	-1	: database error
  *
  */
-long long 
+long long
 get_next_svr_sequence_id(void)
 {
 	static long long lastid = -1;

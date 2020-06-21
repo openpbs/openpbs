@@ -585,7 +585,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	 * If the job has already finished, then do not make any new changes
 	 * to job state or substate.
 	 */
-	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED || 
+	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED ||
 		((pjob->ji_qs.ji_state == newstate) && (pjob->ji_qs.ji_substate == newsubstate)))
 		return (0);
 
@@ -2995,7 +2995,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		presv->ri_alter.ra_revert.rr_stime = 0;
 	} else
 		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
-	
+
 	if (presv->ri_alter.ra_revert.rr_select != NULL) {
 		resource *presc;
 		resource_def *prdef;
