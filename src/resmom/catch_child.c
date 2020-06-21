@@ -1729,8 +1729,7 @@ end_loop:
 					resc_used(pjob, "mem", getsize));
 				(void)diswul(stream,
 					resc_used(pjob, "cpupercent", gettime));
-				(void)send_resc_used_to_ms(stream,
-							pjob->ji_qs.ji_jobid);
+				(void)send_resc_used_to_ms(stream, pjob);
 				(void)dis_flush(stream);
 				pjob->ji_obit = TM_NULL_EVENT;
 			}
@@ -1914,7 +1913,7 @@ get_servername_random(unsigned int *port)
 /**
  * @brief
  * 	send IS_HELLOSVR message to Server.
- * 
+ *
  * @param[in]	stream	- connection stream
  *
  * @par
