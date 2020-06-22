@@ -96,7 +96,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 {
 	char	*cp;
 	int	i;
-	static char	shell[MAX_PATH + 1] = {'\0'};
+	static char	shell[MAX_PATH + 1];
 	char    *temp_dir = NULL;
 	struct array_strings *vstrs;
 
@@ -104,8 +104,10 @@ set_shell(job *pjob, struct passwd *pwdp)
 	 * Find which shell to use, one specified or the login shell
 	 * If we fail to get cmd shell(unlikely), use "cmd.exe" as shell
 	 */
-	if (0 != get_cmd_shell(shell, sizeof(shell)))
-		(void)snprintf(shell, sizeof(shell) - 1, "cmd.exe");
+	if (0 != get_cmd_shell(shell, sizeof(shell))) {
+		strncpy(shell, "cmd.exe", sizeof(shell) - 1);
+		shell[sizeof(shell) - 1] = '\0';
+	}
 	if ((pjob->ji_wattr[(int)JOB_ATR_shell].at_flags & ATR_VFLAG_SET) &&
 		(vstrs = pjob->ji_wattr[(int)JOB_ATR_shell].at_val.at_arst)) {
 		for (i = 0; i < vstrs->as_usedptr; ++i) {
@@ -113,11 +115,13 @@ set_shell(job *pjob, struct passwd *pwdp)
 			if (cp) {
 				if (!strncmp(mom_host, cp+1, strlen(cp+1))) {
 					*cp = '\0';	/* host name matches */
-					strncpy(shell, vstrs->as_string[i], PBS_CMDLINE_LENGTH - 1);
+					strncpy(shell, vstrs->as_string[i], sizeof(shell) - 1);
+					shell[sizeof(shell) - 1] = '\0';
 					break;
 				}
 			} else {
-				strncpy(shell, vstrs->as_string[i], PBS_CMDLINE_LENGTH - 1);	/* wildcard */
+				strncpy(shell, vstrs->as_string[i], sizeof(shell) - 1);	/* wildcard */
+				shell[sizeof(shell) - 1] = '\0';
 			}
 		}
 	}
