@@ -83,14 +83,11 @@
 #include <pwd.h>
 #include <assert.h>
 #include <netinet/in.h>
-#ifndef WIN32
 #include <dlfcn.h>
 #include <grp.h>
 #include <time.h>
 #include <sys/time.h>
-#else
-#include <sddl.h>
-#endif
+
 #include "pbs_error.h"
 
 #ifdef HAVE_MALLOC_INFO

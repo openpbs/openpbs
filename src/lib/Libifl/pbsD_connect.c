@@ -61,9 +61,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
-#ifndef WIN32
 #include <netinet/tcp.h>
-#endif
 #include <arpa/inet.h>
 #include <pbs_ifl.h>
 #include "libpbs.h"

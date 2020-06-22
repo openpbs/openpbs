@@ -41,9 +41,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
-#ifdef WIN32
-#include <winsock.h>
-#endif
+#include <pbs_config.h>
+
 #include "dis.h"
 #include "pbs_error.h"
 #include "pbs_internal.h"

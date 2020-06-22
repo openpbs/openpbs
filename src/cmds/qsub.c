@@ -87,17 +87,16 @@
 #include <signal.h>
 #include <termios.h>
 #include <assert.h>
-#ifndef WIN32
 #include <sys/un.h>
 #include <syslog.h>
-#endif
-
 #include "pbs_ifl.h"
 #include "cmds.h"
 #include "libpbs.h"
 #include "net_connect.h"
 #include "dis.h"
 #include "port_forwarding.h"
+#include "credential.h"
+#include "ticket.h"
 
 #ifdef LOG_BUF_SIZE
 /* Also defined in port_forwarding.h */
@@ -106,12 +105,6 @@
 
 #define LOG_BUF_SIZE 1024
 #define ENV_PBS_JOBID "PBS_JOBID"
-
-#include "credential.h"
-#include "ticket.h"
-#ifdef WIN32
-#include "win_remote_shell.h"
-#endif
 #define CMDLINE 3
 
 #ifdef WIN32
@@ -135,10 +128,6 @@
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
 #endif /* HAVE_SYS_IOCTL_H */
-
-#if !defined(sgi) && !defined(linux) && !defined(WIN32)
-#include <sys/tty.h>
-#endif
 
 #if defined(FD_SET_IN_SYS_SELECT_H)
 #  include <sys/select.h>

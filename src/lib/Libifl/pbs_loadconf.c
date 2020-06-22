@@ -53,11 +53,10 @@
 #include <pbs_error.h>
 #include "pbs_client_thread.h"
 #include "net_connect.h"
-
-#ifdef WIN32
 #include <sys/stat.h>
 #include <unistd.h>
-#else
+
+#ifndef WIN32
 #define shorten_and_cleanup_path(p) strdup(p)
 #endif
 

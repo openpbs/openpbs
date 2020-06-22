@@ -45,9 +45,7 @@
 #include <string.h>
 #include "portability.h"
 #include "log.h"
-#ifdef WIN32
-#include "win.h"
-#endif
+
 
 /**
  * @file	setup_env.c

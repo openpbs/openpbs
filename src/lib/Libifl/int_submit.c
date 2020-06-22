@@ -46,9 +46,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#ifndef WIN32
 #include <stdint.h>
-#endif
+
 #include "portability.h"
 #include "libpbs.h"
 #include "dis.h"

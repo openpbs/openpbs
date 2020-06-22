@@ -85,12 +85,10 @@
 #include <netinet/in.h>
 #include <memory.h>
 #include <assert.h>
-#ifndef WIN32
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
 #include <dlfcn.h>
-#endif
 #include <ctype.h>
 #include "libpbs.h"
 #include "pbs_error.h"

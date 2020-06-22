@@ -51,26 +51,22 @@
 #include <wchar.h>
 #endif
 
-#ifdef	WIN32
-#include	<sys/timeb.h>
-#else
 #include	<unistd.h>
-#include        <pwd.h>
+#include    <pwd.h>
 #include	<grp.h>
 #include	<netdb.h>
 #include	<sys/param.h>
 #include	<sys/times.h>
-#include        <netinet/in.h>
-#include        <sys/socket.h>
-#include        <sys/time.h>
-#include        <sys/resource.h>
-#include        <sys/utsname.h>
+#include    <netinet/in.h>
+#include    <sys/socket.h>
+#include    <sys/time.h>
+#include    <sys/resource.h>
+#include    <sys/utsname.h>
 #include	<sys/wait.h>
 #ifdef _POSIX_MEMLOCK
 #include	<sys/mman.h>
 #endif /* _POSIX_MEMLOCK */
 #include        <dirent.h>
-#endif	/* WIN32 */
 
 #include	<assert.h>
 #include	<stdio.h>
@@ -110,7 +106,8 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
-#ifndef	WIN32
+#include	"avltree.h"
+#ifdef HWLOC	
 #ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
 #endif /* localmod 113 */
