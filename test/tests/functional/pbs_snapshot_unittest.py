@@ -639,7 +639,6 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         self.assertTrue(rv)
         self.server.log_match(logmsg)
 
-    @requirements(num_moms=2)
     def snapshot_multi_mom_basic(self, obfuscate=False):
         """
         Test capturing data from a multi-mom system
@@ -710,12 +709,14 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                         "%s snapshot didn't capture all expected"
                         " information" % (host2))
 
+    @requirements(num_moms=2)
     def test_multi_mom_basic(self):
         """
         Test running pbs_snapshot on a multi-mom setup
         """
         self.snapshot_multi_mom_basic()
 
+    @requirements(num_moms=2)
     def test_multi_mom_basic_obfuscate(self):
         """
         Test running pbs_snapshot on a multi-mom setup with obfuscation
