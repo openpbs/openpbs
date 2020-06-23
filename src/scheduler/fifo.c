@@ -2450,6 +2450,16 @@ next_job(status *policy, server_info *sinfo, int flag)
 static void
 init_sc_attrs(void)
 {
+	static int first_time = 1;
+
+	if (!first_time) {
+		free(sc_attrs.comment);
+		free(sc_attrs.job_sort_formula);
+		free(sc_attrs.partition);
+		free(sc_attrs.sched_log);
+		free(sc_attrs.sched_port);
+		free(sc_attrs.sched_priv);
+	}
 	sc_attrs.attr_update_period = 0;
 	sc_attrs.comment = NULL;
 	sc_attrs.do_not_span_psets = 0;
@@ -2469,6 +2479,8 @@ init_sc_attrs(void)
 	sc_attrs.server_dyn_res_alarm = 0;
 	sc_attrs.throughput_mode = 1;
 	sc_attrs.opt_backfill_fuzzy = BF_DEFAULT;
+
+	first_time = 0;
 }
 
 /**
