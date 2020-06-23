@@ -403,7 +403,7 @@ svr_enquejob(job *pjob)
 
 	if ((pjob->ji_wattr[JOB_ATR_qtime].at_flags & ATR_VFLAG_SET) == 0) {
 		pjob->ji_wattr[JOB_ATR_qtime].at_val.at_long = time_now;
-		pjob->ji_wattr[JOB_ATR_qtime].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		pjob->ji_wattr[JOB_ATR_qtime].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	/*
