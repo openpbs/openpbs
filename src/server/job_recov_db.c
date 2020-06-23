@@ -260,6 +260,7 @@ job_save_db(job *pjob)
 	pbs_db_conn_t *conn = svr_db_conn;
 	int savetype;
 	int rc = -1;
+	int old_mtime, old_flags;
 
 	if ((savetype = job_2_db(pjob, &dbjob)) == -1)
 		goto done;
@@ -267,16 +268,23 @@ job_save_db(job *pjob)
 	obj.pbs_db_obj_type = PBS_DB_JOB;
 	obj.pbs_db_un.pbs_db_job = &dbjob;
 
-	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0) {
+	old_mtime = pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long;
+	old_flags = pjob->ji_wattr[JOB_ATR_mtime].at_flags;
+
+	/* update mtime before save, so the same value gets to the DB as well */
+	pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
+	pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_SET_MOD_MCACHE;
+	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0)
 		pjob->newobj = 0;
-		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
-		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_VFLAG_MODCACHE;
-	}
 
 done:
 	free_db_attr_list(&dbjob.db_attr_list);
 
 	if (rc != 0) {
+		/* revert mtime, flags update */
+		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = old_mtime;
+		pjob->ji_wattr[JOB_ATR_mtime].at_flags = old_flags;
+
 		log_errf(PBSE_INTERNAL, __func__, "Failed to save job %s %s", pjob->ji_qs.ji_jobid, (conn->conn_db_err)? conn->conn_db_err : "");
 		if (conn->conn_db_err) {
 			if (savetype == OBJ_SAVE_NEW && strstr(conn->conn_db_err, "duplicate key value"))
@@ -475,6 +483,7 @@ resv_save_db(resc_resv *presv)
 	pbs_db_conn_t *conn = svr_db_conn;
 	int savetype;
 	int rc = -1;
+	int old_mtime, old_flags;
 
 	if ((savetype = resv_2_db(presv, &dbresv)) == -1)
 		goto done;	
@@ -482,16 +491,22 @@ resv_save_db(resc_resv *presv)
 	obj.pbs_db_obj_type = PBS_DB_RESV;
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
 	
-	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0) {
+	old_mtime = presv->ri_wattr[RESV_ATR_mtime].at_val.at_long;
+	old_flags = presv->ri_wattr[RESV_ATR_mtime].at_flags;
+
+	/* update mtime before save, so the same value gets to the DB as well */
+	presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = time_now;
+	presv->ri_wattr[RESV_ATR_mtime].at_flags |= ATR_SET_MOD_MCACHE;
+	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0)
 		presv->newobj = 0;
-		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = time_now;
-		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= ATR_SET_MOD_MCACHE;
-	}
 
 done:
 	free_db_attr_list(&dbresv.db_attr_list);
 
 	if (rc != 0) {
+		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = old_mtime;
+		presv->ri_wattr[RESV_ATR_mtime].at_flags = old_flags;
+
 		log_errf(PBSE_INTERNAL, __func__, "Failed to save resv %s %s", presv->ri_qs.ri_resvID, (conn->conn_db_err)? conn->conn_db_err : "");
 		if(conn->conn_db_err) {
 			if (savetype == OBJ_SAVE_NEW && strstr(conn->conn_db_err, "duplicate key value"))

@@ -669,7 +669,7 @@ action_reserve_retry_time(attribute *pattr, void *pobj, int actmode)
 		if (pattr->at_val.at_long <= 0)
 			return PBSE_BADATVAL;
 		server.sv_attr[(int) SRV_ATR_resv_retry_init].at_flags &= ~ATR_VFLAG_SET;
-		server.sv_attr[(int) SRV_ATR_resv_retry_init].at_flags |= ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY;
+		server.sv_attr[(int) SRV_ATR_resv_retry_init].at_flags |= ATR_MOD_MCACHE;
 
 		resv_retry_time = pattr->at_val.at_long;
 	}
@@ -698,7 +698,7 @@ action_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
 		if (pattr->at_val.at_long <= 0)
 			return PBSE_BADATVAL;
 		server.sv_attr[(int) SRV_ATR_resv_retry_time].at_val.at_long = pattr->at_val.at_long;
-		server.sv_attr[(int) SRV_ATR_resv_retry_time].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
+		server.sv_attr[(int) SRV_ATR_resv_retry_time].at_flags |= ATR_SET_MOD_MCACHE;
 
 		resv_retry_time = pattr->at_val.at_long;
 	}

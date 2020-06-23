@@ -205,7 +205,7 @@ job_save_fs(job *pjob)
 	} else {
 		/* an attribute changed,  update mtime */
 		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
-		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY;
+		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_MOD_MCACHE;
 
 		/*
 		 * write the whole structure to the file.

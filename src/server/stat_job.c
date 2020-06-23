@@ -271,7 +271,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 		if (pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) {
 			oldtime = pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long;
 			pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += (time_now - pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long);
-			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= (ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY);
+			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 
 			/* Note: ATR_VFLAG_MODCACHE must be set because of svr_cached() does */
 			/* 	 not correctly check ATR_VFLAG_SET */

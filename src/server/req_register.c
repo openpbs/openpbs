@@ -192,7 +192,7 @@ static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int typ
 			return; /* Job dependency already established */
 		if (strcmp(pjob->ji_qs.ji_jobid, d_jobid)) {
 			dpj = make_dependjob(dp, d_jobid, d_svr);
-			pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_VFLAG_MODCACHE|ATR_VFLAG_MODIFY|ATR_VFLAG_SET;
+			pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_SET_MOD_MCACHE;
 			job_save(pjob);
 			/* runone dependencies are circular */
 			if (type == JOB_DEPEND_TYPE_RUNONE)
@@ -750,7 +750,7 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 						 djob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)) {
 						/* If the dependent job is running or has system hold, then put this job on hold too*/
 						pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-						pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+						pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 						(void)svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_DEPNHOLD);
 					}
 				}
@@ -964,7 +964,7 @@ int depend_runone_hold_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 				(void)svr_setjobstate(d_pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
 			}
 		}
@@ -1003,7 +1003,7 @@ int depend_runone_release_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long &= ~HOLD_s;
-		                d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_MODCACHE;
+		        d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_MODCACHE;
 				svr_evaljobstate(d_pjob, &newstate, &newsub, 0);
 				(void)svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
 			}

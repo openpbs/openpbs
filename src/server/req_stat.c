@@ -718,7 +718,7 @@ update_isrunhook(attribute *pattr)
 
 	if (new_val != old_val) {
 		pattr->at_val.at_long = new_val;
-		pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 }
 

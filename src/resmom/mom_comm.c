@@ -3220,8 +3220,7 @@ im_request(int stream, int version)
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
 			pjob->ji_qs.ji_stime = time_now;
 			pjob->ji_polltime = time_now;
-			pjob->ji_wattr[(int)JOB_ATR_mtime].at_val.at_long =
-				(long)time_now;
+			pjob->ji_wattr[(int)JOB_ATR_mtime].at_val.at_long = (long)time_now;
 			pjob->ji_wattr[(int)JOB_ATR_mtime].at_flags |= ATR_VFLAG_SET;
 
 			/* np is set from job_nodes_inner */
