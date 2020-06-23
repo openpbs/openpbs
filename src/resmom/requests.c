@@ -3124,6 +3124,16 @@ req_cpyfile(struct batch_request *preq)
 	char 			*krbccname = NULL;
 #endif
 
+	if (mock_run) {
+		/*
+		 * in mock run we don't have any files to copy back,
+		 * so just ack request to make server happy
+		 * and return
+		 */
+		reply_ack(preq);
+		return;
+	}
+
 	DBPRT(("%s: entered\n", __func__))
 
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred)
@@ -3429,6 +3439,16 @@ req_delfile(struct batch_request *preq)
 	struct krb_holder *ticket = NULL;
 	char *krbccname = NULL;
 #endif
+
+	if (mock_run) {
+		/*
+		 * in mock run we don't have any files to delete,
+		 * so just ack request to make server happy
+		 * and return
+		 */
+		reply_ack(preq);
+		return;
+	}
 
 	pjob = find_job(preq->rq_ind.rq_cpyfile.rq_jobid);
 	if (pjob) {
