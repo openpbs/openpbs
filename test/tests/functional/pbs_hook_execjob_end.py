@@ -499,14 +499,11 @@ class TestPbsExecjobEnd(TestFunctional):
         self.job_list.append(jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.mom.log_match("Job;%s;starting hook event EXECJOB_END" %
-                           jid, n=100, max_attempts=10,
-                           interval=2)
+                           jid, n=100, interval=2)
         self.mom.restart()
         self.mom.log_match("Job;%s;ending hook event EXECJOB_END" %
-                           jid, n=100, max_attempts=20,
-                           interval=2)
-        self.server.log_match(jid + ";Exit_status=0", interval=4,
-                              max_attempts=10)
+                           jid, n=100, interval=2)
+        self.server.log_match(jid + ";Exit_status=0", interval=4)
 
     def tearDown(self):
         for mom_val in self.moms.values():
