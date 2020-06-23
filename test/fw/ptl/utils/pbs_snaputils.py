@@ -1573,10 +1573,11 @@ quit()
                             line.split("=")[1]
 
             for sched_name in sched_details:
+                pbs_sched_priv = None
                 # Capture sched_priv for the scheduler
                 if len(sched_details) == 1:  # For pre-multisched outputs
                     pbs_sched_priv = os.path.join(self.pbs_home, "sched_priv")
-                else:
+                elif "sched_priv" in sched_details[sched_name]:
                     pbs_sched_priv = sched_details[sched_name]["sched_priv"]
                 if sched_name == "default" or len(sched_details) == 1:
                     snap_sched_priv = os.path.join(self.snapdir,
@@ -1589,15 +1590,17 @@ quit()
                     os.makedirs(snap_sched_priv, 0o755)
                     core_dir = os.path.join(self.snapdir, coredirname)
 
-                self.__copy_dir_with_core(pbs_sched_priv,
-                                          snap_sched_priv, core_dir,
-                                          sudo=self.with_sudo)
+                if pbs_sched_priv and os.path.isdir(pbs_sched_priv):
+                    self.__copy_dir_with_core(pbs_sched_priv,
+                                              snap_sched_priv, core_dir,
+                                              sudo=self.with_sudo)
                 if with_sched_logs and self.num_daemon_logs > 0:
+                    pbs_sched_log = None
                     # Capture scheduler logs
                     if len(sched_details) == 1:  # For pre-multisched outputs
                         pbs_sched_log = os.path.join(self.pbs_home,
                                                      "sched_logs")
-                    else:
+                    elif "sched_log" in sched_details[sched_name]:
                         pbs_sched_log = sched_details[sched_name]["sched_log"]
                     if sched_name == "default" or len(sched_details) == 1:
                         snap_sched_log = os.path.join(self.snapdir,
@@ -1607,7 +1610,9 @@ quit()
                         snap_sched_log = os.path.join(self.snapdir, dirname)
                         os.makedirs(snap_sched_log, 0o755)
 
-                    self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
+                    if pbs_sched_log and os.path.isdir(pbs_sched_log):
+                        self.__capture_sched_logs(pbs_sched_log,
+                                                  snap_sched_log)
 
         elif self.sched_info_avail:
             # We don't know about other multi-scheds,
