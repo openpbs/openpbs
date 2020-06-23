@@ -262,14 +262,14 @@ job_save_db(job *pjob)
 	int rc = -1;
 	int old_mtime, old_flags;
 
+	old_mtime = pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long;
+	old_flags = pjob->ji_wattr[JOB_ATR_mtime].at_flags;
+
 	if ((savetype = job_2_db(pjob, &dbjob)) == -1)
 		goto done;
 
 	obj.pbs_db_obj_type = PBS_DB_JOB;
 	obj.pbs_db_un.pbs_db_job = &dbjob;
-
-	old_mtime = pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long;
-	old_flags = pjob->ji_wattr[JOB_ATR_mtime].at_flags;
 
 	/* update mtime before save, so the same value gets to the DB as well */
 	pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
@@ -485,14 +485,14 @@ resv_save_db(resc_resv *presv)
 	int rc = -1;
 	int old_mtime, old_flags;
 
+	old_mtime = presv->ri_wattr[RESV_ATR_mtime].at_val.at_long;
+	old_flags = presv->ri_wattr[RESV_ATR_mtime].at_flags;
+
 	if ((savetype = resv_2_db(presv, &dbresv)) == -1)
 		goto done;	
 
 	obj.pbs_db_obj_type = PBS_DB_RESV;
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
-	
-	old_mtime = presv->ri_wattr[RESV_ATR_mtime].at_val.at_long;
-	old_flags = presv->ri_wattr[RESV_ATR_mtime].at_flags;
 
 	/* update mtime before save, so the same value gets to the DB as well */
 	presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = time_now;
