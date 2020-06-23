@@ -325,7 +325,7 @@ void disconnect_from_server();
 "Syntax ... OP value[multiplier]\n" \
 "A multipler can be added to the end of a size in bytes or words.\n" \
 "The multipliers are: tb, gb, mb, kb, b, tw, gw, mw, kw, w.  The second letter\n" \
-"stands for bytes or words.  b or w is the default multiplier.\n" \
+"stands for bytes or words.  b is the default multiplier.\n" \
 "The multipliers are case insensitive i.e. gw is the same as GW.\n" \
 "Examples:\n" \
 "100mb\n" \
