@@ -266,7 +266,7 @@ local_move(job *jobp, struct batch_request *req)
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 
 	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
-	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= VALUE_DIRTY;
+	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_MOD_MCACHE;
 
 	pattr = &jobp->ji_wattr[(int)JOB_ATR_reserve_ID];
 	if (qp->qu_resvp) {
@@ -788,7 +788,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		(move_type != MOVE_TYPE_Exec)) {
 		tempval = ((long)time_now - jobp->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long);
 		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += tempval;
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= VALUE_DIRTY;
+		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 	}
 
 	pattr = jobp->ji_wattr;

@@ -513,7 +513,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= VALUE_SET;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 

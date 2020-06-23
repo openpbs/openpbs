@@ -3135,7 +3135,7 @@ set_job_reslist(job *pjob, char *hook_name, char *msg, int msg_len,
 
 	/* The following forces new job's Resource_List values to be seen */
 	/* in qstat -f */
-	jb->at_flags |= VALUE_DIRTY;
+	jb->at_flags |= ATR_MOD_MCACHE;
 
 	pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
 	if (pseldef != NULL) {

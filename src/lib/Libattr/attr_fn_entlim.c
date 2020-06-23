@@ -290,7 +290,7 @@ internal_decode_entlim(struct attribute *patr,  char *name, char *rn,
 		return (PBSE_BADATVAL);
 	}
 	patr->at_val.at_enty.ae_tree = petree;
-	patr->at_flags |= VALUE_SET;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	return (0);
 }
@@ -927,7 +927,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 		default:	return (PBSE_INTERNAL);
 	}
 
-	old->at_flags |= VALUE_SET;
+	old->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 
@@ -1111,7 +1111,7 @@ unset_entlim_resc(attribute *pattr, char *rescname)
 		}
 	}
 	if (modified)
-		pattr->at_flags |= VALUE_DIRTY;
+		pattr->at_flags |= ATR_MOD_MCACHE;
 	if (hasentries == 0)
 		free_entlim(pattr);	/* no entries left, clear attribute */
 	return;

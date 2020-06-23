@@ -108,9 +108,9 @@ decode_size(struct attribute *patr, char *name, char *rescn, char *val)
 			return (PBSE_BADATVAL);
 		if (errno != 0)
 			return (PBSE_BADATVAL);
-		patr->at_flags |= VALUE_SET;
+		patr->at_flags |= ATR_SET_MOD_MCACHE;
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | VALUE_DIRTY;
+		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
 	}
 	return (0);
 }
@@ -228,7 +228,7 @@ set_size(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= VALUE_SET;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	return (0);
 }

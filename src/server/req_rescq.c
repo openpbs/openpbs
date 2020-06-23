@@ -340,7 +340,7 @@ remove_node_from_resv(resc_resv *presv, struct pbsnode *pnode)
 				}
 			}
 
-			presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_flags |= VALUE_DIRTY;
+			presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_flags |= ATR_MOD_MCACHE;
 		}
 	}
 
@@ -636,11 +636,11 @@ req_confirmresv(struct batch_request *preq)
 	if ((newstart = (time_t)preq->rq_ind.rq_run.rq_resch) != 0) {
 		presv->ri_qs.ri_stime = newstart;
 		presv->ri_wattr[RESV_ATR_start].at_val.at_long = newstart;
-		presv->ri_wattr[RESV_ATR_start].at_flags |= VALUE_SET;
+		presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
 
 		presv->ri_qs.ri_etime = newstart + presv->ri_qs.ri_duration;
 		petime->at_val.at_long = presv->ri_qs.ri_etime;
-		petime->at_flags |= VALUE_SET;
+		petime->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	/* The main difference between an advance reservation and a standing
@@ -712,13 +712,13 @@ req_confirmresv(struct batch_request *preq)
 			}
 			if (!is_being_altered) {
 				presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long = resv_count;
-				presv->ri_wattr[RESV_ATR_resv_count].at_flags |= VALUE_SET;
+				presv->ri_wattr[RESV_ATR_resv_count].at_flags |= ATR_SET_MOD_MCACHE;
 			}
 
 			/* Set first occurrence to index 1
 			 * (rather than 0 because it gets displayed in pbs_rstat -f) */
 			presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long = 1;
-			presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= VALUE_SET;
+			presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_SET_MOD_MCACHE;
 		}
 
 		/* Skip setting the execvnodes sequence when reconfirming the last
@@ -981,33 +981,33 @@ resv_revert_alter_times(resc_resv *presv)
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {
 		presv->ri_qs.ri_stime = presv->ri_alter_stime;
 		presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter_stime;
-		presv->ri_wattr[RESV_ATR_start].at_flags |= VALUE_SET;
+		presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
 		presv->ri_alter_stime = 0;
 	}
 	if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED) {
 		presv->ri_qs.ri_etime = presv->ri_alter_etime;
 		presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter_etime;
-		presv->ri_wattr[RESV_ATR_end].at_flags |= VALUE_SET;
+		presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
 		presv->ri_alter_etime = 0;
 	}
 	if (presv->ri_alter_flags & RESV_DURATION_MODIFIED) {
 		if (presv->ri_alter_etime != 0) {
 			presv->ri_qs.ri_etime = presv->ri_alter_etime;
 			presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter_etime;
-			presv->ri_wattr[RESV_ATR_end].at_flags |= VALUE_SET;
+			presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
 			presv->ri_alter_etime = 0;
 		}
 		if (presv->ri_alter_stime != 0) {
 			presv->ri_qs.ri_stime = presv->ri_alter_stime;
 			presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter_stime;
-			presv->ri_wattr[RESV_ATR_start].at_flags |= VALUE_SET;
+			presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
 			presv->ri_alter_stime = 0;
 		}
 	}
 
 	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;
 	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
-	presv->ri_wattr[RESV_ATR_duration].at_flags |= VALUE_SET;
+	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
 	presv->ri_alter_flags = 0;
 	eval_resvState(presv, RESVSTATE_alter_failed, 0, &state, &sub);
 	/* While requesting alter, substate was retained, so we use the same here. */

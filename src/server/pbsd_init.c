@@ -254,40 +254,40 @@ init_server_attrs()
 	server.newobj = 1;
 
 	server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_INIT;
-	server.sv_attr[(int)SRV_ATR_State].at_flags = VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_State].at_flags = ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_ResvEnable].at_val.at_long = 1;
-	server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_SvrHost].at_val.at_str =strdup(server_host);
-	server.sv_attr[(int)SRV_ATR_SvrHost].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_SvrHost].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_val.at_long = PBS_NODE_FAIL_REQUEUE_DEFAULT;
-	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long = PBS_MAX_ARRAY_JOB_DFL;
-	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
-	server.sv_attr[(int)SRV_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long = 0;
-	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long = PBS_MAX_CONCURRENT_PROV;
-	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_val.at_ll = SVR_MAX_JOB_SEQ_NUM_DEFAULT;
-	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	clear_attr(&attrib, &svr_attr_def[(int)	SVR_ATR_jobscript_max_size]);
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
@@ -315,15 +315,15 @@ init_server_attrs()
 			&server.sv_attr[(int)SVR_ATR_DefaultChunk], prdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = 1;
-			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
-			server.sv_attr[(int)SVR_ATR_DefaultChunk].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+			server.sv_attr[(int)SVR_ATR_DefaultChunk].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 			(void)deflt_chunk_action(&server.sv_attr[(int)SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_NEW);
 		}
 		presc = add_resource_entry(&server.sv_attr[SRV_ATR_resource_deflt], prdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = 1;
-			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
-			server.sv_attr[(int)SRV_ATR_resource_deflt].at_flags = ATR_VFLAG_DEFLT | VALUE_SET;
+			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+			server.sv_attr[(int)SRV_ATR_resource_deflt].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 		}
 
 	}
@@ -555,7 +555,7 @@ pbsd_init(int type)
 		if (new_log_event_mask) {
 			/* set to what was given on command line -e option */
 			server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long = new_log_event_mask;
-			server.sv_attr[(int)SRV_ATR_log_events].at_flags = VALUE_SET;
+			server.sv_attr[(int)SRV_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
 
 		}
 		/* if server comment is a default, clear it */
@@ -679,7 +679,7 @@ pbsd_init(int type)
 			call_log_license, 0);
 
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = licenses.lb_aval_floating + licenses.lb_glob_floating;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = VALUE_SET;
+	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_SET_MOD_MCACHE;
 
 	/* 6. open accounting file */
 
@@ -694,7 +694,7 @@ pbsd_init(int type)
 		/* a_option was set, overrides saved value of scheduling attr */
 
 		server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long = a_opt;
-		server.sv_attr[(int)SRV_ATR_scheduling].at_flags |= VALUE_SET;
+		server.sv_attr[(int)SRV_ATR_scheduling].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	/*
@@ -1461,7 +1461,7 @@ pbsd_init_job(job *pjob, int type)
 		/* Likely means recovering a job from a older version      */
 		if (((pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0) && ((pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags & ATR_VFLAG_SET) != 0)) {
 			pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (VALUE_SET);
+			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_SET_MOD_MCACHE);
 		}
 
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
@@ -1702,7 +1702,7 @@ pbsd_init_reque(job *pjob, int change_state)
 	set_statechar(pjob);
 	/* make sure substate attributes match actual value */
 	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = pjob->ji_qs.ji_substate;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= VALUE_SET;
+	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
 
 	if ((rc = svr_enquejob(pjob)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);

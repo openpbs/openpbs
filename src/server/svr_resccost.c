@@ -166,7 +166,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 			return (PBSE_SYSTEM);
 	}
 	pcost->rc_cost = atol(val);
-	patr->at_flags |= VALUE_SET;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 
@@ -274,7 +274,7 @@ set_rcost(struct attribute *old, struct attribute *new, enum batch_op op)
 		}
 		pcnew = (struct resource_cost *)GET_NEXT(pcnew->rc_link);
 	}
-	old->at_flags |= VALUE_SET;
+	old->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 

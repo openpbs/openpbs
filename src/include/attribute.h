@@ -253,8 +253,8 @@ typedef struct ecl_attribute_def ecl_attribute_def;
 #define ATR_VFLAG_HOOK		0x40	/* value set by a hook script   */
 #define ATR_VFLAG_IN_EXECVNODE_FLAG	0x80	/* resource key value pair was found in execvnode */
 
-#define VALUE_DIRTY (ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE)
-#define VALUE_SET (ATR_VFLAG_SET | VALUE_DIRTY)
+#define ATR_MOD_MCACHE (ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE)
+#define ATR_SET_MOD_MCACHE (ATR_VFLAG_SET | ATR_MOD_MCACHE)
 
 /* Defines for Parent Object type field in the attribute definition	*/
 /* really only used for telling queue types apart			*/

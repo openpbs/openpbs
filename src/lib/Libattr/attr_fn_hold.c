@@ -109,9 +109,9 @@ decode_hold(struct attribute *patr, char *name, char *rescn, char *val)
 					return (PBSE_BADATVAL);
 			}
 		}
-		patr->at_flags |= VALUE_SET;
+		patr->at_flags |= ATR_SET_MOD_MCACHE;
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | VALUE_DIRTY;
+		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
 	}
 	return (0);
 }

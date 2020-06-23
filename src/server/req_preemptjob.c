@@ -410,7 +410,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 
 		/* successful preemption */
 		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_val.at_long = time(0);
-		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_flags |= VALUE_SET;
+		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_flags |= ATR_SET_MOD_MCACHE;
 		switch (aux) {
 			case PREEMPT_METHOD_SUSPEND:
 				strcpy(preempt_jobs_list[preempt_index].order, "S");

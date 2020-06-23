@@ -1112,7 +1112,7 @@ main(int argc, char **argv)
 	 * it controls which events are logged.
 	 */
 	server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long = PBSEVENT_MASK;
-	server.sv_attr[(int)SRV_ATR_log_events].at_flags = VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
 	log_event_mask = &server.sv_attr[SRV_ATR_log_events].at_val.at_long;
 	(void)sprintf(path_log, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
 

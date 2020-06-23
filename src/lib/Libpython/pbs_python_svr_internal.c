@@ -3350,7 +3350,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 		que->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = que->qu_numjobs -
 			(que->qu_njstate[JOB_STATE_MOVED] + que->qu_njstate[JOB_STATE_FINISHED] + que->qu_njstate[JOB_STATE_EXPIRED]);
 	}
-	que->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= VALUE_SET;
+	que->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
 
 	update_state_ct(&que->qu_attr[(int)QA_ATR_JobsByState],
 		que->qu_njstate,
@@ -3495,7 +3495,7 @@ _pps_helper_get_server(char *perf_label)
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 
 	server.sv_attr[(int)SRV_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
-	server.sv_attr[(int)SRV_ATR_TotalJobs].at_flags |= VALUE_SET;
+	server.sv_attr[(int)SRV_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
 	update_state_ct(&server.sv_attr[(int)SRV_ATR_JobsByState],
 		server.sv_jobstates,
 		server.sv_jobstbuf);

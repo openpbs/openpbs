@@ -606,7 +606,7 @@ update_subjob_state_ct(job *pjob)
 		free(pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_val.at_str);
 
 	pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_val.at_str = buf;
-	pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_flags |= VALUE_SET;
+	pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_flags |= ATR_SET_MOD_MCACHE;
 }
 /**
  * @brief
@@ -728,7 +728,7 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 	/* set attribute "array" True  and clear "array_state_count" */
 
 	pjob->ji_wattr[(int)JOB_ATR_array].at_val.at_long = 1;
-	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = VALUE_SET;
+	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_SET_MOD_MCACHE;
 	job_attr_def[(int)JOB_ATR_array_state_count].at_free(&pjob->ji_wattr[(int)JOB_ATR_array_state_count]);
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
@@ -941,7 +941,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 			eligibletime += subj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long - parent->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long;
 
 		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = eligibletime;
-		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= VALUE_SET;
+		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_SET_MOD_MCACHE;
 
 	}
 
@@ -949,7 +949,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 	/* set the queue rank attribute */
 	subj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
-	subj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= VALUE_SET;
+	subj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
 	if (svr_enquejob(subj) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;

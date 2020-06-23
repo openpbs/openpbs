@@ -485,7 +485,7 @@ resv_save_db(resc_resv *presv)
 	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0) {
 		presv->newobj = 0;
 		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = time_now;
-		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= VALUE_SET;
+		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= ATR_SET_MOD_MCACHE;
 	}
 
 done:

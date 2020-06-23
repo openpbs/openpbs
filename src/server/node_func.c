@@ -419,7 +419,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 		if ((prd->rs_flags & (ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) &&
 									(prd->rs_flags & ATR_DFLAG_MOM)) {
 			presc = add_resource_entry(pat2, prd);
-			presc->rs_value.at_flags = VALUE_SET;
+			presc->rs_value.at_flags = ATR_SET_MOD_MCACHE;
 		}
 	}
 
@@ -681,7 +681,7 @@ setup_notification()
 			continue;
 
 		set_vnode_state(pbsndlist[i], INUSE_DOWN, Nd_State_Or);
-		pbsndlist[i]->nd_attr[(int)ND_ATR_state].at_flags |= VALUE_SET;
+		pbsndlist[i]->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
 			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
 		}
@@ -1656,7 +1656,7 @@ node_pcpu_action(attribute *new, void *pobj, int actmode)
 		((prc->rs_value.at_flags & ATR_VFLAG_DEFLT) != 0)) {
 		if (prc->rs_value.at_val.at_long != new_np) {
 			prc->rs_value.at_val.at_long = new_np;
-			prc->rs_value.at_flags |= VALUE_SET | ATR_VFLAG_DEFLT;
+			prc->rs_value.at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
 			return (mod_node_ncpus(pnode, new_np, actmode));
 		}
 	}
@@ -1692,7 +1692,7 @@ mark_which_queues_have_nodes()
 	while (pque != NULL) {
 		pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 0;
 		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags &= ~ATR_VFLAG_SET;
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags |= VALUE_DIRTY;
+		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags |= ATR_MOD_MCACHE;
 		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 
@@ -1701,7 +1701,7 @@ mark_which_queues_have_nodes()
 	for (i=0; i<svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_pque) {
 			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 1;
-			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_flags = VALUE_SET;
+			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_flags = ATR_SET_MOD_MCACHE;
 			svr_quehasnodes = 1;
 		}
 	}
@@ -1835,7 +1835,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
 		clear_attr(patr, &node_attr_def[(int)ND_ATR_Mom]);
 		/* ATTR_VFLAG_SET is cleared now */
-		patr->at_flags &= VALUE_DIRTY;
+		patr->at_flags &= ATR_MOD_MCACHE;
 		return (0);
 	}
 
@@ -2104,7 +2104,7 @@ set_node_topology(attribute *new, void *pobj, int op)
 	}
 
 	if (rc == PBSE_NONE) {
-		new->at_flags |= VALUE_SET;
+		new->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 	return rc;
 #endif /* localmod 035 */

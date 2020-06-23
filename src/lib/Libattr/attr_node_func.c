@@ -802,7 +802,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
 
 	if (!rc) {
 		pattr->at_val.at_long = flag;
-		pattr->at_flags |= VALUE_SET;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	if (slen >= 512)		/*buffer on heap, not stack*/
@@ -838,7 +838,7 @@ int
 decode_ntype(attribute *pattr, char *name, char *rescn, char *val)
 {
 	pattr->at_val.at_short = NTYPE_PBS;
-	pattr->at_flags |= VALUE_SET;
+	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	return 0;
 }
@@ -875,7 +875,7 @@ decode_sharing(attribute *pattr, char *name, char *rescn, char *val)
 
 	if (!rc) {
 		pattr->at_val.at_long = vns;
-		pattr->at_flags |= VALUE_SET;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	return rc;
@@ -937,7 +937,7 @@ set_node_state(attribute *pattr, attribute *new, enum batch_op op)
 	}
 
 	if (!rc) {
-		pattr->at_flags |= VALUE_SET;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 	return rc;
 }
@@ -989,7 +989,7 @@ set_node_ntype(attribute *pattr, attribute *new, enum batch_op op)
 	}
 
 	if (!rc)
-		pattr->at_flags |= VALUE_SET;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	return rc;
 }
 

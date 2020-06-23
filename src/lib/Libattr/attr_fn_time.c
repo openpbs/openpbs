@@ -108,7 +108,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 	int index = -1;
 
 	if ((val == NULL) || (strlen(val) == 0)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | VALUE_DIRTY;
+		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
 		patr->at_val.at_long = 0;
 		return (0);
 	}
@@ -161,7 +161,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 	if (atoi(msec) >= 500)
 		rv++;
 	patr->at_val.at_long = rv;
-	patr->at_flags |= VALUE_SET;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 	(void)free(workvalsv);
 	return (0);
 

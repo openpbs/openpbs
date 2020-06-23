@@ -914,7 +914,7 @@ req_modifyReservation(struct batch_request *preq)
 			resv_revert_alter_times(presv);
 			return;
 		}
-		presv->ri_wattr[RESV_ATR_resource].at_flags |= VALUE_SET;
+		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 	bad = 0;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
@@ -941,7 +941,7 @@ req_modifyReservation(struct batch_request *preq)
 			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
 				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long == 0)) {
 				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
-				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= VALUE_SET;
+				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_SET_MOD_MCACHE;
 			}
 			que_save_db(presv->ri_qp);
 			free(pattrl);

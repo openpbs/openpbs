@@ -281,7 +281,7 @@ post_cred(struct work_task *pwt)
 			/* send_cred was successful  - update validity*/
 
 			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_val.at_long = preq->rq_ind.rq_cred.rq_cred_validity;
-			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_flags |= VALUE_SET;
+			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_flags |= ATR_SET_MOD_MCACHE;
 
 			/* save the full job */
 			(void)job_save_db(pjob);

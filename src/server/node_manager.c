@@ -678,7 +678,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			}
 		}
 
-		pvnd->nd_attr[(int)ND_ATR_state].at_flags |= VALUE_SET;
+		pvnd->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 		pat = &pvnd->nd_attr[(int)ND_ATR_Comment];
 
 		/*
@@ -806,7 +806,7 @@ node_down_requeue(struct work_task *pwt)
 					if (nname && (strcasecmp(np->nd_name, nname) == 0)) {
 						/* node is Mother Superior for job */
 						pj->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = JOB_EXEC_RERUN_MS_FAIL;
-						pj->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= VALUE_SET;
+						pj->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
 
 						sprintf(log_buffer, msg_job_end_stat , JOB_EXEC_RERUN_MS_FAIL);
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
@@ -1243,7 +1243,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 
 	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_long) {
 		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
-		pnode->nd_attr[(int)ND_ATR_state].at_flags |= VALUE_SET;
+		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	if (nd_prev_state != pnode->nd_state) {
@@ -1821,7 +1821,7 @@ unset_resv_retry(resc_resv *presv)
 
 	presv->ri_wattr[RESV_ATR_retry].at_val.at_long = 0;
 	presv->ri_wattr[RESV_ATR_retry].at_flags &= ~(ATR_VFLAG_SET);
-	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= VALUE_SET;
+	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
 
 	presv->ri_resv_retry = 0;
 	presv->ri_degraded_time = 0;
@@ -1851,7 +1851,7 @@ set_resv_retry(resc_resv *presv, long retry_time)
 	if (presv == NULL)
 		return;
 
-	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= VALUE_SET;
+	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
 	presv->ri_wattr[RESV_ATR_retry].at_val.at_long = retry_time;
 
 	presv->ri_resv_retry = retry_time;
@@ -3690,7 +3690,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 							/* changes survive */
 							/* server restart */
 							prs->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
-							prs->rs_value.at_flags |= VALUE_SET;
+							prs->rs_value.at_flags |= ATR_SET_MOD_MCACHE;
 							if (psrp->vna_val[0] != '\0') {
 								prs->rs_value.at_flags |= (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
 							}
@@ -3856,7 +3856,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					/* restart */
 
 					pattr->at_flags &= ~ATR_VFLAG_DEFLT;
-					pattr->at_flags |= VALUE_SET;
+					pattr->at_flags |= ATR_SET_MOD_MCACHE;
 					if (psrp->vna_val[0] != '\0') {
 						pattr->at_flags |= \
 					       (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
@@ -4028,13 +4028,13 @@ check_and_set_multivnode(struct pbsnode *pnode)
 				pala = &pbsndlist[i]->nd_attr[
 					(int) ND_ATR_in_multivnode_host];
 				(*pala).at_val.at_long = 1;
-				(*pala).at_flags = VALUE_SET | ATR_VFLAG_DEFLT;
+				(*pala).at_flags = ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
 
 				/* DEFLT needed to reset on update */
 				pala = &pnode->nd_attr[
 					(int) ND_ATR_in_multivnode_host];
 				(*pala).at_val.at_long = 1;
-				(*pala).at_flags = VALUE_SET | ATR_VFLAG_DEFLT;
+				(*pala).at_flags = ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
 				break;
 			}
 		}
@@ -4147,11 +4147,11 @@ mom_running_jobs(int stream)
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ALERT, pjob->ji_qs.ji_jobid, log_buffer);
 
 					pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = runver;
-					pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= VALUE_SET;
+					pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
 
 					if (!(pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags & ATR_VFLAG_SET) || (pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long<=0)) {
 						pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long = runver;
-						pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags |= VALUE_SET;
+						pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags |= ATR_SET_MOD_MCACHE;
 					/* update for resources used will save this to DB on later message from MOM, if it is indeed valid */
 					}
 				} else {
@@ -4470,7 +4470,7 @@ found:
 				np = psvrmom->msr_children[0];	/* the "one" */
 				np->nd_ncpus = psvrmom->msr_pcpus;
 				np->nd_attr[(int)ND_ATR_pcpus].at_val.at_long = psvrmom->msr_pcpus;
-				np->nd_attr[(int)ND_ATR_pcpus].at_flags |= VALUE_SET;
+				np->nd_attr[(int)ND_ATR_pcpus].at_flags |= ATR_SET_MOD_MCACHE;
 			}
 
 			i = disrui(stream, &ret);	/* num of avail CPUs on host */
@@ -4557,7 +4557,7 @@ found:
 						((prc->rs_value.at_flags & ATR_VFLAG_DEFLT) != 0)) {
 						mod_node_ncpus(np, i, ATR_ACTION_ALTER);
 						prc->rs_value.at_val.at_long = i;
-						prc->rs_value.at_flags |= (VALUE_SET | ATR_VFLAG_DEFLT);
+						prc->rs_value.at_flags |= (ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT);
 					}
 
 					/* available memory */
@@ -4571,7 +4571,7 @@ found:
 						prc->rs_value.at_val.at_size.atsv_num  =
 							psvrmom->msr_pmem;
 						prc->rs_value.at_val.at_size.atsv_shift = 10;
-						prc->rs_value.at_flags |= (VALUE_SET | ATR_VFLAG_DEFLT);
+						prc->rs_value.at_flags |= (ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT);
 					}
 				}
 			}
@@ -4696,7 +4696,7 @@ found:
 					if (prc->rs_value.at_flags & ATR_VFLAG_SET)
 						free(prc->rs_value.at_val.at_str);
 					prc->rs_value.at_val.at_str = strdup(psvrmom->msr_arch);
-					prc->rs_value.at_flags |= (VALUE_SET | ATR_VFLAG_DEFLT);
+					prc->rs_value.at_flags |= (ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT);
 				}
 
 				/*
@@ -4714,7 +4714,7 @@ found:
 					if (prc &&
 						((prc->rs_value.at_flags & ATR_VFLAG_SET)==0)) {
 						prc->rs_value.at_val.at_long = psvrmom->msr_acpus;
-						prc->rs_value.at_flags |= (VALUE_SET | ATR_VFLAG_DEFLT);
+						prc->rs_value.at_flags |= (ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT);
 					}
 					prd = find_resc_def(svr_resc_def, "mem",
 						svr_resc_size);
@@ -4726,7 +4726,7 @@ found:
 						prc->rs_value.at_val.at_size.atsv_num  =
 							psvrmom->msr_pmem;
 						prc->rs_value.at_val.at_size.atsv_shift = 10;
-						prc->rs_value.at_flags |= (VALUE_SET | ATR_VFLAG_DEFLT);
+						prc->rs_value.at_flags |= (ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT);
 					}
 				}
 
@@ -4779,7 +4779,7 @@ found:
 					}
 
 					if (change || !(np->nd_attr[(int)ND_ATR_ResvEnable].at_flags & ATR_VFLAG_SET) || !(np->nd_attr[(int)ND_ATR_ResvEnable].at_flags & ATR_VFLAG_DEFLT))
-						np->nd_attr[(int)ND_ATR_ResvEnable].at_flags |= ATR_VFLAG_DEFLT | VALUE_SET;
+						np->nd_attr[(int)ND_ATR_ResvEnable].at_flags |= ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 				}
 
 				if (psvrmom->msr_pbs_ver != NULL) {
@@ -4922,7 +4922,7 @@ found:
 					if (hact == JOB_ACT_REQ_REQUEUE) {
 						pjob->ji_wattr[(int)JOB_ATR_exit_status].\
 						at_val.at_long = JOB_EXEC_HOOK_RERUN;
-						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= VALUE_SET;
+						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
 						snprintf(log_buffer, sizeof(log_buffer),
 							"hook request rerun %s", jid);
 						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
@@ -4930,7 +4930,7 @@ found:
 					} else if (hact == JOB_ACT_REQ_DELETE) {
 						pjob->ji_wattr[(int)JOB_ATR_exit_status].\
 						at_val.at_long = JOB_EXEC_HOOK_DELETE;
-						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= VALUE_SET;
+						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
 						snprintf(log_buffer, sizeof(log_buffer),
 							"hook request delete %s", jid);
 						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
@@ -5973,7 +5973,7 @@ update_FLic_attr(void)
 	if ((pbs_max_licenses - licenses.lb_used_floating) < pbs_float_lic->at_val.at_long)
 		pbs_float_lic->at_val.at_long = pbs_max_licenses - licenses.lb_used_floating;
 
-	pbs_float_lic->at_flags |= VALUE_DIRTY;
+	pbs_float_lic->at_flags |= ATR_MOD_MCACHE;
 }
 
 #define JBINXSZ_GROW 16;
@@ -7394,7 +7394,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					if (op == DECR) {
 						check_for_negative_resource(prdef, pr, NULL);
 					}
-					sysru->at_flags |= VALUE_SET;
+					sysru->at_flags |= ATR_SET_MOD_MCACHE;
 				}
 
 				/* update queue attribute of resources assigned */
@@ -7410,7 +7410,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					if (op == DECR) {
 						check_for_negative_resource(prdef, pr, NULL);
 					}
-					queru->at_flags |= VALUE_SET;
+					queru->at_flags |= ATR_SET_MOD_MCACHE;
 				}
 
 			}
@@ -7442,7 +7442,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 			} else {
 				pr->rs_value.at_val.at_long += nchunk;
 			}
-			pr->rs_value.at_flags |= VALUE_SET | ATR_VFLAG_DEFLT;
+			pr->rs_value.at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
 		}
 	}
 	if (queru) {
@@ -7456,7 +7456,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 			} else {
 				pr->rs_value.at_val.at_long += nchunk;
 			}
-			pr->rs_value.at_flags |= ATR_VFLAG_SET | VALUE_SET;
+			pr->rs_value.at_flags |= ATR_VFLAG_SET | ATR_SET_MOD_MCACHE;
 		}
 	}
 	return;

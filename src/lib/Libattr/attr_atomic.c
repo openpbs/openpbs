@@ -164,11 +164,11 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 			 * the next step, so clear MODIFY here; including
 			 * within resources.
 			 */
-			(new + index)->at_flags &= ~VALUE_DIRTY;
+			(new + index)->at_flags &= ~ATR_MOD_MCACHE;
 			if ((new + index)->at_type == ATR_TYPE_RESC) {
 				prc = (resource *)GET_NEXT((new+index)->at_val.at_list);
 				while (prc) {
-					prc->rs_value.at_flags &= ~VALUE_DIRTY;
+					prc->rs_value.at_flags &= ~ATR_MOD_MCACHE;
 					prc = (resource *)GET_NEXT(prc->rs_link);
 				}
 			}
@@ -188,7 +188,7 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 			}
 		} else if (temp.at_flags & ATR_VFLAG_MODIFY) {
 			(pdef + index)->at_free(new + index);
-			(new + index)->at_flags |= VALUE_DIRTY; /* SET was removed by at_free */
+			(new + index)->at_flags |= ATR_MOD_MCACHE; /* SET was removed by at_free */
 		}
 
 		(pdef+index)->at_free(&temp);

@@ -854,7 +854,7 @@ on_job_exit(struct work_task *ptask)
 			}
 
 			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_val.at_long = stageout_status;
-			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = VALUE_SET;
+			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_SET_MOD_MCACHE;
 
 			/*
 			 * files (generally) copied ok, move on to the next phase by
@@ -1894,7 +1894,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 		exitstatus = local_exitstatus;
 	} else {
 		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = exitstatus;
-		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= VALUE_SET;
+		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	patlist = (svrattrl *)GET_NEXT(pruu->ru_attr);
@@ -2058,7 +2058,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 
 				/* put job on password hold */
 				pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_bad_password;
-				pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= VALUE_SET;
+				pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_HELD;
 				svr_evaljobstate(pjob, &newstate, &newsubst, 0);
@@ -2186,7 +2186,7 @@ RetryJob:
 					DBPRT(("%s: MOM rejected job %s with security breach fatal error.\n",
 						__func__, pruu->ru_pjobid))
 					pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= VALUE_SET;
+					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],NULL,
 						NULL,"job held due to possible security breach of job tmpdir, failed to start");
 					rel_resc(pjob);
