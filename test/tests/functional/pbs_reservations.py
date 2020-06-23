@@ -38,8 +38,9 @@
 # subject to Altair's trademark licensing policies.
 
 
-from tests.functional import *
 import time
+
+from tests.functional import *
 
 
 @tags('reservations')
@@ -1603,7 +1604,7 @@ class TestReservations(TestFunctional):
         rid1 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid2)
         rid1_q = rid1.split('.')[0]
-        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
                     'reserve_duration': 10}
         self.server.expect(RESV, exp_attr, id=rid1)
         self.server.expect(

@@ -333,7 +333,6 @@ struct ajtrk {
 	int trk_exitstat;	 /* if executed and exitstat set */
 	int trk_substate;	 /* sub state */
 	int trk_stgout;		 /* stageout status */
-	int trk_discarding;	 /* indicate job is discarding */
 	struct job *trk_psubjob; /* pointer to instantiated subjob */
 };
 
@@ -439,10 +438,8 @@ struct job {
 	int		ji_momhandle;	/* open connection handle to MOM */
 	int		ji_mom_prot;	/* PROT_TCP or PROT_TPP */
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
-#ifndef PBS_MOM
-	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */
-#endif /* PBS_MOM */
-#ifdef	PBS_MOM				/* MOM ONLY */
+#ifdef PBS_MOM /* MOM ONLY */
+	void *ji_pending_ruu; /* pending last update */
 	struct batch_request *ji_preq;	/* outstanding request */
 	struct grpcache *ji_grpcache;	/* cache of user's groups */
 	enum PBS_Chkpt_By ji_chkpttype; /* checkpoint type  */
@@ -503,7 +500,8 @@ struct job {
 	int		ji_stderr;	/* socket for stderr */
 	int		ji_ports[2];	/* ports for stdout/err */
 	enum	bg_hook_request	ji_hook_running_bg_on; /* set when hook starts in the background*/
-#else					/* END Mom ONLY -  start Server ONLY */
+#else /* END Mom ONLY -  start Server ONLY */
+	struct batch_request *ji_pmt_preq;		/* outstanding preempt job request for deleting jobs */
 	int		ji_discarding;	/* discarding job */
 	struct batch_request *ji_prunreq; /* outstanding runjob request */
 	pbs_list_head	ji_svrtask;	/* links to svr work_task list */

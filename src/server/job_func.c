@@ -80,6 +80,10 @@
 
 #ifndef PBS_MOM
 #include "pbs_idx.h"
+#else
+#include "mom_server.h"
+#include "mom_func.h"
+#include "mom_hook_func.h"
 #endif
 
 #include "svrfunc.h"
@@ -95,7 +99,6 @@
 extern int time_now;
 
 /* External functions */
-
 #ifdef WIN32
 extern int read_cred(job *pjob, char **cred, size_t *len);
 #endif
@@ -124,9 +127,6 @@ extern pbs_list_head svr_alljobs;
 extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
-#include "mom_func.h"
-#include "mom_hook_func.h"
-
 extern void rmtmpdir(char *);
 void nodes_free(job *);
 extern char *std_file_name(job *pjob, enum job_file which, int *keeping);
@@ -876,6 +876,11 @@ job_purge(job *pjob)
 	}
 #endif
 #ifdef	PBS_MOM
+	if (pjob->ji_pending_ruu != NULL) {
+		ruu *x = (ruu *)(pjob->ji_pending_ruu);
+		send_resc_used(x->ru_cmd, 1, x);
+		FREE_RUU(x);
+	}
 	delete_link(&pjob->ji_jobque);
 	delete_link(&pjob->ji_alljobs);
 	delete_link(&pjob->ji_unlicjobs);

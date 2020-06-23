@@ -122,8 +122,6 @@ extern void set_resc_assigned(void *, int,  enum batch_op);
 extern long get_walltime(const job *, int);
 
 /* Local public functions  */
-
-void	job_obit(struct resc_used_update *, int s);
 void	on_job_rerun(struct work_task *ptask);
 void	on_job_exit(struct work_task *ptask);
 extern void set_admin_suspend(job *pjob, int set_remove_nstate);
@@ -1689,7 +1687,7 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
  */
 
 void
-job_obit(struct resc_used_update *pruu, int stream)
+job_obit(ruu *pruu, int stream, int *is_reject)
 {
 	int		  alreadymailed = 0;
 	char		 *acctbuf = NULL;
@@ -1728,11 +1726,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			LOG_NOTICE, pruu->ru_pjobid, log_buffer);
 
 		/* tell MOM the job was blown away */
-
-		reject_obit(stream, pruu->ru_pjobid);
-
-		/* free pruu, see mom_server.h */
-		FREE_RUU(pruu)
+		*is_reject = 1;
 		return;
 	}
 	sprintf(log_buffer, "Obit received momhop:%d serverhop:%ld state:%d substate:%d",
@@ -1754,22 +1748,20 @@ job_obit(struct resc_used_update *pruu, int stream)
 			DBPRT(("%s: job %s not in exiting state!\n",
 				__func__, pruu->ru_pjobid))
 			pjob->ji_discarding = 0;
-			reject_obit(stream, pruu->ru_pjobid);
+			*is_reject = 1;
 
 			(void)sprintf(log_buffer, "%s", msg_obitnotrun);
 			log_event(PBSEVENT_ERROR|PBSEVENT_JOB,
 				PBS_EVENTCLASS_JOB, LOG_INFO,
 				pruu->ru_pjobid, log_buffer);
-			FREE_RUU(pruu)
 			return;
 		} else if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_TERM) {
+			*is_reject = -1;
 			/*
 			 * not in special site script substate, Mom must have
 			 * had a problem and wants to have the post job
 			 * processing restarted.
-			 */
-			FREE_RUU(pruu)
-			/*
+			 *
 			 * If there is an open connection to Mom for this job,
 			 * find the associate work task, remove and free it and
 			 * any outstanding batch_request to Mom.  Then close
@@ -1817,8 +1809,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 		/* somewhere else.   Just tell Mom to junk job.		     */
 		DBPRT(("%s: job %s run count too low\n",
 			__func__, pruu->ru_pjobid))
-		reject_obit(stream, pruu->ru_pjobid);
-		FREE_RUU(pruu) /* free pruu, see mom_server.h */
+		*is_reject = 1;
 		return;
 	} else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 
@@ -1842,8 +1833,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			}
 			if (ivndx == ((mom_svrinfo_t *)(psendmom->mi_data))->msr_numvnds) {
 				/* not the same node,  reject the obit */
-				reject_obit(stream, pruu->ru_pjobid);
-				FREE_RUU(pruu) /* free pruu, see mom_server.h */
+				*is_reject = 1;
 				return;
 			}
 		}
@@ -1940,7 +1930,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 
 			resource_def *tmpdef;
 
-			if (strcmp(patlist->al_name, ATTR_used_update) == 0)
+			if (strcmp(patlist->al_name, ATTR_used) != 0)
 				continue;
 
 			tmpdef = find_resc_def(svr_resc_def, patlist->al_resc);
@@ -2132,7 +2122,7 @@ RetryJob:
 					goto RetryJob;
 
 				rel_resc(pjob);
-				ack_obit(stream, pjob->ji_qs.ji_jobid);
+				*is_reject = 0;
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN|JOB_SVFLG_CHKPT;
 
 					svr_evaljobstate(pjob, &newstate, &newsubst, 1);
@@ -2143,7 +2133,6 @@ RetryJob:
 					pjob->ji_momhandle = -1;
 					pjob->ji_mom_prot = PROT_INVALID;
 
-				FREE_RUU(pruu)
 				free(mailbuf);
 				free(acctbuf);
 				return;
@@ -2183,18 +2172,13 @@ RetryJob:
 					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],NULL,
 						NULL,"job held due to possible security breach of job tmpdir, failed to start");
 					rel_resc(pjob);
-					ack_obit(stream, pjob->ji_qs.ji_jobid);
+					*is_reject = 0;
 					svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
-					FREE_RUU(pruu)
 					free(mailbuf);
 					free(acctbuf);
 					return;
 		}
 	}
-
-	/* can now free the resc_used_update structure */
-
-	FREE_RUU(pruu)
 
 	/* Send email if exiting (not rerun) */
 
@@ -2236,7 +2220,7 @@ RetryJob:
 			 */
 
 			rel_resc(pjob);
-			ack_obit(stream, pjob->ji_qs.ji_jobid);
+			*is_reject = 0;
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HASHOLD;
 			svr_evaljobstate(pjob, &newstate, &newsubst, 1);
@@ -2285,7 +2269,7 @@ RetryJob:
 	/* short and there might be several running there                */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
-		ack_obit(stream, pjob->ji_qs.ji_jobid);
+		*is_reject = 0;
 
 	DBPRT(("%s: Returning from end of function.\n", __func__))
 	return;

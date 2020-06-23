@@ -126,7 +126,6 @@ extern	pbs_list_head       task_list_immed;
 extern	pbs_list_head       task_list_timed;
 extern	pbs_list_head       task_list_event;
 extern	pbs_list_head	svr_alljobs;
-extern	int		svr_hook_resend_job_attrs;
 
 extern	char		*msg_err_malloc;
 
@@ -571,7 +570,7 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		"Administrators",
 	READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 							      == 0 ) {
-		snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the file for user: %s, file: %s", 
+		snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the file for user: %s, file: %s",
 			pjob->ji_user->pw_name, dest_file);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, log_buffer);
@@ -1059,7 +1058,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the script file for user: %s, file: %s", 
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the script file for user: %s, file: %s",
 				pjob->ji_user->pw_name, script_file);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, log_buffer);
@@ -1104,7 +1103,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the hook input file for user: %s, file: %s", 
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the hook input file for user: %s, file: %s",
 				pjob->ji_user->pw_name, hook_inputfile);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, log_buffer);
@@ -1129,7 +1128,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			"Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 								      == 0 ) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the log file for user: %s, file: %s", 
+			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the log file for user: %s, file: %s",
 				pjob->ji_user->pw_name, log_file);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 				__func__, log_buffer);
@@ -1527,7 +1526,7 @@ run_hook_exit:
 			int ret = 0;
 			ret = hook_env_setup(pjob, phook);
 			if ( ret != 0 ) {
-				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s", 
+				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s",
 					pjob->ji_qs.ji_jobid);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					__func__, log_buffer);
@@ -1722,7 +1721,7 @@ run_hook_exit:
 
 #ifdef WIN32
 	if(secure_file(file_out, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) 
+		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
 		sprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", file_out);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, log_buffer);
@@ -1752,7 +1751,7 @@ python_script_free(struct python_script *py_script)
 	}
 	else
 		log_err(PBSE_HOOKERROR, __func__, "Python Script is NULL");
-	
+
 }
 
 /**
@@ -2384,17 +2383,10 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					/* working on a new list of job data */
 					if (pjob2_prev != NULL) {
 						if (*reject_deletejob) {
-							/* deletejob takes */
-							/* precedence */
-							new_job_action_req(pjob2,
-							phook?phook->user:\
-							   HOOK_PBSADMIN,
-								JOB_ACT_REQ_DELETE);
+							/* deletejob takes precedence */
+							new_job_action_req(pjob2, phook ? phook->user: HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 						} else if (*reject_rerunjob) {
-							new_job_action_req(pjob2,
-							phook?phook->user:\
-								HOOK_PBSADMIN,
-								JOB_ACT_REQ_REQUEUE);
+							new_job_action_req(pjob2, phook ? phook->user: HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 						}
 						/* already sent the action */
 						found_rerunjob_action = 0;
@@ -2586,11 +2578,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				}
 				/* attributes in a hook should be flagged */
 				/* with ATR_VFLAG_HOOK                    */
-				pjob2->ji_wattr[index].at_flags |=
-					ATR_VFLAG_HOOK;
-				if (svr_hook_resend_job_attrs == 0) {
-					svr_hook_resend_job_attrs = 1;
-				}
+				pjob2->ji_wattr[index].at_flags |= ATR_VFLAG_HOOK;
 			}
 
 		} if ((strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT,
@@ -2798,11 +2786,9 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	if (found_joblist && (found_rerunjob_action || found_deletejob_action)) {
 		if ((reject_deletejob != NULL) && (*reject_deletejob)) {
 			/* deletejob takes precedence */
-			new_job_action_req(pjob2,
-				phook?phook->user:HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
+			new_job_action_req(pjob2, phook ? phook->user : HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 		} else if ((reject_rerunjob != NULL) && (*reject_rerunjob)) {
-			new_job_action_req(pjob2,
-				phook?phook->user:HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
+			new_job_action_req(pjob2, phook ? phook->user : HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 		}
 	}
 	rc = 0;
@@ -2939,8 +2925,7 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
  *
  */
 static void
-post_periodic_hook(pwt)
-struct work_task *pwt;
+post_periodic_hook(struct work_task *pwt)
 {
 	int	 wstat = pwt->wt_aux;
 	hook	 *phook = (hook *)pwt->wt_parm1;
@@ -3169,7 +3154,7 @@ record_job_last_hook_executed(unsigned int hook_event,
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
 			  LOG_ERR, __func__, "Job not received");
 		return;
-	} 
+	}
 
 	if (hook_name == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
@@ -3388,17 +3373,14 @@ post_run_hook(struct work_task *ptask)
 				/* hook script executed by PBSADMIN or not. */
 				if (reject_deletejob) {
 					/* deletejob takes precedence */
-					new_job_action_req(pjob, phook->user,
-						JOB_ACT_REQ_DELETE);
+					new_job_action_req(pjob, phook->user, JOB_ACT_REQ_DELETE);
 				} else if (reject_rerunjob) {
-					new_job_action_req(pjob, phook->user,
-						JOB_ACT_REQ_REQUEUE);
+					new_job_action_req(pjob, phook->user, JOB_ACT_REQ_REQUEUE);
 				}
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
-				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 0);
+				update_ajob_status_using_cmd(pjob, IS_RESCUSED_FROM_HOOK);
 			}
 
 
@@ -3615,8 +3597,7 @@ reply_hook_bg(job *pjob)
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
 					(void)snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
-							runver;
+					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = runver;
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
 					/* JOB_ACT_REQ_DEALLOCATE request will tell the
 					 * the server that this mom has completely deleted the

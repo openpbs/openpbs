@@ -1733,11 +1733,10 @@ record_finish_exec(int sd)
 				}
 
 			} else if (get_hook_results(hook_outfile, NULL, NULL, NULL, 0,
-				&reject_rerunjob, &reject_deletejob, NULL,
-				NULL, 0, &vnl_changes, pjob, NULL, 0, NULL) != 0) {
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, "",
-					"Failed to get prologue hook results");
+						    &reject_rerunjob, &reject_deletejob, NULL,
+						    NULL, 0, &vnl_changes, pjob,
+						    NULL, 0, NULL) != 0) {
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "Failed to get prologue hook results");
 				vna_list_free(vnl_changes);
 				/* important to unlink this file here */
 				/* as this file is usually opened in append */
@@ -1750,24 +1749,14 @@ record_finish_exec(int sd)
 				/* hook script executed by PBSADMIN or not. */
 				if (reject_deletejob) {
 					/* deletejob takes precedence */
-#ifdef NAS /* localmod 005 */
-					new_job_action_req(pjob, HOOK_PBSADMIN, 1);
-#else
-					new_job_action_req(pjob, 0, 1);
-#endif /* localmod 005 */
+					new_job_action_req(pjob, HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 				} else if (reject_rerunjob) {
-#ifdef NAS /* localmod 005 */
-					new_job_action_req(pjob, HOOK_PBSADMIN, 0);
-#else
-					new_job_action_req(pjob, 0, 0);
-#endif /* localmod 005 */
+					new_job_action_req(pjob, HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 				}
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
-
-				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 0);
+				update_ajob_status_using_cmd(pjob, IS_RESCUSED_FROM_HOOK);
 
 				/* Push vnl hook changes to server */
 				hook_requests_to_server(&vnl_changes);
@@ -2544,7 +2533,7 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 	/* set modify flag on the job attributes that will be sent to the server */
 	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
-	(void)update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1);
+	(void)update_ajob_status_using_cmd(pjob, IS_RESCUSED);
 
 	return (0);
 }
