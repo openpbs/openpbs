@@ -37,7 +37,7 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-PBS_DIR=$( readlink -f $0 | awk -F'/ci/' '{print $1}' )
+PBS_DIR=$(readlink -f $0 | awk -F'/ci/' '{print $1}')
 cd ${PBS_DIR}
 
 yum clean all
