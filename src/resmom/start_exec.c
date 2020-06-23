@@ -3865,7 +3865,11 @@ finish_exec(job *pjob)
 				}
 			}
 
-			mom_writer(qsub_sock, ptc);
+			int res = mom_writer(qsub_sock, ptc);
+			if (res == -1)
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "CS_write failed with errno %d", errno);
+			else if (res == -2)
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "read failed with errno %d", errno);
 
 			shutdown(qsub_sock, 2);
 			exit(0);
@@ -4043,7 +4047,11 @@ finish_exec(job *pjob)
 							qsub_sock, mom_reader_Xjob,
 							log_mom_portfw_msg);
 					} else {
-						mom_reader(qsub_sock, ptc, buf);
+						int res = mom_reader(qsub_sock, ptc, buf);
+						if (res == -1)
+							log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "Write failed with errno %d", errno);
+						else if (res == -2)
+							log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "CS_read failed with errno %d", errno);
 					}
 				} else {
 					log_err(errno,  __func__,

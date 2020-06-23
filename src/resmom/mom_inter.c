@@ -106,7 +106,6 @@ int    amt;
 		} else if (got == 0)
 			break;
 		else {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "CS_read failed with errno %d", errno);
 			return (-1);
 		}
 	}
@@ -264,6 +263,11 @@ int pty;
  * @param[in] ptc - master file descriptor
  * @param[in] command - shell command
  *
+ * @return    error code
+ * @retval    0     Success
+ * @retval   -1     Write Failure
+ * @retval   -2     Read Failure
+ * 
  */
 int
 mom_reader(s, ptc, command)
@@ -285,7 +289,6 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 				if (errno == EINTR) {
 					continue;
 				}
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "Write failed with errno %d", errno);
 				return (-1);
 			}
 			c -= wc;
@@ -305,7 +308,6 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 					if (errno == EINTR) {
 						continue;
 					}
-					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "Write to ptc failed with errno %d", errno);
 					return (-1);
 				}
 				c -= wc;
@@ -317,8 +319,7 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 			if (errno == EINTR)
 				continue;
 			else {
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "CS_read failed with errno %d", errno);
-				return (-1);
+				return (-2);
 			}
 		}
 	}
@@ -353,7 +354,6 @@ setcurrentworkdir(char *command)
 				if (errno == EINTR) {
 					continue;
 				}
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "Write failed with errno %d", errno);
 				return (-1);
 			}
 			c -= wc;
@@ -391,7 +391,6 @@ mom_reader_Xjob(int s)
 				if (errno == EINTR) {
 					continue;
 				}
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "Write to ptc failed with errno %d", errno);
 				return (-1);
 			}
 			c -= wc;
@@ -407,7 +406,6 @@ mom_reader_Xjob(int s)
 			return (0);
 		}
 		else {
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "CS_read failed with errno %d", errno);
 			return (-1);
 		}
 	}
@@ -425,7 +423,8 @@ mom_reader_Xjob(int s)
  *
  * @return    error code
  * @retval    0     Success
- * @retval   -1     Failure
+ * @retval   -1     Write Failure
+ * @retval   -2     Read Failure
  *
  */
 int
@@ -448,7 +447,6 @@ int ptc;
 					if (errno == EINTR) {
 						continue;
 					}
-					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "CS_Write failed with errno %d", errno);
 					return (-1);
 				}
 				c -= wc;
@@ -460,8 +458,7 @@ int ptc;
 			if (errno == EINTR)
 				continue;
 			else {
-				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "read failed with errno %d", errno);
-				return (-1);
+				return (-2);
 			}
 		}
 	}
