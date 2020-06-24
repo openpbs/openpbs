@@ -2450,6 +2450,13 @@ next_job(status *policy, server_info *sinfo, int flag)
 static void
 init_sc_attrs(void)
 {
+	free(sc_attrs.comment);
+	free(sc_attrs.job_sort_formula);
+	free(sc_attrs.partition);
+	free(sc_attrs.sched_log);
+	free(sc_attrs.sched_port);
+	free(sc_attrs.sched_priv);
+
 	sc_attrs.attr_update_period = 0;
 	sc_attrs.comment = NULL;
 	sc_attrs.do_not_span_psets = 0;
