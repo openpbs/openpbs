@@ -578,10 +578,10 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         self.momA.signal("-CONT")
         self.momB.signal("-CONT")
         self.momC.signal("-CONT")
-        TestFunctional.tearDown(self)
         for host in [self.hostA, self.hostB, self.hostC]:
             test_img = os.path.join("/home", "pbsuser", "test.img")
-            self.du.rm(hostname=host, path=test_img, force=True, runas=TEST_USER)
+            self.du.rm(hostname=host, path=test_img, force=True,
+                       runas=TEST_USER)
         TestFunctional.tearDown(self)
 
     def test_release_nodes_on_stageout_true(self):
@@ -601,7 +601,6 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Inside job1's script contains the
         # directive to release_nodes_on_stageout=true
         jid = self.create_and_submit_job('job1')
-
 
         self.server.expect(JOB, {'job_state': 'R',
                                  'release_nodes_on_stageout': 'True',
