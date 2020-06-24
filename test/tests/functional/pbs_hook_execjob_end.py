@@ -413,15 +413,18 @@ class TestPbsExecjobEnd(TestFunctional):
 
         # check for the job's state after the node_fail_requeue time hits
         self.logger.info("Waiting for 30s so that node_fail_requeue time hits")
-        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid, offset=30)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid, offset=30,
+                           trigger_sched_cycle=False)
 
         host.start()
         self.logger.info(
             "Successfully started mom process on %s" %
             host.shortname)
-        self.server.expect(NODE, {'state': 'free'}, id=host.shortname)
+        self.server.expect(NODE, {'state': 'free'}, id=host.shortname,
+                           trigger_sched_cycle=False)
 
-        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid,
+                           trigger_sched_cycle=False)
         # run job
         try:
             # qrun will fail as it is discarding the job
@@ -436,7 +439,8 @@ class TestPbsExecjobEnd(TestFunctional):
                                starttime=now, interval=2)
             time.sleep(5)
             self.server.runjob(jid)
-            self.server.expect(JOB, {'job_state': 'R'}, jid)
+            self.server.expect(JOB, {'job_state': 'R'}, jid,
+                               trigger_sched_cycle=False)
             now = time.time()
             self.mom.log_match(
                 "starting hook event EXECJOB_END",

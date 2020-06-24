@@ -86,14 +86,17 @@ class TestEligibleTime(TestFunctional):
 
         J1 = Job(TEST_USER, attrs={ATTR_a: s})
         jid = self.server.submit(J1)
-        self.server.expect(JOB, {ATTR_state: 'W'}, id=jid)
+        self.server.expect(JOB, {ATTR_state: 'W'}, id=jid,
+                           trigger_sched_cycle=False)
 
         self.logger.info("Sleeping 120s till job is out of 'W' state")
         time.sleep(120)
-        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid,
+                           trigger_sched_cycle=False)
         # eligible_time should really be 0, but just incase there is some
         # lag on some slow systems, add a little leeway.
-        self.server.expect(JOB, {'eligible_time': 10}, op=LT)
+        self.server.expect(JOB, {'eligible_time': 10}, op=LT,
+                           trigger_sched_cycle=False)
 
     @skipOnCpuSet
     def test_job_array(self):

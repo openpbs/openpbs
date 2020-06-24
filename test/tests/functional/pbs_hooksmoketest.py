@@ -262,7 +262,8 @@ else:
         j1 = Job(TEST_USER, a)
         j1.create_script(self.script)
         jid1 = self.server.submit(j1, submit_dir=submit_dir)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1,
+                           trigger_sched_cycle=False)
         # As a user submit a job without requesting walltime
         # Job is denied with the message
         _msg = "qsub: No walltime specified. Master does not approve! ;o)"
@@ -444,7 +445,8 @@ print_attribs(j)"""
         j1 = Job(TEST_USER7)
         j1.create_script(self.script)
         jid1 = self.server.submit(j1, submit_dir=submit_dir)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1,
+                           trigger_sched_cycle=False)
         # qrun job j1
         self.server.runjob(jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)

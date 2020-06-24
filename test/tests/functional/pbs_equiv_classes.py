@@ -2161,8 +2161,10 @@ else:
 
         # Turn on scheduling
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jidh)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1,
+                           trigger_sched_cycle=False)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jidh,
+                           trigger_sched_cycle=False)
 
         # make sure that the second job ran in the same cycle as the high
         # priority job

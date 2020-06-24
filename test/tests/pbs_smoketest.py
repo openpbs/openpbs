@@ -187,9 +187,11 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         j = Job(TEST_USER)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid,
+                           trigger_sched_cycle=False)
         self.server.alterjob(jid, {'comment': 'job comment altered'})
-        self.server.expect(JOB, {'comment': 'job comment altered'}, id=jid)
+        self.server.expect(JOB, {'comment': 'job comment altered'}, id=jid,
+                           trigger_sched_cycle=False)
 
     def test_sigjob(self):
         """

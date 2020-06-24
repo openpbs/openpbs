@@ -1045,13 +1045,13 @@ for jj in e.job_list.keys():
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
         self.server.rerunjob(jobid=jid1, runas=ROOT_USER)
-        self.server.expect(JOB,
-                           {'job_state': 'Q'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1,
+                           trigger_sched_cycle=False)
 
         # Verify that foo_f is unset
         self.server.expect(JOB,
                            'Resource_List.foo_f',
-                           op=UNSET, id=jid1)
+                           op=UNSET, id=jid1, trigger_sched_cycle=False)
 
         # turn the scheduling on
         self.server.manager(MGR_CMD_SET, SERVER,

@@ -169,7 +169,7 @@ class TestQsub_remove_files(TestFunctional):
         directory when default_qsub_arguments is set to -Roe.
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(5)
+        j.set_sleep_time(10)
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'default_qsub_arguments': '-Roe'})
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
@@ -204,11 +204,13 @@ class TestQsub_remove_files(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         j = Job(TEST_USER)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid,
+                           trigger_sched_cycle=False)
         attribs = {ATTR_R: 'oe'}
         try:
             self.server.alterjob(jid, attribs)
-            self.server.expect(JOB, attribs, id=jid)
+            self.server.expect(JOB, attribs, id=jid,
+                               trigger_sched_cycle=False)
         except PbsAlterError as e:
             print(str(e))
 

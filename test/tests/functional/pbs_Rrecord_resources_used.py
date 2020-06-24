@@ -272,9 +272,12 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             id=jid3s1, regexp=True)
 
         # Verify that the jobs are in 'Q' state.
-        self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
-        self.server.expect(JOB, {ATTR_state: 'Q'}, jid2)
-        self.server.expect(JOB, {ATTR_state: 'Q'}, jid3s1)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, jid1,
+                           trigger_sched_cycle=False)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, jid2,
+                           trigger_sched_cycle=False)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, jid3s1,
+                           trigger_sched_cycle=False)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 

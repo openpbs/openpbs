@@ -536,9 +536,11 @@ class TestJobArray(TestFunctional):
         a = {'scheduling': 'false'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.rerunjob(subjid_1)
-        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1)
+        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1,
+                           trigger_sched_cycle=False)
         self.kill_and_restart_svr()
-        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1)
+        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1,
+                           trigger_sched_cycle=False)
         a = {'scheduling': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'job_state': 'R'}

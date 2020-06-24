@@ -68,4 +68,5 @@ class Test_TestparamsDecorator(TestSelf):
         if scheduling:
             self.server.expect(JOB, {'job_state=R': num_jobs})
         else:
-            self.server.expect(JOB, {'job_state=Q': num_jobs})
+            self.server.expect(JOB, {'job_state=Q': num_jobs},
+                               trigger_sched_cycle=False)

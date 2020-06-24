@@ -549,12 +549,15 @@ class TestAdminSuspend(TestFunctional):
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
         self.server.create_vnodes('vn', a, 3, self.mom, usenatvnode=True)
 
-        j = Job(TEST_USER)
-        j.set_attributes({'Resource_List.select': '3:ncpus=1',
-                          'Resource_List.place': 'vscatter'})
-        jid1 = self.server.submit(j)
-        jid2 = self.server.submit(j)
-        jid3 = self.server.submit(j)
+        ja = {'Resource_List.select': '3:ncpus=1',
+              'Resource_List.place': 'vscatter'}
+        j1 = Job(TEST_USER, ja)
+        jid1 = self.server.submit(j1)
+        j2 = Job(TEST_USER, ja)
+        jid2 = self.server.submit(j2)
+        j3 = Job(TEST_USER, ja)
+        jid3 = self.server.submit(j3)
+
         self.server.expect(JOB, {'job_state=R': 3, 'substate=42': 3})
         self.server.expect(NODE, {'state=free': 3})
 
@@ -584,7 +587,8 @@ class TestAdminSuspend(TestFunctional):
 
         # resume the remaining job
         self.server.sigjob(jid2, 'admin-resume', runas=ROOT_USER)
-        self.server.expect(NODE, {'state=free': 3})
+        self.server.expect(NODE, {'state=free': 2})
+        self.server.expect(NODE, {'state=job-busy': 1})
         self.server.expect(JOB, {'job_state=R': 4})
 
     @skipOnCpuSet

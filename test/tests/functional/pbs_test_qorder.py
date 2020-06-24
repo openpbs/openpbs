@@ -72,7 +72,7 @@ class Test_qorder(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'server_state': 'Scheduling'}
-        self.server.expect(SERVER, a, op=NE)
+        self.server.expect(SERVER, a, op=NE, trigger_sched_cycle=False)
 
         jid2 = jid2.split('.')[0]
         cycle = self.scheduler.cycles(start=self.server.ctime, lastN=1)
@@ -112,7 +112,7 @@ class Test_qorder(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'server_state': 'Scheduling'}
-        self.server.expect(SERVER, a, op=NE)
+        self.server.expect(SERVER, a, op=NE, trigger_sched_cycle=False)
 
         jid2 = jid2.split('.')[0]
         cycle = self.scheduler.cycles(start=self.server.ctime, lastN=1)

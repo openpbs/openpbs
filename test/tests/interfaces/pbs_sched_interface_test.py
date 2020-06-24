@@ -277,12 +277,14 @@ class TestSchedulerInterface(TestInterfaces):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'},
                             runas=ROOT_USER)
-        self.server.expect(SERVER, {'scheduling': 'False'})
+        self.server.expect(SERVER, {'scheduling': 'False'},
+                           trigger_sched_cycle=False)
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'},
                             runas=ROOT_USER)
         self.server.expect(SCHED, {'scheduling': 'True'},
-                           id='default', max_attempts=10)
+                           id='default', max_attempts=10,
+                           trigger_sched_cycle=False)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduler_iteration': 300},
                             runas=ROOT_USER)

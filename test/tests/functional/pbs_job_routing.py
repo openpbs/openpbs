@@ -132,7 +132,7 @@ class TestJobRouting(TestFunctional):
         jid = self.server.submit(job)
 
         self.server.expect(JOB, {ATTR_state + '=Q': 4}, count=True,
-                           id=jid, extend='t')
+                           id=jid, extend='t', trigger_sched_cycle=False)
 
         # Start scheduling cycle. This will move all 3 subjobs to R state.
         # And parent job state to B state.

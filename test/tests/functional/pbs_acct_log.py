@@ -146,7 +146,8 @@ class TestAcctLog(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         self.server.rerunjob(jid)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid,
+                           trigger_sched_cycle=False)
 
         # Make sure the accounting log hasn't been truncated
         acctlog_match = 'resources_used.foo_str=' + hstr

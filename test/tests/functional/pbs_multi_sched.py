@@ -308,7 +308,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc5")
         self.server.expect(SCHED, {'state': 'scheduling'},
-                           id='sc5', max_attempts=10)
+                           id='sc5')
 
     @skipOnCpuSet
     def test_resource_sched_reconfigure(self):
@@ -616,10 +616,12 @@ class TestMultipleSchedulers(TestFunctional):
                             {'scheduling': 'False'}, id="default")
         j = Job(TEST_USER1, attrs={'Resource_List.select': '1:ncpus=1'})
         jid1 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1,
+                           trigger_sched_cycle=False)
         j = Job(TEST_USER1, attrs={'Resource_List.select': '1:ncpus=2'})
         jid2 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2,
+                           trigger_sched_cycle=False)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="default")
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
@@ -628,11 +630,13 @@ class TestMultipleSchedulers(TestFunctional):
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:ncpus=1'})
         jid3 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3,
+                           trigger_sched_cycle=False)
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:ncpus=2'})
         jid4 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4,
+                           trigger_sched_cycle=False)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc3")
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
@@ -1900,7 +1904,8 @@ class TestMultipleSchedulers(TestFunctional):
              'Resource_List.walltime': 600}
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid,
+                           trigger_sched_cycle=False)
 
         # Now turn this job into a reservation and notice that it runs inside
         # a reservation running on vnode[2] which is part of sc3
@@ -1938,7 +1943,7 @@ class TestMultipleSchedulers(TestFunctional):
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, a, rid)
+        self.server.expect(RESV, a, rid, trigger_sched_cycle=False)
 
         # Submit a standing reservation such that it consumes one partition
         # and an occurrence finishes before the advance reservation starts.

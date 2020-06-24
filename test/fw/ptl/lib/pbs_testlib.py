@@ -8330,6 +8330,10 @@ class Server(PBSService):
                             str(offset))
             time.sleep(offset)
 
+        if trigger_sched_cycle and attempt == 0:
+            self.manager(MGR_CMD_SET,
+                         SERVER, {'scheduling': 'True'}, sudo=True)
+
         if attrib is None:
             attrib = {}
 
