@@ -613,9 +613,7 @@ pbsd_init(int type)
 
 			/* reinitialize schema by dropping PBS schema */
 			if (pbs_db_truncate_all(svr_db_conn) == -1) {
-				sprintf(log_buffer, "Could not truncate PBS data:[%s]", (char *) conn->conn_db_err);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname, log_buffer);
-				printf("%s\n", log_buffer);
+				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname, "Could not truncate PBS data:[%s]", (char *) conn->conn_db_err);
 				return -1;
 			}
 		}
@@ -839,16 +837,10 @@ pbsd_init(int type)
 		if ((pjob = job_recov_db_spl(&dbjob, NULL)) == NULL) {
 			if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
 				/* remove the loaded job from db */
-				if (pbs_db_delete_obj(conn, &obj) != 0) {
-					sprintf(log_buffer, "job %s not purged", dbjob.ji_jobid);
-					log_err(-1, __func__, log_buffer);
-				}
-			} else {
-				sprintf(log_buffer, "Failed to recover job %s", dbjob.ji_jobid);
-				log_event(PBSEVENT_SYSTEM,
-					PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-					msg_daemonname, log_buffer);
-			}
+				if (pbs_db_delete_obj(conn, &obj) != 0)
+					log_errf(-1, __func__, "job %s not purged", dbjob.ji_jobid);
+			} else
+				log_errf(-1, __func__, "Failed to recover job %s", dbjob.ji_jobid);
 			continue;
 		}
 		free_db_attr_list(&dbjob.db_attr_list);
@@ -1461,7 +1453,7 @@ pbsd_init_job(job *pjob, int type)
 		/* Likely means recovering a job from a older version      */
 		if (((pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0) && ((pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags & ATR_VFLAG_SET) != 0)) {
 			pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_SET_MOD_MCACHE);
+			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
 		}
 
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {

@@ -1684,7 +1684,7 @@ mgr_sched_set(struct batch_request *preq)
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 
-	/* if the unsetist has attributes, call server_unset to remove them separately */
+	/* if the unsetlist has attributes, call server_unset to remove them separately */
 	ulist = (svrattrl *)GET_NEXT(unsetlist);
 	if (ulist) {
 		mgr_unset_attr(psched->sch_attr, sched_attr_def, SCHED_ATR_LAST, ulist,
@@ -1832,7 +1832,7 @@ mgr_queue_set(struct batch_request *preq)
 		pque = (pbs_queue *)GET_NEXT(svr_queues);
 
 	while (pque) {
-		/* if the unsetist has attributes, call server_unset to remove them separately */
+		/* if the unsetlist has attributes, call server_unset to remove them separately */
 		ulist = (svrattrl *)GET_NEXT(unsetlist);
 		if (ulist) {
 			mgr_unset_attr(pque->qu_attr, que_attr_def, QA_ATR_LAST, ulist,
@@ -2090,7 +2090,7 @@ mgr_node_set(struct batch_request *preq)
 	i = 0;
 	while (pnode) {
 		if ((pnode->nd_state & INUSE_DELETED) == 0) {
-			/* if the unsetist has attributes, call server_unset to remove them separately */
+			/* if the unsetlist has attributes, call server_unset to remove them separately */
 			ulist = (svrattrl *)GET_NEXT(unsetlist);
 			if (ulist) {
 				mgr_unset_attr(pnode->nd_attr, node_attr_def, ND_ATR_LAST, ulist,

@@ -1003,7 +1003,7 @@ int depend_runone_release_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long &= ~HOLD_s;
-		        d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_MODCACHE;
+		        d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_MOD_MCACHE;
 				svr_evaljobstate(d_pjob, &newstate, &newsub, 0);
 				(void)svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
 			}

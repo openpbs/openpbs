@@ -277,9 +277,7 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, struct attribute_
 					padef[index].at_decode(&pattr[index], pal->al_name, pal->al_resc, pal->al_value);
 					if (padef[index].at_action)
 						if ((act_rc = (padef[index].at_action(&pattr[index], parent, ATR_ACTION_RECOV)))) {
-							snprintf(log_buffer,LOG_BUF_SIZE, "Action function failed for %s attr, errn %d",
-									(padef+index)->at_name, act_rc);
-							log_err(act_rc, __func__, log_buffer);
+							log_errf(act_rc, __func__, "Action function failed for %s attr, errn %d", (padef+index)->at_name, act_rc);
 							for ( index++; index <= limit; index++) {
 								while (pal) {
 									tmp_pal = pal->al_sister;

@@ -100,6 +100,7 @@ static int
 db_2_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 {
 	if (pdbnd->nd_name && pdbnd->nd_name[0] != 0) {
+		free(pnode->nd_name); /* free any previously allocated value */
 		pnode->nd_name = strdup(pdbnd->nd_name);
 		if (pnode->nd_name == NULL)
 			return -1;
@@ -108,6 +109,7 @@ db_2_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 		pnode->nd_name = NULL;
 
 	if (pdbnd->nd_hostname && (pdbnd->nd_hostname[0] != 0)) {
+		free(pnode->nd_hostname); /* free any previously allocated value */
 		pnode->nd_hostname = strdup(pdbnd->nd_hostname);
 		if (pnode->nd_hostname == NULL)
 			return -1;
@@ -176,8 +178,7 @@ node_recov_db(char *nd_name, struct pbsnode *pnode)
 
 	if (rc != 0) {
 		pnode = NULL; /* so we return NULL */
-		if (pnd)
-			free(pnd); /* free if we allocated here */
+		free_pnode(pnd); /* free if we allocated here */
 	}
 	return pnode;
 }

@@ -287,7 +287,7 @@ extern int   action_svr_iteration(attribute *pattr, void *pobj, int mode);
 extern void  update_node_rassn(attribute *, enum batch_op);
 extern void  update_job_node_rassn(job *, attribute *, enum batch_op);
 extern int   cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
-extern int is_valid_resource(attribute *pattr, void *pobject, int actmode);
+extern int   is_valid_resource(attribute *pattr, void *pobject, int actmode);
 extern int   queuestart_action(attribute *pattr, void *pobject, int actmode);
 extern int   alter_eligibletime(attribute *pattr, void *pobject, int actmode);
 extern int   set_chunk_sum(attribute  *pselectattr, attribute *pattr);

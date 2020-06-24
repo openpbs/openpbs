@@ -7456,7 +7456,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 			} else {
 				pr->rs_value.at_val.at_long += nchunk;
 			}
-			pr->rs_value.at_flags |= ATR_VFLAG_SET | ATR_SET_MOD_MCACHE;
+			pr->rs_value.at_flags |= ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 		}
 	}
 	return;
