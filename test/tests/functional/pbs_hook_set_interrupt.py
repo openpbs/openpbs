@@ -68,14 +68,14 @@ pbs.logmsg(pbs.LOG_DEBUG, "TestHook Ended")
         st = time.time()
         jid = self.server.submit(j)
 
-        self.server.log_match("TestHook Started", starttime=st, max_attempts=5)
+        self.server.log_match("TestHook Started", starttime=st)
 
         _msg = "Not Running: PBS Error: request rejected"
         _msg += " as filter hook '%s' got an alarm call." % hook_name
         _msg += " Please inform Admin"
         self.server.expect(JOB,
                            {'job_state': 'Q', 'comment': _msg},
-                           id=jid, offset=5, max_attempts=5)
+                           id=jid, offset=5)
 
         self.server.log_match("Hook;catch_hook_alarm;alarm call received",
                               starttime=st)
