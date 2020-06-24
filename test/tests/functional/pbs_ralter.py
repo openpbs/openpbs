@@ -2196,9 +2196,9 @@ class TestPbsResvAlter(TestFunctional):
             self.submit_and_confirm_reservation(offset, dur, select=select,
                                                 standing=True)
 
-        self.alter_a_reservation(rid, start, end, alter_s=True, alter_d=True,
+        self.alter_a_reservation(rid, start, end, alter_s=True,
                                  shift=shift1, a_duration=dur2, select=select2)
-        self.alter_a_reservation(rid, start, end, alter_s=True, alter_d=True,
+        self.alter_a_reservation(rid, start, end, alter_s=True,
                                  shift=shift2, a_duration=dur3,
                                  select=select3, sequence=2)
 
