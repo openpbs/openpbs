@@ -332,9 +332,6 @@ class TestPbsResvAlter(TestFunctional):
             else:
                 new_duration_conv = a_duration
 
-
-<< << << < HEAD
-
             if not alter_s and not alter_e:
                 new_end = start + a_duration + shift
             elif alter_s and not alter_e:
@@ -342,13 +339,6 @@ class TestPbsResvAlter(TestFunctional):
             elif not alter_s and alter_e:
                 new_start = new_end - a_duration
             # else new_start and new_end have already been calculated
-
-== == == =
-            if not alter_e:
-                new_end = new_start + new_duration_conv
-            elif not alter_s:
-                new_start = new_end - new_duration_conv
->>>>>> > Enhance pbs_ralter for -lselect for non-running reservations
         else:
             new_duration_conv = new_end - new_start
 
