@@ -3029,11 +3029,32 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* If the start time of the reservation was altered, copy from RESV_ATR_start
  	 * will make the next instance to have it's start time altered so take the start
  	 * time from the ri_alter_stime. */
-	if (presv->ri_alter_stime) {
-		dtstart = presv->ri_alter_stime;
-		presv->ri_alter_stime = 0;
+	if (presv->ri_alter.ra_revert.rr_stime) {
+		dtstart = presv->ri_alter.ra_revert.rr_stime;
+		presv->ri_alter.ra_revert.rr_stime = 0;
 	} else
 		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	
+	if (presv->ri_alter.ra_revert.rr_select != NULL) {
+		resource *presc;
+		resource_def *prdef;
+
+		prdef = find_resc_def(svr_resc_def, "select", svr_resc_size);
+		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
+		free(presc->rs_value.at_val.at_str);
+		presc->rs_value.at_val.at_str = presv->ri_alter.ra_revert.rr_select;
+		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
+		presv->ri_alter.ra_revert.rr_select = NULL;
+		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], presc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
+		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
+	}
+
+	if (presv->ri_alter.ra_revert.rr_duration) {
+		presv->ri_qs.ri_duration = presv->ri_alter.ra_revert.rr_duration;
+		presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_alter.ra_revert.rr_duration;
+		presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
+		presv->ri_alter.ra_revert.rr_duration = 0;
+	}
 
 	dtend = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 	next = dtstart;
@@ -3054,10 +3075,6 @@ Time4occurrenceFinish(resc_resv *presv)
 		occurrence_ended_early = 0;
 		/* get occurrence that is "j" numbers away from dtstart. */
 		next = get_occurrence(rrule, dtstart, tz, j);
-		if (presv->ri_alter_standing_reservation_duration) {
-			presv->ri_qs.ri_duration = presv->ri_alter_standing_reservation_duration;
-			presv->ri_alter_standing_reservation_duration = 0;
-		}
 		dtend = next + presv->ri_qs.ri_duration;
 
 		/* Index of next occurrence from dtstart */
@@ -3154,22 +3171,18 @@ Time4occurrenceFinish(resc_resv *presv)
 	newend = (time_t)(newstart + presv->ri_qs.ri_duration);
 
 	presv->ri_wattr[RESV_ATR_start].at_val.at_long = newstart;
-	presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY
-		| ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
 	presv->ri_qs.ri_stime = newstart;
 
 	presv->ri_wattr[RESV_ATR_end].at_val.at_long = newend;
-	presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY
-		| ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
 	presv->ri_qs.ri_etime = newend;
 
 	presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long = ridx;
-	presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_VFLAG_SET
-		| ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_SET_MOD_MCACHE;
 
 	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
-	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_VFLAG_SET
-		| ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
 
 	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
 	prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], rscdef);
@@ -3177,7 +3190,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	atemp.at_type = ATR_TYPE_LONG;
 	atemp.at_val.at_long = presv->ri_qs.ri_duration;
 	rscdef->rs_set(&prsc->rs_value, &atemp, SET);
-	presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
 
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
@@ -3553,7 +3566,7 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 		*psub = RESV_UNCONFIRMED;
 	} else if (s == RESVSTATE_alter_failed)
 		/* backup only the state, as substate was not modified. */
-		*pstate = presv->ri_alter_state;
+		*pstate = presv->ri_alter.ra_state;
 }
 
 
@@ -4210,7 +4223,7 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
  *
  * @return	int
  * @retval	0	: Success
- * @retval	!=0	: don't have a complete or consistent set of
+ * @retval	!= 0	: don't have a complete or consistent set of
  * 					information, or possibly some other error
  * 					occurred - e.g. problem adding the "walltime"
  * 					resource entry if it doesn't exist
@@ -4228,8 +4241,8 @@ start_end_dur_wall(resc_resv *presv)
 	attribute_def	*pddef = NULL;
 	int		pstate = 0;
 
-	int	swcode = 0;	/*"switch code"*/
-	int	rc = 0;		/*return code, assume success*/
+	int	swcode = 0;	/* "switch code" */
+	int	rc = 0;		/* return code, assume success */
 	short	check_start = 1;
 
 	if (presv == 0)
@@ -4251,23 +4264,23 @@ start_end_dur_wall(resc_resv *presv)
 
 	if (pstate != RESV_BEING_ALTERED) {
 		if (pstime->at_flags & ATR_VFLAG_SET)
-			swcode += 1;			/*have start*/
+			swcode += 1;			/* have start */
 		if (petime->at_flags & ATR_VFLAG_SET)
-			swcode += 2;			/*have end  */
+			swcode += 2;			/* have end */
 		if (pduration->at_flags & ATR_VFLAG_SET)
-			swcode += 4;			/*have duration*/
+			swcode += 4;			/* have duration */
 		if (prsc)
-			swcode += 8;			/*have walltime*/
+			swcode += 8;			/* have walltime */
 		else if (!(prsc = add_resource_entry(pattr, rscdef)))
 			return (-1);
 	} else {
-		if (presv->ri_alter_flags & RESV_DURATION_MODIFIED)
+		if (presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED)
 			swcode += 4;
-		if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)
-			swcode += 2; /*calcualte start time*/
-		if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED)
-			swcode += 1; /*calculate end time*/
-		if (presv->ri_alter_flags == RESV_START_TIME_MODIFIED || presv->ri_alter_flags == RESV_END_TIME_MODIFIED) {
+		if (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED)
+			swcode += 2; /* calcualte start time */
+		if (presv->ri_alter.ra_flags & RESV_START_TIME_MODIFIED)
+			swcode += 1; /* calculate end time */
+		if (presv->ri_alter.ra_flags == RESV_START_TIME_MODIFIED || presv->ri_alter.ra_flags == RESV_END_TIME_MODIFIED) {
 			swcode = 3;
 		}
 	}
@@ -4275,26 +4288,25 @@ start_end_dur_wall(resc_resv *presv)
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
-		case  3:	/*start, end*/
+		case  3:	/* start, end */
 			if (((check_start && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {
 				atemp.at_val.at_long = (petime->at_val.at_long -
 					pstime->at_val.at_long);
-				(void)pddef->at_set(pduration, &atemp, SET);
-				(void)rscdef->rs_set(&prsc->rs_value, &atemp, SET);
+				pddef->at_set(pduration, &atemp, SET);
+				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
 		case  4:
-		case  5:	/*start, duration*/
+		case  5:	/* start, duration */
 			if (((check_start && pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
-				petime->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					pduration->at_val.at_long;
 				atemp.at_val.at_long = pduration->at_val.at_long;
@@ -4302,7 +4314,7 @@ start_end_dur_wall(resc_resv *presv)
 			}
 			break;
 
-		case  7:	/*start, end, duration*/
+		case  7:	/* start, end, duration */
 			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(petime->at_val.at_long < pstime->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0) ||
@@ -4323,8 +4335,7 @@ start_end_dur_wall(resc_resv *presv)
 				rc = -1;
 			}
 			else {
-				pstime->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pstime->at_flags |= ATR_SET_MOD_MCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
 					pduration->at_val.at_long;
 				atemp.at_val.at_long = pduration->at_val.at_long;
@@ -4332,17 +4343,15 @@ start_end_dur_wall(resc_resv *presv)
 			}
 			break;
 
-		case  9:	/*start, wall*/
+		case  9:	/* start, wall */
 			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0))
 				rc = -1;
 			else {
-				petime->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					prsc->rs_value.at_val.at_long;
-				pduration->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pduration->at_flags |= ATR_SET_MOD_MCACHE;
 				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
 			}
 			break;
@@ -4354,43 +4363,39 @@ start_end_dur_wall(resc_resv *presv)
 				rc = -1;
 			}
 			else {
-				pstime->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pstime->at_flags |= ATR_SET_MOD_MCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
 					prsc->rs_value.at_val.at_long;
-				pduration->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pduration->at_flags |= ATR_SET_MOD_MCACHE;
 				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
 			}
 			break;
 
-		case 11:	/*start, end, wall*/
+		case 11:	/* start, end, wall */
 			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0) ||
 				(petime->at_val.at_long - pstime->at_val.at_long !=
 					prsc->rs_value.at_val.at_long))
 				rc = -1;
 			else {
-				pduration->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pduration->at_flags |= ATR_SET_MOD_MCACHE;
 				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
 			}
 			break;
 
-		case 13:	/*start, duration & wall*/
+		case 13:	/* start, duration & wall */
 			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
 				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
-				petime->at_flags |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					presv->ri_qs.ri_duration;
 			}
 			break;
 
-		case 15:	/*start, end, duration & wall*/
+		case 15:	/* start, end, duration & wall */
 			if (((check_start) || (pstime->at_val.at_long < time_now)) ||
 				(petime->at_val.at_long < pstime->at_val.at_long) ||
 				(pduration->at_val.at_long <= 0) ||
@@ -4404,8 +4409,7 @@ start_end_dur_wall(resc_resv *presv)
 			rc = -1;
 	}
 
-	if (server.sv_attr[(int)SVR_ATR_resv_post_processing].at_flags &
-		ATR_VFLAG_SET) {
+	if (server.sv_attr[(int)SVR_ATR_resv_post_processing].at_flags & ATR_VFLAG_SET) {
 		pduration->at_val.at_long += server.sv_attr[(int)SVR_ATR_resv_post_processing].at_val.at_long;
 		petime->at_val.at_long += server.sv_attr[(int)SVR_ATR_resv_post_processing].at_val.at_long;
 	}

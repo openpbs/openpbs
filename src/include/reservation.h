@@ -65,6 +65,7 @@ extern "C" {
 #define RESV_START_TIME_MODIFIED	0x1
 #define RESV_END_TIME_MODIFIED		0x2
 #define RESV_DURATION_MODIFIED		0x4
+#define RESV_SELECT_MODIFIED		0x8
 
 
 /*
@@ -121,6 +122,7 @@ enum resv_atr {
 	RESV_ATR_retry,
 	RESV_ATR_del_idle_time,
 	RESV_ATR_job,
+	RESV_ATR_SchedSelect_orig,
 	RESV_ATR_node_set,
 	RESV_ATR_partition,
 	RESV_ATR_UNKN,
@@ -150,6 +152,24 @@ typedef struct pbsnode_list_ {
 	struct pbsnode *vnode;
 	struct pbsnode_list_ *next;
 } pbsnode_list_t;
+
+/* Structure used to revert standing reservations back to original values for susequent occurrences*/
+struct resv_alter_revert {
+	time_t rr_stime;
+	long rr_duration;
+	char *rr_select;
+};
+
+/* Structure used to revert reservation back if the ralter failed */
+struct resv_alter {
+	time_t ra_stime;
+	time_t ra_etime;
+	long ra_duration;
+	char *ra_select;
+	long ra_state;
+	unsigned long ra_flags;
+	struct resv_alter_revert ra_revert;
+};
 
 /*
  * THE RESERVATION
@@ -226,12 +246,7 @@ struct resc_resv {
 	pbsnode_list_t		*ri_pbsnode_list;	/* vnode list associated to the reservation */
 
 	/* objects used while altering a reservation. */
-	time_t			ri_alter_stime;		/* start time backup while altering a reservation. */
-	time_t			ri_alter_etime;		/*   end time backup while altering a reservation. */
-	time_t			ri_alter_state;		/* resv state backup while altering a reservation. */
-	time_t			ri_alter_standing_reservation_duration;
-							/* duration backup while altering a standing reservation. */
-	unsigned int		ri_alter_flags;		/* flags used while altering a reservation. */
+	struct resv_alter 	ri_alter;		/* object used to alter a reservation */
 
 	/* Reservation start and end tasks */
 	struct work_task	*resv_start_task;
@@ -288,7 +303,6 @@ struct resc_resv {
 	 * Its presence is for rapid access to the attributes.
 	 */
 	attribute		ri_wattr[RESV_ATR_LAST];  /*reservation's attributes*/
-
 };
 
 /*
