@@ -3866,6 +3866,7 @@ finish_exec(job *pjob)
 			}
 
 			int res = mom_writer(qsub_sock, ptc);
+			/* Inside mom_writer, if read is successful and write fails then it is an error and hence logging here as error for -1 */
 			if (res == -1)
 				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "CS_write failed with errno %d", errno);
 			else if (res == -2)
@@ -4048,6 +4049,7 @@ finish_exec(job *pjob)
 							log_mom_portfw_msg);
 					} else {
 						int res = mom_reader(qsub_sock, ptc, buf);
+						/* Inside mom_reader, if read is successful and write fails then it is an error and hence logging here as error for -1 */
 						if (res == -1)
 							log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "Write failed with errno %d", errno);
 						else if (res == -2)

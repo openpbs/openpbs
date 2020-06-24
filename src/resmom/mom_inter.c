@@ -105,9 +105,8 @@ int    amt;
 			total += got;
 		} else if (got == 0)
 			break;
-		else {
+		else
 			return (-1);
-		}
 	}
 	return (total);
 }
