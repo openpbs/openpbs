@@ -403,11 +403,11 @@ int   pe_io_type;
 			if (!SetEnvironmentVariable("PBS_JOBDIR",
 				jobdirname(pjob->ji_qs.ji_jobid,
 				pjob->ji_grpcache->gc_homedir)))
-				log_err(-1, __func__, "Unable to set PBS_JOBDIR for sandbox=PRIVATE");
+				log_err(-1, __func__, "Unable to set environment variable PBS_JOBDIR for sandbox=PRIVATE");
 		} else {
 			/* set PBS_JOBDIR to user HOME*/
 			if (!SetEnvironmentVariable("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir))
-				log_err(-1, __func__, "Unable to set PBS_JOBDIR for user HOME");
+				log_err(-1, __func__, "Unable to set environment variable PBS_JOBDIR to user HOME");
 		}
 	}
 
