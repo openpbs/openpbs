@@ -105,8 +105,7 @@ class TestResvStaleVnode(TestFunctional):
         Test that a reservation goes into the degraded state
         when one of its vnodes go stale
         """
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
-        self.server.expect(NODE, {'state': 'free'}, id='vnode[0]')
+        self.server.expect(NODE, {'state=free': 3})
         now = int(time.time())
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'vscatter',
