@@ -87,6 +87,7 @@
 
 #include <sys/param.h>
 #include <sys/wait.h>
+#include "log.h"
 
 extern pid_t fork_me(int sock);
 extern int kill_session(pid_t pid, int sig, int dir);
@@ -137,6 +138,7 @@ pbs_popen(const char *command, const char *type)
 		return NULL;
 
 	if ((cur = malloc(sizeof(struct pid))) == NULL) {
+		log_err(errno, __func__, "Could not allocate memory for new file descriptor");
 		(void)close(pdes[0]);
 		(void)close(pdes[1]);
 		return NULL;

@@ -262,6 +262,11 @@ int pty;
  * @param[in] ptc - master file descriptor
  * @param[in] command - shell command
  *
+ * @return    error code
+ * @retval    0     Success
+ * @retval   -1     Write Failure
+ * @retval   -2     Read Failure
+ * 
  */
 int
 mom_reader(s, ptc, command)
@@ -313,7 +318,7 @@ char *command; /* shell command(s) to be sent to the PTY before user data from t
 			if (errno == EINTR)
 				continue;
 			else {
-				return (-1);
+				return (-2);
 			}
 		}
 	}
@@ -417,7 +422,8 @@ mom_reader_Xjob(int s)
  *
  * @return    error code
  * @retval    0     Success
- * @retval   -1     Failure
+ * @retval   -1     Write Failure
+ * @retval   -2     Read Failure
  *
  */
 int
@@ -451,7 +457,7 @@ int ptc;
 			if (errno == EINTR)
 				continue;
 			else {
-				return (-1);
+				return (-2);
 			}
 		}
 	}
