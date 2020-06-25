@@ -118,7 +118,7 @@ extern time_t time_now;
  * @retval	>=0 What to save: 0=nothing, OBJ_SAVE_NEW or OBJ_SAVE_QS
  */
 static int
-job_2_db(job *pjob, pbs_db_job_info_t *dbjob)
+job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 {
 	int savetype = 0;
 	int save_all_attrs = 0;
@@ -134,7 +134,7 @@ job_2_db(job *pjob, pbs_db_job_info_t *dbjob)
 	if (pjob->newobj) /* object was never saved/loaded before */
 		savetype |= (OBJ_SAVE_NEW | OBJ_SAVE_QS);
 
-	if (obj_qs_modified(&pjob->ji_qs, sizeof(pjob->ji_qs), pjob->qs_hash) == 1) {
+	if (compare_obj_hash(&pjob->ji_qs, sizeof(pjob->ji_qs), pjob->qs_hash) == 1) {
 		savetype |= OBJ_SAVE_QS;
 
 		dbjob->ji_state     = pjob->ji_qs.ji_state;
@@ -185,7 +185,7 @@ job_2_db(job *pjob, pbs_db_job_info_t *dbjob)
  * @retval   0    Success
  */
 static int
-db_2_job(job *pjob,  pbs_db_job_info_t *dbjob)
+db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 {
 	/* Variables assigned constant values are not stored in the DB */
 	pjob->ji_qs.ji_jsversion = JSVERSION;
@@ -233,7 +233,7 @@ db_2_job(job *pjob,  pbs_db_job_info_t *dbjob)
 	if ((decode_attr_db(pjob, &dbjob->db_attr_list, job_attr_def, pjob->ji_wattr, (int)JOB_ATR_LAST, (int) JOB_ATR_UNKN)) != 0)
 		return -1;
 
-	obj_qs_modified(&pjob->ji_qs, sizeof(pjob->ji_qs), pjob->qs_hash);
+	compare_obj_hash(&pjob->ji_qs, sizeof(pjob->ji_qs), pjob->qs_hash);
 
 	pjob->newobj = 0;
 
@@ -265,7 +265,7 @@ job_save_db(job *pjob)
 	old_mtime = pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long;
 	old_flags = pjob->ji_wattr[JOB_ATR_mtime].at_flags;
 
-	if ((savetype = job_2_db(pjob, &dbjob)) == -1)
+	if ((savetype = job_to_db(pjob, &dbjob)) == -1)
 		goto done;
 
 	obj.pbs_db_obj_type = PBS_DB_JOB;
@@ -320,7 +320,7 @@ job_recov_db_spl(pbs_db_job_info_t *dbjob, job *pjob)
 	}
 	
 	if (pjob) {
-		if (db_2_job(pjob, dbjob) == 0)
+		if (db_to_job(pjob, dbjob) == 0)
 			return (pjob);
 	}
 
@@ -383,7 +383,7 @@ job_recov_db(char *jid, job *pjob)
  * @retval   >=0 What to save: 0=nothing, OBJ_SAVE_NEW or OBJ_SAVE_QS
  */
 static int
-resv_2_db(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
+resv_to_db(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
 {
 	int savetype = 0;
 
@@ -395,7 +395,7 @@ resv_2_db(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
 	if (presv->newobj) /* object was never saved or loaded before */
 		savetype |= (OBJ_SAVE_NEW | OBJ_SAVE_QS);
 
-	if (obj_qs_modified(&presv->ri_qs, sizeof(presv->ri_qs), presv->qs_hash) == 1) {
+	if (compare_obj_hash(&presv->ri_qs, sizeof(presv->ri_qs), presv->qs_hash) == 1) {
 		savetype |= OBJ_SAVE_QS;
 
 		strcpy(dbresv->ri_queue, presv->ri_qs.ri_queue);
@@ -429,7 +429,7 @@ resv_2_db(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
  * @retval   0    Success
  */
 static int
-db_2_resv(resc_resv *presv, pbs_db_resv_info_t *dbresv)
+db_to_resv(resc_resv *presv, pbs_db_resv_info_t *dbresv)
 {
 	strcpy(presv->ri_qs.ri_resvID, dbresv->ri_resvid);
 	strcpy(presv->ri_qs.ri_queue, dbresv->ri_queue);
@@ -451,7 +451,7 @@ db_2_resv(resc_resv *presv, pbs_db_resv_info_t *dbresv)
 	if ((decode_attr_db(presv, &dbresv->db_attr_list, resv_attr_def, presv->ri_wattr, (int) RESV_ATR_LAST, (int) RESV_ATR_UNKN)) != 0)
 		return -1;
 
-	obj_qs_modified(&presv->ri_qs, sizeof(presv->ri_qs), presv->qs_hash);
+	compare_obj_hash(&presv->ri_qs, sizeof(presv->ri_qs), presv->qs_hash);
 
 	presv->newobj = 0;
 
@@ -488,7 +488,7 @@ resv_save_db(resc_resv *presv)
 	old_mtime = presv->ri_wattr[RESV_ATR_mtime].at_val.at_long;
 	old_flags = presv->ri_wattr[RESV_ATR_mtime].at_flags;
 
-	if ((savetype = resv_2_db(presv, &dbresv)) == -1)
+	if ((savetype = resv_to_db(presv, &dbresv)) == -1)
 		goto done;	
 
 	obj.pbs_db_obj_type = PBS_DB_RESV;
@@ -558,7 +558,7 @@ resv_recov_db(char *resvid, resc_resv *presv)
 		return presv; /* no change in resv */
 
 	if (rc == 0) {
-		rc = db_2_resv(presv, &dbresv);
+		rc = db_to_resv(presv, &dbresv);
 	}
 
 	free_db_attr_list(&dbresv.db_attr_list);

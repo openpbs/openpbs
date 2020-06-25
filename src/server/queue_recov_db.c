@@ -86,7 +86,7 @@ extern pbs_db_conn_t	*svr_db_conn;
  * @retval	>=0 What to save: 0=nothing, OBJ_SAVE_NEW or OBJ_SAVE_QS
  */
 static int
-que_2_db(pbs_queue *pque, pbs_db_que_info_t *pdbque)
+que_to_db(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 {
 	int savetype = 0;
 
@@ -99,7 +99,7 @@ que_2_db(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 	if (pque->newobj) /* object was never saved or loaded before */
 		savetype |= (OBJ_SAVE_NEW | OBJ_SAVE_QS);
 
-	if (obj_qs_modified(&pque->qu_qs, sizeof(pque->qu_qs), pque->qs_hash) == 1) {
+	if (compare_obj_hash(&pque->qu_qs, sizeof(pque->qu_qs), pque->qs_hash) == 1) {
 		savetype |= OBJ_SAVE_QS;
 		pdbque->qu_type = pque->qu_qs.qu_type;
 	}
@@ -118,7 +118,7 @@ que_2_db(pbs_queue *pque, pbs_db_que_info_t *pdbque)
  *@return !=0    Failure
  */
 static int
-db_2_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
+db_to_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 {
 	strcpy(pque->qu_qs.qu_name, pdbque->qu_name);
 	pque->qu_qs.qu_type = pdbque->qu_type;
@@ -126,7 +126,7 @@ db_2_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 	if ((decode_attr_db(pque, &pdbque->db_attr_list, que_attr_def, pque->qu_attr, (int) QA_ATR_LAST, 0)) != 0)
 		return -1;
 
-	obj_qs_modified(&pque->qu_qs, sizeof(pque->qu_qs), pque->qs_hash);
+	compare_obj_hash(&pque->qu_qs, sizeof(pque->qu_qs), pque->qs_hash);
 
 	pque->newobj = 0;
 
@@ -153,7 +153,7 @@ que_save_db(pbs_queue *pque)
 	int savetype;
 	int rc = -1;
 
-	if ((savetype = que_2_db(pque, &dbque)) == -1)
+	if ((savetype = que_to_db(pque, &dbque)) == -1)
 		goto done;
 	
 	obj.pbs_db_obj_type = PBS_DB_QUEUE;
@@ -210,7 +210,7 @@ que_recov_db(char *qname, pbs_queue	*pq)
 		return pq; /* no change in que, return the same pq */
 
 	if (rc == 0)
-		rc = db_2_que(pq, &dbque);
+		rc = db_to_que(pq, &dbque);
 	else
 		log_errf(PBSE_INTERNAL, __func__, "Failed to load queue %s %s", qname, (conn->conn_db_err)? conn->conn_db_err : "");
 		

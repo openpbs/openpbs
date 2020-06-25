@@ -97,7 +97,7 @@
  *
  */
 static int
-db_2_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
+db_to_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 {
 	if (pdbnd->nd_name && pdbnd->nd_name[0] != 0) {
 		free(pnode->nd_name); /* free any previously allocated value */
@@ -111,8 +111,10 @@ db_2_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	if (pdbnd->nd_hostname && (pdbnd->nd_hostname[0] != 0)) {
 		free(pnode->nd_hostname); /* free any previously allocated value */
 		pnode->nd_hostname = strdup(pdbnd->nd_hostname);
-		if (pnode->nd_hostname == NULL)
+		if (pnode->nd_hostname == NULL) {
+			free(pnode->nd_name);
 			return -1;
+		}
 	}
 	else
 		pnode->nd_hostname = NULL;
@@ -170,7 +172,7 @@ node_recov_db(char *nd_name, struct pbsnode *pnode)
 		return pnode; /* no change in node, return the same pnode */
 
 	if (rc == 0)
-		rc = db_2_node(pnode, &dbnode);
+		rc = db_to_node(pnode, &dbnode);
 	else
 		log_errf(PBSE_INTERNAL, __func__, "Failed to load node %s %s", nd_name, (conn->conn_db_err)? conn->conn_db_err : "");
 	
@@ -194,7 +196,7 @@ node_recov_db(char *nd_name, struct pbsnode *pnode)
  * @retval	>=0 What to save: 0=nothing, OBJ_SAVE_NEW or OBJ_SAVE_QS
  */
 static int
-node_2_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
+node_to_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 {
 	int wrote_np = 0;
 	svrattrl *psvrl, *tmp;
@@ -324,7 +326,7 @@ node_save_db(struct pbsnode *pnode)
 	int savetype;
 	int rc = -1;
 
-	if ((savetype = node_2_db(pnode, &dbnode))  == -1)
+	if ((savetype = node_to_db(pnode, &dbnode))  == -1)
 		goto done;
 
 	obj.pbs_db_obj_type = PBS_DB_NODE;

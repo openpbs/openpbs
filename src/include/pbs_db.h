@@ -219,7 +219,7 @@ struct pbs_db_job_info {
 	INTEGER  ji_svrflags; /* server flags */
 	INTEGER  ji_numattr; /* not used */
 	INTEGER  ji_ordering; /* special scheduling ordering */
-	INTEGER  ji_priority; /* INTEGERernal priority */
+	INTEGER  ji_priority; /* priority */
 	BIGINT   ji_stime; /* time job started execution */
 	BIGINT   ji_endtBdry; /* estimate upper bound on end time */
 	char     ji_queue[PBS_MAXQUEUENAME + 1]; /* name of current queue */
@@ -614,7 +614,7 @@ int pbs_db_delete_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
  * @param[in]	conn - Connected database handle
  * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
  * @param[in]	obj_id - The object id of the parent (jobid, node-name etc)
- * @param[in]	db_attr_list _ List of attributes to remove from DB
+ * @param[in]	db_attr_list - List of attributes to remove from DB
  *
  * @return      int
  * @retval      -1  - Failure
@@ -864,7 +864,7 @@ int pg_db_delete_svrattr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
  * @retval	 1 - quick save area has changed
  *
  */
-int obj_qs_modified(void *qs, int len, void *oldhash);
+int compare_obj_hash(void *qs, int len, void *oldhash);
 
 /**
  * @brief

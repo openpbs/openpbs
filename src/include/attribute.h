@@ -255,6 +255,7 @@ typedef struct ecl_attribute_def ecl_attribute_def;
 
 #define ATR_MOD_MCACHE (ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE)
 #define ATR_SET_MOD_MCACHE (ATR_VFLAG_SET | ATR_MOD_MCACHE)
+#define ATR_UNSET(X) (X)->at_flags = (((X)->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE)
 
 /* Defines for Parent Object type field in the attribute definition	*/
 /* really only used for telling queue types apart			*/

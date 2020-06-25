@@ -96,7 +96,7 @@ int
 decode_c(struct attribute *patr, char *name, char *rescn, char *val)
 {
 	if ((val == NULL) || (strlen(val) == 0)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
+		ATR_UNSET(patr);
 		patr->at_val.at_char = '\0';
 	} else {
 		patr->at_flags |= ATR_SET_MOD_MCACHE;

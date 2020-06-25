@@ -291,8 +291,7 @@ str_to_vnode_state(char *vnstate)
  *
  * @return 	int
  * @retval	<0	an error encountered; value is negative of an error code
- * @retval	>=0 ok, encode happened and number of svrattrl created and linked in,
- *		     	or nothing to encode.
+ * @retval ==1 ok, encode succeeded and returning one item 
  */
 
 int
@@ -682,8 +681,8 @@ encode_resvs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
  *
  * @return      int
  * @retval      <0      an error encountered; value is negative of an error code
- * @retval      >=0     ok, encode happened and svrattrl created and linked in >0,
- *                      or nothing to encode = 0
+ * @retval     ==1      ok, encode succeeded and returning one item 
+ * 
  */
 
 int

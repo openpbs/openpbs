@@ -157,7 +157,7 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 
 		if (((old + index)->at_flags & ATR_VFLAG_SET) &&
 			!((new + index)->at_flags & ATR_VFLAG_SET)) {
-			if ((rc = (pdef + index)->at_set(new+index, old+index, SET)) != 0)
+			if ((rc = (pdef + index)->at_set(new + index, old + index, SET)) != 0)
 				break;
 			/*
 			 * we need to know if the value is changed during

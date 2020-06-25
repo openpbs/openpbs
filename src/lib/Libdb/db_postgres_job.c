@@ -96,7 +96,7 @@ pg_db_prepare_job_sqls(pbs_db_conn_t *conn)
 		"values ($1, $2, $3, $4, $5, $6, $7, $8, $9, "
 		"$10, $11, $12, $13,"
 		"$14, $15, $16, $17, $18, $19, $20, $21, $22, $23,"
-		"localtimestamp, localtimestamp, "
+		"localtimestamp, localtimestamp,"
 		"hstore($24::text[]))");
 	if (pg_prepare_stmt(conn, STMT_INSERT_JOB, conn->conn_sql, 24) != 0)
 		return -1;
@@ -380,7 +380,7 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
 
 	/* convert attributes from postgres raw array format */
-	return (dbarray_2_attrlist(raw_array, &pj->db_attr_list));
+	return (dbarray_to_attrlist(raw_array, &pj->db_attr_list));
 }
 
 /**
@@ -389,7 +389,8 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
  *
  * @param[in]	conn - The connnection handle
  * @param[in]	obj  - The job object to save
- * @param[in]	savetype 
+ * @param[in]	savetype - The kind of save 
+ *                         (insert, update full, or full qs area only)
  *
  * @return      Error code
  * @retval	-1 - Execution of prepared statement failed
@@ -438,7 +439,7 @@ pg_db_save_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	if ((pjob->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
-		if ((len = attrlist_2_dbarray(&raw_array, &pjob->db_attr_list)) <= 0)
+		if ((len = attrlist_to_dbarray(&raw_array, &pjob->db_attr_list)) <= 0)
 			return -1;
 
 		if (savetype & OBJ_SAVE_QS) {
@@ -455,10 +456,10 @@ pg_db_save_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	if (savetype & OBJ_SAVE_NEW)
 		stmt = STMT_INSERT_JOB;
 
-	if (stmt) {
+	if (stmt)
 		rc = pg_db_cmd(conn, stmt, params);
-		free(raw_array);
-	}
+
+	free(raw_array);
 
 	return rc;
 }
@@ -700,7 +701,7 @@ pg_db_del_attr_job(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_l
 	int len = 0;
 	int rc = 0;
 
-	if ((len = attrlist_2_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
+	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
 
 	SET_PARAM_STR(conn, obj_id, 0);

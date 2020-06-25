@@ -838,9 +838,9 @@ pbsd_init(int type)
 			if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
 				/* remove the loaded job from db */
 				if (pbs_db_delete_obj(conn, &obj) != 0)
-					log_errf(-1, __func__, "job %s not purged", dbjob.ji_jobid);
+					log_errf(PBSE_SYSTEM, __func__, "job %s not purged", dbjob.ji_jobid);
 			} else
-				log_errf(-1, __func__, "Failed to recover job %s", dbjob.ji_jobid);
+				log_errf(PBSE_SYSTEM, __func__, "Failed to recover job %s", dbjob.ji_jobid);
 			continue;
 		}
 		free_db_attr_list(&dbjob.db_attr_list);

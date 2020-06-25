@@ -323,9 +323,9 @@ int pg_prepare_stmt(pbs_db_conn_t *conn, char *stmt, char *sql, int num_vars);
 int pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars);
 int pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars, PGresult **res);
 unsigned long long pbs_ntohll(unsigned long long);
-int dbarray_2_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list);
-int attrlist_2_dbarray(char **raw_array, pbs_db_attr_list_t *attr_list);
-int attrlist_2_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_only);
+int dbarray_to_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list);
+int attrlist_to_dbarray(char **raw_array, pbs_db_attr_list_t *attr_list);
+int attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_only);
 int resize_buff(pbs_db_sql_buffer_t *dest, int size);
 
 /* job functions */

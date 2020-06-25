@@ -2589,7 +2589,7 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 		int newstate, newsub;
 		FILE	*fp_debug_out = NULL;
 
-		snprintf(msg, msg_len-1, "'%s' hook set job's %s = %s", hook_name, ATTR_a, exec_time_ctime);
+		snprintf(msg, msg_len, "'%s' hook set job's %s = %s", hook_name, ATTR_a, exec_time_ctime);
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
 		(void)svr_setjobstate(pjob, newstate, newsub);
 

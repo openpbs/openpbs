@@ -110,9 +110,9 @@ decode_hold(struct attribute *patr, char *name, char *rescn, char *val)
 			}
 		}
 		patr->at_flags |= ATR_SET_MOD_MCACHE;
-	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
-	}
+	} else
+		ATR_UNSET(patr);
+
 	return (0);
 }
 

@@ -73,17 +73,16 @@ extern unsigned char pbs_aes_iv[][16];
  *	Function to set the database error into the db_err field of the
  *	connection object
  *
- * @param[in]	conn - The connnection handle
- * @param[in]	fnc - Custom string added to the error message
- *			This can be used to provide the name of the
- *			functionality.
- * @param[in]	msg - Custom string added to the error message. This can be
- *			used to provide a failure message.
- * @param[in]	msg2 - Additional diagnostic message from the resultset, if any
+ * @param[in]  conn     - The connnection handle
+ * @param[in]  fnc      - Custom string added to the error message
+ *                        This can be used to provide the name of the functionality.
+ * @param[in]  msg      - Custom string added to the error message. This can be
+ *                        used to provide a failure message.
+ * @param[in]  diag_msg - Additional diagnostic message from the resultset, if any
  *
  */
 void
-pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2)
+pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *diag_msg)
 {
 	char *str;
 	char *p;
@@ -102,14 +101,11 @@ pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2)
 	while ((p >= str) && (*p == '\r' || *p == '\n'))
 		*p-- = 0; /* supress the last newline */
 	
-	if (!msg2)
-		msg2 = "";
+	if (!diag_msg)
+		diag_msg = "";
 
-	conn->conn_db_err = malloc(strlen(fnc) + strlen(msg) + strlen(msg2) + strlen(str) + sizeof(fmt) + 1);
-	if (!conn->conn_db_err)
-		return;
+	pbs_asprintf((char **) &(conn->conn_db_err), fmt, fnc, msg, str, diag_msg);
 
-	sprintf((char *) conn->conn_db_err, fmt, fnc, msg, str, msg2);
 #ifdef DEBUG
 	printf("%s\n", (char *) conn->conn_db_err);
 	fflush(stdout);

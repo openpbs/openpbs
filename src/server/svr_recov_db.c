@@ -128,7 +128,7 @@ update_svrlive()
  *
  */
 static int
-svr_2_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
+svr_to_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 {
 	int savetype = 0;
 
@@ -154,7 +154,7 @@ svr_2_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
  * @return   0     - Success
  */
 int
-db_2_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
+db_to_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 {
 	if ((decode_attr_db(ps, &pdbsvr->db_attr_list, svr_attr_def, ps->sv_attr, (int) SRV_ATR_LAST, 0)) != 0)
 		return -1;
@@ -176,7 +176,7 @@ db_2_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
  * @retval	>=0 What to save: 0=nothing, OBJ_SAVE_NEW or OBJ_SAVE_QS
  */
 static int
-sched_2_db(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
+sched_to_db(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 {
 	int savetype = 0;
 
@@ -200,7 +200,7 @@ sched_2_db(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
  *
  */
 static int
-db_2_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
+db_to_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 {
 	strcpy(ps->sc_name, pdbsched->sched_name);
 
@@ -238,7 +238,7 @@ svr_recov_db(void)
 		return 0; /* no change in server, return 0 */
 
 	if (rc == 0)
-		rc = db_2_svr(&server, &dbsvr);
+		rc = db_to_svr(&server, &dbsvr);
 
 	free_db_attr_list(&dbsvr.db_attr_list);
 
@@ -274,7 +274,7 @@ svr_save_db(struct server *ps)
 	if (update_svrlive() != 0)
 		goto done;
 
-	if ((savetype = svr_2_db(ps, &dbsvr)) == -1)
+	if ((savetype = svr_to_db(ps, &dbsvr)) == -1)
 		goto done;
 
 	obj.pbs_db_obj_type = PBS_DB_SVR;
@@ -333,7 +333,7 @@ sched_recov_db(char *sname, pbs_sched *ps)
 		return ps; /* no change in sched */
 
 	if (rc == 0)
-		rc = db_2_sched(ps, &dbsched);	
+		rc = db_to_sched(ps, &dbsched);	
 	else
 		log_errf(PBSE_INTERNAL, __func__, "Failed to load sched %s %s", sname, (conn->conn_db_err)? conn->conn_db_err : "");
 
@@ -372,7 +372,7 @@ sched_save_db(pbs_sched *ps)
 	int savetype;
 	int rc = -1;
 
-	if ((savetype = sched_2_db(ps, &dbsched)) == -1)
+	if ((savetype = sched_to_db(ps, &dbsched)) == -1)
 		goto done;
 
 	obj.pbs_db_obj_type = PBS_DB_SCHED;

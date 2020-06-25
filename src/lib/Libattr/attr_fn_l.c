@@ -114,7 +114,7 @@ decode_l(struct attribute *patr, char *name, char *rescn, char *val)
 		patr->at_flags |= ATR_SET_MOD_MCACHE;
 		patr->at_val.at_long = strtol(val, &endp, 10);
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
+		ATR_UNSET(patr);
 		patr->at_val.at_long = 0;
 	}
 	return (0);

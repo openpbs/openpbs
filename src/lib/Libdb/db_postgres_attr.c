@@ -167,7 +167,7 @@ make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags)
  *
  */
 int
-dbarray_2_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list)
+dbarray_to_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list)
 {
 	int i;
 	int j;
@@ -241,7 +241,7 @@ dbarray_2_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list)
  *
  */
 int
-attrlist_2_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_only)
+attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_only)
 {
 	struct pg_array *array;
 	int len = 0;
@@ -256,16 +256,18 @@ attrlist_2_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_
 		if (keys_only)
 			attr_val_len = 0;
 		else
-			attr_val_len = (pal->al_atopl.value == NULL? 0:strlen(pal->al_atopl.value));
+			attr_val_len = (pal->al_atopl.value == NULL ? 0 : strlen(pal->al_atopl.value));
 		len += sizeof(int32_t) + 3 + attr_val_len + 1; /* include space for dot */
 		count++;
 	}
 
-	assert(count == attr_list->attr_count);
+	if (count != attr_list->attr_count)
+		return -1;
 
 	array = malloc(len);
 	if (!array)
 		return -1;
+
 	array->ndim = htonl(1);
 	array->off = 0;
 	array->elemtype = htonl(TEXTOID);
@@ -279,13 +281,13 @@ attrlist_2_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_
 	val = (struct str_data *)((char *) array + sizeof(struct pg_array));
 
 	for (pal = (svrattrl *)GET_NEXT(attr_list->attrs); pal != NULL; pal = (svrattrl *)GET_NEXT(pal->al_link)) {
-		sprintf(val->str, "%s.%s", pal->al_atopl.name, ((pal->al_atopl.resource == NULL)?"":pal->al_atopl.resource));
+		sprintf(val->str, "%s.%s", pal->al_atopl.name, ((pal->al_atopl.resource == NULL) ? "" : pal->al_atopl.resource));
 		val->len = htonl(strlen(val->str));
 
 		val = (struct str_data *)(val->str + ntohl(val->len)); /* point to end */
 
 		if (keys_only == 0) {
-			sprintf(val->str, "%d.%s", pal->al_flags, ((pal->al_atopl.value == NULL)?"":pal->al_atopl.value));
+			sprintf(val->str, "%d.%s", pal->al_flags, ((pal->al_atopl.value == NULL) ? "" : pal->al_atopl.value));
 			val->len = htonl(strlen(val->str));
 
 			val = (struct str_data *)(val->str + ntohl(val->len)); /* point to end */
@@ -309,9 +311,9 @@ attrlist_2_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_
  *
  */
 int
-attrlist_2_dbarray(char **raw_array, pbs_db_attr_list_t *attr_list)
+attrlist_to_dbarray(char **raw_array, pbs_db_attr_list_t *attr_list)
 {
-	return attrlist_2_dbarray_ex(raw_array, attr_list, 0);
+	return attrlist_to_dbarray_ex(raw_array, attr_list, 0);
 }
 
 /**

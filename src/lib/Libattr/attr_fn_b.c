@@ -140,7 +140,7 @@ decode_b(struct attribute *patr, char *name, char *rescn, char *val)
 	int i;
 
 	if ((val == NULL) || (strlen(val) == 0)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
+		ATR_UNSET(patr);
 		patr->at_val.at_long = 0;		/* default to false */
 	} else {
 		if ((i = is_true_or_false(val)) != -1)

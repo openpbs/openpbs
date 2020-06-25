@@ -144,8 +144,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 
 
 	if ((val == NULL) || (rescn == NULL)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			ATR_VFLAG_MODIFY;
+		ATR_UNSET(patr);
 		return (0);
 	}
 	if (patr->at_flags & ATR_VFLAG_SET) {

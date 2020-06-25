@@ -1420,11 +1420,10 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 			}
 		} else if ((plist->al_atopl.value == NULL) || (plist->al_atopl.value[0] == '\0')) {
 			/* 
-			 * Earlier, we used to write all attributes of the server (replacing existing attributes).
-			 * So any attributes remove from heap would also get "removed" from database.
-			 * However, now we only update selected attributes, thus, if this api is called with 
-			 * empty or null values to unset something, then we need to detect those and actually 
-			 * call unset_xxx routines to remove from database.
+			 * We do not overwrite/update the entire record in the database. Therefore, to 
+			 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
+			 * We create a separate list for removal from the list of attributes provided, and
+			 * pass it to mgr_unset_attr, below
 			 */
 			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
 			delete_link(&plist->al_link);
@@ -1454,12 +1453,12 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 	rc = mgr_set_attr(server.sv_attr, svr_attr_def, SRV_ATR_LAST, plist,
 		preq->rq_perm, &bad_attr, (void *)&server,
 		ATR_ACTION_ALTER);
-	if (rc != 0) {
+	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
-	} else {
+	else {
 		svr_save_db(&server);
 done:
-		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,msg_daemonname, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 		mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SERVER, msg_daemonname, NULL);
 		reply_ack(preq);
 	}
@@ -1842,8 +1841,7 @@ mgr_queue_set(struct batch_request *preq)
 		plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 		if (plist) {
 			rc = mgr_set_attr(pque->qu_attr, que_attr_def, QA_ATR_LAST,
-				plist, preq->rq_perm, &bad, (void *)pque,
-				ATR_ACTION_ALTER);
+				plist, preq->rq_perm, &bad, pque, ATR_ACTION_ALTER);
 			if (rc != 0) {
 				reply_badattr(rc, bad, plist, preq);
 				return;
@@ -2066,7 +2064,7 @@ mgr_node_set(struct batch_request *preq)
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 
-	/*set writtable attributes of node (nodes if numnodes > 1) */
+	/* set writtable attributes of node (nodes if numnodes > 1) */
 	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO, nodename, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 
 	if (numnodes > 1) {
@@ -3496,8 +3494,8 @@ struct batch_request *preq;
 			if (ppoolm) {
 				log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_INFO,
 					mymom->mi_host, "POOL: cross linking %d vnodes from %s",
-					ppoolm->msr_numvnds-1, ppool->vnpm_inventory_mom->mi_host);
-				for (i=1; i<ppoolm->msr_numvnds; ++i) {
+					ppoolm->msr_numvnds - 1, ppool->vnpm_inventory_mom->mi_host);
+				for (i = 1; i < ppoolm->msr_numvnds; ++i) {
 					cross_link_mom_vnode(ppoolm->msr_children[i], mymom);
 				}
 			}

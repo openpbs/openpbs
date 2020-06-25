@@ -242,7 +242,7 @@ load_node(PGresult *res, pbs_db_node_info_t *pnd, int row)
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
 
 	/* convert attributes from postgres raw array format */
-	return (dbarray_2_attrlist(raw_array, &pnd->db_attr_list));
+	return (dbarray_to_attrlist(raw_array, &pnd->db_attr_list));
 }
 
 /**
@@ -282,7 +282,7 @@ pg_db_save_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	if ((pnd->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
-		if ((len = attrlist_2_dbarray(&raw_array, &pnd->db_attr_list)) <= 0)
+		if ((len = attrlist_to_dbarray(&raw_array, &pnd->db_attr_list)) <= 0)
 			return -1;
 
 		if (savetype & OBJ_SAVE_QS) {
@@ -299,10 +299,10 @@ pg_db_save_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	if (savetype & OBJ_SAVE_NEW)
 		stmt = STMT_INSERT_NODE;
 
-	if (stmt) {
+	if (stmt)
 		rc = pg_db_cmd(conn, stmt, params);
-		free(raw_array);
-	}
+
+	free(raw_array);
 
 	return rc;
 }
@@ -438,7 +438,7 @@ pg_db_del_attr_node(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_
 	int len = 0;
 	int rc = 0;
 
-	if ((len = attrlist_2_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
+	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
 
 	SET_PARAM_STR(conn, obj_id, 0);

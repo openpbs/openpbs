@@ -84,7 +84,7 @@ extern struct attribute_def	que_attr_def[];
  * @retval	 1 - quick save area has changed
  */
 int
-obj_qs_modified(void *qs, int len, void *oldhash)
+compare_obj_hash(void *qs, int len, void *oldhash)
 {
 	char hash[DIGEST_LENGTH];
 
@@ -120,7 +120,7 @@ encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_
 	
 	lhead = &db_attr_list->attrs;
 
-	rc = padef->at_encode(pattr, lhead, padef->at_name, (char *)0, ATR_ENCODE_DB, NULL);
+	rc = padef->at_encode(pattr, lhead, padef->at_name, NULL, ATR_ENCODE_DB, NULL);
 	if (rc < 0)
 		return -1;
 	
@@ -153,7 +153,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 	CLEAR_HEAD(db_attr_list->attrs);
 
 	for (i = 0; i < numattr; i++) {
-		if (!((pattr+i)->at_flags & ATR_VFLAG_MODIFY))
+		if (!((pattr + i)->at_flags & ATR_VFLAG_MODIFY))
 			continue;
 
 		if ((((padef + i)->at_flags & ATR_DFLAG_NOSAVM) == 0) || all) {
@@ -205,7 +205,7 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, struct attribute_
 
 	attr_list = &db_attr_list->attrs;
 
-	for (pal = (svrattrl *)GET_NEXT(*attr_list); pal != NULL; pal = (svrattrl *) GET_NEXT(pal->al_link)) {
+	for (pal = (svrattrl *) GET_NEXT(*attr_list); pal != NULL; pal = (svrattrl *) GET_NEXT(pal->al_link)) {
 		/* find the attribute definition based on the name */
 		index = find_attr(padef, pal->al_name, limit);
 		if (index < 0) {

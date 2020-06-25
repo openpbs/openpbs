@@ -109,7 +109,7 @@ decode_str(struct attribute *patr, char *name, char *rescn, char *val)
 		(void)strcpy(patr->at_val.at_str, val);
 		patr->at_flags |= ATR_SET_MOD_MCACHE;
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
+		ATR_UNSET(patr);
 		patr->at_val.at_str = NULL;
 	}
 	return (0);
