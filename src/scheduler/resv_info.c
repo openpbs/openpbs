@@ -191,6 +191,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		int ignore_resv = 0;
 		clear_schd_error(err);
 		struct attrl	*attrp = NULL;
+		resource_resv **jobs_in_reservations;
 		/* Check if this reservation belongs to this scheduler */
 		for (attrp = cur_resv->attribs; attrp != NULL; attrp = attrp->next) {
 			if (strcmp(attrp->name, ATTR_partition) == 0) {
@@ -352,7 +353,12 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						}
 					}
 				}
-				collect_jobs_on_nodes(resresv->resv->resv_nodes, resresv->resv->resv_queue->jobs, j);
+				jobs_in_reservations = resource_resv_filter(resresv->resv->resv_queue->jobs,
+									    count_array((void **)resresv->resv->resv_queue->jobs),
+									    check_running_job_in_reservation, NULL, 0);
+				collect_jobs_on_nodes(resresv->resv->resv_nodes, jobs_in_reservations,
+					              count_array((void **)jobs_in_reservations));
+				free(jobs_in_reservations);
 
 				/* Sort the nodes to ensure correct job placement. */
 				qsort(resresv->resv->resv_nodes,
