@@ -46,7 +46,7 @@ addons:
 services:
   - docker
 env:
-  - OS_TYPE=centos:7
+  - OS_TYPE=centos:8
   - OS_TYPE=opensuse/leap:15
   - OS_TYPE=ubuntu:18.04
   - OS_TYPE=debian:9

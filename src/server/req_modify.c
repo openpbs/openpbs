@@ -97,7 +97,7 @@ extern int resc_access_perm;
 extern char *msg_nostf_resv;
 
 int modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad);
-extern void resv_revert_alter_times(resc_resv *presv);
+extern void resv_revert_alter(resc_resv *presv);
 extern int gen_future_reply(resc_resv *presv, long fromNow);
 extern job  *chk_job_request(char *, struct batch_request *, int *, int *);
 extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
@@ -320,12 +320,9 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	if (outsideselect) {
-		presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource],
-			pseldef);
-		if (presc &&
-			((presc->rs_value.at_flags & ATR_VFLAG_DEFLT) == 0)) {
+		presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], pseldef);
+		if (presc && ((presc->rs_value.at_flags & ATR_VFLAG_DEFLT) == 0)) {
 			/* select is not a default, so reject qalter */
-
 			resc_in_err = strdup(outsideselect->rs_name);
 			req_reject(PBSE_INVALJOBRESC, 0, preq);
 			return;
@@ -372,8 +369,7 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	if (pjob->ji_wattr[(int)JOB_ATR_resource].at_flags & ATR_VFLAG_MODIFY) {
-		presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource],
-			pseldef);
+		presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], pseldef);
 		if (presc && (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)) {
 			/* changing Resource_List and select is a default   */
 			/* clear "select" so it is rebuilt inset_resc_deflt */
@@ -522,8 +518,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 				/* if being changed at all, see if "select" */
 				if (prc->rs_defin == pseldef) {
 					/* select is modified, recalc chunk sums */
-					rc = set_chunk_sum(&prc->rs_value,
-						&newattr[(int)JOB_ATR_resource]);
+					rc = set_chunk_sum(&prc->rs_value, &newattr[(int)JOB_ATR_resource]);
 					if (rc)
 						break;
 				}
@@ -704,6 +699,61 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 }
 
 /**
+ * @brief determine if one schedselect is made up of fewer or equal number of 
+ *		the same chunk types with possibly some chunk types removed.
+ * 
+ * @return int
+ * @retval 1 fewer or equal chunks
+ * @retval 0 more chunks or different chunks
+ * @retval -1 error
+ */
+int
+is_select_smaller(char *select_orig, char *select_smaller)
+{
+	char *spec1, *spec2;
+	char *subspec1, *subspec2;
+	char *last1, *last2;
+	int num_chunks1, num_chunks2;
+	char *rest1, *rest2;
+
+	if (select_orig == NULL || select_smaller == NULL)
+		return -1;
+
+	if ((spec1 = strdup(select_orig)) == NULL) {
+		log_err(errno, __func__, "Failed to allocate memory");
+		return -1;
+	}
+	if ((spec2 = strdup(select_smaller)) == NULL) {
+		free(spec1);
+		log_err(errno, __func__, "Failed to allocate memory");
+		return -1;
+	}
+
+	subspec2 = parse_plus_spec_r(spec2, &last2, NULL);
+	num_chunks2 = strtol(subspec2, &rest2, 10);
+
+	for (subspec1 = parse_plus_spec_r(spec1, &last1, NULL); subspec1;
+	     subspec1 = parse_plus_spec_r(last1, &last1, NULL)) {
+		num_chunks1 = strtol(subspec1, &rest1, 10);
+
+		if (strcmp(rest1, rest2) == 0 && num_chunks2 <= num_chunks1) {
+			subspec2 = parse_plus_spec_r(last2, &last2, NULL);
+			if (subspec2 == NULL)
+				break;
+			num_chunks2 = strtol(subspec2, &rest2, 10);
+		}
+	}
+
+	free(spec1);
+	free(spec2);
+
+	if (subspec2 != NULL)
+		return 0;
+
+	return 1;
+}
+
+/**
  * @brief Service the Modify Reservation Request from client such as pbs_ralter.
  *
  *	This request atomically modifies one or more of a reservation's attributes.
@@ -730,10 +780,12 @@ req_modifyReservation(struct batch_request *preq)
 	char		*fmt = "%a %b %d %H:%M:%S %Y";
 	int		is_standing = 0;
 	int		next_occr_start = 0;
+	long resv_state;
 	extern char	*msg_stdg_resv_occr_conflict;
 	resc_resv	*presv;
 	int num_jobs;
 	long new_end_time = 0;
+	resource *presc = NULL;
 
 	if (preq == NULL)
 		return;
@@ -767,10 +819,17 @@ req_modifyReservation(struct batch_request *preq)
 					presv->ri_wattr[RESV_ATR_start].at_val.at_long,
 					presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str, 2);
 
+	resc_access_perm = preq->rq_perm;
 	resc_access_perm_save = resc_access_perm;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
-	presv->ri_alter_flags = 0;
-	presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+	presv->ri_alter.ra_flags = 0;
+	presv->ri_alter.ra_state  = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+
+	/* Only set these once to the original start/duration */
+	if (is_standing && presv->ri_alter.ra_revert.rr_stime == 0) {
+		presv->ri_alter.ra_revert.rr_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+		presv->ri_alter.ra_revert.rr_duration = presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
+	}
 
 	while (psatl) {
 		long temp = 0;
@@ -809,23 +868,23 @@ req_modifyReservation(struct batch_request *preq)
 					temp = strtol(psatl->al_value, &end, 10);
 					if (temp > time(NULL)) {
 						if (!is_standing || (temp < next_occr_start)) {
-							send_to_scheduler = RESV_START_TIME_MODIFIED;
-							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
-							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
+							send_to_scheduler = 1;
+							presv->ri_alter.ra_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+							presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
 						} else {
-							resv_revert_alter_times(presv);
-							log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-								preq->rq_ind.rq_modify.rq_objname, "%s", msg_stdg_resv_occr_conflict);
+							resv_revert_alter(presv);
+							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+								  preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
 							req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 							return;
 						}
 					} else {
-						resv_revert_alter_times(presv);
+						resv_revert_alter(presv);
 						req_reject(PBSE_BADTSPEC, 0, preq);
 						return;
 					}
 				} else {
-					resv_revert_alter_times(presv);
+					resv_revert_alter(presv);
 					if (num_jobs)
 						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
 					else
@@ -837,33 +896,54 @@ req_modifyReservation(struct batch_request *preq)
 			case RESV_ATR_end:
 				temp = strtol(psatl->al_value, &end, 10);
 				if (!is_standing || temp < next_occr_start) {
-					send_to_scheduler = RESV_END_TIME_MODIFIED;
-					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
-					presv->ri_alter_flags |= RESV_END_TIME_MODIFIED;
+					send_to_scheduler = 1;
+					presv->ri_alter.ra_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
 				} else {
-					resv_revert_alter_times(presv);
-					log_eventf(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-						preq->rq_ind.rq_modify.rq_objname, "%s", msg_stdg_resv_occr_conflict);
+					resv_revert_alter(presv);
+					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+						  preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
 					req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
 					return;
 				}
 
 				break;
 			case RESV_ATR_duration:
-				send_to_scheduler = RESV_DURATION_MODIFIED;
-				presv->ri_alter_flags |= RESV_DURATION_MODIFIED;
+				send_to_scheduler = 1;
+				presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
+				break;
+			case RESV_ATR_resource:
+				if (strcmp(psatl->al_resc, "select") != 0) {
+					resv_revert_alter(presv);
+					req_reject(PBSE_BADATVAL, 0, preq);
+					return;
+				}
+
+				resv_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+				if (resv_state != RESV_CONFIRMED && resv_state != RESV_DEGRADED) {
+					resv_revert_alter(presv);
+					req_reject(PBSE_BADSTATE, 0, preq);
+					return;
+				}
+				send_to_scheduler = 1;
+				presv->ri_alter.ra_flags |= RESV_SELECT_MODIFIED;
+				if (pseldef == NULL) /* do one time to keep handy */
+					pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
+				presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], pseldef);
+				if (presc == NULL) {
+					req_reject(PBSE_INTERNAL, 0, preq);
+					resv_revert_alter(presv);
+					return;
+				}
+				if (is_standing && presv->ri_alter.ra_revert.rr_select == NULL)
+					presv->ri_alter.ra_revert.rr_select = strdup(presc->rs_value.at_val.at_str);
+				free(presv->ri_alter.ra_select);
+				presv->ri_alter.ra_select = strdup(presc->rs_value.at_val.at_str);
+				resv_attr_def[RESV_ATR_SchedSelect_orig].at_set(&presv->ri_wattr[RESV_ATR_SchedSelect_orig],
+										&presv->ri_wattr[RESV_ATR_SchedSelect], SET);
 				break;
 			default:
 				break;
-		}
-
-		/* decode attribute */
-		rc = pdef->at_decode(&presv->ri_wattr[index],
-			psatl->al_name, psatl->al_resc, psatl->al_value);
-
-		if (rc != 0) {
-			reply_badattr(rc, 1, psatl, preq);
-			return;
 		}
 
 		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
@@ -871,55 +951,81 @@ req_modifyReservation(struct batch_request *preq)
 
 
 	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_RUNNING && num_jobs) {
-		if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && (presv->ri_alter_flags & RESV_END_TIME_MODIFIED)) {
-			resv_revert_alter_times(presv);
+		if ((presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) && (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED)) {
+			resv_revert_alter(presv);
 			req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
 			return;
 		}
 	}
-	resc_access_perm = resc_access_perm_save; /* restore perm */
+
+
+	bad = 0;
+	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
+	if (psatl) {
+		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
+		if (rc != 0) {
+			reply_badattr(rc, bad, psatl, preq);
+			resv_revert_alter(presv);
+			return;
+		}
+	}
+	resc_access_perm = resc_access_perm_save;
 
 	new_end_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long + presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
 
-	if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && presv->ri_alter_etime == 0) {
+	if ((presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) && presv->ri_alter.ra_etime == 0) {
 		if (!is_standing || new_end_time < next_occr_start) {
-			presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+			presv->ri_alter.ra_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 		} else {
 			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-				preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
+				  preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
 			req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
-			resv_revert_alter_times(presv);
+			resv_revert_alter(presv);
 			return;
 		}
 	}
 
-	if ((presv->ri_alter_flags & RESV_DURATION_MODIFIED) && presv->ri_alter_stime == 0) {
+	if ((presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) && presv->ri_alter.ra_stime == 0) {
 		if (!is_standing || new_end_time < next_occr_start) {
-			presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+			presv->ri_alter.ra_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 		} else {
 			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-				preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
+				  preq->rq_ind.rq_modify.rq_objname, msg_stdg_resv_occr_conflict);
 			req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
-			resv_revert_alter_times(presv);
+			resv_revert_alter(presv);
 			return;
 		}
 	}
 
+	if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
+		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], pseldef);
+		make_schedselect(&presv->ri_wattr[(int) RESV_ATR_resource], presc, NULL, &presv->ri_wattr[(int) RESV_ATR_SchedSelect]);
+		if (is_select_smaller(presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str, presv->ri_wattr[RESV_ATR_SchedSelect].at_val.at_str) == 0) {
+			req_reject(PBSE_SELECT_NOT_SUBSET, 0, preq);
+			resv_revert_alter(presv);
+			return;
+		}
+		rc = set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
+		if (rc) {
+			req_reject(rc, 0, preq);
+			resv_revert_alter(presv);
+			return;
+		}
+	}
 
 	if (send_to_scheduler) {
 		resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
-		/*"start", "end","duration", and "wall"; derive and check */
-		if (start_end_dur_wall(presv)) {
-			req_reject(PBSE_BADTSPEC, 0, preq);
-			resv_revert_alter_times(presv);
-			return;
+		if (presv->ri_alter.ra_flags & (RESV_START_TIME_MODIFIED | RESV_END_TIME_MODIFIED | RESV_DURATION_MODIFIED)) {
+			/* "start", "end", "duration", and "wall"; derive and check */
+			if (start_end_dur_wall(presv)) {
+				req_reject(PBSE_BADTSPEC, 0, preq);
+				resv_revert_alter(presv);
+				return;
+			}
+			/* walltime can change */
+			presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
 		}
-		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
 	}
-	bad = 0;
-	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
-	if (psatl)
-		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
 
 	/* If Authorized_Groups is modified, we need to update the queue's acl_users
 	 * Authorized_Users cannot be unset, it must always have a value
@@ -959,16 +1065,20 @@ req_modifyReservation(struct batch_request *preq)
 	if (send_to_scheduler)
 		notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
 
-	(void)sprintf(log_buffer, "Attempting to modify reservation");
-	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {
+	sprintf(log_buffer, "Attempting to modify reservation");
+	if (presv->ri_alter.ra_flags & RESV_START_TIME_MODIFIED) {
 		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_start].at_val.at_long));
 		log_len = strlen(log_buffer);
 		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len," start=%s", buf);
 	}
-	if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED) {
+	if (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED) {
 		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_end].at_val.at_long));
 		log_len = strlen(log_buffer);
 		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len," end=%s", buf);
+	}
+	if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
+		log_len = strlen(log_buffer);
+		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len, " select=%s", presc->rs_value.at_val.at_str);
 	}
 	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, preq->rq_ind.rq_modify.rq_objname, log_buffer);
 
@@ -986,7 +1096,7 @@ req_modifyReservation(struct batch_request *preq)
 			return;
 		}
 	} else {
-		/*Don't reply back until scheduler decides*/
+		/* Don't reply back until scheduler decides */
 		long dt;
 		presv->ri_brp = preq;
 		dt = presv->ri_wattr[RESV_ATR_interactive].at_val.at_long;

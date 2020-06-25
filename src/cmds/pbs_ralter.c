@@ -76,7 +76,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	long	temp = 0;
 	char dur_buf[800];
 
-	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:")) != EOF) {
+	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:l:")) != EOF) {
 		switch (c) {
 			case 'E':
 				t = cvtdate(optarg);
@@ -144,6 +144,14 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 			case 'D':
 				snprintf(dur_buf, sizeof(dur_buf), "%s", optarg);
 				set_attr_error_exit(&attrib, ATTR_resv_duration, dur_buf);
+				break;
+			case 'l':
+				if (strncmp(optarg, "select=", 7) == 0)
+					set_attr_resc_error_exit(&attrib, ATTR_l, "select", (optarg + 7));
+				else {
+					fprintf(stderr, "pbs_ralter -l only allows for select\n");
+					errflg++;
+				}
 				break;
 			default:
 				/* pbs_ralter option not recognized */

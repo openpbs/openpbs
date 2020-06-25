@@ -2581,7 +2581,7 @@ in_runnable_state(resource_resv *resresv)
 				return 0;
 		}
 
-		if (resresv->job  ->is_queued)
+		if (resresv->job->is_queued)
 			return 1;
 
 		if (resresv->job->is_susp_sched)

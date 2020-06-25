@@ -4618,7 +4618,7 @@ strcat_grow(char **buf, char **curr, size_t *lenbuf, char *source)
  */
 /**
  * @par
- * 		Decode a selection specification,  and produce the
+ * 		Decode a selection specification, and produce the
  *		the "schedselect" attribute which contains any default resources
  *		missing from the chunks in the select spec.
  *		Also translates the value of any boolean resource to the "formal"
