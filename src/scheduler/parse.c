@@ -321,10 +321,6 @@ parse_config(char *fname)
 					if (!type.is_time)
 						error = 1;
 				}
-				else if (!strcmp(config_name, PARSE_SYNC_TIME)) {
-					obsolete[0] = PARSE_SYNC_TIME;
-					obsolete[1] = "nothing - syncs happen automatically";
-				}
 				else if (!strcmp(config_name, PARSE_UNKNOWN_SHARES))
 					conf.unknown_shares = num;
 				else if (!strcmp(config_name, PARSE_FAIRSHARE_DECAY_FACTOR)) {

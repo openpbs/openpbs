@@ -102,7 +102,6 @@
 #define PARSE_BY_QUEUE "by_queue"
 #define PARSE_FAIR_SHARE "fair_share"
 #define PARSE_HALF_LIFE "half_life"
-#define PARSE_SYNC_TIME "sync_time"
 #define PARSE_UNKNOWN_SHARES "unknown_shares"
 #define PARSE_LOG_FILTER "log_filter"
 #define PARSE_DEDICATED_PREFIX "dedicated_prefix"

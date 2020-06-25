@@ -1171,7 +1171,6 @@ struct config
 	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
-	time_t sync_time;			/* time between syncing usage to disk */
 	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
 	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
