@@ -1,0 +1,13 @@
+[Unit]
+Description=Run ci docker entrypoint script at startup after all systemd services are loaded
+After=getty.target
+
+[Service]
+Type=forking
+RemainAfterExit=yes
+EnvironmentFile=/env-file
+ExecStart=/src/docker-entrypoint
+TimeoutStartSec=0
+
+[Install]
+WantedBy=default.target

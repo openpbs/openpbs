@@ -45,7 +45,7 @@ fi
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
-  workdir=/src
+  commandloops=/src/.commandloops
   logdir=/logs
   PBS_DIR=/pbssrc
 else
@@ -150,21 +150,25 @@ fi
 
 if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   echo "### First time build is complete ###"
+  host=$(hostname)
+  echo "READY:${host}" >>${commandloops}/.status
   exit 0
 fi
 
 if [ "x${ONLY_INSTALL_DEPS}" == "x1" ]; then
   exit 0
 fi
-
-_targetdirname=target-${ID}
+hostname=$(hostname)
+_targetdirname=target-${ID}-${hostname}
 if [ "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
   rm -rf ${_targetdirname}
 fi
 mkdir -p ${_targetdirname}
-if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
+if [ ! -f ${_targetdirname}/Makefile ]; then
   [[ -f Makefile ]] && make distclean || true
   ./autogen.sh
+fi
+if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
   _cflags="-g -O2 -Wall -Werror"
   if [ "x${ID}" == "xubuntu" ]; then
     _cflags="${_cflags} -Wno-unused-result"
@@ -174,8 +178,8 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   fi
   cd ${_targetdirname}
   if [ -f /src/ci ]; then
-    if [ -f ${workdir}/.configure_opt ]; then
-      configure_opt="$(cat ${workdir}/.configure_opt)"
+    if [ -f ${commandloops}/.configure_opt ]; then
+      configure_opt="$(cat ${commandloops}/.configure_opt)"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -199,24 +203,56 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   cd -
 fi
 cd ${_targetdirname}
-prefix=$(cat ${workdir}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
+prefix=$(cat ${commandloops}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
 if [ "x${prefix}" == "x" ]; then
   prefix='/opt/pbs'
 fi
 if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ]; then
   echo "skipping make"
 else
+  if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
+    if [ -f ${commandloops}/.configure_opt ]; then
+      configure_opt="$(cat ${commandloops}/.configure_opt)"
+      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
+      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+    else
+      configure_opt='--prefix=/opt/pbs --enable-ptl'
+    fi
+    if [ -z ${_cflags} ]; then
+      ../configure ${configure_opt}
+    else
+      ../configure CFLAGS="${_cflags}" ${configure_opt}
+    fi
+  fi
   make -j8
 fi
 if [ "x$ONLY_REBUILD" == "x1" ]; then
   exit 0
 fi
 if [ "x${ONLY_TEST}" != "x1" ]; then
+  if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
+    if [ -f ${commandloops}/.configure_opt ]; then
+      configure_opt="$(cat ${commandloops}/.configure_opt)"
+      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
+      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+    else
+      configure_opt='--prefix=/opt/pbs --enable-ptl'
+    fi
+    if [ -z ${_cflags} ]; then
+      ../configure ${configure_opt}
+    else
+      ../configure CFLAGS="${_cflags}" ${configure_opt}
+    fi
+    make -j8
+  fi
   make -j8 install
   chmod 4755 ${prefix}/sbin/pbs_iff ${prefix}/sbin/pbs_rcp
   if [ "x${DONT_START_PBS}" != "x1" ]; then
     ${prefix}/libexec/pbs_postinstall server
     sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
+    if [ "x$IS_CI_BUILD" == "x1" ]; then
+      /src/etc/configure_node.sh
+    fi
     /etc/init.d/pbs restart
   fi
 fi
@@ -240,13 +276,25 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
-  benchpress_opt="$(cat ${workdir}/.benchpress_opt)"
+  benchpress_opt="$(cat ${commandloops}/.benchpress_opt)"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
+  # pbsnodes=$(/opt/pbs/bin/pbsnodes -av -F json | grep -o mom_.*_[0-9]\"$ | awk -F '"' '{print $1}')
+  pbsnodes=$(/opt/pbs/bin/pbsnodes -av | grep -v "  " | grep -v "vnode")
+  if [ ! -z "$pbsnodes" ]; then
+    set -- $pbsnodes
+    while [ $# -gt 0 ]; do
+      moms="$moms$1:"
+      shift
+    done
+    moms=$(echo "${moms%?}")
+    echo "moms=$moms" >${commandloops}/.params
+    params="--param-file ${commandloops}/.params"
+  fi
   if [ -z "${eval_tag}" ]; then
-    pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+    pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   else
-    pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+    pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   fi
 fi
 
