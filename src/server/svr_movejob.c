@@ -248,10 +248,7 @@ local_move(job *jobp, struct batch_request *req)
 		mtype = MOVE_TYPE_Move;		/* non-privileged move */
 	}
 
-	pbs_errno = svr_chkque(jobp, qp,
-		get_hostPart(jobp->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str),
-		mtype);
-
+	pbs_errno = svr_chkque(jobp, qp, get_hostPart(jobp->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str), mtype);
 	if (pbs_errno) {
 		/* should this queue be retried? */
 		return (should_retry_route(pbs_errno));
@@ -269,18 +266,14 @@ local_move(job *jobp, struct batch_request *req)
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 
 	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
-	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_MODCACHE;
+	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_MOD_MCACHE;
 
 	pattr = &jobp->ji_wattr[(int)JOB_ATR_reserve_ID];
 	if (qp->qu_resvp) {
-
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr,
-			NULL, NULL, qp->qu_resvp->ri_qs.ri_resvID);
+		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr, NULL, NULL, qp->qu_resvp->ri_qs.ri_resvID);
 		jobp->ji_myResv = qp->qu_resvp;
 	} else {
-
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr,
-			NULL, NULL, NULL);
+		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr, NULL, NULL, NULL);
 	}
 
 	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
@@ -295,7 +288,8 @@ local_move(job *jobp, struct batch_request *req)
 
 	jobp->ji_lastdest = 0;	/* reset in case of another route */
 
-	(void)job_save(jobp, SAVEJOB_FULL);
+	job_save_db(jobp);
+	
 
 	/* If a scheduling cycle is in progress, then this moved job may have
 	 * had changes resulting from the move that would impact scheduling or
@@ -794,7 +788,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		(move_type != MOVE_TYPE_Exec)) {
 		tempval = ((long)time_now - jobp->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long);
 		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += tempval;
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_MODCACHE;
+		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 	}
 
 	pattr = jobp->ji_wattr;

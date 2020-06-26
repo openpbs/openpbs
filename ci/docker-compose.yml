@@ -45,6 +45,9 @@ services:
       - ./:/src
       - ./logs:/logs
     entrypoint: /src/docker-entrypoint
+    environment: 
+      - LC_ALL=en_US.utf-8
+      - LANG=en_US.utf-8
     env_file: .env
     environment:
       - LC_ALL=en_US.utf-8

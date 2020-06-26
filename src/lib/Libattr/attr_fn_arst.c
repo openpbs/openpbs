@@ -185,7 +185,7 @@ decode_arst_direct(struct attribute *patr, char *val)
 
 	stp->as_usedptr = j;
 	stp->as_next = pc;
-	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 	patr->at_val.at_arst = stp;
 
 	if (sbufp != strbuf)	/* buffer on heap, not stack */
@@ -218,7 +218,7 @@ decode_arst(struct attribute *patr, char *name, char *rescn, char *val)
 	if ((val == NULL) || (strlen(val) == 0)) {
 		free_arst(patr);
 		/* _SET cleared in free_arst */
-		patr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		patr->at_flags |= ATR_MOD_MCACHE;
 
 		return (0);
 	}
@@ -512,7 +512,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 
@@ -849,7 +849,7 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
 
 	stp->as_usedptr = j;
 	stp->as_next = pc;
-	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 	patr->at_val.at_arst = stp;
 
 	if (sbufp != strbuf)	/* buffer on heap, not stack */
@@ -885,7 +885,7 @@ decode_arst_bs(struct attribute *patr, char *name, char *rescn, char *val)
 	if ((val == NULL) || (strlen(val) == 0)) {
 		free_arst(patr);
 		/* _SET cleared in free_arst */
-		patr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		patr->at_flags |= ATR_MOD_MCACHE;
 
 		return (0);
 	}
@@ -1153,7 +1153,7 @@ set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
 		}
 	}
 
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 

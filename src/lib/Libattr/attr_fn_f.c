@@ -116,11 +116,10 @@ decode_f(struct attribute *patr, char *name, char *rescn, char *val)
 		/* if any part of val is not converted or errno set, error */
 		if (&val[len] != end || errno != 0)
 			return (PBSE_BADATVAL);	 /* invalid string */
-		patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		patr->at_flags |= ATR_SET_MOD_MCACHE;
 		patr->at_val.at_float = fval;
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+		ATR_UNSET(patr);
 		patr->at_val.at_float = 0.0;
 	}
 	return (0);
@@ -211,7 +210,7 @@ set_f(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 

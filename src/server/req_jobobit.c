@@ -854,7 +854,7 @@ on_job_exit(struct work_task *ptask)
 			}
 
 			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_val.at_long = stageout_status;
-			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_SET_MOD_MCACHE;
 
 			/*
 			 * files (generally) copied ok, move on to the next phase by
@@ -1112,7 +1112,6 @@ unset_extra_attributes(job *pjob)
 
 		job_attr_def[(int) JOB_ATR_resource_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_resource_orig]);
 		pjob->ji_wattr[(int) JOB_ATR_resource_orig].at_flags &= ~ATR_VFLAG_SET;
-		pjob->ji_modified = 1;
 	}
 
 	if (pjob->ji_wattr[(int) JOB_ATR_resc_used_update].at_flags & ATR_VFLAG_SET) {
@@ -1509,7 +1508,6 @@ on_job_rerun(struct work_task *ptask)
 					job_attr_def[(int)JOB_ATR_pset].at_free(
 						&pjob->ji_wattr[(int)JOB_ATR_pset]);
 				}
-				pjob->ji_modified = 1;	/* force full job save */
 				pjob->ji_momhandle = -1;
 				pjob->ji_mom_prot = PROT_INVALID;
 				/* job dir has no meaning for re-queued jobs, so unset it */
@@ -1895,11 +1893,8 @@ job_obit(struct resc_used_update *pruu, int stream)
 		(exitstatus != JOB_EXEC_FAILHOOK_DELETE)) {
 		exitstatus = local_exitstatus;
 	} else {
-
-		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = \
-								exitstatus;
-		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |=
-			(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
+		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = exitstatus;
+		pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	patlist = (svrattrl *)GET_NEXT(pruu->ru_attr);
@@ -2063,10 +2058,9 @@ job_obit(struct resc_used_update *pruu, int stream)
 
 				/* put job on password hold */
 				pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_bad_password;
-				pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+				pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_HELD;
-				pjob->ji_modified = 1;
 				svr_evaljobstate(pjob, &newstate, &newsubst, 0);
 				(void)svr_setjobstate(pjob, newstate, newsubst);
 
@@ -2191,9 +2185,8 @@ RetryJob:
 					/* MOM rejected job with security breach fatal error, abort job */
 					DBPRT(("%s: MOM rejected job %s with security breach fatal error.\n",
 						__func__, pruu->ru_pjobid))
-					pjob->ji_modified = 1;
 					pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY;
+					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],NULL,
 						NULL,"job held due to possible security breach of job tmpdir, failed to start");
 					rel_resc(pjob);
@@ -2209,11 +2202,6 @@ RetryJob:
 	/* can now free the resc_used_update structure */
 
 	FREE_RUU(pruu)
-
-	/* Set the following variable to make full save of the job. This is useful to retrieve the
-	 * attributes of the job if in case pbs_server is restarted during the end of job processing.
-	 */
-	pjob->ji_modified = 1;
 
 	/* Send email if exiting (not rerun) */
 

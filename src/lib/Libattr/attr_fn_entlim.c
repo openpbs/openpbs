@@ -290,7 +290,7 @@ internal_decode_entlim(struct attribute *patr,  char *name, char *rn,
 		return (PBSE_BADATVAL);
 	}
 	patr->at_val.at_enty.ae_tree = petree;
-	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	return (0);
 }
@@ -419,7 +419,6 @@ int
 encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	void *ctx;
-	int grandtotal = 0;
 	pbs_entlim_key_t *pkey = NULL;
 	char rescn[PBS_MAX_RESC_NAME + 1];
 	char etname[PBS_MAX_RESC_NAME + 1];
@@ -533,7 +532,6 @@ encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char
 						*pkey->key, etname, tmpsvl->al_atopl.value);
 				}
 				free(tmpsvl);
-				++grandtotal;
 			}
 		}
 		pkey = entlim_get_next(pkey, ctx);
@@ -573,7 +571,7 @@ encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char
 	if (db_attrlist)
 		free(db_attrlist);
 
-	return (grandtotal);
+	return (cursize);
 
 err:
 	if (pkey)
@@ -929,7 +927,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 		default:	return (PBSE_INTERNAL);
 	}
 
-	old->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	old->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 
@@ -1113,7 +1111,7 @@ unset_entlim_resc(attribute *pattr, char *rescname)
 		}
 	}
 	if (modified)
-		pattr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_MOD_MCACHE;
 	if (hasentries == 0)
 		free_entlim(pattr);	/* no entries left, clear attribute */
 	return;

@@ -178,41 +178,37 @@ enum srv_atr {
 extern attribute_def svr_attr_def[];
 /* for trillion job id */
 extern long long svr_max_job_sequence_id;
-extern long long svr_jobidnumber;
+
 /* for history jobs*/
 extern long svr_history_enable;
 extern long svr_history_duration;
 
-
 struct server {
 	struct server_qs {
-		int		sv_numjobs;	/* number of job owned by server   */
-		int		sv_numque;	/* nuber of queues managed          */
-		long long	sv_jobidnumber;	/* next number to use in new jobid  */
-		time_t		sv_savetm;	/* time of server db update         */
+		int sv_numjobs;		  /* number of job owned by server   */
+		int sv_numque;		  /* number of queues managed  */
+		long long sv_jobidnumber; /* next number to use in new jobid  */
+		long long sv_lastid;	  /* block increment to avoid many saves */
 	} sv_qs;
+	attribute sv_attr[SRV_ATR_LAST]; /* the server attributes */
+	short newobj;
+	time_t sv_started;		       /* time server started */
+	time_t sv_hotcycle;		       /* if RECOV_HOT,time of last restart */
+	time_t sv_next_schedule;	   /* when to next run scheduler cycle */
+	int sv_jobstates[PBS_NUMJOBSTATE]; /* # of jobs per state */
+	char sv_jobstbuf[150];
+	char sv_license_ct_buf[150]; /* license_count buffer */
+	int sv_nseldft;		         /* num of elems in sv_seldft */
+	key_value_pair *sv_seldft;   /* defelts for job's -l select	*/
 
-	time_t	  sv_started;		/* time server started */
-	time_t	  sv_hotcycle;		/* if RECOV_HOT,time of last restart */
-	time_t	  sv_next_schedule;	/* when to next run scheduler cycle */
-	int	  sv_jobstates[PBS_NUMJOBSTATE];  /* # of jobs per state */
-	char	  sv_jobstbuf[150];
-	char	  sv_license_ct_buf[150]; /* license_count buffer */
-	int	  sv_nseldft;		/* num of elems in sv_seldft	    */
-	key_value_pair *sv_seldft;	/* defelts for job's -l select	    */
-
-	attribute sv_attr[SRV_ATR_LAST]; /* the server attributes 	    */
-
-	int	  sv_trackmodifed;	/* 1 if tracking list modified	    */
-	int	  sv_tracksize;		/* total number of sv_track entries */
-	struct tracking *sv_track;	/* array of track job records	    */
-	int	  sv_provtrackmodifed;	/* 1 if prov_tracking list modified */
-	int	  sv_provtracksize; /* total number of sv_prov_track entries */
+	int sv_trackmodifed;		     /* 1 if tracking list modified	    */
+	int sv_tracksize;		         /* total number of sv_track entries */
+	struct tracking *sv_track;	     /* array of track job records	    */
+	int sv_provtrackmodifed;	     /* 1 if prov_tracking list modified */
+	int sv_provtracksize;		     /* total number of sv_prov_track entries */
 	struct prov_tracking *sv_prov_track; /* array of provision records */
-	int	  sv_cur_prov_records; /* number of provisiong requests
-					 currently running */
+	int sv_cur_prov_records;	     /* number of provisiong requests currently running */
 };
-
 
 extern struct server	server;
 extern	pbs_list_head	svr_alljobs;
@@ -278,10 +274,10 @@ enum failover_state {
 
 /* function prototypes */
 
-extern int			svr_recov_db(void);
-extern int			svr_save_db(struct server *, int mode);
-extern pbs_sched *		sched_recov_db(char *);
-extern int			sched_save_db(pbs_sched *, int mode);
+extern int			svr_recov_db();
+extern int			svr_save_db(struct server *);
+extern pbs_sched *	sched_recov_db(char *, pbs_sched *ps);
+extern int			sched_save_db(pbs_sched *);
 extern enum failover_state	are_we_primary(void);
 extern int			have_socket_licensed_nodes(void);
 extern void			unlicense_socket_licensed_nodes(void);

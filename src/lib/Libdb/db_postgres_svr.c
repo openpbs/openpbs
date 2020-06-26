@@ -67,54 +67,32 @@ int
 pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
 {
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.server( "
-		"sv_numjobs, "
-		"sv_numque, "
 		"sv_jobidnumber, "
-		"sv_svraddr, "
-		"sv_svrport, "
 		"sv_savetm, "
 		"sv_creattm, "
 		"attributes "
 		") "
 		"values "
-		"($1, $2, $3, $4, $5, localtimestamp, localtimestamp, hstore($6::text[]))");
-	if (pg_prepare_stmt(conn, STMT_INSERT_SVR, conn->conn_sql, 6) != 0)
+		"($1, localtimestamp, localtimestamp, hstore($2::text[]))");
+	if (pg_prepare_stmt(conn, STMT_INSERT_SVR, conn->conn_sql, 2) != 0)
 		return -1;
 
 	/* replace all attributes for a FULL update */
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
-		"sv_numjobs = $1, "
-		"sv_numque = $2, "
-		"sv_jobidnumber = $3, "
-		"sv_svraddr = $4, "
-		"sv_svrport = $5, "
+		"sv_jobidnumber = $1, "
 		"sv_savetm = localtimestamp, "
-		"attributes = hstore($6::text[]) ");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR_FULL, conn->conn_sql, 6) != 0)
-		return -1;
-
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
-		"sv_numjobs = $1, "
-		"sv_numque = $2, "
-		"sv_jobidnumber = $3, "
-		"sv_svraddr = $4, "
-		"sv_svrport = $5, "
-		"sv_savetm = localtimestamp ");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR_QUICK, conn->conn_sql, 5) != 0)
+		"attributes = attributes || hstore($2::text[])");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR, conn->conn_sql, 2) != 0)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
 		"sv_savetm = localtimestamp,"
-		"attributes = attributes - hstore($1::text[]) ");
+		"attributes = attributes - $1::text[]");
 	if (pg_prepare_stmt(conn, STMT_REMOVE_SVRATTRS, conn->conn_sql, 1) != 0)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
-		"sv_numjobs, "
-		"sv_numque, "
 		"sv_jobidnumber, "
-		"extract(epoch from sv_savetm)::bigint as sv_savetm, "
-		"extract(epoch from sv_creattm)::bigint as sv_creattm, "
 		"hstore_to_array(attributes) as attributes "
 		"from "
 		"pbs.server ");
@@ -176,42 +154,34 @@ int
 pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
-	char *stmt;
+	char *stmt = NULL;
 	int params;
 	char *raw_array = NULL;
+	int len = 0;
+	int rc = 0;
 
-	SET_PARAM_INTEGER(conn, ps->sv_numjobs, 0);
-	SET_PARAM_INTEGER(conn, ps->sv_numque, 1);
-	SET_PARAM_BIGINT(conn, ps->sv_jobidnumber, 2);
-	SET_PARAM_BIGINT(conn, ps->sv_svraddr, 3);
-	SET_PARAM_INTEGER(conn, ps->sv_svrport, 4);
+	/* Svr does not have a QS area, so ignoring that */
+	SET_PARAM_BIGINT(conn, ps->sv_jobidnumber, 0);
 
-	if (savetype == PBS_UPDATE_DB_QUICK) {
-		params = 5;
-	} else {
-		int len = 0;
+	if ((ps->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		/* convert attributes to postgres raw array format */
-		if ((len = convert_db_attr_list_to_array(&raw_array, &ps->attr_list)) <= 0)
+		if ((len = attrlist_to_dbarray(&raw_array, &ps->db_attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 5);
-		params = 6;
+		SET_PARAM_BIN(conn, raw_array, len, 1);
+		params = 2;
+		stmt = STMT_UPDATE_SVR;
 	}
 
-	if (savetype == PBS_UPDATE_DB_FULL)
-		stmt = STMT_UPDATE_SVR_FULL;
-	else if (savetype == PBS_UPDATE_DB_QUICK)
-		stmt = STMT_UPDATE_SVR_QUICK;
-	else
+	if (savetype & OBJ_SAVE_NEW)
 		stmt = STMT_INSERT_SVR;
 
-	if (pg_db_cmd(conn, stmt, params) != 0) {
-		free(raw_array);
-		return -1;
-	}
+	if (stmt)
+		rc = pg_db_cmd(conn, stmt, params);
 
 	free(raw_array);
-	return 0;
+
+	return rc;
 }
 
 /**
@@ -234,34 +204,26 @@ pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	int rc;
 	char *raw_array;
 	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
-	static int sv_numjobs_fnum, sv_numque_fnum, sv_jobidnumber_fnum, sv_savetm_fnum,
-	sv_creattm_fnum, attributes_fnum;
+	static int sv_jobidnumber_fnum, attributes_fnum;
 	static int fnums_inited = 0;
 
 	if ((rc = pg_db_query(conn, STMT_SELECT_SVR, 0, &res)) != 0)
 		return rc;
 
 	if (fnums_inited == 0) {
-		sv_numjobs_fnum = PQfnumber(res, "sv_numjobs");
-		sv_numque_fnum = PQfnumber(res, "sv_numque");
 		sv_jobidnumber_fnum = PQfnumber(res, "sv_jobidnumber");
-		sv_savetm_fnum = PQfnumber(res, "sv_savetm");
-		sv_creattm_fnum = PQfnumber(res, "sv_creattm");
 		attributes_fnum = PQfnumber(res, "attributes");
 		fnums_inited = 1;
 	}
 
-	GET_PARAM_INTEGER(res, 0, ps->sv_numjobs, sv_numjobs_fnum);
-	GET_PARAM_INTEGER(res, 0, ps->sv_numque, sv_numque_fnum);
 	GET_PARAM_BIGINT(res, 0, ps->sv_jobidnumber, sv_jobidnumber_fnum);
-	GET_PARAM_BIGINT(res, 0, ps->sv_savetm, sv_savetm_fnum);
-	GET_PARAM_BIGINT(res, 0, ps->sv_creattm, sv_creattm_fnum);
 	GET_PARAM_BIN(res, 0, raw_array, attributes_fnum);
 
 	/* convert attributes from postgres raw array format */
-	rc = convert_array_to_db_attr_list(raw_array, &ps->attr_list);
+	rc = dbarray_to_attrlist(raw_array, &ps->db_attr_list);
 
 	PQclear(res);
+
 	return rc;
 }
 
@@ -314,7 +276,6 @@ pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
  *	Deletes attributes of a server
  *
  * @param[in]	conn - Connection handle
- * @param[in]	obj  - server information
  * @param[in]	obj_id  - server id
  * @param[in]	attr_list - List of attributes
  *
@@ -324,37 +285,19 @@ pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
  *
  */
 int
-pg_db_del_attr_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
+pg_db_del_attr_svr(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
 	char *raw_array = NULL;
 	int len = 0;
+	int rc;
 
-	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
-
 
 	SET_PARAM_BIN(conn, raw_array, len, 0);
 
-	if (pg_db_cmd(conn, STMT_REMOVE_SVRATTRS, 1) != 0)
-		return -1;
-
+	rc = pg_db_cmd(conn, STMT_REMOVE_SVRATTRS, 1);
 	free(raw_array);
 
-	return 0;
-}
-
-
-/**
- * @brief
- *	Frees allocate memory of an Object
- *
- * @param[in]	obj - pbs_db_obj_info_t containing the DB object
- *
- * @return None
- *
- */
-void
-pg_db_reset_svr(pbs_db_obj_info_t *obj)
-{
-	free_db_attr_list(&(obj->pbs_db_un.pbs_db_svr->attr_list));
+	return rc;
 }

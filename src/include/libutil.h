@@ -323,6 +323,8 @@ extern char *netaddr(struct sockaddr_in *);
 extern unsigned long crc_file(char *fname);
 extern int get_fullhostname(char *, char *, int);
 
+extern int get_msvr_mode(void);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)
@@ -340,4 +342,3 @@ void encode_SHA(char*, size_t, char **);
 #endif
 #endif
 
-int get_max_servers(void);

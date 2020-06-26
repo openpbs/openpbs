@@ -2972,7 +2972,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 		(void)sprintf(log_buffer, "task transmogrified, %s", cmd_line);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -3276,7 +3276,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 
 		rc = 0;
@@ -7828,7 +7828,7 @@ dorestrict_user(void)
 			if (hjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 				hjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 				hjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-				job_save(hjob, SAVEJOB_QUICK);
+				job_save(hjob);
 			}
 
 			/*
@@ -10678,7 +10678,7 @@ active_idle(job *pjob, int which)
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
 	}
-	job_save(pjob, SAVEJOB_QUICK);
+	job_save(pjob);
 }
 
 void

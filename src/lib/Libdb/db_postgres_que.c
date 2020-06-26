@@ -68,37 +68,47 @@ pg_db_prepare_que_sqls(pbs_db_conn_t *conn)
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.queue("
 		"qu_name, "
 		"qu_type, "
-		"qu_ctime, "
-		"qu_mtime, "
+		"qu_creattm, "
+		"qu_savetm, "
 		"attributes "
 		") "
 		"values "
 		"($1, $2,  localtimestamp, localtimestamp, hstore($3::text[]))");
-
 	if (pg_prepare_stmt(conn, STMT_INSERT_QUE, conn->conn_sql, 3) != 0)
 		return -1;
 
 	/* rewrite all attributes for FULL update */
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.queue set "
 			"qu_type = $2, "
-			"qu_mtime = localtimestamp, "
-			"attributes = hstore($3::text[])"
-			" where qu_name = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_QUE_FULL, conn->conn_sql, 3) != 0)
+			"qu_savetm = localtimestamp, "
+			"attributes = attributes || hstore($3::text[]) "
+			"where qu_name = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_QUE, conn->conn_sql, 3) != 0)
 		return -1;
 
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.queue set "
+			"qu_type = $2, "
+			"qu_savetm = localtimestamp "
+			"where qu_name = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_QUE_QUICK, conn->conn_sql, 2) != 0)
+		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.queue set "
-		"qu_mtime = localtimestamp,"
-		"attributes = attributes - hstore($2::text[]) "
+			"qu_savetm = localtimestamp, "
+			"attributes = attributes || hstore($2::text[]) "
+			"where qu_name = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_QUE_ATTRSONLY, conn->conn_sql, 2) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.queue set "
+		"qu_savetm = localtimestamp,"
+		"attributes = attributes - $2::text[] "
 		"where qu_name = $1");
 	if (pg_prepare_stmt(conn, STMT_REMOVE_QUEATTRS, conn->conn_sql, 2) != 0)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select qu_name, "
 			"qu_type, "
-			"extract(epoch from qu_ctime)::bigint as qu_ctime, "
-			"extract(epoch from qu_mtime)::bigint as qu_mtime, "
 			"hstore_to_array(attributes) as attributes "
 			"from pbs.queue "
 			"where qu_name = $1");
@@ -108,10 +118,8 @@ pg_db_prepare_que_sqls(pbs_db_conn_t *conn)
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 			"qu_name, "
 			"qu_type, "
-			"extract(epoch from qu_ctime)::bigint as qu_ctime, "
-			"extract(epoch from qu_mtime)::bigint as qu_mtime, "
 			"hstore_to_array(attributes) as attributes "
-			"from pbs.queue order by qu_ctime");
+			"from pbs.queue order by qu_creattm");
 	if (pg_prepare_stmt(conn, STMT_FIND_QUES_ORDBY_CREATTM, conn->conn_sql, 0) != 0)
 		return -1;
 
@@ -139,26 +147,22 @@ static int
 load_que(PGresult *res, pbs_db_que_info_t *pq, int row)
 {
 	char *raw_array;
-	static int qu_name_fnum, qu_type_fnum, qu_ctime_fnum, qu_mtime_fnum, attributes_fnum;
+	static int qu_name_fnum, qu_type_fnum, attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {
 		qu_name_fnum = PQfnumber(res, "qu_name");
 		qu_type_fnum = PQfnumber(res, "qu_type");
-		qu_ctime_fnum = PQfnumber(res, "qu_ctime");
-		qu_mtime_fnum = PQfnumber(res, "qu_mtime");
 		attributes_fnum = PQfnumber(res, "attributes");
 		fnums_inited = 1;
 	}
 
 	GET_PARAM_STR(res, row, pq->qu_name, qu_name_fnum);
 	GET_PARAM_INTEGER(res, row, pq->qu_type, qu_type_fnum);
-	GET_PARAM_BIGINT(res, row, pq->qu_ctime, qu_ctime_fnum);
-	GET_PARAM_BIGINT(res, row, pq->qu_mtime, qu_mtime_fnum);
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
 
 	/* convert attributes from postgres raw array format */
-	return (convert_array_to_db_attr_list(raw_array, &pq->attr_list));
+	return (dbarray_to_attrlist(raw_array, &pq->db_attr_list));
 }
 
 /**
@@ -177,38 +181,45 @@ int
 pg_db_save_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_que_info_t *pq = obj->pbs_db_un.pbs_db_que;
-	char *stmt;
+	char *stmt = NULL;
 	int params;
+	int rc = 0;
 	char *raw_array = NULL;
 
 	SET_PARAM_STR(conn, pq->qu_name, 0);
-	SET_PARAM_INTEGER(conn, pq->qu_type, 1);
 
-	if (savetype == PBS_UPDATE_DB_QUICK) {
+	if (savetype & OBJ_SAVE_QS) {
+		SET_PARAM_INTEGER(conn, pq->qu_type, 1);
 		params = 2;
-	} else {
+		stmt = STMT_UPDATE_QUE_QUICK;
+	} 
+
+	if ((pq->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
-		if ((len = convert_db_attr_list_to_array(&raw_array, &pq->attr_list)) <= 0)
+		if ((len = attrlist_to_dbarray(&raw_array, &pq->db_attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 2);
-		params = 3;
+		if (savetype & OBJ_SAVE_QS) {
+			SET_PARAM_BIN(conn, raw_array, len, 2);
+			params = 3;
+			stmt = STMT_UPDATE_QUE;
+		} else {
+			SET_PARAM_BIN(conn, raw_array, len, 1);
+			params = 2;
+			stmt = STMT_UPDATE_QUE_ATTRSONLY;
+		}
 	}
 
-	if (savetype == PBS_UPDATE_DB_FULL)
-		stmt = STMT_UPDATE_QUE_FULL;
-	else
+	if (savetype & OBJ_SAVE_NEW)
 		stmt = STMT_INSERT_QUE;
 
-	if (pg_db_cmd(conn, stmt, params) != 0) {
-		free(raw_array);
-		return -1;
-	}
+	if (stmt)
+		rc = pg_db_cmd(conn, stmt, params);
 
 	free(raw_array);
 
-	return 0;
+	return rc;
 }
 
 /**
@@ -239,6 +250,7 @@ pg_db_load_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	rc = load_que(res, pq, 0);
 
 	PQclear(res);
+
 	return rc;
 }
 
@@ -296,7 +308,6 @@ int
 pg_db_next_que(pbs_db_conn_t* conn, void *st, pbs_db_obj_info_t* obj)
 {
 	pg_query_state_t *state = (pg_query_state_t *) st;
-
 	return (load_que(state->res, obj->pbs_db_un.pbs_db_que, state->row));
 }
 
@@ -310,7 +321,6 @@ pg_db_next_que(pbs_db_conn_t* conn, void *st, pbs_db_obj_info_t* obj)
  * @return      Error code
  * @retval	-1 - Failure
  * @retval	 0 - Success
- * @retval	 1 - Success but no rows deleted
  *
  */
 int
@@ -337,36 +347,21 @@ pg_db_delete_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
  *
  */
 int
-pg_db_del_attr_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
+pg_db_del_attr_que(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
 	char *raw_array = NULL;
 	int len = 0;
+	int rc = 0;
 
-	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
-	SET_PARAM_STR(conn, obj_id, 0);
 
+	SET_PARAM_STR(conn, obj_id, 0);
 	SET_PARAM_BIN(conn, raw_array, len, 1);
 
-	if (pg_db_cmd(conn, STMT_REMOVE_QUEATTRS, 2) != 0)
-		return -1;
-
+	rc = pg_db_cmd(conn, STMT_REMOVE_QUEATTRS, 2);
 	free(raw_array);
 
-	return 0;
+	return rc;
 }
 
-/**
- * @brief
- *	Frees allocate memory of an Object
- *
- * @param[in]	obj - pbs_db_obj_info_t containing the DB object
- *
- * @return None
- *
- */
-void
-pg_db_reset_que(pbs_db_obj_info_t *obj)
-{
-	free_db_attr_list(&(obj->pbs_db_un.pbs_db_que->attr_list));
-}

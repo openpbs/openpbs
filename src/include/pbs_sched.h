@@ -120,6 +120,7 @@ typedef struct pbs_sched {
 	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
 	/* sched object's attributes  */
 	attribute sch_attr[SCHED_ATR_LAST];
+	short newobj;
 } pbs_sched;
 
 

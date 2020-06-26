@@ -819,7 +819,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				 * Set exit status for the job to SIGKILL as we will not be working with any obit.
 				 */
 				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
-				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
 			}
 
 			/* see if it has any dependencies */

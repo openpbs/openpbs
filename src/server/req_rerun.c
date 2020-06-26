@@ -142,7 +142,6 @@ force_reque(job *pjob)
 	int  newstate;
 	int  newsubstate;
 
-	pjob->ji_modified = 1;
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
 

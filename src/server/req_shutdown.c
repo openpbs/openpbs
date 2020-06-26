@@ -138,7 +138,6 @@ svr_shutdown(int type)
       /* Saving server jobid number to the database as server is going to shutdown.
 	 * Once server will come up then it will start jobid/resvid from this number onwards.
 	 */
-	server.sv_qs.sv_jobidnumber = svr_jobidnumber;
 	state = &server.sv_attr[(int)SRV_ATR_State].at_val.at_long;
 	(void)strcpy(log_buffer, msg_shutdown_start);
 
@@ -196,7 +195,7 @@ svr_shutdown(int type)
 
 	if (type == SHUT_QUICK) /* quick, leave jobs as are */
 		return;
-	svr_save_db(&server, SVR_SAVE_QUICK);
+	svr_save_db(&server);
 
 	pnxt = (job *)GET_NEXT(svr_alljobs);
 	while ((pjob = pnxt) != NULL) {
@@ -337,8 +336,7 @@ shutdown_preempt_chkpt(job *pjob)
 		if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT)
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
 		pjob->ji_qs.ji_svrflags |= (JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT | JOB_SVFLG_HASHOLD);
-		pjob->ji_modified = 1;
-		(void)job_save(pjob, SAVEJOB_QUICK);
+		(void)job_save_db(pjob);
 		return (0);
 	} else {
 		*hold_val = old_hold;	/* reset to the old value */
@@ -372,8 +370,7 @@ post_chkpt(struct work_task *ptask)
 		if (preq->rq_reply.brp_auxcode) { /* chkpt can be moved */
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_CHKPT;
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_ChkptMig;
-			pjob->ji_modified = 1;
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			job_save_db(pjob);
 		}
 		account_record(PBS_ACCT_CHKPNT, pjob, NULL);
 	} else {
@@ -381,8 +378,7 @@ post_chkpt(struct work_task *ptask)
 		if (preq->rq_reply.brp_code != PBSE_CKPBSY) {
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_CHKPT;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			pjob->ji_modified = 1;
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			job_save_db(pjob);
 			if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)
 				rerun_or_kill(pjob, msg_on_shutdown);
 		}

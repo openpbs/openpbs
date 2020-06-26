@@ -110,8 +110,34 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+		"ri_queue = $2, "
+		"ri_state = $3, "
+		"ri_substate = $4, "
+		"ri_stime = $5, "
+		"ri_etime = $6, "
+		"ri_duration = $7, "
+		"ri_tactive = $8, "
+		"ri_svrflags = $9, "
+		"ri_numattr = $10, "
+		"ri_resvTag = $11, "
+		"ri_un_type = $12, "
+		"ri_fromsock = $13, "
+		"ri_fromaddr = $14, "
+		"ri_savetm = localtimestamp "
+		"where ri_resvID = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV_QUICK, conn->conn_sql, 14) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+		"ri_savetm = localtimestamp, "
+		"attributes = attributes || hstore($2::text[]) "
+		"where ri_resvID = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV_ATTRSONLY, conn->conn_sql, 2) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
 		"ri_savetm = localtimestamp,"
-		"attributes = attributes - hstore($2::text[]) "
+		"attributes = attributes - $2::text[] "
 		"where ri_resvID = $1");
 	if (pg_prepare_stmt(conn, STMT_REMOVE_RESVATTRS, conn->conn_sql, 2) != 0)
 		return -1;
@@ -131,8 +157,6 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_un_type, "
 		"ri_fromsock, "
 		"ri_fromaddr, "
-		"extract(epoch from ri_savetm)::bigint as ri_savetm, "
-		"extract(epoch from ri_creattm)::bigint as ri_creattm, "
 		"hstore_to_array(attributes) as attributes "
 		"from pbs.resv where ri_resvid = $1");
 	if (pg_prepare_stmt(conn, STMT_SELECT_RESV, conn->conn_sql, 1) != 0)
@@ -153,8 +177,6 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_un_type, "
 		"ri_fromsock, "
 		"ri_fromaddr, "
-		"extract(epoch from ri_savetm)::bigint as ri_savetm, "
-		"extract(epoch from ri_creattm)::bigint as ri_creattm, "
 		"hstore_to_array(attributes) as attributes "
 		"from pbs.resv "
 		"order by ri_creattm");
@@ -188,8 +210,7 @@ load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
 	char *raw_array;
 	static int ri_resvid_fnum, ri_queue_fnum, ri_state_fnum, ri_substate_fnum, ri_stime_fnum,
 	ri_etime_fnum, ri_duration_fnum, ri_tactive_fnum, ri_svrflags_fnum, ri_numattr_fnum, ri_resvTag_fnum,
-	ri_un_type_fnum, ri_fromsock_fnum, ri_fromaddr_fnum, ri_savetm_fnum, ri_creattm_fnum,
-	attributes_fnum;
+	ri_un_type_fnum, ri_fromsock_fnum, ri_fromaddr_fnum, attributes_fnum;
 
 	static int fnums_inited = 0;
 
@@ -208,8 +229,6 @@ load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
 		ri_un_type_fnum = PQfnumber(res, "ri_un_type");
 		ri_fromsock_fnum = PQfnumber(res, "ri_fromsock");
 		ri_fromaddr_fnum = PQfnumber(res, "ri_fromaddr");
-		ri_savetm_fnum = PQfnumber(res, "ri_savetm");
-		ri_creattm_fnum = PQfnumber(res, "ri_creattm");
 		attributes_fnum = PQfnumber(res, "attributes");
 		fnums_inited = 1;
 	}
@@ -228,12 +247,10 @@ load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
 	GET_PARAM_INTEGER(res, row, presv->ri_un_type, ri_un_type_fnum);
 	GET_PARAM_INTEGER(res, row, presv->ri_fromsock, ri_fromsock_fnum);
 	GET_PARAM_BIGINT(res, row, presv->ri_fromaddr, ri_fromaddr_fnum);
-	GET_PARAM_BIGINT(res, row, presv->ri_savetm, ri_savetm_fnum);
-	GET_PARAM_BIGINT(res, row, presv->ri_creattm, ri_creattm_fnum);
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
 
 	/* convert attributes from postgres raw array format */
-	return (convert_array_to_db_attr_list(raw_array, &presv->attr_list));
+	return (dbarray_to_attrlist(raw_array, &presv->db_attr_list));
 }
 
 /**
@@ -252,50 +269,57 @@ int
 pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
-	char *stmt;
+	char *stmt = NULL;
 	int params;
+	int rc = 0;
 	char *raw_array = NULL;
 
 	SET_PARAM_STR(conn, presv->ri_resvid, 0);
-	SET_PARAM_STR(conn, presv->ri_queue, 1);
-	SET_PARAM_INTEGER(conn, presv->ri_state, 2);
-	SET_PARAM_INTEGER(conn, presv->ri_substate, 3);
-	SET_PARAM_BIGINT(conn, presv->ri_stime, 4);
-	SET_PARAM_BIGINT(conn, presv->ri_etime, 5);
-	SET_PARAM_BIGINT(conn, presv->ri_duration, 6);
-	SET_PARAM_INTEGER(conn, presv->ri_tactive, 7);
-	SET_PARAM_INTEGER(conn, presv->ri_svrflags, 8);
-	SET_PARAM_INTEGER(conn, presv->ri_numattr, 9);
-	SET_PARAM_INTEGER(conn, presv->ri_resvTag, 10);
-	SET_PARAM_INTEGER(conn, presv->ri_un_type, 11);
-	SET_PARAM_INTEGER(conn, presv->ri_fromsock, 12);
-	SET_PARAM_BIGINT(conn, presv->ri_fromaddr, 13);
 
-	if (savetype == PBS_UPDATE_DB_QUICK) {
+	if (savetype & OBJ_SAVE_QS) {
+		SET_PARAM_STR(conn, presv->ri_queue, 1);
+		SET_PARAM_INTEGER(conn, presv->ri_state, 2);
+		SET_PARAM_INTEGER(conn, presv->ri_substate, 3);
+		SET_PARAM_BIGINT(conn, presv->ri_stime, 4);
+		SET_PARAM_BIGINT(conn, presv->ri_etime, 5);
+		SET_PARAM_BIGINT(conn, presv->ri_duration, 6);
+		SET_PARAM_INTEGER(conn, presv->ri_tactive, 7);
+		SET_PARAM_INTEGER(conn, presv->ri_svrflags, 8);
+		SET_PARAM_INTEGER(conn, presv->ri_numattr, 9);
+		SET_PARAM_INTEGER(conn, presv->ri_resvTag, 10);
+		SET_PARAM_INTEGER(conn, presv->ri_un_type, 11);
+		SET_PARAM_INTEGER(conn, presv->ri_fromsock, 12);
+		SET_PARAM_BIGINT(conn, presv->ri_fromaddr, 13);
+		stmt = STMT_UPDATE_RESV_QUICK;
 		params = 14;
-	} else {
+	}
+
+	if ((presv->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
-		if ((len = convert_db_attr_list_to_array(&raw_array, &presv->attr_list)) <= 0)
+		if ((len = attrlist_to_dbarray(&raw_array, &presv->db_attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 14);
-		params = 15;
+		if (savetype & OBJ_SAVE_QS) {
+			SET_PARAM_BIN(conn, raw_array, len, 14);
+			stmt = STMT_UPDATE_RESV;
+			params = 15;
+		} else {
+			SET_PARAM_BIN(conn, raw_array, len, 1);
+			params = 2;
+			stmt = STMT_UPDATE_RESV_ATTRSONLY;
+		}
 	}
 
-	if (savetype == PBS_UPDATE_DB_FULL)
-		stmt = STMT_UPDATE_RESV;
-	else
+	if (savetype & OBJ_SAVE_NEW)
 		stmt = STMT_INSERT_RESV;
 
-	if (pg_db_cmd(conn, stmt, params) != 0) {
-		free(raw_array);
-		return -1;
-	}
+	if (stmt)
+		rc = pg_db_cmd(conn, stmt, params);
 
 	free(raw_array);
 
-	return 0;
+	return rc;
 }
 
 /**
@@ -326,6 +350,7 @@ pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	rc = load_resv(res, presv, 0);
 
 	PQclear(res);
+
 	return rc;
 }
 
@@ -387,7 +412,6 @@ int
 pg_db_next_resv(pbs_db_conn_t* conn, void* st, pbs_db_obj_info_t* obj)
 {
 	pg_query_state_t *state = (pg_query_state_t *) st;
-
 	return (load_resv(state->res, obj->pbs_db_un.pbs_db_resv, state->row));
 }
 
@@ -401,7 +425,6 @@ pg_db_next_resv(pbs_db_conn_t* conn, void* st, pbs_db_obj_info_t* obj)
  * @return      Error code
  * @retval	-1 - Failure
  * @retval	 0 - Success
- * @retval	 1 - Success but no rows deleted
  *
  */
 int
@@ -428,37 +451,22 @@ pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t* obj)
  *
  */
 int
-pg_db_del_attr_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
+pg_db_del_attr_resv(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
 	char *raw_array = NULL;
 	int len = 0;
+	int rc = 0;
 
-	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
+
 	SET_PARAM_STR(conn, obj_id, 0);
 
 	SET_PARAM_BIN(conn, raw_array, len, 1);
 
-	if (pg_db_cmd(conn, STMT_REMOVE_RESVATTRS, 2) != 0)
-		return -1;
-
+	rc = pg_db_cmd(conn, STMT_REMOVE_RESVATTRS, 2);
 	free(raw_array);
 
-	return 0;
+	return rc;
 }
 
-
-/**
- * @brief
- *	Frees allocate memory of an Object
- *
- * @param[in]	obj - pbs_db_obj_info_t containing the DB object
- *
- * @return None
- *
- */
-void
-pg_db_reset_resv(pbs_db_obj_info_t *obj)
-{
-	free_db_attr_list(&(obj->pbs_db_un.pbs_db_resv->attr_list));
-}

@@ -61,6 +61,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "list_link.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -81,9 +82,11 @@ extern "C" {
 #define PBS_MAX_DB_CONN_INIT_ERR  500
 #define MAX_SCHEMA_VERSION_LEN 9
 
-#define PBS_UPDATE_DB_FULL 0
-#define PBS_UPDATE_DB_QUICK 1
-#define PBS_INSERT_DB 2
+#define DB_TIMESTAMP_LEN 50
+
+/* type of saves bit wise flags - see savetype */
+#define OBJ_SAVE_NEW    1   /* object is new, so whole object should be saved */
+#define OBJ_SAVE_QS     2   /* quick save area modified, it should be saved */
 
 /**
  * @brief
@@ -135,27 +138,74 @@ typedef int       INTEGER;
 typedef long long BIGINT;
 typedef char      *TEXT;
 
-/**
- * @brief
- *  Structure used to map database attr structure to C
- *
- */
-struct pbs_db_attr_info {
-	char	attr_name[PBS_MAXATTRNAME+1];
-	char	attr_resc[PBS_MAXATTRRESC+1];
-	TEXT    attr_value;
-	INTEGER attr_flags;
-};
-
-typedef struct pbs_db_attr_info pbs_db_attr_info_t;
-
 struct pbs_db_attr_list {
 	int attr_count;
-	pbs_db_attr_info_t *attributes;
+	pbs_list_head attrs;
 };
 
 typedef struct pbs_db_attr_list pbs_db_attr_list_t;
 
+/**
+ * @brief
+ *  Structure used to map database server structure to C
+ *
+ */
+struct pbs_db_svr_info {
+	BIGINT  sv_jobidnumber;
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+};
+typedef struct pbs_db_svr_info pbs_db_svr_info_t;
+
+/**
+ * @brief
+ *  Structure used to map database scheduler structure to C
+ *
+ */
+struct pbs_db_sched_info {
+	char    sched_name[PBS_MAXSCHEDNAME+1];
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+};
+typedef struct pbs_db_sched_info pbs_db_sched_info_t;
+
+/**
+ * @brief
+ *  Structure used to map database queue structure to C
+ *
+ */
+struct pbs_db_que_info {
+	char    qu_name[PBS_MAXQUEUENAME +1];
+	INTEGER qu_type;
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+};
+typedef struct pbs_db_que_info pbs_db_que_info_t;
+
+/**
+ * @brief
+ *  Structure used to map database node structure to C
+ *
+ */
+struct pbs_db_node_info {
+	char	nd_name[PBS_MAXSERVERNAME+1];
+	INTEGER nd_index;
+	BIGINT	mom_modtime;
+	char	nd_hostname[PBS_MAXSERVERNAME+1];
+	INTEGER nd_state;
+	INTEGER nd_ntype;
+	char	nd_pque[PBS_MAXSERVERNAME+1];
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+};
+typedef struct pbs_db_node_info pbs_db_node_info_t;
+
+/**
+ * @brief
+ *  Structure used to map database mominfo_time structure to C
+ *
+ */
+struct pbs_db_mominfo_time {
+	BIGINT	mit_time;
+	INTEGER mit_gen;
+};
+typedef struct pbs_db_mominfo_time pbs_db_mominfo_time_t;
 
 /**
  * @brief
@@ -169,7 +219,7 @@ struct pbs_db_job_info {
 	INTEGER  ji_svrflags; /* server flags */
 	INTEGER  ji_numattr; /* not used */
 	INTEGER  ji_ordering; /* special scheduling ordering */
-	INTEGER  ji_priority; /* INTEGERernal priority */
+	INTEGER  ji_priority; /* priority */
 	BIGINT   ji_stime; /* time job started execution */
 	BIGINT   ji_endtBdry; /* estimate upper bound on end time */
 	char     ji_queue[PBS_MAXQUEUENAME + 1]; /* name of current queue */
@@ -186,11 +236,20 @@ struct pbs_db_job_info {
 	char     ji_4ash[8];
 	INTEGER  ji_credtype;
 	INTEGER  ji_qrank;
-	BIGINT   ji_savetm;
-	BIGINT   ji_creattm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
+	pbs_db_attr_list_t db_attr_list; /* list of attributes for database */
 };
 typedef struct pbs_db_job_info pbs_db_job_info_t;
+
+/**
+ * @brief
+ *  Structure used to map database job script to C
+ *
+ */
+struct pbs_db_jobscr_info {
+	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
+	TEXT     script;
+};
+typedef struct pbs_db_jobscr_info pbs_db_jobscr_info_t;
 
 /**
  * @brief
@@ -212,96 +271,9 @@ struct pbs_db_resv_info {
 	INTEGER ri_un_type;
 	INTEGER ri_fromsock;
 	BIGINT  ri_fromaddr;
-	BIGINT  ri_creattm;
-	BIGINT  ri_savetm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
 };
 typedef struct pbs_db_resv_info pbs_db_resv_info_t;
-
-/**
- * @brief
- *  Structure used to map database server structure to C
- *
- */
-struct pbs_db_svr_info {
-	INTEGER sv_numjobs;
-	INTEGER sv_numque;
-	BIGINT  sv_jobidnumber;
-	BIGINT  sv_svraddr; /* host addr of Server */
-	INTEGER sv_svrport; /* port of host server */
-	BIGINT  sv_creattm;
-	BIGINT  sv_savetm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
-};
-typedef struct pbs_db_svr_info pbs_db_svr_info_t;
-
-/**
- * @brief
- *  Structure used to map database scheduler structure to C
- *
- */
-struct pbs_db_sched_info {
-	char    sched_name[PBS_MAXSCHEDNAME+1];
-	BIGINT  sched_creattm;
-	BIGINT  sched_savetm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
-};
-typedef struct pbs_db_sched_info pbs_db_sched_info_t;
-
-/**
- * @brief
- *  Structure used to map database queue structure to C
- *
- */
-struct pbs_db_que_info {
-	char    qu_name[PBS_MAXQUEUENAME +1];
-	INTEGER qu_type;
-	BIGINT  qu_ctime;
-	BIGINT  qu_mtime;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
-};
-typedef struct pbs_db_que_info pbs_db_que_info_t;
-
-/**
- * @brief
- *  Structure used to map database node structure to C
- *
- */
-struct pbs_db_node_info {
-	char	nd_name[PBS_MAXSERVERNAME+1];
-	INTEGER nd_index;
-	BIGINT	mom_modtime;
-	char	nd_hostname[PBS_MAXSERVERNAME+1];
-	INTEGER nd_state;
-	INTEGER nd_ntype;
-	char	nd_pque[PBS_MAXSERVERNAME+1];
-	BIGINT  nd_creattm;
-	BIGINT  nd_svtime;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
-};
-typedef struct pbs_db_node_info pbs_db_node_info_t;
-
-/**
- * @brief
- *  Structure used to map database mominfo_time structure to C
- *
- */
-struct pbs_db_mominfo_time {
-	BIGINT	mit_time;
-	INTEGER mit_gen;
-};
-typedef struct pbs_db_mominfo_time pbs_db_mominfo_time_t;
-
-/**
- * @brief
- *  Structure used to map database job script to C
- *
- */
-struct pbs_db_jobscr_info {
-	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	TEXT     script;
-};
-typedef struct pbs_db_jobscr_info pbs_db_jobscr_info_t;
 
 /**
  * @brief
@@ -319,15 +291,16 @@ struct pbs_db_query_options {
 };
 typedef struct pbs_db_query_options pbs_db_query_options_t;
 
-#define PBS_DB_JOB 			0
-#define PBS_DB_RESV			1
-#define PBS_DB_SVR			2
-#define PBS_DB_NODE			3
-#define PBS_DB_QUEUE			4
-#define PBS_DB_JOBSCR			5
-#define PBS_DB_SCHED			6
-#define PBS_DB_MOMINFO_TIME		7
-#define PBS_DB_NUM_TYPES		8
+
+#define PBS_DB_SVR          0
+#define PBS_DB_SCHED        1
+#define PBS_DB_QUEUE        2
+#define PBS_DB_NODE         3
+#define PBS_DB_MOMINFO_TIME 4
+#define PBS_DB_JOB          5
+#define PBS_DB_JOBSCR       6
+#define PBS_DB_RESV         7
+#define PBS_DB_NUM_TYPES    8
 
 
 /* connection error code */
@@ -363,14 +336,14 @@ typedef struct pbs_db_query_options pbs_db_query_options_t;
 struct pbs_db_obj_info {
 	int 	pbs_db_obj_type; /* identifies the contained object type */
 	union {
-		pbs_db_job_info_t	*pbs_db_job;
-		pbs_db_jobscr_info_t	*pbs_db_jobscr;
-		pbs_db_resv_info_t	*pbs_db_resv;
-		pbs_db_svr_info_t	*pbs_db_svr;
-		pbs_db_que_info_t	*pbs_db_que;
-		pbs_db_node_info_t	*pbs_db_node;
-		pbs_db_sched_info_t	*pbs_db_sched;
-		pbs_db_mominfo_time_t	*pbs_db_mominfo_tm;
+		pbs_db_svr_info_t     *pbs_db_svr;
+		pbs_db_sched_info_t   *pbs_db_sched;
+		pbs_db_que_info_t     *pbs_db_que;
+		pbs_db_node_info_t    *pbs_db_node;
+		pbs_db_mominfo_time_t *pbs_db_mominfo_tm;
+		pbs_db_job_info_t     *pbs_db_job;
+		pbs_db_jobscr_info_t  *pbs_db_jobscr;
+		pbs_db_resv_info_t    *pbs_db_resv;
 	} pbs_db_un;
 };
 typedef struct pbs_db_obj_info pbs_db_obj_info_t;
@@ -406,7 +379,7 @@ typedef struct pbs_db_obj_info pbs_db_obj_info_t;
  * @retval      !NULL - Success, address initialized connection structure is returned
  *
  */
-pbs_db_conn_t * pbs_db_init_connection(char * host, int timeout, int can_start_db, int *failcode, char *errmsg, int len);
+pbs_db_conn_t *pbs_db_init_connection(char * host, int timeout, int can_start_db, int *failcode, char *errmsg, int len);
 
 /**
  * @brief
@@ -550,9 +523,7 @@ int pbs_db_end_trx(pbs_db_conn_t *conn, int commit);
  * @retval      NULL      - Failure
  *
  */
-void *
-pbs_db_cursor_init(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj,
-	pbs_db_query_options_t *opts);
+void *pbs_db_cursor_init(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
 
 /**
  * @brief
@@ -572,9 +543,7 @@ pbs_db_cursor_init(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj,
  * @retval       1  -  Success but no more rows
  *
  */
-int
-pbs_db_cursor_next(pbs_db_conn_t *conn, void *state,
-	pbs_db_obj_info_t *obj);
+int pbs_db_cursor_next(pbs_db_conn_t *conn, void *state, pbs_db_obj_info_t *obj);
 
 /**
  * @brief
@@ -590,19 +559,6 @@ pbs_db_cursor_next(pbs_db_conn_t *conn, void *state,
  *
  */
 void pbs_db_cursor_close(pbs_db_conn_t *conn, void *state);
-
-/**
- * @brief
- *	Get the number of rows from a cursor
- *
- * @param[in]	state - The opaque cusor state handle
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int pbs_db_get_rowcount(void *state);
 
 /**
  * @brief
@@ -657,8 +613,8 @@ int pbs_db_delete_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
  *
  * @param[in]	conn - Connected database handle
  * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- * @param[in]   obj_id - The object id of the parent (jobid, node-name etc)
- * @param[in]	attr_list - List of attributes to remove
+ * @param[in]	obj_id - The object id of the parent (jobid, node-name etc)
+ * @param[in]	db_attr_list - List of attributes to remove from DB
  *
  * @return      int
  * @retval      -1  - Failure
@@ -667,24 +623,7 @@ int pbs_db_delete_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
  *
  */
 
-int pbs_db_delete_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
-
-/**
- * @brief
- *	Update/add attributes of an existing object to the database
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- * @param[in]   obj_id - The object id of the parent (jobid, node-name etc)
- * @param[in]	attr_list - List of attributes to Update/add
- *
- * @return      int
- * @retval      -1  - Failure
- * @retval       0  - success
- * @retval       1 -  Success but no rows deleted
- *
- */
-int pbs_db_add_update_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_delete_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *db_attr_list);
 
 /**
  * @brief
@@ -715,70 +654,6 @@ int pbs_db_load_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
  */
 void pbs_db_cleanup_resultset(pbs_db_conn_t *conn);
 
-/**
- * @brief
- *	Initialize a multi-attribute insert operation
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- *              (and data) to insert
- * @param[in]	pbs_db_sql_buffer_t - Simple resizable buffer that is created
- *              by the caller and used by internal functions
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int
-pbs_db_insert_multiattr_start(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj,
-	pbs_db_sql_buffer_t *buff);
-
-/**
- * @brief
- *	Add an attribute to the multi-attribute insert statment created eariler
- *
- * @param[in]	  conn - Database connection handle
- * @param[in]	  firsttime - Is it being called for the firsttime?
- * @param[in]	  info - The database object to be inserted
- * @param[in/out] sql  - The buffer to used to hold the final sql query that
- *                       is being formed by calling this function multiple times.
- *
- * @param[in]	part - This buffer is used for hold the a "part" of the whole
- *              sql query. This is eventually added to the sql buffer.
- *	            Thus, part is a "work" buffer, and "sql" hold the final
- *              sql formed, that would be executed at the end.
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-int
-pbs_db_insert_multiattr_add(pbs_db_conn_t *conn, pbs_db_obj_info_t *info,
-	int firsttime, pbs_db_sql_buffer_t *sql,
-	pbs_db_sql_buffer_t *part);
-
-/**
- * @brief
- *	Execute the multi-line insert statement that has been created earlier.
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- *              (and data) to insert
- * @param[in]	pbs_db_sql_buffer_t - Simple resizable buffer that is created
- *              by the caller and used by internal functions
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int
-pbs_db_insert_multiattr_execute(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj,
-	pbs_db_sql_buffer_t *buff);
 
 /**
  * @brief
@@ -937,7 +812,6 @@ char *pbs_db_escape_str(pbs_db_conn_t *conn, char *str);
  */
 void pbs_db_free_conn_info(pbs_db_conn_t *conn);
 
-
 /**
  * @brief
  *	Retrieve the Datastore schema version (maj, min)
@@ -962,21 +836,6 @@ int pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_
  */
 void panic_stop_db(char *txt);
 
-
-/**
- * @brief
- *	Get the svrid corresponding to the given svr hostname
- *
- * @param[in]	conn - The database connection handle
- * @param[in]	hostname - The svr hostname
- *
- * @return      The database svrid (to be freed by caller)
- * @retval	-NULL  - Failure
- *		-!NULL - Success
- *
- */
-char* pbs_db_get_svr_id(pbs_db_conn_t *conn, char *hostname);
-
 /**
  * @brief
  *	Delete all the server attributes from the database
@@ -994,30 +853,29 @@ int pg_db_delete_svrattr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 /**
  * @brief
- *	resize a buffer. The buffer structure stores the current size of the
- *	buffer. This function determines how much of that buffer size is
- *	free and expands the buffer accordingly
+ *	Compute and check whether the quick save area has been modified
  *
- * @param[in]	dest - buffer to resize
- * @param[in]	size - Size of buffer required
+ * @param[in]	qs  - pointer to the quick save area
+ * @param[in]	len - length of the quick save area
+ * @param[in]	oldhash  - pointer to a opaque value of current quick save area signature/hash
  *
- * @return      int Error code
- * @retval	 0 - Success
- * @retval	-1 - Failure to allocate new memory
+ * @return      Error code
+ * @retval	 0 - quick save area was not changed
+ * @retval	 1 - quick save area has changed
  *
  */
-int resize_buff(pbs_db_sql_buffer_t *dest, int size);
+int compare_obj_hash(void *qs, int len, void *oldhash);
 
 /**
  * @brief
- *	Resets database object
+ *	Frees attribute list memory
  *
- * @param[in]	obj - db object
+ * @param[in]	attr_list - List of pbs_db_attr_list_t objects
  *
  * @return      None
  *
  */
-void pbs_db_reset_obj(pbs_db_obj_info_t *obj);
+void free_db_attr_list(pbs_db_attr_list_t *attr_list);
 
 #ifdef	__cplusplus
 }

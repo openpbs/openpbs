@@ -107,10 +107,9 @@ decode_str(struct attribute *patr, char *name, char *rescn, char *val)
 		if (patr->at_val.at_str == NULL)
 			return (PBSE_SYSTEM);
 		(void)strcpy(patr->at_val.at_str, val);
-		patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		patr->at_flags |= ATR_SET_MOD_MCACHE;
 	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+		ATR_UNSET(patr);
 		patr->at_val.at_str = NULL;
 	}
 	return (0);
@@ -240,7 +239,7 @@ set_str(struct attribute *attr, struct attribute *new, enum batch_op op)
 		default:	return (PBSE_INTERNAL);
 	}
 	if ((attr->at_val.at_str != NULL) && (*attr->at_val.at_str !='\0'))
-		attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		attr->at_flags |= ATR_SET_MOD_MCACHE;
 	else
 		attr->at_flags &= ~ATR_VFLAG_SET;
 

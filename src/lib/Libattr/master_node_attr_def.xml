@@ -572,7 +572,7 @@
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>set_node_topology</member_at_action>
-	<member_at_flags><SVR>ATR_DFLAG_SSET</SVR></member_at_flags>
+	<member_at_flags><SVR>ATR_DFLAG_SSET | ATR_DFLAG_NOSAVM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
     </attributes>

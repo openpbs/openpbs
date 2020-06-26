@@ -150,7 +150,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 		((resc_access_perm & ATR_DFLAG_ACCESS) != ATR_DFLAG_ACCESS))
 		return (PBSE_ATTRRO);
 
-	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	if ((resc_access_perm & ATR_PERM_ALLOW_INDIRECT) && (*val == '@')) {
 		if (strcmp(rescn, "ncpus") != 0)
@@ -357,7 +357,7 @@ set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
 
 		newresc = (resource *)GET_NEXT(newresc->rs_link);
 	}
-	old->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	old->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 
@@ -599,7 +599,7 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 	} else {
 		append_link(&pattr->at_val.at_list, &new->rs_link, new);
 	}
-	pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (new);
 }
 

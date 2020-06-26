@@ -214,20 +214,6 @@ write_node_state(void)
 	return;
 }
 
-
-void
-save_characteristic(struct pbsnode *pnode)
-{
-	return;
-}
-
-int
-chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
-{
-	return (0);
-}
-
-
 void
 mgr_log_attr(char *msg, struct svrattrl *plist, int logclass,
 	char *objname, char *hookname)

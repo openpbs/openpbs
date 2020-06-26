@@ -99,7 +99,7 @@ mock_run_record_finish_exec(job *pjob)
 {
 	pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 	pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-	job_save(pjob, SAVEJOB_QUICK);
+	job_save(pjob);
 
 	pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_long = JOB_STATE_RUNNING;
 	pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char = 'R';

@@ -204,7 +204,7 @@ extern void   on_job_rerun(struct work_task *);
 extern int resize_prov_table(int newsize);
 extern void offline_all_provisioning_vnodes(void);
 extern void stop_db();
-extern job * job_recov_db_spl(pbs_db_job_info_t *dbjob);
+extern job *job_recov_db_spl(pbs_db_job_info_t *dbjob, job *pjob);
 /* Private functions in this file */
 
 static void  catch_child(int);
@@ -251,56 +251,43 @@ init_server_attrs()
 	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduler_iteration]), &svr_attr_def[(int) SRV_ATR_scheduler_iteration],
 		TOSTR(PBS_SCHEDULE_CYCLE));
 
+	server.newobj = 1;
+
 	server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_INIT;
-	server.sv_attr[(int)SRV_ATR_State].at_flags =
-		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_State].at_flags = ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_ResvEnable].at_val.at_long = 1;
-	server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_SvrHost].at_val.at_str =strdup(server_host);
-	server.sv_attr[(int)SRV_ATR_SvrHost].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_SvrHost].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_val.at_long = PBS_NODE_FAIL_REQUEUE_DEFAULT;
-	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long = PBS_MAX_ARRAY_JOB_DFL;
-	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long =
-		PBS_MIN_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_min].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
+	server.sv_attr[(int)SRV_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long =
-		PBS_MAX_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_max].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
+	server.sv_attr[(int)SRV_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
-	server.sv_attr[(int)SRV_ATR_license_linger].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long = 0;
-	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long =
-		PBS_MAX_CONCURRENT_PROV;
-	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long = PBS_MAX_CONCURRENT_PROV;
+	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_val.at_ll = SVR_MAX_JOB_SEQ_NUM_DEFAULT;
-	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	clear_attr(&attrib, &svr_attr_def[(int)	SVR_ATR_jobscript_max_size]);
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
@@ -328,21 +315,15 @@ init_server_attrs()
 			&server.sv_attr[(int)SVR_ATR_DefaultChunk], prdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = 1;
-			presc->rs_value.at_flags =
-				ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-			server.sv_attr[(int)SVR_ATR_DefaultChunk].at_flags =
-				ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-			(void)deflt_chunk_action(
-				&server.sv_attr[(int)SVR_ATR_DefaultChunk],
-				(void *)&server, ATR_ACTION_NEW);
+			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+			server.sv_attr[(int)SVR_ATR_DefaultChunk].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+			(void)deflt_chunk_action(&server.sv_attr[(int)SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_NEW);
 		}
 		presc = add_resource_entry(&server.sv_attr[SRV_ATR_resource_deflt], prdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = 1;
-			presc->rs_value.at_flags =
-				ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-			server.sv_attr[(int)SRV_ATR_resource_deflt].at_flags =
-				ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+			server.sv_attr[(int)SRV_ATR_resource_deflt].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 		}
 
 	}
@@ -369,12 +350,10 @@ pbsd_init(int type)
 	struct dirent *pdirent;
 	DIR	*dir;
 	int	 fd;
-	int	 had;
 	int	 i = 0;
 	char	 zone_dir[MAXPATHLEN];
 	char	*hook_suffix = HOOK_FILE_SUFFIX;
 	int	hook_suf_len = strlen(hook_suffix);
-	int	 logtype;
 	int	 numjobs;
 	job	*pjob;
 	hook	*phook, *phook_current;
@@ -389,11 +368,11 @@ pbsd_init(int type)
 	struct sigaction oact;
 
 	struct tm	*ptm;
-	pbs_db_job_info_t	dbjob;
-	pbs_db_resv_info_t	dbresv;
-	pbs_db_que_info_t	dbque;
-	pbs_db_sched_info_t	dbsched;
-	pbs_db_obj_info_t	obj;
+	pbs_db_job_info_t	dbjob = {{0}};
+	pbs_db_resv_info_t	dbresv = {{0}};
+	pbs_db_que_info_t	dbque = {{0}};
+	pbs_db_sched_info_t	dbsched = {{0}};
+	pbs_db_obj_info_t	obj = {0};
 	void		*state = NULL;
 	pbs_db_conn_t	*conn = (pbs_db_conn_t *) svr_db_conn;
 	char *buf = NULL;
@@ -549,7 +528,7 @@ pbsd_init(int type)
 	}
 
 	/* 3. Set default server attibutes values */
-
+	memset(&server, 0, sizeof(server));
 	if (server.sv_attr[(int)SRV_ATR_scheduling].at_flags & ATR_VFLAG_SET)
 		a_opt = server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long;
 
@@ -557,44 +536,32 @@ pbsd_init(int type)
 
 	/* 5. If not a "create" initialization, recover server db */
 	/*    and sched db					  */
-	rc =svr_recov_db();
+	rc = svr_recov_db();
 	if ((rc != 0) && (type != RECOV_CREATE)) {
 		need_y_response(type, "no server database exists");
 		type = RECOV_CREATE;
 	}
 	if (type != RECOV_CREATE) {
-		int count;
 		/* Server read success full ?*/
 
 		if (rc != 0) {
 			log_err(rc, __func__, msg_init_baddb);
 			return (-1);
 		}
-		/*
-		 * Retrieve the jobidnumber from the database and use it to generate jobid's locally
-		 * see: get_next_svr_sequence_id(void)
-		 */
-		svr_jobidnumber = server.sv_qs.sv_jobidnumber;
-		if (server.sv_attr[(int)SRV_ATR_resource_assn].at_flags &
-			ATR_VFLAG_SET) {
-			svr_attr_def[(int)SRV_ATR_resource_assn].at_free(
-				&server.sv_attr[(int)SRV_ATR_resource_assn]);
+
+		if (server.sv_attr[(int)SRV_ATR_resource_assn].at_flags & ATR_VFLAG_SET) {
+			svr_attr_def[(int)SRV_ATR_resource_assn].at_free(&server.sv_attr[(int)SRV_ATR_resource_assn]);
 		}
 		if (new_log_event_mask) {
 			/* set to what was given on command line -e option */
-			server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long =
-				new_log_event_mask;
-			server.sv_attr[(int)SRV_ATR_log_events].at_flags =
-				ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+			server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long = new_log_event_mask;
+			server.sv_attr[(int)SRV_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
 
 		}
 		/* if server comment is a default, clear it */
 		/* it will be reset as needed               */
-		if ((server.sv_attr[(int)SRV_ATR_Comment].at_flags &
-			(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) ==
-			(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) {
-			svr_attr_def[(int)SRV_ATR_Comment].at_free(
-				&server.sv_attr[(int)SRV_ATR_Comment]);
+		if ((server.sv_attr[(int)SRV_ATR_Comment].at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) {
+			svr_attr_def[(int)SRV_ATR_Comment].at_free(&server.sv_attr[(int)SRV_ATR_Comment]);
 		}
 
 		/* now do sched db */
@@ -614,60 +581,48 @@ pbsd_init(int type)
 			return (-1);
 		}
 
-		count = pbs_db_get_rowcount(state);
-		if (count <= 0) {
-			/* no schedulers found in DB*/
-			pbs_db_cursor_close(conn, state);
-			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-			/* No Schedulers found in DB */
-			/* Create and save default to DB*/
+		while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
+			/* recover sched */
+			if ((psched = sched_recov_db(dbsched.sched_name, NULL)) != NULL) {
+				if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME, strlen(PBS_DFLT_SCHED_NAME))) {
+					dflt_scheduler = psched;
+				}
+				psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
+				psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
+				set_scheduler_flag(SCH_CONFIGURE, psched);
+			}
+		}
+		pbs_db_cursor_close(conn, state);
+
+		if (!dflt_scheduler) {
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
 			set_sched_default(dflt_scheduler, 0);
-			sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
-		} else {
-			while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-				/* recover sched */
-				if ((psched = sched_recov_db(dbsched.sched_name)) != NULL) {
-					if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME,
-						strlen(PBS_DFLT_SCHED_NAME))) {
-						dflt_scheduler = psched;
-
-					}
-					psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
-					psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
-					set_scheduler_flag(SCH_CONFIGURE, psched);
-				}
-				pbs_db_reset_obj(&obj);
-			}
-
-			pbs_db_cursor_close(conn, state);
-
-			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
-				set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
-
-			/* end the transaction */
-			if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-				return (-1);
+			sched_save_db(dflt_scheduler);
 		}
+
+		if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
+			set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
+
+		/* end the transaction */
+		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+			return (-1);
+		
 	} else {	/* init type is "create" */
 		if (rc == 0) {		/* server was loaded */
 			need_y_response(type, "server database exists");
 
 			/* reinitialize schema by dropping PBS schema */
 			if (pbs_db_truncate_all(svr_db_conn) == -1) {
-				sprintf(log_buffer,
-					"Could not truncate PBS data:[%s]",
-					(char *) conn->conn_db_err);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_ALERT, msg_daemonname, log_buffer);
-				printf("%s\n", log_buffer);
+				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname, "Could not truncate PBS data:[%s]", (char *) conn->conn_db_err);
 				return -1;
 			}
 		}
-		svr_save_db(&server, SVR_SAVE_NEW);
+
+		svr_save_db(&server);
+
 		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
 		set_sched_default(dflt_scheduler, 0);
-		sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
+		sched_save_db(dflt_scheduler);
 	}
 
 	/* 4. Check License information */
@@ -722,7 +677,7 @@ pbsd_init(int type)
 			call_log_license, 0);
 
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = licenses.lb_aval_floating + licenses.lb_glob_floating;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_SET_MOD_MCACHE;
 
 	/* 6. open accounting file */
 
@@ -737,16 +692,13 @@ pbsd_init(int type)
 		/* a_option was set, overrides saved value of scheduling attr */
 
 		server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long = a_opt;
-		server.sv_attr[(int)SRV_ATR_scheduling].at_flags |=
-			ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+		server.sv_attr[(int)SRV_ATR_scheduling].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	/*
 	 * 8A. If not a "create" initialization, recover queues.
 	 *    If a create, remove any queues that might be there.
 	 */
-
-	had = server.sv_qs.sv_numque;
 	server.sv_qs.sv_numque = 0;
 
 	/* start a transaction */
@@ -767,7 +719,7 @@ pbsd_init(int type)
 	}
 	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
 		/* recover queue */
-		if ((pque = que_recov_db(dbque.qu_name)) != NULL) {
+		if ((pque = que_recov_db(dbque.qu_name, NULL)) != NULL) {
 			/* que_recov increments sv_numque */
 			sprintf(log_buffer, msg_init_recovque,
 				pque->qu_qs.qu_name);
@@ -780,7 +732,6 @@ pbsd_init(int type)
 					&pque->qu_attr[(int) QE_ATR_ResourceAssn]);
 			}
 		}
-		pbs_db_reset_obj(&obj);
 	}
 
 	pbs_db_cursor_close(conn, state);
@@ -788,15 +739,6 @@ pbsd_init(int type)
 	/* end the transaction */
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		return (-1);
-
-	if ((had != server.sv_qs.sv_numque) && (type != RECOV_CREATE))
-		logtype = PBSEVENT_ERROR | PBSEVENT_SYSTEM;
-	else
-		logtype = PBSEVENT_SYSTEM;
-	sprintf(log_buffer, msg_init_expctq, had, server.sv_qs.sv_numque);
-	log_event(logtype, PBS_EVENTCLASS_SERVER, LOG_INFO,
-		msg_daemonname, log_buffer);
-
 
 	/* Open and read in node list if one exists */
 	if ((rc = setup_nodes()) == -1) {
@@ -836,8 +778,7 @@ pbsd_init(int type)
 	}
 	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
 		/* recover reservation */
-		presv = (resc_resv *) job_or_resv_recov(dbresv.ri_resvid,
-			RESC_RESV_OBJECT);
+		presv = resv_recov_db(dbresv.ri_resvid, NULL);
 		if (presv != NULL) {
 
 			is_resv_window_in_future(presv);
@@ -861,7 +802,6 @@ pbsd_init(int type)
 					LOG_INFO, msg_daemonname, log_buffer);
 			}
 		}
-		pbs_db_reset_obj(&obj);
 	}
 	pbs_db_cursor_close(conn, state);
 
@@ -890,66 +830,53 @@ pbsd_init(int type)
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return (-1);
 	}
-	if (pbs_db_get_rowcount(state) <= 0) {
-		if ((type != RECOV_CREATE) && (type != RECOV_COLD)) {
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG,
-					msg_daemonname, msg_init_nojobs);
+	
+	/* Now, for each job found ... */
+	numjobs = 0;
+	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
+		if ((pjob = job_recov_db_spl(&dbjob, NULL)) == NULL) {
+			if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
+				/* remove the loaded job from db */
+				if (pbs_db_delete_obj(conn, &obj) != 0)
+					log_errf(PBSE_SYSTEM, __func__, "job %s not purged", dbjob.ji_jobid);
+			} else
+				log_errf(PBSE_SYSTEM, __func__, "Failed to recover job %s", dbjob.ji_jobid);
+			continue;
 		}
-	} else {
-		/* Now, for each job found ... */
-		numjobs = 0;
-		while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-			if ((pjob = job_recov_db_spl(&dbjob)) == NULL) {
-				if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
-					/* remove the loaded job from db */
-					if (pbs_db_delete_obj(conn, &obj) != 0) {
-						sprintf(log_buffer, "job %s not purged", dbjob.ji_jobid);
-						log_err(-1, __func__, log_buffer);
-					}
-				} else {
-					sprintf(log_buffer, "Failed to recover job %s", dbjob.ji_jobid);
-					log_event(PBSEVENT_SYSTEM,
-						PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-						msg_daemonname, log_buffer);
-				}
-				continue;
-			}
-			pbs_db_reset_obj(&obj);
+		free_db_attr_list(&dbjob.db_attr_list);
 
-			/*chk if job belongs to a reservation or
-			 *is a reservation job.  If this is true
-			 *and the reservation is no longer possible,
-			 *return (1) else return (0)
-			 */
-			if (Rmv_if_resv_not_possible(pjob)) {
-				account_record(PBS_ACCT_ABT, pjob, "");
-				svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL,
-					msg_init_abt);
-				check_block(pjob, msg_init_abt);
-				job_purge(pjob);
-				continue;
-			}
-
-			rc = pbsd_init_job(pjob, type);
-			/*
-			 *	in the db version, job always has job script
-			 *	since they are saved together, so nothing to
-			 *	check
-			 *
-			 */
-			if ((++numjobs % 20) == 0) {
-				/* periodically touch the file so the  */
-				/* world knows we are alive and active */
-				(void)update_svrlive();
-			}
+		/*chk if job belongs to a reservation or
+			*is a reservation job.  If this is true
+			*and the reservation is no longer possible,
+			*return (1) else return (0)
+			*/
+		if (Rmv_if_resv_not_possible(pjob)) {
+			account_record(PBS_ACCT_ABT, pjob, "");
+			svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL,
+				msg_init_abt);
+			check_block(pjob, msg_init_abt);
+			job_purge(pjob);
+			continue;
 		}
 
-		sprintf(log_buffer, msg_init_exptjobs,
-			server.sv_qs.sv_numjobs);
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-			msg_daemonname, log_buffer);
+		rc = pbsd_init_job(pjob, type);
+		/*
+			*	in the db version, job always has job script
+			*	since they are saved together, so nothing to
+			*	check
+			*
+			*/
+		if ((++numjobs % 20) == 0) {
+			/* periodically touch the file so the  */
+			/* world knows we are alive and active */
+			(void)update_svrlive();
+		}
 	}
+
+	sprintf(log_buffer, msg_init_exptjobs,
+		server.sv_qs.sv_numjobs);
+	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+		msg_daemonname, log_buffer);
 
 	pbs_db_cursor_close(conn, state);
 	/* close transaction */
@@ -1427,7 +1354,6 @@ reassign_resc(job *pjob)
 			NULL,
 			NULL,
 			hoststr);
-		pjob->ji_modified = 1;
 	}
 	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
 
@@ -1527,7 +1453,7 @@ pbsd_init_job(job *pjob, int type)
 		/* Likely means recovering a job from a older version      */
 		if (((pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0) && ((pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags & ATR_VFLAG_SET) != 0)) {
 			pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET & ATR_VFLAG_MODCACHE);
+			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
 		}
 
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
@@ -1767,11 +1693,8 @@ pbsd_init_reque(job *pjob, int change_state)
 	}
 	set_statechar(pjob);
 	/* make sure substate attributes match actual value */
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long =
-		pjob->ji_qs.ji_substate;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |=
-		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-
+	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = pjob->ji_qs.ji_substate;
+	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
 
 	if ((rc = svr_enquejob(pjob)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);
