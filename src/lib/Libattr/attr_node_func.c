@@ -290,8 +290,8 @@ str_to_vnode_state(char *vnstate)
  * @param[out] 	rtnl	- pointer to the actual svrattrl entry.
  *
  * @return 	int
- * @retval	<0	an error encountered; value is negative of an error code
- * @retval ==1 ok, encode succeeded and returning one item 
+ * @retval	<0  an error encountered; value is negative of an error code
+ * @retval  ==1 ok, encode succeeded and returning one item 
  */
 
 int
