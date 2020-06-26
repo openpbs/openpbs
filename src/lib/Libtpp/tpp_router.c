@@ -88,7 +88,7 @@
 struct tpp_config *tpp_conf; /* copy of the global tpp_config */
 
 /*pthread_rwlock_t router_lock;*/ /* rw lock for router indexes */
-pthread_mutex_t router_lock; /* for now only a write only lock, since our indexes is not mt-safe */
+pthread_mutex_t router_lock; /* for now only a write only lock, since our indexes are not mt-safe */
 
 /* index of routers connected to this router */
 void *routers_idx = NULL;

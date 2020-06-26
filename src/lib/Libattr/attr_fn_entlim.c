@@ -63,8 +63,6 @@
  * @brief
  * 	This file contains functions for manipulating attributes of type "entlim"
  * 	entity limits for Finer Granularity Control (FGC)
- * 	This layer is to somewhat isolate the entlim concept from the specific
- * 	implementation (index tree).
  * @details
  * The entities are maintained in an index tree for fast searching,
  *	see attr_entity in attribute.h.
@@ -453,7 +451,7 @@ encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char
 	ctx = attr->at_val.at_enty.ae_tree;
 
 	/* ok, now process each separate entry in the tree */
-	plf = (svr_entlim_leaf_t *)entlim_get_first(ctx, (void **)&key);
+	plf = (svr_entlim_leaf_t *) entlim_get_first(ctx, (void **)&key);
 	while (plf) {
 
 		rescn[0] = '\0';
@@ -526,7 +524,7 @@ encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char
 				free(tmpsvl);
 			}
 		}
-		plf = (svr_entlim_leaf_t *)entlim_get_next(ctx, (void **)&key);
+		plf = (svr_entlim_leaf_t *) entlim_get_next(ctx, (void **)&key);
 	}
 
 	/*
@@ -644,7 +642,7 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 		return (PBSE_SYSTEM);
 
 	/* ok, now process each separate entry in the tree */
-	plf = (svr_entlim_leaf_t *)entlim_get_first(ctx, (void **)&key);
+	plf = (svr_entlim_leaf_t *) entlim_get_first(ctx, (void **)&key);
 	while (plf) {
 
 		rescn[0] = '\0';
@@ -740,7 +738,7 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 				++grandtotal;
 			}
 		}
-		plf = (svr_entlim_leaf_t *)entlim_get_next(ctx, (void **)&key);
+		plf = (svr_entlim_leaf_t *) entlim_get_next(ctx, (void **)&key);
 	}
 	for (i=0; i<index; i++)
 		free(rescn_array[i]);
@@ -815,7 +813,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 				old->at_val.at_enty.ae_tree = entlim_initialize_ctx();
 			}
 			oldctx = old->at_val.at_enty.ae_tree;
-			newptr = (svr_entlim_leaf_t *)entlim_get_first(newctx, (void **)&key);
+			newptr = (svr_entlim_leaf_t *) entlim_get_first(newctx, (void **)&key);
 			while (newptr != NULL) {
 				/* duplicate the record to be added */
 				newptr = dup_svr_entlim_leaf(newptr);
@@ -826,7 +824,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 						return (PBSE_SYSTEM);
 					}
 				}
-				newptr = (svr_entlim_leaf_t *)entlim_get_next(newctx, (void **)&key);
+				newptr = (svr_entlim_leaf_t *) entlim_get_next(newctx, (void **)&key);
 			}
 			old->at_val.at_enty.ae_newlimittm = time(0);
 			break;
@@ -845,7 +843,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 			newctx = new->at_val.at_enty.ae_tree;
 			oldctx = old->at_val.at_enty.ae_tree;
 
-			newptr = (svr_entlim_leaf_t *)entlim_get_first(newctx, (void **)&key);
+			newptr = (svr_entlim_leaf_t *) entlim_get_first(newctx, (void **)&key);
 			while (newptr != NULL) {
 				/* "exptr" points to record in "old" attribute */
 				if ((exptr = entlim_get(key, oldctx)) != NULL) {
@@ -883,11 +881,11 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 						(void)entlim_delete(key, oldctx, svr_freeleaf);
 					}
 				}
-				newptr = (svr_entlim_leaf_t *)entlim_get_next(newctx, (void **)&key);
+				newptr = (svr_entlim_leaf_t *) entlim_get_next(newctx, (void **)&key);
 			}
 			/* having removed one or more elements from the value tree */
 			/* see if any entries are left or if the value is now null */
-			newptr = (svr_entlim_leaf_t *)entlim_get_first(oldctx, (void **)&key);
+			newptr = (svr_entlim_leaf_t *) entlim_get_first(oldctx, (void **)&key);
 			if (newptr == NULL) {
 				/* no entries left set, clear the entire attribute */
 				free_entlim(old);
