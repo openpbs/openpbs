@@ -130,6 +130,7 @@ e.vnode_list[localnode].resources_available['foo_str2'] = "seven"
         Test accumulation of resources of a single node job from an
         exechost_epilogue hook.
         """
+        self.stime = time.time()
         self.logger.info("test_epilogue_single_node")
         hook_body = """
 import pbs
@@ -190,44 +191,53 @@ e.job.resources_used["stra"] = '"glad,elated","happy"'
 
         acctlog_match = 'resources_used.foo_f=0.09'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.foo_i=9'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.foo_str=\'{"seven": 7}\''
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.vmem=9gb'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.cput=00:00:10'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.foo_str2=seven'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.ncpus=1'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
 
         acctlog_match = 'resources_used.foo_str3='
         s = self.server.accounting_match(
-            "E;%s;.*%s'{.*}'.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s'{.*}'.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
         acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
         s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n="ALL",
+            starttime=self.stime)
         self.assertTrue(s)
