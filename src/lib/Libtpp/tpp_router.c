@@ -124,6 +124,7 @@ alloc_router(char *name, tpp_addr_t *address)
 	tpp_addr_t *addrs = NULL;
 	int count = 0;
 	void *unused;
+	void *p_r_addr;
 
 	/* add self name to tree */
 	r = (tpp_router_t *) calloc(1, sizeof(tpp_router_t));
@@ -161,14 +162,15 @@ alloc_router(char *name, tpp_addr_t *address)
 		return NULL;
 	}
 
-	if (pbs_idx_find(routers_idx, &r->router_addr, &unused, NULL) == PBS_IDX_ERR_OK) {
+	p_r_addr = &r->router_addr;
+	if (pbs_idx_find(routers_idx, &p_r_addr, &unused, NULL) == PBS_IDX_RET_OK) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Duplicate router %s in router list", r->router_name);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		free_router(r);
 		return NULL;
 	}
 
-	if (pbs_idx_insert(routers_idx, &r->router_addr, r) != PBS_IDX_ERR_OK) {
+	if (pbs_idx_insert(routers_idx, &r->router_addr, r) != PBS_IDX_RET_OK) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Failed to add router %s in routers index", r->router_name);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		free_router(r);
@@ -231,7 +233,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 	TPP_DBPRT(("Sending leaves to router=%s", target->router_name));
 
 	/* traverse my leaves tree, there is only one record per leaf */
-	if (pbs_idx_first(parent->my_leaves_idx, &idx_ctx, (void **)&l, NULL) == PBS_IDX_ERR_OK) {
+	if (pbs_idx_find(parent->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
 		do {
 			if ((lf_data = malloc(sizeof(struct leaf_data))) == NULL) {
 				tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
@@ -262,7 +264,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 				tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueuing to ctl_hdr_queue");
 				goto err;
 			}
-		} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_ERR_OK);
+		} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_RET_OK);
 	}
 
 	tpp_unlock(&router_lock);
@@ -330,14 +332,14 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 	int i;
 	void *idx_ctx;
 
-	if (pbs_idx_first(routers_idx, &idx_ctx, (void **)&r, NULL) == PBS_IDX_ERR_OK) {
+	if (pbs_idx_find(routers_idx, NULL, (void **)&r, &idx_ctx) == PBS_IDX_RET_OK) {
 		do {
 			if (r->conn_fd == -1 || r == this_router || r->conn_fd == origin_tfd || r->state != TPP_ROUTER_STATE_CONNECTED) {
 				continue; /* don't send to self, or to originating router */
 			}
 			TPP_DBPRT(("Broadcasting leaf to router %s", r->router_name));
 			list[max_cons++] = r->conn_fd;
-		} while (pbs_idx_next(idx_ctx, (void **)&r, NULL) == PBS_IDX_ERR_OK);
+		} while (pbs_idx_next(idx_ctx, (void **)&r, NULL) == PBS_IDX_RET_OK);
 	}
 	tpp_unlock(&router_lock);
 
@@ -398,7 +400,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 		return -1;
 
 	tpp_lock(&router_lock);
-	if (pbs_idx_first(traverse_idx, &idx_ctx, (void **)&l, NULL) == PBS_IDX_ERR_OK) {
+	if (pbs_idx_find(traverse_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
 		do {
 			/*
 			* leaf directly connected to me? and not myself
@@ -424,7 +426,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 
 				list[max_cons++] = l->conn_fd;
 			}
-		} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_ERR_OK);
+		} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_RET_OK);
 	}
 	pbs_idx_free_ctx(idx_ctx);
 	tpp_unlock(&router_lock);
@@ -674,7 +676,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 		}
 
 		/* we had only the first address record stored in the my_leaves tree */
-		if (pbs_idx_delete(r->my_leaves_idx, &l->leaf_addrs[0]) != PBS_IDX_ERR_OK) {
+		if (pbs_idx_delete(r->my_leaves_idx, &l->leaf_addrs[0]) != PBS_IDX_RET_OK) {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 				"tfd=%d, Failed to delete address from my_leaves %s",
 				tfd, tpp_netaddr(&l->leaf_addrs[0]));
@@ -697,7 +699,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 
 		/* delete all of this leaf's addresses from the search tree */
 		for (i = 0; i < l->num_addrs; i++) {
-			if (pbs_idx_delete(cluster_leaves_idx, &l->leaf_addrs[i]) != PBS_IDX_ERR_OK) {
+			if (pbs_idx_delete(cluster_leaves_idx, &l->leaf_addrs[i]) != PBS_IDX_RET_OK) {
 				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s from cluster leaves", tfd, tpp_netaddr(&l->leaf_addrs[i]));
 				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 				tpp_unlock(&router_lock);
@@ -749,7 +751,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			tpp_lock(&router_lock);
 			TPP_QUE_CLEAR(&deleted_leaves);
 
-			if (pbs_idx_first(r->my_leaves_idx, &idx_ctx, (void **)&l, NULL) == PBS_IDX_ERR_OK) {
+			if (pbs_idx_find(r->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
 				do {
 					if (l->num_routers > 0) {
 						del_router_from_leaf(l, tfd);
@@ -767,7 +769,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 							}
 						}
 					}
-				} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_ERR_OK);
+				} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_RET_OK);
 			}
 			pbs_idx_free_ctx(idx_ctx);
 
@@ -782,7 +784,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 				}
 
 				for (i = 0; i < l->num_addrs; i++) {
-					if (pbs_idx_delete(cluster_leaves_idx, &l->leaf_addrs[i]) != PBS_IDX_ERR_OK) {
+					if (pbs_idx_delete(cluster_leaves_idx, &l->leaf_addrs[i]) != PBS_IDX_RET_OK) {
 						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 							"tfd=%d, Failed to delete address %s",
 							tfd, tpp_netaddr(&l->leaf_addrs[i]));
@@ -1313,13 +1315,14 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 			/* check if type was router or leaf */
 			if (node_type == TPP_ROUTER_NODE) {
 				tpp_router_t *r = NULL;
+				void *pconn_host = &connected_host;
 
 				TPP_DBPRT(("Recvd TPP_CTL_JOIN from pbs_comm node %s", tpp_netaddr(&connected_host)));
 
 				tpp_lock(&router_lock);
 
 				/* find associated router */
-				pbs_idx_find(routers_idx, &connected_host, (void **)&r, NULL);
+				pbs_idx_find(routers_idx, &pconn_host, (void **)&r, NULL);
 				if (r) {
 					if (r->conn_fd != -1) {
 						/* this router had not yet disconnected,
@@ -1384,6 +1387,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				int i;
 				int index = (int) hdr->index;
 				tpp_addr_t *addrs;
+				void *paddr;
 
 				if (hdr->num_addrs == 0) {
 					/* error, must have atleast one address associated */
@@ -1401,10 +1405,11 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					/* router is myself */
 					r = this_router;
 				} else {
+					void *pconn_host = &connected_host;
 					/* must be a router forwarding leaves from its database to me */
 
 					/* find associated router */
-					pbs_idx_find(routers_idx, &connected_host, (void **)&r, NULL);
+					pbs_idx_find(routers_idx, &pconn_host, (void **)&r, NULL);
 					if (!r) {
 						char rname[TPP_MAXADDRLEN + 1];
 
@@ -1421,7 +1426,8 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 				/* find the leaf */
 				found = 1;
-				pbs_idx_find(cluster_leaves_idx, &addrs[0], (void **)&l, NULL);
+				paddr = &addrs[0];
+				pbs_idx_find(cluster_leaves_idx, &paddr, (void **)&l, NULL);
 				if (!l) {
 					found = 0;
 					l = (tpp_leaf_t *) calloc(1, sizeof(tpp_leaf_t));
@@ -1503,7 +1509,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					return 0;
 				}
 
-				if (pbs_idx_insert(r->my_leaves_idx, &l->leaf_addrs[0], l) != PBS_IDX_ERR_OK) {
+				if (pbs_idx_insert(r->my_leaves_idx, &l->leaf_addrs[0], l) != PBS_IDX_RET_OK) {
 					sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to index of my leaves", tfd,
 							tpp_netaddr(&l->leaf_addrs[0]));
 					tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1519,9 +1525,10 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 					 * since this is the primary "routing table"
 					 */
 					for (i = 0; i < l->num_addrs; i++) {
-						if (pbs_idx_insert(cluster_leaves_idx, &l->leaf_addrs[i], l) != PBS_IDX_ERR_OK) {
+						if (pbs_idx_insert(cluster_leaves_idx, &l->leaf_addrs[i], l) != PBS_IDX_RET_OK) {
 							void *unused;
-							if (pbs_idx_find(cluster_leaves_idx, &l->leaf_addrs[i], &unused, NULL) == PBS_IDX_ERR_OK) {
+							void *pleaf_addr = &l->leaf_addrs[i];
+							if (pbs_idx_find(cluster_leaves_idx, &pleaf_addr, &unused, NULL) == PBS_IDX_RET_OK) {
 								int k;
 								sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to cluster-leaves index "
 										"since address already exists, dropping duplicate",
@@ -1555,7 +1562,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 
 				if (r == this_router) {
 					if (l->leaf_type == TPP_LEAF_NODE_LISTEN) {
-						if (pbs_idx_insert(my_leaves_notify_idx, &l->leaf_addrs[0], l) != PBS_IDX_ERR_OK) {
+						if (pbs_idx_insert(my_leaves_notify_idx, &l->leaf_addrs[0], l) != PBS_IDX_RET_OK) {
 							sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to notify-leaves index",
 									tfd, tpp_netaddr(&l->leaf_addrs[0]));
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1642,7 +1649,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				tpp_lock(&router_lock);
 
 				/* find the leaf context to pass to close handler */
-				pbs_idx_find(cluster_leaves_idx, src_addr, (void **)&l, NULL);
+				pbs_idx_find(cluster_leaves_idx, (void **)&src_addr, (void **)&l, NULL);
 				if (!l) {
 					TPP_DBPRT(("No leaf %s found", tpp_netaddr(src_addr)));
 					tpp_unlock(&router_lock);
@@ -1766,7 +1773,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 				TPP_DBPRT(("MCAST data on fd=%u", src_sd));
 
 				tpp_lock(&router_lock);
-				pbs_idx_find(cluster_leaves_idx, dest_host, (void **)&l, NULL);
+				pbs_idx_find(cluster_leaves_idx, (void **)&dest_host, (void **)&l, NULL);
 				if (l == NULL) {
 					char msg[TPP_LOGBUF_SZ];
 					tpp_unlock(&router_lock);
@@ -1960,7 +1967,7 @@ mcast_err:
 
 			tpp_lock(&router_lock);
 
-			pbs_idx_find(cluster_leaves_idx, dest_host, (void **)&l, NULL);
+			pbs_idx_find(cluster_leaves_idx, (void **)&dest_host, (void **)&l, NULL);
 			if (l == NULL) {
 				char msg[TPP_LOGBUF_SZ];
 				tpp_unlock(&router_lock);
@@ -2031,7 +2038,7 @@ mcast_err:
 				/* find the fd to forward to via the associated router */
 				tpp_lock(&router_lock);
 
-				pbs_idx_find(cluster_leaves_idx, dest_host, (void **)&l, NULL);
+				pbs_idx_find(cluster_leaves_idx, (void **)&dest_host, (void **)&l, NULL);
 				if (l == NULL) {
 					tpp_unlock(&router_lock);
 					if (data_out)

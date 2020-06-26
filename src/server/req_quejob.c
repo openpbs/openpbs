@@ -531,7 +531,7 @@ req_quejob(struct batch_request *preq)
 			int prot = preq->prot;
 			if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
-				if (pbs_idx_delete(jobs_idx, pj->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+				if (pbs_idx_delete(jobs_idx, pj->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
 					log_joberr(PBSE_INTERNAL, __func__, "Failed to remove checkpointed job from index", pj->ji_qs.ji_jobid);
 				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
@@ -551,7 +551,7 @@ req_quejob(struct batch_request *preq)
 		}
 		/* unlink job from svr_alljobs since will be place on newjobs */
 		delete_link(&pj->ji_alljobs);
-		if (pbs_idx_delete(jobs_idx, pj->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+		if (pbs_idx_delete(jobs_idx, pj->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
 			log_joberr(PBSE_INTERNAL, __func__, "Failed to remove job from index", pj->ji_qs.ji_jobid);
 	} else {
 		char *namebuf;
@@ -1752,7 +1752,7 @@ req_commit(struct batch_request *preq)
 
 	/* move job from new job list to "all" job list, set to running state */
 	delete_link(&pj->ji_alljobs);
-	if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_ERR_OK) {
+	if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_RET_OK) {
 		log_joberr(PBSE_INTERNAL, __func__, "Failed insert job in index", pj->ji_qs.ji_jobid);
 		req_reject(PBSE_INTERNAL, 0, preq);
 		job_purge(pj);

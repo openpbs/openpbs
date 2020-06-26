@@ -46,18 +46,126 @@ extern "C" {
 #define PBS_IDX_DUPS_NOT_OK 0 /* duplicate key not allowed in index */
 #define PBS_IDX_DUPS_OK     1 /* duplicate key allowed in index */
 
-#define PBS_IDX_ERR_OK    0 /* index op succeed */
-#define PBS_IDX_ERR_FAIL -1 /* index op failed */
+#define PBS_IDX_RET_OK    0 /* index op succeed */
+#define PBS_IDX_RET_FAIL -1 /* index op failed */
 
-extern void *pbs_idx_get_tls(void);
+/**
+ * @brief
+ *	Create an empty index
+ *
+ * @param[in] - dups   - Whether duplicates are allowed or not in index
+ * @param[in] - keylen - length of key in index (can be 0 for default size)
+ *
+ * @return void *
+ * @retval !NULL - success
+ * @retval NULL  - failure
+ *
+ */
 extern void *pbs_idx_create(int dups, int keylen);
+
+/**
+ * @brief
+ *	destroy index
+ *
+ * @param[in] - idx - pointer to index
+ *
+ * @return void
+ *
+ */
 extern void pbs_idx_destroy(void *idx);
+
+/**
+ * @brief
+ *	add entry in index
+ *
+ * @param[in] - idx  - pointer to index
+ * @param[in] - key  - key of entry
+ * @param[in] - data - data of entry
+ *
+ * @return int
+ * @retval PBS_IDX_RET_OK   - success
+ * @retval PBS_IDX_RET_FAIL - failure
+ *
+ */
 extern int pbs_idx_insert(void *idx, void *key, void *data);
+
+/**
+ * @brief
+ *	delete entry from index
+ *
+ * @param[in] - idx - pointer to index
+ * @param[in] - key - key of entry
+ *
+ * @return int
+ * @retval PBS_IDX_RET_OK   - success
+ * @retval PBS_IDX_RET_FAIL - failure
+ *
+ */
 extern int pbs_idx_delete(void *idx, void *key);
+
+/**
+ * @brief
+ *	delete exact entry from index using given context
+ *
+ * @param[in] - ctx - pointer to context used while
+ *                    deleting exact entry in index
+ *
+ * @return int
+ * @retval PBS_IDX_RET_OK   - success
+ * @retval PBS_IDX_RET_FAIL - failure
+ *
+ */
 extern int pbs_idx_delete_byctx(void *ctx);
-extern int pbs_idx_find(void *idx, void *key, void **data, void **ctx);
-extern int pbs_idx_first(void *idx, void **ctx, void **data, void **key);
+
+/**
+ * @brief
+ *	find entry or get first entry in index
+ *	and optionally set context for iteration on index
+ *
+ * @param[in]     - idx  - pointer to index
+ * @param[in/out] - key  - key of the entry
+ *                         if *key is NULL then this routine will
+ *                         return the first entry's key in *key
+ * @param[in/out] - data - data of the first or matched entry
+ * @param[in/out] - ctx  - context to be set for iteration
+ *                         can be NULL, if caller doesn't want
+ *                         iteration context
+ *
+ * @return int
+ * @retval PBS_IDX_RET_OK   - success
+ * @retval PBS_IDX_RET_FAIL - failure
+ *
+ * @note
+ * 	ctx should be free'd after use, using pbs_idx_free_ctx()
+ *
+ */
+extern int pbs_idx_find(void *idx, void **key, void **data, void **ctx);
+
+/**
+ * @brief
+ *	get next entry in index based on given context
+ *
+ * @param[in]     - ctx  - pointer to context for iteration
+ * @param[in/out] - data - data of next entry
+ * @param[in/out] - key  - key of next entry, can be NULL, if
+ *                         caller doesn't want access to key
+ *
+ * @return int
+ * @retval PBS_IDX_RET_OK   - success
+ * @retval PBS_IDX_RET_FAIL - failure
+ *
+ */
 extern int pbs_idx_next(void *ctx, void **data, void **key);
+
+/**
+ * @brief
+ *	free given iteration context
+ *
+ * @param[in] - ctx - pointer to context for iteration
+ *
+ * @return void
+ *
+ */
 extern void pbs_idx_free_ctx(void *ctx);
 
 #ifdef __cplusplus

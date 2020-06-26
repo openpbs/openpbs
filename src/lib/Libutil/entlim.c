@@ -89,7 +89,7 @@ entlim_get(const char *keystr, void *ctx)
 {
 	void *rtn;
 
-	if (pbs_idx_find(((entlim_ctx *)ctx)->idx, (void *)keystr, &rtn, NULL) == PBS_IDX_ERR_OK)
+	if (pbs_idx_find(((entlim_ctx *)ctx)->idx, (void **)&keystr, &rtn, NULL) == PBS_IDX_RET_OK)
 		return rtn;
 	return NULL;
 }
@@ -109,7 +109,7 @@ entlim_get(const char *keystr, void *ctx)
 int
 entlim_add(const char *keystr, const void *recptr, void *ctx)
 {
-	if (pbs_idx_insert(((entlim_ctx *)ctx)->idx, (void *)keystr, (void *)recptr) == PBS_IDX_ERR_OK)
+	if (pbs_idx_insert(((entlim_ctx *)ctx)->idx, (void *)keystr, (void *)recptr) == PBS_IDX_RET_OK)
 		return 0;
 	return -1;
 }
@@ -136,13 +136,13 @@ entlim_replace(const char *keystr, void *recptr, void *ctx, void fr_leaf(void *)
 	void *olddata;
 	entlim_ctx *pctx = (entlim_ctx *)ctx;
 
-	if (pbs_idx_insert(pctx->idx, (void *)keystr, recptr) == PBS_IDX_ERR_OK)
+	if (pbs_idx_insert(pctx->idx, (void *)keystr, recptr) == PBS_IDX_RET_OK)
 		return 0;
 	else {
-		if (pbs_idx_find(pctx->idx, (void *)keystr, &olddata, NULL) == PBS_IDX_ERR_OK) {
-			if (pbs_idx_delete(pctx->idx, (void *)keystr) == PBS_IDX_ERR_OK) {
+		if (pbs_idx_find(pctx->idx, (void **)&keystr, &olddata, NULL) == PBS_IDX_RET_OK) {
+			if (pbs_idx_delete(pctx->idx, (void *)keystr) == PBS_IDX_RET_OK) {
 				fr_leaf(olddata);
-				if (pbs_idx_insert(pctx->idx, (void *)keystr, recptr) == PBS_IDX_ERR_OK)
+				if (pbs_idx_insert(pctx->idx, (void *)keystr, recptr) == PBS_IDX_RET_OK)
 					return 0;
 			}
 		}
@@ -169,8 +169,8 @@ entlim_delete(const char *keystr, void *ctx, void free_leaf(void *))
 {
 	void *prec;
 
-	if (pbs_idx_find(((entlim_ctx *)ctx)->idx, (void *)keystr, &prec, NULL) == PBS_IDX_ERR_OK) {
-		if (pbs_idx_delete(((entlim_ctx *)ctx)->idx, (void *)keystr) == PBS_IDX_ERR_OK) {
+	if (pbs_idx_find(((entlim_ctx *)ctx)->idx, (void **)&keystr, &prec, NULL) == PBS_IDX_RET_OK) {
+		if (pbs_idx_delete(((entlim_ctx *)ctx)->idx, (void *)keystr) == PBS_IDX_RET_OK) {
 			free_leaf(prec);
 			return 0;
 		}
@@ -189,7 +189,7 @@ entlim_get_first(void *ctx, void **key)
 	*key = NULL;
 	if (pctx->idx_ctx != NULL)
 		pbs_idx_free_ctx(pctx->idx_ctx);
-	if (pbs_idx_first(pctx->idx, &pctx->idx_ctx, &data, key) == PBS_IDX_ERR_OK)
+	if (pbs_idx_find(pctx->idx, key, &data, &pctx->idx_ctx) == PBS_IDX_RET_OK)
 		return data;
 	return NULL;
 }
@@ -219,7 +219,7 @@ entlim_get_next(void *ctx, void **key)
 	if (key == NULL || pctx == NULL || pctx->idx == NULL || pctx->idx_ctx == NULL)
 		return NULL;
 
-	if (pbs_idx_next(pctx->idx_ctx, &data, key) == PBS_IDX_ERR_OK)
+	if (pbs_idx_next(pctx->idx_ctx, &data, key) == PBS_IDX_RET_OK)
 		return data;
 	pbs_idx_free_ctx(pctx->idx_ctx);
 	pctx->idx_ctx = NULL;
@@ -248,10 +248,10 @@ entlim_free_ctx(void *ctx, void free_leaf(void *))
 
 	if (pctx->idx_ctx != NULL)
 		pbs_idx_free_ctx(pctx->idx_ctx);
-	if (pbs_idx_first(pctx->idx, &pctx->idx_ctx, &leaf, NULL) == PBS_IDX_ERR_OK) {
+	if (pbs_idx_find(pctx->idx, NULL, &leaf, &pctx->idx_ctx) == PBS_IDX_RET_OK) {
 		do {
 			free_leaf(leaf);
-		} while (pbs_idx_next(pctx->idx_ctx, &leaf, NULL) == PBS_IDX_ERR_OK);
+		} while (pbs_idx_next(pctx->idx_ctx, &leaf, NULL) == PBS_IDX_RET_OK);
 	}
 	pbs_idx_free_ctx(pctx->idx_ctx);
 	pbs_idx_destroy(pctx->idx);

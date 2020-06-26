@@ -948,6 +948,7 @@ tpp_open(char *dest_host, unsigned int port)
 	char *dest;
 	tpp_addr_t *addrs, dest_addr;
 	int count;
+	void *pdest_addr = &dest_addr;
 	void *idx_ctx = NULL;
 	void *idx_nkey = NULL;
 
@@ -974,7 +975,7 @@ tpp_open(char *dest_host, unsigned int port)
 	 * elsewhere, either when network first dropped or if any message
 	 * comes to such a half open stream
 	 */
-	if (pbs_idx_find(streams_idx, &dest_addr, (void **)&strm, &idx_ctx) == PBS_IDX_ERR_OK) {
+	if (pbs_idx_find(streams_idx, &pdest_addr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
 		do {
 			if (idx_nkey && memcmp(idx_nkey, &dest_addr, sizeof(tpp_addr_t)) != 0)
 				break;
@@ -988,7 +989,7 @@ tpp_open(char *dest_host, unsigned int port)
 				free(dest);
 				return strm->sd;
 			}
-		} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_ERR_OK);
+		} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_RET_OK);
 	}
 	pbs_idx_free_ctx(idx_ctx);
 
@@ -1483,7 +1484,7 @@ alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 
 	if (dest_addr) {
 		/* also add stream to the streams_idx with the dest as key */
-		if (pbs_idx_insert(streams_idx, &strm->dest_addr, strm) != PBS_IDX_ERR_OK) {
+		if (pbs_idx_insert(streams_idx, &strm->dest_addr, strm) != PBS_IDX_RET_OK) {
 			sprintf(tpp_get_logbuf(), "Failed to add strm with sd=%u to streams", strm->sd);
 			tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 			free(strm);
@@ -2657,7 +2658,7 @@ find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int 
 	void *idx_nkey = NULL;
 	stream_t *strm;
 
-	if (pbs_idx_find(streams_idx, dest_addr, (void **)&strm, &idx_ctx) != PBS_IDX_ERR_OK)
+	if (pbs_idx_find(streams_idx, (void **)&dest_addr, (void **)&strm, &idx_ctx) != PBS_IDX_RET_OK)
 		return NULL;
 
 	do {
@@ -2668,7 +2669,7 @@ find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int 
 			pbs_idx_free_ctx(idx_ctx);
 			return strm;
 		}
-	} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_ERR_OK);
+	} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_RET_OK);
 	pbs_idx_free_ctx(idx_ctx);
 	return NULL;
 }
@@ -3784,14 +3785,15 @@ free_stream(unsigned int sd)
 		void *idx_nkey = NULL;
 		int found = 0;
 		stream_t *t_strm = NULL;
+		void *pdest_addr = &strm->dest_addr;
 
-		if (pbs_idx_find(streams_idx, &strm->dest_addr, (void **)&t_strm, &idx_ctx) == PBS_IDX_ERR_OK) {
+		if (pbs_idx_find(streams_idx, &pdest_addr, (void **)&t_strm, &idx_ctx) == PBS_IDX_RET_OK) {
 			do {
 				if (idx_nkey && memcmp(idx_nkey, &strm->dest_addr, sizeof(tpp_addr_t)) != 0)
 					break;
 				if (strm == t_strm)
 					found = 1;
-			} while (!found && pbs_idx_next(idx_ctx, (void **)&t_strm, &idx_nkey) == PBS_IDX_ERR_OK);
+			} while (!found && pbs_idx_next(idx_ctx, (void **)&t_strm, &idx_nkey) == PBS_IDX_RET_OK);
 		}
 
 		if (!found) {
@@ -4449,8 +4451,9 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 			for(i = 0; i < hdr->num_addrs; i++) {
 				void *idx_ctx = NULL;
 				void *idx_nkey = NULL;
+				void *paddr = &addrs[i];
 
-				if (pbs_idx_find(streams_idx, &addrs[i], (void **)&strm, &idx_ctx) == PBS_IDX_ERR_OK) {
+				if (pbs_idx_find(streams_idx, &paddr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
 					do {
 						if (idx_nkey && memcmp(idx_nkey, &addrs[i], sizeof(tpp_addr_t)) != 0)
 							break;
@@ -4466,7 +4469,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 								return -1;
 							}
 						}
-					} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_ERR_OK);
+					} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_RET_OK);
 				}
 				pbs_idx_free_ctx(idx_ctx);
 			}

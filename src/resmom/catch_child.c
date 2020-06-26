@@ -2038,7 +2038,7 @@ init_abort_jobs(int recover)
 		/* To get homedir info */
 		pj->ji_grpcache = NULL;
 		check_pwd(pj);
-		if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_ERR_OK) {
+		if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_RET_OK) {
 			log_joberr(PBSE_INTERNAL, __func__, "Failed to add job in index during recovery", pj->ji_qs.ji_jobid);
 			job_free(pj);
 			continue;

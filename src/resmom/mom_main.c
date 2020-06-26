@@ -1317,8 +1317,8 @@ initialize(void)
 			exclhost = vnode_sharing_to_str(shareval);
 
 		/* search for host */
-		if (pbs_idx_find(temp_idx, host, (void **)&exclhost_frmidx, NULL) != PBS_IDX_ERR_OK) {
-			if (pbs_idx_insert(temp_idx, host, (void *)exclhost) != PBS_IDX_ERR_OK) {
+		if (pbs_idx_find(temp_idx, (void **)&host, (void **)&exclhost_frmidx, NULL) != PBS_IDX_RET_OK) {
+			if (pbs_idx_insert(temp_idx, host, (void *)exclhost) != PBS_IDX_RET_OK) {
 				log_errf(errno, __func__, "Failed to add exechost = %s for host %s in index", exclhost, host);
 				die(0);
 			}

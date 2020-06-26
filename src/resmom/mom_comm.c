@@ -3401,7 +3401,7 @@ im_request(int stream, int version)
 			 */
 			if (mom_do_poll(pjob))
 				append_link(&mom_polljobs, &pjob->ji_jobque, pjob);
-			if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_ERR_OK) {
+			if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_RET_OK) {
 				log_joberr(PBSE_INTERNAL, __func__, "Failed to add job in index during join job", pjob->ji_qs.ji_jobid);
 				goto join_err;
 			}

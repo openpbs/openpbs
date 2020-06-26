@@ -403,8 +403,6 @@ typedef struct {
 	void *td;
 	char tpplogbuf[TPP_LOGBUF_SZ];
 	char tppstaticbuf[TPP_LOGBUF_SZ];
-	void *log_data; /* data created by the logging layer for the TPP threads */
-	void *idx_data; /* data created by the index functions for the TPP threads */
 } tpp_tls_t;
 
 typedef struct {

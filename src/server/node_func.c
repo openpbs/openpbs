@@ -185,7 +185,7 @@ find_nodebyname(char *nodename)
 		*pslash = '\0';
 	if (node_idx == NULL)
 		return NULL;
-	if (pbs_idx_find(node_idx, nodename, (void **)&node, NULL) != PBS_IDX_ERR_OK)
+	if (pbs_idx_find(node_idx, (void **)&nodename, (void **)&node, NULL) != PBS_IDX_RET_OK)
 		return NULL;
 	return node;
 }

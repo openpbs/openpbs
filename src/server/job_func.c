@@ -823,7 +823,7 @@ job_purge(job *pjob)
 	delete_link(&pjob->ji_jobque);
 	delete_link(&pjob->ji_alljobs);
 	delete_link(&pjob->ji_unlicjobs);
-	if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+	if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
 		log_joberr(PBSE_INTERNAL, __func__, "Failed to remove job from index", pjob->ji_qs.ji_jobid);
 
 	if (pjob->ji_preq != NULL) {
@@ -1058,6 +1058,7 @@ find_job(char *jobid)
 	char *at;
 	job  *pj = NULL;
 	char buf[PBS_MAXSVRJOBID + 1];
+	void *pbuf = &buf;
 
 	if (jobid == NULL || jobid[0] == '\0')
 		return NULL;
@@ -1136,7 +1137,7 @@ find_job(char *jobid)
 	}
 
 #endif
-	if (pbs_idx_find(jobs_idx, buf, (void **)&pj, NULL) == PBS_IDX_ERR_OK)
+	if (pbs_idx_find(jobs_idx, &pbuf, (void **)&pj, NULL) == PBS_IDX_RET_OK)
 		return pj;
 	return NULL;
 }
@@ -1567,7 +1568,11 @@ resv_alloc(char *resvid)
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';
 
-	if (pbs_idx_insert(resvs_idx, (void *)(resvid + 1), (void *)resvp) != PBS_IDX_ERR_OK) {
+	/*
+	 * ignore first char in given id as it can change, see req_resvSub()
+	 * So, we only use digits in given id as key in index
+	 */
+	if (pbs_idx_insert(resvs_idx, (void *)(resvid + 1), (void *)resvp) != PBS_IDX_RET_OK) {
 		*dot = '.';
 		log_errf(-1, __func__, "Failed to add resv %s into index", resvid);
 		free(resvp);
@@ -1630,7 +1635,7 @@ resv_free(resc_resv *presv)
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';
 
-	if (pbs_idx_delete(resvs_idx, (void *)(resvid + 1)) != PBS_IDX_ERR_OK) {
+	if (pbs_idx_delete(resvs_idx, (void *)(resvid + 1)) != PBS_IDX_RET_OK) {
 		if (dot)
 			*dot = '.';
 		dot = NULL;

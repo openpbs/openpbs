@@ -124,7 +124,7 @@ que_alloc(char *name)
 	CLEAR_LINK(pq->qu_link);
 
 	snprintf(pq->qu_qs.qu_name, sizeof(pq->qu_qs.qu_name), "%s", name);
-	if (pbs_idx_insert(queues_idx, pq->qu_qs.qu_name, pq) != PBS_IDX_ERR_OK) {
+	if (pbs_idx_insert(queues_idx, pq->qu_qs.qu_name, pq) != PBS_IDX_RET_OK) {
 		log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_QUEUE, LOG_ERR,
 			   "Failed to add queue in index %s", pq->qu_qs.qu_name);
 		free(pq);
@@ -179,7 +179,7 @@ que_free(pbs_queue *pq)
 	/* now free the main structure */
 	server.sv_qs.sv_numque--;
 	delete_link(&pq->qu_link);
-	if (pbs_idx_delete(queues_idx, pq->qu_qs.qu_name) != PBS_IDX_ERR_OK)
+	if (pbs_idx_delete(queues_idx, pq->qu_qs.qu_name) != PBS_IDX_RET_OK)
 		log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_QUEUE, LOG_ERR,
 			   "Failed to delete queue %s from index", pq->qu_qs.qu_name);
 	(void) free(pq);
@@ -287,7 +287,7 @@ find_queuebyname(char *quename)
 {
 	char *at;
 	pbs_queue *pque = NULL;
-	int rc = PBS_IDX_ERR_FAIL;
+	int rc = PBS_IDX_RET_FAIL;
 
 	if (quename == NULL || quename[0] == '\0')
 		return NULL;
@@ -296,10 +296,10 @@ find_queuebyname(char *quename)
 	if (at)
 		*at = '\0';
 
-	rc = pbs_idx_find(queues_idx, quename, (void **)&pque, NULL);
+	rc = pbs_idx_find(queues_idx, (void **)&quename, (void **)&pque, NULL);
 	if (at)
 		*at = '@'; /* restore '@' server portion */
-	if (rc == PBS_IDX_ERR_OK)
+	if (rc == PBS_IDX_RET_OK)
 		return pque;
 	return NULL;
 }
@@ -354,6 +354,7 @@ find_resv(char *id_or_quename)
 {
 	char *dot = NULL;
 	resc_resv *presv = NULL;
+	void *prid;
 
 	if (id_or_quename == NULL || id_or_quename[0] == '\0')
 		return NULL;
@@ -361,7 +362,8 @@ find_resv(char *id_or_quename)
 	if ((dot = strchr(id_or_quename, (int)'.')) != 0)
 		*dot = '\0';
 
-	if (pbs_idx_find(resvs_idx, (void *)(id_or_quename + 1), (void **)&presv, NULL) != PBS_IDX_ERR_OK) {
+	prid = id_or_quename + 1; /* ignore first char, as index key doesn't have it */
+	if (pbs_idx_find(resvs_idx, &prid, (void **)&presv, NULL) != PBS_IDX_RET_OK) {
 		if (dot)
 			*dot = '.';
 		return NULL;

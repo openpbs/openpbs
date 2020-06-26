@@ -1434,7 +1434,6 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 		handle_disconnect(conn);
 	} else if (cmd == TPP_CMD_EXIT) {
 		int i;
-		tpp_tls_t *p;
 
 		for (i = 0; i < conns_array_size; i++) {
 			conn = get_transport_atomic(i, &slot_state);
@@ -1463,14 +1462,6 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Thrd exiting, had %d connections", num_cons);
 		tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
-
-		/* clean up any tls memory, just for valgrind's sake */
-		if ((p = tpp_get_tls())) {
-			free(p->log_data);
-			free(p->idx_data);
-			free(p);
-			td->tpp_tls = NULL;
-		}
 
 		pthread_exit(NULL);
 		/* no execution after this */
@@ -1626,10 +1617,6 @@ work(void *v)
 	}
 #endif
 	tpp_log_func(LOG_CRIT, NULL, "Thread ready");
-
-	/* store the log and index tls data so we can free later */
-	td->tpp_tls->log_data = log_get_tls_data();
-	td->tpp_tls->idx_data = pbs_idx_get_tls();
 
 	/* start processing loop */
 	for (;;) {

@@ -99,7 +99,7 @@ mom_CPUs_report(void)
 	if (cpuctx == NULL)
 		return;
 
-	if (pbs_idx_first(cpuctx, &idx_ctx, (void **)&mip, NULL) != PBS_IDX_ERR_OK)
+	if (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) != PBS_IDX_RET_OK)
 		return;
 	do {
 		unsigned int	i;
@@ -155,7 +155,7 @@ mom_CPUs_report(void)
 line_done:
 		;
 
-	} while (pbs_idx_next(idx_ctx, (void **)&mip, NULL) == PBS_IDX_ERR_OK);
+	} while (pbs_idx_next(idx_ctx, (void **)&mip, NULL) == PBS_IDX_RET_OK);
 
 	pbs_idx_free_ctx(idx_ctx);
 }
@@ -550,7 +550,7 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 	if (cpuctx == NULL)
 		return;
 
-	if (pbs_idx_first(cpuctx, &idx_ctx, (void **)&mip, NULL) != PBS_IDX_ERR_OK)
+	if (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) != PBS_IDX_RET_OK)
 		return;
 
 	do {
@@ -576,7 +576,7 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 				return;
 			}
 		}
-	} while (pbs_idx_next(idx_ctx, (void **)&mip, NULL) == PBS_IDX_ERR_OK);
+	} while (pbs_idx_next(idx_ctx, (void **)&mip, NULL) == PBS_IDX_RET_OK);
 
 	pbs_idx_free_ctx(idx_ctx);
 

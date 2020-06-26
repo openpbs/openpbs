@@ -275,7 +275,7 @@ svr_enquejob(job *pjob)
 			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
 
 			if (is_linked(&svr_alljobs, &pjob->ji_alljobs) == 0) {
-				if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_ERR_OK) {
+				if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_RET_OK) {
 					log_joberr(PBSE_INTERNAL, __func__, "Failed add history job in index", pjob->ji_qs.ji_jobid);
 					return PBSE_INTERNAL;
 				}
@@ -308,7 +308,7 @@ svr_enquejob(job *pjob)
 		pjob->ji_qs.ji_jobid, log_buffer);
 #endif	/* NDEBUG */
 
-	if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_ERR_OK) {
+	if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_RET_OK) {
 		log_joberr(PBSE_INTERNAL, __func__, "Failed add job in index", pjob->ji_qs.ji_jobid);
 		return PBSE_INTERNAL;
 	}
@@ -519,7 +519,7 @@ svr_dequejob(job *pjob)
 	if (is_linked(&svr_alljobs, &pjob->ji_alljobs)) {
 		delete_link(&pjob->ji_alljobs);
 		delete_link(&pjob->ji_unlicjobs);
-		if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_ERR_OK)
+		if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
 			log_joberr(PBSE_INTERNAL, __func__, "Failed to delete job from index", pjob->ji_qs.ji_jobid);
 		if (--server.sv_qs.sv_numjobs < 0)
 			bad_ct = 1;

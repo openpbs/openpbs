@@ -2571,7 +2571,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 	 * so that we do not hit NS for everything
 	 */
 	if (hostaddr_idx != NULL) {
-		if (pbs_idx_find(hostaddr_idx, phost, (void **)&tpul, NULL) == PBS_IDX_ERR_OK) {
+		if (pbs_idx_find(hostaddr_idx, (void **)&phost, (void **)&tpul, NULL) == PBS_IDX_RET_OK) {
 			*pul = (u_long *)malloc(tpul->len);
 			if (!*pul) {
 				strcat(log_buffer, "out of memory ");
@@ -2653,7 +2653,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 			return (PBSE_SYSTEM);
 		}
 	}
-	if (pbs_idx_insert(hostaddr_idx, phost, tpul) != PBS_IDX_ERR_OK) {
+	if (pbs_idx_insert(hostaddr_idx, phost, tpul) != PBS_IDX_RET_OK) {
 		free(tpul->pul);
 		free(tpul);
 		return (PBSE_SYSTEM);
@@ -2677,13 +2677,14 @@ remove_mom_ipaddresses_list(mominfo_t *pmom)
 	/* take ipaddrs from ipaddrs cache index */
 	if (hostaddr_idx != NULL) {
 		struct pul_store *tpul = NULL;
+		void *phost = &pmom->mi_host;
 
-		if (pbs_idx_find(hostaddr_idx, pmom->mi_host, (void **)&tpul, NULL) == PBS_IDX_ERR_OK) {
+		if (pbs_idx_find(hostaddr_idx, &phost, (void **)&tpul, NULL) == PBS_IDX_RET_OK) {
 			u_long *pul;
 			for (pul = tpul->pul; *pul; pul++)
 				tdelete2(*pul, pmom->mi_port, &ipaddrs);
 
-			if (pbs_idx_delete(hostaddr_idx, pmom->mi_host) != PBS_IDX_ERR_OK)
+			if (pbs_idx_delete(hostaddr_idx, pmom->mi_host) != PBS_IDX_RET_OK)
 				return (PBSE_SYSTEM);
 
 			free(tpul->pul);
@@ -2808,7 +2809,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		}
 
 		/* add to node to index */
-		if (pbs_idx_insert(node_idx, pname, pnode) != PBS_IDX_ERR_OK) {
+		if (pbs_idx_insert(node_idx, pname, pnode) != PBS_IDX_RET_OK) {
 			svr_totnodes--;
 			free_pnode(pnode);
 			free(pname);

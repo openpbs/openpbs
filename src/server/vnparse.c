@@ -650,7 +650,7 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 			return (-1);
 		}
 		vnlp->vnl_cur = vnlp->vnl_used++;
-		if (pbs_idx_insert(vnlp->vnl_ix, id, (void *)vnlp->vnl_dl.dl_cur) != PBS_IDX_ERR_OK) {
+		if (pbs_idx_insert(vnlp->vnl_ix, id, (void *)vnlp->vnl_dl.dl_cur) != PBS_IDX_RET_OK) {
 			free(newid);
 			free(newval);
 			free(newname);
@@ -700,7 +700,7 @@ static vnal_t *
 id2vnrl(vnl_t *vnlp, char *id)
 {
 	unsigned long i = 0;
-	if (vnlp != NULL && pbs_idx_find(vnlp->vnl_ix, id, (void **)&i, NULL) == PBS_IDX_ERR_OK) {
+	if (vnlp != NULL && pbs_idx_find(vnlp->vnl_ix, (void **)&id, (void **)&i, NULL) == PBS_IDX_RET_OK) {
 		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
 
 		return (vnrlp);
