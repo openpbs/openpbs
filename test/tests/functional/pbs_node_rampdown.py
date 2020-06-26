@@ -156,10 +156,14 @@ class TestPbsNodeRampDown(TestFunctional):
         in 10 seconds
         """
         test_file_path = os.path.join("/home", str(TEST_USER), "test.img")
-        for i in range(0,11):
-            test_img_size = os.stat(test_file_path).st_size
+        cmd = ['stat', '-c', '%s', test_file_path]
+        for i in range(0, 11):
+            rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd, runas=TEST_USER)
+            test_img_size = int(rc['out'][0])
             if (test_img_size < 1073741824) and (i > 9):
                 self.fail("Failed to Create 1gb test.img file")
+            elif test_img_size > 1073741824:
+                break
             time.sleep(1)
 
     def match_accounting_log(self, atype, jid, exec_host, exec_vnode,
