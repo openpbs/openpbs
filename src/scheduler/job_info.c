@@ -3899,7 +3899,7 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
 
 	if (sinfo->qrun_job != NULL) {
 		if (job == sinfo->qrun_job ||
-		    (job->job->is_subjob && (strcmp(job->job->array_id, sinfo->qrun_job->name) == 0)))
+		    (jinfo->is_subjob && (strcmp(jinfo->array_id, sinfo->qrun_job->name) == 0)))
 			jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_QRUN);
 	}
 
