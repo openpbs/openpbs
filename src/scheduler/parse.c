@@ -321,10 +321,6 @@ parse_config(char *fname)
 					if (!type.is_time)
 						error = 1;
 				}
-				else if (!strcmp(config_name, PARSE_SYNC_TIME)) {
-					obsolete[0] = PARSE_SYNC_TIME;
-					obsolete[1] = "nothing - syncs happen automatically";
-				}
 				else if (!strcmp(config_name, PARSE_UNKNOWN_SHARES))
 					conf.unknown_shares = num;
 				else if (!strcmp(config_name, PARSE_FAIRSHARE_DECAY_FACTOR)) {
@@ -899,6 +895,15 @@ init_config()
 		free_string_array(conf.res_to_check);
 	if (conf.dyn_res_to_get != NULL)
 		free_string_array(conf.dyn_res_to_get);
+	
+	if (conf.dynamic_res[0].res != NULL) {
+		int i;
+		for (i = 0; conf.dynamic_res[i].res != NULL; i++) {
+			free(conf.dynamic_res[i].res);
+			free(conf.dynamic_res[i].command_line);
+			free(conf.dynamic_res[i].script_name);
+		}
+	}
 
 	/* default everyone OFF */
 	memset(&conf, 0, sizeof(struct config));
@@ -934,7 +939,6 @@ init_config()
 	conf.update_comments = 1;
 
 	conf.decay_time = 86400;	/* default decay time period is 24 hours */
-	conf.sync_time = 86400;
 
 	if ((conf.fairshare_res = string_dup("cput")) == NULL)
 		return 0;

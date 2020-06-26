@@ -10920,7 +10920,6 @@ class Scheduler(PBSService):
                             "fairshare_enforce_no_shares",
                             "strict_ordering",
                             "resource_unset_infinite",
-                            "sync_time",
                             "unknown_shares",
                             "dedicated_prefix",
                             "load_balancing",
