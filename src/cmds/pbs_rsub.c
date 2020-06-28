@@ -52,6 +52,7 @@
 #include "cmds.h"
 #include "net_connect.h"
 #include "attribute.h"
+#include "portability.h"
 
 #define DEFAULT_INTERACTIVE "-10"
 #define OPT_BUF_LEN 256
@@ -415,9 +416,7 @@ set_resv_env(char **envp)
 
 	c = getenv("MAIL");
 	if (c != NULL) {
-#ifdef WIN32
-		back2forward_slash(c);
-#endif
+		fix_path(c, 1);
 		strcat(resv_env, ",PBS_O_MAIL=");
 		strcat(resv_env, c);
 	}

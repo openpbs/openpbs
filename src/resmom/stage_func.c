@@ -207,7 +207,7 @@ is_child_path(char *dir, char *path)
 	/* it may use /../../ notation and escape that directory, */
 	/* so always perform full check of parent-child directory relation */
 #ifdef WIN32
-	forward2back_slash(fullpath);
+	fix_path(fullpath, 3);
 	pbs_strncpy(dir_real, lpath2short(dir), MAXPATHLEN + 1);
 	pbs_strncpy(fullpath_real, lpath2short(fullpath), 2 * MAXPATHLEN + 2);
 #endif
@@ -563,7 +563,7 @@ remtree(char *dirname)
 
 	if (dirname != NULL && *dirname != '\0') {
 		replace(dirname, "\\ ", " ", unipath);
-		forward2back_slash(unipath);
+		fix_path(unipath, 3);
 	} else {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, "directory or file path is NULL");
 		return -1;
@@ -1824,14 +1824,14 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				replace(ag2, "\\ ", " ", str_buf);
 				snprintf(ag2_path, sizeof(ag2_path),
 					"%s", str_buf);
-				forward2back_slash(ag2_path);
+				fix_path(ag2_path, 3);
 
 				if (stat_uncpath(ag2, &sb) != -1) {
 					if (S_ISREG(sb.st_mode)) {
 						replace(ag3, "\\ ", " ", str_buf);
 						snprintf(ag3_path, sizeof(ag3_path), "%s",
 							str_buf);
-						forward2back_slash(ag3_path);
+						fix_path(ag3_path, 3);
 
 						/* if file, use copy with /y option */
 						/* the option /y will supress any file
@@ -1881,8 +1881,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 						replace(ag3_tmp, "\\ ", " ", str_buf);
 						snprintf(ag3_path, sizeof(ag3_path), "%s",
 							str_buf);
-						forward2back_slash(ag3_path);
-
+						fix_path(ag3_path, 3);
 						snprintf(cmd_line, sizeof(cmd_line),
 							"cmd /c %s %s \"%s\" \"%s\"",
 							ag0, ag1, ag2_path, ag3_path);
@@ -1910,16 +1909,16 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 						log_errf(errno, __func__, "Failed to get the full path of the current working directory on the specified drive %s", wdir);
 					}
 					strcpy(ag2_path, replace_space(ag2+2, ""));
-					forward2back_slash(ag2_path);
+					fix_path(ag2_path, 3);
 				} else if (strchr(ag2, ':')) {
 					/* replace "\ " wth " " so "\" not forwarded */
 					replace(ag2, "\\ ", " ", ag2_path);
-					back2forward_slash(ag2_path);
+					fix_path(ag2_path, 1);
 					sprintf(ag2_path, "\"%s\"",
 						replace_space(ag2_path, "\\ "));
 				} else {
 					sprintf(ag2_path, "\"%s\"", ag2);
-					forward2back_slash(ag2_path);
+					fix_path(ag2_path, 3);
 				}
 
 				if (ag3[1] == ':') {	/* has drive info */
@@ -1927,16 +1926,16 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 					sprintf(wdir, "%c:\\", toupper(ag3[0]));
 
 					strcpy(ag3_path, replace_space(ag3+2, ""));
-					forward2back_slash(ag3_path);
+					fix_path(ag3_path, 3);
 				} else if (strchr(ag3, ':')) {
 					/* replace "\ " wth " " so "\" not forwarded */
 					replace(ag3, "\\ ", " ", ag3_path);
-					back2forward_slash(ag3_path);
+					fix_path(ag3_path, 1);
 					sprintf(ag3_path, "\"%s\"",
 						replace_space(ag3_path, "\\ "));
 				} else {
 					sprintf(ag3_path, "\"%s\"", ag3);
-					forward2back_slash(ag3_path);
+					fix_path(ag3_path, 3);
 				}
 
 				sprintf(cmd_line, "%s %s %s %s", ag0, ag1,

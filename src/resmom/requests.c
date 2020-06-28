@@ -82,6 +82,7 @@
 #include "work_task.h"
 #include "placementsets.h"
 #include "pbs_internal.h"
+#include "portability.h"
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #include "renew_creds.h"
@@ -2109,10 +2110,8 @@ delete_file(char *path, char *user, char *prmt, char **bad_list)
 	int		rc;
 
 	DBPRT(("%s: path %s\n", __func__, path))
-#ifdef WIN32
-	forward2back_slash(prmt);
-	forward2back_slash(path);
-#endif
+	fix_path(prmt, 3);
+	fix_path(path, 3);
 	if (local_or_remote(&prmt) == 0) {
 		/* local file, is the source == destination? */
 		/* if so, don't delete it		     */

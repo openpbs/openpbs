@@ -51,6 +51,9 @@
 
 #define dlerror_reset() dlerror()
 #define SHAREDLIB_EXT "so"
+#define fix_path(char, int) NULL
+#define get_uncpath(char)   NULL
+#define critical_section()  NULL
 
 #ifdef PBS_MOM
 #define TRAILING_CHAR '/'
