@@ -3230,7 +3230,7 @@ record_job_last_hook_executed(unsigned int hook_event,
  * @return 0 a hook rejected
  * @return -1 an internal error occurred
  */
-static int
+int
 post_run_hook(struct work_task *ptask)
 {
 
