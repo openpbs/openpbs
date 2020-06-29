@@ -152,19 +152,29 @@ class TestPbsNodeRampDown(TestFunctional):
 
     def check_test_img_size(self):
         """
-        This Function will make sure that 1gb of test.img file is created
-        in 10 seconds
+        This Function will make sure that atleast 1gb of test.img
+        file is created in 10 seconds
         """
-        test_file_path = os.path.join("/home", str(TEST_USER), "test.img")
-        cmd = ['stat', '-c', '%s', test_file_path]
-        for i in range(0, 11):
-            rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd, runas=TEST_USER)
-            test_img_size = int(rc['out'][0])
-            if (test_img_size < 1073741824) and (i > 9):
-                self.fail("Failed to Create 1gb test.img file")
-            elif test_img_size > 1073741824:
-                break
+        fpath = os.path.join(TEST_USER.home, "test.img")
+        cmd = ['stat', '-c', '%s', fpath]
+        count = 10
+        fsize = 0
+        while count > 0:
+        fsize = 0
+        rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd, runas=TEST_USER)
+        if rc['rc'] == 0 and len(rc['out']) == 1:
+        try:
+            fsize = int(rc['out'][0])
+        except:
+            pass
+        # 1073741824 == 1Gb
+        if fsize > 1073741824:
+            break
+        else:
+            count -= 1
             time.sleep(1)
+        if fsize <= 1073741824:
+            self.fail("Failed to create 1gb file at %s" % fpath)
 
     def match_accounting_log(self, atype, jid, exec_host, exec_vnode,
                              mem, ncpus, nodect, place, select):
