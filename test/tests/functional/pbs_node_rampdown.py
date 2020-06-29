@@ -160,19 +160,19 @@ class TestPbsNodeRampDown(TestFunctional):
         count = 10
         fsize = 0
         while count > 0:
-        fsize = 0
-        rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd, runas=TEST_USER)
-        if rc['rc'] == 0 and len(rc['out']) == 1:
-        try:
-            fsize = int(rc['out'][0])
-        except:
-            pass
-        # 1073741824 == 1Gb
-        if fsize > 1073741824:
-            break
-        else:
-            count -= 1
-            time.sleep(1)
+            rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd,
+                                 runas=TEST_USER)
+            if rc['rc'] == 0 and len(rc['out']) == 1:
+                try:
+                    fsize = int(rc['out'][0])
+                except:
+                    pass
+            # 1073741824 == 1Gb
+            if fsize > 1073741824:
+                break
+            else:
+                count -= 1
+                time.sleep(1)
         if fsize <= 1073741824:
             self.fail("Failed to create 1gb file at %s" % fpath)
 
