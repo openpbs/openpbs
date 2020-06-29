@@ -676,15 +676,16 @@ int
 has_hardlimits(void *p)
 {
 	struct limit_info	*lip = p;
-	char *k;
+	char *k = NULL;
 
-	if (entlim_get_first(LI2RESCTX(lip), (void **)&k) != NULL) /* at least one hard resource limit present */
+	if (entlim_get_next(LI2RESCTX(lip), (void **)&k) != NULL) /* at least one hard resource limit present */
 		return (1);
 
 	/* run limit already checked? */
 	if (LI2RUNCTX(lip) == LI2RESCTX(lip))
 		return (0);
-	if (entlim_get_first(LI2RUNCTX(lip), (void **)&k) != NULL) /* at least one hard run limit present */
+	k = NULL;
+	if (entlim_get_next(LI2RUNCTX(lip), (void **)&k) != NULL) /* at least one hard run limit present */
 		return (1);
 
 	return (0);
@@ -704,15 +705,16 @@ int
 has_softlimits(void *p)
 {
 	struct limit_info	*lip = p;
-	char *k;
+	char *k = NULL;
 
-	if (entlim_get_first(LI2RESCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft resource limit present */
+	if (entlim_get_next(LI2RESCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft resource limit present */
 		return (1);
 
 	/* run limit already checked? */
 	if (LI2RUNCTXSOFT(lip) == LI2RESCTXSOFT(lip))
 		return (0);
-	if (entlim_get_first(LI2RUNCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft run limit present */
+	k = NULL;
+	if (entlim_get_next(LI2RUNCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft run limit present */
 		return (1);
 
 	return (0);
@@ -3191,12 +3193,11 @@ lim_dup_ctx(void *ctx)
 		return(NULL);
 	}
 
-	value = (char *)entlim_get_first(ctx, (void **)&key);
-	while(value != NULL) {
+	while ((value = entlim_get_next(ctx, (void **)&key)) != NULL) {
 		if ((newval = strdup(value)) == NULL) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup value failed");
 			(void) entlim_free_ctx(newctx, free);
-			return(NULL);
+			return NULL;
 		} else if (entlim_add(key, newval, newctx) != 0) {
 			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "entlim_add(%s) failed", key);
 			/*
@@ -3212,11 +3213,10 @@ lim_dup_ctx(void *ctx)
 			 *	to twice-freed memory.
 			 */
 			(void) entlim_free_ctx(newctx, free);
-			return(NULL);
+			return NULL;
 		}
-		value = (char *)entlim_get_next(ctx, (void **)&key);
 	}
-	return(newctx);
+	return newctx;
 }
 
 /**

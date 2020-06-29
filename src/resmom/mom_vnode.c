@@ -93,18 +93,16 @@ mom_CPUs_report(void)
 	char *p;
 	char reportbuf[LOG_BUF_SIZE];
 	int bufspace; /* space remaining in reportbuf[] */
-	void *idx_ctx;
-	mominfo_t *mip;
+	void *idx_ctx = NULL;
+	mominfo_t *mip = NULL;
 
 	if (cpuctx == NULL)
 		return;
 
-	if (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) != PBS_IDX_RET_OK)
-		return;
-	do {
-		unsigned int	i;
-		int		first;
-		mom_vninfo_t	*mvp;
+	while (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) == PBS_IDX_RET_OK) {
+		unsigned int i;
+		int first;
+		mom_vninfo_t *mvp;
 
 		assert(mip != NULL);
 		assert(mip->mi_data != NULL);
@@ -154,8 +152,7 @@ mom_CPUs_report(void)
 		log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, reportbuf);
 line_done:
 		;
-
-	} while (pbs_idx_next(idx_ctx, (void **)&mip, NULL) == PBS_IDX_RET_OK);
+	}
 
 	pbs_idx_free_ctx(idx_ctx);
 }
@@ -544,18 +541,15 @@ static void
 cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 {
 	static char ra_ncpus[] = "resources_available.ncpus";
-	void *idx_ctx;
-	mominfo_t *mip;
+	void *idx_ctx = NULL;
+	mominfo_t *mip = NULL;
 
 	if (cpuctx == NULL)
 		return;
 
-	if (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) != PBS_IDX_RET_OK)
-		return;
-
-	do {
-		unsigned int	i;
-		mom_vninfo_t	*mvp;
+	while (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) == PBS_IDX_RET_OK) {
+		unsigned int i;
+		mom_vninfo_t *mvp;
 
 		assert(mip != NULL);
 		assert(mip->mi_data != NULL);
@@ -576,7 +570,7 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 				return;
 			}
 		}
-	} while (pbs_idx_next(idx_ctx, (void **)&mip, NULL) == PBS_IDX_RET_OK);
+	}
 
 	pbs_idx_free_ctx(idx_ctx);
 

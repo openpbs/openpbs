@@ -451,8 +451,7 @@ encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char
 	ctx = attr->at_val.at_enty.ae_tree;
 
 	/* ok, now process each separate entry in the tree */
-	plf = (svr_entlim_leaf_t *) entlim_get_first(ctx, (void **)&key);
-	while (plf) {
+	while ((plf = entlim_get_next(ctx, (void **)&key)) != NULL) {
 
 		rescn[0] = '\0';
 		needquotes = 0;
@@ -524,7 +523,6 @@ encode_entlim_db(const attribute *attr, pbs_list_head *phead, char *atname, char
 				free(tmpsvl);
 			}
 		}
-		plf = (svr_entlim_leaf_t *) entlim_get_next(ctx, (void **)&key);
 	}
 
 	/*
@@ -642,8 +640,7 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 		return (PBSE_SYSTEM);
 
 	/* ok, now process each separate entry in the tree */
-	plf = (svr_entlim_leaf_t *) entlim_get_first(ctx, (void **)&key);
-	while (plf) {
+	while ((plf = entlim_get_next(ctx, (void **)&key)) != NULL) {
 
 		rescn[0] = '\0';
 		needquotes = 0;
@@ -738,7 +735,6 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 				++grandtotal;
 			}
 		}
-		plf = (svr_entlim_leaf_t *) entlim_get_next(ctx, (void **)&key);
 	}
 	for (i=0; i<index; i++)
 		free(rescn_array[i]);
@@ -783,7 +779,7 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 int
 set_entlim(attribute *old, attribute *new, enum batch_op op)
 {
-	char *key;
+	char *key = NULL;
 	void *newctx;
 	void *oldctx;
 	svr_entlim_leaf_t *newptr;
@@ -813,8 +809,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 				old->at_val.at_enty.ae_tree = entlim_initialize_ctx();
 			}
 			oldctx = old->at_val.at_enty.ae_tree;
-			newptr = (svr_entlim_leaf_t *) entlim_get_first(newctx, (void **)&key);
-			while (newptr != NULL) {
+			while ((newptr = entlim_get_next(newctx, (void **)&key)) != NULL) {
 				/* duplicate the record to be added */
 				newptr = dup_svr_entlim_leaf(newptr);
 				if (newptr) {
@@ -824,7 +819,6 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 						return (PBSE_SYSTEM);
 					}
 				}
-				newptr = (svr_entlim_leaf_t *) entlim_get_next(newctx, (void **)&key);
 			}
 			old->at_val.at_enty.ae_newlimittm = time(0);
 			break;
@@ -843,8 +837,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 			newctx = new->at_val.at_enty.ae_tree;
 			oldctx = old->at_val.at_enty.ae_tree;
 
-			newptr = (svr_entlim_leaf_t *) entlim_get_first(newctx, (void **)&key);
-			while (newptr != NULL) {
+			while ((newptr = entlim_get_next(newctx, (void **)&key)) != NULL) {
 				/* "exptr" points to record in "old" attribute */
 				if ((exptr = entlim_get(key, oldctx)) != NULL) {
 
@@ -881,12 +874,11 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 						(void)entlim_delete(key, oldctx, svr_freeleaf);
 					}
 				}
-				newptr = (svr_entlim_leaf_t *) entlim_get_next(newctx, (void **)&key);
 			}
 			/* having removed one or more elements from the value tree */
 			/* see if any entries are left or if the value is now null */
-			newptr = (svr_entlim_leaf_t *) entlim_get_first(oldctx, (void **)&key);
-			if (newptr == NULL) {
+			key = NULL;
+			if (entlim_get_next(oldctx, (void **)&key) == NULL) {
 				/* no entries left set, clear the entire attribute */
 				free_entlim(old);
 				/* set _MODIFY flag so up level functions */
@@ -896,7 +888,8 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 			}
 			break;
 
-		default:	return (PBSE_INTERNAL);
+		default:
+			return (PBSE_INTERNAL);
 	}
 
 	old->at_flags |= ATR_SET_MOD_MCACHE;
@@ -936,8 +929,8 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 int
 set_entlim_res(attribute *old, attribute *new, enum batch_op op)
 {
-	char *keynew;
-	char *keyold;
+	char *keynew = NULL;
+	char *keyold = NULL;
 	void *valnew;
 	void *valold;
 	void *newctx;
@@ -962,19 +955,16 @@ set_entlim_res(attribute *old, attribute *new, enum batch_op op)
 		/* walk the new tree identifying which resources are */
 		/* being changed,  walk the old tree and remove any  */
 		/* record with the same resource in its key	     */
-		valnew = entlim_get_first(newctx, (void **)&keynew);
-		while (valnew != NULL) {
+		while ((valnew = entlim_get_next(newctx, (void **)&keynew)) != NULL) {
 			/* get the resource name from the "new" key */
 			if (entlim_resc_from_key(keynew, newresc, PBS_MAX_RESC_NAME) != 0) {
-				valnew = entlim_get_next(newctx, (void **)&keynew);
 				continue;	/* no resc, go to next */
 			}
 
-			valold = entlim_get_first(oldctx, (void **)&keyold);
-			while (valold != NULL) {
+			keyold = NULL;
+			while ((valold = entlim_get_next(oldctx, (void **)&keyold)) != NULL) {
 				/* get the resource name from the "old" key */
 				if (entlim_resc_from_key(keyold, oldresc, PBS_MAX_RESC_NAME) != 0) {
-					valold = entlim_get_next(oldctx, (void **)&keyold);
 					continue;    /* no resc, go to next */
 				}
 
@@ -983,9 +973,7 @@ set_entlim_res(attribute *old, attribute *new, enum batch_op op)
 				if (strcasecmp(oldresc, newresc) == 0) {
 					(void)entlim_delete(keyold, oldctx, svr_freeleaf);
 				}
-				valold = entlim_get_next(oldctx, (void **)&keyold);
 			}
-			valnew = entlim_get_next(newctx, (void **)&keynew);
 		}
 
 		/* now the operation is the same as an INCR, adding	*/
@@ -1062,8 +1050,7 @@ unset_entlim_resc(attribute *pattr, char *rescname)
 	/* walk "old" and for each leaf, remove */
 	/* entry with matching  resource name   */
 	oldctx = pattr->at_val.at_enty.ae_tree;
-	value = entlim_get_first(oldctx, (void **)&key);
-	while (value != NULL) {
+	while ((value = entlim_get_next(oldctx, (void **)&key)) != NULL) {
 
 		hasentries = 1;	/* found at least one (remaining) entry */
 
@@ -1076,11 +1063,10 @@ unset_entlim_resc(attribute *pattr, char *rescname)
 				 * now restart search from beginning as we are
 				 * not sure what the deletion did to the order
 				 */
-				value = entlim_get_first(oldctx, (void **)&key);
+				key = NULL;
 				continue;
 			}
 		}
-		value = entlim_get_next(oldctx, (void **)&key);
 	}
 	if (modified)
 		pattr->at_flags |= ATR_MOD_MCACHE;

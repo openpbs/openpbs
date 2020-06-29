@@ -1806,7 +1806,7 @@ entlim_resum(struct work_task *pwt)
 	int is_resc;
 	attribute *pattr;
 	attribute *pattr2;
-	char *key;
+	char *key = NULL;
 	svr_entlim_leaf_t *plf;
 	job *pj;
 	void *pobject;
@@ -1847,25 +1847,20 @@ entlim_resum(struct work_task *pwt)
 	/* Next, walk the limit tree and clear all current values */
 
 	ctx = pattr->at_val.at_enty.ae_tree;
-	plf = entlim_get_first(ctx, (void **)&key);
-	while (plf) {
-
+	while ((plf = entlim_get_next(ctx, (void **)&key)) != NULL) {
 		if ((plf->slf_sum.at_flags & ATR_VFLAG_SET) != 0) {
 			plf->slf_rescd->rs_free(&plf->slf_sum);
 			DBPRT(("clearing %s\n", key))
 		}
-		plf = entlim_get_next(ctx, (void **)&key);
 	}
 
 	ctx = pattr2->at_val.at_enty.ae_tree;
-	plf = entlim_get_first(ctx, (void **)&key);
-	while (plf) {
-
+	key = NULL;
+	while ((plf = entlim_get_next(ctx, (void **)&key)) != NULL) {
 		if ((plf->slf_sum.at_flags & ATR_VFLAG_SET) != 0) {
 			plf->slf_rescd->rs_free(&plf->slf_sum);
 			DBPRT(("clearing %s\n", key))
 		}
-		plf = entlim_get_next(ctx, (void **)&key);
 	}
 
 	/* then for each job in the parent object, sum up its count/resource */

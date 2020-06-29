@@ -950,7 +950,6 @@ tpp_open(char *dest_host, unsigned int port)
 	int count;
 	void *pdest_addr = &dest_addr;
 	void *idx_ctx = NULL;
-	void *idx_nkey = NULL;
 
 	if ((dest = mk_hostname(dest_host, port)) == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory opening stream");
@@ -975,21 +974,17 @@ tpp_open(char *dest_host, unsigned int port)
 	 * elsewhere, either when network first dropped or if any message
 	 * comes to such a half open stream
 	 */
-	if (pbs_idx_find(streams_idx, &pdest_addr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
-		do {
-			if (idx_nkey && memcmp(idx_nkey, &dest_addr, sizeof(tpp_addr_t)) != 0)
-				break;
-			if (strm->u_state == TPP_STRM_STATE_OPEN &&
-					strm->t_state == TPP_TRNS_STATE_OPEN &&
-					strm->used_locally == 1) {
-				tpp_unlock(&strmarray_lock);
-				pbs_idx_free_ctx(idx_ctx);
+	while (pbs_idx_find(streams_idx, &pdest_addr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+		if (memcmp(pdest_addr, &dest_addr, sizeof(tpp_addr_t)) != 0)
+			break;
+		if (strm->u_state == TPP_STRM_STATE_OPEN && strm->t_state == TPP_TRNS_STATE_OPEN && strm->used_locally == 1) {
+			tpp_unlock(&strmarray_lock);
+			pbs_idx_free_ctx(idx_ctx);
 
-				TPP_DBPRT(("Stream for dest[%s] returned = %u", dest, strm->sd));
-				free(dest);
-				return strm->sd;
-			}
-		} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_RET_OK);
+			TPP_DBPRT(("Stream for dest[%s] returned = %u", dest, strm->sd));
+			free(dest);
+			return strm->sd;
+		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
 
@@ -2654,22 +2649,19 @@ send_app_strm_close(stream_t *strm, int cmd, int error)
 static stream_t *
 find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int dest_magic)
 {
-	void *idx_ctx;
-	void *idx_nkey = NULL;
+	void *idx_ctx = NULL;
+	void *idx_nkey = dest_addr;
 	stream_t *strm;
 
-	if (pbs_idx_find(streams_idx, (void **)&dest_addr, (void **)&strm, &idx_ctx) != PBS_IDX_RET_OK)
-		return NULL;
-
-	do {
-		if (idx_nkey && memcmp(idx_nkey, dest_addr, sizeof(tpp_addr_t)) != 0)
+	while (pbs_idx_find(streams_idx, &idx_nkey, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+		if (memcmp(idx_nkey, dest_addr, sizeof(tpp_addr_t)) != 0)
 			break;
 		TPP_DBPRT(("sd=%u, dest_sd=%u, u_state=%d, t-state=%d, dest_magic=%u", strm->sd, strm->dest_sd, strm->u_state, strm->t_state, strm->dest_magic));
 		if (strm->dest_sd == dest_sd && strm->dest_magic == dest_magic) {
 			pbs_idx_free_ctx(idx_ctx);
 			return strm;
 		}
-	} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_RET_OK);
+	}
 	pbs_idx_free_ctx(idx_ctx);
 	return NULL;
 }
@@ -3782,18 +3774,17 @@ free_stream(unsigned int sd)
 	strm = strmarray[sd].strm;
 	if (strm->strm_type != TPP_STRM_MCAST) {
 		void *idx_ctx = NULL;
-		void *idx_nkey = NULL;
 		int found = 0;
 		stream_t *t_strm = NULL;
 		void *pdest_addr = &strm->dest_addr;
 
-		if (pbs_idx_find(streams_idx, &pdest_addr, (void **)&t_strm, &idx_ctx) == PBS_IDX_RET_OK) {
-			do {
-				if (idx_nkey && memcmp(idx_nkey, &strm->dest_addr, sizeof(tpp_addr_t)) != 0)
-					break;
-				if (strm == t_strm)
-					found = 1;
-			} while (!found && pbs_idx_next(idx_ctx, (void **)&t_strm, &idx_nkey) == PBS_IDX_RET_OK);
+		while (pbs_idx_find(streams_idx, &pdest_addr, (void **)&t_strm, &idx_ctx) == PBS_IDX_RET_OK) {
+			if (memcmp(pdest_addr, &strm->dest_addr, sizeof(tpp_addr_t)) != 0)
+				break;
+			if (strm == t_strm) {
+				found = 1;
+				break;
+			}
 		}
 
 		if (!found) {
@@ -4450,26 +4441,23 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 			addrs = (tpp_addr_t *) (((char *) data) + sizeof(tpp_leave_pkt_hdr_t));
 			for(i = 0; i < hdr->num_addrs; i++) {
 				void *idx_ctx = NULL;
-				void *idx_nkey = NULL;
 				void *paddr = &addrs[i];
 
-				if (pbs_idx_find(streams_idx, &paddr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
-					do {
-						if (idx_nkey && memcmp(idx_nkey, &addrs[i], sizeof(tpp_addr_t)) != 0)
-							break;
-						strm->lasterr = 0;
-						/* under lock already, can access directly */
-						if (strmarray[strm->sd].slot_state == TPP_SLOT_BUSY) {
-							if (tpp_enque(&send_close_queue, strm) == NULL) {
-								tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueing to send close queue");
-								tpp_unlock(&strmarray_lock);
-								pbs_idx_free_ctx(idx_ctx);
-								if (data_out)
-									free(data_out);
-								return -1;
-							}
+				while (pbs_idx_find(streams_idx, &paddr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+					if (memcmp(paddr, &addrs[i], sizeof(tpp_addr_t)) != 0)
+						break;
+					strm->lasterr = 0;
+					/* under lock already, can access directly */
+					if (strmarray[strm->sd].slot_state == TPP_SLOT_BUSY) {
+						if (tpp_enque(&send_close_queue, strm) == NULL) {
+							tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueing to send close queue");
+							tpp_unlock(&strmarray_lock);
+							pbs_idx_free_ctx(idx_ctx);
+							if (data_out)
+								free(data_out);
+							return -1;
 						}
-					} while (pbs_idx_next(idx_ctx, (void **)&strm, &idx_nkey) == PBS_IDX_RET_OK);
+					}
 				}
 				pbs_idx_free_ctx(idx_ctx);
 			}

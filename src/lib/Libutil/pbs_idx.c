@@ -187,17 +187,18 @@ pbs_idx_delete_byctx(void *ctx)
 
 /**
  * @brief
- *	find entry or get first entry in index
- *	and optionally set context for iteration on index
+ *	find or iterate entry in index
  *
  * @param[in]     - idx  - pointer to index
  * @param[in/out] - key  - key of the entry
  *                         if *key is NULL then this routine will
- *                         return the first entry's key in *key
- * @param[in/out] - data - data of the first or matched entry
+ *                         return the first entry in index
+ * @param[in/out] - data - data of the entry
  * @param[in/out] - ctx  - context to be set for iteration
  *                         can be NULL, if caller doesn't want
  *                         iteration context
+ *                         if *ctx is not NULL, then this routine
+ *                         will return next entry in index
  *
  * @return int
  * @retval PBS_IDX_RET_OK   - success
@@ -210,82 +211,65 @@ pbs_idx_delete_byctx(void *ctx)
 int
 pbs_idx_find(void *idx, void **key, void **data, void **ctx)
 {
+	iter_ctx *pctx;
 	AVL_IX_REC *pkey;
 	int rc = AVL_IX_FAIL;
 
 	if (idx == NULL || data == NULL)
 		return PBS_IDX_RET_FAIL;
 
-	if (ctx != NULL)
-		*ctx = NULL;
+	if (ctx != NULL && *ctx != NULL) {
+		pctx = (iter_ctx *) *ctx;
 
-	*data = NULL;
+		*data = NULL;
+		if (key)
+			*key = NULL;
 
-	pkey = avlkey_create(idx, key ? *key : NULL);
-	if (pkey == NULL)
-		return PBS_IDX_RET_FAIL;
+		if (pctx->idx != idx || pctx->pkey == NULL)
+			return PBS_IDX_RET_FAIL;
 
-	if (key != NULL && *key != NULL) {
-		rc = avl_find_key(pkey, idx);
+		if (avl_next_key(pctx->pkey, pctx->idx) != AVL_IX_OK)
+			return PBS_IDX_RET_FAIL;
+
+		*data = pctx->pkey->recptr;
+		if (key)
+			*key = &pctx->pkey->key;
+
+		return PBS_IDX_RET_OK;
 	} else {
-		avl_first_key(idx);
-		rc = avl_next_key(pkey, idx);
-	}
+		*data = NULL;
+		pkey = avlkey_create(idx, key ? *key : NULL);
+		if (pkey == NULL)
+			return PBS_IDX_RET_FAIL;
 
-	if (rc == AVL_IX_OK) {
-		*data = pkey->recptr;
-		if (key != NULL && *key == NULL)
-			*key = &pkey->key;
-		if (ctx != NULL) {
-			iter_ctx *pctx = (iter_ctx *) malloc(sizeof(iter_ctx));
-			if (pctx == NULL) {
-				free(pkey);
-				return PBS_IDX_RET_FAIL;
-			}
-			pctx->idx = idx;
-			pctx->pkey = pkey;
-			*ctx = (void *) pctx;
-
-			return PBS_IDX_RET_OK;
+		if (key != NULL && *key != NULL) {
+			rc = avl_find_key(pkey, idx);
+		} else {
+			avl_first_key(idx);
+			rc = avl_next_key(pkey, idx);
 		}
+
+		if (rc == AVL_IX_OK) {
+			*data = pkey->recptr;
+			if (key != NULL && *key == NULL)
+				*key = &pkey->key;
+			if (ctx != NULL) {
+				pctx = (iter_ctx *) malloc(sizeof(iter_ctx));
+				if (pctx == NULL) {
+					free(pkey);
+					return PBS_IDX_RET_FAIL;
+				}
+				pctx->idx = idx;
+				pctx->pkey = pkey;
+				*ctx = (void *) pctx;
+
+				return PBS_IDX_RET_OK;
+			}
+		}
+		free(pkey);
 	}
 
-	free(pkey);
 	return rc == AVL_IX_OK ? PBS_IDX_RET_OK : PBS_IDX_RET_FAIL;
-}
-
-/**
- * @brief
- *	get next entry in index based on given context
- *
- * @param[in]     - ctx  - pointer to context for iteration
- * @param[in/out] - data - data of next entry
- * @param[in/out] - key  - key of next entry, can be NULL, if
- *                         caller doesn't want access to key
- *
- * @return int
- * @retval PBS_IDX_RET_OK   - success
- * @retval PBS_IDX_RET_FAIL - failure
- *
- */
-int
-pbs_idx_next(void *ctx, void **data, void **key)
-{
-	iter_ctx *pctx = (iter_ctx *) ctx;
-
-	if (data == NULL || pctx == NULL || pctx->idx == NULL || pctx->pkey == NULL)
-		return PBS_IDX_RET_FAIL;
-
-	*data = NULL;
-	if (key)
-		*key = NULL;
-
-	if (avl_next_key(pctx->pkey, pctx->idx) != AVL_IX_OK)
-		return PBS_IDX_RET_FAIL;
-	*data = pctx->pkey->recptr;
-	if (key)
-		*key = &pctx->pkey->key;
-	return PBS_IDX_RET_OK;
 }
 
 /**

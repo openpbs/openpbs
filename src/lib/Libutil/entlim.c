@@ -178,22 +178,6 @@ entlim_delete(const char *keystr, void *ctx, void free_leaf(void *))
 	return -1;
 }
 
-void *
-entlim_get_first(void *ctx, void **key)
-{
-	entlim_ctx *pctx = (entlim_ctx *)ctx;
-	void *data;
-
-	if (key == NULL || pctx == NULL || pctx->idx == NULL)
-		return NULL;
-	*key = NULL;
-	if (pctx->idx_ctx != NULL)
-		pbs_idx_free_ctx(pctx->idx_ctx);
-	if (pbs_idx_find(pctx->idx, key, &data, &pctx->idx_ctx) == PBS_IDX_RET_OK)
-		return data;
-	return NULL;
-}
-
 /**
  * @brief
  * 	entlim_get_next - walk the objects returning the next entry.
@@ -216,11 +200,21 @@ entlim_get_next(void *ctx, void **key)
 	entlim_ctx *pctx = (entlim_ctx *)ctx;
 	void *data;
 
-	if (key == NULL || pctx == NULL || pctx->idx == NULL || pctx->idx_ctx == NULL)
+	if (pctx == NULL || pctx->idx == NULL)
 		return NULL;
 
-	if (pbs_idx_next(pctx->idx_ctx, &data, key) == PBS_IDX_RET_OK)
-		return data;
+	if (key != NULL && *key != NULL) {
+		if (pctx->idx_ctx == NULL)
+			return NULL;
+	} else {
+		if (pctx->idx_ctx != NULL)
+			pbs_idx_free_ctx(pctx->idx_ctx);
+		pctx->idx_ctx = NULL;
+	}
+
+	if (pbs_idx_find(pctx->idx, key, &data, &pctx->idx_ctx) == PBS_IDX_RET_OK)
+			return data;
+
 	pbs_idx_free_ctx(pctx->idx_ctx);
 	pctx->idx_ctx = NULL;
 	*key = NULL;
@@ -248,10 +242,9 @@ entlim_free_ctx(void *ctx, void free_leaf(void *))
 
 	if (pctx->idx_ctx != NULL)
 		pbs_idx_free_ctx(pctx->idx_ctx);
-	if (pbs_idx_find(pctx->idx, NULL, &leaf, &pctx->idx_ctx) == PBS_IDX_RET_OK) {
-		do {
-			free_leaf(leaf);
-		} while (pbs_idx_next(pctx->idx_ctx, &leaf, NULL) == PBS_IDX_RET_OK);
+	pctx->idx_ctx = NULL;
+	while (pbs_idx_find(pctx->idx, NULL, &leaf, &pctx->idx_ctx) == PBS_IDX_RET_OK) {
+		free_leaf(leaf);
 	}
 	pbs_idx_free_ctx(pctx->idx_ctx);
 	pbs_idx_destroy(pctx->idx);

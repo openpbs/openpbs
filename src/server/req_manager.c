@@ -774,8 +774,7 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 				svr_entlim_leaf_t *pleaf;
 				void *unused = NULL;
 
-				pleaf = entlim_get_first((new+index)->at_val.at_enty.ae_tree, &unused);
-				while (pleaf) {
+				while ((pleaf = entlim_get_next((new+index)->at_val.at_enty.ae_tree, &unused)) != NULL) {
 
 					/* entry that is Modified, and not Set meant it had a null value - illegal */
 					if ((pleaf->slf_limit.at_flags & (ATR_VFLAG_SET|ATR_VFLAG_MODIFY)) == ATR_VFLAG_MODIFY) {
@@ -785,7 +784,6 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 						attr_atomic_kill(attr_save, pdef, limit);
 						return (PBSE_BADATVAL);
 					}
-					pleaf = entlim_get_next((new+index)->at_val.at_enty.ae_tree, &unused);
 				}
 			}
 
@@ -1316,7 +1314,7 @@ mgr_queue_delete(struct batch_request *preq)
 			queue_name[(sizeof(queue_name) - 1)] = '\0';
 			if ((rc = que_purge(pque)) != 0) {
 				rc = PBSE_OBJBUSY;
-			} else 
+			} else
 				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_QUEUE, LOG_INFO, queue_name, msg_manager, msg_man_del, preq->rq_user, preq->rq_host);
 		}
 		if (rc != 0) {
@@ -1413,8 +1411,8 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 				return;
 			}
 		} else if ((plist->al_atopl.value == NULL) || (plist->al_atopl.value[0] == '\0')) {
-			/* 
-			 * We do not overwrite/update the entire record in the database. Therefore, to 
+			/*
+			 * We do not overwrite/update the entire record in the database. Therefore, to
 			 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
 			 * We create a separate list for removal from the list of attributes provided, and
 			 * pass it to mgr_unset_attr, below
@@ -1427,7 +1425,7 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 		}
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
-	
+
 	/* if the unsetist has attributes, call server_unset to remove them separately */
 	ulist = (svrattrl *)GET_NEXT(unsetlist);
 	if (ulist) {
@@ -3556,13 +3554,11 @@ is_entity_resource_set(attribute *pattr, char *resc_name)
 		void *ctx = pattr->at_val.at_enty.ae_tree;
 		char resc[PBS_MAX_RESC_NAME+1];
 
-		if (entlim_get_first(ctx, (void **)&key) != NULL) {
-			do {
-				if (entlim_resc_from_key(key, resc, PBS_MAX_RESC_NAME) == 0) {
-					if (strcmp(resc, resc_name) == 0)
-						return 1;
-				}
-			} while (entlim_get_next(ctx, (void **)&key) != NULL);
+		while (entlim_get_next(ctx, (void **)&key) != NULL) {
+			if (entlim_resc_from_key(key, resc, PBS_MAX_RESC_NAME) == 0) {
+				if (strcmp(resc, resc_name) == 0)
+					return 1;
+			}
 		}
 	}
 	return 0;

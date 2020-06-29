@@ -97,9 +97,6 @@ int entlim_delete(const char *entity, void *ctx, void free_leaf(void *));
 /* the function "free_leaf" is used to free the data record      */
 int entlim_free_ctx(void *ctx, void free_leaf(void *));
 
-/* walk the records returning a key object for the first entry found */
-void *entlim_get_first(void *ctx, void **key);
-
 /* walk the records returning a key object for the next entry found */
 void *entlim_get_next(void *ctx, void **key);
 

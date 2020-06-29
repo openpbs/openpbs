@@ -233,38 +233,36 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 	TPP_DBPRT(("Sending leaves to router=%s", target->router_name));
 
 	/* traverse my leaves tree, there is only one record per leaf */
-	if (pbs_idx_find(parent->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
-		do {
-			if ((lf_data = malloc(sizeof(struct leaf_data))) == NULL) {
-				tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
-				goto err;
-			}
+	while (pbs_idx_find(parent->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
+		if ((lf_data = malloc(sizeof(struct leaf_data))) == NULL) {
+			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
+			goto err;
+		}
 
-			lf_data->addrs = malloc(sizeof(tpp_addr_t) * l->num_addrs);
-			if (!lf_data->addrs) {
-				tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
-				goto err;
-			}
+		lf_data->addrs = malloc(sizeof(tpp_addr_t) * l->num_addrs);
+		if (!lf_data->addrs) {
+			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
+			goto err;
+		}
 
-			index = leaf_get_router_index(l, this_router);
-			if (index == -1) {
-				tpp_log_func(LOG_CRIT, __func__, "Could not find index of my router in leaf's pbs_comm list");
-				goto err;
-			}
+		index = leaf_get_router_index(l, this_router);
+		if (index == -1) {
+			tpp_log_func(LOG_CRIT, __func__, "Could not find index of my router in leaf's pbs_comm list");
+			goto err;
+		}
 
-			/* save hdr and addrs to be sent outside of locks */
-			lf_data->hdr.type = TPP_CTL_JOIN;
-			lf_data->hdr.node_type = l->leaf_type;
-			lf_data->hdr.hop = 2;
-			lf_data->hdr.index = index;
-			lf_data->hdr.num_addrs = l->num_addrs;
-			memcpy(lf_data->addrs, l->leaf_addrs, sizeof(tpp_addr_t) * l->num_addrs);
+		/* save hdr and addrs to be sent outside of locks */
+		lf_data->hdr.type = TPP_CTL_JOIN;
+		lf_data->hdr.node_type = l->leaf_type;
+		lf_data->hdr.hop = 2;
+		lf_data->hdr.index = index;
+		lf_data->hdr.num_addrs = l->num_addrs;
+		memcpy(lf_data->addrs, l->leaf_addrs, sizeof(tpp_addr_t) * l->num_addrs);
 
-			if (tpp_enque(&ctl_hdr_queue, lf_data) == NULL) {
-				tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueuing to ctl_hdr_queue");
-				goto err;
-			}
-		} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_RET_OK);
+		if (tpp_enque(&ctl_hdr_queue, lf_data) == NULL) {
+			tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueuing to ctl_hdr_queue");
+			goto err;
+		}
 	}
 
 	tpp_unlock(&router_lock);
@@ -330,20 +328,18 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 	int list[TPP_MAX_ROUTERS];
 	int max_cons = 0;
 	int i;
-	void *idx_ctx;
+	void *idx_ctx = NULL;
 
-	if (pbs_idx_find(routers_idx, NULL, (void **)&r, &idx_ctx) == PBS_IDX_RET_OK) {
-		do {
-			if (r->conn_fd == -1 || r == this_router || r->conn_fd == origin_tfd || r->state != TPP_ROUTER_STATE_CONNECTED) {
-				continue; /* don't send to self, or to originating router */
-			}
-			TPP_DBPRT(("Broadcasting leaf to router %s", r->router_name));
-			list[max_cons++] = r->conn_fd;
-		} while (pbs_idx_next(idx_ctx, (void **)&r, NULL) == PBS_IDX_RET_OK);
+	while (pbs_idx_find(routers_idx, NULL, (void **)&r, &idx_ctx) == PBS_IDX_RET_OK) {
+		if (r->conn_fd == -1 || r == this_router || r->conn_fd == origin_tfd || r->state != TPP_ROUTER_STATE_CONNECTED) {
+			continue; /* don't send to self, or to originating router */
+		}
+		TPP_DBPRT(("Broadcasting leaf to router %s", r->router_name));
+		list[max_cons++] = r->conn_fd;
 	}
-	tpp_unlock(&router_lock);
-
 	pbs_idx_free_ctx(idx_ctx);
+
+	tpp_unlock(&router_lock);
 
 	for (i = 0; i < max_cons; i++) {
 		if (tpp_transport_vsend(list[i], chunks, count) != 0) {
@@ -400,33 +396,31 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 		return -1;
 
 	tpp_lock(&router_lock);
-	if (pbs_idx_find(traverse_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
-		do {
-			/*
-			* leaf directly connected to me? and not myself
-			* and is interested in events
-			*/
-			if (l->conn_fd != -1 && l->conn_fd != origin_tfd) {
+	while (pbs_idx_find(traverse_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
+		/*
+		 * leaf directly connected to me? and not myself
+		 * and is interested in events
+		 */
+		if (l->conn_fd != -1 && l->conn_fd != origin_tfd) {
 
-				/* if type is 1, notify only listen leaves */
-				if (type == 1 && l->leaf_type != TPP_LEAF_NODE_LISTEN)
-					continue;
+			/* if type is 1, notify only listen leaves */
+			if (type == 1 && l->leaf_type != TPP_LEAF_NODE_LISTEN)
+				continue;
 
-				if (max_cons == list_size) { /* we ran out of list buffer, resize */
-					list_size += RLIST_INC;
-					p = realloc(list, sizeof(int) * list_size);
-					if (!p) {
-						tpp_unlock(&router_lock);
-						pbs_idx_free_ctx(idx_ctx);
-						free(list);
-						return -1;
-					}
-					list = p;
+			if (max_cons == list_size) { /* we ran out of list buffer, resize */
+				list_size += RLIST_INC;
+				p = realloc(list, sizeof(int) * list_size);
+				if (!p) {
+					tpp_unlock(&router_lock);
+					pbs_idx_free_ctx(idx_ctx);
+					free(list);
+					return -1;
 				}
-
-				list[max_cons++] = l->conn_fd;
+				list = p;
 			}
-		} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_RET_OK);
+
+			list[max_cons++] = l->conn_fd;
+		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
 	tpp_unlock(&router_lock);
@@ -751,25 +745,23 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			tpp_lock(&router_lock);
 			TPP_QUE_CLEAR(&deleted_leaves);
 
-			if (pbs_idx_find(r->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
-				do {
-					if (l->num_routers > 0) {
-						del_router_from_leaf(l, tfd);
-						if (l->num_routers == 0) {
-							/*
-							 * delete leaf from the leaf tree, since it
-							 * is not connected to any routers now
-							 */
-							TPP_DBPRT(("All routers to leaf %s down, deleting leaf", tpp_netaddr(&l->leaf_addrs[0])));
+			while (pbs_idx_find(r->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
+				if (l->num_routers > 0) {
+					del_router_from_leaf(l, tfd);
+					if (l->num_routers == 0) {
+						/*
+						 * delete leaf from the leaf tree, since it
+						 * is not connected to any routers now
+						 */
+						TPP_DBPRT(("All routers to leaf %s down, deleting leaf", tpp_netaddr(&l->leaf_addrs[0])));
 
-							if (tpp_enque(&deleted_leaves, l) == NULL) {
-								tpp_unlock(&router_lock);
-								tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueuing deleted leaves");
-								return -1;
-							}
+						if (tpp_enque(&deleted_leaves, l) == NULL) {
+							tpp_unlock(&router_lock);
+							tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueuing deleted leaves");
+							return -1;
 						}
 					}
-				} while (pbs_idx_next(idx_ctx, (void **)&l, NULL) == PBS_IDX_RET_OK);
+				}
 			}
 			pbs_idx_free_ctx(idx_ctx);
 

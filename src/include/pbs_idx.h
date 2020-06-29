@@ -119,17 +119,18 @@ extern int pbs_idx_delete_byctx(void *ctx);
 
 /**
  * @brief
- *	find entry or get first entry in index
- *	and optionally set context for iteration on index
+ *	find or iterate entry in index
  *
  * @param[in]     - idx  - pointer to index
  * @param[in/out] - key  - key of the entry
  *                         if *key is NULL then this routine will
- *                         return the first entry's key in *key
- * @param[in/out] - data - data of the first or matched entry
+ *                         return the first entry in index
+ * @param[in/out] - data - data of the entry
  * @param[in/out] - ctx  - context to be set for iteration
  *                         can be NULL, if caller doesn't want
  *                         iteration context
+ *                         if *ctx is not NULL, then this routine
+ *                         will return next entry in index
  *
  * @return int
  * @retval PBS_IDX_RET_OK   - success
@@ -140,22 +141,6 @@ extern int pbs_idx_delete_byctx(void *ctx);
  *
  */
 extern int pbs_idx_find(void *idx, void **key, void **data, void **ctx);
-
-/**
- * @brief
- *	get next entry in index based on given context
- *
- * @param[in]     - ctx  - pointer to context for iteration
- * @param[in/out] - data - data of next entry
- * @param[in/out] - key  - key of next entry, can be NULL, if
- *                         caller doesn't want access to key
- *
- * @return int
- * @retval PBS_IDX_RET_OK   - success
- * @retval PBS_IDX_RET_FAIL - failure
- *
- */
-extern int pbs_idx_next(void *ctx, void **data, void **key);
 
 /**
  * @brief
