@@ -115,7 +115,7 @@
 #include "libpbs.h"
 #include "credential.h"
 #include "batch_request.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "tracking.h"
@@ -296,7 +296,9 @@ struct batch_request	*saved_takeover_req=NULL;
 struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
-AVL_IX_DESC *AVL_jctx = NULL;
+void *jobs_idx = NULL;
+void *queues_idx = NULL;
+void *resvs_idx = NULL;
 sigset_t	allsigs;
 
 int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
@@ -1863,15 +1865,11 @@ try_db_again:
 	tpp_shutdown();
 
 	/*
-	 * SERVER is going to be shutdown, delete AVL tree using
-	 * avl_destroy_index() which was created in pbsd_init.c
-	 * by avl_create_index().
+	 * SERVER is going to be shutdown, destroy indexes
 	 */
-	if (AVL_jctx != NULL) {
-		avl_destroy_index(AVL_jctx);
-		free(AVL_jctx);
-		AVL_jctx = NULL;
-	}
+	pbs_idx_destroy(jobs_idx);
+	pbs_idx_destroy(queues_idx);
+	pbs_idx_destroy(resvs_idx);
 
 	{
 		int csret;

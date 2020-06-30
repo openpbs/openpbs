@@ -90,7 +90,7 @@
 #include	"pbs_reliable.h"
 
 static vnal_t	*vnal_alloc(vnal_t **);
-static vnal_t	*id2vnrl(vnl_t *, char *, AVL_IX_REC *);
+static vnal_t	*id2vnrl(vnl_t *, char *);
 static vna_t	*attr2vnr(vnal_t *, char *);
 
 static const char	iddelim = ':';
@@ -569,7 +569,7 @@ vn_vnode(vnl_t *vnlp, char *id)
 {
 	if (vnlp == NULL)
 		return NULL;
-	return id2vnrl(vnlp, id, NULL);
+	return id2vnrl(vnlp, id);
 }
 
 /**
@@ -590,7 +590,7 @@ vn_exist(vnl_t *vnlp, char *id, char *attr)
 
 	if (vnlp == NULL)
 		return NULL;
-	if ((vnrlp = id2vnrl(vnlp, id, NULL)) == NULL)
+	if ((vnrlp = id2vnrl(vnlp, id)) == NULL)
 		return NULL;
 
 	return attr_exist(vnrlp, attr);
@@ -621,11 +621,6 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 	vnal_t	*vnrlp;
 	vna_t	*vnrp;
 	char	*newid, *newname, *newval;
-	union {
-		AVL_IX_REC xrp;
-		char	buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
-	} xxrp;
-	AVL_IX_REC *rp = &xxrp.xrp;
 
 	if ((callback != NULL) && (callback(id, attr, attrval) == 0))
 		return (0);
@@ -637,9 +632,7 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 		return (-1);
 	}
 
-	/* the index was created with string keys */
-	snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
-	if ((vnrlp = id2vnrl(vnlp, id, rp)) == NULL) {
+	if ((vnrlp = id2vnrl(vnlp, id)) == NULL) {
 		if ((newid = strdup(id)) == NULL) {
 			free(newval);
 			free(newname);
@@ -657,8 +650,7 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 			return (-1);
 		}
 		vnlp->vnl_cur = vnlp->vnl_used++;
-		rp->recptr = (AVL_RECPOS)vnlp->vnl_dl.dl_cur;
-		if (avl_add_key(rp, &vnlp->vnl_ix) != AVL_IX_OK) {
+		if (pbs_idx_insert(vnlp->vnl_ix, id, (void *)vnlp->vnl_dl.dl_cur) != PBS_IDX_RET_OK) {
 			free(newid);
 			free(newval);
 			free(newname);
@@ -699,27 +691,16 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
  *
  * @param[in,out]	vnlp	-	vnode list to search
  * @param[in]	id	-	vnode name to look for
- * @param[out]	rp	-	rectype
  *
  * @return	vnal_t *
  * @retval	a pointer to vnal_t	: entry with the given ID (id) exists
  * @retval	NULL	: does not exists.
  */
 static vnal_t *
-id2vnrl(vnl_t *vnlp, char *id, AVL_IX_REC *rp)
+id2vnrl(vnl_t *vnlp, char *id)
 {
-	union {
-		AVL_IX_REC xrp;
-		char	buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
-	} xxrp;
-
-	if (rp == NULL) {
-		rp = &xxrp.xrp;
-		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
-	}
-
-	if (vnlp != NULL && avl_find_key(rp, &vnlp->vnl_ix) == AVL_IX_OK) {
-		unsigned long	i = (unsigned long)rp->recptr;
+	unsigned long i = 0;
+	if (vnlp != NULL && pbs_idx_find(vnlp->vnl_ix, (void **)&id, (void **)&i, NULL) == PBS_IDX_RET_OK) {
 		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
 
 		return (vnrlp);
@@ -786,7 +767,7 @@ vnl_free(vnl_t *vnlp)
 		}
 		free(vnlp->vnl_list);
 #ifdef PBS_MOM
-		avl_destroy_index(&vnlp->vnl_ix);
+		pbs_idx_destroy(vnlp->vnl_ix);
 #endif /* PBS_MOM */
 		free(vnlp);
 	}
@@ -964,10 +945,10 @@ vnl_alloc(vnl_t **vp)
 			free(newchunk);
 			return NULL;
 		}
-		/*
-		 * The keylength 0 means use nul terminated strings for keys.
-		 */
-		avl_create_index(&newchunk->vnl_ix, AVL_NO_DUP_KEYS, 0);
+		if ((newchunk->vnl_ix = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+			free(newchunk);
+			return NULL;
+		}
 		newchunk->vnl_list = newlist;
 		newchunk->vnl_nelem = 1;
 		newchunk->vnl_cur = 0;

@@ -114,7 +114,7 @@
 #include "provision.h"
 #include "pbs_db.h"
 #include "assert.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 #include "sched_cmds.h"
 #include "pbs_sched.h"
 #include "pbs_share.h"
@@ -127,8 +127,8 @@
 
 pntPBS_IP_LIST pbs_iplist = NULL;
 
-AVL_IX_DESC *node_tree = NULL;
-AVL_IX_DESC *hostaddr_tree = NULL;
+void *node_idx = NULL;
+static void *hostaddr_idx = NULL;
 
 /* Global Data Items: */
 
@@ -182,7 +182,7 @@ struct work_task *rescdef_wt_g = NULL;
 
 
 /*
- * This structure used as part of the avl tree
+ * This structure used as part of the index tree
  * to do a faster lookup of hostnames.
  * It is stored against pname in make_host_addresses_list()
  */
@@ -772,27 +772,19 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 
 			if ((pdef+index)->at_type == ATR_TYPE_ENTITY) {
 				svr_entlim_leaf_t *pleaf;
-				pbs_entlim_key_t  *pkey = NULL;
+				void *unused = NULL;
 
-				pkey = entlim_get_next(NULL,
-					(new+index)->at_val.at_enty.ae_tree);
-				while (pkey) {
+				while ((pleaf = entlim_get_next((new+index)->at_val.at_enty.ae_tree, &unused)) != NULL) {
 
 					/* entry that is Modified, and not Set meant it had a null value - illegal */
-					pleaf = pkey->recptr;
 					if ((pleaf->slf_limit.at_flags & (ATR_VFLAG_SET|ATR_VFLAG_MODIFY)) == ATR_VFLAG_MODIFY) {
 						*bad = index + 1;
 						attr_atomic_kill(new, pdef, limit);
 						attr_atomic_kill(pre_copy, pdef, limit);
 						attr_atomic_kill(attr_save, pdef, limit);
-						free(pkey);
 						return (PBSE_BADATVAL);
 					}
-					pkey = entlim_get_next(pkey,
-						(new+index)->at_val.at_enty.ae_tree);
 				}
-				free(pkey);
-				pkey = NULL;
 			}
 
 			/* now replace the old values with any modified new values */
@@ -1322,7 +1314,7 @@ mgr_queue_delete(struct batch_request *preq)
 			queue_name[(sizeof(queue_name) - 1)] = '\0';
 			if ((rc = que_purge(pque)) != 0) {
 				rc = PBSE_OBJBUSY;
-			} else 
+			} else
 				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_QUEUE, LOG_INFO, queue_name, msg_manager, msg_man_del, preq->rq_user, preq->rq_host);
 		}
 		if (rc != 0) {
@@ -1419,8 +1411,8 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 				return;
 			}
 		} else if ((plist->al_atopl.value == NULL) || (plist->al_atopl.value[0] == '\0')) {
-			/* 
-			 * We do not overwrite/update the entire record in the database. Therefore, to 
+			/*
+			 * We do not overwrite/update the entire record in the database. Therefore, to
 			 * unset attributes, we will need to find out the ones with a 0 or NULL value set.
 			 * We create a separate list for removal from the list of attributes provided, and
 			 * pass it to mgr_unset_attr, below
@@ -1433,7 +1425,7 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 		}
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
-	
+
 	/* if the unsetist has attributes, call server_unset to remove them separately */
 	ulist = (svrattrl *)GET_NEXT(unsetlist);
 	if (ulist) {
@@ -2573,14 +2565,14 @@ make_host_addresses_list(char *phost, u_long **pul)
 	if ((phost == 0) || (*phost == '\0'))
 		return (PBSE_SYSTEM);
 
-	/* search for the address list in the address list tree
+	/* search for the address list in the address list index
 	 * so that we do not hit NS for everything
 	 */
-	if (hostaddr_tree != NULL) {
-		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, phost)) != NULL) {
+	if (hostaddr_idx != NULL) {
+		if (pbs_idx_find(hostaddr_idx, (void **)&phost, (void **)&tpul, NULL) == PBS_IDX_RET_OK) {
 			*pul = (u_long *)malloc(tpul->len);
 			if (!*pul) {
-				strcat(log_buffer, "out of  memory ");
+				strcat(log_buffer, "out of memory ");
 				return (PBSE_SYSTEM);
 			}
 			memmove(*pul, tpul->pul, tpul->len);
@@ -2651,16 +2643,15 @@ make_host_addresses_list(char *phost, u_long **pul)
 	}
 	memmove(tpul->pul, *pul, tpul->len);
 
-	if (hostaddr_tree == NULL ) {
-		hostaddr_tree = create_tree(AVL_NO_DUP_KEYS, 0);
-		if (hostaddr_tree == NULL ) {
+	if (hostaddr_idx == NULL) {
+		if ((hostaddr_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
 			free(tpul->pul);
 			free(tpul);
 			strcat(log_buffer, "out of  memory");
 			return (PBSE_SYSTEM);
 		}
 	}
-	if (tree_add_del(hostaddr_tree, phost, tpul, TREE_OP_ADD) != 0) {
+	if (pbs_idx_insert(hostaddr_idx, phost, tpul) != PBS_IDX_RET_OK) {
 		free(tpul->pul);
 		free(tpul);
 		return (PBSE_SYSTEM);
@@ -2670,7 +2661,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 
 /**
  * @brief
- * 		remove the cached ip addresses of a mom from the host tree and the ipaddrs tree
+ * 		remove the cached ip addresses of a mom from the host index and the ipaddrs index
  *
  * @param[in]	pmom - valid ptr to the mom info
  *
@@ -2681,16 +2672,17 @@ make_host_addresses_list(char *phost, u_long **pul)
 int
 remove_mom_ipaddresses_list(mominfo_t *pmom)
 {
-	/* take ipaddrs from ipaddrs cache tree */
-	if (hostaddr_tree != NULL) {
-		struct pul_store *tpul;
+	/* take ipaddrs from ipaddrs cache index */
+	if (hostaddr_idx != NULL) {
+		struct pul_store *tpul = NULL;
+		void *phost = &pmom->mi_host;
 
-		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, pmom->mi_host)) != NULL) {
+		if (pbs_idx_find(hostaddr_idx, &phost, (void **)&tpul, NULL) == PBS_IDX_RET_OK) {
 			u_long *pul;
 			for (pul = tpul->pul; *pul; pul++)
 				tdelete2(*pul, pmom->mi_port, &ipaddrs);
 
-			if (tree_add_del(hostaddr_tree, pmom->mi_host, NULL, TREE_OP_DEL) != 0)
+			if (pbs_idx_delete(hostaddr_idx, pmom->mi_host) != PBS_IDX_RET_OK)
 				return (PBSE_SYSTEM);
 
 			free(tpul->pul);
@@ -2804,10 +2796,9 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			return (PBSE_SYSTEM);
 		}
 
-		/* create node tree if not already done */
-		if (node_tree == NULL ) {
-			node_tree = create_tree(AVL_NO_DUP_KEYS, 0);
-			if (node_tree == NULL ) {
+		/* create node index if not already done */
+		if (node_idx == NULL) {
+			if ((node_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
 				svr_totnodes--;
 				free_pnode(pnode);
 				free(pname);
@@ -2815,8 +2806,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			}
 		}
 
-		/* add to node tree */
-		if (tree_add_del(node_tree, pname, pnode, TREE_OP_ADD) != 0) {
+		/* add to node to index */
+		if (pbs_idx_insert(node_idx, pname, pnode) != PBS_IDX_RET_OK) {
 			svr_totnodes--;
 			free_pnode(pnode);
 			free(pname);
@@ -3559,16 +3550,15 @@ int
 is_entity_resource_set(attribute *pattr, char *resc_name)
 {
 	if (pattr->at_flags & ATR_VFLAG_SET) {
-		pbs_entlim_key_t  *pkey = NULL;
+		char *key = NULL;
 		void *ctx = pattr->at_val.at_enty.ae_tree;
 		char resc[PBS_MAX_RESC_NAME+1];
 
-		while ((pkey=entlim_get_next(pkey, ctx)) != NULL) {
-			if (entlim_resc_from_key(pkey, resc, PBS_MAX_RESC_NAME) == 0)
-				if (strcmp(resc, resc_name) == 0) {
-					free(pkey);
+		while (entlim_get_next(ctx, (void **)&key) != NULL) {
+			if (entlim_resc_from_key(key, resc, PBS_MAX_RESC_NAME) == 0) {
+				if (strcmp(resc, resc_name) == 0)
 					return 1;
-				}
+			}
 		}
 	}
 	return 0;

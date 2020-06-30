@@ -655,3 +655,19 @@
    fun:set_tpp_config
    fun:main
 }
+{
+   From PBS - Suppress intentional unfreed avl tree tls data
+   Memcheck:Leak
+   fun:calloc
+   fun:get_avl_tls
+   fun:avl_*
+   ...
+}
+{
+   From PBS - Suppress intentional unfreed tpp tls data
+   Memcheck:Leak
+   fun:calloc
+   fun:tpp_get_tls
+   fun:work
+   ...
+}

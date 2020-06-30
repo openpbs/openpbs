@@ -7251,7 +7251,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	int page_size_KB = 0;
 	int shift_count = 0;
 	int res = 0;
-	long page_count, avl_mem;
+	long page_count, avail_mem;
 	char *invalid_char_ptr;
 
 	brp = d->brp;
@@ -7404,8 +7404,8 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 
-			avl_mem = page_size_KB * page_count;
-			snprintf(node_group->avlmem, BASIL_STRING_SHORT, "%ld", avl_mem);
+			avail_mem = page_size_KB * page_count;
+			snprintf(node_group->avlmem, BASIL_STRING_SHORT, "%ld", avail_mem);
 		} else if (strcmp(BASIL_ATR_ACCELS, *np) == 0) {
 			if (*node_group->accel_name != '\0') {
 				parse_err_multiple_attrs(d, *np);

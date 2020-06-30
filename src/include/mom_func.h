@@ -229,8 +229,8 @@ extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);
 extern void send_join_job_restart(int, eventent *, int, job *, pbs_list_head *);
-extern int send_resc_used_to_ms(int stream, char *jobid);
-extern int recv_resc_used_from_sister(int stream, char *jobid, int nodeidx);
+extern int send_resc_used_to_ms(int stream, job *pjob);
+extern int recv_resc_used_from_sister(int stream, job *pjob, int nodeidx);
 extern int  is_comm_up(int);
 
 /* Defines for pe_io_type, see run_pelog() */
@@ -325,6 +325,7 @@ enum stagefile_errcode {
 struct copy_info {
 	pbs_list_link al_link;		/* link to all copy info list */
 	char *jobid;			/* job id to which this info belongs */
+	job *pjob;			/* pointer to job structure */
 	struct work_task *ptask;	/* pointer to work task */
 	struct batch_request *preq;	/* pointer to batch request */
 	pio_handles pio;		/* process info struct */

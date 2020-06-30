@@ -49,11 +49,9 @@ extern "C" {
 #include <pthread.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "avltree.h"
 #include "log.h"
 
 #include "tpp.h"
-
 
 #ifndef WIN32
 
@@ -326,15 +324,15 @@ typedef struct {
  * Structure to hold information about a router
  */
 typedef struct {
-	char *router_name; /* router host id */
+	char *router_name;	/* router host id */
 	tpp_addr_t router_addr; /* primary ip address of router */
-	int conn_fd;     /* fd - in case there is direct connection to router */
-	time_t conn_time; /* time at which connection completed */
-	int initiator;   /* we initialized the connection to the router */
-	int state;       /* 1 - connected or 0 - disconnected */
-	int delay;       /* time delay in re-connecting to the router */
-	int index;		 /* the preference of data going over this connection */
-	AVL_IX_DESC *AVL_my_leaves; /* leaves connected to this router, used by comm only */
+	int conn_fd;		/* fd - in case there is direct connection to router */
+	time_t conn_time;	/* time at which connection completed */
+	int initiator;		/* we initialized the connection to the router */
+	int state;		/* 1 - connected or 0 - disconnected */
+	int delay;		/* time delay in re-connecting to the router */
+	int index;		/* the preference of data going over this connection */
+	void *my_leaves_idx;	/* leaves connected to this router, used by comm only */
 } tpp_router_t;
 
 /*
@@ -405,8 +403,6 @@ typedef struct {
 	void *td;
 	char tpplogbuf[TPP_LOGBUF_SZ];
 	char tppstaticbuf[TPP_LOGBUF_SZ];
-	void *log_data; /* data created by the logging layer for the TPP threads */
-	void *avl_data; /* data created by the avl tree functions for the TPP threads */
 } tpp_tls_t;
 
 typedef struct {

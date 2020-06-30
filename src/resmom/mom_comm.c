@@ -2728,7 +2728,7 @@ static	char	bail_format[] = "dis read failed: %s";
  *	'stream' descriptor.
  *
  * @param[in] stream - descriptor pathway to MS.
- * @param[in] jobid - the jobid of the owning job.
+ * @param[in] pjob - poineter to owning job structure
  *
  * @return  error code
  * @retval -1     error
@@ -2736,76 +2736,57 @@ static	char	bail_format[] = "dis read failed: %s";
  *
  */
 int
-send_resc_used_to_ms(int stream, char *jobid)
+send_resc_used_to_ms(int stream, job *pjob)
 {
-	attribute		*at;
-	attribute_def		*ad;
-	svrattrl		*pal;
-	svrattrl		*nxpal;
-	pbs_list_head		lhead;
-	pbs_list_head		send_head;
-	extern	int		resc_access_perm;
-	svrattrl		 *psatl;
-	job			*pjob;
-	int			ret;
+	extern int resc_access_perm;
+	attribute *at;
+	attribute_def *ad;
+	svrattrl *pal;
+	svrattrl *nxpal;
+	pbs_list_head lhead;
+	pbs_list_head send_head;
+	svrattrl *psatl;
+	int ret;
 
-	if (jobid == NULL)
+	if (pjob == NULL || stream == -1)
 		return (-1);
 
-	if (stream == -1)
+	at = &pjob->ji_wattr[(int) JOB_ATR_resc_used];
+	if (at->at_type != ATR_TYPE_RESC)
 		return (-1);
-
-	pjob = find_job(jobid);
-	if (pjob == NULL)
-		return (-1);
-
-	at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
-	if (at->at_type != ATR_TYPE_RESC) {
-		return (-1);
-	}
-	ad = &job_attr_def[(int)JOB_ATR_resc_used];
+	ad = &job_attr_def[(int) JOB_ATR_resc_used];
 	resc_access_perm = ATR_DFLAG_MGRD;
 
 	memset(&lhead, 0, sizeof(lhead));
 	CLEAR_HEAD(lhead);
 
-	(void)ad->at_encode(at,
-		&lhead, ad->at_name,
-		NULL, ATR_ENCODE_CLIENT, NULL);
-
+	(void) ad->at_encode(at, &lhead, ad->at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 	memset(&send_head, 0, sizeof(send_head));
 	CLEAR_HEAD(send_head);
 
-	pal = (svrattrl *)GET_NEXT(lhead);
-
+	pal = (svrattrl *) GET_NEXT(lhead);
 	while (pal != NULL) {
-		nxpal = (struct svrattrl *)GET_NEXT(pal->al_link);
+		nxpal = (struct svrattrl *) GET_NEXT(pal->al_link);
 
 		/* no need to track the resources automatically sent to MS */
 		/* like 'cput', 'mem', and 'cpupercent',but only those */
 		/* resources that are set in a mom hook */
-		if (((pal->al_flags & ATR_VFLAG_HOOK) != 0) && \
-		     (strcmp(pal->al_resc, "cput") != 0) && \
-		     (strcmp(pal->al_resc, "mem") != 0) && \
-		     (strcmp(pal->al_resc, "cpupercent") != 0)) {
-			if (add_to_svrattrl_list(
-				&send_head,
-				pal->al_name,
-				pal->al_resc,
-				pal->al_value,
-				pal->al_op, NULL) == -1) {
+		if ((pal->al_flags & ATR_VFLAG_HOOK) != 0 &&
+		    strcmp(pal->al_resc, "cput") != 0 &&
+		    strcmp(pal->al_resc, "mem") != 0 &&
+		    strcmp(pal->al_resc, "cpupercent") != 0) {
+			if (add_to_svrattrl_list(&send_head, pal->al_name, pal->al_resc,
+						 pal->al_value, pal->al_op, NULL) == -1) {
 				free_attrlist(&send_head);
 				free_attrlist(&lhead);
 				return (-1);
 			}
-
 		}
 		pal = nxpal;
 	}
 	free_attrlist(&lhead);
 
-	psatl = (svrattrl *)GET_NEXT(send_head);
-
+	psatl = (svrattrl *) GET_NEXT(send_head);
 	if (psatl == NULL) {
 		free_attrlist(&send_head);
 		return (-1);
@@ -2825,7 +2806,7 @@ send_resc_used_to_ms(int stream, char *jobid)
  *	internal nodes resources table indexed by 'nodeidx'.
  *
  * @param[in] stream - descriptor pathway
- * @param[in] jobid - the jobid of the owning job.
+ * @param[in] pjob - pointer to owning job structure
  * @param[in] nodeidx - node index to the job's internal resources table
  *			where received values will be saved.
  *			resources values received from
@@ -2836,47 +2817,32 @@ send_resc_used_to_ms(int stream, char *jobid)
  *
  */
 int
-recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
+recv_resc_used_from_sister(int stream, job *pjob, int nodeidx)
 {
-	attribute_def		*pdef;
-	pbs_list_head		lhead;
-	extern	int		resc_access_perm;
-	svrattrl		*psatl;
-	job			*pjob;
-	int			errcode;
+	extern int resc_access_perm;
+	attribute_def *pdef;
+	pbs_list_head lhead;
+	svrattrl *psatl;
+	int errcode;
 
-	if (jobid == NULL)
+	if (pjob == NULL || stream == -1 || nodeidx < 0)
 		return (-1);
 
-	if (stream == -1)
-		return (-1);
-
-	if (nodeidx < 0)
-		return (-1);
-
-	pjob = find_job(jobid);
-	if (pjob == NULL)
-		return (-1);
-
-
-	pdef = &job_attr_def[(int)JOB_ATR_resc_used];
+	pdef = &job_attr_def[(int) JOB_ATR_resc_used];
 
 	CLEAR_HEAD(lhead);
 	if (decode_DIS_svrattrl(stream, &lhead) != DIS_SUCCESS) {
 		sprintf(log_buffer, "decode_DIS_svrattrl failed");
 		return (-1);
 	}
-	if  ((pjob->ji_resources[nodeidx].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
+	if ((pjob->ji_resources[nodeidx].nr_used.at_flags & ATR_VFLAG_SET) != 0)
 		pdef->at_free(&pjob->ji_resources[nodeidx].nr_used);
-	}
 	/* decode attributes from request into job structure */
-	clear_attr(&pjob->ji_resources[nodeidx].nr_used,
-		&job_attr_def[JOB_ATR_resc_used]);
+	clear_attr(&pjob->ji_resources[nodeidx].nr_used, &job_attr_def[JOB_ATR_resc_used]);
 
 	resc_access_perm = READ_WRITE;
-	for (psatl = (svrattrl *)GET_NEXT(lhead);
-		psatl;
-		psatl = (svrattrl *)GET_NEXT(psatl->al_link)) {
+	psatl = (svrattrl *) GET_NEXT(lhead);
+	for (; psatl; psatl = (svrattrl *) GET_NEXT(psatl->al_link)) {
 
 		if ((psatl->al_name == NULL) || (psatl->al_resc == NULL)) {
 			free_attrlist(&lhead);
@@ -2889,10 +2855,9 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
 		}
 
 		/* decode attribute */
-		errcode = pdef->at_decode(
-			&pjob->ji_resources[nodeidx].nr_used,
-			psatl->al_name, psatl->al_resc,
-			psatl->al_value);
+		errcode = pdef->at_decode(&pjob->ji_resources[nodeidx].nr_used,
+					  psatl->al_name, psatl->al_resc,
+					  psatl->al_value);
 		/* Unknown resources still get decoded */
 		/* under "unknown" resource def */
 		if ((errcode != 0) && (errcode != PBSE_UNKRESC)) {
@@ -2900,10 +2865,8 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
 			return (-1);
 		}
 
-		if (psatl->al_op == DFLT) {
-			pjob->ji_resources[nodeidx].nr_used.at_flags |=
-				ATR_VFLAG_DEFLT;
-		}
+		if (psatl->al_op == DFLT)
+			pjob->ji_resources[nodeidx].nr_used.at_flags |= ATR_VFLAG_DEFLT;
 	}
 
 	free_attrlist(&lhead);
@@ -3438,6 +3401,10 @@ im_request(int stream, int version)
 			 */
 			if (mom_do_poll(pjob))
 				append_link(&mom_polljobs, &pjob->ji_jobque, pjob);
+			if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_RET_OK) {
+				log_joberr(PBSE_INTERNAL, __func__, "Failed to add job in index during join job", pjob->ji_qs.ji_jobid);
+				goto join_err;
+			}
 			append_link(&svr_alljobs, &pjob->ji_alljobs, pjob);
 
 			/*
@@ -4204,7 +4171,7 @@ join_err:
 				break;
 			ret = diswul(stream, resc_used(pjob, "cpupercent", gettime));
 
-			send_resc_used_to_ms(stream, jobid);
+			send_resc_used_to_ms(stream, pjob);
 			break;
 
 #ifdef PMIX
@@ -4673,39 +4640,35 @@ join_err:
 					 ** )
 					 */
 					if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
-						sprintf(log_buffer,
-							"got KILL_JOB OKAY and I'm not MS");
+						sprintf(log_buffer, "got KILL_JOB OKAY and I'm not MS");
 						goto err;
 					}
 					DBPRT(("%s: KILL_JOB %s OKAY\n", __func__, jobid))
 
-					pjob->ji_resources[nodeidx-1].nr_cput =
-						disrul(stream, &ret);
+					pjob->ji_resources[nodeidx - 1].nr_cput = disrul(stream, &ret);
 					BAIL("OK-KILL_JOB cput")
-					pjob->ji_resources[nodeidx-1].nr_mem =
-						disrul(stream, &ret);
+					pjob->ji_resources[nodeidx - 1].nr_mem = disrul(stream, &ret);
 					BAIL("OK-KILL_JOB mem")
-					pjob->ji_resources[nodeidx-1].nr_cpupercent =
-						disrul(stream, &ret);
+					pjob->ji_resources[nodeidx - 1].nr_cpupercent = disrul(stream, &ret);
 					BAIL("OK-KILL_JOB cpupercent")
 
 					DBPRT(("%s: %s FINAL from %d cpu %lu sec mem %lu kb\n",
-						__func__, jobid, nodeidx,
-						pjob->ji_resources[nodeidx-1].nr_cput,
-						pjob->ji_resources[nodeidx-1].nr_mem))
-					recv_resc_used_from_sister(stream, jobid, nodeidx-1);
+					       __func__, jobid, nodeidx,
+					       pjob->ji_resources[nodeidx - 1].nr_cput,
+					       pjob->ji_resources[nodeidx - 1].nr_mem))
+					recv_resc_used_from_sister(stream, pjob, nodeidx - 1);
 
 					/* don't close stream in case other jobs use it */
 					np->hn_sister = SISTER_KILLDONE;
-					for (i=1; i<pjob->ji_numnodes; i++) {
-						if ((reliable_job_node_find(&pjob->ji_failed_node_list, pjob->ji_hosts[i].hn_host) == NULL) && (pjob->ji_hosts[i].hn_sister == SISTER_OKAY))
+					for (i = 1; i < pjob->ji_numnodes; i++) {
+						if (reliable_job_node_find(&pjob->ji_failed_node_list, pjob->ji_hosts[i].hn_host) == NULL &&
+						    pjob->ji_hosts[i].hn_sister == SISTER_OKAY)
 							break;
 					}
-					if (i == pjob->ji_numnodes) {	/* all dead */
-						DBPRT(("%s: ALL DONE, set EXITING job %s\n",
-							__func__, jobid))
+					if (i == pjob->ji_numnodes) { /* all dead */
+						DBPRT(("%s: ALL DONE, set EXITING job %s\n", __func__, jobid))
 						if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_KILLSIS) {
-							pjob->ji_qs.ji_state    = JOB_STATE_EXITING;
+							pjob->ji_qs.ji_state = JOB_STATE_EXITING;
 							pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
 							exiting_tasks = 1;
 						}
@@ -4886,26 +4849,22 @@ join_err:
 					 ** )
 					 */
 					if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
-						sprintf(log_buffer,
-							"got POLL_JOB and I'm not MS");
+						sprintf(log_buffer, "got POLL_JOB and I'm not MS");
 						goto err;
 					}
 					exitval = disrsi(stream, &ret);
 					BAIL("OK-POLL_JOB exitval")
-					pjob->ji_resources[nodeidx-1].nr_cput =
-						disrul(stream, &ret);
+					pjob->ji_resources[nodeidx - 1].nr_cput = disrul(stream, &ret);
 					BAIL("OK-POLL_JOB cput")
-					pjob->ji_resources[nodeidx-1].nr_mem =
-						disrul(stream, &ret);
+					pjob->ji_resources[nodeidx - 1].nr_mem = disrul(stream, &ret);
 					BAIL("OK-POLL_JOB mem")
-					pjob->ji_resources[nodeidx-1].nr_cpupercent =
-						disrul(stream, &ret);
+					pjob->ji_resources[nodeidx - 1].nr_cpupercent = disrul(stream, &ret);
 					BAIL("OK-POLL_JOB cpupercent")
-					recv_resc_used_from_sister(stream, jobid, nodeidx-1);
+					recv_resc_used_from_sister(stream, pjob, nodeidx - 1);
 					DBPRT(("%s: POLL_JOB %s OKAY kill %d cpu %lu mem %lu\n",
-						__func__, jobid, exitval,
-						pjob->ji_resources[nodeidx-1].nr_cput,
-						pjob->ji_resources[nodeidx-1].nr_mem))
+					       __func__, jobid, exitval,
+					       pjob->ji_resources[nodeidx - 1].nr_cput,
+					       pjob->ji_resources[nodeidx - 1].nr_mem))
 
 					if (exitval)
 						pjob->ji_nodekill = np->hn_node;

@@ -110,7 +110,6 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
-#include	"avltree.h"
 #ifndef	WIN32
 #ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
@@ -335,6 +334,8 @@ typedef struct kp kp;
 
 pbs_list_head	killed_procs;		/* procs killed by dorestrict_user() */
 #endif /* localmod 011 */
+
+void *jobs_idx = NULL;
 
 unsigned long	hook_action_id = 0;
 
@@ -1048,8 +1049,9 @@ die(int sig)
 			"abnormal termination");
 
 	cleanup();
-	log_close(1);
+	pbs_idx_destroy(jobs_idx);
 	unload_auths();
+	log_close(1);
 #ifdef	WIN32
 	ExitThread(1);
 #else
@@ -1072,36 +1074,19 @@ die(int sig)
 void
 initialize(void)
 {
-	unsigned int	i;
-	int		avl;
-	AVL_IX_DESC	ix;
-	char		hook_msg[HOOK_MSG_SIZE+1];
-	char		hook_buf[HOOK_BUF_SIZE+1];
-	mom_hook_input_t  hook_input;
+	unsigned int i;
+	void *temp_idx;
+	char hook_msg[HOOK_MSG_SIZE + 1];
+	char hook_buf[HOOK_BUF_SIZE + 1];
+	mom_hook_input_t hook_input;
 	mom_hook_output_t hook_output;
-	int		hook_errcode = 0;
-	int		hook_rc = 0;
-	hook		*last_phook = NULL;
-	unsigned int	hook_fail_action = 0;
-	int		ret;
-
-	/*
-	 * Each node of the AVL tree has a key, the hostname in this
-	 * case. The default length of the key is defined in avltree.h,
-	 * but then overridden here by the union definition of xxrp. The
-	 * rp variable then points to this structure. When memory beyond
-	 * the default lenfth of the AVL_IX_REC is accessed, it must be
-	 * through xxrp or the compiler will complain about accessing
-	 * memory beyond the size of the structure.
-	 *
-	 */
-	union {
-		AVL_IX_REC	xrp;
-		char		buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
-	} xxrp;
-	AVL_IX_REC *rp = &xxrp.xrp;
-	char	none[] = "<unset>";
-	enum vnode_sharing	hostval;
+	int hook_errcode = 0;
+	int hook_rc = 0;
+	hook *last_phook = NULL;
+	unsigned int hook_fail_action = 0;
+	int ret;
+	char none[] = "<unset>";
+	enum vnode_sharing hostval;
 
 	/* set limits that can be modified by the Admin */
 #ifndef	WIN32 /* ---- UNIX ------------------------------------------*/
@@ -1308,14 +1293,18 @@ initialize(void)
 	 *	Check that there are no bad combinations of sharing values
 	 *	across the vnodes.
 	 */
-	avl_create_index(&ix, AVL_NO_DUP_KEYS, 0);
+	if ((temp_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Failed to create index for checking sharing value on vnodes");
+		die(0);
+	}
 
-	for (i=0; i < vnlp->vnl_used; i++) {
-		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
-		char	*host = attr_exist(vnrlp, "resources_available.host");
-		char	*share;
-		char	*exclhost = none;
-		enum vnode_sharing	shareval;
+	for (i = 0; i < vnlp->vnl_used; i++) {
+		vnal_t *vnrlp = VNL_NODENUM(vnlp, i);
+		char *host = attr_exist(vnrlp, "resources_available.host");
+		char *share;
+		char *exclhost = none;
+		char *exclhost_frmidx = none;
+		enum vnode_sharing shareval;
 
 		if (host == NULL)
 			/* mom_host and mom_short_name are different!! */
@@ -1328,28 +1317,20 @@ initialize(void)
 			exclhost = vnode_sharing_to_str(shareval);
 
 		/* search for host */
-		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", host);
-
-		/* look to see if host has a sharing value saved */
-		avl = avl_find_key(rp, &ix);
-		if (avl != AVL_IX_OK) {
-			/*
-			 * Not found so save the one we got.
-			 */
-			rp->recptr = exclhost;
-			if (avl_add_key(rp, &ix) != AVL_IX_OK) {
-				log_err(errno, __func__, "avl_add_key");
+		if (pbs_idx_find(temp_idx, (void **)&host, (void **)&exclhost_frmidx, NULL) != PBS_IDX_RET_OK) {
+			if (pbs_idx_insert(temp_idx, host, (void *)exclhost) != PBS_IDX_RET_OK) {
+				log_errf(errno, __func__, "Failed to add exechost = %s for host %s in index", exclhost, host);
 				die(0);
 			}
 			continue;
 		}
 
 		/* the host exists, check if the saved value is the same */
-		if (rp->recptr == (void *)exclhost)
+		if (exclhost_frmidx == exclhost)
 			continue;
 
 		/* they are different, now check if it is a bad combo */
-		hostval = str_to_vnode_sharing(rp->recptr);
+		hostval = str_to_vnode_sharing(exclhost_frmidx);
 		if (hostval == VNS_DFLT_EXCLHOST ||
 			hostval == VNS_FORCE_EXCLHOST ||
 			shareval == VNS_DFLT_EXCLHOST ||
@@ -1359,14 +1340,14 @@ initialize(void)
 				"for vnode %s with sharing=%s which "
 				"is set for other vnodes on host %s",
 				exclhost, vnrlp->vnal_id,
-				(char *)rp->recptr, host);
+				exclhost_frmidx, host);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
 				LOG_NOTICE, __func__, log_buffer);
 			die(0);
 		}
 	}
 
-	avl_destroy_index(&ix);
+	pbs_idx_destroy(temp_idx);
 
 	if (joinjob_alarm_time == -1)
 		joinjob_alarm_time = DEFAULT_JOINJOB_ALARM;
@@ -8068,7 +8049,7 @@ net_down_handler(void *data)
  * 	Can be used for any such scenario.
  *
  * @param[in] mode -	reset mode is to bring it back to bursting mode
- * 
+ *
  * @return int
  * @retval >0 : time delta
  * @retval 0 : only in case of reset mode.
@@ -8784,13 +8765,13 @@ main(int argc, char *argv[])
 	}
 #endif
 
-	/* 
+	/*
 	 * Set mom_host to gethostname(), if gethostname() fail, then use PBS_MOM_NODE_NAME
 	 * if it is defined and complies to RFC 952/1123
 	 */
 	c = gethostname(mom_host, (sizeof(mom_host) - 1));
 	if (c != 0) {
-		/* 
+		/*
 		 * backup plan
 		 * use PBS_MOM_NODE_NAME as hostname if it is defined and complies to RFC 952/1123
 		 */
@@ -9128,6 +9109,12 @@ main(int argc, char *argv[])
 #endif /* ! WIN32 end -------------------------------------------------------*/
 
 	/* initialize variables */
+
+	if ((jobs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating jobs index failed!");
+		fprintf(stderr, "Creating jobs index failed!\n");
+		return (-1);
+	}
 
 
 	CLEAR_HEAD(svr_newjobs);
@@ -10110,6 +10097,8 @@ main(int argc, char *argv[])
 
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, "Is down");
+	pbs_idx_destroy(jobs_idx);
+	unload_auths();
 	log_close(1);
 #ifdef	WIN32
 	mom_lock(lockfds, F_UNLCK);     /* unlock  */
@@ -10117,13 +10106,11 @@ main(int argc, char *argv[])
 	(void)unlink("mom.lock");
 	CloseDesktop(pbs_desktop);
 	CloseWindowStation(pbs_winsta);
-	destroy_env_avltree();
 #endif
 
 #ifdef PYTHON
 	Py_Finalize();
 #endif
-	unload_auths();
 	return (0);
 }
 

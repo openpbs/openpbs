@@ -115,7 +115,6 @@ extern int recreate_exec_vnode(job *, char *, char *, char *, int);
 extern void unset_extra_attributes(job *);
 extern int node_delete_db(struct pbsnode *);
 extern int pbsd_init(int);
-extern int resv_save_db(resc_resv *);
 extern int svr_chk_histjob(job *);
 extern int chk_and_update_db_svrhost(void);
 extern int apply_aoe_inchunk_rules(resource *, attribute *, void *, int);
@@ -132,8 +131,6 @@ extern void reply_preempt_jobs_request(int, int, struct job *);
 extern int copy_params_from_job(char *, resc_resv *);
 extern int confirm_resv_locally(resc_resv *, struct batch_request *, char *);
 extern int set_select_and_place(int, void *, attribute *);
-extern pbs_queue *find_resvqueuebyname(char *);
-extern resc_resv *find_resv_by_quename(char *);
 extern int make_schedselect(attribute *, resource *, pbs_queue *, attribute *);
 extern long long get_next_svr_sequence_id(void);
 
@@ -141,10 +138,7 @@ extern long long get_next_svr_sequence_id(void);
 extern int find_prov_vnode_list(job *, exec_vnode_listtype *, char **);
 #endif /* _PROVISION_H */
 
-#if !defined(PBS_MOM) && defined(_AVLTREE_H)
-extern AVL_IX_DESC *AVL_jctx;
-extern AVL_IX_REC *svr_avlkey_create(const char *);
-#endif
+extern void *jobs_idx;
 
 #ifdef _RESERVATION_H
 extern int set_nodes(void *, int, char *, char **, char **, char **, int, int);

@@ -1142,25 +1142,22 @@ extern int   do_tolerate_node_failures(job *);
  */
 #ifdef PBS_MOM
 
-extern job  *job_recov_fs(char *);
-extern int   job_save_fs(job *);
+extern job *job_recov_fs(char *);
+extern int job_save_fs(job *);
 
-#define job_save job_save_fs
+#define job_save  job_save_fs
 #define job_recov job_recov_fs
 
 #else
 
-extern job  *job_recov_db(char *, job *pjob);
-extern int  job_save_db(job *);
+extern job *job_recov_db(char *, job *pjob);
+extern int job_save_db(job *);
 
-#define job_save job_save_db
+#define job_save  job_save_db
 #define job_recov job_recov_db
 
-extern char *get_job_credid(char *jobid);
-
+extern char *get_job_credid(char *);
 #endif
-
-
 
 #ifdef	_BATCH_REQUEST_H
 extern job  *chk_job_request(char *, struct batch_request *, int *, int *);

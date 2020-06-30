@@ -135,7 +135,7 @@
 #include "net_connect.h"
 #include "cmds.h"
 #include "pbs_license.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
 extern int h_errno;
 #endif
@@ -154,7 +154,7 @@ extern unsigned int pbs_rm_port;
 extern mominfo_time_t  mominfo_time;
 extern char	*resc_in_err;
 extern char	server_host[];
-extern AVL_IX_DESC *node_tree;
+extern void *node_idx;
 extern time_t	 time_now;
 extern int write_single_node_mom_attr(struct pbsnode *np);
 
@@ -167,14 +167,15 @@ static void	remove_node_topology(char *);
  * 		find_nodebyname() - find a node host by its name
  * @param[in]	nodename	- node being searched
  *
- * @return	pbsnode
- * @retval	NULL	- failure
+ * @return	strcut pbsnode *
+ * @retval	!NULL - success
+ * @retval	NULL  - failure
  */
-
-struct pbsnode	  *find_nodebyname(nodename)
-char *nodename;
+struct pbsnode *
+find_nodebyname(char *nodename)
 {
-	char		*pslash;
+	char *pslash;
+	struct pbsnode *node = NULL;
 
 	if (nodename == NULL)
 		return NULL;
@@ -182,10 +183,11 @@ char *nodename;
 		nodename++;	/* skip over leading paren */
 	if ((pslash = strchr(nodename, (int)'/')) != NULL)
 		*pslash = '\0';
-	if (node_tree == NULL)
+	if (node_idx == NULL)
 		return NULL;
-
-	return ((struct pbsnode *) find_tree(node_tree, nodename));
+	if (pbs_idx_find(node_idx, (void **)&nodename, (void **)&node, NULL) != PBS_IDX_RET_OK)
+		return NULL;
+	return node;
 }
 
 
@@ -643,9 +645,8 @@ effective_node_delete(struct pbsnode *pnode)
 	remove_node_topology(pnode->nd_name);
 
 	/* delete the node from the node tree as well as the node array */
-	if (node_tree != NULL) {
-		tree_add_del(node_tree, pnode->nd_name, NULL, TREE_OP_DEL);
-	}
+	if (node_idx != NULL)
+		pbs_idx_delete(node_idx, pnode->nd_name);
 
 	for (iht=pnode->nd_arr_index + 1; iht < svr_totnodes; iht++) {
 		pbsndlist[iht - 1] = pbsndlist[iht];
@@ -760,7 +761,7 @@ static char *nodeerrtxt = "Node description file update failed";
 
 /**
  * @brief
- *		Static function to update the specified mom in the db. 
+ *		Static function to update the specified mom in the db.
  *
  * @see
  * 		save_nodes_db, save_nodes_db_inner

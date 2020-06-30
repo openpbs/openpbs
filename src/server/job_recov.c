@@ -160,7 +160,7 @@ job_save_fs(job *pjob)
 	(void)strcpy(namebuf2, namebuf1);	/* setup for later */
 	(void)strcat(namebuf1, JOB_FILE_SUFFIX);
 
-	
+
 
 	if (pjob->ji_qs.ji_jsversion != JSVERSION) {
 		/* version of job structure changed, force full write */
@@ -511,4 +511,3 @@ job_recov_fs(char *filename)
 
 	return (pj);
 }
-

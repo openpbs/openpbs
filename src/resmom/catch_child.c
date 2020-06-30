@@ -1729,8 +1729,7 @@ end_loop:
 					resc_used(pjob, "mem", getsize));
 				(void)diswul(stream,
 					resc_used(pjob, "cpupercent", gettime));
-				(void)send_resc_used_to_ms(stream,
-							pjob->ji_qs.ji_jobid);
+				(void)send_resc_used_to_ms(stream, pjob);
 				(void)dis_flush(stream);
 				pjob->ji_obit = TM_NULL_EVENT;
 			}
@@ -1914,7 +1913,7 @@ get_servername_random(unsigned int *port)
 /**
  * @brief
  * 	send IS_HELLOSVR message to Server.
- * 
+ *
  * @param[in]	stream	- connection stream
  *
  * @par
@@ -2039,6 +2038,11 @@ init_abort_jobs(int recover)
 		/* To get homedir info */
 		pj->ji_grpcache = NULL;
 		check_pwd(pj);
+		if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_RET_OK) {
+			log_joberr(PBSE_INTERNAL, __func__, "Failed to add job in index during recovery", pj->ji_qs.ji_jobid);
+			job_free(pj);
+			continue;
+		}
 		append_link(&svr_alljobs, &pj->ji_alljobs, pj);
 		job_nodes(pj);
 		task_recov(pj);

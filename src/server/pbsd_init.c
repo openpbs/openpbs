@@ -104,7 +104,7 @@
 #include "pbs_nodes.h"
 #include "tracking.h"
 #include "provision.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 #include "svrfunc.h"
 #include "acct.h"
 #include "pbs_version.h"
@@ -606,7 +606,7 @@ pbsd_init(int type)
 		/* end the transaction */
 		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 			return (-1);
-		
+
 	} else {	/* init type is "create" */
 		if (rc == 0) {		/* server was loaded */
 			need_y_response(type, "server database exists");
@@ -699,6 +699,11 @@ pbsd_init(int type)
 	 * 8A. If not a "create" initialization, recover queues.
 	 *    If a create, remove any queues that might be there.
 	 */
+	if ((queues_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating queue index failed!");
+		return (-1);
+	}
+
 	server.sv_qs.sv_numque = 0;
 
 	/* start a transaction */
@@ -766,6 +771,10 @@ pbsd_init(int type)
 		return (-1);
 
 	/* load reservations */
+	if ((resvs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating reservations index failed!");
+		return (-1);
+	}
 	obj.pbs_db_obj_type = PBS_DB_RESV;
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
 	state = pbs_db_cursor_init(conn, &obj, NULL);
@@ -808,14 +817,12 @@ pbsd_init(int type)
 	/*
 	 * 9. If not "create" or "clean" recovery, recover the jobs.
 	 *    If a create or clean recovery, delete any jobs.
-	 *    Before job creation/recovery, create the AVL tree.
+	 *    Before job creation/recovery, create the jobs index.
 	 */
-	AVL_jctx = (AVL_IX_DESC *) malloc(sizeof(AVL_IX_DESC));
-	if (AVL_jctx == NULL) {
-		log_err(-1, __func__, "Creating AVL tree for job-lookup failed!");
+	if ((jobs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		log_err(-1, __func__, "Creating jobs index failed!");
 		return (-1);
 	}
-	avl_create_index(AVL_jctx, AVL_NO_DUP_KEYS, 0);
 
 	server.sv_qs.sv_numjobs = 0;
 
@@ -830,7 +837,7 @@ pbsd_init(int type)
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return (-1);
 	}
-	
+
 	/* Now, for each job found ... */
 	numjobs = 0;
 	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {

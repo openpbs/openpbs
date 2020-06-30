@@ -76,19 +76,13 @@ extern void	mom_CPUs_report();
 int
 create_vmap(void **ctxp)
 {
-	static AVL_IX_DESC	*pix;
-
 	assert(ctxp != NULL);
 
 	if (*ctxp == NULL) {
-		if ((pix = malloc(sizeof(AVL_IX_DESC))) == NULL) {
-			log_err(errno, __func__, "create_vmap malloc failed");
-			*ctxp = NULL;
-			return (0);
-		} else
-			*ctxp = pix;
-		if (avl_create_index(pix, AVL_NO_DUP_KEYS, 0))
+		if ((*ctxp = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Failed to create vnode map");
+			return 0;
+		}
 	}
 
 	return (1);
@@ -107,8 +101,8 @@ void
 destroy_vmap(void *ctx)
 {
 	assert(ctx != NULL);
-	avl_destroy_index(ctx);
-	free(ctx);
+	pbs_idx_destroy(ctx);
+	ctx = NULL;
 }
 
 /**
@@ -125,20 +119,10 @@ destroy_vmap(void *ctx)
 mominfo_t *
 find_vmapent_byID(void *ctx, const char *vnid)
 {
-	AVL_IX_REC      *pe;
+	mominfo_t *p;
 
-	if ((pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1)) != NULL) {
-		(void) strncpy(pe->key, vnid, PBS_MAXNODENAME);
-		if (avl_find_key(pe, ctx) == AVL_IX_OK)
-			return ((mominfo_t *) pe->recptr);
-	} else {
-		log_err(errno, __func__, "malloc pe failed");
-#ifdef	DEBUG
-		mom_CPUs_report();
-#endif	/* DEBUG */
-	}
-
-	free (pe);
+	if (pbs_idx_find(ctx, (void **)&vnid, (void **)&p, NULL) == PBS_IDX_RET_OK)
+		return p;
 	return NULL;
 }
 
@@ -159,21 +143,10 @@ find_vmapent_byID(void *ctx, const char *vnid)
 int
 add_vmapent_byID(void *ctx, const char *vnid, void *data)
 {
-	AVL_IX_REC     	*pe = NULL;
-	int rc = 0;
-
-	if ((pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1)) != NULL) {
-		(void) strncpy(pe->key, vnid, PBS_MAXNODENAME);
-		pe->recptr = data;
-		if (avl_add_key(pe, ctx) != AVL_IX_OK) {
-			rc = 1;
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "avl_add_key failed");
-		}
-	} else {
-		rc = 1;
-		log_err(errno, __func__, "malloc pe failed");
+	if (pbs_idx_insert(ctx, (void *)vnid, data) != PBS_IDX_RET_OK) {
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, "Failed to add vnode %s in vnodemap", vnid);
+		return 1;
 	}
-	free(pe);
-	return rc;
+	return 0;
 }
 #endif	/* PBS_MOM */

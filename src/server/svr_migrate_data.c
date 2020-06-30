@@ -151,19 +151,10 @@ char *path_scheddb_new;
 
 /* Private functions in this file */
 extern int chk_save_file(char *filename);
-extern void rm_files(char *dirname);
-
-/* extern definitions to older FS based object recovery functions */
-extern job *job_recov_fs(char *filename);
-extern void *job_or_resv_recov_fs(char *filename, int objtype);
 extern char *build_path(char *parent, char *name, char *sufix);
 
 #ifdef NAS /* localmod 005 */
-
-extern int resv_save_db(resc_resv *presv, int updatetype);
-
 extern int pbsd_init(int type);
-
 #endif /* localmod 005 */
 extern void init_server_attrs();
 

@@ -94,7 +94,7 @@
 #include <stdlib.h>
 #endif
 
-#include "avltree.h"
+#include "pbs_idx.h"
 #include "libpbs.h"
 #include "tpp_internal.h"
 #include "dis.h"
@@ -288,8 +288,8 @@ unsigned int high_sd = UNINITIALIZED_INT; /* the highest stream sd used */
 tpp_que_t freed_sd_queue;            /* last freed stream sd */
 int freed_queue_count = 0;
 
-/* AVL tree of streams - so that we can search faster inside it */
-AVL_IX_DESC *AVL_streams = NULL;
+/* index of streams - so that we can search faster inside it */
+void *streams_idx = NULL;
 
 /* following common structure is used to do a timed action on a stream */
 typedef struct {
@@ -784,9 +784,9 @@ tpp_init(struct tpp_config *cnf)
 	TPP_QUE_CLEAR(&strm_action_queue);
 	TPP_QUE_CLEAR(&freed_sd_queue);
 
-	AVL_streams = create_tree(AVL_DUP_KEYS_OK, sizeof(tpp_addr_t));
-	if (AVL_streams == NULL) {
-		tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for leaves");
+	streams_idx = pbs_idx_create(PBS_IDX_DUPS_OK, sizeof(tpp_addr_t));
+	if (streams_idx == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Failed to create index for leaves");
 		return -1;
 	}
 
@@ -948,7 +948,8 @@ tpp_open(char *dest_host, unsigned int port)
 	char *dest;
 	tpp_addr_t *addrs, dest_addr;
 	int count;
-	AVL_IX_REC *pkey;
+	void *pdest_addr = &dest_addr;
+	void *idx_ctx = NULL;
 
 	if ((dest = mk_hostname(dest_host, port)) == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory opening stream");
@@ -973,31 +974,19 @@ tpp_open(char *dest_host, unsigned int port)
 	 * elsewhere, either when network first dropped or if any message
 	 * comes to such a half open stream
 	 */
+	while (pbs_idx_find(streams_idx, &pdest_addr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+		if (memcmp(pdest_addr, &dest_addr, sizeof(tpp_addr_t)) != 0)
+			break;
+		if (strm->u_state == TPP_STRM_STATE_OPEN && strm->t_state == TPP_TRNS_STATE_OPEN && strm->used_locally == 1) {
+			tpp_unlock(&strmarray_lock);
+			pbs_idx_free_ctx(idx_ctx);
 
-	if ((pkey = avlkey_create(AVL_streams, &dest_addr))) {
-		if (avl_find_key(pkey, AVL_streams) == AVL_IX_OK) {
-			while (1) {
-				strm = pkey->recptr;
-				if (strm->u_state == TPP_STRM_STATE_OPEN &&
-						strm->t_state == TPP_TRNS_STATE_OPEN &&
-						strm->used_locally == 1) {
-					tpp_unlock(&strmarray_lock);
-					free(pkey);
-
-					TPP_DBPRT(("Stream for dest[%s] returned = %u", dest, strm->sd));
-					free(dest);
-					return strm->sd;
-				}
-
-				if (avl_next_key(pkey, AVL_streams) != AVL_IX_OK)
-					break;
-
-				if (memcmp(&pkey->key, &dest_addr, sizeof(tpp_addr_t)) != 0)
-					break;
-			}
+			TPP_DBPRT(("Stream for dest[%s] returned = %u", dest, strm->sd));
+			free(dest);
+			return strm->sd;
 		}
 	}
-	free(pkey);
+	pbs_idx_free_ctx(idx_ctx);
 
 	tpp_unlock(&strmarray_lock);
 
@@ -1338,7 +1327,7 @@ tpp_recv(int sd, void *data, int len)
 	tpp_que_elem_t *n;
 	tpp_packet_t *cur_pkt = NULL;
 	stream_t *strm;
-	int offset, avl_bytes, trnsfr_bytes;
+	int offset, avail_bytes, trnsfr_bytes;
 
 	errno = 0;
 	if (len == 0)
@@ -1362,8 +1351,8 @@ tpp_recv(int sd, void *data, int len)
 	}
 
 	offset = cur_pkt->pos - cur_pkt->data;
-	avl_bytes = cur_pkt->len - offset;
-	trnsfr_bytes = (len < avl_bytes) ? len : avl_bytes;
+	avail_bytes = cur_pkt->len - offset;
+	trnsfr_bytes = (len < avail_bytes) ? len : avail_bytes;
 
 	if (trnsfr_bytes == 0) {
 		errno = EWOULDBLOCK;
@@ -1489,8 +1478,8 @@ alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 	strmarray[sd].strm = strm;
 
 	if (dest_addr) {
-		/* also add stream to the AVL_streams with the dest as key */
-		if (tree_add_del(AVL_streams, &strm->dest_addr, strm, TREE_OP_ADD) != 0) {
+		/* also add stream to the streams_idx with the dest as key */
+		if (pbs_idx_insert(streams_idx, &strm->dest_addr, strm) != PBS_IDX_RET_OK) {
 			sprintf(tpp_get_logbuf(), "Failed to add strm with sd=%u to streams", strm->sd);
 			tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 			free(strm);
@@ -2460,7 +2449,7 @@ queue_strm_close(stream_t *strm)
  * @par Functionality
  *	The slot is not marked free immediately, rather after a period. This is to
  *	ensure that wandering/delayed messages do not cause havoc.
- *	Additionally deletes the stream's entry in the Stream AVL tree. This
+ *	Additionally deletes the stream's entry in the Stream index. This
  *	function is called from both the APP thread and the IO thread, so it
  *	synchronizes using the strmarray_lock mutex.
  *
@@ -2637,9 +2626,9 @@ send_app_strm_close(stream_t *strm, int cmd, int error)
  *	destination stream descriptor.
  *
  * @par Functionality
- *	Searches the AVL tree of streams based on the destination address.
+ *	Searches the index of streams based on the destination address.
  *	There could be several entries, since several streams could be open
- *	to the same destination. The AVL search quickly find the first entry
+ *	to the same destination. The index search quickly find the first entry
  *	that matches the address. Then on, we serially match the fd of the
  *	destination stream.
  *
@@ -2660,37 +2649,20 @@ send_app_strm_close(stream_t *strm, int cmd, int error)
 static stream_t *
 find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int dest_magic)
 {
-	AVL_IX_REC *pkey;
+	void *idx_ctx = NULL;
+	void *idx_nkey = dest_addr;
 	stream_t *strm;
 
-	pkey = avlkey_create(AVL_streams, dest_addr);
-	if (pkey == NULL)
-		return NULL;
-
-	if (avl_find_key(pkey, AVL_streams) != AVL_IX_OK) {
-		free(pkey);
-		return NULL;
-	}
-
-	while (1) {
-		strm = pkey->recptr;
-
+	while (pbs_idx_find(streams_idx, &idx_nkey, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+		if (memcmp(idx_nkey, dest_addr, sizeof(tpp_addr_t)) != 0)
+			break;
 		TPP_DBPRT(("sd=%u, dest_sd=%u, u_state=%d, t-state=%d, dest_magic=%u", strm->sd, strm->dest_sd, strm->u_state, strm->t_state, strm->dest_magic));
 		if (strm->dest_sd == dest_sd && strm->dest_magic == dest_magic) {
-			free(pkey);
+			pbs_idx_free_ctx(idx_ctx);
 			return strm;
 		}
-
-		if (avl_next_key(pkey, AVL_streams) != AVL_IX_OK) {
-			free(pkey);
-			return NULL;
-		}
-
-		if (memcmp(&pkey->key, dest_addr, sizeof(tpp_addr_t)) != 0) {
-			free(pkey);
-			return NULL;
-		}
 	}
+	pbs_idx_free_ctx(idx_ctx);
 	return NULL;
 }
 
@@ -3730,46 +3702,6 @@ send_spl_packet(stream_t *strm, int type)
 
 /**
  * @brief
- *	Helper function to find a key in a stream and match the stream pointers
- *
- * @param[in] strm - The stream to which close packet has to be sent
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: No
- *
- */
-static AVL_IX_REC *
-find_stream_tree_key(stream_t *strm)
-{
-	AVL_IX_REC *pkey;
-
-	pkey = avlkey_create(AVL_streams, &strm->dest_addr);
-	if (pkey == NULL) {
-		sprintf(tpp_get_logbuf(), "Out of memory allocating avlkey for sd=%u", strm->sd);
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
-		return NULL;
-	}
-
-	if (avl_find_key(pkey, AVL_streams) == AVL_IX_OK) {
-		do {
-			stream_t *t_strm;
-
-			t_strm = pkey->recptr;
-			if (strm == t_strm)
-				return pkey;
-
-			if (memcmp(&pkey->key, &strm->dest_addr, sizeof(tpp_addr_t)) != 0)
-				break;
-		} while (avl_next_key(pkey, AVL_streams) == AVL_IX_OK);
-	}
-	free(pkey);
-	return NULL;
-}
-
-/**
- * @brief
  *	Clear all retries, acks and destroy the stream finally
  *
  * @param[in] strm - The stream that needs to be freed
@@ -3841,19 +3773,31 @@ free_stream(unsigned int sd)
 
 	strm = strmarray[sd].strm;
 	if (strm->strm_type != TPP_STRM_MCAST) {
-		AVL_IX_REC *pkey;
+		void *idx_ctx = NULL;
+		int found = 0;
+		stream_t *t_strm = NULL;
+		void *pdest_addr = &strm->dest_addr;
 
-		pkey = find_stream_tree_key(strm);
-		if (pkey == NULL) {
+		while (pbs_idx_find(streams_idx, &pdest_addr, (void **)&t_strm, &idx_ctx) == PBS_IDX_RET_OK) {
+			if (memcmp(pdest_addr, &strm->dest_addr, sizeof(tpp_addr_t)) != 0)
+				break;
+			if (strm == t_strm) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
 			/* this should not happen ever */
 			sprintf(tpp_get_logbuf(), "Failed finding strm with dest=%s, strm=%p, sd=%u", tpp_netaddr(&strm->dest_addr), strm, strm->sd);
 			tpp_log_func(LOG_ERR, __func__, tpp_get_logbuf());
 			tpp_unlock(&strmarray_lock);
+			pbs_idx_free_ctx(idx_ctx);
 			return;
 		}
 
-		avl_delete_key(pkey, AVL_streams);
-		free(pkey);
+		pbs_idx_delete_byctx(idx_ctx);
+		pbs_idx_free_ctx(idx_ctx);
 	}
 
 	/* empty all strm actions from the strm action queue */
@@ -4483,7 +4427,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 
 		case TPP_CTL_LEAVE: {
 			tpp_leave_pkt_hdr_t *hdr = (tpp_leave_pkt_hdr_t *) data;
-			AVL_IX_REC *pkey;
 			tpp_que_t send_close_queue;
 			tpp_addr_t *addrs;
 			int i;
@@ -4497,42 +4440,26 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx, void *extra)
 			/* go past the header and point to the list of addresses following it */
 			addrs = (tpp_addr_t *) (((char *) data) + sizeof(tpp_leave_pkt_hdr_t));
 			for(i = 0; i < hdr->num_addrs; i++) {
-				if ((pkey = avlkey_create(AVL_streams, &addrs[i]))) {
+				void *idx_ctx = NULL;
+				void *paddr = &addrs[i];
 
-					/*
-					 * An avl tree, that allows duplicates, keeps nodes with same
-					 * keys right next to each other, so one find is enough to
-					 * get to the vicinity. Doing avl_next_key continuously as long
-					 * as the keys match, is good enough to find all matching nodes
-					 *
-					 */
-					if (avl_find_key(pkey, AVL_streams) == AVL_IX_OK) {
-						while (1) {
-							strm = pkey->recptr;
-							strm->lasterr = 0;
-
-							/* under lock already, can access directly */
-							if (strmarray[strm->sd].slot_state == TPP_SLOT_BUSY) {
-								if (tpp_enque(&send_close_queue, strm) == NULL) {
-									tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueing to send close queue");
-									tpp_unlock(&strmarray_lock);
-									if (data_out)
-										free(data_out);
-									return -1;
-								}
-							}
-
-							/* if this is the end of the tree, break out */
-							if (avl_next_key(pkey, AVL_streams) != AVL_IX_OK)
-								break;
-
-							/* if the next key in the tree is not the same key, break */
-							if (memcmp(&pkey->key, &addrs[i], sizeof(tpp_addr_t)) != 0)
-								break;
+				while (pbs_idx_find(streams_idx, &paddr, (void **)&strm, &idx_ctx) == PBS_IDX_RET_OK) {
+					if (memcmp(paddr, &addrs[i], sizeof(tpp_addr_t)) != 0)
+						break;
+					strm->lasterr = 0;
+					/* under lock already, can access directly */
+					if (strmarray[strm->sd].slot_state == TPP_SLOT_BUSY) {
+						if (tpp_enque(&send_close_queue, strm) == NULL) {
+							tpp_log_func(LOG_CRIT, __func__, "Out of memory enqueing to send close queue");
+							tpp_unlock(&strmarray_lock);
+							pbs_idx_free_ctx(idx_ctx);
+							if (data_out)
+								free(data_out);
+							return -1;
 						}
 					}
-					free(pkey);
 				}
+				pbs_idx_free_ctx(idx_ctx);
 			}
 			tpp_unlock(&strmarray_lock);
 
