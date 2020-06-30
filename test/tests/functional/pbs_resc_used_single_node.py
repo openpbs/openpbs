@@ -147,9 +147,9 @@ e.job.resources_used["stra"] = '"glad,elated","happy"'
 """
 
         hook_name = "epi"
-        # this hook must run after the cgroups hook (default order=100)
-        # on the same machine
-        a = {'event': "execjob_epilogue", 'enabled': 'True', 'order': '200'}
+        # this hook must run last on the same machine, and after the
+        # cgroups hook (default order=100)
+        a = {'event': "execjob_epilogue", 'enabled': 'True', 'order': '1000'}
         rv = self.server.create_import_hook(
             hook_name,
             a,
