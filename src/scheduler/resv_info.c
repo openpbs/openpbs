@@ -119,6 +119,7 @@ stat_resvs(int pbs_sd)
 
 /**
  *
+ * @brief
  *	query_reservations - query the reservations from the server.
  *
  *  Each reservation, is created to reflect its current state in the server.
@@ -132,14 +133,15 @@ stat_resvs(int pbs_sd)
  *  reservation retains its currently allocated resources, such that no other
  *  requests make use of the same resources.
  *
- *	  sinfo - the server to query from
- *	  resvs - batch status of the stat'ed reservations
+ * @param[in] sinfo  - the server to query from
+ * @param[in] resvs  - batch status of the stat'ed reservations
+ * @param[in] pbs_sd - connection to the pbs server
  *
- *	returns an array of reservations
+ * @return    An array of reservations
  *
  */
 resource_resv **
-query_reservations(server_info *sinfo, struct batch_status *resvs)
+query_reservations(server_info *sinfo, struct batch_status *resvs, int pbs_sd)
 {
 	/* the current reservation in the list */
 	struct batch_status *cur_resv;
@@ -239,6 +241,15 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 
 		if (ignore_resv == 1) {
 			sinfo->num_resvs--;
+			/* mark all the jobs of the associated queue as can never run */
+			if (resresv->resv->queuename != NULL) {
+				queue_info *qinfo = find_queue_info(sinfo->queues, resresv->resv->queuename);
+				if (qinfo != NULL) {
+				    clear_schd_error(err);
+				    set_schd_error_codes(err, NEVER_RUN, NO_TOTAL_NODES);
+				    update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
+				}
+			}
 			free_resource_resv(resresv);
 			continue;
 		}
