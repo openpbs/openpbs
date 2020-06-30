@@ -823,6 +823,11 @@ job_purge(job *pjob)
 	if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
 		log_joberr(PBSE_INTERNAL, __func__, "Failed to remove job from index", pjob->ji_qs.ji_jobid);
 
+	if (pjob->ji_bg_hook_task) {
+		free(pjob->ji_bg_hook_task->wt_parm2);
+		pjob->ji_bg_hook_task->wt_parm2 = NULL;
+	}
+
 	if (pjob->ji_preq != NULL) {
 		log_joberr(PBSE_INTERNAL, __func__, "request outstanding",
 			pjob->ji_qs.ji_jobid);

@@ -2698,36 +2698,6 @@ mom_set_use_all(void)
 void
 job_purge_mom(job *pjob)
 {
-	extern pbs_list_head task_list_event;
-	extern int post_run_hook(struct work_task *wtask);
-
-	struct work_task *wtask = NULL;
-	struct work_task *wtask_next = NULL;
-
-	/* Check for other task lists */
-	for (wtask = (struct work_task *) GET_NEXT(task_list_event); wtask; wtask = wtask_next) {
-		wtask_next = (struct work_task *) GET_NEXT(wtask->wt_linkall);
-
-		if ((wtask->wt_type == WORK_Deferred_Child) &&
-			((int (*)())wtask->wt_func == post_run_hook) &&
-			(wtask->wt_parm2 != NULL)) {
-			mom_process_hooks_params_t *php = NULL;
-			mom_hook_input_t *hook_input = NULL;
-			job   *task_pjob = NULL;
-
-			php = (mom_process_hooks_params_t *)wtask->wt_parm2;
-			hook_input = (mom_hook_input_t *) php->hook_input;
-			if (hook_input) {
-				task_pjob = (job *)hook_input->pjob;
-				if (strcmp(task_pjob->ji_qs.ji_jobid, pjob->ji_qs.ji_jobid) == 0) {
-					sprintf(log_buffer, "deleting stale hook task for job %s", pjob->ji_qs.ji_jobid);
-					log_err(0, __func__, log_buffer);
-					delete_task(wtask);
-				}
-			}
-		}
-	}
-
 	if (mock_run)
 		mock_run_job_purge(pjob);
 	else

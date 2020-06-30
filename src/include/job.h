@@ -459,6 +459,7 @@ struct job {
 	int		ji_parent2child_moms_status_pipe;	/* write pipe for parent mom to send sister moms status to child starter process */
 	int		ji_updated;	/* set to 1 if job's node assignment was updated */
 	time_t		ji_walltime_stamp;	/* time stamp for accumulating walltime */
+	struct work_task *ji_bg_hook_task;
 #ifdef WIN32
 	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
 #else	/* not WIN32 */

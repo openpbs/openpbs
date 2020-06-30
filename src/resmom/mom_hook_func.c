@@ -886,12 +886,13 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				log_err(errno, __func__, msg_err_malloc);
 				return (-1);
 			}
-		 	if (php)
+		 	if (php) {
 				ptask->wt_parm2 = (void *)php;
+				php->hook_input->pjob->ji_bg_hook_task = ptask;
+			}
 			return (0);	/* no hook output file at this time */
 		} else if (php)
 			php->child = child;
-
 
 		set_alarm(phook->alarm, run_hook_alarm);
 		while (waitpid(child, &waitst, 0) < 0) {	/* error on wait */
@@ -3477,10 +3478,9 @@ post_run_hook(struct work_task *ptask)
 	}
 
 	if (!php->parent_wait) {
-		/* Backround hook */
+		/* Background hook */
 		/* Create task to check and run next hook script */
-		new_task = set_task(WORK_Immed, 0,
-						(void *)mom_process_background_hooks, phook);
+		new_task = set_task(WORK_Immed, 0, (void *)mom_process_background_hooks, phook);
 		if (!new_task)
 			log_err(errno, __func__,
 				"Unable to set task for mom_process_background_hooks");
@@ -3502,7 +3502,8 @@ post_run_hook(struct work_task *ptask)
  * @return void
  */
 
-void reply_hook_bg(job *pjob)
+void
+reply_hook_bg(job *pjob)
 {
 	int	n = 0;
 	int	ret = 0;
@@ -3659,9 +3660,9 @@ void reply_hook_bg(job *pjob)
  *
  * @retval void
  */
- static void
- mom_process_background_hooks(struct work_task *ptask)
- {
+static void
+mom_process_background_hooks(struct work_task *ptask)
+{
 	char	hook_infile[MAXPATHLEN+1] = {'\0'};
 	char	hook_outfile[MAXPATHLEN+1] = {'\0'};
 	char	hook_datafile[MAXPATHLEN+1] = {'\0'};
@@ -3713,7 +3714,7 @@ void reply_hook_bg(job *pjob)
 
 	run_hook(phook, php->hook_event, php->hook_input,
 			php->req_user, php->req_host, 0, (void *)post_run_hook,
-			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1, php);
+			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN + 1, php);
 	return;
 
 	fini:
