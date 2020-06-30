@@ -134,9 +134,8 @@ que_alloc(char *name)
 	server.sv_qs.sv_numque++;
 
 	/* set the working attributes to "unspecified" */
-	for (i = 0; i < (int) QA_ATR_LAST; i++) {
+	for (i = 0; i < (int) QA_ATR_LAST; i++)
 		clear_attr(&pq->qu_attr[i], &que_attr_def[i]);
-	}
 
 	return (pq);
 }

@@ -115,17 +115,19 @@ mom_CPUs_report(void)
 			truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
 			continue;
 		}
-		p += ret, bufspace -= ret;
+		p += ret;
+		bufspace -= ret;
 		for (i = 0, first = 1; i < mvp->mvi_ncpus; i++) {
-			if (first) {
+			if (first)
 				first = 0;
-			} else {
+			else {
 				if (bufspace < 1) {
 					truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
 					goto line_done;
 				}
 				sprintf(p, ",");
-				p++, bufspace--;
+				p++;
+				bufspace--;
 			}
 
 			ret = snprintf(p, bufspace, "%d", mvp->mvi_cpulist[i].mvic_cpunum);
@@ -133,7 +135,8 @@ mom_CPUs_report(void)
 				truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
 				goto line_done;
 			}
-			p += ret, bufspace -= ret;
+			p += ret;
+			bufspace -= ret;
 
 			if (MVIC_CPUISFREE(mvp, i))
 				ret = snprintf(p, bufspace, " (free)");
@@ -147,7 +150,8 @@ mom_CPUs_report(void)
 				truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
 				goto line_done;
 			}
-			p += ret, bufspace -= ret;
+			p += ret;
+			bufspace -= ret;
 		}
 		log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, reportbuf);
 line_done:

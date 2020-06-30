@@ -1561,9 +1561,8 @@ resv_alloc(char *resvid)
 	 * the working attributes to "unspecified"
 	 */
 	resvp->ri_qs.ri_rsversion = RSVERSION;
-	for (i = 0; i < RESV_ATR_LAST; i++) {
+	for (i = 0; i < RESV_ATR_LAST; i++)
 		clear_attr(&resvp->ri_wattr[i], &resv_attr_def[i]);
-	}
 
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';

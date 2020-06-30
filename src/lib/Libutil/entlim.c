@@ -352,16 +352,16 @@ entlim_entity_from_key(char *key, char *rtnname, size_t ln)
 	char *pc;
 	int   sz = 0;
 
-	pc = key+2;
+	pc = key + 2;
 	while (*pc && (*pc != ';')) {
 		++sz;
 		++pc;
 	}
 	if ((size_t)sz < ln) {
-		(void)strncpy(rtnname, key+2, sz);
+		(void)strncpy(rtnname, key + 2, sz);
 		*(rtnname+sz) = '\0';
 		return 0;
-	} else
+	}
 	return -1;
 }
 

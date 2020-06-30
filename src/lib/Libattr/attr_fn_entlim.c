@@ -645,7 +645,7 @@ encode_entlim(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 		rescn[0] = '\0';
 		needquotes = 0;
 
-		if ((entlim_entity_from_key(key, etname, PBS_MAX_RESC_NAME)==0) &&
+		if ((entlim_entity_from_key(key, etname, PBS_MAX_RESC_NAME) == 0) &&
 			(entlim_resc_from_key(key, rescn, PBS_MAX_RESC_NAME) >= 0)) {
 
 			/* decode leaf value into a local svrattrl structure in */
@@ -957,22 +957,19 @@ set_entlim_res(attribute *old, attribute *new, enum batch_op op)
 		/* record with the same resource in its key	     */
 		while ((valnew = entlim_get_next(newctx, (void **)&keynew)) != NULL) {
 			/* get the resource name from the "new" key */
-			if (entlim_resc_from_key(keynew, newresc, PBS_MAX_RESC_NAME) != 0) {
+			if (entlim_resc_from_key(keynew, newresc, PBS_MAX_RESC_NAME) != 0)
 				continue;	/* no resc, go to next */
-			}
 
 			keyold = NULL;
 			while ((valold = entlim_get_next(oldctx, (void **)&keyold)) != NULL) {
 				/* get the resource name from the "old" key */
-				if (entlim_resc_from_key(keyold, oldresc, PBS_MAX_RESC_NAME) != 0) {
+				if (entlim_resc_from_key(keyold, oldresc, PBS_MAX_RESC_NAME) != 0)
 					continue;    /* no resc, go to next */
-				}
 
 				/* if old and new resource names match, */
 				/* delete old record			*/
-				if (strcasecmp(oldresc, newresc) == 0) {
+				if (strcasecmp(oldresc, newresc) == 0)
 					(void)entlim_delete(keyold, oldctx, svr_freeleaf);
-				}
 			}
 		}
 

@@ -645,9 +645,8 @@ effective_node_delete(struct pbsnode *pnode)
 	remove_node_topology(pnode->nd_name);
 
 	/* delete the node from the node tree as well as the node array */
-	if (node_idx != NULL) {
+	if (node_idx != NULL)
 		pbs_idx_delete(node_idx, pnode->nd_name);
-	}
 
 	for (iht=pnode->nd_arr_index + 1; iht < svr_totnodes; iht++) {
 		pbsndlist[iht - 1] = pbsndlist[iht];
@@ -762,7 +761,7 @@ static char *nodeerrtxt = "Node description file update failed";
 
 /**
  * @brief
- *		Static function to update the specified mom in the db. 
+ *		Static function to update the specified mom in the db.
  *
  * @see
  * 		save_nodes_db, save_nodes_db_inner
