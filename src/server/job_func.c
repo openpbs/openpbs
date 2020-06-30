@@ -134,6 +134,7 @@ extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
 #include "mom_func.h"
+#include "mom_hook_func.h"
 
 extern void rmtmpdir(char *);
 void nodes_free(job *);
@@ -461,7 +462,7 @@ free_job_work_tasks(job *pj)
 void
 job_free(job *pj)
 {
-	int	i;
+	int i;
 
 #ifdef PBS_MOM
 
@@ -483,11 +484,11 @@ job_free(job *pj)
 						return;
 					}
 				}
-				/* p+14 is the string after HomeDirectory= */
-				unmap_unc_path(p+14);
+				/* p + 14 is the string after HomeDirectory= */
+				unmap_unc_path(p + 14);
 				(void)revert_impersonated_user();
 			}
-			unmap_unc_path(p+14); /* also unmap under Admin to be sure */
+			unmap_unc_path(p + 14); /* also unmap under Admin to be sure */
 		}
 	}
 #endif
@@ -496,9 +497,8 @@ job_free(job *pj)
 
 	/* remove any malloc working attribute space */
 
-	for (i=0; i < (int)JOB_ATR_LAST; i++) {
+	for (i = 0; i < (int)JOB_ATR_LAST; i++)
 		job_attr_def[i].at_free(&pj->ji_wattr[i]);
-	}
 
 #ifndef PBS_MOM
 	{
@@ -562,6 +562,18 @@ job_free(job *pj)
 
 	reliable_job_node_free(&pj->ji_failed_node_list);
 	reliable_job_node_free(&pj->ji_node_list);
+
+	if (pj->ji_bg_hook_task) {
+		mom_process_hooks_params_t *php;
+		php = pj->ji_bg_hook_task->wt_parm2;
+		if (php->hook_output) {
+			free(php->hook_output->reject_errcode);
+			free(php->hook_output);
+		}
+		free(php->hook_input);
+		free(php);
+		pj->ji_bg_hook_task->wt_parm2 = NULL;
+	}
 
 	/*
 	 ** This gets rid of any dependent job structure(s) from ji_setup.
@@ -785,7 +797,7 @@ del_chkpt_files(job *pjob)
 void
 job_purge(job *pjob)
 {
-	extern	char	*msg_err_purgejob;
+	extern char *msg_err_purgejob;
 #ifdef	PBS_MOM
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
@@ -797,7 +809,7 @@ job_purge(job *pjob)
 #endif
 
 #else
-	extern	char	*msg_err_purgejob_db;
+	extern char *msg_err_purgejob_db;
 	pbs_db_obj_info_t obj;
 	pbs_db_job_info_t dbjob;
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
@@ -822,11 +834,6 @@ job_purge(job *pjob)
 	delete_link(&pjob->ji_unlicjobs);
 	if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
 		log_joberr(PBSE_INTERNAL, __func__, "Failed to remove job from index", pjob->ji_qs.ji_jobid);
-
-	if (pjob->ji_bg_hook_task) {
-		free(pjob->ji_bg_hook_task->wt_parm2);
-		pjob->ji_bg_hook_task->wt_parm2 = NULL;
-	}
 
 	if (pjob->ji_preq != NULL) {
 		log_joberr(PBSE_INTERNAL, __func__, "request outstanding",
@@ -856,35 +863,28 @@ job_purge(job *pjob)
 		} else
 			(void)close_conn(pjob->ji_jsmpipe);
 	}
-	if (pjob->ji_mjspipe != -1) {
+	if (pjob->ji_mjspipe != -1)
 		(void)close(pjob->ji_mjspipe);
-	}
 
 	/* if open, close 2nd pipes to/from Mom starter process */
-	if (pjob->ji_jsmpipe2 != -1) {
+	if (pjob->ji_jsmpipe2 != -1)
 		(void)close_conn(pjob->ji_jsmpipe2);
-	}
-	if (pjob->ji_mjspipe2 != -1) {
+	if (pjob->ji_mjspipe2 != -1)
 		(void)close(pjob->ji_mjspipe2);
-	}
 
 	/* if open, close 3rd pipes to/from Mom starter process */
-	if (pjob->ji_child2parent_job_update_pipe != -1) {
+	if (pjob->ji_child2parent_job_update_pipe != -1)
 		(void)close_conn(pjob->ji_child2parent_job_update_pipe);
-	}
-	if (pjob->ji_parent2child_job_update_pipe != -1) {
+	if (pjob->ji_parent2child_job_update_pipe != -1)
 		(void)close(pjob->ji_parent2child_job_update_pipe);
-	}
 
 	/* if open, close 4th pipes to/from Mom starter process */
-	if (pjob->ji_parent2child_job_update_status_pipe != -1) {
+	if (pjob->ji_parent2child_job_update_status_pipe != -1)
 		(void)close(pjob->ji_parent2child_job_update_status_pipe);
-	}
 
 	/* if open, close 5th pipes to/from Mom starter process */
-	if (pjob->ji_parent2child_moms_status_pipe != -1) {
+	if (pjob->ji_parent2child_moms_status_pipe != -1)
 		(void)close(pjob->ji_parent2child_moms_status_pipe);
-	}
 #endif
 #else	/* not PBS_MOM */
 	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) &&
@@ -919,7 +919,6 @@ job_purge(job *pjob)
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 			delete_cred(pjob->ji_qs.ji_jobid);
 #endif
-
 			/* parent mom */
 			job_free(pjob);
 			return;
