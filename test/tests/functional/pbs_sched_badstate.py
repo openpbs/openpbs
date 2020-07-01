@@ -103,7 +103,7 @@ class TestSchedBadstate(TestFunctional):
         jid1 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         if self.mom.is_cpuset_mom():
-            self.server.expect(VNODE, {'state': 'job-exclusive'}, id=vnode_id)
+            self.server.expect(VNODE, {'state': 'job-busy'}, id=vnode_id)
         else:
             self.server.expect(NODE, {'state': 'job-busy'},
                                id=self.mom.shortname)
@@ -168,7 +168,7 @@ class TestSchedBadstate(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.mom.signal('-KILL')
         if self.mom.is_cpuset_mom():
-            self.server.expect(VNODE, {'state': 'down,job-exclusive'},
+            self.server.expect(VNODE, {'state': 'down,job-busy'},
                                id=vnode_id)
         else:
             self.server.expect(NODE, {'state': 'down,job-busy'},
