@@ -806,7 +806,7 @@ resstr_to_resdef(char **resstr)
 	if (resstr == NULL)
 		return NULL;
 
-	cnt = count_array((void **) resstr);
+	cnt = count_array(resstr);
 	if ((tmparr = malloc((cnt + 1) * sizeof(resdef *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
