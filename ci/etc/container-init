@@ -1,12 +1,10 @@
 #!/bin/bash -x
 
-if [ $(echo ${CONTAINER_PLATFORM} | grep 'ci_pbs' | grep -v grep | wc -l) -ne 1 ]; then
-	/workspace/etc/install-system-packages 2>&1 | tee -a /logs/build-$(hostname)
-fi
+/workspace/etc/install-system-packages 2>&1 | tee -a /logs/build-$(hostname -s)
 
 # set environment var file
-touch /env-file
-set >/env-file
+touch /.env-file
+set >/.env-file
 
 capsh --print | grep -Eq '*cap_sys_admin*'
 if [ $? -eq 0 ]; then
@@ -21,9 +19,4 @@ if [ $? -eq 0 ]; then
 	else
 		echo "Couldn't start container in systemd mode, starting in default mode"
 	fi
-fi
-if [ $# -ne 0 ]; then
-	exec "$@"
-else
-	exec /bin/bash
 fi

@@ -1,14 +1,14 @@
 #! /bin/bash -x
 
 set_requirement_decorator() {
-	if [ ! -f /src/.commandloops/.benchpress_opt ]; then
-		touch /src/.commandloops/.benchpress_opt
+	if [ ! -f /src/.config_dir/.benchpress_opt ]; then
+		touch /src/.config_dir/.benchpress_opt
 	fi
-	if [ "x$(cat /src/.commandloops/.benchpress_opt)" == "x" ]; then
-		echo "-t SmokeTest" >/src/.commandloops/.benchpress_opt
+	if [ "x$(cat /src/.config_dir/.benchpress_opt)" == "x" ]; then
+		echo "-t SmokeTest" >/src/.config_dir/.benchpress_opt
 	fi
 	if [ ! -f "/src/ptl_ts_tree.json" ]; then
-		/src/etc/gen_ptl_json.sh "$(cat /src/.commandloops/.benchpress_opt)"
+		/src/etc/gen_ptl_json.sh "$(cat /src/.config_dir/.benchpress_opt)"
 	fi
 
 	node_flags=$(python -c "
@@ -31,7 +31,7 @@ print(str(no_mom_on_server_flag) +';' + str(no_comm_on_server_flag) + ';' + str(
 
 set_requirement_decorator
 
-if [ "x${NODE_TYPE}" == "x'mom'" ]; then
+if [ "x${NODE_TYPE}" == "xmom" ]; then
 	sed -i "s@PBS_SERVER=$(hostname)@PBS_SERVER=pbs_server@" /etc/pbs.conf
 	sed -i "s@PBS_START_SERVER=1@PBS_START_SERVER=0@" /etc/pbs.conf
 	HOST_NAME=$(hostname -f)
@@ -41,7 +41,7 @@ if [ "x${NODE_TYPE}" == "x'mom'" ]; then
 	fi
 fi
 
-if [ "x${NODE_TYPE}" == "x'server'" ]; then
+if [ "x${NODE_TYPE}" == "xserver" ]; then
 	if [ "x$no_comm_on_server" == "xTrue" ]; then
 		sed -i "s@PBS_START_COMM=1@PBS_START_COMM=0@" /etc/pbs.conf
 	fi
@@ -50,7 +50,7 @@ if [ "x${NODE_TYPE}" == "x'server'" ]; then
 	fi
 fi
 
-if [ "x${NODE_TYPE}" == "x'comm'" ]; then
+if [ "x${NODE_TYPE}" == "xcomm" ]; then
 	sed -i "s@PBS_START_MOM=1@PBS_START_MOM=0@" /etc/pbs.conf
 	sed -i "s@PBS_START_SERVER=1@PBS_START_SERVER=0@" /etc/pbs.conf
 fi

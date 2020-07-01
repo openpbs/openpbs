@@ -50,22 +50,47 @@ import sys
 import threading
 import time
 from argparse import RawTextHelpFormatter
+from string import Template
 
-pbs_dirname = ''
+ci_dirname = ''
 
+service_template_prist = Template('{\
+"image": "$image",\
+"volumes": [\
+    "../:/pbssrc",\
+    "./:/src",\
+    "./logs:/logs",\
+    "./etc:/workspace/etc"\
+],\
+"entrypoint": "/workspace/etc/container-init",\
+"environment": [\
+    "NODE_TYPE=$node_type",\
+    "LANG=en_US.utf-8"\
+],\
+"networks": {\
+    "ci": {\
+    "aliases": [\
+        "$alias"\
+        ]\
+    }\
+},\
+"hostname": "$hostname",\
+"user": "root",\
+"privileged": true \
+}')
 
 def log_error(str_to_print):
-    print('\033[91m' + "ERROR ::: " + str(str_to_print) + '\033[0m')
+    print("ERROR ::: " + str(str_to_print))
 
 
 def log_info(str_to_print):
     t = time.localtime()
     current_time = time.strftime("%H:%M:%S", t)
-    print('\033[1m' + current_time + " ---> " + str(str_to_print) + '\033[0m')
+    print(current_time + " ---> " + str(str_to_print))
 
 
 def log_warning(str_to_print):
-    print('\033[93m' + "WARNING ::: " + str(str_to_print) + '\033[0m')
+    print("WARNING ::: " + str(str_to_print))
 
 
 def get_services_list():
@@ -80,7 +105,7 @@ def get_services_list():
 
 
 def get_compose_file_services_list():
-    compose_file = os.path.join(pbs_dirname, 'docker-compose.json')
+    compose_file = os.path.join(ci_dirname, 'docker-compose.json')
     with open(compose_file) as f:
         compose_file = json.loads(f.read())
     return list(compose_file['services'].keys())
@@ -111,6 +136,7 @@ def run_docker_cmd(run_cmd, only_run_on='all'):
     '''
     services = get_services_list()
     services.sort(reverse=True)  # we want server cmds to run first
+    log_error(services)
     for service in services:
         cmd = "docker-compose -f docker-compose.json exec " + \
             service + " bash -c \'" + run_cmd + "\'"
@@ -162,7 +188,7 @@ def commit_docker_image():
         time.sleep(15)
         timeout = timeout + 15
         status = read_from_file(os.path.join(
-            pbs_dirname, '.commandloops', '.status'))
+            ci_dirname, '.config_dir', '.status'))
         for service in services:
             if str(status).find(service) != -1:
                 services.remove(service)
@@ -205,8 +231,8 @@ def get_pkgs(platform):
     build_cmd = '/src/build-pbs-packages.sh'
     if platform != 'called':
         try:
-            subprocess.run([pbs_dirname + '/ci', '--delete'])
-            subprocess.run([pbs_dirname + '/ci', '--start=' + platform])
+            subprocess.run([ci_dirname + '/ci', '--delete'])
+            subprocess.run([ci_dirname + '/ci', '--start=' + platform])
         except:
             log_error('Failed to restart ci.')
     log_info('The package build logs can be found in logs/pkglogs')
@@ -215,13 +241,14 @@ def get_pkgs(platform):
 
 def create_ts_tree_json():
     benchpress_opt = os.path.join(
-        pbs_dirname, '.commandloops', '.benchpress_opt')
+        ci_dirname, '.config_dir', '.benchpress_opt')
     benchpress_value = read_from_file(benchpress_opt)
     try:
         cmd = '/src/etc/gen_ptl_json.sh "' + benchpress_value + '"'
         run_docker_cmd(cmd, only_run_on='server')
     except:
         log_error('Failed to generate testsuite info json')
+        os._exit(1)
 
 
 def get_node_config(node_image='centos:7'):
@@ -233,7 +260,7 @@ def get_node_config(node_image='centos:7'):
     no_comm_on_mom_flag = True
     no_comm_on_server_flag = False
     try:
-        with open(os.path.join(pbs_dirname, 'ptl_ts_tree.json')) as f:
+        with open(os.path.join(ci_dirname, 'ptl_ts_tree.json')) as f:
             json_data = json.load(f)
     except:
         log_error('Could not find ptl tree json file')
@@ -249,36 +276,35 @@ def get_node_config(node_image='centos:7'):
             no_comm_on_server_flag = tclist['requirements']['no_comm_on_server'] or no_comm_on_server_flag
             no_comm_on_mom_flag = tclist['requirements']['no_comm_on_mom'] or no_comm_on_mom_flag
 
-    node_config = ''
-
+    node_config = []
     # get required number of servers and moms
     for _ in range(max_servers_needed):
-        node_config = node_config+'server='+node_image+';'
+        node_config = node_config + ['server='+node_image]
     if no_mom_on_server_flag == False:
         max_moms_needed = max(max_moms_needed, max_servers_needed)
         if max_moms_needed > max_servers_needed:
             for _ in range(max_moms_needed - max_servers_needed):
-                node_config = node_config + 'mom=' + node_image + ';'
+                node_config = node_config + ['mom=' + node_image]
     else:
         for _ in range(max_moms_needed):
-            node_config = node_config + 'mom=' + node_image + ';'
+            node_config = node_config + ['mom=' + node_image]
 
-    only_moms = node_config.count("mom=")
+    only_moms = len(list(filter(lambda x: 'mom' in x, node_config)))
     # get required num of comms
     if no_comm_on_mom_flag == True and no_comm_on_server_flag == True:
         for _ in range(max_comms_needed):
-            node_config = node_config + 'comm=' + node_image + ';'
+            node_config = node_config + ['comm=' + node_image]
     elif no_comm_on_mom_flag == True and no_comm_on_server_flag == False:
         if max_comms_needed > max_servers_needed:
             for _ in range(max_comms_needed-max_servers_needed):
-                node_config = node_config + 'comm=' + node_image + ';'
+                node_config = node_config + ['comm=' + node_image]
     else:
         if max_comms_needed > only_moms:
             for _ in range(max_comms_needed - only_moms):
-                node_config = node_config + 'comm=' + node_image + ';'
+                node_config = node_config + ['comm=' + node_image]
 
     # remove the trailing ';' from the node_config string
-    node_config = node_config[:-1]
+    node_config = ";".join(node_config)
     return node_config
 
 
@@ -298,7 +324,7 @@ def tail_file():
             build_log_path = i
             server_name = i
     build_log_path = os.path.join(
-        pbs_dirname, 'logs', 'build-' + build_log_path)
+        ci_dirname, 'logs', 'build-' + build_log_path)
     prev = ''
     next = ''
     with open(build_log_path, 'rb') as f:
@@ -312,7 +338,7 @@ def tail_file():
                 prev = next
             else:
                 status_file = os.path.join(
-                    pbs_dirname, '.commandloops', '.status')
+                    ci_dirname, '.config_dir', '.status')
                 status_file = read_from_file(status_file)
                 if status_file.find(server_name) != -1:
                     return
@@ -336,7 +362,7 @@ def check_for_existing_image(val='centos:7'):
 
 
 def get_current_setup():
-    compose_file = os.path.join(pbs_dirname, 'docker-compose.json')
+    compose_file = os.path.join(ci_dirname, 'docker-compose.json')
     node_config = ''
     with open(compose_file) as f:
         compose_file = json.loads(f.read())
@@ -352,7 +378,7 @@ def get_current_setup():
 
 
 def load_conf():
-    conf_file = os.path.join(pbs_dirname, '.commandloops', '.conf.json')
+    conf_file = os.path.join(ci_dirname, '.config_dir', '.conf.json')
     with open(conf_file) as f:
         conf_file = json.loads(f.read())
     return conf_file
@@ -361,69 +387,49 @@ def load_conf():
 def show_set_opts():
     conf_opts = load_conf()
     os_file_list = get_compose_file_services_list()
+    os_file_list = [(x.split('_', 1)[0] + '=' + x.split('_', 1)[1][:-2]
+                     ).replace('_', ':').replace('-', '.') for x in os_file_list]
     os_file_list.sort()
     conf_opts['OS'] = os_file_list
     print(json.dumps(conf_opts, indent=2, sort_keys=True))
+
+def create_param_file():
+    moms='moms='
+    comms='comms='
+    for service in get_services_list():
+        if service.find('mom') != -1:
+            moms += service + ':'
+        if service.find('comm') != -1:
+            comms += service + ':'
+    param_path = os.path.join(ci_dirname,'.config_dir','.params')
+    write_to_file(param_path,moms[:-1] + '\n' + comms[:-1])
 
 
 def build_compose_file(nodes):
     compose_template = {
         "version": "3",
-        "services": {
-            "pbs-build": {
-                "image": "centos:7",
-                "volumes": [
-                    "../:/pbssrc",
-                    "./:/src",
-                    "./logs:/logs",
-                    "./etc:/workspace/etc"
-                ],
-                "entrypoint": "/workspace/etc/container-init \"/src/docker-entrypoint\"",
-                "environment": [
-                    "CLUSTER_INFO='SERVER=centos:7'",
-                    "NODE_TYPE='server'",
-                    "LC_ALL=en_US.utf-8",
-                    "LANG=en_US.utf-8"
-                ],
-                "networks": {
-                    "ci": {
-                        "aliases": [
-                            "pbs_server"
-                        ]
-                    }
-                },
-                "hostname": "pbs.ci",
-                "user": "root",
-                "privileged": True
-            }
-        },
         "networks": {
             "ci": {
                 "driver": "bridge"
             }
-        }
+        },
+        "services": {}
     }
-    service_template_prist = compose_template['services']['pbs-build']
-    service_template_prist['environment'][0] = 'CLUSTER_INFO=\'' + nodes + '\''
-    del compose_template['services']['pbs-build']
     count = 0
     for n in nodes.split(';'):
-        service_template = copy.deepcopy(service_template_prist)
         count = count + 1
         node_val = n.split('=')[1]
         node_key = n.split('=')[0]
         node_name = node_key + '_' + \
             (node_val.replace(':', '_')).replace('.', '-') + '_' + str(count)
-        service_template['environment'][1] = 'NODE_TYPE=\'' + node_key + '\''
-        service_template['networks']['ci']['aliases'][0] = node_name
-        if node_key == 'server':
-            service_template['networks']['ci']['aliases'].append('pbs_server')
-        service_template['hostname'] = node_name
         image_value = node_val
         _, image_value = check_for_existing_image(node_val)
-        service_template['image'] = image_value
+        service_template = json.loads(service_template_prist.substitute(
+            image=image_value, node_type=node_key, alias=node_name, hostname=node_name))
+        if node_key == 'server':
+            service_template['networks']['ci']['aliases'].append('pbs_server')
         compose_template['services'][node_name] = service_template
-    f = open(os.path.join(pbs_dirname, 'docker-compose.json'), 'w')
+    f = open(os.path.join(ci_dirname, 'docker-compose.json'), 'w')
     json.dump(compose_template, f, indent=2, sort_keys=True)
     f.close()
     log_info("Configured nodes for ci")
@@ -456,18 +462,18 @@ def check_prerequisites():
             log_info("No running service found")
             try:
                 log_info('Attempting to start container')
-                os.chdir(pbs_dirname)
+                os.chdir(ci_dirname)
                 subprocess.run(["docker-compose", "-f", "docker-compose.json", "down", "--remove-orphans"],
                                stdout=subprocess.DEVNULL)
-                if os.path.exists(os.path.join(pbs_dirname, '.commandloops', '.status')):
+                if os.path.exists(os.path.join(ci_dirname, '.config_dir', '.status')):
                     os.remove(os.path.join(
-                        pbs_dirname, '.commandloops', '.status'))
+                        ci_dirname, '.config_dir', '.status'))
                 write_to_file(os.path.join(
-                    pbs_dirname, '.commandloops', '.status'), '')
+                    ci_dirname, '.config_dir', '.status'), '')
                 subprocess.run(
                     ["docker-compose", "-f", "docker-compose.json", "up", "-d"])
                 log_info('Waiting for container build to complete ')
-                build_log_path = os.path.join(pbs_dirname, 'logs')
+                build_log_path = os.path.join(ci_dirname, 'logs')
                 log_info("Build logs can be found in " + build_log_path)
                 # wait for build to complete and commit newly built container
                 tail_file()
@@ -507,7 +513,7 @@ def is_restart_required():
 
 
 def initialise_command_loop():
-    command_path = os.path.join(pbs_dirname, '.commandloops')
+    command_path = os.path.join(ci_dirname, '.config_dir')
     if not os.path.exists(command_path):
         os.mkdir(command_path)
     target_path = os.path.join(command_path, '.conf.json')
@@ -522,11 +528,7 @@ def initialise_command_loop():
     if not os.path.exists(target_path):
         value = "--tags=smoke"
         write_to_file(target_path, value)
-    target_path = os.path.join(command_path, '.make')
-    if not os.path.exists(target_path):
-        value = "True"
-        write_to_file(target_path, value)
-    target_path = os.path.join(pbs_dirname, 'docker-compose.json')
+    target_path = os.path.join(ci_dirname, 'docker-compose.json')
     if not os.path.exists(target_path):
         build_compose_file('server=centos:7')
         run_cmd('docker-compose -f docker-compose.json down --remove-orphans')
@@ -541,7 +543,7 @@ if __name__ == "__main__":
         ./ci --set \'OS=centos:7\'\n\
         ./ci --set "tests=-t SmokeTest"\n\
         ./ci --set "configure=CFLAGS=\'-g O2\' --enable-ptl"\n\
-        ./ci --set "nodes=mom=centos:7;server=ubuntu:16.04"\n\
+        ./ci --set "nodes=mom=centos:7;server=ubuntu:16.04;comm=opensuse/leap:15;mom=ubuntu:18.04"\n\
         ./ci --delete\n\
         ./ci --build-pkgs or ./ci --build-pkgs=\'ubuntu:16.04\'\n\
         ./ci --local\n\
@@ -549,7 +551,7 @@ if __name__ == "__main__":
         conflict_handler='resolve')
     ap.add_argument('--run', const='called',
                     help='runs the containers such that (if needed) will configure, make and install pbs and run tests (if not set as empty)', nargs='?')
-    ap.add_argument('--set', const='called',
+    ap.add_argument('--set', const='called',action='append',
                     help='set configuration values for \033[1m | OS | nodes | configure | tests | \033[0m', nargs='?')
     ap.add_argument('--delete', const='called',
                     help='destroy pbs container', nargs='?')
@@ -561,11 +563,13 @@ if __name__ == "__main__":
         log_error('\nToo few arguments\n')
         ap.print_help()
         sys.exit(1)
-    args = ap.parse_args(sys.argv[1:])
-    pbs_dirname = find_ci()
-    pbs_dirname = os.path.join(pbs_dirname, 'ci')
-    os.chdir(pbs_dirname)
-    build_log_path = os.path.join(pbs_dirname, 'logs')
+    mangle_args=('run','set','delete','build-pkgs','local')
+    args=['--'+arg if arg in mangle_args else arg for arg in sys.argv[1:]]
+    args = ap.parse_args(args)
+    ci_dirname = find_ci()
+    ci_dirname = os.path.join(ci_dirname, 'ci')
+    os.chdir(ci_dirname)
+    build_log_path = os.path.join(ci_dirname, 'logs')
     initialise_command_loop()
     if args.delete == None and args.local == None and args.set == None:
         ret = check_prerequisites()
@@ -575,46 +579,47 @@ if __name__ == "__main__":
             sys.exit(1)
     try:
         if args.set != None:
-            if args.set != 'called':
+            if args.set[0] != 'called':
                 container_running = False
                 conf_opts = load_conf()
-                key = (args.set).split('=', 1)[0]
-                value = (args.set).split('=', 1)[1]
-                docker_container_process = subprocess.run(
-                    ["docker-compose", "-f", "docker-compose.json", "ps"], stdout=subprocess.PIPE)
-                docker_container = str(docker_container_process.stdout)
-                for val in docker_container.split('\\n'):
-                    if val.find('Up') != -1:
-                        container_running = True
-                if key == 'nodes':
-                    if container_running:
-                        log_error(
-                            "Delete existing containers first with ./ci --delete")
-                        os._exit(1)
-                    build_compose_file(value)
-                elif key == 'OS' or key == 'os':
-                    if container_running:
-                        log_error(
-                            "Delete existing containers first with ./ci --delete")
-                        os._exit(1)
-                    node_string = value.replace('"', '')
-                    node_string = 'server=' + node_string
-                    build_compose_file(nodes=node_string)
-                else:
-                    if key in conf_opts:
-                        conf_opts[key] = value
-                        f = open(os.path.join(
-                            pbs_dirname, '.commandloops', '.conf.json'), 'w')
-                        json.dump(conf_opts, f, indent=2, sort_keys=True)
-                        f.close()
+                for set_opts in args.set:
+                    key = (set_opts).split('=', 1)[0]
+                    value = (set_opts).split('=', 1)[1]
+                    docker_container_process = subprocess.run(
+                        ["docker-compose", "-f", "docker-compose.json", "ps"], stdout=subprocess.PIPE)
+                    docker_container = str(docker_container_process.stdout)
+                    for val in docker_container.split('\\n'):
+                        if val.find('Up') != -1:
+                            container_running = True
+                    if key == 'nodes':
+                        if container_running:
+                            log_error(
+                                "Delete existing containers first with ./ci --delete")
+                            os._exit(1)
+                        build_compose_file(value)
+                    elif key == 'OS' or key == 'os':
+                        if container_running:
+                            log_error(
+                                "Delete existing containers first with ./ci --delete")
+                            os._exit(1)
+                        node_string = value.replace('"', '')
+                        node_string = 'server=' + node_string
+                        build_compose_file(nodes=node_string)
                     else:
-                        log_warning("Unrecognised key, nothing to update")
+                        if key in conf_opts:
+                            conf_opts[key] = value
+                            f = open(os.path.join(
+                                ci_dirname, '.config_dir', '.conf.json'), 'w')
+                            json.dump(conf_opts, f, indent=2, sort_keys=True)
+                            f.close()
+                        else:
+                            log_warning("Unrecognised key, nothing to update")
             log_info("These are the current options")
             show_set_opts()
         if args.build_pkgs != None:
             get_pkgs(args.build_pkgs)
         if args.run != None:
-            command_path = os.path.join(pbs_dirname, '.commandloops')
+            command_path = os.path.join(ci_dirname, '.config_dir')
             conf_opts = load_conf()
             if conf_opts['tests'] != '':
                 target_path = os.path.join(command_path, '.benchpress_opt')
@@ -625,31 +630,31 @@ if __name__ == "__main__":
                     check_prerequisites()
             target_path = os.path.join(command_path, '.configure_opt')
             if conf_opts['configure'] != read_from_file(target_path):
-                cmd = ' export ONLY_CONFIGURE=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname) '
+                cmd = ' export ONLY_CONFIGURE=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
                 run_docker_cmd(cmd)
                 write_to_file(target_path, conf_opts['configure'])
-            target_path = os.path.join(command_path, '.make')
-            if read_from_file(target_path) == 'True':
-                cmd = ' export ONLY_REBUILD=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname) '
-                run_docker_cmd(cmd)
-                cmd = ' export ONLY_INSTALL=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname) '
-                run_docker_cmd(cmd)
+            cmd = ' export ONLY_REBUILD=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
+            run_docker_cmd(cmd)
+            cmd = ' export ONLY_INSTALL=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
+            run_docker_cmd(cmd)
             target_path = os.path.join(command_path, '.benchpress_opt')
             if conf_opts['tests'] == '':
                 write_to_file(target_path, conf_opts['tests'])
                 log_warning("No tests assigned, skipping PTL run")
             else:
+                create_param_file()
                 write_to_file(target_path, conf_opts['tests'])
                 cmd = 'export RUN_TESTS=1 && export ONLY_TEST=1 && /src/do.sh '
                 run_docker_cmd(cmd, only_run_on='server')
         if args.delete != None:
             confirm = input(
-                '\033[91mAre you sure you want to delete containers (Y/N)?: \033[0m')
-            if confirm.lower() == 'no' or confirm.lower() == 'n':
+                'Are you sure you want to delete containers (Y/N)?: ')
+            if confirm[0].lower() == 'n':
                 os._exit(0)
-            elif confirm.lower() == 'yes' or confirm.lower() == 'y':
+            elif confirm[0].lower() == 'y':
                 services = get_services_list()
                 if len(services) != 0:
+                    print(get_current_setup())
                     build_compose_file(nodes=get_current_setup())
                     cmd = '/src/killit.sh backup'
                     run_docker_cmd(cmd, only_run_on='server')
@@ -658,7 +663,7 @@ if __name__ == "__main__":
                 else:
                     log_info('No running container found, nothing to backup')
                 try:
-                    os.chdir(pbs_dirname)
+                    os.chdir(ci_dirname)
                     run_cmd(
                         "docker-compose -f docker-compose.json down --remove-orphans")
                     log_info(
@@ -668,7 +673,7 @@ if __name__ == "__main__":
             else:
                 log_error("Invalid option provided")
         if args.local != None:
-            os.chdir(pbs_dirname)
+            os.chdir(ci_dirname)
             # using subprocess.run instead of run_cmd function so we dont supress stdout and stderr
             if args.local == 'called':
                 exit_code = subprocess.run("./do.sh")

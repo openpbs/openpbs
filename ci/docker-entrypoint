@@ -41,7 +41,7 @@ workdir=/src
 logdir=/logs
 
 cd /pbssrc
-${workdir}/do.sh 1 2>&1 | tee -a ${logdir}/build-$(hostname)
+${workdir}/do.sh 1 2>&1 | tee -a ${logdir}/build-$(hostname -s)
 if [ $? -ne 0 ]; then
     exit 1
 else

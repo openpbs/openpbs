@@ -45,8 +45,10 @@ fi
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
-  commandloops=/src/.commandloops
+  config_dir=/src/.config_dir
+  chmod -R 755 ${config_dir}
   logdir=/logs
+  chmod -R 755 ${logdir}
   PBS_DIR=/pbssrc
 else
   PBS_DIR=$(readlink -f $0 | awk -F'/ci/' '{print $1}')
@@ -150,21 +152,21 @@ fi
 
 if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   echo "### First time build is complete ###"
-  host=$(hostname)
-  echo "READY:${host}" >>${commandloops}/.status
+  host=$(hostname -s)
+  echo "READY:${host}" >>${config_dir}/.status
   exit 0
 fi
 
 if [ "x${ONLY_INSTALL_DEPS}" == "x1" ]; then
   exit 0
 fi
-hostname=$(hostname)
+hostname=$(hostname -s)
 _targetdirname=target-${ID}-${hostname}
 if [ "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
   rm -rf ${_targetdirname}
 fi
 mkdir -p ${_targetdirname}
-if [ ! -f ${_targetdirname}/Makefile ]; then
+if [ ! -f ./configure ]; then
   [[ -f Makefile ]] && make distclean || true
   ./autogen.sh
 fi
@@ -178,8 +180,8 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   fi
   cd ${_targetdirname}
   if [ -f /src/ci ]; then
-    if [ -f ${commandloops}/.configure_opt ]; then
-      configure_opt="$(cat ${commandloops}/.configure_opt)"
+    if [ -f ${config_dir}/.configure_opt ]; then
+      configure_opt="$(cat ${config_dir}/.configure_opt)"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -203,7 +205,7 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   cd -
 fi
 cd ${_targetdirname}
-prefix=$(cat ${commandloops}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
+prefix=$(cat ${config_dir}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
 if [ "x${prefix}" == "x" ]; then
   prefix='/opt/pbs'
 fi
@@ -211,8 +213,8 @@ if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ]; then
   echo "skipping make"
 else
   if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
-    if [ -f ${commandloops}/.configure_opt ]; then
-      configure_opt="$(cat ${commandloops}/.configure_opt)"
+    if [ -f ${config_dir}/.configure_opt ]; then
+      configure_opt="$(cat ${config_dir}/.configure_opt)"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -231,8 +233,8 @@ if [ "x$ONLY_REBUILD" == "x1" ]; then
 fi
 if [ "x${ONLY_TEST}" != "x1" ]; then
   if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
-    if [ -f ${commandloops}/.configure_opt ]; then
-      configure_opt="$(cat ${commandloops}/.configure_opt)"
+    if [ -f ${config_dir}/.configure_opt ]; then
+      configure_opt="$(cat ${config_dir}/.configure_opt)"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -276,21 +278,10 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
-  benchpress_opt="$(cat ${commandloops}/.benchpress_opt)"
+  benchpress_opt="$(cat ${config_dir}/.benchpress_opt)"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
-  # pbsnodes=$(/opt/pbs/bin/pbsnodes -av -F json | grep -o mom_.*_[0-9]\"$ | awk -F '"' '{print $1}')
-  pbsnodes=$(/opt/pbs/bin/pbsnodes -av | grep -v "  " | grep -v "vnode")
-  if [ ! -z "$pbsnodes" ]; then
-    set -- $pbsnodes
-    while [ $# -gt 0 ]; do
-      moms="$moms$1:"
-      shift
-    done
-    moms=$(echo "${moms%?}")
-    echo "moms=$moms" >${commandloops}/.params
-    params="--param-file ${commandloops}/.params"
-  fi
+  params="-p ${config_dir}/.params"
   if [ -z "${eval_tag}" ]; then
     pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   else
