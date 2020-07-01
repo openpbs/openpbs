@@ -846,7 +846,7 @@ free_nodes(node_info **ninfo_arr)
 	if (ninfo_arr == NULL)
 		return;
 
-	num_nodes = count_array((void **) ninfo_arr);
+	num_nodes = count_array(ninfo_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {
@@ -1330,7 +1330,7 @@ node_filter(node_info **nodes, int size,
 	int i, j;
 
 	if (size < 0)
-		size = count_array((void **) nodes);
+		size = count_array(nodes);
 
 	if ((new_nodes = (node_info **) malloc((size + 1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1946,7 +1946,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	}
 
 	susp_jobs = resource_resv_filter(resresv_arr,
-		count_array((void **) resresv_arr), check_susp_job, NULL, 0);
+		count_array(resresv_arr), check_susp_job, NULL, 0);
 	if (susp_jobs == NULL)
 		return 0;
 
@@ -2604,7 +2604,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 
 	if (resresv->server->has_multi_vnode) {
 		/* Worst case is that split all chunks onto all nodes */
-		tot_nodes = count_array((void **)ninfo_arr);
+		tot_nodes = count_array(ninfo_arr);
 		num_nspecs = tot_nodes * spec->total_chunks;
 	}
 	else
@@ -2636,7 +2636,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			free_nspecs(*nspec_arr);
 			*nspec_arr = NULL;
 		} else if (resresv->server->has_multi_vnode) {
-			tmp = realloc(*nspec_arr, (count_array((void **)*nspec_arr) + 1) * sizeof(nspec *));
+			tmp = realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *));
 			if (tmp != NULL)
 				*nspec_arr = tmp;
 		}
@@ -2723,7 +2723,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		free_nspecs(*nspec_arr);
 		*nspec_arr = NULL;
 	} else if (resresv->server->has_multi_vnode) {
-		tmp = realloc(*nspec_arr, (count_array((void **)*nspec_arr) + 1) * sizeof(nspec *));
+		tmp = realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *));
 		if (tmp != NULL)
 			*nspec_arr = tmp;
 	}
@@ -3220,7 +3220,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 		return eval_simple_selspec(policy, spec->chunks[0], ninfo_arr, pl, resresv,
 			flags, resresv->server->flt_lic, nspec_arr, err);
 
-	tot_nodes = count_array((void **) ninfo_arr);
+	tot_nodes = count_array(ninfo_arr);
 
 	nsa = *nspec_arr;
 
@@ -5051,7 +5051,7 @@ create_node_array_from_nspec(nspec **nspec_arr)
 	if (nspec_arr == NULL)
 		return NULL;
 
-	count = count_array((void **) nspec_arr);
+	count = count_array(nspec_arr);
 
 	if ((ninfo_arr = calloc(count + 1, sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -5118,7 +5118,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	if (resresv == NULL && conf.provision_policy == AVOID_PROVISION)
 		return NULL;
 
-	nsize = count_array((void **) nodes);
+	nsize = count_array(nodes);
 
 	if ((node_array_size < nsize + 1) || node_array == NULL) {
 		tmparr = realloc(node_array, sizeof(node_info *) * (nsize + 1));
@@ -5832,7 +5832,7 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 	if (nodes == NULL || strnodes == NULL)
 		return NULL;
 
-	cnt = count_array((void **)strnodes);
+	cnt = count_array(strnodes);
 
 	if ((ninfo_arr = malloc((cnt+1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -6249,7 +6249,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 		return;
 
 	if (num_nodes == -1)
-		num_nodes = count_array((void **) ninfo_arr);
+		num_nodes = count_array(ninfo_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {

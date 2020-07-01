@@ -379,7 +379,7 @@ dup_resdef_array(resdef **odef_arr)
 	if (odef_arr == NULL)
 		return NULL;
 
-	ct = count_array((void **) odef_arr);
+	ct = count_array(odef_arr);
 
 	ndef_arr = malloc((ct + 1) * sizeof(resdef*));
 	if (ndef_arr == NULL) {
@@ -436,9 +436,9 @@ add_resdef_to_array(resdef ***resdef_arr, resdef *def)
 	if (resdef_arr == NULL || def == NULL)
 		return -1;
 
-	cnt = count_array((void **) *resdef_arr);
+	cnt = count_array(*resdef_arr);
 
-	tmp_arr = (resdef**) realloc(*resdef_arr, (cnt+2)*sizeof(resdef*));
+	tmp_arr = (resdef **) realloc(*resdef_arr, (cnt + 2) * sizeof(resdef*));
 	if (tmp_arr == NULL)
 		return -1;
 
@@ -470,8 +470,8 @@ copy_resdef_array(resdef **deflist)
 	if (deflist == NULL)
 		return NULL;
 
-	cnt = count_array((void **)deflist);
-	new_deflist = malloc((cnt+1) * sizeof(resdef*));
+	cnt = count_array(deflist);
+	new_deflist = malloc((cnt + 1) * sizeof(resdef*));
 	if (new_deflist == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
