@@ -486,9 +486,8 @@ vna_list_free(pbs_list_head listh)
 
 	while (pvna != NULL) {
 		nxt = (struct hook_vnl_action *)GET_NEXT(pvna->hva_link);
-		if (pvna->hva_vnl) {
+		if (pvna->hva_vnl)
 			vnl_free((vnl_t *)pvna->hva_vnl);
-		}
 		delete_link(&pvna->hva_link);
 		free(pvna);
 		pvna = nxt;
@@ -3071,9 +3070,9 @@ struct work_task *pwt;
 void send_hook_fail_action(hook *phook)
 {
 
-	char	hook_buf[HOOK_BUF_SIZE];
+	char hook_buf[HOOK_BUF_SIZE];
 	vnl_t *tvnl = NULL;
-	int	vret = -1;
+	int vret = -1;
 
 	if ((phook == NULL) || (phook->hook_name == NULL)) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
@@ -3081,7 +3080,7 @@ void send_hook_fail_action(hook *phook)
 		return;
 	}
 
-	snprintf(hook_buf, sizeof(hook_buf)-1, "1,%s", phook->hook_name);
+	snprintf(hook_buf, sizeof(hook_buf) - 1, "1,%s", phook->hook_name);
 
 	if (vnl_alloc(&tvnl) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),

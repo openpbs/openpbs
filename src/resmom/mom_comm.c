@@ -3758,10 +3758,10 @@ join_err:
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
 
-			switch (hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_PROLOGUE,
+			switch (hook_rc = mom_process_hooks(HOOK_EVENT_EXECJOB_PROLOGUE,
 						PBS_MOM_SERVICE_NAME,
 						mom_host, &hook_input, &hook_output,
-							hook_msg, sizeof(hook_msg), 1)) {
+						hook_msg, sizeof(hook_msg), 1)) {
 
 				case 1: /* explicit accept */
 				case 2:	/* no hook script executed - go ahead and accept event*/
@@ -3781,9 +3781,8 @@ join_err:
 						hook_errcode = PBSE_HOOKERROR;
 					}
 					SEND_ERR2(hook_errcode, (char *)hook_msg);
-					if (hook_errcode == PBSE_HOOKERROR) {
+					if (hook_errcode == PBSE_HOOKERROR)
 					    send_hook_fail_action(last_phook);
-					}
 			}
 			break;
 
