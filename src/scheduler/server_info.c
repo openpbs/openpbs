@@ -446,7 +446,7 @@ query_server(status *pol, int pbs_sd)
 
 	if (sinfo->buckets != NULL) {
 		int ct;
-		ct = count_array((void **) sinfo->buckets);
+		ct = count_array(sinfo->buckets);
 		qsort(sinfo->buckets, ct, sizeof(node_bucket *), multi_bkt_sort);
 	}
 
@@ -1654,7 +1654,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 				int num_resv_nodes;
 
 				resv_nodes = resresv->job->resv->resv->resv_nodes;
-				num_resv_nodes = count_array((void **) resv_nodes);
+				num_resv_nodes = count_array(resv_nodes);
 				qsort(resv_nodes, num_resv_nodes, sizeof(node_info *),
 					multi_node_sort);
 			} else {
@@ -1662,7 +1662,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 					multi_node_sort);
 
 				if (sinfo->nodes != sinfo->unassoc_nodes) {
-					num_unassoc = count_array((void **) sinfo->unassoc_nodes);
+					num_unassoc = count_array(sinfo->unassoc_nodes);
 					qsort(sinfo->unassoc_nodes, num_unassoc, sizeof(node_info *),
 						multi_node_sort);
 				}
@@ -3652,7 +3652,7 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
 	    return 0;
 
 	list_head = *qlhead;
-	queue_list_size = count_array((void **)list_head);
+	queue_list_size = count_array(list_head);
 
 	temp_list = find_queue_list_by_priority(list_head, qinfo->priority);
 	if (temp_list == NULL) {
@@ -3719,7 +3719,7 @@ struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
 
 	if ((list == NULL) || (add == NULL))
 		return NULL;
-	count = count_array((void **)*list);
+	count = count_array(*list);
 
 	/* count contains number of elements in list (excluding NULL). we add 2 to add the NULL
 	 * back in, plus our new element.
@@ -3927,8 +3927,8 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	if (old_unordered_nodes == NULL || nnodes == NULL)
 		return NULL;
 
-	ct1 = count_array((void **) nnodes);
-	ct2 = count_array((void **) old_unordered_nodes);
+	ct1 = count_array(nnodes);
+	ct2 = count_array(old_unordered_nodes);
 
 	if(ct1 != ct2)
 		return NULL;
@@ -3962,7 +3962,7 @@ add_ptr_to_array(void *ptr_arr, void *ptr)
 	void **arr;
 	int cnt;
 
-	cnt = count_array((void **)ptr_arr);
+	cnt = count_array(ptr_arr);
 
 	if (cnt == 0) {
 		arr = malloc(sizeof(void *) * 2);

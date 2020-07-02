@@ -1585,7 +1585,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			}
 #endif
 
-			num_nspec = count_array((void **) ns);
+			num_nspec = count_array(ns);
 			if (num_nspec > 1)
 				qsort(ns, num_nspec, sizeof(nspec *), cmp_nspec);
 
@@ -2304,7 +2304,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		if (policy->round_robin) {
 			last_queue = 0;
 			last_queue_index = 0;
-			queue_list_size = count_array((void **)sinfo->queue_list);
+			queue_list_size = count_array(sinfo->queue_list);
 
 		}
 		else if (policy->by_queue)
@@ -2370,7 +2370,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		i = last_queue_index;
 		while((rjob == NULL) && (i < queue_list_size)) {
 			/* Calculating number of queues at this priority level */
-			queue_index_size = count_array((void **) sinfo->queue_list[i]);
+			queue_index_size = count_array(sinfo->queue_list[i]);
 			for (j = last_queue; j < queue_index_size; j++) {
 				ind = find_runnable_resresv_ind(sinfo->queue_list[i][j]->jobs, 0);
 				if(ind != -1)

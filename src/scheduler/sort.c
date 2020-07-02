@@ -1286,27 +1286,25 @@ sort_jobs(status *policy, server_info *sinfo)
 		}
 		/** Sort on entire complex **/
 		else if (!policy->by_queue && !policy->round_robin) {
-			qsort(sinfo->jobs, count_array((void **)sinfo->jobs),
-				sizeof(resource_resv *), cmp_sort);
+			qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv *), cmp_sort);
 		}
 	}
 	else if (policy->by_queue) {
 		for (i = 0; i < sinfo->num_queues; i++) {
-			qsort(sinfo->queues[i]->jobs, count_array((void **)sinfo->queues[i]->jobs),
-				sizeof(resource_resv *), cmp_sort);
+			qsort(sinfo->queues[i]->jobs, count_array(sinfo->queues[i]->jobs), sizeof(resource_resv *), cmp_sort);
 		}
-		qsort(sinfo->jobs, count_array((void **)sinfo->jobs), sizeof(resource_resv*), cmp_sort);
+		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv*), cmp_sort);
 	}
 	else if (policy->round_robin) {
 		if (sinfo -> queue_list != NULL) {
-			int queue_list_size = count_array((void **)sinfo->queue_list);
+			int queue_list_size = count_array(sinfo->queue_list);
 			int i,j;
 			for (i = 0; i < queue_list_size; i++)
 			{
-				int queue_index_size = count_array((void **)sinfo->queue_list[i]);
+				int queue_index_size = count_array(sinfo->queue_list[i]);
 				for (j = 0; j < queue_index_size; j++)
 				{
-				    qsort(sinfo->queue_list[i][j]->jobs, count_array((void **)sinfo->queue_list[i][j]->jobs),
+				    qsort(sinfo->queue_list[i][j]->jobs, count_array(sinfo->queue_list[i][j]->jobs),
 					    sizeof(resource_resv *), cmp_sort);
 				}
 			}
@@ -1314,5 +1312,5 @@ sort_jobs(status *policy, server_info *sinfo)
 		}
 	}
 	else
-		qsort(sinfo->jobs, count_array((void **)sinfo->jobs), sizeof(resource_resv*), cmp_sort);
+		qsort(sinfo->jobs, count_array(sinfo->jobs), sizeof(resource_resv*), cmp_sort);
 }

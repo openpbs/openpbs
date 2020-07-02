@@ -1017,7 +1017,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	num_new_jobs = num_jobs;
 
 	/* if there are previous jobs, count those too */
-	num_prev_jobs = count_array((void **) pjobs);
+	num_prev_jobs = count_array(pjobs);
 	num_jobs += num_prev_jobs;
 
 
@@ -2375,7 +2375,7 @@ dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
 	if (osets == NULL || nsinfo == NULL)
 		return NULL;
 
-	len = count_array((void **) osets);
+	len = count_array(osets);
 
 	rsets = malloc((len + 1) * sizeof(resresv_set *));
 	if (rsets == NULL) {
@@ -2534,7 +2534,7 @@ create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 	for (cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
 		limres_ct++;
 
-	def_ct = count_array((void **) policy->resdef_to_check);
+	def_ct = count_array(policy->resdef_to_check);
 	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
 	defs = malloc((def_ct + limres_ct + 6) * sizeof(resdef *));
 
@@ -2729,7 +2729,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 
 	resresvs = sinfo->jobs;
 
-	len = count_array((void **) resresvs);
+	len = count_array(resresvs);
 	rsets = malloc((len + 1) * sizeof(resresv_set *));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -2760,7 +2760,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	tmp_rset_arr = realloc(rsets,(j + 1) * sizeof(resresv_set *));
 	if (tmp_rset_arr != NULL)
 		rsets = tmp_rset_arr;
-	rset_len = count_array((void **)rsets);
+	rset_len = count_array(rsets);
 	if (rset_len > 0) {
 		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 			"Number of job equivalence classes: %d", rset_len);
@@ -3383,7 +3383,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	if (sc_attrs.preempt_targets_enable) {
 		if (preempt_targets_req != NULL) {
 			prjobs = resource_resv_filter(nsinfo->running_jobs,
-				count_array((void **) nsinfo->running_jobs),
+				count_array(nsinfo->running_jobs),
 				preempt_job_set_filter,
 				(void *) preempt_targets_list, NO_FLAGS);
 			free_string_array(preempt_targets_list);
@@ -3392,7 +3392,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	if (prjobs != NULL) {
 		rjobs = prjobs;
-		rjobs_count = count_array((void **)prjobs);
+		rjobs_count = count_array(prjobs);
 		if (rjobs_count > 0) {
 			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name,
 				"Limited running jobs used for preemption from %d to %d", nsinfo->sc.running, rjobs_count);
@@ -3792,9 +3792,9 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 					 */
 					if (rdtc_non_consumable == NULL) {
 						long max_resdefs = 0;
-						if (policy != NULL) {
-							max_resdefs = count_array( (void **) policy->resdef_to_check);
-						}
+						if (policy != NULL)
+							max_resdefs = count_array(policy->resdef_to_check);
+
 						if (max_resdefs > 0)    {
 							rdtc_non_consumable = (resdef **) calloc(sizeof(resdef *),(size_t) max_resdefs + 1);
 							if (rdtc_non_consumable != NULL) {
@@ -5379,7 +5379,7 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 	if ((arr == NULL) || (job == NULL) || (err == NULL))
 		return NULL;
 
-	arr_length = count_array((void **)arr);
+	arr_length = count_array(arr);
 
 	switch (err->error_code) {
 		/* list of resources we care about */
@@ -5523,7 +5523,7 @@ void associate_dependent_jobs(server_info *sinfo) {
 			job_arr = parse_runone_job_list(sinfo->jobs[i]->job->depend_job_str);
 			if (job_arr != NULL) {
 				int j;
-				int len = count_array((void **)job_arr);
+				int len = count_array(job_arr);
 				sinfo->jobs[i]->job->dependent_jobs = calloc((len + 1), sizeof(resource_resv *));
 				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
 				for (j = 0; job_arr[j] != NULL; j++) {

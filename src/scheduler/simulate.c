@@ -870,7 +870,7 @@ create_events(server_info *sinfo)
 	 * the timed events are in the front of the array.
 	 * Once the first non-timed event is reached, we're done
 	 */
-	all_resresv_len = count_array((void **)sinfo->all_resresv);
+	all_resresv_len = count_array(sinfo->all_resresv);
 	all_resresv_copy = malloc((all_resresv_len + 1) * sizeof(resource_resv *));
 	if (all_resresv_copy == NULL)
 		return 0;
@@ -880,7 +880,7 @@ create_events(server_info *sinfo)
 	all = all_resresv_copy;
 
 	/* sort the all resersv list so all the timed events are in the front */
-	qsort(all, count_array((void **)all), sizeof(resource_resv *), cmp_events);
+	qsort(all, count_array(all), sizeof(resource_resv *), cmp_events);
 
 	for (i = 0; all[i] != NULL && is_timed(all[i]); i++) {
 		/* only add a run event for a job or reservation if they're

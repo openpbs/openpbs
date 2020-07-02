@@ -222,7 +222,7 @@ dup_node_bucket_array(node_bucket **old, server_info *nsinfo) {
 	if (old == NULL)
 		return NULL;
 
-	new = malloc((count_array((void**) old) + 1) * sizeof(node_bucket *));
+	new = malloc((count_array(old) + 1) * sizeof(node_bucket *));
 	if (new == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -403,7 +403,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 	if (policy == NULL || nodes == NULL)
 		return NULL;
 
-	node_ct = count_array((void**) nodes);
+	node_ct = count_array(nodes);
 
 	buckets = calloc((node_ct + 1), sizeof(node_bucket *));
 	if (buckets == NULL) {
@@ -962,8 +962,8 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 	} else
 		clear_schd_error(failerr);
 
-	bucket_ct = count_array((void **) buckets);
-	chunk_ct = count_array((void **) resresv->select->chunks);
+	bucket_ct = count_array(buckets);
+	chunk_ct = count_array(resresv->select->chunks);
 
 	cb_map = calloc((chunk_ct + 1), sizeof(chunk_map *));
 	if (cb_map == NULL) {
