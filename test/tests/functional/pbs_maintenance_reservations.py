@@ -640,7 +640,6 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
-    @requirements(num_moms=2)
     def test_maintenance_degrade_reservation_jobs_dont_run(self):
         """
         Test if the reservation is degraded by overlapping
@@ -648,6 +647,7 @@ class TestMaintenanceReservations(TestFunctional):
         not run when the reservation starts running.
         Two moms (-p "servers=M1,moms=M1:M2") are needed for this test.
         """
+
         if len(self.moms) != 2:
             cmt = "need 2 mom hosts: -p servers=<m1>,moms=<m1>:<m2>"
             self.skip_test(reason=cmt)
@@ -691,6 +691,6 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.logger.info('wait 5 seconds to make sure scheduler looks at job')
         time.sleep(5)
-        a = {'comment': 'Can Never Run: Not enough total nodes available',
+        a = {'comment': 'Can Never Run: Reservation is in invalid state',
              'job_state': 'Q'}
         self.server.expect(JOB, a, id=jid)

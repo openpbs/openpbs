@@ -246,7 +246,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs, int pbs_sd)
 				queue_info *qinfo = find_queue_info(sinfo->queues, resresv->resv->queuename);
 				if (qinfo != NULL) {
 				    clear_schd_error(err);
-				    set_schd_error_codes(err, NEVER_RUN, NO_TOTAL_NODES);
+				    set_schd_error_arg(err, SPECMSG, "Reservation is in invalid state");
+				    set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 				    update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
 				}
 			}
