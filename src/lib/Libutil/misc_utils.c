@@ -1343,11 +1343,6 @@ ends_with_triple_quotes(char *str, int strip_quotes)
 
 	if (*p == '\n') {
 		p--;
-#ifdef WIN32
-		if (*p  == '\r') {
-			p--;
-		}
-#endif
 	}
 
 	ct = 0;

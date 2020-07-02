@@ -85,7 +85,6 @@ pbs_server_bin_SOURCES = \
 	hook_func.c \
 	issue_request.c \
 	job_func.c \
-	job_recov.c \
 	job_recov_db.c \
 	job_route.c \
 	license_client.c \

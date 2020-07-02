@@ -107,56 +107,11 @@
 
 
 /* global Data Items */
-extern char *msg_startup3;
 extern char *msg_daemonname;
-extern char *msg_init_abt;
-extern char *msg_init_queued;
-extern char *msg_init_substate;
-extern char *msg_err_noqueue;
-extern char *msg_err_noqueue1;
-extern char *msg_init_noqueues;
-extern char *msg_init_noresvs;
-extern char *msg_init_resvNOq;
-extern char *msg_init_recovque;
-extern char *msg_init_recovresv;
-extern char *msg_init_expctq;
-extern char *msg_init_nojobs;
-extern char *msg_init_exptjobs;
-extern char *msg_init_norerun;
-extern char *msg_init_unkstate;
-extern char *msg_init_baddb;
-extern char *msg_init_chdir;
-extern char *msg_init_badjob;
-extern char *msg_script_open;
-extern char *msg_unkresc;
-
-extern char *path_svrdb;
-extern char *path_priv;
-extern char *path_jobs;
-extern char *path_users;
-extern char *path_rescdef;
-extern char *path_spool;
-
-extern char server_host[];
-extern char server_name[];
-extern struct server server;
-
-char *path_queues;
-char *path_nodes;
-char *path_nodestate;
-char *path_scheddb;
-char *path_resvs;
-char *path_svrdb_new;
-char *path_scheddb_new;
-
-/* Private functions in this file */
-extern int chk_save_file(char *filename);
-extern char *build_path(char *parent, char *name, char *sufix);
 
 #ifdef NAS /* localmod 005 */
 extern int pbsd_init(int type);
 #endif /* localmod 005 */
-extern void init_server_attrs();
 
 /**
  * @brief

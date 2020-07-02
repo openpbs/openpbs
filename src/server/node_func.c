@@ -102,13 +102,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "pbs_db.h"
-#ifndef WIN32
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#endif
 #include <assert.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
@@ -120,9 +118,6 @@
 #include "batch_request.h"
 #include "server.h"
 #include "resv_node.h"
-#ifdef WIN32
-#include "win.h"
-#endif
 #include "job.h"
 #include "queue.h"
 #include "reservation.h"
@@ -136,7 +131,7 @@
 #include "cmds.h"
 #include "pbs_license.h"
 #include "pbs_idx.h"
-#if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
+#if !defined(H_ERRNO_DECLARED)
 extern int h_errno;
 #endif
 
@@ -145,9 +140,6 @@ extern int h_errno;
 
 extern int	 svr_quehasnodes;
 extern int	 svr_totnodes;
-extern char	*path_nodes_new;
-extern char	*path_nodes;
-extern char	*path_nodestate;
 extern pbs_list_head svr_queues;
 extern unsigned int pbs_mom_port;
 extern unsigned int pbs_rm_port;
@@ -1942,9 +1934,6 @@ record_node_topology(char *node_name, char *topology)
 			log_err(errno, __func__, log_buffer);
 			return;
 		}
-#ifdef	WIN32
-		secure_file(path, NULL, 0);
-#endif
 	} else if (!S_ISDIR(sb.st_mode)) {
 		/* path exists but is not a directory */
 		sprintf(log_buffer, "%s", msg_notdir);
@@ -1968,10 +1957,6 @@ record_node_topology(char *node_name, char *topology)
 		log_err(errno, __func__, log_buffer);
 		return;
 	}
-#ifdef	WIN32
-	secure_file(path, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-#endif
 	topology_len = strlen(topology);
 	if (write(fd, topology, topology_len) != topology_len) {
 		sprintf(log_buffer, msg_writepathfail, node_name);

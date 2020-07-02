@@ -125,7 +125,6 @@ extern struct server   server;
 extern char *msg_abt_err;
 extern char *path_jobs;
 extern char *path_spool;
-extern char *path_resvs;
 extern char  server_name[];
 extern char *pbs_server_name;
 extern pbs_list_head svr_newjobs;
@@ -359,6 +358,7 @@ job_alloc(void)
 	pj->ji_stdout = 0;
 	pj->ji_stderr = 0;
 	pj->ji_setup = NULL;
+	pj->ji_momsubt = 0;
 #else	/* SERVER */
 	pj->ji_discarding = 0;
 	pj->ji_prunreq = NULL;
@@ -373,9 +373,6 @@ job_alloc(void)
 	pj->ji_momhandle = -1;		/* mark mom connection invalid */
 	pj->ji_mom_prot = PROT_INVALID; /* invalid protocol type */
 	pj->newobj = 1;
-#if defined(PBS_MOM) && defined(WIN32)
-	pj->ji_momsubt = NULL;
-#endif
 
 	/* set the working attributes to "unspecified" */
 
@@ -1184,10 +1181,6 @@ write_cred(job *pjob, char *cred, size_t len)
 		goto done;
 	}
 
-#if !defined(PBS_MOM) && defined(WIN32)
-	cache_usertoken_and_homedir(pjob->ji_wattr[JOB_ATR_euser].at_val.at_str,
-		NULL, 0, read_cred, (job *)pjob, pbs_decrypt_pwd, 1);
-#endif
 	ret = 0;
 
 done:

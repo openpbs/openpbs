@@ -76,13 +76,8 @@ pbs_get_dataservice_usr(char *errmsg, int len)
 	struct stat st = {0};
 	char buf[MAXPATHLEN+1];
 
-#ifdef WIN32
-	snprintf(usr_file, MAXPATHLEN+1, "%s\\server_priv\\db_user", pbs_conf.pbs_home_path);
-	if ((fd = open(usr_file, O_RDONLY | O_BINARY)) == -1)
-#else
 	snprintf(usr_file, MAXPATHLEN+1, "%s/server_priv/db_user", pbs_conf.pbs_home_path);
 	if ((fd = open(usr_file, O_RDONLY)) == -1)
-#endif
 	{
 		if (access(usr_file, F_OK) == 0) {
 			snprintf(errmsg, len, "%s: open failed, errno=%d", usr_file, errno);

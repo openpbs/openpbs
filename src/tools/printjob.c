@@ -514,12 +514,6 @@ char *argv[];
 		return 1;
 	}
 
-#if defined(PRINTJOBSVR) && defined(WIN32)
-	if (winsock_init()) {
-		return 1;
-	}
-#endif
-
 	for (f=optind; f<argc; ++f) {
 		char	*jobfile = argv[f];
 		int	len;
@@ -724,9 +718,6 @@ char *argv[];
 	if (conn != NULL) {
 		pbs_db_disconnect(conn);
 	}
-#ifdef WIN32
-	winsock_cleanup();
-#endif
 #endif
 	return (0);
 }

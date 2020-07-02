@@ -281,10 +281,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
-#ifdef WIN32
-	struct sockaddr_in to_sock;
-	struct sockaddr_in from_sock;
-#endif
 
 #ifndef WIN32
 	char   pbsrc[_POSIX_PATH_MAX];
@@ -659,11 +655,7 @@ pbs_connect_noblk(char *server, int tout)
 
 #ifdef WIN32
 	int     non_block = 1;
-	struct sockaddr_in to_sock;
-	struct sockaddr_in from_sock;
-#endif
-
-#ifndef WIN32
+#else
 	int nflg;
 	int oflg;
 #endif

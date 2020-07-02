@@ -126,26 +126,21 @@
 /* global Data Items */
 
 extern char	*msg_startup3;
-extern char     *msg_daemonname;
+extern char *msg_daemonname;
 extern char	*msg_init_abt;
 extern char	*msg_init_queued;
 extern char	*msg_init_substate;
 extern char	*msg_err_noqueue;
 extern char	*msg_err_noqueue1;
-extern char	*msg_init_noqueues;
-extern char	*msg_init_noresvs;
 extern char	*msg_init_resvNOq;
 extern char	*msg_init_recovque;
 extern char	*msg_init_recovresv;
 extern char	*msg_init_expctq;
 extern char	*msg_init_nojobs;
 extern char	*msg_init_exptjobs;
-extern char	*msg_init_norerun;
 extern char	*msg_init_unkstate;
 extern char	*msg_init_baddb;
 extern char	*msg_init_chdir;
-extern char	*msg_init_badjob;
-extern char	*msg_script_open;
 extern char	*msg_unkresc;
 extern char	*msg_corelimit;
 
@@ -153,45 +148,29 @@ extern char	*acct_file;
 extern int	 ext_license_server;
 extern char	*log_file;
 extern char	*path_acct;
-extern char     *path_usedlicenses;
+extern char *path_usedlicenses;
 extern char	path_log[];
 extern char	*path_priv;
 extern char	*path_jobs;
 extern char	*path_users;
-extern char	*path_rescdef;
-extern char	*path_resvs;
-extern char	*path_queues;
 extern char	*path_spool;
-extern char	*path_svrdb;
-extern char	*path_svrdb_new;
-extern char	*path_scheddb;
-extern char	*path_scheddb_new;
 extern char	*path_track;
 extern char	*path_prov_track;
-extern char	*path_nodes;
-extern char	*path_nodes_new;
-extern char	*path_nodestate;
 extern long	 new_log_event_mask;
 extern char	 server_host[];
 extern char	 server_name[];
-extern int	 svr_delay_entry;
 extern pbs_list_head svr_newjobs;
-extern pbs_list_head svr_alljobs;
 extern pbs_list_head svr_allresvs;
-extern pbs_list_head task_list_event;
 extern time_t	 time_now;
 
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
-extern int      pbs_mom_port;
 struct license_block licenses;
 struct license_used  usedlicenses;
-extern struct resc_sum *svr_resc_sum;
 extern char   *path_hooks;
 extern char   *path_hooks_workdir;
 extern pbs_list_head       prov_allvnodes;
 extern int 		max_concurrent_prov;
-extern int		brought_up_db;
 extern pbs_db_conn_t	*svr_db_conn;
 
 extern	pbs_list_head	svr_allhooks;
@@ -219,7 +198,6 @@ static void  stop_me(int);
 static int   Rmv_if_resv_not_possible(job *);
 static int   attach_queue_to_reservation(resc_resv *);
 static void  call_log_license(struct work_task *);
-extern int create_resreleased(job *pjob);
 
 extern pbs_sched *sched_alloc(char *sched_name);
 /* private data */

@@ -42,10 +42,8 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#ifndef WIN32
 #include <sys/param.h>
 #include <execinfo.h>
-#endif
 
 #include "pbs_ifl.h"
 #include <errno.h>
@@ -58,14 +56,6 @@
 #include "server_limits.h"
 #include "list_link.h"
 #include "attribute.h"
-
-#ifdef WIN32
-#include <sys/stat.h>
-#include <io.h>
-#include <windows.h>
-#include "win.h"
-#endif
-
 #include "job.h"
 #include "reservation.h"
 #include "queue.h"
@@ -79,18 +69,12 @@
 
 #define MAX_SAVE_TRIES 3
 
-#ifndef PBS_MOM
 extern pbs_db_conn_t	*svr_db_conn;
-#ifndef WIN32
 #define BACKTRACE_BUF_SIZE 50
 void print_backtrace(char *);
-#endif
-#endif
 
 /* global data items */
 extern time_t time_now;
-
-#ifndef PBS_MOM
 
 /**
  * @brief
@@ -561,6 +545,3 @@ resv_recov_db(char *resvid, resc_resv *presv)
 
 	return presv;
 }
-
-
-#endif /* ifndef PBS_MOM */

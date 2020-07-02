@@ -71,9 +71,7 @@
 #include "pbs_db.h"
 
 
-#ifndef PBS_MOM
 extern pbs_db_conn_t	*svr_db_conn;
-#endif
 
 /**
  * @brief

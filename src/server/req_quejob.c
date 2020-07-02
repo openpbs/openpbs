@@ -144,7 +144,6 @@ extern pbs_list_head svr_alljobs;
 extern pbs_list_head svr_newjobs;
 extern attribute_def job_attr_def[];
 extern char *path_jobs;
-extern char *path_resvs;
 extern char *pbs_o_host;
 extern char *msg_script_open;
 extern char *msg_script_write;
@@ -1473,10 +1472,8 @@ req_mvjobfile(struct batch_request *preq)
 	int	 fds;
 	char	 namebuf[MAXPATHLEN+1];
 	job	*pj;
-#ifndef WIN32
 	mode_t	 cur_mask;
 	struct stat sb;
-#endif
 
 	pj = locate_new_job(preq, NULL);
 	if (pj == NULL)
@@ -1511,8 +1508,7 @@ req_mvjobfile(struct batch_request *preq)
 			return;
 	}
 
-#ifndef WIN32
-	/* Windows does not do symlinks, we only need to check on Unix/Linux */
+	/* check symlinks */
 	if (lstat(namebuf, &sb) == 0) {
 		/* if it exists, the file must be a prior copy which means */
 		/* it must be a regular file and owned by me (root)        */
@@ -1574,24 +1570,11 @@ req_mvjobfile(struct batch_request *preq)
 		}
 	}
 
-#else	/* is WIN32  */
-
-	if (preq->rq_ind.rq_jobfile.rq_sequence == 0)
-		fds = open(namebuf, O_WRONLY|O_CREAT|O_EXCL|O_Sync, 0600);
-	else
-		fds = open(namebuf, O_WRONLY|O_APPEND|O_Sync, 0600);
-
-#endif	/* WIN32 */
-
 	if (fds < 0) {
 		log_err(errno, "req_mvjobfile", msg_script_open);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
-#ifdef WIN32
-	secure_file(namebuf, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-	setmode(fds, O_BINARY);
-#endif
 
 	if (write(fds, preq->rq_ind.rq_jobfile.rq_data,
 		(unsigned)preq->rq_ind.rq_jobfile.rq_size) !=
@@ -1723,11 +1706,7 @@ req_commit(struct batch_request *preq)
 	pbs_db_jobscr_info_t	jobscr;
 	pbs_db_obj_info_t	obj;
 	long			time_msec;
-#ifdef	WIN32
-	struct	_timeb		tval;
-#else
 	struct timeval		tval;
-#endif
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 #endif
 
@@ -1818,13 +1797,8 @@ req_commit(struct batch_request *preq)
 	svr_evaljobstate(pj, &newstate, &newsub, 1);
 	(void)svr_setjobstate(pj, newstate, newsub);
 
-#ifdef WIN32
-	_ftime_s(&tval);
-	time_msec = (tval.time * 1000L) + tval.millitm;
-#else
 	gettimeofday(&tval, NULL);
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
-#endif
 	/* set the queue rank attribute */
 	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
 	pj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
@@ -2519,11 +2493,7 @@ req_resvSub(struct batch_request *preq)
 		server.sv_attr[(int)SRV_ATR_acl_ResvGroup_enable].at_val.at_long) {
 
 		if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_ResvGroups],
-#ifdef WIN32
-			presv->ri_wattr[RESV_ATR_egroup].at_val.at_str,
-#else
 			presv->ri_wattr[RESV_ATR_euser].at_val.at_str,
-#endif
 			ACL_Group) == 0) {
 
 			resv_free(presv);

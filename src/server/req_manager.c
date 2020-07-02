@@ -174,11 +174,9 @@ enum res_op_flag {
 	INDIRECT_RES_CHECK,
 };
 
-#ifndef PBS_MOM
 extern time_t time_now;
 extern pbs_db_conn_t	*svr_db_conn;
 struct work_task *rescdef_wt_g = NULL;
-#endif
 
 
 /*

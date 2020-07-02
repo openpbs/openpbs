@@ -39,11 +39,11 @@
 
 
 /**
- * @file    job_recov.c
+ * @file    job_recov_fs.c
  *
  * @brief
- *	job_recov.c - This file contains the functions to record a job
- *	data struture to disk and to recover it from disk.
+ *	job_recov_fs.c - This file contains the functions to record a job
+ *	data struture to disk and to recover it from disk by Mom
  *
  *	The data is recorded in a file whose name is the job_id.
  *
@@ -95,7 +95,6 @@
 /* global data items */
 
 extern char  *path_jobs;
-extern char  *path_resvs;
 extern time_t time_now;
 extern char   pbs_recov_filename[];
 
@@ -250,12 +249,6 @@ job_save_fs(job *pjob)
 			} else if (save_struct((char *)&pjob->ji_extended,
 				extndsize) != 0) {
 				redo++;
-#ifndef PBS_MOM
-			} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) &&
-				(save_struct((char *)pjob->ji_ajtrk,
-				pjob->ji_ajtrk->tkm_size) != 0)) {
-				redo++;
-#endif
 			} else if (save_attr_fs(job_attr_def, pjob->ji_wattr,
 				(int)JOB_ATR_LAST) != 0) {
 				redo++;
@@ -450,29 +443,6 @@ job_recov_fs(char *filename)
 		return NULL;
 	}
 
-#ifndef PBS_MOM
-	if (pj->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-		size_t xs;
-
-		if (read(fds, (char *)&xs, sizeof(xs)) != sizeof(xs)) {
-			sprintf(log_buffer,
-				"error reading array section of %s",
-				pbs_recov_filename);
-			log_err(errno, __func__, log_buffer);
-			free((char *)pj);
-			(void)close(fds);
-			return NULL;
-		}
-		if ((pj->ji_ajtrk = (struct ajtrkhd *)malloc(xs)) == NULL) {
-			free((char *)pj);
-			(void)close(fds);
-			return NULL;
-		}
-		read(fds, (char *)pj->ji_ajtrk + sizeof(xs), xs - sizeof(xs));
-		pj->ji_ajtrk->tkm_size = xs;
-	}
-#endif	/* not PBS_MOM */
-
 	/* read in working attributes */
 
 	if (recov_attr_fs(fds, pj, job_attr_def, pj->ji_wattr, (int)JOB_ATR_LAST,
@@ -486,7 +456,7 @@ job_recov_fs(char *filename)
 	}
 	(void)close(fds);
 
-#if defined(PBS_MOM) && defined(WIN32)
+#if defined(WIN32)
 	/* get a handle to the job (may not exist) */
 	pj->ji_hJob = OpenJobObject(JOB_OBJECT_ALL_ACCESS, FALSE,
 		pj->ji_qs.ji_jobid);

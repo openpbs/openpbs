@@ -754,7 +754,9 @@ int pbs_shutdown_db_async(char **errmsg);
  *			Caller should free this memory after usage.
  *
  */
+#ifndef pbs_get_dataservice_usr
 char *pbs_get_dataservice_usr(char *errmsg, int len);
+#endif
 
 /**
  * @brief
