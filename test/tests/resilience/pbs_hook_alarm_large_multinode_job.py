@@ -107,7 +107,7 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '30'}
+             'alarm': '60'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
@@ -138,7 +138,7 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '30'}
+             'alarm': '60'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
@@ -168,7 +168,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 """
         search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '30'}
+             'alarm': '60'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
