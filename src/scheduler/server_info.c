@@ -355,9 +355,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	jobs_alive = resource_resv_filter(sinfo->jobs,
-		sinfo->sc.total,
-		check_jobs_running, NULL, 0);
+	jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_job_running, NULL, 0);
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
@@ -403,7 +401,7 @@ query_server(status *pol, int pbs_sd)
 	 * nodes, which are accounted for by collect_jobs_on_nodes in
 	 * query_reservation, hence the use of the filtered list of jobs
 	 */
-	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array((void **)jobs_alive));
+	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array((void **)jobs_alive), DETECT_GHOST_JOBS);
 
 	/* Now that the job_arr is created, garbage collect the jobs */
 	free(jobs_alive);
@@ -2065,9 +2063,9 @@ check_susp_job(resource_resv *job, void *arg)
  * @retval	0	: if job is not running
  */
 int
-check_jobs_running(resource_resv *job, void *arg)
+check_job_running(resource_resv *job, void *arg)
 {
-	if (job->is_job && (job->job->is_running || job->job->is_exiting || job->job->is_suspended || job->job->is_userbusy))
+	if (job->is_job && (job->job->is_running || job->job->is_exiting || job->job->is_userbusy))
 		return 1;
 
 	return 0;
@@ -2088,7 +2086,7 @@ int
 check_running_job_in_reservation(resource_resv *job, void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
-	    (job->job->is_running || job->job->is_exiting || job->job->is_suspended || job->job->is_userbusy))
+		(check_job_running(job, arg) == 1))
 		return 1;
 
 	return 0;

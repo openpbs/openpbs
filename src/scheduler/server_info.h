@@ -166,10 +166,10 @@ int check_susp_job(resource_resv *job, void *arg);
 
 /*
  *
- *	check_jobs_running - function used by job_filter to filter out
+ *	check_job_running - function used by job_filter to filter out
  *			   jobs that are running
  */
-int check_jobs_running(resource_resv *job, void *arg);
+int check_job_running(resource_resv *job, void *arg);
 
 /*
  *

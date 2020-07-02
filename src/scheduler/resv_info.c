@@ -357,7 +357,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 									    count_array((void **)resresv->resv->resv_queue->jobs),
 									    check_running_job_in_reservation, NULL, 0);
 				collect_jobs_on_nodes(resresv->resv->resv_nodes, jobs_in_reservations,
-					              count_array((void **)jobs_in_reservations));
+					              count_array((void **)jobs_in_reservations), DONT_DETECT_GHOST_JOBS);
 				free(jobs_in_reservations);
 
 				/* Sort the nodes to ensure correct job placement. */
