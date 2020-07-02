@@ -91,17 +91,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     dnf -y builddep ${SPEC_FILE}
     dnf -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
-    # source install swig
-    dnf -y install gcc-c++ byacc pcre-devel
-    mkdir -p /tmp/swig/
-    cd /tmp/swig
-    git clone https://github.com/swig/swig --branch rel-4.0.0 --single-branch
-    cd swig
-    ./autogen.sh
-    ./configure
-    make -j8
-    make install
-    cd ${PBS_DIR}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y update
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
@@ -155,6 +144,22 @@ if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   host=$(hostname -s)
   echo "READY:${host}" >>${config_dir}/.status
   exit 0
+fi
+
+if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+  if [ ! -f /tmp/swig/swig/configure ]; then
+    # source install swig
+    dnf -y install gcc-c++ byacc pcre-devel
+    mkdir -p /tmp/swig/
+    cd /tmp/swig
+    git clone https://github.com/swig/swig --branch rel-4.0.0 --single-branch
+    cd swig
+    ./autogen.sh
+    ./configure
+    make -j8
+    make install
+    cd ${PBS_DIR}
+  fi
 fi
 
 if [ "x${ONLY_INSTALL_DEPS}" == "x1" ]; then
@@ -281,7 +286,7 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   benchpress_opt="$(cat ${config_dir}/.benchpress_opt)"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
-  params="-p ${config_dir}/.params"
+  params="--param-file=${config_dir}/.params"
   if [ -z "${eval_tag}" ]; then
     pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   else

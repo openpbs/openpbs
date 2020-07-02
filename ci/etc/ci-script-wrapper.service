@@ -5,7 +5,7 @@ After=getty.target
 [Service]
 Type=forking
 RemainAfterExit=yes
-EnvironmentFile=/env-file
+EnvironmentFile=/.env-file
 ExecStart=/src/docker-entrypoint
 TimeoutStartSec=0
 
