@@ -5805,8 +5805,7 @@ prov_request_timed(struct work_task *wtask)
 		DBPRT(("%s: pid = %d\n", __func__, this_pid))
 
 		/* Kill all process belonging to this process group */
-		if (kill(((-1)*this_pid), SIGKILL) == -1)
-		{
+		if (kill(((-1)*this_pid), SIGKILL) == -1) {
 			DBPRT(("%s: couldn't kill prov process pgid = %d\n",
 				__func__, this_pid))
 		}
