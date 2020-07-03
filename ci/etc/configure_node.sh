@@ -24,6 +24,7 @@ if [ "x${NODE_TYPE}" == "xserver" ]; then
 fi
 
 if [ "x${NODE_TYPE}" == "xcomm" ]; then
+	sed -i "s@PBS_SERVER=$(hostname)@PBS_SERVER=pbs_server@" /etc/pbs.conf
 	sed -i "s@PBS_START_MOM=1@PBS_START_MOM=0@" /etc/pbs.conf
 	sed -i "s@PBS_START_SERVER=1@PBS_START_SERVER=0@" /etc/pbs.conf
 fi

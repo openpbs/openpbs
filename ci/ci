@@ -82,6 +82,7 @@ service_template_prist = Template('''{
         ]
     }
 },
+"container_name": "$hostname",
 "hostname": "$hostname",
 "user": "root",
 "privileged": true
@@ -109,7 +110,7 @@ def get_services_list():
     docker_container = str(docker_container_process.stdout)
     for val in docker_container.split('\\n'):
         if val.find('Up') != -1:
-            services.append(val.split(' ')[0][:-2][3:])
+            services.append(val.split(' ')[0])
     return services
 
 
@@ -407,14 +408,20 @@ def create_param_file():
     moms = []
     comms = []
     include_server_mom = False
+    include_server_comm = False
     reqs = read_from_file(os.path.join(
         ci_dirname, '.config_dir', '.requirements_decorator'))
     if reqs.find('no_mom_on_server=False') != -1:
         include_server_mom = True
+    if reqs.find('no_comm_on_server=False') != -1:
+        include_server_comm = True
     for service in get_services_list():
-        if include_server_mom:
-            if service.find('server') != -1:
+        service = service+'.ci_ci'
+        if service.find('server') != -1:
+            if include_server_mom:
                 moms.append(service)
+            if include_server_comm:
+                comms.append(service)
         if service.find('mom') != -1:
             moms.append(service)
         if service.find('comm') != -1:
@@ -423,7 +430,7 @@ def create_param_file():
     if len(moms) != 0:
         write_str = 'moms=' + ':'.join(moms) + '\n'
     if len(comms) != 0:
-        write_str += 'comms' + ':'.join(comms)
+        write_str += 'comms=' + ':'.join(comms)
     param_path = os.path.join(ci_dirname, '.config_dir', '.params')
     write_to_file(param_path, write_str)
 
