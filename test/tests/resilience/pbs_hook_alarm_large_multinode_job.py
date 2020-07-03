@@ -179,7 +179,8 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
 
-        self.server.log_match("dequeuing from", starttime=search_after)
+        self.server.log_match("dequeuing from", max_attempts=100,
+                              interval=3, starttime=search_after)
 
         self.mom.log_match(
             "pbs_python;executing epilogue hook %s" % (hook_name,), n=100,
@@ -216,7 +217,8 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
 
-        self.server.log_match("dequeuing from", starttime=search_after)
+        self.server.log_match("dequeuing from", max_attempts=100,
+                              interval=3, starttime=search_after)
 
         self.mom.log_match(
             "pbs_python;executing end hook %s" % (hook_name,), n=100,
