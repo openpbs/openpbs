@@ -176,7 +176,7 @@ Requires: pmix
 %endif
 %if %{defined suse_version}
 Requires: smtp_daemon
-Requires: libhwloc5
+Requires: libhwloc15
 Requires: net-tools
 %else
 Requires: smtpdaemon
@@ -221,7 +221,7 @@ Requires: python3 >= 3.5
 Requires: pmix
 %endif
 %if %{defined suse_version}
-Requires: libhwloc5
+Requires: libhwloc15
 Requires: net-tools
 %else
 Requires: hostname
