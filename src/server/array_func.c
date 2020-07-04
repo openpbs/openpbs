@@ -669,8 +669,8 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pb
 	}
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
-		if (server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-			l = server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long;
+		if (server.sv_attr[(int)SRV_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
+			l = server.sv_attr[(int)SRV_ATR_maxarraysize].at_val.at_long;
 		else
 			l = PBS_MAX_ARRAY_JOB_DFL;  /* default limit 10000 */
 

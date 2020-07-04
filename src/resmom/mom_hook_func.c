@@ -2535,10 +2535,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					resource_def *prdef;
 					svrattrl *plist, *plist2, *plist_next;
 
-					prdef = find_resc_def(svr_resc_def,
-						"|unknown|", svr_resc_size);
-					prsc = find_resc_entry(\
-					    &pjob2->ji_wattr[index], prdef);
+					prdef = &svr_resc_def[RESC_UNKN];
+					prsc = find_resc_entry(&pjob2->ji_wattr[index], prdef);
 
 					if ((prdef == NULL) || (prsc == NULL)) {
 						log_err(-1, __func__, "bad unknown resc");

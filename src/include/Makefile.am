@@ -126,8 +126,56 @@ noinst_HEADERS = \
 	site_sched_attr_enum.h \
 	site_svr_attr_def.h \
 	site_svr_attr_enum.h \
+	job_attr_enum.h \
+	node_attr_enum.h \
+	queue_attr_enum.h \
+	resc_def_enum.h \
+	resv_attr_enum.h \
+	sched_attr_enum.h \
+	svr_attr_enum.h \
 	svrfunc.h \
 	ticket.h \
 	tracking.h \
 	user.h \
 	work_task.h
+	win.h \
+	win_remote_shell.h \
+	work_task.h
+
+
+CLEANFILES = \
+	job_attr_enum.h \
+	node_attr_enum.h \
+	queue_attr_enum.h \
+	resc_def_enum.h \
+	resv_attr_enum.h \
+	sched_attr_enum.h \
+	svr_attr_enum.h
+
+job_attr_enum.h: $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml -d $@
+
+node_attr_enum.h: $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml -d $@
+
+queue_attr_enum.h: $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml -d $@
+
+resc_def_enum.h: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml -d $@
+
+resv_attr_enum.h: $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml -d $@
+
+sched_attr_enum.h: $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml -d $@
+
+svr_attr_enum.h: $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml
+	@echo Generating $@ from $< ; \
+	@PYTHON@ $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml -d $@

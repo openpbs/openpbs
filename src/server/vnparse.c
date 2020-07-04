@@ -1741,7 +1741,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 		new_exec_host2[0] = '\0';
 	}
 
-	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+	prdefvntype = &svr_resc_def[RESC_VNTYPE];
 	/* There's a 1:1:1 mapping among exec_vnode parenthesized
 	 * entries, exec_host, and exec_host2.
 	 */

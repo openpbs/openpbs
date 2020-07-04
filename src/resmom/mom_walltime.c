@@ -97,8 +97,7 @@ update_walltime(job *pjob)
 
     resources_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
     assert(resources_used != NULL);
-    walltime_def = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
-    assert(walltime_def != NULL);
+    walltime_def = &svr_resc_def[RESC_WALLTIME];
     used_walltime = find_resc_entry(resources_used, walltime_def);
 
     /* if walltime entry is not created yet, create it */
@@ -178,7 +177,7 @@ recover_walltime(job *pjob)
 
     resources_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
     assert(resources_used != NULL);
-    walltime_def = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+    walltime_def = &svr_resc_def[RESC_WALLTIME];
     assert(walltime_def != NULL);
     used_walltime = find_resc_entry(resources_used, walltime_def);
 

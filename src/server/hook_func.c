@@ -3137,16 +3137,14 @@ set_job_reslist(job *pjob, char *hook_name, char *msg, int msg_len,
 	/* in qstat -f */
 	jb->at_flags |= ATR_MOD_MCACHE;
 
-	pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
-	if (pseldef != NULL) {
-		presc = find_resc_entry(jb, pseldef);
-		if (presc && (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)) {
-			/* changing Resource_List and select is a default */
-			/* clear "select" so it is rebuilt in set_resc_deflt */
-			pseldef->rs_free(&presc->rs_value);
-		}
-		(void)set_resc_deflt((void *)pjob, JOB_OBJECT, NULL);
+	pseldef = &svr_resc_def[RESC_SELECT];
+	presc = find_resc_entry(jb, pseldef);
+	if (presc && (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)) {
+		/* changing Resource_List and select is a default */
+		/* clear "select" so it is rebuilt in set_resc_deflt */
+		pseldef->rs_free(&presc->rs_value);
 	}
+	(void)set_resc_deflt((void *)pjob, JOB_OBJECT, NULL);
 	free(val_str_dup);
 	return (0);
 }

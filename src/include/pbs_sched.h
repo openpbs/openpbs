@@ -73,34 +73,7 @@ extern "C" {
  * Must be the same order as listed in sched_attr_def (master_sched_attr_def.xml)
  */
 enum sched_atr {
-	SCHED_ATR_SchedHost,
-	SCHED_ATR_version,
-	SCHED_ATR_sched_cycle_len,
-	SCHED_ATR_dont_span_psets,
-	SCHED_ATR_only_explicit_psets,
-	SCHED_ATR_sched_preempt_enforce_resumption,
-	SCHED_ATR_preempt_targets_enable,
-	SCHED_ATR_job_sort_formula_threshold,
-	SCHED_ATR_throughput_mode,
-	SCHED_ATR_job_run_wait,
-	SCHED_ATR_opt_backfill_fuzzy,
-	SCHED_ATR_sched_port,
-	SCHED_ATR_partition,
-	SCHED_ATR_sched_priv,
-	SCHED_ATR_sched_log,
-	SCHED_ATR_scheduling,
-	SCHED_ATR_schediteration,
-	SCHED_ATR_sched_user,
-	SCHED_ATR_sched_comment,
-	SCHED_ATR_sched_state,
-	SCHED_ATR_preempt_queue_prio,
-	SCHED_ATR_preempt_prio,
-	SCHED_ATR_preempt_order,
-	SCHED_ATR_preempt_sort,
-	SCHED_ATR_log_events,
-	SCHED_ATR_job_sort_formula,
-	SCHED_ATR_server_dyn_res_alarm,
-	SCHED_ATR_attr_update_period,
+#include "sched_attr_enum.h"
 #include "site_sched_attr_enum.h"
 	/* This must be last */
 	SCHED_ATR_LAST

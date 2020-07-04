@@ -363,9 +363,9 @@ req_quejob(struct batch_request *preq)
 				LOG_INFO, "", "queuejob event: accept req by default");
 	}
 
-	prdefsel = find_resc_def(svr_resc_def, "select", svr_resc_size);
-	prdefplc = find_resc_def(svr_resc_def, "place",  svr_resc_size);
-	prdefnod = find_resc_def(svr_resc_def, "nodes", svr_resc_size);
+	prdefsel = &svr_resc_def[RESC_SELECT];
+	prdefplc = &svr_resc_def[RESC_PLACE];
+	prdefnod = &svr_resc_def[RESC_NODES];
 
 	/*
 	 * if the job id is supplied, the request had better be
@@ -3170,7 +3170,7 @@ validate_place_req_of_job_in_reservation(job *pj)
 	if (pj->ji_myResv == NULL)
 		return 1;
 
-	prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);
+	prsdef = &svr_resc_def[RESC_PLACE];
 	jattr = &pj->ji_wattr[(int) JOB_ATR_resource];
 	rattr = &pj->ji_myResv->ri_wattr[(int) RESV_ATR_resource];
 
@@ -3332,7 +3332,7 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	}
 
 	if (!walltime_copied) {
-		resc_def = find_resc_def(svr_resc_def, WALLTIME, svr_resc_size);
+		resc_def = &svr_resc_def[RESC_WALLTIME];
 		if (resc_def != NULL) {
 			resv_resc_entry = find_resc_entry(&presv->ri_wattr[(int)RESV_ATR_resource], resc_def);
 			if (resv_resc_entry == NULL) {
@@ -3345,7 +3345,7 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &temp, SET);
 		}
 	}
-	prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
+	prdefsl = &svr_resc_def[RESC_SELECT];
 	presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
 	make_schedselect(&pjob->ji_wattr[(int)JOB_ATR_resource], presc , NULL, &presv->ri_wattr[(int)RESV_ATR_SchedSelect]);
 

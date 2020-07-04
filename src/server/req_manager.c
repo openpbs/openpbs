@@ -450,13 +450,11 @@ set_resources_min_max(attribute *old, attribute *new, enum batch_op op)
 	if (op == SET) {
 		resource_def *resdef = NULL;
 		resource *pres = NULL;
-		resdef = find_resc_def(svr_resc_def, MIN_WALLTIME, svr_resc_size);
-		assert(resdef != NULL);
+		resdef = &svr_resc_def[RESC_MIN_WALLTIME];
 		pres = find_resc_entry(new, resdef);
 		if (pres != NULL)
 			return PBSE_NOLIMIT_RESOURCE;
-		resdef = find_resc_def(svr_resc_def, "max_walltime", svr_resc_size);
-		assert(resdef != NULL);
+		resdef = &svr_resc_def[RESC_MAX_WALLTIME];
 		pres = find_resc_entry(new, resdef);
 		if (pres != NULL)
 			return PBSE_NOLIMIT_RESOURCE;
@@ -1561,8 +1559,8 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
-		if (server.sv_attr[SVR_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY) {
-			(void)deflt_chunk_action(&server.sv_attr[SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_ALTER);
+		if (server.sv_attr[SRV_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY) {
+			(void)deflt_chunk_action(&server.sv_attr[SRV_ATR_DefaultChunk], (void *)&server, ATR_ACTION_ALTER);
 		}
 		/* Now set the default values on some of the unset attributes */
 		plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -1587,8 +1585,8 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_ResvEnable]),
 					    &svr_attr_def[(int)SRV_ATR_ResvEnable], "TRUE");
 			else if(strcasecmp(plist->al_name, ATTR_maxarraysize) == 0)
-				set_attr_svr(&(server.sv_attr[(int)SVR_ATR_maxarraysize]),
-					    &svr_attr_def[(int)SVR_ATR_maxarraysize], TOSTR(PBS_MAX_ARRAY_JOB_DFL));
+				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_maxarraysize]),
+					    &svr_attr_def[(int)SRV_ATR_maxarraysize], TOSTR(PBS_MAX_ARRAY_JOB_DFL));
 			else if(strcasecmp(plist->al_name, ATTR_max_concurrent_prov) == 0)
 				set_attr_svr(&(server.sv_attr[(int)SRV_ATR_max_concurrent_prov]),
 					    &svr_attr_def[(int)SRV_ATR_max_concurrent_prov], TOSTR(PBS_MAX_CONCURRENT_PROV));
@@ -2443,7 +2441,7 @@ mgr_node_unset(struct batch_request *preq)
 
 				/* if resources_avail.ncpus unset, reset to default */
 				patr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-				prd  = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
+				prd  = &svr_resc_def[RESC_NCPUS];
 				prc  = find_resc_entry(patr, prd);
 				if (prc == NULL) {
 					prc = add_resource_entry(patr, prd);
@@ -2893,7 +2891,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 	pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 
-	prdef = find_resc_def(svr_resc_def, "host", svr_resc_size);
+	prdef = &svr_resc_def[RESC_HOST];
 	presc = find_resc_entry(pattr, prdef);
 	if (presc == NULL) {
 		/* add the entry */
@@ -2929,7 +2927,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		effective_node_delete(pnode);
 		return (PBSE_SYSTEM);
 	}
-	prdef = find_resc_def(svr_resc_def, "vnode", svr_resc_size);
+	prdef = &svr_resc_def[RESC_VNODE];
 	presc = find_resc_entry(pattr, prdef);
 	if (presc == NULL)
 		presc = add_resource_entry(pattr, prdef);	/* add the entry */
@@ -3320,7 +3318,7 @@ struct batch_request *preq;
 
 	/* BLUE GENE only - see if any BLUE GENE nodes still exist */
 	rc = 0;
-	prescdef = find_resc_def(svr_resc_def, "arch", svr_resc_size);
+	prescdef = &svr_resc_def[RESC_ARCH];
 	for (i=0; i<svr_totnodes; i++) {
 
 		pnode = pbsndlist[i];
@@ -3805,9 +3803,9 @@ mgr_resource_delete(struct batch_request *preq)
 		return;
 
 	/* check if resource is set in restrict_res_to_release_on_suspend */
-	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
-		for (i = 0; i < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; i++ ) {
-			if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[i],
+	if (server.sv_attr[(int)SRV_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
+		for (i = 0; i < server.sv_attr[(int)SRV_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; i++ ) {
+			if (strcmp(server.sv_attr[(int)SRV_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[i],
 				    prdef->rs_name) == 0) {
 				reply_text(preq, PBSE_RESCBUSY, "Resource busy on server");
 				return;
@@ -3876,8 +3874,8 @@ mgr_resource_delete(struct batch_request *preq)
 				 * the server keeps track of defaults to add to
 				 * schedselect @see sv_seldft
 				 */
-				if ((i == SVR_ATR_DefaultChunk) && (server.sv_attr[SVR_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY)) {
-					(void)deflt_chunk_action(&server.sv_attr[SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_ALTER);
+				if ((i == SRV_ATR_DefaultChunk) && (server.sv_attr[SRV_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY)) {
+					(void)deflt_chunk_action(&server.sv_attr[SRV_ATR_DefaultChunk], (void *)&server, ATR_ACTION_ALTER);
 				}
 			}
 			free_svrattrl(plist);

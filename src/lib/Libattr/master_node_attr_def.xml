@@ -90,16 +90,16 @@
 	</ECL>
     </head>
     <attributes>
-    /* ND_ATR_Mom */
-	<member_name><both>ATTR_NODE_Mom</both></member_name>
+    <member_index>ND_ATR_Mom</member_index>
+	<member_name>ATTR_NODE_Mom</member_name>
 	<member_at_decode>decode_Mom_list</member_at_decode>
 	<member_at_encode>encode_arst</member_at_encode>
 	<member_at_set>set_arst_uniq</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
 	<member_at_action>set_node_host_name</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ARST</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -107,17 +107,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_Port */
+    <member_index>ND_ATR_Port</member_index>
 	<!-- Port - port to which Mom is listening -->
-	<member_name><both>ATTR_NODE_Port</both></member_name>
+	<member_name>ATTR_NODE_Port</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>set_node_mom_port</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -125,17 +125,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_version */
+    <member_index>ND_ATR_version</member_index>
 	<!-- Mom's pbs_version -->
-	<member_name><both>ATTR_version</both></member_name>
+	<member_name>ATTR_version</member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_SvWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_SvWR</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -143,17 +143,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_ntype */
+    <member_index>ND_ATR_ntype</member_index>
 	<!-- ntype -->
-	<member_name><both>ATTR_NODE_ntype</both></member_name>
+	<member_name>ATTR_NODE_ntype</member_name>
 	<member_at_decode>decode_ntype</member_at_decode>
 	<member_at_encode>encode_ntype</member_at_encode>
 	<member_at_set>set_node_ntype</member_at_set>
 	<member_at_comp>comp_null</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>node_ntype</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_NOSAVM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SHORT</both></member_at_type>
+	<member_at_flags>READ_ONLY | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_SHORT</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -161,17 +161,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_state */
+    <member_index>ND_ATR_state</member_index>
 	<!-- state -->
-	<member_name><both>ATTR_NODE_state</both></member_name>
+	<member_name>ATTR_NODE_state</member_name>
 	<member_at_decode>decode_state</member_at_decode>
 	<member_at_encode>encode_state</member_at_encode>
 	<member_at_set>set_node_state</member_at_set>
 	<member_at_comp>comp_null</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>node_state</member_at_action>
-	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_NOSAVM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SHORT</both></member_at_type>
+	<member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_SHORT</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -179,17 +179,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_pcpus */
+    <member_index>ND_ATR_pcpus</member_index>
 	<!-- pcpus - physical cpus -->
-	<member_name><both>ATTR_NODE_pcpus</both></member_name>
+	<member_name>ATTR_NODE_pcpus</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>node_pcpu_action</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_SvWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>READ_ONLY | ATR_DFLAG_SvWR</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -197,17 +197,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_Priority */
+    <member_index>ND_ATR_priority</member_index>
 	<!-- Priority -->
-	<member_name><both>ATTR_p</both></member_name>
+	<member_name>ATTR_p</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -215,17 +215,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_jobs */
+    <member_index>ND_ATR_jobs</member_index>
 	<!-- jobs -->
-	<member_name><both>ATTR_NODE_jobs</both></member_name>
+	<member_name>ATTR_NODE_jobs</member_name>
 	<member_at_decode>decode_null</member_at_decode>
 	<member_at_encode>encode_jobs</member_at_encode>
 	<member_at_set>set_null</member_at_set>
 	<member_at_comp>comp_null</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_RDACC | ATR_DFLAG_NOSAVM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_JINFOP</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_RDACC | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_JINFOP</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -233,17 +233,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_MaxRun */
+    <member_index>ND_ATR_MaxRun</member_index>
 	<!-- max_running -->
-	<member_name><both>ATTR_maxrun</both></member_name>
+	<member_name>ATTR_maxrun</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -251,17 +251,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_MaxUserRun */
+    <member_index>ND_ATR_MaxUserRun</member_index>
 	<!-- max_user_run -->
-	<member_name><both>ATTR_maxuserrun</both></member_name>
+	<member_name>ATTR_maxuserrun</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -269,17 +269,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_MaxGrpRun */
+    <member_index>ND_ATR_MaxGrpRun</member_index>
 	<!-- max_group_run -->
-	<member_name><both>ATTR_maxgrprun</both></member_name>
+	<member_name>ATTR_maxgrprun</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -287,17 +287,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_No_Tasks */
+    <member_index>ND_ATR_No_Tasks</member_index>
 	<!-- no_tasks -->
-	<member_name><both>ATTR_NODE_No_Tasks</both></member_name>
+	<member_name>ATTR_NODE_No_Tasks</member_name>
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
 	<member_at_set>set_b</member_at_set>
 	<member_at_comp>comp_b</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -305,17 +305,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_PNames */
+    <member_index>ND_ATR_PNames</member_index>
 	<!-- pnames -->
-	<member_name><both>ATTR_PNames</both></member_name>
+	<member_name>ATTR_PNames</member_name>
 	<member_at_decode>decode_arst</member_at_decode>
 	<member_at_encode>encode_arst</member_at_encode>
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ARST</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -323,17 +323,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_resvs */
+    <member_index>ND_ATR_resvs</member_index>
 	<!-- reservations -->
-	<member_name><both>ATTR_NODE_resvs</both></member_name>
+	<member_name>ATTR_NODE_resvs</member_name>
 	<member_at_decode>decode_null</member_at_decode>
 	<member_at_encode>encode_resvs</member_at_encode>
 	<member_at_set>set_null</member_at_set>
 	<member_at_comp>comp_null</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_RDACC | ATR_DFLAG_NOSAVM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_JINFOP</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_RDACC | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_JINFOP</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -341,17 +341,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_ResourceAvail */
+    <member_index>ND_ATR_ResourceAvail</member_index>
 	<!-- resources_available -->
-	<member_name><both>ATTR_rescavail</both></member_name>
+	<member_name>ATTR_rescavail</member_name>
 	<member_at_decode>decode_resc</member_at_decode>
 	<member_at_encode>encode_resc</member_at_encode>
 	<member_at_set>set_resc</member_at_set>
 	<member_at_comp>comp_resc</member_at_comp>
 	<member_at_free>free_resc</member_at_free>
 	<member_at_action>node_np_action</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC</both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -359,17 +359,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_ResourceAssn */
+    <member_index>ND_ATR_ResourceAssn</member_index>
 	<!-- resources_assigned -->
-	<member_name><both>ATTR_rescassn</both></member_name>
+	<member_name>ATTR_rescassn</member_name>
 	<member_at_decode>decode_resc</member_at_decode>
 	<member_at_encode>encode_resc</member_at_encode>
 	<member_at_set>set_resc</member_at_set>
 	<member_at_comp>comp_resc</member_at_comp>
 	<member_at_free>free_resc</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_NOSAVM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC</both></member_at_type>
+	<member_at_flags>READ_ONLY | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -377,17 +377,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_Queue */
+    <member_index>ND_ATR_Queue</member_index>
 	<!-- queue -->
-	<member_name><both>ATTR_queue</both></member_name>
+	<member_name>ATTR_queue</member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>node_queue_action</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -395,17 +395,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_Comment */
+    <member_index>ND_ATR_Comment</member_index>
 	<!-- comment -->
-	<member_name><both>ATTR_comment</both></member_name>
+	<member_name>ATTR_comment</member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>node_comment</member_at_action>
-	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_NOSAVM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -413,17 +413,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_ResvEnable */
+    <member_index>ND_ATR_ResvEnable</member_index>
 	<!-- resv_enable -->
-	<member_name><both>ATTR_NODE_resv_enable</both></member_name>
+	<member_name>ATTR_NODE_resv_enable</member_name>
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
 	<member_at_set>set_b</member_at_set>
 	<member_at_comp>comp_b</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -431,17 +431,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_NoMultiNode */
+    <member_index>ND_ATR_NoMultiNode</member_index>
 	<!-- no_multinode_jobs -->
-	<member_name><both>ATTR_NODE_NoMultiNode</both></member_name>
+	<member_name>ATTR_NODE_NoMultiNode</member_name>
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
 	<member_at_set>set_b</member_at_set>
 	<member_at_comp>comp_b</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -449,17 +449,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_Sharing */
+    <member_index>ND_ATR_Sharing</member_index>
 	<!-- sharing -->
-	<member_name><both>ATTR_NODE_Sharing</both></member_name>
+	<member_name>ATTR_NODE_Sharing</member_name>
 	<member_at_decode>decode_sharing</member_at_decode>
 	<member_at_encode>encode_sharing</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>READ_ONLY | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -467,17 +467,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_ProvisionEnable */
+    <member_index>ND_ATR_ProvisionEnable</member_index>
 	<!-- provision_enable -->
-	<member_name><both>ATTR_NODE_ProvisionEnable</both></member_name>
+	<member_name>ATTR_NODE_ProvisionEnable</member_name>
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
 	<member_at_set>set_b</member_at_set>
 	<member_at_comp>comp_b</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>node_prov_enable_action</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -485,17 +485,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_current_aoe */
+    <member_index>ND_ATR_current_aoe</member_index>
 	<!-- current_aoe -->
-	<member_name><both>ATTR_NODE_current_aoe</both></member_name>
+	<member_name>ATTR_NODE_current_aoe</member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>node_current_aoe_action</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -503,17 +503,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_in_multivnode_host */
+    <member_index>ND_ATR_in_multivnode_host</member_index>
 	<!-- in_multivnode_host -->
-	<member_name><both>ATTR_NODE_in_multivnode_host</both></member_name>
+	<member_name>ATTR_NODE_in_multivnode_host</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_MGRD | ATR_DFLAG_MGWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_MGRD | ATR_DFLAG_MGWR</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -521,17 +521,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_MaintJobs */
+    <member_index>ND_ATR_MaintJobs</member_index>
 	<!-- maintenance_jobs -->
-	<member_name><both>ATTR_NODE_MaintJobs</both></member_name>
+	<member_name>ATTR_NODE_MaintJobs</member_name>
 	<member_at_decode>decode_arst</member_at_decode>
 	<member_at_encode>encode_arst</member_at_encode>
 	<member_at_set>set_arst</member_at_set>
 	<member_at_comp>comp_arst</member_at_comp>
 	<member_at_free>free_arst</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_SvWR | ATR_DFLAG_MGRD</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_SvWR | ATR_DFLAG_MGRD</member_at_flags>
+	<member_at_type>ATR_TYPE_ARST</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -540,6 +540,7 @@
     </attributes>
     <attributes flag = 'SVR'>
 	<!-- license -->
+	<member_index>ND_ATR_License</member_index>
 	<member_name><SVR>ATTR_NODE_License</SVR></member_name>
 	<member_at_decode>decode_c</member_at_decode>
 	<member_at_encode>encode_c</member_at_encode>
@@ -552,6 +553,7 @@
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
     </attributes>
     <attributes flag = 'SVR'>
+	<member_index>ND_ATR_LicenseInfo</member_index>
 	<!-- licensing information -->
 	<member_name><SVR>ATTR_NODE_LicenseInfo</SVR></member_name>
 	<member_at_decode>decode_l</member_at_decode>
@@ -565,6 +567,7 @@
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
     </attributes>
     <attributes flag = 'SVR'>
+	<member_index>ND_ATR_TopologyInfo</member_index>
 	<member_name><SVR>ATTR_NODE_TopologyInfo</SVR></member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
@@ -577,17 +580,17 @@
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
     </attributes>
     <attributes>
-    /* ND_ATR_VnodePool */
+    <member_index>ND_ATR_vnode_pool</member_index>
 	<!-- vnode_pool -->
-	<member_name><both>ATTR_NODE_VnodePool</both></member_name>
+	<member_name>ATTR_NODE_VnodePool</member_name>
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>chk_vnode_pool</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -595,17 +598,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_Power_Provisioning */
+    <member_index>ND_ATR_Power_Provisioning</member_index>
 	<!-- power_provisioning -->
-	<member_name><both>ATTR_NODE_power_provisioning</both></member_name>
+	<member_name>ATTR_NODE_power_provisioning</member_name>
 	<member_at_decode>decode_b</member_at_decode>
 	<member_at_encode>encode_b</member_at_encode>
 	<member_at_set>set_b</member_at_set>
 	<member_at_comp>comp_b</member_at_comp>
 	<member_at_free>free_null</member_at_free>
 	<member_at_action>node_prov_enable_action</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -613,17 +616,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_current_eoe */
+    <member_index>ND_ATR_current_eoe</member_index>
 	<!-- current_eoe -->
-	<member_name><both>ATTR_NODE_current_eoe</both></member_name>
+	<member_name>ATTR_NODE_current_eoe</member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -631,17 +634,17 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-    /* ND_ATR_partition */
+    <member_index>ND_ATR_partition</member_index>
 	<!-- partition -->
-	<member_name><both>ATTR_partition</both></member_name>
+	<member_name>ATTR_partition</member_name>
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>action_node_partition</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -649,16 +652,16 @@
 	</member_verify_function>
     </attributes>
 	<attributes>
-   /* ND_ATR_poweroff_eligible */
-	<member_name><both>ATTR_NODE_poweroff_eligible</both></member_name>          <!-- "poweroff_eligible" -->
+   <member_index>ND_ATR_poweroff_eligible</member_index>
+	<member_name>ATTR_NODE_poweroff_eligible</member_name>          <!-- "poweroff_eligible" -->
 	<member_at_decode>decode_b </member_at_decode>
 	<member_at_encode>encode_b </member_at_encode>
 	<member_at_set>set_b </member_at_set>
 	<member_at_comp>comp_b </member_at_comp>
 	<member_at_free>free_null </member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -666,16 +669,16 @@
 	</member_verify_function>
    </attributes>
    <attributes>
-   /* ND_ATR_last_state_change_time */
-   <member_name><both>ATTR_NODE_last_state_change_time </both></member_name>	<!-- "last_state_change_time" -->
+   <member_index>ND_ATR_last_state_change_time</member_index>
+   <member_name>ATTR_NODE_last_state_change_time</member_name>	<!-- "last_state_change_time" -->
 	<member_at_decode>decode_l </member_at_decode>
 	<member_at_encode>encode_l </member_at_encode>
 	<member_at_set>set_l </member_at_set>
 	<member_at_comp>comp_l </member_at_comp>
 	<member_at_free>free_null </member_at_free>
 	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both> READ_ONLY | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_at_flags> READ_ONLY | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
@@ -683,16 +686,16 @@
 	</member_verify_function>
    </attributes>
    <attributes>
-   /* ND_ATR_last_used_time */
-	<member_name><both>ATTR_NODE_last_used_time </both></member_name>	<!-- "last_used_time" -->
+   <member_index>ND_ATR_last_used_time</member_index>
+	<member_name>ATTR_NODE_last_used_time</member_name>	<!-- "last_used_time" -->
 	<member_at_decode>decode_l </member_at_decode>
 	<member_at_encode>encode_l </member_at_encode>
 	<member_at_set>set_l </member_at_set>
 	<member_at_comp>comp_l </member_at_comp>
 	<member_at_free>free_null </member_at_free>
 	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both> READ_ONLY | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_at_flags> READ_ONLY | ATR_DFLAG_SSET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>

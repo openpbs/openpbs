@@ -563,7 +563,7 @@ ck_chkpnt(attribute *pattr, void *pobject, int mode)
 	if (mode == ATR_ACTION_ALTER) {
 		pque = ((job *)pobject)->ji_qhdr;
 
-		eval_chkpnt(pattr, &pque->qu_attr[(int)QE_ATR_ChkptMim]);
+		eval_chkpnt(pattr, &pque->qu_attr[(int)QE_ATR_ChkptMin]);
 	}
 	return (0);
 }
@@ -1653,12 +1653,12 @@ static int svr_oldstyle[] = {
 	(int)SRV_ATR_max_running,
 	(int)SRV_ATR_MaxUserRun,
 	(int)SRV_ATR_MaxGrpRun,
-	(int)SVR_ATR_MaxUserRes,
-	(int)SVR_ATR_MaxGroupRes,
-	(int)SVR_ATR_MaxUserRunSoft,
-	(int)SVR_ATR_MaxGrpRunSoft,
-	(int)SVR_ATR_MaxUserResSoft,
-	(int)SVR_ATR_MaxGroupResSoft,
+	(int)SRV_ATR_MaxUserRes,
+	(int)SRV_ATR_MaxGroupRes,
+	(int)SRV_ATR_MaxUserRunSoft,
+	(int)SRV_ATR_MaxGrpRunSoft,
+	(int)SRV_ATR_MaxUserResSoft,
+	(int)SRV_ATR_MaxGroupResSoft,
 	-1
 };
 static int svr_newstyle[] = {
@@ -4467,7 +4467,7 @@ check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 	/* get the resources_available.aoe arst */
 	pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 
-	prd = find_resc_def(svr_resc_def, "aoe", svr_resc_size);
+	prd = &svr_resc_def[RESC_AOE];
 	if (prd == NULL)
 		return -1;
 	prc = find_resc_entry(pala, prd);
@@ -4634,7 +4634,7 @@ node_need_prov(struct pbsnode *pnode, char *aoe_name)
 	if (pnode == NULL || aoe_name == NULL)
 		return -1;
 
-	prdef = find_resc_def(svr_resc_def, "aoe", svr_resc_size);
+	prdef = &svr_resc_def[RESC_AOE];
 	pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 	presc = find_resc_entry(pattr, prdef);
 
@@ -5873,7 +5873,7 @@ prov_request_timed(struct work_task *wtask)
  *
  * @par Functionality:
  *      This function sets server level attributes, SRV_ATR_ProvisionEnable and
- *		SVR_ATR_provision_timeout from the provisioning hook. It checks whether
+ *		SRV_ATR_provision_timeout from the provisioning hook. It checks whether
  *		server attributes should be set or not.
  *
  * @see
@@ -5906,8 +5906,8 @@ set_srv_prov_attributes(void)
 	}
 
 	provision_timeout = phook->alarm;
-	server.sv_attr[(int)SVR_ATR_provision_timeout].at_val.at_long = provision_timeout;
-	server.sv_attr[(int)SVR_ATR_provision_timeout].at_flags |= ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SRV_ATR_provision_timeout].at_val.at_long = provision_timeout;
+	server.sv_attr[(int)SRV_ATR_provision_timeout].at_flags |= ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SRV_ATR_ProvisionEnable].at_val.at_long=1;
 	server.sv_attr[(int)SRV_ATR_ProvisionEnable].at_flags |= ATR_SET_MOD_MCACHE;
@@ -6666,7 +6666,7 @@ action_jobscript_max_size(attribute *pattr, void *pobj, int actmode)
 	if (pattr == NULL)
 		return PBSE_NONE;
 	set_size(&attr_jobscript_max_size,pattr,SET);
-	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,"2gb");
+	svr_attr_def[(int)SRV_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,"2gb");
 	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		if (comp_size(pattr,&attrib) > 0)
 			return PBSE_BADJOBSCRIPTMAXSIZE;
@@ -6724,7 +6724,7 @@ void
 unset_jobscript_max_size(void)
 {
 	struct attribute attrib;
-	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
+	svr_attr_def[(int)SRV_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
 	set_size(&attr_jobscript_max_size,&attrib,SET);
 
 	snprintf(log_buffer, sizeof(log_buffer),

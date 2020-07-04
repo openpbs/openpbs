@@ -56,70 +56,8 @@ extern "C" {
  */
 
 enum queueattr {
-	QA_ATR_QType,
-	QA_ATR_Priority,
-	QA_ATR_MaxJobs,
-	QA_ATR_TotalJobs,
-	QA_ATR_JobsByState,
-	QA_ATR_MaxRun,
-	QA_ATR_max_queued,
-	QA_ATR_max_queued_res,
-	QA_ATR_AclHostEnabled,
-	QA_ATR_AclHost,
-	QA_ATR_AclUserEnabled,
-	QA_ATR_AclUsers,
-	QA_ATR_FromRouteOnly,
-	QA_ATR_ResourceMax,
-	QA_ATR_ResourceMin,
-	QA_ATR_ResourceDefault,
-	QA_ATR_ReqCredEnable,
-	QA_ATR_ReqCred,
-	QA_ATR_maxarraysize,
-	QA_ATR_Comment,
-	QE_ATR_AclGroupEnabled,
-	QE_ATR_AclGroup,
-
-	/* The following attributes apply only to exection queues */
-
-	QE_ATR_ChkptMim,
-	QE_ATR_RendezvousRetry,
-	QE_ATR_ReservedExpedite,
-	QE_ATR_ReservedSync,
-	QE_ATR_DefaultChunk,
-	QE_ATR_ResourceAvail,
-	QE_ATR_ResourceAssn,
-	QE_ATR_KillDelay,
-	QE_ATR_MaxUserRun,
-	QE_ATR_MaxGrpRun,
-	QE_ATR_max_run,
-	QE_ATR_max_run_res,
-	QE_ATR_max_run_soft,
-	QE_ATR_max_run_res_soft,
-	QE_ATR_HasNodes,
-	QE_ATR_MaxUserRes,
-	QE_ATR_MaxGroupRes,
-	QE_ATR_MaxUserRunSoft,
-	QE_ATR_MaxGrpRunSoft,
-	QE_ATR_MaxUserResSoft,
-	QE_ATR_MaxGroupResSoft,
-	QE_ATR_NodeGroupKey,
-	QE_ATR_BackfillDepth,
-
-	/* The following attribute apply only to routing queues... */
-
-	QR_ATR_RouteDestin,
-	QR_ATR_AltRouter,
-	QR_ATR_RouteHeld,
-	QR_ATR_RouteWaiting,
-	QR_ATR_RouteRetryTime,
-	QR_ATR_RouteLifeTime,
-
+#include "queue_attr_enum.h"
 #include "site_que_attr_enum.h"
-	QA_ATR_Enabled, /* these are last for qmgr print function   */
-	QA_ATR_Started,
-	QA_ATR_queued_jobs_threshold,
-	QA_ATR_queued_jobs_threshold_res,
-	QA_ATR_partition,
 	QA_ATR_LAST /* WARNING: Must be the highest valued enum */
 };
 

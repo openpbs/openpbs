@@ -74,6 +74,12 @@ extern "C" {
 
 #define RESOURCE_UNKNOWN "|unknown|"
 
+enum resc_enum {
+#include "resc_def_enum.h"
+	RESC_UNKN,
+	RESC_LAST
+};
+
 typedef enum resdef_op {
 	RESDEF_CREATE,
 	RESDEF_UPDATE,
@@ -81,39 +87,37 @@ typedef enum resdef_op {
 } resdef_op_t;
 
 typedef struct resource {
-	pbs_list_link 	     rs_link;	/* link to other resources in list */
-	struct resource_def *rs_defin;	/* pointer to definition entry */
-	attribute	     rs_value;	/* attribute struct holding value */
+	pbs_list_link rs_link;	       /* link to other resources in list */
+	struct resource_def *rs_defin; /* pointer to definition entry */
+	attribute rs_value;	       /* attribute struct holding value */
 } resource;
 
 typedef struct resource_def {
-	char   *rs_name;
-	int   (*rs_decode)(attribute *prsc, char *name, char *rn, char *val);
-	int   (*rs_encode)(const attribute *prsv, pbs_list_head *phead, char *atname,
-		char *rsname, int mode, svrattrl **rtnl);
-	int   (*rs_set)(attribute *old, attribute *new, enum batch_op op);
-	int   (*rs_comp)(attribute *prsc, attribute *with);
-	void  (*rs_free)(attribute *prsc);
-	int   (*rs_action)(resource *presc, attribute *pat, void *pobj,
-		int type, int actmode);
-	unsigned int rs_flags:ATRDFLAG;	/* flags: R/O, ..., see attribute.h */
-	unsigned int rs_type:ATRDTYPE;	/* type of resource,see attribute.h */
-	unsigned int rs_entlimflg;	/* tracking entity limits for this  */
+	char *rs_name;
+	int (*rs_decode)(attribute *prsc, char *name, char *rn, char *val);
+	int (*rs_encode)(const attribute *prsv, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl);
+	int (*rs_set)(attribute *old, attribute *new, enum batch_op op);
+	int (*rs_comp)(attribute *prsc, attribute *with);
+	void (*rs_free)(attribute *prsc);
+	int (*rs_action)(resource *presc, attribute *pat, void *pobj, int type, int actmode);
+	unsigned int rs_flags : ATRDFLAG; /* flags: R/O, ..., see attribute.h */
+	unsigned int rs_type : ATRDTYPE;  /* type of resource,see attribute.h */
+	unsigned int rs_entlimflg;	  /* tracking entity limits for this  */
 	struct resource_def *rs_next;
 } resource_def;
 
 struct resc_sum {
-	struct resource_def *rs_def;	/* ptr to this resources's def   */
-	struct resource     *rs_prs;	/* ptr resource in Resource_List */
-	attribute            rs_attr;	/* used for summation of values  */
-	int		     rs_set;	/* set if value is set here      */
+	struct resource_def *rs_def; /* ptr to this resources's def   */
+	struct resource *rs_prs;     /* ptr resource in Resource_List */
+	attribute rs_attr;	     /* used for summation of values  */
+	int rs_set;		     /* set if value is set here      */
 };
 
 /* following used for Entity Limits for Finer Granularity Control */
-typedef struct  svr_entlim_leaf {
-	resource_def	*slf_rescd;
-	attribute	 slf_limit;
-	attribute	 slf_sum;
+typedef struct svr_entlim_leaf {
+	resource_def *slf_rescd;
+	attribute slf_limit;
+	attribute slf_sum;
 } svr_entlim_leaf_t;
 
 extern struct resc_sum *svr_resc_sum;
