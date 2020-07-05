@@ -2,7 +2,8 @@
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
- * This file is part of the PBS Professional ("PBS Pro") software.
+ * This file is part of both the OpenPBS software ("OpenPBS")
+ * and the PBS Professional ("PBS Pro") software.
  *
  * Open Source License Information:
  *
@@ -59,7 +60,6 @@ pbs_license_counts license_counts;
 struct work_task *init_licensing_task;
 struct work_task *get_more_licenses_task;
 struct work_task *licenses_linger_time_task;
-extern void release_licenses(int);
 /**
  * @brief
  * 	consume_licenses - use count licenses from the pool of
@@ -776,27 +776,22 @@ validate_sign(char *sign, struct pbsnode *pnode)
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
 				LOG_NOTICE, pnode->nd_name, "Invalid signature");
 			return PBSE_LICENSEINV;
-			break;
 		case -2:
 			return PBSE_BADTSPEC;
-			break;
 		case -1:
 			return PBSE_BADNDATVAL;
-			break;
 		case 0:
-			return PBSE_NONE;
 			snprintf(log_buffer, sizeof(log_buffer),
 					"Signature is valid till:%ld", expiry);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 						LOG_DEBUG, pnode->nd_name, log_buffer);
 			if ((ppnl->at_flags & ATR_VFLAG_SET) &&
 				(ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
-				release_licenses(ppnli->at_val.at_long);
+				return_licenses(ppnli->at_val.at_long);
 				clear_attr(ppnl, pnadl);
 				clear_attr(ppnli, pnadli);
 			}
 			set_attr_svr(ppnl, pnadl, ND_LIC_cloud_str);
-			pnode->nd_modified |= NODE_UPDATE_OTHERS;
 			break;
 		case 1:
 			snprintf(log_buffer, sizeof(log_buffer),
@@ -804,7 +799,6 @@ validate_sign(char *sign, struct pbsnode *pnode)
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE,
 						LOG_DEBUG, pnode->nd_name, log_buffer);
 			return PBSE_NONE;
-			break;
 	}
 	return PBSE_NONE;
 }
@@ -940,7 +934,6 @@ unlicense_nodes(void)
 			ND_LIC_TYPE_locked) {
 			clear_attr(&np->nd_attr[(int) ND_ATR_License],
 				&node_attr_def[(int) ND_ATR_License]);
-			np->nd_modified |= NODE_UPDATE_OTHERS;
 			if (first) {
 				first = 0;
 				sprintf(log_buffer, msg_node_unlicensed,
