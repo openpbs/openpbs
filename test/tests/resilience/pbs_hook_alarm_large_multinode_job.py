@@ -107,13 +107,13 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '30'}
+             'alarm': '60'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
 
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=20, interval=2)
+                           jid, max_attempts=100, interval=2)
         self.mom.log_match(
             "pbs_python;executing begin hook %s" % (hook_name,), n=100,
             max_attempts=5, interval=5, regexp=True)
@@ -138,13 +138,13 @@ e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
 """
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '30'}
+             'alarm': '60'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
 
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=20, interval=2)
+                           jid, max_attempts=100, interval=2)
 
         self.mom.log_match(
             "pbs_python;executing prologue hook %s" % (hook_name,), n=100,
@@ -168,18 +168,19 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 """
         search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '30'}
+             'alarm': '60'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
 
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=20, interval=2)
+                           jid, max_attempts=100, interval=2)
 
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
 
-        self.server.log_match("dequeuing from", starttime=search_after)
+        self.server.log_match("dequeuing from", max_attempts=100,
+                              interval=3, starttime=search_after)
 
         self.mom.log_match(
             "pbs_python;executing epilogue hook %s" % (hook_name,), n=100,
@@ -206,17 +207,18 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
 """
         search_after = time.time()
         a = {'event': hook_event, 'enabled': 'True',
-             'alarm': '20'}
+             'alarm': '40'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         jid = self.submit_job()
         self.server.expect(JOB, {'job_state': 'R'},
-                           jid, max_attempts=20, interval=2)
+                           jid, max_attempts=100, interval=2)
 
         self.logger.info("Wait 10s for job to finish")
         sleep(10)
 
-        self.server.log_match("dequeuing from", starttime=search_after)
+        self.server.log_match("dequeuing from", max_attempts=100,
+                              interval=3, starttime=search_after)
 
         self.mom.log_match(
             "pbs_python;executing end hook %s" % (hook_name,), n=100,
