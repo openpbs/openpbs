@@ -4,7 +4,7 @@ It also supports build and test history in the form of logs.
 
 Dependincies for this tool are:
 * python3.5 or above
-* docker
+* docker (17.12.0+)
 * docker-compose
 
 ***How to setup:***
