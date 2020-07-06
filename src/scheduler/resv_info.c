@@ -354,10 +354,10 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					}
 				}
 				jobs_in_reservations = resource_resv_filter(resresv->resv->resv_queue->jobs,
-									    count_array((void **)resresv->resv->resv_queue->jobs),
+									    count_array(resresv->resv->resv_queue->jobs),
 									    check_running_job_in_reservation, NULL, 0);
 				collect_jobs_on_nodes(resresv->resv->resv_nodes, jobs_in_reservations,
-					              count_array((void **)jobs_in_reservations), NO_FLAGS);
+					              count_array(jobs_in_reservations), NO_FLAGS);
 				free(jobs_in_reservations);
 
 				/* Sort the nodes to ensure correct job placement. */

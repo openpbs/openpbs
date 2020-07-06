@@ -401,7 +401,7 @@ query_server(status *pol, int pbs_sd)
 	 * nodes, which are accounted for by collect_jobs_on_nodes in
 	 * query_reservation, hence the use of the filtered list of jobs
 	 */
-	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array((void **)jobs_alive), DETECT_GHOST_JOBS);
+	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array(jobs_alive), DETECT_GHOST_JOBS);
 
 	/* Now that the job_arr is created, garbage collect the jobs */
 	free(jobs_alive);

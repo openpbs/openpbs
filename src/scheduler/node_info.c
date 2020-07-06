@@ -1517,7 +1517,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 	if (onodes == NULL || nsinfo == NULL)
 		return NULL;
 
-	num_nodes = thread_node_ct_left = count_array((void **) onodes);
+	num_nodes = thread_node_ct_left = count_array(onodes);
 
 	if ((nnodes = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
