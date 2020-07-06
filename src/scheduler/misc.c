@@ -183,7 +183,7 @@ add_str_to_array(char ***str_arr, char *str)
 	if (*str_arr == NULL)
 		cnt = 0;
 	else
-		cnt = count_array((void **) *str_arr);
+		cnt = count_array(*str_arr);
 
 	tmp_arr = realloc(*str_arr, (cnt+2)*sizeof(char*));
 	if (tmp_arr == NULL)
@@ -409,7 +409,7 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 	if (ptrarr == NULL || filter_func == NULL)
 		return NULL;
 
-	size = count_array((void **) ptrarr);
+	size = count_array(ptrarr);
 
 	if ((new_arr = (void **) malloc((size + 1) * sizeof(void *))) == NULL) {
 		log_err(errno, __func__, "Error allocating memory");
@@ -453,7 +453,7 @@ dup_string_array(char **ostrs)
 	int i;
 
 	if (ostrs != NULL) {
-		i = count_array((void **) ostrs);
+		i = count_array(ostrs);
 
 		if ((nstrs = (char **)malloc((i + 1) * sizeof(char *))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
@@ -513,7 +513,7 @@ enum match_string_array_ret match_string_array(char **strarr1, char **strarr2)
 	if (strarr1 == NULL || strarr2 == NULL)
 		return SA_NO_MATCH;
 
-	strarr2_len = count_array((void **)strarr2);
+	strarr2_len = count_array(strarr2);
 
 	for (i = 0; strarr1[i] != NULL; i++) {
 		if (is_string_in_arr(strarr2, strarr1[i]))
@@ -802,20 +802,23 @@ is_num(char *str)
  *		count_array - count the number of elements in a NULL terminated array
  *		      of pointers
  *
- * @param[in]	arr	-	the array to count
+ * @param[in]	arr	the array to count
  *
  * @return	number of elements in the array
  *
  */
 int
-count_array(void **arr)
+count_array(void *arr)
 {
 	int i;
+	void **ptr_arr;
 
 	if (arr == NULL)
 		return 0;
 
-	for (i = 0; arr[i] != NULL; i++)
+	ptr_arr = (void **) arr;
+
+	for (i = 0; ptr_arr[i] != NULL; i++)
 		;
 
 	return i;

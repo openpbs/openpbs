@@ -130,6 +130,4 @@ noinst_HEADERS = \
 	ticket.h \
 	tracking.h \
 	user.h \
-	win.h \
-	win_remote_shell.h \
 	work_task.h

@@ -743,7 +743,7 @@ dis_clear_buf(pbs_dis_buf_t *tp)
 	tp->tdis_lead = 0;
 	tp->tdis_trail = 0;
 	tp->tdis_eod = 0;
-	memset(tp->tdis_thebuf, '\0', tp->tdis_bufsize);
+	tp->tdis_thebuf[0] = '\0';
 }
 
 /**

@@ -356,7 +356,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 
 				/* Sort the nodes to ensure correct job placement. */
 				qsort(resresv->resv->resv_nodes,
-					count_array((void **) resresv->resv->resv_nodes),
+					count_array(resresv->resv->resv_nodes),
 					sizeof(node_info *), multi_node_sort);
 			}
 		}

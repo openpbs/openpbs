@@ -219,7 +219,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				qinfo->nodes = node_filter(sinfo->nodes, sinfo->num_nodes,
 					node_queue_cmp, (void *) qinfo->name, 0);
 
-				qinfo->num_nodes = count_array((void **) qinfo->nodes);
+				qinfo->num_nodes = count_array(qinfo->nodes);
 
 			}
 
