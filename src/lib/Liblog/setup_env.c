@@ -116,6 +116,11 @@ setup_env(char *filen)
 					/* no newline, wonder if this is last line */
 					questionable = 1;
 				} else {
+#ifdef WIN32
+					/* take care of <carriage-return> char */
+					if (len > 1 && !isalnum(buf[len-2]))
+						buf[len-2] = '\0';
+#endif
 					buf[len - 1] = '\0';
 				}
 
