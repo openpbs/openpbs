@@ -11,22 +11,22 @@ Dependincies for this tool are:
 
 Simply invoke the following command:
 
-` ./ci --run`
+` ./ci`
 
 ***CLI interface for ci:***
 
-* **./ci --run:** This is the primary command for ci. It starts the container (if not already running), builds pbs dependencies. Will configure(if required), make and install pbs. If the tests option are given it will run PTL with the same. It does not take any argument.
+* **./ci :** This is the primary command for ci. It starts the container (if not already running), builds pbs dependencies. Will configure(if required), make and install pbs. If the tests option are given it will run PTL with the same. It does not take any argument.
 ```bash
-./ci --run
+./ci
  ```
 
-* **./ci --set:** This option will be used to set ci configurations. The following options can be set via this command.
+* **./ci --set:** This option will be used to set ci configurations and proceed to run ci. The following options can be set via this command.
 | OS | nodes | configure | tests | It will take a single string argument.
 
 ```bash
 ./ci --set
 
-# When the set command is called without any arguments it will display the currently set options.
+# When the set command is called without any arguments it will display the currently set options and then proceed to run ci
 
 
 ./ci --set 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
@@ -48,7 +48,7 @@ Simply invoke the following command:
 #		with the suffix '_ci_pbs'. If you wish to use the base image delete any such images.
 # OS platform can be defined by any image from docker-hub
 
-./ci --set 'nodes=nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04'
+./ci --set 'nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04;mom=centos:8'
 # This is an example of how to define multi node setup for pbs.
 # You can define multiple 'mom' or 'comm' nodes but only one 'server' node
 
@@ -61,9 +61,6 @@ Optionally accepts argument for other platform. The packages can be found in 'ci
 ```bash
 ./ci --build-pkgs
 # Above command builds package for the platform ci was started/currently running on.
-
-./ci --build-pkgs='ubuntu:16.04'
-# This will build package on ubuntu:16.04 platform, it will restart ci services and build for the specified platform
 ```
 
 * **./ci --delete:** will delete any running containers and take a backup of logs. Does not take any arguments.
