@@ -193,9 +193,12 @@ def commit_docker_image():
     services = get_services_list()
     service_count = len(services)
     timeout_total = 1 * 60 * 60
-    while service_count > 0 or timeout > timeout_total:
+    while service_count > 0:
         time.sleep(15)
         timeout = timeout + 15
+        if timeout > timeout_total:
+            log_error("build is taking too long, timed out")
+            os._exit(1)
         status = read_from_file(os.path.join(
             ci_dirname, '.config_dir', '.status'))
         for service in services:
@@ -409,12 +412,15 @@ def create_param_file():
     comms = []
     include_server_mom = False
     include_server_comm = False
+    include_mom_comm = False
     reqs = read_from_file(os.path.join(
         ci_dirname, '.config_dir', '.requirements_decorator'))
     if reqs.find('no_mom_on_server=False') != -1:
         include_server_mom = True
     if reqs.find('no_comm_on_server=False') != -1:
         include_server_comm = True
+    if reqs.find('no_comm_on_mom=False') != -1:
+        include_mom_comm = True
     for service in get_services_list():
         service = service+'.ci_ci'
         if service.find('server') != -1:
@@ -424,6 +430,8 @@ def create_param_file():
                 comms.append(service)
         if service.find('mom') != -1:
             moms.append(service)
+            if include_mom_comm:
+                comms.append(service)
         if service.find('comm') != -1:
             comms.append(service)
     write_str = ''
