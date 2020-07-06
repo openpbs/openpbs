@@ -1855,7 +1855,7 @@ collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int s
  *
  */
 int
-collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size, enum misc_constants flags)
+collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size, int flags)
 {
 	char *ptr;		/* used to find the '/' in the jobs array */
 	resource_resv *job;	/* find the job from the jobs array */
@@ -1883,7 +1883,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 			/* If there are no running jobs in the list and node reports a running job,
 			 * mark that the node has ghost job
 			 */
-			if (size == 0 && flags == DETECT_GHOST_JOBS) {
+			if (size == 0 && (flags & DETECT_GHOST_JOBS)) {
 				ninfo_arr[i]->has_ghost_job = 1;
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name,
 					  "Jobs reported running on node no longer exists or are not in running state");
@@ -1927,7 +1927,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 						/* make the job array searchable with find_resource_resv */
 						ninfo_arr[i]->job_arr[k] = NULL;
 					}
-				} else if (flags == DETECT_GHOST_JOBS) {
+				} else if (flags & DETECT_GHOST_JOBS) {
 					/* Race Condition occurred: nodes were queried when a job existed.
 					 * Jobs were queried when the job no longer existed.  Make note
 					 * of it on the job so the node's resources_assigned values can be
