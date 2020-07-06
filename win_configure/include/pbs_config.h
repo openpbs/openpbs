@@ -169,6 +169,6 @@ typedef int		ssize_t;
 
 #define PBS_COMPRESSION_ENABLED 1
 
-#define pbs_get_dataservice_usr(errmsg, PBS_MAX_DB_ERR)   NULL, strcpy(errmsg, "dataservice not supported on windows")
+#define pbs_get_dataservice_usr(errmsg, PBS_MAX_DB_ERR)  NULL
 
 #endif /* _PBS_CONFIG_H */
