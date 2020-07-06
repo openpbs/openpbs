@@ -87,7 +87,7 @@ enum node_topology_type {
 typedef enum node_topology_type ntt_t;
 
 typedef struct {
-	int index;
+	struct pbsnode *pnode;
 	pbs_list_link link;
 } unlicensed_node;
 
@@ -106,7 +106,7 @@ extern int release_node_lic(void *);
 extern void license_nodes();
 extern void init_licensing(struct work_task *ptask);
 extern void reset_license_counters(pbs_license_counts *);
-extern void remove_from_unlicensed_node_list(int);
+extern void remove_from_unlicensed_node_list(struct pbsnode *pnode);
 
 /* Licensing-related variables */
 extern char *pbs_licensing_location;

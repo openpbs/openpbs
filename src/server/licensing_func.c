@@ -46,6 +46,7 @@
  *
  */
 
+#include <time.h>
 #include "pbs_nodes.h"
 #include "pbs_license.h"
 #include "server.h"
@@ -60,6 +61,7 @@ pbs_license_counts license_counts;
 struct work_task *init_licensing_task;
 struct work_task *get_more_licenses_task;
 struct work_task *licenses_linger_time_task;
+extern time_t time_now;
 /**
  * @brief
  * 	consume_licenses - use count licenses from the pool of
@@ -108,22 +110,22 @@ return_licenses(long count)
  * @return void
  */
 static void
-add_to_unlicensed_node_list(int index)
+add_to_unlicensed_node_list(struct pbsnode *pnode)
 {
 	unlicensed_node *pun;
 
-	if (pbsndlist[index]->nd_added_to_unlicensed_list)
+	if (pnode->nd_added_to_unlicensed_list)
 		return;
 
 	pun = malloc(sizeof(unlicensed_node));
 	if (!pun)
 		return;
 
-	pun->index = index;
+	pun->pnode = pnode;
 	CLEAR_LINK(pun->link);
 
 	append_link(&unlicensed_nodes_list, &pun->link, pun);
-	pbsndlist[index]->nd_added_to_unlicensed_list = 1;
+	pnode->nd_added_to_unlicensed_list = 1;
 }
 
 /**
@@ -137,15 +139,17 @@ add_to_unlicensed_node_list(int index)
  * @return void
  */
 void
-remove_from_unlicensed_node_list(int index)
+remove_from_unlicensed_node_list(struct pbsnode *pnode)
 {
 	unlicensed_node *pun;
+	if(!pnode->nd_added_to_unlicensed_list)
+		return;
 
-	pbsndlist[index]->nd_added_to_unlicensed_list = 0;
+	pnode->nd_added_to_unlicensed_list = 0;
 	pun = (unlicensed_node *) GET_NEXT(unlicensed_nodes_list);
 	while (pun != NULL) {
-		if (pun->index == index) {
-			licensing_control.licenses_total_needed -= pbsndlist[index]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+		if (!strcmp((pun->pnode)->nd_name, pnode->nd_name)) {
+			licensing_control.licenses_total_needed -= pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
 			delete_link(&pun->link);
 			free(pun);
 			break;
@@ -398,7 +402,6 @@ void
 check_license_expiry(struct work_task *wt)
 {
 	char *warn_str = NULL;
-	time_t time_now = time(NULL);
 
 	warn_str = lic_check_expiry();
 	if (warn_str && (strlen(warn_str) > 0)) {
@@ -446,6 +449,9 @@ get_licenses(int lic_count)
 			lic_count, pbs_licensing_location);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_NOTICE, msg_daemonname, log_buffer);
+		license_counts.licenses_local = 0;
+		license_counts.licenses_used = 0;
+		licensing_control.licenses_checked_out = 0;
 	} else {
 		sprintf(log_buffer,
 			"%d licenses checked out from pbs_license_info=%s",
@@ -454,7 +460,7 @@ get_licenses(int lic_count)
 			LOG_NOTICE, msg_daemonname, log_buffer);
 
 		licensing_control.licenses_checked_out = lic_count;
-		licensing_control.licenses_checkout_time = time(NULL);
+		licensing_control.licenses_checkout_time = time_now;
 		license_counts.licenses_local = lic_count - license_counts.licenses_used;
 		license_counts.licenses_global -= diff;
 	}
@@ -510,7 +516,7 @@ get_more_licenses(struct work_task *ptask)
 	license_counts.licenses_global = lic_obtainable();
 
 	if (license_counts.licenses_global < (licensing_control.licenses_total_needed - licensing_control.licenses_checked_out))
-		get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 300, get_more_licenses, NULL);
+		get_more_licenses_task = set_task(WORK_Timed, time_now + 300, get_more_licenses, NULL);
 
 	if (license_counts.licenses_global > 0) {
 		lic_count = calc_licenses_allowed();
@@ -552,15 +558,14 @@ license_one_node(pbsnode *pnode)
 				 	&node_attr_def[(int)ND_ATR_License],
 				 	ND_LIC_locked_str);
 			} else {
-				add_to_unlicensed_node_list(pnode->nd_index);
+				add_to_unlicensed_node_list(pnode);
 				if (get_more_licenses_task)
-					get_more_licenses_task->wt_event = time(NULL) + 2;
-				else
-					get_more_licenses_task = set_task(WORK_Timed, time(NULL) + 2, get_more_licenses, NULL);
+					delete_task(get_more_licenses_task);
+				get_more_licenses_task = set_task(WORK_Timed, time_now + 2, get_more_licenses, NULL);
 			}
 		}
 	} else
-		add_to_unlicensed_node_list(pnode->nd_index);
+		add_to_unlicensed_node_list(pnode);
 }
 
 /**
@@ -632,28 +637,28 @@ license_nodes()
 {
 	int i;
 	pbsnode *np;
-	unlicensed_node *pun;
+	unlicensed_node *punodes;
 	unlicensed_node *pnext;
 
-	pun = (unlicensed_node *) GET_NEXT(unlicensed_nodes_list);
-	while (pun != NULL) {
-		np = pbsndlist[pun->index];
-		pnext = (unlicensed_node *) GET_NEXT(pun->link);
+	punodes = (unlicensed_node *) GET_NEXT(unlicensed_nodes_list);
+	while (punodes != NULL) {
+		np = punodes->pnode;
+		pnext = (unlicensed_node *) GET_NEXT(punodes->link);
 		if ((np->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked)) {
 			if (np->nd_attr[(int)ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET) {
 				if (consume_licenses(np->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
 					set_attr_svr(&(np->nd_attr[(int)ND_ATR_License]),
 						 &node_attr_def[(int)ND_ATR_License],
 						 ND_LIC_locked_str);
-					delete_link(&pun->link);
-					free(pun);
+					delete_link(&punodes->link);
+					free(punodes);
 				}
 			} else {
 				for (i = 0; i < np->nd_nummoms; i++)
 					propagate_licenses_to_vnodes(np->nd_moms[i]);
 			}
 		}
-		pun = pnext;
+		punodes = pnext;
 	}
 	update_license_highuse();
 	return;
@@ -687,7 +692,9 @@ init_licensing(struct work_task *ptask)
  	 * as the license location has changed.
  	 */
 	memset(&license_counts, 0, sizeof(license_counts));
-	licensing_control.licenses_total_needed = licensing_control.licenses_checkout_time = licensing_control.licenses_checked_out = 0;
+	licensing_control.licenses_total_needed = 
+		licensing_control.licenses_checkout_time = 
+			licensing_control.licenses_checked_out = 0;
 	licensing_control.expiry_warning_email_yday = -1;
 
 	count = lic_init(pbs_licensing_location);
@@ -696,7 +703,7 @@ init_licensing(struct work_task *ptask)
 			clear_node_lic_attrs(pbsndlist[i], 1);
 			free(pbsndlist[i]->nd_lic_info);
 			pbsndlist[i]->nd_lic_info = NULL;
-			add_to_unlicensed_node_list(i);
+			add_to_unlicensed_node_list(pbsndlist[i]);
 		}
 
 		switch (count) {
@@ -728,7 +735,7 @@ init_licensing(struct work_task *ptask)
 
 		set_node_lic_info_attr(pbsndlist[i]);
 
-		add_to_unlicensed_node_list(i);
+		add_to_unlicensed_node_list(pbsndlist[i]);
 	}
 
 	/* Determine how many licenses we can check out */
@@ -930,8 +937,7 @@ unlicense_nodes(void)
 
 	for (i = 0; i < svr_totnodes; i++) {
 		np = pbsndlist[i];
-		if (np->nd_attr[(int) ND_ATR_License].at_val.at_char ==
-			ND_LIC_TYPE_locked) {
+		if (np->nd_attr[(int) ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked) {
 			clear_attr(&np->nd_attr[(int) ND_ATR_License],
 				&node_attr_def[(int) ND_ATR_License]);
 			if (first) {
@@ -959,6 +965,6 @@ return_lingering_licenses(struct work_task *ptask)
 		get_licenses(licensing_control.licenses_min);
 
 	licenses_linger_time_task = set_task(WORK_Timed,
-		time(NULL) + licensing_control.licenses_linger_time,
+		time_now + licensing_control.licenses_linger_time,
 		return_lingering_licenses, NULL);
 }

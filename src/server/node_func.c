@@ -541,7 +541,7 @@ effective_node_delete(struct pbsnode *pnode)
 		psubn = pnxt;
 	}
 
-	remove_from_unlicensed_node_list(pnode->nd_index);
+	remove_from_unlicensed_node_list(pnode);
 	lic_released = release_node_lic(pnode);
 
         /* free attributes */
