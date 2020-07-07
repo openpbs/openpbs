@@ -187,11 +187,9 @@ mock_run_mom_set_use(job *pjob)
 		rd[3] = &svr_resc_def[RESC_CPUPERCENT];
 		rd[4] = NULL;
 	}
-	if (vmemd == NULL) {
-		vmemd = &svr_resc_def[RESC_VMEM];
-		assert(vmemd != NULL);
-	}
 
+	vmemd = &svr_resc_def[RESC_VMEM];
+	
 	for (i = 0; rd[i] != NULL; i++) {
 		rdefp = rd[i];
 		pres = find_resc_entry(at, rdefp);

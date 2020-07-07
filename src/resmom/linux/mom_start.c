@@ -232,9 +232,7 @@ getplacesharing(job *pjob)
 	/*
 	 *	Compute the "Resource_List.place" index for vnss[][]:
 	 */
-	if (prsdef == NULL) {
-		prsdef = &svr_resc_def[RESC_PLACE];
-	}
+	prsdef = &svr_resc_def[RESC_PLACE];
 	if (prsdef != NULL) {
 		char	*placeval = NULL;
 

@@ -244,12 +244,16 @@ def attr(m_file, s_file, e_file, d_file):
             do_member(attr, PropType.BOTH, 'member_at_type')
             do_member(attr, PropType.SERVER, 'member_at_parent')
             do_member(attr, PropType.ECL, 'member_verify_function')
+            do_member(attr, PropType.SERVER, 'member_at_entlim')
+            do_member(attr, PropType.SERVER, 'member_at_struct')
 
             fileappend(PropType.BOTH, '\n\t}')
             fileappend(PropType.BOTH, ",")
 
             if macro_name:
-                fileappend(PropType.BOTH, '\n #endif')
+                fileappend(PropType.BOTH, '\n#else')
+                fileappend(PropType.BOTH, '\n\t{\n\t\t"noop"\n\t},')
+                fileappend(PropType.BOTH, '\n#endif')
 
         tail_list = node.getElementsByTagName('tail')
         for t in tail_list:
