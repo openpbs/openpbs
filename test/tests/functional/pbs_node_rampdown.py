@@ -158,7 +158,7 @@ class TestPbsNodeRampDown(TestFunctional):
         fpath = os.path.join(TEST_USER.home, "test.img")
         cmd = ['stat', '-c', '%s', fpath]
         fsize = 0
-        for i in range(0, 11):
+        for i in range(11):
             rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd,
                                  runas=TEST_USER)
             if rc['rc'] == 0 and len(rc['out']) == 1:
