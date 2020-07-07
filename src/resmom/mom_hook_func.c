@@ -412,7 +412,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 		}
 	}
 
-	snprintf(bufs, sizeof(bufs)-1, "%d", num_pcpus);
+	snprintf(bufs, sizeof(bufs), "%d", num_pcpus);
 	if (vn_addvnr(*p_vnlp, mom_short_name, ATTR_NODE_pcpus, bufs, 0, 0, NULL) == -1) {
 		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
@@ -423,7 +423,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 
 	}
 
-	snprintf(bufs, sizeof(bufs)-1, "%d", num_acpus);
+	snprintf(bufs, sizeof(bufs), "%d", num_acpus);
 	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.ncpus", bufs, 0, 0, NULL) == -1) {
 		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
@@ -434,7 +434,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 
 	}
 
-	snprintf(bufs, sizeof(bufs)-1, "%llukb", av_phy_mem);
+	snprintf(bufs, sizeof(bufs), "%llukb", av_phy_mem);
 	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.mem", bufs, 0, 0, NULL) == -1) {
 		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
@@ -1420,7 +1420,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		arg[7] = (char *)log_file;
 	}
 	arg[8] = "-e";
-	snprintf(logmask, sizeof(logmask)-1, "%ld", *log_event_mask);
+	snprintf(logmask, sizeof(logmask), "%ld", *log_event_mask);
 	arg[9] = (char *)logmask;
 
 	if (rescdef_file != NULL) {
@@ -3080,7 +3080,7 @@ void send_hook_fail_action(hook *phook)
 		return;
 	}
 
-	snprintf(hook_buf, sizeof(hook_buf) - 1, "1,%s", phook->hook_name);
+	snprintf(hook_buf, sizeof(hook_buf), "1,%s", phook->hook_name);
 
 	if (vnl_alloc(&tvnl) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -3934,7 +3934,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		/* the job's exit value. 				    */
 		/* Set it only once, and only if there's a hook to execute  */
 		/* since we're affecting the job directly.		    */
-		if( ((hook_event == HOOK_EVENT_EXECJOB_END) || \
+		if (((hook_event == HOOK_EVENT_EXECJOB_END) ||
 		     (hook_event == HOOK_EVENT_EXECJOB_EPILOGUE)) && !set_job_exit) {
 
 			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
