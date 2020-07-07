@@ -313,7 +313,7 @@ query_server(status *pol, int pbs_sd)
 	}
 
 	/* get reservations, if any - NOTE: will set sinfo -> num_resvs */
-	sinfo->resvs = query_reservations(sinfo, bs_resvs, pbs_sd);
+	sinfo->resvs = query_reservations(pbs_sd, sinfo, bs_resvs);
 	pbs_statfree(bs_resvs);
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */

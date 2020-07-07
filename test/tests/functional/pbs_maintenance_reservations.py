@@ -640,6 +640,7 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
+    @requirements(num_moms=2)
     def test_maintenance_degrade_reservation_jobs_dont_run(self):
         """
         Test if the reservation is degraded by overlapping
@@ -661,16 +662,16 @@ class TestMaintenanceReservations(TestFunctional):
               'reserve_end': now + 1200}
         start = now + 30
         r1 = Reservation(TEST_USER, attrs=a1)
-        rid = self.server.submit(r1)
-        rid1 = rid.split('.')[0]
+        rid1 = self.server.submit(r1)
+        resv_name = rid1.split('.')[0]
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, exp_attr, id=rid1)
+        self.server.expect(RESV, exp_attr, id=resv_name)
         self.server.status(RESV, 'resv_nodes', id=rid1)
-        resv_node_list = self.server.reservations[rid].get_vnodes()
+        resv_node_list = self.server.reservations[rid1].get_vnodes()
         resv_node = resv_node_list[0]
 
-        jid = self.server.submit(Job(attrs={ATTR_q: rid1}))
+        jid = self.server.submit(Job(attrs={ATTR_q: resv_name}))
 
         a2 = {'reserve_start': now + 35,
               'reserve_end': now + 1000}
@@ -684,13 +685,12 @@ class TestMaintenanceReservations(TestFunctional):
         resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.logger.info('Sleeping until reservation starts')
         offset = start - int(time.time())
-        self.server.expect(RESV, resv_state, id=rid,
+        self.server.expect(RESV, resv_state, id=rid1,
                            offset=offset)
         self.server.expect(RESV, resv_state, id=rid2,
                            offset=offset)
 
-        self.logger.info('wait 5 seconds to make sure scheduler looks at job')
-        time.sleep(5)
-        a = {'comment': 'Can Never Run: Reservation is in invalid state',
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        a = {'comment': 'Can Never Run: Reservation is in an invalid state',
              'job_state': 'Q'}
         self.server.expect(JOB, a, id=jid)

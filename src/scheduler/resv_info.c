@@ -133,15 +133,15 @@ stat_resvs(int pbs_sd)
  *  reservation retains its currently allocated resources, such that no other
  *  requests make use of the same resources.
  *
+ * @param[in] pbs_sd - connection to the pbs server
  * @param[in] sinfo  - the server to query from
  * @param[in] resvs  - batch status of the stat'ed reservations
- * @param[in] pbs_sd - connection to the pbs server
  *
  * @return    An array of reservations
  *
  */
 resource_resv **
-query_reservations(server_info *sinfo, struct batch_status *resvs, int pbs_sd)
+query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 {
 	/* the current reservation in the list */
 	struct batch_status *cur_resv;
@@ -246,7 +246,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs, int pbs_sd)
 				queue_info *qinfo = find_queue_info(sinfo->queues, resresv->resv->queuename);
 				if (qinfo != NULL) {
 				    clear_schd_error(err);
-				    set_schd_error_arg(err, SPECMSG, "Reservation is in invalid state");
+				    set_schd_error_arg(err, SPECMSG, "Reservation is in an invalid state");
 				    set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 				    update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
 				}
