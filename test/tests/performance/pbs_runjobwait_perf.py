@@ -90,7 +90,7 @@ class TestRunjobWaitPerf(TestPerformance):
         Test performance of job_run_wait=none
         """
         t = self.common_test("none")
-        self.perf_test_result(t, "time_taken_rw_none", "sec")
+        self.perf_test_result(t, "time_taken_run_wait_none", "sec")
 
     @timeout(7200)
     def test_rw_runjobhook(self):
@@ -106,7 +106,7 @@ pbs.event().accept()
         hk_attrs = {'event': 'runjob', 'enabled': 'True'}
         self.server.create_import_hook('rj', hk_attrs, hook_txt)
         t = self.common_test("runjob_hook")
-        self.perf_test_result(t, "time_taken_rw_runjobhook", "sec")
+        self.perf_test_result(t, "time_taken_run_wait_runjobhook", "sec")
 
     @timeout(7200)
     def test_rw_execjobhook(self):
@@ -114,7 +114,7 @@ pbs.event().accept()
         Test performance of job_run_wait=execjob_hook
         """
         t = self.common_test("execjob_hook")
-        self.perf_test_result(t, "time_taken_rw_execjobhook", "sec")
+        self.perf_test_result(t, "time_taken_run_wait_execjobhook", "sec")
 
     @timeout(14400)
     def test_rw_runjobhook_nohook(self):
@@ -128,9 +128,10 @@ pbs.event().accept()
         # the time taken by none mode, as without a runjob hook, the
         # scheduler should assume none mode even if job_run_wait=runjob_hook
         self.assertLess(t_rj / t_none, 1.5)
-        self.perf_test_result(t_rj, "time_taken_rw_runjobhook_nohook", "sec")
-        self.perf_test_result(t_none, "time_taken_rw_none", "sec")
         self.perf_test_result(
-            (t_rj - t_none),
-            "time_diff_rw_none_rw_runjobhook_nohook",
+            t_rj, "time_taken_run_wait_runjobhook_nohook", "sec")
+        self.perf_test_result(t_none, "time_taken_run_wait_none", "sec")
+        self.perf_test_result(
+            (t_none - t_rj),
+            "time_diff_run_wait_none_and_run_wait_runjobhook_nohook",
             "sec")
