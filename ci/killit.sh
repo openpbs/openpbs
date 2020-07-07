@@ -78,8 +78,8 @@ kill_pbs_process() {
 . /etc/os-release
 
 if [ "x$1" == "xbackup" ]; then
-    time_stamp=$(date +"%s")
-    folder=session_ended_at_${time_stamp}
+    time_stamp=$(date -u "+%Y-%m-%d-%H%M%S")
+    folder=session-${time_stamp}
     mkdir -p /logs/${folder}
     cp /logs/build-* /logs/${folder}
     cp /logs/logfile /logs/${folder}

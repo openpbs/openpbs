@@ -20,35 +20,35 @@ Simply invoke the following command:
 ./ci
  ```
 
-* **./ci --set:** This option will be used to set ci configurations and proceed to run ci. The following options can be set via this command.
+* **./ci --params:** This option will be used to set ci configurations and proceed to run ci. The following options can be set via this command.
 | OS | nodes | configure | tests | It will take a single string argument.
 
 ```bash
-./ci --set
+./ci --params
 
-# When the set command is called without any arguments it will display the currently set options and then proceed to run ci
+# When the params command is called without any arguments it will display the currently set options and then proceed to run ci
 
 
-./ci --set 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
+./ci --params 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
 
 # The above command is an example of how to define a custom configure option for pbs.
 
-./ci --set 'tests=-f pbs_smoketest.py'
-./ci --set 'tests=--tags=smoke'
+./ci --params 'tests=-f pbs_smoketest.py'
+./ci --params 'tests=--tags=smoke'
 
 # The above method are examples how to define a custom test case for pbs_benchpress.
 # NOTE: The string is passed to pbs_benchpress command therefore one can use all available options of pbs_benchpress here.
 
-./ci --set 'tests='
+./ci --params 'tests='
 # If you wish to not run any PTL tests then use the above command. This will set tests as empty thus not invoking PTL.
 
-./ci --set 'os=centos:7'
+./ci --params 'os=centos:7'
 # This is an example of setting the container operating system. This will setup a single container running pbs server.
 # NOTE: ci uses cached image to increase performance of dependecy build. These cached images are saved on the local system
 #		with the suffix '_ci_pbs'. If you wish to use the base image delete any such images.
 # OS platform can be defined by any image from docker-hub
 
-./ci --set 'nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04;mom=centos:8'
+./ci --params 'nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04;mom=centos:8'
 # This is an example of how to define multi node setup for pbs.
 # You can define multiple 'mom' or 'comm' nodes but only one 'server' node
 
