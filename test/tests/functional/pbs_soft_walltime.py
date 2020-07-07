@@ -79,7 +79,7 @@ class TestSoftWalltime(TestFunctional):
         if self.mom.is_cpuset_mom():
             # reset the freq value
             attrs = {'freq': 120}
-            rv = self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
+            self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
         TestFunctional.tearDown(self)
 
     def stat_job(self, job):
@@ -940,7 +940,7 @@ done
         # purpose of this test.
         if self.mom.is_cpuset_mom():
             attrs = {'freq': 1}
-            rv = self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
+            self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
             # cause the change to take effect now
             self.mom.restart()
 
