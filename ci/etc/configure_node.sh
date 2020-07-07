@@ -14,7 +14,7 @@ if [ "x${NODE_TYPE}" == "xmom" ]; then
 	else
 		sed -i "s@PBS_START_COMM=.*@PBS_START_COMM=1@" /etc/pbs.conf
 	fi
-	sed -i "s@PBS_START_SCHED=.*@PBS_START_SCHED=1@" /etc/pbs.conf
+	sed -i "s@PBS_START_SCHED=.*@PBS_START_SCHED=0@" /etc/pbs.conf
 fi
 
 if [ "x${NODE_TYPE}" == "xserver" ]; then
@@ -35,7 +35,7 @@ fi
 
 if [ "x${NODE_TYPE}" == "xcomm" ]; then
 	sed -i "s@PBS_START_COMM=.*@PBS_START_COMM=1@" /etc/pbs.conf
-	sed -i "s@PBS_SERVER=.*@PBS_SERVER=pbs_server@" /etc/pbs.conf
+	sed -i "s@PBS_SERVER=.*@PBS_SERVER=pbs-server@" /etc/pbs.conf
 	sed -i "s@PBS_START_MOM=.*@PBS_START_MOM=0@" /etc/pbs.conf
 	sed -i "s@PBS_START_SERVER=.*@PBS_START_SERVER=0@" /etc/pbs.conf
 	sed -i "s@PBS_START_SCHED=.*@PBS_START_SCHED=0@" /etc/pbs.conf
