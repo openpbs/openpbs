@@ -351,6 +351,7 @@ job_alloc(void)
 	pj->ji_parent2child_moms_status_pipe = -1;
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
+	pj->ji_bg_hook_task = NULL;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -566,13 +567,15 @@ job_free(job *pj)
 	if (pj->ji_bg_hook_task) {
 		mom_process_hooks_params_t *php;
 		php = pj->ji_bg_hook_task->wt_parm2;
-		if (php->hook_output) {
-			free(php->hook_output->reject_errcode);
-			free(php->hook_output);
+		if (php != NULL) {
+			if (php->hook_output) {
+				free(php->hook_output->reject_errcode);
+				free(php->hook_output);
+			}
+			free(php->hook_input);
+			free(php);
 		}
-		free(php->hook_input);
-		free(php);
-		pj->ji_bg_hook_task->wt_parm2 = NULL;
+		delete_task(pj->ji_bg_hook_task);
 	}
 
 	/*
