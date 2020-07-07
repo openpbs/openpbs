@@ -951,7 +951,7 @@ done
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         self.logger.info("Sleep 10 secs waiting for cput to cause the"
-            " job to be deleted")
+                         " job to be deleted")
         time.sleep(10)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
 
