@@ -644,10 +644,10 @@ if __name__ == "__main__":
         ./ci --delete\n\
         ./ci --build-pkgs or ./ci --build-pkgs=\'ubuntu:16.04\'\n\
         ./ci --local\n\
-\033[1mNote:Set tests as empty if you dont want to run PTL \033[0m',
+Note:Set tests as empty if you dont want to run PTL',
         conflict_handler='resolve')
     ap.add_argument('--params', const='called', action='append',
-                    help='set configuration values for \033[1m | OS | nodes | configure | tests | \033[0m', nargs='?')
+                    help='set configuration values for | OS | nodes | configure | tests | ', nargs='?')
     ap.add_argument('--delete', const='called',
                     help='destroy pbs container', nargs='?')
     ap.add_argument('--build-pkgs', const='called',
