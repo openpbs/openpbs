@@ -110,11 +110,9 @@ class TestQstatPerformance(TestPerformance):
         self.logger.info("With E option    :" + with_E_option['err'][0])
         measure = "elapse_time qstat" + query.split("`")[0]
         self.perf_test_result(float(without_E_option['err'][0]),
-                              measure,
-                              "sec")
+                              measure, "sec")
         self.perf_test_result(float(with_E_option['err'][0]),
-                              measure + "-E",
-                              "sec")
+                              measure + "-E", "sec")
         self.assertTrue(
             (without_E_option['err'][0] >= with_E_option['err'][0]),
             "Qstat command with option : " + query + " Failed")

@@ -133,5 +133,4 @@ pbs.event().accept()
         self.perf_test_result(t_none, "time_taken_run_wait_none", "sec")
         self.perf_test_result(
             (t_none - t_rj),
-            "time_diff_run_wait_none_and_run_wait_runjobhook_nohook",
-            "sec")
+            "time_diff_run_wait_none_and_run_wait_runjobhook_nohook", "sec")
