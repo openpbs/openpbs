@@ -639,3 +639,58 @@ class TestMaintenanceReservations(TestFunctional):
         time.sleep(30)
 
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+
+    @requirements(num_moms=2)
+    def test_maintenance_degrade_reservation_jobs_dont_run(self):
+        """
+        Test if the reservation is degraded by overlapping
+        maintenance reservation the jobs inside that degraded reservations do
+        not run when the reservation starts running.
+        Two moms (-p "servers=M1,moms=M1:M2") are needed for this test.
+        """
+
+        if len(self.moms) != 2:
+            cmt = "need 2 mom hosts: -p servers=<m1>,moms=<m1>:<m2>"
+            self.skip_test(reason=cmt)
+
+        now = int(time.time())
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': '%s@*' % TEST_USER})
+
+        a1 = {'reserve_start': now + 30,
+              'reserve_end': now + 1200}
+        start = now + 30
+        r1 = Reservation(TEST_USER, attrs=a1)
+        rid1 = self.server.submit(r1)
+        resv_name = rid1.split('.')[0]
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=resv_name)
+        self.server.status(RESV, 'resv_nodes', id=rid1)
+        resv_node_list = self.server.reservations[rid1].get_vnodes()
+        resv_node = resv_node_list[0]
+
+        jid = self.server.submit(Job(attrs={ATTR_q: resv_name}))
+
+        a2 = {'reserve_start': now + 35,
+              'reserve_end': now + 1000}
+        h2 = [resv_node]
+        r2 = Reservation(TEST_USER, attrs=a2, hosts=h2)
+        rid2 = self.server.submit(r2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10'),
+                    'reserve_substate': 12}
+        self.server.expect(RESV, exp_attr, id=rid1)
+        resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.logger.info('Sleeping until reservation starts')
+        offset = start - int(time.time())
+        self.server.expect(RESV, resv_state, id=rid1,
+                           offset=offset)
+        self.server.expect(RESV, resv_state, id=rid2,
+                           offset=offset)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        a = {'comment': 'Can Never Run: Reservation is in an invalid state',
+             'job_state': 'Q'}
+        self.server.expect(JOB, a, id=jid)
