@@ -928,6 +928,16 @@ do
     dd if=/dev/zero of=/dev/null;
 done
 """
+	# If it is a cpuset mom, the cgroups hook relies on the periodic hook
+        # to update cput, so make the periodic hook run more often for the
+        # purpose of this test.
+        if self.mom.is_cpuset_mom():
+            attrs = {'freq':1}            
+            rv = self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
+            self.assertEqual(rv,0)
+            # cause the change to take effect now
+            self.mom.restart()
+
         j1 = Job(TEST_USER, {'Resource_List.cput': 5})
         j1.create_script(body=script)
         jid = self.server.submit(j1)
@@ -935,8 +945,15 @@ done
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # verify that job is deleted when cput limit is reached
+        self.logger.info("Sleep for 10 waiting for cput to cause job to be deleted")
         time.sleep(10)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+        if self.mom.is_cpuset_mom():
+            # reset the freq value
+            attrs = {'freq':120}            
+            rv = self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
+            self.assertEqual(rv,0)
 
     def test_soft_walltime_resv(self):
         """
