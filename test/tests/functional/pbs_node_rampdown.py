@@ -150,16 +150,15 @@ class TestPbsNodeRampDown(TestFunctional):
             return False
         return True
 
-    def check_test_img_size(self):
+    def check_stageout_file_size(self):
         """
-        This Function will make sure that atleast 1gb of test.img
-        file is created in 10 seconds
+        This Function will check that atleast 1gb of test.img
+        file which is to be stagedout is created in 10 seconds
         """
         fpath = os.path.join(TEST_USER.home, "test.img")
         cmd = ['stat', '-c', '%s', fpath]
-        count = 10
         fsize = 0
-        while count > 0:
+        for i in range(0, 11):
             rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd,
                                  runas=TEST_USER)
             if rc['rc'] == 0 and len(rc['out']) == 1:
@@ -171,7 +170,6 @@ class TestPbsNodeRampDown(TestFunctional):
             if fsize > 1073741824:
                 break
             else:
-                count -= 1
                 time.sleep(1)
         if fsize <= 1073741824:
             self.fail("Failed to create 1gb file at %s" % fpath)
@@ -659,7 +657,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Deleting the job will trigger the stageout process
         # at which time sister nodes are automatically released
         # due to release_nodes_stageout=true set
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify remaining job resources.
@@ -756,7 +754,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # Deleting a job should not trigger automatic
         # release of nodes due to release_nodes_stagout=False
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify no change in remaining job resources.
@@ -837,7 +835,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
 
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify no change in remaining job resources.
@@ -930,7 +928,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # This triggers the lengthy stageout process
         # Wait for the Job to create test.img file
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         self.server.expect(JOB, {'job_state': 'E',
@@ -1026,7 +1024,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # This triggers long stageout process
         # Wait for the Job to create test.img file
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify no change in remaining job resources.
@@ -1132,7 +1130,7 @@ pbs.event().job.release_nodes_on_stageout=True
         # at which time sister nodes are automatically released
         # due to release_nodes_stageout=true set
         # Wait for the Job to create test.img file
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify remaining job resources.
@@ -1242,7 +1240,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # Deleting a job should not trigger automatic
         # release of nodes due to release_nodes_stagout=False
         # Wait for the Job to create test.img file
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify no change in remaining job resources.
@@ -1352,7 +1350,7 @@ pbs.event().job.release_nodes_on_stageout=True
         # at which time sister nodes are automatically released
         # due to release_nodes_stageout=true set
         # Wait for the Job to create test.img file
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify remaining job resources.
@@ -1464,7 +1462,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # Deleting a job should not trigger automatic
         # release of nodes due to release_nodes_stagout=False
         # Wait for the Job to create test.img file
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify no change in remaining job resources.
@@ -4448,7 +4446,7 @@ pbs.event().job.release_nodes_on_stageout=False
                                   6, 2, self.job1_place, newsel_esc)
 
         # Terminate the job
-        self.check_test_img_size()
+        self.check_stageout_file_size()
         self.server.delete(jid)
 
         # Verify remaining job resources.
