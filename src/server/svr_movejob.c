@@ -529,7 +529,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 
 	(void) strcpy(job_id, jobp->ji_qs.ji_jobid);
 
-	if (((jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) == 0) && (credlen <= 0))
+	if (((jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) == 0) && (credlen <= 0) && ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) == 0))
 		extend = EXTEND_OPT_IMPLICIT_COMMIT;
 
 	pqjatr = &((svrattrl *) GET_NEXT(attrl))->al_atopl;
@@ -589,8 +589,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 			goto send_err;
 	}
 
-	if ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN)
-		&& (hostaddr != pbs_server_addr)) {
+	if ((jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) && (hostaddr != pbs_server_addr)) {
 		if ((move_job_file(stream, jobp, StdOut, PROT_TPP, &dup_msgid) != 0) ||
 			(move_job_file(stream, jobp, StdErr, PROT_TPP, &dup_msgid) != 0) ||
 			(move_job_file(stream, jobp, Chkpt, PROT_TPP, &dup_msgid) != 0))
