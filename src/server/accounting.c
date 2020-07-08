@@ -1292,7 +1292,7 @@ account_jobend(job *pjob, char *used, int type)
 	}
 
 	/* Add eligible_time */
-	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		char timebuf[TIMEBUF_SIZE] = {0};
 		i = 26;	/* max size for " eligible_time=<value>" */
 		if (i > len)
@@ -1968,7 +1968,7 @@ account_job_update(job *pjob, int type)
 	}
 
 	/* Add eligible_time */
-	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		char timebuf[TIMEBUF_SIZE] = {0};
 		i = 26;	/* sort of max size for " eligible_time=<value>" */
 		if (i > len)

@@ -390,8 +390,8 @@ job_alloc(void)
 	pj->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
-	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
-	    server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
+	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
+	    server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
 		int elig_val;
 
 		elig_val = determine_accruetype(pj);

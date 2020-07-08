@@ -138,7 +138,7 @@ svr_shutdown(int type)
       /* Saving server jobid number to the database as server is going to shutdown.
 	 * Once server will come up then it will start jobid/resvid from this number onwards.
 	 */
-	state = &server.sv_attr[(int)SRV_ATR_State].at_val.at_long;
+	state = &server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
 	(void)strcpy(log_buffer, msg_shutdown_start);
 
 	if (*state == SV_STATE_SHUTIMM) {
@@ -402,7 +402,7 @@ post_chkpt(struct work_task *ptask)
 static void
 rerun_or_kill(job *pjob, char *text)
 {
-	long server_state = server.sv_attr[(int)SRV_ATR_State].at_val.at_long;
+	long server_state = server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
 
 	if (pjob->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long) {
 

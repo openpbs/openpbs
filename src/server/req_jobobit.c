@@ -1055,7 +1055,7 @@ on_job_exit(struct work_task *ptask)
 				else
 					rec = "";
 
-				if (server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long &
+				if (server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long &
 					PBSEVENT_JOB_USAGE) {
 					/* log events set to record usage */
 					log_event(PBSEVENT_JOB_USAGE | PBSEVENT_JOB_USAGE,

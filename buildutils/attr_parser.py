@@ -59,16 +59,17 @@ list_defs = []
 global attr_type
 global newattr
 
-global ms
-global me
-
 class PropType(enum.Enum):
+    '''
+    BOTH - Write information for this tag to all the output files
+    SERVER - Write information for this tag to the SERVER file only
+    ECL - Write information for this tag to the ECL file only
+    '''
     BOTH = 0
     SERVER = 1
     ECL = 2
 
 class switch(object):
-
     """
     This class provides the functionality which is equivalent
     to switch/case statements in C. It only needs to be defined
@@ -95,10 +96,11 @@ class switch(object):
 
 
 def fileappend(prop_type, line):
-    """
-    fileappend function - (wrapper on top of append for being able to
-    select the file where to write
-    """
+    '''
+    Selects files to append line to dependig on prop_type
+    prop_type - BOTH, SERVER, ECL
+    line - The string line to append to the file(s)
+    '''
     global attr_type
 
     if prop_type == PropType.SERVER:
@@ -115,23 +117,30 @@ def fileappend(prop_type, line):
     return None
 
 
-def getText(s_file, e_file, d_file):
-    """
+def getText(svr_file, ecl_file, defines_file):
+    '''
     getText function - (writes the data stored in lists to file)
-    """
+    svr_file - the server side output file
+    ecl_file - the output file to be used by the ECL layer
+    defines_file - the output file containing the macro definitions for the index positions
+    '''
     buff = "".join(list_svr)
     for line in buff:
-        s_file.write(line)
+        svr_file.write(line)
 
     buff = "".join(list_ecl)
     for line in buff:
-        e_file.write(line)
+        ecl_file.write(line)
 
     buff = "".join(list_defs)
     for line in buff:
-        d_file.write(line)
+        defines_file.write(line)
+
 
 def do_head(node):
+    '''
+    Processes the head element of the node passed
+    '''
     alist = node.getElementsByTagName('head')
     for a in alist:
         list_svr.append ("/*Disclaimer: This is a machine generated file.*/" + '\n')
@@ -149,7 +158,11 @@ def do_head(node):
             text2 = text2.strip(' \t')
             list_ecl.append(text2)
 
+
 def do_index(attr):
+    '''
+    Processes the member_index attribute attr
+    '''
     li = None
     li = attr.getElementsByTagName('member_index')
     if li:
@@ -157,7 +170,14 @@ def do_index(attr):
             buf = v.childNodes[0].nodeValue
             list_defs.append("\n\t" + buf + ",")
 
+
 def do_member(attr, p_flag, tag_name):
+    '''
+    Processes the member identified by tage_name
+    attr - the attribute definition node
+    p_flag - property flag - SVR, ECL, BOTH
+    tag_name - the tag_name string to process
+    '''
     global newattr
     buf = None
     comma = ','
@@ -190,18 +210,21 @@ def do_member(attr, p_flag, tag_name):
                     fileappend(p_flag, comma + '\n' + '\t' + '\t' + buf)
 
 
-def attr(m_file, s_file, e_file, d_file):
-    """
-    attr function - (opens the files reads them and using minidom filters relevant
-    data to individual lists)
-    """
+def process(master_file, svr_file, ecl_file, defines_file):
+    '''
+    process the master xml file and produce the outputs files as requested
+    master_file - the Master XML files to process
+    svr_file - the server side output file
+    ecl_file - the output file to be used by the ECL layer
+    defines_file - the output file containing the macro definitions for the index positions
+    '''
     from xml.dom import minidom
 
     global attr_type
     global newattr
     newattr = False
 
-    doc = minidom.parse(m_file)
+    doc = minidom.parse(master_file)
     nodes = doc.getElementsByTagName('data')
 
     for node in nodes:
@@ -278,23 +301,22 @@ def attr(m_file, s_file, e_file, d_file):
                 e = e.strip(' \t')
                 list_ecl.append(e)
 
-        getText(s_file, e_file, d_file)
+        getText(svr_file, ecl_file, defines_file)
 
 
 def main(argv):
-    """
-    The Main Module starts here-
+    '''
     Opens files,and calls appropriate functions based on Object values.
-    """
-    global SVR_FILE
-    global ECL_FILE
-    global DEF_FILE
-    global MASTER_FILE
+    '''
+    global SVR_FILENAME
+    global ECL_FILENAME
+    global DEFINES_FILENAME
+    global MASTER_FILENAME
 
-    SVR_FILE = "/dev/null"
-    ECL_FILE = "/dev/null"
-    DEF_FILE = "/dev/null"
-    MASTER_FILE = "/dev/null"
+    SVR_FILENAME = "/dev/null"
+    ECL_FILENAME = "/dev/null"
+    DEFINES_FILENAME = "/dev/null"
+    MASTER_FILENAME = "/dev/null"
 
     if len(sys.argv) == 2:
         usage()
@@ -310,62 +332,62 @@ def main(argv):
             usage()
             sys.exit(1)
         elif opt in ("-m", "--master"):
-            MASTER_FILE = arg
+            MASTER_FILENAME = arg
         elif opt in ("-s", "--svr"):
-            SVR_FILE = arg
+            SVR_FILENAME = arg
         elif opt in ("-d", "--defines"):
-            DEF_FILE = arg
+            DEFINES_FILENAME = arg
         elif opt in ("-e", "--ecl"):
-            ECL_FILE = arg
+            ECL_FILENAME = arg
         else:
             print("Invalid Option!")
             sys.exit(1)
 #    Error conditions are checked here.
 
-    if MASTER_FILE is None or not os.path.isfile(MASTER_FILE) or not os.path.getsize(MASTER_FILE) > 0:
+    if MASTER_FILENAME is None or not os.path.isfile(MASTER_FILENAME) or not os.path.getsize(MASTER_FILENAME) > 0:
         print("Master file not found or data is not present in File")
         sys.exit(1)
 
     try:
-        m_file = open(MASTER_FILE, encoding='utf-8')
+        master_file = open(MASTER_FILENAME, encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Master File!')
+        print('Cannot open master file ' + MASTER_FILENAME)
         sys.exit(1)
 
     try:
-        s_file = open(SVR_FILE, 'w', encoding='utf-8')
+        svr_file = open(SVR_FILENAME, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Server File!')
+        print('Cannot open ferver file ' + SVR_FILENAME)
         sys.exit(1)
 
     try:
-        d_file = open(DEF_FILE, 'w', encoding='utf-8')
+        defines_file = open(DEFINES_FILENAME, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Defines File!')
+        print('Cannot open defines file ' + DEFINES_FILENAME)
         sys.exit(1)
 
     try:
-        e_file = open(ECL_FILE, 'w', encoding='utf-8')
+        ecl_file = open(ECL_FILENAME, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Ecl File!')
+        print('Cannot open ecl file ' + ECL_FILENAME)
         sys.exit(1)
 
-    attr(m_file, s_file, e_file, d_file)
+    process(master_file, svr_file, ecl_file, defines_file)
 
-    m_file.close()
-    s_file.close()
-    e_file.close()
+    master_file.close()
+    svr_file.close()
+    ecl_file.close()
 
 
 def usage():
     """
     Usage (depicts the usage of the script)
     """
-    print("usage: prog -m <MASTER_FILE> -s <svr_attr_file> -e <ecl_attr_file> -a <object>")
+    print("usage: prog -m <MASTER_FILENAME> -s <svr_attr_file> -e <ecl_attr_file> -d <defines_file>")
 
 
 if __name__ == "__main__":

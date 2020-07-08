@@ -745,8 +745,8 @@ req_quejob(struct batch_request *preq)
 
 		(void)job_attr_def[(int)JOB_ATR_cred_id].at_decode(&pj->ji_wattr[(int)JOB_ATR_cred_id], NULL, NULL, conn->cn_credid);
 
-		if (server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms].at_flags & ATR_VFLAG_SET) {
-			if (!acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_submit_realms], conn->cn_credid, ACL_Host)) {
+		if (server.sv_attr[(int)SVR_ATR_acl_krb_submit_realms].at_flags & ATR_VFLAG_SET) {
+			if (!acl_check(&server.sv_attr[(int)SVR_ATR_acl_krb_submit_realms], conn->cn_credid, ACL_Host)) {
 				job_purge(pj);
 				req_reject(PBSE_PERM, 0, preq);
 				return;
@@ -993,10 +993,10 @@ req_quejob(struct batch_request *preq)
 
 	/* If enabled, check the server's required cred type */
 
-	if ((server.sv_attr[SRV_ATR_ReqCredEnable].at_flags & ATR_VFLAG_SET) &&
-		server.sv_attr[SRV_ATR_ReqCredEnable].at_val.at_long &&
-		(server.sv_attr[SRV_ATR_ReqCred].at_flags & ATR_VFLAG_SET)) {
-		char	*reqc = server.sv_attr[SRV_ATR_ReqCred].at_val.at_str;
+	if ((server.sv_attr[SVR_ATR_ReqCredEnable].at_flags & ATR_VFLAG_SET) &&
+		server.sv_attr[SVR_ATR_ReqCredEnable].at_val.at_long &&
+		(server.sv_attr[SVR_ATR_ReqCred].at_flags & ATR_VFLAG_SET)) {
+		char	*reqc = server.sv_attr[SVR_ATR_ReqCred].at_val.at_str;
 		char	*jobc = pj->ji_wattr[(int)JOB_ATR_cred].at_val.at_str;
 		/*
 		 **	The server requires a cred, if job has none, or
@@ -2099,8 +2099,8 @@ req_resvSub(struct batch_request *preq)
 
 	/* Is the admin refusing to allow reservations on this server? */
 
-	if ((server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags & ATR_VFLAG_SET) &&
-		(server.sv_attr[(int)SRV_ATR_ResvEnable].at_val.at_long == 0)) {
+	if ((server.sv_attr[(int)SVR_ATR_ResvEnable].at_flags & ATR_VFLAG_SET) &&
+		(server.sv_attr[(int)SVR_ATR_ResvEnable].at_val.at_long == 0)) {
 
 		snprintf(buf, sizeof(buf), "reservations disallowed on %s", server_name);
 		if ((rc = reply_text(preq, PBSE_RESVAUTH_U, buf))) {
@@ -2110,9 +2110,9 @@ req_resvSub(struct batch_request *preq)
 		return;
 	}
 	/* Are reservations from submitting host allowed? */
-	if (server.sv_attr[(int)SRV_ATR_acl_Resvhost_enable].at_val.at_long) {
+	if (server.sv_attr[(int)SVR_ATR_acl_Resvhost_enable].at_val.at_long) {
 		/* acl enabled so need to check it */
-		if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_Resvhosts],
+		if (acl_check(&server.sv_attr[(int)SVR_ATR_acl_Resvhosts],
 			preq->rq_host, ACL_Host) == 0) {
 				req_reject(PBSE_RESVAUTH_H, 0, preq);
 				return;
@@ -2514,11 +2514,11 @@ req_resvSub(struct batch_request *preq)
 	 * If yes, check if this one is allowed or denied
 	 */
 
-	if ((server.sv_attr[(int)SRV_ATR_acl_ResvGroup_enable].at_flags &
+	if ((server.sv_attr[(int)SVR_ATR_acl_ResvGroup_enable].at_flags &
 		ATR_VFLAG_SET) &&
-		server.sv_attr[(int)SRV_ATR_acl_ResvGroup_enable].at_val.at_long) {
+		server.sv_attr[(int)SVR_ATR_acl_ResvGroup_enable].at_val.at_long) {
 
-		if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_ResvGroups],
+		if (acl_check(&server.sv_attr[(int)SVR_ATR_acl_ResvGroups],
 #ifdef WIN32
 			presv->ri_wattr[RESV_ATR_egroup].at_val.at_str,
 #else
@@ -2534,15 +2534,15 @@ req_resvSub(struct batch_request *preq)
 
 	/* Is this user allowed to submit a reservation? */
 
-	if ((server.sv_attr[(int)SRV_ATR_AclResvUserEnabled].at_flags &
+	if ((server.sv_attr[(int)SVR_ATR_AclResvUserEnabled].at_flags &
 		ATR_VFLAG_SET) &&
-		server.sv_attr[(int)SRV_ATR_AclResvUserEnabled].at_val.at_long) {
+		server.sv_attr[(int)SVR_ATR_AclResvUserEnabled].at_val.at_long) {
 		if (NULL != preq->rq_host) {
 			snprintf(buf1, sizeof(buf1), "%s@%s",
 				presv->ri_wattr[RESV_ATR_euser].at_val.at_str, preq->rq_host);
 		}
 
-		if (acl_check(&server.sv_attr[(int)SRV_ATR_AclResvUsers], buf1, ACL_User) == 0) {
+		if (acl_check(&server.sv_attr[(int)SVR_ATR_AclResvUsers], buf1, ACL_User) == 0) {
 			resv_free(presv);
 			req_reject(PBSE_RESVAUTH_U, 0, preq);
 			return;

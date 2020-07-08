@@ -88,7 +88,7 @@
       #include "pbs_ifl.h"
       #include "pbs_ecl.h"
       ecl_attribute_def ecl_job_attr_def[] = {
-     </ECL>
+      </ECL>
    </head>
    <attributes>
       <member_index>JOB_ATR_jobname</member_index>
@@ -107,7 +107,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_jobname</ECL>
+         <ECL>verify_value_jobname</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -124,7 +124,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -141,7 +141,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -158,7 +158,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -175,7 +175,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -192,7 +192,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_state</ECL>
+         <ECL>verify_value_state</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -209,7 +209,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -226,7 +226,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -243,7 +243,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -253,30 +253,26 @@
       <member_at_encode>encode_str</member_at_encode>
       <member_at_set>set_str</member_at_set>
       <member_at_comp>
-
 #ifdef PBS_MOM
 		comp_str
 #else
 		comp_chkpnt
 #endif
-
       </member_at_comp>
       <member_at_free>free_str</member_at_free>
       <member_at_action>
-
 #ifdef PBS_MOM
-      NULL_FUNC
+		NULL_FUNC
 #else
 		ck_chkpnt
 #endif
-
       </member_at_action>
       <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
-       <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-		 <ECL>verify_value_checkpoint</ECL>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_checkpoint</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -293,72 +289,60 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
       <member_index>JOB_ATR_depend</member_index>
       <member_name>ATTR_depend</member_name>
       <member_at_decode>
-
 #ifndef PBS_MOM
 		decode_depend
 #else
 		decode_str
 #endif
-
       </member_at_decode>
       <member_at_encode>
-
 #ifndef PBS_MOM
 		encode_depend
 #else
 		encode_str
 #endif
-
       </member_at_encode>
       <member_at_set>
-
 #ifndef PBS_MOM
 		set_depend
 #else
-	   set_str
+      set_str
 #endif
-
       </member_at_set>
       <member_at_comp>
-
 #ifndef PBS_MOM
 		comp_depend
 #else
 		comp_str
 #endif
-
       </member_at_comp>
       <member_at_free>
-
 #ifndef PBS_MOM
 		free_depend
 #else
 		free_str
 #endif
-
       </member_at_free>
       <member_at_action>
-
 #ifndef PBS_MOM
 		depend_on_que
 #else
-      NULL_FUNC
+		NULL_FUNC
 #endif
-
       </member_at_action>
       <member_at_flags>READ_WRITE</member_at_flags>
       <member_at_type>ATR_TYPE_LIST</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_dependlist</ECL>
+         <ECL>verify_value_dependlist</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -375,7 +359,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_path</ECL>
+         <ECL>verify_value_path</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -394,14 +378,14 @@
 #else
 		READ_ONLY
 #endif
-         </SVR>
+      </SVR>
          <ECL>READ_ONLY</ECL>
       </member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
-        <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -418,7 +402,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -437,14 +421,14 @@
 #else
 		READ_ONLY | ATR_DFLAG_HIDDEN
 #endif
-         </SVR>
+      </SVR>
          <ECL>READ_ONLY</ECL>
       </member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -463,14 +447,14 @@
 #else
 		READ_ONLY | ATR_DFLAG_HIDDEN
 #endif
-         </SVR>
+      </SVR>
          <ECL>READ_ONLY</ECL>
       </member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -487,7 +471,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -504,7 +488,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -521,7 +505,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -538,7 +522,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -561,7 +545,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -578,7 +562,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_user_list</ECL>
+         <ECL>verify_value_user_list</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -595,7 +579,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_hold</ECL>
+         <ECL>verify_value_hold</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -612,7 +596,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -629,7 +613,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_joinpath</ECL>
+         <ECL>verify_value_joinpath</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -642,9 +626,9 @@
       <member_at_free>free_str</member_at_free>
       <member_at_action>
 #ifdef PBS_MOM
-      NULL_FUNC
+		NULL_FUNC
 #else
-	   keepfiles_action
+		keepfiles_action
 #endif
       </member_at_action>
       <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</member_at_flags>
@@ -652,7 +636,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_keepfiles</ECL>
+         <ECL>verify_value_keepfiles</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -669,7 +653,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_mailpoints</ECL>
+         <ECL>verify_value_mailpoints</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -686,7 +670,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_mailusers</ECL>
+         <ECL>verify_value_mailusers</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -703,7 +687,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -720,7 +704,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_bool</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -737,7 +721,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_path</ECL>
+         <ECL>verify_value_path</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -754,7 +738,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>verify_value_priority</ECL>
+         <ECL>verify_value_priority</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -771,7 +755,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -784,7 +768,7 @@
       <member_at_free>free_str</member_at_free>
       <member_at_action>
 #ifdef PBS_MOM
-      NULL_FUNC
+		NULL_FUNC
 #else
 		removefiles_action
 #endif
@@ -794,7 +778,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_removefiles</ECL>
+         <ECL>verify_value_removefiles</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -811,7 +795,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_bool</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -828,7 +812,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_resc</ECL>
+         <ECL>verify_value_resc</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -845,7 +829,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_resc</ECL>
+         <ECL>verify_value_resc</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -862,7 +846,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_resc</ECL>
+         <ECL>verify_value_resc</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -879,7 +863,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -896,7 +880,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -913,7 +897,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -930,7 +914,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -947,7 +931,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_shellpathlist</ECL>
+         <ECL>verify_value_shellpathlist</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -964,7 +948,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_sandbox</ECL>
+         <ECL>verify_value_sandbox</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -981,7 +965,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -998,7 +982,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_stagelist</ECL>
+         <ECL>verify_value_stagelist</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1015,7 +999,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_stagelist</ECL>
+         <ECL>verify_value_stagelist</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1032,7 +1016,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1055,7 +1039,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_user_list</ECL>
+         <ECL>verify_value_user_list</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1072,7 +1056,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1089,7 +1073,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1106,7 +1090,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1123,7 +1107,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1140,7 +1124,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1157,7 +1141,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1174,7 +1158,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1191,7 +1175,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1208,7 +1192,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1225,7 +1209,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1242,7 +1226,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1259,7 +1243,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1276,7 +1260,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1293,7 +1277,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1310,7 +1294,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1327,7 +1311,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1344,7 +1328,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1361,7 +1345,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1378,7 +1362,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1395,7 +1379,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1412,7 +1396,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>verify_value_zero_or_positive</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1429,7 +1413,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1442,7 +1426,7 @@
       <member_at_free>free_null</member_at_free>
       <member_at_action>
 #ifndef PBS_MOM
-	   alter_eligibletime
+		alter_eligibletime
 #else
 		NULL_FUNC
 #endif
@@ -1452,7 +1436,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_time</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1469,7 +1453,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1486,7 +1470,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1503,7 +1487,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1520,7 +1504,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1537,7 +1521,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1554,10 +1538,10 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
-  </attributes>
-  <!--
+   </attributes>
+   <!--
        Attributes to store command and its argument list specified
        in qsub command-line options list.
     -->
@@ -1575,7 +1559,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1592,7 +1576,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1609,10 +1593,10 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
-    <!--
+   <!--
 	The following, Array Job related, attributes should be at the end of the
 	job attributes, see status_subjob() to understand why.   When statusing
 	a subjob,  they are not copied from the parent array job and having them
@@ -1632,7 +1616,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_bool</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1649,7 +1633,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1666,7 +1650,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1683,7 +1667,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1696,9 +1680,9 @@
       <member_at_free>free_str</member_at_free>
       <member_at_action>
 #ifndef PBS_MOM
-      setup_arrayjob_attrs
+		setup_arrayjob_attrs
 #else
-      NULL_FUNC
+		NULL_FUNC
 #endif
       </member_at_action>
       <member_at_flags>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | READ_ONLY</member_at_flags>
@@ -1706,7 +1690,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_jrange</ECL>
+         <ECL>verify_value_jrange</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1724,12 +1708,12 @@
 		NULL_FUNC
 #endif
       </member_at_action>
-      <member_at_flags>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | READ_ONLY </member_at_flags>
+      <member_at_flags>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | READ_ONLY</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1746,7 +1730,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1763,15 +1747,17 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>verify_value_resc</ECL>
+         <ECL>verify_value_resc</ECL>
       </member_verify_function>
    </attributes>
    <!--
 	the following is not really a job attribute, but used by selectjobs
 	so listing them here at the end
     -->
-   <attributes flag = 'ECL'>
-      <member_name><ECL>ATTR_q</ECL></member_name>
+   <attributes flag="ECL">
+      <member_name>
+         <ECL>ATTR_q</ECL>
+      </member_name>
       <member_at_flags>ATR_DFLAG_SvWR|ATR_DFLAG_MGWR</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_verify_function>
@@ -1793,7 +1779,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1810,7 +1796,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1827,7 +1813,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1844,7 +1830,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1861,9 +1847,9 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
-  </attributes>
+   </attributes>
    <attributes>
       <member_index>JOB_ATR_sched_preempted</member_index>
       <member_name>ATTR_sched_preempted</member_name>
@@ -1878,7 +1864,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
-	     <ECL>verify_value_zero_or_positive</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1895,26 +1881,26 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
-     <member_index>JOB_ATR_GUI</member_index>
-     <member_name>ATTR_GUI</member_name>
-     <member_at_decode>decode_b</member_at_decode>
-     <member_at_encode>encode_b</member_at_encode>
-     <member_at_set>set_b</member_at_set>
-     <member_at_comp>comp_b</member_at_comp>
-     <member_at_free>free_null</member_at_free>
-     <member_at_action>NULL_FUNC</member_at_action>
-     <member_at_flags>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</member_at_flags>
-     <member_at_type>ATR_TYPE_BOOL</member_at_type>
-     <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
-     <member_verify_function>
+      <member_index>JOB_ATR_GUI</member_index>
+      <member_name>ATTR_GUI</member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_BOOL</member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
          <ECL>verify_datatype_bool</ECL>
          <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-     </member_verify_function>
-  </attributes>
+      </member_verify_function>
+   </attributes>
    <attributes>
       <member_index>JOB_ATR_topjob_ineligible</member_index>
       <member_name>ATTR_topjob_ineligible</member_name>
@@ -1929,7 +1915,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_bool</ECL>
-	      <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1941,12 +1927,12 @@
       <member_at_comp>comp_str</member_at_comp>
       <member_at_free>free_str</member_at_free>
       <member_at_action>NULL_FUNC</member_at_action>
-      <member_at_flags> PRIV_READ | ATR_DFLAG_SvWR | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_flags>PRIV_READ | ATR_DFLAG_SvWR | ATR_DFLAG_ALTRUN</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	      <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1958,12 +1944,12 @@
       <member_at_comp>comp_resc</member_at_comp>
       <member_at_free>free_resc</member_at_free>
       <member_at_action>action_resc_job</member_at_action>
-      <member_at_flags> PRIV_READ </member_at_flags>
+      <member_at_flags>PRIV_READ</member_at_flags>
       <member_at_type>ATR_TYPE_RESC</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	 <ECL>verify_value_resc</ECL>
+         <ECL>verify_value_resc</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1980,7 +1966,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>verify_datatype_bool</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -1996,8 +1982,8 @@
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_tolerate_node_failures</ECL>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_tolerate_node_failures</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -2014,7 +2000,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -2031,7 +2017,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -2048,7 +2034,7 @@
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes>
@@ -2064,12 +2050,12 @@
       <member_at_type>ATR_TYPE_BOOL</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
       <member_verify_function>
-	<ECL>verify_datatype_bool</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+         <ECL>verify_datatype_bool</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
-    <attributes flag = 'SVR'>
-#include "site_job_attr_def.h"
+   <attributes flag="SVR">
+      #include "site_job_attr_def.h"
       /* THIS MUST BE THE LAST ENTRY */
       <member_name>"_other_"</member_name>
       <member_at_decode>decode_unkn</member_at_decode>
@@ -2078,12 +2064,8 @@
       <member_at_comp>comp_unkn</member_at_comp>
       <member_at_free>free_unkn</member_at_free>
       <member_at_action>NULL_FUNC</member_at_action>
-      <member_at_flags>
-         <SVR>READ_WRITE | ATR_DFLAG_SELEQ</SVR>
-      </member_at_flags>
-      <member_at_type>
-         <SVR>ATR_TYPE_LIST</SVR>
-      </member_at_type>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_LIST</member_at_type>
       <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
    </attributes>
    <tail>

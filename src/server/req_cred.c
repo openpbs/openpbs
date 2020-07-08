@@ -83,7 +83,7 @@ typedef struct cred_cache cred_cache;
  *	job are stored in server's memory cache and whether the credentials are
  *	not too old. Such credentials are returned. If they are not present
  *	in cache or are too old new credentials are requested with the
- *	SRV_ATR_cred_renew_tool and renewed credentials are stored in the cache
+ *	SVR_ATR_cred_renew_tool and renewed credentials are stored in the cache
  *	(server's memory).
  *
  * @param[in] pjob - pointer to job, the credentials are requested for this job
@@ -128,7 +128,7 @@ get_cached_cred(job  *pjob)
 
 	/* valid credentials not cached, get new one */
 
-	if ((server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_flags & ATR_VFLAG_SET) == 0) {
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, "%s is not set", ATTR_cred_renew_tool);
 		return NULL;
@@ -137,11 +137,11 @@ get_cached_cred(job  *pjob)
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
 		LOG_DEBUG, msg_daemonname, "using %s '%s' to acquire credentials for user: %s",
 		ATTR_cred_renew_tool,
-		server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_val.at_str,
+		server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_val.at_str,
 		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 
 	snprintf(cmd, MAXPATHLEN + PBS_MAXUSER + 2, "%s %s", /* +1 for space and +1 for EOL */
-		server.sv_attr[(int)SRV_ATR_cred_renew_tool].at_val.at_str,
+		server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_val.at_str,
 		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
 
 	if ((fp = popen(cmd, "r")) == NULL) {

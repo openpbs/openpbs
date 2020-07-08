@@ -304,7 +304,7 @@ CLEANFILES = \
 	ecl_resc_def_all.c \
 	ecl_resv_attr_def.c
 
-ecl_job_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml
+ecl_job_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
 	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml -e $@
 
@@ -322,7 +322,7 @@ ecl_queue_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml $(
 
 ecl_resv_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml -s /dev/null -e $@
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml -e $@
 
 ecl_sched_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \

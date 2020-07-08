@@ -1010,7 +1010,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		account_job_update(pjob, PBS_ACCT_LAST);
 		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_END);
 
-		if (server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long &
+		if (server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long &
 			PBSEVENT_JOB_USAGE) {
 			/* log events set to record usage */
 			log_event(PBSEVENT_JOB_USAGE, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -3174,7 +3174,7 @@ setup_pnames(char *namestr)
 	}
 	*newbuffer = '\0';
 
-	ppnames = &server.sv_attr[(int)SRV_ATR_PNames];
+	ppnames = &server.sv_attr[(int)SVR_ATR_PNames];
 	pparst  = ppnames->at_val.at_arst;
 	ps = workcopy;
 
@@ -3234,10 +3234,10 @@ setup_pnames(char *namestr)
 			(ATR_VFLAG_SET|ATR_VFLAG_DEFLT)))
 			flag = ATR_VFLAG_DEFLT;
 
-		clear_attr(&working, &svr_attr_def[(int)SRV_ATR_PNames]);
-		svr_attr_def[(int)SRV_ATR_PNames].at_decode(&working, NULL, NULL, newbuffer);
-		svr_attr_def[(int)SRV_ATR_PNames].at_set(ppnames, &working, INCR);
-		svr_attr_def[(int)SRV_ATR_PNames].at_free(&working);
+		clear_attr(&working, &svr_attr_def[(int)SVR_ATR_PNames]);
+		svr_attr_def[(int)SVR_ATR_PNames].at_decode(&working, NULL, NULL, newbuffer);
+		svr_attr_def[(int)SVR_ATR_PNames].at_set(ppnames, &working, INCR);
+		svr_attr_def[(int)SVR_ATR_PNames].at_free(&working);
 		ppnames->at_flags |= flag;
 	}
 	free(workcopy);
@@ -3261,7 +3261,7 @@ set_no_node_grouping(struct pbsnode *pnode)
 
 	have_blue_gene_nodes = 1;
 
-	if ((server.sv_attr[(int)SRV_ATR_NodeGroupEnable].at_flags & ATR_VFLAG_SET) && (server.sv_attr[(int)SRV_ATR_NodeGroupEnable].at_val.at_long != 0)) {
+	if ((server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_flags & ATR_VFLAG_SET) && (server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_val.at_long != 0)) {
 		set_vnode_state(pnode, INUSE_OFFLINE, Nd_State_Or);
 		node_attr_def[(int)ND_ATR_Comment].at_decode(&pnode->nd_attr[(int)ND_ATR_Comment], ATTR_comment, NULL, msg_ngbluegene);
 	}
@@ -7332,7 +7332,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	if ((pjob != NULL) &&
 		(pexech == &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated])) {
 		char *pc;
-		sysru = &server.sv_attr[(int)SRV_ATR_resource_assn];
+		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
 
 		pc = pexech->at_val.at_str;
@@ -7995,8 +7995,8 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 		 */
 		if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
 			(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
-			for (j = 0; j < server.sv_attr[(int)SRV_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
-				if (strcmp(server.sv_attr[(int)SRV_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
+			for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
+				if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
 				    prdef->rs_name) == 0) {
 					presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
 					if (presc == NULL)

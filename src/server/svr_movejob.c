@@ -276,7 +276,7 @@ local_move(job *jobp, struct batch_request *req)
 		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr, NULL, NULL, NULL);
 	}
 
-	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		newtype = determine_accruetype(jobp);
 		update_eligible_time(newtype, jobp);
 	}
@@ -784,7 +784,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	/* Note: if job is being sent for execution on mom, then don't calc eligible time */
 
 	if ((jobp->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) &&
-		(server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) &&
+		(server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) &&
 		(move_type != MOVE_TYPE_Exec)) {
 		tempval = ((long)time_now - jobp->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long);
 		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += tempval;

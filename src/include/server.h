@@ -71,7 +71,7 @@ enum srv_atr {
 #include "svr_attr_enum.h"
 #include "site_svr_attr_enum.h"
 	/* This must be last */
-	SRV_ATR_LAST
+	SVR_ATR_LAST
 };
 
 extern attribute_def svr_attr_def[];
@@ -89,7 +89,7 @@ struct server {
 		long long sv_jobidnumber; /* next number to use in new jobid  */
 		long long sv_lastid;	  /* block increment to avoid many saves */
 	} sv_qs;
-	attribute sv_attr[SRV_ATR_LAST]; /* the server attributes */
+	attribute sv_attr[SVR_ATR_LAST]; /* the server attributes */
 	short newobj;
 	time_t sv_started;		       /* time server started */
 	time_t sv_hotcycle;		       /* if RECOV_HOT,time of last restart */
