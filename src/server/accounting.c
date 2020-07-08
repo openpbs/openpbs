@@ -384,9 +384,7 @@ get_walltime(const job *jp, int res)
 	resource_def	*rscdef;
 	resource	*pres;
 
-	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
-	if (rscdef == NULL)
-		return (-1);
+	rscdef = &svr_resc_def[RESC_WALLTIME];
 	pres = find_resc_entry(&jp->ji_wattr[res], rscdef);
 	if (pres == NULL)
 		return (-1);
@@ -1294,7 +1292,7 @@ account_jobend(job *pjob, char *used, int type)
 	}
 
 	/* Add eligible_time */
-	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		char timebuf[TIMEBUF_SIZE] = {0};
 		i = 26;	/* max size for " eligible_time=<value>" */
 		if (i > len)
@@ -1970,7 +1968,7 @@ account_job_update(job *pjob, int type)
 	}
 
 	/* Add eligible_time */
-	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		char timebuf[TIMEBUF_SIZE] = {0};
 		i = 26;	/* sort of max size for " eligible_time=<value>" */
 		if (i > len)

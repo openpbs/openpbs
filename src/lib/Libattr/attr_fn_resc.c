@@ -135,7 +135,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 		 * accept unknown resources
 		 */
 		rc = PBSE_UNKRESC;
-		prdef = find_resc_def(svr_resc_def, RESOURCE_UNKNOWN, svr_resc_size);
+		prdef = &svr_resc_def[RESC_UNKN];
 	}
 
 	prsc = find_resc_entry(patr, prdef);

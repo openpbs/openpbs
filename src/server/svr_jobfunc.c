@@ -422,7 +422,7 @@ svr_enquejob(job *pjob)
 
 	/* update any entity count and entity resources usage for the queue */
 
-	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) || (server.sv_attr[(int)SRV_ATR_State].at_val.at_long == SV_STATE_INIT)) {
+	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) || (server.sv_attr[(int)SVR_ATR_State].at_val.at_long == SV_STATE_INIT)) {
 		account_entity_limit_usages(pjob, pque, NULL, INCR, ETLIM_ACC_ALL);
 	}
 
@@ -444,7 +444,7 @@ svr_enquejob(job *pjob)
 		/* check the job checkpoint against the queue's  min */
 
 		eval_chkpnt(&pjob->ji_wattr[(int)JOB_ATR_chkpnt],
-			&pque->qu_attr[(int)QE_ATR_ChkptMim]);
+			&pque->qu_attr[(int)QE_ATR_ChkptMin]);
 
 		/*
 		 * do anything needed doing regarding job dependencies,
@@ -452,7 +452,7 @@ svr_enquejob(job *pjob)
 		 * was registered when the job was first enqueued.
 		 */
 
-		if (server.sv_attr[(int)SRV_ATR_State].at_val.at_long != SV_STATE_INIT) {
+		if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long != SV_STATE_INIT) {
 			if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET) {
 				rc = depend_on_que(&pjob->ji_wattr[(int)JOB_ATR_depend], pjob, ATR_ACTION_NOOP);
 				if (rc)
@@ -476,8 +476,8 @@ svr_enquejob(job *pjob)
 				sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
 				log_err(-1, __func__, log_buffer);
 			}
-		} else if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long &&
-			server.sv_attr[SRV_ATR_scheduling].at_val.at_long) {
+		} else if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long &&
+			server.sv_attr[SVR_ATR_scheduling].at_val.at_long) {
 
 			/* notify the Scheduler we have moved a job here */
 
@@ -652,7 +652,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	set_statechar(pjob);
 
 	/* eligible_time_enable */
-	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		long newaccruetype;
 
 		newaccruetype = determine_accruetype(pjob);
@@ -865,7 +865,7 @@ chk_svr_resc_limit(attribute *jobatr, attribute *queatr,
 	static resource_def *noderesc = NULL;
 
 	if (noderesc == NULL) {
-		noderesc = find_resc_def(svr_resc_def, "nodes", svr_resc_size);
+		noderesc = 	&svr_resc_def[RESC_NODES];
 	}
 	comp_resc_gt = 0;
 	comp_resc_lt = 0;
@@ -1003,7 +1003,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 	if (pque && get_wt_limit(&(pque->qu_attr[QA_ATR_ResourceMax]), &wt_max_queue_limit) == 0)
 		have_max_queue_limit = 1;
 	/* Check server maximum limit only if queue maximum limit is not present */
-	if (!have_max_queue_limit && pque && get_wt_limit(&(server.sv_attr[SRV_ATR_ResourceMax]), &wt_max_server_limit) == 0)
+	if (!have_max_queue_limit && pque && get_wt_limit(&(server.sv_attr[SVR_ATR_ResourceMax]), &wt_max_server_limit) == 0)
 		have_max_server_limit = 1;
 
 #ifndef NAS /* localmod 026 */
@@ -1013,7 +1013,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 	 * to queue's resources_max.walltime. */
 	if (resc_maxwt == NULL && pattr != NULL
 		&& (have_max_queue_limit || have_max_server_limit)) {
-		rscdef = find_resc_def(svr_resc_def, MAX_WALLTIME, svr_resc_size);
+		rscdef = &svr_resc_def[RESC_MAX_WALLTIME];
 		new_res = add_resource_entry(pattr , rscdef);
 		if (have_max_queue_limit)
 			new_res->rs_defin->rs_set(&new_res->rs_value, &wt_max_queue_limit, SET);
@@ -1092,7 +1092,7 @@ chk_resc_limits(attribute *pattr, pbs_queue *pque)
 	/* now check individual resources against queue or server maximum */
 	chk_svr_resc_limit(pattr,
 		&pque->qu_attr[QA_ATR_ResourceMax],
-		&server.sv_attr[SRV_ATR_ResourceMax],
+		&server.sv_attr[SVR_ATR_ResourceMax],
 		pque->qu_qs.qu_type);
 
 	if (comp_resc_lt > 0)
@@ -1884,9 +1884,9 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 			cvt_len = CVT_SIZE;
 	}
 
-	prdefpc = find_resc_def(svr_resc_def, "place", svr_resc_size);
-	prdefnd = find_resc_def(svr_resc_def, "nodes", svr_resc_size);
-	prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
+	prdefpc = &svr_resc_def[RESC_PLACE];
+	prdefnd = &svr_resc_def[RESC_NODES];
+	prdefsl = &svr_resc_def[RESC_SELECT];
 	presc   = find_resc_entry(patr, prdefnd);
 
 	/* add "select" and "place" resource */
@@ -2135,7 +2135,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 
 	/* set pseudo-resource "nodect" to the number of chunks */
 
-	pdef = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
+	pdef = &svr_resc_def[RESC_NODECT];
 	if (pdef) {
 		presc = find_resc_entry(pattr, pdef);
 		if (presc == NULL)
@@ -2209,8 +2209,8 @@ set_deflt_resc(attribute *jb, attribute *dflt, int selflg)
 	resource_def   *seldef;
 	resource_def   *plcdef;
 
-	seldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
-	plcdef = find_resc_def(svr_resc_def, "place",  svr_resc_size);
+	seldef = &svr_resc_def[RESC_SELECT];
+	plcdef = &svr_resc_def[RESC_PLACE];
 
 	if (dflt->at_flags & ATR_VFLAG_SET) {
 
@@ -2307,7 +2307,7 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 
 	/* set defaults based on the Server' resources_default */
 	set_deflt_resc(pdest,
-		&server.sv_attr[(int)SRV_ATR_resource_deflt], 1);
+		&server.sv_attr[(int)SVR_ATR_resource_deflt], 1);
 
 	/* set defaults based on the Queue's resources_max */
 	if (pque) {
@@ -2317,19 +2317,19 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 
 	/* set defaults based on the Server's resources_max */
 	set_deflt_resc(pdest,
-		&server.sv_attr[(int)SRV_ATR_ResourceMax], 0);
+		&server.sv_attr[(int)SVR_ATR_ResourceMax], 0);
 
 
 	/* if needed, set "select" and "place" from the other resources */
 
-	prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
+	prdefsl = &svr_resc_def[RESC_SELECT];
 	presc   = find_resc_entry(pdest, prdefsl);
 	/* if not set, set select/place */
 	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0))
 		if ((rc = set_select_and_place(objtype, pobj, pdest)) != 0)
 			return rc;
 
-	prdefpc = find_resc_def(svr_resc_def, "place", svr_resc_size);
+	prdefpc = &svr_resc_def[RESC_PLACE];
 	presc = find_resc_entry(pdest, prdefpc);
 	/* if "place" still not set, force to "free" */
 	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0)) {
@@ -2521,7 +2521,7 @@ get_wall(job *jp)
 	resource_def	*rscdef;
 	resource	*pres;
 
-	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_WALLTIME];
 	if (rscdef == 0)
 		return (-1);
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
@@ -2555,7 +2555,7 @@ get_used_wall(job *jp)
 	resource_def	*rscdef;
 	resource	*pres;
 
-	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_WALLTIME];
 	if (rscdef == 0)
 		return (-1);
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resc_used], rscdef);
@@ -2586,7 +2586,7 @@ get_softwall(job *jp)
 	resource_def	*rscdef;
 	resource	*pres;
 
-	rscdef = find_resc_def(svr_resc_def, "soft_walltime", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_SOFT_WALLTIME];
 	if (rscdef == 0)
 		return (-1);
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
@@ -2617,7 +2617,7 @@ get_cput(job *jp)
 	resource_def	*rscdef;
 	resource	*pres;
 
-	rscdef = find_resc_def(svr_resc_def, "cput", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_CPUT];
 	if (rscdef == 0)
 		return (-1);
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
@@ -2651,7 +2651,7 @@ get_used_cput(job *jp)
 	resource_def	*rscdef;
 	resource	*pres;
 
-	rscdef = find_resc_def(svr_resc_def, "cput", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_CPUT];
 	if (rscdef == 0)
 		return (-1);
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resc_used], rscdef);
@@ -3000,7 +3000,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		resource *presc;
 		resource_def *prdef;
 
-		prdef = find_resc_def(svr_resc_def, "select", svr_resc_size);
+		prdef = &svr_resc_def[RESC_SELECT];
 		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
 		free(presc->rs_value.at_val.at_str);
 		presc->rs_value.at_val.at_str = presv->ri_alter.ra_revert.rr_select;
@@ -3145,7 +3145,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
 	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
 
-	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_WALLTIME];
 	prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], rscdef);
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
@@ -4207,7 +4207,7 @@ start_end_dur_wall(resc_resv *presv)
 	if (presv == 0)
 		return (-1);
 
-	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	rscdef = &svr_resc_def[RESC_WALLTIME];
 
 	pstime = &presv->ri_wattr[RESV_ATR_start];
 	pstate = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
@@ -4664,7 +4664,7 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 	if (actmode == ATR_ACTION_ALTER) {
 
 		/* eligible_time_enable is OFF, then error */
-		if (!server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long) {
+		if (!server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long) {
 			return PBSE_ETEERROR;
 		} else {
 			long accrued_time;
@@ -5780,8 +5780,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 	}
 
 	if (new_select && *new_select) {
-		prdefsl = find_resc_def(svr_resc_def, "select",
-							svr_resc_size);
+		prdefsl = &svr_resc_def[RESC_SELECT];
 		/* re-generate "select" resource */
 		if (prdefsl != NULL) {
 			presc = find_resc_entry(

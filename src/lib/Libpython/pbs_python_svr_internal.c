@@ -922,7 +922,7 @@ pbs_python_setup_server_class_attributes(void)
 	PyObject *py_value_type = NULL;
 	PyObject *py_default_value = NULL;
 	PyObject *py_default_args = NULL;
-	int num_entry =  SRV_ATR_LAST+1; /* 1 for sentinel */
+	int num_entry =  SVR_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
@@ -935,7 +935,7 @@ pbs_python_setup_server_class_attributes(void)
 
 	/* ok now set all the svr_attr_def types known to the server */
 	attr_def_p = svr_attr_def;
-	for (i = 0; i < SRV_ATR_LAST; i++) {
+	for (i = 0; i < SVR_ATR_LAST; i++) {
 		/* get the value type for this attribute */
 		py_value_type = pbs_python_setup_attr_get_value_type(attr_def_p,
 			PY_TYPE_SERVER);
@@ -3494,13 +3494,13 @@ _pps_helper_get_server(char *perf_label)
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 
-	server.sv_attr[(int)SRV_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
-	server.sv_attr[(int)SRV_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
-	update_state_ct(&server.sv_attr[(int)SRV_ATR_JobsByState],
+	server.sv_attr[(int)SVR_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
+	server.sv_attr[(int)SVR_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
+	update_state_ct(&server.sv_attr[(int)SVR_ATR_JobsByState],
 		server.sv_jobstates,
 		server.sv_jobstbuf);
 
-	update_license_ct(&server.sv_attr[(int)SRV_ATR_license_count],
+	update_license_ct(&server.sv_attr[(int)SVR_ATR_license_count],
 		server.sv_license_ct_buf);
 
 	/* stuff all the attributes */
@@ -3510,7 +3510,7 @@ _pps_helper_get_server(char *perf_label)
 		py_svr_attr_types,
 		server.sv_attr,
 		svr_attr_def,
-		SRV_ATR_LAST, perf_label, perf_action);
+		SVR_ATR_LAST, perf_label, perf_action);
 
 	if (tmp_rc == -1) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -5208,8 +5208,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	}
 
 	lval = max_hooks;
-	if (server.sv_attr[(int)SRV_ATR_PythonRestartMaxHooks].at_flags & ATR_VFLAG_SET)
-		max_hooks = server.sv_attr[(int)SRV_ATR_PythonRestartMaxHooks].at_val.at_long;
+	if (server.sv_attr[(int)SVR_ATR_PythonRestartMaxHooks].at_flags & ATR_VFLAG_SET)
+		max_hooks = server.sv_attr[(int)SVR_ATR_PythonRestartMaxHooks].at_val.at_long;
 	else
 		max_hooks = PBS_PYTHON_RESTART_MAX_HOOKS;
 	if (lval != max_hooks) {
@@ -5219,8 +5219,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	}
 
 	lval = max_objects;
-	if (server.sv_attr[(int)SRV_ATR_PythonRestartMaxObjects].at_flags & ATR_VFLAG_SET)
-		max_objects = server.sv_attr[(int)SRV_ATR_PythonRestartMaxObjects].at_val.at_long;
+	if (server.sv_attr[(int)SVR_ATR_PythonRestartMaxObjects].at_flags & ATR_VFLAG_SET)
+		max_objects = server.sv_attr[(int)SVR_ATR_PythonRestartMaxObjects].at_val.at_long;
 	else
 		max_objects = PBS_PYTHON_RESTART_MAX_OBJECTS;
 	if (lval != max_objects) {
@@ -5230,8 +5230,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	}
 
 	lval = min_restart_interval;
-	if (server.sv_attr[(int)SRV_ATR_PythonRestartMinInterval].at_flags & ATR_VFLAG_SET)
-		min_restart_interval = server.sv_attr[(int)SRV_ATR_PythonRestartMinInterval].at_val.at_long;
+	if (server.sv_attr[(int)SVR_ATR_PythonRestartMinInterval].at_flags & ATR_VFLAG_SET)
+		min_restart_interval = server.sv_attr[(int)SVR_ATR_PythonRestartMinInterval].at_val.at_long;
 	else
 		min_restart_interval = PBS_PYTHON_RESTART_MIN_INTERVAL;
 	if (lval != min_restart_interval) {
@@ -8566,7 +8566,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 			}
 		}
 	} else if (strcmp(table, PY_TYPE_SERVER) == 0) {
-		attr_idx = find_attr(svr_attr_def, name, SRV_ATR_LAST);
+		attr_idx = find_attr(svr_attr_def, name, SVR_ATR_LAST);
 		if (attr_idx == -1) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "server attribute %s not found", name);
 			log_buffer[LOG_BUF_SIZE-1] = '\0';

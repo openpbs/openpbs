@@ -68,113 +68,12 @@ extern "C" {
 #define SYNC_SCHED_HINT_OTHER	2
 
 enum srv_atr {
-	SRV_ATR_State,
-	SRV_ATR_SvrHost,
-	SRV_ATR_scheduling,
-	SRV_ATR_max_running,
-	SRV_ATR_max_queued,
-	SRV_ATR_max_queued_res,
-	SRV_ATR_max_run,
-	SRV_ATR_max_run_res,
-	SRV_ATR_max_run_soft,
-	SRV_ATR_max_run_res_soft,
-	SRV_ATR_MaxUserRun,
-	SRV_ATR_MaxGrpRun,
-	SVR_ATR_MaxUserRes,
-	SVR_ATR_MaxGroupRes,
-	SVR_ATR_MaxUserRunSoft,
-	SVR_ATR_MaxGrpRunSoft,
-	SVR_ATR_MaxUserResSoft,
-	SVR_ATR_MaxGroupResSoft,
-	SVR_ATR_PNames,
-	SRV_ATR_TotalJobs,
-	SRV_ATR_JobsByState,
-	SRV_ATR_acl_host_enable,
-	SRV_ATR_acl_hosts,
-	SRV_ATR_acl_host_moms_enable,
-	SRV_ATR_acl_Resvhost_enable,
-	SRV_ATR_acl_Resvhosts,
-	SRV_ATR_acl_ResvGroup_enable,
-	SRV_ATR_acl_ResvGroups,
-	SRV_ATR_AclUserEnabled,
-	SRV_ATR_AclUsers,
-	SRV_ATR_AclResvUserEnabled,
-	SRV_ATR_AclResvUsers,
-	SRV_ATR_AclRoot,
-	SRV_ATR_managers,
-	SRV_ATR_operators,
-	SRV_ATR_dflt_que,
-	SRV_ATR_log_events,
-	SRV_ATR_mailfrom,
-	SRV_ATR_query_others,
-	SRV_ATR_resource_avail,
-	SRV_ATR_resource_deflt,
-	SVR_ATR_DefaultChunk,
-	SRV_ATR_ResourceMax,
-	SRV_ATR_resource_assn,
-	SRV_ATR_resource_cost,
-	SVR_ATR_sys_cost,
-	SRV_ATR_scheduler_iteration,
-	SRV_ATR_Comment,
-	SVR_ATR_DefNode,
-	SVR_ATR_NodePack,
-	SRV_ATR_FlatUID,
-	SVR_ATR_FLicenses,
-	SRV_ATR_ResvEnable,
-	SRV_ATR_NodeFailReq,
-	SVR_ATR_maxarraysize,
-	SRV_ATR_ReqCredEnable,
-	SRV_ATR_ReqCred,
-	SRV_ATR_NodeGroupEnable,
-	SRV_ATR_NodeGroupKey,
-	SRV_ATR_dfltqdelargs,
-	SRV_ATR_dfltqsubargs,
-	SRV_ATR_rpp_retry,
-	SRV_ATR_rpp_highwater,
-	SRV_ATR_pbs_license_info,
-	SRV_ATR_license_min,
-	SRV_ATR_license_max,
-	SRV_ATR_license_linger,
-	SRV_ATR_license_count,
-	SRV_ATR_version,
-	SRV_ATR_job_sort_formula,
-	SRV_ATR_EligibleTimeEnable,
-	SRV_ATR_resv_retry_time,
-	SRV_ATR_resv_retry_init,
-	SRV_ATR_JobHistoryEnable,
-	SRV_ATR_JobHistoryDuration,
-	SRV_ATR_ProvisionEnable,
-	SRV_ATR_max_concurrent_prov,
-	SVR_ATR_provision_timeout,
-	SVR_ATR_resv_post_processing,
-	SRV_ATR_BackfillDepth,
-	SRV_ATR_JobRequeTimeout,
-	SRV_ATR_PythonRestartMaxHooks,
-	SRV_ATR_PythonRestartMaxObjects,
-	SRV_ATR_PythonRestartMinInterval,
+#include "svr_attr_enum.h"
 #include "site_svr_attr_enum.h"
-	SRV_ATR_queued_jobs_threshold,
-	SRV_ATR_queued_jobs_threshold_res,
-	SVR_ATR_jobscript_max_size,
-	SVR_ATR_restrict_res_to_release_on_suspend,
-	SRV_ATR_PowerProvisioning,
-	SRV_ATR_show_hidden_attribs,
-	SRV_ATR_sync_mom_hookfiles_timeout,
-	SRV_ATR_rpp_max_pkt_check,
-	SRV_ATR_max_job_sequence_id,
-	SRV_ATR_has_runjob_hook,
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-	SRV_ATR_acl_krb_realm_enable,
-	SRV_ATR_acl_krb_realms,
-	SRV_ATR_acl_krb_submit_realms,
-	SRV_ATR_cred_renew_enable,
-	SRV_ATR_cred_renew_tool,
-	SRV_ATR_cred_renew_period,
-	SRV_ATR_cred_renew_cache_period,
-#endif
 	/* This must be last */
-	SRV_ATR_LAST
+	SVR_ATR_LAST
 };
+
 extern attribute_def svr_attr_def[];
 /* for trillion job id */
 extern long long svr_max_job_sequence_id;
@@ -190,7 +89,7 @@ struct server {
 		long long sv_jobidnumber; /* next number to use in new jobid  */
 		long long sv_lastid;	  /* block increment to avoid many saves */
 	} sv_qs;
-	attribute sv_attr[SRV_ATR_LAST]; /* the server attributes */
+	attribute sv_attr[SVR_ATR_LAST]; /* the server attributes */
 	short newobj;
 	time_t sv_started;		       /* time server started */
 	time_t sv_hotcycle;		       /* if RECOV_HOT,time of last restart */

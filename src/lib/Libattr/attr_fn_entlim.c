@@ -150,22 +150,18 @@ alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf)
 	struct resource_def	*prdef;
 	svr_entlim_leaf_t	*plf;
 
-	if (resc_name == NULL) {
-		/* use "ncpus" resource_def for the various functions	*/
-		/* as it is a simple integer type as needed here	*/
-		prdef = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
-	} else {
+	if (resc_name == NULL) /* use "ncpus" resource_def for the various functions	*/
+		prdef = &svr_resc_def[RESC_NCPUS];
+	else
 		prdef = find_resc_def(svr_resc_def, resc_name, svr_resc_size);
-	}
 
-	if (prdef == NULL) {
+	if (prdef == NULL)
 		return PBSE_UNKRESC;
-	}
 
 	plf = malloc(sizeof(svr_entlim_leaf_t));
-	if (plf == NULL) {
+	if (plf == NULL)
 		return PBSE_SYSTEM;
-	}
+
 	memset((void *)plf, 0, sizeof(svr_entlim_leaf_t));
 	plf->slf_rescd = prdef;
 	*pplf = plf;

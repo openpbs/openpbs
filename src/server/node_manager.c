@@ -1010,7 +1010,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		account_job_update(pjob, PBS_ACCT_LAST);
 		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_END);
 
-		if (server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long &
+		if (server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long &
 			PBSEVENT_JOB_USAGE) {
 			/* log events set to record usage */
 			log_event(PBSEVENT_JOB_USAGE, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -1263,7 +1263,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 			resource     *prc;
 
 			pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-			prd = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+			prd = &svr_resc_def[RESC_VNTYPE];
 			if (pala && prd && (prc = find_resc_entry(pala, prd))) {
 				if (strncmp(prc->rs_value.at_val.at_arst->as_string[0],
 					"cray_compute", 12) == 0)  {
@@ -2106,7 +2106,7 @@ stat_update(int stream)
 					(void)set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect], &pjob->ji_wattr[(int)JOB_ATR_resource]);
 					set_resc_assigned((void *)pjob, 0, INCR);
 
-					prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
+					prdefsl = &svr_resc_def[RESC_SELECT];
 					/* re-generate "select" resource */
 					if (prdefsl != NULL) {
 						presc = find_resc_entry(
@@ -3261,7 +3261,7 @@ set_no_node_grouping(struct pbsnode *pnode)
 
 	have_blue_gene_nodes = 1;
 
-	if ((server.sv_attr[(int)SRV_ATR_NodeGroupEnable].at_flags & ATR_VFLAG_SET) && (server.sv_attr[(int)SRV_ATR_NodeGroupEnable].at_val.at_long != 0)) {
+	if ((server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_flags & ATR_VFLAG_SET) && (server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_val.at_long != 0)) {
 		set_vnode_state(pnode, INUSE_OFFLINE, Nd_State_Or);
 		node_attr_def[(int)ND_ATR_Comment].at_decode(&pnode->nd_attr[(int)ND_ATR_Comment], ATTR_comment, NULL, msg_ngbluegene);
 	}
@@ -3417,8 +3417,8 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	 * Can't do static initialization of these because svr_resc_def
 	 * may change as new resources are added dynamically.
 	 */
-	prdefhost = find_resc_def(svr_resc_def, "host", svr_resc_size);
-	prdefvnode = find_resc_def(svr_resc_def, "vnode", svr_resc_size);
+	prdefhost = &svr_resc_def[RESC_HOST];
+	prdefvnode = &svr_resc_def[RESC_VNODE];
 
 	pnode = find_nodebyname(pvnal->vnal_id);
 
@@ -3992,7 +3992,7 @@ check_and_set_multivnode(struct pbsnode *pnode)
 	if (pnode == NULL)
 		return;
 
-	prd = find_resc_def(svr_resc_def, "host", svr_resc_size);
+	prd = &svr_resc_def[RESC_HOST];
 	if (prd == NULL)
 		return;
 
@@ -4549,7 +4549,7 @@ found:
 
 					/* available cpus */
 					i = psvrmom->msr_acpus;
-					prd = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
+					prd = &svr_resc_def[RESC_NCPUS];
 					prc = find_resc_entry(pala, prd);
 					if (prc == NULL)
 						prc = add_resource_entry(pala, prd);
@@ -4561,7 +4561,7 @@ found:
 					}
 
 					/* available memory */
-					prd = find_resc_def(svr_resc_def, "mem", svr_resc_size);
+					prd = &svr_resc_def[RESC_MEM];
 					prc = find_resc_entry(pala, prd);
 					if (prc == NULL)
 						prc = add_resource_entry(pala, prd);
@@ -4688,7 +4688,7 @@ found:
 
 				pala = &np->nd_attr[(int)ND_ATR_ResourceAvail];
 
-				prd = find_resc_def(svr_resc_def, "arch", svr_resc_size);
+				prd = &svr_resc_def[RESC_ARCH];
 				prc = find_resc_entry(pala, prd);
 				if (prc == NULL)
 					prc = add_resource_entry(pala, prd);
@@ -4706,8 +4706,7 @@ found:
 				 */
 				if (ivnd == 0) {
 					/* the first = natural vnode */
-					prd = find_resc_def(svr_resc_def, "ncpus",
-						svr_resc_size);
+					prd = &svr_resc_def[RESC_NCPUS];
 					prc = find_resc_entry(pala, prd);
 					if (prc == NULL)
 						prc = add_resource_entry(pala, prd);
@@ -4716,8 +4715,7 @@ found:
 						prc->rs_value.at_val.at_long = psvrmom->msr_acpus;
 						prc->rs_value.at_flags |= (ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT);
 					}
-					prd = find_resc_def(svr_resc_def, "mem",
-						svr_resc_size);
+					prd = &svr_resc_def[RESC_MEM];
 					prc = find_resc_entry(pala, prd);
 					if (prc == NULL)
 						prc = add_resource_entry(pala, prd);
@@ -5626,16 +5624,8 @@ cvt_nodespec_to_select(char *str, char **cvt_bp, size_t *cvt_lenp, attribute *pa
 	pcvt     = *cvt_bp;
 	pcvt_free = *cvt_lenp;
 
-	if (pncpusdef == NULL) {
-		pncpusdef = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
-		if (pncpusdef == NULL)
-			return (PBSE_SYSTEM);
-	}
-	if (pmemdef == NULL) {
-		pmemdef = find_resc_def(svr_resc_def, "mem", svr_resc_size);
-		if (pmemdef == NULL)
-			return (PBSE_SYSTEM);
-	}
+	pncpusdef = &svr_resc_def[RESC_NCPUS];
+	pmemdef = &svr_resc_def[RESC_MEM];
 
 	/*
 	 * check the local copy of the "nodes" specification for any "global"
@@ -6449,7 +6439,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			return PBSE_UNKNODE;
 
 		/* are we to allocate the nodes "excl" ? */
-		prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);
+		prsdef = &svr_resc_def[RESC_PLACE];
 		pplace = find_resc_entry(patresc, prsdef);
 		if (pplace && pplace->rs_value.at_val.at_str) {
 			if ((place_sharing_type(pplace->rs_value.at_val.at_str,
@@ -7342,7 +7332,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	if ((pjob != NULL) &&
 		(pexech == &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated])) {
 		char *pc;
-		sysru = &server.sv_attr[(int)SRV_ATR_resource_assn];
+		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
 
 		pc = pexech->at_val.at_str;
@@ -7425,7 +7415,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 
 	if (sysru || queru) {
 		/* set pseudo-resource "nodect" to the number of chunks */
-		prdef = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
+		prdef = &svr_resc_def[RESC_NODECT];
 		if (prdef == NULL) {
 			return;
 		}

@@ -384,8 +384,8 @@ get_dfltque(void)
 {
 	pbs_queue *pq = NULL;
 
-	if (server.sv_attr[SRV_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
-		pq = find_queuebyname(server.sv_attr[SRV_ATR_dflt_que].at_val.at_str);
+	if (server.sv_attr[SVR_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
+		pq = find_queuebyname(server.sv_attr[SVR_ATR_dflt_que].at_val.at_str);
 	return (pq);
 }
 
@@ -411,7 +411,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 	pbs_queue *pque = (pbs_queue *) pobject;
 	pbs_sched *psched;
 
-	if ((pque != NULL) && (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1)) {
+	if ((pque != NULL) && (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1)) {
 
 		if (pattr->at_val.at_long == 0) { /* started = OFF */
 			/* queue stopped, start accruing eligible time */
@@ -454,7 +454,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 			}
 
 			/* if scheduling = True, notify scheduler to start */
-			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long) {
+			if (server.sv_attr[SVR_ATR_scheduling].at_val.at_long) {
 				if (find_assoc_sched_pque(pque, &psched))
 					set_scheduler_flag(SCH_SCHEDULE_STARTQ, psched);
 				else {

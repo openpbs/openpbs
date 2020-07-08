@@ -3137,16 +3137,14 @@ set_job_reslist(job *pjob, char *hook_name, char *msg, int msg_len,
 	/* in qstat -f */
 	jb->at_flags |= ATR_MOD_MCACHE;
 
-	pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
-	if (pseldef != NULL) {
-		presc = find_resc_entry(jb, pseldef);
-		if (presc && (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)) {
-			/* changing Resource_List and select is a default */
-			/* clear "select" so it is rebuilt in set_resc_deflt */
-			pseldef->rs_free(&presc->rs_value);
-		}
-		(void)set_resc_deflt((void *)pjob, JOB_OBJECT, NULL);
+	pseldef = &svr_resc_def[RESC_SELECT];
+	presc = find_resc_entry(jb, pseldef);
+	if (presc && (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)) {
+		/* changing Resource_List and select is a default */
+		/* clear "select" so it is rebuilt in set_resc_deflt */
+		pseldef->rs_free(&presc->rs_value);
 	}
+	(void)set_resc_deflt((void *)pjob, JOB_OBJECT, NULL);
 	free(val_str_dup);
 	return (0);
 }
@@ -3557,8 +3555,8 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
 	}
 
 	/* update the eligible time to JOB_INITIAL */
-	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET)
-		&& server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1)
+	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET)
+		&& server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1)
 		update_eligible_time(JOB_INITIAL, pjob);
 
 	/*
@@ -4316,9 +4314,9 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			char *qname = ((struct rq_queuejob *)req_ptr->rq_job)->rq_destin;
 			/* use default queue if user did not specify a queue for the job */
 			if ((!qname || *qname == '\0' || *qname == '@') &&
-				server.sv_attr[SRV_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
+				server.sv_attr[SVR_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
 				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT,
-						server.sv_attr[SRV_ATR_dflt_que].at_val.at_str);
+						server.sv_attr[SVR_ATR_dflt_que].at_val.at_str);
 			else
 				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT, qname);
 		}
@@ -6142,8 +6140,8 @@ next_sync_mom_hookfiles(void)
 	short timed_out = 0;
 
 	timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
-	if (server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
-		timeout_sec = server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
+	if (server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
+		timeout_sec = server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
 	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
 

@@ -463,8 +463,8 @@ tpp_request(int fd)
 	 * appear sluggish if not interleaved.
 	 *
 	 */
-	if (server.sv_attr[(int) SRV_ATR_rpp_max_pkt_check].at_flags & ATR_VFLAG_SET)
-		rpp_max_pkt_check = server.sv_attr[(int) SRV_ATR_rpp_max_pkt_check].at_val.at_long;
+	if (server.sv_attr[(int) SVR_ATR_rpp_max_pkt_check].at_flags & ATR_VFLAG_SET)
+		rpp_max_pkt_check = server.sv_attr[(int) SVR_ATR_rpp_max_pkt_check].at_val.at_long;
 
 	for (iloop = 0; iloop < rpp_max_pkt_check; iloop++) {
 		int	stream;
@@ -904,7 +904,7 @@ main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "A:a:Cd:e:F:p:t:lL:M:NR:S:g:G:s:P:-:")) != -1) {
 		switch (c) {
 			case 'a':
-				if (decode_b(&server.sv_attr[(int)SRV_ATR_scheduling], NULL,
+				if (decode_b(&server.sv_attr[(int)SVR_ATR_scheduling], NULL,
 					NULL, optarg) != 0) {
 					(void)fprintf(stderr, "%s: bad -a option\n", argv[0]);
 					return (1);
@@ -1113,9 +1113,9 @@ main(int argc, char **argv)
 	 * set log_event_mask to point to the log_event attribute value so
 	 * it controls which events are logged.
 	 */
-	server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long = PBSEVENT_MASK;
-	server.sv_attr[(int)SRV_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
-	log_event_mask = &server.sv_attr[SRV_ATR_log_events].at_val.at_long;
+	server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long = PBSEVENT_MASK;
+	server.sv_attr[(int)SVR_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
+	log_event_mask = &server.sv_attr[SVR_ATR_log_events].at_val.at_long;
 	(void)sprintf(path_log, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
 
 	(void)log_open(log_file, path_log);
@@ -1555,7 +1555,7 @@ try_db_again:
 		(void)set_task(WORK_Timed, time_now, secondary_handshake, NULL);
 
 		svr_mailowner(0, 0, 1, log_buffer);
-		if (server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long) {
+		if (server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long) {
 			/* Bring up scheduler here */
 			pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_secondary);
 			if (contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port) < 0) {
@@ -1601,7 +1601,7 @@ try_db_again:
 	 * following section constitutes the "main" loop of the server
 	 */
 
-	state  = &server.sv_attr[(int)SRV_ATR_State].at_val.at_long;
+	state  = &server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
 	if (server_init_type == RECOV_HOT)
 		*state = SV_STATE_HOT;
 	else
@@ -1677,7 +1677,7 @@ try_db_again:
 			if (stat(path_secondaryact, &sb_sa) == -1) {
 				if (errno == ENOENT) {
 					/* file gone, restart to go idle */
-					server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_SECIDLE;
+					server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_SECIDLE;
 					break;
 				}
 			}

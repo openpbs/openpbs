@@ -390,8 +390,8 @@ job_alloc(void)
 	pj->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
-	if ((server.sv_attr[SRV_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
-	    server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
+	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
+	    server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
 		int elig_val;
 
 		elig_val = determine_accruetype(pj);
@@ -1492,15 +1492,8 @@ update_resources_list(job *pjob, char *res_list_name,
 	   ((pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) == 0)) {
 		/* this means no resources got freed during suspend */
 		/* let's put a dummy entry for ncpus=0 */
-		prdef = find_resc_def(svr_resc_def, "ncpus",
-							svr_resc_size);
-		if (prdef == NULL) {
-			log_err(PBSE_INTERNAL, __func__,
-				"no ncpus in svr_resc_def!");
-			return (1);
-		}
-		presc = add_resource_entry(
-				&pjob->ji_wattr[res_list_index], prdef);
+		prdef = &svr_resc_def[RESC_NCPUS];
+		presc = add_resource_entry(&pjob->ji_wattr[res_list_index], prdef);
 		if (presc == NULL) {
 			log_err(PBSE_INTERNAL, __func__,
 				"failed to add ncpus in resource list");
@@ -1885,7 +1878,7 @@ resv_exclusive_handler(resc_resv *presv)
 	char		*scdsel;
 
 	patresc = &presv->ri_wattr[(int) RESV_ATR_resource];
-	prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);
+	prsdef = &svr_resc_def[RESC_PLACE];
 	pplace = find_resc_entry(patresc, prsdef);
 	if (pplace && pplace->rs_value.at_val.at_str) {
 		if ((place_sharing_type(pplace->rs_value.at_val.at_str,

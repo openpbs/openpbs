@@ -829,8 +829,7 @@ mom_set_use(job	*pjob)
 	if ((at->at_flags & ATR_VFLAG_SET) == 0) {
 		at->at_flags |= ATR_VFLAG_SET;
 
-		rd = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_NCPUS];
 		pres = add_resource_entry(at, rd);
 		pres->rs_value.at_flags |= ATR_VFLAG_SET;
 		pres->rs_value.at_type = ATR_TYPE_LONG;
@@ -847,23 +846,20 @@ mom_set_use(job	*pjob)
 		else
 			pres->rs_value.at_val.at_long = 0;
 
-		rd = find_resc_def(svr_resc_def, "cput", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_CPUT];
 		pres = add_resource_entry(at, rd);
 		assert(pres != NULL);
 		pres->rs_value.at_flags |= ATR_VFLAG_SET;
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = 0;
 
-		rd = find_resc_def(svr_resc_def, "cpupercent", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_CPUPERCENT];
 		pres = add_resource_entry(at, rd);
 		pres->rs_value.at_flags |= ATR_VFLAG_SET;
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = 0;
 
-		rd = find_resc_def(svr_resc_def, "vmem", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_VMEM];
 		pres = add_resource_entry(at, rd);
 		assert(pres != NULL);
 		pres->rs_value.at_flags |= ATR_VFLAG_SET;
@@ -872,16 +868,14 @@ mom_set_use(job	*pjob)
 		pres->rs_value.at_val.at_size.atsv_units = ATR_SV_BYTESZ;
 		pres->rs_value.at_val.at_size.atsv_num = 0;
 
-		rd = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_WALLTIME];
 		pres = add_resource_entry(at, rd);
 		assert(pres != NULL);
 		pres->rs_value.at_flags |= ATR_VFLAG_SET;
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = 0;
 
-		rd = find_resc_def(svr_resc_def, "mem", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_MEM];
 		pres = add_resource_entry(at, rd);
 		assert(pres != NULL);
 		pres->rs_value.at_flags |= ATR_VFLAG_SET;
@@ -891,8 +885,7 @@ mom_set_use(job	*pjob)
 		pres->rs_value.at_val.at_size.atsv_num = 0;
 	}
 
-	rd = find_resc_def(svr_resc_def, "cput", svr_resc_size);
-	assert(rd != NULL);
+	rd = &svr_resc_def[RESC_CPUT];
 	pres = find_resc_entry(at, rd);
 	assert(pres != NULL);
 	lp = (unsigned long *)&pres->rs_value.at_val.at_long;
@@ -905,23 +898,20 @@ mom_set_use(job	*pjob)
 	calc_cpupercent(pjob, oldcput, lnum, sampletime_ceil);
 	pjob->ji_sampletim = sampletime_floor;
 
-	rd = find_resc_def(svr_resc_def, "vmem", svr_resc_size);
-	assert(rd != NULL);
+	rd = &svr_resc_def[RESC_VMEM];
 	pres = find_resc_entry(at, rd);
 	assert(pres != NULL);
 	lp = (unsigned long *)&pres->rs_value.at_val.at_size.atsv_num;
 	lnum = (mem_sum(pjob) + 1023) >> 10;	/* in KB */
 	*lp = MAX(*lp, lnum);
 
-	rd = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
-	assert(rd != NULL);
+	rd = &svr_resc_def[RESC_WALLTIME];
 	pres = find_resc_entry(at, rd);
 	assert(pres != NULL);
 	pres->rs_value.at_val.at_long = (long)((double)(time_now -
 			pjob->ji_qs.ji_stime) * wallfactor);
 
-	rd = find_resc_def(svr_resc_def, "mem", svr_resc_size);
-	assert(rd != NULL);
+	rd = &svr_resc_def[RESC_MEM];
 	pres = find_resc_entry(at, rd);
 	assert(pres != NULL);
 	lp = (unsigned long *)&pres->rs_value.at_val.at_size.atsv_num;

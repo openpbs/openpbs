@@ -134,7 +134,7 @@ svr_to_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 
 	pdbsvr->sv_jobidnumber = ps->sv_qs.sv_lastid;
 
-	if ((encode_attr_db(svr_attr_def, ps->sv_attr, (int)SRV_ATR_LAST, &pdbsvr->db_attr_list, 1)) != 0) /* encode all attributes */
+	if ((encode_attr_db(svr_attr_def, ps->sv_attr, (int)SVR_ATR_LAST, &pdbsvr->db_attr_list, 1)) != 0) /* encode all attributes */
 		return -1;
 	
 	if (ps->newobj) /* object was never saved or loaded before */
@@ -156,7 +156,7 @@ svr_to_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 int
 db_to_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 {
-	if ((decode_attr_db(ps, &pdbsvr->db_attr_list, svr_attr_def, ps->sv_attr, (int) SRV_ATR_LAST, 0)) != 0)
+	if ((decode_attr_db(ps, &pdbsvr->db_attr_list, svr_attr_def, ps->sv_attr, (int) SVR_ATR_LAST, 0)) != 0)
 		return -1;
 
 	ps->newobj = 0;

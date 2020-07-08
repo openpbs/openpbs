@@ -191,7 +191,7 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	if (pseldef == NULL)  /* do one time to keep handy */
-		pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
+		pseldef = &svr_resc_def[RESC_SELECT];
 
 	pjob = chk_job_request(preq->rq_ind.rq_modify.rq_objname, preq, &jt, NULL);
 	if (pjob == NULL)
@@ -928,7 +928,7 @@ req_modifyReservation(struct batch_request *preq)
 				send_to_scheduler = 1;
 				presv->ri_alter.ra_flags |= RESV_SELECT_MODIFIED;
 				if (pseldef == NULL) /* do one time to keep handy */
-					pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
+					pseldef = &svr_resc_def[RESC_SELECT];
 				presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], pseldef);
 				if (presc == NULL) {
 					req_reject(PBSE_INTERNAL, 0, preq);
