@@ -129,7 +129,7 @@ class TestQrun(TestFunctional):
             try:
                 self.server.runjob(jobid=jid)
                 self.logger.info("Successfully runjob. Child process exit.")
-                os._exit(5)
+                os._exit(0)
             except PbsRunError as e:
                 self.logger.info("Runjob throws error: " + e.msg[0])
         else:
