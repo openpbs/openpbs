@@ -1540,6 +1540,8 @@ class DshUtils(object):
                            runas=runas, level=level)
         if ret['rc'] == 0:
             if gid is not None:
+                if runas is None:
+                    runas = _u
                 rv = self.chgrp(hostname, path, gid=gid, sudo=sudo,
                                 level=level, recursive=recursive, runas=runas,
                                 logerr=logerr)
@@ -2072,8 +2074,7 @@ class DshUtils(object):
             self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
                           recursive=True, gid=gid, uid=uid,
                           level=level)
-            if mode is not None:
-                self.chmod(hostname, path=dirname, mode=mode, runas=asuser)
+            self.chmod(hostname, path=dirname, mode=mode, runas=asuser)
 
             tmpdir = dirname + tmpdir[4:]
 
@@ -2085,8 +2086,7 @@ class DshUtils(object):
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir, runas=asuser,
                               recursive=True, uid=uid, gid=gid,
                               level=level)
-                if mode is not None:
-                    self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
+                self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
             else:
                 # copy temp dir created on localhost to remote as current user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir,
@@ -2102,8 +2102,7 @@ class DshUtils(object):
             # copy the orginal temp as new temp dir
             self.run_copy(hostname, src=tmpdir, dest=tmpdir2, runas=asuser,
                           recursive=True, uid=uid, gid=gid, level=level)
-            if mode is not None:
-                self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
+            self.chmod(hostname, path=tmpdir2, mode=mode, runas=asuser)
             # remove original temp dir
             os.rmdir(tmpdir)
             self.tmpdirlist.append(tmpdir2)

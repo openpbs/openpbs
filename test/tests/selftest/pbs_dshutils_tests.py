@@ -122,5 +122,5 @@ class TestDshUtils(TestSelf):
 
         # create a directory as a specific user, group and permissions
         tmpdir = self.du.create_temp_dir(asuser=TEST_USER2, mode=0o770,
-                                         asgroup=TSTGRP2)
-        self.check_access(tmpdir, mode=0o770, user=TEST_USER2, group=TSTGRP2)
+                                         asgroup=TSTGRP3)
+        self.check_access(tmpdir, mode=0o770, user=TEST_USER2, group=TSTGRP3)
