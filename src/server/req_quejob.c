@@ -1189,11 +1189,8 @@ req_quejob(struct batch_request *preq)
 
 #ifndef PBS_MOM
 	if (set_project && (pj->ji_wattr[(int)JOB_ATR_project].at_flags & ATR_VFLAG_SET)  &&
-			(strcmp(pj->ji_wattr[(int)JOB_ATR_project].at_val.at_str, PBS_DEFAULT_PROJECT) == 0)) {
-		sprintf(log_buffer, msg_defproject, ATTR_project, PBS_DEFAULT_PROJECT);
-
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
-	}
+			(strcmp(pj->ji_wattr[(int)JOB_ATR_project].at_val.at_str, PBS_DEFAULT_PROJECT) == 0))
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, msg_defproject, ATTR_project, PBS_DEFAULT_PROJECT);
 #endif
 
 	if (implicit_commit) {
@@ -1843,19 +1840,21 @@ req_commit_now(struct batch_request *preq,  job *pj)
 		return;
 	}
 
-	strcpy(jobscr.ji_jobid, pj->ji_qs.ji_jobid);
-	jobscr.script = pj->ji_script;
-	obj.pbs_db_obj_type = PBS_DB_JOBSCR;
-	obj.pbs_db_un.pbs_db_jobscr = &jobscr;
+	if (pj->ji_script) {
+		strcpy(jobscr.ji_jobid, pj->ji_qs.ji_jobid);
+		jobscr.script = pj->ji_script;
+		obj.pbs_db_obj_type = PBS_DB_JOBSCR;
+		obj.pbs_db_un.pbs_db_jobscr = &jobscr;
 
-	if (pbs_db_save_obj(conn, &obj, OBJ_SAVE_NEW) != 0) {
-		job_purge(pj);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		return;
+		if (pbs_db_save_obj(conn, &obj, OBJ_SAVE_NEW) != 0) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+			return;
+		}
+		free(pj->ji_script);
+		pj->ji_script = NULL;
 	}
-	free(pj->ji_script);
-	pj->ji_script = NULL;
 
 	/* Now, no need to save server here because server
 	   has already saved in the get_next_svr_sequence_id() */

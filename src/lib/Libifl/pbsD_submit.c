@@ -163,29 +163,28 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	struct pbs_client_thread_context *ptr;
 	struct cred_info *cred_info = NULL;
 	int commit_done = 0;
+	char *lextend = NULL;
 
 	/* initialize the thread context data, if not already initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return return_jobid;
+	if ((pbs_errno = pbs_client_thread_init_thread_context()) != 0)
+		goto error;
 
 	ptr = (struct pbs_client_thread_context *) pbs_client_thread_get_context_data();
 	if (!ptr) {
 		pbs_errno = PBSE_INTERNAL;
-		return return_jobid;
+		goto error;
 	}
 
 	/* first verify the attributes, if verification is enabled */
-	rc = pbs_verify_attributes(c, PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib);
-	if (rc)
-		return return_jobid;
+	if (pbs_verify_attributes(c, PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+		goto error; /* pbs_errno is already set in this case */
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return return_jobid;
+		goto error; /* pbs_errno is already set in this case */
 
 	/* first be sure that the script is readable if specified ... */
-
 	if ((script != NULL) && (*script != '\0')) {
 		if (access(script, R_OK) != 0) {
 			pbs_errno = PBSE_BADSCRIPT;
@@ -196,7 +195,6 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	}
 
 	/* initiate the queueing of the job */
-
 	for (pal = attrib; pal; pal = pal->next)
 		pal->op = SET;		/* force operator to SET */
 
@@ -204,11 +202,16 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 
 	if ((!script || (*script == '\0')) && (!cred_info || (cred_info->cred_len <= 0))) {
 		/* no cred and no script, let's request implicit commit to cut one message exchange */
-		if (!(extend = pbs_strcat(&extend, NULL, EXTEND_OPT_IMPLICIT_COMMIT))) {
-			if (set_conn_errtxt(c, "Failed to allocated memory") != 0)
-				pbs_errno = PBSE_SYSTEM;
-			goto error;
-		}
+		if (extend) {
+			lextend = EXTEND_OPT_IMPLICIT_COMMIT;
+			if (!pbs_strcat(&lextend, NULL, extend)) {
+				if (set_conn_errtxt(c, "Failed to allocate memory") != 0)
+					pbs_errno = PBSE_SYSTEM;
+				goto error;
+			}
+			extend = lextend;
+		} else
+			extend = EXTEND_OPT_IMPLICIT_COMMIT;
 	}	
 
 	/* Queue job with null string for job id */
@@ -220,7 +223,6 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 		goto done;
 
 	/* send script across */
-
 	if ((script != NULL) && (*script != '\0')) {
 		if ((rc = PBSD_jscript(c, script, 0, NULL)) != 0) {
 			if (rc == PBSE_JOBSCRIPTMAXSIZE)
@@ -232,7 +234,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	}
 
 	/* OK, the script got across, apparently, so we are */
-	/* ready to commit 				    */
+	/* ready to commit */
 
 	/* opaque information */
 	if (cred_info && cred_info->cred_len > 0) {
@@ -247,13 +249,11 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	if (PBSD_commit(c, return_jobid, 0, NULL) != 0)
 		goto error;
 
-done:
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
-
-	return return_jobid;
 error:
-	(void)pbs_client_thread_unlock_connection(c);
-	return NULL;
+done:
+	free(lextend);
+
+	/* unlock the thread lock and update the thread context data */
+	pbs_client_thread_unlock_connection(c);
+	return return_jobid;
 }
