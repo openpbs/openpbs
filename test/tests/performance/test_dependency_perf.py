@@ -45,6 +45,7 @@ class TestDependencyPerformance(TestPerformance):
     """
     Test the performance of job dependency feature
     """
+
     def check_depend_delete_msg(self, pjid, cjid):
         """
         helper function to check ia message that the dependent job (cjid)
@@ -83,3 +84,5 @@ class TestDependencyPerformance(TestPerformance):
         self.logger.info('Time taken to delete all jobs %f' % (t2-t1))
         self.logger.info('#' * 80)
         self.check_depend_delete_msg(j_arr[4999], j_arr[5000])
+        self.perf_test_result((t2 - t1),
+                              "time_taken_delete_all_dependent_jobs", "sec")
