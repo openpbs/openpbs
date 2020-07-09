@@ -87,16 +87,16 @@
       </ECL>
     </head>
     <attributes>
-	/* QA_ATR_QType */
-	<member_name><both>ATTR_qtype </both></member_name>		<!-- "queue_type"- type of queue -->
-	<member_at_decode>decode_str </member_at_decode>
-	<member_at_encode>encode_str </member_at_encode>
-	<member_at_set>set_str </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_str </member_at_free>
-	<member_at_action>set_queue_type </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR </both></member_at_type>
+	<member_index>QA_ATR_QType</member_index>
+	<member_name>ATTR_qtype</member_name>		<!-- "queue_type"- type of queue -->
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>set_queue_type</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -104,16 +104,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_Priority */
-	<member_name><both>ATTR_p </both></member_name>			<!-- "priority" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QA_ATR_Priority</member_index>
+	<member_name>ATTR_p</member_name>			<!-- "priority" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -121,16 +121,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_MaxJobs */
-	<member_name><both>ATTR_maxque </both></member_name>		<!-- "max_queuable" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QA_ATR_MaxJobs</member_index>
+	<member_name>ATTR_maxque</member_name>		<!-- "max_queuable" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -138,16 +138,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_TotalJobs */
-	<member_name><both>ATTR_total </both></member_name>		<!-- "total_jobs" -->
-	<member_at_decode>decode_null </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_null </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>READ_ONLY </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QA_ATR_TotalJobs</member_index>
+	<member_name>ATTR_total</member_name>		<!-- "total_jobs" -->
+	<member_at_decode>decode_null</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_null</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>READ_ONLY</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -155,16 +155,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_JobsByState */
-	<member_name><both>ATTR_count </both></member_name>		<!-- "state_count" -->
-	<member_at_decode>decode_null </member_at_decode>		<!--  note-use fixed memory in queue struct  -->
-	<member_at_encode>encode_str </member_at_encode>
-	<member_at_set>set_null </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>READ_ONLY </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR </both></member_at_type>
+	<member_index>QA_ATR_JobsByState</member_index>
+	<member_name>ATTR_count</member_name>		<!-- "state_count" -->
+	<member_at_decode>decode_null</member_at_decode>		<!--  note-use fixed memory in queue struct  -->
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_null</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>READ_ONLY</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -172,16 +172,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_MaxRun */
-	<member_name><both>ATTR_maxrun </both></member_name>		<!-- "max_running" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QA_ATR_MaxRun</member_index>
+	<member_name>ATTR_maxrun</member_name>		<!-- "max_running" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -189,16 +189,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_max_queued */
-	<member_name><both>ATTR_max_queued </both></member_name>	<!-- "max_queued" -->
-	<member_at_decode>decode_entlim </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_ct </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QA_ATR_max_queued</member_index>
+	<member_name>ATTR_max_queued</member_name>	<!-- "max_queued" -->
+	<member_at_decode>decode_entlim</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_ct</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -206,16 +206,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_max_queued_res */
-	<member_name><both>ATTR_max_queued_res </both></member_name>	<!-- "max_queued_res" -->
-	<member_at_decode>decode_entlim_res </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim_res </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_res </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QA_ATR_max_queued_res</member_index>
+	<member_name>ATTR_max_queued_res</member_name>	<!-- "max_queued_res" -->
+	<member_at_decode>decode_entlim_res</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim_res</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_res</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -223,16 +223,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_AclHostEnabled */
-	<member_name><both>ATTR_aclhten </both></member_name>		 <!-- "acl_host_enable" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QA_ATR_AclHostEnabled</member_index>
+	<member_name>ATTR_aclhten</member_name>		 <!-- "acl_host_enable" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -240,16 +240,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_AclHost */
-	<member_name><both>ATTR_aclhost </both></member_name>		<!-- "acl_hosts" -->
-	<member_at_decode>decode_arst </member_at_decode>
-	<member_at_encode>encode_arst </member_at_encode>
-	<member_at_set>set_hostacl </member_at_set>
-	<member_at_comp>comp_arst </member_at_comp>
-	<member_at_free>free_arst </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ACL </both></member_at_type>
+	<member_index>QA_ATR_AclHost</member_index>
+	<member_name>ATTR_aclhost</member_name>		<!-- "acl_hosts" -->
+	<member_at_decode>decode_arst</member_at_decode>
+	<member_at_encode>encode_arst</member_at_encode>
+	<member_at_set>set_hostacl</member_at_set>
+	<member_at_comp>comp_arst</member_at_comp>
+	<member_at_free>free_arst</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ACL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -257,16 +257,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_AclUserEnabled */
-	<member_name><both>ATTR_acluren </both></member_name>		<!-- "acl_user_enable" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QA_ATR_AclUserEnabled</member_index>
+	<member_name>ATTR_acluren</member_name>		<!-- "acl_user_enable" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -274,16 +274,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_AclUsers */
-	<member_name><both>ATTR_acluser </both></member_name>		<!-- "acl_users" -->
-	<member_at_decode>decode_arst </member_at_decode>
-	<member_at_encode>encode_arst </member_at_encode>
-	<member_at_set>set_uacl </member_at_set>
-	<member_at_comp>comp_arst </member_at_comp>
-	<member_at_free>free_arst </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ACL </both></member_at_type>
+	<member_index>QA_ATR_AclUsers</member_index>
+	<member_name>ATTR_acluser</member_name>		<!-- "acl_users" -->
+	<member_at_decode>decode_arst</member_at_decode>
+	<member_at_encode>encode_arst</member_at_encode>
+	<member_at_set>set_uacl</member_at_set>
+	<member_at_comp>comp_arst</member_at_comp>
+	<member_at_free>free_arst</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ACL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
@@ -291,16 +291,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_FromRouteOnly */
-	<member_name><both>ATTR_fromroute </both></member_name>		 <!-- "from_route_only" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QA_ATR_FromRouteOnly</member_index>
+	<member_name>ATTR_fromroute</member_name>		 <!-- "from_route_only" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool</ECL>
@@ -308,16 +308,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_ResourceMax */
-	<member_name><both>ATTR_rescmax </both></member_name>		<!-- "resources_max" -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resources_min_max </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QA_ATR_ResourceMax</member_index>
+	<member_name>ATTR_rescmax</member_name>		<!-- "resources_max" -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resources_min_max</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -325,16 +325,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_ResourceMin */
-	<member_name><both>ATTR_rescmin </both></member_name>		 <!-- "resources_min" -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resources_min_max </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QA_ATR_ResourceMin</member_index>
+	<member_name>ATTR_rescmin</member_name>		 <!-- "resources_min" -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resources_min_max</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -342,16 +342,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_ResourceDefault */
-	<member_name><both>ATTR_rescdflt </both></member_name>		 <!-- "resources_default" -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
+	<member_index>QA_ATR_ResourceDefault</member_index>
+	<member_name>ATTR_rescdflt</member_name>		 <!-- "resources_default" -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
 	<member_at_action>action_resc_dflt_queue</member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -359,16 +359,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_ReqCredEnable */
-	<member_name><both>ATTR_ReqCredEnable </both></member_name>	<!-- "require_cred_enable" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QA_ATR_ReqCredEnable</member_index>
+	<member_name>ATTR_ReqCredEnable</member_name>	<!-- "require_cred_enable" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -376,16 +376,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_ReqCred */
-	<member_name><both>ATTR_ReqCred </both></member_name>		 <!-- "require_cred" -->
-	<member_at_decode>decode_str </member_at_decode>
-	<member_at_encode>encode_str </member_at_encode>
-	<member_at_set>set_str </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_str </member_at_free>
-	<member_at_action>cred_name_okay </member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR </both></member_at_type>
+	<member_index>QA_ATR_ReqCred</member_index>
+	<member_name>ATTR_ReqCred</member_name>		 <!-- "require_cred" -->
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>cred_name_okay</member_at_action>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -393,16 +393,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_maxarraysize */
-	<member_name><both>ATTR_maxarraysize </both></member_name>	 <!-- max_array_size -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QA_ATR_maxarraysize</member_index>
+	<member_name>ATTR_maxarraysize</member_name>	 <!-- max_array_size -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -410,33 +410,33 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_Comment */
-	<member_name><both>ATTR_comment </both></member_name>			<!-- "comment" -->
-	<member_at_decode>decode_str </member_at_decode>
-	<member_at_encode>encode_str </member_at_encode>
-	<member_at_set>set_str </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_str </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_NOSAVM </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR </both></member_at_type>
-	<member_at_parent>PARENT_TYPE_QUE_ALL </member_at_parent>
+	<member_index>QA_ATR_Comment</member_index>
+	<member_name>ATTR_comment</member_name>			<!-- "comment" -->
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
+	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_AclGroupEnabled */
-	<member_name><both>ATTR_aclgren </both></member_name>		 <!-- "acl_group_enable" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QE_ATR_AclGroupEnabled</member_index>
+	<member_name>ATTR_aclgren</member_name>		 <!-- "acl_group_enable" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -444,16 +444,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_AclGroup */
-	<member_name><both>ATTR_aclgroup </both></member_name>		 <!-- "acl_groups" -->
-	<member_at_decode>decode_arst </member_at_decode>
-	<member_at_encode>encode_arst </member_at_encode>
-	<member_at_set>set_gacl </member_at_set>
-	<member_at_comp>comp_arst </member_at_comp>
-	<member_at_free>free_arst </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ACL </both></member_at_type>
+	<member_index>QE_ATR_AclGroup</member_index>
+	<member_name>ATTR_aclgroup</member_name>		 <!-- "acl_groups" -->
+	<member_at_decode>decode_arst</member_at_decode>
+	<member_at_encode>encode_arst</member_at_encode>
+	<member_at_set>set_gacl</member_at_set>
+	<member_at_comp>comp_arst</member_at_comp>
+	<member_at_free>free_arst</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ACL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -461,16 +461,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_ChkptMin */
-	<member_name><both>ATTR_chkptmin </both></member_name>		<!-- "checkpoint_min" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_ChkptMin</member_index>
+	<member_name>ATTR_chkptmin</member_name>		<!-- "checkpoint_min" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -478,16 +478,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_RendezvousRetry */
-	<member_name><both>"rendezvous_retry" </both></member_name>
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_RendezvousRetry</member_index>
+	<member_name>"rendezvous_retry"</member_name>
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -495,16 +495,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_ReservedExpedite */
-	<member_name><both>"reserved_expedite" </both></member_name>
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_ReservedExpedite</member_index>
+	<member_name>"reserved_expedite"</member_name>
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -512,16 +512,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_ReservedSync */
-	<member_name><both>"reserved_sync" </both></member_name>
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_ReservedSync</member_index>
+	<member_name>"reserved_sync"</member_name>
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -529,16 +529,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_DefaultChunk */
-	<member_name><both>ATTR_DefaultChunk </both></member_name>	<!-- default_chunk -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>deflt_chunk_action </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_DefaultChunk</member_index>
+	<member_name>ATTR_DefaultChunk</member_name>	<!-- default_chunk -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>deflt_chunk_action</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -546,16 +546,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_ResourceAvail */
-	<member_name><both>"resources_available" </both></member_name>
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_ResourceAvail</member_index>
+	<member_name>"resources_available"</member_name>
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -563,16 +563,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_ResourceAssn */
-	<member_name><both>ATTR_rescassn </both></member_name>		<!-- "resources_assigned" -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>READ_ONLY </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_ResourceAssn</member_index>
+	<member_name>ATTR_rescassn</member_name>		<!-- "resources_assigned" -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>READ_ONLY</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -580,16 +580,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_KillDelay */
-	<member_name><both>ATTR_killdelay </both></member_name>		<!-- "kill_delay" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_KillDelay</member_index>
+	<member_name>ATTR_killdelay</member_name>		<!-- "kill_delay" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -597,16 +597,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxUserRun */
-	<member_name><both>ATTR_maxuserrun </both></member_name>	<!-- "max_user_run" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_MaxUserRun</member_index>
+	<member_name>ATTR_maxuserrun</member_name>	<!-- "max_user_run" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -614,16 +614,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxGrpRun */
-	<member_name><both>ATTR_maxgrprun </both></member_name>		<!-- "max_group_run" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_MaxGrpRun</member_index>
+	<member_name>ATTR_maxgrprun</member_name>		<!-- "max_group_run" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -631,16 +631,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_max_run */
-	<member_name><both>ATTR_max_run </both></member_name>		<!-- "max_run" -->
-	<member_at_decode>decode_entlim </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_chk </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QE_ATR_max_run</member_index>
+	<member_name>ATTR_max_run</member_name>		<!-- "max_run" -->
+	<member_at_decode>decode_entlim</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_chk</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -648,16 +648,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_max_run_res */
-	<member_name><both>ATTR_max_run_res </both></member_name>		<!-- "max_run_res" -->
-	<member_at_decode>decode_entlim_res </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim_res </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_chk </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QE_ATR_max_run_res</member_index>
+	<member_name>ATTR_max_run_res</member_name>		<!-- "max_run_res" -->
+	<member_at_decode>decode_entlim_res</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim_res</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_chk</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -665,16 +665,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_max_run_soft */
-	<member_name><both>ATTR_max_run_soft </both></member_name>		<!-- "max_run_soft" -->
-	<member_at_decode>decode_entlim </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_chk </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QE_ATR_max_run_soft</member_index>
+	<member_name>ATTR_max_run_soft</member_name>		<!-- "max_run_soft" -->
+	<member_at_decode>decode_entlim</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_chk</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -682,16 +682,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_max_run_res_soft */
-	<member_name><both>ATTR_max_run_res_soft </both></member_name>		<!-- "max_run_res_soft" -->
-	<member_at_decode>decode_entlim_res </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim_res </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_chk </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QE_ATR_max_run_res_soft</member_index>
+	<member_name>ATTR_max_run_res_soft</member_name>		<!-- "max_run_res_soft" -->
+	<member_at_decode>decode_entlim_res</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim_res</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_chk</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -699,16 +699,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_HasNodes */
-	<member_name><both>ATTR_HasNodes </both></member_name>		<!-- "hasnodes" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_NOSAVM </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QE_ATR_HasNodes</member_index>
+	<member_name>ATTR_HasNodes</member_name>		<!-- "hasnodes" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>READ_ONLY | ATR_DFLAG_NOSAVM</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -716,16 +716,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxUserRes */
-	<member_name><both>ATTR_maxuserres </both></member_name> 	<!-- max_user_res -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_MaxUserRes</member_index>
+	<member_name>ATTR_maxuserres</member_name> 	<!-- max_user_res -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -733,16 +733,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxGroupRes */
-	<member_name><both>ATTR_maxgroupres </both></member_name> 	<!-- max_group_res -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_MaxGroupRes</member_index>
+	<member_name>ATTR_maxgroupres</member_name> 	<!-- max_group_res -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -750,16 +750,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxUserRunSoft */
-	<member_name><both>ATTR_maxuserrunsoft </both></member_name>	<!-- max_user_run_soft -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_MaxUserRunSoft</member_index>
+	<member_name>ATTR_maxuserrunsoft</member_name>	<!-- max_user_run_soft -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -767,16 +767,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxGrpRunSoft */
-	<member_name><both>ATTR_maxgrprunsoft </both></member_name>	<!-- max_group_run_soft -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QE_ATR_MaxGrpRunSoft</member_index>
+	<member_name>ATTR_maxgrprunsoft</member_name>	<!-- max_group_run_soft -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -784,16 +784,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxUserResSoft */
-	<member_name><both>ATTR_maxuserressoft </both></member_name>	<!-- max_user_res_soft -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_MaxUserResSoft</member_index>
+	<member_name>ATTR_maxuserressoft</member_name>	<!-- max_user_res_soft -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -801,16 +801,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_MaxGroupResSoft */
-	<member_name><both>ATTR_maxgroupressoft </both></member_name>	<!-- max_group_res_soft -->
-	<member_at_decode>decode_resc </member_at_decode>
-	<member_at_encode>encode_resc </member_at_encode>
-	<member_at_set>set_resc </member_at_set>
-	<member_at_comp>comp_resc </member_at_comp>
-	<member_at_free>free_resc </member_at_free>
-	<member_at_action>check_no_entlim </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC </both></member_at_type>
+	<member_index>QE_ATR_MaxGroupResSoft</member_index>
+	<member_name>ATTR_maxgroupressoft</member_name>	<!-- max_group_res_soft -->
+	<member_at_decode>decode_resc</member_at_decode>
+	<member_at_encode>encode_resc</member_at_encode>
+	<member_at_set>set_resc</member_at_set>
+	<member_at_comp>comp_resc</member_at_comp>
+	<member_at_free>free_resc</member_at_free>
+	<member_at_action>check_no_entlim</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_RESC</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -818,16 +818,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QE_ATR_NodeGroupKey */
-	<member_name><both>ATTR_NodeGroupKey </both></member_name>	<!-- node_group_key -->
-	<member_at_decode>decode_arst </member_at_decode>
-	<member_at_encode>encode_arst </member_at_encode>
-	<member_at_set>set_arst </member_at_set>
-	<member_at_comp>comp_arst </member_at_comp>
-	<member_at_free>free_arst </member_at_free>
-	<member_at_action>is_valid_resource </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST </both></member_at_type>
+	<member_index>QE_ATR_NodeGroupKey</member_index>
+	<member_name>ATTR_NodeGroupKey</member_name>	<!-- node_group_key -->
+	<member_at_decode>decode_arst</member_at_decode>
+	<member_at_encode>encode_arst</member_at_encode>
+	<member_at_set>set_arst</member_at_set>
+	<member_at_comp>comp_arst</member_at_comp>
+	<member_at_free>free_arst</member_at_free>
+	<member_at_action>is_valid_resource</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ARST</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -835,34 +835,34 @@
 	</member_verify_function>
     </attributes>
    <attributes>
-   /* QE_ATR_BackfillDepth */
-        <member_name><both>ATTR_backfill_depth</both></member_name>             <!-- "backfill_depth" -->
+   <member_index>QE_ATR_BackfillDepth</member_index>
+        <member_name>ATTR_backfill_depth</member_name>             <!-- "backfill_depth" -->
         <member_at_decode>decode_l</member_at_decode>
         <member_at_encode>encode_l</member_at_encode>
         <member_at_set>set_l</member_at_set>
         <member_at_comp>comp_l</member_at_comp>
         <member_at_free>free_null</member_at_free>
         <member_at_action>action_backfill_depth</member_at_action>
-        <member_at_flags><both>NO_USER_SET</both></member_at_flags>
-        <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+        <member_at_flags>NO_USER_SET</member_at_flags>
+        <member_at_type>ATR_TYPE_LONG</member_at_type>
         <member_at_parent>PARENT_TYPE_QUE_EXC</member_at_parent>
         <member_verify_function>
         <ECL>verify_datatype_long</ECL>
         <ECL>verify_value_zero_or_positive</ECL>
-        </member_verify_function>
+       </member_verify_function>
    </attributes>
 
     <attributes>
-	/* QR_ATR_RouteDestin */
-	<member_name><both>ATTR_routedest </both></member_name>		<!-- "route_destinations" -->
-	<member_at_decode>decode_arst </member_at_decode>
-	<member_at_encode>encode_arst </member_at_encode>
-	<member_at_set>set_arst </member_at_set>
-	<member_at_comp>comp_arst </member_at_comp>
-	<member_at_free>free_arst </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST </both></member_at_type>
+	<member_index>QR_ATR_RouteDestin</member_index>
+	<member_name>ATTR_routedest</member_name>		<!-- "route_destinations" -->
+	<member_at_decode>decode_arst</member_at_decode>
+	<member_at_encode>encode_arst</member_at_encode>
+	<member_at_set>set_arst</member_at_set>
+	<member_at_comp>comp_arst</member_at_comp>
+	<member_at_free>free_arst</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ARST</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_RTE</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -870,16 +870,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QR_ATR_AltRouter */
-	<member_name><both>ATTR_altrouter </both></member_name>		<!-- "alt_router" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QR_ATR_AltRouter</member_index>
+	<member_name>ATTR_altrouter</member_name>		<!-- "alt_router" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_RTE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -887,16 +887,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QR_ATR_RouteHeld */
-	<member_name><both>ATTR_routeheld </both></member_name>		<!-- "route_held_jobs" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QR_ATR_RouteHeld</member_index>
+	<member_name>ATTR_routeheld</member_name>		<!-- "route_held_jobs" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_RTE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -904,16 +904,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QR_ATR_RouteWaiting */
-	<member_name><both>ATTR_routewait </both></member_name>		<!-- "route_waiting_jobs" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QR_ATR_RouteWaiting</member_index>
+	<member_name>ATTR_routewait</member_name>		<!-- "route_waiting_jobs" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_RTE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -921,16 +921,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QR_ATR_RouteRetryTime */
-	<member_name><both>ATTR_routeretry </both></member_name>	<!-- "route_retry_time" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QR_ATR_RouteRetryTime</member_index>
+	<member_name>ATTR_routeretry</member_name>	<!-- "route_retry_time" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_RTE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
@@ -938,33 +938,33 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QR_ATR_RouteLifeTime	 */
-	<member_name><both>ATTR_routelife </both></member_name>		<!-- "route_lifetime" -->
-	<member_at_decode>decode_l </member_at_decode>
-	<member_at_encode>encode_l </member_at_encode>
-	<member_at_set>set_l </member_at_set>
-	<member_at_comp>comp_l </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>NULL_FUNC </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG </both></member_at_type>
+	<member_index>QR_ATR_RouteLifeTime</member_index>
+	<member_name>ATTR_routelife</member_name>		<!-- "route_lifetime" -->
+	<member_at_decode>decode_l</member_at_decode>
+	<member_at_encode>encode_l</member_at_encode>
+	<member_at_set>set_l</member_at_set>
+	<member_at_comp>comp_l</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_LONG</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_RTE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long </ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
     </attributes>
-    <attributes include = '#include "site_que_attr_def.h"'>
-	/* QA_ATR_Enabled */
-	<member_name><both>ATTR_enable </both></member_name>		<!-- "enabled" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>check_que_enable </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+    <attributes>
+	<member_index>QA_ATR_Enabled</member_index>
+	<member_name>ATTR_enable</member_name>		<!-- "enabled" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>check_que_enable</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -972,16 +972,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_Started */
-	<member_name><both>ATTR_start </both></member_name>		<!-- "started" -->
-	<member_at_decode>decode_b </member_at_decode>
-	<member_at_encode>encode_b </member_at_encode>
-	<member_at_set>set_b </member_at_set>
-	<member_at_comp>comp_b </member_at_comp>
-	<member_at_free>free_null </member_at_free>
-	<member_at_action>queuestart_action </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_index>QA_ATR_Started</member_index>
+	<member_name>ATTR_start</member_name>		<!-- "started" -->
+	<member_at_decode>decode_b</member_at_decode>
+	<member_at_encode>encode_b</member_at_encode>
+	<member_at_set>set_b</member_at_set>
+	<member_at_comp>comp_b</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>queuestart_action</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_BOOL</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_bool </ECL>
@@ -989,16 +989,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
- 	/* QA_ATR_queued_jobs_threshold */
-	<member_name><both>ATTR_queued_jobs_threshold </both></member_name>	<!-- "queued_jobs_threshold" -->
-	<member_at_decode>decode_entlim </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_ct </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+ 	<member_index>QA_ATR_queued_jobs_threshold</member_index>
+	<member_name>ATTR_queued_jobs_threshold</member_name>	<!-- "queued_jobs_threshold" -->
+	<member_at_decode>decode_entlim</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_ct</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -1006,16 +1006,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_queued_jobs_threshold_res */
-	<member_name><both>ATTR_queued_jobs_threshold_res </both></member_name>	<!-- "queued_jobs_threshold_res" -->
-	<member_at_decode>decode_entlim_res </member_at_decode>
-	<member_at_encode>encode_entlim </member_at_encode>
-	<member_at_set>set_entlim_res </member_at_set>
-	<member_at_comp>comp_str </member_at_comp>
-	<member_at_free>free_entlim </member_at_free>
-	<member_at_action>action_entlim_res </member_at_action>
-	<member_at_flags><both>NO_USER_SET </both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ENTITY </both></member_at_type>
+	<member_index>QA_ATR_queued_jobs_threshold_res</member_index>
+	<member_name>ATTR_queued_jobs_threshold_res</member_name>	<!-- "queued_jobs_threshold_res" -->
+	<member_at_decode>decode_entlim_res</member_at_decode>
+	<member_at_encode>encode_entlim</member_at_encode>
+	<member_at_set>set_entlim_res</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_entlim</member_at_free>
+	<member_at_action>action_entlim_res</member_at_action>
+	<member_at_flags>NO_USER_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_ENTITY</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -1023,16 +1023,16 @@
 	</member_verify_function>
     </attributes>
     <attributes>
-	/* QA_ATR_partition */
-	<member_name><both>ATTR_partition</both></member_name>	<!-- partition -->
+	<member_index>QA_ATR_partition</member_index>
+	<member_name>ATTR_partition</member_name>	<!-- partition -->
 	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_str</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
 	<member_at_free>free_str</member_at_free>
 	<member_at_action>action_queue_partition</member_at_action>
-	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_flags>MGR_ONLY_SET</member_at_flags>
+	<member_at_type>ATR_TYPE_STR</member_at_type>
 	<member_at_parent>PARENT_TYPE_QUE_ALL</member_at_parent>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
@@ -1041,6 +1041,7 @@
     </attributes>
     <tail>
       <SVR>
+	  #include "site_que_attr_def.h"
 	};
       </SVR>
       <ECL>

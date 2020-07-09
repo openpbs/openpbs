@@ -152,7 +152,7 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 	get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, owner);
 	pu = site_map_user(owner, get_hostPart(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str));
 
-	if (server.sv_attr[(int)SRV_ATR_FlatUID].at_val.at_long) {
+	if (server.sv_attr[(int)SVR_ATR_FlatUID].at_val.at_long) {
 		/* with flatuid, all that must match is user names */
 		return (strcmp(rmtuser, pu));
 	} else  {
@@ -261,18 +261,18 @@ svr_get_privilege(char *user, char *host)
 		return (priv | ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 #endif	/* PBS_ROOT_ALWAYS_ADMIN */
 
-	if (!(server.sv_attr[(int)SRV_ATR_managers].at_flags & ATR_VFLAG_SET)) {
+	if (!(server.sv_attr[(int)SVR_ATR_managers].at_flags & ATR_VFLAG_SET)) {
 		if (is_root)
 			priv |= (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR);
 
-	} else if (acl_check(&server.sv_attr[SRV_ATR_managers], uh, ACL_User))
+	} else if (acl_check(&server.sv_attr[SVR_ATR_managers], uh, ACL_User))
 		priv |= (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR);
 
-	if (!(server.sv_attr[(int)SRV_ATR_operators].at_flags&ATR_VFLAG_SET)) {
+	if (!(server.sv_attr[(int)SVR_ATR_operators].at_flags&ATR_VFLAG_SET)) {
 		if (is_root)
 			priv |= (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 
-	} else if (acl_check(&server.sv_attr[SRV_ATR_operators], uh, ACL_User))
+	} else if (acl_check(&server.sv_attr[SVR_ATR_operators], uh, ACL_User))
 		priv |= (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 
 	return (priv);
@@ -308,12 +308,12 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
 
 	/* If Server's Acl_User enabled, check if user in list */
 
-	if (server.sv_attr[SRV_ATR_AclUserEnabled].at_val.at_long) {
+	if (server.sv_attr[SVR_ATR_AclUserEnabled].at_val.at_long) {
 
 		(void)strcpy(uath, preq->rq_user);
 		(void)strcat(uath, "@");
 		(void)strcat(uath, preq->rq_host);
-		if (acl_check(&server.sv_attr[SRV_ATR_AclUsers],
+		if (acl_check(&server.sv_attr[SVR_ATR_AclUsers],
 			uath, ACL_User) == 0) {
 			/* not in list, next check if listed as a manager */
 

@@ -55,7 +55,7 @@ struct batch_status *stat_resvs(int pbs_sd);
 /*
  *	query_reservations - query the reservations from the server
  */
-resource_resv **query_reservations(server_info *sinfo, struct batch_status *resvs);
+resource_resv **query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs);
 
 /*
  *	query_resv_info - convert the servers batch_statys structure into a

@@ -356,6 +356,7 @@ enum misc_constants
 	IGNORE_DISABLED_EVENTS = 1,
 	FORCE,
 	SET_RESRESV_INDEX = 4,
+	DETECT_GHOST_JOBS = 8,
 	ALL_MASK = 0xffffffff
 };
 

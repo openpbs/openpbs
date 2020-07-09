@@ -1517,7 +1517,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 	if (onodes == NULL || nsinfo == NULL)
 		return NULL;
 
-	num_nodes = thread_node_ct_left = count_array((void **) onodes);
+	num_nodes = thread_node_ct_left = count_array(onodes);
 
 	if ((nnodes = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1847,6 +1847,7 @@ collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int s
  * @param[in]	ninfo	-	the nodes to collect for
  * @param[in]	resresv_arr	-	the array of jobs to consider
  * @param[in]	size	-	the size (in number of pointers) of the job arrays
+ * @param[in]	flags	-	to indicate whether to do ghost job detection
  *
  * @retval	1	: upon success
  * @retval	2	: if a job reported on nodes was not found in the job arrays
@@ -1854,7 +1855,7 @@ collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int s
  *
  */
 int
-collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size)
+collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size, int flags)
 {
 	char *ptr;		/* used to find the '/' in the jobs array */
 	resource_resv *job;	/* find the job from the jobs array */
@@ -1870,12 +1871,24 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
 		if ((ninfo_arr[i]->job_arr =
 			malloc((size + 1) * sizeof(resource_resv *))) == NULL)
+		{
+			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
+		}
 		ninfo_arr[i]->job_arr[0] = NULL;
 	}
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
 		if (ninfo_arr[i]->jobs != NULL) {
+			/* If there are no running jobs in the list and node reports a running job,
+			 * mark that the node has ghost job
+			 */
+			if (size == 0 && (flags & DETECT_GHOST_JOBS)) {
+				ninfo_arr[i]->has_ghost_job = 1;
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name,
+					  "Jobs reported running on node no longer exists or are not in running state");
+			}
+
 			for (j = 0, k = 0; ninfo_arr[i]->jobs[j] != NULL && k < size; j++) {
 				/* jobs are in the format of node_name/sub_node.  We don't care about
 				 * the subnode... we just want to populate the jobs on our node
@@ -1914,7 +1927,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 						/* make the job array searchable with find_resource_resv */
 						ninfo_arr[i]->job_arr[k] = NULL;
 					}
-				} else {
+				} else if (flags & DETECT_GHOST_JOBS) {
 					/* Race Condition occurred: nodes were queried when a job existed.
 					 * Jobs were queried when the job no longer existed.  Make note
 					 * of it on the job so the node's resources_assigned values can be

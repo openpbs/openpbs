@@ -71,7 +71,8 @@
  * 	check_exit_job()
  * 	check_run_resv()
  * 	check_susp_job()
- * 	check_job_not_in_reservation()
+ * 	check_running_job_not_in_reservation()
+ * 	check_running_job_in_reservation()
  * 	check_resv_running_on_node()
  * 	dup_server_info()
  * 	dup_resource_list()
@@ -186,9 +187,8 @@ query_server(status *pol, int pbs_sd)
 	counts *cts;			/* used to count running per user/grp */
 	int num_express_queues = 0;	/* number of express queues */
 	int i;
-	int size;
 	char *errmsg;
-	resource_resv **jobs_not_in_reservations;
+	resource_resv **jobs_alive;
 	status *policy;
 
 	if (pol == NULL)
@@ -313,7 +313,7 @@ query_server(status *pol, int pbs_sd)
 	}
 
 	/* get reservations, if any - NOTE: will set sinfo -> num_resvs */
-	sinfo->resvs = query_reservations(sinfo, bs_resvs);
+	sinfo->resvs = query_reservations(pbs_sd, sinfo, bs_resvs);
 	pbs_statfree(bs_resvs);
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */
@@ -355,9 +355,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	jobs_not_in_reservations = resource_resv_filter(sinfo->jobs,
-		sinfo->sc.total,
-		check_job_not_in_reservation, NULL, 0);
+	jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_job_running, NULL, 0);
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
@@ -398,17 +396,15 @@ query_server(status *pol, int pbs_sd)
 	policy->equiv_class_resdef = create_resresv_sets_resdef(policy, sinfo);
 	sinfo->equiv_classes = create_resresv_sets(policy, sinfo);
 
-	size = sinfo->sc.running + sinfo->sc.exiting + sinfo->sc.suspended
-		+ sinfo->sc.userbusy;
 	/* To avoid duplicate accounting of jobs on nodes, we are only interested in
 	 * jobs that are bound to the server nodes and not those bound to reservation
 	 * nodes, which are accounted for by collect_jobs_on_nodes in
 	 * query_reservation, hence the use of the filtered list of jobs
 	 */
-	collect_jobs_on_nodes(sinfo->nodes, jobs_not_in_reservations, size);
+	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array(jobs_alive), DETECT_GHOST_JOBS);
 
-	/* Now that the job_arr is created, garbage collect the jobs in resv list */
-	free(jobs_not_in_reservations);
+	/* Now that the job_arr is created, garbage collect the jobs */
+	free(jobs_alive);
 
 	collect_resvs_on_nodes(sinfo->nodes, sinfo->resvs, sinfo->num_resvs);
 
@@ -2063,13 +2059,34 @@ check_susp_job(resource_resv *job, void *arg)
  * @param[in]	arg	-	argument (not used here)
  *
  * @return	int
- * @retval	1	: if job is not in reservation passed in arg
- * @retval	0	:  if job is there in reservation passed in arg
+ * @retval	1	: if job is running
+ * @retval	0	: if job is not running
  */
 int
-check_job_not_in_reservation(resource_resv *job, void *arg)
+check_job_running(resource_resv *job, void *arg)
 {
-	if (job->is_job && job->job != NULL && job->job->resv == NULL)
+	if (job->is_job && (job->job->is_running || job->job->is_exiting || job->job->is_userbusy))
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief
+ * 		helper function for resource_resv_filter()
+ *
+ * @param[in]	job	-	resource reservation job.
+ * @param[in]	arg	-	argument (not used here)
+ *
+ * @return	int
+ * @retval	1	: if job is running and in reservation passed in arg
+ * @retval	0	: if job is not running or not in reservation passed in arg
+ */
+int
+check_running_job_in_reservation(resource_resv *job, void *arg)
+{
+	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
+		(check_job_running(job, arg) == 1))
 		return 1;
 
 	return 0;

@@ -72,7 +72,7 @@ mock_run_finish_exec(job *pjob)
 	resource *wall_req;
 	int walltime = 0;
 
-	rd = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	rd = &svr_resc_def[RESC_WALLTIME];
 	wallt = &pjob->ji_wattr[(int)JOB_ATR_resource];
 	wall_req = find_resc_entry(wallt, rd);
 	if (wall_req != NULL) {
@@ -181,17 +181,15 @@ mock_run_mom_set_use(job *pjob)
 			return PBSE_SYSTEM;
 		}
 
-		rd[0] = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
-		rd[1] = find_resc_def(svr_resc_def, "mem", svr_resc_size);
-		rd[2] = find_resc_def(svr_resc_def, "cput", svr_resc_size);
-		rd[3] = find_resc_def(svr_resc_def, "cpupercent", svr_resc_size);
+		rd[0] = &svr_resc_def[RESC_NCPUS];
+		rd[1] = &svr_resc_def[RESC_MEM];
+		rd[2] = &svr_resc_def[RESC_CPUT];
+		rd[3] = &svr_resc_def[RESC_CPUPERCENT];
 		rd[4] = NULL;
 	}
-	if (vmemd == NULL) {
-		vmemd = find_resc_def(svr_resc_def, "vmem", svr_resc_size);
-		assert(vmemd != NULL);
-	}
 
+	vmemd = &svr_resc_def[RESC_VMEM];
+	
 	for (i = 0; rd[i] != NULL; i++) {
 		rdefp = rd[i];
 		pres = find_resc_entry(at, rdefp);

@@ -1007,7 +1007,7 @@ resv_revert_alter(resc_resv *presv)
 		resource *presc;
 		resource_def *prdef;
 
-		prdef = find_resc_def(svr_resc_def, "select", svr_resc_size);
+		prdef = &svr_resc_def[RESC_SELECT];
 		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
 		free(presc->rs_value.at_val.at_str);
 		presc->rs_value.at_val.at_str = presv->ri_alter.ra_select;

@@ -741,19 +741,19 @@ req_stat_svr(struct batch_request *preq)
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 
-	server.sv_attr[(int)SRV_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
-	server.sv_attr[(int)SRV_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
-	update_state_ct(&server.sv_attr[(int)SRV_ATR_JobsByState],
+	server.sv_attr[(int)SVR_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
+	server.sv_attr[(int)SVR_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
+	update_state_ct(&server.sv_attr[(int)SVR_ATR_JobsByState],
 		server.sv_jobstates,
 		server.sv_jobstbuf);
 
-	update_license_ct(&server.sv_attr[(int)SRV_ATR_license_count],
+	update_license_ct(&server.sv_attr[(int)SVR_ATR_license_count],
 		server.sv_license_ct_buf);
 
 	conn = get_conn(preq->rq_conn);
 	if (conn->cn_authen & PBS_NET_CONN_TO_SCHED) {
 		/* Request is from sched so update "has_runjob_hook" */
-		update_isrunhook(&server.sv_attr[SRV_ATR_has_runjob_hook]);
+		update_isrunhook(&server.sv_attr[SVR_ATR_has_runjob_hook]);
 	}
 
 	/* allocate a reply structure and a status sub-structure */
@@ -778,7 +778,7 @@ req_stat_svr(struct batch_request *preq)
 
 	bad = 0;
 	pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-	if (status_attrib(pal, svr_attr_def, server.sv_attr, SRV_ATR_LAST,
+	if (status_attrib(pal, svr_attr_def, server.sv_attr, SVR_ATR_LAST,
 		preq->rq_perm, &pstat->brp_attr, &bad))
 		reply_badattr(PBSE_NOATTR, bad, pal, preq);
 	else

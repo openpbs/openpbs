@@ -223,49 +223,49 @@ init_server_attrs()
 	char		dflt_log_event[22];
 
 
-	for (i = 0; i < SRV_ATR_LAST; i++)
+	for (i = 0; i < SVR_ATR_LAST; i++)
 		clear_attr(&server.sv_attr[i], &svr_attr_def[i]);
 
-	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduler_iteration]), &svr_attr_def[(int) SRV_ATR_scheduler_iteration],
+	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_scheduler_iteration]), &svr_attr_def[(int) SVR_ATR_scheduler_iteration],
 		TOSTR(PBS_SCHEDULE_CYCLE));
 
 	server.newobj = 1;
 
-	server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_INIT;
-	server.sv_attr[(int)SRV_ATR_State].at_flags = ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_INIT;
+	server.sv_attr[(int)SVR_ATR_State].at_flags = ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_ResvEnable].at_val.at_long = 1;
-	server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_ResvEnable].at_val.at_long = 1;
+	server.sv_attr[(int)SVR_ATR_ResvEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_SvrHost].at_val.at_str =strdup(server_host);
-	server.sv_attr[(int)SRV_ATR_SvrHost].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_SvrHost].at_val.at_str =strdup(server_host);
+	server.sv_attr[(int)SVR_ATR_SvrHost].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_val.at_long = PBS_NODE_FAIL_REQUEUE_DEFAULT;
-	server.sv_attr[(int)SRV_ATR_NodeFailReq].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_NodeFailReq].at_val.at_long = PBS_NODE_FAIL_REQUEUE_DEFAULT;
+	server.sv_attr[(int)SVR_ATR_NodeFailReq].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long = PBS_MAX_ARRAY_JOB_DFL;
 	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
+	server.sv_attr[(int)SVR_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
+	server.sv_attr[(int)SVR_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
-	server.sv_attr[(int)SRV_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
+	server.sv_attr[(int)SVR_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long = 0;
-	server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long = 0;
+	server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long = PBS_MAX_CONCURRENT_PROV;
-	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_max_concurrent_prov].at_val.at_long = PBS_MAX_CONCURRENT_PROV;
+	server.sv_attr[(int)SVR_ATR_max_concurrent_prov].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
-	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_val.at_ll = SVR_MAX_JOB_SEQ_NUM_DEFAULT;
-	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	server.sv_attr[(int)SVR_ATR_max_job_sequence_id].at_val.at_ll = SVR_MAX_JOB_SEQ_NUM_DEFAULT;
+	server.sv_attr[(int)SVR_ATR_max_job_sequence_id].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 
 	clear_attr(&attrib, &svr_attr_def[(int)	SVR_ATR_jobscript_max_size]);
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
@@ -274,34 +274,33 @@ init_server_attrs()
 
 	snprintf(dflt_log_event, sizeof(dflt_log_event), "%d", SVR_LOG_DFLT);
 
-	set_attr_svr(&(server.sv_attr[SRV_ATR_has_runjob_hook]), &svr_attr_def[SRV_ATR_has_runjob_hook], ATR_FALSE);
+	set_attr_svr(&(server.sv_attr[SVR_ATR_has_runjob_hook]), &svr_attr_def[SVR_ATR_has_runjob_hook], ATR_FALSE);
 
-	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_log_events]), &svr_attr_def[(int) SRV_ATR_log_events], dflt_log_event);
+	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events], dflt_log_event);
 
-	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_mailfrom]), &svr_attr_def[(int) SRV_ATR_mailfrom], PBS_DEFAULT_MAIL);
+	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_mailfrom]), &svr_attr_def[(int) SVR_ATR_mailfrom], PBS_DEFAULT_MAIL);
 
-	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_query_others]), &svr_attr_def[(int) SRV_ATR_query_others], ATR_TRUE);
+	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_query_others]), &svr_attr_def[(int) SVR_ATR_query_others], ATR_TRUE);
 
-	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduling]), &svr_attr_def[(int) SRV_ATR_scheduling], ATR_TRUE);
+	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_scheduling]), &svr_attr_def[(int) SVR_ATR_scheduling], ATR_TRUE);
 
 	/* an update_to FLicenses()  and pbs_float_lic must already exist */
 	pbs_float_lic = &server.sv_attr[(int)SVR_ATR_FLicenses];
 
-	prdef = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
+	prdef = &svr_resc_def[RESC_NCPUS];
 	if (prdef) {
-		presc = add_resource_entry(
-			&server.sv_attr[(int)SVR_ATR_DefaultChunk], prdef);
+		presc = add_resource_entry(&server.sv_attr[(int)SVR_ATR_DefaultChunk], prdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = 1;
 			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 			server.sv_attr[(int)SVR_ATR_DefaultChunk].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 			(void)deflt_chunk_action(&server.sv_attr[(int)SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_NEW);
 		}
-		presc = add_resource_entry(&server.sv_attr[SRV_ATR_resource_deflt], prdef);
+		presc = add_resource_entry(&server.sv_attr[SVR_ATR_resource_deflt], prdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = 1;
 			presc->rs_value.at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
-			server.sv_attr[(int)SRV_ATR_resource_deflt].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+			server.sv_attr[(int)SVR_ATR_resource_deflt].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
 		}
 
 	}
@@ -507,8 +506,8 @@ pbsd_init(int type)
 
 	/* 3. Set default server attibutes values */
 	memset(&server, 0, sizeof(server));
-	if (server.sv_attr[(int)SRV_ATR_scheduling].at_flags & ATR_VFLAG_SET)
-		a_opt = server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long;
+	if (server.sv_attr[(int)SVR_ATR_scheduling].at_flags & ATR_VFLAG_SET)
+		a_opt = server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long;
 
 	init_server_attrs();
 
@@ -527,19 +526,19 @@ pbsd_init(int type)
 			return (-1);
 		}
 
-		if (server.sv_attr[(int)SRV_ATR_resource_assn].at_flags & ATR_VFLAG_SET) {
-			svr_attr_def[(int)SRV_ATR_resource_assn].at_free(&server.sv_attr[(int)SRV_ATR_resource_assn]);
+		if (server.sv_attr[(int)SVR_ATR_resource_assn].at_flags & ATR_VFLAG_SET) {
+			svr_attr_def[(int)SVR_ATR_resource_assn].at_free(&server.sv_attr[(int)SVR_ATR_resource_assn]);
 		}
 		if (new_log_event_mask) {
 			/* set to what was given on command line -e option */
-			server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long = new_log_event_mask;
-			server.sv_attr[(int)SRV_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
+			server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long = new_log_event_mask;
+			server.sv_attr[(int)SVR_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
 
 		}
 		/* if server comment is a default, clear it */
 		/* it will be reset as needed               */
-		if ((server.sv_attr[(int)SRV_ATR_Comment].at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) {
-			svr_attr_def[(int)SRV_ATR_Comment].at_free(&server.sv_attr[(int)SRV_ATR_Comment]);
+		if ((server.sv_attr[(int)SVR_ATR_Comment].at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) {
+			svr_attr_def[(int)SVR_ATR_Comment].at_free(&server.sv_attr[(int)SVR_ATR_Comment]);
 		}
 
 		/* now do sched db */
@@ -578,7 +577,7 @@ pbsd_init(int type)
 			sched_save_db(dflt_scheduler);
 		}
 
-		if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
+		if (server.sv_attr[SVR_ATR_scheduling].at_val.at_long)
 			set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
 
 		/* end the transaction */
@@ -623,8 +622,8 @@ pbsd_init(int type)
 	if (fd != -1)
 		close(fd);
 
-	(void)svr_attr_def[(int)SRV_ATR_version].at_decode(
-		&server.sv_attr[(int)SRV_ATR_version], 0, 0,
+	(void)svr_attr_def[(int)SVR_ATR_version].at_decode(
+		&server.sv_attr[(int)SVR_ATR_version], 0, 0,
 		PBS_VERSION);
 
 	if ((pbs_licensing_license_location == NULL) && (licenses.lb_aval_floating == 0)) {
@@ -669,8 +668,8 @@ pbsd_init(int type)
 	if (a_opt != -1) {
 		/* a_option was set, overrides saved value of scheduling attr */
 
-		server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long = a_opt;
-		server.sv_attr[(int)SRV_ATR_scheduling].at_flags |= ATR_SET_MOD_MCACHE;
+		server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long = a_opt;
+		server.sv_attr[(int)SVR_ATR_scheduling].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	/*
@@ -1069,7 +1068,7 @@ pbsd_init(int type)
 		amt = statbuf.st_size;
 
 		server.sv_provtracksize =
-			server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long;
+			server.sv_attr[(int)SVR_ATR_max_concurrent_prov].at_val.at_long;
 		DBPRT(("%s: server.sv_provtracksize=%d amt=%ld\n", __func__, server.sv_provtracksize, (long)amt))
 
 		p = malloc(amt + 1);
@@ -1763,7 +1762,7 @@ change_logs(int sig)
 static void
 stop_me(int sig)
 {
-	server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_SHUTSIG;
+	server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_SHUTSIG;
 }
 /**
  * @brief

@@ -933,7 +933,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	/* subjob needs to borrow eligible time from parent job array.
 	 * expecting only to accrue eligible_time and nothing else.
 	 */
-	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 
 		eligibletime = parent->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long;
 

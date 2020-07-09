@@ -87,6 +87,11 @@ time.sleep(20)
         The released numa node can be used in another job.
         """
 
+        # Check that there are at least a natural vnode + 2 numa vnodes
+        nodeinfo = self.server.status(NODE)
+        if len(nodeinfo) < 3:
+            self.skipTest("Not enough vnodes to run the test.")
+
         # instantiate execjob_launch hook
         hook_event = "execjob_launch"
         hook_name = "launch"

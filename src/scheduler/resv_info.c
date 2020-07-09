@@ -119,6 +119,7 @@ stat_resvs(int pbs_sd)
 
 /**
  *
+ * @brief
  *	query_reservations - query the reservations from the server.
  *
  *  Each reservation, is created to reflect its current state in the server.
@@ -132,14 +133,15 @@ stat_resvs(int pbs_sd)
  *  reservation retains its currently allocated resources, such that no other
  *  requests make use of the same resources.
  *
- *	  sinfo - the server to query from
- *	  resvs - batch status of the stat'ed reservations
+ * @param[in] pbs_sd - connection to the pbs server
+ * @param[in] sinfo  - the server to query from
+ * @param[in] resvs  - batch status of the stat'ed reservations
  *
- *	returns an array of reservations
+ * @return    An array of reservations
  *
  */
 resource_resv **
-query_reservations(server_info *sinfo, struct batch_status *resvs)
+query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 {
 	/* the current reservation in the list */
 	struct batch_status *cur_resv;
@@ -191,6 +193,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		int ignore_resv = 0;
 		clear_schd_error(err);
 		struct attrl	*attrp = NULL;
+		resource_resv **jobs_in_reservations;
 		/* Check if this reservation belongs to this scheduler */
 		for (attrp = cur_resv->attribs; attrp != NULL; attrp = attrp->next) {
 			if (strcmp(attrp->name, ATTR_partition) == 0) {
@@ -239,6 +242,16 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 
 		if (ignore_resv == 1) {
 			sinfo->num_resvs--;
+			/* mark all the jobs of the associated queue as can never run */
+			if (resresv->resv->queuename != NULL) {
+				queue_info *qinfo = find_queue_info(sinfo->queues, resresv->resv->queuename);
+				if (qinfo != NULL) {
+				    clear_schd_error(err);
+				    set_schd_error_arg(err, SPECMSG, "Reservation is in an invalid state");
+				    set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
+				    update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
+				}
+			}
 			free_resource_resv(resresv);
 			continue;
 		}
@@ -352,7 +365,12 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						}
 					}
 				}
-				collect_jobs_on_nodes(resresv->resv->resv_nodes, resresv->resv->resv_queue->jobs, j);
+				jobs_in_reservations = resource_resv_filter(resresv->resv->resv_queue->jobs,
+									    count_array(resresv->resv->resv_queue->jobs),
+									    check_running_job_in_reservation, NULL, 0);
+				collect_jobs_on_nodes(resresv->resv->resv_nodes, jobs_in_reservations,
+					              count_array(jobs_in_reservations), NO_FLAGS);
+				free(jobs_in_reservations);
 
 				/* Sort the nodes to ensure correct job placement. */
 				qsort(resresv->resv->resv_nodes,

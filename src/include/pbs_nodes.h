@@ -66,41 +66,7 @@ extern pbs_db_conn_t	*svr_db_conn;
 
 /* Attributes in the Server's vnode (old node) object */
 enum nodeattr {
-	ND_ATR_Mom,
-	ND_ATR_Port,
-	ND_ATR_version,
-	ND_ATR_ntype,
-	ND_ATR_state,
-	ND_ATR_pcpus,
-	ND_ATR_priority,
-	ND_ATR_jobs,
-	ND_ATR_MaxRun,
-	ND_ATR_MaxUserRun,
-	ND_ATR_MaxGrpRun,
-	ND_ATR_No_Tasks,
-	ND_ATR_PNames,
-	ND_ATR_resvs,
-	ND_ATR_ResourceAvail,
-	ND_ATR_ResourceAssn,
-	ND_ATR_Queue,
-	ND_ATR_Comment,
-	ND_ATR_ResvEnable,
-	ND_ATR_NoMultiNode,
-	ND_ATR_Sharing,
-	ND_ATR_ProvisionEnable,
-	ND_ATR_current_aoe,	/* current AOE instantiated */
-	ND_ATR_in_multivnode_host,
-	ND_ATR_MaintJobs,
-	ND_ATR_License,
-	ND_ATR_LicenseInfo,
-	ND_ATR_TopologyInfo,
-	ND_ATR_vnode_pool,
-	ND_ATR_Power_Provisioning,
-	ND_ATR_current_eoe,     /* current EOE instantiated */
-	ND_ATR_partition,
-	ND_ATR_poweroff_eligible,	/* Node can be powered-off */
-	ND_ATR_last_state_change_time,	/* Node's state changed at */
-	ND_ATR_last_used_time,		/* Node was last busy at */
+#include "node_attr_enum.h"
 	ND_ATR_LAST	/* WARNING: Must be the highest valued enum */
 };
 
