@@ -277,6 +277,7 @@ req_quejob(struct batch_request *preq)
 	int rc;
 	int sock = preq->rq_conn;
 	int resc_access_perm_save;
+	int implicit_commit = 0;
 #ifndef PBS_MOM
 	int set_project = 0;
 	int i;
@@ -1161,42 +1162,41 @@ req_quejob(struct batch_request *preq)
 	}
 #endif
 
-	/* acknowledge the request with the job id */
-	if (preq->prot == PROT_TCP) {
-		pj->ji_qs.ji_un.ji_newt.ji_fromaddr = get_connectaddr(sock);
-		/* acknowledge the request with the job id */
-		if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) != 0) {
-			/* reply failed, purge the job and close the connection */
+	/* check implicit commit only not blocking job */
+	if ((pj->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
+		implicit_commit = ((preq->rq_extend) && (strstr(preq->rq_extend, EXTEND_OPT_IMPLICIT_COMMIT)));
 
-			close_client(sock);
-			job_purge(pj);
-			return;
+	/* acknowledge the request with the job id */
+	if (!implicit_commit) {
+		if (preq->prot == PROT_TCP) {
+			pj->ji_qs.ji_un.ji_newt.ji_fromaddr = get_connectaddr(sock);
+			/* acknowledge the request with the job id */
+			if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) != 0) {
+				/* reply failed, purge the job and close the connection */
+
+				close_client(sock);
+				job_purge(pj);
+				return;
+			}
+		} else {
+			struct sockaddr_in* addr = tpp_getaddr(sock);
+			if (addr)
+				pj->ji_qs.ji_un.ji_newt.ji_fromaddr = (pbs_net_t) ntohl(addr->sin_addr.s_addr);
+			free_br(preq);
+			/* No need of acknowledge for TPP */
 		}
-	} else {
-		struct sockaddr_in* addr = tpp_getaddr(sock);
-		if (addr)
-			pj->ji_qs.ji_un.ji_newt.ji_fromaddr = (pbs_net_t) ntohl(addr->sin_addr.s_addr);
-		free_br(preq);
-		/* No need of acknowledge for TPP */
 	}
 
 #ifndef PBS_MOM
-	if (set_project && (pj->ji_wattr[(int)JOB_ATR_project].at_flags &
-	ATR_VFLAG_SET)  && \
-	     (strcmp(pj->ji_wattr[(int)JOB_ATR_project].at_val.at_str,
-		PBS_DEFAULT_PROJECT) == 0)) {
-		sprintf(log_buffer, msg_defproject,
-			ATTR_project, PBS_DEFAULT_PROJECT);
-
-#ifdef NAS /* localmod 107 */
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pj->ji_qs.ji_jobid, log_buffer);
-#else
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pj->ji_qs.ji_jobid, log_buffer);
-#endif /* localmod 107 */
-	}
+	if (set_project && (pj->ji_wattr[(int)JOB_ATR_project].at_flags & ATR_VFLAG_SET)  &&
+			(strcmp(pj->ji_wattr[(int)JOB_ATR_project].at_val.at_str, PBS_DEFAULT_PROJECT) == 0))
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, msg_defproject, ATTR_project, PBS_DEFAULT_PROJECT);
 #endif
+
+	if (implicit_commit) {
+		req_commit_now(preq, pj);
+		return;
+	}
 
 	/* link job into server's new jobs list request  */
 
@@ -1707,35 +1707,28 @@ req_mvjobfile(struct batch_request *preq)
  *		Set state of job to JOB_STATE_QUEUED (or Held or Waiting) and
  *		enqueue the job into its destination queue.
  *
- *  @param[in]	preq	-	The batch request structure
+ * @param[in]	preq	-	The batch request structure
+ * @param[in]	pj		-   Pointer to the job structure
  *
  */
-
 void
-req_commit(struct batch_request *preq)
+req_commit_now(struct batch_request *preq,  job *pj)
 {
-	job			*pj;
-#ifndef	PBS_MOM
-	int			newstate;
-	int			newsub;
-	pbs_queue	*pque;
-	int			rc;
-	pbs_db_jobscr_info_t	jobscr;
-	pbs_db_obj_info_t	obj;
-	long			time_msec;
-#ifdef	WIN32
-	struct	_timeb		tval;
+#ifndef PBS_MOM
+	int newstate;
+	int newsub;
+	pbs_queue *pque;
+	int rc;
+	pbs_db_jobscr_info_t jobscr;
+	pbs_db_obj_info_t obj;
+	long time_msec;
+#ifdef WIN32
+	struct _timeb tval;
 #else
-	struct timeval		tval;
+	struct timeval tval;
 #endif
-	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 #endif
-
-	pj = locate_new_job(preq, preq->rq_ind.rq_commit);
-	if (pj == NULL) {
-		req_reject(PBSE_UNKJOBID, 0, preq);
-		return;
-	}
 
 	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
 		req_reject(PBSE_IVALREQ, 0, preq);
@@ -1847,19 +1840,21 @@ req_commit(struct batch_request *preq)
 		return;
 	}
 
-	strcpy(jobscr.ji_jobid, pj->ji_qs.ji_jobid);
-	jobscr.script = pj->ji_script;
-	obj.pbs_db_obj_type = PBS_DB_JOBSCR;
-	obj.pbs_db_un.pbs_db_jobscr = &jobscr;
+	if (pj->ji_script) {
+		strcpy(jobscr.ji_jobid, pj->ji_qs.ji_jobid);
+		jobscr.script = pj->ji_script;
+		obj.pbs_db_obj_type = PBS_DB_JOBSCR;
+		obj.pbs_db_un.pbs_db_jobscr = &jobscr;
 
-	if (pbs_db_save_obj(conn, &obj, OBJ_SAVE_NEW) != 0) {
-		job_purge(pj);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		return;
+		if (pbs_db_save_obj(conn, &obj, OBJ_SAVE_NEW) != 0) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+			return;
+		}
+		free(pj->ji_script);
+		pj->ji_script = NULL;
 	}
-	free(pj->ji_script);
-	pj->ji_script = NULL;
 
 	/* Now, no need to save server here because server
 	   has already saved in the get_next_svr_sequence_id() */
@@ -1898,20 +1893,37 @@ req_commit(struct batch_request *preq)
 
 	/* acknowledge the request with the job id */
 	if ((rc = reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit))) {
-		(void)snprintf(log_buffer, sizeof(log_buffer),
-		                "Failed to reply with Job Id, error %d", rc);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
-						pj->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR, pj->ji_qs.ji_jobid, "Failed to reply with Job Id, error %d", rc);
 		job_purge(pj);
 		return;
 	}
 
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-		pj->ji_qs.ji_jobid, log_buffer);
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
 
 	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 		issue_track(pj);	/* notify creator where job is */
 #endif		/* PBS_SERVER */
+}
+
+/**
+ * @brief
+ *		locate job and call req_commit_now
+ *
+ *  @param[in]	preq - The batch request structure
+ *
+ */
+void
+req_commit(struct batch_request *preq)
+{
+	job			*pj;
+
+	pj = locate_new_job(preq, preq->rq_ind.rq_commit);
+	if (pj == NULL) {
+		req_reject(PBSE_UNKJOBID, 0, preq);
+		return;
+	}
+
+	req_commit_now(preq, pj);
 }
 
 /**

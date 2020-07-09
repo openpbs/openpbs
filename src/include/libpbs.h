@@ -301,6 +301,8 @@ struct batch_reply
 #define FAILOVER_SecdGoInactive	4 /* Primary down, secondary go inactive */
 #define FAILOVER_SecdTakeOver	5 /* Primary down, secondary take over */
 
+#define EXTEND_OPT_IMPLICIT_COMMIT ":C:" /* option added to pbs_submit() extend parameter to request implicit commit */
+
 extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
 extern void PBS_free_aopl(struct attropl *);
@@ -327,7 +329,7 @@ extern void PBSD_FreeReply(struct batch_reply *);
 extern struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 extern preempt_job_info *PBSD_preempt_jobs(int, char **);
 extern struct batch_status *PBSD_status_get(int);
-extern char * PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **);
+extern char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
 extern int decode_DIS_svrattrl(int, pbs_list_head *);
 extern int decode_DIS_attrl(int, struct attrl **);
 extern int decode_DIS_JobId(int, char *);
