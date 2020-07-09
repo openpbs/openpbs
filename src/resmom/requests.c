@@ -105,7 +105,6 @@ extern pbs_list_head	svr_alljobs;
 extern char		mom_host[];
 #ifdef	WIN32
 extern char		*mom_home;
-extern char		*path_checkpoint;
 #endif
 extern char		*msg_err_unlink;
 extern char		*msg_mom_reject_root_scripts;
@@ -1007,9 +1006,6 @@ req_modifyjob(struct batch_request *preq)
 	attribute	*pattr;
 	job		*pjob;
 	svrattrl	*plist;
-#ifdef	WIN32
-	svrattrl	*psatl;
-#endif
 	int		 rc;
 	int		 recreate_nodes = 0;
 	char		*new_peh = NULL;
@@ -3991,9 +3987,8 @@ local_checkpoint(job *pjob,
 	int		rc;
 	attribute	tmph;
 	pbs_task	*ptask;
-#ifdef WIN32
 	int		hok = 1;
-#else
+#ifndef WIN32
 	pid_t		pid;
 #endif
 
@@ -4033,7 +4028,6 @@ local_checkpoint(job *pjob,
 
 	if (pid == 0) {
 		/* child - does the checkpoint */
-		int	  hok = 1;
 #endif
 
 		clear_attr(&tmph, &job_attr_def[(int)JOB_ATR_hold]);

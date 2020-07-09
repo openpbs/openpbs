@@ -136,7 +136,6 @@ extern unsigned char pbs_aes_key[][16];
 extern unsigned char pbs_aes_iv[][16];
 
 int	ptc = -1;	/* fd for master pty */
-#ifndef WIN32
 #include <poll.h>
 #ifdef  RLIM64_INFINITY
 extern struct rlimit64 orig_nproc_limit;
@@ -145,7 +144,6 @@ extern struct rlimit64 orig_core_limit;
 extern struct rlimit   orig_nproc_limit;
 extern struct rlimit   orig_core_limit;
 #endif  /* RLIM64... */
-#endif  /* WIN32 */
 
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
 extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead);
@@ -1686,7 +1684,6 @@ record_finish_exec(int sd)
 	DBPRT(("%s: read start return %d %d\n", __func__,
 		sjr.sj_code, sjr.sj_session))
 
-#ifndef WIN32
 	/* update pjob with values set from a prologue/launch hook
 	 * since these are hooks that are executing in a child process
 	 * and changes inside the child will not be reflected in main
@@ -1781,7 +1778,6 @@ record_finish_exec(int sd)
 			}
 		}
 	}
-#endif
 
 	/*
 	 ** Set the global id before exiting on error so any
@@ -1977,19 +1973,6 @@ read_pipe_data(int downfds, int data_size, int wait_sec)
 	static  int	buf_size = 0;
 	int		ret;
 	int		nread =  0;
-#ifdef WIN32
-	fd_set		readset;
-	struct timeval	tv;
-
-	FD_ZERO(&readset);
-	tv.tv_sec = wait_sec;		/* connect timeout */
-	tv.tv_usec = 0;
-
-	FD_SET((unsigned int)downfds, &readset);
-
-	ret = select(FD_SETSIZE, &readset, NULL, NULL, &tv);
-
-#else
 	struct pollfd pollfds[1];
 	int timeout = (int)(wait_sec * 1000); /* milli seconds */
 	pollfds[0].fd = downfds;
@@ -1998,7 +1981,6 @@ read_pipe_data(int downfds, int data_size, int wait_sec)
 
 	ret = poll(pollfds, 1, timeout);
 
-#endif
 	if (ret == -1) {
 		log_err(errno, __func__, "error on monitoring pipe");
 		return NULL;
@@ -2614,7 +2596,6 @@ report_failed_node_hosts_task(struct work_task *ptask)
 
 		if (!rjn->prologue_hook_success) {
 			reliable_job_node_add(&pjob->ji_failed_node_list, rjn->rjn_host);
-#ifndef WIN32
 			if (pjob->ji_parent2child_moms_status_pipe != -1) {
 				size_t r_size;
 				r_size = strlen(rjn->rjn_host) + 1;
@@ -2623,7 +2604,6 @@ report_failed_node_hosts_task(struct work_task *ptask)
 				else
 					log_err(errno, __func__, "failed to write");
 			}
-#endif
 			delete_link(&rjn->rjn_link);
 			free(rjn);
 		}
@@ -3516,13 +3496,11 @@ finish_exec(job *pjob)
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
 	/* set system core limit */
-#ifndef WIN32
 #if defined(RLIM64_INFINITY)
 	(void)setrlimit64(RLIMIT_CORE, &orig_core_limit);
 #else   /* set rlimit 32 bit */
 	(void)setrlimit(RLIMIT_CORE, &orig_core_limit);
 #endif  /* RLIM64_INFINITY */
-#endif /* !WIN32 */
 
 	/*
 	 * find which shell to use, one specified or the login shell
@@ -4261,7 +4239,6 @@ finish_exec(job *pjob)
 
 	/* if RLIMIT_NPROC is definded,  the value set when Mom was */
 	/* invoked was saved,  reset that limit for the job	    */
-#ifndef WIN32
 #ifdef	RLIMIT_NPROC
 #ifdef  RLIM64_INFINITY
 	if ((i = setrlimit64(RLIMIT_NPROC, &orig_nproc_limit)) == -1) {
@@ -4275,7 +4252,6 @@ finish_exec(job *pjob)
 	}
 #endif  /* RLIM64... */
 #endif	/* RLIMIT_NPROC */
-#endif  /* WIN32 */
 	if (i == 0) {
 		/* now set all other kernel enforced limits on the job */
 		if ((i = mom_set_limits(pjob, SET_LIMIT_SET)) != PBSE_NONE) {

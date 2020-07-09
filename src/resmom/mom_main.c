@@ -7604,12 +7604,7 @@ dorestrict_user(void)
 		 * On success the dataservice username is returned which should be freed by the caller to
 		 * prevent a mem leak.
 		 */
-		if ((usr = pbs_get_dataservice_usr(errmsg, PBS_MAX_DB_ERR)) == NULL) {
-
-			log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, id,
-				errmsg);
-		}
-		else {
+		if ((usr = pbs_get_dataservice_usr(errmsg, PBS_MAX_DB_ERR)) != NULL) {
 			/* usr now contains the dataservice user name . Get the uid of the dataservice
 			 * user name using the  getpwnam() api
 			 */

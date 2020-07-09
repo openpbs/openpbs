@@ -84,14 +84,11 @@
 /* Global Data */
 
 extern char     *msg_err_unlink;
-extern char	*path_queues;
 extern struct    server server;
 extern pbs_list_head svr_queues;
 extern time_t	 time_now;
 extern long	 svr_history_enable;
-#ifndef PBS_MOM
 extern pbs_db_conn_t	*svr_db_conn;
-#endif
 
 
 /**

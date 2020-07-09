@@ -245,8 +245,6 @@ char *pelog;
 job  *pjob;
 int   pe_io_type;
 {
-#ifdef	WIN32
-#endif
 	char		*arg[12];
 	char		exitcode[20];
 	char		resc_list[2048];

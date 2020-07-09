@@ -80,7 +80,6 @@ pbs_mom_SOURCES = \
 	$(top_srcdir)/src/server/attr_recov.c \
 	$(top_srcdir)/src/server/dis_read.c \
 	$(top_srcdir)/src/server/job_func.c \
-	$(top_srcdir)/src/server/job_recov.c \
 	$(top_srcdir)/src/server/process_request.c \
 	$(top_srcdir)/src/server/reply_send.c \
 	$(top_srcdir)/src/server/req_quejob.c \
@@ -92,6 +91,7 @@ pbs_mom_SOURCES = \
 	${PBS_MACH}/mom_start.c \
 	${PBS_MACH}/pe_input.c \
 	catch_child.c \
+	job_recov_fs.c \
 	mock_run.c \
 	mock_run.h \
 	mom_comm.c \
@@ -118,9 +118,3 @@ pbs_mom_CPPFLAGS += -DMOM_ALPS=1 @expat_inc@
 pbs_mom_LDADD += @expat_lib@
 pbs_mom_SOURCES += linux/alps.c
 endif
-
-EXTRA_DIST = \
-	darwin/mom_mach.c \
-	darwin/mom_mach.h \
-	darwin/mom_start.c \
-	darwin/pe_input.c

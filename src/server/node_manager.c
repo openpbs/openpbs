@@ -117,22 +117,14 @@
 
 #include 	<stdio.h>
 #include 	<stdlib.h>
-
-#ifndef WIN32
 #include	<unistd.h>
-#endif
-
 #include 	<string.h>
 #include 	<ctype.h>
 #include 	<errno.h>
 #include	<fcntl.h>
 #include 	<sys/types.h>
-
-#ifndef WIN32
 #include	<netdb.h>
 #include	<netinet/in.h>
-#endif
-
 #include	<stddef.h>
 #include	<time.h>
 
@@ -145,12 +137,6 @@
 #include	"server.h"
 #include	"net_connect.h"
 #include	"work_task.h"
-
-#ifdef WIN32
-#include	<windows.h>
-#include	"win.h"
-#endif
-
 #include	"job.h"
 #include	"reservation.h"
 #include 	"acct.h"
@@ -175,7 +161,7 @@
 #include 	"pbs_sched.h"
 #include	"svrfunc.h"
 
-#if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
+#if !defined(H_ERRNO_DECLARED)
 extern int h_errno;
 #endif
 
@@ -4484,11 +4470,7 @@ found:
 			if (ret != DIS_SUCCESS)
 				goto err;
 
-#ifdef WIN32
-			DBPRT(("mem %I64ukb ", l))
-#else
 			DBPRT(("mem %llukb ", l))
-#endif /* WIN32 */
 
 			psvrmom->msr_pmem = l;
 
@@ -5797,11 +5779,7 @@ cvt_nodespec_to_select(char *str, char **cvt_bp, size_t *cvt_lenp, attribute *pa
 		/* 3. the amt of mem, if specified */
 
 		if (hmem) {
-#ifdef WIN32
-			sprintf(sprintf_buf, ":mem=%I64uKB", memamt);
-#else
 			sprintf(sprintf_buf, ":mem=%lluKB", memamt);
-#endif /* WIN32 */
 			needed = strlen(sprintf_buf) + 1;
 			if (cvt_overflow(pcvt_free, needed) &&
 				(cvt_realloc(cvt_bp, cvt_lenp, &pcvt, &pcvt_free) == 0)) {

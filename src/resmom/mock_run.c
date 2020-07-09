@@ -259,14 +259,12 @@ mock_run_job_purge(job *pjob)
 	delete_link(&pjob->ji_alljobs);
 	delete_link(&pjob->ji_unlicjobs);
 
-#ifdef PBS_MOM
 	if (pjob->ji_preq != NULL) {
 		log_joberr(PBSE_INTERNAL, __func__, "request outstanding",
 			pjob->ji_qs.ji_jobid);
 		reply_text(pjob->ji_preq, PBSE_INTERNAL, "job deleted");
 		pjob->ji_preq = NULL;
 	}
-#endif
 
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);

@@ -68,12 +68,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef WIN32
-#include <windows.h>
-#include "win.h"
-#include <time.h>
-#include <sys/timeb.h>
-#endif
 
 #include "libpbs.h"
 #include "server_limits.h"

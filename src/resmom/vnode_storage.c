@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifdef  PBS_MOM
 #ifdef	WIN32
 #include	"pbs_config.h"
 #endif
@@ -149,4 +148,3 @@ add_vmapent_byID(void *ctx, const char *vnid, void *data)
 	}
 	return 0;
 }
-#endif	/* PBS_MOM */

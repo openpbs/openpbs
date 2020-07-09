@@ -179,7 +179,6 @@ void *get_conn_data(int sock); /* Gets the pointer to the data present with the 
 void close_socket(int sock);
 int  client_to_svr(pbs_net_t, unsigned int port, int);
 int  client_to_svr_extend(pbs_net_t, unsigned int port, int, char*);
-void set_client_to_svr_timeout(unsigned int);
 void close_conn(int socket);
 pbs_net_t get_connectaddr(int sock);
 int  get_connecthost(int sock, char *namebuf, int size);

@@ -617,9 +617,6 @@ set_to_non_blocking(conn_t *conn)
 {
 
 	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
-
-#ifndef WIN32
-
 		int flg;
 		flg = fcntl(conn->cn_sock, F_GETFL);
 		if (((flg = fcntl(conn->cn_sock, F_GETFL)) == -1) ||
@@ -629,7 +626,6 @@ set_to_non_blocking(conn_t *conn)
 			return -1;
 		}
 		conn->cn_sockflgs = flg;
-#endif	/* WIN32 */
 	}
 	return 0;
 }
@@ -651,13 +647,11 @@ clear_non_blocking(conn_t *conn)
 	if(!conn)
 		return;
 	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
-#ifndef WIN32
 		int flg;
 		if ((flg = conn->cn_sockflgs) != -1)
 			/* reset socket flag to prior value */
 			(void)fcntl(conn->cn_sock, F_SETFL, flg);
 		conn->cn_sockflgs = 0;
-#endif /* WIN32 */
 	}
 }
 #endif	/* !PBS_MOM */

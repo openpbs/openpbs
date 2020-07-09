@@ -2316,12 +2316,6 @@ process_opts(int argc, char **argv, int passet)
 	char *pc;
 	struct attrl *pattr = NULL;
 	size_t N_len = 0;
-#ifdef WIN32
-	struct attrl *ap = NULL;
-	short int n_sizeof_hostname = 0;
-	char *orig_apvalue = NULL;
-	char *temp_apvalue = NULL;
-#endif
 	int ddash_index = -1;
 
 #ifdef WIN32
