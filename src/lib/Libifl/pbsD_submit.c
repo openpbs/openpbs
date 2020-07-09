@@ -207,6 +207,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 			if (!pbs_strcat(&lextend, NULL, extend)) {
 				if (set_conn_errtxt(c, "Failed to allocate memory") != 0)
 					pbs_errno = PBSE_SYSTEM;
+				lextend = NULL;
 				goto error;
 			}
 			extend = lextend;
