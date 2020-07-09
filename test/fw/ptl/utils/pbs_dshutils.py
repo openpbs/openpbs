@@ -53,7 +53,7 @@ import traceback
 import inspect
 from subprocess import PIPE, Popen
 
-from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser
+from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser, PbsGroup
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -2058,14 +2058,15 @@ class DshUtils(object):
         """
         current_user_info = self.get_id_info(self.get_current_user())
         uid = current_user_info['uid']
-        gid = current_user_info['gid']
         if asuser is not None:
-            uid = self.get_id_info(str(asuser))['uid']
+            uid = PbsUser.get_user(asuser).uid
         if asgroup is not None:
-            gid = grp.getgrnam(str(asgroup))[2]
+            gid = PbsGroup.get_group(asgroup).gid
+        else:
+            gid = None
         # create a temp dir as current user
         tmpdir = tempfile.mkdtemp(suffix, prefix)
-        # By default mkdtemp creates dir according to usmask.
+        # By default mkdtemp creates dir according to umask.
         # To create dir as different user first change the dir
         # permission to 0755 so that other user has read permission
         self.chmod(path=tmpdir, mode=0o755)
@@ -2091,10 +2092,10 @@ class DshUtils(object):
                 # copy temp dir created on localhost to remote as current user
                 self.run_copy(hostname, src=tmpdir, dest=tmpdir,
                               level=level, preserve_permission=True,
-                              uid=uid, gid=gid)
+                              recursive=True, uid=uid, gid=gid)
             # remove local temp dir
             os.rmdir(tmpdir)
-        if asuser is not None:
+        elif asuser is not None:
             # since we need to create as differnt user than current user
             # create a temp dir just to get temp dir name with absolute path
             tmpdir2 = tempfile.mkdtemp(suffix, prefix, dirname)
