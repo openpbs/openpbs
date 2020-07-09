@@ -1016,31 +1016,50 @@ class TestTPP(TestFunctional):
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
+
         self.comm.signal("-KILL")
         for mom in self.moms.values():
             self.server.expect(NODE, {'state': 'state-unknown,down'},
                                id=mom.shortname)
-        self.logger.info("starting pbs_comm through command line")
+
         pbs_comm_path = os.path.join(self.pbs_conf['PBS_EXEC'], "sbin",
                                      "pbs_comm")
-        cmd = "sudo -u root %s -N" % pbs_comm_path
-        process = subprocess.Popen(cmd, shell=True)
+        sudo_path = os.path.join(os.sep, "bin", "sudo")
+        cmd = [sudo_path, "-u", "root", pbs_comm_path, "-N"]
+        self.logger.info("Start pbs_comm through command line")
+        msg = "Not able to start pbs_comm through command line"
+        try:
+            process = subprocess.Popen(cmd)
+        except Exception as e:
+            self.logger.error("Error running command " + str(cmd))
+            self.skip_test(msg)
+
         for mom in self.moms.values():
             self.server.expect(NODE, {'state': 'free'},
                                id=mom.shortname)
+
         jid = self.submit_job(job=True, job_script=True, sleep=30)
+
         rid = self.submit_resv()
         resv_jid = self.submit_job(rid=rid, resv_job=True, job_script=True,
                                    sleep=30)
+
         resv_attrib = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, resv_attrib, rid, offset=10)
+
         for job_id in [jid, resv_jid]:
             self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
-        self.logger.info("kill pbs_comm running in foreground")
-        subprocess.check_call(["sudo", "kill", str(process.pid)])
-        os.waitpid(process.pid, 0)
-        self.logger.info("starting pbs_comm through init script")
+
+        self.logger.info("kill running pbs_comm that was just started")
+        try:
+            cmd = [sudo_path, "kill", str(process.pid)]
+            subprocess.check_call(["sudo", "kill", str(process.pid)])
+        except subprocess.CalledProcessError as e:
+            self.skip_test("Not able to kill pbs_comm. Error: '%s'" % e)
+
+        self.logger.info("start pbs_comm through init script")
         self.comm.start()
+
         self.server.expect(RESV, resv_attrib, rid)
         for job_id in [jid, resv_jid]:
             self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=30)
