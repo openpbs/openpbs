@@ -452,7 +452,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "#PBS -l place=" + self.job1_place + "\n" + \
             "pbsdsh -n 1 -- %s &\n" % (FIB45,) + \
             "pbsdsh -n 2 -- %s &\n" % (FIB45,) + \
-            "%s\n" % (FIB45,)
+            "%s\n" % (FIB400,)
 
         self.script['jobA'] = \
             "#PBS -S /bin/bash\n" \
