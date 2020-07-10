@@ -1185,7 +1185,7 @@ if e.job.in_ms_mom():
         e.job.rerun()
         e.reject("unsuccessful at LAUNCH")
 """
-        self.stime= time.time()
+        self.stime = time.time()
 
     def tearDown(self):
         self.momA.signal("-CONT")
@@ -1458,10 +1458,10 @@ if e.job.in_ms_mom():
                                   self.job1_sel_esc)
 
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -1800,10 +1800,10 @@ pbs_tmrsh %s hostname
                                   self.job1_place,
                                   self.job1_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -2164,12 +2164,11 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
                                   "6gb", 8, 3,
                                   self.job1_place,
                                   self.job1_sel_esc)
-        
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -2409,10 +2408,10 @@ pbs_tmrsh %s hostname
                                   self.job1_place,
                                   self.job1v2_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -2641,12 +2640,11 @@ pbs_tmrsh %s hostname
                                   "6gb", 8, 3,
                                   self.job1_place,
                                   self.job1v3_sel_esc)
-        
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -2904,10 +2902,10 @@ pbs_tmrsh %s hostname
                                   self.job1_place,
                                   self.job1v4_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -3315,10 +3313,10 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
                                   self.job1_place,
                                   self.job1v5_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -3589,10 +3587,10 @@ pbs_tmrsh %s hostname
                             n=10, max_attempts=30, interval=2, regexp=True)
 
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -4417,10 +4415,10 @@ if e.job.in_ms_mom():
                                   self.job1_place,
                                   self.job1v6_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -5112,10 +5110,10 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
                                   self.job1_place,
                                   self.job1v2_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -5198,10 +5196,10 @@ pbs_tmrsh %s hostname
                                   self.job1_place,
                                   self.job1v2_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
@@ -5628,10 +5626,10 @@ pbs_tmrsh %s hostname
                                   self.job1_place,
                                   self.job1v4_sel_esc)
         self.momA.log_match("Job;%s;task.+started, hostname" % (jid,),
-                            n=10, max_attempts=60, interval=5, regexp=True)
+                            n=10, interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;copy file request received" % (jid,),
-                            n=10, max_attempts=60, interval=5)
+                            n=10, interval=5)
 
         # validate output
         expected_out = """/var/spool/pbs/aux/%s
