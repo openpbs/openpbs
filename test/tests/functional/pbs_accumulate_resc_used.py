@@ -215,7 +215,7 @@ else:
 """
 
         hook_name = "epi"
-        a = {'event': "execjob_epilogue", 'enabled': 'True'}
+        a = {'event': "execjob_epilogue", 'enabled': 'True', 'order': 999}
         rv = self.server.create_import_hook(
             hook_name,
             a,
@@ -331,7 +331,14 @@ else:
         """
         Test accumulatinon of resources of a multinode job from an
         exechost_prologue hook.
+	On cpuset systems don't check for cput because the pbs_cgroups hook will
+        be enabled and will overwrite the cput value set in the prologue hook
         """
+        has_cpuset = 0
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                has_cpuset = 1
+
         self.logger.info("test_prologue")
         hook_body = """
 import pbs
@@ -397,15 +404,19 @@ else:
         #
         # For string_array type  resource 'stra', it is not accumulated but
         # will be set to last seen value from a mom prologue hook.
-        self.server.expect(JOB, {
+        a = {
             'job_state': 'F',
             'resources_used.foo_f': '0.35',
             'resources_used.foo_i': '35',
             'resources_used.foo_str4': "eight",
             'resources_used.stra': "\"glad,elated\",\"happy\"",
             'resources_used.vmem': '35gb',
-            'resources_used.cput': '00:00:35',
-            'resources_used.ncpus': '3'},
+            'resources_used.ncpus': '3'}
+
+        if has_cpuset is 0:
+            a['resources_used.cput'] = '00:00:35'
+
+        self.server.expect(JOB, a,
             extend='x', offset=10, attrop=PTL_AND, id=jid)
 
         foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
@@ -459,9 +470,10 @@ else:
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
-        acctlog_match = 'resources_used.cput=00:00:35'
-        self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+        if has_cpuset is 0:
+            acctlog_match = 'resources_used.cput=00:00:35'
+            self.server.accounting_match(
+                "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
         # resources_used.foo_str2 should not be reported in accounting_logs.
         acctlog_match = 'resources_used.foo_str2='
@@ -843,6 +855,10 @@ j.resources_used["stra2"] = '"glad"'
         Test that resource accumulation will not get
         impacted if server is restarted during job execution
         """
+        has_cpuset = 0
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                has_cpuset = 1
 
         # Create a prologue hook
         hook_body = """
@@ -899,10 +915,11 @@ else:
         a = {'resources_used.foo_i': '35',
              'resources_used.foo_f': '0.35',
              'resources_used.vmem': '35gb',
-             'resources_used.cput': '00:00:35',
              'resources_used.stra': "\"glad,elated\",\"happy\"",
              'resources_used.foo_str4': "eight",
              'job_state': 'F'}
+        if has_cpuset is 0:
+            a['resources_used.cput'] = '00:00:35'
         self.server.expect(JOB, a, extend='x',
                            offset=5, id=jid, interval=1, attrop=PTL_AND)
 
@@ -1124,6 +1141,10 @@ else:
         and different resources. Values of same resource
         would get overwriteen by the last hook.
         """
+        has_cpuset = 0
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                has_cpuset = 1
 
         hook_body = """
 import pbs
@@ -1180,13 +1201,15 @@ e.job.resources_used["cput"] = 10
         jid = self.server.submit(j)
 
         # Verify the resources_used once the job is over
-        self.server.expect(JOB, {
+        b = {
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.6',
-            'resources_used.cput': '30',
-            'job_state': 'F'}, attrop=PTL_AND,
-            extend='x', id=jid, offset=5,
-            max_attempts=60, interval=1)
+            'job_state': 'F'}
+
+        if has_cpuset is 0:
+            b['resources_used.cput'] = '30'
+        self.server.expect(JOB, b, attrop=PTL_AND, extend='x', id=jid,
+            offset=5, max_attempts=60, interval=1)
 
         # Submit another job
         j1 = Job(TEST_USER)
