@@ -331,7 +331,7 @@ else:
         """
         Test accumulatinon of resources of a multinode job from an
         exechost_prologue hook.
-	On cpuset systems don't check for cput because the pbs_cgroups hook will
+        On cpuset systems don't check for cput because the pbs_cgroups hook will
         be enabled and will overwrite the cput value set in the prologue hook
         """
         has_cpuset = 0
@@ -416,8 +416,8 @@ else:
         if has_cpuset is 0:
             a['resources_used.cput'] = '00:00:35'
 
-        self.server.expect(JOB, a,
-            extend='x', offset=10, attrop=PTL_AND, id=jid)
+        self.server.expect(JOB, a, extend='x', offset=10,
+                           attrop=PTL_AND, id=jid)
 
         foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
         qstat = self.server.status(
@@ -854,6 +854,8 @@ j.resources_used["stra2"] = '"glad"'
         """
         Test that resource accumulation will not get
         impacted if server is restarted during job execution
+        On cpuset systems don't check for cput because the pbs_cgroups hook will
+        be enabled and will overwrite the cput value set in the prologue hook
         """
         has_cpuset = 0
         for mom in self.moms.values():
@@ -1140,6 +1142,8 @@ else:
         Test that epilogue and prologue changing same
         and different resources. Values of same resource
         would get overwriteen by the last hook.
+        On cpuset systems don't check for cput because the pbs_cgroups hook will
+        be enabled and will overwrite the cput value set in the prologue hook
         """
         has_cpuset = 0
         for mom in self.moms.values():
@@ -1209,7 +1213,7 @@ e.job.resources_used["cput"] = 10
         if has_cpuset is 0:
             b['resources_used.cput'] = '30'
         self.server.expect(JOB, b, attrop=PTL_AND, extend='x', id=jid,
-            offset=5, max_attempts=60, interval=1)
+                           offset=5, max_attempts=60, interval=1)
 
         # Submit another job
         j1 = Job(TEST_USER)
