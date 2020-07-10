@@ -331,8 +331,9 @@ else:
         """
         Test accumulatinon of resources of a multinode job from an
         exechost_prologue hook.
-        On cpuset systems don't check for cput because the pbs_cgroups hook will
-        be enabled and will overwrite the cput value set in the prologue hook
+        On cpuset systems don't check for cput because the pbs_cgroups hook
+        will be enabled and will overwrite the cput value set in the prologue
+        hook
         """
         has_cpuset = 0
         for mom in self.moms.values():
@@ -854,8 +855,9 @@ j.resources_used["stra2"] = '"glad"'
         """
         Test that resource accumulation will not get
         impacted if server is restarted during job execution
-        On cpuset systems don't check for cput because the pbs_cgroups hook will
-        be enabled and will overwrite the cput value set in the prologue hook
+        On cpuset systems don't check for cput because the pbs_cgroups hook
+        will be enabled and will overwrite the cput value set in the prologue
+        hook
         """
         has_cpuset = 0
         for mom in self.moms.values():
@@ -1142,8 +1144,9 @@ else:
         Test that epilogue and prologue changing same
         and different resources. Values of same resource
         would get overwriteen by the last hook.
-        On cpuset systems don't check for cput because the pbs_cgroups hook will
-        be enabled and will overwrite the cput value set in the prologue hook
+        On cpuset systems don't check for cput because the pbs_cgroups hook
+        will be enabled and will overwrite the cput value set in the prologue
+        hook
         """
         has_cpuset = 0
         for mom in self.moms.values():
