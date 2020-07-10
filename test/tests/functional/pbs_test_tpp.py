@@ -1026,7 +1026,7 @@ class TestTPP(TestFunctional):
                                      "pbs_comm")
         sudo_path = os.path.join(os.sep, "bin", "sudo")
         cmd = [sudo_path, "-u", "root", pbs_comm_path, "-N"]
-        self.logger.info("Start pbs_comm through command line")
+        self.logger.info("Starting pbs_comm through command line")
         msg = "Not able to start pbs_comm through command line"
         try:
             process = subprocess.Popen(cmd)
@@ -1050,14 +1050,14 @@ class TestTPP(TestFunctional):
         for job_id in [jid, resv_jid]:
             self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
 
-        self.logger.info("kill running pbs_comm that was just started")
+        self.logger.info("Killing pbs_comm that was just started")
         try:
             cmd = [sudo_path, "kill", str(process.pid)]
             subprocess.check_call(["sudo", "kill", str(process.pid)])
         except subprocess.CalledProcessError as e:
             self.skip_test("Not able to kill pbs_comm. Error: '%s'" % e)
 
-        self.logger.info("start pbs_comm through init script")
+        self.logger.info("Starting pbs_comm through init script")
         self.comm.start()
 
         self.server.expect(RESV, resv_attrib, rid)
