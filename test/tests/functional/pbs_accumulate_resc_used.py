@@ -335,10 +335,10 @@ else:
         will be enabled and will overwrite the cput value set in the prologue
         hook
         """
-        has_cpuset = 0
+        has_cpuset = False
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                has_cpuset = 1
+                has_cpuset = True
 
         self.logger.info("test_prologue")
         hook_body = """
@@ -414,7 +414,7 @@ else:
             'resources_used.vmem': '35gb',
             'resources_used.ncpus': '3'}
 
-        if has_cpuset is 0:
+        if not has_cpuset:
             a['resources_used.cput'] = '00:00:35'
 
         self.server.expect(JOB, a, extend='x', offset=10,
@@ -471,7 +471,7 @@ else:
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
-        if has_cpuset is 0:
+        if not has_cpuset:
             acctlog_match = 'resources_used.cput=00:00:35'
             self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
@@ -859,10 +859,10 @@ j.resources_used["stra2"] = '"glad"'
         will be enabled and will overwrite the cput value set in the prologue
         hook
         """
-        has_cpuset = 0
+        has_cpuset = False
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                has_cpuset = 1
+                has_cpuset = True
 
         # Create a prologue hook
         hook_body = """
@@ -922,7 +922,7 @@ else:
              'resources_used.stra': "\"glad,elated\",\"happy\"",
              'resources_used.foo_str4': "eight",
              'job_state': 'F'}
-        if has_cpuset is 0:
+        if not has_cpuset:
             a['resources_used.cput'] = '00:00:35'
         self.server.expect(JOB, a, extend='x',
                            offset=5, id=jid, interval=1, attrop=PTL_AND)
@@ -1148,10 +1148,10 @@ else:
         will be enabled and will overwrite the cput value set in the prologue
         hook
         """
-        has_cpuset = 0
+        has_cpuset = False
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
-                has_cpuset = 1
+                has_cpuset = True
 
         hook_body = """
 import pbs
@@ -1213,10 +1213,9 @@ e.job.resources_used["cput"] = 10
             'resources_used.foo_f': '0.6',
             'job_state': 'F'}
 
-        if has_cpuset is 0:
+        if not has_cpuset:
             b['resources_used.cput'] = '30'
-        self.server.expect(JOB, b, attrop=PTL_AND, extend='x', id=jid,
-                           offset=5, max_attempts=60, interval=1)
+        self.server.expect(JOB, b, extend='x', id=jid, offset=5, interval=1)
 
         # Submit another job
         j1 = Job(TEST_USER)
