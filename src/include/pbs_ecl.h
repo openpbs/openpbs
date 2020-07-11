@@ -79,9 +79,7 @@ extern int (*pfn_pbs_verify_attributes)(int connect, int batch_request,
 		parent_object,  cmd, attribute_list)
 
 int verify_an_attribute(int, int, int, struct attropl *, int *, char **);
-int
-verify_attributes(int, int, int, struct attropl *,
-	struct ecl_attribute_errors **);
+int verify_attributes(int, int, int, struct attropl *, struct ecl_attribute_errors **);
 
 ecl_attribute_def *ecl_find_resc_def(ecl_attribute_def *, char *, int);
 struct ecl_attribute_errors * ecl_get_attr_err_list(int);

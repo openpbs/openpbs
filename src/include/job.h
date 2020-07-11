@@ -210,6 +210,7 @@ typedef struct resc_limit {		/* per node limits for Mom	*/
  */
 
 extern attribute_def job_attr_def[];
+extern void *job_attr_idx;
 
 #ifndef PBS_MOM
 

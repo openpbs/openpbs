@@ -78,7 +78,7 @@ create_vmap(void **ctxp)
 	assert(ctxp != NULL);
 
 	if (*ctxp == NULL) {
-		if ((*ctxp = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		if ((*ctxp = pbs_idx_create(0, 0)) == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Failed to create vnode map");
 			return 0;
 		}

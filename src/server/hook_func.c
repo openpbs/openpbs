@@ -6640,7 +6640,7 @@ get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, ch
 						LOG_INFO, vname_str, "node_name not found");
 				} else if ((pnode->nd_state & INUSE_DELETED) == 0) {
 
-					rc = mgr_set_attr(pnode->nd_attr, node_attr_def, ND_ATR_LAST,
+					rc = mgr_set_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST,
 								plist, ATR_DFLAG_WRACC, &bad, (void *)pnode, ATR_ACTION_ALTER);
 					if (rc != 0) {
 						pbse_err = pbse_to_txt(rc);

@@ -67,7 +67,7 @@ typedef rectype AVL_IX_REC;
 typedef struct {
 	void *root;
 	int keylength; /* zero for null-terminated strings */
-	int dup_keys;
+	int flags;
 } AVL_IX_DESC;
 
 /*  return codes  */
@@ -75,12 +75,12 @@ typedef struct {
 #define AVL_IX_FAIL 0
 #define AVL_EOIX    -2
 
-/* 'dup' args of avl_create_index() */
-#define AVL_NO_DUP_KEYS 0 /* repeated key causes an error message */
-#define AVL_DUP_KEYS_OK 1 /* repeated key & rec cause an error message */
+/* default behavior is no-dup-keys and case-sensitive search */
+#define AVL_DUP_KEYS_OK 0x01 /* repeated key & rec cause an error message */
+#define AVL_CASE_CMP    0x02 /* case insensitive search */
 
 extern void *get_avl_tls(void);
-extern int avl_create_index(AVL_IX_DESC *pix, int dup, int keylength);
+extern int avl_create_index(AVL_IX_DESC *pix, int flags, int keylength);
 extern void avl_destroy_index(AVL_IX_DESC *pix);
 extern int avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
 extern int avl_add_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);

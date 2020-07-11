@@ -78,6 +78,8 @@ enum sched_atr {
 	/* This must be last */
 	SCHED_ATR_LAST
 };
+
+extern void *sched_attr_idx;
 extern attribute_def sched_attr_def[];
 
 typedef struct pbs_sched {

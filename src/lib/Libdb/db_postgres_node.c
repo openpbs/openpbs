@@ -302,8 +302,6 @@ pg_db_save_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	if (stmt)
 		rc = pg_db_cmd(conn, stmt, params);
 
-	free(raw_array);
-
 	return rc;
 }
 
@@ -445,7 +443,6 @@ pg_db_del_attr_node(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_
 	SET_PARAM_BIN(conn, raw_array, len, 1);
 
 	rc = pg_db_cmd(conn, STMT_REMOVE_NODEATTRS, 2);
-	free(raw_array);
 
 	return rc;
 }

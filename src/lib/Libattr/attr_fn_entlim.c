@@ -147,8 +147,8 @@ dup_svr_entlim_leaf(svr_entlim_leaf_t *orig)
 int
 alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf)
 {
-	struct resource_def	*prdef;
-	svr_entlim_leaf_t	*plf;
+	resource_def *prdef;
+	svr_entlim_leaf_t *plf;
 
 	if (resc_name == NULL) /* use "ncpus" resource_def for the various functions	*/
 		prdef = &svr_resc_def[RESC_NCPUS];

@@ -74,6 +74,7 @@ enum srv_atr {
 	SVR_ATR_LAST
 };
 
+extern void *svr_attr_idx;
 extern attribute_def svr_attr_def[];
 /* for trillion job id */
 extern long long svr_max_job_sequence_id;

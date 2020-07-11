@@ -39,25 +39,9 @@
 
 
 /**
- * @file    resc_attr.c
  *
  * @brief
- * 	resc_attr.c	-	Functions relation to the Track Job Request and job tracking.
- *
- * Functions included are:
- *	ctnodes()
- *	set_node_ct()
- *	decode_place()
- *	to_kbsize()
- *	preempt_targets_action()
- *	host_action()
- *	resc_select_action()
- *	apply_aoe_inchunk_rules()
- *	zero_or_positive_action()
- *	apply_select_inchunk_rules()
- *	select_search
- *      apply_eoe_inchunk_rules
- *
+ * 	Functions relation to the Track Job Request and job tracking.
  *
  */
 
@@ -938,6 +922,7 @@ action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type,
 					return PBSE_BADATVAL;
 			}
 		}
+		
 		/* soft_walltime and STF jobs are incompatible */
 		if (min_walltime_def == NULL)
 			min_walltime_def = &svr_resc_def[RESC_MIN_WALLTIME];

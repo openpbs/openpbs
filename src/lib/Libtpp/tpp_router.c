@@ -155,7 +155,7 @@ alloc_router(char *name, tpp_addr_t *address)
 	}
 
 	/* initialize the routers leaf tree */
-	r->my_leaves_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, sizeof(tpp_addr_t));
+	r->my_leaves_idx = pbs_idx_create(0, sizeof(tpp_addr_t));
 	if (r->my_leaves_idx == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create index for my leaves");
 		free_router(r);
@@ -796,7 +796,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			r->my_leaves_idx = NULL;
 			if (r->initiator == 1) {
 				/* initialize the routers leaf tree */
-				r->my_leaves_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, sizeof(tpp_addr_t));
+				r->my_leaves_idx = pbs_idx_create(0, sizeof(tpp_addr_t));
 				if (r->my_leaves_idx == NULL) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create index for my leaves");
 					free_router(r);
@@ -2308,19 +2308,19 @@ tpp_init_router(struct tpp_config *cnf)
 
 	tpp_init_lock(&router_lock);
 
-	routers_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, sizeof(tpp_addr_t));
+	routers_idx = pbs_idx_create(0, sizeof(tpp_addr_t));
 	if (routers_idx == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create index for pbs comms");
 		return -1;
 	}
 
-	cluster_leaves_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, sizeof(tpp_addr_t));
+	cluster_leaves_idx = pbs_idx_create(0, sizeof(tpp_addr_t));
 	if (cluster_leaves_idx == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create index for cluster leaves");
 		return -1;
 	}
 
-	my_leaves_notify_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, sizeof(tpp_addr_t));
+	my_leaves_notify_idx = pbs_idx_create(0, sizeof(tpp_addr_t));
 	if (my_leaves_notify_idx == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create index for leaves requiring notification");
 		return -1;

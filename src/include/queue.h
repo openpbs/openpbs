@@ -61,6 +61,7 @@ enum queueattr {
 	QA_ATR_LAST /* WARNING: Must be the highest valued enum */
 };
 
+extern void *que_attr_idx;
 extern attribute_def que_attr_def[];
 
 /* at last we come to the queue definition itself	*/

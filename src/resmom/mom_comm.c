@@ -1253,7 +1253,7 @@ receive_job_update(int stream, job *pjob)
 		psatl; psatl = (svrattrl *)GET_NEXT(psatl->al_link)) {
 
 		/* identify the attribute by name */
-		index = find_attr(job_attr_def, psatl->al_name, JOB_ATR_LAST);
+		index = find_attr(job_attr_idx, job_attr_def, psatl->al_name);
 		if (index < 0) { /* didn`t recognize the name */
 			snprintf(log_buffer, sizeof(log_buffer),
 				"did not recognize attribute name %s", psatl->al_name);
@@ -3116,8 +3116,7 @@ im_request(int stream, int version)
 				psatl = (svrattrl *)GET_NEXT(psatl->al_link)) {
 
 				/* identify the attribute by name */
-				index = find_attr(job_attr_def, psatl->al_name,
-					JOB_ATR_LAST);
+				index = find_attr(job_attr_idx, job_attr_def, psatl->al_name);
 				if (index < 0) {	/* didn`t recognize the name */
 					errcode = PBSE_NOATTR;
 					break;

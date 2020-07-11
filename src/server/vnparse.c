@@ -39,28 +39,10 @@
 
 
 /**
- * @file    vnparse.c
  *
  *@brief
- * 		vnparse.c - Functions which provide basic operation on the parsing of vnl files.
+ * 		Functions which provide basic operation on the parsing of vnl files.
  *
- * Included functions are:
- *
- *   vn_parse	opening and reading the given file and parsing it into a vnl_t
- *   vn_parse_stream	Read a configuration file.
- *   vn_merge	Merge data from the newly-parse vnode list (new) into a previously-parsed one (cur)
- *   vn_merge2	Merge data from the newly-parse vnode list (new) into a previously-parsed one (cur)
- *   attr_exist	Search for an attribute in a vnode.
- *   vn_vnode	Check if a vnode exists.
- *   vn_exist	Search for a named vnode, then search for an attribute in that vnode.
- *   vn_addvnr	Add the given attribute (attr) and value (attrval) to the vnode with ID id;
- *   id2vnrl	If a vnal_t entry with the given ID (id) exists, return a pointer to it;
- *   attr2vnr	If a vna_t entry with the given ID attribute (attr), return a pointer to it;
- *   vnl_free	free the vnl_t
- *   legal_vnode_char	Check character in a vnode name.
- *   parse_node_token	Parse tokens in the nodes file
- *   vnl_alloc	Handle initial allocation of a vnl_t as well as reallocation when we run out of space.
- *   vnal_alloc	Handle initial allocation of a vnal_t as well as reallocation when we run out of space.
  */
 #include	<sys/types.h>
 #include	<sys/stat.h>
@@ -945,7 +927,7 @@ vnl_alloc(vnl_t **vp)
 			free(newchunk);
 			return NULL;
 		}
-		if ((newchunk->vnl_ix = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+		if ((newchunk->vnl_ix = pbs_idx_create(0, 0)) == NULL) {
 			free(newchunk);
 			return NULL;
 		}
@@ -1912,9 +1894,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 
 				for (j = 0; j < nelem; ++j) {
 
-					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw,
-										svr_resc_size);
-
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
 					if (resc_def == NULL) {
 						continue;
 					}
@@ -2760,7 +2740,6 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 	}
 
 	resc_def = find_resc_def(svr_resc_def, kv_keyw, svr_resc_size);
-
 	if (resc_def == NULL) {
 		log_err(-1, __func__, "resc_def is NULL");
 		return PBSE_UNKRESC;
@@ -4059,9 +4038,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				for (j = 0; j < nelem; ++j) {
 
 #ifdef PBS_MOM
-					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw,
-										svr_resc_size);
-
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
 					if (resc_def == NULL) {
 						continue;
 					}

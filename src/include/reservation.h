@@ -100,6 +100,7 @@ enum resvState_discrim {
  * it is also indexed by the RESV_ATR_... enums.
  */
 
+extern void *resv_attr_idx;
 extern attribute_def resv_attr_def[];
 extern int	     index_atrJob_to_atrResv [][2];
 
