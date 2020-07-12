@@ -37,7 +37,7 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-workdir=/src
+workdir=/src/etc
 logdir=/logs
 
 cd /pbssrc

@@ -38,6 +38,7 @@
 # subject to Altair's trademark licensing policies.
 
 import argparse
+import configparser
 import copy
 import fileinput
 import json
@@ -47,20 +48,19 @@ import shlex
 import shutil
 import subprocess
 import sys
+import textwrap
 import threading
 import time
 from argparse import RawTextHelpFormatter
 from string import Template
 
 ci_dirname = ''
-# MACROS
-CONFIG_DIR = '.config_dir'
-STATUS_FILE = '.status'
-PARAM_FILE = '.params'
-REQUIREMENT_DECORATOR_FILE = '.requirements_decorator'
-CONFIGURE_OPT_FILE = '.configure_opt'
-BENCHPRESS_OPT_FILE = '.benchpress_opt'
-CONF_JSON_FILE = '.conf.json'
+MACROS = {}
+
+def read_macros():
+    for line in open(os.path.join(ci_dirname,'etc','macros')):
+        var, value = line.split('=')
+        MACROS[var] = value.replace('\n', '')
 
 requirements_template = Template('''num_servers=${num_servers}
 num_moms=${num_moms}
@@ -100,18 +100,18 @@ service_template_prist = Template('''{
 }''')
 
 
-def log_error(str_to_print):
-    print("ERROR ::: " + str(str_to_print))
+def log_error(msg):
+    print("ERROR ::: " + str(msg))
 
 
-def log_info(str_to_print):
+def log_info(msg):
     t = time.localtime()
     current_time = time.strftime("%H:%M:%S", t)
-    print(current_time + " ---> " + str(str_to_print))
+    print(current_time + " ---> " + str(msg))
 
 
-def log_warning(str_to_print):
-    print("WARNING ::: " + str(str_to_print))
+def log_warning(msg):
+    print("WARNING ::: " + str(msg))
 
 
 def get_services_list():
@@ -157,7 +157,7 @@ def run_docker_cmd(run_cmd, only_run_on='all'):
     for service in services:
         cmd = "docker-compose -f docker-compose.json exec " + \
             service + " bash -c \'" + run_cmd + "\'"
-        if only_run_on != 'all' and cmd.find(only_run_on) == -1:
+        if only_run_on != 'all' and service.find(only_run_on) == -1:
             log_info('Skipping on service platform ' + service +
                      ' as command to only be run on ' + only_run_on)
             continue
@@ -208,7 +208,7 @@ def commit_docker_image():
             log_error("build is taking too long, timed out")
             os._exit(1)
         status = read_from_file(os.path.join(
-            ci_dirname, CONFIG_DIR, STATUS_FILE))
+            ci_dirname, MACROS['CONFIG_DIR'], MACROS['STATUS_FILE']))
         for service in services:
             if str(status).find(service) != -1:
                 services.remove(service)
@@ -249,7 +249,7 @@ def commit_docker_image():
 
 def create_ts_tree_json():
     benchpress_opt = os.path.join(
-        ci_dirname, CONFIG_DIR, BENCHPRESS_OPT_FILE)
+        ci_dirname, MACROS['CONFIG_DIR'], MACROS['BENCHPRESS_OPT_FILE'])
     benchpress_value = read_from_file(benchpress_opt)
     try:
         cmd = '/src/etc/gen_ptl_json.sh "' + benchpress_value + '"'
@@ -284,7 +284,7 @@ def get_node_config(node_image='centos:7'):
             no_comm_on_server_flag = tclist['requirements']['no_comm_on_server'] or no_comm_on_server_flag
             no_comm_on_mom_flag = tclist['requirements']['no_comm_on_mom'] or no_comm_on_mom_flag
     # Create a bash readable requirements decorator file
-    write_to_file(os.path.join(ci_dirname, CONFIG_DIR, REQUIREMENT_DECORATOR_FILE),
+    write_to_file(os.path.join(ci_dirname, MACROS['CONFIG_DIR'], MACROS['REQUIREMENT_DECORATOR_FILE']),
                   requirements_template.substitute(num_servers=max_servers_needed,
                                                    num_moms=max_moms_needed,
                                                    num_comms=max_comms_needed,
@@ -359,7 +359,7 @@ def tail_build_log():
                 prev = next
             else:
                 status = os.path.join(
-                    ci_dirname, CONFIG_DIR, STATUS_FILE)
+                    ci_dirname, MACROS['CONFIG_DIR'], MACROS['STATUS_FILE'])
                 status = read_from_file(status)
                 if status.find(server_name) != -1:
                     return
@@ -399,7 +399,7 @@ def get_current_setup():
 
 
 def load_conf():
-    conf_file = os.path.join(ci_dirname, CONFIG_DIR, CONF_JSON_FILE)
+    conf_file = os.path.join(ci_dirname, MACROS['CONFIG_DIR'], MACROS['CONF_JSON_FILE'])
     with open(conf_file) as f:
         conf_file = json.loads(f.read())
     return conf_file
@@ -422,7 +422,7 @@ def create_param_file():
     include_server_comm = False
     include_mom_comm = False
     reqs = read_from_file(os.path.join(
-        ci_dirname, CONFIG_DIR, REQUIREMENT_DECORATOR_FILE))
+        ci_dirname, MACROS['CONFIG_DIR'], MACROS['REQUIREMENT_DECORATOR_FILE']))
     if reqs.find('no_mom_on_server=False') != -1:
         include_server_mom = True
     if reqs.find('no_comm_on_server=False') != -1:
@@ -447,8 +447,24 @@ def create_param_file():
         write_str = 'moms=' + ':'.join(moms) + '\n'
     if len(comms) != 0:
         write_str += 'comms=' + ':'.join(comms)
-    param_path = os.path.join(ci_dirname, CONFIG_DIR, PARAM_FILE)
+    param_path = os.path.join(ci_dirname, MACROS['CONFIG_DIR'], MACROS['PARAM_FILE'])
     write_to_file(param_path, write_str)
+
+
+def unpack_node_string(nodes):
+    for x in nodes:
+        if x.find('*') != -1:
+            num = x.split('*')[0]
+            try:
+                num = int(num)
+            except:
+                log_error('invalid string provided for "nodes" configuration')
+                os._exit(1)
+            val = x.split('*')[1]
+            nodes.remove(x)
+            for _ in range(num):
+                nodes.append(val)
+    return ';'.join(nodes)
 
 
 def build_compose_file(nodes):
@@ -461,6 +477,8 @@ def build_compose_file(nodes):
         },
         "services": {}
     }
+    if nodes.find("*") != -1:
+        nodes = unpack_node_string(nodes.split(';'))
     count = 0
     for n in nodes.split(';'):
         count = count + 1
@@ -482,37 +500,7 @@ def build_compose_file(nodes):
     log_info("Configured nodes for ci")
 
 
-def check_prerequisites():
-    '''
-    This function will check whether docker docker-compose commands are available
-    or a container is that has pbs running.
-    '''
-    cmd = "where" if platform.system() == "Windows" else "which"
-
-    try:
-        subprocess.run([cmd, "docker"], stdout=subprocess.DEVNULL)
-    except:
-        log_error("docker not found in PATH")
-        return 1
-
-    try:
-        version = subprocess.run(
-            ["docker", "--version"], stdout=subprocess.PIPE)
-        version = str(version.stdout.decode('utf-8')
-                      ).split(' ')[2].split('-')[0].replace('.', '')
-        if int(version) < 17120:
-            log_error("Docker version less than minimum required 17.12.0")
-            return 1
-    except:
-        log_error("Failed to get docker version")
-        return 1
-
-    try:
-        subprocess.run([cmd, "docker-compose"], stdout=subprocess.DEVNULL)
-    except:
-        log_error("docker-compose not found in PATH")
-        return 1
-
+def check_ci_running():
     try:
         service_count = len(get_services_list())
         if service_count == 0:
@@ -522,11 +510,11 @@ def check_prerequisites():
                 os.chdir(ci_dirname)
                 subprocess.run(["docker-compose", "-f", "docker-compose.json", "down", "--remove-orphans"],
                                stdout=subprocess.DEVNULL)
-                if os.path.exists(os.path.join(ci_dirname, CONFIG_DIR, STATUS_FILE)):
+                if os.path.exists(os.path.join(ci_dirname, MACROS['CONFIG_DIR'], MACROS['STATUS_FILE'])):
                     os.remove(os.path.join(
-                        ci_dirname, CONFIG_DIR, STATUS_FILE))
+                        ci_dirname, MACROS['CONFIG_DIR'], MACROS['STATUS_FILE']))
                 write_to_file(os.path.join(
-                    ci_dirname, CONFIG_DIR, STATUS_FILE), '')
+                    ci_dirname, MACROS['CONFIG_DIR'], MACROS['STATUS_FILE']), '')
                 subprocess.run(
                     ["docker-compose", "-f", "docker-compose.json", "up", "-d"])
                 log_info('Waiting for container build to complete ')
@@ -542,6 +530,38 @@ def check_prerequisites():
             return 0
     except:
         log_error(e)
+
+
+def check_prerequisites():
+    '''
+    This function will check whether docker docker-compose commands are available
+    or a container is that has pbs running.
+    '''
+    cmd = "where" if platform.system() == "Windows" else "which"
+
+    try:
+        subprocess.run([cmd, "docker"], stdout=subprocess.DEVNULL)
+    except:
+        log_error("docker not found in PATH")
+        os._exit(1)
+
+    try:
+        version = subprocess.run(
+            ["docker", "--version"], stdout=subprocess.PIPE)
+        version = str(version.stdout.decode('utf-8')
+                      ).split(' ')[2].split('-')[0].replace('.', '')
+        if int(version) < 17120:
+            log_error("Docker version less than minimum required 17.12.0")
+            os._exit(1)
+    except:
+        log_error("Failed to get docker version")
+        os._exit(1)
+
+    try:
+        subprocess.run([cmd, "docker-compose"], stdout=subprocess.DEVNULL)
+    except:
+        log_error("docker-compose not found in PATH")
+        os._exit(1)
 
 
 def is_restart_required():
@@ -569,19 +589,19 @@ def is_restart_required():
         return False
 
 
-def initialise_command_loop():
-    command_path = os.path.join(ci_dirname, CONFIG_DIR)
+def setup_config_dir():
+    command_path = os.path.join(ci_dirname, MACROS['CONFIG_DIR'])
     if not os.path.exists(command_path):
         os.mkdir(command_path)
-    target_path = os.path.join(command_path, CONF_JSON_FILE)
+    target_path = os.path.join(command_path, MACROS['CONF_JSON_FILE'])
     if not os.path.exists(target_path):
         value = '{ "configure": "--prefix=/opt/pbs --enable-ptl", "tests" : "-t SmokeTest" }'
         write_to_file(target_path, value)
-    target_path = os.path.join(command_path, CONFIGURE_OPT_FILE)
+    target_path = os.path.join(command_path, MACROS['CONFIGURE_OPT_FILE'])
     if not os.path.exists(target_path):
         value = "--prefix=/opt/pbs --enable-ptl"
         write_to_file(target_path, value)
-    target_path = os.path.join(command_path, BENCHPRESS_OPT_FILE)
+    target_path = os.path.join(command_path, MACROS['BENCHPRESS_OPT_FILE'])
     if not os.path.exists(target_path):
         value = "--tags=smoke"
         write_to_file(target_path, value)
@@ -591,157 +611,178 @@ def initialise_command_loop():
         run_cmd('docker-compose -f docker-compose.json down --remove-orphans')
 
 
+def delete_ci():
+    confirm = input(
+        'Are you sure you want to delete containers (Y/N)?: ')
+    if confirm[0].lower() == 'n':
+        os._exit(0)
+    elif confirm[0].lower() == 'y':
+        services = get_services_list()
+        if len(services) != 0:
+            build_compose_file(nodes=get_current_setup())
+            cmd = '/src/etc/killit.sh backup'
+            run_docker_cmd(cmd, only_run_on='server')
+            log_warning('Removed logs file')
+            log_info('backup files can be found in ' + build_log_path)
+        else:
+            log_info('No running container found, nothing to backup')
+        try:
+            os.chdir(ci_dirname)
+            run_cmd(
+                "docker-compose -f docker-compose.json down --remove-orphans")
+            log_info(
+                "done delete container and services")
+        except Exception as e:
+            log_error("Failed to destroy container and services: " + e)
+    else:
+        log_error("Invalid option provided")
+    os._exit(0)
+
+
+def parse_params(params_list):
+    if params_list[0] != 'called':
+        container_running = False
+        conf_opts = load_conf()
+        for set_opts in params_list:
+            key = (set_opts).split('=', 1)[0]
+            value = (set_opts).split('=', 1)[1]
+            service_count = len(get_services_list())
+            if service_count > 0:
+                container_running = True
+            if key == 'nodes':
+                if container_running:
+                    log_warning(
+                        "Deleting existing containers first,find backup in logs folder")
+                    delete_ci()
+                build_compose_file(value)
+            elif key == 'OS' or key == 'os':
+                if container_running:
+                    log_warning(
+                        "Deleting existing containers first, find backup in logs folder")
+                    delete_ci()
+                node_string = value.replace('"', '')
+                node_string = 'server=' + node_string
+                build_compose_file(nodes=node_string)
+            else:
+                if key in conf_opts:
+                    conf_opts[key] = value
+                    f = open(os.path.join(
+                        ci_dirname, MACROS['CONFIG_DIR'], MACROS['CONF_JSON_FILE']), 'w')
+                    json.dump(conf_opts, f, indent=2, sort_keys=True)
+                    f.close()
+                else:
+                    log_warning("Unrecognised key, nothing to update")
+    log_info("These are the current options")
+    show_set_opts()
+
+
+def run_ci_local(local):
+    os.chdir(ci_dirname)
+    # using subprocess.run instead of run_cmd function so we dont supress stdout and stderr
+    if local == 'normal':
+        exit_code = subprocess.run("./do.sh")
+        sys.exit(exit_code.returncode)
+    if local == 'sanitize':
+        exit_code = subprocess.run("./do_sanitize_mode.sh")
+        sys.exit(exit_code.returncode)
+
+
 def run_ci(build_pkgs=False):
-    ret = check_prerequisites()
+    if len(get_services_list())>0:
+        build_compose_file(get_current_setup())
+    ret = check_ci_running()
     if ret == 1:
         log_error(
             "container build failed, build logs can be found in " + build_log_path)
         sys.exit(1)
-    command_path = os.path.join(ci_dirname, CONFIG_DIR)
+    command_path = os.path.join(ci_dirname, MACROS['CONFIG_DIR'])
     conf_opts = load_conf()
     if build_pkgs:
-        build_cmd = '/src/build-pbs-packages.sh'
+        build_cmd = '/src/etc/build-pbs-packages.sh'
         log_info('The package build logs can be found in logs/pkglogs')
         run_docker_cmd(build_cmd + ' | tee /logs/pkglogs',
                        only_run_on='server')
         os._exit(0)
     if conf_opts['tests'] != '':
-        target_path = os.path.join(command_path, BENCHPRESS_OPT_FILE)
+        target_path = os.path.join(command_path, MACROS['BENCHPRESS_OPT_FILE'])
         write_to_file(target_path, conf_opts['tests'])
         if is_restart_required():
             run_cmd(
                 "docker-compose -f docker-compose.json down --remove-orphans")
-            check_prerequisites()
-    target_path = os.path.join(command_path, CONFIGURE_OPT_FILE)
+            check_ci_running()
+    target_path = os.path.join(command_path, MACROS['CONFIGURE_OPT_FILE'])
     if conf_opts['configure'] != read_from_file(target_path):
-        cmd = ' export ONLY_CONFIGURE=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
+        cmd = ' export ONLY_CONFIGURE=1 && /src/etc/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
         run_docker_cmd(cmd)
         write_to_file(target_path, conf_opts['configure'])
-    cmd = ' export ONLY_REBUILD=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
+    cmd = ' export ONLY_REBUILD=1 && /src/etc/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
     run_docker_cmd(cmd)
-    cmd = ' export ONLY_INSTALL=1 && /src/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
+    cmd = ' export ONLY_INSTALL=1 && /src/etc/do.sh 2>&1 | tee -a /logs/build-$(hostname -s) '
     run_docker_cmd(cmd)
-    target_path = os.path.join(command_path, BENCHPRESS_OPT_FILE)
+    target_path = os.path.join(command_path, MACROS['BENCHPRESS_OPT_FILE'])
     if conf_opts['tests'] == '':
         write_to_file(target_path, conf_opts['tests'])
         log_warning("No tests assigned, skipping PTL run")
     else:
         create_param_file()
         write_to_file(target_path, conf_opts['tests'])
-        cmd = 'export RUN_TESTS=1 && export ONLY_TEST=1 && /src/do.sh '
+        cmd = 'export RUN_TESTS=1 && export ONLY_TEST=1 && /src/etcetc/do.sh '
         run_docker_cmd(cmd, only_run_on='server')
 
 
 if __name__ == "__main__":
 
-    ap = argparse.ArgumentParser(
-        prog='ci', description='Runs the ci tool for pbs', formatter_class=RawTextHelpFormatter,
-        epilog='Examples of using arguments.\n\
-        ./ci --params \'OS=centos:7\'\n\
-        ./ci --params "tests=-t SmokeTest"\n\
-        ./ci --params "configure=CFLAGS=\'-g O2\' --enable-ptl"\n\
-        ./ci --params "nodes=mom=centos:7;server=ubuntu:16.04;comm=opensuse/leap:15;mom=ubuntu:18.04"\n\
-        ./ci --delete\n\
-        ./ci --build-pkgs or ./ci --build-pkgs=\'ubuntu:16.04\'\n\
-        ./ci --local\n\
-Note:Set tests as empty if you dont want to run PTL',
-        conflict_handler='resolve')
-    ap.add_argument('--params', const='called', action='append',
-                    help='set configuration values for | OS | nodes | configure | tests | ', nargs='?')
-    ap.add_argument('--delete', const='called',
-                    help='destroy pbs container', nargs='?')
-    ap.add_argument('--build-pkgs', const='called',
-                    help='build packages for the current platform.', nargs='?')
-    ap.add_argument('--local', const='called',
-                    help='Simply run the travis script locally, without spawning any containers', nargs='?')
-    mangle_args = ('run', 'param', 'delete', 'build-pkgs', 'local')
-    args = ['--'+arg if arg in mangle_args else arg for arg in sys.argv[1:]]
-    args = ap.parse_args(args)
+    _help = '''
+    Examples of using arguments.
+        ./ci -p 'OS=centos:7'
+        ./ci -p 'tests=-t SmokeTest'
+        ./ci -p 'configure=CFLAGS='-g O2' --enable-ptl'
+        ./ci -p 'nodes=mom=centos:7;server=ubuntu:16.04'
+        ./ci -d or ./ci --delete
+        ./ci -b or ./ci --build
+        ./ci -l or ./ci --local
+    Note: Set tests as empty if you dont want to run PTL'
+    '''
+    ap = argparse.ArgumentParser(prog='ci',
+                                 description='Runs the ci tool for pbs',
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 epilog=textwrap.dedent(_help),
+                                 conflict_handler='resolve')
+    _help = 'set configuration values for os | nodes | configure | tests'
+    ap.add_argument('-p', '--params', nargs='+', help=_help, metavar='param')
+    _help = 'destroy pbs container'
+    ap.add_argument('-d', '--delete', action='store_true', help=_help)
+    _help = 'build packages for the current platform.'
+    ap.add_argument('-b', '--build-pkgs', nargs='?', const='called',
+                    help=_help)
+    _help = 'Simply run the tests locally, without spawning any containers.'
+    _help += '\ntype can be one of normal (default) or sanitize'
+    ap.add_argument('-l', '--local', nargs='?', const='normal',
+                    help=_help, metavar='type')
+    args = ap.parse_args()
     build_pkgs = False
     ci_dirname = find_ci()
     ci_dirname = os.path.join(ci_dirname, 'ci')
     os.chdir(ci_dirname)
+    read_macros()
     build_log_path = os.path.join(ci_dirname, 'logs')
-    initialise_command_loop()
+    setup_config_dir()
+    check_prerequisites()
     if args.delete == None and args.local == None and args.params == None:
-        ret = check_prerequisites()
+        ret = check_ci_running()
         if ret == 1:
             log_error(
                 "container build failed, build logs can be found in " + build_log_path)
             sys.exit(1)
     try:
         if args.params != None:
-            if args.params[0] != 'called':
-                container_running = False
-                conf_opts = load_conf()
-                for set_opts in args.params:
-                    key = (set_opts).split('=', 1)[0]
-                    value = (set_opts).split('=', 1)[1]
-                    service_count = len(get_services_list())
-                    if service_count > 0:
-                        container_running = True
-                    if key == 'nodes':
-                        if container_running:
-                            log_error(
-                                "Delete existing containers first with ./ci --delete")
-                            os._exit(1)
-                        build_compose_file(value)
-                    elif key == 'OS' or key == 'os':
-                        if container_running:
-                            log_error(
-                                "Delete existing containers first with ./ci --delete")
-                            os._exit(1)
-                        node_string = value.replace('"', '')
-                        node_string = 'server=' + node_string
-                        build_compose_file(nodes=node_string)
-                    else:
-                        if key in conf_opts:
-                            conf_opts[key] = value
-                            f = open(os.path.join(
-                                ci_dirname, CONFIG_DIR, CONF_JSON_FILE), 'w')
-                            json.dump(conf_opts, f, indent=2, sort_keys=True)
-                            f.close()
-                        else:
-                            log_warning("Unrecognised key, nothing to update")
-            log_info("These are the current options")
-            show_set_opts()
+            parse_params(args.params)
         if args.build_pkgs != None:
             build_pkgs = True
-        if args.delete != None:
-            confirm = input(
-                'Are you sure you want to delete containers (Y/N)?: ')
-            if confirm[0].lower() == 'n':
-                os._exit(0)
-            elif confirm[0].lower() == 'y':
-                services = get_services_list()
-                if len(services) != 0:
-                    build_compose_file(nodes=get_current_setup())
-                    cmd = '/src/killit.sh backup'
-                    run_docker_cmd(cmd, only_run_on='server')
-                    log_warning('Removed logs file')
-                    log_info('backup files can be found in ' + build_log_path)
-                else:
-                    log_info('No running container found, nothing to backup')
-                try:
-                    os.chdir(ci_dirname)
-                    run_cmd(
-                        "docker-compose -f docker-compose.json down --remove-orphans")
-                    log_info(
-                        "done delete container and services")
-                except Exception as e:
-                    log_error("Failed to destroy container and services: " + e)
-            else:
-                log_error("Invalid option provided")
-            os._exit(0)
+        if args.delete == True:
+            delete_ci()
         if args.local != None:
-            os.chdir(ci_dirname)
-            # using subprocess.run instead of run_cmd function so we dont supress stdout and stderr
-            if args.local == 'called':
-                exit_code = subprocess.run("./do.sh")
-                sys.exit(exit_code.returncode)
-            if args.local == 'sanitize':
-                exit_code = subprocess.run("./do_sanitize_mode.sh")
-                sys.exit(exit_code.returncode)
+            run_ci_local(args.local)
     except Exception as e:
         ap.print_help()
         log_error(e)

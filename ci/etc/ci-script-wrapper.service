@@ -6,7 +6,7 @@ After=getty.target
 Type=forking
 RemainAfterExit=yes
 EnvironmentFile=/.env-file
-ExecStart=/src/docker-entrypoint
+ExecStart=/src/etc/docker-entrypoint
 TimeoutStartSec=0
 
 [Install]

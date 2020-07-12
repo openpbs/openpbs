@@ -1,7 +1,8 @@
 #! /bin/bash -x
 
-if [ -f /src/.config_dir/.requirements_decorator ]; then
-	. /src/.config_dir/.requirements_decorator
+. /src/etc/macros
+if [ -f /src/${CONFIG_DIR}/.${REQUIREMENT_DECORATOR_FILE} ]; then
+	. /src/${CONFIG_DIR}/.${REQUIREMENT_DECORATOR_FILE}
 fi
 
 if [ "x${NODE_TYPE}" == "xmom" ]; then

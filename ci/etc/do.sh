@@ -45,7 +45,8 @@ fi
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
-  config_dir=/src/.config_dir
+  . /src/etc/macros
+  config_dir=/src/${CONFIG_DIR}
   chmod -R 755 ${config_dir}
   logdir=/logs
   chmod -R 755 ${logdir}
@@ -142,7 +143,7 @@ fi
 if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   echo "### First time build is complete ###"
   host=$(hostname -s)
-  echo "READY:${host}" >>${config_dir}/.status
+  echo "READY:${host}" >>${config_dir}/${STATUS_FILE}
   exit 0
 fi
 
@@ -185,8 +186,8 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   fi
   cd ${_targetdirname}
   if [ -f /src/ci ]; then
-    if [ -f ${config_dir}/.configure_opt ]; then
-      configure_opt="$(cat ${config_dir}/.configure_opt)"
+    if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
+      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -210,7 +211,7 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   cd -
 fi
 cd ${_targetdirname}
-prefix=$(cat ${config_dir}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
+prefix=$(cat ${config_dir}/${CONFIGURE_OPT_FILE} | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
 if [ "x${prefix}" == "x" ]; then
   prefix='/opt/pbs'
 fi
@@ -218,8 +219,8 @@ if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ]; then
   echo "skipping make"
 else
   if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
-    if [ -f ${config_dir}/.configure_opt ]; then
-      configure_opt="$(cat ${config_dir}/.configure_opt)"
+    if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
+      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -238,8 +239,8 @@ if [ "x$ONLY_REBUILD" == "x1" ]; then
 fi
 if [ "x${ONLY_TEST}" != "x1" ]; then
   if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
-    if [ -f ${config_dir}/.configure_opt ]; then
-      configure_opt="$(cat ${config_dir}/.configure_opt)"
+    if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
+      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -283,10 +284,10 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
-  benchpress_opt="$(cat ${config_dir}/.benchpress_opt)"
+  benchpress_opt="$(cat ${config_dir}/${BENCHPRESS_OPT_FILE})"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
-  params="--param-file=${config_dir}/.params"
+  params="--param-file=${config_dir}/${PARAM_FILE}"
   if [ -z "${eval_tag}" ]; then
     pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   else
