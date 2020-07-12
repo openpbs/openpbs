@@ -5,3 +5,4 @@ REQUIREMENT_DECORATOR_FILE=.requirements_decorator
 CONFIGURE_OPT_FILE=.configure_opt
 BENCHPRESS_OPT_FILE=.benchpress_opt
 CONF_JSON_FILE=.conf.json
+REQ_DOCKER_VERSION=17120

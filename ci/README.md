@@ -1,8 +1,8 @@
 Instant-CI is a developer tool which aims at providing continous integration to the developers locally on their development systems.
-Users can build and install pbs and run PTL tests with a single command on the pbs of the users repository, for all this the user may not worry about underlying dependencies or any caveats.
+Users can build, install PBS and run PTL tests with a single command. For this, the user need not worry about any underlying dependencies.
 It also supports build and test history in the form of logs.
 
-Dependincies for this tool are:
+Dependencies for this tool are:
 * python3.5 or above
 * docker (17.12.0+)
 * docker-compose
@@ -20,18 +20,20 @@ Simply invoke the following command:
 ./ci
  ```
 
-* **./ci --params:** This option will be used to set ci configurations and proceed to run ci. The following options can be set via this command.
-| OS | nodes | configure | tests | It will take a single string argument.
+* **./ci --params:** The params option can be used run ci with a custom configuration.
+Following parameters can be set.
+| os | nodes | configure | tests |
 
 ```bash
 ./ci --params
 
-# When the params command is called without any arguments it will display the currently set options and then proceed to run ci
+# When the params command is called without any arguments it will display the currently set "configuration" and then proceed to run ci
 
 
 ./ci --params 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
 
-# The above command is an example of how to define a custom configure option for pbs.
+# The above command is an example of how to define a custom configure option for pbs. Everything to the right of the first '=' after configure will
+# be taken as it is and given as an argument to the configure file in pbs. The same convention follows for other configuration options as well
 
 ./ci --params 'tests=-f pbs_smoketest.py'
 ./ci --params 'tests=--tags=smoke'
@@ -41,6 +43,7 @@ Simply invoke the following command:
 
 ./ci --params 'tests='
 # If you wish to not run any PTL tests then use the above command. This will set tests as empty thus not invoking PTL.
+# By default the test option is set to '-t SmokeTest'
 
 ./ci --params 'os=centos:7'
 # This is an example of setting the container operating system. This will setup a single container running pbs server.
@@ -63,7 +66,7 @@ Optionally accepts argument for other platform. The packages can be found in 'ci
 # Above command builds package for the platform ci was started/currently running on.
 ```
 
-* **./ci --delete:** will delete any running containers and take a backup of logs. Does not take any arguments.
+* **./ci --delete:** will delete any running containers and take a backup of logs. Does not take any arguments. The current logs can be found in the "logs" folder in the ci folder. The backup logs can be found in session-{date}-{timestamp} format folder inside "logs" folder.
 
 ```bash
 ./ci --delete

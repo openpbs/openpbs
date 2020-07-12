@@ -6,10 +6,10 @@ if [ -f /src/${CONFIG_DIR}/.${REQUIREMENT_DECORATOR_FILE} ]; then
 fi
 
 if [ "x${NODE_TYPE}" == "xmom" ]; then
-	sed -i "s@PBS_SERVER=.*@PBS_SERVER=pbs-server@" /etc/pbs.conf
+	sed -i "s@PBS_SERVER=.*@PBS_SERVER=${SERVER}@" /etc/pbs.conf
 	sed -i "s@PBS_START_SERVER=.*@PBS_START_SERVER=0@" /etc/pbs.conf
 	HOST_NAME=$(hostname -s)
-	ssh -t root@pbs-server " /opt/pbs/bin/qmgr -c 'c n ${HOST_NAME}'"
+	ssh -t root@${SERVER} " /opt/pbs/bin/qmgr -c 'c n ${HOST_NAME}'"
 	if [ "x$no_comm_on_mom" == "xTrue" ]; then
 		sed -i "s@PBS_START_COMM=.*@PBS_START_COMM=0@" /etc/pbs.conf
 	else
@@ -36,7 +36,7 @@ fi
 
 if [ "x${NODE_TYPE}" == "xcomm" ]; then
 	sed -i "s@PBS_START_COMM=.*@PBS_START_COMM=1@" /etc/pbs.conf
-	sed -i "s@PBS_SERVER=.*@PBS_SERVER=pbs-server@" /etc/pbs.conf
+	sed -i "s@PBS_SERVER=.*@PBS_SERVER=${SERVER}@" /etc/pbs.conf
 	sed -i "s@PBS_START_MOM=.*@PBS_START_MOM=0@" /etc/pbs.conf
 	sed -i "s@PBS_START_SERVER=.*@PBS_START_SERVER=0@" /etc/pbs.conf
 	sed -i "s@PBS_START_SCHED=.*@PBS_START_SCHED=0@" /etc/pbs.conf

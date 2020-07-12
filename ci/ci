@@ -158,8 +158,8 @@ def run_docker_cmd(run_cmd, only_run_on='all'):
         cmd = "docker-compose -f docker-compose.json exec " + \
             service + " bash -c \'" + run_cmd + "\'"
         if only_run_on != 'all' and service.find(only_run_on) == -1:
-            log_info('Skipping on service platform ' + service +
-                     ' as command to only be run on ' + only_run_on)
+            log_info('Skipping on ' + service +
+                     ' as command only to be run on ' + only_run_on)
             continue
         try:
             log_info(cmd)
@@ -197,14 +197,16 @@ def commit_docker_image():
     '''
 
     images_to_commit = {}
-    timeout = 0
+    time_spent = 0
     services = get_services_list()
     service_count = len(services)
-    timeout_total = 1 * 60 * 60
+    timeout = 1 * 60 * 60
     while service_count > 0:
         time.sleep(15)
-        timeout = timeout + 15
-        if timeout > timeout_total:
+        # Check every 15 seconds if container build is ready
+        # Do not want to check constantly as it increases cpu load
+        time_spent = time_spent + 15
+        if time_spent > timeout:
             log_error("build is taking too long, timed out")
             os._exit(1)
         status = read_from_file(os.path.join(
@@ -212,7 +214,7 @@ def commit_docker_image():
         for service in services:
             if str(status).find(service) != -1:
                 services.remove(service)
-                service_count = service_count-1
+                service_count -= 1
                 image = (service.split('-', 1)[1][:-2]).replace('-', ':')
                 image = image.replace("_", ".")
                 images_to_commit[image] = service
@@ -260,6 +262,10 @@ def create_ts_tree_json():
 
 
 def get_node_config(node_image='centos:7'):
+    '''
+    Calculate the required node configuration for given
+    requirements decorator and return node config
+    '''
     json_data = {}
     max_servers_needed = 1
     max_moms_needed = 1
@@ -383,6 +389,9 @@ def check_for_existing_image(val='centos:7'):
 
 
 def get_current_setup():
+    '''
+    Returns the node config for currently running ci containers
+    '''
     compose_file = os.path.join(ci_dirname, 'docker-compose.json')
     node_config = ''
     with open(compose_file) as f:
@@ -416,6 +425,10 @@ def show_set_opts():
 
 
 def create_param_file():
+    '''
+    Create param file with necessary node configuration for
+    multi node PTL tests.
+    '''
     moms = []
     comms = []
     include_server_mom = False
@@ -452,6 +465,9 @@ def create_param_file():
 
 
 def unpack_node_string(nodes):
+    '''
+    Helper function to expand abbreviated node config
+    '''
     for x in nodes:
         if x.find('*') != -1:
             num = x.split('*')[0]
@@ -468,6 +484,9 @@ def unpack_node_string(nodes):
 
 
 def build_compose_file(nodes):
+    '''
+    Build docker-compose file for given node config in function parameter
+    '''
     compose_template = {
         "version": "3.5",
         "networks": {
@@ -480,10 +499,10 @@ def build_compose_file(nodes):
     if nodes.find("*") != -1:
         nodes = unpack_node_string(nodes.split(';'))
     count = 0
+    server=''
     for n in nodes.split(';'):
         count = count + 1
-        node_val = n.split('=')[1]
-        node_key = n.split('=')[0]
+        node_key,node_val = n.split('=')
         node_name = node_key + '-' + \
             (node_val.replace(':', '-')).replace('.', '_') + '-' + str(count)
         image_value = node_val
@@ -491,9 +510,10 @@ def build_compose_file(nodes):
         service_template = json.loads(service_template_prist.substitute(
             image=image_value, node_type=node_key, alias=node_name, hostname=node_name))
         if node_key == 'server':
-            service_template['networks']['ci.local']['aliases'].append(
-                'pbs-server')
+            server=node_name
         compose_template['services'][node_name] = service_template
+    for service in compose_template['services']:
+        compose_template['services'][service]['environment'].append("SERVER="+server)
     f = open(os.path.join(ci_dirname, 'docker-compose.json'), 'w')
     json.dump(compose_template, f, indent=2, sort_keys=True)
     f.close()
@@ -501,6 +521,9 @@ def build_compose_file(nodes):
 
 
 def check_ci_running():
+    '''
+    Check for running ci container; if not start ci container.
+    '''
     try:
         service_count = len(get_services_list())
         if service_count == 0:
@@ -534,8 +557,8 @@ def check_ci_running():
 
 def check_prerequisites():
     '''
-    This function will check whether docker docker-compose commands are available
-    or a container is that has pbs running.
+    This function will check whether docker docker-compose commands
+    are available. Also check docker version is minimum required.
     '''
     cmd = "where" if platform.system() == "Windows" else "which"
 
@@ -549,8 +572,8 @@ def check_prerequisites():
         version = subprocess.run(
             ["docker", "--version"], stdout=subprocess.PIPE)
         version = str(version.stdout.decode('utf-8')
-                      ).split(' ')[2].split('-')[0].replace('.', '')
-        if int(version) < 17120:
+                        ).split(' ')[2].split('-')[0].replace('.', '')
+        if int(version) < int(MACROS['REQ_DOCKER_VERSION']):
             log_error("Docker version less than minimum required 17.12.0")
             os._exit(1)
     except:
@@ -565,6 +588,11 @@ def check_prerequisites():
 
 
 def is_restart_required():
+    '''
+    This function checks if the number of nodes currently running meet
+    requirement for the given test case. If not builds new docker-compose file
+    and returns bool value to restart ci.
+    '''
     create_ts_tree_json()
     current_file_services_list = get_compose_file_services_list()
     current_node_image = current_file_services_list[0].split(
@@ -590,6 +618,9 @@ def is_restart_required():
 
 
 def setup_config_dir():
+    '''
+    Initializes config directory and files for ci
+    '''
     command_path = os.path.join(ci_dirname, MACROS['CONFIG_DIR'])
     if not os.path.exists(command_path):
         os.mkdir(command_path)
@@ -612,50 +643,47 @@ def setup_config_dir():
 
 
 def delete_ci():
-    confirm = input(
-        'Are you sure you want to delete containers (Y/N)?: ')
-    if confirm[0].lower() == 'n':
-        os._exit(0)
-    elif confirm[0].lower() == 'y':
-        services = get_services_list()
-        if len(services) != 0:
-            build_compose_file(nodes=get_current_setup())
-            cmd = '/src/etc/killit.sh backup'
-            run_docker_cmd(cmd, only_run_on='server')
-            log_warning('Removed logs file')
-            log_info('backup files can be found in ' + build_log_path)
-        else:
-            log_info('No running container found, nothing to backup')
-        try:
-            os.chdir(ci_dirname)
-            run_cmd(
-                "docker-compose -f docker-compose.json down --remove-orphans")
-            log_info(
-                "done delete container and services")
-        except Exception as e:
-            log_error("Failed to destroy container and services: " + e)
+    '''
+    Takes backup of logs and deletes running containers.
+    '''
+    services = get_services_list()
+    if len(services) != 0:
+        build_compose_file(nodes=get_current_setup())
+        cmd = '/src/etc/killit.sh backup'
+        run_docker_cmd(cmd, only_run_on='server')
+        log_warning('Removed logs file')
+        log_info('backup files can be found in ' + build_log_path)
     else:
-        log_error("Invalid option provided")
-    os._exit(0)
+        log_info('No running container found, nothing to backup')
+    try:
+        os.chdir(ci_dirname)
+        run_cmd(
+            "docker-compose -f docker-compose.json down --remove-orphans")
+        log_info(
+            "done delete container and services")
+    except Exception as e:
+        log_error("Failed to destroy container and services: " + e)
 
 
 def parse_params(params_list):
+    '''
+    Update given params and run ci
+    '''
     if params_list[0] != 'called':
         container_running = False
         conf_opts = load_conf()
         for set_opts in params_list:
-            key = (set_opts).split('=', 1)[0]
-            value = (set_opts).split('=', 1)[1]
+            key, value = (set_opts).split('=', 1)
             service_count = len(get_services_list())
             if service_count > 0:
                 container_running = True
-            if key == 'nodes':
+            if key.lower() == 'nodes':
                 if container_running:
                     log_warning(
                         "Deleting existing containers first,find backup in logs folder")
                     delete_ci()
                 build_compose_file(value)
-            elif key == 'OS' or key == 'os':
+            elif key.lower() == 'os':
                 if container_running:
                     log_warning(
                         "Deleting existing containers first, find backup in logs folder")
@@ -677,17 +705,24 @@ def parse_params(params_list):
 
 
 def run_ci_local(local):
+    '''
+    Run ci locally on host without spawning containers
+    '''
     os.chdir(ci_dirname)
     # using subprocess.run instead of run_cmd function so we dont supress stdout and stderr
     if local == 'normal':
-        exit_code = subprocess.run("./do.sh")
+        exit_code = subprocess.run("./etc/do.sh")
         sys.exit(exit_code.returncode)
     if local == 'sanitize':
-        exit_code = subprocess.run("./do_sanitize_mode.sh")
+        exit_code = subprocess.run("./etc/do_sanitize_mode.sh")
         sys.exit(exit_code.returncode)
 
 
 def run_ci(build_pkgs=False):
+    '''
+    Run PBS configure, install PBS and run PTL tests, if build_pkgs
+    is set to True it will instead run package build script only
+    '''
     if len(get_services_list())>0:
         build_compose_file(get_current_setup())
     ret = check_ci_running()
@@ -707,8 +742,7 @@ def run_ci(build_pkgs=False):
         target_path = os.path.join(command_path, MACROS['BENCHPRESS_OPT_FILE'])
         write_to_file(target_path, conf_opts['tests'])
         if is_restart_required():
-            run_cmd(
-                "docker-compose -f docker-compose.json down --remove-orphans")
+            delete_ci()
             check_ci_running()
     target_path = os.path.join(command_path, MACROS['CONFIGURE_OPT_FILE'])
     if conf_opts['configure'] != read_from_file(target_path):
@@ -726,7 +760,7 @@ def run_ci(build_pkgs=False):
     else:
         create_param_file()
         write_to_file(target_path, conf_opts['tests'])
-        cmd = 'export RUN_TESTS=1 && export ONLY_TEST=1 && /src/etcetc/do.sh '
+        cmd = 'export RUN_TESTS=1 && export ONLY_TEST=1 && /src/etc/do.sh '
         run_docker_cmd(cmd, only_run_on='server')
 
 
@@ -767,8 +801,10 @@ if __name__ == "__main__":
     read_macros()
     build_log_path = os.path.join(ci_dirname, 'logs')
     setup_config_dir()
-    check_prerequisites()
-    if args.delete == None and args.local == None and args.params == None:
+    will_run_local = sys.argv.count('-l')==0 and sys.argv.count('--local')==0
+    if will_run_local:
+        check_prerequisites()
+    if args.delete == None and will_run_local==False and args.params == None:
         ret = check_ci_running()
         if ret == 1:
             log_error(
@@ -780,7 +816,15 @@ if __name__ == "__main__":
         if args.build_pkgs != None:
             build_pkgs = True
         if args.delete == True:
-            delete_ci()
+            confirm = input(
+                'Are you sure you want to delete containers (Y/N)?: ')
+            if confirm[0].lower() == 'n':
+                os._exit(0)
+            elif confirm[0].lower() == 'y':
+                delete_ci()
+            else:
+                log_error("Invalid option provided")
+            os._exit(0)
         if args.local != None:
             run_ci_local(args.local)
     except Exception as e:
