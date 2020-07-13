@@ -126,7 +126,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_lr_save_path */
 	0,					/* high resolution timestamp logging */
 	0,					/* number of scheduler threads */
-	NULL				/* default scheduler user */
+	NULL					/* default scheduler user */
 #ifdef WIN32
 	,NULL					/* remote viewer launcher executable along with launch options */
 #endif

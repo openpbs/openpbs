@@ -12664,12 +12664,6 @@ class Scheduler(PBSService):
         if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
 
-        # env = ['PBS_DAEMON_SERVICE_USER=%s' % str(self.user)]
-        # self.logger.info(env)
-        # env.extend(cmd)
-        # cmd = env
-        # env = {'PBS_DAEMON_SERVICE_USER': str(self.user)}
-
         dsu = 'PBS_DAEMON_SERVICE_USER'
 
         if ((dsu in self.pbs_conf and self.pbs_conf[dsu] != self.user.name) or
@@ -12677,7 +12671,6 @@ class Scheduler(PBSService):
             env = '%s=%s' % (dsu, self.user.name)
             cmd.insert(0, env)
 
-        self.logger.info(cmd)
         if self.user.name == 'root':
             ret = self.du.run_cmd(self.hostname, cmd=cmd,
                                   sudo=True, logerr=False)

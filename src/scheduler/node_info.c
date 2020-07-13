@@ -208,8 +208,6 @@ query_node_info_chunk(th_data_query_ninfo *data)
 	data->oarr = ninfo_arr;
 }
 
-
-
 /**
  * @brief	Allocates th_data_query_ninfo for multi-threading of query_nodes
  *
@@ -4586,7 +4584,7 @@ create_execvnode(nspec **ns)
  *
  * @param[in]	execvnode	-	the execvnode to parse
  * @param[in]	sinfo		-	server to get the nodes from
- * @param[in]	sel		- select to map
+ * @param[in]	sel			- select to map
  *
  * @return	a newly allocated nspec array for the execvnode
  *

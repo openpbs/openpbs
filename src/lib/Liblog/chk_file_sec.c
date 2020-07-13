@@ -108,7 +108,7 @@ teststat(struct stat *sp, int isdir, int sticky, int disallow,
  * @param[in]   isdir - value indicating directory or not
  * @param[in]   sticky - value indicating whether to allow write on directory
  * @param[in]   disallow - value indicating whether admin and owner given access permission
- * @param[in]   uid - if >0, can be value of owner. else, check if owner <=10
+ * @param[in]   uid - if >0, value of owner. else, check if owner <=10
  *
  * @return      int
  * @retval      0               success
@@ -158,7 +158,7 @@ teststat(struct stat *sp, int isdir, int sticky, int disallow, int uid)
  * @param[in]   isdir - value indicating directory or not
  * @param[in]   sticky - value indicating whether to allow write on directory
  * @param[in]   disallow - value indicating whether admin and owner given access permission
- * @param[in]   uid - if >0, can be value of owner. else, check if owner <=10
+ * @param[in]   uid - if >0, value of owner. else, check if owner <=10
  *
  * @return      int
  * @retval      0               success
@@ -174,9 +174,11 @@ tempstat(struct stat *sp, int isdir, int sticky, int disallow, int uid)
 	if ((~disallow & S_IWUSR) && (sp->st_uid > 10 && !(uid > 0 && uid == sp->st_uid))) {
 		/* Owner write is allowed, and UID is greater than 10 or owner is not self. */
 		rc = EPERM;
+		log_errf(rc, "tempstat", "BAD USER");
 	} else if ((~disallow & S_IWGRP) && (sp->st_gid > 9)) {
 		/* Group write is allowed, and GID is greater than 9. */
 		rc = EPERM;
+		log_errf(rc, "tempstat", "BAD GROUP");
 	} else if (~disallow & S_IWOTH) {
 		/*
 		 * Other write is allowed, and at least one of the following
@@ -184,22 +186,29 @@ tempstat(struct stat *sp, int isdir, int sticky, int disallow, int uid)
 		 * - target is not a directory
 		 * - the value of the sticky argument we were passed was zero
 		 */
-		if (!S_ISDIR(sp->st_mode) || !sticky)
+		if (!S_ISDIR(sp->st_mode) || !sticky) {
 			rc = EPERM;
+			log_errf(rc, "tempstat", "OTHERWRITE NOTSTIKCY");
+		}
 		/*
 		 ** - sticky bit is off and other write is on
 		 */
-		if (!(sp->st_mode & S_ISVTX) && (sp->st_mode & S_IWOTH))
+		if (!(sp->st_mode & S_ISVTX) && (sp->st_mode & S_IWOTH)) {
 			rc = EPERM;
+			log_errf(rc, "tempstat", "OTHERWRITE NONSTICKY");
+		}
 	} else if (isdir && !S_ISDIR(sp->st_mode)) {
 		/* Target is supposed to be a directory, but is not. */
 		rc = ENOTDIR;
+		log_errf(rc, "tempstat", "BAD DIR");
 	} else if (!isdir && S_ISDIR(sp->st_mode)) {
 		/* Target is not supposed to be a directory, but is. */
 		rc = EISDIR;
+		log_errf(rc, "tempstat", "BAD DIR2");
 	} else if ((S_IRWXU|S_IRWXG|S_IRWXO) & disallow & sp->st_mode) {
 		/* Disallowed permission bits are set in the mode mask. */
 		rc =  EACCES;
+		log_errf(rc, "tempstat", "BAD PERM");
 	}
 	return rc;
 }

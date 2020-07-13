@@ -849,7 +849,7 @@ main(int argc, char *argv[])
 		return (1);
 
 	if (pbs_conf.pbs_daemon_service_user) {
-		struct passwd * pwd = getpwnam(pbs_conf.pbs_daemon_service_user);
+		struct passwd *pwd = getpwnam(pbs_conf.pbs_daemon_service_user);
 		if (!pwd) {
 			fprintf(stderr, "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", argv[0], pbs_conf.pbs_daemon_service_user);
 			return(1);

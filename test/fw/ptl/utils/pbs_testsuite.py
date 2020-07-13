@@ -786,7 +786,6 @@ class PBSTestSuite(unittest.TestCase):
                                         func=init_sched_func)
 
         for sched in cls.scheds.values():
-            # sched.pi.restart_sched(sched.hostname)
             if sched.server.name in cls.schedulers:
                 continue
             else:
@@ -808,10 +807,10 @@ class PBSTestSuite(unittest.TestCase):
         if cls.moms:
             cls.mom = cls.moms.values()[0]
 
-        for mom in cls.moms.values():
-            if not mom.isUp():
-                cls.logger.error('mom ' + mom.hostname + ' is down')
-                mom.pi.start_mom(mom.hostname)
+        # for mom in cls.moms.values():
+        #     if not mom.isUp():
+        #         cls.logger.error('mom ' + mom.hostname + ' is down')
+        #         mom.pi.start_mom(mom.hostname)
 
         cls.server.moms = cls.moms
 

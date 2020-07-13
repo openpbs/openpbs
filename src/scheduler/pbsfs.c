@@ -146,7 +146,7 @@ main(int argc, char *argv[])
 	}
 
 	if (pbs_conf.pbs_daemon_service_user) {
-		struct passwd * user;
+		struct passwd *user;
 		user = getpwnam(pbs_conf.pbs_daemon_service_user);
 		if (user == NULL) {
 			fprintf(stderr, "PBS_DAEMON_SERVICE_USER [%s] does not exist\n", pbs_conf.pbs_daemon_service_user);
