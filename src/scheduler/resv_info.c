@@ -467,6 +467,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resource_resv_array(resresv_arr);
+				free_resource_resv(resresv);
 				free_execvnode_seq(tofree);
 				free(execvnodes_seq);
 				free(execvnode_ptr);
@@ -501,6 +502,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					if (resresv_ocr == NULL) {
 						log_err(errno, __func__, "Error duplicating resource reservation");
 						free_resource_resv_array(resresv_arr);
+						free_resource_resv(resresv);
 						free_execvnode_seq(tofree);
 						free(execvnodes_seq);
 						free(execvnode_ptr);
@@ -554,6 +556,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					strftime(start_time, sizeof(start_time), "%Y%m%d-%H:%M:%S",
 					loc_time) == 0) {
 					free_resource_resv_array(resresv_arr);
+					free_resource_resv(resresv);
 					free_execvnode_seq(tofree);
 					free(execvnodes_seq);
 					free(execvnode_ptr);
