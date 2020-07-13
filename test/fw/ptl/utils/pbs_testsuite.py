@@ -1487,8 +1487,9 @@ class PBSTestSuite(unittest.TestCase):
                 # a high max_attempts is needed to tolerate delay receiving
                 # hook-related files, due to temporary network interruptions
                 mom.log_match('pbs_cgroups.CF;copy hook-related '
-                              'file request received', max_attempts=240,
-                              starttime=just_before_enable_cgroup_cset-1)
+                              'file request received', max_attempts=120,
+                              starttime=just_before_enable_cgroup_cset-1,
+                              interval=1)
                 # Make sure that the MoM will generate per-NUMA node vnodes
                 # when the natural node is created below
                 # HUP may not be enough if exechost_startup is delayed
