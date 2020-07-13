@@ -835,15 +835,15 @@ if __name__ == "__main__":
     read_macros()
     build_log_path = os.path.join(ci_dirname, 'logs')
     setup_config_dir()
-    will_run_local = sys.argv.count('-l') == 0 \
+    not_local_run = sys.argv.count('-l') == 0 \
         and sys.argv.count('--local') == 0 \
         and sys.argv.count('-l=sanitize') == 0\
         and sys.argv.count('--local=sanitize') == 0 \
         and sys.argv.count('-l=normal') == 0 \
         and sys.argv.count('--local=normal') == 0
-    if will_run_local:
+    if not_local_run:
         check_prerequisites()
-    if not args.delete and not will_run_local and args.params is None:
+    if (not args.delete) and not_local_run and (args.params is None):
         ret = check_ci_running()
         if ret == 1:
             log_error(
