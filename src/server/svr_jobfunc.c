@@ -4221,6 +4221,10 @@ start_end_dur_wall(resc_resv *presv)
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
+					presv->ri_alter.ra_duration = pduration->at_val.at_long;
+				}
 				atemp.at_val.at_long = (petime->at_val.at_long -
 					pstime->at_val.at_long);
 				pddef->at_set(pduration, &atemp, SET);
@@ -4234,6 +4238,10 @@ start_end_dur_wall(resc_resv *presv)
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
+					presv->ri_alter.ra_etime = petime->at_val.at_long;
+				}
 				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					pduration->at_val.at_long;
@@ -4263,6 +4271,10 @@ start_end_dur_wall(resc_resv *presv)
 				rc = -1;
 			}
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
+					presv->ri_alter.ra_stime = pstime->at_val.at_long;
+				}
 				pstime->at_flags |= ATR_SET_MOD_MCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
 					pduration->at_val.at_long;
@@ -4276,6 +4288,11 @@ start_end_dur_wall(resc_resv *presv)
 				(prsc->rs_value.at_val.at_long <= 0))
 				rc = -1;
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED | RESV_DURATION_MODIFIED;
+					presv->ri_alter.ra_etime = petime->at_val.at_long;
+					presv->ri_alter.ra_duration = pduration->at_val.at_long;
+				}
 				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					prsc->rs_value.at_val.at_long;
@@ -4291,6 +4308,10 @@ start_end_dur_wall(resc_resv *presv)
 				rc = -1;
 			}
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
+					presv->ri_alter.ra_stime = pstime->at_val.at_long;
+				}
 				pstime->at_flags |= ATR_SET_MOD_MCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
 					prsc->rs_value.at_val.at_long;
@@ -4306,6 +4327,10 @@ start_end_dur_wall(resc_resv *presv)
 					prsc->rs_value.at_val.at_long))
 				rc = -1;
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
+					presv->ri_alter.ra_duration = pduration->at_val.at_long;
+				}
 				pduration->at_flags |= ATR_SET_MOD_MCACHE;
 				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
 			}
@@ -4317,6 +4342,10 @@ start_end_dur_wall(resc_resv *presv)
 				(pduration->at_val.at_long <= 0))
 				rc = -1;
 			else {
+				if (pstate == RESV_BEING_ALTERED) {
+					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
+					presv->ri_alter.ra_etime = petime->at_val.at_long;
+				}
 				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
 					presv->ri_qs.ri_duration;

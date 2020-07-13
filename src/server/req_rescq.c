@@ -792,7 +792,7 @@ req_confirmresv(struct batch_request *preq)
 	 * in this case, the reservation had already been confirmed and added to
 	 * the task list before
 	 */
-	if (!is_degraded && (is_being_altered != RESV_END_TIME_MODIFIED) &&
+	if (!is_degraded && (!is_being_altered || is_being_altered & RESV_START_TIME_MODIFIED) &&
 		(rc = gen_task_Time4resv(presv)) != 0) {
 		free(next_execvnode);
 		req_reject(rc, 0, preq);
