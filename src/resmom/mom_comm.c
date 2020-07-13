@@ -1942,7 +1942,7 @@ addr_to_hostname(struct sockaddr_in *ap)
 void
 job_start_error(job *pjob, int code, char *nodename, char *cmd)
 {
-	void    exec_bail(job *pjob, int code, char *txt);
+	void exec_bail(job *pjob, int code, char *txt);
 
 	if ((pjob == NULL) || (nodename == NULL) || (cmd == NULL))
 		return;

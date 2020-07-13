@@ -2356,7 +2356,7 @@ discard_job(job *pjob, char *txt, int noack)
 		pn++;
 	}
 	/* allocate one extra for the null terminator */
-	pdsc = calloc(sizeof(struct jbdscrd), (size_t)(nmom+1));
+	pdsc = calloc(sizeof(struct jbdscrd), (size_t)(nmom + 1));
 	if (pdsc == NULL)
 		return;
 
@@ -2376,15 +2376,15 @@ discard_job(job *pjob, char *txt, int noack)
 		if (pnode != NULL) {
 
 			for (i = 0; i < nmom; ++i) {
-				if ((pdsc+i)->jdcd_mom == pnode->nd_moms[0])
+				if ((pdsc + i)->jdcd_mom == pnode->nd_moms[0])
 					break;		/* already have this Mom */
 			}
 			if (i == nmom) {
-				(pdsc+nmom)->jdcd_mom = pnode->nd_moms[0];
+				(pdsc + nmom)->jdcd_mom = pnode->nd_moms[0];
 				if (((mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data))->msr_state & INUSE_DOWN)
-					(pdsc+nmom)->jdcd_state = JDCD_DOWN;
+					(pdsc + nmom)->jdcd_state = JDCD_DOWN;
 				else {
-					(pdsc+nmom)->jdcd_state = JDCD_WAITING;
+					(pdsc + nmom)->jdcd_state = JDCD_WAITING;
 					pjob->ji_jdcd_waiting = 1;
 				}
 				nmom++;
@@ -2407,11 +2407,11 @@ discard_job(job *pjob, char *txt, int noack)
 		int s;
 
 		s = ((mom_svrinfo_t *)((pdsc + i)->jdcd_mom->mi_data))->msr_stream;
-		if ((s != -1) && ((pdsc+i)->jdcd_state != JDCD_DOWN)) {
+		if ((s != -1) && ((pdsc + i)->jdcd_state != JDCD_DOWN)) {
 			send_discard_job(s, pjob->ji_qs.ji_jobid, rver, txt);
 			txt = NULL;	/* so one log message only */
 		} else
-			(pdsc+i)->jdcd_state = JDCD_DOWN;
+			(pdsc + i)->jdcd_state = JDCD_DOWN;
 	}
 
 	/*

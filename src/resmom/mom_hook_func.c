@@ -954,7 +954,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 
 	if (runas_jobuser) {
 
-		/* use world writtable spool directory */
+		/* use world writable spool directory */
 
 		snprintf(hook_inputfile, MAXPATHLEN,
 			FMT_HOOK_INFILE, path_spool,
@@ -1177,7 +1177,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 
 		log_file[0] = '\0';
 
-		if ((fp=fopen(hook_inputfile, "w")) == NULL) {
+		if ((fp = fopen(hook_inputfile, "w")) == NULL) {
 			sprintf(log_buffer,
 				"open of input file %s failed!",
 				hook_inputfile);
