@@ -1012,12 +1012,10 @@ class TestTPP(TestFunctional):
         Node 1 : Server, Sched, Mom, Comm
         Node 2 : Mom
         """
-        """
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        """
 
         self.comm.signal("-KILL")
         for mom in self.moms.values():
@@ -1027,13 +1025,13 @@ class TestTPP(TestFunctional):
         pbs_comm_path = os.path.join(self.pbs_conf['PBS_EXEC'], "sbin",
                                      "pbs_comm")
         sudo_path = self.du.which(hostname=self.mom.hostname,
-                                         exe="sudo")
+                                  exe="sudo")
 
         cmd = [sudo_path, "-u", "root", pbs_comm_path, "-N &"]
 
         self.logger.info("Starting pbs_comm through command line")
         msg = "Not able to start pbs_comm through command line"
-        ret= self.du.run_cmd(self.server.shortname, cmd, as_script=True)
+        ret = self.du.run_cmd(self.server.shortname, cmd, as_script=True)
         self.assertTrue(ret['rc'] == 0 and len(ret['err']) == 0, msg)
 
         for mom in self.moms.values():
