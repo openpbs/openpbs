@@ -1662,7 +1662,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 			}
 		}
 	}
-	else if (resresv->is_resv && resresv->resv !=NULL) {
+	else if (resresv->is_resv && resresv->resv != NULL) {
 		resresv->resv->resv_state = RESV_RUNNING;
 
 		resv_queue = find_queue_info(resresv->server->queues,

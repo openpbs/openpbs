@@ -513,17 +513,17 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 						resresv->resv->resv_state == RESV_BEING_ALTERED ||
 						resresv->resv->resv_state == RESV_DELETING_JOBS) {
 						/* Each occurrence will be added to the simulation framework and
-							* should not be in running state. Their state should be
-							* Confirmed instead of possibly inheriting the Running state
-							* from the parent reservation.
-							*/
+						 * should not be in running state. Their state should be
+						 * Confirmed instead of possibly inheriting the Running state
+						 * from the parent reservation.
+						 */
 						resresv_ocr->resv->resv_state = RESV_CONFIRMED;
 					}
 					/* Duplication deep-copies node info array. This array gets
-						* overwritten and needs to be freed. This is an alternative
-						* to creating another duplication function that only duplicates
-						* the required fields.
-						*/
+					 * overwritten and needs to be freed. This is an alternative
+					 * to creating another duplication function that only duplicates
+					 * the required fields.
+					 */
 					release_nodes(resresv_ocr);
 
 					resresv_ocr->orig_nspec_arr = parse_execvnode(
@@ -536,10 +536,10 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				}
 
 				/* Set occurrence start and end time and nodes information. On the
-					* first occurrence the start time may need to be reset to the time
-					* specified by the recurrence rule. See description at the head of
-					* this block.
-					*/
+				 * first occurrence the start time may need to be reset to the time
+				 * specified by the recurrence rule. See description at the head of
+				 * this block.
+				 */
 				resresv_ocr->resv->req_start = next;
 				resresv_ocr->resv->req_end = next + resresv->duration;
 				resresv_ocr->start = resresv_ocr->resv->req_start;
@@ -1438,7 +1438,11 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				if (nresv->resv->resv_state == RESV_RUNNING) {
 					char *sel;
 					free_selspec(nresv->execselect);
-					sel = create_select_from_nspec(nresv->nspec_arr);
+					/* Use orig_nspec_arr over nspec_arr because 
+					 * A) we modified it above in check_vnodes_unavailable() for reconfirmation
+					 * B) it will allow us to map the original select back to the new resv_nodes
+					 */
+					sel = create_select_from_nspec(nresv->orig_nspec_arr);
 					nresv->execselect = parse_selspec(sel);
 					free(sel);
 					release_running_resv_nodes(nresv, nsinfo->nodes);
@@ -1487,9 +1491,6 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					break;
 				}
 			}
-
-			/* unconfirm the reservation to let the process of confirmation go on */
-			nresv->resv->resv_state = RESV_UNCONFIRMED;
 		}
 
 		if (nresv->resv->req_start == PBS_RESV_FUTURE_SCH) { /* ASAP Resv */
@@ -1803,7 +1804,9 @@ check_vnodes_unavailable(resource_resv *resv)
 			 */
 			free_resource_req_list(resv->orig_nspec_arr[j]->resreq);
 			resv->orig_nspec_arr[j]->resreq = dup_resource_req_list(resv->orig_nspec_arr[j]->chk->req);
-		}
+			resv->orig_nspec_arr[j]->sub_seq_num = 1;
+		} else /* Node is available for use */
+			resv->orig_nspec_arr[i]->sub_seq_num = 0;
 	}
 
 	if (has_superchunk) {
@@ -1814,6 +1817,8 @@ check_vnodes_unavailable(resource_resv *resv)
 			remove_ptr_from_array(resv->orig_nspec_arr, chunks_to_remove[i]);
 		}
 	}
+
+	qsort(resv->orig_nspec_arr, count_array(resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec);
 
 	free(chunks_to_remove);
 

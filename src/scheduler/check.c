@@ -766,20 +766,25 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				return NULL;
 		}
 
-		/* if a reservation is unconfirmed or being altered, we can try and confirm it */
-		if ((resresv->is_resv) &&
-			resresv->resv->resv_state != RESV_UNCONFIRMED &&
-			resresv->resv->resv_state != RESV_BEING_ALTERED) {
+		/* There are 3 [sub]states a reservation is in that can be confirmed
+		 * 1) state = RESV_UNCONFIRMED
+		 * 2) state = RESV_BEING_ALTERED
+		 * 3) substate = RESV_DEGRADED
+		 */
+		if (resresv->is_resv && resresv->resv != NULL) {
+			int rstate = resresv->resv->resv_state;
+			int rsubstate = resresv->resv->resv_substate;
+			if (rstate != RESV_UNCONFIRMED && rstate != RESV_BEING_ALTERED && rsubstate != RESV_DEGRADED) {
+				set_schd_error_codes(err, NOT_RUN, NOT_QUEUED);
+				add_err(&prev_err, err);
 
-			set_schd_error_codes(err, NOT_RUN, NOT_QUEUED);
-			add_err(&prev_err, err);
+				if (!(flags & RETURN_ALL_ERR))
+					return NULL;
 
-			if (!(flags & RETURN_ALL_ERR))
-				return NULL;
-
-			err = new_schd_error();
-			if (err == NULL)
-				return NULL;
+				err = new_schd_error();
+				if (err == NULL)
+					return NULL;
+			}
 		}
 	}
 
