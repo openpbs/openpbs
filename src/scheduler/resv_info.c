@@ -410,7 +410,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			char *rrule = NULL;
 			char *tz = NULL;
 			struct tm* loc_time;
-			char start_time[18];
+			char start_time[128];
 			int count = 0;
 			int occr_count; /* occurrences count as reported by execvnodes_seq */
 			int occr_idx = 1; /* the occurrence index of a standing reservation */
@@ -467,6 +467,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resource_resv_array(resresv_arr);
+				free_resource_resv(resresv);
 				free_execvnode_seq(tofree);
 				free(execvnodes_seq);
 				free(execvnode_ptr);
@@ -501,6 +502,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					if (resresv_ocr == NULL) {
 						log_err(errno, __func__, "Error duplicating resource reservation");
 						free_resource_resv_array(resresv_arr);
+						free_resource_resv(resresv);
 						free_execvnode_seq(tofree);
 						free(execvnodes_seq);
 						free(execvnode_ptr);
@@ -549,17 +551,8 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				resresv_arr[idx] = NULL;
 
 				loc_time = localtime(&resresv_ocr->start);
+				strftime(start_time, sizeof(start_time), "%Y%m%d-%H:%M:%S", loc_time);
 
-				if (loc_time == NULL ||
-					strftime(start_time, sizeof(start_time), "%Y%m%d-%H:%M:%S",
-					loc_time) == 0) {
-					free_resource_resv_array(resresv_arr);
-					free_execvnode_seq(tofree);
-					free(execvnodes_seq);
-					free(execvnode_ptr);
-					free_schd_error(err);
-					return NULL;
-				}
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name,
 					"Occurrence %d/%d,%s", occr_idx, count, start_time);
 			}
