@@ -333,11 +333,11 @@ class TestPbsResvAlter(TestFunctional):
                 new_duration_conv = a_duration
 
             if not alter_s and not alter_e:
-                new_end = start + a_duration + shift
+                new_end = start + new_duration_conv + shift
             elif alter_s and not alter_e:
-                new_end = new_start + a_duration
+                new_end = new_start + new_duration_conv
             elif not alter_s and alter_e:
-                new_start = new_end - a_duration
+                new_start = new_end - new_duration_conv
             # else new_start and new_end have already been calculated
         else:
             new_duration_conv = new_end - new_start
@@ -369,26 +369,23 @@ class TestPbsResvAlter(TestFunctional):
 
             if check_log:
                 msg = "Resv;" + r + ";Attempting to modify reservation "
-                if alter_s:
+                if start != new_start:
                     msg += "start="
                     msg += time.strftime(self.fmt,
                                          time.localtime(int(new_start)))
+                    msg += " "
 
-                if alter_e:
-                    if alter_s:
-                        msg += " "
-                        acct_msg += " "
+                if end != new_end:
                     msg += "end="
                     msg += time.strftime(self.fmt,
                                          time.localtime(int(new_end)))
-                    acct_msg += "end="
-                    acct_msg += str(new_end)
+                    msg += " "
 
                 if select:
-                    if alter_s or alter_e:
-                        msg += " "
-                    msg += "select=" + select
+                    msg += "select=" + select + " "
 
+                # strip the last space
+                msg = msg[:-1]
                 self.server.log_match(msg, interval=2, max_attempts=30)
 
             if whichMessage == 1:
@@ -1624,6 +1621,12 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_start, temp_start)
         self.assertEqual(t_duration, new_duration2)
 
+        sleepdur = (temp_end + shift / 2) - time.time()
+        self.logger.info('Sleeping until reservation would have ended')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid, max_attempts=5, offset=sleepdur)
+
     @skipOnCpuSet
     def test_adv_resv_dur_and_endtime_before_start(self):
         """
@@ -1722,8 +1725,8 @@ class TestPbsResvAlter(TestFunctional):
         new_duration = int(time.time()) - int(t_start) - 1
         attr = {'reserve_duration': new_duration}
         self.server.alterresv(rid, attr)
-        self.server.log_match(rid + ";Reservation alter denied",
-                              id=rid, interval=2)
+        msg = "Resv;" + rid + ";Reservation alter confirmed"
+        self.server.log_match(msg, id=rid)
         rid = rid.split('.')[0]
         self.server.log_match(rid + ";deleted at request of pbs_server",
                               id=rid, interval=2)
@@ -2234,3 +2237,29 @@ class TestPbsResvAlter(TestFunctional):
         a = {'Resource_List.select': '8:ncpus=1', 'Resource_List.ncpus': 8,
              'Resource_List.nodect': 8}
         self.server.expect(RESV, a, id=rid)
+
+    def test_resv_resc_assigned(self):
+        """
+        Test that when an ralter -D is issued, the resources on the node
+        are still correct
+        """
+
+        offset = 60
+        dur = 60
+        select = "4:ncpus=1"
+
+        rid, start, end = \
+            self.submit_and_confirm_reservation(offset, dur, select=select)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        sleepdur = start - time.time()
+        self.logger.info('Sleeping until reservation starts')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           offset=sleepdur)
+        self.alter_a_reservation(rid, start, end, a_duration=600,
+                                 confirm=False)
+        self.server.expect(NODE, {'resources_assigned.ncpus': 4},
+                           max_attempts=1, id=resv_node)
