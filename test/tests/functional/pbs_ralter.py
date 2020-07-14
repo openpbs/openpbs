@@ -1725,6 +1725,8 @@ class TestPbsResvAlter(TestFunctional):
         new_duration = int(time.time()) - int(t_start) - 1
         attr = {'reserve_duration': new_duration}
         self.server.alterresv(rid, attr)
+        msg = "Resv;" + rid + ";Reservation alter confirmed"
+        self.server.log_match(msg, id=rid)
         rid = rid.split('.')[0]
         self.server.log_match(rid + ";deleted at request of pbs_server",
                               id=rid, interval=2)
