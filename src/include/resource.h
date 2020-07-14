@@ -80,6 +80,8 @@ enum resc_enum {
 	RESC_LAST
 };
 
+#define RESC_NOOP_DEF "noop"
+
 typedef enum resdef_op {
 	RESDEF_CREATE,
 	RESDEF_UPDATE,
@@ -104,6 +106,7 @@ typedef struct resource_def {
 	unsigned int rs_type : ATRDTYPE;  /* type of resource,see attribute.h */
 	unsigned int rs_entlimflg;	  /* tracking entity limits for this  */
 	struct resource_def *rs_next;
+	unsigned int rs_custom; /* bit flag to indicate custom resource or builtin */
 } resource_def;
 
 struct resc_sum {
@@ -121,20 +124,21 @@ typedef struct svr_entlim_leaf {
 } svr_entlim_leaf_t;
 
 extern struct resc_sum *svr_resc_sum;
-extern resource_def *svr_resc_def;	/* the resource definition array */
-extern int	     svr_resc_size;	/* size (num elements) in above  */
-extern int	     svr_resc_unk;	/* index to "unknown" resource   */
+extern void *resc_attrdef_idx;
+extern resource_def *svr_resc_def; /* the resource definition array */
+extern int svr_resc_size;	   /* size (num elements) in above  */
+extern int svr_resc_unk;	   /* index to "unknown" resource   */
 
-extern resource     *add_resource_entry(attribute *, resource_def *);
-extern resource_def *find_resc_def(resource_def *, char *, int);
-extern resource     *find_resc_entry(const attribute *, resource_def *);
-extern int          is_builtin(resource_def *rscdef);
-extern int           update_resource_def_file(char *name, resdef_op_t op, int type, int perms);
-extern int           add_resource_def(char *name, int type, int perms);
-extern int          restart_python_interpreter(const char *);
-extern long long     to_kbsize(char *val);
-extern int   alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf);
-extern int  parse_resc_type(char *val, int *resc_type_p);
+extern resource *add_resource_entry(attribute *, resource_def *);
+extern int cr_rescdef_idx(resource_def *resc_def, int limit);
+extern resource_def *find_resc_def(resource_def *, char *);
+extern resource *find_resc_entry(const attribute *, resource_def *);
+extern int update_resource_def_file(char *name, resdef_op_t op, int type, int perms);
+extern int add_resource_def(char *name, int type, int perms);
+extern int restart_python_interpreter(const char *);
+extern long long to_kbsize(char *val);
+extern int alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf);
+extern int parse_resc_type(char *val, int *resc_type_p);
 extern int  parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p);
 extern int verify_resc_name(char *name);
 extern int verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, char *rescname, char *buf, int buflen, int autocorrect);

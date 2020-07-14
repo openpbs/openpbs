@@ -2940,7 +2940,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 				strncpy(the_resc, resc, sizeof(the_resc)-1);
 				if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
 
-					if ((rescdef=find_resc_def(svr_resc_def, resc, svr_resc_size)) == NULL) {
+					if ((rescdef = find_resc_def(svr_resc_def, resc)) == NULL) {
 						/* not a builtin or previously defined resource */
 						py_resc = PyObject_GetAttrString(py_val, resc); /* NEW */
 
@@ -7682,7 +7682,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				break; /* ok to modify queue under qsub */
 			}
 
-			attr_idx = find_attr(job_attr_def, name, JOB_ATR_LAST);
+			attr_idx = find_attr(job_attr_idx, job_attr_def, name);
 			if (attr_idx == -1) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1,
 					"job attribute '%s' not found", name);
@@ -7705,7 +7705,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				}
 			}
 			if (resource && (resource[0] != '\0')) {
-				rscdef = find_resc_def(svr_resc_def, resource, svr_resc_size);
+				rscdef = find_resc_def(svr_resc_def, resource);
 				if (!rscdef) {
 					snprintf(log_buffer, LOG_BUF_SIZE-1,
 						"resource attribute '%s' not found",
@@ -7833,7 +7833,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 					log_buffer);
 				goto IAVS_ERROR_EXIT;
 			}
-			attr_idx = find_attr(resv_attr_def, name, RESV_ATR_LAST);
+			attr_idx = find_attr(resv_attr_idx, resv_attr_def, name);
 			if (attr_idx == -1) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1,
 					"resv attribute '%s' not found", name);
@@ -7852,7 +7852,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				goto IAVS_ERROR_EXIT;
 			}
 			if (resource && (resource[0] != '\0')) {
-				rscdef = find_resc_def(svr_resc_def, resource, svr_resc_size);
+				rscdef = find_resc_def(svr_resc_def, resource);
 
 				if (!rscdef) {
 					snprintf(log_buffer, LOG_BUF_SIZE-1,
@@ -8465,7 +8465,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 
 		} else if (is_v == 2) { /* go to job table to validate */
 
-			attr_idx = find_attr(job_attr_def, name, JOB_ATR_LAST);
+			attr_idx = find_attr(job_attr_idx, job_attr_def, name);
 			if (attr_idx == -1) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1, "job attribute %s not found", name);
 				log_buffer[LOG_BUF_SIZE-1] = '\0';
@@ -8497,7 +8497,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 	} else if (strcmp(table, PY_RESOURCE) == 0) {
 		resource_def *rescdef;
 
-		rescdef = find_resc_def(svr_resc_def, name, svr_resc_size);
+		rescdef = find_resc_def(svr_resc_def, name);
 		if (!rescdef) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "resource attribute %s not found", name);
 			log_buffer[LOG_BUF_SIZE-1] = '\0';
@@ -8538,7 +8538,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 			goto validate_input_error_exit;
 		} else if (is_v == 2) {	 /* go to resv table to validate */
 
-			attr_idx = find_attr(resv_attr_def, name, RESV_ATR_LAST);
+			attr_idx = find_attr(resv_attr_idx, resv_attr_def, name);
 			if (attr_idx == -1) {
 				snprintf(log_buffer, LOG_BUF_SIZE-1, "reservation attribute %s not found", name);
 				log_buffer[LOG_BUF_SIZE-1] = '\0';
@@ -8566,7 +8566,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 			}
 		}
 	} else if (strcmp(table, PY_TYPE_SERVER) == 0) {
-		attr_idx = find_attr(svr_attr_def, name, SVR_ATR_LAST);
+		attr_idx = find_attr(svr_attr_idx, svr_attr_def, name);
 		if (attr_idx == -1) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "server attribute %s not found", name);
 			log_buffer[LOG_BUF_SIZE-1] = '\0';
@@ -8593,7 +8593,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 			}
 		}
 	} else if (strcmp(table, PY_TYPE_QUEUE) == 0) {
-		attr_idx = find_attr(que_attr_def, name, QA_ATR_LAST);
+		attr_idx = find_attr(que_attr_idx, que_attr_def, name);
 		if (attr_idx == -1) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "queue attribute %s not found", name);
 			log_buffer[LOG_BUF_SIZE-1] = '\0';
@@ -9435,9 +9435,8 @@ _pbs_python_do_vnode_set(void)
 
 		plist = (svrattrl *)GET_NEXT(vn_set_req->rq_attr);
 
-		rc = mgr_set_attr(pnode->nd_attr, node_attr_def, ND_ATR_LAST,
-			plist, ATR_PERM_ALLOW_INDIRECT,
-			&bad, (void *)pnode, ATR_ACTION_ALTER);
+		rc = mgr_set_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST,
+			plist, ATR_PERM_ALLOW_INDIRECT, &bad, (void *)pnode, ATR_ACTION_ALTER);
 
 		if (rc != 0) {
 			char	*pbse_err;

@@ -214,6 +214,13 @@ src/include/pbs_version.h
 src/include/pbs_config.h
 src/include/pbs_config.h.in
 src/include/pbs_config.h.in~
+src/include/job_attr_enum.h
+src/include/node_attr_enum.h
+src/include/queue_attr_enum.h
+src/include/resc_def_enum.h
+src/include/resv_attr_enum.h
+src/include/sched_attr_enum.h
+src/include/svr_attr_enum.h
 src/lib/Libattr/queue_attr_def.c
 src/lib/Libattr/resc_def_all.c
 src/lib/Libattr/resv_attr_def.c

@@ -113,7 +113,7 @@ typedef struct _node {
 
 typedef struct {
 	int __ix_keylength;
-	int __ix_dupkeys;    /* set from AVL_IX_DESC */
+	int __ix_flags;    /* set from AVL_IX_DESC */
 	int __rec_keylength; /* set from actual key */
 	int __node_overhead;
 
@@ -169,7 +169,7 @@ get_avl_tls(void)
 }
 
 #define ix_keylength  (((avl_tls_t *) get_avl_tls())->__ix_keylength)
-#define ix_dupkeys    (((avl_tls_t *) get_avl_tls())->__ix_dupkeys)
+#define ix_flags   (((avl_tls_t *) get_avl_tls())->__ix_flags)
 #define rec_keylength (((avl_tls_t *) get_avl_tls())->__rec_keylength)
 #define node_overhead (((avl_tls_t *) get_avl_tls())->__node_overhead)
 #define avl_t	      (((avl_tls_t *) get_avl_tls())->__t)
@@ -219,8 +219,17 @@ freenode(node *n)
 static int
 compkey(rectype *r1, rectype *r2)
 {
-	int n = ix_keylength ? memcmp(r1->key, r2->key, ix_keylength) : strcmp(r1->key, r2->key);
-	if (n || ix_dupkeys == AVL_NO_DUP_KEYS)
+	int n;
+	if (ix_keylength)
+		n = memcmp(r1->key, r2->key, ix_keylength);
+	else {
+		if (ix_flags & AVL_CASE_CMP)
+			n = strcasecmp(r1->key, r2->key);
+		else
+			n = strcmp(r1->key, r2->key);
+	}
+
+	if (n || !(ix_flags & AVL_DUP_KEYS_OK))
 		return n;
 	return memcmp(&(r1->recptr), &(r2->recptr), sizeof(AVL_RECPOS));
 }
@@ -262,7 +271,7 @@ allocnode()
 		fprintf(stderr, "avltrees: out of memory\n");
 		return NULL;
 	}
-	if (ix_dupkeys != AVL_NO_DUP_KEYS)
+	if (ix_flags & AVL_DUP_KEYS_OK)
 		n->data.count = 1;
 	return n;
 }
@@ -588,7 +597,7 @@ avltree_clear(node **tt)
  *	create index for the tree.
  *
  * @param[in] pix - record
- * @param[in] dup - value indicating whether to allow dup records.
+ * @param[in] flags - 0x01 - dups allowed, 0x02 - case insensitive search
  * @param[in] keylength - key length
  *
  * @return	error code
@@ -597,19 +606,15 @@ avltree_clear(node **tt)
  *
  */
 int
-avl_create_index(AVL_IX_DESC *pix, int dup, int keylength)
+avl_create_index(AVL_IX_DESC *pix, int flags, int keylength)
 {
-	if (dup != AVL_NO_DUP_KEYS && dup != AVL_DUP_KEYS_OK) {
-		fprintf(stderr, "create_index 'dup'=%d: programming error\n", dup);
-		return 1;
-	}
 	if (keylength < 0) {
 		fprintf(stderr, "create_index 'keylength'=%d: programming error\n", keylength);
 		return 1;
 	}
 	pix->root = NULL;
 	pix->keylength = keylength;
-	pix->dup_keys = dup;
+	pix->flags = flags;
 
 	return 0;
 }
@@ -648,7 +653,7 @@ avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 	rectype *ptr;
 
 	ix_keylength = pix->keylength;
-	ix_dupkeys = pix->dup_keys;
+	ix_flags = pix->flags;
 
 	memset((void *) &(pe->recptr), 0, sizeof(AVL_RECPOS));
 	ptr = avltree_search((node **) &(pix->root), pe,
@@ -679,7 +684,7 @@ int
 avl_add_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 {
 	ix_keylength = pix->keylength;
-	ix_dupkeys = pix->dup_keys;
+	ix_flags = pix->flags;
 	if (ix_keylength == 0)
 		rec_keylength = strlen(pe->key) + 1;
 	if (avltree_insert((node **) &(pix->root), pe) == NULL)
@@ -705,7 +710,7 @@ avl_delete_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 	rectype *ptr;
 
 	ix_keylength = pix->keylength;
-	ix_dupkeys = pix->dup_keys;
+	ix_flags = pix->flags;
 
 	ptr = avltree_search((node **) &(pix->root), pe, SRF_FINDEQUAL | SRF_SETMARK);
 	if (ptr == NULL)
@@ -745,7 +750,7 @@ avl_next_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 {
 	rectype *ptr;
 	ix_keylength = pix->keylength;
-	ix_dupkeys = pix->dup_keys;
+	ix_flags = pix->flags;
 
 	if ((ptr = avltree_search((node **) &(pix->root),
 				  pe, /* pe not used */

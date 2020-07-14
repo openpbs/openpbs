@@ -46,42 +46,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"
 #include "pbs_error.h"
 #include "libpbs.h"
+#include "pbs_idx.h"
 
 /**
- * @file	attr_func.c
+ *
  * @brief
  * 	This file contains general functions for manipulating attributes and attribute lists.
  *
- * @par Included are:
- *	clear_attr()
- *	find_attr()
- *	free_null()
- *	attrlist_alloc()
- *	attrlist_create()
- *	free_attrlist()
- *	parse_equal_string()
- *	parse_comma_string()
- *	count_substrings()
- *	add_to_svrattrl_list()
- *	add_to_svrattrl_list_sorted()
- *	copy_svrattrl_list()
- *	find_svrattrl_list_entry()
- *	get_svrattrl_flag()
- *	compare_svrattrl_list()
- *	svrattrl_to_str_array()
- *	str_array_to_svrattrl()
- *	str_array_to_str()
- *	env_array_to_str()
- *	str_to_str_array()
- *	free_str_array()
- *	strtok_quoted()
- *
- * The prototypes are declared in "attribute.h"
  */
 
 /**
@@ -113,34 +90,66 @@ clear_attr(attribute *pattr, struct attribute_def *pdef)
 
 /**
  * @brief
- * 	find_attr - find attribute definition by name
+ * 	Create the search index for the provided attribute def array
+ *
+ * @param[in] attr_def - ptr to attribute definitions
+ * @param[in] limit - limit on size of def array
+ *
+ * @return	void *
+ * @retval	 NULL	Failure
+ * @retval	!NULL	The address of the search index created
+ *
+ */
+void *
+cr_attrdef_idx(struct attribute_def *adef, int limit)
+{
+	int i;
+	void *attrdef_idx = NULL;
+
+	if (!adef)
+		return NULL;
+
+	/* create the attribute index */
+	if ((attrdef_idx = pbs_idx_create(PBS_IDX_ICASE_CMP, 0)) == NULL)
+		return NULL;
+
+	/* add all attributes to the tree with key as the attr name */
+	for (i = 0; i < limit; i++) {
+		if (pbs_idx_insert(attrdef_idx, adef->at_name, adef) != PBS_IDX_RET_OK)
+			return NULL;
+		
+		adef++;
+	}
+	return attrdef_idx;
+}
+
+
+/**
+ * @brief
+ * 	find attribute definition by name
  *
  *	Searches array of attribute definition strutures to find one
  *	whose name matches the requested name.
  *
+ * @param[in] attr_idx - search index of the attribute def array
  * @param[in] attr_def - ptr to attribute definitions
  * @param[in] name - attribute name to find
- * @param[in] limit - limit on size of def array
  *
  * @return	int
  * @retval	>=0	index into definition struture array
  * @retval	-1	if didn't find matching name
  *
  */
-
 int
-find_attr(struct attribute_def *attr_def, char *name, int limit)
+find_attr(void *attrdef_idx, struct attribute_def *attr_def, char *name)
 {
-	int index;
+	int index = -1;
+	struct attribute_def *found_def = NULL;
 
-	if (attr_def) {
-		for (index = 0; index < limit; index++) {
-			if (!strcasecmp(attr_def->at_name, name))
-				return (index);
-			attr_def++;
-		}
-	}
-	return (-1);
+	if (pbs_idx_find(attrdef_idx, (void **) &name, (void **)&found_def, NULL) == PBS_IDX_RET_OK)
+		index = (found_def - attr_def);
+		
+	return index;
 }
 
 /**

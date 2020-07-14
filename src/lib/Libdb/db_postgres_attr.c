@@ -59,7 +59,9 @@
  */
 #define INIT_BUF_SIZE 1000
 
-#define   TEXTOID   25
+#define TEXTOID   25
+#define DBARRAY_BUF_LEN 4096
+#define DBARRAY_BUF_INC 1024
 
 struct str_data {
 	int32_t len;
@@ -237,36 +239,27 @@ dbarray_to_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list)
  *
  * @return      Error code
  * @retval	-1 - On Error
- * @retval	 0 - On Success
+ * @retval	 length of array - On Success
  *
  */
 int
 attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_only)
 {
-	struct pg_array *array;
-	int len = 0;
+	/* use static variables to improve performance by not allocating memory for each object save */
+	static struct pg_array *array = NULL, *tmp;
+	static int len = sizeof(struct pg_array) + DBARRAY_BUF_LEN;
 	struct str_data *val = NULL;
-	int attr_val_len = 0;
 	svrattrl *pal;
-	int count = 0;
-
-	len = sizeof(struct pg_array);
-	for (pal = (svrattrl *)GET_NEXT(attr_list->attrs); pal != NULL; pal = (svrattrl *)GET_NEXT(pal->al_link)) {
-		len += sizeof(int32_t) + PBS_MAXATTRNAME + PBS_MAXATTRRESC + 1; /* include space for dot */
-		if (keys_only)
-			attr_val_len = 0;
-		else
-			attr_val_len = (pal->al_atopl.value == NULL ? 0 : strlen(pal->al_atopl.value));
-		len += sizeof(int32_t) + 3 + attr_val_len + 1; /* include space for dot */
-		count++;
+	char *p;
+	int spc_avl, spc_req;
+	/* (len_field * 2) + PBS_MAXATTRNAME + PBS_MAXATTRRESC + max 3 digits flags +  2 dots + 1 null terminator */
+	static int fixed_part_req = (sizeof(int32_t) * 2) + PBS_MAXATTRNAME + PBS_MAXATTRRESC + 3  + 2  + 1; 
+	
+	if (!array) {
+		array = malloc(len);
+		if (!array)
+			return -1;
 	}
-
-	if (count != attr_list->attr_count)
-		return -1;
-
-	array = malloc(len);
-	if (!array)
-		return -1;
 
 	array->ndim = htonl(1);
 	array->off = 0;
@@ -281,16 +274,33 @@ attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys
 	val = (struct str_data *)((char *) array + sizeof(struct pg_array));
 
 	for (pal = (svrattrl *)GET_NEXT(attr_list->attrs); pal != NULL; pal = (svrattrl *)GET_NEXT(pal->al_link)) {
-		sprintf(val->str, "%s.%s", pal->al_atopl.name, ((pal->al_atopl.resource == NULL) ? "" : pal->al_atopl.resource));
-		val->len = htonl(strlen(val->str));
+		spc_avl =  len - ((char *) val - (char *) array);
+		spc_req = fixed_part_req + (pal->al_atopl.value ? strlen(pal->al_atopl.value) : 0); /* value can have arbitrary length */
+		if (spc_avl <= spc_req) {
+			len += (spc_req > DBARRAY_BUF_LEN) ? spc_req : DBARRAY_BUF_LEN;
+			tmp = realloc(array, len);
+			if (!tmp)
+				return -1;
 
-		val = (struct str_data *)(val->str + ntohl(val->len)); /* point to end */
+			val = (struct str_data *) ((char *) val + ((char *) tmp - (char *) array)); /* move val since array moved */	
+			array = tmp;
+		}
+		p = pbs_strcpy(val->str, pal->al_atopl.name);
+		if (pal->al_atopl.resource && pal->al_atopl.resource[0] != '\0') {
+			*p++ = '.';
+			p = pbs_strcpy(p, pal->al_atopl.resource);
+		}
+		val->len = htonl(p - val->str);
+		val = (struct str_data *) p; /* p is already pointing to the end */
 
 		if (keys_only == 0) {
-			sprintf(val->str, "%d.%s", pal->al_flags, ((pal->al_atopl.value == NULL) ? "" : pal->al_atopl.value));
-			val->len = htonl(strlen(val->str));
-
-			val = (struct str_data *)(val->str + ntohl(val->len)); /* point to end */
+			p = pbs_strcpy(val->str, uLTostr(pal->al_flags, 10)); /* can't fail; uLtostr has buffer for long, we pass very small value */ 
+			if (pal->al_atopl.value && pal->al_atopl.value[0] != '\0') {
+				*p++ = '.';
+				p = pbs_strcpy(p, pal->al_atopl.value);
+			}
+			val->len = htonl(p - val->str);
+			val = (struct str_data *) p; /* p is already pointing to the end */
 		}
 	}
 	*raw_array = (char *) array;

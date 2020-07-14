@@ -53,6 +53,7 @@
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"
+#include "pbs_idx.h"
 
 
 /**
@@ -92,7 +93,7 @@ int comp_resc_gt;	/* count of resources compared > */
 int comp_resc_eq;	/* count of resources compared = */
 int comp_resc_lt;	/* count of resources compared < */
 int comp_resc_nc;	/* count of resources not compared  */
-
+void *resc_attrdef_idx = NULL;
 
 /**
  * @brief
@@ -127,7 +128,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 		CLEAR_HEAD(patr->at_val.at_list);
 
 
-	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL) {
 		/*
 		 * didn't find resource with matching name, use unknown;
@@ -453,72 +454,60 @@ free_resc(attribute *pattr)
 
 /**
  * @brief
- * 	find_resc_def - find the resource_def structure for a resource with
- *	a given name
+ * 	 create the search index for resource deinitions
  *
  * @param[in] rscdf - address of array of resource_def structs
- * @param[in] name - name of resource
  * @param[in] limit - number of members in resource_def array
  *
- * @return	pointer to structure
- * @retval	pointer to resource_def structure	Success
- * @retval	NULL					Error
+ * @return	error code
+ * @retval	0  - Success
+ * @retval	-1 - Failure
  *
  */
-
-resource_def *
-find_resc_def(resource_def *rscdf, char *name, int limit)
+int
+cr_rescdef_idx(resource_def *resc_def, int limit)
 {
-	if (rscdf == NULL || name == NULL)
-		return NULL;
+	int i;
 
-	while (limit--) {
-		if (strcasecmp(rscdf->rs_name, name) == 0)
-			return (rscdf);
-		rscdf = rscdf->rs_next;
+	if (!resc_def)
+		return -1;
+
+	/* create the attribute index */
+	if ((resc_attrdef_idx = pbs_idx_create(PBS_IDX_ICASE_CMP, 0)) == NULL)
+		return -1;
+
+	/* add all attributes to the tree with key as the attr name */
+	for (i = 0; i < limit; i++) {
+		if (strcmp(resc_def->rs_name, RESC_NOOP_DEF) != 0) {
+			if (pbs_idx_insert(resc_attrdef_idx, resc_def->rs_name, resc_def) != PBS_IDX_RET_OK)
+				return -1;
+		}
+		resc_def++;
 	}
-	return NULL;
+	return 0;
 }
 
 /**
  * @brief
- *	Determines if a resource is a PBS built-in or user custom
+ * 	find the resource_def structure for a resource with a given name
  *
  * @param[in] rscdf - address of array of resource_def structs
+ * @param[in] name - name of resource
  *
- * @return	int
- * @retval 	1 	if built-in
- * @retval 	0 	if custom
- * @retval 	-1 	on error
+ * @return	pointer to structure
+ * @retval	pointer to resource_def structure - Success
+ * @retval	NULL - Error
  *
  */
-int
-is_builtin(resource_def *rscdef)
+resource_def *
+find_resc_def(resource_def *resc_def, char *name)
 {
-	int i;
-	resource_def *svr_rsdef;
-	int builtin_resc = 1;
+	resource_def *found_def = NULL, *def = NULL;
 
-	if (rscdef == NULL) {
-		return -1;
-
-	}
-	for (i=0, svr_rsdef=svr_resc_def; i < svr_resc_size; i++) {
-		/* the |unknown| resource is the delimiter between builtins
-		 * and custom
-		 */
-		if (strcmp(svr_rsdef->rs_name, RESOURCE_UNKNOWN) == 0) {
-			builtin_resc = 0;
-		}
-		else if (strcasecmp(svr_rsdef->rs_name, rscdef->rs_name) == 0) {
-			if (builtin_resc) {
-				return 1;
-			}
-			return 0;
-		}
-		svr_rsdef = svr_rsdef->rs_next;
-	}
-	return -1;
+	if (pbs_idx_find(resc_attrdef_idx, (void **) &name, (void **)&found_def, NULL) == PBS_IDX_RET_OK)
+		def = &resc_def[found_def - resc_def];
+		
+	return def;
 }
 
 /**

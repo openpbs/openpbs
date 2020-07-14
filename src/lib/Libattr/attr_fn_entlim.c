@@ -147,13 +147,13 @@ dup_svr_entlim_leaf(svr_entlim_leaf_t *orig)
 int
 alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf)
 {
-	struct resource_def	*prdef;
-	svr_entlim_leaf_t	*plf;
+	resource_def *prdef;
+	svr_entlim_leaf_t *plf;
 
 	if (resc_name == NULL) /* use "ncpus" resource_def for the various functions	*/
 		prdef = &svr_resc_def[RESC_NCPUS];
 	else
-		prdef = find_resc_def(svr_resc_def, resc_name, svr_resc_size);
+		prdef = find_resc_def(svr_resc_def, resc_name);
 
 	if (prdef == NULL)
 		return PBSE_UNKRESC;
@@ -351,7 +351,7 @@ decode_entlim_res(struct attribute *patr, char *name, char *rescn, char *val)
 		return (PBSE_INTERNAL);
 	if (rescn == NULL)
 		return (PBSE_UNKRESC);
-	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL) {
 		/*
 		 * didn't find resource with matching name
@@ -850,7 +850,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 						if (entlim_resc_from_key(key, rsbuf, PBS_MAX_RESC_NAME) == 0) {
 
 							/* find compare function for this resource */
-							prdef=find_resc_def(svr_resc_def, rsbuf, svr_resc_size);
+							prdef=find_resc_def(svr_resc_def, rsbuf);
 							if (prdef)
 								compf = prdef->rs_comp;
 							else

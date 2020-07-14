@@ -179,13 +179,14 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 /*
  * status_attrib - add each requested or all attributes to the status reply
  *
- * @param[in,out]	pal	-	specific attributes to status
- * @param[in]	padef	-	attribute defenition structure
+ * @param[in,out]	pal 	-	specific attributes to status
+ * @param[in]		pidx 	-	Search index of the attribute array
+ * @param[in]		padef	-	attribute definition structure
  * @param[in,out]	pattr	-	attribute structure
- * @param[in]	limit	-	limit on size of def array
- * @param[in]	priv	-	user-client privilege
+ * @param[in]		limit	-	limit on size of def array
+ * @param[in]		priv	-	user-client privilege
  * @param[in,out]	phead	-	pbs_list_head
- * @param[out]	bad	-	RETURN: index of first bad attribute
+ * @param[out]		bad 	-	RETURN: index of first bad attribute
  *
  * @return	int
  * @retval	0	: success
@@ -193,7 +194,7 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
  */
 
 int
-status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, int priv, pbs_list_head *phead, int *bad)
+status_attrib(svrattrl *pal, void *pidx, attribute_def *padef, attribute *pattr, int limit, int priv, pbs_list_head *phead, int *bad)
 {
 	int   index;
 	int   nth = 0;
@@ -206,7 +207,7 @@ status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, 
 	if (pal) {		/* client specified certain attributes */
 		while (pal) {
 			++nth;
-			index = find_attr(padef, pal->al_name, limit);
+			index = find_attr(pidx, padef, pal->al_name);
 			if (index < 0) {
 				*bad = nth;
 				return (-1);
@@ -216,9 +217,7 @@ status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, 
 			}
 			pal = (svrattrl *)GET_NEXT(pal->al_link);
 		}
-
 	} else {	/* non specified, return all readable attributes */
-
 		for (index = 0; index < limit; index++) {
 			if ((padef+index)->at_flags & priv) {
 				svrcached(pattr+index, phead, padef+index);
@@ -305,8 +304,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	/* add attributes to the status reply */
 
 	*bad = 0;
-	if (status_attrib(pal, job_attr_def, pjob->ji_wattr, JOB_ATR_LAST,
-		preq->rq_perm, &pstat->brp_attr, bad))
+	if (status_attrib(pal, job_attr_idx, job_attr_def, pjob->ji_wattr, JOB_ATR_LAST, preq->rq_perm, &pstat->brp_attr, bad))
 		return (PBSE_NOATTR);
 
 	/* reset eligible time, it was calctd on the fly, real calctn only when accrue_type changes */
@@ -458,8 +456,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 		/* 	 not correctly check ATR_VFLAG_SET */
 	}
 
-	if (status_attrib(pal, job_attr_def, pjob->ji_wattr, limit,
-		preq->rq_perm, &pstat->brp_attr, bad))
+	if (status_attrib(pal, job_attr_idx, job_attr_def, pjob->ji_wattr, limit, preq->rq_perm, &pstat->brp_attr, bad))
 		rc =  PBSE_NOATTR;
 
 	/* Set the parent state back to what it really is */

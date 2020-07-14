@@ -53,7 +53,7 @@ typedef struct _iter_ctx {
  * @brief
  *	Create an empty index
  *
- * @param[in] - dups   - Whether duplicates are allowed or not in index
+ * @param[in] - flags  - index flags like duplicates allowed, or case insensitive compare
  * @param[in] - keylen - length of key in index (can be 0 for default size)
  *
  * @return void *
@@ -62,7 +62,7 @@ typedef struct _iter_ctx {
  *
  */
 void *
-pbs_idx_create(int dups, int keylen)
+pbs_idx_create(int flags, int keylen)
 {
 	void *idx = NULL;
 
@@ -70,7 +70,7 @@ pbs_idx_create(int dups, int keylen)
 	if (idx == NULL)
 		return NULL;
 
-	if (avl_create_index(idx, dups, keylen)) {
+	if (avl_create_index(idx, flags, keylen)) {
 		free(idx);
 		return NULL;
 	}

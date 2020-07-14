@@ -151,7 +151,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 		free_rcost(patr);
 	}
 
-	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL)
 		return (PBSE_UNKRESC);
 	pcost = (struct resource_cost *)GET_NEXT(patr->at_val.at_list);

@@ -1029,8 +1029,7 @@ req_modifyjob(struct batch_request *preq)
 
 	/* call attr_atomic_set to decode and set a copy of the attributes */
 
-	rc = attr_atomic_set(plist, pattr, newattr, job_attr_def, JOB_ATR_LAST,
-		-1, ATR_DFLAG_MGWR | ATR_DFLAG_MOM, &bad);
+	rc = attr_atomic_set(plist, pattr, newattr, job_attr_idx, job_attr_def, JOB_ATR_LAST, -1, ATR_DFLAG_MGWR | ATR_DFLAG_MOM, &bad);
 	if (rc) {
 		/* leave old values, free the new ones */
 		for (i=0; i<JOB_ATR_LAST; i++)

@@ -695,8 +695,8 @@ get_attr_type(struct ecl_attribute_def attr_def)
  *
  * @par MT-safe: Yes
  */
-struct ecl_attribute_def *ecl_find_resc_def(
-	struct ecl_attribute_def *rscdf, char *name, int limit)
+struct ecl_attribute_def *
+ecl_find_resc_def(struct ecl_attribute_def *rscdf, char *name, int limit) 
 {
 	while (limit--) {
 		if (strcasecmp(rscdf->at_name, name) == 0)

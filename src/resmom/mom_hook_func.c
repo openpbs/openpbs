@@ -2460,8 +2460,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					    		ATR_DFLAG_Creat;
 
 				/* identify the attribute by name */
-				index = find_attr(job_attr_def, name_str,
-					JOB_ATR_LAST);
+				index = find_attr(job_attr_idx, job_attr_def, name_str);
 				if (index < 0) { /* didn`t recognize the name */
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s' unrecognized attrbute name %s!",
@@ -2545,21 +2544,18 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						continue;
 					}
 
-					plist = (svrattrl *)GET_NEXT(\
-				      	     prsc->rs_value.at_val.at_list);
+					plist = (svrattrl *)GET_NEXT(prsc->rs_value.at_val.at_list);
 
 					do {
 						if (plist == NULL)
 							break;
 
-						plist_next = (svrattrl *)GET_NEXT(\
-							   plist->al_link);
+						plist_next = (svrattrl *)GET_NEXT(plist->al_link);
 
 						/* check for duplicate resource */
 						/* entry. The later ones take */
 						/* precedence */
-						plist2 = (svrattrl *)GET_NEXT(\
-							plist->al_link);
+						plist2 = (svrattrl *)GET_NEXT(plist->al_link);
 						while (plist2 != NULL) {
 							if (strcmp(plist->al_resc,
 								plist2->al_resc) == 0) {
@@ -2567,8 +2563,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 								free(plist);
 								break;
 							}
-							plist2 = (svrattrl *)GET_NEXT(\
-							   plist2->al_link);
+							plist2 = (svrattrl *)GET_NEXT(plist2->al_link);
 						}
 
 						plist = plist_next;
@@ -2581,8 +2576,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					resource_def 	*rd;
 					resource	*pres;
 
-					rd = find_resc_def(svr_resc_def,
-						resc_str, svr_resc_size);
+					rd = find_resc_def(svr_resc_def, resc_str);
 					if (rd != NULL) {
 						pres = find_resc_entry(
 							&pjob2->ji_wattr[index],
@@ -2728,8 +2722,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				rs_flag = READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM;
 				if ((p2=strrchr(name_str, '.')) != NULL) {
 					p2++;
-					prdef = find_resc_def(svr_resc_def,
-						p2, svr_resc_size);
+					prdef = find_resc_def(svr_resc_def, p2);
 					if (prdef == NULL) { /* a custom resource */
 						if (value_type != NULL) {
 							if (strcmp(value_type, "boolean") == 0) {

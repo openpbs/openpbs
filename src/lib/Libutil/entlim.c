@@ -63,7 +63,7 @@ entlim_initialize_ctx(void)
 	if (pctx == NULL)
 		return NULL;
 	pctx->idx_ctx = NULL;
-	pctx->idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0);
+	pctx->idx = pbs_idx_create(0, 0);
 	if (pctx->idx == NULL) {
 		free(pctx);
 		return NULL;

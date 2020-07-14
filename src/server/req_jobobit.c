@@ -1943,8 +1943,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			if (strcmp(patlist->al_name, ATTR_used_update) == 0)
 				continue;
 
-			tmpdef = find_resc_def(svr_resc_def, patlist->al_resc, svr_resc_size);
-
+			tmpdef = find_resc_def(svr_resc_def, patlist->al_resc);
 			if (tmpdef == NULL)
 				continue;
 

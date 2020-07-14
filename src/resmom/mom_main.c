@@ -599,7 +599,7 @@ static struct specials addspecial[] = {
 	{ NULL, NULL }
 };
 
-
+void *job_attr_idx = NULL;
 char	*log_file = NULL;
 char	*path_log;
 
@@ -1293,7 +1293,7 @@ initialize(void)
 	 *	Check that there are no bad combinations of sharing values
 	 *	across the vnodes.
 	 */
-	if ((temp_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+	if ((temp_idx = pbs_idx_create(0, 0)) == NULL) {
 		log_err(-1, __func__, "Failed to create index for checking sharing value on vnodes");
 		die(0);
 	}
@@ -8601,6 +8601,14 @@ main(int argc, char *argv[])
 
 #endif /* !WIN32 */
 
+	if ((job_attr_idx = cr_attrdef_idx(job_attr_def, JOB_ATR_LAST)) == NULL) {
+		log_err(errno, __func__, "Failed creating job attribute search index");
+		return (-1);
+	}
+	if (cr_rescdef_idx(svr_resc_def, svr_resc_size) != 0) {
+		log_err(errno, __func__, "Failed creating resc definition search index");
+		return (-1);
+	}
 
 	/* initialize pointers in resource_def array */
 	for (i = 0; i < (svr_resc_size - 1); ++i)
@@ -9100,7 +9108,7 @@ main(int argc, char *argv[])
 
 	/* initialize variables */
 
-	if ((jobs_idx = pbs_idx_create(PBS_IDX_DUPS_NOT_OK, 0)) == NULL) {
+	if ((jobs_idx = pbs_idx_create(0, 0)) == NULL) {
 		log_err(-1, __func__, "Creating jobs index failed!");
 		fprintf(stderr, "Creating jobs index failed!\n");
 		return (-1);
