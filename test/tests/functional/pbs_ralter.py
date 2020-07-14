@@ -333,11 +333,11 @@ class TestPbsResvAlter(TestFunctional):
                 new_duration_conv = a_duration
 
             if not alter_s and not alter_e:
-                new_end = start + a_duration + shift
+                new_end = start + new_duration_conv + shift
             elif alter_s and not alter_e:
-                new_end = new_start + a_duration
+                new_end = new_start + new_duration_conv
             elif not alter_s and alter_e:
-                new_start = new_end - a_duration
+                new_start = new_end - new_duration_conv
             # else new_start and new_end have already been calculated
         else:
             new_duration_conv = new_end - new_start
@@ -2259,10 +2259,7 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV,
                            {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
                            offset=sleepdur)
-
-        self.server.alterresv(rid, {ATTR_resv_duration: '10:00'})
-        self.server.expect(RESV,
-                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
-                           id=rid, max_attempts=5)
+        self.alter_a_reservation(rid, start, end, a_duration=600,
+                                 confirm=False)
         self.server.expect(NODE, {'resources_assigned.ncpus': 4},
                            max_attempts=1, id=resv_node)
