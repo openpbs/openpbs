@@ -163,6 +163,11 @@ class TestReservations(TestFunctional):
         self.assertEquals(set(self.server.reservations[rid].get_vnodes()),
                           {resv_node_list[1], other_node},
                           "Node not replaced correctly")
+        if run:
+            a = {'resources_assigned.ncpus': 0}
+            self.server.expect(NODE, a, id=resv_node)
+            a = {'resources_assigned.ncpus=1': 2}
+            self.server.expect(NODE, a)
 
     def degraded_resv_failed_reconfirm(self, start, end, rrule=None,
                                        run=False, resume=False):
