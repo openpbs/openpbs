@@ -8330,10 +8330,6 @@ class Server(PBSService):
                             str(offset))
             time.sleep(offset)
 
-        if trigger_sched_cycle and attempt == 0:
-            self.manager(MGR_CMD_SET,
-                         SERVER, {'scheduling': 'True'}, sudo=True)
-
         if attrib is None:
             attrib = {}
 
@@ -8361,6 +8357,12 @@ class Server(PBSService):
                 d[l] = ''
             attrib = d
 
+        # run custom actions defined for this object type
+        if trigger_sched_cycle and self.actions:
+                    for act_obj in self.actions.get_actions_by_type(obj_type):
+                        if act_obj.enabled:
+                            act_obj.action(self, obj_type, attrib, id, op,
+                                           attrop)
         # Add check for substate=42 for jobstate=R, if not added explicitly.
         if obj_type == JOB:
             add_attribs = {}
@@ -8564,12 +8566,6 @@ class Server(PBSService):
                 self.logger.info(prefix + " ".join(msg))
                 time.sleep(interval)
 
-                # run custom actions defined for this object type
-                if trigger_sched_cycle and self.actions:
-                    for act_obj in self.actions.get_actions_by_type(obj_type):
-                        if act_obj.enabled:
-                            act_obj.action(self, obj_type, attrib, id, op,
-                                           attrop)
                 return self.expect(obj_type, attrib, id, op, attrop,
                                    attempt + 1, max_attempts, interval, count,
                                    extend, level=level, msg=" ".join(msg),
