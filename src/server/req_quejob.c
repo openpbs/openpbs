@@ -228,7 +228,7 @@ validate_perm_res_in_select(char *val, int val_exist)
 
 			/* first check for any invalid resources in the select */
 			for (j=0; j<nelem; ++j) {
-				presc = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+				presc = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 				if (presc) {
 					if ((presc->rs_flags & resc_access_perm) == 0) {
 						if ((resc_in_err = strdup(pkvp[j].kv_keyw)) == NULL)
@@ -695,7 +695,7 @@ req_quejob(struct batch_request *preq)
 				resource	*presc;
 				resource_def	*prdef;
 
-				prdef = find_resc_def(svr_resc_def, psatl->al_resc, svr_resc_size);
+				prdef = find_resc_def(svr_resc_def, psatl->al_resc);
 				if (prdef == 0) {
 					job_purge(pj);
 					reply_badattr(rc, 1, psatl, preq);
@@ -2798,7 +2798,7 @@ get_queue_for_reservation(resc_resv *presv)
 	j = sizeof(dont_set_in_max) / sizeof(struct dont_set_in_max);
 	for (i = 0; i < j; ++i) {
 		resource_def *prdef;
-		prdef = find_resc_def(svr_resc_def, dont_set_in_max[i].ds_name, svr_resc_size);
+		prdef = find_resc_def(svr_resc_def, dont_set_in_max[i].ds_name);
 		dont_set_in_max[i].ds_rescp = find_resc_entry(
 			&presv->ri_wattr[RESV_ATR_resource],
 			prdef);

@@ -731,7 +731,7 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 		return (PBSE_NONE);
 
 	for (i=0; i<pattr->at_val.at_arst->as_usedptr; ++i) {
-		pres = find_resc_def(svr_resc_def, pattr->at_val.at_arst->as_string[i], svr_resc_size);
+		pres = find_resc_def(svr_resc_def, pattr->at_val.at_arst->as_string[i]);
 		if (pres == NULL)
 			return PBSE_UNKRESC;
 
@@ -6532,7 +6532,7 @@ action_check_res_to_release(attribute *pattr, void *pobj, int actmode)
 
 	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_NEW) {
 		for (i = 0; i < pattr->at_val.at_arst->as_usedptr; i++) {
-			if (find_resc_def(svr_resc_def, pattr->at_val.at_arst->as_string[i], svr_resc_size) == NULL)
+			if (find_resc_def(svr_resc_def, pattr->at_val.at_arst->as_string[i]) == NULL)
 				return PBSE_UNKRESC;
 		}
 	}

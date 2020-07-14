@@ -9156,9 +9156,6 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(task_list_timed);
 	CLEAR_HEAD(task_list_event);
 
-	cr_attrdef_idx(job_attr_def, JOB_ATR_LAST);
-	cr_rescdef_idx(svr_resc_def, svr_resc_size);
-
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	CLEAR_HEAD(svr_allcreds);
 #endif

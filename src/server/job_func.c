@@ -1435,7 +1435,7 @@ update_resources_list(job *pjob, char *res_list_name,
 			goto update_resources_list_error;
 		}
 		for (j = 0; j < nelem; j++) {
-			prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+			prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 			if (prdef == NULL) {
 				snprintf(log_buffer, sizeof(log_buffer),
 				  "unknown resource %s in exec_vnode",

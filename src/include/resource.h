@@ -131,7 +131,7 @@ extern int svr_resc_unk;	   /* index to "unknown" resource   */
 
 extern resource *add_resource_entry(attribute *, resource_def *);
 extern int cr_rescdef_idx(resource_def *resc_def, int limit);
-extern resource_def *find_resc_def(resource_def *, char *, int);
+extern resource_def *find_resc_def(resource_def *, char *);
 extern resource *find_resc_entry(const attribute *, resource_def *);
 extern int update_resource_def_file(char *name, resdef_op_t op, int type, int perms);
 extern int add_resource_def(char *name, int type, int perms);

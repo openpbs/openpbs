@@ -2576,7 +2576,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					resource_def 	*rd;
 					resource	*pres;
 
-					rd = find_resc_def(svr_resc_def, resc_str, svr_resc_size);
+					rd = find_resc_def(svr_resc_def, resc_str);
 					if (rd != NULL) {
 						pres = find_resc_entry(
 							&pjob2->ji_wattr[index],
@@ -2722,7 +2722,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				rs_flag = READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM;
 				if ((p2=strrchr(name_str, '.')) != NULL) {
 					p2++;
-					prdef = find_resc_def(svr_resc_def, p2, svr_resc_size);
+					prdef = find_resc_def(svr_resc_def, p2);
 					if (prdef == NULL) { /* a custom resource */
 						if (value_type != NULL) {
 							if (strcmp(value_type, "boolean") == 0) {

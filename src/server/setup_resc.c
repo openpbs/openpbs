@@ -114,7 +114,7 @@ add_resource_def(char *name, int type, int perms)
 	int rc;
 
 	/* first see if the resource "name" already exists */
-	if ((prdef=find_resc_def(svr_resc_def, name, svr_resc_size)) != NULL) {
+	if ((prdef=find_resc_def(svr_resc_def, name)) != NULL) {
 		if (prdef->rs_type != type)
 			return -2;
 		if ((prdef->rs_flags & ATR_DFLAG_CVTSLT) != (perms & ATR_DFLAG_CVTSLT))
@@ -374,6 +374,7 @@ expand_resc_array(char *rname, int rtype, int rflag)
 	pnew->rs_next  = NULL;
 
 	if (pbs_idx_insert(resc_attrdef_idx, pnew->rs_name, pnew) != PBS_IDX_RET_OK) {
+		free(pnew->rs_name);
 		free(pnew);
 		return (-1);
 	}
@@ -630,7 +631,7 @@ setup_resc(int autocorrect)
 		}
 		/* create resource definition */
 
-		presc = find_resc_def(svr_resc_def, rescname, svr_resc_size);
+		presc = find_resc_def(svr_resc_def, rescname);
 		if (presc != NULL) {
 			if (resc_type == presc->rs_type) {
 				resc_flag &= ( ATR_DFLAG_RASSN |

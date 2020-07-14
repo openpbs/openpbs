@@ -2535,7 +2535,7 @@ resc_used(job *pjob, char *name, u_long	(*func)(resource *))
 	if (at == NULL)
 		return 0;
 
-	rd = find_resc_def(svr_resc_def, name, svr_resc_size);
+	rd = find_resc_def(svr_resc_def, name);
 	if (rd == NULL)
 		return 0;
 

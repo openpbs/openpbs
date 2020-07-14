@@ -97,7 +97,6 @@ compare_obj_hash(void *qs, int len, void *oldhash)
  *
  * @param[in]	padef - Address of parent's attribute definition array
  * @param[in]	pattr - Address of the parent objects attribute array
- * @param[in]   index - index of this attribute in the respective attribute def array
  * @param[out]	db_attr_list - pointer to the structure of type pbs_db_attr_list_t for storing in DB
  *
  * @return  error code
@@ -106,7 +105,7 @@ compare_obj_hash(void *qs, int len, void *oldhash)
  *
  */
 int 
-encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, int index, pbs_db_attr_list_t *db_attr_list)
+encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *db_attr_list)
 {
 	pbs_list_head *lhead;
 	int rc = 0;
@@ -150,7 +149,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 			continue;
 
 		if ((((padef + i)->at_flags & ATR_DFLAG_NOSAVM) == 0) || all) {
-			if (encode_single_attr_db((padef + i), (pattr + i), i, db_attr_list) != 0)
+			if (encode_single_attr_db((padef + i), (pattr + i), db_attr_list) != 0)
 				return -1;
 			
 			(pattr+i)->at_flags &= ~ATR_VFLAG_MODIFY;

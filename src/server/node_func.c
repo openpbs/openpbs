@@ -867,7 +867,7 @@ save_nodes_db(int changemodtime, void *p)
 		rname = NULL;
 
 	if (rname)
-		rscdef = find_resc_def(svr_resc_def, rname, svr_resc_size);
+		rscdef = find_resc_def(svr_resc_def, rname);
 	else
 		rscdef = NULL;
 

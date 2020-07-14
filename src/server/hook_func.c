@@ -3042,7 +3042,7 @@ set_job_reslist(job *pjob, char *hook_name, char *msg, int msg_len,
 			np = strtok(NULL, ",");
 			continue;
 		}
-		rescdef = find_resc_def(svr_resc_def, resc, svr_resc_size);
+		rescdef = find_resc_def(svr_resc_def, resc);
 		if (rescdef == NULL) {
 			snprintf(msg, msg_len-1,
 				"Setting job '%s' attribute %s.%s failed: unknown resource", pjob->ji_qs.ji_jobid, ATTR_l, resc);

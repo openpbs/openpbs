@@ -2940,7 +2940,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 				strncpy(the_resc, resc, sizeof(the_resc)-1);
 				if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
 
-					if ((rescdef = find_resc_def(svr_resc_def, resc, svr_resc_size)) == NULL) {
+					if ((rescdef = find_resc_def(svr_resc_def, resc)) == NULL) {
 						/* not a builtin or previously defined resource */
 						py_resc = PyObject_GetAttrString(py_val, resc); /* NEW */
 
@@ -7705,7 +7705,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				}
 			}
 			if (resource && (resource[0] != '\0')) {
-				rscdef = find_resc_def(svr_resc_def, resource, svr_resc_size);
+				rscdef = find_resc_def(svr_resc_def, resource);
 				if (!rscdef) {
 					snprintf(log_buffer, LOG_BUF_SIZE-1,
 						"resource attribute '%s' not found",
@@ -7852,7 +7852,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				goto IAVS_ERROR_EXIT;
 			}
 			if (resource && (resource[0] != '\0')) {
-				rscdef = find_resc_def(svr_resc_def, resource, svr_resc_size);
+				rscdef = find_resc_def(svr_resc_def, resource);
 
 				if (!rscdef) {
 					snprintf(log_buffer, LOG_BUF_SIZE-1,
@@ -8497,7 +8497,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 	} else if (strcmp(table, PY_RESOURCE) == 0) {
 		resource_def *rescdef;
 
-		rescdef = find_resc_def(svr_resc_def, name, svr_resc_size);
+		rescdef = find_resc_def(svr_resc_def, name);
 		if (!rescdef) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "resource attribute %s not found", name);
 			log_buffer[LOG_BUF_SIZE-1] = '\0';

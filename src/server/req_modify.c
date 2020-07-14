@@ -260,7 +260,7 @@ req_modifyjob(struct batch_request *preq)
 			return;
 		}
 		if (i == (int)JOB_ATR_resource) {
-			prsd = find_resc_def(svr_resc_def, plist->al_resc, svr_resc_size);
+			prsd = find_resc_def(svr_resc_def, plist->al_resc);
 			if (prsd == 0) {
 				reply_badattr(PBSE_UNKRESC, 1, plist, preq);
 				return;

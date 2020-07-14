@@ -261,7 +261,7 @@ warnings_update(int wcode, pbsnode **wnodes, int *widx, pbsnode *np)
 
 		rname = server.sv_attr[SVR_ATR_NodeGroupKey].at_val.at_str;
 		if ((rname != NULL) && (*rname != '\0'))
-			rscdef = find_resc_def(svr_resc_def, rname, svr_resc_size);
+			rscdef = find_resc_def(svr_resc_def, rname);
 		return;
 
 	} else if (warning_ok == 1 && wcode == WARN_ngrp  && wnodes != NULL) {
@@ -975,7 +975,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 
 			/* check the individual resource */
 
-			prsdef = find_resc_def(svr_resc_def, pl->al_resc, svr_resc_size);
+			prsdef = find_resc_def(svr_resc_def, pl->al_resc);
 			if (prsdef == NULL) {
 				*bad = ord;
 				return (PBSE_UNKRESC);
@@ -1015,7 +1015,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 
 	while (plist) {
 		index = find_attr(pidx, pdef, plist->al_name);
-		if (encode_single_attr_db((pdef + index), (pattr + index), index, &db_attr_list) != 0)
+		if (encode_single_attr_db((pdef + index), (pattr + index), &db_attr_list) != 0)
 			return (PBSE_NOATTR);
 
 		if (((pdef+index)->at_type == ATR_TYPE_RESC) &&
@@ -1024,7 +1024,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 			/* attribute of type resource and specified resource */
 			/* free resource member, not the attribute */
 
-			prsdef = find_resc_def(svr_resc_def, plist->al_resc, svr_resc_size);
+			prsdef = find_resc_def(svr_resc_def, plist->al_resc);
 			presc = find_resc_entry(pattr+index, prsdef);
 			if (presc) {
 				if ((ptype != PARENT_TYPE_SERVER) ||
@@ -3663,7 +3663,7 @@ mgr_resource_create(struct batch_request *preq)
 		return;
 	}
 
-	prdef = find_resc_def(svr_resc_def, resc, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, resc);
 	if (prdef != NULL) {
 		req_reject(PBSE_DUPLIST, 0, preq);
 		return;
@@ -3752,7 +3752,7 @@ mgr_resource_delete(struct batch_request *preq)
 		return;
 	}
 
-	if ((prdef=find_resc_def(svr_resc_def, resc, svr_resc_size)) == NULL) {
+	if ((prdef=find_resc_def(svr_resc_def, resc)) == NULL) {
 		req_reject(PBSE_UNKRESC, 0, preq);
 		return;
 	}
@@ -3966,7 +3966,7 @@ mgr_resource_set(struct batch_request *preq)
 		return;
 	}
 
-	prdef = find_resc_def(svr_resc_def, resc, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, resc);
 	if (prdef == NULL) {
 		req_reject(PBSE_UNKRESC, 0, preq);
 		return;
@@ -4196,7 +4196,7 @@ mgr_resource_unset(struct batch_request *preq)
 		return;
 	}
 
-	prdef = find_resc_def(svr_resc_def, resc, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, resc);
 	if (prdef == NULL) {
 		req_reject(PBSE_UNKRESC, 0, preq);
 		return;

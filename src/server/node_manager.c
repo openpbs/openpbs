@@ -3115,7 +3115,7 @@ setup_pnames(char *namestr)
 		}
 
 		/* next see if it needs to be added to resourcedef */
-		if (!find_resc_def(svr_resc_def, ps, svr_resc_size)) {
+		if (!find_resc_def(svr_resc_def, ps)) {
 			if (add_resource_def(ps, ATR_TYPE_ARST, NO_USER_SET) == 0)
 				resc_added++;
 		}
@@ -3532,7 +3532,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			}
 
 			/* Is the resource already defined? */
-			prdef = find_resc_def(svr_resc_def, resc, svr_resc_size);
+			prdef = find_resc_def(svr_resc_def, resc);
 			if (prdef == NULL) {
 				int err;
 
@@ -3554,7 +3554,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					vn_resc_added++;
 				}
 				/* now find the new resource definition */
-				prdef = find_resc_def(svr_resc_def, resc, svr_resc_size);
+				prdef = find_resc_def(svr_resc_def, resc);
 				if (prdef == NULL)
 					continue; /* skip this attribute, go to next */
 			} else if ((psrp->vna_type != 0) &&
@@ -6532,7 +6532,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				if (strcasecmp("ncpus", (pkvp + i)->kv_keyw) == 0)
 					(phowl+ndindex)->hw_ncpus = atoi((pkvp+i)->kv_val);
 				else {
-					if ((find_resc_def(svr_resc_def, (pkvp+i)->kv_keyw, svr_resc_size) == NULL) && (svr_init == FALSE)) {
+					if ((find_resc_def(svr_resc_def, (pkvp+i)->kv_keyw) == NULL) && (svr_init == FALSE)) {
 						free(phowl);
 						free(execvncopy);
 						resc_in_err = strdup((pkvp+i)->kv_keyw);
@@ -7257,7 +7257,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	while (chunk) {
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			for (j=0; j<nelem; ++j) {
-				prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+				prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 				if (prdef == NULL)
 					return;
 
@@ -7869,7 +7869,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 	while(chunk) {
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			for (j = 0; j < nelem; j++) {
-				prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+				prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 				if (prdef == NULL)
 					return 1;
 				if (prdef->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN)) {

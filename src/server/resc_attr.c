@@ -269,7 +269,7 @@ decode_place(struct attribute *patr, char *name, char *rescn, char *val)
 			/* now need to see if the value is a valid resource/type */
 			h = *px;
 			*px = '\0';
-			pres = find_resc_def(svr_resc_def, pc, svr_resc_size);
+			pres = find_resc_def(svr_resc_def, pc);
 			if (pres == NULL)
 				return PBSE_UNKRESC;
 			if ((pres->rs_type != ATR_TYPE_STR) &&
@@ -429,7 +429,7 @@ preempt_targets_action(resource *presc, attribute *pattr, void *pobject, int typ
 				if (p) {
 					ch = *p;
 					*p = '\0';
-					resdef = find_resc_def(svr_resc_def, res_name, svr_resc_size);
+					resdef = find_resc_def(svr_resc_def, res_name);
 					*p = ch;
 					if (resdef == NULL)
 						return PBSE_UNKRESC;
@@ -868,7 +868,7 @@ int apply_select_inchunk_rules(resource *presc, attribute *pattr, void *pobj, in
 #endif
 		{
 			for (j = 0; j < nelem; ++j) {
-			    	tmp_resc.rs_defin = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+			    	tmp_resc.rs_defin = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 				if ((tmp_resc.rs_defin != NULL) && (tmp_resc.rs_defin->rs_type == ATR_TYPE_LONG)) {
 					tmp_resc.rs_value.at_val.at_long = atol(pkvp[j].kv_val);
 					if (tmp_resc.rs_defin->rs_action) {

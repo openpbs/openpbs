@@ -1881,7 +1881,7 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 			while (psvrl) {
 				resource_def *prdefcopy;
 
-				prdefcopy = find_resc_def(svr_resc_def, psvrl->al_resc, svr_resc_size);
+				prdefcopy = find_resc_def(svr_resc_def, psvrl->al_resc);
 				if (prdefcopy && (prdefcopy->rs_flags & ATR_DFLAG_CVTSLT)) {
 					size_t cvtneed;
 

@@ -649,7 +649,7 @@ build_selentry(svrattrl *plist, attribute_def *pdef, int perm, struct select_lis
 	 * decode it to allow us to select upon it.
 	 */
 	if (plist->al_resc != NULL) {
-		prd =find_resc_def(svr_resc_def, plist->al_resc, svr_resc_size);
+		prd =find_resc_def(svr_resc_def, plist->al_resc);
 		if (prd != NULL && (prd->rs_flags&NO_USER_SET) == NO_USER_SET) {
 			resc_access_perm = ATR_DFLAG_ACCESS;
 		}
@@ -679,7 +679,7 @@ build_selentry(svrattrl *plist, attribute_def *pdef, int perm, struct select_lis
 	 */
 
 	if (entry->sl_attr.at_type == ATR_TYPE_RESC) {
-		entry->sl_def = (attribute_def *) find_resc_def(svr_resc_def, plist->al_resc, svr_resc_size);
+		entry->sl_def = (attribute_def *) find_resc_def(svr_resc_def, plist->al_resc);
 		if (!entry->sl_def) {
 			(void)free(entry);
 			return (PBSE_UNKRESC);

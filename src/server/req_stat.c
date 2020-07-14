@@ -1150,7 +1150,7 @@ req_stat_resc(struct batch_request *preq)
 		type = 1;
 	else {
 		type = 0;
-		prd = find_resc_def(svr_resc_def, name, svr_resc_size);
+		prd = find_resc_def(svr_resc_def, name);
 		if (prd == NULL) {
 			req_reject(PBSE_UNKRESC, 0, preq);
 			return;

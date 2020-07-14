@@ -1894,7 +1894,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 
 				for (j = 0; j < nelem; ++j) {
 
-					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 					if (resc_def == NULL) {
 						continue;
 					}
@@ -2739,7 +2739,7 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 		return PBSE_INVALJOBRESC;
 	}
 
-	resc_def = find_resc_def(svr_resc_def, kv_keyw, svr_resc_size);
+	resc_def = find_resc_def(svr_resc_def, kv_keyw);
 	if (resc_def == NULL) {
 		log_err(-1, __func__, "resc_def is NULL");
 		return PBSE_UNKRESC;
@@ -4038,7 +4038,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				for (j = 0; j < nelem; ++j) {
 
 #ifdef PBS_MOM
-					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 					if (resc_def == NULL) {
 						continue;
 					}
@@ -4686,7 +4686,7 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 						return PBSE_DUPRESC;
 					}
 				}
-				presc = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+				presc = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 				if (presc) {
 					if ((presc->rs_flags & ATR_DFLAG_CVTSLT) == 0) {
 						if (presc_in_err != NULL) {
@@ -4771,13 +4771,13 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 				 * appropriate for the Scheduler.  Then rebuild it in
 				 * the out buf.
 				 */
-				presc = find_resc_def(svr_resc_def, pkvp[0].kv_keyw, svr_resc_size);
+				presc = find_resc_def(svr_resc_def, pkvp[0].kv_keyw);
 				for (i=0; i<nelem; ++i) {
 					strcat(pc, ":");
 					if (strcat_grow(&outbuf, &pc, &bufsz, pkvp[i].kv_keyw) == -1)
 						return PBSE_SYSTEM;
 					strcat(pc, "=");
-					presc = find_resc_def(svr_resc_def, pkvp[i].kv_keyw, svr_resc_size);
+					presc = find_resc_def(svr_resc_def, pkvp[i].kv_keyw);
 					if (presc && (presc->rs_type == ATR_TYPE_BOOL)) {
 						j = is_true_or_false(pkvp[i].kv_val);
 						if (j == 1)

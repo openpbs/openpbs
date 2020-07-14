@@ -128,7 +128,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 		CLEAR_HEAD(patr->at_val.at_list);
 
 
-	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL) {
 		/*
 		 * didn't find resource with matching name, use unknown;
@@ -493,7 +493,6 @@ cr_rescdef_idx(resource_def *resc_def, int limit)
  *
  * @param[in] rscdf - address of array of resource_def structs
  * @param[in] name - name of resource
- * @param[in] limit - number of members in resource_def array
  *
  * @return	pointer to structure
  * @retval	pointer to resource_def structure - Success
@@ -501,7 +500,7 @@ cr_rescdef_idx(resource_def *resc_def, int limit)
  *
  */
 resource_def *
-find_resc_def(resource_def *resc_def, char *name, int limit)
+find_resc_def(resource_def *resc_def, char *name)
 {
 	resource_def *found_def = NULL, *def = NULL;
 
