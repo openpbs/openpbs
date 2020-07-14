@@ -51,15 +51,19 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
     [PYTHON_CONFIG="python3-config"]
   )
   AM_PATH_PYTHON([3.5])
-  AS_IF([test "$PYTHON_VERSION" != "3.5" -a "$PYTHON_VERSION" != "3.6" -a "$PYTHON_VERSION" != "3.7"],
-    AC_MSG_ERROR([Python must be version 3.5, 3.6 or 3.7]))
-  [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes`]
+  AS_IF([test "$PYTHON_VERSION" != "3.5" \
+          -a "$PYTHON_VERSION" != "3.6" \
+          -a "$PYTHON_VERSION" != "3.7" \
+          -a "$PYTHON_VERSION" != "3.8" ],
+    AC_MSG_ERROR([Python must be version 3.5, 3.6, 3.7 or 3.8]))
+  AS_IF([test "$PYTHON_VERSION" == "3.8"], [_extra_arg="--embed"], [_extra_arg=""])
+  [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${_extra_arg}`]
   AC_SUBST(PYTHON_INCLUDES)
-  [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags`]
+  [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags ${_extra_arg}`]
   AC_SUBST(PYTHON_CFLAGS)
-  [PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags`]
+  [PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags ${_extra_arg}`]
   AC_SUBST(PYTHON_LDFLAGS)
-  [PYTHON_LIBS=`$PYTHON_CONFIG --libs`]
+  [PYTHON_LIBS=`$PYTHON_CONFIG --libs ${_extra_arg}`]
   AC_SUBST(PYTHON_LIBS)
   AC_DEFINE([PYTHON], [], [Defined when Python is available])
   AC_DEFINE_UNQUOTED([PYTHON_BIN_PATH], ["$PYTHON"], [Python executable path])

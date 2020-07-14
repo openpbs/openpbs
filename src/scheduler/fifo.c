@@ -149,7 +149,7 @@ schedinit(int nthreads)
 	struct tm *tmptr;
 
 #ifdef PYTHON
-	char *errstr;
+	const char *errstr;
 	PyObject *module;
 	PyObject *obj;
 	PyObject *dict;

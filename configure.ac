@@ -187,7 +187,6 @@ AC_CHECK_HEADERS([ \
 	sys/statfs.h \
 	sys/stat.h \
 	sys/statvfs.h \
-	sys/sysctl.h \
 	sys/sysinfo.h \
 	sys/sysmacros.h \
 	sys/time.h \

@@ -72,7 +72,7 @@ void
 pbs_python_write_object_to_log(PyObject *obj, char *pre, int severity)
 {
 	PyObject *py_tmp_str = NULL;
-	char *obj_str = NULL;
+	const char *obj_str = NULL;
 
 	if (!(py_tmp_str = PyObject_Str(obj))) { goto ERROR_EXIT; }
 	if (!(obj_str = PyUnicode_AsUTF8(py_tmp_str))) { goto ERROR_EXIT; }
@@ -432,7 +432,7 @@ pbs_python_object_get_attr_integral_value(PyObject *obj, const char *key)
 char *
 pbs_python_object_str(PyObject *obj)
 {
-	char *str = NULL;
+	const char *str = NULL;
 	PyObject *py_str;
 	static char *ret_str = NULL;
 	char  	*tmp_str = NULL;

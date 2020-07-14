@@ -698,7 +698,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	PyObject *ptraceback;
 	PyObject *pobjStr;
 	PyObject *retval;
-	char      *pStr;
+	const char      *pStr;
 	int rc=0;
 	pid_t orig_pid;
 

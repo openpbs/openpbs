@@ -88,7 +88,6 @@ pbs_ifl_wrap.c: $(top_srcdir)/src/lib/Libifl/pbs_ifl_wrap.c
 	echo '#include "pbs_ifl.h"' >> pbs_ifl.i ; \
 	echo '%}' >> pbs_ifl.i ; \
 	echo '%include "pbs_ifl.h"' >> pbs_ifl.i ; \
-	@swig_dir@/bin/swig -I`ls -d @swig_dir@/share/swig/*` \
-		-I`ls -d @swig_dir@/share/swig/*/python` \
+	@swig_dir@/bin/swig @swig_py_inc@ \
 		-I$(top_srcdir)/src/include \
 		-python pbs_ifl.i

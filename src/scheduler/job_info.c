@@ -4296,7 +4296,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 	int globals_size = 1024;  /* initial size... will grow if needed */
 	resource_req *req;
 	sch_resource_t ans = 0;
-	char *str;
+	const char *str;
 	int i;
 	char *formula_buf;
 	int formula_buf_len;

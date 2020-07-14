@@ -467,7 +467,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	PyObject	*py_func_dumps = NULL;
 	PyObject	*py_value = NULL;
 	PyObject	*py_result = NULL;
-	char		*tmp_str = NULL;
+	const char	*tmp_str = NULL;
 	char		*ret_string = NULL;
 	int		slen;
 
