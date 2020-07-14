@@ -258,9 +258,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 		for (vnp = vnid; *vnp && legal_vnode_char(*vnp, 1); vnp++)
 			;
 		if (*vnp) {
-			sprintf(log_buffer,
-				"invalid character in vnode name \"%s\"", vnid);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			log_errf(PBSE_SYSTEM, __func__, "invalid character in vnode name \"%s\"", vnid);
 			vnl_free(vnlp);
 			return NULL;
 		}
@@ -270,9 +268,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 		 * is defined as string of length 64.
 		 */
 		if (strlen(vnid) > PBS_MAXHOSTNAME) {
-			sprintf(log_buffer,
-				"Node name \"%s\" is too big", vnid);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			log_errf(PBSE_SYSTEM, __func__, "Node name \"%s\" is too big", vnid);
 			return NULL;
 		}
 		/* <ATTRNAME> <ATTRDELIM> */
