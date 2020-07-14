@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #define PBS_IDX_DUPS_OK     0x01 /* duplicate key allowed in index */
-#define PBS_IDX_CASE_CMP    0x02 /* set case-insensitive compare */
+#define PBS_IDX_ICASE_CMP   0x02 /* set case-insensitive compare */
 
 #define PBS_IDX_RET_OK    0 /* index op succeed */
 #define PBS_IDX_RET_FAIL -1 /* index op failed */

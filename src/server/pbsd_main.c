@@ -262,20 +262,20 @@ pbs_list_head	svr_execjob_preresume_hooks;
 pbs_list_head	svr_allscheds;
 extern pbs_list_head	svr_creds_cache; /* all credentials available to send */
 time_t		time_now;
-struct batch_request	*saved_takeover_req=NULL;
+struct batch_request	*saved_takeover_req;
 struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
-void *jobs_idx = NULL;
-void *queues_idx = NULL;
-void *resvs_idx = NULL;
+void *jobs_idx;
+void *queues_idx;
+void *resvs_idx;
 
-void *job_attr_idx = NULL;
-void *resv_attr_idx = NULL;
-void *node_attr_idx = NULL;
-void *que_attr_idx = NULL;
-void *svr_attr_idx = NULL;
-void *sched_attr_idx = NULL;
+void *job_attr_idx;
+void *resv_attr_idx;
+void *node_attr_idx;
+void *que_attr_idx;
+void *svr_attr_idx;
+void *sched_attr_idx;
 
 sigset_t	allsigs;
 
@@ -285,7 +285,7 @@ int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
 static char    *suffix_slash = "/";
 static int	brought_up_alt_sched = 0;
 void stop_db();
-char *db_err_msg = NULL;
+char *db_err_msg;
 extern void mark_nodes_unknown(int);
 
 /*

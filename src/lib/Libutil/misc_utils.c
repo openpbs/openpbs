@@ -321,7 +321,7 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
  * @retval pointer to the end of the resulting string
  *	
  * @note: Caller needs to ensure space and non-NULL pointers
- *        This function is created for performance so does
+ *        This function is created for performance so does not
  *        verify any paramaters
  */
 char *

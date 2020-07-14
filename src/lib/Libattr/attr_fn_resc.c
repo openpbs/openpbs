@@ -473,7 +473,7 @@ cr_rescdef_idx(resource_def *resc_def, int limit)
 		return -1;
 
 	/* create the attribute index */
-	if ((resc_attrdef_idx = pbs_idx_create(PBS_IDX_CASE_CMP, 0)) == NULL)
+	if ((resc_attrdef_idx = pbs_idx_create(PBS_IDX_ICASE_CMP, 0)) == NULL)
 		return -1;
 
 	/* add all attributes to the tree with key as the attr name */

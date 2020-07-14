@@ -110,15 +110,13 @@ cr_attrdef_idx(struct attribute_def *adef, int limit)
 		return NULL;
 
 	/* create the attribute index */
-	if ((attrdef_idx = pbs_idx_create(PBS_IDX_CASE_CMP, 0)) == NULL)
+	if ((attrdef_idx = pbs_idx_create(PBS_IDX_ICASE_CMP, 0)) == NULL)
 		return NULL;
 
 	/* add all attributes to the tree with key as the attr name */
 	for (i = 0; i < limit; i++) {
-		if (pbs_idx_insert(attrdef_idx, adef->at_name, adef) != PBS_IDX_RET_OK) {
-			/* destroy this index */
+		if (pbs_idx_insert(attrdef_idx, adef->at_name, adef) != PBS_IDX_RET_OK)
 			return NULL;
-		}
 		
 		adef++;
 	}

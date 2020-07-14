@@ -252,8 +252,8 @@ attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys
 	svrattrl *pal;
 	char *p;
 	int spc_avl, spc_req;
-	/* len attr_name . attr_resc len attr_flags . attr_value */ 
-	static int fixed_part_req = sizeof(int32_t)*2 + PBS_MAXATTRNAME + PBS_MAXATTRRESC + 3 /* max 3 digits flags */ + 2 /* 2 dots */ + 1 /* null terminator */; 
+	/* (len_field * 2) + PBS_MAXATTRNAME + PBS_MAXATTRRESC + max 3 digits flags +  2 dots + 1 null terminator */
+	static int fixed_part_req = (sizeof(int32_t) * 2) + PBS_MAXATTRNAME + PBS_MAXATTRRESC + 3  + 2  + 1; 
 	
 	if (!array) {
 		array = malloc(len);

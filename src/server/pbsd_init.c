@@ -376,7 +376,7 @@ pbsd_init(int type)
 	/* initialize the pointers in the resource_def array */
 
 	for (i = 0; i < (svr_resc_size - 1); ++i)
-		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
+		svr_resc_def[i].rs_next = &svr_resc_def[i + 1];
 	/* last entry is left with null pointer */
 
 	/* The following is code to reduce security risks                */

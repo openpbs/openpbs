@@ -606,7 +606,7 @@ extern int set_attr(struct attrl **attrib, char *attrib_name, char *attrib_value
 extern int set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
 
 extern svrattrl *make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags);
-extern void * cr_attrdef_idx(struct attribute_def *adef, int limit);
+extern void *cr_attrdef_idx(struct attribute_def *adef, int limit);
 
 /* "type" to pass to acl_check() */
 #define ACL_Host  1
