@@ -758,8 +758,12 @@ req_confirmresv(struct batch_request *preq)
 	 * to the reservation and unset all attributes relating to retry attempts
 	 */
 	if (is_degraded) {
-		if (presv->ri_qs.ri_state == RESV_RUNNING)
-			set_resc_assigned((void *) presv, 1, DECR);
+		if (presv->ri_qs.ri_state == RESV_RUNNING) {
+			if (presv->ri_giveback) {
+				set_resc_assigned((void *) presv, 1, DECR);
+				presv->ri_giveback = 0;
+			}
+		}
 		free_resvNodes(presv);
 		/* Reset retry time */
 		unset_resv_retry(presv);
@@ -785,15 +789,23 @@ req_confirmresv(struct batch_request *preq)
 
 	if (rc != PBSE_NONE) {
 		free(next_execvnode);
-		if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING)
-			set_resc_assigned((void *) presv, 1, INCR);
+		if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING) {
+			if (presv->ri_giveback == 0) {
+				set_resc_assigned((void *) presv, 1, INCR);
+				presv->ri_giveback = 1;
+			}
+		}
 
 		req_reject(rc, 0, preq);
 		return;
 	}
 
-	if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING)
-		set_resc_assigned((void *) presv, 1, INCR);
+	if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING) {
+		if (presv->ri_giveback == 0) {
+			set_resc_assigned((void *) presv, 1, INCR);
+			presv->ri_giveback = 1;
+		}
+	}
 
 	/* place "Time4resv" task on "task_list_timed" only if this is a
 	 * confirmation but not the reconfirmation of a degraded reservation as
