@@ -2031,11 +2031,15 @@ chk_del_job(job *pjob, int errcode)
 		/* now reply to the Server's delete job request */
 		if (pjob->ji_preq) {
 			if ((bad != 0) || (errcode != 0)) {
-				req_reject(PBSE_SISCOMM, 0, pjob->ji_preq);
+				if (pjob->ji_hook_running_bg_on == BG_NONE) {
+					req_reject(PBSE_SISCOMM, 0, pjob->ji_preq);
+					pjob->ji_preq = NULL;
+				} else
+					pjob->ji_hook_running_bg_on = BG_PBSE_SISCOMM;
 			} else {
 				reply_ack(pjob->ji_preq);
+				pjob->ji_preq = NULL;
 			}
-			pjob->ji_preq = NULL;
 		}
 		DBPRT(("%s: all sisters done for job %s\n",
 			__func__, pjob->ji_qs.ji_jobid))
@@ -2055,7 +2059,8 @@ chk_del_job(job *pjob, int errcode)
 		} else {
 			if (is_linked(&mom_polljobs, &pjob->ji_jobque))
 				delete_link(&pjob->ji_jobque);
-			append_link(&mom_deadjobs, &pjob->ji_jobque, pjob);
+			if (pjob->ji_hook_running_bg_on == BG_NONE)
+				append_link(&mom_deadjobs, &pjob->ji_jobque, pjob);
 		}
 	}
 }

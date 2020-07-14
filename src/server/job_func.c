@@ -549,7 +549,7 @@ job_free(job *pj)
 	nodes_free(pj);
 	tasks_free(pj);
 	if (pj->ji_resources) {
-		for (i=0; i < pj->ji_numrescs; i++) {
+		for (i = 0; i < pj->ji_numrescs; i++) {
 			free(pj->ji_resources[i].nodehost);
 			pj->ji_resources[i].nodehost = NULL;
 			if  ((pj->ji_resources[i].nr_used.at_flags & ATR_VFLAG_SET) != 0) {

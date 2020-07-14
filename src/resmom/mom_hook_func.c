@@ -3502,11 +3502,11 @@ post_run_hook(struct work_task *ptask)
 void
 reply_hook_bg(job *pjob)
 {
-	int	n = 0;
-	int	ret = 0;
-	char	jobid[PBS_MAXSVRJOBID+1] = {'\0'};
-	job	*pjob2 = NULL;
-	long	runver;
+	int n = 0;
+	int ret = 0;
+	char jobid[PBS_MAXSVRJOBID + 1] = {'\0'};
+	job *pjob2 = NULL;
+	long runver;
 #if !MOM_ALPS
 	struct	batch_request *preq = pjob->ji_preq;
 #endif
@@ -3561,14 +3561,14 @@ reply_hook_bg(job *pjob)
 					if (pjob->ji_numnodes == 1)
 						reply_ack(preq);
 					else if (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)
-							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
+						req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
-					pjob->ji_hook_running_bg_on = BG_NONE;
 					job_purge_mom(pjob);
 				}
+				pjob->ji_hook_running_bg_on = BG_NONE;
 				/*
 				* otherwise, job_purge() and dorestrict_user() are called in
-				* mom_comm when all the sisters have replied.  The reply to
+				* mom_comm when all the sisters have replied. The reply to
 				* the Server is also done there
 				*/
 
@@ -3687,7 +3687,7 @@ mom_process_background_hooks(struct work_task *ptask)
 	if (pjob->ji_bg_hook_task)
 		pjob->ji_bg_hook_task = NULL;
 
-	if (php->hook_output && *(php->hook_output->reject_errcode)){
+	if (php->hook_output && *(php->hook_output->reject_errcode)) {
 		reply_hook_bg(pjob);
 		goto fini;
 	}
