@@ -274,7 +274,7 @@ attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys
 	val = (struct str_data *)((char *) array + sizeof(struct pg_array));
 
 	for (pal = (svrattrl *)GET_NEXT(attr_list->attrs); pal != NULL; pal = (svrattrl *)GET_NEXT(pal->al_link)) {
-		spc_avl =  len - ((void *) val - (void *) array);
+		spc_avl =  len - ((char *) val - (char *) array);
 		spc_req = fixed_part_req + (pal->al_atopl.value ? strlen(pal->al_atopl.value) : 0); /* value can have arbitrary length */
 		if (spc_avl <= spc_req) {
 			len += (spc_req > DBARRAY_BUF_LEN) ? spc_req : DBARRAY_BUF_LEN;
@@ -282,7 +282,7 @@ attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys
 			if (!tmp)
 				return -1;
 
-			val = (struct str_data *) ((void *) val + ((void *) tmp - (void *) array)); /* move val since array moved */	
+			val = (struct str_data *) ((char *) val + ((char *) tmp - (char *) array)); /* move val since array moved */	
 			array = tmp;
 		}
 		p = pbs_strcpy(val->str, pal->al_atopl.name);
@@ -305,7 +305,7 @@ attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys
 	}
 	*raw_array = (char *) array;
 
-	return ((void *) val - (void *) array);
+	return ((char *) val - (char *) array);
 }
 
 /**
