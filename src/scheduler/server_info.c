@@ -2079,8 +2079,8 @@ check_job_running(resource_resv *job, void *arg)
  * @param[in]	arg	-	argument (not used here)
  *
  * @return	int
- * @retval	1	: if job is running and in reservation passed in arg
- * @retval	0	: if job is not running or not in reservation passed in arg
+ * @retval	1	: if job is running and in a reservation
+ * @retval	0	: if job is not running or not in a reservation
  */
 int
 check_running_job_in_reservation(resource_resv *job, void *arg)
@@ -2100,8 +2100,8 @@ check_running_job_in_reservation(resource_resv *job, void *arg)
  * @param[in]	arg	-	argument (not used here)
  *
  * @return	int
- * @retval	1	: if job is running and not in reservation passed in arg
- * @retval	0	: if job is not running or in reservation passed in arg
+ * @retval	1	: if job is running and not in a reservation
+ * @retval	0	: if job is not running or in a reservation
  */
 int
 check_running_job_not_in_reservation(resource_resv *job, void *arg)
