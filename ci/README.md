@@ -68,6 +68,8 @@ Optionally accepts argument for other platform. The packages can be found in 'ci
 ```bash
 # Below command builds package for the platform ci was started/currently running on.
 ./ci --build-pkgs
+# or
+./ci -b
 
 ```
 
@@ -76,4 +78,17 @@ Optionally accepts argument for other platform. The packages can be found in 'ci
 ```bash
 # If you want to get rid of the container simply invoke this command.
 ./ci --delete
+# or
+./ci -d
+```
+
+* **./ci --local:** will run ci on your machine locally; this is not a flag that can be combined with other commands. It builds pbs dependencies, will configure, make and install pbs and run pbs_benchpress with option '--tags=smoke'. It does not configurations from params but runs with predefined params(as run in travis).
+```bash
+# The command to run
+./ci --local
+#or
+./ci -l
+
+# Optionally one can run the sanitize version (works only on centos:7) with the follwoing argument
+./ci --local sanitize
 ```
