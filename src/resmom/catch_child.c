@@ -2472,7 +2472,7 @@ mom_deljob(job *pjob)
 /**
  * @brief
  * 	mom_deljob_wait - deletes most of the job stuff, job entry not deleted
- *	untill the sisters have rplied or are down
+ *	until the sisters have replied or are down
  *	This version DOES wait for the Sisters to reply, see processing of
  *	IM_DELETE_JOB_REPLY in mom_comm.c
  *	IT should only be called for a job for which this is Mother Superior.

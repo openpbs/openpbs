@@ -9734,12 +9734,12 @@ main(int argc, char *argv[])
 		i = 0;
 		while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL) {
 			/* sometimes this purge is happening earlier than
-			 * IS_DISCARD_JOB, which then does not get the pjob
-			 * pointer to call kill_job().
-			 *
-			 * Fixed by adding a kill_job here, which should be
-			 * no harm anyway.
-			 */
+			* IS_DISCARD_JOB, which then does not get the pjob
+			* pointer to call kill_job().
+			*
+			* Fixed by adding a kill_job here, which should be
+			* no harm anyway.
+			*/
 			(void)kill_job(pjob, SIGKILL);
 			job_purge_mom(pjob);
 			++i;
@@ -10073,9 +10073,8 @@ main(int argc, char *argv[])
 
 	/* Have we any jobs that can be purged before we go away? */
 
-	while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL) {
+	while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL)
 		job_purge_mom(pjob);
-	}
 
 	{
 		int csret;

@@ -459,6 +459,7 @@ struct job {
 	int		ji_parent2child_moms_status_pipe;	/* write pipe for parent mom to send sister moms status to child starter process */
 	int		ji_updated;	/* set to 1 if job's node assignment was updated */
 	time_t		ji_walltime_stamp;	/* time stamp for accumulating walltime */
+	struct work_task *ji_bg_hook_task;
 #ifdef WIN32
 	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
 #else	/* not WIN32 */
@@ -752,7 +753,7 @@ typedef struct	infoent {
 #define IM_RESTART		16
 #define IM_DELETE_JOB		17
 #define IM_REQUEUE		18
-#define IM_DELETE_JOB_REPLY		19
+#define IM_DELETE_JOB_REPLY	19
 #define IM_SETUP_JOB		20
 #define IM_DELETE_JOB2		21	/* sent by sister mom to delete job early */
 #define IM_SEND_RESC		22

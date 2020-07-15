@@ -1942,7 +1942,7 @@ addr_to_hostname(struct sockaddr_in *ap)
 void
 job_start_error(job *pjob, int code, char *nodename, char *cmd)
 {
-	void    exec_bail(job *pjob, int code, char *txt);
+	void exec_bail(job *pjob, int code, char *txt);
 
 	if ((pjob == NULL) || (nodename == NULL) || (cmd == NULL))
 		return;
@@ -2031,11 +2031,15 @@ chk_del_job(job *pjob, int errcode)
 		/* now reply to the Server's delete job request */
 		if (pjob->ji_preq) {
 			if ((bad != 0) || (errcode != 0)) {
-				req_reject(PBSE_SISCOMM, 0, pjob->ji_preq);
+				if (pjob->ji_hook_running_bg_on == BG_NONE) {
+					req_reject(PBSE_SISCOMM, 0, pjob->ji_preq);
+					pjob->ji_preq = NULL;
+				} else
+					pjob->ji_hook_running_bg_on = BG_PBSE_SISCOMM;
 			} else {
 				reply_ack(pjob->ji_preq);
+				pjob->ji_preq = NULL;
 			}
-			pjob->ji_preq = NULL;
 		}
 		DBPRT(("%s: all sisters done for job %s\n",
 			__func__, pjob->ji_qs.ji_jobid))
@@ -2055,7 +2059,8 @@ chk_del_job(job *pjob, int errcode)
 		} else {
 			if (is_linked(&mom_polljobs, &pjob->ji_jobque))
 				delete_link(&pjob->ji_jobque);
-			append_link(&mom_deadjobs, &pjob->ji_jobque, pjob);
+			if (pjob->ji_hook_running_bg_on == BG_NONE)
+				append_link(&mom_deadjobs, &pjob->ji_jobque, pjob);
 		}
 	}
 }
@@ -3758,10 +3763,10 @@ join_err:
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
 
-			switch (hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_PROLOGUE,
+			switch (hook_rc = mom_process_hooks(HOOK_EVENT_EXECJOB_PROLOGUE,
 						PBS_MOM_SERVICE_NAME,
 						mom_host, &hook_input, &hook_output,
-							hook_msg, sizeof(hook_msg), 1)) {
+						hook_msg, sizeof(hook_msg), 1)) {
 
 				case 1: /* explicit accept */
 				case 2:	/* no hook script executed - go ahead and accept event*/
@@ -3781,9 +3786,8 @@ join_err:
 						hook_errcode = PBSE_HOOKERROR;
 					}
 					SEND_ERR2(hook_errcode, (char *)hook_msg);
-					if (hook_errcode == PBSE_HOOKERROR) {
+					if (hook_errcode == PBSE_HOOKERROR)
 					    send_hook_fail_action(last_phook);
-					}
 			}
 			break;
 

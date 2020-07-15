@@ -730,12 +730,16 @@ vnl_free(vnl_t *vnlp)
 
 	if (vnlp) {
 		assert(vnlp->vnl_list != NULL);
+		if (vnlp->vnl_used == 0 && vnlp->vnl_nelem && vnlp->vnl_list) {
+			vnal_t *vnrlp = (vnal_t *) vnlp->vnl_list;
+			free(vnrlp->vnal_list);
+		}
 		for (i = 0; i < vnlp->vnl_used; i++) {
-			vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
+			vnal_t *vnrlp = VNL_NODENUM(vnlp, i);
 
 			assert(vnrlp->vnal_list != NULL);
 			for (j = 0; j < vnrlp->vnal_used; j++) {
-				vna_t	*vnrp = VNAL_NODENUM(vnrlp, j);
+				vna_t *vnrp = VNAL_NODENUM(vnrlp, j);
 
 				free(vnrp->vna_name);
 				free(vnrp->vna_val);
