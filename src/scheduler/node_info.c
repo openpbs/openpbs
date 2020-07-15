@@ -708,10 +708,6 @@ new_node_info()
 	new->group_counts = NULL;
 	new->user_counts = NULL;
 
-	new->max_load = 0.0;
-	new->ideal_load = 0.0;
-	new->loadave = 0.0;
-
 	new->max_running = SCHD_INFINITY;
 	new->max_user_run = SCHD_INFINITY;
 	new->max_group_run = SCHD_INFINITY;
@@ -1554,10 +1550,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	else
 		nnode->res = dup_resource_list(onode->res);
 
-	nnode->max_load = onode->max_load;
-	nnode->ideal_load = onode->ideal_load;
-	nnode->loadave = onode->loadave;
-
 	nnode->max_running = onode->max_running;
 	nnode->max_user_run = onode->max_user_run;
 	nnode->max_group_run = onode->max_group_run;
@@ -1900,7 +1892,6 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 
 				if (res->def  == getallres(RES_NCPUS)) {
 					ncpusres = res;
-					ninfo->loadave += resreq->amount;
 					if (!ninfo->lic_lock)
 						ninfo->server->flt_lic -= resreq->amount;
 				}
@@ -2070,9 +2061,6 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 							res->assigned = 0;
 						}
 						if (res->def == getallres(RES_NCPUS)) {
-							ninfo->loadave -= resreq->amount;
-							if (ninfo->loadave < 0)
-								ninfo->loadave = 0;
 
 							if (!ninfo->lic_lock)
 								ninfo->server->flt_lic += resreq->amount;
@@ -2113,64 +2101,6 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 
 
 }
-
-/**
- * @brief
- *		should_talk_with_mom - check if we should talk to this mom
- *
- * @param[in]	ninfo	-	the mom we are checking
- *
- * @return	int
- * @retval	1	: talk with the mom
- * @retval	0	: don't talk
- *
- */
-int
-should_talk_with_mom(node_info *ninfo)
-{
-	schd_resource *res;
-	int talk = 0;
-
-	if (ninfo == NULL)
-		return 0;
-
-	if (ninfo->is_down)
-		return 0;
-
-	if (ninfo->is_offline)
-		return 0;
-
-	if (ninfo->is_sleeping)
-		return 0;
-
-	if (conf.dyn_res_to_get != NULL)
-		talk = 1;
-
-	if (cstat.smp_dist == SMP_LOWEST_LOAD)
-		talk = 1;
-
-	if (cstat.load_balancing)
-		talk = 1;
-
-	if (conf.assign_ssinodes) {
-		res = find_resource(ninfo->res, getallres(RES_ARCH));
-
-		if (res != NULL)
-			if (strncmp("irix", res->str_avail[0], 4) == 0)
-				talk = 1;
-	}
-
-	if (talk) {
-		res = find_resource(ninfo->res, getallres(RES_HOST));
-		if (res != NULL) {
-			if (!compare_res_to_str(res, ninfo->name, CMP_CASELESS))
-				talk = 0;
-		}
-	}
-
-	return talk;
-}
-
 
 /**
  * @brief
@@ -3993,8 +3923,6 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	time_t end_time;
 	int is_run_event;
 
-	int loadcmp;	/* used for load comparison */
-
 	nspec *ns;
 	timed_event *event;
 	unsigned int event_mask;
@@ -4004,24 +3932,6 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 		return -1;
 
 	noderes = ninfo->res;
-
-	/* don't enforce max load if job is being qrun */
-	if (cstat.load_balancing && resresv->server->qrun_job ==NULL) {
-		req = find_resource_req(resreq, getallres(RES_NCPUS));
-		if (req != NULL && req->amount > 0) {
-			/* here we calculate the number of "loadcpus".  Basically this is
-			 * the number of cpus we have available if we consider 1 cpu to be
-			 * 1 in the loadave.  We need to take the max with 0 just in case
-			 * the loadave is higher then the max_load.  This is cast into an
-			 * int because we need an integer amount of cpus.
-			 */
-			loadcmp = (int) IF_NEG_THEN_ZERO(ninfo->max_load - ninfo->loadave);
-			chunks = ceil(loadcmp / req->amount);
-		}
-
-		if (chunks == 0)
-			set_schd_error_codes(err, NOT_RUN, NODE_HIGH_LOAD);
-	}
 
 	min_chunks = check_avail_resources(noderes, resreq,
 		CHECK_ALL_BOOLS|UNSET_RES_ZERO, NULL, INSUFFICIENT_RESOURCE, err);
@@ -5007,12 +4917,6 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 			nptr = nodes;
 			break;
 
-		case SMP_LOWEST_LOAD:
-
-			memcpy(nptr, nodes, (nsize+1) * sizeof(node_info *));
-
-			qsort(nptr, nsize, sizeof(node_info *), cmp_low_load);
-			break;
 		case SMP_ROUND_ROBIN:
 
 			if ((tmparr = calloc(node_array_size, sizeof(node_info *))) == NULL) {

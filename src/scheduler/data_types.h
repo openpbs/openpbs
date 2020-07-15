@@ -317,8 +317,6 @@ struct status
 	unsigned strict_fifo:1;		/* deprecated */
 	unsigned strict_ordering:1;
 	unsigned fair_share:1;
-	unsigned load_balancing:1;
-	unsigned load_balancing_rr:1;
 	unsigned help_starving_jobs:1;
 	unsigned backfill:1;
 	unsigned sort_nodes:1;
@@ -712,9 +710,6 @@ struct node_info
 	counts *group_counts;		/* group resource and running counts */
 	counts *user_counts;		/* user resource and running counts */
 
-	float max_load;		/* the load not to go over */
-	float ideal_load;		/* the ideal load of the machine */
-	float loadave;		/* current load average */
 	int max_running;		/* max number of jobs on the node */
 	int max_user_run;		/* max number of jobs running by a user */
 	int max_group_run;		/* max number of jobs running by a UNIX group */
@@ -1134,16 +1129,12 @@ struct config
 	unsigned non_prime_so	:1;
 	unsigned prime_fs	:1;	/* fair share */
 	unsigned non_prime_fs	:1;
-	unsigned prime_lb	:1;	/* load balancing */
-	unsigned non_prime_lb	:1;
 	unsigned prime_hsv	:1;	/* help starving jobs */
 	unsigned non_prime_hsv:1;
 	unsigned prime_bf	:1;	/* back filling */
 	unsigned non_prime_bf	:1;
 	unsigned prime_sn	:1;	/* sort nodes by priority */
 	unsigned non_prime_sn	:1;
-	unsigned prime_lbrr	:1;	/* round robin through load balanced nodes */
-	unsigned non_prime_lbrr:1;
 	unsigned prime_bp	:1;	/* backfill around prime time */
 	unsigned non_prime_bp	:1;	/* backfill around non prime time */
 	unsigned prime_pre	:1;	/* preemptive scheduling */

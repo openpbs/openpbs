@@ -258,7 +258,7 @@ chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath) {
  * @param[in]	isdir - 1 = path is directory, 0 = file
  * @param[in]	sticky - allow write on directory if sticky set
  * @param[in]	disallow - perm bits to disallow
- * @param[in] 	fullpath - check full path
+ * @param[in]	fullpath - check full path
  * @param[in]	uid - uid to check
  *
  * @return	int
