@@ -580,6 +580,9 @@ pbsd_init(int type)
 		while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
 			/* recover sched */
 			if ((psched = sched_recov_db(dbsched.sched_name, NULL)) != NULL) {
+				
+				free_db_attr_list(&dbsched.db_attr_list);
+
 				if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME, strlen(PBS_DFLT_SCHED_NAME))) {
 					dflt_scheduler = psched;
 				}
@@ -721,20 +724,17 @@ pbsd_init(int type)
 	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
 		/* recover queue */
 		if ((pque = que_recov_db(dbque.qu_name, NULL)) != NULL) {
+
+			free_db_attr_list(&dbque.db_attr_list);
+			
 			/* que_recov increments sv_numque */
-			sprintf(log_buffer, msg_init_recovque,
-				pque->qu_qs.qu_name);
-			log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
-				PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, msg_daemonname, log_buffer);
-			if (pque->qu_attr[(int) QE_ATR_ResourceAssn].at_flags &
-				ATR_VFLAG_SET) {
-				que_attr_def[(int) QE_ATR_ResourceAssn].at_free(
-					&pque->qu_attr[(int) QE_ATR_ResourceAssn]);
-			}
+			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, 
+					msg_daemonname, msg_init_recovque, pque->qu_qs.qu_name);
+
+			if (pque->qu_attr[(int) QE_ATR_ResourceAssn].at_flags & ATR_VFLAG_SET)
+				que_attr_def[(int) QE_ATR_ResourceAssn].at_free(&pque->qu_attr[(int) QE_ATR_ResourceAssn]);
 		}
 	}
-
 	pbs_db_cursor_close(conn, state);
 
 	/* end the transaction */
@@ -786,26 +786,18 @@ pbsd_init(int type)
 		presv = resv_recov_db(dbresv.ri_resvid, NULL);
 		if (presv != NULL) {
 
+			free_db_attr_list(&dbresv.db_attr_list);
+
 			is_resv_window_in_future(presv);
 			set_old_subUniverse(presv);
 
 			append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-			if (attach_queue_to_reservation(presv)) {
-
-				/* reservation needed queue; failed to find it */
-				sprintf(log_buffer, msg_init_resvNOq,
-					presv->ri_qs.ri_queue, presv->ri_qs.ri_resvID);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
-					PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
-					LOG_NOTICE, msg_daemonname, log_buffer);
-			} else {
-
-				sprintf(log_buffer, msg_init_recovresv,
-					presv->ri_qs.ri_resvID);
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
-					PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-					LOG_INFO, msg_daemonname, log_buffer);
-			}
+			if (attach_queue_to_reservation(presv)) /* reservation needed queue; failed to find it */
+				log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE, 
+					msg_daemonname, msg_init_resvNOq, presv->ri_qs.ri_queue, presv->ri_qs.ri_resvID);
+			else
+				log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, 
+					msg_daemonname, msg_init_recovresv, presv->ri_qs.ri_resvID);
 		}
 	}
 	pbs_db_cursor_close(conn, state);
@@ -876,10 +868,7 @@ pbsd_init(int type)
 		}
 	}
 
-	sprintf(log_buffer, msg_init_exptjobs,
-		server.sv_qs.sv_numjobs);
-	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		msg_daemonname, log_buffer);
+	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, msg_init_exptjobs, server.sv_qs.sv_numjobs);
 
 	pbs_db_cursor_close(conn, state);
 	/* close transaction */
@@ -1274,12 +1263,9 @@ pbsd_init(int type)
 		phook_current = phook;
 		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 
-		if (phook_current->pending_delete &&
-			!has_pending_mom_action_delete(
-			phook_current->hook_name)) {
-			hook_purge(phook_current,
-				pbs_python_ext_free_python_script);
-		}
+		if (phook_current->pending_delete && !has_pending_mom_action_delete(phook_current->hook_name))
+			hook_purge(phook_current, pbs_python_ext_free_python_script);
+
 	}
 	send_rescdef(0);
 	hook_track_save(NULL, -1); /* refresh path_hooks_tracking file */

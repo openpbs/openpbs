@@ -671,3 +671,29 @@
    fun:work
    ...
 }
+{
+   From PBS - Suppress uninitialized job fs structure in mom
+   Memcheck:Param
+   write(buf)
+   ...
+   fun:job_save_fs
+   ...
+}
+{
+   From PBS - Suppress hook allocated buffer
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:hook_alloc
+   fun:hook_recov
+   ...
+}
+{
+   From PBS - Suppress hook allocated buffer
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:hook_alloc
+   fun:mgr_hook_create
+   ...
+}
