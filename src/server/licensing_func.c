@@ -239,7 +239,7 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 	if (((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds < 2)
 		return;
 
-	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+	prdefvntype = &svr_resc_def[RESC_VNTYPE];
 
 	/*
  	 * Determine where to begin looking for socket licensed nodes:  if
@@ -828,7 +828,7 @@ check_sign(pbsnode *pnode, attribute *new)
 	resource_def *prdef;
 	int err = PBSE_NONE;
 
-	prdef = find_resc_def(svr_resc_def, ND_RESC_LicSignature, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, ND_RESC_LicSignature);
 	presc = find_resc_entry((attribute *)new, prdef);
 	if (presc && (presc->rs_value.at_flags & ATR_VFLAG_MODIFY)) {
 		if ((err = validate_sign(presc->rs_value.at_val.at_str, pnode)) != PBSE_NONE)
