@@ -25,35 +25,39 @@ Following parameters can be set.
 | os | nodes | configure | tests |
 
 ```bash
-./ci --params
-
 # When the params command is called without any arguments it will display the currently set "configuration" and then proceed to run ci
+# as the following example.
+./ci --params
+# or
+./ci -p
 
 
+# The following command is an example of how to define a custom configure option for pbs. Everything to the right of the first '=' after configure will
+# be taken as it is and given as an argument to the configure file in pbs. The same convention follows for other configuration options as well
 ./ci --params 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
 
-# The above command is an example of how to define a custom configure option for pbs. Everything to the right of the first '=' after configure will
-# be taken as it is and given as an argument to the configure file in pbs. The same convention follows for other configuration options as well
 
+# The following are examples how to define a custom test case for pbs_benchpress.
+# NOTE: The string is passed to pbs_benchpress command therefore one can use all available options of pbs_benchpress here.
 ./ci --params 'tests=-f pbs_smoketest.py'
 ./ci --params 'tests=--tags=smoke'
 
-# The above method are examples how to define a custom test case for pbs_benchpress.
-# NOTE: The string is passed to pbs_benchpress command therefore one can use all available options of pbs_benchpress here.
 
-./ci --params 'tests='
 # If you wish to not run any PTL tests then use the above command. This will set tests as empty thus not invoking PTL.
 # By default the test option is set to '-t SmokeTest'
+./ci --params 'tests='
 
-./ci --params 'os=centos:7'
-# This is an example of setting the container operating system. This will setup a single container running pbs server.
+
+# Below is an example of setting the container operating system. This will setup a single container running pbs server.
 # NOTE: ci uses cached image to increase performance of dependecy build. These cached images are saved on the local system
 #		with the suffix '_ci_pbs'. If you wish to use the base image delete any such images.
 # OS platform can be defined by any image from docker-hub
+./ci --params 'os=centos:7'
 
-./ci --params 'nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04;mom=centos:8'
-# This is an example of how to define multi node setup for pbs.
+
+# Following is an example of how to define multi node setup for pbs.
 # You can define multiple 'mom' or 'comm' nodes but only one 'server' node
+./ci --params 'nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04;mom=centos:8'
 
 ```
 
@@ -62,14 +66,14 @@ Following parameters can be set.
 Optionally accepts argument for other platform. The packages can be found in 'ci/packages' folder.
 
 ```bash
+# Below command builds package for the platform ci was started/currently running on.
 ./ci --build-pkgs
-# Above command builds package for the platform ci was started/currently running on.
+
 ```
 
 * **./ci --delete:** will delete any running containers and take a backup of logs. Does not take any arguments. The current logs can be found in the "logs" folder in the ci folder. The backup logs can be found in session-{date}-{timestamp} format folder inside "logs" folder.
 
 ```bash
-./ci --delete
-
 # If you want to get rid of the container simply invoke this command.
+./ci --delete
 ```
