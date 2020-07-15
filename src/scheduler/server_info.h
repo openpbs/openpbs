@@ -174,9 +174,16 @@ int check_job_running(resource_resv *job, void *arg);
 /*
  *
  *	check_running_job_in_reservation - function used by job_filter to filter out
- *			   jobs that are not in a reservation
+ *			   jobs that are in a reservation
  */
 int check_running_job_in_reservation(resource_resv *job, void *arg);
+
+/*
+ *
+ *	check_running_job_not_in_reservation - function used by job_filter to filter out
+ *			   jobs that are not in a reservation
+ */
+int check_running_job_not_in_reservation(resource_resv *job, void *arg);
 
 /*
  *

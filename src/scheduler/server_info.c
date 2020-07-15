@@ -355,7 +355,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_job_running, NULL, 0);
+	jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_running_job_not_in_reservation, NULL, 0);
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
@@ -2079,13 +2079,34 @@ check_job_running(resource_resv *job, void *arg)
  * @param[in]	arg	-	argument (not used here)
  *
  * @return	int
- * @retval	1	: if job is running and in reservation passed in arg
- * @retval	0	: if job is not running or not in reservation passed in arg
+ * @retval	1	: if job is running and in a reservation
+ * @retval	0	: if job is not running or not in a reservation
  */
 int
 check_running_job_in_reservation(resource_resv *job, void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
+		(check_job_running(job, arg) == 1))
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief
+ * 		helper function for resource_resv_filter()
+ *
+ * @param[in]	job	-	resource reservation job.
+ * @param[in]	arg	-	argument (not used here)
+ *
+ * @return	int
+ * @retval	1	: if job is running and not in a reservation
+ * @retval	0	: if job is not running or in a reservation
+ */
+int
+check_running_job_not_in_reservation(resource_resv *job, void *arg)
+{
+	if (job->is_job && job->job != NULL && job->job->resv == NULL &&
 		(check_job_running(job, arg) == 1))
 		return 1;
 
