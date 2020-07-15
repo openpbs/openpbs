@@ -362,7 +362,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 		if (py_json_module == NULL) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "failed to import json");
-			goto json_loads_fail;
+			return NULL;
 		}
 	}
 
@@ -371,7 +371,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 		if (py_json_dict == NULL) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "failed to get json module dictionary");
-			goto json_loads_fail;
+			return NULL;
 		}
 	}
 
@@ -380,7 +380,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 		if ((py_json_func_loads == NULL) || !PyCallable_Check(py_json_func_loads)) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "did not find json.loads() function");
-			goto json_loads_fail;
+			return NULL;
 		}
 	}
 
@@ -388,7 +388,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 	if (py_value == NULL) {
 		if (msg != NULL)
 			snprintf(msg, msg_len, "failed to build python arg %s", value);
-		goto json_loads_fail;
+		return NULL;
 	}
 
 	PyErr_Clear(); /* clear any exception */
@@ -482,7 +482,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		if (py_json_module == NULL) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "failed to import json");
-			goto json_dumps_fail;
+			return NULL;
 		}
 	}
 
@@ -491,7 +491,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		if (py_json_dict == NULL) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "failed to get json module dictionary");
-			goto json_dumps_fail;
+			return NULL;
 		}
 	}
 
@@ -500,7 +500,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		if ((py_json_func_dumps == NULL) || !PyCallable_Check(py_json_func_dumps)) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "did not find json.dumps() function");
-			goto json_dumps_fail;
+			return NULL;
 		}
 	}
 
@@ -508,7 +508,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	if (py_value == NULL) {
 		if (msg != NULL)
 			snprintf(msg, msg_len, "failed to build python arg %p", (void *)py_val);
-		goto json_dumps_fail;
+		return NULL;
 	}
 	PyErr_Clear(); /* clear any exception */
 	py_result = PyObject_CallObject(py_json_func_dumps, py_value);
@@ -548,22 +548,22 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	if (tmp_str == NULL) {
 		if (msg != NULL)
 			snprintf(msg, msg_len, "PyUnicode_AsUTF8 failed");
-		Py_XDECREF(py_result);
-		return NULL;
+		goto json_dumps_fail;
 	}
 	slen = strlen(tmp_str) + 3; /* for null character + 2 single quotes */
 	ret_string = (char *)malloc(slen);
 	if (ret_string == NULL) {
 		if (msg != NULL)
 			snprintf(msg, msg_len, "malloc of ret_string failed");
-		Py_XDECREF(py_result);
-		return NULL;
+		goto json_dumps_fail;
 	}
 	snprintf(ret_string, slen, "'%s'", tmp_str);
+	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return (ret_string);
 
 json_dumps_fail:
+	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return NULL;
 
