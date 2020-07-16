@@ -1924,10 +1924,9 @@ account_job_update(job *pjob, int type)
 	struct svrattrl *patlist = NULL;
 	char *resc_used = NULL;
 	int resc_used_size = 0;
-	int k, len_upd;
-	char	save_char = '\0';
-	int	old_perm;
-
+	int k, len_upd, attr_index;
+	char save_char = '\0';
+	int old_perm;
 
 	if ((pjob->ji_wattr[JOB_ATR_exec_vnode_acct].at_flags & ATR_VFLAG_SET) == 0) {
 		return;
@@ -1944,10 +1943,9 @@ account_job_update(job *pjob, int type)
 	if (i > len)
 		if (grow_acct_buf(&pb, &len, i) == -1)
 			goto writeit;
-	(void)sprintf(pb, "session=%ld",
-		pjob->ji_wattr[JOB_ATR_session_id].at_val.at_long);
+	(void) sprintf(pb, "session=%ld", pjob->ji_wattr[JOB_ATR_session_id].at_val.at_long);
 	i = strlen(pb);
-	pb  += i;
+	pb += i;
 	len -= i;
 
 	/* Alternate id if present */
@@ -1959,47 +1957,51 @@ account_job_update(job *pjob, int type)
 			if (grow_acct_buf(&pb, &len, i) == -1)
 				goto writeit;
 
-		(void)sprintf(pb, " alt_id=%s",
-			pjob->ji_wattr[JOB_ATR_altid].at_val.at_str);
+		(void) sprintf(pb, " alt_id=%s", pjob->ji_wattr[JOB_ATR_altid].at_val.at_str);
 
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
 	/* Add eligible_time */
 	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
-		char timebuf[TIMEBUF_SIZE] = {0};
-		i = 26;	/* sort of max size for " eligible_time=<value>" */
+		char timebuf[TIMEBUF_SIZE];
+		i = 26; /* sort of max size for " eligible_time=<value>" */
 		if (i > len)
 			if (grow_acct_buf(&pb, &len, i) == -1)
 				goto writeit;
 
 		convert_duration_to_str(pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long, timebuf, TIMEBUF_SIZE);
-		(void)sprintf(pb, " eligible_time=%s", timebuf);
+		(void) sprintf(pb, " eligible_time=%s", timebuf);
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 	}
 
 	/* Add in runcount */
 
-	i = 34;		/* sort of max size for "run_count=<value>" */
+	i = 34; /* sort of max size for "run_count=<value>" */
 	if (i > len)
 		if (grow_acct_buf(&pb, &len, i) == -1)
 			goto writeit;
-	sprintf(pb, " run_count=%ld",
-		pjob->ji_wattr[JOB_ATR_runcount].at_val.at_long);
+	sprintf(pb, " run_count=%ld", pjob->ji_wattr[JOB_ATR_runcount].at_val.at_long);
 
 	/* now encode the job's resources_used attribute */
 	old_perm = resc_access_perm;
 	resc_access_perm = READ_ONLY;
-	(void)job_attr_def[JOB_ATR_resc_used_update].at_encode(
-			&pjob->ji_wattr[JOB_ATR_resc_used_update],
-			&attrlist,
-			job_attr_def[JOB_ATR_resc_used_update].at_name,
-			NULL,
-			ATR_ENCODE_CLIENT, NULL);
+	if (pjob->ji_wattr[JOB_ATR_resc_used_update].at_flags & ATR_VFLAG_SET) {
+		len_upd = 7; /* for length of "_update" */
+		attr_index = JOB_ATR_resc_used_update;
+	} else {
+		len_upd = 0;
+		attr_index = JOB_ATR_resc_used;
+	}
+	job_attr_def[attr_index].at_encode(&pjob->ji_wattr[attr_index],
+					   &attrlist,
+					   job_attr_def[attr_index].at_name,
+					   NULL,
+					   ATR_ENCODE_CLIENT, NULL);
 	resc_access_perm = old_perm;
 
 	/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
@@ -2010,13 +2012,15 @@ account_job_update(job *pjob, int type)
 	resc_used[0] = '\0';
 
 	patlist = GET_NEXT(attrlist);
-	len_upd = 7; /* for length of "_update" */
 	while (patlist) {
-		/* strip off the '_update' suffix */
-		k = strlen(patlist->al_name);
-		if (k  > len_upd) {
-			save_char = patlist->al_name[k-len_upd];
-			patlist->al_name[k-len_upd] = '\0';
+		k = 0;
+		if (len_upd > 0) {
+			/* strip off the '_update' suffix */
+			k = strlen(patlist->al_name);
+			if (k > len_upd) {
+				save_char = patlist->al_name[k - len_upd];
+				patlist->al_name[k - len_upd] = '\0';
+			}
 		}
 		/*
 		 * To calculate length of the string of the form "resources_used.<resource>=<value>".
@@ -2024,61 +2028,58 @@ account_job_update(job *pjob, int type)
 		 */
 		if (strlen(patlist->al_value) > 0) {
 
-			if(pbs_strcat(&resc_used, &resc_used_size, " ") == NULL) {
+			if (pbs_strcat(&resc_used, &resc_used_size, " ") == NULL) {
 				log_err(errno, __func__, "Failed to allocate memory.");
-				if (k > len_upd) {
-					patlist->al_name[k-len_upd] = save_char;
+				if (len_upd > 0 && k > len_upd) {
+					patlist->al_name[k - len_upd] = save_char;
 				}
 				goto writeit;
 			}
-			if(pbs_strcat(&resc_used, &resc_used_size, patlist->al_name) == NULL) {
+			if (pbs_strcat(&resc_used, &resc_used_size, patlist->al_name) == NULL) {
 				log_err(errno, __func__, "Failed to allocate memory.");
-				if (k > len_upd) {
-					patlist->al_name[k-len_upd] = save_char;
+				if (len_upd > 0 && k > len_upd) {
+					patlist->al_name[k - len_upd] = save_char;
 				}
 				goto writeit;
 			}
-			if (k > len_upd) {
-				patlist->al_name[k-len_upd] = save_char;
+			if (len_upd > 0 && k > len_upd) {
+				patlist->al_name[k - len_upd] = save_char;
 			}
 			if (patlist->al_resc) {
-				if(pbs_strcat(&resc_used, &resc_used_size, ".") == NULL) {
+				if (pbs_strcat(&resc_used, &resc_used_size, ".") == NULL) {
 					log_err(errno, __func__, "Failed to allocate memory.");
 					goto writeit;
 				}
-				if(pbs_strcat(&resc_used, &resc_used_size, patlist->al_resc) == NULL) {
+				if (pbs_strcat(&resc_used, &resc_used_size, patlist->al_resc) == NULL) {
 					log_err(errno, __func__, "Failed to allocate memory.");
 					goto writeit;
 				}
 			}
-			if(pbs_strcat(&resc_used, &resc_used_size, "=") == NULL) {
+			if (pbs_strcat(&resc_used, &resc_used_size, "=") == NULL) {
 				log_err(errno, __func__, "Failed to allocate memory.");
 				goto writeit;
 			}
 			if (patlist->al_resc && (strcmp(patlist->al_resc, WALLTIME) == 0)) {
-				long	j, k;
+				long j, k;
 
 				k = get_walltime(pjob, JOB_ATR_resc_used_acct);
 				j = get_walltime(pjob, JOB_ATR_resc_used);
 				if ((k >= 0) && (j >= k)) {
-					char timebuf[TIMEBUF_SIZE] = {0};
+					char timebuf[TIMEBUF_SIZE];
 
-					convert_duration_to_str(j-k, timebuf, TIMEBUF_SIZE);
-					if(pbs_strcat(&resc_used, &resc_used_size,
-							timebuf) == NULL) {
+					convert_duration_to_str(j - k, timebuf, TIMEBUF_SIZE);
+					if (pbs_strcat(&resc_used, &resc_used_size, timebuf) == NULL) {
 						log_err(errno, __func__, "Failed to allocate memory.");
 						goto writeit;
 					}
 				} else {
-					if(pbs_strcat(&resc_used, &resc_used_size,
-							patlist->al_value) == NULL) {
+					if (pbs_strcat(&resc_used, &resc_used_size, patlist->al_value) == NULL) {
 						log_err(errno, __func__, "Failed to allocate memory.");
 						goto writeit;
 					}
 				}
 			} else {
-				if(pbs_strcat(&resc_used, &resc_used_size,
-						patlist->al_value) == NULL) {
+				if (pbs_strcat(&resc_used, &resc_used_size, patlist->al_value) == NULL) {
 					log_err(errno, __func__, "Failed to allocate memory.");
 					goto writeit;
 				}
@@ -2088,30 +2089,29 @@ account_job_update(job *pjob, int type)
 	}
 	free_attrlist(&attrlist);
 
-	if (resc_used != NULL) {
+	if (resc_used[0] != '\0') {
 		i = strlen(resc_used) + 1;
 		if (i > len)
 			if (grow_acct_buf(&pb, &len, i) == -1)
 				goto writeit;
-		(void)strcat(pb, " ");
-		(void)strcat(pb, resc_used);
+		(void) strcat(pb, " ");
+		(void) strcat(pb, resc_used);
 		i = strlen(pb);
-		pb  += i;
+		pb += i;
 		len -= i;
 
 		if ((pjob->ji_wattr[JOB_ATR_resc_used_acct].at_flags & ATR_VFLAG_SET) != 0) {
 			job_attr_def[JOB_ATR_resc_used_acct].at_free(&pjob->ji_wattr[JOB_ATR_resc_used_acct]);
 			pjob->ji_wattr[JOB_ATR_resc_used_acct].at_flags &= ~ATR_VFLAG_SET;
 		}
-		job_attr_def[JOB_ATR_resc_used_acct].at_set( &pjob->ji_wattr[JOB_ATR_resc_used_acct], &pjob->ji_wattr[JOB_ATR_resc_used], INCR);
+		job_attr_def[JOB_ATR_resc_used_acct].at_set(&pjob->ji_wattr[JOB_ATR_resc_used_acct], &pjob->ji_wattr[JOB_ATR_resc_used], INCR);
 	}
 
 writeit:
-	acct_buf[acct_bufsize-1] = '\0';
+	acct_buf[acct_bufsize - 1] = '\0';
 	account_record(type, pjob, acct_buf);
-	if (resc_used != NULL) {
+	if (resc_used != NULL)
 		free(resc_used);
-	}
 }
 
 /**
