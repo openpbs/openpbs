@@ -51,19 +51,13 @@ class TestDaemonServiceUser(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-        self.orig_pbs_conf = self.du.parse_pbs_config(self.server.shortname)
 
-    def tearDown(self):
-        self.du.set_pbs_config(self.server.shortname,
-                               confs=self.orig_pbs_conf,
-                               append=False)
-        TestFunctional.tearDown(self)
-
-    def common_test(self, binary, runas, scheduser, msg):
+    def common_test(self, binary, runas, scheduser, msg, setup_sched=False):
         """
         Test if running `binary` as `runas` with
         PBS_DAEMON_SERVICE_USER set as `scheduser`
         Check to see `msg` is in stderr
+        If `msg` is None, make sure command passed
         """
         if scheduser:
             self.du.set_pbs_config(
@@ -76,27 +70,23 @@ class TestDaemonServiceUser(TestFunctional):
                 confs='PBS_DAEMON_SERVICE_USER'
             )
         pbs_conf = self.du.parse_pbs_config(self.server.shortname)
+        if setup_sched:
+            sched_logs = os.path.join(pbs_conf['PBS_HOME'], 'sched_logs')
+            sched_priv = os.path.join(pbs_conf['PBS_HOME'], 'sched_priv')
+            self.du.chown(path=sched_logs, uid=scheduser,
+                          recursive=True, sudo=True, level=logging.INFO)
+            self.du.chown(path=sched_priv, uid=scheduser,
+                          recursive=True, sudo=True, level=logging.INFO)
+
         binpath = os.path.join(pbs_conf['PBS_EXEC'], 'sbin', binary)
         ret = self.du.run_cmd(self.server.shortname,
                               cmd=[binpath], runas=runas)
-        self.assertEquals(ret['rc'], 1)
-        self.assertIn(msg, '\n'.join(ret['err']))
-
-    def test_sched_runas_root(self):
-        """
-        Test if running sched as root with
-        PBS_DAEMON_SERVICE_USER set as another user
-        """
-        self.common_test('pbs_sched', ROOT_USER, TEST_USER,
-                         'Must be run by PBS_DAEMON_SERVICE_USER')
-
-    def test_pbsfs_runas_root(self):
-        """
-        Test if running pbsfs as root with
-        PBS_DAEMON_SERVICE_USER set as another user
-        """
-        self.common_test('pbsfs', ROOT_USER, TEST_USER,
-                         'Must be run by PBS_DAEMON_SERVICE_USER')
+        if msg:
+            self.assertEquals(ret['rc'], 1)
+            self.assertIn(msg, '\n'.join(ret['err']))
+        else:
+            self.assertEquals(ret['rc'], 0)
+            self.assertFalse(ret['err'])
 
     def test_sched_runas_nonroot(self):
         """
@@ -131,3 +121,14 @@ class TestDaemonServiceUser(TestFunctional):
         self.common_test('pbsfs', TEST_USER, None,
                          'Must be run by PBS_DAEMON_SERVICE_USER if '
                          'set or root if not set')
+
+    def test_sched_runas_nonroot_pass(self):
+        """
+        Test if sched runs as non-root user
+        """
+        self.scheduler.stop()
+        self.common_test('pbs_sched', TEST_USER, TEST_USER, None,
+                         setup_sched=True)
+        j = Job(TEST_USER1)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)

@@ -596,7 +596,7 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.add_resource('foo')
 
         scr_body = ['echo "10"', 'exit 0']
-        home_dir = os.path.join(os.sep, 'tmp')
+        home_dir = os.path.expanduser('~%s' % (self.scheduler.user))
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=home_dir,
                                                validate=False)
@@ -625,6 +625,7 @@ class TestServerDynRes(TestFunctional):
                                            dirname=home_dir,
                                            suffix=' tmp',
                                            sudo=True)
+        self.du.chmod(path=dir_temp, mode=0o766, sudo=True)
         self.du.chown(path=dir_temp, sudo=True, uid=self.scheduler.user)
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=dir_temp,

@@ -848,22 +848,8 @@ main(int argc, char *argv[])
 	if (pbs_loadconf(0) == 0)
 		return (1);
 
-	if (pbs_conf.pbs_daemon_service_user) {
-		struct passwd *pwd = getpwnam(pbs_conf.pbs_daemon_service_user);
-		if (!pwd) {
-			fprintf(stderr, "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", argv[0], pbs_conf.pbs_daemon_service_user);
-			return(1);
-		}
-
-		if (pwd->pw_uid != getuid()) {
-			fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER\n", argv[0]);
-			return(1);
-		}
-	} else if ((geteuid() != 0) || (getuid() != 0)) {
-		fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", argv[0]);
+	if (validate_running_user(argv[0]) == 0)
 		return (1);
-	}
-
 
 	/* disable attribute verification */
 	set_no_attribute_verification();

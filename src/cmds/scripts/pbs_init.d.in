@@ -392,14 +392,13 @@ start_pbs() {
     fi
 
     if [ "${PBS_START_SCHED}" -gt 0 ] ; then
-      scheduser="${PBS_DAEMON_SERVICE_USER:-"root"}"
       if check_prog "sched" ; then
         echo "PBS scheduler already running."
       else
          if [ -f ${pbslibdir}/init.d/limits.pbs_sched ] ; then
              . ${pbslibdir}/init.d/limits.pbs_sched
          fi
-         if su -c ${PBS_EXEC}/sbin/pbs_sched ${scheduser}
+         if ${PBS_EXEC}/sbin/pbs_sched
          then
             echo "PBS sched"
          else

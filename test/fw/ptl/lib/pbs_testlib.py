@@ -11152,12 +11152,8 @@ class Scheduler(PBSService):
             if sched_home is not None:
                 cmd += ['-d', sched_home]
             try:
-                if self.user.name == 'root':
-                    ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
-                                          logerr=False, level=logging.INFOCLI)
-                else:
-                    ret = self.du.run_cmd(self.hostname, cmd, runas=self.user,
-                                          logerr=False, level=logging.INFOCLI)
+                ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
+                                      logerr=False, level=logging.INFOCLI)
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             self.server.manager(MGR_CMD_LIST, SCHED)
@@ -11682,10 +11678,7 @@ class Scheduler(PBSService):
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
-        if self.user.name == 'root':
-            self.du.run_cmd(cmd=cmd, sudo=True)
-        else:
-            self.du.run_cmd(cmd=cmd, runas=self.user)
+        self.du.run_cmd(cmd=cmd, runas=self.user)
         self.parse_sched_config()
         if self.platform == 'cray' or self.platform == 'craysim':
             self.add_resource('vntype')
@@ -12662,19 +12655,8 @@ class Scheduler(PBSService):
         if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
 
-        dsu = 'PBS_DAEMON_SERVICE_USER'
-
-        if ((dsu in self.pbs_conf and self.pbs_conf[dsu] != self.user.name) or
-                (dsu not in self.pbs_conf and self.user.name != 'root')):
-            env = '%s=%s' % (dsu, self.user.name)
-            cmd.insert(0, env)
-
-        if self.user.name == 'root':
-            ret = self.du.run_cmd(self.hostname, cmd=cmd,
-                                  sudo=True, logerr=False)
-        else:
-            ret = self.du.run_cmd(self.hostname, cmd=cmd,
-                                  runas=self.user, logerr=False)
+        ret = self.du.run_cmd(self.hostname, cmd=cmd,
+                              sudo=True, logerr=False)
 
         if ret['rc'] != 0:
             raise PbsFairshareError(rc=ret['rc'], rv=None,

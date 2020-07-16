@@ -3228,7 +3228,7 @@ conf4primary(FILE *fp, struct infrastruct *pinf)
 					pbsservice[0] = pw->pw_uid;
 				}
 				else {
-					char * msgbuf;
+					char *msgbuf;
 					pbs_asprintf(&msgbuf, "Service user %s does not exist\n", conf_value);
 					put_msg_in_table(NULL, SRC_CONF, MSG_real, msgbuf);
 					free(msgbuf);
@@ -3302,7 +3302,7 @@ env4primary(struct infrastruct *pinf)
 			pbsservice[0] = pw->pw_uid;
 		}
 		else {
-			char * msgbuf;
+			char *msgbuf;
 			pbs_asprintf(&msgbuf, "Service user %s does not exist\n", gvalue);
 			put_msg_in_table(NULL, SRC_CONF, MSG_real, msgbuf);
 			free(msgbuf);

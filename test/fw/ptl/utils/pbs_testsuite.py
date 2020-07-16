@@ -806,12 +806,6 @@ class PBSTestSuite(unittest.TestCase):
                                       func=init_mom_func)
         if cls.moms:
             cls.mom = cls.moms.values()[0]
-
-        # for mom in cls.moms.values():
-        #     if not mom.isUp():
-        #         cls.logger.error('mom ' + mom.hostname + ' is down')
-        #         mom.pi.start_mom(mom.hostname)
-
         cls.server.moms = cls.moms
 
     @classmethod

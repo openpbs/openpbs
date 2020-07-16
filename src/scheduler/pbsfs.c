@@ -53,8 +53,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
 #include <libpbs.h>
 #include <pbs_ifl.h>
 #include "data_types.h"
@@ -65,6 +63,7 @@
 #include "pbs_version.h"
 #include "sched_cmds.h"
 #include "log.h"
+#include "fifo.h"
 
 /* prototypes */
 static void print_fairshare_entity(group_info *ginfo);
@@ -145,20 +144,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (pbs_conf.pbs_daemon_service_user) {
-		struct passwd *user;
-		user = getpwnam(pbs_conf.pbs_daemon_service_user);
-		if (user == NULL) {
-			fprintf(stderr, "PBS_DAEMON_SERVICE_USER [%s] does not exist\n", pbs_conf.pbs_daemon_service_user);
-			exit(1);
-		}
-		if (user->pw_uid != getuid()) {
-			fprintf(stderr, "pbsfs: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", pbs_conf.pbs_daemon_service_user);
-			exit(1);
-		}
-	}
-	else if (getuid() != 0) {
-		fprintf(stderr, "pbsfs: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n");
+	if (validate_running_user(argv[0]) == 0) {
 		exit(1);
 	}
 

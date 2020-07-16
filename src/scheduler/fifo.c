@@ -66,6 +66,7 @@
  * 	find_susp_job()
  * 	scheduler_simulation_task()
  * 	next_job()
+ * 	validate_running_user()
  */
 #include <pbs_config.h>
 
@@ -86,6 +87,7 @@
 #include <sched_cmds.h>
 #include <time.h>
 #include <log.h>
+#include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -2991,6 +2993,45 @@ set_validate_sched_attrs(int connector)
 	}
 
 	pbs_statfree(all_ss);
+
+	return 1;
+}
+
+/**
+ * @brief Validate running user.
+ * If PBS_DAEMON_SERVICE_USER is set, and user is root, change user to it.
+ *
+ * @param[in] exename - name of executable (argv[0])
+ *
+ * @retval Error code
+ * @return 0 - Failure
+ * @return 1 - Success
+ *
+ * @par Side Effects:
+ *	None
+ */
+int
+validate_running_user(char * exename) {
+	if (pbs_conf.pbs_daemon_service_user) {
+		struct passwd *user = getpwnam(pbs_conf.pbs_daemon_service_user);
+		if (user == NULL) {
+			fprintf(stderr, "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", exename, pbs_conf.pbs_daemon_service_user);
+			return 0;
+		}
+
+		if (geteuid() == 0) {
+			setuid(user->pw_uid);
+		}
+
+		if (user->pw_uid != getuid()) {
+			fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", exename, pbs_conf.pbs_daemon_service_user);
+			return 0;
+		}
+	}
+	else if ((geteuid() != 0) ||getuid() != 0) {
+		fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
+		return 0;
+	}
 
 	return 1;
 }
