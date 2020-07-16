@@ -1396,6 +1396,7 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 				    preq->rq_perm, &bad_attr, (void *) &server, PARENT_TYPE_SERVER, INDIRECT_RES_CHECK);
 		if (rc != 0) {
 			reply_badattr(rc, bad_attr, ulist, preq);
+			free_attrlist(&unsetlist);
 			return;
 		}
 		free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
@@ -1645,6 +1646,7 @@ mgr_sched_set(struct batch_request *preq)
 			preq->rq_perm, &bad_attr, (void *)psched, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
 		if (rc != 0) {
 			reply_badattr(rc, bad_attr, ulist, preq);
+			free_attrlist(&unsetlist);
 			return;
 		}
 		free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
@@ -1797,6 +1799,7 @@ mgr_queue_set(struct batch_request *preq)
 				preq->rq_perm, &bad, (void *)pque, PARENT_TYPE_QUE_ALL, INDIRECT_RES_CHECK);
 			if (rc != 0) {
 				reply_badattr(rc, bad, ulist, preq);
+				free_attrlist(&unsetlist);
 				return;
 			}
 			free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */	
@@ -2085,7 +2088,8 @@ mgr_node_set(struct batch_request *preq)
 							case PBSE_ATTRRO:
 							case PBSE_MUTUALEX:
 							case PBSE_BADNDATVAL:
-								reply_badattr(rc, bad, NULL, preq);
+							case PBSE_UNKRESC:
+								reply_badattr(rc, bad, plist, preq);
 								break;
 							case PBSE_QUE_NOT_IN_PARTITION:
 								(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_queue_not_in_partition,
@@ -2104,6 +2108,8 @@ mgr_node_set(struct batch_request *preq)
 								req_reject(rc, 0, preq);
 						}
 						free(warn_nodes);
+						free_attrlist(&unsetlist);
+						free_attrlist(&setlist);
 						return;
 					}
 				} else {/*modifications succeed for this node*/
@@ -2396,6 +2402,7 @@ mgr_node_unset(struct batch_request *preq)
 						case PBSE_ATTRRO:
 						case PBSE_MUTUALEX:
 						case PBSE_BADNDATVAL:
+						case PBSE_UNKRESC:
 							reply_badattr(rc, bad, plist, preq);
 							break;
 
