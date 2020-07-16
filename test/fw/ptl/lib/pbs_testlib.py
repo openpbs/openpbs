@@ -14072,12 +14072,12 @@ class MoM(PBSService):
         pat = 'cgroup /sys/fs/cgroup'
         enablemem = False
         for line in mounts:
-             entries = line.split()
-             if entries[2] != 'cgroup':
-                 continue
-             flags = entries[3].split(',')
-             if 'memory' in flags:
-                 enablemem = True
+            entries = line.split()
+            if entries[2] != 'cgroup':
+                continue
+            flags = entries[3].split(',')
+            if 'memory' in flags:
+                enablemem = True
         if str(mounts).count(pat) >= 6 and str(mounts).count('cpuset') >= 2:
             pbs_conf_val = self.du.parse_pbs_config(self.hostname)
             f1 = os.path.join(pbs_conf_val['PBS_EXEC'], 'lib',
