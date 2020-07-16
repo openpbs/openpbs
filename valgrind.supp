@@ -660,7 +660,6 @@
    Memcheck:Leak
    fun:calloc
    fun:get_avl_tls
-   fun:avl_*
    ...
 }
 {
