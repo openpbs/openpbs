@@ -701,36 +701,36 @@ int
 main(int argc, char **argv)
 {
 	char *nodename = NULL;
-	int			are_primary;
-	int			c, rc;
-	int			i;
-	int			tppfd;		/* fd to receive is HELLO's */
-	struct			tpp_config tpp_conf;
-	char			lockfile[MAXPATHLEN+1];
-	char			**origevp;
-	char			*pc;
-	pbs_queue		*pque;
-	char			*servicename;
-	time_t			svrlivetime;
-	int			sock;
-	struct stat 		sb_sa;
-	struct batch_request	*periodic_req;
-	char			hook_msg[HOOK_MSG_SIZE];
-	pbs_sched		*psched;
-	char			*keep_daemon_name = NULL;
-
-	pid_t			sid = -1;
-
-	long			*state;
-	time_t			waittime;
+	int are_primary;
+	int c, rc;
+	int i;
+	int tppfd; /* fd to receive is HELLO's */
+	struct tpp_config tpp_conf;
+	char lockfile[MAXPATHLEN + 1];
+	char **origevp;
+	char *pc;
+	pbs_queue *pque;
+	char *servicename;
+	time_t svrlivetime;
+	int sock;
+	struct stat sb_sa;
+	struct batch_request *periodic_req;
+	char hook_msg[HOOK_MSG_SIZE];
+	pbs_sched *psched;
+	char *keep_daemon_name = NULL;
+	job *pjob;
+	resc_resv *presv;
+	pid_t sid = -1;
+	long *state;
+	time_t waittime;
 #ifdef _POSIX_MEMLOCK
-	int			do_mlockall = 0;
-#endif	/* _POSIX_MEMLOCK */
-	extern char		**environ;
+	int do_mlockall = 0;
+#endif /* _POSIX_MEMLOCK */
+	extern char **environ;
 
 	static struct {
 		char *it_name;
-		int   it_type;
+		int it_type;
 	} init_name_type[] = {
 		{ "hot",	RECOV_HOT },
 		{ "warm",	RECOV_WARM },
@@ -750,17 +750,13 @@ main(int argc, char **argv)
 	extern char		*msg_startup1;	/* log message */
 	extern char		*msg_startup2;	/* log message */
 	/* python externs */
-	extern void pbs_python_svr_initialize_interpreter_data(
-		struct python_interpreter_data *interp_data);
-	extern void pbs_python_svr_destroy_interpreter_data(
-		struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_destroy_interpreter_data(struct python_interpreter_data *interp_data);
 
 	/* set python interp data */
 	svr_interp_data.data_initialized = 0;
-	svr_interp_data.init_interpreter_data =
-		pbs_python_svr_initialize_interpreter_data;
-	svr_interp_data.destroy_interpreter_data =
-		pbs_python_svr_destroy_interpreter_data;
+	svr_interp_data.init_interpreter_data = pbs_python_svr_initialize_interpreter_data;
+	svr_interp_data.destroy_interpreter_data = pbs_python_svr_destroy_interpreter_data;
 	/*the real deal or just pbs_version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
@@ -1616,6 +1612,16 @@ main(int argc, char **argv)
 	server.sv_qs.sv_lastid = server.sv_qs.sv_jobidnumber;
 	svr_save_db(&server);	/* final recording of server */
 	track_save(NULL);	/* save tracking data	     */
+
+	/* save any jobs that need saving */
+	for (pjob = (job *)GET_NEXT(svr_alljobs); pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs))
+		job_save_db(pjob);
+
+	/* save any reservations that need saving */
+	for (presv = (resc_resv *)GET_NEXT(svr_allresvs); presv; presv = (resc_resv *)GET_NEXT(presv->ri_allresvs))
+		resv_save_db(presv);
+
+	save_nodes_db(0, NULL);
 
 	/* if brought up the Secondary Scheduler, take it down */
 
