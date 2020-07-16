@@ -1396,6 +1396,7 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 				    preq->rq_perm, &bad_attr, (void *) &server, PARENT_TYPE_SERVER, INDIRECT_RES_CHECK);
 		if (rc != 0) {
 			reply_badattr(rc, bad_attr, ulist, preq);
+			free_attrlist(&unsetlist);
 			return;
 		}
 		free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
@@ -1641,8 +1642,14 @@ mgr_sched_set(struct batch_request *preq)
 	/* if the unsetlist has attributes, call server_unset to remove them separately */
 	ulist = (svrattrl *)GET_NEXT(unsetlist);
 	if (ulist) {
-		mgr_unset_attr(psched->sch_attr, sched_attr_idx, sched_attr_def, SCHED_ATR_LAST, ulist,
+		rc = mgr_unset_attr(psched->sch_attr, sched_attr_idx, sched_attr_def, SCHED_ATR_LAST, ulist,
 			preq->rq_perm, &bad_attr, (void *)psched, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
+		if (rc != 0) {
+			reply_badattr(rc, bad_attr, ulist, preq);
+			free_attrlist(&unsetlist);
+			return;
+		}
+		free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
 	}
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -1788,8 +1795,14 @@ mgr_queue_set(struct batch_request *preq)
 		/* if the unsetlist has attributes, call server_unset to remove them separately */
 		ulist = (svrattrl *)GET_NEXT(unsetlist);
 		if (ulist) {
-			mgr_unset_attr(pque->qu_attr, que_attr_idx, que_attr_def, QA_ATR_LAST, ulist,
+			rc = mgr_unset_attr(pque->qu_attr, que_attr_idx, que_attr_def, QA_ATR_LAST, ulist,
 				preq->rq_perm, &bad, (void *)pque, PARENT_TYPE_QUE_ALL, INDIRECT_RES_CHECK);
+			if (rc != 0) {
+				reply_badattr(rc, bad, ulist, preq);
+				free_attrlist(&unsetlist);
+				return;
+			}
+			free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */	
 		}
 
 		plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -1923,28 +1936,27 @@ mgr_node_set(struct batch_request *preq)
 {
 	extern char *msg_queue_not_in_partition;
 	extern char *msg_partition_not_in_queue;
-	int		bad = 0;
-	char		hostname[PBS_MAXHOSTNAME+1];
-	int		numnodes = 1;	/* number of vnodes to be operated on */
+	int bad = 0;
+	char hostname[PBS_MAXHOSTNAME + 1];
+	int numnodes = 1; /* number of vnodes to be operated on */
 	svrattrl *tmp;
 	svrattrl *plist;
-	svrattrl *ulist;
 	pbs_list_head unsetlist;
-	char		*nodename;
-	mominfo_t	*pmom = NULL;
-	mom_svrinfo_t	*psvrmom = NULL;
-	struct pbsnode  *pnode;
-	int		rc;
-
-	int		i, len;
-	int		problem_cnt = 0;
-	int		momidx;
-	char		*problem_names = NULL;
-	struct pbsnode  **problem_nodes = NULL;
-	static char	*warnmsg = NULL;
-	struct pbsnode  **warn_nodes = NULL;
-	int		warn_idx = 0;
-	int		replied = 0;	/* boolean */
+	pbs_list_head setlist;
+	char *nodename;
+	mominfo_t *pmom = NULL;
+	mom_svrinfo_t *psvrmom = NULL;
+	struct pbsnode *pnode;
+	int rc;
+	int i, j, len;
+	int problem_cnt = 0;
+	int momidx;
+	char *problem_names = NULL;
+	struct pbsnode **problem_nodes = NULL;
+	static char *warnmsg = NULL;
+	struct pbsnode **warn_nodes = NULL;
+	int warn_idx = 0;
+	int replied = 0; /* boolean */
 
 	nodename = preq->rq_ind.rq_manager.rq_objname;
 
@@ -2005,17 +2017,19 @@ mgr_node_set(struct batch_request *preq)
 		return;
 	}
 
+	CLEAR_HEAD(setlist);
 	CLEAR_HEAD(unsetlist);
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
-		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0') {
-			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
-			delete_link(&plist->al_link);
+		tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
+		
+		delete_link(&plist->al_link);
+		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0')
 			append_link(&unsetlist, &plist->al_link, plist);
-			plist = tmp;
-			continue;
-		}
-		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
+		else
+			append_link(&setlist, &plist->al_link, plist);
+
+		plist = tmp;
 	}
 
 	/* set writtable attributes of node (nodes if numnodes > 1) */
@@ -2042,68 +2056,70 @@ mgr_node_set(struct batch_request *preq)
 	i = 0;
 	while (pnode) {
 		if ((pnode->nd_state & INUSE_DELETED) == 0) {
-			/* if the unsetlist has attributes, call server_unset to remove them separately */
-			ulist = (svrattrl *)GET_NEXT(unsetlist);
-			if (ulist) {
-				mgr_unset_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, ulist,
-					preq->rq_perm, &bad, (void *)pnode, PARENT_TYPE_NODE, INDIRECT_RES_CHECK);
-			}
-
-			plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
-			rc = mgr_set_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST,
-				plist,
-				preq->rq_perm | ATR_PERM_ALLOW_INDIRECT,
-				&bad, (void *)pnode, ATR_ACTION_ALTER);
-			if (rc != 0) {
-
-				if (numnodes > 1) {
-					if (problem_nodes) {
-						/*we have an array in which to save*/
-						problem_nodes[ problem_cnt ] = pnode;
-						++problem_cnt;
-					}
-				} else {/*In the specific node case, reply w/ error and return*/
-					switch (rc) {
-						case PBSE_INTERNAL:
-						case PBSE_SYSTEM:
-							req_reject(rc, bad, preq);
-							break;
-
-						case PBSE_NOATTR:
-						case PBSE_ATTRRO:
-						case PBSE_MUTUALEX:
-						case PBSE_BADNDATVAL:
-							reply_badattr(rc, bad, plist, preq);
-							break;
-						case PBSE_QUE_NOT_IN_PARTITION:
-							(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_queue_not_in_partition,
-								pnode->nd_attr[ND_ATR_Queue].at_val.at_str);
-							log_err(-1, __func__, log_buffer);
-							reply_text(preq, PBSE_QUE_NOT_IN_PARTITION, log_buffer);
-							break;
-						case PBSE_PARTITION_NOT_IN_QUE:
-							(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_partition_not_in_queue,
-								pnode->nd_attr[ND_ATR_partition].at_val.at_str);
-							log_err(-1, __func__, log_buffer);
-							reply_text(preq, PBSE_PARTITION_NOT_IN_QUE, log_buffer);
-							break;
-
-						default:
-							req_reject(rc, 0, preq);
-					}
-					free(warn_nodes);
-					return;
+			for (j = 0; j < 2; j++) {
+				rc = 0;
+				if (j == 0) {
+					plist = (svrattrl *)GET_NEXT(unsetlist);
+					rc = mgr_unset_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, plist,
+							preq->rq_perm, &bad, (void *)pnode, PARENT_TYPE_NODE, INDIRECT_RES_CHECK);
+				} else {
+					plist = (svrattrl *)GET_NEXT(setlist);
+					rc = mgr_set_attr(pnode->nd_attr, node_attr_idx, node_attr_def, ND_ATR_LAST, plist,
+						preq->rq_perm | ATR_PERM_ALLOW_INDIRECT, &bad, (void *)pnode, ATR_ACTION_ALTER);
 				}
+				if (rc != 0) {
+					if (numnodes > 1) {
+						if (problem_nodes) {
+							/*we have an array in which to save*/
+							if (problem_nodes[problem_cnt - 1] != pnode) {
+								/* and this node was not saved already */
+								problem_nodes[ problem_cnt ] = pnode;
+								++problem_cnt;
+							}
+						}
+					} else {/*In the specific node case, reply w/ error and return*/
+						switch (rc) {
+							case PBSE_INTERNAL:
+							case PBSE_SYSTEM:
+								req_reject(rc, bad, preq);
+								break;
 
-			} else {/*modifications succeed for this node*/
+							case PBSE_NOATTR:
+							case PBSE_ATTRRO:
+							case PBSE_MUTUALEX:
+							case PBSE_BADNDATVAL:
+							case PBSE_UNKRESC:
+								reply_badattr(rc, bad, plist, preq);
+								break;
+							case PBSE_QUE_NOT_IN_PARTITION:
+								(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_queue_not_in_partition,
+									pnode->nd_attr[ND_ATR_Queue].at_val.at_str);
+								log_err(-1, __func__, log_buffer);
+								reply_text(preq, PBSE_QUE_NOT_IN_PARTITION, log_buffer);
+								break;
+							case PBSE_PARTITION_NOT_IN_QUE:
+								(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_partition_not_in_queue,
+									pnode->nd_attr[ND_ATR_partition].at_val.at_str);
+								log_err(-1, __func__, log_buffer);
+								reply_text(preq, PBSE_PARTITION_NOT_IN_QUE, log_buffer);
+								break;
 
-				warnings_update(WARN_ngrp, warn_nodes, &warn_idx, pnode);
+							default:
+								req_reject(rc, 0, preq);
+						}
+						free(warn_nodes);
+						free_attrlist(&unsetlist);
+						free_attrlist(&setlist);
+						return;
+					}
+				} else {/*modifications succeed for this node*/
+					warnings_update(WARN_ngrp, warn_nodes, &warn_idx, pnode);
 
-				if ((pnode->nd_nsnfree == 0) && (pnode->nd_state == 0))
-					set_vnode_state(pnode, INUSE_JOB, Nd_State_Or);
+					if ((pnode->nd_nsnfree == 0) && (pnode->nd_state == 0))
+						set_vnode_state(pnode, INUSE_JOB, Nd_State_Or);
 
-				mgr_log_attr(msg_man_set, plist,
-					PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+					mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+				}
 			}
 		}
 		if (numnodes == 1)
@@ -2143,6 +2159,9 @@ mgr_node_set(struct batch_request *preq)
 			pnode = pbsndlist[i];	/* next vnode in array */
 		}
 	} /*bottom of the while()*/
+
+	free_attrlist(&unsetlist);
+	free_attrlist(&setlist);
 
 	warnmsg = warn_msg_build(WARN_ngrp, warn_nodes, warn_idx);
 
@@ -2383,6 +2402,7 @@ mgr_node_unset(struct batch_request *preq)
 						case PBSE_ATTRRO:
 						case PBSE_MUTUALEX:
 						case PBSE_BADNDATVAL:
+						case PBSE_UNKRESC:
 							reply_badattr(rc, bad, plist, preq);
 							break;
 
