@@ -1720,8 +1720,8 @@ pbsd_init_job(job *pjob, int type)
 					pjob->ji_qs.ji_un.ji_exect.ji_momaddr = new_momaddr;
 					pjob->ji_qs.ji_un.ji_exect.ji_momport = new_momport;
 				} else {
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
-						LOG_DEBUG, pjob->ji_qs.ji_jobid,
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+						LOG_INFO, pjob->ji_qs.ji_jobid,
 						"Failed to update mom address. Mom address not changed.");
 				}
 			} else {
