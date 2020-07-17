@@ -218,7 +218,7 @@ if __name__ == '__main__':
     genhtml_bin = None
     timeout = None
     repeat_tests = 1
-    repeat_tests_delay = 5
+    repeat_tests_delay = 0
     nosedebug = False
     only_info = False
     tags = []
