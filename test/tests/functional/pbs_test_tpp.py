@@ -808,6 +808,10 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
+        self.common_setup()
+        hostA_ip = socket.gethostbyname(self.hostA)
+        comm_val = self.hostA + ":17001"
+        a = {'PBS_COMM_ROUTERS': comm_val}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         comm_val = hostA_ip + ":17001" + "," + self.hostC
         a = {'PBS_COMM_ROUTERS': comm_val}
