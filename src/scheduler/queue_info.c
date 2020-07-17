@@ -186,7 +186,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			return NULL;
 		}
 
-		if (queue_in_partition(qinfo, sinfo->partition)) {
+		if (queue_in_partition(qinfo, sc_attrs.partition)) {
 			/* check if the queue is a dedicated time queue */
 			if (conf.ded_prefix[0] != '\0')
 				if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
@@ -219,7 +219,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				qinfo->nodes = node_filter(sinfo->nodes, sinfo->num_nodes,
 					node_queue_cmp, (void *) qinfo->name, 0);
 
-				qinfo->num_nodes = count_array((void **) qinfo->nodes);
+				qinfo->num_nodes = count_array(qinfo->nodes);
 
 			}
 

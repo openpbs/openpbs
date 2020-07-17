@@ -204,7 +204,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 			return;
 		}
 
-		if (node_in_partition(ninfo, sinfo->partition)) {
+		if (node_in_partition(ninfo, sc_attrs.partition)) {
 			if (first_talk_with_mom) {	/* need to acquire a lock for talk_with_mom the first time */
 				pthread_mutex_lock(&general_lock);
 				if (!first_talk_with_mom)
@@ -846,7 +846,7 @@ free_nodes(node_info **ninfo_arr)
 	if (ninfo_arr == NULL)
 		return;
 
-	num_nodes = count_array((void **) ninfo_arr);
+	num_nodes = count_array(ninfo_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {
@@ -1330,7 +1330,7 @@ node_filter(node_info **nodes, int size,
 	int i, j;
 
 	if (size < 0)
-		size = count_array((void **) nodes);
+		size = count_array(nodes);
 
 	if ((new_nodes = (node_info **) malloc((size + 1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1517,7 +1517,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 	if (onodes == NULL || nsinfo == NULL)
 		return NULL;
 
-	num_nodes = thread_node_ct_left = count_array((void **) onodes);
+	num_nodes = thread_node_ct_left = count_array(onodes);
 
 	if ((nnodes = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1847,6 +1847,7 @@ collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int s
  * @param[in]	ninfo	-	the nodes to collect for
  * @param[in]	resresv_arr	-	the array of jobs to consider
  * @param[in]	size	-	the size (in number of pointers) of the job arrays
+ * @param[in]	flags	-	to indicate whether to do ghost job detection
  *
  * @retval	1	: upon success
  * @retval	2	: if a job reported on nodes was not found in the job arrays
@@ -1854,7 +1855,7 @@ collect_resvs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int s
  *
  */
 int
-collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size)
+collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size, int flags)
 {
 	char *ptr;		/* used to find the '/' in the jobs array */
 	resource_resv *job;	/* find the job from the jobs array */
@@ -1870,12 +1871,24 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
 		if ((ninfo_arr[i]->job_arr =
 			malloc((size + 1) * sizeof(resource_resv *))) == NULL)
+		{
+			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
+		}
 		ninfo_arr[i]->job_arr[0] = NULL;
 	}
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
 		if (ninfo_arr[i]->jobs != NULL) {
+			/* If there are no running jobs in the list and node reports a running job,
+			 * mark that the node has ghost job
+			 */
+			if (size == 0 && (flags & DETECT_GHOST_JOBS)) {
+				ninfo_arr[i]->has_ghost_job = 1;
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo_arr[i]->name,
+					  "Jobs reported running on node no longer exists or are not in running state");
+			}
+
 			for (j = 0, k = 0; ninfo_arr[i]->jobs[j] != NULL && k < size; j++) {
 				/* jobs are in the format of node_name/sub_node.  We don't care about
 				 * the subnode... we just want to populate the jobs on our node
@@ -1914,7 +1927,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 						/* make the job array searchable with find_resource_resv */
 						ninfo_arr[i]->job_arr[k] = NULL;
 					}
-				} else {
+				} else if (flags & DETECT_GHOST_JOBS) {
 					/* Race Condition occurred: nodes were queried when a job existed.
 					 * Jobs were queried when the job no longer existed.  Make note
 					 * of it on the job so the node's resources_assigned values can be
@@ -1946,7 +1959,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	}
 
 	susp_jobs = resource_resv_filter(resresv_arr,
-		count_array((void **) resresv_arr), check_susp_job, NULL, 0);
+		count_array(resresv_arr), check_susp_job, NULL, 0);
 	if (susp_jobs == NULL)
 		return 0;
 
@@ -2604,7 +2617,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 
 	if (resresv->server->has_multi_vnode) {
 		/* Worst case is that split all chunks onto all nodes */
-		tot_nodes = count_array((void **)ninfo_arr);
+		tot_nodes = count_array(ninfo_arr);
 		num_nspecs = tot_nodes * spec->total_chunks;
 	}
 	else
@@ -2636,7 +2649,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			free_nspecs(*nspec_arr);
 			*nspec_arr = NULL;
 		} else if (resresv->server->has_multi_vnode) {
-			tmp = realloc(*nspec_arr, (count_array((void **)*nspec_arr) + 1) * sizeof(nspec *));
+			tmp = realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *));
 			if (tmp != NULL)
 				*nspec_arr = tmp;
 		}
@@ -2702,7 +2715,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	}
 
 	if (!can_fit) {
-		if (!resresv->server->dont_span_psets) {
+		if (!sc_attrs.do_not_span_psets) {
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Request won't fit into any placement sets, will use all nodes");
 			resresv->can_not_fit = 1;
@@ -2723,7 +2736,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		free_nspecs(*nspec_arr);
 		*nspec_arr = NULL;
 	} else if (resresv->server->has_multi_vnode) {
-		tmp = realloc(*nspec_arr, (count_array((void **)*nspec_arr) + 1) * sizeof(nspec *));
+		tmp = realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *));
 		if (tmp != NULL)
 			*nspec_arr = tmp;
 	}
@@ -3220,7 +3233,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 		return eval_simple_selspec(policy, spec->chunks[0], ninfo_arr, pl, resresv,
 			flags, resresv->server->flt_lic, nspec_arr, err);
 
-	tot_nodes = count_array((void **) ninfo_arr);
+	tot_nodes = count_array(ninfo_arr);
 
 	nsa = *nspec_arr;
 
@@ -5051,7 +5064,7 @@ create_node_array_from_nspec(nspec **nspec_arr)
 	if (nspec_arr == NULL)
 		return NULL;
 
-	count = count_array((void **) nspec_arr);
+	count = count_array(nspec_arr);
 
 	if ((ninfo_arr = calloc(count + 1, sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -5118,7 +5131,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	if (resresv == NULL && conf.provision_policy == AVOID_PROVISION)
 		return NULL;
 
-	nsize = count_array((void **) nodes);
+	nsize = count_array(nodes);
 
 	if ((node_array_size < nsize + 1) || node_array == NULL) {
 		tmparr = realloc(node_array, sizeof(node_info *) * (nsize + 1));
@@ -5832,7 +5845,7 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 	if (nodes == NULL || strnodes == NULL)
 		return NULL;
 
-	cnt = count_array((void **)strnodes);
+	cnt = count_array(strnodes);
 
 	if ((ninfo_arr = malloc((cnt+1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -6249,7 +6262,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 		return;
 
 	if (num_nodes == -1)
-		num_nodes = count_array((void **) ninfo_arr);
+		num_nodes = count_array(ninfo_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {

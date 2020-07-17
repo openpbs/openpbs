@@ -1,0 +1,663 @@
+#!/bin/sh
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
+
+
+trap cleanup 1 2 3 15
+
+dir=`dirname $0`
+CWD=`pwd`
+upgrade=0
+PBS_AES_SWITCH_VER='14.0'
+change_locale=0
+opt_err=1
+opt="$1"
+
+#---------------------------------------------------------------------------------------------------
+# Helper functions.
+cleanup() {
+	cd ${CWD}
+	rm -rf ${data_dir}
+	rm -f ${schema}
+	rm -f ${tmp_file}
+}
+
+cleanup_on_finish () {
+	# change back to our dir and quit
+	cd ${CWD}
+	err=`rm -f ${schema}`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+	fi
+}
+
+set_db_trust_login() {
+	datastore_dir=$1
+	err=`cp -p ${datastore_dir}/pg_hba.conf ${datastore_dir}/pg_hba.conf.orig 2>&1`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+		return 1
+	fi
+	err=`chown ${PBS_DATA_SERVICE_USER} ${datastore_dir}/pg_hba.conf.orig`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+		return 1
+	fi
+	err=`sed 's/md5/trust/g' ${datastore_dir}/pg_hba.conf > ${datastore_dir}/pg_hba.conf.new 2>&1`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+		return 1
+	fi
+	err=`chown ${PBS_DATA_SERVICE_USER} ${datastore_dir}/pg_hba.conf.new`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+		return 1
+	fi
+	err=`mv ${datastore_dir}/pg_hba.conf.new ${datastore_dir}/pg_hba.conf 2>&1`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+		return 1
+	fi
+}
+
+revoke_db_trust_login() {
+	datastore_dir=$1
+	err=`cp -p ${datastore_dir}/pg_hba.conf.orig ${datastore_dir}/pg_hba.conf 2>&1`
+	if [ $? -eq 0 ]; then
+		rm -f ${datastore_dir}/pg_hba.conf.orig
+	else
+		echo "${err}"
+		return 1
+	fi
+}
+
+backupdir() {
+	if [ -d "$1" -a -d "$2" ]; then
+		backupdir="$(basename $1).pre.${PBS_VERSION}"
+		echo "*** Backing up $1 to ${2}/${backupdir}"
+		mv "$1" "${2}/${backupdir}"
+	fi
+}
+
+# DB Upgrade functions
+upgrade_pbs_database() {
+	sys_pgsql_ver=$1
+	old_pgsql_ver=$2
+	user="${PBS_DATA_SERVICE_USER}"
+	inst_dir="${PGSQL_DIR}"
+	data_dir="${PBS_HOME}/datastore"
+
+	# Check for existence of old data service directory.
+	if [ -d "${PBS_HOME}/pgsql.old" ]; then
+		old_inst_dir="${PBS_HOME}/pgsql.old"
+		old_data_dir="${PBS_HOME}/datastore.old"
+	elif [ -d "${PBS_HOME}/pgsql.forupgrade" ]; then
+		old_inst_dir="${PBS_HOME}/pgsql.forupgrade"
+		old_data_dir="${PBS_HOME}/datastore.forupgrade"
+	else
+		echo "Data service directory from previous PBS installation not found,"
+		echo "Datastore upgrade cannot continue"
+		return 1
+	fi
+
+	# strip the minor version from sys_pgsql_ver if old_pgsql_ver does not have minor version (for comparison).
+	[[ ! $old_pgsql_ver =~ "." ]] && sys_pgsql_ver=$(echo $sys_pgsql_ver | cut -d '.' -f 1)
+
+	[ ${sys_pgsql_ver%.*} -eq ${old_pgsql_ver%.*} ] && [ ${sys_pgsql_ver#*.} \> ${old_pgsql_ver#*.} ] || [ ${sys_pgsql_ver%.*} -gt ${old_pgsql_ver%.*} ];
+	result=$?
+	if [ ${result} -eq 0 ]; then
+		if [ -d "$PBS_EXEC/pgsql" ]; then
+			#Start upgrade process of datastore
+			upgrade_db
+			return $?
+		else
+			return 2
+		fi
+	elif [ "${old_pgsql_ver}" = "${sys_pgsql_ver}" ]; then
+		return 0
+	fi
+
+	echo "Upgrade from version ${old_pgsql_ver} unsupported"
+	return 1
+}
+
+upgrade_db() {
+	#
+	# This routine will insatll a postgres database cluster,
+	# will perform the pre-upgrade checks for datastore
+	# with appropriate authentication management.
+	#
+
+	server_ctl="${PBS_EXEC}/sbin/pbs_dataservice"
+	if [ ! -x "${server_ctl}" ]; then
+		echo "${server_ctl} not found"
+		return 1
+	fi
+
+	if [ ! -x "${PBS_EXEC}/sbin/pbs_ds_password" ]; then
+		echo "${PBS_EXEC}/sbin/pbs_ds_password not found"
+		return 1
+	fi
+
+	if [ ! -x "${inst_dir}/bin/pg_upgrade" ]; then
+		echo "${inst_dir}/bin/pg_upgrade not found"
+		return 1
+	fi
+
+	# Backup datastore directory, if backup directory already
+	# present then exit.
+	if [ -d "${old_data_dir}" ]; then
+		echo "Files from previous datastore upgrade found,"
+		echo "Datastore upgrade cannot continue"
+		return 1
+	else
+		err=`mv ${data_dir} ${old_data_dir} 2>&1`
+		if [ $? -ne 0 ]; then
+			echo "${err}"
+			return 1
+		fi
+	fi
+
+	# Invoke the dataservice creation script for pbs
+
+	upgrade=1
+	pbs_install_db
+	ret=$?
+
+	if [ ${ret} -ne 0 ]; then
+		echo "*** Error initializing the PBS dataservice"
+		echo "Error details:"
+		echo "$resp"
+		return ${ret}
+	fi
+
+	# Copy the pg_hba.conf from old cluster.
+	err=`cp -p ${old_data_dir}/pg_hba.conf ${data_dir}/pg_hba.conf`
+	if [ $? -ne 0 ]; then
+		echo "${err}"
+		return 1
+	fi
+
+	set_db_trust_login "${data_dir}"
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		return $ret
+	fi
+	set_db_trust_login "${old_data_dir}"
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		return $ret
+	fi
+
+	CWD=`pwd`
+	cd "${data_dir}"
+	#Perform pg_upgrade -c to check if we can upgrade the cluster or not
+	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${inst_dir}/bin/pg_upgrade -b ${old_inst_dir}/bin -B ${inst_dir}/bin -d ${old_data_dir} -D ${data_dir} -c'" 2>&1`
+	if [ $? -ne 0 ]; then
+		echo "Refer pg_upgrade log files at $PBS_HOME/datastore/pg_upgrade_internal.log,"
+		echo "$PBS_HOME/datastore/pg_upgrade_server.log and"
+		echo "$PBS_HOME/datastore/pg_upgrade_utility.log for more information"
+		revoke_db_trust_login "${data_dir}"
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+
+		revoke_db_trust_login "${old_data_dir}"
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+
+		return 1
+	fi
+
+	#Perform pg_upgrade for database upgrade
+	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${inst_dir}/bin/pg_upgrade -b ${old_inst_dir}/bin -B ${inst_dir}/bin -d ${old_data_dir} -D ${data_dir}'" 2>&1`
+	if [ $? -ne 0 ]; then
+		echo "Refer pg_upgrade log files at $PBS_HOME/datastore/pg_upgrade_internal.log,"
+		echo "$PBS_HOME/datastore/pg_upgrade_server.log and"
+		echo "$PBS_HOME/datastore/pg_upgrade_utility.log for more information"
+		revoke_db_trust_login "${data_dir}"
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+
+		revoke_db_trust_login "${old_data_dir}"
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+
+		return 1
+	fi
+
+	# start the dataservice
+	${server_ctl} start > /dev/null
+	if [ $? -ne 0 ]; then
+		echo "Error starting PBS Data Service"
+		return 1
+	fi
+
+	# Optimizer statistics are not transferred by pg_upgrade, so do it manually.
+	ENVSTR="PGPORT=${PBS_DATA_SERVICE_PORT}; export PGPORT; PGHOST=${PBS_SERVER}; export PGHOST; PGUSER=${user}; export PGUSER; "
+	err=`su ${user} -c "/bin/sh -c '${PGSQL_LIBSTR} ${ENVSTR} ${data_dir}/analyze_new_cluster.sh'"`
+
+	# Update locale of pbs database to C
+	if [ ${change_locale} -eq 1 ]; then
+		${inst_dir}/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${user} -c "update pg_database set datcollate='C', datctype='C'" > /dev/null
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			return $ret
+		fi
+	fi
+
+	# stop the dataservice
+	${server_ctl} stop > /dev/null
+	if [ $? -ne 0 ]; then
+		echo "Error stopping PBS Data Service"
+		kill -s SIGTERM `ps -ef | grep "${inst_dir}/bin/postgres" | grep -v grep | awk '{if ($3 == 1) print $2}'`
+		return 1
+	fi
+	revoke_db_trust_login "${data_dir}"
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		return $ret
+	fi
+
+	cd "${CWD}"
+	# Delete old cluster
+	err=`${data_dir}/delete_old_cluster.sh`
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		return $ret
+	fi
+}
+
+
+pbs_install_db () {
+	locale=""
+	if [ "${change_locale}" = "0" ]; then
+		locale="--locale=C"
+	fi
+
+	if [ ! -z "${PBS_DATA_SERVICE_HOST}" ]; then
+		echo "Custom data service host used...configure manually"
+		exit 0
+	fi
+
+	if [ -z "${PBS_DATA_SERVICE_PORT}" ]; then
+		PBS_DATA_SERVICE_PORT="15007"
+	fi
+	export PBS_DATA_SERVICE_PORT
+
+	bin_dir="${PGSQL_BIN}"
+	data_dir="${PBS_HOME}/datastore"
+	server_ctl="${PBS_EXEC}/sbin/pbs_dataservice"
+	tmp_file="${PBS_HOME}/spool/tmp_inst_$$"
+	db_user="${PBS_HOME}/server_priv/db_user"
+
+	# Get non symbolic absolute path of pgsql directory
+	real_inst_dir="`/bin/ls -l $PBS_EXEC | awk '{print $NF "/pgsql"}'`"
+
+	schema_in="${PBS_EXEC}/libexec/pbs_db_schema.sql"
+	if [ ! -f "${schema_in}" ]; then
+		echo "PBS datastore schema file not found"
+		exit 1
+	fi
+	schema="${PBS_HOME}/spool/pbs_install_db_schema"
+	cat ${schema_in} > ${schema}
+	chmod 600 ${schema}
+	if [ $? -ne 0 ]; then
+		echo "chmod of ${schema} failed"
+		rm -f ${schema}
+		exit 1
+	fi
+
+	lwd=`pwd`
+
+	if [ ! -d "${bin_dir}" ]; then
+		# Using the system installed Postgres instead
+		initdb_loc=`type initdb 2>/dev/null | cut -d' ' -f3`
+		if [ -z "$initdb_loc" ]; then
+			echo "PBS Data Service directory ${bin_dir}"
+			echo "not present and postgresql-server not installed."
+			rm -f ${schema}
+			exit 1
+		fi
+		bin_dir=`dirname $initdb_loc`
+	fi
+
+	user="${PBS_DATA_SERVICE_USER}"
+	port="${PBS_DATA_SERVICE_PORT}"
+
+	chown ${user} ${schema}
+	if [ $? -ne 0 ]; then
+		echo "chown of ${schema} to user ${user} failed"
+		rm -f ${schema}
+		exit 1
+	fi
+
+	if [ ! -x "${bin_dir}/initdb" ]; then
+		echo "${bin_dir} exists, binaries missing...exiting"
+		rm -f ${schema}
+		exit 1
+	fi
+
+	if [ -d "${data_dir}/base" ]; then
+		olduser=`ls -ld ${data_dir} | awk '{print $3}'`
+		if [ $? -ne 0 ]; then
+			echo "Failed to stat directory ${data_dir}"
+			rm -f ${schema}
+			exit 1
+		fi
+		if [ "$olduser" != "$user" ]; then
+			echo "Existing PBS Data Store ${data_dir} owned by different user ${olduser}"
+			echo "Use the same user name or install in a different location"
+			rm -f ${schema}
+			exit 1
+		fi
+		rm -f ${schema}
+		exit 2
+	fi
+
+	if [ ! -d "${data_dir}" ]; then
+		mkdir -p "${data_dir}"
+		if [ $? -ne 0 ]; then
+			echo "Error creating dir ${data_dir}"
+			rm -f ${schema}
+			exit 1
+		fi
+	fi
+
+	# delete the password file, if any, since we are creating new db
+	[ ${upgrade} -eq 0 ] && rm -f "${PBS_HOME}/server_priv/db_password"
+	passwd="${user}"
+
+	chown ${user} ${data_dir}
+	if [ $? -ne 0 ]; then
+		echo "Chown of ${data_dir} to user ${user} failed"
+		rm -f ${schema}
+		exit 1
+	fi
+
+	chmod 700 ${data_dir}
+	if [ $? -ne 0 ]; then
+		echo "chmod of ${data_dir} failed"
+		rm -f ${schema}
+		exit 1
+	fi
+
+	echo "Creating the PBS Data Service..."
+
+	# change directory to data_dir to ensure that we don't get cd errors from postgres later
+	cd ${data_dir}
+
+	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/initdb -D ${data_dir} -U \"${user}\" -E SQL_ASCII ${locale}'" 2>&1`
+
+	if [ $? -ne 0 ]; then
+		echo "$err"
+		echo "Error creating PBS datastore"
+		cleanup
+		exit 1
+	fi
+
+	# check for postgres config files existence
+	if [ ! -f "${data_dir}/postgresql.conf" ]; then
+		echo "PBS Data Sevice Config files not found"
+		cleanup
+		exit 1
+	fi
+
+	if [ ! -f "${data_dir}/pg_hba.conf" ]; then
+		echo "PBS Data Sevice Config files not found"
+		cleanup
+		exit 1
+	fi
+
+	# update postgresql.conf 
+	sed "{
+		s/#checkpoint_segments = 3/checkpoint_segments = 20/g
+		s/#port = 5432/port = ${port}/g
+		s/#listen_addresses = 'localhost'/listen_addresses = '*'/g
+		s/#standard_conforming_strings = off/standard_conforming_strings = on/g
+		s/#logging_collector = off/logging_collector = on/g
+		s/#log_directory = 'pg_log'/log_directory = 'pg_log'/g
+		s/#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'/log_filename = 'pbs_dataservice_log.%a'/g
+		s/#log_truncate_on_rotation = off/log_truncate_on_rotation = on/g
+		s/#log_rotation_age = 1d/log_rotation_age = 1440/g
+		s/#log_line_prefix = ''/log_line_prefix = '%t'/g
+		}" ${data_dir}/postgresql.conf > ${tmp_file}
+	if [ $? -ne 0 ]; then
+		echo "Error creating PBS datastore"
+		cleanup
+		exit 1
+	fi
+	mv ${tmp_file} ${data_dir}/postgresql.conf
+	if [ $? -ne 0 ]; then
+		echo "Error moving ${tmp_file} to ${data_dir}/postgresql.conf"
+		cleanup
+		exit 1
+	fi
+
+	chown ${user} ${data_dir}/postgresql.conf
+	if [ $? -ne 0 ]; then
+		echo "Error setting ownership to file ${data_dir}/postgresql.conf"
+		cleanup
+		exit 1
+	fi
+
+	chmod 600 ${data_dir}/postgresql.conf
+	if [ $? -ne 0 ]; then
+		echo "Error setting permissions to file ${data_dir}/postgresql.conf"
+		cleanup
+		exit 1
+	fi
+	
+	# Copy pgsql directory to PBS_HOME (as pgsql.forupgrade) for it's future upgrade
+	[ ! -d "${PBS_HOME}/pgsql.forupgrade" -a -d "${PBS_EXEC}/pgsql" -a -d "${PBS_HOME}" ] && cp -pr --no-preserve=timestamps "${PBS_EXEC}/pgsql" "${PBS_HOME}/pgsql.forupgrade" 2>&1
+
+	if [ $upgrade -eq 1 ]; then
+		cleanup_on_finish
+		exit 0
+	fi
+
+	# Add IPV6 local address to pg_hba.conf so the pbs_ds_password is fine
+	echo "host    all             all             ::1/128                 trust" >> ${data_dir}/pg_hba.conf
+
+	${server_ctl} start 
+	if [ $? -ne 0 ]; then
+		echo "Error starting PBS Data Service"
+		cleanup
+		exit 1
+	fi
+	# Wait for postgres to start.
+	tries=5
+	while [ $tries -ge 0 ]
+	do
+		${server_ctl} status > /dev/null 2>&1
+		ret=$?
+		if [ $ret -eq 0 ]; then
+			break
+		fi
+		tries=$((tries-1))
+		sleep 2
+	done
+	if [ $ret -ne 0 ]; then
+		echo "Error starting PBS Data Service"
+		cleanup
+		exit 1
+	fi
+
+	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/createdb -p ${port} pbs_datastore'" 2>&1`
+
+	if [ $? -ne 0 ]; then
+		echo "$err"
+		echo "Error creating PBS datastore"
+		${server_ctl} stop > /dev/null 2>&1
+		cleanup
+		exit 1
+	fi
+
+	# now install the pbs datastore schema onto the datastore
+	err=`su ${user} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${bin_dir}/psql -p ${port} -d pbs_datastore -U \"${user}\" -f ${schema}'" 2>&1`
+
+	if [ $? -ne 0 ]; then
+		echo $err
+		echo "Error initializing PBS datastore"
+		${server_ctl} stop > /dev/null 2>&1
+		cleanup
+		exit 1
+	fi
+
+	err=`${PBS_EXEC}/sbin/pbs_ds_password -r`
+	if [ $? -ne 0 ]; then
+		echo $err
+		echo "Error setting password for PBS Data Service"
+		${server_ctl} stop > /dev/null 2>&1
+		cleanup
+		exit 1
+	fi
+
+	# stop the dataservice
+	${server_ctl} stop
+	if [ $? -ne 0 ]; then
+		echo $err
+		echo "Error stopping PBS Data Service"
+		kill -TERM `ps -ef | grep "${bin_dir}/postgres" | grep -v grep | awk '{if ($3 == 1) print $2}'`
+		cleanup
+		exit 1
+	fi
+
+	# update the pg_hba.conf, so that no passwordless entry is allowed
+	num=`grep -n "#.*TYPE.*DATABASE.*USER.*ADDRESS.*METHOD" ${data_dir}/pg_hba.conf | awk -F: '{print $1}'`
+	head -n $num ${data_dir}/pg_hba.conf > ${tmp_file}
+	mv ${tmp_file} ${data_dir}/pg_hba.conf
+
+	echo "# IPv4 local connections: " >> ${data_dir}/pg_hba.conf
+	echo "local   all             all                                     md5" >> ${data_dir}/pg_hba.conf
+	echo "host    all             all             0.0.0.0/0               md5" >> ${data_dir}/pg_hba.conf
+	echo "host    all             all             127.0.0.1/32            md5" >> ${data_dir}/pg_hba.conf
+	echo "# IPv6 local connections:" >> ${data_dir}/pg_hba.conf
+	echo "host    all             all             ::1/128                 md5" >> ${data_dir}/pg_hba.conf
+
+	chown ${user} ${data_dir}/pg_hba.conf
+	chmod 600 ${data_dir}/pg_hba.conf
+
+	cleanup_on_finish
+	exit 0
+}
+
+if [ "${opt}" = "upgrade_db" ]; then
+	opt_err=0
+	# Store the old PBS VERSION for later use
+	if [ -f "${PBS_HOME}/pbs_version" ]; then
+		old_pbs_version=`cat ${PBS_HOME}/pbs_version`
+	fi
+
+	data_dir="${PBS_HOME}/datastore"
+	if [ ! -f "${data_dir}/PG_VERSION" ]; then
+		echo "Database version file: ${data_dir}/PG_VERSION not found, cannot continue"
+		exit 1
+	fi
+	sys_pgsql_ver=$(echo `${PGSQL_BIN}/postgres -V` | awk 'NR==1 {print $NF}' | cut -d '.' -f 1,2)
+	old_pgsql_ver=`cat ${data_dir}/PG_VERSION`
+	if [ "${sys_pgsql_ver}" != "${old_pgsql_ver}" ]; then
+		# Upgrade postgres
+		upgrade_pbs_database "${sys_pgsql_ver}" "${old_pgsql_ver}"
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			if [ $ret -eq 2 ]; then
+				echo "It appears that PostgreSQL has been upgraded independently of PBS."
+				echo "The PBS database must be manually upgraded. Please refer to the"
+				echo "documentation/release notes for details."
+			else
+				echo "Failed to upgrade PBS Datastore"
+			fi
+			exit $ret
+		else
+			if [ -d "${old_inst_dir}" ]; then
+				backupdir "$old_inst_dir" "$PBS_HOME"
+				if [ $? -ne 0 ]; then
+					echo "Failed to backup $old_inst_dir, please follow the below instructions:"
+					echo "*** Backup "$old_inst_dir" if you need to downgrade pgsql later on."
+					echo "*** For future upgrades to be successful run the below command."
+					echo "*** cp -pr ${PBS_EXEC}/pgsql ${PBS_HOME}/pgsql.forupgrade"
+				else
+					echo "*** ${PBS_HOME}/$(basename ${old_inst_dir}).pre.${PBS_VERSION} may need to be manually removed if you do not wish to downgrade PBS."
+				fi
+			fi
+		fi
+	fi
+
+	# do schema upgrade
+	set_db_trust_login "${PBS_HOME}/datastore"
+	${PBS_EXEC}/libexec/pbs_schema_upgrade ${PBS_DATA_SERVICE_PORT} ${PBS_DATA_SERVICE_USER}
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		revoke_db_trust_login "${PBS_HOME}/datastore"
+		echo "Failed to upgrade PBS Datastore"
+		exit $ret
+	fi
+
+	# We need to regenerate the db_password file since we have changed encryption/decryption
+	# library from DES to AES in PBS Version PBS_AES_SWITCH_VER
+	if [ "$old_pbs_version" \< "${PBS_AES_SWITCH_VER}" ] ;then
+		rm -f  "${PBS_HOME}/server_priv/db_password"
+		err=`${PBS_EXEC}/sbin/pbs_ds_password -r`
+		if [ $? -ne 0 ]; then
+			echo $err
+			echo "Error setting password for PBS Data Service"
+			${server_ctl} stop > /dev/null 2>&1
+			revoke_db_trust_login "${PBS_HOME}/datastore"
+			exit 1
+		fi
+	fi
+	revoke_db_trust_login "${PBS_HOME}/datastore"
+
+elif [ "${opt}" = "install_db" ]; then
+	opt_err=0
+	pbs_install_db
+fi
+
+if [ "${opt_err}" -eq 1 ]; then
+	echo "Usage: pbs_db_utility [install_db|upgrade_db]"
+	exit 1
+fi

@@ -380,7 +380,7 @@ parse_pkt(void *pkt, size_t pkt_len, int *type, void **data_out, size_t *len_out
 	*type = *((unsigned char *)pos);
 	pos++;
 	*len_out = ntohl(*((int *)pos));
-	if (*len_out != (pkt_len - 1 - sizeof(int))) {
+	if (*len_out != (pkt_len - PKT_MAGIC_SZ - 1 - sizeof(int))) {
 		*type = 0;
 		*data_out = NULL;
 		*len_out = 0;
@@ -388,7 +388,7 @@ parse_pkt(void *pkt, size_t pkt_len, int *type, void **data_out, size_t *len_out
 	}
 	pos += sizeof(int);
 	*data_out = malloc(*len_out);
-	if (data_out == NULL) {
+	if (*data_out == NULL) {
 		*type = 0;
 		*len_out = 0;
 		return -1;
@@ -743,7 +743,7 @@ dis_clear_buf(pbs_dis_buf_t *tp)
 	tp->tdis_lead = 0;
 	tp->tdis_trail = 0;
 	tp->tdis_eod = 0;
-	memset(tp->tdis_thebuf, '\0', tp->tdis_bufsize);
+	tp->tdis_thebuf[0] = '\0';
 }
 
 /**

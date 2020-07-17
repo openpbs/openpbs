@@ -47,7 +47,7 @@
  *	This is used to abstract the use of libical from the
  *  functionality of PBS. It is invoked from
  *  1) the commands (pbs_rsub and pbs_rstat)
- *  2) the server: req_rescq.c, svr_jobfunc.c and job_recov.c
+ *  2) the server: req_rescq.c, svr_jobfunc.c
  *  3) the scheduler: resv_info.c
  *
  *  The purpose of this interface to libical is to wrap all iCalendar specific

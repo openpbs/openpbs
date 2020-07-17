@@ -516,6 +516,14 @@ class PBSTestSuite(unittest.TestCase):
             self.revert_pbsconf()
             self.revert_schedulers()
             self.revert_moms()
+
+        # turn off opt_backfill_fuzzy to avoid unexpected calendaring behavior
+        # as many tests assume that scheduler will simulate each event
+        a = {'opt_backfill_fuzzy': 'off'}
+        for schedinfo in self.schedulers.values():
+            for schedname in schedinfo.keys():
+                self.server.manager(MGR_CMD_SET, SCHED, a, id=schedname)
+
         self.revert_comms()
         self.log_end_setup()
         self.measurements = []
@@ -1482,9 +1490,12 @@ class PBSTestSuite(unittest.TestCase):
                 time.sleep(4)
                 just_before_enable_cgroup_cset = time.time()
                 mom.enable_cgroup_cset()
+                # a high max_attempts is needed to tolerate delay receiving
+                # hook-related files, due to temporary network interruptions
                 mom.log_match('pbs_cgroups.CF;copy hook-related '
-                              'file request received',
-                              starttime=just_before_enable_cgroup_cset)
+                              'file request received', max_attempts=120,
+                              starttime=just_before_enable_cgroup_cset-1,
+                              interval=1)
                 # Make sure that the MoM will generate per-NUMA node vnodes
                 # when the natural node is created below
                 # HUP may not be enough if exechost_startup is delayed

@@ -398,14 +398,10 @@ enum accrue_types {
 #define ERRORNO        errno
 #endif
 
-#ifdef WIN32
-typedef enum { false, true } bool;
-#else
 #if HAVE__BOOL
 #include "stdbool.h"
 #else
 typedef enum { false, true } bool;
-#endif
 #endif
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs
@@ -541,7 +537,9 @@ extern int      parse_stage_list(char *);
 extern int      prepare_path(char *, char*);
 extern void     prt_job_err(char *, int, char *);
 extern int     set_attr(struct attrl **, char *, char *);
+#ifndef pbs_get_dataservice_usr
 extern char*    pbs_get_dataservice_usr(char *, int);
+#endif
 extern char*	get_attr(struct attrl *, char *, char *);
 extern int      set_resources(struct attrl **, char *, int, char **);
 extern int      cnt2server(char *server);

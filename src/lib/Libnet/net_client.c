@@ -72,22 +72,6 @@
  */
 static int conn_timeout = PBS_DIS_TCP_TIMEOUT_CONNECT; /* timeout for connect */
 
-#ifdef WIN32
-/**
- * @brief
- * 	set_client_to_svr_timeout - sets the timeout value needed
- *
- * @param[in] timeout - timeout value
- *
- * @return	Void
- */
-void
-set_client_to_svr_timeout(unsigned int timeout)
-{
-	conn_timeout = timeout;
-}
-#endif	/* WIN32 */
-
 /**
  * @brief
  * 	engage_authentication - Use the security library interface to
@@ -240,7 +224,6 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 	int	ret;
 	int	non_block = 1;
 	struct	linger      li;
-	struct	sockaddr_in from;
 	struct	timeval     tv;
 	fd_set	            writeset;
 #else

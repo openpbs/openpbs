@@ -41,9 +41,6 @@
 
 #include <errno.h>
 #ifdef WIN32
-#if defined(FD_SET_IN_SYS_SELECT_H)
-#  include <sys/select.h>
-#endif
 #include <io.h>
 #else
 #include <unistd.h>

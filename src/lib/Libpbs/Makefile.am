@@ -280,6 +280,7 @@ libpbs_la_SOURCES = \
 	../Libutil/misc_utils.c \
 	../Libutil/pbs_secrets.c \
 	../Libutil/pbs_aes_encrypt.c \
+	../Libutil/pbs_idx.c \
 	../Libnet/hnls.c \
 	../Libtpp/tpp_client.c \
 	../Libtpp/tpp_em.c \
@@ -303,44 +304,30 @@ CLEANFILES = \
 	ecl_resc_def_all.c \
 	ecl_resv_attr_def.c
 
-ecl_job_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml
+ecl_job_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml \
-		-s /dev/null -e $@ -a job
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml -e $@
 
-ecl_svr_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml
+ecl_svr_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml \
-		-s /dev/null -e $@ -a server
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml -e $@
 
-ecl_node_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml
+ecl_node_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml \
-		-s /dev/null -e $@ -a node
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml -e $@
 
-ecl_queue_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml
+ecl_queue_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml \
-		-s /dev/null -e $@ -a queue
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml -e $@
 
-ecl_resv_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml
+ecl_resv_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml \
-		-s /dev/null -e $@ -a resv
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml -e $@
 
-ecl_sched_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml
+ecl_sched_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml \
-		-s /dev/null -e $@ -a sched
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml -e $@
 
-ecl_resc_def_all.c: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml
+ecl_resc_def_all.c: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml $(top_srcdir)/buildutils/attr_parser.py
 	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml \
-		-s /dev/null -e $@ -a resc
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py -m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml -e $@

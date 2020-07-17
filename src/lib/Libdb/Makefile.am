@@ -39,21 +39,11 @@
 
 #
 
-noinst_LIBRARIES = libdb.a
+SUBDIRS = \
+	pgsql
 
-libdb_a_CPPFLAGS = \
-	-I$(top_srcdir)/src/include \
-	@database_inc@ \
-	@KRB5_CFLAGS@
+all-local:
+	cp -p $(top_builddir)/src/lib/Libdb/pgsql/.libs/libdb.so.0.0.0 $(top_builddir)/src/lib/Libdb/libdb.so
 
-libdb_a_SOURCES = \
-	db_postgres.h \
-	db_postgres_impl.c \
-	db_postgres_common.c \
-	db_postgres_attr.c \
-	db_postgres_job.c \
-	db_postgres_resv.c \
-	db_postgres_svr.c \
-	db_postgres_que.c \
-	db_postgres_node.c \
-	db_postgres_sched.c
+clean-local:
+	rm -f $(top_builddir)/src/lib/Libdb/libdb.so

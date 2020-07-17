@@ -42,7 +42,6 @@ from tests.functional import *
 from ptl.utils.pbs_logutils import PBSLogUtils
 
 
-@skipOnShasta
 class TestPbsHookSetJobEnv(TestFunctional):
     """
     This test suite to make sure hooks properly
@@ -366,6 +365,7 @@ class TestPbsHookSetJobEnv(TestFunctional):
 
         return self.server.submit(retjob)
 
+    @skipOnShasta
     def test_begin_launch(self):
         """
         Test to verify that job environment variables having special
@@ -445,6 +445,7 @@ e.env["HAPPY"] = "nights"
         # Check the values in mom logs as well
         self.common_log_match("mom")
 
+    @skipOnShasta
     def test_que(self):
         """
         Test that variable_list do not change with and without
@@ -505,6 +506,7 @@ pbs.logmsg(pbs.LOG_DEBUG,"Variable List is %s" % (e.job.Variable_List,))
 
         self.common_log_match("server")
 
+    @skipOnShasta
     def test_execjob_epi(self):
         """
         Test that Variable_List will contain environment variable
@@ -565,6 +567,7 @@ pbs.logmsg(pbs.LOG_DEBUG,"Variable_List is %s" % (j.Variable_List,))
         # Verify the env variables in logs too
         self.common_log_match("mom")
 
+    @skipOnShasta
     def test_execjob_pro(self):
         """
         Test that environment variable not gets truncated
@@ -623,6 +626,7 @@ pbs.logmsg(pbs.LOG_DEBUG,"Variable_List is %s" % (j.Variable_List,))
         # compare the values in mom_logs as well
         self.common_log_match("mom")
 
+    @skipOnShasta
     @checkModule("pexpect")
     def test_interactive(self):
         """
@@ -683,6 +687,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "Variable_List is %s" % (j.Variable_List,))
         # verify the env values in logs
         self.common_log_match("mom")
 
+    @skipOnShasta
     def test_no_hook(self):
         """
         Test to verify that environment variables are
@@ -816,6 +821,7 @@ haa'"""
         # self.assertTrue("BROL1=hii\nhaa" in job_var)
         # self.assertTrue("TEST_RETURN=3\,\n4\,\n5\," in job_var)
 
+    @skipOnShasta
     @checkModule("pexpect")
     def test_interactive_no_hook(self):
         """
@@ -912,6 +918,7 @@ haa'"""
         self.logger.info("BROL - " + os.environ['BROL1'] + " == " +
                          self.env_nohook['BROL1'].rstrip('\n'))
 
+    @skipOnShasta
     def test_execjob_epi2(self):
         """
         Test that Variable_List will contain environment variable
@@ -930,6 +937,12 @@ haa'"""
         POST: The epilogue hook should see the proper value to the
               Variable_List.
         """
+
+        msg = "skipped due to issue: "
+        msg += "PTL failed to parse env variable"
+        msg += " when qstat has multiline variable/attr value."
+        self.skipTest(msg)
+
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.walltime': 60}
         j = Job(attrs=a)

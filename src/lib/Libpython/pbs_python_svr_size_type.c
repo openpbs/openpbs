@@ -124,7 +124,7 @@ extern PyObject * PPSVR_Size_FromSizeValue(struct size_value);
 static int
 _pps_check_for_negative_number(PyObject *il) {
 	PyObject *str_value = NULL;
-	char *c_value;
+	const char *c_value;
 	int rc = 0;
 
 	if (!(str_value = PyObject_Str(il))) {
@@ -247,7 +247,7 @@ _pps_size_from_string(PyObject *self, PyObject *from)
 
 	PPSVR_Size_Object *working_copy = (PPSVR_Size_Object *) self;
 	if (PyUnicode_Check(from)) {
-		if ((to_size(PyUnicode_AsUTF8(from), &working_copy->sz_value) != 0)) {
+		if ((to_size((char *)PyUnicode_AsUTF8(from), &working_copy->sz_value) != 0)) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "%s: bad value for _size",
 				pbs_python_object_str(from));
 			PyErr_SetString(PyExc_TypeError, log_buffer);

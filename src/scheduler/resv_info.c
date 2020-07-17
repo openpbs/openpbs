@@ -119,6 +119,7 @@ stat_resvs(int pbs_sd)
 
 /**
  *
+ * @brief
  *	query_reservations - query the reservations from the server.
  *
  *  Each reservation, is created to reflect its current state in the server.
@@ -132,14 +133,15 @@ stat_resvs(int pbs_sd)
  *  reservation retains its currently allocated resources, such that no other
  *  requests make use of the same resources.
  *
- *	  sinfo - the server to query from
- *	  resvs - batch status of the stat'ed reservations
+ * @param[in] pbs_sd - connection to the pbs server
+ * @param[in] sinfo  - the server to query from
+ * @param[in] resvs  - batch status of the stat'ed reservations
  *
- *	returns an array of reservations
+ * @return    An array of reservations
  *
  */
 resource_resv **
-query_reservations(server_info *sinfo, struct batch_status *resvs)
+query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 {
 	/* the current reservation in the list */
 	struct batch_status *cur_resv;
@@ -191,10 +193,11 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		int ignore_resv = 0;
 		clear_schd_error(err);
 		struct attrl	*attrp = NULL;
+		resource_resv **jobs_in_reservations;
 		/* Check if this reservation belongs to this scheduler */
 		for (attrp = cur_resv->attribs; attrp != NULL; attrp = attrp->next) {
 			if (strcmp(attrp->name, ATTR_partition) == 0) {
-				if (sinfo->partition != NULL && (strcmp(attrp->value, sinfo->partition) != 0))
+				if (sc_attrs.partition != NULL && (strcmp(attrp->value, sc_attrs.partition) != 0))
 					ignore_resv = 1;
 				break;
 			}
@@ -239,6 +242,16 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 
 		if (ignore_resv == 1) {
 			sinfo->num_resvs--;
+			/* mark all the jobs of the associated queue as can never run */
+			if (resresv->resv->queuename != NULL) {
+				queue_info *qinfo = find_queue_info(sinfo->queues, resresv->resv->queuename);
+				if (qinfo != NULL) {
+				    clear_schd_error(err);
+				    set_schd_error_arg(err, SPECMSG, "Reservation is in an invalid state");
+				    set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
+				    update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
+				}
+			}
 			free_resource_resv(resresv);
 			continue;
 		}
@@ -352,11 +365,16 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 						}
 					}
 				}
-				collect_jobs_on_nodes(resresv->resv->resv_nodes, resresv->resv->resv_queue->jobs, j);
+				jobs_in_reservations = resource_resv_filter(resresv->resv->resv_queue->jobs,
+									    count_array(resresv->resv->resv_queue->jobs),
+									    check_running_job_in_reservation, NULL, 0);
+				collect_jobs_on_nodes(resresv->resv->resv_nodes, jobs_in_reservations,
+					              count_array(jobs_in_reservations), NO_FLAGS);
+				free(jobs_in_reservations);
 
 				/* Sort the nodes to ensure correct job placement. */
 				qsort(resresv->resv->resv_nodes,
-					count_array((void **) resresv->resv->resv_nodes),
+					count_array(resresv->resv->resv_nodes),
 					sizeof(node_info *), multi_node_sort);
 			}
 		}
@@ -392,7 +410,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			char *rrule = NULL;
 			char *tz = NULL;
 			struct tm* loc_time;
-			char start_time[18];
+			char start_time[128];
 			int count = 0;
 			int occr_count; /* occurrences count as reported by execvnodes_seq */
 			int occr_idx = 1; /* the occurrence index of a standing reservation */
@@ -449,6 +467,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resource_resv_array(resresv_arr);
+				free_resource_resv(resresv);
 				free_execvnode_seq(tofree);
 				free(execvnodes_seq);
 				free(execvnode_ptr);
@@ -483,6 +502,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					if (resresv_ocr == NULL) {
 						log_err(errno, __func__, "Error duplicating resource reservation");
 						free_resource_resv_array(resresv_arr);
+						free_resource_resv(resresv);
 						free_execvnode_seq(tofree);
 						free(execvnodes_seq);
 						free(execvnode_ptr);
@@ -531,17 +551,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				resresv_arr[idx] = NULL;
 
 				loc_time = localtime(&resresv_ocr->start);
+				strftime(start_time, sizeof(start_time), "%Y%m%d-%H:%M:%S", loc_time);
 
-				if (loc_time == NULL ||
-					strftime(start_time, sizeof(start_time), "%Y%m%d-%H:%M:%S",
-					loc_time) == 0) {
-					free_resource_resv_array(resresv_arr);
-					free_execvnode_seq(tofree);
-					free(execvnodes_seq);
-					free(execvnode_ptr);
-					free_schd_error(err);
-					return NULL;
-				}
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name,
 					"Occurrence %d/%d,%s", occr_idx, count, start_time);
 			}
@@ -695,6 +706,8 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			advresv->resv->count = atoi(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_partition)) {
 			advresv->resv->partition = strdup(attrp->value);
+		} else if (!strcmp(attrp->name, ATTR_SchedSelect_orig)) {
+			advresv->resv->select_orig = parse_selspec(attrp->value);
 		}
 		attrp = attrp->next;
 	}
@@ -729,7 +742,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	if (advresv->resv->resv_state == RESV_UNCONFIRMED &&
 		get_num_occurrences(advresv->resv->rrule,
 		advresv->resv->req_start,
-		advresv->resv->timezone) ==0)
+		advresv->resv->timezone) == 0)
 		advresv->is_invalid = 1;
 
 	/* When a reservation is recognized as DEGRADED, it is converted into
@@ -1356,8 +1369,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					break;
 				}
 				nresv = nresv_copy;
-			}
-			else {
+			} else {
 				nresv_copy = dup_resource_resv(nresv, nsinfo, NULL, err);
 
 				if (nresv_copy == NULL) {
@@ -1576,7 +1588,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * will return an error
 		 */
 		snprintf(confirm_msg, LOG_BUF_SIZE, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
-			 nsinfo->partition?nsinfo->partition:DEFAULT_PARTITION);
+			 sc_attrs.partition ? sc_attrs.partition : DEFAULT_PARTITION);
 
 		pbsrc = pbs_confirmresv(pbs_sd, nresv_parent->name, short_xc,
 			resv_start_time, confirm_msg);

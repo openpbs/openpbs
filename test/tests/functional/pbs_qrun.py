@@ -129,6 +129,7 @@ class TestQrun(TestFunctional):
             try:
                 self.server.runjob(jobid=jid)
                 self.logger.info("Successfully runjob. Child process exit.")
+                os._exit(0)
             except PbsRunError as e:
                 self.logger.info("Runjob throws error: " + e.msg[0])
         else:
@@ -142,3 +143,20 @@ class TestQrun(TestFunctional):
                 os.waitpid(pid, 0)
                 self.logger.info("Runjob hung. Child process exit.")
                 self.fail("Qrun didn't start another sched cycle")
+
+    @skipOnCpuSet
+    def test_qrun_subjob(self):
+        """
+        This test tests if PBS is able to qrun an array subjob
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        jid = self.server.submit(Job())
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+        j = Job(TEST_USER, {ATTR_J: '1-5'})
+        arr_jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, arr_jid)
+        subj2 = j.create_subjob_id(arr_jid, 2)
+        self.server.runjob(jobid=subj2)
+        self.server.expect(JOB, {'job_state': 'R'}, subj2)
+        self.server.expect(JOB, {'job_state': 'S'}, jid)

@@ -156,7 +156,6 @@ parse_config(char *fname)
 #endif
 
 	/* auto-set any internally needed config values before reading the file */
-
 	while (pbs_fgets_extend(&buf, &buf_size, fp) != NULL) {
 		errbuf[0] = '\0';
 		linenum++;
@@ -291,12 +290,6 @@ parse_config(char *fname)
 					conf.preempt_starving = num ? 1 : 0;
 				else if (!strcmp(config_name, PARSE_PREEMPT_FAIRSHARE))
 					conf.preempt_fairshare = num ? 1 : 0;
-				else if (!strcmp(config_name, PARSE_PREEMPT_SUSPEND))
-					conf.preempt_suspend = num ? 1 : 0;
-				else if (!strcmp(config_name, PARSE_PREEMPT_CHKPT))
-					conf.preempt_chkpt = num ? 1 : 0;
-				else if (!strcmp(config_name, PARSE_PREEMPT_REQUEUE))
-					conf.preempt_requeue = num ? 1 : 0;
 				else if (!strcmp(config_name, PARSE_ASSIGN_SSINODES))
 					conf.assign_ssinodes = num ? 1 : 0;
 				else if (!strcmp(config_name, PARSE_DONT_PREEMPT_STARVING))
@@ -327,10 +320,6 @@ parse_config(char *fname)
 					conf.decay_time = res_to_num(config_value, &type);
 					if (!type.is_time)
 						error = 1;
-				}
-				else if (!strcmp(config_name, PARSE_SYNC_TIME)) {
-					obsolete[0] = PARSE_SYNC_TIME;
-					obsolete[1] = "nothing - syncs happen automatically";
 				}
 				else if (!strcmp(config_name, PARSE_UNKNOWN_SHARES))
 					conf.unknown_shares = num;
@@ -739,21 +728,16 @@ parse_config(char *fname)
 				}
 				else if (!strcmp(config_name, PARSE_PREEMPT_ATTEMPTS))
 					conf.max_preempt_attempts = num;
-				else if(!strcmp(config_name, PARSE_OPT_BACKFILL_FUZZY_TIME))
-					conf.dflt_opt_backfill_fuzzy = num;
 				else if (!strcmp(config_name, PARSE_MAX_JOB_CHECK)) {
 					if (!strcmp(config_value, "ALL_JOBS"))
 						conf.max_jobs_to_check = SCHD_INFINITY;
 					else
 						conf.max_jobs_to_check = num;
-				}
-				else if (!strcmp(config_name, PARSE_CPUS_PER_SSINODE) ||
-					!strcmp(config_name, PARSE_MEM_PER_SSINODE)
-					) {
+				} else if (!strcmp(config_name, PARSE_CPUS_PER_SSINODE) ||
+					   !strcmp(config_name, PARSE_MEM_PER_SSINODE)) {
 					obsolete[0] = config_name;
 					obsolete[1] = "nothing";
-				}
-				else if (!strcmp(config_name, PARSE_SELECT_PROVISION)) {
+				} else if (!strcmp(config_name, PARSE_SELECT_PROVISION)) {
 					if (config_value != NULL) {
 						if (!strcmp(config_value, PROVPOLICY_AVOID))
 							conf.provision_policy = AVOID_PROVISION;
@@ -767,15 +751,13 @@ parse_config(char *fname)
 					conf.max_borrow = res_to_num(config_value, &type);
 					if (!type.is_time)
 						error = 1;
-				}
-				else if (!strcmp(config_name, PARSE_SHARES_TRACK_ONLY)) {
+				} else if (!strcmp(config_name, PARSE_SHARES_TRACK_ONLY)) {
 					if (prime == PRIME || prime == ALL)
 						conf.prime_sto = num ? 1 : 0;
 					if (prime == NON_PRIME || prime == ALL)
 						conf.non_prime_sto = num ? 1 : 0;
-				}
-				else if (!strcmp(config_name, PARSE_PER_SHARE_DEPTH) ||
-					!strcmp(config_name, PARSE_PER_SHARE_TOPJOBS)) {
+				} else if (!strcmp(config_name, PARSE_PER_SHARE_DEPTH) ||
+					   !strcmp(config_name, PARSE_PER_SHARE_TOPJOBS)) {
 					conf.per_share_topjobs = num;
 				}
 				/* localmod 038 */
@@ -785,8 +767,7 @@ parse_config(char *fname)
 				/* localmod 030 */
 				else if (!strcmp(config_name, PARSE_MIN_INTERRUPTED_CYCLE_LENGTH)) {
 					conf.min_intrptd_cycle_length = num;
-				}
-				else if (!strcmp(config_name, PARSE_MAX_CONS_INTERRUPTED_CYCLES)) {
+				} else if (!strcmp(config_name, PARSE_MAX_CONS_INTERRUPTED_CYCLES)) {
 					conf.max_intrptd_cycles = num;
 				}
 #endif
@@ -914,6 +895,15 @@ init_config()
 		free_string_array(conf.res_to_check);
 	if (conf.dyn_res_to_get != NULL)
 		free_string_array(conf.dyn_res_to_get);
+	
+	if (conf.dynamic_res[0].res != NULL) {
+		int i;
+		for (i = 0; conf.dynamic_res[i].res != NULL; i++) {
+			free(conf.dynamic_res[i].res);
+			free(conf.dynamic_res[i].command_line);
+			free(conf.dynamic_res[i].script_name);
+		}
+	}
 
 	/* default everyone OFF */
 	memset(&conf, 0, sizeof(struct config));
@@ -945,14 +935,10 @@ init_config()
 	memset(conf.non_prime_node_sort, 0, (MAX_SORTS + 1) *
 		sizeof(struct sort_info));
 
-	/* set any defaults other then OFF */
-	conf.preempt_min_wt_used = 1;
-
 	/* for backwards compatibility */
 	conf.update_comments = 1;
 
 	conf.decay_time = 86400;	/* default decay time period is 24 hours */
-	conf.sync_time = 86400;
 
 	if ((conf.fairshare_res = string_dup("cput")) == NULL)
 		return 0;
@@ -963,10 +949,6 @@ init_config()
 	conf.enforce_no_shares = 1;
 	conf.fairshare_decay_factor = .5;
 
-	/* don't want it to default to 0 and think all queues are express queues
-	conf.preempt_queue_prio = SCHD_INFINITY;
-	*/
-
 	conf.max_preempt_attempts = SCHD_INFINITY;
 	conf.max_jobs_to_check = SCHD_INFINITY;
 
@@ -975,9 +957,6 @@ init_config()
 
 	/* deprecated parameters which are needed to be set to true */
 	conf.assign_ssinodes = 1;
-	conf.preempt_suspend = 1;
-	conf.preempt_chkpt = 1;
-	conf.preempt_requeue = 1;
 	conf.preempt_starving = 1;
 	conf.preempt_fairshare = 1;
 	conf.prime_bf = 1;

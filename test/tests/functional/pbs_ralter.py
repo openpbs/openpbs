@@ -50,6 +50,7 @@ class TestPbsResvAlter(TestFunctional):
     tzone = None
     # These must be equal to the declarations in pbs_error.h
     PBSE_UNKRESVID = 236
+    PBSE_SELECT_NOT_SUBSET = 79
     PBSE_RESV_NOT_EMPTY = 74
     PBSE_STDG_RESV_OCCR_CONFLICT = 75
     PBSE_INCORRECT_USAGE = 2
@@ -69,7 +70,7 @@ class TestPbsResvAlter(TestFunctional):
             self.logger.info('Timezone not set, using Asia/Kolkata')
             self.tzone = 'Asia/Kolkata'
 
-        a = {'resources_available.ncpus': 4}
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
         self.server.create_vnodes('vnode', a, num=2, mom=self.mom,
                                   usenatvnode=True)
 
@@ -201,10 +202,11 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV, attrs, id=rid,
                            offset=(duration - 5), interval=2)
 
-    def check_standing_resv_second_occurrence(self, rid, start, end):
+    def check_standing_resv_second_occurrence(self, rid, start, end,
+                                              select=None):
         """
         Helper method to verify that the second occurrence of a standing
-        reservation retains its original start and end times.
+        reservation retains its original start, and end times and select.
         Assumption: This method assumes that rid represents an HOURLY
                     reservation.
 
@@ -227,6 +229,8 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'reserve_start': next_start_conv,
                  'reserve_end': next_end_conv,
                  'reserve_duration': duration}
+        if select:
+            attrs.update({'Resource_List.select': select})
         self.server.expect(RESV, attrs, id=rid, max_attempts=10,
                            interval=5)
 
@@ -252,8 +256,8 @@ class TestPbsResvAlter(TestFunctional):
     def alter_a_reservation(self, r, start, end, shift=0,
                             alter_s=False, alter_e=False,
                             whichMessage=1, confirm=True, check_log=True,
-                            interactive=0, sequence=1, alter_d=False,
-                            a_duration=None):
+                            interactive=0, sequence=1,
+                            a_duration=None, select=None):
         """
         Helper method for altering a reservation.
         This method also checks for the server and accounting logs.
@@ -300,6 +304,9 @@ class TestPbsResvAlter(TestFunctional):
                         to alter.
                         Default: 1
         :type  sequence: int.
+
+        :param a_duration: The duration to modify
+        :type a_duration: int
         """
         new_start = start
         new_end = end
@@ -324,11 +331,22 @@ class TestPbsResvAlter(TestFunctional):
                 new_duration_conv = self.bu.convert_duration(a_duration)
             else:
                 new_duration_conv = a_duration
+
+            if not alter_s and not alter_e:
+                new_end = start + new_duration_conv + shift
+            elif alter_s and not alter_e:
+                new_end = new_start + new_duration_conv
+            elif not alter_s and alter_e:
+                new_start = new_end - new_duration_conv
+            # else new_start and new_end have already been calculated
         else:
             new_duration_conv = new_end - new_start
 
         if a_duration:
             attrs['reserve_duration'] = new_duration_conv
+
+        if select:
+            attrs['Resource_List.select'] = select
 
         if whichMessage:
             msg = ['']
@@ -351,21 +369,23 @@ class TestPbsResvAlter(TestFunctional):
 
             if check_log:
                 msg = "Resv;" + r + ";Attempting to modify reservation "
-                if alter_s:
+                if start != new_start:
                     msg += "start="
                     msg += time.strftime(self.fmt,
                                          time.localtime(int(new_start)))
+                    msg += " "
 
-                if alter_e:
-                    if alter_s:
-                        msg += " "
-                        acct_msg += " "
+                if end != new_end:
                     msg += "end="
                     msg += time.strftime(self.fmt,
                                          time.localtime(int(new_end)))
-                    acct_msg += "end="
-                    acct_msg += str(new_end)
+                    msg += " "
 
+                if select:
+                    msg += "select=" + select + " "
+
+                # strip the last space
+                msg = msg[:-1]
                 self.server.log_match(msg, interval=2, max_attempts=30)
 
             if whichMessage == 1:
@@ -437,6 +457,9 @@ class TestPbsResvAlter(TestFunctional):
                     msg = "pbs_ralter: Reservation not empty"
                 elif e.rc == self.PBSE_UNKRESVID:
                     msg = "pbs_ralter: Unknown Reservation Id"
+                elif e.rc == self.PBSE_SELECT_NOT_SUBSET:
+                    msg = "pbs_ralter: New select must be made up of a "
+                    msg += "subset of the original chunks"
                 elif e.rc == self.PBSE_STDG_RESV_OCCR_CONFLICT:
                     msg = "Requested time(s) will interfere with "
                     msg += "a later occurrence"
@@ -1255,7 +1278,7 @@ class TestPbsResvAlter(TestFunctional):
             offset, duration, select="1:ncpus=2", standing=True)
         self.mom.stop()
         msg = 'mom is not down'
-        self.assertFalse(self.mom.isUp(), msg)
+        self.assertFalse(self.mom.isUp(max_attempts=5), msg)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         self.server.expect(RESV, attrs, id=rid1)
         self.server.expect(RESV, attrs, id=rid2)
@@ -1598,6 +1621,12 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_start, temp_start)
         self.assertEqual(t_duration, new_duration2)
 
+        sleepdur = (temp_end + shift / 2) - time.time()
+        self.logger.info('Sleeping until reservation would have ended')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid, max_attempts=5, offset=sleepdur)
+
     @skipOnCpuSet
     def test_adv_resv_dur_and_endtime_before_start(self):
         """
@@ -1696,8 +1725,8 @@ class TestPbsResvAlter(TestFunctional):
         new_duration = int(time.time()) - int(t_start) - 1
         attr = {'reserve_duration': new_duration}
         self.server.alterresv(rid, attr)
-        self.server.log_match(rid + ";Reservation alter denied",
-                              id=rid, interval=2)
+        msg = "Resv;" + rid + ";Reservation alter confirmed"
+        self.server.log_match(msg, id=rid)
         rid = rid.split('.')[0]
         self.server.log_match(rid + ";deleted at request of pbs_server",
                               id=rid, interval=2)
@@ -2004,3 +2033,233 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_end, end)
         self.assertEqual(t_start, start)
         self.assertEqual(t_duration, duration)
+
+    def test_duration_walltime(self):
+        """
+        Check when ralter changes duration, it also changes walltime
+        """
+
+        rid, start, end = self.submit_and_confirm_reservation(3600, 600)
+
+        self.server.expect(RESV, {'Resource_List.walltime': 600}, id=rid)
+
+        # Alter start + end
+        self.alter_a_reservation(rid, start, end, shift=30, alter_s=True,
+                                 alter_e=True)
+        self.server.expect(RESV, {'Resource_List.walltime': 600}, id=rid)
+
+        # Alter start + duration
+        self.alter_a_reservation(rid, start, end, shift=30, alter_s=True,
+                                 a_duration=300, sequence=2)
+        self.server.expect(RESV, {'Resource_List.walltime': 300}, id=rid)
+
+        # Alter end + duration
+        self.alter_a_reservation(rid, start, end, shift=30, alter_e=True,
+                                 a_duration=450, sequence=3)
+        self.server.expect(RESV, {'Resource_List.walltime': 450}, id=rid)
+
+        # Alter start + end + duration
+        self.alter_a_reservation(rid, start, end, shift=30, alter_e=True,
+                                 alter_s=True, a_duration=600, sequence=4)
+        self.server.expect(RESV, {'Resource_List.walltime': 600}, id=rid)
+
+    def test_alter_select_basic(self):
+        """
+        Test basic use of pbs_ralter -l select to shrink a reservation
+        """
+        offset = 3600
+        duration = 3600
+        select = "2:ncpus=1+4:ncpus=1+2:ncpus=1"
+        new_select1 = "4:ncpus=1"
+        new_select2 = "2:ncpus=1"
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+                                                              select=select)
+        st = self.server.status(RESV)
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), 8)
+        a = {'Resource_List.ncpus': 8, 'Resource_List.nodect': 8}
+        self.server.expect(RESV, a, id=rid)
+
+        self.alter_a_reservation(rid, start, end, select=new_select1)
+
+        st2 = self.server.status(RESV)
+        self.assertEquals(len(st2[0]['resv_nodes'].split('+')), 4)
+        a = {'Resource_List.ncpus': 4, 'Resource_List.nodect': 4}
+        self.server.expect(RESV, a, id=rid)
+
+        self.alter_a_reservation(rid, start, end, sequence=2,
+                                 select=new_select2)
+
+        st2 = self.server.status(RESV)
+        self.assertEquals(len(st2[0]['resv_nodes'].split('+')), 2)
+        a = {'Resource_List.ncpus': 2, 'Resource_List.nodect': 2}
+        self.server.expect(RESV, a, id=rid)
+
+    def test_alter_select_with_times(self):
+        """
+        Modify the select with the start and end times all at once
+        """
+        offset = 3600
+        duration = 3600
+        select = "6:ncpus=1"
+        new_select = "4:ncpus=1"
+        shift = 300
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+                                                              select=select)
+        st = self.server.status(RESV)
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), 6)
+
+        self.alter_a_reservation(rid, start, end, alter_s=True, alter_e=True,
+                                 shift=shift, select=new_select, interactive=9)
+
+        st = self.server.status(RESV)
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), 4)
+        t = int(time.mktime(time.strptime(st[0]['reserve_start'], '%c')))
+        self.assertEquals(t, start+shift)
+
+        t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
+        self.assertEquals(t, end+shift)
+
+    def test_alter_select_with_times_standing(self):
+        """
+        Modify the select with start and end times on a standing reservation
+        """
+        offset = 20
+        duration = 20
+        select = "6:ncpus=1"
+        new_select = "4:ncpus=1"
+        shift = 15
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+                                                              select=select,
+                                                              standing=True)
+        st = self.server.status(RESV)
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), 6)
+
+        self.alter_a_reservation(rid, start, end, alter_s=True, alter_e=True,
+                                 shift=shift, select=new_select, interactive=9)
+
+        st = self.server.status(RESV)
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), 4)
+        t = int(time.mktime(time.strptime(st[0]['reserve_start'], '%c')))
+        self.assertEquals(t, start+shift)
+
+        t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
+        self.assertEquals(t, end + shift)
+
+        t = start + shift - int(time.time())
+
+        self.logger.info('Waiting until reservation starts')
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_RUNNING|5')}, offset=t)
+
+        self.check_standing_resv_second_occurrence(rid, start, end, select)
+
+    def test_alter_select_larger_fail(self):
+        """
+        Test proper failures if ralter -lselect with a larger select
+        """
+
+        offset = 3600
+        duration = 3600
+        select = "6:ncpus=1"
+        select_more = "7:ncpus=1"
+        select_extra = "6:ncpus=1+1:ncpus=1:mem=1gb"
+        select_different = "6:ncpus=4:mem=1gb"
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+                                                              select=select)
+
+        self.alter_a_reservation(rid, start, end, select=select_more,
+                                 whichMessage=0)
+
+        self.alter_a_reservation(rid, start, end, select=select_extra,
+                                 whichMessage=0)
+        self.alter_a_reservation(rid, start, end, select=select_different,
+                                 whichMessage=0)
+
+    def test_standing_multiple_alter(self):
+        """
+        Test that a standing reservation's second occurrence reverts to the
+        original start/end/duration/select if it is altered multiple times
+        """
+
+        offset = 3600
+        shift1 = -1800
+        shift2 = -3560
+        dur = 30
+        dur2 = 20
+        dur3 = 15
+        select = "6:ncpus=1"
+        select2 = "4:ncpus=1"
+        select3 = "2:ncpus=1"
+
+        rid, start, end = \
+            self.submit_and_confirm_reservation(offset, dur, select=select,
+                                                standing=True)
+
+        self.alter_a_reservation(rid, start, end, alter_s=True,
+                                 shift=shift1, a_duration=dur2, select=select2)
+        self.alter_a_reservation(rid, start, end, alter_s=True,
+                                 shift=shift2, a_duration=dur3,
+                                 select=select3, sequence=2)
+
+        t = start - int(time.time()) + shift2
+
+        self.logger.info('Sleeping %ds until resv starts' % (t))
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid, offset=t)
+
+        self.check_standing_resv_second_occurrence(rid, start, end, select)
+
+    def test_select_fail_revert(self):
+        """
+        Test that when a ralter fails, the select is reverted properly
+        """
+        offset = 3600
+        offset2 = 7200
+        shift = 1800
+        dur = 3600
+        select = "8:ncpus=1"
+        select2 = "4:ncpus=1"
+
+        rid, start, end = \
+            self.submit_and_confirm_reservation(offset, dur, select=select)
+
+        rid2, start2, end2 = \
+            self.submit_and_confirm_reservation(offset2, dur, select=select)
+
+        self.alter_a_reservation(rid, start, end, alter_s=True, alter_e=True,
+                                 shift=shift, select=select2, whichMessage=3)
+
+        a = {'Resource_List.select': '8:ncpus=1', 'Resource_List.ncpus': 8,
+             'Resource_List.nodect': 8}
+        self.server.expect(RESV, a, id=rid)
+
+    def test_resv_resc_assigned(self):
+        """
+        Test that when an ralter -D is issued, the resources on the node
+        are still correct
+        """
+
+        offset = 60
+        dur = 60
+        select = "4:ncpus=1"
+
+        rid, start, end = \
+            self.submit_and_confirm_reservation(offset, dur, select=select)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        sleepdur = start - time.time()
+        self.logger.info('Sleeping until reservation starts')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           offset=sleepdur)
+        self.alter_a_reservation(rid, start, end, a_duration=600,
+                                 confirm=False)
+        self.server.expect(NODE, {'resources_assigned.ncpus': 4},
+                           max_attempts=1, id=resv_node)

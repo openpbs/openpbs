@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <data>
-    <!--
+   <!--
 /*
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
@@ -63,8 +63,7 @@
        verify value function
     -->
    <head>
-     <SVR>
-     #include &lt;pbs_config.h&gt;
+      <SVR>#include &lt;pbs_config.h&gt;
      #include &lt;fcntl.h&gt;
      #include &lt;sys/types.h&gt;
      #include "pbs_ifl.h"
@@ -75,779 +74,806 @@
      #include "reservation.h"
 
 
-     attribute_def resv_attr_def[] = {
-     </SVR>
-     <ECL>
-     #include &lt;pbs_config.h&gt;
+     attribute_def resv_attr_def[] = {</SVR>
+      <ECL>#include &lt;pbs_config.h&gt;
      #include "pbs_ifl.h"
      #include "pbs_ecl.h"
 
-     /* ordered by guess to put ones most often used at front */
+    /* ordered by guess to put ones most often used at front */
 
-     ecl_attribute_def ecl_resv_attr_def[] = {
-     </ECL>
+     ecl_attribute_def ecl_resv_attr_def[] = {</ECL>
    </head>
    <attributes>
-   /*RESV_ATR_resv_name*/
-	<member_name><both>ATTR_resv_name</both></member_name>		<!--  "Reserve_Name" -->
-	<member_at_decode>decode_jobname</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_jobname</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resv_name</member_index>
+      <member_name>ATTR_resv_name</member_name>
+      <member_at_decode>decode_jobname</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_jobname</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_resv_owner*/
-	<member_name><both>ATTR_resv_owner</both></member_name>	<!--  "Reserve_Owner" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_SSET | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-	</attributes>
-   <attributes>
-   /*RESV_ATR_state*/
-	<member_name><both>ATTR_resv_state</both></member_name>	<!--  "reserve_state" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_RDACC | ATR_DFLAG_SvWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function></attributes>
-   <attributes>
-   /*RESV_ATR_substate*/
-	<member_name><both>ATTR_resv_substate</both></member_name>	<!--  "reserve_substate" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_RDACC | ATR_DFLAG_SvWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resv_owner</member_index>
+      <member_name>ATTR_resv_owner</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_SSET | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_reserve_Tag*/
-	<member_name><both>ATTR_resv_Tag</both></member_name>		<!--  "reservation_tag" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_Creat | READ_ONLY</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_state</member_index>
+      <member_name>ATTR_resv_state</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_RDACC | ATR_DFLAG_SvWR</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_reserveID*/
-	<member_name><both>ATTR_resv_ID</both></member_name>		<!--  "reserve_ID" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_Creat | ATR_DFLAG_SvWR | READ_ONLY</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-	</attributes>
-   <attributes>
-   /*RESV_ATR_start*/
-	<member_name><both>ATTR_resv_start</both></member_name>	<!--  "reserve_start" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_substate</member_index>
+      <member_name>ATTR_resv_substate</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_RDACC | ATR_DFLAG_SvWR</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_end*/
-	<member_name><both>ATTR_resv_end</both></member_name>		<!--  "reserve_end" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_reserve_Tag</member_index>
+      <member_name>ATTR_resv_Tag</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_Creat | READ_ONLY</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_duration*/
-	<member_name><both>ATTR_resv_duration</both></member_name>	<!--  "reserve_duration" -->
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_reserveID</member_index>
+      <member_name>ATTR_resv_ID</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_Creat | ATR_DFLAG_SvWR | READ_ONLY</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_queue*/
-	<member_name><both>ATTR_queue</both></member_name>		<!--  "Queue" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_start</member_index>
+      <member_name>ATTR_resv_start</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resource */
-	<member_name><both>ATTR_l</both></member_name>			<!--  "Resource_List" -->
-	<member_at_decode>decode_resc</member_at_decode>
-	<member_at_encode>encode_resc</member_at_encode>
-	<member_at_set>set_resc</member_at_set>
-	<member_at_comp>comp_resc</member_at_comp>
-	<member_at_free>free_resc</member_at_free>
-	<member_at_action>action_resc_resv</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_resc</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_end</member_index>
+      <member_name>ATTR_resv_end</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_SchedSelect */
-	<member_name><both>ATTR_SchedSelect</both></member_name>       <!--  "schedselect" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_MGRD</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_JOB</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_duration</member_index>
+      <member_name>ATTR_resv_duration</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resc_used */
-	<member_name><both>ATTR_used</both></member_name>		<!--  "resources_used" -->
-	<member_at_decode>decode_resc</member_at_decode>
-	<member_at_encode>encode_resc</member_at_encode>
-	<member_at_set>set_resc</member_at_set>
-	<member_at_comp>comp_resc</member_at_comp>
-	<member_at_free>free_resc</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_SvWR</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_RESC</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_queue</member_index>
+      <member_name>ATTR_queue</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resv_nodes */
-	<member_name><both>ATTR_resv_nodes</both></member_name>	<!--  "resv_nodes" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resource</member_index>
+      <member_name>ATTR_l</member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>action_resc_resv</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_RESC</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_resc</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_userlst */
-	<member_name><both>ATTR_u</both></member_name>			<!--  "User_List",(effective user) -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_uacl</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_user_list</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_SchedSelect</member_index>
+      <member_name>ATTR_SchedSelect</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_MGRD</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_grouplst */
-	<member_name><both>ATTR_g</both></member_name>			<!--  "group_list", (effective group) -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_user_list</ECL>
-	</member_verify_function>
-	</attributes>
-   <attributes>
-   /* RESV_ATR_auth_u */
-	<member_name><both>ATTR_auth_u</both></member_name>		<!--  "Authorized_Users",(acl for queue) -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_uacl</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_authorized_users</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resc_used</member_index>
+      <member_name>ATTR_used</member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_SvWR</member_at_flags>
+      <member_at_type>ATR_TYPE_RESC</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_auth_g */
-	<member_name><both>ATTR_auth_g</both></member_name>		<!--  "Authorized_Groups", (acl for queue) -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_authorized_groups</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resv_nodes</member_index>
+      <member_name>ATTR_resv_nodes</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_auth_h */
-	<member_name><both>ATTR_auth_h</both></member_name>		<!--  "Authorized_Hosts",(acl for queue) -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_userlst</member_index>
+      <member_name>ATTR_u</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_uacl</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_user_list</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_at_server */
-	<member_name><both>ATTR_server</both></member_name>		<!--  "Server" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_grouplst</member_index>
+      <member_name>ATTR_g</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_user_list</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_account */
-	<member_name><both>ATTR_A</both></member_name>			<!--  "Account_Name" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_auth_u</member_index>
+      <member_name>ATTR_auth_u</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_uacl</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_authorized_users</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_ctime */
-	<member_name><both>ATTR_ctime</both></member_name>		<!--  "ctime" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_auth_g</member_index>
+      <member_name>ATTR_auth_g</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_authorized_groups</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_mailpnts */
-	<member_name><both>ATTR_m</both></member_name>			<!--  "Mail_Points" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_mailpoints</ECL>
-	</member_verify_function>
-	</attributes>
-   <attributes>
-   /* RESV_ATR_mailuser */
-	<member_name><both>ATTR_M</both></member_name>			<!--  "Mail_Users" -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_mailusers</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_auth_h</member_index>
+      <member_name>ATTR_auth_h</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_mtime */
-	<member_name><both>ATTR_mtime</both></member_name>		<!--  "mtime" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-	</attributes>
-   <attributes>
-   /* RESV_ATR_hashname */
-	<member_name><both>ATTR_hashname</both></member_name>		<!--  "hashname" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_at_server</member_index>
+      <member_name>ATTR_server</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_hopcount */
-	<member_name><both>ATTR_hopcount</both></member_name>		<!--  "hop_count" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_SSET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_account</member_index>
+      <member_name>ATTR_A</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_priority */
-	<member_name><both>ATTR_p</both></member_name>			<!--  "Priority" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>verify_value_priority</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_ctime</member_index>
+      <member_name>ATTR_ctime</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_SSET</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_interactive */
-	<member_name><both>ATTR_inter</both></member_name>			<!--  "Interactive" -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_mailpnts</member_index>
+      <member_name>ATTR_m</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_mailpoints</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_variables */
-	<member_name><both>ATTR_v</both></member_name>			<!--  "Variable_List" -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_mailuser</member_index>
+      <member_name>ATTR_M</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_mailusers</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_euser */
-	<member_name><both>ATTR_euser</both></member_name>		<!--  "euser" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_MGRD</both>
-	</member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_mtime</member_index>
+      <member_name>ATTR_mtime</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_SSET</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_egroup */
-	<member_name><both>ATTR_egroup</both></member_name>		<!--  "egroup" -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>ATR_DFLAG_MGRD</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_hashname</member_index>
+      <member_name>ATTR_hashname</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_convert  */
-	<member_name><both>ATTR_convert</both></member_name>
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_hopcount</member_index>
+      <member_name>ATTR_hopcount</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_SSET</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resv_standing */
-	<member_name><both>ATTR_resv_standing</both></member_name>     <!--  "reserve_standing" is 1 if Standing Reservation,0 otherwise -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_bool</ECL>	<!--  using bool since value is supposed to be binary -->
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_priority</member_index>
+      <member_name>ATTR_p</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>verify_value_priority</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resv_rrule */
-	<member_name><both>ATTR_resv_rrule</both></member_name>     <!--  "reserve_rrule" Standing Reservation's rrule.-->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_interactive</member_index>
+      <member_name>ATTR_inter</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_resv_idx*/
-	<member_name><both>ATTR_resv_idx</both></member_name>    <!-- "reserve_index" Occurrence index of a standing reservation -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_variables</member_index>
+      <member_name>ATTR_v</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resv_count */
-	<member_name><both>ATTR_resv_count</both></member_name>     <!--  "reserve_count" number of occurrences of a standing reservation -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_euser</member_index>
+      <member_name>ATTR_euser</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_MGRD</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resv_execvnodes */
-	<member_name><both>ATTR_resv_execvnodes</both></member_name>    <!--  "reserve_execvnodes" the sequence of execvnodes of a standing reservation -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_egroup</member_index>
+      <member_name>ATTR_egroup</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_MGRD</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_resv_timezone */
-	<member_name><both>ATTR_resv_timezone</both></member_name>    <!--  "reserve_timezone" Timezone associated to the submission host -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_convert</member_index>
+      <member_name>ATTR_convert</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_retry */
-	<member_name><both>ATTR_resv_retry</both></member_name>	<!--  "reserve_retry" The time in seconds at which a reservation is to be reconfirmed -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resv_standing</member_index>
+      <member_name>ATTR_resv_standing</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /* RESV_ATR_del_idle_time */
-	<member_name><both>ATTR_del_idle_time</both></member_name>	<!-- delete_idle_time -->
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_time</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resv_rrule</member_index>
+      <member_name>ATTR_resv_rrule</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*RESV_ATR_job*/
-	<member_name><both>ATTR_resv_job</both></member_name>		<!--  "Reserve_job" -->
-	<member_at_decode>decode_jobname</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESV_ATR_resv_idx</member_index>
+      <member_name>ATTR_resv_idx</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>
-   /*"node_set" */
-	<member_name><SVR>ATTR_node_set</SVR></member_name>
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><SVR>ATR_DFLAG_SvWR|ATR_DFLAG_MGWR</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+   <attributes>
+      <member_index>RESV_ATR_resv_count</member_index>
+      <member_name>ATTR_resv_count</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>
-   /*"partition" */
-	<member_name><SVR>ATTR_partition</SVR></member_name>
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><SVR>ATR_DFLAG_SSET | READ_ONLY</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+   <attributes>
+      <member_index>RESV_ATR_resv_execvnodes</member_index>
+      <member_name>ATTR_resv_execvnodes</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>
-    #include "site_resv_attr_def.h"
-   /* RESV_ATR_UNKN - THIS MUST BE THE LAST ENTRY */
-	<member_name><SVR>"_other_"</SVR></member_name>
-	<member_at_decode>decode_unkn</member_at_decode>
-	<member_at_encode>encode_unkn</member_at_encode>
-	<member_at_set>set_unkn</member_at_set>
-	<member_at_comp>comp_unkn</member_at_comp>
-	<member_at_free>free_unkn</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_SELEQ</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LIST</SVR></member_at_type>
-	<member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+   <attributes>
+      <member_index>RESV_ATR_resv_timezone</member_index>
+      <member_name>ATTR_resv_timezone</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>RESV_ATR_retry</member_index>
+      <member_name>ATTR_resv_retry</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>RESV_ATR_del_idle_time</member_index>
+      <member_name>ATTR_del_idle_time</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>RESV_ATR_job</member_index>
+      <member_name>ATTR_resv_job</member_name>
+      <member_at_decode>decode_jobname</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>RESV_ATR_SchedSelect_orig</member_index>
+      <member_name>ATTR_SchedSelect_orig</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>ATR_DFLAG_MGRD</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESV_ATR_node_set</member_index>
+      <member_name>
+         <SVR>ATTR_node_set</SVR>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <SVR>ATR_DFLAG_SvWR|ATR_DFLAG_MGWR</SVR>
+      </member_at_flags>
+      <member_at_type>
+         <SVR>ATR_TYPE_ARST</SVR>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESV_ATR_partition</member_index>
+      <member_name>
+         <SVR>ATTR_partition</SVR>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <SVR>ATR_DFLAG_SSET | READ_ONLY</SVR>
+      </member_at_flags>
+      <member_at_type>
+         <SVR>ATR_TYPE_STR</SVR>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
+   </attributes>
+   <attributes flag="SVR">
+      #include "site_resv_attr_def.h"
+      <member_name>
+         <SVR>"_other_"</SVR>
+      </member_name>
+      <member_at_decode>decode_unkn</member_at_decode>
+      <member_at_encode>encode_unkn</member_at_encode>
+      <member_at_set>set_unkn</member_at_set>
+      <member_at_comp>comp_unkn</member_at_comp>
+      <member_at_free>free_unkn</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <SVR>READ_WRITE | ATR_DFLAG_SELEQ</SVR>
+      </member_at_flags>
+      <member_at_type>
+         <SVR>ATR_TYPE_LIST</SVR>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
    </attributes>
    <tail>
-     <SVR>
-	};
-     </SVR>
-     <ECL>
-	};
-	int   ecl_resv_attr_size = sizeof(ecl_resv_attr_def) / sizeof(ecl_attribute_def);
-     </ECL>
+      <SVR>};</SVR>
+      <ECL>};
+	int   ecl_resv_attr_size = sizeof(ecl_resv_attr_def) / sizeof(ecl_attribute_def);</ECL>
    </tail>
 </data>

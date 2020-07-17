@@ -37,7 +37,6 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
 from tests.functional import *
 
 
@@ -150,6 +149,30 @@ class TestPbsNodeRampDown(TestFunctional):
         if ((ehost1 > ehost2) - (ehost1 < ehost2)) != 0:
             return False
         return True
+
+    def check_stageout_file_size(self):
+        """
+        This Function will check that atleast 1gb of test.img
+        file which is to be stagedout is created in 10 seconds
+        """
+        fpath = os.path.join(TEST_USER.home, "test.img")
+        cmd = ['stat', '-c', '%s', fpath]
+        fsize = 0
+        for i in range(11):
+            rc = self.du.run_cmd(hosts=self.hostA, cmd=cmd,
+                                 runas=TEST_USER)
+            if rc['rc'] == 0 and len(rc['out']) == 1:
+                try:
+                    fsize = int(rc['out'][0])
+                except:
+                    pass
+            # 1073741824 == 1Gb
+            if fsize > 1073741824:
+                break
+            else:
+                time.sleep(1)
+        if fsize <= 1073741824:
+            self.fail("Failed to create 1gb file at %s" % fpath)
 
     def match_accounting_log(self, atype, jid, exec_host, exec_vnode,
                              mem, ncpus, nodect, place, select):
@@ -389,10 +412,10 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -W stageout=test.img@%s:test.img\n" % (self.n4,) + \
             "#PBS -W release_nodes_on_stageout=true\n" + \
-            "dd if=/dev/zero of=test.img count=1024 bs=1048576\n" + \
+            "dd if=/dev/zero of=test.img count=1024 bs=2097152\n" + \
             "pbsdsh -n 1 -- %s\n" % (FIB40,) + \
             "pbsdsh -n 2 -- %s\n" % (FIB40,) + \
-            "%s\n" % (FIB50,)
+            "%s\n" % (FIB400,)
 
         self.script['job1_1'] = \
             "#PBS -S /bin/bash\n" \
@@ -400,20 +423,20 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -W stageout=test.img@%s:test.img\n" % (self.n4,) + \
             "#PBS -W release_nodes_on_stageout=false\n" + \
-            "dd if=/dev/zero of=test.img count=1024 bs=1048576\n" + \
+            "dd if=/dev/zero of=test.img count=1024 bs=2097152\n" + \
             "pbsdsh -n 1 -- %s\n" % (FIB40,) + \
             "pbsdsh -n 2 -- %s\n" % (FIB40,) + \
-            "%s\n" % (FIB50,)
+            "%s\n" % (FIB400,)
 
         self.script['job1_2'] = \
             "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -W stageout=test.img@%s:test.img\n" % (self.n4,) + \
-            "dd if=/dev/zero of=test.img count=1024 bs=1048576\n" + \
+            "dd if=/dev/zero of=test.img count=1024 bs=2097152\n" + \
             "pbsdsh -n 1 -- %s\n" % (FIB40,) + \
             "pbsdsh -n 2 -- %s\n" % (FIB40,) + \
-            "%s\n" % (FIB50,)
+            "%s\n" % (FIB400,)
 
         self.script['job1_3'] = \
             "#PBS -S /bin/bash\n" \
@@ -429,7 +452,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
             "#PBS -l place=" + self.job1_place + "\n" + \
             "pbsdsh -n 1 -- %s &\n" % (FIB45,) + \
             "pbsdsh -n 2 -- %s &\n" % (FIB45,) + \
-            "%s\n" % (FIB45,)
+            "%s\n" % (FIB400,)
 
         self.script['jobA'] = \
             "#PBS -S /bin/bash\n" \
@@ -579,6 +602,10 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         self.momA.signal("-CONT")
         self.momB.signal("-CONT")
         self.momC.signal("-CONT")
+        for host in [self.hostA, self.hostB, self.hostC]:
+            test_img = os.path.join("/home", "pbsuser", "test.img")
+            self.du.rm(hostname=host, path=test_img, force=True,
+                       runas=TEST_USER)
         TestFunctional.tearDown(self)
 
     def test_release_nodes_on_stageout_true(self):
@@ -630,7 +657,31 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Deleting the job will trigger the stageout process
         # at which time sister nodes are automatically released
         # due to release_nodes_stageout=true set
+        self.check_stageout_file_size()
         self.server.delete(jid)
+
+        # Verify remaining job resources.
+        self.server.expect(JOB, {'job_state': 'E',
+                                 'Resource_List.mem': '2gb',
+                                 'Resource_List.ncpus': 3,
+                                 'Resource_List.select': self.job1_newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 1,
+                                 'schedselect': self.job1_newsel,
+                                 'exec_host': self.job1_new_exec_host,
+                                 'exec_vnode': self.job1_new_exec_vnode},
+                           id=jid)
+        # Check various vnode status
+        self.match_vnode_status([self.n1, self.n2],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n3], 'job-busy', jobs_assn1, 1, '0kb')
+
+        self.match_vnode_status([self.n0, self.n4, self.n5, self.n6,
+                                 self.n7, self.n8, self.n9, self.n10], 'free')
+
+        self.assertTrue(
+            self.pbs_nodefile_match_exec_host(jid, self.job1_new_exec_host))
 
         # Verify mom_logs
         self.momA.log_match(
@@ -646,30 +697,6 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
                             max_attempts=18, interval=2)
-
-        # Verify remaining job resources.
-        self.server.expect(JOB, {'job_state': 'E',
-                                 'Resource_List.mem': '2gb',
-                                 'Resource_List.ncpus': 3,
-                                 'Resource_List.select': self.job1_newsel,
-                                 'Resource_List.place': self.job1_place,
-                                 'Resource_List.nodect': 1,
-                                 'schedselect': self.job1_newsel,
-                                 'exec_host': self.job1_new_exec_host,
-                                 'exec_vnode': self.job1_new_exec_vnode},
-                           id=jid)
-
-        # Check various vnode status
-        self.match_vnode_status([self.n1, self.n2],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        self.match_vnode_status([self.n3], 'job-busy', jobs_assn1, 1, '0kb')
-
-        self.match_vnode_status([self.n0, self.n4, self.n5, self.n6,
-                                 self.n7, self.n8, self.n9, self.n10], 'free')
-
-        self.assertTrue(
-            self.pbs_nodefile_match_exec_host(jid, self.job1_new_exec_host))
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -727,16 +754,8 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # Deleting a job should not trigger automatic
         # release of nodes due to release_nodes_stagout=False
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
 
         # Verify no change in remaining job resources.
         self.server.expect(JOB, {'job_state': 'E',
@@ -760,6 +779,15 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
                                 2, '2097152kb')
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        # Verify mom_logs
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
 
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
@@ -807,16 +835,8 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
 
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
 
         # Verify no change in remaining job resources.
         self.server.expect(JOB, {'job_state': 'E',
@@ -828,7 +848,6 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
                                  'schedselect': self.job1_schedselect,
                                  'exec_host': self.job1_exec_host,
                                  'exec_vnode': self.job1_exec_vnode}, id=jid)
-
         # Check various vnode status.
         self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
                                 'job-busy', jobs_assn1, 1, '1048576kb')
@@ -841,6 +860,15 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10],
                                 'free')
+
+        # Verify mom_logs
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
 
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
@@ -899,7 +927,32 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
 
         # This triggers the lengthy stageout process
+        # Wait for the Job to create test.img file
+        self.check_stageout_file_size()
         self.server.delete(jid)
+
+        self.server.expect(JOB, {'job_state': 'E',
+                                 'Resource_List.mem': '2gb',
+                                 'Resource_List.ncpus': 3,
+                                 'Resource_List.select': self.job1_newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 1,
+                                 'schedselect': self.job1_newsel,
+                                 'exec_host': self.job1_new_exec_host,
+                                 'exec_vnode': self.job1_new_exec_vnode},
+                           id=jid)
+        # Check various vnode status
+        self.match_vnode_status([self.n1, self.n2],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n3], 'job-busy', jobs_assn1,
+                                1, '0kb')
+
+        self.match_vnode_status([self.n0, self.n4, self.n5, self.n6,
+                                 self.n7, self.n8, self.n9, self.n10], 'free')
+
+        self.assertTrue(
+            self.pbs_nodefile_match_exec_host(jid, self.job1_new_exec_host))
 
         # Verify mom_logs
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
@@ -915,30 +968,6 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
                             max_attempts=18, interval=2)
-
-        self.server.expect(JOB, {'job_state': 'E',
-                                 'Resource_List.mem': '2gb',
-                                 'Resource_List.ncpus': 3,
-                                 'Resource_List.select': self.job1_newsel,
-                                 'Resource_List.place': self.job1_place,
-                                 'Resource_List.nodect': 1,
-                                 'schedselect': self.job1_newsel,
-                                 'exec_host': self.job1_new_exec_host,
-                                 'exec_vnode': self.job1_new_exec_vnode},
-                           id=jid)
-
-        # Check various vnode status
-        self.match_vnode_status([self.n1, self.n2],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        self.match_vnode_status([self.n3], 'job-busy', jobs_assn1,
-                                1, '0kb')
-
-        self.match_vnode_status([self.n0, self.n4, self.n5, self.n6,
-                                 self.n7, self.n8, self.n9, self.n10], 'free')
-
-        self.assertTrue(
-            self.pbs_nodefile_match_exec_host(jid, self.job1_new_exec_host))
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -994,16 +1023,9 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
 
         # This triggers long stageout process
+        # Wait for the Job to create test.img file
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
 
         # Verify no change in remaining job resources.
         self.server.expect(JOB, {'job_state': 'E',
@@ -1027,6 +1049,15 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
                                 2, '2097152kb')
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        # Verify mom_logs
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
 
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
@@ -1098,23 +1129,9 @@ pbs.event().job.release_nodes_on_stageout=True
         # Deleting the job will trigger the stageout process
         # at which time sister nodes are automatically released
         # due to release_nodes_stageout=true set
+        # Wait for the Job to create test.img file
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-
-        self.momA.log_match(
-            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.n4,), n=10,
-            max_attempts=18, interval=2, regexp=True)
-
-        self.momA.log_match(
-            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
-
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
 
         # Verify remaining job resources.
 
@@ -1140,6 +1157,22 @@ pbs.event().job.release_nodes_on_stageout=True
 
         self.assertTrue(
             self.pbs_nodefile_match_exec_host(jid, self.job1_new_exec_host))
+
+        # Verify mom_logs
+
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.n4,), n=10,
+            max_attempts=18, interval=2, regexp=True)
+
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
+            max_attempts=18, interval=2, regexp=True)
+
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=18, interval=2)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=18, interval=2)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -1206,16 +1239,9 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Deleting a job should not trigger automatic
         # release of nodes due to release_nodes_stagout=False
+        # Wait for the Job to create test.img file
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
 
         # Verify no change in remaining job resources.
         self.server.expect(JOB, {'job_state': 'E',
@@ -1239,6 +1265,15 @@ pbs.event().job.release_nodes_on_stageout=False
                                 2, '2097152kb')
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        # Verify mom_logs
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
 
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
@@ -1314,22 +1349,9 @@ pbs.event().job.release_nodes_on_stageout=True
         # Deleting the job will trigger the stageout process
         # at which time sister nodes are automatically released
         # due to release_nodes_stageout=true set
+        # Wait for the Job to create test.img file
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-        self.momA.log_match(
-            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
-
-        self.momA.log_match(
-            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
-
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
 
         # Verify remaining job resources.
 
@@ -1355,6 +1377,21 @@ pbs.event().job.release_nodes_on_stageout=True
 
         self.assertTrue(
             self.pbs_nodefile_match_exec_host(jid, self.job1_new_exec_host))
+
+        # Verify mom_logs
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
+            max_attempts=18, interval=2, regexp=True)
+
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
+            max_attempts=18, interval=2, regexp=True)
+
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=18, interval=2)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=18, interval=2)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -1424,16 +1461,9 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Deleting a job should not trigger automatic
         # release of nodes due to release_nodes_stagout=False
+        # Wait for the Job to create test.img file
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Verify mom_logs
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=1,
-                            existence=False)
 
         # Verify no change in remaining job resources.
         self.server.expect(JOB, {'job_state': 'E',
@@ -1447,8 +1477,6 @@ pbs.event().job.release_nodes_on_stageout=False
                                  'exec_vnode': self.job1_exec_vnode}, id=jid)
 
         # Check various vnode status.
-
-        # Check various vnode status.
         self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
                                 'job-busy', jobs_assn1, 1, '1048576kb')
 
@@ -1459,6 +1487,15 @@ pbs.event().job.release_nodes_on_stageout=False
                                 2, '2097152kb')
 
         self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        # Verify mom_logs
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, interval=1,
+                            existence=False)
 
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
@@ -4409,21 +4446,8 @@ pbs.event().job.release_nodes_on_stageout=False
                                   6, 2, self.job1_place, newsel_esc)
 
         # Terminate the job
+        self.check_stageout_file_size()
         self.server.delete(jid)
-
-        # Check 'u' accounting record from release_nodes_on_stageout=true
-        self.match_accounting_log('u', jid, new_exec_host_esc,
-                                  new_exec_vnode_esc, "4194304kb", 6, 2,
-                                  self.job1_place,
-                                  newsel_esc)
-
-        # Verify mom_logs
-        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
-
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
 
         # Verify remaining job resources.
 
@@ -4451,6 +4475,20 @@ pbs.event().job.release_nodes_on_stageout=False
                                  'schedselect': newsel,
                                  'exec_host': new_exec_host,
                                  'exec_vnode': new_exec_vnode}, id=jid)
+
+        # Check 'u' accounting record from release_nodes_on_stageout=true
+        self.match_accounting_log('u', jid, new_exec_host_esc,
+                                  new_exec_vnode_esc, "4194304kb", 6, 2,
+                                  self.job1_place,
+                                  newsel_esc)
+
+        # Verify mom_logs
+        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
+            jid, self.hostB), n=10,
+            max_attempts=18, interval=2, regexp=True)
+
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=18, interval=2)
 
         # Check various vnode status.
 

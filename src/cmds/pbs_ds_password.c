@@ -121,9 +121,10 @@ size_t	cred_len;
 char	*cred_buf = NULL;
 
 int started_db = 0;
-pbs_db_conn_t *conn = NULL;
+void *conn = NULL;
 struct passwd	*pwent;
 char pwd_file_new[MAXPATHLEN+1];
+char conn_db_host[PBS_MAXSERVERNAME+1];
 
 extern unsigned char pbs_aes_key[][16];
 extern unsigned char pbs_aes_iv[][16];
@@ -148,12 +149,13 @@ cleanup()
 
 	if (conn != NULL) {
 		pbs_db_disconnect(conn);
-		pbs_db_destroy_connection(conn);
 		conn = NULL;
 	}
+
 	if (started_db  == 1) {
-		if (pbs_shutdown_db(&db_err) != 0) {
+		if (pbs_stop_db(conn_db_host, pbs_conf.pbs_data_service_port) != 0) {
 			fprintf(stderr, "Failed to stop PBS Data Service");
+			pbs_db_get_errmsg(PBS_DB_ERR, &db_err);
 			if (db_err) {
 				fprintf(stderr, ":[%s]", db_err);
 				free(db_err);
@@ -367,13 +369,11 @@ main(int argc, char *argv[])
 	int i, rc;
 	char passwd[MAX_PASSWORD_LEN + 1] = {'\0'};
 	char passwd2[MAX_PASSWORD_LEN + 1];
-	char *pquoted;
 	char pwd_file[MAXPATHLEN + 1];
 	char userid[LOGIN_NAME_MAX + 1];
 	int fd, errflg = 0;
 	int gen_pwd = 0;
-	char sqlbuff[1024];
-	int db_conn_error=0;
+	int failcode = 0;
 	char *db_errmsg = NULL;
 	int pmode;
 	int change_user = 0;
@@ -462,44 +462,40 @@ main(int argc, char *argv[])
 	}
 
 	atexit(cleanup);
+	if (pbs_conf.pbs_data_service_host)
+		strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
+	else
+		strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); 
 
 	if (update_db == 1) {
 		/* then connect to database */
-		conn = pbs_db_init_connection(NULL, PBS_DB_CNT_TIMEOUT_NORMAL, 1, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
-		if (!conn) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr, "%s: %s\n", prog, db_errmsg);
-			if (strlen(errmsg) > 0)
-				fprintf(stderr, "%s\n", errmsg);
-			return -1;
-		}
-		db_conn_error = pbs_db_connect(conn);
-		if (db_conn_error == PBS_DB_SUCCESS && change_user == 1) {
+
+		failcode = pbs_db_connect(&conn, NULL, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
+
+		if (conn && change_user == 1) {
 			/* able to connect ? Thats bad, PBS or dataservice is running */
 			fprintf(stderr, "%s: PBS Services and/or PBS Data Service is running\n", prog);
 			fprintf(stderr, "                 Stop PBS and Data Services before changing Data Service user\n");
 			return (-1);
 		}
 
-		if (db_conn_error != PBS_DB_SUCCESS) {
-			if (db_conn_error == PBS_DB_CONNREFUSED) {
-				/* start db only if it was not already running */
-				if (pbs_startup_db(&db_errmsg) != 0) {
-					if (db_errmsg)
-						fprintf(stderr, "%s: Failed to start PBS dataservice:[%s]\n", prog, db_errmsg);
-					else
-						fprintf(stderr, "%s: Failed to start PBS dataservice\n", prog);
-					return (-1);
-				}
-				started_db = 1;
-			}
-			db_conn_error = pbs_db_connect(conn);
-			if (db_conn_error != PBS_DB_SUCCESS) {
-				get_db_errmsg(db_conn_error, &db_errmsg);
-				if (conn->conn_db_err)
-					fprintf(stderr, "%s: Could not connect to PBS data service:%s:[%s]\n", prog,
-						db_errmsg, (char*)conn->conn_db_err);
+		if (!conn) {
+			/* start db only if it was not already running */
+			failcode = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
+			if (failcode != 0) {
+				pbs_db_get_errmsg(failcode, &db_errmsg);
+				if (db_errmsg)
+					fprintf(stderr, "%s: Failed to start PBS dataservice:[%s]\n", prog, db_errmsg);
 				else
+					fprintf(stderr, "%s: Failed to start PBS dataservice\n", prog);
+				return (-1);
+			}
+			started_db = 1;
+
+			failcode = pbs_db_connect(&conn, NULL, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
+			if (!conn) {
+				pbs_db_get_errmsg(failcode, &db_errmsg);
+				if (db_errmsg)
 					fprintf(stderr, "%s: Could not connect to PBS data service:%s\n", prog, db_errmsg);
 				return (-1);
 			}
@@ -532,12 +528,6 @@ main(int argc, char *argv[])
 		return (-1);
 	}
 
-	/* escape password to use in sql strings later */
-	if ((pquoted = pbs_db_escape_str(conn, passwd)) == NULL) {
-		fprintf(stderr, "%s: Out of memory\n", prog);
-		return -1;
-	}
-
 	sprintf(pwd_file_new, "%s/server_priv/db_password.new", pbs_conf.pbs_home_path);
 	sprintf(pwd_file, "%s/server_priv/db_password", pbs_conf.pbs_home_path);
 
@@ -551,76 +541,30 @@ main(int argc, char *argv[])
 	}
 
 	if (update_db == 1) {
-		/* change password only if this config option is not set */
-
-		if (pbs_db_begin_trx(conn, 0, 0) != 0) {
-			fprintf(stderr, "%s: Could not start transaction\n", prog);
-			unlink(pwd_file_new);
+		/* change password only if this config option is not set */		
+		rc = pbs_db_password(conn, userid, passwd, olduser);
+		memset(passwd, 0, sizeof(passwd));
+		memset(passwd2, 0, sizeof(passwd2));
+		if (rc == -1) {
+			fprintf(stderr, "%s: Failed to create/alter user id %s\n", prog, userid);
 			return -1;
-		}
-
-		if (change_user == 1) {
-			/* check whether user exists */
-			snprintf(sqlbuff, sizeof(sqlbuff),
-				"select usename from pg_user where usename = '%s'",
-				userid);
-			if (pbs_db_execute_str(conn, sqlbuff) == 1) {
-				/* now attempt to create new user & set the database passwd to the un-encrypted password */
-				snprintf(sqlbuff, sizeof(sqlbuff),
-					"create user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
-					userid, pquoted);
-			} else {
-				/* attempt to alter new user & set the database passwd to the un-encrypted password */
-				snprintf(sqlbuff, sizeof(sqlbuff),
-					"alter user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
-					userid, pquoted);
-			}
-			memset(passwd, 0, sizeof(passwd));
-			memset(passwd2, 0, sizeof(passwd2));
-			memset(pquoted, 0, (sizeof(char) * strlen(pquoted)));
-			if (pbs_db_execute_str(conn, sqlbuff) == -1) {
-				fprintf(stderr, "%s: Failed to create/alter user id %s\n", prog, userid);
-				(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-				return -1;
-			}
-		} else {
-			/* now attempt to set the database passwd to the un-encrypted password */
-			/* alter user ${user} SUPERUSER ENCRYPTED PASSWORD '${passwd}' */
-			sprintf(sqlbuff, "alter user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
-				olduser, pquoted);
-			memset(passwd, 0, sizeof(passwd));
-			memset(passwd2, 0, sizeof(passwd2));
-			memset(pquoted, 0, (sizeof(char) * strlen(pquoted)));
-			if (pbs_db_execute_str(conn, sqlbuff) == -1) {
-				fprintf(stderr, "%s: Failed to create/alter user id %s\n", prog, userid);
-				(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-				return -1;
-			}
 		}
 	}
 
 	if (write(fd, cred_buf, cred_len) != cred_len) {
 		perror("write failed");
 		fprintf(stderr, "%s: Unable to write to file %s\n", prog, pwd_file_new);
-		if (update_db == 1) {
-			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		}
 		return -1;
 	}
 	close(fd);
 	free(cred_buf);
 
 	if (rename(pwd_file_new, pwd_file) != 0) {
-		if (update_db == 1) {
-			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		}
 		return (-1);
 	}
 
-
 	if (update_db == 1) {
 		/* commit  to database */
-		(void) pbs_db_end_trx(conn, PBS_DB_COMMIT);
 		cleanup(); /* cleanup will disconnect and delete tmp file too */
 	}
 
@@ -663,37 +607,15 @@ main(int argc, char *argv[])
 			return (-1);
 		}
 
-		if (pbs_startup_db(&db_errmsg) != 0) {
+		failcode = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
+		if (failcode != 0) {
+			pbs_db_get_errmsg(failcode, &db_errmsg);
 			if (db_errmsg)
 				fprintf(stderr, "%s: Failed to start PBS dataservice as new user:[%s]\n", prog, db_errmsg);
 			else
 				fprintf(stderr, "%s: Failed to start PBS dataservice as new user\n", prog);
 			return (-1);
 		}
-		started_db = 1;
-
-		/* connect again to drop the old user */
-		conn = pbs_db_init_connection(NULL, PBS_DB_CNT_TIMEOUT_NORMAL, 1, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
-		if (!conn) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr, "%s: %s\n", prog, db_errmsg);
-			if (strlen(errmsg) > 0)
-				fprintf(stderr, "%s\n", errmsg);
-			return -1;
-		}
-		db_conn_error = pbs_db_connect(conn);
-		if (db_conn_error != PBS_DB_SUCCESS) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			if (conn->conn_db_err)
-				fprintf(stderr, "%s: Could not connect to PBS data service as new user:%s[%s]\n", prog,
-					db_errmsg, (char*)conn->conn_db_err);
-			else
-				fprintf(stderr, "%s: Could not connect to PBS data service as new user:%s\n", prog, db_errmsg);
-			return (-1);
-		}
-		/* delete the old user from the database */
-		sprintf(sqlbuff, "drop user \"%s\"", olduser);
-		pbs_db_execute_str(conn, sqlbuff);
 	}
 	printf("---> Success\n");
 

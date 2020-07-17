@@ -110,7 +110,6 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
-#include	"avltree.h"
 #ifndef	WIN32
 #ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
@@ -335,6 +334,8 @@ typedef struct kp kp;
 
 pbs_list_head	killed_procs;		/* procs killed by dorestrict_user() */
 #endif /* localmod 011 */
+
+void *jobs_idx = NULL;
 
 unsigned long	hook_action_id = 0;
 
@@ -599,7 +600,7 @@ static struct specials addspecial[] = {
 	{ NULL, NULL }
 };
 
-
+void *job_attr_idx = NULL;
 char	*log_file = NULL;
 char	*path_log;
 
@@ -1049,8 +1050,9 @@ die(int sig)
 			"abnormal termination");
 
 	cleanup();
-	log_close(1);
+	pbs_idx_destroy(jobs_idx);
 	unload_auths();
+	log_close(1);
 #ifdef	WIN32
 	ExitThread(1);
 #else
@@ -1073,36 +1075,19 @@ die(int sig)
 void
 initialize(void)
 {
-	unsigned int	i;
-	int		avl;
-	AVL_IX_DESC	ix;
-	char		hook_msg[HOOK_MSG_SIZE+1];
-	char		hook_buf[HOOK_BUF_SIZE+1];
-	mom_hook_input_t  hook_input;
+	unsigned int i;
+	void *temp_idx;
+	char hook_msg[HOOK_MSG_SIZE + 1];
+	char hook_buf[HOOK_BUF_SIZE + 1];
+	mom_hook_input_t hook_input;
 	mom_hook_output_t hook_output;
-	int		hook_errcode = 0;
-	int		hook_rc = 0;
-	hook		*last_phook = NULL;
-	unsigned int	hook_fail_action = 0;
-	int		ret;
-
-	/*
-	 * Each node of the AVL tree has a key, the hostname in this
-	 * case. The default length of the key is defined in avltree.h,
-	 * but then overridden here by the union definition of xxrp. The
-	 * rp variable then points to this structure. When memory beyond
-	 * the default lenfth of the AVL_IX_REC is accessed, it must be
-	 * through xxrp or the compiler will complain about accessing
-	 * memory beyond the size of the structure.
-	 *
-	 */
-	union {
-		AVL_IX_REC	xrp;
-		char		buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
-	} xxrp;
-	AVL_IX_REC *rp = &xxrp.xrp;
-	char	none[] = "<unset>";
-	enum vnode_sharing	hostval;
+	int hook_errcode = 0;
+	int hook_rc = 0;
+	hook *last_phook = NULL;
+	unsigned int hook_fail_action = 0;
+	int ret;
+	char none[] = "<unset>";
+	enum vnode_sharing hostval;
 
 	/* set limits that can be modified by the Admin */
 #ifndef	WIN32 /* ---- UNIX ------------------------------------------*/
@@ -1309,14 +1294,18 @@ initialize(void)
 	 *	Check that there are no bad combinations of sharing values
 	 *	across the vnodes.
 	 */
-	avl_create_index(&ix, AVL_NO_DUP_KEYS, 0);
+	if ((temp_idx = pbs_idx_create(0, 0)) == NULL) {
+		log_err(-1, __func__, "Failed to create index for checking sharing value on vnodes");
+		die(0);
+	}
 
-	for (i=0; i < vnlp->vnl_used; i++) {
-		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
-		char	*host = attr_exist(vnrlp, "resources_available.host");
-		char	*share;
-		char	*exclhost = none;
-		enum vnode_sharing	shareval;
+	for (i = 0; i < vnlp->vnl_used; i++) {
+		vnal_t *vnrlp = VNL_NODENUM(vnlp, i);
+		char *host = attr_exist(vnrlp, "resources_available.host");
+		char *share;
+		char *exclhost = none;
+		char *exclhost_frmidx = none;
+		enum vnode_sharing shareval;
 
 		if (host == NULL)
 			/* mom_host and mom_short_name are different!! */
@@ -1329,28 +1318,20 @@ initialize(void)
 			exclhost = vnode_sharing_to_str(shareval);
 
 		/* search for host */
-		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", host);
-
-		/* look to see if host has a sharing value saved */
-		avl = avl_find_key(rp, &ix);
-		if (avl != AVL_IX_OK) {
-			/*
-			 * Not found so save the one we got.
-			 */
-			rp->recptr = exclhost;
-			if (avl_add_key(rp, &ix) != AVL_IX_OK) {
-				log_err(errno, __func__, "avl_add_key");
+		if (pbs_idx_find(temp_idx, (void **)&host, (void **)&exclhost_frmidx, NULL) != PBS_IDX_RET_OK) {
+			if (pbs_idx_insert(temp_idx, host, (void *)exclhost) != PBS_IDX_RET_OK) {
+				log_errf(errno, __func__, "Failed to add exechost = %s for host %s in index", exclhost, host);
 				die(0);
 			}
 			continue;
 		}
 
 		/* the host exists, check if the saved value is the same */
-		if (rp->recptr == (void *)exclhost)
+		if (exclhost_frmidx == exclhost)
 			continue;
 
 		/* they are different, now check if it is a bad combo */
-		hostval = str_to_vnode_sharing(rp->recptr);
+		hostval = str_to_vnode_sharing(exclhost_frmidx);
 		if (hostval == VNS_DFLT_EXCLHOST ||
 			hostval == VNS_FORCE_EXCLHOST ||
 			shareval == VNS_DFLT_EXCLHOST ||
@@ -1360,14 +1341,14 @@ initialize(void)
 				"for vnode %s with sharing=%s which "
 				"is set for other vnodes on host %s",
 				exclhost, vnrlp->vnal_id,
-				(char *)rp->recptr, host);
+				exclhost_frmidx, host);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
 				LOG_NOTICE, __func__, log_buffer);
 			die(0);
 		}
 	}
 
-	avl_destroy_index(&ix);
+	pbs_idx_destroy(temp_idx);
 
 	if (joinjob_alarm_time == -1)
 		joinjob_alarm_time = DEFAULT_JOINJOB_ALARM;
@@ -2973,7 +2954,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 		(void)sprintf(log_buffer, "task transmogrified, %s", cmd_line);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -3277,7 +3258,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 
 		rc = 0;
@@ -6830,14 +6811,13 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 		return;
 
 	ncpus_req = 0;
-	rd = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
+	rd = &svr_resc_def[RESC_NCPUS];
 	at_req = &pjob->ji_wattr[(int)JOB_ATR_resource];
 	pres_req = find_resc_entry(at_req, rd);
 	if (pres_req != NULL)
 		ncpus_req = MAX(0, pres_req->rs_value.at_val.at_long);
 
-	rd = find_resc_def(svr_resc_def, "cpupercent", svr_resc_size);
-	assert(rd != NULL);
+	rd = &svr_resc_def[RESC_CPUPERCENT];
 	at_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
 	pres = find_resc_entry(at_used, rd);
 	if (pres == NULL)
@@ -6871,8 +6851,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 		 *   never allow percent to rise above (*lp)
 		 */
 		long	wallt = -1;
-		rd = find_resc_def(svr_resc_def, "Walltime", svr_resc_size);
-		assert(rd != NULL);
+		rd = &svr_resc_def[RESC_WALLTIME];
 		preswalltime = find_resc_entry(at_used, rd);
 		if ((preswalltime != NULL) &&
 			((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
@@ -7113,8 +7092,8 @@ mom_over_limit(job *pjob)
 
 		at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
 		assert(at->at_type == ATR_TYPE_RESC);
-		rd = find_resc_def(svr_resc_def, "cpupercent", svr_resc_size);
-		assert(rd != NULL);
+		
+		rd = &svr_resc_def[RESC_CPUPERCENT];
 		prescpup = find_resc_entry(at, rd);
 		if ((prescpup != NULL) &&
 			((prescpup->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
@@ -7134,17 +7113,14 @@ mom_over_limit(job *pjob)
 					pjob->ji_qs.ji_svrflags |= JOB_SVFLG_cpuperc;
 				}
 			}
-			rd = find_resc_def(svr_resc_def, "walltime",
-				svr_resc_size);
-			assert(rd != NULL);
+
+			rd = &svr_resc_def[RESC_WALLTIME];
 			preswalltime = find_resc_entry(at, rd);
 			if ((preswalltime != NULL) &&
 				((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
 				walltime_sum = preswalltime->rs_value.at_val.at_long;
 				if (walltime_sum > average_trialperiod) {
-					rd = find_resc_def(svr_resc_def, "cput",
-						svr_resc_size);
-					assert(rd != NULL);
+					rd = &svr_resc_def[RESC_CPUT];
 					prescput = find_resc_entry(at, rd);
 					if ((prescput != NULL) &&
 						((prescput->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
@@ -7176,7 +7152,7 @@ mom_over_limit(job *pjob)
 	/* check vmem useage locally */
 	llvalue = pjob->ji_hosts[pjob->ji_nodeid].hn_nrlimit.rl_vmem << 10;
 	if (llvalue != 0) {
-		rd = find_resc_def(svr_resc_def, "vmem", svr_resc_size);
+		rd = &svr_resc_def[RESC_VMEM];
 		used = find_resc_entry(uattr, rd);
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
@@ -7198,7 +7174,7 @@ mom_over_limit(job *pjob)
 	/* check mem usage locally */
 	llvalue = pjob->ji_hosts[pjob->ji_nodeid].hn_nrlimit.rl_mem << 10;
 	if (llvalue != 0) {
-		rd = find_resc_def(svr_resc_def, "mem", svr_resc_size);
+		rd = &svr_resc_def[RESC_MEM];
 		used = find_resc_entry(uattr, rd);
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
@@ -7629,12 +7605,7 @@ dorestrict_user(void)
 		 * On success the dataservice username is returned which should be freed by the caller to
 		 * prevent a mem leak.
 		 */
-		if ((usr = pbs_get_dataservice_usr(errmsg, PBS_MAX_DB_ERR)) == NULL) {
-
-			log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, id,
-				errmsg);
-		}
-		else {
+		if ((usr = pbs_get_dataservice_usr(errmsg, PBS_MAX_DB_ERR)) != NULL) {
 			/* usr now contains the dataservice user name . Get the uid of the dataservice
 			 * user name using the  getpwnam() api
 			 */
@@ -7661,7 +7632,7 @@ dorestrict_user(void)
 		return;
 
 	if (prsdef == NULL)
-		prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);
+		prsdef = &svr_resc_def[RESC_PLACE];
 
 #ifndef WIN32
 	if (mom_sid == -1) {
@@ -7829,7 +7800,7 @@ dorestrict_user(void)
 			if (hjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 				hjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 				hjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-				job_save(hjob, SAVEJOB_QUICK);
+				job_save(hjob);
 			}
 
 			/*
@@ -8069,7 +8040,7 @@ net_down_handler(void *data)
  * 	Can be used for any such scenario.
  *
  * @param[in] mode -	reset mode is to bring it back to bursting mode
- * 
+ *
  * @return int
  * @retval >0 : time delta
  * @retval 0 : only in case of reset mode.
@@ -8148,8 +8119,6 @@ main(int argc, char *argv[])
 	char			path_hooks_rescdef[MAXPATHLEN+1];
 	int			sock_bind_rm;
 	int			sock_bind_mom;
-	struct			sockaddr_in check_ip;
-	int			is_mom_host_ip;
 #ifdef	WIN32
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
@@ -8633,6 +8602,14 @@ main(int argc, char *argv[])
 
 #endif /* !WIN32 */
 
+	if ((job_attr_idx = cr_attrdef_idx(job_attr_def, JOB_ATR_LAST)) == NULL) {
+		log_err(errno, __func__, "Failed creating job attribute search index");
+		return (-1);
+	}
+	if (cr_rescdef_idx(svr_resc_def, svr_resc_size) != 0) {
+		log_err(errno, __func__, "Failed creating resc definition search index");
+		return (-1);
+	}
 
 	/* initialize pointers in resource_def array */
 	for (i = 0; i < (svr_resc_size - 1); ++i)
@@ -8786,45 +8763,63 @@ main(int argc, char *argv[])
 			LOG_WARNING, msg_daemonname, winlog_buffer);
 	}
 #endif
+
 	/*
-	 * Set mom_host to PBS_MOM_NODE_NAME if it is defined.
-	 * Otherwise, set mom_host with a call to gethostname().
+	 * Set mom_host to gethostname(), if gethostname() fail, then use PBS_MOM_NODE_NAME
+	 * if it is defined and complies to RFC 952/1123
 	 */
-	c = 0;
-	if (pbs_conf.pbs_mom_node_name) {
-		/* Hostname was defined by PBS_MOM_NODE_NAME */
-		(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
-		mom_host[(sizeof(mom_host) - 1)] = '\0';
-		ptr = mom_host;
-		/* First character must be alpha-numeric */
-		if (isalnum((int)*ptr)) {
-			/* Subsequent characters may also be dots or dashes */
-			for (ptr++; (c == 0) && (*ptr != '\0'); ptr++) {
-				if (*ptr == '.') {
-					/* Disallow two dots in a row or a trailing dot */
-					if (*(ptr+1) == '.' || *(ptr+1) == '\0')
+	c = gethostname(mom_host, (sizeof(mom_host) - 1));
+	if (c != 0) {
+		/*
+		 * backup plan
+		 * use PBS_MOM_NODE_NAME as hostname if it is defined and complies to RFC 952/1123
+		 */
+		c = 0;
+		if (pbs_conf.pbs_mom_node_name) {
+			(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
+			mom_host[(sizeof(mom_host) - 1)] = '\0';
+			ptr = mom_host;
+			/* First character must be alpha-numeric */
+			if (isalnum((int)*ptr)) {
+				/* Subsequent characters may also be dots or dashes */
+				for (ptr++; (c == 0) && (*ptr != '\0'); ptr++) {
+					if (*ptr == '.') {
+						/* Disallow two dots in a row or a trailing dot */
+						if (*(ptr+1) == '.' || *(ptr+1) == '\0')
+							c = -1;
+					} else if ((*ptr != '-') && !isalnum((int)*ptr)) {
 						c = -1;
-				} else if ((*ptr != '-') && !isalnum((int)*ptr)) {
-					c = -1;
+					}
 				}
+			} else {
+				c = -1;
 			}
 		} else {
 			c = -1;
 		}
+		if (c != 0) {
+			log_err(-1, msg_daemonname, "Unable to obtain my host name");
+			return (-1);
+		}
+	}
+
+	/*
+	 * Set mom_short_name to PBS_MOM_NODE_NAME if it is defined.
+	 * Otherwise, set mom_short_name to the return value of
+	 * gethostname(), truncated to first dot.
+	 */
+	if (pbs_conf.pbs_mom_node_name) {
+		/* mom_short_name was specified explicitly using PBS_MOM_NODE_NAME */
+		(void)strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, (sizeof(mom_short_name) - 1));
+		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
 	} else {
-		/* Query the hostname. */
-		c = gethostname(mom_host, (sizeof(mom_host) - 1));
-	}
-	if (c != 0) {
-		log_err(-1, msg_daemonname, "Unable to obtain my host name");
-		return (-1);
-	}
-	(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
-	mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
-	is_mom_host_ip = inet_pton(AF_INET, mom_host, &(check_ip.sin_addr));
-	if (!(is_mom_host_ip > 0))
+		/* use gethostname(), truncated to first dot */
+		(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
+		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
 		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
-			*ptr = '\0';  /* terminate shortname at first dot */
+			*ptr = '\0';  /* terminate at first dot */
+	}
+
 	/*
 	 * Now get mom_host, which determines resources_available.host
 	 * and also the interface used to register to pbs_comm if
@@ -9114,6 +9109,12 @@ main(int argc, char *argv[])
 
 	/* initialize variables */
 
+	if ((jobs_idx = pbs_idx_create(0, 0)) == NULL) {
+		log_err(-1, __func__, "Creating jobs index failed!");
+		fprintf(stderr, "Creating jobs index failed!\n");
+		return (-1);
+	}
+
 
 	CLEAR_HEAD(svr_newjobs);
 	CLEAR_HEAD(svr_alljobs);
@@ -9291,8 +9292,8 @@ main(int argc, char *argv[])
 	}
 
 	/* locate cput resource definition, needed for checking chkpt time */
-	rdcput = find_resc_def(svr_resc_def, "cput", svr_resc_size);
-	rdwall = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	rdcput = &svr_resc_def[RESC_CPUT];
+	rdwall = &svr_resc_def[RESC_WALLTIME];
 	/* locate the checkpoint path */
 	path_checkpoint_from_getenv = getenv("PBS_CHECKPOINT_PATH");
 	path_checkpoint_default = mk_dirs("checkpoint/");
@@ -9735,12 +9736,12 @@ main(int argc, char *argv[])
 		i = 0;
 		while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL) {
 			/* sometimes this purge is happening earlier than
-			 * IS_DISCARD_JOB, which then does not get the pjob
-			 * pointer to call kill_job().
-			 *
-			 * Fixed by adding a kill_job here, which should be
-			 * no harm anyway.
-			 */
+			* IS_DISCARD_JOB, which then does not get the pjob
+			* pointer to call kill_job().
+			*
+			* Fixed by adding a kill_job here, which should be
+			* no harm anyway.
+			*/
 			(void)kill_job(pjob, SIGKILL);
 			job_purge_mom(pjob);
 			++i;
@@ -10074,9 +10075,8 @@ main(int argc, char *argv[])
 
 	/* Have we any jobs that can be purged before we go away? */
 
-	while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL) {
+	while ((pjob = (job *)GET_NEXT(mom_deadjobs)) != NULL)
 		job_purge_mom(pjob);
-	}
 
 	{
 		int csret;
@@ -10096,6 +10096,8 @@ main(int argc, char *argv[])
 
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, "Is down");
+	pbs_idx_destroy(jobs_idx);
+	unload_auths();
 	log_close(1);
 #ifdef	WIN32
 	mom_lock(lockfds, F_UNLCK);     /* unlock  */
@@ -10103,13 +10105,11 @@ main(int argc, char *argv[])
 	(void)unlink("mom.lock");
 	CloseDesktop(pbs_desktop);
 	CloseWindowStation(pbs_winsta);
-	destroy_env_avltree();
 #endif
 
 #ifdef PYTHON
 	Py_Finalize();
 #endif
-	unload_auths();
 	return (0);
 }
 
@@ -10664,7 +10664,7 @@ active_idle(job *pjob, int which)
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
 	}
-	job_save(pjob, SAVEJOB_QUICK);
+	job_save(pjob);
 }
 
 void

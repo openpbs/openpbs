@@ -45,8 +45,7 @@ class TestSchedPerf(TestPerformance):
     """
     Test the performance of scheduler features
     """
-
-    def setUp(self):
+    def common_setup1(self):
         TestPerformance.setUp(self)
         self.server.manager(MGR_CMD_CREATE, RSC,
                             {'type': 'string', 'flag': 'h'}, id='color')
@@ -151,6 +150,7 @@ class TestSchedPerf(TestPerformance):
         place=excl to use node buckets.
         This test uses place=scatter.  Scatter placement is quicker than free
         """
+        self.common_setup1()
         num_jobs = 3000
         self.compare_normal_path_to_buckets('scatter', num_jobs)
 
@@ -162,6 +162,7 @@ class TestSchedPerf(TestPerformance):
         place=excl to use node buckets.
         This test uses free placement.  Free placement is slower than scatter
         """
+        self.common_setup1()
         num_jobs = 3000
         self.compare_normal_path_to_buckets('free', num_jobs)
 
@@ -170,6 +171,7 @@ class TestSchedPerf(TestPerformance):
         """
         Submit many normal path jobs and time the cycle that runs all of them.
         """
+        self.common_setup1()
         num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1'}
         jids = self.submit_jobs(a, num_jobs, wt_start=num_jobs)
@@ -187,6 +189,7 @@ class TestSchedPerf(TestPerformance):
         """
         Submit many bucket path jobs and time the cycle that runs all of them.
         """
+        self.common_setup1()
         num_jobs = 10000
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl'}
@@ -207,7 +210,7 @@ class TestSchedPerf(TestPerformance):
         """
         Test opt_backfill_fuzzy with placement sets.
         """
-
+        self.common_setup1()
         a = {'strict_ordering': 'True'}
         self.scheduler.set_sched_config(a)
 
@@ -255,6 +258,7 @@ class TestSchedPerf(TestPerformance):
 
     @timeout(1200)
     def test_many_chunks(self):
+        self.common_setup1()
         num_jobs = 1000
         num_cycles = 3
         # Submit jobs with a large number of chunks that can't run
@@ -279,6 +283,7 @@ class TestSchedPerf(TestPerformance):
         """
         Performance test for when there are many jobs and calendaring is on
         """
+        self.common_setup1()
         # Turn strict ordering on and backfill_depth=20
         a = {'strict_ordering': 'True'}
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
@@ -311,3 +316,46 @@ class TestSchedPerf(TestPerformance):
 
         # Delete all jobs
         self.server.cleanup_jobs()
+
+    @timeout(5000)
+    def test_attr_update_period_perf(self):
+        """
+        Test the performance boost gained by using attr_update_period
+        """
+        # Create 1 node with 1 cpu
+        a = {"resources_available.ncpus": 1}
+        self.server.create_vnodes('vnode', a, 1, self.mom, sharednode=False)
+
+        a = {"attr_update_period": 10000, "scheduling": "False"}
+        self.server.manager(MGR_CMD_SET, SCHED, a, id="default")
+
+        # Submit 5k jobs
+        for _ in range(5000):
+            self.server.submit(Job())
+
+        # The first scheduling cycle will send attribute updates
+        self.scheduler.run_scheduling_cycle()
+        cycle1 = self.scheduler.cycles(lastN=1)[0]
+        cycle1_time = cycle1.end - cycle1.start
+
+        # Delete all jobs, submit 5k jobs again
+        self.server.cleanup_jobs()
+        for _ in range(5000):
+            self.server.submit(Job())
+
+        # This is the second scheduling cycle. We gave a very long
+        # attr_update_period value, so we should still be within that period
+        # So, sched should NOT send updates this time
+        self.scheduler.run_scheduling_cycle()
+        cycle2 = self.scheduler.cycles(lastN=1)[0]
+        cycle2_time = cycle2.end - cycle2.start
+
+        # Compare performance of the 2 cycles
+        self.logger.info("##################################################")
+        self.logger.info(
+            "Sched cycle time with attribute updates: %f" % cycle1_time)
+        self.logger.info(
+            "Sched cycle time without attribute updates: %f" % cycle2_time)
+        self.logger.info("##################################################")
+        m = "sched cycle time"
+        self.perf_test_result([cycle1_time, cycle2_time], m, "sec")

@@ -79,26 +79,27 @@ extern "C" {
 
 /* Server Database information - path names */
 
-#define PBS_SVR_PRIVATE		"server_priv"
-#define PBS_ACCT		"accounting"
-#define PBS_JOBDIR		"jobs"
-#define PBS_USERDIR		"users"
-#define PBS_RESCDEF		"resourcedef"
-#define	PBS_RESVDIR		"resvs"
-#define PBS_SPOOLDIR		"spool"
-#define PBS_QUEDIR		"queues"
-#define PBS_LOGFILES		"server_logs"
-#define PBS_ACTFILES		"accounting"
-#define PBS_SERVERDB		"serverdb"
-#define PBS_SVRACL		"acl_svr"
-#define PBS_TRACKING		"tracking"
-#define NODE_DESCRIP		"nodes"
-#define NODE_STATUS		"node_status"
-#define VNODE_MAP		"vnodemap"
-#define PBS_PROV_TRACKING	"prov_tracking"
-#define PBS_SCHEDDB		"scheddb"
-#define PBS_SCHED_PRIVATE	"sched_priv"
-#define PBS_SVRLIVE		"svrlive"
+#define PBS_SVR_PRIVATE   "server_priv"
+#define PBS_ACCT          "accounting"
+#define PBS_JOBDIR        "jobs"
+#define PBS_USERDIR       "users"
+#define PBS_RESCDEF       "resourcedef"
+#define PBS_RESVDIR       "resvs"
+#define PBS_SPOOLDIR      "spool"
+#define PBS_QUEDIR        "queues"
+#define PBS_LOGFILES      "server_logs"
+#define PBS_ACTFILES      "accounting"
+#define PBS_SERVERDB      "serverdb"
+#define PBS_SVRACL        "acl_svr"
+#define PBS_TRACKING      "tracking"
+#define NODE_DESCRIP      "nodes"
+#define NODE_STATUS       "node_status"
+#define VNODE_MAP         "vnodemap"
+#define PBS_PROV_TRACKING "prov_tracking"
+#define PBS_SCHEDDB       "scheddb"
+#define PBS_SCHED_PRIVATE "sched_priv"
+#define PBS_SVRLIVE       "svrlive"
+#define DIGEST_LENGTH     20 /* for now making this equal to SHA_DIGEST_LENGTH  which is 20 */
 
 /*
  * Security, Authentication, Authorization Control:
@@ -161,7 +162,7 @@ typedef unsigned long pbs_net_t;	/* for holding host addresses */
 #define RECOV_WARM   1		/* requeue/reschedule  all jobs */
 #define RECOV_COLD   2 		/* discard all jobs		*/
 #define RECOV_CREATE 3		/* discard all info		*/
-#define RECOV_UPDATEDB 4		/* migrate data from fs to database */
+#define RECOV_UPDATEDB 4	/* migrate data from fs to database */
 #define RECOV_Invalid 5
 
 /*

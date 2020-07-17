@@ -1017,7 +1017,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	num_new_jobs = num_jobs;
 
 	/* if there are previous jobs, count those too */
-	num_prev_jobs = count_array((void **) pjobs);
+	num_prev_jobs = count_array(pjobs);
 	num_jobs += num_prev_jobs;
 
 
@@ -1636,6 +1636,33 @@ set_job_state(char *state, job_info *jinfo)
 }
 
 /**
+ * @brief	Check whether it's ok send attribute updates to server
+ *
+ * @param[in]	attrname - name of the attribute
+ *
+ * @return	int
+ * @retval	0 for No
+ * @retval	1 for Yes
+ */
+static int
+can_send_update(char *attrname)
+{
+	char *attrs_to_throttle[] = {ATTR_comment, ATTR_estimated, NULL};
+	int i;
+
+	if (send_job_attr_updates)
+		return 1;
+
+	/* Check to see if the attr being updated is eligible for throttling */
+	for (i = 0; attrs_to_throttle[i] != NULL; i++) {
+		if (strcmp(attrs_to_throttle[i], attrname) == 0)
+			return 0;
+	}
+
+	return 1;
+}
+
+/**
  * @brief
  * 		update job attributes on the server
  *
@@ -1692,6 +1719,22 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 		if(pattr == NULL)
 			return -1;
 	} else {
+		if ((flags & UPDATE_NOW) && !can_send_update(attr_name)) {
+			struct attrl *iter_attrl = NULL;
+			int attr_elig = 0;
+
+			/* Check if any of the extra attrs are eligible to be sent */
+			for (iter_attrl = extra; iter_attrl != NULL; iter_attrl = iter_attrl->next) {
+				if (can_send_update(iter_attrl->name)) {
+					attr_elig = 1;
+					break;
+				}
+			}
+
+			if (!attr_elig)
+				return 0;
+		}
+
 		pattr = new_attrl();
 
 		if (pattr == NULL)
@@ -1716,7 +1759,6 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 	if(flags & UPDATE_LATER) {
 		end->next = resresv->job->attr_updates;
 		resresv->job->attr_updates = pattr;
-
 	}
 
 	if (pattr != NULL && (flags & UPDATE_NOW)) {
@@ -1745,18 +1787,34 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
  * @retval	1	- success
  * @retval	0	- failure to update
  */
-int send_job_updates(int pbs_sd, resource_resv *job) {
+int send_job_updates(int pbs_sd, resource_resv *job)
+{
 	int rc;
+	struct attrl *iter_attr = NULL;
 
 	if(job == NULL)
 		return 0;
 
-	rc = send_attr_updates(pbs_sd, job->name, job->job->attr_updates) ;
+	if (!send_job_attr_updates) {
+		int send = 0;
+		for (iter_attr = job->job->attr_updates; iter_attr != NULL; iter_attr = iter_attr->next) {
+			if (can_send_update(iter_attr->name)) {
+				send = 1;
+				break;
+			}
+		}
+		if (!send)
+			return 0;
+	}
+
+	rc = send_attr_updates(pbs_sd, job->name, job->job->attr_updates);
 
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;
 	return rc;
-	}
+}
+
+
 /**
  * @brief
  * 		send delayed attributes to the server for a job
@@ -1769,7 +1827,9 @@ int send_job_updates(int pbs_sd, resource_resv *job) {
  * @retval	1	success
  * @retval	0	failure to update
  */
-int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
+int
+send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr)
+{
 	char *errbuf;
 	int one_attr = 0;
 
@@ -1782,8 +1842,10 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 	if (pattr->next == NULL)
 		one_attr = 1;
 
-	if (pbs_asyalterjob(pbs_sd, job_name, pattr, NULL) == 0)
+	if (pbs_asyalterjob(pbs_sd, job_name, pattr, NULL) == 0) {
+		last_attr_updates = time(NULL);
 		return 1;
+	}
 
 	if (is_finished_job(pbs_errno) == 1) {
 		if (one_attr)
@@ -1807,6 +1869,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
 			"Failed to update job attributes: %s (%d)",
 			errbuf, pbs_errno);
+
 	return 0;
 }
 
@@ -2312,7 +2375,7 @@ dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
 	if (osets == NULL || nsinfo == NULL)
 		return NULL;
 
-	len = count_array((void **) osets);
+	len = count_array(osets);
 
 	rsets = malloc((len + 1) * sizeof(resresv_set *));
 	if (rsets == NULL) {
@@ -2471,7 +2534,7 @@ create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 	for (cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
 		limres_ct++;
 
-	def_ct = count_array((void **) policy->resdef_to_check);
+	def_ct = count_array(policy->resdef_to_check);
 	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
 	defs = malloc((def_ct + limres_ct + 6) * sizeof(resdef *));
 
@@ -2481,7 +2544,7 @@ create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 	defs[i++] = getallres(RES_WALLTIME);
 	defs[i++] = getallres(RES_MAX_WALLTIME);
 	defs[i++] = getallres(RES_MIN_WALLTIME);
-	if(sinfo->preempt_targets_enable)
+	if(sc_attrs.preempt_targets_enable)
 		defs[i++] = getallres(RES_PREEMPT_TARGETS);
 	defs[i] = NULL;
 
@@ -2666,7 +2729,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 
 	resresvs = sinfo->jobs;
 
-	len = count_array((void **) resresvs);
+	len = count_array(resresvs);
 	rsets = malloc((len + 1) * sizeof(resresv_set *));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -2697,7 +2760,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	tmp_rset_arr = realloc(rsets,(j + 1) * sizeof(resresv_set *));
 	if (tmp_rset_arr != NULL)
 		rsets = tmp_rset_arr;
-	rset_len = count_array((void **)rsets);
+	rset_len = count_array(rsets);
 	if (rset_len > 0) {
 		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
 			"Number of job equivalence classes: %d", rset_len);
@@ -2934,7 +2997,7 @@ struct preempt_ordering *schd_get_preempt_order(resource_resv *resresv)
 	if (get_job_req_used_time(resresv, &req, &used) != 0)
 		return NULL;
 
-	po = get_preemption_order(conf.preempt_order, req, used);
+	po = get_preemption_order(sc_attrs.preempt_order, req, used);
 
 	return po;
 }
@@ -3210,7 +3273,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	}
 	else {
 		for (i = 0; i < NUM_PPRIO && !has_lower_jobs; i++)
-			if (conf.pprio[i][1] < hjob->job->preempt &&
+			if (sc_attrs.preempt_prio[i][1] < hjob->job->preempt &&
 				sinfo->preempt_count[i] > 0)
 				has_lower_jobs = TRUE;
 	}
@@ -3289,7 +3352,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	}
 	pjobs[0] = NULL;
 
-	if (sinfo->preempt_targets_enable) {
+	if (sc_attrs.preempt_targets_enable) {
 		preempt_targets_req = find_resource_req(hjob->resreq, getallres(RES_PREEMPT_TARGETS));
 		if (preempt_targets_req != NULL) {
 
@@ -3317,10 +3380,10 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	nhjob = find_resource_resv_by_indrank(nsinfo->jobs, hjob->resresv_ind, hjob->rank);
 	prev_prio = nhjob->job->preempt;
 
-	if (nsinfo->preempt_targets_enable) {
+	if (sc_attrs.preempt_targets_enable) {
 		if (preempt_targets_req != NULL) {
 			prjobs = resource_resv_filter(nsinfo->running_jobs,
-				count_array((void **) nsinfo->running_jobs),
+				count_array(nsinfo->running_jobs),
 				preempt_job_set_filter,
 				(void *) preempt_targets_list, NO_FLAGS);
 			free_string_array(preempt_targets_list);
@@ -3329,7 +3392,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	if (prjobs != NULL) {
 		rjobs = prjobs;
-		rjobs_count = count_array((void **)prjobs);
+		rjobs_count = count_array(prjobs);
 		if (rjobs_count > 0) {
 			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name,
 				"Limited running jobs used for preemption from %d to %d", nsinfo->sc.running, rjobs_count);
@@ -3350,7 +3413,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	/* sort jobs in ascending preemption priority and starttime... we want to preempt them
 	 * from lowest prio to highest
 	 */
-	if (conf.preempt_min_wt_used) {
+	if (sc_attrs.preempt_sort == PS_MIN_T_SINCE_START) {
 		qsort(rjobs, rjobs_count, sizeof(job_info *),
 			cmp_preempt_stime_asc);
 	}
@@ -3729,9 +3792,9 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 					 */
 					if (rdtc_non_consumable == NULL) {
 						long max_resdefs = 0;
-						if (policy != NULL) {
-							max_resdefs = count_array( (void **) policy->resdef_to_check);
-						}
+						if (policy != NULL)
+							max_resdefs = count_array(policy->resdef_to_check);
+
 						if (max_resdefs > 0)    {
 							rdtc_non_consumable = (resdef **) calloc(sizeof(resdef *),(size_t) max_resdefs + 1);
 							if (rdtc_non_consumable != NULL) {
@@ -3801,7 +3864,7 @@ preempt_level(int prio)
 	int i;
 
 	for (i = 0; i < NUM_PPRIO && level == NUM_PPRIO ; i++)
-		if (conf.pprio[i][1] == prio)
+		if (sc_attrs.preempt_prio[i][1] == prio)
 			level = i;
 
 	return level;
@@ -3834,11 +3897,14 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
 	jinfo->preempt = 0;
 	jinfo->preempt_status = 0;
 
-	if (job == sinfo->qrun_job)
-		jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_QRUN);
+	if (sinfo->qrun_job != NULL) {
+		if (job == sinfo->qrun_job ||
+		    (jinfo->is_subjob && (strcmp(jinfo->array_id, sinfo->qrun_job->name) == 0)))
+			jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_QRUN);
+	}
 
-	if (conf.preempt_queue_prio != SCHD_INFINITY &&
-		qinfo->priority >= conf.preempt_queue_prio)
+	if (sc_attrs.preempt_queue_prio != SCHD_INFINITY &&
+		qinfo->priority >= sc_attrs.preempt_queue_prio)
 		jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_EXPRESS);
 
 	if (conf.preempt_fairshare && over_fs_usage(jinfo->ginfo))
@@ -3868,21 +3934,21 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
 	 * through the list once and set the priority to the first one we find
 	 */
 
-	for (i = 0; i < NUM_PPRIO && conf.pprio[i][0] != 0 &&
+	for (i = 0; i < NUM_PPRIO && sc_attrs.preempt_prio[i][0] != 0 &&
 		jinfo->preempt == 0; i++) {
-		if ((jinfo->preempt_status & conf.pprio[i][0]) == conf.pprio[i][0]) {
-			jinfo->preempt = conf.pprio[i][1];
+		if ((jinfo->preempt_status & sc_attrs.preempt_prio[i][0]) == sc_attrs.preempt_prio[i][0]) {
+			jinfo->preempt = sc_attrs.preempt_prio[i][1];
 			/* if the express bit is on, then we'll add the priority of that
 			 * queue into our priority to allow for multiple express queues
 			 */
-			if (conf.pprio[i][0] & PREEMPT_TO_BIT(PREEMPT_EXPRESS))
+			if (sc_attrs.preempt_prio[i][0] & PREEMPT_TO_BIT(PREEMPT_EXPRESS))
 				jinfo->preempt += jinfo->queue->priority;
 		}
 	}
 	/* we didn't find our preemption level -- this means we're a normal job */
 	if (jinfo->preempt == 0) {
 		jinfo->preempt_status = PREEMPT_TO_BIT(PREEMPT_NORMAL);
-		jinfo->preempt = conf.preempt_normal;
+		jinfo->preempt = preempt_normal;
 	}
 }
 
@@ -4230,7 +4296,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 	int globals_size = 1024;  /* initial size... will grow if needed */
 	resource_req *req;
 	sch_resource_t ans = 0;
-	char *str;
+	const char *str;
 	int i;
 	char *formula_buf;
 	int formula_buf_len;
@@ -5313,7 +5379,7 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 	if ((arr == NULL) || (job == NULL) || (err == NULL))
 		return NULL;
 
-	arr_length = count_array((void **)arr);
+	arr_length = count_array(arr);
 
 	switch (err->error_code) {
 		/* list of resources we care about */
@@ -5457,7 +5523,7 @@ void associate_dependent_jobs(server_info *sinfo) {
 			job_arr = parse_runone_job_list(sinfo->jobs[i]->job->depend_job_str);
 			if (job_arr != NULL) {
 				int j;
-				int len = count_array((void **)job_arr);
+				int len = count_array(job_arr);
 				sinfo->jobs[i]->job->dependent_jobs = calloc((len + 1), sizeof(resource_resv *));
 				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
 				for (j = 0; job_arr[j] != NULL; j++) {

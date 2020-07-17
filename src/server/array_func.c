@@ -482,7 +482,7 @@ chk_array_doneness(job *parent)
 	} else {
 		/* Before we do a full save of parent, recalculate "JOB_ATR_array_indices_remaining" here*/
 		update_array_indices_remaining_attr(parent);
-		(void)job_save(parent, SAVEJOB_FULL);
+		(void)job_save_db(parent);
 	}
 }
 /**
@@ -533,8 +533,6 @@ update_subjob_state(job *pjob, int newstate)
 			}
 		}
 		ptbl->tkm_tbl[pjob->ji_subjindx].trk_substate = pjob->ji_qs.ji_substate;
-
-		parent->ji_modified = 1;
 	}
 	chk_array_doneness(parent);
 }
@@ -608,8 +606,7 @@ update_subjob_state_ct(job *pjob)
 		free(pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_val.at_str);
 
 	pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_val.at_str = buf;
-	pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_flags |=
-		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	pjob->ji_wattr[(int)JOB_ATR_array_state_count].at_flags |= ATR_SET_MOD_MCACHE;
 }
 /**
  * @brief
@@ -731,7 +728,7 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 	/* set attribute "array" True  and clear "array_state_count" */
 
 	pjob->ji_wattr[(int)JOB_ATR_array].at_val.at_long = 1;
-	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_SET_MOD_MCACHE;
 	job_attr_def[(int)JOB_ATR_array_state_count].at_free(&pjob->ji_wattr[(int)JOB_ATR_array_state_count]);
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
@@ -881,7 +878,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 		*rc = PBSE_SYSTEM;
 		return NULL;
 	}
-	subj->ji_newjob = 1; /* flag to indicate a new job is being added to the db */
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
 	parent->ji_ajtrk->tkm_tbl[indx].trk_psubjob = subj;
 	subj->ji_qhdr     = parent->ji_qhdr;
@@ -931,14 +927,13 @@ create_subjob(job *parent, char *newjid, int *rc)
 	subj->ji_qs.ji_svrflags |=  JOB_SVFLG_SubJob;
 	subj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSICM;
 	(void)svr_setjobstate(subj, JOB_STATE_QUEUED, JOB_SUBSTATE_QUEUED);
-	subj->ji_modified = 1;  /* to force a SAVEJOB_NEW db save in svr_setjobstate() for subjobs */
 	subj->ji_wattr[(int)JOB_ATR_state].at_flags    |= ATR_VFLAG_SET;
 	subj->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_SET;
 
 	/* subjob needs to borrow eligible time from parent job array.
 	 * expecting only to accrue eligible_time and nothing else.
 	 */
-	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 
 		eligibletime = parent->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long;
 
@@ -946,7 +941,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 			eligibletime += subj->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long - parent->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long;
 
 		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = eligibletime;
-		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_SET_MOD_MCACHE;
 
 	}
 
@@ -954,7 +949,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 	/* set the queue rank attribute */
 	subj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
-	subj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	subj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
 	if (svr_enquejob(subj) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;

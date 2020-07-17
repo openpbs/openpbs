@@ -226,7 +226,8 @@ addrinsert(const u_long key)
 			msg_daemonname, log_buffer);
 #endif /* localmod 094 */
 
-	}
+	} else
+		log_err(errno, __func__, "Failed to allocate memory for new node in tree");
 	return;
 }
 
@@ -999,19 +1000,19 @@ is_request(int stream, int version)
 					free(phook_input);
 				}
 			}
-			if ((ret=is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS) {
+			if ((ret = is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS) {
 				free(jobid);
 				jobid = NULL;
 				goto err;
 			}
-			if ((ret=diswst(server_stream, jobid)) != DIS_SUCCESS) {
+			if ((ret = diswst(server_stream, jobid)) != DIS_SUCCESS) {
 				free(jobid);
 				jobid = NULL;
 				goto err;
 			}
 			free(jobid);	/* can be freed now */
 			jobid = NULL;
-			if ((ret=diswsi(server_stream, n)) != DIS_SUCCESS)
+			if ((ret = diswsi(server_stream, n)) != DIS_SUCCESS)
 				goto err;
 			dis_flush(server_stream);
 			break;

@@ -140,15 +140,14 @@ decode_b(struct attribute *patr, char *name, char *rescn, char *val)
 	int i;
 
 	if ((val == NULL) || (strlen(val) == 0)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+		ATR_UNSET(patr);
 		patr->at_val.at_long = 0;		/* default to false */
 	} else {
 		if ((i = is_true_or_false(val)) != -1)
 			patr->at_val.at_long = i;
 		else
 			return (PBSE_BADATVAL);
-		patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		patr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 	return (0);
 }
@@ -243,7 +242,7 @@ set_b(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 

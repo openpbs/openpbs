@@ -82,8 +82,9 @@ static void
 pelog_timeout(void)
 {
 	if (pelog_handle != INVALID_HANDLE_VALUE) {
-		TerminateJobObject(pelog_handle, 2);
-		log_err(-1, "pelog_timeout", "terminated pelog object");
+		if (!TerminateJobObject(pelog_handle, 2))
+			log_err(-1, __func__, "TerminateJobObject failed: Could not terminate pelog object");
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, __func__, "terminated pelog object");
 	}
 }
 #endif
@@ -144,7 +145,7 @@ int	   buflen;	/* the length of the above buffer */
 	if ((buf[0] != '\0') && buflen >= 3) {
 		char *buf2=(char*)malloc(tmp_buflen * sizeof(char));
 		if (buf2 == NULL) {
-			log_err(errno, "resc_to_string", "malloc failure");
+			log_err(errno, __func__, "malloc failure");
 			buf[0] = '\0';
 		} else {
 			snprintf(buf2, tmp_buflen, "\"%s\"", buf);
@@ -244,8 +245,6 @@ char *pelog;
 job  *pjob;
 int   pe_io_type;
 {
-#ifdef	WIN32
-#endif
 	char		*arg[12];
 	char		exitcode[20];
 	char		resc_list[2048];
@@ -303,13 +302,17 @@ int   pe_io_type;
 			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 		if (fd_out != -1) {
 			hOut = (HANDLE)_get_osfhandle(fd_out);
-			SetFilePointer(hOut, (LONG)NULL, (PLONG)NULL, FILE_END);
+			DWORD dwPtr = SetFilePointer(hOut, (LONG)NULL, (PLONG)NULL, FILE_END);
+			if (dwPtr == INVALID_SET_FILE_POINTER)
+				log_err(-1, __func__, "SetFilePointer failed for out file handle");
 		}
 		fd_err = open_std_file(pjob, StdErr, O_APPEND|O_WRONLY,
 			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 		if (fd_err != -1) {
 			hErr = (HANDLE)_get_osfhandle(fd_err);
-			SetFilePointer(hErr, (LONG)NULL, (PLONG)NULL, FILE_END);
+			DWORD dwPtr = SetFilePointer(hErr, (LONG)NULL, (PLONG)NULL, FILE_END);
+			if (dwPtr == INVALID_SET_FILE_POINTER)
+				log_err(-1, __func__, "SetFilePointer failed for error file handle");
 		}
 		if (fd_out == -1 || fd_err == -1) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING,
@@ -320,10 +323,16 @@ int   pe_io_type;
 		extern	int	script_out;
 		extern	int	script_err;
 
-		if (script_out != -1)
+		if (script_out != -1) {
 			hOut = (HANDLE)_get_osfhandle(script_out);
-		if (script_err != -1)
+			if (hOut == INVALID_HANDLE_VALUE)
+				log_err(errno, __func__, "_get_osfhandle failed for out file handle");
+		}
+		if (script_err != -1) {
 			hErr = (HANDLE)_get_osfhandle(script_err);
+			if (hErr == INVALID_HANDLE_VALUE)
+				log_err(errno, __func__, "_get_osfhandle failed for error file handle");
+		}
 	}
 
 	/* for both prologue and epilogue */
@@ -378,7 +387,7 @@ int   pe_io_type;
 	sprintf(action_name, "pbs_pelog%d_%d", which, _getpid());
 	pelog_handle = CreateJobObject(NULL, action_name);
 
-	if (pelog_handle == INVALID_HANDLE_VALUE) {
+	if ((pelog_handle == INVALID_HANDLE_VALUE) || (pelog_handle == NULL)) {
 		run_exit = 254;
 		(void)pelog_err(pjob, pelog, run_exit, "nonzero p/e exit status");
 		return run_exit;
@@ -392,11 +401,11 @@ int   pe_io_type;
 			if (!SetEnvironmentVariable("PBS_JOBDIR",
 				jobdirname(pjob->ji_qs.ji_jobid,
 				pjob->ji_grpcache->gc_homedir)))
-				log_err(-1, __func__, "set environment variable PBS_JOBDIR");
+				log_err(-1, __func__, "Unable to set environment variable PBS_JOBDIR for sandbox=PRIVATE");
 		} else {
 			/* set PBS_JOBDIR to user HOME*/
 			if (!SetEnvironmentVariable("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir))
-				log_err(-1, __func__, "set environment variable PBS_JOBDIR");
+				log_err(-1, __func__, "Unable to set environment variable PBS_JOBDIR to user HOME");
 		}
 	}
 
@@ -438,9 +447,7 @@ int   pe_io_type;
 
 	run_exit = 255;
 	if (rc == 0) {
-		sprintf(log_buffer, "CreateProcess failed...error=%d",
-			GetLastError());
-		log_err(-1, __func__, log_buffer);
+		log_err(-1, __func__, "CreateProcess failed");
 	} else {
 		sprintf(log_buffer, "running %s",
 			which == PE_PROLOGUE ? "prologue" : "epilogue");

@@ -497,11 +497,11 @@ req_reject(int code, int aux, struct batch_request *preq)
  * 		Create a reject (error) reply for a request including
  * 		the name of the bad attribute/resource.
  *
- * @param[in]	code	- PBS error code indicating the reason the rejection
- * 							is taking place.  If this is PBSE_NONE, no log message is output.
- * @param[in]	aux	- Auxiliary error code
- * @param[in,out]	pal	- external form of attributes.
- * @param[in]	preq	- Pointer to batch request
+ * @param[in]	code	PBS error code indicating the reason the rejection
+ * 			is taking place.  If this is PBSE_NONE, no log message is output.
+ * @param[in]	aux	Auxiliary error code
+ * @param[in,out] pal	external form of attributes.
+ * @param[in]	preq	Pointer to batch request
  */
 void
 reply_badattr(int code, int aux, svrattrl *pal,
@@ -599,7 +599,6 @@ reply_text(struct batch_request *preq, int code, char *text)
  * 		Return a reply with the job id.
  *
  * @see req_queuejob()
- * @see req_rdytocommit()
  * @see req_commit()
  *
  * @par Side-effects:

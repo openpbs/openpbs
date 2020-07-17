@@ -289,7 +289,7 @@ copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps
 	if (onp_arr == NULL || new_nps == NULL)
 		return NULL;
 
-	cnt = count_array((void **)onp_arr);
+	cnt = count_array(onp_arr);
 	if ((nnp_arr = malloc((cnt + 1) * sizeof(node_partition *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -414,7 +414,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 	if (nodes[0] != NULL && nodes[0]->server != NULL)
 		queues = nodes[0]->server->queues;
 
-	num_nodes = count_array((void **) nodes);
+	num_nodes = count_array(nodes);
 
 	if ((np_arr = (node_partition **)
 		malloc((num_nodes + 1) * sizeof(node_partition *))) == NULL) {
@@ -593,7 +593,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 		/* if multiple resource values are present, tot_nodes may be incorrect.
 		 * recalculating tot_nodes for each node partition.
 		 */
-		np_arr[np_i]->tot_nodes = count_array((void **) np_arr[np_i]->ninfo_arr);
+		np_arr[np_i]->tot_nodes = count_array(np_arr[np_i]->ninfo_arr);
 		np_arr[np_i]->bkts = create_node_buckets(policy, np_arr[np_i]->ninfo_arr, queues, NO_PRINT_BUCKETS);
 		node_partition_update(policy, np_arr[np_i]);
 	}
@@ -899,7 +899,7 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 	if (npc == NULL) {
 		int flags = NP_NO_ADD_NP_ARR;
 
-		if (policy->only_explicit_psets == 0)
+		if (sc_attrs.only_explicit_psets == 0)
 			flags |= NP_CREATE_REST;
 
 		/* didn't find node partition cache, need to allocate and create */
@@ -958,7 +958,7 @@ add_np_cache(np_cache ***npc_arr, np_cache *npc)
 
 	cur_cache = *npc_arr;
 
-	ct = count_array((void **) cur_cache);
+	ct = count_array(cur_cache);
 
 	/* ct+2: 1 for new element 1 for NULL ptr */
 	new_cache = realloc(cur_cache, (ct+2) * sizeof(np_cache *));
@@ -1155,7 +1155,7 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes, int flag
 	if (np == NULL)
 		return NULL;
 
-	cnt = count_array((void **) nodes);
+	cnt = count_array(nodes);
 
 	np->name = string_dup(name);
 	np->def = NULL;
@@ -1223,7 +1223,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
-			resstr, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
+			resstr, sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
 		if (sinfo->hostsets != NULL) {
 			sinfo->num_hostsets = num;
 			for (i = 0; sinfo->nodes[i] != NULL; i++) {
@@ -1253,7 +1253,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
 		sinfo->nodepart = create_node_partitions(policy, sinfo->unassoc_nodes,
 			sinfo->node_group_key,
-			policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
+			sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
 			&sinfo->num_parts);
 
 		if (sinfo->nodepart != NULL) {
@@ -1287,7 +1287,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 				ngkey = sinfo->node_group_key;
 
 			qinfo->nodepart = create_node_partitions(policy, ngroup_nodes,
-				ngkey, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
+				ngkey, sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
 				&(qinfo->num_parts));
 			if (qinfo->nodepart != NULL) {
 				qsort(qinfo->nodepart, qinfo->num_parts,

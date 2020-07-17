@@ -50,7 +50,7 @@
 
 #include	<sys/types.h>
 #include	<stdio.h>
-#include	"avltree.h"
+#include	"pbs_idx.h"
 
 /*
  *	This structure is used to describe a dynamically-sized list, one which
@@ -72,7 +72,7 @@ typedef struct dynlist {
  *	 +------------------------------+			vnl_t
  *	 |  	file mod time	        |
  *	 +------------------------------+
- *	 |	AVL tree index		|
+ *	 |	index tree		|
  *	 +------------------------------+
  *	 |	size of vnode list  	|
  *	 |	number of used entries	|
@@ -102,14 +102,11 @@ typedef struct dynlist {
  *			     |------------------ |-----+
  *			     | 0 (will be flags) | ... |    in V4 of message
  *			     +-------------------------+
- *
- * The AVL tree index was added to speed up the search for a vnode ID
- * in the vnal_t array.
  * @endverbatim
  */
 typedef struct vnode_list {
 	time_t	vnl_modtime;		/* last mod time for these data */
-	AVL_IX_DESC	vnl_ix;		/* index with vnode name as key */
+	void *vnl_ix;			/* index with vnode name as key */
 	dl_t	vnl_dl;			/* current state of vnal_t list */
 #define	vnl_nelem	vnl_dl.dl_nelem
 #define	vnl_used	vnl_dl.dl_used

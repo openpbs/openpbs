@@ -142,7 +142,6 @@ force_reque(job *pjob)
 	int  newstate;
 	int  newsubstate;
 
-	pjob->ji_modified = 1;
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
 
@@ -519,10 +518,10 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	/* indefinitely; if it does, the scheduler would also hang on a */
 	/* requeue request  */
 	time_now = time(NULL);
-	if ((server.sv_attr[(int)SRV_ATR_JobRequeTimeout].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((server.sv_attr[(int)SVR_ATR_JobRequeTimeout].at_flags & ATR_VFLAG_SET) == 0) {
 		rerun_to = time_now + PBS_DIS_TCP_TIMEOUT_RERUN;
 	} else {
-		rerun_to = time_now + server.sv_attr[(int)SRV_ATR_JobRequeTimeout].at_val.at_long;
+		rerun_to = time_now + server.sv_attr[(int)SVR_ATR_JobRequeTimeout].at_val.at_long;
 	}
 	ptask = set_task(WORK_Timed, rerun_to, timeout_rerun_request, pjob);
 	if (ptask) {

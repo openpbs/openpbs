@@ -192,14 +192,12 @@ typedef struct attribute attribute;
  */
 
 struct attribute_def {
-	char	*at_name;
+	char *at_name;
 	int	(*at_decode)(attribute *patr, char *name, char *rn, char *val);
-	int	(*at_encode)(const attribute *pattr, pbs_list_head *phead,
-		char *aname, char *rsname, int mode,
-		svrattrl **rtnl);
+	int	(*at_encode)(const attribute *pattr, pbs_list_head *phead, char *aname, char *rsname, int mode, svrattrl **rtnl);
 	int	(*at_set)(attribute *pattr, attribute *new, enum batch_op);
 	int	(*at_comp)(attribute *pattr, attribute *with);
-	void	(*at_free)(attribute *pattr);
+	void (*at_free)(attribute *pattr);
 	int	(*at_action)(attribute *pattr, void *pobject, int actmode);
 	unsigned int at_flags:ATRDFLAG;	/* flags: perms, ...		*/
 	unsigned int at_type:ATRDTYPE;	/* type of attribute		*/
@@ -252,6 +250,10 @@ typedef struct ecl_attribute_def ecl_attribute_def;
 #define ATR_VFLAG_TARGET	0x20	/* target of indirect resource  */
 #define ATR_VFLAG_HOOK		0x40	/* value set by a hook script   */
 #define ATR_VFLAG_IN_EXECVNODE_FLAG	0x80	/* resource key value pair was found in execvnode */
+
+#define ATR_MOD_MCACHE (ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE)
+#define ATR_SET_MOD_MCACHE (ATR_VFLAG_SET | ATR_MOD_MCACHE)
+#define ATR_UNSET(X) (X)->at_flags = (((X)->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE)
 
 /* Defines for Parent Object type field in the attribute definition	*/
 /* really only used for telling queue types apart			*/
@@ -310,8 +312,8 @@ struct attrl *dup_attrl_list(struct attrl *oattr_list);
 void free_attrl(struct attrl *at);
 void free_attrl_list(struct attrl *at_list);
 extern void clear_attr(attribute *pattr, attribute_def *pdef);
-extern int  find_attr  (attribute_def *attrdef, char *name, int limit);
-extern int  recov_attr_fs(int fd, void *parent, attribute_def *padef,
+extern int  find_attr  (void *attrdef_idx, attribute_def *attr_def, char *name);
+extern int  recov_attr_fs(int fd, void *parent, void *padef_idx, attribute_def *padef,
 	attribute *pattr, int limit, int unknown);
 extern void free_null  (attribute *attr);
 extern void free_none  (attribute *attr);
@@ -321,7 +323,7 @@ extern void free_svrattrl(svrattrl *pal);
 extern void free_attrlist(pbs_list_head *attrhead);
 extern void free_svrcache(struct attribute *attr);
 extern int  attr_atomic_set(svrattrl *plist, attribute *old,
-	attribute *new, attribute_def *pdef, int limit,
+	attribute *new, void *adef_idx, attribute_def *pdef, int limit,
 	int unkn, int privil, int *badattr);
 extern int  attr_atomic_node_set(svrattrl *plist, attribute *old,
 	attribute *new, attribute_def *pdef, int limit,
@@ -513,8 +515,7 @@ extern int	svr_max_conc_prov_action(attribute *, void *, int);
 
 /* Manager functions */
 extern void	mgr_log_attr(char *, struct svrattrl *, int, char *, char *);
-extern int	mgr_set_attr(attribute *, attribute_def *, int, svrattrl *,
-	int, int *, void *, int);
+extern int	mgr_set_attr(attribute *, void *, attribute_def *, int, svrattrl *, int, int *, void *, int);
 /* Extern functions (at_action) called  from job_attr_def*/
 
 extern int job_set_wait(attribute *, void *, int);
@@ -574,14 +575,12 @@ extern int check_for_bgl_nodes(attribute *patr,  void *pobject,  int actmode);
 extern int action_sched_iteration(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_priv(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_log(attribute *pattr, void *pobj, int actmode);
-extern int action_sched_log_events(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_user(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_port(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_host(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_partition(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_preempt_order(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_preempt_common(attribute *pattr, void *pobj, int actmode);
-extern int action_sched_server_dyn_res_alarm(attribute *pattr, void *pobj, int actmode);
 extern int action_job_run_wait(attribute *pattr, void *pobj, int actmode);
 extern int action_throughput_mode(attribute *pattr, void *pobj, int actmode);
 
@@ -594,18 +593,20 @@ extern int action_queue_partition(attribute *pattr, void *pobj, int actmode);
 /* Extern functions (at_action) called  from resv_attr_def */
 extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 
+
 /* Functions used to save and recover the attributes from the database */
-extern int encode_attr_db(struct attribute_def *padef, const attribute *pattr,
-	int numattr, pbs_db_attr_list_t *attr_list, int all);
-extern int decode_attr_db(void *parent, pbs_db_attr_list_t *attr_list,
-	struct attribute_def *padef, struct attribute *pattr, int limit, int unknown);
+extern int encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *db_attr_list);
+extern int encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr,  pbs_db_attr_list_t *db_attr_list, int all);
+extern int decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, 
+	void *padef_idx, struct attribute_def *padef, struct attribute *pattr, int limit, int unknown);
 
 extern int is_attr(int, char *, int);
 
 extern int set_attr(struct attrl **attrib, char *attrib_name, char *attrib_value);
 extern int set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
 
-extern void unset_attr_array_flags(attribute *pattr, int flags, int numattrs);
+extern svrattrl *make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags);
+extern void *cr_attrdef_idx(struct attribute_def *adef, int limit);
 
 /* "type" to pass to acl_check() */
 #define ACL_Host  1

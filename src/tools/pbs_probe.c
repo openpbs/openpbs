@@ -432,9 +432,8 @@ static char exetc[][80] = {
 	/* 05 */ "etc/pbs_postinstall",
 	/* 06 */ "etc/pbs_resource_group",
 	/* 07 */ "etc/pbs_sched_config",
-	/* 08 */ "etc/install_db",
-	/* 09 */ "etc/pbs_db_schema.sql",
-	/* 10 */ "etc/pbs_topologyinfo"
+	/* 08 */ "etc/pbs_db_utility",
+	/* 09 */ "etc/pbs_topologyinfo"
 };
 
 static char exinc[][80] = {
@@ -789,9 +788,8 @@ static MPUG	etc_mpugs[] = {
 	{1, 0, 0,   frwxgo, sgsrwxorwx, &dflt_pbs_ug, exetc[ 5], NULL }, /* pbs_postinstall */
 	{1, 6, 0,    frwrr,  xsgswxowx, &dflt_pbs_ug, exetc[ 6], NULL }, /* pbs_resource_group */
 	{1, 6, 0,   frgror,   sgswxowx, &dflt_pbs_ug, exetc[ 7], NULL }, /* pbs_sched_config */
-	{1, 6, 0,   frwxgo,  tgrwxorwx, &dflt_pbs_ug, exetc[ 8], NULL }, /* install_db */
-	{1, 6, 0,    frwrr,   sgswxowx, &dflt_pbs_ug, exetc[ 9], NULL }, /* pbs_db_schema.sql */
-	{1, 6, 0,   frwxgo, sgsrwxorwx, &dflt_pbs_ug, exetc[10], NULL }  /* pbs_topologyinfo */
+	{1, 6, 0,   frwxgo,  tgrwxorwx, &dflt_pbs_ug, exetc[ 8], NULL }, /* pbs_db_utility */
+	{1, 6, 0,   frwxgo, sgsrwxorwx, &dflt_pbs_ug, exetc[ 9], NULL }  /* pbs_topologyinfo */
 };
 
 

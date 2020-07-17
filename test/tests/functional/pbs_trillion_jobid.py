@@ -48,7 +48,7 @@ class TestTrillionJobid(TestFunctional):
 
     update_svr_db_script = """#!/bin/bash
 . %s
-. ${PBS_EXEC}/libexec/pbs_pgsql_env.sh
+. ${PBS_EXEC}/libexec/pbs_db_env
 
 DATA_PORT=${PBS_DATA_SERVICE_PORT}
 if [ -z ${DATA_PORT} ]; then
@@ -443,9 +443,8 @@ exit 0
         # Abruptly kill and start the server twice consecutively
         self.stop_and_restart_svr('kill')
         self.stop_and_restart_svr('kill')
-        # Adding 1000 in current jobid for the sequence window buffer and
-        # 4 for the jobs that ran already after server start
-        curr_id += 1000 + 4
+        # Starting at 1000 in current jobid for the sequence window buffer
+        curr_id = 1000
         self.submit_job(job_id='%s' % str(curr_id))
         self.submit_job(lower=1, upper=2, job_id='%s[]' % str(curr_id + 1))
         self.submit_resv(resv_id='R%s' % str(curr_id + 2))

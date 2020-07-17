@@ -48,7 +48,7 @@
 #include <signal.h>
 
 #include "log.h"
-#include "avltree.h"
+#include "pbs_idx.h"
 
 #include "constant.h"
 #include "misc.h"
@@ -263,7 +263,6 @@ void *
 worker(void *tid)
 {
 	th_task_info *work = NULL;
-	void *ts = NULL;
 	sigset_t set;
 	int ntid;
 	char buf[1024];
@@ -340,10 +339,6 @@ worker(void *tid)
 			pthread_mutex_unlock(&result_lock);
 		}
 	}
-
-	ts = get_avl_tls();
-	if (ts != NULL)
-		free(ts);
 
 	pthread_exit(NULL);
 }

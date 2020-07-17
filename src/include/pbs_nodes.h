@@ -56,7 +56,7 @@ extern "C" {
 #include "libutil.h"
 #ifndef PBS_MOM
 #include "pbs_db.h"
-extern pbs_db_conn_t	*svr_db_conn;
+extern void *svr_db_conn;
 #endif
 
 
@@ -66,41 +66,7 @@ extern pbs_db_conn_t	*svr_db_conn;
 
 /* Attributes in the Server's vnode (old node) object */
 enum nodeattr {
-	ND_ATR_Mom,
-	ND_ATR_Port,
-	ND_ATR_version,
-	ND_ATR_ntype,
-	ND_ATR_state,
-	ND_ATR_pcpus,
-	ND_ATR_priority,
-	ND_ATR_jobs,
-	ND_ATR_MaxRun,
-	ND_ATR_MaxUserRun,
-	ND_ATR_MaxGrpRun,
-	ND_ATR_No_Tasks,
-	ND_ATR_PNames,
-	ND_ATR_resvs,
-	ND_ATR_ResourceAvail,
-	ND_ATR_ResourceAssn,
-	ND_ATR_Queue,
-	ND_ATR_Comment,
-	ND_ATR_ResvEnable,
-	ND_ATR_NoMultiNode,
-	ND_ATR_Sharing,
-	ND_ATR_ProvisionEnable,
-	ND_ATR_current_aoe,	/* current AOE instantiated */
-	ND_ATR_in_multivnode_host,
-	ND_ATR_MaintJobs,
-	ND_ATR_License,
-	ND_ATR_LicenseInfo,
-	ND_ATR_TopologyInfo,
-	ND_ATR_vnode_pool,
-	ND_ATR_Power_Provisioning,
-	ND_ATR_current_eoe,     /* current EOE instantiated */
-	ND_ATR_partition,
-	ND_ATR_poweroff_eligible,	/* Node can be powered-off */
-	ND_ATR_last_state_change_time,	/* Node's state changed at */
-	ND_ATR_last_used_time,		/* Node was last busy at */
+#include "node_attr_enum.h"
 	ND_ATR_LAST	/* WARNING: Must be the highest valued enum */
 };
 
@@ -271,27 +237,27 @@ struct	devices {
 /*
  * Vnode structure
  */
-struct	pbsnode {
-	char			*nd_name;	/* vnode's name */
-	struct mominfo		**nd_moms;	/* array of parent Moms */
-	int			 nd_nummoms;	/* number of Moms */
-	int			 nd_nummslots;	/* number of slots in nd_moms */
-	int			 nd_index;	/* global node index */
-	int			 nd_arr_index;	/* index of myself in the svr node array, only in mem, not db */
-	char			*nd_hostname;	/* ptr to hostname */
-	struct pbssubn		*nd_psn;	/* ptr to list of virt cpus */
-	struct resvinfo		*nd_resvp;
-	long			 nd_nsn;	/* number of VPs  */
-	long			 nd_nsnfree;	/* number of VPs free */
-	long			 nd_ncpus;	/* number of phy cpus on node */
-	short			 nd_written;	/* written to nodes file */
-	unsigned long		 nd_state;	/* state of node */
-	unsigned short	 	 nd_ntype;	/* node type */
-	unsigned short		 nd_accted;	/* resc recorded in job acct */
-	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
-	int			 nd_modified;	/* flag indicating whether state update is required */
+struct pbsnode {
+	char *nd_name;		  /* vnode's name */
+	struct mominfo **nd_moms; /* array of parent Moms */
+	int nd_nummoms;		  /* number of Moms */
+	int nd_nummslots;	  /* number of slots in nd_moms */
+	int nd_index;		  /* global node index */
+	int nd_arr_index;	  /* index of myself in the svr node array, only in mem, not db */
+	char *nd_hostname;	  /* ptr to hostname */
+	struct pbssubn *nd_psn;	  /* ptr to list of virt cpus */
+	struct resvinfo *nd_resvp;
+	long nd_nsn;		   /* number of VPs  */
+	long nd_nsnfree;	   /* number of VPs free */
+	long nd_ncpus;		   /* number of phy cpus on node */
+	short nd_written;	   /* written to nodes file */
+	unsigned long nd_state;	   /* state of node */
+	unsigned short nd_ntype;   /* node type */
+	unsigned short nd_accted;  /* resc recorded in job acct */
+	struct pbs_queue *nd_pque; /* queue to which it belongs */
 	struct devices device;
-	attribute		 nd_attr[ND_ATR_LAST];
+	attribute nd_attr[ND_ATR_LAST];
+	short newobj; /* new node ? */
 };
 
 /*
@@ -398,25 +364,6 @@ enum vnode_degraded_op {
 
 #define PBSNODE_NTYPE_MASK	0xf		 /* relevant ntype bits */
 
-#define WRITENODE_STATE		0x1		 /*associated w/ offline*/
-#define WRITE_NEW_NODESFILE	0x2 /*changed: deleted,ntype,or properties*/
-
-/*
- * To indicate the type of attribute that needs to be updated in the datastore
- */
-#define NODE_UPDATE_STATE           0x1  /* state attribute to be updated */
-#define NODE_UPDATE_COMMENT         0x2  /* update comment attribute */
-#define NODE_UPDATE_OTHERS          0x4  /* other attributes need to be updated */
-#define NODE_UPDATE_VNL             0x8  /* this vnode updated in vnl by Mom  */
-#define NODE_UPDATE_CURRENT_AOE     0x10  /* current_aoe attribute to be updated */
-#define NODE_UPDATE_MOM             0x20 /* update only the mom attribute */
-
-
-#define NODE_SAVE_FULL  0
-#define NODE_SAVE_QUICK 1
-#define NODE_SAVE_NEW   2
-#define NODE_SAVE_QUICK_STATE 3
-
 
 /* tree for mapping contact info to node struture */
 struct tree {
@@ -426,6 +373,7 @@ struct tree {
 	struct tree	  *left, *right;
 };
 
+extern void *node_attr_idx;
 extern struct attribute_def node_attr_def[]; /* node attributes defs */
 extern struct pbsnode **pbsndlist;           /* array of ptr to nodes  */
 extern int svr_totnodes;                     /* number of nodes (hosts) */
@@ -436,7 +384,7 @@ extern pntPBS_IP_LIST pbs_iplist;
 extern int mominfo_array_size;
 extern int mom_send_vnode_map;
 extern int svr_num_moms;
-extern int svr_chngNodesfile;
+
 
 /* Handlers for vnode state changing.for degraded reservations */
 extern	void vnode_unavailable(struct pbsnode *, int);
@@ -508,6 +456,7 @@ extern char *msg_daemonname;
 
 #ifndef PBS_MOM
 extern int node_save_db(struct pbsnode *pnode);
+struct pbsnode *node_recov_db(char *nd_name, struct pbsnode *pnode);
 extern int add_mom_to_pool(mominfo_t *);
 extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);

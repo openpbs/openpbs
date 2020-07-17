@@ -68,6 +68,7 @@ AC_PROG_CC
 AC_PROG_LEX
 AC_PROG_INSTALL
 AC_PROG_LN_S
+AM_PROG_LIBTOOL
 
 # Automake macros
 #AM_PROG_AR macro is defined with automake version >= 1.12
@@ -187,7 +188,6 @@ AC_CHECK_HEADERS([ \
 	sys/statfs.h \
 	sys/stat.h \
 	sys/statvfs.h \
-	sys/sysctl.h \
 	sys/sysinfo.h \
 	sys/sysmacros.h \
 	sys/time.h \
@@ -383,6 +383,7 @@ AC_CONFIG_FILES([
 	src/include/pbs_version.h
 	src/lib/Libattr/Makefile
 	src/lib/Libdb/Makefile
+	src/lib/Libdb/pgsql/Makefile
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile

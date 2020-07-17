@@ -61,6 +61,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "list_link.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -73,57 +74,11 @@ extern "C" {
 #define	MAX(x, y)	(((x) > (y)) ? (x) : (y))
 #endif
 
-#define PBS_MAXATTRNAME 64
-#define PBS_MAXATTRRESC 64
-#define MAX_SQL_LENGTH 8192
-#define PBS_DB_COMMIT   0
-#define PBS_DB_ROLLBACK 1
-#define PBS_MAX_DB_CONN_INIT_ERR  500
-#define MAX_SCHEMA_VERSION_LEN 9
+#define PBS_MAX_DB_CONN_INIT_ERR  (MAXPATHLEN*2)
 
-#define PBS_UPDATE_DB_FULL 0
-#define PBS_UPDATE_DB_QUICK 1
-#define PBS_INSERT_DB 2
-
-/**
- * @brief
- *  Structure used to maintain the database connection information
- *
- *  All elements of this structure are generic and are not bound to any
- *  particular database
- */
-struct pbs_db_connection {
-	void    *conn_db_handle;        /* opaque database handle  */
-	char    *conn_info;             /* database connect string */
-	char    *conn_host;             /* host */
-	int     conn_timeout;           /* connection timeout (async connects) */
-	int     conn_state;             /* connected? */
-	int     conn_internal_state;    /* internal connection state (async connects) */
-	int     conn_have_db_control;   /* can start db? */
-	int     conn_db_state;          /* db up? down? starting? (async connects) */
-	time_t  conn_connect_time;      /* when was connection initiated */
-	int     conn_trx_nest;          /* incr/decr with each begin/end trx */
-	int     conn_trx_rollback;      /* rollback flag in case of nested trx */
-	int     conn_result_format;     /* 0 - text, 1 - binary */
-	int     conn_trx_async;		/* 1 - async, 0 - sync, one-shot reset */
-	void    *conn_db_err;           /* opaque database error store */
-	void    *conn_data;             /* any other db specific data */
-	void    *conn_resultset;        /* point to any results data */
-	char    conn_sql[MAX_SQL_LENGTH]; /* sql buffer */
-};
-typedef struct pbs_db_connection pbs_db_conn_t;
-
-/**
- * @brief
- *  Resizable sql buffer structure.
- *
- *  Used in multi inserts, reduces number of parameters in many functions
- */
-struct pbs_db_sql_buffer {
-	char *buff;
-	int buf_len;
-};
-typedef struct pbs_db_sql_buffer pbs_db_sql_buffer_t;
+/* type of saves bit wise flags - see savetype */
+#define OBJ_SAVE_NEW    1   /* object is new, so whole object should be saved */
+#define OBJ_SAVE_QS     2   /* quick save area modified, it should be saved */
 
 /**
  * @brief
@@ -135,88 +90,12 @@ typedef int       INTEGER;
 typedef long long BIGINT;
 typedef char      *TEXT;
 
-/**
- * @brief
- *  Structure used to map database attr structure to C
- *
- */
-struct pbs_db_attr_info {
-	char	attr_name[PBS_MAXATTRNAME+1];
-	char	attr_resc[PBS_MAXATTRRESC+1];
-	TEXT    attr_value;
-	INTEGER attr_flags;
-};
-
-typedef struct pbs_db_attr_info pbs_db_attr_info_t;
-
 struct pbs_db_attr_list {
 	int attr_count;
-	pbs_db_attr_info_t *attributes;
+	pbs_list_head attrs;
 };
 
 typedef struct pbs_db_attr_list pbs_db_attr_list_t;
-
-
-/**
- * @brief
- *  Structure used to map database job structure to C
- *
- */
-struct pbs_db_job_info {
-	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	INTEGER  ji_state; /* INTEGERernal copy of state */
-	INTEGER  ji_substate; /* job sub-state */
-	INTEGER  ji_svrflags; /* server flags */
-	INTEGER  ji_numattr; /* not used */
-	INTEGER  ji_ordering; /* special scheduling ordering */
-	INTEGER  ji_priority; /* INTEGERernal priority */
-	BIGINT   ji_stime; /* time job started execution */
-	BIGINT   ji_endtBdry; /* estimate upper bound on end time */
-	char     ji_queue[PBS_MAXQUEUENAME + 1]; /* name of current queue */
-	char     ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route */
-	INTEGER  ji_un_type;
-	INTEGER  ji_momaddr; /* host addr of Server */
-	INTEGER  ji_momport; /* port # */
-	INTEGER  ji_exitstat; /* job exit status from MOM */
-	BIGINT   ji_quetime; /* time entered queue */
-	BIGINT   ji_rteretry; /* route retry time */
-	INTEGER  ji_fromsock; /* socket job coming over */
-	BIGINT   ji_fromaddr; /* host job coming from   */
-	char     ji_4jid[8];
-	char     ji_4ash[8];
-	INTEGER  ji_credtype;
-	INTEGER  ji_qrank;
-	BIGINT   ji_savetm;
-	BIGINT   ji_creattm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
-};
-typedef struct pbs_db_job_info pbs_db_job_info_t;
-
-/**
- * @brief
- *  Structure used to map database resv structure to C
- *
- */
-struct pbs_db_resv_info {
-	char    ri_resvid[PBS_MAXSVRJOBID + 1];
-	char    ri_queue[PBS_MAXQUEUENAME + 1];
-	INTEGER ri_state;
-	INTEGER ri_substate;
-	BIGINT  ri_stime;
-	BIGINT  ri_etime;
-	BIGINT  ri_duration;
-	INTEGER ri_tactive;
-	INTEGER ri_svrflags;
-	INTEGER ri_numattr;
-	INTEGER ri_resvTag;
-	INTEGER ri_un_type;
-	INTEGER ri_fromsock;
-	BIGINT  ri_fromaddr;
-	BIGINT  ri_creattm;
-	BIGINT  ri_savetm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
-};
-typedef struct pbs_db_resv_info pbs_db_resv_info_t;
 
 /**
  * @brief
@@ -224,14 +103,8 @@ typedef struct pbs_db_resv_info pbs_db_resv_info_t;
  *
  */
 struct pbs_db_svr_info {
-	INTEGER sv_numjobs;
-	INTEGER sv_numque;
 	BIGINT  sv_jobidnumber;
-	BIGINT  sv_svraddr; /* host addr of Server */
-	INTEGER sv_svrport; /* port of host server */
-	BIGINT  sv_creattm;
-	BIGINT  sv_savetm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
 };
 typedef struct pbs_db_svr_info pbs_db_svr_info_t;
 
@@ -241,10 +114,8 @@ typedef struct pbs_db_svr_info pbs_db_svr_info_t;
  *
  */
 struct pbs_db_sched_info {
-	char    sched_name[PBS_MAXSCHEDNAME+1];
-	BIGINT  sched_creattm;
-	BIGINT  sched_savetm;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
+	char    sched_name[PBS_MAXSCHEDNAME+1]; /* sched name */
+	pbs_db_attr_list_t db_attr_list; 	/* list of attributes */
 };
 typedef struct pbs_db_sched_info pbs_db_sched_info_t;
 
@@ -254,11 +125,9 @@ typedef struct pbs_db_sched_info pbs_db_sched_info_t;
  *
  */
 struct pbs_db_que_info {
-	char    qu_name[PBS_MAXQUEUENAME +1];
-	INTEGER qu_type;
-	BIGINT  qu_ctime;
-	BIGINT  qu_mtime;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
+	char    qu_name[PBS_MAXQUEUENAME +1]; 	/* queue name */
+	INTEGER qu_type;		 	/* queue type: exec, route */
+	pbs_db_attr_list_t db_attr_list; 	/* list of attributes */
 };
 typedef struct pbs_db_que_info pbs_db_que_info_t;
 
@@ -268,16 +137,14 @@ typedef struct pbs_db_que_info pbs_db_que_info_t;
  *
  */
 struct pbs_db_node_info {
-	char	nd_name[PBS_MAXSERVERNAME+1];
-	INTEGER nd_index;
-	BIGINT	mom_modtime;
-	char	nd_hostname[PBS_MAXSERVERNAME+1];
-	INTEGER nd_state;
-	INTEGER nd_ntype;
-	char	nd_pque[PBS_MAXSERVERNAME+1];
-	BIGINT  nd_creattm;
-	BIGINT  nd_svtime;
-	pbs_db_attr_list_t attr_list; /* list of attributes */
+	char	nd_name[PBS_MAXSERVERNAME+1]; /* vnode's name */
+	INTEGER nd_index;	/* global node index */
+	BIGINT	mom_modtime; 	/* node config update time */
+	char	nd_hostname[PBS_MAXSERVERNAME+1]; /* node hostname */
+	INTEGER nd_state;	/* state of node */
+	INTEGER nd_ntype;	/* node type */
+	char	nd_pque[PBS_MAXSERVERNAME+1]; /* queue to which it belongs */
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
 };
 typedef struct pbs_db_node_info pbs_db_node_info_t;
 
@@ -287,10 +154,43 @@ typedef struct pbs_db_node_info pbs_db_node_info_t;
  *
  */
 struct pbs_db_mominfo_time {
-	BIGINT	mit_time;
-	INTEGER mit_gen;
+	BIGINT	mit_time; /* time of the host to vnode map */
+	INTEGER mit_gen;  /* generation of the host to vnode map */
 };
 typedef struct pbs_db_mominfo_time pbs_db_mominfo_time_t;
+
+/**
+ * @brief
+ *  Structure used to map database job structure to C
+ *
+ */
+struct pbs_db_job_info {
+	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
+	INTEGER  ji_state; 	/* Internal copy of state */
+	INTEGER  ji_substate; 	/* job sub-state */
+	INTEGER  ji_svrflags; 	/* server flags */
+	INTEGER  ji_numattr; 	/* not used */
+	INTEGER  ji_ordering; 	/* special scheduling ordering */
+	INTEGER  ji_priority; 	/* priority */
+	BIGINT   ji_stime; 	/* time job started execution */
+	BIGINT   ji_endtBdry; 	/* estimate upper bound on end time */
+	char     ji_queue[PBS_MAXQUEUENAME + 1]; /* name of current queue */
+	char     ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route */
+	INTEGER  ji_un_type; 	/* job's queue type */
+	INTEGER  ji_momaddr; 	/* host addr of Server */
+	INTEGER  ji_momport; 	/* port # */
+	INTEGER  ji_exitstat; 	/* job exit status from MOM */
+	BIGINT   ji_quetime; 	/* time entered queue */
+	BIGINT   ji_rteretry; 	/* route retry time */
+	INTEGER  ji_fromsock; 	/* socket job coming over */
+	BIGINT   ji_fromaddr; 	/* host job coming from   */
+	char     ji_4jid[8];  	/* extended job save data */
+	char     ji_4ash[8];  	/* extended job save data */
+	INTEGER  ji_credtype; 	/* credential type */
+	INTEGER  ji_qrank;    	/* sort key for db query */
+	pbs_db_attr_list_t db_attr_list; /* list of attributes for database */
+};
+typedef struct pbs_db_job_info pbs_db_job_info_t;
 
 /**
  * @brief
@@ -299,9 +199,33 @@ typedef struct pbs_db_mominfo_time pbs_db_mominfo_time_t;
  */
 struct pbs_db_jobscr_info {
 	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	TEXT     script;
+	TEXT     script;			/* job script */
 };
 typedef struct pbs_db_jobscr_info pbs_db_jobscr_info_t;
+
+/**
+ * @brief
+ *  Structure used to map database resv structure to C
+ *
+ */
+struct pbs_db_resv_info {
+	char    ri_resvid[PBS_MAXSVRJOBID + 1]; /* reservation identifier */
+	char    ri_queue[PBS_MAXQUEUENAME + 1]; /* queue used by reservation */
+	INTEGER ri_state;	/* internal copy of state */
+	INTEGER ri_substate;	/* substate of resv state */
+	BIGINT  ri_stime;	/* left window boundry  */
+	BIGINT  ri_etime;	/* right window boundry */
+	BIGINT  ri_duration;	/* reservation duration */
+	INTEGER ri_tactive;	/* time reservation became active */
+	INTEGER ri_svrflags;	/* server flags */
+	INTEGER ri_numattr;	/* not used */
+	INTEGER ri_resvTag;	/* not used */
+	INTEGER ri_un_type;	/* not used */
+	INTEGER ri_fromsock;	/* resv from sock */
+	BIGINT  ri_fromaddr;	/* resv from sock addr */
+	pbs_db_attr_list_t db_attr_list; /* list of attributes */
+};
+typedef struct pbs_db_resv_info pbs_db_resv_info_t;
 
 /**
  * @brief
@@ -319,35 +243,36 @@ struct pbs_db_query_options {
 };
 typedef struct pbs_db_query_options pbs_db_query_options_t;
 
-#define PBS_DB_JOB 			0
-#define PBS_DB_RESV			1
-#define PBS_DB_SVR			2
-#define PBS_DB_NODE			3
-#define PBS_DB_QUEUE			4
-#define PBS_DB_JOBSCR			5
-#define PBS_DB_SCHED			6
-#define PBS_DB_MOMINFO_TIME		7
-#define PBS_DB_NUM_TYPES		8
 
+#define PBS_DB_SVR		0
+#define PBS_DB_SCHED		1
+#define PBS_DB_QUEUE		2
+#define PBS_DB_NODE		3
+#define PBS_DB_MOMINFO_TIME	4
+#define PBS_DB_JOB		5
+#define PBS_DB_JOBSCR		6
+#define PBS_DB_RESV		7
+#define PBS_DB_NUM_TYPES	8
 
 /* connection error code */
-#define	PBS_DB_SUCCESS			0
-#define PBS_DB_CONNREFUSED		1
-#define PBS_DB_AUTH_FAILED		2
-#define PBS_DB_CONNFAILED		3
-#define PBS_DB_NOMEM			4
+#define PBS_DB_SUCCESS		0
+#define PBS_DB_CONNREFUSED	1
+#define PBS_DB_AUTH_FAILED	2
+#define PBS_DB_CONNFAILED	3
+#define PBS_DB_NOMEM		4
 #define PBS_DB_STILL_STARTING	5
+#define PBS_DB_ERR		6
 
-/* asynchronous connection states */
+/* Database connection states */
 #define PBS_DB_CONNECT_STATE_NOT_CONNECTED	1
 #define PBS_DB_CONNECT_STATE_CONNECTING		2
 #define PBS_DB_CONNECT_STATE_CONNECTED		3
-#define PBS_DB_CONNECT_STATE_FAILED			4
+#define PBS_DB_CONNECT_STATE_FAILED		4
 
 /* Database states */
-#define PBS_DB_DOWN					1
-#define PBS_DB_STARTING				2
-#define PBS_DB_STARTED				3
+#define PBS_DB_DOWN		1
+#define PBS_DB_STARTING		2
+#define PBS_DB_STARTED		3
 
 /**
  * @brief
@@ -363,261 +288,60 @@ typedef struct pbs_db_query_options pbs_db_query_options_t;
 struct pbs_db_obj_info {
 	int 	pbs_db_obj_type; /* identifies the contained object type */
 	union {
-		pbs_db_job_info_t	*pbs_db_job;
-		pbs_db_jobscr_info_t	*pbs_db_jobscr;
-		pbs_db_resv_info_t	*pbs_db_resv;
-		pbs_db_svr_info_t	*pbs_db_svr;
-		pbs_db_que_info_t	*pbs_db_que;
-		pbs_db_node_info_t	*pbs_db_node;
-		pbs_db_sched_info_t	*pbs_db_sched;
-		pbs_db_mominfo_time_t	*pbs_db_mominfo_tm;
+		pbs_db_svr_info_t     *pbs_db_svr;		/* map database server structure to C */
+		pbs_db_sched_info_t   *pbs_db_sched;		/* map database scheduler structure to C */
+		pbs_db_que_info_t     *pbs_db_que;		/* map database queue structure to C */
+		pbs_db_node_info_t    *pbs_db_node;		/* map database node structure to C */
+		pbs_db_mominfo_time_t *pbs_db_mominfo_tm;	/* map database mominfo_time structure to C */
+		pbs_db_job_info_t     *pbs_db_job;		/* map database job structure to C */
+		pbs_db_jobscr_info_t  *pbs_db_jobscr;		/* map database job script to C */
+		pbs_db_resv_info_t    *pbs_db_resv;		/* map database resv structure to C */
 	} pbs_db_un;
 };
 typedef struct pbs_db_obj_info pbs_db_obj_info_t;
+typedef void (*query_cb_t)(pbs_db_obj_info_t *, int *);
 
-#define PBS_DB_CNT_TIMEOUT_NORMAL		30
-#define PBS_DB_CNT_TIMEOUT_INFINITE		0
+#define PBS_DB_CNT_TIMEOUT_NORMAL	30
+#define PBS_DB_CNT_TIMEOUT_INFINITE	0
 
 
 /* Database start stop control commands */
-#define PBS_DB_CONTROL_STATUS			"status"
-#define PBS_DB_CONTROL_START			"start"
-#define PBS_DB_CONTROL_STARTASYNC		"startasync"
-#define PBS_DB_CONTROL_STOP			"stop"
-#define PBS_DB_CONTROL_STOPASYNC		"stopasync"
+#define PBS_DB_CONTROL_STATUS	"status"
+#define PBS_DB_CONTROL_START	"start"
+#define PBS_DB_CONTROL_STOP	"stop"
 
 /**
  * @brief
- *	Initialize a database connection structure
- *      - creates a database connection structure
+ *	Initialize a database connection handle
+ *      - creates a database connection handle
  *      - Initializes various fields of the connection structure
  *      - Retrieves connection password and sets the database
  *        connect string
  *
- * @param[in]   host         - The name of the host on which database resides
- * @param[in]   timeout      - The timeout value in seconds to attempt the connection
- * @param[in]   can_start_db - Whether the database can be started, if down?
- * @param[out]  failcode     - Failure error code
- * @param[out]  errmsg       - Details of the error
- * @param[in]   len          - length of error messge variable
+ * @param[out]  conn		- Initialized connecetion handler
+ * @param[in]   host		- The name of the host on which database resides
+ * @param[in]	port		- The port number where database is running
+ * @param[in]   timeout		- The timeout value in seconds to attempt the connection
  *
- * @return      Initialized connection structure
- * @retval      NULL  - Failure
- * @retval      !NULL - Success, address initialized connection structure is returned
+ * @return      int
+ * @retval      !0  - Failure
+ * @retval      0 - Success
  *
  */
-pbs_db_conn_t * pbs_db_init_connection(char * host, int timeout, int can_start_db, int *failcode, char *errmsg, int len);
-
-/**
- * @brief
- *      Destroys a previously created connection structure
- *      and frees all memory associated with it.
- *
- * @param[in]   conn - Previously initialized connection structure
- *
- */
-void pbs_db_destroy_connection(pbs_db_conn_t *conn);
-
-/**
- * @brief
- *	Creates the database connect string by retreiving the
- *      database password and appending the other connection
- *      parameters
- *
- * @param[in]   host     - The hostname to connect to
- * @param[in]   timeout  - The timeout parameter of the connection
- * @param[in]   err_code - The error code in case of failure
- * @param[out]  errmsg   - Details of the error
- * @param[in]   len      - length of error messge variable
- *
- * @return      The newly allocated and populated connection string
- * @retval      NULL  - Failure
- * @retval      !NULL - Success
- *
- */
-char *pbs_get_connect_string(char *host, int timeout, int *err_code, char *errmsg, int len);
-
-/**
- * @brief
- *	Translates the error code to an error message
- *
- * @param[in]   err_code - Error code to translate
- * @param[out]  err_msg  - The translated error message (newly allocated memory)
- *
- */
-void get_db_errmsg(int err_code, char **err_msg);
-
-/**
- * @brief
- *	Connect to the database synchronously
- *
- * @param[in]   conn   - Previously initialized connection structure
- *
- * @return      Failure code
- * @retval      PBS_DB_SUCCESS  - Success
- * @retval      !PBS_DB_SUCCESS - Database error code
- *
- */
-int pbs_db_connect(pbs_db_conn_t *conn);
-
-/**
- * @brief
- *	Connect to the database asynchronously. This
- *  function needs to be called repeatedly till a connection
- *  success or failure happens.
- *
- * @param[in]   conn   - Previously initialized connection structure
- *
- * @return      Failure code
- * @retval      PBS_DB_SUCCESS  - Success
- * @retval      !PBS_DB_SUCCESS - Database error code
- *
- */
-int pbs_db_connect_async(pbs_db_conn_t *conn);
+int pbs_db_connect(void **conn, char *host, int port, int timeout);
 
 /**
  * @brief
  *	Disconnect from the database and frees all allocated memory.
  *
  * @param[in]   conn - Connected database handle
+ *  
+ * @return      Failure error code
+ * @retval      Non-zero  - Failure
+ * @retval      0 - Success
  *
  */
-void pbs_db_disconnect(pbs_db_conn_t *conn);
-
-
-/**
- * @brief
- *	Initializes all the sqls before they can be used
- *
- * @param[in]   conn - Connected database handle
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int pbs_db_prepare_sqls(pbs_db_conn_t *conn);
-
-/**
- * @brief
- *	Start a database transaction
- *	If a transaction is already on, just increment the transactioin nest
- *	count in the database handle object
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	isolation_level - Isolation level to set for the transaction
- * @param[in]	async - Set synchronous/asynchronous commit behavior
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int pbs_db_begin_trx(pbs_db_conn_t *conn, int isolation_level, int async);
-
-/**
- * @brief
- *	End a database transaction
- *	Decrement the transaction nest count in the connection object. If the
- *	count reaches zero, then end the database transaction.
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	commit - If commit is PBS_DB_COMMIT, then the transaction is
- *			    commited. If commi tis PBS_DB_ROLLBACK, then the
- *			    transaction is rolled back.
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int pbs_db_end_trx(pbs_db_conn_t *conn, int commit);
-
-
-/**
- * @brief
- *	Initialize a multirow database cursor
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - The pointer to the wrapper object which
- *              describes the PBS object (job/resv/node etc) that is wrapped
- *              inside it.
- * @param[in]	pbs_db_query_options_t - Pointer to the options object that can
- *              contain the flags or timestamp which will effect the query.
- *
- * @return      void *
- * @retval      Not NULL  - success. Returns the opaque cursor state handle
- * @retval      NULL      - Failure
- *
- */
-void *
-pbs_db_cursor_init(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj,
-	pbs_db_query_options_t *opts);
-
-/**
- * @brief
- *	Get the next row from the cursor. It also is used to get the first row
- *	from the cursor as well.
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	state - The cursor state handle that was obtained using the
- *                   	pbs_db_cursor_init call.
- * @param[out]	pbs_db_obj_info_t - The pointer to the wrapper object which
- *              describes the PBS object (job/resv/node etc) that is wrapped
- *              inside it. The row data is loaded into this parameter.
- *
- * @return      int
- * @retval      -1  - Failure
- * @retval       0  - success
- * @retval       1  -  Success but no more rows
- *
- */
-int
-pbs_db_cursor_next(pbs_db_conn_t *conn, void *state,
-	pbs_db_obj_info_t *obj);
-
-/**
- * @brief
- *	Close a cursor that was earlier opened using a pbs_db_cursor_init call.
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	state - The cursor state handle that was obtained using the
- *                      pbs_db_cursor_init call.
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-void pbs_db_cursor_close(pbs_db_conn_t *conn, void *state);
-
-/**
- * @brief
- *	Get the number of rows from a cursor
- *
- * @param[in]	state - The opaque cusor state handle
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int pbs_db_get_rowcount(void *state);
-
-/**
- * @brief
- *	Execute a direct sql string on the open database connection
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	sql  - A string describing the sql to execute.
- *
- * @return      int
- * @retval      -1  - Error
- * @retval       0  - success
- * @retval       1  - Execution succeeded but statement did not return any rows
- *
- */
-int pbs_db_execute_str(pbs_db_conn_t *conn, char *sql);
+int pbs_db_disconnect(void *conn);
 
 /**
  * @brief
@@ -633,7 +357,7 @@ int pbs_db_execute_str(pbs_db_conn_t *conn, char *sql);
  * @retval       0  - success
  *
  */
-int pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_save_obj(void *conn, pbs_db_obj_info_t *obj, int savetype);
 
 /**
  * @brief
@@ -649,16 +373,18 @@ int pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
  * @retval       1 -  Success but no rows deleted
  *
  */
-int pbs_db_delete_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_delete_obj(void *conn, pbs_db_obj_info_t *obj);
 
 /**
  * @brief
  *	Delete attributes of an existing object from the database
  *
  * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- * @param[in]   obj_id - The object id of the parent (jobid, node-name etc)
- * @param[in]	attr_list - List of attributes to remove
+ * @param[in]	pbs_db_obj_info_t - The pointer to the wrapper object which
+ *				describes the PBS object (job/resv/node etc) that is wrapped
+ *				inside it.
+ * @param[in]	obj_id - The object id of the parent (jobid, node-name etc)
+ * @param[in]	db_attr_list - List of attributes to remove from DB
  *
  * @return      int
  * @retval      -1  - Failure
@@ -666,25 +392,28 @@ int pbs_db_delete_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
  * @retval       1 -  Success but no rows deleted
  *
  */
-
-int pbs_db_delete_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_delete_attr_obj(void *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *db_attr_list);
 
 /**
  * @brief
- *	Update/add attributes of an existing object to the database
+ *	Search the database for existing objects and load the server structures.
  *
  * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- * @param[in]   obj_id - The object id of the parent (jobid, node-name etc)
- * @param[in]	attr_list - List of attributes to Update/add
+ * @param[in]	pbs_db_obj_info_t - The pointer to the wrapper object which
+ *				describes the PBS object (job/resv/node etc) that is wrapped
+ *				inside it.
+ * @param[in]	pbs_db_query_options_t - Pointer to the options object that can
+ *				contain the flags or timestamp which will effect the query.
+ * @param[in]	callback function which will process the result from the database
+ * 				and update the server strctures.
  *
- * @return      int
- * @retval      -1  - Failure
- * @retval       0  - success
- * @retval       1 -  Success but no rows deleted
+ * @return	int
+ * @retval	0	- Success but no rows found
+ * @retval	-1	- Failure
+ * @retval	>0	- Success and number of rows found
  *
  */
-int pbs_db_add_update_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_search(void *conn, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts, query_cb_t query_cb);
 
 /**
  * @brief
@@ -701,97 +430,7 @@ int pbs_db_add_update_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void
  * @retval       1 -  Success but no rows loaded
  *
  */
-int pbs_db_load_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-
-/**
- * @brief
- *	Cleans up memory associated with a resultset (tht was returned from a
- *	call to a query)
- *
- * @param[in]	conn - Connected database handle
- *
- * @return      void
- *
- */
-void pbs_db_cleanup_resultset(pbs_db_conn_t *conn);
-
-/**
- * @brief
- *	Initialize a multi-attribute insert operation
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- *              (and data) to insert
- * @param[in]	pbs_db_sql_buffer_t - Simple resizable buffer that is created
- *              by the caller and used by internal functions
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int
-pbs_db_insert_multiattr_start(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj,
-	pbs_db_sql_buffer_t *buff);
-
-/**
- * @brief
- *	Add an attribute to the multi-attribute insert statment created eariler
- *
- * @param[in]	  conn - Database connection handle
- * @param[in]	  firsttime - Is it being called for the firsttime?
- * @param[in]	  info - The database object to be inserted
- * @param[in/out] sql  - The buffer to used to hold the final sql query that
- *                       is being formed by calling this function multiple times.
- *
- * @param[in]	part - This buffer is used for hold the a "part" of the whole
- *              sql query. This is eventually added to the sql buffer.
- *	            Thus, part is a "work" buffer, and "sql" hold the final
- *              sql formed, that would be executed at the end.
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-int
-pbs_db_insert_multiattr_add(pbs_db_conn_t *conn, pbs_db_obj_info_t *info,
-	int firsttime, pbs_db_sql_buffer_t *sql,
-	pbs_db_sql_buffer_t *part);
-
-/**
- * @brief
- *	Execute the multi-line insert statement that has been created earlier.
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- *              (and data) to insert
- * @param[in]	pbs_db_sql_buffer_t - Simple resizable buffer that is created
- *              by the caller and used by internal functions
- *
- * @return      int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int
-pbs_db_insert_multiattr_execute(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj,
-	pbs_db_sql_buffer_t *buff);
-
-/**
- * @brief
- *	Delete ALL data from the pbs database, used in RECOV_CREATE mode
- *
- * @param[in]	conn - Connected database handle
- *
- * @return	    int
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-int pbs_db_truncate_all(pbs_db_conn_t *conn);
+int pbs_db_load_obj(void *conn, pbs_db_obj_info_t *obj);
 
 /**
  * @brief
@@ -803,12 +442,11 @@ int pbs_db_truncate_all(pbs_db_conn_t *conn);
  * @retval	1  - Data service not running
  *
  */
-int pbs_status_db(char **errmsg);
+int pbs_status_db(char *pbs_ds_host, int pbs_ds_port);
 
 /**
  * @brief
- *	Start the database daemons/service in synchronous mode.
- *  This function waits for the database to complete startup.
+ *	Start the database daemons/service.
  *
  * @param[out]	errmsg - returns the startup error message if any
  *
@@ -817,21 +455,7 @@ int pbs_status_db(char **errmsg);
  * @retval       !=0   - Failure
  *
  */
-int pbs_startup_db(char **errmsg);
-
-/**
- * @brief
- *	Start the database daemons/service in asynchronous mode.
- * This function does not wait for the database to complete startup.
- *
- * @param[out]	errmsg - returns the startup error message if any
- *
- * @return	    int
- * @retval       0     - success
- * @retval       !=0   - Failure
- *
- */
-int pbs_startup_db_async(char **errmsg);
+int pbs_start_db(char *pbs_ds_host, int pbs_ds_port);
 
 /**
  * @brief
@@ -844,180 +468,33 @@ int pbs_startup_db_async(char **errmsg);
  * @retval       0  - Success
  *
  */
-int pbs_shutdown_db(char **errmsg);
+int pbs_stop_db(char *pbs_ds_host, int pbs_ds_port);
 
 /**
  * @brief
- *	Function to stop the database service/daemons
- *	in an asynchronous manner.
- *	This passes the parameter STOPASYNC to the
- *	pbs_dataservice script, which initiates the
- *	the database stop and returns without waiting.
+ *	Translates the error code to an error message
  *
- * @param[out]	errmsg - returns the db error message if any
+ * @param[in]   err_code - Error code to translate
+ * @param[out]  err_msg  - The translated error message (newly allocated memory)
  *
- * @return      Error code
- * @retval       !=0 - Failure
+ */
+void pbs_db_get_errmsg(int err_code, char **err_msg);
+
+/**
+ * @brief
+ *	Function to create new databse user or change password of current user.
+ *
+ * @param[in] conn[in]: The database connection handle which was created by pbs_db_connection.
+ * @param[in] user_name[in]: Databse user name.
+ * @param[in] password[in]:  New password for the database.
+ * @param[in] olduser[in]: old database user name.
+ *
+ * @retval       -1 - Failure
  * @retval        0  - Success
  *
  */
-int pbs_shutdown_db_async(char **errmsg);
+int pbs_db_password(void *conn, char *userid, char *password, char *olduser);
 
-/**
- * @brief
- *	Retrieves the database user. The database user-id is retrieved from
- *	the file under server_priv, called db_user.
- *	If a db_user file is not found under server_priv, then pbsdata is
- *	returned as the default db user.
- *
- * @param[out]  errmsg - Details of the error
- * @param[in]   len    - length of error messge variable
- *
- * @return      dbuser String
- * @retval	 NULL - Failed to retrieve user-id
- * @retval	!NULL - Pointer to allocated memory with user-id string.
- *			Caller should free this memory after usage.
- *
- */
-char *pbs_get_dataservice_usr(char *errmsg, int len);
-
-/**
- * @brief
- *	Retrieve (after decrypting) the database password for a database user
- *
- * @param[in]	user - The name of the user whose password to retrieve
- * @param[out]  errmsg - Details of the error
- * @param[in]   len    - length of error messge variable
- *
- * @return      char * - The password of the user.
- *                       Caller should free returned address
- * @retval       0  - success
- * @retval      -1  - Failure
- *
- */
-char *pbs_get_dataservice_password(char *user, char *errmsg, int len);
-
-
-/**
- * @brief
- *	Check whether connection to pbs dataservice is fine
- *
- * @param[in]	conn - Connected database handle
- *
- * @return      Connection status
- * @retval      -1 - Connection down
- * @retval       0 - Connection fine
- *
- */
-int pbs_db_is_conn_ok(pbs_db_conn_t *conn);
-
-
-/**
- * @brief
- *	Function to escape special characters in a string
- *	before using as a column value in the database
- *
- * @param[in]	conn - handle to the database connection
- * @param[in]	str - the string to escape
- *
- * @return     escaped string
- * @retval     NULL - failure to escape string
- * @retval     !NULL - newly allocated area holding escaped string,
- *                     caller needs to free
- *
- */
-char *pbs_db_escape_str(pbs_db_conn_t *conn, char *str);
-
-/**
- * @brief
- *	Free the connect string associated with a connection
- *
- * @param[in]   conn - Previously initialized connection structure
- *
- */
-void pbs_db_free_conn_info(pbs_db_conn_t *conn);
-
-
-/**
- * @brief
- *	Retrieve the Datastore schema version (maj, min)
- *
- * @param[out]   db_maj_ver - return the major schema version
- * @param[out]   db_min_ver - return the minor schema version
- *
- * @return     Error code
- * @retval     -1 - Failure
- * @retval     0  - Success
- *
- */
-int pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver);
-
-/**
- * @brief
- *	Attempt to mail a message to "mail_from" (administrator), shut down
- *	the database, close the log and exit the Server.   Called when a
- *	database save fails
- *
- * @param[in]	txt  - message to send via mail
- */
-void panic_stop_db(char *txt);
-
-
-/**
- * @brief
- *	Get the svrid corresponding to the given svr hostname
- *
- * @param[in]	conn - The database connection handle
- * @param[in]	hostname - The svr hostname
- *
- * @return      The database svrid (to be freed by caller)
- * @retval	-NULL  - Failure
- *		-!NULL - Success
- *
- */
-char* pbs_db_get_svr_id(pbs_db_conn_t *conn, char *hostname);
-
-/**
- * @brief
- *	Delete all the server attributes from the database
- *
- * @param[in]	conn - Connection handle
- * @param[in]	obj  - server information
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows deleted
- *
- */
-int pg_db_delete_svrattr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-
-/**
- * @brief
- *	resize a buffer. The buffer structure stores the current size of the
- *	buffer. This function determines how much of that buffer size is
- *	free and expands the buffer accordingly
- *
- * @param[in]	dest - buffer to resize
- * @param[in]	size - Size of buffer required
- *
- * @return      int Error code
- * @retval	 0 - Success
- * @retval	-1 - Failure to allocate new memory
- *
- */
-int resize_buff(pbs_db_sql_buffer_t *dest, int size);
-
-/**
- * @brief
- *	Resets database object
- *
- * @param[in]	obj - db object
- *
- * @return      None
- *
- */
-void pbs_db_reset_obj(pbs_db_obj_info_t *obj);
 
 #ifdef	__cplusplus
 }

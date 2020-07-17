@@ -145,7 +145,7 @@ int set_node_type(node_info *ninfo, char *ntype);
  *      collect_jobs_on_nodes - collect all the jobs in the job array on the
  *                              nodes
  */
-int collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size);
+int collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int size, int flags);
 
 /*
  *      collect_resvs_on_nodes - collect all the running resvs in the resv array

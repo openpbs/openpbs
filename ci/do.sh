@@ -49,7 +49,7 @@ if [ -f /src/ci ]; then
   logdir=/logs
   PBS_DIR=/pbssrc
 else
-  PBS_DIR=$( readlink -f $0 | awk -F'/ci/' '{print $1}' )
+  PBS_DIR=$(readlink -f $0 | awk -F'/ci/' '{print $1}')
 fi
 
 cd ${PBS_DIR}
@@ -62,20 +62,47 @@ if [ ! -r ${SPEC_FILE} -o ! -r ${REQ_FILE} ]; then
 fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
-  if [ "x${ID}" == "xcentos" ]; then
+  if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
     yum clean all
     yum -y update
     yum -y install yum-utils epel-release rpmdevtools
     yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
-                    expat libedit postgresql-server postgresql-contrib python3 \
-                    sendmail sudo tcl tk libical libasan llvm git
+      expat libedit postgresql-server postgresql-contrib python3 \
+      sendmail sudo tcl tk libical libasan llvm git
     rpmdev-setuptree
     yum-builddep -y ${SPEC_FILE}
-    yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}'| sort -u | grep -vE '^(/bin/)?(ba)?sh$')
+    yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
-        yum -y update
-        yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
+      yum -y update
+      yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
+    fi
+  elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+    dnf -y clean all
+    dnf -y install 'dnf-command(config-manager)'
+    dnf -y config-manager --set-enabled PowerTools
+    dnf -y install epel-release
+    dnf -y update
+    dnf -y install python3-pip sudo which net-tools man-db time.x86_64 \
+      expat libedit postgresql-server postgresql-contrib python3 \
+      sendmail sudo tcl tk libical libasan llvm git
+    dnf -y builddep ${SPEC_FILE}
+    dnf -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
+    pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
+    # source install swig
+    dnf -y install gcc-c++ byacc pcre-devel
+    mkdir -p /tmp/swig/
+    cd /tmp/swig
+    git clone https://github.com/swig/swig --branch rel-4.0.0 --single-branch
+    cd swig
+    ./autogen.sh
+    ./configure
+    make -j8
+    make install
+    cd ${PBS_DIR}
+    if [ "x${BUILD_MODE}" == "xkerberos" ]; then
+      dnf -y update
+      dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     _PRETTY_NAME=$(echo ${PRETTY_NAME} | awk -F[=\"] '{print $1}')
@@ -99,10 +126,10 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get -y update
     apt-get -y upgrade
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
-                        libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
-                        libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql postgresql-contrib python3-pip sudo \
-                        man-db git elfutils
+      libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
+      libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
+      swig expat postgresql postgresql-contrib python3-pip sudo \
+      man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
@@ -111,9 +138,9 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     apt-get -y update
     apt-get -y upgrade
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
-                        libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
-                        libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
-                        swig expat postgresql python3-pip sudo man-db git elfutils
+      libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
+      libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
+      swig expat postgresql python3-pip sudo man-db git elfutils
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   else
     echo "Unknown platform..."
@@ -142,8 +169,11 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   if [ "x${ID}" == "xubuntu" ]; then
     _cflags="${_cflags} -Wno-unused-result"
   fi
+  if [ "x${VERSION_ID}" == "x8" -a "x${ID}" == "xcentos" ]; then
+    swig_opt="--with-swig=/usr/local"
+  fi
   cd ${_targetdirname}
-  if [ -f /src/ci ];then
+  if [ -f /src/ci ]; then
     if [ -f ${workdir}/.configure_opt ]; then
       configure_opt="$(cat ${workdir}/.configure_opt)"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
@@ -152,11 +182,11 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
       configure_opt='--prefix=/opt/pbs --enable-ptl'
     fi
     if [ -z ${_cflags} ]; then
-      ../configure ${configure_opt}
+      ../configure ${configure_opt} ${swig_opt}
     else
-      ../configure CFLAGS="${_cflags}" ${configure_opt}
+      ../configure CFLAGS="${_cflags}" ${configure_opt} ${swig_opt}
     fi
-    if [ "x${ONLY_CONFIGURE}" == "x1" ];then
+    if [ "x${ONLY_CONFIGURE}" == "x1" ]; then
       exit 0
     fi
   else
@@ -164,24 +194,24 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       configure_opt="${configure_opt} --with-krbauth PATH_KRB5_CONFIG=/usr/bin/krb5-config"
     fi
-    ../configure CFLAGS="${_cflags}" ${configure_opt}
+    ../configure CFLAGS="${_cflags}" ${configure_opt} ${swig_opt}
   fi
   cd -
 fi
 cd ${_targetdirname}
 prefix=$(cat ${workdir}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
-if [ "x${prefix}" == "x" ];then
+if [ "x${prefix}" == "x" ]; then
   prefix='/opt/pbs'
 fi
-if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ];then
+if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ]; then
   echo "skipping make"
 else
   make -j8
 fi
-if [ "x$ONLY_REBUILD" == "x1" ];then
+if [ "x$ONLY_REBUILD" == "x1" ]; then
   exit 0
 fi
-if [ "x${ONLY_TEST}" != "x1" ];then
+if [ "x${ONLY_TEST}" != "x1" ]; then
   make -j8 install
   chmod 4755 ${prefix}/sbin/pbs_iff ${prefix}/sbin/pbs_rcp
   if [ "x${DONT_START_PBS}" != "x1" ]; then
@@ -201,8 +231,8 @@ set +e
 set -e
 pbs_config --make-ug
 
-if [ "x${RUN_TESTS}" == "x1" ];then
-  if [ "x${ID}" == "xcentos" ];then
+if [ "x${RUN_TESTS}" == "x1" ]; then
+  if [ "x${ID}" == "xcentos" ]; then
     export LC_ALL=en_US.utf-8
     export LANG=en_US.utf-8
   elif [ "x${ID}" == "xopensuse" ]; then
@@ -210,17 +240,17 @@ if [ "x${RUN_TESTS}" == "x1" ];then
   fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
-  benchpress_opt="$( cat ${workdir}/.benchpress_opt )"
+  benchpress_opt="$(cat ${workdir}/.benchpress_opt)"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
-  if [ -z "${eval_tag}" ];then
+  if [ -z "${eval_tag}" ]; then
     pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
   else
     pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
   fi
 fi
 
-if [ "x$IS_CI_BUILD" != "x1" ];then
+if [ "x$IS_CI_BUILD" != "x1" ]; then
   cd /opt/ptl/tests/
   pbs_benchpress --tags=smoke
 fi

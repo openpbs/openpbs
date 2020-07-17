@@ -180,6 +180,13 @@ char *sc_name = NULL;
 int sched_port = -1;
 char *logfile = NULL;
 
+int preempt_normal;			/* preempt priority of normal_jobs */
+
 char path_log[_POSIX_PATH_MAX];
 int dflt_sched = 0;
-int server_dyn_res_alarm = 0;
+
+struct schedattrs sc_attrs;
+
+time_t last_attr_updates = 0;
+
+int send_job_attr_updates = 1;

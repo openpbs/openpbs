@@ -69,7 +69,6 @@ extern unsigned int	pbs_mom_port;
 extern unsigned int	pbs_rm_port;
 extern vnl_t		*vnlp;					/* vnode list */
 static void		*cpuctx;
-static AVL_IX_REC	*pe;
 static void		cpu_inuse(unsigned int, job *, int);
 static void		*new_ctx(void);
 static mom_vninfo_t	*new_vnid(const char *, void *);
@@ -90,90 +89,76 @@ enum res_op	{ RES_DECR, RES_INCR, RES_SET };
 void
 mom_CPUs_report(void)
 {
-	AVL_IX_DESC	*pix;
-	int		ret;
-	char		reportbuf[LOG_BUF_SIZE];
-	int		bufspace;	/* space remaining in reportbuf[] */
+	int ret;
+	char *p;
+	char reportbuf[LOG_BUF_SIZE];
+	int bufspace; /* space remaining in reportbuf[] */
+	void *idx_ctx = NULL;
+	mominfo_t *mip = NULL;
 
-	if ((pix = cpuctx) != NULL) {
-		char	*p;
+	if (cpuctx == NULL)
+		return;
 
-		avl_first_key(pix);
+	while (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) == PBS_IDX_RET_OK) {
+		unsigned int i;
+		int first;
+		mom_vninfo_t *mvp;
 
-		if (pe == NULL) {
-			pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1);
-			if (pe == NULL) {
-				log_err(errno, __func__, "malloc pe failed");
-				return;
-			}
+		assert(mip != NULL);
+		assert(mip->mi_data != NULL);
+
+		mvp = (mom_vninfo_t *) mip->mi_data;
+		p = reportbuf;
+		bufspace = sizeof(reportbuf);
+		ret = snprintf(p, bufspace, "%s:  cpus = ", mvp->mvi_id);
+		if (ret >= bufspace) {
+			truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
+			continue;
 		}
-		while ((ret = avl_next_key(pe, pix)) == AVL_IX_OK) {
-			unsigned int	i;
-			int		first;
-			mominfo_t	*mip;
-			mom_vninfo_t	*mvp;
+		p += ret;
+		bufspace -= ret;
+		for (i = 0, first = 1; i < mvp->mvi_ncpus; i++) {
+			if (first)
+				first = 0;
+			else {
+				if (bufspace < 1) {
+					truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
+					goto line_done;
+				}
+				sprintf(p, ",");
+				p++;
+				bufspace--;
+			}
 
-			mip = (mominfo_t *) pe->recptr;
-			assert(mip != NULL);
-			assert(mip->mi_data != NULL);
-
-			mvp = (mom_vninfo_t *) mip->mi_data;
-			p = reportbuf;
-			bufspace = sizeof(reportbuf);
-			ret = snprintf(p, bufspace, "%s:  cpus = ", mvp->mvi_id);
+			ret = snprintf(p, bufspace, "%d", mvp->mvi_cpulist[i].mvic_cpunum);
 			if (ret >= bufspace) {
-				truncate_and_log(__func__, reportbuf,
-					sizeof(reportbuf));
-				continue;
+				truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
+				goto line_done;
 			}
-			p += ret, bufspace -= ret;
-			for (i = 0, first = 1; i < mvp->mvi_ncpus; i++) {
-				if (first) {
-					first = 0;
-				} else {
-					if (bufspace < 1) {
-						truncate_and_log(__func__, reportbuf,
-							sizeof(reportbuf));
-						goto line_done;
-					}
-					sprintf(p, ",");
-					p++, bufspace--;
-				}
+			p += ret;
+			bufspace -= ret;
 
-				ret = snprintf(p, bufspace, "%d",
-					mvp->mvi_cpulist[i].mvic_cpunum);
-				if (ret >= bufspace) {
-					truncate_and_log(__func__, reportbuf,
-						sizeof(reportbuf));
-					goto line_done;
-				}
-				p += ret, bufspace -= ret;
-
-				if (MVIC_CPUISFREE(mvp, i))
-					ret = snprintf(p, bufspace, " (free)");
-				else {
-					if (mvp->mvi_cpulist[i].mvic_job == NULL)
-						ret = snprintf(p, bufspace,
-							" (inuse, no job)");
-					else
-						ret = snprintf(p, bufspace,
-							" (inuse, job %s)",
-							mvp->mvi_cpulist[i].mvic_job->ji_qs.ji_jobid);
-				}
-				if (ret >= bufspace) {
-					truncate_and_log(__func__, reportbuf,
-						sizeof(reportbuf));
-					goto line_done;
-				}
-				p += ret, bufspace -= ret;
+			if (MVIC_CPUISFREE(mvp, i))
+				ret = snprintf(p, bufspace, " (free)");
+			else {
+				if (mvp->mvi_cpulist[i].mvic_job == NULL)
+					ret = snprintf(p, bufspace, " (inuse, no job)");
+				else
+					ret = snprintf(p, bufspace, " (inuse, job %s)", mvp->mvi_cpulist[i].mvic_job->ji_qs.ji_jobid);
 			}
-			log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, reportbuf);
-line_done:
-			;
+			if (ret >= bufspace) {
+				truncate_and_log(__func__, reportbuf, sizeof(reportbuf));
+				goto line_done;
+			}
+			p += ret;
+			bufspace -= ret;
 		}
-
-		assert(ret == AVL_EOIX);
+		log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, reportbuf);
+line_done:
+		;
 	}
+
+	pbs_idx_free_ctx(idx_ctx);
 }
 
 /**
@@ -559,51 +544,39 @@ cpunum_outofservice(unsigned int cpunum)
 static void
 cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 {
-	static char	ra_ncpus[] = "resources_available.ncpus";
-	AVL_IX_DESC	*pix;
-	int		ret;
+	static char ra_ncpus[] = "resources_available.ncpus";
+	void *idx_ctx = NULL;
+	mominfo_t *mip = NULL;
 
-	pix = cpuctx;
-	if (pix == NULL)
+	if (cpuctx == NULL)
 		return;
 
-	avl_first_key(pix);
+	while (pbs_idx_find(cpuctx, NULL, (void **)&mip, &idx_ctx) == PBS_IDX_RET_OK) {
+		unsigned int i;
+		mom_vninfo_t *mvp;
 
-	if (pe == NULL) {
-		pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1);
-		if (pe == NULL) {
-			log_err(errno, __func__, "malloc pe failed");
-			return;
-		}
-	}
-	while ((ret = avl_next_key(pe, pix)) == AVL_IX_OK) {
-		unsigned int	i;
-		mominfo_t	*mip;
-		mom_vninfo_t	*mvp;
-
-		mip = (mominfo_t *) pe->recptr;
 		assert(mip != NULL);
 		assert(mip->mi_data != NULL);
 
 		mvp = (mom_vninfo_t *) mip->mi_data;
-		for (i = 0; i < mvp->mvi_ncpus; i++)
+		for (i = 0; i < mvp->mvi_ncpus; i++) {
 			if (mvp->mvi_cpulist[i].mvic_cpunum == cpunum) {
 				if (MVIC_CPUISFREE(mvp, i)) {
 					cpuindex_inuse(mvp, i, pjob);
 					if (outofserviceflag != 0) {
 						assert(vnlp != NULL);
 						assert(mvp->mvi_id != NULL);
-						resadj(vnlp, mvp->mvi_id,
-							ra_ncpus, RES_DECR,
-							1);
+						resadj(vnlp, mvp->mvi_id, ra_ncpus, RES_DECR, 1);
 						mvp->mvi_acpus--;
 					}
 				}
+				pbs_idx_free_ctx(idx_ctx);
 				return;
 			}
+		}
 	}
 
-	assert(ret == AVL_EOIX);
+	pbs_idx_free_ctx(idx_ctx);
 
 	/*
 	 *	If we get here, we didn't find the CPU in question.
@@ -880,10 +853,8 @@ new_vnid(const char *vnid, void *ctx)
 	mvp->mvi_cpulist = NULL;
 	mvp->mvi_memnum = (unsigned int) -1;	/* uninitialized data marker */
 
-	if (!add_mominfo(ctx, vnid, mip)) {
-		sprintf(log_buffer, "add_mom_data %s failed",
-			vnid);
-		log_err(PBSE_SYSTEM, __func__, log_buffer);
+	if (add_mominfo(ctx, vnid, mip) != 0) {
+		log_errf(PBSE_SYSTEM, __func__, "add_mominfo %s failed", vnid);
 		return NULL;
 	}
 
