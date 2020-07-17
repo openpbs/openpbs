@@ -48,6 +48,7 @@ import re
 import signal
 import socket
 import sys
+import time
 import tempfile
 import unittest
 from threading import Timer
@@ -466,9 +467,11 @@ class PtlTextTestRunner(TextTestRunner):
     """
 
     def __init__(self, stream=sys.stdout, descriptions=True, verbosity=3,
-                 config=None):
+                 config=None, repetition=1, repetition_delay=0):
         self.logger = logging.getLogger(__name__)
         self.result = None
+        self.repetition = repetition
+        self.repetition_delay = repetition_delay
         TextTestRunner.__init__(self, stream, descriptions, verbosity, config)
 
     def _makeResult(self):
@@ -490,7 +493,17 @@ class PtlTextTestRunner(TextTestRunner):
         self.result = result = self._makeResult()
         self.result.start = datetime.datetime.now()
         try:
-            test(result)
+            for i in range(self.repetition):
+                self.logger.info("====================================")
+                self.logger.info("tests are running (" + str(i + 1) + ") time")
+                self.logger.info("====================================")
+                if i is not 0:
+                    time.sleep(self.repetition_delay)
+                test(result)
+            self.logger.info("=============================================")
+            self.logger.info(" All tests are repeated " +
+                             str(self.repetition) + " times")
+            self.logger.info("=============================================")
         except KeyboardInterrupt:
             do_exit = True
         self.result.stop = datetime.datetime.now()
@@ -513,6 +526,8 @@ class PTLTestRunner(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.param = None
+        self.repeat_tests = 1
+        self.repeat_test_delay = 0
         self.use_cur_setup = False
         self.lcov_bin = None
         self.lcov_data = None
@@ -537,10 +552,11 @@ class PTLTestRunner(Plugin):
         """
         pass
 
-    def set_data(self, paramfile, testparam,
-                 lcov_bin, lcov_data, lcov_out, genhtml_bin, lcov_nosrc,
-                 lcov_baseurl, tc_failure_threshold,
-                 cumulative_tc_failure_threshold, use_cur_setup):
+    def set_data(self, paramfile, testparam, repeat_tests,
+                 repeat_test_delay, lcov_bin, lcov_data, lcov_out,
+                 genhtml_bin, lcov_nosrc, lcov_baseurl,
+                 tc_failure_threshold, cumulative_tc_failure_threshold,
+                 use_cur_setup):
         if paramfile is not None:
             _pf = open(paramfile, 'r')
             _params_from_file = _pf.readlines()
@@ -557,6 +573,8 @@ class PTLTestRunner(Plugin):
             else:
                 testparam = _f
         self.param = testparam
+        self.repeat_tests = repeat_tests
+        self.repeat_test_delay = repeat_test_delay
         self.use_cur_setup = use_cur_setup
         self.lcov_bin = lcov_bin
         self.lcov_data = lcov_data
@@ -579,7 +597,9 @@ class PTLTestRunner(Plugin):
         """
         Prepare test runner
         """
-        return PtlTextTestRunner(verbosity=3, config=self.config)
+        return PtlTextTestRunner(verbosity=3, config=self.config,
+                                 repetition=self.repeat_tests,
+                                 repetition_delay=self.repeat_test_delay)
 
     def prepareTestResult(self, result):
         """
