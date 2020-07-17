@@ -142,8 +142,7 @@ fi
 
 if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   echo "### First time build is complete ###"
-  host=$(hostname -s)
-  echo "READY:${host}" >>${config_dir}/${STATUS_FILE}
+  echo "READY:$(hostname -s)" >>${config_dir}/${STATUS_FILE}
   exit 0
 fi
 
@@ -166,8 +165,7 @@ fi
 if [ "x${ONLY_INSTALL_DEPS}" == "x1" ]; then
   exit 0
 fi
-hostname=$(hostname -s)
-_targetdirname=target-${ID}-${hostname}
+_targetdirname=target-${ID}-$(hostname -s)
 if [ "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
   rm -rf ${_targetdirname}
 fi
@@ -234,7 +232,7 @@ else
   fi
   make -j8
 fi
-if [ "x$ONLY_REBUILD" == "x1" ]; then
+if [ "x${ONLY_REBUILD}" == "x1" ]; then
   exit 0
 fi
 if [ "x${ONLY_TEST}" != "x1" ]; then
@@ -295,7 +293,7 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   fi
 fi
 
-if [ "x$IS_CI_BUILD" != "x1" ]; then
+if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
   pbs_benchpress --tags=smoke
 fi

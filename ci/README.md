@@ -15,14 +15,18 @@ Simply invoke the following command:
 
 ***CLI interface for ci:***
 
-* **./ci :** This is the primary command for ci. It starts the container (if not already running), builds pbs dependencies. Will configure(if required), make and install pbs. If the tests option are given it will run PTL with the same. It does not take any argument.
+* **./ci :** This is the primary command for ci. It starts the container (if not already running), builds PBS dependencies. Will configure(if required), make and install PBS. If the tests option are given it will run PTL with the same. It does not take any argument.
 ```bash
 ./ci
  ```
 
-* **./ci --params:** The params option can be used run ci with a custom configuration.
+* **./ci --params:** The params option can be used to run ci with a custom configuration.
 Following parameters can be set.
 | os | nodes | configure | tests |
+os 			: used to set OS platform of the container (single node)
+nodes 		: used to define multi-node configuration for container
+configure 	: will hold the value of configure options for PBS
+tests 		: will hold the value for pbs_benchpress argument for PTL; if set empty will skip PTL tests
 
 ```bash
 # When the params command is called without any arguments it will display the currently set "configuration" and then proceed to run ci
@@ -32,37 +36,37 @@ Following parameters can be set.
 ./ci -p
 
 
-# The following command is an example of how to define a custom configure option for pbs. Everything to the right of the first '=' after configure will
-# be taken as it is and given as an argument to the configure file in pbs. The same convention follows for other configuration options as well
+# The following command is an example of how to provide a custom configure option for PBS. Everything to the right of the first '=' after configure will
+# be taken as it is and given as an argument to the configure file in PBS. The same convention follows for other configuration options as well
 ./ci --params 'configure=CFLAGS=" -O2 -Wall -Werror" --prefix=/tmp/pbs --enable-ptl'
 
 
 # The following are examples how to define a custom test case for pbs_benchpress.
 # NOTE: The string is passed to pbs_benchpress command therefore one can use all available options of pbs_benchpress here.
+# By default the test option is set to '-t SmokeTest'
 ./ci --params 'tests=-f pbs_smoketest.py'
 ./ci --params 'tests=--tags=smoke'
 
 
-# If you wish to not run any PTL tests then use the above command. This will set tests as empty thus not invoking PTL.
-# By default the test option is set to '-t SmokeTest'
+# If you wish to not run any PTL tests then use the below command. This will set tests as empty thus not invoking PTL.
 ./ci --params 'tests='
 
 
-# Below is an example of setting the container operating system. This will setup a single container running pbs server.
-# NOTE: ci uses cached image to increase performance of dependecy build. These cached images are saved on the local system
-#		with the suffix '_ci_pbs'. If you wish to use the base image delete any such images.
+# Below is an example of setting the container operating system. This will setup a single container running PBS server.
+# NOTE: ci uses cached image to increase performance. These cached images are saved on the local system
+#		with the suffix '-ci-pbs'. If you do not wish to use the cached image(s) delete them using <docker rmi {image_name}>.
 # OS platform can be defined by any image from docker-hub
 ./ci --params 'os=centos:7'
 
 
-# Following is an example of how to define multi node setup for pbs.
+# Following is an example of how to define multi node setup for PBS.
 # You can define multiple 'mom' or 'comm' nodes but only one 'server' node
 ./ci --params 'nodes=mom=centos:7;server=ubuntu:16.04;comm=ubuntu:18.04;mom=centos:8'
 
 ```
 
 
-* **./ci --build-pkgs:** Invoke this command to build pbs packages. By default it will build packages for the platform ci container is started for.
+* **./ci --build-pkgs:** Invoke this command to build PBS packages. By default it will build packages for the platform ci container is started for.
 Optionally accepts argument for other platform. The packages can be found in 'ci/packages' folder.
 
 ```bash
@@ -73,22 +77,22 @@ Optionally accepts argument for other platform. The packages can be found in 'ci
 
 ```
 
-* **./ci --delete:** will delete any running containers and take a backup of logs. Does not take any arguments. The current logs can be found in the "logs" folder in the ci folder. The backup logs can be found in session-{date}-{timestamp} format folder inside "logs" folder.
+* **./ci --delete:** This will delete any containers created by this tool and take a backup of logs. The current logs can be found in the "logs" folder in the ci folder. The backup of previous sessions logs can be can be found in the ci/logs/session-{date}-{timestamp} folder.
 
 ```bash
-# If you want to get rid of the container simply invoke this command.
+# If you want to delete the container simply invoke this command.
 ./ci --delete
 # or
 ./ci -d
 ```
 
-* **./ci --local:** will run ci on your machine locally; this is not a flag that can be combined with other commands. It builds pbs dependencies, will configure, make and install pbs and run pbs_benchpress with option '--tags=smoke'. It does not configurations from params but runs with predefined params(as run in travis).
+* **./ci --local:** This will build, install PBS, and run smoke tests on the local machine. This option can not be combined with other options. It does not take configurations from params but runs with predefined params(as run in travis).
 ```bash
 # The command to run
 ./ci --local
 #or
 ./ci -l
 
-# Optionally one can run the sanitize version (works only on centos:7) with the follwoing argument
+# Optionally one can run the sanitize version (works only on centos:7) with the following argument
 ./ci --local sanitize
 ```
