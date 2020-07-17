@@ -105,7 +105,8 @@ class TestDshUtils(TestSelf):
             c = '"import os;s = os.stat(\'' + path + '\');'
             c += 'print((s.st_uid,s.st_gid,s.st_mode))"'
             cmd = [py, '-c', c]
-            ret = self.du.run_cmd(host, cmd, sudo=True)
+            runas = self.du.get_current_user()
+            ret = self.du.run_cmd(host, cmd, sudo=True, runas=runas)
             self.assertEqual(ret['rc'], 0)
             res = ret['out'][0]
             u, g, m = [int(v) for v in

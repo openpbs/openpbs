@@ -2084,7 +2084,7 @@ class DshUtils(object):
             if asuser is not None:
                 # copy temp dir created on local host to remote host
                 # as different user
-                self.run_copy(hostname, src=tmpdir, dest=tmpdir, runas=asuser,
+                self.run_copy(hostname, src=tmpdir, dest=tmpdir,
                               recursive=True, uid=uid, gid=gid,
                               level=level)
                 self.chmod(hostname, path=tmpdir, mode=mode, runas=asuser)
