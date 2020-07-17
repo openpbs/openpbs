@@ -1110,7 +1110,7 @@ be_secondary(time_t delay)
 
 			case SECONDARY_STATE_nohsk:
 				/* have not received a hankshake or connection closed */
-				/* check time stamp on path_svrdb */
+				/* check time stamp on path_svrlive */
 				if (stat(path_svrlive, &sb) == 0) {
 
 					/* able to stat the server database */

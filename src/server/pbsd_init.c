@@ -154,10 +154,9 @@ extern char   *path_hooks;
 extern char   *path_hooks_workdir;
 extern pbs_list_head       prov_allvnodes;
 extern int 		max_concurrent_prov;
-extern pbs_db_conn_t	*svr_db_conn;
+extern void	*svr_db_conn;
 
 extern	pbs_list_head	svr_allhooks;
-
 
 /* External Functions Called */
 
@@ -167,6 +166,11 @@ extern int resize_prov_table(int newsize);
 extern void offline_all_provisioning_vnodes(void);
 extern void stop_db();
 extern job *job_recov_db_spl(pbs_db_job_info_t *dbjob, job *pjob);
+extern pbs_sched *sched_alloc(char *sched_name);
+extern job *recov_job_cb(pbs_db_obj_info_t *, int *);
+extern resc_resv *recov_resv_cb(pbs_db_obj_info_t *, int *);
+extern pbs_queue *recov_queue_cb(pbs_db_obj_info_t *, int *);
+extern pbs_sched *recov_sched_cb(pbs_db_obj_info_t *, int *);
 /* Private functions in this file */
 
 static void  catch_child(int);
@@ -174,15 +178,12 @@ static void  init_abt_job(job *);
 static void  change_logs(int);
 int   chk_save_file(char *filename);
 static void  need_y_response(int, char *);
-static int   pbsd_init_job(job *pjob, int type);
 static int   pbsd_init_reque(job *job, int change_state);
 static void  resume_net_move(struct work_task *);
 static void  stop_me(int);
 static int   Rmv_if_resv_not_possible(job *);
 static int   attach_queue_to_reservation(resc_resv *);
 static void  call_log_license(struct work_task *);
-
-extern pbs_sched *sched_alloc(char *sched_name);
 /* private data */
 
 #define CHANGE_STATE 1
@@ -314,16 +315,12 @@ pbsd_init(int type)
 	char	 zone_dir[MAXPATHLEN];
 	char	*hook_suffix = HOOK_FILE_SUFFIX;
 	int	hook_suf_len = strlen(hook_suffix);
-	int	 numjobs;
-	job	*pjob;
 	hook	*phook, *phook_current;
-	pbs_queue *pque;
-	resc_resv *presv;
 	char	*psuffix;
 	int	 rc;
 	struct stat statbuf;
 	char	hook_msg[HOOK_MSG_SIZE];
-
+	char *conn_db_err = NULL;
 	struct sigaction act;
 	struct sigaction oact;
 
@@ -333,11 +330,9 @@ pbsd_init(int type)
 	pbs_db_que_info_t	dbque = {{0}};
 	pbs_db_sched_info_t	dbsched = {{0}};
 	pbs_db_obj_info_t	obj = {0};
-	void		*state = NULL;
-	pbs_db_conn_t	*conn = (pbs_db_conn_t *) svr_db_conn;
+	void	*conn = (void *) svr_db_conn;
 	char *buf = NULL;
 	int buf_len = 0;
-	pbs_sched *psched;
 
 #ifdef  RLIMIT_CORE
 	int      char_in_cname = 0;
@@ -534,6 +529,11 @@ pbsd_init(int type)
 	/*    and sched db					  */
 	rc = svr_recov_db();
 	if ((rc != 0) && (type != RECOV_CREATE)) {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		if (conn_db_err != NULL) {
+			log_errf(-1, __func__, "%s", conn_db_err);
+			free(conn_db_err);
+		}
 		need_y_response(type, "no server database exists");
 		type = RECOV_CREATE;
 	}
@@ -541,7 +541,7 @@ pbsd_init(int type)
 		/* Server read success full ?*/
 
 		if (rc != 0) {
-			log_err(rc, __func__, msg_init_baddb);
+			log_errf(rc, __func__, msg_init_baddb);
 			return (-1);
 		}
 
@@ -561,37 +561,19 @@ pbsd_init(int type)
 		}
 
 		/* now do sched db */
-		/* start a transaction */
-		if (pbs_db_begin_trx(conn, 0, 0) != 0)
-			return (-1);
 
 		obj.pbs_db_obj_type = PBS_DB_SCHED;
 		obj.pbs_db_un.pbs_db_sched = &dbsched;
 
-		state = pbs_db_cursor_init(conn, &obj, NULL);
-		if (state == NULL) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "%s", (char *) conn->conn_db_err);
-			log_err(-1, "pbsd_init", log_buffer);
-			pbs_db_cursor_close(conn, state);
-			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+		rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_sched_cb);
+		if (rc == -1) {
+			pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+			if (conn_db_err != NULL) {
+				log_errf(-1, __func__, "%s", conn_db_err);
+				free(conn_db_err);
+			}
 			return (-1);
 		}
-
-		while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-			/* recover sched */
-			if ((psched = sched_recov_db(dbsched.sched_name, NULL)) != NULL) {
-				
-				free_db_attr_list(&dbsched.db_attr_list);
-
-				if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME, strlen(PBS_DFLT_SCHED_NAME))) {
-					dflt_scheduler = psched;
-				}
-				psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
-				psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
-				set_scheduler_flag(SCH_CONFIGURE, psched);
-			}
-		}
-		pbs_db_cursor_close(conn, state);
 
 		if (!dflt_scheduler) {
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
@@ -601,21 +583,9 @@ pbsd_init(int type)
 
 		if (server.sv_attr[SVR_ATR_scheduling].at_val.at_long)
 			set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
-
-		/* end the transaction */
-		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-			return (-1);
-
 	} else {	/* init type is "create" */
-		if (rc == 0) {		/* server was loaded */
+		if (rc == 0) 		/* server was loaded */
 			need_y_response(type, "server database exists");
-
-			/* reinitialize schema by dropping PBS schema */
-			if (pbs_db_truncate_all(svr_db_conn) == -1) {
-				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT, msg_daemonname, "Could not truncate PBS data:[%s]", (char *) conn->conn_db_err);
-				return -1;
-			}
-		}
 
 		svr_save_db(&server);
 
@@ -681,7 +651,7 @@ pbsd_init(int type)
 	/* 6. open accounting file */
 
 	if (acct_open(acct_file) != 0) {
-		log_err(-1, __func__, "Could not open accounting file");
+		log_errf(-1, __func__, "Could not open accounting file");
 		return (-1);
 	}
 
@@ -705,46 +675,24 @@ pbsd_init(int type)
 
 	server.sv_qs.sv_numque = 0;
 
-	/* start a transaction */
-	if (pbs_db_begin_trx(conn, 0, 0) != 0)
-		return (-1);
-
 	/* get jobs from DB for this instance of server, by port and address */
 	obj.pbs_db_obj_type = PBS_DB_QUEUE;
 	obj.pbs_db_un.pbs_db_que = &dbque;
 
-	state = pbs_db_cursor_init(conn, &obj, NULL);
-	if (state == NULL) {
-		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		log_err(-1, __func__, log_buffer);
-		pbs_db_cursor_close(conn, state);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		return (-1);
-	}
-	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-		/* recover queue */
-		if ((pque = que_recov_db(dbque.qu_name, NULL)) != NULL) {
-
-			free_db_attr_list(&dbque.db_attr_list);
-			
-			/* que_recov increments sv_numque */
-			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, 
-					msg_daemonname, msg_init_recovque, pque->qu_qs.qu_name);
-
-			if (pque->qu_attr[(int) QE_ATR_ResourceAssn].at_flags & ATR_VFLAG_SET)
-				que_attr_def[(int) QE_ATR_ResourceAssn].at_free(&pque->qu_attr[(int) QE_ATR_ResourceAssn]);
+	rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_queue_cb);
+	if (rc == -1) {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		if (conn_db_err != NULL) {
+			log_errf(-1, __func__, "%s", conn_db_err);
+			free(conn_db_err);
 		}
-	}
-	pbs_db_cursor_close(conn, state);
-
-	/* end the transaction */
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		return (-1);
+	}
 
 	/* Open and read in node list if one exists */
 	if ((rc = setup_nodes()) == -1) {
 		/* log_buffer set in setup_nodes */
-		log_err(-1, __func__, log_buffer);
+		log_errf(-1, __func__, log_buffer);
 		return (-1);
 	}
 	mark_which_queues_have_nodes();
@@ -762,10 +710,6 @@ pbsd_init(int type)
 	sprintf(zone_dir, "%s%s", pbs_conf.pbs_exec_path, ICAL_ZONEINFO_DIR);
 	set_ical_zoneinfo(zone_dir);
 
-	/* start a transaction */
-	if (pbs_db_begin_trx(conn, 0, 0) != 0)
-		return (-1);
-
 	/* load reservations */
 	if ((resvs_idx = pbs_idx_create(0, 0)) == NULL) {
 		log_err(-1, __func__, "Creating reservations index failed!");
@@ -773,34 +717,16 @@ pbsd_init(int type)
 	}
 	obj.pbs_db_obj_type = PBS_DB_RESV;
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
-	state = pbs_db_cursor_init(conn, &obj, NULL);
-	if (state == NULL) {
-		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		log_err(-1, __func__, log_buffer);
-		pbs_db_cursor_close(conn, state);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+
+	rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_resv_cb);
+	if (rc == -1) {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		if (conn_db_err != NULL) {
+			log_errf(-1, __func__, "%s", conn_db_err);
+			free(conn_db_err);
+		}
 		return (-1);
 	}
-	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-		/* recover reservation */
-		presv = resv_recov_db(dbresv.ri_resvid, NULL);
-		if (presv != NULL) {
-
-			free_db_attr_list(&dbresv.db_attr_list);
-
-			is_resv_window_in_future(presv);
-			set_old_subUniverse(presv);
-
-			append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-			if (attach_queue_to_reservation(presv)) /* reservation needed queue; failed to find it */
-				log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE, 
-					msg_daemonname, msg_init_resvNOq, presv->ri_qs.ri_queue, presv->ri_qs.ri_resvID);
-			else
-				log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_INFO, 
-					msg_daemonname, msg_init_recovresv, presv->ri_qs.ri_resvID);
-		}
-	}
-	pbs_db_cursor_close(conn, state);
 
 	/*
 	 * 9. If not "create" or "clean" recovery, recover the jobs.
@@ -817,63 +743,21 @@ pbsd_init(int type)
 	/* get jobs from DB */
 	obj.pbs_db_obj_type = PBS_DB_JOB;
 	obj.pbs_db_un.pbs_db_job = &dbjob;
-	state = pbs_db_cursor_init(conn, &obj, NULL);
-	if (state == NULL) {
-		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		log_err(-1, __func__, log_buffer);
-		pbs_db_cursor_close(conn, state);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+	rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_job_cb);
+	if (rc == -1) {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		if (conn_db_err != NULL) {
+			log_errf(-1, __func__, "%s", conn_db_err);
+			free(conn_db_err);
+		}
 		return (-1);
-	}
-
-	/* Now, for each job found ... */
-	numjobs = 0;
-	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-		if ((pjob = job_recov_db_spl(&dbjob, NULL)) == NULL) {
-			if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
-				/* remove the loaded job from db */
-				if (pbs_db_delete_obj(conn, &obj) != 0)
-					log_errf(PBSE_SYSTEM, __func__, "job %s not purged", dbjob.ji_jobid);
-			} else
-				log_errf(PBSE_SYSTEM, __func__, "Failed to recover job %s", dbjob.ji_jobid);
-			continue;
-		}
-		free_db_attr_list(&dbjob.db_attr_list);
-
-		/*chk if job belongs to a reservation or
-			*is a reservation job.  If this is true
-			*and the reservation is no longer possible,
-			*return (1) else return (0)
-			*/
-		if (Rmv_if_resv_not_possible(pjob)) {
-			account_record(PBS_ACCT_ABT, pjob, "");
-			svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL,
-				msg_init_abt);
-			check_block(pjob, msg_init_abt);
-			job_purge(pjob);
-			continue;
-		}
-
-		rc = pbsd_init_job(pjob, type);
-		/*
-			*	in the db version, job always has job script
-			*	since they are saved together, so nothing to
-			*	check
-			*
-			*/
-		if ((++numjobs % 20) == 0) {
-			/* periodically touch the file so the  */
-			/* world knows we are alive and active */
-			(void)update_svrlive();
-		}
+	} else if (rc == 1) {
+		if ((type != RECOV_CREATE) && (type != RECOV_COLD))
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+				LOG_DEBUG, msg_daemonname, msg_init_nojobs);
 	}
 
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, msg_init_exptjobs, server.sv_qs.sv_numjobs);
-
-	pbs_db_cursor_close(conn, state);
-	/* close transaction */
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		return (-1);
 
 	/* Now, cause any reservations marked RESV_FINISHED to be
 	 * removed and place "begin" and "end" tasks onto the
@@ -929,7 +813,7 @@ pbsd_init(int type)
 			}
 
 			if ((phook = \
-			       hook_recov(pdirent->d_name, NULL, hook_msg,
+				hook_recov(pdirent->d_name, NULL, hook_msg,
 				sizeof(hook_msg),
 				pbs_python_ext_alloc_python_script,
 				pbs_python_ext_free_python_script)) == NULL) {
@@ -1388,7 +1272,6 @@ reassign_resc(job *pjob)
 	}
 }
 
-
 /**
  * @brief
  * 		pbsd_init_job - decide what to do with the recovered job structure
@@ -1402,11 +1285,20 @@ reassign_resc(job *pjob)
  * @retval	0	- success
  * @retval	-1	- error.
  */
-static int
+int
 pbsd_init_job(job *pjob, int type)
 {
 	int	 newstate;
 	int	 newsubstate;
+
+	/* chk if job belongs to a reservation or is a reservation job.  If this is true
+	* and the reservation is no longer possible, return (1) else return (0) */
+	if (Rmv_if_resv_not_possible(pjob)) {
+		account_record(PBS_ACCT_ABT, pjob, "");
+		svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL, msg_init_abt);
+		check_block(pjob, msg_init_abt);
+		job_purge(pjob);
+	}
 
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
@@ -1424,7 +1316,6 @@ pbsd_init_job(job *pjob, int type)
 	if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
 		need_y_response(type, "jobs exists");
 		init_abt_job(pjob);
-
 	} else {
 
 		if (type != RECOV_HOT)
@@ -1650,6 +1541,89 @@ pbsd_init_job(job *pjob, int type)
 		}
 	}
 	return 0;
+}
+
+/**
+ * @brief
+ * 		pbsd_init_resv - decide what to do with the recovered reservation structure.
+ *
+ *		The action depends on the type of initialization.
+ *
+ * @param[in,out]	presv	- the reservation.
+ * @param[in]		type	- type of initialization (read-only=0 , or ownership=1)
+ * 					type is unused for now, will be used in later PRs
+ *
+ */
+void
+pbsd_init_resv(resc_resv *presv, int type)
+{
+	is_resv_window_in_future(presv);
+	set_old_subUniverse(presv);
+
+	/* add resv to server list */
+	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+	if (attach_queue_to_reservation(presv))
+		/* reservation needed queue; failed to find it */
+		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
+			LOG_NOTICE, msg_daemonname, msg_init_resvNOq, presv->ri_qs.ri_queue, presv->ri_qs.ri_resvID);
+	else
+		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+			LOG_INFO, msg_daemonname, msg_init_recovresv, presv->ri_qs.ri_resvID);
+}
+
+/**
+ * @brief
+ * 		pbsd_init_node - decide what to do with the recovered node structure.
+ *
+ *		The action depends on the type of initialization.
+ *
+ * @param[in,out]	dbnode	- the node recovered.
+ * @param[in]		type	- type of initialization (read-only=0 , or ownership=1)
+ * 					type is unused for now, will be used in later PRs
+ *
+ * @return	ptr to pbsnode
+ * @retval	Node structure	- success
+ * @retval	NULL	- error.
+ */
+struct pbsnode *
+pbsd_init_node(pbs_db_node_info_t *dbnode, int type)
+{
+	time_t mom_modtime = 0;
+	struct pbsnode *np;
+	svrattrl *pal;
+	int bad;
+	int rc = 0;
+	int perm = ATR_DFLAG_ACCESS | ATR_PERM_ALLOW_INDIRECT;
+
+	mom_modtime = dbnode->mom_modtime;
+
+	pal = GET_NEXT(dbnode->db_attr_list.attrs);
+
+	/* now create node and subnodes */
+	rc = create_pbs_node2(dbnode->nd_name, pal, perm, &bad, &np, FALSE, TRUE);	/* allow unknown resources */
+	if (rc)
+		np = NULL;
+
+	if (np) {
+		if (mom_modtime)
+			np->nd_moms[0]->mi_modtime = mom_modtime;
+
+		if ((np->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
+			(np->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
+			mominfo_t *pmom = np->nd_moms[0];
+			if (pmom && (np == ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[0])) {
+				/* natural vnode being recovered, add to pool */
+				add_mom_to_pool(np->nd_moms[0]);
+			}
+		}
+	} else {
+		if (rc == PBSE_NODEEXIST)
+			sprintf(log_buffer, "duplicate node \"%s\"", dbnode->nd_name);
+		else
+			sprintf(log_buffer, "could not create node \"%s\", error = %d", dbnode->nd_name, rc);
+		log_errf(-1, __func__, log_buffer);
+	}
+	return np;
 }
 
 /**

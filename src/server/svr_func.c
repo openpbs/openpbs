@@ -6601,10 +6601,9 @@ extern char *path_spool;
 char *
 svr_load_jobscript(job *pj)
 {
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 	pbs_db_jobscr_info_t jobscr;
 	pbs_db_obj_info_t obj;
-	char *script = NULL;
 
 	if (pj->ji_script) {
 		free(pj->ji_script);
@@ -6616,6 +6615,7 @@ svr_load_jobscript(job *pj)
 	} else {
 		strcpy(jobscr.ji_jobid, pj->ji_qs.ji_jobid);
 	}
+	jobscr.script = NULL;
 	obj.pbs_db_obj_type = PBS_DB_JOBSCR;
 	obj.pbs_db_un.pbs_db_jobscr = &jobscr;
 
@@ -6626,10 +6626,8 @@ svr_load_jobscript(job *pj)
 		log_err(-1, __func__, log_buffer);
 		return NULL;
 	}
-	script = strdup(jobscr.script);
-	pbs_db_cleanup_resultset(conn);
 
-	if (script == NULL) {
+	if (jobscr.script == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Out of memory loading script for job %s from PBS datastore",
 			pj->ji_qs.ji_jobid);
@@ -6637,9 +6635,9 @@ svr_load_jobscript(job *pj)
 		return NULL;
 	}
 
-	pj->ji_script = script;
+	pj->ji_script = jobscr.script;
 
-	return script;
+	return jobscr.script;
 }
 
 /*

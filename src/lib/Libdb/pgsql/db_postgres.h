@@ -39,7 +39,6 @@
 
 
 /**
- * @file    db_postgres.h
  *
  * @brief
  *  Postgres specific implementation
@@ -73,11 +72,15 @@ extern "C" {
  * Conversion macros for long long type
  */
 #if !defined(ntohll)
-#define ntohll(x) pbs_ntohll(x)
+#define ntohll(x) db_ntohll(x)
 #endif
 #if !defined(htonll)
 #define htonll(x) ntohll(x)
 #endif
+
+#define PBS_MAXATTRNAME 64
+#define PBS_MAXATTRRESC 64
+#define MAX_SQL_LENGTH 8192
 
 /* job sql statement names */
 #define STMT_SELECT_JOB "select_job"
@@ -85,15 +88,15 @@ extern "C" {
 #define STMT_UPDATE_JOB "update_job"
 #define STMT_UPDATE_JOB_ATTRSONLY "update_job_attrsonly"
 #define STMT_UPDATE_JOB_QUICK "update_job_quick"
-#define STMT_FINDJOBS_ORDBY_QRANK   "findjobs_ordby_qrank"
+#define STMT_FINDJOBS_ORDBY_QRANK "findjobs_ordby_qrank"
 #define STMT_FINDJOBS_BYQUE_ORDBY_QRANK "findjobs_byque_ordby_qrank"
 #define STMT_DELETE_JOB "delete_job"
 #define STMT_REMOVE_JOBATTRS "remove_jobattrs"
 
 /* JOBSCR stands for job script */
-#define STMT_INSERT_JOBSCR  "insert_jobscr"
-#define STMT_SELECT_JOBSCR  "select_jobscr"
-#define STMT_DELETE_JOBSCR  "delete_jobscr"
+#define STMT_INSERT_JOBSCR "insert_jobscr"
+#define STMT_SELECT_JOBSCR "select_jobscr"
+#define STMT_DELETE_JOBSCR "delete_jobscr"
 
 /* reservation statement names */
 #define STMT_INSERT_RESV "insert_resv"
@@ -183,18 +186,34 @@ typedef struct postgres_conn_data pg_conn_data_t;
 
 /**
  * @brief
+ * Postgres transaction management helper structure.
+ */
+struct pg_conn_trx
+{
+	int conn_trx_nest;	   /* incr/decr with each begin/end trx */
+	int conn_trx_rollback; /* rollback flag in case of nested trx */
+	int conn_trx_async;	   /* 1 - async, 0 - sync, one-shot reset */
+};
+typedef struct pg_conn_trx pg_conn_trx_t;
+
+extern pg_conn_data_t *conn_data;
+extern pg_conn_trx_t *conn_trx;
+
+/**
+ * @brief
  *  This structure is used to represent the cursor state for a multirow query
  *  result. The row field keep track of which row is the current row (or was
  *  last returned to the caller). The count field contains the total number of
  *  rows that are available in the resultset.
  *
  */
-struct postgres_query_state {
+struct db_query_state {
 	PGresult *res;
 	int row;
 	int count;
+	query_cb_t query_cb;
 };
-typedef struct postgres_query_state pg_query_state_t;
+typedef struct db_query_state db_query_state_t;
 
 /**
  * @brief
@@ -211,15 +230,12 @@ typedef struct postgres_query_state pg_query_state_t;
  *
  */
 struct postgres_db_fn {
-	int (*pg_db_save_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-	int (*pg_db_delete_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-	int (*pg_db_load_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-	int (*pg_db_find_obj)	(pbs_db_conn_t *conn, void *state,
-		pbs_db_obj_info_t *obj,
-		pbs_db_query_options_t *opts);
-	int (*pg_db_next_obj)	(pbs_db_conn_t *conn, void *state,
-		pbs_db_obj_info_t *obj);
-	int (*pg_db_del_attr_obj)(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+	int (*pbs_db_save_obj) (void *conn, pbs_db_obj_info_t *obj, int savetype);
+	int (*pbs_db_delete_obj) (void *conn, pbs_db_obj_info_t *obj);
+	int (*pbs_db_load_obj) (void *conn, pbs_db_obj_info_t *obj);
+	int (*pbs_db_find_obj) (void *conn, void *state, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+	int (*pbs_db_next_obj) (void *conn, void *state, pbs_db_obj_info_t *obj);
+	int (*pbs_db_del_attr_obj)(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
 };
 
 typedef struct postgres_db_fn pg_db_fn_t;
@@ -264,37 +280,37 @@ typedef struct postgres_db_fn pg_db_fn_t;
  * - temp_int	  - array to use to convert int to network byte order
  * - temp_long	  - array to use to convery BIGINT to network byte order
  */
-#define SET_PARAM_STR(conn, itm, i)  \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
-        if (itm) \
-                ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = strlen(itm); \
-        else \
-                ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = 0; \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 0;
+#define SET_PARAM_STR(conn_data, itm, i)  \
+		((pg_conn_data_t *) conn_data)->paramValues[i] = (itm); \
+		if (itm) \
+				((pg_conn_data_t *) conn_data)->paramLengths[i] = strlen(itm); \
+		else \
+				((pg_conn_data_t *) conn_data)->paramLengths[i] = 0; \
+		((pg_conn_data_t *) conn_data)->paramFormats[i] = 0;
 
-#define SET_PARAM_STRSZ(conn, itm, size, i)  \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = (size); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 0;
+#define SET_PARAM_STRSZ(conn_data, itm, size, i)  \
+		((pg_conn_data_t *) conn_data)->paramValues[i] = (itm); \
+		((pg_conn_data_t *) conn_data)->paramLengths[i] = (size); \
+		((pg_conn_data_t *) conn_data)->paramFormats[i] = 0;
 
-#define SET_PARAM_INTEGER(conn, itm, i) \
-        ((pg_conn_data_t *) (conn)->conn_data)->temp_int[i] = (INTEGER) htonl(itm); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = \
-                (char *) &(((pg_conn_data_t *) (conn)->conn_data)->temp_int[i]); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = sizeof(int); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_INTEGER(conn_data, itm, i) \
+		((pg_conn_data_t *) conn_data)->temp_int[i] = (INTEGER) htonl(itm); \
+		((pg_conn_data_t *) conn_data)->paramValues[i] = \
+				(char *) &(((pg_conn_data_t *) conn_data)->temp_int[i]); \
+		((pg_conn_data_t *) conn_data)->paramLengths[i] = sizeof(int); \
+		((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
 
-#define SET_PARAM_BIGINT(conn, itm, i) \
-        ((pg_conn_data_t *) (conn)->conn_data)->temp_long[i] = (BIGINT) htonll(itm); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = \
-                (char *) &(((pg_conn_data_t *) (conn)->conn_data)->temp_long[i]); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = sizeof(BIGINT); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_BIGINT(conn_data, itm, i) \
+		((pg_conn_data_t *) conn_data)->temp_long[i] = (BIGINT) htonll(itm); \
+		((pg_conn_data_t *) conn_data)->paramValues[i] = \
+				(char *) &(((pg_conn_data_t *) conn_data)->temp_long[i]); \
+		((pg_conn_data_t *) conn_data)->paramLengths[i] = sizeof(BIGINT); \
+		((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
 
-#define SET_PARAM_BIN(conn, itm, len , i)  \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = (len); \
-        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_BIN(conn_data, itm, len , i)  \
+		((pg_conn_data_t *) conn_data)->paramValues[i] = (itm); \
+		((pg_conn_data_t *) conn_data)->paramLengths[i] = (len); \
+		((pg_conn_data_t *) conn_data)->paramFormats[i] = 1;
 
 #define GET_PARAM_STR(res, row, itm, fnum)  \
 		strcpy((itm), PQgetvalue((res), (row), (fnum)));
@@ -311,79 +327,94 @@ typedef struct postgres_db_fn pg_db_fn_t;
 #define FIND_JOBS_BY_QUE 1
 
 /* common functions */
-int pg_db_prepare_job_sqls(pbs_db_conn_t *conn);
-int pg_db_prepare_resv_sqls(pbs_db_conn_t *conn);
-int pg_db_prepare_svr_sqls(pbs_db_conn_t *conn);
-int pg_db_prepare_node_sqls(pbs_db_conn_t *conn);
-int pg_db_prepare_sched_sqls(pbs_db_conn_t *conn);
-int pg_db_prepare_que_sqls(pbs_db_conn_t *conn);
+int db_prepare_job_sqls(void *conn);
+int db_prepare_resv_sqls(void *conn);
+int db_prepare_svr_sqls(void *conn);
+int db_prepare_node_sqls(void *conn);
+int db_prepare_sched_sqls(void *conn);
+int db_prepare_que_sqls(void *conn);
 
-void pg_set_error(pbs_db_conn_t *conn, char *fnc, char *msg, char *msg2);
-int pg_prepare_stmt(pbs_db_conn_t *conn, char *stmt, char *sql, int num_vars);
-int pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars);
-int pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars, PGresult **res);
-unsigned long long pbs_ntohll(unsigned long long);
+void db_set_error(void *conn, char **conn_db_err, char *fnc, char *msg, char *msg2);
+int db_prepare_stmt(void *conn, char *stmt, char *sql, int num_vars);
+int db_cmd(void *conn, char *stmt, int num_vars);
+int db_query(void *conn, char *stmt, int num_vars, PGresult **res);
+unsigned long long db_ntohll(unsigned long long);
 int dbarray_to_attrlist(char *raw_array, pbs_db_attr_list_t *attr_list);
 int attrlist_to_dbarray(char **raw_array, pbs_db_attr_list_t *attr_list);
 int attrlist_to_dbarray_ex(char **raw_array, pbs_db_attr_list_t *attr_list, int keys_only);
-int resize_buff(pbs_db_sql_buffer_t *dest, int size);
 
 /* job functions */
-int pg_db_save_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_find_job(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
-int pg_db_next_job(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
-int pg_db_delete_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_job(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_job(void *conn, pbs_db_obj_info_t *obj);
+int pbs_db_find_job(void *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+int pbs_db_next_job(void *conn, void *st, pbs_db_obj_info_t *obj);
+int pbs_db_delete_job(void *conn, pbs_db_obj_info_t *obj);
 
-int pg_db_save_jobscr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_jobscr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_jobscr(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_jobscr(void *conn, pbs_db_obj_info_t *obj);
 
 /* resv functions */
-int pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_find_resv(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
-int pg_db_next_resv(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
-int pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_resv(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_resv(void *conn, pbs_db_obj_info_t *obj);
+int pbs_db_find_resv(void *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+int pbs_db_next_resv(void *conn, void *st, pbs_db_obj_info_t *obj);
+int pbs_db_delete_resv(void *conn, pbs_db_obj_info_t *obj);
 
 /* svr functions */
-int pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_svr(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_svr(void *conn, pbs_db_obj_info_t *obj);
 
 /* node functions */
-int pg_db_save_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_find_node(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
-int pg_db_next_node(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
-int pg_db_delete_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_node(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_node(void *conn, pbs_db_obj_info_t *obj);
+int pbs_db_find_node(void *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+int pbs_db_next_node(void *conn, void *st, pbs_db_obj_info_t *obj);
+int pbs_db_delete_node(void *conn, pbs_db_obj_info_t *obj);
 
 /* mominfo_time functions */
-int pg_db_save_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_mominfo_tm(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_mominfo_tm(void *conn, pbs_db_obj_info_t *obj);
 
 /* queue functions */
-int pg_db_save_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_find_que(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
-int pg_db_next_que(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
-int pg_db_delete_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_que(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_que(void *conn, pbs_db_obj_info_t *obj);
+int pbs_db_find_que(void *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+int pbs_db_next_que(void *conn, void *st, pbs_db_obj_info_t *obj);
+int pbs_db_delete_que(void *conn, pbs_db_obj_info_t *obj);
 
 /* scheduler functions */
-int pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
-int pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_save_sched(void *conn, pbs_db_obj_info_t *obj, int savetype);
+int pbs_db_load_sched(void *conn, pbs_db_obj_info_t *obj);
 
-int pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
-int pg_db_next_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
-int pg_db_delete_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pbs_db_find_sched(void *conn, void *st, pbs_db_obj_info_t *obj, pbs_db_query_options_t *opts);
+int pbs_db_next_sched(void *conn, void *st, pbs_db_obj_info_t *obj);
+int pbs_db_delete_sched(void *conn, pbs_db_obj_info_t *obj);
 
-int pg_db_del_attr_job(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
-int pg_db_del_attr_sched(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
-int pg_db_del_attr_resv(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
-int pg_db_del_attr_svr(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
-int pg_db_del_attr_que(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
-int pg_db_del_attr_node(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_del_attr_job(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_del_attr_sched(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_del_attr_resv(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_del_attr_svr(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_del_attr_que(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pbs_db_del_attr_node(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list);
+
+/**
+ * @brief
+ *	Execute a direct sql string on the open database connection
+ *
+ * @param[in]	conn - Connected database handle
+ * @param[in]	sql  - A string describing the sql to execute.
+ *
+ * @return      int
+ * @retval      -1  - Error
+ * @retval       0  - success
+ * @retval       1  - Execution succeeded but statement did not return any rows
+ *
+ */
+int db_execute_str(void *conn, char *sql);
 
 #ifdef	__cplusplus
 }
 #endif
 
-#endif	/* _DB_POSTGRES_H */
+#endif /* _DB_POSTGRES_H */
+

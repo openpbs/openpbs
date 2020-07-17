@@ -88,7 +88,9 @@ extern struct    server server;
 extern pbs_list_head svr_queues;
 extern time_t	 time_now;
 extern long	 svr_history_enable;
-extern pbs_db_conn_t	*svr_db_conn;
+#ifndef PBS_MOM
+extern void	*svr_db_conn;
+#endif
 
 /**
  * @brief
@@ -198,7 +200,7 @@ que_purge(pbs_queue *pque)
 {
 	pbs_db_obj_info_t   obj;
 	pbs_db_que_info_t   dbque;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 
 	/*
 	 * If the queue (pque) is not valid, then nothing to

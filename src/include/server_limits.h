@@ -162,7 +162,7 @@ typedef unsigned long pbs_net_t;	/* for holding host addresses */
 #define RECOV_WARM   1		/* requeue/reschedule  all jobs */
 #define RECOV_COLD   2 		/* discard all jobs		*/
 #define RECOV_CREATE 3		/* discard all info		*/
-#define RECOV_UPDATEDB 4		/* migrate data from fs to database */
+#define RECOV_UPDATEDB 4	/* migrate data from fs to database */
 #define RECOV_Invalid 5
 
 /*

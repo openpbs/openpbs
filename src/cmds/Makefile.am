@@ -72,6 +72,7 @@ bin_PROGRAMS = \
 	qterm
 
 sbin_PROGRAMS = \
+	pbs_dataservice.bin \
 	pbs_ds_password.bin \
 	pbs_demux
 
@@ -119,11 +120,24 @@ pbs_demux_CPPFLAGS = ${common_cflags}
 pbs_demux_LDADD = ${common_libs}
 pbs_demux_SOURCES = pbs_demux.c
 
+pbs_dataservice_bin_CPPFLAGS = \
+	${common_cflags} \
+	@database_inc@
+pbs_dataservice_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
+pbs_dataservice_bin_LDADD = \
+	$(top_builddir)/src/lib/Libdb/libdb.so \
+	${common_libs} \
+	@database_lib@ \
+	-lssl \
+	-lcrypto
+pbs_dataservice_bin_SOURCES = pbs_dataservice.c ${common_sources}
+
 pbs_ds_password_bin_CPPFLAGS = \
 	${common_cflags} \
 	@database_inc@
+pbs_ds_password_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_ds_password_bin_LDADD = \
-	$(top_builddir)/src/lib/Libdb/libdb.a \
+	$(top_builddir)/src/lib/Libdb/libdb.so \
 	${common_libs} \
 	@database_lib@ \
 	-lssl \

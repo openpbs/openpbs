@@ -40,7 +40,6 @@
 
 
 /**
- * @file    db_postgres_resv.c
  *
  * @brief
  *      Implementation of the resv data access functions for postgres
@@ -62,9 +61,10 @@
  *
  */
 int
-pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
+db_prepare_resv_sqls(void *conn)
 {
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.resv ("
+	char conn_sql[MAX_SQL_LENGTH];
+	snprintf(conn_sql, MAX_SQL_LENGTH, "insert into pbs.resv ("
 		"ri_resvID, "
 		"ri_queue, "
 		"ri_state, "
@@ -86,10 +86,10 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"values "
 		"($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, "
 		"$14, localtimestamp, localtimestamp, hstore($15::text[]))");
-	if (pg_prepare_stmt(conn, STMT_INSERT_RESV, conn->conn_sql, 15) != 0)
+	if (db_prepare_stmt(conn, STMT_INSERT_RESV, conn_sql, 15) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
 		"ri_queue = $2, "
 		"ri_state = $3, "
 		"ri_substate = $4, "
@@ -106,10 +106,10 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_savetm = localtimestamp, "
 		"attributes = attributes || hstore($15::text[]) "
 		"where ri_resvID = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV, conn->conn_sql, 15) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_RESV, conn_sql, 15) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
 		"ri_queue = $2, "
 		"ri_state = $3, "
 		"ri_substate = $4, "
@@ -125,24 +125,24 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_fromaddr = $14, "
 		"ri_savetm = localtimestamp "
 		"where ri_resvID = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV_QUICK, conn->conn_sql, 14) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_RESV_QUICK, conn_sql, 14) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
 		"ri_savetm = localtimestamp, "
 		"attributes = attributes || hstore($2::text[]) "
 		"where ri_resvID = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV_ATTRSONLY, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_RESV_ATTRSONLY, conn_sql, 2) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
 		"ri_savetm = localtimestamp,"
 		"attributes = attributes - $2::text[] "
 		"where ri_resvID = $1");
-	if (pg_prepare_stmt(conn, STMT_REMOVE_RESVATTRS, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_REMOVE_RESVATTRS, conn_sql, 2) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "select "
 		"ri_resvID, "
 		"ri_queue, "
 		"ri_state, "
@@ -159,10 +159,10 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_fromaddr, "
 		"hstore_to_array(attributes) as attributes "
 		"from pbs.resv where ri_resvid = $1");
-	if (pg_prepare_stmt(conn, STMT_SELECT_RESV, conn->conn_sql, 1) != 0)
+	if (db_prepare_stmt(conn, STMT_SELECT_RESV, conn_sql, 1) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "select "
 		"ri_resvID, "
 		"ri_queue, "
 		"ri_state, "
@@ -180,12 +180,12 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"hstore_to_array(attributes) as attributes "
 		"from pbs.resv "
 		"order by ri_creattm");
-	if (pg_prepare_stmt(conn, STMT_FINDRESVS_ORDBY_CREATTM,
-		conn->conn_sql, 0) != 0)
+	if (db_prepare_stmt(conn, STMT_FINDRESVS_ORDBY_CREATTM,
+		conn_sql, 0) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "delete from pbs.resv where ri_resvid = $1");
-	if (pg_prepare_stmt(conn, STMT_DELETE_RESV, conn->conn_sql, 1) != 0)
+	snprintf(conn_sql, MAX_SQL_LENGTH, "delete from pbs.resv where ri_resvid = $1");
+	if (db_prepare_stmt(conn, STMT_DELETE_RESV, conn_sql, 1) != 0)
 		return -1;
 
 	return 0;
@@ -266,7 +266,7 @@ load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
  *
  */
 int
-pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
+pbs_db_save_resv(void *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
 	char *stmt = NULL;
@@ -274,22 +274,22 @@ pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	int rc = 0;
 	char *raw_array = NULL;
 
-	SET_PARAM_STR(conn, presv->ri_resvid, 0);
+	SET_PARAM_STR(conn_data, presv->ri_resvid, 0);
 
 	if (savetype & OBJ_SAVE_QS) {
-		SET_PARAM_STR(conn, presv->ri_queue, 1);
-		SET_PARAM_INTEGER(conn, presv->ri_state, 2);
-		SET_PARAM_INTEGER(conn, presv->ri_substate, 3);
-		SET_PARAM_BIGINT(conn, presv->ri_stime, 4);
-		SET_PARAM_BIGINT(conn, presv->ri_etime, 5);
-		SET_PARAM_BIGINT(conn, presv->ri_duration, 6);
-		SET_PARAM_INTEGER(conn, presv->ri_tactive, 7);
-		SET_PARAM_INTEGER(conn, presv->ri_svrflags, 8);
-		SET_PARAM_INTEGER(conn, presv->ri_numattr, 9);
-		SET_PARAM_INTEGER(conn, presv->ri_resvTag, 10);
-		SET_PARAM_INTEGER(conn, presv->ri_un_type, 11);
-		SET_PARAM_INTEGER(conn, presv->ri_fromsock, 12);
-		SET_PARAM_BIGINT(conn, presv->ri_fromaddr, 13);
+		SET_PARAM_STR(conn_data, presv->ri_queue, 1);
+		SET_PARAM_INTEGER(conn_data, presv->ri_state, 2);
+		SET_PARAM_INTEGER(conn_data, presv->ri_substate, 3);
+		SET_PARAM_BIGINT(conn_data, presv->ri_stime, 4);
+		SET_PARAM_BIGINT(conn_data, presv->ri_etime, 5);
+		SET_PARAM_BIGINT(conn_data, presv->ri_duration, 6);
+		SET_PARAM_INTEGER(conn_data, presv->ri_tactive, 7);
+		SET_PARAM_INTEGER(conn_data, presv->ri_svrflags, 8);
+		SET_PARAM_INTEGER(conn_data, presv->ri_numattr, 9);
+		SET_PARAM_INTEGER(conn_data, presv->ri_resvTag, 10);
+		SET_PARAM_INTEGER(conn_data, presv->ri_un_type, 11);
+		SET_PARAM_INTEGER(conn_data, presv->ri_fromsock, 12);
+		SET_PARAM_BIGINT(conn_data, presv->ri_fromaddr, 13);
 		stmt = STMT_UPDATE_RESV_QUICK;
 		params = 14;
 	}
@@ -301,11 +301,11 @@ pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 			return -1;
 
 		if (savetype & OBJ_SAVE_QS) {
-			SET_PARAM_BIN(conn, raw_array, len, 14);
+			SET_PARAM_BIN(conn_data, raw_array, len, 14);
 			stmt = STMT_UPDATE_RESV;
 			params = 15;
 		} else {
-			SET_PARAM_BIN(conn, raw_array, len, 1);
+			SET_PARAM_BIN(conn_data, raw_array, len, 1);
 			params = 2;
 			stmt = STMT_UPDATE_RESV_ATTRSONLY;
 		}
@@ -315,7 +315,7 @@ pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 		stmt = STMT_INSERT_RESV;
 
 	if (stmt)
-		rc = pg_db_cmd(conn, stmt, params);
+		rc = db_cmd(conn, stmt, params);
 
 	return rc;
 }
@@ -334,15 +334,15 @@ pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
  *
  */
 int
-pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pbs_db_load_resv(void *conn, pbs_db_obj_info_t *obj)
 {
 	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
 	PGresult *res;
 	int rc;
 
-	SET_PARAM_STR(conn, presv->ri_resvid, 0);
+	SET_PARAM_STR(conn_data, presv->ri_resvid, 0);
 
-	if ((rc = pg_db_query(conn, STMT_SELECT_RESV, 1, &res)) != 0)
+	if ((rc = db_query(conn, STMT_SELECT_RESV, 1, &res)) != 0)
 		return rc;
 
 	rc = load_resv(res, presv, 0);
@@ -368,22 +368,22 @@ pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
  *
  */
 int
-pg_db_find_resv(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
+pbs_db_find_resv(void *conn, void *st, pbs_db_obj_info_t *obj,
 	pbs_db_query_options_t *opts)
 {
 	PGresult *res;
 	int rc;
 	int params;
-
-	pg_query_state_t *state = (pg_query_state_t *) st;
+	char conn_sql[MAX_SQL_LENGTH];
+	db_query_state_t *state = (db_query_state_t *) st;
 
 	if (!state)
 		return -1;
 
 	params=0;
-	strcpy(conn->conn_sql, STMT_FINDRESVS_ORDBY_CREATTM);
+	strcpy(conn_sql, STMT_FINDRESVS_ORDBY_CREATTM);
 
-	if ((rc = pg_db_query(conn, conn->conn_sql, params, &res)) != 0)
+	if ((rc = db_query(conn, conn_sql, params, &res)) != 0)
 		return rc;
 
 	state->row = 0;
@@ -407,9 +407,9 @@ pg_db_find_resv(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
  *
  */
 int
-pg_db_next_resv(pbs_db_conn_t* conn, void* st, pbs_db_obj_info_t* obj)
+pbs_db_next_resv(void* conn, void* st, pbs_db_obj_info_t* obj)
 {
-	pg_query_state_t *state = (pg_query_state_t *) st;
+	db_query_state_t *state = (db_query_state_t *) st;
 	return (load_resv(state->res, obj->pbs_db_un.pbs_db_resv, state->row));
 }
 
@@ -426,11 +426,11 @@ pg_db_next_resv(pbs_db_conn_t* conn, void* st, pbs_db_obj_info_t* obj)
  *
  */
 int
-pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t* obj)
+pbs_db_delete_resv(void *conn, pbs_db_obj_info_t* obj)
 {
 	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
-	SET_PARAM_STR(conn, presv->ri_resvid, 0);
-	return (pg_db_cmd(conn, STMT_DELETE_RESV, 1));
+	SET_PARAM_STR(conn_data, presv->ri_resvid, 0);
+	return (db_cmd(conn, STMT_DELETE_RESV, 1));
 }
 
 
@@ -439,7 +439,6 @@ pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t* obj)
  *	Deletes attributes of a Resv
  *
  * @param[in]	conn - Connection handle
- * @param[in]	obj  - Resv information
  * @param[in]	obj_id  - Resv id
  * @param[in]	attr_list - List of attributes
  *
@@ -449,7 +448,7 @@ pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t* obj)
  *
  */
 int
-pg_db_del_attr_resv(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
+pbs_db_del_attr_resv(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
 	char *raw_array = NULL;
 	int len = 0;
@@ -458,12 +457,10 @@ pg_db_del_attr_resv(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_
 	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
 
-	SET_PARAM_STR(conn, obj_id, 0);
+	SET_PARAM_STR(conn_data, obj_id, 0);
+	SET_PARAM_BIN(conn_data, raw_array, len, 1);
 
-	SET_PARAM_BIN(conn, raw_array, len, 1);
-
-	rc = pg_db_cmd(conn, STMT_REMOVE_RESVATTRS, 2);
+	rc = db_cmd(conn, STMT_REMOVE_RESVATTRS, 2);
 
 	return rc;
 }
-

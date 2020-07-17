@@ -108,6 +108,7 @@ extern int write_single_node_mom_attr(struct pbsnode *np);
 extern struct python_interpreter_data  svr_interp_data;
 extern int node_delete_db(struct pbsnode *pnode);
 static void	remove_node_topology(char *);
+extern pbsnode *recov_node_cb(pbs_db_obj_info_t *, int *);
 
 /**
  * @brief
@@ -147,8 +148,8 @@ find_nodebyname(char *nodename)
  * @retval	NULL	- failure
  */
 
-struct pbsnode	  *find_nodebyaddr(addr)
-pbs_net_t addr;
+struct pbsnode *
+find_nodebyaddr(pbs_net_t addr)
 {
 	int i, j;
 	mom_svrinfo_t *psvrmom;
@@ -809,6 +810,7 @@ save_nodes_db(int changemodtime, void *p)
 	resource_def *rscdef;
 	int	i;
 	mominfo_t    *pmom = (mominfo_t *) p;
+	char *conn_db_err = NULL;
 
 	DBPRT(("%s: entered\n", __func__))
 
@@ -828,10 +830,6 @@ save_nodes_db(int changemodtime, void *p)
 		return (-1);
 	}
 
-	/* begin transaction */
-	if (pbs_db_begin_trx(svr_db_conn, 0, 0) !=0)
-		goto db_err;
-
 	/* insert/update the mominfo_time to db */
 	mom_tm.mit_time = mominfo_time.mit_time;
 	mom_tm.mit_gen = mominfo_time.mit_gen;
@@ -850,9 +848,6 @@ save_nodes_db(int changemodtime, void *p)
 		if (save_nodes_db_inner() == -1)
 			goto db_err;
 	}
-
-	if (pbs_db_end_trx(svr_db_conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
 
 	/*
 	 * Clear the ATR_VFLAG_MODIFY bit on each node attribute
@@ -892,12 +887,10 @@ save_nodes_db(int changemodtime, void *p)
 	return (0);
 
 db_err:
-	strcpy(log_buffer, "Unable to save node data base ");
-	if (svr_db_conn->conn_db_err != NULL)
-		strncat(log_buffer, svr_db_conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
-	log_err(-1, __func__, log_buffer);
-	(void) pbs_db_end_trx(svr_db_conn, PBS_DB_ROLLBACK);
-	panic_stop_db(log_buffer);
+	pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+	log_errf(-1, __func__, "Unable to save node to the database %s", conn_db_err ? conn_db_err: "");
+	free(conn_db_err);
+	panic_stop_db();
 	return (-1);
 }
 
@@ -989,99 +982,44 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
 int
 setup_nodes()
 {
-	int	  err;
-	int       perm = ATR_DFLAG_ACCESS | ATR_PERM_ALLOW_INDIRECT;
-	pbs_db_obj_info_t   obj;
+	pbs_db_obj_info_t obj;
 	pbs_db_node_info_t dbnode = {{0}};
 	pbs_db_mominfo_time_t mom_tm = {0, 0};
-	void *state;
 	int rc;
-	time_t	  mom_modtime = 0;
-	struct pbsnode *np;
-	pbs_list_head atrlist;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
-	svrattrl *pal;
-	int bad;
+	void *conn = (void *) svr_db_conn;
+	char *conn_db_err = NULL;
 
 	DBPRT(("%s: entered\n", __func__))
-	CLEAR_HEAD(atrlist);
 
 	tfree2(&streams);
 	tfree2(&ipaddrs);
 
 	svr_totnodes = 0;
 
-	/* start a transaction */
-	if (pbs_db_begin_trx(conn, 0, 0) != 0)
-		return (-1);
-
 	/* Load  the mominfo_time from the db */
 	obj.pbs_db_obj_type = PBS_DB_MOMINFO_TIME;
 	obj.pbs_db_un.pbs_db_mominfo_tm = &mom_tm;
 	if (pbs_db_load_obj(svr_db_conn, &obj) == -1) {
-		sprintf(log_buffer, "Could not load momtime info");
-		goto db_err;
+		log_errf(-1, __func__, "Could not load momtime info");
+		return (-1);
 	}
 	mominfo_time.mit_time = mom_tm.mit_time;
 	mominfo_time.mit_gen = mom_tm.mit_gen;
 
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
-	state = pbs_db_cursor_init(conn, &obj, NULL);
-	if (state == NULL) {
-		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		goto db_err;
+	
+	rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_node_cb);
+	if (rc == -1) {
+		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
+		if (conn_db_err != NULL) {
+			log_errf(-1, __func__, conn_db_err);
+			free(conn_db_err);
+		}
+		return (-1);
 	}
-
-	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-		mom_modtime = dbnode.mom_modtime;
-
-		/* now create node and subnodes */
-		pal = GET_NEXT(dbnode.db_attr_list.attrs);
-
-		err = create_pbs_node2(dbnode.nd_name, pal, perm, &bad, &np, FALSE, TRUE);	/* allow unknown resources */
-		free_attrlist(&atrlist);
-		if (err) {
-			if (err == PBSE_NODEEXIST) {
-				sprintf(log_buffer, "duplicate node \"%s\"",
-					dbnode.nd_name);
-			} else {
-				sprintf(log_buffer,
-					"could not create node \"%s\", "
-					"error = %d",
-					dbnode.nd_name, err);
-			}
-			log_err(-1, __func__, log_buffer);
-			continue; /* continue recovering other nodes */
-		}
-		if (mom_modtime) {
-			/* a vnode pointer will be returned */
-			if (np)
-				np->nd_moms[0]->mi_modtime = mom_modtime;
-		}
-		if (np) {
-			if ((np->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
-			    (np->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
-				mominfo_t *pmom = np->nd_moms[0];
-				if (pmom &&
-				    (np == ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[0])) {
-					/* natural vnode being recovered, add to pool */
-					add_mom_to_pool(np->nd_moms[0]);
-				}
-			}
-		}
-		free_db_attr_list(&dbnode.db_attr_list);
-	}
-
-	pbs_db_cursor_close(conn, state);
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) !=0)
-		goto db_err;
 
 	return (0);
-db_err:
-	log_err(-1, __func__, log_buffer);
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-	return (-1);
 }
 
 

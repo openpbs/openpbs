@@ -133,6 +133,9 @@ extern int confirm_resv_locally(resc_resv *, struct batch_request *, char *);
 extern int set_select_and_place(int, void *, attribute *);
 extern int make_schedselect(attribute *, resource *, pbs_queue *, attribute *);
 extern long long get_next_svr_sequence_id(void);
+extern int compare_obj_hash(void *, int , void *);
+extern void panic_stop_db();
+extern void free_db_attr_list(pbs_db_attr_list_t *);
 
 #ifdef _PROVISION_H
 extern int find_prov_vnode_list(job *, exec_vnode_listtype *, char **);

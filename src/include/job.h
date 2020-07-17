@@ -1084,6 +1084,7 @@ extern int   get_used_wall(job*);
 extern int   get_used_cput(job*);
 extern int   get_cput(job*);
 extern void  remove_deleted_resvs(void);
+extern int   pbsd_init_job(job *pjob, int type);
 
 extern void del_job_related_file(job *pjob, char *fsuffix);
 #ifdef PBS_MOM

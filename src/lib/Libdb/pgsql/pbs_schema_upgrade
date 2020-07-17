@@ -38,7 +38,6 @@
 # subject to Altair's trademark licensing policies.
 
 
-
 upgrade_pbs_schema_from_v1_0_0() {
 
 	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
@@ -46,7 +45,6 @@ upgrade_pbs_schema_from_v1_0_0() {
 		alter table pbs.node drop constraint node_nd_index_key;
 		create index job_scr_idx on pbs.job_scr (ji_jobid);
 		drop sequence pbs.node_sequence;
-
 		\set PBS_MAXHOSTNAME	'64'
 		create sequence pbs.svr_id_seq;
 		alter table pbs.server add column sv_hostname varchar(:PBS_MAXHOSTNAME);
@@ -264,15 +262,9 @@ upgrade_pbs_schema_from_v1_4_0() {
 }
 
 # start of the upgrade schema script
-
+. ${PBS_EXEC}/libexec/pbs_db_env
 tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
 PBS_CURRENT_SCHEMA_VER='1.5.0'
-conf=${PBS_CONF_FILE:-/etc/pbs.conf}
-PBS_DATA_SERVICE_PORT="$1"
-PBS_DATA_SERVICE_USER="$2"
-
-. $conf
-. "$PBS_EXEC"/libexec/pbs_pgsql_env.sh
 
 #
 # pbs_dataservice command now has more diagnostic output.
@@ -285,17 +277,17 @@ outfile="${tmpdir}/pbs_dataservice_output_$$"
 
 ${PBS_EXEC}/sbin/pbs_dataservice status > /dev/null
 if [ $? -eq 0 ]; then
-    # running stop now
-    ${PBS_EXEC}/sbin/pbs_dataservice stop > /dev/null
-    if [ $? -ne 0 ]; then
-        echo "Failed to stop PBS Dataservice"
-        exit 1
-    fi
+	# running stop now
+	${PBS_EXEC}/sbin/pbs_dataservice stop > /dev/null
+	if [ $? -ne 0 ]; then
+		echo "Failed to stop PBS Dataservice"
+		exit 1
+	fi
 fi
 
 ret=$?
 if [ $ret -ne 0 ]; then
-    exit $ret
+	exit $ret
 fi
 
 # restart with new credentials
@@ -305,110 +297,110 @@ fi
 #
 ${PBS_EXEC}/sbin/pbs_dataservice start > ${outfile}
 if [ $? -ne 0 ]; then
-    cat ${outfile}
-    rm -f ${outfile}
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    exit 1
+	cat ${outfile}
+	rm -f ${outfile}
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	return 1
 fi
 rm -f ${outfile}
 
 ver=`${PGSQL_DIR}/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "select pbs_schema_version from pbs.info"`
 if [ "$ver" = "${PBS_CURRENT_SCHEMA_VER}" ]; then
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    exit 0
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	exit 0
 fi
 
 if [ "$ver" = "1.0.0" ]; then
-    upgrade_pbs_schema_from_v1_0_0
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        ret=$?
-        if [ $ret -ne 0 ]; then
-            exit $ret
-        fi
-        exit 1
-    fi
-    ver="1.1.0"
+	upgrade_pbs_schema_from_v1_0_0
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		ret=$?
+		if [ $ret -ne 0 ]; then
+		exit $ret
+		fi
+		exit 1
+	fi
+	ver="1.1.0"
 fi
 
 ${PBS_EXEC}/sbin/pbs_dataservice status > /dev/null
 if [ $? -eq 1 ]; then
-    # not running, start now
-    ${PBS_EXEC}/sbin/pbs_dataservice start > ${outfile}
-    if [ $? -ne 0 ]; then
-        cat ${outfile}
-        rm -f ${outfile}
-        ret=$?
-        if [ $ret -ne 0 ]; then
-            exit $ret
-        fi
-        exit 1
-    fi
-    rm -f ${outfile}
+	# not running, start now
+	${PBS_EXEC}/sbin/pbs_dataservice start > ${outfile}
+	if [ $? -ne 0 ]; then
+		cat ${outfile}
+		rm -f ${outfile}
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			exit $ret
+		fi
+		exit 1
+	fi
+	rm -f ${outfile}
 fi
 
 if [ "$ver" = "1.1.0" ]; then
-    upgrade_pbs_schema_from_v1_1_0
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    ver="1.2.0"
+	upgrade_pbs_schema_from_v1_1_0
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	ver="1.2.0"
 fi
 
 if [ "$ver" = "1.2.0" ]; then
-    upgrade_pbs_schema_from_v1_2_0
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    ver="1.3.0"
+	upgrade_pbs_schema_from_v1_2_0
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	ver="1.3.0"
 fi
 
 if [ "$ver" = "1.3.0" ]; then
-    upgrade_pbs_schema_from_v1_3_0
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    ver="1.4.0"
+	upgrade_pbs_schema_from_v1_3_0
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	ver="1.4.0"
 fi
 
 if [ "$ver" = "1.4.0" ]; then
-    upgrade_pbs_schema_from_v1_4_0
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    ver="1.5.0"
+	upgrade_pbs_schema_from_v1_4_0
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	ver="1.5.0"
 else
-    echo "Cannot upgrade PBS datastore version $ver"
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
-    exit 1
+	echo "Cannot upgrade PBS datastore version $ver"
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		exit $ret
+	fi
+	exit 1
 fi
 
 ${PBS_EXEC}/sbin/pbs_dataservice status > /dev/null
 if [ $? -eq 1 ]; then
-    # not running, start now
-    ${PBS_EXEC}/sbin/pbs_dataservice start > ${outfile}
-    if [ $? -ne 0 ]; then
-        cat ${outfile}
-        rm -f ${outfile}
-        ret=$?
-        if [ $ret -ne 0 ]; then
-            exit $ret
-        fi
-        exit 1
-    fi
+	# not running, start now
+	${PBS_EXEC}/sbin/pbs_dataservice start > ${outfile}
+	if [ $? -ne 0 ]; then
+		cat ${outfile}
+		rm -f ${outfile}
+		ret=$?
+		if [ $ret -ne 0 ]; then
+			exit $ret
+		fi
+		exit 1
+	fi
 fi
 rm -f ${outfile}
 

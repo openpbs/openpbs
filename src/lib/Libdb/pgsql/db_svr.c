@@ -40,7 +40,6 @@
 
 
 /**
- * @file    db_postgres_svr.c
  *
  * @brief
  *      Implementation of the svr data access functions for postgres
@@ -50,6 +49,9 @@
 #include "pbs_db.h"
 #include <errno.h>
 #include "db_postgres.h"
+
+extern char *errmsg_cache;
+static int pbs_db_truncate_all(void *conn);
 
 /**
  * @brief
@@ -64,9 +66,11 @@
  *
  */
 int
-pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
+db_prepare_svr_sqls(void *conn)
 {
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.server( "
+	char conn_sql[MAX_SQL_LENGTH];
+
+	snprintf(conn_sql, MAX_SQL_LENGTH, "insert into pbs.server( "
 		"sv_jobidnumber, "
 		"sv_savetm, "
 		"sv_creattm, "
@@ -74,36 +78,29 @@ pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
 		") "
 		"values "
 		"($1, localtimestamp, localtimestamp, hstore($2::text[]))");
-	if (pg_prepare_stmt(conn, STMT_INSERT_SVR, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_INSERT_SVR, conn_sql, 2) != 0)
 		return -1;
 
 	/* replace all attributes for a FULL update */
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
 		"sv_jobidnumber = $1, "
 		"sv_savetm = localtimestamp, "
 		"attributes = attributes || hstore($2::text[])");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR, conn->conn_sql, 2) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_SVR, conn_sql, 2) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
 		"sv_savetm = localtimestamp,"
 		"attributes = attributes - $1::text[]");
-	if (pg_prepare_stmt(conn, STMT_REMOVE_SVRATTRS, conn->conn_sql, 1) != 0)
+	if (db_prepare_stmt(conn, STMT_REMOVE_SVRATTRS, conn_sql, 1) != 0)
 		return -1;
 
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
+	snprintf(conn_sql, MAX_SQL_LENGTH, "select "
 		"sv_jobidnumber, "
 		"hstore_to_array(attributes) as attributes "
 		"from "
 		"pbs.server ");
-	if (pg_prepare_stmt(conn, STMT_SELECT_SVR, conn->conn_sql, 0) != 0)
-		return -1;
-
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
-		"pbs_schema_version "
-		"from "
-		"pbs.info");
-	if (pg_prepare_stmt(conn, STMT_SELECT_DBVER, conn->conn_sql, 0) != 0)
+	if (db_prepare_stmt(conn, STMT_SELECT_SVR, conn_sql, 0) != 0)
 		return -1;
 
 	return 0;
@@ -120,10 +117,12 @@ pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
  *		 0 - Success
  *
  */
-int
-pbs_db_truncate_all(pbs_db_conn_t *conn)
+static int
+pbs_db_truncate_all(void *conn)
 {
-	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "truncate table 	"
+	char conn_sql[MAX_SQL_LENGTH]; /* sql buffer */
+
+	snprintf(conn_sql, MAX_SQL_LENGTH, "truncate table 	"
 		"pbs.scheduler, "
 		"pbs.node, "
 		"pbs.queue, "
@@ -132,7 +131,7 @@ pbs_db_truncate_all(pbs_db_conn_t *conn)
 		"pbs.job, "
 		"pbs.server");
 
-	if (pbs_db_execute_str(conn, conn->conn_sql) == -1)
+	if (db_execute_str(conn, conn_sql) == -1)
 		return -1;
 
 	return 0;
@@ -151,7 +150,7 @@ pbs_db_truncate_all(pbs_db_conn_t *conn)
  *
  */
 int
-pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
+pbs_db_save_svr(void *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
 	char *stmt = NULL;
@@ -161,23 +160,29 @@ pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	int rc = 0;
 
 	/* Svr does not have a QS area, so ignoring that */
-	SET_PARAM_BIGINT(conn, ps->sv_jobidnumber, 0);
+	SET_PARAM_BIGINT(conn_data, ps->sv_jobidnumber, 0);
 
 	if ((ps->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
 		/* convert attributes to postgres raw array format */
 		if ((len = attrlist_to_dbarray(&raw_array, &ps->db_attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 1);
+		SET_PARAM_BIN(conn_data, raw_array, len, 1);
 		params = 2;
 		stmt = STMT_UPDATE_SVR;
 	}
 
-	if (savetype & OBJ_SAVE_NEW)
+	if (savetype & OBJ_SAVE_NEW) {
 		stmt = STMT_INSERT_SVR;
+		/* reinitialize schema by dropping PBS schema */
+		if (pbs_db_truncate_all(conn) == -1) {
+			db_set_error(conn, &errmsg_cache, "Could not truncate PBS data", stmt, "");
+			return -1;
+		}
+	}
 
 	if (stmt)
-		rc = pg_db_cmd(conn, stmt, params);
+		rc = db_cmd(conn, stmt, params);
 
 	return rc;
 }
@@ -196,7 +201,7 @@ pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
  *
  */
 int
-pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pbs_db_load_svr(void *conn, pbs_db_obj_info_t *obj)
 {
 	PGresult *res;
 	int rc;
@@ -205,7 +210,7 @@ pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	static int sv_jobidnumber_fnum, attributes_fnum;
 	static int fnums_inited = 0;
 
-	if ((rc = pg_db_query(conn, STMT_SELECT_SVR, 0, &res)) != 0)
+	if ((rc = db_query(conn, STMT_SELECT_SVR, 0, &res)) != 0)
 		return rc;
 
 	if (fnums_inited == 0) {
@@ -227,50 +232,6 @@ pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 
 /**
  * @brief
- *	Retrieve the Datastore schema version (maj, min)
- *
- * @param[out]   db_maj_ver - return the major schema version
- * @param[out]   db_min_ver - return the minor schema version
- *
- * @return     Error code
- * @retval     -1 - Failure
- * @retval     0  - Success
- *
- */
-int
-pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
-{
-	PGresult *res;
-	int rc;
-	char ver_str[MAX_SCHEMA_VERSION_LEN + 1];
-	char *token;
-
-	if ((rc = pg_db_query(conn, STMT_SELECT_DBVER, 0, &res)) != 0)
-		return rc;
-
-	ver_str[0] = '\0';
-	GET_PARAM_STR(res, 0, ver_str, PQfnumber(res, "pbs_schema_version"));
-
-	PQclear(res);
-
-	if (ver_str[0] == '\0')
-		return -1;
-
-	token = strtok(ver_str, ".");
-	if (!token)
-		return -1;
-	*db_maj_ver = atol(token);
-
-	token = strtok(NULL, ".");
-	if (!token)
-		return -1;
-	*db_min_ver = atol(token);
-
-	return 0;
-}
-
-/**
- * @brief
  *	Deletes attributes of a server
  *
  * @param[in]	conn - Connection handle
@@ -283,7 +244,7 @@ pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
  *
  */
 int
-pg_db_del_attr_svr(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
+pbs_db_del_attr_svr(void *conn, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
 	char *raw_array = NULL;
 	int len = 0;
@@ -292,9 +253,9 @@ pg_db_del_attr_svr(pbs_db_conn_t *conn, void *obj_id, pbs_db_attr_list_t *attr_l
 	if ((len = attrlist_to_dbarray_ex(&raw_array, attr_list, 1)) <= 0)
 		return -1;
 
-	SET_PARAM_BIN(conn, raw_array, len, 0);
+	SET_PARAM_BIN(conn_data, raw_array, len, 0);
 
-	rc = pg_db_cmd(conn, STMT_REMOVE_SVRATTRS, 1);
+	rc = db_cmd(conn, STMT_REMOVE_SVRATTRS, 1);
 
 	return rc;
 }

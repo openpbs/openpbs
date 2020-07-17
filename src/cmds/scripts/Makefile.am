@@ -79,14 +79,11 @@ dist_unitfile_DATA = \
 	pbs.service
 
 dist_libexec_SCRIPTS = \
-	install_db \
 	pbs_habitat \
 	pbs_init.d \
-	pbs_pgsql_env.sh \
 	pbs_postinstall \
 	pbs_preuninstall \
-	pbs_posttrans \
-	pbs_schema_upgrade
+	pbs_posttrans
 
 dist_bin_SCRIPTS = \
 	pbs_topologyinfo \
@@ -99,8 +96,7 @@ dist_sbin_SCRIPTS = \
 	pbs_snapshot
 
 dist_sysconf_DATA = \
-	modulefile \
-	pbs_db_schema.sql
+	modulefile 
 
 CLEANFILES = \
 	pbs_init.d \
