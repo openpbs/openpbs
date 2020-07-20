@@ -1050,14 +1050,14 @@ class TestTPP(TestFunctional):
         for host in comm_hosts:
             self.set_pbs_conf(host_name=host, conf_param=a)
         mom_hosts = [self.hostB, self.hostC, self.hostD, self.hostE]
-        for hosts in mom_hosts:
+        for host in mom_hosts:
             if hosts == self.hostB:
                 leaf_val = self.hostF + "," + self.hostG
-            if hosts == self.hostC:
+            elif hosts == self.hostC:
                 leaf_val = self.hostG + "," + self.hostF
-            if hosts == self.hostD:
+            elif hosts == self.hostD:
                 leaf_val = self.hostH + "," + self.hostI
-            if hosts == self.hostE:
+            elif hosts == self.hostE:
                 leaf_val = self.hostI + "," + self.hostH
             b = {'PBS_LEAF_ROUTERS': leaf_val}
             self.set_pbs_conf(host_name=host, conf_param=b)
