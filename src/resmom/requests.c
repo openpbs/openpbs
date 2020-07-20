@@ -2514,13 +2514,11 @@ req_rerunjob(struct batch_request *preq)
 #endif
 	}
 
-#ifdef WIN32
-	(void)closesocket(sock);
-	return;
-#else
-	(void)close(sock);
+	closesocket(sock);
+#ifndef WIN32
 	exit(rc);
 #endif
+	return;
 }
 
 #ifdef WIN32 /* WIN32 ------------------------------------------------------ */

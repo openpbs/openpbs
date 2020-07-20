@@ -302,7 +302,7 @@ process_request(int sfds)
 
 	if (!conn) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
-		CLOSESOCKET(sfds);
+		closesocket(sfds);
 		return;
 	}
 

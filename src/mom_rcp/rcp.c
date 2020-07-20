@@ -639,15 +639,14 @@ tolocal(int argc, char *argv[])
 
 #ifdef WIN32
 		sink(1, argv + argc - 1);
-		(void)closesocket(rem);
 #else
 		if (seteuid(userid) == -1)
 			exit(15);
 		sink(1, argv + argc - 1);
 		if (seteuid(0) == -1)
 			exit(15);
-		(void)close(rem);
 #endif
+		closesocket(rem);
 
 		rem = -1;
 	}

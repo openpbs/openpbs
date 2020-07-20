@@ -1403,7 +1403,7 @@ no_suspend(int sig)
 
 /**
  * @brief
- *	Close a socket for both windows and unix.
+ *	Shut and Close a socket
  *
  * @return	void
  * @param	sock	file descriptor
@@ -1412,14 +1412,10 @@ no_suspend(int sig)
  *
  */
 static void
-close_sock(int sock)
+shut_close_sock(int sock)
 {
 	shutdown(sock, 2);
-#ifdef WIN32
 	closesocket(sock);
-#else
-	close(sock);
-#endif /* WIN32 */
 }
 
 /**
@@ -1436,7 +1432,7 @@ bailout(int ret)
 {
 	int c;
 
-	close_sock(comm_sock);
+	shut_close_sock(comm_sock);
 	printf("Job %s is being deleted\n", new_jobname);
 	c = cnt2server(server_out);
 	if (c <= 0) {
@@ -2235,7 +2231,7 @@ retry:
 
 	if ((ret != CS_SUCCESS) && (ret != CS_AUTH_USE_IFF)) {
 		fprintf(stderr, "qsub: failed authentication with execution host\n");
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 
@@ -2245,19 +2241,19 @@ retry:
 		/*
 		 * We couldn't read data so try again if it is a port scan.
 		 */
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 	if (version != 1) {
 		fprintf(stderr, "qsub: unknown protocol version %d\n", version);
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 
 	jobid = disrst(news, &ret);
 	if ((ret != DIS_SUCCESS) || (strcmp(jobid, new_jobname) != 0)) {
 		fprintf(stderr, "qsub: Unknown Job Identifier %s\n", jobid);
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 

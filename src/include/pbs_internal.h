@@ -391,10 +391,9 @@ enum accrue_types {
 #endif
 #define LOCALHOST_SHORTNAME "localhost"
 #ifdef WIN32
-#define CLOSESOCKET(X) (void)closesocket(X)
 #define ERRORNO        WSAGetLastError()
 #else
-#define CLOSESOCKET(X) (void)close(X)
+#define closesocket(X) close(X)
 #define ERRORNO        errno
 #endif
 

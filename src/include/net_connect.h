@@ -176,7 +176,6 @@ conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*r
 conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int), int priority_flag);
 int add_conn_data(int sock, void *data); /* Adds the data to the connection */
 void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
-void close_socket(int sock);
 int  client_to_svr(pbs_net_t, unsigned int port, int);
 int  client_to_svr_extend(pbs_net_t, unsigned int port, int, char*);
 void close_conn(int socket);

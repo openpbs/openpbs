@@ -5887,11 +5887,7 @@ rm_request(int iochan, int version, int prot)
 		if (!conn) {
 			log_err(errno, __func__,
 				"not find iochan in connection table");
-#ifdef	WIN32
-			(void)closesocket(iochan);
-#else
-			(void)close(iochan);
-#endif	/* WIN32 */
+			closesocket(iochan);
 			return -1;
 		}
 		ipadd = conn->cn_addr;
@@ -6306,11 +6302,7 @@ tcp_request(int fd)
 		sprintf(log_buffer, "could not find fd=%d in connection table",
 			fd);
 		log_err(-1, __func__, log_buffer);
-#ifdef	WIN32
-		(void)closesocket(fd);
-#else
-		(void)close(fd);
-#endif	/* WIN32 */
+		closesocket(fd);
 		return;
 	}
 
