@@ -105,6 +105,7 @@
 #include "pbs_stat.h"
 #include "libutil.h"
 #include "pbs_ifl.h"
+#include "pbs_internal.h"
 
 #ifdef        USELOG
 #include <syslog.h>
