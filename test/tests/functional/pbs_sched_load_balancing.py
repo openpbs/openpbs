@@ -52,6 +52,7 @@ class TestSchedLoadBalancing(TestFunctional):
         TestFunctional.setUp(self)
         self.scheduler.set_sched_config({'load_balancing': 'true	ALL'})
 
+    @skipOnCpuSet
     def test_load_bal_node_ip(self):
         """
         This test case tests scheduler load balancing
