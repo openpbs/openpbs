@@ -1,3 +1,5 @@
+#!/bin/bash -ex
+
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -35,30 +37,13 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-version: '3'
+workdir=/src/etc
+logdir=/logs
 
-services:
-  pbs-build:
-    image: ${CONTAINER_PLATFORM}
-    volumes:
-      - ../:/pbssrc
-      - ./:/src
-      - ./logs:/logs
-    entrypoint: /src/docker-entrypoint
-    environment: 
-      - LC_ALL=en_US.utf-8
-      - LANG=en_US.utf-8
-    env_file: .env
-    environment:
-      - LC_ALL=en_US.utf-8
-      - LANG=en_US.utf-8
-    networks:
-      ci:
-        aliases:
-          - pbs_server
-    hostname: pbs.ci
-    privileged: true
-
-networks:
-  ci:
-    driver: bridge
+cd /pbssrc
+${workdir}/do.sh 1 2>&1 | tee -a ${logdir}/build-$(hostname -s)
+if [ $? -ne 0 ]; then
+    exit 1
+else
+    exit 0
+fi

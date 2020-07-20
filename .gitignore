@@ -264,6 +264,8 @@ ci/logs/
 ci/logs/prev_LOGS/
 ci/.*
 ci/packages
+ci/ptl_ts_tree.json
+ci/docker-compose.json
 
 # Generated scripts
 src/cmds/scripts/modulefile

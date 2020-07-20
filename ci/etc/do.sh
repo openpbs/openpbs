@@ -45,8 +45,11 @@ fi
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
-  workdir=/src
+  . /src/etc/macros
+  config_dir=/src/${CONFIG_DIR}
+  chmod -R 755 ${config_dir}
   logdir=/logs
+  chmod -R 755 ${logdir}
   PBS_DIR=/pbssrc
 else
   PBS_DIR=$(readlink -f $0 | awk -F'/ci/' '{print $1}')
@@ -89,17 +92,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     dnf -y builddep ${SPEC_FILE}
     dnf -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
-    # source install swig
-    dnf -y install gcc-c++ byacc pcre-devel
-    mkdir -p /tmp/swig/
-    cd /tmp/swig
-    git clone https://github.com/swig/swig --branch rel-4.0.0 --single-branch
-    cd swig
-    ./autogen.sh
-    ./configure
-    make -j8
-    make install
-    cd ${PBS_DIR}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
       dnf -y update
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
@@ -150,21 +142,39 @@ fi
 
 if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   echo "### First time build is complete ###"
+  echo "READY:$(hostname -s)" >>${config_dir}/${STATUS_FILE}
   exit 0
+fi
+
+if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+  if [ ! -f /tmp/swig/swig/configure ]; then
+    # source install swig
+    dnf -y install gcc-c++ byacc pcre-devel
+    mkdir -p /tmp/swig/
+    cd /tmp/swig
+    git clone https://github.com/swig/swig --branch rel-4.0.0 --single-branch
+    cd swig
+    ./autogen.sh
+    ./configure
+    make -j8
+    make install
+    cd ${PBS_DIR}
+  fi
 fi
 
 if [ "x${ONLY_INSTALL_DEPS}" == "x1" ]; then
   exit 0
 fi
-
-_targetdirname=target-${ID}
+_targetdirname=target-${ID}-$(hostname -s)
 if [ "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
   rm -rf ${_targetdirname}
 fi
 mkdir -p ${_targetdirname}
-if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
+if [ ! -f ./configure ]; then
   [[ -f Makefile ]] && make distclean || true
   ./autogen.sh
+fi
+if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
   _cflags="-g -O2 -Wall -Werror"
   if [ "x${ID}" == "xubuntu" ]; then
     _cflags="${_cflags} -Wno-unused-result"
@@ -174,8 +184,8 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   fi
   cd ${_targetdirname}
   if [ -f /src/ci ]; then
-    if [ -f ${workdir}/.configure_opt ]; then
-      configure_opt="$(cat ${workdir}/.configure_opt)"
+    if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
+      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
       _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
       configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
     else
@@ -199,24 +209,56 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   cd -
 fi
 cd ${_targetdirname}
-prefix=$(cat ${workdir}/.configure_opt | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
+prefix=$(cat ${config_dir}/${CONFIGURE_OPT_FILE} | awk -F'prefix=' '{print $2}' | awk -F' ' '{print $1}')
 if [ "x${prefix}" == "x" ]; then
   prefix='/opt/pbs'
 fi
 if [ "x${ONLY_INSTALL}" == "x1" -o "x${ONLY_TEST}" == "x1" ]; then
   echo "skipping make"
 else
+  if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
+    if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
+      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
+      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
+      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+    else
+      configure_opt='--prefix=/opt/pbs --enable-ptl'
+    fi
+    if [ -z ${_cflags} ]; then
+      ../configure ${configure_opt}
+    else
+      ../configure CFLAGS="${_cflags}" ${configure_opt}
+    fi
+  fi
   make -j8
 fi
-if [ "x$ONLY_REBUILD" == "x1" ]; then
+if [ "x${ONLY_REBUILD}" == "x1" ]; then
   exit 0
 fi
 if [ "x${ONLY_TEST}" != "x1" ]; then
+  if [ ! -f ${PBS_DIR}/${_targetdirname}/Makefile ]; then
+    if [ -f ${config_dir}/${CONFIGURE_OPT_FILE} ]; then
+      configure_opt="$(cat ${config_dir}/${CONFIGURE_OPT_FILE})"
+      _cflags="$(echo ${configure_opt} | awk -F'"' '{print $2}')"
+      configure_opt="$(echo ${configure_opt} | sed -e 's/CFLAGS=\".*\"//g')"
+    else
+      configure_opt='--prefix=/opt/pbs --enable-ptl'
+    fi
+    if [ -z ${_cflags} ]; then
+      ../configure ${configure_opt}
+    else
+      ../configure CFLAGS="${_cflags}" ${configure_opt}
+    fi
+    make -j8
+  fi
   make -j8 install
   chmod 4755 ${prefix}/sbin/pbs_iff ${prefix}/sbin/pbs_rcp
   if [ "x${DONT_START_PBS}" != "x1" ]; then
     ${prefix}/libexec/pbs_postinstall server
     sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
+    if [ "x$IS_CI_BUILD" == "x1" ]; then
+      /src/etc/configure_node.sh
+    fi
     /etc/init.d/pbs restart
   fi
 fi
@@ -240,17 +282,18 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
-  benchpress_opt="$(cat ${workdir}/.benchpress_opt)"
+  benchpress_opt="$(cat ${config_dir}/${BENCHPRESS_OPT_FILE})"
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
+  params="--param-file=${config_dir}/${PARAM_FILE}"
   if [ -z "${eval_tag}" ]; then
-    pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+    pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   else
-    pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile
+    pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
   fi
 fi
 
-if [ "x$IS_CI_BUILD" != "x1" ]; then
+if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
   pbs_benchpress --tags=smoke
 fi
