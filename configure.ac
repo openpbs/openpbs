@@ -68,7 +68,6 @@ AC_PROG_CC
 AC_PROG_LEX
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AM_PROG_LIBTOOL
 
 # Automake macros
 #AM_PROG_AR macro is defined with automake version >= 1.12
@@ -76,6 +75,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_PROG_CC_C_O
 
 # Initialize libtool
+AM_PROG_LIBTOOL
 LT_INIT([shared static])
 
 # Checks for libraries.

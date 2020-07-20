@@ -68,6 +68,6 @@ dist_sbin_SCRIPTS = \
 	pbs_ds_systemd
 
 install-exec-hook:
-	cp -p $(DESTDIR)$(libdir)/libdb.so.0.0.0 $(DESTDIR)$(libdir)/libdb_pg.so
+	install -D $(DESTDIR)$(libdir)/libdb.so.0.0.0 $(DESTDIR)$(libdir)/libdb_pg.so
 uninstall:
 	rm -f $(DESTDIR)$(libdir)/libdb_pg.so
