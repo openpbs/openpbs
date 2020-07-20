@@ -388,6 +388,7 @@ class DshUtils(object):
             if 'PBS_CONF_FILE' in os.environ:
                 dflt_conf = os.environ['PBS_CONF_FILE']
         else:
+            """
             pc = ('"import os;print([False, os.environ[\'PBS_CONF_FILE\']]'
                   '[\'PBS_CONF_FILE\' in os.environ])"')
             cmd = ['ls', '-1', dflt_python]
@@ -401,6 +402,11 @@ class DshUtils(object):
             if ((ret['rc'] != 0) and (len(ret['out']) > 0) and
                     (ret['out'][0] != 'False')):
                 dflt_conf = ret['out'][0]
+            """
+            print("******Executing else from get_conf_file****")
+            val = os.environ.geti('PBS_CONF_FILE', False)
+            if value is not False:
+                dflt_conf = value
 
         self._h2c[hostname] = dflt_conf
         return dflt_conf
