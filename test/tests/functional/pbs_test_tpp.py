@@ -39,7 +39,6 @@
 
 from tests.functional import *
 import socket
-import subprocess
 
 
 @tags('comm')
