@@ -1097,65 +1097,6 @@ class TestTPP(TestFunctional):
         self.comm4.start()
         self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=30)
 
-    @requirements(num_moms=2)
-    def test_comm_instantiation_on_cmdline(self):
-        """
-        Test pbs_comm instantiation through command line
-        Configuration:
-        Node 1 : Server, Sched, Mom, Comm
-        Node 2 : Mom
-        """
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
-        self.hostA = self.momA.shortname
-        self.hostB = self.momB.shortname
-
-        self.comm.signal("-KILL")
-        for mom in self.moms.values():
-            self.server.expect(NODE, {'state': 'state-unknown,down'},
-                               id=mom.shortname)
-
-        pbs_comm_path = os.path.join(self.pbs_conf['PBS_EXEC'], "sbin",
-                                     "pbs_comm")
-        sudo_path = self.du.which(hostname=self.mom.hostname,
-                                  exe="sudo")
-
-        cmd = [sudo_path, "-u", "root", pbs_comm_path, "-N &"]
-
-        self.logger.info("Starting pbs_comm through command line")
-        msg = "Not able to start pbs_comm through command line"
-        ret = self.du.run_cmd(self.server.shortname, cmd, as_script=True)
-        self.assertTrue(ret['rc'] == 0 and len(ret['err']) == 0, msg)
-
-        for mom in self.moms.values():
-            self.server.expect(NODE, {'state': 'free'},
-                               id=mom.shortname)
-
-        jid = self.submit_job(job=True, job_script=True, sleep=30)
-
-        rid = self.submit_resv()
-        resv_jid = self.submit_job(rid=rid, resv_job=True, job_script=True,
-                                   sleep=30)
-
-        resv_attrib = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-        self.server.expect(RESV, resv_attrib, rid, offset=10)
-
-        for job_id in [jid, resv_jid]:
-            self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
-
-        self.logger.info("Killing pbs_comm that was just started")
-        cmd = [sudo_path, "kill", str(process.pid)]
-        ret = self.du.run_cmd(self.server.shortname, cmd, as_script=True)
-        self.assertTrue(ret['rc'] == 0 and len(ret['err']) == 0, msg)
-
-        self.logger.info("Starting pbs_comm through init script")
-        self.comm.start()
-
-        self.server.expect(RESV, resv_attrib, rid)
-        for job_id in [jid, resv_jid]:
-            self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=30)
-            self.server.log_match("%s;Exit_status=0" % job_id)
-
     def tearDown(self):
         os.environ['PBS_CONF_FILE'] = self.pbs_conf_path
         self.logger.info("Successfully exported PBS_CONF_FILE variable")
