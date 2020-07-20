@@ -23,10 +23,10 @@ Simply invoke the following command:
 * **./ci --params:** The params option can be used to run ci with a custom configuration.
 Following parameters can be set.
 | os | nodes | configure | tests |
-os 			: used to set OS platform of the container (single node)
-nodes 		: used to define multi-node configuration for container
-configure 	: will hold the value of configure options for PBS
-tests 		: will hold the value for pbs_benchpress argument for PTL; if set empty will skip PTL tests
+> os: used to set OS platform of the container (single node)
+> nodes: used to define multi-node configuration for container
+> configure: will hold the value of configure options for PBS
+> tests: will hold the value for pbs_benchpress argument for PTL; if set empty will skip PTL tests
 
 ```bash
 # When the params command is called without any arguments it will display the currently set "configuration" and then proceed to run ci
