@@ -43,7 +43,7 @@ SUBDIRS = \
 	pgsql
 
 all-local:
-	install -D $(top_builddir)/src/lib/Libdb/pgsql/.libs/libdb.so.0.0.0 $(top_builddir)/src/lib/Libdb/libdb.so
+	cp -p $(top_builddir)/src/lib/Libdb/pgsql/.libs/libdb.so.0.0.0 $(top_builddir)/src/lib/Libdb/libdb.so
 
 clean-local:
 	rm -f $(top_builddir)/src/lib/Libdb/libdb.so
