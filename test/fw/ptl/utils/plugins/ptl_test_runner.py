@@ -467,11 +467,11 @@ class PtlTextTestRunner(TextTestRunner):
     """
 
     def __init__(self, stream=sys.stdout, descriptions=True, verbosity=3,
-                 config=None, repetition=1, repetition_delay=0):
+                 config=None, repeat_count=1, repeat_delay=0):
         self.logger = logging.getLogger(__name__)
         self.result = None
-        self.repetition = repetition
-        self.repetition_delay = repetition_delay
+        self.repeat_count = repeat_count
+        self.repeat_delay = repeat_delay
         TextTestRunner.__init__(self, stream, descriptions, verbosity, config)
 
     def _makeResult(self):
@@ -493,17 +493,15 @@ class PtlTextTestRunner(TextTestRunner):
         self.result = result = self._makeResult()
         self.result.start = datetime.datetime.now()
         try:
-            for i in range(self.repetition):
-                self.logger.info("====================================")
-                self.logger.info("tests are running (" + str(i + 1) + ") time")
-                self.logger.info("====================================")
-                if i is not 0:
-                    time.sleep(self.repetition_delay)
+            for i in range(self.repeat_count):
+                if i != 0:
+                    time.sleep(self.repeat_delay)
                 test(result)
-            self.logger.info("=============================================")
-            self.logger.info(" All tests are repeated " +
-                             str(self.repetition) + " times")
-            self.logger.info("=============================================")
+            if self.repeat_count > 1:
+                self.logger.info("==========================================")
+                self.logger.info("All Tests are repeated %d times"
+                                 % self.repeat_count)
+                self.logger.info("==========================================")
         except KeyboardInterrupt:
             do_exit = True
         self.result.stop = datetime.datetime.now()
@@ -526,8 +524,8 @@ class PTLTestRunner(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.param = None
-        self.repeat_tests = 1
-        self.repeat_test_delay = 0
+        self.repeat_count = 1
+        self.repeat_delay = 0
         self.use_cur_setup = False
         self.lcov_bin = None
         self.lcov_data = None
@@ -552,8 +550,8 @@ class PTLTestRunner(Plugin):
         """
         pass
 
-    def set_data(self, paramfile, testparam, repeat_tests,
-                 repeat_test_delay, lcov_bin, lcov_data, lcov_out,
+    def set_data(self, paramfile, testparam, repeat_count,
+                 repeat_delay, lcov_bin, lcov_data, lcov_out,
                  genhtml_bin, lcov_nosrc, lcov_baseurl,
                  tc_failure_threshold, cumulative_tc_failure_threshold,
                  use_cur_setup):
@@ -573,8 +571,8 @@ class PTLTestRunner(Plugin):
             else:
                 testparam = _f
         self.param = testparam
-        self.repeat_tests = repeat_tests
-        self.repeat_test_delay = repeat_test_delay
+        self.repeat_count = repeat_count
+        self.repeat_delay = repeat_delay
         self.use_cur_setup = use_cur_setup
         self.lcov_bin = lcov_bin
         self.lcov_data = lcov_data
@@ -598,8 +596,8 @@ class PTLTestRunner(Plugin):
         Prepare test runner
         """
         return PtlTextTestRunner(verbosity=3, config=self.config,
-                                 repetition=self.repeat_tests,
-                                 repetition_delay=self.repeat_test_delay)
+                                 repeat_count=self.repeat_count,
+                                 repeat_delay=self.repeat_delay)
 
     def prepareTestResult(self, result):
         """

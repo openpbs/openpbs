@@ -145,8 +145,8 @@ def usage():
             'fails\n']
     msg += ['--timeout=<seconds>: duration after which no test suites are '
             'run\n']
-    msg += ['--repeat-tests=<int>: number of times test is going to repeat\n']
-    msg += ['--repeat-tests-delay=<seconds>: delay between two repetition\n']
+    msg += ['--repeat-count=<count>: repeat given all tests <count> times\n']
+    msg += ['--repeat-delay=<seconds>: delay between two repetition\n']
     msg += ['--follow-child: if set, walk the test hierarchy and run ' +
             'each test\n']
     msg += ['--tags=<tag>: Select only tests that have <tag> tag.']
@@ -216,8 +216,8 @@ if __name__ == '__main__':
     lcov_baseurl = None
     genhtml_bin = None
     timeout = None
-    repeat_tests = 1
-    repeat_tests_delay = 0
+    repeat_count = 1
+    repeat_delay = 0
     nosedebug = False
     only_info = False
     tags = []
@@ -232,14 +232,14 @@ if __name__ == '__main__':
     user_plugins = None
     PtlConfig()
 
-    largs = ['exclude=', 'log-conf=', 'timeout=', 'repeat-tests=']
+    largs = ['exclude=', 'log-conf=', 'timeout=', 'repeat-count=']
     largs += ['param-file=', 'min-pyver=', 'max-pyver=']
     largs += ['db-name=', 'db-access=', 'db-type=', 'genhtml-bin=']
     largs += ['lcov-bin=', 'lcov-data=', 'lcov-out=', 'lcov-nosrc']
     largs += ['lcov-baseurl=', 'tags=', 'eval-tags=', 'tags-info', 'list-tags']
     largs += ['version', 'verbose', 'follow-child']
     largs += ['stop-on-failure', 'enable-nose-debug']
-    largs += ['post-analysis-data=', 'gen-ts-tree', 'repeat-tests-delay=']
+    largs += ['post-analysis-data=', 'gen-ts-tree', 'repeat-delay=']
     largs += ['tc-failure-threshold=', 'cumulative-tc-failure-threshold=']
     largs += ['max-postdata-threshold=', 'user-plugins=', 'use-current-setup']
 
@@ -300,10 +300,10 @@ if __name__ == '__main__':
             testgroup = val
         elif o == '--timeout':
             timeout = int(val)
-        elif o == '--repeat-tests':
-            repeat_tests = int(val)
-        elif o == '--repeat-tests-delay':
-            repeat_tests_delay = int(val)
+        elif o == '--repeat-count':
+            repeat_count = int(val)
+        elif o == '--repeat-delay':
+            repeat_delay = int(val)
         elif o == '--db-type':
             dbtype = val
         elif o == '--db-name':
@@ -469,8 +469,8 @@ if __name__ == '__main__':
         data = PTLTestData()
         loader.set_data(testgroup, testsuites, excludes, follow, testfiles)
         testtags.set_data(tags, eval_tags)
-        runner.set_data(paramfile, testparam, repeat_tests,
-                        repeat_tests_delay, lcov_bin, lcov_data,
+        runner.set_data(paramfile, testparam, repeat_count,
+                        repeat_delay, lcov_bin, lcov_data,
                         lcov_out, genhtml_bin, lcov_nosrc,
                         lcov_baseurl, tc_failure_threshold,
                         cumulative_tc_failure_threshold, use_cur_setup)
