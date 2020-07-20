@@ -249,7 +249,7 @@ class PtlConfig(object):
             'PTL_SUDO_CMD': 'sudo -H',
             'PTL_RSH_CMD': 'ssh',
             'PTL_CP_CMD': 'scp -p',
-            'PTL_MAX_ATTEMPTS': 60,
+            'PTL_MAX_ATTEMPTS': 180,
             'PTL_ATTEMPT_INTERVAL': 0.5,
             'PTL_UPDATE_ATTRIBUTES': True,
         }
