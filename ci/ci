@@ -44,6 +44,7 @@ import fileinput
 import json
 import os
 import platform
+import re
 import shlex
 import shutil
 import subprocess
@@ -583,10 +584,9 @@ def check_prerequisites():
     try:
         version = subprocess.run(
             ["docker", "--version"], stdout=subprocess.PIPE)
-        version = str(version.stdout.decode('utf-8')
-                      ).split(' ')[2].split('-')[0].replace('.', '')
-        if int(version) < int(MACROS['REQ_DOCKER_VERSION']):
-            log_error("Docker version less than minimum required 17.12.0")
+        version = re.findall(r'\s*([\d.]+)', version.stdout.decode('utf-8'))
+        if int(version[0].replace(".", "")) < int(MACROS['REQ_DOCKER_VERSION']):
+            print("Docker version less than minimum required 17.12.0")
             sys.exit(1)
     except:
         log_error("Failed to get docker version")
