@@ -376,6 +376,7 @@ class TestReservations(TestFunctional):
         self.assertNotEqual(nds1, nds2)
         self.assertEquals(sc, nds1.split('+')[0])
 
+    @skipOnCpuSet
     def test_degraded_running_only_replace(self):
         """
         Test that when a running degraded reservation is reconfirmed,
