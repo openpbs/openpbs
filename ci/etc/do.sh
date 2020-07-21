@@ -67,7 +67,6 @@ fi
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
     yum clean all
-    yum -y update
     yum -y install yum-utils epel-release rpmdevtools
     yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
@@ -77,7 +76,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     yum -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
-      yum -y update
       yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
@@ -85,7 +83,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     dnf -y install 'dnf-command(config-manager)'
     dnf -y config-manager --set-enabled PowerTools
     dnf -y install epel-release
-    dnf -y update
     dnf -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical libasan llvm git
@@ -93,19 +90,10 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     dnf -y install $(rpmspec --requires -q ${SPEC_FILE} | awk '{print $1}' | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
     if [ "x${BUILD_MODE}" == "xkerberos" ]; then
-      dnf -y update
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
-    _PRETTY_NAME=$(echo ${PRETTY_NAME} | awk -F[=\"] '{print $1}')
-    _PRETTY_NAME=${_PRETTY_NAME# }
-    _PRETTY_NAME=${_PRETTY_NAME% }
-    _PRETTY_NAME=${_PRETTY_NAME// /_}
-    _base_link="http://download.opensuse.org/repositories"
-    zypper -n ar -f -G ${_base_link}/devel:/tools/${_PRETTY_NAME}/devel:tools.repo
-    zypper -n ar -f -G ${_base_link}/devel:/libraries:/c_c++/${_PRETTY_NAME}/devel:libraries:c_c++.repo
     zypper -n ref
-    zypper -n update
     zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git
     rpmdev-setuptree
     zypper -n install --force-resolution $(rpmspec --buildrequires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
@@ -116,7 +104,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       export DEBIAN_FRONTEND=noninteractive
     fi
     apt-get -y update
-    apt-get -y upgrade
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
       libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
@@ -128,7 +115,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       export DEBIAN_FRONTEND=noninteractive
     fi
     apt-get -y update
-    apt-get -y upgrade
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
       libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
