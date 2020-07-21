@@ -167,9 +167,7 @@ extern char *msg_force_qsub_update;
 #define PBS_O_ENV "PBS_O_" /* prefix for environment variables created by qsub */
 
 /* Warning/Error messages */
-#ifdef GUI_FEATURE
 #define INTER_GUI_WARN "qsub: only interactive jobs can have GUI\n"
-#endif
 #define INTER_BLOCK_WARN "qsub (Warning) : setting \"block\" attribute as \"true\"" \
 	" for an interactive job will not return job's exit status\n"
 #define INTER_ARRAY "qsub: interactive and array job submission cannot be used together\n"
@@ -180,11 +178,10 @@ extern char *msg_force_qsub_update;
 /* Security library variables */
 static int cs_init = 0; /*1 == security library initialized, 0 == not initialized*/
 static int cred_type = -1;
-size_t cred_len = 0;
-char *cred_buf = NULL;
-char cred_name[32]; /* space to hold small credential name */
-
-char *tmpdir = NULL; /* Path of temp directory in which to put the job script */
+size_t	cred_len = 0;
+char	*cred_buf = NULL;
+char	cred_name[32]; /* space to hold small credential name */
+char	*tmpdir = NULL; /* Path of temp directory in which to put the job script */
 
 /* variables for Interactive mode */
 int comm_sock; /* Socket for interactive and block job */
@@ -194,45 +191,37 @@ int X11_comm_sock; /* Socket for x11 communication */
 #define X11_PORT_LEN 8 /* Max size of buffer to store port information as string */
 #define XAUTH_ERR_REDIRECTION "2>&1" /* redirection string used for xauth command */
 #define X11_MSG_OFFSET sizeof(XAUTH_ERR_REDIRECTION) /* offset of the redirection clause */
+#define MAXPIPENAME sizeof(((struct sockaddr_un *)0)->sun_path)
 
 
 char retmsg[MAXPATHLEN]; /* holds the message that background qsub process will send */
 char qsub_cwd[MAXPATHLEN + 1]; /* buffer to pass cwd to background qsub */
-
-
-struct attrl *attrib = NULL; /* Attribute list */
-static struct attrl *attrib_o = NULL; /* Original attribute list, before applying default_qsub_arguments */
 char *new_jobname = NULL; /* return from submit request */
-static char dir_prefix[MAX_QSUB_PREFIX_LEN + 1]; /* Directive Prefix, specified by C opt */
 char destination[PBS_MAXDEST]; /* Destination of the batch job, specified by q opt */
 char server_out[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2]; /* Destination server, parsed from destination[] */
+char script_tmp[MAXPATHLEN + 1] = { '\0' }; /* name of script file copy */
+int  sd_svr; /* return from pbs_connect */
+char *display; /* environment variable DISPLAY */
+struct attrl *attrib = NULL; /* Attribute list */
+static struct attrl *attrib_o = NULL; /* Original attribute list, before applying default_qsub_arguments */
+static char dir_prefix[MAX_QSUB_PREFIX_LEN + 1]; /* Directive Prefix, specified by C opt */
 static struct batch_status *ss = NULL;
 static char *dfltqsubargs = NULL; /* Default qsub arguments */
-int sd_svr; /* return from pbs_connect */
-char script_tmp[MAXPATHLEN + 1] = {'\0'}; /* name of script file copy */
-
-#ifdef X11_FEATURE
-#define MAXPIPENAME sizeof(((struct sockaddr_un *)0)->sun_path)
-#endif
-
 static char *pbs_hostvar = NULL; /* buffer containing ",PBS_O_HOST=" and host name */
 static int pbs_o_hostsize = sizeof(",PBS_O_HOST=") + 1; /* size of prefix for hostvar */
-char *display; /* environment variable DISPLAY */
 
 /*
  * Flag to check if current process is the background process.
  * This variable is set only once and is read-only afterwards.
  */
-int is_background = 0;
-static int no_background = 0; /* flag to disable backgrounding */
-static char roptarg = 'y'; /* whether the job is rerunnable */
-char *v_value = NULL; /* expanded variable list from v opt */
-static char *v_value_o = NULL; /* copy of v_value before set_job_env() */
+int  is_background = 0;
 char *basic_envlist = NULL; /* basic comma-separated environment variables list string */
 char *qsub_envlist = NULL; /* comma-separated variables list string */
-#ifdef X11_FEATURE
+char *v_value = NULL; /* expanded variable list from v opt */
+static int no_background = 0; /* flag to disable backgrounding */
+static char roptarg = 'y'; /* whether the job is rerunnable */
+static char *v_value_o = NULL; /* copy of v_value before set_job_env() */
 static int x11_disp = FALSE; /* whether DISPLAY environment variable is available */
-#endif
 
 /* state booleans for protecting already-set options */
 static int a_opt = FALSE;
@@ -260,16 +249,10 @@ static int R_opt = FALSE;
 static int S_opt = FALSE;
 static int V_opt = FALSE;
 static int Depend_opt = FALSE;
-int Interact_opt = FALSE;
 static int Stagein_opt = FALSE;
 static int Stageout_opt = FALSE;
 static int Sandbox_opt = FALSE;
 static int Grouplist_opt = FALSE;
-int Forwardx11_opt = FALSE;
-
-#ifdef GUI_FEATURE
-int gui_opt = FALSE;
-#endif
 static int Resvstart_opt = FALSE;
 static int Resvend_opt = FALSE;
 static int pwd_opt = FALSE;
@@ -278,6 +261,10 @@ static int block_opt = FALSE;
 static int relnodes_on_stageout_opt = FALSE;
 static int tolerate_node_failures_opt = FALSE;
 static int roptarg_inter = FALSE;
+int Interact_opt = FALSE;
+int Forwardx11_opt = FALSE;
+int gui_opt = FALSE;
+
 
 /* for saving option booleans */
 static int a_opt_o = FALSE;
@@ -309,10 +296,7 @@ static int Stagein_opt_o = FALSE;
 static int Stageout_opt_o = FALSE;
 static int Sandbox_opt_o = FALSE;
 static int Grouplist_opt_o = FALSE;
-
-#ifdef GUI_FEATURE
 static int gui_opt_o = FALSE;
-#endif
 static int Resvstart_opt_o = FALSE;
 static int Resvend_opt_o = FALSE;
 static int pwd_opt_o = FALSE;
@@ -321,52 +305,24 @@ static int block_opt_o = FALSE;
 static int relnodes_on_stageout_opt_o = FALSE;
 static int tolerate_node_failures_opt_o = FALSE;
 
-/* definition in qsub_sup.c file */
-#ifdef X11_FEATURE
-	extern void get_comm_filename(char *);
-	extern int reader_Xjob(int);
-	extern void exit_on_sigpipe(int);
-	extern int fork_and_stay(void);
-	extern void blockint(int sig);
-#endif
-#ifdef GUI_FEATURE
-	CRITICAL_SECTION continuethread_cs;
-	extern void do_daemon_stuff(char *, char *, char *);
-#endif
-
-// common
+extern void critical_section(void);
+extern void blockint(int sig);
+extern void do_daemon_stuff(char *, char *, char *);
 extern void enable_gui(void);
-extern int dorecv(void *, char *, int);
-extern int dosend(void *, char *, int);
 extern void set_sig_handlers(void);
 extern void interactive(void);
 extern void back2forward_slash(char *);
 extern void back2forward_slash2(char *);
-extern int daemon_submit(int *, int *, char *);
 extern void get_uncpath(char *);
-extern int get_script(FILE *, char *, char *);
+extern int  dorecv(void *, char *, int);
+extern int  dosend(void *, char *, int);
+extern int  check_bg_process(void);
+extern int  daemon_submit(int *, int *, char *);
+extern int  get_script(FILE *, char *, char *);
 
+void exit_qsub(int exitstatus);
 
 /* The following are "Utility" functions. */
-
-
-#ifdef X11_FEATURE
-/**
- * @brief
- * 	Log a simple message to syslog
- * 	To be used from the qsub background daemon
- *
- * @param[in]	msg - string to be logged
- *
- */
-void
-log_syslog(char *msg)
-{
-	openlog("qsub", LOG_PID | LOG_CONS | LOG_NOWAIT, LOG_USER);
-	syslog(LOG_ERR, "%s", msg);
-	closelog();
-}
-#endif
 
 /**
  * @brief
@@ -686,7 +642,7 @@ refresh_dfltqsubargs(void)
  *
  */
 char *
-x11_get_authstring(void)
+get_authstring(void)
 {
 	char line[XAUTH_LEN] = {'\0'};
 	char command[XAUTH_LEN] = {'\0'};
@@ -750,7 +706,7 @@ x11_get_authstring(void)
 		strcpy(screen, "0"); /* Should be safe because sizeof(screen) = XAUTH_LEN which is >= 2 */
 
 #ifdef DEBUG
-	fprintf(stderr, "x11_get_authstring: %s\n", line);
+	fprintf(stderr, "get_authstring: %s\n", line);
 #endif
 	f = popen(line, "r");
 	if (f == NULL) {
@@ -801,6 +757,57 @@ x11_get_authstring(void)
 
 	return (authstring);
 }
+
+/**
+ * @brief
+ *	This function creates a socket to listen for "X11" data
+ *	and returns a port number where its listening for X data.
+ *
+ * @return	char*
+ * @retval	portstring	success
+ *
+ * @par Side Effects
+ *		If this function fails, it will exit the qsub process.
+ *
+ */
+char*
+get_listening_port(void)
+{
+	pbs_socklen_t namelen;
+	struct sockaddr_in myaddr;
+	static char X11_port_str[X11_PORT_LEN];
+	unsigned short X11_port;
+
+	X11_comm_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (X11_comm_sock < 0) {
+		perror("qsub: unable to create socket");
+		exit_qsub(1);
+	}
+	myaddr.sin_family = AF_INET;
+	myaddr.sin_addr.s_addr = INADDR_ANY;
+	myaddr.sin_port = 0;
+
+	if (bind(X11_comm_sock, (struct sockaddr *) &myaddr,
+		sizeof(myaddr)) < 0) {
+		perror("qsub: unable to bind to socket");
+		exit_qsub(1);
+	}
+	/* get port number assigned */
+	namelen = sizeof(myaddr);
+	if (getsockname(X11_comm_sock, (struct sockaddr *) &myaddr,
+		&namelen) < 0) {
+		perror("qsub: unable to get port number");
+		exit_qsub(1);
+	}
+	X11_port = ntohs(myaddr.sin_port);
+	(void) sprintf(X11_port_str, "%u", (unsigned int) X11_port);
+	if (listen(X11_comm_sock, 1) < 0) {
+		perror("qsub: listening on X11 socket failed");
+		exit_qsub(1);
+	}
+	return (X11_port_str);
+}
+
 #endif
 
 /**
@@ -816,10 +823,13 @@ x11_get_authstring(void)
 void
 exit_qsub(int exitstatus)
 {
-#ifdef WIN32
+//#ifdef WIN32
 	/* A thread that makes qsub exit, should try and acquire the Critical Section. */
-	EnterCriticalSection(&continuethread_cs);
-#endif
+//	EnterCriticalSection(&continuethread_cs);
+//#endif
+/* A thread that makes qsub exit, should try and acquire the Critical Section. */
+critical_section();
+
 	if (cs_init == 1)
 		/* Cleanup security library initializations before exiting */
 		CS_close_app();
@@ -956,60 +966,6 @@ interactive_port(void)
 
 	return (portstring);
 }
-
-
-#ifdef X11_FEATURE
-/**
- * @brief
- *	This function creates a socket to listen for "X11" data
- *	and returns a port number where its listening for X data.
- *
- * @return	char*
- * @retval	portstring	success
- *
- * @par Side Effects
- *		If this function fails, it will exit the qsub process.
- *
- */
-char*
-port_X11(void)
-{
-	pbs_socklen_t namelen;
-	struct sockaddr_in myaddr;
-	static char X11_port_str[X11_PORT_LEN];
-	unsigned short X11_port;
-
-	X11_comm_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (X11_comm_sock < 0) {
-		perror("qsub: unable to create socket");
-		exit_qsub(1);
-	}
-	myaddr.sin_family = AF_INET;
-	myaddr.sin_addr.s_addr = INADDR_ANY;
-	myaddr.sin_port = 0;
-
-	if (bind(X11_comm_sock, (struct sockaddr *) &myaddr,
-		sizeof(myaddr)) < 0) {
-		perror("qsub: unable to bind to socket");
-		exit_qsub(1);
-	}
-	/* get port number assigned */
-	namelen = sizeof(myaddr);
-	if (getsockname(X11_comm_sock, (struct sockaddr *) &myaddr,
-		&namelen) < 0) {
-		perror("qsub: unable to get port number");
-		exit_qsub(1);
-	}
-	X11_port = ntohs(myaddr.sin_port);
-	(void) sprintf(X11_port_str, "%u", (unsigned int) X11_port);
-	if (listen(X11_comm_sock, 1) < 0) {
-		perror("qsub: listening on X11 socket failed");
-		exit_qsub(1);
-	}
-	return (X11_port_str);
-}
-
-#endif /* X11_FEATURE */
 
 /**
  * @brief
@@ -1719,14 +1675,12 @@ extern char GETOPT_ARGS[];
 #endif
 				}
 				break;
-#ifdef GUI_FEATURE
 			case 'G':
 				if_cmd_line(gui_opt) {
 					gui_opt = passet;
 					set_attr_error_exit(&attrib, ATTR_GUI, "TRUE");
 				}
 				break;
-#endif
 			case 'z':
 				if_cmd_line(z_opt) z_opt = passet;
 				break;
@@ -1743,13 +1697,11 @@ extern char GETOPT_ARGS[];
 			"interactive jobs\n");
 		exit_qsub(1);
 	}
-#ifdef GUI_FEATURE
 	if ((gui_opt == CMDLINE) && (Interact_opt == FALSE)) {
 		fprintf(stderr, INTER_GUI_WARN);
 		gui_opt = FALSE;
 		exit_qsub(1);
 	}
-#endif
 
 	if (errflg == 0 && J_opt == 0 && get_attr(attrib, ATTR_m, NULL) != NULL &&
 		strchr(get_attr(attrib, ATTR_m, NULL), 'j') != NULL) {
@@ -2511,8 +2463,6 @@ set_job_env(char *basic_vlist, char *current_vlist)
 
 		/* From state4, goes back to state1, using 'c' as input */
 		*c++ = '\0';;
-
-#ifdef X11_FEATURE
 		if (v_opt && Forwardx11_opt) {
 			if (strcmp(s, "DISPLAY") == 0) {
 				x11_disp = TRUE;
@@ -2520,7 +2470,6 @@ set_job_env(char *basic_vlist, char *current_vlist)
 				return FALSE;
 			}
 		}
-#endif
 		pc = job_env + strlen(job_env);
 		(void)strcat(job_env, ",");
 		(void)strcat(job_env, s);
@@ -3199,9 +3148,7 @@ save_opts(void)
 	Stageout_opt_o = Stageout_opt;
 	Sandbox_opt_o = Sandbox_opt;
 	Grouplist_opt_o = Grouplist_opt;
-#ifdef GUI_FEATURE
 	gui_opt_o = gui_opt;
-#endif
 	Resvstart_opt_o = Resvstart_opt;
 	Resvend_opt_o = Resvend_opt;
 	pwd_opt_o = pwd_opt;
@@ -3428,10 +3375,8 @@ regular_submit(int daemon_up)
 		else
 			rc = -1;
 	}
-#ifdef X11_FEATURE
 	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0) && !V_opt)
-		fork_and_stay();
-#endif
+		check_bg_process();
 	return rc;
 }
 
