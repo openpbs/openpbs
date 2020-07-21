@@ -8731,11 +8731,11 @@ main(int argc, char *argv[])
 
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 
-#ifdef	WIN32
-	if (winsock_init()) {
+	if (initsocketlib()) {
 		return 1;
 	}
 
+#ifdef	WIN32
 	/* Under WIN32, create structure that will be used to track child processes. */
 	if (initpids() == 0) {
 		log_err(-1, "pbsd_init", "Creating pid handles table failed!");

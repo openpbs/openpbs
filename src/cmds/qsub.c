@@ -2127,9 +2127,6 @@ set_sig_handlers(void)
 	signal(SIGBREAK, win_blockint);
 	signal(SIGTERM, win_blockint);
 
-	if (winsock_init()) {
-		return 1;
-	}
 	InitializeCriticalSection(&continuethread_cs);
 #else
 	/* Catch SIGPIPE on write() failures. */
@@ -5635,6 +5632,10 @@ main(int argc, char **argv, char **envp) /* qsub */
 	int daemon_up = 0;
 	char **argv_cpy; /* copy argv for getopt */
 	int i;
+
+	if (initsocketlib()) {
+		return 1;
+	}
 
 	/* Set signal handlers */
 	set_sig_handlers();

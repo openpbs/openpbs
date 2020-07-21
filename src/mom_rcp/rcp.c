@@ -313,11 +313,9 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib()) {
 		return 1;
 	}
-#endif
 
 #ifdef KERBEROS
 	if (use_kerberos) {

@@ -392,9 +392,11 @@ enum accrue_types {
 #define LOCALHOST_SHORTNAME "localhost"
 #ifdef WIN32
 #define ERRORNO        WSAGetLastError()
+#define initsocketlib() winsock_init()
 #else
 #define closesocket(X) close(X)
 #define ERRORNO        errno
+#define initsocketlib() FALSE
 #endif
 
 #if HAVE__BOOL

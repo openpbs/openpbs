@@ -73,11 +73,9 @@ main(int argc, char **argv, char **envp)
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib()) {
 		return 1;
 	}
-#endif
 
 	if (argc != 3) {
 		static char usage[]="usage: qorder job_identifier job_identifier\n";
