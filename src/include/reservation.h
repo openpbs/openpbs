@@ -112,7 +112,6 @@ typedef struct pbsnode_list_ {
 
 /* Structure used to revert standing reservations back to original values for susequent occurrences*/
 struct resv_alter_revert {
-	time_t rr_stime;
 	long rr_duration;
 	char *rr_select;
 };

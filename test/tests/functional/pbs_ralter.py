@@ -2263,3 +2263,36 @@ class TestPbsResvAlter(TestFunctional):
                                  confirm=False)
         self.server.expect(NODE, {'resources_assigned.ncpus': 4},
                            max_attempts=1, id=resv_node)
+
+    def test_alter_standing_resv_future_occrs(self):
+        """
+        Test that when start time of a confirmed standing reservation is
+        altered, only the upcoming occurence changes and not all occurences
+        are modified.
+        """
+
+        duration = 20
+        offset = 3600
+        shift = -3000
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", standing=True,
+            rrule="FREQ=HOURLY;COUNT=3")
+
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           rid)
+        # move the reservation 10 mins in future
+        self.alter_a_reservation(rid, start, end, confirm=True, alter_s=True,
+                                 alter_e=True, shift=shift)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           rid)
+        # Now make another reservation which runs in about 50 mins from now.
+        # Ideally this reservation should confirm because second occurrence
+        # of the first reservation happens in almost 2 hrs from now.
+        rid2, start, end = self.submit_and_confirm_reservation(
+            3000, 1800, select="2:ncpus=4")
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid2)

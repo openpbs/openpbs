@@ -485,6 +485,13 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				* execvnode on which the occurrence is confirmed to run.
 				*/
 			for (j = 0; occr_idx <= count; occr_idx++, j++, degraded_idx++) {
+				/* If it is not the first occurrence then update the start time as
+				 * req_start_future (if set). This is to ensure that if the first
+				 * occurrence has been changed, othe future occurrences are not
+				 * affected.
+				 */
+				if (j == 1 && resresv_ocr->resv->req_start_future != UNSPECIFIED)
+					dtstart = resresv_ocr->resv->req_start_future;
 				/* Get the start time of the next occurrence computed from dtstart.
 					* The server maintains state of a single reservation object for
 					* which in the case of a standing reservation, it updates start
@@ -638,6 +645,12 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 				count = -1;
 			advresv->resv->req_start = count;
 		}
+		else if (!strcmp(attrp->name, ATTR_resv_start_revert)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp != '\0')
+				count = -1;
+			advresv->resv->req_start_future = count;
+		}
 		else if (!strcmp(attrp->name, ATTR_resv_end)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
@@ -779,6 +792,7 @@ new_resv_info()
 
 	rinfo->queuename = NULL;
 	rinfo->req_start = UNSPECIFIED;
+	rinfo->req_start_future = UNSPECIFIED;
 	rinfo->req_end = UNSPECIFIED;
 	rinfo->req_duration = UNSPECIFIED;
 	rinfo->retry_time = UNSPECIFIED;
@@ -864,6 +878,7 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 		nrinfo->queuename = string_dup(rinfo->queuename);
 
 	nrinfo->req_start = rinfo->req_start;
+	nrinfo->req_start_future = rinfo->req_start_future;
 	nrinfo->req_end = rinfo->req_end;
 	nrinfo->req_duration = rinfo->req_duration;
 	nrinfo->retry_time = rinfo->retry_time;

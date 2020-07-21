@@ -756,6 +756,7 @@ struct resv_info
 	int resv_idx;			/* the index of standing resv occurrence */
 	int count;			/* the total number of occurrences */
 	time_t req_start;		/* user requested start time of resv */
+	time_t req_start_future;	/* For standing reservations being modified, this will be the start time of future occurrences */
 	time_t req_end;			/* user requested end tiem of resv */
 	time_t req_duration;		/* user requested duration of resv */
 	time_t retry_time;		/* time at which a reservation is to be reconfirmed */
