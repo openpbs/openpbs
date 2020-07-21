@@ -199,7 +199,7 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 static int
 stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dosubjobs)
 {
-	int i, indx, x, y, z;
+	int i;
 	char *pc;
 	char *range;
 	int rc;
@@ -208,16 +208,18 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 	svrattrl *pal;
 
 	if ((i = is_job_array(name)) == IS_ARRAY_Single) {
+		int idx;
+
 		pjob = find_arrayparent(name);
 		if (pjob == NULL) {
 			return (PBSE_UNKJOBID);
 		} else if ((!dohistjobs) && (rc = svr_chk_histjob(pjob))) {
 			return (rc);
 		}
-		indx = subjob_index_to_offset(pjob, get_index_from_jid(name));
-		if (indx != -1) {
+		idx = subjob_index_to_offset(pjob, get_index_from_jid(name));
+		if (idx != -1) {
 			pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-			rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
+			rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
 		} else {
 			rc = PBSE_UNKJOBID;
 		}
@@ -245,11 +247,16 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		}
 		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 		while (1) {
-			if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &i)) == -1) {
+			int start;
+			int end;
+			int step;
+			int count;
+
+			if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 				return (PBSE_IVALREQ);
 			} else if (i == 1)
 				break;
-			for (i = x; i <= y; i += z) {
+			for (i = start; i <= end; i += step) {
 				rc = status_subjob(pjob, preq, pal, SJ_IDX_2_TBLIDX(pjob, i), &preply->brp_un.brp_status, &bad);
 				if (rc && (rc != PBSE_PERM))
 					return (rc);

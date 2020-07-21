@@ -601,9 +601,9 @@ subst_array_index(job *pjob, char *path)
 
 	sprintf(cvt, "%d", SJ_TBLIDX_2_IDX(ppjob, pjob->ji_subjindx));
 	*pindorg = '\0';
-	(void) strcpy(trail, pindorg + strlen(index_tag));
-	(void) strcat(path, cvt);
-	(void) strcat(path, trail);
+	strcpy(trail, pindorg + strlen(index_tag));
+	strcat(path, cvt);
+	strcat(path, trail);
 	return path;
 }
 /**
@@ -619,60 +619,65 @@ subst_array_index(job *pjob, char *path)
  * @return	ptr to table
  * @retval  NULL	- error
  */
-static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pbserror, int mode)
+static struct ajtrkhd *
+mk_subjob_index_tbl(char *range, int initalstate, int *pbserror, int mode)
 {
-	int   ct;
-	int   i, j, l;
-	int   x, y, z;
+	int i;
+	int j;
+	int limit;
+	int start;
+	int end;
+	int step;
+	int count;
 	char *eptr;
-	struct ajtrkhd *t;
-	size_t  sz;
+	struct ajtrkhd *trktbl;
+	size_t sz;
 
-	i = parse_subjob_index(range, &eptr, &x, &y, &z, &ct);
+	i = parse_subjob_index(range, &eptr, &start, &end, &step, &count);
 	if (i != 0) {
 		*pbserror = PBSE_BADATVAL;
 		return NULL; /* parse error */
 	}
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
-		if (server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-			l = server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long;
+		if (server.sv_attr[(int) SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
+			limit = server.sv_attr[(int) SVR_ATR_maxarraysize].at_val.at_long;
 		else
-			l = PBS_MAX_ARRAY_JOB_DFL;  /* default limit 10000 */
+			limit = PBS_MAX_ARRAY_JOB_DFL; /* default limit 10000 */
 
-		if (ct > l) {
+		if (count > limit) {
 			*pbserror = PBSE_MaxArraySize;
 			return NULL; /* parse error */
 		}
 	}
 
-	sz = sizeof(struct ajtrkhd) + ((ct-1) * sizeof(struct ajtrk));
-	t = (struct ajtrkhd *)malloc(sz);
+	sz = sizeof(struct ajtrkhd) + ((count - 1) * sizeof(struct ajtrk));
+	trktbl = (struct ajtrkhd *) malloc(sz);
 
-	if (t == NULL) {
+	if (trktbl == NULL) {
 		*pbserror = PBSE_SYSTEM;
 		return NULL;
 	}
-	t->tkm_ct   = ct;
-	t->tkm_start = x;
-	t->tkm_step = z;
-	t->tkm_size = sz;
-	t->tkm_flags = 0;
-	for (i=0; i<PBS_NUMJOBSTATE; i++)
-		t->tkm_subjsct[i] = 0;
-	t->tkm_subjsct[JOB_STATE_QUEUED] = ct;
-	t->tkm_dsubjsct = 0;
+	trktbl->tkm_ct = count;
+	trktbl->tkm_start = start;
+	trktbl->tkm_step = step;
+	trktbl->tkm_size = sz;
+	trktbl->tkm_flags = 0;
+	for (i = 0; i < PBS_NUMJOBSTATE; i++)
+		trktbl->tkm_subjsct[i] = 0;
+	trktbl->tkm_subjsct[JOB_STATE_QUEUED] = count;
+	trktbl->tkm_dsubjsct = 0;
 	j = 0;
-	for (i=x; i<=y; i+=z, j++) {
-		t->tkm_tbl[j].trk_status = initalstate;
-		t->tkm_tbl[j].trk_error  = 0;
-		t->tkm_tbl[j].trk_discarding = 0;
-		t->tkm_tbl[j].trk_substate  = JOB_SUBSTATE_FINISHED;
-		t->tkm_tbl[j].trk_stgout  = -1;
-		t->tkm_tbl[j].trk_exitstat  = 0;
-		t->tkm_tbl[j].trk_psubjob = NULL;
+	for (i = start; i <= end; i += step, j++) {
+		trktbl->tkm_tbl[j].trk_status = initalstate;
+		trktbl->tkm_tbl[j].trk_error = 0;
+		trktbl->tkm_tbl[j].trk_discarding = 0;
+		trktbl->tkm_tbl[j].trk_substate = JOB_SUBSTATE_FINISHED;
+		trktbl->tkm_tbl[j].trk_stgout = -1;
+		trktbl->tkm_tbl[j].trk_exitstat = 0;
+		trktbl->tkm_tbl[j].trk_psubjob = NULL;
 	}
-	return t;
+	return trktbl;
 }
 /**
  * @brief
@@ -758,10 +763,13 @@ int
 fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 {
 	int i;
-	int x, y, z, ct;
+	int start;
+	int end;
+	int step;
+	int count;
 	char *ep;
-	job *pjob = pobj;
 	char *str;
+	job *pjob = pobj;
 
 	if (!pjob || !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) || !pjob->ji_ajtrk)
 		return PBSE_BADATVAL;
@@ -775,9 +783,9 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 
 	str = pattr->at_val.at_str;
 	while (1) {
-		if (parse_subjob_index(str, &ep, &x, &y, &z, &ct) != 0)
+		if (parse_subjob_index(str, &ep, &start, &end, &step, &count) != 0)
 			break;
-		for (i = x; i <= y; i += z)
+		for (i = start; i <= end; i += step)
 			set_subjob_tblstate(pjob, SJ_IDX_2_TBLIDX(pjob, i), JOB_STATE_QUEUED);
 		str = ep;
 	}
@@ -1050,68 +1058,68 @@ mk_subjob_id(job *parent, int offset)
 char *
 cvt_range(job *pjob, int state)
 {
-	unsigned int f;	/* first of a pair or range   */
-	unsigned int n;  /* next one we are looking at */
-	unsigned int l;
+	unsigned int first; /* first of a pair or range   */
+	unsigned int next;  /* next one we are looking at */
+	unsigned int last;
 	int pcomma = 0;
-	char *b2;
 	static char *buf = NULL;
-	static size_t   buflen = 0;
-	struct ajtrkhd *t = pjob->ji_ajtrk;
+	static size_t buflen = 0;
+	struct ajtrkhd *trktbl = pjob->ji_ajtrk;
 
-	if (t == NULL)
+	if (trktbl == NULL)
 		return NULL;
 
 	if (buf == NULL) {
 		buflen = 1000;
-		if ((buf = (char *)malloc(buflen)) == NULL)
+		if ((buf = (char *) malloc(buflen)) == NULL)
 			return NULL;
 	}
-	*buf = '\0';	/* initialize buf to empty */
-	f = 0;
-	while (f < t->tkm_ct) {
+	*buf = '\0'; /* initialize buf to empty */
+	first = 0;
+	while (first < trktbl->tkm_ct) {
 
 		if ((buflen - strlen(buf)) < 20) {
+			char *tmpbuf;
 			/* expand buf */
 			buflen += 500;
-			b2 = realloc(buf, buflen);
-			if (b2 == NULL)
+			tmpbuf = realloc(buf, buflen);
+			if (tmpbuf == NULL)
 				return NULL;
-			buf = b2;
+			buf = tmpbuf;
 		}
 
 		/* find first incompleted entry */
-		if (t->tkm_tbl[f].trk_status == state) {
-			l = f;
-			n = f+1;
-			/* add "f" or ",f" */
+		if (trktbl->tkm_tbl[first].trk_status == state) {
+			last = first;
+			next = first + 1;
+			/* add "first" or ",first" */
 			if (pcomma)
-				sprintf(buf+strlen(buf), ",");
+				sprintf(buf + strlen(buf), ",");
 			else
 				pcomma = 1;
 
-			sprintf(buf+strlen(buf), "%d", SJ_TBLIDX_2_IDX(pjob, f));
+			sprintf(buf + strlen(buf), "%d", SJ_TBLIDX_2_IDX(pjob, first));
 
 			/* find next incomplete entry */
 
-			while (n < t->tkm_ct) {
-				if (t->tkm_tbl[n].trk_status == state) {
-					l = n++;
+			while (next < trktbl->tkm_ct) {
+				if (trktbl->tkm_tbl[next].trk_status == state) {
+					last = next++;
 				} else {
 					break;
 				}
 			}
-			if (l > (f+1)) {
-				if (t->tkm_step > 1)
-					sprintf(buf+strlen(buf), "-%d:%d", SJ_TBLIDX_2_IDX(pjob, l), t->tkm_step);
+			if (last > (first + 1)) {
+				if (trktbl->tkm_step > 1)
+					sprintf(buf + strlen(buf), "-%d:%d", SJ_TBLIDX_2_IDX(pjob, last), trktbl->tkm_step);
 				else
-					sprintf(buf+strlen(buf), "-%d", SJ_TBLIDX_2_IDX(pjob, l));
-			} else if (l > f) {
-				sprintf(buf+strlen(buf), ",%d", SJ_TBLIDX_2_IDX(pjob, l));
+					sprintf(buf + strlen(buf), "-%d", SJ_TBLIDX_2_IDX(pjob, last));
+			} else if (last > first) {
+				sprintf(buf + strlen(buf), ",%d", SJ_TBLIDX_2_IDX(pjob, last));
 			}
-			f = l+1;
+			first = last + 1;
 		} else {
-			f++;
+			first++;
 		}
 	}
 
@@ -1119,88 +1127,90 @@ cvt_range(job *pjob, int state)
 }
 /**
  * @brief
- *		cparse_subjob_index - parse a subjob index range of the form:
- *		X[-Y[:Z]][,...]
+ *		parse_subjob_index - parse a subjob index range of the form:
+ *		START[-END[:STEP]][,...]
  *		Each call parses up to the first comma or if no comma the end of
  *		the string or a ']'
- * @param[in]	pc - range of sub jobs
- * @param[out]	ep -  ptr to character that terminated scan (comma or new-line)
- * @param[out]	px -  first number of range
- * @param[out]	py -  maximum value in range
- * @param[out]	pz -  stepping factor
- * @param[out]	pct - number of entries in this section of the range
+ * @param[in]	pc	-	range of sub jobs
+ * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line)
+ * @param[out]	pstart	-	first number of range
+ * @param[out]	pend	-	maximum value in range
+ * @param[out]	pstep	-	stepping factor
+ * @param[out]	pcount -	number of entries in this section of the range
+ *
  * @return	integer
  * @retval	0	- success
  * @retval	1	- no (more) indices are found
  * @retval	-1	- parse/format error
  */
 int
-parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct)
+parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int *pcount)
 {
-	int   x, y, z;
+	int start;
+	int end;
+	int step;
 	char *eptr;
 
-
-	while (isspace((int)*pc) || (*pc == ','))
+	while (isspace((int) *pc) || (*pc == ','))
 		pc++;
 	if ((*pc == '\0') || (*pc == ']')) {
-		*pct = 0;
-		*ep  = pc;
+		*pcount = 0;
+		*ep = pc;
 		return (1);
 	}
 
-	if (!isdigit((int)*pc)) {
+	if (!isdigit((int) *pc)) {
 		/* Invalid format, 1st char not digit */
 		return (-1);
 	}
-	x = (int)strtol(pc, &eptr, 10);
+	start = (int) strtol(pc, &eptr, 10);
 	pc = eptr;
-	while (isspace((int)*pc))
+	while (isspace((int) *pc))
 		pc++;
 	if ((*pc == ',') || (*pc == '\0') || (*pc == ']')) {
 		/* "X," or "X" case */
-		y = x;
-		z = 1;
+		end = start;
+		step = 1;
 		if (*pc == ',')
 			pc++;
 	} else {
 		/* should be X-Y[:Z] case */
 		if (*pc != '-') {
 			/* Invalid format, not in X-Y format */
-			*pct = 0;
+			*pcount = 0;
 			return (-1);
 		}
-		y = (int)strtol(++pc, &eptr, 10);
+		end = (int) strtol(++pc, &eptr, 10);
 		pc = eptr;
-		if (isspace((int)*pc))
+		if (isspace((int) *pc))
 			pc++;
 		if ((*pc == '\0') || (*pc == ',') || (*pc == ']')) {
-			z = 1;
+			step = 1;
 		} else if (*pc++ != ':') {
 			/* Invalid format, not in X-Y:z format */
-			*pct = 0;
+			*pcount = 0;
 			return (-1);
 		} else {
-			while (isspace((int)*pc))
+			while (isspace((int) *pc))
 				pc++;
-			z = (int)strtol(pc, &eptr, 10);
+			step = (int) strtol(pc, &eptr, 10);
 			pc = eptr;
-			while (isspace((int)*pc))
+			while (isspace((int) *pc))
 				pc++;
 			if (*pc == ',')
 				pc++;
 		}
 
 		/* y must be greater than x for a range and z must be greater 0 */
-		if ((x >= y) || (z < 1))
+		if ((start >= end) || (step < 1))
 			return (-1);
 	}
 
 	*ep = pc;
-	/* now compute the number of extires ((y+1)-x+(z-1))/z = (y-x+z)/z */
-	*pct = (y - x + z)/z;
-	*px  = x;
-	*py  = y;
-	*pz  = z;
+	/* now compute the number of extires ((end + 1) - start + (step - 1)) / step = (end - start + step) / step */
+	*pcount = (end - start + step) / step;
+	*pstart = start;
+	*pend = end;
+	*pstep = step;
 	return (0);
 }

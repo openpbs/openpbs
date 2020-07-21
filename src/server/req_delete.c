@@ -351,7 +351,6 @@ req_deletejob(struct batch_request *preq)
 {
 	int forcedel = 0;
 	int i;
-	int j;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
 	int offset;
@@ -360,7 +359,6 @@ req_deletejob(struct batch_request *preq)
 	job *parent;
 	char *range;
 	int sjst; /* subjob state */
-	int x, y, z;
 	int rc = 0;
 	int delhist = 0;
 	int err = PBSE_NONE;
@@ -523,19 +521,26 @@ req_deletejob(struct batch_request *preq)
 
 	++preq->rq_refct;
 	while (1) {
-		if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
+		int start;
+		int end;
+		int step;
+		int count;
+
+		if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			break;
 		} else if (i == 1)
 			break;
-		/* Ensure that the range specified in the delete job request does not exceed the
-		 index of the highest numbered array subjob */
 
-		if (x > SJ_TBLIDX_2_IDX(parent, parent->ji_ajtrk->tkm_ct - 1)) {
+		/*
+		 * Ensure that the range specified in the delete job request does not exceed the
+		 * index of the highest numbered array subjob
+		 */
+		if (start > SJ_TBLIDX_2_IDX(parent, parent->ji_ajtrk->tkm_ct - 1)) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			break;
 		}
-		for (i = x; i <= y; i += z) {
+		for (i = start; i <= end; i += step) {
 			int idx = SJ_IDX_2_TBLIDX(parent, i);
 
 			sjst = get_subjob_state(parent, idx);

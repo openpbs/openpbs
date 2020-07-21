@@ -104,7 +104,6 @@ req_signaljob(struct batch_request *preq)
 {
 	int anygood = 0;
 	int i;
-	int j;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
 	int offset;
@@ -115,7 +114,10 @@ req_signaljob(struct batch_request *preq)
 	int suspend = 0;
 	int resume = 0;
 	char *vrange;
-	int x, y, z;
+	int start;
+	int end;
+	int step;
+	int count;
 	int err = PBSE_NONE;
 
 	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_signal.rq_jid);
@@ -224,12 +226,12 @@ req_signaljob(struct batch_request *preq)
 
 	vrange = range;
 	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		} else if (i == 1)
 			break;
-		for (i = x; i <= y; i += z) {
+		for (i = start; i <= end; i += step) {
 			if (get_subjob_state(parent, SJ_IDX_2_TBLIDX(parent, i)) == JOB_STATE_RUNNING)
 				anygood++;
 		}
@@ -245,12 +247,12 @@ req_signaljob(struct batch_request *preq)
 	++preq->rq_refct;	/* protect the request/reply struct */
 
 	while (1) {
-		if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			break;
 		} else if (i == 1)
 			break;
-		for (i = x; i <= y; i += z) {
+		for (i = start; i <= end; i += step) {
 			int idx = SJ_IDX_2_TBLIDX(parent, i);
 			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
 				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {

@@ -294,21 +294,24 @@ call_to_process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len
 void
 req_runjob(struct batch_request *preq)
 {
-	int		  anygood;
-	int		  i;
-	int		  j;
-	char		 *jid;
-	int		  jt;		/* job type */
-	int		  offset = -1;
-	char		 *pc;
-	job		 *pjob = NULL;
-	job		 *pjobsub = NULL;
-	job		 *parent  = NULL;
-	char		 *range;
-	int		  x, y, z;
+	int anygood;
+	int i;
+	int j;
+	char *jid;
+	int jt; /* job type */
+	int offset = -1;
+	char *pc;
+	job *pjob = NULL;
+	job *pjobsub = NULL;
+	job *parent = NULL;
+	char *range;
+	int start;
+	int end;
+	int step;
+	int count;
 	struct deferred_request *pdefr;
-	char		  hook_msg[HOOK_MSG_SIZE];
-	pbs_sched	  *psched;
+	char hook_msg[HOOK_MSG_SIZE];
+	pbs_sched *psched;
 
 	if (license_expired) {
 		req_reject(PBSE_LICENSEINV, 0, preq);
@@ -323,7 +326,7 @@ req_runjob(struct batch_request *preq)
 	jid = preq->rq_ind.rq_run.rq_jid;
 	parent = chk_job_request(jid, preq, &jt, NULL);
 	if (parent == NULL)
-		return;		/* note, req_reject already called */
+		return; /* note, req_reject already called */
 
 	/* the job must be in an execution queue */
 
@@ -343,7 +346,7 @@ req_runjob(struct batch_request *preq)
 	if ((psched->scheduler_sock != -1) && was_job_alteredmoved(parent)) {
 		/* Reject run request for altered/moved jobs if job_run_wait is set to "execjob_hook" */
 		if (!(psched->sch_attr[SCHED_ATR_job_run_wait].at_flags & ATR_VFLAG_SET) ||
-				(!strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RUN_WAIT_EXECJOB_HOOK))) {
+		    (!strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RUN_WAIT_EXECJOB_HOOK))) {
 			req_reject(PBSE_NORUNALTEREDJOB, 0, preq);
 			set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 			return;
@@ -404,12 +407,12 @@ req_runjob(struct batch_request *preq)
 		}
 
 		while (1) {
-			if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
+			if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 				req_reject(PBSE_IVALREQ, 0, preq);
 				return;
 			} else if (i == 1)
-				break;	/* no more in the range */
-			for (i = x; x <= y; i += z) {
+				break; /* no more in the range */
+			for (i = start; i <= end; i += step) {
 				int idx = SJ_IDX_2_TBLIDX(parent, i);
 				if ((get_subjob_state(parent, idx) == JOB_STATE_QUEUED) && get_subjob_discarding(parent, idx) != 1)
 					anygood = 1;
@@ -429,21 +432,18 @@ req_runjob(struct batch_request *preq)
 	/* resources, then process the run request, else it has    */
 	/* to go to the scheduler				   */
 
-	if ((preq->rq_ind.rq_run.rq_destin == NULL)  ||
-		(*preq->rq_ind.rq_run.rq_destin == '\0')) {
-		char fixjid[PBS_MAXSVRJOBID+1];
+	if ((preq->rq_ind.rq_run.rq_destin == NULL) ||
+	    (*preq->rq_ind.rq_run.rq_destin == '\0')) {
+		char fixjid[PBS_MAXSVRJOBID + 1];
 
 		/* if runjob request is from the Scheduler, */
 		/* it must have a destination specified     */
 		if (preq->rq_conn == psched->scheduler_sock) {
-			sprintf(log_buffer,
-				"runjob request from scheduler with null destination");
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO,
-				jid, log_buffer);
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, jid, "runjob request from scheduler with null destination");
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		}
-		pdefr = (struct deferred_request *)malloc(sizeof(struct deferred_request));
+		pdefr = (struct deferred_request *) malloc(sizeof(struct deferred_request));
 		if (pdefr == NULL) {
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
@@ -454,15 +454,15 @@ req_runjob(struct batch_request *preq)
 		/* suffix;  in case qrun 1.short vs 1.short.domain.com   */
 
 		snprintf(fixjid, sizeof(fixjid), "%s", jid);
-		pc = strchr(fixjid, (int)'.');
+		pc = strchr(fixjid, (int) '.');
 		if (pc)
 			*pc = '\0';
-		pc = strchr(parent->ji_qs.ji_jobid, (int)'.');
+		pc = strchr(parent->ji_qs.ji_jobid, (int) '.');
 		if (pc)
-			(void)strcat(fixjid, pc);
+			(void) strcat(fixjid, pc);
 
-		(void)strncpy(pdefr->dr_id, fixjid, PBS_MAXSVRJOBID);
-		pdefr->dr_id[PBS_MAXSVRJOBID] ='\0';
+		(void) strncpy(pdefr->dr_id, fixjid, PBS_MAXSVRJOBID);
+		pdefr->dr_id[PBS_MAXSVRJOBID] = '\0';
 		pdefr->dr_preq = preq;
 		pdefr->dr_sent = 0;
 		append_link(&svr_deferred_req, &pdefr->dr_link, pdefr);
@@ -479,9 +479,7 @@ req_runjob(struct batch_request *preq)
 		return;
 	}
 
-
-	DBPRT(("req_runjob: received command to run job on destin %s\n",
-		preq->rq_ind.rq_run.rq_destin))
+	DBPRT(("req_runjob: received command to run job on destin %s\n", preq->rq_ind.rq_run.rq_destin))
 
 	/* OK - go back over the run job request, assign the vhosts */
 	/* and finally run the job by calling req_runjob2()	    */
@@ -489,16 +487,15 @@ req_runjob(struct batch_request *preq)
 	if (jt == IS_ARRAY_NO) {
 
 		/* just a regular job, pass it on down the line and be done */
-		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
-				pbs_python_set_interrupt) == 0) {
+		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt) == 0) {
 			reply_text(preq, PBSE_HOOKERROR, hook_msg);
 			return;
 		}
 		pjob = where_to_runjob(preq, parent);
 		if (pjob) {
 			/* free prov_vnode before use */
-			job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-				&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
+			job_attr_def[(int) JOB_ATR_prov_vnode].at_free(
+				&pjob->ji_wattr[(int) JOB_ATR_prov_vnode]);
 			req_runjob2(preq, parent);
 		}
 		return;
@@ -514,9 +511,8 @@ req_runjob(struct batch_request *preq)
 		if ((pjobsub = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob) != NULL) {
 			sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
 			sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
-			if (pjobsub->ji_wattr[JOB_ATR_resource].at_flags & ATR_VFLAG_SET) {
+			if (pjobsub->ji_wattr[JOB_ATR_resource].at_flags & ATR_VFLAG_SET)
 				job_attr_def[JOB_ATR_resource].at_set(&sub_prev_res, &pjobsub->ji_wattr[JOB_ATR_resource], SET);
-			}
 			job_purge(pjobsub);
 		}
 
@@ -528,13 +524,13 @@ req_runjob(struct batch_request *preq)
 		}
 
 		if (sub_run_version.at_flags & ATR_VFLAG_SET) {
-			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
-			pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
+			pjobsub->ji_wattr[(int) JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
+			pjobsub->ji_wattr[(int) JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
 		}
 
 		if (sub_runcount.at_flags & ATR_VFLAG_SET) {
-			pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long = sub_runcount.at_val.at_long;
-			pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_flags |= ATR_SET_MOD_MCACHE;
+			pjobsub->ji_wattr[(int) JOB_ATR_runcount].at_val.at_long = sub_runcount.at_val.at_long;
+			pjobsub->ji_wattr[(int) JOB_ATR_runcount].at_flags |= ATR_SET_MOD_MCACHE;
 		}
 
 		if (sub_prev_res.at_flags & ATR_VFLAG_SET) {
@@ -543,8 +539,7 @@ req_runjob(struct batch_request *preq)
 			job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
 		}
 
-		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
-				pbs_python_set_interrupt) == 0) {
+		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt) == 0) {
 			/* subjob reject from hook*/
 			reply_text(preq, PBSE_HOOKERROR, hook_msg);
 			return;
@@ -552,12 +547,10 @@ req_runjob(struct batch_request *preq)
 		pjob = where_to_runjob(preq, pjobsub);
 		if (pjob) {
 			/* free prov_vnode before use */
-			job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-				&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
+			job_attr_def[(int) JOB_ATR_prov_vnode].at_free(&pjob->ji_wattr[(int) JOB_ATR_prov_vnode]);
 			req_runjob2(preq, pjob);
 		}
 		return;
-
 	}
 
 	/* what's left to handle is a range of subjobs,	*/
@@ -572,18 +565,19 @@ req_runjob(struct batch_request *preq)
 	++preq->rq_refct;
 
 	while (1) {
-		if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			break;
 		} else if (i == 1)
 			break;
-		for (i = x; x <= y; i += z) {
+		for (i = start; i <= end; i += step) {
 			int idx = SJ_IDX_2_TBLIDX(parent, i);
 
 			if (get_subjob_state(parent, idx) == JOB_STATE_QUEUED) {
 				attribute sub_runcount = {0};
 				attribute sub_run_version = {0};
-				jid  = mk_subjob_id(parent, idx);
+
+				jid = mk_subjob_id(parent, idx);
 				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob) != NULL) {
 					sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
 					sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
@@ -596,17 +590,16 @@ req_runjob(struct batch_request *preq)
 				}
 
 				if (sub_run_version.at_flags & ATR_VFLAG_SET) {
-					pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
-					pjobsub->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
+					pjobsub->ji_wattr[(int) JOB_ATR_run_version].at_val.at_long = sub_run_version.at_val.at_long;
+					pjobsub->ji_wattr[(int) JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
 				}
 
 				if (sub_runcount.at_flags & ATR_VFLAG_SET) {
-					pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long = sub_runcount.at_val.at_long;
-					pjobsub->ji_wattr[(int)JOB_ATR_runcount].at_flags |= ATR_SET_MOD_MCACHE;
+					pjobsub->ji_wattr[(int) JOB_ATR_runcount].at_val.at_long = sub_runcount.at_val.at_long;
+					pjobsub->ji_wattr[(int) JOB_ATR_runcount].at_flags |= ATR_SET_MOD_MCACHE;
 				}
 
-				if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
-						pbs_python_set_interrupt) == 0) {
+				if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt) == 0) {
 					/* subjob reject from hook*/
 					reply_text(preq, PBSE_HOOKERROR, hook_msg);
 					return;
@@ -619,7 +612,6 @@ req_runjob(struct batch_request *preq)
 		}
 		range = pc;
 	}
-
 
 	/* if not waiting on any running subjobs, can reply; else */
 	/* it is taken care of when last running subjob responds  */
