@@ -1654,9 +1654,6 @@ class TestReservations(TestFunctional):
         time doesn't crashes PBS daemon.
         """
         self.common_steps()
-        # turn opt_backfill_fuzzy so both reservations are at the same time
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'opt_backfill_fuzzy': 'off'}, id='default')
 
         # Submit job j to consume all resources
         a = {'Resource_List.walltime': '5',
@@ -2160,9 +2157,6 @@ class TestReservations(TestFunctional):
         doesn't crashes PBS daemons on completion of reservation.
         """
         self.common_config()
-        # Turn opt_backfill_fuzzy off so both resvs are at the same time
-        self.server.manager(MGR_CMD_SET, SCHED,
-                            {'opt_backfill_fuzzy': 'off'}, id='default')
         # Submit job array such that it consumes all the resources
         # on both vnodes
         attrs = {ATTR_J: '1-5',
