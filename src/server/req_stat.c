@@ -199,13 +199,13 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 static int
 stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dosubjobs)
 {
-	int   i, indx, x, y, z;
+	int i, indx, x, y, z;
 	char *pc;
 	char *range;
-	int   rc;
-	job  *pjob;
+	int rc;
+	job *pjob;
 	struct batch_reply *preply = &preq->rq_reply;
-	svrattrl	   *pal;
+	svrattrl *pal;
 
 	if ((i = is_job_array(name)) == IS_ARRAY_Single) {
 		pjob = find_arrayparent(name);
@@ -216,12 +216,12 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		}
 		indx = subjob_index_to_offset(pjob, get_index_from_jid(name));
 		if (indx != -1) {
-			pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
+			pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 			rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
 		} else {
 			rc = PBSE_UNKJOBID;
 		}
-		return (rc);	/* no job still needs to be stat-ed */
+		return (rc); /* no job still needs to be stat-ed */
 
 	} else if ((i == IS_ARRAY_NO) || (i == IS_ARRAY_ArrayJob)) {
 		pjob = find_job(name);
@@ -243,23 +243,16 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		} else if ((!dohistjobs) && (rc = svr_chk_histjob(pjob))) {
 			return (rc);
 		}
-		pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
+		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 		while (1) {
-			if ((i=parse_subjob_index(range,&pc,&x,&y,&z,&i)) == -1) {
-		    		return (PBSE_IVALREQ);
+			if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &i)) == -1) {
+				return (PBSE_IVALREQ);
 			} else if (i == 1)
 				break;
-			while (x <= y) {
-				indx = numindex_to_offset(pjob, x);
-				if (indx < 0) {
-					x += z;
-					continue;
-				}
-				rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
-				if (rc && (rc != PBSE_PERM)) {
+			for (i = x; i <= y; i += z) {
+				rc = status_subjob(pjob, preq, pal, SJ_IDX_2_TBLIDX(pjob, i), &preply->brp_un.brp_status, &bad);
+				if (rc && (rc != PBSE_PERM))
 					return (rc);
-				}
-				x += z;
 			}
 			range = pc;
 		}

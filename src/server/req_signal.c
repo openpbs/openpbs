@@ -229,14 +229,9 @@ req_signaljob(struct batch_request *preq)
 			return;
 		} else if (i == 1)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i >= 0) {
-				if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-					anygood++;
-				}
-			}
-			x += z;
+		for (i = x; i <= y; i += z) {
+			if (get_subjob_state(parent, SJ_IDX_2_TBLIDX(parent, i)) == JOB_STATE_RUNNING)
+				anygood++;
 		}
 		vrange = pc;
 	}
@@ -255,19 +250,13 @@ req_signaljob(struct batch_request *preq)
 			break;
 		} else if (i == 1)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i < 0) {
-				x += z;
-				continue;
-			}
-
-			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
+		for (i = x; i <= y; i += z) {
+			int idx = SJ_IDX_2_TBLIDX(parent, i);
+			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
+				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
 					dup_br_for_subjob(preq, pjob, req_signaljob2);
 				}
 			}
-			x += z;
 		}
 		range = pc;
 	}

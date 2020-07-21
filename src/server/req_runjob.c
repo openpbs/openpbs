@@ -409,13 +409,10 @@ req_runjob(struct batch_request *preq)
 				return;
 			} else if (i == 1)
 				break;	/* no more in the range */
-			for (; x <= y; x += z) {
-				if ((i = numindex_to_offset(parent, x)) >= 0) {
-					if ((get_subjob_state(parent, i) == JOB_STATE_QUEUED) &&
-						get_subjob_discarding(parent, i) != 1) {
-							anygood = 1;
-					}
-				}
+			for (i = x; x <= y; i += z) {
+				int idx = SJ_IDX_2_TBLIDX(parent, i);
+				if ((get_subjob_state(parent, idx) == JOB_STATE_QUEUED) && get_subjob_discarding(parent, idx) != 1)
+					anygood = 1;
 			}
 			range = pc;
 		}
@@ -580,17 +577,14 @@ req_runjob(struct batch_request *preq)
 			break;
 		} else if (i == 1)
 			break;
-		for (; x <= y; x += z) {
-			i = numindex_to_offset(parent, x);
-			if (i < 0) {
-				continue;
-			}
+		for (i = x; x <= y; i += z) {
+			int idx = SJ_IDX_2_TBLIDX(parent, i);
 
-			if (get_subjob_state(parent, i) == JOB_STATE_QUEUED) {
+			if (get_subjob_state(parent, idx) == JOB_STATE_QUEUED) {
 				attribute sub_runcount = {0};
 				attribute sub_run_version = {0};
-				jid  = mk_subjob_id(parent, i);
-				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob) != NULL) {
+				jid  = mk_subjob_id(parent, idx);
+				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob) != NULL) {
 					sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
 					sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
 					job_purge(pjobsub);

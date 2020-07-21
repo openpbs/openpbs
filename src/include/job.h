@@ -327,7 +327,6 @@ typedef struct	noderes {
 
 /* individual entries in array job index table */
 struct ajtrk {
-	int trk_index;	/* actual index     */
 	int trk_status; /* status           */
 	int trk_error;  /* error code       */
 	int trk_exitstat;  /* if executed and exitstat set */
@@ -341,6 +340,7 @@ struct ajtrk {
 struct ajtrkhd {
 	size_t  tkm_size;	 /* size of whole table */
 	int	tkm_ct;		 /* count of original entries in table */
+	int	tkm_start;	 /* start of range (x in x-y:z) */
 	int	tkm_step;	 /* stepping factor for range (z in x-y:z) */
 	int	tkm_flags;	 /* special flags for array job		   */
 	int 	tkm_subjsct[PBS_NUMJOBSTATE];  /* count of subjobs in various states */

@@ -363,8 +363,6 @@ req_deletejob(struct batch_request *preq)
 	int x, y, z;
 	int rc = 0;
 	int delhist = 0;
-	int maxindex = 0;
-	int count = 0;
 	int err = PBSE_NONE;
 
 	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_delete.rq_objname);
@@ -533,48 +531,33 @@ req_deletejob(struct batch_request *preq)
 		/* Ensure that the range specified in the delete job request does not exceed the
 		 index of the highest numbered array subjob */
 
-		count = parent->ji_ajtrk->tkm_ct;
-		maxindex = parent->ji_ajtrk->tkm_tbl[count-1].trk_index;
-		if (x > maxindex) {
+		if (x > SJ_TBLIDX_2_IDX(parent, parent->ji_ajtrk->tkm_ct - 1)) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			break;
 		}
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i < 0) {
-				x += z; /* no such index, ignore it */
-				continue;
-			}
+		for (i = x; i <= y; i += z) {
+			int idx = SJ_IDX_2_TBLIDX(parent, i);
 
-			sjst = get_subjob_state(parent, i);
-			if ((sjst == JOB_STATE_EXITING) && !forcedel) {
-				x += z; /* ignore it */
+			sjst = get_subjob_state(parent, idx);
+			if ((sjst == JOB_STATE_EXITING) && !forcedel)
 				continue;
-			}
 
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
+			if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
 				if (delhist)
 					pjob->ji_deletehistory = 1;
 				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
-					snprintf(log_buffer, sizeof(log_buffer),
-						msg_job_history_delete, preq->rq_user,
-						preq->rq_host);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-						pjob->ji_qs.ji_jobid,
-						log_buffer);
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_job_history_delete, preq->rq_user, preq->rq_host);
 					job_purge(pjob);
-				}else
+				} else
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
 			} else {
 				/* Queued, Waiting, Held, just set to expired */
 				if (sjst != JOB_STATE_EXPIRED) {
-					parent->ji_ajtrk->tkm_tbl[i].trk_substate =
-						JOB_SUBSTATE_TERMINATED;
-					set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
+					parent->ji_ajtrk->tkm_tbl[idx].trk_substate = JOB_SUBSTATE_TERMINATED;
+					set_subjob_tblstate(parent, idx, JOB_STATE_EXPIRED);
 					decr_single_subjob_usage(parent);
 				}
 			}
-			x += z;
 		}
 		range = pc;
 	}

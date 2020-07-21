@@ -44,7 +44,6 @@
  *
  * Included public functions are:
  * is_job_array()
- * numindex_to_offset()
  * subjob_index_to_offset()
  * get_index_from_jid()
  * find_arrayparent()
@@ -197,31 +196,6 @@ is_job_array(char *id)
 
 /**
  * @brief
- * 		numindex_to_offset - return the offset into the table for a numerical
- *
- * @param[in]	parent - Pointer to to parent job structure.
- * @param[in]	iindx  - first number of range
- *
- *	@return	Sub job index.
- *	@retval -1	- on error.
- */
-int
-numindex_to_offset(job *parent, int iindx)
-{
-	struct ajtrkhd *ptbl;
-	int i;
-
-	ptbl = parent->ji_ajtrk;
-	if (ptbl == NULL)
-		return -1;
-	for (i=0; i<ptbl->tkm_ct; i++) {
-		if (ptbl->tkm_tbl[i].trk_index == iindx)
-			return i;
-	}
-	return -1;
-}
-/**
- * @brief
  * 		subjob_index_to_offset - return the offset into the table for an array
  *
  * @param[in]	parent - Pointer to to parent job structure.
@@ -233,22 +207,13 @@ numindex_to_offset(job *parent, int iindx)
 int
 subjob_index_to_offset(job *parent, char *index)
 {
-	struct ajtrkhd *ptbl;
-	int i;
-	int nidx;
+	long nidx;
 
-	if ((index == NULL) || (*index == '\0'))
+	if (parent == NULL || parent->ji_ajtrk == NULL || index == NULL || *index == '\0')
 		return -1;
 
 	nidx = atoi(index);
-	ptbl = parent->ji_ajtrk;
-	if (ptbl == NULL)
-		return -1;
-	for (i=0; i<ptbl->tkm_ct; i++) {
-		if (ptbl->tkm_tbl[i].trk_index == nidx)
-			return i;
-	}
-	return -1;
+	return SJ_IDX_2_TBLIDX(parent, nidx);
 }
 /**
  * @brief
@@ -410,7 +375,7 @@ update_array_indices_remaining_attr(job *parent)
 
 	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
 		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
-		char *pnewstr = cvt_range(parent->ji_ajtrk, JOB_STATE_QUEUED);
+		char *pnewstr = cvt_range(parent, JOB_STATE_QUEUED);
 		if ((pnewstr == NULL) || (*pnewstr == '\0'))
 			pnewstr = "-";
 		job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
@@ -625,19 +590,20 @@ subst_array_index(job *pjob, char *path)
 {
 	char *pindorg;
 	char cvt[10];
-	char trail[MAXPATHLEN+1];
+	char trail[MAXPATHLEN + 1];
+	job *ppjob = pjob->ji_parentaj;
 	static char index_tag[] = PBS_FILE_ARRAY_INDEX_TAG;
 
-	if (pjob->ji_parentaj == NULL)
+	if (ppjob == NULL)
 		return path;
 	if ((pindorg = strstr(path, index_tag)) == NULL)
-		return path;	/* unchanged */
+		return path; /* unchanged */
 
-	sprintf(cvt, "%d", pjob->ji_parentaj->ji_ajtrk->tkm_tbl[pjob->ji_subjindx].trk_index);
+	sprintf(cvt, "%d", SJ_TBLIDX_2_IDX(ppjob, pjob->ji_subjindx));
 	*pindorg = '\0';
-	(void)strcpy(trail, pindorg+strlen(index_tag));
-	(void)strcat(path, cvt);
-	(void)strcat(path, trail);
+	(void) strcpy(trail, pindorg + strlen(index_tag));
+	(void) strcat(path, cvt);
+	(void) strcat(path, trail);
 	return path;
 }
 /**
@@ -688,6 +654,7 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pb
 		return NULL;
 	}
 	t->tkm_ct   = ct;
+	t->tkm_start = x;
 	t->tkm_step = z;
 	t->tkm_size = sz;
 	t->tkm_flags = 0;
@@ -697,7 +664,6 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pb
 	t->tkm_dsubjsct = 0;
 	j = 0;
 	for (i=x; i<=y; i+=z, j++) {
-		t->tkm_tbl[j].trk_index = i;
 		t->tkm_tbl[j].trk_status = initalstate;
 		t->tkm_tbl[j].trk_error  = 0;
 		t->tkm_tbl[j].trk_discarding = 0;
@@ -780,8 +746,8 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
  * @par	Functionality:
  * 		This is used when a job is being qmoved into this server.
  * 		It is necessary that the indices_submitted be first to cause the
- * 		creation of the tracking tbl.  If the job is created here, it is not
- * 		being qmoved.
+ * 		creation of the tracking tbl. If the job is created here, no need of fix indicies
+ *
  * @param[in]	pattr - pointer to special attributes of an Array Job
  * @param[in]	pobj -  pointer to job structure
  * @param[in]	mode -  actmode
@@ -791,29 +757,28 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 int
 fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 {
-	int   i;
-	int   x, y, z, ct;
+	int i;
+	int x, y, z, ct;
 	char *ep;
-	job  *pjob = pobj;
+	job *pjob = pobj;
 	char *str;
 
 	if (!pjob || !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) || !pjob->ji_ajtrk)
 		return PBSE_BADATVAL;
 
-	/* set all all sub jobs expired,  then reset queued the ones in "remaining" */
-	for (i=0; i < pjob->ji_ajtrk->tkm_ct; i++)
+	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) && mode == ATR_ACTION_NEW)
+		return PBSE_NONE;
+
+	/* set all sub jobs expired, then reset queued the ones in "remaining" */
+	for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++)
 		set_subjob_tblstate(pjob, i, JOB_STATE_EXPIRED);
 
 	str = pattr->at_val.at_str;
 	while (1) {
 		if (parse_subjob_index(str, &ep, &x, &y, &z, &ct) != 0)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(pjob, x);
-			if (i != -1)
-				set_subjob_tblstate(pjob, i, JOB_STATE_QUEUED);
-			x += z;
-		}
+		for (i = x; i <= y; i += z)
+			set_subjob_tblstate(pjob, SJ_IDX_2_TBLIDX(pjob, i), JOB_STATE_QUEUED);
 		str = ep;
 	}
 
@@ -1060,7 +1025,7 @@ mk_subjob_id(job *parent, int offset)
 	char        index[20];
 	char       *pb;
 
-	sprintf(index, "%d", parent->ji_ajtrk->tkm_tbl[offset].trk_index);
+	sprintf(index, "%d", SJ_TBLIDX_2_IDX(parent, offset));
 	(void)strcpy(jid, parent->ji_qs.ji_jobid);
 
 	pb = strchr(jid, (int)']');
@@ -1077,13 +1042,13 @@ mk_subjob_id(job *parent, int offset)
  * 		cvt-range - convert entries in subjob index table which are in "state"
  * 		to a range of indices of subjobs.  range will be of form:
  * 		X,X-Y:Z,...
- * @param[in]	t - pointer to subjob index table
+ * @param[in]	pjob - job pointer
  * @param[in]	state -  job state.
  * @return	Pointer to static buffer
  * @par	MT-safe: No - uses a global buffer, "buf" and "buflen".
  */
 char *
-cvt_range(struct ajtrkhd *t, int state)
+cvt_range(job *pjob, int state)
 {
 	unsigned int f;	/* first of a pair or range   */
 	unsigned int n;  /* next one we are looking at */
@@ -1092,6 +1057,7 @@ cvt_range(struct ajtrkhd *t, int state)
 	char *b2;
 	static char *buf = NULL;
 	static size_t   buflen = 0;
+	struct ajtrkhd *t = pjob->ji_ajtrk;
 
 	if (t == NULL)
 		return NULL;
@@ -1124,7 +1090,7 @@ cvt_range(struct ajtrkhd *t, int state)
 			else
 				pcomma = 1;
 
-			sprintf(buf+strlen(buf), "%d", t->tkm_tbl[f].trk_index);
+			sprintf(buf+strlen(buf), "%d", SJ_TBLIDX_2_IDX(pjob, f));
 
 			/* find next incomplete entry */
 
@@ -1137,11 +1103,11 @@ cvt_range(struct ajtrkhd *t, int state)
 			}
 			if (l > (f+1)) {
 				if (t->tkm_step > 1)
-					sprintf(buf+strlen(buf), "-%d:%d", t->tkm_tbl[l].trk_index, t->tkm_step);
+					sprintf(buf+strlen(buf), "-%d:%d", SJ_TBLIDX_2_IDX(pjob, l), t->tkm_step);
 				else
-					sprintf(buf+strlen(buf), "-%d", t->tkm_tbl[l].trk_index);
+					sprintf(buf+strlen(buf), "-%d", SJ_TBLIDX_2_IDX(pjob, l));
 			} else if (l > f) {
-				sprintf(buf+strlen(buf), ",%d", t->tkm_tbl[l].trk_index);
+				sprintf(buf+strlen(buf), ",%d", SJ_TBLIDX_2_IDX(pjob, l));
 			}
 			f = l+1;
 		} else {
