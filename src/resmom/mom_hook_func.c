@@ -3564,8 +3564,8 @@ reply_hook_bg(job *pjob)
 						req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
 					job_purge_mom(pjob);
-				}
-				pjob->ji_hook_running_bg_on = BG_NONE;
+				} else
+					pjob->ji_hook_running_bg_on = BG_NONE;
 				/*
 				* otherwise, job_purge() and dorestrict_user() are called in
 				* mom_comm when all the sisters have replied. The reply to
