@@ -379,7 +379,7 @@ class TestReservations(TestFunctional):
     def test_degraded_running_only_replace(self):
         """
         Test that when a running degraded reservation is reconfirmed,
-        make sure that only the nodes that unavailable are repalced
+        make sure that only the nodes that unavailable are replaced
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
 
