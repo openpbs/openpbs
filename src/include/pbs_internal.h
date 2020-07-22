@@ -396,7 +396,7 @@ enum accrue_types {
 #else
 #define closesocket(X) close(X)
 #define ERRORNO        errno
-#define initsocketlib() FALSE
+#define initsocketlib() 0
 #endif
 
 #if HAVE__BOOL
