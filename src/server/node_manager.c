@@ -6839,52 +6839,21 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	return 0;
 }
 
-/**
- * @brief
- * 		free nodes allocated to a job
- *
- * @param[in,out]	pjob	- job structure
- *
- * @return	void
- */
 void
-free_nodes(job *pjob)
+disassociate_job_from_moms(job *pjob, struct pbsnode *pnode)
 {
-
-	struct pbsnode *pnode;
-	mom_svrinfo_t *psvrmom;
-	char *execvnod_in = NULL;
 	int i;
 	int j;
-	char *execvncopy;
-	char *chunk;
-	char *last;
-	int hasprn;
-	char *vname;
-	int nelem;
-	struct key_value_pair *pkvp;
-	char *execvnod = NULL;
 	int special_case = 0;
+	mom_svrinfo_t *psvrmom;
 	
-	/* decrement number of jobs on the Mom who is the first Mom */	
-	/* for the job, Mother Superior; incremented in set_nodes() */	
-	/* and saved in ji_destin in assign_hosts()		    */	
-	if (((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) != 0) &&	
-		(pjob->ji_qs.ji_destin[0] != '\0')) {	
-		pnode = find_nodebyname(pjob->ji_qs.ji_destin);	
-		if (pnode) {	
-			psvrmom = pnode->nd_moms[0]->mi_data;	
-			if (--psvrmom->msr_numjobs < 0)	
-				psvrmom->msr_numjobs = 0;	
-		}	
-	}
-	
-	/* Now loop through the Moms and remove the jobindx entry */	
-	/* and remove this jobs's jobinfo entry from each vnode   */	
-	for (i = 0; i < mominfo_array_size; i++) {	
-		if (mominfo_array[i] == NULL)	
+	if (pnode == NULL)
+		return;
+			
+	for (i = 0; i < pnode->nd_nummoms; i++) {	
+		if (pnode->nd_moms[i] == NULL)	
 			continue;	
-		psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);	
+		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[i]->mi_data);	
 
 		for (j=0; j<psvrmom->msr_jbinxsz; j++) {	
 			if (psvrmom->msr_jobindx[j] == pjob) {	
@@ -6911,7 +6880,51 @@ free_nodes(job *pjob)
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);	
 		}
 	}
+	
+}
 
+
+/**
+ * @brief
+ * 		free nodes allocated to a job
+ *
+ * @param[in,out]	pjob	- job structure
+ *
+ * @return	void
+ */
+void
+free_nodes(job *pjob)
+{
+
+	struct pbsnode *pnode;
+	mom_svrinfo_t *psvrmom;
+	char *execvnod_in = NULL;
+	char *execvncopy;
+	char *chunk;
+	char *last;
+	int hasprn;
+	char *vname;
+	int nelem;
+	struct key_value_pair *pkvp;
+	char *execvnod = NULL;
+
+	
+	/* decrement number of jobs on the Mom who is the first Mom */	
+	/* for the job, Mother Superior; incremented in set_nodes() */	
+	/* and saved in ji_destin in assign_hosts()		    */	
+	if (((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) != 0) &&	
+		(pjob->ji_qs.ji_destin[0] != '\0')) {	
+		pnode = find_nodebyname(pjob->ji_qs.ji_destin);	
+		if (pnode) {	
+			psvrmom = pnode->nd_moms[0]->mi_data;	
+			if (--psvrmom->msr_numjobs < 0)	
+				psvrmom->msr_numjobs = 0;	
+		}	
+	}
+	
+	/* Now loop through the Moms and remove the jobindx entry */
+	/*  remove this jobs's jobinfo entry from each vnode   */
+	
 	if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
 		execvnod_in = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
 		if (!execvnod_in)
@@ -6938,6 +6951,7 @@ free_nodes(job *pjob)
 	while (chunk) {
 		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {
 			pnode = find_nodebyname(vname);
+			disassociate_job_from_moms(pjob, pnode);
 			deallocate_job_from_node(pjob, pnode);
 			chunk = parse_plus_spec_r(last, &last, &hasprn);
 		}
