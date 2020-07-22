@@ -138,9 +138,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        moms = [self.momA, self.momB, self.momC]
+        for m in moms:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -150,9 +150,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in moms:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -162,9 +161,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in moms:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         attr['flag'] = 'h'
@@ -175,9 +173,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
 
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in moms:
+            m.log_match("resourcedef;copy hook-related file")
 
     def test_epilogue(self):
         """
