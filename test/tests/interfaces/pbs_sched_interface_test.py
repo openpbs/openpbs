@@ -322,3 +322,27 @@ class TestSchedulerInterface(TestInterfaces):
              'scheduler_iteration': 600,
              'sched_cycle_length': '00:20:00'}
         self.server.expect(SCHED, a, id='TestCommonSched', max_attempts=10)
+
+    def test_scheduling_behaviour(self):
+        """
+        Server should not contact Scheduler when scheduling is off even
+        if a high priority sched command like SCH_CONFIGURE is pending by the
+        time Scheduler goes down.
+        """
+        self.scheduler.stop()
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'},
+                            runas=ROOT_USER)
+        self.server.expect(SERVER, {'scheduling': 'False'})
+
+        # Following triggers SCH_CONFIGURE which is to be sent to Scheduler.
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduler_iteration': 300},
+                            runas=ROOT_USER)
+        self.server.expect(SERVER, {'scheduler_iteration': 300})
+
+        self.server.log_match("contact_sched, Could not contact Scheduler",
+                              existence=False, max_attempts=30)
+
+        self.scheduler.start()

@@ -1501,50 +1501,50 @@ main(int argc, char **argv)
 			}
 			for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 				/* if time or event says to run scheduler, do it */
+				if (psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long) {
+					
+					/* if we have a high prio sched command, send it 1st */
+					if (psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
+						schedule_high(psched);
+					if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 
-				/* if we have a high prio sched command, send it 1st */
-				if (psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
-					schedule_high(psched);
-				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
+						/* send only to existing connection */
+						/* since it is for interrupting current */
+						/* cycle */
+						/* NOTE: both primary and secondary scheduler */
+						/* connect must have been setup to be valid */
+						if ((psched->scheduler_sock2 != -1) &&
+							(psched->scheduler_sock != -1)) {
 
-					/* send only to existing connection */
-					/* since it is for interrupting current */
-					/* cycle */
-					/* NOTE: both primary and secondary scheduler */
-					/* connect must have been setup to be valid */
-					if ((psched->scheduler_sock2 != -1) &&
-						(psched->scheduler_sock != -1)) {
-
-						if (put_sched_cmd(psched->scheduler_sock2,
-								psched->svr_do_schedule, NULL) == 0) {
-							sprintf(log_buffer, "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
-							log_event(PBSEVENT_DEBUG2,
+							if (put_sched_cmd(psched->scheduler_sock2,
+									psched->svr_do_schedule, NULL) == 0) {
+								sprintf(log_buffer, "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
+								log_event(PBSEVENT_DEBUG2,
+									PBS_EVENTCLASS_SERVER,
+									LOG_NOTICE, msg_daemonname, log_buffer);
+							}
+						} else {
+							sprintf(log_buffer, "no valid secondary connection to scheduler %s: restart scheduling cycle request ignored",
+									psched->sc_name);
+							log_event(PBSEVENT_DEBUG3,
 								PBS_EVENTCLASS_SERVER,
 								LOG_NOTICE, msg_daemonname, log_buffer);
 						}
-					} else {
-						sprintf(log_buffer, "no valid secondary connection to scheduler %s: restart scheduling cycle request ignored",
-								psched->sc_name);
-						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_SERVER,
-							LOG_NOTICE, msg_daemonname, log_buffer);
-					}
-					psched->svr_do_schedule = SCH_SCHEDULE_NULL;
-				} else if (((svr_unsent_qrun_req) || ((psched->svr_do_schedule != SCH_SCHEDULE_NULL) &&
-					psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long))
-					&& can_schedule()) {
-					/*
-					 * If svr_unsent_qrun_req is set to one there are pending qrun
-					 * request, then do schedule_jobs irrespective of the server scheduling
-					 * state.
-					 * If svr_unsent_qrun_req is not set then do the existing checking and do
-					 * scheduling only if server scheduling is turned on.
-					 */
+						psched->svr_do_schedule = SCH_SCHEDULE_NULL;
+					} else if (svr_unsent_qrun_req || ((psched->svr_do_schedule != SCH_SCHEDULE_NULL) && can_schedule())) {
+						/*
+						 * If svr_unsent_qrun_req is set to one there are pending qrun
+						 * request, then do schedule_jobs irrespective of the server scheduling
+						 * state.
+						 * If svr_unsent_qrun_req is not set then do the existing checking and do
+						 * scheduling only if server scheduling is turned on.
+						 */
 
-					psched->sch_next_schedule = time_now +
-							psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
-					if ((schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
-						svr_unsent_qrun_req = 0;
+						psched->sch_next_schedule = time_now +
+								psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
+						if ((schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
+							svr_unsent_qrun_req = 0;
+					}
 				}
 			}
 		} else if (*state == SV_STATE_HOT) {
