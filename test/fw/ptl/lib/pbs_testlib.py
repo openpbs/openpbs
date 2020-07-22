@@ -4059,9 +4059,13 @@ class PBSService(PBSObject):
             rv = self.logutils.match_msg(lines, msg, allmatch=allmatch,
                                          regexp=regexp, starttime=starttime,
                                          endtime=endtime)
-            if rv is None and not existence:
-                self.logger.log(level, infomsg + attemptmsg + '... OK')
-                break
+            if not existence:
+                if rv:
+                    _msg = infomsg + ' - but exists'
+                    raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+                else:
+                    self.logger.log(level, infomsg + attemptmsg + '... OK')
+                    break
             if rv:
                 self.logger.log(level, infomsg + '... OK')
                 break
@@ -4084,7 +4088,7 @@ class PBSService(PBSObject):
             lines.close()
         except:
             pass
-        if (rv is None and existence) or (rv is not None and not existence):
+        if (rv is None and existence):
             _msg = infomsg + attemptmsg
             raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
         return rv
@@ -11489,7 +11493,8 @@ class Scheduler(PBSService):
                                starttime=reconfig_time)
                 self.log_match("Error reading line", max_attempts=2,
                                starttime=reconfig_time, existence=False)
-            except PtlLogMatchError:
+            except PtlLogMatchError as log_error:
+                self.logger.error(log_error.msg)
                 _msg = 'Error in validating sched_config changes'
                 raise PbsSchedConfigError(rc=1, rv=False,
                                           msg=_msg)
@@ -11513,10 +11518,13 @@ class Scheduler(PBSService):
         if apply:
             try:
                 self.apply_config(validate=validate)
-            except PbsSchedConfigError:
+            except PbsSchedConfigError as sched_error:
+                _msg = sched_error.msg
+                self.logger.error(_msg)
                 for k in confs:
                     del self.sched_config[k]
                 self.apply_config(validate=validate)
+                raise PbsSchedConfigError(rc=1, rv=False, msg=_msg)
         return True
 
     def add_server_dyn_res(self, custom_resource, script_body=None,
