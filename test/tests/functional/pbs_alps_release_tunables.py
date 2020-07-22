@@ -44,7 +44,7 @@ import math
 
 def get_epoch(msg):
     # Since its a log message split on ';' to get timestamp
-    a = time.strptime(msg.split(';')[0], "%m/%d/%Y %H:%M:%S")
+    a = time.strptime(msg.split(';')[0], "%m/%d/%Y %H:%M:%S.%f")
     return int(time.mktime(a))
 
 
