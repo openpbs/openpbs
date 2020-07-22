@@ -138,8 +138,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        moms = [self.momA, self.momB, self.momC]
-        for m in moms:
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
             m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
@@ -150,7 +150,7 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        for m in moms:
+        for m in momlist:
             m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
@@ -161,7 +161,7 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        for m in moms:
+        for m in momlist:
             m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
@@ -173,7 +173,7 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
 
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
-        for m in moms:
+        for m in momlist:
             m.log_match("resourcedef;copy hook-related file")
 
     def test_epilogue(self):
@@ -760,25 +760,23 @@ else:
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_i2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'float'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_f2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='stra2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         # Create an epilogue hook
         hook_body = """
@@ -1152,9 +1150,9 @@ e.job.resources_used["foo_f"] = 0.10
 
         # Verify the copy message in the logs to avoid
         # race conditions
-        self.momA.log_match("pro.PY;copy hook-related file")
-        self.momB.log_match("pro.PY;copy hook-related file")
-        self.momC.log_match("pro.PY;copy hook-related file")
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("pro.PY;copy hook-related file")
 
         hook_body = """
 import pbs
@@ -1171,9 +1169,8 @@ e.job.resources_used["cput"] = 10
 
         # Verify the copy message in the logs to avoid
         # race conditions
-        self.momA.log_match("epi.PY;copy hook-related file")
-        self.momB.log_match("epi.PY;copy hook-related file")
-        self.momC.log_match("epi.PY;copy hook-related file")
+        for m in momlist:
+            m.log_match("epi.PY;copy hook-related file")
 
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}
