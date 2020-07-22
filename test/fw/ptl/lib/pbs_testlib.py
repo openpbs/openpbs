@@ -4061,7 +4061,7 @@ class PBSService(PBSObject):
                                          endtime=endtime)
             if not existence:
                 if rv:
-                    _msg = infomsg + ' - Match'
+                    _msg = infomsg + ' - but exists'
                     raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
                 else:
                     self.logger.log(level, infomsg + attemptmsg + '... OK')
