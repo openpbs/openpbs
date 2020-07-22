@@ -246,10 +246,10 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			if (resresv->resv->queuename != NULL) {
 				queue_info *qinfo = find_queue_info(sinfo->queues, resresv->resv->queuename);
 				if (qinfo != NULL) {
-				    clear_schd_error(err);
-				    set_schd_error_arg(err, SPECMSG, "Reservation is in an invalid state");
-				    set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
-				    update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
+					clear_schd_error(err);
+					set_schd_error_arg(err, SPECMSG, "Reservation is in an invalid state");
+					set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
+					update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
 				}
 			}
 			free_resource_resv(resresv);
@@ -526,6 +526,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 						 * from the parent reservation.
 						 */
 						resresv_ocr->resv->resv_state = RESV_CONFIRMED;
+						resresv_ocr->resv->is_running = 0;
 					}
 					/* Duplication deep-copies node info array. This array gets
 					 * overwritten and needs to be freed. This is an alternative
@@ -536,8 +537,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 
 					resresv_ocr->orig_nspec_arr = parse_execvnode(
 						execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
-					resresv_ocr->nspec_arr = dup_nspecs(resresv_ocr->orig_nspec_arr, sinfo->nodes, NULL);
-					combine_nspec_array(resresv_ocr->nspec_arr);
+					resresv_ocr->nspec_arr = combine_nspec_array(resresv_ocr->orig_nspec_arr);
 					resresv_ocr->ninfo_arr = create_node_array_from_nspec(resresv_ocr->nspec_arr);
 					resresv_ocr->resv->resv_nodes = create_resv_nodes(
 						resresv_ocr->nspec_arr, sinfo);
@@ -739,6 +739,26 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		attrp = attrp->next;
 	}
 
+	if (advresv->resv->select_orig != NULL) {
+		int i;
+		int j = 0;
+		int sel_orig_num, sel_num;
+		char *sel_orig_str, *sel_str;
+		sel_num = strtol(advresv->select->chunks[j]->str_chunk, &sel_str, 10);
+		
+		for (i = 0; advresv->resv->select_orig->chunks[i] != NULL; i++) {
+			chunk *chk = advresv->resv->select_orig->chunks[i];
+			sel_orig_num = strtol(chk->str_chunk, &sel_orig_str, 10);
+			if (strcmp(sel_orig_str, sel_str) == 0 && sel_num <= sel_orig_num) {
+				advresv->select->chunks[j++]->seq_num = chk->seq_num;
+				if (advresv->select->chunks[j] != NULL)
+					sel_num = strtol(advresv->select->chunks[j]->str_chunk, &sel_str, 10);
+				else
+					break;
+			}
+		}
+	}
+
 	if (resv_nodes != NULL) {
 		selspec *sel;
 		/* parse the execvnode and create an nspec array with ninfo ptrs pointing
@@ -749,15 +769,14 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		else
 			sel = advresv->select;
 		advresv->orig_nspec_arr = parse_execvnode(resv_nodes, sinfo, sel);
-		advresv->nspec_arr = dup_nspecs(advresv->orig_nspec_arr, sinfo->nodes, advresv->select);
-		combine_nspec_array(advresv->nspec_arr);
+		advresv->nspec_arr = combine_nspec_array(advresv->orig_nspec_arr);
 		advresv->ninfo_arr = create_node_array_from_nspec(advresv->nspec_arr);
 
 		/* create a node info array by copying the nodes and setting
 		 * available resources to only the ones assigned to the reservation
 		 */
 		advresv->resv->resv_nodes = create_resv_nodes(advresv->nspec_arr, sinfo);
-		selectspec = create_select_from_nspec(advresv->nspec_arr);
+		selectspec = create_select_from_nspec(advresv->orig_nspec_arr);
 		advresv->execselect = parse_selspec(selectspec);
 		free(selectspec);
 	}
@@ -1121,8 +1140,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						release_nodes(nresv_copy);
 						nresv_copy->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
 						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
-						nresv_copy->nspec_arr = dup_nspecs(nresv_copy->orig_nspec_arr, nresv_copy->ninfo_arr, NULL);
-						combine_nspec_array(nresv_copy->nspec_arr);
+						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->orig_nspec_arr);
 						nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 					}
 
@@ -1460,7 +1478,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			 * unavailable. If none, then this reservation or occurrence does not
 			 * require reconfirmation.
 			 */
-			vnodes_down = check_vnodes_unavailable(nresv);
+			if (nresv->resv->resv_state == RESV_BEING_ALTERED)
+				vnodes_down = ralter_reduce_chunks(nresv);
+			else
+				vnodes_down = check_vnodes_unavailable(nresv);
 
 			if (vnodes_down < 0 && nresv->resv->resv_substate != RESV_IN_CONFLICT) {
 				if (vnodes_down == -1)
@@ -1718,11 +1739,12 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
  * @retval 1 - running jobs, no unavailable nodes
  * @retval 0 no unavailable nodes, no running jobs
  * @retval -1 unavailable nodes, but no running jobs on the chunk
- * @retval -2 unavilable nodes, running jobs within the chunk
+ * @retval -2 unavailable nodes, running jobs within the chunk
  * @retval -3 error
  * 
  */
-int check_down_running(resource_resv *resv, int chunk_ind)
+int
+check_down_running(resource_resv *resv, int chunk_ind)
 {
 	int i, j, k;
 	int ret = 0;
@@ -1730,34 +1752,158 @@ int check_down_running(resource_resv *resv, int chunk_ind)
 	if (resv == NULL || chunk_ind < 0 || !resv->is_resv)
 		return -3;
 
-	for(i = chunk_ind; resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {
+	for (i = chunk_ind; resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {
 		nspec *ns = resv->orig_nspec_arr[i];
 		node_info *ninfo = ns->ninfo;
 
-		if (ninfo->is_down || ninfo->is_offline || ninfo->is_stale || ninfo->is_unknown || ninfo->is_maintenance || ninfo->is_sleeping) {
-			if (ret == 1)
-				ret = -2;
-			else
-				ret = -1;
-		}
-
-		if (resv->resv->resv_queue->running_jobs != NULL)
-			for (j = 0; resv->resv->resv_queue->running_jobs[j] != NULL && ret != -2; j++) {
-				resource_resv *job = resv->resv->resv_queue->running_jobs[j];
-				for (k = 0; job->ninfo_arr[k] != NULL && ret != -2; k++)
-					if (job->ninfo_arr[k]->rank == ninfo->rank) {
-						if (ret == -1)
-							ret = -2;
-						else
-							ret = 1;
-					}
+		if (ninfo != NULL) {
+			if (ninfo->is_down || ninfo->is_offline || ninfo->is_stale || ninfo->is_unknown || ninfo->is_maintenance || ninfo->is_sleeping) {
+				if (ret == 1)
+					ret = -2;
+				else
+					ret = -1;
 			}
 
-		if (ns->end_of_chunk)
-			break;
+			if (resv->resv->resv_queue->running_jobs != NULL)
+				for (j = 0; resv->resv->resv_queue->running_jobs[j] != NULL && ret != -2; j++) {
+					resource_resv *job = resv->resv->resv_queue->running_jobs[j];
+					for (k = 0; job->ninfo_arr[k] != NULL && ret != -2; k++)
+						if (job->ninfo_arr[k]->rank == ninfo->rank) {
+							if (ret == -1)
+								ret = -2;
+							else
+								ret = 1;
+						}
+				}
+
+			if (ns->end_of_chunk)
+				break;
+		}
 	}
 
 	return ret;
+}
+
+/**
+ * @brief "remove" nodes from nspec array by adding them to chunks_to_remove.  The type of node removes
+ * 	is based on node_type.  It can be either an unavailable node or a normal node (or either).
+ * 	If we have 4:A+5:B and num_chunks is 2, we'd remove 2 A's and return.
+ * 
+ * @param[in] resv - reservation to remove nodes from
+ * @param[in] start_of_chk - index into orig_nspec_arr of where to start
+ * @param[in] chk_seq_num - sequence number of chunk to remove nodes from
+ * @param[in] num_chks - number of nodes to remove.  Depending on node_type, it is OK to remove less than this
+ * @param[in, out] chunks_to_remove - chunks from the nspec array to remove
+ * @param[in, out] ctr_ind - index of where to start in chunks_to_remove, and advanced as we add to it
+ * @param[in] node_type - type of node to remove: -1 unavailable, 0 normal, 1 either all with no running jobs
+ * 
+ * @note all nspec chunks to be removed will have their ninfo pointer NULL'd.
+ * 
+ * @return int
+ * @retval number of chunks removed from the nspec array
+ * @retval -1 nspecs are not mapped to select chunks
+ */
+int ralter_remove_nodes(resource_resv *resv, int start_of_chk, int chk_seq_num, int num_chks, int node_type) {
+	int i,k;
+	int cur_chks;
+
+	cur_chks = num_chks;
+	nspec **nspec_arr;
+
+	nspec_arr = resv->orig_nspec_arr;
+
+	for (i = start_of_chk; nspec_arr[i] != NULL && cur_chks; i++) {
+		int ret;
+		if (nspec_arr[i]->chk == NULL)
+			return -1;
+	
+		if (nspec_arr[i]->chk->seq_num != chk_seq_num)
+			break;
+		ret = check_down_running(resv, i);
+		if (ret == node_type || node_type == 1) {
+			k = i;
+			do {
+				nspec_arr[k]->ninfo = NULL;
+				k++;
+			} while (nspec_arr[k] != NULL && !nspec_arr[k]->end_of_chunk);
+
+			if (nspec_arr[i]->end_of_chunk)
+				cur_chks--;
+		}
+	}
+	return num_chks - cur_chks;
+}
+
+int 
+ralter_reduce_chunks(resource_resv *resv) 
+{
+	int cnt;
+	int start_of_chunk = 0;
+	int i, j, k;
+	chunk **chks_orig, **chks;
+
+	if (resv == NULL)
+		return -2;
+	
+	/* We're not altering the select, just return success */
+	if (resv->resv->select_orig == NULL)
+		return 0;
+
+	cnt = count_array(resv->orig_nspec_arr);
+	j = 0;
+	chks_orig = resv->resv->select_orig->chunks;
+	chks = resv->select->chunks;
+	for (i = 0; chks_orig[i] != NULL; i++) {
+		int num_chks = 0;
+		if (chks[j] == NULL || chks_orig[i]->seq_num != chks[j]->seq_num) {
+			/* We're removing the entire chunk, so remove all the nodes of the chunk */
+			num_chks = ralter_remove_nodes(resv, start_of_chunk, chks_orig[i]->seq_num, chks_orig[i]->num_chunks, 1);
+			if (num_chks == -1)
+				return -2;
+			/* If we didn't remove all the nodes, some of them must have running jobs on them */
+			if (num_chks != chks_orig[i]->num_chunks)
+				return -1;
+
+		} else {
+			int tot_num_chunks = 0;
+			int chk_diff = chks_orig[i]->num_chunks - chks[j]->num_chunks;
+			if (chk_diff > 0) {
+				/* First remove nodes that are unavailable */
+				num_chks = ralter_remove_nodes(resv, start_of_chunk, chks_orig[i]->seq_num, chk_diff, -1);
+				if (num_chks == -1)
+					return -2;
+
+				if (chk_diff - num_chks > 0) {
+					/* Once we have all the unavailable nodes, fill in the rest with available nodes */
+					tot_num_chunks = ralter_remove_nodes(resv, start_of_chunk, chks_orig[i]->seq_num, chk_diff - num_chks, 0);
+					if (tot_num_chunks == -1)
+						return -2;
+				}
+				tot_num_chunks += num_chks;
+				/* We weren't able to find enough nodes without runniung jobs on them.  Fail the alter */
+				if (tot_num_chunks < chk_diff)
+					return -1;
+			}
+
+			j++;
+		}
+		for (k = start_of_chunk; k < cnt && resv->orig_nspec_arr[k]->chk->seq_num == chks_orig[i]->seq_num; k++)
+			;
+		start_of_chunk = k;
+	}
+	i = 0;
+	while (resv->orig_nspec_arr[i] != NULL) {
+		if (resv->orig_nspec_arr[i]->ninfo == NULL) {
+			free_nspec(resv->orig_nspec_arr[i]);
+			for (j = i; resv->orig_nspec_arr[j] != NULL; j++)
+				resv->orig_nspec_arr[j] = resv->orig_nspec_arr[j + 1];
+		} else
+			i++;
+	}
+	free_nspecs(resv->nspec_arr);
+	resv->nspec_arr = combine_nspec_array(resv->orig_nspec_arr);
+
+	return 1;
 }
 
 /**
@@ -1983,7 +2129,7 @@ end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
  * 	    check_nodes() to assign back to the reservation.
  *
  * @param[in] resv - reservation to alter nodes for
- * @param[in] all_nodes - array of server's nodes
+ * @param[in] sinfo - PBS universe
  *
  */
 

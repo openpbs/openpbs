@@ -735,7 +735,7 @@ struct node_info
 	int nodesig_ind;		/* resource signature index in server array */
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
 	node_partition *hostset;	/* other vnodes on on the same host */
-	node_scratch nscr;		/* scratch space local to node search code */
+	unsigned int nscr;		/* scratch space local to node search code */
 	char *partition;		/* partition to which node belongs to */
 	time_t last_state_change_time;	/* Node state change at time stamp */
 	time_t last_used_time;		/* Node was last active at this time */

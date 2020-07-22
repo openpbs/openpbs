@@ -335,7 +335,7 @@ int compare_selspec(selspec *sel1, selspec *sel2);
  *	combine_nspec_array - find and combine any nspec's for the same node
  *				in an nspec array
  */
-void combine_nspec_array(nspec **nspec_arr);
+nspec **combine_nspec_array(nspec **nspec_arr);
 
 /*
  *	eval_selspec - eval a select spec to see if it is satisifable
@@ -619,17 +619,6 @@ node_info *find_node_by_rank(node_info **ninfo_arr, int rank);
 
 /* find node by index into sinfo->unordered_nodes or by unique rank */
 node_info *find_node_by_indrank(node_info **ninfo_arr, int ind, int rank);
-
-/*
- * node scratch constructor
- */
-node_scratch *new_node_scratch(void);
-
-
-/*
- * node_scratch destructor
- */
-void free_node_scratch(node_scratch *nscr);
 
 /* determine if resresv conflicts with future events on ninfo based on the exclhost state */
 int sim_exclhost(event_list *calendar, resource_resv *resresv, node_info *ninfo);

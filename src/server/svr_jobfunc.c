@@ -3372,36 +3372,37 @@ resvFinishReply(struct work_task *ptask)
  * @param[out]	psub	-	substate of resv state
  */
 void
-eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
-	int *pstate, int *psub)
+eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal, int *pstate, int *psub)	
 {
-	/*initialize new values to current settings*/
+	int is_running = 0;
 
 	*pstate = presv->ri_qs.ri_state;
 	*psub = presv->ri_qs.ri_substate;
+
+	if (time_now >= presv->ri_qs.ri_stime && time_now < presv->ri_qs.ri_etime)
+		is_running = 1;
 
 	if (s == RESVSTATE_gen_task_Time4resv) {
 		/* from a successful confirmation */
 		if (relVal == 0) {
 			if (*psub == RESV_DEGRADED) {
-				if (*pstate == RESV_RUNNING && presv->ri_qs.ri_stime < time_now)
+				if (is_running) {
+					*pstate = RESV_RUNNING;
 					*psub = RESV_RUNNING;
-				else {
+				} else {
 					*pstate = RESV_CONFIRMED;
 					*psub = RESV_CONFIRMED;
 				}
 			} else {
 				if (*pstate == RESV_BEING_ALTERED) {
-					/* Altering a reservation's start time after the current time
-					 * moves the reservation into the confirmed state.
-					 */
-					if (presv->ri_qs.ri_stime > time_now) {
-						*pstate = RESV_CONFIRMED;
-						*psub = RESV_CONFIRMED;
-					} else {
-						/* Altering a reservation after its start time */
+					if (is_running) {
 						*pstate = RESV_RUNNING;
 						*psub = RESV_RUNNING;
+
+					} else {
+						/* Altering a reservation after its start time */
+						*pstate = RESV_CONFIRMED;
+						*psub = RESV_CONFIRMED;
 					}
 				} else if (presv->ri_qs.ri_etime > time_now) {
 					*pstate = RESV_CONFIRMED;

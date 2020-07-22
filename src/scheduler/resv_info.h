@@ -115,6 +115,9 @@ node_info **create_resv_nodes(nspec **nspec_arr, server_info *sinfo);
  */
 void release_running_resv_nodes(resource_resv *resv, server_info *sinfo);
 
+/* Reduce resv_nodes of a reservation on pbs_ralter -lselect for running jobs */
+int ralter_reduce_chunks(resource_resv *resv);
+
 /* Will we try and confirm this reservation in this cycle */
 int will_confirm(resource_resv *resv, time_t server_time);
 

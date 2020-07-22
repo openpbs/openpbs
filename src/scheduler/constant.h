@@ -629,6 +629,13 @@ enum preempt_sort_vals {
 	PS_HIGH
 };
 
+enum nscr_vals {
+	NSCR_NONE = 0,
+	NSCR_VISITED = 1,
+	NSCR_SCATTERED = 2,
+	NSCR_INELIGIBLE = 4
+};
+
 #ifdef	__cplusplus
 }
 #endif

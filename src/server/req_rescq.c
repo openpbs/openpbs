@@ -783,28 +783,32 @@ req_confirmresv(struct batch_request *preq)
 	 * Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes.
 	 */
-	if (is_being_altered)
+	if (is_being_altered) {
+		if ((is_being_altered & RESV_SELECT_MODIFIED) && presv->ri_qs.ri_stime < time_now) {
+			/* If we are both degraded and ralter -lselect, we are fine.  We will have unset ri_giveback above */
+			if (presv->ri_giveback) {
+				set_resc_assigned((void *) presv, 1, DECR);
+				presv->ri_giveback = 0;
+			}
+		}
+
 		free_resvNodes(presv);
+	}
 	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
-	if (rc != PBSE_NONE) {
-		free(next_execvnode);
-		if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING) {
+	if (presv->ri_qs.ri_stime < time_now) {
+		if (is_degraded || is_being_altered & RESV_SELECT_MODIFIED) {
 			if (presv->ri_giveback == 0) {
 				set_resc_assigned((void *) presv, 1, INCR);
 				presv->ri_giveback = 1;
 			}
 		}
-
-		req_reject(rc, 0, preq);
-		return;
 	}
 
-	if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING) {
-		if (presv->ri_giveback == 0) {
-			set_resc_assigned((void *) presv, 1, INCR);
-			presv->ri_giveback = 1;
-		}
+	if (rc != PBSE_NONE) {
+		free(next_execvnode);
+		req_reject(rc, 0, preq);
+		return;
 	}
 
 	/* place "Time4resv" task on "task_list_timed" only if this is a
