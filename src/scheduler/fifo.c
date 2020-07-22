@@ -1541,6 +1541,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			rr = queue_subjob(resresv, sinfo, qinfo);
 			if(rr == NULL) {
 				set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
+				free_nspecs(ns_arr);
 				return -1;
 			}
 		} else
@@ -1658,6 +1659,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		rr->can_not_run = 1;
 
+		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr)
+			free_nspecs(rr->nspec_arr);
 		/* The nspec array coming out of the node selection code could
 		 * have a node appear multiple times.  This is how we need to
 		 * send the execvnode to the server.  We now need to combine
@@ -1809,11 +1812,15 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
 	if(err == NULL)
 		err = new_schd_error();
 
-	if (resresv == NULL)
+	if (resresv == NULL) {
+		free_nspecs(ns_arr);
 		return -1;
+	}
 
-	if (!is_resource_resv_valid(resresv, NULL))
+	if (!is_resource_resv_valid(resresv, NULL)) {
+		free_nspecs(ns_arr);
 		return -1;
+	}
 
 	sinfo = resresv->server;
 	if (resresv->is_job)

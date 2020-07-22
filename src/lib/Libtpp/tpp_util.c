@@ -311,8 +311,6 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 
 		hlen = strlen(nm);
 		if ((tmp = realloc(formatted_names, len + hlen + 2)) == NULL) { /* 2 for command and null char */
-			free(formatted_names);
-			free(nm);
 			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make formatted node name");
 			fprintf(stderr, "%s\n", log_buffer);
 			tpp_log_func(LOG_CRIT, NULL, log_buffer);
@@ -435,8 +433,6 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 		tpp_conf->routers = malloc(sizeof(char *) * (num_routers + 1));
 		if (!tpp_conf->routers) {
 			tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating routers array");
-			if (routers)
-				free(routers);
 			return -1;
 		}
 
@@ -482,9 +478,6 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 				(tpp_conf->routers[i]) ?(tpp_conf->routers[i]) : "");
 			fprintf(stderr, "%s\n", log_buffer);
 			tpp_log_func(LOG_CRIT, NULL, log_buffer);
-
-			if (tpp_conf->routers)
-				free(tpp_conf->routers);
 			return -1;
 		}
 	}
