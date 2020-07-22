@@ -6930,8 +6930,7 @@ free_nodes(job *pjob)
 		if (!execvnod_in)
 			return;
 	} else {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-		pjob->ji_qs.ji_jobid, "in free_nodes and no exec_vnode");
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "in free_nodes and no exec_vnode");
 		return;
 	}
 
