@@ -95,8 +95,8 @@ at least resid .* is exclusive"
 
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)
-        s = self.mom.log_match(msg_expected, starttime=check_after, regexp=True,
-                              max_attempts=10)
+        s = self.mom.log_match(msg_expected, starttime=check_after,
+                               regexp=True, max_attempts=10)
         self.assertTrue(s)
 
     @tags('cray')
