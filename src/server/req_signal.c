@@ -232,7 +232,7 @@ req_signaljob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			if (get_subjob_state(parent, SJ_IDX_2_TBLIDX(parent, i)) == JOB_STATE_RUNNING)
+			if (get_subjob_state(parent, numindex_to_offset(parent, i)) == JOB_STATE_RUNNING)
 				anygood++;
 		}
 		vrange = pc;
@@ -253,7 +253,7 @@ req_signaljob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			int idx = SJ_IDX_2_TBLIDX(parent, i);
+			int idx = numindex_to_offset(parent, i);
 			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
 				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
 					dup_br_for_subjob(preq, pjob, req_signaljob2);
@@ -412,8 +412,8 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
 
 	newreq->rq_extra = extra;
 
-	(void)strcpy(newreq->rq_ind.rq_signal.rq_jid, pjob->ji_qs.ji_jobid);
-	(void)strncpy(newreq->rq_ind.rq_signal.rq_signame, signame, PBS_SIGNAMESZ);
+	strcpy(newreq->rq_ind.rq_signal.rq_jid, pjob->ji_qs.ji_jobid);
+	strncpy(newreq->rq_ind.rq_signal.rq_signame, signame, PBS_SIGNAMESZ);
 	return (relay_to_mom(pjob, newreq, func));
 
 	/* when MOM replies, we just free the request structure */

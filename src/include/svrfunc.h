@@ -55,19 +55,11 @@ extern "C" {
 #include "pbs_entlim.h"
 
 /*
- * Convert given subjob index to tracking table array index
+ * Convert given tracking table array index to subjob index
  *
  * For example: -J10-20:7 creates 2 subjob
  *   1. [10] on 0th index in table
  *   2. [17] on 1st index in table
- * So SJ_IDX_2_TBLIDX(pj, 17) == ((17 - 10) / 7) == 1
- */
-#define SJ_IDX_2_TBLIDX(pj, sjidx) ((int)((sjidx - pj->ji_ajtrk->tkm_start) / pj->ji_ajtrk->tkm_step))
-
-/*
- * Convert given tracking table array index to subjob index
- *
- * In above -J10-20:7 example
  *
  * SJ_TBLIDX_2_IDX(pj, 1) == ((1 * 7) + 10) == 17
  */
@@ -207,6 +199,7 @@ extern void set_subjob_tblstate(job *, int, int);
 extern void update_subjob_state(job *, int);
 extern void update_subjob_state_ct(job *);
 extern char *subst_array_index(job *, char *);
+extern int numindex_to_offset(job *, int);
 extern int subjob_index_to_offset(job *, char *);
 #ifndef PBS_MOM
 extern void svr_setjob_histinfo(job *, histjob_type);
