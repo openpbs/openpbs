@@ -79,6 +79,10 @@
 #define QSUB_DMN_TIMEOUT_LONG 60 /* timeout for qsub background process */
 #define DMN_REFUSE_EXIT 7 /* return code when daemon can't serve a job and exits */
 #define CMDLINE 3
+#define XAUTH_LEN 512 /* Max size of buffer to store Xauth cookie length */
+#define XAUTH_ERR_REDIRECTION "2>&1" /* redirection string used for xauth command */
+#define X11_PORT_LEN 8 /* Max size of buffer to store port information as string */
+
 
 #if !defined(PBS_NO_POSIX_VIOLATION)
 	char GETOPT_ARGS[] = "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:XzP:";
@@ -116,7 +120,7 @@ extern char	*v_value; /* expanded variable list from v opt */
 extern char	*cred_buf;
 extern char	*display; /* environment variable DISPLAY */
 extern int	comm_sock; /* Socket for interactive and block job */
-extern int	X11_comm_sock; /* Socket for x11 communication */
+int	X11_comm_sock; /* Socket for x11 communication */
 extern int	Forwardx11_opt;
 extern int	sd_svr; /* return from pbs_connect */
 extern int	is_background;
@@ -141,10 +145,10 @@ extern void exit_qsub(int exitstatus);
 extern void qsub_free_attrl(struct attrl *attrib);
 extern void bailout(int ret);
 extern char *strdup_esc_commas(char *str_to_dup);
-extern char *get_authstring(void);
+static char *X11_get_authstring(void);
 extern void set_attr_error_exit(struct attrl **attrib, char *attrib_name, char *attrib_value);
-extern char *get_listening_port(void);
-void do_daemon_stuff(void);
+static char *port_X11(void);
+static void do_daemon_stuff(void);
 
 void
 back2forward_slash(char *get_optarg) {
@@ -348,9 +352,9 @@ enable_gui(void)
 			exit_qsub(1);
 		}
 		/* get the DISPLAY's auth protocol, hexdata, and screen number */
-		if ((x11authstr = get_authstring()) != NULL) {
+		if ((x11authstr = X11_get_authstring()) != NULL) {
 			set_attr_error_exit(&attrib, ATTR_X11_cookie, x11authstr);
-			set_attr_error_exit(&attrib, ATTR_X11_port, get_listening_port());
+			set_attr_error_exit(&attrib, ATTR_X11_port, port_X11());
 #ifdef DEBUG
 			fprintf(stderr, "x11auth string: %s\n", x11authstr);
 #endif
@@ -360,6 +364,184 @@ enable_gui(void)
 	}
 }
 
+
+/**
+ * @Brief
+ *      This function returns a string that consists of the protocol getting
+ *      used, the hex data and the screen number . This string will form the
+ *      basis of X authentication . It will be passed as a job attribute to
+ *      MOM.
+ * @return char*
+ * @retval authstring Success
+ * @retval NULL Failure
+ *
+ */
+static char *
+X11_get_authstring(void)
+{
+	char line[XAUTH_LEN] = {'\0'};
+	char command[XAUTH_LEN] = {'\0'};
+	char protocol[XAUTH_LEN];
+	char hexdata[XAUTH_LEN];
+	char screen[XAUTH_LEN];
+	char format[XAUTH_LEN];
+	char *authstring = NULL;
+	FILE *f;
+	int got_data = 0, ret = 0;
+	char *p;
+
+	protocol[0] = '\0';
+	hexdata[0] = '\0';
+	screen[0] = '\0';
+
+	sprintf(format, " %%*s %%%ds %%%ds ", XAUTH_LEN - 1, XAUTH_LEN - 1);
+
+	p = strchr(display, ':');
+	if (p == NULL) {
+		fprintf(stderr, "qsub: Failed to get xauth data "
+			"(check $DISPLAY variable)\n");
+		return NULL;
+	}
+
+	/* Try to get Xauthority information for the display. */
+	if (strncmp(display, "localhost", sizeof("localhost") - 1) == 0) {
+		/*
+		 * Handle FamilyLocal case where $DISPLAY does
+		 * not match an authorization entry. For this we
+		 * just try "xauth list unix:displaynum.screennum".
+		 * "localhost" match to determine FamilyLocal
+		 * is not perfect.
+		 */
+		ret = snprintf(line, sizeof(line), "%s list unix:%s %s",
+			XAUTH_BINARY,
+			p + 1,
+			XAUTH_ERR_REDIRECTION);
+		if (ret >= sizeof(line)) {
+			fprintf(stderr, " qsub: line overflow\n");
+			return NULL;
+		}
+	} else {
+		ret = snprintf(line, sizeof(line), "%s list %.255s %s",
+			XAUTH_BINARY,
+			display,
+			XAUTH_ERR_REDIRECTION);
+		if (ret >= sizeof(line)) {
+			fprintf(stderr, " qsub: line overflow\n");
+			return NULL;
+		}
+	}
+	snprintf(command, sizeof(command), "%s", line);
+
+	if (p != NULL)
+		p = strchr(p, '.');
+
+	if (p != NULL)
+		snprintf(screen, sizeof(screen), "%s", p + 1);
+	else
+		strcpy(screen, "0"); /* Should be safe because sizeof(screen) = XAUTH_LEN which is >= 2 */
+
+#ifdef DEBUG
+	fprintf(stderr, "X11_get_authstring: %s\n", line);
+#endif
+	f = popen(line, "r");
+	if (f == NULL) {
+		fprintf(stderr, "execution of '%s' failed, errno=%d \n", command, errno);
+	} else if (fgets(line, sizeof(line), f) == 0) {
+		fprintf(stderr, "cannot read data from '%s', errno=%d \n", command, errno);
+	} else if (sscanf(line, format,
+		protocol,
+		hexdata) != 2) {
+		fprintf(stderr, "cannot parse output from '%s'\n", command);
+	} else {
+		/* SUCCESS */
+		got_data = 1;
+	}
+
+	if (f != NULL) {
+		/*
+		 * Check the return value of pclose to see if the command failed?
+		 * In that case, the "line" read from stdout is probably an
+		 * error message (since stderr is redirected to stdout) from the shell or xauth,
+		 * so display that to the user.
+		 */
+		if (pclose(f) != 0) {
+			fprintf(stderr, "execution of xauth failed: %s", line);
+			return NULL;
+		}
+	}
+
+	if (!got_data)
+		/* FAILURE */
+		return NULL;
+
+	/**
+	 * Allocate 4 additional bytes for the terminating NULL character for
+	 * each of the strings inside malloc
+	 */
+	authstring = malloc(strlen(protocol) + strlen(hexdata) +
+		strlen(screen) + 4);
+	if (authstring == NULL) {
+		/* FAILURE */
+		fprintf(stderr, " qsub: Malloc Failed\n");
+		return NULL;
+	}
+	sprintf(authstring, "%s:%s:%s",
+		protocol,
+		hexdata,
+		screen);
+
+	return (authstring);
+}
+
+/**
+ * @brief
+ *	This function creates a socket to listen for "X11" data
+ *	and returns a port number where its listening for X data.
+ *
+ * @return	char*
+ * @retval	portstring	success
+ *
+ * @par Side Effects
+ *		If this function fails, it will exit the qsub process.
+ *
+ */
+static char*
+port_X11(void)
+{
+	pbs_socklen_t namelen;
+	struct sockaddr_in myaddr;
+	static char X11_port_str[X11_PORT_LEN];
+	unsigned short X11_port;
+
+	X11_comm_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (X11_comm_sock < 0) {
+		perror("qsub: unable to create socket");
+		exit_qsub(1);
+	}
+	myaddr.sin_family = AF_INET;
+	myaddr.sin_addr.s_addr = INADDR_ANY;
+	myaddr.sin_port = 0;
+
+	if (bind(X11_comm_sock, (struct sockaddr *) &myaddr,
+		sizeof(myaddr)) < 0) {
+		perror("qsub: unable to bind to socket");
+		exit_qsub(1);
+	}
+	/* get port number assigned */
+	namelen = sizeof(myaddr);
+	if (getsockname(X11_comm_sock, (struct sockaddr *) &myaddr,
+		&namelen) < 0) {
+		perror("qsub: unable to get port number");
+		exit_qsub(1);
+	}
+	X11_port = ntohs(myaddr.sin_port);
+	(void) sprintf(X11_port_str, "%u", (unsigned int) X11_port);
+	if (listen(X11_comm_sock, 1) < 0) {
+		perror("qsub: listening on X11 socket failed");
+		exit_qsub(1);
+	}
+	return (X11_port_str);
+}
 
 /**
  * @brief
@@ -1332,7 +1514,7 @@ check_qsub_daemon(char *fname)
  *	does a silent exit of the background qsub daemon.
  *
  */
-void
+static void
 do_daemon_stuff(void)
 {
 	int sock, bindfd;
