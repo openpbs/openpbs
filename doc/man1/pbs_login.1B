@@ -33,73 +33,57 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_lamboot 8B "6 May 2020" Local "PBS Professional"
+.TH pbs_login 1B "15 July 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_lamboot 
-\- PBS front end to LAM's lamboot program
+.B pbs_login 
+- cache encrypted user password for authentication
+.SH Synopsis
+.B pbs_login
+.br
+.B pbs_login
+-m <PBS service account password>
+.br
+echo <password>|
+.B pbs_login
+-p
 
-.SH SYNOPSIS
-.B pbs_lamboot
-
-.B pbs_lamboot
---version
-
-.SH DESCRIPTION
-.B Deprecated.  
-The PBS command 
-.B pbs_lamboot 
-replaces the standard 
-.I lamboot
-command in a PBS
-LAM MPI job, for starting LAM software on each of the 
-PBS execution hosts running Linux 2.4 or higher.
-
-Usage is the same as for LAM's
-.I lamboot.
-All arguments except for
-.I bhost 
-are passed directly to 
-.I lamboot.  
-PBS will issue a warning saying that the
-.I bhost 
-argument is ignored by PBS since input is taken automatically 
-from 
-.B $PBS_NODEFILE.
+.SH Description
 The 
-.B pbs_lamboot 
-program will not redundantly consult the
-.B $PBS_NODEFILE
-if it has been instructed to boot the nodes using the 
-.I tm
-module.  This instruction happens when an argument is
-passed to
-.B pbs_lamboot
-containing "-ssi boot tm" or when the 
-.B LAM_MPI_SSI_boot 
-environment variable exists with the value
-.I tm.
+.B pbs_login 
+command encrypts the password and caches it locally where it can be
+used by daemons for authorization.
 
-.SH OPTIONS
-.IP "--version" 8
-The 
-.B pbs_lamboot
-command returns its PBS version information and exits.
-This option can only be used alone.
+Job submitters must run this command at each submission host each time
+their password changes.
 
-.SH OPERANDS
-The operands for
-.B pbs_lamboot 
-are the same as for 
-.I lamboot.
+On Windows, the 
+.B win_postinstall 
+script calls 
+.B pbs_login 
+to store the PBS service account password so that the account user can
+be authenticated by daemons.
+
+.SH Required Privilege
+Can be run by any user.
 
 
-.SH ENVIRONMENT VARIABLES
+.SH Options to pbs_login
+.IP "(no options)" 8
+Queries user for password.
 
+.IP "-m <PBS service account password>" 8
+This option is intended to be used only by the PBS service account,
+which is the account that is used to execute 
+.B pbs_mom 
+via the Service Control Manager on Windows.  This option is used during installation
+when invoked by the
+.B win_postinstall 
+script, or by the administrator when the
+PBS service account password has changed.  Stores PBS service account
+password in the mom_priv directory.
 
-.SH PATH
-The PATH on remote machines must contain 
-.I PBS_EXEC/bin.
+.IP "-p" 8
+Caches user password on client host.  Intended to be run by job
+submitter at client host.  Allows job submitter to be authenticated
+by daemons.
 
-
-.SH SEE ALSO
-lamboot(1), tm(3)
