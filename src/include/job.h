@@ -327,27 +327,30 @@ typedef struct	noderes {
 
 /* individual entries in array job index table */
 struct ajtrk {
-	int trk_index;	/* actual index     */
-	int trk_status; /* status           */
-	int trk_error;  /* error code       */
-	int trk_exitstat;  /* if executed and exitstat set */
-	int trk_substate; /* sub state    */
-	int trk_stgout; /* stageout status  */
-	int trk_discarding; /* indicate job is discarding */
+	int trk_status;		 /* status */
+	int trk_error;		 /* error code */
+	int trk_exitstat;	 /* if executed and exitstat set */
+	int trk_substate;	 /* sub state */
+	int trk_stgout;		 /* stageout status */
+	int trk_discarding;	 /* indicate job is discarding */
 	struct job *trk_psubjob; /* pointer to instantiated subjob */
 };
 
 /* subjob index table */
 struct ajtrkhd {
-	size_t  tkm_size;	 /* size of whole table */
-	int	tkm_ct;		 /* count of original entries in table */
-	int	tkm_step;	 /* stepping factor for range (z in x-y:z) */
-	int	tkm_flags;	 /* special flags for array job		   */
-	int 	tkm_subjsct[PBS_NUMJOBSTATE];  /* count of subjobs in various states */
-	int     tkm_dsubjsct;    /* count of deleted subjobs */
-	struct ajtrk tkm_tbl[1]; /* ptr to array of individual entries     */
-	/* when table is malloced, room for the additional required number */
-	/* of tkm_tbl entries (ct-1) will be included			   */
+	size_t tkm_size;		  /* size of whole table */
+	int tkm_ct;			  /* count of original entries in table */
+	int tkm_start;			  /* start of range (x in x-y:z) */
+	int tkm_end;			  /* end of range (y in x-y:z) */
+	int tkm_step;			  /* stepping factor for range (z in x-y:z) */
+	int tkm_flags;			  /* special flags for array job */
+	int tkm_subjsct[PBS_NUMJOBSTATE]; /* count of subjobs in various states */
+	int tkm_dsubjsct;		  /* count of deleted subjobs */
+	struct ajtrk tkm_tbl[1];	  /* ptr to array of individual entries */
+	/*
+	 * when table is malloced, room for the additional required number
+	 * of tkm_tbl entries (tkm_ct - 1) will be included
+	 */
 };
 
 /*

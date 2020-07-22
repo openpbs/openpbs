@@ -199,29 +199,31 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 static int
 stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dosubjobs)
 {
-	int   i, indx, x, y, z;
+	int i;
 	char *pc;
 	char *range;
-	int   rc;
-	job  *pjob;
+	int rc;
+	job *pjob;
 	struct batch_reply *preply = &preq->rq_reply;
-	svrattrl	   *pal;
+	svrattrl *pal;
 
 	if ((i = is_job_array(name)) == IS_ARRAY_Single) {
+		int idx;
+
 		pjob = find_arrayparent(name);
 		if (pjob == NULL) {
 			return (PBSE_UNKJOBID);
 		} else if ((!dohistjobs) && (rc = svr_chk_histjob(pjob))) {
 			return (rc);
 		}
-		indx = subjob_index_to_offset(pjob, get_index_from_jid(name));
-		if (indx != -1) {
-			pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-			rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
+		idx = subjob_index_to_offset(pjob, get_index_from_jid(name));
+		if (idx != -1) {
+			pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
+			rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
 		} else {
 			rc = PBSE_UNKJOBID;
 		}
-		return (rc);	/* no job still needs to be stat-ed */
+		return (rc); /* no job still needs to be stat-ed */
 
 	} else if ((i == IS_ARRAY_NO) || (i == IS_ARRAY_ArrayJob)) {
 		pjob = find_job(name);
@@ -243,23 +245,24 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		} else if ((!dohistjobs) && (rc = svr_chk_histjob(pjob))) {
 			return (rc);
 		}
-		pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
+		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 		while (1) {
-			if ((i=parse_subjob_index(range,&pc,&x,&y,&z,&i)) == -1) {
-		    		return (PBSE_IVALREQ);
+			int start;
+			int end;
+			int step;
+			int count;
+
+			if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
+				return (PBSE_IVALREQ);
 			} else if (i == 1)
 				break;
-			while (x <= y) {
-				indx = numindex_to_offset(pjob, x);
-				if (indx < 0) {
-					x += z;
+			for (i = start; i <= end; i += step) {
+				int idx = numindex_to_offset(pjob, i);
+				if (idx == -1)
 					continue;
-				}
-				rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
-				if (rc && (rc != PBSE_PERM)) {
+				rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
+				if (rc && (rc != PBSE_PERM))
 					return (rc);
-				}
-				x += z;
 			}
 			range = pc;
 		}
@@ -461,10 +464,10 @@ req_stat_que(struct batch_request *preq)
 		}
 	}
 	if (rc) {
-		(void)reply_free(preply);
+		reply_free(preply);
 		req_reject(rc, bad, preq);
 	} else {
-		(void)reply_send(preq);
+		reply_send(preq);
 	}
 }
 
@@ -510,7 +513,7 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	pstat->brp_objtype = MGR_OBJ_QUEUE;
-	(void)strcpy(pstat->brp_objname, pque->qu_qs.qu_name);
+	strcpy(pstat->brp_objname, pque->qu_qs.qu_name);
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
@@ -595,7 +598,7 @@ req_stat_node(struct batch_request *preq)
 	}
 
 	if (!rc) {
-		(void)reply_send(preq);
+		reply_send(preq);
 	} else {
 		if (rc != PBSE_UNKNODEATR)
 			req_reject(rc, 0, preq);
@@ -662,7 +665,7 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 		return (PBSE_SYSTEM);
 
 	pstat->brp_objtype = MGR_OBJ_NODE;
-	(void)strcpy(pstat->brp_objname, pnode->nd_name);
+	strcpy(pstat->brp_objname, pnode->nd_name);
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 
@@ -766,7 +769,7 @@ req_stat_svr(struct batch_request *preq)
 		return;
 	}
 	CLEAR_LINK(pstat->brp_stlink);
-	(void)strcpy(pstat->brp_objname, server_name);
+	strcpy(pstat->brp_objname, server_name);
 	pstat->brp_objtype = MGR_OBJ_SERVER;
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(&preply->brp_un.brp_status, &pstat->brp_stlink, pstat);
@@ -779,7 +782,7 @@ req_stat_svr(struct batch_request *preq)
 		preq->rq_perm, &pstat->brp_attr, &bad))
 		reply_badattr(PBSE_NOATTR, bad, pal, preq);
 	else
-		(void)reply_send(preq);
+		reply_send(preq);
 }
 
 /**
@@ -806,7 +809,7 @@ status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_head *pstat
 		return (PBSE_SYSTEM);
 
 	pstat->brp_objtype = MGR_OBJ_SCHED;
-	(void)strncpy(pstat->brp_objname, psched->sc_name, (PBS_MAXSVRJOBID > PBS_MAXDEST ?
+	strncpy(pstat->brp_objname, psched->sc_name, (PBS_MAXSVRJOBID > PBS_MAXDEST ?
 			PBS_MAXSVRJOBID : PBS_MAXDEST) -1);
 	pstat->brp_objname[(PBS_MAXSVRJOBID > PBS_MAXDEST ? PBS_MAXSVRJOBID : PBS_MAXDEST) - 1] = '\0';
 
@@ -861,7 +864,7 @@ req_stat_sched(struct batch_request *preq)
 	}
 
 	if (!rc) {
-		(void)reply_send(preq);
+		reply_send(preq);
 	} else {
 		if (rc != PBSE_NOATTR)
 			req_reject(rc, 0, preq);
@@ -987,7 +990,7 @@ req_stat_resv(struct batch_request * preq)
 	}
 
 	if (rc == 0)
-		(void)reply_send(preq);
+		reply_send(preq);
 	else
 		req_reject(rc, bad, preq);
 }
@@ -1025,7 +1028,7 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
 		return (PBSE_SYSTEM);
 
 	pstat->brp_objtype = MGR_OBJ_RESV;
-	(void)strcpy(pstat->brp_objname, presv->ri_qs.ri_resvID);
+	strcpy(pstat->brp_objname, presv->ri_qs.ri_resvID);
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
@@ -1077,7 +1080,7 @@ status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head 
 	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	pstat->brp_objtype = MGR_OBJ_RSC;
-	(void)strcpy(pstat->brp_objname, prd->rs_name);
+	strcpy(pstat->brp_objname, prd->rs_name);
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 
@@ -1193,9 +1196,9 @@ req_stat_resc(struct batch_request *preq)
 		}
 	}
 	if (rc) {
-		(void)reply_free(preply);
+		reply_free(preply);
 		req_reject(rc, bad, preq);
 	} else {
-		(void)reply_send(preq);
+		reply_send(preq);
 	}
 }

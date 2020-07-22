@@ -230,8 +230,8 @@ range_parse(char *str)
 	range *head = NULL;
 	range *cur = NULL;
 	range *r;
-	char *p, *endp;
-	int x, y, z, count;
+	char *p;
+	char *endp;
 	int ret;
 
 	if (str == NULL)
@@ -239,9 +239,13 @@ range_parse(char *str)
 
 	p = str;
 
-
 	do {
-		ret = parse_subjob_index(p,  &endp, &x, &y, &z, &count);
+		int start;
+		int end;
+		int step;
+		int count;
+
+		ret = parse_subjob_index(p, &endp, &start, &end, &step, &count);
 		if (!ret) {
 			r = new_range();
 
@@ -250,18 +254,18 @@ range_parse(char *str)
 				return NULL;
 			}
 
-			r->start = x;
-			r->end = y;
-			r->step = z;
+			r->start = start;
+			r->end = end;
+			r->step = step;
 			r->count = count;
 
 			/* ensure the end value is contained in the range */
-			while (range_contains(r, y) == 0 && y > x)
-				y--;
+			while (range_contains(r, end) == 0 && end > start)
+				end--;
 
-			if (range_contains(r, y))
-				r->end = y;
-			else   { /* range is majorly hosed */
+			if (range_contains(r, end))
+				r->end = end;
+			else { /* range is majorly hosed */
 				free_range_list(head);
 				free_range(r);
 				return NULL;
@@ -582,78 +586,78 @@ range_intersection(range *r1, range *r2)
 /**
  * @brief
  * 		parse_subjob_index - parse a subjob index range of the form:
- *			X[-Y[:Z]][,...]
+ *			START[-END[:STEP]][,...]
  *		Each call parses up to the first comma or the end of str if no comma
  * @par
  *		Additional returns which are valid only if zero is returned are:
  *
  * @param[in]	pc	-	subjob index.
  * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line
- * @param[out]	px	-	first number of range
- * @param[out]	py	-	maximum value in range
- * @param[out]	pz	-	stepping factor
- * @param[out]	pct -	number of entries in this section of the range
+ * @param[out]	pstart	-	first number of range
+ * @param[out]	pend	-	maximum value in range
+ * @param[out]	pstep	-	stepping factor
+ * @param[out]	pcount -	number of entries in this section of the range
  *
  * @return	0/1
  * @retval	0	: returned as the function value if no error was detected.
  * @retval	1	: returned if there is a parse/format error
  */
 int
-parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct)
+parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int *pcount)
 {
-	int   x, y, z;
+	int start;
+	int end;
+	int step;
 	char *eptr;
 
-	if (pc == NULL) {
+	if (pc == NULL)
 		return (1);
-	}
 
-	if (*pc == ',' || isspace((int)*pc)) {
+	if (*pc == ',' || isspace((int) *pc))
 		pc++;
-	}
 
-	if (!isdigit((int)*pc)) {
+	if (!isdigit((int) *pc)) {
 		/* Invalid format, 1st char not digit */
 		return (1);
 	}
-	x = (int)strtol(pc, &eptr, 10);
+	start = (int) strtol(pc, &eptr, 10);
 	pc = eptr;
 	if ((*pc == ',') || (*pc == '\0')) {
-		/* "X," or "X" case */
-		y = x;
-		z = 1;
+		/* "START," or "START" case */
+		end = start;
+		step = 1;
 	} else {
-		/* should be X-Y[:Z] case */
+		/* should be START-END[:STEP] case */
 		if (*pc != '-') {
-			/* Invalid format, not in X-Y format */
+			/* Invalid format, not in START-END format */
 			return (1);
 		}
-		y = (int)strtol(++pc, &eptr, 10);
+		end = (int) strtol(++pc, &eptr, 10);
 		pc = eptr;
 		if ((*pc == '\0') || (*pc == ',')) {
-			z = 1;
+			step = 1;
 		} else if (*pc != ':') {
-			/* Invalid format, not in X-Y:Z format */
+			/* Invalid format, not in START-END:STEP format */
 			return (1);
 		} else {
-			z = (int)strtol(++pc, &eptr, 10);
+			step = (int) strtol(++pc, &eptr, 10);
 			pc = eptr;
-			/* we're finished with X-Y:Z, only valid char is ',' or '\0' */
+			/* we're finished with START-END:STEP, only valid char is ',' or '\0' */
 			if (*eptr != ',' && *eptr != '\0') {
 				return (1);
 			}
 		}
 	}
 
-	if ((x > y) || (z < 1))
+	if ((start > end) || (step < 1))
 		return 1;
 
 	*ep = pc;
-	/* now compute the number of extires ((y+1)-x+(z-1))/z = (y-x+z)/z */
-	*pct = (y - x + z)/z;
-	*px  = x;
-	*py  = y;
-	*pz  = z;
+	/* now compute the number of extires ((end + 1) - start + (step - 1)) / step = (end - start + step) / step */
+	*pcount = (end - start + step) / step;
+	*pstart = start;
+	*pend = end;
+	*pstep = step;
 	return 0;
 }
 

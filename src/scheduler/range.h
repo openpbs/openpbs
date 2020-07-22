@@ -123,7 +123,7 @@ int range_add_value(range *r, int val, enum range_step_type type);
  */
 range *range_intersection(range *r1, range *r2);
 
-int parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct);
+extern int parse_subjob_index(char *, char **, int *, int *, int *, int *);
 
 /*
  * Return a string representation of a range structure
