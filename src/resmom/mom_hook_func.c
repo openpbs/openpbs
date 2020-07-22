@@ -1383,10 +1383,22 @@ run_hook_exit:
 				goto run_hook_exit;
 			}
 		}
-		(void) win_alarm(phook->alarm, run_hook_alarm);
-		run_exit = wsystem(cmdline, pwdp->pw_userlogin);
-		(void) win_alarm(0, NULL);
+		(void)win_alarm(phook->alarm, run_hook_alarm);
+		char* env_string = NULL;
+		char** hook_env = NULL;
+		char* pbs_hook_conf = NULL;
+
+		if (pjob->ji_env != NULL) {
+			hook_env = dup_string_arr(pjob->ji_env);
+			if (pbs_hook_conf = getenv("PBS_HOOK_CONFIG_FILE"))
+				hook_env = bld_wenv_variables("PBS_HOOK_CONFIG_FILE", pbs_hook_conf, hook_env);
+		}
+		env_string = make_envp(hook_env);
+		run_exit = wsystem(cmdline, pwdp->pw_userlogin, env_string);
+		free(env_string);
+		(void)win_alarm(0, NULL);
 		setenv(ENV_AUTH_KEY, NULL, 1);
+		free_string_array(hook_env);
 	} else {
 		/* The following blocks until after */
 		(void) win_alarm(phook->alarm, run_hook_alarm);

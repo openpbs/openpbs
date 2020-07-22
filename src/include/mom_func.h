@@ -342,9 +342,6 @@ extern int pbs_glob(char *, char *);
 extern void  rmjobdir(char *, char *, uid_t, gid_t, int);
 extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
 #ifdef WIN32
-extern void  bld_wenv_variables(char *, char *);
-extern void  init_envp(void);
-extern char  *make_envp(void);
 extern int   mktmpdir(char *, char *);
 extern int   mkjobdir(char *, char *, char *, HANDLE login_handle);
 extern int isdriveletter(int);

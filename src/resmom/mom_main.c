@@ -2543,25 +2543,27 @@ do_mom_action_script(int ae,	      /* index into action table */
 #else
 	char buf[MAXPATHLEN + 1];
 #endif
-	int i;
-	int nargs;
-	char **pargs;
-	struct stat sb;
-	struct passwd *pwdp;
-	int rc = -1;
-	struct mom_action *ma;
-	int transmog = 0;
-#ifdef WIN32
-	char *pnoq = 0;
-	char cmd_line[4096];
-	int flags = CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP;
-	STARTUPINFO si = {0};
-	PROCESS_INFORMATION pi = {0};
-	char *env_block;
-	char *shell;
-	extern char *variables_else[];
-	DWORD ret;
-	HANDLE hjob;
+	int		i;
+	int		nargs;
+	char		**pargs;
+	struct	stat	sb;
+	struct	passwd	*pwdp;
+	int		rc = -1;
+	struct mom_action	*ma;
+	int	transmog = 0;
+#ifdef	WIN32
+	char	*pnoq = 0;
+	char	cmd_line[4096];
+	int	flags = CREATE_DEFAULT_ERROR_MODE|CREATE_NEW_CONSOLE|
+		CREATE_NEW_PROCESS_GROUP;
+	STARTUPINFO             si = { 0 };
+	PROCESS_INFORMATION     pi = { 0 };
+	char	*env_block = NULL;
+	char	**env_array = NULL;
+	char	*shell;
+	extern	char	*variables_else[];
+	DWORD	ret;
+	HANDLE	hjob;
 #else
 	int j;
 	int pipes[2], kid_read = -1, kid_write = -1;
@@ -2712,58 +2714,65 @@ do_mom_action_script(int ae,	      /* index into action table */
 #ifdef WIN32
 	shell = set_shell(pjob, pwdp); /* machine dependent */
 
-	init_envp();
-
-	/* Setup environment */
+	/*
+	 **	Setup environment
+	 */
 	/* UID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
-	bld_wenv_variables("UID", buf);
+	env_array = bld_wenv_variables("UID", buf, env_array);
 	/* GID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-	bld_wenv_variables("GID", buf);
+	env_array = bld_wenv_variables("GID", buf, env_array);
 	/* HOME */
-	bld_wenv_variables(variables_else[0], pwdp->pw_dir);
+	env_array = bld_wenv_variables(variables_else[0], pwdp->pw_dir, env_array);
 	/* LOGNAME */
-	bld_wenv_variables(variables_else[1], pwdp->pw_name);
+	env_array = bld_wenv_variables(variables_else[1], pwdp->pw_name, env_array);
 	/* PBS_JOBNAME */
-	bld_wenv_variables(variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
+	env_array = bld_wenv_variables(variables_else[2],
+		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str, env_array);
 	/* PBS_JOBID */
-	bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid);
+	env_array = bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid, env_array);
 	/* PBS_QUEUE */
-	bld_wenv_variables(variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
+	env_array = bld_wenv_variables(variables_else[4],
+		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str, env_array);
 	/* SHELL */
-	bld_wenv_variables(variables_else[5], shell);
+	env_array = bld_wenv_variables(variables_else[5], shell, env_array);
 	/* USER */
-	bld_wenv_variables(variables_else[6], pwdp->pw_name);
+	env_array = bld_wenv_variables(variables_else[6], pwdp->pw_name, env_array);
 	/* PBS_JOBCOOKIE */
-	bld_wenv_variables(variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
+	env_array = bld_wenv_variables(variables_else[7],
+		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str, env_array);
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
-	bld_wenv_variables(variables_else[8], buf);
+	env_array = bld_wenv_variables(variables_else[8], buf, env_array);
 	/* PBS_TASKNUM */
-	sprintf(buf, "%ld", (long) ptask->ti_qs.ti_task);
-	bld_wenv_variables(variables_else[9], buf);
+	sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
+	env_array = bld_wenv_variables(variables_else[9], buf, env_array);
 	/* PBS_MOMPORT */
 	sprintf(buf, "%d", pbs_rm_port);
-	bld_wenv_variables(variables_else[10], buf);
+	env_array = bld_wenv_variables(variables_else[10], buf, env_array);
 	/* PBS_NODEFILE */
-	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
-	bld_wenv_variables(variables_else[11], buf);
+	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path,
+		pjob->ji_qs.ji_jobid);
+	env_array = bld_wenv_variables(variables_else[11], buf, env_array);
 	/* PBS_SID */
 	sprintf(buf, "%ld", ptask->ti_qs.ti_sid);
-	bld_wenv_variables("PBS_SID", buf);
+	env_array = bld_wenv_variables("PBS_SID", buf, env_array);
 	/* PBS_JOBDIR */
-	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
-			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0))
-		bld_wenv_variables("PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
-	else
-		bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
+	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
+		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		env_array = bld_wenv_variables("PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir), env_array);
+	} else {
+		env_array = bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir, env_array);
+	}
 
 	/* USERPROFILE */
-	bld_wenv_variables(variables_else[16], default_local_homedir(pwdp->pw_name, pwdp->pw_userlogin, 1));
+	env_array = bld_wenv_variables(variables_else[16],
+		default_local_homedir(pwdp->pw_name,
+		pwdp->pw_userlogin, 1), env_array);
 
 	/* USERNAME */
-	bld_wenv_variables(variables_else[17], pwdp->pw_name);
+	env_array = bld_wenv_variables(variables_else[17], pwdp->pw_name, env_array);
 
 	/*
 	 ** Special case for restart_transmogrify.
@@ -2784,7 +2793,7 @@ do_mom_action_script(int ae,	      /* index into action table */
 		flags |= CREATE_SUSPENDED;
 	}
 
-	env_block = make_envp();
+	env_block = make_envp(env_array);
 	si.cb = sizeof(si);
 	si.lpDesktop = "";
 
@@ -2893,7 +2902,7 @@ do_mom_action_script(int ae,	      /* index into action table */
 		}
 	}
 
-	init_envp();
+	free_string_array(env_array);
 #else
 	/*
 	 * Special case for restart_transmogrify.

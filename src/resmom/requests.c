@@ -2780,7 +2780,7 @@ req_cpyfile(struct batch_request *preq)
 		 * but they would be inherited by the next request handler
 		 * and will cause interference
 		 */
-		init_envp();
+		free_string_array(pjob->ji_env);
 	}
 
 	snprintf(cmdline, sizeof(cmdline), "%s/sbin/pbs_stage_file.exe", pbs_conf.pbs_exec_path);

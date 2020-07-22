@@ -2364,7 +2364,7 @@ main(int argc, char *argv[], char *envp[])
 			strncat(python_cmdline, argv[i], sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 			strncat(python_cmdline, "\"", sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 		}
-		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE);
+		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE, NULL);
 #else
 		char in_data[MAXBUF+1];
 		char *largv[3];
