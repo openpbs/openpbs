@@ -510,7 +510,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/libexec/pbs_db_utility
 %exclude %{pbs_prefix}/sbin/pbs_comm
 %exclude %{pbs_prefix}/sbin/pbs_dataservice
-%exclude %{pbs_prefix}/sbin/pbs_systemd
 %exclude %{pbs_prefix}/sbin/pbs_ds_monitor
 %exclude %{pbs_prefix}/sbin/pbs_ds_password
 %exclude %{pbs_prefix}/sbin/pbs_ds_password.bin
