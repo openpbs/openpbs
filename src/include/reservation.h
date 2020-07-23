@@ -118,7 +118,7 @@ struct resv_alter {
 	char *ra_select;
 	long ra_state;
 	unsigned long ra_flags;
-	char *rr_select; /* used to revert select*/
+	char *ra_select_revert; /* used to revert select for future occurrences*/
 };
 
 /*

@@ -2932,16 +2932,16 @@ Time4occurrenceFinish(resc_resv *presv)
 	} else
 		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 
-	if (presv->ri_alter.rr_select != NULL) {
+	if (presv->ri_alter.ra_select_revert != NULL) {
 		resource *presc;
 		resource_def *prdef;
 
 		prdef = &svr_resc_def[RESC_SELECT];
 		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
 		free(presc->rs_value.at_val.at_str);
-		presc->rs_value.at_val.at_str = presv->ri_alter.rr_select;
+		presc->rs_value.at_val.at_str = presv->ri_alter.ra_select_revert;
 		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.rr_select = NULL;
+		presv->ri_alter.ra_select_revert = NULL;
 		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], presc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
 		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	}

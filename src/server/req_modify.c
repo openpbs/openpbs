@@ -927,8 +927,8 @@ req_modifyReservation(struct batch_request *preq)
 					resv_revert_alter(presv);
 					return;
 				}
-				if (is_standing && presv->ri_alter.rr_select == NULL)
-					presv->ri_alter.rr_select = strdup(presc->rs_value.at_val.at_str);
+				if (is_standing && presv->ri_alter.ra_select_revert == NULL)
+					presv->ri_alter.ra_select_revert = strdup(presc->rs_value.at_val.at_str);
 				free(presv->ri_alter.ra_select);
 				presv->ri_alter.ra_select = strdup(presc->rs_value.at_val.at_str);
 				resv_attr_def[RESV_ATR_SchedSelect_orig].at_set(&presv->ri_wattr[RESV_ATR_SchedSelect_orig],

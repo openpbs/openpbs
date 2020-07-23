@@ -2287,7 +2287,7 @@ class TestPbsResvAlter(TestFunctional):
         rid2, start, end = self.submit_and_confirm_reservation(
             3000, 1800, select="2:ncpus=4")
 
-    def test_alter_start_standing_resv_future_occrs(self):
+    def test_alter_duration_standing_resv_future_occrs(self):
         """
         Test that when duration of a confirmed standing reservation is
         altered, only the upcoming occurence changes and not all occurences
@@ -2295,7 +2295,7 @@ class TestPbsResvAlter(TestFunctional):
         """
 
         duration = 180
-        offset = 30
+        offset = 300
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration, select="2:ncpus=4", standing=True,
@@ -2303,11 +2303,7 @@ class TestPbsResvAlter(TestFunctional):
 
         # change the reservation's duration to 20 seconds
         self.alter_a_reservation(rid, start, end, confirm=True, a_duration=20)
-        sleepdur = start - time.time()
-        self.logger.info('Sleeping until first occurrence starts')
-        self.server.expect(RESV,
-                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
-                           offset=sleepdur)
+
         # Submit another reservation that starts in 1hr and 30 seconds.
         # Ideally, in 1 hr second occurrence of reservation will start running
         # and it will run for 3 mins. This means the new reservation will be
