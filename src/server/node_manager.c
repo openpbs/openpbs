@@ -100,7 +100,6 @@ int		 mom_send_vnode_map = 0; /* server must send vnode map to Mom */
 int		 svr_quehasnodes;
 int	 	 svr_totnodes = 0;	/* total number nodes defined       */
 /* on server shutdown, (qmgr mods)  */
-int		 is_called_by_job_purge = 0;
 
 static int mtfd_replyhello = -1;
 static int mtfd_replyhello_noinv = -1;
@@ -6844,7 +6843,6 @@ remove_job_index_from_mom(job *pjob, struct pbsnode *pnode)
 {
 	int i;
 	int j;
-	int special_case = 0;
 	mom_svrinfo_t *psvrmom;
 	
 	if (pnode == NULL)
@@ -6858,29 +6856,9 @@ remove_job_index_from_mom(job *pjob, struct pbsnode *pnode)
 		for (j=0; j<psvrmom->msr_jbinxsz; j++) {	
 			if (psvrmom->msr_jobindx[j] == pjob) {	
 				psvrmom->msr_jobindx[j] = NULL;	
-				if (is_called_by_job_purge)
-					special_case = 1;
 			}	
 		}
-		
-		if (special_case) {	
-			snprintf(log_buffer, LOG_BUF_SIZE, "\n================================================================"	
-				"======================================================\nPBS diagnostic information."	
-				" Share this log with PBS Team.\n=========================================="	
-				"============================================================================\n"	
-				"Mom's state:%lu, number of jobs on this node: %d, number of vnodes: %d.\n"	
-				"Other jobs present in the node follows:",	
-				psvrmom->msr_state, psvrmom->msr_numjobs, psvrmom->msr_numvnds);	
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);	
-			for (j=0; j<psvrmom->msr_jbinxsz; j++)	
-				if (psvrmom->msr_jobindx[j] != NULL)	
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, psvrmom->msr_jobindx[j]->ji_qs.ji_jobid);	
-			sprintf(log_buffer, "===================================================================="	
-				"==================================================");	
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);	
-		}
 	}
-	
 }
 
 
@@ -6953,7 +6931,6 @@ free_nodes(job *pjob)
 	}
 	free(execvncopy);
 	pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HasNodes;
-	is_called_by_job_purge = 0;
 }
 
 /**

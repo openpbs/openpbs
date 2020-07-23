@@ -129,7 +129,6 @@ extern char  server_name[];
 extern char *pbs_server_name;
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_alljobs;
-extern int is_called_by_job_purge;
 extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
@@ -1000,11 +999,9 @@ job_purge(job *pjob)
 			pjob->ji_qs.ji_jobid);
 	}
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) {
-		is_called_by_job_purge = 1;
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes)
 		free_nodes(pjob);
-		is_called_by_job_purge = 0;
-	}
+
 #endif
 
 	del_job_related_file(pjob, JOB_CRED_SUFFIX);
