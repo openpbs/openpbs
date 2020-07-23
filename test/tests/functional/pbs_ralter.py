@@ -2325,31 +2325,3 @@ class TestPbsResvAlter(TestFunctional):
         new_offset = (start + 3630) - time.time()
         rid2, start, end = self.submit_and_confirm_reservation(
             new_offset, 180, select="2:ncpus=4", ExpectSuccess=0)
-
-#    def test_alter_standing_resv_check_start_time(self):
-#        """
-#        Test that when start time of a confirmed standing reservation is
-#        altered, all its occurrences start at the right time.
-#        """
-#
-#        duration = 20
-#        offset = 60
-#        shift = -40
-#
-#        rid, start, end = self.submit_and_confirm_reservation(
-#            offset, duration, select="2:ncpus=4", standing=True,
-#            rrule="FREQ=MINUTELY;COUNT=2")
-#
-#        # move the reservation 20 seconds in future
-#        self.alter_a_reservation(rid, start, end, confirm=True, alter_s=True,
-#                                 alter_e=True, shift=shift)
-#        sleepdur = (start + shift) - time.time()
-#        self.logger.info('Sleeping until first occurrence starts')
-#        self.server.expect(RESV,
-#                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
-#                           offset=sleepdur)
-#        sleepdur = 100
-#        self.logger.info('Sleeping until second occurrence starts')
-#        self.server.expect(RESV,
-#                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
-#                           offset=sleepdur)
