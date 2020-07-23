@@ -816,9 +816,11 @@ req_modifyReservation(struct batch_request *preq)
 	presv->ri_alter.ra_state  = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 
 	/* Only set these once to the original start/duration */
-	if (is_standing && (!(presv->ri_wattr[RESV_ATR_start_revert].at_flags & ATR_VFLAG_SET))) {
-		resv_attr_def[RESV_ATR_start_revert].at_set(&presv->ri_wattr[RESV_ATR_start_revert], &presv->ri_wattr[RESV_ATR_start], SET);
-		presv->ri_alter.ra_revert.rr_duration = presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
+	if (is_standing) {
+		if (!(presv->ri_wattr[RESV_ATR_start_revert].at_flags & ATR_VFLAG_SET))
+			resv_attr_def[RESV_ATR_start_revert].at_set(&presv->ri_wattr[RESV_ATR_start_revert], &presv->ri_wattr[RESV_ATR_start], SET);
+		if (!(presv->ri_wattr[RESV_ATR_duration_revert].at_flags & ATR_VFLAG_SET))
+			resv_attr_def[RESV_ATR_duration_revert].at_set(&presv->ri_wattr[RESV_ATR_duration_revert], &presv->ri_wattr[RESV_ATR_duration], SET);
 	}
 
 	while (psatl) {
@@ -925,8 +927,8 @@ req_modifyReservation(struct batch_request *preq)
 					resv_revert_alter(presv);
 					return;
 				}
-				if (is_standing && presv->ri_alter.ra_revert.rr_select == NULL)
-					presv->ri_alter.ra_revert.rr_select = strdup(presc->rs_value.at_val.at_str);
+				if (is_standing && presv->ri_alter.rr_select == NULL)
+					presv->ri_alter.rr_select = strdup(presc->rs_value.at_val.at_str);
 				free(presv->ri_alter.ra_select);
 				presv->ri_alter.ra_select = strdup(presc->rs_value.at_val.at_str);
 				resv_attr_def[RESV_ATR_SchedSelect_orig].at_set(&presv->ri_wattr[RESV_ATR_SchedSelect_orig],
