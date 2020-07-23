@@ -36,3 +36,12 @@
  * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
  * subject to Altair's trademark licensing policies.
  */
+
+#ifndef	_PORTABILITY_H
+#define	_PORTABILITY_H
+
+#define fix_path(char, int) NULL
+#define get_uncpath(char)   NULL
+#define critical_section()  NULL
+
+#endif

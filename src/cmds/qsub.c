@@ -98,6 +98,7 @@
 #include "net_connect.h"
 #include "dis.h"
 #include "port_forwarding.h"
+#include "portability.h"
 
 #ifdef LOG_BUF_SIZE
 /* Also defined in port_forwarding.h */
@@ -298,15 +299,11 @@ static int block_opt_o = FALSE;
 static int relnodes_on_stageout_opt_o = FALSE;
 static int tolerate_node_failures_opt_o = FALSE;
 
-extern void critical_section(void);
 extern void blockint(int sig);
 extern void do_daemon_stuff(char *, char *, char *); /* it's for other side only */
 extern void enable_gui(void);
 extern void set_sig_handlers(void);
 extern void interactive(void);
-extern void back2forward_slash(char *);
-extern void back2forward_slash2(char *);
-extern void get_uncpath(char *);
 extern int  dorecv(void *, char *, int);
 extern int  dosend(void *, char *, int);
 extern int  check_bg_process(void);
@@ -1319,7 +1316,7 @@ extern char GETOPT_ARGS[];
 					 * environment because '\' is used to protect commas
 					 * inside quoted values.
 					 */
-					(void)back2forward_slash(optarg);
+					fix_path(optarg, 1);
 					v_value = expand_varlist(optarg);
 					if (v_value == NULL)
 						exit(1);
@@ -1337,7 +1334,7 @@ extern char GETOPT_ARGS[];
 					errflg++;
 					break;
 				}
-				(void)back2forward_slash2(optarg);
+				fix_path(optarg, 2);
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 
 				/*
@@ -1962,7 +1959,7 @@ job_env_basic(void)
 
 	/* Send the required variables with the job. */
 	c = strdup_esc_commas(getenv("HOME"));
-	(void)back2forward_slash(c);
+	fix_path(c, 1);
 	strcat(job_env, "PBS_O_HOME=");
 	if (c != NULL) {
 		strcat(job_env, c);
@@ -1984,21 +1981,21 @@ job_env_basic(void)
 		free(c);
 	}
 	c = strdup_esc_commas(getenv("PATH"));
-	(void)back2forward_slash(c);
+	fix_path(c, 1);
 	if (c != NULL) {
 		strcat(job_env, ",PBS_O_PATH=");
 		strcat(job_env, c);
 		free(c);
 	}
 	c = strdup_esc_commas(getenv("MAIL"));
-	(void)back2forward_slash(c);
+	fix_path(c, 1);
 	if (c != NULL) {
 		strcat(job_env, ",PBS_O_MAIL=");
 		strcat(job_env, c);
 		free(c);
 	}
 	c = strdup_esc_commas(getenv("SHELL"));
-	(void)back2forward_slash(c);
+	fix_path(c, 1);
 	if (c != NULL) {
 		strcat(job_env, ",PBS_O_SHELL=");
 		strcat(job_env, c);
@@ -2062,7 +2059,7 @@ job_env_basic(void)
 		get_uncpath(c);
 		c_escaped = strdup_esc_commas(c);
 		if (c_escaped != NULL) {
-			(void)back2forward_slash(c_escaped);
+			fix_path(c_escaped, 1);
 			strncpy(p, c_escaped, len - (p - job_env));
 			free(c_escaped);
 			c_escaped = NULL;
@@ -2157,7 +2154,7 @@ env_array_to_varlist(char **envp)
 			strcat(job_env, ",");
 			strcat(job_env, *evp);
 			strcat(job_env, "=");
-			(void)back2forward_slash(s + 1);
+			fix_path(s + 1, 1);
 			(void)copy_env_value(job_env, s + 1, 1);
 		}
 		*s = '=';
@@ -2256,7 +2253,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 			strcat(job_env, ",");
 			strcat(job_env, s);
 			strcat(job_env, "=");
-			(void)back2forward_slash(env);
+			fix_path(env, 1);
 			if (copy_env_value(job_env, env, 1) == NULL) {
 				free(job_env);
 				return FALSE;
@@ -2281,7 +2278,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 		(void)strcat(job_env, ",");
 		(void)strcat(job_env, s);
 		(void)strcat(job_env, "=");
-		(void)back2forward_slash(c);
+		fix_path(c, 1);
 		if ((c = copy_env_value(job_env, c, 0)) == NULL) {
 			free(job_env);
 			return FALSE;
@@ -3295,7 +3292,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 	free(argv_cpy);
 	/* Process special arguments */
 	command_flag = process_special_args(argc, argv, script);
-	(void)back2forward_slash(script);
+	fix_path(script, 1);
 
 	if (command_flag == 0)
 		/* Read the job script from a file or stdin */

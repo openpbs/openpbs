@@ -573,7 +573,7 @@ init_qmgr_hist(char *prog)
 		if (GetUserName((LPSTR) &username, &len)) {
 			snprintf(qmgr_hist_file, MAXPATHLEN, "%s\\spool\\.pbs_qmgr_history_%s",
 				pbs_conf.pbs_home_path,	username);
-			forward2back_slash(qmgr_hist_file);
+			fix_path(qmgr_hist_file, 3);
 			read_history(qmgr_hist_file);
 			if (write_history(qmgr_hist_file) != 0)
 				clear_history();

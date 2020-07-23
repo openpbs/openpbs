@@ -332,7 +332,7 @@ prepare_path(char *path_in, char *path_out)
 		}
 		strncat(path_out, path_name, MAXPATHLEN - strlen(path_out));
 	}
-	back2forward_slash(path_out);	/* "\" translate to "/" for path */
+	fix_path(path_out, 1);
 	strcpy(path_out, replace_space(path_out, "\\ "));
 	path_out[MAXPATHLEN - 1] = '\0';
 #else

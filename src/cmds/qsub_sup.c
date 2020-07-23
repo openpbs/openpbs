@@ -150,26 +150,6 @@ extern void set_attr_error_exit(struct attrl **attrib, char *attrib_name, char *
 static char *port_X11(void);
 static void do_daemon_stuff(void);
 
-void
-back2forward_slash(char *get_optarg) {
-	/* as of now nothing to write here */
-}
-
-void
-back2forward_slash2(char *get_optarg) {
-	/* as of now nothing to write here */
-}
-
-void
-get_uncpath(char *c) {
-	/* as of now nothing to write here */
-}
-
-void
-critical_section(void) {
-	/* as of now nothing to write here */
-}
-
 /**
  * @brief
  * 	Log a simple message to syslog

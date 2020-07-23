@@ -44,7 +44,7 @@
 
 #include "cmds.h"
 #include "pbs_ifl.h"
-
+#include "portability.h"
 
 
 #ifdef WIN32	/* we're including the space character under windows */
@@ -159,9 +159,7 @@ parse_at_list(char *list, int use_count, int abs_path)
 	if ((list == NULL) || (*list == '\0'))
 		return 1;
 
-#ifdef WIN32
-	back2forward_slash(list);        /* "\" translate to "/" for path */
-#endif
+	fix_path(list, 1);
 
 	if ((list_dup = strdup(list)) == NULL) {
 		fprintf(stderr, "Out of memory.\n");
