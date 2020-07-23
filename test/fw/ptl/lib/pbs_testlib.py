@@ -13867,15 +13867,13 @@ class MoM(PBSService):
         else:
             return False
 
-    def delete_vnode_defs(self, vdefname=None, restart=True):
+    def delete_vnode_defs(self, vdefname=None):
         """
         delete vnode definition(s) on this MoM
 
         :param vdefname: name of a vnode definition file to delete,
                          if None all vnode definitions are deleted
         :type vdefname: str
-        :param restart: If True, restart the MoM. Default is True
-        :type restart: bool
         :returns: True if delete succeed otherwise False
         """
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbs_mom')]
@@ -13900,8 +13898,6 @@ class MoM(PBSService):
                         return False
                     else:
                         rv = True
-        if restart:
-            self.restart()
         return rv
 
     def has_pelog(self, filename=None):

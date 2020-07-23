@@ -1462,6 +1462,7 @@ class PBSTestSuite(unittest.TestCase):
             self.assertTrue(mom.isUp(), msg)
         mom.pbs_version()
         restart = False
+        enabled_cpuset = False
         if ((self.revert_to_defaults and self.mom_revert_to_defaults and
              mom.revert_to_default) or force):
             # no need to delete vnodes as it is already deleted in
@@ -1475,6 +1476,8 @@ class PBSTestSuite(unittest.TestCase):
             if 'clienthost' in self.conf:
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
+            if mom.is_cpuset_mom():
+                enabled_cpuset = True
         if restart:
             mom.restart()
         else:
@@ -1483,7 +1486,7 @@ class PBSTestSuite(unittest.TestCase):
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
         a = {'state': 'free'}
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
-        if mom.is_cpuset_mom():
+        if enabled_cpuset:
             # In order to avoid intermingling CF/HK/PY file copies from the
             # create node and those caused by the following call, wait
             # until the dialogue between MoM and the server is complete
