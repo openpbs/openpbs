@@ -81,7 +81,7 @@ dist_ptlbin_SCRIPTS = \
 	bin/pbs_loganalyzer \
 	bin/pbs_snapshot \
 	bin/pbs_config \
-	bin/pbs_generate_report
+	bin/pbs_compare_perf_results
 
 dist_ptlmodule_PYTHON = ptl/__init__.py
 

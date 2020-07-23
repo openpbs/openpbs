@@ -43,13 +43,16 @@ import csv
 import json
 import sys
 
+
 def usage():
     msg = []
     msg += ['Usage: ' + os.path.basename(sys.argv[0])]
     msg += [' [benchmark_json_file] [tocompare_json_file] [OPTION]\n\n']
-    msg += [' Performance test report generation tool to generate csv and html report\n\n']
+    msg += [' Performance test results comparision tool']
+    msg += [' to generate csv and html report\n\n']
     msg += ['--html-report : option to generate html report\n']
     print(''.join(msg))
+
 
 def generate_html_report():
     """
@@ -72,7 +75,8 @@ def generate_html_report():
     </head>
     <body>
       <table>
-        <tr><th><b>Performance tests benchmark comparision results</b></th></tr>
+        <tr><th><b>Performance tests benchmark comparision results</b>
+        </th></tr>
         <tr><td><b>cmd:</b> %s</td></tr>
         <tr><td><b>user:</b> %s</td></tr>
         <tr><td><b>host:</b> %s</td></tr>
@@ -84,12 +88,15 @@ def generate_html_report():
     </html>
     '''
     with open('performance_test_report.html', 'w+') as fp:
-        fp.write(HTML % (oldv['command'], oldv['user'], list(oldv['machine_info'].keys())[0],
+        fp.write(HTML % (oldv['command'], oldv['user'],
+                         list(oldv['machine_info'].keys())[0],
                          _h + ''.join(_data)))
+
 
 def generate_csv_report():
     with open('performance_test_report.csv', 'w+') as fp:
         csv.writer(fp).writerows([header] + data)
+
 
 def percent_change(nv, ov, unit):
     if unit == 'jobs/sec':
@@ -124,8 +131,9 @@ if __name__ == '__main__':
     with open(sys.argv[2]) as fp:
         newv = json.load(fp)
 
-    header = ['Description', 'TestCase', 'Test Measure', oldv['product_version'],
-              newv['product_version'], '% Diff', 'Unit']
+    header = ['Description', 'TestCase', 'Test Measure',
+              oldv['product_version'], newv['product_version'],
+              '% Diff', 'Unit']
     TR = '    <tr>\n%s    </tr>\n'
     TH = '      <th>%s</th>\n'
     TD = '      <td>%s</td>\n'
