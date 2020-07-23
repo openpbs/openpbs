@@ -532,3 +532,17 @@ Detached scripts essentially background themselves and are attached back to
 the job monitoring through pbs_attach such that they are terminated when the
 job terminates. The detached script must write out its PID as its first
 output.
+
+How to use pbs_generate_report
+-----------------------
+
+The pbs_generate_report is a tool to compare performance test results by
+comparing the output ptl_test_results.json files.
+
+To run pbs_generate_report and generate csv only report::
+
+  pbs_generate_report <benchmark_version>.json <tocompare_version>.json
+
+To run pbs_generate_report and generate html report along with csv::
+  
+  pbs_generate_report <benchmark_version>.json <tocompare_version>.json --html-report
