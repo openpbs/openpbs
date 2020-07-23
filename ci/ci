@@ -647,7 +647,7 @@ def setup_config_dir():
         write_to_file(target_path, value)
     target_path = os.path.join(command_path, MACROS['BENCHPRESS_OPT_FILE'])
     if not os.path.exists(target_path):
-        value = "--tags=smoke"
+        value = "-t SmokeTest"
         write_to_file(target_path, value)
     target_path = os.path.join(ci_dirname, 'docker-compose.json')
     if not os.path.exists(target_path):

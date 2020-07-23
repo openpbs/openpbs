@@ -79,6 +79,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+    export LANG="C.utf8"
     dnf -y clean all
     dnf -y install 'dnf-command(config-manager)'
     dnf -y config-manager --set-enabled PowerTools
@@ -133,6 +134,8 @@ if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
 fi
 
 if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+  export LANG="C.utf8"
+  swig_opt="--with-swig=/usr/local"
   if [ ! -f /tmp/swig/swig/configure ]; then
     # source install swig
     dnf -y install gcc-c++ byacc pcre-devel
@@ -164,9 +167,6 @@ if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}"
   _cflags="-g -O2 -Wall -Werror"
   if [ "x${ID}" == "xubuntu" ]; then
     _cflags="${_cflags} -Wno-unused-result"
-  fi
-  if [ "x${VERSION_ID}" == "x8" -a "x${ID}" == "xcentos" ]; then
-    swig_opt="--with-swig=/usr/local"
   fi
   cd ${_targetdirname}
   if [ -f /src/ci ]; then

@@ -95,6 +95,7 @@ Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 %bcond_with alps
 %bcond_with ptl
 %bcond_with pmix
+%bcond_with swig
 
 BuildRoot: %{buildroot}
 BuildRequires: gcc
@@ -327,6 +328,9 @@ cd build
 	--prefix=%{pbs_prefix} \
 %if %{with ptl}
 	--enable-ptl \
+%endif
+%if %{with swig}
+	--with-swig=/usr/local \
 %endif
 %if %{defined suse_version}
 	--libexecdir=%{pbs_prefix}/libexec \

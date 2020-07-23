@@ -46,12 +46,30 @@ rm -rf /src/packages
 mkdir -p /src/packages
 mkdir -p ${rpm_dir}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
+if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+	export LANG="C.utf8"
+	swig_opt="--with-swig=/usr/local"
+	if [ ! -f /tmp/swig/swig/configure ]; then
+		# source install swig
+		dnf -y install gcc-c++ byacc pcre-devel
+		mkdir -p /tmp/swig/
+		cd /tmp/swig
+		git clone https://github.com/swig/swig --branch rel-4.0.0 --single-branch
+		cd swig
+		./autogen.sh
+		./configure
+		make -j8
+		make install
+		cd ${PBS_DIR}
+	fi
+fi
+
 cp -r $pbsdir /tmp/pbs
 cd /tmp/pbs
 ./autogen.sh
 mkdir target
 cd target
-../configure --prefix=/opt/pbs --enable-ptl
+../configure --prefix=/opt/pbs --enable-ptl ${swig_opt}
 make dist
 cp *.tar.gz ${rpm_dir}/SOURCES
 cp ../*-rpmlintrc ${rpm_dir}/SOURCES
@@ -60,7 +78,11 @@ cflags="-g -O2 -Wall -Werror"
 if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
 	CFLAGS="${cflags} -Wno-unused-result" rpmbuild -ba --nodeps *.spec --with ptl
 else
-	CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl
+	if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl --with swig
+	else
+		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl
+	fi
 fi
 
 mv ${rpm_dir}/RPMS/*/*pbs* /src/packages/
@@ -74,7 +96,10 @@ if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
 	_dir=$(/bin/ls -1d *debuginfo* | grep -vE '(rpm|orig)')
 	mv ${_dir}/opt/pbs/usr/ ${_dir}/
 	rm -rf ${_dir}/opt
-	(cd ${_dir}; dpkg-buildpackage -d -b -us -uc)
+	(
+		cd ${_dir}
+		dpkg-buildpackage -d -b -us -uc
+	)
 	rm -rf ${_dir} ${_dir}.orig *debuginfo*.buildinfo *debuginfo*.changes *debuginfo*.rpm
 	fakeroot alien --to-deb --scripts --target=${_target_arch} *.rpm
 	rm -f *.rpm
