@@ -300,13 +300,12 @@ static int relnodes_on_stageout_opt_o = FALSE;
 static int tolerate_node_failures_opt_o = FALSE;
 
 extern void blockint(int sig);
-extern void do_daemon_stuff(char *, char *, char *); /* it's for other side only */
+extern void do_daemon_stuff(char *, char *, char *);
 extern void enable_gui(void);
 extern void set_sig_handlers(void);
 extern void interactive(void);
 extern int  dorecv(void *, char *, int);
 extern int  dosend(void *, char *, int);
-extern int  check_bg_process(void);
 extern int  daemon_submit(int *, int *, char *);
 extern int  get_script(FILE *, char *, char *);
 
@@ -3167,6 +3166,7 @@ static int
 regular_submit(int daemon_up)
 {
 	int rc = 0;
+	char *d_arg = "qsub";
 	rc = do_connect(server_out, retmsg);
 	if (rc == 0) {
 		if (sd_svr != -1) {
@@ -3176,7 +3176,7 @@ regular_submit(int daemon_up)
 			rc = -1;
 	}
 	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0) && !V_opt)
-		check_bg_process();
+		do_daemon_stuff(d_arg, d_arg, d_arg);
 	return rc;
 }
 

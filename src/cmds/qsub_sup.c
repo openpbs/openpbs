@@ -148,7 +148,7 @@ extern char *strdup_esc_commas(char *str_to_dup);
 static char *X11_get_authstring(void);
 extern void set_attr_error_exit(struct attrl **attrib, char *attrib_name, char *attrib_value);
 static char *port_X11(void);
-static void do_daemon_stuff(void);
+static void daemon_stuff(void);
 
 /**
  * @brief
@@ -525,18 +525,22 @@ port_X11(void)
 
 /**
  * @brief
- *	Fork the current process. Call the do_daemon_stuff function in the
+ *	Fork the current process. Call the daemon_stuff function in the
  *	child process which starts listening on the unix domain socket etc.
  *	The parent process continues out of this function and eventually
  *	returns back control to the calling shell.
  *
- * @return error code
- * @retval 0 Success
+ * @param[in] fname  - The filename used for the communication pipe/socket for
+ *                     the communication between background and forground qsub processes.
+ * @param[in] handle - Handle to synchronization event between foreground and
+ *                     background qsub processes.
+ * @param[in] server - Target server name of NULL in case of default
+ *
  * exits program on failure
  *
  */
-int
-fork_and_stay(void)
+void
+do_daemon_stuff(char *fname, char *handle, char *server)
 {
 	int pid;
 
@@ -575,7 +579,7 @@ fork_and_stay(void)
 
 		/* set when background qsub is running */
 		is_background = 1;
-		do_daemon_stuff();
+		daemon_stuff();
 		/*
 		 * Control should never reach here.
 		 * Still adding an exit, so it does not traverse parent code.
@@ -583,23 +587,7 @@ fork_and_stay(void)
 		exit(1);
 	}
 	/* parent code */
-	return 0;
 }
-
-/**
- * @brief
- *	wrapper function to call fork_and_stay()
-
- * @return error code
- * @retval 0 Success
- * exits program on failure
- *
- */
-int
-check_bg_process(void) {
-	return (fork_and_stay());
-}
-
 
 /**
  * @brief
@@ -1479,7 +1467,7 @@ check_qsub_daemon(char *fname)
 
 /**
  * @brief
- *	The do_daemon_stuff Unix counterpart.
+ *	The daemon_stuff Unix counterpart.
  *	It creates a unix domain socket server and starts listening on it.
  *	The umask is set to 077 so that the domain socket file is owned and
  *	accessible by the user executing qsub only. Once a client (foreground
@@ -1495,7 +1483,7 @@ check_qsub_daemon(char *fname)
  *
  */
 static void
-do_daemon_stuff(void)
+daemon_stuff(void)
 {
 	int sock, bindfd;
 	struct sockaddr_un s_un;
