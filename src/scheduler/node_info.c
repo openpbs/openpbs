@@ -3610,9 +3610,16 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 					COMPARE_TOTAL | UNSET_RES_ZERO | CHECK_ALL_BOOLS,
 					policy->resdef_to_check_no_hostvnode,
 					INSUFFICIENT_RESOURCE, err) == 0) {
-					for (k = 0; ninfo_arr[k] != NULL; k++)
-						if (ninfo_arr[k]->nodesig_ind == ninfo_arr[i]->nodesig_ind)
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+							"", "Marking nodes with signature %s ineligible", ninfo_arr[i]->nodesig);
+					for (k = 0; ninfo_arr[k] != NULL; k++) {
+						if (ninfo_arr[k]->nodesig_ind == ninfo_arr[i]->nodesig_ind) {
 							ninfo_arr[k]->nscr.visited = 1;
+							if (i != k)
+								schdlogerr(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+									ninfo_arr[k]->name, NULL, err);
+						}
+					}
 				}
 			}
 
