@@ -42,6 +42,7 @@ import os
 import csv
 import json
 import sys
+import getopt
 
 
 def usage():
@@ -51,10 +52,12 @@ def usage():
     msg += [' Performance test results comparision tool']
     msg += [' to generate csv and html report\n\n']
     msg += ['--html-report : option to generate html report\n']
+    msg += ['--output-file : path to generate csv and html file\n']
+    msg += ['--help or -h : To display usage information\n']
     print(''.join(msg))
 
 
-def generate_html_report():
+def generate_html_report(filepath):
     """
     Generate html performance comparision report
     """
@@ -87,18 +90,27 @@ def generate_html_report():
     </body>
     </html>
     '''
-    with open('performance_test_report.html', 'w+') as fp:
+    htmlfile = filepath + '.html'
+    with open(htmlfile, 'w+') as fp:
         fp.write(HTML % (oldv['command'], oldv['user'],
                          list(oldv['machine_info'].keys())[0],
                          _h + ''.join(_data)))
 
 
-def generate_csv_report():
-    with open('performance_test_report.csv', 'w+') as fp:
+def generate_csv_report(filepath):
+    """
+    compare 2 json results and generate csv report
+    """
+    csvfile = filepath + '.csv'
+    with open(csvfile, 'w+') as fp:
         csv.writer(fp).writerows([header] + data)
 
 
 def percent_change(nv, ov, unit):
+    """
+    swap the values to find approriate percent
+    change for units
+    """
     if unit == 'jobs/sec':
         a = ov
         ov = nv
@@ -115,15 +127,27 @@ def percent_change(nv, ov, unit):
 
 
 if __name__ == '__main__':
-    args = 3
-    try:
-        if sys.argv[3] == '--html-report':
-            args += 1
-    except:
-        args = 3
-    if int(len(sys.argv)) != args:
+    if int(len(sys.argv)) < 3:
         usage()
         sys.exit(1)
+
+    html_report = False
+    try:
+        opts, args = getopt.getopt(sys.argv[3:], "h",
+                                   ["help", "html-report", "output-file="])
+    except getopt.GetoptError as err:
+        print(err)
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == '--html-report':
+            html_report = True
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit(1)
+        elif o == "--output-file":
+            filepath = val
 
     with open(sys.argv[1]) as fp:
         oldv = json.load(fp)
@@ -186,6 +210,8 @@ if __name__ == '__main__':
                 _adf.append(d[1])
         else:
             _data.append(TR % ''.join([TD % x for x in d]))
-    if args == 4:
-        generate_html_report()
-    generate_csv_report()
+    if not filepath:
+        filepath = 'performance_test_report'
+    if html_report:
+        generate_html_report(filepath)
+    generate_csv_report(filepath)
