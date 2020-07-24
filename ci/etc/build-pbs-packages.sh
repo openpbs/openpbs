@@ -79,7 +79,7 @@ if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
 	CFLAGS="${cflags} -Wno-unused-result" rpmbuild -ba --nodeps *.spec --with ptl
 else
 	if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
-		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl --with swig
+		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl -D '_with_swig ${swig_opt}'
 	else
 		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl
 	fi
