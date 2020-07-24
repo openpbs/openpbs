@@ -328,6 +328,7 @@ cd build
 %if %{with ptl}
 	--enable-ptl \
 %endif
+	%{?_with_swig} \
 %if %{defined suse_version}
 	--libexecdir=%{pbs_prefix}/libexec \
 %endif
