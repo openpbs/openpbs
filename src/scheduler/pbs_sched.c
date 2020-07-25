@@ -732,7 +732,7 @@ lock_out(int fds, int op)
 	flock.l_start  = 0;
 	flock.l_len    = 0;	/* whole file */
 	if (fcntl(fds, F_SETLK, &flock) < 0) {
-		(void)strcpy(log_buffer, "pbs_sched: another scheduler running\n");
+		pbs_strncpy(log_buffer, "pbs_sched: another scheduler running\n", LOG_BUF_SIZE);
 		log_err(errno, msg_daemonname, log_buffer);
 		fprintf(stderr, "%s", log_buffer);
 		exit(1);

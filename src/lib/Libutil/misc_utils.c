@@ -334,6 +334,26 @@ pbs_strcpy(char *dest, const char *src)
 
 	return dest;
 }
+/**
+ *
+ * @brief general purpose strncpy function that will make sure to
+ *        copy '\0' at the end of the buffer.
+ *
+ * @param[in] dest - pointer to the destination buffer
+ * @param[in] src  - pointer to the source string
+ * @param[in] n    - size of destination buffer
+ *
+ * @return char *
+ * @retval pointer to the destination string
+ *
+ * @note: Caller needs ensure non-NULL pointers
+ */
+char *pbs_strncpy(char *dest, const char *src, size_t n)
+{
+    strncpy(dest, src, n-1);
+    dest[n-1] = '\0';
+    return dest;
+}
 
 /**
  * @brief
@@ -348,7 +368,6 @@ pbs_strcpy(char *dest, const char *src)
  * @retval pointer to *pbuf(the string pbuf points at) on successful read
  * @retval NULL on EOF or error
  */
-#define PBS_FGETS_LINE_LEN 8192
 char *
 pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp)
 {

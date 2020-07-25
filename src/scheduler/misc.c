@@ -122,16 +122,17 @@ char *
 string_dup(char *str)
 {
 	char *newstr;
+	size_t len;
 
 	if (str == NULL)
 		return NULL;
-
-	if ((newstr = (char *) malloc(strlen(str) + 1)) == NULL) {
+	len = strlen(str) + 1;
+	if ((newstr = (char *) malloc(len)) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	strcpy(newstr, str);
+	pbs_strncpy(newstr, str, len);
 
 	return newstr;
 }
