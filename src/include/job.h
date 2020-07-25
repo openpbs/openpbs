@@ -538,6 +538,7 @@ struct job {
 
 	struct preempt_ordering	*preempt_order;
 	int preempt_order_index;
+	struct work_task *ji_prov_startjob_task;
 
 #endif					/* END SERVER ONLY */
 

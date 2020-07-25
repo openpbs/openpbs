@@ -5490,9 +5490,7 @@ prov_vnode_pending_hook_copy(job *pjob)
 		for (j = 0; j < np->nd_nummoms; j++) {
 
 			if ((np->nd_moms[j] != NULL) && (sync_mom_hookfiles_count(np->nd_moms[j]) > 0)) {
-				snprintf(log_buffer, sizeof(log_buffer),
-						"prov vnode %s's parent mom %s:%d has a pending copy hook or delete hook request", np->nd_name,  np->nd_moms[j]->mi_host, np->nd_moms[j]->mi_port);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_WARNING, pjob->ji_qs.ji_jobid, "prov vnode %s's parent mom %s:%d has a pending copy hook or delete hook request", np->nd_name,  np->nd_moms[j]->mi_host, np->nd_moms[j]->mi_port);
 				rcode = 1;
 				break;
 			}
@@ -5526,6 +5524,12 @@ prov_startjob(struct work_task *ptask)
 
 	assert(ptask->wt_parm1 != NULL);
 	pjob = (job *) ptask->wt_parm1;
+        if (pjob == NULL) {
+		DBPRT(("%s: pjob is NULL\n", __func__))
+		return;
+	}
+	/* task being serviced here */
+        pjob->ji_prov_startjob_task = NULL;
 	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_proc_running) &&
 	    (prov_vnode_pending_hook_copy(pjob))) {
 
@@ -5540,8 +5544,9 @@ prov_startjob(struct work_task *ptask)
 			, __func__))
 
                 /* set a work task to run after 5 sec from now */
-                if (!set_task(WORK_Timed, time_now + 5,
-                        prov_startjob, pjob)){
+		pjob->ji_prov_startjob_task = set_task(WORK_Timed, time_now + 5,
+                        				prov_startjob, pjob);
+                if (pjob->ji_prov_startjob_task == NULL) {
                         log_err(errno, __func__,
 				"Unable to set task for prov_startjob; requeuing the job");
 			(void)force_reque(pjob);

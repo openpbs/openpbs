@@ -204,10 +204,7 @@ class TestProvisioningJob(TestFunctional):
         jid = self.server.submit(job)
         self.server.expect(NODE, {'state': 'provisioning'}, id=self.hostA)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 71}, id=jid)
-        self.server.log_match(
-            "fake calling os provisioning script",
-            max_attempts=20,
-            interval=1)
+        self.server.log_match("fake calling os provisioning script")
 
         # Bring down the mom that is not part of the job
         self.momB.stop()

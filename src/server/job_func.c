@@ -369,6 +369,7 @@ job_alloc(void)
 	pj->ji_terminated = 0;
 	pj->ji_deletehistory = 0;
 	pj->ji_script = NULL;
+	pj->ji_prov_startjob_task = NULL;
 #endif
 	pj->ji_qs.ji_jsversion = JSVERSION;
 	pj->ji_momhandle = -1;		/* mark mom connection invalid */
@@ -538,6 +539,8 @@ job_free(job *pj)
 		free(pj->ji_clterrmsg);
 	if (pj->ji_script)
 		free(pj->ji_script);
+	if (pj->ji_prov_startjob_task)
+		delete_task(pj->ji_prov_startjob_task);
 
 #else	/* PBS_MOM  Mom Only */
 
