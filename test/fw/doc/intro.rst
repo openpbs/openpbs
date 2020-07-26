@@ -9,6 +9,7 @@ Command line tools
 - :ref:`pbs_stat <pbs_stat>` used to filter PBS objects based on select properties
 - :ref:`pbs_config <pbs_config>` used to configure services, e.g., create vnodes
 - :ref:`pbs_py_spawn <pbs_py_spawn>` used to invoke a pbs_py_spawn action associated to a job running on a MoM
+- :ref:`pbs_compare_results <pbs_compare_results>` used to compare performance test results
 
 Library
 -------
