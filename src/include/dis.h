@@ -209,11 +209,10 @@ extern void DIS_tcp_funcs();
 #define DIS_READ_BUF 1
 
 typedef struct pbs_dis_buf {
-	size_t tdis_lead;
-	size_t tdis_trail;
-	size_t tdis_eod;
 	size_t tdis_bufsize;
-	char *tdis_thebuf;
+	size_t tdis_len;
+	char *tdis_pos;
+	char *tdis_data;
 } pbs_dis_buf_t;
 
 typedef struct pbs_tcp_auth_data {
@@ -235,8 +234,6 @@ int disr_skip(int, size_t);
 int dis_getc(int);
 int dis_gets(int, char *, size_t);
 int dis_puts(int, const char *, size_t);
-int disr_commit(int, int);
-int disw_commit(int, int);
 int dis_flush(int);
 void dis_setup_chan(int, pbs_tcp_chan_t * (*)(int));
 void dis_destroy_chan(int);

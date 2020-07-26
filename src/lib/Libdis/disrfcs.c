@@ -99,8 +99,6 @@ disrfcs(int stream, size_t *nchars, size_t achars, char *value)
 		else if (dis_gets(stream, value, *nchars) != *nchars)
 			locret = DIS_PROTO;
 	}
-	locret = disr_commit(stream, locret == DIS_SUCCESS) ?
-		DIS_NOCOMMIT : locret;
 	if (locret != DIS_SUCCESS)
 		*nchars = 0;
 	return (locret);

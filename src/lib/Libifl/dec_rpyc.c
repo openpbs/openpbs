@@ -90,13 +90,13 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 	struct brp_select    *psel;
 	struct brp_select   **pselx;
 	struct brp_cmdstat   *pstcmd;
-	struct brp_cmdstat  **pstcx;
+	struct brp_cmdstat  **pstcx = NULL;
 	int		      rc = 0;
 	size_t		      txtlen;
 	preempt_job_info 	*ppj = NULL;
 
 	/* first decode "header" consisting of protocol type and version */
-
+again:
 	i = disrui(sock, &rc);
 	if (rc != 0) return rc;
 	if (i != PBS_BATCH_PROT_TYPE) return DIS_PROTO;
@@ -111,6 +111,8 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 	reply->brp_auxcode = disrsi(sock, &rc);
 	if (rc) return rc;
 	reply->brp_choice  = disrui(sock, &rc);
+	if (rc) return rc;
+	reply->brp_is_part  = disrui(sock, &rc);
 	if (rc) return rc;
 
 
@@ -154,9 +156,10 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 		case BATCH_REPLY_CHOICE_Status:
 
 			/* have to get count of number of status objects first */
-
-			reply->brp_un.brp_statc = NULL;
-			pstcx = &reply->brp_un.brp_statc;
+			if (pstcx == NULL) {
+				reply->brp_un.brp_statc = NULL;
+				pstcx = &reply->brp_un.brp_statc;
+			}
 			ct = disrui(sock, &rc);
 			if (rc) return rc;
 
@@ -169,10 +172,8 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 				pstcmd->brp_attrl = NULL;
 
 				pstcmd->brp_objtype = disrui(sock, &rc);
-				if (rc == 0) {
-					rc = disrfst(sock, PBS_MAXSVRJOBID+1,
-						pstcmd->brp_objname);
-				}
+				if (rc == 0)
+					rc = disrfst(sock, PBS_MAXSVRJOBID+1, pstcmd->brp_objname);
 				if (rc) {
 					(void)free(pstcmd);
 					return rc;
@@ -185,6 +186,8 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 				*pstcx = pstcmd;
 				pstcx  = &pstcmd->brp_stlink;
 			}
+			if (reply->brp_is_part)
+				goto again;
 			break;
 
 		case BATCH_REPLY_CHOICE_Text:

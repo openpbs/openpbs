@@ -108,7 +108,6 @@ unsigned short disrus(int stream, int *retval)
 		value = USHRT_MAX;
 		locret = DIS_OVERFLOW;
 	}
-	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : locret;
+	*retval = locret;
 	return ((unsigned short)value);
 }

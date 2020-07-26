@@ -49,6 +49,7 @@ extern "C" {
 #include "net_connect.h"
 
 #define PBS_SIGNAMESZ 16
+#define MAX_JOBS_PER_REPLY 500
 
 /* QueueJob */
 struct rq_queuejob {
@@ -322,6 +323,7 @@ extern void reply_badattr(int, int, svrattrl *, struct batch_request *);
 extern void reply_badattr_msg(int, int, svrattrl *, struct batch_request *, int);
 extern int reply_text(struct batch_request *, int, char *);
 extern int reply_send(struct batch_request *);
+extern int reply_send_status_part(struct batch_request *);
 extern int reply_jobid(struct batch_request *, char *, int);
 extern int reply_jobid_msg(struct batch_request *, char *, int, int);
 extern void reply_free(struct batch_reply *);

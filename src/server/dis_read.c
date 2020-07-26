@@ -290,6 +290,8 @@ decode_DIS_replySvr_inner(int sock, struct batch_reply *reply)
 	if (rc) return rc;
 	reply->brp_choice  = disrui(sock, &rc);
 	if (rc) return rc;
+	reply->brp_is_part  = disrui(sock, &rc);
+	if (rc) return rc;
 
 
 	switch (reply->brp_choice) {

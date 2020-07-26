@@ -92,7 +92,8 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 
 	if ((rc = diswsi(sock, reply->brp_code)) 	||
 		(rc = diswsi(sock, reply->brp_auxcode))	||
-		(rc = diswui(sock, reply->brp_choice)))
+		(rc = diswui(sock, reply->brp_choice)) ||
+		(rc = diswui(sock, reply->brp_is_part)))
 			return rc;
 
 	switch (reply->brp_choice) {

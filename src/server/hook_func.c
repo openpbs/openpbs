@@ -4080,13 +4080,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		struct	batch_request	*temp_req;
 		int			do_recreate = 0;
 
-		temp_req = (struct batch_request *)malloc(
-				sizeof(struct batch_request));
+		temp_req = alloc_br(rq_type);
 		if (temp_req != NULL) {
-			memset((void *)temp_req, (int)0,
-					sizeof(struct batch_request));
-			temp_req->rq_type = rq_type;
-
 			switch (rq_type) {
 				case PBS_BATCH_QueueJob:
 				case PBS_BATCH_SubmitResv:

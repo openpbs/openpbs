@@ -109,7 +109,6 @@ disruc(int stream, int *retval)
 		value = UCHAR_MAX;
 		locret = DIS_OVERFLOW;
 	}
-	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : locret;
+	*retval = locret;
 	return ((unsigned char)value);
 }
