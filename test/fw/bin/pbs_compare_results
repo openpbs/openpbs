@@ -90,8 +90,9 @@ def generate_html_report(filepath):
     </body>
     </html>
     '''
-    htmlfile = filepath + '.html'
-    with open(htmlfile, 'w+') as fp:
+    if not filepath.endswith('.html'):
+        filepath = filepath + '.html'
+    with open(filepath, 'w+') as fp:
         fp.write(HTML % (oldv['command'], oldv['user'],
                          list(oldv['machine_info'].keys())[0],
                          _h + ''.join(_data)))
@@ -101,8 +102,9 @@ def generate_csv_report(filepath):
     """
     compare 2 json results and generate csv report
     """
-    csvfile = filepath + '.csv'
-    with open(csvfile, 'w+') as fp:
+    if not filepath.endswith('.csv'):
+        filepath = filepath + '.csv'
+    with open(filepath, 'w+') as fp:
         csv.writer(fp).writerows([header] + data)
 
 
@@ -127,7 +129,7 @@ def percent_change(nv, ov, unit):
 
 
 if __name__ == '__main__':
-    if int(len(sys.argv)) < 3:
+    if len(sys.argv) < 3:
         usage()
         sys.exit(1)
 
@@ -140,12 +142,13 @@ if __name__ == '__main__':
         usage()
         sys.exit(1)
 
+    filepath = None
     for o, val in opts:
         if o == '--html-report':
             html_report = True
         elif o in ("-h", "--help"):
             usage()
-            sys.exit(1)
+            sys.exit(0)
         elif o == "--output-file":
             filepath = val
 
