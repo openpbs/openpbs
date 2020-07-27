@@ -36,27 +36,26 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_idled 8B "16 January 2018" Local "PBS"
+.TH pbs_idled 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_idled
+.B pbs_idled 
 \- run PBS daemon that monitors the console and informs pbs_mom of idle time
 .SH LINUX SYNOPSIS
-.B pbs_idled
-[-D <display>] [-r <reconnect delay>] [-w <wait time>]
+.B pbs_idled 
+[-D <display>] [-r <reconnect delay>] [-w <wait time>] 
 .br
 .B pbs_idled
 --version
 .SH WINDOWS SYNOPSIS
-.B pbs_idled
-[start | stop]
+.B pbs_idled 
+[start | stop] 
 .br
 .B pbs_idled
 --version
 
 .SH LINUX DESCRIPTION
-On Linux, the
-.B pbs_idled
+On Linux, the 
+.B pbs_idled 
 program monitors an X windows display and communicates the idle time
 of the display back to PBS.  If the mouse is moved or a key is
 touched, PBS is informed that the vnode is busy.
@@ -68,47 +67,44 @@ to the X display.  See the xhost or xauth man pages for a description
 of X security.
 
 .SH WINDOWS DESCRIPTION
-On Windows,
-.B pbs_idled
+On Windows, 
+.B pbs_idled 
 reads its polling interval from a file called
-.I idle_poll_time
+.I idle_poll_time 
 which is created by MoM.  The process monitors
 keyboard, mouse, and console activity, and updates a file called
-.I idle_touch
-when it finds user activity.  The
-.I idle_touch
+.I idle_touch 
+when it finds user activity.  The 
+.I idle_touch 
 file is created by MoM.
 
 .SH LINUX OPTIONS
 .IP "-D <display>" 10
 The display to connect to and monitor
 .IP "-r <reconnect delay>" 10
-Time to wait before we try to reconnect to the X display if the previous
+Time to wait before we try to reconnect to the X display if the previous 
 attempt was unsuccessful
 .IP "-w <wait time>" 10
 Interval between times when the daemon checks for events or pointer movement
 .IP "--version" 10
-The
+The 
 .B pbs_idled
 command returns its PBS version information and exits.
 This option can only be used alone.
 .SH WINDOWS OPTIONS
 .IP "start" 10
-Starts the
-.B pbs_idled
+Starts the 
+.B pbs_idled 
 process.
 .IP "stop" 10
-Stops the
-.B pbs_idled
+Stops the 
+.B pbs_idled 
 process.
 .IP "--version" 10
-The
-.B pbs_idled
+The 
+.B pbs_idled 
 process returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-and the following manual pages:
 pbs_mom(8B), xhost(1), xauth(1)

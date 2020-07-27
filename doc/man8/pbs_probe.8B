@@ -36,14 +36,13 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_probe 8B "23 October 2017" Local "PBS"
+.TH pbs_probe 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_probe
+.B pbs_probe 
 - report PBS diagnostic information and fix permission errors
 .SH SYNOPSIS
-.B pbs_probe
-[ -f | -v ]
+.B pbs_probe 
+[ -f | -v ] 
 .br
 .B pbs_probe
 --version
@@ -58,11 +57,11 @@ diagnostics, and fixes permission errors.
 .RS 3
 Information that is supplied on the command line
 .br
-The file /etc/pbs.conf
+The file /etc/pbs.conf 
 .br
 The file /etc/init.d/pbs
 .br
-The values of any of the following environment variables; these may
+The values of any of the following environment variables; these may 
 be set in the environment in which
 .B pbs_probe
 is run: PBS_CONF_FILE, PBS_HOME, PBS_EXEC, PBS_START_SERVER, PBS_START_MOM,
@@ -87,14 +86,14 @@ Empty categories are not written.
 Run in "fix" mode. In this mode pbs_probe examines each of the relevant
 infrastructure files and, where possible, fixes any errors that it detects,
 and prints a message of what got changed. If it is unable to fix a problem,
-it prints a message regarding what was detected.
+it prints a message regarding what was detected. 
 .IP "-v" 10
 Run in "verbose" mode. In this mode
 .B pbs_probe
 writes a complete list of the infrastructure files that it checked.
 .LP
 .IP "--version" 10
-The
+The 
 .B pbs_probe
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -106,17 +105,14 @@ command writes a diagnostic message to standard error for each error occurrence.
 
 .SH EXIT STATUS
 Exit code does not reflect results of probe; it reflects whether or not
-the program ran.
+the program ran.  
 .IP "Zero" 10
-When run correctly, whether or not
-.B pbs_probe
+When run correctly, whether or not 
+.B pbs_probe 
 finds any problems or errors
 
 .IP "Non-negative" 10
 When run incorrectly
 .RE
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-and the following manual pages:
 pbs_server(8B), pbs_sched(8B), pbs_mom(8B).

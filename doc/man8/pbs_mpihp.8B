@@ -36,65 +36,64 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_mpihp 8B "23 October 2017" Local "PBS"
+.TH pbs_mpihp 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_mpihp
+.B pbs_mpihp 
 \- run an MPI application in a PBS job with HP MPI
 
 .SH SYNOPSIS
 .B pbs_mpihp
 [-h <host>] [-np <number>] [<other HP mpirun options>] <program> [<args>]
 
-.B pbs_mpihp
+.B pbs_mpihp  
 [<HP mpirun options>] -f <appfile> [-- [<extra_args>]]
 
 .B pbs_mpihp
 --version
 
 .SH DESCRIPTION
-The PBS command
-.B pbs_mpihp
-replaces the standard
+The PBS command 
+.B pbs_mpihp 
+replaces the standard 
 .I mpirun
 command in a PBS
-HP MPI job, for executing programs.
-.B pbs_mpihp
-is a front end to the HP MPI version of mpirun.
+HP MPI job, for executing programs.  
+.B pbs_mpihp 
+is a front end to the HP MPI version of mpirun.  
 
-When
-.B pbs_mpihp
-is invoked from a PBS job, it
+When 
+.B pbs_mpihp 
+is invoked from a PBS job, it 
 processes the command line arguments, then calls standard HP mpirun to
 actually start the MPI ranks.  The ranks created are mapped onto
-CPUs on the vnodes allocated to the PBS job.  The environment variable
-.B MPI_REMSH
-is set to
-.I $PBS_EXEC/bin/pbs_tmrsh.
+CPUs on the vnodes allocated to the PBS job.  The environment variable 
+.B MPI_REMSH 
+is set to 
+.I $PBS_EXEC/bin/pbs_tmrsh.  
 This causes
 the processes that are created to become part of the PBS job.
 
 The path to standard HP mpirun is found by checking to see if a link
-exists with the name
-.I "PBS_EXEC/etc/pbs_mpihp".
+exists with the name 
+.I "PBS_EXEC/etc/pbs_mpihp".  
 If this link exists,
 it points to standard HP mpirun.  If it does not exist, a call
-to
-.I "mpirun -version"
+to 
+.I "mpirun -version" 
 is made to determine whether it is HP mpirun.
 If so, the call is made to "mpirun" without an absolute path.
 If HP mpirun cannot be found, an error is output, all temp
 files are cleaned up and the script exits with value 127.
 
-If
-.B pbs_mpihp
+If 
+.B pbs_mpihp 
 is invoked from outside a PBS job, it passes all of
 its arguments directly to standard HP mpirun without further processing.
 
 .B Configuration
 .br
-When HP MPI is wrapped with pbs_mpihp, "rsh" is the default used to
-start the mpids. If you wish to use "ssh" or something else,
+When HP MPI is wrapped with pbs_mpihp, "rsh" is the default used to 
+start the mpids. If you wish to use "ssh" or something else, 
 be sure to set the following in $PBS_HOME/pbs_environment:
 
 .RS 5
@@ -108,7 +107,7 @@ or put the following in the job script:
 .RE
 
 .SH USAGE
-Usage is the same as for HP
+Usage is the same as for HP 
 .I mpirun.
 
 .B pbs_mpihp <program>
@@ -116,46 +115,46 @@ allows one executable to be specified.
 
 .B pbs_mpihp -f <appfile>
 uses an
-.I appfile
+.I appfile 
 to list multiple executables.
 The format is described in the HP mpirun man page.  If this form
 is used from inside a PBS job, the file is read to determine
 what executables are to be run and how many processes are
 started for each.
 
-Executing
-.B pbs_mpihp
-with the
-.I -client
+Executing 
+.B pbs_mpihp 
+with the 
+.I -client 
 option is not supported under PBS.
 
 .SH OPTIONS
 All options except the following are passed directly to HP mpirun
 with no modification.
 
-.IP "-client" 15
+.IP "-client" 15  
 Not supported.
 
-.IP "-f <appfile>"
-The specified
-.I appfile
-is read by
+.IP "-f <appfile>"  
+The specified 
+.I appfile 
+is read by 
 .B pbs_mpihp.
 
-.IP "-h <host>" 15
-Ignored by
+.IP "-h <host>" 15    
+Ignored by 
 .B pbs_mpihp.
 
-.IP "-l <user>"
+.IP "-l <user>"     
 Ignored by pbs_mpihp.
 
-.IP "-np <number>" 15
-Specifies the
-.I number
+.IP "-np <number>" 15  
+Specifies the 
+.I number 
 of processes to run on the PBS vnodes.
 
 .IP "--version" 15
-The
+The 
 .B pbs_mpihp
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -168,7 +167,4 @@ If HP
 cannot be found
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.LP
 mpirun(1)

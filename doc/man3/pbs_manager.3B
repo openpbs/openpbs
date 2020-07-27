@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_manager 3B "15 November 2019" Local "PBS"
+.TH pbs_manager 3B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_manager
+.B pbs_manager 
 \- modify a PBS batch object
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -47,18 +46,18 @@
 #include <pbs_ifl.h>
 .sp
 .nf
-.B int pbs_manager(int connect, int command, int object_type,
-.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *object_name, struct attropl *attrib_list,
+.B int pbs_manager(int connect, int command, int object_type, 
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *object_name, struct attropl *attrib_list, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 .SH DESCRIPTION
 
 Issues a batch request to perform administrative functions at a server.
 
-Generates a
+Generates a 
 .I Manager
-(9) batch request and sends it to the server over the connection specified by
-.I connect.
+(9) batch request and sends it to the server over the connection specified by 
+.I connect.  
 
 You can use this to create, delete, and set attributes of objects such as queues.
 
@@ -75,7 +74,7 @@ Functions MGR_CMD_SET and MGR_CMD_UNSET require PBS Manager or Operator privileg
 
 When used with hooks:
 .RS 3
-All commands require root privilege on the server host.
+All commands require root privilege on the server host.  
 .br
 Functions MGR_CMD_IMPORT, MGR_CMD_EXPORT, and MGR_OBJ_HOOK are used
 only with hooks, and therefore require root privilege on the server
@@ -86,12 +85,12 @@ Hook commands are run at the server host.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection over which to send batch request to server.
 
 .IP command 8
-Operation to be performed.  Valid values are specified in pbs_ifl.h.
+Operation to be performed.  Valid values are specified in pbs_ifl.h. 
 
 .IP object_type 8
 Specifies type of object on which command is to operate.  Valid values
@@ -102,8 +101,8 @@ Name of object on which to operate.
 
 .IP attrib_list 8
 Pointer to a list of attributes to be operated on.  Each attribute is
-described in an
-.I attropl
+described in an 
+.I attropl 
 structure, defined in pbs_ifl .h as:
 .nf
 struct attropl {
@@ -126,14 +125,14 @@ Character string for extensions to command.  Not currently used.
 Points to next attribute in list.  A null pointer terminates the list.
 
 .IP name 8
-Points to a string containing the name of the attribute.
+Points to a string containing the name of the attribute.  
 
 .IP resource 8
 Points to a string containing the name of a resource.  Used only when
 the specified attribute contains resource information.
-Otherwise,
-.I resource
-should be a null pointer.
+Otherwise, 
+.I resource 
+should be a null pointer.  
 
 If the resource is already present in the object's attribute, the
 value is altered as specified.  Otherwise the resource is added.
@@ -145,143 +144,143 @@ all parameters for the attribute.
 
 .IP op 8
 Defines the manner in which the new value is assigned to the attribute
-or resource.  The operators used for this function are
+or resource.  The operators used for this function are 
 .I SET, UNSET, INCR, DECR.
 
 .SH USAGE FOR HOOKS
 When importing a hook or hook configuration file:
 .RS 3
-Set
-.I command
-to
+Set 
+.I command 
+to 
 .I MGR_CMD_IMPORT
 
-Set
-.I object_type
-to
-.I SITE_HOOK
-(or
-.I PBS_HOOK
+Set 
+.I object_type 
+to 
+.I SITE_HOOK 
+(or 
+.I PBS_HOOK 
 if you are importing a
 configuration file for a built-in hook; you cannot import a built-in hook)
 
-Set
-.I object_name
+Set 
+.I object_name 
 to the name of the hook
 
 In one attropl structure:
 .RS 6
-Set
-.I name
+Set 
+.I name 
 to "content-type"
 
-Set
-.I value
+Set 
+.I value 
 to "application/x-python" for a hook, or "application/x-config" for a configuration file
 .RE
 
 In another attropl structure:
 .RS 6
-Set
-.I name
+Set 
+.I name 
 to "content-encoding"
 
-Set
-.I value
+Set 
+.I value 
 to "default" or "base64"
 .RE
 
 In a third attropl structure:
 .RS 6
-Set
-.I name
+Set  
+.I name 
 to "input-file"
 
-Set
-.I value
+Set 
+.I value 
 to the name of the input file
 .RE
 
-Set
-.I op
-to
+Set 
+.I op 
+to 
 .I SET
 .RE
 
 When exporting a hook or hook configuration file:
 .RS 3
-Set
-.I command
-to
+Set 
+.I command 
+to 
 .I MGR_CMD_EXPORT
 
-Set
-.I object_type
-to
-.I SITE_HOOK
-(or
-.I PBS_HOOK
-if you are exporting a configuration file for a built-in hook; you cannot export
-a built-in hook)
+Set 
+.I object_type 
+to 
+.I SITE_HOOK 
+(or 
+.I PBS_HOOK 
+if you are exporting a configuration file for a built-in hook; you cannot export 
+a built-in hook) 
 
-Set
-.I object_name
+Set 
+.I object_name 
 to the name of the hook
 
 In one attropl structure:
 .RS 6
-Set
+Set 
 .I name to "content-type"
 
-Set
-.I value
+Set 
+.I value 
 to "application/x-python" for a hook, or "application/x-config" for a configuration file
 .RE
 In another attropl structure:
 .RS 6
-Set
-.I name
+Set  
+.I name 
 to "content-encoding"
 
-Set
-.I value
+Set 
+.I value 
 to "default" or "base64"
 .RE
 In another attropl structure:
 .RS 6
-Set
-.I name
+Set  
+.I name 
 to "output-file"
 
-Set
-.I value
+Set 
+.I value 
 to "default" or "base64"
 .RE
 In a third attropl structure:
 .RS 6
-Set
-.I name
+Set 
+.I name 
 to "output-file"
 
-Set
-.I value
+Set 
+.I value 
 to the name of the output file
 .RE
 
-Set
-.I op
-to
+Set 
+.I op 
+to 
 .I SET
 .RE
-See the
-.I PBS Hooks Guide.
 
 .SH RETURN VALUE
 The routine returns 0 (zero) on success.
 
 If an error occurred, the routine returns a non-zero exit value, and
-the error number is available in the global integer
+the error number is available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO
 qmgr(1B), pbs_connect(3B)
+
+

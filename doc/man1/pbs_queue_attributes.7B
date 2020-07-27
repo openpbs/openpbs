@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_queue_attributes 7B "19 November 2019" Local "PBS"
+.TH pbs_queue_attributes 7B "6 May 2020" Local "PBS Professional"
 .SH NAME
 pbs_queue_attributes
 \- Attributes of PBS queues
@@ -46,8 +45,8 @@ Queues have the following attributes:
 
 .IP acl_group_enable 8
 Controls whether group access to the queue obeys the access control list defined in
-the
-.I acl_groups
+the 
+.I acl_groups 
 queue attribute.
 .br
 Applies to routing and execution queues.
@@ -60,15 +59,15 @@ Format:
 Python type:
 .I bool
 .br
-Behavior:
-.RS
+Behavior: 
+.RS 
 .IP True 3
 Group access to the queue is limited according to the group access control list.
 .IP False 3
 All groups are allowed access.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP acl_groups 8
@@ -92,8 +91,8 @@ Default: No default
 
 .IP acl_host_enable 8
 Controls whether host access to the queue obeys the access control list defined in
-the
-.I acl_hosts
+the 
+.I acl_hosts 
 queue attribute.
 .br
 Applies to routing and execution queues.
@@ -106,15 +105,15 @@ Format:
 Python type:
 .I bool
 .br
-Behavior:
-.RS
+Behavior: 
+.RS 
 .IP True 3
 Host access to the queue is limited according to the host access control list.
 .IP False 3
 All hosts are allowed access.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP acl_hosts 8
@@ -137,8 +136,8 @@ Default: No default
 
 .IP acl_user_enable 8
 Controls whether user access to the queue obeys the access control list defined in
-the
-.I acl_users
+the 
+.I acl_users 
 queue attribute.
 .br
 Applies to routing and execution queues.
@@ -151,15 +150,15 @@ Format:
 Python type:
 .I bool
 .br
-Behavior:
-.RS
+Behavior: 
+.RS 
 .IP True 3
 User access to the queue is limited according to the user access control list.
 .IP False 3
 All users are allowed access.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP acl_users 8
@@ -184,12 +183,12 @@ Default: No default
 No longer used.
 
 .IP backfill_depth 8
-Modifies backfilling behavior for this queue.  Sets the number of jobs
-to be backfilled around in this queue.  Overrides
+Modifies backfilling behavior for this queue.  Sets the number of jobs 
+to be backfilled around in this queue.  Overrides 
 .I backfill_depth
 server attribute.
 .br
-Recommendation: set this to less than
+Recommendation: set this to less than 
 .I 100.
 .br
 Applies to execution queues.
@@ -201,12 +200,12 @@ Format:
 .br
 Valid values: Must be >=0
 .br
-Behavior:
+Behavior: 
 .RS
 .IP ">= 0" 3
 PBS backfills around the specified number of jobs.
 .IP "Unset" 3
-Backfill depth is set to
+Backfill depth is set to 
 .I 1.
 .RE
 .IP
@@ -217,9 +216,9 @@ Default: Unset (backfill depth is 1)
 
 .IP checkpoint_min 8
 Minimum number of minutes of CPU time or walltime allowed
-between checkpoints of a job.
+between checkpoints of a job.  
 If a user specifies a time less than this
-value, this value is used instead.  The value given in
+value, this value is used instead.  The value given in 
 .I checkpoint_min
 is used for both CPU minutes and walltime minutes.
 .br
@@ -236,9 +235,9 @@ Python type:
 Default: No default
 
 .IP default_chunk 8
-The list of resources which will be inserted into each chunk of a job's select
+The list of resources which will be inserted into each chunk of a job's select 
 specification if the corresponding resource is not specified by the user.
-This provides a means for a site to be sure a given resource is properly
+This provides a means for a site to be sure a given resource is properly 
 accounted for even if not specified by the user.
 .br
 Applies to execution queues.
@@ -261,9 +260,9 @@ Python type:
 .br
 Syntax:
 .RS 11
-default_chunk["<resource name>"]=<value>
+default_chunk["<resource name>"]=<value> 
 .br
-where
+where 
 .I resource name
 is any built-in or custom resource
 .RE
@@ -271,7 +270,7 @@ is any built-in or custom resource
 Default: No default
 
 .IP enabled 8
-Specifies whether this queue accepts new jobs.
+Specifies whether this queue accepts new jobs.  
 .br
 Applies to routing and execution queues.
 .br
@@ -291,7 +290,7 @@ This queue is enabled.  This queue accepts new jobs; new jobs can be enqueued.
 This queue does not accept new jobs.
 .RE
 .IP
-Default:
+Default: 
 .I False
 (disabled)
 
@@ -318,7 +317,7 @@ This queue accepts jobs from both execution and routing queues,
 as well as directly from submitter.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP hasnodes 8
@@ -334,14 +333,14 @@ Format:
 Python type:
 .I bool
 .br
-Behavior:
+Behavior: 
 .RS 11
-When
+When 
 .I True,
 there are vnodes associated with this queue.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP kill_delay 8
@@ -363,7 +362,7 @@ Python type:
 .br
 Valid values: Must be >= 0
 .br
-Default:
+Default: 
 .I 10 seconds
 
 .IP max_array_size 8
@@ -393,7 +392,7 @@ Readable by all; settable by Operator and Manager.
 Format:
 .I String
 .br
-Syntax:
+Syntax: 
 .I max_group_res.<resource name>=<value>
 .br
 Python type:
@@ -401,16 +400,16 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_group_res["<resource name>"]=<value>
+max_group_res["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set server max_group_res.ncpus=6
 .br
 Default: No default
@@ -430,24 +429,24 @@ Readable by all; settable by Operator and Manager.
 Format:
 .I String
 .br
-Syntax:
+Syntax: 
 .I max_group_res_soft.<resource name>=<value>
 .br
 Python type:
 .I pbs.pbs_resource
 .br
-Syntax:
+Syntax: 
 .RS 11
-max_group_res_soft["<resource name>"]=<value>
+max_group_res_soft["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq max_group_res_soft.ncpus=3
 .br
 Default: No default
@@ -508,7 +507,7 @@ Default: No default (no limit)
 .IP max_queued 8
 Limit attribute.  The maximum number of jobs allowed to be queued
 in or running from this queue.  Can be specified for projects, users, groups, or all.
-Cannot be used with old limit attributes.
+Cannot be used with old limit attributes. 
 .br
 Applies to routing and execution queues.
 .br
@@ -516,8 +515,8 @@ Readable by all; settable by Operator and Manager.
 .br
 .br
 Format:
-.I Limit specification.
-See
+.I Limit specification.  
+See 
 .B FORMATS.
 .br
 Python type:
@@ -525,64 +524,64 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_queued["<resource name>"]=<value>
+max_queued["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Default: No default
 
 .IP max_queued_res 8
-Limit attribute.  The maximum amount of the specified resource
+Limit attribute.  The maximum amount of the specified resource 
 allowed to be allocated to jobs queued in or running from this queue.
 Can be specified for projects, users, groups, or all.
-Cannot be used with old limit attributes.
+Cannot be used with old limit attributes.  
 .br
 Applies to routing and execution queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Limit specification.
-See
+.I Limit specification.  
+See 
 .B FORMATS.
 .br
-Syntax:
+Syntax: 
 .I max_queued_res.<resource name>=<value>
 .br
 Python type:
 .I pbs.pbs_resource
 .br
-Syntax:
+Syntax: 
 .RS 11
-max_queued_res["<resource name>"]=<value>
+max_queued_res["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq max_queued_res.ncpus=4
 .br
 Default: No default
 
 .IP max_run 8
-Limit attribute.  The maximum number of jobs allowed to be running
+Limit attribute.  The maximum number of jobs allowed to be running 
 from this queue.  Can be specified for projects, users, groups, or all.
-Cannot be used with old limit attributes.
+Cannot be used with old limit attributes. 
 .br
 Applies to routing and execution queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Limit specification.
-See
+.I Limit specification.  
+See 
 .B FORMATS.
 .br
 Python type:
@@ -590,31 +589,31 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_run["<resource name>"]=<value>
+max_run["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Default: No default
 
 .IP max_run_res 8
-Limit attribute.  The maximum amount of the specified resource
+Limit attribute.  The maximum amount of the specified resource 
 allowed to be allocated to jobs running from this queue.
 Can be specified for projects, users, groups, or all.
-Cannot be used with old limit attributes.
+Cannot be used with old limit attributes.  
 .br
 Applies to execution queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Limit specification.
-See
+.I Limit specification.  
+See 
 .B FORMATS.
 .br
-Syntax:
+Syntax: 
 .I max_run_res.<resource name>=<value>
 .br
 Python type:
@@ -622,36 +621,36 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_run_res["<resource name>"]=<value>
+max_run_res["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq max_run_res.ncpus=4
 .br
 Default: No default
 
 .IP max_run_res_soft 8
-Limit attribute.  Soft limit on the amount of the specified resource
+Limit attribute.  Soft limit on the amount of the specified resource 
 allowed to be allocated to jobs running from this queue.
 Can be specified for projects, users, groups, or all.
-Cannot be used with old limit attributes.
+Cannot be used with old limit attributes.  
 .br
 Applies to execution queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Limit specification.
-See
+.I Limit specification.  
+See 
 .B FORMATS.
 .br
-Syntax:
+Syntax: 
 .I max_run_res_soft.<resource name>=<value>
 .br
 Python type:
@@ -659,32 +658,32 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_run_res_soft["<resource name>"]=<value>
+max_run_res_soft["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq max_run_res_soft.ncpus=2
 .br
 Default: No default
 
 .IP max_run_soft 8
-Limit attribute.  Soft limit on the number of jobs allowed to be running
+Limit attribute.  Soft limit on the number of jobs allowed to be running 
 from this queue.  Can be specified for projects, users, groups, or all.
-Cannot be used with old limit attributes.
+Cannot be used with old limit attributes.  
 .br
 Applies to execution queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Limit specification.
-See
+.I Limit specification.  
+See 
 .B FORMATS.
 .br
 Python type:
@@ -692,10 +691,10 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_run_soft["<resource name>"]=<value>
+max_run_soft["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
@@ -703,9 +702,9 @@ Default: No default
 
 .IP max_running 8
 Old limit attribute.  Incompatible with new limit attributes.
-For an execution queue, this is the largest number of jobs allowed to
+For an execution queue, this is the largest number of jobs allowed to 
 be running at any given time.  For a routing queue, this is the largest
-number of jobs allowed to be transiting from this queue at any given
+number of jobs allowed to be transiting from this queue at any given 
 time.
 .br
 Applies to routing and execution queues.
@@ -720,7 +719,7 @@ Python type:
 .br
 Default: No default
 
-.IP max_user_res 8
+.IP max_user_res 8 
 Old limit attribute.  Incompatible with new limit attributes.
 The maximum amount of the specified resource that any single user may consume.
 .br
@@ -739,16 +738,16 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_user_res["<resource name>"]=<value>
+max_user_res["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq max_user_res.ncpus=2
 .br
 Default: No default
@@ -775,24 +774,24 @@ Python type:
 .br
 Syntax:
 .RS 11
-max_user_res_soft["<resource name>"]=<value>
+max_user_res_soft["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq max_user_res_soft.ncpus=2
 .br
 Default: No default
 
 .IP max_user_run 8
 Old limit attribute.  Incompatible with new limit attributes.
-The maximum number of jobs owned by a single user that are allowed to be
-running from this queue at one time.
+The maximum number of jobs owned by a single user that are allowed to be 
+running from this queue at one time.  
 .br
 Applies to execution queues.
 .br
@@ -826,9 +825,9 @@ Python type:
 Default: No default
 
 .IP node_group_key 8
-Specifies the resources to use for placement sets.  Overrides server's
+Specifies the resources to use for placement sets.  Overrides server's 
 .I node_group_key
-attribute.  Specified resources must be of type
+attribute.  Specified resources must be of type 
 .I string_array.
 .br
 Applies to routing and execution queues.
@@ -840,7 +839,7 @@ Format:
 .br
 Syntax:
 .RS 11
-.I Comma-separated list of resource names.
+.I Comma-separated list of resource names.  
 .br
 When specifying multiple resources, enclose value in double quotes.
 .RE
@@ -867,18 +866,18 @@ Readable by all; settable by Manager.
 Format:
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP Priority 8
 The priority of this queue compared to other queues of the same type
-in this PBS complex.  Priority can define a queue as an express queue.  See
+in this PBS complex.  Priority can define a queue as an express queue.  See 
 .I preempt_queue_prio
 in the pbs_sched(8B) man page.  Used for execution queues only; the value
-of
-.I Priority
+of 
+.I Priority 
 has no meaning for routing queues.
 .br
 Applies to execution queues.
@@ -907,7 +906,7 @@ Readable by all; settable by Operator and Manager.
 .br
 Format:
 .I Limit specification;
-See
+See 
 .B LIMITS
 .br
 Python type:
@@ -915,10 +914,10 @@ Python type:
 .br
 Syntax:
 .RS 11
-queued_jobs_threshold["<resource name>"]=<value>
+queued_jobs_threshold["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
@@ -936,7 +935,7 @@ Readable by all; settable by Operator and Manager.
 .br
 Format:
 .I limit specification.
-See
+See 
 .B LIMITS
 .br
 Syntax:
@@ -947,22 +946,22 @@ Python type:
 .br
 Syntax:
 .RS 11
-queued_jobs_threshold_res_["<resource name>"]=<value>
+queued_jobs_threshold_res_["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Valid values: Any PBS resource, e.g. "ncpus", "mem", "pmem"
 .br
-Example:
+Example: 
 .I set queue workq queued_jobs_threshold_res.ncpus=8
 .br
 Default: No default
 
 .IP queue_type 8
-The type of the queue.  This attribute must be explicitly set
+The type of the queue.  This attribute must be explicitly set 
 at queue creation.
 .br
 Applies to routing and execution queues.
@@ -972,11 +971,11 @@ Readable by all; settable by Operator and Manager.
 Format:
 .I String
 .br
-Python type:
+Python type: 
 .RS 11
-PBS queue type constant:
-.I pbs.QUEUETYPE_EXECUTION
-or
+PBS queue type constant: 
+.I pbs.QUEUETYPE_EXECUTION 
+or 
 .I pbs.QUEUETYPE_ROUTE
 .RE
 .IP
@@ -985,8 +984,8 @@ Valid values: "e", "execution", "r", "route"
 Default: No default
 
 .IP require_cred 8
-Specifies the credential type required.  All jobs submitted to the named
-queue without the specified credential will be rejected.
+Specifies the credential type required.  All jobs submitted to the named 
+queue without the specified credential will be rejected.  
 .br
 Applies to routing and execution queues.
 .br
@@ -1000,13 +999,15 @@ Python type:
 .br
 Valid values:
 .I krb5
+or 
+.I dce
 .br
 Default: Unset
 
 .IP require_cred_enable 8
-Specifies whether the credential authentication method specified in the
-.I require_cred
-queue attribute is required for this queue.
+Specifies whether the credential authentication method specified in the 
+.I require_cred 
+queue attribute is required for this queue. 
 .br
 Applies to routing and execution queues.
 .br
@@ -1020,16 +1021,16 @@ Python type:
 .br
 Behavior:
 .RS 11
-When set to
+When set to 
 .I True,
 the credential authentication method is required.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP resources_assigned 8
-The total for each kind of resource allocated to running and
+The total for each kind of resource allocated to running and 
 exiting jobs in this queue.
 .br
 Applies to execution queues.
@@ -1042,7 +1043,7 @@ Format:
 Syntax:
 .RS 11
 .nf
-.I resources_assigned.<resource name>=<value><newline>
+.I resources_assigned.<resource name>=<value><newline> 
 .I resources_assigned.<resource name>=<value><newline> ...
 .fi
 .RE
@@ -1052,20 +1053,20 @@ Python type:
 .br
 Syntax:
 .RS 11
-resources_assigned["<resource name>"]=<value>
+resources_assigned["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
-.IP
+.IP 
 Default value: No default
 
 .IP resources_available 8
 The list of resources and amounts available to jobs running in this
 queue. The sum of the resource of each type used by all jobs running
 from this queue cannot exceed the total amount listed here.  See the
-.I qmgr(1B)
+.I qmgr(1B) 
 man page.
 .br
 Applies to execution queues.
@@ -1078,7 +1079,7 @@ Format:
 Syntax:
 .RS 11
 .nf
-.I resources_available.<resource name>=<value><newline>
+.I resources_available.<resource name>=<value><newline> 
 .I resources_available.<resource name>=<value><newline> ...
 .fi
 .RE
@@ -1088,25 +1089,25 @@ Python type:
 .br
 Syntax:
 .RS 11
-resources_available["<resource name>"]=<value>
+resources_available["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
-.IP
+.IP 
 Default value: No default
 
 .IP resources_default 8
-The list of default resource values which are set as limits for a job
-residing in this queue and for which the job did not specify a limit.
+The list of default resource values which are set as limits for a job 
+residing in this queue and for which the job did not specify a limit.  
 If not explicitly set, the default limit for a job is determined by
-the first of the following attributes which is set: server's
+the first of the following attributes which is set: server's 
 .I resources_default,
-queue's
-.I resources_max,
-server's
-.I resources_max.
+queue's 
+.I resources_max, 
+server's 
+.I resources_max.  
 If none of these is set, the job gets unlimited resource usage.
 .br
 Applies to routing and execution queues.
@@ -1129,13 +1130,13 @@ Python type:
 .br
 Syntax:
 .RS 11
-resources_default["<resource name>"]=<value>
+resources_default["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
-.IP
+.IP 
 Default value: No default
 
 .IP resources_max 8
@@ -1162,13 +1163,13 @@ Python type:
 .br
 Syntax:
 .RS 11
-resources_max["<resource name>"]=<value>
+resources_max["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
-.IP
+.IP 
 Default value: No default (infinite usage)
 
 .IP resources_min 8
@@ -1195,13 +1196,13 @@ Python type:
 .br
 Syntax:
 .RS 11
-resources_min["<resource name>"]=<value>
+resources_min["<resource name>"]=<value> 
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
-.IP
+.IP 
 Default value: No default (zero usage)
 
 .IP route_destinations 8
@@ -1226,13 +1227,13 @@ List of comma-separated strings:
 Python type:
 .I pbs.route_destinations
 .br
-Example:
+Example:  
 .I Q1,Q2@remote,Q3@remote:15501
 .br
 Default: No default
 
 .IP route_held_jobs 8
-Specifies whether jobs in the
+Specifies whether jobs in the 
 .I held
 state can be routed from this queue.
 .br
@@ -1248,12 +1249,12 @@ Python type:
 .br
 Behavior:
 .RS 11
-When
-.I True,
+When 
+.I True, 
 jobs with a hold can be routed from this queue.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP route_lifetime 8
@@ -1274,7 +1275,7 @@ Python type:
 .I pbs.duration
 .br
 Behavior:
-.RS
+.RS 
 .IP >0 3
 Jobs can reside for specified number of seconds
 .IP "0 or unset" 3
@@ -1285,52 +1286,52 @@ Default: Unset
 
 .IP route_retry_time 8
 Time delay between routing retries.  Typically used when the network between
-servers is down.
+servers is down.  
 .br
 Applies to routing queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Integer
+.I Integer 
 .br
-Units:
+Units: 
 .I Seconds
 .br
 Python type:
 .I pbs.duration
 .br
-Default:
+Default: 
 .I 30 seconds
 
 .IP route_waiting_jobs 8
-Specifies whether jobs whose
-.I Execution_Time
-attribute value is in the future can be routed from this queue.
+Specifies whether jobs whose 
+.I Execution_Time 
+attribute value is in the future can be routed from this queue. 
 .br
 Applies to routing queues.
 .br
 Readable by all; settable by Operator and Manager.
 .br
 Format:
-.I Boolean
+.I Boolean 
 .br
 Python type:
 .I bool
 Behavior:
 .RS 11
-When
+When 
 .I True,
 jobs with a future
-.I Execution_Time
+.I Execution_Time 
 can be routed from this queue.
 .RE
 .IP
-Default:
+Default: 
 .I False
 
 .IP started 8
-If this is an execution queue, specifies whether jobs in this queue can be scheduled for execution,
+If this is an execution queue, specifies whether jobs in this queue can be scheduled for execution, 
 or if this is a routing queue, whether jobs can be routed.
 .br
 Applies to routing and execution queues.
@@ -1344,10 +1345,10 @@ Python type:
 .I bool
 .br
 Behavior: When
-.I True,
+.I True, 
 jobs in this queue can run or be routed.
 .br
-Default:
+Default: 
 .I False
 
 .IP state_count 8
@@ -1360,7 +1361,7 @@ Readable by all; set by PBS.
 Format:
 .I String
 .br
-Syntax:
+Syntax: 
 .I transiting=<value>,exiting=<value>, ...
 .br
 Python type:
@@ -1374,7 +1375,7 @@ The number of jobs currently residing in this queue.
 Applies to routing and execution queues.
 .br
 Readable by all; set by PBS.
-.br
+.br 
 Format:
 .I Integer
 .br
@@ -1414,9 +1415,9 @@ set server <limit attribute> -= "<limit specification>[, <limit specification>] 
 .fi
 .RE
 .IP
-Where
-.I limit specification
-is
+Where 
+.I limit specification 
+is 
 .RS 11
 o:PBS_ALL         Overall limit
 .br
@@ -1433,13 +1434,13 @@ p:PBS_GENERIC     Generic projects
 p:<project name>  A specific project
 .RE
 .IP
-The
-.I limit specification
+The 
+.I limit specification 
 can contain spaces anywhere except after the colon
 (":").
 .br
-If there are comma-separated
-.I limit specifications,
+If there are comma-separated 
+.I limit specifications, 
 the entire string must be enclosed in double quotes.
 .br
 A username, groupname, or project name containing spaces must be
@@ -1450,27 +1451,27 @@ quotes, and the entire string requires quotes, the outer enclosing
 quotes must be single quotes.  Similarly, if the inner quotes are
 single quotes, the outer quotes must be double quotes.
 .br
-.I PBS_ALL
+.I PBS_ALL 
 is a keyword which indicates that this limit applies to the usage total.
 .br
-.I PBS_GENERIC
+.I PBS_GENERIC 
 is a keyword which indicates that this limit applies to
 generic users, groups, or projects.
 .br
-When removing a limit, the
-.I limit value
+When removing a limit, the 
+.I limit value 
 does not need to be specified.
 .br
 
-For example, to set the
-.I max_queued
+For example, to set the 
+.I max_queued 
 limit on QueueA to 5 for total usage, and to limit user bill to 3:
 .RS 11
 s q QueueA max_queued = "[o:PBS_ALL=5], [u:bill =3]"
 .RE
 .IP
 
-Examples of setting, adding, and removing:
+Examples of setting, adding, and removing: 
 .br
 .RS 11
 set server max_run="[u:PBS_GENERIC=2], [g:group1=10], [o:PBS_ALL = 100]"
@@ -1482,17 +1483,13 @@ set server max_run-="[u:user2], [g:group3]"
 set server max_run_res.ncpus="[u:PBS_GENERIC=2], [g:group1=8], [o:PBS_ALL = 64]"
 .RE
 .IP
-See the
-.I PBS Administrator's Guide.
 
 .SH Incompatible Limit Attributes
-The old and new limit attributes are incompatible.
+The old and new limit attributes are incompatible.  
 If any of one kind is set, none of the other kind can be set.
 All of one kind must be unset in order to set any of the other kind.
 .br
 
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide,
 qmgr(1B)

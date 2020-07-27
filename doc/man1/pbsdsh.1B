@@ -36,60 +36,59 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbsdsh 1B "13 October 2017" Local "PBS"
+.TH pbsdsh 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbsdsh
+.B pbsdsh 
 \- distribute tasks to vnodes under PBS
 
 .SH SYNOPSIS
-.B pbsdsh
+.B pbsdsh 
 [-c <copies>] [-s] [-v] [-o] -- <program> [<program args>]
 .br
-.B pbsdsh
+.B pbsdsh 
 [-n <vnode index>] [-s] [-v] [-o] -- <program> [<program args>]
 .br
-.B pbsdsh
+.B pbsdsh 
 --version
 
 .SH DESCRIPTION
-The
+The 
 .B pbsdsh
 command allows you to distribute and execute a task on each of the vnodes
 assigned to your job by executing (spawning) the application on each
-vnode.  The
-.B pbsdsh
-command uses the PBS Task Manager, or TM, to distribute the program on
+vnode.  The 
+.B pbsdsh 
+command uses the PBS Task Manager, or TM, to distribute the program on 
 the allocated vnodes.
 
-When run without the
-.I -c
-or the
-.I -n
-option,
-.B pbsdsh
+When run without the 
+.I -c 
+or the 
+.I -n 
+option, 
+.B pbsdsh 
 will spawn the program
 on all vnodes allocated to the PBS job.  The spawns take place concurrently;
 all execute at (about) the same time.
 
-Note that the double dash must come after the options and before the
+Note that the double dash must come after the options and before the 
 program and arguments.  The double dash is only required for Linux.
 
-The
-.B pbsdsh
-command runs one task for each line in the $PBS_NODEFILE.  Each MPI rank
-gets a single line in the $PBS_NODEFILE, so if you are running multiple
-MPI ranks on the same host, you still get multiple
-.B pbsdsh
+The 
+.B pbsdsh 
+command runs one task for each line in the $PBS_NODEFILE.  Each MPI rank 
+gets a single line in the $PBS_NODEFILE, so if you are running multiple 
+MPI ranks on the same host, you still get multiple 
+.B pbsdsh 
 tasks on that host.
 
 .B Example
 .br
-The following example shows the
-.B pbsdsh
-command inside of a PBS batch job. The options indicate that the user wants
-.B pbsdsh
-to run the myapp program with one argument (app-arg1) on all four vnodes
+The following example shows the 
+.B pbsdsh 
+command inside of a PBS batch job. The options indicate that the user wants 
+.B pbsdsh 
+to run the myapp program with one argument (app-arg1) on all four vnodes 
 allocated to the job (i.e. the default behavior).
 
 .RS 5
@@ -104,21 +103,21 @@ pbsdsh ./myapp app-arg1
 
 .SH OPTIONS
 .IP "-c copies"
-The program is spawned
+The program is spawned 
 .I copies
 times on the vnodes allocated, one per vnode, unless
-.I copies
+.I copies 
 is greater than the number of vnodes.
-If
+If 
 .I copies
-is greater than the number of vnodes,
+is greater than the number of vnodes, 
 it wraps around, running multiple instances on some vnodes.
-This option is mutually exclusive with
+This option is mutually exclusive with 
 .I -n.
 .IP "-n <vnode index>"
-The program is spawned only on a single vnode, which is the
+The program is spawned only on a single vnode, which is the 
 .I vnode index -th
-vnode allocated.  This option is mutually exclusive with
+vnode allocated.  This option is mutually exclusive with 
 .I -c.
 .IP -o
 No obit request is made for spawned tasks.  The program does not wait for
@@ -129,7 +128,7 @@ Te program is run in turn on each vnode, one after the other.
 Produces verbose output about error conditions and task exit status.
 
 .IP --version
-The
+The 
 .B pbsdsh
 command returns its PBS version information and exits.
 This option can only be used alone
@@ -138,25 +137,21 @@ This option can only be used alone
 .IP program
 The first operand,
 .I program ,
-is the program to execute.  The double dash must precede the
-.I program
+is the program to execute.  The double dash must precede the 
+.I program 
 under Linux.
 .LP
 .IP "program args"
 Additional operands,
 .I program args ,
-are passed as arguments to the
+are passed as arguments to the 
 .I program.
 
 .SH STANDARD ERROR
-The
-.B pbsdsh
+The 
+.B pbsdsh 
 command writes a diagnostic message to standard error for
 each error occurrence.
 
 .SH SEE ALSO
-The
-.B PBS User's Guide,
-the
-.B PBS Administrator's Guide,
 qsub(1B), tm(3).

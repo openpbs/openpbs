@@ -36,18 +36,17 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_account 8B "18 November 2019" Local "PBS"
+.TH pbs_account 8B "18 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_account
+.B pbs_account 
 For Windows.  Manage PBS service account
 .SH SYNOPSIS
-.B pbs_account
-[-a <PBS service account name>] [-c [<password>]] [--ci]
+.B pbs_account 
+[-a <PBS service account name>] [-c [<password>]] [--ci] 
 .RS 12
-[--instid <instance ID>] [-o <output path>]
+[--instid <instance ID>] [-o <output path>] 
 .br
-[-p [<password>]] [--reg <service path>] [-s]
+[-p [<password>]] [--reg <service path>] [-s] 
 .br
 [--unreg <service path>]
 .RE
@@ -67,24 +66,24 @@ This command can be run by administrators only.
 This command is available on Windows only.
 
 .SH Caveats
-Using
+Using 
 .B pbs_account --unreg
 and
-.B pbs_account --reg
+.B pbs_account --reg 
 stops and restarts MoM, which can kill jobs.
 
 .SH OPTIONS
 .IP "-a <account name>" 15
 Specifies service account name.
 
-.IP "-c [<password>]" 15
+.IP "-c [<password>]" 15  
 If specified account does not exist, creates the account with the password.
 
 If specified account exists, validates password against it.
 
-Gives necessary privileges to the specified account:
-.I Create Token Object, Replace Process Level Token, Log on as a Service,
-and
+Gives necessary privileges to the specified account: 
+.I Create Token Object, Replace Process Level Token, Log on as a Service, 
+and 
 .I Act as Part of the Operating System
 
 If password is not specified, user is prompted for password.
@@ -103,7 +102,7 @@ pbs_account --unreg "C:\\Program Files (x86)\\PBS Pro_2\\exec\\sbin\\pbs_mom" --
 
 .RE
 
-.IP "-o <output path>" 15
+.IP "-o <output path>" 15   
 Prints stdout and stderr messages in specified output path.
 
 .IP "-p [<password >]" 15
@@ -111,10 +110,10 @@ Updates the PBS service account password. If no password is specified,
 the user is prompted for a password.
 
 .IP "--reg <path to service>" 15
-Registers the PBS service with the SCM, instructing it to run the services
-under the PBS service account.
+Registers the PBS service with the SCM, instructing it to run the services 
+under the PBS service account.  
 .I path to service
-must be in double quotes.  Restarts MoM.
+must be in double quotes.  Restarts MoM. 
 
 .IP "-S" 15
 Adds necessary privileges to the PBS service account. Grants the
@@ -123,7 +122,7 @@ Service", and "Act as Part of the Operating System" privileges to PBS
 service account.
 
 .IP "--unreg <path to service>" 15
-Unregisters the PBS service with the SCM.
+Unregisters the PBS service with the SCM.  
 .I path to service
 must be in double quotes.  Stops MoM.
 

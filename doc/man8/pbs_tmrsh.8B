@@ -36,16 +36,15 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_tmrsh 8B "22 November 2017" Local "PBS"
+.TH pbs_tmrsh 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_tmrsh
+.B pbs_tmrsh 
 - TM-enabled replacement for rsh/ssh for use by MPI implementations
 .SH SYNOPSIS
-.B pbs_tmrsh
+.B pbs_tmrsh 
 <hostname> [-l <username>] [-n] <command> [<args> ...]
 .br
-.B pbs_tmrsh
+.B pbs_tmrsh 
 --version
 
 .SH DESCRIPTION
@@ -54,13 +53,13 @@ The
 command attempts to emulate an "rsh" connection to the specified host,
 via underlying calls to the Task Management (TM) API. The program is
 intended to be used during MPI integration activities, and not by
-end-users.
+end-users. 
 
 Running "pbs_tmrsh <hostname> <command>" causes a PBS task to be started
-on
-.I hostname
-running
-.I command.
+on 
+.I hostname 
+running 
+.I command. 
 
 .B Requirements for Environment Variables
 .br
@@ -73,26 +72,26 @@ and point to the full path for
 The file $PBS_HOME/pbs_environment should contain an environment
 variable PATH in which to search for the program executable. This
 applies to both Windows and Linux. It is expected that a full path will
-be specified for the
-.I command
+be specified for the 
+.I command 
 and the PATH variable will not be needed.
 
 .SH OPTIONS
 .IP "-l <username>" 13
-Specifies the username under which to execute the task. If used,
-.I username
+Specifies the username under which to execute the task. If used, 
+.I username 
 must
 match the username running the
-.B pbs_tmrsh
+.B pbs_tmrsh 
 command.
 .IP "-n" 13
 A no-op; provided for MPI implementations that expect to call
-rsh with the
-.I -n
+rsh with the 
+.I -n 
 option.
 .LP
 .IP "--version" 13
-The
+The 
 .B pbs_tmrsh
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -102,8 +101,8 @@ This option can only be used alone.
 Specifies command to be run as a PBS task.
 
 .IP hostname
-Specifies host on which to run PBS task.  The
-.I hostname
+Specifies host on which to run PBS task.  The 
+.I hostname 
 may be in IP-dot-address form.
 
 .SH Output and Error
@@ -122,7 +121,4 @@ program exits with the exit status of the remote command or with
 255 if an error occurred. This is because ssh works this way.
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide
-and the following manual pages:
-pbs_attach(8B), tm(3)
+pbs_attach(8B), tm(3) 

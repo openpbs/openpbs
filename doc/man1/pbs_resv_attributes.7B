@@ -36,38 +36,37 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_resv_attributes 7B "15 January 2019" Local "PBS"
+.TH pbs_resv_attributes 7B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_resv_attributes
-\- attributes of PBS advance and standing reservations
+.B pbs_resv_attributes 
+\- attributes of PBS reservations
 
 .SH DESCRIPTION
-PBS advance and standing reservations have the following attributes:
+PBS reservations have the following attributes:
 
 .IP Account_Name 8
 No longer used.
 
 .IP Authorized_Groups 8
 List of groups who can or cannot submit jobs to this reservation.
-Group names are interpreted relative to the server, not the
-submission host.  List is evaluated left-to-right; first match in
-list is used.  This list is used to set the reservation queue's
-.I acl_groups
-attribute.  See the
-.I G
-option to the
-.I pbs_rsub
+Group names are interpreted relative to the server, not the 
+submission host.  List is evaluated left-to-right; first match in 
+list is used.  This list is used to set the reservation queue's 
+.I acl_groups 
+attribute.  See the 
+.I G 
+option to the 
+.I pbs_rsub 
 command.
 .br
 Readable by all; settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax:
 .RS 11
-.I [+|-]<group name> [,[+|-]<group name> ...]
+.I [+|-]<group name> [,[+|-]<group name> ...] 
 .RE
 .IP
 Python type:
@@ -76,19 +75,19 @@ Python type:
 Default: Reservation owner's login group
 
 .IP Authorized_Hosts 8
-The list of hosts from which jobs can and cannot be submitted to this reservation.
-List is evaluated left-to-right; first match in list is used.
-This list is used to set the reservation queue's
+The list of hosts from which jobs can and cannot be submitted to this reservation. 
+List is evaluated left-to-right; first match in list is used.  
+This list is used to set the reservation queue's 
 .I acl_hosts
-attribute.  See the
+attribute.  See the 
 .I H
-option to the
-.I pbs_rsub
-command.
+option to the 
+.I pbs_rsub 
+command.  
 .br
 Readable by all; settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax:
@@ -119,27 +118,27 @@ Default: No default (Jobs can be submitted from all hosts)
 
 .IP Authorized_Users 8
 The list of users who can or cannot submit jobs to this reservation.
-List is evaluated left-to-right; first match in list is used.
-This list is used to set the reservation queue's
+List is evaluated left-to-right; first match in list is used.  
+This list is used to set the reservation queue's 
 .I acl_users
-attribute.  See the
-.I U
-option to the
-.I pbs_rsub
+attribute.  See the 
+.I U 
+option to the 
+.I pbs_rsub 
 command.
 .br
 Readable by all; settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax:
 .RS 11
 .I [+|-]<username>[@<hostname>.<domain>] [, [+|-]<username>[@<hostname>.<domain>] ...]
 .br
-where '-' means "deny" and '+' means "allow".
+where '-' means "deny" and '+' means "allow". 
 .br
-The hostname portion of a username may be wildcarded using an asterisk,
+The hostname portion of a username may be wildcarded using an asterisk, 
 according to the following rules:
 .RS 3
 - A hostname can contain at most one asterisk
@@ -167,16 +166,16 @@ The time that the reservation was created.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Timestamp
 .RS 11
 Printed by qstat in human-readable
 .I Date
-format.
+format.  
 .br
 Output in hooks as seconds since epoch.
 .RE
-.IP
+.IP 
 Python type:
 .I int
 .br
@@ -189,14 +188,14 @@ No longer used.
 No longer used.
 
 .IP "interactive" 8
-Number of seconds that the
-.I pbs_rsub
-command will block while waiting for confirmation or denial of the
-reservation.
-See the
+Number of seconds that the 
+.I pbs_rsub 
+command will block while waiting for confirmation or denial of the 
+reservation.  
+See the 
 .I -I block_time
-option to the
-.I pbs_rsub
+option to the 
+.I pbs_rsub 
 command.
 .br
 Readable by all; settable by all.
@@ -209,33 +208,33 @@ Behavior:
 .IP "Less than zero" 3
 The reservation is automatically deleted if it cannot be confirmed in the time specified.
 .IP "Zero or greater than zero" 3
-The reservation is not automatically deleted after this time.
+The reservation is not automatically deleted after this time.  
 .RE
 .IP
 Python type:
 .I int
 .br
-Default:
+Default: 
 .I Zero
 
 .IP "Mail_Points" 8
-Sets the list of events for which mail is sent by the server.  Mail
-is sent to the list of users specified in the
+Sets the list of events for which mail is sent by the server.  Mail 
+is sent to the list of users specified in the 
 .I Mail_Users
-attribute.  See the
-.I m mail_points
-option to the
-.I pbs_rsub
+attribute.  See the 
+.I m mail_points 
+option to the 
+.I pbs_rsub 
 command.
 .br
 Readable by all; settable by all.
 .br
 Format:
-.I String
+.I String 
 .br
 Syntax:
 .RS 11
-One or more letters "a", "b", "c", "e", or the string "n".
+One or more letters "a", "b", "c", "e", or the string "n".  
 .br
 Cannot use "n" with any other letter.
 .RE
@@ -261,18 +260,18 @@ Default: "ac"
 
 .IP "Mail_Users" 8
 The set of users to whom mail is sent for the reservation events
-specified in the
+specified in the 
 .I Mail_Points
-attribute.  See the
-.I M mail_list
-option to the
-.I pbs_rsub
+attribute.  See the 
+.I M mail_list 
+option to the 
+.I pbs_rsub 
 command.
 .br
 Readable by all; settable by all.
 .br
 Format:
-.I String
+.I String 
 .br
 Syntax:
 .RS 11
@@ -289,12 +288,12 @@ The time that the reservation was last modified.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Timestamp
 .RS 11
 Printed by qstat in human-readable
 .I Date
-format.
+format.  
 .br
 Output in hooks as seconds since epoch.
 .RE
@@ -308,15 +307,15 @@ Default: No default
 No longer used.
 
 .IP queue 8
-Name of the reservation queue.  Jobs that
-are to use resources belonging to this reservation are submitted to this queue.
+Name of the reservation queue.  Jobs that 
+are to use resources belonging to this reservation are submitted to this queue. 
 .br
 Readable by all; set by PBS.
 .br
 Format:
 .I String
 .RS 11
-Format for an advance reservation:
+Format for an advance or job-specific reservation:
 .I R<unique integer>
 .br
 Format for a standing reservation:
@@ -330,7 +329,7 @@ Default: No default
 
 .IP reserve_count 8
 The total number of occurrences in a standing reservation.
-.br
+.br 
 Readable by all; settable by all.
 .br
 Format:
@@ -357,16 +356,16 @@ Default: No default
 
 .IP reserve_end 8
 The date and time when an advance reservation or soonest occurrence of a
-standing reservation ends.
+standing reservation ends.  
 .br
 Readable by all; settable by all.
 .br
-Format:
+Format: 
 .I Timestamp
 .RS 11
 Printed by qstat in human-readable
 .I Date
-format.
+format.  
 .br
 Output in hooks as seconds since epoch.
 .RE
@@ -377,15 +376,15 @@ Python type:
 Default: No default
 
 .IP reserve_ID 8
-The reservation identifier.
+The reservation identifier. 
 .br
 Format:
-.I String
+.I String 
 .RS 11
-Format for an advance reservation:
+Format for an advance or job-specific reservation: 
 .I R<unique integer>.<server name>
 .br
-Format for a standing reservation:
+Format for a standing reservation: 
 .I S<unique integer>.<server name>
 .RE
 .IP
@@ -407,17 +406,32 @@ Python type:
 .br
 Default: No default
 
+.IP "reserve_job" 8
+If this reservation is a job-specific start or now reservation, 
+shows the ID of the job from which the reservation was created.
+.br
+Readable by all; set by PBS.
+.br
+Format:
+.I String
+.br
+Python type:
+.I str
+.br
+Default: no default
+
+
 .IP "Reserve_Name" 8
-The name assigned to the reservation during creation, if specified.  See the
-.I N
-option to the
-.I pbs_rsub
+The name assigned to the reservation during creation, if specified.  See the 
+.I N 
+option to the 
+.I pbs_rsub 
 command.
 .br
 Readable by all; settable by all.
 .br
 Format:
-.I String
+.I String 
 .br
 Syntax:
 Up to 15 characters.  First character is alphabetic.
@@ -445,17 +459,17 @@ Python type:
 Default: Login name of creator
 
 .IP reserve_retry 8
-If this reservation becomes degraded, this is set to the
+If this reservation becomes degraded, this is set to the 
 next time that PBS will attempt to reconfirm this reservation.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Timestamp
 .RS 11
 Printed by qstat in human-readable
 .I Date
-format.
+format.  
 .br
 Output in hooks as seconds since epoch.
 .RE
@@ -467,15 +481,15 @@ Default: No default
 
 .IP reserve_rrule 8
 The rule that describes the recurrence pattern of a standing reservation.
-See the
+See the 
 .I r
-option to the
+option to the 
 .I pbs_rsub
 command.
 .br
 Readable by all; settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax: either of two forms:
@@ -500,17 +514,17 @@ Frequency with which the standing reservation repeats.  Valid values are:
 WEEKLY|DAILY|HOURLY
 
 .IP count_spec 15
-The exact number of occurrences.  Number up to 4 digits in length.
+The exact number of occurrences.  Number up to 4 digits in length.  
 .br
 Format:
 .I Integer
 
 .IP interval_spec 15
-Specifies interval.
+Specifies interval.  
 .br
 Format is one or both of:
 .br
-.I BYDAY = MO|TU|WE|TH|FR|SA|SU
+.I BYDAY = MO|TU|WE|TH|FR|SA|SU 
 .br
 or
 .br
@@ -518,14 +532,14 @@ or
 .br
 
 .IP until_spec 15
-Occurrences will start up to but not after date and time
+Occurrences will start up to but not after date and time 
 specified.
 .br
 .br
 Format:
-.I YYYYMMDD[THHMMSS]
+.I YYYYMMDD[THHMMSS] 
 .br
-Note that the year-month-day section is separated from
+Note that the year-month-day section is separated from 
 the hour-minute-second section by a capital T.
 .RE
 .IP
@@ -535,17 +549,17 @@ Python type:
 Default: No default
 
 .IP reserve_start 8
-The date and time when the reservation period for the reservation
-or soonest occurrence begins.
+The date and time when the reservation period for the reservation 
+or soonest occurrence begins.  
 .br
 Readable by all; settable by all.
 .br
-Format:
+Format: 
 .I Timestamp
 .RS 11
 Printed by qstat in human-readable
 .I Date
-format.
+format.  
 .br
 Output in hooks as seconds since epoch.
 .RE
@@ -554,11 +568,11 @@ Python type:
 .I int
 
 .IP reserve_state 8
-The state of the reservation.
+The state of the reservation.  
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
 Python type:
@@ -578,7 +592,7 @@ Reservation has been confirmed.  For a standing reservation, this means
 that all occurrences of the reservation have been confirmed.
 
 .IP "WT   RESV_WAIT            pbs.RESV_STATE_WAIT "
-Unused.
+Unused.  
 
 .IP "TR   RESV_TIME_TO_RUN     pbs.RESV_STATE_TIME_TO_RUN "
 Start of the reservation period.
@@ -602,7 +616,7 @@ Jobs belonging to the reservation are being deleted.
 Default: No default
 
 .IP reserve_substate 8
-The substate of the reservation or occurrence.  The
+The substate of the reservation or occurrence.  The 
 substate is used internally by PBS.
 .br
 Readable by all; set by PBS.
@@ -633,22 +647,22 @@ Syntax:
 .I Resource_List.<resource name>=<value>[,Resource_List.<resource name>=<value> ...]
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.pbs_resource
 .br
 Syntax:
 .RS 11
 .I Resource_List["<resource name>"]=<resource value>
 .br
-where
-.I resource name
+where 
+.I resource name 
 is any built-in or custom resource
 .RE
 .IP
 Default: No default
 
 .IP resv_nodes 8
-The list of vnodes and resources allocated from them to satisfy
+The list of vnodes and resources allocated from them to satisfy 
 the chunks requested for this reservation or occurrence.
 .br
 Readable by all; set by PBS.
@@ -656,9 +670,9 @@ Readable by all; set by PBS.
 Format:
 .I String
 .br
-Syntax:
+Syntax:  
 .RS 11
-.I (<vnode name>:<resource name>=<value>[:<resource name>=<value>]...)
+.I (<vnode name>:<resource name>=<value>[:<resource name>=<value>]...) 
 .I [+(<vnode name>:<resource name>=<value>[:<resource name>=<value>])+...]
 .RE
 .IP
@@ -688,11 +702,7 @@ Not used.
 
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
-pbs_rstat(1B),
-pbs_rsub(1B),
+pbs_rstat(1B), 
+pbs_rsub(1B), 
 pbs_resources(7B)
+

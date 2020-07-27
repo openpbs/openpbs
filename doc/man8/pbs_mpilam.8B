@@ -36,71 +36,67 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_mpilam 8B "3 December 2019" Local "PBS"
+.TH pbs_mpilam 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_mpilam
+.B pbs_mpilam 
 \- run MPI programs under PBS with LAM MPI
 
 .SH SYNOPSIS
-.B pbs_mpilam
+.B pbs_mpilam 
 [<mpilam options>]
 
-.B pbs_mpilam
+.B pbs_mpilam 
 --version
 
 .SH DESCRIPTION
-.B Deprecated.
-The PBS command
-.B pbs_mpilam
-replaces the standard
+.B Deprecated.  
+The PBS command 
+.B pbs_mpilam 
+replaces the standard 
 .I mpirun
 command in a PBS LAM MPI job.
 
-If used to run a single program, PBS tracks resource usage
+If used to run a single program, PBS tracks resource usage 
 and controls all user processes spawned by the program.
 If used to run multiple programs as specified in an application file
-(no
-.I <where>
-argument and no
-.I -np/-c
+(no 
+.I <where> 
+argument and no 
+.I -np/-c 
 option), PBS does not manage the spawned user processes of each program.
 
-If the
-.I where
+If the 
+.I where 
 argument is not specified,
 .I pbs_mpilam
 will try to run the user's program on all available CPUs
-using the
+using the 
 .I C
 keyword.
 
 .B Prerequisites
 .br
-The PATH on remote machines must contain
+The PATH on remote machines must contain 
 .I PBS_EXEC/bin.
 
 .SH USAGE
-Usage is the same as for LAM
+Usage is the same as for LAM 
 .I mpirun.
-All options are passed directly to
-.I mpirun.
+All options are passed directly to 
+.I mpirun.  
 
 .SH OPTIONS
 .IP "<mpilam options>" 8
-The
-.B pbs_mpilam
-command uses the same options as
+The 
+.B pbs_mpilam 
+command uses the same options as 
 .I mpirun.
 
 .IP "--version" 8
-The
+The 
 .B pbs_mpilam
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.LP
 mpirun(1)

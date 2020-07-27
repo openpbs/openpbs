@@ -36,11 +36,10 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbsrun_unwrap 8B "16 October 2017" Local "PBS"
+.TH pbsrun_unwrap 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
 .B pbsrun_unwrap
-\- unwraps mpirun, reversing
+\- unwraps mpirun, reversing 
 .B pbsrun_wrap
 
 .SH SYNOPSIS
@@ -51,27 +50,27 @@ pbsrun.<mpirun version/flavor>
 --version
 
 .SH DESCRIPTION
-The
+The 
 .B pbsrun_unwrap
-script is used to reverse the actions of the
+script is used to reverse the actions of the 
 .B pbsrun_wrap
 script.
 
-Use
+Use 
 .B pbsrun_wrap
 to wrap mpirun.
 
-Using
+Using 
 .B pbsrun_unwrap
-with Intel MPI is
+with Intel MPI is 
 .B deprecated
 as of 13.0.
 
 .SH USAGE
 
-Syntax:
+Syntax: 
 .RS 5
-.B pbsrun_unwrap
+.B pbsrun_unwrap 
 pbsrun.<mpirun version/flavor>
 .RE
 
@@ -105,15 +104,12 @@ rm $PBS_EXEC/bin/pbsrun.ch_gm
 
 .SH OPTIONS
 .IP "--version" 5
-The
+The 
 .B pbsrun_unwrap
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.LP
-pbs_attach(8B),
-pbsrun(8B),
+pbs_attach(8B), 
+pbsrun(8B), 
 pbsrun_wrap(8B)

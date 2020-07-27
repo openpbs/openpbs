@@ -36,22 +36,21 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qselect 1B "5 March 2019" Local "PBS"
+.TH qselect 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qselect
+.B qselect 
 - select specified PBS jobs
 .SH SYNOPSIS
 .B qselect
-[-a [<op>] <date and time>] [-A <account string>]
+[-a [<op>] <date and time>] [-A <account string>] 
 .RS 8
-[-c [<op>] <interval>] [-h <hold list>] [-H] [-J]
+[-c [<op>] <interval>] [-h <hold list>] [-H] [-J] 
 .br
-[-l <resource list>] [-N <name>] [-p [<op>] <priority>]
+[-l <resource list>] [-N <name>] [-p [<op>] <priority>] 
 .br
-[-P <project>] [-q <destination>] [-r <rerun>] [-s <states>]
+[-P <project>] [-q <destination>] [-r <rerun>] [-s <states>] 
 .br
-[-t <time option> [<comparison>] <specified time>] [-T]
+[-t <time option> [<comparison>] <specified time>] [-T] 
 .br
 [-u <user list>] [-x]
 .RE
@@ -64,25 +63,25 @@ The
 .B qselect
 command lists those jobs that meet the specified selection criteria.
 You can compare certain job attribute values to specified values using
-a comparison operator shown as
-.I op
+a comparison operator shown as 
+.I op 
 in the option description.
 
 You can select jobs, job arrays, or subjobs.  You can select jobs from
 one server per call to the command.
 
-Each option acts as a filter restricting which jobs are listed.
+Each option acts as a filter restricting which jobs are listed.  
 
 You can select jobs according to the values of some of the resources
-in the
-.I Resource_List
+in the 
+.I Resource_List 
 job attribute.  You can also select jobs
 according the selection directive (although because this is a string,
 you can only check for equality or inequality.)
 
-Jobs that are finished or moved are listed only when the
-.I -x
-or
+Jobs that are finished or moved are listed only when the 
+.I -x 
+or 
 .I -H
 options are used.  Otherwise, job selection is limited to queued and
 running jobs.
@@ -90,7 +89,7 @@ running jobs.
 .B Comparison Operations
 .br
 You can select jobs by comparing the values of certain job attributes
-to values you specify.  The following table lists the comparison
+to values you specify.  The following table lists the comparison 
 operations you can use:
 
 .B Operation \ \ Type of Comparison
@@ -105,7 +104,7 @@ option argument.
 .IP .ge. 12
 The value of the attribute of the job is greater than or equal to the
 value of the option argument.
-.IP .gt. 12
+.IP .gt. 12	
 The value of the attribute of the job is greater than the value of the
 option argument.
 .IP .le. 12
@@ -116,16 +115,16 @@ The value of the attribute of the job is less than the
 value of the option argument.
 .LP
 
-For example, to select jobs whose
-.I Priority
-attribute has a value greater than
+For example, to select jobs whose 
+.I Priority 
+attribute has a value greater than 
 .I 5:
 .br
 .B \ \ \ qselect -p.gt.5
 
 Where an optional comparison is not specified, the comparison
-operation defaults to
-.I .eq,
+operation defaults to 
+.I .eq, 
 meaning PBS checks whether the value of the
 attribute is equal to the option argument.
 
@@ -141,48 +140,48 @@ Lists all jobs at the server which the user is authorized to list
 (query status of).
 
 .IP "-a [<op>] <date and time>" 8
-.B Deprecated.
-Restricts selection to those jobs whose
+.B Deprecated.  
+Restricts selection to those jobs whose 
 .I Execution_Time
-attribute qualifies when compared to the
+attribute qualifies when compared to the 
 .I date and time
 argument.  You can select a range of execution times by using this
 option twice, to compare to a minimum time and a maximum time.
 
-The
+The 
 .I date and time
 argument has the format:
 .br
 .I [[CC]YY]MMDDhhmm[.SS]
 .br
-where the
-.I MM
-is the two digits for the month,
-.I DD
-is the day of the month,
-.I hh
-is the hour,
-.I mm
-is the minute, and the optional
-.I SS
-is the seconds.
-.I CC
-is the century and
-.I YY
+where the 
+.I MM 
+is the two digits for the month, 
+.I DD 
+is the day of the month, 
+.I hh 
+is the hour, 
+.I mm 
+is the minute, and the optional 
+.I SS 
+is the seconds.  
+.I CC 
+is the century and 
+.I YY 
 the year.
 
 .IP "-A <account string>" 8
-Restricts selection to jobs whose
+Restricts selection to jobs whose 
 .I Account_Name
 attribute matches the specified
 .I account string.
 
 .IP "-c [<op>] <interval>" 8
-Restricts selection to jobs whose
+Restricts selection to jobs whose 
 .I Checkpoint
 interval attribute meets the comparison criteria.
 
-The
+The 
 .I interval
 argument can take one of the following values:
 .RS 11
@@ -199,26 +198,26 @@ argument can take one of the following values:
 .I w=<minutes>
 .RE
 .IP " "  8
-We give the range of interval  values for the
+We give the range of interval  values for the 
 .I Checkpoint
 attribute the following ordered relationship:
 .br
 .I  n\ >\ s\ >\ c=minutes\ >\ c\ >\ u
 
-(Information about
+(Information about 
 .I w
-and
+and 
 .I w=<minutes>
 is not available.)
 
-For an interval value of
+For an interval value of 
 "u", only ".eq" and ".ne" are valid.
 
 .IP "-h <hold list>" 8
 Restricts the selection of jobs to those with a specific set of hold types.
-The holds in the
+The holds in the 
 .I Hold_Types
-job attribute must be the same as those in the
+job attribute must be the same as those in the 
 .I hold list
 argument, but can be in a different order.
 
@@ -230,8 +229,8 @@ or one or more of the letters
 .I u,
 .I o,
 .I p,
-or
-.I s
+or 
+.I s 
 in any combination.  If letters are duplicated, they are treated as if they
 occurred once.
 The letters represent the hold types:
@@ -255,12 +254,12 @@ Limits selection to job arrays only.
 
 .IP "-l <resource list>" 8
 Restricts selection of jobs to those with specified resource amounts.
-Resource must be job-wide, or be
-.I mem, ncpus,
-or
+Resource must be job-wide, or be 
+.I mem, ncpus, 
+or 
 .I vmem.
 
-The
+The 
 .I resource list
 is in the following format:
 .br
@@ -272,9 +271,9 @@ and you can use any of the comparison operators.
 
 Because resource specifications for chunks using the select statement,
 and placement using the place statement, are stored as strings, the
-only useful operators for these are
-.I .eq.
-and
+only useful operators for these are 
+.I .eq.  
+and 
 .I .ne.
 
 Unprivileged users cannot specify custom resources
@@ -286,22 +285,20 @@ Restricts selection of jobs to those with the specified value for the
 attribute.
 
 .IP "-p [<op>] <priority>" 8
-Restricts selection of jobs to those with the specified
-.I Priority
+Restricts selection of jobs to those with the specified 
+.I Priority 
 value(s).
 
 .IP "-P <project>" 8
-Restricts selection of jobs to those matching the specified value for the
+Restricts selection of jobs to those matching the specified value for the 
 .I project
 attribute.
 
-Format:
-.I Project Name;
-see the
-.I PBS Reference Guide.
+Format: 
+.I Project Name
 
 .IP "-q <destination>" 8
-Restricts selection to those jobs at the specified
+Restricts selection to those jobs at the specified 
 .I destination.
 
 The
@@ -318,19 +315,19 @@ Restricts selection to the specified server.
 .br
 .I <queue name>@<server name>
 .br
-Restricts selection to the specified queue at the specified server.
+Restricts selection to the specified queue at the specified server. 
 .RE
 .IP " " 8
 If the -q option is not specified, jobs are selected from the default server.
 
 .IP "-r <rerun>" 8
-Restricts selection of jobs to those with the specified value for the
+Restricts selection of jobs to those with the specified value for the 
 .I Rerunable
-attribute.  The option argument
+attribute.  The option argument 
 .I rerun
 must be a single character, either
 .I y
-or
+or 
 .I n.
 
 .IP "-s <states>" 8
@@ -343,9 +340,9 @@ The
 argument is a character string consisting of any combination of these
 characters:
 .I B
-,
+, 
 .I E
-,
+, 
 .I F
 ,
 .I H
@@ -388,79 +385,78 @@ X       The eXited state.  Subjobs only
 .IP
 Jobs in any of the specified states are selected.
 
-Job arrays are never in states
-.I R, S, T,
-or
-.I U.
+Job arrays are never in states 
+.I R, S, T, 
+or 
+.I U.  
 Subjobs may be in those states.
 
 .IP "-t <time option> [<op>] <specified time>" 8
-Jobs are selected according to one of their time-based attributes.  The
+Jobs are selected according to one of their time-based attributes.  The 
 .I time option
-specifies which time-based attribute is tested.  You give the
+specifies which time-based attribute is tested.  You give the 
 .I specified time
-in
+in 
 .I datetime
-format.  See the
-.I PBS Reference Guide.
+format. 
 
-The
-.I time option
+The 
+.I time option 
 is one of the following:
 
 .nf
-.B Time
+.B Time 
 .B Option \ Time Attribute \ Attribute Description
 ---------------------------------------------------------------
-a       Execution_Time  Timestamp.  Time the job is eligible
-                        for execution.  Specified in datetime
+a       Execution_Time  Timestamp.  Time the job is eligible 
+                        for execution.  Specified in datetime 
                         format.
 
 c       ctime           Timestamp; time at which the job was
-                        created.  Printed by qstat in
+                        created.  Printed by qstat in 
                         human-readable format.  Output in hooks
                         as seconds since epoch.
 
-e       etime           Timestamp; time when job became
-                        eligible to run, i.e. was enqueued in
-                        an execution queue and was in the "Q"
-                        state.  Reset when a job moves queues,
-                        or is held then released.  Not affected
-                        by qaltering.  Printed by qstat in
-                        human-readable format.  Output in hooks
+e       etime           Timestamp; time when job became 
+                        eligible to run, i.e. was enqueued in 
+                        an execution queue and was in the "Q" 
+                        state.  Reset when a job moves queues, 
+                        or is held then released.  Not affected 
+                        by qaltering.  Printed by qstat in 
+                        human-readable format.  Output in hooks 
                         as seconds since epoch.
 
-g       eligible_time   Amount of eligible time job accrued
+g       eligible_time   Amount of eligible time job accrued 
                         waiting to run.  Specified as duration.
 
-m       mtime           Timestamp; the time that the job was
-                        last modified, changed state, or
-                        changed locations.  Printed by qstat in
-                        human-readable format.  Output in hooks
+m       mtime           Timestamp; the time that the job was 
+                        last modified, changed state, or 
+                        changed locations.  Printed by qstat in 
+                        human-readable format.  Output in hooks 
                         as seconds since epoch.
 
-q       qtime           Timestamp; the time that the job
-                        entered the current queue.  Printed by
-                        qstat in human-readable format.  Output
+q       qtime           Timestamp; the time that the job 
+                        entered the current queue.  Printed by 
+                        qstat in human-readable format.  Output 
                         in hooks as seconds since epoch.
 
-s       stime           Timestamp; time the job started.
-                        Updated when job is restarted.  Printed
-                        by qstat in human-readable format.
+s       stime           Timestamp; time the job started.  
+                        Updated when job is restarted.  Printed 
+                        by qstat in human-readable format.  
                         Output in hooks as seconds since epoch.
 
-t       estimated.      Job's estimated start time.  Specified
-        start_time      in datetime format.  Printed by qstat in
-                        human-readable format.  Output in hooks
+t       estimated.      Job's estimated start time.  Specified 
+        start_time      in datetime format.  Printed by qstat in 
+                        human-readable format.  Output in hooks 
                         as seconds since epoch.
 .fi
 
-To bracket a time period, use the
+To bracket a time period, use the 
 .I -t
 option twice.
 .br
-For example, to select jobs using
-.I stime
+For example, to select jobs using 
+.I stime 
 between noon and 3 p.m.:
 .br
 .B \ \ \ qselect -ts.gt.09251200 -ts.lt.09251500
@@ -476,16 +472,16 @@ Syntax of
 .br
 .I <username>[@<hostname>][,<username>[@<hostname>],...]
 
-Selects jobs which are owned by the listed users at the corresponding hosts.
+Selects jobs which are owned by the listed users at the corresponding hosts. 
 Hostnames may be wildcarded on the left end, e.g. "*.nasa.gov".  A username
-without a "@<hostname>" is equivalent to "<username>@*", meaning that it is
+without a "@<hostname>" is equivalent to "<username>@*", meaning that it is 
 valid at any host.
 
 .IP "-x" 8
 Selects finished and moved jobs in addition to queued and running jobs.
 
 .IP "--version" 8
-The
+The 
 .B qselect
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -497,36 +493,32 @@ job array, or a subjob.  Each job ID has one of the forms:
 .br
 .I <sequence number>.<server name>[@<server name>]
 .br
-.I <sequence number>[].<server name>[@<server name>]
+.I <sequence number>[].<server name>[@<server name>]   
 .br
 .I <sequence number>[<index>].<server name>[@<server name>]
 .br
-.I @<server name>
+.I @<server name> 
 identifies the server which currently owns the job.
 
 .SH STANDARD ERROR
-The
-.B qselect
+The 
+.B qselect 
 command writes a diagnostic message to standard error for
 each error occurrence.
 
 .SH EXIT STATUS
 .IP Zero 8
 Upon successful processing of all options presented to the
-.B qselect
+.B qselect 
 command
 .IP "Greater than zero" 8
-If the
-.B qselect
+If the 
+.B qselect 
 command fails to process any option
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qstat(1B),
-qsub(1B),
+qsub(1B), 
 pbs_job_attributes(7B),
 pbs_resources(7B)
+

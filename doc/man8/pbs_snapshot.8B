@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_snapshot 8B "20 September 2019" Local "PBS"
+.TH pbs_snapshot 8B "20 September 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_snapshot
 - Linux only.  Capture PBS data to be used for diagnostics
@@ -45,17 +44,17 @@
 .B pbs_snapshot
 -h, --help
 .br
-.B pbs_snapshot
--o <output directory path>
+.B pbs_snapshot 
+-o <output directory path> 
 .RS 12
-[--accounting-logs=<number of days>]
+[--accounting-logs=<number of days>] 
 .br
 [--additional-hosts=<hostname list>] [--basic]
 .br
-[--daemon-logs=<number of days>]
+[--daemon-logs=<number of days>] 
 [-H <server host>]
 .br
-[-l <log level>]
+[-l <log level>] 
 [--map=<file path>]
 [--obfuscate]
 .br
@@ -65,50 +64,50 @@
 --version
 .SH DESCRIPTION
 
-You use
-.B pbs_snapshot
+You use 
+.B pbs_snapshot 
 to capture PBS data for diagnostics.  This tool is written in Python
 and uses PTL libraries, including PBSSnapUtils, to extract the data.
-You can optionally anonymize the PBS data.  The
-.B pbs_snapshot
+You can optionally anonymize the PBS data.  The 
+.B pbs_snapshot 
 command captures data from all multischeds.  The
 command detects which daemon or daemons are running on the host where
 it is collecting information, and captures daemon and system data
 accordingly.  If no PBS daemons are running, the command collects
 system information.  The output tarball contains information about the
-host specified via the
-.I -H
+host specified via the 
+.I -H 
 option, or if that is not specified, the
 local host.  If you specify additional hosts, the command creates a
 tarball for each additional host and includes it as a sub-tarball in
 the output.
 
-If you want to capture only PBS configuration information, use the
+If you want to capture only PBS configuration information, use the 
 .I --basic
 option.
 
 .B Required Privilege
 .br
-The
-.B pbs_snapshot
-command allows you to use the
-.B sudo
+The 
+.B pbs_snapshot 
+command allows you to use the 
+.B sudo 
 infrastructure
 provided by the PTL framework to capture root-owned information via
-.I --with-sudo.
+.I --with-sudo.  
 All other information is collected as a normal user.  If
-you need to run
-.B pbs_snapshot
+you need to run 
+.B pbs_snapshot 
 as a non-prvileged user, and without
-using the PTL
-.I --with-sudo
+using the PTL 
+.I --with-sudo 
 infrastructure, you must be root if you want
 root-owned information to be collected.
 
 .B Restrictions
 .br
-The
-.B pbs_snapshot
+The 
+.B pbs_snapshot 
 command is not available on Windows.
 
 .SH OPTIONS
@@ -116,40 +115,40 @@ command is not available on Windows.
 Specifies number of days of accounting logs to be collected; this
 count includes the current day.
 .br
-Value of
-.I number of days
+Value of 
+.I number of days 
 must be >=0:
 .br
    If number of days is 0, no logs are captured.
 .br
-   If number of days is 1, only the logs for the current day
+   If number of days is 1, only the logs for the current day 
 .br
    are captured.
 .br
-Default:
+Default: 
 .B pbs_snapshot
 collects 30 days of accounting logs
 
 .IP "--additional-hosts=<hostname list>" 5
-Specifies that
+Specifies that 
 .B pbs_snapshot
-should gather data from the specified list of additional hosts.
-Launches the
-.B pbs_snapshot
+should gather data from the specified list of additional hosts.  
+Launches the 
+.B pbs_snapshot 
 command on each specified host, creates a
-tarball there named
-.I <hostname>_snapshot.tgz,
+tarball there named 
+.I <hostname>_snapshot.tgz, 
 and includes it as a sub-tarball in the output for the main output.  If you use the
-.I --with-sudo
+.I --with-sudo 
 option, each launched copy uses that option as well.
 
-The command does not query the server when it runs at a non-server host.
+The command does not query the server when it runs at a non-server host.  
 
 The command collects a full snapshot, including the following information:
 .RS 8
 Daemon logs, for the number of days of logs being captured, specified
-via the
-.I --daemon-logs=<number of days>
+via the 
+.I --daemon-logs=<number of days> 
 option
 .br
 The PBS_HOME/<daemon>_priv directory
@@ -159,9 +158,9 @@ Accounting logs if server daemon runs on host
 System information
 .RE
 .IP
-Format for
-.I hostname list
-is a comma-separated list of one or more hostnames:
+Format for 
+.I hostname list 
+is a comma-separated list of one or more hostnames: 
 .br
 .I <hostname>[, <hostname> ...]
 
@@ -178,27 +177,27 @@ node/pbsnodes_va.out          Output of pbsnodes -va
 reservation/pbs_rstat_f.out   Output of pbs_rstat -f
 job/qstat_f.out               Output of qstat -f
 hook/qmgr_lpbshook.out        Output of qmgr -c 'list pbshook'
-sched_priv/ for each          Copy of each scheduler's
+sched_priv/ for each          Copy of each scheduler's 
 scheduler instance            sched_priv directory
-server_priv/resourcedef       Copy of server_priv/resourcedef file
-pbs.conf                      Copy of /etc/pbs.conf on server host
+server_priv/resourcedef       Copy of server_priv/resourcedef file  
+pbs.conf                      Copy of /etc/pbs.conf on server host    
 pbs_snapshot.log              Log of pbs_snapshot execution
 ctime                         Timestamp of when the snapshot
                               was taken
 .fi
 
-Can be combined with other options such as
+Can be combined with other options such as 
 .I --accounting-logs
-and
+and 
 .I --daemon-logs
 in order to capture additional information.
 
 .IP "--daemon-logs=<number of days>" 5
 Specifies number of days of daemon logs to be collected; this count
-includes the current day.
+includes the current day. 
 .br
-Value of
-.I number of days
+Value of 
+.I number of days 
 must be >=0:
 .RS 8
 If number of days is 0, no logs are captured.
@@ -206,7 +205,7 @@ If number of days is 0, no logs are captured.
 If number of days is 1, only the logs for the current day are captured.
 .RE
 .IP
-Default:
+Default: 
 .B pbs_snapshot
 collects 5 days of daemon logs
 
@@ -215,16 +214,16 @@ Prints usage and exits.
 
 .IP "-H <hostname>" 5
 Specifies hostname for host whose retrieved data is to be at the top
-level in the output tarball.  If not specified,
-.B pbs_snapshot
+level in the output tarball.  If not specified, 
+.B pbs_snapshot 
 puts data for the local host at the top level in the output tarball.
 
 .IP "-l <log level>" 5
-Specifies level at which
+Specifies level at which 
 .B pbs_snapshot
-writes its log.  The log file is
-pbs_snapshot.log, in the output directory path specified using the
-.I -o <output directory path>
+writes its log.  The log file is 
+pbs_snapshot.log, in the output directory path specified using the 
+.I -o <output directory path> 
 option.
 
 Valid values, from most comprehensive to least: DEBUG2, DEBUG,
@@ -238,22 +237,22 @@ Specifies path for file containing obfuscation map, which is a
 <key>:<value> pair-mapping of obfuscated data.  Path can be absolute
 or relative to current working directory.
 .br
-Default:
+Default: 
 .B pbs_snapshot
 writes its obfuscation map in a file called obfuscate.map in the
 location specified via the
-.I -o <output directory path>
-option.
+.I -o <output directory path> 
+option.  
 .br
-Can only be used with the
-.I --obfuscate
+Can only be used with the 
+.I --obfuscate 
 option.
 
 .IP "--obfuscate" 5
-Obfuscates (anonymizes) or deletes sensitive PBS data captured by
+Obfuscates (anonymizes) or deletes sensitive PBS data captured by 
 .B pbs_snapshot.
 .br
-Obfuscates the following data:
+Obfuscates the following data: 
 .RS 8
 euser, egroup, project, Account_Name, operators, managers, group_list,
 Mail_Users, User_List, server_host, acl_groups, acl_users,
@@ -262,78 +261,78 @@ acl_hosts, Job_Owner, exec_host, Host, Mom, resources_available.host,
 resources_available.vnode
 .RE
 .IP " " 5
-Deletes the following data:
+Deletes the following data: 
 .RS 8
 Variable_List, Error_Path, Output_Path, mail_from, Mail_Points,
 Job_Name, jobdir, Submit_arguments, Shell_Path_List
 .RE
 
 .IP "--version" 5
-The
+The 
 .B pbs_snapshot
 command prints its PBS version information and exits.
 Can only be used alone.
 
 .IP "--with-sudo" 5
-Uses the PTL
-.B sudo
+Uses the PTL 
+.B sudo 
 infrastructure in order capture root-owned
-information via
-.B sudo.
+information via 
+.B sudo.  
 (Information not owned by root is captured
 using normal privilege, not root privilege.)  With this option, you do
-not need to prefix your
-.B pbs_snapshot
-command with
-.B sudo,
+not need to prefix your 
+.B pbs_snapshot 
+command with 
+.B sudo, 
 and you do not need root privilege.
 
 .SH Arguments to pbs_snapshot
 .IP "-o <output directory path>" 5
-Path to directory where
+Path to directory where 
 .B pbs_snapshot
 writes its output tarball.  Required.  Path can be absolute or
 relative to current working directory.
 .br
-For example, if you specify
+For example, if you specify 
 .I -o /temp,
 .B pbs_snapshot
 writes "/temp/snapshot_<timestamp>.tgz".
 .br
-The output directory path must already exist.
+The output directory path must already exist. 
 
 .SH Output
 .B Output Location
 .br
-You must use the
-.I -o <output directory path>
-option to specify the directory where
+You must use the 
+.I -o <output directory path> 
+option to specify the directory where 
 .B pbs_snapshot
 writes its output.  The path can be absolute or relative to current
 working directory.  The output directory must already exist.  As an
-example, if you specify "-o /temp",
+example, if you specify "-o /temp", 
 .B pbs_snapshot
 writes "/temp/snapshot_<timestamp>.tgz".
 
 .B Output Contents
 .br
-The
+The 
 .B pbs_snapshot
-command writes
+command writes 
 the output for the local host and each specified remote host as a
 tarball.  Tarballs for remote hosts are included in the main tarball.
 
-The command captures JSON output from
-.B qstat-f -F json
-and
-.B pbsnodes -av -F json.
+The command captures JSON output from 
+.B qstat-f -F json 
+and 
+.B pbsnodes -av -F json.  
 .br
 The main tarball contains the following directory structure, files, and tarballs:
 .nf
 Directory  Directory
 or File    Contents             Description
 ------------------------------------------------------------------------
-server/
+server/         
            qstat_B.out          Output of qstat -B
            qstat_Bf.out         Output of qstat -Bf
            qmgr_ps.out          Output of qmgr print server
@@ -341,39 +340,39 @@ server/
            qstat_Qf.out         Output of qstat -Qf
            qmgr_pr.out          Output of qmgr print resource
 
-server_priv/                    Copy of the PBS_HOME/server_priv
-                                directory.
-                                Core files are captured separately;
+server_priv/                    Copy of the PBS_HOME/server_priv 
+                                directory.   
+                                Core files are captured separately; 
 .fi
 .RS 32
 see
-.I core_file_bt/.
+.I core_file_bt/.  
 .RE
 .nf
 
-           accounting/          Accounting logs from
-                                PBS_HOME/server_priv/accounting/
-                                directory for the number of days
+           accounting/          Accounting logs from 
+                                PBS_HOME/server_priv/accounting/ 
+                                directory for the number of days 
 .fi
 .RS 32
-specified via
-.I --accounting-logs
+specified via 
+.I --accounting-logs 
 option
 .RE
 .nf
 
-server_logs/                    Server logs from the
+server_logs/                    Server logs from the 
                                 PBS_HOME/server_logs directory for the
-                                number of days specified
+                                number of days specified 
 .fi
 .RS 32
 via
-.I --daemon-logs
+.I --daemon-logs 
 option
 .RE
 .nf
 
-job/
+job/            
            qstat.out            Output of qstat
            qstat_f.out          Output of qstat -f
            qstat_f_F_json.out   Output of qstat -f -F json
@@ -384,7 +383,7 @@ job/
            qstat_ns.out         Output of qstat -ns
            qstat_fx_F_dsv.out   Output of qstat -fx -F dsv
            qstat_f_F_dsv.out    Output of qstat -f -F dsv
-node/
+node/           
            pbsnodes_va.out      Output of pbsnodes -va
            pbsnodes_a.out       Output of pbsnodes -a
            pbsnodes_avSj.out    Output of pbsnodes -avSj
@@ -396,114 +395,114 @@ node/
            pbsnodes_avFjson.out Output of pbsnodes -avF json
            qmgr_pn_default.out  Output of qmgr print node @default
 
-mom_priv/                       Copy of the PBS_HOME/mom_priv
+mom_priv/                       Copy of the PBS_HOME/mom_priv 
                                 directory.
-                                Core files are captured separately;
-                                see core_file_bt/.
+                                Core files are captured separately; 
+                                see core_file_bt/.  
 
-mom_logs/                       MoM logs from the PBS_HOME/mom_logs
-                                directory for the number of days
+mom_logs/                       MoM logs from the PBS_HOME/mom_logs 
+                                directory for the number of days 
 .fi
 .RS 32
 via
-.I --daemon-logs
+.I --daemon-logs 
 option
 .RE
 .nf
 
-comm_logs/                      Comm logs from the PBS_HOME/comm_logs
-                                directory for the number of days
+comm_logs/                      Comm logs from the PBS_HOME/comm_logs 
+                                directory for the number of days 
 .fi
 .RS 32
-specified via
-.I --daemon-logs
+specified via 
+.I --daemon-logs 
 option
 .RE
-.nf
+.nf  
 
-sched_priv/                     Copy of the PBS_HOME/sched_priv
+sched_priv/                     Copy of the PBS_HOME/sched_priv 
                                 directory, with all files.
-                                Core files are not captured;
-                                see core_file_bt/.
+                                Core files are not captured; 
+                                see core_file_bt/. 
 
-sched_logs/                     Scheduler logs from the
-                                PBS_HOME/sched_logs directory for
-                                the number of days specified
+sched_logs/                     Scheduler logs from the 
+                                PBS_HOME/sched_logs directory for 
+                                the number of days specified 
 .fi
 .RS 32
 via
-.I --daemon-logs
-option
+.I --daemon-logs 
+option    
 .RE
 .nf
 
-sched_priv_<multisched name>/   Copy of the
+sched_priv_<multisched name>/   Copy of the 
                                 PBS_HOME/sched_priv_<multisched_name>
                                 directory, with all files.
-                                Core files are not captured;
-                                see core_file_bt/.
+                                Core files are not captured; 
+                                see core_file_bt/. 
 
-sched_logs_<multisched name>/   Scheduler logs from the
-                                PBS_HOME/sched_logs_<multisched_name>
+sched_logs_<multisched name>/   Scheduler logs from the 
+                                PBS_HOME/sched_logs_<multisched_name> 
                                 directory for the number
                                 of days specified
 .fi
 .RS 32
 via
-.I --daemon-logs
-option
+.I --daemon-logs 
+option    
 .RE
 .nf
 
-reservation/
+reservation/            
            pbs_rstat_f.out      Output of pbs_rstat -f
 
            pbs_rstat.out        Output of pbs_rstat
 
-scheduler/
+scheduler/              
            qmgr_lsched.out      Output of qmgr list sched
 
-hook/
+hook/           
            qmgr_ph_default.out  Output of qmgr print hook @default
 
            qmgr_lpbshook.out    Output of qmgr list pbshook
 
-datastore/
-           pg_log/              Copy of the
-                                PBS_HOME/datastore/pg_log directory
-                                for the number of days specified
+datastore/              
+           pg_log/              Copy of the 
+                                PBS_HOME/datastore/pg_log directory 
+                                for the number of days specified 
 .fi
 .RS 32
 via
-.I --daemon-logs
+.I --daemon-logs 
 option
 .RE
 .nf
 
-core_file_bt/                   Stack backtrace from core files
+core_file_bt/                   Stack backtrace from core files 
 
-           sched_priv/          Files containing the output of thread
-                                apply all backtrace full on all core
+           sched_priv/          Files containing the output of thread 
+                                apply all backtrace full on all core 
                                 files captured from PBS_HOME/sched_priv
 
-           sched_priv_          Files containing the output of thread
-           <multisched name>/   apply all backtrace full on all core
+           sched_priv_          Files containing the output of thread 
+           <multisched name>/   apply all backtrace full on all core 
                                 files captured from PBS_HOME/sched_priv
 
-           server_priv/         Files containing the output of thread
-                                apply all backtrace full on all core
-                                files captured from
+           server_priv/         Files containing the output of thread 
+                                apply all backtrace full on all core 
+                                files captured from 
                                 PBS_HOME/server_priv
 
-           mom_priv/            Files containing the output of thread
-                                apply all backtrace full on all core
+           mom_priv/            Files containing the output of thread 
+                                apply all backtrace full on all core 
                                 files captured from PBS_HOME/mom_priv
 
-           misc/                Files containing the output of thread
-                                apply all backtrace full on any other
+           misc/                Files containing the output of thread 
+                                apply all backtrace full on any other 
                                 core files found inside PBS_HOME
 
-system/
+system/         
            pbs_probe_v.out      Output of pbs_probe -v
 
            pbs_hostn_v.out      Output of pbs_hostn -v $(hostname)
@@ -512,7 +511,7 @@ system/
 
            os_info              Information about the OS
 
-           process_info         List of processes running on the system
+           process_info         List of processes running on the system 
                                 when the snapshot was taken.  Output of
                                 ps -aux | grep [p]bs on Linux systems,
                                 or tasklist /v on Windows systems
@@ -526,24 +525,24 @@ system/
            etc_nsswitch_conf    Copy of /etc/nsswitch.conf file.
                                 Linux only.
 
-           vmstat.out           Output of the command vmstat.
+           vmstat.out           Output of the command vmstat.  
                                 Linux only.
 
-           df_h.out             Output of the command df -h.
+           df_h.out             Output of the command df -h.  
                                 Linux only.
 
-           dmesg.out            Output of the dmesg command.
+           dmesg.out            Output of the dmesg command.  
                                 Linux only.
 
-pbs.conf                        Copy of the pbs.conf file on the
-                                server host
+pbs.conf                        Copy of the pbs.conf file on the 
+                                server host    
 
-ctime                           Contains the time in seconds since
-                                epoch when the snapshot was taken
+ctime                           Contains the time in seconds since 
+                                epoch when the snapshot was taken    
 
 pbs_snapshot.log                Log messages written by pbs_snapshot
-
-<remote hostname>.tgz           Tarball of output from running the
+    
+<remote hostname>.tgz           Tarball of output from running the 
                                 pbs_snapshot command at a remote host
 .fi
 
@@ -557,3 +556,4 @@ host.
 Writes a snapshot to /temp/snapshot_<timestamp>.tgz that includes 1
 day of accounting and daemon logs.  Obfuscates the data and stores the
 data mapping in the map file named "mapfile.txt".
+

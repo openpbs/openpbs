@@ -36,16 +36,15 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qorder 1B "18 December 2017" Local "PBS"
+.TH qorder 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qorder
+.B qorder 
 \- exchange order of two PBS batch jobs.
 .SH SYNOPSIS
-.B qorder
+.B qorder 
 <job ID> <job ID>
 .br
-.B qorder
+.B qorder 
 --version
 .SH DESCRIPTION
 
@@ -54,7 +53,7 @@ queue(s).
 
 No attribute of either job, e.g. priority, is changed.
 The impact of interchanging the order within or between queues is dependent on local
-job scheduling policy; contact your systems administrator.
+job scheduling policy; contact your systems administrator.  
 
 .B Restrictions
 .br
@@ -62,7 +61,7 @@ A job in the
 .B running
 state cannot be reordered.
 .br
-The
+The 
 .B qorder
 command can be used on job arrays, but not on subjobs or ranges of subjobs.
 .br
@@ -75,7 +74,7 @@ the user.  A privileged user (Manager, Operator) can reorder any jobs.
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B qorder
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -84,7 +83,7 @@ This option can only be used alone.
 Both operands are
 .I job IDs
 which specify the jobs to be exchanged.
-The
+The 
 .B qorder
 command accepts two
 .I job ID
@@ -101,8 +100,8 @@ Note that some shells require that you enclose a job array identifier in
 double quotes.
 
 .SH STANDARD ERROR
-The
-.B qorder
+The 
+.B qorder 
 command writes diagnostic messages to standard error for each
 error occurrence.
 
@@ -110,14 +109,9 @@ error occurrence.
 .IP "Zero" 8
 Upon successful processing of all operands
 .IP "Greater than zero" 8
-If the
-.B qorder
+If the 
+.B qorder 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qsub(1B), qmove(1B), pbs_orderjob(3B), pbs_movejob(3B)

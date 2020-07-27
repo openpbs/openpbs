@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_statrsc 3B "15 November 2019" Local "PBS"
+.TH pbs_statrsc 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_statrsc
+.B pbs_statrsc 
 \- get status of PBS resources
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -48,7 +47,7 @@
 .sp
 .nf
 .B struct batch_status *
-.B pbs_statrsc(int connect, char *rescname, struct attrl *output_attribs,
+.B pbs_statrsc(int connect, char *rescname, struct attrl *output_attribs, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 
@@ -56,25 +55,25 @@
 Issues a batch request to query and return the status of a specified
 resource, or a set of resources at a server.
 
-Generates a
-.I Status Resource
-(82) batch request and sends it to the server over the connection specified by
+Generates a 
+.I Status Resource 
+(82) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection handle over which to send batch request to server.
 
 .IP rescname 8
-Name of resource to be queried.  If this is null, queries all resources at the server.
+Name of resource to be queried.  If this is null, queries all resources at the server.  
 
 .IP output_attribs 8
 Pointer to a list of attributes to return.  If this argument is a null
 pointer or points to a null string, returns all attributes.  Each
-attribute is described in an
-.I attrl
+attribute is described in an 
+.I attrl 
 structure, defined in pbs_ifl.h as:
 .nf
 struct attrl {
@@ -91,10 +90,10 @@ Character string for extensions to command.  Not currently used.
 
 .B Members of attrl Structure
 .IP name 8
-Points to a string containing the name of the attribute.
+Points to a string containing the name of the attribute.  
 
 .IP resource 8
-Points to a string containing the name of a resource.  Should be a null pointer.
+Points to a string containing the name of a resource.  Should be a null pointer.  
 
 .IP value 8
 Points to a string containing the value of the attribute or resource.
@@ -104,17 +103,17 @@ Should always be a pointer to a null string.
 Points to next attribute in list.  A null pointer terminates the list.
 
 .SH QUERYING RESOURCES AT SERVER
-Use the
-.B pbs_connect()
-command to get a connection handle at the server.
+Use the 
+.B pbs_connect() 
+command to get a connection handle at the server.  
 
 To query all resources at the server, pass a null pointer as the name
 of the resource.
 
 .SH RETURN VALUE
 For a single resource, if the resource can be queried, returns a
-pointer to a
-.I batch_status
+pointer to a 
+.I batch_status 
 structure containing the status of the specified resource.
 
 If the resource cannot be queried, the routine returns a null pointer,
@@ -122,24 +121,24 @@ and the error number is available in the global integer
 .I pbs_errno.
 
 When querying a server, the connection to the server is already
-established by
-.B pbs_connect().
-If there are resources at the server, returns a pointer to a
-.I batch_status
-structure describing the queryable resource(s) at the server.
+established by 
+.B pbs_connect().  
+If there are resources at the server, returns a pointer to a 
+.I batch_status 
+structure describing the queryable resource(s) at the server.  
 In the unlikely event that the server does not contain any queryable
 resources because the user is unprivileged and all  resources are
-marked as invisible (the
-.I i
+marked as invisible (the 
+.I i 
 flag is set), returns a NULL pointer, and
-.I pbs_errno
-is set to
+.I pbs_errno 
+is set to 
 .I PBSE_NONE (0).
 
 .B The batch_status Structure
 .br
 The
-.I batch_status
+.I batch_status 
 structure is defined in pbs_ifl.h as
 .nf
 struct batch_status {
@@ -151,9 +150,9 @@ struct batch_status {
 .fi
 
 .SH CLEANUP
-You must free the list of
-.I batch_status
-structures when no longer needed, by calling
+You must free the list of 
+.I batch_status 
+structures when no longer needed, by calling 
 .B pbs_statfree().
 
 .SH SEE ALSO

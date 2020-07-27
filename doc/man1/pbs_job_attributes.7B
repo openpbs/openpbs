@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_job_attributes 7B "21 August 2019" Local "PBS"
+.TH pbs_job_attributes 7B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_job_attributes
+.B pbs_job_attributes 
 \- attributes of PBS jobs
 .SH DESCRIPTION
 Each PBS job has attributes that characterize that job.
@@ -49,11 +48,11 @@ String used for accounting purposes.  Can be used for fairshare.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
-.I String;
+Format: 
+.I String; 
 can contain any character.
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
@@ -62,26 +61,26 @@ Default: No default
 Accounting ID for tracking accounting data not produced by PBS.
 Readable by all.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 
 .IP accrue_type 8
-Indicates what kind of time the job is accruing.
+Indicates what kind of time the job is accruing.  
 .br
 Readable by Manager only.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
-Valid values:
+Valid values: 
 .RS 11
-One of 0 (initial_time), 1 (ineligible_time), 2 (eligible_time), or 3 (run_time).
+One of 0 (initial_time), 1 (ineligible_time), 2 (eligible_time), or 3 (run_time).  
 .RE
 .IP
 Default:
@@ -91,33 +90,28 @@ Default:
 For a few systems, the session ID is insufficient to track which
 processes belong to the job.  Where a different identifier is
 required, it is recorded in this attribute.  If set, it will also be
-recorded in the end-of-job accounting record.
-.br
-For jobs running in CPU sets, the
-.I alt_id
-holds the set name in a form usable by the cpuset(1) command; this is
-.I cpuset =<path to cpuset>.
+recorded in the end-of-job accounting record.  
 .br
 On Windows, holds PBS home directory.
 .br
 Readable by all; settable by None.
 .br
 Format:
-.I String;
+.I String; 
 may contain white spaces.
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP "argument_list" 8
-Job executable's argument list.  Shown if job is submitted with
+Job executable's argument list.  Shown if job is submitted with 
 "-- <executable> [<argument list>]".
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I JSDL=encoded string
 .RS 11
 .I <jsdl-hpcpa:Argument> <1st arg> </jsdl-hpcpa:Argument>
@@ -127,150 +121,150 @@ Format:
 .I <jsdl-hpcpa:Argument> <nth arg> </jsdl-hpcpa:Argument>
 .RE
 .IP
-Example:
+Example: 
 .RS 11
-If arguments are "A B":
+If arguments are "A B": 
 <jsdl-hpcpa:Argument>A</jsdl-hpcpa:Argument> <jsdl-hpcpa:Argument>B</jsdl-hpcpa:Argument>
 .RE
 .IP
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP array 8
-Indicates whether this is a job array.  Set to
+Indicates whether this is a job array.  Set to 
 .I True
 if this is an array job.
 .br
 Can be read and set by user.  Can be read by Manager and Operator.
 .br
-Format:
+Format: 
 .I Boolean
 .br
-Python type:
+Python type: 
 .I bool
 .br
-Default:
+Default: 
 .I False
 
 .IP array_id 8
 Applies only to subjobs.  Array identifier of subjob.
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP array_index 8
-Applies only to subjobs.  Index number of subjob.
+Applies only to subjobs.  Index number of subjob. 
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
 
 .IP array_indices_remaining 8
-Applies only to job arrays.  List of indices of subjobs still queued.
+Applies only to job arrays.  List of indices of subjobs still queued.  
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax: Range or list of ranges, e.g. 500, 552, 596-1000
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP array_indices_submitted 8
-Applies only to job arrays.  Complete list of indices of subjobs
-given at submission time.
+Applies only to job arrays.  Complete list of indices of subjobs 
+given at submission time.  
 .br
 Can be read and set by user.  Can be read by Manager and Operator.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 Given as range, e.g. 1-100
 .br
-Python type:
+Python type: 
 .I pbs.range
 .br
 Default: No default
 
 .IP array_state_count 8
-Applies only to job arrays.  Lists number of subjobs in each state.
-.br
+Applies only to job arrays.  Lists number of subjobs in each state. 
+.br 
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I pbs.state_count
 .br
 Default: No default
 
 .IP "block" 8
 Specifies whether qsub will wait for the job to complete and
-return the exit value of the job.
+return the exit value of the job.  
 .br
-For X11 forwarding jobs, and jobs with
+For X11 forwarding jobs, and jobs with 
 .I interactive
-and
+and 
 .I block
 attributes set to
-.I True,
+.I True, 
 the job's exit status is not returned.
 .br
-When
-.I block
-is
-.I True,
-qsub waits for the job to finish.
+When 
+.I block 
+is 
+.I True, 
+qsub waits for the job to finish.  
 .br
 Can be read and set by user.  Can be read by Manager and Operator.
 .br
-Format:
+Format: 
 .I Boolean
 .br
-Python type:
+Python type: 
 .I int
 .br
-Default:
+Default: 
 .I False
 
 .IP "Checkpoint" 8
-Determines when the job will be checkpointed.  An
+Determines when the job will be checkpointed.  An 
 .I $action
-script is required to checkpoint the job.  See the
+script is required to checkpoint the job.  See the 
 .I pbs_mom(8B)
-man page.
+man page. 
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
-.I String,
+Format: 
+.I String, 
 containing description of interval at which to checkpoint.
 .br
-Python type:
+Python type: 
 .I pbs.checkpoint
 .br
-Valid values:
+Valid values:  
 .RS
 .IP c 3
-Checkpoint at intervals, measured in CPU time, set on the job's
+Checkpoint at intervals, measured in CPU time, set on the job's 
 execution queue.  If no interval set at queue, job is not checkpointed.
 
 .IP "c=<minutes of CPU time>" 3
@@ -283,28 +277,28 @@ Format:
 .I Integer
 
 .IP w 3
-Checkpoint at intervals, measured in walltime, set on job's execution
+Checkpoint at intervals, measured in walltime, set on job's execution 
 queue.  If no interval set at queue, job is not checkpointed.
 
 .IP "w=<minutes of walltime>" 3
-Checkpoint at intervals of the specified number of minutes of job
-walltime.  This value must be greater than zero.  If the interval
-specified is less that that set on job's execution queue, the
+Checkpoint at intervals of the specified number of minutes of job 
+walltime.  This value must be greater than zero.  If the interval 
+specified is less that that set on job's execution queue, the 
 queue's interval is used.
 .br
-Format:
+Format: 
 .I Integer
 .IP n 3
 No checkpointing.
 .IP s 3
 Checkpoint only when the server is shut down.
 .IP u 3
-Unset.  Defaults to behavior when
+Unset.  Defaults to behavior when 
 .I interval
-argument is set to
+argument is set to 
 .I s.
 .LP
-Default:
+Default: 
 .I u
 .RE
 
@@ -313,30 +307,59 @@ Comment about job.  Informational only.
 .br
 Can be read by user.  Can be read and set by Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
+.IP create_resv_from_job 8
+When this attribute is
+.I True, 
+when this job is run, immediately creates and confirms a job-specific
+start reservation on the same resources as the job (including
+resources inherited by the job), and places the job in the
+job-specific reservation's queue.  Sets the job's
+.I create_resv_from_job 
+attribute to 
+.I True.  
+Sets the job-specific reservation's 
+.I reserve_job 
+attribute to the ID of the job from which the reservation was created.
+The new reservation's duration and start time are the same as the
+job's walltime and start time.  If the job is peer scheduled, the
+job-specific reservation is created in the pulling complex.
+.br
+Readable and settable by all.
+.br
+Format: 
+.I Boolean
+.br
+Python type:
+.I bool
+.br
+Default: 
+.I False
+
+
 .IP ctime 8
-Timestamp; time at which the job was created.
+Timestamp; time at which the job was created.  
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Syntax: Timestamp.
+Syntax: Timestamp.  
 .RS 11
-Printed by
+Printed by 
 .B qstat
 in human-readable format.  Output by hooks as seconds since epoch.
 .RE
 .IP
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -348,73 +371,73 @@ No limit on number of dependencies.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 "<type>:<job ID>[,<job ID> ...][,<type>:<job ID>[,<job ID> ...] ...]"
 .br
-Must be enclosed in double quotes if it contains commas.
+Must be enclosed in double quotes if it contains commas.  
 .RE
 .IP
 Example: "before:123,456"
 .br
-Python type:
+Python type: 
 .I pbs.depend
 .br
-Valid values:
+Valid values: 
 .RS
 .IP "after:<job ID list>" 3
-This job may run at any point after all jobs in
-.I job ID list
+This job may run at any point after all jobs in 
+.I job ID list 
 have started execution.
 
 .IP "afterok:<job ID list>" 3
-This job may run only after all jobs in
-.I job ID list
+This job may run only after all jobs in 
+.I job ID list 
 have terminated with no errors.
 
 .IP "afternotok:<job ID list>" 3
-This job may run only after all jobs in
-.I job ID list
+This job may run only after all jobs in 
+.I job ID list 
 have terminated with errors.
 
-.IP "afterany:<job ID list>"
-This job can run after all jobs in
+.IP "afterany:<job ID list>"  
+This job can run after all jobs in 
 .I job ID list
 have finished execution, with or without errors. This job will not run
-if a job in the
-.I job ID list
+if a job in the 
+.I job ID list 
 was deleted without ever having been run.
 
-.IP "before:<job ID list>" 3
-Jobs in
-.I job ID list
+.IP "before:<job ID list>" 3    
+Jobs in 
+.I job ID list 
 may start once this job has started.
 
-.IP "beforeok:<job ID list>" 3
-Jobs in
-.I job ID list
+.IP "beforeok:<job ID list>" 3  
+Jobs in 
+.I job ID list 
 may start once this job terminates without errors.
 
 .IP "beforenotok:<job ID list>" 3
-If this job terminates execution with errors, jobs in
-.I job ID list
+If this job terminates execution with errors, jobs in 
+.I job ID list 
 may begin.
 
-.IP "beforeany:<job id list>" 3
-Jobs in
-.I job ID list
+.IP "beforeany:<job id list>" 3 
+Jobs in 
+.I job ID list 
 may begin execution once this job terminates execution, with or without errors.
 
 .IP "on:<count>" 3
-This job may run after
-.I count
-dependencies on other jobs have been satisfied. This type is used with one of the
-.I before types listed.
-.I Count
-is an integer greater than
+This job may run after 
+.I count 
+dependencies on other jobs have been satisfied. This type is used with one of the 
+.I before types listed. 
+.I Count 
+is an integer greater than 
 .I 0.
 .RE
 .IP
@@ -422,37 +445,37 @@ Default: No dependencies
 
 .IP egroup 8
 If the job is queued, this attribute is set to the
-group name under which the job is to be run.
+group name under which the job is to be run.  
 .br
 Readable by Manager only.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP eligible_time 8
 The amount of wall clock wait time a job has accrued while the job
-is blocked waiting for resources.  For a job currently accruing
-.I eligible_time,
+is blocked waiting for resources.  For a job currently accruing 
+.I eligible_time, 
 if we were to add enough of the right type of resources, the job would
 start immediately.
 .br
-Viewable via
+Viewable via 
 .B qstat -f.
 .br
 Readable by job owner, Manager and Operator.  Settable by Operator or Manager.
 .br
-Format:
+Format: 
 .I Duration
 .br
-Python type:
+Python type: 
 .I pbs.duration
 .br
-Default:
+Default: 
 .I Zero
 
 .IP "Error_Path" 8
@@ -465,13 +488,13 @@ commands.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
-Syntax:
+Syntax: 
 .I [<hostname>:]<path>
 .br
 Valid values:
@@ -485,33 +508,33 @@ Path is absolute path on current host where command is executing.
 Path is relative to user's home directory on specified host.
 .IP "<hostname>:<absolute path>" 3
 Path is absolute path on named host.
-.IP "No path" 3
+.IP "No path" 3 
 Path is current working directory where qsub is executed.
 .RE
 .IP
 Default: Default path is current working directory where qsub is run.
 If the output path is specified, but does not include a
-filename, the default filename is
-.I <job ID>.ER.
-If the path name is not specified, the default filename is
+filename, the default filename is 
+.I <job ID>.ER.  
+If the path name is not specified, the default filename is 
 .I <job name>.e<sequence number>.
 
 
 .IP estimated 8
-List of estimated values for job.  Used to report job's
-.I exec_vnode, start_time,
-and
+List of estimated values for job.  Used to report job's 
+.I exec_vnode, start_time, 
+and 
 .I soft_walltime.
-Can be set in a hook or via qalter, but PBS will overwrite the values.
+Can be set in a hook or via qalter, but PBS will overwrite the values.  
 .br
 Format: Format of reported element
 .br
-Syntax:
+Syntax: 
 .RS 11
 .I estimated.<resource name>=<value>[, estimated.<resource name>=<value> ...]
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.pbs_resource
 .br
 Syntax:
@@ -521,20 +544,20 @@ estimated.<resource name>=<value>
 where <resource name> is a resource
 .RE
 .IP
-Reported values:
+Reported values: 
 .RS
 .IP "exec_vnode" 3
-The estimated vnodes used by this job.
+The estimated vnodes used by this job.     
 .br
 Readable by all; settable by Manager and Operator.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I pbs.exec_vnode
 .br
-Default: Unset
+Default: Unset   
 
 .IP "soft_walltime" 3
 The estimated soft walltime for this job.  Calculated when a job
@@ -542,10 +565,10 @@ exceeds its soft_walltime resource.
 .br
 Readable by all; settable by Manager.
 .br
-Format:
+Format: 
 .I Duration
 .br
-Python type:
+Python type: 
 .I pbs.duration
 .br
 Default: Unset
@@ -555,14 +578,14 @@ The estimated start time for this job.
 .br
 Readable by all; settable by Manager and Operator.
 .br
-Format:
-.I start_time
+Format: 
+.I start_time 
 is printed by qstat
-in human-readable format;
-.I start_time
+in human-readable format; 
+.I start_time 
 output in hooks as seconds since epoch.
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: Unset
@@ -577,51 +600,51 @@ queues, or is held then released.  Not affected by qaltering.
 .br
 Readable by all; set by PBS.
 .br
-Format:
-.I Integer
+Format: 
+.I Integer 
 .br
 Syntax:
 .RS 11
 Printed by qstat in human-readable format.  Output in hooks as seconds since epoch.
 .RE
 .IP
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
 
 .IP euser 8
 If the job is queued, this attribute is set to the
-user name under which the job is to be run.
+user name under which the job is to be run.  
 .br
 Readable by Manager only; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP "executable" 8
-JSDL-encoded listong of job's executable.
+JSDL-encoded listong of job's executable.  
 Shown if job is submitted with "-- <executable> [<arg list>]".
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I JSDL-encoded string
 .br
-Syntax: <jsdl-hpcpa:Executable> <name of executable>
+Syntax: <jsdl-hpcpa:Executable> <name of executable> 
 .br
-Example:
+Example: 
 .RS 11
 If the executable is ping, the string
 is <jsdl-hpcpa:Executable>ping</jsdl-hpcpa:Executable>
 .RE
 .IP
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
@@ -634,90 +657,90 @@ problem.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I Datetime
 .br
 Syntax:
 .I [[CCwYY]MMDDhhmm[.ss]
 .br
-Python type:
+Python type: 
 .I int
 .br
-Default: Unset (no delay)
+Default: Unset (no delay)  
 
 .IP exec_host 8
 If the job is running, this is set to the name of the host or hosts on which
-the job is executing.
+the job is executing.  
 .br
 Can be read by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax:
 .RS 11
-.I <hostname>/N[*C][+...],
+.I <hostname>/N[*C][+...], 
 .br
-where
-.I N
+where 
+.I N 
 is task slot number, starting with 0,
-on that vnode, and
-.I C
+on that vnode, and 
+.I C 
 is the number of CPUs allocated to the job.
-.I *C
-does not appear if
-.I C
-has a value of
+.I *C 
+does not appear if 
+.I C 
+has a value of 
 .I 1.
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.exec_host
 .br
 Default: No default
 
 .IP exec_vnode 8
 List of chunks for the job.  Each chunk shows the name of the vnode(s)
-from which it is taken, along with the host-level, consumable resources
-allocated from that vnode, and any AOE provisioned on this vnode for this job.
+from which it is taken, along with the host-level, consumable resources 
+allocated from that vnode, and any AOE provisioned on this vnode for this job.  
 .br
-If a vnode is allocated to the job but no resources
+If a vnode is allocated to the job but no resources 
 from the vnode are used by the job, the vnode
-name appears alone.
+name appears alone.  
 .br
-If a chunk is split across vnodes, the name of
-each vnode and its resources appear inside one pair of parentheses,
+If a chunk is split across vnodes, the name of 
+each vnode and its resources appear inside one pair of parentheses, 
 joined with a plus sign ("+").
 .br
 Can be read by user.  Can be read and set by Manager, Operator.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
-.RS 11
+Syntax: 
+.RS 11 
 Each chunk is enclosed in parentheses, and
-chunks are connected by plus signs.
+chunks are connected by plus signs.  
 .RE
 .IP
-Example:
+Example: 
 .RS 11
 For a job which requested two chunks
 that were satisfied by resources from three vnodes,
-.I exec_vnode
+.I exec_vnode 
 is
 .br
 (vnodeA:ncpus=N:mem=X)+(vnodeB:ncpus=P:mem=Y+vnodeC:mem=Z).
 .br
 For a job which requested one chunk and exclusive use of a 2-vnode host,
 where the chunk was satisfied by resources from one vnode,
-.I exec_vnode
+.I exec_vnode 
 is
 .br
 (vnodeA:ncpus=N:mem=X)+(vnodeB).
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.exec_vnode
 .br
 Default: No default
@@ -725,14 +748,14 @@ Default: No default
 .IP Exit_status 8
 Exit status of job.  Set to zero for successful execution.  If any
 subjob of an array job has non-zero exit status, the array job has
-non-zero exit status.
+non-zero exit status.  
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -742,7 +765,7 @@ Contains the X authorization cookie.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
 Python type:
@@ -751,15 +774,15 @@ Python type:
 Default: No default
 
 .IP "forward_x11_port"  8
-Contains the number of the port being listened to by the port
+Contains the number of the port being listened to by the port 
 forwarder on the submission host.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -769,31 +792,31 @@ A list of group names used to determine the group under which the job
 runs. When a job runs, the server selects a group name from the list
 according to the following ordered set of rules:
 .RS
-.IP "1." 3
+.IP "1." 3 
 Select the group name for which the associated host name matches the
 name of the server host.
 
-.IP "2." 3
+.IP "2." 3 
 Select the group name which has no associated host name.
 
-.IP "3." 3
-Use the login group for the user name under which the job will be run.
+.IP "3." 3 
+Use the login group for the user name under which the job will be run. 
 .RE
 .IP
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 .I <group name>[@<hostname>] [,<group name>[@<hostname>] ...]
 .br
 Must be enclosed in double quotes if it contains commas.
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.group_list
 .br
 Default: No default
@@ -802,20 +825,20 @@ Default: No default
 No longer used.
 
 .IP "Hold_Types" 8
-The set of holds currently applied to the job.  If the set is not null,
+The set of holds currently applied to the job.  If the set is not null, 
 the job will not be scheduled for execution and is said to be in the
 .I held
 state.  The
 .I held
 state takes precedence over the
 .I wait
-state.
+state.  
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
-.I String,
-made up of the letters
+Format: 
+.I String, 
+made up of the letters 
 .I 'n', 'o', 'p', 's', 'u'
 .br
 Hold types:
@@ -832,7 +855,7 @@ System hold
 User hold
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.hold_types
 .br
 Default:
@@ -841,13 +864,13 @@ Default:
 .RE
 
 .IP "interactive" 8
-Specifies whether the job is interactive.
+Specifies whether the job is interactive.  
 .br
-When both this attribute and the
+When both this attribute and the 
 .I block
-attribute are
-.I True,
-no exit status is returned.
+attribute are 
+.I True, 
+no exit status is returned.  
 For X11 forwarding jobs, the job's exit status is not returned.
 .br
 Cannot be set using a PBS directive.
@@ -856,47 +879,47 @@ Job arrays cannot be interactive.
 .br
 Can be set, but not altered, by unprivileged user.  Can be read by Operator, Manager.
 .br
-Format:
+Format: 
 .I Boolean
 .br
-Python type:
+Python type: 
 .I int
 .br
-Default:
+Default: 
 .I False
 
 .IP "jobdir" 8
-Path of the job's staging and execution directory on the
+Path of the job's staging and execution directory on the 
 primary execution host.  Either user's home, or private sandbox.
-Depends on value of
+Depends on value of 
 .I sandbox
-attribute.  Viewable via
+attribute.  Viewable via 
 .B qstat -f.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP "Job_Name" 8
-The job name.  See the
+The job name.  See the 
 .B qsub
 and
 .B qalter
-commands.
+commands.   
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
-.I String
+Format: 
+.I String 
 up to 236 characters, first character must be alphabetic or numeric
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: Base name of job script, or STDIN
@@ -906,10 +929,10 @@ The login name on the submitting host of the user who submitted the batch job.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
@@ -919,11 +942,11 @@ The state of the job.
 .br
 Readable by all.  Can be set indirectly by all.
 .br
-Format:
+Format: 
 .I Character
 .br
 Job states:
-.RS
+.RS 
 .IP B 3
 .I Begun.
 Job arrays only.  The job array has begun execution.
@@ -931,7 +954,7 @@ Job arrays only.  The job array has begun execution.
 Python type: PBS job state constant
 .I pbs.JOB_STATE_BEGUN
 .IP E 3
-.I Exiting.
+.I Exiting.  
 The job has finished, with or without errors,
 and PBS is cleaning up post-execution.
 .br
@@ -945,19 +968,19 @@ or job was deleted.
 Python type: PBS job state constant
 .I pbs.JOB_STATE_FINISHED
 .IP H 3
-.I Held.
-The job is held.
+.I Held.  
+The job is held. 
 .br
 Python type: PBS job state constant
 .I pbs.JOB_STATE_HELD
 .IP M 3
 .I Moved.
-Job has been moved to another server.
+Job has been moved to another server. 
 .br
 Python type: PBS job state constant
 .I pbs.JOB_STATE_MOVED
 .IP Q 3
-.I Queued.
+.I Queued.  
 The job resides in an execution or routing queue pending
 execution or routing.  It is not in
 .B held
@@ -968,26 +991,26 @@ state.
 Python type: PBS job state constant
 .I pbs.JOB_STATE_QUEUED
 .IP R 3
-.I Running.
+.I Running.  
 The job is in a execution queue and is running.
 .br
 Python type: PBS job state constant
 .I pbs.JOB_STATE_RUNNING
 .IP S 3
-.I Suspended.
-The job was executing and has been suspended.
+.I Suspended.  
+The job was executing and has been suspended.   
 The job does not use CPU cycles or walltime.
 .br
 Python type: PBS job state constant
 .I pbs.JOB_STATE_SUSPEND
 .IP T 3
-.I Transiting.
+.I Transiting.  
 The job is being routed or moved to a new destination.
 .br
 Python type: PBS job state constant
 .I pbs.JOB_STATE_TRANSIT
 .IP U 3
-.I User suspended.
+.I User suspended.  
 The job was running on a workstation configured for cycle
 harvesting and the keyboard/mouse is currently busy.  The job is suspended
 until the workstation has been idle for a configured amount of time.
@@ -995,11 +1018,11 @@ until the workstation has been idle for a configured amount of time.
 Python type: PBS job state constant
 .I pbs.JOB_STATE_SUSPEND_USERACTIVE
 .IP W 3
-.I Waiting.
-The
+.I Waiting.  
+The 
 .I Execution_Time
 attribute contains a time in the future.  Can be set when
-stage-in fails and PBS moves job start time out
+stage-in fails and PBS moves job start time out 
 30 minutes to allow user to fix problem.
 .br
 Python type: PBS job state constant
@@ -1015,23 +1038,23 @@ Python type: PBS job state constant
 
 .IP "Join_Path" 8
 Specifies whether the job's standard error and standard output streams
-are to be merged and placed in the file specified in the
+are to be merged and placed in the file specified in the 
 .I Output_Path
 job attribute.
 .br
-When set to
-.I True,
+When set to 
+.I True, 
 the job's standard error and standard output streams are merged.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
 Behavior:
 .RS
 .IP eo 3
-Standard output and standard error are merged, intermixed, into a
+Standard output and standard error are merged, intermixed, into a 
 single stream, which becomes standard error.
 .IP oe 3
 Standard output and standard error are merged, intermixed, into a single stream, which becomes standard output.
@@ -1039,27 +1062,27 @@ Standard output and standard error are merged, intermixed, into a single stream,
 Standard output and standard error are not merged.
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.join_path
 .br
-Default:
+Default: 
 .I False
 
 .IP "Keep_Files" 8
 Specifies whether the standard output and/or standard error streams
 are retained on the execution host in the job's staging and execution
 directory after the job has executed.  Otherwise these files are
-returned to the submission host.
-.I Keep_Files
-overrides the
+returned to the submission host.  
+.I Keep_Files 
+overrides the 
 .I Output_Path
-and
-.I Error_Path
+and 
+.I Error_Path 
 attributes.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Python type:
@@ -1071,7 +1094,7 @@ Valid values: Can be one of the following:
 The standard output stream is retained.  The filename is:
 .I <job name>.o<sequence number>
 .IP e 3
-The standard error stream is  retained.  The filename is:
+The standard error stream is  retained.  The filename is: 
 .I <job name>.e<sequence number>
 .IP "eo, oe" 3
 Both standard output and standard error streams are retained.
@@ -1080,8 +1103,8 @@ Output and error are written directly to their final destination
 .IP n 3
 Neither stream is retained.  Files are returned to submission host.
 .RE
-.IP
-Default:
+.IP 
+Default: 
 .I n
 .RS 11
 (neither stream is retained, and files are returned to submission host.)
@@ -1095,16 +1118,16 @@ Can be read and set by user, Operator, Manager.
 Format:
 .I String
 .br
-Python type:
+Python type: 
 .I pbs.mail_points
 .br
 Valid values: Combination of
-.I a, b,
+.I a, b, 
 and
-.I e,
-with optional
-.I j,
-or
+.I e, 
+with optional 
+.I j, 
+or 
 .I n
 by itself.
 .RS
@@ -1116,31 +1139,31 @@ Mail is sent at beginning of job
 Mail is sent when job ends
 .IP j 3
 Mail is sent for subjobs.  Must be combined with one or more of
-.I a, b,
-and
+.I a, b, 
+and 
 .I e
 options.
 .IP n 3
 No mail is sent.  Cannot be combined with other options.
 .RE
 .IP
-Default:
+Default: 
 .I a
 
 .IP "Mail_Users" 8
 The set of users to whom mail is sent when the job makes state changes
-specified in the
+specified in the 
 .I Mail_Points
 job attribute.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
 Syntax: "<username>@<hostname>[,<username>@<hostname>]"
 .br
-Python type:
+Python type: 
 .I pbs.email_list
 .br
 Default: Job owner only
@@ -1148,16 +1171,16 @@ Default: Job owner only
 .IP mtime 8
 Timestamp; the time that the job was last modified, changed state, or changed locations.
 .br
-Format:
+Format: 
 .I Integer.
 .br
-Syntax: Timestamp.
+Syntax: Timestamp.  
 .RS 11
-Printed by qstat in human-readable format; output in hooks
+Printed by qstat in human-readable format; output in hooks 
 as seconds since epoch.
 .RE
 .IP
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -1175,13 +1198,13 @@ commands.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
-Syntax:
+Syntax: 
 .I [<hostname>:]<path>
 .br
 Valid values:
@@ -1195,74 +1218,74 @@ Path is absolute path on current host where command is executing.
 Path is relative to user's home directory on specified host.
 .IP "<hostname>:<absolute path>" 3
 Path is absolute path on named host.
-.IP "No path" 3
+.IP "No path" 3 
 Path is current working directory where qsub is executed.
 .RE
 .IP
-Default:
+Default: 
 .RS 11
 Default path is current working directory where qsub is run.
 .br
 If the output path is specified, but does not include a
-filename, the default filename is
-.I <job ID>.OU.
+filename, the default filename is 
+.I <job ID>.OU.  
 .br
-If the path name is not specified, the default filename is
+If the path name is not specified, the default filename is 
 .I <job name>.o<sequence number>.
 .RE
 
 .IP "pcap_accelerator" 8
-Power attribute.  Power cap for an accleerator.  Corresponds to Cray
+Power attribute.  Power cap for an accleerator.  Corresponds to Cray 
 .I capmc set_power_cap --accel
-setting.  See
+setting.  See 
 .I capmc
 documentation.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Units:
+Units: 
 .I Watts
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: Unset
 
 .IP "pcap_node" 8
-Power attribute.  Power cap for a node.  Corresponds to Cray
+Power attribute.  Power cap for a node.  Corresponds to Cray 
 .I capmc set_power_cap --node
-setting.  See
+setting.  See 
 .I capmc
 documentation.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Units:
+Units: 
 .I Watts
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: Unset
 
 .IP "pgov" 8
 Power attribute.  Cray ALPS reservation setting for CPU throttling
-corresponding to
+corresponding to 
 .I p-governor.
 See BASIL 1.4 documentation.  We do not recommend using this attribute.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: Unset
@@ -1272,15 +1295,15 @@ The scheduling priority for the job.  Higher value indicates higher priority.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Syntax:
+Syntax: 
 .I [+|-]nnnnn
 .br
 Valid values: [-1024, +1023] inclusive
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: Unset
@@ -1291,49 +1314,50 @@ to at most one project.
 .br
 Readable and settable by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .RS 11
 Can contain any characters except for the following:
-Slash ("/"), left bracket ("["), right bracket ("]"), double quote ("""),
-semicolon (";"), colon (":"), vertical bar ("|"), left angle bracket ("<"),
-right angle bracket (">"), plus ("+"), comma (","), question mark ("?"),
+Slash ("/"), left bracket ("["), right bracket ("]"), double quote ("""), 
+semicolon (";"), colon (":"), vertical bar ("|"), left angle bracket ("<"), 
+right angle bracket (">"), plus ("+"), comma (","), question mark ("?"), 
 and asterisk ("*").
 .RE
 .IP
-Python type:
+Python type: 
 .I str
 .br
 Default: "_pbs_project_default"
 
 .IP "pset" 8
-Name of the placement set used by the job.
+.B Deprecated.  
+Name of the placement set used by the job.  
 .br
 Can be read by user, Operator.  Can be read and set by Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
 
 .IP "pstate" 8
 Power attribute.  Cray ALPS reservation setting for CPU frequency
-corresponding to
+corresponding to 
 .I p-state.
-See BASIL 1.4 documentation.
+See BASIL 1.4 documentation.  
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Units:
 .I Hertz
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: Unset
@@ -1343,16 +1367,16 @@ Timestamp; the time that the job entered the current queue.
 .br
 Readable by all; settable only by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Syntax: Timestamp.
+Syntax: Timestamp.  
 .RS 11
-Printed by qstat in human-readable format; output in hooks
+Printed by qstat in human-readable format; output in hooks 
 as seconds since epoch.
 .RE
 .IP
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -1362,45 +1386,45 @@ The name of the queue in which the job currently resides.
 .br
 Readable by all; settable only by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I pbs.queue
 .br
 Default: No default
 
 .IP queue_rank 8
 A number indicating the job's position within the
-queue.  Only used internally by PBS.
+queue.  Only used internally by PBS.  
 .br
 Readable by Manager only.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
 
 .IP queue_type 8
-The type of queue in which the job is currently residing.
+The type of queue in which the job is currently residing.  
 .br
 Readable by Manager only.
 .br
-Format:
+Format: 
 .I Character
 .br
-Valid values: One of
+Valid values: One of 
 .I E
-or
+or 
 .I R
 .RS
 .IP E 3
 Execution queue
 .br
-Python type:
+Python type: 
 .RS 3
 PBS job state constant
 .I pbs.QUEUE_TYPE_EXECUTION
@@ -1408,7 +1432,7 @@ PBS job state constant
 .IP R 3
 Routing queue
 .br
-Python type:
+Python type: 
 .RS 3
 PBS job state constant
 .I pbs.QUEUE_TYPE_EXECUTION
@@ -1420,31 +1444,30 @@ Default: No default
 .IP "release_nodes_on_stageout" 8
 Controls whether job vnodes are released when stageout begins.
 .br
-Cannot be used with vnodes managed by cpuset MoMs, (whose arch is
-linux_cpuset), or with vnodes tied to Cray X* series systems.
+Cannot be used with vnodes tied to Cray X* series systems.
 .br
 When cgroups is enabled and this is used with some but not all vnodes
 from one MoM, resources on those vnodes that are part of a cgroup are
 not released until the entire cgroup is released.
 .br
-The job's
-.I stageout
+The job's 
+.I stageout 
 attribute must be set for the
-.I release_nodes_on_stageout
+.I release_nodes_on_stageout 
 attribute to take effect.
 .br
-When set to
-.I True,
+When set to 
+.I True, 
 all of the job's vnodes not on the primary execution
-host are released when stageout begins.
+host are released when stageout begins.  
 .br
-When set to
+When set to 
 .I False,
 job's vnodes are released when the job finishes and MoM cleans up the job.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I Boolean
 .br
 Python type:
@@ -1454,12 +1477,12 @@ Default:
 .I False
 
 .IP "Remove_Files" 8
-Specifies whether standard output and/or standard error files are
+Specifies whether standard output and/or standard error files are 
 automatically removed upon job completion.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
 Python type:
@@ -1481,46 +1504,45 @@ Default: Unset
 
 .IP "Rerunable" 8
 Specifies whether the job can be rerun.  Does not affect how a job is
-treated if the job could not begin execution.  See "Allowing Your Job
-to be Re-run", in the PBS User's Guide.
+treated if the job could not begin execution.  
 .br
 Job arrays are required to be rerunnable and are rerunnable by
 default.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I Character
 .br
-Syntax: One of
+Syntax: One of 
 .I y
-or
+or 
 .I n
 .br
-Python type:
+Python type: 
 .I bool
 .br
 Default: y (job is rerunnable)
 
 .IP "Resource_List" 8
-The list of resources required by the job. List is a set of
-.I <resource name>=<value>
+The list of resources required by the job. List is a set of 
+.I <resource name>=<value> 
 strings. The meaning of name and value is dependent upon
 defined resources. Each value establishes the limit of usage of that
 resource. If not set, the value for a resource may be determined by a
-queue or server default established by the administrator.
+queue or server default established by the administrator. 
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 .I Resource_List.<resource name>=<value>[, Resource_List.<resource name>=<value>, ...]
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.pbs_resource
 .br
 Syntax:
@@ -1534,16 +1556,16 @@ Default: No default
 
 .IP "resources_released" 8
 Listed by vnode, consumable resources that were released when the job
-was suspended.  Populated only when
+was suspended.  Populated only when 
 .I restrict_res_to_release_on_suspend
-server attribute is set.
+server attribute is set.  
 .br
 Readable by all.  Set by server.
 .br
-Format:
-.I String
+Format: 
+.I String 
 .br
-Syntax:
+Syntax: 
 .RS 11
 .I (<vnode>:<resource name>=<value>:
 .I <resource name>=<value>:...)+
@@ -1558,84 +1580,84 @@ Default: No default
 .IP "resource_release_list" 8
 Sum of each consumable resource requested by the job that was released
 when the job was suspended.  Populated only when
-.I restrict_res_to_release_on_suspend
-server attribute is set.
+.I restrict_res_to_release_on_suspend 
+server attribute is set. 
 .br
 Readable by Manager and Operator.  Set by server.
 .br
-Format:
-.I String
+Format: 
+.I String 
 .br
-Syntax:
+Syntax: 
 .RS 11
 .I resource_released_list.<resource name>=<value>,
 .I resource_released_list.<resource name>=<value>, ...
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.pbs_resource
 .br
 Default: No default
 
 .IP "resources_used" 8
-The amount of each resource used by the job.
+The amount of each resource used by the job.  
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
-List of
+List of 
 .I resources_used.<resource name>=<value>,resources_used.<resource name>=<value>
-pairs.
+pairs.  
 .RE
 .IP
 Example: resources_used.mem=2mb
 .br
-Python type:
+Python type: 
 .I pbs.pbs_resource
 .br
 Syntax:
 .RS 11
-resources_used["<resource name>"]=<value>
+resources_used["<resource name>"]=<value> 
 .br
 where <resource name> is any built-in or custom resource
 .RE
-.IP
+.IP 
 Default: No default
 
 .IP run_count 8
-The number of times the server thinks the job has been executed.
+The number of times the server thinks the job has been executed.  
 .br
 The
 .I run_count
-attribute starts at zero.  Job is held after 21 tries.
+attribute starts at zero.  Job is held after 21 tries.  
 .br
 Can be set via qsub, qalter, or a hook.
 .br
 Can be read and set by Manager and Operator.
 .br
-Format:
+Format: 
 .I Integer;
 must be greater than or equal to zero.
 .br
-Python type:
+Python type: 
 .I int
 .br
-Default:
+Default: 
 .I Zero
 
 .IP "run_version" 8
-Used internally by PBS to track the instance of the job.
+Used internally by PBS to track the instance of the job.  
 .br
-Set by PBS.  Visible to Manager only.
+Set by PBS.  Visible to Manager only.  
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -1643,48 +1665,48 @@ Default: No default
 .IP "sandbox" 8
 Specifies type of location PBS uses for job staging and execution.
 .br
-User-settable via
+User-settable via 
 .B qsub -Wsandbox=<value>
 or via a PBS directive.
 .br
-See the $jobdir_root MoM configuration option in
-.B pbs_mom.8B.
+See the $jobdir_root MoM configuration option in 
+.B pbs_mom.8B. 
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Valid values:
-.I PRIVATE, HOME,
+Valid values: 
+.I PRIVATE, HOME, 
 unset
 .br
 .RS
 .IP PRIVATE 3
 When set to PRIVATE, PBS creates job-specific staging and
-execution directories under the directory specified in
-the
-.I $jobdir_root
+execution directories under the directory specified in 
+the 
+.I $jobdir_root 
 MoM configuration option.
 .IP "HOME or unset" 3
 PBS uses the job owner's home directory for staging and execution.
 .RE
 .IP
-Python type:
-.I str
+Python type: 
+.I str 
 .br
 Default: Unset
 
 .IP schedselect  8
-The union of the select specification of the job, and the queue and
-server defaults for resources in a chunk.
+The union of the select specification of the job, and the queue and 
+server defaults for resources in a chunk.  
 .br
 Can be read by PBS Manager only.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I pbs.select
 .br
 Default: No default
@@ -1700,10 +1722,10 @@ via qmove or peer scheduling, shows the name of the new server.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I pbs.server
 .br
 Default: No default
@@ -1714,10 +1736,10 @@ executing task.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -1728,17 +1750,17 @@ script file.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 "<path>[@<hostname>][,<path>[@<hostname>]...]"
 .br
 Must be enclosed in double quotes if it contains commas.
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.path_list
 .br
 Default: User's login shell on execution host
@@ -1748,16 +1770,16 @@ The list of files to be staged in prior to job execution.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 "<execution path>@<storage host>:<storage path>
 [, <execution path>@<storage host>:<storage path>, ...]"
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.staging_list
 .br
 Default: No default
@@ -1767,34 +1789,34 @@ The list of files to be staged out after job execution.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 "<execution path>@<storage host>:<storage path>
 [, <execution path>@<storage host>:<storage path>, ...]"
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.staging_list
 .br
 Default: No default
 
 .IP Stageout_status 8
-Status of stageout.  If stageout succeeded, this is set to 1.
-If stageout failed, this is
-set to 0.  Displayed only if set.
-If stageout fails for any subjob of an array job, the value of
+Status of stageout.  If stageout succeeded, this is set to 1.  
+If stageout failed, this is 
+set to 0.  Displayed only if set.  
+If stageout fails for any subjob of an array job, the value of 
 .I Stageout_status
 is zero for the array job.  Available only for finished jobs.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
@@ -1804,31 +1826,31 @@ Timestamp; time when the job started execution.  Changes when job is restarted.
 .br
 Readable by all; set by PBS.
 .br
-Format:
-.I Integer
+Format: 
+.I Integer 
 .br
-Syntax: Timestamp.
+Syntax: Timestamp.  
 .RS 11
-Printed by qstat in human-readable format; output in hooks
+Printed by qstat in human-readable format; output in hooks 
 as seconds since epoch.
 .RE
 .IP
-Python type:
+Python type: 
 .I int
 .br
 Default: No default
 
 .IP "Submit_arguments" 8
-Job submission arguments given on the
+Job submission arguments given on the 
 .B qsub
 command line.  Available for all jobs.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I String
 .br
-Python type:
+Python type: 
 .I str
 .br
 Default: No default
@@ -1838,12 +1860,12 @@ The substate of the job.  The substate is used internally by PBS.
 .br
 Readable by all; set by PBS.
 .br
-Format:
+Format: 
 .I Integer
 .br
-Python type:
+Python type: 
 .I int
-.br
+.br 
 Default: No default
 
 .IP sw_index 8
@@ -1852,19 +1874,19 @@ Default: No default
 .IP "tobjob_ineligible" 8
 Allows administrators to mark this job as ineligible to be a top job.
 .br
-When
+When 
 .I True
 , this job is not eligible to be the top job.
 .br
 Can be read and set by Manager.
 .br
-Format:
+Format: 
 .I Boolean
 .br
-Python type:
+Python type: 
 .I bool
 .br
-Default:
+Default: 
 .I False
 
 .IP umask 8
@@ -1874,13 +1896,13 @@ initialization files such as .profile or .cshrc.
 .br
 Can be read and set by user, Operator, Manager.
 .br
-Format:
+Format: 
 .I Decimal integer
 .br
-Python type:
+Python type: 
 .I int
 .br
-Default:
+Default: 
 .I 077
 
 .IP "User_List" 8
@@ -1890,25 +1912,25 @@ is run on a given host.  No length limit.
 When a job is to be executed, the server selects a user name from the
 list according to the following ordered set of rules:
 .RS
-.IP 1. 3
+.IP 1. 3 
 Select the user name from the list for which the associated host name
 matches the name of the server.
 .IP 2. 3
 Select the user name which has no associated host name; the wild card name.
-.IP 3. 3
-Use the value of
-.I Job_Owner
+.IP 3. 3 
+Use the value of 
+.I Job_Owner 
 as the user name.
 .RE
 .IP
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
-"<username>@<hostname> [,<username>@<hostname>...]"
+"<username>@<hostname> [,<username>@<hostname>...]" 
 .br
 Must be enclosed in double quotes if it contains commas.  May be up to
 256 characters in length.
@@ -1917,7 +1939,7 @@ Must be enclosed in double quotes if it contains commas.  May be up to
 Python type:
 .I pbs.user_list
 .br
-Default: Value of
+Default: Value of 
 .I Job_Owner
 job attribute
 
@@ -1927,21 +1949,21 @@ See the qsub(1B) command.
 .br
 Readable and settable by all.
 .br
-Format:
+Format: 
 .I String
 .br
-Syntax:
+Syntax: 
 .RS 11
 "<variable name>=<value> [,<variable name>=<value>...]"
 .br
-Must be enclosed in double quotes if it contains commas.
+Must be enclosed in double quotes if it contains commas. 
 .RE
 .IP
-Python type:
+Python type: 
 .I pbs.pbs_resource
 .br
 Syntax:
-.RS 11
+.RS 11 
 Variable_List["<variable name>"]=<value>
 .RE
 .IP
