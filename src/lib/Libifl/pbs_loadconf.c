@@ -707,10 +707,6 @@ __pbs_loadconf(int reload)
 		free(pbs_conf.cp_path);
 		pbs_conf.cp_path = shorten_and_cleanup_path(gvalue);
 	}
-	if ((gvalue = getenv(PBS_CONF_K5DCELOGIN)) != NULL) {
-		free(pbs_conf.k5dcelogin_path);
-		pbs_conf.k5dcelogin_path = shorten_and_cleanup_path(gvalue);
-	}
 	if ((gvalue = getenv(PBS_CONF_PRIMARY)) != NULL) {
 		free(pbs_conf.pbs_primary);
 		if ((pbs_conf.pbs_primary = strdup(gvalue)) == NULL) {
@@ -1067,10 +1063,6 @@ err:
 	if (pbs_conf.cp_path) {
 		free(pbs_conf.cp_path);
 		pbs_conf.cp_path = NULL;
-	}
-	if (pbs_conf.k5dcelogin_path) {
-		free(pbs_conf.k5dcelogin_path);
-		pbs_conf.k5dcelogin_path = NULL;
 	}
 	if (pbs_conf.pbs_environment) {
 		free(pbs_conf.pbs_environment);
