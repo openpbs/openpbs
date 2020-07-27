@@ -109,7 +109,7 @@ def timeout(val):
 
 def checkModule(modname):
     def wrapper(func):
-        return func 
+        return func
     import imp
     try:
         imp.find_module(modname)
@@ -121,14 +121,16 @@ def checkModule(modname):
 def momIsCray(self):
     return self.mom.is_cray()
 
+
 skipOnCray = unittest.skipIf(momIsCray, 'capability not supported on Cray')
 
 
 def momIsShasta(self):
     return self.mom.is_shasta()
 
-skipOnShasta = unittest.skipIf(momIsShasta,\
-    'capability not supported on Cray Shasta')
+
+skipOnShasta = unittest.skipIf(momIsShasta,
+                               'capability not supported on Cray Shasta')
 
 
 def anyMomIsCpuSet(self):
@@ -137,8 +139,10 @@ def anyMomIsCpuSet(self):
             return True
     return False
 
-skipOnCpuSet = unittest.skipIf(anyMomIsCpuSet,\
-    'capability not supported on cgroup cpuset system')
+
+skipOnCpuSet = unittest.skipIf(anyMomIsCpuSet,
+                               'capability not supported on cgroup '
+                               'cpuset system')
 
 
 def requirements(*args, **kwargs):
