@@ -512,10 +512,6 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.cp_path);
 				pbs_conf.cp_path = shorten_and_cleanup_path(conf_value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_K5DCELOGIN)) {
-				free(pbs_conf.k5dcelogin_path);
-				pbs_conf.k5dcelogin_path = shorten_and_cleanup_path(conf_value);
-			}
 			/* rcp_path can be inferred from pbs_conf.pbs_exec_path - see below */
 			/* pbs_demux_path is inferred from pbs_conf.pbs_exec_path - see below */
 			else if (!strcmp(conf_name, PBS_CONF_ENVIRONMENT)) {
