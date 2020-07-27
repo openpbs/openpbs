@@ -12,6 +12,8 @@
 
 #include "histedit.h"
 
+#ifdef QMGR_HAVE_HIST
+
 EditLine *el;
 HistEvent ev;
 History *qmgrhist;
@@ -336,3 +338,5 @@ get_request_hist(char **request)
 	}
 	return 1;
 }
+
+#endif
