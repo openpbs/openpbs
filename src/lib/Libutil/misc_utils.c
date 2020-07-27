@@ -350,8 +350,8 @@ pbs_strcpy(char *dest, const char *src)
  */
 char *pbs_strncpy(char *dest, const char *src, size_t n)
 {
-    strncpy(dest, src, n-1);
-    dest[n-1] = '\0';
+    strncpy(dest, src, n - 1);
+    dest[n - 1] = '\0';
     return dest;
 }
 
@@ -368,6 +368,7 @@ char *pbs_strncpy(char *dest, const char *src, size_t n)
  * @retval pointer to *pbuf(the string pbuf points at) on successful read
  * @retval NULL on EOF or error
  */
+#define PBS_FGETS_LINE_LEN 8192
 char *
 pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp)
 {

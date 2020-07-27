@@ -48,8 +48,6 @@ extern "C" {
 #include <stdio.h>
 #include <netinet/in.h>
 
-#define PBS_FGETS_LINE_LEN 8192
-
 /* misc_utils specific */
 
 /* replace - Replace sub-string  with new pattern in string */

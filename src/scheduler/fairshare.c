@@ -627,7 +627,7 @@ write_usage(char *filename, fairshare_head *fhead)
 	 * ...
 	 */
 
-	pbs_strncpy(head.tag, USAGE_MAGIC, 9);
+	pbs_strncpy(head.tag, USAGE_MAGIC, sizeof(head.tag));
 	head.version = USAGE_VERSION;
 	fwrite(&head, sizeof(struct group_node_header), 1, fp);
 	fwrite(&fhead->last_decay, sizeof(time_t), 1, fp);

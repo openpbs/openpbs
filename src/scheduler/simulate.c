@@ -576,19 +576,19 @@ perform_event(status *policy, timed_event *event)
 			}
 			break;
 		case TIMED_POLICY_EVENT:
-			pbs_strncpy(logbuf, "Policy change", LOG_BUF_SIZE);
+			pbs_strncpy(logbuf, "Policy change", sizeof(logbuf));
 			break;
 		case TIMED_DED_START_EVENT:
-			pbs_strncpy(logbuf, "Dedtime Start", LOG_BUF_SIZE);
+			pbs_strncpy(logbuf, "Dedtime Start", sizeof(logbuf));
 			break;
 		case TIMED_DED_END_EVENT:
-			pbs_strncpy(logbuf, "Dedtime End", LOG_BUF_SIZE);
+			pbs_strncpy(logbuf, "Dedtime End", sizeof(logbuf));
 			break;
 		case TIMED_NODE_UP_EVENT:
-			pbs_strncpy(logbuf, "Node Up", LOG_BUF_SIZE);
+			pbs_strncpy(logbuf, "Node Up", sizeof(logbuf));
 			break;
 		case TIMED_NODE_DOWN_EVENT:
-			pbs_strncpy(logbuf, "Node Down", LOG_BUF_SIZE);
+			pbs_strncpy(logbuf, "Node Down", sizeof(logbuf));
 			break;
 		default:
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,

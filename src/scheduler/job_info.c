@@ -4148,7 +4148,7 @@ modify_job_array_for_qrun(server_info *sinfo, char *jobid)
 	if (sinfo == NULL || jobid == NULL)
 		return -1;
 
-	pbs_strncpy(name, jobid, 128);
+	pbs_strncpy(name, jobid, sizeof(name));
 
 	if ((ptr = strchr(name, (int) '[')) == NULL)
 		return 0;
@@ -4159,7 +4159,7 @@ modify_job_array_for_qrun(server_info *sinfo, char *jobid)
 	if ((ptr = strchr(rangestr, ']')) == NULL)
 		return 0;
 
-	pbs_strncpy(rest, ptr, 128);
+	pbs_strncpy(rest, ptr, sizeof(rest));
 
 	*ptr = '\0';
 

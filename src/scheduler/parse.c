@@ -103,7 +103,7 @@ parse_config(char *fname)
 	FILE *fp;			/* file pointer to config file */
 	char *buf = NULL;
 	int buf_size = 0;
-	char buf2[PBS_FGETS_LINE_LEN];	/* general purpose buffer */
+	char buf2[8192];		/* general purpose buffer */
 	char errbuf[1024];		/* buffer for reporting errors */
 	char *config_name;		/* parse first word of line */
 	char *config_value;		/* parsed second word - right after colen (:) */
@@ -389,7 +389,7 @@ parse_config(char *fname)
 					 * done by default prior to 7.1.
 					 */
 					if (strstr(config_value, "host") == NULL)
-						pbs_strncpy(buf2, "host,", PBS_FGETS_LINE_LEN);
+						pbs_strncpy(buf2, "host,", sizeof(buf2));
 
 					/* hack: add in "vnode" in 8.0 */
 					if (strstr(config_value, "vnode") == NULL)
@@ -414,19 +414,19 @@ parse_config(char *fname)
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						pbs_strncpy(conf.ded_prefix, config_value, PBS_MAXQUEUENAME + 1);
+						pbs_strncpy(conf.ded_prefix, config_value, sizeof(conf.ded_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_PRIMETIME_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						pbs_strncpy(conf.pt_prefix, config_value, PBS_MAXQUEUENAME + 1);
+						pbs_strncpy(conf.pt_prefix, config_value, sizeof(conf.pt_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_NONPRIMETIME_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						pbs_strncpy(conf.npt_prefix, config_value, PBS_MAXQUEUENAME + 1);
+						pbs_strncpy(conf.npt_prefix, config_value, sizeof(conf.npt_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_SMP_CLUSTER_DIST)) {
 					for (i = 0; i < HIGH_SMP_DIST; i++)
