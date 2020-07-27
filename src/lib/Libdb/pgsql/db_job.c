@@ -271,12 +271,23 @@ static int
 load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 {
 	char *raw_array;
-	static int ji_jobid_fnum, ji_state_fnum, ji_substate_fnum, ji_svrflags_fnum,
-	ji_stime_fnum, ji_queue_fnum, ji_destin_fnum, ji_un_type_fnum,
-	ji_exitstat_fnum, ji_quetime_fnum, ji_rteretry_fnum, ji_fromsock_fnum,
-	ji_fromaddr_fnum, ji_4jid_fnum, ji_credtype_fnum, ji_qrank_fnum,
-	attributes_fnum;
-
+	static int ji_jobid_fnum;
+	static int ji_state_fnum;
+	static int ji_substate_fnum;
+	static int ji_svrflags_fnum,
+	static int ji_stime_fnum;
+	static int ji_queue_fnum;
+	static int ji_destin_fnum;
+	static int ji_un_type_fnum,
+	static int ji_exitstat_fnum;
+	static int ji_quetime_fnum;
+	static int ji_rteretry_fnum;
+	static int ji_fromsock_fnum,
+	static int ji_fromaddr_fnum;
+	static int ji_4jid_fnum;
+	static int ji_credtype_fnum;
+	static int ji_qrank_fnum;
+	static int attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {

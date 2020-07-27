@@ -183,9 +183,16 @@ static int
 load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
 {
 	char *raw_array;
-	static int ri_resvid_fnum, ri_queue_fnum, ri_state_fnum, ri_substate_fnum, ri_stime_fnum,
-	ri_etime_fnum, ri_duration_fnum, ri_tactive_fnum, ri_svrflags_fnum, attributes_fnum;
-
+	static int ri_resvid_fnum;
+	static int ri_queue_fnum;
+	static int ri_state_fnum;
+	static int ri_substate_fnum;
+	static int ri_stime_fnum,
+	static int ri_etime_fnum;
+	static int ri_duration_fnum;
+	static int ri_tactive_fnum;
+	static int ri_svrflags_fnum;
+	static int attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {

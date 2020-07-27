@@ -255,16 +255,14 @@ extern int	task_recov(job *pjob);
 extern int	send_sisters(job *pjob, int com, pbs_jobndstm_t);
 extern int	send_sisters_inner(job *pjob, int com, pbs_jobndstm_t, char *);
 extern int	send_sisters_job_update(job *pjob);
-extern int	im_compose(int stream, char *jobid, char *cookie,
-	int command, tm_event_t	event, tm_task_id taskid, int version);
+extern int	im_compose(int stream, char *jobid, char *cookie, int command, tm_event_t event, tm_task_id taskid, int version);
 extern int	message_job(job *pjob, enum job_file jft, char *text);
 extern void	term_job(job *pjob);
 extern int	start_process(pbs_task *pt, char **argv, char **envp, bool nodemux);
 extern pre_finish_results_t pre_finish_exec(job *pjob, int do_job_setup_send);
 extern void	finish_exec(job *pjob);
 extern void	exec_bail(job *pjob, int code, char *txt);
-extern int	generate_pbs_nodefile(job *pjob, char *nodefile,
-	int nodefile_sz, char *err_msg, int err_msg_sz);
+extern int	generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz, char *err_msg, int err_msg_sz);
 extern int	job_nodes_inner(struct job *pjob, hnodent **mynp);
 extern int	job_nodes(job *pjob);
 extern int	tm_reply(int stream, int version, int com, tm_event_t event);

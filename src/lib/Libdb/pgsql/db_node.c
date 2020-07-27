@@ -218,8 +218,13 @@ static int
 load_node(PGresult *res, pbs_db_node_info_t *pnd, int row)
 {
 	char *raw_array;
-	static int nd_name_fnum, mom_modtime_fnum, nd_hostname_fnum, nd_state_fnum, nd_ntype_fnum,
-	nd_pque_fnum, attributes_fnum;
+	static int nd_name_fnum;
+	static int mom_modtime_fnum;
+	static int nd_hostname_fnum;
+	static int nd_state_fnum;
+	static int nd_ntype_fnum;
+	static int nd_pque_fnum;
+	static int attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {
