@@ -5524,12 +5524,12 @@ prov_startjob(struct work_task *ptask)
 
 	assert(ptask->wt_parm1 != NULL);
 	pjob = (job *) ptask->wt_parm1;
-        if (pjob == NULL) {
+	if (pjob == NULL) {
 		DBPRT(("%s: pjob is NULL\n", __func__))
 		return;
 	}
 	/* task being serviced here */
-        pjob->ji_prov_startjob_task = NULL;
+	pjob->ji_prov_startjob_task = NULL;
 	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_proc_running) &&
 	    (prov_vnode_pending_hook_copy(pjob))) {
 
@@ -5543,14 +5543,13 @@ prov_startjob(struct work_task *ptask)
 			"hookfiles is not completed\n"
 			, __func__))
 
-                /* set a work task to run after 5 sec from now */
+		/* set a work task to run after 5 sec from now */
 		pjob->ji_prov_startjob_task = set_task(WORK_Timed, time_now + 5,
                         				prov_startjob, pjob);
-                if (pjob->ji_prov_startjob_task == NULL) {
-                        log_err(errno, __func__,
-				"Unable to set task for prov_startjob; requeuing the job");
+		if (pjob->ji_prov_startjob_task == NULL) {
+			log_err(errno, __func__, "Unable to set task for prov_startjob; requeuing the job");
 			(void)force_reque(pjob);
-                }
+		}
 		return;
         }
 
