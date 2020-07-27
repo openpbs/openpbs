@@ -278,6 +278,7 @@ struct batch_reply
 #define PBS_BATCH_Cred			94
 #define PBS_BATCH_Authenticate		95
 #define PBS_BATCH_ModifyJob_Async	96
+#define PBS_BATCH_AsyrunJob_ack	97
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -299,6 +300,8 @@ struct batch_reply
 #define FAILOVER_SecdShutdown	3 /* Primary going down, secondary go down */
 #define FAILOVER_SecdGoInactive	4 /* Primary down, secondary go inactive */
 #define FAILOVER_SecdTakeOver	5 /* Primary down, secondary take over */
+
+#define EXTEND_OPT_IMPLICIT_COMMIT ":C:" /* option added to pbs_submit() extend parameter to request implicit commit */
 
 extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
@@ -326,7 +329,7 @@ extern void PBSD_FreeReply(struct batch_reply *);
 extern struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 extern preempt_job_info *PBSD_preempt_jobs(int, char **);
 extern struct batch_status *PBSD_status_get(int);
-extern char * PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **);
+extern char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
 extern int decode_DIS_svrattrl(int, pbs_list_head *);
 extern int decode_DIS_attrl(int, struct attrl **);
 extern int decode_DIS_JobId(int, char *);
@@ -362,7 +365,7 @@ extern int tcp_pre_process(conn_t *);
 extern char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 extern int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 
-int tcp_send_auth_req(int, unsigned int, char *);
+extern int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 
 #ifdef __cplusplus
 }

@@ -43,18 +43,17 @@
 PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
 export PBS_TMPDIR
 
-log_file="${PBS_HOME}/spool/pg_start.log"
 version_mismatch=3
 
 get_db_user() {
-  dbusr_file="${PBS_HOME}/server_priv/db_user"
-  if [ ! -f "${dbusr_file}" ]; then
-    echo "pbsdata"
-    return 0
-  else
-    cat "${dbusr_file}"
-    return $?
-  fi
+	dbusr_file="${PBS_HOME}/server_priv/db_user"
+	if [ ! -f "${dbusr_file}" ]; then
+		echo "pbsdata"
+		return 0
+	else
+		cat "${dbusr_file}"
+		return $?
+	fi
 }
 
 
@@ -66,13 +65,11 @@ get_db_user() {
 # 4. Set PBS_DATA_SERVICE_PORT to default port
 
 get_port() {
-
 	if [ "$1" ]; then
 		PBS_DATA_SERVICE_PORT="$1"
-
 	else
 		if [ -z "${PBS_DATA_SERVICE_PORT}" ]; then
-		    PBS_DATA_SERVICE_PORT=`awk '{if($1=="pbs_dataservice") {x=$2}} END {{split(x,a,"/")} {if ( a[2] == "tcp" ) print a[1]}}' /etc/services`
+			PBS_DATA_SERVICE_PORT=`awk '{if($1=="pbs_dataservice") {x=$2}} END {{split(x,a,"/")} {if ( a[2] == "tcp" ) print a[1]}}' /etc/services`
 		fi
 	fi
 
@@ -85,88 +82,72 @@ get_port() {
 export PBS_DATA_SERVICE_PORT
 get_port $3
 
-PGPORT=${PBS_DATA_SERVICE_PORT}
-export PGPORT
+DBPORT=${PBS_DATA_SERVICE_PORT}
+export DBPORT
 
-# Source the file that sets PGSQL_LIBSTR
-. "$PBS_EXEC"/libexec/pbs_pgsql_env.sh
+. ${PBS_EXEC}/libexec/pbs_db_env
 
-# On some platforms LD_LIBRARY_PATH etc is not passed on after su
-# so we set it again after the su. PGSQL_LIBSTR contains the line to
-# set the variable again
-export PGSQL_LIBSTR
-
-
-PGUSR=`get_db_user`
+DBUSER=`get_db_user`
 if [ $? -ne 0 ]; then
-  echo "Could not retrieve PBS Data Service User"
-  exit 1
+	echo "Could not retrieve PBS Data Service User"
+	exit 1
 fi
-export PGUSR
+export DBUSER
 
 if [ -z "${PBS_DATA_SERVICE_PORT}" ]; then
 	PBS_DATA_SERVICE_PORT="15007"
 fi
 
-
-
-PG_CTL="$PGSQL_BIN/pg_ctl -D ${PBS_HOME}/datastore"
-export PG_CTL
-
 CWD=`pwd`
 
-if [ ! -d "${PBS_HOME}/datastore/base" ]; then
+if [ -z "$(ls -A ${PBS_HOME}/datastore)" ]; then
 	echo "PBS Data Service not initialized"
 	exit 1
 fi
 
-# Check if PGUSR is defined and is non-root
-id=`id ${PGUSR} 2>&1`
+# Check if DBUSER is defined and is non-root
+id=`id ${DBUSER} 2>&1`
 if [ $? -ne 0 ]; then
-	echo "User ${PGUSR} does not exist"
+	echo "User ${DBUSER} does not exist"
 	exit 1
 fi
 
 # Check that id is not 0
 id=`echo ${id} | cut -c5- | cut -d "(" -f1`
-if [ "$id" = "0" ]; then
+if [ "${id}" = "0" ]; then
 	echo "PBS Data Service User should not be root"
 	exit 1
 fi
 
 # check I am root
 myid=`id | cut -c5- | cut -d "(" -f1 2>&1`
-if [ "$myid" != "0" ]; then
-      echo "Please run as root"
-      exit 1
+if [ "${myid}" != "0" ]; then
+	echo "Please run as root"
+	exit 1
 fi
 
-# Check if PGUSR is enabled, try to cd to user home
-if [ -n "$NASMODE" ] ; then
-	su - ${PGUSR} -s /bin/sh -c "cd" >/dev/null 2>&1
-else
-	su - ${PGUSR} -c "cd" >/dev/null 2>&1
-fi
+# Check if DBUSER is enabled, try to cd to user home
+su - ${DBUSER} -s /bin/sh -c "cd" >/dev/null 2>&1
 if [ $? -ne 0 ]; then
-	echo "Unable to login as user ${PGUSR}. Is the user enabled/home directory accessible?"
+	echo "Unable to login as user ${DBUSER}. Is the user enabled/home directory accessible?"
 	exit 1
 fi
 
 # check that the user has not tampered with the data user manually
 if [ -d "${PBS_HOME}/datastore" ]; then
 	dbstore_owner=`ls -ld ${PBS_HOME}/datastore | awk '{print $3}'`
-	if [ "${dbstore_owner}" != "${PGUSR}" ]; then
+	if [ "${dbstore_owner}" != "${DBUSER}" ]; then
 		echo "PBS DataService user value has been changed manually. Please revert back to the original value \"${dbstore_owner}\""
 		exit 1
 	fi
 else
-	echo "Path ${PBS_HOME}/datastore is not accessible by Data Service User ${PGUSR}"
+	echo "Path ${PBS_HOME}/datastore is not accessible by Data Service User ${DBUSER}"
 	exit 1
 fi
 
 #
 # The check_status function does the following:
-# Checks what pg_ctl thinks about the database status. If pg_ctl says db is up,
+# Checks what LIBDB thinks about the database status. If LIBDB says db is up,
 # just return 0 (running locally) else check if the datastore directory can be
 # locked.
 # If we cannot obtain exclusive lock, then return 2
@@ -179,232 +160,100 @@ fi
 #
 
 check_status() {
-  cd ${PBS_HOME}/datastore
-  if [ $? -ne 0 ]; then
-	echo "Could not change directory to ${PBS_HOME}/datastore"
-	exit -1
-  fi
-
-  if [ -n "$NASMODE" ] ; then
-	res=`su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w status'"`
-  else
-	res=`su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w status'"`
-  fi
-  status=$?
-
-  if [ ${status} -eq 0 ]; then
-	echo "$res" | grep 'no server running'
-	if [ $? -eq 0 ]; then
-		status=1
-	else
-		msg="PBS data service running locally"
-	fi
-  else
-	# check further only if pgctl thinks no postgres is running
-	status=1
-	msg="PBS data service not running"
-	out=`${data_srv_mon} check 2>&1`
-	if [ $? -ne 0 ]; then
-		status=2
-		msg="$out"
-	fi
-  fi
-
-  cd ${CWD}
-  export msg
-  return ${status}
-}
-
-
-#
-# Protect self from Linux OOM killer
-#
-oom_protect() {
-	if [ -f /proc/self/oom_score_adj ] ; then
-		echo "-1000" > /proc/self/oom_score_adj
-	elif [ -f /proc/self/oom_adj ] ; then
-		echo "-17" > /proc/self/oom_adj
-	fi
-}
-
-
-#
-# Launch monitoring by invoking the pbs_dataservice_monitor program
-# with the "monitor" parameter. If the monitor returns a 0 exit status, it
-# means it has been able to aquire a lock on a flag file, and so we can continue
-# to start the data service by calling pg_ctl.
-# This function also protects the database and the monitoring script from the
-# OOM on linux.
-# This function checks whether systemd (i.e. systemctl) is available on system or not?
-# If systemctl is available then register database processes with pbs.service
-#
-start_dataservice() {
-	is_systemd=0
-	systemctl --version >/dev/null 2>&1
-	if [ $? -eq 0 ] ; then
-		is_systemd=1
-	fi
-
 	cd ${PBS_HOME}/datastore
 	if [ $? -ne 0 ]; then
 		echo "Could not change directory to ${PBS_HOME}/datastore"
-		exit 1
+		exit -1
 	fi
 
-	oom_protect
+	res=`${data_srv_bin} -s status 2>&1`
+	status=$?
 
-	#launch monitoring program which will fork to background
-	out=`${data_srv_mon} monitor 2>&1`
-	ret=$?
-	if [ $ret -eq 0 ]; then
-		if [ "$1" = "startasync" ]; then
-			if [ -n "$NASMODE" ] ; then
-				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
-			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} setsid ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
-			fi
-		else
-			if [ -n "$NASMODE" ] ; then
-				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
-			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} setsid ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
-			fi
+	if [ ${status} -eq 0 ]; then
+		echo "${res}" | grep 'no server running'
+		if [ $? -eq 0 ]; then
+			status=1
+		else 
+			msg="PBS data service running locally"
 		fi
-		ret=$?
-		grep -q "database files are incompatible with server" $log_file
-		grep_ret=$?
-
-		if [ $grep_ret -eq 0 ]; then
-			return ${version_mismatch}
-		fi
-
-		if [ $ret -eq 0 -a $is_systemd -eq 1 ] ; then
-			SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`
-			if [ ! -d $SYSTEMD_CGROUP/system.slice/pbs.service ] ; then
-				mkdir -p $SYSTEMD_CGROUP/system.slice/pbs.service
-			fi
-
-			pstmstr_pid_found=0
-			try=0
-			while [ $try -lt 10 -a $pstmstr_pid_found -ne 1 ]
-			do
-				sleep 1
-				if [ -f ${PBS_HOME}/datastore/postmaster.pid ] ; then
-					pstmstr_pid_found=1
-				fi
-				try=`expr $try + 1`
-			done
-
-			if [ $pstmstr_pid_found -eq 1 ] ; then
-				P_PID=`head -n 1 ${PBS_HOME}/datastore/postmaster.pid`
-				if [ -n "$P_PID" ] ; then
-					echo $P_PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
-					pidlist=`pgrep -P $P_PID`
-					if [ -n "$pidlist" ] ; then
-						for PID in $pidlist; do
-							echo $PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
-						done
-					fi
-				fi
-			fi
+	else
+		# check further only if LIBDB thinks no DATABASE is running
+		status=1
+		msg="PBS data service not running"
+		out=`${data_srv_mon} check 2>&1`
+		if [ $? -ne 0 ]; then
+			status=2
+			msg="${out}"
 		fi
 	fi
+
 	cd ${CWD}
-
-	return ${ret}
+	export msg
+	return ${status}
 }
 
-
+data_srv_bin="${PBS_EXEC}/sbin/pbs_dataservice.bin"
 data_srv_mon="${PBS_EXEC}/sbin/pbs_ds_monitor"
 
-#
-# If second parameter is specified as "PBS" it means this was called from the PBS daemons
-# In such a case we do not want to be very verbose (as we only need the error code and msg)
-# When stop is called from command line we do a regular postgres stop, but when called from PBS
-# we do a "fast" stop of postgres. The "fast" stop disconnects any existing clients to ensure that
-# the postgres daemons are indeed stopped when PBS is stopped
-#
-
 case "$1" in
-	start|startasync)
+	start)
 		check_status
 		ret=$?
 		if [ ${ret} -eq 1 ]; then
-			if [ "$2" != "PBS" ]; then
-				echo "Starting PBS Data Service.."
-			fi
-			start_dataservice $1
+			echo "Starting PBS Data Service.."
+			${data_srv_bin} -s start
 			ret=$?
+
 			if [ ${ret} -ne 0 ]; then
-				if  [ "$2" != "PBS" ]; then
-					echo "Failed to start PBS Data Service"
-				else
-					cat $log_file 2> /dev/null
-					if [ ${ret} -eq ${version_mismatch} ]; then
-						echo "PBS database needs to be upgraded."
-						echo "Consult the documentation/release notes for details."
-					fi
+				echo "Failed to start PBS Data Service"
+				if [ ${ret} -eq ${version_mismatch} ]; then
+					echo "PBS database needs to be upgraded."
+					echo "Consult the documentation/release notes for details."
 				fi
 			fi
 		else
-			echo "$msg - cannot start"
+			echo "${msg} - cannot start"
 		fi
-		rm -f $log_file
 
 		exit ${ret}
 		;;
 
-	stop|stopasync)
+	stop)
 		check_status
 		ret=$?
 		if [ ${ret} -ne 0 ]; then
-		    echo "$msg - cannot stop"
-		    exit 0
+			echo "${msg} - cannot stop"
+			exit 0
 		fi
-		if [ "$2" != "PBS" ]; then
-			# Check if PBS is running
-			${PBS_EXEC}/bin/qstat >/dev/null 2>&1
-			if [ $? -eq 0 ]; then
-				echo "PBS server is running. Cannot stop PBS Data Service now."
-				server_pid="`ps -ef | grep "${PBS_EXEC}/sbin/pbs_server.bi[n]" | awk '{print $2}'`"
-				if [ -z "${server_pid}" ]; then
-					server_host="`${PBS_EXEC}/bin/qstat -Bf | grep 'server_host' | awk '{print $NF}'`"
-					if [ ! -z "${server_host}" ]; then
-						echo "PBS server is running on host ${server_host}."
-					fi
-					echo "Please check pbs.conf file to verify PBS is configured with correct server host value. Exiting."
+
+		# Check if PBS is running
+		${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			echo "PBS server is running. Cannot stop PBS Data Service now."
+			server_pid="`ps -ef | grep "pbs_server.bi[n]" | awk '{print $2}'`"
+			if [ -z "${server_pid}" ]; then
+				server_host="`${PBS_EXEC}/bin/qstat -Bf | grep 'server_host' | awk '{print $NF}'`"
+				if [ ! -z "${server_host}" ]; then
+					echo "PBS server is running on host ${server_host}."
 				fi
-				exit 1
+				echo "Please check pbs.conf file to verify PBS is configured with correct server host value. Exiting."
 			fi
-			echo "Stopping PBS Data Service.."
+			exit 1
 		fi
+		echo "Stopping PBS Data Service.."
 
 		cd ${PBS_HOME}/datastore
 		if [ $? -ne 0 ]; then
 			echo "Could not change directory to ${PBS_HOME}/datastore"
 			exit 1
 		fi
-		if [ "$2" = "PBS" ]; then
-			if [ -n "$NASMODE" ] ; then
-				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop -m fast'"
-			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop -m fast'"
-			fi
-		else
-			if [ -n "$NASMODE" ] ; then
-				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop'"
-			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop'"
-			fi
-		fi
+		${data_srv_bin} -s stop
 		ret=$?
 		cd ${CWD}
 		if [ ${ret} -ne 0 ]; then
-			if [ "$2" != "PBS" ]; then
-				echo "Failed to stop PBS Data Service"
-				echo "(Check if there are active connections to the data service)"
-			fi
-		elif [ "$1" = "stop" ]; then
+			echo "Failed to stop PBS Data Service"
+			echo "(Check if there are active connections to the data service)"
+		else
 			# check that we are able to acquire locks again, ie, monitor has died
 			i=0
 			check_status
@@ -417,9 +266,7 @@ case "$1" in
 				i=`expr $i + 1`
 			done
 			if [ ${sret} -ne 1 ]; then
-				if [ "$2" != "PBS" ]; then
-					echo "Failed to stop PBS Data Service"
-				fi
+				echo "Failed to stop PBS Data Service"
 				exit 1
 			fi
 		fi
@@ -429,9 +276,7 @@ case "$1" in
 	status)
 		check_status
 		ret=$?
-		if [ "$2" != "PBS" ]; then
-			echo "$msg"
-		fi
+		echo "${msg}"
 		exit ${ret}
 		;;
 
@@ -440,3 +285,4 @@ case "$1" in
 		;;
 esac
 exit 1
+

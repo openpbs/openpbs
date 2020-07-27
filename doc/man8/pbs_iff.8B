@@ -36,23 +36,22 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_iff 8B "18 October 2017" Local "PBS"
+.TH pbs_iff 8B "18 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_iff
 \- tests authentication with the server
 .SH SYNOPSIS
-.B pbs_iff
+.B pbs_iff 
 [-t] <server host> <server port>
 
-.B pbs_iff
+.B pbs_iff 
 --version
 .SH DESCRIPTION
 Called from the pbs_connect() IFL API to authenticate a connection
 with the PBS server.  Designed to be called internally by PBS commands
 and components, to be used by our IFL layer to talk to the server.
 
-If
+If 
 .B pbs_iff
 cannot authenticate, it returns an error message.
 
@@ -66,8 +65,8 @@ privileged port.
 
 .SH OPTIONS TO pbs_iff
 .IP "-t" 10
-Test mode; means test whether
-.B pbs_iff
+Test mode; means test whether 
+.B pbs_iff 
 can authenticate with the server
 .IP "--version" 10
 Reports version and exits; can only be used alone
@@ -80,10 +79,10 @@ Port on which server is listening; default is 15001
 
 .SH EXIT STATUS
 .IP "Zero" 10
-If
-.B pbs_iff
+If 
+.B pbs_iff 
 is able to contact the server at the specified port
 .IP "Non-zero" 10
-If
-.B pbs_iff
+If 
+.B pbs_iff 
 is unable to contact the server at the specified port

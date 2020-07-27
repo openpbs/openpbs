@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qstat 1B "2 July 2019" Local "PBS"
+.TH qstat 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qstat
+.B qstat 
 - display status of PBS jobs, queues, or servers
 
 
@@ -49,23 +48,23 @@
 .RS 7
 Default format:
 .br
-.B qstat
+.B qstat 
 [-E] [-J] [-p] [-t] [-w] [-x] [[<job ID> | <destination>] ...]
 
 .sp
 Long format:
 .br
-.B qstat
--f [-F json | dsv [-D <delimiter>]] [-E] [-J] [-p]
-[-t] [-w]
+.B qstat 
+-f [-F json | dsv [-D <delimiter>]] [-E] [-J] [-p] 
+[-t] [-w] 
 .RS 6
 [-x] [[<job ID> | <destination>] ...]
 .RE
 .sp
 Alternate format:
 .br
-.B qstat
-[-a | -H | -i | -r ] [-E] [-G | -M] [-J] [-n [-1]]
+.B qstat 
+[-a | -H | -i | -r ] [-E] [-G | -M] [-J] [-n [-1]]   
 .RS 6
 [-s [-1]] [-t] [-T] [-u <user list>] [-w]
 .br
@@ -77,17 +76,17 @@ Alternate format:
 .RS 7
 Default format:
 .br
-.B qstat
+.B qstat 
 -Q [<destination> ...]
 .sp
 Long format:
 .br
-.B qstat
+.B qstat 
 -Q -f [-F json | dsv [-D <delimiter>]] [-w] [<destination> ...]
 .sp
 Alternate format:
 .br
-.B qstat
+.B qstat 
 -q [-G | -M] [<destination> ...]
 .RE
 
@@ -95,12 +94,12 @@ Alternate format:
 .RS 7
 Default format:
 .br
-.B qstat
+.B qstat 
 -B [<server> ...]
 .sp
 Long format:
 .br
-.B qstat
+.B qstat 
 -B -f [-F json | dsv [-D <delimiter>]] [-w] [<server> ...]
 
 .B Version Information
@@ -114,8 +113,8 @@ The
 command displays the status of jobs, queues, or servers, writing
 the status information to standard output.
 .LP
-When displaying job status information, the
-.B qstat
+When displaying job status information, the 
+.B qstat 
 command displays status information about all specified jobs, job
 arrays, and subjobs.  You can specify jobs by ID, or by destination,
 for example all jobs at a specified queue or server.
@@ -131,16 +130,16 @@ status information showing all attributes, one attribute to a line.
 .B Displaying Information for Finished and Moved Jobs
 .br
 You can display status information for finished and moved jobs by
-using the
-.I -x
-and
-.I -H
+using the 
+.I -x 
+and 
+.I -H 
 options.
 
 If your job has been moved to another server through peer scheduling,
-give the job ID as an argument to
-.B qstat.
-If you do not specify the job ID, your job will not appear to exist.
+give the job ID as an argument to 
+.B qstat.  
+If you do not specify the job ID, your job will not appear to exist.  
 For example, your job 123.ServerA is moved to ServerB.  In this case, you can use
 .br
 .B \ \ \ qstat 123
@@ -150,7 +149,7 @@ or
 .B \ \ \ qstat 123.ServerA
 
 Specifying the full job name, including the server, avoids the possibility
-that
+that 
 .B qstat
 will report on a job named 123.ServerB that was moved to ServerA.
 
@@ -164,38 +163,38 @@ When the number of characters required would exceed the space
 available, qstat truncates the output and puts an asterisk ("*") in
 the last position.  For example, in default job display format, there
 are three characters allowed for the number of cores.  If the actual
-output were
+output were 
 .I 1234
-, the value displayed would be
+, the value displayed would be 
 .I 12*
 instead.
 
 .B Required Privilege
 .br
-Users without Manager or Operator privilege cannot view
+Users without Manager or Operator privilege cannot view 
 resources or attributes that are invisible to unprivileged users.
 
 .SH DISPLAYING JOB STATUS
 .B Job Status in Default Format
 .br
-Triggers: no options, or any of the
-.I -J, -p, -t,
-or
+Triggers: no options, or any of the 
+.I -J, -p, -t, 
+or 
 .I -x
 options.
 
-The
-.B qstat
+The 
+.B qstat 
 command displays job status in default format when you specify no
-options, or any of the
+options, or any of the 
 .I -J, -p, -t,
-or
-.I -x,
+or 
+.I -x, 
 options.
 Jobs are displayed one to a line, with these column headers:
 
 .nf
-Job ID   Name       User      Time Use S Queue
+Job ID   Name       User      Time Use S Queue   
 -------- ---------- --------- -------- - -----
 
 Description of columns:
@@ -208,32 +207,32 @@ Job ID    17 (22 when          30       Job ID assigned by PBS
           max_job_sequence_id
           > 10 million)
 
-Name      16                   15       Job name specified by submitter
+Name      16                   15       Job name specified by submitter       
 
-User      16                   15       Username of job owner
+User      16                   15       Username of job owner                 
 
-Time Use  8                    8        The CPU time used by the job.  Before
-or                                      the application has actually started
-Percent                                 running, for example during stage-in,
-Complete                                this field is "0". At the point where
-                                        the application starts accumulating
-                                        cput, this field changes to "00:00:00".
-                                        After that, every time the MoM polls
-                                        for resource usage, the field is
+Time Use  8                    8        The CPU time used by the job.  Before 
+or                                      the application has actually started  
+Percent                                 running, for example during stage-in, 
+Complete                                this field is "0". At the point where 
+                                        the application starts accumulating   
+                                        cput, this field changes to "00:00:00".  
+                                        After that, every time the MoM polls  
+                                        for resource usage, the field is      
                                         updated.
 
-                                        The MoM on each execution host polls
-                                        for the usage of all processes on her
-                                        host belonging to the job.  Usage is
-                                        summed.  The polling interval is short
-                                        when a job first starts running and
-                                        lengthens to a maximum of 2 minutes.
+                                        The MoM on each execution host polls   
+                                        for the usage of all processes on her 
+                                        host belonging to the job.  Usage is  
+                                        summed.  The polling interval is short 
+                                        when a job first starts running and   
+                                        lengthens to a maximum of 2 minutes.  
 
-                                        If you specify -p, the Time Use column
-                                        is replaced with the percentage
-                                        completed for the job.  For a job array
-                                        this is the percentage of subjobs
-                                        completed.  For a normal job, it is the
+                                        If you specify -p, the Time Use column 
+                                        is replaced with the percentage 
+                                        completed for the job.  For a job array 
+                                        this is the percentage of subjobs 
+                                        completed.  For a normal job, it is the 
                                         percentage of allocated CPU time used.
 
 S         1                    1        The job's state:
@@ -247,7 +246,7 @@ S         1                    1        The job's state:
                                           R  Job is running
                                           S  Job is suspended
                                           T  Job is being moved to new location
-                                          U  Cycle-harvesting job is suspended
+                                          U  Cycle-harvesting job is suspended 
                                              due to keyboard activity
                                           W  Job is waiting for its submitter-
                                              assigned start time to be reached
@@ -260,54 +259,54 @@ Queue     16                   15       The queue in which the job resides
 
 .B Job Status in Long Format
 .br
-Trigger: the
+Trigger: the 
 .I -f
 option.
 .br
-If you specify the
+If you specify the 
 .I -f
-(full) option, full job status information for each job is displayed
+(full) option, full job status information for each job is displayed 
 in this order:
 .RS 5
 The job ID
 .br
 Each job attribute, one to a line
 .br
-The job's submission arguments
+The job's submission arguments 
 .br
 The job's executable, in JSDL format
 .br
 The executable's argument list, in JSDL format
 .RE
 
-The job attributes are listed
-as
+The job attributes are listed 
+as 
 .I <name> = <value>
-pairs. This includes the
-.I exec_host
-and
-.I exec_vnode
-strings.
+pairs. This includes the 
+.I exec_host 
+and 
+.I exec_vnode 
+strings.  
 The full output can be very large.
 .sp
 
-The
-.I exec_host
+The 
+.I exec_host 
 string has the format:
 .br
 .I <host1>/<T1>*<P1>[+<host2>/<T2>*<P2>+...]
 .br
-where
+where 
 .br
 .I T1
 is the task slot number (the index) of the job on hostA.
 .br
 .I P1
-is the number of processors allocated to the job from host1.  The
+is the number of processors allocated to the job from host1.  The 
 number of processors allocated does not appear if it is 1.
 
-The
-.I exec_vnode
+The 
+.I exec_vnode 
 string has the format:
 .br
 .I (<vnode1>:ncpus=<N1>:mem=<M1>)[+(<vnode2>:ncpus=<N2>:mem=<M2>)+...]
@@ -320,22 +319,22 @@ M1 is the amount of memory allocated to that job on vnode1.
 
 .B Job Status in Alternate Format
 .br
-Triggers: any of the
+Triggers: any of the 
 .I -a, -i, -G, -H, -M, -n, -r, -s, -T,
 or
 .I -u <user list>
 options.
 .br
-The
+The 
 .B qstat
 command displays job status in the alternate format if you specify any of the
 .I -a, -i, -G, -H, -M, -n, -r, -s, -T,
-or
+or 
 .I -u <user list>
 options.
 Jobs are displayed one to a line.  If jobs are running and the -n
 option is specified, or if jobs are finished or moved and the -H and
--n options are specified, there is a second line for the
+-n options are specified, there is a second line for the 
 .I exec_host
 string.
 
@@ -344,12 +343,12 @@ Column headers:
 
                                              Req'd  Req'd   Elap
 Job ID Username Queue Jobname SessID NDS TSK Memory Time  S Time
------- -------- ----- ------- ------ --- --- ------ ----- - ----
+------ -------- ----- ------- ------ --- --- ------ ----- - ---- 
 
 Description of columns:
-
+   
 Column    Width                Width    Description
-Name      without -w           with -w
+Name      without -w           with -w  
 --------------------------------------------------------------------------------
 
 Job ID    15 (20 when          30       The job ID assigned by PBS
@@ -362,10 +361,10 @@ Queue     8                    15       Queue in which the job resides
 
 Jobname   10                   15       Job name specified by submitter
 
-SessID    6                    8        Session ID.  Appears only if the job
+SessID    6                    8        Session ID.  Appears only if the job 
                                         is running.
 
-NDS       3                    4        Number of chunks or vnodes requested
+NDS       3                    4        Number of chunks or vnodes requested 
                                         by the job
 
 TSK       3                    5        Number of CPUs requested by the job
@@ -373,54 +372,54 @@ TSK       3                    5        Number of CPUs requested by the job
 Req'd     6                    6        Amount of memory requested by the job
 Memory
 
-Req'd     5                    5        If CPU time is requested, this shows CPU
+Req'd     5                    5        If CPU time is requested, this shows CPU 
 Time                                    time.  Otherwise, shows walltime
 
-S         1                    1        The job's state.  (See listing above
+S         1                    1        The job's state.  (See listing above  
                                         for default format)
 
-Elap      5                    5        If CPU time is requested, this shows CPU
+Elap      5                    5        If CPU time is requested, this shows CPU 
 Time                                    time.  Otherwise, shows walltime.
-or
-Est Start                               If you use the -P option, displays
-Time                                    estimated start time for queued jobs,
-                                        replacing the Elap Time field with the
+or       
+Est Start                               If you use the -P option, displays 
+Time                                    estimated start time for queued jobs, 
+                                        replacing the Elap Time field with the 
                                         Est Start Time field.
 .fi
 
 .SH Grouping Jobs and Sorting by ID
-Trigger: the
-.I -E
-option.
+Trigger: the 
+.I -E 
+option.  
 .br
-You can use the
-.I -E
-option to sort and group jobs in the output of
-.B qstat.
-The
-.I -E
+You can use the 
+.I -E 
+option to sort and group jobs in the output of 
+.B qstat.  
+The 
+.I -E 
 option groups jobs by server and displays each group by ascending ID.
-This option also improves
-.B qstat
-performance.  The following table shows how the
-.I -E
-option affects the behavior of
+This option also improves 
+.B qstat 
+performance.  The following table shows how the 
+.I -E 
+option affects the behavior of 
 .B qstat:
-
-.B How qstat is Used \ \  Result Without -E \ \ \ \ \ \ \ \ \  Result With -E
+  
+.B How qstat is Used \ \  Result Without -E \ \ \ \ \ \ \ \ \  Result With -E 
 .br
 -----------------------------------------------------------------------
 .br
-qstat (no job ID     Queries the default server  No change in behavior;
+qstat (no job ID     Queries the default server  No change in behavior; 
 .br
-specified)           and displays result         same as without
+specified)           and displays result         same as without 
 .I -E
 .br
                                                  option
 .br
 -----------------------------------------------------------------------
 .br
-qstat <list of job   Displays results in the     Displays results in
+qstat <list of job   Displays results in the     Displays results in 
 .br
 IDs from single      order specified             ascending ID order
 .br
@@ -428,9 +427,9 @@ server>
 .br
 -----------------------------------------------------------------------
 .br
-qstat <job IDs at    Displays results in the     Groups jobs by server.
+qstat <job IDs at    Displays results in the     Groups jobs by server.  
 .br
-multiple servers>    order they are specified    Displays each group in
+multiple servers>    order they are specified    Displays each group in 
 .br
                                                  ascending order
 .br
@@ -440,16 +439,16 @@ multiple servers>    order they are specified    Displays each group in
 .SH DISPLAYING QUEUE STATUS
 .B Queue Status in Default Format
 .br
-Trigger: the
+Trigger: the 
 .I -Q
 option by itself.
 .br
-The
+The 
 .B qstat
-command displays queue status in the default format if
+command displays queue status in the default format if 
 the only option is
 .I -Q.
-Queue status is displayed one queue to a line, with these column headers:
+Queue status is displayed one queue to a line, with these column headers: 
 
 .nf
 Queue Max  Tot  Ena  Str Que  Run  Hld  Wat  Trn  Ext  Type
@@ -464,14 +463,14 @@ Maximum number of jobs allowed to run concurrently in this queue
 .IP "Tot" 15
 Total number of jobs in the queue
 .IP "Ena" 15
-Whether the queue is
+Whether the queue is 
 enabled
-or
+or 
 disabled
 .IP "Str" 15
-Whether the queue is
+Whether the queue is 
 started
-or
+or 
 stopped
 .IP "Que" 15
 Number of queued jobs
@@ -493,40 +492,40 @@ Type of queue: execution or routing
 
 .B Queue Status in Long Format
 .br
-Trigger: the
+Trigger: the 
 .I -q
-and
+and 
 .I -f
 options together.
 .br
 If you specify the
 .I -f
-(full) option with the
+(full) option with the 
 .I -q
 option, full queue status information for each queue is displayed
 starting with the queue name, followed by each attribute, one to a line,
 as
 .I <name> = <value>
-pairs.
+pairs.  
 .sp
 
 .B Queue Status: Alternate Format
 .br
-Triggers: any of the
-.I -q, -G,
-or
+Triggers: any of the 
+.I -q, -G, 
+or 
 .I -M
 options.
 .br
 The
 .B qstat
-command displays queue status in the alternate format if you
+command displays queue status in the alternate format if you 
 specify any of the
 .I -q, -G,
-or
+or 
 .I -M
 options.
-Queue status is displayed one queue to a line, and the lowest line
+Queue status is displayed one queue to a line, and the lowest line 
 contains totals for some columns.
 
 These are the alternate format queue status column headers:
@@ -551,19 +550,19 @@ Maximum number of vnodes that can be requested by a job in this queue
 Number of running and suspended jobs.  Lowest row is total number of
 running and suspended jobs in all the queues shown
 .IP "Que" 15
-Number of queued, waiting, and held jobs.  Lowest row is total number
+Number of queued, waiting, and held jobs.  Lowest row is total number 
 of queued, waiting, and held jobs in all the queues shown
 .IP "Lm" 15
 Maximum number of jobs allowed to run concurrently in this queue
 .IP "State" 15
-State of this queue:
+State of this queue: 
 .I E
-(enabled) or
+(enabled) or 
 .I D
-(disabled),
-and
+(disabled), 
+and 
 .I R
-(running) or
+(running) or 
 .I S
 (stopped)
 
@@ -574,13 +573,13 @@ and
 
 .B Server Status in Default Format:
 .br
-Trigger: the
-.I -B
+Trigger: the 
+.I -B 
 option.
 .br
-The
-.B qstat
-command displays server status if the only option given is
+The 
+.B qstat 
+command displays server status if the only option given is 
 .I -B.
 .sp
 Column headers for default server status output:
@@ -594,7 +593,7 @@ Description of columns:
 .IP "Server" 15
 Name of server
 .IP "Max" 15
-Maximum number of jobs allowed to be running concurrently
+Maximum number of jobs allowed to be running concurrently 
 on the server
 .IP "Tot" 15
 Total number of jobs currently managed by the server
@@ -623,7 +622,7 @@ option.
 If you specify the
 .I -f
 (full) option, displays full server status information
-starting with the server name, followed by each server attribute,
+starting with the server name, followed by each server attribute, 
 one to a line, as
 .I <name> = <value>
 pairs. Includes PBS version information.
@@ -634,126 +633,126 @@ pairs. Includes PBS version information.
 .IP "-E" 10
 Groups jobs by server and displays jobs sorted by ascending ID.  When
 .B qstat
-is presented with a list of jobs, jobs are grouped by server and each
-group is displayed by ascending ID.  This option also improves
+is presented with a list of jobs, jobs are grouped by server and each 
+group is displayed by ascending ID.  This option also improves 
 .B qstat
-performance.
+performance.  
 .LP
 .B Default Job Status Options
 .IP "-J" 10
 Prints status information for job arrays (not subjobs).
 .IP "-t" 10
 Displays status information for jobs, job arrays, and subjobs.
-When used with
+When used with 
 .I -J
 option, prints status information for subjobs only.
 
 .IP "-p" 10
-The
-.I Time Use
-column is replaced with the percentage completed for the job.  For an
+The 
+.I Time Use 
+column is replaced with the percentage completed for the job.  For an 
 array job this is the percentage of subjobs completed.  For a normal
 job, it is the percentage of allocated CPU time used.
 
 .IP "-x" 10
-Displays status information for finished and moved jobs in
+Displays status information for finished and moved jobs in 
 addition to queued and running jobs.
 .LP
 
 .B Alternate Job Status Options
 .IP "-a" 10
-All queued and running jobs are displayed.
+All queued and running jobs are displayed.  
 If a
 .I destination
 is specified, information for all jobs at that
 .I destination
 is displayed.
-If a
+If a 
 .I job ID
-is specified, information about that job is displayed.
-Always specify this option before the
-.I -n
-or
+is specified, information about that job is displayed.  
+Always specify this option before the 
+.I -n 
+or 
 .I -s
 options, otherwise they will not take effect.
 
 .IP "-H" 10
 Without a job identifier, displays information for all finished or moved jobs.
-If a
-.I job ID
-is given, displays information for that job regardless of
-its state.  If a
+If a 
+.I job ID 
+is given, displays information for that job regardless of 
+its state.  If a 
 .I destination
-is specified, displays information for finished or moved jobs, or
-specified job(s), at
+is specified, displays information for finished or moved jobs, or 
+specified job(s), at 
 .I destination.
 
 .IP "-i" 10
 If a
 .I destination
-is given, information for queued, held or waiting jobs at that
+is given, information for queued, held or waiting jobs at that 
 .I destination
 is displayed.
-If a
+If a 
 .I job ID
 is given, information about that job is displayed regardless
-of its state.
+of its state. 
 
 .IP "-n" 10
-The
-.I exec_host
+The 
+.I exec_host 
 string is listed on the line below the basic information.
-If the
+If the 
 .I -1
-option is given, the
-.I exec_host
+option is given, the 
+.I exec_host 
 string is listed on the end of the same line.
-If using the
-.I -a
+If using the 
+.I -a 
 option, always specify the
-.I -n
+.I -n 
 option after
 .I -a,
 otherwise the
-.I -n
+.I -n 
 option does not take effect.
-
+ 
 .IP "-r" 10
-If a
+If a 
 .I destination
-is given, information for running or suspended jobs at that
+is given, information for running or suspended jobs at that 
 .I destination
 is displayed.
-If a
+If a 
 .I job ID
-is given, information about that job is displayed regardless of its state.
+is given, information about that job is displayed regardless of its state.  
 
 .IP "-s" 10
 Any comment added by the administrator or scheduler is shown on the line below the basic information.
-If the
-.I -1
+If the 
+.I -1 
 option is given, the comment string is listed on the end of the same line.
-If using the
-.I -a
+If using the 
+.I -a 
 option, always specify the
-.I -s
+.I -s 
 option after
 .I -a,
 otherwise the
-.I -s
+.I -s 
 option does not take effect.
 
 .IP "-T" 10
-Displays estimated start time for queued jobs, replacing the
+Displays estimated start time for queued jobs, replacing the 
 .I Elap Time
-field with the
+field with the 
 .I Est Start Time
 field.  Jobs with earlier estimated start
-times are displayed before those with later estimated start times.
+times are displayed before those with later estimated start times. 
 
 Running jobs are displayed before other jobs.  Running jobs are sorted
-by their
-.I stime
+by their 
+.I stime 
 attribute (start time).
 
 Queued jobs whose estimated start times are unset
@@ -768,10 +767,10 @@ is shown as a question mark ("?").
 Time displayed is local to the qstat command.  Current week begins on
 Sunday.
 
-The following table shows the format for the
-.I Est Start Time
+The following table shows the format for the 
+.I Est Start Time 
 field when the
-.I -w
+.I -w 
 option is not used:
 
 .IP " " 10
@@ -783,7 +782,7 @@ option is not used:
 <2-letter      Within 7 days, but after today         We 15
 weekday> <HH>
 -------------------------------------------------------------
-<3-letter      This calendar year, but after this     Feb
+<3-letter      This calendar year, but after this     Feb 
 month name>    week
 -------------------------------------------------------------
 <YYYY>         Less than or equal to 5 years from     2018
@@ -794,10 +793,10 @@ month name>    week
 .fi
 
 .IP " " 10
-The following table shows the format for the
-.I Est Start Time
+The following table shows the format for the 
+.I Est Start Time 
 field when the
-.I -w
+.I -w 
 option is used:
 .IP " " 10
 .nf
@@ -806,7 +805,7 @@ option is used:
 Today <HH>:<MM>     Today               Today 13:34
 -------------------------------------------------------------
 <Day> <HH>:<MM>     This week, but      Wed 15:34
-                    after today
+                    after today  
 -------------------------------------------------------------
 <Day> <Month>       This year, but      Wed Feb 10 15:34
 <Daynum> <HH>:<MM>  after this week
@@ -818,29 +817,29 @@ Today <HH>:<MM>     Today               Today 13:34
 .fi
 
 .IP " " 10
-When used with the
-.I -f
+When used with the 
+.I -f 
 option, prints the full timezone-qualified start time.
 
-Estimated start time information can be made unavailable to unprivileged
+Estimated start time information can be made unavailable to unprivileged 
 users; in this case, the estimated start time appears to be unset.
 
 .IP "-u <user list>" 10
-If a
+If a 
 .I destination
-is given, status for jobs at that
-.I destination
-owned by users in
+is given, status for jobs at that 
+.I destination 
+owned by users in 
 .I <user list>
 is displayed.
-If a
+If a 
 .I job ID
-is given, status information for that job is displayed regardless of the job's
+is given, status information for that job is displayed regardless of the job's 
 ownership.
 .sp
-Format:
-.I <username>[@<hostname>][, <username>[@<hostname>], ...]
-in comma-separated list.
+Format: 
+.I <username>[@<hostname>][, <username>[@<hostname>], ...] 
+in comma-separated list.  
 
 Hostnames may be wildcarded, but not domain names.
 When no hostname is specified, username is for any host.
@@ -849,34 +848,34 @@ When no hostname is specified, username is for any host.
 Can be used with job status in default and alternate formats.  Allows display
 of wider fields up to 120 characters.  See
 .B Job Status in Default Format
-and
+and 
 .B Job Status in Alternate Format
 for column widths.
 
-This option is different from the
+This option is different from the 
 .I -w
 option used with the
-.I -f
+.I -f 
 long-format option.
 
 .IP "-1 (hyphen one)" 10
-Reformats
-.B qstat
-output to a single line.  Can be used only in conjunction with the
+Reformats 
+.B qstat 
+output to a single line.  Can be used only in conjunction with the 
 .I -n
-and/or
+and/or 
 .I -s
 options.
 
 .LP
 .B Queue Status Options
 .IP "-Q" 10
-Displays queue status in default format.
-Operands must be
+Displays queue status in default format.  
+Operands must be 
 .I destinations.
 .IP "-q" 10
-Displays queue status in alternate format.
-Operands must be
+Displays queue status in alternate format.  
+Operands must be 
 .I destinations.
 
 .LP
@@ -890,36 +889,36 @@ Operands must be names of servers.
 .IP "-f [-w]" 10
 Full display for long format. Job, queue or server attributes displayed one to a line.
 .br
-JSON output: PBS reports
-.I resources_used
+JSON output: PBS reports 
+.I resources_used 
 values for resources that are created or set in a hook as JSON strings
-in the output of
+in the output of 
 .B qstat -f.
 
 If MoM returns a JSON object (a Python dictionary), PBS reports the
-value as a string in single quotes:
+value as a string in single quotes:  
 .br
-.I resources_used.<resource_name> = '{ <mom_JSON_item_value>,
+.I resources_used.<resource_name> = '{ <mom_JSON_item_value>, 
 .I <mom_JSON_item_value>, <mom_JSON_item_value>, ..}'
 .br
-Example:  MoM returns { "a":1, "b":2, "c":1,"d": 4} for
-.I resources_used.foo_str.
-We get:
+Example:  MoM returns { "a":1, "b":2, "c":1,"d": 4} for 
+.I resources_used.foo_str.  
+We get: 
 .br
 resources_used.foo_str='{"a": 1, "b": 2, "c":1,"d": 4}'
 
 If MoM returns a value that is
 not a valid JSON object, the value is reported verbatim.
 .br
-Example: MoM returns "hello"  for
-.I resources_used.foo_str.
+Example: MoM returns "hello"  for 
+.I resources_used.foo_str.  
 We get:
 .br
 resources_used.foo_str="hello"
 
 .br
-Optional
-.I -w
+Optional 
+.I -w 
 prints each attribute on one unbroken line.  Feed characters are converted:
 .RS 13
 Newline is converted to backslash concatenated with "n", resulting in "\\n"
@@ -927,27 +926,27 @@ Newline is converted to backslash concatenated with "n", resulting in "\\n"
 Form feed is converted to backslash concatenated with "f", resulting in "\\f"
 .RE
 .RS 10
-This
-.I -w
-is independent of the
-.I -w
+This 
+.I -w 
+is independent of the 
+.I -w 
 job output option used with default and alternate formats.
 .RE
 
 .IP "-F dsv [-D <delimiter>]" 10
 
 Prints output in delimiter-separated value format.  The default
-.I delimiter
+.I delimiter 
 is a pipe ("|").  You can specify a character or a string
-delimiter using the
-.I -D
-argument to the
-.I -F dsv
+delimiter using the 
+.I -D 
+argument to the 
+.I -F dsv 
 option.  For example, to use a comma as the delimeter:
 .RS 13
 .B qstat -f -F dsv -D,
 .RE
-.RS 10
+.RS 10 
 If the delimiter itself appears in a value, it is escaped:
 .RS 3
 On Linux, the delimiter is escaped with a backslash ("\\").
@@ -977,9 +976,9 @@ Job Id: 1.vbox|Job_Name = STDIN|Job_Owner = root@vbox|job_state = Q|queue = work
 .RE
 
 .IP "-F json" 10
-Prints output in JSON format (http://www.json.org/).
-Attribute output is preceded by timestamp, PBS version, and PBS server hostname.
-Example:
+Prints output in JSON format (http://www.json.org/).  
+Attribute output is preceded by timestamp, PBS version, and PBS server hostname.  
+Example: 
 
 .RS 13
 .B qstat -f F json
@@ -1000,14 +999,14 @@ Example:
 .IP "-G" 10
 Shows size in gigabytes.  Triggers alternate format.
 .IP "-M" 10
-Shows size in megawords.  A word is considered to be 8 bytes.
+Shows size in megawords.  A word is considered to be 8 bytes.  
 Triggers alternate format.
 
 .LP
 
 .B Version Information
 .IP "--version" 8
-The
+The 
 .B qstat
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -1016,9 +1015,9 @@ This option can only be used alone.
 .SH  OPERANDS
 .B Job Identifier Operands
 .br
-The
+The 
 .I job ID
-is assigned by PBS at submission.
+is assigned by PBS at submission.  
 Job IDs are used only with job status requests.
 Status information for specified job(s) is displayed.
 Formats:
@@ -1060,7 +1059,7 @@ When displaying queue status, PBS displays status for the specified
 queue at the specified server.
 .RE
 .IP "@server name" 15
-Specifies server name for job or queue display.
+Specifies server name for job or queue display.  
 .RS 18
 When displaying job status, PBS displays status for all jobs at all
 queues at the specified server.
@@ -1068,7 +1067,7 @@ queues at the specified server.
 When displaying queue status, PBS displays status for all queues at
 the specified server.
 .RE
-.IP "server name"
+.IP "server name" 
 Specifies server name for server display.
 .RS 18
 When displaying server status (with the -B option) PBS displays status
@@ -1077,8 +1076,8 @@ for the specified server.
 .LP
 
 .SH STANDARD ERROR
-The
-.B qstat
+The 
+.B qstat 
 command writes a diagnostic message to standard error for
 each error occurrence.
 
@@ -1089,12 +1088,7 @@ Upon successful processing of all operands
 If any operands could not be processed
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qalter(1B), qsub(1B), pbs_alterjob(3B), pbs_statjob(3B), pbs_statque(3B),
 pbs_statserver(3B), pbs_submit(3B),
 pbs_job_attributes(7B), pbs_queue_attributes(7B), pbs_server_attributes(7B),
-pbs_resources(7B)
+pbs_resources(7B) 

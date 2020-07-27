@@ -205,7 +205,6 @@ extern "C" {
 
 #define ATTR_resv_name	 "Reserve_Name"
 #define ATTR_resv_owner	 "Reserve_Owner"
-#define ATTR_resv_type	 "reserve_type"
 #define ATTR_resv_Tag	 "reservation_Tag"
 #define ATTR_resv_ID	 "reserve_ID"
 #define ATTR_resv_retry "reserve_retry"
@@ -323,6 +322,7 @@ extern "C" {
 #define ATTR_power_provisioning "power_provisioning"
 #define ATTR_sync_mom_hookfiles_timeout "sync_mom_hookfiles_timeout"
 #define ATTR_max_job_sequence_id "max_job_sequence_id"
+#define ATTR_has_runjob_hook "has_runjob_hook"
 #define ATTR_acl_krb_realm_enable "acl_krb_realm_enable"
 #define ATTR_acl_krb_realms	"acl_krb_realms"
 #define ATTR_acl_krb_submit_realms "acl_krb_submit_realms"
@@ -330,6 +330,7 @@ extern "C" {
 #define ATTR_cred_renew_tool	"cred_renew_tool"
 #define ATTR_cred_renew_period	"cred_renew_period"
 #define ATTR_cred_renew_cache_period "cred_renew_cache_period"
+#define ATTR_attr_update_period "attr_update_period"
 
 /**
  * RPP_MAX_PKT_CHECK_DEFAULT controls the number of loops used to process
@@ -361,6 +362,7 @@ extern "C" {
 #define ATTR_sched_preempt_order  "preempt_order"
 #define ATTR_sched_preempt_sort  "preempt_sort"
 #define ATTR_sched_server_dyn_res_alarm "server_dyn_res_alarm"
+#define ATTR_job_run_wait "job_run_wait"
 
 /* additional node "attributes" names */
 
@@ -687,6 +689,8 @@ extern char *__pbs_server_location(void);
 
 extern int pbs_asyrunjob(int, char *, char *, char *);
 
+extern int pbs_asyrunjob_ack(int, char *, char *, char *);
+
 extern int pbs_alterjob(int, char *, struct attrl *, char *);
 
 extern int pbs_asyalterjob(int c, char *jobid, struct attrl *attrib, char *extend);
@@ -772,6 +776,7 @@ extern preempt_job_info *pbs_preempt_jobs(int, char **);
 
 /* IFL function pointers */
 extern int (*pfn_pbs_asyrunjob)(int, char *, char *, char *);
+extern int (*pfn_pbs_asyrunjob_ack)(int, char *, char *, char *);
 extern int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *);
 extern int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *);
 extern int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *);

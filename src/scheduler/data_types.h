@@ -324,7 +324,6 @@ struct status
 	unsigned sort_nodes:1;
 	unsigned backfill_prime:1;
 	unsigned preempting:1;
-	unsigned only_explicit_psets:1;		/* control if psets with unset resource are created */
 #ifdef NAS /* localmod 034 */
 	unsigned shares_track_only:1;
 #endif /* localmod 034 */
@@ -332,7 +331,6 @@ struct status
 	unsigned is_prime:1;
 	unsigned is_ded_time:1;
 	unsigned sync_fairshare_files:1;	/* sync fairshare files to disk */
-	unsigned int job_form_threshold_set:1;
 
 	struct sort_info *sort_by;		/* job sorting */
 	struct sort_info *node_sort;		/* node sorting */
@@ -340,9 +338,6 @@ struct status
 
 	unsigned prime_spill;			/* the amount of time a job can spill into the next prime state */
 	unsigned int backfill_depth;		/* number of top jobs to backfill around */
-
-	double job_form_threshold;		/* threshold in which jobs won't run */
-
 
 	resdef **resdef_to_check;		/* resources to match as definitions */
 	resdef **resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
@@ -366,6 +361,35 @@ struct status
 	unsigned long long iteration;		/* scheduler iteration count */
 };
 
+/*
+ * All attributes of the qmgr sched object
+ * Don't need log_events here, we use log_event_mask from Liblog/log_event.c
+ */
+struct schedattrs
+{
+	unsigned do_not_span_psets:1;
+	unsigned only_explicit_psets:1;
+	unsigned preempt_targets_enable:1;
+	unsigned sched_preempt_enforce_resumption:1;
+	unsigned throughput_mode:1;
+	long attr_update_period;
+	char *comment;
+	char *job_sort_formula;
+	double job_sort_formula_threshold;
+	int opt_backfill_fuzzy;
+	char *partition;
+	long preempt_queue_prio;
+	int preempt_prio[NUM_PPRIO][2];
+	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
+	enum preempt_sort_vals preempt_sort;
+	enum runjob_mode runjob_mode; /* set to a numeric version of job_run_wait attribute value */
+	long sched_cycle_length;
+	char *sched_log;
+	char *sched_port;
+	char *sched_priv;
+	long server_dyn_res_alarm;
+};
+
 struct server_info
 {
 	unsigned has_soft_limit:1;	/* server has a soft user/grp limit set */
@@ -381,14 +405,11 @@ struct server_info
 	unsigned node_group_enable:1;	/* is node grouping enabled */
 	unsigned has_nodes_assoc_queue:1; /* nodes are associates with queues */
 	unsigned has_multi_vnode:1;	/* server has at least one multi-vnoded MOM  */
+	unsigned has_runjob_hook:1;	/* server has at least 1 runjob hook enabled */
 	unsigned eligible_time_enable:1;/* controls if we accrue eligible_time  */
 	unsigned provision_enable:1;	/* controls if provisioning occurs */
 	unsigned power_provisioning:1;	/* controls if power provisioning occurs */
-	unsigned dont_span_psets:1;	/* dont_span_psets sched object attribute */
-	unsigned throughput_mode:1;	/* scheduler set to throughput mode */
 	unsigned has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
-	unsigned enforce_prmptd_job_resumption:1;/* If set, preempted jobs will resume after the preemptor finishes */
-	unsigned preempt_targets_enable:1;/* if preemptable limit targets are enabled */
 	unsigned use_hard_duration:1;	/* use hard duration when creating the calendar */
 	unsigned pset_metadata_stale:1;	/* The placement set meta data is stale and needs to be regenerated before the next use */
 	char *name;			/* name of server */
@@ -399,9 +420,6 @@ struct server_info
 	int num_nodes;			/* number of nodes associated with the server */
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
-	long sched_cycle_len;		/* length of cycle in seconds */
-	char *partition;		/* partition associated */
-	long opt_backfill_fuzzy_time;	/* time window for fuzzy backfill opt */
 	char **node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */
 	queue_info **queues;		/* array of queues */
@@ -414,6 +432,7 @@ struct server_info
 	resource_resv **jobs;		/* all the jobs in the server */
 	resource_resv **all_resresv;	/* a list of all jobs and adv resvs */
 	event_list *calendar;		/* the calendar of events */
+	char *job_sort_formula;	/* set via the JSF attribute of either the sched, or the server */
 
 	time_t server_time;		/* The time the server is at.  Could be in the
 					 * future if we're simulating
@@ -453,7 +472,6 @@ struct server_info
 	np_cache **npc_arr;
 
 	resource_resv *qrun_job;	/* used if running a job via qrun request */
-	char *job_formula;		/* formula used for sorting */
 	/* policy structure for the server.  This is an easy storage location for
 	 * the policy struct.  The policy struct will be passed around separately
 	 */
@@ -741,7 +759,6 @@ struct resv_info
 	time_t req_end;			/* user requested end tiem of resv */
 	time_t req_duration;		/* user requested duration of resv */
 	time_t retry_time;		/* time at which a reservation is to be reconfirmed */
-	int resv_type;			/* type of reservation i.e. job general etc */
 	enum resv_states resv_state;	/* reservation state */
 	enum resv_states resv_substate;	/* reservation substate */
 	queue_info *resv_queue;		/* general resv: queue which is owned by resv */
@@ -1131,18 +1148,13 @@ struct config
 	unsigned update_comments:1;	/* should we update comments or not */
 	unsigned prime_exempt_anytime_queues:1; /* backfill affects anytime queues */
 	unsigned assign_ssinodes:1;	/* assign the ssinodes resource */
-	unsigned preempt_suspend:1;	/* allow preemption through suspention */
-	unsigned preempt_chkpt:1;	/* allow preemption through checkpointing */
-	unsigned preempt_requeue:1;	/* allow preemption through requeueing */
 	unsigned preempt_starving:1;	/* once jobs become starving, it can preempt */
 	unsigned preempt_fairshare:1; /* normal jobs can preempt over usage jobs */
 	unsigned dont_preempt_starving:1; /* don't preempt staving jobs */
 	unsigned enforce_no_shares:1;	/* jobs with 0 shares don't run */
-	unsigned preempt_min_wt_used:1; /*allow preemption through min walltime used*/
 	unsigned node_sort_unused:1;	/* node sorting by unused/assigned is used */
 	unsigned resv_conf_ignore:1;  /* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
 	unsigned allow_aoe_calendar:1;        /* allow jobs requesting aoe in calendar*/
-	unsigned logstderr:1;               /* log to stderr as well as log file */
 #ifdef NAS /* localmod 034 */
 	unsigned prime_sto	:1;	/* shares_track_only--no enforce shares */
 	unsigned non_prime_sto:1;
@@ -1159,17 +1171,14 @@ struct config
 	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
-	time_t sync_time;			/* time between syncing usage to disk */
 	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
 	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
 	int num_holidays;			/* number of actual holidays */
 	struct timegap ded_time[MAX_DEDTIME_SIZE];/* dedicated times */
 	int unknown_shares;			/* unknown group shares */
-	int preempt_queue_prio;			/* Queue prio that defines an express queue */
 	int max_preempt_attempts;		/* max num of preempt attempts per cyc*/
 	int max_jobs_to_check;			/* max number of jobs to check in cyc*/
-	long dflt_opt_backfill_fuzzy;		/* default time for the fuzzy backfill optimization */
 	char ded_prefix[PBS_MAXQUEUENAME +1];	/* prefix to dedicated queues */
 	char pt_prefix[PBS_MAXQUEUENAME +1];	/* prefix to primetime queues */
 	char npt_prefix[PBS_MAXQUEUENAME +1];	/* prefix to non primetime queues */
@@ -1182,12 +1191,8 @@ struct config
 	char **ignore_res;			/* resources - unset implies infinite */
 	int num_res_to_check;			/* the size of res_to_check */
 	time_t max_starve;			/* starving threshold */
-	int pprio[NUM_PPRIO][2];		/* premption priority levels */
-	int preempt_low;			/* lowest preemption level */
-	int preempt_normal;			/* preempt priority of normal_jobs */
 	/* order to preempt jobs */
 	struct sort_info *prime_node_sort;	/* node sorting primetime */
-	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
 	struct sort_info *non_prime_node_sort;	/* node sorting non primetime */
 	struct dyn_res dynamic_res[MAX_SERVER_DYN_RES]; /* for server_dyn_res */
 	struct peer_queue peer_queues[NUM_PEERS];/* peer local -> remote queue map */

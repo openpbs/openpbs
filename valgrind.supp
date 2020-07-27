@@ -655,3 +655,67 @@
    fun:set_tpp_config
    fun:main
 }
+{
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:malloc
+   fun:mk_hostname
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:realloc
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBS - Suppress intentional unfreed avl tree tls data
+   Memcheck:Leak
+   fun:calloc
+   fun:get_avl_tls
+   ...
+}
+{
+   From PBS - Suppress intentional unfreed tpp tls data
+   Memcheck:Leak
+   fun:calloc
+   fun:tpp_get_tls
+   fun:work
+   ...
+}
+{
+   From PBS - Suppress uninitialized job fs structure in mom
+   Memcheck:Param
+   write(buf)
+   ...
+   fun:job_save_fs
+   ...
+}
+{
+   From PBS - Suppress hook allocated buffer
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:hook_alloc
+   fun:hook_recov
+   ...
+}
+{
+   From PBS - Suppress hook allocated buffer
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:hook_alloc
+   fun:mgr_hook_create
+   ...
+}

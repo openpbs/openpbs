@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qrls 1B "18 December 2017" Local "PBS"
+.TH qrls 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qrls
+.B qrls 
 - release hold on PBS jobs
 .SH SYNOPSIS
 .B qrls
@@ -50,28 +49,28 @@
 .SH DESCRIPTION
 The
 .B qrls
-command removes or releases holds on batch jobs or job arrays,
+command removes or releases holds on batch jobs or job arrays, 
 but not on subjobs or ranges of subjobs.
 
 A job may have one or more types of holds which make the job
 ineligible for execution.
 
-If you
+If you 
 .B qrls
-a job whose
+a job whose 
 .I Execution_Time
-attribute is not set to a time in the future, the job changes to the
+attribute is not set to a time in the future, the job changes to the 
 .I queued
-state.  If
+state.  If 
 .I Execution_Time
 is in the future, the job changes to the
 .I waiting
 state.
 
-Holds can be set by the owner, an Operator, or Manager, when a job
-has a dependency, or when a job has its
-.I Execution_Time
-attribute set to a time in the future.  Se the
+Holds can be set by the owner, an Operator, or Manager, when a job 
+has a dependency, or when a job has its 
+.I Execution_Time 
+attribute set to a time in the future.  Se the 
 .B qhold
 man page.
 
@@ -83,17 +82,17 @@ Hold  Meaning       Privilege Required to Release
 .br
 --------------------------------------------------------------
 .IP u 6
-User          Job owner, Operator, Manager,
+User          Job owner, Operator, Manager, 
 .br
               administrator, root
 .IP o 6
 Other         Operator, Manager, administrator, root
 .IP s 6
-System        Manager, administrator, root,
+System        Manager, administrator, root, 
 .br
               PBS (dependency)
 .IP n 6
-None          Job owner, Operator, Manager,
+None          Job owner, Operator, Manager, 
 .br
               administrator, root
 .IP p 6
@@ -114,27 +113,27 @@ Types of holds to be released for the job(s).
 The
 .I hold list
 argument is a string consisting of one or more of the letters
-.I """u""", """o""",
-or
+.I """u""", """o""", 
+or 
 .I """s"""
 in any combination, or one of the letters
-.I """n"""
-or
+.I """n""" 
+or 
 .I """p""".
 
 .IP "--version" 8
-The
+The 
 .B qrls
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH  OPERANDS
-The
+The 
 .B qrls
-command can be used on jobs and job arrays, but not on subjobs or ranges
-of subjobs.  The
-.B qrls
-comand accepts one or more
+command can be used on jobs and job arrays, but not on subjobs or ranges 
+of subjobs.  The 
+.B qrls 
+comand accepts one or more 
 .I job IDs
 in the form:
 .RS 4
@@ -146,8 +145,8 @@ Note that some shells require that you enclose a job array identifier in
 double quotes.
 
 .SH STANDARD ERROR
-The
-.B qrls
+The 
+.B qrls 
 command writes a diagnostic message to standard error for
 each error occurrence.
 
@@ -156,15 +155,10 @@ each error occurrence.
 Upon successful processing of all operands
 
 .IP "Greater than zero" 8
-If the
+If the 
 .B qrls
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qsub(1B), qalter(1B), qhold(1B), pbs_alterjob(3B), pbs_holdjob(3B), and
 pbs_rlsjob(3B).

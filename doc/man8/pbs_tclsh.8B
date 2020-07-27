@@ -36,24 +36,23 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_tclsh 8B "2 December 2019" Local "PBS"
+.TH pbs_tclsh 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_tclsh
+.B pbs_tclsh 
 - TCL shell with TCL-wrapped PBS API
 .SH SYNOPSIS
-.B pbs_tclsh
+.B pbs_tclsh 
 
-.B pbs_tclsh
+.B pbs_tclsh 
 --version
 .SH DESCRIPTION
-.B Deprecated.
+.B Deprecated.  
 The
 .B pbs_tclsh
 command starts a version of the TCL shell which includes wrapped versions of
 the PBS external API. The PBS TCL API is documented in the pbs_tclapi(3B) manual page.
 
-The
+The 
 .B pbs_tclsh
 command is used to query MoM.  For example:
 
@@ -71,14 +70,14 @@ tclsh> closereq <file descriptor>
 
 .B Required Privilege
 .br
-Root privilege is required in order to query MoM for dynamic
+Root privilege is required in order to query MoM for dynamic 
 resources.  Root privilege is not required in order to query
 MoM for built-in resources and site-defined static resources.
 
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B pbs_tclsh
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -90,9 +89,4 @@ command writes a diagnostic message to standard error for
 each error occurrence.
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide,
-the
-.I PBS Programmer's Guide,
-and the following manual pages:
 pbs_wish(8B), pbs_server(8B), pbs_mom(8B), pbs_sched(8B)

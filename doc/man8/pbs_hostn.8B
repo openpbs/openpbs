@@ -36,22 +36,21 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_hostn 8B "18 October 2017" Local "PBS"
+.TH pbs_hostn 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_hostn
+.B pbs_hostn 
 - report hostname and network address(es)
 .SH SYNOPSIS
-.B pbs_hostn
+.B pbs_hostn 
 [ -v ] <hostname>
 .br
-.B pbs_hostn
+.B pbs_hostn 
 --version
 
 .SH DESCRIPTION
 The
 .B pbs_hostn
-command takes a hostname, and reports the results of both
+command takes a hostname, and reports the results of both 
 gethostbyname(3) and gethostbyaddr(3) system calls. Both forward and
 reverse lookup of hostname and network addresses need to succeed in order
 for PBS to authenticate a host.
@@ -64,7 +63,7 @@ configuration, especially within clusters.
 Turns on verbose mode.
 .LP
 .IP "--version" 15
-The
+The 
 .B pbs_hostn
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -74,7 +73,7 @@ This option can only be used alone.
 .IP "hostname" 15
 The
 .B pbs_hostn
-command accepts a
+command accepts a 
 .I hostname
 operand either in short name form, or in fully qualified
 domain name (FQDN) form.
@@ -96,7 +95,4 @@ If the
 command fails to process any operand.
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-and the following manual page:
 pbs_server(8B)

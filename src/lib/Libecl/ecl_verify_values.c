@@ -138,8 +138,7 @@ verify_value_resc(int batch_request, int parent_object, int cmd,
 	if (pattr->resource == NULL)
 		return (PBSE_NONE);
 
-	if ((prdef = ecl_find_resc_def(ecl_svr_resc_def, pattr->resource,
-		ecl_svr_resc_size))) {
+	if ((prdef = ecl_find_resc_def(ecl_svr_resc_def, pattr->resource, ecl_svr_resc_size))) {
 		/* found the resource, verify type and value of resource */
 		resc_attr.name = pattr->resource;
 		resc_attr.value = pattr->value;

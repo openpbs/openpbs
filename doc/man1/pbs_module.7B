@@ -36,27 +36,24 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_module 7B "20 April 2018" Local "PBS"
+.TH pbs_module 7B "6 April 2020" Local "PBS Professional"
 .SH NAME
 .B pbs_module
 \- Python interface to PBS and PBS hook environment
 
 
 .SH DESCRIPTION
-
-The
-.I pbs module
+ 
+The 
+.I pbs module 
 provides an interface to PBS and the hook environment.
 The interface is made up of Python objects, which have attributes and
 methods.  You can operate on these objects using Python code.
-For a description of each object, see the
-.I PBS Administrator's Guide.
 
 .SH PBS MODULE OBJECTS
 
 .IP  pbs.acl
-Represents a PBS ACL type.
+Represents a PBS ACL type. 
 .IP  pbs.args
 Represents a space-separated list of PBS arguments to commands like qsub, qdel.
 .IP  pbs.argv[]
@@ -70,11 +67,11 @@ Raised when setting the resource value of a pbs.* object to an invalid value.
 .IP  pbs.BadResourceValueTypeError
 Raised when setting the resource value of a pbs.* object to an invalid value type.
 .IP  pbs.checkpoint
-Represents a job's
-.I Checkpoint
+Represents a job's 
+.I Checkpoint 
 attribute.
 .IP  pbs.depend
-Represents a job's
+Represents a job's 
 .I depend
 attribute.
 .IP  pbs.duration
@@ -88,54 +85,54 @@ Represents a PBS event.
 .IP  pbs.EventIncompatibleError
 Raised when referencing a non-existent attribute in pbs.event().
 .IP  pbs.EXECHOST_PERIODIC
-The
-.I exechost_periodic
+The 
+.I exechost_periodic 
 event type.
 .IP  pbs.EXECHOST_STARTUP
-The
+The 
 .I exechost_startup
 event type.
 .IP  pbs.EXECJOB_ATTACH
-The
+The 
 .I execjob_attach
 event type.
 .IP  pbs.EXECJOB_BEGIN
-The
+The 
 .I execjob_begin
 event type.
 .IP  pbs.EXECJOB_END
-The
+The 
 .I execjob_end
 event type.
 .IP  pbs.EXECJOB_EPILOGUE
-The
+The 
 .I execjob_epilogue
 event type.
 .IP  pbs.EXECJOB_LAUNCH
-The
+The 
 .I execjob_launch
 event type.
 .IP  pbs.EXECJOB_PRETERM
-The
+The 
 .I execjob_preterm
 event type.
 .IP  pbs.EXECJOB_PROLOGUE
-The
+The 
 .I execjob_prologue
 event type.
 .IP  pbs.exec_host
-Represents a job's
-.I exec_host
+Represents a job's 
+.I exec_host 
 attribute.
 .IP  pbs.exec_vnode
-Represents a job's
-.I exec_vnode
+Represents a job's 
+.I exec_vnode 
 attribute.
 .IP  pbs.group_list
 Represents a list of group names.
 .IP  pbs.hold_types
-Represents a job's
-.I Hold_Types
+Represents a job's 
+.I Hold_Types 
 attribute.
 .IP  pbs.hook_config_filename
 Contains path to hook's configuration file.
@@ -145,7 +142,7 @@ Represents a PBS job.
 Represents a list of pbs.job objects.
 .IP  pbs.job_sort_formula
 Represents the server's
-.I job_sort_formula
+.I job_sort_formula 
 attribute.
 .IP  pbs.JOB_STATE_BEGUN
 Represents the job array state of having started.
@@ -172,12 +169,12 @@ Represents the job state of transiting.
 .IP  pbs.JOB_STATE_WAITING
 Represents the job state of waiting.
 .IP  pbs.join_path
-Represents a job's
+Represents a job's 
 .I Join_Path
 attribute.
 .IP  pbs.keep_files
-Represents a job's
-.I Keep_Files
+Represents a job's 
+.I Keep_Files 
 attribute.
 .IP pbs.license_count
 Represents a set of licensing-related counters.
@@ -188,87 +185,87 @@ Log level 004.
 .IP  pbs.LOG_WARNING
 Log level 004.
 .IP  pbs.mail_points
-Represents a job's
-.I Mail_Points
+Represents a job's 
+.I Mail_Points 
 attribute.
 .IP  pbs.MODIFYJOB
-The
-.I modifyjob
+The 
+.I modifyjob 
 event type.
 .IP  pbs.MOVEJOB
-The
-.I movejob
+The 
+.I movejob 
 event type.
 
 .IP pbs.ND_BUSY
-Represents
-.I busy
+Represents 
+.I busy 
 vnode state.
 
 .IP pbs.ND_DEFAULT_EXCL
-Represents
-.I default_excl sharing
+Represents 
+.I default_excl sharing 
 vnode attribute value
 
 .IP pbs.ND_DEFAULT_SHARED
-Represents
-.I default_shared sharing
+Represents 
+.I default_shared sharing 
 vnode attribute value.
 
 .IP pbs.ND_DOWN
-Represents
-.I down
+Represents 
+.I down 
 vnode state
 
 .IP pbs.ND_FORCE_EXCL
-Represents
-.I force_excl sharing
+Represents 
+.I force_excl sharing 
 vnode attribute value.
 
 .IP pbs.ND_FREE
-Represents
-.I free
-vnode state.
+Represents 
+.I free 
+vnode state. 
 
 .IP pbs.ND_GLOBUS
-PBS no longer supports Globus.  The Globus functionality has been
-.B removed
+PBS no longer supports Globus.  The Globus functionality has been 
+.B removed 
 from PBS.
 
 Represents
-.I globus
-vnode
+.I globus 
+vnode 
 .I ntype.
 
 .IP pbs.ND_IGNORE_EXCL
-Represents
-.I ignore_excl sharing
+Represents 
+.I ignore_excl sharing 
 vnode attribute value.
 
 .IP pbs.ND_JOBBUSY
-Represents
-.I job-busy
+Represents 
+.I job-busy 
 vnode state.
 
 .IP pbs.ND_JOB_EXCLUSIVE
-Represents
-.I job-exclusive
+Represents 
+.I job-exclusive 
 vnode state.
 
 .IP pbs.ND_OFFLINE
-Represents
-.I offline
-vnode state.
+Represents 
+.I offline 
+vnode state.  
 
 .IP pbs.ND_PBS
-Represents
-.I pbs
-vnode
+Represents 
+.I pbs 
+vnode 
 .I ntype.
 
 .IP pbs.ND_PROV
-Represents
-.I provisioning
+Represents 
+.I provisioning 
 vnode state.
 
 .IP pbs.ND_RESV_EXCLUSIVE
@@ -277,27 +274,27 @@ Represents
 vnode state.
 
 .IP pbs.ND_STALE
-Represents
-.I stale
+Represents 
+.I stale 
 vnode state.
 
 .IP pbs.ND_STATE_UNKNOWN
-Represents
-.I state-unknown, down
+Represents 
+.I state-unknown, down 
 vnode state.
 
 .IP pbs.ND_UNRESOLVABLE
-Represents the
+Represents the 
 .I unresolvable
 vnode state.
 
 .IP pbs.ND_WAIT_PROV
-Represents
-.I wait-provisioning
+Represents 
+.I wait-provisioning 
 vnode state.
 
 .IP  pbs.node_group_key
-Represents the server or queue
+Represents the server or queue 
 .I node_group_key
 attribute.
 .IP  pbs.path_list
@@ -308,31 +305,31 @@ Dictionary of entries in pbs.conf.
 Represents the process ID of a process belonging to a job.
 
 .IP  pbs.place
-Represents the
+Represents the 
 .I place
 job submission specification.
 .IP pbs.progname
 Path of job shell or executable.
 .IP  pbs.QTYPE_EXECUTION
-The
+The 
 .I execution
 queue type.
 .IP  pbs.QTYPE_ROUTE
-The
+The 
 .I route
 queue type.
 .IP  pbs.queue
 Represents a PBS queue.
 .IP  pbs.QUEUEJOB
-The
-.I queuejob
+The 
+.I queuejob 
 event type.
 .IP  pbs.range
 Represents a range of numbers referring to array indices.
 .IP  pbs.resv
 Represents a PBS reservation.
 .IP  pbs.RESVSUB
-The
+The 
 .I resvsub
 event type.
 .IP  pbs.RESV_STATE_BEING_DELETED
@@ -358,21 +355,21 @@ Represents the reservation state RESV_UNCONFIRMED.
 .IP  pbs.RESV_STATE_WAIT
 Represents the reservation state RESV_WAIT.
 .IP  pbs.route_destinations
-Represents a queue's
+Represents a queue's 
 .I route_destinations
 attribute.
 .IP  pbs.RUNJOB
-The
+The 
 .I runjob
 event type.
 .IP  pbs.select
-Represents the
+Represents the 
 .I select
 job submission specification.
 .IP  pbs.server
 Represents the local PBS server.
 .IP  pbs.size
-Represents a PBS
+Represents a PBS 
 .I size
 type.
 .IP  pbs.software
@@ -418,11 +415,11 @@ Instantiation of these objects requires a formatted input string.
 
 
 .IP pbs.args("<args>")
-where
-.I <args>
-are space-separated arguments to a command such as
-.B qsub
-or
+where 
+.I <args> 
+are space-separated arguments to a command such as 
+.B qsub 
+or 
 .B qdel.
 Creates an object representing the arguments to the command.
 Example:
@@ -433,23 +430,23 @@ pbs.args("-Wsuppress_email=N -r y")
 Instantiation of these objects requires a formatted input string.
 
 .IP pbs.checkpoint("<checkpoint_string>")
-where
-.I <checkpoint_string>
+where 
+.I <checkpoint_string> 
 must be one of "n", "s", "c", "c=mmm", "w", or "w=mmm"
 Creates an object representing the job's
-.I Checkpoint
+.I Checkpoint 
 attribute, using the given string.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.depend("<depend_string>")
-.I <depend_string>
+.I <depend_string> 
 must be of format "<type>:<jobid>[,<jobid>...]", or "on:<count>", and
-where
-.I <type>
+where 
+.I <type> 
 is one of "after", "afterok", "afterany", "before", "beforeok",
 and "beforenotok".
 Creates a PBS dependency specification object representing the job's
-.I depend
-attribute, using the given
+.I depend 
+attribute, using the given 
 .I <depend_string>.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.duration("[[hours:]minutes:]seconds[.milliseconds]")
@@ -460,35 +457,35 @@ specified using either a time or an integer. See the
 "pbs.duration(<integer>)" creation method.
 .IP pbs.duration(<integer>)
 Creates an integer duration instance using the specified number of
-seconds.  A
-.I pbs.duration
+seconds.  A 
+.I pbs.duration 
 instance can be operated on by any of the
-Python
-.I int
+Python 
+.I int 
 functions.  When performing arithmetic operations on a
-.I pbs.duration
-type, ensure the resulting value is a
+.I pbs.duration 
+type, ensure the resulting value is a 
 .I pbs.duration()
 type, before assigning to a job member that expects such a type.
 .IP pbs.email_list("<email_address1>[,<email_address2>...]")
 Creates an object representing a mail list.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.exec_host("host/N[*C][+...]")
-Create an object representing the
-.I exec_host
+Create an object representing the 
+.I exec_host 
 job attribute, using the
 given host and resource specification.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.exec_vnode("<vchunk>[+<vchunk>...]")
-.I <vchunk>
+.I <vchunk> 
 is (<vnodename:ncpus=N:mem=M>)
-Creates an object representing the
-.I exec_vnode
+Creates an object representing the 
+.I exec_vnode 
 job attribute, using the
-given vnode and resource specification. When the
-.B qrun -H
-command is used, or when the scheduler runs a job, the
-.I pbs.job.exec_vnode
+given vnode and resource specification. When the 
+.B qrun -H 
+command is used, or when the scheduler runs a job, the 
+.I pbs.job.exec_vnode 
 object contains the vnode specification for the job.  Instantiation of these
 objects requires a formatted input string.
 .br
@@ -496,11 +493,11 @@ Example:
 .br
 pbs.exec_vnode("(vnodeA:ncpus=N:mem=X)+(nodeB:ncpus=P:mem=Y+nodeC:mem=Z)")
 .br
-This object is managed and accessed via the
-.I str()
-or
-.I repr()
-functions.
+This object is managed and accessed via the 
+.I str() 
+or 
+.I repr() 
+functions. 
 .br
 Example:
 .br
@@ -521,7 +518,7 @@ configfilepath = pbs.get_hook_config_file()
 This returns a Python str whose value is the name of the local natural vnode.
 If you want to refer to the vnode object representing the current
 host, you can pass this vnode name as the key to
-.I pbs.event().vnode_list[].
+.I pbs.event().vnode_list[].  
 For example:
 .RS 10
 Vn = pbs.event().vnode_list[pbs.get_local_nodename()]
@@ -552,56 +549,56 @@ pbs.job.group_list = pbs.group_list(....)
 .br
 Instantiation of these objects requires a formatted input string.
 .IP pbs.hold_types("<hold_type_str>")
-where
-.I <hold_type_str>
+where 
+.I <hold_type_str> 
 is one of "u", "o", "s", or "n".
-Creates an object representing the
-.I Hold_Types
+Creates an object representing the 
+.I Hold_Types 
 job attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.job_sort_formula("<formula_string>")
-where
-.I <formula_string>
-is a string containing a math formula.
-Creates an object representing the
-.I job_sort_formula
+where 
+.I <formula_string> 
+is a string containing a math formula. 
+Creates an object representing the 
+.I job_sort_formula 
 server attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.join_path({"oe"|"eo"|"n"})
-Creates an object representing the
-.I Join_Path
+Creates an object representing the 
+.I Join_Path 
 job attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.keep_files("<keep_files_str>")
-where
-.I <keep_files_str>
+where 
+.I <keep_files_str> 
 is one of "o", "e", "oe", "eo".
-Creates an object representing the
-.I Keep_Files
+Creates an object representing the 
+.I Keep_Files 
 job attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.license_count("Avail_Global:<W>Avail_Local:<X>Used:<Y>High_Use:<Z>")
-Instantiates an object representing a
-.I license_count
+Instantiates an object representing a 
+.I license_count 
 attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.logjobmsg(job_ID,message)
-where
-.I job_ID
-must be an existing or previously existing job ID and where
-.I message
+where 
+.I job_ID 
+must be an existing or previously existing job ID and where 
+.I message 
 is an arbitrary string.  This puts a custom string in the PBS Server
-log. The
-.B tracejob
+log. The 
+.B tracejob 
 command can be used to print out the job-related
 messages logged by a hook script.  Messages are logged at log event
-class
+class 
 .I pbs.LOG_DEBUG.
 .IP pbs.logmsg(log_event_class,message)
-where
-.I message
-is an arbitrary string, and where
-.I log_event_class
+where 
+.I message 
+is an arbitrary string, and where 
+.I log_event_class 
 can be one of the message log event class constants:
 .br
 pbs.LOG_WARNING
@@ -612,11 +609,11 @@ pbs.LOG_DEBUG
 .br
 This puts a custom string in the daemon log.
 .IP pbs.mail_points("<mail_points_string>")
-where
-.I <mail_points_string>
+where 
+.I <mail_points_string> 
 is "a", "b", and/or "e", or "n".
-Creates an object representing a
-.I Mail_Points
+Creates an object representing a 
+.I Mail_Points 
 attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.node_group_key("<resource>")
@@ -638,18 +635,18 @@ pbs.event().env = pbs.pbs_env()
 .RE
 
 .IP pbs.place("[arrangement]:[sharing]:[group]")
-.I arrangement
+.I arrangement 
 can be "pack", "scatter", "free", "vscatter"
 .br
-.I sharing
+.I sharing 
 can be "shared", "excl", "exclhost"
 .br
-.I group
+.I group 
 can be of the form "group=<resource>"
 .br
-.I [arrangement], [sharing],
-and
-.I [group]
+.I [arrangement], [sharing], 
+and 
+.I [group] 
 can be given in any order or combination.
 .br
 Creates a place object representing the job's place specification.
@@ -723,17 +720,17 @@ The specified <command> is executed in a shell on Linux/UNIX or via cmd on Windo
 
 
 .IP pbs.route_destinations("<queue_spec>[,<queue_spec>,...]")
-where
-.I <queue_spec>
+where 
+.I <queue_spec> 
 is queue_name[@server_host[:port]]
 .br
-Creates an object that represents a
-.I route_destinations
+Creates an object that represents a 
+.I route_destinations 
 routing queue attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.select("[N:]res=val[:res=val][+[N:]res=val[:res=val]...]")
-Creates a
-.I select
+Creates a 
+.I select 
 object representing the job's select specification.
 Instantiation of these objects requires a formatted input string.
 Example:
@@ -749,26 +746,23 @@ s = s + "+5:scratch=10gb" (append to string)
 sel = pbs.select(s) (reset the value of sel)
 .br
 .IP pbs.size(<integer>)
-Creates a PBS
-.I size
+Creates a PBS 
+.I size 
 object using the given integer value, storing the
 value as the number of bytes. Size objects can be specified using
 either an integer or a string. See the "pbs.size("<integer><suffix>")"
 creation method.
 .IP pbs.size("<integer><suffix>")
-Creates a PBS
-.I size
-object out of the given string specification.
-See the
-.I PBS Reference Guide
-for suffix information.
+Creates a PBS 
+.I size 
+object out of the given string specification. 
 The size of a word
-is the word size on the execution host.
-.I Size
+is the word size on the execution host. 
+.I Size 
 objects can be specified
-using either an integer or a string.  To operate on
+using either an integer or a string.  To operate on 
 .I pbs.size
-instances, use the "+" and "-" operators.  To compare
+instances, use the "+" and "-" operators.  To compare 
 .I pbs.size
 instances, use the "==", "!=", ">", "<", ">=", and "<=" operators.
 Example: the sizes are normalized to the smaller of the 2 suffixes. In
@@ -780,10 +774,10 @@ sz = sz + 10mb
 .br
 10250mb
 .br
-Example: the following returns
-.I True
-because
-.I sz
+Example: the following returns 
+.I True 
+because 
+.I sz 
 is greater than 100 bytes:
 .br
 if sz > 100:
@@ -796,8 +790,8 @@ Creates an object representing a site-dependent software resource.
 Instantiation of these objects requires a formatted input string.
 
 .IP pbs.staging_list("<filespec>[,<filespec>,...]")
-where
-.I <filespec>
+where 
+.I <filespec> 
 is <execution_path>@<storage_host>:<storage_path>
 Creates an object representing a job file staging parameters list.
 To use a staging list object:
@@ -806,8 +800,8 @@ pbs.job.stagein = pbs.staging_list(....)
 .br
 Instantiation of these objects requires a formatted input string.
 .IP pbs.state_count("Transit:<U>Queued:<V>Held:<W>Running:<X>Exiting:<Y>Begun:<Z>)
-Instantiates an object representing a
-.I state_count
+Instantiates an object representing a 
+.I state_count 
 attribute.
 Instantiation of these objects requires a formatted input string.
 .IP pbs.user_list("<user>[@<host>][,<user>@<host>...]")
@@ -826,7 +820,7 @@ Instantiation of these objects requires a formatted input string.
 
 .SH ATTRIBUTES AND RESOURCES
 .br
-Hooks can read Server, Queue, or reservation resources.
+Hooks can read Server, Queue, or reservation resources. 
 Hooks can read vnode or job attributes and resources.  Hooks can modify
 .IP
 The resources requested by a job
@@ -840,7 +834,7 @@ The resource arguments to pbs_rsub
 Vnode attributes and resources
 .br
 The shell or program to be executed in a job
-.br
+.br 
 The arguments to the shell or program to be executed in a job
 .br
 The environment of the job
@@ -855,7 +849,7 @@ the Server, the event that triggered the hook, or the current job, for example:
 pbs.server().resources_available["< resource name>"]
 .br
 pbs.event().job.Resource_List["< resource name>"]
-.br
+.br 
 pbs.event().vnode_list[<vnode name>].resources_available["< resource name >"]
 .LP
 
@@ -898,7 +892,7 @@ Raised when accepting or rejecting an action.
 
 If a hook encounters an unhandled exception:
 .IP
-PBS rejects the corresponding action, and an error message is printed
+PBS rejects the corresponding action, and an error message is printed 
 to stderr.
 .br
 A message is printed to the daemon log.
@@ -909,8 +903,7 @@ A message is printed to the daemon log.
 
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide,
-.br
 pbs_hook_attributes(7B), pbs_resources(7B),
 qmgr(1B)
+
+

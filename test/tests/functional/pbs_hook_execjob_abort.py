@@ -140,7 +140,8 @@ time.sleep(2)
         msg = "called execjob_abort hook"
         for mom in self.moms.values():
             mom.log_match(msg, starttime=start_time)
-        self.server.expect(JOB, {ATTR_state: 'H'}, id=jid, offset=7)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=jid, max_attempts=100,
+                           offset=7)
 
     def test_execjob_abort_exit_job_launch_reject(self):
         """

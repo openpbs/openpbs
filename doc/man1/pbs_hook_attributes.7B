@@ -36,19 +36,18 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_hook_attributes 7B "20 September 2019" Local "PBS"
+.TH pbs_hook_attributes 7B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_hook_attributes
+.B pbs_hook_attributes 
 \- attributes of PBS hooks
 
 .SH DESCRIPTION
 .LP
-Hook attributes can be set, unset, and viewed using the
-.B qmgr
+Hook attributes can be set, unset, and viewed using the 
+.B qmgr 
 command.
-See the
-.B qmgr(1B)
+See the 
+.B qmgr(1B) 
 man page.
 
 An unset hook attribute takes the default value for that attribute.
@@ -77,8 +76,8 @@ Default value: 30
 Specifies whether or not the hook produces debugging files under
 PBS_HOME/server_priv/hooks/tmp or PBS_HOME/mom_priv/hooks/tmp.  Files
 are named hook_<hook event>_<hook name>_<unique ID>.in, .data, and .out.
-When this is set to
-.I true,
+When this is set to 
+.I true, 
 the hook leaves debugging files.
 .br
 Set by administrator.
@@ -89,10 +88,10 @@ Default value: False
 
 .IP "enabled"
 Determines whether or not a hook is run when its triggering event occurs.
-If a hook's
+If a hook's 
 .I enabled
-attribute is
-.I True,
+attribute is 
+.I True, 
 the hook is run.
 .br
 Set by administrator.
@@ -102,31 +101,31 @@ Format: Boolean
 Default: True
 
 .IP "event"
-List of events that trigger the hook.  Can be operated on with
-the "=", "+=", and "-=" operators.  The
+List of events that trigger the hook.  Can be operated on with 
+the "=", "+=", and "-=" operators.  The 
 .I provision
 event cannot be combined with any other events.
 .br
-Valid events:
+Valid events: 
 .RS 11
 .nf
 "exechost_periodic"
-"exechost_startup"
+"exechost_startup" 
 "execjob_attach"
 "execjob_begin"
 "execjob_end"
-"execjob_epilogue"
-"execjob_launch"
+"execjob_epilogue" 
+"execjob_launch" 
 "execjob_postsuspend"
 "execjob_preresume"
-"execjob_preterm"
+"execjob_preterm" 
 "execjob_prologue"
-"modifyjob"
-"movejob"
+"modifyjob" 
+"movejob" 
 "periodic"
 "provision"
 "queuejob"
-"resvsub"
+"resvsub" 
 "runjob"
 "" (meaning no event)
 .fi
@@ -135,7 +134,7 @@ Valid events:
 .br
 Set by administrator.
 .br
-Format: string array
+Format: string array 
 .br
 Default value: "" (meaning none, i.e. the hook is not triggered)
 
@@ -143,10 +142,9 @@ Default value: "" (meaning none, i.e. the hook is not triggered)
 Specifies the action to be taken when hook fails due to alarm call or
 unhandled exception, or to an internal error such as not enough disk
 space or memory.  Can also specify a subsequent action to be taken
-when hook runs successfully.  Value can be either "none" or one or more of
-"offline_vnodes", "clear_vnodes_upon_recovery", and "scheduler_restart_cycle".
+when hook runs successfully.  Value can be either "none" or one or more of 
+"offline_vnodes", "clear_vnodes_upon_recovery", and "scheduler_restart_cycle". 
 If this attribute is set to multiple values, scheduler restart happens last.
-See the Hooks chapter in the PBS Administrator's Guide.
 .br
 .I offline_vnodes
 .RS 11
@@ -163,7 +161,7 @@ offline_vnodes fail action.  Only available for exechost_startup hooks.
 .IP
 .I scheduler_restart_cycle
 .RS 11
-After unsuccessful hook execution, restarts scheduling cycle.  Only
+After unsuccessful hook execution, restarts scheduling cycle.  Only 
 available for execjob_begin and execjob_prologue hooks.
 .RE
 .IP
@@ -178,14 +176,14 @@ Default value: "none"
 Number of seconds between periodic or exechost_periodic triggers.
 .br
 Set by administrator.
-.br
+.br 
 Format: integer
 .br
 Default: 120 seconds
 
 .IP "order"
-Indicates relative order of hook execution, for hooks of the same
-type sharing a trigger.  Hooks with lower
+Indicates relative order of hook execution, for hooks of the same 
+type sharing a trigger.  Hooks with lower 
 .I order
 values execute before those with higher values.
 Does not apply to periodic or exechost_periodic hooks.
@@ -228,13 +226,13 @@ Format: String
 Default value: "site"
 
 .IP "user"
-Specifies who executes the hook.
+Specifies who executes the hook.  
 .br
 Valid values: "pbsadmin", "pbsuser"
 .br
 .I "pbsadmin"
 .RS 11
-The hook executes as root.
+The hook executes as root.  
 .RE
 .IP
 .I "pbsuser"
@@ -250,13 +248,8 @@ Format: String
 Default value: "pbsadmin"
 
 .SH SEE ALSO
-The
-.I PBS Hooks Guide,
-the
-.I PBS Administrator's Guide,
-the
-.I PBS Programmer's Guide,
-.br
 qmgr(1B),
-pbs_module(7B),
+pbs_module(7B), 
 pbs_stathook(3B)
+
+

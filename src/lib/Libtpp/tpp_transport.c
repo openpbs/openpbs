@@ -72,6 +72,7 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <signal.h>
+#include "pbs_idx.h"
 #include "tpp_internal.h"
 #include "auth.h"
 
@@ -1433,7 +1434,6 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 		handle_disconnect(conn);
 	} else if (cmd == TPP_CMD_EXIT) {
 		int i;
-		tpp_tls_t *p;
 
 		for (i = 0; i < conns_array_size; i++) {
 			conn = get_transport_atomic(i, &slot_state);
@@ -1462,14 +1462,6 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Thrd exiting, had %d connections", num_cons);
 		tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
-
-		/* clean up any tls memory, just for valgrind's sake */
-		if ((p = tpp_get_tls())) {
-			free(p->log_data);
-			free(p->avl_data);
-			free(p);
-			td->tpp_tls = NULL;
-		}
 
 		pthread_exit(NULL);
 		/* no execution after this */
@@ -1625,10 +1617,6 @@ work(void *v)
 	}
 #endif
 	tpp_log_func(LOG_CRIT, NULL, "Thread ready");
-
-	/* store the log and avl tls data so we can free later */
-	td->tpp_tls->log_data = log_get_tls_data();
-	td->tpp_tls->avl_data = get_avl_tls();
 
 	/* start processing loop */
 	for (;;) {
@@ -2042,7 +2030,7 @@ static int
 add_pkts(phy_conn_t *conn)
 {
 	char *pkt_start;
-	int avl_len;
+	int avail_len;
 	int rc = 0;
 	int tfd = conn->sock_fd;
 	int slot_state;
@@ -2050,9 +2038,9 @@ add_pkts(phy_conn_t *conn)
 
 	int recv_len = conn->scratch.pos - conn->scratch.data;
 	pkt_start = conn->scratch.data;
-	avl_len = recv_len;
+	avail_len = recv_len;
 
-	while (avl_len >= (sizeof(int) + sizeof(char))) {
+	while (avail_len >= (sizeof(int) + sizeof(char))) {
 		int pkt_len;
 		int data_len;
 		char *data;
@@ -2065,7 +2053,7 @@ add_pkts(phy_conn_t *conn)
 
 		data_len = ntohl(*((int *) pkt_start));
 		pkt_len = data_len + sizeof(int);
-		if (avl_len < pkt_len)
+		if (avail_len < pkt_len)
 			break;
 
 		data = pkt_start + sizeof(int);
@@ -2083,9 +2071,9 @@ add_pkts(phy_conn_t *conn)
 
 		count++;
 		/* coalesce before next packet to maintain alignment */
-		avl_len = avl_len - pkt_len;
-		memmove(conn->scratch.data, conn->scratch.data + pkt_len, (size_t)avl_len); /* area OVERLAP - use memmove */
-		conn->scratch.pos = conn->scratch.data + avl_len;
+		avail_len = avail_len - pkt_len;
+		memmove(conn->scratch.data, conn->scratch.data + pkt_len, (size_t)avail_len); /* area OVERLAP - use memmove */
+		conn->scratch.pos = conn->scratch.data + avail_len;
 	}
 
 	if (count > 50) {

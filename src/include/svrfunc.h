@@ -54,6 +54,17 @@ extern "C" {
 #include "pbs_sched.h"
 #include "pbs_entlim.h"
 
+/*
+ * Convert given tracking table array index to subjob index
+ *
+ * For example: -J10-20:7 creates 2 subjob
+ *   1. [10] on 0th index in table
+ *   2. [17] on 1st index in table
+ *
+ * SJ_TBLIDX_2_IDX(pj, 1) == ((1 * 7) + 10) == 17
+ */
+#define SJ_TBLIDX_2_IDX(pj, tblidx) ((tblidx * pj->ji_ajtrk->tkm_step) + pj->ji_ajtrk->tkm_start)
+
 extern int check_num_cpus(void);
 extern int chk_hold_priv(long, int);
 extern void close_client(int);
@@ -87,8 +98,6 @@ extern int svr_connect(pbs_net_t, unsigned int, void (*)(int), enum conn_type, i
 extern void svr_force_disconnect(int);
 extern void svr_shutdown(int);
 extern int svr_get_privilege(char *, char *);
-extern void write_node_state(void);
-extern int write_single_node_state(struct pbsnode *);
 extern int setup_nodes(void);
 extern int setup_resc(int);
 extern void update_job_node_rassn(job *, attribute *, enum batch_op);
@@ -116,14 +125,9 @@ extern void svr_saveorpurge_finjobhist(job *);
 extern int recreate_exec_vnode(job *, char *, char *, char *, int);
 extern void unset_extra_attributes(job *);
 extern int node_delete_db(struct pbsnode *);
-extern int node_recov_db_raw(void *, pbs_list_head *);
-extern int save_attr_db(pbs_db_conn_t *, pbs_db_attr_info_t *, struct attribute_def *, struct attribute *, int, int);
-extern int recov_attr_db(pbs_db_conn_t *, void *, pbs_db_attr_info_t *, struct attribute_def *, struct attribute *, int, int);
 extern int pbsd_init(int);
-extern int resv_save_db(resc_resv *, int);
 extern int svr_chk_histjob(job *);
 extern int chk_and_update_db_svrhost(void);
-extern int recov_attr_db_raw(pbs_db_conn_t *, pbs_db_attr_info_t *, pbs_list_head *);
 extern int apply_aoe_inchunk_rules(resource *, attribute *, void *, int);
 extern int apply_select_inchunk_rules(resource *, attribute *, void *, int, int);
 extern int svr_create_tmp_jobscript(job *, char *);
@@ -138,18 +142,17 @@ extern void reply_preempt_jobs_request(int, int, struct job *);
 extern int copy_params_from_job(char *, resc_resv *);
 extern int confirm_resv_locally(resc_resv *, struct batch_request *, char *);
 extern int set_select_and_place(int, void *, attribute *);
-extern pbs_queue *find_resvqueuebyname(char *);
-extern resc_resv *find_resv_by_quename(char *);
 extern int make_schedselect(attribute *, resource *, pbs_queue *, attribute *);
+extern long long get_next_svr_sequence_id(void);
+extern int compare_obj_hash(void *, int , void *);
+extern void panic_stop_db();
+extern void free_db_attr_list(pbs_db_attr_list_t *);
 
 #ifdef _PROVISION_H
 extern int find_prov_vnode_list(job *, exec_vnode_listtype *, char **);
 #endif /* _PROVISION_H */
 
-#if !defined(PBS_MOM) && defined(_AVLTREE_H)
-extern AVL_IX_DESC *AVL_jctx;
-extern AVL_IX_REC *svr_avlkey_create(const char *);
-#endif
+extern void *jobs_idx;
 
 #ifdef _RESERVATION_H
 extern int set_nodes(void *, int, char *, char **, char **, char **, int, int);
@@ -187,7 +190,7 @@ extern char *lastname(char *);
 extern void chk_array_doneness(job *);
 extern void update_array_indices_remaining_attr(job *);
 extern job *create_subjob(job *, char *, int *);
-extern char *cvt_range(struct ajtrkhd *, int);
+extern char *cvt_range(job *, int);
 extern job *find_arrayparent(char *);
 extern int get_subjob_state(job *, int);
 extern int get_subjob_discarding(job *, int);
@@ -196,8 +199,8 @@ extern void set_subjob_tblstate(job *, int, int);
 extern void update_subjob_state(job *, int);
 extern void update_subjob_state_ct(job *);
 extern char *subst_array_index(job *, char *);
-extern int subjob_index_to_offset(job *, char *);
 extern int numindex_to_offset(job *, int);
+extern int subjob_index_to_offset(job *, char *);
 #ifndef PBS_MOM
 extern void svr_setjob_histinfo(job *, histjob_type);
 extern void svr_histjob_update(job *, int, int);
@@ -254,8 +257,8 @@ extern void req_quejob(struct batch_request *);
 extern void req_jobcredential(struct batch_request *);
 extern void req_usercredential(struct batch_request *);
 extern void req_jobscript(struct batch_request *);
-extern void req_rdytocommit(struct batch_request *);
 extern void req_commit(struct batch_request *);
+extern void req_commit_now(struct batch_request *, job *);
 extern void req_deletejob(struct batch_request *);
 extern void req_holdjob(struct batch_request *);
 extern void req_messagejob(struct batch_request *);
@@ -281,25 +284,24 @@ extern void set_last_used_time_node(void *, int);
 
 #endif /* _BATCH_REQUEST_H */
 
-#ifdef _ATTRIBUTE_H
-extern int check_que_enable(attribute *, void *, int);
-extern int set_queue_type(attribute *, void *, int);
-extern void save_characteristic(struct pbsnode *);
-extern int chk_characteristic(struct pbsnode *, int *);
-extern int is_valid_str_resource(attribute *, void *, int);
-extern int setup_arrayjob_attrs(attribute *, void *, int);
-extern int deflt_chunk_action(attribute *, void *, int);
-extern int action_svr_iteration(attribute *, void *, int);
-extern void update_node_rassn(attribute *, enum batch_op);
-extern void update_job_node_rassn(job *, attribute *, enum batch_op);
-extern int cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
-extern int is_valid_resource(attribute *, void *, int);
-extern int queuestart_action(attribute *, void *, int);
-extern int alter_eligibletime(attribute *, void *, int);
-extern int set_chunk_sum(attribute *, attribute *);
-extern int update_resources_rel(job *, attribute *, enum batch_op);
-extern int keepfiles_action(attribute *, void *, int);
-extern int removefiles_action(attribute *, void *, int);
+#ifdef	_ATTRIBUTE_H
+extern int   check_que_enable(attribute *, void *, int);
+extern int   set_queue_type(attribute *, void *, int);
+extern int   chk_characteristic(struct pbsnode *pnode, int *pneed_todo);
+extern int   is_valid_str_resource(attribute *pattr, void *pobject, int actmode);
+extern int   setup_arrayjob_attrs(attribute *, void *, int);
+extern int   deflt_chunk_action(attribute *pattr, void *pobj, int mode);
+extern int   action_svr_iteration(attribute *pattr, void *pobj, int mode);
+extern void  update_node_rassn(attribute *, enum batch_op);
+extern void  update_job_node_rassn(job *, attribute *, enum batch_op);
+extern int   cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
+extern int   is_valid_resource(attribute *pattr, void *pobject, int actmode);
+extern int   queuestart_action(attribute *pattr, void *pobject, int actmode);
+extern int   alter_eligibletime(attribute *pattr, void *pobject, int actmode);
+extern int   set_chunk_sum(attribute  *pselectattr, attribute *pattr);
+extern int   update_resources_rel(job *, attribute *, enum batch_op);
+extern int   keepfiles_action(attribute *pattr, void *pobject, int actmode);
+extern int   removefiles_action(attribute *pattr, void *pobject, int actmode);
 
 /* Functions below exposed as they are now accessed by the Python hooks */
 extern void update_state_ct(attribute *, int *, char *);
@@ -332,8 +334,6 @@ extern int issue_Drequest(int, struct batch_request *, void (*)(), struct work_t
 #endif /* _WORK_TASK_H */
 
 #ifdef _RESERVATION_H
-extern void Update_Resvstate_if_resv(job *);
-extern int add_resc_resv_to_job(job *);
 extern void is_resv_window_in_future(resc_resv *);
 extern void resv_setResvState(resc_resv *, int, int);
 extern void is_resv_window_in_future(resc_resv *);

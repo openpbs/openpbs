@@ -136,7 +136,6 @@ extern unsigned char pbs_aes_key[][16];
 extern unsigned char pbs_aes_iv[][16];
 
 int	ptc = -1;	/* fd for master pty */
-#ifndef WIN32
 #include <poll.h>
 #ifdef  RLIM64_INFINITY
 extern struct rlimit64 orig_nproc_limit;
@@ -145,7 +144,6 @@ extern struct rlimit64 orig_core_limit;
 extern struct rlimit   orig_nproc_limit;
 extern struct rlimit   orig_core_limit;
 #endif  /* RLIM64... */
-#endif  /* WIN32 */
 
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
 extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead);
@@ -1686,7 +1684,6 @@ record_finish_exec(int sd)
 	DBPRT(("%s: read start return %d %d\n", __func__,
 		sjr.sj_code, sjr.sj_session))
 
-#ifndef WIN32
 	/* update pjob with values set from a prologue/launch hook
 	 * since these are hooks that are executing in a child process
 	 * and changes inside the child will not be reflected in main
@@ -1781,7 +1778,6 @@ record_finish_exec(int sd)
 			}
 		}
 	}
-#endif
 
 	/*
 	 ** Set the global id before exiting on error so any
@@ -1835,7 +1831,7 @@ record_finish_exec(int sd)
 
 	pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 	pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-	job_save(pjob, SAVEJOB_QUICK);
+	job_save(pjob);
 
 	if (mom_get_sample() == PBSE_NONE) {
 		time_resc_updated = time_now;
@@ -1977,19 +1973,6 @@ read_pipe_data(int downfds, int data_size, int wait_sec)
 	static  int	buf_size = 0;
 	int		ret;
 	int		nread =  0;
-#ifdef WIN32
-	fd_set		readset;
-	struct timeval	tv;
-
-	FD_ZERO(&readset);
-	tv.tv_sec = wait_sec;		/* connect timeout */
-	tv.tv_usec = 0;
-
-	FD_SET((unsigned int)downfds, &readset);
-
-	ret = select(FD_SETSIZE, &readset, NULL, NULL, &tv);
-
-#else
 	struct pollfd pollfds[1];
 	int timeout = (int)(wait_sec * 1000); /* milli seconds */
 	pollfds[0].fd = downfds;
@@ -1998,7 +1981,6 @@ read_pipe_data(int downfds, int data_size, int wait_sec)
 
 	ret = poll(pollfds, 1, timeout);
 
-#endif
 	if (ret == -1) {
 		log_err(errno, __func__, "error on monitoring pipe");
 		return NULL;
@@ -2560,8 +2542,6 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 		(char *)0,
 		new_schedselect);
 
-	pjob->ji_modified = 1;
-
 	free(new_exec_vnode);
 	free(new_exec_host);
 	free(new_schedselect);
@@ -2574,7 +2554,7 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 		return (-1);
 	}
 
-	job_save(pjob, SAVEJOB_FULL);
+	job_save(pjob);
 	/* set modify flag on the job attributes that will be sent to the server */
 	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
@@ -2616,7 +2596,6 @@ report_failed_node_hosts_task(struct work_task *ptask)
 
 		if (!rjn->prologue_hook_success) {
 			reliable_job_node_add(&pjob->ji_failed_node_list, rjn->rjn_host);
-#ifndef WIN32
 			if (pjob->ji_parent2child_moms_status_pipe != -1) {
 				size_t r_size;
 				r_size = strlen(rjn->rjn_host) + 1;
@@ -2625,7 +2604,6 @@ report_failed_node_hosts_task(struct work_task *ptask)
 				else
 					log_err(errno, __func__, "failed to write");
 			}
-#endif
 			delete_link(&rjn->rjn_link);
 			free(rjn);
 		}
@@ -3518,13 +3496,11 @@ finish_exec(job *pjob)
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
 	/* set system core limit */
-#ifndef WIN32
 #if defined(RLIM64_INFINITY)
 	(void)setrlimit64(RLIMIT_CORE, &orig_core_limit);
 #else   /* set rlimit 32 bit */
 	(void)setrlimit(RLIMIT_CORE, &orig_core_limit);
 #endif  /* RLIM64_INFINITY */
-#endif /* !WIN32 */
 
 	/*
 	 * find which shell to use, one specified or the login shell
@@ -3865,7 +3841,12 @@ finish_exec(job *pjob)
 				}
 			}
 
-			mom_writer(qsub_sock, ptc);
+			int res = mom_writer(qsub_sock, ptc);
+			/* Inside mom_writer, if read is successful and write fails then it is an error and hence logging here as error for -1 */
+			if (res == -1)
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "CS_write failed with errno %d", errno);
+			else if (res == -2)
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "read failed with errno %d", errno);
 
 			shutdown(qsub_sock, 2);
 			exit(0);
@@ -4043,7 +4024,12 @@ finish_exec(job *pjob)
 							qsub_sock, mom_reader_Xjob,
 							log_mom_portfw_msg);
 					} else {
-						mom_reader(qsub_sock, ptc, buf);
+						int res = mom_reader(qsub_sock, ptc, buf);
+						/* Inside mom_reader, if read is successful and write fails then it is an error and hence logging here as error for -1 */
+						if (res == -1)
+							log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, "Write failed with errno %d", errno);
+						else if (res == -2)
+							log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "CS_read failed with errno %d", errno);
 					}
 				} else {
 					log_err(errno,  __func__,
@@ -4253,7 +4239,6 @@ finish_exec(job *pjob)
 
 	/* if RLIMIT_NPROC is definded,  the value set when Mom was */
 	/* invoked was saved,  reset that limit for the job	    */
-#ifndef WIN32
 #ifdef	RLIMIT_NPROC
 #ifdef  RLIM64_INFINITY
 	if ((i = setrlimit64(RLIMIT_NPROC, &orig_nproc_limit)) == -1) {
@@ -4267,7 +4252,6 @@ finish_exec(job *pjob)
 	}
 #endif  /* RLIM64... */
 #endif	/* RLIMIT_NPROC */
-#endif  /* WIN32 */
 	if (i == 0) {
 		/* now set all other kernel enforced limits on the job */
 		if ((i = mom_set_limits(pjob, SET_LIMIT_SET)) != PBSE_NONE) {
@@ -4801,7 +4785,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-			job_save(pjob, SAVEJOB_QUICK);
+			job_save(pjob);
 		}
 		(void)sprintf(log_buffer, "task %8.8X started, %s",
 			ptask->ti_qs.ti_task, argv[0]);
@@ -6052,9 +6036,8 @@ start_exec(job *pjob)
 #endif/* MOM_BGL */
 
 	/* make sure we have an open tpp stream back to the server */
-
 	if (server_stream == -1)
-		send_restart();
+		send_hellosvr(server_stream);
 
 #if MOM_ALPS
 	/* set ALPS reservation id to -1 to indicate there isn't one yet */

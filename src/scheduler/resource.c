@@ -379,7 +379,7 @@ dup_resdef_array(resdef **odef_arr)
 	if (odef_arr == NULL)
 		return NULL;
 
-	ct = count_array((void **) odef_arr);
+	ct = count_array(odef_arr);
 
 	ndef_arr = malloc((ct + 1) * sizeof(resdef*));
 	if (ndef_arr == NULL) {
@@ -436,9 +436,9 @@ add_resdef_to_array(resdef ***resdef_arr, resdef *def)
 	if (resdef_arr == NULL || def == NULL)
 		return -1;
 
-	cnt = count_array((void **) *resdef_arr);
+	cnt = count_array(*resdef_arr);
 
-	tmp_arr = (resdef**) realloc(*resdef_arr, (cnt+2)*sizeof(resdef*));
+	tmp_arr = (resdef **) realloc(*resdef_arr, (cnt + 2) * sizeof(resdef*));
 	if (tmp_arr == NULL)
 		return -1;
 
@@ -470,8 +470,8 @@ copy_resdef_array(resdef **deflist)
 	if (deflist == NULL)
 		return NULL;
 
-	cnt = count_array((void **)deflist);
-	new_deflist = malloc((cnt+1) * sizeof(resdef*));
+	cnt = count_array(deflist);
+	new_deflist = malloc((cnt + 1) * sizeof(resdef*));
 	if (new_deflist == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -806,7 +806,7 @@ resstr_to_resdef(char **resstr)
 	if (resstr == NULL)
 		return NULL;
 
-	cnt = count_array((void **) resstr);
+	cnt = count_array(resstr);
 	if ((tmparr = malloc((cnt + 1) * sizeof(resdef *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -872,12 +872,12 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * execselect: select created from the exec_vnode.  This is likely to
 		 * be a subset of resources from schedselect + 'vnode'.  It is possible
 		 * that a job was run with qrun -H (res=val) where res is not part of
-		 * the schedselect.  The exec_vnode is taken directly from the -H  argument
+		 * the schedselect.  The exec_vnode is taken directly from the -H argument
 		 * The qrun -H case is why we need to do this check.
 		 */
 		if (r->execselect != NULL && r->execselect->defs != NULL) {
-			if ((r->is_job && r->job != NULL && in_runnable_state(r)) ||
-				(r->is_resv && r->resv != NULL && r->resv->resv_state == RESV_BEING_ALTERED)) {
+			if ((r->job != NULL && in_runnable_state(r)) ||
+				(r->resv != NULL && (r->resv->resv_state == RESV_BEING_ALTERED || r->resv->resv_substate == RESV_DEGRADED))) {
 				for (j = 0; r->execselect->defs[j] != NULL;j++) {
 					if (!resdef_exists_in_array(defarr, r->execselect->defs[j]))
 						add_resdef_to_array(&defarr, r->execselect->defs[j]);

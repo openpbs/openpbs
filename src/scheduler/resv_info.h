@@ -55,7 +55,7 @@ struct batch_status *stat_resvs(int pbs_sd);
 /*
  *	query_reservations - query the reservations from the server
  */
-resource_resv **query_reservations(server_info *sinfo, struct batch_status *resvs);
+resource_resv **query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs);
 
 /*
  *	query_resv_info - convert the servers batch_statys structure into a
@@ -110,10 +110,10 @@ void release_nodes(resource_resv *resc_resv);
 node_info **create_resv_nodes(nspec **nspec_arr, server_info *sinfo);
 
 /*
- *	adjust_alter_resv_nodes - adjust nodes resources for reservations that
- *				  that are being altered.
+ *	release_running_resv_nodes - adjust nodes resources for reservations that
+ *				  that are being altered or are degraded.
  */
-void adjust_alter_resv_nodes(resource_resv *resv, node_info **all_nodes);
+void release_running_resv_nodes(resource_resv *resv, node_info **all_nodes);
 
 /* Will we try and confirm this reservation in this cycle */
 int will_confirm(resource_resv *resv, time_t server_time);

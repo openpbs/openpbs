@@ -181,7 +181,7 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  *	       first move it to the local server and then run it.
  *	       if it's a local job, just run it.
  */
-int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_error *err);
+int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook, schd_error *err);
 
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
@@ -232,7 +232,7 @@ int scheduler_simulation_task(int pbs_sd, int debug);
 
 int update_svr_schedobj(int connector, int cmd, int alarm_time);
 
-int validate_sched_attrs(int connector);
+int set_validate_sched_attrs(int connector);
 
 
 #ifdef	__cplusplus

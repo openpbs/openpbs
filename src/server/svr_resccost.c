@@ -144,15 +144,14 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 
 
 	if ((val == NULL) || (rescn == NULL)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			ATR_VFLAG_MODIFY;
+		ATR_UNSET(patr);
 		return (0);
 	}
 	if (patr->at_flags & ATR_VFLAG_SET) {
 		free_rcost(patr);
 	}
 
-	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
+	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL)
 		return (PBSE_UNKRESC);
 	pcost = (struct resource_cost *)GET_NEXT(patr->at_val.at_list);
@@ -166,7 +165,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 			return (PBSE_SYSTEM);
 	}
 	pcost->rc_cost = atol(val);
-	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 
@@ -190,7 +189,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 
 
 int
-encode_rcost(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	struct resource_cost *pcost;
@@ -274,7 +273,7 @@ set_rcost(struct attribute *old, struct attribute *new, enum batch_op op)
 		}
 		pcnew = (struct resource_cost *)GET_NEXT(pcnew->rc_link);
 	}
-	old->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	old->at_flags |= ATR_SET_MOD_MCACHE;
 	return (0);
 }
 

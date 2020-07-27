@@ -196,6 +196,14 @@ enum vnode_sharing str_to_vnode_sharing(char *vn_str);
  */
 char *pbs_strcat(char **strbuf, int *ssize, char *str);
 
+/*
+ * like strcpy, but returns pointer to end of copied data
+ * useful for chain copies instead of sprintf which is very
+ * slow
+ * 
+ */
+char *pbs_strcpy(char *dest, const char *src);
+
 char *pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp);
 char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 
@@ -323,6 +331,8 @@ extern char *netaddr(struct sockaddr_in *);
 extern unsigned long crc_file(char *fname);
 extern int get_fullhostname(char *, char *, int);
 
+extern int get_msvr_mode(void);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)
@@ -339,3 +349,4 @@ void encode_SHA(char*, size_t, char **);
 }
 #endif
 #endif
+

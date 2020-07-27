@@ -71,7 +71,8 @@
  * 	check_exit_job()
  * 	check_run_resv()
  * 	check_susp_job()
- * 	check_job_not_in_reservation()
+ * 	check_running_job_not_in_reservation()
+ * 	check_running_job_in_reservation()
  * 	check_resv_running_on_node()
  * 	dup_server_info()
  * 	dup_resource_list()
@@ -149,6 +150,7 @@
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"
+#include "hook.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -179,17 +181,14 @@ server_info *
 query_server(status *pol, int pbs_sd)
 {
 	struct batch_status *server;	/* info about the server */
-	struct batch_status *all_sched;	/* info about all server's scheduler objects */
-	struct batch_status *sched;	/* info about the this scheduler object */
 	struct batch_status *bs_resvs;	/* batch status of the reservations */
 	server_info *sinfo;		/* scheduler internal form of server info */
 	queue_info **qinfo;		/* array of queues on the server */
 	counts *cts;			/* used to count running per user/grp */
 	int num_express_queues = 0;	/* number of express queues */
 	int i;
-	int size;
 	char *errmsg;
-	resource_resv **jobs_not_in_reservations;
+	resource_resv **jobs_alive;
 	status *policy;
 
 	if (pol == NULL)
@@ -230,34 +229,12 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	all_sched = pbs_statsched(pbs_sd, NULL, NULL);
-	sched = bs_find(all_sched, sc_name);
-
-	if (sched == NULL) {
-		errmsg = pbs_geterrmsg(pbs_sd);
-		if (errmsg == NULL)
-			errmsg = "";
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
-			"pbs_statsched failed: %s (%d)", errmsg, pbs_errno);
-		pbs_statfree(server);
-		pbs_statfree(all_sched);
-		sinfo->fairshare = NULL;
-		free_server(sinfo);
-		return NULL;
-	}
-	query_sched_obj(policy, sched, sinfo);
-	pbs_statfree(all_sched);
-
-	if (!dflt_sched && (sinfo->partition == NULL)) {
+	if (!dflt_sched && (sc_attrs.partition == NULL)) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
 		free_server(sinfo);
 		return NULL;
-	}
-	/* If it is a default scheduler then set the partition to have only one value "pbs-default" */
-	if (dflt_sched) {
-		sinfo->partition = string_dup(DEFAULT_PARTITION);
 	}
 
 	/* to avoid a possible race condition in which the time it takes to
@@ -305,7 +282,7 @@ query_server(status *pol, int pbs_sd)
 		sinfo->num_queues++;
 		total_states(&(sinfo->sc), &((*qinfo)->sc));
 
-		if ((*qinfo)->priority >= conf.preempt_queue_prio)
+		if ((*qinfo)->priority >= sc_attrs.preempt_queue_prio)
 			num_express_queues++;
 
 		qinfo++;
@@ -336,7 +313,7 @@ query_server(status *pol, int pbs_sd)
 	}
 
 	/* get reservations, if any - NOTE: will set sinfo -> num_resvs */
-	sinfo->resvs = query_reservations(sinfo, bs_resvs);
+	sinfo->resvs = query_reservations(pbs_sd, sinfo, bs_resvs);
 	pbs_statfree(bs_resvs);
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */
@@ -378,9 +355,7 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	jobs_not_in_reservations = resource_resv_filter(sinfo->jobs,
-		sinfo->sc.total,
-		check_job_not_in_reservation, NULL, 0);
+	jobs_alive = resource_resv_filter(sinfo->jobs, sinfo->sc.total, check_running_job_not_in_reservation, NULL, 0);
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		counts *allcts;
@@ -421,17 +396,15 @@ query_server(status *pol, int pbs_sd)
 	policy->equiv_class_resdef = create_resresv_sets_resdef(policy, sinfo);
 	sinfo->equiv_classes = create_resresv_sets(policy, sinfo);
 
-	size = sinfo->sc.running + sinfo->sc.exiting + sinfo->sc.suspended
-		+ sinfo->sc.userbusy;
 	/* To avoid duplicate accounting of jobs on nodes, we are only interested in
 	 * jobs that are bound to the server nodes and not those bound to reservation
 	 * nodes, which are accounted for by collect_jobs_on_nodes in
 	 * query_reservation, hence the use of the filtered list of jobs
 	 */
-	collect_jobs_on_nodes(sinfo->nodes, jobs_not_in_reservations, size);
+	collect_jobs_on_nodes(sinfo->nodes, jobs_alive, count_array(jobs_alive), DETECT_GHOST_JOBS);
 
-	/* Now that the job_arr is created, garbage collect the jobs in resv list */
-	free(jobs_not_in_reservations);
+	/* Now that the job_arr is created, garbage collect the jobs */
+	free(jobs_alive);
 
 	collect_resvs_on_nodes(sinfo->nodes, sinfo->resvs, sinfo->num_resvs);
 
@@ -469,7 +442,7 @@ query_server(status *pol, int pbs_sd)
 
 	if (sinfo->buckets != NULL) {
 		int ct;
-		ct = count_array((void **) sinfo->buckets);
+		ct = count_array(sinfo->buckets);
 		qsort(sinfo->buckets, ct, sizeof(node_bucket *), multi_bkt_sort);
 	}
 
@@ -567,7 +540,7 @@ query_server_info(status *pol, struct batch_status *server)
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {	/* Deprecated */
-			sinfo->job_formula = read_formula();
+			sinfo->job_sort_formula = read_formula();
 			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 					"Job sorting formula and job_sort_key are incompatible.  "
@@ -656,8 +629,21 @@ query_server_info(status *pol, struct batch_status *server)
 				policy->rel_on_susp = resstr_to_resdef(resl);
 				free_string_array(resl);
 			}
+		} else if(!strcmp(attrp->name, ATTR_has_runjob_hook)) {
+			if (!strcmp(attrp->value, ATR_TRUE))
+				sinfo->has_runjob_hook = 1;
+			else
+				sinfo->has_runjob_hook = 0;
 		}
 		attrp = attrp->next;
+	}
+
+	if (sinfo->job_sort_formula == NULL && sc_attrs.job_sort_formula != NULL) {
+		sinfo->job_sort_formula = string_dup(sc_attrs.job_sort_formula);
+		if (sinfo->job_sort_formula == NULL) {
+			free_server_info(sinfo);
+			return NULL;
+		}
 	}
 
 	if (has_hardlimits(sinfo->liminfo))
@@ -760,9 +746,9 @@ query_server_dyn_res(server_info *sinfo)
 			if (!pipe_err) {
 				FD_ZERO(&set);
 				FD_SET(pdes[0], &set);
-				if (server_dyn_res_alarm) {
+				if (sc_attrs.server_dyn_res_alarm) {
 					struct timeval timeout;
-					timeout.tv_sec = server_dyn_res_alarm;
+					timeout.tv_sec = sc_attrs.server_dyn_res_alarm;
 					timeout.tv_usec = 0;
 					ret = select(FD_SETSIZE, &set, NULL, NULL, &timeout);
 				} else {
@@ -833,173 +819,6 @@ query_server_dyn_res(server_info *sinfo)
 			"Reached max number of server_dyn_res of %d", MAX_SERVER_DYN_RES);
 
 	return 0;
-}
-
-/**
- * @brief
- * 		query_sched_obj - query the server's scheduler object and
- *		convert attributes to scheduler's internal data structures
- *
- * @param[in,out]	policy 	-	policy object to set policy on
- * @param[in]		sched 	-	result of pbs_statsched()
- * @param[in]		sinfo 	-	server_info to store sched obj attributes
- *
- * @return	int
- *	@retval	1	: success
- *	@retval	0	: failure
- *
- */
-int
-query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
-{
-	struct attrl *attrp;          /* linked list of attributes from server */
-
-	int i = 0;
-	int j = 0;
-	char *tok;
-	char *endp;
-	char **list;
-	char *save_ptr;
-
-	int num = -1;
-	int prio = -1;
-
-	if (sched == NULL || sinfo == NULL)
-		return 0;
-
-	attrp = sched->attribs;
-
-	/* set throughput mode to 1 by default */
-	sinfo->throughput_mode = 1;
-
-	while (attrp != NULL) {
-		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
-			sinfo->sched_cycle_len = res_to_num(attrp->value, NULL);
-		} else if (!strcmp(attrp->name, ATTR_partition)) {
-			sinfo->partition = string_dup(attrp->value);
-		} else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
-			sinfo->dont_span_psets = res_to_num(attrp->value, NULL);
-		} else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
-			policy->only_explicit_psets = res_to_num(attrp->value, NULL);
-		} else if (!strcmp(attrp->name, ATTR_sched_preempt_enforce_resumption)) {
-			if (!strcasecmp(attrp->value, ATR_FALSE))
-				sinfo->enforce_prmptd_job_resumption = 0;
-			else
-				sinfo->enforce_prmptd_job_resumption = 1;
-		} else if (!strcmp(attrp->name, ATTR_preempt_targets_enable)) {
-			if (!strcasecmp(attrp->value, ATR_FALSE))
-				sinfo->preempt_targets_enable = 0;
-			else
-				sinfo->preempt_targets_enable = 1;
-		} else if (!strcmp(attrp->name, ATTR_job_sort_formula_threshold)) {
-			policy->job_form_threshold_set = 1;
-			policy->job_form_threshold = res_to_num(attrp->value, NULL);
-		} else if (!strcmp(attrp->name, ATTR_throughput_mode)) {
-			sinfo->throughput_mode = res_to_num(attrp->value, NULL);
-		} else if (!strcmp(attrp->name, ATTR_opt_backfill_fuzzy)) {
-			if (!strcasecmp(attrp->value, "off"))
-				sinfo->opt_backfill_fuzzy_time = BF_OFF;
-			else if (!strcasecmp(attrp->value, "low"))
-				sinfo->opt_backfill_fuzzy_time = BF_LOW;
-			else if (!strcasecmp(attrp->value, "med") || !strcasecmp(attrp->value, "medium"))
-				sinfo->opt_backfill_fuzzy_time = BF_MED;
-			else if (!strcasecmp(attrp->value, "high"))
-				sinfo->opt_backfill_fuzzy_time = BF_HIGH;
-			else
-				sinfo->opt_backfill_fuzzy_time = BF_DEFAULT;
-		} else if (!strcmp(attrp->name, ATTR_sched_preempt_order)) {
-			tok = strtok_r(attrp->value, "\t ", &save_ptr);
-
-			if (tok != NULL && !isdigit(tok[0])) {
-				/* unset the defaults */
-				conf.preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
-				conf.preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
-				conf.preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
-
-				conf.preempt_order[0].high_range = 100;
-				i = 0;
-				do {
-					if (isdigit(tok[0])) {
-						num = strtol(tok, &endp, 10);
-						if (*endp == '\0') {
-							conf.preempt_order[i].low_range = num + 1;
-							i++;
-							conf.preempt_order[i].high_range = num;
-						}
-					} else {
-						for (j = 0; tok[j] != '\0' ; j++) {
-							switch (tok[j]) {
-								case 'S':
-									conf.preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
-									break;
-								case 'C':
-									conf.preempt_order[i].order[j] = PREEMPT_METHOD_CHECKPOINT;
-									break;
-								case 'R':
-									conf.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
-									break;
-								case 'D':
-									conf.preempt_order[i].order[j] = PREEMPT_METHOD_DELETE;
-									break;
-							}
-						}
-					}
-					tok = strtok_r(NULL, "\t ", &save_ptr);
-				} while (tok != NULL && i < PREEMPT_ORDER_MAX);
-
-				conf.preempt_order[i].low_range = 0;
-			}
-		} else if (!strcmp(attrp->name, ATTR_sched_preempt_queue_prio)) {
-			conf.preempt_queue_prio = strtol(attrp->value, &endp, 10);
-		} else if (!strcmp(attrp->name, ATTR_sched_preempt_prio)) {
-			prio = PREEMPT_PRIORITY_HIGH;
-			list = break_comma_list(attrp->value);
-			if (list != NULL) {
-				memset(conf.pprio, 0, sizeof(conf.pprio));
-				conf.pprio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
-				conf.pprio[0][1] = prio;
-				prio -= PREEMPT_PRIORITY_STEP;
-				for (i = 0; list[i] != NULL; i++) {
-					num = preempt_bit_field(list[i]);
-					if (num >= 0) {
-						conf.pprio[i + 1][0] = num;
-						conf.pprio[i + 1][1] = prio;
-						conf.preempt_low = prio;
-						prio -= PREEMPT_PRIORITY_STEP;
-					}
-				}
-				/* conf.pprio is an int array of size[NUM_PPRIO][2] */
-				qsort(conf.pprio, NUM_PPRIO, sizeof(int) * 2, preempt_cmp);
-
-				/* cache preemption priority for normal jobs */
-				for (i = 0; i < NUM_PPRIO && conf.pprio[i][1] != 0; i++) {
-					if (conf.pprio[i][0] == PREEMPT_TO_BIT(PREEMPT_NORMAL)) {
-						conf.preempt_normal = conf.pprio[i][1];
-						break;
-					}
-				}
-
-				free_string_array(list);
-			}
-		} else if (!strcmp(attrp->name, ATTR_sched_preempt_sort)) {
-			if (strcasecmp(attrp->value, "min_time_since_start") == 0)
-				conf.preempt_min_wt_used = 1;
-			else
-				conf.preempt_min_wt_used = 0;
-		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
-			if (sinfo->job_formula != NULL)
-				free(sinfo->job_formula);
-			sinfo->job_formula = read_formula();
-			if (policy->sort_by[1].res_name != NULL) /* 0 is the formula itself */
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
-					"Job sorting formula and job_sort_key are incompatible.  "
-					"The job sorting formula will be used.");
-
-		}
-		attrp = attrp->next;
-	}
-
-	return 1;
 }
 
 /**
@@ -1191,8 +1010,6 @@ free_server_info(server_info *sinfo)
 		free_np_cache_array(sinfo->npc_arr);
 	if (sinfo->node_group_key != NULL)
 		free_string_array(sinfo->node_group_key);
-	if (sinfo->job_formula != NULL)
-		free(sinfo->job_formula);
 	if (sinfo->calendar != NULL)
 		free_event_list(sinfo->calendar);
 	if (sinfo->policy != NULL)
@@ -1207,8 +1024,6 @@ free_server_info(server_info *sinfo)
 		free_queue_list(sinfo->queue_list);
 	if(sinfo->equiv_classes != NULL)
 		free_resresv_set_array(sinfo->equiv_classes);
-	if (sinfo->partition != NULL)
-		free(sinfo->partition);
 	if(sinfo->buckets != NULL)
 		free_node_bucket_array(sinfo->buckets);
 
@@ -1216,6 +1031,8 @@ free_server_info(server_info *sinfo)
 		free(sinfo->unordered_nodes);
 
 	free_resource_list(sinfo->res);
+	free(sinfo->job_sort_formula);
+
 #ifdef NAS
 	/* localmod 034 */
 	site_free_shares(sinfo);
@@ -1313,20 +1130,15 @@ new_server_info(int limallocflag)
 	sinfo->has_nonprime_queue = 0;
 	sinfo->has_nodes_assoc_queue = 0;
 	sinfo->has_ded_queue = 0;
+	sinfo->has_runjob_hook = 0;
 	sinfo->node_group_enable = 0;
 	sinfo->eligible_time_enable = 0;
 	sinfo->provision_enable = 0;
 	sinfo->power_provisioning = 0;
-	sinfo->dont_span_psets = 0;
-	sinfo->throughput_mode = 0;
 	sinfo->has_nonCPU_licenses = 0;
-	sinfo->enforce_prmptd_job_resumption = 0;
 	sinfo->use_hard_duration = 0;
 	sinfo->pset_metadata_stale = 0;
-	sinfo->sched_cycle_len = 0;
 	sinfo->num_parts = 0;
-	sinfo->partition = NULL;
-	sinfo->opt_backfill_fuzzy_time = conf.dflt_opt_backfill_fuzzy;
 	sinfo->name = NULL;
 	sinfo->res = NULL;
 	sinfo->queues = NULL;
@@ -1352,10 +1164,8 @@ new_server_info(int limallocflag)
 	sinfo->hostsets = NULL;
 	sinfo->nodesigs = NULL;
 	sinfo->node_group_key = NULL;
-	sinfo->preempt_targets_enable = 1; /* enabled by default */
 	sinfo->npc_arr = NULL;
 	sinfo->qrun_job = NULL;
-	sinfo->job_formula = NULL;
 	sinfo->policy = NULL;
 	sinfo->fairshare = NULL;
 	sinfo->equiv_classes = NULL;
@@ -1367,6 +1177,7 @@ new_server_info(int limallocflag)
 	sinfo->num_hostsets = 0;
 	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
+	sinfo->job_sort_formula = NULL;
 
 	if ((limallocflag != 0))
 		sinfo->liminfo = lim_alloc_liminfo();
@@ -1839,7 +1650,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 				int num_resv_nodes;
 
 				resv_nodes = resresv->job->resv->resv->resv_nodes;
-				num_resv_nodes = count_array((void **) resv_nodes);
+				num_resv_nodes = count_array(resv_nodes);
 				qsort(resv_nodes, num_resv_nodes, sizeof(node_info *),
 					multi_node_sort);
 			} else {
@@ -1847,7 +1658,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 					multi_node_sort);
 
 				if (sinfo->nodes != sinfo->unassoc_nodes) {
-					num_unassoc = count_array((void **) sinfo->unassoc_nodes);
+					num_unassoc = count_array(sinfo->unassoc_nodes);
 					qsort(sinfo->unassoc_nodes, num_unassoc, sizeof(node_info *),
 						multi_node_sort);
 				}
@@ -2248,13 +2059,55 @@ check_susp_job(resource_resv *job, void *arg)
  * @param[in]	arg	-	argument (not used here)
  *
  * @return	int
- * @retval	1	: if job is not in reservation passed in arg
- * @retval	0	:  if job is there in reservation passed in arg
+ * @retval	1	: if job is running
+ * @retval	0	: if job is not running
  */
 int
-check_job_not_in_reservation(resource_resv *job, void *arg)
+check_job_running(resource_resv *job, void *arg)
 {
-	if (job->is_job && job->job != NULL && job->job->resv == NULL)
+	if (job->is_job && (job->job->is_running || job->job->is_exiting || job->job->is_userbusy))
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief
+ * 		helper function for resource_resv_filter()
+ *
+ * @param[in]	job	-	resource reservation job.
+ * @param[in]	arg	-	argument (not used here)
+ *
+ * @return	int
+ * @retval	1	: if job is running and in a reservation
+ * @retval	0	: if job is not running or not in a reservation
+ */
+int
+check_running_job_in_reservation(resource_resv *job, void *arg)
+{
+	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
+		(check_job_running(job, arg) == 1))
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief
+ * 		helper function for resource_resv_filter()
+ *
+ * @param[in]	job	-	resource reservation job.
+ * @param[in]	arg	-	argument (not used here)
+ *
+ * @return	int
+ * @retval	1	: if job is running and not in a reservation
+ * @retval	0	: if job is not running or in a reservation
+ */
+int
+check_running_job_not_in_reservation(resource_resv *job, void *arg)
+{
+	if (job->is_job && job->job != NULL && job->job->resv == NULL &&
+		(check_job_running(job, arg) == 1))
 		return 1;
 
 	return 0;
@@ -2329,16 +2182,10 @@ dup_server_info(server_info *osinfo)
 	nsinfo->eligible_time_enable = osinfo->eligible_time_enable;
 	nsinfo->provision_enable = osinfo->provision_enable;
 	nsinfo->power_provisioning = osinfo->power_provisioning;
-	nsinfo->dont_span_psets = osinfo->dont_span_psets;
 	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
-	nsinfo->enforce_prmptd_job_resumption = osinfo->enforce_prmptd_job_resumption;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
-	nsinfo->sched_cycle_len = osinfo->sched_cycle_len;
-	nsinfo->partition = string_dup(osinfo->partition);
-	nsinfo->opt_backfill_fuzzy_time = osinfo->opt_backfill_fuzzy_time;
 	nsinfo->name = string_dup(osinfo->name);
-	nsinfo->preempt_targets_enable = osinfo->preempt_targets_enable;
 	nsinfo->liminfo = lim_dup_liminfo(osinfo->liminfo);
 	nsinfo->server_time = osinfo->server_time;
 	nsinfo->flt_lic = osinfo->flt_lic;
@@ -2352,7 +2199,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->total_project_counts = dup_counts_list(osinfo->total_project_counts);
 	nsinfo->total_user_counts = dup_counts_list(osinfo->total_user_counts);
 	nsinfo->node_group_key = dup_string_array(osinfo->node_group_key);
-	nsinfo->job_formula = string_dup(osinfo->job_formula);
 	nsinfo->nodesigs = dup_string_array(osinfo->nodesigs);
 
 	nsinfo->policy = dup_status(osinfo->policy);
@@ -2495,6 +2341,14 @@ dup_server_info(server_info *osinfo)
 	 * jobs to each other if they have runone dependency
 	 */
 	associate_dependent_jobs(nsinfo);
+
+	if (osinfo->job_sort_formula != NULL) {
+		nsinfo->job_sort_formula = string_dup(osinfo->job_sort_formula);
+		if (nsinfo->job_sort_formula == NULL) {
+			free_server_info(nsinfo);
+			return NULL;
+		}
+	}
 
 	return nsinfo;
 }
@@ -3836,7 +3690,7 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
 	    return 0;
 
 	list_head = *qlhead;
-	queue_list_size = count_array((void **)list_head);
+	queue_list_size = count_array(list_head);
 
 	temp_list = find_queue_list_by_priority(list_head, qinfo->priority);
 	if (temp_list == NULL) {
@@ -3903,7 +3757,7 @@ struct queue_info **append_to_queue_list(queue_info ***list, queue_info *add)
 
 	if ((list == NULL) || (add == NULL))
 		return NULL;
-	count = count_array((void **)*list);
+	count = count_array(*list);
 
 	/* count contains number of elements in list (excluding NULL). we add 2 to add the NULL
 	 * back in, plus our new element.
@@ -4029,7 +3883,7 @@ create_resource_assn_for_node(node_info *ninfo)
 	}
 
 	if (ncpus_res != NULL && ncpus_res->assigned < ncpus_res->avail)
-		set_node_info_state(ninfo, ND_free);
+		remove_node_state(ninfo, ND_jobbusy);
 
 	return 1;
 }
@@ -4111,8 +3965,8 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	if (old_unordered_nodes == NULL || nnodes == NULL)
 		return NULL;
 
-	ct1 = count_array((void **) nnodes);
-	ct2 = count_array((void **) old_unordered_nodes);
+	ct1 = count_array(nnodes);
+	ct2 = count_array(old_unordered_nodes);
 
 	if(ct1 != ct2)
 		return NULL;
@@ -4146,7 +4000,7 @@ add_ptr_to_array(void *ptr_arr, void *ptr)
 	void **arr;
 	int cnt;
 
-	cnt = count_array((void **)ptr_arr);
+	cnt = count_array(ptr_arr);
 
 	if (cnt == 0) {
 		arr = malloc(sizeof(void *) * 2);

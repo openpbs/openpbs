@@ -276,7 +276,7 @@ free_resource_resv_array(resource_resv **resresv_arr)
 	if (resresv_arr == NULL)
 		return;
 
-	num_jobs = count_array((void **) resresv_arr);
+	num_jobs = count_array(resresv_arr);
 
 	tid = *((int *) pthread_getspecific(th_id_key));
 	if (tid != 0 || num_threads <= 1) {
@@ -514,7 +514,7 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 	if (oresresv_arr == NULL || nsinfo == NULL)
 		return NULL;
 
-	num_resresv = thread_job_ct_left = count_array((void **) oresresv_arr);
+	num_resresv = thread_job_ct_left = count_array(oresresv_arr);
 
 	if ((nresresv_arr = malloc((num_resresv + 1) * sizeof(resource_resv *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1662,7 +1662,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 			}
 		}
 	}
-	else if (resresv->is_resv && resresv->resv !=NULL) {
+	else if (resresv->is_resv && resresv->resv != NULL) {
 		resresv->resv->resv_state = RESV_RUNNING;
 
 		resv_queue = find_queue_info(resresv->server->queues,
@@ -1929,7 +1929,7 @@ add_resresv_to_array(resource_resv **resresv_arr,
 		return new_arr;
 	}
 
-	size = count_array((void **) resresv_arr);
+	size = count_array(resresv_arr);
 
 	/* realloc for 1 more ptr (2 == 1 for new and 1 for NULL) */
 	new_arr = realloc(resresv_arr, ((size+2) * sizeof(resource_resv *)));
@@ -2167,7 +2167,7 @@ dup_chunk_array(chunk **old_chunk_arr)
 	if (old_chunk_arr == NULL)
 		return NULL;
 
-	ct = count_array((void **) old_chunk_arr);
+	ct = count_array(old_chunk_arr);
 
 	if ((new_chunk_arr = calloc(ct + 1, sizeof(chunk *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -2581,7 +2581,7 @@ in_runnable_state(resource_resv *resresv)
 				return 0;
 		}
 
-		if (resresv->job  ->is_queued)
+		if (resresv->job->is_queued)
 			return 1;
 
 		if (resresv->job->is_susp_sched)

@@ -169,7 +169,7 @@ vnode_state_to_str(int state_bit)
 
 	/* Now clear any internal states */
 	if (state_bit_tmp != 0)
-		state_bit_tmp &= ~(INUSE_DELETED|INUSE_NEEDS_HELLO_PING|INUSE_INIT);
+		state_bit_tmp &= ~(INUSE_DELETED|INUSE_NEEDS_HELLOSVR|INUSE_INIT);
 
 	if (state_bit_tmp != 0)
 		return ("");	/* found an unknown state bit set! */
@@ -289,14 +289,13 @@ str_to_vnode_state(char *vnstate)
  * @param[out] 	mode	- action mode code, unused here
  * @param[out] 	rtnl	- pointer to the actual svrattrl entry.
  *
- * @return 	int
- * @retval	<0	an error encountered; value is negative of an error code
- * @retval	0       ok, encode happened and svrattrl created and linked in,
- *		     	or nothing to encode.
+ * @return   int
+ * @retval    <0  an error encountered; value is negative of an error code
+ * @retval    ==1 ok, encode succeeded and returning one item 
  */
 
 int
-encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_state(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	int	  i;
 	svrattrl *pal;
@@ -351,7 +350,7 @@ encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	if (rtnl)
 		*rtnl = pal;
 
-	return (0);             /*success*/
+	return (1);             /*success*/
 }
 
 /**
@@ -435,7 +434,7 @@ vnode_ntype_to_str(int vntype)
  *
  */
 int
-encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_ntype(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	short	 ntype;
@@ -500,7 +499,7 @@ encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  */
 
 int
-encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 
 {
 	svrattrl	*pal;
@@ -606,7 +605,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
  */
 
 int
-encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_resvs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	svrattrl	*pal;
 	struct resvinfo *rip;
@@ -682,12 +681,12 @@ encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  *
  * @return      int
  * @retval      <0      an error encountered; value is negative of an error code
- * @retval       0      ok, encode happened and svrattrl created and linked in,
- *                      or nothing to encode
+ * @retval     ==1      ok, encode succeeded and returning one item 
+ * 
  */
 
 int
-encode_sharing(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_sharing(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	int       n;
 	svrattrl *pal;
@@ -715,7 +714,7 @@ encode_sharing(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, in
 	if (rtnl)
 		*rtnl = pal;
 
-	return (0);             /*success*/
+	return (1);             /*success*/
 }
 
 /**
@@ -802,8 +801,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
 
 	if (!rc) {
 		pattr->at_val.at_long = flag;
-		pattr->at_flags |=
-			ATR_VFLAG_SET|ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	if (slen >= 512)		/*buffer on heap, not stack*/
@@ -839,7 +837,7 @@ int
 decode_ntype(attribute *pattr, char *name, char *rescn, char *val)
 {
 	pattr->at_val.at_short = NTYPE_PBS;
-	pattr->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
+	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	return 0;
 }
@@ -876,7 +874,7 @@ decode_sharing(attribute *pattr, char *name, char *rescn, char *val)
 
 	if (!rc) {
 		pattr->at_val.at_long = vns;
-		pattr->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
 	return rc;
@@ -938,8 +936,7 @@ set_node_state(attribute *pattr, attribute *new, enum batch_op op)
 	}
 
 	if (!rc) {
-		pattr->at_flags |=
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	}
 	return rc;
 }
@@ -991,7 +988,7 @@ set_node_ntype(attribute *pattr, attribute *new, enum batch_op op)
 	}
 
 	if (!rc)
-		pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		pattr->at_flags |= ATR_SET_MOD_MCACHE;
 	return rc;
 }
 

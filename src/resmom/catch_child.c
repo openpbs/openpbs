@@ -121,6 +121,13 @@ extern useconds_t	alps_release_jitter;
 
 extern char		*path_hooks_workdir;
 
+static PyObject *py_json_name = NULL;
+static PyObject *py_json_module = NULL;
+static PyObject *py_json_dict = NULL;
+static PyObject *py_json_func_loads = NULL;
+static PyObject *py_json_func_dumps = NULL;
+
+
 #ifndef WIN32
 /**
  * @brief
@@ -326,72 +333,66 @@ static enum job_atr mom_rtn_list_ext[] = {
  * @retval	NULL		 -	if not successful, filling out 'msg'
  *					with the actual error message.
  */
-PyObject *
+static PyObject *
 json_loads(char *value, char *msg, size_t msg_len)
 {
-	PyObject	*py_name = NULL;
-	PyObject	*py_module = NULL;
-	PyObject 	*py_dict = NULL;
-	PyObject	*py_func_loads = NULL;
-	PyObject	*py_value = NULL;
-	PyObject	*py_result = NULL;
+	PyObject *py_value = NULL;
+	PyObject *py_result = NULL;
 
-	if (value == NULL) {
+	if (value == NULL)
 		return NULL;
-	}
 
 	if (msg != NULL) {
-		if (msg_len <= 0) {
+		if (msg_len <= 0)
 			return NULL;
-		}
 		msg[0] = '\0';
 	}
 
-	py_name = PyUnicode_FromString("json");
-	if (py_name == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len, "failed to construct json name");
+	if (py_json_name == NULL) {
+		py_json_name = PyUnicode_FromString("json");
+		if (py_json_name == NULL) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "failed to construct json name");
+			return NULL;
 		}
-		return NULL;
 	}
 
-	py_module = PyImport_Import(py_name);
-	if (py_module == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len, "failed to import json");
+	if (py_json_module == NULL) {
+		py_json_module = PyImport_Import(py_json_name);
+		if (py_json_module == NULL) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "failed to import json");
+			return NULL;
 		}
-		goto json_loads_fail;
 	}
 
-	py_dict = PyModule_GetDict(py_module);
-	if (py_dict == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len,
-				"failed to get json module dictionary");
+	if (py_json_dict == NULL) {
+		py_json_dict = PyModule_GetDict(py_json_module);
+		if (py_json_dict == NULL) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "failed to get json module dictionary");
+			return NULL;
 		}
-		goto json_loads_fail;
 	}
 
-	py_func_loads = PyDict_GetItemString(py_dict, (char*)"loads");
-	if ((py_func_loads == NULL) || !PyCallable_Check(py_func_loads)) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len,
-				"did not find json.loads() function");
+	if (py_json_func_loads == NULL) {
+		py_json_func_loads = PyDict_GetItemString(py_json_dict, (char*)"loads");
+		if ((py_json_func_loads == NULL) || !PyCallable_Check(py_json_func_loads)) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "did not find json.loads() function");
+			return NULL;
 		}
-		goto json_loads_fail;
 	}
 
 	py_value = Py_BuildValue("(z)", (char*)value);
 	if (py_value == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len,
-				"failed to build python arg %s", value);
-		}
-		goto json_loads_fail;
+		if (msg != NULL)
+			snprintf(msg, msg_len, "failed to build python arg %s", value);
+		return NULL;
 	}
 
 	PyErr_Clear(); /* clear any exception */
-	py_result = PyObject_CallObject(py_func_loads, py_value);
+	py_result = PyObject_CallObject(py_json_func_loads, py_value);
 
 	if (PyErr_Occurred()) {
 		if (msg != NULL) {
@@ -403,12 +404,8 @@ json_loads(char *value, char *msg, size_t msg_len)
 			PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
 
 			/* get the exception */
-			if ((exc_type != NULL) &&
-				((exc_string = PyObject_Str(exc_type)) != NULL) &&
-				(PyUnicode_Check(exc_string))) {
-				snprintf(msg, msg_len, "%s",
-					PyUnicode_AsUTF8(exc_string));
-			}
+			if (exc_type != NULL && (exc_string = PyObject_Str(exc_type)) != NULL && PyUnicode_Check(exc_string))
+				snprintf(msg, msg_len, "%s", PyUnicode_AsUTF8(exc_string));
 			Py_XDECREF(exc_string);
 			Py_XDECREF(exc_type);
 			Py_XDECREF(exc_value);
@@ -421,21 +418,16 @@ json_loads(char *value, char *msg, size_t msg_len)
 		}
 		goto json_loads_fail;
 	} else if (!PyDict_Check(py_result)) {
-		if (msg != NULL) {
+		if (msg != NULL)
 			snprintf(msg, msg_len, "value is not a dictionary");
-		}
 		goto json_loads_fail;
 
 	}
 
-	Py_XDECREF(py_name);
-	Py_XDECREF(py_module);
 	Py_XDECREF(py_value);
 	return (py_result);
 
 json_loads_fail:
-	Py_XDECREF(py_name);
-	Py_XDECREF(py_module);
 	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return NULL;
@@ -458,74 +450,68 @@ json_loads_fail:
  *		The returned string is malloced space that must be freed
  *		later when no longer needed.
  */
-char *
+static char *
 json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 {
-	PyObject	*py_name = NULL;
-	PyObject	*py_module = NULL;
-	PyObject 	*py_dict = NULL;
-	PyObject	*py_func_dumps = NULL;
 	PyObject	*py_value = NULL;
 	PyObject	*py_result = NULL;
-	char		*tmp_str = NULL;
+	const char	*tmp_str = NULL;
 	char		*ret_string = NULL;
 	int		slen;
 
-	if (py_val == NULL) {
+	if (py_val == NULL)
 		return NULL;
-	}
 
 	if (msg != NULL) {
-		if (msg_len <= 0) {
+		if (msg_len <= 0)
 			return NULL;
-		}
 		msg[0] = '\0';
 	}
 
-	py_name = PyUnicode_FromString("json");
-	if (py_name == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len, "failed to construct json name");
+	if (py_json_name == NULL) {
+		py_json_name = PyUnicode_FromString("json");
+		if (py_json_name == NULL) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "failed to construct json name");
+			return NULL;
 		}
-		return NULL;
 	}
 
-	py_module = PyImport_Import(py_name);
-	if (py_module == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len, "failed to import json");
+	if (py_json_module == NULL) {
+		py_json_module = PyImport_Import(py_json_name);
+		if (py_json_module == NULL) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "failed to import json");
+			return NULL;
 		}
-		goto json_dumps_fail;
 	}
 
-	py_dict = PyModule_GetDict(py_module);
-	if (py_dict == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len,
-				"failed to get json module dictionary");
+	if (py_json_dict == NULL) {
+		py_json_dict = PyModule_GetDict(py_json_module);
+		if (py_json_dict == NULL) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "failed to get json module dictionary");
+			return NULL;
 		}
-		goto json_dumps_fail;
 	}
 
-	py_func_dumps = PyDict_GetItemString(py_dict, (char*)"dumps");
-	if ((py_func_dumps == NULL) || !PyCallable_Check(py_func_dumps)) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len,
-				"did not find json.loads() function");
+	if (py_json_func_dumps == NULL) {
+		py_json_func_dumps = PyDict_GetItemString(py_json_dict, (char*)"dumps");
+		if ((py_json_func_dumps == NULL) || !PyCallable_Check(py_json_func_dumps)) {
+			if (msg != NULL)
+				snprintf(msg, msg_len, "did not find json.dumps() function");
+			return NULL;
 		}
-		goto json_dumps_fail;
 	}
 
 	py_value = Py_BuildValue("(O)", py_val);
 	if (py_value == NULL) {
-		if (msg != NULL) {
-			snprintf(msg, msg_len,
-				"failed to build python arg %p", (void *)py_val);
-		}
-		goto json_dumps_fail;
+		if (msg != NULL)
+			snprintf(msg, msg_len, "failed to build python arg %p", (void *)py_val);
+		return NULL;
 	}
 	PyErr_Clear(); /* clear any exception */
-	py_result = PyObject_CallObject(py_func_dumps, py_value);
+	py_result = PyObject_CallObject(py_json_func_dumps, py_value);
 
 	if (PyErr_Occurred()) {
 		if (msg != NULL) {
@@ -537,12 +523,8 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 			PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
 
 			/* get the exception */
-			if ((exc_type != NULL) &&
-				((exc_string = PyObject_Str(exc_type)) != NULL) &&
-				(PyUnicode_Check(exc_string))) {
-				snprintf(msg, msg_len, "%s",
-					PyUnicode_AsUTF8(exc_string));
-			}
+			if (exc_type != NULL && (exc_string = PyObject_Str(exc_type)) != NULL && PyUnicode_Check(exc_string))
+				snprintf(msg, msg_len, "%s", PyUnicode_AsUTF8(exc_string));
 			Py_XDECREF(exc_string);
 			Py_XDECREF(exc_type);
 			Py_XDECREF(exc_value);
@@ -555,37 +537,33 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		}
 		goto json_dumps_fail;
 	} else if (!PyUnicode_Check(py_result)) {
-		if (msg != NULL) {
+		if (msg != NULL)
 			snprintf(msg, msg_len, "value is not a string");
-		}
 		goto json_dumps_fail;
 
 	}
 
-	Py_XDECREF(py_name);
-	Py_XDECREF(py_module);
-
 	tmp_str = PyUnicode_AsUTF8(py_result);
 	/* returned tmp_str points to an internal buffer of 'py_result' */
 	if (tmp_str == NULL) {
-		snprintf(msg, msg_len, "PyUnicode_AsUTF8 failed");
-		Py_XDECREF(py_result);
-		return NULL;
+		if (msg != NULL)
+			snprintf(msg, msg_len, "PyUnicode_AsUTF8 failed");
+		goto json_dumps_fail;
 	}
 	slen = strlen(tmp_str) + 3; /* for null character + 2 single quotes */
 	ret_string = (char *)malloc(slen);
 	if (ret_string == NULL) {
-		snprintf(msg, msg_len, "malloc of ret_string failed");
-		Py_XDECREF(py_result);
-		return NULL;
+		if (msg != NULL)
+			snprintf(msg, msg_len, "malloc of ret_string failed");
+		goto json_dumps_fail;
 	}
 	snprintf(ret_string, slen, "'%s'", tmp_str);
+	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return (ret_string);
 
 json_dumps_fail:
-	Py_XDECREF(py_name);
-	Py_XDECREF(py_module);
+	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return NULL;
 
@@ -605,31 +583,12 @@ json_dumps_fail:
 static void
 encode_used(job *pjob, pbs_list_head *phead)
 {
-	unsigned long	 lnum;
-	unsigned long	 lnum3;
-	int		 i;
-	attribute	*at;
-	attribute	*at2;
-	attribute_def	*ad;
-	int		 rc;
-	resource_def	*rd = NULL;
-	resource_def	*rd2;
-	resource	*rs;
-	resource	*rs2;
-	attribute	 val;	/* holds the final accumulated resources_used values from Moms including those released from the job */
-	attribute	 val2;	/* temp variable for accumulating resources_used from sis Moms */
-	attribute	 val3;	/* holds the final accumulated resources_used values from Moms, which does not include the released moms from job */
-	struct  attribute tmpatr = {0};
-	struct  attribute tmpatr3 = {0};
-	char		*sval;
-	char emsg[HOOK_BUF_SIZE];
-	char *dumps = NULL;
-	attribute_def	*ad3;
-	PyObject *py_jvalue = NULL;
-	PyObject *py_accum = NULL; /* holds accum resources_used values from all moms (including the released sister moms from job) */
-	PyObject *py_accum3 = NULL; /* holds accum resources_used values from all moms (NOT including the released sister moms from job) */
-
-	/* append resources_used */
+	attribute *at;
+	attribute_def *ad;
+	attribute_def *ad3;
+	resource *rs;
+	resource_def *rd;
+	int include_resc_used_update = 0;
 
 	at = &pjob->ji_wattr[JOB_ATR_resc_used];
 	ad = &job_attr_def[JOB_ATR_resc_used];
@@ -637,63 +596,74 @@ encode_used(job *pjob, pbs_list_head *phead)
 		return;
 
 	ad3 = &job_attr_def[JOB_ATR_resc_used_update];
+	if (pjob->ji_updated || ((pjob->ji_wattr[JOB_ATR_relnodes_on_stageout].at_flags & ATR_VFLAG_SET) != 0 && (pjob->ji_wattr[JOB_ATR_relnodes_on_stageout].at_val.at_long != 0)))
+		include_resc_used_update = 1;
 
-	for (rs = (resource *)GET_NEXT(at->at_val.at_list);
-		rs != NULL;
-		rs = (resource *)GET_NEXT(rs->rs_link)) {
+	rs = (resource *) GET_NEXT(at->at_val.at_list);
+	for (; rs != NULL; rs = (resource *) GET_NEXT(rs->rs_link)) {
+
+		int i;
+		attribute val;	/* holds the final accumulated resources_used values from Moms including those released from the job */
+		attribute val3; /* holds the final accumulated resources_used values from Moms, which does not include the released moms from job */
+		PyObject *py_jvalue;
+		char *sval;
+		char *dumps;
+		char emsg[HOOK_BUF_SIZE];
+		struct attribute tmpatr = {0};
+		struct attribute tmpatr3 = {0};
 
 		rd = rs->rs_defin;
-
 		if ((rd->rs_flags & resc_access_perm) == 0)
 			continue;
 
-		val = val3 = rs->rs_value;	/* copy resource attribute */
+		val = val3 = rs->rs_value; /* copy resource attribute */
 
-		/* count up sisterhood too */
-		lnum = 0;
-		lnum3 = 0;
+		/* NOTE: presence of pjob->ji_resources means a multinode job (i.e. pjob->ji_numnodes > 1) */
 		if (pjob->ji_resources != NULL) {
-			/* NOTE: presence of pjob->ji_resources means a
-			 *       multinode job (i.e. pjob->ji_numnodes > 1)
-			 */
+			/* count up sisterhood too */
+			unsigned long lnum = 0;
+			unsigned long lnum3 = 0;
+			noderes *nr;
+
 			if (strcmp(rd->rs_name, "cput") == 0) {
-				for (i=0; i<pjob->ji_numrescs; i++) {
-					noderes	*nr = &pjob->ji_resources[i];
+				for (i = 0; i < pjob->ji_numrescs; i++) {
+					nr = &pjob->ji_resources[i];
 					lnum += nr->nr_cput;
-					if (nr->nr_status != PBS_NODERES_DELETE) {
+					if (nr->nr_status != PBS_NODERES_DELETE)
 						lnum3 += nr->nr_cput;
-					}
 				}
 				val.at_val.at_long += lnum;
 				val3.at_val.at_long += lnum3;
-			}
-			else if (strcmp(rd->rs_name, "mem") == 0) {
-				for (i=0; i<pjob->ji_numrescs; i++) {
-					noderes	*nr = &pjob->ji_resources[i];
+			} else if (strcmp(rd->rs_name, "mem") == 0) {
+				for (i = 0; i < pjob->ji_numrescs; i++) {
+					nr = &pjob->ji_resources[i];
 					lnum += nr->nr_mem;
-					if (nr->nr_status != PBS_NODERES_DELETE) {
+					if (nr->nr_status != PBS_NODERES_DELETE)
 						lnum3 += nr->nr_mem;
-					}
+				}
+				val.at_val.at_long += lnum;
+				val3.at_val.at_long += lnum3;
+			} else if (strcmp(rd->rs_name, "cpupercent") == 0) {
+				for (i = 0; i < pjob->ji_numrescs; i++) {
+					nr = &pjob->ji_resources[i];
+					lnum += nr->nr_cpupercent;
+					if (nr->nr_status != PBS_NODERES_DELETE)
+						lnum3 += nr->nr_cpupercent;
 				}
 				val.at_val.at_long += lnum;
 				val3.at_val.at_long += lnum3;
 			}
-			else if (strcmp(rd->rs_name, "cpupercent") == 0) {
-				for (i=0; i<pjob->ji_numrescs; i++) {
-					noderes	*nr = &pjob->ji_resources[i];
-					lnum += nr->nr_cpupercent;
-					if (nr->nr_status != PBS_NODERES_DELETE) {
-						lnum3 += nr->nr_cpupercent;
-					}
-				}
-				val.at_val.at_long += lnum;
-				val3.at_val.at_long += lnum3;
 #ifdef PYTHON
-			} else if ((strcmp(rd->rs_name, RESOURCE_UNKNOWN) != 0) &&
-				   ((val.at_type == ATR_TYPE_LONG)  ||
-				(val.at_type == ATR_TYPE_FLOAT) ||
-				(val.at_type == ATR_TYPE_SIZE)  ||
-				(val.at_type == ATR_TYPE_STR))) {
+			else if (strcmp(rd->rs_name, RESOURCE_UNKNOWN) != 0 &&
+				   (val.at_type == ATR_TYPE_LONG ||
+				    val.at_type == ATR_TYPE_FLOAT ||
+				    val.at_type == ATR_TYPE_SIZE ||
+				    val.at_type == ATR_TYPE_STR)) {
+
+
+				PyObject *py_accum = NULL;  /* holds accum resources_used values from all moms (including the released sister moms from job) */
+				PyObject *py_accum3 = NULL; /* holds accum resources_used values from all moms (NOT including the released sister moms from job) */
+
 
 				/* The following 2 temp variables will be set to 1
 				 * if there's an error accuumlating resources_used
@@ -702,22 +672,16 @@ encode_used(job *pjob, pbs_list_head *phead)
 				 * all sister moms NOT including the released nodes
 				 * from job (fail2).
 				 */
-				int	fail = 0;
-				int	fail2 = 0;
+				int fail = 0;
+				int fail2 = 0;
 
-				py_accum3 = NULL;
 				py_jvalue = NULL;
-				py_accum = NULL;
-
-				(void)memset(&tmpatr, 0, sizeof(struct attribute));
-				(void)memset(&tmpatr3, 0, sizeof(struct attribute));
-				tmpatr.at_type  = tmpatr3.at_type  = val.at_type;
+				tmpatr.at_type = tmpatr3.at_type = val.at_type;
 
 				if (val.at_type != ATR_TYPE_STR) {
 					rd->rs_set(&tmpatr, &val, SET);
 					rd->rs_set(&tmpatr3, &val, SET);
 				} else {
-
 					py_accum = PyDict_New();
 					if (py_accum == NULL) {
 						log_err(-1, __func__, "error creating accumulation dictionary");
@@ -736,55 +700,57 @@ encode_used(job *pjob, pbs_list_head *phead)
 				 * moms) and tmpatr3 (from sisters that have not been
 				 * released from the job).
 				 */
-				for (i=0; i < pjob->ji_numrescs; i++) {
-					char mom_hname[PBS_MAXHOSTNAME+1];
+				for (i = 0; i < pjob->ji_numrescs; i++) {
+					char mom_hname[PBS_MAXHOSTNAME + 1];
 					char *p = NULL;
+					attribute *at2;
+					resource *rs2;
 
 					if (pjob->ji_resources[i].nodehost == NULL)
 						continue;
 
-					strncpy(mom_hname,
-						pjob->ji_resources[i].nodehost,
-							PBS_MAXHOSTNAME);
+					at2 = &pjob->ji_resources[i].nr_used;
+					if ((at2->at_flags & ATR_VFLAG_SET) == 0)
+						continue;
+
+					strncpy(mom_hname, pjob->ji_resources[i].nodehost, PBS_MAXHOSTNAME);
 					mom_hname[PBS_MAXHOSTNAME] = '\0';
 					p = strchr(mom_hname, '.');
 					if (p != NULL)
 						*p = '\0';
 
-					at2 = &pjob->ji_resources[i].nr_used;
-					if ((at2->at_flags & ATR_VFLAG_SET) == 0) {
-						continue;
-					}
-
 					fail = fail2 = 0;
-					for (rs2 = (resource *)GET_NEXT(at2->at_val.at_list);
-						rs2 != NULL;
-						rs2 = (resource *)GET_NEXT(rs2->rs_link)) {
+					rs2 = (resource *) GET_NEXT(at2->at_val.at_list);
+					for (; rs2 != NULL; rs2 = (resource *) GET_NEXT(rs2->rs_link)) {
+
+						attribute val2; /* temp variable for accumulating resources_used from sis Moms */
+						resource_def *rd2;
+
 						rd2 = rs2->rs_defin;
-						val2 = rs2->rs_value;	/* copy resource attribute */
-						if ((strcmp(rd2->rs_name, rd->rs_name) != 0) ||
-							((val2.at_flags & ATR_VFLAG_SET) == 0)) {
+						val2 = rs2->rs_value; /* copy resource attribute */
+						if ((val2.at_flags & ATR_VFLAG_SET) == 0 || strcmp(rd2->rs_name, rd->rs_name) != 0)
 							continue;
-						}
 
 						if (val2.at_type == ATR_TYPE_STR) {
 							sval = val2.at_val.at_str;
-							py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE-1);
+							py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1);
 							if (py_jvalue == NULL) {
-
-								snprintf(log_buffer, sizeof(log_buffer), "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s", pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname, emsg);
-								log_err(-1, __func__, log_buffer);
+								log_errf(-1, __func__,
+									 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
+									 pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname, emsg);
 								fail = 1;
 							} else if (PyDict_Merge(py_accum, py_jvalue, 1) != 0) {
-								snprintf(log_buffer, sizeof(log_buffer), "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values", pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
-								log_err(-1, __func__, log_buffer);
+								log_errf(-1, __func__,
+									 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
+									 pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
 								Py_CLEAR(py_jvalue);
 								fail = 1;
 							} else {
 								if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE) {
 									if (PyDict_Merge(py_accum3, py_jvalue, 1) != 0) {
-										snprintf(log_buffer, sizeof(log_buffer), "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values", pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
-										log_err(-1, __func__, log_buffer);
+										log_errf(-1, __func__,
+											 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
+											 pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
 										fail2 = 1;
 									}
 									Py_CLEAR(py_jvalue);
@@ -793,11 +759,10 @@ encode_used(job *pjob, pbs_list_head *phead)
 								}
 							}
 
-						} else  {
+						} else {
 							rd->rs_set(&tmpatr, &val2, INCR);
-							if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE) {
+							if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE)
 								rd->rs_set(&tmpatr3, &val2, INCR);
-							}
 						}
 						break;
 					}
@@ -811,12 +776,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 						Py_CLEAR(py_accum);
 						Py_CLEAR(py_accum3);
 						/* unset resc */
-						(void)add_to_svrattrl_list(
-							phead,
-							ad->at_name,
-							rd->rs_name,
-							"",
-							SET, NULL);
+						(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
 						/* go to next resource to encode_used */
 						continue;
 					}
@@ -825,12 +785,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 						Py_CLEAR(py_accum);
 						Py_CLEAR(py_accum3);
 						/* unset resc */
-						(void)add_to_svrattrl_list(
-							phead,
-							ad3->at_name,
-							rd->rs_name,
-							"",
-							SET, NULL);
+						(void) add_to_svrattrl_list(phead, ad3->at_name, rd->rs_name, "", SET, NULL);
 						/* go to next resource to encode_used */
 						continue;
 					}
@@ -839,70 +794,43 @@ encode_used(job *pjob, pbs_list_head *phead)
 					if (PyDict_Size(py_accum) == 0) {
 						/* no other values seen
 						 * except from MS...use as is
-						 * don't JSONify */
-						rd->rs_decode(&tmpatr,
-							ATTR_used, rd->rs_name,
-							sval);
+						 * don't JSONify
+						 */
+						rd->rs_decode(&tmpatr, ATTR_used, rd->rs_name, sval);
 						Py_CLEAR(py_accum);
 						Py_CLEAR(py_accum3);
 					} else if ((py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) == NULL) {
-						snprintf(log_buffer,
-							sizeof(log_buffer),
-							"Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
-							pjob->ji_qs.ji_jobid,
-							rd->rs_name, sval,
-							mom_short_name, emsg);
-						log_err(-1, __func__, log_buffer);
+						log_errf(-1, __func__,
+							 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
+							 pjob->ji_qs.ji_jobid, rd->rs_name, sval, mom_short_name, emsg);
 						Py_CLEAR(py_accum);
 						Py_CLEAR(py_accum3);
 						/* unset resc */
-						(void)add_to_svrattrl_list(
-							phead,
-							ad->at_name,
-							rd->rs_name,
-							"",
-							SET, NULL);
+						(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
 						/* go to next resource to encode */
 						continue;
 					} else if (PyDict_Merge(py_accum, py_jvalue, 1) != 0) {
-						snprintf(log_buffer,
-							sizeof(log_buffer),
-							"Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
-							pjob->ji_qs.ji_jobid,
-							rd->rs_name, sval,
-							mom_short_name);
-						log_err(-1, __func__, log_buffer);
+						log_errf(-1, __func__,
+							 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
+							 pjob->ji_qs.ji_jobid, rd->rs_name, sval, mom_short_name);
 						Py_CLEAR(py_jvalue);
 						Py_CLEAR(py_accum);
 						Py_CLEAR(py_accum3);
 						/* unset resc */
-						(void)add_to_svrattrl_list(
-							phead,
-							ad->at_name,
-							rd->rs_name,
-							"",
-							SET, NULL);
+						(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
 						/* go to next resource to encode */
 						continue;
 					} else {
-						dumps = json_dumps(py_accum, emsg, HOOK_BUF_SIZE-1);
+						dumps = json_dumps(py_accum, emsg, HOOK_BUF_SIZE - 1);
 						if (dumps == NULL) {
-							snprintf(log_buffer,
-								sizeof(log_buffer),
-								"Job %s resources_used.%s cannot be accumulated: %s",
-								pjob->ji_qs.ji_jobid,
-								rd->rs_name, emsg);
-							log_err(-1, __func__, log_buffer);
+							log_errf(-1, __func__,
+								 "Job %s resources_used.%s cannot be accumulated: %s",
+								 pjob->ji_qs.ji_jobid, rd->rs_name, emsg);
 							Py_CLEAR(py_jvalue);
 							Py_CLEAR(py_accum);
 							Py_CLEAR(py_accum3);
 							/* unset resc */
-							(void)add_to_svrattrl_list(
-								phead,
-								ad->at_name,
-								rd->rs_name,
-								"",
-								SET, NULL);
+							(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
 							continue;
 						}
 
@@ -911,42 +839,25 @@ encode_used(job *pjob, pbs_list_head *phead)
 						free(dumps);
 
 						if (PyDict_Merge(py_accum3, py_jvalue, 1) != 0) {
-							snprintf(log_buffer,
-								sizeof(log_buffer),
-								"Job %s resources_used_update.%s cannot be accumulated: value '%s' from mom %s: error merging values",
-								pjob->ji_qs.ji_jobid,
-								rd->rs_name, sval,
-								mom_short_name);
-								log_err(-1, __func__, log_buffer);
-								Py_CLEAR(py_jvalue);
-								Py_CLEAR(py_accum3);
-								/* unset resc */
-								(void)add_to_svrattrl_list(
-									phead,
-									ad3->at_name,
-									rd->rs_name,
-									"",
-									SET, NULL);
-								/* go to next resource to encode */
-								continue;
-						} else if ((dumps=json_dumps(py_accum3, emsg, HOOK_BUF_SIZE-1)) == NULL) {
-							snprintf(log_buffer,
-								sizeof(log_buffer),
-								"Job %s resources_used_update.%s cannot be accumulated: %s",
-								pjob->ji_qs.ji_jobid,
-								rd->rs_name, emsg);
-							log_err(-1, __func__, log_buffer);
+							log_errf(-1, __func__,
+								 "Job %s resources_used_update.%s cannot be accumulated: value '%s' from mom %s: error merging values",
+								 pjob->ji_qs.ji_jobid, rd->rs_name, sval, mom_short_name);
 							Py_CLEAR(py_jvalue);
 							Py_CLEAR(py_accum3);
 							/* unset resc */
-							(void)add_to_svrattrl_list(
-								phead,
-								ad3->at_name,
-								rd->rs_name,
-								"",
-								SET, NULL);
+							(void) add_to_svrattrl_list(phead, ad3->at_name, rd->rs_name, "", SET, NULL);
+							/* go to next resource to encode */
 							continue;
-						}   else {
+						} else if ((dumps = json_dumps(py_accum3, emsg, HOOK_BUF_SIZE - 1)) == NULL) {
+							log_errf(-1, __func__,
+								 "Job %s resources_used_update.%s cannot be accumulated: %s",
+								 pjob->ji_qs.ji_jobid, rd->rs_name, emsg);
+							Py_CLEAR(py_jvalue);
+							Py_CLEAR(py_accum3);
+							/* unset resc */
+							(void) add_to_svrattrl_list(phead, ad3->at_name, rd->rs_name, "", SET, NULL);
+							continue;
+						} else {
 							rd->rs_decode(&tmpatr3, ATTR_used_update, rd->rs_name, dumps);
 							Py_CLEAR(py_jvalue);
 							Py_CLEAR(py_accum3);
@@ -956,14 +867,12 @@ encode_used(job *pjob, pbs_list_head *phead)
 				}
 				val = tmpatr;
 				val3 = tmpatr3;
-#endif
 			}
+#endif
 			/* no resource to accumulate and yet a multinode job */
 		}
 
-		if ((val.at_type != ATR_TYPE_STR) ||
-			(pjob->ji_numnodes == 1)  ||
-			(pjob->ji_resources != NULL)) {
+		if (val.at_type != ATR_TYPE_STR || pjob->ji_numnodes == 1 || pjob->ji_resources != NULL) {
 			/* for string values, set value if single node job
 			 * (i.e. pjob->ji_numnodes == 1), or
 			 * if the value is accumulated from the various
@@ -990,40 +899,20 @@ encode_used(job *pjob, pbs_list_head *phead)
 					}
 				}
 			}
-			rc = rd->rs_encode(&val, phead,
-				ad->at_name, rd->rs_name,
-				ATR_ENCODE_CLIENT, NULL);
-			if (rc < 0) {
-				goto encode_used_exit;
-			}
 
-			rc = rd->rs_encode(&val3, phead,
-				ad3->at_name, rd->rs_name,
-				ATR_ENCODE_CLIENT, NULL);
-			if (rc < 0) {
+			if (rd->rs_encode(&val, phead, ad->at_name, rd->rs_name, ATR_ENCODE_CLIENT, NULL) < 0)
 				goto encode_used_exit;
+
+			if (include_resc_used_update) {
+				if (rd->rs_encode(&val3, phead, ad3->at_name, rd->rs_name, ATR_ENCODE_CLIENT, NULL) < 0)
+					goto encode_used_exit;
 			}
 		}
 
-		if (((tmpatr.at_flags & ATR_VFLAG_SET) != 0) &&
-					(tmpatr.at_type == ATR_TYPE_STR)) {
-			rd->rs_free(&tmpatr);
-		}
-		if (((tmpatr3.at_flags & ATR_VFLAG_SET) != 0) &&
-					(tmpatr3.at_type == ATR_TYPE_STR)) {
-			rd->rs_free(&tmpatr3);
-		}
-
-	}
 encode_used_exit:
-	if (((tmpatr.at_flags & ATR_VFLAG_SET) != 0) &&
-				(tmpatr.at_type == ATR_TYPE_STR)) {
-		if (rd)
+		if ((tmpatr.at_flags & ATR_VFLAG_SET) != 0 && tmpatr.at_type == ATR_TYPE_STR)
 			rd->rs_free(&tmpatr);
-	}
-	if (((tmpatr3.at_flags & ATR_VFLAG_SET) != 0) &&
-				(tmpatr3.at_type == ATR_TYPE_STR)) {
-		if (rd)
+		if ((tmpatr3.at_flags & ATR_VFLAG_SET) != 0 && tmpatr3.at_type == ATR_TYPE_STR)
 			rd->rs_free(&tmpatr3);
 	}
 }
@@ -1366,7 +1255,7 @@ send_obit(job *pjob, int exval)
 	pjob->ji_mompost = NULL;
 	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_OBIT) {
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
-		job_save(pjob, SAVEJOB_QUICK);
+		job_save(pjob);
 	}
 	if (server_stream >= 0) {
 		pjob->ji_sampletim = time_now;		/* when obit sent
@@ -1729,8 +1618,7 @@ end_loop:
 					resc_used(pjob, "mem", getsize));
 				(void)diswul(stream,
 					resc_used(pjob, "cpupercent", gettime));
-				(void)send_resc_used_to_ms(stream,
-							pjob->ji_qs.ji_jobid);
+				(void)send_resc_used_to_ms(stream, pjob);
 				(void)dis_flush(stream);
 				pjob->ji_obit = TM_NULL_EVENT;
 			}
@@ -1888,53 +1776,89 @@ end_loop:
 }
 
 /**
- * @brief	Send a restart message to the Server over IS protocol
+ * @brief
+ * 		choosing one server in random if a failover server is already set up.
+ *
+ * @param[out] port - Passed through to parse_servername(), not modified here.
+ *
+ * @return char *
+ * @return NULL - failure
+ * @retval !NULL - pointer to server name
+ */
+char *
+get_servername_random(unsigned int *port)
+{
+
+	if (!pbs_conf.pbs_secondary)
+		return get_servername(port);
+	else {
+		if (rand() % 2 == 0)
+			return get_servername(port);
+		else
+			return parse_servername(pbs_conf.pbs_secondary, port);
+	}
+}
+
+/**
+ * @brief
+ * 	send IS_HELLOSVR message to Server.
+ *
+ * @param[in]	stream	- connection stream
  *
  * @par
- *	Close any existing tpp streams to the server, it is unlikely that
- *	there is one. Parse the server name from pbs.conf;
- *	Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER,
- *	open TPP stream and send restart on it
+ *	Open a connection stream to the named server/port if not already exists,
+ *	compose the IS_HELLOSVR, flush the stream and remember for future use.
  *
- * @return void
+ *
+ * @return	void
+ *
  */
+
 void
-send_restart(void)
+send_hellosvr(int stream)
 {
-	unsigned int port = default_server_port;
-	char *svr;
-	int j;
+	int		rc = 0;
+	char		*svr = NULL;
+	unsigned int	port = default_server_port;
 
-	if (server_stream >= 0) {
-		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
-				"Closing existing server stream %d", server_stream);
-		dis_flush(server_stream);
-		tpp_close(server_stream);
-		server_stream = -1;
+	if (stream < 0) {
+		if ((svr = get_servername_random(&port)) == NULL) {
+			log_err(errno, msg_daemonname, "get_servername_random() failed");
+			return;
+		}
+
+		stream = tpp_open(svr, port);
+		if (stream < 0) {
+			log_errf(errno, msg_daemonname, "tpp_open(%s, %d) failed", svr, port);
+			return;
+		}
 	}
 
+	if ((rc = is_compose(stream, IS_HELLOSVR)) != DIS_SUCCESS)
+		goto err;
 
-	svr = get_servername(&port);
-	j = tpp_open(svr, port);
+	if ((rc = diswui(stream, pbs_mom_port)) != DIS_SUCCESS)
+		goto err;
+	if ((rc = dis_flush(stream)) != DIS_SUCCESS)
+		goto err;
 
-	if (j < 0) {
-		(void)sprintf(log_buffer, "tpp_open(%s, %d) failed", svr, port);
-		log_err(errno, msg_daemonname, log_buffer);
-		return;
-	}
+	server_stream = stream;
 
-	if (is_compose(j, IS_RESTART) != DIS_SUCCESS) {
-		(void)sprintf(log_buffer, "Failed to compose restart message");
-		log_err(errno, msg_daemonname, log_buffer);
-		tpp_close(j);
-		return;
-	}
+	if (svr)
+		sprintf(log_buffer, "HELLO sent to server at %s:%d", svr, port);
+	else
+		sprintf(log_buffer, "HELLO sent to server at stream:%d", stream);
+	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+		msg_daemonname, log_buffer);
+	return;
 
-	(void)diswui(j, pbs_mom_port);
-	dis_flush(j);
-	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
-			"Restart sent to server at %s:%d", svr, port);
-	tpp_close(j);
+err:
+	if (svr)
+		log_errf(errno, msg_daemonname, "Failed to send HELLO at %s:%d", svr, port);
+	else
+		log_errf(errno, msg_daemonname, "Failed to send HELLO at stream:%d", stream);
+	tpp_close(stream);
+	return;
 }
 
 /**
@@ -2003,6 +1927,11 @@ init_abort_jobs(int recover)
 		/* To get homedir info */
 		pj->ji_grpcache = NULL;
 		check_pwd(pj);
+		if (pbs_idx_insert(jobs_idx, pj->ji_qs.ji_jobid, pj) != PBS_IDX_RET_OK) {
+			log_joberr(PBSE_INTERNAL, __func__, "Failed to add job in index during recovery", pj->ji_qs.ji_jobid);
+			job_free(pj);
+			continue;
+		}
 		append_link(&svr_alljobs, &pj->ji_alljobs, pj);
 		job_nodes(pj);
 		task_recov(pj);
@@ -2064,7 +1993,7 @@ init_abort_jobs(int recover)
 				(JOB_SVFLG_CHKPT|
 				JOB_SVFLG_ChkptMig)) == 0) {
 				pj->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
-				job_save(pj, SAVEJOB_QUICK);
+				job_save(pj);
 			}
 		} else if (pj->ji_qs.ji_substate == JOB_SUBSTATE_TERM) {
 			/*
@@ -2075,7 +2004,7 @@ init_abort_jobs(int recover)
 			if (recover)
 				(void)kill_job(pj, SIGKILL);
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
-			job_save(pj, SAVEJOB_QUICK);
+			job_save(pj);
 		} else if ((recover != 2) &&
 			((pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) ||
 			(pj->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) ||
@@ -2116,7 +2045,7 @@ init_abort_jobs(int recover)
 			}
 
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
-			job_save(pj, SAVEJOB_QUICK);
+			job_save(pj);
 			exiting_tasks = 1;
 		} else if (recover == 2) {
 			pbs_task	*ptask;
@@ -2432,7 +2361,7 @@ mom_deljob(job *pjob)
 /**
  * @brief
  * 	mom_deljob_wait - deletes most of the job stuff, job entry not deleted
- *	untill the sisters have rplied or are down
+ *	until the sisters have replied or are down
  *	This version DOES wait for the Sisters to reply, see processing of
  *	IM_DELETE_JOB_REPLY in mom_comm.c
  *	IT should only be called for a job for which this is Mother Superior.
@@ -2620,7 +2549,7 @@ set_job_toexited(char *jobid)
 			/* if checkpointed, save state to disk, otherwise  */
 			/* leave unchanges on disk so recovery will resend */
 			/* obit to server                                  */
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			(void)job_save(pjob);
 		}
 	}
 }

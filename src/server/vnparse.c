@@ -39,28 +39,10 @@
 
 
 /**
- * @file    vnparse.c
  *
  *@brief
- * 		vnparse.c - Functions which provide basic operation on the parsing of vnl files.
+ * 		Functions which provide basic operation on the parsing of vnl files.
  *
- * Included functions are:
- *
- *   vn_parse	opening and reading the given file and parsing it into a vnl_t
- *   vn_parse_stream	Read a configuration file.
- *   vn_merge	Merge data from the newly-parse vnode list (new) into a previously-parsed one (cur)
- *   vn_merge2	Merge data from the newly-parse vnode list (new) into a previously-parsed one (cur)
- *   attr_exist	Search for an attribute in a vnode.
- *   vn_vnode	Check if a vnode exists.
- *   vn_exist	Search for a named vnode, then search for an attribute in that vnode.
- *   vn_addvnr	Add the given attribute (attr) and value (attrval) to the vnode with ID id;
- *   id2vnrl	If a vnal_t entry with the given ID (id) exists, return a pointer to it;
- *   attr2vnr	If a vna_t entry with the given ID attribute (attr), return a pointer to it;
- *   vnl_free	free the vnl_t
- *   legal_vnode_char	Check character in a vnode name.
- *   parse_node_token	Parse tokens in the nodes file
- *   vnl_alloc	Handle initial allocation of a vnl_t as well as reallocation when we run out of space.
- *   vnal_alloc	Handle initial allocation of a vnal_t as well as reallocation when we run out of space.
  */
 #include	<sys/types.h>
 #include	<sys/stat.h>
@@ -90,7 +72,7 @@
 #include	"pbs_reliable.h"
 
 static vnal_t	*vnal_alloc(vnal_t **);
-static vnal_t	*id2vnrl(vnl_t *, char *, AVL_IX_REC *);
+static vnal_t	*id2vnrl(vnl_t *, char *);
 static vna_t	*attr2vnr(vnal_t *, char *);
 
 static const char	iddelim = ':';
@@ -258,9 +240,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 		for (vnp = vnid; *vnp && legal_vnode_char(*vnp, 1); vnp++)
 			;
 		if (*vnp) {
-			sprintf(log_buffer,
-				"invalid character in vnode name \"%s\"", vnid);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			log_errf(PBSE_SYSTEM, __func__, "invalid character in vnode name \"%s\"", vnid);
 			vnl_free(vnlp);
 			return NULL;
 		}
@@ -270,9 +250,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 		 * is defined as string of length 64.
 		 */
 		if (strlen(vnid) > PBS_MAXHOSTNAME) {
-			sprintf(log_buffer,
-				"Node name \"%s\" is too big", vnid);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			log_errf(PBSE_SYSTEM, __func__, "Node name \"%s\" is too big", vnid);
 			return NULL;
 		}
 		/* <ATTRNAME> <ATTRDELIM> */
@@ -569,7 +547,7 @@ vn_vnode(vnl_t *vnlp, char *id)
 {
 	if (vnlp == NULL)
 		return NULL;
-	return id2vnrl(vnlp, id, NULL);
+	return id2vnrl(vnlp, id);
 }
 
 /**
@@ -590,7 +568,7 @@ vn_exist(vnl_t *vnlp, char *id, char *attr)
 
 	if (vnlp == NULL)
 		return NULL;
-	if ((vnrlp = id2vnrl(vnlp, id, NULL)) == NULL)
+	if ((vnrlp = id2vnrl(vnlp, id)) == NULL)
 		return NULL;
 
 	return attr_exist(vnrlp, attr);
@@ -621,11 +599,6 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 	vnal_t	*vnrlp;
 	vna_t	*vnrp;
 	char	*newid, *newname, *newval;
-	union {
-		AVL_IX_REC xrp;
-		char	buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
-	} xxrp;
-	AVL_IX_REC *rp = &xxrp.xrp;
 
 	if ((callback != NULL) && (callback(id, attr, attrval) == 0))
 		return (0);
@@ -637,9 +610,7 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 		return (-1);
 	}
 
-	/* the index was created with string keys */
-	snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
-	if ((vnrlp = id2vnrl(vnlp, id, rp)) == NULL) {
+	if ((vnrlp = id2vnrl(vnlp, id)) == NULL) {
 		if ((newid = strdup(id)) == NULL) {
 			free(newval);
 			free(newname);
@@ -657,8 +628,7 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 			return (-1);
 		}
 		vnlp->vnl_cur = vnlp->vnl_used++;
-		rp->recptr = (AVL_RECPOS)vnlp->vnl_dl.dl_cur;
-		if (avl_add_key(rp, &vnlp->vnl_ix) != AVL_IX_OK) {
+		if (pbs_idx_insert(vnlp->vnl_ix, id, (void *)vnlp->vnl_dl.dl_cur) != PBS_IDX_RET_OK) {
 			free(newid);
 			free(newval);
 			free(newname);
@@ -699,27 +669,16 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
  *
  * @param[in,out]	vnlp	-	vnode list to search
  * @param[in]	id	-	vnode name to look for
- * @param[out]	rp	-	rectype
  *
  * @return	vnal_t *
  * @retval	a pointer to vnal_t	: entry with the given ID (id) exists
  * @retval	NULL	: does not exists.
  */
 static vnal_t *
-id2vnrl(vnl_t *vnlp, char *id, AVL_IX_REC *rp)
+id2vnrl(vnl_t *vnlp, char *id)
 {
-	union {
-		AVL_IX_REC xrp;
-		char	buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
-	} xxrp;
-
-	if (rp == NULL) {
-		rp = &xxrp.xrp;
-		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
-	}
-
-	if (vnlp != NULL && avl_find_key(rp, &vnlp->vnl_ix) == AVL_IX_OK) {
-		unsigned long	i = (unsigned long)rp->recptr;
+	unsigned long i = 0;
+	if (vnlp != NULL && pbs_idx_find(vnlp->vnl_ix, (void **)&id, (void **)&i, NULL) == PBS_IDX_RET_OK) {
 		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
 
 		return (vnrlp);
@@ -771,12 +730,16 @@ vnl_free(vnl_t *vnlp)
 
 	if (vnlp) {
 		assert(vnlp->vnl_list != NULL);
+		if (vnlp->vnl_used == 0 && vnlp->vnl_nelem && vnlp->vnl_list) {
+			vnal_t *vnrlp = (vnal_t *) vnlp->vnl_list;
+			free(vnrlp->vnal_list);
+		}
 		for (i = 0; i < vnlp->vnl_used; i++) {
-			vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
+			vnal_t *vnrlp = VNL_NODENUM(vnlp, i);
 
 			assert(vnrlp->vnal_list != NULL);
 			for (j = 0; j < vnrlp->vnal_used; j++) {
-				vna_t	*vnrp = VNAL_NODENUM(vnrlp, j);
+				vna_t *vnrp = VNAL_NODENUM(vnrlp, j);
 
 				free(vnrp->vna_name);
 				free(vnrp->vna_val);
@@ -786,7 +749,7 @@ vnl_free(vnl_t *vnlp)
 		}
 		free(vnlp->vnl_list);
 #ifdef PBS_MOM
-		avl_destroy_index(&vnlp->vnl_ix);
+		pbs_idx_destroy(vnlp->vnl_ix);
 #endif /* PBS_MOM */
 		free(vnlp);
 	}
@@ -964,10 +927,10 @@ vnl_alloc(vnl_t **vp)
 			free(newchunk);
 			return NULL;
 		}
-		/*
-		 * The keylength 0 means use nul terminated strings for keys.
-		 */
-		avl_create_index(&newchunk->vnl_ix, AVL_NO_DUP_KEYS, 0);
+		if ((newchunk->vnl_ix = pbs_idx_create(0, 0)) == NULL) {
+			free(newchunk);
+			return NULL;
+		}
 		newchunk->vnl_list = newlist;
 		newchunk->vnl_nelem = 1;
 		newchunk->vnl_cur = 0;
@@ -1760,7 +1723,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 		new_exec_host2[0] = '\0';
 	}
 
-	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+	prdefvntype = &svr_resc_def[RESC_VNTYPE];
 	/* There's a 1:1:1 mapping among exec_vnode parenthesized
 	 * entries, exec_host, and exec_host2.
 	 */
@@ -1931,9 +1894,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 
 				for (j = 0; j < nelem; ++j) {
 
-					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw,
-										svr_resc_size);
-
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 					if (resc_def == NULL) {
 						continue;
 					}
@@ -2778,8 +2739,7 @@ resc_limit_insert_other_res(resc_limit_t *have, char *kv_keyw, char *kv_val, int
 		return PBSE_INVALJOBRESC;
 	}
 
-	resc_def = find_resc_def(svr_resc_def, kv_keyw, svr_resc_size);
-
+	resc_def = find_resc_def(svr_resc_def, kv_keyw);
 	if (resc_def == NULL) {
 		log_err(-1, __func__, "resc_def is NULL");
 		return PBSE_UNKRESC;
@@ -4078,9 +4038,7 @@ pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_
 				for (j = 0; j < nelem; ++j) {
 
 #ifdef PBS_MOM
-					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw,
-										svr_resc_size);
-
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 					if (resc_def == NULL) {
 						continue;
 					}
@@ -4618,7 +4576,7 @@ strcat_grow(char **buf, char **curr, size_t *lenbuf, char *source)
  */
 /**
  * @par
- * 		Decode a selection specification,  and produce the
+ * 		Decode a selection specification, and produce the
  *		the "schedselect" attribute which contains any default resources
  *		missing from the chunks in the select spec.
  *		Also translates the value of any boolean resource to the "formal"
@@ -4728,7 +4686,7 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 						return PBSE_DUPRESC;
 					}
 				}
-				presc = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+				presc = find_resc_def(svr_resc_def, pkvp[j].kv_keyw);
 				if (presc) {
 					if ((presc->rs_flags & ATR_DFLAG_CVTSLT) == 0) {
 						if (presc_in_err != NULL) {
@@ -4813,13 +4771,13 @@ do_schedselect(char *select_val, void *server, void *destin, char **presc_in_err
 				 * appropriate for the Scheduler.  Then rebuild it in
 				 * the out buf.
 				 */
-				presc = find_resc_def(svr_resc_def, pkvp[0].kv_keyw, svr_resc_size);
+				presc = find_resc_def(svr_resc_def, pkvp[0].kv_keyw);
 				for (i=0; i<nelem; ++i) {
 					strcat(pc, ":");
 					if (strcat_grow(&outbuf, &pc, &bufsz, pkvp[i].kv_keyw) == -1)
 						return PBSE_SYSTEM;
 					strcat(pc, "=");
-					presc = find_resc_def(svr_resc_def, pkvp[i].kv_keyw, svr_resc_size);
+					presc = find_resc_def(svr_resc_def, pkvp[i].kv_keyw);
 					if (presc && (presc->rs_type == ATR_TYPE_BOOL)) {
 						j = is_true_or_false(pkvp[i].kv_val);
 						if (j == 1)

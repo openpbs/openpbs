@@ -259,8 +259,8 @@ enum vnode_sharing str_to_vnode_sharing(char *vn_str)
  * 	  Operation: strbuf += str
  *
  *	@param[in, out] strbuf - string that will expand to accommodate the
- *			        concatenation of 'str'
- *	@param[in, out] ssize - allocated size of strbuf
+ *			        concatenation of 'str' - if null, new buffer allocated
+ *	@param[in, out] ssize - if not NULL, allocated size of strbuf
  *	@param[in]      str   - string to concatenate to 'strbuf'
  *
  *	@return char *
@@ -276,14 +276,11 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
 	char *rbuf;
 	int size;
 
-	if (strbuf == NULL || ssize == NULL)
-		return NULL;
-
 	if (str == NULL)
 		return *strbuf;
 
 	rbuf = *strbuf;
-	size = *ssize;
+	size = ssize == NULL ? 0 : *ssize;
 
 	len = strlen(str);
 	rbuf_len = rbuf == NULL ? 0 : strlen(rbuf);
@@ -297,7 +294,8 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
 		tmp = realloc(rbuf, size + 1);
 		if (tmp == NULL)
 			return NULL;
-		*ssize = size;
+		if (ssize)
+			*ssize = size;
 		*strbuf = tmp;
 		rbuf = tmp;
 		/* first allocate */
@@ -306,6 +304,35 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
 	}
 
 	return strcat(rbuf, str);
+}
+
+/**
+ *
+ * @brief special purpose strcpy for chain copying strings
+ *        primary difference with normal strcpy is that it
+ *        returns the destination buffer position just past
+ *        the copied data. Thus the next string can be just 
+ *        added to the returned pointer.  
+ *
+ * @param[in] dest - pointer to the destination buffer
+ * @param[in] src  - pointer to the source buffer
+ *
+ * @return char *
+ * @retval pointer to the end of the resulting string
+ *	
+ * @note: Caller needs to ensure space and non-NULL pointers
+ *        This function is created for performance so does not
+ *        verify any paramaters
+ */
+char *
+pbs_strcpy(char *dest, const char *src)
+{
+	while (*src)
+		*dest++ = *src++;
+
+	*dest = '\0';
+
+	return dest;
 }
 
 /**
@@ -2159,4 +2186,16 @@ crc_file(char *filepath)
 #else
 	return (crc(buf, sb.st_size));
 #endif
+}
+
+/**
+ * @brief
+ * 	Return multiserver mode
+ *
+ * @return int
+ */
+int 
+get_msvr_mode(void)
+{
+	return 0;
 }

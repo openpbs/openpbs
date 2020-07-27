@@ -59,12 +59,6 @@ extern "C" {
 server_info *query_server(status *policy, int pbs_sd);
 
 /*
- *	query_sched_obj - query the server's scheduler object and convert
- *			  attributes to scheduler's internal data structures
- */
-int query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo);
-
-/*
  *	query_server_info - collect information out of a statserver call
  *			    into a server_info structure
  */
@@ -172,10 +166,24 @@ int check_susp_job(resource_resv *job, void *arg);
 
 /*
  *
- *	check_job_not_in_reservation - function used by job_filter to filter out
+ *	check_job_running - function used by job_filter to filter out
+ *			   jobs that are running
+ */
+int check_job_running(resource_resv *job, void *arg);
+
+/*
+ *
+ *	check_running_job_in_reservation - function used by job_filter to filter out
  *			   jobs that are in a reservation
  */
-int check_job_not_in_reservation(resource_resv *job, void *arg);
+int check_running_job_in_reservation(resource_resv *job, void *arg);
+
+/*
+ *
+ *	check_running_job_not_in_reservation - function used by job_filter to filter out
+ *			   jobs that are not in a reservation
+ */
+int check_running_job_not_in_reservation(resource_resv *job, void *arg);
 
 /*
  *

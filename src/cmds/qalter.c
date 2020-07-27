@@ -186,12 +186,6 @@ main(int argc, char **argv, char **envp) /* qalter */
 	char server_out[MAXSERVERNAME];
 	char rmt_server[MAXSERVERNAME];
 	struct ecl_attribute_errors *err_list;
-#ifdef WIN32
-	struct attrl *ap = NULL;
-	short int nSizeofHostName = 0;
-	char* orig_apvalue = NULL;
-	char* temp_apvalue = NULL;
-#endif
 
 #define GETOPT_ARGS "a:A:c:e:h:j:k:l:m:M:N:o:p:r:R:S:u:W:P:"
 

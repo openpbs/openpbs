@@ -2316,12 +2316,6 @@ process_opts(int argc, char **argv, int passet)
 	char *pc;
 	struct attrl *pattr = NULL;
 	size_t N_len = 0;
-#ifdef WIN32
-	struct attrl *ap = NULL;
-	short int n_sizeof_hostname = 0;
-	char *orig_apvalue = NULL;
-	char *temp_apvalue = NULL;
-#endif
 	int ddash_index = -1;
 
 #ifdef WIN32
@@ -5043,6 +5037,7 @@ daemon_submit(char *qsub_exe, int *do_regular_submit)
 	char cmd_line[2 * MAXPATHLEN + 1];
 	int created = 0;
 	HANDLE h_event;
+	int flags = CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_PROCESS_GROUP;
 
 	/* determine pipe name */
 	get_comm_filename(fl);
@@ -5090,12 +5085,13 @@ again:
 
 			/* launch new qsub process, connect 2 server */
 			sa.bInheritHandle = FALSE;
+			si.lpDesktop = NULL;
 			sprintf(cmd_line, "%s --daemon %s %d %s",
 					qsub_exe, fl,
 					h_event, server_out);
 			if (!CreateProcess(NULL, cmd_line, &sa, &sa,
-						TRUE, CREATE_NO_WINDOW, NULL,
-						NULL, &si, &pi)) {
+						TRUE, flags,
+						NULL, NULL, &si, &pi)) {
 				CloseHandle(h_event);
 				return rc;
 			}
@@ -5681,6 +5677,9 @@ main(int argc, char **argv, char **envp) /* qsub */
 	if ((argc == 4 || argc == 5) && (strcasecmp(argv[1], "--daemon") == 0)) {
 		/* set when background qsub is running */
 		is_background = 1;
+		(void)fclose(stdin);
+		(void)fclose(stdout);
+		(void)fclose(stderr);
 		if (argc == 4)
 			do_daemon_stuff(argv[2], argv[3], NULL);
 		else

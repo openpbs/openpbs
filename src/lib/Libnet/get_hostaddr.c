@@ -177,3 +177,55 @@ compare_short_hostname(char *shost, char *lhost)
 	else
 		return 1;	/* no match */
 }
+
+/**
+ * @brief
+ *
+ * comp_svraddr - get internal internet address of the given host
+ *		  check to see if any of the addresses match the given server
+ *		  net address.
+ *
+ *
+ * @param[in] svr_addr - net address of the server
+ * @param[in] hostname - hostname whose internet addr needs to be compared
+ *
+ * @return	int
+ * @retval	0 address found
+ * @retval	1 address not found
+ * @retval	2 failed to find address
+ *
+ */
+int
+comp_svraddr(pbs_net_t svr_addr, char *hostname)
+{
+	struct addrinfo *aip, *pai;
+	struct addrinfo hints;
+	struct sockaddr_in *inp;
+	pbs_net_t	res;
+
+	if ((hostname == NULL) || (*hostname == '\0')) {
+		return (2);
+	}
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	if (getaddrinfo(hostname, NULL, &hints, &pai) != 0) {
+		pbs_errno = PBSE_BADHOST;
+		return (2);
+	}
+	for (aip = pai; aip != NULL; aip = aip->ai_next) {
+		if (aip->ai_family == AF_INET) {
+			inp = (struct sockaddr_in *) aip->ai_addr;
+			res = ntohl(inp->sin_addr.s_addr);
+			if (res == svr_addr) {
+				freeaddrinfo(pai);
+				return 0;
+			}
+		}
+	}
+	/* no match found */
+	freeaddrinfo(pai);
+	return (1);
+}

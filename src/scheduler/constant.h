@@ -356,6 +356,7 @@ enum misc_constants
 	IGNORE_DISABLED_EVENTS = 1,
 	FORCE,
 	SET_RESRESV_INDEX = 4,
+	DETECT_GHOST_JOBS = 8,
 	ALL_MASK = 0xffffffff
 };
 
@@ -614,6 +615,18 @@ enum sort_info_type {
 	NON_PRIME_SORT,
 	PRIME_NODE_SORT,
 	NON_PRIME_NODE_SORT
+};
+
+enum runjob_mode {
+	RJ_NOWAIT,
+	RJ_RUNJOB_HOOK,
+	RJ_EXECJOB_HOOK
+};
+
+enum preempt_sort_vals {
+	PS_MIN_T_SINCE_START,
+	PS_PREEMPT_PRIORITY,
+	PS_HIGH
 };
 
 #ifdef	__cplusplus

@@ -202,6 +202,8 @@ class TestAcctLog(TestFunctional):
 
         r = Reservation()
         rid1 = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid1)
         j3 = Job(TEST_USER, {ATTR_queue: rid1.split('.')[0]})
         jid3 = self.server.submit(j3)
 

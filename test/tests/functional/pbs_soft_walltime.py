@@ -75,6 +75,13 @@ class TestSoftWalltime(TestFunctional):
         # Delete operators if added
         self.server.manager(MGR_CMD_UNSET, SERVER, 'operators')
 
+    def tearDown(self):
+        if self.mom.is_cpuset_mom():
+            # reset the freq value
+            attrs = {'freq': 120}
+            self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
+        TestFunctional.tearDown(self)
+
     def stat_job(self, job):
         """
         stat a job for its estimated.start_time and soft_walltime or walltime
@@ -928,13 +935,23 @@ do
     dd if=/dev/zero of=/dev/null;
 done
 """
+        # If it is a cpuset mom, the cgroups hook relies on the periodic hook
+        # to update cput, so make the periodic hook run more often for the
+        # purpose of this test.
+        if self.mom.is_cpuset_mom():
+            attrs = {'freq': 1}
+            self.server.manager(MGR_CMD_SET, HOOK, attrs, "pbs_cgroups")
+            # cause the change to take effect now
+            self.mom.restart()
+
         j1 = Job(TEST_USER, {'Resource_List.cput': 5})
         j1.create_script(body=script)
         jid = self.server.submit(j1)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 300})
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        # verify that job is deleted when cput limit is reached
+        self.logger.info("Sleep 10 secs waiting for cput to cause the"
+                         " job to be deleted")
         time.sleep(10)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
 

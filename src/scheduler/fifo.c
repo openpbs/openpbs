@@ -149,7 +149,7 @@ schedinit(int nthreads)
 	struct tm *tmptr;
 
 #ifdef PYTHON
-	char *errstr;
+	const char *errstr;
 	PyObject *module;
 	PyObject *obj;
 	PyObject *dict;
@@ -362,7 +362,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			return 0;
 	}
 
-	if ((policy->fair_share || sinfo->job_formula != NULL) && sinfo->fairshare != NULL) {
+	if ((policy->fair_share || sinfo->job_sort_formula != NULL) && sinfo->fairshare != NULL) {
 		FILE *fp;
 		int resort = 0;
 		if ((fp = fopen(USAGE_TOUCH, "r")) != NULL) {
@@ -471,13 +471,13 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 
 
 				}
-				if (sinfo->job_formula != NULL) {
-					double threshold = policy->job_form_threshold;
-					resresv->job->formula_value = formula_evaluate(sinfo->job_formula, resresv, resresv->resreq);
+				if (sinfo->job_sort_formula != NULL) {
+					double threshold = sc_attrs.job_sort_formula_threshold;
+					resresv->job->formula_value = formula_evaluate(sinfo->job_sort_formula, resresv, resresv->resreq);
 					log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Formula Evaluation = %.*f",
 						   float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value);
 
-					if (!resresv->can_not_run && policy->job_form_threshold_set && resresv->job->formula_value <= threshold) {
+					if (!resresv->can_not_run && resresv->job->formula_value <= threshold) {
 						set_schd_error_codes(err, NOT_RUN, JOB_UNDER_THRESHOLD);
 						log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Job's formula value %.*f is under threshold %.*f",
 							   float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value, float_digits(threshold, 2), threshold);
@@ -546,6 +546,10 @@ schedule(int cmd, int sd, char *runjobid)
 			 */
 			reset_global_resource_ptrs();
 
+			/* Get config from the qmgr sched object */
+			if (!set_validate_sched_attrs(sd))
+				return 0;
+
 		case SCH_SCHEDULE_NEW:
 		case SCH_SCHEDULE_TERM:
 		case SCH_SCHEDULE_CMD:
@@ -562,18 +566,14 @@ schedule(int cmd, int sd, char *runjobid)
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				  "reconfigure", "Scheduler is reconfiguring");
 			reset_global_resource_ptrs();
-			if(schedinit(-1) != 0) {
+
+			/* Get config from sched_priv/ files */
+			if (schedinit(-1) != 0)
 				return 0;
-			}
-			break;
-		case SCH_ATTRS_CONFIGURE:
-			/*
-			 * This is required since there is a probability that scheduler's configuration has been changed at
-			 * server through qmgr.
-			 */
-			if (!validate_sched_attrs(connector)) {
+
+			/* Get config from the qmgr sched object */
+			if (!set_validate_sched_attrs(sd))
 				return 0;
-			}
 			break;
 		case SCH_QUIT:
 #ifdef PYTHON
@@ -658,6 +658,12 @@ scheduling_cycle(int sd, char *jobid)
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		  "", "Starting Scheduling Cycle");
+
+	/* Decide whether we need to send "can't run" type updates this cycle */
+	if (time(NULL) - last_attr_updates >= sc_attrs.attr_update_period)
+		send_job_attr_updates = 1;
+	else
+		send_job_attr_updates = 0;
 
 	update_cycle_status(&cstat, 0);
 
@@ -836,7 +842,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 
 	time(&cycle_start_time);
 	/* calculate the time which we've been in the cycle too long */
-	cycle_end_time = cycle_start_time + sinfo->sched_cycle_len;
+	cycle_end_time = cycle_start_time + sc_attrs.sched_cycle_length;
 
 	chk_lim_err = new_schd_error();
 	if(chk_lim_err == NULL)
@@ -977,7 +983,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 					}
 #else
 					sort_again = MAY_RESORT_JOBS;
-					if (njob->job->is_preempted == 0 || sinfo->enforce_prmptd_job_resumption == 0) { /* preempted jobs don't increase top jobs count */
+					if (njob->job->is_preempted == 0 || sc_attrs.sched_preempt_enforce_resumption == 0) { /* preempted jobs don't increase top jobs count */
 						if (qinfo->backfill_depth == UNSPECIFIED)
 							num_topjobs++;
 						else
@@ -1075,7 +1081,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			end_cycle = 1;
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_NOTICE, "toolong",
 				"Leaving the scheduling cycle: Cycle duration of %ld seconds has exceeded %s of %ld seconds",
-				(long)(cur_time - cycle_start_time), ATTR_sched_cycle_len, sinfo->sched_cycle_len);
+				(long)(cur_time - cycle_start_time), ATTR_sched_cycle_len, sc_attrs.sched_cycle_length);
 		}
 		if (conf.max_jobs_to_check != SCHD_INFINITY && (i + 1) >= conf.max_jobs_to_check) {
 			/* i begins with 0, hence i + 1 */
@@ -1285,6 +1291,28 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 }
 
 /**
+ * @brief	Send the relevant runjob request to server
+ *
+ * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
+ * @param[in]	has_runjob_hook	- does server have a runjob hook?
+ * @param[in]	jobid	-	id of the job to run
+ * @param[in]	execvnode	-	the execvnode to run the job on
+ *
+ * @return	int
+ * @retval	return value of the runjob call
+ */
+static int
+send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
+{
+	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)
+		return pbs_runjob(pbs_sd, jobid, execvnode, NULL);
+	else if ((sc_attrs.runjob_mode == RJ_RUNJOB_HOOK) && has_runjob_hook)
+		return pbs_asyrunjob_ack(pbs_sd, jobid, execvnode, NULL);
+	else
+		return pbs_asyrunjob(pbs_sd, jobid, execvnode, NULL);
+}
+
+/**
  * @brief
  * 		run_job - handle the running of a pbs job.  If it's a peer job
  *	       first move it to the local server and then run it.
@@ -1293,7 +1321,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
  * @param[in]	rjob	-	the job to run
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
- * @param[in]	throughput	-	thoughput mode enabled?
+ * @param[in]	has_runjob_hook	-	does server have a runjob hook?
  * @param[out]	err	-	error struct to return errors
  *
  * @retval	0	: success
@@ -1301,7 +1329,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @retval -1	: error
  */
 int
-run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_error *err)
+run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err)
 {
 	char buf[100];	/* used to assemble queue@localserver */
 	char *errbuf;		/* comes from pbs_geterrmsg() */
@@ -1354,17 +1382,10 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_e
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
-				if (throughput)
-					rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
-				else
-					rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
+				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode);
 			}
-		} else {
-			if (throughput)
-				rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
-			else
-				rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
-		}
+		} else
+			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode);
 	}
 
 	if (rc) {
@@ -1520,6 +1541,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			rr = queue_subjob(resresv, sinfo, qinfo);
 			if(rr == NULL) {
 				set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
+				free_nspecs(ns_arr);
 				return -1;
 			}
 		} else
@@ -1564,7 +1586,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			}
 #endif
 
-			num_nspec = count_array((void **) ns);
+			num_nspec = count_array(ns);
 			if (num_nspec > 1)
 				qsort(ns, num_nspec, sizeof(nspec *), cmp_nspec);
 
@@ -1601,7 +1623,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					fflush(stdout);
 #endif /* localmod 031 */
 
-					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->throughput_mode, err);
+					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);
@@ -1637,6 +1659,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		rr->can_not_run = 1;
 
+		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr)
+			free_nspecs(rr->nspec_arr);
 		/* The nspec array coming out of the node selection code could
 		 * have a node appear multiple times.  This is how we need to
 		 * send the execvnode to the server.  We now need to combine
@@ -1788,11 +1812,15 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
 	if(err == NULL)
 		err = new_schd_error();
 
-	if (resresv == NULL)
+	if (resresv == NULL) {
+		free_nspecs(ns_arr);
 		return -1;
+	}
 
-	if (!is_resource_resv_valid(resresv, NULL))
+	if (!is_resource_resv_valid(resresv, NULL)) {
+		free_nspecs(ns_arr);
 		return -1;
+	}
 
 	sinfo = resresv->server;
 	if (resresv->is_job)
@@ -1869,8 +1897,8 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 		return 0;
 
 	/* Job is preempted and we're helping preempted jobs resume -- add to the calendar*/
-	if (resresv->job->is_preempted && sinfo->enforce_prmptd_job_resumption
-	    && (resresv->job->preempt >= conf.preempt_normal))
+	if (resresv->job->is_preempted && sc_attrs.sched_preempt_enforce_resumption
+	    && (resresv->job->preempt >= preempt_normal))
 		return 1;
 
 	/* Admin settable flag - don't add to calendar */
@@ -2283,7 +2311,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		if (policy->round_robin) {
 			last_queue = 0;
 			last_queue_index = 0;
-			queue_list_size = count_array((void **)sinfo->queue_list);
+			queue_list_size = count_array(sinfo->queue_list);
 
 		}
 		else if (policy->by_queue)
@@ -2349,7 +2377,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		i = last_queue_index;
 		while((rjob == NULL) && (i < queue_list_size)) {
 			/* Calculating number of queues at this priority level */
-			queue_index_size = count_array((void **) sinfo->queue_list[i]);
+			queue_index_size = count_array(sinfo->queue_list[i]);
 			for (j = last_queue; j < queue_index_size; j++) {
 				ind = find_runnable_resresv_ind(sinfo->queue_list[i][j]->jobs, 0);
 				if(ind != -1)
@@ -2424,9 +2452,41 @@ next_job(status *policy, server_info *sinfo, int flag)
 }
 
 /**
- * @brief
- *	Helper function used to copy the attribute values from batch_status to the corresponding
- *	scheduler global variables which hold its priv_dir, log_dir and partitions
+ * @brief	Initialize sc_attrs
+ */
+static void
+init_sc_attrs(void)
+{
+	free(sc_attrs.comment);
+	free(sc_attrs.job_sort_formula);
+	free(sc_attrs.partition);
+	free(sc_attrs.sched_log);
+	free(sc_attrs.sched_port);
+	free(sc_attrs.sched_priv);
+
+	sc_attrs.attr_update_period = 0;
+	sc_attrs.comment = NULL;
+	sc_attrs.do_not_span_psets = 0;
+	sc_attrs.job_sort_formula = NULL;
+	sc_attrs.job_sort_formula_threshold = INT_MIN;
+	sc_attrs.only_explicit_psets = 0;
+	sc_attrs.partition = NULL;
+	sc_attrs.preempt_queue_prio = 0;
+	sc_attrs.preempt_sort = PS_MIN_T_SINCE_START;
+	sc_attrs.runjob_mode = RJ_NOWAIT;
+	sc_attrs.preempt_targets_enable = 1;
+	sc_attrs.sched_cycle_length = SCH_CYCLE_LEN_DFLT;
+	sc_attrs.sched_log = NULL;
+	sc_attrs.sched_port = NULL;
+	sc_attrs.sched_preempt_enforce_resumption = 0;
+	sc_attrs.sched_priv = NULL;
+	sc_attrs.server_dyn_res_alarm = 0;
+	sc_attrs.throughput_mode = 1;
+	sc_attrs.opt_backfill_fuzzy = BF_DEFAULT;
+}
+
+/**
+ * @brief	Parse and cache sched object batch_status
  *
  * @param[in] status - populated batch_status after stating this scheduler from server
  *
@@ -2437,13 +2497,11 @@ next_job(status *policy, server_info *sinfo, int flag)
  * @mt-safe: No
  * @par Side Effects:
  *	None
- *
- *
  */
 static int
-sched_settings_frm_svr(struct batch_status *status)
+parse_sched_obj(struct batch_status *status)
 {
-	struct attrl *attr;
+	struct attrl *attrp;
 	char *tmp_priv_dir = NULL;
 	char *tmp_log_dir = NULL;
 	static char *priv_dir = NULL;
@@ -2452,39 +2510,189 @@ sched_settings_frm_svr(struct batch_status *status)
 	char *tmp_comment = NULL;
 	int clear_comment = 0;
 	int ret = 0;
+	long num;
+	char *endp;
+	char *tok;
+	char *save_ptr;
+	int i;
+	int j;
+	long prev_attr_u_period = sc_attrs.attr_update_period;
 
-	attr = status->attribs;
+	attrp = status->attribs;
+
+	init_sc_attrs();
+
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
+			  "", "Updating scheduler attributes");
 
 	/* resetting the following before fetching from batch_status. */
-	while (attr != NULL) {
+	while (attrp != NULL) {
+		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
+			sc_attrs.sched_cycle_length = res_to_num(attrp->value, NULL);
+		} else if (!strcmp(attrp->name, ATTR_attr_update_period)) {
+			long newval;
 
-		if (attr->name != NULL && attr->value != NULL) {
-			if (!strcmp(attr->name, ATTR_sched_priv) && !dflt_sched) {
-				if ((tmp_priv_dir = string_dup(attr->value)) == NULL)
-					goto cleanup;
-			} else if (!strcmp(attr->name, ATTR_sched_log) && !dflt_sched) {
-				if ((tmp_log_dir = string_dup(attr->value)) == NULL)
-					goto cleanup;
-			} else if (!strcmp(attr->name, ATTR_comment) && !dflt_sched) {
-				if ((tmp_comment = string_dup(attr->value)) == NULL)
-					goto cleanup;
-			} else if (!strcmp(attr->name, ATTR_logevents)) {
-				char *endp;
-				long mask;
-				mask = strtol(attr->value, &endp, 10);
-				if (*endp != '\0')
-					goto cleanup;
-				*log_event_mask = mask;
-			} else if (!strcmp(attr->name, ATTR_sched_server_dyn_res_alarm)) {
-				char *endp;
-				long val;
-				val = strtol(attr->value, &endp, 10);
-				if (*endp != '\0')
-					goto cleanup;
-				server_dyn_res_alarm = val;
+			newval = res_to_num(attrp->value, NULL);
+			sc_attrs.attr_update_period = newval;
+			if (newval != prev_attr_u_period)
+				last_attr_updates = 0;
+		} else if (!strcmp(attrp->name, ATTR_partition)) {
+			free(sc_attrs.partition);
+			sc_attrs.partition = string_dup(attrp->value);
+		} else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
+			sc_attrs.do_not_span_psets = res_to_num(attrp->value, NULL);
+		} else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
+			sc_attrs.only_explicit_psets = res_to_num(attrp->value, NULL);
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_enforce_resumption)) {
+			if (!strcasecmp(attrp->value, ATR_FALSE))
+				sc_attrs.sched_preempt_enforce_resumption = 0;
+			else
+				sc_attrs.sched_preempt_enforce_resumption  = 1;
+		} else if (!strcmp(attrp->name, ATTR_preempt_targets_enable)) {
+			if (!strcasecmp(attrp->value, ATR_FALSE))
+				sc_attrs.preempt_targets_enable = 0;
+			else
+				sc_attrs.preempt_targets_enable = 1;
+		} else if (!strcmp(attrp->name, ATTR_job_sort_formula_threshold)) {
+			sc_attrs.job_sort_formula_threshold = res_to_num(attrp->value, NULL);
+		} else if (!strcmp(attrp->name, ATTR_throughput_mode)) {
+			sc_attrs.throughput_mode = res_to_num(attrp->value, NULL);
+		} else if (!strcmp(attrp->name, ATTR_opt_backfill_fuzzy)) {
+			num = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				sc_attrs.opt_backfill_fuzzy = num;
+			else if (!strcasecmp(attrp->value, "off"))
+				sc_attrs.opt_backfill_fuzzy = BF_OFF;
+			else if (!strcasecmp(attrp->value, "low"))
+				sc_attrs.opt_backfill_fuzzy = BF_LOW;
+			else if (!strcasecmp(attrp->value, "med") || !strcasecmp(attrp->value, "medium"))
+				sc_attrs.opt_backfill_fuzzy = BF_MED;
+			else if (!strcasecmp(attrp->value, "high"))
+				sc_attrs.opt_backfill_fuzzy = BF_HIGH;
+			else
+				sc_attrs.opt_backfill_fuzzy = BF_DEFAULT;
+		} else if (!strcmp(attrp->name, ATTR_job_run_wait)) {
+			if (!strcmp(attrp->value, RUN_WAIT_NONE))
+				sc_attrs.runjob_mode = RJ_NOWAIT;
+			else if (!strcmp(attrp->value, RUN_WAIT_RUNJOB_HOOK)) {
+				sc_attrs.runjob_mode = RJ_RUNJOB_HOOK;
+			} else
+				sc_attrs.runjob_mode = RJ_EXECJOB_HOOK;
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_order)) {
+			tok = strtok_r(attrp->value, "\t ", &save_ptr);
+
+			if (tok != NULL && !isdigit(tok[0])) {
+				/* unset the defaults */
+				sc_attrs.preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
+				sc_attrs.preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
+				sc_attrs.preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
+
+				sc_attrs.preempt_order[0].high_range = 100;
+				i = 0;
+				do {
+					if (isdigit(tok[0])) {
+						num = strtol(tok, &endp, 10);
+						if (*endp != '\0')
+							goto cleanup;
+						sc_attrs.preempt_order[i].low_range = num + 1;
+						i++;
+						sc_attrs.preempt_order[i].high_range = num;
+					} else {
+						for (j = 0; tok[j] != '\0' ; j++) {
+							switch (tok[j]) {
+								case 'S':
+									sc_attrs.preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
+									break;
+								case 'C':
+									sc_attrs.preempt_order[i].order[j] = PREEMPT_METHOD_CHECKPOINT;
+									break;
+								case 'R':
+									sc_attrs.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
+									break;
+								case 'D':
+									sc_attrs.preempt_order[i].order[j] = PREEMPT_METHOD_DELETE;
+									break;
+							}
+						}
+					}
+					tok = strtok_r(NULL, "\t ", &save_ptr);
+				} while (tok != NULL && i < PREEMPT_ORDER_MAX);
+
+				sc_attrs.preempt_order[i].low_range = 0;
 			}
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_queue_prio)) {
+			sc_attrs.preempt_queue_prio = strtol(attrp->value, &endp, 10);
+			if (*endp != '\0')
+				goto cleanup;
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_prio)) {
+			long prio;
+			char **list;
+
+			prio = PREEMPT_PRIORITY_HIGH;
+			list = break_comma_list(attrp->value);
+			if (list != NULL) {
+				memset(sc_attrs.preempt_prio, 0, sizeof(sc_attrs.preempt_prio));
+				sc_attrs.preempt_prio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
+				sc_attrs.preempt_prio[0][1] = prio;
+				prio -= PREEMPT_PRIORITY_STEP;
+				for (i = 0; list[i] != NULL; i++) {
+					num = preempt_bit_field(list[i]);
+					if (num >= 0) {
+						sc_attrs.preempt_prio[i + 1][0] = num;
+						sc_attrs.preempt_prio[i + 1][1] = prio;
+						prio -= PREEMPT_PRIORITY_STEP;
+					}
+				}
+				/* sc_attrs.preempt_prio is an int array of size[NUM_PPRIO][2] */
+				qsort(sc_attrs.preempt_prio, NUM_PPRIO, sizeof(int) * 2, preempt_cmp);
+
+				/* cache preemption priority for normal jobs */
+				for (i = 0; i < NUM_PPRIO && sc_attrs.preempt_prio[i][1] != 0; i++) {
+					if (sc_attrs.preempt_prio[i][0] == PREEMPT_TO_BIT(PREEMPT_NORMAL)) {
+						preempt_normal = sc_attrs.preempt_prio[i][1];
+						break;
+					}
+				}
+
+				free_string_array(list);
+			}
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_sort)) {
+			if (strcasecmp(attrp->value, "min_time_since_start") == 0)
+				sc_attrs.preempt_sort = PS_MIN_T_SINCE_START;
+			else
+				sc_attrs.preempt_sort = PS_PREEMPT_PRIORITY;
+		} else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
+			free(sc_attrs.job_sort_formula);
+			sc_attrs.job_sort_formula = read_formula();
+			if ((conf.prime_sort != NULL && conf.prime_sort[0].res_name != NULL) ||
+			(conf.non_prime_sort != NULL && conf.non_prime_sort[0].res_name != NULL))
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__,
+						  "Job sorting formula and job_sort_key are incompatible.  "
+						  "The job sorting formula will be used.");
+		} else if (!strcmp(attrp->name, ATTR_sched_server_dyn_res_alarm)) {
+			num = strtol(attrp->value, &endp, 10);
+			if (*endp != '\0')
+				goto cleanup;
+
+			sc_attrs.server_dyn_res_alarm = num;
+		} else if (!strcmp(attrp->name, ATTR_sched_priv) && !dflt_sched) {
+			if ((tmp_priv_dir = string_dup(attrp->value)) == NULL)
+				goto cleanup;
+		} else if (!strcmp(attrp->name, ATTR_sched_log) && !dflt_sched) {
+			if ((tmp_log_dir = string_dup(attrp->value)) == NULL)
+				goto cleanup;
+		} else if (!strcmp(attrp->name, ATTR_comment) && !dflt_sched) {
+			if ((tmp_comment = string_dup(attrp->value)) == NULL)
+				goto cleanup;
+		} else if (!strcmp(attrp->name, ATTR_logevents)) {
+			char *endp;
+			long mask;
+			mask = strtol(attrp->value, &endp, 10);
+			if (*endp != '\0')
+				goto cleanup;
+			*log_event_mask = mask;
 		}
-		attr = attr->next;
+		attrp = attrp->next;
 	}
 
 	if (!dflt_sched) {
@@ -2694,7 +2902,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	if (cmd == SCH_ERROR || connector < 0)
 		return 1;
 
-	if (!validate_sched_attrs(connector)) {
+	if (!set_validate_sched_attrs(connector)) {
 		return 0;
 	}
 
@@ -2741,7 +2949,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 
 /**
  * @brief
- *	Validates the sched object attributes changed from Server.
+ *	Set and validate the sched object attributes queried from Server
  *
  * @param[in] connector - socket descriptor to server
  *
@@ -2755,10 +2963,13 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
  *
  */
 int
-validate_sched_attrs(int connector)
+set_validate_sched_attrs(int connector)
 {
 	struct batch_status *ss = NULL;
 	struct batch_status *all_ss = NULL;
+
+	if (connector < 0)
+		return 0;
 
 	/* Stat the scheduler to get details of sched */
 
@@ -2771,7 +2982,7 @@ validate_sched_attrs(int connector)
 		pbs_statfree(all_ss);
 		return 0;
 	}
-	if (!sched_settings_frm_svr(ss)) {
+	if (!parse_sched_obj(ss)) {
 		pbs_statfree(all_ss);
 		return 0;
 	}

@@ -36,13 +36,12 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_dataservice 8B "19 November 2019" Local "PBS"
+.TH pbs_dataservice 8B "19 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_dataservice
+.B pbs_dataservice 
 \- start, stop, or check the status of the PBS data service
 .SH SYNOPSIS
-.B pbs_dataservice
+.B pbs_dataservice 
 [start|stop|status]
 
 .SH DESCRIPTION
@@ -51,18 +50,18 @@ The
 command starts, stops, or gets the status of the PBS data service.
 
 .SH Permission
-Root privilege is required to use this command.
+Root privilege is required to use this command. 
 
 .SH Arguments
 .IP "start" 15
 Starts the PBS data service.
 
-.IP "stop" 15
+.IP "stop" 15  
 Stops the PBS data service.
 
 Can be used only when the PBS server is not running.
 
-.IP "status" 15
+.IP "status" 15   
 Displays the status of the PBS data service, as follows:
 
 Data service running
@@ -70,7 +69,7 @@ Data service running
 "PBS Data Service running"
 .RE
 
-.IP " " 15
+.IP " " 15 
 Data service not running
 .RS 20
 "PBS Data Service not running"

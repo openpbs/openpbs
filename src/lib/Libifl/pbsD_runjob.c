@@ -49,28 +49,24 @@
 #include "dis.h"
 #include "pbs_ecl.h"
 
-
 /**
- * @brief
- *	-send runjob batch request
+ * @brief	Helper function for pbs_asynrunjob and pbs_asynrunjob_ack
  *
- * @param[in] c - communication handle
- * @param[in] jobid - job identifier
- * @param[in] location - location where job running
- * @param[in] extend - extend string to encode req
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] location - string of vnodes/resources to be allocated to the job
+ * @param[in] extend - extend string for encoding req
+ * @param[in] req_type - one of PBS_BATCH_AsyrunJob or PBS_BATCH_AsyrunJob_ack
  *
  * @return      int
- * @retval      DIS_SUCCESS(0)  success
- * @retval      error code      error
- *
+ * @retval      0       success
+ * @retval      !0      error
  */
-
-int
-__pbs_runjob(int c, char *jobid, char *location, char *extend)
+static int
+__runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 {
-	int	rc;
-	struct batch_reply   *reply;
-	unsigned long	resch = 0;
+	int rc = 0;
+	unsigned long resch = 0;
 
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
@@ -92,34 +88,97 @@ __pbs_runjob(int c, char *jobid, char *location, char *extend)
 
 	/* send run request */
 
-	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_RunJob, pbs_current_user)) ||
+	if ((rc = encode_DIS_ReqHdr(c, req_type, pbs_current_user)) ||
 		(rc = encode_DIS_Run(c, jobid, location, resch)) ||
 		(rc = encode_DIS_ReqExtend(c, extend))) {
-		if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
+		if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
 			pbs_errno = PBSE_SYSTEM;
-		} else {
+		else
 			pbs_errno = PBSE_PROTOCOL;
-		}
-		(void)pbs_client_thread_unlock_connection(c);
+
+		pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
 
 	if (dis_flush(c)) {
 		pbs_errno = PBSE_PROTOCOL;
-		(void)pbs_client_thread_unlock_connection(c);
+		pbs_client_thread_unlock_connection(c);
 		return pbs_errno;
 	}
 
-	/* get reply */
+	if (req_type != PBS_BATCH_AsyrunJob) {
+		struct batch_reply *reply = NULL;
 
-	reply = PBSD_rdrpy(c);
-	rc = get_conn_errno(c);
-
-	PBSD_FreeReply(reply);
+		/* Get reply */
+		reply = PBSD_rdrpy(c);
+		rc = get_conn_errno(c);
+		PBSD_FreeReply(reply);
+	}
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
 		return pbs_errno;
 
 	return rc;
+}
+
+/**
+ * @brief
+ *	-send async run job batch request.
+ *
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] location - string of vnodes/resources to be allocated to the job
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ *
+ */
+int __pbs_asyrunjob(int c, char *jobid, char *location, char *extend)
+{
+	return __runjob_helper(c, jobid, location, extend, PBS_BATCH_AsyrunJob);
+}
+
+/**
+ * @brief
+ *	-send a run job batch request which waits for an ack from server
+ *	pbs_runjob() and pbs_asyrunjob_ack() are similar in the fact that they both wait for an ack back from the server,
+ *	but this call is faster than pbs_runjob() because the server returns before contacting MoM
+ *
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] location - string of vnodes/resources to be allocated to the job
+ * @param[in] extend - extend string for encoding req
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ *
+ */
+int __pbs_asyrunjob_ack(int c, char *jobid, char *location, char *extend)
+{
+	return __runjob_helper(c, jobid, location, extend, PBS_BATCH_AsyrunJob_ack);
+}
+
+/**
+ * @brief
+ *	-send runjob batch request
+ *
+ * @param[in] c - communication handle
+ * @param[in] jobid - job identifier
+ * @param[in] location - location where job running
+ * @param[in] extend - extend string to encode req
+ *
+ * @return      int
+ * @retval      DIS_SUCCESS(0)  success
+ * @retval      error code      error
+ *
+ */
+
+int
+__pbs_runjob(int c, char *jobid, char *location, char *extend)
+{
+	return __runjob_helper(c, jobid, location, extend, PBS_BATCH_RunJob);
 }

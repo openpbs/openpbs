@@ -44,6 +44,7 @@
 #include "ifl_internal.h"
 
 int (*pfn_pbs_asyrunjob)(int, char *, char *, char *) = __pbs_asyrunjob;
+int (*pfn_pbs_asyrunjob_ack)(int, char *, char *, char *) = __pbs_asyrunjob_ack;
 int (*pfn_pbs_alterjob)(int, char *, struct attrl *, char *) = __pbs_alterjob;
 int (*pfn_pbs_asyalterjob)(int, char *, struct attrl *, char *) = __pbs_asyalterjob;
 int (*pfn_pbs_confirmresv)(int, char *, char *, unsigned long, char *) = __pbs_confirmresv;

@@ -416,7 +416,7 @@ struct limit_info {
  * @note
  *		Note that we do not free and rebuild this list for each scheduling cycle.
  *		Instead, we assume that the number of resources with limits is small and
- *		the AVL limit fetching code is sufficiently fast that this isn't an
+ *		the index tree limit fetching code is sufficiently fast that this isn't an
  *		issue.
  */
 static schd_resource	*limres;	/* list of resources that have limits */
@@ -676,22 +676,17 @@ int
 has_hardlimits(void *p)
 {
 	struct limit_info	*lip = p;
-	pbs_entlim_key_t	*k;
+	char *k = NULL;
 
-	k = entlim_get_next(NULL, LI2RESCTX(lip));
-	if (k != NULL) {	/* at least one hard resource limit present */
-		free(k);
+	if (entlim_get_next(LI2RESCTX(lip), (void **)&k) != NULL) /* at least one hard resource limit present */
 		return (1);
-	}
 
 	/* run limit already checked? */
 	if (LI2RUNCTX(lip) == LI2RESCTX(lip))
 		return (0);
-	k = entlim_get_next(NULL, LI2RUNCTX(lip));
-	if (k != NULL) {	/* at least one hard run limit present */
-		free(k);
+	k = NULL;
+	if (entlim_get_next(LI2RUNCTX(lip), (void **)&k) != NULL) /* at least one hard run limit present */
 		return (1);
-	}
 
 	return (0);
 }
@@ -710,22 +705,18 @@ int
 has_softlimits(void *p)
 {
 	struct limit_info	*lip = p;
-	pbs_entlim_key_t	*k;
+	char *k = NULL;
 
-	k = entlim_get_next(NULL, LI2RESCTXSOFT(lip));
-	if (k != NULL) {	/* at least one soft resource limit present */
-		free(k);
+	if (entlim_get_next(LI2RESCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft resource limit present */
 		return (1);
-	}
 
 	/* run limit already checked? */
 	if (LI2RUNCTXSOFT(lip) == LI2RESCTXSOFT(lip))
 		return (0);
-	k = entlim_get_next(NULL, LI2RUNCTXSOFT(lip));
-	if (k != NULL) {	/* at least one soft run limit present */
-		free(k);
+	k = NULL;
+	if (entlim_get_next(LI2RUNCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft run limit present */
 		return (1);
-	}
+
 	return (0);
 }
 /**
@@ -3194,40 +3185,38 @@ lim_dup_ctx(void *ctx)
 {
 	void *newctx;
 	const char *newval;
-	pbs_entlim_key_t *pkey = NULL;
+	char *key = NULL;
+	char *value = NULL;
 
 	if ((newctx = entlim_initialize_ctx()) == NULL) {
 		log_err(errno, __func__, "malloc failed");
 		return(NULL);
 	}
 
-	while((pkey = entlim_get_next(pkey, ctx)) != NULL) {
-		if ((newval = strdup(pkey->recptr)) == NULL) {
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup recptr failed");
-			free(pkey);
+	while ((value = entlim_get_next(ctx, (void **)&key)) != NULL) {
+		if ((newval = strdup(value)) == NULL) {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup value failed");
 			(void) entlim_free_ctx(newctx, free);
-			return(NULL);
-		} else if (entlim_add(pkey->key, newval, newctx) != 0) {
-			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "entlim_add(%s) failed", pkey->key);
+			return NULL;
+		} else if (entlim_add(key, newval, newctx) != 0) {
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "entlim_add(%s) failed", key);
 			/*
 			 *	One might think that we should free newval
 			 *	on error as well.  We don't only because we
-			 *	are uncertain whether the AVL tree code might
-			 *	have remembered the location of the key's value
-			 *	in spite of having returned failure indication.
+			 *	are uncertain whether the underneath entlim code
+			 *	might have remembered the location of the key's
+			 *	value in spite of having returned failure indication.
 			 *	We choose to leak a small amount of memory (in
 			 *	what we hope to be rare circumstances) rather
 			 *	than have the scheduler crash when the system
 			 *	memory allocation code detects and aborts due
 			 *	to twice-freed memory.
 			 */
-			free(pkey);
 			(void) entlim_free_ctx(newctx, free);
-			return(NULL);
+			return NULL;
 		}
 	}
-	free(pkey);
-	return(newctx);
+	return newctx;
 }
 
 /**

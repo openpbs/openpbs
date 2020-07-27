@@ -36,148 +36,186 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_rsub 1B "20 September 2019" Local "PBS"
+.TH pbs_rsub 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_rsub
-\- create a PBS advance, standing, or maintenance reservation
+.B pbs_rsub 
+\- create a PBS reservation 
 
 .SH SYNOPSIS
 .B For advance and standing reservations:
 .br
-.B pbs_rsub
-[-D <duration>] [-E <end time>] [-g <group list>]
+.B pbs_rsub 
+[-D <duration>] [-E <end time>] [-g <group list>] 
 .RS 9
 [-G <auth group list>] [-H <auth host list>] [-I <block time>]
-] [-l <placement>] [-l <resource request>] [-m <mail events>]
-[-M <mail list>] [-N <reservation name>] [-q <destination>]
-[-r <recurrence rule>] [-R <start time>]  [-u <user list>]
+] [-l <placement>] [-l <resource request>] [-m <mail events>] 
+[-M <mail list>] [-N <reservation name>] [-q <destination>] 
+[-r <recurrence rule>] [-R <start time>]  [-u <user list>] 
 [-U <auth user list>] [-W <attribute value list>]
+.RE
+
+.B For job-specific now reservations:
+.br
+.B pbs_rsub 
+[-I <block time>] [-m <mail events>] [-M <mail list>] 
+.RS 9
+.br
+--job <job ID>
 .RE
 
 .B For maintenance reservations:
 .br
-.B pbs_rsub
+.B pbs_rsub 
 [-D <duration>] [-E <end time>] [--hosts <host list>]
 .RS 9
-[-N <reservation name>] [-q <destination>] [-R <start time>]
+[-N <reservation name>] [-q <destination>] [-R <start time>]  
 .RE
 
 .B For version information:
 .br
-.B pbs_rsub
+.B pbs_rsub 
 --version
 
 .SH DESCRIPTION
-The
+The 
 .B pbs_rsub
-command is used to create an advance, standing, or
-maintenance reservation.  Advance and standing reservations are
-"job reservations", to distinguish them from
-maintenance reservations.  An advance reservation reserves specific
-resources for the requested time period.  A standing reservation
-reserves specific resources for recurring time periods.  A maintenance
+command is used to create advance, standing, job-specific now, 
+job-specific ASAP, or maintenance reservations.  
+.RS 3
+
+An advance reservation reserves specific resources for the requested
+time period.
+
+A standing reservation reserves specific resources for recurring time
+periods.
+
+A job-specific now reservation reserves the resources being used by a
+specific job in case the job fails and needs to be re-submitted,
+allowing it to run again without having to wait to be scheduled.  The
+reservation is created and starts running when a queued job starts
+running, or immediately when you use 
+.B pbs_rsub --job <job ID> 
+on a running job.
+
+A job-specific ASAP reservation is created from a queued job via
+.B pbs_rsub -Wqmove=<job ID>.  
+The reservation runs as soon as possible,
+and the job is moved into the reservation.  The reservation is created
+using the same resources as the job requested.  
+
+A job-specific start reservation is created immediately using a 
+running job's resources, and the job is moved into the reservation.  
+You create job-specific start reservations using 
+.B qsub -Wcreate_resv_from_job=true 
+on a running job.  See the
+.B qsub 
+command.
+
+A maintenance
 reservation reserves the specified hosts for the specified time
-regardless of other circumstances. When a reservation is created, it
-has an associated queue.
+regardless of other circumstances.
 
-To get information about a reservation, use
-the
-.B pbs_rstat
-command.
+.RE
 
-To delete a reservation, use the
-.B pbs_rdel
-command.  Do not use the
-.B qdel
-command.
+Advance, standing, and job-specific reservations are "job reservations", 
+to distinguish them from maintenance reservations.  When a reservation
+is created, it has an associated queue.  
 
-The behavior of the
-.B pbs_rsub
+To get information about a reservation, use the 
+.B pbs_rstat 
+command.  
+
+To delete a reservation, use the 
+.B pbs_rdel 
+command.  Do not use the qdel command.  
+
+The behavior of the 
+.B pbs_rsub 
 command may be affected by any site hooks.  Site hooks can modify the
 reservation's attributes.
 
 .B Job Reservations
-
-After a job reservation is requested, it is either confirmed or
-denied.  Once the reservation has been confirmed, authorized users
-submit jobs to the reservation's queue via
-.B qsub
-and
-.B qmove.
+.br
+After an advance or standing reservation is requested, it is either
+confirmed or denied.  A job-specific now reservation is created when
+the job is started and confirmed immediately.  A job-specific ASAP
+reservation is scheduled as soon as possible.  Once the reservation
+has been confirmed, authorized users submit jobs to the
+reservation's queue via qsub and qmove.  
 
 A confirmed job reservation will accept jobs at any time.  The jobs in
-its queue can run only during the reservation period, whether during
-a single advance reservation or during the occurrences of a standing
-reservation.
+its queue can run only during the reservation period.  Jobs in a
+single advance reservation or job-specific reservation can run only
+during the reservation's time slot, and jobs in a standing
+reservation can run only during the time slots of occurrences of the
+standing reservation.  
 
-When an advance job reservation ends, all of its jobs are deleted,
-whether running or queued.  When an occurrence of a standing
-reservation ends, only its running jobs are deleted; those jobs still
-in the queue are not deleted.
+When an advance reservation ends, all of its jobs are deleted, whether
+running or queued.  When an occurrence of a standing reservation ends,
+only its running jobs are deleted; those jobs still in the queue are
+not deleted.
 
-.B Maintenance Reservations
-
-You can create maintenance reservations using
-.B pbs_rsub --hosts <host list>.
+.B Maintenance Reservations 
+.br
+You can create maintenance reservations using 
+.B pbs_rsub --hosts <host list>.  
 Maintenance reservations are designed to make the specified
 hosts available for the specified amount of time, regardless of what
 else is happening:
 .RS 3
 You can create a maintenance reservation that includes or is made up
-of vnodes that are down or offline.
+of vnodes that are down or offline.  
 
-Maintenance reservations ignore the value of a vnode's
-.I resv_enable
-attribute.
+Maintenance reservations ignore the value of a vnode's 
+.I resv_enable 
+attribute.  
 
-PBS immediately confirms any maintenance reservation.
+PBS immediately confirms any maintenance reservation.  
 
 Maintenance reservations take precedence over other reservations; if you create a
 maintenance reservation that overlaps an advance or standing job
 reservation, the overlapping vnodes become unavailable to the job
 reservation, and the job reservation becomes degraded.  PBS looks for
-replacement vnodes; see "Reservation Fault Tolerance" in chapter 9 of the
-.I PBS Administrator's Guide.
+replacement vnodes.
 .RE
 
 PBS will not start any new jobs on vnodes overlapping or in a
 maintenance reservation.  However, jobs that were already running on
 overlapping vnodes continue to run; you can let them run or requeue
-them.
+them.  
 
 You cannot specify place or select for a maintenance
-reservation; these are created by PBS:
+reservation; these are created by PBS: 
 
 .RS 3
 PBS creates the
 reservation's placement specification so that hosts are
 assigned exclusively to the reservation.  The placement specification
-is always the following:
+is always the following: 
 .RS 3
-.I -lplace=exclhost
+.I -lplace=exclhost 
 .RE
 
-PBS sets the reservation's
+PBS sets the reservation's 
 .I resv_nodes
 attribute value so that all CPUs on the reserved hosts are assigned
 to the
 maintenance reservation.  The select specification is always the
-following:
+following: 
 .IP "" 3
-.I -lselect = host=<host1>:ncpus= <number of CPUs at host1>
+.I -lselect = host=<host1>:ncpus= <number of CPUs at host1> 
 .I +host=<host2>:ncpus= <number of CPUs at host2>+...
 .LP
 .RE
 
 Maintenance reservations are prefixed with M.  A maintenance
-reservation ID has the format:
+reservation ID has the format: 
 .RS 3
 .I M<unique integer>.<server name>
 .RE
 
 Creating a maintenance reservation does not trigger a scheduling
-cycle.
+cycle.  
 
 You must have manager or operator privilege to create a maintenance reservation.
 
@@ -185,144 +223,204 @@ You must have manager or operator privilege to create a maintenance reservation.
 
 When using
 .B pbs_rsub
-to request a reservation, you must specify two of the following
-options:
-.I -R, -E,
+to request a standing, advance, or maintenance reservation, you must 
+specify two of the following options: 
+.I -R, -E, 
 and
 .I -D.
-The resource request
+The resource request 
 .I -l walltime
-can be used instead of the
-.I -D
+can be used instead of the 
+.I -D 
 option.
 
-If you want to run jobs in a reservation that will request exclusive placement,
-you must create the reservation with exclusive placement via -l place=excl.
+If you want to run jobs in a reservation that will request exclusiveqsub 
+placement, you must create the reservation with exclusive placement
+via -l place=excl.
 
 .SH OPTIONS
 .IP "-D <duration>" 8
 Specifies reservation duration. If the start
 time and end time are the only times specified, this duration time is
-calculated.
+calculated.  
 .br
-Format:
-.I Duration.
-See
+Format: 
+.I Duration.  
+See 
 .B FORMATS.
 .br
 Default: none
 .RE
 .IP "-E <end time>" 8
 Specifies the reservation end time.  If start time and duration are
-the only times specified, the end time value is calculated.
+the only times specified, the end time value is calculated.    
 .br
-Format:
-.I Datetime.
-See
+Format: 
+.I Datetime. 
+See 
 .B FORMATS.
 .br
 Default: none.
 .RE
 .IP "-g <group list>" 8
-The
+The 
 .I group list
-is a comma-separated list of group names.
-The server uses entries in this list, along with an ordered set
-of rules, to associate a group name with the reservation.
+is a comma-separated list of group names. 
+The server uses entries in this list, along with an ordered set 
+of rules, to associate a group name with the reservation. 
 The reservation creator's primary group is automatically added to this list.
 .br
 Format: <group>@<hostname>[,<group>@<hostname> ...]
 .RE
 .IP "-G <auth group list>" 8
 Comma-separated list of names of groups who
-can or cannot submit jobs to this reservation.  Group names are
-interpreted in the context of the server's host, not the context of the host
-from which the job is submitted.
+can or cannot submit jobs to this reservation.  Sets reservation's 
+.I Authorized_Groups 
+attribute to 
+.I auth group list.
 .br
-This list becomes the
-.I acl_groups
-list for the
-reservation's queue.
+This list becomes the 
+.I acl_groups 
+list for the 
+reservation's queue. 
+.br
 More specific entries should be listed before more general, because the
 list is read left-to-right, and the first match determines access.
 .br
 If both the
 .I Authorized_Users
-and
+and 
 .I Authorized_Groups
 reservation attributes are set, a user must belong to both in order to
-be able to submit jobs to this reservation.  If the reservation
-creator specifies this list, the creator's group is not automatically
-added to the list.
+be able to submit jobs to this reservation.  
 .br
-Refer to the
-.I Authorized_Groups
-reservation attribute in the
-pbs_resv_attributes(7B) man page.
+Group names are
+interpreted in the context of the server's host, not the context of the host 
+from which the job is submitted. 
 .br
-Format: [+|-]<group name>[,[+|-]<group name> ...]
+See the 
+.I Authorized_Groups 
+reservation attribute in the 
+pbs_resv_attributes(7B) man page.  
+.br
+Syntax: 
+.I [+|-]<group name>[,[+|-]<group name> ...]
 .br
 Default: All groups are authorized to submit jobs.
 .RE
 
 .IP "--hosts <host list>" 8
 Space-separated list of hosts to be included in maintenance
-reservation.  Cannot be used with the
-.I -l <placement>
-or
-.I -l <resource request>
-options.  PBS creates placement and resource requests.  Placement is always
-.I exclhost,
+reservation.  Cannot be used with the 
+.I -l <placement> 
+or 
+.I -l <resource request> 
+options.  PBS creates placement and resource requests.  Placement is always 
+.I exclhost, 
 and all CPUs of requested hosts are assigned to maintenance reservation.
 
 .IP "-H <auth host list>" 8
-Comma-separated list of hosts from which jobs can and cannot be
-submitted to this reservation.  This list becomes the
-.I acl_hosts
-list for the reservation's queue.
+Comma-separated list of hosts from which jobs can and cannot be 
+submitted to this reservation.  This list becomes the 
+.I acl_hosts 
+list for the reservation's queue. 
 .br
 More specific entries should be listed before more general, because the
 list is read left-to-right, and the first match determines access.
-If the reservation creator specifies this list, the creator's
+If the reservation creator specifies this list, the creator's 
 host is not automatically added to the list.
 .br
-See the
-.I Authorized_Hosts
+See the 
+.I Authorized_Hosts 
 reservation attribute in the pbs_resv_attributes(7B) man page.
 .br
 Format: [+|-]<hostname>[,[+|-]<hostname> ...]
 .br
 Default: All hosts are authorized to submit jobs
 .RE
+
 .IP "-I <block time>" 8
-Specifies interactive mode.  The
-.B pbs_rsub
-command will block, up to
-.I block time
-seconds, while waiting for the reservation request to be
+Specifies interactive mode.  The 
+.B pbs_rsub 
+command will block, up to 
+.I block time 
+seconds, while waiting for the reservation request to be 
 confirmed or denied.
 .br
-If
+If 
 .I block time
-is positive, and the reservation isn't confirmed or denied in
-the specified time, the ID string for the reservation is returned
+is positive, and the reservation isn't confirmed or denied in 
+the specified time, the ID string for the reservation is returned 
 with the status "UNCONFIRMED".
 .br
-If
+If 
 .I block time
-is negative, and a scheduler doesn't confirm or deny the reservation in
+is negative, and a scheduler doesn't confirm or deny the reservation in 
 the specified time, the reservation is deleted.
 .br
-Format: Integer.
+Cannot be used with
+.I --hosts
+option.  Has no effect when used with 
+.I --job 
+option.
+.br
+Format: Integer
 .br
 Default: Not interactive
 .RE
 
+.IP "--job <job ID>" 8
+Immediately creates and confirms a job-specific now reservation on the
+same resources as the job (including resources inherited by the job),
+and places the job in the job-specific now reservation queue.  Sets
+the job's 
+.I create_resv_from_job 
+attribute to 
+.I True.  
+Sets the now reservation's 
+.I reserve_job 
+attribute to the ID of the job from which the reservation was created,
+sets the reservation's 
+.I Reserve_Owner 
+attribute to the value of the job's 
+.I Job_Owner 
+attribute, sets the reservation's 
+.I resv_nodes 
+attribute to the job's 
+.I exec_vnode 
+attribute, sets the reservation's resources to match the job's 
+.I schedselect 
+attribute, and sets the reservation's
+.I Resource_List 
+attribute to the job's 
+.I Resource_List 
+attribute.
+
+The now reservation's duration and start time are the same as the
+job's walltime and start time.  If the job is peer scheduled, the now
+reservation is created in the pulling complex.
+.br
+Format: 
+.I Boolean
+.br
+Default: no default
+.br
+Example:
+.B pbs_rsub --job 1234.myserver
+
+Can be used on running jobs only (jobs in the 
+.I R 
+state, with substate 
+.I 42
+).
+
+Cannot be used with job arrays, jobs already in reservations, or other users' jobs.
+
 .IP "-l <placement>" 8
-The
+The 
 .I placement
-specifies how vnodes are reserved.
-The
+specifies how vnodes are reserved. 
+The 
 .I place
 statement can contain the following elements, in any order:
 .IP " " 11
@@ -337,25 +435,25 @@ statement can contain the following elements, in any order:
 .IP " " 8
 where
 .IP " " 11
-.RS
+.RS 
 .IP arrangement 3
-Whether this reservation chunk is willing to share this vnode or host
-with other chunks from this reservation.  One of
+Whether this reservation chunk is willing to share this vnode or host 
+with other chunks from this reservation.  One of 
 .I free
 |
 .I pack
 |
 .I scatter
-|
+| 
 .I vscatter
 
 .IP sharing 3
 Whether this reservation chunk is willing to share this vnode or host
-with other reservations or jobs.  One of
-.I excl
-|
-.I share
-|
+with other reservations or jobs.  One of 
+.I excl 
+| 
+.I share 
+| 
 .I exclhost
 
 .IP grouping 3
@@ -388,10 +486,10 @@ The entire host is allocated to the reservation.
 .IP shared 3
 This reservation can share the vnodes chosen.
 .IP group=<resource> 3
-Chunks are grouped according to a
-.I resource.
-All vnodes in the group must have a common value for
-.I resource,
+Chunks are grouped according to a 
+.I resource.  
+All vnodes in the group must have a common value for 
+.I resource, 
 which can be either the built-in resource
 .I host
 or a custom vnode-level resource.
@@ -403,11 +501,11 @@ must be a string or a string array.
 .RE
 .LP
 .IP " " 8
-If you want to run jobs in the reservation that will request exclusive
-placement, you must create the reservation with exclusive placement via
+If you want to run jobs in the reservation that will request exclusive 
+placement, you must create the reservation with exclusive placement via 
 .B -l place=excl.
 
-The place statement cannot begin with a colon.  Colons are delimiters; use
+The place statement cannot begin with a colon.  Colons are delimiters; use 
 them only to separate parts of a place statement, unless they are quoted
 inside resource values.
 
@@ -416,23 +514,19 @@ job placement requests.  See the
 .B pbs_node_attributes(7B)
 man page.
 .LP
-.IP " " 8
-For more on reservations, see
-.B PBS User's Guide.
-.RE
 .IP "-l resource request" 8
-The
-.I resource request
-specifies the resources required for the reservation. These
-resources are used for the limits on the queue that is dynamically created
-for the reservation. The aggregate amount of resources for currently
-running jobs from this queue will not exceed these resource limits.
-Jobs in the queue that
-request more of a resource than the queue limit for that resource are not
-allowed to run. Also, the queue inherits the value of any resource limit set
-on the server, and these are used for the job if the reservation request
+The 
+.I resource request 
+specifies the resources required for the reservation. These 
+resources are used for the limits on the queue that is dynamically created 
+for the reservation. The aggregate amount of resources for currently 
+running jobs from this queue will not exceed these resource limits. 
+Jobs in the queue that 
+request more of a resource than the queue limit for that resource are not 
+allowed to run. Also, the queue inherits the value of any resource limit set 
+on the server, and these are used for the job if the reservation request 
 itself is silent about that resource.
-A non-privileged user cannot submit a reservation requesting a custom
+A non-privileged user cannot submit a reservation requesting a custom 
 resource which has
 been created to be invisible or read-only for users.
 
@@ -448,7 +542,7 @@ or in job-wide requests using
 pairs.
 
 Requesting resources in chunks:
-.RS
+.RS 
 .IP " " 3
 .I -l select=[N:]<chunk>[+[N:]<chunk> ...]
 .LP
@@ -470,10 +564,10 @@ Requesting job-wide resources:
 .RE
 
 .IP "-m <mail events>" 8
-Specifies the set of events that cause mail to be sent to the
-list of users specified in the
+Specifies the set of events that cause mail to be sent to the 
+list of users specified in the 
 .I -M mail list
-option.
+option. 
 .br
 Format: string consisting of one of the following:
 .RS
@@ -484,14 +578,14 @@ Format: string consisting of one of the following:
 Notify if the reservation is terminated for whatever reason
 .IP b
 Notify when the reservation period begins
-.IP c
+.IP c 
 Notify when the reservation is confirmed
-.IP e
+.IP e 
 Notify when the reservation period ends
 .IP n
-Send no mail.  Cannot be used with any of
+Send no mail.  Cannot be used with any of 
 .I a, b, c
-or
+or 
 .I e.
 .LP
 Default:
@@ -499,28 +593,28 @@ Default:
 .RE
 
 .IP "-M <mail list>" 8
-The list of users to whom mail is sent
-whenever the reservation transitions to one of the states
-specified in the
+The list of users to whom mail is sent 
+whenever the reservation transitions to one of the states 
+specified in the 
 .I -m mail events
-option.
+option. 
 .br
 Format: <username>[@<hostname>][,<username>[@<hostname>]...]
 .br
 Default: reservation owner.
 .RE
 .IP "-N <reservation name>" 8
-Specifies a name for the reservation.
+Specifies a name for the reservation. 
 .br
-Format:
-.I Reservation name.
-See
+Format: 
+.I Reservation name.  
+See 
 .B FORMATS.
 .br
 Default: None.
 .RE
 .IP "-q <destination>" 8
-Specifies the destination server at which to create the reservation.
+Specifies the destination server at which to create the reservation. 
 .br
 Default: The default server is used if this option is not selected.
 .RE
@@ -529,8 +623,8 @@ Default: The default server is used if this option is not selected.
 Specifies rule for recurrence of standing reservations.  Rule must conform to iCalendar
 syntax, and is specified using a subset of parameters from RFC 2445.
 .br
-Valid syntax for
-.I recurrence rule
+Valid syntax for 
+.I recurrence rule 
 takes one of two forms:
 .RS 11
 .I FREQ=<freq spec>;COUNT=<count spec>;<interval spec>
@@ -549,13 +643,13 @@ Frequency with which the standing reservation repeats.  Valid values are:
 WEEKLY|DAILY|HOURLY
 
 .IP "count spec" 5
-The exact number of occurrences.  Number up to 4 digits in length.
+The exact number of occurrences.  Number up to 4 digits in length.  
 Format: integer.
 
 .IP "interval spec" 5
 Specifies interval.  Format is one or both of:
 .br
-BYDAY = MO|TU|WE|TH|FR|SA|SU
+BYDAY = MO|TU|WE|TH|FR|SA|SU 
 .br
 or
 .br
@@ -563,66 +657,63 @@ BYHOUR = 0|1|2|...|23
 .br
 When using both, separate them with a semicolon.
 .br
-Elements specified in the recurrence rule override those
-specified in the arguments to the
-.I -R
-and
+Elements specified in the recurrence rule override those 
+specified in the arguments to the 
+.I -R 
+and 
 .I -E
-options.  For example, the
-.I BYHOUR
+options.  For example, the 
+.I BYHOUR 
 specification overrides the hourly part of the
 .I -R
-option.  For example,
+option.  For example, 
 .br
 -R 0730 -E 0830 ... BYHOUR=9
 .br
 results in a reservation that starts at 9:30 and runs for 1 hour.
-See the
-.B PBS User's Guide.
 
 .IP "until spec" 5
-Occurrences will start up to but not after date and time
+Occurrences will start up to but not after date and time 
 specified.
 .br
-Format: YYYYMMDD[THHMMSS]
+Format: YYYYMMDD[THHMMSS] 
 .br
-Note that the year-month-day section is separated from
+Note that the year-month-day section is separated from 
 the hour-minute-second section by a capital T.
 .RE
 .IP " " 8
 Requirements:
 .br
 The recurrence rule must be on one unbroken line and must be enclosed
-in double quotes.
+in double quotes.  
 
-A start and end date must be used when specifying a recurrence rule.
-See the
+A start and end date must be used when specifying a recurrence rule.  
+See the 
 .I R
 and
-.I E
+.I E 
 options.
 
-The PBS_TZID environment variable must be set at the submission host.  The
+The PBS_TZID environment variable must be set at the submission host.  The 
 format for PBS_TZID is a timezone location.  Examples: America/Los_Angeles,
-America/Detroit, Europe/Berlin, Asia/Calcutta.  See the
-.B PBS User's Guide.
+America/Detroit, Europe/Berlin, Asia/Calcutta.  
 
 .B Examples of Standing Reservations
 .br
 For a reservation that runs every day from 8am to 10am, for a total of 10 occurrences:
-.RS
+.RS 
 .IP " " 3
 pbs_rsub -R 0800 -E 1000 -r "FREQ=DAILY;COUNT=10"
 .LP
 
 Every weekday from 6am to 6pm until December 10 2008
 .IP " " 3
-pbs_rsub -R 0600 -E 1800
+pbs_rsub -R 0600 -E 1800 
 .br
 -r "FREQ=WEEKLY; BYDAY=MO,TU,WE,TH,FR; UNTIL=20081210"
 .LP
 
-Every week from 3pm to 5pm on Monday, Wednesday, and Friday, for 9 occurrences,
+Every week from 3pm to 5pm on Monday, Wednesday, and Friday, for 9 occurrences, 
 i.e., for three weeks:
 .RS 5
 pbs_rsub -R 1500 -E 1700
@@ -634,7 +725,7 @@ pbs_rsub -R 1500 -E 1700
 .IP "-R <start time>" 8
 .RS
 .LP
-Specifies reservation starting time. If the reservation's end time
+Specifies reservation starting time. If the reservation's end time 
 and duration are the only times specified, this start time is calculated.
 
 If the day,
@@ -642,18 +733,18 @@ If the day,
 is not specified, it defaults to today if the time
 .I hhmm
 is in the future. Otherwise, the day is set to tomorrow.
-For example, if you submit a reservation with the specification
+For example, if you submit a reservation with the specification 
 .I "-R 1110"
 at 11:15 a.m., it is interpreted as being for 11:10am tomorrow.
 If the month portion,
 .I MM ,
-is not specified, it defaults to the current month, provided that the specified
+is not specified, it defaults to the current month, provided that the specified 
 day
 .I DD ,
 is in the future. Otherwise, the month is set to next month. Similar
 rules apply to the two other optional, left-side components.
 .br
-Format:
+Format: 
 .I Datetime
 .LP
 .RE
@@ -665,96 +756,100 @@ Format: <username>[@<hostname>][,<username>[@<hostname>] ...]
 Default: None
 .RE
 .IP "-U <auth user list>" 8
-Comma-separated list of users who are and are not allowed to
-submit jobs to this reservation.
-This list becomes the
-.I acl_users
-attribute for the reservation's queue.
+Comma-separated list of users who are and are not allowed to 
+submit jobs to this reservation.  Sets reservation's 
+.I Authorized_Users 
+attribute to 
+.I auth user list.
+.br
+This list becomes the 
+.I acl_users 
+attribute for the reservation's queue. 
+.br
 More specific entries should be listed before more general, because the
-list is read left-to-right, and the first match determines access.
-
-If both the
-.I Authorized_Users
-and
-.I Authorized_Groups
-reservation attributes are set, a user must belong to both in order to be able to
-submit jobs to this reservation.
+list is read left-to-right, and the first match determines access. 
 The reservation creator's username is automatically added to this list,
 whether or not the reservation creator specifies this list.
-
-Refer to the
-.I Authorized_Users
-reservation attribute on the pbs_resv_attributes man page.
 .br
-Format:
+If both the
+.I Authorized_Users
+and 
+.I Authorized_Groups
+reservation attributes are set, a user must belong to both in order to be able to 
+submit jobs to this reservation.
+.br
+See the 
+.I Authorized_Users
+reservation attribute in the pbs_resv_attributes(7B) man page.
+.br
+Syntax:
 .I [+|-]<username>@<hostname>[,[+|-]<username>@<hostname>...]
 .br
-Default: Job owner only
+Default: Reservation owner only
 .br
 .RE
 .IP "-W attribute value list" 8
 This allows you to define other attributes for the reservation.
 Supported attributes:
 .RS
+
 .IP "qmove=<job ID>" 5
-Converts a normal job designated by
-.I job ID
-into a reservation job that will run
-as soon as possible.  Creates the
-reservation with its queue and moves the job into the reservation's
-queue.
-Uses the resources requested by the job to create the reservation.
+Takes as input a queued job, creates a job-specific ASAP reservation
+for the same resources the job requests, and moves the job into the
+reservation's queue.  The reservation is scheduled to run as soon as
+possible.  
 
-When the reservation is created, it inherits its resources from the job,
-not from the resources requested through the
-.B pbs_rsub
-command.
+When the reservation is created, it inherits its resources from the
+job, not from the resources requested through the pbs_rsub command.
 
-You can use the
+You can use the 
+.I -I 
+option to specify a timeout for the conversion.  If you use the 
+.I qmove 
+option to convert a job to a reservation, and the
+reservation is not confirmed within the timeout period, the
+reservation is deleted.  The default timeout period is 10 seconds.
+There is no option for this kind of reservation to be unconfirmed.  
+
+To specify the timeout, you must give a negative value for the 
 .I -I
-option to specify a timeout for the conversion.  If you use the
-.B qmove
-option to convert a job to a reservation, and the reservation is not
-confirmed within the timeout period, the reservation is deleted.  The
-default timeout period is
-.I 10 seconds.
-There is no option for this kind of reservation to be unconfirmed.
+option.  For example, to specify a timeout of 300 seconds: 
+.br
+.B \ \ \ pbs_rsub -Wqmove=<job ID> -I -300 
 
-To specify the timeout, you must give a negative value for the
-.I -I
-option.  For example, to specify a timeout of 300 seconds:
+The default value for the 
+.I delete_idle_time
+attribute for an ASAP reservation is 10 minutes.  
 
-   pbs_rsub -Wqmove=<job ID> -I -300
-
-The
-.I -R
-and
-.I -E
-options to
-.B pbs_rsub
-are disabled when using the
-.I qmove=<job ID>
-attribute.
+The 
+.I -R 
+and 
+.I -E 
+options to pbs_rsub are disabled when using the
+.I qmove=<job ID> 
+option.  
 
 Some shells require that you enclose a job array ID in double quotes.
+
+Can be used on queued jobs only.
 .RE
 
 .IP "--version" 8
-The
+The 
 .B pbs_rsub
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OUTPUT
-The
-.B pbs_rsub
-command returns the reservation identifier.
+The 
+.B pbs_rsub 
+command returns the reservation identifier.  
 .br
-Format for an advance reservation:
+Format for an advance or job-specific reservation:
 .IP
 .I R<sequence number>.<server name>
 .br
-The associated queue's name is the prefix,
+The associated queue's name is the prefix, 
 .I R<sequence number>.
 .LP
 
@@ -762,7 +857,7 @@ Format for a standing reservation:
 .IP
 .I S<sequence number>.<server name>
 .br
-The associated queue's name is the prefix,
+The associated queue's name is the prefix, 
 .I S<sequence number>.
 .LP
 
@@ -776,12 +871,12 @@ Format for a maintenance reservation:
 .I "[[[[CC]YY]MM]DD]hhmm[.SS]"
 
 .IP "Duration format"
-A period of time, expressed either as
+A period of time, expressed either as 
 .RS 11
 .I    An integer whose units are seconds
 .RE
-.IP
-or
+.IP 
+or 
 .RS 11
 .I [[hours:]minutes:]seconds[.milliseconds]
 .br
@@ -798,13 +893,8 @@ non-white space characters.  It can contain alphabetic and numeric
 characters, and plus sign, dash or minus, underscore, and dot or period.
 
 .SH SEE ALSO
-The
-.B PBS User's Guide,
-the
-.B PBS Administrator's Guide,
-.br
 pbs_resv_attributes(7B),
 pbs_rdel(1B),
-pbs_rstat(1B),
+pbs_rstat(1B), 
 qmove(1B),
-qsub(1B)
+qsub(1B)	

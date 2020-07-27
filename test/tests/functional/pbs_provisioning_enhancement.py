@@ -78,6 +78,8 @@ e.reject()
 
     def setUp(self):
 
+        if self.du.get_platform().startswith('cray'):
+            self.skipTest("Test suite only meant to run on non-Cray")
         if len(self.moms) < 2:
             self.skipTest("Provide at least 2 moms while invoking test")
 

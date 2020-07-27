@@ -232,10 +232,7 @@ getplacesharing(job *pjob)
 	/*
 	 *	Compute the "Resource_List.place" index for vnss[][]:
 	 */
-	if (prsdef == NULL) {
-		prsdef = find_resc_def(svr_resc_def, "place",
-			svr_resc_size);
-	}
+	prsdef = &svr_resc_def[RESC_PLACE];
 	if (prsdef != NULL) {
 		char	*placeval = NULL;
 
@@ -1276,7 +1273,7 @@ scan_for_terminated(void)
 			if (pjob->ji_mompost) {
 				pjob->ji_mompost(pjob, exiteval);
 			}
-			(void)job_save(pjob, SAVEJOB_QUICK);
+			(void)job_save(pjob);
 			continue;
 		}
 		DBPRT(("%s: task %8.8X pid %d exit value %d\n", __func__,

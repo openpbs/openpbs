@@ -639,7 +639,6 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         self.assertTrue(rv)
         self.server.log_match(logmsg)
 
-    @requirements(num_moms=2)
     def snapshot_multi_mom_basic(self, obfuscate=False):
         """
         Test capturing data from a multi-mom system
@@ -710,12 +709,14 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                         "%s snapshot didn't capture all expected"
                         " information" % (host2))
 
+    @requirements(num_moms=2)
     def test_multi_mom_basic(self):
         """
         Test running pbs_snapshot on a multi-mom setup
         """
         self.snapshot_multi_mom_basic()
 
+    @requirements(num_moms=2)
     def test_multi_mom_basic_obfuscate(self):
         """
         Test running pbs_snapshot on a multi-mom setup with obfuscation
@@ -951,6 +952,22 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                 if fpath not in target_files:
                     if not fpath.startswith(sched_priv_dir):
                         self.fail("Unexpected file " + fpath + " captured")
+
+    def test_snapshot_mom_obf(self):
+        """
+        Test capturing a snapshot of a system that's only running pbs_mom
+        """
+        # Kill all daemons and start only pbs_mom
+        self.server.pi.initd(op="stop", daemon="all")
+        self.mom.pi.start_mom()
+        self.assertTrue(self.mom.isUp())
+        self.assertFalse(self.server.isUp())
+
+        # Take & verify a snapshot with obfuscate
+        self.take_snapshot(obfuscate=True, with_sudo=True, acct_logs=10)
+
+        # Bring the rest of daemons up otherwise tearDown will error out
+        self.server.pi.initd(op="start", daemon="all")
 
     def tearDown(self):
         # Delete the snapshot directories and tarballs created

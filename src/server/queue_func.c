@@ -63,9 +63,9 @@
 #include <sys/param.h>
 #include <memory.h>
 #include <stdlib.h>
-#include "pbs_ifl.h"
 #include <errno.h>
 #include <string.h>
+#include "pbs_ifl.h"
 #include "list_link.h"
 #include "log.h"
 #include "attribute.h"
@@ -78,22 +78,19 @@
 #include "sched_cmds.h"
 #include "pbs_db.h"
 #include "pbs_nodes.h"
-#include <memory.h>
 #include "pbs_sched.h"
-
+#include "pbs_idx.h"
 
 /* Global Data */
 
 extern char     *msg_err_unlink;
-extern char	*path_queues;
 extern struct    server server;
 extern pbs_list_head svr_queues;
 extern time_t	 time_now;
 extern long	 svr_history_enable;
 #ifndef PBS_MOM
-extern pbs_db_conn_t	*svr_db_conn;
+extern void	*svr_db_conn;
 #endif
-
 
 /**
  * @brief
@@ -109,33 +106,37 @@ extern pbs_db_conn_t	*svr_db_conn;
 pbs_queue *
 que_alloc(char *name)
 {
-	int        i;
+	int i;
 	pbs_queue *pq;
 
-
-	pq = (pbs_queue *)malloc(sizeof(pbs_queue));
+	pq = (pbs_queue *) malloc(sizeof(pbs_queue));
 	if (pq == NULL) {
-		log_err(errno, "que_alloc", "no memory");
+		log_err(errno, __func__, "no memory");
 		return NULL;
 	}
-	(void)memset((char *)pq, (int)0, (size_t)sizeof(pbs_queue));
+	(void) memset((char *) pq, (int) 0, (size_t) sizeof(pbs_queue));
+
 	pq->qu_qs.qu_type = QTYPE_Unset;
+	pq->newobj = 1;
 	CLEAR_HEAD(pq->qu_jobs);
 	CLEAR_LINK(pq->qu_link);
 
 	snprintf(pq->qu_qs.qu_name, sizeof(pq->qu_qs.qu_name), "%s", name);
+	if (pbs_idx_insert(queues_idx, pq->qu_qs.qu_name, pq) != PBS_IDX_RET_OK) {
+		log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_QUEUE, LOG_ERR,
+			   "Failed to add queue in index %s", pq->qu_qs.qu_name);
+		free(pq);
+		return NULL;
+	}
 	append_link(&svr_queues, &pq->qu_link, pq);
 	server.sv_qs.sv_numque++;
 
 	/* set the working attributes to "unspecified" */
-
-	for (i=0; i<(int)QA_ATR_LAST; i++) {
+	for (i = 0; i < (int) QA_ATR_LAST; i++)
 		clear_attr(&pq->qu_attr[i], &que_attr_def[i]);
-	}
 
 	return (pq);
 }
-
 
 /**
  * @brief
@@ -149,36 +150,37 @@ que_alloc(char *name)
 void
 que_free(pbs_queue *pq)
 {
-	int		 i;
-	attribute	*pattr;
-	attribute_def	*pdef;
-	key_value_pair  *pkvp = NULL;
+	int i;
+	attribute *pattr;
+	attribute_def *pdef;
+	key_value_pair *pkvp = NULL;
 
 	/* remove any malloc working attribute space */
-
-	for (i=0; i < (int)QA_ATR_LAST; i++) {
-		pdef  = &que_attr_def[i];
+	for (i = 0; i < (int) QA_ATR_LAST; i++) {
+		pdef = &que_attr_def[i];
 		pattr = &pq->qu_attr[i];
 
 		pdef->at_free(pattr);
 	}
+
 	/* free default chunks set on queue */
 	pkvp = pq->qu_seldft;
 	if (pkvp) {
 		for (i = 0; i < pq->qu_nseldft; ++i) {
-			free((pkvp+i)->kv_keyw);
-			free((pkvp+i)->kv_val);
+			free((pkvp + i)->kv_keyw);
+			free((pkvp + i)->kv_val);
 		}
 		free(pkvp);
 	}
 
 	/* now free the main structure */
-
 	server.sv_qs.sv_numque--;
 	delete_link(&pq->qu_link);
-	(void)free((char *)pq);
+	if (pbs_idx_delete(queues_idx, pq->qu_qs.qu_name) != PBS_IDX_RET_OK)
+		log_eventf(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_QUEUE, LOG_ERR,
+			   "Failed to delete queue %s from index", pq->qu_qs.qu_name);
+	(void) free(pq);
 }
-
 
 /**
  * @brief
@@ -198,7 +200,7 @@ que_purge(pbs_queue *pque)
 {
 	pbs_db_obj_info_t   obj;
 	pbs_db_que_info_t   dbque;
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	void *conn = (void *) svr_db_conn;
 
 	/*
 	 * If the queue (pque) is not valid, then nothing to
@@ -280,25 +282,26 @@ que_purge(pbs_queue *pque)
 pbs_queue *
 find_queuebyname(char *quename)
 {
-	char *pc;
-	pbs_queue *pque;
-	char qname[PBS_MAXDEST + 1];
+	char *at;
+	pbs_queue *pque = NULL;
+	int rc = PBS_IDX_RET_FAIL;
 
-	(void)strncpy(qname, quename, PBS_MAXDEST);
-	qname[PBS_MAXDEST] ='\0';
-	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
-	if (pc)
-		*pc = '\0';
-	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
-		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
-		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
-			break;
-	}
-	if (pc)
-		*pc = '@';	/* restore '@' server portion */
-	return (pque);
+	if (quename == NULL || quename[0] == '\0')
+		return NULL;
+
+	at = strchr(quename, (int)'@');	/* strip off server (fragment) */
+	if (at)
+		*at = '\0';
+
+	rc = pbs_idx_find(queues_idx, (void **)&quename, (void **)&pque, NULL);
+	if (at)
+		*at = '@'; /* restore '@' server portion */
+	if (rc == PBS_IDX_RET_OK)
+		return pque;
+	return NULL;
 }
 
+#ifdef NAS /* localmod 075 */
 /**
  * @brief
  * 		find_resvqueuebyname() - find a queue by the name of its reservation
@@ -307,7 +310,6 @@ find_queuebyname(char *quename)
  *
  * @return	pbs_queue *
  */
-
 pbs_queue *
 find_resvqueuebyname(char *quename)
 {
@@ -330,40 +332,42 @@ find_resvqueuebyname(char *quename)
 		*pc = '@';	/* restore '@' server portion */
 	return (pque);
 }
+#endif /* localmod 075 */
 
 /**
  * @brief
- * 		find_resv_by_quename() - find a reservation by the name of its queue
+ * 	find_resv() - find reservation resc_resv struct by its ID or queue name
  *
- * @param[in]	quename	- queue name.
+ *	Search list of all server resc_resv structs for one with given
+ *	reservation id or reservation queue name
  *
- * @return	resc_resv *
+ * @param[in]	id_or_quename - reservation ID or queue name
+ *
+ * @return	pointer to resc_resv struct
+ * @retval	NULL	- not found
  */
-
 resc_resv *
-find_resv_by_quename(char *quename)
+find_resv(char *id_or_quename)
 {
-	char *pc;
+	char *dot = NULL;
 	resc_resv *presv = NULL;
-	char qname[PBS_MAXQUEUENAME + 1];
+	void *prid;
 
-	if (quename == NULL || *quename == '\0')
+	if (id_or_quename == NULL || id_or_quename[0] == '\0')
 		return NULL;
 
-	(void)strncpy(qname, quename, PBS_MAXQUEUENAME);
-	qname[PBS_MAXQUEUENAME] = '\0';
-	pc = strchr(qname, (int)'@');	/* strip off server (fragment) */
-	if (pc)
-		*pc = '\0';
-	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	while (presv != NULL) {
-		if (strcmp(qname, presv->ri_qp->qu_qs.qu_name) == 0)
-			break;
-		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+	if ((dot = strchr(id_or_quename, (int)'.')) != 0)
+		*dot = '\0';
+
+	prid = id_or_quename + 1; /* ignore first char, as index key doesn't have it */
+	if (pbs_idx_find(resvs_idx, &prid, (void **)&presv, NULL) != PBS_IDX_RET_OK) {
+		if (dot)
+			*dot = '.';
+		return NULL;
 	}
-	if (pc)
-		*pc = '@';	/* restore '@' server portion */
-	return (presv);
+	if (dot)
+		*dot = '.';
+	return presv;
 }
 
 /**
@@ -378,8 +382,8 @@ get_dfltque(void)
 {
 	pbs_queue *pq = NULL;
 
-	if (server.sv_attr[SRV_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
-		pq = find_queuebyname(server.sv_attr[SRV_ATR_dflt_que].at_val.at_str);
+	if (server.sv_attr[SVR_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
+		pq = find_queuebyname(server.sv_attr[SVR_ATR_dflt_que].at_val.at_str);
 	return (pq);
 }
 
@@ -405,7 +409,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 	pbs_queue *pque = (pbs_queue *) pobject;
 	pbs_sched *psched;
 
-	if ((pque != NULL) && (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1)) {
+	if ((pque != NULL) && (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1)) {
 
 		if (pattr->at_val.at_long == 0) { /* started = OFF */
 			/* queue stopped, start accruing eligible time */
@@ -441,14 +445,14 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 					oldtype != JOB_ELIGIBLE) {
 
 					newaccruetype = determine_accruetype(pj);
-					(void)update_eligible_time(newaccruetype, pj);
+					update_eligible_time(newaccruetype, pj);
 				}
 
 				pj = (job*)GET_NEXT(pj->ji_jobque);
 			}
 
 			/* if scheduling = True, notify scheduler to start */
-			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long) {
+			if (server.sv_attr[SVR_ATR_scheduling].at_val.at_long) {
 				if (find_assoc_sched_pque(pque, &psched))
 					set_scheduler_flag(SCH_SCHEDULE_STARTQ, psched);
 				else {

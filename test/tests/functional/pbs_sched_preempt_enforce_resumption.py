@@ -105,10 +105,9 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         end = start + 120
         self.scheduler.add_dedicated_time(start=start, end=end)
 
-        temp += 180
         j1 = Job(TEST_USER)
         j1.set_attributes({ATTR_l + '.select': '1:ncpus=2',
-                           ATTR_l + '.walltime': temp})
+                           ATTR_l + '.walltime': start-int(time.time())-10})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 

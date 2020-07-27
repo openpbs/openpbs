@@ -108,8 +108,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 	int index = -1;
 
 	if ((val == NULL) || (strlen(val) == 0)) {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
+		ATR_UNSET(patr);
 		patr->at_val.at_long = 0;
 		return (0);
 	}
@@ -162,7 +161,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 	if (atoi(msec) >= 500)
 		rv++;
 	patr->at_val.at_long = rv;
-	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	patr->at_flags |= ATR_SET_MOD_MCACHE;
 	(void)free(workvalsv);
 	return (0);
 
@@ -193,7 +192,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 #define CVNBUFSZ 24
 
 int
-encode_time(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_time(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t ct;
 	unsigned long n;

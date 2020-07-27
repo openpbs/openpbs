@@ -59,6 +59,7 @@ class TestNodeJobsRestart(TestFunctional):
         svr_nodes = self.server.status(NODE, id=job_nodes[0])
         msg = 'Job ' + jid + ' not in node ' + job_nodes[0] + '\'s jobs line'
         self.assertTrue(jid in svr_nodes[0]['jobs'], msg)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         self.server.restart()
 

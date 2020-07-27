@@ -139,10 +139,9 @@ relay_to_mom2(job *pjob, struct batch_request *request,
 	momaddr = pjob->ji_qs.ji_un.ji_exect.ji_momaddr;
 	momport = pjob->ji_qs.ji_un.ji_exect.ji_momport;
 
-	pmom = tfind2((unsigned long) momaddr, momport, &ipaddrs);
-	if (!pmom || (((mom_svrinfo_t *) (pmom->mi_data))->msr_state & INUSE_DOWN)) {
+	if ((pmom = tfind2((unsigned long) momaddr, momport, &ipaddrs)) == NULL)
 		return (PBSE_NORELYMOM);
-	}
+
 	mom_tasklist_ptr = &(((mom_svrinfo_t *) (pmom->mi_data))->msr_deferred_cmds);
 
 	conn = svr_connect(momaddr, momport, process_Dreply, ToServerDIS, prot);
@@ -442,7 +441,6 @@ issue_Drequest(int conn, struct batch_request *request, void (*func)(), struct w
 	/* the request is bound to another server, encode/send the request */
 	switch (request->rq_type) {
 
-#ifndef PBS_MOM
 		case PBS_BATCH_DeleteJob:
 			rc =   PBSD_mgr_put(conn,
 				PBS_BATCH_DeleteJob,
@@ -683,6 +681,7 @@ issue_Drequest(int conn, struct batch_request *request, void (*func)(), struct w
 			/* we should never do this on tpp based connection */
 			rc = put_failover(sock, request);
 			break;
+
 		case PBS_BATCH_Cred:
 			rc = PBSD_cred(conn,
 				request->rq_ind.rq_cred.rq_credid,
@@ -693,23 +692,6 @@ issue_Drequest(int conn, struct batch_request *request, void (*func)(), struct w
 				prot,
 				&msgid);
 			break;
-
-#else	/* PBS_MOM */
-
-		case PBS_BATCH_JobObit:
-			rc = encode_DIS_ReqHdr(sock, PBS_BATCH_JobObit, pbs_current_user);
-			if (rc != 0)
-				break;
-			rc = encode_DIS_JobObit(sock, request);
-			if (rc != 0)
-				break;
-			rc = encode_DIS_ReqExtend(sock, 0);
-			if (rc != 0)
-				break;
-			rc = dis_flush(sock);
-			break;
-
-#endif	/* PBS_MOM */
 
 		default:
 			(void)sprintf(log_buffer, msg_issuebad, request->rq_type);
@@ -761,9 +743,7 @@ process_Dreply(int sock)
 	struct work_task	*ptask;
 	int			 rc;
 	struct batch_request	*request;
-#ifdef WIN32
-	int                     i;
-#endif
+
 	/* find the work task for the socket, it will point us to the request */
 	ptask = (struct work_task *)GET_NEXT(task_list_event);
 	while (ptask) {

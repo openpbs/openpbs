@@ -158,7 +158,7 @@ int is_num(char *str);
  *	count_array - count the number of elements in a NULL terminated array
  *		      of pointers
  */
-int count_array(void **arr);
+int count_array(void *arr);
 
 /*
  *	dup_array - make a shallow copy of elements in a NULL terminated array of pointers.

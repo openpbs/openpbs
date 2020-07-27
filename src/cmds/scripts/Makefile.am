@@ -45,9 +45,7 @@ dist_libinit_DATA = \
 	limits.pbs_mom \
 	limits.pbs_mom.compat \
 	limits.post_services \
-	limits.post_services.compat \
-	sgiICEvnode.sh \
-	sgiICEplacement.sh
+	limits.post_services.compat 
 
 libmpidir = $(libdir)/MPI
 
@@ -81,14 +79,11 @@ dist_unitfile_DATA = \
 	pbs.service
 
 dist_libexec_SCRIPTS = \
-	install_db \
 	pbs_habitat \
 	pbs_init.d \
-	pbs_pgsql_env.sh \
 	pbs_postinstall \
 	pbs_preuninstall \
-	pbs_posttrans \
-	pbs_schema_upgrade
+	pbs_posttrans
 
 dist_bin_SCRIPTS = \
 	pbs_topologyinfo \
@@ -101,8 +96,7 @@ dist_sbin_SCRIPTS = \
 	pbs_snapshot
 
 dist_sysconf_DATA = \
-	modulefile \
-	pbs_db_schema.sql
+	modulefile 
 
 CLEANFILES = \
 	pbs_init.d \

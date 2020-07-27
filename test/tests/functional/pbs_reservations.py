@@ -114,20 +114,21 @@ class TestReservations(TestFunctional):
         self.scheduler.add_resource('color')
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=3, mom=self.mom,
+        self.server.create_vnodes('vn', a, num=5, mom=self.mom,
                                   attrfunc=self.cust_attr)
 
         now = int(time.time())
 
         rid = self.submit_reservation(user=TEST_USER,
-                                      select='1:ncpus=1:color=red',
+                                      select='2:ncpus=1:color=red',
                                       rrule=rrule, start=start, end=end)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
 
         self.server.status(RESV, 'resv_nodes', id=rid)
-        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        resv_node_list = self.server.reservations[rid].get_vnodes()
+        resv_node = resv_node_list[0]
 
         if run:
             resv_state = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
@@ -149,15 +150,24 @@ class TestReservations(TestFunctional):
         free_nodes = self.server.filter(NODE, a)
         nodes = list(free_nodes.values())[0]
 
-        other_node = [nodes[0], nodes[1]][resv_node == nodes[0]]
+        other_node = [x for x in nodes if x not in resv_node_list][0]
 
         if run:
             a = {'reserve_substate': 5}
         else:
             a = {'reserve_substate': 2}
-        a.update({'resv_nodes': (MATCH_RE, re.escape(other_node))})
 
         self.server.expect(RESV, a, id=rid, interval=1)
+
+        self.server.status(RESV)
+        self.assertEquals(set(self.server.reservations[rid].get_vnodes()),
+                          {resv_node_list[1], other_node},
+                          "Node not replaced correctly")
+        if run:
+            a = {'resources_assigned.ncpus': 0}
+            self.server.expect(NODE, a, id=resv_node)
+            a = {'resources_assigned.ncpus=1': 2}
+            self.server.expect(NODE, a)
 
     def degraded_resv_failed_reconfirm(self, start, end, rrule=None,
                                        run=False, resume=False):
@@ -365,6 +375,63 @@ class TestReservations(TestFunctional):
         self.assertEqual(len(sp), len(nds2.split('+')))
         self.assertNotEqual(nds1, nds2)
         self.assertEquals(sc, nds1.split('+')[0])
+
+    @skipOnCpuSet
+    def test_degraded_running_only_replace(self):
+        """
+        Test that when a running degraded reservation is reconfirmed,
+        make sure that only the nodes that unavailable are replaced
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vn', a, 5, self.mom)
+
+        # Submit two jobs to take up nodes 0 and 1. This forces the reservation
+        # onto nodes 3 and 4. The idea is to delete the two jobs and see
+        # if the reservation shifts onto nodes 0 and 1 after the reconfirm
+        j1 = Job(attrs={'Resource_List.select': '1:ncpus=1'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        j2 = Job(attrs={'Resource_List.select': '1:ncpus=1'})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        now = int(time.time())
+        start = now + 20
+        a = {'reserve_start': start, 'reserve_end': start + 60,
+             'Resource_List.select': '2:ncpus=1'}
+        R = Reservation(attrs=a)
+        rid = self.server.submit(R)
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
+        resv_queue = rid.split('.')[0]
+        a = {'Resource_List.select': '1:ncpus=1', 'queue': resv_queue}
+        j3 = Job(attrs=a)
+        jid3 = self.server.submit(j3)
+
+        self.logger.info('Sleeping until reservation starts')
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid, offset=start - int(time.time()))
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+        self.server.delete(jid1, wait=True)
+        self.server.delete(jid2, wait=True)
+        self.server.status(RESV)
+        rnodes = self.server.reservations[rid].get_vnodes()
+        self.server.status(JOB)
+        jnode = j3.get_vnodes()[0]
+        other_node = rnodes[rnodes[0] == jnode]
+        self.server.manager(MGR_CMD_SET, NODE, {
+                            'state': (INCR, 'offline')}, id=other_node)
+        self.server.expect(RESV, {'reserve_substate': 10}, id=rid)
+        self.logger.info('Waiting until reconfirmation')
+        self.server.expect(RESV, {'reserve_substate': 5}, id=rid, offset=7)
+        self.server.status(RESV)
+        rnodes2 = self.server.reservations[rid].get_vnodes()
+        self.assertIn(jnode, rnodes2, 'Reservation not on job node')
 
     @skipOnCpuSet
     def test_standing_reservation_occurrence_two_not_degraded(self):

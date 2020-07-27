@@ -340,10 +340,8 @@ class TestPbsExecjobEnd(TestFunctional):
             NODE, a, id=self.momB.shortname)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
 
-        # Wait for job to be in E state
-        time.sleep(15)
         hook_execution_time = time.time()
-        self.server.expect(JOB, {'job_state': "E"}, id=jid, offset=10)
+        self.server.expect(JOB, {'job_state': "E"}, id=jid, max_attempts=300)
 
         # Following message should be logged on momA after job delete request
         # received
@@ -501,14 +499,11 @@ class TestPbsExecjobEnd(TestFunctional):
         self.job_list.append(jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.mom.log_match("Job;%s;starting hook event EXECJOB_END" %
-                           jid, n=100, max_attempts=10,
-                           interval=2)
+                           jid, n=100, interval=2)
         self.mom.restart()
         self.mom.log_match("Job;%s;ending hook event EXECJOB_END" %
-                           jid, n=100, max_attempts=20,
-                           interval=2)
-        self.server.log_match(jid + ";Exit_status=0", interval=4,
-                              max_attempts=10)
+                           jid, n=100, interval=2)
+        self.server.log_match(jid + ";Exit_status=0", interval=4)
 
     def tearDown(self):
         for mom_val in self.moms.values():

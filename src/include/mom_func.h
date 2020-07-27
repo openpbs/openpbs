@@ -152,6 +152,8 @@ extern int mock_run;
 #ifdef	_PBS_JOB_H
 
 #define COMM_MATURITY_TIME  60 /* time when we consider a pbs_comm connection as mature */
+#define MOM_DELTA_NORMAL	1	/* Normal mode of operation for time_delta_hellosvr function */
+#define MOM_DELTA_RESET 	0	/* Reset the values of time_delta_hellosvr function back to 1 */
 
 typedef	int	(*pbs_jobfunc_t)(job *);
 typedef	int	(*pbs_jobnode_t)(job *, hnodent *);
@@ -179,6 +181,7 @@ extern int   start_checkpoint(job *, int, struct batch_request *);
 extern int   local_checkpoint(job *, int, struct batch_request *);
 extern int   start_restart(job *, struct batch_request *);
 extern int   local_restart(job *, struct batch_request *);
+extern int   time_delta_hellosvr(int);
 
 #ifdef WIN32
 extern void  wait_action(void);
@@ -209,7 +212,7 @@ struct passwd	*check_pwd(job *);
 extern char *set_shell(job *, struct passwd *);
 extern void  start_exec(job *);
 extern void  send_obit(job *, int);
-extern void  send_restart(void);
+extern void send_hellosvr(int);
 extern void  send_wk_job_idle(char *, int);
 extern int   site_job_setup(job *);
 extern int   site_mom_chkuser(job *);
@@ -226,8 +229,8 @@ extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);
 extern void send_join_job_restart(int, eventent *, int, job *, pbs_list_head *);
-extern int send_resc_used_to_ms(int stream, char *jobid);
-extern int recv_resc_used_from_sister(int stream, char *jobid, int nodeidx);
+extern int send_resc_used_to_ms(int stream, job *pjob);
+extern int recv_resc_used_from_sister(int stream, job *pjob, int nodeidx);
 extern int  is_comm_up(int);
 
 /* Defines for pe_io_type, see run_pelog() */
@@ -322,6 +325,7 @@ enum stagefile_errcode {
 struct copy_info {
 	pbs_list_link al_link;		/* link to all copy info list */
 	char *jobid;			/* job id to which this info belongs */
+	job *pjob;			/* pointer to job structure */
 	struct work_task *ptask;	/* pointer to work task */
 	struct batch_request *preq;	/* pointer to batch request */
 	pio_handles pio;		/* process info struct */
@@ -392,7 +396,7 @@ extern void  scan_for_terminated(void);
 extern int   setwinsize(int);
 extern void  set_termcc(int);
 extern int   conn_qsub(char *host, long port);
-extern void  state_to_server(int);
+extern int  state_to_server(int, int);
 extern int   send_hook_vnl(void *vnl);
 extern int hook_requests_to_server(pbs_list_head *);
 extern void  set_job_toexited(char *);

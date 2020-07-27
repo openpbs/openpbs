@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_runjob 3B "15 November 2019" Local "PBS"
+.TH pbs_runjob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_runjob
 \- run a PBS batch job
@@ -47,16 +46,16 @@
 #include <pbs_ifl.h>
 .sp
 .nf
-.B int pbs_runjob(int connect, char *jobID, char *location,
+.B int pbs_runjob(int connect, char *jobID, char *location, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 .SH DESCRIPTION
 Issues a batch request to run a batch job.
 
 Generates a
-.I Run Job
-(15) request and sends it to the server over the connection specified by
-.I connect.
+.I Run Job 
+(15) request and sends it to the server over the connection specified by 
+.I connect.  
 
 If no file stagein is required, the server replies when the job has
 started execution.  If file stagein is required, the server replies
@@ -67,12 +66,12 @@ You must have Manager or Operator privilege to use this command.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection over which to send batch request to server.
 
 .IP jobID 8
-ID of job to be run.
+ID of job to be run.  
 .br
 Format for a job:
 .br
@@ -83,19 +82,19 @@ Format for a job array:
 .I <sequence number>[].<server name
 
 .IP location 8
-Location where job should run, and optionally resources to use.  Same as
+Location where job should run, and optionally resources to use.  Same as 
 .B qrun -H:
 
 .RS 8
 .IP "-H <vnode specification without resources>" 3
-The
+The 
 .I vnode specification without resources
 has this format:
 .br
 .I \ \ \ (<vchunk>)[+(<vchunk>) ...]
 .br
-where
-.I vchunk
+where 
+.I vchunk 
 has the format
 .br
 .I \ \ \ <vnode name>[+<vnode name> ...]
@@ -103,24 +102,24 @@ has the format
 Example: -H (VnodeA+VnodeB)+(VnodeC)
 
 PBS applies one requested chunk from the job's selection directive in round-robin
-fashion to each
-.I vchunk
-in the list.  Each
-.I vchunk
+fashion to each 
+.I vchunk 
+in the list.  Each 
+.I vchunk 
 must be sufficient to run the job's corresponding chunk, otherwise
 the job may not execute correctly.
 .RE
 
 .RS 8
 .IP "-H <vnode specification with resources>" 3
-The
+The 
 .I vnode specification with resources
 has this format:
 .br
 .I \ \ \ (<vchunk>)[+(<vchunk>) ...]
 .br
-where
-.I vchunk
+where 
+.I vchunk 
 has the format
 .IP "" 6
 .I <vnode name>:<vnode resources>[+<vnode name>:<vnode resources> ...]
@@ -135,27 +134,27 @@ has the format
 
 .IP "Example:" 3
 .nf
--H (VnodeA:mem=100kb:ncpus=1)+
-.br
+-H (VnodeA:mem=100kb:ncpus=1)+ 
+.br 
      (VnodeB:mem=100kb:ncpus=2+ VnodeC:mem=100kb)
 .fi
 .LP
 
-PBS creates a new selection directive from the
-.I vnode specification with resources,
+PBS creates a new selection directive from the 
+.I vnode specification with resources, 
 using it instead of the original specification from the user.
 Any single resource specification results in the
-job's original selection directive being ignored.  Each
-.I vchunk
+job's original selection directive being ignored.  Each 
+.I vchunk 
 must be sufficient to run the job's corresponding chunk, otherwise
 the job may not execute correctly.
 
 If the job being run requests
 .I -l place=exclhost,
-take extra care to satisfy the
-.I exclhost
-request.  Make sure that if any vnodes are from a multi-vnoded host,
-all vnodes from that host are allocated.  Otherwise those vnodes can
+take extra care to satisfy the 
+.I exclhost 
+request.  Make sure that if any vnodes are from a multi-vnoded host, 
+all vnodes from that host are allocated.  Otherwise those vnodes can 
 be allocated to other jobs.
 .RE
 .RE
@@ -168,7 +167,7 @@ The routine returns 0 (zero) on success.
 .br
 
 If an error occurred, the routine returns a non-zero exit value, and
-the error number is available in the global integer
+the error number is available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO

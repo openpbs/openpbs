@@ -36,29 +36,28 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH printjob 8B "28 November 2017" Local "PBS"
+.TH printjob 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B printjob
+.B printjob 
 \- print job information
 .SH SYNOPSIS
-.B printjob
+.B printjob 
 [ -a | -s ] <job ID>
 .br
-.B printjob
+.B printjob 
 [ -a ] <file path> [<file path>...]
 .br
 .B printjob
 --version
 .SH DESCRIPTION
-Prints job information.  This command is mainly useful for troubleshooting,
-as during normal operation, the
-.B qstat(8B)
+Prints job information.  This command is mainly useful for troubleshooting, 
+as during normal operation, the 
+.B qstat(8B) 
 command is the preferred method for displaying job-specific data and attributes.
 The server and MoM do not have to be running to execute this command.
 
 .SH Usage
-For a running job, you can run this command at any host using a
+For a running job, you can run this command at any host using a 
 job ID, and you can run this command at any execution host where
 the job is running using a .JB file path.
 
@@ -80,37 +79,37 @@ you must have root or Windows Administrator privilege.
 .IP "(no options)" 15
 Prints all job data including job attributes.
 .IP "-a" 15
-Suppresses the printing of job attributes.  Cannot be used with
-.I -s
+Suppresses the printing of job attributes.  Cannot be used with 
+.I -s 
 option.
 .IP "-s" 15
 Prints out the job script only.  Can be used at server or primary execution host.
-Cannot be used with
+Cannot be used with 
 .I -a
 option.  Must be used with a job ID.
 
 .IP "--version" 15
-The
+The 
 .B printjob
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
 .IP "file path" 15
-The
+The 
 .B printjob
 command accepts one or more
 .I file path
-operands at the execution host.  Files are found in PBS_HOME/mom_priv/jobs/
+operands at the execution host.  Files are found in PBS_HOME/mom_priv/jobs/ 
 on the primary execution host.  File path must include full path to file.  Cannot be
-used with
-.I -s
+used with 
+.I -s 
 option.
 
 .IP "job ID" 15
-The
-.B printjob
-command accepts a job ID at the server host.
+The 
+.B printjob 
+command accepts a job ID at the server host. 
 .br
 Format: <sequence number>[.<server name>][@<server name>]
 .br
@@ -127,12 +126,9 @@ Upon successful processing of all the operands presented to the
 command
 .LP
 .IP "Greater than zero" 15
-If the
-.B printjob
+If the 
+.B printjob 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide,
-.br
 pbs_server(8B), qstat(8B)

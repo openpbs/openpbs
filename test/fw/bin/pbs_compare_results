@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+import os
+import csv
+import json
+import sys
+import getopt
+
+
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0])]
+    msg += [' [benchmark_json_file] [tocompare_json_file] [OPTION]\n\n']
+    msg += [' Performance test results comparision tool']
+    msg += [' to generate csv and html report\n\n']
+    msg += ['--html-report : option to generate html report\n']
+    msg += ['--output-file : path to generate csv and html file\n']
+    msg += ['--help or -h : To display usage information\n']
+    print(''.join(msg))
+
+
+def generate_html_report(filepath):
+    """
+    Generate html performance comparision report
+    """
+    HTML = '''<html>
+    <head>
+      <style>
+        table {
+          font-family: sans-serif, "Times New Roman", serif;
+          border-collapse: collapse;
+          width: 100%%;
+        }
+        td, th {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+      </style>
+    </head>
+    <body>
+      <table>
+        <tr><th><b>Performance tests benchmark comparision results</b>
+        </th></tr>
+        <tr><td><b>cmd:</b> %s</td></tr>
+        <tr><td><b>user:</b> %s</td></tr>
+        <tr><td><b>host:</b> %s</td></tr>
+      </table>
+      <table>
+      %s
+      </table>
+    </body>
+    </html>
+    '''
+    if not filepath.endswith('.html'):
+        filepath = filepath + '.html'
+    with open(filepath, 'w+') as fp:
+        fp.write(HTML % (oldv['command'], oldv['user'],
+                         list(oldv['machine_info'].keys())[0],
+                         _h + ''.join(_data)))
+
+
+def generate_csv_report(filepath):
+    """
+    compare 2 json results and generate csv report
+    """
+    if not filepath.endswith('.csv'):
+        filepath = filepath + '.csv'
+    with open(filepath, 'w+') as fp:
+        csv.writer(fp).writerows([header] + data)
+
+
+def percent_change(nv, ov, unit):
+    """
+    swap the values to find approriate percent
+    change for units
+    """
+    if unit == 'jobs/sec':
+        a = ov
+        ov = nv
+        nv = a
+    diff = ov - nv
+    pchange = 0
+    if diff > 0:
+        pchange = (diff / nv) * 100
+    elif diff < 0:
+        diff = nv - ov
+        pchange = -(diff / nv) * 100
+    pchange = round(pchange, 2)
+    return str(pchange) + '%'
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        usage()
+        sys.exit(1)
+
+    html_report = False
+    try:
+        opts, args = getopt.getopt(sys.argv[3:], "h",
+                                   ["help", "html-report", "output-file="])
+    except getopt.GetoptError as err:
+        print(err)
+        usage()
+        sys.exit(1)
+
+    filepath = None
+    for o, val in opts:
+        if o == '--html-report':
+            html_report = True
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit(0)
+        elif o == "--output-file":
+            filepath = val
+
+    with open(sys.argv[1]) as fp:
+        oldv = json.load(fp)
+
+    with open(sys.argv[2]) as fp:
+        newv = json.load(fp)
+
+    header = ['Description', 'TestCase', 'Test Measure',
+              oldv['product_version'], newv['product_version'],
+              '% Diff', 'Unit']
+    TR = '    <tr>\n%s    </tr>\n'
+    TH = '      <th>%s</th>\n'
+    TD = '      <td>%s</td>\n'
+    TDR = '      <td rowspan=%d>%s</td>\n'
+
+    data = []
+    for k, v in sorted(oldv['testsuites'].items()):
+        assert k in newv['testsuites'], k
+        _ntcs = newv['testsuites'][k]['testcases']
+        _otcs = v['testcases']
+        for _k, _v in sorted(v['testcases'].items()):
+            _tcn = k + '.' + _k
+            assert _k in _ntcs, _tcn
+            _om = _v['results']['measurements']
+            _om = [x for x in _om if 'test_measure' in x]
+            _om = sorted(_om, key=lambda x: x['test_measure'])
+            _nm = _ntcs[_k]['results']['measurements']
+            _nm = [x for x in _nm if 'test_measure' in x]
+            _nm = sorted(_nm, key=lambda x: x['test_measure'])
+            _nm_ms = [x['test_measure'] for x in _nm]
+            for i, _m in enumerate(_om):
+                _mn = _m['test_measure']
+                _msg = 'test measure %s missing' % _mn
+                _msg += ' in new %s' % _tcn
+                assert _mn in _nm_ms, _msg
+                _o = _m['test_data']['mean']
+                _n = _nm[i]['test_data']['mean']
+                _row = [_v['docstring'].split(' Test Params')[0], _tcn, _mn]
+                _row += [str(_o), str(_n), percent_change(_n, _o, _m['unit']),
+                         _m['unit']]
+                data.append(_row)
+
+    _h = TR % ''.join([TH % x for x in header])
+    _data = []
+    _rsns = {}
+    _adf = []
+    for i, d in enumerate(data):
+        if d[1] in _rsns:
+            _rsns[d[1]] += 1
+        else:
+            _rsns.setdefault(d[1], 1)
+    for i, d in enumerate(data):
+        if _rsns[d[1]] > 1:
+            if d[1] in _adf:
+                _data.append(TR % ''.join([TD % x for x in d[2:]]))
+            else:
+                _d = [TDR % (_rsns[d[1]], x) for x in d[:2]]
+                _d1 = [TD % x for x in d[2:]]
+                _data.append(TR % ''.join(_d + _d1))
+                _adf.append(d[1])
+        else:
+            _data.append(TR % ''.join([TD % x for x in d]))
+    if not filepath:
+        filepath = 'performance_test_report'
+    if html_report:
+        generate_html_report(filepath)
+    generate_csv_report(filepath)

@@ -281,10 +281,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
-#ifdef WIN32
-	struct sockaddr_in to_sock;
-	struct sockaddr_in from_sock;
-#endif
 
 #ifndef WIN32
 	char   pbsrc[_POSIX_PATH_MAX];
@@ -460,7 +456,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	reply = PBSD_rdrpy(sock);
 	PBSD_FreeReply(reply);
 
-	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
+	if (engage_client_auth(sock, server, server_port, errbuf, sizeof(errbuf)) != 0) {
 		if (pbs_errno == 0)
 			pbs_errno = PBSE_PERM;
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
@@ -659,11 +655,7 @@ pbs_connect_noblk(char *server, int tout)
 
 #ifdef WIN32
 	int     non_block = 1;
-	struct sockaddr_in to_sock;
-	struct sockaddr_in from_sock;
-#endif
-
-#ifndef WIN32
+#else
 	int nflg;
 	int oflg;
 #endif
@@ -852,7 +844,7 @@ err:
 	reply = PBSD_rdrpy(sock);
 	PBSD_FreeReply(reply);
 
-	if (engage_client_auth(sock, server_name, server_port, errbuf, sizeof(errbuf)) != 0) {
+	if (engage_client_auth(sock, server, server_port, errbuf, sizeof(errbuf)) != 0) {
 		if (pbs_errno == 0)
 			pbs_errno = PBSE_PERM;
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);

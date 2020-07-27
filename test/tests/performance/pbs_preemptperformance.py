@@ -189,22 +189,22 @@ class TestPreemptPerformance(TestPerformance):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        a = {ATTR_l + '.select': '1:ncpus=1:qlist=list1'}
-        for _ in range(3200):
-            j = Job(TEST_USER, attrs=a)
-            j.set_sleep_time(3000)
-            self.server.submit(j)
-
         a = {ATTR_l + '.select': '1:ncpus=1:qlist=list2'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(3000)
 
         # Add qlist to the resources scheduler checks for
         self.scheduler.add_resource('qlist')
-        self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
-                            runas=ROOT_USER)
 
         jid = self.server.submit(j)
+        time.sleep(1)
+
+        a = {ATTR_l + '.select': '1:ncpus=1:qlist=list1'}
+        for _ in range(3200):
+            j = Job(TEST_USER, attrs=a)
+            j.set_sleep_time(3000)
+            self.server.submit(j)
+
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.server.expect(JOB, {'job_state=R': 3201}, interval=20,
@@ -276,12 +276,6 @@ class TestPreemptPerformance(TestPerformance):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
-        a = {ATTR_l + '.select': '1:ncpus=1:qlist=list1'}
-        for _ in range(3200):
-            j = Job(TEST_USER, attrs=a)
-            j.set_sleep_time(3000)
-            self.server.submit(j)
-
         a = {ATTR_l + '.select': '1:ncpus=1:qlist=list2'}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(3000)
@@ -292,11 +286,16 @@ class TestPreemptPerformance(TestPerformance):
 
         # Add qlist to the resources scheduler checks for
         self.scheduler.add_resource('qlist')
-        self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
-                            runas=ROOT_USER)
 
         jid = self.server.submit(j)
         jid2 = self.server.submit(j2)
+
+        a = {ATTR_l + '.select': '1:ncpus=1:qlist=list1'}
+        for _ in range(3200):
+            j = Job(TEST_USER, attrs=a)
+            j.set_sleep_time(3000)
+            self.server.submit(j)
+
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.server.expect(JOB, {'job_state=R': 3202}, interval=20,
@@ -361,21 +360,20 @@ class TestPreemptPerformance(TestPerformance):
         a = {ATTR_rescavail + ".foo": 50, 'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        a = {ATTR_l + '.select': '1:ncpus=1'}
-        for _ in range(3200):
-            j = Job(TEST_USER, attrs=a)
-            j.set_sleep_time(3000)
-            self.server.submit(j)
-
         # Add foo to the resources scheduler checks for
         self.scheduler.add_resource('foo')
-        self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
-                            runas=ROOT_USER)
 
         a = {ATTR_l + '.select': '1:ncpus=1', ATTR_l + '.foo': 25}
         j = Job(TEST_USER, attrs=a)
         j.set_sleep_time(3000)
         jid = self.server.submit(j)
+        time.sleep(1)
+
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        for _ in range(3200):
+            j = Job(TEST_USER, attrs=a)
+            j.set_sleep_time(3000)
+            self.server.submit(j)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state=R': 3201}, interval=20,

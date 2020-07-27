@@ -1214,10 +1214,16 @@ class SmokeTest(PBSTestSuite):
         attr = {'Resources_available.foo': True}
         self.server.manager(MGR_CMD_SET, SERVER, attr,
                             id=self.server.shortname)
+
+        vnode_val = self.mom.shortname
+        if self.mom.is_cpuset_mom():
+            nodeinfo = self.server.status(NODE)
+            if len(nodeinfo) > 1:
+                vnode_val = nodeinfo[1]['id']
         attr = {'Resources_available.foo3': '2gb'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=vnode_val)
         attr = {'Resources_available.foo1': 3}
-        self.server.manager(MGR_CMD_SET, NODE, attr, id=self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, attr, id=vnode_val)
 
         now = time.time()
         r = Reservation(TEST_USER)
@@ -1460,9 +1466,6 @@ class SmokeTest(PBSTestSuite):
         Test that if jobscript_max_size attribute is set, users can not
         submit jobs with job script size exceeding the limit.
         """
-        msg = "skipped due to issue: "
-        msg += "server attribute 'jobscript_max_size' not working properly."
-        self.skipTest(msg)
 
         scr = []
         scr += ['echo "This is a very long line, it will exceed 20 bytes"']

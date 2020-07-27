@@ -239,9 +239,9 @@ req_orderjob(struct batch_request *req)
 	rank = pjob1->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
 	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long =
 		pjob2->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
-	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_MODCACHE;
+	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
 	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = rank;
-	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_MODCACHE;
+	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
 
 	if (pjob1->ji_qhdr != pjob2->ji_qhdr) {
 		(void)strcpy(tmpqn, pjob1->ji_qs.ji_queue);
@@ -258,9 +258,8 @@ req_orderjob(struct batch_request *req)
 	}
 
 	/* need to update disk copy of both jobs to save new order */
-
-	(void)job_save(pjob1, SAVEJOB_FULL);
-	(void)job_save(pjob2, SAVEJOB_FULL);
+	job_save_db(pjob1);
+	job_save_db(pjob2);
 
 	reply_ack(req);
 }

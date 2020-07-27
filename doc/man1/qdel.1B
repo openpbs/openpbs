@@ -36,68 +36,67 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qdel 1B "23 October 2019" Local "PBS"
+.TH qdel 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qdel
+.B qdel 
 - delete PBS jobs
 .SH SYNOPSIS
-.B qdel
+.B qdel 
 [ -Wforce | -Wsuppress_email=<N>] [-x] <job ID> [<job ID> ...]
 .br
 .B qdel
 --version
 .SH DESCRIPTION
-The
-.B qdel
+The 
+.B qdel 
 command deletes jobs in the order given, whether they are at the local
-server or at a remote server.
+server or at a remote server.  
 
 .B Usage
 .br
 The qdel command is used without options to delete queued, running,
 held, or suspended jobs, while the
-.I -x
+.I -x  
 option gives it the additional capacity to delete finished or moved
 jobs.  With the
-.I -x
+.I -x 
 option, this command can be used on finished and moved jobs, in
 addition to queued, running, held, or suspended jobs.
 
-When this command is used without the
-.I -x
+When this command is used without the 
+.I -x 
 option, if job history is enabled, the deleted job's history is
-retained.  The
-.I -x
+retained.  The 
+.I -x 
 option is used to additionally remove the history of the job being
 deleted.
 
 If someone other than the job's owner deletes the job, mail is
-sent to the job's owner, or to a list of mail recipients if
-specified during
-.B qsub.
-See the
+sent to the job's owner, or to a list of mail recipients if 
+specified during 
+.B qsub.  
+See the 
 .B qsub(1B)
 man page.
 
 If the job is in the process of provisioning,
-it can be deleted only by using the
+it can be deleted only by using the 
 .I -W force
 option.
 
 .B "How Behavior of qdel Command Can Be Affected"
 .br
-The server's
+The server's 
 .I default_qdel_arguments
-attribute may affect the behavior of the
-.B qdel
-command.  This attribute is settable by the administrator
-via the
+attribute may affect the behavior of the 
+.B qdel 
+command.  This attribute is settable by the administrator 
+via the 
 .B qmgr
 command.  The attribute may be set to "-Wsuppress_email=<N>".
 The server attribute is overridden by command-line arguments.
-See the
-.B pbs_server_attributes(1B)
+See the 
+.B pbs_server_attributes(1B) 
 man page.
 
 .B Sequence of Events
@@ -119,64 +118,64 @@ The job is removed from the MOM(s) and the server.
 .B Required Privilege
 .br
 A PBS job may be deleted by its owner, an Operator, or the
-administrator.  The MoM deletes a PBS job by sending a
+administrator.  The MoM deletes a PBS job by sending a 
 .B SIGTERM
 signal, then, if there are remaining processes, a
-.B SIGKILL
-signal.
+.B SIGKILL 
+signal.  
 
 
 .SH OPTIONS
 .IP "(no options)" 8
-Can delete queued, running, held, or suspended jobs.
+Can delete queued, running, held, or suspended jobs.  
 Does not delete job history for specified job(s).
 .IP "-W force" 8
-Deletes the job whether or not the job's execution host is
+Deletes the job whether or not the job's execution host is 
 reachable.  Deletes the job whether or not the job is in the
-process of provisioning.  Cannot be used with the
+process of provisioning.  Cannot be used with the 
 .I -Wsuppress_email
 option.
 
-If the server can contact the MoM, this option is ignored; the
-server allows the job to be deleted normally.  If the server
-cannot contact the MoM or the job is in the
+If the server can contact the MoM, this option is ignored; the 
+server allows the job to be deleted normally.  If the server 
+cannot contact the MoM or the job is in the 
 .I E
 state, the server deletes its information about the job.
 
 .IP "-Wsuppress_email=<N>" 8
-Sets limit on number of emails sent when deleting multiple jobs.
+Sets limit on number of emails sent when deleting multiple jobs.  
 .RS 11
-If
+If 
 .I N
->= 1 and
-.I N
-or more
+>= 1 and 
+.I N 
+or more 
 .I job IDs
-are given,
-.I N
-emails are sent.
+are given, 
+.I N 
+emails are sent.  
 .br
-If
+If 
 .I N
->=1 and less than
+>=1 and less than 
 .I N job IDs
 are given, the number of emails is
-the same as the number of jobs.
+the same as the number of jobs.  
 .br
-If
+If 
 .I N
-= 0, this option is ignored.
+= 0, this option is ignored.  
 .br
-If
+If 
 .I N
 = -1, no email is sent.
 .RE
 .LP
 .IP " " 8
-The
+The 
 .I <N>
 argument is an integer.  Note that there is no space between "W" and "suppress_email".
-Cannot be used with the
+Cannot be used with the 
 .I -Wforce
 option.
 .LP
@@ -185,14 +184,14 @@ Can delete running, queued, suspended, held, finished, or moved jobs.
 Deletes job history for specified job(s).
 .LP
 .IP "--version" 8
-The
+The 
 .B qdel
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
-The
-.B qdel
+The 
+.B qdel 
 command accepts one or more space-separated
 .I job ID
 operands.  These operands can be job identifiers, job array
@@ -218,8 +217,8 @@ Job array identifiers must be enclosed in double quotes for some shells.
 
 
 .SH STANDARD ERROR
-The
-.B qdel
+The 
+.B qdel 
 command writes a diagnostic message to standard error for each
 error occurrence.
 
@@ -231,10 +230,5 @@ Upon successful processing of input
 Upon error
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
-pbs_queue_attributes(7B), pbs_server_attributes(1B),
+pbs_queue_attributes(7B), pbs_server_attributes(1B), 
 qsub(1B), qsig(1B), pbs_deljob(3B)

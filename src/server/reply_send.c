@@ -281,10 +281,12 @@ reply_send(struct batch_request *request)
 	int		    rc = 0;
 	int		    sfds = request->rq_conn;		/* socket */
 
-	if (request && request->rq_type == PBS_BATCH_ModifyJob_Async) {
+	if (request && (request->rq_type == PBS_BATCH_ModifyJob_Async ||
+			request->rq_type == PBS_BATCH_AsyrunJob)) {
 		free_br(request);
 		return 0;
 	}
+
 
 	/* if this is a child request, just move the error to the parent */
 	if (request->rq_parentbr) {
@@ -368,7 +370,7 @@ reply_ack(struct batch_request *preq)
 	if (preq == NULL)
 		return;
 
-	if (preq->rq_type == PBS_BATCH_ModifyJob_Async) {
+	if (preq->rq_type == PBS_BATCH_ModifyJob_Async || preq->rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;
 	}
@@ -455,7 +457,7 @@ req_reject(int code, int aux, struct batch_request *preq)
 	if (preq == NULL)
 		return;
 
-	if (preq->rq_type == PBS_BATCH_ModifyJob_Async) {
+	if (preq->rq_type == PBS_BATCH_ModifyJob_Async || preq->rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;
 	}
@@ -495,11 +497,11 @@ req_reject(int code, int aux, struct batch_request *preq)
  * 		Create a reject (error) reply for a request including
  * 		the name of the bad attribute/resource.
  *
- * @param[in]	code	- PBS error code indicating the reason the rejection
- * 							is taking place.  If this is PBSE_NONE, no log message is output.
- * @param[in]	aux	- Auxiliary error code
- * @param[in,out]	pal	- external form of attributes.
- * @param[in]	preq	- Pointer to batch request
+ * @param[in]	code	PBS error code indicating the reason the rejection
+ * 			is taking place.  If this is PBSE_NONE, no log message is output.
+ * @param[in]	aux	Auxiliary error code
+ * @param[in,out] pal	external form of attributes.
+ * @param[in]	preq	Pointer to batch request
  */
 void
 reply_badattr(int code, int aux, svrattrl *pal,
@@ -597,7 +599,6 @@ reply_text(struct batch_request *preq, int code, char *text)
  * 		Return a reply with the job id.
  *
  * @see req_queuejob()
- * @see req_rdytocommit()
  * @see req_commit()
  *
  * @par Side-effects:

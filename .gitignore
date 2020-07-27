@@ -214,6 +214,13 @@ src/include/pbs_version.h
 src/include/pbs_config.h
 src/include/pbs_config.h.in
 src/include/pbs_config.h.in~
+src/include/job_attr_enum.h
+src/include/node_attr_enum.h
+src/include/queue_attr_enum.h
+src/include/resc_def_enum.h
+src/include/resv_attr_enum.h
+src/include/sched_attr_enum.h
+src/include/svr_attr_enum.h
 src/lib/Libattr/queue_attr_def.c
 src/lib/Libattr/resc_def_all.c
 src/lib/Libattr/resv_attr_def.c
@@ -232,6 +239,13 @@ src/include/stamp-h1
 src/lib/Libpython/pbs_ifl.i
 src/lib/Libpython/pbs_ifl.py
 src/lib/Libpython/pbs_ifl_wrap.c
+src/include/job_attr_enum.h
+src/include/node_attr_enum.h
+src/include/queue_attr_enum.h
+src/include/resc_def_enum.h
+src/include/resv_attr_enum.h
+src/include/sched_attr_enum.h
+src/include/svr_attr_enum.h
 
 #Generated source files - Windows
 src/lib/Libecl/ecl_node_attr_def.c
@@ -250,6 +264,8 @@ ci/logs/
 ci/logs/prev_LOGS/
 ci/.*
 ci/packages
+ci/ptl_ts_tree.json
+ci/docker-compose.json
 
 # Generated scripts
 src/cmds/scripts/modulefile

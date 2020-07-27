@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qsig 1B "15 October 2019" Local "PBS"
+.TH qsig 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qsig
+.B qsig 
 \- signal a PBS batch job
 .SH SYNOPSIS
 .B qsig
@@ -51,20 +50,20 @@
 .SH DESCRIPTION
 The
 .B qsig
-command sends a signal to all the processes of the specified jobs.
-The
-.B qsig
-command sends a
+command sends a signal to all the processes of the specified jobs.  
+The 
+.B qsig 
+command sends a 
 .I Signal Job
 batch request to the server which owns the job.
 
-The
+The 
 .B qsig
 command can be used for jobs, job arrays, subjobs, and ranges of subjobs.
-If it is used on a range of subjobs, the running subjobs in the range
+If it is used on a range of subjobs, the running subjobs in the range 
 are signaled.
 
-Not all signal names are recognized by
+Not all signal names are recognized by 
 .B qsig
 ; if using a signal name does not work, try issuing the signal number instead.
 
@@ -72,22 +71,22 @@ Not all signal names are recognized by
 .br
 If you have a vnode requiring maintenance while remaining powered up,
 where you do not want jobs running during the maintenance, you can use
-the special signals
-.I admin-suspend
-and
-.I admin-resume
-to suspend and resume the jobs on the vnode.  When you use
-.I admin-suspend
+the special signals 
+.I admin-suspend 
+and 
+.I admin-resume 
+to suspend and resume the jobs on the vnode.  When you use 
+.I admin-suspend 
 on a vnode's
-job(s), the vnode goes into the
-.I maintenance
-state, and its scheduler does not schedule jobs on it.  You must separately
-.I admin-suspend
-each job on the vnode.  When its last
-.I admin-suspended
-job is admin-resumed, a vnode leaves the
-.I maintenance
-state.
+job(s), the vnode goes into the 
+.I maintenance 
+state, and its scheduler does not schedule jobs on it.  You must separately 
+.I admin-suspend 
+each job on the vnode.  When its last 
+.I admin-suspended 
+job is admin-resumed, a vnode leaves the 
+.I maintenance 
+state.  
 
 .B Restrictions
 .br
@@ -95,9 +94,9 @@ The request to signal a job is rejected if:
 .IP -
 The user is not authorized to signal the job
 .IP -
-The job is not in the
+The job is not in the 
 .I running
-or
+or 
 .I suspended
 state
 .IP -
@@ -106,22 +105,22 @@ job is executing
 .IP -
 The job is in the process of provisioning
 .IP -
-You attempt to use
-.I admin-resume
-on a job that was
+You attempt to use 
+.I admin-resume 
+on a job that was 
 .I suspended
 .IP -
-You attempt to use
-.I resume
-on a job that was
+You attempt to use 
+.I resume 
+on a job that was 
 .I admin-suspended
 .LP
 
 .B Required Privilege
 .br
-Manager or Operator privilege is required to use the
-.I admin-suspend, admin-resume, suspend,
-or
+Manager or Operator privilege is required to use the 
+.I admin-suspend, admin-resume, suspend, 
+or 
 .I resume
 signals.  Unprivileged users can use other signals.
 
@@ -133,7 +132,7 @@ PBS sends signal
 .I signal
 to the job.
 .IP "--version" 8
-The
+The 
 .B qsig
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -147,9 +146,9 @@ argument can be in any of the following formats:
 A signal name, e.g.
 .I SIGKILL
 
-The signal name without the
+The signal name without the 
 .I SIG
-prefix, e.g.
+prefix, e.g. 
 .I KILL
 
 An unsigned signal number, e.g.
@@ -158,7 +157,7 @@ An unsigned signal number, e.g.
 
 The signal name
 .I SIGNULL
-is allowed; in this case the server sends the signal 0 to the job, which
+is allowed; in this case the server sends the signal 0 to the job, which 
 has no effect.
 
 .B Special Signals
@@ -167,11 +166,11 @@ The following special signals are all lower-case, and have no
 associated signal number:
 
 .IP "admin-suspend"
-Suspends a job and puts its vnodes into the
-.I maintenance
-state.  The job is put into the
-.I S
-state and its processes are suspended.
+Suspends a job and puts its vnodes into the 
+.I maintenance 
+state.  The job is put into the 
+.I S 
+state and its processes are suspended.  
 When suspended, a job is not executing and is not charged for
 walltime.
 .br
@@ -179,21 +178,21 @@ Syntax:
 .I qsig -s admin-suspend <job ID>
 
 .IP "admin-resume"
-Resumes a job that was suspended using the
-.I admin-suspend
-signal, without waiting for its scheduler.   Cannot be used on jobs that were suspended with
-.I suspend
-signal. When the last
+Resumes a job that was suspended using the 
+.I admin-suspend 
+signal, without waiting for its scheduler.   Cannot be used on jobs that were suspended with 
+.I suspend 
+signal. When the last 
 .I admin-suspended
-job has been
-.I admin_resumed,
+job has been 
+.I admin_resumed, 
 the vnode leaves the maintenance state.
 .br
 Syntax:
 .I qsig -s admin-resume <job ID>
 
-.IP "suspend"
-Suspends specified job(s).  Job goes into
+.IP "suspend" 
+Suspends specified job(s).  Job goes into 
 .I suspended (S)
 state.  When suspended, a job is not
 executing and is not charged for walltime.
@@ -201,17 +200,17 @@ executing and is not charged for walltime.
 .IP "resume"
 Marks specified job(s) for resumption by a
 scheduler when there are sufficient resources.  If you use
-.B qsig -s resume
-on a job that was suspended using
+.B qsig -s resume 
+on a job that was suspended using 
 .B qsig -s suspend
 , the job is resumed when there are sufficient resources.  Cannot
-be used on jobs that were suspended with
-.I admin_suspend
-signal.
+be used on jobs that were suspended with 
+.I admin_suspend 
+signal.  
 
 .SH  OPERANDS
-The
-.B qsig
+The 
+.B qsig 
 command accepts one or more
 .I job ID
 operands.  For a job, this has the form:
@@ -219,7 +218,7 @@ operands.  For a job, this has the form:
 .I <sequence number>[.<server name>][@<server name>]
 .RE
 
-For a job array,
+For a job array, 
 .I job ID
 takes the form:
 .RS 4
@@ -230,26 +229,21 @@ Note that some shells require that you enclose a job array identifier in
 double quotes.
 
 .SH STANDARD ERROR
-The
-.B qsig
+The 
+.B qsig 
 command writes a diagnostic messages to standard error for
 each error occurrence.
 
 .SH EXIT STATUS
 .IP Zero 8
 Upon successful processing of all the operands presented to the
-.B qsig
+.B qsig 
 command
 .IP "Greater than zero" 8
-If the
-.B qsig
+If the 
+.B qsig 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qsub(1B), pbs_sigjob(3B),
 pbs_resources(7B)

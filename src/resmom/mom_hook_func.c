@@ -412,7 +412,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 		}
 	}
 
-	snprintf(bufs, sizeof(bufs)-1, "%d", num_pcpus);
+	snprintf(bufs, sizeof(bufs), "%d", num_pcpus);
 	if (vn_addvnr(*p_vnlp, mom_short_name, ATTR_NODE_pcpus, bufs, 0, 0, NULL) == -1) {
 		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
@@ -423,7 +423,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 
 	}
 
-	snprintf(bufs, sizeof(bufs)-1, "%d", num_acpus);
+	snprintf(bufs, sizeof(bufs), "%d", num_acpus);
 	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.ncpus", bufs, 0, 0, NULL) == -1) {
 		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
@@ -434,7 +434,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 
 	}
 
-	snprintf(bufs, sizeof(bufs)-1, "%llukb", av_phy_mem);
+	snprintf(bufs, sizeof(bufs), "%llukb", av_phy_mem);
 	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.mem", bufs, 0, 0, NULL) == -1) {
 		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
@@ -486,9 +486,8 @@ vna_list_free(pbs_list_head listh)
 
 	while (pvna != NULL) {
 		nxt = (struct hook_vnl_action *)GET_NEXT(pvna->hva_link);
-		if (pvna->hva_vnl) {
+		if (pvna->hva_vnl)
 			vnl_free((vnl_t *)pvna->hva_vnl);
-		}
 		delete_link(&pvna->hva_link);
 		free(pvna);
 		pvna = nxt;
@@ -886,16 +885,18 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				log_err(errno, __func__, msg_err_malloc);
 				return (-1);
 			}
-		 	if (php)
+		 	if (php) {
 				ptask->wt_parm2 = (void *)php;
+				if (php->hook_input && php->hook_input->pjob)
+					php->hook_input->pjob->ji_bg_hook_task = ptask;
+			}
 			return (0);	/* no hook output file at this time */
 		} else if (php)
 			php->child = child;
 
-
 		set_alarm(phook->alarm, run_hook_alarm);
 		while (waitpid(child, &waitst, 0) < 0) {	/* error on wait */
-			if (errno != EINTR) {	/* continue loop on signal */
+			if (errno != EINTR) {			/* continue loop on signal */
 				run_exit = -5;
 				break;
 			}
@@ -932,11 +933,9 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		php->child = child;
 #endif
 
-
 	run_exit = 255;
 
-	snprintf(path_hooks_rescdef, MAXPATHLEN,
-		"%s%s", path_hooks, PBS_RESCDEF);
+	snprintf(path_hooks_rescdef, MAXPATHLEN, "%s%s", path_hooks, PBS_RESCDEF);
 
 	strncpy(hook_config_path, ((struct python_script *)phook->script)->path,
 		sizeof(hook_config_path)-1);
@@ -950,13 +949,12 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		if (stat(hook_config_path, &sbuf) != 0) {
 			hook_config_path[0] = '\0';
 		}
-	} else {
+	} else
 		hook_config_path[0] = '\0';
-	}
 
 	if (runas_jobuser) {
 
-		/* use world writtable spool directory */
+		/* use world writable spool directory */
 
 		snprintf(hook_inputfile, MAXPATHLEN,
 			FMT_HOOK_INFILE, path_spool,
@@ -1179,7 +1177,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 
 		log_file[0] = '\0';
 
-		if ((fp=fopen(hook_inputfile, "w")) == NULL) {
+		if ((fp = fopen(hook_inputfile, "w")) == NULL) {
 			sprintf(log_buffer,
 				"open of input file %s failed!",
 				hook_inputfile);
@@ -1422,7 +1420,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		arg[7] = (char *)log_file;
 	}
 	arg[8] = "-e";
-	snprintf(logmask, sizeof(logmask)-1, "%ld", *log_event_mask);
+	snprintf(logmask, sizeof(logmask), "%ld", *log_event_mask);
 	arg[9] = (char *)logmask;
 
 	if (rescdef_file != NULL) {
@@ -2460,8 +2458,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					    		ATR_DFLAG_Creat;
 
 				/* identify the attribute by name */
-				index = find_attr(job_attr_def, name_str,
-					JOB_ATR_LAST);
+				index = find_attr(job_attr_idx, job_attr_def, name_str);
 				if (index < 0) { /* didn`t recognize the name */
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s' unrecognized attrbute name %s!",
@@ -2535,10 +2532,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					resource_def *prdef;
 					svrattrl *plist, *plist2, *plist_next;
 
-					prdef = find_resc_def(svr_resc_def,
-						"|unknown|", svr_resc_size);
-					prsc = find_resc_entry(\
-					    &pjob2->ji_wattr[index], prdef);
+					prdef = &svr_resc_def[RESC_UNKN];
+					prsc = find_resc_entry(&pjob2->ji_wattr[index], prdef);
 
 					if ((prdef == NULL) || (prsc == NULL)) {
 						log_err(-1, __func__, "bad unknown resc");
@@ -2547,21 +2542,18 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						continue;
 					}
 
-					plist = (svrattrl *)GET_NEXT(\
-				      	     prsc->rs_value.at_val.at_list);
+					plist = (svrattrl *)GET_NEXT(prsc->rs_value.at_val.at_list);
 
 					do {
 						if (plist == NULL)
 							break;
 
-						plist_next = (svrattrl *)GET_NEXT(\
-							   plist->al_link);
+						plist_next = (svrattrl *)GET_NEXT(plist->al_link);
 
 						/* check for duplicate resource */
 						/* entry. The later ones take */
 						/* precedence */
-						plist2 = (svrattrl *)GET_NEXT(\
-							plist->al_link);
+						plist2 = (svrattrl *)GET_NEXT(plist->al_link);
 						while (plist2 != NULL) {
 							if (strcmp(plist->al_resc,
 								plist2->al_resc) == 0) {
@@ -2569,8 +2561,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 								free(plist);
 								break;
 							}
-							plist2 = (svrattrl *)GET_NEXT(\
-							   plist2->al_link);
+							plist2 = (svrattrl *)GET_NEXT(plist2->al_link);
 						}
 
 						plist = plist_next;
@@ -2583,8 +2574,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					resource_def 	*rd;
 					resource	*pres;
 
-					rd = find_resc_def(svr_resc_def,
-						resc_str, svr_resc_size);
+					rd = find_resc_def(svr_resc_def, resc_str);
 					if (rd != NULL) {
 						pres = find_resc_entry(
 							&pjob2->ji_wattr[index],
@@ -2730,8 +2720,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				rs_flag = READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM;
 				if ((p2=strrchr(name_str, '.')) != NULL) {
 					p2++;
-					prdef = find_resc_def(svr_resc_def,
-						p2, svr_resc_size);
+					prdef = find_resc_def(svr_resc_def, p2);
 					if (prdef == NULL) { /* a custom resource */
 						if (value_type != NULL) {
 							if (strcmp(value_type, "boolean") == 0) {
@@ -3081,9 +3070,9 @@ struct work_task *pwt;
 void send_hook_fail_action(hook *phook)
 {
 
-	char	hook_buf[HOOK_BUF_SIZE];
+	char hook_buf[HOOK_BUF_SIZE];
 	vnl_t *tvnl = NULL;
-	int	vret = -1;
+	int vret = -1;
 
 	if ((phook == NULL) || (phook->hook_name == NULL)) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
@@ -3091,7 +3080,7 @@ void send_hook_fail_action(hook *phook)
 		return;
 	}
 
-	snprintf(hook_buf, sizeof(hook_buf)-1, "1,%s", phook->hook_name);
+	snprintf(hook_buf, sizeof(hook_buf), "1,%s", phook->hook_name);
 
 	if (vnl_alloc(&tvnl) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -3239,29 +3228,29 @@ record_job_last_hook_executed(unsigned int hook_event,
  * @return 0 a hook rejected
  * @return -1 an internal error occurred
  */
-static int
+int
 post_run_hook(struct work_task *ptask)
 {
 
-	int    accept_flag = 1;
-	int    reject_flag = 0;
-	int    reject_rerunjob = 0;
-	int    reject_deletejob = 0;
-	int    reboot_flag = 0;
-	int    log_type = 0;
-	int    log_class = 0;
-	int    hook_error_flag = 0;
-	int    *reject_errcode = NULL;
-	int    wstat = 0;
-	char   *log_id = NULL;
-	char   reject_msg[HOOK_MSG_SIZE+1] = {'\0'};
-	char   reboot_cmd[HOOK_BUF_SIZE]  = {'\0'};
-	char   hook_outfile[MAXPATHLEN+1] = {'\0'};
-	hook   *phook	= NULL;
+	int accept_flag = 1;
+	int reject_flag = 0;
+	int reject_rerunjob = 0;
+	int reject_deletejob = 0;
+	int reboot_flag = 0;
+	int log_type = 0;
+	int log_class = 0;
+	int hook_error_flag = 0;
+	int *reject_errcode = NULL;
+	int wstat = 0;
+	char *log_id = NULL;
+	char reject_msg[HOOK_MSG_SIZE + 1] = {'\0'};
+	char reboot_cmd[HOOK_BUF_SIZE]  = {'\0'};
+	char hook_outfile[MAXPATHLEN + 1] = {'\0'};
+	hook *phook = NULL;
 	mom_hook_input_t *hook_input = NULL;
-	job   *pjob = NULL;
+	job *pjob = NULL;
 	struct work_task *new_task = NULL;
-	pbs_list_head   vnl_changes;
+	pbs_list_head vnl_changes;
 	mom_process_hooks_params_t *php = NULL;
 
 	if (ptask == NULL) {
@@ -3327,7 +3316,7 @@ post_run_hook(struct work_task *ptask)
 				break;
 			case -2:	/* unhandled exception return on Windows */
 			case 254:
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
 					"%s hook '%s' encountered an exception, "
 					"request rejected",
 					hook_event_as_string(php->hook_event), phook->hook_name);
@@ -3344,7 +3333,7 @@ post_run_hook(struct work_task *ptask)
 				/* other would catch it first */
 			case -3:	/* somewhere in this file, we do return -3 */
 			case 253:
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
 					"alarm call while running %s hook '%s', "
 					"request rejected",
 					hook_event_as_string(php->hook_event), phook->hook_name);
@@ -3355,7 +3344,7 @@ post_run_hook(struct work_task *ptask)
 				hook_error_flag = 1;
 				break;
 			default:
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
+				snprintf(log_buffer, LOG_BUF_SIZE - 1,
 					"Non-zero exit status %d encountered for %s hook",
 					wstat, hook_event_as_string(php->hook_event));
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
@@ -3486,10 +3475,9 @@ post_run_hook(struct work_task *ptask)
 	}
 
 	if (!php->parent_wait) {
-		/* Backround hook */
+		/* Background hook */
 		/* Create task to check and run next hook script */
-		new_task = set_task(WORK_Immed, 0,
-						(void *)mom_process_background_hooks, phook);
+		new_task = set_task(WORK_Immed, 0, (void *)mom_process_background_hooks, phook);
 		if (!new_task)
 			log_err(errno, __func__,
 				"Unable to set task for mom_process_background_hooks");
@@ -3511,13 +3499,14 @@ post_run_hook(struct work_task *ptask)
  * @return void
  */
 
-void reply_hook_bg(job *pjob)
+void
+reply_hook_bg(job *pjob)
 {
-	int	n = 0;
-	int	ret = 0;
-	char	jobid[PBS_MAXSVRJOBID+1] = {'\0'};
-	job	*pjob2 = NULL;
-	long	runver;
+	int n = 0;
+	int ret = 0;
+	char jobid[PBS_MAXSVRJOBID + 1] = {'\0'};
+	job *pjob2 = NULL;
+	long runver;
 #if !MOM_ALPS
 	struct	batch_request *preq = pjob->ji_preq;
 #endif
@@ -3572,14 +3561,14 @@ void reply_hook_bg(job *pjob)
 					if (pjob->ji_numnodes == 1)
 						reply_ack(preq);
 					else if (pjob->ji_hook_running_bg_on == BG_PBSE_SISCOMM)
-							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
+						req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
 #endif
-					pjob->ji_hook_running_bg_on = BG_NONE;
 					job_purge_mom(pjob);
-				}
+				} else
+					pjob->ji_hook_running_bg_on = BG_NONE;
 				/*
 				* otherwise, job_purge() and dorestrict_user() are called in
-				* mom_comm when all the sisters have replied.  The reply to
+				* mom_comm when all the sisters have replied. The reply to
 				* the Server is also done there
 				*/
 
@@ -3668,15 +3657,15 @@ void reply_hook_bg(job *pjob)
  *
  * @retval void
  */
- static void
- mom_process_background_hooks(struct work_task *ptask)
- {
-	char	hook_infile[MAXPATHLEN+1] = {'\0'};
-	char	hook_outfile[MAXPATHLEN+1] = {'\0'};
-	char	hook_datafile[MAXPATHLEN+1] = {'\0'};
-	hook	*phook = NULL;
-	job	*pjob = NULL;
-	mom_process_hooks_params_t	*php = NULL;
+static void
+mom_process_background_hooks(struct work_task *ptask)
+{
+	char hook_infile[MAXPATHLEN + 1] = {'\0'};
+	char hook_outfile[MAXPATHLEN + 1] = {'\0'};
+	char hook_datafile[MAXPATHLEN + 1] = {'\0'};
+	hook *phook = NULL;
+	job *pjob = NULL;
+	mom_process_hooks_params_t *php = NULL;
 
 	if (ptask == NULL) {
 		log_err(-1, __func__, "missing ptask argument");
@@ -3695,7 +3684,10 @@ void reply_hook_bg(job *pjob)
 
 	pjob = php->hook_input->pjob;
 
-	if (php->hook_output && *(php->hook_output->reject_errcode)){
+	if (pjob->ji_bg_hook_task)
+		pjob->ji_bg_hook_task = NULL;
+
+	if (php->hook_output && *(php->hook_output->reject_errcode)) {
 		reply_hook_bg(pjob);
 		goto fini;
 	}
@@ -3722,7 +3714,7 @@ void reply_hook_bg(job *pjob)
 
 	run_hook(phook, php->hook_event, php->hook_input,
 			php->req_user, php->req_host, 0, (void *)post_run_hook,
-			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1, php);
+			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN + 1, php);
 	return;
 
 	fini:
@@ -3732,8 +3724,7 @@ void reply_hook_bg(job *pjob)
 		}
 		free(php->hook_input);
 		free(php);
-
- }
+}
 
 /**
  * @brief
@@ -3771,26 +3762,26 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 	mom_hook_input_t *hook_input, mom_hook_output_t *hook_output, char *hook_msg,
 	size_t msg_len, int update_server)
 {
-	char		hook_infile[MAXPATHLEN+1];
-	char		hook_outfile[MAXPATHLEN+1];
-	char		hook_datafile[MAXPATHLEN+1];
-	char		*log_id = NULL;
-	int			rc;
-	int			num_run = 0;
-	int			set_job_exit = 0;
-	int			log_type = 0;
-	int			log_class = 0;
-	int			*reject_errcode = NULL;
-	unsigned int		*pfail_action = NULL;
-	hook		*phook;
-	hook		*phook_next = NULL;
-	hook		**last_phook = NULL;
-	job			*pjob = NULL;
+	char hook_infile[MAXPATHLEN + 1];
+	char hook_outfile[MAXPATHLEN + 1];
+	char hook_datafile[MAXPATHLEN + 1];
+	char *log_id = NULL;
+	int rc;
+	int num_run = 0;
+	int set_job_exit = 0;
+	int log_type = 0;
+	int log_class = 0;
+	int *reject_errcode = NULL;
+	unsigned int *pfail_action = NULL;
+	hook *phook;
+	hook *phook_next = NULL;
+	hook **last_phook = NULL;
+	job *pjob = NULL;
 	pbs_list_head vnl_changes;
 	pbs_list_head *head_ptr;
 	mom_process_hooks_params_t *php = NULL;
 	struct work_task task;
-	char		perf_label[MAXBUFLEN];
+	char perf_label[MAXBUFLEN];
 
 	if (hook_input == NULL) {
 		log_err(-1, __func__, "missing input argument to event");
@@ -3943,16 +3934,11 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		/* the job's exit value. 				    */
 		/* Set it only once, and only if there's a hook to execute  */
 		/* since we're affecting the job directly.		    */
-		if( ((hook_event == HOOK_EVENT_EXECJOB_END) || \
-		     (hook_event == HOOK_EVENT_EXECJOB_EPILOGUE)) &&
-			!set_job_exit) {
+		if (((hook_event == HOOK_EVENT_EXECJOB_END) ||
+		     (hook_event == HOOK_EVENT_EXECJOB_EPILOGUE)) && !set_job_exit) {
 
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-							at_val.at_long = \
-				pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-								at_flags |=
-				(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
+			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
+			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
 			set_job_exit = 1;
 		} else if ((hook_event == HOOK_EVENT_EXECJOB_LAUNCH) && (num_run >= 1)) {
 
@@ -3975,7 +3961,6 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				}
 				hook_input->argv = svrattrl_to_str_array(hook_output->argv);
 			}
-
 		}
 
 		if (pjob != NULL)
@@ -3986,15 +3971,14 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		hook_perf_stat_start(perf_label, "mom_process_hooks", 1);
 		rc = run_hook(phook, hook_event, hook_input,
 			req_user, req_host, php->parent_wait, (void *)post_run_hook,
-			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1, php);
+			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN + 1, php);
 		hook_perf_stat_stop(perf_label, "mom_process_hooks", 1);
 
-		if (last_phook != NULL) {
+		if (last_phook != NULL)
 			*last_phook = phook;
-		}
-		if (pfail_action != NULL) {
+
+		if (pfail_action != NULL)
 			*pfail_action |= phook->fail_action;
-		}
 
 		/* go back to mom's private directory */
 		if (chdir(mom_home) != 0) {
@@ -4003,11 +3987,9 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				"unable to go back to mom_home");
 		}
 
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-			LOG_INFO, phook->hook_name, "finished");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, phook->hook_name, "finished");
 
-		if ((hook_event == HOOK_EVENT_EXECHOST_PERIODIC) ||
-			(hook_event == HOOK_EVENT_EXECHOST_STARTUP)) {
+		if ((hook_event == HOOK_EVENT_EXECHOST_PERIODIC) || (hook_event == HOOK_EVENT_EXECHOST_STARTUP)) {
 			log_id = phook->hook_name;
 			log_type = PBSEVENT_DEBUG2;
 			log_class = PBS_EVENTCLASS_HOOK;

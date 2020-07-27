@@ -115,6 +115,13 @@ extern 	int		str_to_vnode_state(char *state_str);
 extern 	int		str_to_vnode_ntype(char *ntype_str);
 extern 	enum vnode_sharing str_to_vnode_sharing(char *sharing_str);
 
+void *job_attr_idx = NULL;
+void *resv_attr_idx = NULL;
+void *node_attr_idx = NULL;
+void *que_attr_idx = NULL;
+void *svr_attr_idx = NULL;
+void *sched_attr_idx = NULL;
+
 char server_name[PBS_MAXSERVERNAME+1];
 char server_host[PBS_MAXHOSTNAME+1];	   /* host_name of this svr */
 int  have_blue_gene_nodes = 0;
@@ -214,20 +221,6 @@ write_node_state(void)
 	return;
 }
 
-
-void
-save_characteristic(struct pbsnode *pnode)
-{
-	return;
-}
-
-int
-chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
-{
-	return (0);
-}
-
-
 void
 mgr_log_attr(char *msg, struct svrattrl *plist, int logclass,
 	char *objname, char *hookname)
@@ -236,7 +229,7 @@ mgr_log_attr(char *msg, struct svrattrl *plist, int logclass,
 }
 
 int
-mgr_set_attr(attribute *pattr, attribute_def *pdef, int limit,
+mgr_set_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit,
 	svrattrl *plist, int privil, int *bad, void *parent, int mode)
 {
 	return (0);
@@ -319,11 +312,6 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 
 int
 action_sched_log(attribute *pattr, void *pobj, int actmode)
-{
-	return 0;
-}
-int
-action_sched_log_events(attribute *pattr, void *pobj, int actmode)
 {
 	return 0;
 }
@@ -645,6 +633,36 @@ node_current_aoe_action(attribute *new, void *pobj, int act)
 	return PBSE_NONE;
 }
 
+int 
+action_sched_host(attribute *new, void *pobj, int act)
+{
+	return PBSE_NONE;
+}
+
+int 
+action_throughput_mode(attribute *new, void *pobj, int act)
+{
+	return PBSE_NONE;
+}
+
+int 
+action_job_run_wait(attribute *new, void *pobj, int act)
+{
+	return PBSE_NONE;
+}
+
+int 
+action_opt_bf_fuzzy(attribute *new, void *pobj, int act)
+{
+	return PBSE_NONE;
+}
+
+int 
+action_sched_partition(attribute *new, void *pobj, int act)
+{
+	return PBSE_NONE;
+}
+
 /**
  * @brief
  * 		decode_rcost - decode string into resource cost value
@@ -665,14 +683,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 	return 0;
 }
 
-int
-encode_rcost(attr, phead, atname, rsname, mode, rtnl)
-attribute	*attr;	  /* ptr to attribute */
-pbs_list_head	*phead;	  /* head of attrlist list */
-char		*atname;  /* attribute name */
-char		*rsname;  /* resource name or null */
-int		mode;	  /* encode mode, unused here */
-svrattrl      **rtnl;	  /* RETURN: ptr to svrattrl */
+int encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return (1);
 }
@@ -750,7 +761,7 @@ set_cred_renew_cache_period(attribute *pattr, void *pobj, int actmode) {
  * @param[out]	rtnl	-	RETURN: ptr to svrattrl
  */
 int
-encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return (1);
 }
@@ -791,7 +802,7 @@ decode_depend(struct attribute *patr, char *name, char *rescn, char *val)
  * @retval	success
  */
 int
-encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_depend(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return 0;
 }
@@ -2271,10 +2282,8 @@ main(int argc, char *argv[], char *envp[])
 	int  	i, rc;
 
 	/* python externs */
-	extern void pbs_python_svr_initialize_interpreter_data(
-		struct python_interpreter_data *interp_data);
-	extern void pbs_python_svr_destroy_interpreter_data(
-		struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_destroy_interpreter_data(struct python_interpreter_data *interp_data);
 
 	if (set_msgdaemonname(PBS_PYTHON_PROGRAM)) {
 		fprintf(stderr, "Out of memory\n");
@@ -2318,6 +2327,34 @@ main(int argc, char *argv[], char *envp[])
 		return (-1);
 	}
 
+	if ((job_attr_idx = cr_attrdef_idx(job_attr_def, JOB_ATR_LAST)) == NULL) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating job attribute search index");
+		return (-1);
+	}
+	if ((node_attr_idx = cr_attrdef_idx(node_attr_def, ND_ATR_LAST)) == NULL) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating node attribute search index");
+		return (-1);
+	}
+	if ((que_attr_idx = cr_attrdef_idx(que_attr_def, QA_ATR_LAST)) == NULL) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating queue attribute search index");
+		return (-1);
+	}
+	if ((svr_attr_idx = cr_attrdef_idx(svr_attr_def, SVR_ATR_LAST)) == NULL) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating server attribute search index");
+		return (-1);
+	}
+	if ((sched_attr_idx = cr_attrdef_idx(sched_attr_def, SCHED_ATR_LAST)) == NULL) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating sched attribute search index");
+		return (-1);
+	}
+	if ((resv_attr_idx = cr_attrdef_idx(resv_attr_def, RESV_ATR_LAST)) == NULL) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating resv attribute search index");
+		return (-1);
+	}
+	if (cr_rescdef_idx(svr_resc_def, svr_resc_size) != 0) {
+		log_err(errno, PBS_PYTHON_PROGRAM, "Failed creating resc definition search index");
+		return (-1);
+	}
 
 	/* initialize the pointers in the resource_def array */
 
@@ -2814,10 +2851,8 @@ main(int argc, char *argv[], char *envp[])
 
 		/* set python interp data */
 		svr_interp_data.data_initialized = 0;
-		svr_interp_data.init_interpreter_data =
-			pbs_python_svr_initialize_interpreter_data;
-		svr_interp_data.destroy_interpreter_data =
-			pbs_python_svr_destroy_interpreter_data;
+		svr_interp_data.init_interpreter_data = pbs_python_svr_initialize_interpreter_data;
+		svr_interp_data.destroy_interpreter_data = pbs_python_svr_destroy_interpreter_data;
 
 		svr_interp_data.daemon_name = strdup(PBS_PYTHON_PROGRAM);
 

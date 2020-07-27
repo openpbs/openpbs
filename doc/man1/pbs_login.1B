@@ -1,0 +1,92 @@
+.\"
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
+.\"
+.\" Open Source License Information:
+.\"
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
+.\"
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
+.\"
+.\" You should have received a copy of the GNU Affero General Public License
+.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" Commercial License Information:
+.\"
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
+.\"
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
+.\" distribute them - whether embedded or bundled with other software -
+.\" under a commercial license agreement.
+.\"
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
+.\"
+.TH pbs_login 1B "15 July 2020" Local "PBS Professional"
+.SH NAME
+.B pbs_login 
+- cache encrypted user password for authentication
+.SH Synopsis
+.B pbs_login
+.br
+.B pbs_login
+-m <PBS service account password>
+.br
+echo <password>|
+.B pbs_login
+-p
+
+.SH Description
+The 
+.B pbs_login 
+command encrypts the password and caches it locally where it can be
+used by daemons for authorization.
+
+Job submitters must run this command at each submission host each time
+their password changes.
+
+On Windows, the 
+.B win_postinstall 
+script calls 
+.B pbs_login 
+to store the PBS service account password so that the account user can
+be authenticated by daemons.
+
+.SH Required Privilege
+Can be run by any user.
+
+
+.SH Options to pbs_login
+.IP "(no options)" 8
+Queries user for password.
+
+.IP "-m <PBS service account password>" 8
+This option is intended to be used only by the PBS service account,
+which is the account that is used to execute 
+.B pbs_mom 
+via the Service Control Manager on Windows.  This option is used during installation
+when invoked by the
+.B win_postinstall 
+script, or by the administrator when the
+PBS service account password has changed.  Stores PBS service account
+password in the mom_priv directory.
+
+.IP "-p" 8
+Caches user password on client host.  Intended to be run by job
+submitter at client host.  Allows job submitter to be authenticated
+by daemons.
+

@@ -46,14 +46,14 @@ from tests.functional import *
 class TestPbsCpuset(TestFunctional):
 
     """
-    This tests the Reliable Job Startup Feature with cpuset mom.
+    This tests the Reliable Job Startup Feature with cgroup cpuset system.
     A job can be started with extra nodes with node failures tolerated
     during job start. Released cpuset resources can be reused by another job.
     """
 
     def setUp(self):
         if not self.mom.is_cpuset_mom():
-            self.skipTest("Test suite only meant to run with cpuset mom.")
+            self.skipTest("Tests meant to run only on cgroup cpuset system.")
         TestFunctional.setUp(self)
 
         # launch hook
@@ -86,6 +86,11 @@ time.sleep(20)
         An execjob_launch hook will force job to have only one numa node.
         The released numa node can be used in another job.
         """
+
+        # Check that there are at least a natural vnode + 2 numa vnodes
+        nodeinfo = self.server.status(NODE)
+        if len(nodeinfo) < 3:
+            self.skipTest("Not enough vnodes to run the test.")
 
         # instantiate execjob_launch hook
         hook_event = "execjob_launch"

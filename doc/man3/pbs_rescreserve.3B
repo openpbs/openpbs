@@ -1,43 +1,39 @@
-.\"
-.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
+.\" Copyright (C) 1994-2019 Altair Engineering, Inc.
 .\" For more information, contact Altair at www.altair.com.
 .\"
-.\" This file is part of both the OpenPBS software ("OpenPBS")
-.\" and the PBS Professional ("PBS Pro") software.
+.\" This file is part of the PBS Professional ("PBS Pro") software.
 .\"
 .\" Open Source License Information:
 .\"
-.\" OpenPBS is free software. You can redistribute it and/or modify it under
-.\" the terms of the GNU Affero General Public License as published by the
-.\" Free Software Foundation, either version 3 of the License, or (at your
-.\" option) any later version.
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free
+.\" Software Foundation, either version 3 of the License, or (at your option) any
+.\" later version.
 .\"
-.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
-.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
-.\" License for more details.
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+.\" FOR A PARTICULAR PURPOSE.
+.\" See the GNU Affero General Public License for more details.
 .\"
 .\" You should have received a copy of the GNU Affero General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .\"
 .\" Commercial License Information:
 .\"
-.\" PBS Pro is commercially licensed software that shares a common core with
-.\" the OpenPBS software.  For a copy of the commercial license terms and
-.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
-.\" Altair Legal Department.
+.\" For a copy of the commercial license terms and conditions,
+.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
+.\" or contact the Altair Legal Department.
 .\"
-.\" Altair's dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of OpenPBS and
+.\" Altair’s dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of PBS Pro and
 .\" distribute them - whether embedded or bundled with other software -
 .\" under a commercial license agreement.
 .\"
-.\" Use of Altair's trademarks, including but not limited to "PBS™",
-.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
-.\" subject to Altair's trademark licensing policies.
+.\" Use of Altair’s trademarks, including but not limited to "PBS™",
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+.\" trademark licensing policies.
 .\"
-
-.TH pbs_rescreserve 3B "13 Sept 2011" Local "PBS"
+.TH pbs_rescreserve 3B "13 Sept 2011" Local "PBS Professional"
 .SH NAME
 pbs_rescreserve, pbs_rescrelease - reserve/free batch resources
 .SH SYNOPSIS
@@ -45,7 +41,7 @@ pbs_rescreserve, pbs_rescrelease - reserve/free batch resources
 .br
 #include <pbs_ifl.h>
 .sp
-.B int pbs_rescreserve\^(\^int\ connect, char\ **resourcelist,
+.B int pbs_rescreserve\^(\^int\ connect, char\ **resourcelist, 
 .B int arraysize, resource_t *resource_id\^)
 .sp
 .B int pbs_rescrelease\^(\^int connect, resource_t resource_id\^)
@@ -56,35 +52,35 @@ pbs_rescreserve, pbs_rescrelease - reserve/free batch resources
 Issue a request to the batch server to reserve specified resources.
 .I connect
 is the connection returned by \f3pbs_connect\fP().
-.I resourcelist
+.I resourcelist 
 is an array of one or more strings specifying the resources to be queried.
 .I arraysize
 is the is the number of strings in resourcelist.
 .I resource_id
 is a pointer to a resource handle.
 The pointer cannot be null.
-If the present value of the resource handle is
+If the present value of the resource handle is 
 .B RESOURCE_T_NULL ,
 this request is for a new reservation and if successful, a resource handle
 will be returned in resource_id.
 .IP
-If the value of resource_id as supplied by the caller is not
+If the value of resource_id as supplied by the caller is not 
 .B RESOURCE_T_NULL ,
-this is a existing (partial) reservation.   Resources currently reserved
+this is a existing (partial) reservation.   Resources currently reserved 
 for this handle will be released and the full reservation will be attempted
 again.
 If the caller wishes to release the resources allocated to a partial
-reservation, the caller should pass the resource handle to
+reservation, the caller should pass the resource handle to 
 \f2pbs_rescrelease\fP().
 .IP
-At the present time the only resources which may be specified are "nodes".
+At the present time the only resources which may be specified are "nodes". 
 It should be specified as:
 .RS 4
 .I nodes=specification
 .RE
 .IP
 where specification is what a user specifies in the -l option argument list
-for nodes, see
+for nodes, see 
 .I qsub (1B).
 .HP 2
 .B pbs_rescrelease
@@ -108,10 +104,10 @@ in pbs_errno.
 .IP PBSE_RMPART
 is a special case indicating that some but not all of the requested resources
 could be reserved; a partial reservation was made.  The reservation request
-should either be rerequested with the returned handle or the partial
+should either be rerequested with the returned handle or the partial 
 resources released.
 .IP PBSE_RMBADPARAM
 a parameter is incorrect, such as a null for the pointer to the resource_id.
 .IP PBSE_RMNOPARAM
-a parameter is missing, such as a null resource list.
+a parameter is missing, such as a null resource list. 
 .LP

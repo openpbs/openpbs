@@ -138,12 +138,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -153,9 +150,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -165,9 +161,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         attr['flag'] = 'h'
@@ -178,9 +173,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
 
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
     def test_epilogue(self):
         """
@@ -215,7 +209,7 @@ else:
 """
 
         hook_name = "epi"
-        a = {'event': "execjob_epilogue", 'enabled': 'True'}
+        a = {'event': "execjob_epilogue", 'enabled': 'True', 'order': 999}
         rv = self.server.create_import_hook(
             hook_name,
             a,
@@ -331,7 +325,15 @@ else:
         """
         Test accumulatinon of resources of a multinode job from an
         exechost_prologue hook.
+        On cpuset systems don't check for cput because the pbs_cgroups hook
+        will be enabled and will overwrite the cput value set in the prologue
+        hook
         """
+        has_cpuset = False
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                has_cpuset = True
+
         self.logger.info("test_prologue")
         hook_body = """
 import pbs
@@ -397,16 +399,20 @@ else:
         #
         # For string_array type  resource 'stra', it is not accumulated but
         # will be set to last seen value from a mom prologue hook.
-        self.server.expect(JOB, {
+        a = {
             'job_state': 'F',
             'resources_used.foo_f': '0.35',
             'resources_used.foo_i': '35',
             'resources_used.foo_str4': "eight",
             'resources_used.stra': "\"glad,elated\",\"happy\"",
             'resources_used.vmem': '35gb',
-            'resources_used.cput': '00:00:35',
-            'resources_used.ncpus': '3'},
-            extend='x', offset=10, attrop=PTL_AND, id=jid)
+            'resources_used.ncpus': '3'}
+
+        if not has_cpuset:
+            a['resources_used.cput'] = '00:00:35'
+
+        self.server.expect(JOB, a, extend='x', offset=10,
+                           attrop=PTL_AND, id=jid)
 
         foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
         qstat = self.server.status(
@@ -459,9 +465,10 @@ else:
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
-        acctlog_match = 'resources_used.cput=00:00:35'
-        self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
+        if not has_cpuset:
+            acctlog_match = 'resources_used.cput=00:00:35'
+            self.server.accounting_match(
+                "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
         # resources_used.foo_str2 should not be reported in accounting_logs.
         acctlog_match = 'resources_used.foo_str2='
@@ -753,34 +760,23 @@ else:
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_i2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'float'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_f2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='stra2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         # Create an epilogue hook
         hook_body = """
@@ -829,8 +825,7 @@ j.resources_used["stra2"] = '"glad"'
              'resources_used.stra2': "\"glad\"",
              'job_state': 'F'}
         self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
-                           offset=30, interval=1,
-                           max_attempts=20, id=jid)
+                           offset=30, interval=1, id=jid)
 
         # Restart server and verifies that the values are still the same
         self.server.restart()
@@ -842,7 +837,14 @@ j.resources_used["stra2"] = '"glad"'
         """
         Test that resource accumulation will not get
         impacted if server is restarted during job execution
+        On cpuset systems don't check for cput because the pbs_cgroups hook
+        will be enabled and will overwrite the cput value set in the prologue
+        hook
         """
+        has_cpuset = False
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                has_cpuset = True
 
         # Create a prologue hook
         hook_body = """
@@ -899,10 +901,11 @@ else:
         a = {'resources_used.foo_i': '35',
              'resources_used.foo_f': '0.35',
              'resources_used.vmem': '35gb',
-             'resources_used.cput': '00:00:35',
              'resources_used.stra': "\"glad,elated\",\"happy\"",
              'resources_used.foo_str4': "eight",
              'job_state': 'F'}
+        if not has_cpuset:
+            a['resources_used.cput'] = '00:00:35'
         self.server.expect(JOB, a, extend='x',
                            offset=5, id=jid, interval=1, attrop=PTL_AND)
 
@@ -1123,7 +1126,14 @@ else:
         Test that epilogue and prologue changing same
         and different resources. Values of same resource
         would get overwriteen by the last hook.
+        On cpuset systems don't check for cput because the pbs_cgroups hook
+        will be enabled and will overwrite the cput value set in the prologue
+        hook
         """
+        has_cpuset = False
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                has_cpuset = True
 
         hook_body = """
 import pbs
@@ -1140,12 +1150,9 @@ e.job.resources_used["foo_f"] = 0.10
 
         # Verify the copy message in the logs to avoid
         # race conditions
-        self.momA.log_match(
-            "pro.PY;copy hook-related file", max_attempts=10)
-        self.momB.log_match(
-            "pro.PY;copy hook-related file", max_attempts=10)
-        self.momC.log_match(
-            "pro.PY;copy hook-related file", max_attempts=10)
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("pro.PY;copy hook-related file")
 
         hook_body = """
 import pbs
@@ -1162,12 +1169,8 @@ e.job.resources_used["cput"] = 10
 
         # Verify the copy message in the logs to avoid
         # race conditions
-        self.momA.log_match(
-            "epi.PY;copy hook-related file", max_attempts=10)
-        self.momB.log_match(
-            "epi.PY;copy hook-related file", max_attempts=10)
-        self.momC.log_match(
-            "epi.PY;copy hook-related file", max_attempts=10)
+        for m in momlist:
+            m.log_match("epi.PY;copy hook-related file")
 
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}
@@ -1180,13 +1183,14 @@ e.job.resources_used["cput"] = 10
         jid = self.server.submit(j)
 
         # Verify the resources_used once the job is over
-        self.server.expect(JOB, {
+        b = {
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.6',
-            'resources_used.cput': '30',
-            'job_state': 'F'}, attrop=PTL_AND,
-            extend='x', id=jid, offset=5,
-            max_attempts=60, interval=1)
+            'job_state': 'F'}
+
+        if not has_cpuset:
+            b['resources_used.cput'] = '30'
+        self.server.expect(JOB, b, extend='x', id=jid, offset=5, interval=1)
 
         # Submit another job
         j1 = Job(TEST_USER)
@@ -1202,7 +1206,7 @@ e.job.resources_used["cput"] = 10
             'job_state': 'R',
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.3'}, attrop=PTL_AND,
-            id=jid1, max_attempts=30, interval=2)
+            id=jid1, interval=2)
 
         # Force delete the job
         self.server.deljob(id=jid1, wait=True, attr_W="force")
@@ -1314,11 +1318,11 @@ else:
 
         # Submit a job
         a = {'Resource_List.select': '3:ncpus=1',
-             'Resource_List.walltime': 10,
+             'Resource_List.walltime': 20,
              'Resource_List.place': "scatter"}
         j = Job(TEST_USER)
         j.set_attributes(a)
-        j.set_sleep_time("10")
+        j.set_sleep_time("20")
         jid = self.server.submit(j)
 
         # Verify job is running

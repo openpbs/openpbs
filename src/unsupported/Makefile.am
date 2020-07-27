@@ -46,7 +46,10 @@ unsupported_PROGRAMS = pbs_rmget
 dist_unsupported_SCRIPTS = \
 	pbs_loganalyzer \
 	pbs_stat \
-	pbs_config
+	pbs_config \
+	sgiICEvnode.sh \
+	sgiICEplacement.sh \
+	sgigenvnodelist.awk
 
 # Marking all *.py files as data as these files are meant to be used as hooks and
 # need no compilation.

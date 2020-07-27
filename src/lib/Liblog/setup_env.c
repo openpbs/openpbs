@@ -148,9 +148,6 @@ setup_env(char *filen)
 	} else if (errno != ENOENT) {
 		goto err;
 	}
-#ifdef WIN32
-	update_env_avltree();
-#endif
 	sprintf(log_buffer, "read environment from %s", filen);
 	log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, id, log_buffer);
 	return (nstr);

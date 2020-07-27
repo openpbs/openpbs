@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_rlsjob 3B "15 November 2019" Local "PBS"
+.TH pbs_rlsjob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_rlsjob
+.B pbs_rlsjob 
 \- release a hold on a PBS batch job
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -51,19 +50,19 @@
 .SH DESCRIPTION
 Issues a batch request to release a hold on a job or job array.
 
-Generates a
-.I Release Job
-(13) batch request and sends it to the server over the connection specified by
+Generates a 
+.I Release Job 
+(13) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection handle over which to send batch request to server.
 
 .IP jobID 8
-ID of job to be requeued.
+ID of job to be requeued.  
 .br
 Format for a job:
 .br
@@ -77,8 +76,8 @@ Format for a job array:
 .IP hold_type 8
 Type of hold to remove from job or job array.  Valid values are defined
 in pbs_ifl.h.  If hold_type is a null pointer or points to a null
-string, PBS removes a
-.I User
+string, PBS removes a 
+.I User 
 hold to the job or job array.
 
 .IP extend 8
@@ -88,7 +87,7 @@ Character string for extensions to command.  Not currently used.
 The routine returns 0 (zero) on success.
 
 If an error occurred, the routine returns a non-zero exit value, and
-the error number is available in the global integer
+the error number is available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO

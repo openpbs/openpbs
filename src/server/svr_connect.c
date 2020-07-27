@@ -134,10 +134,10 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 
 	if ((hostaddr == pbs_server_addr) && (port == pbs_server_port_dis))
 		return (PBS_LOCAL_CONNECTION);	/* special value for local */
-
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
 	if ((pmom != NULL) && (port == pmom->mi_port)) {
-		if (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN) {
+		if ((((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)
+							&& (open_momstream(pmom) < 0)) {
 			pbs_errno = PBSE_NORELYMOM;
 			return (PBS_NET_RC_FATAL);
 		}

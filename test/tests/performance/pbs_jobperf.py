@@ -114,10 +114,10 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_job_performance_sched_off(self):
         """
-        Test Job subission from multiple users with scheduler off
-        and submit jobs which can run within a single cycle
+        Test Job subission rate when scheduling is off by
+        submitting 1k jobs and turn on scheduling with 1k ncpus.
         Test Params:  'No_of_jobs_per_user': 100,
-                      'No_of_tries': 1,
+                      'No_of_tries': 10,
                       'No_of_iterations': 1,
                       'No_of_users': 10,
                       'svr_log_level': 511,
@@ -127,7 +127,7 @@ class TestJobPerf(TestPerformance):
                       'No_of_ncpus_per_node': 48
         """
         testconfig = {'No_of_jobs_per_user': 100,
-                      'No_of_tries': 1,
+                      'No_of_tries': 10,
                       'No_of_iterations': 1,
                       'No_of_users': 10,
                       'svr_log_level': 511,
@@ -139,21 +139,20 @@ class TestJobPerf(TestPerformance):
 
         avg_sub_time = []
         avg_run_rate = []
-        sub_rate = []
-        run_rate = []
         j = 0
         counts = self.server.counter(NODE, {'state': 'free'})
         if counts['state=free'] < config['No_of_moms']:
             a = {'resources_available.ncpus': config['No_of_ncpus_per_node']}
             self.server.create_moms(
                 'mom', a,
-                config['No_of_moms'] - counts['state=free'], self.mom)
-        sclg = PBSLogAnalyzer()
+                config['No_of_moms'], self.mom)
         while j < config['No_of_tries']:
+            sub_rate = []
+            run_rate = []
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -188,6 +187,7 @@ class TestJobPerf(TestPerformance):
             self.scheduler.log_match("Leaving Scheduling Cycle",
                                      starttime=int(start) + 1,
                                      max_attempts=30, interval=1)
+            sclg = PBSLogAnalyzer()
             md = sclg.analyze_scheduler_log(
                 filename=self.scheduler.logfile, start=int(start))
             rr = md['summary']['job_run_rate']
@@ -203,7 +203,8 @@ class TestJobPerf(TestPerformance):
     @timeout(6000)
     def test_job_performance_sched_on(self):
         """
-        Test job completion performance from multiple users with scheduler on
+        Test job submit_rate, run_rate, throughput by submitting 10k jobs
+        when scheduling is on with 1k ncpus.
         Test Params: 'No_of_jobs_per_user': 100,
                       'No_of_tries': 1,
                       'No_of_iterations': 10,
@@ -228,23 +229,22 @@ class TestJobPerf(TestPerformance):
         avg_sub_time = []
         avg_run_rate = []
         avg_throughput = []
-        sub_time = []
-        run_rate = []
-        throughput = []
         j = 0
         counts = self.server.counter(NODE, {'state': 'free'})
         if counts['state=free'] < self.config['No_of_moms']:
             a = {'resources_available.ncpus': num_ncpus}
             self.server.create_moms(
                 'mom', a,
-                self.config['No_of_moms'] - counts['state=free'], self.mom)
-
+                self.config['No_of_moms'], self.mom)
         while j < self.config['No_of_tries']:
+            sub_time = []
+            run_rate = []
+            throughput = []
             i = 0
             log_start = time.time()
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'job_history_enable': True}
@@ -309,11 +309,11 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_qstat_perf(self):
         """
-        Test qstat performance with huge number of jobs in queue
+        Test time taken by 100 qstat -f with 10k jobs in queue
         Test Params: 'No_of_jobs_per_user': 100,
                       'No_of_tries': 1,
                       'No_of_iterations': 10,
-                      'No_of_qstats': 100,
+                      'No_of_qstats': 10,
                       'No_of_users': 10,
                       'svr_log_level': 511,
                       'qstat_args': '-f',
@@ -330,13 +330,13 @@ class TestJobPerf(TestPerformance):
         config = self.set_test_config(testconfig)
 
         avg_stat_time = []
-        stat_time = []
         j = 0
         while j < config['No_of_tries']:
             i = 0
+            stat_time = []
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -375,7 +375,7 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_qstat_hist_perf(self):
         """
-        Test qstat performance with huge number of jobs in history
+        Test time taken by 100 qstat -fx with 10k jobs in history
         Test Params: 'No_of_jobs_per_user': 100,
                       'No_of_tries': 1,
                       'No_of_iterations': 10,
@@ -400,7 +400,6 @@ class TestJobPerf(TestPerformance):
         self.config = self.set_test_config(testconfig)
 
         avg_stat_time = []
-        stat_time = []
         num_ncpus = self.config['No_of_ncpus_per_node']
         j = 0
         counts = self.server.counter(NODE, {'state': 'free'})
@@ -408,12 +407,13 @@ class TestJobPerf(TestPerformance):
             a = {'resources_available.ncpus': num_ncpus}
             self.server.create_moms(
                 'mom', a,
-                self.config['No_of_moms'] - counts['state=free'], self.mom)
+                self.config['No_of_moms'], self.mom)
         while j < self.config['No_of_tries']:
+            stat_time = []
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -467,13 +467,13 @@ class TestJobPerf(TestPerformance):
         config = self.set_test_config(testconfig)
 
         avg_result = []
-        result = []
         j = 0
         while j < config['No_of_tries']:
+            result = []
             i = 0
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -505,8 +505,7 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_server_restart_kill(self):
         """
-        Test server kill and restart performance with huge
-        number of jobs in queue
+        Test server kill and restart performance with 100k jobs in queue
         Test Params: 'No_of_jobs_per_user': 10000,
                       'No_of_tries': 1,
                       'No_of_iterations': 1,
@@ -518,8 +517,7 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_server_restart(self):
         """
-        Test server restart performance with huge number
-        of jobs in queue
+        Test server restart performance 100k jobs in queue
         Test Params: 'No_of_jobs_per_user': 10000,
                       'No_of_tries': 1,
                       'No_of_iterations': 1,
@@ -531,7 +529,7 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_qdel_perf(self):
         """
-        Test job deletion performance for queued jobs
+        Test job deletion performance for 10k queued jobs
         Test Params: 'No_of_jobs_per_user': 1000,
                       'No_of_tries': 1,
                       'No_of_iterations': 1,
@@ -546,12 +544,12 @@ class TestJobPerf(TestPerformance):
         config = self.set_test_config(testconfig)
 
         avg_qdel_time = []
-        qdel_time = []
         j = 0
         while j < config['No_of_tries']:
+            qdel_time = []
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}
@@ -583,7 +581,7 @@ class TestJobPerf(TestPerformance):
     @timeout(3600)
     def test_qdel_hist_perf(self):
         """
-        Test job deletion performance for history jobs
+        Test job deletion performance for 10k history jobs
         Test Params: 'No_of_jobs_per_user': 1000,
                       'No_of_tries': 1,
                       'No_of_users': 10,
@@ -607,11 +605,12 @@ class TestJobPerf(TestPerformance):
             a = {'resources_available.ncpus': num_ncpus}
             self.server.create_moms(
                 'mom', a,
-                self.config['No_of_moms'] - counts['state=free'], self.mom)
+                self.config['No_of_moms'], self.mom)
         while j < self.config['No_of_tries']:
+            qdel_time = []
             users = [TEST_USER1, TEST_USER2, TEST_USER3, TEST_USER4,
                      TEST_USER5, TEST_USER6, TEST_USER7, TEST_USER,
-                     ROOT_USER, ADMIN_USER]
+                     TST_USR, TST_USR1]
             a = {'log_events': self.config['svr_log_level']}
             self.server.manager(MGR_CMD_SET, SERVER, a)
             a = {'scheduling': 'False'}

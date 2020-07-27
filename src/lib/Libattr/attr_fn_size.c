@@ -108,11 +108,10 @@ decode_size(struct attribute *patr, char *name, char *rescn, char *val)
 			return (PBSE_BADATVAL);
 		if (errno != 0)
 			return (PBSE_BADATVAL);
-		patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-	} else {
-		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
-			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-	}
+		patr->at_flags |= ATR_SET_MOD_MCACHE;
+	} else
+		ATR_UNSET(patr);
+
 	return (0);
 }
 
@@ -139,12 +138,12 @@ decode_size(struct attribute *patr, char *name, char *rescn, char *val)
 #define CVNBUFSZ 23
 
 int
-encode_size(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_size(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	     ct;
 	char	     cvnbuf[CVNBUFSZ];
 	svrattrl *pal;
-	void from_size(struct size_value *, char *);
+	void from_size(const struct size_value *, char *);
 
 	if (!attr)
 		return (-1);
@@ -229,7 +228,7 @@ set_size(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
 
 	return (0);
 }
@@ -434,7 +433,7 @@ to_size(char *val, struct size_value *psize)
  */
 
 void
-from_size(struct size_value *psize, char *cvnbuf)
+from_size(const struct size_value *psize, char *cvnbuf)
 {
 
 #ifdef WIN32

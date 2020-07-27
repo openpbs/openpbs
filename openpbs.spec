@@ -176,7 +176,7 @@ Requires: pmix
 %endif
 %if %{defined suse_version}
 Requires: smtp_daemon
-Requires: libhwloc5
+Requires: libhwloc15
 Requires: net-tools
 %else
 Requires: smtpdaemon
@@ -221,7 +221,7 @@ Requires: python3 >= 3.5
 Requires: pmix
 %endif
 %if %{defined suse_version}
-Requires: libhwloc5
+Requires: libhwloc15
 Requires: net-tools
 %else
 Requires: hostname
@@ -328,6 +328,7 @@ cd build
 %if %{with ptl}
 	--enable-ptl \
 %endif
+	%{?_with_swig} \
 %if %{defined suse_version}
 	--libexecdir=%{pbs_prefix}/libexec \
 %endif
@@ -347,6 +348,9 @@ cd build
 mandir=$(find %{buildroot} -type d -name man)
 [ -d "$mandir" ] && find $mandir -type f -exec gzip -9 -n {} \;
 install -D %{buildroot}/%{pbs_prefix}/libexec/pbs_init.d %{buildroot}/etc/init.d/pbs
+%if 0%{?rhel} >= 7
+export QA_RPATHS=$[ 0x0002 ]
+%endif
 
 %post %{pbs_server}
 ldconfig %{_libdir}
@@ -498,20 +502,19 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{_unitdir}/pbs.service
 %endif
 %exclude %{pbs_prefix}/bin/printjob_svr.bin
-%exclude %{pbs_prefix}/etc/pbs_db_schema.sql
-%exclude %{pbs_prefix}/libexec/pbs_schema_upgrade
 %exclude %{pbs_prefix}/etc/pbs_dedicated
 %exclude %{pbs_prefix}/etc/pbs_holidays*
 %exclude %{pbs_prefix}/etc/pbs_resource_group
 %exclude %{pbs_prefix}/etc/pbs_sched_config
 %exclude %{pbs_prefix}/lib*/init.d/sgiICEplacement.sh
 %exclude %{pbs_prefix}/lib*/python/altair/pbs_hooks/*
-%exclude %{pbs_prefix}/libexec/install_db
+%exclude %{pbs_prefix}/libexec/pbs_db_utility
 %exclude %{pbs_prefix}/sbin/pbs_comm
 %exclude %{pbs_prefix}/sbin/pbs_dataservice
 %exclude %{pbs_prefix}/sbin/pbs_ds_monitor
 %exclude %{pbs_prefix}/sbin/pbs_ds_password
 %exclude %{pbs_prefix}/sbin/pbs_ds_password.bin
+%exclude %{pbs_prefix}/sbin/pbs_ds_systemd
 %exclude %{pbs_prefix}/sbin/pbs_sched
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
@@ -539,7 +542,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/bin/pbs_attach
 %exclude %{pbs_prefix}/bin/pbs_tmrsh
 %exclude %{pbs_prefix}/bin/printjob_svr.bin
-%exclude %{pbs_prefix}/etc/pbs_db_schema.sql
 %exclude %{pbs_prefix}/etc/pbs_dedicated
 %exclude %{pbs_prefix}/etc/pbs_holidays*
 %exclude %{pbs_prefix}/etc/pbs_resource_group
@@ -549,9 +551,8 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/lib*/init.d
 %exclude %{pbs_prefix}/lib*/python/altair/pbs_hooks
 %exclude %{pbs_prefix}/lib*/python/pbs_bootcheck*
-%exclude %{pbs_prefix}/libexec/install_db
+%exclude %{pbs_prefix}/libexec/pbs_db_utility
 %exclude %{pbs_prefix}/libexec/pbs_habitat
-%exclude %{pbs_prefix}/libexec/pbs_schema_upgrade
 %exclude %{pbs_prefix}/libexec/pbs_init.d
 %exclude %{pbs_prefix}/sbin/pbs_comm
 %exclude %{pbs_prefix}/sbin/pbs_demux
@@ -559,6 +560,7 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_ds_monitor
 %exclude %{pbs_prefix}/sbin/pbs_ds_password
 %exclude %{pbs_prefix}/sbin/pbs_ds_password.bin
+%exclude %{pbs_prefix}/sbin/pbs_ds_systemd
 %exclude %{pbs_prefix}/sbin/pbs_idled
 %exclude %{pbs_prefix}/sbin/pbs_mom
 %exclude %{pbs_prefix}/sbin/pbs_rcp

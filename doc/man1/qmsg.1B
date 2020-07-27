@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qmsg 1B "15 October 2019" Local "PBS"
+.TH qmsg 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qmsg
+.B qmsg 
 - write message string into one or more job output files
 .SH SYNOPSIS
 .B qmsg
@@ -52,18 +51,18 @@
 .SH DESCRIPTION
 Writes a message string into one or more output files of the job.
 Typically this is done to leave an informative message in the output
-of the job.  Also called "sending a message to a job".
+of the job.  Also called "sending a message to a job".  
 
-The
+The 
 .B qmsg
-command writes messages into the files of jobs by sending a
-.I Message Job
-batch request to the batch server that owns the job.  The
+command writes messages into the files of jobs by sending a 
+.I Message Job 
+batch request to the batch server that owns the job.  The 
 .B qmsg
 command does not directly write the message into the files of the job.
 
-The
-.B qmsg
+The 
+.B qmsg 
 command can be used on jobs and subjobs, but not on job arrays or ranges of
 subjobs.
 
@@ -75,7 +74,7 @@ The message is written to the standard error of each job.
 The message is written to the standard output of each job.
 
 .IP "--version" 8
-The
+The 
 .B qmsg
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -86,14 +85,14 @@ The message is written to the standard error of each job.
 .SH  OPERANDS
 .IP "message string" 8
 The message to be written. String.  First operand.  If the string contains
-blanks, the string must be quoted.  If the final character of the string
+blanks, the string must be quoted.  If the final character of the string 
 is not a newline, a newline character is added when written to the job's file.
 
 .IP "job ID" 8
-The job(s) to receive the message string.  This operand follows the
+The job(s) to receive the message string.  This operand follows the 
 .I message string
-operand.  Can be a job or subjob.  Cannot be a job array or range of subjobs.  The
-.B qmsg
+operand.  Can be a job or subjob.  Cannot be a job array or range of subjobs.  The 
+.B qmsg 
 command accepts one or more
 .I job ID
 operands.
@@ -107,7 +106,7 @@ Format for subjob. Note that a subjob has square brackets around its index numbe
 .I <sequence number>[<index>][.<server name>][@<server name>]
 
 .SH STANDARD ERROR
-The
+The 
 .B qmsg
 command writes a diagnostic message to standard error for
 each error occurrence.
@@ -119,9 +118,4 @@ Upon success
 Upon failure
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qsub(1B), pbs_msgjob(3B)

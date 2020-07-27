@@ -100,12 +100,6 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	int opt_re_flg = FALSE;
 	int opt_inter_flg = FALSE;
 	int opt_res_req_flg = FALSE;
-#ifdef WIN32
-	struct attrl *ap = NULL;
-	short nSizeofHostName = 0;
-	char* orig_apvalue = NULL;
-	char* temp_apvalue = NULL;
-#endif
 
 	while ((c = getopt(argc, argv, "D:E:I:l:m:M:N:q:r:R:u:U:g:G:H:W:-:")) != EOF) {
 		switch (c) {

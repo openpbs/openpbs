@@ -451,8 +451,8 @@ process_request(int sfds)
 			"", msg_auth_request, request->rq_type, request->rq_user,
 			request->rq_host, conn->cn_physhost, sfds);
 
-		if (server.sv_attr[(int)SRV_ATR_acl_krb_realm_enable].at_val.at_long) {
-			if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_realms], conn->cn_credid, ACL_Host) == 0) {
+		if (server.sv_attr[(int)SVR_ATR_acl_krb_realm_enable].at_val.at_long) {
+			if (acl_check(&server.sv_attr[(int)SVR_ATR_acl_krb_realms], conn->cn_credid, ACL_Host) == 0) {
 				req_reject(PBSE_PERM, 0, request);
 				close_client(sfds);
 				return;
@@ -465,12 +465,12 @@ process_request(int sfds)
 #endif
 
 	/* is the request from a host acceptable to the server */
-	if ((access_by_krb == 0) && (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long)) {
+	if ((access_by_krb == 0) && (server.sv_attr[(int)SVR_ATR_acl_host_enable].at_val.at_long)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;
-		if ((server.sv_attr[SRV_ATR_acl_host_moms_enable].at_flags & ATR_VFLAG_SET) &&
-			(server.sv_attr[(int)SRV_ATR_acl_host_moms_enable].at_val.at_long == 1)) {
+		if ((server.sv_attr[SVR_ATR_acl_host_moms_enable].at_flags & ATR_VFLAG_SET) &&
+			(server.sv_attr[(int)SVR_ATR_acl_host_moms_enable].at_val.at_long == 1)) {
 			isanode = find_nodebyaddr(get_connectaddr(sfds));
 
 			if ((isanode != NULL) && (isanode->nd_state & INUSE_DELETED))
@@ -478,7 +478,7 @@ process_request(int sfds)
 		}
 
 		if (isanode == NULL) {
-			if ((acl_check(&server.sv_attr[(int)SRV_ATR_acl_hosts],
+			if ((acl_check(&server.sv_attr[(int)SVR_ATR_acl_hosts],
 				request->rq_host, ACL_Host) == 0) &&
 				(strcasecmp(server_host, request->rq_host) != 0)) {
 					req_reject(PBSE_BADHOST, 0, request);
@@ -543,9 +543,10 @@ process_request(int sfds)
 
 	/* if server shutting down, disallow new jobs and new running */
 
-	if (server.sv_attr[(int)SRV_ATR_State].at_val.at_long > SV_STATE_RUN) {
+	if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long > SV_STATE_RUN) {
 		switch (request->rq_type) {
 			case PBS_BATCH_AsyrunJob:
+			case PBS_BATCH_AsyrunJob_ack:
 			case PBS_BATCH_JobCred:
 			case PBS_BATCH_UserCred:
 			case PBS_BATCH_MoveJob:
@@ -616,9 +617,6 @@ set_to_non_blocking(conn_t *conn)
 {
 
 	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
-
-#ifndef WIN32
-
 		int flg;
 		flg = fcntl(conn->cn_sock, F_GETFL);
 		if (((flg = fcntl(conn->cn_sock, F_GETFL)) == -1) ||
@@ -628,7 +626,6 @@ set_to_non_blocking(conn_t *conn)
 			return -1;
 		}
 		conn->cn_sockflgs = flg;
-#endif	/* WIN32 */
 	}
 	return 0;
 }
@@ -650,13 +647,11 @@ clear_non_blocking(conn_t *conn)
 	if(!conn)
 		return;
 	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
-#ifndef WIN32
 		int flg;
 		if ((flg = conn->cn_sockflgs) != -1)
 			/* reset socket flag to prior value */
 			(void)fcntl(conn->cn_sock, F_SETFL, flg);
 		conn->cn_sockflgs = 0;
-#endif /* WIN32 */
 	}
 }
 #endif	/* !PBS_MOM */
@@ -845,6 +840,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_RunJob:
 		case PBS_BATCH_AsyrunJob:
+		case PBS_BATCH_AsyrunJob_ack:
 			req_runjob(request);
 			break;
 
@@ -929,7 +925,9 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_StatusHook:
-			if (!is_local_root(request->rq_user, request->rq_host)) {
+			/* Scheduler is allowed to make the request */
+			if ((find_sched_from_sock(request->rq_conn) == NULL) &&
+					!is_local_root(request->rq_user, request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
 					"access hooks data from server %s",
 					request->rq_user, request->rq_host, server_host);
@@ -1389,6 +1387,7 @@ free_br(struct batch_request *preq)
 
 		case PBS_BATCH_RunJob:
 		case PBS_BATCH_AsyrunJob:
+		case PBS_BATCH_AsyrunJob_ack:
 		case PBS_BATCH_StageIn:
 		case PBS_BATCH_ConfirmResv:
 			if (preq->rq_ind.rq_run.rq_destin)
@@ -1587,3 +1586,4 @@ get_servername(unsigned int *port)
 
 	return name;
 }
+

@@ -763,8 +763,13 @@ log_err(int errnum, const char *routine, const char *text)
 	if (log_opened == 0)
 		(void)log_open("/dev/console", log_directory);
 
-	if (isatty(2))
-		(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
+	if (isatty(2)) {
+		if (msg_daemonname == NULL) {
+			(void)fprintf(stderr, "%s\n", buf);
+		} else {
+			(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
+		}
+	}
 
 	(void)log_record(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_ERR, msg_daemonname, buf);
@@ -1081,32 +1086,6 @@ log_close(int msg)
 		syslogopen = 0;
 	}
 #endif	/* SYSLOG */
-}
-
-
-/**
- * @brief
- *	Function to set the database error into log buffer.
- *	If db_err is set, then set both the pbs specific error
- *	message "err_msg" + "db_err" to log_buffer.
- *	Else only the pbs error message
- *	is copied to log_buffer.
- *
- * @param[in]	err_msg - The pbs specific error message
- * @param[in]	db_err - Any Database specific error message
- *				that is returned by any database calls
- *
- */
-void
-log_set_dberr(char *err_msg, char *db_err)
-{
-	if (db_err && db_err[0] != 0) {
-		snprintf(log_buffer,  LOG_BUF_SIZE, "%s:[%s]",
-			err_msg,  db_err);
-	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE,
-			"%s", err_msg);
-	}
 }
 
 /**

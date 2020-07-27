@@ -48,7 +48,6 @@
  * 	prt_job_struct()
  * 	prt_task_struct()
  * 	read_attr()
- * 	db_to_svr_job()
  * 	print_db_job()
  * 	main()
  */
@@ -75,11 +74,7 @@
 #include "job.h"
 #ifdef PRINTJOBSVR
 #include "pbs_db.h"
-#include "db_postgres.h"
-pbs_db_conn_t *conn = NULL;
-#ifdef NAS /* localmod 005 */
-extern int pg_db_prepare_job_sqls(pbs_db_conn_t *conn);
-#endif /* localmod 005 */
+void *conn = NULL;
 #endif
 
 #define BUF_SIZE 512
@@ -268,7 +263,7 @@ read_attr(int fd)
  */
 #ifdef PRINTJOBSVR
 static void
-db_to_svr_job(job *pjob,  pbs_db_job_info_t *pdjob)
+db_2_job(job *pjob,  pbs_db_job_info_t *pdjob)
 {
 	strcpy(pjob->ji_qs.ji_jobid, pdjob->ji_jobid);
 	pjob->ji_qs.ji_state = pdjob->ji_state;
@@ -317,54 +312,27 @@ print_db_job(char *id, int no_attributes)
 	pbs_db_job_info_t dbjob;
 	pbs_db_jobscr_info_t jobscr;
 	job xjob;
-	int db_conn_error;
-	pbs_db_attr_info_t *attrs;
 	char *db_errmsg = NULL;
-	char errmsg[PBS_MAX_DB_CONN_INIT_ERR + 1];
-
+	int failcode;
 
 	if (conn == NULL) {
 
 		/* connect to database */
 #ifdef NAS /* localmod 111 */
 		if (pbs_conf.pbs_data_service_host) {
-			conn = pbs_db_init_connection(pbs_conf.pbs_data_service_host, PBS_DB_CNT_TIMEOUT_NORMAL, 0, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
+			failcode = pbs_db_connect(&conn, pbs_conf.pbs_data_service_host, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
 		}
 		else
 #endif /* localmod 111 */
-		conn = pbs_db_init_connection(pbs_conf.pbs_server_name, PBS_DB_CNT_TIMEOUT_NORMAL, 0, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
-		if (!conn) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr, "%s\n", db_errmsg);
-			if (strlen(errmsg) > 0)
-				fprintf(stderr, "%s\n", errmsg);
-			return -1;
-		}
-		db_conn_error = pbs_db_connect(conn);
-		if (db_conn_error != PBS_DB_SUCCESS && pbs_conf.pbs_secondary != NULL) {
-			conn = pbs_db_init_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_NORMAL, 0, &db_conn_error, errmsg, PBS_MAX_DB_CONN_INIT_ERR);
+		failcode = pbs_db_connect(&conn, pbs_conf.pbs_server_name, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
+		if (!conn && pbs_conf.pbs_secondary != NULL) {
+			failcode = pbs_db_connect(&conn, pbs_conf.pbs_secondary, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
 			if (!conn) {
-				get_db_errmsg(db_conn_error, &db_errmsg);
+				pbs_db_get_errmsg(failcode, &db_errmsg);
 				fprintf(stderr, "%s\n", db_errmsg);
-				if (strlen(errmsg) > 0)
-					fprintf(stderr, "%s\n", errmsg);
+				free(db_errmsg);
 				return -1;
 			}
-			db_conn_error = pbs_db_connect(conn);
-		}
-		if (db_conn_error != PBS_DB_SUCCESS) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr,
-				"Could not connect to PBS dataservice:[%s]\n",
-				(db_errmsg)?db_errmsg:"None");
-			exit(1);
-		}
-		if (pg_db_prepare_job_sqls(conn) != 0) {
-			get_db_errmsg(db_conn_error, &db_errmsg);
-			fprintf(stderr,
-				"Could not initialize PBS dataservice:[%s]\n",
-				(conn->conn_db_err)?(char *)conn->conn_db_err:"None");
-			exit(1);
 		}
 	}
 
@@ -411,20 +379,19 @@ print_db_job(char *id, int no_attributes)
 			fprintf(stderr, "Job %s not found\n", dbjob.ji_jobid);
 			return (1);
 		}
-		db_to_svr_job(&xjob, &dbjob);
+		db_2_job(&xjob, &dbjob);
 		prt_job_struct(&xjob);
 
-		attrs = dbjob.attr_list.attributes;
 		if (no_attributes == 0) {
-			int i;
+			svrattrl *pal;
 			printf("--attributes--\n");
-			for (i=0; i< dbjob.attr_list.attr_count; i++) {
-				printf("%s", attrs[i].attr_name);
-				if (attrs[i].attr_resc && attrs[i].attr_resc[0] != 0)
-					printf(".%s", attrs[i].attr_resc);
+			for (pal = (svrattrl *)GET_NEXT(dbjob.db_attr_list.attrs); pal != NULL; pal = (svrattrl *)GET_NEXT(pal->al_link)) {
+				printf("%s", pal->al_atopl.name);
+				if (pal->al_atopl.resource && pal->al_atopl.resource[0] != 0)
+					printf(".%s", pal->al_atopl.resource);
 				printf(" = ");
-				if (attrs[i].attr_value)
-					printf("%s", show_nonprint_chars(attrs[i].attr_value));
+				if (pal->al_atopl.value)
+					printf("%s", pal->al_atopl.value);
 				printf("\n");
 			}
 
@@ -516,12 +483,6 @@ char *argv[];
 		print_usage();
 		return 1;
 	}
-
-#if defined(PRINTJOBSVR) && defined(WIN32)
-	if (winsock_init()) {
-		return 1;
-	}
-#endif
 
 	for (f=optind; f<argc; ++f) {
 		char	*jobfile = argv[f];
@@ -727,9 +688,6 @@ char *argv[];
 	if (conn != NULL) {
 		pbs_db_disconnect(conn);
 	}
-#ifdef WIN32
-	winsock_cleanup();
-#endif
 #endif
 	return (0);
 }

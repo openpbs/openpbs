@@ -36,28 +36,27 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_server 8B "20 November 2019" Local "PBS"
+.TH pbs_server 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_server
+.B pbs_server 
 - start a PBS batch server
 .SH SYNOPSIS
-.B pbs_server
-[-a <active>]
-[-A <acctfile>]
+.B pbs_server 
+[-a <active>] 
+[-A <acctfile>] 
 [-C]
-[-d <config path>]
+[-d <config path>] 
 .RS 11
-[-e <mask>]
+[-e <mask>] 
 [-F <delay>]
 [-L <logfile>]
-[-M <MoM port>]
+[-M <MoM port>] 
 [-N]
 [-p <port number>]
-[-R <MoM RM port>]
+[-R <MoM RPP port>] 
 [-S <default scheduler port>]
 [-s <replacement string>]
-[-t <restart type>]
+[-t <restart type>] 
 .RE
 .B pbs_server
 --version
@@ -68,13 +67,13 @@ The
 command starts a batch server on the local host.
 Typically, this command is in a local boot file such as
 .I /etc/rc.local.
-If the batch server is already in running,
+If the batch server is already in running, 
 .B pbs_server
 exits with an error.
 
 .B Required Permission
 .br
-To ensure that the
+To ensure that the 
 .B pbs_server
 command is not runnable by the general user community, the server
 runs only if its real and effective uid is zero.  You must be root.
@@ -86,20 +85,20 @@ If not specified, the file is named for the current date in the
 PBS_HOME/server_priv/accounting directory.
 
 .IP "-a <active> " 10
-When
-.I True,
+When 
+.I True, 
 the server is in state "active" and the default scheduler is called
 to schedule jobs.
-When
-.I False,
+When 
+.I False, 
 the server is in state "idle" and the default scheduler is not called
 to schedule jobs.
-Sets the server's
-.I scheduling
+Sets the server's 
+.I scheduling 
 attribute.
-If this option is not specified, the server uses the prior
-.I value
-for the
+If this option is not specified, the server uses the prior 
+.I value 
+for the 
 .I scheduling
 attribute.
 .br
@@ -121,14 +120,14 @@ Specifies a log event mask to be used when logging.  See "log_events" in the
 pbs_server_attributes(7B) man page.
 
 .IP "-F <delay>"
-Specifies the number of seconds that the secondary server should wait
-before taking over when it believes the primary server is down.  If
-the number of seconds is specified as
-.I -1,
+Specifies the number of seconds that the secondary server should wait 
+before taking over when it believes the primary server is down.  If 
+the number of seconds is specified as 
+.I -1, 
 the secondary will make one
 attempt to contact the primary and then become active.
 .br
-Default:
+Default: 
 .I 30 seconds
 
 .IP "-L <logfile>"
@@ -143,21 +142,21 @@ option.
 Specifies the host name and/or port number on which the server should connect
 to MOM.  The option argument,
 .I MoM port,
-uses the syntax:
+uses the syntax: 
 .br
 .I \ \ \ [<hostname>][:<port number>]
 .br
-If
-.I hostname
-is not specified, the local host is assumed.
+If 
+.I hostname 
+is not specified, the local host is assumed.   
 .br
-If
-.I port number
-is not specified, the default port is assumed.  See the
-.I -M
-option for pbs_mom(8).
+If 
+.I port number 
+is not specified, the default port is assumed.  See the 
+.I -M 
+option for pbs_mom(8).  
 .br
-Default:
+Default: 
 .I 15002
 
 .IP "-N" 10
@@ -169,16 +168,16 @@ If multiple servers are running on a
 single host, each must have its own unique port number.
 This option is for use in testing with multiple batch systems on a single host.
 .br
-Default:
+Default: 
 .I 15001
 
-.IP "-R <MoM RM port>"
+.IP "-R <MoM RPP port>"
 Specifies the port number on which the server should query the up/down
-status of MoM.    See the
-.I -R
-option for pbs_mom(8).
+status of MoM.    See the 
+.I -R 
+option for pbs_mom(8).  
 .br
-Default:
+Default: 
 .I 15003
 
 .IP "-S <default scheduler port>" 10
@@ -189,13 +188,12 @@ uses the syntax:
 .br
 .I \ \ \ [<hostname>][:<port number>]
 .br
-Default:
+Default: 
 .I 15004
 
 .IP "-s <replacement string>" 10
-Specifies the string to use when replacing spaces in accounting
-entity names.  Only available under Windows.  See the
-.I PBS Administrator's Guide.
+Specifies the string to use when replacing spaces in accounting 
+entity names.  Only available under Windows.
 
 .IP "-t <restart type>"
 Specifies behavior when the server restarts.  The
@@ -208,10 +206,10 @@ this direction is accepted.
 
 .IP create 7
 The server discards any existing configuration files: server, nodes, queues,
-and jobs, and initialize configuration files to the default values.
+and jobs, and initialize configuration files to the default values.  
 The default scheduler is idled (
-.I scheduling
-is set to
+.I scheduling 
+is set to 
 .I False
 ).  Any multischeds are deleted.
 
@@ -228,8 +226,8 @@ retained in their current state.
 If a job cannot be restarted immediately because of a missing resource, such
 as a vnode being down, the server attempts to restart it periodically for
 up to 5 minutes.   After that period, the server will revert to a normal state,
-as if
-.I warm
+as if 
+.I warm 
 started, and will no longer attempt to restart any remaining jobs
 which were running prior to the shutdown.
 
@@ -240,9 +238,9 @@ data service format.
 .IP warm 7
 All jobs in the Running state are retained in that state.  All other
 jobs are maintained in their current state.  The default scheduler
-typically chooses new jobs for execution.
-.I warm
-is the default if
+typically chooses new jobs for execution.  
+.I warm 
+is the default if 
 .I -t
 is not specified.
 
@@ -250,7 +248,7 @@ is not specified.
 .RE
 .LP
 .IP "--version" 10
-The
+The 
 .B pbs_server
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -267,19 +265,19 @@ Directory for log files recorded by the server
 When it receives the following signals, the server performs the following actions:
 
 .IP SIGHUP
-The current server log and accounting log are closed and reopened.  This
+The current server log and accounting log are closed and reopened.  This 
 allows for the prior log to be renamed and a new log started from the time
 of the signal.
 
 .IP SIGTERM
-Causes a rapid orderly shutdown of
-.B pbs_server,
-identical to
+Causes a rapid orderly shutdown of 
+.B pbs_server, 
+identical to 
 .I "qterm -t quick".
 
 .IP SIGSHUTDN
 On systems where SIGSHUTDN is defined, causes an orderly
-.I "quick"
+.I "quick" 
 shutdown of the server.
 
 .IP "SIGPIPE, SIGUSR1, SIGUSR2"
@@ -292,20 +290,20 @@ The server will record a diagnostic message in a log file for any
 error occurrence.  The log files are maintained in the server_logs
 directory below the home directory of the server.
 If the log file cannot be opened, the diagnostic message is written
-to the system console.  The server writes its PBS
-version and build information to the logfile whenever it starts up or
+to the system console.  The server writes its PBS 
+version and build information to the logfile whenever it starts up or 
 the logfile is rolled to a new file.
 
 .SH Stopping the PBS Server
 .B Stopping the Server on Linux
 .br
-Use the
+Use the 
 .B qterm
 command:
 .br
-.I \ \ \ qterm
+.I \ \ \ qterm 
 .br
-(see qterm(8B))
+(see qterm(8B)) 
 .br
 or send a SIGTERM:
 .br
@@ -320,9 +318,6 @@ If the server command fails to begin batch operation
 
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide
-and the following manual pages:
 qsub (1B), pbs_connect(3B),
 pbs_mom(8B), pbs_sched(8B),
 pbsnodes(8B), qdisable(8B), qenable(8B), qmgr(8B), qrun(8B), qstart(8B),

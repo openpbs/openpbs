@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <data>
-    <!--
+   <!--
 /*
  * Copyright (C) 1994-2020 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
@@ -98,7 +98,7 @@
       #endif /* PBS_MOM */
       /* ordered by guess to put ones most often used at front */
 
-      static resource_def svr_resc_defm[] = {
+      static resource_def svr_resc_defm[] = { 
       </SVR>
       <ECL>
       #include &lt;pbs_config.h&gt;
@@ -110,868 +110,866 @@
       </ECL>
    </head>
    <attributes>
-   /*cput*/
-	<member_name><both>"cput"</both></member_name>
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_time</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_CPUT</member_index>
+      <member_name>"cput"</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*mem*/
-	<member_name><both>"mem"</both></member_name>
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_size</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_MEM</member_index>
+      <member_name>"mem"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_size</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*walltime*/
-	<member_name><both>"walltime"</both></member_name>			<!-- wall clock time limit for a job  -->
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_time</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>action_walltime</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_WALLTIME</member_index>
+      <member_name>"walltime"</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>action_walltime</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-  /* soft_walltime */
-        <member_name><both>"soft_walltime"</both></member_name>        <!-- soft wall clock time limit for a job  -->
-        <member_at_decode>decode_time</member_at_decode>
-        <member_at_encode>encode_time</member_at_encode>
-        <member_at_set>set_l</member_at_set>
-        <member_at_comp>comp_l</member_at_comp>
-        <member_at_free>free_null</member_at_free>
-        <member_at_action>action_soft_walltime</member_at_action>
-        <member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_ALTRUN</both></member_at_flags>
-        <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-        <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-        <member_at_struct>NULL</member_at_struct>
-        <member_verify_function>
-        <ECL>verify_datatype_time</ECL>
-        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-        </member_verify_function>
-   </attributes>
-
-   <attributes>
-   /*min_walltime*/
-	<member_name><both>"min_walltime"</both></member_name>		<!-- min wall clock time limit for a job  -->
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_time</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>action_min_walltime</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
+      <member_index>RESC_SOFT_WALLTIME</member_index>
+      <member_name>"soft_walltime"</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>action_soft_walltime</member_at_action>
+      <member_at_flags>MGR_ONLY_SET | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*max_walltime*/
-	<member_name><both>"max_walltime"</both></member_name>		<!-- max wall clock time limit for a job  -->
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_time</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>action_max_walltime</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
+      <member_index>RESC_MIN_WALLTIME</member_index>
+      <member_name>"min_walltime"</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>action_min_walltime</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*ncpus*/
-	<member_name><both>"ncpus"</both></member_name>                        <!-- number of processors for job  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>zero_or_positive_action</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*naccelerators*/
-	<member_name><SVR>"naccelerators"</SVR></member_name>	<!-- number of accelerators  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+      <member_index>RESC_MAX_WALLTIME</member_index>
+      <member_name>"max_walltime"</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>action_max_walltime</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_ALTRUN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*select*/
-	<member_name><both>"select"</both></member_name>			<!-- user specification of select  -->
-	<member_at_decode>decode_select</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>#ifdef PBS_MOM
-							NULL_FUNC_RESC
-					  #else
-							resc_select_action
-					  #endif</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_select</ECL>
-	<ECL>verify_value_select</ECL>
-	</member_verify_function>
+      <member_index>RESC_NCPUS</member_index>
+      <member_name>"ncpus"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>zero_or_positive_action</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_NACCELERATORS</member_index>
+      <member_name>"naccelerators"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
    </attributes>
    <attributes>
-   /*place*/
-	<member_name><both>"place"</both></member_name>			<!-- user specification of place  -->
-	<member_at_decode>decode_place</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_SELECT</member_index>
+      <member_name>"select"</member_name>
+      <member_at_decode>decode_select</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>
+#ifdef PBS_MOM
+		NULL_FUNC_RESC
+#else
+		resc_select_action
+#endif
+      </member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_select</ECL>
+         <ECL>verify_value_select</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*nodes*/
-	<member_name><both>"nodes"</both></member_name>			<!-- user specification of nodes  -->
-	<member_at_decode>decode_nodes</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>set_node_ct</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_nodes</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_PLACE</member_index>
+      <member_name>"place"</member_name>
+      <member_at_decode>decode_place</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*nodect*/
-	<member_name><both>"nodect"</both></member_name>		<!-- count of number of nodes requested  -->
-	<member_at_decode>decode_l</member_at_decode>			<!-- read-only, set by server whenever   -->
-	<member_at_encode>encode_l</member_at_encode>			<!-- "nodes" is set, for use by sched    -->
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_ONLY | ATR_DFLAG_MGWR | ATR_DFLAG_RASSN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
+      <member_index>RESC_NODES</member_index>
+      <member_name>"nodes"</member_name>
+      <member_at_decode>decode_nodes</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>set_node_ct</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_nodes</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*arch*/
-	<member_name><both>"arch"</both></member_name>				<!-- system architecture type  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*nchunk*/
-	<member_name><SVR>"nchunk"</SVR></member_name>		<!-- number of chunks  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>NO_USER_SET | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*vntype*/
-	<member_name><SVR>"vntype"</SVR></member_name>
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+      <member_index>RESC_NODECT</member_index>
+      <member_name>"nodect"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_ONLY | ATR_DFLAG_MGWR | ATR_DFLAG_RASSN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*MPIPROCS*/
-	<member_name><both>MPIPROCS</both></member_name>		<!-- "mpiprocs", special resource for mpi  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>zero_or_positive_action</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_RASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
+      <member_index>RESC_ARCH</member_index>
+      <member_name>"arch"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_NCHUNK</member_index>
+      <member_name>"nchunk"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_VNTYPE</member_index>
+      <member_name>"vntype"</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
    </attributes>
    <attributes>
-   /*OMPTHREADS*/
-	<member_name><both>OMPTHREADS</both></member_name>		<!-- "ompthreads", special resource for OpenMP  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>zero_or_positive_action</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
+      <member_index>RESC_MPIPROCS</member_index>
+      <member_name>MPIPROCS</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>zero_or_positive_action</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_RASSN | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*cpupercent*/
-	<member_name><both>"cpupercent"</both></member_name>
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>verify_value_zero_or_positive</ECL>
-	</member_verify_function>
+      <member_index>RESC_OMPTHREADS</member_index>
+      <member_name>OMPTHREADS</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>zero_or_positive_action</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*energy*/
-	<member_name><both>"energy"</both></member_name>
-	<member_at_decode>decode_f</member_at_decode>
-	<member_at_encode>encode_f</member_at_encode>
-	<member_at_set>set_f</member_at_set>
-	<member_at_comp>comp_f</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_FLOAT</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_float</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_CPUPERCENT</member_index>
+      <member_name>"cpupercent"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*file*/
-	<member_name><both>"file"</both></member_name>
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_size</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-	</attributes>
-   <attributes>
-   /*pmem*/
-	<member_name><both>"pmem"</both></member_name>
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_size</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_ENERGY</member_index>
+      <member_name>"energy"</member_name>
+      <member_at_decode>decode_f</member_at_decode>
+      <member_at_encode>encode_f</member_at_encode>
+      <member_at_set>set_f</member_at_set>
+      <member_at_comp>comp_f</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_FLOAT</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_float</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*vmem*/
-	<member_name><both>"vmem"</both></member_name>
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_size</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_FILE</member_index>
+      <member_name>"file"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_size</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*pvmem*/
-	<member_name><both>"pvmem"</both></member_name>
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_size</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_PMEM</member_index>
+      <member_name>"pmem"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_size</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*nice*/
-	<member_name><both>"nice"</both></member_name>				<!-- job nice value  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_VMEM</member_index>
+      <member_name>"vmem"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_size</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*pcput*/
-	<member_name><both>"pcput"</both></member_name>
-	<member_at_decode>decode_time</member_at_decode>
-	<member_at_encode>encode_time</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_time</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_PVMEM</member_index>
+      <member_name>"pvmem"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_size</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*nodemask*/
-	<member_name><both>"nodemask"</both></member_name>
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-	</attributes>
-  <attributes>
-  /*hpm*/
-	<member_name><both>"hpm"</both></member_name>                          <!-- Job wants Hardware Perf. Monitors  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_NICE</member_index>
+      <member_name>"nice"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*ssinodes*/
-	<member_name><both>"ssinodes"</both></member_name>                     <!-- Number of SSI "nodes" requested  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_long</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_PCPUT</member_index>
+      <member_name>"pcput"</member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*host*/
-	<member_name><both>"host"</both></member_name>				<!-- host to execute on  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>#ifdef PBS_MOM
-							NULL_FUNC_RESC
-					  #else
-							host_action
-					  #endif</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_NODEMASK</member_index>
+      <member_name>"nodemask"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*vnode*/
-	<member_name><both>"vnode"</both></member_name>			<!-- vnode name on which to execute  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_HPM</member_index>
+      <member_name>"hpm"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*resc*/
-	<member_name><both>"resc"</both></member_name>
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_SSINODES</member_index>
+      <member_name>"ssinodes"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*software*/
-	<member_name><both>"software"</both></member_name>			<!-- software required for execution  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_HOST</member_index>
+      <member_name>"host"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>
+#ifdef PBS_MOM
+		NULL_FUNC_RESC
+#else
+		host_action
+#endif
+      </member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*site*/
-	<member_name><both>"site"</both></member_name>                         <!-- site resource  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*exec_vnode*/
-	<member_name><SVR>"exec_vnode"</SVR></member_name>		<!-- estimated place where job will run  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>NO_USER_SET</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*start_time*/
-	<member_name><SVR>"start_time"</SVR></member_name>			<!-- estimated start time  -->
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>NO_USER_SET</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes macro = '#if PE_MASK != 0'>
-	/* PE mask on Cray T3e (similar to nodemask on SGI O2K */
-	<member_name><both>"pe_mask"</both></member_name>
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_VNODE</member_index>
+      <member_name>"vnode"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-	/*partition*/
-	<member_name><both>"partition"</both></member_name>       <!-- partition (e.g. Blue Gene)  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes macro = '#ifndef PBS_MOM' mflag = 'SVR'>
-   /*aoe*/
-	<member_name><both>"aoe"</both></member_name>       	<!-- aoe   -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes macro = '#ifndef PBS_MOM' mflag = 'SVR'>
-   /*eoe*/
-	<member_name><both>"eoe"</both></member_name>       	<!-- eoe   -->
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
-   </attributes>
-    <attributes>
-   	/*preempt_targets*/
-	<member_name><both>"preempt_targets"</both></member_name>
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>preempt_targets_action</member_at_action>
-	<member_at_flags><both>READ_WRITE</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-	<member_verify_function>
-	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
-	<ECL>verify_value_preempt_targets</ECL>
-	</member_verify_function>
-   </attributes>
-   <attributes flag = 'SVR'>
-   	/*accelerator*/
-	<member_name><SVR>"accelerator"</SVR></member_name> <!-- there is an accelerator in state="UP" on this host  -->
-	<member_at_decode>decode_b</member_at_decode>
-	<member_at_encode>encode_b</member_at_encode>
-	<member_at_set>set_b</member_at_set>
-	<member_at_comp>comp_b</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_BOOL</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*accelerator_model*/
-	<member_name><SVR>"accelerator_model"</SVR></member_name>		<!-- accelerator model/family  -->
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*accelerator_memory*/
-	<member_name><SVR>"accelerator_memory"</SVR></member_name>	<!-- memory associated with the accelerator  -->
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_SIZE</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*accelerator_group*/
-	<member_name><SVR>"accelerator_group"</SVR></member_name>
-	<member_at_decode>decode_arst</member_at_decode>
-	<member_at_encode>encode_arst</member_at_encode>
-	<member_at_set>set_arst</member_at_set>
-	<member_at_comp>comp_arst</member_at_comp>
-	<member_at_free>free_arst</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
-   </attributes>
-   <attributes flag = 'SVR'>
-   /*pstate*/
-	<member_name><SVR>"pstate"</SVR></member_name>
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+      <member_index>RESC_RESC</member_index>
+      <member_name>"resc"</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
    <attributes>
-   /*hbmem*/
-	<member_name><both>"hbmem"</both></member_name>
-	<member_at_decode>decode_size</member_at_decode>
-	<member_at_encode>encode_size</member_at_encode>
-	<member_at_set>set_size</member_at_set>
-	<member_at_comp>comp_size</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</both></member_at_flags>
-	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
-	<member_verify_function>
-	<ECL>verify_datatype_size</ECL>
-	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function>
+      <member_index>RESC_SOFTWARE</member_index>
+      <member_name>"software"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>
-   /*pgov*/
-	<member_name><SVR>"pgov"</SVR></member_name>
-	<member_at_decode>decode_str</member_at_decode>
-	<member_at_encode>encode_str</member_at_encode>
-	<member_at_set>set_str</member_at_set>
-	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_str</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+   <attributes>
+      <member_index>RESC_SITE</member_index>
+      <member_name>"site"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>
-   /*pcap_node*/
-	<member_name><SVR>"pcap_node"</SVR></member_name>
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>zero_or_positive_action</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+   <attributes flag="SVR">
+      <member_index>RESC_EXEC_VNODE</member_index>
+      <member_name>"exec_vnode"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>
-   /*pcap_accelerator*/
-	<member_name><SVR>"pcap_accelerator"</SVR></member_name>
-	<member_at_decode>decode_l</member_at_decode>
-	<member_at_encode>encode_l</member_at_encode>
-	<member_at_set>set_l</member_at_set>
-	<member_at_comp>comp_l</member_at_comp>
-	<member_at_free>free_null</member_at_free>
-	<member_at_action>zero_or_positive_action</member_at_action>
-	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+   <attributes flag="SVR">
+      <member_index>RESC_START_TIME</member_index>
+      <member_name>"start_time"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>
-    /* the definition for the "unknown" resource MUST be last */
-	<member_name><SVR>"|unknown|"</SVR></member_name>
-	<member_at_decode>decode_unkn</member_at_decode>
-	<member_at_encode>encode_unkn</member_at_encode>
-	<member_at_set>set_unkn</member_at_set>
-	<member_at_comp>comp_unkn</member_at_comp>
-	<member_at_free>free_unkn</member_at_free>
-	<member_at_action>NULL_FUNC_RESC</member_at_action>
-	<member_at_flags><SVR>READ_WRITE</SVR></member_at_flags>
-	<member_at_type><SVR>ATR_TYPE_LIST</SVR></member_at_type>
-	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>NULL</member_at_struct>
+   <attributes macro="#if PE_MASK != 0">
+      <member_index>RESC_PE_MASK</member_index>
+      <member_name>"pe_mask"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>RESC_PARTITION</member_index>
+      <member_name>"partition"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>NO_USER_SET | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes macro="#ifndef PBS_MOM" mflag="SVR">
+      <member_index>RESC_AOE</member_index>
+      <member_name>"aoe"</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes macro="#ifndef PBS_MOM" mflag="SVR">
+      <member_index>RESC_EOE</member_index>
+      <member_name>"eoe"</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>RESC_PREEMPT_TARGETS</member_index>
+      <member_name>"preempt_targets"</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>preempt_targets_action</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>verify_value_preempt_targets</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_ACCELERATOR</member_index>
+      <member_name>"accelerator"</member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_BOOL</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_ACCELERATOR_MODEL</member_index>
+      <member_name>"accelerator_model"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_ACCELERATOR_MEMORY</member_index>
+      <member_name>"accelerator_memory"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_ACCELERATOR_GROUP</member_index>
+      <member_name>"accelerator_group"</member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_ARST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_PSTATE</member_index>
+      <member_name>"pstate"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes>
+      <member_index>RESC_HBMEM</member_index>
+      <member_name>"hbmem"</member_name>
+      <member_at_decode>decode_size</member_at_decode>
+      <member_at_encode>encode_size</member_at_encode>
+      <member_at_set>set_size</member_at_set>
+      <member_at_comp>comp_size</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</member_at_flags>
+      <member_at_type>ATR_TYPE_SIZE</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>(struct resource_def *)0</member_at_struct>
+      <member_verify_function>
+         <ECL>verify_datatype_size</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_PGOV</member_index>
+      <member_name>"pgov"</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_PCAP_NODE</member_index>
+      <member_name>"pcap_node"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>zero_or_positive_action</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_index>RESC_PCAP_ACCELERATOR</member_index>
+      <member_name>"pcap_accelerator"</member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>zero_or_positive_action</member_at_action>
+      <member_at_flags>READ_WRITE | ATR_DFLAG_MOM</member_at_flags>
+      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
+   </attributes>
+   <attributes flag="SVR">
+      <member_name>"|unknown|"</member_name>
+      <member_at_decode>decode_unkn</member_at_decode>
+      <member_at_encode>encode_unkn</member_at_encode>
+      <member_at_set>set_unkn</member_at_set>
+      <member_at_comp>comp_unkn</member_at_comp>
+      <member_at_free>free_unkn</member_at_free>
+      <member_at_action>NULL_FUNC_RESC</member_at_action>
+      <member_at_flags>READ_WRITE</member_at_flags>
+      <member_at_type>ATR_TYPE_LIST</member_at_type>
+      <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+      <member_at_struct>NULL</member_at_struct>
    </attributes>
    <tail>
-      <SVR>
-	};
-	int           svr_resc_size = sizeof(svr_resc_defm) / sizeof(resource_def);
-	resource_def *svr_resc_def  = svr_resc_defm;
-	int	      svr_resc_unk  = sizeof(svr_resc_defm) / sizeof(resource_def)-1;
-      </SVR>
-      <ECL>
-	};
-	int ecl_svr_resc_size = sizeof(ecl_svr_resc_def)/sizeof(ecl_attribute_def);
-      </ECL>
+   <SVR>};
+int svr_resc_size = sizeof(svr_resc_defm) / sizeof(resource_def);
+resource_def *svr_resc_def = svr_resc_defm;
+int svr_resc_unk = sizeof(svr_resc_defm) / sizeof(resource_def) - 1;</SVR>
+   <ECL>};
+int ecl_svr_resc_size = sizeof(ecl_svr_resc_def)/sizeof(ecl_attribute_def);</ECL>
    </tail>
 </data>

@@ -8392,7 +8392,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_submit_arguments",SWIG_FromCharPtr("Submit_arguments"));
   SWIG_Python_SetConstant(d, "ATTR_resv_name",SWIG_FromCharPtr("Reserve_Name"));
   SWIG_Python_SetConstant(d, "ATTR_resv_owner",SWIG_FromCharPtr("Reserve_Owner"));
-  SWIG_Python_SetConstant(d, "ATTR_resv_type",SWIG_FromCharPtr("reserve_type"));
   SWIG_Python_SetConstant(d, "ATTR_resv_Tag",SWIG_FromCharPtr("reservation_Tag"));
   SWIG_Python_SetConstant(d, "ATTR_resv_ID",SWIG_FromCharPtr("reserve_ID"));
   SWIG_Python_SetConstant(d, "ATTR_resv_retry",SWIG_FromCharPtr("reserve_retry"));
@@ -8506,6 +8505,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_preempt_targets_enable",SWIG_FromCharPtr("preempt_targets_enable"));
   SWIG_Python_SetConstant(d, "ATTR_job_sort_formula_threshold",SWIG_FromCharPtr("job_sort_formula_threshold"));
   SWIG_Python_SetConstant(d, "ATTR_throughput_mode",SWIG_FromCharPtr("throughput_mode"));
+  SWIG_Python_SetConstant(d, "ATTR_job_run_wait",SWIG_FromCharPtr("job_run_wait"));
   SWIG_Python_SetConstant(d, "ATTR_opt_backfill_fuzzy",SWIG_FromCharPtr("opt_backfill_fuzzy"));
   SWIG_Python_SetConstant(d, "ATTR_sched_port",SWIG_FromCharPtr("sched_port"));
   SWIG_Python_SetConstant(d, "ATTR_partition",SWIG_FromCharPtr("partition"));
@@ -8704,4 +8704,3 @@ SWIG_init(void) {
   return;
 #endif
 }
-

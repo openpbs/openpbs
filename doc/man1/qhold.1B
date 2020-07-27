@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qhold 1B "30 November 2017" Local "PBS"
+.TH qhold 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qhold
+.B qhold 
 \- hold PBS batch jobs
 
 
@@ -61,13 +60,12 @@ is in the queued, held, or waiting states, then all that occurs is
 that the hold type is added to the job.  The job is then put into the
 held state if it resides in an execution queue.
 
-If the job is running, the result of the
-.B qhold
+If the job is running, the result of the 
+.B qhold 
 command depends upon whether the job can be checkpointed.
-The job can be checkpointed if the OS supports checkpointing, or
-if the application being checkpointed supports checkpointing.  See
-the
-.I PBS Administrator's Guide.
+The job can be checkpointed if the OS supports checkpointing, or 
+if the application being checkpointed supports checkpointing. 
+.br
 If the job can be checkpointed, the following happens:
 .RS 3
 The job is checkpointed and its execution is interrupted.
@@ -76,44 +74,44 @@ The resources assigned to the job are released.
 
 The job is placed in the held state in the execution queue.
 
-The job's
-.I Hold_Types
-attribute is set to
+The job's 
+.I Hold_Types 
+attribute is set to 
 .I u
-for
+for 
 .I user hold.
 .RE
 
-If checkpoint / restart is not supported,
-.B qhold
+If checkpoint / restart is not supported, 
+.B qhold 
 simply sets the
-job's
-.I Hold_Types
-attribute to
-.I u.
+job's 
+.I Hold_Types 
+attribute to 
+.I u.  
 The job continues to execute.
 
-A job's dependency places a
-.I system
+A job's dependency places a 
+.I system 
 hold on the job.  When the
-dependency is satisfied, the
-.I system
-hold is removed.  This
-.I system
+dependency is satisfied, the 
+.I system 
+hold is removed.  This 
+.I system 
 hold
 is the same as the one set by an administrator.  If the administrator
-sets a
-.I system
+sets a 
+.I system 
 hold on a job with a dependency, when the
 dependency is satisfied, the job becomes eligible for execution.
 
 If the job is in the process of provisioning, it cannot be held.
 
-A hold on a job can be released by the administrator, a Manager,
+A hold on a job can be released by the administrator, a Manager, 
 an Operator, or the job owner, when the job reaches the time set
-in its
+in its 
 .I Execution_Time
-attribute, or when a dependency clears.  See
+attribute, or when a dependency clears.  See 
 .B qrls.1B.
 
 .B Effect of Privilege on Behavior
@@ -124,17 +122,17 @@ Hold  Meaning       Who Can Set
 .br
 --------------------------------------------------------------
 .IP u 6
-User          Job owner, Operator, Manager,
+User          Job owner, Operator, Manager, 
 .br
               administrator, root
 .IP o 6
 Other         Operator, Manager, administrator, root
 .IP s 6
-System        Manager, administrator, root,
+System        Manager, administrator, root, 
 .br
               PBS (dependency)
 .IP n 6
-None          Job owner, Operator, Manager,
+None          Job owner, Operator, Manager, 
 .br
               administrator, root
 .IP p 6
@@ -144,9 +142,9 @@ Bad password  Administrator, root
 
 .SH OPTIONS
 .IP "(no options)" 8
-Same as
+Same as 
 .I -h u.
-Applies the
+Applies the 
 .I user
 hold to the specified job(s).
 .IP "-h <hold list>" 8
@@ -155,28 +153,28 @@ Types of holds to be placed on the job(s).
 The
 .I hold list
 argument is a string consisting of one or more of the letters
-.I """u""", """o""",
-or
+.I """u""", """o""", 
+or 
 .I """s"""
 in any combination, or one of the letters
-.I """n"""
-or
+.I """n""" 
+or 
 .I """p""".
 
 .IP "--version" 8
-The
+The 
 .B qhold
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 
 .SH OPERANDS
-The
-.B qhold
-command can be used on jobs and job arrays, but not on subjobs or ranges
-of subjobs.  The
-.B qhold
-comand accepts one or more
+The 
+.B qhold 
+command can be used on jobs and job arrays, but not on subjobs or ranges 
+of subjobs.  The 
+.B qhold 
+comand accepts one or more 
 .I job IDs
 in the form:
 .RS 4
@@ -188,8 +186,8 @@ Note that some shells require that you enclose a job array identifier in
 double quotes.
 
 .SH STANDARD ERROR
-The
-.B qhold
+The 
+.B qhold 
 command writes a diagnostic message to standard error for each
 error occurrence.
 
@@ -198,14 +196,10 @@ error occurrence.
 Upon successful processing of all operands
 
 .IP "Greater than zero" 8
-If the
-.B qhold
+If the 
+.B qhold 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
 qrls(1B), qalter(1B), qsub(1B), pbs_alterjob(3B), pbs_holdjob(3B),
 pbs_rlsjob(3B), pbs_job_attributes(7B), pbs_resources(7B)

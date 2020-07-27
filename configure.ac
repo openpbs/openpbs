@@ -75,6 +75,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_PROG_CC_C_O
 
 # Initialize libtool
+AM_PROG_LIBTOOL
 LT_INIT([shared static])
 
 # Checks for libraries.
@@ -187,7 +188,6 @@ AC_CHECK_HEADERS([ \
 	sys/statfs.h \
 	sys/stat.h \
 	sys/statvfs.h \
-	sys/sysctl.h \
 	sys/sysinfo.h \
 	sys/sysmacros.h \
 	sys/time.h \
@@ -383,6 +383,7 @@ AC_CONFIG_FILES([
 	src/include/pbs_version.h
 	src/lib/Libattr/Makefile
 	src/lib/Libdb/Makefile
+	src/lib/Libdb/pgsql/Makefile
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile

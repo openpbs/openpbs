@@ -48,23 +48,28 @@ import pdb
 import re
 import string
 import sys
+import enum
 import xml.dom.minidom
 import xml.parsers.expat
 
 list_ecl = []
 list_svr = []
-global e_flag
-global s_flag
+list_defs = []
 
-global ms
-global me
+global attr_type
+global newattr
 
-e_flag = 0
-s_flag = 0
-
+class PropType(enum.Enum):
+    '''
+    BOTH - Write information for this tag to all the output files
+    SERVER - Write information for this tag to the SERVER file only
+    ECL - Write information for this tag to the ECL file only
+    '''
+    BOTH = 0
+    SERVER = 1
+    ECL = 2
 
 class switch(object):
-
     """
     This class provides the functionality which is equivalent
     to switch/case statements in C. It only needs to be defined
@@ -90,369 +95,195 @@ class switch(object):
             return False
 
 
-def fileappend(line):
-    """
-    fileappend function - (wrapper on top of append for being able to
-    select the file where to write
-    """
-    global s_flag
-    global e_flag
+def fileappend(prop_type, line):
+    '''
+    Selects files to append line to dependig on prop_type
+    prop_type - BOTH, SERVER, ECL
+    line - The string line to append to the file(s)
+    '''
+    global attr_type
 
-    if s_flag == 1 and e_flag == 0:
-        list_svr.append(line)
-    if e_flag == 1 and s_flag == 0:
-        list_ecl.append(line)
-    if e_flag == 0 and s_flag == 0:
-        list_svr.append(line)
-        list_ecl.append(line)
+    if prop_type == PropType.SERVER:
+        if attr_type == PropType.SERVER or attr_type == PropType.BOTH:
+            list_svr.append(line)
+    elif prop_type == PropType.ECL:
+        if attr_type == PropType.ECL or attr_type == PropType.BOTH:
+            list_ecl.append(line)
+    elif prop_type == PropType.BOTH:
+        if attr_type == PropType.SERVER or attr_type == PropType.BOTH:
+            list_svr.append(line)
+        if attr_type == PropType.ECL or attr_type == PropType.BOTH:
+            list_ecl.append(line)
     return None
 
 
-def getText(efl, sfl):
-    """
+def getText(svr_file, ecl_file, defines_file):
+    '''
     getText function - (writes the data stored in lists to file)
-    """
-    buff1 = "".join(list_svr)
-    buff2 = "".join(list_ecl)
-    for line in buff1:
-        sfl.write(line)
-    for line in buff2:
-        efl.write(line)
+    svr_file - the server side output file
+    ecl_file - the output file to be used by the ECL layer
+    defines_file - the output file containing the macro definitions for the index positions
+    '''
+    buff = "".join(list_svr)
+    for line in buff:
+        svr_file.write(line)
+
+    buff = "".join(list_ecl)
+    for line in buff:
+        ecl_file.write(line)
+
+    buff = "".join(list_defs)
+    for line in buff:
+        defines_file.write(line)
 
 
-def add_comma(string):
-    """
-    add_comma function - (will take Tag values and will put if there is any comma in it)
-    """
-    buff2 = string.split('\n')
-    for line in buff2:
-        if re.search(r'#', line):
-            line = line.strip(' \t')
-            list_svr.append('\t' + '\t' + line + '\n')
-        elif re.search(r'\n', line):
-            pass
-        else:
-            line = line.strip(' \t')
-            list_svr.append('\t' + '\t' + '\t' + line + ',' + '\n')
+def do_head(node):
+    '''
+    Processes the head element of the node passed
+    '''
+    alist = node.getElementsByTagName('head')
+    for a in alist:
+        list_svr.append ("/*Disclaimer: This is a machine generated file.*/" + '\n')
+        list_svr.append("/*For modifying any attribute change corresponding XML file */" + '\n')
+        list_ecl.append("/*Disclaimer: This is a machine generated file.*/" + '\n')
+        list_ecl.append("/*For modifying any attribute change corresponding XML file */" + '\n')
+        blist = a.getElementsByTagName('SVR')
+        blist_ecl = a.getElementsByTagName('ECL')
+        for s in blist:
+            text1 = s.childNodes[0].nodeValue
+            text1 = text1.strip(' \t')
+            list_svr.append(text1)
+        for e in blist_ecl:
+            text2 = e.childNodes[0].nodeValue
+            text2 = text2.strip(' \t')
+            list_ecl.append(text2)
 
 
-def attr(masterf, svrf, eclf):
-    """
-    attr function - (opens the files reads them and using minidom filters relevant
-    data to individual lists)
-    """
+def do_index(attr):
+    '''
+    Processes the member_index attribute attr
+    '''
+    li = None
+    li = attr.getElementsByTagName('member_index')
+    if li:
+        for v in li:
+            buf = v.childNodes[0].nodeValue
+            list_defs.append("\n\t" + buf + ",")
+
+
+def do_member(attr, p_flag, tag_name):
+    '''
+    Processes the member identified by tage_name
+    attr - the attribute definition node
+    p_flag - property flag - SVR, ECL, BOTH
+    tag_name - the tag_name string to process
+    '''
+    global newattr
+    buf = None
+    comma = ','
+    if newattr:
+        comma = ''
+
+    newattr = False
+    li = attr.getElementsByTagName(tag_name)
+    if li:
+        svr = li[0].getElementsByTagName('SVR')
+        if svr:
+            value = svr
+            for v in value:
+                buf = v.childNodes[0].nodeValue
+                fileappend(PropType.SERVER, comma + '\n' + '\t' + '\t' + buf)
+
+        ecl = li[0].getElementsByTagName('ECL')
+        if ecl:
+            value = ecl
+            for v in value:
+                buf = v.childNodes[0].nodeValue
+                fileappend(PropType.ECL, comma + '\n' + '\t' + '\t' + buf)
+
+        value = li
+        for v in value:
+            buf = v.childNodes[0].nodeValue
+            if buf:
+                s = buf.strip('\n \t')
+                if s:
+                    fileappend(p_flag, comma + '\n' + '\t' + '\t' + buf)
+
+
+def process(master_file, svr_file, ecl_file, defines_file):
+    '''
+    process the master xml file and produce the outputs files as requested
+    master_file - the Master XML files to process
+    svr_file - the server side output file
+    ecl_file - the output file to be used by the ECL layer
+    defines_file - the output file containing the macro definitions for the index positions
+    '''
     from xml.dom import minidom
 
-    global e_flag
-    global s_flag
-    doc = minidom.parse(masterf)
+    global attr_type
+    global newattr
+    newattr = False
+
+    doc = minidom.parse(master_file)
     nodes = doc.getElementsByTagName('data')
 
     for node in nodes:
-        alist = node.getElementsByTagName('head')
-        for a in alist:
-            list_svr.append (
-                "/*Disclaimer: This is a machine generated file.*/" + '\n')
-            list_svr.append(
-                "/*For modifying any attribute change corresponding XML file */" + '\n')
-            list_ecl.append(
-                "/*Disclaimer: This is a machine generated file.*/" + '\n')
-            list_ecl.append(
-                "/*For modifying any attribute change corresponding XML file */" + '\n')
-            blist = a.getElementsByTagName('SVR')
-            blist_ecl = a.getElementsByTagName('ECL')
-            for s in blist:
-                text1 = s.childNodes[0].nodeValue
-                text1 = text1.strip(' \t')
-                list_svr.append(text1)
-            for e in blist_ecl:
-                text2 = e.childNodes[0].nodeValue
-                text2 = text2.strip(' \t')
-                list_ecl.append(text2)
+        do_head(node)
+    
         at_list = node.getElementsByTagName('attributes')
-        for i in at_list:
-            e_flag = 0
-            s_flag = 0
-            attr_list = i.childNodes[0].nodeValue
-            inc_name =  i.getAttribute('include')
-            list_svr.append( '\n' + inc_name)
-            flag_name = i.getAttribute('flag')
+        for attr in at_list:
+            attr_type = PropType.BOTH
+            newattr  = True
+
+            flag_name = attr.getAttribute('flag')
             if flag_name == 'SVR':
-                s_flag = 1
+                attr_type = PropType.SERVER
             if flag_name == 'ECL':
-                e_flag = 1
-            if flag_name == None:
-                e_flag = 0
-                s_flag = 0
-            attr_list = attr_list.strip(' \t')
-            fileappend(attr_list)
-            h = None
-            s_mem = None
-            e_mem = None
-            mem_list1 = i.getElementsByTagName('member_name')
-            if mem_list1:
-                bot = mem_list1[0].getElementsByTagName('both')
-                svr = mem_list1[0].getElementsByTagName('SVR')
-                ecl = mem_list1[0].getElementsByTagName('ECL')
-                for b in bot:
-                    h = b.childNodes[0].nodeValue
-                    h = h.strip(' \t')
-                    fileappend(
-                        '\n' + '\t' + '{' + '\n' + '\t' + '\t' + h + ',' + '\n')
-                for s in svr:
-                    s_mem = s.childNodes[0].nodeValue
-                    s_mem = s_mem.strip(' \t')
-                    fileappend(
-                        '\n' + '\t' + '{' + '\n' + '\t' + '\t' + s_mem + ',' + '\n')
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    e_mem = e_mem.strip(' \t')
-                    fileappend(
-                        '\n' + '\t' + '{' + '\n' + '\t' + '\t' + e_mem + ',' + '\n')
-            else:
-                sys.exit(
-                    "member_name does not exist!" + i.childNodes[0].nodeValue)
+                attr_type = PropType.ECL
 
-            mem_list2 = i.getElementsByTagName('member_at_decode')
-            if mem_list2:
-                mem = mem_list2[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_decode <Tag> does not exist! for Attribute -> " + tmp)
+            inc_name =  attr.getAttribute('include')
+            if inc_name:
+                fileappend(PropType.SERVER, '\n' + inc_name)
 
+            mem_list = attr.childNodes[0].nodeValue
+            mem_list = mem_list.strip(' \t')
+            fileappend(PropType.BOTH, mem_list)
 
-            mem_list3 = i.getElementsByTagName('member_at_encode')
-            if mem_list3:
-                mem = mem_list3[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                s_flag = 1
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_encode <Tag> does not exist! for Attribute -> " + tmp)
+            macro_name = attr.getAttribute('macro')
+            if macro_name:
+                fileappend(PropType.BOTH, '\n' + macro_name + "\n")
 
-            mem_list4 = i.getElementsByTagName('member_at_set')
-            s_flag = 1
-            if mem_list4:
-                mem = mem_list4[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_set <Tag> does not exist! for Attribute -> " + tmp)
+            do_index(attr)
+            fileappend(PropType.BOTH, '\t{')
 
-            mem_list5 = i.getElementsByTagName('member_at_comp')
-            s_flag = 1
-            if mem_list5:
-                mem = mem_list5[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_comp <Tag> does not exist! for Attribute -> " + tmp)
+            do_member(attr, PropType.BOTH, 'member_name')
+            do_member(attr, PropType.SERVER, 'member_at_decode')
+            do_member(attr, PropType.SERVER, 'member_at_encode')
+            do_member(attr, PropType.SERVER, 'member_at_set')
+            do_member(attr, PropType.SERVER, 'member_at_comp')
+            do_member(attr, PropType.SERVER, 'member_at_free')
+            do_member(attr, PropType.SERVER, 'member_at_action')
+            do_member(attr, PropType.BOTH, 'member_at_flags')
+            do_member(attr, PropType.BOTH, 'member_at_type')
+            do_member(attr, PropType.SERVER, 'member_at_parent')
+            do_member(attr, PropType.ECL, 'member_verify_function')
+            do_member(attr, PropType.SERVER, 'member_at_entlim')
+            do_member(attr, PropType.SERVER, 'member_at_struct')
 
-            mem_list6 = i.getElementsByTagName('member_at_free')
-            s_flag = 1
-            if mem_list6:
-                mem = mem_list6[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_free <Tag> does not exist! for Attribute -> " + tmp)
+            fileappend(PropType.BOTH, '\n\t}')
+            fileappend(PropType.BOTH, ",")
 
-            mem_list7 = i.getElementsByTagName('member_at_action')
-            s_flag = 1
-            if mem_list7:
-                mem = mem_list7[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_action <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list8 = i.getElementsByTagName('member_at_flags')
-            if mem_list8:
-                mem = mem_list8[0].childNodes[0].nodeValue
-                bot = mem_list8[0].getElementsByTagName('both')
-                svr = mem_list8[0].getElementsByTagName('SVR')
-                ecl = mem_list8[0].getElementsByTagName('ECL')
-                for b in bot:
-                    h = b.childNodes[0].nodeValue
-                    h = h.strip(' \t')
-                    fileappend('\t' + '\t' + h + ',' + '\n')
-                for s in svr:
-                    s_mem = s.childNodes[0].nodeValue
-                    s_mem = s_mem.strip(' \t')
-                    s_flag = 1
-                    if re.search(r'^#', s_mem):
-                        add_comma(s_mem)
-                    else:
-                        fileappend('\t' + '\t' + s_mem + ',' + '\n')
-                s_flag = 0
-                e_flag = 0
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    e_mem = e_mem.strip(' \t')
-                    e_flag = 1
-                    fileappend('\t' + '\t' + e_mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_flags <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list9 = i.getElementsByTagName('member_at_type')
-            if mem_list9:
-                mem = mem_list9[0].childNodes[0].nodeValue
-                bot = mem_list9[0].getElementsByTagName('both')
-                svr = mem_list9[0].getElementsByTagName('SVR')
-                ecl = mem_list9[0].getElementsByTagName('ECL')
-                for b in bot:
-                    h = b.childNodes[0].nodeValue
-                    h = h.strip(' \t')
-                    fileappend('\t' + '\t' + h + ',' + '\n')
-                for s in svr:
-                    s_mem = s.childNodes[0].nodeValue
-                    s_mem = s_mem.strip(' \t')
-                    s_flag = 1
-                    if re.search(r'^#', s_mem):
-                        add_comma(s_mem)
-                    else:
-                        fileappend('\t' + '\t' + s_mem + ',' + '\n')
-                s_flag = 0
-                e_flag = 0
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    e_mem = e_mem.strip(' \t')
-                    e_flag = 1
-                    fileappend('\t' + '\t' + e_mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_type <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list10 = i.getElementsByTagName('member_at_parent')
-            if mem_list10:
-                mem = mem_list10[0].childNodes[0].nodeValue
-                mem = mem.strip(' \t')
-                s_flag = 1
-                fileappend('\t' + '\t' + mem + '\n' + '\t' + '},')
-                s_flag = 0
-            else:
-                pass
-            e_flag = 0
-            s_flag = 0
-            mem_list11 = i.getElementsByTagName('member_verify_function')
-            if mem_list11:
-                mem = mem_list11[0].childNodes[0].nodeValue
-                ecl = mem_list11[0].getElementsByTagName('ECL')
-                e_mem1 = []
-                # <Tag> member_verify_function, will always have only 2 ECL subtags.
-                e_flag = 1
-                for e in ecl:
-                    e_mem1.append(e.childNodes[0].nodeValue.strip(' \t'))
-                fileappend('\t' + '\t' + e_mem1[0] + ',' + '\n')
-                fileappend('\t' + '\t' + e_mem1[1] + '\t' + '\n' + '\t' + '},')
-                e_flag = 0
-                s_flag = 0
-            else:
-                pass
+            if macro_name:
+                fileappend(PropType.BOTH, '\n#else')
+                fileappend(PropType.BOTH, '\n\t{\n\t\t"noop"\n\t},')
+                fileappend(PropType.BOTH, '\n#endif')
 
         tail_list = node.getElementsByTagName('tail')
         for t in tail_list:
             tail_value = t.childNodes[0].nodeValue
             if tail_value == None:
                 pass
-            fileappend('\n')
+            fileappend(PropType.BOTH, '\n')
             tail_both = t.getElementsByTagName('both')
             tail_svr = t.getElementsByTagName('SVR')
             tail_ecl = t.getElementsByTagName('ECL')
@@ -470,400 +301,28 @@ def attr(masterf, svrf, eclf):
                 e = e.strip(' \t')
                 list_ecl.append(e)
 
-        getText(eclf, svrf)
-
-
-def resc_attr(masterf, svrf, eclf):
-    """
-    resc_attr function - (opens the resc_def file reads them and using minidom
-    filters relevant data to individual lists)
-    """
-    from xml.dom import minidom
-
-    global e_flag
-    global s_flag
-
-    global ms
-    global me
-
-    doc = minidom.parse(masterf)
-    nodes = doc.getElementsByTagName('data')
-
-    for node in nodes:
-        alist = node.getElementsByTagName('head')
-        for a in alist:
-            list_svr.append (
-                "/*Disclaimer: This is a machine generated file.*/" + '\n')
-            list_svr.append(
-                  "/*For modifying any attribute change corresponding XML file */" + '\n')
-            list_ecl.append(
-                  "/*Disclaimer: This is a machine generated file.*/" + '\n')
-            list_ecl.append(
-                  "/*For modifying any attribute change corresponding XML file */" + '\n')
-            blist = a.getElementsByTagName('SVR')
-            blist_ecl = a.getElementsByTagName('ECL')
-            for s in blist:
-                text1 = s.childNodes[0].nodeValue
-                list_svr.append(text1)
-            for e in blist_ecl:
-                text2 = e.childNodes[0].nodeValue
-                list_ecl.append(text2)
-        at_list = node.getElementsByTagName('attributes')
-        for i in at_list:
-            attr_list = i.childNodes[0].nodeValue
-            flag_name = i.getAttribute('flag')
-            macro_name = i.getAttribute('macro')
-            s_flag = 0
-            e_flag = 0
-            ms = 0
-            me = 0
-            mflg = i.getAttribute('mflag')
-            if flag_name == 'SVR':
-                s_flag = 1
-            if flag_name == 'ECL':
-                e_flag = 1
-            if flag_name == None:
-                e_flag = 0
-                s_flag = 0
-            if macro_name:
-                ms = 1
-                me = 1
-                for case in switch(mflg):
-                    if case('SVR'):
-                        ms = 1
-                        me = 0
-                        break
-                    if case('ECL'):
-                        me = 1
-                        ms = 0
-                        break
-            if me == 1 and macro_name != None:
-                list_ecl.append('\n' + macro_name)
-            if ms == 1 and macro_name != None:
-                list_svr.append('\n' + macro_name)
-            fileappend(attr_list)
-            h = None
-            s_mem = None
-            e_mem = None
-            mem_list1 = i.getElementsByTagName('member_name')
-            if mem_list1:
-                mem = mem_list1[0].childNodes[0].nodeValue
-                bot = mem_list1[0].getElementsByTagName('both')
-                svr = mem_list1[0].getElementsByTagName('SVR')
-                ecl = mem_list1[0].getElementsByTagName('ECL')
-                for b in bot:
-                    h = b.childNodes[0].nodeValue
-                    fileappend(
-                        '\n' + '\t' + '{' + '\n' + '\t' + '\t' + h.strip(' \t') + ',' + '\n')
-                for s in svr:
-                    s_mem = s.childNodes[0].nodeValue
-                    s_mem = s_mem.strip(' \t')
-                    fileappend(
-                        '\n' + '\t' + '{' + '\n' + '\t' + '\t' + s_mem + ',' + '\n')
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    e_mem = e_mem.strip(' \t')
-                    fileappend(
-                        '\n' + '\t' + '{' + '\n' + '\t' + '\t' + e_mem + ',' + '\n')
-            else:
-                sys.exit(
-                    "member_name does not exist!" + i.childNodes[0].nodeValue)
-            mem_list2 = i.getElementsByTagName('member_at_decode')
-            if mem_list2:
-                mem = mem_list2[0].childNodes[0].nodeValue
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_decode <Tag> does not exist! for Attribute -> " + tmp)
-
-            mem_list3 = i.getElementsByTagName('member_at_encode')
-            if mem_list3:
-                mem = mem_list3[0].childNodes[0].nodeValue
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_encode <Tag> does not exist! for Attribute -> " + tmp)
-
-            mem_list4 = i.getElementsByTagName('member_at_set')
-            if mem_list4:
-                mem = mem_list4[0].childNodes[0].nodeValue
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_set <Tag> does not exist! for Attribute -> " + tmp)
-
-            mem_list5 = i.getElementsByTagName('member_at_comp')
-            if mem_list5:
-                mem = mem_list5[0].childNodes[0].nodeValue
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_comp <Tag> does not exist! for Attribute -> " + tmp)
-
-            mem_list6 = i.getElementsByTagName('member_at_free')
-            if mem_list6:
-                mem = mem_list6[0].childNodes[0].nodeValue
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_free <Tag> does not exist! for Attribute -> " + tmp)
-
-            mem_list7 = i.getElementsByTagName('member_at_action')
-            if mem_list7:
-                mem = mem_list7[0].childNodes[0].nodeValue
-                s_flag = 1  # This is not required in ECL files
-                if re.search(r'^#', mem):
-                    add_comma(mem)
-                else:
-                    fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_action <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list8 = i.getElementsByTagName('member_at_flags')
-            if mem_list8:
-                mem = mem_list8[0].childNodes[0].nodeValue
-                bot = mem_list8[0].getElementsByTagName('both')
-                svr = mem_list8[0].getElementsByTagName('SVR')
-                ecl = mem_list8[0].getElementsByTagName('ECL')
-                for b in bot:
-                    h = b.childNodes[0].nodeValue
-                    fileappend('\t' + '\t' + h + ',' + '\n')
-                for s in svr:
-                    s_mem = s.childNodes[0].nodeValue
-                    s_flag = 1
-                    if re.search(r'^#', s_mem):
-                        add_comma(s_mem)
-                    else:
-                        fileappend('\t' + '\t' + s_mem + ',' + '\n')
-                s_flag = 0
-                e_flag = 0
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    e_flag = 1
-                    fileappend('\t' + '\t' + e_mem + ',' + '\n')
-
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_flags <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list9 = i.getElementsByTagName('member_at_type')
-            if mem_list9:
-                mem = mem_list9[0].childNodes[0].nodeValue
-                bot = mem_list9[0].getElementsByTagName('both')
-                svr = mem_list9[0].getElementsByTagName('SVR')
-                ecl = mem_list9[0].getElementsByTagName('ECL')
-                for b in bot:
-                    h = b.childNodes[0].nodeValue
-                    fileappend('\t' + '\t' + h + ',' + '\n')
-                for s in svr:
-                    s_mem = s.childNodes[0].nodeValue
-                    s_flag = 1
-                    if re.search(r'^#', s_mem):
-                        add_comma(s_mem)
-                    else:
-                        fileappend('\t' + '\t' + s_mem + ',' + '\n')
-                e_flag = 0
-                s_flag = 0
-
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    e_flag = 1
-                    fileappend('\t' + '\t' + e_mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_type <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list10 = i.getElementsByTagName('member_at_entlim')
-            if mem_list10:
-                mem = mem_list10[0].childNodes[0].nodeValue
-                s_flag = 1
-                fileappend('\t' + '\t' + mem + ',' + '\n')
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_entlim <Tag> does not exist! for Attribute -> " + tmp)
-
-            mem_list11 = i.getElementsByTagName('member_at_struct')
-            if mem_list11:
-                mem = mem_list11[0].childNodes[0].nodeValue
-                s_flag = 1
-                fileappend('\t' + '\t' + mem + '\n' + '\t' + '},')
-                if ms == 1:
-                    fileappend('\n' + '#endif' + '\n')
-
-            else:
-                if h:
-                    tmp = h
-                elif s_mem:
-                    tmp = s_mem
-                elif e_mem:
-                    tmp = e_mem
-                else:
-                    tmp = i.childNodes[0].nodeValue
-                sys.exit(
-                    "member_at_struct <Tag> does not exist! for Attribute -> " + tmp)
-            e_flag = 0
-            s_flag = 0
-
-            mem_list12 = i.getElementsByTagName('member_verify_function')
-            if mem_list12:
-                mem = mem_list12[0].childNodes[0].nodeValue
-                ecl = mem_list12[0].getElementsByTagName('ECL')
-                for e in ecl:
-                    e_mem = e.childNodes[0].nodeValue
-                    ecl = mem_list12[0].getElementsByTagName('ECL')
-                e_mem1 = []
-                # <Tag> member_verify_function, will always have only 2 ECL subtags.
-                e_flag = 1
-                for e in ecl:
-                    e_mem1.append(e.childNodes[0].nodeValue.strip(' \t'))
-                fileappend('\t' + '\t' + e_mem1[0] + ',' + '\n')
-                fileappend('\t' + '\t' + e_mem1[1] + '\t' + '\n' + '\t' + '},')
-
-                if me == 1:
-                    fileappend('\n' + '#endif' + '\n')
-                e_flag = 0
-                s_flag = 0
-            else:
-                pass
-
-        tail_list = node.getElementsByTagName('tail')
-        for t in tail_list:
-            tail_value = t.childNodes[0].nodeValue
-            if tail_value == None:
-                pass
-            fileappend('\n')
-            tail_both = t.getElementsByTagName('both')
-            tail_svr = t.getElementsByTagName('SVR')
-            tail_ecl = t.getElementsByTagName('ECL')
-            for tb in tail_both:
-                b = tb.childNodes[0].nodeValue
-                list_ecl.append(b)
-                list_svr.append(b)
-            for ts in tail_svr:
-                s = ts.childNodes[0].nodeValue
-                list_svr.append(s)
-            for te in tail_ecl:
-                e = te.childNodes[0].nodeValue
-                list_ecl.append(e)
-
-    getText(eclf, svrf)
+        getText(svr_file, ecl_file, defines_file)
 
 
 def main(argv):
-    """
-    The Main Module starts here-
+    '''
     Opens files,and calls appropriate functions based on Object values.
-    """
-    global SVR_FILE
-    global ECL_FILE
-    global MASTER_FILE
-    global ATTRIBUTE_SCRIPT_ARG
+    '''
+    global SVR_FILENAME
+    global ECL_FILENAME
+    global DEFINES_FILENAME
+    global MASTER_FILENAME
+
+    SVR_FILENAME = "/dev/null"
+    ECL_FILENAME = "/dev/null"
+    DEFINES_FILENAME = "/dev/null"
+    MASTER_FILENAME = "/dev/null"
 
     if len(sys.argv) == 2:
         usage()
         sys.exit(1)
     try:
-        opts, args = getopt.getopt(
-            argv, "m:s:e:a:h", ["master=", "svr=", "ecl=", "attr=", "help"])
+        opts, args = getopt.getopt(argv, "m:s:e:d:h", ["master=", "svr=", "ecl=", "attr=", "help=", "defines="])
     except getopt.error as err:
         print(str(err))
         usage()
@@ -873,76 +332,62 @@ def main(argv):
             usage()
             sys.exit(1)
         elif opt in ("-m", "--master"):
-            MASTER_FILE = arg
+            MASTER_FILENAME = arg
         elif opt in ("-s", "--svr"):
-            SVR_FILE = arg
+            SVR_FILENAME = arg
+        elif opt in ("-d", "--defines"):
+            DEFINES_FILENAME = arg
         elif opt in ("-e", "--ecl"):
-            ECL_FILE = arg
-        elif opt in ("-a", "--attr"):
-            ATTRIBUTE_SCRIPT_ARG = arg
+            ECL_FILENAME = arg
         else:
             print("Invalid Option!")
             sys.exit(1)
 #    Error conditions are checked here.
 
-    if MASTER_FILE is None or not os.path.isfile(MASTER_FILE) or not os.path.getsize(MASTER_FILE) > 0:
+    if MASTER_FILENAME is None or not os.path.isfile(MASTER_FILENAME) or not os.path.getsize(MASTER_FILENAME) > 0:
         print("Master file not found or data is not present in File")
         sys.exit(1)
 
-    if SVR_FILE is None:
-        SVR_FILE = "attr_def.c"
-
-    if ECL_FILE is None:
-        ECL_FILE = "ecl_attr_def.c"
-
-    if ATTRIBUTE_SCRIPT_ARG is None or not str:
-        print("Attribute type is required")
+    try:
+        master_file = open(MASTER_FILENAME, encoding='utf-8')
+    except IOError as err:
+        print(str(err))
+        print('Cannot open master file ' + MASTER_FILENAME)
         sys.exit(1)
 
     try:
-        m_file = open(MASTER_FILE, encoding='utf-8')
+        svr_file = open(SVR_FILENAME, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Master File!')
+        print('Cannot open ferver file ' + SVR_FILENAME)
         sys.exit(1)
 
     try:
-        s_file = open(SVR_FILE, 'w', encoding='utf-8')
+        defines_file = open(DEFINES_FILENAME, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Server File!')
+        print('Cannot open defines file ' + DEFINES_FILENAME)
         sys.exit(1)
 
     try:
-        e_file = open(ECL_FILE, 'w', encoding='utf-8')
+        ecl_file = open(ECL_FILENAME, 'w', encoding='utf-8')
     except IOError as err:
         print(str(err))
-        print('Cannot Open Ecl File!')
+        print('Cannot open ecl file ' + ECL_FILENAME)
         sys.exit(1)
 
-    n = str(ATTRIBUTE_SCRIPT_ARG)
+    process(master_file, svr_file, ecl_file, defines_file)
 
-    for case in switch(n):
-        if case('job', 'server', 'node', 'queue', 'sched', 'resv'):
-            attr(m_file, s_file, e_file)
-            break
-        if case('resc'):
-            resc_attr(m_file, s_file, e_file)
-            break
-        if case():  # default, could also just omit condition or 'if True'
-            print("Invalid Object!")
-        # No need to break here, it'll stop anyway
-
-    m_file.close()
-    s_file.close()
-    e_file.close()
+    master_file.close()
+    svr_file.close()
+    ecl_file.close()
 
 
 def usage():
     """
     Usage (depicts the usage of the script)
     """
-    print("usage: prog -m <MASTER_FILE> -s <svr_attr_file> -e <ecl_attr_file> -a <object>")
+    print("usage: prog -m <MASTER_FILENAME> -s <svr_attr_file> -e <ecl_attr_file> -d <defines_file>")
 
 
 if __name__ == "__main__":

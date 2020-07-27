@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_submit_resv 3B "15 November 2019" Local "PBS"
+.TH pbs_submit_resv 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_submit_resv
+.B pbs_submit_resv 
 \- submit a PBS reservation
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -47,30 +46,30 @@
 #include <pbs_ifl.h>
 .sp
 .nf
-.B char *pbs_submit_resv(int connect, struct attropl *attrib_list,
+.B char *pbs_submit_resv(int connect, struct attropl *attrib_list, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 
 .SH DESCRIPTION
 Issues a batch request to submit a new reservation.
 
-Generates a
-.I Submit Reservation
-(70) batch request and sends it to the server over the connection specified by
+Generates a 
+.I Submit Reservation 
+(70) batch request and sends it to the server over the connection specified by 
 .I connect.
 
-Returns a pointer to the reservation ID.
+Returns a pointer to the reservation ID. 
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection over which to send batch request to server.
 
 .IP attrib_list 8
 Pointer to a list of attributes to set, with values.  Each attribute
-is described in an
-.I attropl
+is described in an 
+.I attropl 
 structure, defined in pbs_ifl.h as:
 .nf
 struct attropl {
@@ -96,19 +95,19 @@ Character string for extensions to command.  Not currently used.
 Points to next attribute in list.  A null pointer terminates the list.
 
 .IP name 8
-Points to a string containing the name of the attribute.
+Points to a string containing the name of the attribute.  
 
 .IP resource 8
 Points to a string containing the name of a resource.  Used only when
 the specified attribute contains resource information.  Otherwise,
-.I resource
+.I resource 
 should be a null pointer.
 
 .IP value 8
-Points to a string containing the value of the attribute or resource.
+Points to a string containing the value of the attribute or resource.  
 
 .IP op 8
-Operator.  The only allowed operator for this function is
+Operator.  The only allowed operator for this function is 
 .I SET.
 
 .SH RETURN VALUE
@@ -117,17 +116,17 @@ Returns a pointer to a character string containing the reservation ID
 assigned by the server.
 
 If an error occurred, the routine returns a null pointer, and the
-error number is available in the global integer
+error number is available in the global integer 
 .I pbs_errno.
 
 .SH CLEANUP
 
-The space for the reservation ID returned by
-.B pbs_submit_resv()
-is allocated by
-.B pbs_submit_resv().
-Free it via a call to
-.B free()
+The space for the reservation ID returned by 
+.B pbs_submit_resv() 
+is allocated by 
+.B pbs_submit_resv().  
+Free it via a call to 
+.B free() 
 when you no longer need it.
 
 .SH SEE ALSO

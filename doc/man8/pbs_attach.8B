@@ -36,60 +36,59 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_attach 8B "17 October 2017" Local "PBS"
+.TH pbs_attach 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_attach
+.B pbs_attach 
 \- attach a session ID to a PBS job
 
 
 .SH SYNOPSIS
 .B Linux
 .br
-.B pbs_attach
+.B pbs_attach 
 [-j <job ID>] [-m <port>] -p <PID>
 .br
-.B pbs_attach
-[-j <job ID>] [-m <port>] [-P] [-s] <cmd> [<arg> ...]
+.B pbs_attach 
+[-j <job ID>] [-m <port>] [-P] [-s] <cmd> [<arg> ...] 
 .br
-.B pbs_attach
+.B pbs_attach 
 --version
 
 .B Windows
 .br
-.B pbs_attach
+.B pbs_attach 
 [-c <path to script>] [-j <job ID>] [-m <port>] -p <PID>
 .br
 .B pbs_attach
-[-c <path to script>] [-j <job ID>] [-m <port>] [-P] [-s]
+[-c <path to script>] [-j <job ID>] [-m <port>] [-P] [-s] 
 .RS 11
-<cmd> [<arg> ...]
+<cmd> [<arg> ...] 
 .RE
 .br
-.B pbs_attach
+.B pbs_attach 
 --version
 
 .SH DESCRIPTION
 The
 .B pbs_attach
-command associates the processes in a session with
+command associates the processes in a session with 
 a PBS job by attaching the session ID to the job.  This allows PBS MoM
 to monitor and control those processes.
 
 MoM uses process IDs to determine session IDs, which are
-put into MoM's task list (attached to the job.)  All process IDs in
+put into MoM's task list (attached to the job.)  All process IDs in 
 a session are then associated with the job.
 
 When a command
 .I cmd
-is given as an operand,
-the
+is given as an operand, 
+the 
 .B pbs_attach
-process becomes the parent process of
-.I cmd,
-and the session ID of
+process becomes the parent process of 
+.I cmd, 
+and the session ID of 
 .B pbs_attach
-is attached to the job.
+is attached to the job.  
 
 
 
@@ -97,20 +96,20 @@ is attached to the job.
 .IP "-c <path to script>" 15
 Windows only.  Specified command is invoked using a new command shell.
 In order to spawn and attach built-in DOS commands such as set or
-echo, it is necessary to open the task using a
-.I cmd
+echo, it is necessary to open the task using a 
+.I cmd 
 shell.  The new
-command shell,
+command shell, 
 .I cmd.exe
 , is attached as a task to the PBS job.  The
-.B pbs_attach
+.B pbs_attach 
 command spawns a program using a new command shell when
-attaching a batch script, or when invoked with the
-.I -c
+attaching a batch script, or when invoked with the 
+.I -c 
 option.
 .IP "-j <job ID>" 15
 The job ID to which the session ID is to be attached.
-If
+If 
 .I job ID
 is not specified,
 a best effort is made to determine the job to which to attach
@@ -119,90 +118,87 @@ the session.
 The port at which to contact MOM.  Default: value of PBS_MANAGER_SERVICE_PORT
 from pbs.conf
 .IP "-p <PID>" 15
-Process ID whose session ID is to be attached to the job.
+Process ID whose session ID is to be attached to the job.  
 Default: process ID of pbs_attach.
-Cannot be used with the
-.I -P
+Cannot be used with the 
+.I -P 
 or
 .I -s
-options or the
+options or the 
 .I cmd
 operand.
 
 .IP "-P" 15
-Attach sessions of both
-.B pbs_attach
-and the parent of
-.B pbs_attach
-to job.
-When used with
+Attach sessions of both 
+.B pbs_attach 
+and the parent of 
+.B pbs_attach 
+to job.  
+When used with 
 .I -s
-option,
+option, 
 the sessions of the new
 .B fork()
 ed
 .B pbs_attach
-and its parent, which is
+and its parent, which is 
 .B pbs_attach,
-are attached to the job.  Cannot be used with the
+are attached to the job.  Cannot be used with the 
 .I -p
 or
 .I -s
-options or the
+options or the 
 .I cmd
 operand.
 
 .IP "-s" 15
-Starts a new session and attaches it to the job:
+Starts a new session and attaches it to the job: 
 .B pbs_attach
-calls
-.B fork(),
+calls 
+.B fork(), 
 then the child
 .B pbs_attach
-first calls
-.B setsid()
-and then calls
+first calls 
+.B setsid() 
+and then calls 
 .B tm_attach
 to attach the new session to the job.  The session ID of the new
 .B pbs_attach
 is attached to the job.
 
 .IP "--version" 15
-The
+The 
 .B pbs_attach
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
-.IP "cmd" 15
+.IP "cmd" 15 
 Name of command whose process ID is to be associated with the job.
 
 
 .SH EXIT STATUS
-.IP "0" 15
+.IP "0" 15 
 Success
 .IP "1" 15
 Any error following successful command line processing.
 A message is printed to standard error.
 .LP
-If
+If 
 .I cmd
-is specified,
-.B pbs_attach
+is specified, 
+.B pbs_attach 
 waits for
 .I cmd
 to exit, then exits with the exit value of
 .I cmd.
 .LP
-If
+If 
 .I cmd
-is not specified,
+is not specified, 
 .B pbs_attach
 exits after attaching the session ID(s) to the job.
 
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.br
 pbs_mom(8B), pbs_tmrsh(8B), setsid(2), tm(3)

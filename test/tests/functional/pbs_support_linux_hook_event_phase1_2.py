@@ -84,7 +84,7 @@ else:
         if self.momA.is_cpuset_mom():
             self.hostA = self.hostA + '[0]'
         if self.momB.is_cpuset_mom():
-            self.hostB = self.hostB + '[1]'
+            self.hostB = self.hostB + '[0]'
 
         # Job script
         test = []
