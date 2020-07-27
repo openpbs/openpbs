@@ -91,7 +91,7 @@ static char merr[] = "malloc failed";
 
 mominfo_t **mominfo_array = NULL;
 int         mominfo_array_size = 0;     /* num entries in the array */
-mominfo_time_t  mominfo_time = {0, 0};	/* time stamp of mominfo update */
+mominfo_time_t  mominfo_time = {0};	/* time stamp of mominfo update */
 int	    svr_num_moms = 0;
 vnpool_mom_t    *vnode_pool_mom_list = NULL;
 

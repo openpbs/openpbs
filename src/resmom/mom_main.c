@@ -6718,8 +6718,8 @@ net_restore_handler(void *data)
 {
 	mom_net_up = 1;
 	mom_net_up_time = time(0);
-	if (tpp_log_func)
-		tpp_log_func(LOG_INFO, msg_daemonname, "net restore handler called");
+
+	log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ALERT, __func__, "net restore handler called");
 }
 
 /*
@@ -6741,8 +6741,7 @@ net_down_handler(void *data)
 	hnodent	*np;
 	job		*pjob;
 
-	if (tpp_log_func)
-		tpp_log_func(LOG_INFO, msg_daemonname, "net down handler called");
+	log_event(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ALERT, __func__, "net down handler called");
 	if (server_stream >= 0) {
 		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
 				"Closing existing server stream %d", server_stream);
@@ -8013,28 +8012,6 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
-	/* set tpp config */
-	rc = set_tpp_config(NULL, &pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers);
-	free(nodename);
-
-	if (rc == -1) {
-		(void) sprintf(log_buffer, "Error setting TPP config");
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-							LOG_ERR,msg_daemonname, log_buffer);
-		fprintf(stderr, "%s", log_buffer);
-		return (3);
-	}
-
-	tpp_set_app_net_handler(net_down_handler, net_restore_handler);
-
-	if ((tppfd = tpp_init(&tpp_conf)) == -1) {
-		(void) sprintf(log_buffer, "tpp_init failed");
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-			LOG_ERR, msg_daemonname, log_buffer);
-		fprintf(stderr, "%s", log_buffer);
-		return (3);
-	}
-
 	servername = get_servername(&serverport);
 	localaddr = addclient_byname(LOCALHOST_SHORTNAME);
 	(void)addclient_byname(mom_host);
@@ -8220,6 +8197,27 @@ main(int argc, char *argv[])
 #ifndef	WIN32
 	initialize();		/* init RM code */
 #endif
+	/* set tpp config */
+	rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers);
+	free(nodename);
+
+	if (rc == -1) {
+		(void) sprintf(log_buffer, "Error setting TPP config");
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+							LOG_ERR,msg_daemonname, log_buffer);
+		fprintf(stderr, "%s", log_buffer);
+		return (3);
+	}
+
+	tpp_set_app_net_handler(net_down_handler, net_restore_handler);
+
+	if ((tppfd = tpp_init(&tpp_conf)) == -1) {
+		(void) sprintf(log_buffer, "tpp_init failed");
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_ERR, msg_daemonname, log_buffer);
+		fprintf(stderr, "%s", log_buffer);
+		return (3);
+	}
 	(void)add_conn(tppfd, TppComm, (pbs_net_t)0, 0, NULL, tpp_request);
 
 	/* initialize machine dependent polling routines */

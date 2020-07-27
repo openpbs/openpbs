@@ -50,6 +50,7 @@ extern "C" {
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "log.h"
+#include "list_link.h"
 
 #include "tpp.h"
 
@@ -104,9 +105,8 @@ void tpp_invalidate_thrd_handle(pthread_t *);
 int tpp_is_valid_thrd(pthread_t);
 
 #define MAX_CON TPP_MAXOPENFD /* default max connections */
-#define MAX_SEQ_NUMBER          (UINT_MAX - 10)
-#define UNINITIALIZED_INT       (MAX_SEQ_NUMBER + 1)
-#define TPP_LOGBUF_SZ        	1024
+#define UNINITIALIZED_INT       -1
+#define TPP_GEN_BUF_SZ        	1024
 #define TPP_MAXADDRLEN          (INET6_ADDRSTRLEN + 10)
 
 /* some built in timing control defines to retry connections to routers */
@@ -135,31 +135,34 @@ typedef struct {
 	char family; /* Ipv4 or IPV6 etc */
 } tpp_addr_t;
 
+typedef struct {
+	pbs_list_link chunk_link;
+	char *data;	/* pointer to the data buffer */
+	int len;	/* length of the data buffer */
+	char *pos;	/* current position - till which data is consumed */
+} tpp_chunk_t;
+
 /*
  * Packet structure used at various places to hold a data and the
  * current position to which data has been consumed or processed
  */
 typedef struct {
-	char *data;	/* pointer to the data buffer */
-	int len;	/* length of the data buffer */
-	char *pos;	/* current position - till which data is consumed */
-	void *extra_data;	/* any additional data */
+	pbs_list_head chunks;
+	tpp_chunk_t *curr_chunk;
+	int totlen;
 	int ref_count;	/* number of accessors */
 } tpp_packet_t;
 
-/*
- * Structure used to describe chunks of data to be sent to a gather-and-send
- * api "tpp_transport_vsend". Each chunk has this structure.
- */
 typedef struct {
-	void *data;	/* pointer to data */
-	int len;	/* length of data */
-} tpp_chunk_t;
+	int ntotlen;
+	char type;
+} tpp_encrypt_hdr_t;
 
 /*
  * The authenticate packet header structure
  */
 typedef struct {
+	int ntotlen;
 	unsigned char type;
 	unsigned int for_encrypt;
 	char auth_method[MAXAUTHNAME + 1];
@@ -171,6 +174,7 @@ typedef struct {
  * The Join packet header structure
  */
 typedef struct {
+	int ntotlen;
 	unsigned char type;         /* type packet, JOIN, LEAVE etc */
 	unsigned char node_type;    /* node type - leaf or router */
 	unsigned char hop;          /* hop count */
@@ -183,6 +187,7 @@ typedef struct {
  * The Leave packet header structure
  */
 typedef struct {
+	int ntotlen;
 	unsigned char type;      /* type packet, JOIN, LEAVE etc */
 	unsigned char hop;
 	unsigned char ecode;
@@ -194,6 +199,7 @@ typedef struct {
  * The control packet header structure, MSG, NOROUTE etc
  */
 typedef struct {
+	int ntotlen;
 	unsigned char type;
 	unsigned char code;        /* NOROUTE, UPDATE, ERROR */
 	unsigned char error_num;   /* error_num in case of NOROUTE, ERRORs */
@@ -206,17 +212,13 @@ typedef struct {
  * The data packet header structure
  */
 typedef struct {
-	unsigned char type;        /* type of the packet - TPP_DATA, JOIN etc */
-	unsigned char dup;         /* Is this a duplicate packet? */
+	int ntotlen;
+	unsigned char type;        /* type of the packet - TPP_DATA, JOIN etc */	
 
 	unsigned int src_magic;    /* magic id of source stream */
-	unsigned int cmprsd_len;   /* length of compressed data, 0 if not compressed */
 
 	unsigned int src_sd;       /* source stream descriptor */
 	unsigned int dest_sd;      /* destination stream descriptor */
-
-	unsigned int seq_no;       /* packet sequence number */
-	unsigned int ack_seq;      /* sequence number of packet being ackd */
 
 	unsigned int totlen;       /* total pkt len (in case of fragmented pkts)*/
 
@@ -228,6 +230,7 @@ typedef struct {
  * The multicast packet header structure
  */
 typedef struct {
+	int ntotlen;
 	unsigned char type;       /* type of packet - TPP_MCAST_DATA */
 	unsigned char hop;        /* hop count */
 	unsigned int num_streams; /* number of member streams */
@@ -247,7 +250,6 @@ typedef struct {
 	unsigned int src_sd;	/* source descriptor of member stream */
 	unsigned int src_magic; /* magic id of source stream */
 	unsigned int dest_sd;	/* destination descriptor of member stream */
-	unsigned int seq_no;	/* sequence number of member stream */
 	tpp_addr_t dest_addr;	/* dest host address of member */
 } tpp_mcast_pkt_info_t;
 
@@ -256,6 +258,8 @@ typedef struct {
 #define TPP_SLOT_FREE           0
 #define TPP_SLOT_BUSY           1
 #define TPP_SLOT_DELETED        2
+
+#define TPP_MAX_MBOX_SIZE 		640000
 
 /* tpp internal message header types */
 enum TPP_MSG_TYPES {
@@ -298,6 +302,9 @@ enum TPP_MSG_TYPES {
 #define TPP_CMD_NET_RESTORE     9
 #define TPP_CMD_NET_DOWN        10
 #define TPP_CMD_WAKEUP          11
+#define TPP_CMD_FREECONN		12
+#define TPP_CMD_READ			13
+#define TPP_CMD_CONNECT			14
 
 #define TPP_DEF_ROUTER_PORT     17001
 #define TPP_SCRATCHSIZE         8192
@@ -305,6 +312,8 @@ enum TPP_MSG_TYPES {
 #define TPP_ROUTER_STATE_DISCONNECTED	0   /* Leaf not connected to router */
 #define TPP_ROUTER_STATE_CONNECTING		1   /* Leaf is connecting to router */
 #define TPP_ROUTER_STATE_CONNECTED		2   /* Leaf connected to router */
+
+#define TPP_MBOX_NAME_SZ	10 /* max 10 mbox_name size */
 
 /*
  * This structure contains the information about what kind of end-point
@@ -370,8 +379,9 @@ typedef struct {
  */
 typedef struct {
 	unsigned int tfd;
-	int cmdval;
+	char cmdval;
 	void *data;
+	int sz;
 } tpp_cmd_t;
 
 /*
@@ -382,8 +392,11 @@ typedef struct {
  * and allows to act on the message
  */
 typedef struct {
+	char mbox_name[TPP_MBOX_NAME_SZ]; /* small price for debuggability */
 	pthread_mutex_t mbox_mutex;
 	tpp_que_t mbox_queue;
+	int max_size;
+	int mbox_size;
 #ifdef HAVE_SYS_EVENTFD_H
 	int mbox_eventfd;
 #else
@@ -401,13 +414,10 @@ typedef struct {
 
 typedef struct {
 	void *td;
-	char tpplogbuf[TPP_LOGBUF_SZ];
-	char tppstaticbuf[TPP_LOGBUF_SZ];
+	char tppstaticbuf[TPP_GEN_BUF_SZ];
 } tpp_tls_t;
 
 typedef struct {
-	void *cleartext;
-	int cleartext_len;
 	void *authctx;
 	auth_def_t *authdef;
 	void *encryptctx;
@@ -416,6 +426,8 @@ typedef struct {
 	int conn_initiator;
 	int conn_type;
 } conn_auth_t;
+
+int tpp_child_terminated; /* whether a forked child called tpp_terminate or not? initialized to 0 */
 
 conn_auth_t *tpp_make_authdata(struct tpp_config *, int, char *, char *);
 int tpp_handle_auth_handshake(int, int, conn_auth_t *, int, void *, size_t);
@@ -437,19 +449,17 @@ tpp_tls_t *tpp_get_tls(void);
 char *tpp_get_logbuf(void);
 char *mk_hostname(char *, int);
 struct sockaddr_in* tpp_localaddr(int);
-tpp_packet_t *tpp_cr_pkt(void *, int, int);
+tpp_packet_t *tpp_bld_pkt(tpp_packet_t *, void *, int, int, void **);
 
 void tpp_router_terminate(void);
 void tpp_free_tls(void);
 
 int tpp_transport_connect(char *, int, void *, int *);
-int tpp_transport_vsend(int, tpp_chunk_t *, int);
+int tpp_transport_vsend(int, tpp_packet_t *pkt);
 int tpp_transport_isresvport(int);
-int tpp_transport_vsend_extra(int, tpp_chunk_t *, int, void *);
 int tpp_transport_init(struct tpp_config *);
 void tpp_transport_set_handlers(
-	int (*pkt_presend_handler)(int, tpp_packet_t *, void *),
-	int (*pkt_postsend_handler)(int, tpp_packet_t *, void *),
+	int (*pkt_presend_handler)(int, tpp_packet_t *, void *, void *),
 	int (*pkt_handler)(int, void *, int, void *, void *),
 	int (*close_handler)(int, int, void *, void *),
 	int (*post_connect_handler)(int, void *, void *, void *),
@@ -458,8 +468,6 @@ void tpp_transport_set_handlers(
 void tpp_set_logmask(long);
 int tpp_transport_shutdown(void);
 int tpp_transport_terminate(void);
-int tpp_transport_send(int, void *, int);
-int tpp_transport_send_raw(int, tpp_packet_t *);
 void tpp_transport_set_conn_ctx(int, void *);
 void *tpp_transport_get_conn_ctx(int);
 void *tpp_transport_get_thrd_context(int);
@@ -479,13 +487,14 @@ int tpp_destroy_lock(pthread_mutex_t *);
  * if necessary
  */
 int tpp_init_rwlock(void *);
-int tpp_rdlock_rwlock(void *);
-int tpp_wrlock_rwlock(void *);
+int tpp_read_lock(void *);
+int tpp_write_lock(void *);
 int tpp_unlock_rwlock(void *);
 int tpp_destroy_rwlock(void *);
 
 int tpp_set_non_blocking(int);
 int tpp_set_close_on_exec(int);
+void tpp_free_chunk(tpp_chunk_t *);
 void tpp_free_pkt(tpp_packet_t *);
 int tpp_send_ctl_msg(int, int, tpp_addr_t *, tpp_addr_t *, unsigned int, char, char *);
 int tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *, void *);
@@ -513,10 +522,10 @@ void tpp_transport_set_conn_extra(int, void *);
 extern int tpp_get_thrd_index();
 char *tpp_netaddr(tpp_addr_t *);
 char *tpp_netaddr_sa(struct sockaddr *);
- /* auth logger function - just a wrapper of tpp_log_func to match signature with log_event() from Liblog */
+int tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt);
 extern void tpp_auth_logger(int, int, int, const char *, const char *);
 
-extern int tpp_dbprt;
+void tpp_log(int level, const char *routine, const char *fmt, ...);
 
 void free_router(tpp_router_t *);
 void free_leaf(tpp_leaf_t *);
@@ -583,12 +592,12 @@ typedef struct {
  * Internally these functions may use a eventfd, signalfd, signals,
  * plain pipes etc.
  */
-int tpp_mbox_init(tpp_mbox_t *);
-void tpp_mbox_destroy(tpp_mbox_t *, int);
+int tpp_mbox_init(tpp_mbox_t *, char *, int);
+void tpp_mbox_destroy(tpp_mbox_t *);
 int tpp_mbox_monitor(void *, tpp_mbox_t *);
 int tpp_mbox_read(tpp_mbox_t *, unsigned int *, int *, void **);
-int tpp_mbox_clear(tpp_mbox_t *, tpp_que_elem_t **, unsigned int, int *, void **);
-int tpp_mbox_post(tpp_mbox_t *, unsigned int, int, void *);
+int tpp_mbox_clear(tpp_mbox_t *, tpp_que_elem_t **, unsigned int, short *, void **);
+int tpp_mbox_post(tpp_mbox_t *, unsigned int, char, void *, int);
 int tpp_mbox_getfd(tpp_mbox_t *);
 
 extern int tpp_going_down;
@@ -599,29 +608,14 @@ extern int tpp_going_down;
  */
 #ifdef  DEBUG
 
-#define TPP_DBPRT(x) \
-	if (tpp_dbprt) { \
-		int	err = errno; \
-		time_t now; \
-		struct tm ptm; \
-		now = time(NULL); \
-		localtime_r(&now, &ptm); \
-		printf("%02d/%02d/%04d %02d:%02d:%02d;Thread:%d:%s: ",  \
-			ptm.tm_mon+1, ptm.tm_mday, ptm.tm_year+1900, \
-			ptm.tm_hour, ptm.tm_min, ptm.tm_sec, \
-			tpp_get_thrd_index(), \
-			__func__); \
-			printf x; \
-		printf("\n"); \
-		fflush(stdout); \
-		errno = err; \
-	}
+#define TPP_DBPRT(...) tpp_log(LOG_DEBUG, __func__,  __VA_ARGS__)
+
 void print_packet_hdr(const char *, void *, int);
 #define PRTPKTHDR(id, data, len) print_packet_hdr(id, data, len);
 
 #else
 
-#define TPP_DBPRT(x)
+#define TPP_DBPRT(...)
 #define PRTPKTHDR(id, data, len)
 
 #endif

@@ -874,6 +874,10 @@ send_hellosvr(int stream)
 	int		rc = 0;
 	char		*svr = NULL;
 	unsigned int	port = default_server_port;
+	extern int     mom_net_up;
+
+	if (mom_net_up == 0)
+		return;
 
 	if (stream < 0) {
 		if ((svr = get_servername_random(&port)) == NULL) {

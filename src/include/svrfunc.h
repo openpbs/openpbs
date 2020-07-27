@@ -105,7 +105,9 @@ extern void mark_node_down(char *, char *);
 extern void mark_node_offline_by_mom(char *, char *);
 extern void clear_node_offline_by_mom(char *, char *);
 extern void mark_which_queues_have_nodes(void);
+#ifndef DEBUG
 extern void pbs_close_stdfiles(void);
+#endif
 extern int is_job_array(char *);
 extern int get_queued_subjobs_ct(job *);
 extern char *get_index_from_jid(char *);

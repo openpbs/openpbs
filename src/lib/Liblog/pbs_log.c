@@ -38,20 +38,11 @@
  */
 
 /**
- * @file	pbs_log.c
+ * 
  * @brief
- * pbs_log.c - contains functions to log error and event messages to
+ *  contains functions to log error and event messages to
  *	the log file.
  *
- * @par Functions included are:
- *	log_open()
- *	log_open_main()
- *	log_err()
- *	log_joberr()
- *	log_record()
- *	log_close()
- *	log_add_debug_info()
- *	log_add_if_info()
  */
 
 
@@ -90,7 +81,7 @@
 /* Global Data */
 
 char log_buffer[LOG_BUF_SIZE];
-char log_directory[_POSIX_PATH_MAX/2];
+char log_directory[_POSIX_PATH_MAX / 2];
 
 /*
  * PBS logging is not reentrant. Especially the log switch changes the
@@ -98,20 +89,23 @@ char log_directory[_POSIX_PATH_MAX/2];
  * Initialize the mutex once at log_open().
  */
 static pthread_once_t log_once_ctl = PTHREAD_ONCE_INIT;
-static pthread_key_t pbs_log_tls_key;
-static pthread_mutex_t log_mutex;
+static pthread_mutex_t log_write_mutex;
+typedef struct {
+	struct tm ptm;
+	char microsec_buf[8];
+} ms_time; /* microsecond time stamp */
 
 char *msg_daemonname;
 
 /* Local Data */
 
-static int	     log_auto_switch = 0;
-static int	     log_open_day;
-static FILE	    *logfile;		/* open stream for log file */
-static volatile int  log_opened = 0;
+static int log_auto_switch = 0;
+static int log_open_day;
+static FILE *logfile; /* open stream for log file */
+static volatile int log_opened = 0;
 #if SYSLOG
-static int	     syslogopen = 0;
-#endif	/* SYSLOG */
+static int syslogopen = 0;
+#endif /* SYSLOG */
 
 /*
  * the order of these names MUST match the defintions of
@@ -140,11 +134,22 @@ static unsigned int syslogfac = 0;
 static unsigned int syslogsvr = 3;
 static unsigned int pbs_log_highres_timestamp = 0;
 
+static void log_init(void);
+static int log_mutex_lock();
+static int log_mutex_unlock();
+static void get_timestamp(ms_time *mst);
+static void log_record_inner(int eventtype, int objclass, int sev, const char *objname, const char *text, ms_time *mst);
+static void log_console_error(char *);
+
 void
 set_log_conf(char *leafname, char *nodename,
 		unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
 		unsigned int log_highres)
 {
+	pthread_once(&log_once_ctl, log_init); /* initialize mutex once */
+
+	log_mutex_lock();
+
 	if (leafname) {
 		strncpy(pbs_leaf_name, leafname, PBS_MAXHOSTNAME);
 		pbs_leaf_name[PBS_MAXHOSTNAME] = '\0';
@@ -159,6 +164,8 @@ set_log_conf(char *leafname, char *nodename,
 	syslogfac = sl_fac;
 	syslogsvr = sl_svr;
 	pbs_log_highres_timestamp = log_highres;
+
+	log_mutex_unlock();
 }
 
 #ifdef WIN32
@@ -272,24 +279,6 @@ mk_log_name(char *pbuf, size_t pbufsz)
 
 /**
  * @brief
- *	Return the address of the tls data related to pbs_log_tls_key
- *
- * @return tls data pointer
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-void *
-log_get_tls_data(void)
-{
-	return pthread_getspecific(pbs_log_tls_key);
-}
-
-/**
- * @brief
  *	Lock the mutex associated with this log
  *
  * @return Error code
@@ -302,20 +291,18 @@ log_get_tls_data(void)
  * @par MT-safe: Yes
  *
  */
-int
+static int
 log_mutex_lock()
 {
-	void *log_lock;
-	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) != NULL)
+	if (pthread_mutex_lock(&log_write_mutex) != 0) {
+		FILE *err;
+		err = fopen("/dev/console", "w");
+		if (err != NULL) {
+			fprintf(err, "PBS cannot lock its log, errno = %d", errno);
+			fclose(err);
+		}
 		return -1;
-
-	if (pthread_mutex_lock(&log_mutex) != 0)
-		return -1;
-
-	/* use &log_lock for non-null value */
-	log_lock = &log_lock;
-	pthread_setspecific(pbs_log_tls_key, log_lock);
-
+	}
 	return 0;
 }
 
@@ -333,19 +320,18 @@ log_mutex_lock()
  * @par MT-safe: Yes
  *
  */
-int
+static int
 log_mutex_unlock()
 {
-	void *log_lock;
-	if ((log_lock = pthread_getspecific(pbs_log_tls_key)) == NULL)
+	if (pthread_mutex_unlock(&log_write_mutex) != 0) {
+		FILE *err;
+		err = fopen("/dev/console", "w");
+		if (err != NULL) {
+			fprintf(err, "PBS cannot unlock its log, errno = %d", errno);
+			fclose(err);
+		}
 		return -1;
-
-	if (pthread_mutex_unlock(&log_mutex) != 0)
-		return -1;
-
-	log_lock = NULL;
-	pthread_setspecific(pbs_log_tls_key, log_lock);
-
+	}
 	return 0;
 }
 
@@ -356,8 +342,8 @@ log_mutex_unlock()
  *	wrapper function for log_mutex_lock().
  *
  */
-void
-log_atfork_prepare()
+static void
+log_pre_fork_handler()
 {
 	log_mutex_lock();
 }
@@ -367,8 +353,8 @@ log_atfork_prepare()
  *	wrapper function for log_mutex_unlock().
  *
  */
-void
-log_atfork_parent()
+static void
+log_parent_post_fork_handler()
 {
 	log_mutex_unlock();
 }
@@ -378,8 +364,8 @@ log_atfork_parent()
  *	wrapper function for log_mutex_unlock().
  *
  */
-void
-log_atfork_child()
+static void
+log_child_post_fork_handler()
 {
 	log_mutex_unlock();
 }
@@ -395,23 +381,33 @@ log_atfork_child()
  * @par MT-safe: Yes
  *
  */
-void
+static void
 log_init(void)
 {
-	if (pthread_key_create(&pbs_log_tls_key, NULL) != 0) {
-		fprintf(stderr, "log tls key creation failed\n");
+	if (pthread_mutex_init(&log_write_mutex, NULL) != 0) {
+		fprintf(stderr, "log write mutex init failed\n");
 		return;
 	}
 
-	if (pthread_mutex_init(&log_mutex, NULL) != 0) {
-		fprintf(stderr, "log mutex init failed\n");
-		return;
-	}
-
+	/* 
+	 * atfork handlers are required for the logging layer
+	 * since child processes might still want to log in the 
+	 * child after fork, from the APP thread, then the APP thread
+	 * needs access to the log mutex - else if the fork happened 
+	 * when the TPP thread acquired the lock, then the APP thread
+	 * after fork can never acquire it (since the TPP thread would
+	 * be dead after fork - only the thread calling fork is duplicated
+	 * in the child process).
+	 * 
+	 * Hence in the prefork handler, we acquire the lock - thus ensuring
+	 * that the TPP thread does not own it, and then post fork we unlock 
+	 * it both for the parent and child.
+	 *  
+	 */
 #ifndef WIN32
 	/* for unix, set a pthread_atfork handler */
-	if (pthread_atfork(log_atfork_prepare, log_atfork_parent, log_atfork_child) != 0) {
-		fprintf(stderr, "log mutex atfork handler failed\n");
+	if (pthread_atfork(log_pre_fork_handler, log_parent_post_fork_handler, log_child_post_fork_handler) != 0) {
+		fprintf(stderr, "log atfork handler failed\n");
 		return;
 	}
 #endif
@@ -427,12 +423,14 @@ log_init(void)
  * @par MT-safe: Yes
  *
  */
-void
+static void
 log_add_debug_info()
 {
 	char dest[LOG_BUF_SIZE] = {'\0'};
 	char temp[PBS_MAXHOSTNAME + 1] = {'\0'};
 	char host[PBS_MAXHOSTNAME + 1] = "N/A";
+	ms_time mst;
+	get_timestamp(&mst);
 
 	/* Set hostname */
 	if (!gethostname(temp, (sizeof(temp) - 1))) {
@@ -445,8 +443,7 @@ log_add_debug_info()
 	snprintf(dest, sizeof(dest),
 		"hostname=%s;pbs_leaf_name=%s;pbs_mom_node_name=%s",
 		host, pbs_leaf_name, pbs_mom_node_name);
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-		msg_daemonname, dest);
+	log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest, &mst);
 	return;
 }
 
@@ -483,7 +480,7 @@ log_supported_auth_methods(char **supported_auth_methods)
  *
  */
 
-void
+static void
 log_add_if_info()
 {
 	char tbuf[LOG_BUF_SIZE];
@@ -492,13 +489,15 @@ log_add_if_info()
 	int i;
 	char dest[LOG_BUF_SIZE * 2];
 	struct log_net_info *ni, *curr;
+	ms_time mst;
+	get_timestamp(&mst);
 
 	memset(msg, '\0', sizeof(msg));
 	ni = get_if_info(msg);
 	if (msg[0] != '\0') {
 		/* Adding error message to log */
 		snprintf(tbuf, sizeof(tbuf), "%s", msg);
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf, &mst);
 	}
 	if (!ni)
 		return;
@@ -512,7 +511,7 @@ log_add_if_info()
 			snprintf(temp, sizeof(temp), "%s ", curr->ifhostnames[i]);
 			snprintf(dest, sizeof(dest), "%s%s", tbuf, temp);
 		}
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest);
+		log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest, &mst);
 	}
 
 	free_if_info(ni);
@@ -642,11 +641,13 @@ log_open_main(char *filename, char *directory, int silent)
 		log_opened = 1;			/* note that file is open */
 
 		if (!silent) {
-			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "Log", "Log opened");
+			ms_time mst;
+			get_timestamp(&mst);
+			log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "Log", "Log opened", &mst);
 			snprintf(tbuf, LOG_BUF_SIZE, "pbs_version=%s", PBS_VERSION);
-			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+			log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf, &mst);
 			snprintf(tbuf, LOG_BUF_SIZE, "pbs_build=%s", PBS_BUILD);
-			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+			log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf, &mst);
 
 			log_add_debug_info();
 			log_add_if_info();
@@ -925,7 +926,60 @@ log_suspect_file(const char *func, const char *text, const char *file, struct st
 
 /**
  * @brief
- * 	log_record - log a message to the log file
+ * 	get the timestamp, include microseconds if configured
+ *
+ * @param[out] mst - the ms_time structure is populated and returned
+ *
+ */
+void
+get_timestamp(ms_time *mst)
+{
+	time_t now = 0;
+	struct tm *ptm;
+	struct timeval tp;
+#ifndef WIN32
+	struct tm ltm;
+#endif
+	/* if gettimeofday() fails, log messages will be printed at the epoch */
+	if (gettimeofday(&tp, NULL) != -1) {
+		now = tp.tv_sec;
+		if (pbs_log_highres_timestamp)
+			snprintf(mst->microsec_buf, sizeof(mst->microsec_buf), ".%06ld", (long)tp.tv_usec);
+		else
+			mst->microsec_buf[0] = '\0';
+	}
+
+#ifdef WIN32
+	ptm = localtime(&now);
+#else
+	ptm = localtime_r(&now, &ltm);
+#endif
+
+	mst->ptm = *ptm;
+}
+
+/**
+ * @brief
+ * 	log_record - log a critical error to the console
+ *
+ * @param[in] msg - log msg to be logged
+ * 
+ */
+void 
+log_console_error(char *msg)
+{
+	FILE *errf;
+	int rc = errno;
+	errf = fopen("/dev/console", "w");
+	if (errf != NULL) {
+		fprintf(errf, "%s - errno = %d", msg, rc);
+		fclose(errf);
+	}
+}
+
+/**
+ * @brief
+ * 	log a message to the log file - this function acquires a lock
  *	The log file must have been opened by log_open().
  *
  *	The caller should ensure proper formating of the message if "text"
@@ -937,22 +991,59 @@ log_suspect_file(const char *func, const char *text, const char *file, struct st
  * @param[in] objname - object name stating log msg related to which object
  * @param[in] text - log msg to be logged.
  *
- *	Note, "sev" (for severity) is used  only if syslogging is enabled.
- *	See syslog(3) for details.
+ * Note, "sev" (for severity) is used  only if syslogging is enabled.
+ * See syslog(3) for details.
+ *
+ * Note: Do NOT call this function from log_open() or log_close() since log_record
+ * acquires a mutex and calls log_open(), log_close(), making it a recursive call, 
+ * and confusing the mutex. Rather call, log_record_inner() from log_open, log_close
+ * etc
  */
-
 void
 log_record(int eventtype, int objclass, int sev, const char *objname, const char *text)
 {
-	time_t now = 0;
-	struct tm *ptm;
-	int    rc = 0;
-	FILE  *savlog;
+	ms_time mst;
+
+	/* lock the file mutex */
+	if (log_mutex_lock() == 0) {
+		get_timestamp(&mst);
+		
+		/* Do we need to switch the log? */
+		if (log_auto_switch && (mst.ptm.tm_yday != log_open_day)) {
+			log_close(1);
+			log_open(NULL, log_directory);
+		}
+
+		/* call the inner routine which does not lock */
+		log_record_inner(eventtype, objclass, sev, objname, text, &mst);
+		log_mutex_unlock();
+	}
+}
+
+
+/**
+ * @brief
+ * 	Inner level function to log WITHOUT acquiring locks
+ *
+ *	The caller should ensure proper formating of the message if "text"
+ *	is to contain "continuation lines".
+ *
+ * @param[in] eventtype - event type
+ * @param[in] objclass - event object class
+ * @param[in] sev - indication for whether to syslogging enabled or not
+ * @param[in] objname - object name stating log msg related to which object
+ * @param[in] text - log msg to be logged
+ * @param[in] mst - the ms_time format timestamp (with microseconds, if configured)
+ *
+ *	Note, "sev" (for severity) is used  only if syslogging is enabled.
+ *	See syslog(3) for details.
+ */
+static void
+log_record_inner(int eventtype, int objclass, int sev, const char *objname, const char *text, ms_time *mst)
+{
+	int rc = 0;
 	char slogbuf[LOG_BUF_SIZE];
-	struct timeval tp;
-	char microsec_buf[8] = {0};
 #ifndef WIN32
-	struct tm ltm;
 	sigset_t block_mask;
 	sigset_t old_mask;
 
@@ -963,99 +1054,37 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 
 #if SYSLOG
 	if (syslogopen != 0) {
-		snprintf(slogbuf, LOG_BUF_SIZE,
-			"%s;%s;%s\n",
-			class_names[objclass],
-			objname,
-			text);
+		snprintf(slogbuf, LOG_BUF_SIZE, "%s;%s;%s\n", class_names[objclass], objname, text);
 		syslog(sev, "%s", slogbuf);
 	}
 #endif  /* SYSLOG */
 
-	if (log_opened <= 0)
-		goto sigunblock;
-
 	if ((text == NULL) || (objname == NULL))
-		goto sigunblock;
-
-	/* if gettimeofday() fails, log messages will be printed at the epoch */
-	if (gettimeofday(&tp, NULL) != -1) {
-		now = tp.tv_sec;
-
-		if (pbs_log_highres_timestamp)
-			snprintf(microsec_buf, sizeof(microsec_buf), ".%06ld", (long)tp.tv_usec);
-	}
-
-#ifdef WIN32
-	ptm = localtime(&now);
-#else
-	ptm = localtime_r(&now, &ltm);
-#endif
-
-	/* lock the log mutex */
-	if (log_mutex_lock() != 0)
-		goto sigunblock;
-
-	/* Do we need to switch the log? */
-	if (log_auto_switch && (ptm->tm_yday != log_open_day)) {
-		log_close(1);
-		log_open(NULL, log_directory);
-	}
+		goto end;
 
 	if (log_opened < 1) {
-		log_mutex_unlock();
-		rc = errno;
-		logfile = fopen("/dev/console", "w");
-		if (logfile != NULL) {
-			log_err(rc, "log_record", "PBS cannot open its log");
-			fclose(logfile);
-		}
-		goto sigunblock;
+		log_console_error("PBS cannot open its log");
+		goto end;
 	}
 
 	if (locallog != 0 || syslogfac == 0) {
 		rc = fprintf(logfile,
-			     "%02d/%02d/%04d %02d:%02d:%02d%s;%04x;%s;%s;%s;%s\n",
-			     ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,
-			     ptm->tm_hour, ptm->tm_min, ptm->tm_sec, microsec_buf,
-			     eventtype & ~PBSEVENT_FORCE, msg_daemonname,
-			     class_names[objclass], objname, text);
+				"%02d/%02d/%04d %02d:%02d:%02d%s;%04x;%s;%s;%s;%s\n",
+				mst->ptm.tm_mon + 1, mst->ptm.tm_mday, mst->ptm.tm_year + 1900,
+				mst->ptm.tm_hour, mst->ptm.tm_min, mst->ptm.tm_sec, mst->microsec_buf,
+				eventtype & ~PBSEVENT_FORCE, msg_daemonname,
+				class_names[objclass], objname, text);
 
 		(void)fflush(logfile);
-		if (rc < 0) {
-			rc = errno;
-			clearerr(logfile);
-			savlog = logfile;
-			logfile = fopen("/dev/console", "w");
-
-			if (logfile != NULL) {
-				log_err(rc, "log_record", "PBS cannot write to its log");
-				fclose(logfile);
-			}
-			logfile = savlog;
-		}
+		if (rc < 0)
+			log_console_error("PBS cannot write to its log");
 	}
-
-	if (log_mutex_unlock() != 0) {
-		/* if the unlock fails, rarely, its a dangerous situation
-		 * since other threads will stay hung waiting for a lock
-		 * while logging, effectively hanging the entire application.
-		 * Since we cannot notify this in the log, open the console
-		 * and write a message for the administrator to hopefully notice.
-		 */
-		logfile = fopen("/dev/console", "w");
-		if (logfile != NULL) {
-			log_err(rc, "log_record", "PBS cannot unlock its log");
-			fclose(logfile);
-		}
-	}
-
-sigunblock:
+	
+end:
 #ifndef WIN32
 	sigprocmask(SIG_SETMASK, &old_mask, NULL);
-#else
-	return;
 #endif
+	return;
 }
 
 /**
@@ -1067,15 +1096,15 @@ sigunblock:
  * @return	Void
  *
  */
-
 void
 log_close(int msg)
 {
 	if (log_opened == 1) {
 		log_auto_switch = 0;
 		if (msg) {
-			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
-				LOG_INFO, "Log", "Log closed");
+			ms_time mst;
+			get_timestamp(&mst);
+			log_record_inner(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "Log", "Log closed", &mst);
 		}
 		(void)fclose(logfile);
 		log_opened = 0;
