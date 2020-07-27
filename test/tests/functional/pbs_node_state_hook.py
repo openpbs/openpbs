@@ -49,8 +49,8 @@ def get_hook_body(hook_msg):
     import pbs
     import sys, os
     from pprint import pformat
-    pbs.logmsg("pbs.__file__:" + pbs.__file__)
-    pbs.logmsg("print(help('modules')):" + str(help('modules')))
+    pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
+    #pbs.logmsg(pbs.LOG_DEBUG, "print(help('modules')):" + str(help('modules')))
     try:
         e = pbs.event()
         pbs.logmsg(pbs.LOG_DEBUG, str(pformat(pbs.REVERSE_NODE_STATES)))
@@ -99,7 +99,7 @@ class TestPbsNodeStateHook(TestFunctional):
         This test checks for the existance and values of the
         pbs.REVERSE_NODE_STATES dictionary.
         """
-        print(help('modules'))
+        #print(help('modules'))
         #import ptl.lib.pbs_ifl as ptl
         #import ptl.lib.pbs_ifl_mock as ptl
         #print(dir(ptl))
@@ -141,9 +141,9 @@ class TestPbsNodeStateHook(TestFunctional):
         """
         self.logger.info("---- TEST STARTED ----")
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
-        attrs = {'event': 'node_state', 'enabled': 'True'}
+        attrs = {'event': 'node_state', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'a1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
@@ -181,8 +181,8 @@ class TestPbsNodeStateHook(TestFunctional):
         3.  The stopping and starting of a mom and the proper hook firing.
         """
         self.logger.info("---- TEST STARTED ----")
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
-        attrs = {'event': 'node_state', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
+        attrs = {'event': 'node_state', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'b1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
@@ -201,7 +201,7 @@ class TestPbsNodeStateHook(TestFunctional):
             value.stop()
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-            self.server.log_match("new_state:0x202", starttime=start_time)
+            self.server.log_match("new_state:0x2", starttime=start_time)
             self.server.log_match("old_state:0x0", starttime=start_time)
             start_time = int(time.time())
             self.logger.error("    ***start    mom:%s", value)
@@ -233,8 +233,8 @@ class TestPbsNodeStateHook(TestFunctional):
         4.  It will check the log for the proper hook messages
         """
         self.logger.info("---- TEST STARTED ----")
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
-        attrs = {'event': 'node_state', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
+        attrs = {'event': 'node_state', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'c1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
@@ -258,7 +258,7 @@ class TestPbsNodeStateHook(TestFunctional):
                 self.logger.error("pkill(ret):%s", str(pformat(ret)))
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-            self.server.log_match("new_state:0x202", starttime=start_time)
+            self.server.log_match("new_state:0x2", starttime=start_time)
             self.server.log_match("old_state:0x0", starttime=start_time)
             start_time = int(time.time())
             self.logger.error("    ***start    mom:%s", value)
