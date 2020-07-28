@@ -2926,31 +2926,30 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* If the start time of the reservation was altered, copy from RESV_ATR_start
  	 * will make the next instance to have it's start time altered so take the start
  	 * time from the ri_alter_stime. */
-	if (presv->ri_alter.ra_revert.rr_stime) {
-		dtstart = presv->ri_alter.ra_revert.rr_stime;
-		presv->ri_alter.ra_revert.rr_stime = 0;
+	if (presv->ri_wattr[RESV_ATR_start_revert].at_flags & ATR_VFLAG_SET) {
+		dtstart = presv->ri_wattr[RESV_ATR_start_revert].at_val.at_long;
+		resv_attr_def[RESV_ATR_start_revert].at_free(&presv->ri_wattr[RESV_ATR_start_revert]);
 	} else
 		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 
-	if (presv->ri_alter.ra_revert.rr_select != NULL) {
+	if (presv->ri_alter.ra_select_revert != NULL) {
 		resource *presc;
 		resource_def *prdef;
 
 		prdef = &svr_resc_def[RESC_SELECT];
 		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
 		free(presc->rs_value.at_val.at_str);
-		presc->rs_value.at_val.at_str = presv->ri_alter.ra_revert.rr_select;
+		presc->rs_value.at_val.at_str = presv->ri_alter.ra_select_revert;
 		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_revert.rr_select = NULL;
+		presv->ri_alter.ra_select_revert = NULL;
 		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], presc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
 		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	}
 
-	if (presv->ri_alter.ra_revert.rr_duration) {
-		presv->ri_qs.ri_duration = presv->ri_alter.ra_revert.rr_duration;
-		presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_alter.ra_revert.rr_duration;
-		presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_revert.rr_duration = 0;
+	if (presv->ri_wattr[RESV_ATR_duration_revert].at_flags & ATR_VFLAG_SET) {
+		presv->ri_qs.ri_duration = presv->ri_wattr[RESV_ATR_duration_revert].at_val.at_long;
+		resv_attr_def[RESV_ATR_duration_revert].at_set(&presv->ri_wattr[RESV_ATR_duration], &presv->ri_wattr[RESV_ATR_duration_revert], SET);
+		resv_attr_def[RESV_ATR_duration_revert].at_free(&presv->ri_wattr[RESV_ATR_duration_revert]);
 	}
 
 	dtend = presv->ri_wattr[RESV_ATR_end].at_val.at_long;

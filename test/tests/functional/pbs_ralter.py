@@ -203,7 +203,8 @@ class TestPbsResvAlter(TestFunctional):
                            offset=(duration - 5), interval=2)
 
     def check_standing_resv_second_occurrence(self, rid, start, end,
-                                              select=None):
+                                              select=None, freq=3600,
+                                              wait=False):
         """
         Helper method to verify that the second occurrence of a standing
         reservation retains its original start, and end times and select.
@@ -218,9 +219,15 @@ class TestPbsResvAlter(TestFunctional):
 
         :param end: End time of the first occurrence of the reservation.
         :type  end: int.
+
+        :param freq: Frequency in seconds to run occurrences, default - 1 hour.
+        :type  freq: int.
+
+        :param wait: Whether to wait for occurrence to start, default - No.
+        :type  wait: int.
         """
-        next_start = start + 3600
-        next_end = end + 3600
+        next_start = start + freq
+        next_end = end + freq
         duration = end - start
         next_start_conv = self.bu.convert_seconds_to_datetime(
             next_start, self.fmt)
@@ -233,6 +240,11 @@ class TestPbsResvAlter(TestFunctional):
             attrs.update({'Resource_List.select': select})
         self.server.expect(RESV, attrs, id=rid, max_attempts=10,
                            interval=5)
+        if wait is True:
+                attr = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+                t = start + freq - time.time()
+                self.server.expect(RESV, attr, id=rid,
+                                   offset=t, max_attempts=10)
 
     def submit_job_to_resv(self, rid, sleep=10, user=None):
         """
@@ -2185,9 +2197,9 @@ class TestPbsResvAlter(TestFunctional):
         original start/end/duration/select if it is altered multiple times
         """
 
-        offset = 3600
-        shift1 = -1800
-        shift2 = -3560
+        offset = 60
+        shift1 = -20
+        shift2 = -30
         dur = 30
         dur2 = 20
         dur3 = 15
@@ -2197,7 +2209,8 @@ class TestPbsResvAlter(TestFunctional):
 
         rid, start, end = \
             self.submit_and_confirm_reservation(offset, dur, select=select,
-                                                standing=True)
+                                                standing=True,
+                                                rrule="FREQ=MINUTELY;COUNT=2")
 
         self.alter_a_reservation(rid, start, end, alter_s=True,
                                  shift=shift1, a_duration=dur2, select=select2)
@@ -2212,7 +2225,8 @@ class TestPbsResvAlter(TestFunctional):
                            {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
                            id=rid, offset=t)
 
-        self.check_standing_resv_second_occurrence(rid, start, end, select)
+        self.check_standing_resv_second_occurrence(rid, start, end, select,
+                                                   freq=60, wait=True)
 
     def test_select_fail_revert(self):
         """
@@ -2263,3 +2277,51 @@ class TestPbsResvAlter(TestFunctional):
                                  confirm=False)
         self.server.expect(NODE, {'resources_assigned.ncpus': 4},
                            max_attempts=1, id=resv_node)
+
+    def test_alter_start_standing_resv_future_occrs(self):
+        """
+        Test that when start time of a confirmed standing reservation is
+        altered, only the upcoming occurence changes and not all occurences
+        are modified.
+        """
+
+        duration = 20
+        offset = 3600
+        shift = -3000
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", standing=True,
+            rrule="FREQ=HOURLY;COUNT=3")
+
+        # move the reservation 10 mins in future
+        self.alter_a_reservation(rid, start, end, confirm=True, alter_s=True,
+                                 alter_e=True, shift=shift)
+        # Ideally this reservation should confirm because second occurrence
+        # of the first reservation happens in almost 2 hrs from now.
+        rid2, start, end = self.submit_and_confirm_reservation(
+            3000, 1800, select="2:ncpus=4")
+
+    def test_alter_duration_standing_resv_future_occrs(self):
+        """
+        Test that when duration of a confirmed standing reservation is
+        altered, only the upcoming occurence changes and not all occurences
+        are modified.
+        """
+
+        duration = 180
+        offset = 300
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", standing=True,
+            rrule="FREQ=HOURLY;COUNT=3")
+
+        # change the reservation's duration to 20 seconds
+        self.alter_a_reservation(rid, start, end, confirm=True, a_duration=20)
+
+        # Submit another reservation that starts in 1hr and 30 seconds.
+        # Ideally, in 1 hr second occurrence of reservation will start running
+        # and it will run for 3 mins. This means the new reservation will be
+        # denied.
+        new_offset = (start + 3630) - time.time()
+        rid2, start, end = self.submit_and_confirm_reservation(
+            new_offset, 180, select="2:ncpus=4", ExpectSuccess=0)

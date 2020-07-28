@@ -2345,7 +2345,6 @@ req_resvSub(struct batch_request *preq)
 			req_reject(rc, 0, preq);
 			return;
 		}
-		presv->ri_alter.ra_revert.rr_duration =  presv->ri_qs.ri_duration;
 
 		/* If more than 1 occurrence are requested then alter the
 		 * reservation and queue first character
