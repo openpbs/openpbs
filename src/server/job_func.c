@@ -348,6 +348,10 @@ job_alloc(void)
 	pj->ji_stderr = 0;
 	pj->ji_setup = NULL;
 	pj->ji_momsubt = 0;
+	pj->ji_msconnected = 0;
+	CLEAR_HEAD(pj->ji_multinodejobs);
+	pj->ji_extended.ji_ext.ji_stdout = 0;
+	pj->ji_extended.ji_ext.ji_stderr = 0;
 #else	/* SERVER */
 	pj->ji_discarding = 0;
 	pj->ji_prunreq = NULL;
@@ -574,6 +578,8 @@ job_free(job *pj)
 	 */
 	if (job_free_extra != NULL)
 		job_free_extra(pj);
+
+	CLEAR_HEAD(pj->ji_multinodejobs);
 
 #ifdef WIN32
 	if (pj->ji_hJob) {

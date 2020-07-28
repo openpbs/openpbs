@@ -184,6 +184,7 @@ char		*mom_domain;
 #endif	/* WIN32 */
 
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
+extern void		resume_multinode(job *pjob);
 
 int		alien_attach = 0;		/* attach alien procs */
 int		alien_kill = 0;			/* kill alien procs */
@@ -637,7 +638,7 @@ extern	void	dep_cleanup(void);
 
 /* External Functions */
 extern	void	catch_child(int);
-extern	void	init_abort_jobs(int);
+extern	void	init_abort_jobs(int, pbs_list_head *);
 extern	void	scan_for_exiting(void);
 #ifdef NAS /* localmod 015 */
 extern	int	to_size(char *, struct size_value *);
@@ -6973,6 +6974,7 @@ mom_over_limit(job *pjob)
  *	check attr value limits of job
  *
  * @param[in] pjob - pointer to job
+ * @param[in] recover - recovering mode for MoM
  *
  * @return	int
  * @retval	0	Failure
@@ -6981,7 +6983,7 @@ mom_over_limit(job *pjob)
  */
 
 int
-job_over_limit(job *pjob)
+job_over_limit(job *pjob, int recover)
 {
 	attribute		*attr;
 	attribute		*used;
@@ -7014,7 +7016,7 @@ job_over_limit(job *pjob)
 
 		/* special case EOF */
 		if (pnode->hn_sister == SISTER_EOF) {
-			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob))) {
+			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob)) || recover == 2) {
 			 	snprintf(log_buffer, sizeof(log_buffer), "ignoring node EOF %d from failed mom %s as job is tolerant of node failures", pjob->ji_nodekill, pnode->hn_host?pnode->hn_host:"");
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 				return 0;
@@ -9217,8 +9219,10 @@ main(int argc, char *argv[])
 		log_err(c, msg_daemonname, "unable to recover vnode to host mapping");
 	}
 
+	pbs_list_link multinode_jobs;
+
 	/* recover & abort Jobs which were under MOM's control */
-	init_abort_jobs(recover);
+	init_abort_jobs(recover, &multinode_jobs);
 
 	/* deploy periodic hooks */
 	mom_hook_input_init(&hook_input);
@@ -9272,6 +9276,20 @@ main(int argc, char *argv[])
 			if (time_now > time_next_hello) {
 				send_hellosvr(server_stream);
 				time_next_hello = time_now + time_delta_hellosvr(MOM_DELTA_NORMAL);
+				if (server_stream != -1) {
+					job *m_job;
+					for (m_job = (job *)GET_NEXT(multinode_jobs); m_job;
+						m_job = (job *)GET_NEXT(m_job->ji_multinodejobs)) {
+						if (m_job->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+							/* I am MS */
+							resume_multinode(m_job);
+						} else {
+							/* I am sister */
+							send_sisters(m_job, IM_RECONNECT_TO_MS, NULL);
+						}
+					}
+					CLEAR_HEAD(multinode_jobs);
+				}
 			}
 		} else
 			send_pending_updates();
@@ -9661,7 +9679,7 @@ main(int argc, char *argv[])
 				if (c & (JOB_SVFLG_OVERLMT1 | JOB_SVFLG_OVERLMT2 | JOB_SVFLG_TERMJOB))
 					continue;
 
-				if (job_over_limit(pjob)) {
+				if (job_over_limit(pjob, recover)) {
 
 					char	*kill_msg;
 					log_event(PBSEVENT_JOB | PBSEVENT_FORCE,
