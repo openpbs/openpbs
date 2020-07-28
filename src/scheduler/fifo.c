@@ -3028,7 +3028,7 @@ validate_running_user(char * exename) {
 			return 0;
 		}
 	}
-	else if ((geteuid() != 0) ||getuid() != 0) {
+	else if ((geteuid() != 0) || getuid() != 0) {
 		fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
 		return 0;
 	}
