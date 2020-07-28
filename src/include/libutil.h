@@ -204,6 +204,12 @@ char *pbs_strcat(char **strbuf, int *ssize, char *str);
  */
 char *pbs_strcpy(char *dest, const char *src);
 
+/*
+ * general purpose strncpy function that will make sure to
+ * copy '\0' at the end of the buffer.
+ */
+char *pbs_strncpy(char *dest, const char *src, size_t n);
+
 char *pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp);
 char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 

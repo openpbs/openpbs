@@ -389,7 +389,7 @@ parse_config(char *fname)
 					 * done by default prior to 7.1.
 					 */
 					if (strstr(config_value, "host") == NULL)
-						strcpy(buf2, "host,");
+						pbs_strncpy(buf2, "host,", sizeof(buf2));
 
 					/* hack: add in "vnode" in 8.0 */
 					if (strstr(config_value, "vnode") == NULL)
@@ -414,19 +414,19 @@ parse_config(char *fname)
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						strcpy(conf.ded_prefix, config_value);
+						pbs_strncpy(conf.ded_prefix, config_value, sizeof(conf.ded_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_PRIMETIME_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						strcpy(conf.pt_prefix, config_value);
+						pbs_strncpy(conf.pt_prefix, config_value, sizeof(conf.pt_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_NONPRIMETIME_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						strcpy(conf.npt_prefix, config_value);
+						pbs_strncpy(conf.npt_prefix, config_value, sizeof(conf.npt_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_SMP_CLUSTER_DIST)) {
 					for (i = 0; i < HIGH_SMP_DIST; i++)

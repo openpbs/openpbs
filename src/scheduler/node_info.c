@@ -1014,7 +1014,7 @@ set_node_info_state(node_info *ninfo, char *state)
 		ninfo->is_resv_exclusive = ninfo->is_job_exclusive = 0;
 		ninfo->is_sleeping = ninfo->is_maintenance = 0;
 
-		strcpy(statebuf, state);
+		pbs_strncpy(statebuf, state, sizeof(statebuf));
 		tok = strtok_r(statebuf, ",", &saveptr);
 
 		while (tok != NULL) {
@@ -4037,7 +4037,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 			}
 
 			if (pl->pack && num_chunks == 1 && cstat.smp_dist == SMP_ROUND_ROBIN)
-				strcpy(last_node_name, node->name);
+				pbs_strncpy(last_node_name, node->name, sizeof(last_node_name));
 			return 1;
 		}
 	}
@@ -4095,7 +4095,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 			}
 
 			if (pl->pack && cstat.smp_dist == SMP_ROUND_ROBIN)
-				strcpy(last_node_name, node->name);
+				pbs_strncpy(last_node_name, node->name, sizeof(last_node_name));
 		}
 		return num_chunks;
 	}
@@ -4373,7 +4373,7 @@ parse_placespec(char *place_str)
 	if (pl == NULL)
 		return NULL;
 
-	strcpy(str, place_str);
+	pbs_strncpy(str, place_str, sizeof(str));
 
 	tok = string_token(str, ":", &tokptr);
 
@@ -4685,7 +4685,7 @@ create_execvnode(nspec **ns)
 
 	for (i = 0; ns[i] != NULL; i++) {
 		if (i > 0)
-			strcpy(buf, "+");
+			pbs_strncpy(buf, "+", bufsize);
 		else
 			buf[0] = '\0';
 
@@ -4716,7 +4716,7 @@ create_execvnode(nspec **ns)
 					return NULL;
 			}
 			else if (ns[i]->go_provision && strcmp(req->name, "aoe") ==0) {
-				strcpy(buf2, ":aoe=");
+				pbs_strncpy(buf2, ":aoe=", sizeof(buf2));
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
 				if (pbs_strcat(&buf, &bufsize, req->res_str) == NULL)
