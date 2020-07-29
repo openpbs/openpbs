@@ -157,7 +157,10 @@ name.  Cannot contain a colon (":").
 Hostname of primary server.  Used only for failover configuration.  
 Overrides PBS_SERVER_HOST_NAME.
 
-.IP PBS_RCP 
+.IP PBS_CP 
+Location of local copy command. Default is cp on Linux systems and xcopy on Windows.
+
+.IP PBS_RCP
 Location of rcp command if rcp is used.
 
 .IP PBS_SCHEDULER_SERVICE_PORT      

@@ -1228,10 +1228,10 @@ Default on Windows: value of the
 environment variable 
 
 .IP "$usecp <hostname:source prefix> <destination prefix>" 5
-MoM uses /bin/cp to deliver output files when
-the destination is a network mounted file system, or when
-the source and destination are both on the local host, or when
-the 
+MoM uses /bin/cp or the program specified by PBS_CP to deliver 
+output files when the destination is a network mounted file system, 
+or when the source and destination are both on the local host, or 
+when the 
 .I source prefix 
 can be replaced with the 
 .I destination prefix
@@ -1243,7 +1243,9 @@ and
 .I destination prefix
 are absolute pathnames of directories, not files.  
 
-Overrides 
+Overrides
+.I PBS_CP
+and
 .I PBS_RCP
 and 
 .I PBS_SCP.
