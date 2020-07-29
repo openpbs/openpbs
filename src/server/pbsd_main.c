@@ -718,8 +718,6 @@ main(int argc, char **argv)
 	char hook_msg[HOOK_MSG_SIZE];
 	pbs_sched *psched;
 	char *keep_daemon_name = NULL;
-	job *pjob;
-	resc_resv *presv;
 	pid_t sid = -1;
 	long *state;
 	time_t waittime;
@@ -995,8 +993,6 @@ main(int argc, char **argv)
 		log_err(errno, msg_daemonname, log_buffer);
 		return (2);
 	}
-
-	server.sv_started = time(&time_now);	/* time server started */
 
 	CLEAR_HEAD(svr_requests);
 	CLEAR_HEAD(task_list_immed);
@@ -1458,7 +1454,6 @@ main(int argc, char **argv)
 	(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port);
 	(void)contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port);
 
-
 	/*
 	 * main loop of server
 	 * stays in this loop until server's state is either
@@ -1612,16 +1607,6 @@ main(int argc, char **argv)
 	server.sv_qs.sv_lastid = server.sv_qs.sv_jobidnumber;
 	svr_save_db(&server);	/* final recording of server */
 	track_save(NULL);	/* save tracking data	     */
-
-	/* save any jobs that need saving */
-	for (pjob = (job *)GET_NEXT(svr_alljobs); pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs))
-		job_save_db(pjob);
-
-	/* save any reservations that need saving */
-	for (presv = (resc_resv *)GET_NEXT(svr_allresvs); presv; presv = (resc_resv *)GET_NEXT(presv->ri_allresvs))
-		resv_save_db(presv);
-
-	save_nodes_db(0, NULL);
 
 	/* if brought up the Secondary Scheduler, take it down */
 
