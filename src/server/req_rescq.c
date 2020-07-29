@@ -928,7 +928,7 @@ req_confirmresv(struct batch_request *preq)
 		if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
 			free(presv->ri_alter.ra_select);
 			presv->ri_alter.ra_select = NULL;
-			job_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
+			resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
 		}
 
 		presv->ri_alter.ra_flags = 0;
@@ -1035,7 +1035,7 @@ resv_revert_alter(resc_resv *presv)
 			     presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str);
 
 		presv->ri_alter.ra_select = NULL;
-		job_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
+		resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
 		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
 		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	}
