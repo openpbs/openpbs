@@ -2120,9 +2120,9 @@ class TestPbsResvAlter(TestFunctional):
 
     def test_alter_select_complex(self):
         """
-        Test more complex use of pbs_ralter -l select 
+        Test more complex use of pbs_ralter -l select
         to shrink a reservation
-        We start with a 2 +'d spec, and shrink each chunk by one, and 
+        We start with a 2 +'d spec, and shrink each chunk by one, and
         then we shrink further and drop out the middle chunk
         """
         select = "2:ncpus=1:mem=1gb+4:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
@@ -2143,7 +2143,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         Test more complex use of pbs_ralter -l select to
         shrink a running reservation
-        We start with a 2 +'d spec, and shrink each chunk by one, and 
+        We start with a 2 +'d spec, and shrink each chunk by one, and
         then we shrink further and drop out the middle chunk
         """
         select = "2:ncpus=1:mem=1gb+4:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
