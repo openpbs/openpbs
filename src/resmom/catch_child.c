@@ -2445,15 +2445,6 @@ mom_deljob_wait2(job *pjob)
 #if MOM_ALPS
 	(void)mom_deljob_wait(pjob);
 
-	/*
-	* The delete job request from Server will have been
-	* or will be replied to and freed by the
-	* alps_cancel_reservation code in the sequence of
-	* functions started with the above call to
-	* mom_deljob_wait().  Set preq to NULL here so we
-	* don't try, mistakenly, to use it again.
-	*/
-	pjob->ji_preq = NULL;
 #else
 	int  		numnodes;
 	struct 	batch_request *preq;
