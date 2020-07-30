@@ -5,7 +5,7 @@ How to install PBS using the configure script.
 
 1. Install the prerequisite packages for building PBS.
 
-  For CentOS-8 systems you should configure and enable PowerTools 
+  For CentOS-8 systems you should configure and enable PowerTools
   repo for hwloc-devel and libedit-devel packages.
 
   You should run the following commands as root:
@@ -76,8 +76,8 @@ How to install PBS using the configure script.
 3. Open a terminal as a normal (non-root) user, unpack the PBS
   tarball, and cd to the package directory.
 
-    tar -xpvf openpbs-20.0.0.tar.gz
-    cd openpbs-20.0.0
+    tar -xpvf openpbs-20.0.1.tar.gz
+    cd openpbs-20.0.1
 
 4. Generate the configure script and Makefiles. (See note 1 below)
 
