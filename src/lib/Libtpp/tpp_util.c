@@ -357,6 +357,11 @@ set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *pbs
 		tpp_log_func(LOG_INFO, NULL, log_buffer);
 	}
 
+	if ((tpp_conf->supported_auth_methods = dup_string_arr(pbs_conf->supported_auth_methods)) == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory while making copy of supported auth methods");
+		return -1;
+	}
+
 #ifdef PBS_COMPRESSION_ENABLED
 	tpp_conf->compress = pbs_conf->pbs_use_compression;
 #else
