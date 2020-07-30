@@ -404,7 +404,7 @@ class DshUtils(object):
                 dflt_conf = ret['out'][0]
             """
             print("******Executing else from get_conf_file****")
-            val = os.environ.get('PBS_CONF_FILE', False)
+            value = os.environ.get('PBS_CONF_FILE', False)
             if value is not False:
                 dflt_conf = value
 
