@@ -133,9 +133,9 @@ time.sleep(2)
             hook_name, a, self.prolo_hook_body % (''))
         # Submit a job that eventually goes in H state
         start_time = time.time()
-        j1attr = {ATTR_l + '.select': '3:ncpus=1', 
-                ATTR_l + '.place': 'scatter',
-                ATTR_W: 'run_count=18'}
+        j1attr = {ATTR_l + '.select': '3:ncpus=1',
+                  ATTR_l + '.place': 'scatter',
+                  ATTR_W: 'run_count=18'}
         j1 = Job(TEST_USER, attrs=j1attr)
         jid = self.server.submit(j1)
         msg = "Job;%s;Job requeued, execution node  down" % jid
