@@ -106,7 +106,7 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
-#include	"avltree.h"
+#include	"pbs_idx.h"
 #ifdef HWLOC	
 #ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
