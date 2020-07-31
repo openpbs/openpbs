@@ -113,13 +113,8 @@ typedef struct pbsnode_list_ {
 
 /* Structure used to revert reservation back if the ralter failed */
 struct resv_alter {
-	time_t ra_stime;
-	time_t ra_etime;
-	long ra_duration;
-	char *ra_select;
 	long ra_state;
 	unsigned long ra_flags;
-	char *ra_select_revert; /* used to revert select for future occurrences */
 };
 
 /*

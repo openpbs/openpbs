@@ -391,8 +391,8 @@ enum accrue_types {
 #define ATTR_node_set		"node_set"	    /* job attribute */
 #define ATTR_sched_preempted    "ptime"   /* job attribute */
 #define ATTR_restrict_res_to_release_on_suspend "restrict_res_to_release_on_suspend"	    /* server attr */
-#define ATTR_resv_start_revert		"reserve_start_revert"
-#define ATTR_resv_duration_revert	"reserve_duration_revert"
+#define ATTR_resv_alter_revert		"reserve_alter_revert"
+#define ATTR_resv_standing_revert	"reserve_standing_revert"
 
 #ifndef IN_LOOPBACKNET
 #define IN_LOOPBACKNET	127

@@ -304,6 +304,7 @@ class TestPbsResvAlter(TestFunctional):
 
         :param whichMessage: Which message is expected to be returned.
                             Default: 1.
+                             =-1 - No exception, don't check logs
                              =0 - PbsResvAlterError exception will be raised,
                                   so check for appropriate error response.
                              =1 - No exception, check for "CONFIRMED" message
@@ -416,7 +417,9 @@ class TestPbsResvAlter(TestFunctional):
                 msg = msg[:-1]
                 self.server.log_match(msg, interval=2, max_attempts=30)
 
-            if whichMessage == 1:
+            if whichMessage == -1:
+                return new_start, new_end
+            elif whichMessage == 1:
                 if alter_s:
                     new_start_conv = self.bu.convert_seconds_to_datetime(
                         new_start, self.fmt)
@@ -2797,3 +2800,45 @@ class TestPbsResvAlter(TestFunctional):
                                  alter_s=True, extend='force', sequence=3)
         _, t_start, _ = self.get_resv_time_info(rid)
         self.assertEqual(int(t_start), start + 1000)
+
+    def test_restart_revert(self):
+        """
+        Test that if a reservation is in state RESV_BEING_ALTERED and
+        the server shuts down, when the server recovers the reservation
+        from the database, it will revert the reservation to the original
+        attributes.
+        """
+
+        duration = 60
+        offset = 60
+        shift = 5
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration)
+
+        attrs = {'reserve_start':
+                 self.bu.convert_seconds_to_datetime(start, self.fmt),
+                 'reserve_end':
+                 self.bu.convert_seconds_to_datetime(end, self.fmt),
+                 'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attrs, id=rid)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
+        new_start, new_end = self.alter_a_reservation(rid, start, end,
+                                                      alter_s=True,
+                                                      alter_e=True,
+                                                      shift=shift,
+                                                      confirm=False,
+                                                      whichMessage=-1)
+        a2 = {'reserve_start':
+              self.bu.convert_seconds_to_datetime(new_start, self.fmt),
+              'reserve_end':
+              self.bu.convert_seconds_to_datetime(new_end, self.fmt),
+              'reserve_state': (MATCH_RE, 'RESV_BEING_ALTERED|11')}
+        self.server.expect(RESV, a2, id=rid)
+        self.server.restart()
+        self.server.expect(RESV, attrs, id=rid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        self.server.expect(RESV, attrs, id=rid)
+        wait = start - time.time()
+        self.check_resv_running(rid, offset=wait)

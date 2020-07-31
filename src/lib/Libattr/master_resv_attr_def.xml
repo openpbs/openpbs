@@ -853,33 +853,33 @@
       <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
    </attributes>
    <attributes flag="SVR">
-      <member_index>RESV_ATR_start_revert</member_index>
-      <member_name>ATTR_resv_start_revert</member_name>
-      <member_at_decode>decode_l</member_at_decode>
-      <member_at_encode>encode_l</member_at_encode>
-      <member_at_set>set_l</member_at_set>
-      <member_at_comp>comp_l</member_at_comp>
-      <member_at_free>free_null</member_at_free>
-      <member_at_action>NULL_FUNC</member_at_action>
+      <member_index>RESV_ATR_alter_revert</member_index>
+      <member_name>ATTR_resv_alter_revert</member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>action_resc_resv</member_at_action>
       <member_at_flags>ATR_DFLAG_MGRD</member_at_flags>
-      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_type>ATR_TYPE_RESC</member_at_type>
       <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
       <member_verify_function>
-         <ECL>verify_datatype_long</ECL>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
          <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes flag="SVR">
-      <member_index>RESV_ATR_duration_revert</member_index>
-      <member_name>ATTR_resv_duration_revert</member_name>
-      <member_at_decode>decode_time</member_at_decode>
-      <member_at_encode>encode_l</member_at_encode>
-      <member_at_set>set_l</member_at_set>
-      <member_at_comp>comp_l</member_at_comp>
-      <member_at_free>free_null</member_at_free>
-      <member_at_action>NULL_FUNC</member_at_action>
+      <member_index>RESV_ATR_standing_revert</member_index>
+      <member_name>ATTR_resv_standing_revert</member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>action_resc_resv</member_at_action>
       <member_at_flags>ATR_DFLAG_MGRD</member_at_flags>
-      <member_at_type>ATR_TYPE_LONG</member_at_type>
+      <member_at_type>ATR_TYPE_RESC</member_at_type>
       <member_at_parent>PARENT_TYPE_RESV</member_at_parent>
       <member_verify_function>
          <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
