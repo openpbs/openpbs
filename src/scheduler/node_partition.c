@@ -911,7 +911,7 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 			npc = new_np_cache();
 			if (npc != NULL) {
 				npc->ninfo_arr = ninfo_arr;
-				npc->resnames = dup_string_array(resnames);
+				npc->resnames = dup_string_arr(resnames);
 				npc->num_parts = num_parts;
 				npc->nodepart = nodepart;
 				if (npc->resnames == NULL || add_np_cache(pnpc_arr, npc) ==0) {

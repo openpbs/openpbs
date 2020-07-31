@@ -1250,6 +1250,45 @@ is_string_in_arr(char **strarr, char *str)
 
 /**
  * @brief
+ *	make copy of string array
+ *
+ * @param[in] strarr - the string array to make copy
+ *
+ * @return char **
+ * @retval !NULL - copy of string array
+ * @retval NULL  - failed to make copy of string array
+ *
+ */
+char **
+dup_string_arr(char **strarr)
+{
+	int i = 0;
+	char **retarr = NULL;
+
+	if (strarr == NULL)
+		return NULL;
+
+	for (i = 0; strarr[i] != NULL; i++)
+		;
+
+	if ((retarr = (char **)malloc((i + 1) * sizeof(char *))) == NULL)
+		return NULL;
+
+	for (i = 0; strarr[i] != NULL; i++) {
+		retarr[i] = strdup(strarr[i]);
+		if (retarr[i] == NULL) {
+			for (i = 0; retarr[i] != NULL; i++)
+				free(retarr[i]);
+			free(retarr);
+			return NULL;
+		}
+	}
+	retarr[i] = NULL;
+	return retarr;
+}
+
+/**
+ * @brief
  * 		find index of str in strarr
  *
  * @param[in]	strarr	-	the string array to search

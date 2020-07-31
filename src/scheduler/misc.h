@@ -102,11 +102,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
 
 /*
- *      dup_string_array - duplicate an array of strings
- */
-char **dup_string_array(char **ostrs);
-
-/*
  *      string_array_verify - verify two string arrays are equal
  */
 unsigned string_array_verify(char **sa1, char **sa2);

@@ -279,6 +279,11 @@ int find_string_idx(char **strarr, char *str);
 int is_string_in_arr(char **strarr, char *str);
 
 /*
+ * Make copy of string array
+ */
+char **dup_string_arr(char **strarr);
+
+/*
  *      free_string_array - free an array of strings with NULL as sentinel
  */
 void free_string_array(char **arr);
