@@ -2198,8 +2198,8 @@ dup_server_info(server_info *osinfo)
 	nsinfo->total_group_counts = dup_counts_list(osinfo->total_group_counts);
 	nsinfo->total_project_counts = dup_counts_list(osinfo->total_project_counts);
 	nsinfo->total_user_counts = dup_counts_list(osinfo->total_user_counts);
-	nsinfo->node_group_key = dup_string_array(osinfo->node_group_key);
-	nsinfo->nodesigs = dup_string_array(osinfo->nodesigs);
+	nsinfo->node_group_key = dup_string_arr(osinfo->node_group_key);
+	nsinfo->nodesigs = dup_string_arr(osinfo->nodesigs);
 
 	nsinfo->policy = dup_status(osinfo->policy);
 
@@ -2521,7 +2521,7 @@ dup_resource(schd_resource *res)
 		nres->orig_str_avail = string_dup(res->orig_str_avail);
 
 	if (res->str_avail != NULL)
-		nres->str_avail = dup_string_array(res->str_avail);
+		nres->str_avail = dup_string_arr(res->str_avail);
 
 	if (res->str_assigned != NULL)
 		nres->str_assigned = string_dup(res->str_assigned);

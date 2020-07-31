@@ -1705,8 +1705,8 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 
 	nnode->priority = onode->priority;
 
-	nnode->jobs = dup_string_array(onode->jobs);
-	nnode->resvs = dup_string_array(onode->resvs);
+	nnode->jobs = dup_string_arr(onode->jobs);
+	nnode->resvs = dup_string_arr(onode->resvs);
 	if (flags & DUP_INDIRECT)
 		nnode->res = dup_ind_resource_list(onode->res);
 	else
@@ -4748,7 +4748,7 @@ create_execvnode(nspec **ns)
  *
  * @param[in]	execvnode	-	the execvnode to parse
  * @param[in]	sinfo		-	server to get the nodes from
- * @param[in]	sel		- select to map 
+ * @param[in]	sel		- select to map
  *
  * @return	a newly allocated nspec array for the execvnode
  *

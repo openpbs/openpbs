@@ -372,7 +372,7 @@ free_resource_resv(resource_resv *resresv)
 
 	if (resresv->nspec_arr != NULL)
 		free_nspecs(resresv->nspec_arr);
-	
+
 	if (resresv->orig_nspec_arr != NULL)
 		free_nspecs(resresv->orig_nspec_arr);
 
@@ -653,7 +653,7 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	nresresv->aoename = string_dup(oresresv->aoename);
 	nresresv->eoename = string_dup(oresresv->eoename);
 
-	nresresv->node_set_str = dup_string_array(oresresv->node_set_str);
+	nresresv->node_set_str = dup_string_arr(oresresv->node_set_str);
 
 	nresresv->resresv_ind = oresresv->resresv_ind;
 	nresresv->node_set = copy_node_ptr_array(oresresv->node_set, nsinfo->nodes);
@@ -2270,10 +2270,10 @@ free_chunk(chunk *ch)
 
 /**
  * @brief find_chunk_by_seq_num - find a chunk by its sequence number
- * 
+ *
  * @param[in] chunks - array of chunks to search
  * @param[in] seq_num - sequence number to search for
- * 
+ *
  * @return chunk *
  * @retval chunk found
  * @retval NULL if not found
