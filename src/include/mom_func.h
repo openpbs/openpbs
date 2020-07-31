@@ -348,7 +348,7 @@ extern void add_bad_list(char **, char *, int);
 extern int is_child_path(char *, char *);
 extern int pbs_glob(char *, char *);
 extern void  rmjobdir(char *, char *, uid_t, gid_t);
-extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *);
+extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
 #ifdef WIN32
 extern void  bld_wenv_variables(char *, char *);
 extern void  init_envp(void);

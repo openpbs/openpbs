@@ -3289,7 +3289,7 @@ req_cpyfile(struct batch_request *preq)
 		}
 
 		rc = stage_file(dir, rmtflag, rqcpf->rq_owner,
-			pair, preq->rq_conn, &stage_inout, prmt);
+			pair, preq->rq_conn, &stage_inout, prmt, rqcpf->rq_jobid);
 		/*
 		 ** Here we break out of the the loop on error.
 		 ** This will only happen on a stagein failure.
