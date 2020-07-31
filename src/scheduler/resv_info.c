@@ -784,6 +784,10 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		if (advresv->resv->resv_substate != RESV_IN_CONFLICT)
 			advresv->resv->resv_substate = RESV_DEGRADED;
 	}
+
+	if (advresv->resv->req_start <= sinfo->server_time && advresv->resv->req_end >= sinfo->server_time)
+		advresv->resv->is_running = 1;
+
 	return advresv;
 }
 
@@ -821,6 +825,7 @@ new_resv_info()
 	rinfo->execvnodes_seq = NULL;
 	rinfo->count = 0;
 	rinfo->is_standing = 0;
+	rinfo->is_running = 0;
 	rinfo->occr_start_arr = NULL;
 	rinfo->partition = NULL;
 	rinfo->select_orig = NULL;
@@ -901,6 +906,7 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 	nrinfo->resv_state = rinfo->resv_state;
 	nrinfo->resv_substate = rinfo->resv_substate;
 	nrinfo->is_standing = rinfo->is_standing;
+	nrinfo->is_running = rinfo->is_running;
 	nrinfo->timezone = string_dup(rinfo->timezone);
 	nrinfo->rrule = string_dup(rinfo->rrule);
 	nrinfo->resv_idx = rinfo->resv_idx;
@@ -1015,7 +1021,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				return -1;
 			}
 
-			release_running_resv_nodes(nresv, nsinfo->nodes);
+			release_running_resv_nodes(nresv, nsinfo);
 
 			/* Attempt to confirm the reservation. For a standing reservation,
 			 * each occurrence is unrolled and attempted to be confirmed within the
@@ -1466,7 +1472,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				rconf = RESV_CONFIRM_FAIL;
 			} else if (vnodes_down > 0 || nresv->resv->resv_substate == RESV_IN_CONFLICT ||
 				nresv->resv->resv_state == RESV_BEING_ALTERED) {
-				if (nresv->resv->resv_state == RESV_RUNNING) {
+				if (nresv->resv->is_running) {
 					char *sel;
 					free_selspec(nresv->execselect);
 					/* Use orig_nspec_arr over nspec_arr because 
@@ -1476,7 +1482,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					sel = create_select_from_nspec(nresv->orig_nspec_arr);
 					nresv->execselect = parse_selspec(sel);
 					free(sel);
-					release_running_resv_nodes(nresv, nsinfo->nodes);
+					release_running_resv_nodes(nresv, nsinfo);
 				}
 				release_nodes(nresv);
 			} else if (vnodes_down == 0) {
@@ -1513,7 +1519,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				}
 				continue;
 			}
-			if (nresv->resv->resv_state != RESV_RUNNING) {
+			if (nresv->resv->is_running) {
 				if (disable_reservation_occurrence(nsinfo->calendar->events, nresv) != 1) {
 					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 						  "Error determining if reservation can be confirmed: "
@@ -1798,7 +1804,7 @@ check_vnodes_unavailable(resource_resv *resv)
 	for (i = 0; resv->orig_nspec_arr[i] != NULL; i++) {
 
 		/* If the original select chunks haven't been mapped to the resv_nodes and the reservation is running, we can't continue */
-		if (resv->resv->resv_state == RESV_RUNNING && resv->orig_nspec_arr[i]->chk == NULL) {
+		if (resv->resv->is_running && resv->orig_nspec_arr[i]->chk == NULL) {
 			free(chunks_to_remove);
 			return -2;
 		}
@@ -1982,24 +1988,21 @@ end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
  */
 
 void
-release_running_resv_nodes(resource_resv *resv, node_info **all_nodes)
+release_running_resv_nodes(resource_resv *resv, server_info *sinfo)
 {
 	int i = 0;
 	node_info **resv_nodes = NULL;
 	node_info *ninfo = NULL;
-	int degraded;
-	int being_altered;
 
-	if (resv == NULL || all_nodes == NULL )
+	if (resv == NULL || sinfo == NULL )
 		return;
-	degraded = resv->resv->resv_state == RESV_RUNNING && resv->resv->resv_substate == RESV_DEGRADED;
-	being_altered = resv->resv->resv_state == RESV_BEING_ALTERED && resv->resv->resv_substate == RESV_RUNNING;
-	if (degraded || being_altered) {
+	if (resv->resv->is_running && (resv->resv->resv_substate == RESV_DEGRADED || resv->resv->resv_state == RESV_BEING_ALTERED)) {
 		resv_nodes = resv->ninfo_arr;
 		for (i = 0; resv_nodes[i] != NULL; i++) {
-			ninfo = find_node_by_indrank(all_nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
+			ninfo = find_node_by_indrank(sinfo->nodes, resv_nodes[i]->node_ind, resv_nodes[i]->rank);
 			update_node_on_end(ninfo, resv, NULL);
 		}
+		sinfo->pset_metadata_stale = 1;
 	}
 }
 

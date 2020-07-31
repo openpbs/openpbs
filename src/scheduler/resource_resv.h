@@ -253,7 +253,7 @@ copy_resresv_array(resource_resv **resresv_arr,
 /*
  *	is_resresv_running - is a resource resv in the running state
  *			     for a job it's in the "R" state
- *			     for an advanced reservation it's in RESV_RUNNING
+ *			     for an advanced reservation it is running
  */
 int is_resresv_running(resource_resv *resresv);
 

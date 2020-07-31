@@ -2026,7 +2026,7 @@ int
 check_run_resv(resource_resv *resv, void *arg)
 {
 	if (resv->is_resv && resv->resv != NULL)
-		return resv->resv->resv_state == RESV_RUNNING;
+		return resv->resv->is_running;
 
 	return 0;
 }
@@ -2128,7 +2128,7 @@ int
 check_resv_running_on_node(resource_resv *resv, void *arg)
 {
 	if (resv->is_resv && resv->resv !=NULL) {
-		if (resv->resv->resv_state == RESV_RUNNING || resv->resv->resv_state == RESV_BEING_DELETED)
+		if (resv->resv->is_running || resv->resv->resv_state == RESV_BEING_DELETED)
 			if (find_node_info(resv->ninfo_arr, (char *) arg))
 				return 1;
 	}

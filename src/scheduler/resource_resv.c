@@ -1664,6 +1664,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 	}
 	else if (resresv->is_resv && resresv->resv != NULL) {
 		resresv->resv->resv_state = RESV_RUNNING;
+		resresv->resv->is_running = 1;
 
 		resv_queue = find_queue_info(resresv->server->queues,
 			resresv->resv->queuename);
@@ -1753,6 +1754,7 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 			set_timed_event_disabled(resresv->end_event, 1);
 	} else if (resresv->is_resv && resresv->resv != NULL) {
 		resresv->resv->resv_state = RESV_DELETED;
+		resresv->resv->is_running = 0;
 
 		resv_queue = find_queue_info(resresv->server->queues,
 			resresv->resv->queuename);
@@ -2002,7 +2004,7 @@ copy_resresv_array(resource_resv **resresv_arr,
  * @brief
  *		is_resresv_running - is a resource resv in the running state
  *			     for a job it's in the "R" state
- *			     for an advanced reservation it's in RESV_RUNNING
+ *			     for an advanced reservation its start time is in the past
  *
  *
  * @param[in]	resresv	-	the resresv to check if it's running
@@ -2030,7 +2032,7 @@ is_resresv_running(resource_resv *resresv)
 		if (resresv->resv == NULL)
 			return 0;
 
-		if (resresv->resv->resv_state ==RESV_RUNNING)
+		if (resresv->resv->is_running)
 			return 1;
 	}
 

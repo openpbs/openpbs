@@ -157,6 +157,7 @@ src/cmds/pbs_tmrsh
 src/cmds/pbsdsh
 src/cmds/pbsnodes
 src/cmds/pbs_release_nodes
+src/cmds/pbs_dataservice.bin
 src/cmds/pbsrun
 src/cmds/pbsrun_unwrap
 src/cmds/pbsrun_wrap
