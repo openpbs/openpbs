@@ -49,15 +49,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef WIN32
-#include <io.h>
-#include <windows.h>
-#include "win.h"
-#else
 #include <sys/wait.h>
 #include <dirent.h>
 #include "tpp.h"
-#endif
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"

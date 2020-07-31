@@ -46,7 +46,6 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 
-#ifndef WIN32
 #include	<unistd.h>
 #include	<dirent.h>
 #include	<pwd.h>
@@ -54,15 +53,10 @@
 #include	<sys/socket.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
-
 #include	<sys/param.h>
 #include	<sys/times.h>
 #include	<sys/time.h>
 #include	<sys/resource.h>
-#else
-#include	<sddl.h>
-#endif
-
 #include	<signal.h>
 #include	<string.h>
 #include	<ctype.h>

@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-#ifndef WIN32
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -428,4 +426,3 @@ pbs_auth_process_handshake_data(void *ctx, void *data_in, size_t len_in, void **
 
 /********* END OF EXPORTED FUNCS *********/
 
-#endif /* WIN32 */

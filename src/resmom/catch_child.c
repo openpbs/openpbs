@@ -42,13 +42,9 @@
 #include <Python.h>
 #endif
 
-#ifdef WIN32
-#include <direct.h>
-#else
 #include <unistd.h>
 #include <dirent.h>
 #include <pwd.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>

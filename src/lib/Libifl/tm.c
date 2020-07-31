@@ -54,9 +54,7 @@
 #include	<sys/time.h>
 #include	<netinet/in.h>
 #include	<netdb.h>
-#ifdef WIN32
-#include	<sddl.h>
-#endif
+
 #include	"dis.h"
 #include	"tm.h"
 #include	"pbs_ifl.h"

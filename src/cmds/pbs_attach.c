@@ -61,9 +61,6 @@
 #include "tm.h"
 #include "pbs_version.h"
 #ifdef WIN32
-#include <windows.h>
-#include "win.h"
-#include "win_remote_shell.h"
 #define PROG_NAME "pbs_attach"
 #endif
 

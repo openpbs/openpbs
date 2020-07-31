@@ -89,10 +89,8 @@
 #include <netdb.h>
 #include <string.h>
 #include <sys/time.h>
-#ifndef WIN32
 #include <stdint.h>
-#include <stdlib.h>
-#endif
+
 
 #include "pbs_idx.h"
 #include "libpbs.h"

@@ -48,12 +48,10 @@
 #include <errno.h>
 #include <netdb.h>
 #include <string.h>
-#ifndef WIN32
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <netinet/tcp.h>
-#endif
 #include "portability.h"
 #include "server_limits.h"
 #include "libpbs.h"
@@ -62,10 +60,7 @@
 #include "libsec.h"
 #include "pbs_internal.h"
 #include "auth.h"
-#ifdef WIN32
-#include "win.h"
-#include <Winerror.h>
-#endif
+
 
 /**
  * @file	net_client.c

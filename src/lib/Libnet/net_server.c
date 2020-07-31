@@ -56,12 +56,8 @@
 #include <fcntl.h>
 #include <time.h>
 #include <stdlib.h>
-
-#ifndef WIN32
-#include <stdlib.h>
 #include <poll.h>
 #include <sys/resource.h>
-#endif
 
 #include "portability.h"
 #include "server_limits.h"

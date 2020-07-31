@@ -57,16 +57,10 @@
 #include <sys/stat.h>
 #include <libutil.h>
 
-#ifdef WIN32
-#include  <io.h>
-#include "win.h"
-#include <sys/timeb.h>
-#else
 #include <unistd.h>
 #include <sys/param.h>
 #include <netinet/in.h>
 #include <sys/time.h>
-#endif
 
 #include "libpbs.h"
 #include "server_limits.h"
@@ -103,14 +97,8 @@
 #include "mom_hook_func.h"
 #include "placementsets.h"
 
-#ifdef WIN32
-#include <direct.h>
-#include "mom_func.h"
-#else
 #include <pwd.h>
 #include "mom_func.h"
-
-#endif /* WIN32 */
 
 extern	char mom_host[PBS_MAXHOSTNAME+1];
 #endif	/* PBS_MOM */

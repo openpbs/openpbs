@@ -52,17 +52,13 @@
 #include	<stdio.h>
 #include	<string.h>
 #include	<stdlib.h>
-#ifndef WIN32
 #include	<unistd.h>
-#endif
 #include	<time.h>
 #include	"dis.h"
 #include	"pbs_error.h"
 #include	"log.h"
 #include	"placementsets.h"
-#ifdef	WIN32
 #include	"pbs_config.h"
-#endif
 #include	"list_link.h"
 #include	"attribute.h"
 #include	"pbs_nodes.h"

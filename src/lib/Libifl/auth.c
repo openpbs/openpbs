@@ -42,12 +42,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <arpa/inet.h>
-#ifndef WIN32
 #include <netinet/tcp.h>
 #include <dlfcn.h>
-#else
-#include "win.h"
-#endif
+
 #include "dis.h"
 #include "pbs_ifl.h"
 #include "libpbs.h"

@@ -44,16 +44,11 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
-#ifdef WIN32
-#include <direct.h>
-#include "win.h"
-#else
 #include <grp.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <dirent.h>
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -2622,7 +2617,7 @@ post_cpyfile(struct work_task *pwt)
 
 	win_pclose2(pio);
 	DBPRT(("%s: done %s\n", __func__, jobid))
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, "%s: done %s", __func__, jobid);
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, "%s: done %s", __func__, jobid);
 
 	delete_link(&cpyinfo->al_link);
 	free(cpyinfo->jobid);

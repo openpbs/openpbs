@@ -56,10 +56,7 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-
-#ifndef WIN32
 #include <sys/param.h>
-#endif
 
 #include "pbs_ifl.h"
 #include <errno.h>
@@ -73,12 +70,7 @@
 #include "list_link.h"
 #include "attribute.h"
 
-#ifdef WIN32
 #include <sys/stat.h>
-#include <io.h>
-#include <windows.h>
-#include "win.h"
-#endif
 
 #include "job.h"
 #include "reservation.h"

@@ -194,7 +194,7 @@ qmgr_CPPFLAGS = \
 qmgr_LDADD = \
 	${common_libs} \
 	@editline_lib@
-qmgr_SOURCES = qmgr.c ${common_sources}
+qmgr_SOURCES = qmgr.c qmgr_sup.c ${common_sources}
 
 qmove_CPPFLAGS = ${common_cflags}
 qmove_LDADD = ${common_libs}

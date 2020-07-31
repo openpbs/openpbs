@@ -108,6 +108,8 @@
                              free(x); \
                          }
 
+#define QMGR_HIST_SIZE 500   /* size of the qmgr history area */
+
 /* structures */
 
 /* this struct is for the open servers */
