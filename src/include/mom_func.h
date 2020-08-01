@@ -90,6 +90,7 @@ extern char	pbs_tmpdir[];
 
 /* used by mom_main.c and start_exec.c for PBS_JOBDIR */
 extern char	pbs_jobdir_root[];
+extern int	pbs_jobdir_root_shared;
 
 /* test bits */
 #define PBSQA_DELJOB_SLEEP	1
@@ -340,7 +341,7 @@ extern int local_or_remote(char **);
 extern void add_bad_list(char **, char *, int);
 extern int is_child_path(char *, char *);
 extern int pbs_glob(char *, char *);
-extern void  rmjobdir(char *, char *, uid_t, gid_t);
+extern void  rmjobdir(char *, char *, uid_t, gid_t, int);
 extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
 #ifdef WIN32
 extern void  bld_wenv_variables(char *, char *);

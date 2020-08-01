@@ -1184,6 +1184,9 @@ error:
  * @param[in] gid    - the group id of the user under which the job will run.
  *		       Currenty this parameter only used in *nix so for
  *		       windows this parameter should be NULL
+ * @param[in] check_shared - if set to '1', test if the staging and execution
+ *			directory is sitting on a shared location, and if so,
+ *			do not remove any files in it.
  * @return void
  *
  * @note	This may take awhile so the task is forked and execed to another
@@ -1192,7 +1195,7 @@ error:
  *
  */
 void
-rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
+rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 {
 	static	char	rmdir_buf[MAXPATHLEN+1] = {'\0'};
 	struct	stat	sb = {0};
@@ -1211,6 +1214,15 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
 
 	if (jobdir == NULL)
 		return;
+
+	if (check_shared &&
+	    (pbs_jobdir_root[0] != '\0') &&
+	    pbs_jobdir_root_shared &&
+	    (strncmp(pbs_jobdir_root, jobdir, strlen(pbs_jobdir_root)) == 0)) {
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid?jobid:__func__, "shared jobdir %s to be removed by primary mom", jobdir);
+
+		return;
+	}
 
 #ifndef WIN32
 	if (pbs_jobdir_root[0] == '\0') {

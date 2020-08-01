@@ -779,17 +779,23 @@ del_job_dirs(job *pjob, char *taskdir)
 	 */
 	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		int	check_shared = 0;
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
+			/* sister mom */
+			check_shared = 1;
 		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
 			if (pjob->ji_grpcache != NULL)
 				rmjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
 					pjob->ji_grpcache->gc_uid,
-					pjob->ji_grpcache->gc_gid);
+					pjob->ji_grpcache->gc_gid,
+					check_shared);
 			else
 				rmjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, NULL),
 					0,
-					0);
+					0,
+					check_shared);
 		}
 	}
 }
