@@ -2336,7 +2336,7 @@ class TestReservations(TestFunctional):
         self.server.create_vnodes('vn', a, num=2, mom=self.mom)
         now = int(time.time())
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
-                                      start=now + 5, end=now + 100)
+                                      start=now + 5, end=now + 300)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, a, id=rid)
