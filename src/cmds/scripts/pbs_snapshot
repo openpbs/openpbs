@@ -44,7 +44,7 @@ ptl_prefix_lib=
 
 # Try package install paths
 if [ -f /etc/debian_version ]; then
-    __ptlpkgname=$(dpkg -W -f='${binary:Package}\n' 2>/dev/null | grep -E '*-ptl$')
+    __ptlpkgname=$(dpkg-query -W -f='${binary:Package}\n' 2>/dev/null | grep -E '*-ptl$')
     if [ "x${__ptlpkgname}" != "x" ]; then
         ptl_prefix_lib=$(dpkg -L ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null)
     fi
@@ -87,7 +87,7 @@ else
     if [ "X${__PBS_EXEC}" != "X" ]; then
         # Define PATH and PYTHONPATH for the users
         PTL_PREFIX=$(dirname ${__PBS_EXEC})/ptl
-        if [ ! -x "${PTL_PREFIX}/lib/site-packages" ]; then
+        if [ ! -d "${PTL_PREFIX}/lib/site-packages" ]; then
             ptlbinpath=${__PBS_EXEC}/unsupported/fw/bin
             ptllibpath=${__PBS_EXEC}/unsupported/fw
             __pbs_snapshot=${__pbs_snapshot}.py
@@ -103,7 +103,7 @@ fi
 
 export PYTHONPATH=${ptllibpath}:${PYTHONPATH}
 
-if [ -x $ptlbinpath ] && [ -x $ptllibpath ];then
+if [ -d $ptlbinpath ] && [ -d $ptllibpath ];then
     if [ -x "${__PBS_EXEC}/python/bin/python" ]; then
         ${__PBS_EXEC}/python/bin/python ${ptlbinpath}/${__pbs_snapshot} "${@}"
     else
