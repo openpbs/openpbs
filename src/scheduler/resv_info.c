@@ -1519,7 +1519,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				}
 				continue;
 			}
-			if (nresv->resv->is_running) {
+			if (!nresv->resv->is_running) {
 				if (disable_reservation_occurrence(nsinfo->calendar->events, nresv) != 1) {
 					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 						  "Error determining if reservation can be confirmed: "
