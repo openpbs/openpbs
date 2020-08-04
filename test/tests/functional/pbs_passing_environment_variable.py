@@ -78,7 +78,8 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
              'Resource_List.walltime': 10}
         script = ['#PBS -v "var1=\'A,B,C,D\'"']
         script += ['env | grep var1']
-        jid = self.create_and_submit_job(user=TEST_USER, content=script)
+        jid = self.create_and_submit_job(user=TEST_USER, content=script,
+                                         attribs={ATTR_S: "/bin/bash"})
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
 
@@ -123,7 +124,8 @@ env | grep -A 3 foo\n
 foo\n
 """
         # Submit a job without hooks in the system
-        jid = self.create_and_submit_job(user=TEST_USER, content=script)
+        jid = self.create_and_submit_job(user=TEST_USER, content=script,
+                                         attribs={ATTR_S: "/bin/bash"})
         qstat = self.server.status(JOB, ATTR_o, id=jid)
         job_outfile = qstat[0][ATTR_o].split(':')[1]
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
