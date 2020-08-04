@@ -360,7 +360,6 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/cmds/Makefile
 	src/cmds/mpiexec
-	src/cmds/nqs2pbs
 	src/cmds/pbs_lamboot
 	src/cmds/pbs_mpihp
 	src/cmds/pbs_mpilam
