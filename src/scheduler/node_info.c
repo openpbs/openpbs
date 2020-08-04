@@ -4960,7 +4960,9 @@ node_state_to_str(node_info *ninfo)
  *
  * @param[in,out]	nspec_arr	-	array to combine
  *
- * @return	nothing
+ * @return	nspec **
+ * @retval	combined nspec array (up to caller to free)
+ * @retval	NULL on error
  *
  */
 nspec **
@@ -4969,7 +4971,6 @@ combine_nspec_array(nspec **nspec_arr)
 	int i, j, k;
 	resource_req *req_i;
 	resource_req *req_j;
-	resource_req *prev_j = NULL;
 	int cnt;
 	nspec **new_nspec_arr;
 	nspec *ns;
@@ -5010,10 +5011,8 @@ combine_nspec_array(nspec **nspec_arr)
 		for (j = i + 1; nspec_arr[j] != NULL; j++) {
 			if (nspec_arr[i]->resreq != NULL &&
 			    nspec_arr[i]->ninfo == nspec_arr[j]->ninfo) {
-				req_j = nspec_arr[j]->resreq;
-				prev_j = NULL;
 
-				while (req_j != NULL) {
+				for (req_j = nspec_arr[j]->resreq; req_j != NULL; req_j = req_j->next) {
 					req_i = find_resource_req(ns->resreq, req_j->def);
 					if (req_i != NULL) {
 						/* we assume that if the resource is a boolean or a string
@@ -5022,23 +5021,13 @@ combine_nspec_array(nspec **nspec_arr)
 						 */
 						if (req_j->type.is_consumable)
 							req_i->amount += req_j->amount;
-						else if (req_j->type.is_string && req_i->res_str == NULL) {
-							req_i->res_str = req_j->res_str;
-							req_j->res_str = NULL;
-						}
-						prev_j = req_j;
-						req_j = req_j->next;
-					} else { /* nspec_arr[j] has a resource [i] does not, just link j's on */
-						req_i = req_j;
-						req_j = req_j->next;
-
-						if (prev_j == NULL) /* req_j is the first in the list */
-							ns->resreq = nspec_arr[j]->resreq->next;
-						else
-							prev_j->next = req_i->next;
-
-						req_i->next = nspec_arr[i]->resreq;
-						ns->resreq = req_i;
+						else if (req_j->type.is_string && req_i->res_str == NULL)
+							req_i->res_str = string_dup(req_j->res_str);
+					} else { /* nspec_arr[j] has a resource nspec_arr[i] does not */
+						resource_req *tmpreq;
+						tmpreq = dup_resource_req(req_i);
+						tmpreq->next = ns->resreq;
+						ns->resreq = tmpreq;
 					}
 				}
 			}

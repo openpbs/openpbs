@@ -739,6 +739,11 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		attrp = attrp->next;
 	}
 
+	/* If we have a select_orig, this means we're doing an ralter and reducing the size of our reservation
+	 * We need to map the orig chunks to chunks from the smaller select to make sure we keep them.
+	 * To do this, we set the seq_num of the select chunk to the same seq_num of the select_orig chunk
+	 *
+	 */
 	if (advresv->resv->select_orig != NULL) {
 		int i;
 		int j = 0;
@@ -1785,19 +1790,17 @@ check_down_running(resource_resv *resv, int chunk_ind)
 }
 
 /**
- * @brief "remove" nodes from nspec array by adding them to chunks_to_remove.  The type of node removes
- * 	is based on node_type.  It can be either an unavailable node or a normal node (or either).
- * 	If we have 4:A+5:B and num_chunks is 2, we'd remove 2 A's and return.
+ * @brief remove nodes from a reservation.  Per call, we remove one type of chunk based on the chunk's seq_num
+ * 	We remove num_chunks if we can (or fail if we can't)  We remove based on node_type which controls whether 
+ * 	we are removing unavailable nodes or available nodes
  * 
  * @param[in] resv - reservation to remove nodes from
  * @param[in] start_of_chk - index into orig_nspec_arr of where to start
  * @param[in] chk_seq_num - sequence number of chunk to remove nodes from
  * @param[in] num_chks - number of nodes to remove.  Depending on node_type, it is OK to remove less than this
- * @param[in, out] chunks_to_remove - chunks from the nspec array to remove
- * @param[in, out] ctr_ind - index of where to start in chunks_to_remove, and advanced as we add to it
  * @param[in] node_type - type of node to remove: -1 unavailable, 0 normal, 1 either all with no running jobs
  * 
- * @note all nspec chunks to be removed will have their ninfo pointer NULL'd.
+ * @note all nspec chunks to be removed will have their ninfo pointer NULL'd.  It up to the caller to actually remove them from the reservation.
  * 
  * @return int
  * @retval number of chunks removed from the nspec array
@@ -1823,17 +1826,33 @@ int ralter_remove_nodes(resource_resv *resv, int start_of_chk, int chk_seq_num, 
 		if (ret == node_type || node_type == 1) {
 			k = i;
 			do {
+				if (k != i)
+					k++;
 				nspec_arr[k]->ninfo = NULL;
-				k++;
 			} while (nspec_arr[k] != NULL && !nspec_arr[k]->end_of_chunk);
 
-			if (nspec_arr[i]->end_of_chunk)
-				cur_chks--;
+			cur_chks--;
+			/* In the case of a superchunk, we advance past it.  In the case of a normal chunk, k didn't move, so we reassign i to i */
+			i = k;
 		}
 	}
 	return num_chks - cur_chks;
 }
 
+/**
+ * @brief reduce nodes of a reservation based on it new altered select.
+ * 	The original select's chunks have been already mapped onto the resv's nodes.
+ * 	When choosing nodes to release, we will first choose nodes which are unavailable.
+ * 	A node with a running job on it can not be released.
+ * 
+ * @param[in] resv - the reservation to shrink
+ * 
+ * @return int
+ * @retval 1 the reservation has been successfully shrunk
+ * @retval 0 no select_orig, not doing a pbs_ralter -l select
+ * @retval -1 can't remove enough chunks due to running jobs
+ * @retval -2 can't reduce due to resv_nodes not correctly mapped to select_orig
+ */
 int 
 ralter_reduce_chunks(resource_resv *resv) 
 {
