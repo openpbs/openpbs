@@ -1298,6 +1298,7 @@ pbsd_init_job(job *pjob, int type)
 		svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL, msg_init_abt);
 		check_block(pjob, msg_init_abt);
 		job_purge(pjob);
+		return 0;
 	}
 
 	pjob->ji_momhandle = -1;
