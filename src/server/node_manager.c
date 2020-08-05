@@ -900,12 +900,11 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		sprintf(log_buffer, ndreque, downmom);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_RERUN);
+		force_reque(pjob);
 		if (pjob->ji_acctrec) {
 			free(pjob->ji_acctrec);	/* logged, so clear it */
 			pjob->ji_acctrec = NULL;
 		}
-		force_reque(pjob);
 
 		/* free resc_used */
 		if ((pjob->ji_wattr[(int)JOB_ATR_resc_used].at_flags & ATR_VFLAG_SET) &&
