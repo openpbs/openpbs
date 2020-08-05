@@ -96,6 +96,16 @@ default_requirements = {
 
 skip = unittest.skip
 
+skipOnCray = unittest.skipIf(os.path.isfile('/etc/xthostname'),
+                             'capability not supported on Cray')
+
+skipOnShasta = unittest.skipIf(os.path.isfile('/etc/cray/xname'),
+                               'capability not supported on Cray Shasta')
+
+skipOnCpuSet = unittest.skipIf(any(map(lambda m: m.is_cpuset_mom, 
+                                       self.moms.values())),
+                               'capability not supported on cgroup '
+                               'cpuset system')
 
 def timeout(val):
     """
@@ -110,39 +120,13 @@ def timeout(val):
 def checkModule(modname):
     def wrapper(func):
         return func
+
     import imp
     try:
         imp.find_module(modname)
     except ImportError:
-        return unittest.skip(func, reason='Module unavailable')
+        unittest.skip(func, reason='Module unavailable')
     return wrapper
-
-
-def momIsCray(self):
-    return self.mom.is_cray()
-
-
-skipOnCray = unittest.skipIf(momIsCray, 'capability not supported on Cray')
-
-
-def momIsShasta(self):
-    return self.mom.is_shasta()
-
-
-skipOnShasta = unittest.skipIf(momIsShasta,
-                               'capability not supported on Cray Shasta')
-
-
-def anyMomIsCpuSet(self):
-    for mom in self.moms.values():
-        if mom.is_cpuset_mom():
-            return True
-    return False
-
-
-skipOnCpuSet = unittest.skipIf(anyMomIsCpuSet,
-                               'capability not supported on cgroup '
-                               'cpuset system')
 
 
 def requirements(*args, **kwargs):
