@@ -1704,7 +1704,7 @@ should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *job)
 
 	/* check if a job is in a reservation */
 	if (job->is_job && job->job != NULL && job->job->resv != NULL) {
-		if (job->job->resv->resv->resv_state == RESV_RUNNING) {
+		if (job->job->resv->resv->is_running) {
 			/* if we are not checking a specific node and the job is in a
 			 * running reservation, there can't be any conflicts
 			 */
@@ -1989,7 +1989,12 @@ void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 			*spec = resresv->select;
 		}
 	} else if (resresv->is_resv && resresv->resv != NULL) {
-		if (resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING)
+		/* The execselect should be used when the resv is running.  We can't
+		 * trust the state/substate to be RESV_RUNNING when a reservation is both
+		 * RESV_DEGRADED and RESV_BEING_ALTERED and is running.
+		 */
+		if (resresv->resv->is_running)
+
 			*spec = resresv->execselect;
 		else
 			*spec = resresv->select;

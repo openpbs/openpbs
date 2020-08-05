@@ -113,7 +113,7 @@ node_info **create_resv_nodes(nspec **nspec_arr, server_info *sinfo);
  *	release_running_resv_nodes - adjust nodes resources for reservations that
  *				  that are being altered or are degraded.
  */
-void release_running_resv_nodes(resource_resv *resv, node_info **all_nodes);
+void release_running_resv_nodes(resource_resv *resv, server_info *sinfo);
 
 /* Will we try and confirm this reservation in this cycle */
 int will_confirm(resource_resv *resv, time_t server_time);
