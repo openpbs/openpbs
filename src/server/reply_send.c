@@ -266,6 +266,7 @@ reply_send_status_part(struct batch_request *preq)
 		reply_free(&preq->rq_reply);
 		preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 		CLEAR_HEAD(preply->brp_un.brp_status);
+		preply->brp_count = 0;
 	}
 	return rc;
 }

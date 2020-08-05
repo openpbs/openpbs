@@ -193,6 +193,7 @@ struct batch_reply
 	int brp_auxcode;
 	int brp_choice; /* the union discriminator */
 	int brp_is_part;
+	int brp_count;
 	union {
 		char brp_jid[PBS_MAXSVRJOBID + 1];
 		struct brp_select *brp_select; /* select replies */

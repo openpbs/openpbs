@@ -315,6 +315,7 @@ decode_DIS_replySvr_inner(int sock, struct batch_reply *reply)
 			pselx = &reply->brp_un.brp_select;
 			ct = disrui(sock, &rc);
 			if (rc) return rc;
+			reply->brp_count = ct;
 
 			while (ct--) {
 				psel = (struct brp_select *)malloc(sizeof(struct brp_select));
@@ -338,6 +339,7 @@ decode_DIS_replySvr_inner(int sock, struct batch_reply *reply)
 			CLEAR_HEAD(reply->brp_un.brp_status);
 			ct = disrui(sock, &rc);
 			if (rc) return rc;
+			reply->brp_count = ct;
 
 			while (ct--) {
 				pstsvr = (struct brp_status *)malloc(sizeof(struct brp_status));
@@ -356,8 +358,7 @@ decode_DIS_replySvr_inner(int sock, struct batch_reply *reply)
 					(void)free(pstsvr);
 					return rc;
 				}
-				append_link(&reply->brp_un.brp_status,
-					&pstsvr->brp_stlink, pstsvr);
+				append_link(&reply->brp_un.brp_status, &pstsvr->brp_stlink, pstsvr);
 				rc = decode_DIS_svrattrl(sock, &pstsvr->brp_attr);
 			}
 			break;

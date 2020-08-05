@@ -159,8 +159,7 @@ PBSD_rdrpy(int c)
  */
 
 void
-PBSD_FreeReply(reply)
-struct batch_reply *reply;
+PBSD_FreeReply(struct batch_reply *reply)
 {
 	struct brp_select   *psel;
 	struct brp_select   *pselx;

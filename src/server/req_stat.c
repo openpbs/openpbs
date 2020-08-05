@@ -138,14 +138,13 @@ static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
  * @param[in]     pjob       - pointer to the job to be statused
  * @param[in]     dohistjobs - flag to include job if it is a history job
  * @param[in]     dosubjobs  - flag to expand a Array job to include all subjobs
- * @param[in/out] count      - count of total jobs in reply (used in sending part status reply)
  *
  * @return int
  * @retval PBSE_NONE  - no error
  * @retval !PBSE_NONE - PBS error code to return to client
  */
 static int
-do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosubjobs, int *count)
+do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosubjobs)
 {
 	int indx;
 	svrattrl *pal;
@@ -163,11 +162,10 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad);
 		if (dosubjobs && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) && (rc == PBSE_NONE || rc != PBSE_PERM) && pjob->ji_ajtrk != NULL) {
 			for (indx = 0; indx < pjob->ji_ajtrk->tkm_ct; ++indx) {
-				if ((*count)++ >= MAX_JOBS_PER_REPLY) {
+				if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
 					rc = reply_send_status_part(preq);
 					if (rc != PBSE_NONE)
 						return rc;
-					*count = 0;
 				}
 				rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
 				if (rc && rc != PBSE_PERM)
@@ -192,14 +190,13 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
  * @param[in]     name       - job id to be statused
  * @param[in]     dohistjobs - flag to include job if it is a history job
  * @param[in]     dosubjobs  - flag to expand a Array job to include all subjobs
- * @param[in/out] count      - count of total jobs in reply (used in sending part status reply)
  *
  * @return int
  * @retval PBSE_NONE  - no error
  * @retval !PBSE_NONE - PBS error code to return to client
  */
 static int
-stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dosubjobs, int *count)
+stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dosubjobs)
 {
 	int i;
 	char *pc;
@@ -231,7 +228,7 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 			return PBSE_UNKJOBID;
 		else if (!dohistjobs && (rc = svr_chk_histjob(pjob)) != PBSE_NONE)
 			return rc;
-		return do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs, count);
+		return do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs);
 	} else {
 		/* range of sub jobs */
 		range = get_index_from_jid(name);
@@ -257,11 +254,10 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 				int idx = numindex_to_offset(pjob, i);
 				if (idx == -1)
 					continue;
-				if ((*count)++ >= MAX_JOBS_PER_REPLY) {
+				if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
 					rc = reply_send_status_part(preq);
 					if (rc != PBSE_NONE)
 						return rc;
-					*count = 0;
 				}
 				rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
 				if (rc && rc != PBSE_PERM)
@@ -304,7 +300,6 @@ req_stat_job(struct batch_request *preq)
 	int rc = 0;
 	int type = 0;
 	char *pnxtjid = NULL;
-	int count = 0;
 
 	/* check for any extended flag in the batch request. 't' for
 	 * the sub jobs. If 'x' is there, then check if the server is
@@ -363,6 +358,7 @@ req_stat_job(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	rc = PBSE_NONE;
 	if (type == 1) {
@@ -374,7 +370,7 @@ req_stat_job(struct batch_request *preq)
 		 */
 		pnxtjid = name;
 		while ((name = parse_comma_string_r(&pnxtjid)) != NULL) {
-			if ((rc = stat_a_jobidname(preq, name, dohistjobs, dosubjobs, &count)) == PBSE_NONE)
+			if ((rc = stat_a_jobidname(preq, name, dohistjobs, dosubjobs)) == PBSE_NONE)
 				at_least_one_success = 1;
 		}
 		if (at_least_one_success == 1)
@@ -386,17 +382,16 @@ req_stat_job(struct batch_request *preq)
 	} else {
 		pjob = (job *) GET_NEXT(type == 2 ? pque->qu_jobs : svr_alljobs);
 		while (pjob) {
-			rc = do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs, &count);
+			rc = do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs);
 			if (rc != PBSE_NONE) {
 				req_reject(rc, bad, preq);
 				return;
 			}
 			pjob = (job *) GET_NEXT(type == 2 ? pjob->ji_jobque : pjob->ji_alljobs);
-			if (count++ >= MAX_JOBS_PER_REPLY && pjob) {
+			if (preply->brp_count >= MAX_JOBS_PER_REPLY && pjob) {
 				rc = reply_send_status_part(preq);
 				if (rc != PBSE_NONE)
 					return;
-				count = 0;
 			}
 		}
 	}
@@ -450,6 +445,7 @@ req_stat_que(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	if (type == 0) {	/* get status of the one named queue */
 		rc = status_que(pque, preq, &preply->brp_un.brp_status);
@@ -522,6 +518,7 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 	/* add attributes to the status reply */
 
@@ -586,6 +583,7 @@ req_stat_node(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	if (type == 0) {		/* get status of the named node */
 		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
@@ -678,6 +676,7 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 	/*the request's reply substructure                         */
 
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 	/*point to the list of node-attributes about which we want status*/
 	/*hang that status information from the brp_attr field for this  */
@@ -766,6 +765,7 @@ req_stat_svr(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
 	if (pstat == NULL) {
@@ -778,6 +778,7 @@ req_stat_svr(struct batch_request *preq)
 	pstat->brp_objtype = MGR_OBJ_SERVER;
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(&preply->brp_un.brp_status, &pstat->brp_stlink, pstat);
+	preply->brp_count++;
 
 	/* add attributes to the status reply */
 
@@ -821,6 +822,7 @@ status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_head *pstat
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 
 	bad = 0;
@@ -857,6 +859,7 @@ req_stat_sched(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 			(psched != NULL);
@@ -975,6 +978,7 @@ req_stat_resv(struct batch_request * preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	if (type == 0) {
 		/* get status of the specifically named reservation */
@@ -1037,6 +1041,7 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 	/*finally, add the requested attributes to the status reply*/
 
@@ -1120,6 +1125,7 @@ status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head 
 			return PBSE_SYSTEM;
 	}
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 	return 0;
 }
 
@@ -1174,6 +1180,7 @@ req_stat_resc(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	if (type == 0) {	/* get status of the one named resource */
 		rc = status_resc(prd, preq, &preply->brp_un.brp_status, private);
