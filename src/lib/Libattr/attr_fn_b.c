@@ -274,3 +274,39 @@ comp_b(struct attribute *attr, struct attribute *with)
 /*
  * free_b - use free_null() to (not) free space
  */
+
+/**
+ * @brief	Attribute setter function for boolean type values
+ *
+ * @param[in]	pattr	-	pointer to attribute being set
+ * @param[in]	value	-	value to be set
+ * @param[in]	op		-	operation to do
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+set_attr_b(attribute *pattr, long val, enum batch_op op)
+{
+	switch (op) {
+		case SET:
+			pattr->at_val.at_long = val;
+			break;
+
+		case INCR:
+			pattr->at_val.at_long = pattr->at_val.at_long | val; /* "or" */
+			break;
+
+		case DECR:
+			pattr->at_val.at_long = pattr->at_val.at_long & ~val;
+			break;
+
+		default:
+			return;
+	}
+	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+}
+

@@ -134,7 +134,7 @@ set_node_ct(resource *pnodesp, attribute *pattr, void *pobj, int type, int actmo
 	resource_def	*pndef;
 
 	if ((actmode == ATR_ACTION_RECOV) ||
-		((pnodesp->rs_value.at_flags & ATR_VFLAG_SET) == 0))
+		((is_attr_set(&pnodesp->rs_value)) == 0))
 		return (0);
 
 	/* first validate the spec */
@@ -395,7 +395,7 @@ preempt_targets_action(resource *presc, attribute *pattr, void *pobject, int typ
 	if ((actmode == ATR_ACTION_FREE) || (actmode == ATR_ACTION_RECOV))
 		return PBSE_NONE;
 
-	if ((pattr->at_flags & ATR_VFLAG_SET) == 0)
+	if (!is_attr_set(pattr))
 		return PBSE_NONE;
 
 	if (presc->rs_value.at_val.at_arst == NULL)
@@ -909,7 +909,7 @@ action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type,
 			walltime_def = &svr_resc_def[RESC_WALLTIME];
 		entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], walltime_def);
 		if (entry != NULL) {
-			if (entry->rs_value.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&entry->rs_value)) {
 				if (walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) < 0)
 					return PBSE_BADATVAL;
 			}
@@ -920,7 +920,7 @@ action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type,
 			min_walltime_def = &svr_resc_def[RESC_MIN_WALLTIME];
 		entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], min_walltime_def);
 		if (entry != NULL) {
-			if (entry->rs_value.at_flags & ATR_VFLAG_SET)
+			if (is_attr_set(&entry->rs_value))
 				return PBSE_SOFTWT_STF;
 		}
 	}
@@ -955,7 +955,7 @@ action_walltime(resource *presc, attribute *pattr, void *pobject, int type, int 
 			soft_walltime_def = &svr_resc_def[RESC_SOFT_WALLTIME];
 		entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], soft_walltime_def);
 		if (entry != NULL) {
-			if (entry->rs_value.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&entry->rs_value)) {
 				if (soft_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) > 0)
 					return PBSE_BADATVAL;
 			}
@@ -1001,7 +1001,7 @@ action_min_walltime(resource *presc, attribute *pattr, void *pobject, int type, 
 		if (soft_walltime_def != NULL) {
 			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], soft_walltime_def);
 			if (entry != NULL) {
-				if (entry->rs_value.at_flags & ATR_VFLAG_SET)
+				if (is_attr_set(&entry->rs_value))
 					return PBSE_SOFTWT_STF;
 			}
 		}
@@ -1011,7 +1011,7 @@ action_min_walltime(resource *presc, attribute *pattr, void *pobject, int type, 
 			max_walltime_def = &svr_resc_def[RESC_MAX_WALLTIME];
 		if (max_walltime_def != NULL) {
 			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], max_walltime_def);
-			if (entry != NULL && (entry->rs_value.at_flags & ATR_VFLAG_SET))
+			if (entry != NULL && (is_attr_set(&entry->rs_value)))
 				if (max_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) < 0)
 					return PBSE_MIN_GT_MAXWT;
 		}
@@ -1052,7 +1052,7 @@ action_max_walltime(resource *presc, attribute *pattr, void *pobj, int type, int
 		if (soft_walltime_def != NULL) {
 			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], soft_walltime_def);
 			if (entry != NULL) {
-				if (entry->rs_value.at_flags & ATR_VFLAG_SET)
+				if (is_attr_set(&entry->rs_value))
 					return PBSE_SOFTWT_STF;
 			}
 		}
@@ -1063,7 +1063,7 @@ action_max_walltime(resource *presc, attribute *pattr, void *pobj, int type, int
 		if (min_walltime_def != NULL) {
 			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], min_walltime_def);
 			if (entry != NULL) {
-				if (entry->rs_value.at_flags & ATR_VFLAG_SET) {
+				if (is_attr_set(&entry->rs_value)) {
 					if (min_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) > 0)
 						return PBSE_MIN_GT_MAXWT;
 				}

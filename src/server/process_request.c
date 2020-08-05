@@ -163,8 +163,8 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 	 * from pbs_send_job who is moving a job from a routing
 	 * queue which doesn't have euser set
 	 */
-	if ((jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
-		ret = user_read_password(jobp->ji_wattr[(int) JOB_ATR_euser].at_val.at_str, data, dsize);
+	if (is_jattr_set(jobp, JOB_ATR_euser) && get_jattr_str(jobp, JOB_ATR_euser)) {
+		ret = user_read_password(get_jattr_str(jobp, JOB_ATR_euser), data, dsize);
 
 		/* we have credential but type is NONE, force DES */
 		if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
@@ -1093,7 +1093,7 @@ close_quejob(int sfds)
 	pjob = (job *)GET_NEXT(svr_newjobs);
 	while (pjob  != NULL) {
 		if (pjob->ji_qs.ji_un.ji_newt.ji_fromsock == sfds) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSICM) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_TRANSICM)) {
 
 #ifndef PBS_MOM
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
@@ -1105,8 +1105,8 @@ close_quejob(int sfds)
 					 * server again to commit.
 					 */
 					delete_link(&pjob->ji_alljobs);
-					pjob->ji_qs.ji_state = JOB_STATE_QUEUED;
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_QUEUED;
+					set_job_state(pjob, JOB_STATE_LTR_QUEUED);
+					set_job_substate(pjob, JOB_SUBSTATE_QUEUED);
 					if (svr_enquejob(pjob))
 						(void)job_abt(pjob, msg_err_noqueue);
 

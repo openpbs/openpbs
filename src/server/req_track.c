@@ -242,10 +242,10 @@ issue_track(job *pjob)
 	if (preq == NULL)
 		return;
 
-	preq->rq_ind.rq_track.rq_hopcount = pjob->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long;
+	preq->rq_ind.rq_track.rq_hopcount = get_jattr_long(pjob, JOB_ATR_hopcount);
 	(void)strcpy(preq->rq_ind.rq_track.rq_jid, pjob->ji_qs.ji_jobid);
 	(void)strcpy(preq->rq_ind.rq_track.rq_location, pbs_server_name);
-	preq->rq_ind.rq_track.rq_state[0] = pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char;
+	preq->rq_ind.rq_track.rq_state[0] = get_job_state(pjob);
 	preq->rq_extend = (char *)malloc(PBS_MAXROUTEDEST+1);
 	if (preq->rq_extend != NULL)
 		(void)strncpy(preq->rq_extend, pjob->ji_qs.ji_queue, PBS_MAXROUTEDEST+1);
@@ -259,7 +259,7 @@ issue_track(job *pjob)
 /**
  * @brief
  * 		track_history_job()	-	It updates the substate and comment attribute of
- * 		history job (job state = JOB_STATE_MOVED).
+ * 		history job (job state = JOB_STATE_LTR_MOVED).
  *
  * @param[in]	prqt	-	request track structure
  * @param[in]	extend	-	request "extension" data
@@ -285,7 +285,7 @@ track_history_job(struct rq_track *prqt, char *extend)
 	 */
 	if ((pjob == NULL) ||
 		((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) ||
-		(pjob->ji_qs.ji_state != JOB_STATE_MOVED)) {
+		(!check_job_state(pjob, JOB_STATE_LTR_MOVED))) {
 		return;
 	}
 
@@ -295,9 +295,7 @@ track_history_job(struct rq_track *prqt, char *extend)
 	 * and update the comment message.
 	 */
 	if (*prqt->rq_state == 'E') {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_FINISHED;
-		pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = JOB_SUBSTATE_FINISHED;
-		pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_MOD_MCACHE;
+		set_job_substate(pjob, JOB_SUBSTATE_FINISHED);
 		/* over write the default comment message */
 		comment = "Job finished at";
 	}
@@ -310,11 +308,7 @@ track_history_job(struct rq_track *prqt, char *extend)
 		(void)strcat(dest_queue, "@");
 		(void)strcat(dest_queue, prqt->rq_location);
 		/* Set the new queue attribute to destination */
-		(void)job_attr_def[(int)JOB_ATR_in_queue].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_in_queue],
-			NULL,
-			NULL,
-			dest_queue);
+		set_jattr_generic(pjob, JOB_ATR_in_queue, dest_queue, NULL, SET);
 	}
 
 	/*
@@ -323,10 +317,6 @@ track_history_job(struct rq_track *prqt, char *extend)
 	 * to update the modified comment message.
 	 */
 	sprintf(log_buffer, "%s \"%s\"", comment, prqt->rq_location);
-	(void)job_attr_def[(int)JOB_ATR_Comment].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_Comment],
-		NULL,
-		NULL,
-		log_buffer);
-	svr_histjob_update(pjob, pjob->ji_qs.ji_state, pjob->ji_qs.ji_substate);
+	set_jattr_str_slim(pjob, JOB_ATR_Comment, log_buffer, NULL);
+	svr_histjob_update(pjob, get_job_state(pjob), get_job_substate(pjob));
 }

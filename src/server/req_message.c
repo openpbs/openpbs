@@ -109,7 +109,7 @@ req_messagejob(struct batch_request *preq)
 
 	/* the job must be running */
 
-	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
+	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
@@ -186,11 +186,11 @@ post_py_spawn_req(struct work_task *pwt)
 void
 req_py_spawn(struct batch_request *preq)
 {
-	int             jt;		/* job type */
-	job		*pjob;
-	int		rc;
-	char		*jid = preq->rq_ind.rq_py_spawn.rq_jid;
-	int		i, offset;
+	int jt; /* job type */
+	job *pjob;
+	int rc;
+	char *jid = preq->rq_ind.rq_py_spawn.rq_jid;
+	int offset;
 
 	/*
 	 ** Returns job pointer for singleton job or "parent" of
@@ -208,14 +208,14 @@ req_py_spawn(struct batch_request *preq)
 
 	if (jt == IS_ARRAY_NO) {		/* a regular job is okay */
 		/* the job must be running */
-		if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) ||
-			(pjob->ji_qs.ji_substate !=
-			JOB_SUBSTATE_RUNNING)) {
+		if ((!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) ||
+			(!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
 	}
 	else if (jt == IS_ARRAY_Single) {	/* a single subjob is okay */
+		char sjst;
 
 		offset = subjob_index_to_offset(pjob,
 			get_index_from_jid(jid));
@@ -224,13 +224,13 @@ req_py_spawn(struct batch_request *preq)
 			return;
 		}
 
-		i = get_subjob_state(pjob, offset);
-		if (i == -1) {
+		sjst = get_subjob_state(pjob, offset);
+		if (sjst == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		}
 
-		if (i != JOB_STATE_RUNNING) {
+		if (sjst != JOB_STATE_LTR_RUNNING) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -238,7 +238,7 @@ req_py_spawn(struct batch_request *preq)
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -271,14 +271,14 @@ req_py_spawn(struct batch_request *preq)
 void
 req_relnodesjob(struct batch_request *preq)
 {
-	int             jt;		/* job type */
-	job		*pjob;
-	int		rc = PBSE_NONE;
-	char		*jid;
-	int		i, offset;
-	char		*nodeslist = NULL;
-	char		msg[LOG_BUF_SIZE];
-	char		*keep_select = NULL;
+	int jt; /* job type */
+	job *pjob;
+	int rc = PBSE_NONE;
+	char *jid;
+	int offset;
+	char *nodeslist = NULL;
+	char msg[LOG_BUF_SIZE];
+	char *keep_select = NULL;
 
 
 	if (preq == NULL)
@@ -299,14 +299,14 @@ req_relnodesjob(struct batch_request *preq)
 
 	if (jt == IS_ARRAY_NO) {		/* a regular job is okay */
 		/* the job must be running */
-		if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) ||
-			(pjob->ji_qs.ji_substate !=
-			JOB_SUBSTATE_RUNNING)) {
+		if ((!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) ||
+			(!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
 	}
 	else if (jt == IS_ARRAY_Single) {	/* a single subjob is okay */
+		char sjst;
 
 		offset = subjob_index_to_offset(pjob,
 			get_index_from_jid(jid));
@@ -315,13 +315,13 @@ req_relnodesjob(struct batch_request *preq)
 			return;
 		}
 
-		i = get_subjob_state(pjob, offset);
-		if (i == -1) {
+		sjst = get_subjob_state(pjob, offset);
+		if (sjst == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		}
 
-		if (i != JOB_STATE_RUNNING) {
+		if (sjst != JOB_STATE_LTR_RUNNING) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -329,7 +329,7 @@ req_relnodesjob(struct batch_request *preq)
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}

@@ -221,6 +221,7 @@ que_purge(pbs_queue *pque)
 
 			job 	*pjob = NULL;
 			job 	*nxpjob = NULL;
+			int state_num;
 
 			pjob = (job *)GET_NEXT(pque->qu_jobs);
 			while (pjob) {
@@ -228,9 +229,9 @@ que_purge(pbs_queue *pque)
 				 * If it is not a history job (MOVED/FINISHED), then
 				 * return with PBSE_OBJBUSY error.
 				 */
-				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
+				if ((!check_job_state(pjob, JOB_STATE_LTR_MOVED)) &&
+					(!check_job_state(pjob, JOB_STATE_LTR_FINISHED)) &&
+					(!check_job_state(pjob, JOB_STATE_LTR_EXPIRED)))
 					return (PBSE_OBJBUSY);
 				pjob = (job *)GET_NEXT(pjob->ji_jobque);
 			}
@@ -242,11 +243,13 @@ que_purge(pbs_queue *pque)
 			 * header pointer of job(pjob->ji_qhdr) to NULL.
 			 */
 			pjob = (job *)GET_NEXT(pque->qu_jobs);
+			state_num = get_job_state_num(pjob);
 			while (pjob) {
 				nxpjob = (job *)GET_NEXT(pjob->ji_jobque);
 				delete_link(&pjob->ji_jobque);
 				--pque->qu_numjobs;
-				--pque->qu_njstate[pjob->ji_qs.ji_state];
+				if (state_num != -1)
+					--pque->qu_njstate[state_num];
 				pjob->ji_qhdr = NULL;
 				pjob = nxpjob;
 			}
@@ -420,7 +423,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 
 			while (pj != NULL) {
 
-				oldtype = pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
+				oldtype = get_jattr_long(pj, JOB_ATR_accrue_type);
 
 				if (oldtype != JOB_RUNNING && oldtype != JOB_INELIGIBLE &&
 					oldtype != JOB_ELIGIBLE) {
@@ -439,7 +442,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 
 			while (pj != NULL) {
 
-				oldtype = pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
+				oldtype = get_jattr_long(pj, JOB_ATR_accrue_type);
 
 				if (oldtype != JOB_RUNNING && oldtype != JOB_INELIGIBLE &&
 					oldtype != JOB_ELIGIBLE) {

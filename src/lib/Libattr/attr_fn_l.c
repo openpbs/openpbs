@@ -238,3 +238,59 @@ comp_l(struct attribute *attr, struct attribute *with)
 /*
  * free_l - use free_null to (not) free space
  */
+
+/**
+ * @brief	Attribute setter function for long type values
+ *
+ * @param[in]	pattr	-	pointer to attribute being set
+ * @param[in]	value	-	value to be set
+ * @param[in]	op		-	operation to do
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+set_attr_l(attribute *pattr, long value, enum batch_op op)
+{
+	if (pattr == NULL) {
+		log_err(-1, __func__, "Invalid pointer to attribute");
+		return;
+	}
+
+	switch (op) {
+		case SET:
+			pattr->at_val.at_long = value;
+			break;
+		case INCR:
+			pattr->at_val.at_long += value;
+			break;
+		case DECR:
+			pattr->at_val.at_long -= value;
+			break;
+		default:
+			return;
+	}
+
+	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+}
+
+/**
+ * @brief	Attribute getter function for long type values
+ *
+ * @param[in]	pattr	-	pointer to the attribute
+ *
+ * @return	long
+ * @retval	long value of the attribute
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ */
+long
+get_attr_l(const attribute *pattr)
+{
+	return  pattr->at_val.at_long;
+}
+

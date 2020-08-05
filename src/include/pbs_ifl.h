@@ -487,7 +487,7 @@ enum mgr_obj {
 
 /* the pair to this list is in module_pbs_v1.c and must be updated to reflect any changes */
 enum batch_op {	SET, UNSET, INCR, DECR,
-	EQ, NE, GE, GT, LE, LT, DFLT
+	EQ, NE, GE, GT, LE, LT, DFLT, INTERNAL
 };
 
 /* shutdown manners externally visible */

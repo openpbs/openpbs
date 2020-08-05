@@ -201,7 +201,7 @@ svr_shutdown(int type)
 	while ((pjob = pnxt) != NULL) {
 		pnxt = (job *)GET_NEXT(pjob->ji_alljobs);
 
-		if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
+		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HOTSTART;
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
@@ -333,8 +333,8 @@ shutdown_preempt_chkpt(job *pjob)
 
 	if (relay_to_mom(pjob, phold, func) == 0) {
 
-		if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT)
-			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
+		if (check_job_state(pjob, JOB_STATE_LTR_TRANSIT))
+			svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RUNNING);
 		pjob->ji_qs.ji_svrflags |= (JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT | JOB_SVFLG_HASHOLD);
 		(void)job_save_db(pjob);
 		return (0);
@@ -377,9 +377,9 @@ post_chkpt(struct work_task *ptask)
 		/* need to try rerun if possible or just abort the job */
 		if (preq->rq_reply.brp_code != PBSE_CKPBSY) {
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_CHKPT;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save_db(pjob);
-			if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)
+			if (check_job_state(pjob, JOB_STATE_LTR_RUNNING))
 				rerun_or_kill(pjob, msg_on_shutdown);
 		}
 	}
@@ -404,12 +404,12 @@ rerun_or_kill(job *pjob, char *text)
 {
 	long server_state = server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long) {
+	if (get_jattr_long(pjob, JOB_ATR_rerunable)) {
 
 		/* job is rerunable, mark it to be requeued */
 
 		(void)issue_signal(pjob, "SIGKILL", release_req, 0);
-		pjob->ji_qs.ji_substate  = JOB_SUBSTATE_RERUN;
+		set_job_substate(pjob, JOB_SUBSTATE_RERUN);
 		(void)strcpy(log_buffer, msg_init_queued);
 		(void)strcat(log_buffer, pjob->ji_qhdr->qu_qs.qu_name);
 		(void)strcat(log_buffer, text);

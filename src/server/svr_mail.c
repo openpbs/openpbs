@@ -134,20 +134,17 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		if (pjob != 0) {
 
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
-					if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
-						MAIL_SUBJOB) == NULL)
+				if (is_jattr_set(pjob, JOB_ATR_mailpnts)) {
+					if (strchr(get_jattr_str(pjob, JOB_ATR_mailpnts), MAIL_SUBJOB) == NULL)
 						return;
-				} else {
+				} else
 					return;
-				}
 			}
 
 			/* see if user specified mail of this type */
 
-			if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
-				if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
-					mailpoint) == NULL)
+			if (is_jattr_set(pjob, JOB_ATR_mailpnts)) {
+				if (strchr(get_jattr_str(pjob, JOB_ATR_mailpnts), mailpoint) == NULL)
 					return;
 			} else if (mailpoint != MAIL_ABORT)	/* not set, default to abort */
 				return;
@@ -195,7 +192,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		if (jid == NULL)
 			jid = pjob->ji_qs.ji_jobid;
 
-		if (pjob->ji_wattr[(int)JOB_ATR_mailuser].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pjob, JOB_ATR_mailuser)) {
 
 			/* has mail user list, send to them rather than owner */
 
@@ -231,7 +228,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			/* no mail user list, just send to owner */
 
-			(void)strncpy(mailto, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, sizeof(mailto));
+			strncpy(mailto, get_jattr_str(pjob, JOB_ATR_job_owner), sizeof(mailto));
 			mailto[(sizeof(mailto) - 1)] = '\0';
 			/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 			/* host name with the name specified in pbs_mail_host_name    */
@@ -326,7 +323,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	if (pjob) {
 		fprintf(outmail, "PBS Job Id: %s\n", jid);
 		fprintf(outmail, "Job Name:   %s\n",
-			pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_jobname));
 	}
 	if (stdmessage)
 		fprintf(outmail, "%s\n", stdmessage);

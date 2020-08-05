@@ -1145,7 +1145,7 @@ mom_set_use(job *pjob)
 	pres = find_resc_entry(at, rd);
 	if (pres == NULL) {
 		pres = add_resource_entry(at, rd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&pres->rs_value);
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 
 		/*
@@ -1168,7 +1168,7 @@ mom_set_use(job *pjob)
 	pres = find_resc_entry(at, rd);
 	if (pres == NULL) {
 		pres = add_resource_entry(at, rd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&pres->rs_value);
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = 0;
 	}
@@ -1185,7 +1185,7 @@ mom_set_use(job *pjob)
 	pres = find_resc_entry(at, rd);
 	if (pres == NULL) {
 		pres = add_resource_entry(at, rd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&pres->rs_value);
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = 0;
 	}
@@ -1200,7 +1200,7 @@ mom_set_use(job *pjob)
 	pres = find_resc_entry(at, rd);
 	if (pres == NULL) {
 		pres = add_resource_entry(at, rd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&pres->rs_value);
 		pres->rs_value.at_type = ATR_TYPE_SIZE;
 		pres->rs_value.at_val.at_size.atsv_shift = 10;	/* KB */
 		pres->rs_value.at_val.at_size.atsv_units = ATR_SV_BYTESZ;
@@ -1217,7 +1217,7 @@ mom_set_use(job *pjob)
 	pres = find_resc_entry(at, rd);
 	if (pres == NULL) {
 		pres = add_resource_entry(at, rd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&pres->rs_value);
 		pres->rs_value.at_type = ATR_TYPE_SIZE;
 		pres->rs_value.at_val.at_size.atsv_shift = 10;	/* KB */
 		pres->rs_value.at_val.at_size.atsv_units = ATR_SV_BYTESZ;

@@ -191,7 +191,7 @@ class PbsAttributeDescriptor():
         elif (value is None) or (value == "") \
             or isinstance(value, self._value_type) \
             or self._is_entity \
-            or (hasattr(obj, "_is_entity") \
+            or (hasattr(obj, "_is_entity")
                 and getattr(obj, "_is_entity")):
 
             # no instantiation/transformation of value needed if matching
@@ -940,7 +940,6 @@ class select(_generic_attr):
         _pbs_v1.validate_input("resc", "select", value)
         super().__init__(value)
 
-
     def increment_chunks(self, increment_spec):
         """
         Given a pbs.select value (i.e. <num>:r1=v1:r2=v2+...+<num>:rn=vN),
@@ -1023,20 +1022,20 @@ class select(_generic_attr):
             increment = increment_spec
         elif isinstance(increment_spec, str):
             if increment_spec.endswith('%'):
-                    percent_inc = float(increment_spec[:-1])/100 + 1.0
+                percent_inc = float(increment_spec[:-1]) / 100 + 1.0
             else:
-                    increment = int(increment_spec)
+                increment = int(increment_spec)
         elif isinstance(increment_spec, dict):
             increment_dict = increment_spec
         else:
             raise ValueError("bad increment specs")
 
         ret_str = ""
-        i = 0 # index to each chunk in the + separated spec
+        i = 0  # index to each chunk in the + separated spec
         for chunk in str(self).split("+"):
             if i != 0:
                 ret_str += '+'
-            j = 0 # index to items within a chunk separated by ':'
+            j = 0  # index to items within a chunk separated by ':'
             for subchunk in chunk.split(":"):
                 c_str = subchunk
                 if j == 0:
@@ -1053,7 +1052,7 @@ class select(_generic_attr):
                     chunk_ct = int(subchunk)
 
                     if i == 0:
-                        chunk_ct -= 1 # don't touch the first chunk which lands in MS
+                        chunk_ct -= 1  # don't touch the first chunk which lands in MS
 
                     if chunk_ct <= 0:
                         num = 0
@@ -1067,7 +1066,8 @@ class select(_generic_attr):
                             num = chunk_ct + inc
                         elif isinstance(increment_dict[i], str):
                             if increment_dict[i].endswith('%'):
-                                p_inc = float(increment_dict[i][:-1])/100 + 1.0
+                                p_inc = float(
+                                    increment_dict[i][:-1]) / 100 + 1.0
                                 num = int(math.ceil(chunk_ct * p_inc))
                             else:
                                 inc = int(increment_dict[i])
@@ -1076,10 +1076,10 @@ class select(_generic_attr):
                         raise ValueError("bad increment specs")
 
                     if (i == 0):
-                        num += 1 # put back the decremented count
+                        num += 1  # put back the decremented count
 
                     if save_str:
-                        c_str = "%s:%s" % (num,save_str)
+                        c_str = "%s:%s" % (num, save_str)
                     else:
                         c_str = "%s" % (num)
                 else:
@@ -1090,6 +1090,7 @@ class select(_generic_attr):
             i += 1
 
         return select(ret_str)
+
 
 class place(_generic_attr):
     """
@@ -1642,7 +1643,8 @@ class pbs_resource():
             if not found:
 
                 if _pbs_v1.in_python_mode():
-                    # if attribute name not found,and executing inside Python script
+                    # if attribute name not found,and executing inside Python
+                    # script
                     if _pbs_v1.get_python_daemon_name() != "pbs_python":
                         # we're in a server hook
                         raise UnsetResourceNameError(

@@ -1820,7 +1820,7 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 				for (prs = (resource *)GET_NEXT(pnode->nd_attr[ND_ATR_ResourceAvail].at_val.at_list); prs != NULL; prs = (resource *)GET_NEXT(prs->rs_link)) {
 					if ((prdefvntype != NULL) &&
 						(prs->rs_defin == prdefvntype) &&
-						(prs->rs_value.at_flags & ATR_VFLAG_SET) != 0) {
+						(is_attr_set(&prs->rs_value)) != 0) {
 						struct array_strings *as;
 						int	l;
 						as = prs->rs_value.at_val.at_arst;

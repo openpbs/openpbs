@@ -87,11 +87,11 @@ svr_renew_job_cred(struct work_task *pwt)
 	job 	*pjob = NULL;
 	int	rc;
 	if ((pjob = find_job(jobid)) != NULL) {
-		if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING)
+		if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING))
 			return;
 
 		/* job without cred id */
-		if ((pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) == 0)
+		if ((is_jattr_set(pjob, JOB_ATR_cred_id)) == 0)
 			return;
 
 		rc = send_cred(pjob);
@@ -144,11 +144,11 @@ svr_renew_creds(struct work_task *pwt)
 		/* save the next job */
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
-		if ((pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) &&
-			pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
+		if ((is_jattr_set(pjob, JOB_ATR_cred_id)) &&
+			check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 
-			if ((pjob->ji_wattr[(int)JOB_ATR_cred_validity].at_flags & ATR_VFLAG_SET) &&
-				(pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_val.at_long - svr_cred_renew_period <= time_now)) {
+			if ((is_jattr_set(pjob, JOB_ATR_cred_validity)) &&
+				(get_jattr_long(pjob,  JOB_ATR_cred_validity) - svr_cred_renew_period <= time_now)) {
 				/* spread the renew tasks to the SVR_RENEW_CREDS_TM interval */
 				if (!set_task(WORK_Timed, (time_now + (rand() % SVR_RENEW_CREDS_TM)), svr_renew_job_cred, pjob->ji_qs.ji_jobid)) {
 					log_err(errno, __func__, "Unable to set task for renew job credential");
