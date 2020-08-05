@@ -89,8 +89,8 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 	int i;
 	struct brp_select *psel;
 	struct brp_select **pselx;
-	struct brp_cmdstat *pstcmd;
-	struct brp_cmdstat **pstcx = NULL;
+	struct batch_status *pstcmd;
+	struct batch_status **pstcx = NULL;
 	int rc = 0;
 	size_t txtlen;
 	preempt_job_info *ppj = NULL;
@@ -177,28 +177,27 @@ again:
 			reply->brp_count += ct;
 
 			while (ct--) {
-				pstcmd = (struct brp_cmdstat *) malloc(sizeof(struct brp_cmdstat));
+				pstcmd = (struct batch_status *) malloc(sizeof(struct batch_status));
 				if (pstcmd == 0)
 					return DIS_NOMALLOC;
+				pstcmd->next = NULL;
+				pstcmd->text = NULL;
+				pstcmd->attribs = NULL;
 
-				pstcmd->brp_stlink = NULL;
-				pstcmd->brp_objname[0] = '\0';
-				pstcmd->brp_attrl = NULL;
-
-				pstcmd->brp_objtype = disrui(sock, &rc);
+				i = disrui(sock, &rc); /* read and discard brp_objtype */
 				if (rc == 0)
-					rc = disrfst(sock, PBS_MAXSVRJOBID + 1, pstcmd->brp_objname);
+					pstcmd->name = disrst(sock, &rc);
 				if (rc) {
-					(void) free(pstcmd);
+					pbs_statfree(pstcmd);
 					return rc;
 				}
-				rc = decode_DIS_attrl(sock, &pstcmd->brp_attrl);
+				rc = decode_DIS_attrl(sock, &pstcmd->attribs);
 				if (rc) {
-					(void) free(pstcmd);
+					pbs_statfree(pstcmd);
 					return rc;
 				}
 				*pstcx = pstcmd;
-				pstcx = &pstcmd->brp_stlink;
+				pstcx = &pstcmd->next;
 			}
 			if (reply->brp_is_part)
 				goto again;

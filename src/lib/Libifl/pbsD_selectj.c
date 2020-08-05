@@ -130,7 +130,6 @@ struct batch_status *
 __pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *extend)
 {
 	struct batch_status *ret = NULL;
-	extern struct batch_status *PBSD_status_get(int c);
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)

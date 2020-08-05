@@ -106,7 +106,7 @@ common_sources = \
 
 pbsdsh_CPPFLAGS = ${common_cflags}
 pbsdsh_LDADD = ${common_libs}
-pbsdsh_SOURCES = pbsdsh.c
+pbsdsh_SOURCES = pbsdsh.c ${common_sources}
 
 pbsnodes_CPPFLAGS = ${common_cflags}
 pbsnodes_LDADD = ${common_libs}
@@ -146,7 +146,7 @@ pbs_ds_password_bin_SOURCES = pbs_ds_password.c ${common_sources}
 
 pbs_tmrsh_CPPFLAGS = ${common_cflags}
 pbs_tmrsh_LDADD = ${common_libs}
-pbs_tmrsh_SOURCES = pbs_tmrsh.c
+pbs_tmrsh_SOURCES = pbs_tmrsh.c ${common_sources}
 
 pbs_ralter_CPPFLAGS = ${common_cflags}
 pbs_ralter_LDADD = ${common_libs}
