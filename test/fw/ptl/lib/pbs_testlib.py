@@ -14702,8 +14702,8 @@ class InteractiveJob(threading.Thread):
                 self.logger.info("Submit interactive job from a remote host")
                 if self.du.get_platform() == "shasta":
                     ssh_cmd = self.du.rsh_cmd + \
-                              ['-p', self._ru.port,
-                               self._ru.name + '@' + self.hostname]
+                        ['-p', self._ru.port,
+                         self._ru.name + '@' + self.hostname]
                     _p = pexpect.spawn(" ".join(ssh_cmd), timeout=_to)
                     _p.sendline(" ".join(self.cmd))
                 else:
