@@ -801,7 +801,7 @@ req_modifyReservation(struct batch_request *preq)
 		return;
 	}
 
-		num_jobs = presv->ri_qp->qu_numjobs;
+	num_jobs = presv->ri_qp->qu_numjobs;
 	if (svr_chk_history_conf()) {
 		num_jobs -= (presv->ri_qp->qu_njstate[JOB_STATE_MOVED] + presv->ri_qp->qu_njstate[JOB_STATE_FINISHED] +
 			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
@@ -921,7 +921,7 @@ req_modifyReservation(struct batch_request *preq)
 					return;
 				}
 
-					send_to_scheduler = 1;
+				send_to_scheduler = 1;
 				presv->ri_alter.ra_flags |= RESV_SELECT_MODIFIED;
 				if (pseldef == NULL) /* do one time to keep handy */
 					pseldef = &svr_resc_def[RESC_SELECT];

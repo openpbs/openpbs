@@ -4986,8 +4986,8 @@ combine_nspec_array(nspec **nspec_arr)
 	}
 
 	for (i = 0; nspec_arr[i] != NULL; i++) {
-		ns = NULL;
 		int found = 0;
+		ns = NULL;
 		for (k = 0; new_nspec_arr[k] != NULL; k++)
 			if (new_nspec_arr[k]->ninfo == nspec_arr[i]->ninfo) {
 				found = 1;
@@ -4995,13 +4995,11 @@ combine_nspec_array(nspec **nspec_arr)
 			}
 		if (found)
 			continue;
-			
+
+		new_nspec_arr[k] = ns = new_nspec();
 		if (ns == NULL) {
-			new_nspec_arr[k] = ns = new_nspec();
-			if (ns == NULL) {
-				free_nspecs(new_nspec_arr);
-				return NULL;
-			}
+			free_nspecs(new_nspec_arr);
+			return NULL;
 		}
 
 		ns->end_of_chunk = 1;
