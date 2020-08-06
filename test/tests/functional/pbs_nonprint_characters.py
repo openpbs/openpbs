@@ -613,7 +613,7 @@ sleep 5
             if ch in self.npch_exclude:
                 self.logger.info('##### excluded char: %s' % repr(ch))
                 continue
-            if uhost is None or self.du.is_localhost(uhost):
+            if self.du.is_localhost(uhost):
                 a = {ATTR_v: "var1=\'A,B,%s,C,D\'" % ch, ATTR_S: '/bin/bash'}
             else:
                 a = {ATTR_v: r"var1=\'A\,B\,%s\,C\,D\'" % ch}
