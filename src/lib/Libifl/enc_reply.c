@@ -78,27 +78,27 @@ int encode_DIS_svrattrl(int sock, svrattrl *psattl);
 static int
 encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 {
-	int		    ct;
-	int		    i;
-	struct brp_select  *psel;
-	struct brp_status  *pstat;
-	svrattrl	   *psvrl;
-	preempt_job_info   *ppj;
+	int ct;
+	int i;
+	struct brp_select *psel;
+	struct brp_status *pstat;
+	svrattrl *psvrl;
+	preempt_job_info *ppj;
 
 	int rc;
 
-
 	/* next encode code, auxcode and choice (union type identifier) */
 
-	if ((rc = diswsi(sock, reply->brp_code)) 	||
-		(rc = diswsi(sock, reply->brp_auxcode))	||
-		(rc = diswui(sock, reply->brp_choice)))
-			return rc;
+	if ((rc = diswsi(sock, reply->brp_code)) ||
+	    (rc = diswsi(sock, reply->brp_auxcode)) ||
+	    (rc = diswui(sock, reply->brp_choice)) ||
+	    (rc = diswui(sock, reply->brp_is_part)))
+		return rc;
 
 	switch (reply->brp_choice) {
 
 		case BATCH_REPLY_CHOICE_NULL:
-			break;	/* no more to do */
+			break; /* no more to do */
 
 		case BATCH_REPLY_CHOICE_Queue:
 		case BATCH_REPLY_CHOICE_RdytoCom:
@@ -111,13 +111,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 
 			/* have to send count of number of strings first */
 
-			ct = 0;
-			psel = reply->brp_un.brp_select;
-			while (psel) {
-				++ct;
-				psel = psel->brp_next;
-			}
-			if ((rc = diswui(sock, ct)) != 0)
+			if ((rc = diswui(sock, reply->brp_count)) != 0)
 				return rc;
 
 			psel = reply->brp_un.brp_select;
@@ -135,29 +129,19 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 			 *
 			 * Server always uses svrattrl form.
 			 * Commands decode into their form.
-			 *
-			 * First need to encode number of status objects and then
-			 * the object itself.
 			 */
 
-			ct = 0;
-			pstat = (struct brp_status *)GET_NEXT(reply->brp_un.brp_status);
-			while (pstat) {
-				++ct;
-				pstat =(struct brp_status *)GET_NEXT(pstat->brp_stlink);
-			}
-			if ((rc = diswui(sock, ct)) != 0)
+			if ((rc = diswui(sock, reply->brp_count)) != 0)
 				return rc;
-			pstat = (struct brp_status *)GET_NEXT(reply->brp_un.brp_status);
+			pstat = (struct brp_status *) GET_NEXT(reply->brp_un.brp_status);
 			while (pstat) {
-				if ((rc = diswui(sock, pstat->brp_objtype))	||
-					(rc = diswst(sock, pstat->brp_objname)))
-						return rc;
+				if ((rc = diswui(sock, pstat->brp_objtype)) || (rc = diswst(sock, pstat->brp_objname)))
+					return rc;
 
-				psvrl = (svrattrl *)GET_NEXT(pstat->brp_attr);
+				psvrl = (svrattrl *) GET_NEXT(pstat->brp_attr);
 				if ((rc = encode_DIS_svrattrl(sock, psvrl)) != 0)
 					return rc;
-				pstat =(struct brp_status *)GET_NEXT(pstat->brp_stlink);
+				pstat = (struct brp_status *) GET_NEXT(pstat->brp_stlink);
 			}
 			break;
 
@@ -165,8 +149,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 
 			/* text reply */
 
-			rc = diswcs(sock, reply->brp_un.brp_txt.brp_str,
-				(size_t)reply->brp_un.brp_txt.brp_txtlen);
+			rc = diswcs(sock, reply->brp_un.brp_txt.brp_str, (size_t) reply->brp_un.brp_txt.brp_txtlen);
 			if (rc)
 				return rc;
 			break;
@@ -186,22 +169,26 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 			ct = reply->brp_un.brp_rescq.brq_number;
 			if ((rc = diswui(sock, ct)) != 0)
 				return rc;
-			for (i=0; (i<ct) && (rc == 0); ++i) {
-				rc =diswui(sock, *(reply->brp_un.brp_rescq.brq_avail+i));
+			for (i = 0; (i < ct) && (rc == 0); ++i) {
+				rc = diswui(sock, *(reply->brp_un.brp_rescq.brq_avail + i));
 			}
-			if (rc) return rc;
-			for (i=0; (i<ct) && (rc == 0); ++i) {
-				rc =diswui(sock, *(reply->brp_un.brp_rescq.brq_alloc+i));
+			if (rc)
+				return rc;
+			for (i = 0; (i < ct) && (rc == 0); ++i) {
+				rc = diswui(sock, *(reply->brp_un.brp_rescq.brq_alloc + i));
 			}
-			if (rc) return rc;
-			for (i=0; (i<ct) && (rc == 0); ++i) {
-				rc =diswui(sock, *(reply->brp_un.brp_rescq.brq_resvd+i));
+			if (rc)
+				return rc;
+			for (i = 0; (i < ct) && (rc == 0); ++i) {
+				rc = diswui(sock, *(reply->brp_un.brp_rescq.brq_resvd + i));
 			}
-			if (rc) return rc;
-			for (i=0; (i<ct) && (rc == 0); ++i) {
-				rc =diswui(sock, *(reply->brp_un.brp_rescq.brq_down+i));
+			if (rc)
+				return rc;
+			for (i = 0; (i < ct) && (rc == 0); ++i) {
+				rc = diswui(sock, *(reply->brp_un.brp_rescq.brq_down + i));
 			}
-			if (rc) return rc;
+			if (rc)
+				return rc;
 			break;
 
 		case BATCH_REPLY_CHOICE_PreemptJobs:
@@ -214,9 +201,8 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 				return rc;
 
 			for (i = 0; i < ct; i++) {
-				if (((rc = diswst(sock, ppj[i].job_id)) != 0) ||
-					((rc = diswst(sock, ppj[i].order)) != 0))
-						return rc;
+				if (((rc = diswst(sock, ppj[i].job_id)) != 0) || ((rc = diswst(sock, ppj[i].order)) != 0))
+					return rc;
 			}
 
 			break;

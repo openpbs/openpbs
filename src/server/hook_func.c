@@ -2314,6 +2314,7 @@ status_hook(hook *phook, struct batch_request *preq, pbs_list_head *pstathd, cha
 	CLEAR_LINK(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 	/* add attributes to the status reply */
 
@@ -2445,6 +2446,7 @@ req_stat_hook(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
 
 	if (type == 0) {	/* get status of the one named hook */
 		/* can only stat HOOK_SITE hooks */
@@ -4080,13 +4082,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		struct	batch_request	*temp_req;
 		int			do_recreate = 0;
 
-		temp_req = (struct batch_request *)malloc(
-				sizeof(struct batch_request));
+		temp_req = alloc_br(rq_type);
 		if (temp_req != NULL) {
-			memset((void *)temp_req, (int)0,
-					sizeof(struct batch_request));
-			temp_req->rq_type = rq_type;
-
 			switch (rq_type) {
 				case PBS_BATCH_QueueJob:
 				case PBS_BATCH_SubmitResv:

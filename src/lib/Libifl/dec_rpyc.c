@@ -85,44 +85,53 @@
 int
 decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 {
-	int		      ct;
-	int		      i;
-	struct brp_select    *psel;
-	struct brp_select   **pselx;
-	struct brp_cmdstat   *pstcmd;
-	struct brp_cmdstat  **pstcx;
-	int		      rc = 0;
-	size_t		      txtlen;
-	preempt_job_info 	*ppj = NULL;
+	int ct;
+	int i;
+	struct brp_select *psel;
+	struct brp_select **pselx;
+	struct batch_status *pstcmd;
+	struct batch_status **pstcx = NULL;
+	int rc = 0;
+	size_t txtlen;
+	preempt_job_info *ppj = NULL;
 
 	/* first decode "header" consisting of protocol type and version */
-
+again:
 	i = disrui(sock, &rc);
-	if (rc != 0) return rc;
-	if (i != PBS_BATCH_PROT_TYPE) return DIS_PROTO;
+	if (rc != 0)
+		return rc;
+	if (i != PBS_BATCH_PROT_TYPE)
+		return DIS_PROTO;
 	i = disrui(sock, &rc);
-	if (rc != 0) return rc;
-	if (i != PBS_BATCH_PROT_VER) return DIS_PROTO;
+	if (rc != 0)
+		return rc;
+	if (i != PBS_BATCH_PROT_VER)
+		return DIS_PROTO;
 
 	/* next decode code, auxcode and choice (union type identifier) */
 
-	reply->brp_code    = disrsi(sock, &rc);
-	if (rc) return rc;
+	reply->brp_code = disrsi(sock, &rc);
+	if (rc)
+		return rc;
 	reply->brp_auxcode = disrsi(sock, &rc);
-	if (rc) return rc;
-	reply->brp_choice  = disrui(sock, &rc);
-	if (rc) return rc;
-
+	if (rc)
+		return rc;
+	reply->brp_choice = disrui(sock, &rc);
+	if (rc)
+		return rc;
+	reply->brp_is_part = disrui(sock, &rc);
+	if (rc)
+		return rc;
 
 	switch (reply->brp_choice) {
 
 		case BATCH_REPLY_CHOICE_NULL:
-			break;	/* no more to do */
+			break; /* no more to do */
 
 		case BATCH_REPLY_CHOICE_Queue:
 		case BATCH_REPLY_CHOICE_RdytoCom:
 		case BATCH_REPLY_CHOICE_Commit:
-			disrfst(sock, PBS_MAXSVRJOBID+1, reply->brp_un.brp_jid);
+			disrfst(sock, PBS_MAXSVRJOBID + 1, reply->brp_un.brp_jid);
 			if (rc)
 				return (rc);
 			break;
@@ -134,64 +143,71 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 			reply->brp_un.brp_select = NULL;
 			pselx = &reply->brp_un.brp_select;
 			ct = disrui(sock, &rc);
-			if (rc) return rc;
+			if (rc)
+				return rc;
+			reply->brp_count = ct;
 
 			while (ct--) {
-				psel = (struct brp_select *)malloc(sizeof(struct brp_select));
-				if (psel == 0) return DIS_NOMALLOC;
+				psel = (struct brp_select *) malloc(sizeof(struct brp_select));
+				if (psel == 0)
+					return DIS_NOMALLOC;
 				psel->brp_next = NULL;
 				psel->brp_jobid[0] = '\0';
-				rc = disrfst(sock, PBS_MAXSVRJOBID+1, psel->brp_jobid);
+				rc = disrfst(sock, PBS_MAXSVRJOBID + 1, psel->brp_jobid);
 				if (rc) {
-					(void)free(psel);
+					(void) free(psel);
 					return rc;
 				}
 				*pselx = psel;
-				pselx  = &psel->brp_next;
+				pselx = &psel->brp_next;
 			}
 			break;
 
 		case BATCH_REPLY_CHOICE_Status:
 
 			/* have to get count of number of status objects first */
-
-			reply->brp_un.brp_statc = NULL;
-			pstcx = &reply->brp_un.brp_statc;
+			if (pstcx == NULL) {
+				reply->brp_un.brp_statc = NULL;
+				pstcx = &reply->brp_un.brp_statc;
+				reply->brp_count = 0;
+			}
 			ct = disrui(sock, &rc);
-			if (rc) return rc;
+			if (rc)
+				return rc;
+			reply->brp_count += ct;
 
 			while (ct--) {
-				pstcmd = (struct brp_cmdstat *)malloc(sizeof(struct brp_cmdstat));
-				if (pstcmd == 0) return DIS_NOMALLOC;
+				pstcmd = (struct batch_status *) malloc(sizeof(struct batch_status));
+				if (pstcmd == 0)
+					return DIS_NOMALLOC;
+				pstcmd->next = NULL;
+				pstcmd->text = NULL;
+				pstcmd->attribs = NULL;
 
-				pstcmd->brp_stlink = NULL;
-				pstcmd->brp_objname[0] = '\0';
-				pstcmd->brp_attrl = NULL;
-
-				pstcmd->brp_objtype = disrui(sock, &rc);
-				if (rc == 0) {
-					rc = disrfst(sock, PBS_MAXSVRJOBID+1,
-						pstcmd->brp_objname);
-				}
+				i = disrui(sock, &rc); /* read and discard brp_objtype */
+				if (rc == 0)
+					pstcmd->name = disrst(sock, &rc);
 				if (rc) {
-					(void)free(pstcmd);
+					pbs_statfree(pstcmd);
 					return rc;
 				}
-				rc = decode_DIS_attrl(sock, &pstcmd->brp_attrl);
+				rc = decode_DIS_attrl(sock, &pstcmd->attribs);
 				if (rc) {
-					(void)free(pstcmd);
+					pbs_statfree(pstcmd);
 					return rc;
 				}
 				*pstcx = pstcmd;
-				pstcx  = &pstcmd->brp_stlink;
+				pstcx = &pstcmd->next;
 			}
+			if (reply->brp_is_part)
+				goto again;
 			break;
 
 		case BATCH_REPLY_CHOICE_Text:
 
 			/* text reply */
 
-		  	reply->brp_un.brp_txt.brp_str = disrcs(sock, &txtlen, &rc);
+			reply->brp_un.brp_txt.brp_str = disrcs(sock, &txtlen, &rc);
 			reply->brp_un.brp_txt.brp_txtlen = txtlen;
 			break;
 
@@ -199,7 +215,7 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 
 			/* Locate Job Reply */
 
-			rc = disrfst(sock, PBS_MAXDEST+1, reply->brp_un.brp_locate);
+			rc = disrfst(sock, PBS_MAXDEST + 1, reply->brp_un.brp_locate);
 			break;
 
 		case BATCH_REPLY_CHOICE_RescQuery:
@@ -209,35 +225,32 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 			reply->brp_un.brp_rescq.brq_avail = NULL;
 			reply->brp_un.brp_rescq.brq_alloc = NULL;
 			reply->brp_un.brp_rescq.brq_resvd = NULL;
-			reply->brp_un.brp_rescq.brq_down  = NULL;
+			reply->brp_un.brp_rescq.brq_down = NULL;
 			ct = disrui(sock, &rc);
-			if (rc) break;
+			if (rc)
+				break;
 			reply->brp_un.brp_rescq.brq_number = ct;
-			reply->brp_un.brp_rescq.brq_avail  =
-				(int *)malloc(ct * sizeof(int));
+			reply->brp_un.brp_rescq.brq_avail = (int *) malloc(ct * sizeof(int));
 			if (reply->brp_un.brp_rescq.brq_avail == NULL)
 				return DIS_NOMALLOC;
-			reply->brp_un.brp_rescq.brq_alloc  =
-				(int *)malloc(ct * sizeof(int));
+			reply->brp_un.brp_rescq.brq_alloc = (int *) malloc(ct * sizeof(int));
 			if (reply->brp_un.brp_rescq.brq_alloc == NULL)
 				return DIS_NOMALLOC;
-			reply->brp_un.brp_rescq.brq_resvd  =
-				(int *)malloc(ct * sizeof(int));
+			reply->brp_un.brp_rescq.brq_resvd = (int *) malloc(ct * sizeof(int));
 			if (reply->brp_un.brp_rescq.brq_resvd == NULL)
 				return DIS_NOMALLOC;
-			reply->brp_un.brp_rescq.brq_down   =
-				(int *)malloc(ct * sizeof(int));
+			reply->brp_un.brp_rescq.brq_down = (int *) malloc(ct * sizeof(int));
 			if (reply->brp_un.brp_rescq.brq_down == NULL)
 				return DIS_NOMALLOC;
 
-			for (i=0; (i < ct) && (rc == 0); ++i)
-				*(reply->brp_un.brp_rescq.brq_avail+i) = disrui(sock, &rc);
-			for (i=0; (i < ct) && (rc == 0); ++i)
-				*(reply->brp_un.brp_rescq.brq_alloc+i) = disrui(sock, &rc);
-			for (i=0; (i < ct) && (rc == 0); ++i)
-				*(reply->brp_un.brp_rescq.brq_resvd+i) = disrui(sock, &rc);
-			for (i=0; (i < ct) && (rc == 0); ++i)
-				*(reply->brp_un.brp_rescq.brq_down+i)  = disrui(sock, &rc);
+			for (i = 0; (i < ct) && (rc == 0); ++i)
+				*(reply->brp_un.brp_rescq.brq_avail + i) = disrui(sock, &rc);
+			for (i = 0; (i < ct) && (rc == 0); ++i)
+				*(reply->brp_un.brp_rescq.brq_alloc + i) = disrui(sock, &rc);
+			for (i = 0; (i < ct) && (rc == 0); ++i)
+				*(reply->brp_un.brp_rescq.brq_resvd + i) = disrui(sock, &rc);
+			for (i = 0; (i < ct) && (rc == 0); ++i)
+				*(reply->brp_un.brp_rescq.brq_down + i) = disrui(sock, &rc);
 			break;
 
 		case BATCH_REPLY_CHOICE_PreemptJobs:
@@ -245,15 +258,16 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 			/* Preempt Jobs Reply */
 			ct = disrui(sock, &rc);
 			reply->brp_un.brp_preempt_jobs.count = ct;
-			if (rc) break;
+			if (rc)
+				break;
 
 			ppj = calloc(sizeof(struct preempt_job_info), ct);
 			reply->brp_un.brp_preempt_jobs.ppj_list = ppj;
 
 			for (i = 0; i < ct; i++) {
 				if (((rc = disrfst(sock, PBS_MAXSVRJOBID + 1, ppj[i].job_id)) != 0) ||
-					((rc = disrfst(sock, PREEMPT_METHOD_HIGH + 1, ppj[i].order)) != 0))
-						return rc;
+				    ((rc = disrfst(sock, PREEMPT_METHOD_HIGH + 1, ppj[i].order)) != 0))
+					return rc;
 			}
 
 			break;

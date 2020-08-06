@@ -110,7 +110,7 @@ pbs_probe_LDADD = \
 	${common_libs} \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@
-pbs_probe_SOURCES = pbs_probe.c
+pbs_probe_SOURCES = pbs_probe.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
 pbs_python_CPPFLAGS =  \
 	-DPBS_PYTHON=1.1 \

@@ -127,8 +127,6 @@ disrd(int stream, int *retval)
 			}
 		}
 	}
-	if (disr_commit(stream, locret == DIS_SUCCESS) < 0)
-		locret = DIS_NOCOMMIT;
 	*retval = locret;
 	return ((double)ldval);
 }

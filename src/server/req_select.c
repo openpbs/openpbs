@@ -294,75 +294,76 @@ add_select_array_entries(job *pjob, int dosub, char *statelist,
 
 /**
  * @brief
- * 		req_selectjobs - service both the Select Job Request and the (special
- *		for the scheduler) Select-status Job Request
+ * 	Service both the Select Job Request and the (special for the scheduler)
+ * 	Select-status Job Request
  *
- *		This request selects jobs based on a supplied criteria and returns
- *		Select   - a list of the job identifiers which meet the criteria
- *		Sel_stat - a list of the status of the jobs that meet the criteria
- *		   and only the list of specified attributes if specified
+ *	This request selects jobs based on a supplied criteria and returns
+ *	Select   - a list of the job identifiers which meet the criteria
+ *	Sel_stat - a list of the status of the jobs that meet the criteria
+ *	             and only the list of specified attributes if specified
  *
- * @param[in,out]	preq	-	Select Job Request or Select-status Job Request
+ * @param[in,out] preq - Select Job Request or Select-status Job Request
+ *
+ * @return void
+ *
  */
-
 void
 req_selectjobs(struct batch_request *preq)
 {
-	int		    bad = 0;
-	int		    i;
-	job		   *pjob;
-	svrattrl	   *plist;
-	pbs_queue	   *pque;
+	int bad = 0;
+	int i;
+	job *pjob;
+	svrattrl *plist;
+	pbs_queue *pque;
 	struct batch_reply *preply;
 	struct brp_select **pselx;
-	int		    dosubjobs = 0;
-	int		    dohistjobs = 0;
-	char		   *pstate = NULL;
-	int		    rc;
+	int dosubjobs = 0;
+	int dohistjobs = 0;
+	char *pstate = NULL;
+	int rc;
 	struct select_list *selistp;
-	pbs_sched	   *psched;
+	pbs_sched *psched;
 
-	/*
-	 * if the letter T (or t) is in the extend string,  select subjobs
-	 * if the letter S is in the extend string,  select real jobs,
-	 * regualar and running subjobs (whatever has a job structure.  This
-	 * is for the Scheduler.
-	 */
-	if ((preq->rq_extend != NULL) && strchr(preq->rq_extend, 'T'))
-		dosubjobs = 1;
-	else if ((preq->rq_extend != NULL) && strchr(preq->rq_extend, 't'))
-		dosubjobs = 1;
-	else if ((preq->rq_extend != NULL) && strchr(preq->rq_extend, 'S'))
-		dosubjobs = 2;
-	/*
-	 * If the letter x is in the extend string, Check if the server is
-	 * configured for job history info. If it is not SET or set to FALSE
-	 * then return with PBSE_JOBHISTNOTSET error. Otherwise select history
-	 * jobs also.
-	 */
-	if ((preq->rq_extend != NULL) && strchr(preq->rq_extend, 'x')) {
-		if (svr_history_enable == 0) {
-			req_reject(PBSE_JOBHISTNOTSET, 0, preq);
-			return;
+	if (preq->rq_extend != NULL) {
+		/*
+		 * if the letter T (or t) is in the extend string, select subjobs
+		 *
+		 * if the letter S is in the extend string, select real jobs,
+		 * regualar and running subjobs as it is requested by the Scheduler.
+		 */
+		if (strchr(preq->rq_extend, 'T') || strchr(preq->rq_extend, 't'))
+			dosubjobs = 1;
+		else if (strchr(preq->rq_extend, 'S'))
+			dosubjobs = 2;
+		/*
+		 * If the letter x is in the extend string, Check if the server is
+		 * configured for job history info. If it is not SET or set to FALSE
+		 * then return with PBSE_JOBHISTNOTSET error. Otherwise select history
+		 * jobs also.
+		 */
+		if (strchr(preq->rq_extend, 'x')) {
+			if (svr_history_enable == 0) {
+				req_reject(PBSE_JOBHISTNOTSET, 0, preq);
+				return;
+			}
+			dohistjobs = 1;
 		}
-		dohistjobs = 1;
 	}
 
-	/* The first selstat() call from the scheduler indicates that a cycle
+	/*
+	 * The first selstat() call from the scheduler indicates that a cycle
 	 * is in progress and has reached the point of querying for jobs.
+	 *
 	 * TODO: This approach must be revisited if the scheduler changes its
 	 * approach to query for jobs, e.g., by issuing a single pbs_statjob()
 	 * instead of a per-queue selstat()
 	 */
 	psched = find_sched_from_sock(preq->rq_conn);
-	if ((psched != NULL) && (psched == dflt_scheduler) && (!scheduler_jobs_stat)) {
+	if (psched != NULL && psched == dflt_scheduler && !scheduler_jobs_stat)
 		scheduler_jobs_stat = 1;
-	}
 
-	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_select.rq_selattr);
-
+	plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_selattr);
 	rc = build_selist(plist, preq->rq_perm, &selistp, &pque, &bad, &pstate);
-
 	if (rc != 0) {
 		reply_badattr(rc, bad, plist, preq);
 		free_sellist(selistp);
@@ -370,7 +371,6 @@ req_selectjobs(struct batch_request *preq)
 	}
 
 	/* setup the appropriate return */
-
 	preply = &preq->rq_reply;
 	if (preq->rq_type == PBS_BATCH_SelectJobs) {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Select;
@@ -380,71 +380,78 @@ req_selectjobs(struct batch_request *preq)
 		CLEAR_HEAD(preply->brp_un.brp_status);
 	}
 	pselx = &preply->brp_un.brp_select;
+	preply->brp_count = 0;
 
 	/* now start checking for jobs that match the selection criteria */
-
 	if (pque)
-		pjob = (job *)GET_NEXT(pque->qu_jobs);
+		pjob = (job *) GET_NEXT(pque->qu_jobs);
 	else
-		pjob = (job *)GET_NEXT(svr_alljobs);
+		pjob = (job *) GET_NEXT(svr_alljobs);
 	while (pjob) {
-		if (server.sv_attr[(int)SVR_ATR_query_others].at_val.at_long ||
-			(svr_authorize_jobreq(preq, pjob) == 0)) {
+		if (server.sv_attr[SVR_ATR_query_others].at_val.at_long || svr_authorize_jobreq(preq, pjob) == 0) {
 
-			/* either job owner or has special permission to see job */
-
-			/* look at  the job and see if the required attributes match */
-			/* If "T" was specified, dosubjobs is set, and if the job is */
-			/* an Array Job, then the State is Not checked.  The State   */
-			/* must be checked against the state of each Subjob	     */
+			/*
+			 * either job owner or has special permission to see job
+			 * and
+			 * look at the job and see if the required attributes match
+			 * If "T" was specified, dosubjobs is set, and if the job is
+			 * an Array Job, then the State is Not checked. The State
+			 * must be checked against the state of each Subjob
+			 */
 
 			if (select_job(pjob, selistp, dosubjobs, dohistjobs)) {
 
 				/* job is selected, include in reply */
-
 				if (preq->rq_type == PBS_BATCH_SelectJobs) {
 
-					/* Select Jobs Reply*/
+					/* Select Jobs Reply */
 
-					preq->rq_reply.brp_auxcode +=
-						add_select_array_entries(pjob, dosubjobs, pstate, &pselx, selistp);
+					preply->brp_count += add_select_array_entries(pjob, dosubjobs, pstate, &pselx, selistp);
 
-				} else if (((pjob->ji_qs.ji_svrflags&JOB_SVFLG_SubJob)==0) || (dosubjobs == 2)) {
+				} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0 || dosubjobs == 2) {
 
-					/* Select-Status  Reply */
+					/* Select-Status Reply */
 
-					plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
-					if ((dosubjobs == 1) && pjob->ji_ajtrk) {
-						for (i=0; i<pjob->ji_ajtrk->tkm_ct; ++i) {
-							if ((pstate == 0) || chk_job_statenum(pjob->ji_ajtrk->tkm_tbl[i].trk_status, pstate)) {
+					plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
+					if (dosubjobs == 1 && pjob->ji_ajtrk) {
+						for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++) {
+							if (pstate == 0 || chk_job_statenum(pjob->ji_ajtrk->tkm_tbl[i].trk_status, pstate)) {
+								if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
+									rc = reply_send_status_part(preq);
+									if (rc != PBSE_NONE)
+										return;
+									preply->brp_count = 0;
+								}
 								rc = status_subjob(pjob, preq, plist, i, &preply->brp_un.brp_status, &bad);
-								if (rc && (rc != PBSE_PERM))
+								if (rc && rc != PBSE_PERM)
 									goto out;
-								plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
-
+								plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
 							}
 						}
 					} else {
-						rc = status_job(pjob, preq, plist,
-							&preply->brp_un.brp_status, &bad);
-						if (rc && (rc != PBSE_PERM))
+						rc = status_job(pjob, preq, plist, &preply->brp_un.brp_status, &bad);
+						if (rc && rc != PBSE_PERM)
 							goto out;
 					}
-
 				}
 			}
 		}
 		if (pque)
-			pjob = (job *)GET_NEXT(pjob->ji_jobque);
+			pjob = (job *) GET_NEXT(pjob->ji_jobque);
 		else
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+			pjob = (job *) GET_NEXT(pjob->ji_alljobs);
+		if (preq->rq_type != PBS_BATCH_SelectJobs && preply->brp_count >= MAX_JOBS_PER_REPLY && pjob) {
+			rc = reply_send_status_part(preq);
+			if (rc != PBSE_NONE)
+				return;
+		}
 	}
 out:
 	free_sellist(selistp);
 	if (rc)
 		req_reject(rc, 0, preq);
 	else
-		(void)reply_send(preq);
+		reply_send(preq);
 }
 
 /**
