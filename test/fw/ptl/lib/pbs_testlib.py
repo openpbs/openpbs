@@ -2391,7 +2391,7 @@ class BatchUtils(object):
                                       self.platform == 'craysim' or
                                       self.platform == 'shasta'):
                 v = v.translate({ord(c): "\\" +
-                                 c for c in r"~`!@#$%^&*()[]{};:,./<>?\|-=+"})
+                                 c for c in r"~`!@#$%^&*()[]{};:,/<>?\|="})
             if exclude_attrs is not None and a in exclude_attrs:
                 continue
 
