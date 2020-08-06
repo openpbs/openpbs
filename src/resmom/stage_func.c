@@ -913,9 +913,9 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 			log_errf(errno, __func__, "Failed to open %s file", rcperr);
 		}
 
-		if (dir == STAGE_DIR_IN)
-			rc = -1;
-		else {
+
+		rc = -1;
+		if (dir == STAGE_DIR_OUT) {
 #ifndef NO_SPOOL_OUTPUT
 			if (stage_inout->from_spool == 1) {	/* copy out of spool */
 				char	undelname[MAXPATHLEN+1];
@@ -1517,10 +1517,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 		if (access_uncpath(ag2, F_OK|R_OK) < 0)
 #endif
 		{
-			if (errno == ENOENT) {
-				log_errf(errno, __func__, "%s", ag2);
-				return 0;
-			}
+			if (errno == ENOENT)
+				return 1;
 		}
 
 		/* take (remote) destination name from request */
