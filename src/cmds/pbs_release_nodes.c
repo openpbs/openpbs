@@ -83,9 +83,8 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 	/*test for real deal or just version and exit*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	job_id[0] = '\0';
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF) {

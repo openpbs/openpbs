@@ -154,9 +154,8 @@ main(int argc, char *argv[], char *envp[])
 		return (1);
 	}
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	/* first, make sure we have a valid server (host), and ports */
 

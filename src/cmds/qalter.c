@@ -193,9 +193,8 @@ main(int argc, char **argv, char **envp) /* qalter */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF)
 		switch (c) {

@@ -1405,7 +1405,6 @@ no_suspend(int sig)
  * @brief
  *	Shut and Close a socket
  *
- * @return	void
  * @param	sock	file descriptor
  *
  * @return Void
@@ -5633,9 +5632,8 @@ main(int argc, char **argv, char **envp) /* qsub */
 	char **argv_cpy; /* copy argv for getopt */
 	int i;
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	/* Set signal handlers */
 	set_sig_handlers();

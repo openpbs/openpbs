@@ -313,9 +313,8 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 #ifdef KERBEROS
 	if (use_kerberos) {

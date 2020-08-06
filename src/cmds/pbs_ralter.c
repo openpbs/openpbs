@@ -249,9 +249,8 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	destbuf[0] = '\0';
 	errflg = process_opts(argc, argv, &attrib, destbuf); /* get cmdline options */

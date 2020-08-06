@@ -42,6 +42,6 @@
 
 #define closesocket(X) close(X)
 #define initsocketlib() 0
-#define ERRORNO        errno
+#define SOCK_ERRNO        errno
 
 #endif

@@ -81,10 +81,8 @@ main(int argc, char **argv, char **envp)
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
-
 
 	while ((c = getopt(argc, argv, "q:")) != EOF)
 		switch (c) {

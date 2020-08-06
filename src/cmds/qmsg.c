@@ -81,9 +81,8 @@ main(int argc, char **argv, char **envp) /* qmsg */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	msg_string[0]='\0';
 	to_file = 0;

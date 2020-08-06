@@ -90,9 +90,8 @@ main(int argc, char **argv)
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	if (argc == 1) {
 		fprintf(stderr, "Usage: qstop [queue][@server] ...\n");

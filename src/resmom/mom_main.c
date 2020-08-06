@@ -8731,9 +8731,8 @@ main(int argc, char *argv[])
 
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 #ifdef	WIN32
 	/* Under WIN32, create structure that will be used to track child processes. */
@@ -9188,7 +9187,7 @@ main(int argc, char *argv[])
 	tpp_fd = -1;
 	if (init_network_add(sock_bind_mom, NULL, process_request) != 0) {
 
-		c = ERRORNO;
+		c = SOCK_ERRNO;
 		(void)sprintf(log_buffer,
 			"server port = %u, errno = %d",
 			pbs_mom_port, c);
@@ -9208,7 +9207,7 @@ main(int argc, char *argv[])
 
 	if (init_network_add(sock_bind_rm, NULL, tcp_request) != 0) {
 
-		c = ERRORNO;
+		c = SOCK_ERRNO;
 		(void)sprintf(log_buffer,
 			"resource (tcp) port = %u, errno = %d",
 			pbs_rm_port, c);

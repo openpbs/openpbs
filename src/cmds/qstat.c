@@ -2384,9 +2384,8 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 	delay_query();
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	mode = JOBS; /* default */
 	alt_opt = 0;

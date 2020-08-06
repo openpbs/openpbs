@@ -102,9 +102,8 @@ char **envp;
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	warg[0]='\0';
 	strcpy(warg1, NOMAIL);

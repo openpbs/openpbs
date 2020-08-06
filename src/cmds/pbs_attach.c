@@ -261,9 +261,9 @@ main(int argc, char *argv[])
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
+
 #ifdef WIN32
 	/* Windows has an additional option -c, in order to run built-in DOS commands using a new command shell */
 	while ((c = getopt(argc, argv, "+j:p:h:m:csP")) != EOF) {

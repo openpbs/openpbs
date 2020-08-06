@@ -2296,9 +2296,8 @@ main(int argc, char *argv[], char *envp[])
 	_set_fmode(_O_BINARY);
 #endif
 
-	if (initsocketlib()) {
+	if (initsocketlib())
 		return 1;
-	}
 
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);

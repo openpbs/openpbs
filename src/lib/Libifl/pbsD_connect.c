@@ -740,7 +740,7 @@ pbs_connect_noblk(char *server, int tout)
 	if (connect_err == 1)
 	{
 		/* connect attempt failed */
-		pbs_errno = ERRORNO;
+		pbs_errno = SOCK_ERRNO;
 		switch (pbs_errno) {
 #ifdef WIN32
 			case WSAEWOULDBLOCK:
@@ -766,9 +766,9 @@ pbs_connect_noblk(char *server, int tout)
 							goto err;
 					} if ((n < 0) &&
 #ifdef WIN32
-						(ERRORNO == WSAEINTR)
+						(SOCK_ERRNO == WSAEINTR)
 #else
-						(ERRORNO == EINTR)
+						(SOCK_ERRNO == EINTR)
 #endif
 						) {
 						continue;
