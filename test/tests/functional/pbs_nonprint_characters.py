@@ -297,7 +297,7 @@ sleep 5
                                 {'default_qsub_arguments': '-V'})
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
-            j = Job(TEST_USER, attrs={ATTR_S:'/bin/bash'})
+            j = Job(TEST_USER, attrs={ATTR_S: '/bin/bash'})
             j.create_script(body=script)
             xval = "X%sY" % ch
             env_to_set = {"NONPRINT_VAR": xval}
