@@ -14647,11 +14647,11 @@ class InteractiveJob(threading.Thread):
         self.cmd = cmd
         self.jobid = None
         self.hostname = host
-        self.runas_user = ""
+        self._ru = ""
         if self.du.get_platform() == "shasta":
-            self.runas_user = PbsUser.get_user(job.username)
-            self.hostname = self.runas_user.host \
-                if self.runas_user.host else self.hostname
+            self._ru = PbsUser.get_user(job.username)
+            if self._ru.host:
+                self.hostname = self._ru.host
 
     def __del__(self):
         del self.__dict__
@@ -14701,10 +14701,9 @@ class InteractiveJob(threading.Thread):
             else:
                 self.logger.info("Submit interactive job from a remote host")
                 if self.du.get_platform() == "shasta":
-                    client = self.runas_user.name + '@' + self.hostname
-                    ssh_cmd = \
-                        self.du.rsh_cmd + \
-                        ['-p', self.runas_user.port, client]
+                    ssh_cmd = self.du.rsh_cmd + \
+                              ['-p', self._ru.port,
+                               self._ru.name + '@' + self.hostname]
                     _p = pexpect.spawn(" ".join(ssh_cmd), timeout=_to)
                     _p.sendline(" ".join(self.cmd))
                 else:
@@ -14731,22 +14730,14 @@ class InteractiveJob(threading.Thread):
                 _p.expect(out)
             self.logger.info('sending exit')
             _p.sendline("exit")
-
-            if is_local:
-                self.logger.info('waiting for the subprocess to finish')
-                _p.wait()
+            while True:
+                try:
+                    _p.read_nonblocking(timeout=5)
+                except Exception:
+                    break
+            if _p.isalive():
                 _p.close()
-                self.job.interactive_handle = None
-                self.logger.debug(_p.exitstatus)
-            else:
-                while True:
-                    try:
-                        _p.read_nonblocking(timeout=5)
-                    except Exception:
-                        break
-                if _p.isalive():
-                    _p.close()
-                self.job.interactive_handle = None
+            self.job.interactive_handle = None
         except Exception:
             self.logger.error(traceback.print_exc())
             return None
