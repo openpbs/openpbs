@@ -102,8 +102,15 @@ skipOnCray = unittest.skipIf(os.path.isfile('/etc/xthostname'),
 skipOnShasta = unittest.skipIf(os.path.isfile('/etc/cray/xname'),
                                'capability not supported on Cray Shasta')
 
-skipOnCpuSet = unittest.skipIf(any(map(lambda m: m.is_cpuset_mom,
-                                       self.moms.values())),
+
+def anyMomIsCpuSet(self):
+    for mom in self.mom.values():
+        if mom.is_cpuset_mom():
+            return True
+    return False
+
+
+skipOnCpuSet = unittest.skipIf(anyMomIsCpuSet,
                                'capability not supported on cgroup '
                                'cpuset system')
 
