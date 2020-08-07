@@ -5023,7 +5023,7 @@ combine_nspec_array(nspec **nspec_arr)
 							req_i->res_str = string_dup(req_j->res_str);
 					} else { /* nspec_arr[j] has a resource nspec_arr[i] does not */
 						resource_req *tmpreq;
-						tmpreq = dup_resource_req(req_i);
+						tmpreq = dup_resource_req(req_j);
 						tmpreq->next = ns->resreq;
 						ns->resreq = tmpreq;
 					}
