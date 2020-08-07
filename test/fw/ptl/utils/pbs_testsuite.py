@@ -1666,6 +1666,7 @@ class PBSTestSuite(unittest.TestCase):
 
         for sched in self.scheds:
             self.scheds[sched].cleanup_files()
+        self.server.delete_sched_config()
         if self.use_cur_setup:
             self.delete_current_state(self.server, self.moms)
             ret = self.server.load_configuration(self.saved_file)

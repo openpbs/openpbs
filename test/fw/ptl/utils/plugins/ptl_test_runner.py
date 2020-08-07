@@ -71,7 +71,6 @@ from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
 from ptl.utils.pbs_testusers import PBS_ALL_USERS
-from ptl.lib.pbs_testlib import Server
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
@@ -1021,7 +1020,6 @@ class PTLTestRunner(Plugin):
         if du.isdir(path=tmppath):
             du.rm(path=tmppath, recursive=True, sudo=True, force=True,
                   level=logging.DEBUG)
-        Server().delete_sched_config()
 
     def begin(self):
         command = sys.argv
