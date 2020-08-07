@@ -6903,7 +6903,12 @@ free_nodes(job *pjob)
 	/* Now loop through the Moms and remove the jobindx entry */
 	/*  remove this jobs's jobinfo entry from each vnode   */
 	
-	if ((pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0 || ((execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str) == NULL)) {
+	if (pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET)
+		execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_val.at_str;
+	else if (pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET)
+		execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str;
+	 
+	if (execvnod_in == NULL) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "in free_nodes and no exec_vnode");
 		return;
 	}
