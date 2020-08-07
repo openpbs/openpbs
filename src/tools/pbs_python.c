@@ -2294,11 +2294,10 @@ main(int argc, char *argv[], char *envp[])
 	/* The following needed so that buffered writes (e.g. fprintf) */
 	/* won't end up getting ^M */
 	_set_fmode(_O_BINARY);
-
-	if (winsock_init()) {
-		return 1;
-	}
 #endif
+
+	if (initsocketlib())
+		return 1;
 
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);

@@ -5884,11 +5884,7 @@ rm_request(int iochan, int version, int prot)
 		if (!conn) {
 			log_err(errno, __func__,
 				"not find iochan in connection table");
-#ifdef	WIN32
-			(void)closesocket(iochan);
-#else
-			(void)close(iochan);
-#endif	/* WIN32 */
+			closesocket(iochan);
 			return -1;
 		}
 		ipadd = conn->cn_addr;
@@ -6303,11 +6299,7 @@ tcp_request(int fd)
 		sprintf(log_buffer, "could not find fd=%d in connection table",
 			fd);
 		log_err(-1, __func__, log_buffer);
-#ifdef	WIN32
-		(void)closesocket(fd);
-#else
-		(void)close(fd);
-#endif	/* WIN32 */
+		closesocket(fd);
 		return;
 	}
 
@@ -8736,11 +8728,10 @@ main(int argc, char *argv[])
 
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 
-#ifdef	WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
 
+#ifdef	WIN32
 	/* Under WIN32, create structure that will be used to track child processes. */
 	if (initpids() == 0) {
 		log_err(-1, "pbsd_init", "Creating pid handles table failed!");
@@ -9193,7 +9184,7 @@ main(int argc, char *argv[])
 	tpp_fd = -1;
 	if (init_network_add(sock_bind_mom, NULL, process_request) != 0) {
 
-		c = ERRORNO;
+		c = SOCK_ERRNO;
 		(void)sprintf(log_buffer,
 			"server port = %u, errno = %d",
 			pbs_mom_port, c);
@@ -9213,7 +9204,7 @@ main(int argc, char *argv[])
 
 	if (init_network_add(sock_bind_rm, NULL, tcp_request) != 0) {
 
-		c = ERRORNO;
+		c = SOCK_ERRNO;
 		(void)sprintf(log_buffer,
 			"resource (tcp) port = %u, errno = %d",
 			pbs_rm_port, c);

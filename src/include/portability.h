@@ -36,3 +36,12 @@
  * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
  * subject to Altair's trademark licensing policies.
  */
+
+#ifndef	_PORTABILITY_H
+#define	_PORTABILITY_H
+
+#define closesocket(X) close(X)
+#define initsocketlib() 0
+#define SOCK_ERRNO        errno
+
+#endif

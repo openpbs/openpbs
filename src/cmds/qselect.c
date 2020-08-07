@@ -416,11 +416,8 @@ main(int argc, char **argv, char **envp) /* qselect */
 	/*test for real deal or just version and exit*/
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF)
 		switch (c) {

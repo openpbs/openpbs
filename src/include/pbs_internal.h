@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #include "pbs_ifl.h"
+#include "portability.h"
 #include "libutil.h"
 #include "auth.h"
 
@@ -394,13 +395,6 @@ enum accrue_types {
 #define IN_LOOPBACKNET	127
 #endif
 #define LOCALHOST_SHORTNAME "localhost"
-#ifdef WIN32
-#define CLOSESOCKET(X) (void)closesocket(X)
-#define ERRORNO        WSAGetLastError()
-#else
-#define CLOSESOCKET(X) (void)close(X)
-#define ERRORNO        errno
-#endif
 
 #if HAVE__BOOL
 #include "stdbool.h"

@@ -72,11 +72,9 @@ main(int argc, char *argv[])
 	fd_set selset;
 	struct timeval tv;
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
+
 	if (gethostname(mom_name, (sizeof(mom_name) - 1)) < 0  )
 		mom_name[0] = '\0';
 

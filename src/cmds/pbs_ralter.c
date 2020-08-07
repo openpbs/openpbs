@@ -249,11 +249,8 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	destbuf[0] = '\0';
 	errflg = process_opts(argc, argv, &attrib, destbuf); /* get cmdline options */

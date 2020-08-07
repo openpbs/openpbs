@@ -5640,11 +5640,7 @@ tm_request(int fd, int version)
 	conn_t 	*conn = get_conn(fd);
 	if (!conn) {
 		sprintf(log_buffer, "not found fd=%d in connection table", fd);
-#ifdef WIN32
-		(void)closesocket(fd);
-#else
-		(void)close(fd);
-#endif
+		closesocket(fd);
 		if (cookie)
 			free(cookie);
 		return -1;
