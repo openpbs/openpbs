@@ -5990,7 +5990,7 @@ class Server(PBSService):
                     appended to the tuple.
         :raises: PbsSubmitError
         """
-        ij = InteractiveJob(job, cmd, self.hostname)
+        ij = InteractiveJob(job, cmd, self.client)
         # start the interactive job submission thread and wait to pickup the
         # actual job identifier
         ij.start()
@@ -14647,6 +14647,11 @@ class InteractiveJob(threading.Thread):
         self.cmd = cmd
         self.jobid = None
         self.hostname = host
+        self._ru = ""
+        if self.du.get_platform() == "shasta":
+            self._ru = PbsUser.get_user(job.username)
+            if self._ru.host:
+                self.hostname = self._ru.host
 
     def __del__(self):
         del self.__dict__
@@ -14689,8 +14694,22 @@ class InteractiveJob(threading.Thread):
                            ['-u', job.username] + cmd)
 
             self.logger.debug(cmd)
-
-            _p = pexpect.spawn(" ".join(cmd), timeout=_to)
+            is_local = self.du.is_localhost(self.hostname)
+            _p = ""
+            if is_local:
+                _p = pexpect.spawn(" ".join(cmd), timeout=_to)
+            else:
+                self.logger.info("Submit interactive job from a remote host")
+                if self.du.get_platform() == "shasta":
+                    ssh_cmd = self.du.rsh_cmd + \
+                        ['-p', self._ru.port,
+                         self._ru.name + '@' + self.hostname]
+                    _p = pexpect.spawn(" ".join(ssh_cmd), timeout=_to)
+                    _p.sendline(" ".join(self.cmd))
+                else:
+                    ssh_cmd = self.du.rsh_cmd + [self.hostname]
+                    _p = pexpect.spawn(" ".join(ssh_cmd), timeout=_to)
+                    _p.sendline(" ".join(cmd))
             self.job.interactive_handle = _p
             time.sleep(_st)
             expstr = "qsub: waiting for job "
@@ -14711,11 +14730,14 @@ class InteractiveJob(threading.Thread):
                 _p.expect(out)
             self.logger.info('sending exit')
             _p.sendline("exit")
-            self.logger.info('waiting for the subprocess to finish')
-            _p.wait()
-            _p.close()
+            while True:
+                try:
+                    _p.read_nonblocking(timeout=5)
+                except Exception:
+                    break
+            if _p.isalive():
+                _p.close()
             self.job.interactive_handle = None
-            self.logger.debug(_p.exitstatus)
         except Exception:
             self.logger.error(traceback.print_exc())
             return None
