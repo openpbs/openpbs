@@ -148,7 +148,7 @@ remove_from_unlicensed_node_list(struct pbsnode *pnode)
 	pnode->nd_added_to_unlicensed_list = 0;
 	pun = (unlicensed_node *) GET_NEXT(unlicensed_nodes_list);
 	while (pun != NULL) {
-		if (!strcmp((pun->pnode)->nd_name, pnode->nd_name)) {
+		if (!strcmp(pun->pnode->nd_name, pnode->nd_name)) {
 			licensing_control.licenses_total_needed -= pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
 			delete_link(&pun->link);
 			free(pun);
@@ -383,7 +383,7 @@ set_node_lic_info_attr(pbsnode *pnode)
 
 		/* Save the number of licenses needed */
 		snprintf(str_val, sizeof(str_val), "%ld", count);			
-		set_attr_svr(&pnode->nd_attr[(int) ND_ATR_LicenseInfo],
+		set_attr_svr(&(pnode->nd_attr[(int) ND_ATR_LicenseInfo]),
 			&node_attr_def[(int) ND_ATR_LicenseInfo], str_val);
 	}
 	return 0;

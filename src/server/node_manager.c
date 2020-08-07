@@ -3474,7 +3474,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_flags = (ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
 
-		(void)release_node_lic(pnode);
 	}
 
 	/* set attributes/resources if they are default */
