@@ -520,6 +520,7 @@ pbsd_init(int type)
 
 	/* 3. Set default server attibutes values */
 	memset(&server, 0, sizeof(server));
+	server.sv_started = time(&time_now);	/* time server started */
 	if (server.sv_attr[(int)SVR_ATR_scheduling].at_flags & ATR_VFLAG_SET)
 		a_opt = server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long;
 
