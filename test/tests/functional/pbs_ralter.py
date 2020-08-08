@@ -54,6 +54,8 @@ class TestPbsResvAlter(TestFunctional):
     PBSE_RESV_NOT_EMPTY = 74
     PBSE_STDG_RESV_OCCR_CONFLICT = 75
     PBSE_INCORRECT_USAGE = 2
+    PBSE_PERM = 159
+    PBSE_NOSUP = 181
     fmt = "%a %b %d %H:%M:%S %Y"
     bu = BatchUtils()
 
@@ -79,7 +81,7 @@ class TestPbsResvAlter(TestFunctional):
     def submit_and_confirm_reservation(self, offset, duration, standing=False,
                                        select="1:ncpus=4",
                                        rrule="FREQ=HOURLY;COUNT=2",
-                                       ExpectSuccess=1):
+                                       ExpectSuccess=1, ruser=TEST_USER):
         """
         Helper function to submit a reservation and wait until it is confirmed.
         It also checks for the corresponding server and accounting logs.
@@ -103,8 +105,13 @@ class TestPbsResvAlter(TestFunctional):
         :type  select: string.
 
         :param ExpectSuccess: Whether the caller expects the submission to be
-                             successful or not.
+                             successful or not. If set anything other than 1
+                             or 0, reservation state is not checked at all.
+                             Default: 1
         :type  ExpectSuccess: int.
+
+        :param ruser: User who own the reservation. Default: TEST_USER.
+        :type ruser: PbsUser.
         """
         start = int(time.time()) + offset
         end = start + duration
@@ -120,7 +127,7 @@ class TestPbsResvAlter(TestFunctional):
                      'reserve_start': start,
                      'reserve_end': end}
 
-        rid = self.server.submit(Reservation(TEST_USER, attrs))
+        rid = self.server.submit(Reservation(ruser, attrs))
         msg = "Resv;" + rid + ";New reservation submitted start="
         msg += time.strftime(self.fmt, time.localtime(int(start)))
         msg += " end="
@@ -131,7 +138,7 @@ class TestPbsResvAlter(TestFunctional):
 
         self.server.log_match(msg, interval=2, max_attempts=30)
 
-        if ExpectSuccess:
+        if ExpectSuccess == 1:
             attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
             self.server.expect(RESV, attrs, id=rid)
 
@@ -140,7 +147,7 @@ class TestPbsResvAlter(TestFunctional):
                                   max_attempts=30)
 
             self.server.expect(RESV, attrs, id=rid)
-            acct_msg = "U;" + rid + ";requestor=" + TEST_USER.name + "@.*"
+            acct_msg = "U;" + rid + ";requestor=" + ruser.name + "@.*"
 
             if standing:
                 acct_msg += " recurrence_rrule=" + re.escape(rrule)
@@ -148,7 +155,7 @@ class TestPbsResvAlter(TestFunctional):
 
             self.server.accounting_match(acct_msg, interval=2, regexp=True,
                                          max_attempts=30, n='ALL')
-        else:
+        elif ExpectSuccess == 0:
             msg = "Resv;" + rid + ";Reservation denied"
             self.server.log_match(msg, interval=2,
                                   max_attempts=30)
@@ -269,7 +276,8 @@ class TestPbsResvAlter(TestFunctional):
                             alter_s=False, alter_e=False,
                             whichMessage=1, confirm=True, check_log=True,
                             interactive=0, sequence=1,
-                            a_duration=None, select=None):
+                            a_duration=None, select=None, extend=None,
+                            runas=None):
         """
         Helper method for altering a reservation.
         This method also checks for the server and accounting logs.
@@ -317,8 +325,13 @@ class TestPbsResvAlter(TestFunctional):
                         Default: 1
         :type  sequence: int.
 
-        :param a_duration: The duration to modify
-        :type a_duration: int
+        :param a_duration: The duration to modify.
+        :type a_duration: int.
+        :param force: Force ralter.
+        :type force: bool.
+        :param runas: User who own alters the reservation.
+                      Default: user running the test.
+        :type runas: PbsUser.
         """
         new_start = start
         new_end = end
@@ -360,6 +373,9 @@ class TestPbsResvAlter(TestFunctional):
         if select:
             attrs['Resource_List.select'] = select
 
+        if runas is None:
+            runas = self.du.get_current_user()
+
         if whichMessage:
             msg = ['']
             acct_msg = ['']
@@ -374,7 +390,7 @@ class TestPbsResvAlter(TestFunctional):
             else:
                 msg = "pbs_ralter: " + r + " ALTER REQUESTED"
 
-            self.server.alterresv(r, attrs)
+            self.server.alterresv(r, attrs, extend=extend, runas=runas)
 
             self.assertEqual(msg, self.server.last_out[0])
             self.logger.info(msg + " displayed")
@@ -463,7 +479,7 @@ class TestPbsResvAlter(TestFunctional):
             return new_start, new_end
         else:
             try:
-                self.server.alterresv(r, attrs)
+                self.server.alterresv(r, attrs, extend=extend, runas=runas)
             except PbsResvAlterError as e:
                 if e.rc == self.PBSE_RESV_NOT_EMPTY:
                     msg = "pbs_ralter: Reservation not empty"
@@ -481,6 +497,10 @@ class TestPbsResvAlter(TestFunctional):
                                           max_attempts=30)
                 elif e.rc == self.PBSE_INCORRECT_USAGE:
                     pass
+                elif e.rc == self.PBSE_PERM:
+                    msg = "pbs_ralter: Unauthorized Request"
+                elif e.rc == self.PBSE_NOSUP:
+                    msg = "pbs_ralter: No support for requested service"
 
                 self.assertNotEqual(e.msg, msg)
                 return start, end
@@ -2595,3 +2615,141 @@ class TestPbsResvAlter(TestFunctional):
         new_offset = (start + 3630) - time.time()
         rid2, start, end = self.submit_and_confirm_reservation(
             new_offset, 180, select="2:ncpus=4", ExpectSuccess=0)
+
+    def test_ralter_force_start_end_confirmed_resv(self):
+        """
+        Test that forcefully altering a confirmed reservation takes effect.
+        Especially when there are conflicting reservations
+        """
+
+        duration1 = 3600
+        offset1 = 3600
+
+        rid1, start1, end1 = self.submit_and_confirm_reservation(
+            offset1, duration1, select="2:ncpus=4")
+
+        duration2 = 1800
+        offset2 = 600
+
+        rid2, start2, end2 = self.submit_and_confirm_reservation(
+            offset2, duration2, select="2:ncpus=4")
+
+        start1 = start2
+        end1 = end2
+
+        self.alter_a_reservation(rid1, start1, end1, confirm=True,
+                                 alter_s=True, alter_e=True, extend='force')
+        t_duration, t_start, t_end = self.get_resv_time_info(rid1)
+        self.assertEqual(int(t_start), start2)
+        self.assertEqual(int(t_duration), duration2)
+        self.assertEqual(int(t_end), end2)
+
+        # Try the same alter but in interactive mode
+        duration = 300
+        self.alter_a_reservation(rid1, start1, end1, confirm=True,
+                                 a_duration=duration, extend='force',
+                                 interactive=2, sequence=2)
+        t_duration, _, _ = self.get_resv_time_info(rid1)
+        self.assertEqual(int(t_duration), duration)
+
+    def test_ralter_force_start_end_unconfirmed_resv(self):
+        """
+        Test that forcefully altering unconfirmed reservation takes effect.
+        """
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'})
+
+        duration = 3600
+        offset = 3600
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", ExpectSuccess=2)
+        attrs = {}
+        new_start = start - 1800
+        new_end = end - 3600
+        new_duration = duration - 1800
+        new_start_conv = self.bu.convert_seconds_to_datetime(new_start)
+        attrs['reserve_start'] = new_start_conv
+
+        new_end_conv = self.bu.convert_seconds_to_datetime(new_end)
+        attrs['reserve_end'] = new_end_conv
+
+        self.server.alterresv(rid, attrs, extend='force')
+        msg = "pbs_ralter: " + rid + " CONFIRMED"
+        self.assertEqual(msg, self.server.last_out[0])
+
+        t_duration, t_start, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_start), new_start)
+        self.assertEqual(int(t_duration), new_duration)
+        self.assertEqual(int(t_end), new_end)
+
+        # Try the same alter but in interactive mode
+        new_end = new_end - 100
+        new_end_conv = self.bu.convert_seconds_to_datetime(new_end)
+        attrs['reserve_end'] = new_end_conv
+        attrs['interactive'] = 2
+        self.server.alterresv(rid, attrs, extend='force')
+        msg = "pbs_ralter: " + rid + " CONFIRMED"
+        self.assertEqual(msg, self.server.last_out[0])
+
+        _, _, t_end = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_end), new_end)
+        check_attr = {'reserve_state': (MATCH_RE, 'RESV_UNCONFIRMED|1')}
+        self.server.expect(RESV, check_attr, rid)
+
+    def test_alter_force_duration_standing_resv_future_occrs(self):
+        """
+        Test that when duration of a confirmed standing reservation is
+        forcefully altered, only the upcoming occurence changes and not all
+        occurrences are modified.
+        """
+
+        duration = 180
+        offset = 300
+        offset_a = 500
+
+        rid_a, start_a, end_a = self.submit_and_confirm_reservation(
+            offset_a, duration, select="2:ncpus=4")
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", standing=True,
+            rrule="FREQ=HOURLY;COUNT=3")
+
+        # change the reservation's duration to 300 seconds, so that it clashes
+        # with the advance reservation
+        self.alter_a_reservation(rid, start, end, confirm=True,
+                                 a_duration=300, extend='force')
+
+        # Submit another reservation that starts in 1hr and 200 seconds.
+        # Ideally, in 1 hr second occurrence of reservation will start running
+        # and it will run for 3 mins. This means the new reservation will be
+        # confirmed.
+        new_offset = (start + 3800) - time.time()
+        rid2, start, end = self.submit_and_confirm_reservation(
+            new_offset, 180, select="2:ncpus=4", ExpectSuccess=1)
+
+    def test_alter_force_non_manager_user(self):
+        """
+        Test that ralter -Wforce option fails for non-manager users
+        """
+
+        duration = 180
+        offset = 300
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", ruser=TEST_USER2)
+        self.alter_a_reservation(rid, start, end,
+                                 a_duration=300, extend='force',
+                                 runas=TEST_USER2, whichMessage=0)
+
+    def test_alter_force_select(self):
+        """
+        Test that ralter -Wforce option fails for select resource
+        """
+
+        duration = 180
+        offset = 300
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4", ruser=TEST_USER2)
+        self.alter_a_reservation(rid, start, end, select="1:ncpus=1",
+                                 a_duration=20, extend='force',
+                                 whichMessage=0)

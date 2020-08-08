@@ -2243,3 +2243,107 @@ e.accept()
         a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
              'partition': 'P1'}
         self.server.expect(RESV, a, id=rid)
+
+    def test_resv_alter_force_for_confirmed_resv(self):
+        """
+        Test that in a multi-sched setup when all schedulers are disabled
+        ralter -Wforce can still modify a reservation successfully even when
+        the ralter results into over subscription of resources.
+        """
+
+        self.common_setup()
+        # Submit 4 reservations to fill up the system and check they are
+        # confirmed
+        for _ in range(4):
+            t = int(time.time())
+            a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 300,
+                 'reserve_end': t + 900}
+            r = Reservation(TEST_USER, a)
+            rid = self.server.submit(r)
+            attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+            self.server.expect(RESV, attr, rid)
+            partition = self.server.status(RESV, 'partition', id=rid)
+            if (partition[0]['partition'] == 'P1'):
+                p1_start_time = a['reserve_start']
+        # submit a reservation that will end before the start time of
+        # reservation confimed in partition P1
+        bu = BatchUtils()
+        stime = int(time.time()) + 30
+        etime = bu.convert_stime_to_seconds(p1_start_time) - 10
+        # Turn off scheduling for all schedulers, expect sc1
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+        attrs = {}
+        attrs['reserve_end'] = etime
+        attrs['reserve_start'] = stime
+        attrs['Resource_List.select'] = '1:ncpus=2'
+        rid_new = self.server.submit(Reservation(TEST_USER, attrs))
+
+        check_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
+                      'partition': 'P1'}
+        self.server.expect(RESV, check_attr, rid_new)
+
+        # Turn off the last running scheduler
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc1")
+        # extend end time so that it overlaps with an existin reservation
+        etime = etime + 300
+        attrs['reserve_end'] = bu.convert_seconds_to_datetime(etime)
+        attrs['reserve_start'] = bu.convert_seconds_to_datetime(stime)
+        del attrs['Resource_List.select']
+
+        self.server.alterresv(rid_new, attrs, extend='force')
+        msg = "pbs_ralter: " + rid_new + " CONFIRMED"
+        self.assertEqual(msg, self.server.last_out[0])
+        resv_attr = self.server.status(RESV, id=rid_new)[0]
+        resv_end = bu.convert_stime_to_seconds(resv_attr['reserve_end'])
+        self.assertEqual(int(resv_end), etime)
+
+    def test_resv_alter_force_for_unconfirmed_resv(self):
+        """
+        Test that in a multi-sched setup when all schedulers are disabled
+        ralter -Wforce can still modify a reservation successfully even when
+        the ralter results into over subscription of resources.
+        """
+
+        self.common_setup()
+        bu = BatchUtils()
+
+        # Turn off scheduling for all schedulers
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc1")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc2")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc3")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="default")
+
+        stime = int(time.time()) + 300
+        etime = stime + 900
+        attrs = {}
+        attrs['reserve_end'] = etime
+        attrs['reserve_start'] = stime
+        attrs['Resource_List.select'] = '1:ncpus=2'
+        rid = self.server.submit(Reservation(TEST_USER, attrs))
+
+        check_attr = {'reserve_state': (MATCH_RE, 'RESV_UNCONFIRMED|1')}
+        self.server.expect(RESV, check_attr, rid)
+
+        # extend end time
+        etime = etime + 3000
+        attrs['reserve_end'] = bu.convert_seconds_to_datetime(etime)
+        attrs['reserve_start'] = bu.convert_seconds_to_datetime(stime)
+        del attrs['Resource_List.select']
+
+        self.server.alterresv(rid, attrs, extend='force')
+        msg = "pbs_ralter: " + rid + " CONFIRMED"
+        self.assertEqual(msg, self.server.last_out[0])
+        resv_attr = self.server.status(RESV, id=rid)[0]
+        resv_end = bu.convert_stime_to_seconds(resv_attr['reserve_end'])
+        self.assertEqual(int(resv_end), etime)
+        self.server.expect(RESV, check_attr, rid)

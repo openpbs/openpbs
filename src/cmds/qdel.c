@@ -116,7 +116,7 @@ char **envp;
 					errflg++;
 					break;
 				}
-				if (strcmp(pc, FORCEDEL) == 0) {
+				if (strcmp(pc, FORCE) == 0) {
 					forcedel = TRUE;
 					break;
 				}
@@ -155,9 +155,9 @@ char **envp;
 	}
 
 	if (forcedel && deletehist)
-		snprintf(warg, sizeof(warg), "%s%s", FORCEDEL, DELETEHISTORY);
+		snprintf(warg, sizeof(warg), "%s%s", FORCE, DELETEHISTORY);
 	else if (forcedel)
-		strcpy(warg, FORCEDEL);
+		strcpy(warg, FORCE);
 	else if (deletehist)
 		strcpy(warg, DELETEHISTORY);
 
