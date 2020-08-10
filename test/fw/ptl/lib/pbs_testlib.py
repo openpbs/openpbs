@@ -4699,6 +4699,19 @@ class Server(PBSService):
 
     actions = ExpectActions()
 
+    # default attribute dictionary when user unset any attribute
+    revert_default_attrib = {'scheduling': True, 'resv_enable': True,
+                             'max_array_size': 10000,
+                             'eligible_time_enable': False,
+                             'max_concurrent_provision': 5,
+                             'log_events': 511, 'mail_from': 'adm',
+                             'query_other_jobs': True,
+                             'scheduler_iteration': 600,
+                             'resources_default.ncpus': 1,
+                             'pbs_license_min': 0,
+                             'pbs_license_max': 2147483647,
+                             'pbs_license_linger_time': 31536000}
+
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
                  snapmap={}, snap=None, client=None, client_pbsconf_file=None,
                  db_access=None, stat=True):
@@ -8485,6 +8498,25 @@ class Server(PBSService):
                 return self.expect(obj_type, attrib, id, op, attrop,
                                    attempt + 1, max_attempts, interval, count,
                                    extend, level=level, msg=msg)
+        else:
+            if op == UNSET:
+                for key in attrib.keys():
+                    if (key in Scheduler.revert_default_attrib.keys() or
+                            key in Server.revert_default_attrib.keys() or
+                            key in MoM.revert_default_attrib.keys()):
+                        if obj_type == SERVER:
+                            attrib = {key: Server.revert_default_attrib[key]}
+                        elif obj_type == SCHED:
+                            attrib = {key:
+                                      Scheduler.revert_default_attrib[key]}
+                        elif obj_type == MOM:
+                            attrib = {key: MoM.revert_default_attrib[key]}
+                        self.manager(MGR_CMD_UNSET, obj_type, key, id=id)
+                        op = EQ
+                        return self.expect(obj_type, attrib, id, op, attrop,
+                                           attempt, max_attempts, interval,
+                                           count, extend, runas=runas,
+                                           level=level, msg=" ".join(msg))
 
         if attrib is None:
             time.sleep(interval)
@@ -10903,6 +10935,16 @@ class Scheduler(PBSService):
             r'(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
     fs_tag = re.compile(fs_re)
 
+    revert_default_attrib = {'server_dyn_res_alarm': 30, 'log_events': 767,
+                             'preempt_prio': '"express_queue, normal_jobs"',
+                             'preempt_queue_prio': 150,
+                             'sched_cycle_length': '00:20:00',
+                             'throughput_mode': True,
+                             'job_run_wait': 'runjob_hook',
+                             'partition': 'pbs-default',
+                             'scheduling': True,
+                             'scheduler_iteration': 600}
+
     def __init__(self, hostname=None, server=None, pbsconf_file=None,
                  snapmap={}, snap=None, db_access=None, id='default',
                  sched_priv=None):
@@ -11629,6 +11671,8 @@ class Scheduler(PBSService):
                                       self.attributes['sched_priv'])
         sched_logs_dir = os.path.join(sched_home,
                                       self.attributes['sched_log'])
+        Scheduler.revert_default_attrib['sched_priv'] = sched_priv_dir
+        Scheduler.revert_default_attrib['sched_log'] = sched_logs_dir
         if not os.path.exists(sched_priv_dir):
             self.du.mkdir(path=sched_priv_dir, sudo=True)
             if self.user.name != 'root':
@@ -13114,6 +13158,8 @@ class MoM(PBSService):
     conf_to_cmd_map = {'PBS_MOM_SERVICE_PORT': '-M',
                        'PBS_MANAGER_SERVICE_PORT': '-R',
                        'PBS_HOME': '-d'}
+
+    revert_default_attrib = {'resources_available.ncpus': 1}
 
     def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):
