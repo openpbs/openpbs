@@ -241,10 +241,10 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV, attrs, id=rid, max_attempts=10,
                            interval=5)
         if wait is True:
-                attr = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
-                t = start + freq - time.time()
-                self.server.expect(RESV, attr, id=rid,
-                                   offset=t, max_attempts=10)
+            attr = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+            t = start + freq - time.time()
+            self.server.expect(RESV, attr, id=rid,
+                               offset=t, max_attempts=10)
 
     def submit_job_to_resv(self, rid, sleep=10, user=None):
         """
@@ -2078,34 +2078,202 @@ class TestPbsResvAlter(TestFunctional):
     def test_alter_select_basic(self):
         """
         Test basic use of pbs_ralter -l select to shrink a reservation
+        We start with a 2 +'d reservation, and then we drop out the 1st and 3rd
+        chunk, and then reduce further
         """
-        offset = 3600
-        duration = 3600
-        select = "2:ncpus=1+4:ncpus=1+2:ncpus=1"
-        new_select1 = "4:ncpus=1"
-        new_select2 = "2:ncpus=1"
+        select = "2:ncpus=1:mem=1gb+4:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect1 = "4:ncpus=1:mem=2gb"
+        aselect2 = "2:ncpus=1:mem=2gb"
 
-        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+        rid, start, end, rnodes = self.alter_select_initial(True, select)
+
+        nodes = [4, rnodes, 0, [], 0, []]
+
+        self.alter_select(
+            rid, start, end, True, aselect1, 4, nodes, 1)
+
+        nodes = [2, rnodes, 0, [], 0, []]
+
+        self.alter_select(rid, start, end, True, aselect2, 2, nodes, 2)
+
+    def test_alter_select_basic_running(self):
+        """
+        Test basic use of pbs_ralter -l select
+        to shrink a running reservation
+        We start with a 2 +'d reservation, and then we drop out the 1st and 3rd
+        chunk, and then reduce further
+        """
+        select = "2:ncpus=1:mem=1gb+4:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect1 = "4:ncpus=1:mem=2gb"
+        aselect2 = "2:ncpus=1:mem=2gb"
+
+        rid, start, end, rnodes = self.alter_select_initial(False, select)
+
+        nodes = [0, [], 4, rnodes[2:6], 0, []]
+
+        rnodes2 = self.alter_select(
+            rid, start, end, False, aselect1, 4, nodes, 1)
+
+        nodes = [0, [], 2, rnodes2, 0, []]
+
+        self.alter_select(rid, start, end, False, aselect2, 2, nodes, 2)
+
+    def test_alter_select_complex(self):
+        """
+        Test more complex use of pbs_ralter -l select
+        to shrink a reservation
+        We start with a 2 +'d spec, and shrink each chunk by one, and
+        then we shrink further and drop out the middle chunk
+        """
+        select = "2:ncpus=1:mem=1gb+4:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect1 = "1:ncpus=1:mem=1gb+2:ncpus=1:mem=2gb+1:ncpus=1:mem=3gb"
+        aselect2 = "1:ncpus=1:mem=2gb"
+
+        rid, start, end, rnodes = self.alter_select_initial(True, select)
+
+        nodes = [4, rnodes, 0, [], 0, []]
+
+        self.alter_select(rid, start, end, True, aselect1, 4, nodes, 1)
+
+        nodes = [1, rnodes, 0, [], 0, []]
+
+        self.alter_select(rid, start, end, True, aselect2, 1, nodes, 2)
+
+    def test_alter_select_complex_running(self):
+        """
+        Test more complex use of pbs_ralter -l select to
+        shrink a running reservation
+        We start with a 2 +'d spec, and shrink each chunk by one, and
+        then we shrink further and drop out the middle chunk
+        """
+        select = "2:ncpus=1:mem=1gb+4:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect1 = "1:ncpus=1:mem=1gb+2:ncpus=1:mem=2gb+1:ncpus=1:mem=3gb"
+        aselect2 = "1:ncpus=1:mem=2gb"
+
+        rid, start, end, rnodes = self.alter_select_initial(False, select)
+
+        nodes = [1, rnodes[0:2], 2, rnodes[2:6], 1, rnodes[6:]]
+
+        rnodes2 = self.alter_select(rid, start, end, False,
+                                    aselect1, 4, nodes, 1)
+
+        nodes = [0, [], 1, rnodes2, 0, []]
+
+        self.alter_select(rid, start, end, False, aselect2, 1, nodes, 2)
+
+    def test_alter_select_complex2(self):
+        """
+        Test more complex use of pbs_ralter -l select
+        to shrink a reservation
+        We start with a 2 +'d chunk and then shrink each chunk by 1
+        We then shrink further and drop out the middle chunk
+        Lastly we drop out the first chunk
+        """
+        select = "3:ncpus=1:mem=1gb+2:ncpus=1:mem=2gb+3:ncpus=1:mem=3gb"
+        aselect1 = "2:ncpus=1:mem=1gb+1:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect2 = "1:ncpus=1:mem=1gb+1:ncpus=1:mem=3gb"
+        aselect3 = "1:ncpus=1:mem=3gb"
+
+        rid, start, end, rnodes = self.alter_select_initial(True, select)
+
+        nodes = [5, rnodes, 0, [], 0, []]
+
+        rnodes2 = self.alter_select(rid, start, end,
+                                    True, aselect1, 5, nodes, 1)
+
+        nodes = [2, rnodes, 0, [], 0, []]
+
+        self.alter_select(rid, start, end, True, aselect2, 2, nodes, 2)
+
+        nodes = [1, rnodes, 0, [], 0, []]
+
+        self.alter_select(rid, start, end, True, aselect3, 1, nodes, 3)
+
+    def test_alter_select_complex_running2(self):
+        """
+        Test more complex use of pbs_ralter -l select to
+        shrink a running reservation
+        We start with a 2 +'d chunk and then shrink each chunk by 1
+        We then shrink further and drop out the middle chunk
+        Lastly we drop out the first chunk
+        """
+        select = "3:ncpus=1:mem=1gb+2:ncpus=1:mem=2gb+3:ncpus=1:mem=3gb"
+        aselect1 = "2:ncpus=1:mem=1gb+1:ncpus=1:mem=2gb+2:ncpus=1:mem=3gb"
+        aselect2 = "1:ncpus=1:mem=1gb+1:ncpus=1:mem=3gb"
+        aselect3 = "1:ncpus=1:mem=3gb"
+
+        rid, start, end, rnodes = self.alter_select_initial(False, select)
+
+        nodes = [2, rnodes[0:3], 1, rnodes[3:5], 2, rnodes[5:]]
+
+        rnodes2 = self.alter_select(rid, start, end,
+                                    False, aselect1, 5, nodes, 1)
+
+        nodes = [1, rnodes2[0:2], 0, [], 1, rnodes2[3:]]
+
+        rnodes3 = self.alter_select(rid, start, end,
+                                    False, aselect2, 2, nodes, 2)
+
+        nodes = [0, [], 0, [], 1, rnodes3[1:]]
+
+        self.alter_select(rid, start, end, False, aselect3, 1, nodes, 3)
+
+    def alter_select_initial(self, confirm, select):
+        """
+        Submit initial reservation and possibly wait until it starts
+        """
+        numnodes = 8
+        offset = 30
+        dur = 3600
+
+        a = {'resources_available.ncpus': 1,
+             'resources_available.mem': '8gb'}
+        self.server.create_vnodes('vnode', a, num=8, mom=self.mom)
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, dur,
                                                               select=select)
         st = self.server.status(RESV)
-        self.assertEquals(len(st[0]['resv_nodes'].split('+')), 8)
-        a = {'Resource_List.ncpus': 8, 'Resource_List.nodect': 8}
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), numnodes)
+        a = {'Resource_List.ncpus': numnodes,
+             'Resource_List.nodect': numnodes}
         self.server.expect(RESV, a, id=rid)
 
-        self.alter_a_reservation(rid, start, end, select=new_select1)
+        if not confirm:
+            a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+            off = start - int(time.time())
+            self.logger.info('Waiting until reservation runs')
+            self.server.expect(RESV, a, id=rid, offset=off)
 
-        st2 = self.server.status(RESV)
-        self.assertEquals(len(st2[0]['resv_nodes'].split('+')), 4)
-        a = {'Resource_List.ncpus': 4, 'Resource_List.nodect': 4}
+        return rid, start, end, resv_nodes
+
+    def alter_select(self, rid, start, end,
+                     confirm, selectN, numnodes, nodes, seq):
+        """
+        Alter a reservation and make sure it is on the correct nodes
+        """
+
+        self.alter_a_reservation(rid, start, end, select=selectN,
+                                 confirm=confirm, sequence=seq)
+
+        st = self.server.status(RESV)
+        self.assertEquals(len(st[0]['resv_nodes'].split('+')), numnodes)
+        a = {'Resource_List.ncpus': numnodes,
+             'Resource_List.nodect': numnodes}
         self.server.expect(RESV, a, id=rid)
-
-        self.alter_a_reservation(rid, start, end, sequence=2,
-                                 select=new_select2)
-
-        st2 = self.server.status(RESV)
-        self.assertEquals(len(st2[0]['resv_nodes'].split('+')), 2)
-        a = {'Resource_List.ncpus': 2, 'Resource_List.nodect': 2}
-        self.server.expect(RESV, a, id=rid)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+        # format is [N, [], N, [], N, []], we look at it in pairs
+        for i in range(0, len(nodes), 2):
+            if nodes[i]:
+                num = nodes[i]
+                for n in nodes[i + 1]:
+                    if n in resv_nodes:
+                        num -= 1
+                        if not num:
+                            break
+                self.assertFalse(num, 'Correct nodes not found after alter')
+        return resv_nodes
 
     def test_alter_select_with_times(self):
         """
@@ -2113,8 +2281,8 @@ class TestPbsResvAlter(TestFunctional):
         """
         offset = 3600
         duration = 3600
-        select = "6:ncpus=1"
-        new_select = "4:ncpus=1"
+        select = '6:ncpus=1'
+        new_select = '4:ncpus=1'
         shift = 300
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
@@ -2133,14 +2301,116 @@ class TestPbsResvAlter(TestFunctional):
         t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
         self.assertEquals(t, end+shift)
 
+    def test_alter_select_with_running_jobs(self):
+        """
+        Test that when a reservation is running and has running jobs,
+        that an ralter -lselect will release nodes without running jobs
+        """
+        offset = 20
+        duration = 600
+        select = '3:ncpus=4'
+        select2 = '2:ncpus=4'
+        select3 = '1:ncpus=4'
+
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
+        self.server.create_vnodes('vnode', a, num=3, mom=self.mom,
+                                  usenatvnode=True)
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+                                                              select=select)
+        resv_queue = rid.split('.')[0]
+        a = {'queue': resv_queue}
+        j1 = Job(attrs=a)
+        jid = self.server.submit(j1)
+
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        off = int(start - time.time())
+        self.server.expect(RESV, a, id=rid, offset=off)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.status(JOB)
+        job_node = j1.get_vnodes()[0]
+
+        self.alter_a_reservation(rid, start, end,
+                                 select=select2, confirm=False)
+        self.server.status(RESV)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+        errmsg1 = 'Reservation does not have the right number of nodes'
+        self.assertEquals(len(resv_nodes), 2, errmsg1)
+
+        errmsg2 = 'Reservation does not contain job node'
+        self.assertIn(job_node, resv_nodes, errmsg2)
+
+        self.alter_a_reservation(rid, start, end,
+                                 select=select3, confirm=False, sequence=2)
+        self.server.status(RESV)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+
+        self.assertEquals(len(resv_nodes), 1, errmsg1)
+        self.assertIn(job_node, resv_nodes, errmsg2)
+
+    def test_alter_select_running_degraded(self):
+        """
+        Test that when a degraded running reservation with a running job is
+        altered, the unavailable nodes are released and the node with the
+        running job is kept
+        """
+        offset = 20
+        duration = 3600
+        select = '3:ncpus=4'
+        select2 = '1:ncpus=4'
+
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
+        self.server.create_vnodes('vnode', a, num=3, mom=self.mom,
+                                  usenatvnode=True)
+
+        rid, start, end = self.submit_and_confirm_reservation(offset, duration,
+                                                              select=select)
+        resv_queue = rid.split('.')[0]
+        self.server.status(RESV)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+
+        self.assertEquals(len(resv_nodes), 3)
+
+        a = {'queue': resv_queue,
+             'Resource_List.select': '1:vnode=%s:ncpus=1' % resv_nodes[1]}
+        j1 = Job(attrs=a)
+        jid = self.server.submit(j1)
+
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        off = int(start - time.time())
+        self.server.expect(RESV, a, id=rid, offset=off)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.status(JOB)
+        job_node = j1.get_vnodes()[0]
+
+        self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'},
+                            id=resv_nodes[2])
+
+        self.server.expect(RESV, {'reserve_substate': 10}, id=rid)
+
+        self.alter_a_reservation(rid, start, end,
+                                 select=select2, confirm=False)
+        self.server.status(RESV)
+        resv_nodes = self.server.reservations[rid].get_vnodes()
+
+        errmsg1 = 'Reservation does not have the right number of nodes'
+        self.assertEquals(len(resv_nodes), 1, errmsg1)
+
+        errmsg2 = 'Reservation does not contain job node'
+        self.assertIn(job_node, resv_nodes, errmsg2)
+
     def test_alter_select_with_times_standing(self):
         """
         Modify the select with start and end times on a standing reservation
         """
         offset = 20
         duration = 20
-        select = "6:ncpus=1"
-        new_select = "4:ncpus=1"
+        select = '6:ncpus=1'
+        new_select = '4:ncpus=1'
         shift = 15
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
@@ -2175,10 +2445,10 @@ class TestPbsResvAlter(TestFunctional):
 
         offset = 3600
         duration = 3600
-        select = "6:ncpus=1"
-        select_more = "7:ncpus=1"
-        select_extra = "6:ncpus=1+1:ncpus=1:mem=1gb"
-        select_different = "6:ncpus=4:mem=1gb"
+        select = '6:ncpus=1'
+        select_more = '7:ncpus=1'
+        select_extra = '6:ncpus=1+1:ncpus=1:mem=1gb'
+        select_different = '6:ncpus=4:mem=1gb'
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               select=select)
@@ -2203,9 +2473,9 @@ class TestPbsResvAlter(TestFunctional):
         dur = 30
         dur2 = 20
         dur3 = 15
-        select = "6:ncpus=1"
-        select2 = "4:ncpus=1"
-        select3 = "2:ncpus=1"
+        select = '6:ncpus=1'
+        select2 = '4:ncpus=1'
+        select3 = '2:ncpus=1'
 
         rid, start, end = \
             self.submit_and_confirm_reservation(offset, dur, select=select,
@@ -2236,14 +2506,14 @@ class TestPbsResvAlter(TestFunctional):
         offset2 = 7200
         shift = 1800
         dur = 3600
-        select = "8:ncpus=1"
-        select2 = "4:ncpus=1"
+        select = '8:ncpus=1'
+        select2 = '4:ncpus=1'
 
-        rid, start, end = \
-            self.submit_and_confirm_reservation(offset, dur, select=select)
+        rid, start, end = self.submit_and_confirm_reservation(offset, dur,
+                                                              select=select)
 
-        rid2, start2, end2 = \
-            self.submit_and_confirm_reservation(offset2, dur, select=select)
+        rid2, start2, end2 = self.submit_and_confirm_reservation(offset2, dur,
+                                                                 select=select)
 
         self.alter_a_reservation(rid, start, end, alter_s=True, alter_e=True,
                                  shift=shift, select=select2, whichMessage=3)
@@ -2260,10 +2530,10 @@ class TestPbsResvAlter(TestFunctional):
 
         offset = 60
         dur = 60
-        select = "4:ncpus=1"
+        select = '4:ncpus=1'
 
-        rid, start, end = \
-            self.submit_and_confirm_reservation(offset, dur, select=select)
+        rid, start, end = self.submit_and_confirm_reservation(offset, dur,
+                                                              select=select)
 
         self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]

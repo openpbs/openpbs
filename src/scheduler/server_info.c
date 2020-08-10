@@ -2127,7 +2127,7 @@ check_running_job_not_in_reservation(resource_resv *job, void *arg)
 int
 check_resv_running_on_node(resource_resv *resv, void *arg)
 {
-	if (resv->is_resv && resv->resv !=NULL) {
+	if (resv->is_resv && resv->resv != NULL) {
 		if (resv->resv->is_running || resv->resv->resv_state == RESV_BEING_DELETED)
 			if (find_node_info(resv->ninfo_arr, (char *) arg))
 				return 1;

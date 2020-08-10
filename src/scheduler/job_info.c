@@ -1397,8 +1397,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 	if (execvnode != NULL) {
 		resresv->orig_nspec_arr = parse_execvnode(execvnode, sinfo, resresv->select);
-		resresv->nspec_arr = dup_nspecs(resresv->orig_nspec_arr, sinfo->nodes, resresv->select);
-		combine_nspec_array(resresv->nspec_arr);
+		resresv->nspec_arr = combine_nspec_array(resresv->orig_nspec_arr);
 
 		if (resresv->nspec_arr != NULL)
 			resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);

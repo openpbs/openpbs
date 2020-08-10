@@ -999,15 +999,14 @@ req_deleteReservation(struct batch_request *preq)
 	if (presv->ri_qs.ri_state != RESV_UNCONFIRMED) {
 		char hook_msg[HOOK_MSG_SIZE] = {0};
 		switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
-	                case 0: /* explicit reject */
-	                case 1: /* no recreate request as there are only read permissions */
-	                case 2: /* no hook script executed - go ahead and accept event*/
-	                        break;
-	                default:
-	                        log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, "resv_end event: accept req by default");
-        	}
+		case 0: /* explicit reject */
+		case 1: /* no recreate request as there are only read permissions */
+		case 2: /* no hook script executed - go ahead and accept event*/
+			break;
+		default:
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, "resv_end event: accept req by default");
+		}
 	}
-
 
 	/*If there are any jobs associated with the reservation, construct and
 	 *issue a PBS_BATCH_DeleteJob request for each job.

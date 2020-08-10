@@ -770,7 +770,6 @@ req_modifyReservation(struct batch_request *preq)
 	char		*fmt = "%a %b %d %H:%M:%S %Y";
 	int		is_standing = 0;
 	int		next_occr_start = 0;
-	long resv_state;
 	extern char	*msg_stdg_resv_occr_conflict;
 	resc_resv	*presv;
 	int num_jobs;
@@ -788,12 +787,17 @@ req_modifyReservation(struct batch_request *preq)
 	 */
 	if (presv == NULL)
 		return;
-
+	
 	rid = preq->rq_ind.rq_modify.rq_objname;
 	presv = find_resv(rid);
 
 	if (presv == NULL) {
 		req_reject(PBSE_UNKRESVID, 0, preq);
+		return;
+	}
+
+	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_BEING_ALTERED) {
+		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
@@ -911,12 +915,12 @@ req_modifyReservation(struct batch_request *preq)
 					return;
 				}
 
-				resv_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
-				if (resv_state != RESV_CONFIRMED && resv_state != RESV_DEGRADED) {
+				if (presv->ri_wattr[RESV_ATR_substate].at_val.at_long == RESV_IN_CONFLICT) {
 					resv_revert_alter(presv);
 					req_reject(PBSE_BADSTATE, 0, preq);
 					return;
 				}
+
 				send_to_scheduler = 1;
 				presv->ri_alter.ra_flags |= RESV_SELECT_MODIFIED;
 				if (pseldef == NULL) /* do one time to keep handy */

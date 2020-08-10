@@ -1471,11 +1471,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	int ret = 0;				/* return code */
 	int pbsrc;				/* return codes from pbs IFL calls */
 	char buf[COMMENT_BUF_SIZE] = {'\0'};		/* generic buffer - comments & logging*/
-	int num_nspec;			/* number of nspecs in node solution */
+	int num_nspec;
 
 	/* used for jobs with nodes resource */
-	nspec **ns = NULL;			/* the nodes to run the job on */
-	char *execvnode = NULL;		/* the execvnode to pass to the server*/
+	nspec **ns = NULL;
+	nspec **orig_ns = NULL;
+	char *execvnode = NULL;
 	int i;
 
 	/* used for resresv array */
@@ -1550,20 +1551,20 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		/* Where should we run our resresv? */
 
 		/* 1) if the resresv knows where it should be run, run it there */
-		if (rr->nspec_arr != NULL) {
-			ns = rr->nspec_arr;
+		if (rr->orig_nspec_arr != NULL) {
+			orig_ns = rr->orig_nspec_arr;
 			/* we didn't use nspec_arr, we need to free it */
 			free_nspecs(ns_arr);
 			ns_arr = NULL;
 		}
 		/* 2) if we were told by our caller through ns_arr, run the resresv there */
 		else if (ns_arr != NULL)
-			ns = ns_arr;
+			orig_ns = ns_arr;
 		/* 3) calculate where to run the resresv ourselves */
 		else
-			ns = check_nodes(policy, sinfo, qinfo, rr, eval_flags, err);
+			orig_ns = check_nodes(policy, sinfo, qinfo, rr, eval_flags, err);
 
-		if (ns != NULL) {
+		if (orig_ns != NULL) {
 #ifdef RESC_SPEC /* Hack to make rescspec work with new select code */
 			if (rr->is_job && rr->job->rspec != NULL && ns[0] != NULL) {
 				struct batch_status *bs;	/* used for rescspec res assignment */
@@ -1586,20 +1587,20 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			}
 #endif
 
-			num_nspec = count_array(ns);
+			num_nspec = count_array(orig_ns);
 			if (num_nspec > 1)
-				qsort(ns, num_nspec, sizeof(nspec *), cmp_nspec);
+				qsort(orig_ns, num_nspec, sizeof(nspec *), cmp_nspec);
 
 			if (pbs_sd != SIMULATE_SD) {
 				if (rr->is_job) { /* don't bother if we're a reservation */
-					execvnode = create_execvnode(ns);
+					execvnode = create_execvnode(orig_ns);
 					if (execvnode != NULL) {
 						/* The nspec array coming out of the node selection code could
 						 * have a node appear multiple times.  This is how we need to
 						 * send the execvnode to the server.  We now need to combine
 						 * nodes into 1 entry for updating our local data structures
 						 */
-						combine_nspec_array(ns);
+						ns = combine_nspec_array(orig_ns);
 					}
 
 					if (rr->nodepart_name != NULL) {
@@ -1666,7 +1667,9 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 * send the execvnode to the server.  We now need to combine
 		 * nodes into 1 entry for updating our local data structures
 		 */
-		combine_nspec_array(ns);
+		if (ns == NULL)
+			ns = combine_nspec_array(orig_ns);
+		rr->orig_nspec_arr = orig_ns;
 		rr->nspec_arr = ns;
 
 		if (rr->is_job && !(flags & RURR_NOPRINT)) {
@@ -2133,7 +2136,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
  *
  * @param[in]	resvs	-	running resvs
  *
- * @return	the first job whose reservation is in RESV_RUNNING
+ * @return	the first job whose reservation is running
  * @retval	: NULL if there are not any
  *
  */

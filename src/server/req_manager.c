@@ -3266,9 +3266,9 @@ struct batch_request *preq;
 
 	save_nodes_db(1, NULL);
 
-	if (numnodes > 1) {          /*modification was for all nodes  */
+	if (numnodes > 1) {		/*modification was for all nodes  */
 
-		if (problem_cnt) {  /*one or more problems encountered*/
+		if (problem_cnt) {	/*one or more problems encountered*/
 
 			for (len=0, i=0; i<problem_cnt; i++)
 				len += strlen(problem_nodes[i]->nd_name) + 3;
