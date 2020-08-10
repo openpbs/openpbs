@@ -159,7 +159,7 @@ typedef struct _pbs_python_types_entry {
 #define  PP_ENV_IDX			26
 #define  PP_MANAGEMENT_IDX	27
 #define  PP_SERVER_ATTRIBUTE_IDX 28
-#define  PP_NODE_STATE_IDX	29
+#define  PP_STATE_CHANGE_IDX	29
 
 pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ATTR_DESCRIPTOR, 		NULL},	/* 0 Always first */
@@ -191,7 +191,7 @@ pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ENV, 				NULL},		 /* 26 */
 	{PY_TYPE_MANAGEMENT,		NULL},		 /* 27 */
 	{PY_TYPE_SERVER_ATTRIBUTE, 		NULL},		 /* 28 */
-	{PY_TYPE_NODE_STATE,		NULL},		 /* 29 */
+	{PY_TYPE_STATE_CHANGE,		NULL},		 /* 29 */
 
 
 	/* ADD ENTRIES ONLY BELOW, OR CHANGE THE PP_XXX_IDX above the table */
@@ -5081,15 +5081,15 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_que = NULL;
 	PyObject *py_resv = NULL;
 	PyObject *py_margs = NULL;
-	PyObject *py_nsargs = NULL;
+	PyObject *py_scargs = NULL;
 	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
-	PyObject *py_node_state = NULL;
+	PyObject *py_state_change = NULL;
 
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
 	PyObject *py_management_class = NULL;
-	PyObject *py_node_state_class = NULL;
+	PyObject *py_state_change_class = NULL;
 	PyObject *py_resv_class = NULL;
 	PyObject *py_env_class = NULL;
 	PyObject *py_varlist = NULL;
@@ -5817,47 +5817,47 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_MANAGEMENT);
 			goto event_set_exit;
 		}
-	} else if (hook_event == HOOK_EVENT_NODE_STATE) {
+	} else if (hook_event == HOOK_EVENT_STATE_CHANGE) {
 		/* FIXME: */
 		{
 			PyObject *py_attr = (PyObject *) NULL;
-			struct rq_node_state *rqj = req_params->rq_node_state;
-			py_node_state_class = pbs_python_types_table[PP_NODE_STATE_IDX].t_class;
-			if (!py_node_state_class) {
-				log_err(PBSE_INTERNAL, __func__, "failed to acquire note state class");
-				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_NODE_STATE,
+			struct rq_state_change *rqj = req_params->rq_state_change;
+			py_state_change_class = pbs_python_types_table[PP_STATE_CHANGE_IDX].t_class;
+			if (!py_state_change_class) {
+				log_err(PBSE_INTERNAL, __func__, "failed to acquire state change class");
+				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_STATE_CHANGE,
 					Py_None);
 				goto event_set_exit;
 			}
 
-			py_nsargs = Py_BuildValue("(skk)",
+			py_scargs = Py_BuildValue("(skk)",
 				rqj->hostname,
 				rqj->new_state,
 				rqj->old_state
 				); /* NEW ref */
 			Py_CLEAR(py_attr);
 
-			if (!py_nsargs) {
-				log_err(PBSE_INTERNAL, __func__, "could not build args list for node_state");
+			if (!py_scargs) {
+				log_err(PBSE_INTERNAL, __func__, "could not build args list for state_change");
 				goto event_set_exit;
 			}
-			py_node_state = PyObject_CallObject(py_node_state_class, py_nsargs);
+			py_state_change = PyObject_CallObject(py_state_change_class, py_scargs);
 
-			if (!py_node_state) {
+			if (!py_state_change) {
 				pbs_python_write_error_to_log(__func__);
-				log_err(PBSE_INTERNAL, __func__, "failed to create a python node state object");
-				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_NODE_STATE,
+				log_err(PBSE_INTERNAL, __func__, "failed to create a python state change object");
+				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_STATE_CHANGE,
 					Py_None);
 				goto event_set_exit;
 			}
 
-			rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_NODE_STATE,
-				py_node_state);
+			rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_STATE_CHANGE,
+				py_state_change);
 		}
 
 
 		LOG_ERROR_ARG2("%s:failed",
-			PY_TYPE_EVENT, PY_EVENT_PARAM_NODE_STATE);
+			PY_TYPE_EVENT, PY_EVENT_PARAM_STATE_CHANGE);
 		goto event_set_exit;
 	} else if (hook_event == HOOK_EVENT_RESV_END) {
 		struct rq_manage *rqj = req_params->rq_manage;
@@ -6344,9 +6344,9 @@ event_set_exit:
 	Py_CLEAR(py_pid);
 	Py_CLEAR(py_resvlist);
 	Py_CLEAR(py_margs);
-	Py_CLEAR(py_nsargs);
+	Py_CLEAR(py_scargs);
 	Py_CLEAR(py_management);
-	Py_CLEAR(py_node_state);
+	Py_CLEAR(py_state_change);
 	return (rc);
 }
 

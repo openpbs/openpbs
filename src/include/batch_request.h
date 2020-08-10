@@ -110,7 +110,7 @@ struct rq_management {
 };
 
 /* Node State - used for node state changes */
-struct rq_node_state {
+struct rq_state_change {
 	char *hostname;
 	unsigned long old_state;
 	unsigned long new_state;
@@ -294,7 +294,7 @@ struct batch_request {
 		char rq_locate[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_manager;
 		struct rq_management rq_management;
-		struct rq_node_state rq_node_state;
+		struct rq_state_change rq_state_change;
 		struct rq_message rq_message;
 		struct rq_relnodes rq_relnodes;
 		struct rq_py_spawn rq_py_spawn;

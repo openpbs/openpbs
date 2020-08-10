@@ -539,17 +539,17 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	int		nchild;
 	unsigned long	inuse_flag = 0;
 	struct batch_request *preq = NULL;
-	struct rq_node_state *rq_node_state = NULL;
+	struct rq_state_change *rq_state_change = NULL;
 	char local_log_buffer[LOG_BUF_SIZE];
 
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-	preq = alloc_br(PBS_BATCH_NodeState);
+	preq = alloc_br(PBS_BATCH_StateChange);
 	/* FIXME: check for NULL */
 	strncpy(preq->rq_host, pmom->mi_host, PBS_MAXHOSTNAME);
 	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
-	rq_node_state = &preq->rq_ind.rq_node_state;
-	rq_node_state->hostname = pmom->mi_host;
-	rq_node_state->old_state = psvrmom->msr_state;
+	rq_state_change = &preq->rq_ind.rq_state_change;
+	rq_state_change->hostname = pmom->mi_host;
+	rq_state_change->old_state = psvrmom->msr_state;
 
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
@@ -557,7 +557,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		psvrmom->msr_state &= ~bits;
 	}
 
-	rq_node_state->new_state = psvrmom->msr_state;
+	rq_state_change->new_state = psvrmom->msr_state;
 
 	{ /* TODO: FIXME: */
 		char hook_msg[HOOK_MSG_SIZE] = {0};
@@ -1235,11 +1235,11 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	int time_int_val;
 	char local_log_buffer[LOG_BUF_SIZE];
 	struct batch_request *preq = NULL;
-	struct rq_node_state *rq_node_state = NULL;
+	struct rq_state_change *rq_state_change = NULL;
 	char hook_msg[HOOK_MSG_SIZE] = {0};
 
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-	preq = alloc_br(PBS_BATCH_NodeState);
+	preq = alloc_br(PBS_BATCH_StateChange);
 
 	if (pnode == NULL)
 		return;
@@ -1249,9 +1249,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	/* FIXME: check for NULL */
 	strncpy(preq->rq_host, pnode->nd_hostname, PBS_MAXHOSTNAME);
 	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
-	rq_node_state = &preq->rq_ind.rq_node_state;
-	rq_node_state->hostname = pnode->nd_hostname;
-	rq_node_state->old_state = pnode->nd_state;
+	rq_state_change = &preq->rq_ind.rq_state_change;
+	rq_state_change->hostname = pnode->nd_hostname;
+	rq_state_change->old_state = pnode->nd_state;
 
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
 		"set_vnode_state: pnode->nd_state=0x%lx-> state_bits=0x%lx "
@@ -1262,7 +1262,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 
 	vnode_state_change = set_vnode_state_bits(pnode, state_bits, type);
 	nd_prev_state = vnode_state_change->nd_prev_state;
-	rq_node_state->new_state = pnode->nd_state;
+	rq_state_change->new_state = pnode->nd_state;
 
 	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 	free_br(preq);

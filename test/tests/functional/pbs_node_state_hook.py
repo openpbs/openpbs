@@ -53,12 +53,12 @@ def get_hook_body(hook_msg):
     #pbs.logmsg(pbs.LOG_DEBUG, "print(help('modules')):" + str(help('modules')))
     try:
         e = pbs.event()
-        pbs.logmsg(pbs.LOG_DEBUG, str(pformat(pbs.REVERSE_NODE_STATES)))
-        for key, value in pbs.REVERSE_NODE_STATES.items():
+        pbs.logmsg(pbs.LOG_DEBUG, str(pformat(pbs.REVERSE_STATE_CHANGES)))
+        for key, value in pbs.REVERSE_STATE_CHANGES.items():
             pbs.logmsg(pbs.LOG_DEBUG, 'k:' + str(key) + ' v:' + str(value))
-        hostname = e.node_state.hostname
-        new_state = e.node_state.new_state
-        old_state = e.node_state.old_state
+        hostname = e.state_change.hostname
+        new_state = e.state_change.new_state
+        old_state = e.state_change.old_state
         pbs.logmsg(pbs.LOG_DEBUG, 'hostname:' + hostname)
         pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
         pbs.logmsg(pbs.LOG_DEBUG, 'old_state:' + hex(old_state))
@@ -97,14 +97,14 @@ class TestPbsNodeStateHook(TestFunctional):
     def test_check_node_state_lookup(self):
         """
         This test checks for the existance and values of the
-        pbs.REVERSE_NODE_STATES dictionary.
+        pbs.REVERSE_STATE_CHANGES dictionary.
         """
         #print(help('modules'))
         #import ptl.lib.pbs_ifl as ptl
         #import ptl.lib.pbs_ifl_mock as ptl
         #print(dir(ptl))
 
-        #from _pbs_v1 import REVERSE_NODE_STATES
+        #from _pbs_v1 import REVERSE_STATE_CHANGES
 
         # correct_dct = {0: 'NODE_STATE_FREE',
         #                1: 'NODE_STATE_OFFLINE',
@@ -129,7 +129,7 @@ class TestPbsNodeStateHook(TestFunctional):
         #                262144: 'NODE_STATE_SLEEP',
         #                409903: 'NODE_STATE_VNODE_UNAVAILABLE',
         #                524288: 'NODE_STATE_NEED_CREDENTIALS'}
-        # self.assertEqual(REVERSE_NODE_STATES, correct_dct)
+        # self.assertEqual(REVERSE_STATE_CHANGES, correct_dct)
 
     @requirements(num_moms=2)
     def test_create_hook_and_delete_00(self):
@@ -143,7 +143,7 @@ class TestPbsNodeStateHook(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
-        attrs = {'event': 'node_state', 'enabled': 'True', 'debug': 'True'}
+        attrs = {'event': 'state_change', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'a1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
@@ -182,7 +182,7 @@ class TestPbsNodeStateHook(TestFunctional):
         """
         self.logger.info("---- TEST STARTED ----")
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
-        attrs = {'event': 'node_state', 'enabled': 'True', 'debug': 'True'}
+        attrs = {'event': 'state_change', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'b1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
@@ -234,7 +234,7 @@ class TestPbsNodeStateHook(TestFunctional):
         """
         self.logger.info("---- TEST STARTED ----")
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
-        attrs = {'event': 'node_state', 'enabled': 'True', 'debug': 'True'}
+        attrs = {'event': 'state_change', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'c1234'
         hook_msg_00 = 'running %s' % get_method_name(self)
         hook_body_00 = get_hook_body(hook_msg_00)
