@@ -639,6 +639,8 @@ class TestNodeBuckets(TestFunctional):
 
         n = self.server.status(NODE, 'resources_available.shape')
 
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, 'estimated.start_time', id=jid2, op=SET)
         ev = self.server.status(JOB, 'estimated.exec_vnode', id=jid2)
         used_nodes2 = j2.get_vnodes(ev[0]['estimated.exec_vnode'])
 
@@ -654,6 +656,8 @@ class TestNodeBuckets(TestFunctional):
             jid3 + ';Chunk: ' + chunk2, interval=1, n=10000)
         self.scheduler.log_match(jid3 + ';Job is a top job', n=10000)
 
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        self.server.expect(JOB, 'estimated.start_time', id=jid3, op=SET)
         ev = self.server.status(JOB, 'estimated.exec_vnode', id=jid3)
         used_nodes3 = j3.get_vnodes(ev[0]['estimated.exec_vnode'])
 
