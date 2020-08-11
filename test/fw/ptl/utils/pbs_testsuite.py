@@ -120,15 +120,12 @@ def timeout(val):
 
 
 def checkModule(modname):
-    def wrapper(func):
-        return func
-
     import imp
     try:
         imp.find_module(modname)
     except ImportError:
-        unittest.skip(func, reason='Module unavailable')
-    return wrapper
+        return unittest.skip('%s Module unavailable' % modname)
+    return unittest._id
 
 
 def requirements(*args, **kwargs):
