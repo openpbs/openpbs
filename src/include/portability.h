@@ -44,4 +44,10 @@
 #define initsocketlib() 0
 #define SOCK_ERRNO        errno
 
+#undef DLLEXPORT
+#define DLLEXPORT
+
+#define dlerror_reset() dlerror()
+#define SO "so"
+
 #endif
