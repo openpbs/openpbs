@@ -94,19 +94,18 @@ default_requirements = {
     'no_comm_on_mom': True
 }
 
-skip = unittest.skip
-
-skipOnCray = unittest.skipIf(os.path.isfile('/etc/xthostname'),
-                             'capability not supported on Cray')
-
-skipOnShasta = unittest.skipIf(os.path.isfile('/etc/cray/xname'),
-                               'capability not supported on Cray Shasta')
-
-skipOnCpuSet = unittest.skipIf(os.path.isfile('/etc/sgi-compute-node-release')
-                               or
-                               os.path.isfile('/etc/sgi-known-distributions'),
-                               'capability not supported on cgroups cpuset'
-                               ' system')
+def skip(reason="Skipped test execution"):
+    """
+    Unconditionally skip a test.
+    :param reason: Reason for the skip
+    :type reason: str or None
+    """
+    skip_flag = True
+    def wrapper(test_item):
+        test_item.__unittest_skip__ = skip_flag
+        test_item.__unittest_skip_why__ = reason
+        return test_item
+    return wrapper
 
 
 def timeout(val):
@@ -120,12 +119,57 @@ def timeout(val):
 
 
 def checkModule(modname):
-    import imp
-    try:
-        imp.find_module(modname)
-    except ImportError:
-        return unittest.skip('%s Module unavailable' % modname)
-    return unittest._id
+    """
+    Decorator to check if named module is available on the system
+    and if not skip the test
+    """
+    def decorated(function):
+        import imp
+        try:
+            imp.find_module(modname)
+        except ImportError:
+            function.__unittest_skip__ = True
+            function.__unittest_skip_why__ = 'Module unavailable ' + modname
+        return function
+    return decorated
+
+def skipOnCray(function):
+    """
+    Decorator to skip a test on a ``Cray`` system
+    """
+    if os.path.isfile('/etc/xthostname'):
+        function.__unittest_skip__ = True
+        function.__unittest_skip_why__ = 'capability not supported on Cray'
+    return function
+
+
+def skipOnShasta(function):
+    """
+    Decorator to skip a test on a ``Cray Shasta`` system
+    """
+    if os.path.isfile('/etc/cray/xname'):
+        function.__unittest_skip__ = True
+        function.__unittest_skip_why__ = 'capability not supported on Cray Shasta'
+    return function
+
+
+def skipOnCpuSet(function):
+     """
+     Decorator to skip a test on a cgroup cpuset system
+     """
+
+     def wrapper(self, *args, **kwargs):
+         for mom in self.moms.values():
+             if mom.is_cpuset_mom():
+                 msg = 'capability not supported on cgroup cpuset system: ' +\
+                       mom.shortname
+                 self.skipTest(reason=msg)
+                 break
+         else:
+             function(self, *args, **kwargs)
+     wrapper.__doc__ = function.__doc__
+     wrapper.__name__ = function.__name__
+     return wrapper
 
 
 def requirements(*args, **kwargs):
