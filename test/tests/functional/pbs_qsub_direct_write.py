@@ -323,6 +323,7 @@ class TestQsub_direct_write(TestFunctional):
             mapping_dir) if os.path.isfile(os.path.join(mapping_dir, name))])
         self.assertEqual(2, file_count)
 
+    @skipOnCpuSet
     def test_direct_write_job_array(self):
         """
         submit a job array and make sure that the std_files
@@ -351,6 +352,7 @@ class TestQsub_direct_write(TestFunctional):
                     raise self.failureException("std file " + f_name +
                                                 " not found")
 
+    @skipOnCpuSet
     def test_direct_write_job_array_custom_dir(self):
         """
         submit a job array and make sure that the files
