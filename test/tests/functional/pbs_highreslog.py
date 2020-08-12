@@ -100,12 +100,13 @@ class TestHighResLogging(TestFunctional):
         there in the server logs lines
         """
         self.switch_microsecondlogging(highrestimestamp=0)
+        now = time.time()
 
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
         lines = self.server.log_lines(logtype=self.server,
-                                      starttime=self.server.ctime)
+                                      starttime=now)
 
         _msg = 'Found high resolution time stamp in log,' \
                ' it shouldn\'t be there'
