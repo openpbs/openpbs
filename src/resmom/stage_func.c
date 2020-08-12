@@ -211,8 +211,8 @@ is_child_path(char *dir, char *path)
 	/* so always perform full check of parent-child directory relation */
 #ifdef WIN32
 	forward2back_slash(fullpath);
-	strncpy(dir_real, lpath2short(dir), MAXPATHLEN);
-	strncpy(fullpath_real, lpath2short(fullpath), 2 * MAXPATHLEN + 1);
+	pbs_strncpy(dir_real, lpath2short(dir), MAXPATHLEN + 1);
+	pbs_strncpy(fullpath_real, lpath2short(fullpath), 2 * MAXPATHLEN + 2);
 #endif
 	/* check that fullpath_real begins with dir_real */
 	if (strlen(dir_real) && strlen(fullpath_real)) {
@@ -338,7 +338,7 @@ told_to_cp(char *host, char *oldpath, char **newpath)
                                         return 0;
 
                                 match_found = 1;
-                                (void)strcpy(newp, (pcphosts+nh)->cph_to);
+                                pbs_strncpy(newp, (pcphosts+nh)->cph_to, sizeof(newp));
                                 (void)strcat(newp, oldpath+i);
                         }
                 }
@@ -630,7 +630,7 @@ remtree(char *dirname)
 			return -1;
 		}
 
-		(void)strcpy(namebuf, dirname);
+		pbs_strncpy(namebuf, dirname, sizeof(namebuf));
 #ifdef WIN32
 		(void)strcat(namebuf, "\\");
 #else
@@ -647,7 +647,7 @@ remtree(char *dirname)
 					continue;
 			}
 
-			(void)strcpy(filnam, pdir->d_name);
+			pbs_strncpy(filnam, pdir->d_name, sizeof(namebuf) - (filnam - namebuf));
 #ifdef WIN32
 			rtnv = remdir(namebuf);
 #else
@@ -790,12 +790,12 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 		{
 			char	*slash = strrchr(src, '/');
 
-			strcpy(dest, pair->fp_local);
+			pbs_strncpy(dest, pair->fp_local, sizeof(dest));
 			strcat(dest, "/");
 			strcat(dest, (slash != NULL) ? slash + 1 : src);
 		}
 		else
-			strcpy(dest, pair->fp_local);
+			pbs_strncpy(dest, pair->fp_local, sizeof(dest));
 	}
 
 	ret = sys_copy(dir, rmtflag, owner, src, pair, conn, prmt, jobid);
@@ -822,7 +822,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 				 */
 				replace(src, "\\,", ",", src_file);
 				if (*src_file == '\0')
-					strcpy(src_file, src);
+					pbs_strncpy(src_file, src, sizeof(src_file));
 
 				if (remtree(src_file) < 0) {
 					if (errno == ENOENT) {
@@ -922,7 +922,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 				char	undelname[MAXPATHLEN+1];
 
 				len = strlen(path_spool);
-				strcpy(undelname, path_undeliv);
+				pbs_strncpy(undelname, path_undeliv, sizeof(undelname));
 				strcat(undelname, src+len);	/* src path begins with spool */
 
 				if (rename(src, undelname) == 0) {	/* move file to undelivered */
@@ -996,7 +996,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 
 			if (!(stage_inout->sandbox_private)) {
 				DBPRT(("%s: STDJOBFILE from %s\n", __func__, path_spool))
-				strcpy(source, path_spool);
+				pbs_strncpy(source, path_spool, sizeof(source));
 				stage_inout->from_spool = 1;	/* flag as being in spool dir */
 			}
 
@@ -1009,7 +1009,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 
 		} else if (pair->fp_flag == JOBCKPFILE) {
 			DBPRT(("%s: JOBCKPFILE from %s\n", __func__, path_checkpoint))
-			strcpy(source, path_checkpoint);
+			pbs_strncpy(source, path_checkpoint, sizeof(source));
 		}
 		strcat(source, pair->fp_local);
 
@@ -1033,7 +1033,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 
 	} else {	/* in bound (stage-in) file */
 		/* take (remote) source name from request */
-		strcpy(source, prmt);
+		pbs_strncpy(source, prmt, sizeof(source));
 	}
 	DBPRT(("%s: source %s\n", __func__, source))
 
@@ -1041,8 +1041,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	if (ps) {
 		/* has prefix path, save parent directory name */
 		len = (int)(ps - source) + 1;
-		strncpy(dname, source, len);
-		dname[len] = '\0';
+		pbs_strncpy(dname, source, len + 1);
 		ps++;
 	} else {
 		/* no prefix path, go with "./source" */
@@ -1104,7 +1103,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			continue;
 
 		/* get Windows file attributes */
-		strcpy(matched, dname);
+		pbs_strncpy(matched, dname, sizeof(matched));
 		strcat(matched, pdirent->d_name);
 		fa = GetFileAttributes(matched);
 
@@ -1124,7 +1123,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		if (pbs_glob(pdirent->d_name, ps) != 0) {
 			/* name matches */
 
-			strcpy(matched, dname);
+			pbs_strncpy(matched, dname, sizeof(matched));
 			strcat(matched, pdirent->d_name);
 			DBPRT(("%s: match %s\n", __func__, matched))
 			rc = copy_file(dir, rmtflag, owner, matched,
@@ -1512,7 +1511,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 		if (*local_file  != '\0')
 			strcpy(ag2, local_file);
 		else
-			strcpy(ag2, src);
+			pbs_strncpy(ag2, src, sizeof(ag2));
 
 #ifndef WIN32
 		/* Is the file there?  If not, don`t try copy */
@@ -1593,7 +1592,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			}
 #else
 			/* using scp/rcp, need to prepend the owner name */
-			strcpy(ag2, owner);
+			pbs_strncpy(ag2, owner, sizeof(ag2));
 			strcat(ag2, "@");
 			len = strlen(ag2);
 			if (quote_and_copy_white(ag2+len, prmt, MAXPATHLEN-len) != 0)
@@ -1618,7 +1617,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 		if (*local_file != '\0')
 			strcpy(ag3, local_file);
 		else
-			strcpy(ag3, pair->fp_local);
+			pbs_strncpy(ag3, pair->fp_local, sizeof(ag3));
 	}
 
 #ifndef WIN32
@@ -1782,7 +1781,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			ag0 = pbs_conf.scp_path;
 			struct stat local_sb = { 0 };
 			char ag0_cpy[MAXPATHLEN + 1] = { '\0' };
-			strncpy(ag0_cpy, ag0, sizeof(ag0_cpy));
+			pbs_strncpy(ag0_cpy, ag0, sizeof(ag0_cpy));
 			if (stat_uncpath(ag0_cpy, &local_sb) == -1) {
 				log_errf(errno, __func__, "%s", ag0_cpy);
 				/* let's try to copy using pbs_rcp now */
@@ -1871,8 +1870,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 						char	*ss, *ts;
 						size_t	len;
 
-						strncpy(ag3_tmp, ag3, sizeof(ag3_tmp)-1);
-						ag3_tmp[sizeof(ag3_tmp)-1] = '\0';
+						pbs_strncpy(ag3_tmp, ag3, sizeof(ag3_tmp));
 						len = strlen(ag3_tmp);
 
 						/*

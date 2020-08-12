@@ -1100,7 +1100,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 		} else if (strcmp(BASIL_ATR_STATUS, *np) == 0) {
-			strcpy(d->status, *vp);
+			pbs_strncpy(d->status, *vp, sizeof(d->status));
 			if (strcmp(BASIL_VAL_SUCCESS, *vp) == 0) {
 				*brp->error = '\0';
 			} else if (strcmp(BASIL_VAL_FAILURE, *vp) == 0) {
@@ -1111,7 +1111,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 		} else if (strcmp(BASIL_ATR_ERROR_CLASS, *np) == 0) {
-			strcpy(d->error_class, *vp);
+			pbs_strncpy(d->error_class, *vp, sizeof(d->error_class));
 			/*
 			 * The existence of a PERMENENT error used to
 			 * reset the BASIL_ERR_TRANSIENT flag. This
@@ -1125,7 +1125,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 		} else if (strcmp(BASIL_ATR_ERROR_SOURCE, *np) == 0) {
-			strcpy(d->error_source, *vp);
+			pbs_strncpy(d->error_source, *vp, sizeof(d->error_source));
 			/*
 			 * Consider "BACKEND" errors TRANSIENT when trying
 			 * to create an ALPS reservation.
@@ -1140,8 +1140,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				}
 			}
 		} else if (strcmp(BASIL_ATR_TYPE, *np) == 0) {
-			strncpy(d->type, *vp, sizeof(d->type) - 1);
-			d->type[sizeof(d->type) - 1] = '\0';
+			pbs_strncpy(d->type, *vp, sizeof(d->type));
 			if ((strcmp(BASIL_VAL_SYSTEM, *vp) != 0) &&
 			    (strcmp(BASIL_VAL_ENGINE, *vp) != 0)) {
 				parse_err_illegal_attr_val(d, *np, *vp);
@@ -1546,8 +1545,7 @@ inventory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		basil11orig = 1;
 	}
 	if (inv->mpp_host[0] == '\0') {
-		strncpy(inv->mpp_host, FAKE_MPP_HOST, sizeof(inv->mpp_host));
-		inv->mpp_host[sizeof(inv->mpp_host)-1] = '\0';
+		pbs_strncpy(inv->mpp_host, FAKE_MPP_HOST, sizeof(inv->mpp_host));
 		basil11orig = 1;
 	}
 
@@ -3557,7 +3555,7 @@ parse_nidlist_char_data(ud_t *d, const char *s, int len)
 				log_err(errno, __func__, "malloc failure");
 				return;
 			}
-			strcpy(knl_node_list, d->current_sys.node_group->nidlist);
+			pbs_strncpy(knl_node_list, d->current_sys.node_group->nidlist, (len + 1));
 		} else {
 			/* Allocate an extra byte for the "," separation between rangelists. */
 			tmp_ptr = realloc(knl_node_list, sizeof(char) * (strlen(knl_node_list) + len + 2));
@@ -4141,7 +4139,7 @@ inventory_loop_on_segments(basil_node_t *node, vnl_t *nv, char *arch,
 
 	} while(socket);
 
-	strncpy(name_buf, vname, VNODE_NAME_LEN);
+	pbs_strncpy(name_buf, vname, VNODE_NAME_LEN);
 	*total_cpu = totcpus;
 	*total_mem = totmem;
 	*total_seg = totseg;
@@ -4220,9 +4218,8 @@ inventory_to_vnodes(basil_response_t *brp)
 		log_err(errno, __func__, "vnl_alloc failed!");
 		return -1;
 	}
-	strncpy(mpphost, brp->data.query.data.inventory.mpp_host,
-		sizeof(mpphost)-1);
-	mpphost[sizeof(mpphost) - 1] = '\0';
+	pbs_strncpy(mpphost, brp->data.query.data.inventory.mpp_host,
+		sizeof(mpphost));
 	nv->vnl_modtime = (long)brp->data.query.data.inventory.timestamp;
 
 	/*
@@ -4908,9 +4905,9 @@ alps_request_parent(int fdin, char *basil_ver)
 		inventory_size = strlen(alps_client_out) + 1;
 
 	if (basil_ver != NULL)
-		strncpy(ud.basil_ver, basil_ver, BASIL_STRING_SHORT);
+		pbs_strncpy(ud.basil_ver, basil_ver, BASIL_STRING_SHORT);
 	else
-		strncpy(ud.basil_ver, BASIL_VAL_UNKNOWN, BASIL_STRING_SHORT);
+		pbs_strncpy(ud.basil_ver, BASIL_VAL_UNKNOWN, BASIL_STRING_SHORT);
 	ud.basil_ver[BASIL_STRING_SHORT - 1] = '\0';
 
 	do {
@@ -5492,9 +5489,8 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		goto err;
 	sprintf(basil_req->user_name, "%s", pwent->pw_name);
 
-	strncpy(basil_req->batch_id, pjob->ji_qs.ji_jobid,
-		sizeof(basil_req->batch_id)-1);
-	basil_req->batch_id[sizeof(basil_req->batch_id)-1] = '\0';
+	pbs_strncpy(basil_req->batch_id, pjob->ji_qs.ji_jobid,
+		sizeof(basil_req->batch_id));
 
 	/* check for pstate or pgov */
 	for (pres = (resource *)
@@ -5755,7 +5751,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		}
 		if (pgov != NULL) {
 			if (strlen(pgov) < sizeof(p->pgovernor)) {
-				strcpy(p->pgovernor, pgov);
+				pbs_strncpy(p->pgovernor, pgov, sizeof(p->pgovernor));
 			} else {
 				sprintf(log_buffer, "pgov value %s is too long,"
 					" length must be less than %ld",
@@ -7286,7 +7282,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 
 			if ((strcmp(BASIL_VAL_BATCH_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_INTERACTIVE_SYS, *vp) == 0))
-				strncpy(node_group->role, *vp, sizeof(node_group->role) - 1);
+				pbs_strncpy(node_group->role, *vp, sizeof(node_group->role));
 			else
 				strcpy(node_group->role, BASIL_VAL_UNKNOWN);
 		} else if (strcmp(BASIL_ATR_STATE, *np) == 0) {
@@ -7301,7 +7297,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			    (strcmp(BASIL_VAL_ROUTING_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_SUSPECT_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_ADMIN_SYS, *vp) == 0))
-				strncpy(node_group->state, *vp, sizeof(node_group->state) - 1);
+				pbs_strncpy(node_group->state, *vp, sizeof(node_group->state));
 			else
 				strcpy(node_group->state, BASIL_VAL_UNKNOWN);
 		} else if (strcmp(BASIL_ATR_SPEED, *np) == 0) {
@@ -7327,7 +7323,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
-			strncpy(node_group->numa_nodes, *vp, sizeof(node_group->numa_nodes) - 1);
+			pbs_strncpy(node_group->numa_nodes, *vp, sizeof(node_group->numa_nodes));
 		} else if (strcmp(BASIL_ATR_DIES, *np) == 0) {
 			if (*node_group->n_dies != '\0') {
 				parse_err_multiple_attrs(d, *np);
@@ -7339,7 +7335,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
-			strncpy(node_group->n_dies, *vp, sizeof(node_group->n_dies) - 1);
+			pbs_strncpy(node_group->n_dies, *vp, sizeof(node_group->n_dies));
 		} else if (strcmp(BASIL_ATR_COMPUTE_UNITS, *np) == 0) {
 			if (*node_group->compute_units != '\0') {
 				parse_err_multiple_attrs(d, *np);
@@ -7351,7 +7347,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
-			strncpy(node_group->compute_units, *vp, sizeof(node_group->compute_units) - 1);
+			pbs_strncpy(node_group->compute_units, *vp, sizeof(node_group->compute_units));
 		} else if (strcmp(BASIL_ATR_CPUS_PER_CU, *np) == 0) {
 			if (*node_group->cpus_per_cu != '\0') {
 				parse_err_multiple_attrs(d, *np);
@@ -7363,7 +7359,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
-			strncpy(node_group->cpus_per_cu, *vp, sizeof(node_group->cpus_per_cu) - 1);
+			pbs_strncpy(node_group->cpus_per_cu, *vp, sizeof(node_group->cpus_per_cu));
 		} else if (strcmp(BASIL_ATR_PAGE_SIZE_KB, *np) == 0) {
 			if (*node_group->pgszl2 != '\0') {
 				parse_err_multiple_attrs(d, *np);
@@ -7417,7 +7413,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
-			strncpy(node_group->accel_name, *vp, sizeof(node_group->accel_name) - 1);
+			pbs_strncpy(node_group->accel_name, *vp, sizeof(node_group->accel_name));
 		} else if (strcmp(BASIL_ATR_ACCEL_STATE, *np) == 0) {
 			if (*node_group->accel_state != '\0') {
 				parse_err_multiple_attrs(d, *np);
@@ -7426,7 +7422,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 
 			if ((strcmp(BASIL_VAL_UP_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_DOWN_SYS, *vp) == 0))
-				strncpy(node_group->accel_state, *vp, sizeof(node_group->accel_state) - 1);
+				pbs_strncpy(node_group->accel_state, *vp, sizeof(node_group->accel_state));
 			else
 				strcpy(node_group->accel_state, BASIL_VAL_UNKNOWN);
 		} else if (strcmp(BASIL_ATR_NUMA_CFG, *np) == 0) {
@@ -7441,7 +7437,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			    (strcmp(BASIL_VAL_SNC4_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_HEMI_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_QUAD_SYS, *vp) == 0))
-				strncpy(node_group->numa_cfg, *vp, sizeof(node_group->numa_cfg) - 1);
+				pbs_strncpy(node_group->numa_cfg, *vp, sizeof(node_group->numa_cfg));
 			else {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
@@ -7457,7 +7453,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
-			strncpy(node_group->hbmsize, *vp, sizeof(node_group->hbmsize) - 1);
+			pbs_strncpy(node_group->hbmsize, *vp, sizeof(node_group->hbmsize));
 		} else if (strcmp(BASIL_ATR_HBM_CFG, *np) == 0) {
 			if (*node_group->hbm_cfg != '\0') {
 				parse_err_multiple_attrs(d, *np);
@@ -7468,7 +7464,7 @@ node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			    (strcmp(BASIL_VAL_25_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_50_SYS, *vp) == 0) ||
 			    (strcmp(BASIL_VAL_100_SYS, *vp) == 0))
-				strncpy(node_group->hbm_cfg, *vp, sizeof(node_group->hbm_cfg) - 1);
+				pbs_strncpy(node_group->hbm_cfg, *vp, sizeof(node_group->hbm_cfg));
 			else {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;

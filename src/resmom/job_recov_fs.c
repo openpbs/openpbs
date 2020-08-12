@@ -326,7 +326,7 @@ job_recov_fs(char *filename)
 
 	/* change file name in case recovery fails so we don't try same file */
 
-	(void)strcpy(basen, pbs_recov_filename);
+	pbs_strncpy(basen, pbs_recov_filename, sizeof(basen));
 	psuffix = basen + strlen(basen) - strlen(JOB_BAD_SUFFIX);
 	(void)strcpy(psuffix, JOB_BAD_SUFFIX);
 #ifdef WIN32

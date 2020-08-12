@@ -174,7 +174,7 @@ host_match(char *line)
 			domain[i] = '\0';
 		}
 	}
-	strcpy(fullhost, line);
+	pbs_strncpy(fullhost, line, sizeof(fullhost));
 	strcat(fullhost, ".");
 	strcat(fullhost, domain);
 

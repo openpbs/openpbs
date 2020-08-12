@@ -936,8 +936,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 
 	snprintf(path_hooks_rescdef, MAXPATHLEN, "%s%s", path_hooks, PBS_RESCDEF);
 
-	strncpy(hook_config_path, ((struct python_script *)phook->script)->path,
-		sizeof(hook_config_path)-1);
+	pbs_strncpy(hook_config_path, ((struct python_script *)phook->script)->path,
+		sizeof(hook_config_path));
 	p = strstr(hook_config_path, HOOK_SCRIPT_SUFFIX);
 	if (p != NULL) {
 		/* replace <HOOK_SCRIPT_SUFFIX> with <HOOK_CONFIG_SUFFIX>: */
@@ -1010,9 +1010,9 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid = \
 					pjob->ji_grpcache->gc_gid;
 
-		strncpy(script_path,
+		pbs_strncpy(script_path,
 			((struct python_script *)phook->script)->path,
-			MAXPATHLEN);
+			sizeof(script_path));
 
 		/* copy hook_config_path to user-accessible */
 		/* [PBS_HOME]/path_spool. */
@@ -1628,9 +1628,9 @@ run_hook_exit:
 			(file_data != NULL)) {
 			(void)rename(hook_datafile, file_data);
 		}
-		strncpy(script_path,
+		pbs_strncpy(script_path,
 			((struct python_script *)phook->script)->path,
-			MAXPATHLEN);
+			sizeof(script_path));
 		pc = strrchr(script_path, '/');
 		if (pc == NULL) {
 			pc = (char *)script_path;
@@ -2021,9 +2021,9 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	/* pbs_event().hook_euser=<value> entries.  In that case, hook_euser */
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
 	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
-		strncpy(hook_euser,
+		pbs_strncpy(hook_euser,
 			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-			PBS_MAXUSER);
+			sizeof(hook_euser));
 	}
 
 	if ((input_file != NULL) && (*input_file != '\0')) {
@@ -2267,7 +2267,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 
 		if (strcmp(obj_name, EVENT_OBJECT) == 0) {
 			if (strcmp(name_str, "hook_euser") == 0) {
-				strncpy(hook_euser, data_value, PBS_MAXUSER);
+				pbs_strncpy(hook_euser, data_value, sizeof(hook_euser));
 				start_new_vnl = 1;
 				/* Need to also clear 'hvnlp' as previous  */
 				/* one would have already been saved in */
@@ -2293,8 +2293,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					*reject_flag = 0;
 			} else if ((reject_msg != NULL) &&
 				(strcmp(name_str, "reject_msg") == 0)) {
-				strncpy(reject_msg, data_value,
-					reject_msg_size-1);
+				pbs_strncpy(reject_msg, data_value,
+					reject_msg_size);
 			} else if (strcmp(name_str, PY_EVENT_PARAM_PROGNAME) == 0) {
 				char	**prog;
 				if (hook_output != NULL) {
@@ -2780,7 +2780,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 			} else if ((reboot_cmd != NULL) &&
 				(strcmp(name_str,
 				PBS_REBOOT_CMD_OBJECT) == 0)) {
-				strncpy(reboot_cmd, data_value, HOOK_BUF_SIZE-1);
+				pbs_strncpy(reboot_cmd, data_value, HOOK_BUF_SIZE);
 			}
 		}
 
@@ -2857,9 +2857,9 @@ do_reboot(char *reboot_cmd)
 	int	rcode;
 
 	if ((reboot_cmd == NULL) || (*reboot_cmd == '\0'))
-		strncpy(bootcmd, REBOOT_CMD, HOOK_BUF_SIZE-1);
+		pbs_strncpy(bootcmd, REBOOT_CMD, sizeof(bootcmd));
 	else
-		strncpy(bootcmd, reboot_cmd, HOOK_BUF_SIZE-1);
+		pbs_strncpy(bootcmd, reboot_cmd, sizeof(bootcmd));
 
 	snprintf(log_buffer, sizeof(log_buffer), "issuing cmd %s", bootcmd);
 	log_event(PBSEVENT_DEBUG3, 0,

@@ -113,7 +113,6 @@ extern	int		lockfds;
 extern	pbs_list_head	mom_polljobs;
 extern	int		next_sample_time;
 extern	int		min_check_poll;
-extern	char		*path_checkpoint;
 extern	char		*path_jobs;
 extern	char		*path_prolog;
 extern	char		*path_spool;
@@ -1929,10 +1928,8 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	}
 	fclose(nhow);
 
-	if ((nodefile != NULL) && (nodefile_sz > 0)) {
-		strncpy(nodefile, pbs_nodefile, nodefile_sz);
-		nodefile[nodefile_sz-1] = '\0';
-	}
+	if ((nodefile != NULL) && (nodefile_sz > 0))
+		pbs_strncpy(nodefile, pbs_nodefile, nodefile_sz);
 
 	return (0);
 }
@@ -5718,8 +5715,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					if (pbs_conf.pbs_leaf_name) {
 						if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
 							/* PBS_LEAF_NAME has changed or node_name is uninitialized */
-							strncpy(node_name, pbs_conf.pbs_leaf_name, PBS_MAXHOSTNAME);
-							node_name[PBS_MAXHOSTNAME] = '\0';
+							pbs_strncpy(node_name, pbs_conf.pbs_leaf_name, sizeof(node_name));
 							/* Need to canonicalize PBS_LEAF_NAME */
 							if (get_fullhostname(node_name, canonical_name,
 									(sizeof(canonical_name) - 1)) != 0) {
@@ -5735,11 +5731,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					} else {
 						if (strcmp(mom_host, node_name) != 0) {
 							/* mom_host has changed or node_name is uninitialized */
-							strncpy(node_name, mom_host, PBS_MAXHOSTNAME);
-							node_name[PBS_MAXHOSTNAME] = '\0';
+							pbs_strncpy(node_name, mom_host, sizeof(node_name));
 							/* mom_host contains the canonical name */
-							strncpy(canonical_name, mom_host, PBS_MAXHOSTNAME);
-							canonical_name[PBS_MAXHOSTNAME] = '\0';
+							pbs_strncpy(canonical_name, mom_host, sizeof(canonical_name));
 						}
 					}
 
@@ -5876,8 +5870,8 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 						return (PBSE_INTERNAL);
 					}
 					hp->hn_vlist = phv;
-					strncpy(phv[hp->hn_vlnum].hv_vname, nodep,
-						PBS_MAXNODENAME);
+					pbs_strncpy(phv[hp->hn_vlnum].hv_vname, nodep,
+						sizeof(phv[hp->hn_vlnum].hv_vname));
 					phv[hp->hn_vlnum].hv_ncpus = vnncpus;
 					phv[hp->hn_vlnum].hv_mem   = ndmem;
 					hp->hn_vlnum++;
@@ -6468,7 +6462,7 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
 	/* create a uniquely named file using mkstemp() */
 	/* for that we need to setup the template       */
 
-	strncpy(buf, path, MAXPATHLEN);
+	pbs_strncpy(buf, path, sizeof(buf));
 	pc   = strrchr(buf, '/');  /* last slash in path */
 	if (pc == NULL)
 		return (-1);

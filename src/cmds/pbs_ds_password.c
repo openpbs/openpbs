@@ -416,7 +416,7 @@ main(int argc, char *argv[])
 				gen_pwd = 1;
 				break;
 			case 'C':
-				strcpy(userid, optarg);
+				pbs_strncpy(userid, optarg, sizeof(userid));
 				break;
 			case '?':
 			default:
@@ -435,8 +435,7 @@ main(int argc, char *argv[])
      */
 	if (argv[optind] != NULL) {
 		gen_pwd = 0;
-		strncpy(passwd, argv[optind], sizeof(passwd));
-		passwd[sizeof(passwd) - 1] = '\0';
+		pbs_strncpy(passwd, argv[optind], sizeof(passwd));
 	}
 
 	/* check admin privileges */
@@ -463,9 +462,9 @@ main(int argc, char *argv[])
 
 	atexit(cleanup);
 	if (pbs_conf.pbs_data_service_host)
-		strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
+		pbs_strncpy(conn_db_host, pbs_conf.pbs_data_service_host, sizeof(conn_db_host));
 	else
-		strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); 
+		pbs_strncpy(conn_db_host, pbs_default(), sizeof(conn_db_host)); 
 
 	if (update_db == 1) {
 		/* then connect to database */

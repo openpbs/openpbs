@@ -807,7 +807,7 @@ del_chkpt_files(job *pjob)
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 
 	if (path_checkpoint != NULL) {	/* delete checkpoint files */
-		(void)strcpy(namebuf, path_checkpoint);
+		pbs_strncpy(namebuf, path_checkpoint, sizeof(namebuf));
 		if (*pjob->ji_qs.ji_fileprefix != '\0')
 			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
 		else

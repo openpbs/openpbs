@@ -1915,8 +1915,7 @@ addr_to_hostname(struct sockaddr_in *ap)
 		hostname_sz = new_sz;
 		ret_hostname = tmp_str;
 	}
-	strncpy(ret_hostname, hp->h_name, hostname_sz);
-	ret_hostname[hostname_sz - 1] = '\0';
+	pbs_strncpy(ret_hostname, hp->h_name, hostname_sz);
 	return (ret_hostname);
 }
 /**
@@ -3093,12 +3092,12 @@ im_request(int stream, int version)
 			psatl = (svrattrl *)GET_NEXT(lhead);
 			while (psatl) {
 				if (!strcmp(psatl->al_name, ATTR_hashname)) {
-					strncpy(basename, psatl->al_value, MAXPATHLEN);
+					pbs_strncpy(basename, psatl->al_value, sizeof(basename));
 					break;
 				}
 				psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 			}
-			strncpy(pjob->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
+			pbs_strncpy(pjob->ji_qs.ji_jobid, jobid, sizeof(pjob->ji_qs.ji_jobid));
 			if (strlen(basename) <= PBS_JOBBASE)
 				strcpy(pjob->ji_qs.ji_fileprefix, basename);
 			else
@@ -3717,7 +3716,7 @@ join_err:
 				 * been deleted already.
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
-					(void)strncpy(pjob2->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
+					pbs_strncpy(pjob2->ji_qs.ji_jobid, jobid, sizeof(pjob2->ji_qs.ji_jobid));
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
 								runver;
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;

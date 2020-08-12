@@ -981,7 +981,7 @@ set_node_info_state(node_info *ninfo, char *state)
 		ninfo->is_resv_exclusive = ninfo->is_job_exclusive = 0;
 		ninfo->is_sleeping = ninfo->is_maintenance = 0;
 
-		pbs_strncpy(statebuf, state, sizeof(statebuf));
+		strcpy(statebuf, state);
 		tok = strtok_r(statebuf, ",", &saveptr);
 
 		while (tok != NULL) {
@@ -2726,10 +2726,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes == 0) {
-							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
-							reason[MAX_LOG_SIZE - 1] = '\0';
-						}
+						if (hostsets[i]->free_nodes == 0)
+							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
 
@@ -2797,10 +2795,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes == 0) {
-							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
-							reason[MAX_LOG_SIZE - 1] = '\0';
-						}
+						if (hostsets[i]->free_nodes == 0)
+							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
 
@@ -2900,10 +2896,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes ==0) {
-							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
-							reason[MAX_LOG_SIZE - 1] = '\0';
-						}
+						if (hostsets[i]->free_nodes ==0)
+							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
 
@@ -4438,7 +4432,7 @@ create_execvnode(nspec **ns)
 
 	for (i = 0; ns[i] != NULL; i++) {
 		if (i > 0)
-			pbs_strncpy(buf, "+", bufsize);
+			strcpy(buf, "+");
 		else
 			buf[0] = '\0';
 
@@ -4469,7 +4463,7 @@ create_execvnode(nspec **ns)
 					return NULL;
 			}
 			else if (ns[i]->go_provision && strcmp(req->name, "aoe") ==0) {
-				pbs_strncpy(buf2, ":aoe=", sizeof(buf2));
+				strcpy(buf2, ":aoe=");
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
 				if (pbs_strcat(&buf, &bufsize, req->res_str) == NULL)

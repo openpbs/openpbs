@@ -256,10 +256,10 @@ fork_to_user(struct batch_request *preq, job *pjob)
 	} else
 		return (INVALID_HANDLE_VALUE);
 
-	strncpy(lpath, save_actual_homedir(pwdp, pjob), MAXPATHLEN + 1);
+	pbs_strncpy(lpath, save_actual_homedir(pwdp, pjob), sizeof(lpath));
 	CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 	if (chdir(lpath) == -1) {
-		strcpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user));
+		pbs_strncpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user), sizeof(lpath));
 		CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 		(void) chdir(lpath);
 	}
@@ -2246,13 +2246,13 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 		if (*rmt_file != '\0')
 			strcpy(prmt, rmt_file);
 		else
-			strcpy(prmt, pair->fp_rmt);
+			pbs_strncpy(prmt, pair->fp_rmt, sizeof(prmt));
 		path[0] = '\0';
 		if (pair->fp_flag == STDJOBFILE) { /* standard out or error */
 #ifndef NO_SPOOL_OUTPUT
 			if (!sandbox_private) {
 				DBPRT(("%s:, STDJOBFILE in %s\n", __func__, path_spool))
-				(void) strcpy(path, path_spool);
+				pbs_strncpy(path, path_spool, sizeof(path));
 			}
 #endif /* NO_SPOOL_OUTPUT */
 		}
@@ -2324,8 +2324,7 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 			/* has prefix path, save parent directory name */
 			int len = (int) (ps - path) + 1;
 
-			strncpy(dname, path, len);
-			dname[len] = '\0';
+			pbs_strncpy(dname, path, len);
 			ps++;
 		} else { /* no prefix path */
 			/*
@@ -2739,7 +2738,7 @@ req_cpyfile(struct batch_request *preq)
 		 * attribute, so we call map_unc_path to get it now
 		 */
 		if ((pw=getpwnam(preq->rq_ind.rq_cpyfile.rq_user)) != NULL) {
-			strncpy(actual_homedir,
+			pbs_strncpy(actual_homedir,
 				map_unc_path(pw->pw_dir, pw), sizeof(actual_homedir));
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, actual_homedir);
 		} else {
@@ -3310,7 +3309,7 @@ req_cpyfile(struct batch_request *preq)
 		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid);
 	}
 
-	strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid) - 1);
+	pbs_strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid));
 	if (preq->prot == PROT_TCP) {
 		if (stage_inout.bad_files) {
 			reply_text(preq, PBSE_NOCOPYFILE, stage_inout.bad_list);
@@ -3565,7 +3564,7 @@ mom_checkpoint_job(job *pjob, int abort)
 	DBPRT(("mom_checkpoint_job: %s %s abort\n", pjob->ji_qs.ji_jobid,
 		abort ? "with" : "no"))
 
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -3827,7 +3826,7 @@ post_chkpt(job *pjob, int  ev)
 	/*
 	 ** Set the TI_FLAGS_CHKPT flag for each task that was checkpointed.
 	 */
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -4172,7 +4171,7 @@ mom_restart_job(job *pjob)
 		goto done;
 	}
 
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else

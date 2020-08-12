@@ -48,6 +48,8 @@
 #include "cmds.h"
 #include "net_connect.h"
 
+#define OPT_BUF_LEN 256
+
 static struct attrl *attrib = NULL;
 static time_t dtstart;
 static time_t dtend;
@@ -133,7 +135,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					errflg++;
 					break;
 				}
-				strcpy(dest, &optarg[1]);
+				pbs_strncpy(dest, &optarg[1], OPT_BUF_LEN);
 				break;
 
 			case 'U':
@@ -254,7 +256,7 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 	int		errflg = 0;			/* command line option error */
 	int		connect = -1;			/* return from pbs_connect */
 	char		*errmsg = NULL;			/* return from pbs_geterrmsg */
-	char		destbuf[256] = {0};		/* buffer for option server */
+	char		destbuf[OPT_BUF_LEN] = {0};		/* buffer for option server */
 	struct attrl 	*attrib = NULL;			/* the attrib list */
 	struct		ecl_attribute_errors *err_list = NULL;
 	char		resv_id[PBS_MAXCLTJOBID] = {0};
@@ -294,7 +296,7 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 		exit(pbs_errno);
 	}
 
-	strcpy(resv_id, argv[optind]);
+	pbs_strncpy(resv_id, argv[optind], sizeof(resv_id));
 	if (get_server(resv_id, resv_id_out, server_out)) {
 		fprintf(stderr, "pbs_ralter: illegally formed reservation identifier: %s\n", resv_id);
 		exit(2);

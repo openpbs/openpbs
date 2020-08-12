@@ -110,7 +110,7 @@ main(int argc, char **argv, char **envp) /* qmsg */
 			exit(2);
 		}
 
-	strcpy(msg_string, argv[optind]);
+	pbs_strncpy(msg_string, argv[optind], sizeof(msg_string));
 
 	/*perform needed security library initializations (including none)*/
 
@@ -124,7 +124,7 @@ main(int argc, char **argv, char **envp) /* qmsg */
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qmsg: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;

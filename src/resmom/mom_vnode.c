@@ -412,7 +412,8 @@ static void
 resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 	unsigned int adjval)
 {
-	int		i, j;
+	int	i, j;
+	char	*vna_newval;
 
 	sprintf(log_buffer, "vnode %s, resource %s, res_op %d, adjval %u",
 		vnid, res, (int) op, adjval);
@@ -475,25 +476,14 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 				 *	the adjusted one.  This may involve
 				 *	surgery on the vna_t.
 				 */
-				if (op == RES_DECR) {
-					/*
-					 *	Since the resource value is now
-					 *	smaller than before, it ought to
-					 *	fit in the space that holds the
-					 *	current value.
-					 */
-					strcpy(vnap->vna_val, valbuf);
+				vna_newval = strdup(valbuf);
+				if (vna_newval != NULL) {
+					free(vnap->vna_val);
+					vnap->vna_val = vna_newval;
 				} else {
-					char	*vna_newval = strdup(valbuf);
-
-					if (vna_newval != NULL) {
-						free(vnap->vna_val);
-						vnap->vna_val = vna_newval;
-					} else {
-						log_event(PBSEVENT_ERROR, 0,
-							LOG_ERR, __func__,
-							"vna_newval strdup failed");
-					}
+					log_event(PBSEVENT_ERROR, 0,
+						LOG_ERR, __func__,
+						"vna_newval strdup failed");
 				}
 				return;
 			}

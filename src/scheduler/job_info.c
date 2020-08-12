@@ -3977,8 +3977,7 @@ create_subjob_name(char *array_id, int index)
 	if (*rest != ']')
 		return NULL;
 
-	strncpy(tmpid, array_id, spn+1);
-	tmpid[spn+1] = '\0';
+	pbs_strncpy(tmpid, array_id, spn+2);
 	sprintf(buf, "%s%d%s", tmpid, index, rest);
 
 	return string_dup(buf);
