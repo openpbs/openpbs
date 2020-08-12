@@ -553,15 +553,21 @@ license_one_node(pbsnode *pnode)
 			status = set_node_lic_info_attr(pnode);
 
 		if (status == 0) {
-			if (consume_licenses(pnode->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
-				set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_License]),
-				 	&node_attr_def[(int)ND_ATR_License],
-				 	ND_LIC_locked_str);
-			} else {
-				add_to_unlicensed_node_list(pnode);
-				if (get_more_licenses_task)
-					delete_task(get_more_licenses_task);
-				get_more_licenses_task = set_task(WORK_Timed, time_now + 2, get_more_licenses, NULL);
+			if (pnode->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked) {
+				if (consume_licenses(pnode->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
+					set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_License]),
+						&node_attr_def[(int)ND_ATR_License],
+						ND_LIC_locked_str);
+					sprintf(log_buffer,
+							"setting license attribute  on %s from one node function", pnode->nd_name);
+					log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+							LOG_NOTICE, msg_daemonname, log_buffer);
+				} else {
+					add_to_unlicensed_node_list(pnode);
+					if (get_more_licenses_task)
+						delete_task(get_more_licenses_task);
+					get_more_licenses_task = set_task(WORK_Timed, time_now + 2, get_more_licenses, NULL);
+				}
 			}
 		}
 	} else
@@ -650,6 +656,10 @@ license_nodes()
 					set_attr_svr(&(np->nd_attr[(int)ND_ATR_License]),
 						 &node_attr_def[(int)ND_ATR_License],
 						 ND_LIC_locked_str);
+					sprintf(log_buffer,
+						"setting license attribute  on %s", np->nd_name);
+					log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+						LOG_NOTICE, msg_daemonname, log_buffer);
 					delete_link(&punodes->link);
 					free(punodes);
 				}
