@@ -94,13 +94,16 @@ default_requirements = {
     'no_comm_on_mom': True
 }
 
+
 def skip(reason="Skipped test execution"):
     """
     Unconditionally skip a test.
+
     :param reason: Reason for the skip
     :type reason: str or None
     """
     skip_flag = True
+
     def wrapper(test_item):
         test_item.__unittest_skip__ = skip_flag
         test_item.__unittest_skip_why__ = reason
@@ -133,6 +136,7 @@ def checkModule(modname):
         return function
     return decorated
 
+
 def skipOnCray(function):
     """
     Decorator to skip a test on a ``Cray`` system
@@ -154,22 +158,22 @@ def skipOnShasta(function):
 
 
 def skipOnCpuSet(function):
-     """
-     Decorator to skip a test on a cgroup cpuset system
-     """
+    """
+    Decorator to skip a test on a cgroup cpuset system
+    """
 
-     def wrapper(self, *args, **kwargs):
-         for mom in self.moms.values():
-             if mom.is_cpuset_mom():
-                 msg = 'capability not supported on cgroup cpuset system: ' +\
-                       mom.shortname
-                 self.skipTest(reason=msg)
-                 break
-         else:
-             function(self, *args, **kwargs)
-     wrapper.__doc__ = function.__doc__
-     wrapper.__name__ = function.__name__
-     return wrapper
+    def wrapper(self, *args, **kwargs):
+        for mom in self.moms.values():
+            if mom.is_cpuset_mom():
+                msg = 'capability not supported on cgroup cpuset system: ' +\
+                    mom.shortname
+                self.skipTest(reason=msg)
+                break
+        else:
+            function(self, *args, **kwargs)
+    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = function.__name__
+    return wrapper
 
 
 def requirements(*args, **kwargs):
