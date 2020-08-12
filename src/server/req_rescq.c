@@ -590,7 +590,7 @@ req_confirmresv(struct batch_request *preq)
 				if ((presv->ri_brp != NULL) &&
 					(presv->ri_wattr[RESV_ATR_interactive].at_flags &
 					ATR_VFLAG_SET)) {
-					if (presv->ri_alter.ra_force == FALSE) {
+					if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
 						presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
 						snprintf(buf, sizeof(buf), "%s DENIED",
 							presv->ri_qs.ri_resvID);
@@ -614,7 +614,7 @@ req_confirmresv(struct batch_request *preq)
 			}
 		}
 		if (presv->ri_qs.ri_state == RESV_BEING_ALTERED) {
-			if (!presv->ri_alter.ra_force) {
+			if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
 				resv_revert_alter(presv);
 				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 					presv->ri_qs.ri_resvID, "Reservation alter denied");
@@ -628,7 +628,7 @@ req_confirmresv(struct batch_request *preq)
 			/* This can only happen when ralter was requested with -Wforce option.
 			 * Even though all schedulers have rejected the change, enforce it.
 			 */
-			presv->ri_alter.ra_force = FALSE;
+			presv->ri_alter.ra_flags &= ~RESV_ALTER_FORCED;
 			free(preq->rq_extend);
 			if (pbs_asprintf(&preq->rq_extend, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
 					 presv->ri_wattr[RESV_ATR_partition].at_val.at_str) == -1) {

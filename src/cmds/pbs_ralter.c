@@ -157,11 +157,6 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				}
 				break;
 			case 'W':
-				if (strlen(optarg) == 0) {
-					fprintf(stderr, "pbs_ralter: illegal -W value\n");
-					errflg++;
-					break;
-				}
 				if (strcmp(optarg, "force") == 0)
 					force_alter = TRUE;
 				else {

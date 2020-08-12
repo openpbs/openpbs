@@ -66,6 +66,7 @@ extern "C" {
 #define RESV_END_TIME_MODIFIED		0x2
 #define RESV_DURATION_MODIFIED		0x4
 #define RESV_SELECT_MODIFIED		0x8
+#define RESV_ALTER_FORCED		0x10
 
 
 /*
@@ -119,7 +120,6 @@ struct resv_alter {
 	long ra_state;
 	unsigned long ra_flags;
 	char *ra_select_revert; /* used to revert select for future occurrences */
-	int ra_force;
 };
 
 /*

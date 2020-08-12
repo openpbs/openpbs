@@ -2634,21 +2634,20 @@ class TestPbsResvAlter(TestFunctional):
         rid2, start2, end2 = self.submit_and_confirm_reservation(
             offset2, duration2, select="2:ncpus=4")
 
-        start1 = start2
-        end1 = end2
-
-        self.alter_a_reservation(rid1, start1, end1, confirm=True,
+        self.alter_a_reservation(rid1, start1, end1, confirm=True, shift=-3000,
                                  alter_s=True, alter_e=True, extend='force')
         t_duration, t_start, t_end = self.get_resv_time_info(rid1)
-        self.assertEqual(int(t_start), start2)
-        self.assertEqual(int(t_duration), duration2)
-        self.assertEqual(int(t_end), end2)
+        start1 = start1 - 3000
+        end1 = end1 - 3000
+        self.assertEqual(int(t_start), start1)
+        self.assertEqual(int(t_duration), duration1)
+        self.assertEqual(int(t_end), end1)
 
         # Try the same alter but in interactive mode
         duration = 300
         self.alter_a_reservation(rid1, start1, end1, confirm=True,
                                  a_duration=duration, extend='force',
-                                 interactive=2, sequence=2)
+                                 interactive=10, sequence=2)
         t_duration, _, _ = self.get_resv_time_info(rid1)
         self.assertEqual(int(t_duration), duration)
 
@@ -2668,6 +2667,7 @@ class TestPbsResvAlter(TestFunctional):
         new_start = start - 1800
         new_end = end - 3600
         new_duration = duration - 1800
+
         new_start_conv = self.bu.convert_seconds_to_datetime(new_start)
         attrs['reserve_start'] = new_start_conv
 
@@ -2687,7 +2687,7 @@ class TestPbsResvAlter(TestFunctional):
         new_end = new_end - 100
         new_end_conv = self.bu.convert_seconds_to_datetime(new_end)
         attrs['reserve_end'] = new_end_conv
-        attrs['interactive'] = 2
+        attrs['interactive'] = 10
         self.server.alterresv(rid, attrs, extend='force')
         msg = "pbs_ralter: " + rid + " CONFIRMED"
         self.assertEqual(msg, self.server.last_out[0])
@@ -2724,7 +2724,7 @@ class TestPbsResvAlter(TestFunctional):
         # Ideally, in 1 hr second occurrence of reservation will start running
         # and it will run for 3 mins. This means the new reservation will be
         # confirmed.
-        new_offset = (start + 3800) - time.time()
+        new_offset = (start + 3800) - int(time.time())
         rid2, start, end = self.submit_and_confirm_reservation(
             new_offset, 180, select="2:ncpus=4", ExpectSuccess=1)
 

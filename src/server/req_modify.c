@@ -749,22 +749,17 @@ is_select_smaller(char *select_orig, char *select_smaller)
  * @param[in] presv - reservation for which string is being made.
  * @return destination string
  */
-char *create_resv_destination(resc_resv *presv)
+char *
+create_resv_destination(resc_resv *presv)
 {
 	char * format = "%s";
-	int destin_len;
-	char * destin;
+	char *destin = NULL;
 	if (presv == NULL)
 		return NULL;
-	destin_len = strlen(presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str) + 6;
-	/* allocate 6 extra bytes because for standing reservation format is different */
-	destin = malloc(destin_len);
-	if (destin == NULL) {
-	    return NULL;
-	}
+	/* standing reservations format is <num>#<exec-vnode>{<num>} */
 	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long)
 	    format = "1#%s{0}";
-	snprintf(destin, destin_len, format, presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str);
+	pbs_asprintf(&destin, format, presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str);
 	return destin;
 }
 
@@ -774,14 +769,14 @@ char *create_resv_destination(resc_resv *presv)
  *
  * @return - Batch request
  */
-static struct batch_request *create_resv_confirm_req(resc_resv *presv)
+static struct batch_request *
+create_resv_confirm_req(resc_resv *presv)
 {
 	struct batch_request *confirm_req;
 	char *part;
 	confirm_req = alloc_br(PBS_BATCH_ConfirmResv);
-	if (confirm_req == NULL) {
+	if (confirm_req == NULL)
 		return NULL;
-	}
 	if (presv->ri_wattr[RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
 		part = presv->ri_wattr[RESV_ATR_partition].at_val.at_str;
 	else
@@ -1154,7 +1149,7 @@ req_modifyReservation(struct batch_request *preq)
 	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, preq->rq_ind.rq_modify.rq_objname, log_buffer);
 
 	if (force_alter == TRUE) {
-		if (scheds_notified == 0 ) { /* No schedulers notified, just enforce confirmation */
+		if (scheds_notified == 0) { /* No schedulers notified, just enforce confirmation */
 			if (presv->ri_alter.ra_state == RESV_UNCONFIRMED) { /* No need to do anything, just make the change */
 				resv_setResvState(presv, RESV_UNCONFIRMED, RESV_UNCONFIRMED);
 				presv->ri_alter.ra_flags = 0;
@@ -1184,7 +1179,7 @@ req_modifyReservation(struct batch_request *preq)
 			reply_text(preq, PBSE_NONE, buf);
 			return;
 		} else
-			presv->ri_alter.ra_force = 1;
+			presv->ri_alter.ra_flags |= RESV_ALTER_FORCED;
 	}
 
 	if ((presv->ri_wattr[RESV_ATR_interactive].at_flags &
