@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <netdb.h>
 #include <pbs_ifl.h>
+#include <pwd.h>
 #include "pbs_internal.h"
 #include <limits.h>
 #include <pbs_error.h>
@@ -126,7 +127,8 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_lr_save_path */
 	0,					/* high resolution timestamp logging */
 	0,					/* number of scheduler threads */
-	NULL					/* default scheduler user */
+	NULL,					/* default scheduler user */
+	{'\0'}					/* current running user */
 #ifdef WIN32
 	,NULL					/* remote viewer launcher executable along with launch options */
 #endif
@@ -293,6 +295,8 @@ __pbs_loadconf(int reload)
 	struct servent *servent;	/* for use with getservent */
 	char **servalias;		/* service alias list */
 	unsigned int *pui;		/* for use with identify_service_entry */
+	struct passwd *pw;
+	uid_t pbs_current_uid;
 #endif
 
 	/* initialize the thread context data, if not already initialized */
@@ -1032,6 +1036,17 @@ __pbs_loadconf(int reload)
 			}
 		}
 	}
+
+	/* determine who we are */
+	pbs_current_uid = getuid();
+	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
+		goto err;
+	}
+	if (strlen(pw->pw_name) > (PBS_MAXUSER - 1)) {
+		goto err;
+	}
+	strcpy(pbs_conf.current_user, pw->pw_name);
+
 
 	pbs_conf.loaded = 1;
 

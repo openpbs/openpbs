@@ -250,6 +250,7 @@ struct pbs_config
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
 	unsigned int pbs_sched_threads;	/* number of threads for scheduler */
 	char *pbs_daemon_service_user; /* user the scheduler runs as */
+	char current_user[PBS_MAXUSER+1]; /* current running user */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
