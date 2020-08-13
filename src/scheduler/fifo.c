@@ -3022,7 +3022,7 @@ validate_running_user(char * exename) {
 
 		if (geteuid() == 0) {
 			setuid(user->pw_uid);
-			strncpy(pbs_current_user, pbs_conf.pbs_daemon_service_user, PBS_MAXUSER);
+			pbs_strncpy(pbs_current_user, pbs_conf.pbs_daemon_service_user, PBS_MAXUSER);
 		}
 
 		if (user->pw_uid != getuid()) {
