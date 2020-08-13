@@ -53,10 +53,10 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
             self.skipTest("Test suite only meant to run on a Cray")
         TestFunctional.setUp(self)
 
-    def get_epoch(self, msg):
-        logutils = PBSLogUtils()
+    @staticmethod
+    def get_epoch(msg):
         # Since its a log message split on ';' to get timestamp
-        a = logutils.convert_date_time(msg.split(';')[0])
+        a = PBSLogUtils.convert_date_time(msg.split(';')[0])
         return a
 
     def test_alps_release_wait_time(self):
@@ -98,7 +98,7 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
             for data in out[1:]:
                 time_current = self.get_epoch(data[1])
                 fail_msg = "alps_release_wait_time not working"
-                self.assertGreaterEqual(time_current - time_prev,
+                self.assertGreaterEqual(int(time_current - time_prev),
                                         math.floor(arwt),
                                         msg=fail_msg)
                 time_prev = time_current
@@ -116,7 +116,7 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
         # measurable using mom log messages
         arj = 2.198
         arwt = 1
-        max_delay = (arwt + math.floor(arj))
+        max_delay = (arwt + math.ceil(arj))
         self.mom.add_config({'$alps_release_jitter': arj})
         self.mom.add_config({'$alps_release_wait_time': arwt})
         # There is no good way to test jitter and it is a random number
@@ -152,7 +152,7 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
                 time_prev = self.get_epoch(out[0][1])
                 for data in out[1:]:
                     time_current = self.get_epoch(data[1])
-                    self.assertLessEqual(math.floor(time_current - time_prev),
+                    self.assertLessEqual(int(time_current - time_prev),
                                          max_delay,
                                          msg="alps_release_jitter not working")
                     time_prev = time_current
