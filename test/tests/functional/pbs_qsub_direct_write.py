@@ -323,7 +323,6 @@ class TestQsub_direct_write(TestFunctional):
             mapping_dir) if os.path.isfile(os.path.join(mapping_dir, name))])
         self.assertEqual(2, file_count)
 
-    @skipOnCpuSet
     def test_direct_write_job_array(self):
         """
         submit a job array and make sure that the std_files
@@ -331,6 +330,12 @@ class TestQsub_direct_write(TestFunctional):
         accessible from mom and direct_files option is used
         but submission directory is not mapped in mom config file.
         """
+        nodes = self.server.counter(NODE, 'resources_available.ncpus',
+                                    grandtotal=True, level=logging.DEBUG)
+        if nodes and 'resources_available.ncpus' in nodes:
+            total_ncpus = nodes['resources_available.ncpus']
+            if total_ncpus < 4:
+                self.skip_test(reason="need %d available ncpus" % ncpus)
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_k: 'doe', ATTR_J: '1-4'})
@@ -352,13 +357,18 @@ class TestQsub_direct_write(TestFunctional):
                     raise self.failureException("std file " + f_name +
                                                 " not found")
 
-    @skipOnCpuSet
     def test_direct_write_job_array_custom_dir(self):
         """
         submit a job array and make sure that the files
         are getting directly written to the custom dir
         provided in -e and -o option even when -doe is set.
         """
+        nodes = self.server.counter(NODE, 'resources_available.ncpus',
+                                    grandtotal=True, level=logging.DEBUG)
+        if nodes and 'resources_available.ncpus' in nodes:
+            total_ncpus = nodes['resources_available.ncpus']
+            if total_ncpus < 4:
+                self.skip_test(reason="need %d available ncpus" % ncpus)
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)
