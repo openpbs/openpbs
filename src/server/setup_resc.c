@@ -220,19 +220,9 @@ update_resource_def_file(char *name, resdef_op_t op, int type, int perms)
 		return -1;
 	}
 	tmp_fd = mkstemp(template);
-#ifdef WIN32
-	if (fopen_s(&tmpfile, template, "w") != 0)
-		return -1;
-
-	secure_file2(template, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-			getlogin_full(),
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-#else
 	tmpfile = fdopen(tmp_fd, "w");
 	/* set mode bits because mkstemp() created files don't ensure 0644 */
 	fchmod(tmp_fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-#endif
 	line = malloc(line_len * sizeof(char));
 	if (line == NULL) {
 		log_err(errno, __func__, MALLOC_ERR_MSG);
@@ -241,7 +231,7 @@ update_resource_def_file(char *name, resdef_op_t op, int type, int perms)
 		return -1;
 	}
 
-	if (lock_file(rfile, F_RDLCK, path_rescdef, LOCK_RETRY_DEFAULT, msg, sizeof(msg)) != 0) {
+	if (lock_file(fileno(rfile), F_RDLCK, path_rescdef, LOCK_RETRY_DEFAULT, msg, sizeof(msg)) != 0) {
 		log_err(errno, __func__, msg);
 		fclose(rfile);
 		fclose(tmpfile);
@@ -287,7 +277,7 @@ update_resource_def_file(char *name, resdef_op_t op, int type, int perms)
 		fprintf(tmpfile, "\n");
 	}
 
-	if (lock_file(rfile, F_UNLCK, path_rescdef, LOCK_RETRY_DEFAULT, msg, sizeof(msg)) != 0)
+	if (lock_file(fileno(rfile), F_UNLCK, path_rescdef, LOCK_RETRY_DEFAULT, msg, sizeof(msg)) != 0)
 		log_err(errno, __func__, msg);
 
 	(void)fclose(rfile);
@@ -297,16 +287,9 @@ update_resource_def_file(char *name, resdef_op_t op, int type, int perms)
 	free(flags);
 
 	rc = 0;
-#ifdef WIN32
-	if (MoveFileEx(template, path_rescdef, MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH) == 0) {
-		errno = GetLastError();
-		rc = 1;
-	}
-#else
 	if (rename(template, path_rescdef) != 0) {
 		rc = 1;
 	}
-#endif
 	if (rc != 0) {
 		snprintf(log_buffer, sizeof(log_buffer), "error renaming resourcedef file");
 		log_err(errno, __func__, log_buffer);

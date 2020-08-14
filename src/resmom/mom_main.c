@@ -6489,75 +6489,6 @@ finish_loop(time_t waittime)
 
 }
 
-
-#ifdef	WIN32
-
-/**
- * @brief
- *	locks mom and logs error msg
- *
- * @param[in] fds - file descriptor
- * @param[in] op - type of lock
- *
- * @return Void
- *
- */
-
-static void
-mom_lock(int fds,
-	int op /* F_WRLCK  or  F_UNLCK */)
-{
-	struct stat  sbuf;
-
-	if (fstat(fds, &sbuf) == -1) {
-		log_err(errno, "mom_lock", "can't stat lock file");
-		exit(1);
-	}
-	if (_locking(fds, op, (long)sbuf.st_size) == -1) {
-		if (op == F_WRLCK) {
-			(void)strcpy(log_buffer,
-				"pbs_mom: another Mom running\n");
-			log_err(errno, msg_daemonname, log_buffer);
-			fprintf(stderr, log_buffer);
-			exit(1);
-		}
-	}
-
-}
-#else
-
-/**
- * @brief
- *	lock out other MOMs from this directory.
- *
- * @param[in] fds - file descriptor
- * @param[in] op - type of lock
- *
- * @return Void
- *
- */
-
-static void
-mom_lock(int fds,
-	int op /* F_WRLCK  or  F_UNLCK */)
-{
-	struct flock flock;
-
-	(void)lseek(fds, (off_t)0, SEEK_SET);
-	flock.l_type   = op;
-	flock.l_whence = SEEK_SET;
-	flock.l_start  = 0;
-	flock.l_len    = 0;	/* whole file */
-	if (fcntl(fds, F_SETLK, &flock) < 0) {
-		(void)strcpy(log_buffer, "pbs_mom: another mom running");
-		log_err(errno, msg_daemonname, log_buffer);
-		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, "%s", log_buffer);
-		exit(1);
-	}
-}
-#endif	/* WIN32 */
-
 /**
  * @brief
  *	size decoding routine.
@@ -8846,8 +8777,12 @@ main(int argc, char *argv[])
 	secure_file("mom.lock", "Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 #endif
-	mom_lock(lockfds, F_WRLCK);	/* See if other MOMs are running */
-
+	if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) {	/* See if other MOMs are running */
+		log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+		fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+		exit(1);
+	}
+	
 	if (read_config(NULL)) {
 		fprintf(stderr, "%s: config file(s) parsing failed\n", argv[0]);
 #ifdef	WIN32
@@ -8980,7 +8915,11 @@ main(int argc, char *argv[])
 
 #ifndef	DEBUG
 	if (stalone != 1) {
-		mom_lock(lockfds, F_UNLCK);	/* unlock so child can relock */
+		if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) {	/* unlock so child can relock */
+			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+			exit(1);
+		}
 
 		if (fork() > 0)
 			return (0);	/* parent goes away */
@@ -8989,7 +8928,11 @@ main(int argc, char *argv[])
 			log_err(errno, msg_daemonname, "setsid failed");
 			return (2);
 		}
-		mom_lock(lockfds, F_WRLCK);	/* lock out other MOMs */
+		if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) {		/* lock out other MOMs */
+			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+			exit(1);
+		}
 	}
 	mom_pid = getpid();
 
@@ -10084,11 +10027,13 @@ main(int argc, char *argv[])
 		LOG_NOTICE, msg_daemonname, "Is down");
 	pbs_idx_destroy(jobs_idx);
 	unload_auths();
-	log_close(1);
 #ifdef	WIN32
-	mom_lock(lockfds, F_UNLCK);     /* unlock  */
-	(void)close(lockfds);
-	(void)unlink("mom.lock");
+	if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) { /* unlock  */
+		log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
+	}
+	log_close(1);
+	close(lockfds);
+	unlink("mom.lock");
 	CloseDesktop(pbs_desktop);
 	CloseWindowStation(pbs_winsta);
 #endif
