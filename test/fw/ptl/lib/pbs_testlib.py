@@ -8496,7 +8496,7 @@ class Server(PBSService):
                                    attempt + 1, max_attempts, interval, count,
                                    extend, level=level, msg=msg)
         else:
-            if op == UNSET:
+            if op == UNSET and obj_type in (SERVER, SCHED, NODE):
                 for key in attrib.keys():
                     if (key not in Scheduler.sched_ignore_attrs or
                         key not in Server.server_ignore_attrs or
