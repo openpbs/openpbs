@@ -130,10 +130,11 @@ class TestMultipleSchedulers(TestFunctional):
             tzone = 'America/Los_Angeles'
         return tzone
 
-    def set_scheduling(self, scheds=[], op=False):
-        for each in scheds:
-            self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': op},
-                                id=each)
+    def set_scheduling(self, scheds=None, op=False):
+        if scheds is not None:
+            for each in scheds:
+                self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': op},
+                                    id=each)
 
     @skipOnCpuSet
     def test_job_sort_formula_multisched(self):
@@ -2221,8 +2222,8 @@ e.accept()
 
     def test_resv_alter_force_for_confirmed_resv(self):
         """
-        Test that in a multi-sched setup when all schedulers are disabled
-        ralter -Wforce can still modify a reservation successfully even when
+        Test that in a multi-sched setup ralter -Wforce can
+        modify a confirmed reservation successfully even when
         the ralter results into over subscription of resources.
         """
 

@@ -327,8 +327,8 @@ class TestPbsResvAlter(TestFunctional):
 
         :param a_duration: The duration to modify.
         :type a_duration: int.
-        :param force: Force ralter.
-        :type force: bool.
+        :param extend: extend parameter.
+        :type extend: str.
         :param runas: User who own alters the reservation.
                       Default: user running the test.
         :type runas: PbsUser.
@@ -2753,3 +2753,45 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid, start, end, select="1:ncpus=1",
                                  a_duration=20, extend='force',
                                  whichMessage=0)
+
+    def test_ralter_force_start_end_running_resv(self):
+        """
+        Test that forcefully altering a running reservation takes effect.
+        """
+
+        duration = 3600
+        offset = 20
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="2:ncpus=4")
+
+        resv_queue = rid.split('.')[0]
+        a = {'queue': resv_queue}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+
+        self.logger.info('Waiting for reservation to start')
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        off = int(start - time.time())
+        self.server.expect(RESV, a, id=rid, offset=off)
+
+        self.alter_a_reservation(rid, start, end, confirm=False, shift=-10,
+                                 alter_s=True, extend='force', whichMessage=0)
+
+        self.alter_a_reservation(rid, start, end, confirm=False, shift=-100,
+                                 alter_e=True, extend='force')
+        _, _, t_end = self.get_resv_time_info(rid)
+        end = end - 100
+        self.assertEqual(int(t_end), end)
+
+        self.alter_a_reservation(rid, start, end, confirm=False,
+                                 a_duration=4000, extend='force', sequence=2)
+        t_duration, _, _ = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_duration), 4000)
+
+        self.server.delete(jid, wait=True)
+        end = start + 4000
+        self.alter_a_reservation(rid, start, end, confirm=True, shift=1000,
+                                 alter_s=True, extend='force', sequence=3)
+        _, t_start, _ = self.get_resv_time_info(rid)
+        self.assertEqual(int(t_start), start + 1000)

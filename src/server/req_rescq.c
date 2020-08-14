@@ -592,23 +592,16 @@ req_confirmresv(struct batch_request *preq)
 					ATR_VFLAG_SET)) {
 					if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
 						presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
-						snprintf(buf, sizeof(buf), "%s DENIED",
-							presv->ri_qs.ri_resvID);
-						(void)reply_text(presv->ri_brp,
-							PBSE_NONE, buf);
+						snprintf(buf, sizeof(buf), "%s DENIED", presv->ri_qs.ri_resvID);
+						(void)reply_text(presv->ri_brp, PBSE_NONE, buf);
 						presv->ri_brp = NULL;
 					}
 				}
 				if (!is_being_altered && !is_confirmed) {
-					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
-						LOG_INFO, presv->ri_qs.ri_resvID,
-						"Reservation denied");
-					(void)snprintf(log_buffer, sizeof(log_buffer),
-						"requestor=%s@%s", msg_daemonname, server_host);
+					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, presv->ri_qs.ri_resvID, "Reservation denied");
+					(void)snprintf(log_buffer, sizeof(log_buffer), "requestor=%s@%s", msg_daemonname, server_host);
 					account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
-						LOG_NOTICE, presv->ri_qs.ri_resvID,
-						"reservation deleted");
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, "reservation deleted");
 					resv_purge(presv);
 				}
 			}
