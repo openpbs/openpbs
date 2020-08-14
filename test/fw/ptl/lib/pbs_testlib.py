@@ -11669,8 +11669,8 @@ class Scheduler(PBSService):
                                       self.attributes['sched_priv'])
         sched_logs_dir = os.path.join(sched_home,
                                       self.attributes['sched_log'])
-        Scheduler.revert_default_attrib['sched_priv'] = sched_priv_dir
-        Scheduler.revert_default_attrib['sched_log'] = sched_logs_dir
+        Scheduler.sched_dflt_attr['sched_priv'] = sched_priv_dir
+        Scheduler.sched_dflt_attr['sched_log'] = sched_logs_dir
         if not os.path.exists(sched_priv_dir):
             self.du.mkdir(path=sched_priv_dir, sudo=True)
             if self.user.name != 'root':
