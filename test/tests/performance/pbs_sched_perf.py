@@ -39,12 +39,14 @@
 
 
 from tests.performance import *
+from ptl.utils.pbs_logutils import PBSSchedulerLog
 
 
 class TestSchedPerf(TestPerformance):
     """
     Test the performance of scheduler features
     """
+
     def common_setup1(self):
         TestPerformance.setUp(self)
         self.server.manager(MGR_CMD_CREATE, RSC,
@@ -359,3 +361,105 @@ class TestSchedPerf(TestPerformance):
         self.logger.info("##################################################")
         m = "sched cycle time"
         self.perf_test_result([cycle1_time, cycle2_time], m, "sec")
+
+    def setup_scheds(self):
+        for i in range(1, 6):
+            partition = 'P' + str(i)
+            sched_port = 15049 + i
+            sched_name = 'sc' + str(i)
+            a = {'partition': partition,
+                 'sched_host': self.server.hostname,
+                 'sched_port': sched_port}
+            self.server.manager(MGR_CMD_CREATE, SCHED,
+                                a, id=sched_name)
+            self.scheds[sched_name].create_scheduler()
+            self.scheds[sched_name].start()
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'True'}, id=sched_name)
+
+    def setup_queues_nodes(self):
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        for i in range(1, 6):
+            self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq' + str(i))
+            p = {'partition': 'P' + str(i)}
+            self.server.manager(MGR_CMD_SET, QUEUE, p, id='wq' + str(i))
+            node = str(self.mom.shortname)
+            num = i - 1
+            self.server.manager(MGR_CMD_SET, NODE, p,
+                                id=node + '[' + str(num) + ']')
+
+    def submit_njobs(self, num_jobs=1, attrs=None, user=TEST_USER):
+        """
+        Submit num_jobs number of jobs with attrs attributes for user.
+        Return a list of job ids
+        """
+        if attrs is None:
+            attrs = {ATTR_q: 'workq'}
+        ret_jids = []
+        for _ in range(num_jobs):
+            J = Job(user, attrs)
+            jid = self.server.submit(J)
+            ret_jids += [jid]
+
+        return ret_jids
+
+    @timeout(3600)
+    def test_multi_sched_perf(self):
+        """
+        Test time taken to schedule and run 5k jobs with
+        single scheduler and workload divided among 5 schedulers.
+        """
+        a = {'resources_available.ncpus': 1000}
+        self.server.create_vnodes(self.mom.shortname, a, 5, self.mom)
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.submit_njobs(5000)
+        start = time.time()
+        self.scheduler.run_scheduling_cycle()
+        c = self.scheduler.cycles(lastN=1)[0]
+        cyc_dur = c.end - c.start
+        self.perf_test_result(cyc_dur, "default_cycle_duration", "secs")
+        msg = 'Time taken by default scheduler to run 5k jobs is '
+        self.logger.info(msg + str(cyc_dur))
+        self.server.cleanup_jobs()
+        self.setup_scheds()
+        self.setup_queues_nodes()
+        for sc in self.scheds:
+            a = {'scheduling': 'False'}
+            self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
+        a = {ATTR_q: 'wq1'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq2'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq3'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq4'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq5'}
+        self.submit_njobs(1000, a)
+        start = time.time()
+        for sc in self.scheds:
+            a = {'scheduling': 'True'}
+            self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
+        for sc in self.scheds:
+            a = {'scheduling': 'False'}
+            self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
+        for sc in self.scheds:
+            self.scheds[sc].log_match("Leaving Scheduling Cycle",
+                                      starttime=int(start),
+                                      max_attempts=30, interval=1)
+        for sc in self.scheds:
+            if sc != 'default':
+                filename = self.scheds[sc].attributes['sched_log']
+                sl = PBSSchedulerLog()
+                end = time.time()
+                sl.analyze(filename, start, end, self.server.hostname)
+                cycles = sl.cycles
+                if cycles is None or len(cycles) == 0:
+                    return []
+                dur = cycles[-1:][0].end - cycles[-1:][0].start
+                self.perf_test_result(dur, sc + "_cycle_duration", "secs")
+                self.logger.info('Time taken by ' + str(sc) +
+                                 ' scheduler to run 1k jobs is ' + str(dur))
