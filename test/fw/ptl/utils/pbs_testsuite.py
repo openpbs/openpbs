@@ -141,9 +141,7 @@ def skipOnCray(function):
     """
     Decorator to skip a test on a ``Cray`` system
     """
-    if os.path.isfile('/etc/xthostname'):
-        function.__unittest_skip__ = True
-        function.__unittest_skip_why__ = 'capability not supported on Cray'
+    function.__skip_on_cray__ = True
     return function
 
 
@@ -151,9 +149,7 @@ def skipOnShasta(function):
     """
     Decorator to skip a test on a ``Cray Shasta`` system
     """
-    if os.path.isfile('/etc/cray/xname'):
-        function.__unittest_skip__ = True
-        function.__unittest_skip_why__ = 'capability not supported on Cray Shasta'
+    function.__skip_on_shasta__ = True
     return function
 
 
@@ -161,19 +157,8 @@ def skipOnCpuSet(function):
     """
     Decorator to skip a test on a cgroup cpuset system
     """
-
-    def wrapper(self, *args, **kwargs):
-        for mom in self.moms.values():
-            if mom.is_cpuset_mom():
-                msg = 'capability not supported on cgroup cpuset system: ' +\
-                    mom.shortname
-                self.skipTest(reason=msg)
-                break
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_cpuset__ = True
+    return function
 
 
 def requirements(*args, **kwargs):
@@ -468,6 +453,11 @@ class PBSTestSuite(unittest.TestCase):
         cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
         cls.server.restart()
         cls.log_end_setup(True)
+        # methods for skipping tests with ptl decorators
+        cls.populate_test_list()
+        cls.skip_cray_tests()
+        cls.skip_shasta_tests()
+        cls.skip_cpuset_tests()
 
     def setUp(self):
         if 'skip-setup' in self.conf:
@@ -513,6 +503,54 @@ class PBSTestSuite(unittest.TestCase):
         self.revert_comms()
         self.log_end_setup()
         self.measurements = []
+
+    @classmethod
+    def populate_test_list(cls):
+        cls.test_list = [attr for attr in dir(cls)
+                         if attr.startswith('test')
+                         and callable(getattr(cls, attr))]
+
+    @classmethod
+    def skip_cray_tests(cls):
+        if not cls.mom.is_cray():
+            return
+        msg = 'capability not supported on Cray'
+        for test_name in cls.test_list:
+            test_item = getattr(cls, test_name)
+            if '__skip_on_cray__' in test_item.__dict__ \
+               and test_item.__skip_on_cray__ is True:
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def skip_shasta_tests(cls):
+        if not cls.mom.is_shasta():
+            return
+        msg = 'capability not supported on Cray Shasta'
+        for test_name in cls.test_list:
+            test_item = getattr(cls, test_name)
+            if '__skip_on_shasta__' in test_item.__dict__ \
+               and test_item.__skip_on_shasta__ is True:
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def skip_cpuset_tests(cls):
+        skip_cpuset_tests = False
+        for mom in cls.moms.values():
+            if mom.is_cpuset_mom():
+                skip_cpuset_tests = True
+                msg = 'capability not supported on cgroup cpuset system: ' +\
+                      mom.shortname
+                break
+        if not skip_cpuset_tests:
+            return
+        for test_name in cls.test_list:
+            test_item = getattr(cls, test_name)
+            if '__skip_on_cpuset__' in test_item.__dict__ \
+               and test_item.__skip_on_cpuset__ is True:
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
 
     @classmethod
     def log_enter_setup(cls, iscls=False):
