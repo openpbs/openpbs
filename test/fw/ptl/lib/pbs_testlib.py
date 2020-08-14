@@ -4699,18 +4699,15 @@ class Server(PBSService):
 
     actions = ExpectActions()
 
-    # default attribute dictionary when user unset any attribute
-    revert_default_attrib = {'scheduling': True, 'resv_enable': True,
-                             'max_array_size': 10000,
-                             'eligible_time_enable': False,
-                             'max_concurrent_provision': 5,
-                             'log_events': 511, 'mail_from': 'adm',
-                             'query_other_jobs': True,
-                             'scheduler_iteration': 600,
-                             'resources_default.ncpus': 1,
-                             'pbs_license_min': 0,
-                             'pbs_license_max': 2147483647,
-                             'pbs_license_linger_time': 31536000}
+    server_ignore_attrs = [ATTR_SvrHost, ATTR_total, ATTR_count, ATTR_managers,
+                           ATTR_operators, ATTR_dfltque, ATTR_FlatUID,
+                           ATTR_FLicenses, ATTR_nodefailrq,
+                           ATTR_pbs_license_info, ATTR_license_count,
+                           ATTR_version, ATTR_power_provisioning,
+                           ATTR_DefaultChunk + '.ncpus',
+                           ATTR_max_job_sequence_id, ATTR_status, 'id']
+
+    server_dflt_attr = {}
 
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
                  snapmap={}, snap=None, client=None, client_pbsconf_file=None,
@@ -8501,16 +8498,24 @@ class Server(PBSService):
         else:
             if op == UNSET:
                 for key in attrib.keys():
-                    if (key in Scheduler.revert_default_attrib.keys() or
-                            key in Server.revert_default_attrib.keys() or
-                            key in MoM.revert_default_attrib.keys()):
+                    if (key not in Scheduler.sched_ignore_attrs or
+                        key not in Server.server_ignore_attrs or
+                            key in MoM.dflt_attr):
                         if obj_type == SERVER:
-                            attrib = {key: Server.revert_default_attrib[key]}
+                            val = Server.server_dflt_attr[key]
                         elif obj_type == SCHED:
-                            attrib = {key:
-                                      Scheduler.revert_default_attrib[key]}
-                        elif obj_type == MOM:
-                            attrib = {key: MoM.revert_default_attrib[key]}
+                            val = Scheduler.sched_dflt_attr[key]
+                        elif obj_type == NODE:
+                            statlist = self.status(obj_type, id=id,
+                                                   level=logging.DEBUG,
+                                                   extend=extend,
+                                                   runas=runas,
+                                                   logerr=False)
+                            if 'pcpus' not in statlist[0].keys():
+                                val = 1
+                            else:
+                                val = MoM.mom_dflt_attr[id][key]
+                        attrib = {key: val}
                         self.manager(MGR_CMD_UNSET, obj_type, key, id=id)
                         op = EQ
                         return self.expect(obj_type, attrib, id, op, attrop,
@@ -10935,15 +10940,8 @@ class Scheduler(PBSService):
             r'(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
     fs_tag = re.compile(fs_re)
 
-    revert_default_attrib = {'server_dyn_res_alarm': 30, 'log_events': 767,
-                             'preempt_prio': '"express_queue, normal_jobs"',
-                             'preempt_queue_prio': 150,
-                             'sched_cycle_length': '00:20:00',
-                             'throughput_mode': True,
-                             'job_run_wait': 'runjob_hook',
-                             'partition': 'pbs-default',
-                             'scheduling': True,
-                             'scheduler_iteration': 600}
+    sched_ignore_attrs = ['opt_backfill_fuzzy', 'sched_port', 'state']
+    sched_dflt_attr = {}
 
     def __init__(self, hostname=None, server=None, pbsconf_file=None,
                  snapmap={}, snap=None, db_access=None, id='default',
@@ -13159,7 +13157,8 @@ class MoM(PBSService):
                        'PBS_MANAGER_SERVICE_PORT': '-R',
                        'PBS_HOME': '-d'}
 
-    revert_default_attrib = {'resources_available.ncpus': 1}
+    dflt_attr = ['resources_available.ncpus']
+    mom_dflt_attr = {}
 
     def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):
