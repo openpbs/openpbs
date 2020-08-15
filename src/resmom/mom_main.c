@@ -8888,36 +8888,13 @@ main(int argc, char *argv[])
 		}
 	}
 
-#ifdef	WIN32 /* ------------------------------------------------------------*/
 #ifndef	DEBUG
+#ifndef  WIN32
 	if (stalone != 1) {
-		(void)fclose(stdin);
-		(void)fclose(stdout);
-		(void)fclose(stderr);
-		freopen("nul", "r", stdin);
-		freopen("nul", "w", stdout);
-		freopen("nul", "w", stderr);
-	}
-
-#else	/* DEBUG */
-	(void)setvbuf(stdout, NULL, _IONBF, 0);
-	(void)setvbuf(stderr, NULL, _IONBF, 0);
-#endif /* DEBUG */
-
-	mom_pid = (pid_t)getpid();
-	(void)lseek(lockfds, (off_t)0, SEEK_SET);
-	(void)sprintf(log_buffer, "%d\n", mom_pid);
-	(void)write(lockfds, log_buffer, strlen(log_buffer));
-
-#else /* ! WIN32 ------------------------------------------------------------*/
-
 	/* go into the background and become own session/process group */
-
-#ifndef	DEBUG
-	if (stalone != 1) {
 		if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) {	/* unlock so child can relock */
-			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
-			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+			log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
+			fprintf(stderr, "%s\n", "failed to unlock mom.lock file");
 			exit(1);
 		}
 
@@ -8934,36 +8911,32 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
-	mom_pid = getpid();
-
-	(void)fclose(stdin);
-	(void)fclose(stdout);
-	(void)fclose(stderr);
-	dummyfile = fopen("/dev/null", "r");
+#endif		
+	fclose(stdin);
+	fclose(stdout);
+	fclose(stderr);
+	dummyfile = fopen(NULL_DEVICE, "r");
 	assert((dummyfile != 0) && (fileno(dummyfile) == 0));
-	dummyfile = fopen("/dev/null", "w");
+	dummyfile = fopen(NULL_DEVICE, "w");
 	assert((dummyfile != 0) && (fileno(dummyfile) == 1));
-	dummyfile = fopen("/dev/null", "w");
+	dummyfile = fopen(NULL_DEVICE, "w");
 	assert((dummyfile != 0) && (fileno(dummyfile) == 2));
 #else	/* DEBUG */
 	if (stalone != 1) {
-		(void) sprintf(log_buffer, "Debug build does not fork.");
+		sprintf(log_buffer, "Debug build does not fork.");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 				__func__, log_buffer);
 	}
-	mom_pid = getpid();
-	(void)setvbuf(stdout, NULL, _IOLBF, 0);
-	(void)setvbuf(stderr, NULL, _IOLBF, 0);
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	setvbuf(stderr, NULL, _IOLBF, 0);
 #endif	/* DEBUG */
 
-	/* write MOM's pid into lockfile */
-#ifdef	WIN32
-	lseek(lockfds, (off_t)0, SEEK_SET);
-#else
-	(void)ftruncate(lockfds, (off_t)0);
-#endif
-	(void)sprintf(log_buffer, "%d\n", mom_pid);
-	(void)write(lockfds, log_buffer, strlen(log_buffer));
+	mom_pid = getpid();
+	sprintf(log_buffer, "%d\n", mom_pid);
+	ftruncate(lockfds, 0);
+	write(lockfds, log_buffer, strlen(log_buffer));
+
+#ifndef	WIN32 /* ------------------------------------------------------------*/
 
 	daemon_protect(0, PBS_DAEMON_PROTECT_ON);
 #ifdef _POSIX_MEMLOCK
