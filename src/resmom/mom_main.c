@@ -10000,13 +10000,13 @@ main(int argc, char *argv[])
 		LOG_NOTICE, msg_daemonname, "Is down");
 	pbs_idx_destroy(jobs_idx);
 	unload_auths();
-#ifdef	WIN32
 	if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) { /* unlock  */
 		log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
 	}
 	log_close(1);
 	close(lockfds);
 	unlink("mom.lock");
+#ifdef	WIN32
 	CloseDesktop(pbs_desktop);
 	CloseWindowStation(pbs_winsta);
 #endif
