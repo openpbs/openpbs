@@ -3863,7 +3863,7 @@ class PBSService(PBSObject):
         """
 
     def log_lines(self, logtype, id=None, n=50, tail=True, starttime=None,
-                  endtime=None):
+                  endtime=None, host=None):
         """
         Return the last ``<n>`` lines of a PBS log file, which
         can be one of ``server``, ``scheduler``, ``MoM``, or
@@ -3887,6 +3887,8 @@ class PBSService(PBSObject):
         :type day: int
         :param starttime: date timestamp to start matching
         :param endtime: date timestamp to end matching
+        :param host: Hostname
+        :type host: str
         :returns: Last ``<n>`` lines of logfile for ``Server``,
                   ``Scheduler``, ``MoM or tracejob``
         """
@@ -3897,6 +3899,8 @@ class PBSService(PBSObject):
             endtime = time.time()
         if starttime is None:
             starttime = self.ctime
+        if host is None:
+            host = self.hostname
         try:
             if logtype == 'tracejob':
                 if id is None:
@@ -3906,7 +3910,7 @@ class PBSService(PBSObject):
                        'bin',
                        'tracejob')]
                 cmd += [str(id)]
-                lines = self.du.run_cmd(self.hostname, cmd)['out']
+                lines = self.du.run_cmd(host, cmd)['out']
                 if n != 'ALL':
                     lines = lines[-n:]
             else:
@@ -3934,7 +3938,7 @@ class PBSService(PBSObject):
                     filename = os.path.join(logdir, day)
                     if n == 'ALL':
                         day_lines = self.du.cat(
-                            self.hostname, filename, sudo=sudo,
+                            host, filename, sudo=sudo,
                             level=logging.DEBUG2)['out']
                     else:
                         if tail:
@@ -3945,7 +3949,7 @@ class PBSService(PBSObject):
                         cmd += ['-n']
                         cmd += [str(n), filename]
                         day_lines = self.du.run_cmd(
-                            self.hostname, cmd, sudo=sudo,
+                            host, cmd, sudo=sudo,
                             level=logging.DEBUG2)['out']
                     lines.extend(day_lines)
                     firstday_obj = firstday_obj + datetime.timedelta(days=1)
