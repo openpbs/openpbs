@@ -1003,7 +1003,7 @@ req_quejob(struct batch_request *preq)
 	 * job structure and attributes already set up.
 	 */
 
-	rc = svr_chkque(pj, pque, preq->rq_host, MOVE_TYPE_Move);
+	rc = svr_chkque(pj, pque, pj->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str, MOVE_TYPE_Move);
 	if (rc) {
 		if (pj->ji_clterrmsg)
 			reply_text(preq, rc, pj->ji_clterrmsg);
