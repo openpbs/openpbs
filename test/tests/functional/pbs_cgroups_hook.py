@@ -1797,8 +1797,8 @@ if %s e.job.in_ms_mom():
             self.assertGreater(300000, usage)
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
-        self.moms_list[0].log_match(err_msg, interval=1, n=100,
-                                    existence=False)
+        self.moms_list[0].log_match(err_msg, max_attempts=3,
+                                    interval=1, n=100, existence=False)
         # Allow some time to pass for values to be updated
         begin = time.time()
         self.logger.info('Waiting for periodic hook to update usage data.')
@@ -3064,7 +3064,8 @@ if %s e.job.in_ms_mom():
         self.tempfile.append(o)
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
-        self.moms_list[0].log_match(err_msg, interval=1, n=100,
+        self.moms_list[0].log_match(err_msg, max_attempts=3,
+                                    interval=1, n=100,
                                     existence=False)
         self.server.log_match(jid1 + ';Exit_status=0')
         # Create a periodic hook that runs more frequently than the
@@ -3150,7 +3151,8 @@ event.accept()
         self.tempfile.append(o)
         err_msg = "Unexpected error in pbs_cgroups " + \
             "handling exechost_periodic event: TypeError"
-        self.moms_list[0].log_match(err_msg, interval=1, n=100,
+        self.moms_list[0].log_match(err_msg, max_attempts=3,
+                                    interval=1, n=100,
                                     existence=False)
         self.server.log_match(jid2 + ';Exit_status=0')
         self.server.manager(MGR_CMD_DELETE, HOOK, None, hookname)
@@ -3161,7 +3163,7 @@ event.accept()
         self.du.run_cmd(cmd=command, hosts=self.hosts_list[0], sudo=True)
         logmsg = '_exechost_periodic_handler: Failed to update %s' % jid1
         self.moms_list[0].log_match(msg=logmsg, starttime=presubmit,
-                                    existence=False)
+                                    max_attempts=1, existence=False)
 
     @requirements(num_moms=3)
     def test_cgroup_release_nodes(self):
@@ -3601,7 +3603,7 @@ exit 0
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
         err_msg = "%s;.*Failed to assign resources.*" % (jid2,)
         for m in self.moms.values():
-            m.log_match(err_msg, interval=1, n=100,
+            m.log_match(err_msg, max_attempts=3, interval=1, n=100,
                         regexp=True, existence=False)
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
@@ -4137,7 +4139,7 @@ sleep 300
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
         err_msg = "write_value: Permission denied.*%s.*memsw" % (jid)
-        self.mom.log_match(err_msg, interval=1, n=100,
+        self.mom.log_match(err_msg, max_attempts=3, interval=1, n=100,
                            regexp=True, existence=False)
         self.server.status(JOB, ['exec_host'], jid)
         ehost = j.attributes['exec_host']
