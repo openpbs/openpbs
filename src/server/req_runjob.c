@@ -307,6 +307,7 @@ req_runjob(struct batch_request *preq)
 	job *pjob = NULL;
 	job *pjobsub = NULL;
 	job *parent = NULL;
+	struct ajtrkhd  *ptbl = NULL;
 	char *range;
 	int start;
 	int end;
@@ -545,6 +546,10 @@ req_runjob(struct batch_request *preq)
 		if (pjob) {
 			/* free prov_vnode before use */
 			job_attr_def[(int) JOB_ATR_prov_vnode].at_free(&pjob->ji_wattr[(int) JOB_ATR_prov_vnode]);
+			ptbl = parent->ji_ajtrk;
+			if (ptbl == NULL)
+				return;
+			ptbl->tkm_flags |= TKMFLG_RUN_JOB_REQ;
 			req_runjob2(preq, pjob);
 		}
 		return;

@@ -380,6 +380,11 @@ update_array_indices_remaining_attr(job *parent)
 {
 	struct ajtrkhd	*ptbl = parent->ji_ajtrk;
 
+	if (ptbl->tkm_flags & TKMFLG_RUN_JOB_REQ) {
+		ptbl->tkm_flags &= ~TKMFLG_RUN_JOB_REQ;
+		return;
+	}
+
 	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
 		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
 		char *pnewstr = cvt_range(parent, JOB_STATE_QUEUED);

@@ -372,6 +372,7 @@ struct jbdscrd {
 #define TKMFLG_NO_DELETE           0x01
 #define TKMFLG_REVAL_IND_REMAINING 0x02 /* Flag to re-evaluate "array_indices_remaining" */
 #define TKMFLG_CHK_ARRAY           0x04 /* chk_array_doneness() already in call stack*/
+#define TKMFLG_RUN_JOB_REQ         0x08 /* For denoting run_job request */
 
 /* Structure for block job reply processing */
 struct block_job_reply {
