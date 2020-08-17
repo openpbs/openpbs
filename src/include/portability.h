@@ -48,6 +48,6 @@
 #define DLLEXPORT
 
 #define dlerror_reset() dlerror()
-#define SO "so"
+#define SHAREDLIB_EXT "so"
 
 #endif

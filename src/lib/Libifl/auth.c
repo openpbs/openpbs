@@ -117,7 +117,7 @@ _load_auth(char *name)
 	strcpy(auth->name, name);
 	auth->name[MAXAUTHNAME] = '\0';
 
-	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.%s", pbs_conf.pbs_exec_path, name, SO);
+	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.%s", pbs_conf.pbs_exec_path, name, SHAREDLIB_EXT);
 
 	libloc[MAXPATHLEN] = '\0';
 
