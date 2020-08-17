@@ -128,9 +128,12 @@ class TestPbsHookSetJobEnv(TestFunctional):
             os.remove(self.job_out1_tempfile)
             os.remove(self.job_out2_tempfile)
             os.remove(self.job_out3_tempfile)
-            self.du.rm(self.mom.hostname, self.job_out1_tempfile)
-            self.du.rm(self.mom.hostname, self.job_out2_tempfile)
-
+            for _file in [self.job_out1_tempfile, self.job_out2_tempfile,
+                          self.job_out3_tempfile]:
+                rc = self.du.isfile(hostname=self.mom.shortname,
+                                    path=_file, sudo=True)
+                if rc:
+                    self.du.rm(self.mom.hostname, _file)
         except OSError:
             pass
 
