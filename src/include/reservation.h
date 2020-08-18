@@ -66,6 +66,7 @@ extern "C" {
 #define RESV_END_TIME_MODIFIED		0x2
 #define RESV_DURATION_MODIFIED		0x4
 #define RESV_SELECT_MODIFIED		0x8
+#define RESV_ALTER_FORCED		0x10
 
 
 /*
@@ -183,10 +184,10 @@ struct resc_resv {
 							 * Will only be useful if we later make
 							 */
 
-	struct batch_request	*ri_brp;		/*NZ if choose interactive (I) mode*/
+	struct batch_request	*ri_brp;		/* NZ if choose interactive (I) mode */
 
 	/*resource reservations routeable objs*/
-	int			ri_downcnt;		/*used when deleting the reservation*/
+	int			ri_downcnt;		/* used when deleting the reservation*/
 
 	long			ri_resv_retry;		/* time at which the reservation will be reconfirmed */
 
@@ -195,7 +196,7 @@ struct resc_resv {
 	pbsnode_list_t		*ri_pbsnode_list;	/* vnode list associated to the reservation */
 
 	/* objects used while altering a reservation. */
-	struct resv_alter 	ri_alter;		/* object used to alter a reservation */
+	struct resv_alter	ri_alter;		/* object used to alter a reservation */
 
 	/* Reservation start and end tasks */
 	struct work_task	*resv_start_task;

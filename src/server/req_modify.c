@@ -744,6 +744,61 @@ is_select_smaller(char *select_orig, char *select_smaller)
 }
 
 /**
+ * @brief This function creates a request run destination string for a reservation.
+ *	  This string is in the same format as preq->rq_ind.rq_run.rq_destin
+ * @param[in] presv - reservation for which string is being made.
+ * @return destination string
+ */
+char *
+create_resv_destination(resc_resv *presv)
+{
+	char * format = "%s";
+	char *destin = NULL;
+	if (presv == NULL)
+		return NULL;
+	/* standing reservations format is <num>#<exec-vnode>{<num>} */
+	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long)
+	    format = "1#%s{0}";
+	pbs_asprintf(&destin, format, presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str);
+	return destin;
+}
+
+/**
+ * @brief This function creates a batch_request to confirm a reservation
+ * @param[in] presv - reservation that is being confirmed.
+ *
+ * @return - Batch request
+ */
+static struct batch_request *
+create_resv_confirm_req(resc_resv *presv)
+{
+	struct batch_request *confirm_req;
+	char *part;
+	confirm_req = alloc_br(PBS_BATCH_ConfirmResv);
+	if (confirm_req == NULL)
+		return NULL;
+	if (presv->ri_wattr[RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
+		part = presv->ri_wattr[RESV_ATR_partition].at_val.at_str;
+	else
+		part = DEFAULT_PARTITION;
+
+	if (pbs_asprintf(&confirm_req->rq_extend, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS, part) == -1) {
+		free_br(confirm_req);
+		return NULL;
+	}
+	pbs_strncpy(confirm_req->rq_ind.rq_run.rq_jid, presv->ri_qs.ri_resvID, sizeof(confirm_req->rq_ind.rq_run.rq_jid));
+	confirm_req->rq_ind.rq_run.rq_resch = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+		confirm_req->rq_ind.rq_run.rq_destin = create_resv_destination(presv);
+		if (confirm_req->rq_ind.rq_run.rq_destin == NULL) {
+			free_br(confirm_req);
+			return NULL;
+		}
+	}
+	return confirm_req;
+}
+
+/**
  * @brief Service the Modify Reservation Request from client such as pbs_ralter.
  *
  *	This request atomically modifies one or more of a reservation's attributes.
@@ -775,6 +830,8 @@ req_modifyReservation(struct batch_request *preq)
 	int num_jobs;
 	long new_end_time = 0;
 	resource *presc = NULL;
+	int scheds_notified = 0;
+	int force_alter = FALSE;
 
 	if (preq == NULL)
 		return;
@@ -787,7 +844,10 @@ req_modifyReservation(struct batch_request *preq)
 	 */
 	if (presv == NULL)
 		return;
-	
+
+	if (preq->rq_extend != NULL && (strcmp(preq->rq_extend, FORCE) == 0))
+		force_alter = TRUE;
+
 	rid = preq->rq_ind.rq_modify.rq_objname;
 	presv = find_resv(rid);
 
@@ -909,6 +969,11 @@ req_modifyReservation(struct batch_request *preq)
 				presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
 				break;
 			case RESV_ATR_resource:
+				if (force_alter) {
+					resv_revert_alter(presv);
+					req_reject(PBSE_NOSUP, 0 , preq);
+					return;
+				}
 				if (strcmp(psatl->al_resc, "select") != 0) {
 					resv_revert_alter(presv);
 					req_reject(PBSE_BADATVAL, 0, preq);
@@ -944,7 +1009,12 @@ req_modifyReservation(struct batch_request *preq)
 
 		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 	}
-
+	/* Force option is only applied to attributes that require reconfirmation */
+	if ((send_to_scheduler == 0) && (force_alter == TRUE)) {
+		resv_revert_alter(presv);
+		req_reject(PBSE_NOSUP, 0 , preq);
+		return;
+	}
 
 	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_RUNNING && num_jobs) {
 		if ((presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) && (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED)) {
@@ -1059,7 +1129,7 @@ req_modifyReservation(struct batch_request *preq)
 	}
 
 	if (send_to_scheduler)
-		notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
+		scheds_notified = notify_scheds_about_resv(SCH_SCHEDULE_RESV_RECONFIRM, presv);
 
 	sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter.ra_flags & RESV_START_TIME_MODIFIED) {
@@ -1077,6 +1147,40 @@ req_modifyReservation(struct batch_request *preq)
 		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len, " select=%s", presc->rs_value.at_val.at_str);
 	}
 	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, preq->rq_ind.rq_modify.rq_objname, log_buffer);
+
+	if (force_alter == TRUE) {
+		if (scheds_notified == 0) { /* No schedulers notified, just enforce confirmation */
+			if (presv->ri_alter.ra_state == RESV_UNCONFIRMED) { /* No need to do anything, just make the change */
+				resv_setResvState(presv, RESV_UNCONFIRMED, RESV_UNCONFIRMED);
+				presv->ri_alter.ra_flags = 0;
+				presv->ri_alter.ra_stime = 0;
+				presv->ri_alter.ra_etime = 0;
+				presv->ri_alter.ra_duration = 0;
+				presv->ri_alter.ra_state = 0;
+			} else {
+				struct batch_request *confirm_req;
+				struct work_task *pwt;
+				confirm_req = create_resv_confirm_req(presv);
+				if (confirm_req == NULL) {
+					req_reject(PBSE_SYSTEM, 0, preq);
+					resv_revert_alter(presv);
+					return;
+				}
+				confirm_req->rq_perm = preq->rq_perm;
+				if (issue_Drequest(PBS_LOCAL_CONNECTION, confirm_req, release_req, &pwt, 0) == -1) {
+					free_br(confirm_req);
+					req_reject(PBSE_SYSTEM, 0, preq);
+					resv_revert_alter(presv);
+					return;
+				}
+				append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+			}
+			snprintf(buf, sizeof(buf), "%s CONFIRMED", presv->ri_qs.ri_resvID);
+			reply_text(preq, PBSE_NONE, buf);
+			return;
+		} else
+			presv->ri_alter.ra_flags |= RESV_ALTER_FORCED;
+	}
 
 	if ((presv->ri_wattr[RESV_ATR_interactive].at_flags &
 		ATR_VFLAG_SET) == 0) {

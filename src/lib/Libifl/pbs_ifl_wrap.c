@@ -8624,7 +8624,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "SHUT_IMMEDIATE",SWIG_From_int((int)(0)));
   SWIG_Python_SetConstant(d, "SHUT_DELAY",SWIG_From_int((int)(1)));
   SWIG_Python_SetConstant(d, "SHUT_QUICK",SWIG_From_int((int)(2)));
-  SWIG_Python_SetConstant(d, "FORCEDEL",SWIG_FromCharPtr("force"));
+  SWIG_Python_SetConstant(d, "FORCE",SWIG_FromCharPtr("force"));
   SWIG_Python_SetConstant(d, "NOMAIL",SWIG_FromCharPtr("nomail"));
   SWIG_Python_SetConstant(d, "SUPPRESS_EMAIL",SWIG_FromCharPtr("suppress_email"));
   SWIG_Python_SetConstant(d, "DELETEHISTORY",SWIG_FromCharPtr("deletehist"));

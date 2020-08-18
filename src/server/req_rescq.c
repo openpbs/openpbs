@@ -569,6 +569,7 @@ req_confirmresv(struct batch_request *preq)
 	 * is invalid, set it to some time after the soonest occurrence is to start
 	 */
 	if (strcmp(preq->rq_extend, PBS_RESV_CONFIRM_FAIL) == 0) {
+		int force_requested = FALSE;
 		if (is_degraded && !is_being_altered) {
 			long retry_time;
 			retry_time = determine_resv_retry(presv);
@@ -589,34 +590,55 @@ req_confirmresv(struct batch_request *preq)
 				if ((presv->ri_brp != NULL) &&
 					(presv->ri_wattr[RESV_ATR_interactive].at_flags &
 					ATR_VFLAG_SET)) {
-					presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
-					snprintf(buf, sizeof(buf), "%s DENIED",
-						presv->ri_qs.ri_resvID);
-					(void)reply_text(presv->ri_brp,
-						PBSE_NONE, buf);
-					presv->ri_brp = NULL;
+					if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
+						presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
+						snprintf(buf, sizeof(buf), "%s DENIED", presv->ri_qs.ri_resvID);
+						(void)reply_text(presv->ri_brp, PBSE_NONE, buf);
+						presv->ri_brp = NULL;
+					}
 				}
 				if (!is_being_altered && !is_confirmed) {
-					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
-						LOG_INFO, presv->ri_qs.ri_resvID,
-						"Reservation denied");
-					(void)snprintf(log_buffer, sizeof(log_buffer),
-						"requestor=%s@%s", msg_daemonname, server_host);
+					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, presv->ri_qs.ri_resvID, "Reservation denied");
+					(void)snprintf(log_buffer, sizeof(log_buffer), "requestor=%s@%s", msg_daemonname, server_host);
 					account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
-						LOG_NOTICE, presv->ri_qs.ri_resvID,
-						"reservation deleted");
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, "reservation deleted");
 					resv_purge(presv);
 				}
 			}
 		}
 		if (presv->ri_qs.ri_state == RESV_BEING_ALTERED) {
-			resv_revert_alter(presv);
-			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-				  presv->ri_qs.ri_resvID, "Reservation alter denied");
+			if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
+				resv_revert_alter(presv);
+				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+					presv->ri_qs.ri_resvID, "Reservation alter denied");
+			} else if (presv->rep_sched_count >= presv->req_sched_count)
+				force_requested = TRUE;
 		}
-		reply_ack(preq);
-		return;
+		if (force_requested == FALSE) {
+			reply_ack(preq);
+			return;
+		} else {
+			/* This can only happen when ralter was requested with -Wforce option.
+			 * Even though all schedulers have rejected the change, enforce it.
+			 */
+			presv->ri_alter.ra_flags &= ~RESV_ALTER_FORCED;
+			free(preq->rq_extend);
+			if (pbs_asprintf(&preq->rq_extend, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
+					 presv->ri_wattr[RESV_ATR_partition].at_val.at_str) == -1) {
+				req_reject(PBSE_SYSTEM, 0, preq);
+				return;
+			}
+			/* set start time and destination in the preq structure */
+			if (presv->ri_wattr[RESV_ATR_start].at_flags & ATR_VFLAG_SET)
+				preq->rq_ind.rq_run.rq_resch = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+			if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+				preq->rq_ind.rq_run.rq_destin = create_resv_destination(presv);
+				if (preq->rq_ind.rq_run.rq_destin == NULL) {
+					req_reject(PBSE_SYSTEM, 0, preq);
+					return;
+				}
+			}
+		}
 	}
 
 #ifdef NAS /* localmod 122 */
@@ -651,7 +673,6 @@ req_confirmresv(struct batch_request *preq)
 	 * describing the execvnodes associated to each occurrence.
 	 */
 	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
-
 		/* The number of occurrences in the standing reservation and index are parsed
 		 * from the execvnode string which is of the form:
 		 *     <num_occurrences>#<vnode1>[range1]<vnode2>[range2]...

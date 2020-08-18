@@ -354,7 +354,7 @@ enum misc_constants
 {
 	NO_FLAGS = 0,
 	IGNORE_DISABLED_EVENTS = 1,
-	FORCE,
+	FORCE_SCHED,
 	SET_RESRESV_INDEX = 4,
 	DETECT_GHOST_JOBS = 8,
 	ALL_MASK = 0xffffffff

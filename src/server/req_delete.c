@@ -367,7 +367,7 @@ req_deletejob(struct batch_request *preq)
 
 	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
 		delhist = 1;
-	if (preq->rq_extend && strstr(preq->rq_extend, FORCEDEL))
+	if (preq->rq_extend && strstr(preq->rq_extend, FORCE))
 		forcedel = 1;
 	/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
 	 *  no mail is sent
@@ -620,7 +620,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		sprintf(by_user, "%s@%s", preq->rq_user, preq->rq_host);
 	}
 
-	if ((preq->rq_extend && strstr(preq->rq_extend, FORCEDEL)))
+	if ((preq->rq_extend && strstr(preq->rq_extend, FORCE)))
 		forcedel = 1;
 
 	/* See if the request is coming from a manager */

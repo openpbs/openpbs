@@ -1751,8 +1751,8 @@ class BatchUtils(object):
                       l[i - count].startswith('\t')):
                     _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
-                    if ((i + 1) < len(l)
-                            and not l[i + 1].startswith(('\t', ' '))):
+                    if ((i + 1) < len(l) and not
+                            l[i + 1].startswith(('\t', ' '))):
                         count += 1
                     else:
                         count = 1
@@ -1780,8 +1780,8 @@ class BatchUtils(object):
                 m = self.pbsobjattrval_re.match(l)
                 if m:
                     attr = m.group('attribute')
-                    if (attribs is None or attr.lower() in attribs
-                            or attr in attribs):
+                    if (attribs is None or attr.lower() in attribs or
+                            attr in attribs):
                         if attr in d:
                             d[attr] = d[attr] + "," + m.group('value')
                         else:
@@ -2366,6 +2366,12 @@ class BatchUtils(object):
                 if ((attrs & SHUT_WHO_SECDONLY) == SHUT_WHO_SECDONLY):
                     _c.append('-i')
             return _c
+
+        elif op == IFL_RALTER:
+            if isinstance(attrs, dict):
+                if 'extend' in attrs and attrs['extend'] is 'force':
+                    ret.append('-Wforce')
+                    del attrs['extend']
 
         if attrs is None or len(attrs) == 0:
             return ret
@@ -4305,26 +4311,26 @@ class PBSService(PBSObject):
                     try:
                         rv = self.du.chmod(path=fn, mode=0o644)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
                         rv = self.du.run_copy(
                             self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         rv = self.du.chown(path=k, runas=ROOT_USER,
                                            uid=0, gid=0, sudo=True)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                     except:
-                        self.logger.error("Failed to restore "
-                                          + "configuration: %s" % k)
+                        self.logger.error("Failed to restore " +
+                                          "configuration: %s" % k)
                         return False
                     finally:
                         if os.path.isfile(fn):
@@ -4337,8 +4343,8 @@ class PBSService(PBSObject):
                         fn = self.du.create_temp_file()
                         rv = self.du.chmod(path=fn, mode=0o644)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         with open(fn, 'w') as fd:
                             mom_config_data = "\n".join(v) + "\n"
@@ -4346,18 +4352,18 @@ class PBSService(PBSObject):
                         rv = self.du.run_copy(
                             self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         rv = self.du.chown(path=k, runas=ROOT_USER,
                                            uid=0, gid=0, sudo=True)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                     except:
-                        self.logger.error("Failed to restore "
-                                          + "configuration: %s" % k)
+                        self.logger.error("Failed to restore " +
+                                          "configuration: %s" % k)
                         return False
                     finally:
                         if os.path.isfile(fn):
@@ -8246,6 +8252,8 @@ class Server(PBSService):
             pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
                                  'pbs_ralter')]
             if attrib is not None:
+                if extend is not None:
+                    attrib['extend'] = extend
                 _conf = self.default_client_pbs_conf
                 pcmd += self.utils.convert_to_cli(attrib, op=IFL_RALTER,
                                                   hostname=self.client,
@@ -8266,7 +8274,8 @@ class Server(PBSService):
                 self.last_out = ret['out']
             self.last_rc = rc
         elif runas is not None:
-            rc = self.pbs_api_as('alterresv', resvid, runas, data=attrib)
+            rc = self.pbs_api_as('alterresv', resvid, runas, data=attrib,
+                                 extend=extend)
         else:
             c = self._connect(self.hostname)
             if c < 0:

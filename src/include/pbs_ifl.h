@@ -499,10 +499,10 @@ enum batch_op {	SET, UNSET, INCR, DECR,
 
 /* messages that may be passsed  by pbs_deljob() api to the server  via its extend parameter*/
 
-#define FORCEDEL			"force"
+#define FORCE				"force"
 #define NOMAIL  			"nomail"
 #define SUPPRESS_EMAIL  		"suppress_email"
-#define DELETEHISTORY		"deletehist"
+#define DELETEHISTORY			"deletehist"
 /*
  ** This structure is identical to attropl so they can be used
  ** interchangably.  The op field is not used.
