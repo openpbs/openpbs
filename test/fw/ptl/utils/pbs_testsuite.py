@@ -1564,6 +1564,8 @@ class PBSTestSuite(unittest.TestCase):
             mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
+            self.server.manager(MGR_CMD_SET, HOOK,
+                                {'enabled': 'False'}, 'pbs_cgroups')
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
