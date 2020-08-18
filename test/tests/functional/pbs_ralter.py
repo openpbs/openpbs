@@ -2775,13 +2775,15 @@ class TestPbsResvAlter(TestFunctional):
         off = int(start - time.time())
         self.server.expect(RESV, a, id=rid, offset=off)
 
+        # this alter command is rejected because the reservation has
+        # a running job in it.
         self.alter_a_reservation(rid, start, end, confirm=False, shift=-10,
                                  alter_s=True, extend='force', whichMessage=0)
 
         self.alter_a_reservation(rid, start, end, confirm=False, shift=-100,
                                  alter_e=True, extend='force')
         _, _, t_end = self.get_resv_time_info(rid)
-        end = end - 100
+        end -= 100
         self.assertEqual(int(t_end), end)
 
         self.alter_a_reservation(rid, start, end, confirm=False,
