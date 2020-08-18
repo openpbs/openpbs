@@ -123,7 +123,6 @@
 #include "pbs_ifl.h"
 #include "pbs_error.h"
 #include "log.h"
-#include "tpp.h"
 #include "pbs_share.h"
 #include "server_info.h"
 #include "constant.h"
@@ -568,39 +567,6 @@ query_server_info(status *pol, struct batch_status *server)
 					return NULL;
 				}
 			}
-		} else if (!strcmp(attrp->name, ATTR_rpp_retry)) { /* rpp_retry */
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = RPP_RETRY;
-
-			/*
-			 ** The value for rpp_retry can be zero or a positive value.
-			 ** Zero means "no retries" or "send it once".
-			 */
-			if (count >= 0 && (int)count != rpp_retry) {
-				sprintf(log_buffer, "rpp_retry changed from %d to %d",
-					rpp_retry, (int)count);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, __func__, log_buffer);
-				rpp_retry = (int)count;
-			}
-		} else if (!strcmp(attrp->name, ATTR_rpp_highwater)) { /* rpp_highwater */
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = RPP_HIGHWATER;
-
-			/*
-			 ** The value for rpp_highwater must be greater than zero.
-			 ** It is the number of packets allowed to be "on the wire"
-			 ** at any give time.
-			 */
-			if (count > 0 && (int)count != rpp_highwater) {
-				sprintf(log_buffer, "rpp_highwater changed from %d to %d",
-					rpp_highwater, (int)count);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, __func__, log_buffer);
-				rpp_highwater = (int)count;
-			}
 		} else if (!strcmp(attrp->name, ATTR_EligibleTimeEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->eligible_time_enable = 1;
@@ -699,7 +665,7 @@ query_server_dyn_res(server_info *sinfo)
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+			err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 			if (err != 0) {
 				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
 					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",

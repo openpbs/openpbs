@@ -263,8 +263,6 @@ static int
 __pbs_client_thread_init_thread_context_single_threaded(void)
 {
 	struct pbs_client_thread_context *ptr;
-	struct passwd *pw;
-	uid_t pbs_current_uid;
 
 	if (single_threaded_init_done)
 		return 0;
@@ -284,16 +282,6 @@ __pbs_client_thread_init_thread_context_single_threaded(void)
 	ptr->th_pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;
 	ptr->th_pbs_tcp_interrupt = 0;
 	ptr->th_pbs_tcp_errno = 0;
-	pbs_current_uid = getuid();
-	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	if (strlen(pw->pw_name) > (PBS_MAXUSER - 1)) {
-		pbs_errno = PBSE_BADUSER;
-		return -1;
-	}
-	strcpy(ptr->th_pbs_current_user, pw->pw_name);
 
 	dis_init_tables();
 
@@ -501,8 +489,6 @@ __pbs_client_thread_init_thread_context(void)
 {
 	struct pbs_client_thread_context *ptr;
 	int ret;
-	struct passwd *pw;
-	uid_t pbs_current_uid;
 	int free_ptr = 0;
 
 	/* initialize the TLS key for all threads */
@@ -547,27 +533,6 @@ __pbs_client_thread_init_thread_context(void)
 		ret = PBSE_SYSTEM;
 		goto err;
 	}
-
-	/* determine who we are */
-	/*
-	 * we need to do this here as well since not all threads would call
-	 * connect, when other threads share the connection handle created by
-	 * one thread
-	 */
-	pbs_current_uid = getuid();
-	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
-		free_ptr = 1;
-		ret = PBSE_SYSTEM;
-		pbs_client_thread_unlock_conf();
-		goto err;
-	}
-	if (strlen(pw->pw_name) > (PBS_MAXUSER - 1)) {
-		free_ptr = 1;
-		ret = PBSE_BADUSER;
-		pbs_client_thread_unlock_conf();
-		goto err;
-	}
-	strcpy(ptr->th_pbs_current_user, pw->pw_name);
 
 	if (pthread_setspecific(key_tls, ptr) != 0) {
 		ret = PBSE_SYSTEM;
@@ -1279,13 +1244,7 @@ __pbs_server_location(void)
 char *
 __pbs_current_user_location(void)
 {
-	/*
-	 * returns real thread context or data from a global structure
-	 * called local_thread_context
-	 */
-	struct pbs_client_thread_context *p =
-		pbs_client_thread_get_context_data();
-	return (p->th_pbs_current_user);
+	return (pbs_conf.current_user);
 }
 
 /**

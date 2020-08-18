@@ -108,6 +108,7 @@ teststat(struct stat *sp, int isdir, int sticky, int disallow,
  * @param[in]   isdir - value indicating directory or not
  * @param[in]   sticky - value indicating whether to allow write on directory
  * @param[in]   disallow - value indicating whether admin and owner given access permission
+ * @param[in]   uid - if >0, value of owner. else, check if owner <=10
  *
  * @return      int
  * @retval      0               success
@@ -116,12 +117,12 @@ teststat(struct stat *sp, int isdir, int sticky, int disallow,
  */
 
 static int
-teststat(struct stat *sp, int isdir, int sticky, int disallow)
+teststat(struct stat *sp, int isdir, int sticky, int disallow, int uid)
 {
 	int	rc = 0;
 
-	if ((~disallow & S_IWUSR) && (sp->st_uid > 10)) {
-		/* Owner write is allowed, and UID is greater than 10. */
+	if ((~disallow & S_IWUSR) && (sp->st_uid > 10 && !(uid > 0 && uid == sp->st_uid))) {
+		/* Owner write is allowed, and UID is greater than 10 or uid doesn't match. */
 		rc = EPERM;
 	} else if ((~disallow & S_IWGRP) && (sp->st_gid > 9)) {
 		/* Group write is allowed, and GID is greater than 9. */
@@ -157,6 +158,7 @@ teststat(struct stat *sp, int isdir, int sticky, int disallow)
  * @param[in]   isdir - value indicating directory or not
  * @param[in]   sticky - value indicating whether to allow write on directory
  * @param[in]   disallow - value indicating whether admin and owner given access permission
+ * @param[in]   uid - if >0, value of owner. else, check if owner <=10
  *
  * @return      int
  * @retval      0               success
@@ -165,12 +167,12 @@ teststat(struct stat *sp, int isdir, int sticky, int disallow)
  */
 
 static int
-tempstat(struct stat *sp, int isdir, int sticky, int disallow)
+tempstat(struct stat *sp, int isdir, int sticky, int disallow, int uid)
 {
 	int	rc = 0;
 
-	if ((~disallow & S_IWUSR) && (sp->st_uid > 10)) {
-		/* Owner write is allowed, and UID is greater than 10. */
+	if ((~disallow & S_IWUSR) && (sp->st_uid > 10 && !(uid > 0 && uid == sp->st_uid))) {
+		/* Owner write is allowed, and UID is greater than 10 or owner is not self. */
 		rc = EPERM;
 	} else if ((~disallow & S_IWGRP) && (sp->st_gid > 9)) {
 		/* Group write is allowed, and GID is greater than 9. */
@@ -182,13 +184,15 @@ tempstat(struct stat *sp, int isdir, int sticky, int disallow)
 		 * - target is not a directory
 		 * - the value of the sticky argument we were passed was zero
 		 */
-		if (!S_ISDIR(sp->st_mode) || !sticky)
+		if (!S_ISDIR(sp->st_mode) || !sticky) {
 			rc = EPERM;
+		}
 		/*
 		 ** - sticky bit is off and other write is on
 		 */
-		if (!(sp->st_mode & S_ISVTX) && (sp->st_mode & S_IWOTH))
+		if (!(sp->st_mode & S_ISVTX) && (sp->st_mode & S_IWOTH)) {
 			rc = EPERM;
+		}
 	} else if (isdir && !S_ISDIR(sp->st_mode)) {
 		/* Target is supposed to be a directory, but is not. */
 		rc = ENOTDIR;
@@ -228,7 +232,37 @@ tempstat(struct stat *sp, int isdir, int sticky, int disallow)
  *              			EACCESS if permissions are not ok
  */
 int
-chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
+chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath) {
+	return chk_file_sec_user(path, isdir, sticky, disallow, fullpath, 0);
+}
+
+
+/**
+ * @brief
+ * 	chk_file_sec_user() - Check file/directory security
+ *      Part of the PBS System Security "Feature"
+ *
+ * @par	To be secure, all directories (and final file) in path must be:
+ *		owned by userid < 10 or owned by uid if set
+ *		owned by groupid < 10 if group writable
+ *		not have world writable unless stick bit set & this is allowed.
+ *
+ * @param[in]	path - path to check
+ * @param[in]	isdir - 1 = path is directory, 0 = file
+ * @param[in]	sticky - allow write on directory if sticky set
+ * @param[in]	disallow - perm bits to disallow
+ * @param[in]	fullpath - check full path
+ * @param[in]	uid - uid to check
+ *
+ * @return	int
+ * @retval	0 			if ok
+ * @retval	errno value 		if not ok, including:
+ *              			EPERM if not owned by root or by uid
+ *              			ENOTDIR if not file/directory as specified
+ *              			EACCESS if permissions are not ok
+ */
+int
+chk_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid)
 {
 	int		rc = 0;
 	struct	stat	sbuf;
@@ -285,7 +319,7 @@ chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 
 			assert(S_ISLNK(sbuf.st_mode) == 0);
 
-			rc = teststat(&sbuf, 1, sticky, S_IWGRP|S_IWOTH);
+			rc = teststat(&sbuf, 1, sticky, S_IWGRP|S_IWOTH, uid);
 
 			if (rc != 0)
 				goto chkerr;
@@ -306,7 +340,7 @@ chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 #ifdef WIN32
 	rc = teststat(&sbuf, isdir, sticky, disallow, real, log_buffer);
 #else
-	rc = teststat(&sbuf, isdir, sticky, disallow);
+	rc = teststat(&sbuf, isdir, sticky, disallow, uid);
 #endif
 
 chkerr:
@@ -353,7 +387,37 @@ chkerr:
  */
 
 int
-tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
+tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath) {
+	return tmp_file_sec_user(path, isdir, sticky, disallow, fullpath, 0);
+}
+
+/**
+ * @brief
+ * 	tmp_file_sec_user() - Check file/directory security
+ *      Part of the PBS System Security "Feature"
+ *
+ * @par	To be secure, all directories (and final file) in path must be:
+ *		owned by userid < 10 or owned by uid if set
+ *		owned by groupid < 10 if group writable
+ *		not have world writable unless stick bit set & this is allowed.
+ *
+ * @param[in]   path - path to check
+ * @param[in]   isdir - 1 = path is directory, 0 = file
+ * @param[in]   sticky - allow write on directory if sticky set
+ * @param[in]   disallow - perm bits to disallow
+ * @param[in]   fullpath - check full path
+ * @param[in]   uid - userid to check
+ *
+ * @return      int
+ * @retval      0                       if ok
+ * @retval      errno value             if not ok, including:
+ *                                      EPERM if not owned by root
+ *                                      ENOTDIR if not file/directory as specified
+ *                                      EACCESS if permissions are not ok
+ */
+
+int
+tmp_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid)
 {
 	int		rc = 0;
 	struct	stat	sbuf;
@@ -410,7 +474,7 @@ tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 
 			assert(S_ISLNK(sbuf.st_mode) == 0);
 
-			rc = tempstat(&sbuf, 1, sticky, 0);
+			rc = tempstat(&sbuf, 1, sticky, 0, uid);
 
 			if (rc != 0)
 				goto chkerr;
@@ -431,7 +495,7 @@ tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 #ifdef WIN32
 	rc = teststat(&sbuf, isdir, sticky, disallow, real, log_buffer);
 #else
-	rc = tempstat(&sbuf, isdir, sticky, disallow);
+	rc = tempstat(&sbuf, isdir, sticky, disallow, uid);
 #endif
 
 chkerr:

@@ -249,6 +249,8 @@ struct pbs_config
 	char *pbs_lr_save_path;		/* path to store undo live recordings */
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
 	unsigned int pbs_sched_threads;	/* number of threads for scheduler */
+	char *pbs_daemon_service_user; /* user the scheduler runs as */
+	char current_user[PBS_MAXUSER+1]; /* current running user */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
@@ -314,6 +316,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"
 #define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"
 #define PBS_CONF_SCHED_THREADS	"PBS_SCHED_THREADS"
+#define PBS_CONF_DAEMON_SERVICE_USER "PBS_DAEMON_SERVICE_USER"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif

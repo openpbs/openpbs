@@ -49,7 +49,6 @@
  * 	cmpres()
  * 	cmp_placement_sets()
  * 	cmp_nspec()
- * 	cmp_low_load()
  * 	cmp_queue_prio_dsc()
  * 	cmp_events()
  * 	cmp_fairshare()
@@ -243,38 +242,6 @@ cmp_nspec(const void *v1, const void *v2)
 }
 
 
-
-/**
- * @brief
- *		cmp_low_load - sort nodes ascending by load ave
- *
- * @param[in]	v1	-	node info 1
- * @param[in]	v2	-	node info 2
- *
- * @return	int
- * @retval	-1	: if v1 < v2
- * @retval	0 	: if v1 == v2
- * @retval	1  	: if v1 > v2
- */
-int
-cmp_low_load(const void *v1, const void *v2)
-{
-	if (v1 == NULL && v2 == NULL)
-		return 0;
-
-	if (v1 == NULL && v2 != NULL)
-		return -1;
-
-	if (v1 != NULL && v2 == NULL)
-		return 1;
-
-	if ((*(node_info **) v1)->loadave < (*(node_info **) v2)->loadave)
-		return -1;
-	else if ((*(node_info **) v1)->loadave > (*(node_info **) v2)->loadave)
-		return 1;
-	else
-		return 0;
-}
 
 /**
  * @brief

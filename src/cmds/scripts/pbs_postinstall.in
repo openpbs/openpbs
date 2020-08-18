@@ -116,7 +116,7 @@ create_conf() {
 	rpm)
 		[ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
 		# If an existing configuration file is present, adapt it.
-		declare -a env_array=("PBS_HOME" "PBS_SERVER" "PBS_MOM_HOME" "PBS_PRIMARY" "PBS_SECONDARY" "PBS_LEAF_ROUTERS")
+		declare -a env_array=("PBS_HOME" "PBS_SERVER" "PBS_MOM_HOME" "PBS_PRIMARY" "PBS_SECONDARY" "PBS_LEAF_ROUTERS" "PBS_DAEMON_SERVICE_USER")
 		if [ -f "$conf" ]; then
 			eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\" >$newconf"
 			update_pbs_conf() {
@@ -531,6 +531,17 @@ create_home() {
 				sed --in-place '/^[[:space:]]*resources:/ s/\"$/, hbmem\"/' $sconfig
 			fi
 		fi
+
+		if [ "${PBS_DAEMON_SERVICE_USER}x" != "x" ]; then
+			id=`id ${PBS_DAEMON_SERVICE_USER} 2>&1`
+			if [ $? -ne 0 ]; then
+				echo "*** PBS_DAEMON_SERVICE_USER ${PBS_DAEMON_SERVICE_USER} does not exist"
+			else
+				chown -R "${PBS_DAEMON_SERVICE_USER}" "${PBS_HOME}/sched_priv"
+				chown -R "${PBS_DAEMON_SERVICE_USER}" "${PBS_HOME}/sched_logs"
+			fi
+		fi
+
 		echo "***"
 
 	fi
@@ -616,9 +627,13 @@ oldconfdir=`dirname "${conf}"`
 ostype=`uname 2>/dev/null`
 unset PBS_EXEC
 unset preset_dbuser
+unset preset_serviceuser
 umask 022
 if [ "${PBS_DATA_SERVICE_USER:+set}" ]; then
 	preset_dbuser="${PBS_DATA_SERVICE_USER}"
+fi
+if [ "${PBS_DAEMON_SERVICE_USER:+set}" ]; then
+	preset_serviceuser="${PBS_DAEMON_SERVICE_USER}"
 fi
 
 # Define the location of a file that the INSTALL script may have created.
@@ -638,6 +653,7 @@ server)
 	else
 		sameconf="false"
 	fi
+	serviceuser="${preset_serviceuser:-${7:-@service_user@}}"
 	if [ ! -x "$newpbs_exec/sbin/pbs_server" ]; then
 		echo "***"
 		echo "*** Unable to locate PBS executables!"
