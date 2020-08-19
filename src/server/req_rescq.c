@@ -89,7 +89,7 @@ struct name_and_val {
 };
 
 int  gen_task_Time4resv(resc_resv*);
-void resv_revert_alter(resc_resv *presv);
+void revert_alter_reservation(resc_resv *presv);
 
 extern int     svr_totnodes;
 extern time_t  time_now;
@@ -608,12 +608,15 @@ req_confirmresv(struct batch_request *preq)
 		}
 		if (presv->ri_qs.ri_state == RESV_BEING_ALTERED) {
 			if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
-				resv_revert_alter(presv);
+				revert_alter_reservation(presv);
 				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 					presv->ri_qs.ri_resvID, "Reservation alter denied");
 			} else if (presv->rep_sched_count >= presv->req_sched_count)
 				force_requested = TRUE;
 		}
+		if (is_being_altered)
+			resv_attr_def[RESV_ATR_alter_revert].at_free(&presv->ri_wattr[RESV_ATR_alter_revert]);
+
 		if (force_requested == FALSE) {
 			reply_ack(preq);
 			return;
@@ -651,6 +654,9 @@ req_confirmresv(struct batch_request *preq)
 		return;
 	}
 #endif /* localmod 122 */
+
+	if (is_being_altered)
+		resv_attr_def[RESV_ATR_alter_revert].at_free(&presv->ri_wattr[RESV_ATR_alter_revert]);
 
 	petime = &presv->ri_wattr[RESV_ATR_end];
 
@@ -838,7 +844,7 @@ req_confirmresv(struct batch_request *preq)
 	 * the task list before
 	 */
 	if (!is_degraded && (!is_being_altered || is_being_altered & RESV_START_TIME_MODIFIED) &&
-		(rc = gen_task_Time4resv(presv)) != 0) {
+	    (rc = gen_task_Time4resv(presv)) != 0) {
 		free(next_execvnode);
 		req_reject(rc, 0, preq);
 		return;
@@ -947,12 +953,7 @@ req_confirmresv(struct batch_request *preq)
 				presv->ri_giveback = 0;
 			}
 		}
-		presv->ri_alter.ra_stime = 0;
-		presv->ri_alter.ra_etime = 0;
-
 		if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
-			free(presv->ri_alter.ra_select);
-			presv->ri_alter.ra_select = NULL;
 			resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
 		}
 
@@ -1008,69 +1009,4 @@ req_confirmresv(struct batch_request *preq)
 	reply_ack(preq);
 
 	return;
-}
-
-/**
- * @brief
- * resv_revert_alter -	- 	Revert a reservation to its pre-altered state in the case where an alter fails.
- *
- * @param[in] presv 	-	Reservation structure.
- */
-void
-resv_revert_alter(resc_resv *presv)
-{
-	int state = 0;
-	int sub = 0;
-
-	if (presv->ri_alter.ra_flags & RESV_START_TIME_MODIFIED) {
-		presv->ri_qs.ri_stime = presv->ri_alter.ra_stime;
-		presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter.ra_stime;
-		presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_stime = 0;
-	}
-	if (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED) {
-		presv->ri_qs.ri_etime = presv->ri_alter.ra_etime;
-		presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter.ra_etime;
-		presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_etime = 0;
-	}
-	if (presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) {
-		if (presv->ri_alter.ra_etime != 0) {
-			presv->ri_qs.ri_etime = presv->ri_alter.ra_etime;
-			presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter.ra_etime;
-			presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
-			presv->ri_alter.ra_etime = 0;
-		}
-		if (presv->ri_alter.ra_stime != 0) {
-			presv->ri_qs.ri_stime = presv->ri_alter.ra_stime;
-			presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter.ra_stime;
-			presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
-			presv->ri_alter.ra_stime = 0;
-		}
-	}
-	if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
-		resource *presc;
-		resource_def *prdef;
-
-		prdef = &svr_resc_def[RESC_SELECT];
-		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
-		free(presc->rs_value.at_val.at_str);
-		presc->rs_value.at_val.at_str = presv->ri_alter.ra_select;
-		set_attr_svr(&presv->ri_wattr[RESV_ATR_SchedSelect], &resv_attr_def[RESV_ATR_SchedSelect],
-			     presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str);
-
-		presv->ri_alter.ra_select = NULL;
-		resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
-		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
-	}
-
-	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;
-	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
-	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
-	presv->ri_alter.ra_flags = 0;
-
-	eval_resvState(presv, RESVSTATE_alter_failed, 0, &state, &sub);
-	/* While requesting alter, substate was retained, so we use the same here. */
-	(void)resv_setResvState(presv, state, presv->ri_qs.ri_substate);
 }

@@ -1627,9 +1627,6 @@ resv_free(resc_resv *presv)
 	if (dot)
 		*dot = '.';
 
-	free(presv->ri_alter.ra_select_revert);
-	free(presv->ri_alter.ra_select);
-
 	/* now free the main structure */
 	free(presv);
 }
