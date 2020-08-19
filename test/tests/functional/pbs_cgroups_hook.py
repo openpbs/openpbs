@@ -1454,13 +1454,13 @@ if %s e.job.in_ms_mom():
         # are all finished, so that we don't match a CF copy
         # message in the logs from someone else!
         time.sleep(5)
-        just_before_import = time.time()
+        just_before_import = time.time() - 1
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
         if mom_checks:
             self.moms_list[0].log_match('pbs_cgroups.CF;'
                                         'copy hook-related '
                                         'file request received',
-                                        starttime=just_before_import-1)
+                                        starttime=just_before_import)
         pbs_home = self.server.pbs_conf['PBS_HOME']
         svr_conf = os.path.join(
             os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
@@ -1475,13 +1475,13 @@ if %s e.job.in_ms_mom():
                 r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
                 if r1['out'] != r2['out']:
                     self.logger.info('server & mom pbs_cgroups.CF differ')
-                    just_before_import = time.time()
+                    just_before_import = time.time() - 1
                     self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                         self.hook_name)
                     self.moms_list[0].log_match('pbs_cgroups.CF;'
                                                 'copy hook-related '
                                                 'file request received',
-                                                starttime=just_before_import-1)
+                                                starttime=just_before_import)
                 else:
                     self.logger.info('server & mom pbs_cgroups.CF match')
                     break
