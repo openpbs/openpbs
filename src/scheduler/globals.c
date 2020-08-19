@@ -88,7 +88,6 @@ const struct enum_conv smp_cluster_info[] =
 	{
 	{ SMP_NODE_PACK, "pack" },
 	{ SMP_ROUND_ROBIN, "round_robin" },
-	{ SMP_LOWEST_LOAD, "lowest_load", },
 	{ HIGH_SMP_DIST, "" }
 };
 
@@ -109,16 +108,6 @@ const struct enum_conv preempt_prio_info[] =
 	{ PREEMPT_HIGH, "" }
 };
 
-/*
- *	res_to_get - resources to get from each nodes mom
- */
-const char *res_to_get[] =
-	{
-	"loadave",		/* the current load average */
-	"max_load",		/* static max_load value */
-	"ideal_load",		/* static ideal_load value */
-};
-
 /* Used to create static indexes into allres */
 const struct enum_conv resind[] =
 	{
@@ -137,9 +126,6 @@ const struct enum_conv resind[] =
 	{RES_PREEMPT_TARGETS, "preempt_targets"},
 	{RES_HIGH, ""}
 };
-
-/* number of indices in the res_to_get array */
-const int num_resget = sizeof(res_to_get) / sizeof(char *);
 
 struct config conf;
 struct status cstat;

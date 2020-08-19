@@ -2923,34 +2923,28 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* the next occurrence returned by get_occurrence is counted from the current
 	 * one which is at index 1. */
 
-	/* If the start time of the reservation was altered, copy from RESV_ATR_start
- 	 * will make the next instance to have it's start time altered so take the start
- 	 * time from the ri_alter_stime. */
-	if (presv->ri_wattr[RESV_ATR_start_revert].at_flags & ATR_VFLAG_SET) {
-		dtstart = presv->ri_wattr[RESV_ATR_start_revert].at_val.at_long;
-		resv_attr_def[RESV_ATR_start_revert].at_free(&presv->ri_wattr[RESV_ATR_start_revert]);
+	/* If the reservation was altered,
+	 * use the stored values in RESV_ATR_standing_revert.
+	 */
+	if (presv->ri_wattr[RESV_ATR_standing_revert].at_flags & ATR_VFLAG_SET) {
+		resource *resc, *resc2;
+		resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_standing_revert], &svr_resc_def[RESC_START_TIME]);
+		dtstart = resc->rs_value.at_val.at_long;
+
+		resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_standing_revert], &svr_resc_def[RESC_WALLTIME]);
+		presv->ri_wattr[RESV_ATR_duration].at_val.at_long = resc->rs_value.at_val.at_long;
+		presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
+		presv->ri_qs.ri_duration = resc->rs_value.at_val.at_long;
+
+		resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], &svr_resc_def[RESC_SELECT]);
+		resc2 = find_resc_entry(&presv->ri_wattr[RESV_ATR_standing_revert], &svr_resc_def[RESC_SELECT]);
+		free(resc->rs_value.at_val.at_str);
+		resc->rs_value.at_val.at_str = strdup(resc2->rs_value.at_val.at_str);
+		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
+		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], resc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
+		set_chunk_sum(&resc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	} else
 		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
-
-	if (presv->ri_alter.ra_select_revert != NULL) {
-		resource *presc;
-		resource_def *prdef;
-
-		prdef = &svr_resc_def[RESC_SELECT];
-		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
-		free(presc->rs_value.at_val.at_str);
-		presc->rs_value.at_val.at_str = presv->ri_alter.ra_select_revert;
-		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_select_revert = NULL;
-		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], presc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
-		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
-	}
-
-	if (presv->ri_wattr[RESV_ATR_duration_revert].at_flags & ATR_VFLAG_SET) {
-		presv->ri_qs.ri_duration = presv->ri_wattr[RESV_ATR_duration_revert].at_val.at_long;
-		resv_attr_def[RESV_ATR_duration_revert].at_set(&presv->ri_wattr[RESV_ATR_duration], &presv->ri_wattr[RESV_ATR_duration_revert], SET);
-		resv_attr_def[RESV_ATR_duration_revert].at_free(&presv->ri_wattr[RESV_ATR_duration_revert]);
-	}
 
 	dtend = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 	next = dtstart;
@@ -3372,7 +3366,7 @@ resvFinishReply(struct work_task *ptask)
  * @param[out]	psub	-	substate of resv state
  */
 void
-eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal, int *pstate, int *psub)	
+eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal, int *pstate, int *psub)
 {
 	int is_running = 0;
 
@@ -3460,9 +3454,26 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal, int *psta
 	} else if (s == RESVSTATE_req_resvSub) {
 		*pstate = RESV_UNCONFIRMED;
 		*psub = RESV_UNCONFIRMED;
-	} else if (s == RESVSTATE_alter_failed)
-		/* backup only the state, as substate was not modified. */
-		*pstate = presv->ri_alter.ra_state;
+	} else if (s == RESVSTATE_alter_failed) {
+		if (presv->ri_alter.ra_state) {
+			*pstate = presv->ri_alter.ra_state;
+		} else if (*psub == RESV_IN_CONFLICT || *psub == RESV_DEGRADED) {
+			if (is_running) {
+				*pstate = RESV_RUNNING;
+			} else {
+				*pstate = RESV_DEGRADED;
+			}
+		} else if (is_running) {
+			*pstate = RESV_RUNNING;
+			*psub = RESV_RUNNING;
+		} else if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+			*pstate = RESV_CONFIRMED;
+			*psub = RESV_CONFIRMED;
+		} else {
+			*pstate = RESV_UNCONFIRMED;
+			*psub = RESV_UNCONFIRMED;
+		}
+	}
 }
 
 
@@ -4190,7 +4201,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
-					presv->ri_alter.ra_duration = pduration->at_val.at_long;
 				}
 				atemp.at_val.at_long = (petime->at_val.at_long -
 					pstime->at_val.at_long);
@@ -4207,7 +4217,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
-					presv->ri_alter.ra_etime = petime->at_val.at_long;
 				}
 				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
@@ -4240,7 +4249,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
-					presv->ri_alter.ra_stime = pstime->at_val.at_long;
 				}
 				pstime->at_flags |= ATR_SET_MOD_MCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
@@ -4257,8 +4265,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED | RESV_DURATION_MODIFIED;
-					presv->ri_alter.ra_etime = petime->at_val.at_long;
-					presv->ri_alter.ra_duration = pduration->at_val.at_long;
 				}
 				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +
@@ -4277,7 +4283,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
-					presv->ri_alter.ra_stime = pstime->at_val.at_long;
 				}
 				pstime->at_flags |= ATR_SET_MOD_MCACHE;
 				pstime->at_val.at_long = petime->at_val.at_long -
@@ -4296,7 +4301,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
-					presv->ri_alter.ra_duration = pduration->at_val.at_long;
 				}
 				pduration->at_flags |= ATR_SET_MOD_MCACHE;
 				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
@@ -4311,7 +4315,6 @@ start_end_dur_wall(resc_resv *presv)
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
-					presv->ri_alter.ra_etime = petime->at_val.at_long;
 				}
 				petime->at_flags |= ATR_SET_MOD_MCACHE;
 				petime->at_val.at_long = pstime->at_val.at_long +

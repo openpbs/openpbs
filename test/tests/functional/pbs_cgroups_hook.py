@@ -1454,12 +1454,13 @@ if %s e.job.in_ms_mom():
         # are all finished, so that we don't match a CF copy
         # message in the logs from someone else!
         time.sleep(5)
+        just_before_import = time.time() - 1
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
         if mom_checks:
             self.moms_list[0].log_match('pbs_cgroups.CF;'
                                         'copy hook-related '
                                         'file request received',
-                                        starttime=self.server.ctime)
+                                        starttime=just_before_import)
         pbs_home = self.server.pbs_conf['PBS_HOME']
         svr_conf = os.path.join(
             os.sep, pbs_home, 'server_priv', 'hooks', 'pbs_cgroups.CF')
@@ -1474,17 +1475,19 @@ if %s e.job.in_ms_mom():
                 r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
                 if r1['out'] != r2['out']:
                     self.logger.info('server & mom pbs_cgroups.CF differ')
+                    just_before_import = time.time() - 1
                     self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                         self.hook_name)
                     self.moms_list[0].log_match('pbs_cgroups.CF;'
                                                 'copy hook-related '
                                                 'file request received',
-                                                starttime=self.server.ctime)
+                                                starttime=just_before_import)
                 else:
                     self.logger.info('server & mom pbs_cgroups.CF match')
                     break
                 time.sleep(1)
                 count -= 1
+            self.assertGreater(count, 0, "pbs_cgroups.CF failed to load")
             # A HUP of each mom ensures update to hook config file is
             # seen by the exechost_startup hook.
             for mom in self.moms_list:
@@ -2054,6 +2057,7 @@ if %s e.job.in_ms_mom():
                             'Processes should be assigned to different CPUs')
         self.logger.info('CpuIDs check passed')
 
+    @timeout(1800)
     def test_cgroup_cpuset_ncpus_are_cores(self):
         """
         Test to verify that correct number of jobs run on a hyperthread
@@ -2116,7 +2120,7 @@ if %s e.job.in_ms_mom():
             # give the scheduler, server and MoM some time
             # it's not a luxury on containers with few CPU resources
             time.sleep(2)
-            self.server.expect(JOB, a1, jid, max_attempts=20)
+            self.server.expect(JOB, a1, jid)
         # Submit another job, expect in Q state -- this one with only 1 CPU
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hosts_list[0], ATTR_N: name + 'b'}
@@ -2127,7 +2131,7 @@ if %s e.job.in_ms_mom():
         # we want to make sure jid2 doesn't run because it can't,
         # not because the scheduler has not yet gotten to it
         time.sleep(30)
-        self.server.expect(JOB, b1, jid2, max_attempts=10)
+        self.server.expect(JOB, b1, jid2)
 
     def test_cgroup_enforce_memory(self):
         """
@@ -2709,13 +2713,13 @@ if %s e.job.in_ms_mom():
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script('date')
         jid1 = self.server.submit(j1)
-        self.server.expect(JOB, 'queue', id=jid1, op=UNSET, max_attempts=20,
+        self.server.expect(JOB, 'queue', id=jid1, op=UNSET,
                            interval=1, offset=1)
         a = {'Resource_List.select': '1:ncpus=1:mem=1000mb'}
         j2 = Job(TEST_USER, attrs=a)
         j2.create_script('date')
         jid2 = self.server.submit(j2)
-        self.server.expect(JOB, 'queue', id=jid2, op=UNSET, max_attempts=30,
+        self.server.expect(JOB, 'queue', id=jid2, op=UNSET,
                            interval=1, offset=1)
         a = {'Resource_List.select': '1:ncpus=1:mem=40gb'}
         j3 = Job(TEST_USER, attrs=a)
@@ -2726,7 +2730,7 @@ if %s e.job.in_ms_mom():
              (MATCH_RE,
               '.*Can Never Run: Insufficient amount of resource: mem.*')}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
-                           interval=1, max_attempts=30)
+                           interval=1)
 
     @timeout(1800)
     def test_cgroup_cpuset_exclude_cpu(self):
@@ -3484,8 +3488,7 @@ event.accept()
         vnodes_count = 10
         try:
             self.server.expect(VNODE, {'state=free': vnodes_count},
-                               op=GE, count=True, max_attempts=10,
-                               interval=2)
+                               op=GE, count=True, interval=2)
         except Exception as exc:
             self.skipTest("Test require >= %d free vnodes" % (vnodes_count,))
 

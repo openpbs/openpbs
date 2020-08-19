@@ -171,6 +171,8 @@ extern job *recov_job_cb(pbs_db_obj_info_t *, int *);
 extern resc_resv *recov_resv_cb(pbs_db_obj_info_t *, int *);
 extern pbs_queue *recov_queue_cb(pbs_db_obj_info_t *, int *);
 extern pbs_sched *recov_sched_cb(pbs_db_obj_info_t *, int *);
+extern void revert_alter_reservation(resc_resv *presv);
+
 /* Private functions in this file */
 
 static void  catch_child(int);
@@ -1559,6 +1561,7 @@ pbsd_init_job(job *pjob, int type)
 void
 pbsd_init_resv(resc_resv *presv, int type)
 {
+	revert_alter_reservation(presv);
 	is_resv_window_in_future(presv);
 	set_old_subUniverse(presv);
 

@@ -742,7 +742,7 @@ class SmokeTest(PBSTestSuite):
         end_time = int(time.time()) + 1
         cycle = self.scheduler.cycles(start=start_time, end=end_time)
         self.logger.info("len(cycle):%s, td:%s" % (len(cycle),
-                         end_time - start_time))
+                                                   end_time - start_time))
         if len(cycle) > 0:
             i = len(cycle) - 1
             while ((i >= 0) and (len(cycle[i].political_order) == 0)):
@@ -815,25 +815,6 @@ class SmokeTest(PBSTestSuite):
         a = {'job_state': 'Q', 'Resource_List.foo': '15',
              'comment': msg}
         self.server.expect(JOB, a, id=j1id)
-
-    def test_add_mom_dyn_res(self):
-        """
-        Test for mom dynamin resource
-        """
-        script_body = '/bin/echo 3'
-        attr = {'type': 'float', 'flag': 'nh'}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo')
-        self.scheduler.set_sched_config({'mom_resources': "foo"},
-                                        validate=True)
-        self.scheduler.add_resource('foo')
-
-        self.mom.add_mom_dyn_res('foo', script_body, prefix='mom_resc',
-                                 suffix='.scr')
-        attr = {'Resource_List.foo': 2}
-        j = Job(TEST_USER, attrs=attr)
-        jid = self.server.submit(j)
-        attr = {'job_state': 'R', 'Resource_List.foo': '2'}
-        self.server.expect(JOB, attr, id=jid, attrop=PTL_AND)
 
     @skipOnCpuSet
     def test_schedlog_preempted_info(self):

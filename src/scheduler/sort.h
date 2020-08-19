@@ -69,11 +69,6 @@ int cmp_nspec(const void *v1, const void *v2);
 int cmp_placement_sets(const void *v1, const void *v2);
 
 /*
- *	cmp_low_load - sort nodes ascending by load ave
- */
-int cmp_low_load(const void *v1, const void *v2);
-
-/*
  * cmp_fairshare - compare based on compare_path()
  */
 int cmp_fairshare(const void *j1, const void *j2);

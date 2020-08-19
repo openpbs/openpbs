@@ -130,6 +130,12 @@ class TestMultipleSchedulers(TestFunctional):
             tzone = 'America/Los_Angeles'
         return tzone
 
+    def set_scheduling(self, scheds=None, op=False):
+        if scheds is not None:
+            for each in scheds:
+                self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': op},
+                                    id=each)
+
     @skipOnCpuSet
     def test_job_sort_formula_multisched(self):
         """
@@ -933,7 +939,7 @@ class TestMultipleSchedulers(TestFunctional):
         sched_name = 'foo'
         pbsfs_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                  'sbin', 'pbsfs') + ' -I ' + sched_name
-        ret = self.du.run_cmd(cmd=pbsfs_cmd, sudo=True)
+        ret = self.du.run_cmd(cmd=pbsfs_cmd, runas=self.scheduler.user)
         err_msg = 'Scheduler %s does not exist' % sched_name
         self.assertEqual(err_msg, ret['err'][0])
 
@@ -1333,7 +1339,7 @@ class TestMultipleSchedulers(TestFunctional):
                             'do_not_span_psets': 't'}, id='sc2')
         self.server.manager(MGR_CMD_SET, SCHED, {
                             'scheduling': 't'}, id='sc2')
-        a = {'Resource_List.select': '4:ncpus=2',  ATTR_queue: 'wq2'}
+        a = {'Resource_List.select': '4:ncpus=2', ATTR_queue: 'wq2'}
         j = Job(TEST_USER, attrs=a)
         j1id = self.server.submit(j)
         self.server.expect(
@@ -1597,6 +1603,8 @@ class TestMultipleSchedulers(TestFunctional):
                        sudo=True, force=True)
 
         self.du.mkdir(path=new_sched_log, sudo=True)
+        self.du.chown(path=new_sched_log, recursive=True,
+                      uid=self.scheds['sc3'].user, sudo=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_log': new_sched_log}, id="sc3")
 
@@ -1887,12 +1895,7 @@ class TestMultipleSchedulers(TestFunctional):
         # Create 3 multi-scheds sc1, sc2 and sc3, 4 partitions and 4 vnodes
         self.common_setup()
         # Turn off scheduling in all schedulers but one (say sc3)
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc1")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc2")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="default")
+        self.set_scheduling(['sc1', 'sc2', 'default'], False)
 
         # submit a job in partition serviced by sc1
         a = {ATTR_queue: 'wq1',
@@ -1923,12 +1926,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.common_setup()
         # Turn off scheduling in all schedulers but sc1 because sc1 serves
         # partition P1
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc2")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc3")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="default")
+        self.set_scheduling(['sc2', 'sc3', 'default'], False)
 
         # Submit an advance reservation which is going to occupy full
         # partition in future
@@ -1977,12 +1975,7 @@ e.accept()
         # Create 3 multi-scheds sc1, sc2 and sc3, 3 partitions and 4 vnodes
         self.common_setup()
         # Turn off scheduling in all schedulers but one (say sc3)
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc1")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc2")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="default")
+        self.set_scheduling(['sc1', 'sc2', 'default'], False)
         t = int(time.time())
         a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 5,
              'reserve_end': t + 15}
@@ -2093,12 +2086,7 @@ e.accept()
         a = {'reserve_retry_time': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc2")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc3")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="default")
+        self.set_scheduling(['sc2', 'sc3', 'default'], False)
 
         attr = {'Resource_List.select': '1:ncpus=2',
                 'reserve_start': start,
@@ -2195,12 +2183,7 @@ e.accept()
         """
         self.common_setup()
         # Turn off scheduling in all schedulers but sc1
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc2")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc3")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="default")
+        self.set_scheduling(['sc2', 'sc3', 'default'], False)
 
         a = {ATTR_W: 'create_resv_from_job=1', ATTR_q: 'wq1',
              'Resource_List.walltime': 1000}
@@ -2223,12 +2206,7 @@ e.accept()
         """
         self.common_setup()
         # Turn off scheduling in all schedulers but sc1
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc2")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="sc3")
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
-                            id="default")
+        self.set_scheduling(['sc2', 'sc3', 'default'], False)
 
         a = {'Resource_List.select': '1:ncpus=2', ATTR_q: 'wq1',
              'Resource_List.walltime': 1000}
@@ -2243,3 +2221,55 @@ e.accept()
         a = {ATTR_job: jid, 'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
              'partition': 'P1'}
         self.server.expect(RESV, a, id=rid)
+
+    def test_resv_alter_force_for_confirmed_resv(self):
+        """
+        Test that in a multi-sched setup ralter -Wforce can
+        modify a confirmed reservation successfully even when
+        the ralter results into over subscription of resources.
+        """
+
+        self.common_setup()
+        # Submit 4 reservations to fill up the system and check they are
+        # confirmed
+        for _ in range(4):
+            t = int(time.time())
+            a = {'Resource_List.select': '1:ncpus=2', 'reserve_start': t + 300,
+                 'reserve_end': t + 900}
+            r = Reservation(TEST_USER, a)
+            rid = self.server.submit(r)
+            attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+            self.server.expect(RESV, attr, rid)
+            partition = self.server.status(RESV, 'partition', id=rid)
+            if (partition[0]['partition'] == 'P1'):
+                p1_start_time = t + 300
+        # submit a reservation that will end before the start time of
+        # reservation confimed in partition P1
+        bu = BatchUtils()
+        stime = int(time.time()) + 30
+        etime = p1_start_time - 10
+        # Turn off scheduling for all schedulers, except sc1
+        self.set_scheduling(['sc2', 'sc3', 'default'], False)
+
+        attrs = {'reserve_end': etime, 'reserve_start': stime,
+                 'Resource_List.select': '1:ncpus=2'}
+        rid_new = self.server.submit(Reservation(TEST_USER, attrs))
+
+        check_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
+                      'partition': 'P1'}
+        self.server.expect(RESV, check_attr, rid_new)
+
+        # Turn off the last running scheduler
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'false'},
+                            id="sc1")
+        # extend end time so that it overlaps with an existin reservation
+        etime = etime + 300
+        a = {'reserve_end': bu.convert_seconds_to_datetime(etime),
+             'reserve_start': bu.convert_seconds_to_datetime(stime)}
+
+        self.server.alterresv(rid_new, a, extend='force')
+        msg = "pbs_ralter: " + rid_new + " CONFIRMED"
+        self.assertEqual(msg, self.server.last_out[0])
+        resv_attr = self.server.status(RESV, id=rid_new)[0]
+        resv_end = bu.convert_stime_to_seconds(resv_attr['reserve_end'])
+        self.assertEqual(int(resv_end), etime)

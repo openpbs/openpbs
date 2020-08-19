@@ -234,6 +234,8 @@ int update_svr_schedobj(int connector, int cmd, int alarm_time);
 
 int set_validate_sched_attrs(int connector);
 
+int validate_running_user(char * exename);
+
 
 #ifdef	__cplusplus
 }
