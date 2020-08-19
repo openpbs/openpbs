@@ -40,6 +40,7 @@
 
 import time
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestCalendaring(TestFunctional):
@@ -227,9 +228,7 @@ class TestCalendaring(TestFunctional):
         job2 = self.server.status(JOB, id=jid2)
         job3 = self.server.status(JOB, id=jid3)
 
-        stime = time.strptime(job2[0]['stime'], "%a %b %d %H:%M:%S %Y")
-        end_time = time.mktime(stime) + 45
+        end_time = time.mktime(time.strptime(job2[0]['stime'], '%c')) + 45
         est_time = job3[0]['estimated.start_time']
-        est_time = time.strptime(est_time, "%a %b %d %H:%M:%S %Y")
-
-        self.assertAlmostEqual(end_time, time.mktime(est_time), delta=1)
+        est_time = time.mktime(time.strptime(est_time, '%c'))
+        self.assertAlmostEqual(end_time, est_time, delta=1)
