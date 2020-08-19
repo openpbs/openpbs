@@ -708,27 +708,61 @@ del_job_related_file(job *pjob, char *fsuffix)
 }
 
 #ifdef PBS_MOM
+/**
+ * @brief	Rename the job's <taskdir>.TK to <taskdir>.TK.RM
+ *
+ * @param[in]	pjob - the job being purged
+ *
+ * @return	char *
+ * @retval	!NULL  - new taskdir path name, malloced which must be freed.
+ * @retval	NULL - rename failed, error encountered
+ */
+static char *
+rename_taskdir(job *pjob)
+{
+	char namebuf[MAXPATHLEN + 1] = {'\0'};
+	char renamebuf[MAXPATHLEN + 1] = {'\0'};
+	char *fprefix;	
+
+	if (pjob == NULL)
+		return (NULL);
+
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		fprefix = pjob->ji_qs.ji_fileprefix;
+	else
+		fprefix = pjob->ji_qs.ji_jobid;
+
+	snprintf(namebuf, sizeof(namebuf) - 1, "%s%s%s", path_jobs, fprefix, JOB_TASKDIR_SUFFIX);
+	snprintf(renamebuf, sizeof(renamebuf) - 1, "%s%s%s%s", path_jobs, fprefix, JOB_TASKDIR_SUFFIX, JOB_DEL_SUFFIX);
+	if (rename(namebuf, renamebuf) == 0)
+		return (strdup(renamebuf));
+	return (strdup(namebuf));
+}
 
 /**
  * @brief	Convenience function to delete directories associated with a job being purged
  *
  * @param[in]	pjob - the job being purged
+ * @param[in]	taskdir - if not NULL, the path name to the task directory to cleanup
  *
  * @return	void
  */
 void
-del_job_dirs(job *pjob)
+del_job_dirs(job *pjob, char *taskdir)
 {
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 
-	strcpy(namebuf, path_jobs);      /* job directory path */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		strcat(namebuf, pjob->ji_qs.ji_jobid);
-	strcat(namebuf, JOB_TASKDIR_SUFFIX);
-	remtree(namebuf);
-
+	if (taskdir == NULL) {
+		strcpy(namebuf, path_jobs);      /* job directory path */
+		if (*pjob->ji_qs.ji_fileprefix != '\0')
+			strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+		else
+			strcat(namebuf, pjob->ji_qs.ji_jobid);
+		strcat(namebuf, JOB_TASKDIR_SUFFIX);
+		remtree(namebuf);
+	} else {
+		remtree(taskdir);
+	}
 	rmtmpdir(pjob->ji_qs.ji_jobid);		/* remove tmpdir */
 
 	/* remove the staging and execution directory when sandbox=PRIVATE
@@ -799,6 +833,7 @@ job_purge(job *pjob)
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
 	attribute *jrpattr = NULL;
+	char *taskdir_path = NULL;
 
 #ifndef WIN32
 	pid_t pid = -1;
@@ -910,6 +945,10 @@ job_purge(job *pjob)
 	 * only if job is executed successfully with exit status 0(JOB_EXEC_OK)
 	 */
 	if (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK) {
+		/* rename the taskdir path to avoid race condition when job
+		 * reruns. It will be removed later in the child process.
+		 */
+		taskdir_path = rename_taskdir(pjob);
 		child_process = 1;
 		pid = fork();
 		if (pid > 0) {
@@ -918,6 +957,7 @@ job_purge(job *pjob)
 #endif
 			/* parent mom */
 			job_free(pjob);
+			free(taskdir_path);
 			return;
 		}
 	}
@@ -931,7 +971,8 @@ job_purge(job *pjob)
 		pjob->ji_preq = NULL;
 	}
 
-	del_job_dirs(pjob);
+	del_job_dirs(pjob, taskdir_path);
+	free(taskdir_path);
 
 	del_chkpt_files(pjob);
 

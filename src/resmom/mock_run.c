@@ -269,7 +269,7 @@ mock_run_job_purge(job *pjob)
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
-	del_job_dirs(pjob);
+	del_job_dirs(pjob, NULL);
 
 	/* delete job file */
 	del_job_related_file(pjob, JOB_FILE_SUFFIX);
