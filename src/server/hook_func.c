@@ -4858,8 +4858,6 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 				}
 				if (set_action) {
 					pact->action = action;
-				} else if ((pact->action & action) && sync_mom_hookfiles_proc_running) {
-					continue;  /* dont reuse the action object if replies are still expected for same action */
 				} else {
 					if (action & MOM_HOOK_ACTION_DELETE) {
 						if (pact->action & MOM_HOOK_SEND_ACTIONS) {
