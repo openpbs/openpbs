@@ -5185,6 +5185,7 @@ class Server(PBSService):
 
         if delnodes:
             self.delete_nodes()
+        # disable cgroups hook - mom revert will enable only if needed 
         self.manager(MGR_CMD_SET, MGR_OBJ_HOOK,
                      {'enabled': 'False'}, 'pbs_cgroups')
         if reverthooks:
