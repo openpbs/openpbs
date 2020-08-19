@@ -71,6 +71,8 @@ else
 			python_dir=$( /bin/ls -1 ${PTL_PREFIX}/lib )/site-packages
 			[ -d "${PTL_PREFIX}/bin" ] && export PATH="${PATH}:${PTL_PREFIX}/bin"
 			[ -d "${PTL_PREFIX}/lib/${python_dir}" ] && export PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+			[ -d "${__PBS_EXEC}/lib/python/altair" ] && export PYTHONPATH="${PYTHONPATH}:${__PBS_EXEC}/lib/python/altair"
+			[ -d "${__PBS_EXEC}/lib64/python/altair" ] && export PYTHONPATH="${PYTHONPATH}:${__PBS_EXEC}/lib64/python/altair"
 		fi
 		unset __PBS_EXEC
 		unset PTL_PREFIX

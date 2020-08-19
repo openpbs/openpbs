@@ -384,6 +384,7 @@ AC_CONFIG_FILES([
 	src/lib/Libattr/Makefile
 	src/lib/Libdb/Makefile
 	src/lib/Libdb/pgsql/Makefile
+	src/lib/Libifl/Makefile
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile
