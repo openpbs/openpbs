@@ -83,7 +83,7 @@ class SmokeTest(PBSTestSuite):
         r = Reservation(TEST_USER)
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=4',
-             'reserve_start': now + 10,
+             'reserve_start': now + 20,
              'reserve_end': now + 110}
         r.set_attributes(a)
         rid = self.server.submit(r)
