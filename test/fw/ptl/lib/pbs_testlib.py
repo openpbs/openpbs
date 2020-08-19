@@ -5185,6 +5185,8 @@ class Server(PBSService):
 
         if delnodes:
             self.delete_nodes()
+        self.manager(MGR_CMD_SET, MGR_OBJ_HOOK,
+                     {'enabled': 'False'}, 'pbs_cgroups')
         if reverthooks:
             if self.platform == 'shasta':
                 dohup = False
