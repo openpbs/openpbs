@@ -2085,7 +2085,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 	}
 
 	ind = ninfo->node_ind;
-	if (ind != -1 && ninfo->bucket_ind != -1) {
+	if (ind != -1 && ninfo->bucket_ind != -1 && ninfo->num_jobs == 0) {
 		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
 
 		if (ninfo->node_events == NULL) {
