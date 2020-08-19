@@ -515,6 +515,15 @@ class PBSTestSuite(unittest.TestCase):
         if not cls.mom.is_cray():
             return
         msg = 'capability not supported on Cray'
+        # check if we need to skip the whole test suite
+        if '__skip_on_cray__' in cls.__dict__ \
+           and cls.__skip_on_cray__ is True:
+            for test_name in cls.test_list:
+                test_item = getattr(cls, test_name)
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+            return
+        # skip individual test cases
         for test_name in cls.test_list:
             test_item = getattr(cls, test_name)
             if '__skip_on_cray__' in test_item.__dict__ \
@@ -527,6 +536,15 @@ class PBSTestSuite(unittest.TestCase):
         if not cls.mom.is_shasta():
             return
         msg = 'capability not supported on Cray Shasta'
+        # check if we need to skip the whole test suite
+        if '__skip_on_shasta__' in cls.__dict__ \
+           and cls.__skip_on_shasta__ is True:
+            for test_name in cls.test_list:
+                test_item = getattr(cls, test_name)
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+            return
+        # skip individual test cases
         for test_name in cls.test_list:
             test_item = getattr(cls, test_name)
             if '__skip_on_shasta__' in test_item.__dict__ \
@@ -545,6 +563,15 @@ class PBSTestSuite(unittest.TestCase):
                 break
         if not skip_cpuset_tests:
             return
+        # check if we need to skip the whole test suite
+        if '__skip_on_cpuset__' in cls.__dict__ \
+           and cls.__skip_on_cpuset__ is True:
+            for test_name in cls.test_list:
+                test_item = getattr(cls, test_name)
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+            return
+        # skip individual test cases
         for test_name in cls.test_list:
             test_item = getattr(cls, test_name)
             if '__skip_on_cpuset__' in test_item.__dict__ \
