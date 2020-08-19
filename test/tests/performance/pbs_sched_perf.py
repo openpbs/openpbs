@@ -39,7 +39,7 @@
 
 
 from tests.performance import *
-from ptl.utils.pbs_logutils import PBSSchedulerLog
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestSchedPerf(TestPerformance):
@@ -447,19 +447,14 @@ class TestSchedPerf(TestPerformance):
             a = {'scheduling': 'False'}
             self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
         for sc in self.scheds:
-            self.scheds[sc].log_match("Leaving Scheduling Cycle",
-                                      starttime=int(start),
-                                      max_attempts=30, interval=1)
-        for sc in self.scheds:
             if sc != 'default':
-                filename = self.scheds[sc].attributes['sched_log']
-                sl = PBSSchedulerLog()
-                end = time.time()
-                sl.analyze(filename, start, end, self.server.hostname)
-                cycles = sl.cycles
-                if cycles is None or len(cycles) == 0:
-                    return []
-                dur = cycles[-1:][0].end - cycles[-1:][0].start
+                self.logger.info("searching log for scheduler " + str(sc))
+                log_msg = self.scheds[sc].log_match("Leaving Scheduling Cycle",
+                                                    starttime=int(start),
+                                                    max_attempts=30)
+                endtime = PBSLogUtils.convert_date_time(
+                    log_msg[1].split(';')[0])
+                dur = endtime - start
                 self.perf_test_result(dur, sc + "_cycle_duration", "secs")
                 self.logger.info('Time taken by ' + str(sc) +
                                  ' scheduler to run 1k jobs is ' + str(dur))
