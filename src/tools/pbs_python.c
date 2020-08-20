@@ -149,6 +149,7 @@ pbs_list_head	svr_modifyjob_hooks;
 pbs_list_head	svr_resvsub_hooks;
 pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
+pbs_list_head	svr_endjob_hooks;
 pbs_list_head	svr_management_hooks;
 pbs_list_head	svr_provision_hooks;
 pbs_list_head	svr_periodic_hooks;

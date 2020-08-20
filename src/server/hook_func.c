@@ -205,6 +205,7 @@ extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
+extern pbs_list_head svr_endjob_hooks;
 extern pbs_list_head svr_management_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
@@ -3843,6 +3844,15 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				"Did not find a job tied to runjob request!");
 			return (-1);
 		}
+	} else if (preq->rq_type == PBS_BATCH_JobObit) {
+		hook_event = HOOK_EVENT_ENDJOB;
+		/* FIXME: req_ptr.rq_end = (struct rq_end *)&preq->rq_ind.rq_end; */
+		head_ptr = &svr_endjob_hooks;
+
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, __func__, "PBS_BATCH_JobObit not implemented");
+		abort();
+		;
 	} else if (preq->rq_type == PBS_BATCH_Manager) {
 		hook_event = HOOK_EVENT_MANAGEMENT;
 		preq->rq_ind.rq_management.rq_reply = &preq->rq_reply;
