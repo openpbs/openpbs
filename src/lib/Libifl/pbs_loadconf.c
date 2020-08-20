@@ -291,12 +291,12 @@ __pbs_loadconf(int reload)
 	char *conf_value;		/* the value from the conf file or env*/
 	char *gvalue;			/* used with getenv() */
 	unsigned int uvalue;		/* used with sscanf() */
+	struct passwd *pw;
+	uid_t pbs_current_uid;
 #ifndef WIN32
 	struct servent *servent;	/* for use with getservent */
 	char **servalias;		/* service alias list */
 	unsigned int *pui;		/* for use with identify_service_entry */
-	struct passwd *pw;
-	uid_t pbs_current_uid;
 #endif
 
 	/* initialize the thread context data, if not already initialized */
