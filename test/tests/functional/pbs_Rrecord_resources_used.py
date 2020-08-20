@@ -543,14 +543,14 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         self.server.accounting_match(
             msg='.*R;' + jid1 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid1, regexp=True)
         self.server.accounting_match(
             msg='.*R;' + jid2 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid2, regexp=True)
         self.server.accounting_match(msg='.*R;' + re.escape(
-            jid3s1) + '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            jid3s1) + '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
         time.sleep(5)
 
@@ -561,15 +561,15 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         # usage and run_count should be 3 for J1 and J2.
         self.server.accounting_match(
             msg='.*R;' + jid1 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=2.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid1, regexp=True)
         self.server.accounting_match(
             msg='.*R;' + jid2 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=2.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid2, regexp=True)
         self.server.accounting_match(msg='.*R;' + re.escape(
             jid3s1) +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid3s1, regexp=True)
 
     def tearDown(self):
