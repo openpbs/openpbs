@@ -127,17 +127,13 @@ def checkModule(modname):
     and if not skip the test
     """
     def decorated(function):
-        def wrapper(self, *args, **kwargs):
-            import imp
-            try:
-                imp.find_module(modname)
-            except ImportError:
-                self.skipTest(reason='Module unavailable ' + modname)
-            else:
-                function(self, *args, **kwargs)
-        wrapper.__doc__ = function.__doc__
-        wrapper.__name__ = function.__name__
-        return wrapper
+        import imp
+        try:
+            imp.find_module(modname)
+        except ImportError:
+            function.__unittest_skip__ = True
+            function.__unittest_skip_why__ = 'Module unavailable ' + modname
+        return function
     return decorated
 
 
@@ -145,49 +141,24 @@ def skipOnCray(function):
     """
     Decorator to skip a test on a ``Cray`` system
     """
-
-    def wrapper(self, *args, **kwargs):
-        if self.mom.is_cray():
-            self.skipTest(reason='capability not supported on Cray')
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_cray__ = True
+    return function
 
 
 def skipOnShasta(function):
     """
     Decorator to skip a test on a ``Cray Shasta`` system
     """
-
-    def wrapper(self, *args, **kwargs):
-        if self.mom.is_shasta():
-            self.skipTest(reason='capability not supported on Cray Shasta')
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_shasta__ = True
+    return function
 
 
 def skipOnCpuSet(function):
     """
     Decorator to skip a test on a cgroup cpuset system
     """
-
-    def wrapper(self, *args, **kwargs):
-        for mom in self.moms.values():
-            if mom.is_cpuset_mom():
-                msg = 'capability not supported on cgroup cpuset system: ' +\
-                      mom.shortname
-                self.skipTest(reason=msg)
-                break
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_cpuset__ = True
+    return function
 
 
 def requirements(*args, **kwargs):
@@ -482,6 +453,11 @@ class PBSTestSuite(unittest.TestCase):
         cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
         cls.server.restart()
         cls.log_end_setup(True)
+        # methods for skipping tests with ptl decorators
+        cls.populate_test_dict()
+        cls.skip_cray_tests()
+        cls.skip_shasta_tests()
+        cls.skip_cpuset_tests()
 
     def setUp(self):
         if 'skip-setup' in self.conf:
@@ -527,6 +503,72 @@ class PBSTestSuite(unittest.TestCase):
         self.revert_comms()
         self.log_end_setup()
         self.measurements = []
+
+    @classmethod
+    def populate_test_dict(cls):
+        cls.test_dict = {}
+        for attr in dir(cls):
+            if attr.startswith('test'):
+                obj = getattr(cls, attr)
+                if callable(obj):
+                    cls.test_dict[attr] = obj
+
+    @classmethod
+    def skip_cray_tests(cls):
+        if not cls.mom.is_cray():
+            return
+        msg = 'capability not supported on Cray'
+        if cls.__dict__.get('__skip_on_cray__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_cray__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def skip_shasta_tests(cls):
+        if not cls.mom.is_shasta():
+            return
+        msg = 'capability not supported on Cray Shasta'
+        if cls.__dict__.get('__skip_on_shasta__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_shasta__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def skip_cpuset_tests(cls):
+        skip_cpuset_tests = False
+        for mom in cls.moms.values():
+            if mom.is_cpuset_mom():
+                skip_cpuset_tests = True
+                msg = 'capability not supported on cgroup cpuset system: '
+                msg += mom.shortname
+                break
+        if not skip_cpuset_tests:
+            return
+        if cls.__dict__.get('__skip_on_cpuset__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_cpuset__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
 
     @classmethod
     def log_enter_setup(cls, iscls=False):
