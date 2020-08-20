@@ -454,7 +454,7 @@ class PBSTestSuite(unittest.TestCase):
         cls.server.restart()
         cls.log_end_setup(True)
         # methods for skipping tests with ptl decorators
-        cls.populate_test_list()
+        cls.populate_test_dict()
         cls.skip_cray_tests()
         cls.skip_shasta_tests()
         cls.skip_cpuset_tests()
@@ -505,52 +505,47 @@ class PBSTestSuite(unittest.TestCase):
         self.measurements = []
 
     @classmethod
-    def populate_test_list(cls):
-        cls.test_list = [attr for attr in dir(cls)
-                         if attr.startswith('test')
-                         and callable(getattr(cls, attr))]
+    def populate_test_dict(cls):
+        cls.test_dict = {}
+        for attr in dir(cls):
+            if attr.startswith('test'):
+                obj = getattr(cls, attr)
+                if callable(obj):
+                    cls.test_dict[attr] = obj
 
     @classmethod
     def skip_cray_tests(cls):
         if not cls.mom.is_cray():
             return
         msg = 'capability not supported on Cray'
-        # check if we need to skip the whole test suite
-        if '__skip_on_cray__' in cls.__dict__ \
-           and cls.__skip_on_cray__ is True:
-            for test_name in cls.test_list:
-                test_item = getattr(cls, test_name)
+        if cls.__dict__.get('__skip_on_cray__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
                 test_item.__unittest_skip__ = True
                 test_item.__unittest_skip_why__ = msg
-            return
-        # skip individual test cases
-        for test_name in cls.test_list:
-            test_item = getattr(cls, test_name)
-            if '__skip_on_cray__' in test_item.__dict__ \
-               and test_item.__skip_on_cray__ is True:
-                test_item.__unittest_skip__ = True
-                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_cray__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
 
     @classmethod
     def skip_shasta_tests(cls):
         if not cls.mom.is_shasta():
             return
         msg = 'capability not supported on Cray Shasta'
-        # check if we need to skip the whole test suite
-        if '__skip_on_shasta__' in cls.__dict__ \
-           and cls.__skip_on_shasta__ is True:
-            for test_name in cls.test_list:
-                test_item = getattr(cls, test_name)
+        if cls.__dict__.get('__skip_on_shasta__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
                 test_item.__unittest_skip__ = True
                 test_item.__unittest_skip_why__ = msg
-            return
-        # skip individual test cases
-        for test_name in cls.test_list:
-            test_item = getattr(cls, test_name)
-            if '__skip_on_shasta__' in test_item.__dict__ \
-               and test_item.__skip_on_shasta__ is True:
-                test_item.__unittest_skip__ = True
-                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_shasta__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
 
     @classmethod
     def skip_cpuset_tests(cls):
@@ -558,26 +553,22 @@ class PBSTestSuite(unittest.TestCase):
         for mom in cls.moms.values():
             if mom.is_cpuset_mom():
                 skip_cpuset_tests = True
-                msg = 'capability not supported on cgroup cpuset system: ' +\
-                      mom.shortname
+                msg = 'capability not supported on cgroup cpuset system: '
+                msg += mom.shortname
                 break
         if not skip_cpuset_tests:
             return
-        # check if we need to skip the whole test suite
-        if '__skip_on_cpuset__' in cls.__dict__ \
-           and cls.__skip_on_cpuset__ is True:
-            for test_name in cls.test_list:
-                test_item = getattr(cls, test_name)
+        if cls.__dict__.get('__skip_on_cpuset__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
                 test_item.__unittest_skip__ = True
                 test_item.__unittest_skip_why__ = msg
-            return
-        # skip individual test cases
-        for test_name in cls.test_list:
-            test_item = getattr(cls, test_name)
-            if '__skip_on_cpuset__' in test_item.__dict__ \
-               and test_item.__skip_on_cpuset__ is True:
-                test_item.__unittest_skip__ = True
-                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_cpuset__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
 
     @classmethod
     def log_enter_setup(cls, iscls=False):
