@@ -423,7 +423,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         j2 = Job(TEST_USER)
         j2.create_script(body=script)
         j2.set_attributes(
-            {ATTR_l + '.cput': 180, ATTR_l + '.ncpus': 3,  ATTR_k: 'oe'})
+            {ATTR_l + '.cput': 180, ATTR_l + '.ncpus': 3, ATTR_k: 'oe'})
         jid2 = self.server.submit(j2)
 
         # Verify that the jobs have started running.
