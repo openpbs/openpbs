@@ -47,13 +47,6 @@ class Test_acl_host_queue(TestFunctional):
     and acl_hosts.
     """
 
-    def setUp(self):
-        """
-        Set up test.
-        """
-
-        TestFunctional.setUp(self)
-
     def test_acl_host_enable_refuse(self):
         """
         Set acl_host_enable = True on queue and check whether or not
@@ -81,7 +74,7 @@ class Test_acl_host_queue(TestFunctional):
         whether or not a job can be submitted.
         """
         a = {"acl_host_enable": True,
-             "acl_hosts": self.mom.hostname}
+             "acl_hosts": self.server.hostname}
         self.server.manager(MGR_CMD_SET, QUEUE, a,
                             self.server.default_queue)
 
