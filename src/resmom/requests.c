@@ -1192,6 +1192,12 @@ post_reply(job *pjob, int err)
 	if (pjob->ji_postevent == TM_NULL_EVENT)	/* no event */
 		return;
 
+	if (pjob->ji_hosts == NULL) {           /* No one to talk to */
+		pjob->ji_postevent = TM_NULL_EVENT;
+		pjob->ji_taskid = TM_NULL_TASK;
+		return;
+	}
+
 	stream = pjob->ji_hosts[0].hn_stream;	/* MS stream */
 	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
 	jobid = pjob->ji_qs.ji_jobid;
