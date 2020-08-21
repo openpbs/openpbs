@@ -934,11 +934,28 @@ is_request(int stream, int version)
 			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "received ack obits = %d", njobs);
 
 			while(njobs--) {
+				job *pjob = NULL;
 				jobid = disrst(stream, &ret);
 				if (ret != DIS_SUCCESS)
 					goto err;
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, "Job exited, Server acknowledged Obit");
-				set_job_toexited(jobid);
+				pjob = find_job(jobid);
+				if (pjob) {
+					/* note: see on_job_exit() for more info */
+					if (!has_stage(pjob) && num_eligible_hooks(HOOK_EVENT_EXECJOB_END) == 0) {
+						mom_deljob(pjob);
+					} else {
+						pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+						if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
+							/*
+							* if checkpointed, save state to disk, otherwise
+							* leave unchanges on disk so recovery will resend
+							* obit to server
+							*/
+							job_save(pjob);
+						}
+					}
+				}
 				free(jobid);
 				jobid = NULL;
 			}

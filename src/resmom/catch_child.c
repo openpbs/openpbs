@@ -1613,35 +1613,6 @@ send_sisters_deljob_wait(job *pjob)
 
 /**
  * @brief
- * 	set_job_toexited - set job substate to exited
- *
- *	Called when a checkpointed job's obit is acknowledged by the server,
- *	prevents a second obit from being sent.
- *
- * @param[in] jobid - char pointer holding jobid
- *
- * @return Void
- *
- */
-void
-set_job_toexited(char *jobid)
-{
-	job *pjob;
-
-	pjob = find_job(jobid);
-	if (pjob) {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
-			/* if checkpointed, save state to disk, otherwise  */
-			/* leave unchanges on disk so recovery will resend */
-			/* obit to server                                  */
-			(void)job_save(pjob);
-		}
-	}
-}
-
-/**
- * @brief
  * 		Convenience function to call mom_set_use() when all jobs need to be updated
  *
  * @param	void

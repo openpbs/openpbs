@@ -381,6 +381,7 @@ extern char *hook_freq_as_string(int);
 extern char *hook_order_as_string(short);
 extern char *hook_user_as_string(hook_user);
 extern char *hook_fail_action_as_string(unsigned int);
+extern int num_eligible_hooks(unsigned int);
 
 #ifdef	_WORK_TASK_H
 extern void cleanup_hooks_workdir(struct work_task *);

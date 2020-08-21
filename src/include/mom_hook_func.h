@@ -191,7 +191,6 @@ extern void cleanup_hooks_in_path_spool(struct work_task *ptask);
 extern int python_script_alloc(const char *script_path, struct python_script **py_script);
 extern void python_script_free(struct python_script *py_script);
 extern void run_periodic_hook_bg(hook *phook);
-extern int num_eligible_hooks(unsigned int hook_event);
 extern int get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 			    char *reject_msg, int reject_msg_size, int *reject_rerunjob,
 			    int *reject_deletejob, int *reboot_flag, char *reboot_cmd,

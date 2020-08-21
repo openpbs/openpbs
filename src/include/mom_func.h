@@ -393,7 +393,6 @@ extern int   conn_qsub(char *host, long port);
 extern int  state_to_server(int, int);
 extern int   send_hook_vnl(void *vnl);
 extern int hook_requests_to_server(pbs_list_head *);
-extern void  set_job_toexited(char *);
 extern int init_x11_display(struct pfwdsock *, int, char *, char *, char *);
 extern int setcurrentworkdir(char *);
 extern int becomeuser(job *);

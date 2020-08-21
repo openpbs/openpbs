@@ -80,6 +80,7 @@
 
 #ifndef PBS_MOM
 #include "pbs_idx.h"
+#include "ticket.h"
 #else
 #include "mom_server.h"
 #include "mom_func.h"
@@ -2018,3 +2019,428 @@ find_aoe_from_request(resc_resv *presv)
 	return aoe_req;
 }
 #endif	/*ifndef PBS_MOM*/
+
+/**
+ * @brief
+ * 		get_jobowner - copy the basic job owner's name, without the @host suffix.
+ *		The "to" buffer must be large enough (PBS_MAXUSER+1).
+ *
+ * @param[in]	from	-	 basic job owner's name
+ * @param[out]	to	-	"to" buffer where name is copied.
+ */
+void
+get_jobowner(char *from, char *to)
+{
+	int i;
+
+	for (i=0; i<PBS_MAXUSER; ++i) {
+		if ((*(from+i) == '@') || (*(from+i) == '\0'))
+			break;
+		*(to+i) = *(from+i);
+	}
+	*(to+i) = '\0';
+}
+
+/**
+ * @brief
+ * 		setup_from - setup the "from" name for a standard job file:
+ *		output, error, or chkpt
+ *
+ * @param[in]	pjob	- job structure
+ * @param[in]	suffix	- suffix for the "from" name
+ *
+ * @return	"from" name
+ */
+
+static char *
+setup_from(job  *pjob, char *suffix)
+{
+	char *from;
+
+	from = malloc(strlen(pjob->ji_qs.ji_jobid) + strlen(suffix) + 1);
+	if (from) {
+		(void)strcpy(from, pjob->ji_qs.ji_jobid);
+		(void)strcat(from, suffix);
+	}
+	return (from);
+}
+
+/**
+ * @brief
+ * 		setup_cpyfiles - if need be, allocate and initialize a Copy Files
+ *		batch request, then append the file pairs
+ *
+ * @param[in]	preq	- batch request
+ * @param[in]	pjob	- job structure
+ * @param[in]	from	- local (to mom) name
+ * @param[in]	to		- remote (destination) name
+ * @param[in]	direction	- copy direction
+ * @param[in]	tflag	- 1 if stdout or stderr , 2 if stage out or in
+ *
+ * @return	modified batch request.
+ * @retval	NULL	- failure
+ */
+
+static struct batch_request *
+setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int  direction, int  tflag)
+{
+	struct rq_cpyfile *pcf;
+	struct rq_cpyfile_cred *pcfc;
+	struct rqfpair    *pair;
+	size_t		  cred_len = 0;
+	char		  *cred = NULL;
+	char		  *prq_jobid;
+	char		  *prq_owner;
+	char		  *prq_user;
+	char		  *prq_group;
+	int 		  *prq_dir;
+	pbs_list_head	  *prq_pair;
+
+#ifndef PBS_MOM
+	/* if this is a sub job of an array job, then check to see if the */
+	/* index needs to be substituted in the paths			  */
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+		to   = subst_array_index(pjob, to);
+		from = subst_array_index(pjob, from);
+	}
+#endif
+
+	if (preq == NULL) {
+		/* check that certain required attributues are valid */
+
+		if ((pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str == NULL) ||
+			(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str == NULL)) {
+			/* this case shouldn't happen, log it and don't do copy     */
+			/* use null jobid, if attr missing, jobid is likely bad too */
+
+			log_event(PBSEVENT_ERROR|PBSEVENT_JOB, PBS_EVENTCLASS_FILE,
+				LOG_INFO,  "",
+				"cannot copy files for job, owner/euser missing");
+			if (from)
+				free(from);
+			if (to)
+				free(to);
+			if (cred)
+				free(cred);
+			return NULL;
+		}
+		/* allocate and initialize the batch request struct */
+#ifndef PBS_MOM
+		if (get_credential(parse_servername(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str, NULL), pjob, PBS_GC_CPYFILE, &cred, &cred_len) == 0) {
+			preq = alloc_br(PBS_BATCH_CopyFiles_Cred);
+		} else
+#endif
+			preq = alloc_br(PBS_BATCH_CopyFiles);
+
+		if (preq == NULL) {
+			if (from)
+				free(from);
+			if (to)
+				free(to);
+			if (cred)
+				free(cred);
+			return (preq);
+		}
+
+		if (preq->rq_type == PBS_BATCH_CopyFiles_Cred) {
+			preq->rq_ind.rq_cpyfile_cred.rq_credtype =
+				pjob->ji_extended.ji_ext.ji_credtype;
+			preq->rq_ind.rq_cpyfile_cred.rq_pcred = cred;
+			preq->rq_ind.rq_cpyfile_cred.rq_credlen = cred_len;
+			pcfc = &preq->rq_ind.rq_cpyfile_cred;
+			prq_jobid = pcfc->rq_copyfile.rq_jobid;
+			prq_owner = pcfc->rq_copyfile.rq_owner;
+			prq_user = pcfc->rq_copyfile.rq_user;
+			prq_group = pcfc->rq_copyfile.rq_group;
+			prq_dir = &pcfc->rq_copyfile.rq_dir;
+			prq_pair = &pcfc->rq_copyfile.rq_pair;
+		} else {
+			pcf = &preq->rq_ind.rq_cpyfile;
+			prq_jobid = pcf->rq_jobid;
+			prq_owner = pcf->rq_owner;
+			prq_user = pcf->rq_user;
+			prq_group = pcf->rq_group;
+			prq_dir = &pcf->rq_dir;
+			prq_pair = &pcf->rq_pair;
+		}
+		CLEAR_HEAD((*prq_pair));
+
+		/* copy jobid, owner, exec-user, group names, upto the @host part */
+
+		(void)strcpy(prq_jobid, pjob->ji_qs.ji_jobid);
+		get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+			prq_owner);
+		get_jobowner(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
+			prq_user);
+		if (((pjob->ji_wattr[(int)JOB_ATR_egroup].at_flags &
+			ATR_VFLAG_DEFLT) ==0) &&
+			(pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str != 0)) {
+			strcpy(prq_group,
+				pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str);
+		}
+		else
+			prq_group[0] = '\0';	/* default: use login group */
+
+		*prq_dir = direction;
+
+		/* set "sandbox=PRIVATE" mode */
+		if (pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) {
+			/* set STAGE_JOBDIR mode based on job settings */
+			if (strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0) {
+				*prq_dir |= STAGE_JOBDIR;
+			}
+		} /* O_WORKDIR check would go here */
+
+	} else {
+
+		/* use the existing request structure */
+
+		if (preq->rq_type == PBS_BATCH_CopyFiles_Cred) {
+			pcfc = &preq->rq_ind.rq_cpyfile_cred;
+			prq_pair = &pcfc->rq_copyfile.rq_pair;
+		} else {
+			pcf = &preq->rq_ind.rq_cpyfile;
+			prq_pair = &pcf->rq_pair;
+		}
+	}
+
+	pair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
+	if (pair == NULL) {
+		free(from);
+		free(to);
+		free_br(preq);
+		return NULL;
+	}
+
+	CLEAR_LINK(pair->fp_link);
+	pair->fp_local  = from;
+	pair->fp_rmt    = to;
+	pair->fp_flag   = tflag;
+	append_link(prq_pair, &pair->fp_link, pair);
+	return (preq);
+}
+/**
+ * @brief
+ * 		is_join - Is the file joined to another.
+ *
+ * @param[in]	pjob	- job structure
+ * @param[in]	ati	- job attribute, output/error path.
+ *
+ * @return	joined or not
+ * @retval	0	- either the first or not in list.
+ * @retval	1	- being joined.
+ */
+static int
+is_join(job *pjob, enum job_atr ati)
+{
+	char       key;
+	attribute *pattr;
+	char	  *pd;
+
+	if (ati == JOB_ATR_outpath)
+		key = 'o';
+	else if (ati == JOB_ATR_errpath)
+		key = 'e';
+	else
+		return (0);
+	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
+	if (pattr->at_flags & ATR_VFLAG_SET) {
+		pd = pattr->at_val.at_str;
+		if (pd && *pd && (*pd != 'n')) {
+			/* if not the first letter, and in list - is joined */
+			if ((*pd != key) && (strchr(pd+1, (int)key)))
+				return (1);	/* being joined */
+		}
+	}
+	return (0);	/* either the first or not in list */
+}
+
+/**
+ * @brief
+ * 		cpy_stdfile - determine if one of the job's standard files (output or error)
+ *		is to be copied, if so set up the Copy Files request.
+ *
+ * @param[in]	preq	- batch request
+ * @param[in]	pjob	- job structure
+ * @param[in]	ati	- JOB_ATR_, output/error path.
+ *
+ * @return	modified batch request.
+ * @retval	NULL	failure
+ */
+
+struct batch_request *
+cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
+{
+	char *from;
+	char  key;
+	attribute *jkpattr;
+	attribute *pathattr = &pjob->ji_wattr[(int)ati];
+	char *suffix;
+	char *to = NULL;
+
+	/* if the job is interactive, don't bother to return output file */
+
+	if (pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags &&
+		pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long)
+		return NULL;
+
+	/* set up depending on which file */
+
+	if (ati == JOB_ATR_errpath) {
+		key    = 'e';
+		suffix = JOB_STDERR_SUFFIX;
+	} else {
+		key    = 'o';
+		suffix = JOB_STDOUT_SUFFIX;
+	}
+
+	if ((pathattr->at_flags & ATR_VFLAG_SET) == 0) { /* This shouldn't be */
+
+		(void)sprintf(log_buffer, "%c file missing", key);
+		log_event(PBSEVENT_ERROR|PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
+			LOG_INFO,  pjob->ji_qs.ji_jobid, log_buffer);
+		return NULL;
+	}
+
+	/* Is the file joined to another, if so don't copy it */
+
+	if (is_join(pjob, ati))
+		return (preq);
+
+	/*
+	 * If the job has a keep file attribute, and the specified file is in
+	 * the keep list, MOM has already placed the file in the user's HOME
+	 * directory.  It don't need to be copied.
+	 */
+
+	jkpattr = &pjob->ji_wattr[(int)JOB_ATR_keep];
+	if ((jkpattr->at_flags & ATR_VFLAG_SET) &&
+		strchr(jkpattr->at_val.at_str, key) && !strchr(jkpattr->at_val.at_str, 'd'))
+
+		return (preq);
+
+	/*
+	 * If the job has a remove file attribute and the job has succeeded,
+	 * std_files doesn't has to be copied.
+	 */
+	if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
+					ATR_VFLAG_SET) {
+		if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long
+				== JOB_EXEC_OK) {
+			jkpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
+			if ((jkpattr->at_flags & ATR_VFLAG_SET)
+					&& (strchr(jkpattr->at_val.at_str, key)))
+				return (preq);
+		}
+	}
+
+	/* else go with the supplied name */
+
+	to = malloc(strlen(pathattr->at_val.at_str) + 1);
+	if (to) {
+		(void)strcpy(to, pathattr->at_val.at_str);
+
+	} else
+		return (preq);	/* cannot continue with this one */
+
+	/* build up the name used by MOM as the from name */
+
+	from = setup_from(pjob, suffix);
+	if (from == NULL) {
+		(void)free(to);
+		return (preq);
+	}
+
+	/* now set names into the batch request */
+
+	return (setup_cpyfiles(preq, pjob, from, to, STAGE_DIR_OUT, STDJOBFILE));
+}
+
+/**
+ * @brief
+ * 		cpy_stage - set up a Copy Files request to include files specified by the
+ *		user to be staged out (also used for stage-in).
+ *		"stage_out" is a resource that may or may not *	exist on a host.
+ *		If such exists, the files are listed one per string as
+ *		"local_name@remote_host:remote_name".
+ *
+ * @param[in]	preq	- batch request
+ * @param[in]	pjob	- job structure
+ * @param[in]	ati	- JOB_ATR_stageout
+ * @param[in]	direction	-  1 = , 2 =
+ *
+ * @return	batch_request *
+ */
+
+struct batch_request *
+cpy_stage(struct batch_request *preq, job *pjob, enum job_atr ati, int direction)
+{
+	int		      i;
+	char		     *from;
+	attribute 	     *pattr;
+	struct array_strings *parst;
+	char 		     *plocal;
+	char		     *prmt;
+	char		     *to;
+
+	pattr = &pjob->ji_wattr[(int)ati];
+	if (pattr->at_flags & ATR_VFLAG_SET) {
+
+		/* at last, we know we have files to stage out/in */
+
+		parst = pattr->at_val.at_arst;
+		for (i = 0; i<parst->as_usedptr; ++i) {
+			plocal = parst->as_string[i];
+			prmt   = strchr(plocal, (int)'@');
+			if (prmt) {
+				*prmt = '\0';
+				from = malloc(strlen(plocal)+1);
+				if (from) {
+					(void)strcpy(from, plocal);
+					*prmt = '@';	/* restore the @ */
+				} else {
+					return (preq);
+				}
+				to   = malloc(strlen(prmt+1) + 1);
+				if (to) {
+					(void)strcpy(to, prmt+1);
+				} else {
+					(void)free(from);
+					return (preq);
+				}
+				preq = setup_cpyfiles(preq, pjob, from, to,
+					direction, STAGEFILE);
+			}
+		}
+	}
+
+	return (preq);
+}
+
+int
+has_stage(job *pjob)
+{
+	struct batch_request *preq = NULL;
+
+	preq = cpy_stdfile(NULL, pjob, JOB_ATR_outpath);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	preq = cpy_stdfile(NULL, pjob, JOB_ATR_errpath);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	preq = cpy_stage(NULL, pjob, JOB_ATR_stageout, STAGE_DIR_OUT);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	preq = cpy_stage(NULL, pjob, JOB_ATR_stagein, STAGE_DIR_IN);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	return 0;
+}
