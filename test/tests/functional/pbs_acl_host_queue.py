@@ -62,11 +62,9 @@ class Test_acl_host_queue(TestFunctional):
             self.server.submit(j)
         except PbsSubmitError as e:
             error_msg = "qsub: Access from host not allowed, or unknown host"
-            if e.msg[0] != error_msg:
-                raise self.failureException("qsub unexpected err message: " +
-                                            e.msg[0])
+            self.assertEquals(e.msg[0], error_msg)
         else:
-            self.assertFalse(True, "Queue is violating acl_hosts")
+            self.fail("Queue is violating acl_hosts")
 
     def test_acl_host_enable_allow(self):
         """
@@ -82,6 +80,6 @@ class Test_acl_host_queue(TestFunctional):
         try:
             jid = self.server.submit(j)
         except PbsSubmitError as e:
-            raise self.failureException("qsub err message: " + e.msg[0])
+            raise self.fail("qsub error message: " + e.msg[0])
         else:
             self.logger.info('Job submitted successfully: ' + jid)
