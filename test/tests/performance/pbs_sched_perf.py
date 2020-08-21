@@ -463,7 +463,7 @@ class TestSchedPerf(TestPerformance):
         self.logger.info(msg + str(max_dur))
         self.perf_test_result(
             cyc_dur - max_dur, "multisched_defaultsched_cycle_diff", "secs")
+        self.assertLess(max_dur, cyc_dur)
         msg1 = 'Multi scheduler is faster than single scheduler by '
         msg2 = 'secs in scheduling 5000 jobs with 5 schedulers'
         self.logger.info(msg1 + str(cyc_dur - max_dur) + msg2)
-        self.assertLess(max_dur, cyc_dur)
