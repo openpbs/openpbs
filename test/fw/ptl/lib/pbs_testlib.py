@@ -5166,11 +5166,6 @@ class Server(PBSService):
         if self.platform == 'cray' or self.platform == 'craysim':
             setdict[ATTR_restrict_res_to_release_on_suspend] = 'ncpus'
         if delhooks:
-            if (self.platform == 'cray' or self.platform == 'craysim' or
-                    self.platform == 'shasta'):
-                reverthooks = True
-            else:
-                reverthooks = False
             self.delete_site_hooks()
         if delqueues:
             revertqueues = False
@@ -5185,9 +5180,6 @@ class Server(PBSService):
 
         if delnodes:
             self.delete_nodes()
-        # disable cgroups hook - mom revert will enable only if needed
-        self.manager(MGR_CMD_SET, MGR_OBJ_HOOK,
-                     {'enabled': 'False'}, 'pbs_cgroups')
         if reverthooks:
             if self.platform == 'shasta':
                 dohup = False
