@@ -539,7 +539,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.rerunjob(jids, extend='force')
 
         # Verify that the accounting logs have R record with last known
-        # resource usage and run_count should be 2 for J1 and J2
+        # resource usage and run_count should be 1 for J1 and J2
 
         self.server.accounting_match(
             msg='.*R;' + jid1 +
@@ -558,7 +558,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.rerunjob(jids, extend='force')
 
         # Verify that the accounting logs have R record with last known
-        # usage and run_count should be 3 for J1 and J2.
+        # usage and run_count should be 2 for J1 and J2.
         self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
