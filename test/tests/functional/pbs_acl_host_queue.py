@@ -77,9 +77,5 @@ class Test_acl_host_queue(TestFunctional):
                             self.server.default_queue)
 
         j = Job(TEST_USER)
-        try:
-            jid = self.server.submit(j)
-        except PbsSubmitError as e:
-            raise self.fail("qsub error message: " + e.msg[0])
-        else:
-            self.logger.info('Job submitted successfully: ' + jid)
+        jid = self.server.submit(j)
+        self.logger.info('Job submitted successfully: ' + jid)
