@@ -103,7 +103,8 @@ class SmokeTest(PBSTestSuite):
         jid2 = self.server.submit(j2)
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, offset=20, interval=1)
+        self.server.expect(RESV, a, id=rid, interval=1,
+                           offset=(now + 30 - int(time.time())))
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
         self.server.expect(JOB, {'job_state': 'B'}, jid2)
 
