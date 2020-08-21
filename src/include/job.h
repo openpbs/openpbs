@@ -461,10 +461,11 @@ struct job {
 	time_t ji_walltime_stamp;		    /* time stamp for accumulating walltime */
 	struct work_task *ji_bg_hook_task;
 #ifdef WIN32
-	HANDLE ji_momsubt; /* process HANDLE to mom subtask */
-#else			   /* not WIN32 */
-	pid_t ji_momsubt; /* pid of mom subtask   */
-#endif			   /* WIN32 */
+	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
+#else	/* not WIN32 */
+	pid_t		ji_momsubt;	/* pid of mom subtask   */
+#endif /* WIN32 */
+	char	**ji_env; /* environment for the job */
 	/* ptr to post processing func  */
 	void (*ji_mompost)(struct job *, int);
 	tm_event_t ji_postevent;	   /* event waiting on mompost */

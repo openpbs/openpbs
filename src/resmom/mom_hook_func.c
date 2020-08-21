@@ -1384,9 +1384,9 @@ run_hook_exit:
 			}
 		}
 		(void)win_alarm(phook->alarm, run_hook_alarm);
-		char* env_string = NULL;
-		char** hook_env = NULL;
-		char* pbs_hook_conf = NULL;
+		char *env_string = NULL;
+		char **hook_env = NULL;
+		char *pbs_hook_conf = NULL;
 
 		if (pjob->ji_env != NULL) {
 			hook_env = dup_string_arr(pjob->ji_env);
