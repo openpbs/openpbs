@@ -446,8 +446,7 @@ class TestSchedPerf(TestPerformance):
         for sc in self.scheds:
             a = {'scheduling': 'False'}
             self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
-        i = 0
-        max = 0
+        sc_dur = []
         for sc in self.scheds:
             if sc != 'default':
                 self.logger.info("searching log for scheduler " + str(sc))
@@ -457,17 +456,14 @@ class TestSchedPerf(TestPerformance):
                 endtime = PBSLogUtils.convert_date_time(
                     log_msg[1].split(';')[0])
                 dur = endtime - start
-                if i == 0:
-                    max = dur
-                else:
-                    if dur > max:
-                        max = dur
-            i = 1
-        self.perf_test_result(max, "max_multisched_cycle_duration", "secs")
+                sc_dur.append(dur)
+        max_dur = max(sc_dur)
+        self.perf_test_result(max_dur, "max_multisched_cycle_duration", "secs")
         msg = 'Max time taken by one of the multi sched to run 1k jobs is '
-        self.logger.info(msg + str(max))
+        self.logger.info(msg + str(max_dur))
         self.perf_test_result(
-            cyc_dur - max, "multisched_defaultsched_cycle_diff", "secs")
+            cyc_dur - max_dur, "multisched_defaultsched_cycle_diff", "secs")
         msg1 = 'Multi scheduler is faster than single scheduler by '
         msg2 = 'secs in scheduling 5000 jobs with 5 schedulers'
-        self.logger.info(msg1 + str(cyc_dur - max) + msg2)
+        self.logger.info(msg1 + str(cyc_dur - max_dur) + msg2)
+        self.assertLess(max_dur, cyc_dur)
