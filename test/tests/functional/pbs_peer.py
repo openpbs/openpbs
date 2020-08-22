@@ -142,6 +142,6 @@ class TestPeering(TestFunctional):
         s1.expect(JOB, {'job_state': 'Q'}, id=jid)
         msg = (jid + r';Failed to run: .* \(15039\)')
         self.scheduler.log_match(msg, regexp=True)
-        msg = jid + ';send of job to workq@shecil:15001 failed error = 15036'
-        s2.log_match(msg)
+        msg = jid + ';send of job to workq@.* failed error = 15036'
+        s2.log_match(msg, regexp=True)
         s1.expect(JOB, {'job_state': 'R'}, id=jid2)
