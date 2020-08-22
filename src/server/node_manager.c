@@ -1925,8 +1925,7 @@ stat_update(int stream)
 	if (rc)
 		return;
 
-	// FIXME: increase to debug3 or remove it
-	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "received updates = %d", njobs);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received updates = %d", njobs);
 
 	rused.ru_next = NULL;
 	while (njobs--) {
@@ -2140,8 +2139,7 @@ recv_job_obit(int stream)
 	if (i)
 		return;
 
-	// FIXME: increase to debug3 or remove it
-	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "received obits = %d", njobs);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received obits = %d", njobs);
 
 	reject_list = (char **)calloc(1, njobs * sizeof(char *));
 	if (reject_list == NULL)
@@ -2177,8 +2175,7 @@ recv_job_obit(int stream)
 			goto recv_job_obit_err;
 	}
 
-	// FIXME: increase to debug3 or remove it
-	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "processed obits, sending replies acks: %d, rejects: %d", ack_count, reject_count);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "processed obits, sending replies acks: %d, rejects: %d", ack_count, reject_count);
 
 	if (ack_count > 0) {
 		if (is_compose(stream, IS_ACKOBIT) != DIS_SUCCESS)
@@ -2192,9 +2189,10 @@ recv_job_obit(int stream)
 			ack_list[i] = NULL;
 		}
 		dis_flush(stream);
-		free(ack_list);
-		ack_count = 0;
 	}
+	free(ack_list);
+	ack_list = NULL;
+	ack_count = 0;
 
 	if (reject_count > 0) {
 		if (is_compose(stream, IS_BADOBIT) != DIS_SUCCESS)
@@ -2208,9 +2206,10 @@ recv_job_obit(int stream)
 			reject_list[i] = NULL;
 		}
 		dis_flush(stream);
-		free(reject_list);
-		reject_count = 0;
 	}
+	free(reject_list);
+	reject_list = NULL;
+	reject_count = 0;
 
 	return;
 
@@ -2230,14 +2229,14 @@ recv_job_obit_err:
 	}
 	tpp_eom(stream);
 
-	if (reject_count > 0) {
+	if (ack_list != NULL) {
 		for (i = 0; i < reject_count; i++) {
 			if (reject_list[i] != NULL)
 				free(reject_list[i]);
 		}
 		free(reject_list);
 	}
-	if (ack_count > 0) {
+	if (ack_list != NULL) {
 		for (i = 0; i < ack_count; i++) {
 			if (ack_list[i] != NULL)
 				free(ack_list[i]);

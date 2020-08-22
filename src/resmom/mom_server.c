@@ -891,8 +891,7 @@ is_request(int stream, int version)
 				goto err;
 
 			DBPRT(("%s: IS_BADOBIT njobs: %d\n", __func__, njobs))
-			// FIXME: increase to debug3 or remove it
-			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "received reject obits = %d", njobs);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received reject obits = %d", njobs);
 
 			while(njobs--) {
 				jobid = disrst(stream, &ret);
@@ -930,8 +929,7 @@ is_request(int stream, int version)
 				goto err;
 
 			DBPRT(("%s: IS_ACKOBIT njobs: %d\n", __func__, njobs))
-			// FIXME: increase to debug3 or remove it
-			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "received ack obits = %d", njobs);
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received ack obits = %d", njobs);
 
 			while(njobs--) {
 				job *pjob = NULL;
