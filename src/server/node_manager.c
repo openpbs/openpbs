@@ -2229,7 +2229,7 @@ recv_job_obit_err:
 	}
 	tpp_eom(stream);
 
-	if (ack_list != NULL) {
+	if (reject_list != NULL) {
 		for (i = 0; i < reject_count; i++) {
 			if (reject_list[i] != NULL)
 				free(reject_list[i]);
