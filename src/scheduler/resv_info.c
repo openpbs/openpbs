@@ -1516,6 +1516,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nresv->resv->resv_state == RESV_BEING_ALTERED) {
 				if (nresv->resv->is_running) {
 					char *sel;
+					int ind;
 					free_selspec(nresv->execselect);
 					/* Use orig_nspec_arr over nspec_arr because
 					 * A) we modified it above in check_vnodes_unavailable() for reconfirmation
@@ -1523,6 +1524,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 					 */
 					sel = create_select_from_nspec(nresv->orig_nspec_arr);
 					nresv->execselect = parse_selspec(sel);
+					for (ind=0; nresv->orig_nspec_arr[ind] != NULL; ind++) {
+					    nresv->execselect->chunks[ind]->seq_num = nresv->orig_nspec_arr[ind]->seq_num;
+					}
+
 					free(sel);
 					release_running_resv_nodes(nresv, nsinfo);
 				}
@@ -1589,6 +1594,9 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		if (!(simrc & TIMED_ERROR) && resv_start_time >= 0) {
 			clear_schd_error(err);
 			if ((ns = is_ok_to_run(nsinfo->policy, nsinfo, NULL, nresv, NO_ALLPART, err)) != NULL) {
+				if (vnodes_down == 1)
+					/* if we are confirming a running reservation, sort nspec array by seq number */
+					qsort(ns, count_array(ns), sizeof(nspec *), cmp_nspec);
 				tmp = create_execvnode(ns);
 				free_nspecs(ns);
 				if (tmp == NULL) {
@@ -2035,8 +2043,8 @@ check_vnodes_unavailable(resource_resv *resv)
 			remove_ptr_from_array(resv->orig_nspec_arr, chunks_to_remove[i]);
 		}
 	}
-
-	qsort(resv->orig_nspec_arr, count_array(resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec);
+	/* move all nspec with down nodes at the back of orig_ncpec_arr */
+	qsort(resv->orig_nspec_arr, count_array(resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec_by_sub_seq);
 
 	free(chunks_to_remove);
 
