@@ -87,12 +87,12 @@
  * check_add_hook_mcast_info
  * del_deferred_hook_cmds
  * sync_mom_hookfilesTPP
- * bg_sync_mom_hookfiles
+ * mc_sync_mom_hookfiles
  * add_pending_mom_allhooks_action
  * next_sync_mom_hookfiles
  * mark_mom_hooks_seen
  * mom_hooks_seen_count
- * bg_delete_mom_hooks
+ * uc_delete_mom_hooks
  * get_hook_rescdef_checksum
  */
 
@@ -261,7 +261,7 @@ extern int get_msgid(char **id);
  *		hook_action_tid_set	- Sets the value of the global 'hook_action_tid' variable to the given
  *		'newval'.
  * @see
- *		main, hook_track_recov and bg_sync_mom_hookfiles.
+ *		main, hook_track_recov and mc_sync_mom_hookfiles.
  *
  * @param[in]	newval - the new value.
  *
@@ -281,7 +281,7 @@ hook_action_tid_set(long long int newval)
  *		Returns the value of the global 'hook_action_tid' variable.
  *
  * @see
- *		sync_mom_hookfilesTPP and bg_sync_mom_hookfiles.
+ *		sync_mom_hookfilesTPP and mc_sync_mom_hookfiles.
  *
  * @return long long int	- the 'hook_action_tid' value.
  */
@@ -4858,6 +4858,8 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 				}
 				if (set_action) {
 					pact->action = action;
+				} else if ((pact->action & action & pact->reply_expected)) {
+					continue;  /* dont reuse the action object if replies are still expected for same action */
 				} else {
 					if (action & MOM_HOOK_ACTION_DELETE) {
 						if (pact->action & MOM_HOOK_SEND_ACTIONS) {
@@ -5072,7 +5074,12 @@ add_pending_mom_hook_action(void *minfo, char *hookname, unsigned int action)
 	for (i=0; i < minfo_array_size; i++) {
 
 		if (minfo_array[i] == NULL)
-			break;
+			continue;
+
+		if ( !minfo_array[i]->mi_data || 
+				(((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
+			continue;
+		}
 
 		j=add_mom_hook_action(&minfo_array[i]->mi_action,
 			&minfo_array[i]->mi_num_action, hookname,
@@ -5323,6 +5330,38 @@ mk_deferred_hook_info(int index, int event, long long int tid)
 
 /**
  * @brief
+ *		check if there is any new pending action
+ *		if yes remove the current one
+ *	
+ * @param[in] minfo - pointer to mom info
+ * @param[in] pact - pointer to current hook action
+ * @param[in] j - index of pact in minfo->mi_action[]
+ * @param[in] event - action event to consider
+ *
+ * @return int
+ * @retval 0  - not found
+ * @retval 1  - found
+ */
+int
+check_for_latest_action(mominfo_t *minfo, mom_hook_action_t *pact, int j, int event)
+{
+	/* if the same action is marked in the next actions for the same hook then remove
+	* the pending flag
+	*/
+	int i;
+	mom_hook_action_t *pact2;
+	for (i = 0; i < minfo->mi_num_action; i++) {
+		pact2 = minfo->mi_action[i];
+		if (pact2 && (pact2->tid > pact->tid) && (pact2->action & event)
+				&& pact2->hookname && (strcmp(pact2->hookname, pact->hookname) == 0)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief
  *		Call back for the hook deferred requests over TPP stream
  *		parm1 points to the mominfo_t
  *		parm2 points to more information about the hook cmd
@@ -5355,6 +5394,7 @@ post_sendhookTPP(struct work_task *pwt)
 	int event;
 	long long int tid;
 	char *msgbuf;
+	bool failed_flag = FALSE;
 
 	if (!info)
 		return;
@@ -5385,6 +5425,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			pbs_asprintf(&msgbuf,
 				"successfully deleted rescdef file %s from %s:%d",
@@ -5409,6 +5450,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (rc != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5437,6 +5479,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			pbs_asprintf(&msgbuf,
 				"successfully deleted hook file %s from %s:%d",
@@ -5458,6 +5501,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5487,6 +5531,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5516,6 +5561,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5533,6 +5579,12 @@ post_sendhookTPP(struct work_task *pwt)
 			pact->action &= ~(MOM_HOOK_ACTION_SEND_SCRIPT);
 			hook_track_save((mominfo_t *) minfo, j);
 		}
+	}
+
+	pact->reply_expected &= ~(event);
+	if (failed_flag && check_for_latest_action(minfo, pact, j, event)) {
+		pact->action &= ~(event);
+		hook_track_save(minfo, j);
 	}
 
 	g_hook_replies_recvd++;
@@ -5740,7 +5792,7 @@ del_deferred_hook_cmds(int index)
  *		system (this function performs this using deferred requests on TPP stream)
  *
  * @see
- * 		bg_sync_mom_hookfiles and bg_delete_mom_hooks
+ * 		mc_sync_mom_hookfiles and uc_delete_mom_hooks
  *
  * @param[in]	minfo	- particular mom information to send hook request, or
  *			 	if NULL, then hook action request sent to all the
@@ -5897,7 +5949,7 @@ sync_mom_hookfilesTPP(void *minfo)
 		}
 
 		if (cmd == 1) {
-			if (PBSD_delhookfile(mconn, hookfile, 1, &msgid) != 0) {
+			if (PBSD_delhookfile(mconn, hookfile, PROT_TPP, &msgid) != 0) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					"errno %d: failed to multicast deletion of %s file %s",
 					pbs_errno, ((filetype == 1) ? "rscdef":"hook"), hookfile);
@@ -5910,7 +5962,7 @@ sync_mom_hookfilesTPP(void *minfo)
 			}
 		} else if (cmd == 2) {
 
-			rc = PBSD_copyhookfile(mconn, hookfile, 1, &msgid);
+			rc = PBSD_copyhookfile(mconn, hookfile, PROT_TPP, &msgid);
 			if (rc == -2) {
 				snprintf(log_buffer, sizeof(log_buffer), "PBSD_copyhookfile(mconn=%d, hookfile=%s): no hook file to copy (rc == -2)", mconn, hookfile);
 				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
@@ -5961,22 +6013,21 @@ sync_mom_hookfilesTPP(void *minfo)
 		ret = SYNC_HOOKFILES_SUCCESS_PARTIAL;
 
 	/* if we returned SYNC_HOOKFILES_NONE, then all hook actions were sent, no retry
-	 * needs to be done. This is in sync with bg_sync_mom_hookfiles() return values.
+	 * needs to be done. This is in sync with mc_sync_mom_hookfiles() return values.
 	 */
 	return (ret);
 }
 
 /**
  * @brief
- *	The task wrapper to sync_mom_hookfilesTPP(), which executes in a child
- *	process.
+ *	Multi cast to moms all the pending mom hook sync operations
  *
  * @return int
  * @retval 0	for successfully executing the task process to sync_mom_hookfilesTPP()
  * @retval != 0 if an error occurred.
  */
 int
-bg_sync_mom_hookfiles(void)
+mc_sync_mom_hookfiles(void)
 {
 	int rc;
 
@@ -6108,32 +6159,112 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
 
 /**
  * @brief
- *		Checks to see if it's time to run bg_sync_mom_hookfiles() and if so,
- *		then run bg_sync_mom_hookfiles().
+ *		clears out reply_expected flags of timed out actions
+ *		and delete their wait tasks
  *
  * @see
- * 		next_task
+ * 		handle_hook_sync_timeout
  *
- * @return	void
+ * @param[in]	tid	- transaction id of timedout hook sync sequence
+ * 
+ * @return void
  */
 void
-next_sync_mom_hookfiles(void)
+clear_timed_out_reply_expected(long long int tid)
+{
+	int	 i, j;
+	mom_hook_action_t *pact;
+	struct work_task *ptask, *tmp_task;
+	mominfo_t *pmom;
+	struct def_hk_cmd_info *info;
+
+	for (i = 0; i < mominfo_array_size; i++) {
+
+		if ((pmom = mominfo_array[i]) == NULL)
+			continue;
+
+		if (pmom->mi_num_action && pmom->mi_num_action) {
+
+			for (j = 0; j < pmom->mi_num_action; j++) {
+				pact = pmom->mi_action[j];
+				if (pact->reply_expected && (pact->tid == tid)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
+						pact->reply_expected, tid, pact->hookname, pmom->mi_host);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+						LOG_INFO, __func__, log_buffer);
+					/* get the task list */
+					ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
+								(pmom->mi_data))->msr_deferred_cmds));
+
+					while (ptask) {
+						/* no need to compare wt_event with handle, since the
+						* task list is for this mom and so it will always match
+						*/
+						tmp_task = ptask;
+						ptask = (struct work_task *) GET_NEXT(ptask->wt_linkobj2);
+						if ((tmp_task->wt_type == WORK_Deferred_cmd) &&
+								(pmom == tmp_task->wt_parm1)) {
+
+							info = (struct def_hk_cmd_info *) tmp_task->wt_parm2;
+
+							if (!info || (j != info->index) || !(pact->reply_expected & info->event)) {
+								snprintf(log_buffer, sizeof(log_buffer),
+									"timedout, skipped deleting pending WORK_Deferred_cmd for %s:%s",
+									pact->hookname, pmom->mi_host);
+								log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+									LOG_INFO, __func__, log_buffer);
+								continue;
+							}
+
+							if (tmp_task->wt_event2)
+								free(tmp_task->wt_event2);
+
+							if (check_for_latest_action(pmom, pact, j, info->event))
+								pact->action &= ~(info->event);
+
+							free(info);
+
+							delete_task(tmp_task);
+						}
+					}
+					pact->reply_expected = 0U;
+					pact->tid = hook_action_tid_get();
+					hook_track_save(pmom, j);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @brief
+ *		checks for hook sync operstion's timeout
+ *		and handles timeout activities if so
+ *
+ * @see
+ * 		next_sync_mom_hookfiles
+ *
+ * @return int
+ * @retval 0	if no timeout has occured
+ * @retval != 0 if a timeout occurred.
+ */
+int
+handle_hook_sync_timeout(void)
 {
 	unsigned long timeout_sec;
 	time_t	timeout_time;
 	time_t	current_time;
-	short timed_out = 0;
-
 	timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
 	if (server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
 		timeout_sec = server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
 	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
-
 	if (sync_mom_hookfiles_proc_running) {
-		if (current_time <= timeout_time)
+		if (current_time <= timeout_time){
 			/* previous updates still in progress and not timed out */
-			return;
+			return 0;
+		}
 
 		/* we're timing out previous sync mom hook files process/action */
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -6145,15 +6276,34 @@ next_sync_mom_hookfiles(void)
 		snprintf(log_buffer, sizeof(log_buffer), "timeout_sec=%lu", timeout_sec);
 		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 
+		clear_timed_out_reply_expected(g_sync_hook_tid);
 		g_hook_replies_recvd = 0;
 		g_hook_replies_expected = 0;
 		/* attempt collapsing  the hook tracking file */
 		collapse_hook_tr();
 		sync_mom_hookfiles_proc_running = 0;
-		timed_out = 1;
+		return 1;
 	}
 
-	if ((do_sync_mom_hookfiles || timed_out) && bg_sync_mom_hookfiles() == 0)
+	return 0;
+}
+
+/**
+ * @brief
+ *		Checks to see if it's time to run mc_sync_mom_hookfiles() and if so,
+ *		then run mc_sync_mom_hookfiles().
+ *
+ * @see
+ * 		next_task
+ *
+ * @return	void
+ */
+void
+next_sync_mom_hookfiles(void)
+{
+	int timed_out = handle_hook_sync_timeout();
+
+	if ((do_sync_mom_hookfiles || timed_out) && !sync_mom_hookfiles_proc_running && mc_sync_mom_hookfiles() == 0)
 		do_sync_mom_hookfiles = 0;
 }
 
@@ -6198,32 +6348,41 @@ mom_hooks_seen_count(void)
 
 /**
  * @brief
- *		Run a child process that will send the delete hook
- *		requests to the 'mom' represented by 'minfo' data.
- *		The child process will not get tracked by the
- *		calling process.
+ *		unicast delete mom hook requests and delete rescdef request
+ *		to the 'mom' represented by 'minfo' data.
+ *		do not care on request failures
  *
  * @see
  * 		delete_svrmom_entry
  *
  * @param[in]	minfo	- data reprsenting the 'mom'.
  *
- * @return int
- * @retval 0	for success
- * @retval != 0 if an error occurred.
+ * @return void
  */
-int
-bg_delete_mom_hooks(void *minfo)
+void
+uc_delete_mom_hooks(void *minfo)
 {
 	/*
-	 * add_pending* and sync_mom_hookfilesTPP() use the
-	 * path_hooks_tracking file for recording the hook
-	 * actions to perform and their outcome.
+	 * unicast delete hook batch request
 	 */
-	add_pending_mom_allhooks_action(minfo, MOM_HOOK_ACTION_DELETE);
-	add_pending_mom_hook_action(minfo, PBS_RESCDEF, MOM_HOOK_ACTION_DELETE_RESCDEF);
-	(void)sync_mom_hookfilesTPP(minfo);
-	return 0;
+	hook  *phook;
+	char  hookfile[MAXPATHLEN+1];
+	mominfo_t *mom_info = (mominfo_t *)minfo;
+	char *msgid = NULL;
+
+	phook = (hook *)GET_NEXT(svr_allhooks);
+	while (phook) {
+		if (phook->hook_name &&
+				(phook->event & MOM_EVENTS)) {
+			msgid = NULL;
+			snprintf(hookfile, sizeof(hookfile), "%s%s", phook->hook_name, HOOK_FILE_SUFFIX);
+			PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, hookfile, PROT_TPP, &msgid);
+		}
+		phook = (hook *)GET_NEXT(phook->hi_allhooks);
+	}
+	msgid = NULL;
+	PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, PBS_RESCDEF, PROT_TPP, &msgid);
+	return;
 }
 
 /**
