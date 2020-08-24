@@ -7854,30 +7854,31 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 			return 1;
 	}
 	/* Now iterate through all of the job resources that are present on at
-	 * queue/server level and add them to resource_release_list.
+	 * queue/server level and add them to resource_release_list. Only do this if
+	 * restrict_res_to_release_on_suspend is set
 	 */
-	presc_sq = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
-	for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
-		prdef = presc_sq->rs_defin;
-		/* make sure it is a server/queue level consumable resource and not
-		 * set in resource_released_list already
-		 */
-		if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
-			server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET &&
-			(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
-			for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
-				if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
-				    prdef->rs_name) == 0) {
-					presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
-					if (presc == NULL)
-						return 1;
-					prdef->rs_set(&presc->rs_value, &presc_sq->rs_value, op);
-					break;
+	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
+		presc_sq = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+		for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
+			prdef = presc_sq->rs_defin;
+			/* make sure it is a server/queue level consumable resource and not
+			* set in resource_released_list already
+			*/
+			if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
+				(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
+				for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
+					if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
+						prdef->rs_name) == 0) {
+						presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+						if (presc == NULL)
+							return 1;
+						prdef->rs_set(&presc->rs_value, &presc_sq->rs_value, op);
+						break;
+					}
 				}
 			}
 		}
 	}
-
 	return 0;
 }
 
