@@ -114,6 +114,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 {
 	int	 addmailhost;
 	int	 i;
+	char    *mailer;
 	char	*mailfrom;
 	char	 mailto[MAIL_ADDR_BUF_LEN];
 	int	 mailaddrlen = 0;
@@ -179,6 +180,9 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
+
+	if ((mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str) == 0)
+		mailer = SENDMAIL_CMD;
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
@@ -255,7 +259,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 	/* setup sendmail command line with -f from_whom */
 
-	margs[0] = SENDMAIL_CMD;
+	margs[0] = mailer;
 	margs[1] = "-f";
 	margs[2] = mailfrom;
 	margs[3] = mailto;
@@ -267,6 +271,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	mcpid = fork();
 	if(mcpid == 0) {
 		/* this child will be sendmail with its stdin set to the pipe */
+		close(mfds[1]);
 		if (mfds[0] != 0) {
 			(void)close(0);
 			if (dup(mfds[0]) == -1)
@@ -274,7 +279,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		}
 		(void)close(1);
 		(void)close(2);
-		if (execv(SENDMAIL_CMD, margs) == -1)
+		if (execv(mailer, margs) == -1)
 			exit(1);
 	}
 	if (mcpid == -1) {/* Error on fork */
@@ -372,6 +377,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 {
 	int	 i;
 	int	 addmailhost;
+	char    *mailer;
 	char	*mailfrom;
 	char	 mailto[MAIL_ADDR_BUF_LEN];
 	int	 mailaddrlen = 0;
@@ -431,6 +437,9 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
+
+	if ((mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str) == 0)
+		mailer = SENDMAIL_CMD;
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
@@ -498,7 +507,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 	/* setup sendmail command line with -f from_whom */
 
-	margs[0] = SENDMAIL_CMD;
+	margs[0] = mailer;
 	margs[1] = "-f";
 	margs[2] = mailfrom;
 	margs[3] = mailto;
@@ -510,6 +519,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	mcpid = fork();
 	if(mcpid == 0) {
 		/* this child will be sendmail with its stdin set to the pipe */
+		close(mfds[1]);
 		if (mfds[0] != 0) {
 			(void)close(0);
 			if (dup(mfds[0]) == -1)
@@ -517,7 +527,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		}
 		(void)close(1);
 		(void)close(2);
-		if (execv(SENDMAIL_CMD, margs) == -1)
+		if (execv(mailer, margs) == -1)
 			exit(1);
 	}
 	if (mcpid == -1) {/* Error on fork */

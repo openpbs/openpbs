@@ -268,6 +268,7 @@ extern "C" {
 #define ATTR_locsvrs	"location_servers"
 #define ATTR_logevents	"log_events"
 #define ATTR_logfile	"log_file"
+#define ATTR_mailer	"mailer"
 #define ATTR_mailfrom	"mail_from"
 #define ATTR_nodepack	"node_pack"
 #define ATTR_nodefailrq "node_fail_requeue"

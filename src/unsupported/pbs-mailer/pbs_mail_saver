@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+import sys
+import time
+import sqlite3
+import json
+import os
+
+
+#
+# CLASS saver
+#
+class PBS_mail_saver(object):
+    """
+    Email saver class
+    """
+
+    sqlite_db = "/var/spool/pbs/pbs_mail.sqlite",
+    tb_name_emails = "pbs_emails"
+
+    email_from = "adm"
+    email_to = ""
+    email_subject = ""
+    email_body = []
+
+    def __init__(self):
+        config = {}
+        try:
+            config_file = "pbs_mail.json"
+            paths = []
+
+            abspath = os.path.dirname(os.path.abspath(__file__))
+            paths.append(os.path.join(abspath, config_file))
+            paths.append(os.path.join(abspath, '..', 'etc', config_file))
+            paths.append(os.path.join('/etc', config_file))
+            paths.append(os.path.join('/opt', 'pbs', 'etc', config_file))
+
+            for path in paths:
+                if os.path.isfile(path):
+                    config_file = path
+                    break
+
+            f = open(os.path.join(path, config_file),)
+            config = json.load(f)
+            f.close()
+
+            self.sqlite_db = config["sqlite_db"]
+
+        except Exception as err:
+            print("Failed to load configuration: %s" % err)
+            exit(1)
+
+        if len(sys.argv) > 1:
+
+            pos = 1
+            if sys.argv[1] == "-f" and len(sys.argv) >= 2:
+                self.email_from = sys.argv[2]
+                pos = 3
+            if len(sys.argv) >= pos:
+                self.email_to = sys.argv[3]
+
+    def read_mail(self):
+        """
+        Read email from stdin
+        """
+
+        data = sys.stdin.readlines()
+
+        for line in data:
+            if not line.strip():
+                continue
+
+            if line.startswith("To: "):
+                self.email_to = line[3:].strip()
+            elif line.startswith("Subject: "):
+                self.email_subject = line[8:].strip()
+            else:
+                self.email_body.append(line.strip())
+
+    def save_mail_db(self):
+        """
+        Save email into sqlite database
+        """
+
+        now = int(time.time())
+
+        try:
+            conn = sqlite3.connect(self.sqlite_db)
+            c = conn.cursor()
+        except Exception as err:
+            print(str(err))
+            conn.commit()
+            conn.close()
+            return
+
+        req = "SELECT name FROM sqlite_master \
+              WHERE type='table' AND name='%s'"\
+              % self.tb_name_emails
+        c.execute(req)
+        if c.fetchone() is None:
+                req = "CREATE TABLE %s ( \
+                      date integer, \
+                      email_to text, \
+                      email_from text, \
+                      subject text, \
+                      body text)" % self.tb_name_emails
+                c.execute(req)
+
+        req = "INSERT INTO %s \
+              VALUES (%d, '%s', '%s', '%s', '%s')" % (
+              self.tb_name_emails,
+              now, self.email_to,
+              self.email_from,
+              self.email_subject,
+              "\n".join(self.email_body))
+        c.execute(req)
+
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    saver = PBS_mail_saver()
+    saver.read_mail()
+    saver.save_mail_db()
