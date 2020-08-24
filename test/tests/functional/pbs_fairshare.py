@@ -378,6 +378,7 @@ class TestFairshare(TestFunctional):
         self.assertEqual(fs_usage, 1,
                          "Fairshare usage %d not equal to 1" % fs_usage)
 
+    @skipOnCpuSet
     def test_fairshare_topjob(self):
         """
         Test that jobs are run in the augmented fairshare order after a topjob
