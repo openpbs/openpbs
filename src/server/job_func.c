@@ -720,23 +720,49 @@ del_job_related_file(job *pjob, char *fsuffix)
 static char *
 rename_taskdir(job *pjob)
 {
-	char namebuf[MAXPATHLEN + 1] = {'\0'};
-	char renamebuf[MAXPATHLEN + 1] = {'\0'};
+	char *namebuf;
+	char *renamebuf;
+	char *p;
+	int  path_len = 0;
 	char *fprefix;	
 
-	if (pjob == NULL)
-		return (NULL);
+	if ((pjob == NULL) || (path_jobs == NULL))
+		return NULL;
 
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		fprefix = pjob->ji_qs.ji_fileprefix;
 	else
 		fprefix = pjob->ji_qs.ji_jobid;
 
-	snprintf(namebuf, sizeof(namebuf) - 1, "%s%s%s", path_jobs, fprefix, JOB_TASKDIR_SUFFIX);
-	snprintf(renamebuf, sizeof(renamebuf) - 1, "%s%s%s%s", path_jobs, fprefix, JOB_TASKDIR_SUFFIX, JOB_DEL_SUFFIX);
-	if (rename(namebuf, renamebuf) == 0)
-		return (strdup(renamebuf));
-	return (strdup(namebuf));
+	if (fprefix == NULL)
+		return NULL;
+
+	path_len = strlen(path_jobs) + strlen(fprefix) + strlen(JOB_TASKDIR_SUFFIX) + 1;
+	namebuf = malloc(path_len);
+	if (namebuf == NULL) {
+		log_err(errno, __func__, "failed to allocate namebuf");
+		return NULL;
+	}
+	renamebuf = malloc(path_len + strlen(JOB_DEL_SUFFIX));
+	if (renamebuf == NULL) {
+		log_err(errno, __func__, "failed to allocate renamebuf");
+		free(namebuf);
+		return NULL;
+	}
+
+	p = pbs_strcpy(namebuf, path_jobs);
+	p = pbs_strcpy(p, fprefix);
+	pbs_strcpy(p, JOB_TASKDIR_SUFFIX);
+
+	p = pbs_strcpy(renamebuf, namebuf);
+	pbs_strcpy(p, JOB_DEL_SUFFIX);
+
+	if (rename(namebuf, renamebuf) == 0) {
+    		free(namebuf);
+    		return renamebuf;
+	}
+	free(renamebuf);
+	return namebuf;
 }
 
 /**
