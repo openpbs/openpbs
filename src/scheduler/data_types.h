@@ -683,7 +683,6 @@ struct node_info
 
 	char *name;			/* name of the node */
 	char *mom;			/* host name on which mom resides */
-	int   port;			/* port on which Mom is listening */
 
 	char **jobs;			/* the name of the jobs currently on the node */
 	char **resvs;			/* the name of the reservations currently on the node */
@@ -885,13 +884,6 @@ struct prev_job_info
 	char *name;			/* name of job */
 	char *entity_name;		/* fair share entity of job */
 	resource_req *resused;	/* resources used by the job */
-};
-
-struct mom_res
-{
-	char name[MAX_RES_NAME_SIZE];		/* name of resources for addreq() */
-	char ans[MAX_RES_RET_SIZE];		/* what is returned from getreq() */
-	unsigned eol:1;			/* set for sentinal value */
 };
 
 struct counts
@@ -1172,7 +1164,6 @@ struct config
 	char *fairshare_res;			/* resource to calc fairshare usage */
 	float fairshare_decay_factor;		/* decay factor used when decaying fairshare tree */
 	char *fairshare_ent;			/* job attribute to use as fs entity */
-	char **dyn_res_to_get;			/* dynamic resources to get from moms */
 	char **res_to_check;			/* the resources schedule on */
 	resdef **resdef_to_check;		/* the res to schedule on in def form */
 	char **ignore_res;			/* resources - unset implies infinite */

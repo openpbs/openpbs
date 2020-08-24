@@ -132,7 +132,6 @@ char		usage[] =
 	"[-d home][-L logfile][-p file][-I schedname][-S port][-R port][-n][-N][-c clientsfile][-t num threads]";
 struct	sockaddr_in	saddr;
 sigset_t	allsigs;
-int		pbs_rm_port;
 
 /* if we received a sigpipe, this probably means the server went away. */
 int		got_sigpipe = 0;
@@ -868,12 +867,10 @@ main(int argc, char *argv[])
 	glob_argv = argv;
 	segv_start_time = segv_last_time = time(NULL);
 
-
 	sched_port = pbs_conf.scheduler_service_port;
-	pbs_rm_port = pbs_conf.manager_service_port;
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "lL:NS:I:R:d:p:c:a:nt:")) != EOF) {
+	while ((c = getopt(argc, argv, "lL:NS:I:d:p:c:a:nt:")) != EOF) {
 		switch (c) {
 			case 'l':
 #ifdef _POSIX_MEMLOCK
@@ -897,13 +894,6 @@ main(int argc, char *argv[])
 					fprintf(stderr,
 						"%s: illegal port\n", optarg);
 					errflg = 1;
-				}
-				break;
-			case 'R':
-				if ((pbs_rm_port = atoi(optarg)) == 0) {
-					(void)fprintf(stderr, "%s: bad -R %s\n",
-						argv[0], optarg);
-					return 1;
 				}
 				break;
 			case 'd':
@@ -1160,7 +1150,6 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	fullresp(0);
 	if (sigemptyset(&allsigs) == -1) {
 		perror("sigemptyset");
 		exit(1);

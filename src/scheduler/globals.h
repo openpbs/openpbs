@@ -69,7 +69,6 @@ extern struct status cstat;
 extern const int num_resget;
 
 /* Variables from pbs_sched code */
-extern int pbs_rm_port;
 extern int got_sigpipe;
 
 /* static indexes into allres */

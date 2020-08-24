@@ -131,7 +131,6 @@ struct config conf;
 struct status cstat;
 
 /* to make references happy */
-int pbs_rm_port;
 int got_sigpipe;
 
 int	second_connection;
