@@ -6063,98 +6063,14 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
 {
 	hook			*phook;
 
-
-	phook = (hook *)GET_NEXT(svr_execjob_begin_hooks);
+	phook = (hook *)GET_NEXT(svr_allhooks);
 	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_begin_hooks);
+		if (phook->hook_name &&	(phook->event & MOM_EVENTS)) {
+			add_pending_mom_hook_action((mominfo_t *)minfo,
+				phook->hook_name, action);
+		}
+		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_prologue_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_prologue_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_epilogue_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_epilogue_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_end_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_end_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_preterm_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_preterm_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_exechost_periodic_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_exechost_periodic_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_exechost_startup_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_exechost_startup_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_launch_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_launch_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_attach_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_attach_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_resize_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_abort_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_postsuspend_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_postsuspend_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_preresume_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_preresume_hooks);
-	}
-
 }
 
 /**
