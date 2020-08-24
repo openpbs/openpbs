@@ -6099,11 +6099,11 @@ clear_timed_out_reply_expected(long long int tid)
 		if ((pmom = mominfo_array[i]) == NULL)
 			continue;
 
-		if (pmom->mi_num_action && pmom->mi_num_action) {
+		if (pmom->mi_num_action && pmom->mi_action) {
 
 			for (j = 0; j < pmom->mi_num_action; j++) {
 				pact = pmom->mi_action[j];
-				if (pact->reply_expected && (pact->tid == tid)) {
+				if (pact && pact->reply_expected && (pact->tid == tid)) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						"timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
 						pact->reply_expected, tid, pact->hookname, pmom->mi_host);
