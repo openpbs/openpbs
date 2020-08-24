@@ -1992,7 +1992,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 			/* do we need 'AsUser' here? */
 			if ((pw->pw_userlogin == INVALID_HANDLE_VALUE) && (strcmpi(owner, getlogin()) == 0)) {
-				sprintf(log_buffer, "Job %s: CreateProcess(%s) under acct %s wdir=%s",
+				snprintf(log_buffer, sizeof(log_buffer), "Job %s: CreateProcess(%s) under acct %s wdir=%s",
 					jobid, cmd_line, owner, wdir);
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 				rc = CreateProcess(NULL, cmd_line,
@@ -2003,7 +2003,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 					log_err(-1, __func__, "CreateProcess failed");
 				}
 			} else {
-				sprintf(log_buffer, "Job %s: CreateProcessAsUser(%d, %s) under acct %s wdir=%s",
+				snprintf(log_buffer, sizeof(log_buffer), "Job %s: CreateProcessAsUser(%d, %s) under acct %s wdir=%s",
 					jobid, pw->pw_userlogin, cmd_line, getlogin(), wdir);
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 				rc = CreateProcessAsUser(pw->pw_userlogin, NULL, cmd_line,
@@ -2017,7 +2017,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 			if (rc == 0) {
 				errno = GetLastError();
-				sprintf(log_buffer, "Job %s: process creation failed errno %lu", jobid, errno);
+				snprintf(log_buffer, sizeof(log_buffer),"Job %s: process creation failed errno %lu", jobid, errno);
 				log_err(-1, __func__, log_buffer);
 			}
 
