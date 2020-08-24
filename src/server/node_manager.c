@@ -2934,10 +2934,10 @@ add_mom_mcast(mominfo_t *pmom, int *mtfd)
 /**
  * @brief
  * 		Mom multicast function to close all failed streams and close them
- * 
+ *
  * @param[in]	stm	- multi-cast stream where broadcast is attempted
  * @param[in]	ret	- failure return code
- * 
+ *
  * @return	void
  */
 void
@@ -2965,13 +2965,13 @@ close_streams(int stm, int ret)
 			log_err(-1, __func__, log_buffer);
 			stream_eof(psvrmom->msr_stream, ret, "ping no ack");
 		}
-	}	
+	}
 }
 
 /**
  * @brief
  * 		Mom multicast functions to broadcast a single command to all the moms.
- * 
+ *
  * @param[in]	ptask	- work task structure
  *
  * @return	void
@@ -3030,7 +3030,7 @@ mcast_moms(struct work_task *ptask)
 		case IS_REPLYHELLO:
 			if (mtfd_replyhello != -1)
 				if ((ret = reply_hellosvr(mtfd_replyhello, 1)) != DIS_SUCCESS)
-					close_streams(mtfd_replyhello, ret);	
+					close_streams(mtfd_replyhello, ret);
 			if (mtfd_replyhello_noinv != -1)
 				if ((ret = reply_hellosvr(mtfd_replyhello_noinv, 0)) != DIS_SUCCESS)
 					close_streams(mtfd_replyhello_noinv, ret);
@@ -3040,7 +3040,7 @@ mcast_moms(struct work_task *ptask)
 			mtfd_replyhello = -1;
 			mtfd_replyhello_noinv = -1;
 			break;
-		
+
 		default:
 			break;
 	}
@@ -3484,7 +3484,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				}
 			}
 		}
-	
+
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_flags = (ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
 
@@ -4270,7 +4270,7 @@ is_request(int stream, int version)
 			add_mom_mcast(pmom, &mtfd_replyhello);
 		else
 			add_mom_mcast(pmom, &mtfd_replyhello_noinv);
-		
+
 		if (reply_send_tm <= time_now) {
 			struct work_task *ptask;
 
@@ -4280,7 +4280,7 @@ is_request(int stream, int version)
 			ptask->wt_aux = IS_REPLYHELLO;
 		}
 		return;
-		
+
 	} else {
 		/* check that machine is known */
 		DBPRT(("%s: connect from %s\n", __func__, netaddr(addr)))
@@ -4304,7 +4304,7 @@ found:
 			process_DreplyTPP(stream);
 			break;
 
-		
+
 		case IS_REGISTERMOM:
 			if (psvrmom->msr_wktask) { /* if task requeue jobs, delete it */
 				delete_task(psvrmom->msr_wktask);
@@ -4538,7 +4538,7 @@ found:
 							}
 						}
 					}
-					
+
 					/* if multiple vnodes indicated (above) and
 					 * if the vnodes (except the first) have
 					 * multiple Moms,  update the map mod
@@ -6843,19 +6843,19 @@ remove_job_index_from_mom(job *pjob, struct pbsnode *pnode)
 	int i;
 	int j;
 	mom_svrinfo_t *psvrmom;
-	
+
 	if (pnode == NULL)
 		return;
-			
-	for (i = 0; i < pnode->nd_nummoms; i++) {	
-		if (pnode->nd_moms[i] == NULL)	
-			continue;	
-		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[i]->mi_data);	
 
-		for (j=0; j<psvrmom->msr_jbinxsz; j++) {	
-			if (psvrmom->msr_jobindx[j] == pjob) {	
-				psvrmom->msr_jobindx[j] = NULL;	
-			}	
+	for (i = 0; i < pnode->nd_nummoms; i++) {
+		if (pnode->nd_moms[i] == NULL)
+			continue;
+		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[i]->mi_data);
+
+		for (j=0; j<psvrmom->msr_jbinxsz; j++) {
+			if (psvrmom->msr_jobindx[j] == pjob) {
+				psvrmom->msr_jobindx[j] = NULL;
+			}
 		}
 	}
 }
@@ -6885,28 +6885,28 @@ free_nodes(job *pjob)
 	struct key_value_pair *pkvp;
 	char *execvnod = NULL;
 
-	
-	/* decrement number of jobs on the Mom who is the first Mom */	
-	/* for the job, Mother Superior; incremented in set_nodes() */	
-	/* and saved in ji_destin in assign_hosts()		    */	
-	if (((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) != 0) &&	
-		(pjob->ji_qs.ji_destin[0] != '\0')) {	
-		pnode = find_nodebyname(pjob->ji_qs.ji_destin);	
-		if (pnode) {	
-			psvrmom = pnode->nd_moms[0]->mi_data;	
-			if (--psvrmom->msr_numjobs < 0)	
-				psvrmom->msr_numjobs = 0;	
-		}	
+
+	/* decrement number of jobs on the Mom who is the first Mom */
+	/* for the job, Mother Superior; incremented in set_nodes() */
+	/* and saved in ji_destin in assign_hosts()		    */
+	if (((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) != 0) &&
+		(pjob->ji_qs.ji_destin[0] != '\0')) {
+		pnode = find_nodebyname(pjob->ji_qs.ji_destin);
+		if (pnode) {
+			psvrmom = pnode->nd_moms[0]->mi_data;
+			if (--psvrmom->msr_numjobs < 0)
+				psvrmom->msr_numjobs = 0;
+		}
 	}
-	
+
 	/* Now loop through the Moms and remove the jobindx entry */
 	/*  remove this jobs's jobinfo entry from each vnode   */
-	
+
 	if (pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET)
 		execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_val.at_str;
 	else if (pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET)
 		execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str;
-	 
+
 	if (execvnod_in == NULL) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "in free_nodes and no exec_vnode");
 		return;
@@ -7863,6 +7863,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 		 * set in resource_released_list already
 		 */
 		if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
+			server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET &&
 			(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
 			for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
 				if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
