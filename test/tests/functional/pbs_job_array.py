@@ -134,7 +134,6 @@ e.accept()
         _msg = 'No license found on server %s' % (self.server.shortname)
         self.assertTrue(rv, _msg)
 
-    @skipOnCpuSet
     def test_running_subjob_survive_restart(self):
         """
         Test to check if a running subjob of an array job survive a
@@ -182,7 +181,6 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_running_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_suspended_subjob_survive_restart(self):
         """
         Test to check if a suspended subjob of an array job survive a
@@ -234,7 +232,6 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_suspended_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_deleted_q_subjob_survive_restart(self):
         """
         Test to check if a deleted queued subjob of an array job survive a
@@ -268,7 +265,6 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_deleted_q_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_deleted_r_subjob_survive_restart(self):
         """
         Test to check if a deleted running subjob of an array job survive a
@@ -303,7 +299,6 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_deleted_q_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_qdel_expired_subjob(self):
         """
         Test to check if qdel of a subjob is disallowed
@@ -344,7 +339,6 @@ e.accept()
         else:
             raise self.failureException("subjob in X state can be deleted")
 
-    @skipOnCpuSet
     def test_subjob_comments(self):
         """
         Test subjob comments for finished and terminated subjobs
@@ -365,7 +359,6 @@ e.accept()
         self.server.expect(
             JOB, {'comment': 'Subjob finished'}, subjid_1, max_attempts=1)
 
-    @skipOnCpuSet
     def test_subjob_comments_with_history(self):
         """
         Test subjob comments for finished, failed and terminated subjobs
@@ -411,7 +404,6 @@ e.accept()
             JOB, {'comment': (MATCH_RE, 'Job run at.*and failed')}, subjid_2,
             extend='x')
 
-    @skipOnCpuSet
     def test_multiple_server_restarts(self):
         """
         Test subjobs wont rerun after multiple server restarts
@@ -431,7 +423,6 @@ e.accept()
             self.server.expect(
                 JOB, a, subjid_1, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_job_array_history_duration(self):
         """
         Test that job array and subjobs are purged after history duration
@@ -462,7 +453,6 @@ e.accept()
         self.server.expect(JOB, 'job_state', op=UNSET,
                            id=subjid_2, extend='x')
 
-    @skipOnCpuSet
     def test_queue_deletion_after_terminated_subjob(self):
         """
         Test that queue can be deleted after the job array is
@@ -481,7 +471,6 @@ e.accept()
         self.server.delete(j_id, wait=True)
         self.server.manager(MGR_CMD_DELETE, QUEUE, id='workq')
 
-    @skipOnCpuSet
     def test_held_job_array_survive_server_restart(self):
         """
         Test held job array can be released after server restart
@@ -515,7 +504,6 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.test_held_job_array_survive_server_restart()
 
-    @skipOnCpuSet
     def test_subjobs_qrun(self):
         """
         Test that job array's subjobs can be qrun
@@ -533,7 +521,6 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'B'}, j_id)
         self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
 
-    @skipOnCpuSet
     def test_dependent_job_array_server_restart(self):
         """
         Check Job array dependency is not released after server restart
@@ -562,7 +549,6 @@ e.accept()
                            j_id, extend='x', interval=5)
         self.server.expect(JOB, {'job_state': 'B'}, j_id2, interval=5)
 
-    @skipOnCpuSet
     def test_rerun_subjobs_server_restart(self):
         """
         Test that subjobs which are requeued remain queued after server restart
@@ -588,7 +574,6 @@ e.accept()
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, subjid_1)
 
-    @skipOnCpuSet
     def test_rerun_node_fail_requeue(self):
         """
         Test sub jobs gets requeued after node_fail_requeue time
@@ -606,7 +591,6 @@ e.accept()
         self.mom.stop()
         self.server.expect(JOB, {'job_state': 'Q'}, subjid_1, offset=5)
 
-    @skipOnCpuSet
     def test_qmove_job_array(self):
         """
         Test job array's can be qmoved to a high priority queue
@@ -635,7 +619,6 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'S'}, subjid_1)
         self.server.expect(JOB, {'job_state': 'R'}, subjid_3)
 
-    @skipOnCpuSet
     def test_delete_history_subjob_server_restart(self):
         """
         Test that subjobs can be deleted from history
@@ -656,7 +639,6 @@ e.accept()
         self.kill_and_restart_svr()
         self.server.expect(JOB, 'job_state', op=UNSET, extend='x', id=j_id)
 
-    @skipOnCpuSet
     def test_job_id_duplicate_server_restart(self):
         """
         Test that after server restart there is no duplication
@@ -727,7 +709,6 @@ e.accept()
                     raise self.failureException("std file " + f_name +
                                                 " not found")
 
-    @skipOnCpuSet
     @skipOnCray
     def test_subjob_wrong_state(self):
         """
@@ -752,7 +733,6 @@ e.accept()
         # ensure all the subjobs are running
         self.server.expect(JOB, {'job_state=R': 200}, extend='t')
 
-    @skipOnCpuSet
     def test_recover_big_array_job(self):
         """
         Test that during server restart, server is able to recover valid

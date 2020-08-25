@@ -63,7 +63,6 @@ class TestQueRescUsage(TestFunctional):
         self.server.manager(MGR_CMD_SET, QUEUE, {
                             'resources_available.foo': 6}, id='workq')
 
-    @skipOnCpuSet
     def test_resc_assigned_set_unset(self):
         """
         Test "resources_assigned" attribute of the resource and it's behavior
@@ -131,7 +130,6 @@ class TestQueRescUsage(TestFunctional):
         self.assertNotIn('resources_assigned.ncpus',
                          q_status[0], self.err_msg)
 
-    @skipOnCpuSet
     def test_resources_assigned_with_zero_val(self):
         """
         In PBS we can request +ve or -ve values so sometimes resources_assigned
@@ -172,7 +170,6 @@ class TestQueRescUsage(TestFunctional):
         self.assertNotIn('resources_assigned.foo',
                          q_status[0], self.err_msg)
 
-    @skipOnCpuSet
     def test_resources_assigned_deletion(self):
         """
         Test resources_assigned.<resc_name> deletion from the system

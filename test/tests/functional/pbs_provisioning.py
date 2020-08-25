@@ -120,7 +120,6 @@ class TestProvisioningJob(TestFunctional):
             self.hook_list[1], a, hook_provision, overwrite=True)
         self.assertTrue(rv)
 
-    @skipOnCpuSet
     def test_execjob_begin_hook_on_os_provisioned_job(self):
         """
         Test the execjob_begin hook is seen by OS provisioned job.
@@ -161,7 +160,6 @@ class TestProvisioningJob(TestFunctional):
                                 interval=1)
         self.assertTrue(rv)
 
-    @skipOnCpuSet
     def test_app_provisioning(self):
         """
         Test application provisioning
@@ -178,7 +176,6 @@ class TestProvisioningJob(TestFunctional):
             max_attempts=20,
             interval=1)
 
-    @skipOnCpuSet
     def test_os_provisioning_pending_hook_copy(self):
         """
         Test that job still runs after:

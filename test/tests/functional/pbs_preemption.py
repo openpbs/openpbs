@@ -166,21 +166,18 @@ exit 1
 
         self.scheduler.log_match(jid + ";Job preempted by " + preempted_by)
 
-    @skipOnCpuSet
     def test_preempt_suspend(self):
         """
         Test that a job is preempted by suspension
         """
         self.submit_and_preempt_jobs(preempt_order='S')
 
-    @skipOnCpuSet
     def test_preempt_suspend_ja(self):
         """
         Test that a subjob is preempted by suspension
         """
         self.submit_and_preempt_jobs(preempt_order='S', job_array=True)
 
-    @skipOnCpuSet
     def test_preempt_checkpoint(self):
         """
         Test that a job is preempted with checkpoint
@@ -188,7 +185,6 @@ exit 1
         self.mom.add_checkpoint_abort_script(body=self.chk_script)
         self.submit_and_preempt_jobs(preempt_order='C')
 
-    @skipOnCpuSet
     def test_preempt_checkpoint_requeue(self):
         """
         Test that when checkpoint fails, a job is correctly requeued
@@ -196,14 +192,12 @@ exit 1
         self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CR')
 
-    @skipOnCpuSet
     def test_preempt_requeue(self):
         """
         Test that a job is preempted by requeue
         """
         self.submit_and_preempt_jobs(preempt_order='R')
 
-    @skipOnCpuSet
     def test_preempt_requeue_exclhost(self):
         """
         Test that a job is preempted by requeue on node
@@ -220,21 +214,18 @@ exit 1
             existence=False, starttime=start_time,
             max_attempts=5)
 
-    @skipOnCpuSet
     def test_preempt_requeue_ja(self):
         """
         Test that a subjob is preempted by requeue
         """
         self.submit_and_preempt_jobs(preempt_order='R', job_array=True)
 
-    @skipOnCpuSet
     def test_preempt_delete(self):
         """
         Test preempt via delete correctly deletes a job
         """
         self.submit_and_preempt_jobs(preempt_order='D')
 
-    @skipOnCpuSet
     def test_preempt_delete_ja(self):
         """
         Test preempt via delete correctly deletes a subjob
@@ -242,7 +233,6 @@ exit 1
 
         self.submit_and_preempt_jobs(preempt_order='D', job_array=True)
 
-    @skipOnCpuSet
     def test_preempt_checkpoint_delete(self):
         """
         Test that when checkpoint fails, a job is correctly deleted
@@ -250,7 +240,6 @@ exit 1
         self.mom.add_checkpoint_abort_script(body=self.chk_script_fail)
         self.submit_and_preempt_jobs(preempt_order='CD')
 
-    @skipOnCpuSet
     def test_preempt_rerunable_false(self):
         # in CLI mode Rerunnable requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
@@ -261,7 +250,6 @@ exit 1
 
         self.server.set_op_mode(m)
 
-    @skipOnCpuSet
     def test_preempt_checkpoint_false(self):
         # in CLI mode Checkpoint requires a 'n' value.  It's different with API
         m = self.server.get_op_mode()
@@ -272,7 +260,6 @@ exit 1
 
         self.server.set_op_mode(m)
 
-    @skipOnCpuSet
     def test_preempt_order_requeue_first(self):
         """
         Test that a low priority job is requeued if preempt_order is in
@@ -280,7 +267,6 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R', order=1)
 
-    @skipOnCpuSet
     def test_preempt_order_requeue_second(self):
         """
         Test that a low priority job is requeued if preempt_order is in
@@ -288,7 +274,6 @@ exit 1
         """
         self.submit_and_preempt_jobs(preempt_order='R', order=2)
 
-    @skipOnCpuSet
     def test_preempt_requeue_never_run(self):
         """
         Test that a job is preempted by requeue and the scheduler does not
@@ -300,7 +285,6 @@ exit 1
             ";Job will never run", existence=False, starttime=start_time,
             max_attempts=5)
 
-    @skipOnCpuSet
     def test_preempt_multiple_jobs(self):
         """
         Test that multiple jobs are preempted by one large high priority job
@@ -324,7 +308,6 @@ exit 1
         self.server.expect(JOB, {'job_state=S': 10})
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
 
-    @skipOnCpuSet
     def test_qalter_preempt_targets_to_none(self):
         """
         Test that a job requesting preempt targets set to two different queues
@@ -348,7 +331,6 @@ exit 1
         self.server.expect(JOB, id=jid,
                            attrib={'Resource_List.preempt_targets': 'None'})
 
-    @skipOnCpuSet
     def test_preempt_sort_when_set(self):
         """
         This test is for preempt_sort when it is set to min_time_since_start
@@ -364,7 +346,6 @@ exit 1
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
 
-    @skipOnCpuSet
     def test_preempt_retry(self):
         """
         Test that jobs can be successfully preempted after a previously failed
@@ -420,7 +401,6 @@ exit 3
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.server.set_op_mode(m)
 
-    @skipOnCpuSet
     def test_vnode_resource_contention(self):
         """
         Test to make sure that preemption happens when the resource in
@@ -450,7 +430,6 @@ exit 3
         self.server.expect(NODE, {'state': 'free'}, id=vn4)
 
     @requirements(num_moms=2)
-    @skipOnCpuSet
     def test_host_resource_contention(self):
         """
         Test to make sure that preemption happens when the resource in
@@ -500,7 +479,6 @@ exit 3
         comment = "Not Running: Insufficient amount of resource: host"
         self.server.expect(JOB, {'comment': comment}, id=hjid2)
 
-    @skipOnCpuSet
     def test_preempt_queue_restart(self):
         """
         Test that a queue which has preempt_targets set to another queue
@@ -535,7 +513,6 @@ exit 3
             self.du.run_cmd(cmd=reset_db, sudo=True, as_script=True)
             self.fail('TC failed as workq2 recovery failed')
 
-    @skipOnCpuSet
     def test_insufficient_server_rassn_select_resc(self):
         """
         Set a rassn_select resource (like ncpus or mem) ons server and
@@ -561,7 +538,6 @@ exit 3
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_high)
 
-    @skipOnCpuSet
     def test_preemption_priority_escalation(self):
         """
         Test that scheduler does not try preempting a job that escalates its
@@ -621,7 +597,6 @@ exit 3
         for job_id in jid_list[0:-2]:
             self.scheduler.log_match(job_id + msg)
 
-    @skipOnCpuSet
     def test_preemption_priority_escalation_2(self):
         """
         Test that scheduler does not try preempting a job that escalates its
@@ -691,7 +666,6 @@ exit 3
         self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[3])
         self.server.expect(JOB, {'job_state': 'S'}, id=jid_list[4])
 
-    @skipOnCpuSet
     def test_preempt_requeue_resc(self):
         """
         Test that scheduler will preempt jobs for resources with rrtros

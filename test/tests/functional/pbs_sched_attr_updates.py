@@ -41,7 +41,7 @@ from tests.functional import *
 
 
 class TestSchedAttrUpdates(TestFunctional):
-    @skipOnCpuSet
+
     def test_basic_throttling(self):
         """
         Test the behavior of sched's 'attr_update_period' attribute
@@ -96,7 +96,6 @@ class TestSchedAttrUpdates(TestFunctional):
         self.server.expect(JOB, "comment", op=SET, id=jid8)
         self.server.log_match("Type 96 request received", starttime=t)
 
-    @skipOnCpuSet
     def test_accrue_type(self):
         """
         Test that accrue_type updates are sent immediately

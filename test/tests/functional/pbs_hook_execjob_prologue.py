@@ -118,7 +118,6 @@ class TestPbsExecutePrologue(TestFunctional):
 
         self.server.expect(NODE, {'state': 'free'}, id=self.hostA, offset=1)
 
-    @skipOnCpuSet
     def test_prologue_internal_error_offline_vnodes(self):
         """
         Test a prologue hook with an internal error and

@@ -136,7 +136,6 @@ class TestEntityLimits(TestFunctional):
             self.assertFalse(True, "Job violating limits got submitted after "
                              "server restart.")
 
-    @skipOnCpuSet
     def test_server_generic_user_limits_queued(self):
         """
         Test queued_jobs_threshold for any user at the server level.
@@ -146,7 +145,6 @@ class TestEntityLimits(TestFunctional):
         m = "qsub: would exceed complex's per-user limit of jobs in 'Q' state"
         self.common_limit_test(True, a, queued=True, exp_err=m)
 
-    @skipOnCpuSet
     def test_server_user_limits_queued(self):
         """
         Test queued_jobs_threshold for user TEST_USER at the server level.
@@ -157,7 +155,6 @@ class TestEntityLimits(TestFunctional):
             str(TEST_USER) + ' already in complex'
         self.common_limit_test(True, a, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_project_limits_queued(self):
         """
         Test queued_jobs_threshold for project p1 at the server level.
@@ -168,7 +165,6 @@ class TestEntityLimits(TestFunctional):
             + "already in complex"
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_generic_project_limits_queued(self):
         """
         Test queued_jobs_threshold for any project at the server level.
@@ -179,7 +175,6 @@ class TestEntityLimits(TestFunctional):
             + "'Q' state"
         self.common_limit_test(True, a, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     @skipOnShasta
     def test_server_group_limits_queued(self):
         """
@@ -191,7 +186,6 @@ class TestEntityLimits(TestFunctional):
             str(TSTGRP0) + ' already in complex'
         self.common_limit_test(True, a, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     @skipOnShasta
     def test_server_generic_group_limits_queued(self):
         """
@@ -202,7 +196,6 @@ class TestEntityLimits(TestFunctional):
         m = "qsub: would exceed complex's per-group limit of jobs in 'Q' state"
         self.common_limit_test(True, a, queued=True, exp_err=m)
 
-    @skipOnCpuSet
     def test_server_overall_limits_queued(self):
         """
         Test queued_jobs_threshold for any entity at the server level.
@@ -211,7 +204,6 @@ class TestEntityLimits(TestFunctional):
         errmsg = "qsub: Maximum number of jobs in 'Q' state already in complex"
         self.common_limit_test(True, a, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_user_limits_queued(self):
         """
         Test queued_jobs_threshold for any user for the default queue.
@@ -223,7 +215,6 @@ class TestEntityLimits(TestFunctional):
             + "jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_user_limits_queued(self):
         """
         Test queued_jobs_threshold for user pbsuser1 for the default queue.
@@ -236,7 +227,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_group_limits_queued(self):
         """
         Test queued_jobs_threshold for group TSTGRP0 for the default queue.
@@ -248,7 +238,6 @@ class TestEntityLimits(TestFunctional):
             str(TSTGRP0) + ' already in queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_project_limits_queued(self):
         """
         Test queued_jobs_threshold for project p1 for the default queue.
@@ -259,7 +248,6 @@ class TestEntityLimits(TestFunctional):
             'already in queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_project_limits_queued(self):
         """
         Test queued_jobs_threshold for any project for the default queue.
@@ -271,7 +259,6 @@ class TestEntityLimits(TestFunctional):
             "'s per-project limit of jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     @skipOnShasta
     def test_queue_generic_group_limits_queued(self):
         """
@@ -284,7 +271,6 @@ class TestEntityLimits(TestFunctional):
             "'s per-group limit of jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_overall_limits_queued(self):
         """
         Test queued_jobs_threshold for all entities for the default queue.
@@ -295,7 +281,6 @@ class TestEntityLimits(TestFunctional):
             + self.server.default_queue
         self.common_limit_test(False, a, attrs, queued=True, exp_err=emsg)
 
-    @skipOnCpuSet
     def test_server_generic_user_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for any user at the server level.
@@ -307,7 +292,6 @@ class TestEntityLimits(TestFunctional):
             + "complex for jobs in 'Q' state"
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_user_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for user pbsuser1 at the server level.
@@ -320,7 +304,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_server_generic_group_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for any group at the server level.
@@ -332,7 +315,6 @@ class TestEntityLimits(TestFunctional):
             + "complex for jobs in 'Q' state"
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_project_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for project p1 at the server level.
@@ -344,7 +326,6 @@ class TestEntityLimits(TestFunctional):
             + " complex for jobs in 'Q' state"
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_generic_project_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for any project at the server level.
@@ -357,7 +338,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_server_group_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for group pbsuser1 at the server level.
@@ -369,7 +349,6 @@ class TestEntityLimits(TestFunctional):
             "'s limit on resource ncpus in complex for jobs in 'Q' state"
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_overall_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for all entities at the server level.
@@ -381,7 +360,6 @@ class TestEntityLimits(TestFunctional):
             + "jobs in 'Q' state"
         self.common_limit_test(True, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_user_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for all users for the default queue.
@@ -394,7 +372,6 @@ class TestEntityLimits(TestFunctional):
             + self.server.default_queue + " for jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=emsg)
 
-    @skipOnCpuSet
     def test_queue_user_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for user pbsuser1 for the default queue.
@@ -409,7 +386,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_group_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for group pbsuser1 for the default queue
@@ -424,7 +400,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_generic_group_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for any group for the default queue.
@@ -437,7 +412,6 @@ class TestEntityLimits(TestFunctional):
             + 'queue ' + self.server.default_queue + " for jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_project_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for project p1 for the default queue.
@@ -450,7 +424,6 @@ class TestEntityLimits(TestFunctional):
             'in queue ' + self.server.default_queue + " for jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_project_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for any project for the default queue.
@@ -463,7 +436,6 @@ class TestEntityLimits(TestFunctional):
             + ' queue ' + self.server.default_queue + " for jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_overall_limits_res_queued(self):
         """
         Test queued_jobs_threshold_res for any entity for the default queue.
@@ -476,7 +448,6 @@ class TestEntityLimits(TestFunctional):
             self.server.default_queue + " for jobs in 'Q' state"
         self.common_limit_test(False, a, attrs, queued=True, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_generic_user_limits_max(self):
         """
         Test max_queued for any user at the server level.
@@ -486,7 +457,6 @@ class TestEntityLimits(TestFunctional):
         errmsg = "qsub: would exceed complex's per-user limit"
         self.common_limit_test(True, a, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_user_limits_max(self):
         """
         Test max_queued for user pbsuser1 at the server level.
@@ -497,7 +467,6 @@ class TestEntityLimits(TestFunctional):
             ' already in complex'
         self.common_limit_test(True, a, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_project_limits_max(self):
         """
         Test max_queued for project p1 at the server level.
@@ -507,7 +476,6 @@ class TestEntityLimits(TestFunctional):
         msg = 'qsub: Maximum number of jobs for project p1 already in complex'
         self.common_limit_test(True, a, attrs, exp_err=msg)
 
-    @skipOnCpuSet
     def test_server_generic_project_limits_max(self):
         """
         Test max_queued for any project at the server level.
@@ -518,7 +486,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(True, a, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_server_group_limits_max(self):
         """
         Test max_queued for group TSTGRP0 at the server level.
@@ -530,7 +497,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(True, a, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_server_generic_group_limits_max(self):
         """
         Test max_queued for any group at the server level.
@@ -540,7 +506,6 @@ class TestEntityLimits(TestFunctional):
         errmsg = "qsub: would exceed complex's per-group limit"
         self.common_limit_test(True, a, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_overall_limits_max(self):
         """
         Test max_queued for any entity at the server level.
@@ -549,7 +514,6 @@ class TestEntityLimits(TestFunctional):
         errmsg = 'qsub: Maximum number of jobs already in complex'
         self.common_limit_test(True, a, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_user_limits_max(self):
         """
         Test max_queued for any user for the default queue.
@@ -560,7 +524,6 @@ class TestEntityLimits(TestFunctional):
         errmsg = "qsub: would exceed queue generic's per-user limit"
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_user_limits_max(self):
         """
         Test max_queued for user pbsuser1 for the default queue.
@@ -573,7 +536,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_group_limits_max(self):
         """
         Test max_queued for group pbsuser1 for the default queue.
@@ -585,7 +547,6 @@ class TestEntityLimits(TestFunctional):
             ' already in queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_project_limits_max(self):
         """
         Test max_queued for project p1 for the default queue.
@@ -596,7 +557,6 @@ class TestEntityLimits(TestFunctional):
             + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=msg)
 
-    @skipOnCpuSet
     def test_queue_generic_project_limits_max(self):
         """
         Test max_queued for any project for the default queue.
@@ -609,7 +569,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_generic_group_limits_max(self):
         """
         Test max_queued for any group for the default queue.
@@ -621,7 +580,6 @@ class TestEntityLimits(TestFunctional):
             "'s per-group limit"
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_overall_limits_max(self):
         """
         Test max_queued for all entities for the default queue.
@@ -632,7 +590,6 @@ class TestEntityLimits(TestFunctional):
             self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_generic_user_limits_res_max(self):
         """
         Test max_queued_res for any user at the server level.
@@ -643,7 +600,6 @@ class TestEntityLimits(TestFunctional):
         emsg = 'qsub: would exceed per-user limit on resource ncpus in complex'
         self.common_limit_test(True, a, attrs, exp_err=emsg)
 
-    @skipOnCpuSet
     def test_server_user_limits_res_max(self):
         """
         Test max_queued_res for user pbsuser1 at the server level.
@@ -656,7 +612,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(True, a, attrs, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_server_generic_group_limits_res_max(self):
         """
         Test max_queued_res for any group at the server level.
@@ -667,7 +622,6 @@ class TestEntityLimits(TestFunctional):
         msg = 'qsub: would exceed per-group limit on resource ncpus in complex'
         self.common_limit_test(True, a, attrs, exp_err=msg)
 
-    @skipOnCpuSet
     def test_server_project_limits_res_max(self):
         """
         Test max_queued_res for project p1 at the server level.
@@ -679,7 +633,6 @@ class TestEntityLimits(TestFunctional):
             + " complex"
         self.common_limit_test(True, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_generic_project_limits_res_max(self):
         """
         Test max_queued_res for any project at the server level.
@@ -691,7 +644,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(True, a, attrs, exp_err=m)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_server_group_limits_res_max(self):
         """
         Test max_queued_res for group pbsuser1 at the server level.
@@ -703,7 +655,6 @@ class TestEntityLimits(TestFunctional):
             "'s limit on resource ncpus in complex"
         self.common_limit_test(True, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_server_overall_limits_res_max(self):
         """
         Test max_queued_res for all entities at the server level.
@@ -714,7 +665,6 @@ class TestEntityLimits(TestFunctional):
         errmsg = 'qsub: would exceed limit on resource ncpus in complex'
         self.common_limit_test(True, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_user_limits_res_max(self):
         """
         Test max_queued_res for all users for the default queue.
@@ -727,7 +677,6 @@ class TestEntityLimits(TestFunctional):
             + ' queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_user_limits_res_max(self):
         """
         Test max_queued_res for user pbsuser1 for the default queue.
@@ -742,7 +691,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_group_limits_res_max(self):
         """
         Test max_queued_res for group pbsuser1 for the default queue
@@ -756,7 +704,6 @@ class TestEntityLimits(TestFunctional):
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
     @skipOnShasta
-    @skipOnCpuSet
     def test_queue_generic_group_limits_res_max(self):
         """
         Test max_queued_res for any group for the default queue.
@@ -769,7 +716,6 @@ class TestEntityLimits(TestFunctional):
             + ' queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_project_limits_res_max(self):
         """
         Test max_queued_res for project p1 for the default queue.
@@ -782,7 +728,6 @@ class TestEntityLimits(TestFunctional):
             ' in queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_generic_project_limits_res_max(self):
         """
         Test max_queued_res for any project for the default queue.
@@ -795,7 +740,6 @@ class TestEntityLimits(TestFunctional):
             + ' queue ' + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_queue_overall_limits_res_max(self):
         """
         Test max_queued_res for any entity for the default queue.
@@ -808,7 +752,6 @@ class TestEntityLimits(TestFunctional):
                  + self.server.default_queue
         self.common_limit_test(False, a, attrs, exp_err=errmsg)
 
-    @skipOnCpuSet
     def test_qalter_resource(self):
         """
         Test that qaltering a job's resource list is accounted
@@ -856,7 +799,6 @@ class TestEntityLimits(TestFunctional):
                 raise self.failureException("rcvd unexpected err message: " +
                                             e.msg[0])
 
-    @skipOnCpuSet
     def test_multiple_queued_limits(self):
         defqname = self.server.default_queue
         q2name = 'q2'
@@ -907,7 +849,6 @@ class TestEntityLimits(TestFunctional):
         else:
             self.assertFalse(True, "Job violating limits got submitted.")
 
-    @skipOnCpuSet
     def test_pbs_all_soft_limits(self):
         """
         Set resource soft limit on server for PBS_ALL and see that the job
@@ -953,7 +894,6 @@ class TestEntityLimits(TestFunctional):
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
 
-    @skipOnCpuSet
     def test_user_soft_limits(self):
         """
         Set resource soft limit on server for a user and see that the job
@@ -1000,7 +940,6 @@ class TestEntityLimits(TestFunctional):
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
 
-    @skipOnCpuSet
     def test_group_soft_limits(self):
         """
         Set resource soft limit on server for a group and see that the job
@@ -1049,7 +988,6 @@ class TestEntityLimits(TestFunctional):
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
 
-    @skipOnCpuSet
     def test_project_soft_limits(self):
         """
         Set resource soft limit on server for a project and see that the job

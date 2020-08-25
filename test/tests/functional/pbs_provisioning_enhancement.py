@@ -127,7 +127,6 @@ e.reject()
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
 
-    @skipOnCpuSet
     def test_app_provisioning(self):
         """
         Test application provisioning
@@ -151,7 +150,6 @@ e.reject()
             max_attempts=20,
             interval=1)
 
-    @skipOnCpuSet
     def test_os_provisioning(self):
         """
         Test os provisioning
@@ -181,7 +179,6 @@ e.reject()
         # OS provisioining completes affer mom restart.
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-    @skipOnCpuSet
     def test_subchunk_application_provisioning(self):
         """
         Test application provisioning job request consist of subchunks
@@ -207,7 +204,6 @@ e.reject()
         # Current aoe on momA, should be set to the requested aoe in job.
         self.server.expect(NODE, {'current_aoe': 'App1'}, id=self.hostA)
 
-    @skipOnCpuSet
     def test_subchunk_os_provisioning(self):
         """
         Test os provisioning job request consist of subchunks
@@ -233,7 +229,6 @@ e.reject()
         # Current aoe on momA, should be set to the requested aoe in job.
         self.server.expect(NODE, {'current_aoe': 'osimage1'}, id=self.hostA)
 
-    @skipOnCpuSet
     def test_job_wide_provisioining_request(self):
         """
         Test jobs with jobwide aoe resource request.
@@ -261,7 +256,6 @@ e.reject()
         # Current aoe on momA, should be set to the requested aoe in job.
         self.server.expect(NODE, {'current_aoe': 'App1'}, id=self.hostA)
 
-    @skipOnCpuSet
     def test_multiple_aoe_request(self):
         """
         Test jobs with multiple similar/various aoe request in subchunks.
@@ -304,7 +298,6 @@ e.reject()
                         'when it should have succeeded')
         self.logger.info("Job submission succeeded, as expected")
 
-    @skipOnCpuSet
     def test_provisioning_with_placement(self):
         """
         Test provisioining job with various placement options.
@@ -366,7 +359,6 @@ e.reject()
         # Current aoe on momA, should be set to the requested aoe in job.
         self.server.expect(NODE, {'current_aoe': 'App1'}, id=self.hostA)
 
-    @skipOnCpuSet
     def test_sched_provisioning_response_with_runjob(self):
         """
         Test that if one provisioning job fails to run then scheduler
@@ -405,7 +397,6 @@ e.reject()
         self.server.log_match(job1_msg)
         self.server.log_match(job2_msg)
 
-    @skipOnCpuSet
     def test_sched_provisioning_response(self):
         """
         Test that if scheduler could not find node solution for one
@@ -451,7 +442,6 @@ e.reject()
         job_state = self.server.status(JOB, id=jid3)
         self.assertEqual(job_state[0]['exec_vnode'], solution)
 
-    @skipOnCpuSet
     def test_multinode_provisioning(self):
         """
         Test the effect of max_concurrent_provision
