@@ -2274,8 +2274,8 @@ class TestReservations(TestFunctional):
     def test_resv_reconfirm_holding_partial_nodes(self):
         """
         Test that scheduler is able to reconfirm a reservation when
-        only of the nodes reservation was running on goes down. Also
-        make sure it hangs on to the node that was not down.
+        only some of the nodes reservation was running on goes down.
+        Also make sure it hangs on to the node that was not down.
         """
         a = {'reserve_retry_time': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -2295,8 +2295,6 @@ class TestReservations(TestFunctional):
         resv_node_list = self.server.reservations[rid].get_vnodes()
         resv_node = resv_node_list[0]
         resv_node2 = resv_node_list[1]
-        print(resv_node_list)
-        print(vn_list)
         vn = [i for i in vn_list if i not in resv_node_list]
 
         a = {'scheduling': 'False'}
