@@ -56,6 +56,7 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_testsuite import default_requirements
 from ptl.utils.plugins.ptl_report_json import PTLJsonData
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
+from ptl.utils.plugins.ptl_test_runner import PtlTextTestRunner
 
 # Following dance require because PTLTestDb().process_output() from this file
 # is used in pbs_loganalyzer script which is shipped with PBS package
@@ -1612,18 +1613,33 @@ class JSONDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         elif not self.dbpath.endswith('.json'):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
+        self._data = {}
         self.jdata = {}
+        self.run_count = 1
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
         self.res_data = PTLJsonData(command=self.__cmd)
 
     def __write_test_data(self, data):
-        prev_data = copy.deepcopy(self.jdata)
-        self.jdata = self.res_data.get_json(data=data, prev_data=prev_data)
-        with open(self.dbpath, 'w') as fd:
-            json.dump(self.jdata, fd, indent=2)
-            fd.write("\n")
+
+        name = "Test_run_count:" + str(self.run_count)
+        if self.run_count != PtlTextTestRunner().run_count:
+            self.jdata[name] = self._data
+            self._data = self.res_data.get_json(data=data)
+            self.run_count = PtlTextTestRunner().run_count
+            name = "Test_run_count:" + str(self.run_count)
+            self.jdata[name] = self._data
+            with open(self.dbpath, 'w') as fd:
+                    json.dump(self.jdata, fd, indent=2)
+                    fd.write("\n")
+        else:
+            prev = copy.deepcopy(self._data)
+            self._data = self.res_data.get_json(data=data, prev_data=prev)
+            self.jdata[name] = self._data
+            with open(self.dbpath, 'w') as fd:
+                json.dump(self.jdata, fd, indent=2)
+                fd.write("\n")
 
     def write(self, data, logfile=None):
         if len(data) == 0:
@@ -1634,7 +1650,7 @@ class JSONDb(DBType):
     def close(self, result=None):
         if result is not None:
             dur = str(result.stop - result.start)
-            self.jdata['test_summary']['test_duration'] = dur
+            self.jdata['tests_duration'] = dur
             with open(self.dbpath, 'w') as fd:
                 json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")

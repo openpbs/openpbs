@@ -466,6 +466,8 @@ class PtlTextTestRunner(TextTestRunner):
     output stream, results, and the test case itself.
     """
 
+    run_count = 1
+
     def __init__(self, stream=sys.stdout, descriptions=True, verbosity=3,
                  config=None, repeat_count=1, repeat_delay=0):
         self.logger = logging.getLogger(__name__)
@@ -494,6 +496,7 @@ class PtlTextTestRunner(TextTestRunner):
         self.result.start = datetime.datetime.now()
         try:
             for i in range(self.repeat_count):
+                PtlTextTestRunner.run_count = i + 1
                 if i != 0:
                     time.sleep(self.repeat_delay)
                 test(result)
