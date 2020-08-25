@@ -1157,7 +1157,7 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 		if ((pque->qu_attr[QA_ATR_FromRouteOnly].at_flags&ATR_VFLAG_SET) &&
 			(pque->qu_attr[QA_ATR_FromRouteOnly].at_val.at_long == 1))
-			if (mtype == MOVE_TYPE_Move)  /* ok if not plain user */
+			if (mtype == MOVE_TYPE_Move)  /* ok if not plain user or scheduler */
 				return (PBSE_QACESS);
 	}
 
