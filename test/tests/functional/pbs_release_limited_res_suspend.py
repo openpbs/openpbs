@@ -1065,7 +1065,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         Test that when the attribute is set and unset,
         the server does not crash on restart with a suspended job.
         """
-        # Set ncpus in restrict_res_to_release_on_suspend server attribute
         a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
@@ -1075,7 +1074,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
-        # make sure that job id is part of node's jobs attribute
         node = self.server.status(NODE, id=self.mom.shortname)
         self.assertIn(jid1, node[0]['jobs'])
         self.server.expect(NODE,
@@ -1083,9 +1081,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                             'resources_assigned.mem': '1024kb'},
                            id=self.mom.shortname)
 
-        # suspend job
         self.server.sigjob(jobid=jid1, signal="suspend")
-
         self.server.expect(NODE,
                            {'resources_assigned.ncpus': 0,
                             'resources_assigned.mem': '1024kb'},
@@ -1104,7 +1100,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                            id=self.mom.shortname)
         self.server.expect(NODE, 'jobs', op=UNSET, id=self.mom.shortname)
 
-        # resume job
         self.server.sigjob(jobid=jid1, signal="resume")
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.server.expect(NODE, 'jobs', op=SET, id=self.mom.shortname)
