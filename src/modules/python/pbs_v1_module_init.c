@@ -66,11 +66,7 @@ void *sched_attr_idx = NULL;
 char server_name[PBS_MAXSERVERNAME+1] = "";
 char server_host[PBS_MAXHOSTNAME+1] = "";
 char *pbs_server_name = NULL;
-
-static struct _inittab pbs_python_inittab_modules[] = {
-	{PBS_PYTHON_V1_MODULE_EXTENSION_NAME, pbs_v1_module_inittab},
-	{NULL, NULL}                    /* sentinel */
-};
+struct server server;
 
 
 PyMODINIT_FUNC
@@ -78,6 +74,8 @@ PyInit__pbs_v1(void) {
 	int i;
 	PyObject * module = NULL;
 	PyObject *py_sys_modules = NULL;
+
+	memset(&server, 0, sizeof(server));
 
 	if (set_msgdaemonname(MODULE_NAME)) {
 		return PyErr_Format(PyExc_MemoryError,
@@ -196,7 +194,6 @@ int have_blue_gene_nodes = 0;
 time_t time_now = 0;
 struct pbsnode **pbsndlist = NULL;
 int svr_totnodes = 0;
-struct server server = {-1, -1, -1, -1};
 int svr_delay_entry = 0;
 char *path_hooks = NULL;
 char *path_hooks_workdir = NULL;
