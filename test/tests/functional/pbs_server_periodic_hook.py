@@ -296,9 +296,9 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         """
         hook_name = "medium_hook"
         scr = self.create_hook(accept=True, sleep_time=10)
-        attrs = {'event': 'periodic', 'alarm': 15, 'freq': 5}
+        attrs = {'event': 'periodic', 'alarm': 15, 'freq': 6}
         self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
-        self.check_next_occurances(2, freq=5, hook_run_time=10,
+        self.check_next_occurances(2, freq=6, hook_run_time=10,
                                    check_for_hook_end=True, alarm=15)
 
     def test_check_for_negative_freq(self):
