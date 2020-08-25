@@ -83,7 +83,7 @@ class TestPeering(TestFunctional):
         self.server.manager(MGR_CMD_SET, QUEUE, a, id=self.cqueue)
         a = {'started': False}
         self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
-        self.server.manager(MGR_CMD_SET, QUEUE, a, id=self.cqueue)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
 
         a = {'peer_queue': '"' + self.cqueue + ' workq"'}
         self.scheduler.set_sched_config(a)
@@ -95,8 +95,6 @@ class TestPeering(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
 
-        a = {'started': True}
-        self.server.manager(MGR_CMD_SET, QUEUE, a, id=self.cqueue)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         msg = (jid + ';Failed to run: Job violates queue and/or server'
@@ -115,9 +113,7 @@ class TestPeering(TestFunctional):
         self.create_resource(server=s2)
         a = {'resources_max.' + self.cres: 4}
         s1.manager(MGR_CMD_SET, QUEUE, a, id='workq')
-        a = {'started': False}
-        s1.manager(MGR_CMD_SET, QUEUE, a, id='workq')
-        s2.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
 
         a = {'flatuid': True}
         s1.manager(MGR_CMD_SET, SERVER, a)
@@ -136,8 +132,7 @@ class TestPeering(TestFunctional):
         s2.expect(JOB, {'job_state': 'Q'}, id=jid)
         s2.expect(JOB, {'job_state': 'Q'}, id=jid2)
 
-        a = {'started': True}
-        s1.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
         s1.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
         s1.expect(JOB, {'job_state': 'Q'}, id=jid)
         msg = (jid + r';Failed to run: .* \(15039\)')
