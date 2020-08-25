@@ -5168,7 +5168,7 @@ has_pending_mom_action_delete(char *hookname)
 	for (i=0; i < mominfo_array_size; i++) {
 
 		if (mominfo_array[i] == NULL)
-			break;
+			continue;
 
 		pact = find_mom_hook_action(mominfo_array[i]->mi_action,
 			mominfo_array[i]->mi_num_action,
@@ -5331,7 +5331,6 @@ mk_deferred_hook_info(int index, int event, long long int tid)
 /**
  * @brief
  *		check if there is any new pending action
- *		if yes remove the current one
  *	
  * @param[in] minfo - pointer to mom info
  * @param[in] pact - pointer to current hook action
@@ -5346,14 +5345,14 @@ int
 check_for_latest_action(mominfo_t *minfo, mom_hook_action_t *pact, int j, int event)
 {
 	/* if the same action is marked in the next actions for the same hook then remove
-	* the pending flag
-	*/
+	 * the pending flag
+	 */
 	int i;
 	mom_hook_action_t *pact2;
 	for (i = 0; i < minfo->mi_num_action; i++) {
 		pact2 = minfo->mi_action[i];
-		if (pact2 && (pact2->tid > pact->tid) && (pact2->action & event)
-				&& pact2->hookname && (strcmp(pact2->hookname, pact->hookname) == 0)) {
+		if (pact2 && (i != j) && (pact2->tid > pact->tid) && (pact2->action & event) &&
+				pact2->hookname && (strcmp(pact2->hookname, pact->hookname) == 0)) {
 			return 1;
 		}
 	}
@@ -5658,9 +5657,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 			free(dup_msgid);
 			return NULL;
 		}
-		g_hook_replies_expected++;
-
-		return &g_hook_mcast_array[i];
+		goto SUCCESS_RET;
 	}
 
 	/* we did not find a match, allocate a new index */
@@ -5700,13 +5697,17 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 		return NULL;
 	}
 
-	g_hook_replies_expected++;
-
 	/* Increment size of the array here only when everything is successful
 	 * This way, we do not have to reset anything back if we failed earlier
 	 * The expanded array is okay to not be resized back
 	 */
 	g_hook_mcast_array_len++;
+
+SUCCESS_RET:
+
+	minfo->mi_action[act_index]->reply_expected |= action;
+
+	g_hook_replies_expected++;
 
 	return &g_hook_mcast_array[i];
 }
@@ -5774,6 +5775,7 @@ del_deferred_hook_cmds(int index)
 				pact = minfo->mi_action[j];
 
 				pact->action &= ~(event);
+				pact->reply_expected &= ~(event);
 				hook_track_save((mominfo_t *) minfo, j);
 
 				/* now dispatch the reply to the routine in the work task */
@@ -6066,8 +6068,7 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
 	phook = (hook *)GET_NEXT(svr_allhooks);
 	while (phook) {
 		if (phook->hook_name &&	(phook->event & MOM_EVENTS)) {
-			add_pending_mom_hook_action((mominfo_t *)minfo,
-				phook->hook_name, action);
+			add_pending_mom_hook_action((mominfo_t *)minfo, phook->hook_name, action);
 		}
 		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
@@ -6104,11 +6105,9 @@ clear_timed_out_reply_expected(long long int tid)
 			for (j = 0; j < pmom->mi_num_action; j++) {
 				pact = pmom->mi_action[j];
 				if (pact && pact->reply_expected && (pact->tid == tid)) {
-					snprintf(log_buffer, sizeof(log_buffer),
-						"timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+						LOG_INFO, __func__, "timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
 						pact->reply_expected, tid, pact->hookname, pmom->mi_host);
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-						LOG_INFO, __func__, log_buffer);
 					/* get the task list */
 					ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
 								(pmom->mi_data))->msr_deferred_cmds));
@@ -6125,11 +6124,9 @@ clear_timed_out_reply_expected(long long int tid)
 							info = (struct def_hk_cmd_info *) tmp_task->wt_parm2;
 
 							if (!info || (j != info->index) || !(pact->reply_expected & info->event)) {
-								snprintf(log_buffer, sizeof(log_buffer),
-									"timedout, skipped deleting pending WORK_Deferred_cmd for %s:%s",
+								log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+									LOG_INFO, __func__, "timedout, skipped deleting pending WORK_Deferred_cmd for %s:%s",
 									pact->hookname, pmom->mi_host);
-								log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-									LOG_INFO, __func__, log_buffer);
 								continue;
 							}
 
@@ -6155,7 +6152,7 @@ clear_timed_out_reply_expected(long long int tid)
 
 /**
  * @brief
- *		checks for hook sync operstion's timeout
+ *		checks for hook sync operation's timeout
  *		and handles timeout activities if so
  *
  * @see
