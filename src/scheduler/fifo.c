@@ -1239,10 +1239,10 @@ update_last_running(server_info *sinfo)
 
 /**
  * @brief clear and free the last running array
- * 
+ *
  * @return void
  */
-void 
+void
 clear_last_running()
 {
 	free_pjobs(last_running, last_running_size);

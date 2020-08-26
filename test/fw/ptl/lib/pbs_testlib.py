@@ -11192,6 +11192,11 @@ class Scheduler(PBSService):
             self.logger.info(self.logprefix + 'stopping Scheduler on host ' +
                              self.hostname)
             return super(Scheduler, self)._stop(sig, inst=self)
+        elif self.attributes['id'] != 'default':
+            self.logger.info(self.logprefix + 'stopping MultiSched ' +
+                             self.attributes['id'] + ' on host ' +
+                             self.hostname)
+            return super(Scheduler, self)._stop(inst=self)
         else:
             try:
                 self.pi.stop_sched()
