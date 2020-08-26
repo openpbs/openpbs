@@ -93,7 +93,7 @@ do { \
 } while (0)
 #endif
 
-extern void job_obit(ruu *, int, int *);
+extern int job_obit(ruu *, int);
 extern int enqueue_update_for_send(job *, int);
 extern void send_resc_used(int cmd, int count, ruu *rud);
 extern char mom_short_name[];

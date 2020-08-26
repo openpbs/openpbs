@@ -2159,7 +2159,7 @@ recv_job_obit(int stream)
 			int is_reject = 0;
 
 			DBPRT(("recv_job_obit: decoded obit for %s\n", rused.ru_pjobid))
-			job_obit(&rused, stream, &is_reject);
+			is_reject = job_obit(&rused, stream);
 			if (is_reject == 1) {
 				reject_list[reject_count++] = rused.ru_pjobid;
 				rused.ru_pjobid = NULL;
@@ -2177,39 +2177,37 @@ recv_job_obit(int stream)
 
 	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "processed obits, sending replies acks: %d, rejects: %d", ack_count, reject_count);
 
-	if (ack_count > 0) {
-		if (is_compose(stream, IS_ACKOBIT) != DIS_SUCCESS)
+	if (ack_count > 0 || reject_count > 0) {
+		if (is_compose(stream, IS_OBITREPLY) != DIS_SUCCESS)
 			goto recv_job_obit_err;
 		if (diswui(stream, ack_count) != DIS_SUCCESS)
 			goto recv_job_obit_err;
-		for (i = 0; i < ack_count; i++) {
-			if (diswst(stream, ack_list[i]) != DIS_SUCCESS)
-				goto recv_job_obit_err;
-			free(ack_list[i]);
-			ack_list[i] = NULL;
+		if (ack_count > 0) {
+			for (i = 0; i < ack_count; i++) {
+				if (diswst(stream, ack_list[i]) != DIS_SUCCESS)
+					goto recv_job_obit_err;
+				free(ack_list[i]);
+				ack_list[i] = NULL;
+			}
 		}
-		dis_flush(stream);
-	}
-	free(ack_list);
-	ack_list = NULL;
-	ack_count = 0;
-
-	if (reject_count > 0) {
-		if (is_compose(stream, IS_BADOBIT) != DIS_SUCCESS)
-			goto recv_job_obit_err;
+		free(ack_list);
+		ack_list = NULL;
+		ack_count = 0;
 		if (diswui(stream, reject_count) != DIS_SUCCESS)
 			goto recv_job_obit_err;
-		for (i = 0; i < reject_count; i++) {
-			if (diswst(stream, reject_list[i]) != DIS_SUCCESS)
-				goto recv_job_obit_err;
-			free(reject_list[i]);
-			reject_list[i] = NULL;
+		if (reject_count > 0) {
+			for (i = 0; i < reject_count; i++) {
+				if (diswst(stream, reject_list[i]) != DIS_SUCCESS)
+					goto recv_job_obit_err;
+				free(reject_list[i]);
+				reject_list[i] = NULL;
+			}
 		}
 		dis_flush(stream);
+		free(reject_list);
+		reject_list = NULL;
+		reject_count = 0;
 	}
-	free(reject_list);
-	reject_list = NULL;
-	reject_count = 0;
 
 	return;
 

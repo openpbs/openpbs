@@ -882,60 +882,21 @@ is_request(int stream, int version)
 				goto err;
 			break;
 
-		case IS_BADOBIT: {
+		case IS_OBITREPLY: {
 			int njobs = 0;
 
-			njobs = disrui(stream, &ret); /* number of job ids in reply */
+			njobs = disrui(stream, &ret); /* number of acks in reply */
 			if (ret != DIS_SUCCESS)
 				goto err;
 
-			DBPRT(("%s: IS_BADOBIT njobs: %d\n", __func__, njobs))
-			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received reject obits = %d", njobs);
-
-			while (njobs--) {
-				jobid = disrst(stream, &ret);
-				if (ret != DIS_SUCCESS)
-					goto err;
-				pjob = find_job(jobid);
-
-				/*
-				 * Allowing only to delete a job that has actually
-				 * started (i.e. not in JOB_SUBSTATE_PRERUN), would
-				 * avoid the race condition resulting in a hung job:
-				 * server force reruns a job which is lingering in
-				 * PRERUN state, and an Obit request for the previous
-				 * instance of the job is received by the server and
-				 * rejected, causing mom to delete the new instance of
-				 * the job. If the job has passed the PRERUN stage,
-				 * then it would have already synced up with the server
-				 * on status, and not end up in this race condition.
-				 */
-				if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
-					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, "Job removed, Server rejected Obit");
-					mom_deljob(pjob);
-				}
-				free(jobid);
-				jobid = NULL;
-			}
-		}
-		break;
-
-		case IS_ACKOBIT: {
-			int njobs = 0;
-
-			njobs = disrui(stream, &ret); /* number of job ids in reply */
-			if (ret != DIS_SUCCESS)
-				goto err;
-
-			DBPRT(("%s: IS_ACKOBIT njobs: %d\n", __func__, njobs))
+			DBPRT(("%s: IS_OBITREPLY ack njobs: %d\n", __func__, njobs))
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received ack obits = %d", njobs);
 
-			while (njobs--) {
-				job *pjob = NULL;
+			while (njobs-- > 0) {
 				jobid = disrst(stream, &ret);
 				if (ret != DIS_SUCCESS)
 					goto err;
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, "Job exited, Server acknowledged Obit");
+
 				pjob = find_job(jobid);
 				if (pjob) {
 					/* note: see on_job_exit() for more info */
@@ -952,6 +913,39 @@ is_request(int stream, int version)
 							job_save(pjob);
 						}
 					}
+				}
+				free(jobid);
+				jobid = NULL;
+			}
+
+			njobs = disrui(stream, &ret); /* number of rejects in reply */
+			if (ret != DIS_SUCCESS)
+				goto err;
+
+			DBPRT(("%s: IS_OBITREPLY reject njobs: %d\n", __func__, njobs))
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received reject obits = %d", njobs);
+
+			while (njobs-- > 0) {
+				jobid = disrst(stream, &ret);
+				if (ret != DIS_SUCCESS)
+					goto err;
+
+				pjob = find_job(jobid);
+				/*
+				 * Allowing only to delete a job that has actually
+				 * started (i.e. not in JOB_SUBSTATE_PRERUN), would
+				 * avoid the race condition resulting in a hung job:
+				 * server force reruns a job which is lingering in
+				 * PRERUN state, and an Obit request for the previous
+				 * instance of the job is received by the server and
+				 * rejected, causing mom to delete the new instance of
+				 * the job. If the job has passed the PRERUN stage,
+				 * then it would have already synced up with the server
+				 * on status, and not end up in this race condition.
+				 */
+				if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, "Job removed, Server rejected Obit");
+					mom_deljob(pjob);
 				}
 				free(jobid);
 				jobid = NULL;
