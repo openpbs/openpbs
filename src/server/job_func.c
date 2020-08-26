@@ -2033,12 +2033,12 @@ get_jobowner(char *from, char *to)
 {
 	int i;
 
-	for (i=0; i<PBS_MAXUSER; ++i) {
-		if ((*(from+i) == '@') || (*(from+i) == '\0'))
+	for (i = 0; i < PBS_MAXUSER; ++i) {
+		if ((*(from + i) == '@') || (*(from + i) == '\0'))
 			break;
-		*(to+i) = *(from+i);
+		*(to + i) = *(from + i);
 	}
-	*(to+i) = '\0';
+	*(to + i) = '\0';
 }
 
 /**

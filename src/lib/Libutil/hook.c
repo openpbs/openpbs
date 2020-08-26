@@ -4012,11 +4012,12 @@ cleanup_hooks_workdir(struct work_task *ptask)
  *
  *	Returns the number of hook scripts that are eligible to
  *	be executed for the specified 'hook_event'.
- *	This means the hook is enabled and has a hook content.
+ *	This means the hook is enabled and has hook content.
  *
- * @param[in] 	hook_event - the event of the hooks to count
- * @return	int
- * @retval 	<n> number of hooks
+ * @param[in] hook_event - the event of the hooks to count
+ *
+ * @return int
+ * @retval <n> number of hooks
  *
  */
 int

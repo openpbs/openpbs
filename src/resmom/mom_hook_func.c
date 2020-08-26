@@ -79,6 +79,7 @@
 #include "pbs_nodes.h"
 #include "net_connect.h"
 #include "mom_hook_func.h"
+#include "mom_server.h"
 #include "hook.h"
 #include "pbs_reliable.h"
 #include "pbs_version.h"
@@ -3380,7 +3381,7 @@ post_run_hook(struct work_task *ptask)
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
-				update_ajob_status_using_cmd(pjob, IS_RESCUSED_FROM_HOOK);
+				enqueue_update_for_send(pjob, IS_RESCUSED_FROM_HOOK);
 			}
 
 

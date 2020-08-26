@@ -885,7 +885,6 @@ is_request(int stream, int version)
 		case IS_BADOBIT: {
 			int njobs = 0;
 
-
 			njobs = disrui(stream, &ret); /* number of job ids in reply */
 			if (ret != DIS_SUCCESS)
 				goto err;
@@ -893,7 +892,7 @@ is_request(int stream, int version)
 			DBPRT(("%s: IS_BADOBIT njobs: %d\n", __func__, njobs))
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received reject obits = %d", njobs);
 
-			while(njobs--) {
+			while (njobs--) {
 				jobid = disrst(stream, &ret);
 				if (ret != DIS_SUCCESS)
 					goto err;
@@ -931,7 +930,7 @@ is_request(int stream, int version)
 			DBPRT(("%s: IS_ACKOBIT njobs: %d\n", __func__, njobs))
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received ack obits = %d", njobs);
 
-			while(njobs--) {
+			while (njobs--) {
 				job *pjob = NULL;
 				jobid = disrst(stream, &ret);
 				if (ret != DIS_SUCCESS)

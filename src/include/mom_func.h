@@ -223,8 +223,6 @@ extern int   mom_deljob_wait(job *);
 extern int   run_pelog(int which, char *file, job *pjob, int pe_io_type);
 extern int   is_joined(job *);
 extern void  update_jobs_status(void);
-extern void  update_ajob_status(job *);
-extern void  update_ajob_status_using_cmd(job *, int);
 extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);

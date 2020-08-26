@@ -281,52 +281,11 @@ fail:
 
 /**
  * @brief
- * 	Communicates the status (updated attributes, resources) of a single job
- *	to the server via the given mom-to-server 'cmd'.
+ * 	update jobs rescused to the server
  *
- * @param[in]	pjob - pointer to the job whose status is being returned.
- * @param[in]	cmd - command message to use to communicate status
- *
- * @return Void
+ * @return void
  *
  */
-void
-update_ajob_status_using_cmd(job *pjob, int cmd)
-{
-	enqueue_update_for_send(pjob, cmd);
-}
-
-/**
- * @brief
- *	Wrapper to: update_ajob_status_using_cmd(pjob, IS_RESCUSED).
- *
- * @param[in]	pjob - job whose status is being returned.
- *
- * @note
- *	This is used when a job is first started.   It returns the special
- *	listed attributes as well as resources used.
- * @return Void
- *
- */
-void
-update_ajob_status(job *pjob)
-{
-	update_ajob_status_using_cmd(pjob, IS_RESCUSED);
-}
-
-/**
- * @brief
- * 	update_jobs_status - return the status of jobs to the server
- *
- *	Returns the updated resources_used for all running jobs.
- *	The special listed attrbutes are not returned because they are only
- *	modified when a job is first started and that case is covered by
- *	update_ajob_status() above.
- *
- * @return Void
- *
- */
-
 void
 update_jobs_status(void)
 {
@@ -395,7 +354,7 @@ send_obit(job *pjob, int exval)
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
-				update_ajob_status_using_cmd(pjob, IS_RESCUSED_FROM_HOOK);
+				enqueue_update_for_send(pjob, IS_RESCUSED_FROM_HOOK);
 
 				/* Push vnl hook changes to server */
 				hook_requests_to_server(&vnl_changes);
@@ -426,9 +385,8 @@ send_obit(job *pjob, int exval)
 	/* chkpt/restart if job was checkpointed	*/
 	if (exval == 2 && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT))
 		pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_QUERST;
-	if (enqueue_update_for_send(pjob, IS_JOBOBIT) != 0) {
+	if (enqueue_update_for_send(pjob, IS_JOBOBIT) != 0)
 		log_joberr(PBSE_SYSTEM, __func__, "Failed to enque job obit", pjob->ji_qs.ji_jobid);
-	}
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "Obit sent");
 }
 

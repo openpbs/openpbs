@@ -656,7 +656,6 @@ extern	void	cleanup_hooks_workdir(struct work_task *);
 
 /* Local private functions */
 static void bundle_ruu(int *r_cnt, ruu **prused, int *rh_cnt, ruu **prhused, int *o_cnt, ruu **obits);
-static void send_pending_ruu(void);
 static void send_pending_updates(void);
 static char *mk_dirs(char *);
 static void check_busy(double);
@@ -2541,70 +2540,65 @@ chk_mom_action(enum Action_Event ae)
  *
  */
 int
-do_mom_action_script(int	ae,	/* index into action table */
-	job		*pjob,	/* ptr to job */
-	pbs_task	*ptask,	/* ptr to task */
-	char		*path,
-	void		(*post)(job *p, int e)) /* post action func */
+do_mom_action_script(int ae,	      /* index into action table */
+		     job *pjob,	      /* ptr to job */
+		     pbs_task *ptask, /* ptr to task */
+		     char *path,
+		     void (*post)(job *p, int e)) /* post action func */
 {
-	char		**args = NULL;
-#ifdef	WIN32
-	char		buf[MAX_PATH + 1];
+	char **args = NULL;
+#ifdef WIN32
+	char buf[MAX_PATH + 1];
 #else
-	char		buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN + 1];
 #endif
-	int		i;
-	int		nargs;
-	char		**pargs;
-	struct	stat	sb;
-	struct	passwd	*pwdp;
-	int		rc = -1;
-	struct mom_action	*ma;
-	int	transmog = 0;
-#ifdef	WIN32
-	char	*pnoq = 0;
-	char	cmd_line[4096];
-	int	flags = CREATE_DEFAULT_ERROR_MODE|CREATE_NEW_CONSOLE|
-		CREATE_NEW_PROCESS_GROUP;
-	STARTUPINFO             si = { 0 };
-	PROCESS_INFORMATION     pi = { 0 };
-	char	*env_block;
-	char	*shell;
-	extern	char	*variables_else[];
-	DWORD	ret;
-	HANDLE	hjob;
+	int i;
+	int nargs;
+	char **pargs;
+	struct stat sb;
+	struct passwd *pwdp;
+	int rc = -1;
+	struct mom_action *ma;
+	int transmog = 0;
+#ifdef WIN32
+	char *pnoq = 0;
+	char cmd_line[4096];
+	int flags = CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP;
+	STARTUPINFO si = {0};
+	PROCESS_INFORMATION pi = {0};
+	char *env_block;
+	char *shell;
+	extern char *variables_else[];
+	DWORD ret;
+	HANDLE hjob;
 #else
-	int	j;
-	int	pipes[2], kid_read = -1, kid_write = -1;
-	int	parent_read = -1, parent_write = -1;
-	struct	startjob_rtn	sjr;
-	pid_t	child;
+	int j;
+	int pipes[2], kid_read = -1, kid_write = -1;
+	int parent_read = -1, parent_write = -1;
+	struct startjob_rtn sjr;
+	pid_t child;
 
 	memset(&sjr, 0, sizeof(sjr));
-#endif	/* WIN32 */
+#endif /* WIN32 */
 
-	assert((0 <= ae) && (ae < (int)LastAction));
+	assert((0 <= ae) && (ae < (int) LastAction));
 
 	ma = &mom_action[ae];
-	if ((ma == NULL) || (ma->ma_script == NULL))
+	if (ma == NULL || ma->ma_script == NULL)
 		return -2;
 
-	/* does script really exist? */
-#ifdef	WIN32
+		/* does script really exist? */
+#ifdef WIN32
 	pnoq = remove_quotes(ma->ma_script);
 	if (stat(pnoq, &sb) == -1) {
-		sprintf(log_buffer, "action %s script %s does not exist",
-			ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s does not exist", ma->ma_name, ma->ma_script);
 		if (pnoq)
 			free(pnoq);
 		return -1;
-	} else if (pnoq && chk_file_sec(pnoq, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0)) {
-		sprintf(log_buffer, "action %s script %s cannot be executed "
-			"due to permissions", ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	} else if (pnoq && chk_file_sec(pnoq, 0, 0, WRITES_MASK ^ FILE_WRITE_EA, 0)) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot be executed due to permissions", ma->ma_name, ma->ma_script);
 		if (pnoq)
 			free(pnoq);
 		return -1;
@@ -2614,30 +2608,21 @@ do_mom_action_script(int	ae,	/* index into action table */
 		free(pnoq);
 #else
 	if (stat(ma->ma_script, &sb) == -1) {
-		sprintf(log_buffer, "action %s script %s does not exist",
-			ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "action %s script %s does not exist", ma->ma_name, ma->ma_script);
 		return -1;
-	} else if ((sb.st_uid != 0) || (sb.st_gid > 10) ||
-		((sb.st_mode & S_IXUSR) != S_IXUSR) ||
-		((sb.st_mode & S_IWOTH) != 0)) {
-		sprintf(log_buffer, "action %s script %s cannot be executed "
-			"due to permissions", ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	} else if (sb.st_uid != 0 || sb.st_gid > 10 || (sb.st_mode & S_IXUSR) != S_IXUSR || (sb.st_mode & S_IWOTH) != 0) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot be executed due to permissions", ma->ma_name, ma->ma_script);
 		return -1;
 	}
-#endif	/* WIN32 */
+#endif /* WIN32 */
 
 	if (ptask == NULL)
-		ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
+		ptask = (pbs_task *) GET_NEXT(pjob->ji_tasks);
 
 	if (ptask == NULL) {
-		sprintf(log_buffer, "action %s script %s cannot run because"
-			" job has no tasks", ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot run because job has no tasks", ma->ma_name, ma->ma_script);
 		return -1;
 	}
 
@@ -2646,17 +2631,13 @@ do_mom_action_script(int	ae,	/* index into action table */
 	 ** the ji_momsubt field has to be free to track the pid.
 	 */
 	if (post != NULL && pjob->ji_momsubt) {
-		sprintf(log_buffer, "action %s script %s cannot be run"
-			" due to existing subtask", ma->ma_name,
-			ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot be run due to existing subtask", ma->ma_name, ma->ma_script);
 		return -1;
 	}
 
 	if ((pwdp = check_pwd(pjob)) == NULL) {
-		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
-			LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
+		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
 		return -1;
 	}
 
@@ -2669,7 +2650,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 	if (args == NULL)
 		return -1;
 
-#ifdef	WIN32
+#ifdef WIN32
 	strcpy(cmd_line, "cmd /q /c ");
 	strcat(cmd_line, ma->ma_script);
 #endif
@@ -2685,35 +2666,32 @@ do_mom_action_script(int	ae,	/* index into action table */
 	for (i = 1; i < nargs; i++, pargs++) {
 		if (**pargs == '%') {
 			if (strcmp(*pargs + 1, "jobid") == 0) {
-				(void)strcpy(buf, pjob->ji_qs.ji_jobid);
+				(void) strcpy(buf, pjob->ji_qs.ji_jobid);
 			} else if (strcmp(*pargs + 1, "sid") == 0) {
 				sprintf(buf, "%d", ptask->ti_qs.ti_sid);
 			} else if (strcmp(*pargs + 1, "taskid") == 0) {
 				sprintf(buf, "%d", ptask->ti_qs.ti_task);
 			} else if (strcmp(*pargs + 1, "uid") == 0) {
-#ifdef	WIN32
+#ifdef WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #endif
 			} else if (strcmp(*pargs + 1, "gid") == 0) {
-#ifdef	WIN32
+#ifdef WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #endif
 			} else if (strcmp(*pargs + 1, "login") == 0) {
-				strcpy(buf,
-					pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+				strcpy(buf, pjob->ji_wattr[(int) JOB_ATR_euser].at_val.at_str);
 			} else if (strcmp(*pargs + 1, "owner") == 0) {
-				strcpy(buf,
-					pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+				strcpy(buf, pjob->ji_wattr[(int) JOB_ATR_job_owner].at_val.at_str);
 			} else if (strcmp(*pargs + 1, "globid") == 0) {
 				strcpy(buf, "NULL");
 			} else if (strcmp(*pargs + 1, "auxid") == 0) {
-				if (pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str)
-					pbs_strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].
-						at_val.at_str, sizeof(buf));
+				if (pjob->ji_wattr[(int) JOB_ATR_altid].at_val.at_str)
+					pbs_strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str, sizeof(buf));
 				else
 					strcpy(buf, "NULL");
 			} else if (strcmp(*pargs + 1, "path") == 0) {
@@ -2722,34 +2700,28 @@ do_mom_action_script(int	ae,	/* index into action table */
 				else
 					strcpy(buf, "NULL");
 			} else {
-				sprintf(log_buffer, "action %s script %s cannot be run"
-					" due to unknown parameter %s",
-					ma->ma_name, ma->ma_script,
-					*pargs);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-					pjob->ji_qs.ji_jobid, log_buffer);
+				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+					   "action %s script %s cannot be run due to unknown parameter %s",
+					   ma->ma_name, ma->ma_script, *pargs);
 				goto done;
 			}
-		} else {
+		} else
 			pbs_strncpy(buf, *pargs, sizeof(buf));
-		}
 		*(args + i) = strdup(buf);
 		if (*(args + i) == NULL)
 			return -1;
-#ifdef	WIN32
+#ifdef WIN32
 		strcat(cmd_line, " ");
 		strcat(cmd_line, buf);
 #endif
 	}
 
-#ifdef	WIN32
-	shell = set_shell(pjob, pwdp);	/* machine dependent */
+#ifdef WIN32
+	shell = set_shell(pjob, pwdp); /* machine dependent */
 
 	init_envp();
 
-	/*
-	 **	Setup environment
-	 */
+	/* Setup environment */
 	/* UID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 	bld_wenv_variables("UID", buf);
@@ -2761,48 +2733,40 @@ do_mom_action_script(int	ae,	/* index into action table */
 	/* LOGNAME */
 	bld_wenv_variables(variables_else[1], pwdp->pw_name);
 	/* PBS_JOBNAME */
-	bld_wenv_variables(variables_else[2],
-		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+	bld_wenv_variables(variables_else[2], pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str);
 	/* PBS_JOBID */
 	bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid);
 	/* PBS_QUEUE */
-	bld_wenv_variables(variables_else[4],
-		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+	bld_wenv_variables(variables_else[4], pjob->ji_wattr[(int) JOB_ATR_in_queue].at_val.at_str);
 	/* SHELL */
 	bld_wenv_variables(variables_else[5], shell);
 	/* USER */
 	bld_wenv_variables(variables_else[6], pwdp->pw_name);
 	/* PBS_JOBCOOKIE */
-	bld_wenv_variables(variables_else[7],
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+	bld_wenv_variables(variables_else[7], pjob->ji_wattr[(int) JOB_ATR_Cookie].at_val.at_str);
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
 	bld_wenv_variables(variables_else[8], buf);
 	/* PBS_TASKNUM */
-	sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
+	sprintf(buf, "%ld", (long) ptask->ti_qs.ti_task);
 	bld_wenv_variables(variables_else[9], buf);
 	/* PBS_MOMPORT */
 	sprintf(buf, "%d", pbs_rm_port);
 	bld_wenv_variables(variables_else[10], buf);
 	/* PBS_NODEFILE */
-	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path,
-		pjob->ji_qs.ji_jobid);
+	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
 	bld_wenv_variables(variables_else[11], buf);
 	/* PBS_SID */
 	sprintf(buf, "%ld", ptask->ti_qs.ti_sid);
 	bld_wenv_variables("PBS_SID", buf);
 	/* PBS_JOBDIR */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+	if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0))
 		bld_wenv_variables("PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
-	} else {
+	else
 		bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
-	}
 
 	/* USERPROFILE */
-	bld_wenv_variables(variables_else[16],
-		default_local_homedir(pwdp->pw_name,
-		pwdp->pw_userlogin, 1));
+	bld_wenv_variables(variables_else[16], default_local_homedir(pwdp->pw_name, pwdp->pw_userlogin, 1));
 
 	/* USERNAME */
 	bld_wenv_variables(variables_else[17], pwdp->pw_name);
@@ -2814,17 +2778,13 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pjob->ji_hJob == INVALID_HANDLE_VALUE) {
 			hjob = CreateJobObject(NULL, pjob->ji_qs.ji_jobid);
 			if (hjob == NULL) {
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-					LOG_WARNING, pjob->ji_qs.ji_jobid,
-					"Unable to create job");
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, "Unable to create job");
 				goto done;
 			}
 			pjob->ji_hJob = hjob;
 		}
 		if ((i = mom_set_limits(pjob, SET_LIMIT_SET)) != PBSE_NONE) {
-			sprintf(log_buffer, "Unable to set limits, err=%d", i);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, "Unable to set limits, err=%d", i);
 			goto done;
 		}
 		flags |= CREATE_SUSPENDED;
@@ -2834,24 +2794,20 @@ do_mom_action_script(int	ae,	/* index into action table */
 	si.cb = sizeof(si);
 	si.lpDesktop = "";
 
-	ret = CreateProcess(NULL, cmd_line,
-		NULL, NULL, TRUE, flags,
-		env_block, NULL, &si, &pi);
+	ret = CreateProcess(NULL, cmd_line, NULL, NULL, TRUE, flags, env_block, NULL, &si, &pi);
 
 	/* could be sitting on a user's network directory (checkpoint action) */
 	if ((ret == 0) && (GetLastError() == ERROR_ACCESS_DENIED)) {
-		char    current_dir[MAX_PATH+1];
-		char    *temp_dir = NULL;
+		char current_dir[MAX_PATH + 1];
+		char *temp_dir = NULL;
 
 		current_dir[0] = '\0';
-		_getcwd(current_dir, MAX_PATH+1);
+		_getcwd(current_dir, MAX_PATH + 1);
 
 		temp_dir = get_saved_env("SYSTEMROOT");
-		chdir(temp_dir?temp_dir:"C:\\");
+		chdir(temp_dir ? temp_dir : "C:\\");
 
-		ret = CreateProcess(NULL, cmd_line,
-			NULL, NULL, TRUE, flags,
-			env_block, NULL, &si, &pi);
+		ret = CreateProcess(NULL, cmd_line, NULL, NULL, TRUE, flags, env_block, NULL, &si, &pi);
 
 		/* restore current working directory */
 		chdir(current_dir);
@@ -2860,15 +2816,11 @@ do_mom_action_script(int	ae,	/* index into action table */
 		free(env_block);
 
 	if (ret == 0) {
-		sprintf(log_buffer, "action script %s cannot be run due to"
-			" CreateProcess failure %d", ma->ma_script,
-			WSAGetLastError());
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "action script %s cannot be run due to CreateProcess failure %d", ma->ma_script, WSAGetLastError());
 		goto done;
 	}
 
-	if (post != NULL) {	/* post func means we do not wait */
+	if (post != NULL) { /* post func means we do not wait */
 		/* hook action process to pjob so that when pjob gets killed */
 		/* all action processes will get cleared */
 		if (pjob->ji_hJob != INVALID_HANDLE_VALUE)
@@ -2884,7 +2836,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		goto done;
 	}
 
-	if (transmog) {		/* setup new task */
+	if (transmog) { /* setup new task */
 		/*
 		 * call to daemon_protect() to unprotect not needed
 		 * for Windows as the created process does not inherit
@@ -2900,26 +2852,20 @@ do_mom_action_script(int	ae,	/* index into action table */
 			goto done;
 		}
 
-		/*
-		 **	After adding process to job
-		 */
+		/* After adding process to job */
 		ptask->ti_hProc = pi.hProcess;
 		ptask->ti_qs.ti_sid = pi.dwProcessId;
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-		(void)task_save(ptask);
+		(void) task_save(ptask);
 		/* update the job with the new session id */
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long
-		= ptask->ti_qs.ti_sid;
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags =
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
+		pjob->ji_wattr[(int) JOB_ATR_session_id].at_val.at_long = ptask->ti_qs.ti_sid;
+		pjob->ji_wattr[(int) JOB_ATR_session_id].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
 			job_save(pjob);
 		}
-		(void)sprintf(log_buffer, "task transmogrified, %s", cmd_line);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "task transmogrified, %s", cmd_line);
 
 		ret = ResumeThread(pi.hThread);
 		if (ret == -1) {
@@ -2930,31 +2876,19 @@ do_mom_action_script(int	ae,	/* index into action table */
 			goto done;
 		}
 		CloseHandle(pi.hThread);
-		/* send updated session id to server */
-		update_ajob_status(pjob);
+		enqueue_update_for_send(pjob, IS_RESCUSED);
 		rc = 0;
-	}
-	else {			/* wait for script */
-		ret = WaitForSingleObject(pi.hProcess, ma->ma_timeout*1000);
+	} else { /* wait for script */
+		ret = WaitForSingleObject(pi.hProcess, ma->ma_timeout * 1000);
 		if (ret == WAIT_TIMEOUT) {
-			sprintf(log_buffer, "%s script %s: timed out",
-				ma->ma_name, ma->ma_script);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: timed out", ma->ma_name, ma->ma_script);
 			rc = -1;
 		} else if (ret == WAIT_FAILED) { /* abnormal exit */
-			sprintf(log_buffer, "%s script %s: wait failed %d",
-				ma->ma_name, ma->ma_script, GetLastError());
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: wait failed %d", ma->ma_name, ma->ma_script, GetLastError());
 			rc = -1;
 		} else {
-			GetExitCodeProcess(pi.hProcess, (DWORD *)&rc);
-			sprintf(log_buffer, "%s script %s: exit code %d",
-				ma->ma_name, ma->ma_script, rc);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			GetExitCodeProcess(pi.hProcess, (DWORD *) &rc);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: exit code %d", ma->ma_name, ma->ma_script, rc);
 		}
 
 		/* The following is iffy --
@@ -2968,25 +2902,21 @@ do_mom_action_script(int	ae,	/* index into action table */
 	init_envp();
 #else
 	/*
-	 ** Special case for restart_transmogrify.
-	 ** The script is going to morf into the task so we have to
-	 ** setup pipes just like in start_process()
+	 * Special case for restart_transmogrify.
+	 * The script is going to morf into the task so we have to
+	 * setup pipes just like in start_process()
 	 */
 	if ((transmog = (ae == RestartAction) && restart_transmogrify)) {
-		sprintf(log_buffer, "action %s script %s preparing "
-			"to transmogrify task %8.8X",
-			ma->ma_name, ma->ma_script,
-			ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s preparing to transmogrify task %8.8X",
+			   ma->ma_name, ma->ma_script, ptask->ti_qs.ti_task);
 
 		if (pipe(pipes) == -1)
 			goto done;
 		if (pipes[1] < 3) {
 			kid_write = fcntl(pipes[1], F_DUPFD, 3);
 			close(pipes[1]);
-		}
-		else
+		} else
 			kid_write = pipes[1];
 		parent_read = pipes[0];
 
@@ -2998,40 +2928,32 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pipes[0] < 3) {
 			kid_read = fcntl(pipes[0], F_DUPFD, 3);
 			close(pipes[0]);
-		}
-		else
+		} else
 			kid_read = pipes[0];
 		parent_write = pipes[1];
-	}
-	else if (ae == RestartAction) {
-		sprintf(log_buffer, "action %s script %s preparing "
-			"to restart task %8.8X",
-			ma->ma_name, ma->ma_script,
-			ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	} else if (ae == RestartAction) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s preparing to restart task %8.8X",
+			   ma->ma_name, ma->ma_script, ptask->ti_qs.ti_task);
 	}
 
-	if ((child = fork_me(-1)) == 0) {		/* child */
-		extern	char	*variables_else[];
-		char		*shell;
+	if ((child = fork_me(-1)) == 0) { /* child */
+		extern char *variables_else[];
+		char *shell;
 
 		/* unprotect the child process which becomes the job */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
-		shell = set_shell(pjob, pwdp);	/* machine dependent */
+		shell = set_shell(pjob, pwdp); /* machine dependent */
 		vtable.v_ensize = 30;
 		vtable.v_used = 0;
-		vtable.v_envp = (char **)calloc(vtable.v_ensize,
-			sizeof(char *));
+		vtable.v_envp = (char **) calloc(vtable.v_ensize, sizeof(char *));
 		if (vtable.v_envp == NULL) {
 			free(args);
 			log_err(errno, "setup environment", "out of memory");
 			return -1;
 		}
-		/*
-		 **	Setup environment
-		 */
+		/* setup environment */
 		/* UID */
 		sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 		bld_env_variables(&vtable, "UID", buf);
@@ -3043,49 +2965,37 @@ do_mom_action_script(int	ae,	/* index into action table */
 		/* LOGNAME */
 		bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 		/* PBS_JOBNAME */
-		bld_env_variables(&vtable, variables_else[2],
-			pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[2], pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str);
 		/* PBS_JOBID */
-		bld_env_variables(&vtable, variables_else[3],
-			pjob->ji_qs.ji_jobid);
+		bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 		/* PBS_QUEUE */
-		bld_env_variables(&vtable, variables_else[4],
-			pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[4], pjob->ji_wattr[(int) JOB_ATR_in_queue].at_val.at_str);
 		/* SHELL */
 		bld_env_variables(&vtable, variables_else[5], shell);
 		/* USER */
 		bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 		/* PBS_JOBCOOKIE */
-		bld_env_variables(&vtable, variables_else[7],
-			pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[7], pjob->ji_wattr[(int) JOB_ATR_Cookie].at_val.at_str);
 		/* PBS_NODENUM */
 		sprintf(buf, "%d", pjob->ji_nodeid);
 		bld_env_variables(&vtable, variables_else[8], buf);
 		/* PBS_TASKNUM */
-		sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
+		sprintf(buf, "%ld", (long) ptask->ti_qs.ti_task);
 		bld_env_variables(&vtable, variables_else[9], buf);
 		/* PBS_MOMPORT */
 		sprintf(buf, "%d", pbs_rm_port);
 		bld_env_variables(&vtable, variables_else[10], buf);
 		/* PBS_NODEFILE */
-		sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path,
-			pjob->ji_qs.ji_jobid);
+		sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
 		bld_env_variables(&vtable, variables_else[11], buf);
 		/* PBS_SID */
 		sprintf(buf, "%d", ptask->ti_qs.ti_sid);
 		bld_env_variables(&vtable, "PBS_SID", buf);
 		/* PBS_JOBDIR */
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags &
-			ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].
-			at_val.at_str, "PRIVATE") == 0)) {
-			bld_env_variables(&vtable, "PBS_JOBDIR",
-				jobdirname(pjob->ji_qs.ji_jobid,
-				pjob->ji_grpcache->gc_homedir));
-		} else {
-			bld_env_variables(&vtable, "PBS_JOBDIR",
-				pjob->ji_grpcache->gc_homedir);
-		}
+		if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0))
+			bld_env_variables(&vtable, "PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+		else
+			bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 		mom_unnice();
 
 		/*
@@ -3096,24 +3006,19 @@ do_mom_action_script(int	ae,	/* index into action table */
 			close(parent_read);
 			close(parent_write);
 
-#if			MOM_ALPS
+#if MOM_ALPS
 			/*
 			 * ALPS jobs need a new PAGG when
 			 * being restarted.
 			 */
-			memset(pjob->ji_extended.ji_ext.ji_jid, 0,
-				sizeof(pjob->ji_extended.ji_ext.ji_jid));
+			memset(pjob->ji_extended.ji_ext.ji_jid, 0, sizeof(pjob->ji_extended.ji_ext.ji_jid));
 #endif
 			j = set_job(pjob, &sjr);
 			if (j < 0) {
-				if (j == -1) {
-					strcpy(log_buffer,
-						"Unable to set task session");
-				}
+				if (j == -1)
+					strcpy(log_buffer, "Unable to set task session");
 				DBPRT(("%s: %s\n", __func__, log_buffer))
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-					LOG_NOTICE, pjob->ji_qs.ji_jobid,
-					log_buffer);
+				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 				if (j == -3)
 					j = JOB_EXEC_FAIL2;
 				else
@@ -3123,11 +3028,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 			ptask->ti_qs.ti_sid = sjr.sj_session;
 			i = mom_set_limits(pjob, SET_LIMIT_SET);
 			if (i != PBSE_NONE) {
-				sprintf(log_buffer,
-					"Unable to set limits, err=%d", i);
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-					LOG_WARNING, pjob->ji_qs.ji_jobid,
-					log_buffer);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, "Unable to set limits, err=%d", i);
 				if (i == PBSE_RESCUNAV)
 					j = JOB_EXEC_RETRY;
 				else
@@ -3136,8 +3037,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 			}
 			log_close(0);
 			starter_return(kid_write, kid_read, JOB_EXEC_OK, &sjr);
-		}
-		else {	/* just close down anything hanging */
+		} else { /* just close down anything hanging */
 			close(0);
 			close(1);
 			close(2);
@@ -3147,15 +3047,12 @@ do_mom_action_script(int	ae,	/* index into action table */
 		exit(254);
 	}
 
-	if (child == -1) {		/* error */
-		sprintf(log_buffer, "action script %s cannot be run due to"
-			" fork failure %d", ma->ma_script, errno);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	if (child == -1) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "action script %s cannot be run due to fork failure %d", ma->ma_script, errno);
 		goto done;
 	}
 
-	if (post != NULL) {	/* post func means we do not wait */
+	if (post != NULL) { /* post func means we do not wait */
 		rc = 1;
 		pjob->ji_momsubt = child;
 		pjob->ji_mompost = post;
@@ -3166,7 +3063,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		goto done;
 	}
 
-	if (transmog) {		/* setup new task */
+	if (transmog) { /* setup new task */
 		close(kid_read);
 		close(kid_write);
 
@@ -3175,38 +3072,27 @@ do_mom_action_script(int	ae,	/* index into action table */
 		j = errno;
 		close(parent_read);
 		if (i != sizeof(sjr)) {
-			sprintf(log_buffer,
-				"read of pipe for pid job %s got %d not %d",
-				pjob->ji_qs.ji_jobid, i, (int)sizeof(sjr));
-			log_err(j, __func__, log_buffer);
+			log_errf(j, __func__, "read of pipe for pid job %s got %d not %d", pjob->ji_qs.ji_jobid, i, (int) sizeof(sjr));
 			close(parent_write);
 			goto done;
 		}
 		/* send info back as an acknowlegment */
 		writepipe(parent_write, &sjr, sizeof(sjr));
 		close(parent_write);
-		DBPRT(("%s: read start return %d %d\n", __func__,
-			sjr.sj_code, sjr.sj_session))
+		DBPRT(("%s: read start return %d %d\n", __func__, sjr.sj_code, sjr.sj_session))
 		/* update system specific ids and information from set_job() */
 		set_globid(pjob, &sjr);
 		if (sjr.sj_code < 0) {
-			sprintf(log_buffer, "task %8.8X not started, %s %d",
-				(unsigned int)ptask->ti_qs.ti_task,
-				(sjr.sj_code == JOB_EXEC_RETRY) ?
-				"Retry" : "Failure",
-				sjr.sj_code);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid,
+				   "task %8.8X not started, %s %d", (unsigned int) ptask->ti_qs.ti_task, (sjr.sj_code == JOB_EXEC_RETRY) ? "Retry" : "Failure", sjr.sj_code);
 			goto done;
 		}
 		ptask->ti_qs.ti_sid = sjr.sj_session;
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-		(void)task_save(ptask);
+		(void) task_save(ptask);
 		/* update the job with the new session id */
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long
-		= sjr.sj_session;
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags =
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
+		pjob->ji_wattr[(int) JOB_ATR_session_id].at_val.at_long = sjr.sj_session;
+		pjob->ji_wattr[(int) JOB_ATR_session_id].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
 		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
 			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
@@ -3214,64 +3100,39 @@ do_mom_action_script(int	ae,	/* index into action table */
 		}
 
 		rc = 0;
-		sprintf(log_buffer, "task %8.8X transmogrified",
-			(unsigned int)ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
-		/* send updated session id to server */
-		update_ajob_status(pjob);
-	}
-	else {			/* wait for script */
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "task %8.8X transmogrified", (unsigned int) ptask->ti_qs.ti_task);
+		enqueue_update_for_send(pjob, IS_RESCUSED);
+	} else { /* wait for script */
 		DBPRT(("action: setting alarm %d\n", ma->ma_timeout))
-		(void)alarm(ma->ma_timeout);
+		(void) alarm(ma->ma_timeout);
 		rc = 0;
 		if (waitpid(child, &rc, 0) == -1) {
-			sprintf(log_buffer,
-				"%s script %s: wait failed %d",
-				ma->ma_name, ma->ma_script, errno);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
-			(void)kill(child, SIGKILL);
-			(void)waitpid(child, &rc, 0);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: wait failed %d", ma->ma_name, ma->ma_script, errno);
+			(void) kill(child, SIGKILL);
+			(void) waitpid(child, &rc, 0);
 		}
-		(void)alarm(0);
+		(void) alarm(0);
 		if (WIFEXITED(rc)) {
 			rc = WEXITSTATUS(rc);
-			sprintf(log_buffer,
-				"%s script %s: exit code %d",
-				ma->ma_name, ma->ma_script, rc);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: exit code %d", ma->ma_name, ma->ma_script, rc);
 			if (rc != 0)
 				rc = -1;
 		} else if (WIFSIGNALED(rc)) {
 			rc = WTERMSIG(rc);
-			sprintf(log_buffer,
-				"%s script %s: got signal %d",
-				ma->ma_name, ma->ma_script, rc);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: got signal %d", ma->ma_name, ma->ma_script, rc);
 			rc = -1;
 		} else {
-			sprintf(log_buffer,
-				"%s script %s: exited abnormally",
-				ma->ma_name, ma->ma_script);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: exited abnormally", ma->ma_name, ma->ma_script);
 			rc = -1;
 		}
 	}
-#endif	/* WIN32 */
+#endif /* WIN32 */
 
 done:
 	/* free args arrays */
 	for (pargs = args; *pargs; pargs++)
-		(void)free(*pargs);
-	(void)free(args);
+		(void) free(*pargs);
+	(void) free(args);
 
 	return rc;
 }
@@ -6394,14 +6255,13 @@ kill_job(job *pjob, int sig)
  * 	Returns the Python dictionary representation of a string
  *	specyfing a JSON object.
  *
- * @param[in]		value	-	string of JSON-object format
- * @param[out]		msg 	-	error message buffer
- * @param[in]		msg_len -	size of 'msg' buffer
+ * @param[in]  value   - string of JSON-object format
+ * @param[out] msg     - error message buffer
+ * @param[in]  msg_len - size of 'msg' buffer
  *
- * @return	PyObject *
- * @retval	<python  object> -	dictionary representation of 'value'
- * @retval	NULL		 -	if not successful, filling out 'msg'
- *					with the actual error message.
+ * @return PyObject *
+ * @retval !NULL - dictionary representation of 'value'
+ * @retval NULL  - if not successful, filling out 'msg' with the actual error message.
  */
 static PyObject *
 json_loads(char *value, char *msg, size_t msg_len)
@@ -6446,7 +6306,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 	}
 
 	if (py_json_func_loads == NULL) {
-		py_json_func_loads = PyDict_GetItemString(py_json_dict, (char*)"loads");
+		py_json_func_loads = PyDict_GetItemString(py_json_dict, (char *) "loads");
 		if ((py_json_func_loads == NULL) || !PyCallable_Check(py_json_func_loads)) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "did not find json.loads() function");
@@ -6454,7 +6314,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 		}
 	}
 
-	py_value = Py_BuildValue("(z)", (char*)value);
+	py_value = Py_BuildValue("(z)", (char *) value);
 	if (py_value == NULL) {
 		if (msg != NULL)
 			snprintf(msg, msg_len, "failed to build python arg %s", value);
@@ -6491,7 +6351,6 @@ json_loads(char *value, char *msg, size_t msg_len)
 		if (msg != NULL)
 			snprintf(msg, msg_len, "value is not a dictionary");
 		goto json_loads_fail;
-
 	}
 
 	Py_XDECREF(py_value);
@@ -6501,33 +6360,31 @@ json_loads_fail:
 	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return NULL;
-
 }
 
 /**
  * @brief
  * 	Returns a JSON-formatted string representing the Python object 'py_val'.
  *
- * @param[in]		py_val	-	Python object
- * @param[out]		msg 	-	error message buffer
- * @param[in]		msg_len -	size of 'msg' buffer
+ * @param[in]  py_val  - Python object
+ * @param[out] msg     - error message buffer
+ * @param[in]  msg_len - size of 'msg' buffer
  *
- * @return	char *
- * @retval	<string> 	-	the returned JSON-formatted string
- * @retval	NULL		-	if not successful, filling out 'msg'
- *					with the actual error message.
+ * @return char *
+ * @retval !NULL - the returned JSON-formatted string
+ * @retval NULL  - if not successful, filling out 'msg' with the actual error message.
+ *
  * @note
- *		The returned string is malloced space that must be freed
- *		later when no longer needed.
+ *	The returned string is malloced space that must be freed later when no longer needed.
  */
 static char *
 json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 {
-	PyObject	*py_value = NULL;
-	PyObject	*py_result = NULL;
-	const char	*tmp_str = NULL;
-	char		*ret_string = NULL;
-	int		slen;
+	PyObject *py_value = NULL;
+	PyObject *py_result = NULL;
+	const char *tmp_str = NULL;
+	char *ret_string = NULL;
+	int slen;
 
 	if (py_val == NULL)
 		return NULL;
@@ -6566,7 +6423,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	}
 
 	if (py_json_func_dumps == NULL) {
-		py_json_func_dumps = PyDict_GetItemString(py_json_dict, (char*)"dumps");
+		py_json_func_dumps = PyDict_GetItemString(py_json_dict, (char *) "dumps");
 		if ((py_json_func_dumps == NULL) || !PyCallable_Check(py_json_func_dumps)) {
 			if (msg != NULL)
 				snprintf(msg, msg_len, "did not find json.dumps() function");
@@ -6577,7 +6434,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	py_value = Py_BuildValue("(O)", py_val);
 	if (py_value == NULL) {
 		if (msg != NULL)
-			snprintf(msg, msg_len, "failed to build python arg %p", (void *)py_val);
+			snprintf(msg, msg_len, "failed to build python arg %p", (void *) py_val);
 		return NULL;
 	}
 	PyErr_Clear(); /* clear any exception */
@@ -6610,7 +6467,6 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		if (msg != NULL)
 			snprintf(msg, msg_len, "value is not a string");
 		goto json_dumps_fail;
-
 	}
 
 	tmp_str = PyUnicode_AsUTF8(py_result);
@@ -6621,7 +6477,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		goto json_dumps_fail;
 	}
 	slen = strlen(tmp_str) + 3; /* for null character + 2 single quotes */
-	ret_string = (char *)malloc(slen);
+	ret_string = (char *) malloc(slen);
 	if (ret_string == NULL) {
 		if (msg != NULL)
 			snprintf(msg, msg_len, "malloc of ret_string failed");
@@ -6636,7 +6492,6 @@ json_dumps_fail:
 	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
 	return NULL;
-
 }
 #endif
 
@@ -6736,7 +6591,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 
 
 				/* The following 2 temp variables will be set to 1
-				 * if there's an error accuumlating resources_used
+				 * if there's an error accumlating resources_used
 				 * values from all sister moms including those that
 				 * have been released from the job (fail) or from
 				 * all sister moms NOT including the released nodes
@@ -6987,6 +6842,18 @@ encode_used_exit:
 	}
 }
 
+/**
+ * @brief
+ * 	check give attribute name exists in give ruu's attr list
+ *
+ * @param[in] old  - pointer to ruu
+ * @param[in] name - attribute name
+ *
+ * @return int
+ * @retval 0 - doesn't exists in ruu's attr list
+ * @retval 1 - exists in ruu's attr list
+ *
+ */
 static int
 is_in_old_ruu(ruu *old, char *name)
 {
@@ -6997,6 +6864,21 @@ is_in_old_ruu(ruu *old, char *name)
 	return 0;
 }
 
+
+/**
+ * @brief
+ * 	generate new resc used update based on given job information
+ *
+ * @param[in] pjob - pointer to job
+ *
+ * @return ruu *
+ *
+ * @return NULL  - failure
+ * @return !NULL - success
+ *
+ * @warning
+ * 	retuned pointer should be free'd using FREE_RUU() when not needed
+ */
 ruu *
 get_job_update(job *pjob)
 {
@@ -7043,11 +6925,10 @@ get_job_update(job *pjob)
 
 	resc_access_perm = ATR_DFLAG_MGRD;
 
-	if (pjob->ji_wattr[JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
+	if (pjob->ji_wattr[JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
 		prused->ru_hop = pjob->ji_wattr[JOB_ATR_run_version].at_val.at_long;
-	} else {
+	else
 		prused->ru_hop = pjob->ji_wattr[JOB_ATR_runcount].at_val.at_long;
-	}
 #ifdef WIN32
 	if (pjob->ji_wattr[JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
 		prused->ru_comment = strdup(pjob->ji_wattr[JOB_ATR_Comment].at_val.at_str);
@@ -7095,6 +6976,20 @@ get_job_update(job *pjob)
 	return prused;
 }
 
+/**
+ * @brief
+ * 	generate resc used update for given job and put it in queue
+ * 	to send to server
+ *
+ * @param[in] pjob - pointer to job
+ * @param[in] cmd  - cmd to be send along with resc used update to server
+ *
+ * @return int
+ *
+ * @retval 1 - failure
+ * @retval 0 - success
+ *
+ */
 int
 enqueue_update_for_send(job *pjob, int cmd)
 {
@@ -7103,7 +6998,7 @@ enqueue_update_for_send(job *pjob, int cmd)
 		return 1; /* get_job_update has done error logging */
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
-		/* If sister node of job, send update right a way */
+		/* If sister node of job, send update right away */
 		send_resc_used(cmd, 1, prused);
 		FREE_RUU(prused);
 		return 0;
@@ -7125,18 +7020,35 @@ enqueue_update_for_send(job *pjob, int cmd)
 	return 0;
 }
 
+/**
+ * @brief
+ * 	create bundles of pending updates in queue based on their cmds
+ * 	if cmd of update is not IS_OBIT then check time of creatation
+ * 	of update and based on that decide whether to send that update
+ * 	or delay it for rescused_send_delay
+ *
+ * @param[out] r_cnt    - number of updates in prused bundle
+ * @param[out] prused   - bundle of IS_RESCUSED updates
+ * @param[out] rh_cnt   - number of updates in prhused bundle
+ * @param[out] prhused  - bundle of IS_RESCUSED_FROM_HOOK updates
+ * @param[out] obits_cnt - number of updates in obits bundle
+ * @param[out] obits    - bundle of IS_OBIT updates
+ *
+ * @return void
+ *
+ */
 static void
-bundle_ruu(int *r_cnt, ruu **prused, int *rh_cnt, ruu **prhused, int *o_cnt, ruu **obits)
+bundle_ruu(int *r_cnt, ruu **prused, int *rh_cnt, ruu **prhused, int *obits_cnt, ruu **obits)
 {
+	static int rescused_send_delay = 2;
 	ruu *cur;
 	ruu *next;
-#define RESCUSED_SEND_DELAY 2
 
 	*r_cnt = 0;
 	*prused = NULL;
 	*rh_cnt = 0;
 	*prhused = NULL;
-	*o_cnt = 0;
+	*obits_cnt = 0;
 	*obits = NULL;
 
 	cur = (ruu *)GET_NEXT(mom_pending_ruu);
@@ -7145,8 +7057,8 @@ bundle_ruu(int *r_cnt, ruu **prused, int *rh_cnt, ruu **prhused, int *o_cnt, ruu
 		if (cur->ru_cmd == IS_JOBOBIT) {
 			cur->ru_next = *obits;
 			*obits = cur;
-			(*o_cnt)++;
-		} else if (time_now >= (cur->ru_created_at + RESCUSED_SEND_DELAY)) {
+			(*obits_cnt)++;
+		} else if (time_now >= (cur->ru_created_at + rescused_send_delay)) {
 			if (cur->ru_cmd == IS_RESCUSED) {
 				cur->ru_next = *prused;
 				*prused = cur;
@@ -7163,28 +7075,28 @@ bundle_ruu(int *r_cnt, ruu **prused, int *rh_cnt, ruu **prhused, int *o_cnt, ruu
 
 /**
  * @brief
- * 	Send the amount of resouces used by jobs to the server
- *	This function used to encode and send the data for IS_RESCUSED,
- *	IS_JOBOBIT, IS_RESCUSED_FROM_HOOK.
- * @param[in]	cmd	- communication command to use
- * @param[in]	count	- number of  jobs to update.
- * @param[in]	rud	- input structure containing info about the jobs,
- *			  resources used, etc...
+ * 	Send the amount of resources used by jobs to the server
+ * 	This function used to encode and send the data for IS_RESCUSED,
+ * 	IS_JOBOBIT, IS_RESCUSED_FROM_HOOK.
+ *
+ * @param[in] cmd   - communication command to use
+ * @param[in] count - number of  jobs to update.
+ * @param[in] rud   - input structure containing info about the jobs, resources used, etc...
  *
  * @note
- *	If cmd is IS_RESCUSED_FROM_HOOK and there's an error communicating
- *	to the server, the server_stream connection is not closed automatically.
- *	It's possible it could be a transient error, and this function may
- *	have been called from a child mom. Closing the server_stream would
- *	cause the server to see mom as down.
+ * 	If cmd is IS_RESCUSED_FROM_HOOK and there's an error communicating
+ * 	to the server, the server_stream connection is not closed automatically.
+ * 	It's possible it could be a transient error, and this function may
+ * 	have been called from a child mom. Closing the server_stream would
+ * 	cause the server to see mom as down.
  *
- * @return Void
+ * @return void
  *
  */
 void
 send_resc_used(int cmd, int count, ruu *rud)
 {
-	int	ret;
+	int ret;
 
 	if (count == 0 || rud == NULL || server_stream < 0)
 		return;
@@ -7217,7 +7129,7 @@ send_resc_used(int cmd, int count, ruu *rud)
 			if (ret != DIS_SUCCESS)
 				goto err;
 		}
-		ret =diswsi(server_stream, rud->ru_status);
+		ret = diswsi(server_stream, rud->ru_status);
 		if (ret != DIS_SUCCESS)
 			goto err;
 
@@ -7225,14 +7137,16 @@ send_resc_used(int cmd, int count, ruu *rud)
 		if (ret != DIS_SUCCESS)
 			goto err;
 
-		ret = encode_DIS_svrattrl(server_stream,
-			(svrattrl *)GET_NEXT(rud->ru_attr));
+		ret = encode_DIS_svrattrl(server_stream, (svrattrl *) GET_NEXT(rud->ru_attr));
 		if (ret != DIS_SUCCESS)
 			goto err;
 
 		rud = rud->ru_next;
 	}
-	dis_flush(server_stream);
+
+	if (dis_flush(server_stream) != 0)
+		goto err;
+
 	return;
 
 err:
@@ -7249,18 +7163,24 @@ err:
 	return;
 }
 
+/**
+ * @brief
+ * 	generate pending update bundles and send it to server
+ *
+ * @retval void
+ */
 static void
-send_pending_ruu(void)
+send_pending_updates(void)
 {
 	int r_cnt;
 	ruu *prused;
 	int rh_cnt;
 	ruu *prhused;
-	int o_cnt;
+	int obits_cnt;
 	ruu *obits;
 	ruu *next;
 
-	bundle_ruu(&r_cnt, &prused, &rh_cnt, &prhused, &o_cnt, &obits);
+	bundle_ruu(&r_cnt, &prused, &rh_cnt, &prhused, &obits_cnt, &obits);
 	if (r_cnt > 0) {
 		send_resc_used(IS_RESCUSED, r_cnt, prused);
 		while (prused != NULL) {
@@ -7277,8 +7197,8 @@ send_pending_ruu(void)
 			prhused = next;
 		}
 	}
-	if (o_cnt > 0) {
-		send_resc_used(IS_JOBOBIT, o_cnt, obits);
+	if (obits_cnt > 0) {
+		send_resc_used(IS_JOBOBIT, obits_cnt, obits);
 		while (obits != NULL) {
 			next = obits->ru_next;
 			/*
@@ -7293,12 +7213,6 @@ send_pending_ruu(void)
 			obits = next;
 		}
 	}
-}
-
-static void
-send_pending_updates(void)
-{
-	send_pending_ruu();
 }
 
 /**
@@ -10430,9 +10344,8 @@ main(int argc, char *argv[])
 				send_hellosvr(server_stream);
 				time_next_hello = time_now + time_delta_hellosvr(MOM_DELTA_NORMAL);
 			}
-		} else {
+		} else
 			send_pending_updates();
-		}
 
 		wait_time = default_next_task();
 #ifdef WIN32

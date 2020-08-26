@@ -91,6 +91,7 @@
 #include "svrfunc.h"
 #include "libsec.h"
 #include "mom_hook_func.h"
+#include "mom_server.h"
 #include "placementsets.h"
 #include "pbs_internal.h"
 #include "pbs_reliable.h"
@@ -1756,7 +1757,7 @@ record_finish_exec(int sd)
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
-				update_ajob_status_using_cmd(pjob, IS_RESCUSED_FROM_HOOK);
+				enqueue_update_for_send(pjob, IS_RESCUSED_FROM_HOOK);
 
 				/* Push vnl hook changes to server */
 				hook_requests_to_server(&vnl_changes);
@@ -1814,10 +1815,10 @@ record_finish_exec(int sd)
 		time_resc_updated = time_now;
 		(void)mom_set_use(pjob);
 	}
-	/* these are set for update_ajob_status() so that it will */
-	/* return them to the Server on the first update below.   */
-	/* Later the corresponding code should be removed from req_commit() */
-
+	/*
+	 * these are set so that it will
+	 * return them to the Server on the first update below
+	 */
 	pjob->ji_wattr[(int)JOB_ATR_errpath].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_outpath].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags |= ATR_VFLAG_MODIFY;
@@ -1828,11 +1829,9 @@ record_finish_exec(int sd)
 	pjob->ji_wattr[(int)JOB_ATR_altid2].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_acct_id].at_flags |= ATR_VFLAG_MODIFY;
 
-	update_ajob_status(pjob);
+	enqueue_update_for_send(pjob, IS_RESCUSED);
 	next_sample_time = min_check_poll;
-	sprintf(log_buffer, "Started, pid = %d", sjr.sj_session);
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-		pjob->ji_qs.ji_jobid, log_buffer);
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "Started, pid = %d", sjr.sj_session);
 
 	return;
 }
@@ -2533,7 +2532,7 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 	/* set modify flag on the job attributes that will be sent to the server */
 	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
 	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
-	(void)update_ajob_status_using_cmd(pjob, IS_RESCUSED);
+	enqueue_update_for_send(pjob, IS_RESCUSED);
 
 	return (0);
 }

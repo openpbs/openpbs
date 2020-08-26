@@ -6844,16 +6844,15 @@ remove_job_index_from_mom(job *pjob, struct pbsnode *pnode)
 	for (i = 0; i < pnode->nd_nummoms; i++) {
 		if (pnode->nd_moms[i] == NULL)
 			continue;
-		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[i]->mi_data);
+		psvrmom = (mom_svrinfo_t *) (pnode->nd_moms[i]->mi_data);
 
-		for (j=0; j<psvrmom->msr_jbinxsz; j++) {
+		for (j = 0; j < psvrmom->msr_jbinxsz; j++) {
 			if (psvrmom->msr_jobindx[j] == pjob) {
 				psvrmom->msr_jobindx[j] = NULL;
 			}
 		}
 	}
 }
-
 
 /**
  * @brief
