@@ -491,7 +491,7 @@ post_signal_req(struct work_task *pwt)
 				/* update all released resources */
 				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 				rel_resc(pjob); /* release resc and nodes */
-				job_save_db(pjob); /* save released resc and nodes */
+				job_save(pjob); /* save released resc and nodes */
 				log_suspend_resume_record(pjob, PBS_ACCT_SUSPEND);
 				/* Since our purpose is to put the node in maintenance state if "admin-suspend"
 				 * signal is used, be sure that rel_resc() is called before set_admin_suspend().
