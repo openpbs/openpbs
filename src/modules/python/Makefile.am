@@ -88,6 +88,7 @@ _pbs_v1_la_LDFLAGS = \
 	@PYTHON_LDFLAGS@
 _pbs_v1_la_LIBADD = \
 	$(top_builddir)/src/lib/Libpbs/libpbs.la \
+	@libz_lib@ \
 	@PYTHON_LIBS@
 
 nodist__pbs_ifl_la_SOURCES = $(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
