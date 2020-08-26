@@ -45,7 +45,7 @@ pbs_v1_so_LTLIBRARIES = \
 	_pbs_v1.la \
 	_pbs_ifl.la
 
-pbs_v1_so_PYTHON = $(top_builddir)/src/lib/Libifl/pbs_ifl.py
+nodist_pbs_v1_so_PYTHON = $(top_builddir)/src/lib/Libifl/pbs_ifl.py
 
 _pbs_v1_la_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/attr_fn_acl.c \
@@ -90,7 +90,7 @@ _pbs_v1_la_LIBADD = \
 	$(top_builddir)/src/lib/Libpbs/libpbs.la \
 	@PYTHON_LIBS@
 
-_pbs_ifl_la_SOURCES = $(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
+nodist__pbs_ifl_la_SOURCES = $(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
 _pbs_ifl_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@PYTHON_INCLUDES@

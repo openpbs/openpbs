@@ -49,13 +49,15 @@ libpbspython_a_CPPFLAGS = \
 libpbspython_a_SOURCES = \
 	shared_python_utils.c \
 	common_python_utils.c \
-	$(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c \
 	pbs_python_external.c \
 	pbs_python_svr_external.c \
 	module_pbs_v1.c \
 	pbs_python_svr_internal.c \
 	pbs_python_svr_size_type.c \
 	pbs_python_import_types.c
+
+nodist_libpbspython_a_SOURCES = \
+	$(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
 
 libpbspython_svr_a_CPPFLAGS = \
 	-DLIBPYTHONSVR \
@@ -66,10 +68,12 @@ libpbspython_svr_a_CPPFLAGS = \
 libpbspython_svr_a_SOURCES = \
 	shared_python_utils.c \
 	common_python_utils.c \
-	$(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c \
 	pbs_python_external.c \
 	pbs_python_svr_external.c \
 	module_pbs_v1.c \
 	pbs_python_svr_internal.c \
 	pbs_python_svr_size_type.c \
 	pbs_python_import_types.c
+
+nodist_libpbspython_svr_a_SOURCES = \
+	$(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
