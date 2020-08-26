@@ -59,7 +59,7 @@ int cmpres(sch_resource_t r1, sch_resource_t r2);
 int cmp_nspec(const void *v1, const void *v2);
 
 /*
- *cmp_nspec_by_sub_seq_dsc - sort nspec by sub sequence number
+ * cmp_nspec_by_sub_seq - sort nspec by sub sequence number
  */
 int cmp_nspec_by_sub_seq(const void *v1, const void *v2);
 
