@@ -276,6 +276,7 @@ class TestPbsExecutePrologue(TestFunctional):
         Jobs should all start, fail (due to prologue hook error),
         requeue, and rerun several times before eventually getting held
         due to too many failed attempts.
+        The test also confirms that all execjob_end hooks get executed.
         """
         hook_name = "prologue_exception"
         hook_body = ("import pbs\n"
@@ -283,8 +284,23 @@ class TestPbsExecutePrologue(TestFunctional):
                      "if not e.job.in_ms_mom():\n"
                      "    raise NameError\n")
 
-        attr = {'event': 'execjob_prologue',
-                'enabled': 'True'}
+        attr = {'event': 'execjob_prologue', 'enabled': 'True'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+
+        hook_name = "endjob_hook1"
+        hook_body = ("import pbs\n"
+                     "e = pbs.event()\n"
+                     "pbs.logjobmsg(e.job.id, 'executed endjob hook 1')\n")
+
+        attr = {'event': 'execjob_end', 'enabled': 'True'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+
+        hook_name = "endjob_hook2"
+        hook_body = ("import pbs\n"
+                     "e = pbs.event()\n"
+                     "pbs.logjobmsg(e.job.id, 'executed endjob hook 2')\n")
+
+        attr = {'event': 'execjob_end', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
 
         attr = {'Resource_List.select': '3:ncpus=1',
@@ -293,6 +309,7 @@ class TestPbsExecutePrologue(TestFunctional):
 
         num_jobs = 3
         job_list = []
+        search_after = time.time()
         for _ in range(num_jobs):
             j = Job(TEST_USER, attrs=attr)
             jid = self.server.submit(j)
@@ -301,5 +318,13 @@ class TestPbsExecutePrologue(TestFunctional):
         held_cmt = "job held, too many failed attempts to run"
         criteria = {'job_state': 'H', 'comment': held_cmt}
         for jid in job_list:
+            for _ in range(21):
+                self.momA.log_match("Job;%s;executed endjob hook 1" % jid,
+                                    max_attempts=10, interval=1,
+                                    starttime=search_after)
+                self.momA.log_match("Job;%s;executed endjob hook 2" % jid,
+                                    max_attempts=10, interval=1,
+                                    starttime=search_after)
+                search_after = time.time()
             self.server.expect(JOB, criteria, id=jid, max_attempts=100,
                                interval=2)
