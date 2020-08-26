@@ -38,8 +38,8 @@
 # subject to Altair's trademark licensing policies.
 
 
-from tests.performance import *
 from ptl.utils.pbs_logutils import PBSLogUtils
+from tests.performance import *
 
 
 class TestSchedPerf(TestPerformance):
@@ -365,11 +365,9 @@ class TestSchedPerf(TestPerformance):
     def setup_scheds(self):
         for i in range(1, 6):
             partition = 'P' + str(i)
-            sched_port = 15049 + i
             sched_name = 'sc' + str(i)
             a = {'partition': partition,
-                 'sched_host': self.server.hostname,
-                 'sched_port': sched_port}
+                 'sched_host': self.server.hostname}
             self.server.manager(MGR_CMD_CREATE, SCHED,
                                 a, id=sched_name)
             self.scheds[sched_name].create_scheduler()

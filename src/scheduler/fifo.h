@@ -45,7 +45,12 @@ extern "C" {
 
 #include  <limits.h>
 #include "data_types.h"
-int connector;
+#include "list_link.h"
+
+extern pbs_list_head servers;
+extern void *poll_context;
+int get_sched_cmd(int, sched_cmd_t *);
+int get_sched_cmd_noblk(int, sched_cmd_t *);
 
 /*
  *      schedinit - initialize conf struct and parse conf files
@@ -57,20 +62,20 @@ int schedinit(int nthreads);
  *                 It will handle the difference cases that caused a
  *                 scheduling cycle
  */
-int schedule(int cmd, int sd, char *runjobid);
+int schedule(svr_t *);
 
 /*
  *	intermediate_schedule - responsible for starting/restarting scheduling
  *				cycle
  */
 
-int intermediate_schedule(int sd, char *jobid);
+int intermediate_schedule(svr_t *);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(int sd, char *jobid);
+int scheduling_cycle(svr_t *);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every
@@ -217,7 +222,7 @@ void update_cycle_status(struct status *policy, time_t current_time);
  *			     deal with normal job can't run stuff
 
  */
-int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr);
+int main_sched_loop(status *, svr_t *, server_info *, schd_error **);
 
 /*
  *
@@ -230,9 +235,7 @@ int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rer
  */
 int scheduler_simulation_task(int pbs_sd, int debug);
 
-int update_svr_schedobj(int connector, int cmd, int alarm_time);
-
-int set_validate_sched_attrs(int connector);
+int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
 

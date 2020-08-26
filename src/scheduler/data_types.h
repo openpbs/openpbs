@@ -59,6 +59,7 @@ extern "C" {
 #include <time.h>
 #include <pbs_ifl.h>
 #include <libutil.h>
+#include "list_link.h"
 #include "constant.h"
 #include "config.h"
 #include "pbs_bitmap.h"
@@ -175,6 +176,19 @@ typedef sch_resource_t usage_t;
 
 typedef void event_ptr_t;
 typedef int (*event_func_t)(event_ptr_t*, void *);
+
+typedef struct sched_cmd {
+	int cmd;   /* sched command */
+	char *jid; /* jobid assisiated with cmd if any else NULL */
+} sched_cmd_t;
+
+typedef struct svr {
+	char *svrhost;
+	int pfd;		     /* primary connection to server - used for IFL calls */
+	int sfd;		     /* secondary connection to server - used to receive sched cmds from server */
+	sched_cmd_t cmd;	     /* command received from server */
+	pbs_list_link all_svrs_link; /* link to all servers */
+} svr_t;
 
 struct th_task_info
 {
@@ -383,7 +397,6 @@ struct schedattrs
 	enum runjob_mode runjob_mode; /* set to a numeric version of job_run_wait attribute value */
 	long sched_cycle_length;
 	char *sched_log;
-	char *sched_port;
 	char *sched_priv;
 	long server_dyn_res_alarm;
 };

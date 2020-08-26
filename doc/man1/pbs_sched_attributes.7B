@@ -427,17 +427,6 @@ Format:
 Default: 
 .I $PBS_HOME/sched_logs_<scheduler name>
 
-.IP sched_port 8
-Port on which this scheduler listens.  Cannot be set on default scheduler.
-Must be set by administrator.  
-.br
-Format: 
-.I String
-.br
-Default: None
-.br
-Python type: No Python type
-
 .IP sched_preempt_enforce_resumption 8
 Controls whether the scheduler treats preempted jobs as top jobs.  
 .br

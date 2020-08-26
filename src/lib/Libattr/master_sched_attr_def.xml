@@ -278,23 +278,6 @@
         </member_verify_function>
    </attributes>
    <attributes>
-	<member_index>SCHED_ATR_sched_port</member_index>
-        <member_name>ATTR_sched_port</member_name>         <!-- "Port" - port to which scheduler binds to -->
-        <member_at_decode>decode_l</member_at_decode>
-        <member_at_encode>encode_l</member_at_encode>
-        <member_at_set>set_l</member_at_set>
-        <member_at_comp>comp_l</member_at_comp>
-        <member_at_free>free_null</member_at_free>
-        <member_at_action>action_sched_port</member_at_action>
-        <member_at_flags>MGR_ONLY_SET</member_at_flags>
-        <member_at_type>ATR_TYPE_LONG</member_at_type>
-        <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
-        <member_verify_function>
-        <ECL>verify_datatype_long</ECL>
-        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-        </member_verify_function>
-   </attributes>
-   <attributes>
 	<member_index>SCHED_ATR_partition</member_index>
 	<member_name>ATTR_partition</member_name>		<!-- "partition" -->
 	<member_at_decode>decode_str</member_at_decode>

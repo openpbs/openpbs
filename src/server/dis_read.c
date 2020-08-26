@@ -566,6 +566,13 @@ dis_request_read(int sfds, struct batch_request *request)
 			break;
 
 #ifndef PBS_MOM
+		case PBS_BATCH_RegisterSched:
+			request->rq_ind.rq_rsched.rq_name = disrst(sfds, &rc);
+			if (rc)
+				break;
+			request->rq_ind.rq_rsched.rq_conn_type = disrst(sfds, &rc);
+			break;
+
 		case PBS_BATCH_RelnodesJob:
 			rc = decode_DIS_RelnodesJob(sfds, request);
 			break;

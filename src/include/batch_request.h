@@ -253,6 +253,11 @@ struct rqfpair {
 	char *fp_rmt;   /* used in Copy only     */
 };
 
+struct rq_register_sched {
+	char *rq_name;
+	char *rq_conn_type;
+};
+
 /*
  * ok we now have all the individual request structures defined,
  * so here is the union ...
@@ -277,6 +282,7 @@ struct batch_request {
 	char *tppcmd_msgid;			/* msg id for tpp commands */
 	struct batch_reply rq_reply;		/* the reply area for this request */
 	union indep_request {
+		struct rq_register_sched rq_rsched;
 		struct rq_auth rq_auth;
 		int rq_connect;
 		struct rq_queuejob rq_queuejob;

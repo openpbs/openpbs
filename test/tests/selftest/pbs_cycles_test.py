@@ -67,8 +67,7 @@ class PBSTestCycle(TestSelf):
         self.server.manager(MGR_CMD_SET, NODE, p1, id='vnode[0]')
 
         a = {'partition': 'P1',
-             'sched_host': self.server.hostname,
-             'sched_port': '15050'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc")
         self.scheds['sc'].create_scheduler()

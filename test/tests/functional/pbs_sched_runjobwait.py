@@ -53,13 +53,11 @@ class TestSchedJobRunWait(TestFunctional):
         for i in range(n):
             scname = "sc" + str(i)
             pname = "P" + str(i)
-            portnum = str(15050 + i)
             qname = "wq" + str(i)
             sc_quenames.append([scname, qname])
 
             a = {'partition': pname,
-                 'sched_host': self.server.hostname,
-                 'sched_port': portnum}
+                 'sched_host': self.server.hostname}
             self.server.manager(MGR_CMD_CREATE, SCHED,
                                 a, id=scname)
             self.scheds[scname].create_scheduler()

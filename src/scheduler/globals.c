@@ -132,8 +132,8 @@ struct status cstat;
 
 /* to make references happy */
 int got_sigpipe;
-
-int	second_connection;
+pbs_list_head servers;
+void *poll_context;
 
 /* Stuff needed for multi-threading */
 pthread_mutex_t general_lock;
@@ -162,7 +162,6 @@ resdef **boolres = NULL;
 char *cmp_aoename = NULL;
 
 char *sc_name = NULL;
-int sched_port = -1;
 char *logfile = NULL;
 
 int preempt_normal;			/* preempt priority of normal_jobs */

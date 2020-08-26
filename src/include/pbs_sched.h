@@ -83,21 +83,20 @@ extern void *sched_attr_idx;
 extern attribute_def sched_attr_def[];
 
 typedef struct pbs_sched {
-	pbs_list_link	sc_link;		/* forward/backward links */
-	int scheduler_sock;
-	int scheduler_sock2;
-	int svr_do_schedule;
-	int svr_do_sched_high;
-	pbs_net_t pbs_scheduler_addr;
-	unsigned int pbs_scheduler_port;
-	time_t sch_next_schedule;		/* when to next run scheduler cycle */
-	char sc_name[PBS_MAXSCHEDNAME + 1];
-	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
-	/* sched object's attributes  */
-	attribute sch_attr[SCHED_ATR_LAST];
-	short newobj;
+	pbs_list_link sc_link;					      /* link to all scheds known to server */
+	int sc_tmp_primary_conn;				      /* this is just to hold primary connection fd till secondary connection comes */
+	int sc_primary_conn;					      /* primary connection to sched */
+	int sc_secondary_conn;					      /* secondary connection to sched */
+	int svr_do_schedule;					      /* next sched command which will be sent to sched */
+	int svr_do_sched_high;					      /* next high prio sched command which will be sent to sched */
+	pbs_net_t sc_conn_addr;					      /* sched host address */
+	time_t sch_next_schedule;				      /* time when to next run scheduler cycle */
+	char sc_name[PBS_MAXSCHEDNAME + 1];			      /* name of sched this sched */
+	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1]; /* preempt order for this sched */
+	int sc_cycle_started;					      /* indicates whether sched cycle is started or not, 0 - not started, 1 - started */
+	attribute sch_attr[SCHED_ATR_LAST];			      /* sched object's attributes  */
+	short newobj;						      /* is this new sched obj? */
 } pbs_sched;
-
 
 extern pbs_sched *dflt_scheduler;
 extern	pbs_list_head	svr_allscheds;
@@ -108,6 +107,8 @@ extern pbs_sched *find_sched_from_sock(int sock);
 extern pbs_sched *find_sched(char *sched_name);
 extern int validate_job_formula(attribute *pattr, void *pobject, int actmode);
 extern pbs_sched *find_sched_from_partition(char *partition);
+extern int recv_sched_cycle_end(int sock);
+extern void handle_deferred_cycle_close();
 
 #ifdef	__cplusplus
 }

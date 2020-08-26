@@ -218,7 +218,6 @@ struct pbs_config
 	unsigned int batch_service_port_dis;	/* PBS batch_service_port_dis */
 	unsigned int mom_service_port;	/* PBS mom_service_port */
 	unsigned int manager_service_port;	/* PBS manager_service_port */
-	unsigned int scheduler_service_port;	/* PBS scheduler_service_port */
 	unsigned int pbs_data_service_port;    /* PBS data_service port */
 	char *pbs_conf_file;			/* full path of the pbs.conf file */
 	char *pbs_home_path;			/* path to the pbs home dir */
@@ -285,7 +284,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_BATCH_SERVICE_PORT_DIS	     "PBS_BATCH_SERVICE_PORT_DIS"
 #define PBS_CONF_MOM_SERVICE_PORT	     "PBS_MOM_SERVICE_PORT"
 #define PBS_CONF_MANAGER_SERVICE_PORT	     "PBS_MANAGER_SERVICE_PORT"
-#define PBS_CONF_SCHEDULER_SERVICE_PORT	     "PBS_SCHEDULER_SERVICE_PORT"
 #define PBS_CONF_DATA_SERVICE_PORT           "PBS_DATA_SERVICE_PORT"
 #define PBS_CONF_DATA_SERVICE_HOST           "PBS_DATA_SERVICE_HOST"
 #define PBS_CONF_USE_COMPRESSION     	     "PBS_USE_COMPRESSION"

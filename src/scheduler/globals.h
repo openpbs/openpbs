@@ -93,7 +93,6 @@ extern resdef **consres;
 extern resdef **boolres;
 
 extern char *sc_name;
-extern int sched_port;
 extern char *logfile;
 
 extern int preempt_normal;			/* preempt priority of normal_jobs */

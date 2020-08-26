@@ -65,6 +65,7 @@ libpbs_sched_a_CPPFLAGS = ${common_cflags}
 
 libpbs_sched_a_SOURCES = \
 	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
+	$(top_builddir)/src/lib/Libutil/misc_utils.c \
 	buckets.c \
 	buckets.h \
 	check.c \

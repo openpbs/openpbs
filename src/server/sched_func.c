@@ -57,6 +57,7 @@
 #include <memory.h>
 
 #include <pbs_python.h>
+#include "pbs_version.h"
 #include "pbs_share.h"
 #include "pbs_sched.h"
 #include "log.h"
@@ -73,6 +74,7 @@
 #include "svrfunc.h"
 
 extern struct server server;
+extern char server_host[];
 
 /* Functions */
 #ifdef PYTHON
@@ -418,8 +420,9 @@ sched_alloc(char *sched_name)
 	psched->sc_name[PBS_MAXSCHEDNAME] = '\0';
 	psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 	psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
-	psched->scheduler_sock = -1;
-	psched->scheduler_sock2 = -1;
+	psched->sc_primary_conn = -1;
+	psched->sc_secondary_conn = -1;
+	psched->sc_tmp_primary_conn = -1;
 	psched->newobj = 1;
 	append_link(&svr_allscheds, &psched->sc_link, psched);
 
@@ -546,33 +549,6 @@ sched_delete(pbs_sched *psched)
 
 /**
  * @brief
- * 		action routine for the sched's "sched_port" attribute
- *
- * @param[in]	pattr	-	attribute being set
- * @param[in]	pobj	-	Object on which attribute is being set
- * @param[in]	actmode	-	the mode of setting, recovery or just alter
- *
- * @return	error code
- * @retval	PBSE_NONE	-	Success
- * @retval	!PBSE_NONE	-	Failure
- *
- */
-int
-action_sched_port(attribute *pattr, void *pobj, int actmode)
-{
-	pbs_sched *psched;
-	psched = (pbs_sched *) pobj;
-
-	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		if ( dflt_scheduler && psched != dflt_scheduler) {
-			psched->pbs_scheduler_port = pattr->at_val.at_long;
-		}
-	}
-	return PBSE_NONE;
-}
-
-/**
- * @brief
  * 		action routine for the sched's "sched_host" attribute
  *
  * @param[in]	pattr	-	attribute being set
@@ -592,8 +568,8 @@ action_sched_host(attribute *pattr, void *pobj, int actmode)
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		if ( dflt_scheduler && psched != dflt_scheduler) {
-			psched->pbs_scheduler_addr = get_hostaddr(pattr->at_val.at_str);
-			if (psched->pbs_scheduler_addr == (pbs_net_t)0)
+			psched->sc_conn_addr = get_hostaddr(pattr->at_val.at_str);
+			if (psched->sc_conn_addr == (pbs_net_t)0)
 				return PBSE_BADATVAL;
 		}
 	}
@@ -981,9 +957,20 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 		psched->sch_attr[SCHED_ATR_throughput_mode].at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
 	}
 
+	if (!(psched->sch_attr[SCHED_ATR_version].at_flags & ATR_VFLAG_SET)) {
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_version]), &sched_attr_def[SCHED_ATR_version], PBS_VERSION, NULL, SET);
+		psched->sch_attr[SCHED_ATR_version].at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
+	}
+
 	if ((psched == dflt_scheduler) && !(psched->sch_attr[SCHED_ATR_partition].at_flags & ATR_VFLAG_SET)) {
 		set_attr_generic(&(psched->sch_attr[(int)SCHED_ATR_partition]),
 					 &sched_attr_def[(int)SCHED_ATR_partition], DEFAULT_PARTITION, NULL, SET);
+	}
+
+	if (psched == dflt_scheduler && !(psched->sch_attr[SCHED_ATR_SchedHost].at_flags & ATR_VFLAG_SET)) {
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_SchedHost]), &sched_attr_def[SCHED_ATR_SchedHost], server_host, NULL, SET);
+		psched->sch_attr[SCHED_ATR_SchedHost].at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
+		psched->sc_conn_addr = get_hostaddr(server_host);
 	}
 	set_scheduler_flag(SCH_CONFIGURE, psched);
 }

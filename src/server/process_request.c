@@ -262,6 +262,98 @@ req_authenticate(conn_t *conn, struct batch_request *request)
 	reply_ack(request);
 }
 
+#ifndef PBS_MOM
+static void
+req_register_sched(conn_t *conn, struct batch_request *preq)
+{
+	pbs_sched *sched;
+	conn_t *pconn;
+	int rc;
+	char *user = pbs_conf.pbs_daemon_service_user ? pbs_conf.pbs_daemon_service_user : pbs_current_user;
+
+	if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(conn->cn_username, user) != 0) {
+		rc = PBSE_PERM;
+		goto rerr;
+	}
+	if (preq->rq_ind.rq_rsched.rq_conn_type == NULL || preq->rq_ind.rq_rsched.rq_name == NULL) {
+		rc = PBSE_IVALREQ;
+		goto rerr;
+	}
+	sched = find_sched(preq->rq_ind.rq_rsched.rq_name);
+	if (sched == NULL) {
+		rc = PBSE_UNKSCHED;
+		goto rerr;
+	}
+	if (sched->sc_conn_addr != conn->cn_addr) {
+		rc = PBSE_BADHOST;
+		goto rerr;
+	}
+	if (sched->sc_primary_conn != -1 || sched->sc_secondary_conn != -1) {
+		rc = PBSE_SCHEDCONNECTED;
+		goto rerr;
+	}
+	if (strcmp(preq->rq_ind.rq_rsched.rq_conn_type, "primary") == 0) {
+		sched->sc_tmp_primary_conn = conn->cn_sock;
+		reply_ack(preq);
+		return;
+	} else if (strcmp(preq->rq_ind.rq_rsched.rq_conn_type, "secondary") == 0) {
+		if (sched->sc_tmp_primary_conn == -1) {
+			rc = PBSE_IVALREQ;
+			goto rerr;
+		}
+		pconn = get_conn(sched->sc_tmp_primary_conn);
+		if (!pconn) {
+			rc = PBSE_INTERNAL;
+			goto rerr;
+		}
+	} else {
+		rc = PBSE_IVALREQ;
+		goto rerr;
+	}
+	if (pconn->cn_sock == conn->cn_sock) {
+		rc = PBSE_IVALREQ;
+		goto rerr;
+	}
+	if ((pconn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(pconn->cn_physhost, conn->cn_physhost) || pconn->cn_addr != conn->cn_addr) {
+		rc = PBSE_PERM;
+		goto rerr;
+	}
+	sched->sc_tmp_primary_conn = -1;
+	sched->sc_primary_conn = pconn->cn_sock;
+	sched->sc_secondary_conn = conn->cn_sock;
+	conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_NOTIMEOUT;
+	pconn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_NOTIMEOUT;
+	pconn->cn_origin = CONN_SCHED_PRIMARY;
+	conn->cn_origin = CONN_SCHED_SECONDARY;
+	net_add_close_func(conn->cn_sock, scheduler_close);
+	net_add_close_func(pconn->cn_sock, scheduler_close);
+	if (!set_conn_as_priority_conn(pconn)) {
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "Failed to set primary connection as priority connection");
+		rc = PBSE_INTERNAL;
+		goto rerr;
+	}
+	if (!set_conn_as_priority_conn(conn)) {
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "Failed to set secondary connection as priority connection");
+		rc = PBSE_INTERNAL;
+		goto rerr;
+	}
+
+	reply_ack(preq);
+	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "scheduler connected");
+	/*
+	 * scheduler (re-)connected, ask it to configure itself
+	 *
+	 * this must come after above reply_ack
+	 */
+	send_sched_cmd(sched, SCH_CONFIGURE, NULL);
+	return;
+
+rerr:
+	req_reject(rc, 0, preq);
+	close_client(preq->rq_conn);
+}
+#endif
+
 /*
 * @brief
  * 		process_request - process an request from the network:
@@ -293,6 +385,14 @@ process_request(int sfds)
 		closesocket(sfds);
 		return;
 	}
+
+#ifndef PBS_MOM
+	if (conn->cn_origin == CONN_SCHED_SECONDARY) {
+		if (recv_sched_cycle_end(sfds) != 0)
+			close_conn(sfds);
+		return;
+	}
+#endif
 
 	if ((request = alloc_br(0)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "Unable to allocate request structure");
@@ -349,10 +449,10 @@ process_request(int sfds)
 		strcpy(conn->cn_username, request->rq_user);
 	if (conn->cn_hostname[0] == '\0')
 		strcpy(conn->cn_hostname, request->rq_host);
-	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) != 0) {
+	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 		/*
-		 * If the request is coming on the socket we opened to the
-		 * scheduler, change the "user" from "root" to "Scheduler"
+		 * If the request is coming from scheduler,
+		 * change the "user" from daemon user to "Scheduler"
 		 */
 		strncpy(request->rq_user, PBS_SCHED_DAEMON_NAME, PBS_MAXUSER);
 		request->rq_user[PBS_MAXUSER] = '\0';
@@ -366,7 +466,12 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
-	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect) {
+	if (request->rq_type == PBS_BATCH_RegisterSched) {
+		req_register_sched(conn, request);
+		return;
+	}
+
+	if (request->rq_type != PBS_BATCH_Connect) {
 		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
 			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
 			req_reject(PBSE_BADCRED, 0, request);
@@ -427,7 +532,6 @@ process_request(int sfds)
 	/* FIXME: Do we need realm check for all auth ? */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	if (conn->cn_credid != NULL &&
-		(conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 &&
 		conn->cn_auth_config != NULL &&
 		conn->cn_auth_config->auth_method != NULL &&
 		strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
@@ -1411,7 +1515,12 @@ free_br(struct batch_request *preq)
 			break;
 
 #ifndef PBS_MOM		/* Server Only */
-
+		case PBS_BATCH_RegisterSched:
+			if (preq->rq_ind.rq_rsched.rq_name)
+				free(preq->rq_ind.rq_rsched.rq_name);
+			if (preq->rq_ind.rq_rsched.rq_conn_type)
+				free(preq->rq_ind.rq_rsched.rq_conn_type);
+			break;
 		case PBS_BATCH_SubmitResv:
 			free_attrlist(&preq->rq_ind.rq_queuejob.rq_attr);
 			break;
