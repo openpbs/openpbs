@@ -430,7 +430,7 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 		 * and this host is Mother Superior for this job
 		 */
 
-		jid_t *pjid = (jid_t *) &pjob->ji_extended.ji_ext.ji_4jid[0];
+		jid_t *pjid = (jid_t *) &pjob->ji_extended.ji_ext.ji_jid[0];
 
 		if (*pjid != (jid_t)0 && *pjid != (jid_t)-1) {
 			sjr->sj_jid = *pjid;
@@ -579,7 +579,7 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 		sprintf(buf, "%#0lx", (unsigned long)sjr->sj_jid);
 		(void)decode_str(&pjob->ji_wattr[JOB_ATR_acct_id], ATTR_acct_id, NULL, buf);
 
-		(void)memcpy(&pjob->ji_extended.ji_ext.ji_4jid, &sjr->sj_jid, sizeof(pjob->ji_extended.ji_ext.ji_4jid));
+		(void)memcpy(&pjob->ji_extended.ji_ext.ji_jid, &sjr->sj_jid, sizeof(pjob->ji_extended.ji_ext.ji_jid));
 
 		if (job_facility_present == 0) {
 			/* first success on job_create() after failure */

@@ -136,6 +136,7 @@
 #endif
 #include	"pbs_undolr.h"
 
+#define PBS_MACH "linux"
 /* Reducing tpp_request process for a minimum of 3 times to interleave other connections */
 #define MAX_TPP_LOOPS 3
 
@@ -3094,8 +3095,8 @@ do_mom_action_script(int	ae,	/* index into action table */
 			 * ALPS jobs need a new PAGG when
 			 * being restarted.
 			 */
-			memset(pjob->ji_extended.ji_ext.ji_4jid, 0,
-				sizeof(pjob->ji_extended.ji_ext.ji_4jid));
+			memset(pjob->ji_extended.ji_ext.ji_jid, 0,
+				sizeof(pjob->ji_extended.ji_ext.ji_jid));
 #endif
 			j = set_job(pjob, &sjr);
 			if (j < 0) {

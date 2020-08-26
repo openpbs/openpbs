@@ -597,8 +597,8 @@ struct job {
 	union jobextend {
 		char fill[256];	/* fill to keep same size */
 		struct {
-			char	ji_4jid[8];
-			int	ji_credtype;
+			char	ji_jid[8];	/* extended job save data for ALPS */
+			int	ji_credtype;	/* credential type */
 #ifdef PBS_MOM
 			tm_host_id ji_nodeidx;	/* my node id */
 			tm_task_id ji_taskidx;	/* generate task id's for job */

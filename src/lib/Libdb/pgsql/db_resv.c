@@ -187,7 +187,7 @@ load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
 	static int ri_queue_fnum;
 	static int ri_state_fnum;
 	static int ri_substate_fnum;
-	static int ri_stime_fnum,
+	static int ri_stime_fnum;
 	static int ri_etime_fnum;
 	static int ri_duration_fnum;
 	static int ri_tactive_fnum;

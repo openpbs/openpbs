@@ -77,7 +77,7 @@ db_prepare_job_sqls(void *conn)
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"ji_savetm,"
@@ -103,7 +103,7 @@ db_prepare_job_sqls(void *conn)
 		"ji_rteretry = $11,"
 		"ji_fromsock = $12,"
 		"ji_fromaddr = $13,"
-		"ji_4jid = $14,"
+		"ji_jid = $14,"
 		"ji_credtype = $15,"
 		"ji_qrank = $16,"
 		"ji_savetm = localtimestamp,"
@@ -139,7 +139,7 @@ db_prepare_job_sqls(void *conn)
 		"ji_rteretry = $11,"
 		"ji_fromsock = $12,"
 		"ji_fromaddr = $13,"
-		"ji_4jid = $14,"
+		"ji_jid = $14,"
 		"ji_credtype = $15,"
 		"ji_qrank = $16,"
 		"ji_savetm = localtimestamp "
@@ -161,7 +161,7 @@ db_prepare_job_sqls(void *conn)
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"hstore_to_array(attributes) as attributes "
@@ -211,7 +211,7 @@ db_prepare_job_sqls(void *conn)
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"hstore_to_array(attributes) as attributes "
@@ -233,7 +233,7 @@ db_prepare_job_sqls(void *conn)
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"hstore_to_array(attributes) as attributes "
@@ -274,17 +274,17 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 	static int ji_jobid_fnum;
 	static int ji_state_fnum;
 	static int ji_substate_fnum;
-	static int ji_svrflags_fnum,
+	static int ji_svrflags_fnum;
 	static int ji_stime_fnum;
 	static int ji_queue_fnum;
 	static int ji_destin_fnum;
-	static int ji_un_type_fnum,
+	static int ji_un_type_fnum;
 	static int ji_exitstat_fnum;
 	static int ji_quetime_fnum;
 	static int ji_rteretry_fnum;
-	static int ji_fromsock_fnum,
+	static int ji_fromsock_fnum;
 	static int ji_fromaddr_fnum;
-	static int ji_4jid_fnum;
+	static int ji_jid_fnum;
 	static int ji_credtype_fnum;
 	static int ji_qrank_fnum;
 	static int attributes_fnum;
@@ -305,7 +305,7 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 		ji_rteretry_fnum = PQfnumber(res, "ji_rteretry");
 		ji_fromsock_fnum = PQfnumber(res, "ji_fromsock");
 		ji_fromaddr_fnum = PQfnumber(res, "ji_fromaddr");
-		ji_4jid_fnum = PQfnumber(res, "ji_4jid");
+		ji_jid_fnum = PQfnumber(res, "ji_jid");
 		ji_qrank_fnum = PQfnumber(res, "ji_qrank");
 		ji_credtype_fnum = PQfnumber(res, "ji_credtype");
 		attributes_fnum = PQfnumber(res, "attributes");
@@ -325,7 +325,7 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 	GET_PARAM_BIGINT(res, row, pj->ji_rteretry, ji_rteretry_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_fromsock, ji_fromsock_fnum);
 	GET_PARAM_BIGINT(res, row, pj->ji_fromaddr, ji_fromaddr_fnum);
-	GET_PARAM_STR(res, row, pj->ji_4jid, ji_4jid_fnum);
+	GET_PARAM_STR(res, row, pj->ji_jid, ji_jid_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_credtype, ji_credtype_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_qrank, ji_qrank_fnum);
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
@@ -372,7 +372,7 @@ pbs_db_save_job(void *conn, pbs_db_obj_info_t *obj, int savetype)
 		SET_PARAM_BIGINT(conn_data, pjob->ji_rteretry, 10);
 		SET_PARAM_INTEGER(conn_data, pjob->ji_fromsock, 11);
 		SET_PARAM_BIGINT(conn_data, pjob->ji_fromaddr, 12);
-		SET_PARAM_STR(conn_data, pjob->ji_4jid, 13);
+		SET_PARAM_STR(conn_data, pjob->ji_jid, 13);
 		SET_PARAM_INTEGER(conn_data, pjob->ji_credtype, 14);
 		SET_PARAM_INTEGER(conn_data, pjob->ji_qrank, 15);
 

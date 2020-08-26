@@ -132,7 +132,7 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 			dbjob->ji_exitstat  = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
 		}
 		/* extended portion */
-		strcpy(dbjob->ji_4jid, pjob->ji_extended.ji_ext.ji_4jid);
+		strcpy(dbjob->ji_jid, pjob->ji_extended.ji_ext.ji_jid);
 		dbjob->ji_credtype  = pjob->ji_extended.ji_ext.ji_credtype;
 		dbjob->ji_qrank = pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
 	}
@@ -184,7 +184,7 @@ db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 	}
 
 	/* extended portion */
-	strcpy(pjob->ji_extended.ji_ext.ji_4jid, dbjob->ji_4jid);
+	strcpy(pjob->ji_extended.ji_ext.ji_jid, dbjob->ji_jid);
 	pjob->ji_extended.ji_ext.ji_credtype = dbjob->ji_credtype;
 
 	if ((decode_attr_db(pjob, &dbjob->db_attr_list, job_attr_idx, job_attr_def, pjob->ji_wattr, JOB_ATR_LAST, JOB_ATR_UNKN)) != 0)

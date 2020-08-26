@@ -66,31 +66,31 @@
 ### END INIT INFO
 
 if [ $# -eq 1 ] && [ $1 = "--version" ]; then
-   echo pbs_version = @PBS_VERSION@
-   exit 0
+	echo pbs_version = @PBS_VERSION@
+	exit 0
 fi
 
 tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
 ostype=`uname 2>/dev/null`
 
 getpid() {
-        if [ -f $1 ]; then
-                cat $1
-        else
-                echo -1
-        fi
+	if [ -f $1 ]; then
+		cat $1
+	else
+		echo -1
+	fi
 }
 
 # update_pids may cause an I/O read to block if PBS_HOME is on a shared
 # mount, it is called selectively after sanity checks are performed
 update_pids() {
-        pbs_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock`
-        pbs_secondary_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock.secondary`
-        pbs_mom_pid=`getpid ${PBS_MOM_HOME}/mom_priv/mom.lock`
-        pbs_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock`
-        pbs_secondary_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock.secondary`
-        pbs_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock`
-        pbs_secondary_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock.secondary`
+	pbs_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock`
+	pbs_secondary_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock.secondary`
+	pbs_mom_pid=`getpid ${PBS_MOM_HOME}/mom_priv/mom.lock`
+	pbs_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock`
+	pbs_secondary_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock.secondary`
+	pbs_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock`
+	pbs_secondary_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock.secondary`
 }
 
 # lc_host_name - convert host name into lower case short host name
@@ -113,17 +113,17 @@ lc_host_name()
 #
 : check_started
 check_started() {
-	ps_out=`ps -p ${1} -o args 2> /dev/null | tail -1`
+	ps_out=`ps -p $1 -o args 2> /dev/null | tail -1`
 	if [ -z "${ps_out}" -o "`echo ${ps_out} | cut -c1`" = "[" ]; then
-		ps_out=`ps -p ${1} -o command 2> /dev/null | tail -1`
+		ps_out=`ps -p $1 -o command 2> /dev/null | tail -1`
 		if [ -z "${ps_out}" ]; then
 			return 1
 		fi
 	fi
 
 	# strip out everything except executable name
-	prog_name=`echo ${ps_out} | grep -how "${2}"`
-	if [ "x${prog_name}" = "x${2}" ]; then
+	prog_name=`echo ${ps_out} | grep -how "$2"`
+	if [ "x${prog_name}" = "x$2" ]; then
 		return 0;
 	fi
 
@@ -134,9 +134,7 @@ check_started() {
 #              get the pid out of the prog.lock file and run check_started
 #               on that pid.
 #
-#        $1 is either "server" "oldserver" "mom" or "sched"
-#                "oldserver" is for non-database server (pbs_server)
-#                as opposed to "pbs_server.bin"
+#        $1 is either "server" "pbs_comm" "mom" or "sched"
 #
 # return value: 0 - program is still running
 #                1 - program is not running
@@ -176,7 +174,7 @@ check_prog() {
 
 	if [ -n "${pid}" ]; then
 		if [ "${pid}" -ne -1 ] ; then
-			if [ check_started "${pid}" "$daemon_name" ]; then
+			if check_started "${pid}" "${daemon_name}" ; then
 				return 0
 			fi
 		fi
@@ -191,18 +189,18 @@ check_prog() {
 # Otherwise, see if a default can be determined from login.defs.
 check_maxsys()
 {
-	if [ grep '^$restrict_user_maxsysid' ${PBS_MOM_HOME}/mom_priv/config > /dev/null ]; then
+	if grep '^$restrict_user_maxsysid' ${PBS_MOM_HOME}/mom_priv/config > /dev/null ; then
 		return
 	fi
 
 	file=/etc/login.defs
-	if [ -f $file ]; then
-		val=`awk '$1 == "SYSTEM_UID_MAX" {print $2}' $file`
-		if [ -z "$val" ]; then
-			val=`awk '$1 == "UID_MIN" {print $2 - 1}' $file`
+	if [ -f ${file} ]; then
+		val=`awk '$1 == "SYSTEM_UID_MAX" {print $2}' ${file}`
+		if [ -z "${val}" ]; then
+			val=`awk '$1 == "UID_MIN" {print $2 - 1}' ${file}`
 		fi
-		if [ -n "$val" ]; then
-			echo '$restrict_user_maxsysid' $val \
+		if [ -n "${val}" ]; then
+			echo '$restrict_user_maxsysid' ${val} \
 				>> ${PBS_MOM_HOME}/mom_priv/config
 		fi
 	fi
@@ -228,7 +226,7 @@ check_core() {
 		do
 			max_seq=`expr ${max_seq} + 1`
 			new_seq=`printf "%04d" ${max_seq}`
-			mv $core_name "${core_dir}"/"core_${new_seq}"
+			mv ${core_name} "${core_dir}"/"core_${new_seq}"
 		done
 
 		core_flag=1
@@ -237,26 +235,26 @@ check_core() {
 
 # Return the name of the PBS server host
 get_server_hostname() {
-        shn=""
-        if [ -z "${PBS_PRIMARY}" -o -z "${PBS_SECONDARY}" ] ; then
-                if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
-                        shn="${PBS_SERVER}"
-                else
-                        shn="${PBS_SERVER_HOST_NAME}"
-                fi
-        else
-                shn="${PBS_PRIMARY}"
-        fi
-        echo `lc_host_name "${shn}"`
+	shn=""
+	if [ -z "${PBS_PRIMARY}" -o -z "${PBS_SECONDARY}" ] ; then
+		if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
+			shn="${PBS_SERVER}"
+		else
+			shn="${PBS_SERVER_HOST_NAME}"
+		fi
+	else
+		shn="${PBS_PRIMARY}"
+	fi
+	echo `lc_host_name "${shn}"`
 }
 
 # Ensure the supplied hostname is valid
 check_hostname() {
-        # Check the hosts file
-        getent hosts "${1}" >/dev/null 2>&1 && return 0
-        # Check DNS
-        host "${1}" >/dev/null 2>&1 && return 0
-        return 1
+	# Check the hosts file
+	getent hosts "$1" >/dev/null 2>&1 && return 0
+	# Check DNS
+	host "$1" >/dev/null 2>&1 && return 0
+	return 1
 }
 
 start_pbs() {
@@ -274,7 +272,7 @@ start_pbs() {
 	check_hostname "${server_hostname}"
 	if [ $? -ne 0 ]; then
 		echo "***" >&2
-		echo "*** The PBS server could not be found: $server" >&2
+		echo "*** The PBS server could not be found: ${server}" >&2
 		echo "*** This value must resolve to a valid IP address." >&2
 		echo "***" >&2
 		exit 1
@@ -290,22 +288,22 @@ start_pbs() {
 	# 4) PBS_HOME/datastore does not exist and this is a server
 	needmakehome=0
 	[ ! -d "${PBS_HOME}" ] && needmakehome=1
-	[ $needmakehome -eq 0 -a ! -f "${PBS_HOME}/pbs_version" ] && needmakehome=2
-	if [ $needmakehome -eq 0 ]; then
+	[ ${needmakehome} -eq 0 -a ! -f "${PBS_HOME}/pbs_version" ] && needmakehome=2
+	if [ ${needmakehome} -eq 0 ]; then
 		qstatver=`${PBS_EXEC}/bin/qstat --version | sed -e "s/^.* = //"`
 		homever=`cat ${PBS_HOME}/pbs_version`
 		[ "${qstatver}" != "${homever}" ] && needmakehome=3
 	fi
-	[ $needmakehome -eq 0 -a "${PBS_START_SERVER}" != "0" -a ! -d "${PBS_HOME}/datastore" ] && needmakehome=4
+	[ ${needmakehome} -eq 0 -a "${PBS_START_SERVER}" != "0" -a ! -d "${PBS_HOME}/datastore" ] && needmakehome=4
 
-	if [ $needmakehome -ne 0 -a ! -x ${PBS_EXEC}/libexec/pbs_habitat ]; then
+	if [ ${needmakehome} -ne 0 -a ! -x ${PBS_EXEC}/libexec/pbs_habitat ]; then
 		echo "***" >&2
 		echo "*** ${PBS_EXEC}/libexec/pbs_habitat is missing." >&2
 		echo "***" >&2
 		exit 1
 	fi
 
-	case $needmakehome in
+	case ${needmakehome} in
 		1)
 			echo PBS Home directory ${PBS_HOME} does not exist.
 			echo Running ${PBS_EXEC}/libexec/pbs_habitat to create it.
@@ -337,7 +335,7 @@ start_pbs() {
 		check_core ${PBS_HOME}/mom_priv
 	fi
 
-	if [ $core_flag -eq 1 ];then
+	if [ ${core_flag} -eq 1 ];then
 		echo "Warning: PBS has detected core file(s) in PBS_HOME that require attention!!!"
 		echo "Warning: Please inform your administrator immediately or contact Altair customer support"
 	fi
@@ -406,7 +404,7 @@ start_pbs() {
 				echo "PBS server"
 			else
 				ret_val=$?
-				if [ $ret_val -eq 4 ] ; then
+				if [ ${ret_val} -eq 4 ] ; then
 					echo "pbs_server failed to start, will retry once in 30 seconds" >&2
 					sleep 30
 					if ${PBS_EXEC}/sbin/pbs_server ; then
@@ -575,14 +573,14 @@ status_pbs() {
 # Check whether PBS is registered to start at boot time
 is_registered()
 {
-        if command -v systemctl >/dev/null 2>&1; then
-                systemctl is-enabled pbs > /dev/null 2>&1
-                return $?
-        elif command -v chkconfig; then
-                chkconfig pbs > /dev/null 2>&1
-                return $?
-        fi
-        return 0
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl is-enabled pbs > /dev/null 2>&1
+		return $?
+	elif command -v chkconfig; then
+		chkconfig pbs > /dev/null 2>&1
+		return $?
+	fi
+	return 0
 }
 
 # Check whether system is being booted or not
@@ -590,50 +588,50 @@ is_registered()
 # return 0 if system is being booted otherwise return 1
 is_boottime()
 {
-        is_registered
-        [ $? -ne 0 ] && return 1
+	is_registered
+	[ $? -ne 0 ] && return 1
 
-        PYTHON_EXE=${PBS_EXEC}/python/bin/python
-        if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
-                PYTHON_EXE=`type python3 2>/dev/null | cut -d' ' -f3`
-                if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
-                        return 1
-                fi
-        fi
+	PYTHON_EXE=${PBS_EXEC}/python/bin/python
+	if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
+		PYTHON_EXE=`type python3 2>/dev/null | cut -d' ' -f3`
+		if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
+			return 1
+		fi
+	fi
 
-        BOOTPYFILE="${pbslibdir}/python/pbs_bootcheck.py"
-        BOOTCHECKFILE="/var/tmp/pbs_boot_check"
+	BOOTPYFILE="${pbslibdir}/python/pbs_bootcheck.py"
+	BOOTCHECKFILE="/var/tmp/pbs_boot_check"
 
-        if [ ! -r "${BOOTPYFILE}" ] ; then
-                return 1
-        fi
+	if [ ! -r "${BOOTPYFILE}" ] ; then
+		return 1
+	fi
 
-        ${PYTHON_EXE} ${BOOTPYFILE} ${BOOTCHECKFILE} > /dev/null 2>&1
-        ret=$?
-        return ${ret}
+	${PYTHON_EXE} ${BOOTPYFILE} ${BOOTCHECKFILE} > /dev/null 2>&1
+	ret=$?
+	return ${ret}
 }
 
 pre_start_pbs()
 {
-        if is_boottime
-        then
-                case "$ostype" in
-                        Linux) echo -e "\nStarting PBS in background\c" ;;
-                        *)  echo "\nStarting PBS in background\c" ;;
-                esac
-                (
-                        TEMP_DIR=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
-                        TEMPFILE=${TEMP_DIR}/start_pbs_logs_tmp_$$
-                        start_pbs > ${TEMPFILE} 2>&1
-                        ret=$?
-                        logger -i -t PBS -f ${TEMPFILE}
-                        rm -f ${TEMPFILE}
-                        exit ${ret}
-                ) &
-        else
-                start_pbs
-                exit $?
-        fi
+	if is_boottime
+	then
+		case "${ostype}" in
+			Linux) echo -e "\nStarting PBS in background\c" ;;
+			*)  echo "\nStarting PBS in background\c" ;;
+		esac
+		(
+			TEMP_DIR=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
+			TEMPFILE=${TEMP_DIR}/start_pbs_logs_tmp_$$
+			start_pbs > ${TEMPFILE} 2>&1
+			ret=$?
+			logger -i -t PBS -f ${TEMPFILE}
+			rm -f ${TEMPFILE}
+			exit ${ret}
+		) &
+	else
+		start_pbs
+		exit $?
+	fi
 }
 
 : main code
@@ -688,11 +686,11 @@ fi
 # Check whether the hostname has an IP address
 check_hostname "${my_hostname}"
 if [ $? -ne 0 ]; then
-        echo "***" >&2
-        echo "*** Invalid local hostname: $my_hostname" >&2
-        echo "*** This value must resolve to a valid IP address." >&2
-        echo "***" >&2
-        exit 1
+	echo "***" >&2
+	echo "*** Invalid local hostname: $my_hostname" >&2
+	echo "*** This value must resolve to a valid IP address." >&2
+	echo "***" >&2
+	exit 1
 fi
 
 is_secondary=0

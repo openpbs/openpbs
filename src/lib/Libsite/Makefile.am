@@ -43,7 +43,7 @@ lib_LIBRARIES = libsite.a
 
 libsite_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/resmom/${PBS_MACH} \
+	-I$(top_srcdir)/src/resmom/linux \
 	@KRB5_CFLAGS@
 
 libsite_a_SOURCES = \

@@ -281,7 +281,7 @@ db_2_job(job *pjob,  pbs_db_job_info_t *pdjob)
 	}
 
 	/* extended portion */
-	strcpy(pjob->ji_extended.ji_ext.ji_4jid, pdjob->ji_4jid);
+	strcpy(pjob->ji_extended.ji_ext.ji_jid, pdjob->ji_jid);
 	pjob->ji_extended.ji_ext.ji_credtype = pdjob->ji_credtype;
 }
 

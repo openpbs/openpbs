@@ -173,7 +173,7 @@ CREATE TABLE pbs.job (
     ji_rteretry     BIGINT,
     ji_fromsock     INTEGER,
     ji_fromaddr     BIGINT,
-    ji_4jid         TEXT,
+    ji_jid          TEXT,
     ji_credtype     INTEGER,
     ji_qrank        INTEGER     NOT NULL,
     ji_savetm       TIMESTAMP   NOT NULL,

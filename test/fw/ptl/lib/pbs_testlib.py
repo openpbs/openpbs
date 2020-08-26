@@ -10439,7 +10439,7 @@ class Server(PBSService):
                     "ji_substate, ji_svrflags, ji_stime, "
                     "ji_queue, ji_destin, ji_un_type, "
                     "ji_exitstat, ji_quetime, ji_rteretry, "
-                    "ji_fromsock, ji_fromaddr, ji_4jid, "
+                    "ji_fromsock, ji_fromaddr, ji_jid, "
                     "ji_credtype, ji_savetm, ji_creattm)")
 
         all_stmts = []

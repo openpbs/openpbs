@@ -178,7 +178,7 @@ struct pbs_db_job_info {
 	BIGINT   ji_rteretry;	/* route retry time */
 	INTEGER  ji_fromsock;	/* socket job coming over */
 	BIGINT   ji_fromaddr;	/* host job coming from   */
-	char     ji_4jid[8];	/* extended job save data */
+	char     ji_jid[8];	/* extended job save data */
 	INTEGER  ji_credtype;	/* credential type */
 	INTEGER  ji_qrank;	/* sort key for db query */
 	pbs_db_attr_list_t db_attr_list; /* list of attributes for database */
