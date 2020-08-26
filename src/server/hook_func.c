@@ -154,7 +154,7 @@ extern	char server_host[PBS_MAXHOSTNAME+1];
 
 /* Global Data items */
 int	do_sync_mom_hookfiles = 1;
-int	sync_mom_hookfiles_proc_running = 0;
+int	sync_mom_hookfiles_replies_pending = 0;
 pbs_list_head vnode_attr_list;
 pbs_list_head resv_attr_list;
 
@@ -4912,6 +4912,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 	if (pact != NULL) {
 		snprintf(pact->hookname, sizeof(pact->hookname), "%s", hookname);
 		pact->action = action;
+		pact->reply_expected = action;
 		pact->do_delete_action_first = 0;
 		pact->tid = input_tid;
 		do_sync_mom_hookfiles = 1;
@@ -5374,7 +5375,7 @@ check_for_latest_action(mominfo_t *minfo, mom_hook_action_t *pact, int j, int ev
  *		The globals g_hook_replies_recvd is incremented for
  *		each reply received. When this matches the global
  *		variable g_hook_replies_expected, the global variable
- *		sync_mom_hookfiles_proc_running is reset to 0, such
+ *		sync_mom_hookfiles_replies_pending is reset to 0, such
  *		that the next "hook transaction" can now start.
  *
  * @param[in] pwt - The work task pointer
@@ -5595,7 +5596,7 @@ post_sendhookTPP(struct work_task *pwt)
 		 * We are done with this batch of hook replies
 		 * allow next set of hook requests to go out now
 		 */
-		sync_mom_hookfiles_proc_running = 0;
+		sync_mom_hookfiles_replies_pending = 0;
 		g_hook_replies_recvd = 0;
 		g_hook_replies_expected = 0;
 
@@ -5827,7 +5828,7 @@ sync_mom_hookfilesTPP(void *minfo)
 		minfo_array_size = 1;
 	}
 
-	sync_mom_hookfiles_proc_running = 1;
+	sync_mom_hookfiles_replies_pending = 1;
 	g_sync_hook_tid = hook_action_tid_get();
 	snprintf(log_buffer, sizeof(log_buffer),
 		"g_sync_hook_tid=%lld", g_sync_hook_tid);
@@ -6007,7 +6008,7 @@ sync_mom_hookfilesTPP(void *minfo)
 		 * variable to 0, so that the next set of
 		 * hook pending operations can get triggered
 		 */
-		sync_mom_hookfiles_proc_running = 0;
+		sync_mom_hookfiles_replies_pending = 0;
 	}
 
 	/* set success to partial so that we come back and try again later */
@@ -6173,7 +6174,7 @@ handle_hook_sync_timeout(void)
 		timeout_sec = server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
 	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
-	if (sync_mom_hookfiles_proc_running) {
+	if (sync_mom_hookfiles_replies_pending) {
 		if (current_time <= timeout_time){
 			/* previous updates still in progress and not timed out */
 			return 0;
@@ -6194,7 +6195,7 @@ handle_hook_sync_timeout(void)
 		g_hook_replies_expected = 0;
 		/* attempt collapsing  the hook tracking file */
 		collapse_hook_tr();
-		sync_mom_hookfiles_proc_running = 0;
+		sync_mom_hookfiles_replies_pending = 0;
 		return 1;
 	}
 
@@ -6216,7 +6217,7 @@ next_sync_mom_hookfiles(void)
 {
 	int timed_out = handle_hook_sync_timeout();
 
-	if ((do_sync_mom_hookfiles || timed_out) && !sync_mom_hookfiles_proc_running && mc_sync_mom_hookfiles() == 0)
+	if ((do_sync_mom_hookfiles || timed_out) && !sync_mom_hookfiles_replies_pending && mc_sync_mom_hookfiles() == 0)
 		do_sync_mom_hookfiles = 0;
 }
 
@@ -6290,11 +6291,13 @@ uc_delete_mom_hooks(void *minfo)
 			msgid = NULL;
 			snprintf(hookfile, sizeof(hookfile), "%s%s", phook->hook_name, HOOK_FILE_SUFFIX);
 			PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, hookfile, PROT_TPP, &msgid);
+			free(msgid);
+			msgid = NULL;
 		}
 		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
-	msgid = NULL;
 	PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, PBS_RESCDEF, PROT_TPP, &msgid);
+	free(msgid);
 	return;
 }
 
