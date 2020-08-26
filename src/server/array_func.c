@@ -137,6 +137,257 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_LAST /* This MUST be LAST	*/
 };
 
+
+/**
+ * @brief
+ * 			init_range - Initialize the sub-job indices
+ *
+ * @param[in]	rarr - pointer to the range_arr_t 
+ * @param[in]	start - start of the subjob indices
+ * @param[in]	end - end of the subjob indices
+ * @param[in]	step - step factor in subjob indices
+ *
+ * @return      Int
+ * @retval	 0  - Intialization success
+ * @retval	 1  - failure 
+ */
+
+int init_range(range_arr_t *rarr, int start, int end, int step)
+{
+	rarr->count = 1;
+	rarr->step= step;
+	rarr->ranges = malloc(sizeof(range_t));
+
+	rarr->ranges[0].start = start;
+	rarr->ranges[0].end = end;
+	return 0;
+}
+
+/**
+ * @brief
+ * 			add_value - Adding a value in the range structures
+ * 						handles adding value in mid of the ranges.
+ *
+ * @param[in]	rarr - pointer to the range_arr_t 
+ * @param[in]	val - Value to add
+ *
+ * @return      Int
+ * @retval	 0  - Intialization success
+ * @retval	 1  - failure 
+ */
+
+int
+add_value(range_arr_t *rarr, int val)
+{
+	int i = 0,j = 0;
+	range_t *new;
+	
+	if (rarr->ranges == NULL) {
+		init_range(rarr, val, val, rarr->step);
+		return 0;
+	}
+
+	/*check the extreme left corner case */
+	if ( val < rarr->ranges[i].start) {
+		rarr->count++;
+		new = realloc(rarr->ranges, sizeof(range_t) * rarr->count);
+		if (new)
+			rarr->ranges = new;
+		else
+			return 1;
+		for (j = rarr->count - 1; j > i; j--) { /* move the pointers right */
+			rarr->ranges[j] = rarr->ranges[j - 1];
+		}
+		/* now we have space for the index in between */
+		rarr->ranges[i].start = val;
+		rarr->ranges[i].end = val;
+		return 0;
+	}
+
+	/* The value that needs to be added is found between left and right sub-ranges  */
+ 
+	for (i = 0; i < rarr->count; i++) {
+
+		if ((val >= rarr->ranges[i].start) && (val <= rarr->ranges[i].end)) {
+			return 1;
+		}
+
+		if ( (i-1) != -1 && (val > rarr->ranges[i - 1].end) && (val < rarr->ranges[i].start)) {
+			if ((i-1) != -1  && (val == (rarr->ranges[i - 1].end + rarr->step)) && (val == (rarr->ranges[i].start - rarr->step))){
+				/* Adding this value would coalesce these two sub-ranges  */
+				rarr->ranges[i-1].end = rarr->ranges[i].end;
+				for (j = i; j < rarr->count - 1; j++)  /* move the pointers left  (assinging jth = j+1th)  */
+					rarr->ranges[j] = rarr->ranges[j + 1];
+				rarr->count--;
+				rarr->ranges = realloc(rarr->ranges, sizeof(range_t) * rarr->count);
+				return 0;
+			}
+			else if ( (i-1) != -1 &&  (val == (rarr->ranges[i - 1].end + rarr->step)) ) {
+			/* value falls in the left sub-range end  */
+				rarr->ranges[i - 1].end += rarr->step;
+				return 0;
+			} else if (val == (rarr->ranges[i].start - rarr->step)) {
+			/* value falls in the right sub-range start  */
+				rarr->ranges[i].start -= rarr->step;
+				return 0;
+			} else {
+			/* value falls in this range, split range */
+				if ((val - rarr->ranges[i - 1].end) % rarr->step != 0)
+					return 1;
+				rarr->count++;
+				new = realloc(rarr->ranges, sizeof(range_t) * rarr->count);
+				if (new)
+					rarr->ranges = new;
+				else 
+					return 1;
+				for (j = rarr->count - 1; j > i; j--) { /* move the pointers right (assiging j-1th = jth)  */
+					rarr->ranges[j] = rarr->ranges[j - 1];
+				}
+				/* now we have space for the index in between */
+				rarr->ranges[i].start = val;
+				rarr->ranges[i].end = val;
+				return 0;
+			}
+		}
+	}
+
+
+	/* Comming out of loop and check the extreme right corner case */
+	--i;  /* resetting the last inc to match the last sub-range */
+	if ( val > rarr->ranges[i].end) {
+		if (val == rarr->ranges[i].end + rarr->step) {
+			rarr->ranges[i].end += rarr->step;
+			return 0;
+		}	
+		else {
+			rarr->count++;
+			new = realloc(rarr->ranges, sizeof(range_t) * rarr->count);
+			if (new)
+				rarr->ranges = new;
+			else
+				return 1;
+			/* now we have space for the index in between */
+			rarr->ranges[i].start = val;
+			rarr->ranges[i].end = val;
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+/**
+ * @brief
+ * 			del_value - Deleting a value in the range structures
+ * 						handles adding value in mid of the ranges.
+ *
+ * @param[in]	rarr - pointer to the range_arr_t 
+ * @param[in]	val - Value to delete
+ *
+ * @return      Int
+ * @retval	 0  - Intialization success
+ * @retval	 1  - failure 
+ */
+
+int
+del_value(range_arr_t *rarr, int val)
+{
+	int i, j;
+	for (i = 0; i < rarr->count; i++) {
+		if (val == rarr->ranges[i].start && val == rarr->ranges[i].end) {
+			/* found sub-range with single element; removing it & bring forward the following sub-ranges  */
+			for (j = i ; j < rarr->count - 1; j++) /* move the pointers left  (assinging jth = j+1th)  */
+				rarr->ranges[j] = rarr->ranges[j + 1];
+			rarr->count--;
+			rarr->ranges = realloc(rarr->ranges, sizeof(range_t) * rarr->count);
+			return 0;
+		} else if (val == rarr->ranges[i].start) {
+			/* just update the first index */
+			rarr->ranges[i].start += rarr->step;
+			return 0;
+		} else if (val == rarr->ranges[i].end) {
+			rarr->ranges[i].end -= rarr->step;
+			return 0;	
+
+		} else if ((val > rarr->ranges[i].start) && (val < rarr->ranges[i].end)) {
+			/* value falls in this range, split range */
+			
+			if ((val - rarr->ranges[i].start) % rarr->step != 0)
+				return 1;
+				
+			rarr->count++;
+			rarr->ranges = realloc(rarr->ranges, sizeof(range_t) * rarr->count);
+			for (j = rarr->count - 1;j > i; j--) { /* move the pointers right */
+				rarr->ranges[j] = rarr->ranges[j - 1];
+			}
+			
+			j = i + 1;
+			/* now we have space for the index in between */
+			rarr->ranges[j - 1].start = rarr->ranges[j].start;
+			rarr->ranges[j - 1].end = val - rarr->step;
+			rarr->ranges[j].start = val + rarr->step;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/**
+ * @brief
+ * 			encode_range - Convert the range structures to readable string
+ *
+ * @param[in]	rarr - pointer to the range_arr_t 
+ * @param[in]	val - Value to delete
+ *
+ * @return      Int
+ * @retval	 0  - Intialization success
+ * @retval	 1  - failure 
+ */
+
+char *
+encode_range(range_arr_t *rarr) 
+{
+	int i; 
+	static char *buf = NULL;
+	static size_t buflen = 0;
+	
+	if (buf == NULL) {
+		buflen = 1000;
+		if ((buf = (char *) malloc(buflen)) == NULL)
+			return NULL;
+	}
+		
+	*buf = '\0'; /* initialize buf to empty */
+	
+	for (i = 0; i < rarr->count; i++) {
+		
+		if (rarr->ranges[i].start == -1 && rarr->ranges[i].end == -1)
+			continue;
+		
+		if ((buflen - strlen(buf)) < 20) {
+			char *tmpbuf;
+			/* expand buf */
+			buflen += 500;
+			tmpbuf = realloc(buf, buflen);
+			if (tmpbuf == NULL)
+				return NULL;
+			buf = tmpbuf;
+		}	
+		
+		if (rarr->ranges[i].start == rarr->ranges[i].end)
+			sprintf(buf + strlen(buf), "%d%s", rarr->ranges[i].start, (i < rarr->count - 1) ? ",":"");
+		else if (rarr->step > 1)
+			sprintf(buf + strlen(buf), "%d-%d:%d%s", rarr->ranges[i].start, rarr->ranges[i].end, rarr->step, (i < rarr->count - 1)?",":"");
+		else 
+			sprintf(buf + strlen(buf), "%d-%d%s", rarr->ranges[i].start, rarr->ranges[i].end, (i < rarr->count - 1) ? ",":"");
+	}
+	
+	return buf;
+}
+
+
+
+
 /**
  * @brief
  * 			is_job_array - determines if the job id indicates
@@ -363,6 +614,12 @@ set_subjob_tblstate(job *parent, int offset, int newstate)
 	ptbl->tkm_subjsct[oldstate]--;
 	ptbl->tkm_subjsct[newstate]++;
 
+	if (oldstate == JOB_STATE_QUEUED)
+		del_value(&ptbl->tkm_rarr, SJ_TBLIDX_2_IDX(parent, offset));
+
+	if (newstate == JOB_STATE_QUEUED) 
+		add_value(&ptbl->tkm_rarr, SJ_TBLIDX_2_IDX(parent, offset));
+
 	/* set flags in attribute so stat_job will update the attr string */
 	ptbl->tkm_flags |= TKMFLG_REVAL_IND_REMAINING;
 
@@ -382,7 +639,7 @@ update_array_indices_remaining_attr(job *parent)
 
 	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
 		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
-		char *pnewstr = cvt_range(parent, JOB_STATE_QUEUED);
+		char *pnewstr = encode_range(&ptbl->tkm_rarr);
 		if ((pnewstr == NULL) || (*pnewstr == '\0'))
 			pnewstr = "-";
 		job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
@@ -702,6 +959,13 @@ int
 setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 {
 	job *pjob = pobj;
+	char * prange;
+	int start;
+	int end;
+	int step;
+	int count;
+	int i;
+	char *eptr;
 
 	/* set attribute "array" True  and clear "array_state_count" */
 
@@ -716,6 +980,19 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str,
 			                                      JOB_STATE_QUEUED, &pbs_error, mode)) == NULL)
 			return pbs_error;
+		
+		prange = pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str;
+		if (!prange)
+			return PBSE_BADATVAL; 
+			
+		i = parse_subjob_index(prange, &eptr, &start, &end, &step, &count);
+		
+		if (i != 0) 
+			return PBSE_BADATVAL; /* parse error */
+
+		if(init_range(&pjob->ji_ajtrk->tkm_rarr, start, end, step))
+			return PBSE_BADATVAL;	
+		
 	}
 
 	if (mode == ATR_ACTION_RECOV) {
@@ -741,9 +1018,9 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 	}
 
 	/* set "array_indices_remaining" if not already set */
-	if ((pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining].at_flags & ATR_VFLAG_SET) == 0)
+	if ((pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining].at_flags & ATR_VFLAG_SET) == 0) {
 		job_attr_def[(int)JOB_ATR_array_indices_remaining].at_decode(&pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining], NULL, NULL, pattr->at_val.at_str);
-
+	}
 
 	/* set other Array related fields in the job structure */
 

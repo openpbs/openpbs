@@ -325,6 +325,18 @@ typedef struct	noderes {
  * specific structures for Job Array attributes
  */
 
+typedef struct {
+	int start;
+	int end;
+} range_t;
+
+typedef struct {
+	int count;
+	int step;
+	range_t *ranges;
+} range_arr_t;
+
+
 /* individual entries in array job index table */
 struct ajtrk {
 	int trk_status;		 /* status */
@@ -346,6 +358,7 @@ struct ajtrkhd {
 	int tkm_flags;			  /* special flags for array job */
 	int tkm_subjsct[PBS_NUMJOBSTATE]; /* count of subjobs in various states */
 	int tkm_dsubjsct;		  /* count of deleted subjobs */
+	range_arr_t tkm_rarr;		 	/* array of ranges */
 	struct ajtrk tkm_tbl[1];	  /* ptr to array of individual entries */
 	/*
 	 * when table is malloced, room for the additional required number
