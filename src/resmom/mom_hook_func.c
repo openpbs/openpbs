@@ -1390,6 +1390,11 @@ run_hook_exit:
 
 		if (pjob->ji_env != NULL) {
 			hook_env = dup_string_arr(pjob->ji_env);
+			if (hook_env == NULL) {
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, "Unable to set hook environment");
+				goto run_hook_exit;
+			}
 			if (pbs_hook_conf = getenv("PBS_HOOK_CONFIG_FILE"))
 				hook_env = bld_wenv_variables("PBS_HOOK_CONFIG_FILE", pbs_hook_conf, hook_env);
 		}
