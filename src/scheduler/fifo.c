@@ -1238,6 +1238,19 @@ update_last_running(server_info *sinfo)
 }
 
 /**
+ * @brief clear and free the last running array
+ * 
+ * @return void
+ */
+void 
+clear_last_running()
+{
+	free_pjobs(last_running, last_running_size);
+	last_running = NULL;
+	last_running_size = 0;
+}
+
+/**
  * @brief
  *		update_job_can_not_run - do post job 'can't run' processing
  *				 mark it 'can_not_run'
