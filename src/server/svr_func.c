@@ -153,7 +153,7 @@ long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for nod
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
 
 extern int do_sync_mom_hookfiles;
-extern int sync_mom_hookfiles_proc_running;
+extern int sync_mom_hookfiles_replies_pending;
 
 char primary_host[PBS_MAXHOSTNAME+1]; /* host_name of primary */
 
@@ -5530,7 +5530,7 @@ prov_startjob(struct work_task *ptask)
 	}
 	/* task being serviced here */
 	pjob->ji_prov_startjob_task = NULL;
-	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_proc_running) &&
+	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_replies_pending) &&
 	    (prov_vnode_pending_hook_copy(pjob))) {
 
 		/**

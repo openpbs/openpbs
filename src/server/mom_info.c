@@ -447,26 +447,22 @@ open_momstream(mominfo_t *pmom)
 void
 delete_svrmom_entry(mominfo_t *pmom)
 {
-	mom_svrinfo_t *psvrmom = NULL;
+	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 	unsigned long *up;
 	extern struct tree  *ipaddrs;
 
-	if (pmom->mi_data) {
+	if (psvrmom) {
 
 #ifndef PBS_MOM
 		/* send request to this mom to delete all hooks known from this server. */
 		/* we'll just send this delete request only once */
 		/* if a hook fails to delete, then that mom host when it */
 		/* come back will still have the hook. */
-		if ((pmom->mi_action != NULL) && (mom_hooks_seen_count() > 0)) {
-			/* there should be at least one hook to */
-			/* add mom actions below, which are in behalf of */
-			/* existing hooks. */
-			(void)bg_delete_mom_hooks(pmom);
+		if (!(psvrmom->msr_state & INUSE_DOWN) && (mom_hooks_seen_count() > 0)) {
+			uc_delete_mom_hooks(pmom);
 		}
 #endif
 
-		psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 		if (psvrmom->msr_arch)
 			free(psvrmom->msr_arch);
 

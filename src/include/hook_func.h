@@ -71,6 +71,7 @@ extern "C" {
 struct mom_hook_action {
 	char            hookname[PBS_HOOK_NAME_SIZE];
 	unsigned int	action;
+	unsigned int	reply_expected; /* reply expected from mom for sent out actions */
 	int		do_delete_action_first; /* force order between delete and send actions */
 	long long int	tid;	/* transaction id to group actions under */
 };
@@ -104,8 +105,8 @@ extern int has_pending_mom_action_delete(char *);
 
 extern void hook_track_save(void *, int);
 extern void hook_track_recov(void);
-extern int bg_sync_mom_hookfiles(void);
-extern int bg_delete_mom_hooks(void *);
+extern int mc_sync_mom_hookfiles(void);
+extern void uc_delete_mom_hooks(void *);
 extern int sync_mom_hookfiles_count(void *);
 extern void next_sync_mom_hookfiles(void);
 extern void send_rescdef(int);
