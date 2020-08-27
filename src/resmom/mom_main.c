@@ -6591,7 +6591,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 
 
 				/* The following 2 temp variables will be set to 1
-				 * if there's an error accumlating resources_used
+				 * if there's an error accumulating resources_used
 				 * values from all sister moms including those that
 				 * have been released from the job (fail) or from
 				 * all sister moms NOT including the released nodes
