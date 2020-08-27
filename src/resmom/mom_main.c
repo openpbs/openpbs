@@ -2608,7 +2608,8 @@ do_mom_action_script(int ae,	      /* index into action table */
 		free(pnoq);
 #else
 	if (stat(ma->ma_script, &sb) == -1) {
-		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "action %s script %s does not exist", ma->ma_name, ma->ma_script);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s does not exist", ma->ma_name, ma->ma_script);
 		return -1;
 	} else if (sb.st_uid != 0 || sb.st_gid > 10 || (sb.st_mode & S_IXUSR) != S_IXUSR || (sb.st_mode & S_IWOTH) != 0) {
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
@@ -2931,11 +2932,10 @@ do_mom_action_script(int ae,	      /* index into action table */
 		} else
 			kid_read = pipes[0];
 		parent_write = pipes[1];
-	} else if (ae == RestartAction) {
+	} else if (ae == RestartAction)
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
 			   "action %s script %s preparing to restart task %8.8X",
 			   ma->ma_name, ma->ma_script, ptask->ti_qs.ti_task);
-	}
 
 	if ((child = fork_me(-1)) == 0) { /* child */
 		extern char *variables_else[];
@@ -6842,28 +6842,6 @@ encode_used_exit:
 	}
 }
 
-/**
- * @brief
- * 	check give attribute name exists in give ruu's attr list
- *
- * @param[in] old  - pointer to ruu
- * @param[in] name - attribute name
- *
- * @return int
- * @retval 0 - doesn't exists in ruu's attr list
- * @retval 1 - exists in ruu's attr list
- *
- */
-static int
-is_in_old_ruu(ruu *old, char *name)
-{
-	if (old == NULL)
-		return 0;
-	if (find_svrattrl_list_entry(&old->ru_attr, name, NULL) != NULL)
-		return 1;
-	return 0;
-}
-
 
 /**
  * @brief
@@ -6964,10 +6942,8 @@ get_job_update(job *pjob)
 
 		if ((at->at_flags & ATR_VFLAG_MODIFY) ||
 		    (at->at_flags & ATR_VFLAG_HOOK) ||
-		    is_in_old_ruu(pjob->ji_pending_ruu, ad->at_name)) {
-			(void) ad->at_encode(at, &prused->ru_attr,
-					     ad->at_name, NULL,
-					     ATR_ENCODE_CLIENT, NULL);
+		    (pjob->ji_pending_ruu != NULL && find_svrattrl_list_entry(&(((ruu *) pjob->ji_pending_ruu)->ru_attr), ad->at_name, NULL) != NULL)) {
+			ad->at_encode(at, &prused->ru_attr, ad->at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 			if (at->at_flags & ATR_VFLAG_MODIFY)
 				at->at_flags &= ~ATR_VFLAG_MODIFY;
 		}
