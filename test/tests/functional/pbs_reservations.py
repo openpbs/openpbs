@@ -1584,10 +1584,10 @@ class TestReservations(TestFunctional):
         self.common_steps()
 
         # Submit job j to consume all resources
-        a = {'Resource_List.walltime': '5',
+        a = {'Resource_List.walltime': '10',
              'Resource_List.select': '1:ncpus=4'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
+        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -1604,7 +1604,7 @@ class TestReservations(TestFunctional):
         rid1 = self.submit_asap_reservation(user=TEST_USER,
                                             jid=jid2)
         rid1_q = rid1.split('.')[0]
-        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
                     'reserve_duration': 10}
         self.server.expect(RESV, exp_attr, id=rid1)
         self.server.expect(
