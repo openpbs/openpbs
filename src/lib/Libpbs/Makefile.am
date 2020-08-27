@@ -56,6 +56,7 @@ pkgconfig_DATA = pbs.pc
 libpbs_la_LDFLAGS = -version-info 0:0:0 @KRB5_LIBS@
 
 libpbs_la_LIBADD= \
+	@libz_lib@ \
 	-lcrypto \
 	-lpthread
 
