@@ -6910,11 +6910,8 @@ get_job_update(job *pjob)
 #ifdef WIN32
 	if (pjob->ji_wattr[JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
 		prused->ru_comment = strdup(pjob->ji_wattr[JOB_ATR_Comment].at_val.at_str);
-		if (prused->ru_comment == NULL) {
-			FREE_RUU(prused);
+		if (prused->ru_comment == NULL)
 			log_joberr(errno, __func__, "Out of memory while encoding comment in stat update", pjob->ji_qs.ji_jobid);
-			return NULL;
-		}
 	}
 #endif
 	if (pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_MODIFY) {
