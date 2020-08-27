@@ -36,6 +36,7 @@
 #
 
 BUILT_SOURCES = pbs_ifl_wrap.c
+EXTRA_DIST = pbs_ifl.i
 
 pbs_ifl_wrap.c: pbs_ifl.i
 	@swig_dir@/bin/swig -python -outcurrentdir -I$(top_srcdir)/src/include $^
