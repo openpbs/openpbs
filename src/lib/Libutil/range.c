@@ -70,9 +70,6 @@
 #include <log.h>
 #include <libutil.h>
 #include "range.h"
-#include "data_types.h"
-#include "constant.h"
-#include "misc.h"
 
 /**
  * @brief
@@ -409,6 +406,7 @@ range_contains_single(range *r, int val)
  *	      of a range, not in the middle
  *
  */
+
 int
 range_remove_value(range **r, int val)
 {
@@ -424,7 +422,18 @@ range_remove_value(range **r, int val)
 
 	cur = *r;
 	while (cur != NULL && !done) {
-		if (cur->start == val) {
+		if (cur->start == val && cur->end == val) {
+			if (prev == NULL) { /* we're removing the first range struct in the list */
+				*r = (*r)->next;
+				free_range(cur);
+			}
+			else {
+				prev->next = cur->next;
+				free_range(cur);
+			}
+			return 1;
+		}
+		else if (cur->start == val) {
 			cur->start += cur->step;
 			cur->count--;
 			done = 1;
@@ -433,6 +442,22 @@ range_remove_value(range **r, int val)
 			cur->end -= cur->step;
 			cur->count--;
 			done = 1;
+		}
+		else if ((val > cur->start) && (val < cur->end)) {
+			range * next_range = NULL;
+			if ((next_range = new_range()) == NULL) {
+				return 0;
+			}
+			next_range->count = (cur->end - val)/cur->step;
+			next_range->step = cur->step;
+			next_range->start = val + next_range->step;
+			next_range->end = cur->end;
+			next_range->next = cur->next;
+
+			cur->count = (val - cur->start)/cur->step;
+			cur->end = val - cur->step;
+			cur->next = next_range;			
+			return 1;	
 		}
 
 		if (!done) {
@@ -465,7 +490,7 @@ range_remove_value(range **r, int val)
  *		range_add_value - add a value to a range list by adding it to the end
  *			  of the list
  *
- * @param[in]	r	-	range to add value too
+ * @param[in,out]	r	-	pointer to pointer to the head of the range
  * @param[in]	val	-	value to add
  * @param[in]	type	-	enable/disable subrange stepping
  *
@@ -475,72 +500,131 @@ range_remove_value(range **r, int val)
  *
  */
 int
-range_add_value(range *r, int val, enum range_step_type type)
+range_add_value(range **r, int val, int range_step)
 {
 	range *cur;			/* current range structure in list */
-	range *prev = NULL;		/* previous range structure in list */
-	range *new;			/* if we need to add to the list */
-	int done = 0;			/* have we added val to our range, leave loop */
+	range *next_range;
 
 	if (r == NULL)
 		return 0;
 
-	if (range_contains(r, val))
+	if (*r == NULL) {
+		/* If there are no range structs in the list; create the new range for first value */
+		range * first_range = NULL;
+		if ((first_range = new_range()) == NULL) {
+			return 0;
+		}
+		first_range->count = 1;
+		first_range->step = range_step;
+		first_range->start = val;
+		first_range->end = val;
+		first_range->next = NULL;
+
+		*r = first_range;
+		return 1;
+	}
+
+
+	if (range_contains(*r, val))
 		return 0;
 
-	cur = r;
+	cur = *r;
 
-	while (cur != NULL && !done) {
-		if (cur->count == 0) {
-			cur->start = cur->end = val;
+	/* Value falls before the first sub-range */
+
+	if (cur != NULL && val < cur->start) {
+		if (val == cur->start - cur->step) {
+			cur->start -= cur->step;
 			cur->count++;
-			done = 1;
-		}
-		else if (val == cur->start - cur->step) {
-			cur->start = val;
-			cur->count++;
-			done = 1;
-		}
-		else if (val == cur->end + cur->step) {
-			cur->end = val;
-			cur->count++;
-			done = 1;
-		}
-
-		prev = cur;
-		cur = cur->next;
-	}
-
-	/* if we made it out of the loop and done is not set, we need to add
-	 * the create a new sub-range and add it to the list
-	 */
-	if (!done) {
-		/* if we have a subrange with a count of 1, add our value to it
-		 * and up the step to compensate
-		 */
-		if (prev->count == 1 && type == ENABLE_SUBRANGE_STEPPING) {
-			if (prev->start < val)
-				prev->end = val;
-			else
-				prev->start = val;
-
-			prev->step = prev->end - prev->start;
-			prev->count++;
-		}
-		else {
-			new = new_range();
-
-			if (new == NULL)
+			return 1;
+		} else {
+			/* Add new range as the first element with same value */
+			range * first_range = NULL;
+			if ((first_range = new_range()) == NULL) {
 				return 0;
+			}
+			first_range->count = 1;
+			first_range->step = cur->step;
+			first_range->start = val;
+			first_range->end = val;
+			first_range->next = cur;
 
-			new->start = new->end = val;
-			new->count = 1;
-
-			prev->next = new;
+			*r = first_range;			
+			return 1;
 		}
 	}
 
-	return 1;
+	/* The value that needs to be added is in between the cur and the next sub-ranges  */
+	
+	while (cur != NULL && cur->next != NULL ) {
+
+		next_range = cur->next;
+		if ((val > cur->end) && (val < next_range->start)) {
+			
+			if ((val == cur->end + cur->step) && (val == next_range->start - next_range->step)) {
+				/* Adding this value would coalesce these two sub-ranges  */
+				cur->end = next_range->end;
+				cur->next = next_range->next;
+				cur->count++;
+				free_range(next_range);	
+				return 1;
+
+			} else if (val == cur->end + cur->step) {
+				/* Value falls in the cur sub-range end  */
+				cur->end += cur->step;
+				cur->count++;
+				return 1; 
+	 
+			} else if (val == next_range->start - next_range->step) {
+				/* Value falls in the next sub-range start  */
+				next_range->start -= next_range->step;
+				next_range->count++;
+				return 1;
+
+			} else {
+				/* Value falls in this range; add new mid-range with same value */
+				range * mid_range = NULL;
+				if ((mid_range = new_range()) == NULL) {
+					return 0;
+				}
+				mid_range->count = 1;
+				mid_range->step = cur->step;
+				mid_range->start = val;
+				mid_range->end = val;
+				mid_range->next = cur->next;
+				
+				cur->next = mid_range;
+ 				return 1;
+			}		
+		}
+		cur = next_range;
+	}
+
+	/* Coming out of the loop and check the extreme right corner case */
+	
+	if (cur != NULL && val > cur->end) {
+		if (val == cur->end + cur->step) {
+			cur->end += cur->step;
+			cur->count++;
+			return 1;
+		} else {
+			/* Add new range at the end with same value */
+			range * end_range = NULL;
+			if ((end_range = new_range()) == NULL) {
+				return 0;
+			}
+			end_range->count = 1;
+			end_range->step = cur->step;
+			end_range->start = val;
+			end_range->end = val;
+			end_range->next = NULL;
+
+			cur->next = end_range;
+			return 1;		
+		}
+	}
+
+	return 0;
 }
 
 /**
@@ -567,15 +651,7 @@ range_intersection(range *r1, range *r2)
 
 	while (cur >= 0) {
 		if (range_contains(r2, cur)) {
-			if (intersection == NULL) {
-				intersection = new_range();
-				intersection->start = cur;
-				intersection->end = cur;
-				intersection->step = 1;
-				intersection->count = 1;
-			}
-			else
-				range_add_value(intersection, cur, ENABLE_SUBRANGE_STEPPING);
+				range_add_value(&intersection, cur, r2->step);
 		}
 		cur = range_next_value(r1, cur);
 	}
@@ -585,22 +661,21 @@ range_intersection(range *r1, range *r2)
 
 /**
  * @brief
- * 		parse_subjob_index - parse a subjob index range of the form:
- *			START[-END[:STEP]][,...]
- *		Each call parses up to the first comma or the end of str if no comma
- * @par
- *		Additional returns which are valid only if zero is returned are:
- *
- * @param[in]	pc	-	subjob index.
- * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line
+ *		parse_subjob_index - parse a subjob index range of the form:
+ *		START[-END[:STEP]][,...]
+ *		Each call parses up to the first comma or if no comma the end of
+ *		the string or a ']'
+ * @param[in]	pc	-	range of sub jobs
+ * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line)
  * @param[out]	pstart	-	first number of range
  * @param[out]	pend	-	maximum value in range
  * @param[out]	pstep	-	stepping factor
  * @param[out]	pcount -	number of entries in this section of the range
  *
- * @return	0/1
- * @retval	0	: returned as the function value if no error was detected.
- * @retval	1	: returned if there is a parse/format error
+ * @return	integer
+ * @retval	0	- success
+ * @retval	1	- no (more) indices are found
+ * @retval	-1	- parse/format error
  */
 int
 parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int *pcount)
@@ -610,47 +685,60 @@ parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int 
 	int step;
 	char *eptr;
 
-	if (pc == NULL)
-		return (1);
-
-	if (*pc == ',' || isspace((int) *pc))
+	while (isspace((int) *pc) || (*pc == ','))
 		pc++;
+	if ((*pc == '\0') || (*pc == ']')) {
+		*pcount = 0;
+		*ep = pc;
+		return (1);
+	}
 
 	if (!isdigit((int) *pc)) {
 		/* Invalid format, 1st char not digit */
-		return (1);
+		return (-1);
 	}
 	start = (int) strtol(pc, &eptr, 10);
 	pc = eptr;
-	if ((*pc == ',') || (*pc == '\0')) {
-		/* "START," or "START" case */
+	while (isspace((int) *pc))
+		pc++;
+	if ((*pc == ',') || (*pc == '\0') || (*pc == ']')) {
+		/* "X," or "X" case */
 		end = start;
 		step = 1;
+		if (*pc == ',')
+			pc++;
 	} else {
-		/* should be START-END[:STEP] case */
+		/* should be X-Y[:Z] case */
 		if (*pc != '-') {
-			/* Invalid format, not in START-END format */
-			return (1);
+			/* Invalid format, not in X-Y format */
+			*pcount = 0;
+			return (-1);
 		}
 		end = (int) strtol(++pc, &eptr, 10);
 		pc = eptr;
-		if ((*pc == '\0') || (*pc == ',')) {
+		if (isspace((int) *pc))
+			pc++;
+		if ((*pc == '\0') || (*pc == ',') || (*pc == ']')) {
 			step = 1;
-		} else if (*pc != ':') {
-			/* Invalid format, not in START-END:STEP format */
-			return (1);
+		} else if (*pc++ != ':') {
+			/* Invalid format, not in X-Y:z format */
+			*pcount = 0;
+			return (-1);
 		} else {
-			step = (int) strtol(++pc, &eptr, 10);
+			while (isspace((int) *pc))
+				pc++;
+			step = (int) strtol(pc, &eptr, 10);
 			pc = eptr;
-			/* we're finished with START-END:STEP, only valid char is ',' or '\0' */
-			if (*eptr != ',' && *eptr != '\0') {
-				return (1);
-			}
+			while (isspace((int) *pc))
+				pc++;
+			if (*pc == ',')
+				pc++;
 		}
-	}
 
-	if ((start > end) || (step < 1))
-		return 1;
+		/* y must be greater than x for a range and z must be greater 0 */
+		if ((start >= end) || (step < 1))
+			return (-1);
+	}
 
 	*ep = pc;
 	/* now compute the number of extires ((end + 1) - start + (step - 1)) / step = (end - start + step) / step */
@@ -658,7 +746,7 @@ parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int 
 	*pstart = start;
 	*pend = end;
 	*pstep = step;
-	return 0;
+	return (0);
 }
 
 /**

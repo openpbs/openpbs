@@ -45,6 +45,7 @@ extern "C" {
 
 #include "list_link.h"
 #include "attribute.h"
+#include "range.h"
 /*
  * job.h - structure definations for job objects
  *
@@ -346,6 +347,7 @@ struct ajtrkhd {
 	int tkm_flags;			  /* special flags for array job */
 	int tkm_subjsct[PBS_NUMJOBSTATE]; /* count of subjobs in various states */
 	int tkm_dsubjsct;		  /* count of deleted subjobs */
+	range * trk_rlist;			/* pointer to range list */
 	struct ajtrk tkm_tbl[1];	  /* ptr to array of individual entries */
 	/*
 	 * when table is malloced, room for the additional required number

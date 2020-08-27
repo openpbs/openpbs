@@ -63,6 +63,7 @@ extern "C" {
 #include "config.h"
 #include "pbs_bitmap.h"
 #include "pbs_share.h"
+#include "range.h"
 #ifdef NAS
 #include "site_queue.h"
 #endif
@@ -117,7 +118,6 @@ typedef struct resv_info resv_info;
 typedef struct counts counts;
 typedef struct nspec nspec;
 typedef struct node_partition node_partition;
-typedef struct range range;
 typedef struct resource_resv resource_resv;
 typedef struct place place;
 typedef struct schd_error schd_error;
@@ -1104,15 +1104,6 @@ struct nameval
 	unsigned int is_set:1;
 	char *str;
 	int value;
-};
-
-struct range
-{
-	int start;
-	int end;
-	int step;
-	int count;
-	range *next;
 };
 
 struct config

@@ -67,6 +67,7 @@
 #include "svrfunc.h"
 #include "acct.h"
 #include <sys/time.h>
+#include "range.h"
 
 
 /* External data */
@@ -362,6 +363,12 @@ set_subjob_tblstate(job *parent, int offset, int newstate)
 
 	ptbl->tkm_subjsct[oldstate]--;
 	ptbl->tkm_subjsct[newstate]++;
+	
+	if (oldstate == JOB_STATE_QUEUED)
+		range_remove_value(&ptbl->trk_rlist , SJ_TBLIDX_2_IDX(parent, offset));
+
+	if (newstate == JOB_STATE_QUEUED) 
+		range_add_value(&ptbl->trk_rlist, SJ_TBLIDX_2_IDX(parent, offset), ptbl->tkm_step);
 
 	/* set flags in attribute so stat_job will update the attr string */
 	ptbl->tkm_flags |= TKMFLG_REVAL_IND_REMAINING;
@@ -382,7 +389,7 @@ update_array_indices_remaining_attr(job *parent)
 
 	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
 		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
-		char *pnewstr = cvt_range(parent, JOB_STATE_QUEUED);
+		char *pnewstr = range_to_str(parent->ji_ajtrk->trk_rlist);
 		if ((pnewstr == NULL) || (*pnewstr == '\0'))
 			pnewstr = "-";
 		job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
@@ -716,6 +723,10 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str,
 			                                      JOB_STATE_QUEUED, &pbs_error, mode)) == NULL)
 			return pbs_error;
+			
+		if ((pjob->ji_ajtrk->trk_rlist = range_parse(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str)) == NULL)
+			return pbs_error;
+		
 	}
 
 	if (mode == ATR_ACTION_RECOV) {
@@ -1132,92 +1143,4 @@ cvt_range(job *pjob, int state)
 
 	return buf;
 }
-/**
- * @brief
- *		parse_subjob_index - parse a subjob index range of the form:
- *		START[-END[:STEP]][,...]
- *		Each call parses up to the first comma or if no comma the end of
- *		the string or a ']'
- * @param[in]	pc	-	range of sub jobs
- * @param[out]	ep	-	ptr to character that terminated scan (comma or new-line)
- * @param[out]	pstart	-	first number of range
- * @param[out]	pend	-	maximum value in range
- * @param[out]	pstep	-	stepping factor
- * @param[out]	pcount -	number of entries in this section of the range
- *
- * @return	integer
- * @retval	0	- success
- * @retval	1	- no (more) indices are found
- * @retval	-1	- parse/format error
- */
-int
-parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int *pcount)
-{
-	int start;
-	int end;
-	int step;
-	char *eptr;
 
-	while (isspace((int) *pc) || (*pc == ','))
-		pc++;
-	if ((*pc == '\0') || (*pc == ']')) {
-		*pcount = 0;
-		*ep = pc;
-		return (1);
-	}
-
-	if (!isdigit((int) *pc)) {
-		/* Invalid format, 1st char not digit */
-		return (-1);
-	}
-	start = (int) strtol(pc, &eptr, 10);
-	pc = eptr;
-	while (isspace((int) *pc))
-		pc++;
-	if ((*pc == ',') || (*pc == '\0') || (*pc == ']')) {
-		/* "X," or "X" case */
-		end = start;
-		step = 1;
-		if (*pc == ',')
-			pc++;
-	} else {
-		/* should be X-Y[:Z] case */
-		if (*pc != '-') {
-			/* Invalid format, not in X-Y format */
-			*pcount = 0;
-			return (-1);
-		}
-		end = (int) strtol(++pc, &eptr, 10);
-		pc = eptr;
-		if (isspace((int) *pc))
-			pc++;
-		if ((*pc == '\0') || (*pc == ',') || (*pc == ']')) {
-			step = 1;
-		} else if (*pc++ != ':') {
-			/* Invalid format, not in X-Y:z format */
-			*pcount = 0;
-			return (-1);
-		} else {
-			while (isspace((int) *pc))
-				pc++;
-			step = (int) strtol(pc, &eptr, 10);
-			pc = eptr;
-			while (isspace((int) *pc))
-				pc++;
-			if (*pc == ',')
-				pc++;
-		}
-
-		/* y must be greater than x for a range and z must be greater 0 */
-		if ((start >= end) || (step < 1))
-			return (-1);
-	}
-
-	*ep = pc;
-	/* now compute the number of extires ((end + 1) - start + (step - 1)) / step = (end - start + step) / step */
-	*pcount = (end - start + step) / step;
-	*pstart = start;
-	*pend = end;
-	*pstep = step;
-	return (0);
-}
