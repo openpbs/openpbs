@@ -151,36 +151,6 @@ extern	int		internal_state_update; /* flag for sending mom information update to
 
 extern int		server_stream;
 
-#ifdef WIN32
-extern int get_sha(job *, char **);
-static
-int hook_env_setup(job *pjob, hook *phook)
-{
-	char *hex_digest = NULL;
-
-	if (get_sha(pjob, &hex_digest) == 0) {
-		if (setenv(ENV_AUTH_KEY, hex_digest, 1) != 0) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name, "Failed to set PBS_AUTH_KEY");
-			goto err;
-		}
-		free(hex_digest);
-		hex_digest = NULL;
-		return 0;
-	} else {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			LOG_ERR, phook->hook_name, "Unable to get hash of encrypted password");
-		goto err;
-	}
-
-err:
-	if (hex_digest) {
-		free(hex_digest);
-		hex_digest = NULL;
-	}
-	return 1;
-}
-#endif
 
 /**
  * @brief
@@ -1376,10 +1346,11 @@ run_hook_exit:
 		    event_type == HOOK_EVENT_EXECJOB_PROLOGUE ||
 		    event_type == HOOK_EVENT_EXECJOB_PRETERM) {
 			int ret = 0;
-			ret = hook_env_setup(pjob, phook);
-			if (ret != 0) {
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
-					   "Unable to set the environment for the job: %s", pjob->ji_qs.ji_jobid);
+			if ( ret != 0 ) {
+				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s", 
+					pjob->ji_qs.ji_jobid);
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, log_buffer);
 				goto run_hook_exit;
 			}
 		}
@@ -1388,7 +1359,8 @@ run_hook_exit:
 		char **hook_env = NULL;
 		char *pbs_hook_conf = NULL;
 
-		if (pjob->ji_env != NULL) {
+		if ((pjob->ji_env != NULL) && (phook->user == HOOK_PBSUSER)) {
+			/* Duplicate only when the hook user is pbsuser */ 
 			hook_env = dup_string_arr(pjob->ji_env);
 			if (hook_env == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
@@ -1397,12 +1369,11 @@ run_hook_exit:
 			}
 			if (pbs_hook_conf = getenv("PBS_HOOK_CONFIG_FILE"))
 				hook_env = bld_wenv_variables("PBS_HOOK_CONFIG_FILE", pbs_hook_conf, hook_env);
+			env_string = make_envp(hook_env);
 		}
-		env_string = make_envp(hook_env);
 		run_exit = wsystem(cmdline, pwdp->pw_userlogin, env_string);
 		free(env_string);
 		(void)win_alarm(0, NULL);
-		setenv(ENV_AUTH_KEY, NULL, 1);
 		free_string_array(hook_env);
 	} else {
 		/* The following blocks until after */
