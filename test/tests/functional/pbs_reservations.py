@@ -97,6 +97,25 @@ class TestReservations(TestFunctional):
 
         return self.server.submit(r)
 
+    def submit_job(self, set_attrib=None, sleep=100, job_running=False):
+        """
+        This function submits job
+        :param set_attrib: Job attributes to set
+        :type set_attrib: Dictionary
+        """
+        j = Job(TEST_USER)
+        if set_attrib is not None:
+            j.set_attributes(set_attrib)
+        j.set_sleep_time(sleep)
+        jid = self.server.submit(j)
+        self.logger.info("Job submitted successfully-%s" % jid)
+        job_node = None
+        if job_running:
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+            get_exec_vnode = self.server.status(JOB, 'exec_vnode', id=jid)[0]
+            job_node = get_exec_vnode['exec_vnode']
+        return (jid, job_node)
+
     @staticmethod
     def cust_attr(name, totnodes, numnode, attrib):
         a = {}
@@ -2320,3 +2339,117 @@ class TestReservations(TestFunctional):
 
         stat = self.server.status(RESV, 'reserve_start', id=rid)
         self.assertIn(sunday, stat[0]['reserve_start'])
+
+    def qmove_job_to_reserv(self, Res_Status, Res_substate, start, end):
+        """
+        Function to qmove job into reservation and verify job state
+        in reservation
+        """
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+        jid1 = self.submit_job(job_running=True)
+
+        # Submit a standing reservation to occur every other minute for a
+        # total count of 2
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      rrule='FREQ=MINUTELY;INTERVAL=2;COUNT=2',
+                                      start=start, end=end)
+        rid_q = rid.split('.')[0]
+        exp_attr = {'reserve_state': Res_Status,
+                    'reserve_substate': Res_substate}
+        self.server.expect(RESV, exp_attr, id=rid, offset=5)
+        self.server.holdjob(jid1[0])
+        # qrerun the jobs
+        self.server.rerunjob(jobid=jid1[0])
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid1[0])
+        # qmove the job to reservation queue
+        self.server.movejob(jid1[0], rid_q)
+        self.server.expect(JOB, {'job_state': 'H', 'queue': rid_q},
+                           id=jid1[0])
+        self.server.rlsjob(jid1[0], 'u')
+        if Res_Status == 'RESV_CONFIRMED':
+            self.server.expect(JOB, {'job_state': 'Q'}, id=jid1[0])
+            self.logger.info('Job %s is in Q as expected' % jid1[0])
+        if Res_Status == 'RESV_RUNNING':
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid1[0])
+            self.logger.info('Job %s is in R as expected' % jid1[0])
+        jid2 = self.submit_job(job_running=True)
+        self.server.delete([rid, jid2[0]])
+
+    @skipOnCpuSet
+    def test_qmove_job_into_standing_reservation(self):
+        """
+        Test qmove job into standing reservation
+        """
+        # Test qmove of a job to a confirmed standing reservation instance
+        self.qmove_job_to_reserv("RESV_CONFIRMED", 2, time.time() + 15,
+                                 time.time() + 60)
+
+        # Test qmove of a job to a running standing reservation instance
+        self.qmove_job_to_reserv("RESV_RUNNING", 5, time.time() + 10,
+                                 time.time() + 60)
+
+    @skipOnCpuSet
+    def test_shared_exclusive_job_not_in_same_rsv_vnode(self):
+        """
+        Test to verify user cannot submit an exclusive placement job
+        in a free placement reservation, job submission would be denied
+        because placement spec does not match.
+        Also verify  shared and exclusive job in reservation should
+        not overlap on same vnode.
+        """
+        vn_attrs = {ATTR_rescavail + '.ncpus': 4,
+                    'sharing': 'default_excl'}
+        self.server.create_vnodes("vnode1", vn_attrs, 6,
+                                  self.mom, fname="vnodedef1")
+
+        # Submit a advance reservation (R1)
+        rid = self.submit_reservation(select='3:ncpus=4', user=TEST_USER,
+                                      start=time.time() + 10,
+                                      end=time.time() + 1000)
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+        a = {'Resource_List.select': '1:ncpus=2',
+             'Resource_List.place': 'shared',
+             'queue': rid_q}
+        jid = self.submit_job(set_attrib=a, job_running=True)
+        self.assertEqual(jid[1], '(vnode1[0]:ncpus=2)')
+        a = {'Resource_List.select': '1:ncpus=8',
+             'Resource_List.place': 'excl',
+             'queue': rid_q}
+        _msg = "qsub: job and reservation have conflicting specification "
+        _msg += "Resource_List.place"
+        try:
+            self.submit_job(set_attrib=a)
+        except PbsSubmitError as e:
+            self.assertEqual(
+                e.msg[0], _msg, msg="Did not get expected qsub err message")
+            self.logger.info("Got expected qsub err message as %s", e.msg[0])
+        else:
+            self.fail("Job got submitted")
+        self.server.delete([jid[0], rid], wait=True)
+
+        # Repeat above test with reservation have place=excl
+        # Submit a advance reservation (R2)
+        rid = self.submit_reservation(select='3:ncpus=4', user=TEST_USER,
+                                      start=time.time() + 10,
+                                      end=time.time() + 1000,
+                                      place='excl')
+        rid_q = rid.split('.')[0]
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+        a = {'Resource_List.select': '1:ncpus=2',
+             'Resource_List.place': 'shared',
+             'queue': rid_q}
+        jid = self.submit_job(set_attrib=a, job_running=True)
+        job1_node = jid[1]
+        self.assertEqual(jid[1], '(vnode1[0]:ncpus=2)')
+        a = {'Resource_List.select': '1:ncpus=8',
+             'Resource_List.place': 'excl',
+             'queue': rid_q}
+        jid2 = self.submit_job(set_attrib=a, job_running=True)
+        job2_node = jid2[1]
+        errmsg = 'job1_node contain job_node2 value'
+        self.assertEqual(jid2[1], '(vnode1[1]:ncpus=4+vnode1[2]:ncpus=4)')
+        self.assertNotIn(job1_node, job2_node, errmsg)
