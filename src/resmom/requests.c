@@ -3113,8 +3113,8 @@ req_cpyfile(struct batch_request *preq)
 	char			*prmt;
 	char			dup_rqcpf_jobid[PBS_MAXSVRJOBID+1];
 	struct work_task	*wtask = NULL;
-	int tot_copies = 0;
-	bool copy_failed = FALSE;
+	int			tot_copies = 0;
+	bool			copy_failed = FALSE;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	struct krb_holder	*ticket = NULL;
