@@ -1477,7 +1477,7 @@ class PBSTestSuite(unittest.TestCase):
         self.assertTrue(rv, _msg)
         self.logger.info('server: %s licensed', server.hostname)
         for key in server_stat.keys():
-            if key not in Server.server_ignore_attrs:
+            if key in Server.server_dflt_attrs:
                 Server.server_dflt_attr[key] = server_stat[key]
 
     def revert_comm(self, comm, force=False):
@@ -1495,6 +1495,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         Revert the values set for scheduler
         """
+        sched_dir_info = {}
         rv = scheduler.isUp()
         if not rv:
             self.logger.error('scheduler ' + scheduler.hostname + ' is down')
@@ -1508,8 +1509,12 @@ class PBSTestSuite(unittest.TestCase):
             self.assertTrue(rv, _msg)
         sched_stat = self.server.status(SCHED)[0]
         for key in sched_stat.keys():
-            if key not in Scheduler.sched_ignore_attrs:
-                Scheduler.sched_dflt_attr[key] = sched_stat[key]
+            if key in Scheduler.sched_dflt_attrs:
+                if key == 'sched_priv' or key == 'sched_log':
+                    sched_dir_info[key] = sched_stat[key]
+                else:
+                    Scheduler.sched_dflt_attr[key] = sched_stat[key]
+        Scheduler.sched_info_dir[scheduler.hostname] = sched_dir_info
 
     def revert_mom(self, mom, force=False):
         """

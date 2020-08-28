@@ -62,3 +62,34 @@ class TestExpect(TestSelf):
         a = {'enabled': 'True', 'started': 'True', 'priority': 150}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'expressq')
         self.server.expect(QUEUE, a, id='expressq')
+
+    def test_revert_sttributes(self):
+        """
+        test that when we unset any attribute in expect(),
+        attribute will be unset and should get value on attribute basis.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
+        self.server.expect(SERVER, 'scheduling', op=UNSET)
+        self.server.expect(SERVER, 'max_job_sequence_id', op=UNSET)
+        self.server.expect(SCHED, 'sched_host', op=UNSET)
+        self.server.expect(NODE, ATTR_NODE_resv_enable,
+                           op=UNSET, id=self.mom.shortname)
+        hook_name = "testhook"
+        hook_body = "import pbs\npbs.event().reject('my custom message')\n"
+        a = {'event': 'queuejob', 'enabled': 'True', 'alarm': 10}
+        self.server.create_import_hook(hook_name, a, hook_body)
+        self.server.expect(HOOK, 'alarm', op=UNSET, id=hook_name)
+        a = {'partition': 'P1',
+             'sched_host': self.server.hostname,
+             'sched_port': '15050'}
+        self.server.manager(MGR_CMD_CREATE, SCHED,
+                            a, id="sc1")
+        self.scheds['sc1'].create_scheduler()
+        self.scheds['sc1'].start()
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        new_sched_home = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                      'sc_1_mot')
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_priv': new_sched_home}, id='sc1')
+        self.server.expect(SCHED, 'sched_priv', op=UNSET, id='sc1')
