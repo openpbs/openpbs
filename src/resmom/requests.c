@@ -3113,6 +3113,9 @@ req_cpyfile(struct batch_request *preq)
 	char			*prmt;
 	char			dup_rqcpf_jobid[PBS_MAXSVRJOBID+1];
 	struct work_task	*wtask = NULL;
+	int			tot_copies = 0;
+	bool			copy_failed = FALSE;
+
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	struct krb_holder	*ticket = NULL;
 	char 			*krbccname = NULL;
@@ -3273,12 +3276,13 @@ req_cpyfile(struct batch_request *preq)
 	copy_start = time(0);
 	for (pair=(struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
 		pair != 0;
-		pair = (struct rqfpair *)GET_NEXT(pair->fp_link)) {
+		pair = (struct rqfpair *)GET_NEXT(pair->fp_link), tot_copies++) {
+		if (copy_failed)
+			continue;	
 		DBPRT(("%s: local %s remote %s\n", __func__, pair->fp_local, pair->fp_rmt))
 
 		stage_inout.from_spool = 0;
 		prmt = pair->fp_rmt;
-		num_copies++;
 
 		if (local_or_remote(&prmt) == 0) {
 			/* destination host is this host, use cp */
@@ -3294,8 +3298,11 @@ req_cpyfile(struct batch_request *preq)
 		 ** Here we break out of the the loop on error.
 		 ** This will only happen on a stagein failure.
 		 */
-		if (rc != 0)
-			break;
+		if (rc != 0) {
+			copy_failed = TRUE;
+			continue;
+		}
+		num_copies++;
 	}
 	copy_stop = time(0);
 
@@ -3343,14 +3350,15 @@ req_cpyfile(struct batch_request *preq)
 
 	/* log the number of files/directories copied and the time it took */
 	copy_stop = copy_stop - copy_start;
+	
 #ifdef NAS /* localmod 005 */
-	sprintf(log_buffer, "staged %d items %s over %ld:%02ld:%02ld",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+	sprintf(log_buffer, "Staged %d/%d items %s over %ld:%02ld:%02ld",
+		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 		(long)copy_stop/3600, ((long)copy_stop%3600)/60,
 		(long)copy_stop%60);
 #else
-	sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+	sprintf(log_buffer, "Staged %d/%d items %s over %d:%02d:%02d",
+		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 		(int)copy_stop/3600, ((int)copy_stop%3600)/60,
 		(int)copy_stop%60);
 #endif /* localmod 005 */
