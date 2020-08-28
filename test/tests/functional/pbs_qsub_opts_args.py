@@ -58,14 +58,19 @@ class TestQsubOptionsArguments(TestFunctional):
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
         self.jobdir_root = "/tmp"
         self.jobdir = []
+        self.remove_jobdir = False
 
     def tearDown(self):
-        for mom in self.moms.values():
-            for d in self.jobdir:
-                if d.startswith(self.jobdir_root):
-                    self.logger.info('%s:remove jobdir %s' % (mom.hostname, d))
-                    cmd = ['/bin/rm', '-rf', d]
-                    self.du.run_cmd(mom.hostname, cmd=cmd, sudo=True)
+        if self.remove_jobdir:
+            for mom in self.moms.values():
+                for d in self.jobdir:
+                    if d.startswith(self.jobdir_root):
+                        self.logger.info('%s:remove jobdir %s' % (
+                                         mom.hostname, d))
+                        cmd = ['/bin/rm', '-rf', d]
+                        self.du.run_cmd(mom.hostname, cmd=cmd,
+                                        sudo=True)
+            self.remove_jobdir = False
         TestFunctional.tearDown(self)
 
     def validate_error(self, err):
@@ -195,6 +200,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         Test submission of job with sandbox=PRIVATE,
         and moms have $jobdir_root set to shared.
         """
+        self.remove_jobdir = True
         momA = self.moms.values()[0]
         momB = self.moms.values()[1]
 
@@ -224,14 +230,18 @@ bhtiusabsdlg' % (os.environ['HOME'])
         ret = self.server.du.run_cmd(self.server.hostname, cmd=rel_cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
-        test_cmd = ['test', '-e', jobdir]
-        ret = self.du.run_cmd(momB.hostname, cmd=test_cmd, sudo=True)
+        file_exists_cmd = '"import os; print(os.path.exists(\'%s\'))"'
+        pbs_python = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                  "bin", "pbs_python")
+        file_exists = [pbs_python, "-c", file_exists_cmd % jobdir]
+        ret = self.du.run_cmd(momB.hostname, cmd=file_exists, sudo=True)
         # sister mom has preserved the file
-        self.assertEqual(ret['rc'], 0, "sister mom deleted jobdir %s" % jobdir)
+        errmsg = "sister mom deleted jobdir %s" % jobdir
+        self.assertEqual(''.join(ret['out']), 'True', errmsg)
         msg = "shared jobdir %s to be removed by primary mom" % jobdir
         momB.log_match(msg)
-
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
-        ret = self.du.run_cmd(momA.hostname, cmd=test_cmd, sudo=True)
+        ret = self.du.run_cmd(momA.hostname, cmd=file_exists, sudo=True)
         # primary mom has deleted the file
-        self.assertEqual(ret['rc'], 1, "MS mom preserved jobdir %s" % jobdir)
+        errmsg = "MS mom preserved jobdir %s" % jobdir
+        self.assertNotEqual(''.join(['out']), 'True', errmsg)

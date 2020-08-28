@@ -3656,7 +3656,7 @@ set_jobdir_root(char *value)
 	free(cleaned_value);
 
 	if (*endptr != '\0') {
-		if (strstr(endptr, "shared"))
+		if (strcmp(endptr, "shared") == 0)
 			pbs_jobdir_root_shared = TRUE;
 	}
 	return HANDLER_SUCCESS;
