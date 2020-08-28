@@ -3144,7 +3144,6 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 					fprintf(stderr, "malloc failure (errno %d)\n", errno);
 					exit(1);
 				}
-				(*names)[names_len] = '\0';
 				pbs_strncpy(*names, req[IND_NAME], names_len + 1);
 			}
 		}

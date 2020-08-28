@@ -79,9 +79,7 @@ class TestQstatFormats(TestFunctional):
             attr = line.split("=")
             if not re.match(r'[\t]', attr[0]):
                 attrs_qstatf.append(attr[0].strip())
-        print (attrs_qstatf)
         attrs_qstatf.pop()
-        print (attrs_qstatf)
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_dsv)
         qstat_attrs = []
         for line in ret['out']:
@@ -92,9 +90,7 @@ class TestQstatFormats(TestFunctional):
         for item in attr_vals:
             qstat_attr = item.split("=")
             qstat_attrs.append(qstat_attr[0])
-        print (qstat_attrs)
         for attr in attrs_qstatf:
-            print (attr)
             if attr not in qstat_attrs:
                 self.assertFalse(attr + " is missing")
 

@@ -480,11 +480,8 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 				if (vna_newval != NULL) {
 					free(vnap->vna_val);
 					vnap->vna_val = vna_newval;
-				} else {
-					log_event(PBSEVENT_ERROR, 0,
-						LOG_ERR, __func__,
-						"vna_newval strdup failed");
-				}
+				} else
+					log_err(PBSE_SYSTEM, __func__, "vna_newval strdup failed");
 				return;
 			}
 		}

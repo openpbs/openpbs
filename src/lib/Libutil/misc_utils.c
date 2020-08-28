@@ -347,7 +347,7 @@ pbs_strcpy(char *dest, const char *src)
  */
 char *pbs_strncpy(char *dest, const char *src, size_t n)
 {
-	if (strlen(src) < n-1)
+	if (strlen(src) < n - 1)
 		strcpy(dest, src);
 	else {
 		strncpy(dest, src, n - 1);
