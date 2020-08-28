@@ -366,8 +366,7 @@ set_subjob_tblstate(job *parent, int offset, int newstate)
 	
 	if (oldstate == JOB_STATE_QUEUED)
 		range_remove_value(&ptbl->trk_rlist , SJ_TBLIDX_2_IDX(parent, offset));
-
-	if (newstate == JOB_STATE_QUEUED) 
+	else if (newstate == JOB_STATE_QUEUED) 
 		range_add_value(&ptbl->trk_rlist, SJ_TBLIDX_2_IDX(parent, offset), ptbl->tkm_step);
 
 	/* set flags in attribute so stat_job will update the attr string */

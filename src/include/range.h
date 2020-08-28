@@ -49,29 +49,27 @@ enum range_step_type {
 	ENABLE_SUBRANGE_STEPPING
 };
 
-typedef struct range range;
-
-struct range
+typedef struct range
 {
 	int start;
 	int end;
 	int step;
 	int count;
-	range *next;
-};
+	struct range *next;
+} range;
 
 /* Error message when we fail to allocate memory */
-#define MEM_ERR_MSG "Unable to allocate memory (malloc error)"
+#define RANGE_MEM_ERR_MSG "Unable to allocate memory (malloc error)"
 
-#define INIT_ARR_SIZE 2048
+#define INIT_RANGE_ARR_SIZE 2048
 
 /*
  *	new_range - allocate and initialize a range structure
  */
 #ifdef NAS /* localmod 005 */
-range *new_range(void);
+range *new_range(int start, int end, int step, int count, range *next);
 #else
-range *new_range();
+range *new_range(int start, int end, int step, int count, range *next);
 #endif /* localmod 005 */
 
 /*

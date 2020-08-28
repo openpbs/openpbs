@@ -80,20 +80,20 @@
  *
  */
 range *
-new_range()
+new_range(int start, int end, int step, int count, range *next)
 {
 	range *r;
 
 	if ((r = malloc(sizeof(range))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
+		log_err(errno, __func__, RANGE_MEM_ERR_MSG);
 		return NULL;
 	}
 
-	r->start = 0;
-	r->end = 0;
-	r->count = 0;
-	r->step = 1;
-	r->next = NULL;
+	r->start = start;
+	r->end = end;
+	r->step = step;
+	r->count = count;
+	r->next = next;
 
 	return r;
 }
@@ -197,16 +197,11 @@ dup_range(range *old_r)
 {
 	range *new_r;
 
-	new_r = new_range();
+	new_r = new_range(old_r->start, old_r->end, old_r->step, old_r->count, NULL);
 
 	if (new_r == NULL)
 		return NULL;
-
-	new_r->start = old_r->start;
-	new_r->end = old_r->end;
-	new_r->step = old_r->step;
-	new_r->count = old_r->count;
-
+		
 	return new_r;
 }
 
@@ -244,17 +239,12 @@ range_parse(char *str)
 
 		ret = parse_subjob_index(p, &endp, &start, &end, &step, &count);
 		if (!ret) {
-			r = new_range();
+			r = new_range(start, end, step, count, NULL);
 
 			if (r == NULL) {
 				free_range_list(head);
 				return NULL;
 			}
-
-			r->start = start;
-			r->end = end;
-			r->step = step;
-			r->count = count;
 
 			/* ensure the end value is contained in the range */
 			while (range_contains(r, end) == 0 && end > start)
@@ -423,34 +413,28 @@ range_remove_value(range **r, int val)
 	cur = *r;
 	while (cur != NULL && !done) {
 		if (cur->start == val && cur->end == val) {
-			if (prev == NULL) { /* we're removing the first range struct in the list */
+			if (prev == NULL)  /* we're removing the first range struct in the list */
 				*r = (*r)->next;
-				free_range(cur);
-			}
-			else {
+			else 
 				prev->next = cur->next;
-				free_range(cur);
-			}
+			free_range(cur);
 			return 1;
-		}
-		else if (cur->start == val) {
+		} else if (cur->start == val) {
 			cur->start += cur->step;
 			cur->count--;
 			done = 1;
-		}
-		else if (cur->end == val) {
+		} else if (cur->end == val) {
 			cur->end -= cur->step;
 			cur->count--;
 			done = 1;
-		}
-		else if ((val > cur->start) && (val < cur->end)) {
+		} else if ((val > cur->start) && (val < cur->end)) {
 			range * next_range = NULL;
-			if ((next_range = new_range()) == NULL) {
+			if ((next_range = new_range(0, 0, 1, 0, NULL)) == NULL) {
 				return 0;
 			}
 			next_range->count = (cur->end - val)/cur->step;
 			next_range->step = cur->step;
-			next_range->start = val + next_range->step;
+			next_range->start = val + cur->step;
 			next_range->end = cur->end;
 			next_range->next = cur->next;
 
@@ -469,14 +453,11 @@ range_remove_value(range **r, int val)
 	if (done) {
 		/* we removed the last value from this section of the range */
 		if (cur->start > cur->end) {
-			if (prev == NULL) { /* we're removing the first range struct in the list */
+			if (prev == NULL)   /* we're removing the first range struct in the list */
 				*r = (*r)->next;
-				free_range(cur);
-			}
-			else {
+			else 
 				prev->next = cur->next;
-				free_range(cur);
-			}
+			free_range(cur);
 		}
 		return 1;
 	}
@@ -510,28 +491,16 @@ range_add_value(range **r, int val, int range_step)
 
 	if (*r == NULL) {
 		/* If there are no range structs in the list; create the new range for first value */
-		range * first_range = NULL;
-		if ((first_range = new_range()) == NULL) {
+		range *first_range = NULL;
+		if ((first_range = new_range(val, val, range_step, 1, NULL)) == NULL) {
 			return 0;
 		}
-		first_range->count = 1;
-		first_range->step = range_step;
-		first_range->start = val;
-		first_range->end = val;
-		first_range->next = NULL;
-
 		*r = first_range;
 		return 1;
 	}
 
-
-	if (range_contains(*r, val))
-		return 0;
-
 	cur = *r;
-
 	/* Value falls before the first sub-range */
-
 	if (cur != NULL && val < cur->start) {
 		if (val == cur->start - cur->step) {
 			cur->start -= cur->step;
@@ -540,15 +509,9 @@ range_add_value(range **r, int val, int range_step)
 		} else {
 			/* Add new range as the first element with same value */
 			range * first_range = NULL;
-			if ((first_range = new_range()) == NULL) {
+			if ((first_range = new_range(val, val, cur->step, 1, cur)) == NULL) {
 				return 0;
 			}
-			first_range->count = 1;
-			first_range->step = cur->step;
-			first_range->start = val;
-			first_range->end = val;
-			first_range->next = cur;
-
 			*r = first_range;			
 			return 1;
 		}
@@ -584,15 +547,9 @@ range_add_value(range **r, int val, int range_step)
 			} else {
 				/* Value falls in this range; add new mid-range with same value */
 				range * mid_range = NULL;
-				if ((mid_range = new_range()) == NULL) {
+				if ((mid_range = new_range(val, val, cur->step, 1, cur->next)) == NULL) {
 					return 0;
 				}
-				mid_range->count = 1;
-				mid_range->step = cur->step;
-				mid_range->start = val;
-				mid_range->end = val;
-				mid_range->next = cur->next;
-				
 				cur->next = mid_range;
  				return 1;
 			}		
@@ -610,15 +567,9 @@ range_add_value(range **r, int val, int range_step)
 		} else {
 			/* Add new range at the end with same value */
 			range * end_range = NULL;
-			if ((end_range = new_range()) == NULL) {
+			if ((end_range = new_range(val, val, cur->step, 1, NULL)) == NULL) {
 				return 0;
 			}
-			end_range->count = 1;
-			end_range->step = cur->step;
-			end_range->start = val;
-			end_range->end = val;
-			end_range->next = NULL;
-
 			cur->next = end_range;
 			return 1;		
 		}
@@ -774,11 +725,11 @@ range_to_str(range *r)
 		return "";
 
 	if (range_str == NULL) {
-		if ((range_str = malloc(INIT_ARR_SIZE+1)) == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
+		if ((range_str = malloc(INIT_RANGE_ARR_SIZE+1)) == NULL) {
+			log_err(errno, __func__, RANGE_MEM_ERR_MSG);
 			return "";
 		}
-		size = INIT_ARR_SIZE;
+		size = INIT_RANGE_ARR_SIZE;
 	}
 	range_str[0] = '\0';
 
