@@ -136,7 +136,6 @@
 #endif
 #include	"pbs_undolr.h"
 
-#define PBS_MACH "linux"
 /* Reducing tpp_request process for a minimum of 3 times to interleave other connections */
 #define MAX_TPP_LOOPS 3
 

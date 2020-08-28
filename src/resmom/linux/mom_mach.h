@@ -49,6 +49,9 @@ extern "C" {
  */
 
 
+#ifndef PBS_MACH
+#define PBS_MACH "linux"
+#endif /* PBS_MACH */
 
 #ifndef MOM_MACH
 #define	MOM_MACH "linux"

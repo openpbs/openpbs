@@ -130,7 +130,7 @@ extern	pbs_list_head	task_list_event;
 
 #if	MOM_ALPS
 extern	char		*path_jobs;
-char *get_versioned_libname(int sotype);
+char *get_versioned_libname();
 int find_in_lib(void *handle, char * plnam, char *psnam, void ** psp);
 
 /**
@@ -252,7 +252,7 @@ ck_acct_facility_present(void)
 	int	ret2;
 	char	*libjob;
 
-	static void *handle1 = NULL, *handle2 = NULL;
+	static void *handle1 = NULL;
 
 	struct	config		*cptr;
 	extern	struct	config	*config_array;
