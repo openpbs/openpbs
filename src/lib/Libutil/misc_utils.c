@@ -350,7 +350,7 @@ char *pbs_strncpy(char *dest, const char *src, size_t n)
 	if (strlen(src) < n - 1)
 		strcpy(dest, src);
 	else {
-		strncpy(dest, src, n - 1);
+		memcpy(dest, src, n - 1);
 		dest[n - 1] = '\0';
 	}
 	return dest;

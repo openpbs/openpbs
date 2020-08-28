@@ -4063,7 +4063,7 @@ recv_attrl(void *s, struct attrl **attrib)
 				attr_v_val = malloc(attr_v_len);
 				if (!attr_v_val)
 					return -1;
-				pbs_strncpy(attr_v_val, p + len_n, attr_v_len);
+				strcpy(attr_v_val, p + len_n);
 				strcat(attr_v_val, pbs_hostvar);
 				set_attr_error_exit(&attr, p, attr_v_val);
 				free(attr_v_val);
