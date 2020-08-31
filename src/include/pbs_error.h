@@ -164,7 +164,7 @@ extern "C" {
 #define PBSE_R_UID	15095		/* Bad effective UID for reservation */
 #define PBSE_R_GID	15096		/* Bad effective GID for reservation */
 #define PBSE_IBMSPSWITCH 15097		/* IBM SP Switch error */
-#define PBSE_UNUSED2 15098		/* Floating License unavailable  */
+#define PBSE_UNUSED2	15098		/* Floating License unavailable  */
 #define PBSE_NOSCHEDULER 15099		/* Unable to contact Scheduler */
 #define PBSE_RESCNOTSTR  15100		/* resource is not of type string */
 

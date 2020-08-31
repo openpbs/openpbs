@@ -318,7 +318,7 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
  *
  * @return void
  */
-static void
+void
 clear_node_lic_attrs(pbsnode *pnode, int clear_license_info)
 {
 	if (clear_license_info && (pnode->nd_attr[(int) ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET))
@@ -340,53 +340,27 @@ clear_node_lic_attrs(pbsnode *pnode, int clear_license_info)
  * @retval - 0	-  Success
  * @retval - < 0 - Failure
  */
-static int
+void
 set_node_lic_info_attr(pbsnode *pnode)
 {
-	long count;
-	char path[MAXPATHLEN + 1];
-	static char topology_dir[] = "topology";
-
-	snprintf(path, sizeof(path), "%s/server_priv/%s/%s", pbs_conf.pbs_home_path,
-		topology_dir, pnode->nd_name);
-
-	count = lic_needed_for_node(path, &(pnode->nd_lic_info));
-	if (count < 0) {
-		switch (count) {
-			case -1:
-				sprintf(log_buffer,
-					"topology file not found for node %s",
-					pnode->nd_name);
-				break;
-			case -2:
-				sprintf(log_buffer,
-					"Unable to open topology file for node %s",
-					pnode->nd_name);
-				break;
-			case -3:
-				sprintf(log_buffer,
-					"Error in parsing topology information for node %s",
-					pnode->nd_name);
-				break;
-			case -4:
-				sprintf(log_buffer,
-					"Licensing library not initialized");
-				break;
-		}
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-		  	LOG_NOTICE, msg_daemonname, log_buffer);
-		return -1;
-	} else {
-		char str_val[20];
-
-		licensing_control.licenses_total_needed += count;		
-
-		/* Save the number of licenses needed */
-		snprintf(str_val, sizeof(str_val), "%ld", count);			
+	int state;
+	long info = 0;
+	char str_val[20];
+	state = lic_state();
+	if (state == 1) {
+		snprintf(str_val, sizeof(str_val), "%ld", pnode->device.nnodes);
 		set_attr_svr(&(pnode->nd_attr[(int) ND_ATR_LicenseInfo]),
-			&node_attr_def[(int) ND_ATR_LicenseInfo], str_val);
-	}
-	return 0;
+		&node_attr_def[(int) ND_ATR_LicenseInfo], str_val);
+	} else if (state == 2) {
+		snprintf(str_val, sizeof(str_val), "%ld", pnode->device.nsockets);
+		set_attr_svr(&(pnode->nd_attr[(int) ND_ATR_LicenseInfo]),
+		&node_attr_def[(int) ND_ATR_LicenseInfo], str_val);
+	}else if (state == 0) {
+		snprintf(str_val, sizeof(str_val), "%ld", info);
+		set_attr_svr(&(pnode->nd_attr[(int) ND_ATR_LicenseInfo]),
+		&node_attr_def[(int) ND_ATR_LicenseInfo], str_val);
+	} else if (state == -3)
+		return;
 }
 
 /**
@@ -536,6 +510,27 @@ get_more_licenses(struct work_task *ptask)
 }
 
 /**
+ * @brief - update_license_highuse - record max number of lic used over time
+ * 				     This information is logged into the
+ * 				     accounting license file.
+ */
+static void
+update_license_highuse(void)
+{
+	int u;
+
+	u = license_counts.licenses_used;
+	if (u > license_counts.licenses_high_use.lu_max_hr)
+		license_counts.licenses_high_use.lu_max_hr = u;
+	if (u > license_counts.licenses_high_use.lu_max_day)
+		license_counts.licenses_high_use.lu_max_day = u;
+	if (u > license_counts.licenses_high_use.lu_max_month)
+		license_counts.licenses_high_use.lu_max_month = u;
+	if (u > license_counts.licenses_high_use.lu_max_forever)
+		license_counts.licenses_high_use.lu_max_forever = u;
+}
+
+/**
  * @brief
  * 	license_one_node - try licensing a single node
  *
@@ -546,24 +541,20 @@ get_more_licenses(struct work_task *ptask)
 void
 license_one_node(pbsnode *pnode)
 {
+	set_node_lic_info_attr(pnode);
+
 	if (license_counts.licenses_global > 0 || license_counts.licenses_used > 0) {
-		int status = 0;
-
-		if (pnode->nd_lic_info == NULL)
-			status = set_node_lic_info_attr(pnode);
-
-		if (status == 0) {
-			if (pnode->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked) {
-				if (consume_licenses(pnode->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
-					set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_License]),
-						&node_attr_def[(int)ND_ATR_License],
-						ND_LIC_locked_str);
-				} else {
-					add_to_unlicensed_node_list(pnode);
-					if (get_more_licenses_task)
-						delete_task(get_more_licenses_task);
-					get_more_licenses_task = set_task(WORK_Timed, time_now + 2, get_more_licenses, NULL);
-				}
+		if (pnode->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked) {
+			if (consume_licenses(pnode->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
+				set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_License]),
+					&node_attr_def[(int)ND_ATR_License],
+					ND_LIC_locked_str);
+				update_license_highuse();
+			} else {
+				add_to_unlicensed_node_list(pnode);
+				if (get_more_licenses_task)
+					delete_task(get_more_licenses_task);
+				get_more_licenses_task = set_task(WORK_Timed, time_now + 2, get_more_licenses, NULL);
 			}
 		}
 	} else
@@ -605,27 +596,6 @@ release_lic_for_cray(struct pbsnode *pnode)
 			break;
 		}
 	}
-}
-
-/**
- * @brief - update_license_highuse - record max number of lic used over time
- * 				     This information is logged into the
- * 				     accounting license file.
- */
-static void
-update_license_highuse(void)
-{
-	int u;
-
-	u = license_counts.licenses_used;
-	if (u > license_counts.licenses_high_use.lu_max_hr)
-		license_counts.licenses_high_use.lu_max_hr = u;
-	if (u > license_counts.licenses_high_use.lu_max_day)
-		license_counts.licenses_high_use.lu_max_day = u;
-	if (u > license_counts.licenses_high_use.lu_max_month)
-		license_counts.licenses_high_use.lu_max_month = u;
-	if (u > license_counts.licenses_high_use.lu_max_forever)
-		license_counts.licenses_high_use.lu_max_forever = u;
 }
 
 /**
@@ -703,8 +673,6 @@ init_licensing(struct work_task *ptask)
 	if (count < 0) {
 		for (i = 0; i < svr_totnodes; i++) {
 			clear_node_lic_attrs(pbsndlist[i], 1);
-			free(pbsndlist[i]->nd_lic_info);
-			pbsndlist[i]->nd_lic_info = NULL;
 			add_to_unlicensed_node_list(pbsndlist[i]);
 		}
 
@@ -731,12 +699,13 @@ init_licensing(struct work_task *ptask)
 	}
 
 	for (i = 0; i < svr_totnodes; i++) {
-		clear_node_lic_attrs(pbsndlist[i], 1);
-		free(pbsndlist[i]->nd_lic_info);
-		pbsndlist[i]->nd_lic_info = NULL;
-
-		set_node_lic_info_attr(pbsndlist[i]);
-
+	 	clear_node_lic_attrs(pbsndlist[i], 0);
+		if (pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long) {
+			licensing_control.licenses_total_needed += pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+		} else {
+			set_node_lic_info_attr(pbsndlist[i]);
+			licensing_control.licenses_total_needed += pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+		}
 		add_to_unlicensed_node_list(pbsndlist[i]);
 	}
 
@@ -879,9 +848,6 @@ release_node_lic(void *pobj)
 		attribute *ppnl = &pnode->nd_attr[(int) ND_ATR_License];
 		attribute *ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
 
-		if (pnode->nd_lic_info)
-			free(pnode->nd_lic_info);
-
 		/* release license if node is locked */
 		if ((ppnl->at_val.at_char == ND_LIC_TYPE_locked) &&
 						(ppnli->at_flags & ATR_VFLAG_SET)) {
@@ -942,6 +908,8 @@ unlicense_nodes(void)
 		if (np->nd_attr[(int) ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked) {
 			clear_attr(&np->nd_attr[(int) ND_ATR_License],
 				&node_attr_def[(int) ND_ATR_License]);
+			clear_attr(&np->nd_attr[(int) ND_ATR_LicenseInfo],
+				&node_attr_def[(int) ND_ATR_LicenseInfo]);
 			if (first) {
 				first = 0;
 				sprintf(log_buffer, msg_node_unlicensed,

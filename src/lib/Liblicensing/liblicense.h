@@ -44,3 +44,4 @@ char *lic_get_error();
 int checkkey(char **cred_list, char *nd_name, time_t *expiry);
 void lic_close();
 char *lic_check_expiry();
+int lic_state();

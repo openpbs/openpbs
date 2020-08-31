@@ -258,7 +258,6 @@ struct pbsnode {
 	struct devices device;
 	attribute nd_attr[ND_ATR_LAST];
 	short newobj; /* new node ? */
-	void *nd_lic_info;		/* information set and used for licensing */
 	int nd_added_to_unlicensed_list;/* To record if the node is added to the list of unlicensed node */
 };
 
@@ -432,7 +431,7 @@ extern void	propagate_socket_licensing(mominfo_t *);
 
 extern char *msg_daemonname;
 
-#define	NODE_TOPOLOGY_TYPE_HWLOC	"hwloc:"
+#define	NODE_TOPOLOGY_TYPE_HWLOC	"hwloc"
 #define	NODE_TOPOLOGY_TYPE_CRAY		"Cray-v1:"
 #define	NODE_TOPOLOGY_TYPE_WIN		"Windows:"
 

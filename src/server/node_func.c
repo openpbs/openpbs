@@ -110,6 +110,8 @@ extern int node_delete_db(struct pbsnode *pnode);
 extern pbsnode *recov_node_cb(pbs_db_obj_info_t *, int *);
 extern int check_sign(pbsnode *, attribute *);
 extern void license_one_node(pbsnode *);
+//extern int	set_node_lic_info_attr(pbsnode *);
+extern int process_topology_info(struct pbsnode *pnode, char *);
 extern void release_lic_for_cray(struct pbsnode *pnode);
 static void remove_node_topology(char *);
 
@@ -309,7 +311,8 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
 	pnode->newobj = 1;
-	pnode->nd_lic_info = NULL;
+	pnode->device.nnodes = 0;
+	pnode->device.nsockets = 0;
 	pnode->nd_added_to_unlicensed_list = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
@@ -318,7 +321,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	/* first, clear the attributes */
 
-	for (i = 0; i < (int)ND_ATR_LAST; i++)
+	for (i = 0; i < ND_ATR_LAST; i++)
 		clear_attr(&pnode->nd_attr[i], &node_attr_def[i]);
 
 	/* then, setup certain attributes */
@@ -1969,6 +1972,7 @@ set_node_topology(attribute *new, void *pobj, int op)
 			}
 
 			record_node_topology(pnode->nd_name, valstr);
+			process_topology_info(pnode, valstr);
 			if (ntt == tt_Cray)
 				release_lic_for_cray(pnode);
 			license_one_node(pnode);
