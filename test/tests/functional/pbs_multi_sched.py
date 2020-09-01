@@ -805,9 +805,9 @@ class TestMultipleSchedulers(TestFunctional):
         # pbsuser3 job will run after pbsuser1
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
-        # deleting the currently running job
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
         self.server.delete(sc1_jid3, wait=True)
         # pbsuser2 job will run in the end
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)

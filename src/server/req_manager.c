@@ -1617,7 +1617,7 @@ mgr_sched_set(struct batch_request *preq)
 	pbs_list_head unsetlist;
 	int	  rc;
 	pbs_sched *psched;
-	int only_scheduling = 0;
+	int only_scheduling = 1;
 
 	psched = find_sched(preq->rq_ind.rq_manager.rq_objname);
 	if (!psched) {
@@ -1628,10 +1628,8 @@ mgr_sched_set(struct batch_request *preq)
 	CLEAR_HEAD(unsetlist);
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
-		if (strcmp(plist->al_atopl.name, ATTR_scheduling) == 0) {
-			only_scheduling++;
-		} else {
-			only_scheduling--;
+		if (strcmp(plist->al_atopl.name, ATTR_scheduling)) {
+			only_scheduling = 0;
 		}
 		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0') {
 			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
