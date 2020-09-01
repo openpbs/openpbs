@@ -811,9 +811,9 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.delete(sc1_jid3, wait=True)
         # pbsuser2 job will run in the end
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)
-        # deleting the currently running job
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
         self.server.delete(sc1_jid2, wait=True)
         # query fairshare and check usage
         sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
@@ -829,6 +829,9 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].restart()
         # Check the multisched 'sc1' usage file whether it's updating or not
         self.assertTrue(self.scheds['sc1'].isUp())
+        # The scheduler will set scheduler attributes on the first scheduling
+        # cycle, so we need to trigger a cycle, have the scheduler configure,
+        # then turn it off again
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
         self.scheds['sc1'].log_match("Scheduler is reconfiguring", starttime=t)
@@ -846,22 +849,22 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid4)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
-        # deleting the currently running job
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
         self.server.delete(sc1_jid4, wait=True)
         # pbsuser1 job will run after pbsuser4
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
-        # deleting the currently running job
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
         self.server.delete(sc1_jid1, wait=True)
         # pbsuser2 job will run in the end
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)
-        # deleting the currently running job
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
         self.server.delete(sc1_jid2, wait=True)
         # query fairshare and check usage
         sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
