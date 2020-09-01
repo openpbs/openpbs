@@ -611,6 +611,10 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 void
 update_buckets_for_node(node_bucket **bkts, node_info *ninfo) {
 	int i;
+
+	if (bkts == NULL || ninfo == NULL)
+		return;
+
 	for (i = 0; bkts[i] != NULL; i++) {
 		int node_ind = ninfo->node_ind;
 
@@ -620,7 +624,7 @@ update_buckets_for_node(node_bucket **bkts, node_info *ninfo) {
 			if (pbs_bitmap_get_bit(bkts[i]->free_pool->truth, node_ind)) {
 				pbs_bitmap_bit_off(bkts[i]->free_pool->truth, node_ind);
 				bkts[i]->free_pool->truth_ct--;
-				} else if (pbs_bitmap_get_bit(bkts[i]->busy_later_pool->truth, node_ind)) {
+			} else if (pbs_bitmap_get_bit(bkts[i]->busy_later_pool->truth, node_ind)) {
 				pbs_bitmap_bit_off(bkts[i]->busy_later_pool->truth, node_ind);
 				bkts[i]->busy_later_pool->truth_ct--;
 			}  else if (pbs_bitmap_get_bit(bkts[i]->busy_pool->truth, node_ind)) {
