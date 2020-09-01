@@ -487,12 +487,12 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			 */
 			for (j = 0; occr_idx <= count; occr_idx++, j++, degraded_idx++) {
 				/* If it is not the first occurrence then update the start time as
-				 * req_start_orig (if set). This is to ensure that if the first
+				 * req_start_standing (if set). This is to ensure that if the first
 				 * occurrence has been changed, other future occurrences are not
 				 * affected.
 				 */
-				if (j == 1 && resresv_ocr->resv->req_start_orig != UNSPECIFIED)
-					dtstart = resresv_ocr->resv->req_start_orig;
+				if (j == 1 && resresv_ocr->resv->req_start_standing != UNSPECIFIED)
+					dtstart = resresv_ocr->resv->req_start_standing;
 				/* Get the start time of the next occurrence computed from dtstart.
 				 * The server maintains state of a single reservation object for
 				 * which in the case of a standing reservation, it updates start
@@ -550,12 +550,12 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				 */
 				resresv_ocr->resv->req_start = next;
 				/* If it is not the first occurrence then update the duration as
-				 * req_duration_orig (if set). This is to ensure that if the first
+				 * req_duration_standing (if set). This is to ensure that if the first
 				 * occurrence has been changed, other future occurrences are not
 				 * affected.
 				 */
-				if (j != 0 && resresv->resv->req_duration_orig != UNSPECIFIED)
-					resresv_ocr->hard_duration = resresv_ocr->duration = resresv->resv->req_duration_orig;
+				if (j != 0 && resresv->resv->req_duration_standing != UNSPECIFIED)
+					resresv_ocr->hard_duration = resresv_ocr->duration = resresv->resv->req_duration_standing;
 				resresv_ocr->resv->req_end = next + resresv->duration;
 				resresv_ocr->start = resresv_ocr->resv->req_start;
 				resresv_ocr->end = resresv_ocr->resv->req_end;
@@ -653,12 +653,6 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 				count = -1;
 			advresv->resv->req_start = count;
 		}
-		else if (!strcmp(attrp->name, ATTR_resv_start_revert)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = -1;
-			advresv->resv->req_start_orig = count;
-		}
 		else if (!strcmp(attrp->name, ATTR_resv_end)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
@@ -671,11 +665,25 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 				count = -1;
 			advresv->resv->req_duration = count;
 		}
-		else if (!strcmp(attrp->name, ATTR_resv_duration_revert)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = -1;
-			advresv->resv->req_duration_orig = count;
+		else if (!strcmp(attrp->name, ATTR_resv_alter_revert)) {
+			if (!strcmp(attrp->resource, "start_time")) {
+				count = strtol(attrp->value, &endp, 10);
+				if (*endp != '\0')
+					count = -1;
+				advresv->resv->req_start_orig = count;
+			} else if (!strcmp(attrp->resource, "walltime")) {
+				advresv->resv->req_duration_orig = (time_t) res_to_num(attrp->value, NULL);
+			}
+		}
+		else if (!strcmp(attrp->name, ATTR_resv_standing_revert)) {
+			if (!strcmp(attrp->resource, "start_time")) {
+				count = strtol(attrp->value, &endp, 10);
+				if (*endp != '\0')
+					count = -1;
+				advresv->resv->req_start_standing = count;
+			} else if (!strcmp(attrp->resource, "walltime")) {
+				advresv->resv->req_duration_standing = (time_t) res_to_num(attrp->value, NULL);
+			}
 		}
 		else if (!strcmp(attrp->name, ATTR_resv_retry)) {
 			count = strtol(attrp->value, &endp, 10);
@@ -750,7 +758,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		int sel_orig_num, sel_num;
 		char *sel_orig_str, *sel_str;
 		sel_num = strtol(advresv->select->chunks[j]->str_chunk, &sel_str, 10);
-		
+
 		for (i = 0; advresv->resv->select_orig->chunks[i] != NULL; i++) {
 			chunk *chk = advresv->resv->select_orig->chunks[i];
 			sel_orig_num = strtol(chk->str_chunk, &sel_orig_str, 10);
@@ -809,7 +817,11 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			advresv->resv->resv_substate = RESV_DEGRADED;
 	}
 
-	if (advresv->resv->req_start <= sinfo->server_time && advresv->resv->req_end >= sinfo->server_time)
+	if (advresv->resv->resv_state == RESV_BEING_ALTERED) {
+		time_t alter_end = advresv->resv->req_start_orig + advresv->resv->req_duration_orig;
+		if (advresv->resv->req_start_orig <= sinfo->server_time && alter_end >= sinfo->server_time)
+			advresv->resv->is_running = 1;
+	} else if (advresv->resv->req_start <= sinfo->server_time && advresv->resv->req_end >= sinfo->server_time)
 		advresv->resv->is_running = 1;
 
 	return advresv;
@@ -835,9 +847,11 @@ new_resv_info()
 	rinfo->queuename = NULL;
 	rinfo->req_start = UNSPECIFIED;
 	rinfo->req_start_orig = UNSPECIFIED;
+	rinfo->req_start_standing = UNSPECIFIED;
 	rinfo->req_end = UNSPECIFIED;
 	rinfo->req_duration = UNSPECIFIED;
 	rinfo->req_duration_orig = UNSPECIFIED;
+	rinfo->req_duration_standing = UNSPECIFIED;
 	rinfo->retry_time = UNSPECIFIED;
 	rinfo->resv_state = RESV_NONE;
 	rinfo->resv_substate = RESV_NONE;
@@ -923,9 +937,11 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 
 	nrinfo->req_start = rinfo->req_start;
 	nrinfo->req_start_orig = rinfo->req_start_orig;
+	nrinfo->req_start_standing = rinfo->req_start_standing;
 	nrinfo->req_end = rinfo->req_end;
 	nrinfo->req_duration = rinfo->req_duration;
 	nrinfo->req_duration_orig = rinfo->req_duration_orig;
+	nrinfo->req_duration_standing = rinfo->req_duration_standing;
 	nrinfo->retry_time = rinfo->retry_time;
 	nrinfo->resv_state = rinfo->resv_state;
 	nrinfo->resv_substate = rinfo->resv_substate;
@@ -1251,7 +1267,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	}
 	free_schd_error(err);
 	/* If a reservation is being altered, its attributes are the new altered attributes.
-	 * If the alter fails, we can't continue with a cycle because the reservation 
+	 * If the alter fails, we can't continue with a cycle because the reservation
 	 * reverted back to its pre-altered state, but the copy we have is as if the alter succeeded.
 	 * If no reservations have been confirmed, we will run a normal cycle.
 	*/
@@ -1500,13 +1516,18 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nresv->resv->resv_state == RESV_BEING_ALTERED) {
 				if (nresv->resv->is_running) {
 					char *sel;
+					int ind;
 					free_selspec(nresv->execselect);
-					/* Use orig_nspec_arr over nspec_arr because 
+					/* Use orig_nspec_arr over nspec_arr because
 					 * A) we modified it above in check_vnodes_unavailable() for reconfirmation
 					 * B) it will allow us to map the original select back to the new resv_nodes
 					 */
 					sel = create_select_from_nspec(nresv->orig_nspec_arr);
 					nresv->execselect = parse_selspec(sel);
+					for (ind = 0; nresv->orig_nspec_arr[ind] != NULL; ind++) {
+					    nresv->execselect->chunks[ind]->seq_num = nresv->orig_nspec_arr[ind]->seq_num;
+					}
+
 					free(sel);
 					release_running_resv_nodes(nresv, nsinfo);
 				}
@@ -1573,6 +1594,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		if (!(simrc & TIMED_ERROR) && resv_start_time >= 0) {
 			clear_schd_error(err);
 			if ((ns = is_ok_to_run(nsinfo->policy, nsinfo, NULL, nresv, NO_ALLPART, err)) != NULL) {
+				qsort(ns, count_array(ns), sizeof(nspec *), cmp_nspec);
 				tmp = create_execvnode(ns);
 				free_nspecs(ns);
 				if (tmp == NULL) {
@@ -1735,18 +1757,18 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 }
 
 /**
- * @brief determine if a nspec superchunk/chunk has unavailable nodes 
+ * @brief determine if a nspec superchunk/chunk has unavailable nodes
  * 		and checks for running jobs on the chunk
  * @param[in] resv - reservation to check
  * @param[in] chunk_ind - index of the chunk start
- * 
+ *
  * @return int
  * @retval 1 - running jobs, no unavailable nodes
  * @retval 0 no unavailable nodes, no running jobs
  * @retval -1 unavailable nodes, but no running jobs on the chunk
  * @retval -2 unavailable nodes, running jobs within the chunk
  * @retval -3 error
- * 
+ *
  */
 int
 check_down_running(resource_resv *resv, int chunk_ind)
@@ -1791,17 +1813,17 @@ check_down_running(resource_resv *resv, int chunk_ind)
 
 /**
  * @brief remove nodes from a reservation.  Per call, we remove one type of chunk based on the chunk's seq_num
- * 	We remove num_chunks if we can (or fail if we can't)  We remove based on node_type which controls whether 
+ * 	We remove num_chunks if we can (or fail if we can't)  We remove based on node_type which controls whether
  * 	we are removing unavailable nodes or available nodes
- * 
+ *
  * @param[in] resv - reservation to remove nodes from
  * @param[in] start_of_chk - index into orig_nspec_arr of where to start
  * @param[in] chk_seq_num - sequence number of chunk to remove nodes from
  * @param[in] num_chks - number of nodes to remove.  Depending on node_type, it is OK to remove less than this
  * @param[in] node_type - type of node to remove: -1 unavailable, 0 normal, 1 either all with no running jobs
- * 
+ *
  * @note all nspec chunks to be removed will have their ninfo pointer NULL'd.  It up to the caller to actually remove them from the reservation.
- * 
+ *
  * @return int
  * @retval number of chunks removed from the nspec array
  * @retval -1 nspecs are not mapped to select chunks
@@ -1819,7 +1841,7 @@ int ralter_remove_nodes(resource_resv *resv, int start_of_chk, int chk_seq_num, 
 		int ret;
 		if (nspec_arr[i]->chk == NULL)
 			return -1;
-	
+
 		if (nspec_arr[i]->chk->seq_num != chk_seq_num)
 			break;
 		ret = check_down_running(resv, i);
@@ -1844,17 +1866,17 @@ int ralter_remove_nodes(resource_resv *resv, int start_of_chk, int chk_seq_num, 
  * 	The original select's chunks have been already mapped onto the resv's nodes.
  * 	When choosing nodes to release, we will first choose nodes which are unavailable.
  * 	A node with a running job on it can not be released.
- * 
+ *
  * @param[in] resv - the reservation to shrink
- * 
+ *
  * @return int
  * @retval 1 the reservation has been successfully shrunk
  * @retval 0 no select_orig, not doing a pbs_ralter -l select
  * @retval -1 can't remove enough chunks due to running jobs
  * @retval -2 can't reduce due to resv_nodes not correctly mapped to select_orig
  */
-int 
-ralter_reduce_chunks(resource_resv *resv) 
+int
+ralter_reduce_chunks(resource_resv *resv)
 {
 	int cnt;
 	int start_of_chunk = 0;
@@ -1863,7 +1885,7 @@ ralter_reduce_chunks(resource_resv *resv)
 
 	if (resv == NULL)
 		return -2;
-	
+
 	/* We're not altering the select, just return success */
 	if (resv->resv->select_orig == NULL)
 		return 0;
@@ -1993,7 +2015,7 @@ check_vnodes_unavailable(resource_resv *resv)
 				if (has_superchunk)
 					chunks_to_remove[del_i++] = resv->orig_nspec_arr[j];
 			}
-			/* We ran into an error where we ran into the end of the array before the end of the chunk 
+			/* We ran into an error where we ran into the end of the array before the end of the chunk
 			 * The entire chunk is in chunks_to_remove, so we'll just remove it.
 			 */
 			if (resv->orig_nspec_arr[j] == NULL)
@@ -2019,8 +2041,12 @@ check_vnodes_unavailable(resource_resv *resv)
 			remove_ptr_from_array(resv->orig_nspec_arr, chunks_to_remove[i]);
 		}
 	}
-
-	qsort(resv->orig_nspec_arr, count_array(resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec);
+	if (has_down_node == 1)
+		/* Move all the specific chunks ahead of the generic chunks.
+		 * This will ensure that we get all the nodes back we need to,
+		 * before we start looking for replacements
+		 */
+		qsort(resv->orig_nspec_arr, count_array(resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec_by_sub_seq);
 
 	free(chunks_to_remove);
 
@@ -2144,7 +2170,7 @@ end_resv_on_nodes(resource_resv *resv, node_info **all_nodes)
 /**
  * @brief - adjust resources on nodes belonging to a reservation that is
  *	    running and is either degraded or being altered.  We need to free
- * 	    the resources on these nodes so the resources are available for 
+ * 	    the resources on these nodes so the resources are available for
  * 	    check_nodes() to assign back to the reservation.
  *
  * @param[in] resv - reservation to alter nodes for

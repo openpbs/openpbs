@@ -303,9 +303,9 @@ static struct fc_translation_table fctt[] = {
 		"Node has no PBS license",
 		"Node has no PBS license"
 	},
-	{	/* NODE_HIGH_LOAD */
-		"Load is above max limit",
-		"Load is above max limit"
+	{	/* UNUSED37 */
+		"",
+		""
 	},
 	{	/* NO_SMALL_CPUSETS */
 		"Max number of small cpusets has been reached",
@@ -973,6 +973,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_c,
 			ATTR_r,
 			ATTR_depend,
+			ATTR_A,
 			NULL
 	};
 
@@ -2062,7 +2063,6 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 #endif /* localmod 031 */
 		case INVALID_NODE_TYPE:
 		case NODE_GROUP_LIMIT_REACHED:
-		case NODE_HIGH_LOAD:
 		case NODE_JOB_LIMIT_REACHED:
 		case NODE_NOT_EXCL:
 		case NODE_NO_MULT_JOBS:
@@ -4987,7 +4987,6 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 			case NODE_GROUP_LIMIT_REACHED:
 			case NODE_NO_MULT_JOBS:
 			case NODE_UNLICENSED:
-			case NODE_HIGH_LOAD:
 			case INSUFFICIENT_RESOURCE:
 			case AOE_NOT_AVALBL:
 			case PROV_RESRESV_CONFLICT:

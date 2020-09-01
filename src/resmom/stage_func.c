@@ -82,8 +82,8 @@ extern char *pwd_buf;
 #endif
 extern char mom_host[PBS_MAXHOSTNAME+1];	/* MoM host name */
 
-int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *);
-static int sys_copy(int, int, char *, char *, struct rqfpair *, int, char *);
+int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
+static int sys_copy(int, int, char *, char *, struct rqfpair *, int, char *, char *);
 
 /**
  * A path in windows is not case sensitive so do a define
@@ -759,6 +759,7 @@ pbs_glob(char *filen, char *pat)
  * @param[in]		conn		-	socket on which request is received
  * @param[in/out]	stage_inout	-	pointer to cpy_files struct
  * @param[in]		prmt		-	path to destination if stageout else source path
+ * @param[in]		jobid		- 	job ID
  *
  * @return	int
  * @retval	0 - all OK
@@ -766,7 +767,7 @@ pbs_glob(char *filen, char *pat)
  *
  */
 int
-copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, int conn, cpy_files *stage_inout, char *prmt)
+copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, int conn, cpy_files *stage_inout, char *prmt, char *jobid)
 {
 	int rc = 0;
 	int ret = 0;
@@ -797,7 +798,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 			strcpy(dest, pair->fp_local);
 	}
 
-	ret = sys_copy(dir, rmtflag, owner, src, pair, conn, prmt);
+	ret = sys_copy(dir, rmtflag, owner, src, pair, conn, prmt, jobid);
 
 	if (ret == 0) {
 		/*
@@ -874,7 +875,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 
 		FILE *fp = NULL;
 		DBPRT(("%s: sys_copy failed, error = %d\n", __func__, ret))
-		snprintf(log_buffer, sizeof(log_buffer), "sys_copy failed with status=%d", ret);
+		snprintf(log_buffer, sizeof(log_buffer), "Job %s: sys_copy failed, return value=%d", jobid, ret);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 		stage_inout->bad_files = 1;
 		snprintf(log_buffer, sizeof(log_buffer), "Unable to copy file %s %s %s",
@@ -913,9 +914,9 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 			log_errf(errno, __func__, "Failed to open %s file", rcperr);
 		}
 
-		if (dir == STAGE_DIR_IN)
-			rc = -1;
-		else {
+
+		rc = -1;
+		if (dir == STAGE_DIR_OUT) {
 #ifndef NO_SPOOL_OUTPUT
 			if (stage_inout->from_spool == 1) {	/* copy out of spool */
 				char	undelname[MAXPATHLEN+1];
@@ -961,6 +962,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
  * @param[in]		conn		-	socket on which request is received
  * @param[in/out]	stage_inout	-	pointer cpy_files struct
  * @param[in]		prmt		-	path to destination if stageout else source path
+ * @param[in]		jobid		- 	job ID
  *
  * @return	int
  * @retval	0 - all OK
@@ -968,7 +970,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
  *
  */
 int
-stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cpy_files *stage_inout, char *prmt)
+stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cpy_files *stage_inout, char *prmt, char *jobid)
 {
 	char *ps = NULL;
 	int i = 0;
@@ -1053,9 +1055,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	if ((rmtflag != 0) && (dir == STAGE_DIR_IN)) {	/* no need to check for wildcards */
 		DBPRT(("%s: simple copy, remote/stagein\n", __func__))
 		rc = copy_file(dir, rmtflag, owner, source,
-			pair, conn, stage_inout, prmt);
+			pair, conn, stage_inout, prmt, jobid);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "remote stagein failed for %s from %s to %s", owner, source, pair->fp_local);
+			snprintf(log_buffer, sizeof(log_buffer), "Job %s: remote stagein failed for %s from %s to %s",
+				jobid, owner, source, pair->fp_local);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
 		}
@@ -1066,10 +1069,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	if ((strchr(ps, '*') == NULL) && (strchr(ps, '?') == NULL)) {
 		DBPRT(("%s: simple copy, no wildcards\n", __func__))
 		rc = copy_file(dir, rmtflag, owner, source,
-			pair, conn, stage_inout, prmt);
+			pair, conn, stage_inout, prmt, jobid);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "no wildcards:%s stage%s failed for %s from %s to %s",
-				(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+			snprintf(log_buffer, sizeof(log_buffer), "Job %s: no wildcards:%s stage%s failed for %s from %s to %s",
+				jobid, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
 				(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
@@ -1081,10 +1084,10 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	if (dirp == NULL) {	/* dir cannot be opened, just call copy_file */
 		DBPRT(("%s: cannot open dir %s\n", __func__, dname))
 		rc = copy_file(dir, rmtflag, owner, source,
-			pair, conn, stage_inout, prmt);
+			pair, conn, stage_inout, prmt, jobid);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "Cannot open directory:%s stage%s failed for %s from %s to %s",
-				(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+			snprintf(log_buffer, sizeof(log_buffer), "Job %s: Cannot open directory:%s stage%s failed for %s from %s to %s",
+				jobid, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
 				(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
@@ -1125,11 +1128,11 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			strcat(matched, pdirent->d_name);
 			DBPRT(("%s: match %s\n", __func__, matched))
 			rc = copy_file(dir, rmtflag, owner, matched,
-				pair, conn, stage_inout, prmt);
+				pair, conn, stage_inout, prmt, jobid);
 			if (rc != 0) {
 				(void)closedir(dirp);
-				snprintf(log_buffer, sizeof(log_buffer), "Pattern matched:%s stage%s failed for %s from %s to %s",
-					(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+				snprintf(log_buffer, sizeof(log_buffer), "Job %s: Pattern matched:%s stage%s failed for %s from %s to %s",
+					jobid, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
 					(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 				goto error;
@@ -1139,11 +1142,11 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	if (errno != 0 && errno != ENOENT) {     /* dir cannot be read, just call copy_file */
 		DBPRT(("%s: cannot read dir %s\n", __func__, dname))
 		rc = copy_file(dir, rmtflag, owner, source,
-			pair, conn, stage_inout, prmt);
+			pair, conn, stage_inout, prmt, jobid);
 		(void)closedir(dirp);
 		if (rc != 0) {
-			snprintf(log_buffer, sizeof(log_buffer), "Cannot read directory:%s stage%s failed for %s from %s to %s",
-				(rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
+			snprintf(log_buffer, sizeof(log_buffer), "Job %s: Cannot read directory:%s stage%s failed for %s from %s to %s",
+				jobid, (rmtflag == 1) ? "remote" : "local", (dir == STAGE_DIR_OUT) ? "out" : "in", owner, source,
 				(dir == STAGE_DIR_OUT) ? pair->fp_rmt : pair->fp_local);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
 			goto error;
@@ -1421,6 +1424,7 @@ is_pbs_rcp_path(void)
  * @param[in]		pair		-	list of file pair
  * @param[in]		conn		-	socket on which request is received
  * @param[in]		prmt		-	path to destination if stageout else source path
+ * @param[in]		jobid		-	Job ID
  *
  * @return	int
  * @retval	0 - successful copy
@@ -1438,7 +1442,7 @@ is_pbs_rcp_path(void)
  *
  */
 static int
-sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int conn, char *prmt)
+sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int conn, char *prmt, char *jobid)
 {
 	char *ag0 = NULL;
 	char *ag1 = NULL;
@@ -1517,10 +1521,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 		if (access_uncpath(ag2, F_OK|R_OK) < 0)
 #endif
 		{
-			if (errno == ENOENT) {
-				log_errf(errno, __func__, "%s", ag2);
-				return 0;
-			}
+			if (errno == ENOENT)
+				return 1;
 		}
 
 		/* take (remote) destination name from request */
@@ -1988,8 +1990,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 			/* do we need 'AsUser' here? */
 			if ((pw->pw_userlogin == INVALID_HANDLE_VALUE) && (strcmpi(owner, getlogin()) == 0)) {
-				sprintf(log_buffer, "CreateProcess(%s) under acct %s wdir=%s",
-					cmd_line, owner, wdir);
+				snprintf(log_buffer, sizeof(log_buffer), "Job %s: CreateProcess(%s) under acct %s wdir=%s",
+					jobid, cmd_line, owner, wdir);
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 				rc = CreateProcess(NULL, cmd_line,
 					NULL, NULL, TRUE, flags,
@@ -1999,8 +2001,8 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 					log_err(-1, __func__, "CreateProcess failed");
 				}
 			} else {
-				sprintf(log_buffer, "CreateProcessAsUser(%d, %s) under acct %s wdir=%s",
-					pw->pw_userlogin, cmd_line, getlogin(), wdir);
+				snprintf(log_buffer, sizeof(log_buffer), "Job %s: CreateProcessAsUser(%d, %s) under acct %s wdir=%s",
+					jobid, pw->pw_userlogin, cmd_line, getlogin(), wdir);
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, log_buffer);
 				rc = CreateProcessAsUser(pw->pw_userlogin, NULL, cmd_line,
 					NULL, NULL, TRUE, flags,
@@ -2009,6 +2011,12 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 					errno = GetLastError();
 					log_err(-1, __func__, "CreateProcessAsUser failed");
 				}
+			}
+
+			if (rc == 0) {
+				errno = GetLastError();
+				snprintf(log_buffer, sizeof(log_buffer),"Job %s: process creation failed errno %lu", jobid, errno);
+				log_err(-1, __func__, log_buffer);
 			}
 
 			close(fd);
@@ -2020,15 +2028,22 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				int ret = 0;
 				ret = WaitForSingleObject(pi.hProcess, INFINITE);
 				if (ret != WAIT_OBJECT_0) {
-					if (ret != WAIT_FAILED)
-						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, "WaitForSingleObject failed with status=%d", ret);
-					else
-						log_errf(-1, __func__, "WaitForSingleObject failed with status=%d", ret);
+					if (ret != WAIT_FAILED) {
+						sprintf(log_buffer, "Job %s: WaitForSingleObject failed with status=%d", jobid, ret);
+						log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_FILE, LOG_ERR, __func__, log_buffer);
+					} else {
+						sprintf(log_buffer, "Job %s: WaitForSingleObject failed with status=%d", jobid, ret);
+						log_err(-1, __func__, log_buffer);
+					}
 				}
 				if (!GetExitCodeProcess(pi.hProcess, &rc)) {
-					log_errf(-1, __func__, "GetExitCodeProcess failed with status=%d", rc);
+					sprintf(log_buffer, "Job %s: GetExitCodeProcess failed", jobid);
+					log_err(-1, __func__, log_buffer);
 				}
-
+				if (rc != 0) {
+					sprintf(log_buffer, "Job %s: GetExitCodeProcess return code=%d", jobid, rc);
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, log_buffer);
+				}
 				CloseHandle(pi.hProcess);
 				CloseHandle(pi.hThread);
 

@@ -312,8 +312,11 @@ class TestResourceUsageLog(TestFunctional):
 
         # Look for R record as job was force requeued
         self.server.accounting_match(
-            msg='.*R;' + jid1 + '.*Exit_status=0.*resources_used.*run_count=1',
-            id=jid1, regexp=True)
+            msg='.*R;' +
+            jid1 +
+            '.*Exit_status=-11.*resources_used.*run_count=1',
+            id=jid1,
+            regexp=True)
 
     @skipOnCpuSet
     def test_acclog_services_restart(self):

@@ -423,7 +423,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         j2 = Job(TEST_USER)
         j2.create_script(body=script)
         j2.set_attributes(
-            {ATTR_l + '.cput': 180, ATTR_l + '.ncpus': 3,  ATTR_k: 'oe'})
+            {ATTR_l + '.cput': 180, ATTR_l + '.ncpus': 3, ATTR_k: 'oe'})
         jid2 = self.server.submit(j2)
 
         # Verify that the jobs have started running.
@@ -539,18 +539,18 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.rerunjob(jids, extend='force')
 
         # Verify that the accounting logs have R record with last known
-        # resource usage and run_count should be 2 for J1 and J2
+        # resource usage and run_count should be 1 for J1 and J2
 
         self.server.accounting_match(
             msg='.*R;' + jid1 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid1, regexp=True)
         self.server.accounting_match(
             msg='.*R;' + jid2 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid2, regexp=True)
         self.server.accounting_match(msg='.*R;' + re.escape(
-            jid3s1) + '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            jid3s1) + '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
         time.sleep(5)
 
@@ -558,18 +558,18 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.rerunjob(jids, extend='force')
 
         # Verify that the accounting logs have R record with last known
-        # usage and run_count should be 3 for J1 and J2.
+        # usage and run_count should be 2 for J1 and J2.
         self.server.accounting_match(
             msg='.*R;' + jid1 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=2.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid1, regexp=True)
         self.server.accounting_match(
             msg='.*R;' + jid2 +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=2.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid2, regexp=True)
         self.server.accounting_match(msg='.*R;' + re.escape(
             jid3s1) +
-            '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
+            '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid3s1, regexp=True)
 
     def tearDown(self):

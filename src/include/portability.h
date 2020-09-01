@@ -46,4 +46,10 @@
 
 #define NULL_DEVICE "/dev/null"
 
+#undef DLLEXPORT
+#define DLLEXPORT
+
+#define dlerror_reset() dlerror()
+#define SHAREDLIB_EXT "so"
+
 #endif

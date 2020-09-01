@@ -378,6 +378,7 @@ class TestFairshare(TestFunctional):
         self.assertEqual(fs_usage, 1,
                          "Fairshare usage %d not equal to 1" % fs_usage)
 
+    @skipOnCpuSet
     def test_fairshare_topjob(self):
         """
         Test that jobs are run in the augmented fairshare order after a topjob
@@ -414,3 +415,49 @@ class TestFairshare(TestFunctional):
         jorder = [j.split('.')[0] for j in jorder]
         msg = 'Jobs ran out of order'
         self.assertEqual(jorder, c.political_order, msg)
+
+    def test_fairshare_acct_name(self):
+        """
+        Test fairshare with fairshare_entity as Account_Name
+        """
+        self.scheduler.set_sched_config({'fair_share': 'True'})
+        self.scheduler.set_sched_config({'fairshare_usage_res': 'ncpus'})
+        self.scheduler.set_sched_config({'fairshare_entity': ATTR_A})
+
+        self.scheduler.add_to_resource_group('acctA', 11, 'root', 10)
+        self.scheduler.set_fairshare_usage('acctA', 1)
+        self.scheduler.add_to_resource_group('acctB', 12, 'root', 25)
+        self.scheduler.set_fairshare_usage('acctB', 1)
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': False})
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.mom.shortname)
+        a = {ATTR_A: 'acctA'}
+        j1 = Job(attrs=a)
+        j1.set_sleep_time(15)
+        jid1 = self.server.submit(j1)
+
+        a = {ATTR_A: 'acctB'}
+        j2 = Job(attrs=a)
+        j2.set_sleep_time(15)
+        jid2 = self.server.submit(j2)
+
+        j3 = Job(attrs=a)
+        j3.set_sleep_time(15)
+        jid3 = self.server.submit(j3)
+
+        j4 = Job(attrs=a)
+        j4.set_sleep_time(15)
+        jid4 = self.server.submit(j4)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+
+        # acctB has 2/3s of the shares, so 2 of its jobs will run before acctA
+        # a second cycle has to be kicked between jobs to make sure the
+        # scheduler acumulates the fairshare usage.
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3, offset=15)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1, offset=15)

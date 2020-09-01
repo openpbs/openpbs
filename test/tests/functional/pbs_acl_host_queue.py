@@ -41,39 +41,41 @@
 from tests.functional import *
 
 
-class TestSchedLoadBalancing(TestFunctional):
+class Test_acl_host_queue(TestFunctional):
     """
-    Test suite for Scheduler load balancing
+    This test suite is for testing the queue attributes acl_host_enable
+    and acl_hosts.
     """
-    def setUp(self):
-        """
-        Set scheduler load_balancing
-        """
-        TestFunctional.setUp(self)
-        self.scheduler.set_sched_config({'load_balancing': 'true	ALL'})
 
-    @skipOnCpuSet
-    def test_load_bal_node_ip(self):
+    def test_acl_host_enable_refuse(self):
         """
-        This test case tests scheduler load balancing
-        feature, when node is added using ip address.
+        Set acl_host_enable = True on queue and check whether or not
+        the submit is refused.
         """
-        # Check current load in system
-        cmd = os.path.join(self.server.pbs_conf[
-                           'PBS_EXEC'], 'unsupported', 'pbs_rmget')
-        cmd += ' -m ' + self.mom.hostname + ' loadave '
-        ret = self.du.run_cmd(self.mom.hostname, cmd, sudo=True)
-        current_load = float(ret['out'][0].split('=')[1])
-        # Considering our job will need 1 cpu
-        ideal_load = current_load + 1
-        max_load = current_load + 2
-        self.mom.add_config({'$ideal_load': ideal_load})
-        self.mom.add_config({'$max_load': max_load})
-        self.server.manager(MGR_CMD_DELETE, NODE, None, '')
-        ipaddr = socket.gethostbyname(self.mom.hostname)
-        self.server.manager(MGR_CMD_CREATE, NODE,  id=ipaddr)
-        self.server.expect(NODE, {'state': 'free'}, id=ipaddr)
+        a = {"acl_host_enable": True,
+             "acl_hosts": "foo"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a,
+                            self.server.default_queue)
+
+        j = Job(TEST_USER)
+        try:
+            self.server.submit(j)
+        except PbsSubmitError as e:
+            error_msg = "qsub: Access from host not allowed, or unknown host"
+            self.assertEquals(e.msg[0], error_msg)
+        else:
+            self.fail("Queue is violating acl_hosts")
+
+    def test_acl_host_enable_allow(self):
+        """
+        Set acl_host_enable = True along with acl_hosts and check
+        whether or not a job can be submitted.
+        """
+        a = {"acl_host_enable": True,
+             "acl_hosts": self.server.hostname}
+        self.server.manager(MGR_CMD_SET, QUEUE, a,
+                            self.server.default_queue)
 
         j = Job(TEST_USER)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.logger.info('Job submitted successfully: ' + jid)

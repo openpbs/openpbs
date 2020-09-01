@@ -101,11 +101,6 @@ int remove_node_state(node_info *ninfo, char *state);
 int add_node_state(node_info *ninfo, char *state);
 
 /*
- *      talk_with_mom - talk to mom and get resources
- */
-int talk_with_mom(node_info *ninfo);
-
-/*
  *      node_filter - filter a node array and return a new filterd array
  */
 node_info **
@@ -193,11 +188,6 @@ int node_partition_cmp(node_info *ninfo, void *arg);
  *      update_node_on_end - update a node when a job ends
  */
 void update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state);
-
-/*
- *      should_talk_with_mom - check if we should talk to this mom
- */
-int should_talk_with_mom(node_info *ninfo);
 
 /*
  *      copy_node_ptr_array - copy an array of jobs using a different set of
@@ -537,20 +527,6 @@ int
 set_res_on_host(char *res_name, char *res_value,
 	char *host, node_info *exclude, node_info **ninfo_arr);
 
-/*
- *	update_mom_resources - update resources set via mom_reources so all
- *			       vnodes on a host indirectly point to the
- *			       natural vnode
- *
- *	ASSUMPTION: only the 'natural' vnodes talk with mom
- *		    'natural' vnodes are vnodes whose host resource is the
- *		    same as its vnode name
- *
- *	  ninfo_arr - node array to update
- *
- *	returns 1 on success 0 on error
- */
-int update_mom_resources(node_info **ninfo_arr);
 
 /*
  *	can_fit_on_vnode - see if a chunk fit on one vnode in node list

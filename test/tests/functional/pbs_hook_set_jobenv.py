@@ -74,6 +74,7 @@ class TestPbsHookSetJobEnv(TestFunctional):
         Set environment variables
         """
         TestFunctional.setUp(self)
+        self.interactive = False
         # Set environment variables with special characters
         os.environ['TEST_COMMA'] = '1,2,3,4'
         os.environ['TEST_RETURN'] = """'3,
@@ -127,7 +128,12 @@ class TestPbsHookSetJobEnv(TestFunctional):
             os.remove(self.job_out1_tempfile)
             os.remove(self.job_out2_tempfile)
             os.remove(self.job_out3_tempfile)
-
+            for _file in [self.job_out1_tempfile, self.job_out2_tempfile,
+                          self.job_out3_tempfile]:
+                rc = self.du.isfile(hostname=self.mom.shortname,
+                                    path=_file, sudo=True)
+                if rc:
+                    self.du.rm(self.mom.hostname, _file)
         except OSError:
             pass
 
@@ -136,6 +142,10 @@ class TestPbsHookSetJobEnv(TestFunctional):
         Parse the output file and store the
         variable list in a dictionary
         """
+        if (not self.du.is_localhost(self.mom.hostname)) and self.interactive:
+            srchost = self.mom.hostname
+            destpath = self.du.get_tempdir(self.server.hostname)
+            self.du.run_copy(srchost=srchost, src=outputfile, dest=destpath)
 
         with open(outputfile) as fd:
             pkey = ""
@@ -196,9 +206,11 @@ class TestPbsHookSetJobEnv(TestFunctional):
         if (daemon == "mom"):
             self.logger.info("Matching in mom logs")
             logfile_type = self.mom
+            host = self.mom.hostname
         elif (daemon == "server"):
             self.logger.info("Matching in server logs")
             logfile_type = self.server
+            host = self.server.hostname
         else:
             self.logger.info("Provide a valid daemon name; server or mom")
             return
@@ -208,8 +220,9 @@ class TestPbsHookSetJobEnv(TestFunctional):
         nomatch_msg = ' No match for '
         for msg in logmsg:
             for attempt in range(1, 61):
-                lines = self.server.log_lines(
-                    logfile_type, starttime=self.server.ctime)
+                lines = self.server.log_lines(logfile_type,
+                                              starttime=self.server.ctime,
+                                              host=host, n='ALL')
                 match = logutils.match_msg(lines, msg=msg)
                 if match:
                     # Dont want the test to pass if there are
@@ -634,6 +647,7 @@ pbs.logmsg(pbs.LOG_DEBUG,"Variable_List is %s" % (j.Variable_List,))
         variable list with execjob_launch hook
         """
 
+        self.interactive = True
         self.exclude_env += ['happy']
 
         # submit an interactive job without hook
@@ -830,6 +844,7 @@ haa'"""
         job even when there is no hook present
         """
 
+        self.interactive = True
         os.environ['BROL'] = 'hii\\\haha'
         os.environ['BROL1'] = """'hii
 haa'"""

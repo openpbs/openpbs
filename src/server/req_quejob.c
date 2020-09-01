@@ -1003,7 +1003,7 @@ req_quejob(struct batch_request *preq)
 	 * job structure and attributes already set up.
 	 */
 
-	rc = svr_chkque(pj, pque, preq->rq_host, MOVE_TYPE_Move);
+	rc = svr_chkque(pj, pque, pj->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str, MOVE_TYPE_Move);
 	if (rc) {
 		if (pj->ji_clterrmsg)
 			reply_text(preq, rc, pj->ji_clterrmsg);
@@ -1941,13 +1941,14 @@ locate_new_job(struct batch_request *preq, char *jobid)
  * @param[in] cmd - The command that is to be notified to the scheduler
  * @param[in] resv - The reservation related to the command
  *
- * @return void
+ * @return Number of schedulers notified.
  *
  */
-void notify_scheds_about_resv(int cmd, resc_resv *resv)
+int notify_scheds_about_resv(int cmd, resc_resv *resv)
 {
 	pbs_sched *psched;
 	char *partition_name = NULL;
+	int num_scheds = 0;
 
 	if (resv != NULL) {
 		if (resv->ri_wattr[(int)RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
@@ -1967,6 +1968,7 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 			if (strcmp(partition_name, DEFAULT_PARTITION) == 0) {
 				if (dflt_scheduler->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
 					set_scheduler_flag(cmd, dflt_scheduler);
+					num_scheds++;
 				}
 				break;
 			} else {
@@ -1974,6 +1976,7 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 				tmp = find_sched_from_partition(partition_name);
 				if (tmp != NULL && (tmp->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1)) {
 					set_scheduler_flag(cmd, tmp);
+					num_scheds++;
 					break;
 				}
 			}
@@ -1982,10 +1985,11 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 				set_scheduler_flag(cmd, psched);
 				if (resv != NULL)
 					resv->req_sched_count++;
+				num_scheds++;
 			}
 		}
 	}
-	return;
+	return num_scheds;
 }
 
 /**

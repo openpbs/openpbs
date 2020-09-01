@@ -483,7 +483,10 @@ main(int argc, char *argv[])
 			/* start db only if it was not already running */
 			failcode = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
 			if (failcode != 0) {
-				pbs_db_get_errmsg(failcode, &db_errmsg);
+				if (failcode == -1)
+					pbs_db_get_errmsg(PBS_DB_ERR, &db_errmsg);
+				else
+					pbs_db_get_errmsg(failcode, &db_errmsg);
 				if (db_errmsg)
 					fprintf(stderr, "%s: Failed to start PBS dataservice:[%s]\n", prog, db_errmsg);
 				else

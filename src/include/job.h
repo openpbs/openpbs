@@ -837,6 +837,7 @@ task_find	(job		*pjob,
 #define JOB_CKPT_SUFFIX    ".CK"	/* job checkpoint file */
 #define JOB_TASKDIR_SUFFIX ".TK"	/* job task directory */
 #define JOB_BAD_SUFFIX     ".BD"	/* save bad job file */
+#define JOB_DEL_SUFFIX     ".RM"	/* file pending to be removed */
 
 /*
  * Job states are defined by POSIX as:
@@ -1092,7 +1093,7 @@ extern int   pbsd_init_job(job *pjob, int type);
 
 extern void del_job_related_file(job *pjob, char *fsuffix);
 #ifdef PBS_MOM
-extern void del_job_dirs(job *pjob);
+extern void del_job_dirs(job *pjob, char *taskdir);
 extern void del_chkpt_files(job *pjob);
 #endif
 
