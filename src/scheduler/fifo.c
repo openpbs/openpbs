@@ -1733,7 +1733,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						if (!ns[i]->ninfo->is_free)
 							npar[j]->free_nodes--;
 						sort_nodepart = 1;
-						update_buckets_for_node_array(npar[j]->bkts, npar[j]->ninfo_arr);
+						update_buckets_for_node(npar[j]->bkts, ns[i]->ninfo);
 					}
 				}
 				/* if the node is being provisioned, it's brought down in
