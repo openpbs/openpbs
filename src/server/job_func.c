@@ -519,6 +519,7 @@ job_free(job *pj)
 			if (psubj)
 				psubj->ji_parentaj = NULL;
 		}
+		free_range_list(pj->ji_ajtrk->trk_rlist);
 		free(pj->ji_ajtrk);
 		pj->ji_ajtrk = NULL;
 	}

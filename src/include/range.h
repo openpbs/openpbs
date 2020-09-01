@@ -66,11 +66,8 @@ typedef struct range
 /*
  *	new_range - allocate and initialize a range structure
  */
-#ifdef NAS /* localmod 005 */
+
 range *new_range(int start, int end, int step, int count, range *next);
-#else
-range *new_range(int start, int end, int step, int count, range *next);
-#endif /* localmod 005 */
 
 /*
  *	free_range_list - free a list of ranges

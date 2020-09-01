@@ -267,9 +267,9 @@ range_parse(char *str)
 
 			p = endp;
 		}
-	} while (!ret && *endp == ',');
+	} while (!ret);
 
-	if (ret) {
+	if (ret == -1) {
 		free_range_list(head);
 		return NULL;
 	}
@@ -428,10 +428,10 @@ range_remove_value(range **r, int val)
 			cur->count--;
 			done = 1;
 		} else if ((val > cur->start) && (val < cur->end)) {
-			range * next_range = NULL;
-			if ((next_range = new_range(0, 0, 1, 0, NULL)) == NULL) {
+			range *next_range = NULL;
+			if ((next_range = new_range(0, 0, 1, 0, NULL)) == NULL)
 				return 0;
-			}
+				
 			next_range->count = (cur->end - val)/cur->step;
 			next_range->step = cur->step;
 			next_range->start = val + cur->step;
@@ -566,7 +566,7 @@ range_add_value(range **r, int val, int range_step)
 			return 1;
 		} else {
 			/* Add new range at the end with same value */
-			range * end_range = NULL;
+			range *end_range = NULL;
 			if ((end_range = new_range(val, val, cur->step, 1, NULL)) == NULL) {
 				return 0;
 			}
@@ -635,6 +635,9 @@ parse_subjob_index(char *pc, char **ep, int *pstart, int *pend, int *pstep, int 
 	int end;
 	int step;
 	char *eptr;
+	
+	if (pc == NULL)
+		return (-1);
 
 	while (isspace((int) *pc) || (*pc == ','))
 		pc++;
@@ -739,7 +742,7 @@ range_to_str(range *r)
 		else
 			sprintf(numbuf, "%d", cur_r->start);
 
-		if (cur_r->step > 1) {
+		if (cur_r->step > 1 && cur_r->count > 1 ) {
 			if (pbs_strcat(&range_str, &size, numbuf) == NULL)
 				return "";
 			sprintf(numbuf, ":%d", cur_r->step);
