@@ -63,74 +63,77 @@ common_libs = \
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 
+
 libpbs_sched_a_SOURCES = \
 	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
-	buckets.c \
-	buckets.h \
-	check.c \
-	check.h \
-	config.h \
-	constant.h \
-	data_types.h \
-	dedtime.c \
-	dedtime.h \
-	fairshare.c \
-	fairshare.h \
-	fifo.c \
-	fifo.h \
-	get_4byte.c \
-	globals.c \
-	globals.h \
-	job_info.c \
-	job_info.h \
-	limits.c \
-	misc.c \
-	misc.h \
-	multi_threading.c \
-	multi_threading.h \
-	node_info.c \
-	node_info.h \
-	node_partition.c \
-	node_partition.h \
-	parse.c \
-	parse.h \
-	pbs_bitmap.c \
-	pbs_bitmap.h \
-	prev_job_info.c \
-	prev_job_info.h \
-	prime.c \
-	prime.h \
-	queue.c \
-	queue.h \
-	queue_info.c \
-	queue_info.h \
-	resource.h \
-	resource_resv.c \
-	resource_resv.h \
-	resv_info.c \
-	resv_info.h \
-	resource.c \
-	server_info.c \
-	server_info.h \
-	simulate.c \
-	simulate.h \
-	sort.c \
-	sort.h \
-	state_count.c \
-	state_count.h \
-	site_code.c \
-	site_code.h \
-	site_data.h
+	buckets.cpp \
+	buckets.hpp \
+	check.cpp \
+	check.hpp \
+	config.hpp \
+	constant.hpp \
+	data_types.hpp \
+	dedtime.cpp \
+	dedtime.hpp \
+	fairshare.cpp \
+	fairshare.hpp \
+	fifo.cpp \
+	fifo.hpp \
+	get_4byte.cpp \
+	globals.cpp \
+	globals.hpp \
+	job_info.cpp \
+	job_info.hpp \
+	limits.cpp \
+	misc.cpp \
+	misc.hpp \
+	multi_threading.cpp \
+	multi_threading.hpp \
+	node_info.cpp \
+	node_info.hpp \
+	node_partition.cpp \
+	node_partition.hpp \
+	parse.cpp \
+	parse.hpp \
+	pbs_bitmap.cpp \
+	pbs_bitmap.hpp \
+	prev_job_info.cpp \
+	prev_job_info.hpp \
+	prime.cpp \
+	prime.hpp \
+	queue.cpp \
+	queue.hpp \
+	queue_info.cpp \
+	queue_info.hpp \
+	resource.cpp \
+	resource.hpp \
+	resource_resv.cpp \
+	resource_resv.hpp \
+	resv_info.cpp \
+	resv_info.hpp \
+	server_info.cpp \
+	server_info.hpp \
+	simulate.cpp \
+	simulate.hpp \
+	sort.cpp \
+	sort.hpp \
+	state_count.cpp \
+	state_count.hpp \
+	site_code.cpp \
+	site_code.hpp \
+	site_data.hpp
 
 sbin_PROGRAMS = pbs_sched pbsfs
 
 pbs_sched_CPPFLAGS = ${common_cflags}
+#pbs_sched_CXXFLAGS = ${common_cflags}
 pbs_sched_LDADD = ${common_libs} @libundolr_lib@
-pbs_sched_SOURCES = pbs_sched.c
+pbs_sched_SOURCES = pbs_sched.cpp
 
 pbsfs_CPPFLAGS = ${common_cflags}
+#pbsfs_CXXFLAGS = ${common_cflags}
 pbsfs_LDADD = ${common_libs}
-pbsfs_SOURCES = pbsfs.c
+pbsfs_SOURCES = pbsfs.cpp
 
 dist_sysconf_DATA = \
 	pbs_dedicated \

@@ -98,7 +98,7 @@ typedef struct resource_def {
 	char *rs_name;
 	int (*rs_decode)(attribute *prsc, char *name, char *rn, char *val);
 	int (*rs_encode)(const attribute *prsv, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl);
-	int (*rs_set)(attribute *old, attribute *new, enum batch_op op);
+	int (*rs_set)(attribute *old, attribute *new_, enum batch_op op);
 	int (*rs_comp)(attribute *prsc, attribute *with);
 	void (*rs_free)(attribute *prsc);
 	int (*rs_action)(resource *presc, attribute *pat, void *pobj, int type, int actmode);
@@ -159,7 +159,7 @@ struct resc_type_map {
 	int   (*rtm_decode)(attribute *prsc, char *name, char *rn, char *val);
 	int   (*rtm_encode)(const attribute *prsv, pbs_list_head *phead, char *atname,
 		char *rsname, int mode, svrattrl **rtnl);
-	int   (*rtm_set)(attribute *old, attribute *new, enum batch_op op);
+	int   (*rtm_set)(attribute *old, attribute *new_, enum batch_op op);
 	int   (*rtm_comp)(attribute *prsc, attribute *with);
 	void  (*rtm_free)(attribute *prsc);
 };

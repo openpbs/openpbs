@@ -797,7 +797,7 @@ pbs_connect_noblk(char *server, int tout)
 	struct batch_reply *reply;
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
-	struct addrinfo *aip, *pai;
+	struct addrinfo *aip, *pai = NULL;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
 	short int connect_err = 0;

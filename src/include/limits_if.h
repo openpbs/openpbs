@@ -149,7 +149,7 @@ extern int	is_oldlimattr(const struct attrl *);
  * @retval NULL		: attribute value is not an old limit attribute
  *
  */
-extern char *	convert_oldlim_to_new(const struct attrl *a);
+extern const char *	convert_oldlim_to_new(const struct attrl *a);
 
 /**	@fn int lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
  *	@brief set resource or run-time limits
@@ -188,7 +188,7 @@ extern int	lim_setlimits(const struct attrl *, enum limtype, void *);
  *
  *	@par MT-safe:	No
  */
-extern int	check_limits(server_info *, queue_info *, resource_resv *,
+extern enum sched_error	check_limits(server_info *, queue_info *, resource_resv *,
 	schd_error *, unsigned int);
 
 /**	@fn int check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
@@ -240,7 +240,7 @@ void update_soft_limits(server_info *, queue_info *, resource_resv *);
  *		the counts structure
  * @return	int
  */
-int find_preempt_bits(counts *, char *, resource_resv *);
+int find_preempt_bits(counts *, const char *, resource_resv *);
 #ifdef	__cplusplus
 }
 #endif

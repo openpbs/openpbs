@@ -75,13 +75,14 @@ cp *.tar.gz ${rpm_dir}/SOURCES
 cp ../*-rpmlintrc ${rpm_dir}/SOURCES
 cp *.spec ${rpm_dir}/SPECS
 cflags="-g -O2 -Wall -Werror"
+cxxflags="-g -O2 -Wall"
 if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
-	CFLAGS="${cflags} -Wno-unused-result" rpmbuild -ba --nodeps *.spec --with ptl
+	CFLAGS="${cflags} -Wno-unused-result" CXXFLAGS="${cxxflags} -Wno-unused-result" rpmbuild -ba --nodeps *.spec --with ptl
 else
 	if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
-		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl -D "_with_swig ${swig_opt}"
+		CFLAGS="${cflags}" CXXFLAGS="${cxxflags}" rpmbuild -ba *.spec --with ptl -D "_with_swig ${swig_opt}"
 	else
-		CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl
+		CFLAGS="${cflags}" CXXFLAGS="${cxxflags}" rpmbuild -ba *.spec --with ptl
 	fi
 fi
 

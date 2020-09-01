@@ -55,6 +55,11 @@ static pbs_dis_buf_t *dis_get_writebuf(int);
 static int dis_resize_buf(pbs_dis_buf_t *, size_t);
 static int transport_chan_is_encrypted(int);
 
+pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
+int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
+int (*pfn_transport_recv)(int, void *, int);
+int (*pfn_transport_send)(int, void *, int);
+
 /**
  * @brief
  * 	transport_chan_set_ctx_status - set auth context status tcp chan assosiated with given fd

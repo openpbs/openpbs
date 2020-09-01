@@ -42,6 +42,10 @@
 #ifndef _PBS_PYTHON_DEF
 #define _PBS_PYTHON_DEF
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -611,5 +615,9 @@ extern void
 hook_output_param_init(hook_output_param_t *hook_output);
 
 /* -- END PBS Server/Python implementations -- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _PBS_PYTHON_DEF */

@@ -47,6 +47,12 @@
 #ifndef PBS_SHARE
 #define PBS_SHARE
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "limits.h"
+
 #include "pbs_ifl.h"
 
 /* Formula special case constants */
@@ -119,4 +125,7 @@ struct preempt_ordering
 	enum preempt_method order[PREEMPT_METHOD_HIGH];/* the order to preempt jobs */
 };
 
+#ifdef __cplusplus
+}
+#endif
 #endif

@@ -44,6 +44,11 @@
  **	connecting to and communicating with the resource monitor.
  */
 
+#ifdef	__cplusplus
+extern "C"  {
+#endif
+
+
 int	openrm		(char *, unsigned int);
 int	closerm		(int);
 int	downrm		(int);
@@ -54,3 +59,7 @@ char*	getreq		(int);
 int	flushreq	(void);
 int	activereq	(void);
 void	fullresp	(int);
+
+#ifdef	__cplusplus
+}
+#endif
