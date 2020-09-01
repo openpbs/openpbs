@@ -3615,16 +3615,13 @@ static handler_ret_t
 set_jobdir_root(char *value)
 {
 	char	*cleaned_value;
-	char    *endptr;
+	char    *savep = NULL;
+	char	*directive;
+	char	*p;
 
-	endptr = value;
-	while ((!isspace((int)*endptr)) && *endptr)
-		endptr++;
-	if (*endptr != '\0') {
-		*endptr = '\0';
-		endptr++;
-	}
-
+	p = value;
+	value = strtok_r(p, " ", &savep);
+	directive = strtok_r(NULL, " ", &savep);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, __func__, value);
 	cleaned_value = remove_quotes(value); /* remove quotes if any present */
@@ -3655,8 +3652,8 @@ set_jobdir_root(char *value)
 	strcpy(pbs_jobdir_root, cleaned_value);
 	free(cleaned_value);
 
-	if (*endptr != '\0') {
-		if (strcmp(endptr, "shared") == 0)
+	if (directive != NULL) {
+		if (strcmp(directive, "shared") == 0)
 			pbs_jobdir_root_shared = TRUE;
 	}
 	return HANDLER_SUCCESS;

@@ -61,17 +61,16 @@ class TestQsubOptionsArguments(TestFunctional):
         self.remove_jobdir = False
 
     def tearDown(self):
+        TestFunctional.tearDown(self)
         if self.remove_jobdir:
             for mom in self.moms.values():
                 for d in self.jobdir:
                     if d.startswith(self.jobdir_root):
                         self.logger.info('%s:remove jobdir %s' % (
                                          mom.hostname, d))
-                        cmd = ['/bin/rm', '-rf', d]
-                        self.du.run_cmd(mom.hostname, cmd=cmd,
-                                        sudo=True)
+                        self.du.rm(hostname=mom.shortname, sudo=True,
+                                   path=d, recursive=True, force=True)
             self.remove_jobdir = False
-        TestFunctional.tearDown(self)
 
     def validate_error(self, err):
         ret_msg = 'qsub: Failed to save job/resv, '\
@@ -204,12 +203,11 @@ bhtiusabsdlg' % (os.environ['HOME'])
         momA = self.moms.values()[0]
         momB = self.moms.values()[1]
 
+        loglevel = {'$logevent': 4095}
+        momB.add_config(loglevel)
         c = {'$jobdir_root': '%s shared' % self.jobdir_root}
-        l = {'$logevent': 4095}
         for mom in [momA, momB]:
             mom.add_config(c)
-            if mom == momB:
-                mom.add_config(l)
             mom.restart()
 
         a = {'Resource_List.select': '2:ncpus=1',
@@ -230,18 +228,16 @@ bhtiusabsdlg' % (os.environ['HOME'])
         ret = self.server.du.run_cmd(self.server.hostname, cmd=rel_cmd,
                                      runas=TEST_USER)
         self.assertEqual(ret['rc'], 0)
-        file_exists_cmd = '"import os; print(os.path.exists(\'%s\'))"'
-        pbs_python = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                  "bin", "pbs_python")
-        file_exists = [pbs_python, "-c", file_exists_cmd % jobdir]
-        ret = self.du.run_cmd(momB.hostname, cmd=file_exists, sudo=True)
         # sister mom has preserved the file
         errmsg = "sister mom deleted jobdir %s" % jobdir
-        self.assertEqual(''.join(ret['out']), 'True', errmsg)
+        rc = self.du.isdir(hostname=momB.shortname, path=jobdir,
+                           sudo=True)
+        self.assertEqual(rc, True, errmsg)
         msg = "shared jobdir %s to be removed by primary mom" % jobdir
         momB.log_match(msg)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
-        ret = self.du.run_cmd(momA.hostname, cmd=file_exists, sudo=True)
         # primary mom has deleted the file
         errmsg = "MS mom preserved jobdir %s" % jobdir
-        self.assertNotEqual(''.join(['out']), 'True', errmsg)
+        rc = self.du.isdir(hostname=momA.shortname, path=jobdir,
+                           sudo=True)
+        self.assertEqual(rc, False, errmsg)

@@ -1219,7 +1219,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid, int check_shared)
 	    (pbs_jobdir_root[0] != '\0') &&
 	    pbs_jobdir_root_shared &&
 	    (strncmp(pbs_jobdir_root, jobdir, strlen(pbs_jobdir_root)) == 0)) {
-		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid?jobid:__func__, "shared jobdir %s to be removed by primary mom", jobdir);
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid?jobid:"", "shared jobdir %s to be removed by primary mom", jobdir);
 
 		return;
 	}
