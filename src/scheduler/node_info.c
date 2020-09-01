@@ -1974,8 +1974,6 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 		pbs_bitmap_bit_on(bkt->busy_pool->truth, ind);
 		bkt->busy_pool->truth_ct++;
 	}
-
-
 }
 
 /**

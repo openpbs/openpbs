@@ -227,6 +227,12 @@ void update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags)
 /* Sort all placement sets (server's psets, queue's psets, and hostsets) */
 void sort_all_nodepart(status *policy, server_info *sinfo);
 
+/*
+ * update the node buckets associated with a node partition on
+ * job/resv run/end
+ */
+void update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr);
+
 #ifdef	__cplusplus
 }
 #endif
