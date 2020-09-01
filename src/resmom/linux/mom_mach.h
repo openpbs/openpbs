@@ -49,6 +49,9 @@ extern "C" {
  */
 
 
+#ifndef PBS_MACH
+#define PBS_MACH "linux"
+#endif /* PBS_MACH */
 
 #ifndef MOM_MACH
 #define	MOM_MACH "linux"
@@ -63,21 +66,10 @@ extern "C" {
 #define	PBS_SUPPORT_SUSPEND 1
 #define	task	pbs_task
 
-#if	MOM_CSA || MOM_ALPS
+#if	MOM_ALPS
 #include <sys/types.h>
 #include <dlfcn.h>
 #include "/usr/include/job.h"
-#if	MOM_CSA
-#include <csaacct.h>
-#include <csa_api.h>
-#endif	/* MOM_CSA */
-#endif	/* MOM_CSA || MOM_ALPS */
-
-#if     MOM_BGL
-#include <rm_api.h>
-#endif  /* MOM_BGL */
-
-#if	MOM_ALPS
 #include <basil.h>
 #endif	/* MOM_ALPS */
 
@@ -101,11 +93,8 @@ struct startjob_rtn {
 	int   sj_code;		/* error code	*/
 	pid_t sj_session;	/* session	*/
 
-#if	MOM_CSA || MOM_ALPS
-	jid_t	sj_jid;
-#endif	/* MOM_CSA or MOM_ALPS */
-
 #if	MOM_ALPS
+	jid_t	sj_jid;
 	long			sj_reservation;
 	unsigned long long	sj_pagg;
 #endif	/* MOM_ALPS */
@@ -126,29 +115,9 @@ extern void	starter_return(int, int, int, struct startjob_rtn *);
 extern void	set_globid(job *, struct startjob_rtn *);
 extern void	mom_topology(void);
 
-#if	MOM_CSA
-extern	int	job_facility_present;
-extern	int	job_facility_enabled;
-extern	int	acct_facility_present;
-extern	int	acct_facility_active;
-extern	int	acct_facility_wkmgt_recs;
-extern	int	acct_facility_wkmgt_active;
-extern	int	acct_facility_csa_active;
-extern	int	acct_dmd_wkmg;
-extern	jid_t	(*jc_create)();
-extern	jid_t	(*jc_getjid)();
-extern	int	(*p_csa_check)(struct csa_check_req *);
-extern	int	(*p_csa_wracct)(struct csa_wra_req *);
-extern	void	write_wkmg_record(int, int, job *);
-extern	int	find_in_lib(void*, char*, char*, void**);
-extern	char	*get_versioned_libname(int);
-#endif	/* MOM_CSA */
-
-#if	MOM_CSA || MOM_ALPS
-extern	void	ck_acct_facility_present(void);
-#endif	/* MOM_CSA or MOM_ALPS */
-
 #if	MOM_ALPS
+extern	void	ck_acct_facility_present(void);
+
 /*
  *	Interface to the Cray ALPS placement scheduler. (alps.c)
  */
@@ -169,133 +138,6 @@ extern void	alps_system_KNL(void);
 extern void	system_to_vnodes_KNL(void);
 #endif	/* MOM_ALPS */
 
-#if 	MOM_BGL
-#define	CPUS_PER_CNODE 		2
-#define	MEM_PER_CNODE  		(512*1024)	/* in kb */
-
-#define	PNAME "partition"
-#define PSET_SUFFIX "partition="
-#define	CARD_DELIM "#"				/* vnode_name delimeter as in */
-/* <bpid>#<qcard>#<ncard_id> */
-
-#define       BGL_ENVIRONMENT_VARS            "BRIDGE_CONFIG_FILE, DB_PROPERTY, MMCS_SERVER_IP, DB2DIR, DB2INSTANCE"
-
-#define BRIDGE_CONFIG_FILE	"/bgl/BlueLight/ppcfloor/bglsys/bin/bridge.config"
-#define DB_PROPERTY		"/bgl/BlueLight/ppcfloor/bglsys/bin/db.properties"
-
-#define DB2DIR_GET_CMD		"source /bgl/BlueLight/ppcfloor/bglsys/bin/db2profile; echo $DB2DIR"
-#define DB2INSTANCE_GET_CMD	"source /bgl/BlueLight/ppcfloor/bglsys/bin/db2profile; echo $DB2INSTANCE"
-
-#define	BGLADMIN		"bglsysdb"  /* special DB2 accounts */
-#define	BGLCLIENT		"bgdb2cli"
-
-typedef enum  {				/* BGL vnode states */
-	BGLVN_UNKNOWN,
-	BGLVN_FREE,
-	BGLVN_BUSY,
-	BGLVN_RESERVE,
-	BGLVN_DOWN
-} bgl_vnstate;
-
-/* List of vnodes and their partitions */
-struct bgl_vnode {
-	struct bgl_vnode *nextptr;
-	char    *vnode_name;  /* i.e. <bpid>#<quarter-id>#<nodecard-id> */
-	bgl_vnstate state;
-	int	num_cnodes;	/* resources_available.ncpus =          */
-	/*      num_cnodes * CPUS_PER_CNODE     */
-	/* will be sent to the server on a      */
-	/* vnodemap update.                     */
-	unsigned long amt_mem;	/* in kb */
-	char    *part_list;
-};
-
-/* bgl_vnode functions */
-extern struct bgl_vnode *bgl_vnode_create(char *vnode_name);
-extern bgl_vnstate bgl_vnode_get_state(struct bgl_vnode *head,
-	char *vnode_name);
-extern int bgl_vnode_get_num_cnodes(struct bgl_vnode *head, char *vnode_name);
-extern unsigned long bgl_vnode_get_amt_mem(struct bgl_vnode *head,
-	char *vnode_name);
-extern char *bgl_vnode_get_part_list(struct bgl_vnode *head, char *vnode_name);
-extern char *bgl_vnode_get_part_list_spanning_vnode(struct bgl_vnode *head,
-	char *vnode_name, char *bpid);
-extern struct bgl_vnode *bgl_vnode_put_state(struct bgl_vnode *head,
-	char *vnode_name, bgl_vnstate state);
-extern struct bgl_vnode *bgl_vnode_put_num_cnodes(struct bgl_vnode *head,
-	char *vnode_name, int num_cnodes);
-extern struct bgl_vnode *bgl_vnode_put_amt_mem(struct bgl_vnode *head,
-	char *vnode_name, unsigned long amt_mem);
-extern struct bgl_vnode *bgl_vnode_put_part_list(struct bgl_vnode *head,
-	char *vnode_name, char *part);
-
-extern void bgl_vnode_free(struct bgl_vnode *head);
-extern void bgl_vnode_print(struct bgl_vnode *head);
-
-/* List of jobs (PBS and BGL)  and their assigned partition */
-struct bgl_job {
-	struct bgl_job *nextptr;
-	db_job_id_t bgl_jobid;
-	char	*pbs_jobid;			/* if assigned to PBS */
-	char    *partition;
-};
-
-/* bgl_job functions */
-extern struct bgl_job *bgl_job_create_given_bgl_jobid(db_job_id_t bgl_jobid);
-extern struct bgl_job *bgl_job_create_given_pbs_jobid(char *pbs_jobid);
-
-extern char *bgl_job_get_partition_given_bgl_jobid(struct bgl_job *head,
-	db_job_id_t bgl_jobid);
-extern char *bgl_job_get_partition_given_pbs_jobid(struct bgl_job *head,
-	char *pbs_jobid);
-extern db_job_id_t bgl_job_get_bgl_jobid(struct bgl_job *head, char *part);
-extern char *bgl_job_get_pbs_jobid(struct bgl_job *head, char *part);
-
-extern struct bgl_job *bgl_job_put_partition_given_bgl_jobid(\
-		struct bgl_job *head, db_job_id_t bgl_jobid, char *part);
-extern struct bgl_job *bgl_job_put_partition_given_pbs_jobid(\
-			struct bgl_job *head, char *pbs_jobid, char *part);
-
-extern struct bgl_job *bgl_job_put_pbs_jobid(struct bgl_job *head, char *part,
-	char *pbs_jobid);
-
-extern void bgl_job_free(struct bgl_job *head);
-extern void bgl_job_print(struct bgl_job *head);
-
-/* List of partitions and sizes */
-struct bgl_partition {
-	struct bgl_partition *nextptr;
-	char    *part_name;
-	int     num_cnodes;
-};
-
-/* bgl_partition functions */
-extern struct bgl_partition *bgl_partition_create(char *part_name);
-extern int bgl_partition_get_num_cnodes(struct bgl_partition *head, char *part_name);
-extern struct bgl_partition *bgl_partition_put_part_name(\
-					struct bgl_partition *head,
-	char *part_name);
-extern void bgl_partition_free(struct bgl_partition *head);
-extern void bgl_partition_print(struct bgl_partition *head);
-
-extern rm_partition_state_t get_bgl_partition_state(char *part_name);
-extern int get_bgl_partition_size(char *part_name, int cnodes_per_bp,
-	int cnodes_per_ncard);
-extern struct bgl_job *get_bgl_jobs(void);
-extern int verify_job_bgl_partition(job *pjob, int *job_error_code);
-extern void evaluate_vnodes_phys_state(struct bgl_vnode **p_bglvns,
-	char *vn_list, int *num_vns_down, int *num_vns_up, char **down_vn_list);
-extern char * job_bgl_partition(job *pjob);
-extern int job_bgl_delete(job *pjob);
-
-/* Global variables */
-extern char    *reserve_bglpartitions;    	 /* comma-separated list of reserved */
-extern struct bgl_partition 	*bglpartitions;       /* unreserved partitions */
-extern struct bgl_partition 	*bglpartitions_down;  /* partitions marked down */
-extern struct bgl_vnode 	*bglvnodes;           /* vnodes in the system */
-extern	char    		*downed_bglvnodes;    /* vnodes phys. down */
-extern struct bgl_job 		*stuck_bgljobs;       /* "hanging" BGL jobs */
-#endif	/* MOM_BGL */
 
 #define	COMSIZE		12
 typedef struct proc_stat {

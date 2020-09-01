@@ -1157,7 +1157,6 @@ void
 complete_running(job *jobp)
 {
 	job    *parent;
-	time_t	wall;
 
 	if (jobp->ji_qs.ji_stime != 0)
 		return;		/* already called for this incarnation */
@@ -1208,10 +1207,6 @@ complete_running(job *jobp)
 	jobp->ji_qs.ji_stime = time_now;
 	jobp->ji_wattr[(int)JOB_ATR_stime].at_val.at_long = time_now;
 	jobp->ji_wattr[(int)JOB_ATR_stime].at_flags |= ATR_SET_MOD_MCACHE;
-
-	/* compute an upper bound on job end time if possible */
-	if ((wall = get_wall(jobp)) != -1)
-		jobp->ji_qs.ji_endtBdry = jobp->ji_qs.ji_stime + wall;
 
 	/*
 	 * if job is in substate PROVISION, set to PRERUN.

@@ -117,9 +117,9 @@
 #include	"work_task.h"
 #include	"pbs_share.h"
 #include	"mom_server.h"
-#if	MOM_CSA || MOM_ALPS
+#if	MOM_ALPS
 #include	"mom_mach.h"
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 #include	"pbs_reliable.h"
 #ifdef PMIX
 #include	"mom_pmix.h"
@@ -505,18 +505,11 @@ static handler_ret_t	set_reject_root_scripts(char *);
 static handler_ret_t	set_report_hook_checksums(char *);
 static handler_ret_t	setmaxload(char *);
 static handler_ret_t	set_max_poll_downtime(char *);
-#if	MOM_BGL
-static handler_ret_t	set_bgl_reserve_partitions(char *);
-#endif	/* MOM_BGL */
 static handler_ret_t	usecp(char *);
 static handler_ret_t	wallmult(char *);
 #ifdef NAS /* localmod 015 */
 static handler_ret_t	set_spoolsize(char *);
 #endif /* localmod 015 */
-
-#if defined(__sgi)
-extern handler_ret_t	set_checkpoint_upgrade(char *);
-#endif /* __sgi */
 
 static struct	specials {
 	char		*name;
@@ -543,13 +536,7 @@ static struct	specials {
 	{ "alps_confirm_switch_timeout",set_alps_confirm_switch_timeout },
 #endif	/* MOM_ALPS */
 	{ "attach_allow",		set_attach_allow },
-#if	MOM_BGL
-	{ "bgl_reserve_partitions",	set_bgl_reserve_partitions },
-#endif	/* MOM_BGL */
 	{ "checkpoint_path",		set_checkpoint_path },
-#if	defined(__sgi)
-	{ "checkpoint_upgrade",		set_checkpoint_upgrade },
-#endif	/* __sgi */
 	{ "clienthost",			addclient },
 	{ "configversion",		config_verscheck },
 	{ "cputmult",			cputmult },
@@ -2054,35 +2041,6 @@ addclient(char *name)
 		return HANDLER_SUCCESS;
 }
 
-#if	MOM_BGL
-/**
- * @brief
- *	sets reserve partitions.
- *
- * @param[in] part_list - partition list
- *
- * @return      handler_ret_t (return value)
- * @retval      HANDLER_FAIL(0)                 Failure
- * @retval      HANDLER_SUCCESS(1)              Success
- *
- */
-
-static handler_ret_t
-set_bgl_reserve_partitions(char *part_list)
-{
-	reserve_bglpartitions = strdup(part_list);
-	if (reserve_bglpartitions) {
-		sprintf(log_buffer, "bgl_reserve_partitions %s", part_list);
-		log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer);
-		return HANDLER_SUCCESS;
-	} else {
-		log_err(errno, __func__, "strdup failed");
-		return HANDLER_FAIL;
-	}
-
-}
-#endif	/* MOM_BGL */
-
 /**
  * @brief
  *	sets the log event
@@ -3123,15 +3081,6 @@ do_mom_action_script(int	ae,	/* index into action table */
 		}
 		mom_unnice();
 
-		if (set_mach_vars(pjob, &vtable) != 0) {
-			log_event(PBSEVENT_JOB | PBSEVENT_SECURITY,
-				PBS_EVENTCLASS_JOB,
-				LOG_ERR, pjob->ji_qs.ji_jobid,
-				"failed to setup dependent environment!");
-			free(args);
-			return -1;
-		}
-
 		/*
 		 ** Do the same operations as start_process() but we don't
 		 ** need to reset the global ID.
@@ -3145,8 +3094,8 @@ do_mom_action_script(int	ae,	/* index into action table */
 			 * ALPS jobs need a new PAGG when
 			 * being restarted.
 			 */
-			memset(pjob->ji_extended.ji_ext.ji_4jid, 0,
-				sizeof(pjob->ji_extended.ji_ext.ji_4jid));
+			memset(pjob->ji_extended.ji_ext.ji_jid, 0,
+				sizeof(pjob->ji_extended.ji_ext.ji_jid));
 #endif
 			j = set_job(pjob, &sjr);
 			if (j < 0) {
@@ -4843,14 +4792,6 @@ read_config(char *file)
 	int			i, j;
 	int			addconfig_ret;
 
-#if	MOM_BGL
-	if (reserve_bglpartitions) {
-		(void)free(reserve_bglpartitions);
-		reserve_bglpartitions = NULL;
-	}
-
-#endif
-
 	/*	initialize variable that can be set by config entries in case	*/
 	/*	they are removed and we are HUPped				*/
 
@@ -5647,12 +5588,6 @@ process_hup(void)
 
 	call_hup = HUP_CLEAR;
 
-#if	MOM_BGL
-	log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__,
-		"HUP is a no-op under Blue Gene mom");
-	return;
-#else
-
 	if (real_hup) {
 		log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__, "reset");
 		log_close(1);
@@ -5692,18 +5627,15 @@ process_hup(void)
 	cleanup();
 	initialize();
 
-#if	MOM_CSA || MOM_ALPS /* ALPS needs libjob support */
+#if	MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 
 	if (!real_hup)		/* no need to go on */
 		return;
-
-
-#endif	/* MOM_BGL */
 }
 
 /**
@@ -6666,23 +6598,11 @@ gettime(resource *pres)
  *
  */
 int
-local_getsize(resource *pres,
-#if defined(__sgi)
-	rlim64_t	*ret
-#else
-	u_long	*ret
-#endif	/* __sgi */
-	)
+local_getsize(resource *pres, u_long *ret)
 {
-#if defined(__sgi)
-	rlim64_t	value;
-#define PBS_RLIM_MAX (~(rlim64_t)0)
-#define PBS_RLIM_TYPE	rlim64_t
-#else
 	u_Long		value;
 #define PBS_RLIM_MAX ULONG_MAX
 #define PBS_RLIM_TYPE	u_long
-#endif	/* __sgi */
 
 	/*
 	 * If the resource pointer(pres) is NULL, then just
@@ -7049,11 +6969,7 @@ mom_over_limit(job *pjob)
 {
 	char		*pname;
 	int		retval;
-#if defined(__sgi)
-	rlim64_t	llvalue, llnum;
-#else
 	u_long		llvalue, llnum;
-#endif
 	u_long		value, num;
 	resource	*pres;
 	resource	*used;
@@ -7145,15 +7061,7 @@ mom_over_limit(job *pjob)
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
 			if (llnum > llvalue) {
-#if defined(__sgi)
-				sprintf(log_buffer,
-					"vmem %llukb exceeded limit %llukb",
-					llnum/1024, llvalue/1024);
-#else
-				sprintf(log_buffer,
-					"vmem %lukb exceeded limit %lukb",
-					llnum/1024, llvalue/1024);
-#endif
+				sprintf(log_buffer, "vmem %lukb exceeded limit %lukb", llnum/1024, llvalue/1024);
 				return (TRUE);
 			}
 		}
@@ -7167,15 +7075,7 @@ mom_over_limit(job *pjob)
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
 			if ((llnum > llvalue) && enforce_mem) {
-#if defined(__sgi)
-				sprintf(log_buffer,
-					"mem %llukb exceeded limit %llukb",
-					llnum/1024, llvalue/1024);
-#else
-				sprintf(log_buffer,
-					"mem %lukb exceeded limit %lukb",
-					llnum/1024, llvalue/1024);
-#endif
+				sprintf(log_buffer, "mem %lukb exceeded limit %lukb", llnum/1024, llvalue/1024);
 				return (TRUE);
 			}
 		}
@@ -7190,8 +7090,6 @@ mom_over_limit(job *pjob)
 		used = find_resc_entry(uattr, pres->rs_defin);
 		assert(pname != NULL);
 		assert(*pname != '\0');
-
-
 
 		/* The checks for cput and walltime (job wide limits) should
 		 * only be done on the MS.  We are leaving the Cray specific
@@ -8869,13 +8767,13 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
-#if	MOM_CSA || MOM_ALPS /* ALPS needs libjob support */
+#if	MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read and before MOM
 	 * forks so the exit value can be seen if there is a bad flag combination.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 
 	/* initialize the network interface */
 
@@ -9602,7 +9500,9 @@ main(int argc, char *argv[])
 		}
 
 		wait_time = default_next_task();
+#ifdef WIN32
 		end_proc();
+#endif
 
 		dorestrict_user();
 

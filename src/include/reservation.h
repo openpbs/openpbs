@@ -221,24 +221,9 @@ struct resc_resv {
 		time_t		ri_duration;		/* reservation duration */
 		time_t		ri_tactive;		/* time reservation became active */
 		int		ri_svrflags;		/* server flags */
-		int		ri_numattr;		/* number of attributes in list */
-		long		ri_resvTag;		/* local numeric reservation ID */
 		char		ri_resvID[PBS_MAXSVRRESVID+1]; /* reservation identifier */
 		char		ri_fileprefix[PBS_RESVBASE+1]; /* reservation file prefix */
 		char		ri_queue[PBS_MAXQRESVNAME+1];  /* queue used by reservation */
-
-		int		ri_un_type;		/* type of struct in "ri_un" area */
-
-		union   {
-
-			struct	{
-				int        ri_fromsock;
-				pbs_net_t  ri_fromaddr;
-
-			}  ri_newt;
-
-		}	    ri_un;
-
 	} ri_qs;
 
 	/*

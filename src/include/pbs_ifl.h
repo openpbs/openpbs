@@ -453,8 +453,6 @@ enum mgr_obj {
 #define MSG_OUT		1
 #define MSG_ERR		2
 
-
-#define BLUEGENE		"bluegene"
 /* SUSv2 guarantees that host names are limited to 255 bytes */
 #define PBS_MAXHOSTNAME		255	/* max host name length */
 #ifndef MAXPATHLEN

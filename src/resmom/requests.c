@@ -1568,13 +1568,6 @@ do_susres(job *pjob, int which)
 		return (PBSE_SYSTEM);
 	}
 
-
-#if     MOM_BGL
-	return (PBSE_NOSUP);     /* don't support suspend/resume as */
-	/* interferes with user running mpirun on a */
-	/* BGL partition; can't migrate "processes" */
-#endif  /* MOM_BGL */
-
 #if MOM_ALPS
 	/* if we're trying to suspend, then ask ALPS to suspend, before
 	 * we send the signal to the processes

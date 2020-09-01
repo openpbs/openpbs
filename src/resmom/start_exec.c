@@ -1526,7 +1526,6 @@ job_setup(job *pjob, struct passwd **pwdparm)
  *	If the read fails, log the fact and requeue the job.
  *	Otherwise, record that the job is now running:
  *	- the session id and global id (if one)
- *	- write any CSA records if CSA supported
  *	- set the state/substate to RUNNING
  *	- get a first sample of usage for this job and
  *	  return a status update to the Server so it knows the job is going.
@@ -1806,16 +1805,6 @@ record_finish_exec(int sd)
 		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
 		return;
 	}
-
-#if MOM_CSA
-	/*
-	 ** if capability present, cause two workload management
-	 ** records to be created for this phase of the job
-	 */
-
-	write_wkmg_record(WM_RECV, WM_RECV_NEW, pjob);
-	write_wkmg_record(WM_INIT, WM_INIT_START, pjob);
-#endif
 
 	/*
 	 * return from the starter indicated the job is a go ...
@@ -3677,12 +3666,6 @@ finish_exec(job *pjob)
 		bld_env_variables(&vtable, "PBS_JOBDIR", pwdp->pw_dir);
 	}
 
-	/* specific system related variables */
-	j = set_mach_vars(pjob, &vtable);
-	if (j != 0) {
-		starter_return(upfds, downfds, j, &sjr);	/* exits */
-	}
-
 	mom_unnice();
 
 	if (is_interactive) {
@@ -4901,10 +4884,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		bld_env_variables(&vtable, variables_else[13],
 			pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str);
 
-	if (set_mach_vars(pjob, &vtable) != 0) {
-		/* never reaches here */
-	}
-
 	if (pjob->ji_wattr[(int)JOB_ATR_umask].at_flags & ATR_VFLAG_SET) {
 		sprintf(buf, "%ld", pjob->ji_wattr[(int)JOB_ATR_umask].
 			at_val.at_long);
@@ -6030,10 +6009,6 @@ start_exec(job *pjob)
 	char hook_msg[HOOK_MSG_SIZE];
 	hook *last_phook = NULL;
 	unsigned int hook_fail_action = 0;
-
-#if	MOM_BGL
-	int             job_error_code;
-#endif/* MOM_BGL */
 
 	/* make sure we have an open tpp stream back to the server */
 	if (server_stream == -1)

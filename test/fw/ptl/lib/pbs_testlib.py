@@ -10431,12 +10431,11 @@ class Server(PBSService):
                          "attr_resource, attr_value, attr_flags)")
 
         job_stmt = ("INSERT INTO pbs.job (ji_jobid, ji_sv_name, ji_state, "
-                    "ji_substate,ji_svrflags, ji_numattr,"
-                    " ji_ordering, ji_priority, ji_stime, ji_endtbdry, "
-                    "ji_queue, ji_destin, ji_un_type, ji_momaddr, "
-                    "ji_momport, ji_exitstat, ji_quetime, ji_rteretry, "
-                    "ji_fromsock, ji_fromaddr, ji_4jid, ji_4ash, "
-                    "ji_credtype, ji_qrank, ji_savetm, ji_creattm)")
+                    "ji_substate, ji_svrflags, ji_stime, "
+                    "ji_queue, ji_destin, ji_un_type, "
+                    "ji_exitstat, ji_quetime, ji_rteretry, "
+                    "ji_fromsock, ji_fromaddr, ji_jid, "
+                    "ji_credtype, ji_savetm, ji_creattm)")
 
         all_stmts = []
 

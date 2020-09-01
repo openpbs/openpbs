@@ -68,23 +68,16 @@ db_prepare_job_sqls(void *conn)
 		"ji_state,"
 		"ji_substate,"
 		"ji_svrflags,"
-		"ji_numattr,"
-		"ji_ordering,"
-		"ji_priority,"
 		"ji_stime,"
-		"ji_endtBdry,"
 		"ji_queue,"
 		"ji_destin,"
 		"ji_un_type,"
-		"ji_momaddr,"
-		"ji_momport,"
 		"ji_exitstat,"
 		"ji_quetime,"
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
-		"ji_4ash,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"ji_savetm,"
@@ -92,40 +85,31 @@ db_prepare_job_sqls(void *conn)
 		"attributes"
 		") "
 		"values ($1, $2, $3, $4, $5, $6, $7, $8, $9, "
-		"$10, $11, $12, $13,"
-		"$14, $15, $16, $17, $18, $19, $20, $21, $22, $23,"
-		"localtimestamp, localtimestamp,"
-		"hstore($24::text[]))");
-	if (db_prepare_stmt(conn, STMT_INSERT_JOB, conn_sql, 24) != 0)
+		"$10, $11, $12, $13, $14, $15, $16, "
+		"localtimestamp, localtimestamp, hstore($17::text[]))");
+	if (db_prepare_stmt(conn, STMT_INSERT_JOB, conn_sql, 17) != 0)
 		return -1;
 
 	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.job set "
 		"ji_state = $2,"
 		"ji_substate = $3,"
 		"ji_svrflags = $4,"
-		"ji_numattr = $5,"
-		"ji_ordering = $6,"
-		"ji_priority = $7,"
-		"ji_stime = $8,"
-		"ji_endtBdry = $9,"
-		"ji_queue  = $10,"
-		"ji_destin = $11,"
-		"ji_un_type = $12,"
-		"ji_momaddr = $13,"
-		"ji_momport  = $14,"
-		"ji_exitstat = $15,"
-		"ji_quetime = $16,"
-		"ji_rteretry = $17,"
-		"ji_fromsock = $18,"
-		"ji_fromaddr = $19,"
-		"ji_4jid = $20,"
-		"ji_4ash = $21,"
-		"ji_credtype = $22,"
-		"ji_qrank = $23,"
+		"ji_stime = $5,"
+		"ji_queue  = $6,"
+		"ji_destin = $7,"
+		"ji_un_type = $8,"
+		"ji_exitstat = $9,"
+		"ji_quetime = $10,"
+		"ji_rteretry = $11,"
+		"ji_fromsock = $12,"
+		"ji_fromaddr = $13,"
+		"ji_jid = $14,"
+		"ji_credtype = $15,"
+		"ji_qrank = $16,"
 		"ji_savetm = localtimestamp,"
-		"attributes = attributes || hstore($24::text[]) "
+		"attributes = attributes || hstore($17::text[]) "
 		"where ji_jobid = $1");
-	if (db_prepare_stmt(conn, STMT_UPDATE_JOB, conn_sql, 24) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_JOB, conn_sql, 17) != 0)
 		return -1;
 
 	snprintf(conn_sql, MAX_SQL_LENGTH, "update pbs.job set "
@@ -146,28 +130,21 @@ db_prepare_job_sqls(void *conn)
 		"ji_state = $2,"
 		"ji_substate = $3,"
 		"ji_svrflags = $4,"
-		"ji_numattr = $5,"
-		"ji_ordering = $6,"
-		"ji_priority = $7,"
-		"ji_stime = $8,"
-		"ji_endtBdry = $9,"
-		"ji_queue  = $10,"
-		"ji_destin = $11,"
-		"ji_un_type = $12,"
-		"ji_momaddr = $13,"
-		"ji_momport  = $14,"
-		"ji_exitstat = $15,"
-		"ji_quetime = $16,"
-		"ji_rteretry = $17,"
-		"ji_fromsock = $18,"
-		"ji_fromaddr = $19,"
-		"ji_4jid = $20,"
-		"ji_4ash = $21,"
-		"ji_credtype = $22,"
-		"ji_qrank = $23,"
+		"ji_stime = $5,"
+		"ji_queue  = $6,"
+		"ji_destin = $7,"
+		"ji_un_type = $8,"
+		"ji_exitstat = $9,"
+		"ji_quetime = $10,"
+		"ji_rteretry = $11,"
+		"ji_fromsock = $12,"
+		"ji_fromaddr = $13,"
+		"ji_jid = $14,"
+		"ji_credtype = $15,"
+		"ji_qrank = $16,"
 		"ji_savetm = localtimestamp "
 		"where ji_jobid = $1");
-	if (db_prepare_stmt(conn, STMT_UPDATE_JOB_QUICK, conn_sql, 23) != 0)
+	if (db_prepare_stmt(conn, STMT_UPDATE_JOB_QUICK, conn_sql, 16) != 0)
 		return -1;
 
 	snprintf(conn_sql, MAX_SQL_LENGTH, "select "
@@ -175,23 +152,16 @@ db_prepare_job_sqls(void *conn)
 		"ji_state,"
 		"ji_substate,"
 		"ji_svrflags,"
-		"ji_numattr,"
-		"ji_ordering,"
-		"ji_priority,"
 		"ji_stime,"
-		"ji_endtBdry,"
 		"ji_queue,"
 		"ji_destin,"
 		"ji_un_type,"
-		"ji_momaddr,"
-		"ji_momport,"
 		"ji_exitstat,"
 		"ji_quetime,"
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
-		"ji_4ash,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"hstore_to_array(attributes) as attributes "
@@ -232,23 +202,16 @@ db_prepare_job_sqls(void *conn)
 		"ji_state,"
 		"ji_substate,"
 		"ji_svrflags,"
-		"ji_numattr,"
-		"ji_ordering,"
-		"ji_priority,"
 		"ji_stime,"
-		"ji_endtBdry,"
 		"ji_queue,"
 		"ji_destin,"
 		"ji_un_type,"
-		"ji_momaddr,"
-		"ji_momport,"
 		"ji_exitstat,"
 		"ji_quetime,"
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
-		"ji_4ash,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"hstore_to_array(attributes) as attributes "
@@ -261,23 +224,16 @@ db_prepare_job_sqls(void *conn)
 		"ji_state,"
 		"ji_substate,"
 		"ji_svrflags,"
-		"ji_numattr,"
-		"ji_ordering,"
-		"ji_priority,"
 		"ji_stime,"
-		"ji_endtBdry,"
 		"ji_queue,"
 		"ji_destin,"
 		"ji_un_type,"
-		"ji_momaddr,"
-		"ji_momport,"
 		"ji_exitstat,"
 		"ji_quetime,"
 		"ji_rteretry,"
 		"ji_fromsock,"
 		"ji_fromaddr,"
-		"ji_4jid,"
-		"ji_4ash,"
+		"ji_jid,"
 		"ji_credtype,"
 		"ji_qrank,"
 		"hstore_to_array(attributes) as attributes "
@@ -315,12 +271,23 @@ static int
 load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 {
 	char *raw_array;
-	static int ji_jobid_fnum, ji_state_fnum, ji_substate_fnum, ji_svrflags_fnum, ji_numattr_fnum,
-	ji_ordering_fnum, ji_priority_fnum, ji_stime_fnum, ji_endtBdry_fnum, ji_queue_fnum, ji_destin_fnum,
-	ji_un_type_fnum, ji_momaddr_fnum, ji_momport_fnum, ji_exitstat_fnum, ji_quetime_fnum, ji_rteretry_fnum,
-	ji_fromsock_fnum, ji_fromaddr_fnum, ji_4jid_fnum, ji_4ash_fnum, ji_credtype_fnum, ji_qrank_fnum,
-	attributes_fnum;
-
+	static int ji_jobid_fnum;
+	static int ji_state_fnum;
+	static int ji_substate_fnum;
+	static int ji_svrflags_fnum;
+	static int ji_stime_fnum;
+	static int ji_queue_fnum;
+	static int ji_destin_fnum;
+	static int ji_un_type_fnum;
+	static int ji_exitstat_fnum;
+	static int ji_quetime_fnum;
+	static int ji_rteretry_fnum;
+	static int ji_fromsock_fnum;
+	static int ji_fromaddr_fnum;
+	static int ji_jid_fnum;
+	static int ji_credtype_fnum;
+	static int ji_qrank_fnum;
+	static int attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {
@@ -329,23 +296,16 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 		ji_state_fnum = PQfnumber(res, "ji_state");
 		ji_substate_fnum = PQfnumber(res, "ji_substate");
 		ji_svrflags_fnum = PQfnumber(res, "ji_svrflags");
-		ji_numattr_fnum = PQfnumber(res, "ji_numattr");
-		ji_ordering_fnum = PQfnumber(res, "ji_ordering");
-		ji_priority_fnum = PQfnumber(res, "ji_priority");
 		ji_stime_fnum = PQfnumber(res, "ji_stime");
-		ji_endtBdry_fnum = PQfnumber(res, "ji_endtBdry");
 		ji_queue_fnum = PQfnumber(res, "ji_queue");
 		ji_destin_fnum = PQfnumber(res, "ji_destin");
 		ji_un_type_fnum = PQfnumber(res, "ji_un_type");
-		ji_momaddr_fnum = PQfnumber(res, "ji_momaddr");
-		ji_momport_fnum = PQfnumber(res, "ji_momport");
 		ji_exitstat_fnum = PQfnumber(res, "ji_exitstat");
 		ji_quetime_fnum = PQfnumber(res, "ji_quetime");
 		ji_rteretry_fnum = PQfnumber(res, "ji_rteretry");
 		ji_fromsock_fnum = PQfnumber(res, "ji_fromsock");
 		ji_fromaddr_fnum = PQfnumber(res, "ji_fromaddr");
-		ji_4jid_fnum = PQfnumber(res, "ji_4jid");
-		ji_4ash_fnum = PQfnumber(res, "ji_4ash");
+		ji_jid_fnum = PQfnumber(res, "ji_jid");
 		ji_qrank_fnum = PQfnumber(res, "ji_qrank");
 		ji_credtype_fnum = PQfnumber(res, "ji_credtype");
 		attributes_fnum = PQfnumber(res, "attributes");
@@ -356,23 +316,16 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 	GET_PARAM_INTEGER(res, row, pj->ji_state, ji_state_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_substate, ji_substate_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_svrflags, ji_svrflags_fnum);
-	GET_PARAM_INTEGER(res, row, pj->ji_numattr, ji_numattr_fnum);
-	GET_PARAM_INTEGER(res, row, pj->ji_ordering, ji_ordering_fnum);
-	GET_PARAM_INTEGER(res, row, pj->ji_priority, ji_priority_fnum);
 	GET_PARAM_BIGINT(res, row, pj->ji_stime, ji_stime_fnum);
-	GET_PARAM_BIGINT(res, row, pj->ji_endtBdry, ji_endtBdry_fnum);
 	GET_PARAM_STR(res, row, pj->ji_queue, ji_queue_fnum);
 	GET_PARAM_STR(res, row, pj->ji_destin, ji_destin_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_un_type, ji_un_type_fnum);
-	GET_PARAM_BIGINT(res, row, pj->ji_momaddr, ji_momaddr_fnum);
-	GET_PARAM_INTEGER(res, row, pj->ji_momport, ji_momport_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_exitstat, ji_exitstat_fnum);
 	GET_PARAM_BIGINT(res, row, pj->ji_quetime, ji_quetime_fnum);
 	GET_PARAM_BIGINT(res, row, pj->ji_rteretry, ji_rteretry_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_fromsock, ji_fromsock_fnum);
 	GET_PARAM_BIGINT(res, row, pj->ji_fromaddr, ji_fromaddr_fnum);
-	GET_PARAM_STR(res, row, pj->ji_4jid, ji_4jid_fnum);
-	GET_PARAM_STR(res, row, pj->ji_4ash, ji_4ash_fnum);
+	GET_PARAM_STR(res, row, pj->ji_jid, ji_jid_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_credtype, ji_credtype_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_qrank, ji_qrank_fnum);
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
@@ -410,28 +363,21 @@ pbs_db_save_job(void *conn, pbs_db_obj_info_t *obj, int savetype)
 		SET_PARAM_INTEGER(conn_data, pjob->ji_state, 1);
 		SET_PARAM_INTEGER(conn_data, pjob->ji_substate, 2);
 		SET_PARAM_INTEGER(conn_data, pjob->ji_svrflags, 3);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_numattr, 4);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_ordering, 5);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_priority, 6);
-		SET_PARAM_BIGINT(conn_data, pjob->ji_stime, 7);
-		SET_PARAM_BIGINT(conn_data, pjob->ji_endtBdry, 8);
-		SET_PARAM_STR(conn_data, pjob->ji_queue, 9);
-		SET_PARAM_STR(conn_data, pjob->ji_destin, 10);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_un_type, 11);
-		SET_PARAM_BIGINT(conn_data, pjob->ji_momaddr, 12);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_momport, 13);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_exitstat, 14);
-		SET_PARAM_BIGINT(conn_data, pjob->ji_quetime, 15);
-		SET_PARAM_BIGINT(conn_data, pjob->ji_rteretry, 16);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_fromsock, 17);
-		SET_PARAM_BIGINT(conn_data, pjob->ji_fromaddr, 18);
-		SET_PARAM_STR(conn_data, pjob->ji_4jid, 19);
-		SET_PARAM_STR(conn_data, pjob->ji_4ash, 20);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_credtype, 21);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_qrank, 22);
+		SET_PARAM_BIGINT(conn_data, pjob->ji_stime, 4);
+		SET_PARAM_STR(conn_data, pjob->ji_queue, 5);
+		SET_PARAM_STR(conn_data, pjob->ji_destin, 6);
+		SET_PARAM_INTEGER(conn_data, pjob->ji_un_type, 7);
+		SET_PARAM_INTEGER(conn_data, pjob->ji_exitstat, 8);
+		SET_PARAM_BIGINT(conn_data, pjob->ji_quetime, 9);
+		SET_PARAM_BIGINT(conn_data, pjob->ji_rteretry, 10);
+		SET_PARAM_INTEGER(conn_data, pjob->ji_fromsock, 11);
+		SET_PARAM_BIGINT(conn_data, pjob->ji_fromaddr, 12);
+		SET_PARAM_STR(conn_data, pjob->ji_jid, 13);
+		SET_PARAM_INTEGER(conn_data, pjob->ji_credtype, 14);
+		SET_PARAM_INTEGER(conn_data, pjob->ji_qrank, 15);
 
 		stmt = STMT_UPDATE_JOB_QUICK;
-		params = 23;
+		params = 16;
 	}
 
 	if ((pjob->db_attr_list.attr_count > 0) || (savetype & OBJ_SAVE_NEW)) {
@@ -442,8 +388,8 @@ pbs_db_save_job(void *conn, pbs_db_obj_info_t *obj, int savetype)
 			return -1;
 
 		if (savetype & OBJ_SAVE_QS) {
-			SET_PARAM_BIN(conn_data, raw_array, len, 23);
-			params = 24;
+			SET_PARAM_BIN(conn_data, raw_array, len, 16);
+			params = 17;
 			stmt = STMT_UPDATE_JOB;
 		} else {
 			SET_PARAM_BIN(conn_data, raw_array, len, 1);

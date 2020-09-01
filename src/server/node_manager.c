@@ -124,8 +124,6 @@ extern int tpp_network_up; /* from pbsd_main.c - used only in case of TPP */
 
 extern unsigned int pbs_mom_port;
 
-extern char *msg_ngbluegene; 	/* BLUE GENE only */
-extern int   have_blue_gene_nodes;
 extern char *msg_noloopbackif;
 extern char *msg_job_end_stat;
 extern char *msg_daemonname;
@@ -3158,27 +3156,6 @@ setup_pnames(char *namestr)
 
 /**
  * @brief
- * 		disallow node_group_enable if bluegene nodes created BLUE GENE only
- * @see
- * 		update2_to_vnode
- * @param[in]	pnode	-	The vnode
- *
- * @return	void
- */
-static void
-set_no_node_grouping(struct pbsnode *pnode)
-{
-
-	have_blue_gene_nodes = 1;
-
-	if ((server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_flags & ATR_VFLAG_SET) && (server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_val.at_long != 0)) {
-		set_vnode_state(pnode, INUSE_OFFLINE, Nd_State_Or);
-		node_attr_def[(int)ND_ATR_Comment].at_decode(&pnode->nd_attr[(int)ND_ATR_Comment], ATTR_comment, NULL, msg_ngbluegene);
-	}
-
-}
-/**
- * @brief
  * 		add mom to the vnode list if it is not listed, and if there is no room,
  * 		re-strucure and create room for the mom. Add Mom's name to this vnode's Mom attribute
  * 		and set reverse linkage Mom -> node.
@@ -3611,13 +3588,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 							/* if ncpus, adjust virtual/subnodes */
 							j = prs->rs_value.at_val.at_long;
 							mod_node_ncpus(pnode, j, ATR_ACTION_ALTER);
-						} else if (strcasecmp("arch", resc) == 0) {
-							if (strcmp(BLUEGENE, prs->rs_value.at_val.at_str) == 0) {
-								/* BLUE GENE only */
-
-								/* disallow node_grouping */
-								set_no_node_grouping(pnode);
-							}
 						}
 					}
 					if (bad != 0) {
