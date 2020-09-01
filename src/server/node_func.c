@@ -110,7 +110,6 @@ extern int node_delete_db(struct pbsnode *pnode);
 extern pbsnode *recov_node_cb(pbs_db_obj_info_t *, int *);
 extern int check_sign(pbsnode *, attribute *);
 extern void license_one_node(pbsnode *);
-//extern int	set_node_lic_info_attr(pbsnode *);
 extern int process_topology_info(struct pbsnode *pnode, char *);
 extern void release_lic_for_cray(struct pbsnode *pnode);
 static void remove_node_topology(char *);
