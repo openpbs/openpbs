@@ -1863,7 +1863,6 @@ terminate_job(job *pjob, int internal)
 		}
 		if (kill_job(pjob, s) == 0) {
 			/* no processes around, force into exiting */
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
 			exiting_tasks = 1;
 		}
 		i = -2;
