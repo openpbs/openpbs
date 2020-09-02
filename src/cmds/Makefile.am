@@ -78,7 +78,6 @@ sbin_PROGRAMS = \
 
 dist_bin_SCRIPTS = \
 	mpiexec \
-	nqs2pbs \
 	pbs_lamboot \
 	pbs_mpihp \
 	pbs_mpilam \
