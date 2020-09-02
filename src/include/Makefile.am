@@ -101,6 +101,7 @@ noinst_HEADERS = \
 	provision.h \
 	qmgr.h \
 	queue.h \
+	range.h \
 	reservation.h \
 	resmon.h \
 	resource.h \
