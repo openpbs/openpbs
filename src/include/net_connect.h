@@ -186,7 +186,7 @@ unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
 int  init_network(unsigned int port);
 int  init_network_add(int sock, int (*readyreadfunc)(conn_t *), void (*readfunc)(int));
 void net_close(int);
-int  wait_request(time_t waittime, void *priority_context);
+int  wait_request(float waittime, void *priority_context);
 extern void *priority_context;
 void net_add_close_func(int, void(*)(int));
 extern  pbs_net_t  get_addr_of_nodebyname(char *name, unsigned int *port);
