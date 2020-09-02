@@ -63,8 +63,7 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.get_pid()
         self.scheduler.signal('-HUP')
         self.scheduler.log_match(fp + ' file has a non-secure file access',
-                                 starttime=match_from, existence=exist,
-                                 max_attempts=10)
+                                 starttime=match_from, existence=exist)
 
     def setup_dyn_res(self, resname, restype, script_body):
         """

@@ -813,7 +813,7 @@ open_master(char **rtn_name)
 		return (-1);
 	}
 
-	(void)strncpy(slavename, newslavename, sizeof(slavename) - 1);
+	pbs_strncpy(slavename, newslavename, sizeof(slavename));
 	assert(rtn_name != NULL);
 	*rtn_name = slavename;
 	return (masterfd);
@@ -845,7 +845,7 @@ open_master(char **rtn_name)
 	static char	ptcchar2[] = "0123456789abcdef";
 	static char	pty_name[PTY_SIZE+1];	/* "/dev/[pt]tyXY" */
 
-	(void)strncpy(pty_name, "/dev/ptyXY", PTY_SIZE);
+	pbs_strncpy(pty_name, "/dev/ptyXY", sizeof(pty_name));
 	for (pc1 = ptcchar1; *pc1 != '\0'; ++pc1) {
 		pty_name[8] = *pc1;
 		for (pc2 = ptcchar2; *pc2 != '\0'; ++pc2) {

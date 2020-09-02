@@ -82,7 +82,7 @@ main(int argc, char *argv[])
 	while ((i = getopt(argc, argv, "s:")) != EOF) {
 		switch (i) {
 			case 's':
-				strcpy(sopt, optarg);
+				pbs_strncpy(sopt, optarg, sizeof(sopt));
 				break;
 			case '?':
 			default:
@@ -106,9 +106,9 @@ main(int argc, char *argv[])
 	}
 
 	if (pbs_conf.pbs_data_service_host)
-		strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
+		pbs_strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
 	else
-		strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME);
+		pbs_strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME);
 
 	if (strcmp(sopt, PBS_DB_CONTROL_START) == 0) {
 		rc = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);

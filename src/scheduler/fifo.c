@@ -2744,7 +2744,7 @@ parse_sched_obj(struct batch_status *status)
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 					goto cleanup;
 				}
-				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE - 1);
+				strcpy(comment, "Unable to change the sched_log directory");
 				patt = attribs;
 				patt->name = ATTR_comment;
 				patt->value = comment;
@@ -2783,13 +2783,13 @@ parse_sched_obj(struct batch_status *status)
 				if (c != 0) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
-					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					priv_dir_update_fail = 1;
 				}
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 			if (c == 0) {
 				if (chdir(tmp_priv_dir) == -1) {
-					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
 					priv_dir_update_fail = 1;
@@ -2797,7 +2797,7 @@ parse_sched_obj(struct batch_status *status)
 					int lockfds;
 					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 					if (lockfds < 0) {
-						strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+						strcpy(comment, "PBS failed validation checks for sched_priv directory");
 						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 							"PBS failed validation checks for directory %s", tmp_priv_dir);
 						priv_dir_update_fail = 1;
@@ -2827,7 +2827,7 @@ parse_sched_obj(struct batch_status *status)
 			attribs = calloc(2, sizeof(struct attropl));
 			if (attribs == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
-				strncpy(comment, "Unable to change the sched_priv directory", MAX_LOG_SIZE);
+				strcpy(comment, "Unable to change the sched_priv directory");
 				goto cleanup;
 			}
 			patt = attribs;

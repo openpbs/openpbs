@@ -2702,17 +2702,15 @@ do_mom_action_script(int	ae,	/* index into action table */
 			} else if (strcmp(*pargs + 1, "globid") == 0) {
 				strcpy(buf, "NULL");
 			} else if (strcmp(*pargs + 1, "auxid") == 0) {
-				if (pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str) {
-					strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].
-						at_val.at_str, sizeof(buf)-1);
-					buf[sizeof(buf)-1] = '\0';
-				} else
+				if (pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str)
+					pbs_strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].
+						at_val.at_str, sizeof(buf));
+				else
 					strcpy(buf, "NULL");
 			} else if (strcmp(*pargs + 1, "path") == 0) {
-				if (path != NULL) {
-					strncpy(buf, path, sizeof(buf)-1);
-					buf[sizeof(buf)-1] = '\0';
-				} else
+				if (path != NULL)
+					pbs_strncpy(buf, path, sizeof(buf));
+				else
 					strcpy(buf, "NULL");
 			} else {
 				sprintf(log_buffer, "action %s script %s cannot be run"
@@ -2724,7 +2722,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 				goto done;
 			}
 		} else {
-			(void)strcpy(buf, *pargs);
+			pbs_strncpy(buf, *pargs, sizeof(buf));
 		}
 		*(args + i) = strdup(buf);
 		if (*(args + i) == NULL)
@@ -4049,26 +4047,27 @@ set_checkpoint_path(char *value)
 	if (path_checkpoint_from_getopt) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using checkpoint path from command line.");
-		strcpy(newpath, path_checkpoint_from_getopt);
+		pbs_strncpy(newpath, path_checkpoint_from_getopt, sizeof(newpath));
 	} else if (path_checkpoint_from_getenv) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using checkpoint path from environment.");
-		strcpy(newpath, path_checkpoint_from_getenv);
+		pbs_strncpy(newpath, path_checkpoint_from_getenv, sizeof(newpath));
 	} else if (value) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using checkpoint path from config file.");
-		strcpy(newpath, value);
+		pbs_strncpy(newpath, value, sizeof(newpath));
 	} else {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using default checkpoint path.");
-		strcpy(newpath, path_checkpoint_default);
+		pbs_strncpy(newpath, path_checkpoint_default, sizeof(newpath));
 	}
 	if (strlen(newpath) == 0) {
 		/* Bad mojo, fall back to existing or default. */
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Empty checkpoint path specified, ignoring.");
 		if (*path_checkpoint == '\0')
-			strcpy(path_checkpoint, path_checkpoint_default);
+			/* path_checkpoint is never allocated memory, it points to path_checkpoint_buf */
+			pbs_strncpy(path_checkpoint, path_checkpoint_default, sizeof(path_checkpoint_buf));
 		return HANDLER_FAIL;	/* error */
 	}
 	if (*(newpath+strlen(newpath)-1) != '/') {
@@ -8069,7 +8068,7 @@ main(int argc, char *argv[])
 		pch = pch + strlen("PBS_MOM");
 		if ((pbs_conf_env = (char*) malloc(strlen(pbsconf_temp)+ strlen(pch) + 1)) != NULL) {
 			memset(pbs_conf_env, 0, strlen(pbsconf_temp)+ strlen(pch) + 1);
-			strncpy(pbs_conf_env, pbsconf_temp, strlen(pbsconf_temp)+ strlen(pch));
+			pbs_strncpy(pbs_conf_env, pbsconf_temp, strlen(pbsconf_temp)+ strlen(pch) + 1);
 			pbs_conf_env = strcat(pbs_conf_env, pch);
 		} else {
 			g_dwCurrentState = SERVICE_STOPPED;
@@ -8217,7 +8216,7 @@ main(int argc, char *argv[])
 				break;
 			case 'c':	/* config file */
 				config_file_specified = 1;
-				strcpy(config_file, optarg);	/* remember name */
+				pbs_strncpy(config_file, optarg, sizeof(config_file));	/* remember name */
 				break;
 			case 'M':
 				pbs_mom_port = (unsigned int)atoi(optarg);
@@ -8661,8 +8660,7 @@ main(int argc, char *argv[])
 		 */
 		c = 0;
 		if (pbs_conf.pbs_mom_node_name) {
-			(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
-			mom_host[(sizeof(mom_host) - 1)] = '\0';
+			pbs_strncpy(mom_host, pbs_conf.pbs_mom_node_name, sizeof(mom_host));
 			ptr = mom_host;
 			/* First character must be alpha-numeric */
 			if (isalnum((int)*ptr)) {
@@ -8693,14 +8691,12 @@ main(int argc, char *argv[])
 	 * Otherwise, set mom_short_name to the return value of
 	 * gethostname(), truncated to first dot.
 	 */
-	if (pbs_conf.pbs_mom_node_name) {
+	if (pbs_conf.pbs_mom_node_name)
 		/* mom_short_name was specified explicitly using PBS_MOM_NODE_NAME */
-		(void)strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, (sizeof(mom_short_name) - 1));
-		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
-	} else {
+		pbs_strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, sizeof(mom_short_name));
+	else {
 		/* use gethostname(), truncated to first dot */
-		(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
-		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
+		pbs_strncpy(mom_short_name, mom_host, sizeof(mom_short_name));
 		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
 			*ptr = '\0';  /* terminate at first dot */
 	}

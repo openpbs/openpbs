@@ -260,8 +260,7 @@ attrlist_add(struct attropl  **attrlist, char *attname,
 
 	ltxt = attname_len;
 	Mstring(paol->name, ltxt + 1);
-	strncpy(paol->name, attname, ltxt);
-	paol->name[ltxt] = '\0';
+	pbs_strncpy(paol->name, attname, ltxt + 1);
 
 	paol->op = SET;
 
@@ -270,8 +269,7 @@ attrlist_add(struct attropl  **attrlist, char *attname,
 	} else {
 		ltxt = attval_len;
 		Mstring(paol->value, ltxt+1);
-		strncpy(paol->value, attval, ltxt);
-		paol->value[ltxt] = '\0';
+		pbs_strncpy(paol->value, attval, ltxt + 1);
 	}
 }
 
@@ -778,7 +776,7 @@ main(int argc, char **argv)
 		exit(2);
 	}
 
-	strcpy((char *)cur_user, who());
+	pbs_strncpy(cur_user, who(), sizeof(cur_user));
 	cur_host[0] = '\0';
 
 	/* obtain global information for hooks */
@@ -798,14 +796,14 @@ main(int argc, char **argv)
 	 * 4. use my host name
 	 */
 	if (pbs_conf.pbs_primary != NULL) {
-		strncpy(conf_full_server_name, pbs_conf.pbs_primary,
-			(sizeof(conf_full_server_name) - 1));
+		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_primary,
+			sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_host_name != NULL) {
-		strncpy(conf_full_server_name, pbs_conf.pbs_server_host_name,
-			(sizeof(conf_full_server_name) - 1));
+		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_host_name,
+			sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_name != NULL) {
-		strncpy(conf_full_server_name, pbs_conf.pbs_server_name,
-			(sizeof(conf_full_server_name) - 1));
+		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_name,
+			sizeof(conf_full_server_name));
 	}
 	if (conf_full_server_name[0] != '\0') {
 		get_fullhostname(conf_full_server_name, conf_full_server_name,
@@ -1059,8 +1057,7 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 			/* Copy attribute into structure */
 			ltxt = c - start;
 			Mstring(paol->name, ltxt+1);
-			strncpy(paol->name, start, ltxt);
-			paol->name[ltxt] = '\0';
+			pbs_strncpy(paol->name, start, ltxt + 1);
 
 			/* Resource, if any */
 			if (*c == '.') {
@@ -1080,8 +1077,7 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 					return (start - attrs);
 
 				Mstring(paol->resource, ltxt+1);
-				strncpy(paol->resource, start, ltxt);
-				paol->resource[ltxt] = '\0';
+				pbs_strncpy(paol->resource, start, ltxt + 1);
 			}
 		}
 		else
@@ -2340,12 +2336,12 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 					attribs_file = NULL;
 					while (attribs_tmp) {
 						if (strcmp(attribs_tmp->name, INPUT_FILE_PARAM) == 0) {
-							strcpy(infile, attribs_tmp->value);
+							pbs_strncpy(infile, attribs_tmp->value, sizeof(infile));
 							attribs_file = attribs_tmp;
 						} else if (strcmp(attribs_tmp->name, CONTENT_ENCODING_PARAM) == 0) {
-							strcpy(content_encoding, attribs_tmp->value);
+							pbs_strncpy(content_encoding, attribs_tmp->value, sizeof(content_encoding));
 						} else if (strcmp(attribs_tmp->name, CONTENT_TYPE_PARAM) == 0) {
-							strcpy(content_type, attribs_tmp->value);
+							pbs_strncpy(content_type, attribs_tmp->value, sizeof(content_type));
 						}
 						attribs_tmp = attribs_tmp->next;
 					}
@@ -2453,11 +2449,11 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 					attribs_file = NULL;
 					while (attribs_tmp) {
 						if (strcmp(attribs_tmp->name, OUTPUT_FILE_PARAM) == 0) {
-							strcpy(outfile, attribs_tmp->value);
+							pbs_strncpy(outfile, attribs_tmp->value, sizeof(outfile));
 							attribs_file = attribs_tmp;
 						} else if (strcmp(attribs_tmp->name,
 							CONTENT_ENCODING_PARAM) == 0) {
-							strcpy(content_encoding, attribs_tmp->value);
+							pbs_strncpy(content_encoding, attribs_tmp->value, sizeof(content_encoding));
 						}
 						attribs_tmp = attribs_tmp->next;
 					}
@@ -2638,8 +2634,7 @@ commalist2objname(char *names, int type)
 			if (*foreptr == '@') {
 				len = foreptr - backptr;
 				Mstring(cur_obj->obj_name, len + 1);
-				strncpy(cur_obj->obj_name, backptr, len);
-				cur_obj->obj_name[len] = '\0';
+				pbs_strncpy(cur_obj->obj_name, backptr, len + 1);
 				foreptr++;
 				backptr = foreptr;
 				while (*foreptr != ',' && !EOL(*foreptr)) foreptr++;
@@ -2653,8 +2648,7 @@ commalist2objname(char *names, int type)
 					cur_obj->svr_name = NULL;
 				else {
 					Mstring(cur_obj->svr_name, len + 1);
-					strncpy(cur_obj->svr_name, backptr, len);
-					cur_obj->svr_name[len] = '\0';
+					pbs_strncpy(cur_obj->svr_name, backptr, len + 1);
 				}
 
 				if (!EOL(*foreptr))
@@ -2669,8 +2663,7 @@ commalist2objname(char *names, int type)
 				}
 				else {
 					Mstring(cur_obj->obj_name, len + 1);
-					strncpy(cur_obj->obj_name, backptr, len);
-					cur_obj->obj_name[len] = '\0';
+					pbs_strncpy(cur_obj->obj_name, backptr, len + 1);
 				}
 
 				if (type == MGR_OBJ_SERVER)
@@ -3151,8 +3144,7 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 					fprintf(stderr, "malloc failure (errno %d)\n", errno);
 					exit(1);
 				}
-				(*names)[names_len] = '\0';
-				strncpy(*names, req[IND_NAME], names_len);
+				pbs_strncpy(*names, req[IND_NAME], names_len + 1);
 			}
 		}
 
@@ -3655,7 +3647,7 @@ parse_request(char *request, char ***req)
 		}
 		((*req)[i])[len] = '\0';
 		if (len > 0)
-			strncpy((*req)[i], backptr, len);
+			pbs_strncpy((*req)[i], backptr, len + 1);
 		i++;
 
 	}

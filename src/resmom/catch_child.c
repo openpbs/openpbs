@@ -192,7 +192,7 @@ chkpt_partial(job *pjob)
 
 	assert(pjob != NULL);
 
-	strcpy(namebuf, path_checkpoint);
+	pbs_strncpy(namebuf, path_checkpoint, sizeof(namebuf));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
 	else
@@ -250,7 +250,7 @@ chkpt_partial(job *pjob)
 	}
 
 	if (texit == 0) {
-		char	oldname[MAXPATHLEN];
+		char	oldname[MAXPATHLEN + 1];
 		struct	stat	statbuf;
 
 		/*
@@ -709,8 +709,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 					if ((at2->at_flags & ATR_VFLAG_SET) == 0)
 						continue;
 
-					strncpy(mom_hname, pjob->ji_resources[i].nodehost, PBS_MAXHOSTNAME);
-					mom_hname[PBS_MAXHOSTNAME] = '\0';
+					pbs_strncpy(mom_hname, pjob->ji_resources[i].nodehost, sizeof(mom_hname));
 					p = strchr(mom_hname, '.');
 					if (p != NULL)
 						*p = '\0';
@@ -1915,7 +1914,7 @@ init_abort_jobs(int recover)
 		 ** If so, remove the regular checkpoint dir
 		 ** and rename the old to the regular name.
 		 */
-		strcpy(path, path_checkpoint);
+		pbs_strncpy(path, path_checkpoint, sizeof(path));
 		if (*pj->ji_qs.ji_fileprefix != '\0')
 			strcat(path, pj->ji_qs.ji_fileprefix);
 		else

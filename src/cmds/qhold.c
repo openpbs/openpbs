@@ -147,7 +147,7 @@ main(int argc, char **argv, char **envp) /* qhold */
 					errflg++;
 				}
 				else
-					strcpy(hold_type, optarg);
+					pbs_strncpy(hold_type, optarg, sizeof(hold_type));
 				break;
 			default :
 				errflg++;
@@ -170,7 +170,7 @@ main(int argc, char **argv, char **envp) /* qhold */
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qhold: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;

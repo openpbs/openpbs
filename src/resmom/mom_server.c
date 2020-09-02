@@ -437,7 +437,7 @@ process_IS_CMD(int stream)
 	}
 
 	request->rq_conn = stream;
-	strcpy(request->rq_host, netaddr(addr));
+	pbs_strncpy(request->rq_host, netaddr(addr), sizeof(request->rq_host));
 	request->rq_fromsvr = 1;
 	request->prot = PROT_TPP;
 	request->tppcmd_msgid = msgid;

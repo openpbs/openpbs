@@ -86,7 +86,7 @@ main(int argc, char **argv, char **envp) /* qmove */
 		exit(2);
 	}
 
-	strcpy(destination, argv[1]);
+	pbs_strncpy(destination, argv[1], sizeof(destination));
 	if (parse_destination_id(destination, &q_n_out, &s_n_out)) {
 		fprintf(stderr, "qmove: illegally formed destination: %s\n", destination);
 		exit(2);
@@ -104,7 +104,7 @@ main(int argc, char **argv, char **envp) /* qmove */
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qmove: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;
@@ -131,7 +131,7 @@ cnt:
 			located = TRUE;
 			if (locate_job(job_id_out, server_out, rmt_server)) {
 				pbs_disconnect(connect);
-				strcpy(server_out, rmt_server);
+				pbs_strncpy(server_out, rmt_server, sizeof(server_out));
 				goto cnt;
 			}
 			prt_job_err("qmove", connect, job_id_out);

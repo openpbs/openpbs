@@ -347,9 +347,13 @@ pbs_strcpy(char *dest, const char *src)
  */
 char *pbs_strncpy(char *dest, const char *src, size_t n)
 {
-    strncpy(dest, src, n - 1);
-    dest[n - 1] = '\0';
-    return dest;
+	if (strlen(src) < n - 1)
+		strcpy(dest, src);
+	else {
+		memcpy(dest, src, n - 1);
+		dest[n - 1] = '\0';
+	}
+	return dest;
 }
 
 /**
