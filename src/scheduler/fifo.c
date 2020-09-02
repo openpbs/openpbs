@@ -1727,11 +1727,13 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				int j;
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
-					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
-						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+					node_partition **npar = ns[i]->ninfo->np_arr;
+					for (j = 0; npar[j] != NULL; j++) {
+						modify_resource_list(npar[j]->res, ns[i]->resreq, SCHD_INCR);
 						if (!ns[i]->ninfo->is_free)
-							ns[i]->ninfo->np_arr[j]->free_nodes--;
+							npar[j]->free_nodes--;
 						sort_nodepart = 1;
+						update_buckets_for_node(npar[j]->bkts, ns[i]->ninfo);
 					}
 				}
 				/* if the node is being provisioned, it's brought down in

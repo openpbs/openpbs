@@ -603,6 +603,53 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 }
 
 /**
+ * @brief update the node buckets associated with a node
+ *
+ *  @param[in] bkts - the buckets to update
+ *  @param[in] ninfo - the node of the job/resv
+ */
+void
+update_buckets_for_node(node_bucket **bkts, node_info *ninfo) {
+	int i;
+
+	if (bkts == NULL || ninfo == NULL)
+		return;
+
+	for (i = 0; bkts[i] != NULL; i++) {
+		int node_ind = ninfo->node_ind;
+
+		/* Is this node in the bucket? */
+		if (pbs_bitmap_get_bit(bkts[i]->bkt_nodes, node_ind)) {
+			/* First turn off the current bit */
+			if (pbs_bitmap_get_bit(bkts[i]->free_pool->truth, node_ind)) {
+				pbs_bitmap_bit_off(bkts[i]->free_pool->truth, node_ind);
+				bkts[i]->free_pool->truth_ct--;
+			} else if (pbs_bitmap_get_bit(bkts[i]->busy_later_pool->truth, node_ind)) {
+				pbs_bitmap_bit_off(bkts[i]->busy_later_pool->truth, node_ind);
+				bkts[i]->busy_later_pool->truth_ct--;
+			}  else if (pbs_bitmap_get_bit(bkts[i]->busy_pool->truth, node_ind)) {
+				pbs_bitmap_bit_off(bkts[i]->busy_pool->truth, node_ind);
+				bkts[i]->busy_pool->truth_ct--;
+			}
+
+			/* Next, turn on the correct bit */
+			if (ninfo->num_jobs > 0 || ninfo->num_run_resv > 0) {
+				pbs_bitmap_bit_on(bkts[i]->busy_pool->truth, node_ind);
+				bkts[i]->busy_pool->truth_ct++;
+			} else {
+				if (ninfo->node_events != NULL) {
+					pbs_bitmap_bit_on(bkts[i]->busy_later_pool->truth, node_ind);
+					bkts[i]->busy_later_pool->truth_ct++;
+				} else {
+					pbs_bitmap_bit_on(bkts[i]->free_pool->truth, node_ind);
+					bkts[i]->free_pool->truth_ct++;
+				}
+			}
+		}
+	}
+}
+
+/**
  * @brief update the node buckets associated with a node partition on
  *        job/resv run/end
  *
@@ -611,45 +658,13 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
  */
 void
 update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr) {
-	int i, j;
+	int i;
 
 	if (bkts == NULL || ninfo_arr == NULL)
 		return;
 
-	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		for (j = 0; bkts[j] != NULL; j++) {
-			int node_ind = ninfo_arr[i]->node_ind;
-
-			/* Is this node in the bucket? */
-			if (pbs_bitmap_get_bit(bkts[j]->bkt_nodes, node_ind)) {
-				/* First turn off the current bit */
-				if (pbs_bitmap_get_bit(bkts[j]->free_pool->truth, node_ind)) {
-					pbs_bitmap_bit_off(bkts[j]->free_pool->truth, node_ind);
-					bkts[j]->free_pool->truth_ct--;
-				} else if (pbs_bitmap_get_bit(bkts[j]->busy_later_pool->truth, node_ind)) {
-					pbs_bitmap_bit_off(bkts[j]->busy_later_pool->truth, node_ind);
-					bkts[j]->busy_later_pool->truth_ct--;
-				}  else if (pbs_bitmap_get_bit(bkts[j]->busy_pool->truth, node_ind)) {
-					pbs_bitmap_bit_off(bkts[j]->busy_pool->truth, node_ind);
-					bkts[j]->busy_pool->truth_ct--;
-				}
-
-				/* Next, turn on the correct bit */
-				if (ninfo_arr[i]->num_jobs > 0 || ninfo_arr[i]->num_run_resv > 0) {
-					pbs_bitmap_bit_on(bkts[j]->busy_pool->truth, node_ind);
-					bkts[j]->busy_pool->truth_ct++;
-				} else {
-					if (ninfo_arr[i]->node_events != NULL) {
-						pbs_bitmap_bit_on(bkts[j]->busy_later_pool->truth, node_ind);
-						bkts[j]->busy_later_pool->truth_ct++;
-					} else {
-						pbs_bitmap_bit_on(bkts[j]->free_pool->truth, node_ind);
-						bkts[j]->free_pool->truth_ct++;
-					}
-				}
-			}
-		}
-	}
+	for (i = 0; ninfo_arr[i] != NULL; i++)
+		update_buckets_for_node(bkts, ninfo_arr[i]);
 }
 
 /**
