@@ -77,6 +77,7 @@
 #include "pbs_error.h"
 #include "batch_request.h"
 #include "pbs_entlim.h"
+#include "libutil.h"
 
 #ifndef PBS_MOM
 #include "pbs_idx.h"
@@ -890,6 +891,10 @@ job_purge(job *pjob)
 		reply_text(pjob->ji_preq, PBSE_INTERNAL, "job deleted");
 		pjob->ji_preq = NULL;
 	}
+
+	if (pjob->ji_env != NULL) 
+		free_string_array(pjob->ji_env);
+
 #ifndef WIN32
 
 	if (pjob->ji_momsubt != 0) {	/* child running */
