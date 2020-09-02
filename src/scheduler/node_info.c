@@ -3993,15 +3993,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 
 				is_run_event = (event->event_type == TIMED_RUN_EVENT);
 
-
-				/* Normally when one job starts immediately after another (J1 end time == J2 start time)
-				 * we have no conflict between the two jobs.  When jobs do not request walltime,
-				 * they all have the same (5yr) walltime and fall one after another.
-				 * Using <= instead of < has the same effect as the jobs having a 1 second overlap.
-				 * Now all non-walltime jobs will overlap with the job before it and cause calendaring to occur.
-				 */
-				if (((resresv->duration == FIVE_YRS)?(event_time <= end_time):(event_time < end_time))
-					&& resresv != resc_resv && ns != NULL) {
+				if ((event_time < end_time) && resresv != resc_resv && ns != NULL) {
 					/* One event will need provisioning while the other will not,
 					 * they cannot co exist at same time.
 					 */
