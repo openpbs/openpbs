@@ -232,7 +232,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         errmsg = "sister mom deleted jobdir %s" % jobdir
         rc = self.du.isdir(hostname=momB.shortname, path=jobdir,
                            sudo=True)
-        self.assertEqual(rc, True, errmsg)
+        self.assertTrue(rc, errmsg)
         msg = "shared jobdir %s to be removed by primary mom" % jobdir
         momB.log_match(msg)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
@@ -240,4 +240,4 @@ bhtiusabsdlg' % (os.environ['HOME'])
         errmsg = "MS mom preserved jobdir %s" % jobdir
         rc = self.du.isdir(hostname=momA.shortname, path=jobdir,
                            sudo=True)
-        self.assertEqual(rc, False, errmsg)
+        self.assertFalse(rc, errmsg)
