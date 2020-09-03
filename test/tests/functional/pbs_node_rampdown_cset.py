@@ -40,6 +40,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=2)
 class TestPbsNodeRampDownCset(TestFunctional):
 
     """
@@ -49,10 +50,13 @@ class TestPbsNodeRampDownCset(TestFunctional):
 
     def setUp(self):
 
+        # skip if there are less than one regular vnode and
+        # three from cpuset system (natural + 2 NUMA vnodes)
         nodeinfo = self.server.status(NODE)
         if len(nodeinfo) < 4:
             self.skipTest("Not enough vnodes to run the test.")
 
+        # skip if there are no cpuset systems in the test cluster
         no_csetmom = True
         for mom in self.moms.values():
             if mom.is_cpuset_mom():
@@ -66,6 +70,7 @@ class TestPbsNodeRampDownCset(TestFunctional):
         self.n2 = '%s[0]' % (self.n1,)
         self.n3 = '%s[1]' % (self.n1,)
 
+        # skip if second mom has less than two NUMA vnodes
         try:
             self.server.expect(NODE, {'state': 'free'},
                                id=self.n3, max_attempts=10)
@@ -82,6 +87,7 @@ class TestPbsNodeRampDownCset(TestFunctional):
         self.pbs_release_nodes_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
 
+        # number of resource ncpus to request initially
         ncpus = self.server.status(NODE, 'resources_available.ncpus',
                                    id=self.n3)[0]
         ncpus = int(ncpus['resources_available.ncpus'])
