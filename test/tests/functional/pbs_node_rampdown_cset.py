@@ -50,6 +50,9 @@ class TestPbsNodeRampDownCset(TestFunctional):
 
     def setUp(self):
 
+        TestFunctional.setUp(self)
+        Job.dflt_attributes[ATTR_k] = 'oe'
+
         # skip if there are less than one regular vnode and
         # three from cpuset system (natural + 2 NUMA vnodes)
         nodeinfo = self.server.status(NODE)
@@ -76,9 +79,6 @@ class TestPbsNodeRampDownCset(TestFunctional):
                                id=self.n3, max_attempts=10)
         except PtlExpectError:
             self.skipTest("Second mom has less than 2 vnodes")
-
-        TestFunctional.setUp(self)
-        Job.dflt_attributes[ATTR_k] = 'oe'
 
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
         self.server.expect(VNODE, {'state=free': 4}, op=EQ, count=True,
