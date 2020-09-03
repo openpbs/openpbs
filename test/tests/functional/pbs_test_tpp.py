@@ -381,7 +381,8 @@ class TestTPP(TestFunctional):
         for vnode in vnode_list:
             self.server.expect(VNODE, a, id=vnode)
 
-    def common_setup(self, no_mom_on_comm=False, no_comm_on_server=False):
+    def common_setup(self, no_mom_on_comm=False, no_comm_on_server=False,
+                     req_moms=2, req_comms=2):
         """
         This function sets the shortnames of moms and comms in the cluster
         accordingly.
@@ -393,20 +394,30 @@ class TestTPP(TestFunctional):
         :type no_mom_on_comm: Bool. Defaults to False
         :param no_comm_on_server: Flag, True if no comm is present on server
         :type no_comm_on_server: Bool. Defaults to False
+        :param req_moms: No of required moms
+        :type req_moms: Integer. Defaults to 2
+        :param req_comms: No of required comms
+        :type req_comms: Integer. Defaults to 2
         """
         mom_list = [x.shortname for x in self.moms.values()]
         comm_list = [y.shortname for y in self.comms.values()]
+        num_moms = len(self.moms)
+        num_comms = len(self.comms)
+        if (req_moms != num_moms) and (req_comms != num_comms):
+            msg = "Test requires exact %s moms and %s" % (req_moms, req_comms)
+            msg += " comms as input"
+            self.skipTest(msg)
         if not no_mom_on_comm and not no_comm_on_server:
             if self.server.shortname not in mom_list:
                 self.skipTest("Mom and comm should be on server host")
-        if len(self.moms.values()) == 2 and len(self.comms.values()) == 2:
+        if num_moms == 2 and num_comms == 2:
             self.hostA = self.server.shortname
             self.momB = self.moms.values()[1]
             self.hostB = self.momB.shortname
             self.comm2 = self.comms.values()[1]
             self.hostC = self.comm2.shortname
-            nodes = [self.hostA, self.hostB, self.hostC]
-        elif len(self.moms.values()) == 3 and len(self.comms.values()) == 3:
+            self.node_list = [self.hostA, self.hostB, self.hostC]
+        elif num_moms == 3 and num_comms == 3:
             self.hostA = self.server.shortname
             self.momB = self.moms.values()[1]
             self.hostB = self.momB.shortname
@@ -416,13 +427,13 @@ class TestTPP(TestFunctional):
             self.hostC = self.comm2.shortname
             self.comm3 = self.comms.values()[2]
             self.hostE = self.comm3.shortname
-            nodes = [
+            self.node_list = [
                 self.hostA,
                 self.hostB,
                 self.hostC,
                 self.hostD,
                 self.hostE]
-        elif len(self.moms.values()) == 2 and len(self.comms.values()) == 3:
+        elif num_moms == 2 and num_comms == 3:
             if self.server.shortname not in comm_list:
                 self.comm1 = self.comms.values()[0]
                 self.hostA = self.comm1.shortname
@@ -436,13 +447,13 @@ class TestTPP(TestFunctional):
             self.hostD = self.comm2.shortname
             self.comm3 = self.comms.values()[2]
             self.hostE = self.comm3.shortname
-            nodes = [
+            self.node_list = [
                 self.hostA,
                 self.hostB,
                 self.hostC,
                 self.hostD,
                 self.hostE]
-        elif len(self.moms.values()) == 4 and len(self.comms.values()) == 5:
+        elif num_moms == 4 and num_comms == 5:
             self.hostA = self.server.shortname
             self.momB = self.moms.values()[0]
             self.hostB = self.momB.shortname
@@ -460,14 +471,13 @@ class TestTPP(TestFunctional):
             self.hostH = self.comm4.shortname
             self.comm5 = self.comms.values()[4]
             self.hostI = self.comm5.shortname
-            nodes = [
+            self.node_list = [
                 self.hostA,
                 self.hostB,
                 self.hostC,
                 self.hostD,
                 self.hostE, self.hostF, self.hostG, self.hostH,
                 self.hostI]
-        self.node_list.extend(nodes)
 
     @requirements(num_moms=2, num_comms=2)
     def test_multiple_comm_with_mom(self):
@@ -727,7 +737,7 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         comm_val = self.hostA + "," + self.hostC
@@ -766,7 +776,7 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         hostA_ip = socket.gethostbyname(self.hostA)
         hostC_ip = socket.gethostbyname(self.hostC)
         a = {'PBS_COMM_ROUTERS': hostA_ip}
@@ -807,7 +817,7 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         hostA_ip = socket.gethostbyname(self.hostA)
         comm_val = self.hostA + ":17001"
         a = {'PBS_COMM_ROUTERS': comm_val}
@@ -848,7 +858,7 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         hostA_ip = socket.gethostbyname(self.hostA)
         comm_val = self.hostA + ":17001"
         a = {'PBS_COMM_ROUTERS': self.hostA}
@@ -991,7 +1001,7 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostC)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup(no_mom_on_comm=True)
+        self.common_setup(no_mom_on_comm=True, req_comms=3)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         hosts = [self.hostD, self.hostE]
         for host in hosts:
@@ -1015,7 +1025,8 @@ class TestTPP(TestFunctional):
         Node 5 : Comm (self.hostE)
         Node 6 : Comm (self.hostA)
         """
-        self.common_setup(no_mom_on_comm=True, no_comm_on_server=True)
+        self.common_setup(no_mom_on_comm=True, no_comm_on_server=True,
+                          req_comms=3)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         hosts = [self.hostD, self.hostE]
         for host in hosts:
@@ -1043,20 +1054,20 @@ class TestTPP(TestFunctional):
         Node 8 : Mom (self.hostE)
         Node 9 : Comm (self.hostI)
         """
-        self.common_setup(no_mom_on_comm=True)
+        self.common_setup(no_mom_on_comm=True,req_moms=4, req_comms=5)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         comm_hosts = [self.hostF, self.hostG, self.hostH, self.hostI]
         for host in comm_hosts:
             self.set_pbs_conf(host_name=host, conf_param=a)
         mom_hosts = [self.hostB, self.hostC, self.hostD, self.hostE]
         for host in mom_hosts:
-            if hosts == self.hostB:
+            if host == self.hostB:
                 leaf_val = self.hostF + "," + self.hostG
-            elif hosts == self.hostC:
+            elif host == self.hostC:
                 leaf_val = self.hostG + "," + self.hostF
-            elif hosts == self.hostD:
+            elif host == self.hostD:
                 leaf_val = self.hostH + "," + self.hostI
-            elif hosts == self.hostE:
+            elif host == self.hostE:
                 leaf_val = self.hostI + "," + self.hostH
             b = {'PBS_LEAF_ROUTERS': leaf_val}
             self.set_pbs_conf(host_name=host, conf_param=b)
