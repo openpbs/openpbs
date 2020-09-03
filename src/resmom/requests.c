@@ -3306,7 +3306,7 @@ req_cpyfile(struct batch_request *preq)
 		/* cd to user's home to be out of   */
 		/* the sandbox so it can be deleted */
 		chdir(pwdp->pw_dir);
-		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid);
+		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, 0);
 	}
 
 	pbs_strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid));

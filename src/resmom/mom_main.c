@@ -234,6 +234,7 @@ char            pbs_jobdir_root[MAX_PATH]= "";
 char            pbs_tmpdir[_POSIX_PATH_MAX] = TMP_DIR;
 char            pbs_jobdir_root[_POSIX_PATH_MAX]= "";
 #endif
+int		pbs_jobdir_root_shared = FALSE;
 vnl_t		*vnlp = NULL;			/* vnode list */
 unsigned long	hooks_rescdef_checksum = 0;
 
@@ -3614,7 +3615,13 @@ static handler_ret_t
 set_jobdir_root(char *value)
 {
 	char	*cleaned_value;
+	char    *savep = NULL;
+	char	*directive;
+	char	*p;
 
+	p = value;
+	value = strtok_r(p, " ", &savep);
+	directive = strtok_r(NULL, " ", &savep);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, __func__, value);
 	cleaned_value = remove_quotes(value); /* remove quotes if any present */
@@ -3644,6 +3651,11 @@ set_jobdir_root(char *value)
 
 	strcpy(pbs_jobdir_root, cleaned_value);
 	free(cleaned_value);
+
+	if (directive != NULL) {
+		if (strcmp(directive, "shared") == 0)
+			pbs_jobdir_root_shared = TRUE;
+	}
 	return HANDLER_SUCCESS;
 }
 
