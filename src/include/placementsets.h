@@ -249,7 +249,7 @@ extern vnl_t	*vn_merge(vnl_t *, vnl_t *, callfunc_t);
  *
  * @retval	NULL	error
  */
-extern vnl_t	*vn_merge2(vnl_t *, vnl_t *, char *, callfunc_t);
+extern vnl_t	*vn_merge2(vnl_t *, vnl_t *, char **, callfunc_t);
 
 /**
  * @brief	parse a file containing vnode information into a vnode list

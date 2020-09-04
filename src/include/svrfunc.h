@@ -71,7 +71,6 @@ extern void close_client(int);
 extern int contact_sched(int, char *, pbs_net_t, unsigned int);
 extern void count_node_cpus(void);
 extern int ctcpus(char *, int *);
-extern void get_jobowner(char *, char *);
 extern void cvrt_fqn_to_name(char *, char *);
 extern int failover_send_shutdown(int);
 extern char *get_hostPart(char *);

@@ -530,7 +530,9 @@ get_subjob_discarding(job *parent, int iindx)
 {
 	if (iindx == -1)
 		return -1;
-	return (parent->ji_ajtrk->tkm_tbl[iindx].trk_discarding);
+	if (parent->ji_ajtrk->tkm_tbl[iindx].trk_psubjob)
+		return (parent->ji_ajtrk->tkm_tbl[iindx].trk_psubjob->ji_discarding);
+	return 0;
 }
 /**
  * @brief
@@ -684,7 +686,6 @@ mk_subjob_index_tbl(char *range, int initalstate, int *pbserror, int mode)
 	for (i = start; i <= end; i += step, j++) {
 		trktbl->tkm_tbl[j].trk_status = initalstate;
 		trktbl->tkm_tbl[j].trk_error = 0;
-		trktbl->tkm_tbl[j].trk_discarding = 0;
 		trktbl->tkm_tbl[j].trk_substate = JOB_SUBSTATE_FINISHED;
 		trktbl->tkm_tbl[j].trk_stgout = -1;
 		trktbl->tkm_tbl[j].trk_exitstat = 0;

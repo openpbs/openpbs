@@ -1713,28 +1713,6 @@ cat_default_std(job *pjob, int key, char *in, char **out)
 	*out = result;
 }
 
-
-/**
- * @brief
- * 		get_jobowner - copy the basic job owner's name, without the @host suffix.
- *		The "to" buffer must be large enough (PBS_MAXUSER+1).
- *
- * @param[in]	from	-	 basic job owner's name
- * @param[out]	to	-	"to" buffer where name is copied.
- */
-void
-get_jobowner(char *from, char *to)
-{
-	int i;
-
-	for (i=0; i<PBS_MAXUSER; ++i) {
-		if ((*(from+i) == '@') || (*(from+i) == '\0'))
-			break;
-		*(to+i) = *(from+i);
-	}
-	*(to+i) = '\0';
-}
-
 /**
  * @brief
  * 		cvrt_fqn_to_name - copy the name only (no @host suffix) to the "to" buffer.

@@ -43,10 +43,7 @@
 extern "C" {
 #endif
 
-
-#ifndef	_LIST_LINK_H
 #include "list_link.h"
-#endif
 
 /*
  * Definition of basic structures and functions used for Mom -> Server
@@ -57,33 +54,55 @@ extern "C" {
  * These are from Mom to Server only and only via TPP
  */
 
+typedef struct resc_used_update ruu;
 struct resc_used_update {
-	struct resc_used_update	*ru_next;
-	char 			*ru_pjobid;	/* pointer to job id         */
-	char			*ru_comment;	/* a general message	     */
-	int			 ru_status;	/* job exit status (or zero) */
-	int			 ru_hop;	/* hop/run count of job	*/
-	pbs_list_head		 ru_attr;	/* list of svrattrl */
+	ruu *ru_next;
+	char *ru_pjobid;		/* pointer to job id */
+	char *ru_comment;		/* a general message */
+	int ru_status;			/* job exit status (or zero) */
+	int ru_hop;			/* hop/run count of job	*/
+	pbs_list_head ru_attr;		/* list of svrattrl */
+#ifdef PBS_MOM
+	time_t ru_created_at;		/* time in epoch at which this ruu was created */
+	job *ru_pjob;			/* pointer to job structure for this ruu */
+	int ru_cmd;			/* cmd for this ruu */
+	pbs_list_link ru_pending;	/* link to mom_pending_ruu list */
+#endif
 };
 
+#ifdef PBS_MOM
 #define FREE_RUU(x) \
+do { \
+	if (x->ru_pjob) { \
+		x->ru_pjob->ji_pending_ruu = NULL; \
+		x->ru_pjob = NULL; \
+	} \
+	delete_link(&x->ru_pending); \
 	free_attrlist(&x->ru_attr); \
-	(void)free(x->ru_pjobid); \
-	if (x->ru_comment) (void)free(x->ru_comment); \
-	(void)free(x);
+	if (x->ru_pjobid) free(x->ru_pjobid); \
+	if (x->ru_comment) free(x->ru_comment); \
+	free(x); \
+} while (0)
+#else
+#define FREE_RUU(x) \
+do { \
+	free_attrlist(&x->ru_attr); \
+	if (x->ru_pjobid) free(x->ru_pjobid); \
+	if (x->ru_comment) free(x->ru_comment); \
+	free(x); \
+} while (0)
+#endif
 
-extern void	send_resc_used(int cmd, int count,
-	struct resc_used_update *ptop);
-extern void	ack_obit(int stream, char *jobid);
-extern void	reject_obit(int stream, char *jobid);
-extern void	job_obit(struct resc_used_update *, int s);
+extern int job_obit(ruu *, int);
+extern int enqueue_update_for_send(job *, int);
+extern void send_resc_used(int cmd, int count, ruu *rud);
+extern void send_pending_updates(void);
+extern char mom_short_name[];
 
-extern char	mom_short_name[];
-
-#ifdef	_PBS_JOB_H
-extern u_long	resc_used(job *, char *, u_long(*func)(resource *pres));
-#endif	/* _PBS_JOB_H */
-#ifdef	__cplusplus
+#ifdef _PBS_JOB_H
+extern u_long resc_used(job *, char *, u_long (*func)(resource *pres));
+#endif /* _PBS_JOB_H */
+#ifdef __cplusplus
 }
 #endif
 #endif	/* _MOM_SERVER_H */

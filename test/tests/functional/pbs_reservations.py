@@ -38,8 +38,9 @@
 # subject to Altair's trademark licensing policies.
 
 
-from tests.functional import *
 import time
+
+from tests.functional import *
 
 
 @tags('reservations')
@@ -1583,10 +1584,10 @@ class TestReservations(TestFunctional):
         self.common_steps()
 
         # Submit job j to consume all resources
-        a = {'Resource_List.walltime': '5',
+        a = {'Resource_List.walltime': '10',
              'Resource_List.select': '1:ncpus=4'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
+        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
