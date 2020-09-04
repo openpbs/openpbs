@@ -287,7 +287,6 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'abc'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
