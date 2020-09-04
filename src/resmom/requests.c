@@ -1862,7 +1862,7 @@ terminate_job(job *pjob, int internal)
 			next_sample_time = min_check_poll;
 		}
 		if (kill_job(pjob, s) == 0) {
-			/* no processes around, force into exiting */
+			/* no processes around, time to exit */
 			exiting_tasks = 1;
 		}
 		i = -2;
