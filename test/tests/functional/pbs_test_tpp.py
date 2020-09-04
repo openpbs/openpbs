@@ -281,8 +281,7 @@ class TestTPP(TestFunctional):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
         self.hostC = self.server.client
-        nodes = [self.hostA, self.hostB, self.hostC]
-        self.node_list.extend(nodes)
+        self.node_list = [self.hostA, self.hostB, self.hostC]
         self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': True})
         self.common_steps(job=True, interactive=True)
         self.common_steps(resv=True, resv_job=True, client=self.hostB)
@@ -309,8 +308,8 @@ class TestTPP(TestFunctional):
         self.hostB = self.server.client
         self.hostC = self.momB.shortname
         self.hostD = self.comm1.shortname
-        nodes = [self.hostA, self.hostB, self.hostC, self.hostD]
-        self.node_list.extend(nodes)
+        self.node_list = [self.hostA, self.hostB,
+                          self.hostC, self.hostD]
         a = {'PBS_START_COMM': '0', 'PBS_START_MOM': '1',
              'PBS_LEAF_ROUTERS': self.hostD}
         b = {'PBS_LEAF_ROUTERS': self.hostD}
@@ -345,8 +344,7 @@ class TestTPP(TestFunctional):
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        nodes = [self.hostA, self.hostB]
-        self.node_list.extend(nodes)
+        self.node_list = [self.hostA, self.hostB]
         self.common_steps(job=True, resv=True,
                           resv_job=True, client=self.hostA)
         self.common_steps(job=True, interactive=True,
@@ -412,7 +410,9 @@ class TestTPP(TestFunctional):
                 self.skipTest("Mom and comm should be on server host")
         if num_moms == 2 and num_comms == 2:
             self.hostA = self.server.shortname
+            self.momB = self.moms.values()[1]
             self.hostB = mom_list[1]
+            self.comm2 = self.comms.values()[1]
             self.hostC = comm_list[1]
             self.node_list = [self.hostA, self.hostB, self.hostC]
         elif num_moms == 3 and num_comms == 3:
@@ -448,8 +448,10 @@ class TestTPP(TestFunctional):
             self.hostC = mom_list[1]
             self.hostD = mom_list[2]
             self.hostE = mom_list[3]
+            self.comm2 = self.comms.values()[1]
             self.hostF = comm_list[1]
             self.hostG = comm_list[2]
+            self.comm4 = self.comms.values()[3]
             self.hostH = comm_list[3]
             self.hostI = comm_list[4]
             self.node_list = [
