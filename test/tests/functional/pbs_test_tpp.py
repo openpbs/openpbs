@@ -1054,7 +1054,7 @@ class TestTPP(TestFunctional):
         Node 8 : Mom (self.hostE)
         Node 9 : Comm (self.hostI)
         """
-        self.common_setup(no_mom_on_comm=True,req_moms=4, req_comms=5)
+        self.common_setup(no_mom_on_comm=True, req_moms=4, req_comms=5)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         comm_hosts = [self.hostF, self.hostG, self.hostH, self.hostI]
         for host in comm_hosts:
