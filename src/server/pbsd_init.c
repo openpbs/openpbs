@@ -402,35 +402,35 @@ pbsd_init(int type)
 
 
 	{
-		struct rlimit64 rlimit;
+		struct rlimit rlimit;
 
-		rlimit.rlim_cur = RLIM64_INFINITY;
-		rlimit.rlim_max = RLIM64_INFINITY;
+		rlimit.rlim_cur = RLIM_INFINITY;
+		rlimit.rlim_max = RLIM_INFINITY;
 
-		(void)setrlimit64(RLIMIT_CPU,   &rlimit);
-		(void)setrlimit64(RLIMIT_FSIZE, &rlimit);
-		(void)setrlimit64(RLIMIT_DATA,  &rlimit);
-		(void)setrlimit64(RLIMIT_STACK, &rlimit);
+		(void)setrlimit(RLIMIT_CPU,   &rlimit);
+		(void)setrlimit(RLIMIT_FSIZE, &rlimit);
+		(void)setrlimit(RLIMIT_DATA,  &rlimit);
+		(void)setrlimit(RLIMIT_STACK, &rlimit);
 #ifdef	RLIMIT_RSS
-		(void)setrlimit64(RLIMIT_RSS  , &rlimit);
+		(void)setrlimit(RLIMIT_RSS  , &rlimit);
 #endif	/* RLIMIT_RSS */
 #ifdef	RLIMIT_VMEM
-		(void)setrlimit64(RLIMIT_VMEM  , &rlimit);
+		(void)setrlimit(RLIMIT_VMEM  , &rlimit);
 #endif	/* RLIMIT_VMEM */
 #ifdef	RLIMIT_CORE
 		if (pbs_conf.pbs_core_limit) {
-			struct rlimit64 corelimit;
-			corelimit.rlim_max = RLIM64_INFINITY;
+			struct rlimit corelimit;
+			corelimit.rlim_max = RLIM_INFINITY;
 			if (strcmp("unlimited", pbs_conf.pbs_core_limit) == 0)
-				corelimit.rlim_cur = RLIM64_INFINITY;
+				corelimit.rlim_cur = RLIM_INFINITY;
 			else if (char_in_cname == 1) {
 				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_WARNING,
 					__func__, msg_corelimit);
-				corelimit.rlim_cur = RLIM64_INFINITY;
+				corelimit.rlim_cur = RLIM_INFINITY;
 			} else
 				corelimit.rlim_cur =
-					(rlim64_t)atol(pbs_conf.pbs_core_limit);
-			(void)setrlimit64(RLIMIT_CORE, &corelimit);
+					(rlim_t)atol(pbs_conf.pbs_core_limit);
+			(void)setrlimit(RLIMIT_CORE, &corelimit);
 		}
 #endif	/* RLIMIT_CORE */
 	}

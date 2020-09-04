@@ -61,9 +61,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-#ifndef SIGKILL
 #include <signal.h>
-#endif
 #include "server_limits.h"
 #include "list_link.h"
 #include "log.h"

@@ -124,7 +124,7 @@ pbs_dataservice_bin_CPPFLAGS = \
 	@database_inc@
 pbs_dataservice_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_dataservice_bin_LDADD = \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
 	@database_lib@ \
 	-lssl \
@@ -136,7 +136,7 @@ pbs_ds_password_bin_CPPFLAGS = \
 	@database_inc@
 pbs_ds_password_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_ds_password_bin_LDADD = \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
 	@database_lib@ \
 	-lssl \

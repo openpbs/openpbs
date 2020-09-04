@@ -48,6 +48,9 @@ extern "C" {
  * Target System: linux
  */
 
+#ifndef __linux__
+typedef unsigned long ulong;
+#endif
 
 #ifndef PBS_MACH
 #define PBS_MACH "linux"

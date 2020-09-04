@@ -54,21 +54,20 @@
 #include <string.h>
 #include <pwd.h>
 #include <time.h>
-#include <mntent.h>
 #include <ftw.h>
 #include <dlfcn.h>
-#include <asm/types.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/procfs.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#ifdef __linux__
 #include <sys/vfs.h>
-#include <sys/sysmacros.h>
+#else
+#include <sys/mount.h>
+#endif
 #include <sys/resource.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
-#include <syscall.h>
 #include <signal.h>
 
 #include "pbs_error.h"

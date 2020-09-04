@@ -42,8 +42,7 @@
 SUBDIRS = \
 	pgsql
 
-all-local:
-	cp -p $(top_builddir)/src/lib/Libdb/pgsql/.libs/libdb.so.0.0.0 $(top_builddir)/src/lib/Libdb/libdb.so
-
-clean-local:
-	rm -f $(top_builddir)/src/lib/Libdb/libdb.so
+lib_LTLIBRARIES = libpbsdb.la
+libpbsdb_la_LDFLAGS = -version-info 0:0:0
+libpbsdb_la_LIBADD = pgsql/libpbsdbpg.la
+libpbsdb_la_SOURCES =

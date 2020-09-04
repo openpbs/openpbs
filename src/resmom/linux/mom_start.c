@@ -895,7 +895,9 @@ struct sig_tbl sig_tbl[] = {
 	{ "TTIN", SIGTTIN },
 	{ "TTOU", SIGTTOU },
 	{ "IO", SIGIO },
+#ifdef __linux__
 	{ "POLL", SIGPOLL },
+#endif
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
 	{ "VTALRM", SIGVTALRM },

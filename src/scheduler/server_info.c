@@ -153,6 +153,7 @@
 #include "site_code.h"
 #endif
 
+extern char **environ;
 
 /**
  *	@brief

@@ -61,7 +61,7 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	@database_ldflags@ \
 	@expat_lib@ \
