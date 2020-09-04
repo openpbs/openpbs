@@ -97,6 +97,7 @@ pbs_mom_SOURCES = \
 	mom_hook_func.c \
 	mom_inter.c \
 	mom_main.c \
+	mom_updates_bundle.c \
 	mom_pmix.c \
 	mom_pmix.h \
 	mom_server.c \

@@ -96,6 +96,7 @@ do { \
 extern int job_obit(ruu *, int);
 extern int enqueue_update_for_send(job *, int);
 extern void send_resc_used(int cmd, int count, ruu *rud);
+extern void send_pending_updates(void);
 extern char mom_short_name[];
 
 #ifdef _PBS_JOB_H
