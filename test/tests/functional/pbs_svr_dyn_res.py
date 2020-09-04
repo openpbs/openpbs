@@ -244,22 +244,24 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_small': '4'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar_small': 4}
         self.server.expect(JOB, a, id=jid)
 
+        self.server.delete(jid, wait=True)
+
         a = {'Resource_List.foobar_medium': '10'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar_medium': 10}
         self.server.expect(JOB, a, id=jid)
+
+        self.server.delete(jid, wait=True)
 
         a = {'Resource_List.foobar_large': '18'}
         # Submit job
@@ -325,12 +327,13 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'red'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar': 'red'}
         self.server.expect(JOB, a, id=jid)
+
+        self.server.delete(jid, wait=True)
 
         # Submit job
         a = {'Resource_List.foobar': 'green'}
@@ -362,12 +365,13 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.set_sleep_time(5)
         jid1 = self.server.submit(j1)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar': '95gb'}
         self.server.expect(JOB, a, id=jid1)
+
+        self.server.delete(jid1, wait=True)
 
         # Submit job
         a = {'Resource_List.foobar': '101gb'}
