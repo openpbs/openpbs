@@ -592,14 +592,8 @@ struct job {
 	union jobextend {
 		char fill[256]; /* fill to keep same size */
 		struct {
-#if defined(__sgi)
-			jid_t ji_jid;
-			ash_t ji_ash;
-#else
-			char ji_4jid[8];
-			char ji_4ash[8];
-#endif /* sgi */
-			int ji_credtype;
+			char ji_jid[8];	 /* extended job save data for ALPS */
+			int ji_credtype; /* credential type */
 #ifdef PBS_MOM
 			tm_host_id ji_nodeidx; /* my node id */
 			tm_task_id ji_taskidx; /* generate task id's for job */
