@@ -293,6 +293,8 @@ class TestServerDynRes(TestFunctional):
         a = {'job_state': 'R', 'Resource_List.foobar': 'abc'}
         self.server.expect(JOB, a, id=jid)
 
+        self.server.delete(jid, wait=True)
+
         # Submit job
         a = {'Resource_List.foobar': 'xyz'}
         j = Job(TEST_USER, attrs=a)
