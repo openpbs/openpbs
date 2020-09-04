@@ -401,8 +401,8 @@ class TestTPP(TestFunctional):
         """
         mom_list = [x.shortname for x in self.moms.values()]
         comm_list = [y.shortname for y in self.comms.values()]
-        num_moms = len(self.moms)
-        num_comms = len(self.comms)
+        num_moms = len(mom_list)
+        num_comms = len(comm_list)
         if (req_moms != num_moms) and (req_comms != num_comms):
             msg = "Test requires exact %s moms and %s" % (req_moms, req_comms)
             msg += " comms as input"
@@ -412,21 +412,15 @@ class TestTPP(TestFunctional):
                 self.skipTest("Mom and comm should be on server host")
         if num_moms == 2 and num_comms == 2:
             self.hostA = self.server.shortname
-            self.momB = self.moms.values()[1]
-            self.hostB = self.momB.shortname
-            self.comm2 = self.comms.values()[1]
-            self.hostC = self.comm2.shortname
+            self.hostB = mom_list[1]
+            self.hostC = comm_list[1]
             self.node_list = [self.hostA, self.hostB, self.hostC]
         elif num_moms == 3 and num_comms == 3:
             self.hostA = self.server.shortname
-            self.momB = self.moms.values()[1]
-            self.hostB = self.momB.shortname
-            self.momC = self.moms.values()[2]
-            self.hostD = self.momC.shortname
-            self.comm2 = self.comms.values()[1]
-            self.hostC = self.comm2.shortname
-            self.comm3 = self.comms.values()[2]
-            self.hostE = self.comm3.shortname
+            self.hostB = mom_list[1]
+            self.hostC = comm_list[1]
+            self.hostD = mom_list[2]
+            self.hostE = comm_list[2]
             self.node_list = [
                 self.hostA,
                 self.hostB,
@@ -435,18 +429,13 @@ class TestTPP(TestFunctional):
                 self.hostE]
         elif num_moms == 2 and num_comms == 3:
             if self.server.shortname not in comm_list:
-                self.comm1 = self.comms.values()[0]
-                self.hostA = self.comm1.shortname
+                self.hostA = comm_list[0]
             else:
                 self.hostA = self.server.shortname
-            self.momB = self.moms.values()[0]
-            self.hostB = self.momB.shortname
-            self.momC = self.moms.values()[1]
-            self.hostC = self.momC.shortname
-            self.comm2 = self.comms.values()[1]
-            self.hostD = self.comm2.shortname
-            self.comm3 = self.comms.values()[2]
-            self.hostE = self.comm3.shortname
+            self.hostB = mom_list[0]
+            self.hostD = comm_list[1]
+            self.hostC = mom_list[1]
+            self.hostE = comm_list[2]
             self.node_list = [
                 self.hostA,
                 self.hostB,
@@ -455,22 +444,14 @@ class TestTPP(TestFunctional):
                 self.hostE]
         elif num_moms == 4 and num_comms == 5:
             self.hostA = self.server.shortname
-            self.momB = self.moms.values()[0]
-            self.hostB = self.momB.shortname
-            self.momC = self.moms.values()[1]
-            self.hostC = self.momC.shortname
-            self.momD = self.moms.values()[2]
-            self.hostD = self.momD.shortname
-            self.momE = self.moms.values()[3]
-            self.hostE = self.momE.shortname
-            self.comm2 = self.comms.values()[1]
-            self.hostF = self.comm2.shortname
-            self.comm3 = self.comms.values()[2]
-            self.hostG = self.comm3.shortname
-            self.comm4 = self.comms.values()[3]
-            self.hostH = self.comm4.shortname
-            self.comm5 = self.comms.values()[4]
-            self.hostI = self.comm5.shortname
+            self.hostB = mom_list[0]
+            self.hostC = mom_list[1]
+            self.hostD = mom_list[2]
+            self.hostE = mom_list[3]
+            self.hostF = comm_list[1]
+            self.hostG = comm_list[2]
+            self.hostH = comm_list[3]
+            self.hostI = comm_list[4]
             self.node_list = [
                 self.hostA,
                 self.hostB,
