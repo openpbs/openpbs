@@ -48,8 +48,10 @@ import traceback
 from datetime import datetime, timedelta, tzinfo
 from subprocess import PIPE, Popen
 
-from ptl.lib.pbs_testlib import (EQ, JOB, NODE, SET, BatchUtils, ResourceResv,
-                                 Server)
+from ptl.lib.pbs_testlib import (EQ, JOB, NODE, SET)
+from ptl.lib.ptl_resources import *
+from ptl.lib.ptl_batchutils import *
+from ptl.lib.ptl_server import *
 from ptl.utils.pbs_dshutils import DshUtils
 
 """
@@ -251,7 +253,7 @@ class PBSLogUtils(object):
 
         try:
             # Get datetime object
-            t = datetime.strptime(dt, fmt)
+            t = datetime.datetime.strptime(dt, fmt)
             # Get epoch-timestamp assuming local timezone
             tm = t.timestamp()
         except ValueError:

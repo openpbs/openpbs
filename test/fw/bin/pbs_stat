@@ -51,9 +51,12 @@ import time
 import ptl
 from ptl.lib.pbs_testlib import (HOOK, JOB, PTL_AND, PTL_CLI, PTL_OR, QUEUE,
                                  RESOURCES_AVAILABLE, RESOURCES_TOTAL, RESV,
-                                 RSC, SCHED, SERVER, VNODE, BatchUtils,
-                                 PbsStatusError, PbsTypeSize, PtlConfig,
-                                 Scheduler, Server)
+                                 RSC, SCHED, SERVER, VNODE, PtlConfig)
+from ptl.lib.ptl_batchutils import *
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_types import *
+from ptl.lib.ptl_sched import *
+from ptl.lib.ptl_server import *
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSAccountingLog

@@ -44,7 +44,8 @@ import copy
 import shlex
 import re
 
-from ptl.lib.pbs_testlib import BatchUtils,  PbsTypeFGCLimit
+from ptl.lib.ptl_types import PbsTypeFGCLimit
+from ptl.lib.ptl_batchutils import *
 from ptl.lib.pbs_ifl_mock import *
 from ptl.utils.pbs_dshutils import DshUtils
 
