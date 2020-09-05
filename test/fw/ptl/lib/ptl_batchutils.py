@@ -56,6 +56,7 @@ from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.lib.pbs_testlib import *
 
+
 def get_batchutils_obj():
     return BatchUtils()
 from ptl.lib.ptl_types import PbsTypeSize, PbsTypeChunk, PbsTypeDuration

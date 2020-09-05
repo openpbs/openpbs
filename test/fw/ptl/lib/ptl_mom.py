@@ -37,6 +37,7 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
+
 import ast
 import base64
 import copy
@@ -74,9 +75,11 @@ from ptl.lib.ptl_expect_action import *
 from ptl.lib.ptl_batchutils import *
 from ptl.lib.ptl_types import *
 from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import * 
+from ptl.lib.ptl_service import *
+
+
 def get_mom_obj(name=None, attrs={}, pbsconf_file=None, snapmap={},
-                 snap=None, server=None, db_access=None):
+                snap=None, server=None, db_access=None):
     return MoM(name, attrs, pbsconf_file, snapmap, snap, server, db_access)
 
 from ptl.lib.ptl_server import get_server_obj

@@ -64,7 +64,8 @@ from ptl.lib.ptl_expect_action import *
 from ptl.lib.ptl_batchutils import *
 from ptl.lib.ptl_types import *
 from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import * 
+from ptl.lib.ptl_service import *
+
 
 def get_comm_obj(name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):

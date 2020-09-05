@@ -780,7 +780,7 @@ class PBSService(PBSObject):
         priv = self._instance_to_privpath(inst)
         lock = self._instance_to_lock(inst)
         if ((inst.__class__.__name__ == "Scheduler") and
-           'sched_priv' in inst.attributes):
+                'sched_priv' in inst.attributes):
             path = os.path.join(inst.attributes['sched_priv'], lock)
         else:
             path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)

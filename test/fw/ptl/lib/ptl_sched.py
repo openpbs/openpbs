@@ -77,9 +77,11 @@ from ptl.lib.ptl_types import *
 from ptl.lib.ptl_object import *
 from ptl.lib.ptl_service import *
 from ptl.lib.ptl_resources import *
+
+
 def get_sched_obj(hostname=None, server=None, pbsconf_file=None,
-                 snapmap={}, snap=None, db_access=None, id='default',
-                 sched_priv=None):
+                  snapmap={}, snap=None, db_access=None, id='default',
+                  sched_priv=None):
     return Scheduler(hostname, server, pbsconf_file, snapmap, snap, db_access,
                      id, sched_priv)
 

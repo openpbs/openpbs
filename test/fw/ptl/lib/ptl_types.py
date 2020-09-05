@@ -38,14 +38,13 @@
 # subject to Altair's trademark licensing policies.
 
 
-
 import datetime
 import os
 import re
 import sys
 import time
 
-from ptl.lib.ptl_batchutils import get_batchutils_obj 
+from ptl.lib.ptl_batchutils import get_batchutils_obj
 
 
 class PbsTypeSize(str):
@@ -694,9 +693,6 @@ class PbsTypeJobId(str):
         return str(self.value)
 
 
-
-
-
 class PbsTypeFGCLimit(object):
 
     """
@@ -759,4 +755,4 @@ class PbsTypeAttribute(dict):
 
     def __getitem__(self, name):
         return get_batchutils_obj.decode_value(super(PbsTypeAttribute,
-                                               self).__getitem__(name))
+                                                     self).__getitem__(name))

@@ -95,10 +95,12 @@ from ptl.lib.ptl_object import *
 from ptl.lib.ptl_service import *
 from ptl.lib.ptl_resources import *
 from ptl.lib.ptl_job import *
+
+
 def get_server_obj(name=None, attrs={}, defaults={}, pbsconf_file=None,
-                 snapmap={}, snap=None, client=None, client_pbsconf_file=None,
-                 db_access=None, stat=True):
-    return Server(name, attrs, defaults,pbsconf_file, snapmap, snap, client,
+                   snapmap={}, snap=None, client=None,
+                   client_pbsconf_file=None, db_access=None, stat=True):
+    return Server(name, attrs, defaults, pbsconf_file, snapmap, snap, client,
                   client_pbsconf_file, db_access, stat)
 
 from ptl.lib.ptl_mom import get_mom_obj
@@ -4198,7 +4200,7 @@ class Server(PBSService):
                     else:
                         self.nodes[id].attributes.update(binfo)
                 else:
-                    self.nodes[id] = get_mom_obj(id, binfo, 
+                    self.nodes[id] = get_mom_obj(id, binfo,
                                                  snapmap={NODE: None},
                                                  server=self)
                 obj = self.nodes[id]
