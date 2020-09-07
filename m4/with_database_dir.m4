@@ -81,6 +81,5 @@ AC_DEFUN([PBS_AC_WITH_DATABASE_DIR],
   AC_SUBST([database_dir])
   AC_SUBST([database_inc])
   AC_SUBST([database_lib])
-  AC_SUBST([database_ldflags])
   AC_DEFINE([DATABASE], [], [Defined when PBS database is available])
 ])

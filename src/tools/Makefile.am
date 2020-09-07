@@ -84,7 +84,6 @@ pbs_ds_monitor_CPPFLAGS = ${common_cflags}
 pbs_ds_monitor_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
-	@database_ldflags@ \
 	-lssl \
 	-lcrypto
 
@@ -199,7 +198,6 @@ printjob_svr_bin_CPPFLAGS = \
 printjob_svr_bin_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
-	@database_ldflags@ \
 	-lssl \
 	-lcrypto
 
