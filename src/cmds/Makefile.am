@@ -121,7 +121,6 @@ pbs_demux_SOURCES = pbs_demux.c
 
 pbs_dataservice_bin_CPPFLAGS = \
 	${common_cflags}
-pbs_dataservice_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_dataservice_bin_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
@@ -131,7 +130,6 @@ pbs_dataservice_bin_SOURCES = pbs_dataservice.c ${common_sources}
 
 pbs_ds_password_bin_CPPFLAGS = \
 	${common_cflags}
-pbs_ds_password_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_ds_password_bin_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \

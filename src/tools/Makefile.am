@@ -81,7 +81,6 @@ chk_tree_LDADD = ${common_libs}
 chk_tree_SOURCES = chk_tree.c
 
 pbs_ds_monitor_CPPFLAGS = ${common_cflags}
-pbs_ds_monitor_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 pbs_ds_monitor_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
@@ -196,8 +195,6 @@ printjob_svr_bin_CPPFLAGS = \
 	${common_cflags} \
 	-I$(top_srcdir)/src/lib/Libdb \
 	-DPRINTJOBSVR
-
-printjob_svr_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 
 printjob_svr_bin_LDADD = \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \

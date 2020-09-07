@@ -49,8 +49,6 @@ pbs_server_bin_CPPFLAGS = \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
 
-pbs_server_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
-
 pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
