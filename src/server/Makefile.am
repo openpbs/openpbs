@@ -43,7 +43,6 @@ sbin_PROGRAMS = pbs_server.bin pbs_comm
 
 pbs_server_bin_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@database_inc@ \
 	@expat_inc@ \
 	@libical_inc@ \
 	@libz_inc@ \

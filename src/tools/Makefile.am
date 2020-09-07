@@ -195,7 +195,6 @@ printjob_bin_SOURCES = printjob.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 printjob_svr_bin_CPPFLAGS = \
 	${common_cflags} \
 	-I$(top_srcdir)/src/lib/Libdb \
-	@database_inc@ \
 	-DPRINTJOBSVR
 
 printjob_svr_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
