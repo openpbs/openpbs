@@ -394,10 +394,12 @@ on_job_exit(struct work_task *ptask)
 		 * If no stage files but has execjob_end hook to run, put job directly in
 		 * exited sub state
 		 */
-		if ((rc = num_eligible_hooks(HOOK_EVENT_EXECJOB_END)) == 0 && !has_stage(pjob)) {
+		int hs = has_stage(pjob);
+		rc = num_eligible_hooks(HOOK_EVENT_EXECJOB_END);
+		if (!rc && !hs) {
 			end_job(pjob, 1);
 			return;
-		} else if (rc > 0) {
+		} else if (rc > 0 && !hs) {
 			svr_setjobstate(pjob, JOB_STATE_EXITING, JOB_SUBSTATE_EXITED);
 		}
 	}
