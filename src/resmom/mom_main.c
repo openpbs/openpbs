@@ -8912,23 +8912,16 @@ main(int argc, char *argv[])
 		}
 	}
 #endif		
-	fclose(stdin);
-	fclose(stdout);
-	fclose(stderr);
-	dummyfile = fopen(NULL_DEVICE, "r");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 0));
-	dummyfile = fopen(NULL_DEVICE, "w");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 1));
-	dummyfile = fopen(NULL_DEVICE, "w");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 2));
+	freopen(NULL_DEVICE, "r", stdin);
+	freopen(NULL_DEVICE, "w", stdout);
+	freopen(NULL_DEVICE, "w", stderr);
 #else	/* DEBUG */
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 	if (stalone != 1) {
-		sprintf(log_buffer, "Debug build does not fork.");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-				__func__, log_buffer);
+				__func__, "Debug build does not fork.");
 	}
-	setvbuf(stdout, NULL, _IOLBF, 0);
-	setvbuf(stderr, NULL, _IOLBF, 0);
 #endif	/* DEBUG */
 
 	mom_pid = getpid();
@@ -10000,9 +9993,8 @@ main(int argc, char *argv[])
 		LOG_NOTICE, msg_daemonname, "Is down");
 	pbs_idx_destroy(jobs_idx);
 	unload_auths();
-	if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) { /* unlock  */
+	if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0))
 		log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
-	}
 	log_close(1);
 	close(lockfds);
 	unlink("mom.lock");
