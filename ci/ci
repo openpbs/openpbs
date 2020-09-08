@@ -796,6 +796,9 @@ def run_ci(build_pkgs=False):
 
 if __name__ == "__main__":
 
+    ci_dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ci_dirname = os.path.join(ci_dirname, 'ci')
+    os.chdir(ci_dirname)
     read_macros()
     _help = '''
     Examples of using arguments.
@@ -827,9 +830,6 @@ if __name__ == "__main__":
                     help=_help, metavar='type')
     args = ap.parse_args()
     build_pkgs = False
-    ci_dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ci_dirname = os.path.join(ci_dirname, 'ci')
-    os.chdir(ci_dirname)
     default_platform = MACROS['DEFAULT_PLATFORM']
     build_log_path = os.path.join(ci_dirname, 'logs')
     setup_config_dir()
