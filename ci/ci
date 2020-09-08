@@ -796,6 +796,7 @@ def run_ci(build_pkgs=False):
 
 if __name__ == "__main__":
 
+    read_macros()
     _help = '''
     Examples of using arguments.
         ./ci -p 'OS=centos:7'
@@ -807,6 +808,7 @@ if __name__ == "__main__":
         ./ci -l or ./ci --local
     Note: Set tests as empty if you dont want to run PTL'
     '''
+    _help += 'Supported platforms are ' + MACROS['SUPPORTED_PLATFORMS']
     ap = argparse.ArgumentParser(prog='ci',
                                  description='Runs the ci tool for pbs',
                                  formatter_class=argparse.RawTextHelpFormatter,
@@ -828,7 +830,6 @@ if __name__ == "__main__":
     ci_dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ci_dirname = os.path.join(ci_dirname, 'ci')
     os.chdir(ci_dirname)
-    read_macros()
     default_platform = MACROS['DEFAULT_PLATFORM']
     build_log_path = os.path.join(ci_dirname, 'logs')
     setup_config_dir()
