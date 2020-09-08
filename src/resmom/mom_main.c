@@ -8064,10 +8064,6 @@ main(int argc, char *argv[])
 	extern int		optind;
 #endif /* WIN32 */
 
-#ifndef	DEBUG
-	FILE				*dummyfile;
-#endif
-
 #ifdef _POSIX_MEMLOCK
 	int					do_mlockall = 0;
 #endif
