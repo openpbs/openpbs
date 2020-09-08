@@ -260,17 +260,6 @@ struct pbsnode {
 	short newobj; /* new node ? */
 };
 
-/*
- * Vnode state change
- */
-struct  vnode_state_change {
-	int time_int_val;
-	int vnode_state_op;
-	unsigned long nd_prev_state;
-	unsigned long nd_new_state;
-};
-typedef struct vnode_state_change vnode_state_change_t;
-
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };
 enum	nix_flags { NIX_none, NIX_qnodes, NIX_nonconsume };
 enum	part_flags { PART_refig, PART_add, PART_rmv };

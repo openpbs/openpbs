@@ -159,7 +159,7 @@ typedef struct _pbs_python_types_entry {
 #define  PP_ENV_IDX			26
 #define  PP_MANAGEMENT_IDX	27
 #define  PP_SERVER_ATTRIBUTE_IDX 28
-#define  PP_STATE_CHANGE_IDX	29
+
 
 pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ATTR_DESCRIPTOR, 		NULL},	/* 0 Always first */
@@ -191,7 +191,6 @@ pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ENV, 				NULL},		 /* 26 */
 	{PY_TYPE_MANAGEMENT,		NULL},		 /* 27 */
 	{PY_TYPE_SERVER_ATTRIBUTE, 		NULL},		 /* 28 */
-	{PY_TYPE_STATE_CHANGE,		NULL},		 /* 29 */
 
 
 	/* ADD ENTRIES ONLY BELOW, OR CHANGE THE PP_XXX_IDX above the table */
@@ -5084,12 +5083,9 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_scargs = NULL;
 	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
-	PyObject *py_state_change = NULL;
-
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
 	PyObject *py_management_class = NULL;
-	PyObject *py_state_change_class = NULL;
 	PyObject *py_resv_class = NULL;
 	PyObject *py_env_class = NULL;
 	PyObject *py_varlist = NULL;
@@ -5099,7 +5095,9 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_joblist = NULL;
 	PyObject *py_resvlist = NULL;
 	PyObject *py_exec_vnode = NULL;
-	PyObject *py_vnode	   = NULL;
+	PyObject *py_vnode_class = NULL;
+	PyObject *py_vnode = NULL;
+	PyObject *py_vnode_o   = NULL;
 	PyObject *py_aoe	   = NULL;
 	PyObject *py_resclist = NULL;
 	PyObject *py_progname = NULL;
@@ -5817,48 +5815,46 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_MANAGEMENT);
 			goto event_set_exit;
 		}
-	} else if (hook_event == HOOK_EVENT_STATE_CHANGE) {
-		/* FIXME: */
-		{
-			PyObject *py_attr = (PyObject *) NULL;
-			struct rq_state_change *rqj = req_params->rq_state_change;
-			py_state_change_class = pbs_python_types_table[PP_STATE_CHANGE_IDX].t_class;
-			if (!py_state_change_class) {
-				log_err(PBSE_INTERNAL, __func__, "failed to acquire state change class");
-				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_STATE_CHANGE,
-					Py_None);
-				goto event_set_exit;
-			}
+	} else if (hook_event == HOOK_EVENT_MODIFYVNODE) {
+		struct rq_modifyvnode *rqmvn = req_params->rq_modifyvnode;
+		struct pbsnode *vnode_o = rqmvn->rq_vnode_o;
+		struct pbsnode *vnode = rqmvn->rq_vnode;
 
-			py_scargs = Py_BuildValue("(skk)",
-				rqj->hostname,
-				rqj->new_state,
-				rqj->old_state
-				); /* NEW ref */
-			Py_CLEAR(py_attr);
+		/* initialize event params to None */
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE,
+			Py_None);
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE_O,
+			Py_None);
 
-			if (!py_scargs) {
-				log_err(PBSE_INTERNAL, __func__, "could not build args list for state_change");
-				goto event_set_exit;
-			}
-			py_state_change = PyObject_CallObject(py_state_change_class, py_scargs);
-
-			if (!py_state_change) {
-				pbs_python_write_error_to_log(__func__);
-				log_err(PBSE_INTERNAL, __func__, "failed to create a python state change object");
-				(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_STATE_CHANGE,
-					Py_None);
-				goto event_set_exit;
-			}
-
-			rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_STATE_CHANGE,
-				py_state_change);
+		/* Retrieve the vnode_o data */
+		py_vnode_o = _pps_helper_get_vnode(vnode_o, NULL, HOOK_PERF_POPULATE_VNODE_O);
+		if (py_vnode_o == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "failed to create a python vnode_o object");
+			goto event_set_exit;
 		}
 
+		/* Retrieve the vnode data */
+		py_vnode = _pps_helper_get_vnode(vnode, NULL, HOOK_PERF_POPULATE_VNODE);
+		if (py_vnode == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "failed to create a python vnode object");
+			goto event_set_exit;
+		}
 
-		LOG_ERROR_ARG2("%s:failed",
-			PY_TYPE_EVENT, PY_EVENT_PARAM_STATE_CHANGE);
-		goto event_set_exit;
+		/* Set the vnode_o event param */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE_O, py_vnode_o);
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODE_O);
+			goto event_set_exit;
+		}
+
+		/* Set the vnode event param */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE, py_vnode);
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODE);
+			goto event_set_exit;
+		}
 	} else if (hook_event == HOOK_EVENT_RESV_END) {
 		struct rq_manage *rqj = req_params->rq_manage;
 
@@ -6321,7 +6317,6 @@ event_set_exit:
 	Py_CLEAR(py_event);
 	Py_CLEAR(py_jargs);
 	Py_CLEAR(py_job);
-	Py_CLEAR(py_vnode);
 	Py_CLEAR(py_job_o);
 	Py_CLEAR(py_que);
 	Py_CLEAR(py_rargs);
@@ -6336,6 +6331,7 @@ event_set_exit:
 	Py_CLEAR(py_resclist);
 	Py_CLEAR(py_exec_vnode);
 	Py_CLEAR(py_vnode);
+	Py_CLEAR(py_vnode_o);
 	Py_CLEAR(py_aoe);
 	Py_CLEAR(py_progname);
 	Py_CLEAR(py_arglist);
@@ -6346,7 +6342,6 @@ event_set_exit:
 	Py_CLEAR(py_margs);
 	Py_CLEAR(py_scargs);
 	Py_CLEAR(py_management);
-	Py_CLEAR(py_state_change);
 	return (rc);
 }
 

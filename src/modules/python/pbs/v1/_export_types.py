@@ -60,7 +60,7 @@ Motivation:
 
 from . import _base_types as pbs_types
 from ._svr_types import (_queue, _job, _server, _resv, _vnode, _event, pbs_iter,
-                         _management, _server_attribute, _state_change)
+                         _management, _server_attribute)
 from ._exc_types import *
 
 
@@ -148,7 +148,6 @@ EXPORTED_TYPES_DICT = {
                        'job'                : _job,
                        'management'         : _management,
                        'server_attribute'   : _server_attribute,
-                       'state_change'         : _state_change,
                        'server'             : _server,
                        'resv'               : _resv,
                        'vnode'              : _vnode,

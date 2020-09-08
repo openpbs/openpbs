@@ -118,7 +118,7 @@ struct python_script {
  *
  * @param[in]	rq_job - maps to a struct rq_quejob batch request.
  * @param[in]	rq_manage - maps to a struct rq_manage batch request.
- * @param[in]	rq_state_change - maps to a struct rq_state_change.
+ * @param[in]	rq_modifyvnode - maps to a struct rq_modifyvnode.
  * @param[in]	rq_move - maps to a struct rq_move batch request.
  * @param[in]	rq_prov - maps to a struct prov_vnode_info.
  * @param[in]	rq_run - maps to a struct rq_runjob batch request.
@@ -143,7 +143,7 @@ struct python_script {
 typedef struct	hook_input_param {
 	void		*rq_job;
 	void		*rq_manage;
-	void		*rq_state_change;
+	void		*rq_modifyvnode;
 	void		*rq_move;
 	void		*rq_prov;
 	void		*rq_run;
@@ -285,6 +285,7 @@ extern int get_py_progname(char **);
 #define PY_EVENT_PARAM_RESV	"resv"
 #define PY_EVENT_PARAM_SRC_QUEUE "src_queue"
 #define PY_EVENT_PARAM_VNODE     "vnode"
+#define PY_EVENT_PARAM_VNODE_O    "vnode_o"
 #define PY_EVENT_PARAM_VNODELIST "vnode_list"
 #define PY_EVENT_PARAM_VNODELIST_FAIL "vnode_list_fail"
 #define PY_EVENT_PARAM_JOBLIST "job_list"
@@ -295,7 +296,6 @@ extern int get_py_progname(char **);
 #define PY_EVENT_PARAM_ENV	"env"
 #define PY_EVENT_PARAM_PID	"pid"
 #define PY_EVENT_PARAM_MANAGEMENT	"management"
-#define PY_EVENT_PARAM_STATE_CHANGE	"state_change"
 
 /* special job object attributes */
 #define PY_JOB_FAILED_MOM_LIST	"failed_mom_list"
@@ -352,7 +352,6 @@ extern int get_py_progname(char **);
 #define PY_TYPE_ENV			"pbs_env"
 #define PY_TYPE_MANAGEMENT	"management"
 #define PY_TYPE_SERVER_ATTRIBUTE	"server_attribute"
-#define PY_TYPE_STATE_CHANGE	"state_change"
 
 /* PBS Python Exception errors - in modules/pbs/v1.1 files */
 #define	PY_ERROR_EVENT_INCOMPATIBLE 	"EventIncompatibleError"
@@ -421,6 +420,7 @@ extern int get_py_progname(char **);
 #define	EVENT_RESV_OBJECT	EVENT_OBJECT ".resv"
 #define	EVENT_SRC_QUEUE_OBJECT	EVENT_OBJECT ".src_queue"
 #define	EVENT_VNODE_OBJECT	EVENT_OBJECT ".vnode"
+#define	EVENT_VNODE_O_OBJECT	EVENT_OBJECT ".vnode_o"
 #define	EVENT_VNODELIST_OBJECT	EVENT_OBJECT ".vnode_list"
 #define	EVENT_VNODELIST_FAIL_OBJECT	EVENT_OBJECT ".vnode_list_fail"
 #define	EVENT_JOBLIST_OBJECT	EVENT_OBJECT ".job_list"
@@ -436,7 +436,6 @@ extern int get_py_progname(char **);
 #define	EVENT_ENV_OBJECT  EVENT_OBJECT ".env"
 #define	EVENT_PID_OBJECT  EVENT_OBJECT ".pid"
 #define	EVENT_MANAGEMENT_OBJECT  EVENT_OBJECT ".management"
-#define	EVENT_STATE_CHANGE_OBJECT  EVENT_OBJECT ".state_change"
 
 /* Special Job parameters */
 #define	JOB_FAILED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_FAILED_MOM_LIST

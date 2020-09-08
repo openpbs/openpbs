@@ -538,43 +538,21 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	attribute	*pat;
 	int		nchild;
 	unsigned long	inuse_flag = 0;
-	struct batch_request *preq = NULL;
-	struct rq_state_change *rq_state_change = NULL;
-	char local_log_buffer[LOG_BUF_SIZE];
-
-	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-	preq = alloc_br(PBS_BATCH_StateChange);
-	/* FIXME: check for NULL */
-	strncpy(preq->rq_host, pmom->mi_host, PBS_MAXHOSTNAME);
-	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
-	rq_state_change = &preq->rq_ind.rq_state_change;
-	rq_state_change->hostname = pmom->mi_host;
-	rq_state_change->old_state = psvrmom->msr_state;
-
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
 	} else {
 		psvrmom->msr_state &= ~bits;
 	}
 
-	rq_state_change->new_state = psvrmom->msr_state;
 
-	{ /* TODO: FIXME: */
-		char hook_msg[HOOK_MSG_SIZE] = {0};
-		size_t msg_len = sizeof(hook_msg);
+	char local_log_buffer[LOG_BUF_SIZE];
+	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
+	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d "
+		"msr_state=0x%lx -> bits=0x%lx txt=%s mi_modtime=%ld", do_set,
+		psvrmom->msr_state, bits, txt, pmom->mi_modtime);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+		pmom->mi_host, local_log_buffer);
 		
-		snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d "
-			"msr_state=0x%lx -> bits=0x%lx txt=%s mi_modtime=%ld", do_set,
-			psvrmom->msr_state, bits, txt, pmom->mi_modtime);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
-			pmom->mi_host, local_log_buffer);
-		
-		/* process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt); */
-
-		free_br(preq);
-		preq = NULL;
-	}
-
 	/* Set the inuse_flag based off the value of setwhen */
 	if (setwhen == Set_ALL_State_All_Down) {
 		inuse_flag = INUSE_DOWN;
@@ -1138,56 +1116,6 @@ momptr_down(mominfo_t *pmom, char *why)
 
 /**
  * @brief
- * 		Change the state bits of a vnode.
- *
- * 		This function detects the type of change, either from available to
- * 		unavailable, and invokes the appropriate handler to handle the state
- * 		change.
- *
- * @param[in]	pbsnode	- The vnode
- * @param[in]	state_bits	- the value to set the vnode to
- * @param[in]	type	- The operation on the node
- *
- * @return	vnode_state_change
- *
- * @par MT-safe: No
- */
-vnode_state_change_t *
-set_vnode_state_bits(pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
-{
-	unsigned long nd_state;
-	if (pnode == NULL)
-		return;
-
-	vnode_state_change_t *vnode_state_change_ptr = malloc(sizeof(vnode_state_change_t));
-	vnode_state_change_ptr->time_int_val = time_now;
-	nd_state = pnode->nd_state;
-	vnode_state_change_ptr->nd_prev_state = nd_state;
-
-	switch (type) {
-		case Nd_State_Set:
-			pnode->nd_state = state_bits;
-			break;
-		case Nd_State_Or:
-			pnode->nd_state |= state_bits;
-			break;
-		case Nd_State_And:
-			pnode->nd_state &= state_bits;
-			break;
-		default:
-			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
-				__func__, type))
-			type = Nd_State_Set;
-			pnode->nd_state = state_bits;
-	}
-	vnode_state_change_ptr->nd_new_state = pnode->nd_state;
-	vnode_state_change_ptr->vnode_state_op = type;
-	return vnode_state_change_ptr;
-}
-
-
-/**
- * @brief
  * 		Given a vnode_state_op, return the string value.
  * 		The enum is found in pbs_nodes.h
  *
@@ -1209,6 +1137,47 @@ get_vnode_state_op(enum vnode_state_op op)
 	return "ND_state_unknown";
 }
 
+/**
+ * @brief
+ * 		Copy elements of a source vnode into a destination vnode_o
+ *
+ * @param[in]	vnode - the source
+ * @param[in]	vnnode_o - the destination
+ * 
+ * @note
+ * 	Assumes vnnode has previously been initialized and vnode_o->nd_name already set prior to invocation,
+ * 	such as via a call to initialize_pbsnode(vnode_o, strdup(vnode->nd_name), NTYPE_PBS)
+ * 
+ * @return  void
+ */
+static void
+copy_vnode_to_vnode_o(struct pbsnode *vnode, struct pbsnode *vnode_o)
+{
+	if (vnode == NULL || vnode_o == NULL) {
+		return;		
+	}
+
+	/*
+	 * Copy key vnode elements
+	 */
+	vnode_o->nd_state = vnode->nd_state;
+	vnode_o->nd_ntype = vnode->nd_ntype;
+	vnode_o->nd_nsn = vnode->nd_nsn;
+	vnode_o->nd_nsnfree = vnode->nd_nsnfree;
+	vnode_o->nd_written = vnode->nd_written;
+	vnode_o->nd_ncpus = vnode->nd_ncpus;
+	if (vnode->nd_hostname) {
+		vnode_o->nd_hostname = strdup(vnode->nd_hostname);
+	} 
+	else {
+		vnode_o->nd_hostname = NULL;
+	}
+
+	/* FIXME: need to save ND_ATR_last_state_change_time value in vnode_o */	
+	/* FIXME: not yet complete! add/subtract members as appropriate */
+	/* For reference see initialize_pbsnode calls */
+
+}
 
 /**
  * @brief
@@ -1230,46 +1199,82 @@ get_vnode_state_op(enum vnode_state_op op)
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
-	vnode_state_change_t *vnode_state_change;
-	unsigned long nd_prev_state;
-	int time_int_val;
-	char local_log_buffer[LOG_BUF_SIZE];
+	/*
+	 * Vars used to construct hook event data
+	 */
 	struct batch_request *preq = NULL;
-	struct rq_state_change *rq_state_change = NULL;
+	struct pbsnode *vnode_o = NULL;
 	char hook_msg[HOOK_MSG_SIZE] = {0};
-
+	size_t msg_len = sizeof(hook_msg);
+	char local_log_buffer[LOG_BUF_SIZE];
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-	preq = alloc_br(PBS_BATCH_StateChange);
 
-	if (pnode == NULL)
-		return;
-
+	int time_int_val;
 	time_int_val = time_now;
 
-	/* FIXME: check for NULL */
-	strncpy(preq->rq_host, pnode->nd_hostname, PBS_MAXHOSTNAME);
-	preq->rq_host[PBS_MAXHOSTNAME] = '\0';
-	rq_state_change = &preq->rq_ind.rq_state_change;
-	rq_state_change->hostname = pnode->nd_hostname;
-	rq_state_change->old_state = pnode->nd_state;
+	if (pnode == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "set_vnode_state failed due to NULL ptr");
+		return;
+	}
+
+	/*
+	 * Allocate space for the modifyvnode event data
+	 */
+	preq = alloc_br(PBS_BATCH_ModifyVnode);
+	if (preq == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "rq_modifyvnode alloc failed");
+		return;
+	}
+
+	/* 
+	 * Allocate and initialize vnode_o, then copy vnode elements into vnnode_o
+	 */
+	if ((vnode_o = malloc(sizeof(struct pbsnode)))) {
+		if (initialize_pbsnode(vnode_o, strdup(pnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
+			log_err(PBSE_INTERNAL, __func__, "vnode_o initialization failed");
+			return;
+		}
+	} else {
+		log_err(PBSE_INTERNAL, __func__, "vnode_o alloc failed");
+		return;
+	}
+	copy_vnode_to_vnode_o(pnode, vnode_o);
+
+	/*
+	 * Apply specified state operation
+	 */
+	switch (type) {
+		case Nd_State_Set:
+			pnode->nd_state = state_bits;
+			break;
+		case Nd_State_Or:
+			pnode->nd_state |= state_bits;
+			break;
+		case Nd_State_And:
+			pnode->nd_state &= state_bits;
+			break;
+		default:
+			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
+				__func__, type))
+			type = Nd_State_Set;
+			pnode->nd_state = state_bits;
+	}
+
+	/* Populate hook param rq_modifyvnode with old and new vnode states */
+	preq->rq_ind.rq_modifyvnode.rq_vnode_o = vnode_o;
+	preq->rq_ind.rq_modifyvnode.rq_vnode = pnode;
+	/* preq->rq_ind.rq_modifyvnode.rq_time = time_int_val; */
+
 
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
-		"set_vnode_state: pnode->nd_state=0x%lx-> state_bits=0x%lx "
-		"type=%d type_r=%s time_int_val=%ld", pnode->nd_state, state_bits,
-		type, get_vnode_state_op(type), time_int_val);
+		"set_vnode_state: vnode->nd_state=0x%lx-> state_bits=0x%lx "
+		"type=%d type_r=%s time=%ld vnode_o->nd_state=0x%lx", pnode->nd_state, state_bits,
+		type, get_vnode_state_op(type), time_int_val,vnode_o->nd_state);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pnode->nd_name, local_log_buffer);
 
-	vnode_state_change = set_vnode_state_bits(pnode, state_bits, type);
-	nd_prev_state = vnode_state_change->nd_prev_state;
-	rq_state_change->new_state = pnode->nd_state;
-
-	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-	free_br(preq);
-	preq = NULL;
-
 	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		nd_prev_state, pnode->nd_state))
+		vnode_o->nd_state, pnode->nd_state))
 
 	/* sync state attribute with nd_state */
 
@@ -1278,7 +1283,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
-	if (nd_prev_state != pnode->nd_state) {
+	if (vnode_o->nd_state != pnode->nd_state) {
 		char str_val[STR_TIME_SZ];
 
 		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
@@ -1317,27 +1322,34 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		/* while node is provisioning, we don't want the reservation
 		 * to degrade, hence returning.
 		 */
-		return;
+		goto fn_return;
 	}
 
 	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		nd_prev_state, pnode->nd_state))
+		vnode_o->nd_state, pnode->nd_state))
 
 	/* node is marked INUSE_DOWN | INUSE_PROV when provisioning.
 	 * need to check transition from INUSE_PROV to UNAVAILABLE
 	 */
-	if ((!(nd_prev_state & VNODE_UNAVAILABLE) ||
-		(nd_prev_state & INUSE_PROV)) &&
-		(pnode->nd_state & VNODE_UNAVAILABLE))
+	if ((!(vnode_o->nd_state & VNODE_UNAVAILABLE) ||
+			(vnode_o->nd_state & INUSE_PROV)) &&
+			(pnode->nd_state & VNODE_UNAVAILABLE)) {
 		/* degrade all associated reservations. The '1' instructs the function to
 		 * account for the unavailable vnodes in the reservation's counter
 		 */
 		(void) vnode_unavailable(pnode, 1);
-
-	else if (((nd_prev_state & VNODE_UNAVAILABLE)) &&
-		((!(pnode->nd_state & VNODE_UNAVAILABLE)) ||
-		(pnode->nd_state == INUSE_FREE)))
+	} else if (((vnode_o->nd_state & VNODE_UNAVAILABLE)) &&
+			((!(pnode->nd_state & VNODE_UNAVAILABLE)) ||
+			(pnode->nd_state == INUSE_FREE))) {
 		(void) vnode_available(pnode);
+	}
+
+fn_return: 
+	/* Fire off the vnode state change event */
+	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+	free_br(preq);
+	preq = NULL;
+	/* FIXME: make sure vnode_o is appropriately freed */
 }
 
 /**
@@ -7909,7 +7921,7 @@ set_last_used_time_node(void *pobj, int type)
 	struct pbsnode	*pnode;
 	int 		rc;
 	char		str_val[STR_TIME_SZ];
-	int 		time_int_val;
+	int			time_int_val;
 
 	time_int_val = time_now;
 

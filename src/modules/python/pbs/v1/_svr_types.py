@@ -1482,51 +1482,6 @@ management = _management
 
 
 #:------------------------------------------------------------------------
-#                  STATE CHANGE TYPE 
-#:-------------------------------------------------------------------------
-class _state_change:
-    """
-    This represents a state change.
-    """
-    attributes = PbsReadOnlyDescriptor('attributes', {})
-    _attributes_hook_set = {}
-
-    def __init__(self, hostname, new_state, old_state, connect_server=None):
-        """__init__"""
-        self.hostname = hostname
-        self.new_state = new_state
-        self.old_state = old_state
-        self._readonly = True
-        self._connect_server = connect_server
-    #: m(__init__)
-
-    def __str__(self):
-        """String representation of the object"""
-        return "%s:%s->%s" % (self.hostname, self.old_state, self.new_state)
-    #: m(__str__)
-
-    def __setattr__(self, name, value):
-        if _pbs_v1.in_python_mode():
-            raise BadAttributeValueError(
-                "'%s' attribute in the node state object is readonly" % (name,))
-        super().__setattr__(name, value)
-    #: m(__setattr__)
-
-_state_change.hostname = PbsAttributeDescriptor(
-    _state_change, 'hostname', None, (str,))
-_state_change.new_state = PbsAttributeDescriptor(
-    _state_change, 'new_state', None, (int,))
-_state_change.old_state = PbsAttributeDescriptor(
-    _state_change, 'old_state', None, (int,))
-_state_change._connect_server = PbsAttributeDescriptor(
-    _state_change, '_connect_server', "", (str,))
-#: C(_state_change)
-
-# This exposes pbs.state_change() to be callable in a hook script
-state_change = _state_change
-
-
-#:------------------------------------------------------------------------
 #                  Reverse Lookup for _pv1mod_insert_int_constants
 #:-------------------------------------------------------------------------
 _pbs_v1.REVERSE_MGR_CMDS = {}
@@ -1534,7 +1489,17 @@ _pbs_v1.REVERSE_MGR_OBJS = {}
 _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
-_pbs_v1.REVERSE_STATE_CHANGES = {}
+_pbs_v1.REVERSE_NODE_STATE = {}
+
+_nd_exclusion_list = [
+	"ND_PBS", 
+	"ND_DEFAULT_SHARED", 
+	"ND_DEFAULT_EXCL", 
+	"ND_FORCE_EXCL", 
+	"ND_IGNORE_EXCL", 
+	"ND_FORCE_EXCLHOST", 
+	"ND_DEFAULT_EXCLHOST"]
+    
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
         _pbs_v1.REVERSE_MGR_CMDS[value] = key
@@ -1546,5 +1511,5 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_BATCH_OPS[value] = key
     elif key.startswith("ATR_VFLAG_"):
         _pbs_v1.REVERSE_ATR_VFLAGS[value] = key
-    elif key.startswith("NODE_STATE_"):
-        _pbs_v1.REVERSE_STATE_CHANGES[value] = key
+    elif key.startswith("ND_") and key not in _nd_exclusion_list:
+        _pbs_v1.REVERSE_NODE_STATE[value] = key

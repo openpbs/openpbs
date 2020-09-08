@@ -98,7 +98,7 @@ extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_management_hooks;
-extern pbs_list_head svr_state_change_hooks;
+extern pbs_list_head svr_modifyvnode_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_resv_end_hooks;
@@ -137,7 +137,7 @@ clear_hook_links(hook *phook)
 	delete_link(&phook->hi_resv_end_hooks);
 	delete_link(&phook->hi_allhooks);
 	delete_link(&phook->hi_management_hooks);
-	delete_link(&phook->hi_state_change_hooks);
+	delete_link(&phook->hi_modifyvnode_hooks);
 
 	/* mom hooks below */
 	delete_link(&phook->hi_execjob_begin_hooks);
@@ -217,10 +217,10 @@ hook_event_as_string(unsigned int event)
 		ev_ct++;
 	}
 
-	if (event & HOOK_EVENT_STATE_CHANGE) {
+	if (event & HOOK_EVENT_MODIFYVNODE) {
 		if (ev_ct > 0)
 			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
-		strncat(eventstr, HOOKSTR_STATE_CHANGE, sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_MODIFYVNODE, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
@@ -365,8 +365,8 @@ hookstr_event_toint(char *eventstr)
 		return HOOK_EVENT_RUNJOB;
 	if (strcmp(eventstr, HOOKSTR_MANAGEMENT) == 0)
 		return HOOK_EVENT_MANAGEMENT;
-	if (strcmp(eventstr, HOOKSTR_STATE_CHANGE) == 0)
-		return HOOK_EVENT_STATE_CHANGE;
+	if (strcmp(eventstr, HOOKSTR_MODIFYVNODE) == 0)
+		return HOOK_EVENT_MODIFYVNODE;
 	if (strcmp(eventstr, HOOKSTR_PROVISION) == 0)
 		return HOOK_EVENT_PROVISION;
 	if (strcmp(eventstr, HOOKSTR_RESV_END) == 0)
@@ -902,8 +902,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		plink_elem = &phook->hi_runjob_hooks;
 	} else if (event == HOOK_EVENT_MANAGEMENT) {
 		plink_elem = &phook->hi_management_hooks;
-	} else if (event == HOOK_EVENT_STATE_CHANGE) {
-		plink_elem = &phook->hi_state_change_hooks;
+	} else if (event == HOOK_EVENT_MODIFYVNODE) {
+		plink_elem = &phook->hi_modifyvnode_hooks;
 	} else if (event == HOOK_EVENT_PROVISION) {
 		plink_elem = &phook->hi_provision_hooks;
 	} else if (event == HOOK_EVENT_PERIODIC) {
@@ -962,8 +962,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 			plink_cur = &phook_cur->hi_runjob_hooks;
 		} else if (event == HOOK_EVENT_MANAGEMENT) {
 			plink_cur = &phook_cur->hi_management_hooks;
-		} else if (event == HOOK_EVENT_STATE_CHANGE) {
-			plink_cur = &phook_cur->hi_state_change_hooks;
+		} else if (event == HOOK_EVENT_MODIFYVNODE) {
+			plink_cur = &phook_cur->hi_modifyvnode_hooks;
 		} else if (event == HOOK_EVENT_PROVISION) {
 			plink_cur = &phook_cur->hi_provision_hooks;
 		} else if (event == HOOK_EVENT_PERIODIC) {
@@ -1330,6 +1330,8 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 
 		delete_link(&phook->hi_queuejob_hooks);
 		delete_link(&phook->hi_modifyjob_hooks);
+		delete_link(&phook->hi_modifyvnode_hooks);
+		delete_link(&phook->hi_management_hooks);
 		delete_link(&phook->hi_resvsub_hooks);
 		delete_link(&phook->hi_movejob_hooks);
 		delete_link(&phook->hi_runjob_hooks);
@@ -1443,13 +1445,13 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			phook->event 	|= HOOK_EVENT_MANAGEMENT;
 			insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
 				&svr_management_hooks, phook);
-		} else if (strcmp(val, HOOKSTR_STATE_CHANGE) == 0) {
-			if (phook->event & HOOK_EVENT_PROVISION)
+		} else if (strcmp(val, HOOKSTR_MODIFYVNODE) == 0) {
+			if (phook->event & HOOK_EVENT_MODIFYVNODE)
 				goto err;
-			delete_link(&phook->hi_state_change_hooks);
-			phook->event 	|= HOOK_EVENT_STATE_CHANGE;
-			insert_hook_sort_order(HOOK_EVENT_STATE_CHANGE,
-				&svr_state_change_hooks, phook);
+			delete_link(&phook->hi_modifyvnode_hooks);
+			phook->event 	|= HOOK_EVENT_MODIFYVNODE;
+			insert_hook_sort_order(HOOK_EVENT_MODIFYVNODE,
+				&svr_modifyvnode_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_PROVISION) == 0) {
 			if (phook->event & ~HOOK_EVENT_PROVISION)
 				goto err;
@@ -1574,10 +1576,10 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
-				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,"
+				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
 				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event",
-				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
+				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
 				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_END,
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
@@ -1666,9 +1668,9 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_MANAGEMENT) == 0) {
 			delete_link(&phook->hi_management_hooks);
 			phook->event 	&= ~HOOK_EVENT_MANAGEMENT;
-		} else if (strcmp(val, HOOKSTR_STATE_CHANGE) == 0) {
-			delete_link(&phook->hi_state_change_hooks);
-			phook->event 	&= ~HOOK_EVENT_STATE_CHANGE;
+		} else if (strcmp(val, HOOKSTR_MODIFYVNODE) == 0) {
+			delete_link(&phook->hi_modifyvnode_hooks);
+			phook->event 	&= ~HOOK_EVENT_MODIFYVNODE;
 		} else if (strcmp(val, HOOKSTR_PROVISION) == 0) {
 			delete_link(&phook->hi_provision_hooks);
 			phook->event 	&= ~HOOK_EVENT_PROVISION;
@@ -1721,10 +1723,10 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
-				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,"
+				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
 				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event.",
-				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
+				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
 				HOOKSTR_RUNJOB, HOOKSTR_PERIODIC, HOOKSTR_PROVISION, HOOKSTR_RESV_END,
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
@@ -1846,10 +1848,10 @@ set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 			&svr_management_hooks, phook);
 	}
 
-	if (phook->event & HOOK_EVENT_STATE_CHANGE) {
-		delete_link(&phook->hi_state_change_hooks);
-		insert_hook_sort_order(HOOK_EVENT_STATE_CHANGE,
-			&svr_state_change_hooks, phook);
+	if (phook->event & HOOK_EVENT_MODIFYVNODE) {
+		delete_link(&phook->hi_modifyvnode_hooks);
+		insert_hook_sort_order(HOOK_EVENT_MODIFYVNODE,
+			&svr_modifyvnode_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESV_END) {
@@ -2239,8 +2241,8 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 	if (phook->event & HOOK_EVENT_MANAGEMENT)
 		delete_link(&phook->hi_management_hooks);
 
-	if (phook->event & HOOK_EVENT_STATE_CHANGE)
-		delete_link(&phook->hi_state_change_hooks);
+	if (phook->event & HOOK_EVENT_MODIFYVNODE)
+		delete_link(&phook->hi_modifyvnode_hooks);
 
 	if (phook->event & HOOK_EVENT_PROVISION)
 		delete_link(&phook->hi_provision_hooks);
@@ -2373,10 +2375,10 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 			&svr_management_hooks, phook);
 	}
 
-	if (phook->event & HOOK_EVENT_STATE_CHANGE) {
-		delete_link(&phook->hi_state_change_hooks);
-		insert_hook_sort_order(HOOK_EVENT_STATE_CHANGE,
-			&svr_state_change_hooks, phook);
+	if (phook->event & HOOK_EVENT_MODIFYVNODE) {
+		delete_link(&phook->hi_modifyvnode_hooks);
+		insert_hook_sort_order(HOOK_EVENT_MODIFYVNODE,
+			&svr_modifyvnode_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESV_END) {
@@ -3510,9 +3512,9 @@ print_hooks(unsigned int event)
 	} else if (event == HOOK_EVENT_MANAGEMENT) {
 		l_elem = svr_management_hooks;
 		strcpy(ev_str, HOOKSTR_MANAGEMENT);
-	} else if (event == HOOK_EVENT_STATE_CHANGE) {
-		l_elem = svr_state_change_hooks;
-		strcpy(ev_str, HOOKSTR_STATE_CHANGE);
+	} else if (event == HOOK_EVENT_MODIFYVNODE) {
+		l_elem = svr_modifyvnode_hooks;
+		strcpy(ev_str, HOOKSTR_MODIFYVNODE);
 	} else if (event == HOOK_EVENT_PERIODIC) {
 		l_elem = svr_periodic_hooks;
 		strcpy(ev_str, HOOKSTR_PERIODIC);
@@ -3584,8 +3586,8 @@ print_hooks(unsigned int event)
 			phook = (hook *)GET_NEXT(phook->hi_runjob_hooks);
 		else if (event == HOOK_EVENT_MANAGEMENT)
 			phook = (hook *)GET_NEXT(phook->hi_management_hooks);
-		else if (event == HOOK_EVENT_STATE_CHANGE)
-			phook = (hook *)GET_NEXT(phook->hi_state_change_hooks);
+		else if (event == HOOK_EVENT_MODIFYVNODE)
+			phook = (hook *)GET_NEXT(phook->hi_modifyvnode_hooks);
 		else if (event == HOOK_EVENT_PROVISION)
 			phook = (hook *)GET_NEXT(phook->hi_provision_hooks);
 		else if (event == HOOK_EVENT_PERIODIC)
