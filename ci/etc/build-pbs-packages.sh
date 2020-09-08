@@ -85,6 +85,9 @@ else
 	fi
 fi
 
+cp ${pbsdir}/README.md /src/packages/
+cp ${pbsdir}/LICENSE /src/packages/
+cp ${pbsdir}/COPYRIGHT /src/packages/
 mv ${rpm_dir}/RPMS/*/*pbs* /src/packages/
 mv ${rpm_dir}/SRPMS/*pbs* /src/packages/
 cd /src/packages

@@ -82,11 +82,13 @@ if [ "x$1" == "xbackup" ]; then
     folder=session-${time_stamp}
     mkdir -p /logs/${folder}
     cp /logs/build-* /logs/${folder}
-    cp /logs/logfile /logs/${folder}
+    cp /logs/logfile* /logs/${folder}
     cp /logs/result* /logs/${folder}
     cp /src/.config_dir/.conf.json /logs/${folder}/conf.json
     cp /src/docker-compose.json /logs/${folder}/
     rm -rf /logs/build-*
+    rm -rf /logs/logfile*
+    rm -rf /logs/result*
     rm -rf /pbssrc/target-*
     exit 0
 fi

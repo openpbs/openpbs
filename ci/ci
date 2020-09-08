@@ -508,6 +508,11 @@ def build_compose_file(nodes):
     for n in nodes.split(';'):
         count = count + 1
         node_key, node_val = n.split('=')
+        if node_val not in MACROS['SUPPORTED_PLATFORMS'].split(','):
+            log_warning("Given platform '" + node_val + "' is not supported by" +
+                        " ci, will result in unexpected behaviour")
+            log_warning("Supported platforms are " +
+                        MACROS['SUPPORTED_PLATFORMS'])
         node_name = node_key + '-' + \
             (node_val.replace(':', '-')).replace('.', '_') + '-' + str(count)
         image_value = node_val
@@ -716,9 +721,9 @@ def parse_params(params_list):
                     json.dump(conf_opts, f, indent=2, sort_keys=True)
                     f.close()
                 else:
-                    log_warning("Unrecognised key, nothing to update")
-    log_info("These are the current options")
-    show_set_opts()
+                    log_error("Unrecognised key in parameter: '" +
+                              key + "' , nothing updated")
+                    sys.exit(1)
 
 
 def run_ci_local(local):
@@ -741,6 +746,9 @@ def run_ci(build_pkgs=False):
     Run PBS configure, install PBS and run PTL tests, if build_pkgs
     is set to True it will instead run package build script only
     '''
+    # Display Current options
+    log_info("Running ci with the following options")
+    show_set_opts()
     if len(get_services_list()) > 0:
         build_compose_file(get_current_setup())
     ret = ensure_ci_running()
