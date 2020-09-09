@@ -508,7 +508,8 @@ def build_compose_file(nodes):
     for n in nodes.split(';'):
         count = count + 1
         node_key, node_val = n.split('=')
-        if node_val not in MACROS['SUPPORTED_PLATFORMS'].split(','):
+        if node_val not in MACROS['SUPPORTED_PLATFORMS'].split(',') \
+                and ''.join(sys.argv).find(node_val) != -1:
             log_warning("Given platform '" + node_val + "' is not supported by" +
                         " ci, will result in unexpected behaviour")
             log_warning("Supported platforms are " +
