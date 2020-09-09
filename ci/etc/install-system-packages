@@ -81,7 +81,8 @@ if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
     ncurses-devel postgresql-devel python3-devel tcl-devel tk-devel swig \
     expat-devel openssl-devel libXext libXft expat libedit glibc-static \
     postgresql-server python3 tcl tk libical perl tar sendmail sudo perl-Env \
-    perl-Switch gcc-c++ doxygen elfutils bison flex glibc-langpack-en which net-tools man-db time csh lsof tzdata file \
+    perl-Switch gcc-c++ doxygen elfutils bison flex glibc-langpack-en \
+    which net-tools man-db time csh lsof tzdata file \
     expect perl-App-cpanminus cpan initscripts \
     systemd systemd-sysv libcap rsyslog \
     openssh-clients openssh-server valgrind-devel valgrind libasan \
