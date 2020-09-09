@@ -6295,75 +6295,6 @@ finish_loop(time_t waittime)
 
 }
 
-
-#ifdef	WIN32
-
-/**
- * @brief
- *	locks mom and logs error msg
- *
- * @param[in] fds - file descriptor
- * @param[in] op - type of lock
- *
- * @return Void
- *
- */
-
-static void
-mom_lock(int fds,
-	int op /* F_WRLCK  or  F_UNLCK */)
-{
-	struct stat  sbuf;
-
-	if (fstat(fds, &sbuf) == -1) {
-		log_err(errno, "mom_lock", "can't stat lock file");
-		exit(1);
-	}
-	if (_locking(fds, op, (long)sbuf.st_size) == -1) {
-		if (op == F_WRLCK) {
-			(void)strcpy(log_buffer,
-				"pbs_mom: another Mom running\n");
-			log_err(errno, msg_daemonname, log_buffer);
-			fprintf(stderr, log_buffer);
-			exit(1);
-		}
-	}
-
-}
-#else
-
-/**
- * @brief
- *	lock out other MOMs from this directory.
- *
- * @param[in] fds - file descriptor
- * @param[in] op - type of lock
- *
- * @return Void
- *
- */
-
-static void
-mom_lock(int fds,
-	int op /* F_WRLCK  or  F_UNLCK */)
-{
-	struct flock flock;
-
-	(void)lseek(fds, (off_t)0, SEEK_SET);
-	flock.l_type   = op;
-	flock.l_whence = SEEK_SET;
-	flock.l_start  = 0;
-	flock.l_len    = 0;	/* whole file */
-	if (fcntl(fds, F_SETLK, &flock) < 0) {
-		(void)strcpy(log_buffer, "pbs_mom: another mom running");
-		log_err(errno, msg_daemonname, log_buffer);
-		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, "%s", log_buffer);
-		exit(1);
-	}
-}
-#endif	/* WIN32 */
-
 /**
  * @brief
  *	size decoding routine.
@@ -7905,10 +7836,6 @@ main(int argc, char *argv[])
 	extern int		optind;
 #endif /* WIN32 */
 
-#ifndef	DEBUG
-	FILE				*dummyfile;
-#endif
-
 #ifdef _POSIX_MEMLOCK
 	int					do_mlockall = 0;
 #endif
@@ -8615,8 +8542,12 @@ main(int argc, char *argv[])
 	secure_file("mom.lock", "Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 #endif
-	mom_lock(lockfds, F_WRLCK);	/* See if other MOMs are running */
-
+	if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) {	/* See if other MOMs are running */
+		log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+		fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+		exit(1);
+	}
+	
 	if (read_config(NULL)) {
 		fprintf(stderr, "%s: config file(s) parsing failed\n", argv[0]);
 #ifdef	WIN32
@@ -8722,34 +8653,15 @@ main(int argc, char *argv[])
 		}
 	}
 
-#ifdef	WIN32 /* ------------------------------------------------------------*/
 #ifndef	DEBUG
+#ifndef  WIN32
 	if (stalone != 1) {
-		(void)fclose(stdin);
-		(void)fclose(stdout);
-		(void)fclose(stderr);
-		freopen("nul", "r", stdin);
-		freopen("nul", "w", stdout);
-		freopen("nul", "w", stderr);
-	}
-
-#else	/* DEBUG */
-	(void)setvbuf(stdout, NULL, _IONBF, 0);
-	(void)setvbuf(stderr, NULL, _IONBF, 0);
-#endif /* DEBUG */
-
-	mom_pid = (pid_t)getpid();
-	(void)lseek(lockfds, (off_t)0, SEEK_SET);
-	(void)sprintf(log_buffer, "%d\n", mom_pid);
-	(void)write(lockfds, log_buffer, strlen(log_buffer));
-
-#else /* ! WIN32 ------------------------------------------------------------*/
-
 	/* go into the background and become own session/process group */
-
-#ifndef	DEBUG
-	if (stalone != 1) {
-		mom_lock(lockfds, F_UNLCK);	/* unlock so child can relock */
+		if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) {	/* unlock so child can relock */
+			log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
+			fprintf(stderr, "%s\n", "failed to unlock mom.lock file");
+			exit(1);
+		}
 
 		if (fork() > 0)
 			return (0);	/* parent goes away */
@@ -8758,38 +8670,31 @@ main(int argc, char *argv[])
 			log_err(errno, msg_daemonname, "setsid failed");
 			return (2);
 		}
-		mom_lock(lockfds, F_WRLCK);	/* lock out other MOMs */
+		if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) {		/* lock out other MOMs */
+			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+			exit(1);
+		}
 	}
-	mom_pid = getpid();
-
-	(void)fclose(stdin);
-	(void)fclose(stdout);
-	(void)fclose(stderr);
-	dummyfile = fopen("/dev/null", "r");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 0));
-	dummyfile = fopen("/dev/null", "w");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 1));
-	dummyfile = fopen("/dev/null", "w");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 2));
+#endif		
+	freopen(NULL_DEVICE, "r", stdin);
+	freopen(NULL_DEVICE, "w", stdout);
+	freopen(NULL_DEVICE, "w", stderr);
 #else	/* DEBUG */
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 	if (stalone != 1) {
-		(void) sprintf(log_buffer, "Debug build does not fork.");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-				__func__, log_buffer);
+				__func__, "Debug build does not fork.");
 	}
-	mom_pid = getpid();
-	(void)setvbuf(stdout, NULL, _IOLBF, 0);
-	(void)setvbuf(stderr, NULL, _IOLBF, 0);
 #endif	/* DEBUG */
 
-	/* write MOM's pid into lockfile */
-#ifdef	WIN32
-	lseek(lockfds, (off_t)0, SEEK_SET);
-#else
-	(void)ftruncate(lockfds, (off_t)0);
-#endif
-	(void)sprintf(log_buffer, "%d\n", mom_pid);
-	(void)write(lockfds, log_buffer, strlen(log_buffer));
+	mom_pid = getpid();
+	sprintf(log_buffer, "%d\n", mom_pid);
+	ftruncate(lockfds, 0);
+	write(lockfds, log_buffer, strlen(log_buffer));
+
+#ifndef	WIN32 /* ------------------------------------------------------------*/
 
 	daemon_protect(0, PBS_DAEMON_PROTECT_ON);
 #ifdef _POSIX_MEMLOCK
@@ -9858,11 +9763,12 @@ main(int argc, char *argv[])
 		LOG_NOTICE, msg_daemonname, "Is down");
 	pbs_idx_destroy(jobs_idx);
 	unload_auths();
+	if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0))
+		log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
 	log_close(1);
+	close(lockfds);
+	unlink("mom.lock");
 #ifdef	WIN32
-	mom_lock(lockfds, F_UNLCK);     /* unlock  */
-	(void)close(lockfds);
-	(void)unlink("mom.lock");
 	CloseDesktop(pbs_desktop);
 	CloseWindowStation(pbs_winsta);
 #endif

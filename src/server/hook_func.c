@@ -397,7 +397,7 @@ hook_track_save(void *minfo, int k)
 		return;
 	}
 
-	if (lock_file(fp, F_WRLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
+	if (lock_file(fileno(fp), F_WRLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0) {
 		log_err(errno, __func__, msg);
 		fclose(fp);
@@ -423,7 +423,7 @@ hook_track_save(void *minfo, int k)
 	}
 	(void)fflush(fp);
 
-	if (lock_file(fp, F_UNLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
+	if (lock_file(fileno(fp), F_UNLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0)
 		log_err(errno, __func__, msg);
 
@@ -564,7 +564,7 @@ hook_track_recov(void)
 		return;
 	}
 
-	if (lock_file(fp, F_RDLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
+	if (lock_file(fileno(fp), F_RDLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0) {
 		log_err(errno, __func__, msg);
 		fclose(fp);
@@ -724,7 +724,7 @@ hook_track_recov(void)
 	hook_action_tid_set(max_tid_recov);
 
 	if (fp != NULL) {
-		if (lock_file(fp, F_UNLCK, path_hooks_tracking,
+		if (lock_file(fileno(fp), F_UNLCK, path_hooks_tracking,
 			LOCK_RETRY_DEFAULT, msg, sizeof(msg)) != 0) {
 			log_err(errno, __func__, msg);
 		}

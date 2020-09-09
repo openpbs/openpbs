@@ -244,7 +244,7 @@ int ends_with_triple_quotes(char *str, int strip_quotes);
 
 #define LOCK_RETRY_DEFAULT	2
 int
-lock_file(FILE *fp, int op, char *filename, int lock_retry,
+lock_file(int fd, int op, char *filename, int lock_retry,
 	char *err_msg, size_t err_msg_len);
 
 /* RSHD/RCP related */
