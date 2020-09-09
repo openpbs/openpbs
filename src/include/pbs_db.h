@@ -180,7 +180,7 @@ struct pbs_db_job_info {
 	BIGINT   ji_fromaddr;	/* host job coming from   */
 	char     ji_jid[8];	/* extended job save data */
 	INTEGER  ji_credtype;	/* credential type */
-	INTEGER  ji_qrank;	/* sort key for db query */
+	BIGINT   ji_qrank;	/* sort key for db query */
 	pbs_db_attr_list_t db_attr_list; /* list of attributes for database */
 };
 typedef struct pbs_db_job_info pbs_db_job_info_t;

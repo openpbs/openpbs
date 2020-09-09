@@ -175,7 +175,7 @@ CREATE TABLE pbs.job (
     ji_fromaddr     BIGINT,
     ji_jid          TEXT,
     ji_credtype     INTEGER,
-    ji_qrank        INTEGER     NOT NULL,
+    ji_qrank        BIGINT      NOT NULL,
     ji_savetm       TIMESTAMP   NOT NULL,
     ji_creattm      TIMESTAMP   NOT NULL,
     attributes      hstore      NOT NULL default '',
