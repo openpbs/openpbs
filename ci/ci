@@ -832,7 +832,6 @@ if __name__ == "__main__":
     build_pkgs = False
     default_platform = MACROS['DEFAULT_PLATFORM']
     build_log_path = os.path.join(ci_dirname, 'logs')
-    setup_config_dir()
     not_local_run = sys.argv.count('-l') == 0 \
         and sys.argv.count('--local') == 0 \
         and sys.argv.count('-l=sanitize') == 0\
@@ -840,6 +839,7 @@ if __name__ == "__main__":
         and sys.argv.count('-l=normal') == 0 \
         and sys.argv.count('--local=normal') == 0
     if not_local_run:
+        setup_config_dir()
         check_prerequisites()
     if (not args.delete) and not_local_run and (args.params is None):
         ret = ensure_ci_running()
