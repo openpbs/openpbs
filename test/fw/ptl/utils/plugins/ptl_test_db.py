@@ -1615,7 +1615,7 @@ class JSONDb(DBType):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
         self._data = {}
         self.jdata = {}
-        self.run_count = 1
+        self.cur_repeat_count = 1
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
@@ -1623,20 +1623,26 @@ class JSONDb(DBType):
 
     def __write_test_data(self, data):
 
-        name = "Test_run_count:" + str(self.run_count)
-        if self.run_count != PtlTextTestRunner().run_count:
-            self.jdata[name] = self._data
+        FMT = '%H:%M:%S.%f'
+        self.run_count = "Test_run_count: " + str(self.cur_repeat_count)
+        if self.cur_repeat_count != PtlTextTestRunner.cur_repeat_count:
+            start = self._data['test_summary']['test_start_time'].split()[1]
+            end = self._data['test_summary']['test_end_time'].split()[1]
+            dur = str(datetime.datetime.strptime(end, FMT) -
+                      datetime.datetime.strptime(start, FMT))
+            self.jdata[self.run_count] = self._data
+            self.jdata[self.run_count]['test_summary']['tests_duration'] = dur
             self._data = self.res_data.get_json(data=data)
-            self.run_count = PtlTextTestRunner().run_count
-            name = "Test_run_count:" + str(self.run_count)
-            self.jdata[name] = self._data
+            self.cur_repeat_count = PtlTextTestRunner.cur_repeat_count
+            self.run_count = "Test_run_count: " + str(self.cur_repeat_count)
+            self.jdata[self.run_count] = self._data
             with open(self.dbpath, 'w') as fd:
                     json.dump(self.jdata, fd, indent=2)
                     fd.write("\n")
         else:
             prev = copy.deepcopy(self._data)
             self._data = self.res_data.get_json(data=data, prev_data=prev)
-            self.jdata[name] = self._data
+            self.jdata[self.run_count] = self._data
             with open(self.dbpath, 'w') as fd:
                 json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")
@@ -1648,9 +1654,15 @@ class JSONDb(DBType):
             self.__write_test_data(data['testdata'])
 
     def close(self, result=None):
+        FMT = '%H:%M:%S.%f'
+        start = self._data['test_summary']['test_start_time'].split()[1]
+        end = self._data['test_summary']['test_end_time'].split()[1]
+        dur = str(datetime.datetime.strptime(end, FMT) -
+                  datetime.datetime.strptime(start, FMT))
+        self.jdata[self.run_count]['test_summary']['tests_duration'] = dur
         if result is not None:
             dur = str(result.stop - result.start)
-            self.jdata['tests_duration'] = dur
+            self.jdata['Total_run_time'] = dur
             with open(self.dbpath, 'w') as fd:
                 json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")
