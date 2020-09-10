@@ -91,7 +91,8 @@ class TestPbsNodeRampDownCset(TestFunctional):
 
         # expected values upon successful job submission
         self.job1_schedselect = \
-            "1:ncpus=1:mem=2gb+1:ncpus=%d:mem=2gb+" % self.ncpus2 + \
+            "1:ncpus=1:mem=2gb+" + \
+            "1:ncpus=%d:mem=2gb:vnode=%s+" % (self.ncpus2, self.n2) + \
             "1:ncpus=%d:mem=2gb:vnode=%s" % (self.ncpus2, self.n3)
         self.job1_exec_host = "%s/0+%s/0*%d+%s/1*%d" % (
             self.n0, self.n1, self.ncpus2, self.n1, self.ncpus2)
@@ -102,7 +103,8 @@ class TestPbsNodeRampDownCset(TestFunctional):
 
         # expected values after release of vnode
         self.job1_schedsel1 = \
-            "1:ncpus=1:mem=2097152kb+1:ncpus=%d:mem=2097152kb" % (self.ncpus2)
+            "1:ncpus=1:mem=2097152kb+" + \
+            "1:ncpus=%d:mem=2097152kb:vnode=%s" % (self.ncpus2, self.n2)
         self.job1_exec_host1 = \
             "%s/0+%s/0*%d" % (self.n0, self.n1, self.ncpus2)
         self.job1_exec_vnode1 = \
@@ -122,9 +124,9 @@ class TestPbsNodeRampDownCset(TestFunctional):
         of the NUMA vnodes and its resources used in the job.
         """
         # Submit a job that uses second mom's two NUMA nodes, in R state
-        a = {'Resource_List.select':
-             'ncpus=1:mem=2gb+ncpus=%d:mem=2gb+ncpus=%d:mem=2gb:vnode=%s' %
-             (self.ncpus2, self.ncpus2, self.n3),
+        a = {'Resource_List.select': 'ncpus=1:mem=2gb+' +
+             'ncpus=%d:mem=2gb:vnode=%s+' % (self.ncpus2, self.n2) +
+             'ncpus=%d:mem=2gb:vnode=%s' % (self.ncpus2, self.n3),
              'Resource_List.place': 'vscatter'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
