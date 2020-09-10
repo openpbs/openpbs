@@ -1685,7 +1685,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 		if (orig_ns != ns_arr) {
 			free_nspecs(ns_arr);
-			ns_arr= NULL;
+			ns_arr = NULL;
 		}
 		/* The nspec array coming out of the node selection code could
 		 * have a node appear multiple times.  This is how we need to

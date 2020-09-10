@@ -1315,7 +1315,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			resresv->job->queued_subjobs = range_parse(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_execvnode)) {
 			nspec **tmp_nspec_arr;
-			tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, resresv->select);
+			tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, NULL);
 			resresv->nspec_arr = combine_nspec_array(tmp_nspec_arr);
 			free_nspecs(tmp_nspec_arr);
 
