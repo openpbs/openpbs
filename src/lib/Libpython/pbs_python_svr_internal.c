@@ -11779,6 +11779,26 @@ pbsv1mod_meth_get_server_data_fp(void)
 	return (fp_obj);
 }
 
+const char pbsv1mod_meth_get_server_data_file_doc[] =
+"server_data_fp()\n\
+\n\
+   Returns the Python string representing the pathname to the hook data file.\n\
+\n\
+";
+
+/**
+ * @brief
+ *	Returns the Python string representing the pathname to the hook data file.
+ */
+PyObject *
+pbsv1mod_meth_get_server_data_file(void)
+{
+	if ((hook_debug.data_file == NULL) || (hook_debug.data_file[0] == '\0')) {
+		Py_RETURN_NONE;
+	}
+	return (PyUnicode_FromString(hook_debug.data_file));
+}
+
 const char pbsv1mod_meth_use_static_data_doc[] =
 "use_static_data()\n\
 \n\
