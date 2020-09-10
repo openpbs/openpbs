@@ -45,19 +45,13 @@ class TestPbsNodeRampDownCset(TestFunctional):
 
     """
     This tests the Node Rampdown Feature on a cluster where the
-    sister mom is a cgroup cpuset system.
+    sister mom is a cgroup cpuset system with two NUMA nodes.
     """
 
     def setUp(self):
 
         TestFunctional.setUp(self)
         Job.dflt_attributes[ATTR_k] = 'oe'
-
-        # skip if there are less than one regular vnode and
-        # three from cpuset system (natural + 2 NUMA vnodes)
-        nodeinfo = self.server.status(NODE)
-        if len(nodeinfo) < 4:
-            self.skipTest("Not enough vnodes to run the test.")
 
         # skip if there are no cpuset systems in the test cluster
         no_csetmom = True
@@ -73,16 +67,18 @@ class TestPbsNodeRampDownCset(TestFunctional):
         self.n2 = '%s[0]' % (self.n1,)
         self.n3 = '%s[1]' % (self.n1,)
 
+        # skip if there are less than one regular vnode and
+        # three from cpuset system (natural + 2 NUMA vnodes)
+        nodeinfo = self.server.status(NODE)
+        if len(nodeinfo) < 4:
+            self.skipTest("Not enough vnodes to run the test.")
         # skip if second mom has less than two NUMA vnodes
-        try:
-            self.server.expect(NODE, {'state': 'free'},
-                               id=self.n3, max_attempts=10)
-        except PtlExpectError:
+        if nodeinfo[3]['id'] != self.n3:
             self.skipTest("Second mom has less than 2 vnodes")
-
-        a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
-        self.server.expect(VNODE, {'state=free': 4}, op=EQ, count=True,
-                           max_attempts=10, interval=2)
+        # skip if none of the vnodes are in free state
+        for node in nodeinfo:
+            if node['state'] != 'free':
+                self.skipTest("Not all the vnodes are in free state")
 
         self.pbs_release_nodes_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
@@ -91,12 +87,12 @@ class TestPbsNodeRampDownCset(TestFunctional):
         ncpus = self.server.status(NODE, 'resources_available.ncpus',
                                    id=self.n3)[0]
         ncpus = int(ncpus['resources_available.ncpus'])
-        self.ncpus2 = ncpus / 2 - 1
+        self.ncpus2 = ncpus / 2
 
         # expected values upon successful job submission
         self.job1_schedselect = \
             "1:ncpus=1:mem=2gb+1:ncpus=%d:mem=2gb+" % self.ncpus2 + \
-            "1:ncpus=%d:mem=2gb" % self.ncpus2
+            "1:ncpus=%d:mem=2gb:vnode=%s" % (self.ncpus2, self.n3)
         self.job1_exec_host = "%s/0+%s/0*%d+%s/1*%d" % (
             self.n0, self.n1, self.ncpus2, self.n1, self.ncpus2)
         self.job1_exec_vnode = \
@@ -113,18 +109,23 @@ class TestPbsNodeRampDownCset(TestFunctional):
             "(%s:ncpus=1:mem=2097152kb)+" % (self.n0,) + \
             "(%s:ncpus=%d:mem=2097152kb)" % (self.n2, self.ncpus2)
 
+        # cgroup cpuset path on second node
+        cmd = ['grep cgroup', '/proc/mounts', '|', 'grep cpuset', '|',
+               'grep -v', '/dev/cpuset']
+        ret = self.server.du.run_cmd(self.n1, cmd, runas=TEST_USER)
+        self.cset_path = ret['out'][0].split()[1]
+
     def test_release_nodes_on_cpuset_sis(self):
         """
         Submit job that will use cpus on two NUMA vnodes on second mom,
-        goes in R state. Use pbs_release_node to release one of the NUMA
-        vnodes. The NUMA vnode and its resources get released. Submit a
-        second job requesting the released NUMA vnode. Job should run and
-        a new cpuset gets created that uses the released cpus.
+        goes in R state. Use pbs_release_node to successfully release one
+        of the NUMA vnodes and its resources used in the job.
         """
         # Submit a job that uses second mom's two NUMA nodes, in R state
         a = {'Resource_List.select':
-             'ncpus=1:mem=2gb+ncpus=%d:mem=2gb+ncpus=%d:mem=2gb' %
-             (self.ncpus2, self.ncpus2), 'Resource_List.place': 'vscatter'}
+             'ncpus=1:mem=2gb+ncpus=%d:mem=2gb+ncpus=%d:mem=2gb:vnode=%s' %
+             (self.ncpus2, self.ncpus2, self.n3),
+             'Resource_List.place': 'vscatter'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R',
@@ -135,7 +136,16 @@ class TestPbsNodeRampDownCset(TestFunctional):
                                  'exec_host': self.job1_exec_host,
                                  'exec_vnode': self.job1_exec_vnode}, id=jid1)
 
-        # Release on NUMA vnode on sis mom using command pbs_release_nodes
+        # Check the cpuset before releasing self.n3 from jid1
+        cset_file = self.cset_path + '/pbs_jobs.service/jobid/' + jid1 + \
+            '/cpuset.cpus'
+        cset_before = self.du.cat(self.n1, cset_file)
+        cset_j1_before = cset_before['out']
+        self.logger.info("cset_j1_before : %s" % cset_j1_before)
+
+        before_release = time.time()
+
+        # Release a NUMA vnode on second mom using command pbs_release_nodes
         cmd = [self.pbs_release_nodes_cmd, '-j', jid1, self.n3]
         ret = self.server.du.run_cmd(self.server.hostname,
                                      cmd, runas=TEST_USER)
@@ -148,9 +158,16 @@ class TestPbsNodeRampDownCset(TestFunctional):
                                  'exec_host': self.job1_exec_host1,
                                  'exec_vnode': self.job1_exec_vnode1}, id=jid1)
 
-        # Submit a second job requesting the released NUMA node, in R state
-        a = {'Resource_List.select': 'ncpus=%d:mem=2gb:vnode=%s' %
-             (self.ncpus2 + 2, self.n3)}
-        j2 = Job(TEST_USER, attrs=a)
-        jid2 = self.server.submit(j2)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2, max_attempts=10)
+        # Check if sister mom updated its internal nodes table after release
+        self.moms.values()[1].log_match('Job;%s;updated nodes info' % jid1,
+                                        starttime=before_release-1,
+                                        max_attempts=10)
+
+        # Check the cpuset for the job after releasing self.n3
+        cset_after = self.du.cat(self.n1, cset_file)
+        cset_j1_after = cset_after['out']
+        self.logger.info("cset_j1_after : %s" % cset_j1_after)
+
+        # Compare the before and after cpusets info
+        msg = "%s: cpuset cpus remain after release of %s" % (jid1, self.n3)
+        self.assertNotEqual(cset_j1_before, cset_j1_after, msg)
