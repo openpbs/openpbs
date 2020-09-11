@@ -36,16 +36,15 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_tclapi 3B "4 December 2019" Local "PBS"
+.TH pbs_tclapi 3B "4 December 2019" Local "PBS Professional"
 .SH NAME
-pbs_tclapi \- PBS TCL Application Programming Interface
+pbs_tclapi \- PBS TCL Application Programming Interface 
 .SH DESCRIPTION
-.B Deprecated.
+.B Deprecated.  
 The
 .B pbs_tclapi
 is a subset of the PBS external API wrapped in a TCL
-library. This functionality allows the creation of
+library. This functionality allows the creation of 
 scripts that query the PBS system. Specifically,
 it permits the user to query the
 .B pbs_server
@@ -68,7 +67,7 @@ variable. If the function call communicates with the PBS
 Server, any error value will come from the error number returned
 by the server. This is the same TCL interface used by the
 .B pbs_tclsh
-and
+and 
 .B pbs_wish
 commands.
 
@@ -267,7 +266,7 @@ is the name, the second the resource and the third is the new value.
 If the alter is successful, a "0" is returned, otherwise, "-1" is returned.
 .LP
 .IP "pbsrescquery resource_list" 6
-.B Deprecated.
+.B Deprecated. 
 Obtain information about the resources specified by
 .I resource_list.
 This will be a list of strings.  If the request succeeds, a list
@@ -349,7 +348,7 @@ extract information about a time, or format it for printing.
 .IP "logmsg tag message" 6
 This function calls the internal PBS function
 .I log_err().
-It will cause a log message to be written to the scheduler's log file.  The
+It will cause a log message to be written to the scheduler's log file.  The 
 .I tag
 specifies a function name or other word used to identify the area
 where the message is generated.  The

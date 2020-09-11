@@ -56,12 +56,8 @@
 #include <fcntl.h>
 #include <time.h>
 #include <stdlib.h>
-
-#ifndef WIN32
-#include <stdlib.h>
 #include <poll.h>
 #include <sys/resource.h>
-#endif
 
 #include "portability.h"
 #include "server_limits.h"
@@ -302,10 +298,8 @@ init_network(unsigned int port)
 	if (bind(sd, (struct sockaddr *)&socname, sizeof(socname)) < 0) {
 #ifdef WIN32
 		errno = WSAGetLastError();
-		(void)closesocket(sd);
-#else
-		(void)close(sd);
 #endif
+		closesocket(sd);
 		log_err(errno, __func__ , "bind failed");
 		return (-1);
 	}
@@ -361,10 +355,8 @@ init_network_add(int sd, int (*readyreadfunc)(conn_t *), void (*readfunc)(int))
 	if (add_conn(sd, type, (pbs_net_t)0, 0, NULL, accept_conn) == NULL) {
 #ifdef WIN32
 		errno = WSAGetLastError();
-		(void)closesocket(sd);
-#else
-		(void)close(sd);
 #endif
+		closesocket(sd);
 		log_err(errno, __func__, "add_conn failed");
 		return -1;
 	}
@@ -374,10 +366,8 @@ init_network_add(int sd, int (*readyreadfunc)(conn_t *), void (*readfunc)(int))
 		log_err(errno, __func__ , "listen failed");
 #ifdef WIN32
 		errno = WSAGetLastError();
-		(void)closesocket(sd);
-#else
-		(void)close(sd);
 #endif
+		closesocket(sd);
 		return (-1);
 	}
 
@@ -925,7 +915,7 @@ close_conn(int sd)
 		cleanup_conn(idx);
 		num_connections--;
 
-		CLOSESOCKET(sd);
+		closesocket(sd);
 	} else {
 		/* if there is a function to call on close, do it */
 		if (svr_conn[idx]->cn_oncl != 0)
@@ -933,7 +923,7 @@ close_conn(int sd)
 
 		cleanup_conn(idx);
 		num_connections--;
-		CLOSESOCKET(sd); /* pipe so use normal close */
+		closesocket(sd); /* pipe so use normal close */
 	}
 }
 
@@ -1174,7 +1164,7 @@ init_poll_context(void)
 		snprintf(logbuf, sizeof(logbuf),
 			"Could not add socket %d to the read set", sd_dummy);
 		log_err(err, __func__, logbuf);
-		CLOSESOCKET(sd_dummy);
+		closesocket(sd_dummy);
 		return -1;
 	}
 	if ((tpp_em_add_fd(priority_context, sd_dummy, EM_IN) == -1)) {
@@ -1182,26 +1172,10 @@ init_poll_context(void)
 		snprintf(logbuf, sizeof(logbuf),
 			"Could not add socket %d to the read set for priority socket", sd_dummy);
 		log_err(err, __func__, logbuf);
-		CLOSESOCKET(sd_dummy);
+		closesocket(sd_dummy);
 		return -1;
 	}
 #endif /* WIN32 */
 
 	return 0;
-}
-
-/**
- * @brief
- *	Close the socket descriptor.
- *
- * @param[in]   sd: socket descriptor.
- *
- */
-void
-close_socket(int sd) {
-#ifdef WIN32
-	(void)closesocket(sd);
-#else
-	(void) close(sd);
-#endif
 }

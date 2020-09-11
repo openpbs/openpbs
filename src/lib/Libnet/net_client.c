@@ -48,12 +48,10 @@
 #include <errno.h>
 #include <netdb.h>
 #include <string.h>
-#ifndef WIN32
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <netinet/tcp.h>
-#endif
 #include "portability.h"
 #include "server_limits.h"
 #include "libpbs.h"
@@ -62,10 +60,7 @@
 #include "libsec.h"
 #include "pbs_internal.h"
 #include "auth.h"
-#ifdef WIN32
-#include "win.h"
-#include <Winerror.h>
-#endif
+
 
 /**
  * @file	net_client.c
@@ -291,22 +286,17 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 #ifdef WIN32
 			errno = WSAGetLastError();
 			if (errno != EADDRINUSE && errno != EADDRNOTAVAIL && errno != WSAEACCES) {
-				closesocket(sock);
 #else
 			if (errno != EADDRINUSE && errno != EADDRNOTAVAIL) {
-				close(sock);
 #endif
+				closesocket(sock);
 				return PBS_NET_RC_FATAL;
 			}
 			else if (--tryport < (IPPORT_RESERVED/2)) {
 				tryport = IPPORT_RESERVED - 1;
 			}
 			if (tryport == start_port) {
-#ifdef WIN32
 				closesocket(sock);
-#else
-				close(sock);
-#endif
 				return PBS_NET_RC_RETRY;
 			}
 		}
@@ -335,16 +325,13 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 
 	if (ioctlsocket(sock, FIONBIO, &non_block) == SOCKET_ERROR) {
 		errno = WSAGetLastError();
-		closesocket(sock);
-		return (PBS_NET_RC_FATAL);
-	}
 #else
 	oflag = fcntl(sock, F_GETFL);
 	if (fcntl(sock, F_SETFL, (oflag | O_NONBLOCK)) == -1) {
-		close(sock);
+#endif
+		closesocket(sock);
 		return (PBS_NET_RC_FATAL);
 	}
-#endif
 
 	if (connect(sock, (struct sockaddr *)&remote, sizeof(remote)) < 0) {
 
@@ -369,11 +356,7 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 			case EADDRINUSE:
 			case ETIMEDOUT:
 			case ECONNREFUSED:
-#ifdef WIN32
 				closesocket(sock);
-#else
-				close(sock);
-#endif
 				return (PBS_NET_RC_RETRY);
 
 #ifdef WIN32
@@ -415,28 +398,24 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 					/* socket may be connected and ready to write */
 					rc = 0;
 					if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, &rc, &len) == -1) || (rc != 0)) {
-						close(sock);
+						closesocket(sock);
 						return PBS_NET_RC_FATAL;
 					}
 					break;
 
 				} else if (rc == 0) {
 					/* socket not ready - not connected in time */
-					close(sock);
+					closesocket(sock);
 					return PBS_NET_RC_RETRY;
 				} else {
 					/* socket not ready - error */
-					close(sock);
+					closesocket(sock);
 					return PBS_NET_RC_FATAL;
 				}
 #endif	/* end UNIX */
 
 			default:
-#ifdef WIN32
 				closesocket(sock);
-#else
-				close(sock);
-#endif
 				return (PBS_NET_RC_FATAL);
 		}
 	}
@@ -446,15 +425,12 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 	non_block = 0;
 	if (ioctlsocket(sock, FIONBIO, &non_block) == SOCKET_ERROR) {
 		errno = WSAGetLastError();
+#else	/* UNIX */
+	if (fcntl(sock, F_SETFL, oflag) == -1) {
+#endif
 		closesocket(sock);
 		return PBS_NET_RC_FATAL;
 	}
-#else	/* UNIX */
-	if (fcntl(sock, F_SETFL, oflag) == -1) {
-		close(sock);
-		return (PBS_NET_RC_FATAL);
-	}
-#endif
 
 	if (engage_authentication(sock,
 		remote.sin_addr, port, authport_flags) != -1)
@@ -462,11 +438,7 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 
 	/*authentication unsuccessful*/
 
-#ifdef WIN32
 	closesocket(sock);
-#else
-	close(sock);
-#endif
 	return (PBS_NET_RC_FATAL);
 }
 

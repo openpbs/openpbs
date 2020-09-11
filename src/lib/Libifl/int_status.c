@@ -48,9 +48,6 @@
 #include <stdio.h>
 #include "libpbs.h"
 
-
-static struct batch_status *alloc_bs();
-
 /**
  * @brief
  *	-wrapper function for PBSD_status_put which sends
@@ -100,11 +97,8 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 struct batch_status *
 PBSD_status_get(int c)
 {
-	struct brp_cmdstat  *stp; /* pointer to a returned status record */
-	struct batch_status *bsp  = NULL;
 	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
-	int i;
 
 	/* read reply from stream into presentation element */
 
@@ -116,60 +110,9 @@ PBSD_status_get(int c)
 		reply->brp_choice != BATCH_REPLY_CHOICE_Status) {
 		pbs_errno = PBSE_PROTOCOL;
 	} else if (get_conn_errno(c) == 0) {
-		/* have zero or more attrl structs to decode here */
-		stp = reply->brp_un.brp_statc;
-		i = 0;
-		pbs_errno = 0;
-		while (stp != NULL) {
-			if (i++ == 0) {
-				rbsp = bsp = alloc_bs();
-				if (bsp == NULL) {
-					pbs_errno = PBSE_SYSTEM;
-					break;
-				}
-			} else {
-				bsp->next = alloc_bs();
-				bsp = bsp->next;
-				if (bsp == NULL) {
-					pbs_errno = PBSE_SYSTEM;
-					break;
-				}
-			}
-			if ((bsp->name = strdup(stp->brp_objname)) == NULL) {
-				pbs_errno = PBSE_SYSTEM;
-				break;
-			}
-			bsp->attribs = stp->brp_attrl;
-			if (stp->brp_attrl)
-				stp->brp_attrl = 0;
-			bsp->next = NULL;
-			stp = stp->brp_stlink;
-		}
-		if (pbs_errno) {
-			pbs_statfree(rbsp);
-			rbsp = NULL;
-		}
+		rbsp = reply->brp_un.brp_statc;
+		reply->brp_un.brp_statc = NULL;
 	}
 	PBSD_FreeReply(reply);
 	return rbsp;
-}
-
-/**
- * @brief
- *	Allocate a batch status reply structure
- */
-static struct batch_status *
-alloc_bs()
-{
-	struct batch_status *bsp;
-
-	bsp = (struct batch_status *)malloc(sizeof(struct batch_status));
-	if (bsp) {
-
-		bsp->next = NULL;
-		bsp->name = NULL;
-		bsp->attribs = NULL;
-		bsp->text = NULL;
-	}
-	return bsp;
 }

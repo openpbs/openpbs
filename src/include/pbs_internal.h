@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #include "pbs_ifl.h"
+#include "portability.h"
 #include "libutil.h"
 #include "auth.h"
 
@@ -218,6 +219,7 @@ struct pbs_config
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
 	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
+	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
 	char *pbs_demux_path;			/* path to pbs demux */
@@ -247,6 +249,8 @@ struct pbs_config
 	char *pbs_lr_save_path;		/* path to store undo live recordings */
 	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
 	unsigned int pbs_sched_threads;	/* number of threads for scheduler */
+	char *pbs_daemon_service_user; /* user the scheduler runs as */
+	char current_user[PBS_MAXUSER+1]; /* current running user */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
@@ -291,6 +295,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_SERVER_NAME	"PBS_SERVER"	   /* name of the pbs server */
 #define PBS_CONF_INSTALL_MODE    "PBS_INSTALL_MODE" /* PBS installation mode */
 #define PBS_CONF_RCP		"PBS_RCP"
+#define PBS_CONF_CP		"PBS_CP"
 #define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
 #define PBS_CONF_PRIMARY	"PBS_PRIMARY"  /* Primary Server in failover */
@@ -311,6 +316,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_LR_SAVE_PATH	"PBS_LR_SAVE_PATH"
 #define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"
 #define PBS_CONF_SCHED_THREADS	"PBS_SCHED_THREADS"
+#define PBS_CONF_DAEMON_SERVICE_USER "PBS_DAEMON_SERVICE_USER"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif
@@ -385,18 +391,13 @@ enum accrue_types {
 #define ATTR_node_set		"node_set"	    /* job attribute */
 #define ATTR_sched_preempted    "ptime"   /* job attribute */
 #define ATTR_restrict_res_to_release_on_suspend "restrict_res_to_release_on_suspend"	    /* server attr */
+#define ATTR_resv_alter_revert		"reserve_alter_revert"
+#define ATTR_resv_standing_revert	"reserve_standing_revert"
 
 #ifndef IN_LOOPBACKNET
 #define IN_LOOPBACKNET	127
 #endif
 #define LOCALHOST_SHORTNAME "localhost"
-#ifdef WIN32
-#define CLOSESOCKET(X) (void)closesocket(X)
-#define ERRORNO        WSAGetLastError()
-#else
-#define CLOSESOCKET(X) (void)close(X)
-#define ERRORNO        errno
-#endif
 
 #if HAVE__BOOL
 #include "stdbool.h"

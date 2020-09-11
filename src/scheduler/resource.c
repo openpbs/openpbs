@@ -93,6 +93,7 @@
 #include "sort.h"
 #include "parse.h"
 #include "limits_if.h"
+#include "fifo.h"
 
 
 
@@ -577,6 +578,8 @@ reset_global_resource_ptrs(void)
 	}
 	update_sorting_defs(SD_FREE);
 
+	clear_last_running();
+
 	/* The above references into this array.  We now free the memory */
 	if (allres != NULL) {
 		free_resdef_array(allres);
@@ -872,12 +875,12 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * execselect: select created from the exec_vnode.  This is likely to
 		 * be a subset of resources from schedselect + 'vnode'.  It is possible
 		 * that a job was run with qrun -H (res=val) where res is not part of
-		 * the schedselect.  The exec_vnode is taken directly from the -H  argument
+		 * the schedselect.  The exec_vnode is taken directly from the -H argument
 		 * The qrun -H case is why we need to do this check.
 		 */
 		if (r->execselect != NULL && r->execselect->defs != NULL) {
-			if ((r->is_job && r->job != NULL && in_runnable_state(r)) ||
-				(r->is_resv && r->resv != NULL && r->resv->resv_state == RESV_BEING_ALTERED)) {
+			if ((r->job != NULL && in_runnable_state(r)) ||
+				(r->resv != NULL && (r->resv->resv_state == RESV_BEING_ALTERED || r->resv->resv_substate == RESV_DEGRADED))) {
 				for (j = 0; r->execselect->defs[j] != NULL;j++) {
 					if (!resdef_exists_in_array(defarr, r->execselect->defs[j]))
 						add_resdef_to_array(&defarr, r->execselect->defs[j]);

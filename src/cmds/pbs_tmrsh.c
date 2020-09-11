@@ -174,7 +174,7 @@ host_match(char *line)
 			domain[i] = '\0';
 		}
 	}
-	strcpy(fullhost, line);
+	pbs_strncpy(fullhost, line, sizeof(fullhost));
 	strcat(fullhost, ".");
 	strcat(fullhost, domain);
 
@@ -205,11 +205,8 @@ main(int argc, char *argv[], char *envp[])
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	id = argv[0];
 	if (argc < 3)

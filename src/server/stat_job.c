@@ -300,6 +300,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	(void)strcpy(pstat->brp_objname, pjob->ji_qs.ji_jobid);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 	/* add attributes to the status reply */
 
@@ -390,6 +391,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	(void)strcpy(pstat->brp_objname, mk_subjob_id(pjob, subj));
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
+	preq->rq_reply.brp_count++;
 
 	/* add attributes to the status reply */
 

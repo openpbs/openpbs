@@ -281,8 +281,7 @@ class TestTPP(TestFunctional):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
         self.hostC = self.server.client
-        nodes = [self.hostA, self.hostB, self.hostC]
-        self.node_list.extend(nodes)
+        self.node_list = [self.hostA, self.hostB, self.hostC]
         self.server.manager(MGR_CMD_SET, SERVER, {'flatuid': True})
         self.common_steps(job=True, interactive=True)
         self.common_steps(resv=True, resv_job=True, client=self.hostB)
@@ -309,8 +308,8 @@ class TestTPP(TestFunctional):
         self.hostB = self.server.client
         self.hostC = self.momB.shortname
         self.hostD = self.comm1.shortname
-        nodes = [self.hostA, self.hostB, self.hostC, self.hostD]
-        self.node_list.extend(nodes)
+        self.node_list = [self.hostA, self.hostB,
+                          self.hostC, self.hostD]
         a = {'PBS_START_COMM': '0', 'PBS_START_MOM': '1',
              'PBS_LEAF_ROUTERS': self.hostD}
         b = {'PBS_LEAF_ROUTERS': self.hostD}
@@ -345,8 +344,7 @@ class TestTPP(TestFunctional):
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
-        nodes = [self.hostA, self.hostB]
-        self.node_list.extend(nodes)
+        self.node_list = [self.hostA, self.hostB]
         self.common_steps(job=True, resv=True,
                           resv_job=True, client=self.hostA)
         self.common_steps(job=True, interactive=True,
@@ -381,7 +379,8 @@ class TestTPP(TestFunctional):
         for vnode in vnode_list:
             self.server.expect(VNODE, a, id=vnode)
 
-    def common_setup(self, no_mom_on_comm=False, no_comm_on_server=False):
+    def common_setup(self, no_mom_on_comm=False, no_comm_on_server=False,
+                     req_moms=2, req_comms=2):
         """
         This function sets the shortnames of moms and comms in the cluster
         accordingly.
@@ -393,56 +392,75 @@ class TestTPP(TestFunctional):
         :type no_mom_on_comm: Bool. Defaults to False
         :param no_comm_on_server: Flag, True if no comm is present on server
         :type no_comm_on_server: Bool. Defaults to False
+        :param req_moms: No of required moms
+        :type req_moms: Integer. Defaults to 2
+        :param req_comms: No of required comms
+        :type req_comms: Integer. Defaults to 2
         """
         mom_list = [x.shortname for x in self.moms.values()]
         comm_list = [y.shortname for y in self.comms.values()]
+        num_moms = len(mom_list)
+        num_comms = len(comm_list)
+        if (req_moms != num_moms) and (req_comms != num_comms):
+            msg = "Test requires exact %s moms and %s" % (req_moms, req_comms)
+            msg += " comms as input"
+            self.skipTest(msg)
         if not no_mom_on_comm and not no_comm_on_server:
             if self.server.shortname not in mom_list:
                 self.skipTest("Mom and comm should be on server host")
-        if len(self.moms.values()) == 2 and len(self.comms.values()) == 2:
+        if num_moms == 2 and num_comms == 2:
             self.hostA = self.server.shortname
             self.momB = self.moms.values()[1]
-            self.hostB = self.momB.shortname
+            self.hostB = mom_list[1]
             self.comm2 = self.comms.values()[1]
-            self.hostC = self.comm2.shortname
-            nodes = [self.hostA, self.hostB, self.hostC]
-        elif len(self.moms.values()) == 3 and len(self.comms.values()) == 3:
+            self.hostC = comm_list[1]
+            self.node_list = [self.hostA, self.hostB, self.hostC]
+        elif num_moms == 3 and num_comms == 3:
             self.hostA = self.server.shortname
-            self.momB = self.moms.values()[1]
-            self.hostB = self.momB.shortname
-            self.momC = self.moms.values()[2]
-            self.hostC = self.momC.shortname
-            self.comm2 = self.comms.values()[1]
-            self.hostD = self.comm2.shortname
-            self.comm3 = self.comms.values()[2]
-            self.hostE = self.comm3.shortname
-            nodes = [
+            self.hostB = mom_list[1]
+            self.hostC = comm_list[1]
+            self.hostD = mom_list[2]
+            self.hostE = comm_list[2]
+            self.node_list = [
                 self.hostA,
                 self.hostB,
                 self.hostC,
                 self.hostD,
                 self.hostE]
-        elif len(self.moms.values()) == 2 and len(self.comms.values()) == 3:
+        elif num_moms == 2 and num_comms == 3:
             if self.server.shortname not in comm_list:
-                self.comm1 = self.comms.values()[0]
-                self.hostA = self.comm1.shortname
+                self.hostA = comm_list[0]
             else:
                 self.hostA = self.server.shortname
-            self.momB = self.moms.values()[0]
-            self.hostB = self.momB.shortname
-            self.momC = self.moms.values()[1]
-            self.hostC = self.momC.shortname
-            self.comm2 = self.comms.values()[1]
-            self.hostD = self.comm2.shortname
-            self.comm3 = self.comms.values()[2]
-            self.hostE = self.comm3.shortname
-            nodes = [
+            self.hostB = mom_list[0]
+            self.hostD = comm_list[1]
+            self.hostC = mom_list[1]
+            self.hostE = comm_list[2]
+            self.node_list = [
                 self.hostA,
                 self.hostB,
                 self.hostC,
                 self.hostD,
                 self.hostE]
-        self.node_list.extend(nodes)
+        elif num_moms == 4 and num_comms == 5:
+            self.hostA = self.server.shortname
+            self.hostB = mom_list[0]
+            self.hostC = mom_list[1]
+            self.hostD = mom_list[2]
+            self.hostE = mom_list[3]
+            self.comm2 = self.comms.values()[1]
+            self.hostF = comm_list[1]
+            self.hostG = comm_list[2]
+            self.comm4 = self.comms.values()[3]
+            self.hostH = comm_list[3]
+            self.hostI = comm_list[4]
+            self.node_list = [
+                self.hostA,
+                self.hostB,
+                self.hostC,
+                self.hostD,
+                self.hostE, self.hostF, self.hostG, self.hostH,
+                self.hostI]
 
     @requirements(num_moms=2, num_comms=2)
     def test_multiple_comm_with_mom(self):
@@ -698,11 +716,11 @@ class TestTPP(TestFunctional):
         Configuration:
         Node 1 : Server, Sched, Mom, Comm (self.hostA)
         Node 2 : Mom (self.hostB)
-        Node 3 : Comm (self.hostD)
-        Node 4 : Mom (self.hostC)
+        Node 3 : Comm (self.hostC)
+        Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         comm_val = self.hostA + "," + self.hostC
@@ -737,11 +755,11 @@ class TestTPP(TestFunctional):
         Configuration:
         Node 1 : Server, Sched, Mom, Comm (self.hostA)
         Node 2 : Mom (self.hostB)
-        Node 3 : Comm (self.hostD)
-        Node 4 : Mom (self.hostC)
+        Node 3 : Comm (self.hostC)
+        Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         hostA_ip = socket.gethostbyname(self.hostA)
         hostC_ip = socket.gethostbyname(self.hostC)
         a = {'PBS_COMM_ROUTERS': hostA_ip}
@@ -778,14 +796,14 @@ class TestTPP(TestFunctional):
         Configuration:
         Node 1 : Server, Sched, Mom, Comm (self.hostA)
         Node 2 : Mom (self.hostB)
-        Node 3 : Comm (self.hostD)
-        Node 4 : Mom (self.hostC)
+        Node 3 : Comm (self.hostC)
+        Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         hostA_ip = socket.gethostbyname(self.hostA)
         comm_val = self.hostA + ":17001"
-        a = {'PBS_COMM_ROUTERS': self.hostA}
+        a = {'PBS_COMM_ROUTERS': comm_val}
         self.set_pbs_conf(host_name=self.hostC, conf_param=a)
         comm_val = hostA_ip + ":17001" + "," + self.hostC
         a = {'PBS_COMM_ROUTERS': comm_val}
@@ -819,11 +837,11 @@ class TestTPP(TestFunctional):
         Configuration:
         Node 1 : Server, Sched, Mom, Comm (self.hostA)
         Node 2 : Mom (self.hostB)
-        Node 3 : Comm (self.hostD)
-        Node 4 : Mom (self.hostC)
+        Node 3 : Comm (self.hostC)
+        Node 4 : Mom (self.hostD)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup()
+        self.common_setup(req_moms=3, req_comms=3)
         hostA_ip = socket.gethostbyname(self.hostA)
         comm_val = self.hostA + ":17001"
         a = {'PBS_COMM_ROUTERS': self.hostA}
@@ -966,7 +984,7 @@ class TestTPP(TestFunctional):
         Node 4 : Mom (self.hostC)
         Node 5 : Comm (self.hostE)
         """
-        self.common_setup(no_mom_on_comm=True)
+        self.common_setup(no_mom_on_comm=True, req_comms=3)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         hosts = [self.hostD, self.hostE]
         for host in hosts:
@@ -990,7 +1008,8 @@ class TestTPP(TestFunctional):
         Node 5 : Comm (self.hostE)
         Node 6 : Comm (self.hostA)
         """
-        self.common_setup(no_mom_on_comm=True, no_comm_on_server=True)
+        self.common_setup(no_mom_on_comm=True, no_comm_on_server=True,
+                          req_comms=3)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         hosts = [self.hostD, self.hostE]
         for host in hosts:
@@ -1002,6 +1021,74 @@ class TestTPP(TestFunctional):
         c = {'PBS_LEAF_ROUTERS': self.hostA}
         self.set_pbs_conf(host_name=self.server.shortname, conf_param=c)
         self.common_steps_for_mom_pool_tests()
+
+    @requirements(num_moms=4, no_mom_on_server=True, num_comms=5)
+    def test_comm_failover_with_isolated_mom_pools(self):
+        """
+        Test comm failover with isolated mom pools
+        Configuration:
+        Node 1 : Server, Sched, Comm (self.hostA)
+        Node 2 : Mom (self.hostB)
+        Node 3 : Comm (self.hostF)
+        Node 4 : Mom (self.hostC)
+        Node 5 : Comm (self.hostG)
+        Node 6 : Mom (self.hostD)
+        Node 7 : Comm (self.hostH)
+        Node 8 : Mom (self.hostE)
+        Node 9 : Comm (self.hostI)
+        """
+        self.common_setup(no_mom_on_comm=True, req_moms=4, req_comms=5)
+        a = {'PBS_COMM_ROUTERS': self.hostA}
+        comm_hosts = [self.hostF, self.hostG, self.hostH, self.hostI]
+        for host in comm_hosts:
+            self.set_pbs_conf(host_name=host, conf_param=a)
+        mom_hosts = [self.hostB, self.hostC, self.hostD, self.hostE]
+        for host in mom_hosts:
+            if host == self.hostB:
+                leaf_val = self.hostF + "," + self.hostG
+            elif host == self.hostC:
+                leaf_val = self.hostG + "," + self.hostF
+            elif host == self.hostD:
+                leaf_val = self.hostH + "," + self.hostI
+            elif host == self.hostE:
+                leaf_val = self.hostI + "," + self.hostH
+            b = {'PBS_LEAF_ROUTERS': leaf_val}
+            self.set_pbs_conf(host_name=host, conf_param=b)
+        vnode_val = "vnode=" + self.hostB + ":ncpus=1+vnode="
+        vnode_val += self.hostC + ":ncpus=1"
+        set_attr = {ATTR_l + '.select': vnode_val,
+                    ATTR_l + '.place': 'scatter', ATTR_k: 'oe'}
+        jid = self.submit_job(set_attr=set_attr, job=True,
+                              job_script=True, sleep=30)
+        exp_attr = {'job_state': 'R'}
+        self.server.expect(JOB, exp_attr, id=jid)
+        self.comm2.stop('-KILL')
+        hosts = [self.hostB, self.hostC]
+        for mom in hosts:
+            self.server.expect(NODE, {'state': 'free'}, id=mom)
+        self.server.expect(JOB, exp_attr, id=jid)
+        self.comm2.start()
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=30)
+
+        vnode_val = "vnode=" + self.hostD + ":ncpus=1+vnode="
+        vnode_val += self.hostE + ":ncpus=1"
+        resv_set_attr = {ATTR_l + '.select': vnode_val,
+                         ATTR_l + '.place': 'scatter',
+                         'reserve_start': time.time() + 10,
+                         'reserve_end': time.time() + 120}
+        rid = self.submit_resv(resv_set_attr)
+        jid = self.submit_job(rid=rid, resv_job=True, sleep=30)
+        resv_exp_attrib = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, resv_exp_attrib, rid, offset=10)
+        self.server.expect(JOB, exp_attr, id=jid)
+        self.comm4.stop('-KILL')
+        hosts = [self.hostD, self.hostE]
+        for mom in hosts:
+            self.server.expect(NODE, {'state': 'free'}, id=mom)
+        self.server.expect(RESV, resv_exp_attrib, rid)
+        self.server.expect(JOB, exp_attr, id=jid)
+        self.comm4.start()
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=30)
 
     def tearDown(self):
         os.environ['PBS_CONF_FILE'] = self.pbs_conf_path

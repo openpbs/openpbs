@@ -42,9 +42,7 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-#ifdef WIN32
-#include "win.h"
-#endif
+#include <pbs_config.h>
 
 /*
  * This section contains size limit definitions

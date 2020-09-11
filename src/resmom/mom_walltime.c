@@ -37,17 +37,16 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-#include <stdlib.h>
-#include <time.h>
-#include <sys/types.h>
-#include "job.h"
 #include "attribute.h"
-#include "resource.h"
+#include "job.h"
 #include "pbs_assert.h"
+#include "resource.h"
+#include <stdlib.h>
+#include <sys/types.h>
+#include <time.h>
 
-time_t			time_now = 0;
-double			wallfactor = 1.00;
+time_t time_now = 0;
+double wallfactor = 1.00;
 
 /**
  * @brief
@@ -63,24 +62,24 @@ double			wallfactor = 1.00;
 void
 start_walltime(job *pjob)
 {
-    if (NULL == pjob)
-        return;
-    /*
-     * time_now is global and should have positive value at this time
-     * if not, set it to current time
-     */
-    if (0 == time_now)
-        time_now = time(NULL);
+	if (NULL == pjob)
+		return;
+	/*
+	 * time_now is global and should have positive value at this time
+	 * if not, set it to current time
+	 */
+	if (0 == time_now)
+		time_now = time(NULL);
 
-    pjob->ji_walltime_stamp = time_now;
+	pjob->ji_walltime_stamp = time_now;
 }
 
 /**
  * @brief
  *
- *		update_walltime() updates the walltime of a job. If walltime is
- *      not in resources_used then update_walltime() creates a new entry
- *      for it.
+ *	update_walltime() updates the walltime of a job. If walltime is
+ *	not in resources_used then update_walltime() creates a new entry
+ *	for it.
  *
  * @param[in] 	pjob	    - pointer to the job
  *
@@ -91,33 +90,33 @@ start_walltime(job *pjob)
 void
 update_walltime(job *pjob)
 {
-    attribute       *resources_used;
-    resource_def    *walltime_def;
-    resource        *used_walltime;
+	attribute *resources_used;
+	resource_def *walltime_def;
+	resource *used_walltime;
 
-    resources_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
-    assert(resources_used != NULL);
-    walltime_def = &svr_resc_def[RESC_WALLTIME];
-    used_walltime = find_resc_entry(resources_used, walltime_def);
+	resources_used = &pjob->ji_wattr[(int) JOB_ATR_resc_used];
+	assert(resources_used != NULL);
+	walltime_def = &svr_resc_def[RESC_WALLTIME];
+	used_walltime = find_resc_entry(resources_used, walltime_def);
 
-    /* if walltime entry is not created yet, create it */
-    if (NULL == used_walltime) {
-        used_walltime = add_resource_entry(resources_used, walltime_def);
-        used_walltime->rs_value.at_flags |= ATR_VFLAG_SET;
-        used_walltime->rs_value.at_type = ATR_TYPE_LONG;
-        used_walltime->rs_value.at_val.at_long = 0;
-    }
+	/* if walltime entry is not created yet, create it */
+	if (NULL == used_walltime) {
+		used_walltime = add_resource_entry(resources_used, walltime_def);
+		used_walltime->rs_value.at_flags |= ATR_VFLAG_SET;
+		used_walltime->rs_value.at_type = ATR_TYPE_LONG;
+		used_walltime->rs_value.at_val.at_long = 0;
+	}
 
-    if (0 != (used_walltime->rs_value.at_flags & ATR_VFLAG_HOOK)) {
-        /* walltime is set by hook so do not update here */
-        return;
-    }
+	if (0 != (used_walltime->rs_value.at_flags & ATR_VFLAG_HOOK)) {
+		/* walltime is set by hook so do not update here */
+		return;
+	}
 
-    if (0 != pjob->ji_walltime_stamp) {
-        /* walltime counting is not stopped so update it */
-        used_walltime->rs_value.at_val.at_long += (long)((time_now - pjob->ji_walltime_stamp) * wallfactor);
-        pjob->ji_walltime_stamp = time_now;
-    }
+	if (0 != pjob->ji_walltime_stamp) {
+		/* walltime counting is not stopped so update it */
+		used_walltime->rs_value.at_val.at_long += (long) ((time_now - pjob->ji_walltime_stamp) * wallfactor);
+		pjob->ji_walltime_stamp = time_now;
+	}
 }
 
 /**
@@ -134,18 +133,18 @@ update_walltime(job *pjob)
 void
 stop_walltime(job *pjob)
 {
-    if (NULL == pjob)
-        return;
-    /*
-     * time_now is global and should have positive value at this time
-     * if not, set it to current time
-     */
-    if (0 == time_now)
-        time_now = time(NULL);
+	if (NULL == pjob)
+		return;
+	/*
+	 * time_now is global and should have positive value at this time
+	 * if not, set it to current time
+	 */
+	if (0 == time_now)
+		time_now = time(NULL);
 
-    /* update walltime and stop accumulating */
-    update_walltime(pjob);
-    pjob->ji_walltime_stamp = 0;
+	/* update walltime and stop accumulating */
+	update_walltime(pjob);
+	pjob->ji_walltime_stamp = 0;
 }
 
 /**
@@ -162,32 +161,32 @@ stop_walltime(job *pjob)
 void
 recover_walltime(job *pjob)
 {
-    attribute       *resources_used;
-    resource_def    *walltime_def;
-    resource        *used_walltime;
+	attribute *resources_used;
+	resource_def *walltime_def;
+	resource *used_walltime;
 
-    if (NULL == pjob)
-        return;
+	if (NULL == pjob)
+		return;
 
-    if (0 == pjob->ji_qs.ji_stime)
-        return;
+	if (0 == pjob->ji_qs.ji_stime)
+		return;
 
-    if (0 == time_now)
-        time_now = time(NULL);
+	if (0 == time_now)
+		time_now = time(NULL);
 
-    resources_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
-    assert(resources_used != NULL);
-    walltime_def = &svr_resc_def[RESC_WALLTIME];
-    assert(walltime_def != NULL);
-    used_walltime = find_resc_entry(resources_used, walltime_def);
+	resources_used = &pjob->ji_wattr[(int) JOB_ATR_resc_used];
+	assert(resources_used != NULL);
+	walltime_def = &svr_resc_def[RESC_WALLTIME];
+	assert(walltime_def != NULL);
+	used_walltime = find_resc_entry(resources_used, walltime_def);
 
-    /*
-     * if the used walltime is not set, try to recover it.
-     */
-    if (NULL == used_walltime) {
-        used_walltime = add_resource_entry(resources_used, walltime_def);
-        used_walltime->rs_value.at_flags |= ATR_VFLAG_SET;
-        used_walltime->rs_value.at_type = ATR_TYPE_LONG;
-        used_walltime->rs_value.at_val.at_long = (long)((double)(time_now - pjob->ji_qs.ji_stime) * wallfactor);
-    }
+	/*
+	 * if the used walltime is not set, try to recover it.
+	 */
+	if (NULL == used_walltime) {
+		used_walltime = add_resource_entry(resources_used, walltime_def);
+		used_walltime->rs_value.at_flags |= ATR_VFLAG_SET;
+		used_walltime->rs_value.at_type = ATR_TYPE_LONG;
+		used_walltime->rs_value.at_val.at_long = (long) ((double) (time_now - pjob->ji_qs.ji_stime) * wallfactor);
+	}
 }

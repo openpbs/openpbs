@@ -227,7 +227,7 @@ local_move(job *jobp, struct batch_request *req)
 
 	if (req == NULL) {
 		mtype = MOVE_TYPE_Route;	/* route */
-	} else if (req->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR)) {
+	} else if (req->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR) && find_sched_from_sock(req->rq_conn) == NULL) {
 		mtype =	MOVE_TYPE_MgrMv;	/* privileged move */
 	} else {
 		mtype = MOVE_TYPE_Move;		/* non-privileged move */
@@ -274,7 +274,7 @@ local_move(job *jobp, struct batch_request *req)
 	jobp->ji_lastdest = 0;	/* reset in case of another route */
 
 	job_save_db(jobp);
-	
+
 
 	/* If a scheduling cycle is in progress, then this moved job may have
 	 * had changes resulting from the move that would impact scheduling or
@@ -550,7 +550,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	/* add to pjob->svrtask list so its automatically cleared when job is purged */
 	append_link(&jobp->ji_svrtask, &ptask->wt_linkobj, ptask);
 
-	/* 
+	/*
 	 * svr-mom communication is asynchronous, so PBSD_quejob does not return in this flow
 	 * hence commit_done is meaningless here
 	 * We only need to check extend and skip sending the other messages

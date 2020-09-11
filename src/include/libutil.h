@@ -204,6 +204,12 @@ char *pbs_strcat(char **strbuf, int *ssize, char *str);
  */
 char *pbs_strcpy(char *dest, const char *src);
 
+/*
+ * general purpose strncpy function that will make sure to
+ * copy '\0' at the end of the buffer.
+ */
+char *pbs_strncpy(char *dest, const char *src, size_t n);
+
 char *pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp);
 char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 
@@ -238,7 +244,7 @@ int ends_with_triple_quotes(char *str, int strip_quotes);
 
 #define LOCK_RETRY_DEFAULT	2
 int
-lock_file(FILE *fp, int op, char *filename, int lock_retry,
+lock_file(int fd, int op, char *filename, int lock_retry,
 	char *err_msg, size_t err_msg_len);
 
 /* RSHD/RCP related */
@@ -271,6 +277,11 @@ int find_string_idx(char **strarr, char *str);
  *	is_string_in_arr - Does a string exist in the given array?
  */
 int is_string_in_arr(char **strarr, char *str);
+
+/*
+ * Make copy of string array
+ */
+char **dup_string_arr(char **strarr);
 
 /*
  *      free_string_array - free an array of strings with NULL as sentinel

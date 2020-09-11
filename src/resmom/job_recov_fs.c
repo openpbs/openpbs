@@ -56,10 +56,7 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-
-#ifndef WIN32
 #include <sys/param.h>
-#endif
 
 #include "pbs_ifl.h"
 #include <errno.h>
@@ -73,12 +70,7 @@
 #include "list_link.h"
 #include "attribute.h"
 
-#ifdef WIN32
 #include <sys/stat.h>
-#include <io.h>
-#include <windows.h>
-#include "win.h"
-#endif
 
 #include "job.h"
 #include "reservation.h"
@@ -334,7 +326,7 @@ job_recov_fs(char *filename)
 
 	/* change file name in case recovery fails so we don't try same file */
 
-	(void)strcpy(basen, pbs_recov_filename);
+	pbs_strncpy(basen, pbs_recov_filename, sizeof(basen));
 	psuffix = basen + strlen(basen) - strlen(JOB_BAD_SUFFIX);
 	(void)strcpy(psuffix, JOB_BAD_SUFFIX);
 #ifdef WIN32

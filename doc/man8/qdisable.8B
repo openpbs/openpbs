@@ -36,13 +36,12 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qdisable 8B "30 November 2017" Local "PBS"
+.TH qdisable 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qdisable
+.B qdisable 
 - prevent a queue from accepting jobs
 .SH SYNOPSIS
-.B qdisable
+.B qdisable 
 <destination> [<destination> ...]
 .br
 .B qdisable
@@ -50,8 +49,8 @@
 .SH DESCRIPTION
 The
 .B qdisable
-command prevents a queue from accepting batch jobs.  Sets the value of
-the queue's
+command prevents a queue from accepting batch jobs.  Sets the value of 
+the queue's 
 .I enabled
 attribute to
 .I False.
@@ -62,13 +61,13 @@ can use this to drain a queue of jobs.
 
 .B Required Permission
 .br
-In order to execute
-.B qdisable,
+In order to execute 
+.B qdisable, 
 the user must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B qdisable
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -90,15 +89,15 @@ Prevents all queues at specified server from accepting jobs.
 .IP " " 8
 Prevents specified queue at specified server from accepting jobs.
 .LP
-To prevent all queues at the default server from accepting jobs,
-use the
-.B qmgr
+To prevent all queues at the default server from accepting jobs, 
+use the 
+.B qmgr 
 command:
 .br
 .B \ \ \ Qmgr: set queue @default enabled=false
 
 .SH STANDARD ERROR
-The
+The 
 .B qdisable
 command writes a diagnostic message to standard error for
 each error occurrence.
@@ -107,12 +106,9 @@ each error occurrence.
 .IP Zero 8
 Upon successful processing of all the operands
 .IP "Greater than zero" 8
-If the
-.B qdisable
+If the 
+.B qdisable 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide
-and the following manual pages:
 pbs_server(8B), qmgr(8B), and qenable(8B)

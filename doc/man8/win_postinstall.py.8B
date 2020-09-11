@@ -1,0 +1,103 @@
+.\"
+.\" Copyright (C) 1994-2020 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"
+.\" This file is part of both the OpenPBS software ("OpenPBS")
+.\" and the PBS Professional ("PBS Pro") software.
+.\"
+.\" Open Source License Information:
+.\"
+.\" OpenPBS is free software. You can redistribute it and/or modify it under
+.\" the terms of the GNU Affero General Public License as published by the
+.\" Free Software Foundation, either version 3 of the License, or (at your
+.\" option) any later version.
+.\"
+.\" OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+.\" FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+.\" License for more details.
+.\"
+.\" You should have received a copy of the GNU Affero General Public License
+.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"
+.\" Commercial License Information:
+.\"
+.\" PBS Pro is commercially licensed software that shares a common core with
+.\" the OpenPBS software.  For a copy of the commercial license terms and
+.\" conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+.\" Altair Legal Department.
+.\"
+.\" Altair's dual-license business model allows companies, individuals, and
+.\" organizations to create proprietary derivative works of OpenPBS and
+.\" distribute them - whether embedded or bundled with other software -
+.\" under a commercial license agreement.
+.\"
+.\" Use of Altair's trademarks, including but not limited to "PBS™",
+.\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+.\" subject to Altair's trademark licensing policies.
+.\"
+.TH win_postinstall.py 8B "20 November 2019" Local "PBS Professional"
+.SH NAME
+.B win_postinstall.py 
+\- For Windows.  Configures PBS MoM or client
+
+
+.SH SYNOPSIS
+<PBS_EXEC>\\etc\\python win_postinstall.py 
+-u <PBS service account> 
+.br
+        -p <PBS service account password> -t <installation type>   
+.br
+        -s <server name> [-c <path to scp command>]
+
+.SH DESCRIPTION
+The
+.B win_postinstall.py
+command configures the PBS MoM and commands.  It performs
+post-installation steps such as validating the PBS service account
+username and password, installing the Visual C++ redistributable
+binary, and creating the
+.I pbs.conf
+file in the PBS destination folder.
+
+For an "execution" type of installation, it creates PBS_HOME, 
+and registers and starts the PBS_MOM service.
+
+When you use this command during an "execution" type installation of
+PBS, the command automatically un-registers any old PBS MoM.
+
+Available on Windows only.
+
+.SH Required Privilege
+
+You must have Administrator privilege to run this command.
+
+.SH Options to win_postinstall.py
+.IP "-c, --scp-path <path to scp command>" 8
+Specifies path to 
+.B scp
+command.
+
+.IP "-p, --passwd <PBS service account password>" 8
+Specifies password for PBS service account.  
+
+.IP "-s, --server <server name>" 8
+Specifies the hostname on which the PBS server will run; required when
+the installation type is one of "execution" or "client".
+
+.IP "-t, --type <installation type>" 8
+Specifies type of installation.  Type can be one of 
+"execution" or "client".
+
+.IP "-u, --user <PBS service account>" 8
+Specifies PBS service account.  When you specify the PBS service
+account, whether or not you are on a domain machine, include only the
+username, not the domain.  For example, if the full username on a
+domain machine is 
+.I <domain>
+\\
+.I <username>
+, pass only 
+.I <username>
+as an argument.
+

@@ -36,25 +36,57 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_migration_assistant.bat 8B "19 October 2017" Local "PBS"
+.TH pbs_login 1B "15 July 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_migration_assistant.bat
-\- For Windows.  Tells PBS which server configuration settings to use
-
-.SH SYNOPSIS
-.B pbs_migration_assistant.bat
-/b
+.B pbs_login 
+- cache encrypted user password for authentication
+.SH Synopsis
+.B pbs_login
 .br
-.B pbs_migration_assistant.bat
-/r
-.SH DESCRIPTION
-On Windows, you use C:\\Program Files(x86)\\PBS Pro\\exec\\bin\\pbs_migration_assistant.bat
-to set server configuration variables appropriately.
+.B pbs_login
+-m <PBS service account password>
+.br
+echo <password>|
+.B pbs_login
+-p
 
-.SH OPTIONS
-.IP "/b" 15
-Tells PBS to use the old server configuration settings.
+.SH Description
+The 
+.B pbs_login 
+command encrypts the password and caches it locally where it can be
+used by daemons for authorization.
 
-.IP "/r" 15
-Tells PBS to use the new server configuration settings.
+Job submitters must run this command at each submission host each time
+their password changes.
+
+On Windows, the 
+.B win_postinstall 
+script calls 
+.B pbs_login 
+to store the PBS service account password so that the account user can
+be authenticated by daemons.
+
+.SH Required Privilege
+Can be run by any user.
+
+
+.SH Options to pbs_login
+.IP "(no options)" 8
+Queries user for password.
+
+.IP "-m <PBS service account password>" 8
+This option is intended to be used only by the PBS service account,
+which is the account that is used to execute 
+.B pbs_mom 
+via the Service Control Manager on Windows.  This option is used during installation
+when invoked by the
+.B win_postinstall 
+script, or by the administrator when the
+PBS service account password has changed.  Stores PBS service account
+password in the mom_priv directory.
+
+.IP "-p" 8
+Caches user password on client host.  Intended to be run by job
+submitter at client host.  Allows job submitter to be authenticated
+by daemons.
+

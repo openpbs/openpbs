@@ -575,6 +575,10 @@ svr_authorize_resvReq(struct batch_request *preq, resc_resv *presv)
 	if ((preq->rq_perm & (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
 		ATR_DFLAG_MGRD | ATR_DFLAG_MGWR)) != 0)
 		return (0);
+	/* Only Manager has privilage to force modify reservation */
+	if (preq->rq_type == PBS_BATCH_ModifyResv && (preq->rq_extend != NULL) &&
+	    (strcmp(preq->rq_extend, FORCE) == 0) && ((preq->rq_perm & ATR_DFLAG_MGWR) == 0))
+		return (-1);
 
 	/* if not, see if requestor is the reservation owner */
 

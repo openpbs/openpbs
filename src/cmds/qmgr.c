@@ -106,37 +106,18 @@
 #include "resource.h"
 #include "pbs_ecl.h"
 
-#ifdef QMGR_HAVE_HIST
-#ifndef WIN32
-#include "histedit.h"
-#else
-#include "editline\readline.h"
-#endif
-#endif
-
 /* Global Variables */
 #define QMGR_TIMEOUT 900 /* qmgr connection timeout set to 15 min */
 time_t start_time = 0;
 time_t check_time = 0;
 
+char prompt[]="Qmgr: "; /* Prompt if input is from terminal */
+char contin[]="Qmgr< "; /* Prompt if input is continued across lines */
+char *cur_prompt = prompt;
 const char hist_init_err[]="History could not be initialized\n";
 const char histfile_access_err[]="Cannot read/write history file %s, history across sessions disabled\n";
-#define QMGR_HIST_SIZE 500   /* size of the qmgr history area */
 int qmgr_hist_enabled = 0; /* history is enabled by default */
 char qmgr_hist_file[MAXPATHLEN + 1]; /* history file for this user */
-#ifdef QMGR_HAVE_HIST
-#ifndef WIN32
-EditLine *el;
-HistEvent ev;
-History *qmgrhist;
-#else
-int qmgr_hist_start_index=1;
-#endif
-#endif
-
-static char prompt[]="Qmgr: "; /* Prompt if input is from terminal */
-static char contin[]="Qmgr< "; /* Prompt if input is continued across lines */
-char *cur_prompt = prompt;
 
 static char hook_tempfile_errmsg[HOOK_MSG_SIZE] = {'\0'};
 
@@ -180,6 +161,12 @@ static char *entlim_attrs[] = {
 
 static char *hook_tempfile = NULL;  /* a temporary file in PBS_HOOK_WORKDIR */
 static char *hook_tempdir = NULL;   /* PBS_HOOK_WORKDIR path */
+
+extern void qmgr_list_history(int);
+extern int init_qmgr_hist(char *);
+extern int qmgr_add_history(char *);
+extern int get_request_hist(char **);
+
 
 /**
  * @brief
@@ -251,392 +238,6 @@ base(char *path)
 	return (p);
 }
 
-#ifdef QMGR_HAVE_HIST
-#ifndef WIN32
-
-/**
- * @brief
- *	To print out the prompt you need to use a function.  This could be
- *	made to do something special, but I opt to just have a static prompt.
- *
- * @param[in] e - prompt printing function
- *
- * @return string
- * @retval string containing prompt
- *
- */
-char *
-el_prompt(EditLine *e)
-{
-	return cur_prompt;
-}
-
-/**
- * @brief
- *	To handle SIGQUIT signal when Ctrl-D is pressed.
- *
- * @param[in] Editline pointer
- * @param[in] int - key which caused the invocation
- *
- * @return EOF
- *
- * @par Side Effects: None
- *
- */
-unsigned char
-EOF_handler(EditLine *e, int ch)
-{
-	return CC_EOF;
-}
-
-/**
- * @brief
- *	List the commands stored in qmgr history
- *
- * @param[in] len - Length of history from recent to list
- *
- * @par Side Effects: None
- *
- */
-void
-qmgr_list_history(int len)
-{
-	int i = 0;
-	int tot;
-
-	if (len <= 0){
-	  if (len!=0)
-	    printf("Invalid option\n");
-	  return;
-        }
-
-	if (history(qmgrhist, &ev, H_GETSIZE) == -1)
-		return;
-	tot = ev.num;
-
-	if (history(qmgrhist, &ev, H_LAST) == -1)
-		return;
-
-	while (1) {
-		i++;
-		if ((ev.str != NULL) && ((i + len) > tot))
-			printf("%d\t%s\n", ev.num, ev.str);
-
-		if (history(qmgrhist, &ev, H_PREV) == -1)
-			return;
-	}
-}
-
-/**
- * @brief
- *	Get the num-th event from the history
- *
- * @param[in] num - the num-th element to get
- * @param[out] request - return history in newly allocated address
- *
- * @par Side Effects: None
- *
- * @return      Error code
- * @retval  0 - success
- * @retval -1 - Failure
- */
-int
-qmgr_get_history(int num, char **request)
-{
-	if (history(qmgrhist, &ev, H_LAST) == -1)
-		return -1;
-
-	while (1) {
-		if (ev.num == num) {
-			if (ev.str == NULL || (*request = strdup(ev.str)) == NULL)
-				return -1;
-			return 0;
-		}
-		if (history(qmgrhist, &ev, H_PREV) == -1)
-			return -1;
-	}
-	return -1;
-}
-
-/**
- * @brief
- *	Initialize the qmgr history capability
- *
- * @param[in]	prog - Name of the program (qmgr) so that
- * editline can use editrc for any custom settings.
- *
- * @return      Error code
- * @retval  0 - Success
- * @retval -1 - Failure
- *
- * @par Side Effects: None
- *
- */
-int
-init_qmgr_hist(char *prog)
-{
-	struct passwd *pw;
-	int rc;
-
-	el = el_init(prog, stdin, stdout, stderr);
-	el_set(el, EL_PROMPT, &el_prompt);
-	el_set(el, EL_EDITOR, "emacs");
-	el_set(el, EL_ADDFN, "EOF_handler", "EOF_handler", &EOF_handler);
-	el_set(el, EL_BIND, "^D", "EOF_handler", NULL);
-
-	/* Initialize the history */
-	qmgrhist = history_init();
-	if (qmgrhist == NULL) {
-		fprintf(stderr, hist_init_err);
-		return -1;
-	}
-
-	/* Set the size of the history */
-	if (history(qmgrhist, &ev, H_SETSIZE, QMGR_HIST_SIZE) == -1) {
-		fprintf(stderr, hist_init_err);
-		return -1;
-	}
-
-	/* set adjacent unique */
-	if (history(qmgrhist, &ev, H_SETUNIQUE, 1) == -1) {
-		fprintf(stderr, hist_init_err);
-		return -1;
-	}
-
-	/* This sets up the call back functions for history functionality */
-	el_set(el, EL_HIST, history, qmgrhist);
-
-	qmgr_hist_file[0] = '\0';
-	rc = 1;
-	if ((pw = getpwuid(getuid()))) {
-		snprintf(qmgr_hist_file, MAXPATHLEN, "%s/.pbs_qmgr_history", pw->pw_dir);
-		history(qmgrhist, &ev, H_LOAD, qmgr_hist_file);
-		if (history(qmgrhist, &ev, H_SAVE, qmgr_hist_file) == -1)
-			history(qmgrhist, &ev, H_CLEAR);
-		else
-			rc = 0;
-
-		if (rc == 1) {
-			snprintf(qmgr_hist_file, MAXPATHLEN, "%s/spool/.pbs_qmgr_history_%s",
-				pbs_conf.pbs_home_path, pw->pw_name);
-			history(qmgrhist, &ev, H_LOAD, qmgr_hist_file);
-			if (history(qmgrhist, &ev, H_SAVE, qmgr_hist_file) == -1)
-				history(qmgrhist, &ev, H_CLEAR);
-			else
-				rc = 0;
-		}
-	}
-
-	if (rc == 1) {
-		fprintf(stderr, histfile_access_err, qmgr_hist_file);
-		qmgr_hist_file[0] = '\0';
-	}
-
-	return 0;
-}
-
-/**
- * @brief
- * Add a line to history
- *
- * @param[in] req - line to be added to history
- *
- * @return - Error code
- * @retval -1 Failure
- * @retval  0 Success
- */
-int
-qmgr_add_history(char *req)
-{
-	if (history(qmgrhist, &ev, H_ENTER, req) == -1) {
-		fprintf(stderr, "Failed to set history\n");
-		return -1;
-	} else if (qmgr_hist_file[0] != '\0') {
-		if (history(qmgrhist, &ev, H_SAVE, qmgr_hist_file) == -1) {
-			fprintf(stderr, "Failed to save history\n");
-			return -1;
-		}
-	}
-	return 0;
-}
-
-#else
-
-/**
- * @brief
- *	List the commands stored in qmgr history
- *
- * @param[in] len - Length of history from recent to list
- *
- * @par Side Effects: None
- *
- */
-void
-qmgr_list_history(int len)
-{
-	int i = 0;
-	int tot;
-	int start;
-	HIST_ENTRY *h;
-
-	tot = history_length();
-	if (tot == 0)
-		return;
-
-	if (len <= 0){
-	  if (len!=0)
-	    printf("Invalid option\n");
-	  return;
-        }
-	else
-		start = tot - len - 1; /* tot is 1+ the total number */
-
-	for (i = start; i < tot - 1; i++) {
-		h = history_get(i);
-		if (h && h->line) {
-			printf("%d\t%s\n", (i+qmgr_hist_start_index), h->line);
-		}
-	}
-	history_set_pos(tot - 1); /* reset cur history pointer to last */
-}
-
-/**
- * @brief
- *	Get the num-th event from the history
- *
- * @param[in] num - the num-th element to get
- * @pqaram[out] request - allocate memory and return history string
- *
- * @par Side Effects: None
- *
- * @return      Error code
- * @retval  0 - success
- * @retval -1 - Failure
- */
-int
-qmgr_get_history(int num, char **request)
-{
-	HIST_ENTRY *h;
-	num -= (qmgr_hist_start_index);
-	if (num < 0)
-		return -1;
-
-	h = history_get(num);
-	if (h && h->line) {
-		if ((*request = strdup(h->line)) == NULL)
-			return -1;
-		return 0;
-	}
-	return -1;
-}
-
-/**
- * @brief
- *	Initialize the qmgr histrory capability
- *
- * @param[in]	prog - Name of the program (qmgr) so that
- * editline can use editrc for any custom settings.
- *
- * @return      Error code
- * @retval  0 - Success
- * @retval -1 - Failure
- *
- * @par Side Effects: None
- *
- */
-int
-init_qmgr_hist(char *prog)
-{
-	char *home;
-	char username[MAXPATHLEN+1];
-	int rc;
-	int len;
-
-	if (using_history() == -1) {
-		fprintf(stderr, hist_init_err);
-		return -1;
-	}
-
-	rc = 1;
-	qmgr_hist_file[0] = '\0';
-	if ((home = getenv("USERPROFILE")) != NULL) {
-		snprintf(qmgr_hist_file, MAXPATHLEN, "%s\\.pbs_qmgr_history", home);
-		read_history(qmgr_hist_file);
-		if ((write_history(qmgr_hist_file)) != 0)
-			clear_history();
-		else
-			rc = 0;
-	}
-
-	if (rc == 1) {
-		len = MAXPATHLEN;
-		if (GetUserName((LPSTR) &username, &len)) {
-			snprintf(qmgr_hist_file, MAXPATHLEN, "%s\\spool\\.pbs_qmgr_history_%s",
-				pbs_conf.pbs_home_path,	username);
-			forward2back_slash(qmgr_hist_file);
-			read_history(qmgr_hist_file);
-			if (write_history(qmgr_hist_file) != 0)
-				clear_history();
-			else
-				rc = 0;
-		}
-	}
-
-	if (rc == 1) {
-		fprintf(stderr, histfile_access_err, qmgr_hist_file);
-		qmgr_hist_file[0] = '\0';
-	}
-	return 0;
-}
-
-/**
- * @brief
- * Add a line to history
- *
- * @param[in] req - line to be added to history
- *
- * @return - Error code
- * @retval -1 Failure
- * @retval  0 Success
- */
-int
-qmgr_add_history(char *req)
-{
-	int tot;
-	char *last;
-
-	/* get last history item */
-	tot = history_length();
-	if (tot > 0) {
-		if (qmgr_get_history(qmgr_hist_start_index + tot - 2, &last) == 0) {
-			if (strcmp(last, req) == 0) {
-				free(last);
-				return 0; /* already last item in history, no need to add */
-			}
-			free(last);
-		}
-	}
-
-	if (tot > QMGR_HIST_SIZE)
-		qmgr_hist_start_index++;
-
-	if (add_history(req) == NULL) {
-		fprintf(stderr, "Failed to set history\n");
-		return -1;
-	}
-
-	if (qmgr_hist_file[0] != '\0') {
-		if (write_history(qmgr_hist_file) != 0) {
-			fprintf(stderr, "Failed to save history\n");
-			return -1;
-		}
-	}
-	return 0;
-}
-
-#endif
-#endif
-
 static void
 attrlist_add(struct attropl  **attrlist, char *attname,
 	size_t attname_len, char *attval, size_t attval_len)
@@ -659,8 +260,7 @@ attrlist_add(struct attropl  **attrlist, char *attname,
 
 	ltxt = attname_len;
 	Mstring(paol->name, ltxt + 1);
-	strncpy(paol->name, attname, ltxt);
-	paol->name[ltxt] = '\0';
+	pbs_strncpy(paol->name, attname, ltxt + 1);
 
 	paol->op = SET;
 
@@ -669,8 +269,7 @@ attrlist_add(struct attropl  **attrlist, char *attname,
 	} else {
 		ltxt = attval_len;
 		Mstring(paol->value, ltxt+1);
-		strncpy(paol->value, attval, ltxt);
-		paol->value[ltxt] = '\0';
+		pbs_strncpy(paol->value, attval, ltxt + 1);
 	}
 }
 
@@ -1131,11 +730,8 @@ main(int argc, char **argv)
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	/* Command line options */
 	while ((c = getopt(argc, argv, opts)) != EOF) {
@@ -1180,7 +776,7 @@ main(int argc, char **argv)
 		exit(2);
 	}
 
-	strcpy((char *)cur_user, who());
+	pbs_strncpy(cur_user, who(), sizeof(cur_user));
 	cur_host[0] = '\0';
 
 	/* obtain global information for hooks */
@@ -1200,14 +796,14 @@ main(int argc, char **argv)
 	 * 4. use my host name
 	 */
 	if (pbs_conf.pbs_primary != NULL) {
-		strncpy(conf_full_server_name, pbs_conf.pbs_primary,
-			(sizeof(conf_full_server_name) - 1));
+		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_primary,
+			sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_host_name != NULL) {
-		strncpy(conf_full_server_name, pbs_conf.pbs_server_host_name,
-			(sizeof(conf_full_server_name) - 1));
+		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_host_name,
+			sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_name != NULL) {
-		strncpy(conf_full_server_name, pbs_conf.pbs_server_name,
-			(sizeof(conf_full_server_name) - 1));
+		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_name,
+			sizeof(conf_full_server_name));
 	}
 	if (conf_full_server_name[0] != '\0') {
 		get_fullhostname(conf_full_server_name, conf_full_server_name,
@@ -1461,8 +1057,7 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 			/* Copy attribute into structure */
 			ltxt = c - start;
 			Mstring(paol->name, ltxt+1);
-			strncpy(paol->name, start, ltxt);
-			paol->name[ltxt] = '\0';
+			pbs_strncpy(paol->name, start, ltxt + 1);
 
 			/* Resource, if any */
 			if (*c == '.') {
@@ -1482,8 +1077,7 @@ attributes(char *attrs, struct attropl **attrlist, int doper)
 					return (start - attrs);
 
 				Mstring(paol->resource, ltxt+1);
-				strncpy(paol->resource, start, ltxt);
-				paol->resource[ltxt] = '\0';
+				pbs_strncpy(paol->resource, start, ltxt + 1);
 			}
 		}
 		else
@@ -2742,12 +2336,12 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 					attribs_file = NULL;
 					while (attribs_tmp) {
 						if (strcmp(attribs_tmp->name, INPUT_FILE_PARAM) == 0) {
-							strcpy(infile, attribs_tmp->value);
+							pbs_strncpy(infile, attribs_tmp->value, sizeof(infile));
 							attribs_file = attribs_tmp;
 						} else if (strcmp(attribs_tmp->name, CONTENT_ENCODING_PARAM) == 0) {
-							strcpy(content_encoding, attribs_tmp->value);
+							pbs_strncpy(content_encoding, attribs_tmp->value, sizeof(content_encoding));
 						} else if (strcmp(attribs_tmp->name, CONTENT_TYPE_PARAM) == 0) {
-							strcpy(content_type, attribs_tmp->value);
+							pbs_strncpy(content_type, attribs_tmp->value, sizeof(content_type));
 						}
 						attribs_tmp = attribs_tmp->next;
 					}
@@ -2855,11 +2449,11 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 					attribs_file = NULL;
 					while (attribs_tmp) {
 						if (strcmp(attribs_tmp->name, OUTPUT_FILE_PARAM) == 0) {
-							strcpy(outfile, attribs_tmp->value);
+							pbs_strncpy(outfile, attribs_tmp->value, sizeof(outfile));
 							attribs_file = attribs_tmp;
 						} else if (strcmp(attribs_tmp->name,
 							CONTENT_ENCODING_PARAM) == 0) {
-							strcpy(content_encoding, attribs_tmp->value);
+							pbs_strncpy(content_encoding, attribs_tmp->value, sizeof(content_encoding));
 						}
 						attribs_tmp = attribs_tmp->next;
 					}
@@ -3040,8 +2634,7 @@ commalist2objname(char *names, int type)
 			if (*foreptr == '@') {
 				len = foreptr - backptr;
 				Mstring(cur_obj->obj_name, len + 1);
-				strncpy(cur_obj->obj_name, backptr, len);
-				cur_obj->obj_name[len] = '\0';
+				pbs_strncpy(cur_obj->obj_name, backptr, len + 1);
 				foreptr++;
 				backptr = foreptr;
 				while (*foreptr != ',' && !EOL(*foreptr)) foreptr++;
@@ -3055,8 +2648,7 @@ commalist2objname(char *names, int type)
 					cur_obj->svr_name = NULL;
 				else {
 					Mstring(cur_obj->svr_name, len + 1);
-					strncpy(cur_obj->svr_name, backptr, len);
-					cur_obj->svr_name[len] = '\0';
+					pbs_strncpy(cur_obj->svr_name, backptr, len + 1);
 				}
 
 				if (!EOL(*foreptr))
@@ -3071,8 +2663,7 @@ commalist2objname(char *names, int type)
 				}
 				else {
 					Mstring(cur_obj->obj_name, len + 1);
-					strncpy(cur_obj->obj_name, backptr, len);
-					cur_obj->obj_name[len] = '\0';
+					pbs_strncpy(cur_obj->obj_name, backptr, len + 1);
 				}
 
 				if (type == MGR_OBJ_SERVER)
@@ -3104,201 +2695,6 @@ commalist2objname(char *names, int type)
 
 	return objs;
 }
-
-/**
- * @brief
- *	Get a request from the command prompt with the support for history
- *
- * @par Functionality:
- *	Gets a line of input from the user. The user can use up and down arrows
- *	(emacs style) to recall history.
- *
- * @param[out]	request - The buffer to which user-input is returned into
- *
- * @return	   int
- * @retval 0 - Success
- * @retval 1 - Failure
- *
- * @par Side Effects: None
- *
- */
-#ifdef QMGR_HAVE_HIST
-#ifndef WIN32
-int
-get_request_hist(char **request)
-{
-	int count;
-	char *line;
-	char *p;
-	char *req;
-	int req_size;
-	int cont_char;
-
-	*request = NULL;
-	req = NULL;
-
-	/* loop till we get some data */
-	while (1) {
-		cur_prompt = prompt;
-		cont_char = 1;
-
-		while (cont_char) {
-			/* count is the number of characters read.
-			 line is a const char* of our command line with the tailing \n */
-			if ((line = (char *) el_gets(el, &count)) == NULL) {
-				return EOF;
-			}
-
-			count--; /* don't count the last \n */
-			if (count <= 0) {
-				cont_char = 0;
-				continue;
-			}
-
-			line[count] = '\0'; /* remove the trailing \n */
-
-			p = line;
-			/* gloss over initial white space */
-			while (White(*p))
-				p++;
-
-			if (*p == '#')
-				continue; /* ignore comments */
-
-			count = strlen(p);
-			if (count <= 0) {
-				cont_char = 0;
-				continue;
-			}
-
-			if (p[count - 1] == '\\') {
-				p[count - 1] = ' ';
-			} else
-				cont_char = 0;
-
-			if (*request == NULL) {
-				*request = strdup(p);
-				if (*request == NULL)
-					return 1;
-			} else {
-				req_size = strlen(*request) + count + 1;
-				*request = realloc(*request, req_size);
-				if (*request == NULL)
-					return 1;
-				strcat(*request, p);
-			}
-			cur_prompt = contin;
-		}
-
-		if (*request == NULL)
-			continue; /* we did not get a good input, continue */
-
-		req = *request;
-
-		/* immediately check if this was a recall of a command from history */
-		if (req[0] == '!') {
-			p = &req[1];
-			if (qmgr_get_history(atol(p), request) != 0) {
-				fprintf(stderr, "No item %s in history\n", p);
-				free(req);
-				*request = NULL;
-				req = NULL;
-				continue;
-			}
-			free(req); /* free the old one */
-		}
-		return 0;
-	}
-	return 1;
-}
-#else
-int
-get_request_hist(char **request)
-{
-	int count;
-	char *line;
-	char *p;
-	char *req;
-	int req_size;
-	int cont_char;
-	int tot;
-
-	*request = NULL;
-
-	/* loop till we get some data */
-	while (1) {
-
-		cur_prompt = prompt;
-		cont_char = 1;
-
-		while (cont_char) {
-			/* reset history position to last */
-			tot = history_length();
-			history_set_pos(tot - 1);
-
-			/* line is newly allocated string */
-			line = readline(cur_prompt);
-			count = strlen(line);
-			if (count <= 0) {
-				cont_char = 0;
-				continue;
-			}
-
-			p = line;
-			/* gloss over initial white space */
-			while (White(*p))
-				p++;
-
-			if (*p == '#')
-				continue; /* ignore comments */
-
-			count=strlen(p);
-			if (count <= 0) {
-				cont_char = 0;
-				continue;
-			}
-
-			if (p[count-1] == '\\') {
-				p[count - 1] = ' ';
-			} else
-				cont_char = 0;
-
-			if (*request == NULL) {
-				*request = line;
-			} else {
-				req_size = strlen(*request) + count + 1;
-				*request = realloc(*request, req_size);
-				if (*request == NULL)
-					return 1;
-				strcat(*request, p);
-				free(line);
-			}
-			cur_prompt = contin;
-		}
-
-		if (*request == NULL)
-			continue; /* we did not get a good input, continue */
-
-		req = *request;
-
-		/* immediately check if this was a recall of a command from history */
-		if (req[0] == '!') {
-			p = &req[1];
-			if (qmgr_get_history(atol(p), request) != 0) {
-				fprintf(stderr, "No item %s in history\n", p);
-				free(req);
-				*request = NULL;
-				req = NULL;
-				continue;
-			}
-			free(req); /* free old request */
-		}
-		return 0;
-	}
-	return 1;
-}
-#endif
-#endif
 
 /**
  * @brief
@@ -3748,8 +3144,7 @@ parse(char *request, int *oper, int *type, char **names, struct attropl **attr)
 					fprintf(stderr, "malloc failure (errno %d)\n", errno);
 					exit(1);
 				}
-				(*names)[names_len] = '\0';
-				strncpy(*names, req[IND_NAME], names_len);
+				pbs_strncpy(*names, req[IND_NAME], names_len + 1);
 			}
 		}
 
@@ -4252,7 +3647,7 @@ parse_request(char *request, char ***req)
 		}
 		((*req)[i])[len] = '\0';
 		if (len > 0)
-			strncpy((*req)[i], backptr, len);
+			pbs_strncpy((*req)[i], backptr, len + 1);
 		i++;
 
 	}

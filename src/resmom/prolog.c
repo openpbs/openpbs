@@ -48,13 +48,10 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
-#ifdef	WIN32
-#include <process.h>
-#else
+
 #include <unistd.h>
 #include <pwd.h>
 #include <sys/wait.h>
-#endif
 #include <sys/stat.h>
 #include "libpbs.h"
 #include "list_link.h"

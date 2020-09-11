@@ -227,14 +227,6 @@ parse_config(char *fname)
 					if (prime == NON_PRIME || prime == ALL)
 						conf.non_prime_fs = num ? 1 : 0;
 				}
-				else if (!strcmp(config_name, PARSE_LOAD_BALANCING)) {
-					if (prime == PRIME || prime == ALL)
-						conf.prime_lb = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
-						conf.non_prime_lb = num ? 1 : 0;
-					obsolete[0] = PARSE_LOAD_BALANCING;
-					obsolete[1] = "exechost_periodic and node_sort_key";
-				}
 				else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
 					if (prime == PRIME || prime == ALL)
 						conf.prime_hsv = num ? 1 : 0;
@@ -252,22 +244,6 @@ parse_config(char *fname)
 				}
 				else if (!strcmp(config_name, PARSE_SORT_QUEUES)) {
 					obsolete[0] = config_name;
-				}
-				else if (!strcmp(config_name, PARSE_LOAD_BALANCING_RR)) {
-					obsolete[0] = config_name;
-					obsolete[1] = "smp_cluster_dist = round_robin and load_balancing = true";
-					if (prime == PRIME || prime == ALL) {
-						if (num) {
-							conf.prime_smp_dist = SMP_ROUND_ROBIN;
-							conf.prime_lb = 1;
-						}
-					}
-					if (prime == NON_PRIME || prime == ALL) {
-						if (num) {
-							conf.prime_smp_dist = SMP_ROUND_ROBIN;
-							conf.non_prime_lb = 1;
-						}
-					}
 				}
 				else if (!strcmp(config_name, PARSE_UPDATE_COMMENTS)) {
 					conf.update_comments = num ? 1 : 0;
@@ -414,19 +390,19 @@ parse_config(char *fname)
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						strcpy(conf.ded_prefix, config_value);
+						pbs_strncpy(conf.ded_prefix, config_value, sizeof(conf.ded_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_PRIMETIME_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						strcpy(conf.pt_prefix, config_value);
+						pbs_strncpy(conf.pt_prefix, config_value, sizeof(conf.pt_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_NONPRIMETIME_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
 					else
-						strcpy(conf.npt_prefix, config_value);
+						pbs_strncpy(conf.npt_prefix, config_value, sizeof(conf.npt_prefix));
 				}
 				else if (!strcmp(config_name, PARSE_SMP_CLUSTER_DIST)) {
 					for (i = 0; i < HIGH_SMP_DIST; i++)
@@ -619,7 +595,7 @@ parse_config(char *fname)
 									error = 1;
 								else {
 									int err;
-									err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+									err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 									if (err != 0) {
 										snprintf(errbuf, sizeof(errbuf),
 											"error: %s file has a non-secure file access, errno: %d", filename, err);
@@ -823,10 +799,6 @@ valid_config()
 		conf.prime_smp_dist = conf.non_prime_smp_dist = SMP_NODE_PACK;
 	}
 
-	if ((conf.prime_lb || conf.non_prime_lb) && conf.node_sort_unused) {
-		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "", "Load balancing and sorting by unused/assigned resources are not compatible.  Load balancing will be disabled.");
-		conf.prime_lb = conf.non_prime_lb = 0;
-	}
 	return valid;
 }
 /**
@@ -895,7 +867,7 @@ init_config()
 		free_string_array(conf.res_to_check);
 	if (conf.dyn_res_to_get != NULL)
 		free_string_array(conf.dyn_res_to_get);
-	
+
 	if (conf.dynamic_res[0].res != NULL) {
 		int i;
 		for (i = 0; conf.dynamic_res[i].res != NULL; i++) {

@@ -130,7 +130,6 @@ struct batch_status *
 __pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *extend)
 {
 	struct batch_status *ret = NULL;
-	extern struct batch_status *PBSD_status_get(int c);
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -237,22 +236,8 @@ PBSD_select_get(int c)
 		reply->brp_choice != BATCH_REPLY_CHOICE_Select) {
 		pbs_errno = PBSE_PROTOCOL;
 	} else if (get_conn_errno(c) == 0) {
-		/* process the reply -- first, build a linked
-		 list of the strings we extract from the reply, keeping
-		 track of the amount of space used...
-		 */
-		stringtot = 0;
-		njobs = 0;
-		sr = reply->brp_un.brp_select;
-		while (sr != NULL) {
-			stringtot += strlen(sr->brp_jobid) + 1;
-			njobs++;
-			sr = sr->brp_next;
-		}
-		/* ...then copy all the strings into one of "Bob's
-		 structures", freeing all strings we just allocated...
-		 */
-
+		njobs = reply->brp_count;
+		stringtot = njobs * (PBS_MAXSVRJOBID + 1);
 		totsize = stringtot + (njobs + 1) * (sizeof(char *));
 		retval = (char **)malloc(totsize);
 		if (retval == NULL) {
@@ -265,7 +250,7 @@ PBSD_select_get(int c)
 		for (i = 0; i < njobs; i++) {
 			retval[i] = sp;
 			strcpy(sp, sr->brp_jobid);
-			sp += strlen(sp) + 1;
+			sp += (PBS_MAXSVRJOBID + 1);
 			sr = sr->brp_next;
 		}
 		retval[i] = NULL;

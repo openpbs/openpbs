@@ -81,12 +81,8 @@ main(int argc, char **argv, char **envp)
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
-
 
 	while ((c = getopt(argc, argv, "q:")) != EOF)
 		switch (c) {
@@ -118,7 +114,7 @@ main(int argc, char **argv, char **envp)
 		int connect;
 		int stat = 0;
 
-		strcpy(resv_id, argv[optind]);
+		pbs_strncpy(resv_id, argv[optind], sizeof(resv_id));
 		if (get_server(resv_id, resv_id_out, server_out)) {
 			fprintf(stderr, "pbs_rdel: illegally formed reservation identifier: %s\n", resv_id);
 			any_failed = 1;

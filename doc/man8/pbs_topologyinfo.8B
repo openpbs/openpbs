@@ -36,24 +36,23 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_topologyinfo 8B "8 June 2018" Local "PBS"
+.TH pbs_topologyinfo 8B "17 July 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_topologyinfo
-\- report topological information used for licensing purposes
+.B pbs_topologyinfo 
+\- report topological information
 
 
 .SH SYNOPSIS
-.B pbs_topologyinfo
+.B pbs_topologyinfo 
 (-a | --all) [(-l | --license) | (-s | --sockets)]
 .br
-.B pbs_topologyinfo
+.B pbs_topologyinfo 
 (-l | --license) <vnode name> [<vnode name> ...]
 .br
-.B pbs_topologyinfo
+.B pbs_topologyinfo 
 (-s | --sockets) <vnode name> [<vnode name> ...]
 .br
-.B pbs_topologyinfo
+.B pbs_topologyinfo 
 -h | --help
 
 .SH DESCRIPTION
@@ -71,19 +70,19 @@ This command must be run on the server host.
 reports number of node licenses needed for all vnodes.
 
 .B pbs_topologyinfo -l <vnode name>
-reports number of node licenses needed for
+reports number of node licenses needed for 
 .I vnode name.
 
-.B pbs_topologyinfo -as
+.B pbs_topologyinfo -as 
 reports socket counts for all vnodes that have reported sockets.
 
 .B pbs_topologyinfo -s <vnode name>
-reports socket count for vnode
+reports socket count for vnode 
 .I vnode name.
 
 .SH Prerequisites
-Before you use this command, the server and MoMs must be configured
-so that they can contact each other, and must have been run.
+Before you use this command, the server and MoMs must be configured 
+so that they can contact each other, and must have been run.  
 
 .SH Required Privilege
 
@@ -111,7 +110,7 @@ the command reports socket count information for the specified vnode(s) only.
 Does not report any information.
 
 .SH OPERANDS
-.IP "vnode name [<vnode name> ...]" 15
+.IP "vnode name [<vnode name> ...]" 15 
 Name(s) of vnode(s) about which to report.
 
 .SH Errors
@@ -119,11 +118,9 @@ If you specify an invalid vnode name, the command prints a message to standard e
 
 
 .SH EXIT STATUS
-.IP "0" 15
+.IP "0" 15 
 Success
 .IP "1" 15
 Any error following successful command line processing.
 
-.SH SEE ALSO
-The
-.B PBS Administrator's Guide
+

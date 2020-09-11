@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbsrun_wrap 8B "16 October 2017" Local "PBS"
+.TH pbsrun_wrap 8B "3 June 2020" Local "PBS Professional"
 .SH NAME
 .B pbsrun_wrap
 \- general-purpose script for wrapping mpirun in pbsrun
@@ -50,64 +49,66 @@
 --version
 
 .SH DESCRIPTION
-The
+The 
 .B pbsrun_wrap
-script is used to wrap any of several versions of mpirun in
-.B pbsrun.
-The
-.B pbsrun_wrap
+script is used to wrap any of several versions of mpirun in 
+.B pbsrun. 
+The 
+.B pbsrun_wrap 
 script creates a symbolic link with the same
-path and name as the mpirun being wrapped.  This calls
-.B pbsrun,
-which uses
+path and name as the mpirun being wrapped.  This calls 
+.B pbsrun, 
+which uses 
 .B pbs_attach
 to give MoM control of jobs.  The result is transparent to the
-user;
+user; 
 when mpirun is called from inside a
-PBS job,
+PBS job, 
 PBS can monitor and control the job, but when mpirun is called
 from outside of a PBS job, it behaves as it would normally.
-See the
-.B pbs_attach(8B)
-and
+See the 
+.B pbs_attach(8B) 
+and 
 .B pbsrun(8B)
 man pages.
 
-Use
+Use 
 .B pbsrun_unwrap
 to reverse the process.
 
-Using
+Using 
 .B pbsrun_wrap
-with Intel MPI is
-.B deprecated
+with Intel MPI is 
+.B deprecated 
 as of 13.0.
+
+Available only under Linux.
 
 .SH USAGE
 
-Syntax:
+Syntax: 
 .RS 5
-.B pbsrun_wrap
+.B pbsrun_wrap 
 [-s] <path to actual mpirun> pbsrun.<mpirun version/flavor>
 .RE
 
 Any mpirun version/flavor that can be wrapped has
-an initialization script ending in ".init",
+an initialization script ending in ".init", 
 found in $PBS_EXEC/lib/MPI:
 .br
 .RS 5
 $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init
 .RE
 
-The
-.B pbsrun_wrap
+The  
+.B pbsrun_wrap 
 script
-instantiates the
-.B pbsrun
+instantiates the 
+.B pbsrun 
 wrapper script as
-.B pbsrun.<mpirun version/flavor>
-in the same directory where
-.B pbsrun
+.B pbsrun.<mpirun version/flavor> 
+in the same directory where 
+.B pbsrun 
 is located, and sets up the link to actual mpirun call via the symbolic link
 .RS 5
 $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.link
@@ -115,7 +116,7 @@ $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.link
 
 For example, running:
 .RS 5
-.B pbsrun_wrap
+.B pbsrun_wrap 
 /opt/mpich-gm/bin/mpirun.ch_gm pbsrun.ch_gm
 .RE
 causes the following actions:
@@ -123,8 +124,8 @@ causes the following actions:
 Save original mpirun.ch_gm script:
 .RS 4
 .IP "mv" 4
-/opt/mpich-gm/bin/mpirun.ch_gm
-.br
+/opt/mpich-gm/bin/mpirun.ch_gm 
+.br 
 /opt/mpich/gm/bin/mpirun.ch_gm.actual
 .LP
 .RE
@@ -154,13 +155,13 @@ $PBS_EXEC/lib/MPI/pbsrun.ch_gm.link
 .SH OPTIONS
 
 .IP "-s" 5
-Sets the "strict_pbs" options in the various
+Sets the "strict_pbs" options in the various 
 initialization scripts (e.g. pbsrun.bgl.init, pbsrun.ch_gm.init, etc...)
-to 1 from the default 0. This means that the mpirun being wrapped by
-pbsrun will only be executed if inside a PBS environment. Otherwise, the user
+to 1 from the default 0. This means that the mpirun being wrapped by 
+pbsrun will only be executed if inside a PBS environment. Otherwise, the user 
 gets the error:
 .RS
-.IP
+.IP 
 Not running under PBS
 exiting since strict_pbs is enabled; execute only in PBS
 .LP
@@ -168,7 +169,7 @@ exiting since strict_pbs is enabled; execute only in PBS
 .RE
 
 .IP "--version" 5
-The
+The 
 .B pbsrun_wrap
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -177,13 +178,10 @@ This option can only be used alone.
 
 .SH REQUIREMENTS
 The mpirun being wrapped
-must be installed and working on all thev nodes in the PBS complex.
+must be installed and working on all the nodes in the PBS complex.
 
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.LP
-pbs_attach(8B),
-pbsrun(8B),
+pbs_attach(8B), 
+pbsrun(8B), 
 pbsrun_unwrap(8B)

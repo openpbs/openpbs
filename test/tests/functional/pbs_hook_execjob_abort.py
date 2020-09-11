@@ -133,15 +133,18 @@ time.sleep(2)
             hook_name, a, self.prolo_hook_body % (''))
         # Submit a job that eventually goes in H state
         start_time = time.time()
-        jid = self.server.submit(self.j)
+        j1attr = {ATTR_l + '.select': '3:ncpus=1',
+                  ATTR_l + '.place': 'scatter',
+                  ATTR_W: 'run_count=18'}
+        j1 = Job(TEST_USER, attrs=j1attr)
+        jid = self.server.submit(j1)
         msg = "Job;%s;Job requeued, execution node  down" % jid
         self.server.log_match(msg, starttime=start_time)
         # Check for abort hook message in each of the moms
         msg = "called execjob_abort hook"
         for mom in self.moms.values():
             mom.log_match(msg, starttime=start_time)
-        self.server.expect(JOB, {ATTR_state: 'H'}, id=jid, max_attempts=100,
-                           offset=7)
+        self.server.expect(JOB, {ATTR_state: 'H'}, id=jid)
 
     def test_execjob_abort_exit_job_launch_reject(self):
         """

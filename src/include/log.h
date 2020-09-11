@@ -122,10 +122,11 @@ extern char log_buffer[LOG_BUF_SIZE];
 extern int log_level_2_etype(int level);
 
 extern int  chk_path_sec(char *path, int dir, int sticky, int bad, int);
-extern int  chk_file_sec(char *path, int isdir, int sticky,
-	int disallow, int fullpath);
-extern int  tmp_file_sec(char *path, int isdir, int sticky,
-	int disallow, int fullpath);
+extern int  chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
+extern int  chk_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
+extern int  tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
+extern int  tmp_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
+
 #ifdef WIN32
 extern int  chk_file_sec2(char *path, int isdir, int sticky,
 	int disallow, int fullpath, char *owner);

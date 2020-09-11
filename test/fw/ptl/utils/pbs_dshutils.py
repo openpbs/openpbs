@@ -2074,7 +2074,7 @@ class DshUtils(object):
 
     def create_temp_dir(self, hostname=None, suffix='', prefix='PtlPbs',
                         dirname=None, asuser=None, asgroup=None, mode=None,
-                        level=logging.INFOCLI2):
+                        level=logging.INFOCLI2, sudo=False):
         """
         Create a temp dir by calling ``tempfile.mkdtemp``
         :param hostname: the hostname on which to query tempdir from
@@ -2098,7 +2098,7 @@ class DshUtils(object):
             dirname = str(dirname)
             self.run_copy(hostname, src=tmpdir, dest=dirname, runas=asuser,
                           recursive=True,
-                          preserve_permission=False, level=level)
+                          preserve_permission=False, level=level, sudo=sudo)
             tmpdir = dirname + tmpdir[4:]
 
         # if temp dir to be created on remote host

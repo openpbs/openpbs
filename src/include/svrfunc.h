@@ -54,13 +54,23 @@ extern "C" {
 #include "pbs_sched.h"
 #include "pbs_entlim.h"
 
+/*
+ * Convert given tracking table array index to subjob index
+ *
+ * For example: -J10-20:7 creates 2 subjob
+ *   1. [10] on 0th index in table
+ *   2. [17] on 1st index in table
+ *
+ * SJ_TBLIDX_2_IDX(pj, 1) == ((1 * 7) + 10) == 17
+ */
+#define SJ_TBLIDX_2_IDX(pj, tblidx) ((tblidx * pj->ji_ajtrk->tkm_step) + pj->ji_ajtrk->tkm_start)
+
 extern int check_num_cpus(void);
 extern int chk_hold_priv(long, int);
 extern void close_client(int);
 extern int contact_sched(int, char *, pbs_net_t, unsigned int);
 extern void count_node_cpus(void);
 extern int ctcpus(char *, int *);
-extern void get_jobowner(char *, char *);
 extern void cvrt_fqn_to_name(char *, char *);
 extern int failover_send_shutdown(int);
 extern char *get_hostPart(char *);
@@ -179,7 +189,7 @@ extern char *lastname(char *);
 extern void chk_array_doneness(job *);
 extern void update_array_indices_remaining_attr(job *);
 extern job *create_subjob(job *, char *, int *);
-extern char *cvt_range(struct ajtrkhd *, int);
+extern char *cvt_range(job *, int);
 extern job *find_arrayparent(char *);
 extern int get_subjob_state(job *, int);
 extern int get_subjob_discarding(job *, int);
@@ -188,8 +198,8 @@ extern void set_subjob_tblstate(job *, int, int);
 extern void update_subjob_state(job *, int);
 extern void update_subjob_state_ct(job *);
 extern char *subst_array_index(job *, char *);
-extern int subjob_index_to_offset(job *, char *);
 extern int numindex_to_offset(job *, int);
+extern int subjob_index_to_offset(job *, char *);
 #ifndef PBS_MOM
 extern void svr_setjob_histinfo(job *, histjob_type);
 extern void svr_histjob_update(job *, int, int);
@@ -247,7 +257,7 @@ extern void req_jobcredential(struct batch_request *);
 extern void req_usercredential(struct batch_request *);
 extern void req_jobscript(struct batch_request *);
 extern void req_commit(struct batch_request *);
-extern void req_commit_now(struct batch_request *, job *); 
+extern void req_commit_now(struct batch_request *, job *);
 extern void req_deletejob(struct batch_request *);
 extern void req_holdjob(struct batch_request *);
 extern void req_messagejob(struct batch_request *);
@@ -334,7 +344,8 @@ extern int node_avail_complex(spec_and_context *, int *, int *, int *, int *);
 extern int node_reserve(spec_and_context *, pbs_resource_t);
 extern void node_unreserve(pbs_resource_t);
 extern int node_spec(struct spec_and_context *, int);
-extern void notify_scheds_about_resv(int, resc_resv *);
+extern int notify_scheds_about_resv(int, resc_resv *);
+extern char *create_resv_destination(resc_resv *presv);
 #endif /* _RESERVATION_H */
 
 #ifdef _LIST_LINK_H

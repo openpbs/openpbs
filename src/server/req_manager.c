@@ -51,8 +51,6 @@
 #include <sys/socket.h>
 
 #include <arpa/inet.h>
-
-#include "libpbs.h"
 #include <ctype.h>
 #include <memory.h>
 #include <string.h>
@@ -60,6 +58,8 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <errno.h>
+
+#include "libpbs.h"
 #include "server_limits.h"
 #include "list_link.h"
 #include "work_task.h"
@@ -89,8 +89,6 @@
 #include "sched_cmds.h"
 #include "pbs_sched.h"
 #include "pbs_share.h"
-#include "pbs_license.h"
-#include <arpa/inet.h>
 
 
 #define PERM_MANAGER (ATR_DFLAG_MGWR | ATR_DFLAG_MGRD)
@@ -1619,6 +1617,7 @@ mgr_sched_set(struct batch_request *preq)
 	pbs_list_head unsetlist;
 	int	  rc;
 	pbs_sched *psched;
+	int only_scheduling = 1;
 
 	psched = find_sched(preq->rq_ind.rq_manager.rq_objname);
 	if (!psched) {
@@ -1629,6 +1628,9 @@ mgr_sched_set(struct batch_request *preq)
 	CLEAR_HEAD(unsetlist);
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
+		if (strcmp(plist->al_atopl.name, ATTR_scheduling)) {
+			only_scheduling = 0;
+		}
 		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0') {
 			tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
 			delete_link(&plist->al_link);
@@ -1662,8 +1664,8 @@ mgr_sched_set(struct batch_request *preq)
 		reply_badattr(rc, bad_attr, plist, preq);
 		return;
 	}
-
-	set_scheduler_flag(SCH_CONFIGURE, psched);
+	if (only_scheduling != 1)
+		set_scheduler_flag(SCH_CONFIGURE, psched);
 
 	sched_save_db(psched);
 
@@ -1802,7 +1804,7 @@ mgr_queue_set(struct batch_request *preq)
 				free_attrlist(&unsetlist);
 				return;
 			}
-			free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */	
+			free_attrlist(&unsetlist); /* since this is not part of plist anymore, we must free separately */
 		}
 
 		plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -2022,7 +2024,7 @@ mgr_node_set(struct batch_request *preq)
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	while (plist) {
 		tmp = (struct svrattrl *)GET_NEXT(plist->al_link);
-		
+
 		delete_link(&plist->al_link);
 		if (plist->al_atopl.value == NULL || plist->al_atopl.value[0] == '\0')
 			append_link(&unsetlist, &plist->al_link, plist);
@@ -3129,12 +3131,7 @@ struct batch_request *preq;
 	char hook_msg[HOOK_MSG_SIZE];
 	struct pbsnode  **problem_nodes = NULL;
 	svrattrl	*plist;
-	/* following four variables are for BLUE GENE only */
-	attribute	*pattr;
-	resource_def	*prescdef;
-	resource	*presc;
 	mom_svrinfo_t	*psvrmom;
-	extern int	 have_blue_gene_nodes;
 
 	nodename = preq->rq_ind.rq_manager.rq_objname;
 
@@ -3267,9 +3264,9 @@ struct batch_request *preq;
 
 	save_nodes_db(1, NULL);
 
-	if (numnodes > 1) {          /*modification was for all nodes  */
+	if (numnodes > 1) {		/*modification was for all nodes  */
 
-		if (problem_cnt) {  /*one or more problems encountered*/
+		if (problem_cnt) {	/*one or more problems encountered*/
 
 			for (len=0, i=0; i<problem_cnt; i++)
 				len += strlen(problem_nodes[i]->nd_name) + 3;
@@ -3293,34 +3290,14 @@ struct batch_request *preq;
 			}
 		}
 
-		free(problem_nodes);		/*maybe problem malloc failed */
+		free(problem_nodes);		/* maybe problem malloc failed */
 		problem_nodes = NULL;
 
-		if (problem_cnt) {		/*reply has already been sent  */
-			return ;
-		}
+		if (problem_cnt)		/* reply has already been sent */
+			return;
 	}
 
-	/* BLUE GENE only - see if any BLUE GENE nodes still exist */
-	rc = 0;
-	prescdef = &svr_resc_def[RESC_ARCH];
-	for (i=0; i<svr_totnodes; i++) {
-
-		pnode = pbsndlist[i];
-		if (pnode->nd_state & INUSE_DELETED)
-			continue;	/* deleted, skip it */
-
-		pattr = &pnode->nd_attr[ND_ATR_ResourceAvail];
-		presc = find_resc_entry(pattr, prescdef);
-		if ((presc != NULL) &&
-			(presc->rs_value.at_flags & ATR_VFLAG_SET)) {
-			if (strcmp(presc->rs_value.at_val.at_str, BLUEGENE) == 0)
-				rc = 1;
-		}
-	}
-	have_blue_gene_nodes = rc;
-
-	reply_ack(preq);		/*request completely successful*/
+	reply_ack(preq);
 }
 
 /**

@@ -61,9 +61,6 @@
 #include "tm.h"
 #include "pbs_version.h"
 #ifdef WIN32
-#include <windows.h>
-#include "win.h"
-#include "win_remote_shell.h"
 #define PROG_NAME "pbs_attach"
 #endif
 
@@ -261,10 +258,10 @@ main(int argc, char *argv[])
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
+
+#ifdef WIN32
 	/* Windows has an additional option -c, in order to run built-in DOS commands using a new command shell */
 	while ((c = getopt(argc, argv, "+j:p:h:m:csP")) != EOF) {
 #else

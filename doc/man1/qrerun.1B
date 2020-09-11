@@ -36,24 +36,23 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qrerun 1B "18 December 2017" Local "PBS"
+.TH qrerun 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qrerun
+.B qrerun 
 - requeue a PBS job
 .SH SYNOPSIS
-.B qrerun
+.B qrerun 
 [-W force]
 <job ID> [<job ID> ...]
 .br
-.B qrerun
+.B qrerun 
 --version
 
 .SH DESCRIPTION
 If possible, kills the specified job(s), then requeues each job in the
-execution queue from which it was run.
+execution queue from which it was run. 
 
-The
+The 
 .B qrerun
 command can be used on jobs, job arrays, subjobs, and ranges of subjobs.
 If you give a job array identifier as an argument, the job array is
@@ -65,21 +64,21 @@ argument, those subjobs are requeued.
 
 .B Restrictions
 .br
-If a job is marked as not rerunnable,
-.B qrerun
+If a job is marked as not rerunnable, 
+.B qrerun 
 neither kills nor requeues the job.  See the
-.I -r
+.I -r 
 option for the
-.B qsub
+.B qsub 
 and
 .B qalter
-commands, and the
-.I Rerunable
+commands, and the 
+.I Rerunable 
 job attribute.
 
 The
-.B qrerun
-command cannot requeue a job or subjob which is not running, is held,
+.B qrerun 
+command cannot requeue a job or subjob which is not running, is held, 
 or is suspended.
 
 .B Required Privilege
@@ -89,10 +88,10 @@ PBS Manager or Operator privilege is required to use this command.
 .SH OPTIONS
 .IP "-W force" 8
 The job is to be requeued even if the vnode on which the job is
-executing is unreachable, or if the job's substate is
+executing is unreachable, or if the job's substate is 
 .I provisioning.
 .IP "--version" 8
-The
+The 
 .B qrerun
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -110,7 +109,7 @@ operands of the form:
 .br
 .I <sequence number>[<index>][.<server name>][@<server name>]
 .br
-.I <sequence number>[<index start>-<index end>][.<server name>]
+.I <sequence number>[<index start>-<index end>][.<server name>] 
 .br
 \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [@<server name>]
 .RE
@@ -132,9 +131,4 @@ Upon successful processing of all operands
 Upon failure to process any operand
 
 .SH SEE ALSO
-The
-.I PBS User's Guide,
-the
-.I PBS Administrator's Guide,
-.br
 qsub(1B), qalter(1B), pbs_alterjob(3B), pbs_rerunjob(3B)

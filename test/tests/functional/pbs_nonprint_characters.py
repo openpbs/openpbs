@@ -256,7 +256,7 @@ sleep 5
                 chk_var = 'NONPRINT_VAR=X%sY' % ch
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
-            a = {self.ATTR_V: None}
+            a = {self.ATTR_V: None, ATTR_S: '/bin/bash'}
             j = Job(TEST_USER, attrs=a)
             j.create_script(body=script)
             xval = "X%sY" % ch
@@ -297,7 +297,7 @@ sleep 5
                                 {'default_qsub_arguments': '-V'})
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
-            j = Job(TEST_USER)
+            j = Job(TEST_USER, attrs={ATTR_S: '/bin/bash'})
             j.create_script(body=script)
             xval = "X%sY" % ch
             env_to_set = {"NONPRINT_VAR": xval}
@@ -403,7 +403,7 @@ sleep 5
         chk_var = 'VAR_IN_TERM=X%s%sY' % (self.bold_esc, self.red_esc)
         job_script = ['sleep 5']
         job_script += ['env | grep VAR_IN_TERM']
-        a = {self.ATTR_V: None}
+        a = {self.ATTR_V: None, ATTR_S: '/bin/bash'}
         j = Job(TEST_USER, attrs=a)
         file_n = j.create_script(body=job_script)
         env_vals = {"VAR_IN_TERM": exp}
@@ -431,7 +431,7 @@ sleep 5
         script = ['sleep 5']
         script += ['env | grep VAR_IN_TERM']
         env_to_set = {"VAR_IN_TERM": exp}
-        j = Job(TEST_USER)
+        j = Job(TEST_USER, attrs={ATTR_S: '/bin/bash'})
         j.create_script(body=script)
         jid = self.server.submit(j, env=env_to_set)
         # Check if qstat -f output contains the escaped character
@@ -606,13 +606,17 @@ sleep 5
         qsub -v "var1='A,B,<non-printable character>,C,D'"
         and check that the qstat -f -F json output is valid
         """
+        uhost = PbsUser.get_user(TEST_USER).host
         self.npch_exclude += ['\x1C']
         for ch in self.npcat:
             self.logger.info('##### non-printable char: %s #####' % repr(ch))
             if ch in self.npch_exclude:
                 self.logger.info('##### excluded char: %s' % repr(ch))
                 continue
-            a = {ATTR_v: r"var1=\'A\,B\,%s\,C\,D\'" % ch}
+            if self.du.is_localhost(uhost):
+                a = {ATTR_v: "var1=\'A,B,%s,C,D\'" % ch, ATTR_S: '/bin/bash'}
+            else:
+                a = {ATTR_v: r"var1=\'A\,B\,%s\,C\,D\'" % ch}
             msg = 'A,B,%s,C,D' % self.npcat[ch]
             npch_msg = {
                 '\x08': 'A,B,\\b,C,D',
@@ -703,7 +707,7 @@ sleep 5
             set_env = {"NONPRINT_VAR": exp}
             script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
-            a = {self.ATTR_V: None, ATTR_J: '1-2'}
+            a = {self.ATTR_V: None, ATTR_J: '1-2', ATTR_S: '/bin/bash'}
             j = Job(TEST_USER, attrs=a)
             j.create_script(body=script)
             jid = self.server.submit(j, env=set_env)
@@ -738,7 +742,7 @@ sleep 5
         env_vals = {"NONPRINT_VAR": "X%s%sY" % (self.bold, self.red)}
         script = ['sleep 5']
         script += ['env | grep NONPRINT_VAR']
-        a = {self.ATTR_V: None, ATTR_J: '1-2'}
+        a = {self.ATTR_V: None, ATTR_J: '1-2', ATTR_S: '/bin/bash'}
         j = Job(TEST_USER, attrs=a)
         j.create_script(body=script)
         jid = self.server.submit(j, env=env_vals)

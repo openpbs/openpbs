@@ -36,57 +36,78 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_release_nodes 1B "15 October 2019" Local "PBS"
+.TH pbs_release_nodes 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_release_nodes
+.B pbs_release_nodes 
 \- release vnodes assigned to a PBS job
 .SH SYNOPSIS
 .B pbs_release_nodes
-[-j <job ID>] <vnode> [<vnode> [<vnode>] ...]
+[-j <job ID>] 
+.RS 18
 .br
-.B pbs_release_nodes
+[-k (<number of hosts to keep> | 
+.br
+<selection of vnodes to keep>)] 
+.br
+<vnode> [<vnode> [<vnode>] ...]
+.RE
+.br
+.B pbs_release_nodes 
 [-j <job ID>] -a
 .br
 .B pbs_release_nodes
 --version
 .SH DESCRIPTION
 
-You can use the
-.B pbs_release_nodes
+You can use the 
+.B pbs_release_nodes 
 command to release no-longer-needed
-vnodes assigned to a running job, before the job would normally
-release them.  These vnodes are then available for use by other jobs.
+sister hosts or vnodes assigned to a running job, before the job would
+normally release them.  These vnodes are then available for use by
+other jobs.  
 
-You can specify the names of vnodes to be released, or you can release
-all vnodes not on the primary execution host that are assigned to a
-running job via the
-.I -a
+You can specify the names of sister vnodes to be released, or you can
+release all sister vnodes not on the primary execution host that are
+assigned to a running job via the
+.I -a 
 option.
 
-Can be used on jobs and subjobs, but not on job arrays or ranges of subjobs.
+PBS can keep the numbe of sister hosts you specify, or PBS can release
+all sister vnodes except for the ones you specify vi a a select
+statement.  
+
+Can be used on jobs and subjobs, but not on job arrays or ranges of
+subjobs.
 
 .B Caveats and Restrictions
 .br
-You can release only vnodes that are not on the primary execution
-host.  You cannot release vnodes on the primary execution host.
 
-The job must be running (in the
-.I R
+You can release only sister hosts or vnodes that are not on the
+primary execution host.  You cannot release vnodes on the primary
+execution host.
+
+The job must be running (in the 
+.I R 
 state).
 
 The pbs_release_nodes command is not supported on vnodes tied to Cray
-X* series systems (vnodes whose
-.I vntype
+X* series systems (vnodes whose 
+.I vntype 
 has the "cray_" prefix).
-
-The pbs_release_nodes command is not supported for vnodes managed by
-cpuset MoMs; partial release of vnodes may result in leftover cpusets.
 
 If cgroups support is enabled, and pbs_release_nodes is called to
 release some but not all the vnodes managed by a MoM, resources on
 those vnodes that are part of a cgroup are not released until the
 entire cgroup is released.
+
+You cannot release a partial host.  If you try to release some but not
+all of a host, the job's 
+.I exec_vnode 
+attribute shows the new, smaller list of vnodes, but the pbsnodes
+command will reveal that the host is still allocated to the job.
+
+If you specify release of a vnode on which a job process is running,
+that process is terminated when the vnode is released.
 
 .B Required Privilege
 .br
@@ -97,17 +118,44 @@ and Administrator, as well as root on Linux and Admin on Windows.
 
 .IP "-a" 10
 Releases all job vnodes not on the primary execution host.  Cannot be
-used with list of vnode names.
+used 
+.I -k
+option, or with list of vnode names.
 
 .IP "-j <job ID>" 10
-
 Specifies the job ID for the job or subjob whose vnode(s) are to be released.
 
+.IP "-k <keep number> | <keep selection>" 10
+Use 
+.I keep number 
+to specify how many sister hosts to keep.
+
+Use 
+.I keep selection 
+to specify which sister vnodes to keep.  The 
+.I keep selection 
+is a select statement beginning with "select=" specifying which vnodes to keep.  
+
+The primary execution host and its vnodes are not released.
+
+For example, to release all sister hosts except 8:
+.br
+.B \ \ \ pbs_release_nodes -k 8
+.br
+
+To release all sister vnodes except for 4 of the ones marked with
+"bigmem":
+
+.br
+.B \ \ \ pbs_release_nodes -k select=4:bigmem=true
+
+Cannot be used with 
+.I -a 
+option or with vnode list argument.
+
 .IP "(no options)" 10
-Without the
-.I -j
-option, pbs_release_nodes uses the value of the
-.I PBS_JOBID
+With no options, pbs_release_nodes uses the value of the
+.I PBS_JOBID 
 environment variable as the job ID of the job whose vnodes are to be released.
 
 .IP "--version" 10
@@ -119,26 +167,34 @@ The pbs_release_nodes command can take as an operand a list of vnodes.  Format:
 .br
 .I <vnode name> [<vnode name> [<vnode name>] ...]
 .br
-Cannot be used with the
-.I -a
+Cannot be used with the 
+.I -a 
 option.
 
 .SH Usage
 This command can be run at the command line, or called inside a job
-script, where it can use the value of the
-.I PBS_JOBID
+script, where it can use the value of the 
+.I PBS_JOBID 
 environment variable.
 
-You can release any vnode that appears in the job's
-.I exec_vnode
+You can release any vnode that appears in the job's 
+.I exec_vnode 
 attribute that is not on the primary execution host.  You can release
 a particular set of a job's vnodes, or you can release all of a job's
 non-primary-execution-host vnodes.
 
 To release specific vnodes:
 .br
-.I pbs_release_nodes [-j <job ID>] <vnode name> [<vnode name>] ...]
+.B \ \ \  pbs_release_nodes [-j <job ID>] <vnode name> [<vnode name>] ...]
 
 To release all of a job's vnodes that are not on the primary execution host:
 .br
-.I pbs_release_nodes [-j <job ID>] -a
+.B \ \ \  pbs_release_nodes [-j <job ID>] -a
+
+To release all except a specified number of vnodes:
+.br
+.B \ \ \ pbs_release_nodes -k <number of sister hosts to keep>
+
+To release all vnodes except for those in a select specification:
+.br
+.B \ \ \ pbs_release_nodes -k <select specification>

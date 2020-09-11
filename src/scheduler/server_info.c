@@ -123,7 +123,6 @@
 #include "pbs_ifl.h"
 #include "pbs_error.h"
 #include "log.h"
-#include "tpp.h"
 #include "pbs_share.h"
 #include "server_info.h"
 #include "constant.h"
@@ -568,39 +567,6 @@ query_server_info(status *pol, struct batch_status *server)
 					return NULL;
 				}
 			}
-		} else if (!strcmp(attrp->name, ATTR_rpp_retry)) { /* rpp_retry */
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = RPP_RETRY;
-
-			/*
-			 ** The value for rpp_retry can be zero or a positive value.
-			 ** Zero means "no retries" or "send it once".
-			 */
-			if (count >= 0 && (int)count != rpp_retry) {
-				sprintf(log_buffer, "rpp_retry changed from %d to %d",
-					rpp_retry, (int)count);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, __func__, log_buffer);
-				rpp_retry = (int)count;
-			}
-		} else if (!strcmp(attrp->name, ATTR_rpp_highwater)) { /* rpp_highwater */
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = RPP_HIGHWATER;
-
-			/*
-			 ** The value for rpp_highwater must be greater than zero.
-			 ** It is the number of packets allowed to be "on the wire"
-			 ** at any give time.
-			 */
-			if (count > 0 && (int)count != rpp_highwater) {
-				sprintf(log_buffer, "rpp_highwater changed from %d to %d",
-					rpp_highwater, (int)count);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, __func__, log_buffer);
-				rpp_highwater = (int)count;
-			}
 		} else if (!strcmp(attrp->name, ATTR_EligibleTimeEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->eligible_time_enable = 1;
@@ -699,7 +665,7 @@ query_server_dyn_res(server_info *sinfo)
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+			err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 			if (err != 0) {
 				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
 					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
@@ -2026,7 +1992,7 @@ int
 check_run_resv(resource_resv *resv, void *arg)
 {
 	if (resv->is_resv && resv->resv != NULL)
-		return resv->resv->resv_state == RESV_RUNNING;
+		return resv->resv->is_running;
 
 	return 0;
 }
@@ -2127,8 +2093,8 @@ check_running_job_not_in_reservation(resource_resv *job, void *arg)
 int
 check_resv_running_on_node(resource_resv *resv, void *arg)
 {
-	if (resv->is_resv && resv->resv !=NULL) {
-		if (resv->resv->resv_state == RESV_RUNNING || resv->resv->resv_state == RESV_BEING_DELETED)
+	if (resv->is_resv && resv->resv != NULL) {
+		if (resv->resv->is_running || resv->resv->resv_state == RESV_BEING_DELETED)
 			if (find_node_info(resv->ninfo_arr, (char *) arg))
 				return 1;
 	}
@@ -2198,8 +2164,8 @@ dup_server_info(server_info *osinfo)
 	nsinfo->total_group_counts = dup_counts_list(osinfo->total_group_counts);
 	nsinfo->total_project_counts = dup_counts_list(osinfo->total_project_counts);
 	nsinfo->total_user_counts = dup_counts_list(osinfo->total_user_counts);
-	nsinfo->node_group_key = dup_string_array(osinfo->node_group_key);
-	nsinfo->nodesigs = dup_string_array(osinfo->nodesigs);
+	nsinfo->node_group_key = dup_string_arr(osinfo->node_group_key);
+	nsinfo->nodesigs = dup_string_arr(osinfo->nodesigs);
 
 	nsinfo->policy = dup_status(osinfo->policy);
 
@@ -2521,7 +2487,7 @@ dup_resource(schd_resource *res)
 		nres->orig_str_avail = string_dup(res->orig_str_avail);
 
 	if (res->str_avail != NULL)
-		nres->str_avail = dup_string_array(res->str_avail);
+		nres->str_avail = dup_string_arr(res->str_avail);
 
 	if (res->str_assigned != NULL)
 		nres->str_assigned = string_dup(res->str_assigned);

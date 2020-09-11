@@ -266,8 +266,6 @@ void *sched_attr_idx;
 
 sigset_t	allsigs;
 
-int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
-
 /* private data */
 static char    *suffix_slash = "/";
 static int	brought_up_alt_sched = 0;
@@ -504,7 +502,6 @@ void
 pbs_close_stdfiles(void)
 {
 	static int already_done = 0;
-#define NULL_DEVICE "/dev/null"
 
 	if (!already_done) {
 		FILE *dummyfile;
@@ -534,7 +531,6 @@ pbs_close_stdfiles(void)
  *		shut down may have there exec_vnode left to assist in HOT start.
  *		If left set, the job is trapped into requiring those nodes.
  *		Clear on any job not running and without a restart file.
- *		Also clear "pset" for BlueGene
  */
 static void
 clear_exec_vnode()
@@ -702,36 +698,34 @@ int
 main(int argc, char **argv)
 {
 	char *nodename = NULL;
-	int			are_primary;
-	int			c, rc;
-	int			i;
-	int			tppfd;		/* fd to receive is HELLO's */
-	struct			tpp_config tpp_conf;
-	char			lockfile[MAXPATHLEN+1];
-	char			**origevp;
-	char			*pc;
-	pbs_queue		*pque;
-	char			*servicename;
-	time_t			svrlivetime;
-	int			sock;
-	struct stat 		sb_sa;
-	struct batch_request	*periodic_req;
-	char			hook_msg[HOOK_MSG_SIZE];
-	pbs_sched		*psched;
-	char			*keep_daemon_name = NULL;
-
-	pid_t			sid = -1;
-
-	long			*state;
-	time_t			waittime;
+	int are_primary;
+	int c, rc;
+	int i;
+	int tppfd; /* fd to receive is HELLO's */
+	struct tpp_config tpp_conf;
+	char lockfile[MAXPATHLEN + 1];
+	char **origevp;
+	char *pc;
+	pbs_queue *pque;
+	char *servicename;
+	time_t svrlivetime;
+	int sock;
+	struct stat sb_sa;
+	struct batch_request *periodic_req;
+	char hook_msg[HOOK_MSG_SIZE];
+	pbs_sched *psched;
+	char *keep_daemon_name = NULL;
+	pid_t sid = -1;
+	long *state;
+	time_t waittime;
 #ifdef _POSIX_MEMLOCK
-	int			do_mlockall = 0;
-#endif	/* _POSIX_MEMLOCK */
-	extern char		**environ;
+	int do_mlockall = 0;
+#endif /* _POSIX_MEMLOCK */
+	extern char **environ;
 
 	static struct {
 		char *it_name;
-		int   it_type;
+		int it_type;
 	} init_name_type[] = {
 		{ "hot",	RECOV_HOT },
 		{ "warm",	RECOV_WARM },
@@ -751,17 +745,13 @@ main(int argc, char **argv)
 	extern char		*msg_startup1;	/* log message */
 	extern char		*msg_startup2;	/* log message */
 	/* python externs */
-	extern void pbs_python_svr_initialize_interpreter_data(
-		struct python_interpreter_data *interp_data);
-	extern void pbs_python_svr_destroy_interpreter_data(
-		struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_initialize_interpreter_data(struct python_interpreter_data *interp_data);
+	extern void pbs_python_svr_destroy_interpreter_data(struct python_interpreter_data *interp_data);
 
 	/* set python interp data */
 	svr_interp_data.data_initialized = 0;
-	svr_interp_data.init_interpreter_data =
-		pbs_python_svr_initialize_interpreter_data;
-	svr_interp_data.destroy_interpreter_data =
-		pbs_python_svr_destroy_interpreter_data;
+	svr_interp_data.init_interpreter_data = pbs_python_svr_initialize_interpreter_data;
+	svr_interp_data.destroy_interpreter_data = pbs_python_svr_destroy_interpreter_data;
 	/*the real deal or just pbs_version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
@@ -1000,8 +990,6 @@ main(int argc, char **argv)
 		log_err(errno, msg_daemonname, log_buffer);
 		return (2);
 	}
-
-	server.sv_started = time(&time_now);	/* time server started */
 
 	CLEAR_HEAD(svr_requests);
 	CLEAR_HEAD(task_list_immed);
@@ -1463,7 +1451,6 @@ main(int argc, char **argv)
 	 */
 	(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port);
 	(void)contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port);
-
 
 	/*
 	 * main loop of server

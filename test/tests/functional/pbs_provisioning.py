@@ -177,3 +177,42 @@ class TestProvisioningJob(TestFunctional):
             "fake calling application provisioning script",
             max_attempts=20,
             interval=1)
+
+    @skipOnCpuSet
+    def test_os_provisioning_pending_hook_copy(self):
+        """
+        Test that job still runs after:
+        1. os provisioning succeeded
+        2. pending mom hook copy action has persisted on
+           downed node that is not part of job
+        """
+        if len(self.moms) < 2:
+            cmt = "need 2 non-server mom hosts: -p moms=<m1>:<m2>"
+            self.skip_test(reason=cmt)
+
+        a = {'resources_available.aoe': 'osimage1'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
+
+        self.momB = self.moms.values()[1]
+        self.hostB = self.momB.shortname
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
+        self.server.expect(NODE, {'state': 'free'}, id=self.hostB)
+        self.server.expect(NODE, {'state': 'free'}, id=self.hostA)
+
+        job = Job(TEST_USER1, attrs={ATTR_l: 'aoe=osimage1'})
+        job.set_sleep_time(30)
+        jid = self.server.submit(job)
+        self.server.expect(NODE, {'state': 'provisioning'}, id=self.hostA)
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 71}, id=jid)
+        self.server.log_match("fake calling os provisioning script")
+
+        # Bring down the mom that is not part of the job
+        self.momB.stop()
+        # Force a server hook send of mom hooks
+        # With momB being down, pending hook copy to momB action persists
+        self.server.manager(MGR_CMD_SET, HOOK,
+                            {'enabled': 'True'}, self.hook_list[0])
+
+        # a restart is needed to complete os provisioning
+        self.momA.restart()
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)

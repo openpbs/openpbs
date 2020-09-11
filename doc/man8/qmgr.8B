@@ -36,25 +36,24 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qmgr 8B "1 May 2019" Local "PBS"
+.TH qmgr 8B "6 May 2020" Local "PBS Professional"
 .nf
 .SH NAME
-.B qmgr
+.B qmgr 
 \- administrator's command interface for managing PBS
 .SH SYNOPSIS
 .B At shell command line:
 .br
-.B qmgr
+.B qmgr 
 -c '<directive> [-a] [-e] [-n] [-z]'
 .br
-.B qmgr
+.B qmgr 
 -c 'help [<help option>]'
 .br
-.B qmgr
+.B qmgr 
 <return>
 .br
-.B qmgr
+.B qmgr 
 --version
 .br
 
@@ -65,15 +64,15 @@
 help <help option>
 
 .SH DESCRIPTION
-The PBS manager command,
-.B qmgr,
-provides a command-line interface to parts of PBS.  The
-.B qmgr
+The PBS manager command, 
+.B qmgr, 
+provides a command-line interface to parts of PBS.  The 
+.B qmgr 
 command is used to create or delete queues,
 vnodes, resources, and hooks, to set or change vnode, queue, hook,
 server, or scheduler attributes and resources, and to view information
-about hooks, queues, vnodes, resource definitions, the server, and
-schedulers.
+about hooks, queues, vnodes, resource definitions, the server, and 
+schedulers.  
 
 For a list of quick summaries of information about syntax, commands,
 attributes, operators, names, and values, type "help" or "?" at the
@@ -81,23 +80,23 @@ qmgr prompt.  See "Printing Usage Information", below.
 
 .B Modes of Operation
 .br
-When you type qmgr -c '<directive>',
-.B qmgr
+When you type qmgr -c '<directive>', 
+.B qmgr 
 performs its
-task and then exits.
+task and then exits.  
 
-When you type qmgr <return>,
+When you type qmgr <return>, 
+.B qmgr 
+starts a session and presents you with its command line prompt.  The 
 .B qmgr
-starts a session and presents you with its command line prompt.  The
-.B qmgr
-command then reads directives etc. from standard input; see
+command then reads directives etc. from standard input; see 
 "Directive Syntax", below.  You can edit the command
 line; see "Reusing and Editing the qmgr Command
-Line", below.
+Line", below.  
 
-For a qmgr prompt, type:
+For a qmgr prompt, type: 
 .br
-.B \ \ \ qmgr <return>
+.B \ \ \ qmgr <return> 
 .br
 You will see the qmgr prompt:
 .br
@@ -109,7 +108,7 @@ You will see the qmgr prompt:
 The qmgr command requires different levels of privilege depending on
 the operation to be performed.
 
-All users can list or print attributes except for hook attributes.
+All users can list or print attributes except for hook attributes.  
 
 PBS Operator or Manager privilege is required in order to set or
 change vnode, queue, server, or scheduler attributes.  PBS Manager
@@ -117,8 +116,8 @@ privilege is required in order to create or delete queues, vnodes, and
 resources.
 
 Under Linux, root privilege is required in order to create hooks, or
-operate on hooks or the
-.I job_sort_formula
+operate on hooks or the 
+.I job_sort_formula 
 server attribute.  Under
 Windows, this must be done from the installation account.
 
@@ -134,8 +133,8 @@ to users.
 
 .B When To Run qmgr At Server Host
 .br
-When operating on hooks or on the
-.I job_sort_formula
+When operating on hooks or on the 
+.I job_sort_formula 
 server attribute,
 the qmgr command must be run at the server host.
 
@@ -198,35 +197,35 @@ The following table lists the options to qmgr:
 .nf
 .B Option \ \ \ \ \ \ \ \ \ \ \  Action
 -----------------------------------------------------------------------
-<return>           Starts a qmgr session and presents user with
+<return>           Starts a qmgr session and presents user with 
                    qmgr prompt
 -----------------------------------------------------------------------
--a                 Aborts qmgr on any syntax errors or any requests
+-a                 Aborts qmgr on any syntax errors or any requests 
                    rejected by a server.
 -----------------------------------------------------------------------
--c '<directive>'   Executes a single command (directive) and exit qmgr.
-                   The directive must be enclosed in single or double
+-c '<directive>'   Executes a single command (directive) and exit qmgr. 
+                   The directive must be enclosed in single or double 
                    quote marks, for example:
-.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ qmgr -c "print server"
+.B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ qmgr -c "print server" 
 -----------------------------------------------------------------------
--c 'help           Prints out usage information.
+-c 'help           Prints out usage information.  
  [<help option>]'  See "Printing Usage Information"
 -----------------------------------------------------------------------
 -e                 Echoes all commands to standard output
 -----------------------------------------------------------------------
--n                 No commands are executed; syntax checking only
+-n                 No commands are executed; syntax checking only 
                    is performed
 -----------------------------------------------------------------------
 -z                 No errors are written to standard error
 -----------------------------------------------------------------------
---version          The qmgr command returns its PBS version information
+--version          The qmgr command returns its PBS version information 
                    and  exits.  This option can only be used alone
 -----------------------------------------------------------------------
 
 
 .SH Directives
-A qmgr
-.I directive
+A qmgr 
+.I directive 
 is a command together with the object(s) to be operated on, the
 attribute(s) belonging to the object that is to be changed, the
 operator, and the value(s) the attribute(s) will take.  In the case of
@@ -256,18 +255,18 @@ Syntax for operating on resources:
 .I <command> <resource name> [<resource name> ...] [type = <type>][,flag = <flag(s)>]
 .RE
 .fi
-For information about resources, see
+For information about resources, see 
 .I pbs_resources.7B.
 
 .B Hook-only Directives
 .br
-The directives here apply only to hooks.  Other directives apply to all objects such as
-queues, resources, hooks, etc.
+The directives here apply only to hooks.  Other directives apply to all objects such as 
+queues, resources, hooks, etc. 
 
 Syntax for importing and exporting site-defined hooks:
 .nf
 .RS 3
-.I import hook <hook name> application/x-python <content-encoding> (<input file> | -)
+.I import hook <hook name> application/x-python <content-encoding> (<input file> | -) 
 .br
 .I export hook <hook name> <content-type> <content-encoding> [<output file>]
 .fi
@@ -275,13 +274,13 @@ Syntax for importing and exporting site-defined hooks:
 Syntax for importing site-defined hook configuration file:
 .nf
 .RS 3
-.I import hook <hook name> application/x-config <content-encoding> (<input file> | -)
+.I import hook <hook name> application/x-config <content-encoding> (<input file> | -)  
 .fi
 .RE
 Syntax for importing built-in hook configuration file:
 .nf
 .RS 3
-.I import pbshook <hook name> application/x-config <content-encoding> (<input file> | -)
+.I import pbshook <hook name> application/x-config <content-encoding> (<input file> | -)  
 .fi
 .RE
 
@@ -324,13 +323,13 @@ lists the section with the full description:
 -----------------------------------------------------------------------
 active   a     Specifies active objects   "Making Objects Active"
 -----------------------------------------------------------------------
-create   c     Creates object             "Creating Objects (Server,
-                                           Scheduler, Vnode, Queue,
+create   c     Creates object             "Creating Objects (Server, 
+                                           Scheduler, Vnode, Queue, 
                                            Hook)"
 -----------------------------------------------------------------------
 delete   d     Deletes object             "Deleting Objects"
 -----------------------------------------------------------------------
-exit           Exits (quits) the qmgr
+exit           Exits (quits) the qmgr     
                session
 -----------------------------------------------------------------------
 export   e     Exports hook               "Exporting Hooks"
@@ -338,22 +337,22 @@ export   e     Exports hook               "Exporting Hooks"
 help     h|?   Prints usage to stdout     "Printing Usage Information"
 -----------------------------------------------------------------------
 import   i     Imports hook or            "Importing Hooks"
-               configuration file         "Importing Hook
+               configuration file         "Importing Hook 
                                            Configuration Files"
 -----------------------------------------------------------------------
-list     l     Lists object attributes    "Listing Objects and Their
+list     l     Lists object attributes    "Listing Objects and Their 
                and their values            Attributes"
 -----------------------------------------------------------------------
-print    p     Prints creation and        "Printing Creation and
+print    p     Prints creation and        "Printing Creation and 
                configuration commands      Configuration Commands"
 -----------------------------------------------------------------------
-quit     q     Quits (exits) the qmgr
+quit     q     Quits (exits) the qmgr 
                session
 -----------------------------------------------------------------------
-set      s     Sets value of attribute    "Setting Attribute and
+set      s     Sets value of attribute    "Setting Attribute and 
                                            Resource Values"
 -----------------------------------------------------------------------
-unset    u     Unsets value of attribute  "Unsetting Attribute and
+unset    u     Unsets value of attribute  "Unsetting Attribute and 
                                            Resource Values"
 -----------------------------------------------------------------------
 
@@ -374,9 +373,9 @@ server    s    server     No one (created         Administrator,
                           at installation)        Operator, Manager
 -----------------------------------------------------------------------
 sched     sc   default    No one (created         Administrator,
-               scheduler  at installation)        Operator, Manager
-               --------------------------------------------------------
-               multisched Administrator, Manager  Administrator,
+               scheduler  at installation)        Operator, Manager 
+               --------------------------------------------------------                 
+               multisched Administrator, Manager  Administrator, 
                                                   Operator, Manager
 -----------------------------------------------------------------------
 queue     q    queue      Administrator,          Administrator,
@@ -385,18 +384,18 @@ queue     q    queue      Administrator,          Administrator,
 node      n    vnode      Administrator,          Administrator,
                           Operator, Manager       Operator, Manager
 -----------------------------------------------------------------------
-resource  r    resource   Administrator, Manager  Administrator,
+resource  r    resource   Administrator, Manager  Administrator, 
                                                   Manager
 -----------------------------------------------------------------------
 hook      h    hook       Linux: root             Linux: root
 
-                          Windows: installation   Windows: installation
+                          Windows: installation   Windows: installation   
                                    account                 account
 -----------------------------------------------------------------------
 pbshook   p    built-in   No one (created         Linux: root
-               hook       at installation)
-                                                  Windows: installation
-                                                           account
+               hook       at installation)        
+                                                  Windows: installation 
+                                                           account 
 -----------------------------------------------------------------------
 
 .B Specifying Active Server
@@ -410,14 +409,14 @@ host's pbs.conf file.  Server names have the following format:
 .br
 .I \ \ \ <hostname>[:<port number>]
 .br
-where
-.I hostname
+where 
+.I hostname 
 is the fully-qualified domain name of the host on which
-the server is running and
-.I port number
+the server is running and 
+.I port number 
 is the port number to which to
-connect.  If
-.I port number
+connect.  If 
+.I port number 
 is not specified, the default port number, 15001, is used.
 
 To specify the default server:
@@ -432,26 +431,26 @@ To specify all active servers:
 .br
 .I \ \ \ @active
 
-.B Using Lists of Object Names
+.B Using Lists of Object Names 
 .br
-In a qmgr directive,
-.I object name(s)
+In a qmgr directive, 
+.I object name(s) 
 is a list of one or more names of
 specific objects.  The administrator specifies the name of an object
 when creating the object.  The name list is in the form:
 .br
 .I \ \ \ <object name>[@<server>][,<object name>[@<server>] ...]
 .br
-where
-.I server
+where 
+.I server 
 is replaced in the directive with "default", "active", or
 the name of the server.  The name list must conform to the following:
 .RS 3
 There must be no space between the object name and the @ sign.
 
-Name lists must not contain white space between entries.
+Name lists must not contain white space between entries.  
 
-All objects in a list must be of the same type.
+All objects in a list must be of the same type.  
 
 Node attributes cannot be used as vnode names.
 .RE
@@ -472,7 +471,7 @@ at the active server:
 
 To act on the active objects of the named type, at a specified server:
 .RS 3
-.I <object type> @<server name>
+.I <object type> @<server name>  
 (note space before @ sign)
 
 For example, to list all active vnodes at the default server, along
@@ -516,24 +515,24 @@ Queue3 at the active server:
 
 .B Operators in Directive Commands
 .br
-In a qmgr directive,
-.I operator
+In a qmgr directive, 
+.I operator 
 is the operation to be performed with
 the attribute and its value.  Operators are listed here:
 
 .nf
 .B Operator \ \ Effect
 -----------------------------------------------------------------------
-=          Sets the value of the attribute or resource.  If the
-           attribute or resource has an existing value, the current
+=          Sets the value of the attribute or resource.  If the 
+           attribute or resource has an existing value, the current 
            value is replaced with the new value.
 -----------------------------------------------------------------------
-+=         Increases the current value of the attribute or resource by
-           the amount in the new value.  When used for a string array,
++=         Increases the current value of the attribute or resource by 
+           the amount in the new value.  When used for a string array, 
            adds the new value as another string after a comma.
 -----------------------------------------------------------------------
--=         Decreases the current value of the attribute or resource by
-           the specified amount.  When used for a string array, removes
+-=         Decreases the current value of the attribute or resource by 
+           the specified amount.  When used for a string array, removes 
            the first matching string.
 -----------------------------------------------------------------------
 
@@ -623,8 +622,8 @@ at Server2 be active:
 .B Qmgr: active queue Queue1@default,Queue2@Server2
 
 Example: To make vnodes N1, N2, N3, and N4 active, and then give them
-all the same value for their
-.I max_running
+all the same value for their 
+.I max_running 
 attribute:
 .br
 .B Qmgr: active node N1,N2,N3,N4
@@ -635,7 +634,7 @@ attribute:
 To make all object(s) of the specified type at the specified server
 active:
 .RS 3
-.I active <object type> @<server name>
+.I active <object type> @<server name>        
 (note space before @ sign)
 
 Example: To make all queues at the default server active:
@@ -649,7 +648,7 @@ Example: To make all vnodes at server Server2 active:
 
 To report which objects of the specified type are active:
 .RS 3
-.I active <object type>
+.I active <object type>  
 
 The qmgr command prints a list of names of active objects of the
 specified type to stdout.
@@ -671,7 +670,7 @@ For example, to create a multisched named multisched_1 at the active server:
 .br
 .B Qmgr: create sched multisched_1
 
-For example, to create a queue named Q1 at the active server:
+For example, to create a queue named Q1 at the active server: 
 .br
 .B Qmgr: create queue Q1
 
@@ -685,7 +684,7 @@ Queue2 at Server2:
 .B Qmgr: create queue Queue1@default,Queue2@Server2
 
 For example, to create vnodes named N1, N2, N3, and N4 at the active
-server, and to set their Mom attribute to Host1 and their
+server, and to set their Mom attribute to Host1 and their 
 .I max_running
 attribute to 1:
 .br
@@ -703,7 +702,7 @@ server.
 
 You can create multiple objects of the same type with a single
 command.  You cannot create multiple types of objects in a single
-command.
+command.  
 
 To create multiple resources of the same type
 and flag, separate each resource name with a comma:
@@ -824,7 +823,7 @@ etc., the attribute is specified in the form:
 .br
 .I \ \ \ <attribute name>.<resource name>
 
-You can have spaces between attribute=value pairs.
+You can have spaces between attribute=value pairs.  
 
 .B Examples of Setting Attribute Values
 .br
@@ -848,11 +847,11 @@ Set vnode offline:
 .B Qmgr: set node state = "offline"
 .RE
 
-.B Unsetting Attribute and Resource Values
+.B Unsetting Attribute and Resource Values 
 .br
 You can use the qmgr command to unset attributes of any object, except
-for the
-.I type
+for the 
+.I type 
 attribute of a built-in hook.
 
 To unset the value of the specified attributes of the named object(s):
@@ -891,19 +890,18 @@ or double quotes.  For example:
 You can set or unset attribute values for only one type of object in each command.
 
 You can use the qmgr command to set attributes of any object, except
-for the
-.I type
+for the 
+.I type 
 attribute of a built-in hook.
 
 You can have spaces between attribute names.
 
 Attribute and resource values must conform to the format for the
-attribute or resource type.
+attribute or resource type.  
 
 Most of a vnode's attributes may be set using qmgr.  However, some
 must be set on the individual execution host in local vnode definition
-files, NOT by using qmgr.  See the
-.I PBS Administrator's Guide.
+files, NOT by using qmgr.  
 
 .B Setting Resource Type and Flag(s)
 .br
@@ -940,73 +938,73 @@ following:
 
 .B Flag \ \ \ \ \ \ \ Meaning
 -----------------------------------------------------------------------
-(no flags)  Indicates a queue-level or server-level resource that is
+(no flags)  Indicates a queue-level or server-level resource that is 
             not consumable.
 -----------------------------------------------------------------------
-fh          The amount is consumable at the host level for only the
-            first vnode allocated to the job (vnode with first task.)
-            Must be consumable or time-based. Cannot be used with
+fh          The amount is consumable at the host level for only the 
+            first vnode allocated to the job (vnode with first task.) 
+            Must be consumable or time-based. Cannot be used with 
             Boolean or string resources.
 
-            This flag specifies that the resource is accumulated at the
-            first vnode, meaning that the value of
-            resources_assigned.<resource> is incremented only at the
-            first vnode when a job is allocated this resource or when a
+            This flag specifies that the resource is accumulated at the 
+            first vnode, meaning that the value of 
+            resources_assigned.<resource> is incremented only at the 
+            first vnode when a job is allocated this resource or when a 
             reservation requesting this resource on this vnode starts.
 -----------------------------------------------------------------------
-h           Indicates a host-level resource. Used alone, means that the
-            resource is not consumable. Required for any resource that
-            will be used inside a select statement. This flag selects
-            hardware. This flag indicates that the resource must be
+h           Indicates a host-level resource. Used alone, means that the 
+            resource is not consumable. Required for any resource that 
+            will be used inside a select statement. This flag selects 
+            hardware. This flag indicates that the resource must be 
             requested inside of a select statement.
 
             Example: for a Boolean resource named "green":
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ green type=boolean,flag=h
 -----------------------------------------------------------------------
-nh          The amount is consumable at the host level, for all vnodes
-            assigned to the job. Must be consumable or time-based.
-            Cannot be used with Boolean or string resources.
+nh          The amount is consumable at the host level, for all vnodes 
+            assigned to the job. Must be consumable or time-based. 
+            Cannot be used with Boolean or string resources. 
 
-            This flag specifies that the resource is accumulated at the
-            vnode level, meaning that the value of
-            resources_assigned.<resource> is incremented at relevant
-            vnodes when a job is allocated this resource or when a
+            This flag specifies that the resource is accumulated at the 
+            vnode level, meaning that the value of 
+            resources_assigned.<resource> is incremented at relevant 
+            vnodes when a job is allocated this resource or when a 
             reservation requesting this resource on this vnode starts.
 
-            This flag is not used with dynamic consumable resources.
-            A scheduler will not oversubscribe dynamic consumable
+            This flag is not used with dynamic consumable resources. 
+            A scheduler will not oversubscribe dynamic consumable 
             resources.
 -----------------------------------------------------------------------
-q           The amount is consumable at the queue and server level.
-            When a job is assigned one unit of a resource with this
-            flag, the resources_assigned.<resource> attribute at the
-            server and any queue is incremented by one. Must be
+q           The amount is consumable at the queue and server level. 
+            When a job is assigned one unit of a resource with this 
+            flag, the resources_assigned.<resource> attribute at the 
+            server and any queue is incremented by one. Must be 
             consumable or time-based.
 
-            This flag specifies that the resource is accumulated at the
-            queue and server level, meaning that the value of
-            resources_assigned.<resource> is incremented at each queue
-            and at the server when a job is allocated this resource.
-            When a reservation starts, allocated resources are added to
+            This flag specifies that the resource is accumulated at the 
+            queue and server level, meaning that the value of 
+            resources_assigned.<resource> is incremented at each queue 
+            and at the server when a job is allocated this resource. 
+            When a reservation starts, allocated resources are added to 
             the server's resources_assigned attribute.
 
-            This flag is not used with dynamic consumable resources.
-            A scheduler will not oversubscribe dynamic consumable
+            This flag is not used with dynamic consumable resources. 
+            A scheduler will not oversubscribe dynamic consumable 
             resources.
 -----------------------------------------------------------------------
 
 .B Resource Permission Flags
-The permission flag for a resource can be one of the following:
+The permission flag for a resource can be one of the following:    
 
 .B Flag \ \ \ \ \ \ \ Meaning
 -----------------------------------------------------------------------
-(no flag)   Users can view and request the resource, and qalter a
+(no flag)   Users can view and request the resource, and qalter a 
             resource request for this resource.
 -----------------------------------------------------------------------
-i           "Invisible".  Users cannot view or request the resource.
+i           "Invisible".  Users cannot view or request the resource.  
             Users cannot qalter a resource request for this resource.
 -----------------------------------------------------------------------
-r           "Read only".  Users can view the resource, but cannot
+r           "Read only".  Users can view the resource, but cannot 
             request it or qalter a resource request for this resource.
 -----------------------------------------------------------------------
 
@@ -1024,7 +1022,7 @@ For example:
 
 To set both type and flag(s):
 .RS 3
-.I set resource <resource name> type=<type>,flag=<flag(s)>
+.I set resource <resource name> type=<type>,flag=<flag(s)> 
 
 Sets the type and flag(s) of the named resource to the specified type
 and flag(s).  For example:
@@ -1059,7 +1057,7 @@ For example:
 .RE
 
 You can unset the flag(s) of multiple resources by separating the
-resource names with commas.
+resource names with commas.  
 .RS 3
 For example:
 .br
@@ -1098,7 +1096,7 @@ with their attributes and the values associated with the attributes:
 .br
 .I \ \ \ list <object type> @<server name>
 
-To list attributes of the active server:
+To list attributes of the active server: 
 .RS 3
 .I list server
 .br
@@ -1130,7 +1128,7 @@ To list attributes of the specified hook:
 .br
 List serverA's schedulers' attributes:
 .br
-.B \ \ \ Qmgr: list sched @serverA
+.B \ \ \ Qmgr: list sched @serverA 
 
 List attributes for default server's scheduler(s):
 .br
@@ -1146,10 +1144,10 @@ List queues at a specified server:
 
 .B Listing Resource Definitions
 .br
-You can use the qmgr
-.B list
-and
-.B print
+You can use the qmgr 
+.B list 
+and 
+.B print 
 commands to list resource
 definitions showing resource name, type, and flag(s).
 
@@ -1162,7 +1160,7 @@ or
 .I print resource <resource name>[,<resource name> ...]
 .RE
 
-To list name, type, and flag(s) of custom resources only:
+To list name, type, and flag(s) of custom resources only: 
 .RS 3
 .I list resource
 .RE
@@ -1172,7 +1170,7 @@ or
 .RE
 or
 .RS 3
-.I print server
+.I print server 
 (note that this also prints information for the active server)
 .RE
 
@@ -1188,8 +1186,8 @@ or
 
 When used by a non-privileged user, qmgr prints only resource
 definitions for resources that are visible to non-privileged users
-(those that do not have the
-.B i
+(those that do not have the 
+.B i 
 flag set).
 
 .B Printing Creation and Configuration Commands
@@ -1200,7 +1198,7 @@ built-in hook.
 To print out the commands to create the named object(s) and set their
 attributes to their current values:
 .RS 3
-.I print <object type> <object name>[,<object name> ...]
+.I print <object type> <object name>[,<object name> ...] 
 .br
 where object name follows the name rules in "Using Lists of Object Names".
 .RE
@@ -1244,8 +1242,8 @@ qmgr command.
 
 When a non-privileged user prints resource definitions, qmgr prints
 only resource definitions for resources that are visible to
-non-privileged users (those that do not have the
-.B i
+non-privileged users (those that do not have the 
+.B i 
 flag set).
 
 .SH Saving and Re-creating Server and Queue Information
@@ -1294,12 +1292,12 @@ To set a hook attribute:
 .I Qmgr: set hook <hook name> <attribute> = <value>
 .RE
 
-To unset a hook attribute:
+To unset a hook attribute: 
 .RS 3
 .I Qmgr: unset hook <hook name> <attribute>
 
-Example: Unset hook1's
-.I alarm
+Example: Unset hook1's 
+.I alarm 
 attribute, causing hook1's alarm to revert to its
 default value of 30 seconds:
 .br
@@ -1317,50 +1315,50 @@ and the PBS server.
 
 Format for importing a site-defined hook:
 .RS 3
-.I import hook <hook name> application/x-python <content encoding> {<input file> | -}
+.I import hook <hook name> application/x-python <content encoding> {<input file> | -} 
 .RE
-This uses the contents of
-.I input file
+This uses the contents of 
+.I input file 
 or stdin (-) as the contents of
-hook
+hook 
 .I hook name.
 
-The
-.I input file
-or stdin (-) data must have a format of
+The 
+.I input file 
+or stdin (-) data must have a format of 
 .I content type
-and must be encoded with
+and must be encoded with 
 .I content encoding.
 
-The allowed values for
-.I content encoding
+The allowed values for 
+.I content encoding 
 are "default" (7bit) and
 "base64".
 
-If the source of input is stdin (-) and
-.I content encoding
+If the source of input is stdin (-) and 
+.I content encoding 
 is "default",
 qmgr expects the input data to be terminated by EOF.
 
-If the source of input is stdin (-) and
-.I content encoding
+If the source of input is stdin (-) and 
+.I content encoding 
 is "base64",
 qmgr expects input data to be terminated by a blank line.
 
-.I input file
+.I input file 
 must be locally accessible to both qmgr and the requested
 batch server.
 
-A relative path
-.I input file
+A relative path 
+.I input file 
 is relative to the directory where qmgr was
 executed.
 
 If a hook already has a content script, that is overwritten by this
 import call.
 
-If the name in
-.I input file
+If the name in 
+.I input file 
 contains spaces as are used in Windows filenames, input file must be quoted.
 
 There is no restriction on the size of the hook script.
@@ -1417,42 +1415,42 @@ Format for importing a built-in hook configuration file:
 .I import pbshook <hook name> application/x-config <content encoding> {<config file>|-}
 .RE
 
-This uses the contents of
-.I config file
-or stdin (-) as the contents of the configuration file for hook
+This uses the contents of 
+.I config file 
+or stdin (-) as the contents of the configuration file for hook 
 .I hook name.
 
-The
-.I config file
-or stdin (-) data must have a format of
+The 
+.I config file 
+or stdin (-) data must have a format of 
 .I content-type
-and must be encoded with
+and must be encoded with 
 .I content encoding.
 
-The allowed values for
-.I content encoding
+The allowed values for 
+.I content encoding 
 are "default" (7bit) and "base64".
 
-If the source of input is stdin (-) and
-.I content encoding
+If the source of input is stdin (-) and 
+.I content encoding 
 is "default", qmgr expects the input data to be terminated by EOF.
 
-If the source of input is stdin (-) and
-.I content encoding
+If the source of input is stdin (-) and 
+.I content encoding 
 is "base64", qmgr expects input data to be terminated by a blank line.
 
-.I config file
+.I config file 
 must be locally accessible to both qmgr and the requested batch server.
 
-A relative path
-.I config file
+A relative path 
+.I config file 
 is relative to the directory where qmgr was executed.
 
 If a hook already has a configuration file, that file is overwritten
 by this import call.
 
-If the name in
-.I config file
+If the name in 
+.I config file 
 contains spaces as are used in Windows filenames, input file must be quoted.
 
 There is no restriction on the size of the hook configuration file.
@@ -1503,52 +1501,52 @@ Example: To import a configuration file in .json format:
 For exporting the contents of a site-defined hook.  Cannot be used with built-in
 hooks.
 
-Format for exporting a hook:
+Format for exporting a hook: 
 .br
 .RS 3
 .I export hook <hook name> <content type> <content encoding> [<output file>]
 .RE
-This dumps the script contents of hook
-.I hook name
-into
-.I output file,
-or stdout if
-.I output file
+This dumps the script contents of hook 
+.I hook name 
+into 
+.I output file, 
+or stdout if 
+.I output file 
 is not specified.
 
-The resulting
-.I output file
-or stdout data is of
-.I content type
-and
+The resulting 
+.I output file 
+or stdout data is of 
+.I content type 
+and 
 .I content encoding.
 
-The only
-.I content type
+The only 
+.I content type 
 currently supported is "application/x-python".
 
-The allowed values for
-.I content encoding
+The allowed values for 
+.I content encoding 
 are "default" (7bit) and "base64".
 
-.I output file
+.I output file 
 must be a path that can be created by qmgr.
 
-Any relative path
-.I output file
+Any relative path 
+.I output file 
 is relative to the directory where qmgr was executed.
 
-If
-.I output file
+If 
+.I output file 
 already exists it is overwritten. If PBS is unable to
 overwrite the file due to ownership or permission problems, an error
 message is displayed in stderr.
 
-If the
-.I output file
+If the 
+.I output file 
 name contains spaces like the ones used in Windows
-file names,
-.I output file
+file names, 
+.I output file 
 must be enclosed in quotes.
 
 .B Examples of Exporting Hooks
@@ -1668,7 +1666,6 @@ Error making object active
 Memory allocation error
 
 .SH See Also
-.I PBS Administrator's Guide,
-and pbs_server_attributes.7B,
-pbs_job_attributes.7B, pbs_hook_attributes.7B, pbs_node_attributes.7B,
+and pbs_server_attributes.7B, 
+pbs_job_attributes.7B, pbs_hook_attributes.7B, pbs_node_attributes.7B, 
 pbs_queue_attributes.7B, pbs_resv_attributes.7B, and pbs_sched_attributes.7B

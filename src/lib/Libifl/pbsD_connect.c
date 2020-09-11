@@ -61,9 +61,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
-#ifndef WIN32
 #include <netinet/tcp.h>
-#endif
 #include <arpa/inet.h>
 #include <pbs_ifl.h>
 #include "libpbs.h"
@@ -386,7 +384,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			break;
 		} else {
 			/* connect attempt failed */
-			CLOSESOCKET(sock);
+			closesocket(sock);
 			pbs_errno = errno;
 		}
 	}
@@ -411,7 +409,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(sock) != 0) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -424,7 +422,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 */
 
 	if (load_auths(AUTH_CLIENT)) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -444,12 +442,12 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 */
 	if ((i = encode_DIS_ReqHdr(sock, PBS_BATCH_Connect, pbs_current_user)) ||
 		(i = encode_DIS_ReqExtend(sock, extend_data))) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 	if (dis_flush(sock)) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -462,7 +460,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		return -1;
 	}
 
@@ -473,7 +471,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * Nagle's algorithm is hurting cmd-server communication.
 	 */
 	if (pbs_connection_set_nodelay(sock) == -1) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -579,7 +577,7 @@ __pbs_disconnect(int connect)
 	}
 
 	CS_close_socket(connect);
-	CLOSESOCKET(connect);
+	closesocket(connect);
 	dis_destroy_chan(connect);
 
 	/* unlock the connection level lock */
@@ -713,7 +711,7 @@ pbs_connect_noblk(char *server, int tout)
 	hints.ai_protocol = IPPROTO_TCP;
 
 	if (getaddrinfo(server, NULL, &hints, &pai) != 0) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_BADHOST;
 		return -1;
 	}
@@ -726,7 +724,7 @@ pbs_connect_noblk(char *server, int tout)
 	}
 	if (aip == NULL) {
 		/* treat no IPv4 addresses as getaddrinfo() failure */
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_BADHOST;
 		freeaddrinfo(pai);
 		return -1;
@@ -740,7 +738,7 @@ pbs_connect_noblk(char *server, int tout)
 	if (connect_err == 1)
 	{
 		/* connect attempt failed */
-		pbs_errno = ERRORNO;
+		pbs_errno = SOCK_ERRNO;
 		switch (pbs_errno) {
 #ifdef WIN32
 			case WSAEWOULDBLOCK:
@@ -766,9 +764,9 @@ pbs_connect_noblk(char *server, int tout)
 							goto err;
 					} if ((n < 0) &&
 #ifdef WIN32
-						(ERRORNO == WSAEINTR)
+						(SOCK_ERRNO == WSAEINTR)
 #else
-						(ERRORNO == EINTR)
+						(SOCK_ERRNO == EINTR)
 #endif
 						) {
 						continue;
@@ -780,7 +778,7 @@ pbs_connect_noblk(char *server, int tout)
 
 			default:
 err:
-				CLOSESOCKET(sock);
+				closesocket(sock);
 				freeaddrinfo(pai);
 				return -1;	/* cannot connect */
 
@@ -803,7 +801,7 @@ err:
 	 */
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(sock) != 0) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		/* pbs_errno set by the pbs_connect_init_context routine */
 		return -1;
 	}
@@ -815,7 +813,7 @@ err:
 	 */
 
 	if (load_auths(AUTH_CLIENT)) {
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		return -1;
 	}
 
@@ -850,7 +848,7 @@ err:
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
-		CLOSESOCKET(sock);
+		closesocket(sock);
 		pbs_errno = PBSE_PERM;
 		return -1;
 	}

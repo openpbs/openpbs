@@ -39,50 +39,7 @@
 
 
 /**
- * @file    misc.c
- *
- * @brief
- * 		misc.c - This file contains Miscellaneous functions of scheduler.
- *
- * Functions included are:
- * 		string_dup()
- * 		add_str_to_unique_array()
- * 		add_str_to_array()
- * 		res_to_num()
- * 		skip_line()
- * 		schdlogerr()
- * 		filter_array()
- * 		dup_string_array()
- * 		find_string()
- * 		find_string_ind()
- * 		match_string_to_array()
- * 		match_string_array()
- * 		string_array_to_str()
- * 		string_array_verify()
- * 		calc_used_walltime()
- * 		calc_time_left_STF()
- * 		calc_time_left()
- * 		cstrcmp()
- * 		is_num()
- * 		count_array()
- * 		remove_ptr_from_array()
- * 		is_valid_pbs_name()
- * 		clear_schd_error()
- * 		new_schd_error()
- * 		dup_schd_error()
- * 		move_schd_error()
- * 		set_schd_error_arg()
- * 		set_schd_error_codes()
- * 		free_schd_error()
- * 		free_schd_error_list()
- * 		create_schd_error()
- * 		create_schd_error_complex()
- * 		add_err()
- * 		res_to_str()
- * 		res_to_str_c()
- * 		res_to_str_r()
- * 		res_to_str_re()
- *
+ * Miscellaneous functions of scheduler.
  */
 #include <pbs_config.h>
 
@@ -122,16 +79,17 @@ char *
 string_dup(char *str)
 {
 	char *newstr;
+	size_t len;
 
 	if (str == NULL)
 		return NULL;
-
-	if ((newstr = (char *) malloc(strlen(str) + 1)) == NULL) {
+	len = strlen(str) + 1;
+	if ((newstr = (char *) malloc(len)) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	strcpy(newstr, str);
+	pbs_strncpy(newstr, str, len);
 
 	return newstr;
 }
@@ -433,39 +391,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 		new_arr = tmp;
 	}
 	return new_arr;
-}
-
-
-
-/**
- * @brief
- *      dup_string_array - duplicate an array of strings
- *
- * @param[in]	ostrs	-	the array to copy
- *
- * @return	the duplicated array.
- *
- */
-char **
-dup_string_array(char **ostrs)
-{
-	char **nstrs = NULL;
-	int i;
-
-	if (ostrs != NULL) {
-		i = count_array(ostrs);
-
-		if ((nstrs = (char **)malloc((i + 1) * sizeof(char *))) == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
-		}
-
-		for (i = 0; ostrs[i] != NULL; i++)
-			nstrs[i] = string_dup(ostrs[i]);
-
-		nstrs[i] = NULL;
-	}
-	return nstrs;
 }
 
 

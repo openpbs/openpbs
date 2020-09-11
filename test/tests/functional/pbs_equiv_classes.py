@@ -2160,14 +2160,18 @@ else:
         (jidh, ) = self.submit_jobs(1, a)
 
         # Turn on scheduling
+        st = time.time()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jidh)
 
         # make sure that the second job ran in the same cycle as the high
         # priority job
-        c = self.scheduler.cycles(lastN=3)
+        c = self.scheduler.cycles(start=st)
+        found = False
         for sched_cycle in c:
             if jidh.split('.')[0] in sched_cycle.sched_job_run:
+                found = True
                 break
+        self.assertTrue(found, "%s didn't found in any sched cycle" % jidh)
         self.assertIn(jid2.split('.')[0], sched_cycle.sched_job_run)

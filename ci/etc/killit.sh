@@ -37,53 +37,67 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-killit(){
-    if [ -z "$1" ]
-	then
-		return 0
-	fi
-	pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')
-	if [ ! -z "${pid}" ]
-	then
-		echo "kill -TERM ${pid}"
-		kill -TERM ${pid} 2>/dev/null
-	else
-		return 0
-	fi
-	sleep 10
-	pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')
-	if [ ! -z "${pid}" ]
-	then
-		echo "kill -KILL ${pid}"
-		kill -KILL ${pid} 2>/dev/null
-	fi
+killit() {
+    if [ -z "$1" ]; then
+        return 0
+    fi
+    pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')
+    if [ ! -z "${pid}" ]; then
+        echo "kill -TERM ${pid}"
+        kill -TERM ${pid} 2>/dev/null
+    else
+        return 0
+    fi
+    sleep 10
+    pid=$(ps -ef 2>/dev/null | grep $1 | grep -v grep | awk '{print $2}')
+    if [ ! -z "${pid}" ]; then
+        echo "kill -KILL ${pid}"
+        kill -KILL ${pid} 2>/dev/null
+    fi
 }
 
-kill_pbs_process(){
+kill_pbs_process() {
     ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l
-    if [ $ret -gt 0 ];then
+    if [ $ret -gt 0 ]; then
         killit pbs_server
         killit pbs_mom
         killit pbs_comm
         killit pbs_sched
         killit pbs_ds_monitor
-		killit /opt/pbs/pgsql/bin/postgres
+        killit /opt/pbs/pgsql/bin/postgres
         killit pbs_benchpress
-        ps_count=$(ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l )
-		if [ ${ps_count} -eq 0 ]; then
-			return 0
-		else
-			return 1
-		fi
+        ps_count=$(ps -eaf 2>/dev/null | grep pbs_ | grep -v grep | wc -l)
+        if [ ${ps_count} -eq 0 ]; then
+            return 0
+        else
+            return 1
+        fi
     fi
 }
 
-clean=${1}
 . /etc/os-release
+
+if [ "x$1" == "xbackup" ]; then
+    time_stamp=$(date -u "+%Y-%m-%d-%H%M%S")
+    folder=session-${time_stamp}
+    mkdir -p /logs/${folder}
+    cp /logs/build-* /logs/${folder}
+    cp /logs/logfile* /logs/${folder}
+    cp /logs/result* /logs/${folder}
+    cp /src/.config_dir/.conf.json /logs/${folder}/conf.json
+    cp /src/docker-compose.json /logs/${folder}/
+    rm -rf /logs/build-*
+    rm -rf /logs/logfile*
+    rm -rf /logs/result*
+    rm -rf /pbssrc/target-*
+    exit 0
+fi
+
+clean=${1}
 echo "Trying to stop all process via init.d"
 /etc/init.d/pbs stop
 ret=$?
-if [ ${ret} -ne 0 ];then
+if [ ${ret} -ne 0 ]; then
     echo "failed graceful stop"
     echo "force kill all processes"
     kill_pbs_process
@@ -97,9 +111,9 @@ else
     fi
 fi
 
-if [ "XX${clean}" == "XXclean" ];then
+if [ "XX${clean}" == "XXclean" ]; then
     cd /pbssrc/target-${ID} && make uninstall
-	rm -rf /etc/init.d/pbs
+    rm -rf /etc/init.d/pbs
     rm -rf /etc/pbs.conf
     rm -rf /var/spool/pbs
     rm -rf /opt/ptl

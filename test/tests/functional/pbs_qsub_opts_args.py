@@ -56,6 +56,21 @@ class TestQsubOptionsArguments(TestFunctional):
         self.fn = self.du.create_temp_file(body=script)
         self.qsub_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qsub')
+        self.jobdir_root = "/tmp"
+        self.jobdir = []
+        self.remove_jobdir = False
+
+    def tearDown(self):
+        TestFunctional.tearDown(self)
+        if self.remove_jobdir:
+            for mom in self.moms.values():
+                for d in self.jobdir:
+                    if d.startswith(self.jobdir_root):
+                        self.logger.info('%s:remove jobdir %s' % (
+                                         mom.hostname, d))
+                        self.du.rm(hostname=mom.shortname, sudo=True,
+                                   path=d, recursive=True, force=True)
+            self.remove_jobdir = False
 
     def validate_error(self, err):
         ret_msg = 'qsub: Failed to save job/resv, '\
@@ -177,3 +192,52 @@ bhtiusabsdlg' % (os.environ['HOME'])
         except PbsSubmitError as e:
             self.validate_error(e)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_2)
+
+    @requirements(num_moms=2)
+    def test_qsub_sandbox_private_jobdir_shared(self):
+        """
+        Test submission of job with sandbox=PRIVATE,
+        and moms have $jobdir_root set to shared.
+        """
+        self.remove_jobdir = True
+        momA = self.moms.values()[0]
+        momB = self.moms.values()[1]
+
+        loglevel = {'$logevent': 4095}
+        momB.add_config(loglevel)
+        c = {'$jobdir_root': '%s shared' % self.jobdir_root}
+        for mom in [momA, momB]:
+            mom.add_config(c)
+            mom.restart()
+
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'scatter',
+             ATTR_sandbox: 'PRIVATE',
+             }
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        attribs = self.server.status(JOB, id=jid)
+        jobdir = attribs[0]['jobdir']
+        self.jobdir.append(jobdir)
+        relpath = os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
+
+        rel_cmd = [relpath, '-j', jid, momB.shortname]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd=rel_cmd,
+                                     runas=TEST_USER)
+        self.assertEqual(ret['rc'], 0)
+        # sister mom has preserved the file
+        errmsg = "sister mom deleted jobdir %s" % jobdir
+        rc = self.du.isdir(hostname=momB.shortname, path=jobdir,
+                           sudo=True)
+        self.assertTrue(rc, errmsg)
+        msg = "shared jobdir %s to be removed by primary mom" % jobdir
+        momB.log_match(msg)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        # primary mom has deleted the file
+        errmsg = "MS mom preserved jobdir %s" % jobdir
+        rc = self.du.isdir(hostname=momA.shortname, path=jobdir,
+                           sudo=True)
+        self.assertFalse(rc, errmsg)

@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_selectjob 3B "15 November 2019" Local "PBS"
+.TH pbs_selectjob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_selectjob
+.B pbs_selectjob 
 \- select PBS batch jobs according to specified criteria
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -47,41 +46,41 @@
 #include <pbs_ifl.h>
 .sp
 .nf
-.B char **pbs_selectjob(int connect, struct attropl *criteria_list,
+.B char **pbs_selectjob(int connect, struct attropl *criteria_list, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 
 .SH DESCRIPTION
 
-.B pbs_selectjob()
+.B pbs_selectjob() 
 issues a batch request to select jobs that meet specified criteria,
 and returns an array of job IDs that meet the specified criteria.
 
-This command generates a
-.I Select Jobs
-(16) batch request and sends it to the server over the connection handle specified by
+This command generates a 
+.I Select Jobs 
+(16) batch request and sends it to the server over the connection handle specified by 
 .I connect.
 
-By default,
-.B pbs_selectjob()
+By default, 
+.B pbs_selectjob() 
 returns all batch jobs for which the user
 is authorized to query status.  You filter the jobs by specifying
 values for job attributes and resources.  You send a linked list of
 attributes with associated values and operators.  Job attributes are
 listed pbs_job_attributes(7B).
 
-Returns a list of jobs that meet all specified criteria.
+Returns a list of jobs that meet all specified criteria.  
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection handle over which to send batch request to server.
 
 .IP criteria_list 8
 Pointer to a list of attributes to use as selection criteria.  Each
-attribute is described in an
-.I attropl
+attribute is described in an 
+.I attropl 
 structure, defined in pbs_ifl.h as:
 .nf
 struct attropl {
@@ -93,8 +92,8 @@ struct attropl {
 };
 .fi
 
-If
-.I criteria_list
+If 
+.I criteria_list 
 itself is null, you are not using attributes or resources as selection criteria.
 
 .IP extend 8
@@ -106,16 +105,16 @@ Character string where you can specify limits or extensions of your search.
 Points to next attribute in list.  A null pointer terminates the list.
 
 .IP name 8
-Points to a string containing the name of the attribute.
+Points to a string containing the name of the attribute.  
 
 .IP resource 8
 Points to a string containing the name of a resource.  Used only when
 the specified attribute contains resource information.  Otherwise,
-.I resource
+.I resource 
 should be a null pointer.
 
 .IP value 8
-Points to a string containing the value of the attribute or resource.
+Points to a string containing the value of the attribute or resource.  
 
 .IP op 8
 Defines the operator in the logical expression:
@@ -124,28 +123,28 @@ Defines the operator in the logical expression:
 .br
 Jobs for which the logical expression evaluates to True are selected.
 
-For this command,
-.I op
+For this command, 
+.I op 
 can be
 .I EQ, NE, GE, GT, LE, LT.
 
 .SH QUERYING STATES
 You can select jobs in more than one state using a single request, by
 listing all states you want returned.  For example, to get jobs in
-.I Held
-and
-.I Waiting
+.I Held 
+and 
+.I Waiting 
 states:
 .RS 3
-Fill in
-.I criteria_list->name
+Fill in 
+.I criteria_list->name 
 with "job_state"
 .br
-Fill in
-.I criteria_list->value
-with "HW" for
-.I Held
-and
+Fill in 
+.I criteria_list->value 
+with "HW" for 
+.I Held 
+and 
 .I Waiting
 .RE
 
@@ -160,24 +159,24 @@ Extends query to include finished and moved jobs.
 .B Querying Finished and Moved Jobs
 .br
 To get information on finished or moved jobs, as well as current jobs,
-add an 'x' character to the
-.I extend
+add an 'x' character to the 
+.I extend 
 parameter (set one character to be the 'x' character).  For example:
-.nf
+.nf 
    pbs_selectjob ( ..., ..., <extend characters>) ...
 .fi
 To get information on finished jobs only:
 .RS 3
-Add the "x" character to the
-.I extend
+Add the "x" character to the 
+.I extend 
 parameter
 .br
-Fill in
-.I criteria_list->name
+Fill in 
+.I criteria_list->name 
 with "ATTR_state"
 .br
-Fill in
-.I criteria_list->value
+Fill in 
+.I criteria_list->value 
 with "FM" for Finished and Moved
 .RE
 Subjobs are not considered finished until the parent array job is finished.
@@ -186,30 +185,30 @@ Subjobs are not considered finished until the parent array job is finished.
 .br
 To query only job arrays (not jobs or subjobs):
 .RS 3
-Fill in
-.I criteria_list->name
+Fill in 
+.I criteria_list->name 
 with "array"
 .br
-Fill in
-.I criteria_list->value
+Fill in 
+.I criteria_list->value 
 with "True"
 .RE
 To query only job arrays and subjobs (not jobs):
 .RS 3
-Fill in
-.I criteria_list->name
+Fill in 
+.I criteria_list->name 
 with "array"
 .br
-Fill in
-.I criteria_list->value
+Fill in 
+.I criteria_list->value 
 with "True"
 .br
-Add the "T" or "t" character to the
-.I extend
+Add the "T" or "t" character to the 
+.I extend 
 parameter
 .RE
-To query only jobs and subjobs (not job arrays), add the "T" or "t" character to the
-.I extend
+To query only jobs and subjobs (not job arrays), add the "T" or "t" character to the 
+.I extend 
 parameter.
 
 .SH RETURN VALUE
@@ -222,14 +221,15 @@ string which is a job ID in the form:
 If no jobs met the criteria, the first pointer in the array is null.
 
 If an error occurred, the routine returns a null pointer, and the
-error number is available in the global integer
+error number is available in the global integer 
 .I pbs_errno.
 
 .SH CLEANUP REQUIRED
 The returned array of character pointers is malloc()'ed by
-.B pbs_selectjob().
-When the array is no longer needed, you must free it via a call to
+.B pbs_selectjob().  
+When the array is no longer needed, you must free it via a call to 
 .B free().
 
 .SH SEE ALSO
 qselect(1B), pbs_connect(3B)
+

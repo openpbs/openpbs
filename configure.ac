@@ -68,7 +68,6 @@ AC_PROG_CC
 AC_PROG_LEX
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AM_PROG_LIBTOOL
 
 # Automake macros
 #AM_PROG_AR macro is defined with automake version >= 1.12
@@ -76,6 +75,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_PROG_CC_C_O
 
 # Initialize libtool
+AM_PROG_LIBTOOL
 LT_INIT([shared static])
 
 # Checks for libraries.
@@ -311,7 +311,6 @@ m4_ifdef([PKG_INSTALLDIR],
 
 # PBS macros (order matters for some of these)
 PBS_AC_PBS_VERSION
-PBS_AC_MACHINE_TYPE
 PBS_AC_DECL_H_ERRNO
 PBS_AC_DECL_SOCKLEN_T
 PBS_AC_DECL_EPOLL
@@ -360,7 +359,6 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/cmds/Makefile
 	src/cmds/mpiexec
-	src/cmds/nqs2pbs
 	src/cmds/pbs_lamboot
 	src/cmds/pbs_mpihp
 	src/cmds/pbs_mpilam

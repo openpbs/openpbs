@@ -79,6 +79,11 @@
                             pstderr("qmgr: Out of memory\n"); \
                             clean_up_and_exit(5); \
                         }
+/* This macro will duplicate string */
+#define Mstrdup(x,y)    if ( (x=strdup(y)) == NULL ) { \
+                            pstderr("qmgr: Out of memory\n"); \
+                            clean_up_and_exit(5); \
+                        }
 /* This macro will allocate memory for some fixed size object */
 #define Mstruct(x,y)    if ( (x=(y *)malloc(sizeof(y))) == NULL ) { \
                             pstderr("qmgr: Out of memory\n"); \
@@ -107,6 +112,8 @@
                              } \
                              free(x); \
                          }
+
+#define QMGR_HIST_SIZE 500   /* size of the qmgr history area */
 
 /* structures */
 

@@ -50,7 +50,6 @@ dist_libinit_DATA = \
 libmpidir = $(libdir)/MPI
 
 dist_libmpi_DATA = \
-	pbsrun.bgl.init.in \
 	pbsrun.ch_gm.init.in \
 	pbsrun.ch_mx.init.in \
 	pbsrun.gm_mpd.init.in \

@@ -922,11 +922,8 @@ main(int argc, char *argv[])
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	/* get default server, may be changed by -s option */
 

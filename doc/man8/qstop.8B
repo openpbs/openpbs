@@ -36,13 +36,12 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qstop 8B "4 January 2018" Local "PBS"
+.TH qstop 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qstop
+.B qstop 
 \- prevent PBS jobs in the specified queue from being scheduled or routed
 .SH SYNOPSIS
-.B qstop
+.B qstop 
 <destination> [<destination> ...]
 .br
 .B qstop
@@ -50,19 +49,19 @@
 
 .SH DESCRIPTION
 
-If
-.I destination
-is an execution queue, the
-.B qstop
+If 
+.I destination 
+is an execution queue, the 
+.B qstop 
 command stops the
-scheduler from scheduling jobs residing in
-.I destination.
+scheduler from scheduling jobs residing in 
+.I destination.  
 If
-.I destination
+.I destination 
 is a routing queue, the server stops routing jobs from
-that queue.  Sets the value of the queue's
-.I started
-attribute to
+that queue.  Sets the value of the queue's 
+.I started 
+attribute to 
 .I False.
 
 .B Required Privilege
@@ -71,14 +70,14 @@ You must have PBS Operator or Manager privilege to run this command.
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B qstop
 command returns its PBS version information and exits.
 This option can only be used alone
 
 .SH  OPERANDS
-The
-.B qstop
+The 
+.B qstop 
 command accepts one or more space-separated
 .I destination
 operands.  The operands take one of three forms:
@@ -98,7 +97,7 @@ Stops scheduling or routing from all queues at the specified server.
 Stops scheduling or routing from the specified queue at the specified server.
 .RE
 
-To stop scheduling at all queues at the default server, use the
+To stop scheduling at all queues at the default server, use the 
 .B qmgr
 command:
 .RS 3
@@ -106,7 +105,7 @@ command:
 .RE
 
 .SH STANDARD ERROR
-The
+The 
 .B qstop
 command writes a diagnostic message to standard error for each error occurrence.
 
@@ -115,12 +114,9 @@ command writes a diagnostic message to standard error for each error occurrence.
 Upon successful processing of all operands
 
 .IP "Greater than zero" 8
-If the
-.B qstop
+If the 
+.B qstop 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide
-and the following manual pages:
 pbs_server(8B), qstart(8B), and qmgr(8B)

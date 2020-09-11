@@ -153,7 +153,6 @@ char *msg_resv_start = "Reservation period starting";
 char *msg_resv_end = "Reservation period ended";
 char *msg_resv_confirm = "Reservation transitioned from state UNCONFIRMED to CONFIRMED";
 char *msg_signal_job   = "job signaled with %s by %s@%s";
-char *msg_ngbluegene  = "cannot have node grouping true with Blue Gene nodes in complex"; /* BLUE GENE only */
 char *msg_license_min_badval = "pbs_license_min is < 0, or > pbs_license_max";
 char *msg_license_max_badval = "pbs_license_max is < 0, or < pbs_license_min";
 char *msg_license_linger_badval = "pbs_license_linger_time is <= 0";
@@ -520,7 +519,6 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_PLACENOSELECT, &msg_placenoselect},
 	{PBSE_INDIRECTHOP, &msg_indirecthop},
 	{PBSE_INDIRECTBT, &msg_indirectbadtgt},
-	{PBSE_NGBLUEGENE, &msg_ngbluegene},
 	{PBSE_NODESTALE, &msg_nodestale},
 	{PBSE_NODEEXIST, &msg_nodeexist},
 	{PBSE_DUPRESC, &msg_dupresc},

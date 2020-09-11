@@ -52,17 +52,13 @@
 #include	<stdio.h>
 #include	<string.h>
 #include	<stdlib.h>
-#ifndef WIN32
 #include	<unistd.h>
-#endif
 #include	<time.h>
 #include	"dis.h"
 #include	"pbs_error.h"
 #include	"log.h"
 #include	"placementsets.h"
-#ifdef	WIN32
 #include	"pbs_config.h"
-#endif
 #include	"list_link.h"
 #include	"attribute.h"
 #include	"pbs_nodes.h"
@@ -455,7 +451,7 @@ vn_merge(vnl_t *cur, vnl_t *new, callfunc_t callback)
  * @brief
  *		Merge data from the newly-parse vnode list (new) into a previously-
  *		parsed one (cur) adding any attribute/value pairs of those attribute
- *		names listed in the space-separated 'allow_attribs'.
+ *		names listed in the 'allow_attribs'.
  *		This overwrites any duplicate attributes with new's values.
  * @note
  *		An entry in 'new' will be matched just before a dot (.) in the name
@@ -465,48 +461,47 @@ vn_merge(vnl_t *cur, vnl_t *new, callfunc_t callback)
  *
  * @param[in]	cur - previously parsed vnode list
  * @param[in]	new - newly parsed vnode list
- * @param[in]	allow_attribs - space-separated list of attribute names to
- * 				to match.
+ * @param[in]	allow_attribs - list of attribute names to to match
+ *
  * @return	vnl_t *
  * @retval	cur	- if successful
  * @retval	NULL	- if not successful.
  */
 vnl_t *
-vn_merge2(vnl_t *cur, vnl_t *new, char *allow_attribs, callfunc_t callback)
+vn_merge2(vnl_t *cur, vnl_t *new, char **allow_attribs, callfunc_t callback)
 {
-	unsigned long	i, j;
-	char		*vna_name, *dot;
-	int		match;
+	unsigned long i, j;
+	char *vna_name, *dot;
+	int match;
 
 	for (i = 0; i < new->vnl_used; i++) {
-		vnal_t	*newreslist = VNL_NODENUM(new, i);
+		vnal_t *newreslist = VNL_NODENUM(new, i);
 
 		for (j = 0; j < newreslist->vnal_used; j++) {
-			vna_t	*newres = VNAL_NODENUM(newreslist, j);
+			vna_t *newres = VNAL_NODENUM(newreslist, j);
 
 			vna_name = newres->vna_name;
-			dot=strchr(vna_name, (int)'.');
+			dot = strchr(vna_name, (int) '.');
 			if (dot)
 				*dot = '\0';
 
 			/* match up to but not including dot */
-			match = in_string_list(vna_name, ' ', allow_attribs);
+			match = is_string_in_arr(allow_attribs, vna_name);
 			if (dot)
 				*dot = '.'; /* restore */
 			if (!match)
 				continue;
 
 			if (vn_addvnr(cur, newreslist->vnal_id,
-				newres->vna_name, newres->vna_val,
-				newres->vna_type, newres->vna_flag,
-				callback) == -1)
+				      newres->vna_name, newres->vna_val,
+				      newres->vna_type, newres->vna_flag,
+				      callback) == -1)
 				return NULL;
 		}
 	}
 
-	cur->vnl_modtime = (cur->vnl_modtime > new->vnl_modtime) ?
-		cur->vnl_modtime : new->vnl_modtime;
-	return (cur);
+	cur->vnl_modtime = cur->vnl_modtime > new->vnl_modtime ? cur->vnl_modtime : new->vnl_modtime;
+	return cur;
 }
 
 /**

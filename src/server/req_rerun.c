@@ -110,7 +110,7 @@ post_rerun(struct work_task *pwt)
 
 	if (pjob != NULL) {
 		if (preq->rq_reply.brp_code != 0) {
-			(void)sprintf(log_buffer, "rerun signal reject by mom: %d",
+			sprintf(log_buffer, "rerun signal reject by mom: %d",
 				      preq->rq_reply.brp_code);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				  preq->rq_ind.rq_signal.rq_jid, log_buffer);
@@ -190,7 +190,7 @@ force_reque(job *pjob)
 	job_attr_def[(int)JOB_ATR_jobdir].at_free(&pjob->
 		ji_wattr[(int)JOB_ATR_jobdir]);
 	svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
-	(void)svr_setjobstate(pjob, newstate, newsubstate);
+	svr_setjobstate(pjob, newstate, newsubstate);
 }
 
 /**
@@ -209,16 +209,18 @@ req_rerunjob(struct batch_request *preq)
 {
 	int anygood = 0;
 	int i;
-	int j;
 	char jid[PBS_MAXSVRJOBID + 1];
-	int jt;				/* job type */
+	int jt; /* job type */
 	int offset;
 	char *pc;
 	job *pjob;
 	job *parent;
 	char *range;
 	char *vrange;
-	int x, y, z;
+	int start;
+	int end;
+	int step;
+	int count;
 	int err = PBSE_NONE;
 
 	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_signal.rq_jid);
@@ -321,18 +323,14 @@ req_rerunjob(struct batch_request *preq)
 
 	vrange = range;
 	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		} else if (i == 1)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i >= 0) {
-				if (get_subjob_state(parent, i) == JOB_STATE_RUNNING)
-					anygood++;
-			}
-			x += z;
+		for (i = start; i <= end; i += step) {
+			if (get_subjob_state(parent, numindex_to_offset(parent, i)) == JOB_STATE_RUNNING)
+				anygood++;
 		}
 		vrange = pc;
 	}
@@ -346,24 +344,18 @@ req_rerunjob(struct batch_request *preq)
 	++preq->rq_refct;	/* protect the request/reply struct */
 
 	while (1) {
-		if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			break;
 		} else if (i == 1)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i < 0) {
-				x += z;
-				continue;
-			}
-
-			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
+		for (i = start; i <= end; i += step) {
+			int idx = numindex_to_offset(parent, i);
+			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
+				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
 					dup_br_for_subjob(preq, pjob, req_rerunjob2);
 				}
 			}
-			x += z;
 		}
 		range = pc;
 	}
@@ -472,6 +464,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 
+		pjob->ji_qs.ji_un.ji_exect.ji_exitstat = JOB_EXEC_RERUN;
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
 		discard_job(pjob, "Force rerun", 0);
 		pjob->ji_discarding = 1;
@@ -501,7 +494,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	JOB_SVFLG_HASRUN;
 	svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RERUN);
 
-	(void)sprintf(log_buffer, msg_manager, msg_jobrerun,
+	sprintf(log_buffer, msg_manager, msg_jobrerun,
 		preq->rq_user, preq->rq_host);
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);

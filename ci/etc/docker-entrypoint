@@ -1,5 +1,5 @@
+#!/bin/bash -ex
 
-#
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -37,15 +37,13 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
+workdir=/src/etc
+logdir=/logs
 
-AC_DEFUN([PBS_AC_MACHINE_TYPE],
-[
-  AC_MSG_CHECKING([for machine type])
-  [PBS_MACH=`$ac_aux_dir/pbs_mach_type`]
-  AC_MSG_RESULT([$PBS_MACH])
-  AC_SUBST(PBS_MACH)
-  AC_DEFINE_UNQUOTED([PBS_MACH], ["$PBS_MACH"], [PBS machine type])
-    [mom_mach_libs=""]
-  AC_SUBST(mom_mach_libs)
-])
+cd /pbssrc
+${workdir}/do.sh 1 2>&1 | tee -a ${logdir}/build-$(hostname -s)
+if [ $? -ne 0 ]; then
+    exit 1
+else
+    exit 0
+fi

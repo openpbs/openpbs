@@ -44,16 +44,11 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
-#ifdef WIN32
-#include <direct.h>
-#include "win.h"
-#else
 #include <grp.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <dirent.h>
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -261,10 +256,10 @@ fork_to_user(struct batch_request *preq, job *pjob)
 	} else
 		return (INVALID_HANDLE_VALUE);
 
-	strncpy(lpath, save_actual_homedir(pwdp, pjob), MAXPATHLEN + 1);
+	pbs_strncpy(lpath, save_actual_homedir(pwdp, pjob), sizeof(lpath));
 	CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 	if (chdir(lpath) == -1) {
-		strcpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user));
+		pbs_strncpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user), sizeof(lpath));
 		CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 		(void) chdir(lpath);
 	}
@@ -1197,6 +1192,12 @@ post_reply(job *pjob, int err)
 	if (pjob->ji_postevent == TM_NULL_EVENT)	/* no event */
 		return;
 
+	if (pjob->ji_hosts == NULL) {           /* No one to talk to */
+		pjob->ji_postevent = TM_NULL_EVENT;
+		pjob->ji_taskid = TM_NULL_TASK;
+		return;
+	}
+
 	stream = pjob->ji_hosts[0].hn_stream;	/* MS stream */
 	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
 	jobid = pjob->ji_qs.ji_jobid;
@@ -1567,13 +1568,6 @@ do_susres(job *pjob, int which)
 		return (PBSE_SYSTEM);
 	}
 
-
-#if     MOM_BGL
-	return (PBSE_NOSUP);     /* don't support suspend/resume as */
-	/* interferes with user running mpirun on a */
-	/* BGL partition; can't migrate "processes" */
-#endif  /* MOM_BGL */
-
 #if MOM_ALPS
 	/* if we're trying to suspend, then ask ALPS to suspend, before
 	 * we send the signal to the processes
@@ -1868,8 +1862,7 @@ terminate_job(job *pjob, int internal)
 			next_sample_time = min_check_poll;
 		}
 		if (kill_job(pjob, s) == 0) {
-			/* no processes around, force into exiting */
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+			/* no processes around, time to exit */
 			exiting_tasks = 1;
 		}
 		i = -2;
@@ -2252,13 +2245,13 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 		if (*rmt_file != '\0')
 			strcpy(prmt, rmt_file);
 		else
-			strcpy(prmt, pair->fp_rmt);
+			pbs_strncpy(prmt, pair->fp_rmt, sizeof(prmt));
 		path[0] = '\0';
 		if (pair->fp_flag == STDJOBFILE) { /* standard out or error */
 #ifndef NO_SPOOL_OUTPUT
 			if (!sandbox_private) {
 				DBPRT(("%s:, STDJOBFILE in %s\n", __func__, path_spool))
-				(void) strcpy(path, path_spool);
+				pbs_strncpy(path, path_spool, sizeof(path));
 			}
 #endif /* NO_SPOOL_OUTPUT */
 		}
@@ -2330,8 +2323,7 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 			/* has prefix path, save parent directory name */
 			int len = (int) (ps - path) + 1;
 
-			strncpy(dname, path, len);
-			dname[len] = '\0';
+			pbs_strncpy(dname, path, len);
 			ps++;
 		} else { /* no prefix path */
 			/*
@@ -2514,13 +2506,11 @@ req_rerunjob(struct batch_request *preq)
 #endif
 	}
 
-#ifdef WIN32
-	(void)closesocket(sock);
-	return;
-#else
-	(void)close(sock);
+	closesocket(sock);
+#ifndef WIN32
 	exit(rc);
 #endif
+	return;
 }
 
 #ifdef WIN32 /* WIN32 ------------------------------------------------------ */
@@ -2622,7 +2612,7 @@ post_cpyfile(struct work_task *pwt)
 
 	win_pclose2(pio);
 	DBPRT(("%s: done %s\n", __func__, jobid))
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, "%s: done %s", __func__, jobid);
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, "%s: done %s", __func__, jobid);
 
 	delete_link(&cpyinfo->al_link);
 	free(cpyinfo->jobid);
@@ -2747,7 +2737,7 @@ req_cpyfile(struct batch_request *preq)
 		 * attribute, so we call map_unc_path to get it now
 		 */
 		if ((pw=getpwnam(preq->rq_ind.rq_cpyfile.rq_user)) != NULL) {
-			strncpy(actual_homedir,
+			pbs_strncpy(actual_homedir,
 				map_unc_path(pw->pw_dir, pw), sizeof(actual_homedir));
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, actual_homedir);
 		} else {
@@ -3114,6 +3104,9 @@ req_cpyfile(struct batch_request *preq)
 	char			*prmt;
 	char			dup_rqcpf_jobid[PBS_MAXSVRJOBID+1];
 	struct work_task	*wtask = NULL;
+	int			tot_copies = 0;
+	bool			copy_failed = FALSE;
+
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	struct krb_holder	*ticket = NULL;
 	char 			*krbccname = NULL;
@@ -3274,12 +3267,13 @@ req_cpyfile(struct batch_request *preq)
 	copy_start = time(0);
 	for (pair=(struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
 		pair != 0;
-		pair = (struct rqfpair *)GET_NEXT(pair->fp_link)) {
+		pair = (struct rqfpair *)GET_NEXT(pair->fp_link), tot_copies++) {
+		if (copy_failed)
+			continue;	
 		DBPRT(("%s: local %s remote %s\n", __func__, pair->fp_local, pair->fp_rmt))
 
 		stage_inout.from_spool = 0;
 		prmt = pair->fp_rmt;
-		num_copies++;
 
 		if (local_or_remote(&prmt) == 0) {
 			/* destination host is this host, use cp */
@@ -3290,13 +3284,16 @@ req_cpyfile(struct batch_request *preq)
 		}
 
 		rc = stage_file(dir, rmtflag, rqcpf->rq_owner,
-			pair, preq->rq_conn, &stage_inout, prmt);
+			pair, preq->rq_conn, &stage_inout, prmt, rqcpf->rq_jobid);
 		/*
 		 ** Here we break out of the the loop on error.
 		 ** This will only happen on a stagein failure.
 		 */
-		if (rc != 0)
-			break;
+		if (rc != 0) {
+			copy_failed = TRUE;
+			continue;
+		}
+		num_copies++;
 	}
 	copy_stop = time(0);
 
@@ -3308,10 +3305,10 @@ req_cpyfile(struct batch_request *preq)
 		/* cd to user's home to be out of   */
 		/* the sandbox so it can be deleted */
 		chdir(pwdp->pw_dir);
-		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid);
+		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, 0);
 	}
 
-	strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid) - 1);
+	pbs_strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid));
 	if (preq->prot == PROT_TCP) {
 		if (stage_inout.bad_files) {
 			reply_text(preq, PBSE_NOCOPYFILE, stage_inout.bad_list);
@@ -3344,14 +3341,15 @@ req_cpyfile(struct batch_request *preq)
 
 	/* log the number of files/directories copied and the time it took */
 	copy_stop = copy_stop - copy_start;
+	
 #ifdef NAS /* localmod 005 */
-	sprintf(log_buffer, "staged %d items %s over %ld:%02ld:%02ld",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+	sprintf(log_buffer, "Staged %d/%d items %s over %ld:%02ld:%02ld",
+		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 		(long)copy_stop/3600, ((long)copy_stop%3600)/60,
 		(long)copy_stop%60);
 #else
-	sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+	sprintf(log_buffer, "Staged %d/%d items %s over %d:%02d:%02d",
+		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 		(int)copy_stop/3600, ((int)copy_stop%3600)/60,
 		(int)copy_stop%60);
 #endif /* localmod 005 */
@@ -3565,7 +3563,7 @@ mom_checkpoint_job(job *pjob, int abort)
 	DBPRT(("mom_checkpoint_job: %s %s abort\n", pjob->ji_qs.ji_jobid,
 		abort ? "with" : "no"))
 
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -3827,7 +3825,7 @@ post_chkpt(job *pjob, int  ev)
 	/*
 	 ** Set the TI_FLAGS_CHKPT flag for each task that was checkpointed.
 	 */
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -4172,7 +4170,7 @@ mom_restart_job(job *pjob)
 		goto done;
 	}
 
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else

@@ -36,40 +36,39 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qstart 8B "12 February 2018" Local "PBS"
+.TH qstart 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qstart
+.B qstart 
 - turn on scheduling or routing for jobs in a PBS queue
 .SH SYNOPSIS
-.B qstart
+.B qstart 
 <destination> [<destination> ...]
 .br
 .B qstart
 --version
 .SH DESCRIPTION
-If
-.I destination
-is an execution queue, the
-.B qstart
+If 
+.I destination 
+is an execution queue, the 
+.B qstart 
 command allows a PBS scheduler to schedule jobs residing in the specified queue.
-If
+If 
 .I destination
 is a routing queue, the server can begin routing jobs from that queue.  Sets
-the value of the queue's
-.I started
+the value of the queue's 
+.I started 
 attribute to
 .I True.
 
 .B Required Privilege
 .br
-In order to execute
-.B qstart,
+In order to execute 
+.B qstart, 
 you must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
-.IP "--version"
-The
+.IP "--version" 
+The 
 .B qstart
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -86,14 +85,14 @@ Starts scheduling or routing from all queues at the specified server.
 .IP "<queue name>@<server name>" 3
 Starts scheduling or routing from the specified queue at the specified server.
 .LP
-To start scheduling at all queues at the default server, use the
+To start scheduling at all queues at the default server, use the 
 .B qmgr
 command:
 .br
 .B \ \ \ Qmgr: set queue @default started=true
 
 .SH STANDARD ERROR
-The
+The 
 .B qstart
 command writes a diagnostic message to standard error for
 each error occurrence.
@@ -107,7 +106,4 @@ command
 If the qstart command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide
-and the following manual pages:
 pbs_server(8B), qstop(8B), and qmgr(8B)

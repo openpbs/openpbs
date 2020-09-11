@@ -36,63 +36,72 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_ralter 1B "15 October 2019" Local "PBS"
+.TH pbs_ralter 1B "21 April 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_ralter
-\- modify an existing advance or standing reservation
+.B pbs_ralter 
+\- modify an existing reservation
 .SH SYNOPSIS
 .B pbs_ralter
-[-E <end time>] [-I <block time>] [-m <mail points>]
-           [-M <mail list>] [-N <reservation name>] [-R <start time>]
-           <reservation ID>
+[-D <duration>] [-E <end time>] [-G <auth group list>] 
+           [-I <block time>] [-m <mail points>] [-M <mail list>] 
+           [-N <reservation name>] [-R <start time>] 
+           [-U <auth user list>] <reservation ID>
 .br
 .B pbs_ralter
 --version
 .SH DESCRIPTION
-You can use the
-.B pbs_ralter
-command to alter an existing advance or standing reservation.  You can
-change the start time, end time, events that generate mail, mail
-recipient list, and reservation name.  You can change the end time for
-a running reservation with running jobs.
+You can use the 
+.B pbs_ralter 
+command to alter an existing advance, job-specific, or standing
+reservation.  You can change the start time, end time, duration,
+events that generate mail, mail recipient list, group name(s), 
+username(s), and reservation name.
 
-You can use this command to change an advance reservation or the next
-or current instance of a standing reservation.
+You can use this command to change an advance or job-specific
+reservation, or the next or current instance of a standing
+reservation.
 
 After the change is requested, the change is either confirmed or
 denied. On denial of the change, the reservation is not deleted and is
 left as is, and the following message appears in the server's log:
 .nf
-   Unable to alter reservation <reservation ID>
+   Unable to alter reservation <reservation ID> 
 .fi
 
 When a reservation is
 confirmed, the following message appears in the server's log:
 .nf
-   Reservation alter successful for <reservation ID>
+   Reservation alter successful for <reservation ID> 
 .fi
 
-To find out whether or not the change was allowed:
+To find out whether or not the change was allowed: 
 .RS 3
-Use the pbs_rstat command: see whether you altered reservation attribute(s)
+Use the pbs_rstat command: see whether you altered reservation attribute(s) 
 
-Use the interactive option: check for confirmation after the blocking time has run out
+Use the interactive option: check for confirmation after the blocking
+time has run out
 
 Check the server log for confirmation or denial messages
 .RE
 
 Before the change is confirmed or denied, the change is unconfirmed,
-and the reservation state is
-.I AL.
+and the reservation state is 
+.I AL.  
 
-Once a reservation change is confirmed, the reservation state is
-.I CO
-or
-.I RN.
+Once a reservation change is confirmed, the reservation state is 
+.I CO 
+or 
+.I RN.  
 
 If the reservation has not started and it cannot be confirmed on the same vnodes, PBS
 searches for another set of vnodes.
+
+.B Caveats and Restrictions
+.br
+You cannot change the start time of a reservtion if jobs are running in it.
+
+If you change the end time of a reservation so that it ends before a job running in the 
+reservation finishes, the job is killed when the reservation ends.
 
 .B Required Privilege
 .br
@@ -100,65 +109,95 @@ You must be the reservation owner or the PBS Administrator to run this command.
 
 .SH Options to pbs_ralter
 
-.IP "-R <start time>" 10
-Specifies reservation's new start time. This option can be used either
-when the reservation is not running or there are no jobs are submitted
-to the reservation.  You cannot use this option when a reservation is
-not empty and has started running.
+.IP "-D <duration>" 10
+Specifies reservation's new duration. This option can be used even
+when the reservation is running and has jobs that are submitted to
+and/or are running in the reservation.  
 
-The specifications for providing the time are the same as for pbs_rsub:
-.br
-If the day,
-.I DD,
-is not specified, it defaults to today if the time
-.I hhmm
-is in the future.  Otherwise, the day is set to tomorrow.  For
-example, if you alter a reservation with the specification -R 1110 at
-11:15 a.m., it is interpreted as being for 11:10 a.m. tomorrow.  If
-the month portion,
-.I MM,
-is not specified, it defaults to the current month, provided that the specified day
-.I DD,
-is in the future.  Otherwise, the month is set to next month.  Similar
-rules apply to the two other optional, left-side components.
+Can be specified with start and/or end time.  PBS calculates anything
+not specified.  When specified without start or end time, PBS keeps
+previous start time.
 
-Format:
-.I Datetime
+If you change the duration to less than the time the reservation has
+already run, PBS deletes the reservation.  
+
+Format: 
+.I Duration, 
+as 
+.I seconds 
+or 
+.I hh:mm:ss
 
 .IP "-E <end time>" 10
 Specifies reservation's new end time. This option can be used even
 when the reservation is running and has jobs that are submitted to
 and/or are running in the reservation.
 
-Format:
+Format: 
 .I Datetime
+
+.IP "-G <auth group list>" 10
+Comma-separated list of names of groups who
+can or cannot submit jobs to this reservation.  Sets reservation's 
+.I Authorized_Groups 
+attribute to 
+.I auth group list.
+.br
+This list becomes the 
+.I acl_groups 
+list for the 
+reservation's queue. 
+.br
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access.
+.br
+If both the
+.I Authorized_Users
+and 
+.I Authorized_Groups
+reservation attributes are set, a user must belong to both in order to
+be able to submit jobs to this reservation.  
+.br
+Group names are
+interpreted in the context of the server's host, not the context of the host 
+from which the job is submitted. 
+.br
+See the 
+.I Authorized_Groups 
+reservation attribute in the 
+pbs_resv_attributes(7B) man page.  
+.br
+Syntax: 
+.I [+|-]<group name>[,[+|-]<group name> ...]
+.br
+Default: All groups are authorized to submit jobs.
 
 .IP "-I <block time>" 10
 Specifies interactive mode. The pbs_ralter command will block, up to
-.I block time
+.I block time 
 seconds, while waiting for the reservation's change request
 to be confirmed or denied.
 
-The value for
-.I block time
+The value for 
+.I block time 
 must be positive. The pbs_ralter command
-returns either the status
-.I "CONFIRMED"
-or the status
+returns either the status 
+.I "CONFIRMED" 
+or the status 
 .I "DENIED".
 
-Format:
+Format: 
 .I Integer
 
 Default: Not interactive
 
 .IP "-m <mail points>" 10
 Specifies the set of events that cause mail to be sent to the list of
-users specified in the
-.I -M <mail list>
+users specified in the 
+.I -M <mail list> 
 option.
 
-Format:
+Format: 
 .I String
 .br
 Syntax: Either of
@@ -185,18 +224,18 @@ Default: No default; if not specified, mail events are unchanged
 .IP "-M <mail list>" 10
 The list of users to whom mail is sent whenever the reservation
 transitions to one of the states specified in the
-.I -m <mail points>
-option.
+.I -m <mail points> 
+option.  
 
-Format:
+Format: 
 .I <username>[@<hostname>][,<username>[@<hostname>]...]
 
 Default: No default; if not specified, user list is unchanged
 
 .IP "-N <reservation name>" 10
-Specifies a name for the reservation.
+Specifies a name for the reservation.  
 
-Format:
+Format: 
 .RS 13
 String up to 15 characters in length.  It must consist of printable,
 non-white space characters with the first character alphabetic.
@@ -204,8 +243,64 @@ non-white space characters with the first character alphabetic.
 .IP
 Default: No default; if not specified, reservation name is unchanged
 
+.IP "-R <start time>" 10
+Specifies reservation's new start time. This option can be used either
+when the reservation is not running or there are no jobs are submitted
+to the reservation.  You cannot use this option when a reservation is
+not empty and has started running.
+
+The specifications for providing the time are the same as for pbs_rsub:
+.br
+If the day, 
+.I DD, 
+is not specified, it defaults to today if the time
+.I hhmm 
+is in the future.  Otherwise, the day is set to tomorrow.  For
+example, if you alter a reservation with the specification -R 1110 at
+11:15 a.m., it is interpreted as being for 11:10 a.m. tomorrow.  If
+the month portion,
+.I MM, 
+is not specified, it defaults to the current month, provided that the specified day 
+.I DD, 
+is in the future.  Otherwise, the month is set to next month.  Similar
+rules apply to the two other optional, left-side components.
+
+Format: 
+.I Datetime
+
+.IP "-U <auth user list>" 10
+Comma-separated list of users who are and are not allowed to 
+submit jobs to this reservation.  Sets reservation's 
+.I Authorized_Users 
+attribute to 
+.I auth user list.
+.br
+This list becomes the 
+.I acl_users 
+attribute for the reservation's queue. 
+.br
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access. 
+The reservation creator's username is automatically added to this list,
+whether or not the reservation creator specifies this list.
+.br
+If both the
+.I Authorized_Users
+and 
+.I Authorized_Groups
+reservation attributes are set, a user must belong to both in order to be able to 
+submit jobs to this reservation.
+.br
+See the 
+.I Authorized_Users
+reservation attribute in the pbs_resv_attributes(7B) man page.
+.br
+Syntax:
+.I [+|-]<username>@<hostname>[,[+|-]<username>@<hostname>...]
+.br
+
 .IP "--version" 10
-The
+The 
 .B pbs_ralter
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -213,7 +308,7 @@ This option can only be used alone.
 .SH OPERANDS
 The pbs_ralter command takes a reservation ID.
 .br
-For an advance reservation this has the form:
+For an advance or job-specific reservation this has the form:
 .RS 4
 .I "R<sequence number>[.<server name>][@<remote server>]"
 .RE
@@ -222,5 +317,6 @@ For a standing reservation this has the form:
 .I "S<sequence number>[.<server name>][@<remote server>]"
 .RE
 
-.I @<remote server>
+.I @<remote server> 
 specifies a reservation at a server other than the default server.
+

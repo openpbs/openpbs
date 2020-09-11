@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_sigjob 3B "15 November 2019" Local "PBS"
+.TH pbs_sigjob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_sigjob
+.B pbs_sigjob 
 \- send a signal to a PBS batch job
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -51,29 +50,29 @@
 .SH DESCRIPTION
 Issues a batch request to send a signal to a batch job.
 
-Generates a
-.I Signal Job
-(18) batch request and sends it to the server over the connection specified by
+Generates a 
+.I Signal Job 
+(18) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 You can send a signal to a job, job array, subjob, or range of subjobs.
 
 The batch server sends the job the specified signal.
 
-The job must be in the
-.I running
-or
-.I suspended
+The job must be in the 
+.I running 
+or 
+.I suspended 
 state.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection handle over which to send batch request to server.
 
 .IP jobID *
-ID of job to be signaled.
+ID of job to be signaled.  
 .br
 Format for a job:
 .br
@@ -92,42 +91,42 @@ Format for a range of subjobs:
 .I <sequence number>[<index start>-<index end>].<server name>
 
 .IP signal 8
-Name of signal to send to job.  Can be alphabetic, with or without
+Name of signal to send to job.  Can be alphabetic, with or without 
 .I SIG
 prefix.  Can be signal number.
 
 The following special signals are all lower-case, and have no associated signal number:
 .RS 8
 .IP admin-suspend 6
-Suspends a job and puts its vnodes into the
-.I maintenance
-state.  The job is put into the
-.I S
+Suspends a job and puts its vnodes into the 
+.I maintenance 
+state.  The job is put into the 
+.I S 
 state and its processes are suspended.
 
 .IP admin-resume 6
-Resumes a job that was suspended using the
-.I admin-suspend
+Resumes a job that was suspended using the 
+.I admin-suspend 
 signal, without waiting for scheduler.  Cannot be used on jobs that were
-suspended with the
-.I suspend
-signal.  When the last
+suspended with the 
+.I suspend 
+signal.  When the last 
 .I admin-suspend
-ed job has been
+ed job has been 
 .I admin-resume
 d, the vnode leaves the maintenance state.
 
 .IP suspend 6
-Suspends specified job(s).  Job goes into
-.I suspended (S)
+Suspends specified job(s).  Job goes into 
+.I suspended (S) 
 state.
 
 .IP resume 6
 Marks specified job(s) for resumption by scheduler when there are
 sufficient resources.  Cannot be used on jobs that were suspended
-with the
-.I admin_suspend
-signal.
+with the 
+.I admin_suspend 
+signal.  
 .LP
 If the signal is not recognized on the execution host, no signal is
 sent and an error is returned.
@@ -140,7 +139,7 @@ Character string for extensions to command.  Not currently used.
 The routine returns 0 (zero) on success.
 
 If an error occurred, the routine returns a non-zero exit value, and
-the error number is available in the global integer
+the error number is available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO

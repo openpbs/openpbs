@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_locjob 3B "15 November 2019" Local "PBS"
+.TH pbs_locjob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_locjob
+.B pbs_locjob 
 - return current location of a PBS batch job
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -51,9 +50,9 @@
 .SH DESCRIPTION
 Issues a batch request to locate a batch job or job array.
 
-This function generates a
-.I Locate Job
-(8) batch request and sends it to the server over the connection specified by
+This function generates a 
+.I Locate Job 
+(8) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 If the server currently manages the batch job, or knows which server
@@ -62,12 +61,12 @@ job.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection over which to send batch request to server.
 
 .IP jobID 8
-ID of job to be located.
+ID of job to be located.  
 .br
 Format for a job:
 .br
@@ -81,21 +80,21 @@ Format for a job array:
 Character string for extensions to command.  Not currently used.
 
 .SH CLEANUP
-The character string returned by
-.B pbs_locjob()
+The character string returned by 
+.B pbs_locjob() 
 is allocated by
-.B pbs_locjob().
-You must free it via a call to
+.B pbs_locjob().  
+You must free it via a call to 
 .B free().
 
 .SH RETURN VALUE
 On success, returns a pointer to a character string containing current
-location.  Format:
+location.  Format: 
 .br
-.I <server name>
+.I <server name> 
 
 On failure, returns a null pointer, and the error number is available
-in the global integer
+in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO

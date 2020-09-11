@@ -153,7 +153,7 @@ long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for nod
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
 
 extern int do_sync_mom_hookfiles;
-extern int sync_mom_hookfiles_proc_running;
+extern int sync_mom_hookfiles_replies_pending;
 
 char primary_host[PBS_MAXHOSTNAME+1]; /* host_name of primary */
 
@@ -5433,6 +5433,79 @@ is_vnode_prov_done(char * vnode)
 
 /**
  * @brief
+ *		Determines if any of the provisionable vnodes assigned to the job
+ *		has a pending mom hook-related file copy action.
+ *
+ * @param[in]   pjob	-	pointer to job struct
+ *
+ * @return	int
+ * @retval	1	: job has a pending hook-related copy action on at least
+ *			  of its provisioning vnodes.
+ * @retval	0	: either no pending hook-related action detected, or an
+ *			  an error has occurred. 
+ *
+ * @par Side Effects:
+ *      Unknown
+ *
+ * @par MT-safe: No
+ *
+ */
+
+static int
+prov_vnode_pending_hook_copy(job *pjob)
+{
+	struct			pbsnode	*np = NULL;
+	int			i;
+	exec_vnode_listtype 	prov_vnode_list = NULL;
+	int			num_of_prov_vnodes = 1;
+	int			rcode = 0;
+
+	if (pjob == NULL) {
+		DBPRT(("%s: job is NULL\n", __func__))
+		return 0;
+	}
+
+	DBPRT(("%s: Entered jobid=%s\n", __func__, pjob->ji_qs.ji_jobid))
+
+	num_of_prov_vnodes = parse_prov_vnode(
+		pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str,
+		&prov_vnode_list);
+
+	if (num_of_prov_vnodes == -1) {
+		if (prov_vnode_list)
+			free(prov_vnode_list);
+		return 0;
+	}
+
+	for (i = 0; i < num_of_prov_vnodes; i++) {
+		int	j;
+
+		np = find_nodebyname(prov_vnode_list[i]);
+		if (np == NULL) {
+			DBPRT(("%s: node %s is null\n",
+				__func__, prov_vnode_list[i]))
+			goto prov_vnode_label;
+		}
+		/* hook has not been sent */
+		for (j = 0; j < np->nd_nummoms; j++) {
+
+			if ((np->nd_moms[j] != NULL) && (sync_mom_hookfiles_count(np->nd_moms[j]) > 0)) {
+				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_WARNING, pjob->ji_qs.ji_jobid, "prov vnode %s's parent mom %s:%d has a pending copy hook or delete hook request", np->nd_name,  np->nd_moms[j]->mi_host, np->nd_moms[j]->mi_port);
+				rcode = 1;
+				break;
+			}
+		}
+	}
+prov_vnode_label:
+
+	if (num_of_prov_vnodes > 0)
+		free(prov_vnode_list);
+
+	return rcode;
+}
+
+/**
+ * @brief
  * 	This function ensures that the hooks are synced with the
  * 	provisioned node before starting the job on it.
  *
@@ -5451,7 +5524,14 @@ prov_startjob(struct work_task *ptask)
 
 	assert(ptask->wt_parm1 != NULL);
 	pjob = (job *) ptask->wt_parm1;
-	if (do_sync_mom_hookfiles || sync_mom_hookfiles_proc_running) {
+	if (pjob == NULL) {
+		DBPRT(("%s: pjob is NULL\n", __func__))
+		return;
+	}
+	/* task being serviced here */
+	pjob->ji_prov_startjob_task = NULL;
+	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_replies_pending) &&
+	    (prov_vnode_pending_hook_copy(pjob))) {
 
 		/**
 		 * If mom hook files sync is in process then create
@@ -5463,13 +5543,13 @@ prov_startjob(struct work_task *ptask)
 			"hookfiles is not completed\n"
 			, __func__))
 
-                /* set a work task to run after 5 sec from now */
-                if (!set_task(WORK_Timed, time_now + 5,
-                        prov_startjob, pjob)){
-                        log_err(errno, __func__,
-				"Unable to set task for prov_startjob; requeuing the job");
+		/* set a work task to run after 5 sec from now */
+		pjob->ji_prov_startjob_task = set_task(WORK_Timed, time_now + 5,
+                        				prov_startjob, pjob);
+		if (pjob->ji_prov_startjob_task == NULL) {
+			log_err(errno, __func__, "Unable to set task for prov_startjob; requeuing the job");
 			(void)force_reque(pjob);
-                }
+		}
 		return;
         }
 

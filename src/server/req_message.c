@@ -361,6 +361,8 @@ req_relnodesjob(struct batch_request *preq)
 
 	rc = free_sister_vnodes(pjob, nodeslist, keep_select, msg, LOG_BUF_SIZE, preq);
 
+	job_save_db(pjob); /* we must save the updates anyway, if any */
+
 	if (rc != 0) {
 		reply_text(preq, PBSE_SYSTEM, msg);
 	}

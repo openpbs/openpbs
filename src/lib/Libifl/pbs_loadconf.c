@@ -48,16 +48,16 @@
 #include <stdlib.h>
 #include <netdb.h>
 #include <pbs_ifl.h>
+#include <pwd.h>
 #include "pbs_internal.h"
 #include <limits.h>
 #include <pbs_error.h>
 #include "pbs_client_thread.h"
 #include "net_connect.h"
-
-#ifdef WIN32
 #include <sys/stat.h>
 #include <unistd.h>
-#else
+
+#ifndef WIN32
 #define shorten_and_cleanup_path(p) strdup(p)
 #endif
 
@@ -97,6 +97,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
 	NULL,					/* PBS server id */
+	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
 	NULL,					/* pbs_demux_path */
@@ -125,7 +126,9 @@ struct pbs_config pbs_conf = {
 	NULL,					/* mom short name override */
 	NULL,					/* pbs_lr_save_path */
 	0,					/* high resolution timestamp logging */
-	0					/* number of scheduler threads */
+	0,					/* number of scheduler threads */
+	NULL,					/* default scheduler user */
+	{'\0'}					/* current running user */
 #ifdef WIN32
 	,NULL					/* remote viewer launcher executable along with launch options */
 #endif
@@ -288,6 +291,8 @@ __pbs_loadconf(int reload)
 	char *conf_value;		/* the value from the conf file or env*/
 	char *gvalue;			/* used with getenv() */
 	unsigned int uvalue;		/* used with sscanf() */
+	struct passwd *pw;
+	uid_t pbs_current_uid;
 #ifndef WIN32
 	struct servent *servent;	/* for use with getservent */
 	char **servalias;		/* service alias list */
@@ -507,6 +512,10 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.scp_path);
 				pbs_conf.scp_path = shorten_and_cleanup_path(conf_value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_CP)) {
+				free(pbs_conf.cp_path);
+				pbs_conf.cp_path = shorten_and_cleanup_path(conf_value);
+			}
 			/* rcp_path can be inferred from pbs_conf.pbs_exec_path - see below */
 			/* pbs_demux_path is inferred from pbs_conf.pbs_exec_path - see below */
 			else if (!strcmp(conf_name, PBS_CONF_ENVIRONMENT)) {
@@ -603,6 +612,10 @@ __pbs_loadconf(int reload)
 				}
 				free(value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_DAEMON_SERVICE_USER)) {
+				free(pbs_conf.pbs_daemon_service_user);
+				pbs_conf.pbs_daemon_service_user = strdup(conf_value);
+			}
 			/* iff_path is inferred from pbs_conf.pbs_exec_path - see below */
 		}
 		fclose(fp);
@@ -697,6 +710,10 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_SCP)) != NULL) {
 		free(pbs_conf.scp_path);
 		pbs_conf.scp_path = shorten_and_cleanup_path(gvalue);
+	}
+	if ((gvalue = getenv(PBS_CONF_CP)) != NULL) {
+		free(pbs_conf.cp_path);
+		pbs_conf.cp_path = shorten_and_cleanup_path(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_PRIMARY)) != NULL) {
 		free(pbs_conf.pbs_primary);
@@ -815,6 +832,11 @@ __pbs_loadconf(int reload)
 			pbs_conf.pbs_sched_threads = uvalue;
 	}
 
+	if ((gvalue = getenv(PBS_CONF_DAEMON_SERVICE_USER)) != NULL) {
+		free(pbs_conf.pbs_daemon_service_user);
+		pbs_conf.pbs_daemon_service_user = strdup(gvalue);
+	}
+
 #ifdef WIN32
 	if ((gvalue = getenv(PBS_CONF_REMOTE_VIEWER)) != NULL) {
 		free(pbs_conf.pbs_conf_remote_viewer);
@@ -919,6 +941,17 @@ __pbs_loadconf(int reload)
 			goto err;
 		}
 	}
+	if (pbs_conf.cp_path == NULL) {
+#ifdef WIN32
+		char *cmd = "xcopy";
+#else
+		char *cmd = "/bin/cp";
+#endif
+		pbs_conf.cp_path = strdup(cmd);
+		if (pbs_conf.cp_path == NULL) {
+			goto err;
+		}
+	}
 
 	free(pbs_conf.pbs_demux_path);
 	/* strlen("/sbin/pbs_demux") + '\0' == 15 + 1 == 16 */
@@ -1004,6 +1037,17 @@ __pbs_loadconf(int reload)
 		}
 	}
 
+	/* determine who we are */
+	pbs_current_uid = getuid();
+	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
+		goto err;
+	}
+	if (strlen(pw->pw_name) > (PBS_MAXUSER - 1)) {
+		goto err;
+	}
+	strcpy(pbs_conf.current_user, pw->pw_name);
+
+
 	pbs_conf.loaded = 1;
 
 	if (pbs_client_thread_unlock_conf() != 0)
@@ -1039,6 +1083,10 @@ err:
 	if (pbs_conf.scp_path) {
 		free(pbs_conf.scp_path);
 		pbs_conf.scp_path = NULL;
+	}
+	if (pbs_conf.cp_path) {
+		free(pbs_conf.cp_path);
+		pbs_conf.cp_path = NULL;
 	}
 	if (pbs_conf.pbs_environment) {
 		free(pbs_conf.pbs_environment);

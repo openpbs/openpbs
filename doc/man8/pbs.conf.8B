@@ -36,115 +36,114 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs.conf 8B "4 March 2019" Local "PBS"
+.TH pbs.conf 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
 .B pbs.conf
 - PBS configuration parameters
 
 .SH DESCRIPTION
-The
-.I /etc/pbs.conf
+The 
+.I /etc/pbs.conf 
 file contains PBS configuration parameters.  You may also set these using
-environment variables.  Environment variables override settings in
+environment variables.  Environment variables override settings in 
 .I pbs.conf.
 
-To specify an alternate location for
-.I pbs.conf,
-you may set
+To specify an alternate location for 
+.I pbs.conf, 
+you may set 
 .I PBS_CONF_FILE in your environment.
 
 .SH CONFIGURATION PARAMETERS
 
-.IP PBS_AUTH_METHOD
+.IP PBS_AUTH_METHOD 
 Authentication method to be used by PBS.  Only allowed value is
-"munge" (case-insensitive).
+"munge" (case-insensitive).  
 
-.IP PBS_BATCH_SERVICE_PORT
+.IP PBS_BATCH_SERVICE_PORT  
 Port on which server listens.  Default: 15001
 
-.IP PBS_BATCH_SERVICE_PORT_DIS
+.IP PBS_BATCH_SERVICE_PORT_DIS      
 DIS port on which server listens.
 
-.IP PBS_COMM_LOG_EVENTS
-Communication daemon log mask.
+.IP PBS_COMM_LOG_EVENTS     
+Communication daemon log mask.  
 .br
 Default: 511
 
-.IP PBS_COMM_ROUTERS
-Tells a
-.I pbs_comm
-the location of the other
+.IP PBS_COMM_ROUTERS        
+Tells a 
+.I pbs_comm 
+the location of the other 
 .I pbs_comms.
 
-.IP PBS_COMM_THREADS
+.IP PBS_COMM_THREADS        
 Number of threads for communication daemon.
 
-.IP PBS_CONF_REMOTE_VIEWER
+.IP PBS_CONF_REMOTE_VIEWER  
 Specifies remote viewer client.  If not specified, PBS uses native
 Remote Desktop client for remote viewer.  Set on submission host(s).
 Supported on Windows only.
 
-.IP PBS_CORE_LIMIT
+.IP PBS_CORE_LIMIT  
 Limit on corefile size for PBS daemons.  Can be set to an integer
 number of bytes or to the string "unlimited".
 
-.IP PBS_DATA_SERVICE_PORT
+.IP PBS_DATA_SERVICE_PORT   
 Used to specify non-default port for connecting to data service.  Default: 15007
 
-.IP PBS_ENVIRONMENT
+.IP PBS_ENVIRONMENT 
 Location of pbs_environment file.
 
-.IP PBS_EXEC
-Location of PBS
-.I bin
-and
-.I sbin
+.IP PBS_EXEC        
+Location of PBS 
+.I bin 
+and 
+.I sbin 
 directories.
 
-.IP PBS_HOME
+.IP PBS_HOME        
 Location of PBS working directories.
 
-.IP PBS_LEAF_NAME
+.IP PBS_LEAF_NAME   
 Tells endpoint what hostname to use for network.
 
-.IP PBS_LEAF_ROUTERS
-Location of endpoint's
-.I pbs_comm
+.IP PBS_LEAF_ROUTERS        
+Location of endpoint's 
+.I pbs_comm 
 daemon(s).
 
-.IP PBS_LOCALLOG
+.IP PBS_LOCALLOG    
 Enables logging to local PBS log files.
 
-.IP PBS_MAIL_HOST_NAME
+.IP PBS_MAIL_HOST_NAME      
 Used in addressing mail regarding jobs and reservations that is sent
 to users specified in a job or reservation's Mail_Users attribute.
 Optional.  Must be a fully qualified domain name.  Cannot contain a
-colon (":").
+colon (":").  
 
-.IP PBS_MANAGER_SERVICE_PORT
+.IP PBS_MANAGER_SERVICE_PORT        
 Port on which MoM listens.  Default: 15003
 
-.IP PBS_MOM_HOME
+.IP PBS_MOM_HOME    
 Location of MoM working directories.
 
-.IP PBS_MOM_SERVICE_PORT
+.IP PBS_MOM_SERVICE_PORT    
 Port on which MoM listens. Default: 15002
 
-.IP PBS_OUTPUT_HOST_NAME
+.IP PBS_OUTPUT_HOST_NAME 
 Host to which all job standard output and
-standard error are delivered.  If specified in
-.I pbs.conf
+standard error are delivered.  If specified in 
+.I pbs.conf 
 on a job
 submission host, the value of PBS_OUTPUT_HOST_NAME is used in the host
-portion of the job's
-.I Output_Path
-and
-.I Error_Path
+portion of the job's 
+.I Output_Path 
+and 
+.I Error_Path 
 attributes.  If the
 job submitter does not specify paths for standard output and standard
-error, the current working directory for the
-.I qsub
+error, the current working directory for the 
+.I qsub 
 command is used, and
 the value of PBS_OUTPUT_HOST_NAME is appended after an at sign ("@").
 If the job submitter specifies only a file path for standard output
@@ -152,71 +151,71 @@ and standard error, the value of PBS_OUTPUT_HOST_NAME is appended
 after an at sign ("@").  If the job submitter specifies paths for
 standard output and standard error that include host names, the
 specified paths are used.  Optional.  Must be a fully qualified domain
-name.  Cannot contain a colon (":").
+name.  Cannot contain a colon (":").  
 
-.IP PBS_PRIMARY
-Hostname of primary server.  Used only for failover configuration.
+.IP PBS_PRIMARY     
+Hostname of primary server.  Used only for failover configuration.  
 Overrides PBS_SERVER_HOST_NAME.
+
+.IP PBS_CP 
+Location of local copy command. Default is cp on Linux systems and xcopy on Windows.
 
 .IP PBS_RCP
 Location of rcp command if rcp is used.
 
-.IP PBS_SCHEDULER_SERVICE_PORT
+.IP PBS_SCHEDULER_SERVICE_PORT      
 Port on which default scheduler listens.  Default value: 15004
 
-.IP PBS_SCP
+.IP PBS_SCP 
 Location of scp command if scp is used; setting this parameter causes
 PBS to first try scp rather than rcp for file transport.
 
-.IP PBS_SECONDARY
-Hostname of secondary server.  Used only for failover configuration.
+.IP PBS_SECONDARY   
+Hostname of secondary server.  Used only for failover configuration.  
 Overrides PBS_SERVER_HOST_NAME.
 
-.IP PBS_SERVER
-Hostname of host running the server.
+.IP PBS_SERVER 
+Hostname of host running the server.  
 If the short name of the server host resolves to the
 correct IP address, you can use the short name for the value of the
 PBS_SERVER entry in pbs.conf.  If only the FQDN of the server host
 resolves to the correct IP address, you must use the FQDN for the
 value of PBS_SERVER.  Overridden by PBS_SERVER_HOST_NAME and
-PBS_PRIMARY.  Cannot be longer than 255 characters.
+PBS_PRIMARY.  Cannot be longer than 255 characters.  
 
 .IP PBS_SERVER_HOST_NAME
 The FQDN of the server host.  Used by clients to contact server.
 Overridden by PBS_PRIMARY and PBS_SECONDARY failover parameters.
 Overrides PBS_SERVER parameter.  Optional.  Must be a fully qualified
-domain name.  Cannot contain a colon (":").
+domain name.  Cannot contain a colon (":").  
 
-.IP PBS_SMTP_SERVER_NAME
+.IP PBS_SMTP_SERVER_NAME    
 Name of SMTP server PBS will use to send mail.  Should be a fully
-qualified domain name.  Cannot contain a colon (":").
+qualified domain name.  Cannot contain a colon (":").  
 
-.IP PBS_START_COMM
+.IP PBS_START_COMM  
 Set to 1 if a communication daemon is to run on this host.
 
-.IP PBS_START_MOM
+.IP PBS_START_MOM   
 Set to 1 if a MoM is to run on this host.
 
-.IP PBS_START_SCHED
-.B Deprecated.
-Set to 1 if the scheduler is to run on this host.  Overridden by
-scheduler's
+.IP PBS_START_SCHED 
+.B Deprecated. 
+Set to 1 if the scheduler is to run on this host.  Overridden by 
+scheduler's 
 .I scheduling
 attribute.
 
-.IP PBS_START_SERVER
+.IP PBS_START_SERVER        
 Set to 1 if the server is to run on this host.
 
-.IP PBS_SYSLOG
+.IP PBS_SYSLOG      
 Controls use of syslog facility.
 
-.IP PBS_SYSLOGSEVR
+.IP PBS_SYSLOGSEVR  
 Filters syslog messages by severity.
 
-.IP PBS_TMPDIR
+.IP PBS_TMPDIR      
 Root directory for temporary files for PBS components.
 
 
-.SH SEE ALSO
-The
-.B PBS Administrator's Guide

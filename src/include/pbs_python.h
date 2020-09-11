@@ -44,18 +44,12 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
-#ifndef WIN32
 #include <unistd.h>
-#else
-#include "win.h"
-#endif
-
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <pbs_ifl.h>
+#include <pbs_config.h>
 #include "pbs_internal.h"
 #include <log.h>
 #include "list_link.h"

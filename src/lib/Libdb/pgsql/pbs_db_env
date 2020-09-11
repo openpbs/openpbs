@@ -1,5 +1,4 @@
 #!/bin/false
-#
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -42,7 +41,11 @@
 # If this is a legacy installation, setup the appropiate dynamic
 # library paths. Otherwise, set some variables the are used later.
 #
+
 PGSQL_LIBSTR=""
+if [ -z "$PBS_EXEC" ]; then
+	. ${PBS_CONF_FILE:-/etc/pbs.conf}
+fi
 if [ -d "$PBS_EXEC/pgsql" ]; then
 	# Using PostgreSQL packaged with PBS
 	if [ -n "$PGSQL_INST_DIR" ]; then
@@ -61,20 +64,10 @@ if [ -d "$PBS_EXEC/pgsql" ]; then
 		echo "\*\*\* $PGSQL_BIN/psql not executable"
 		exit 1
 	fi
-	case `uname` in
-		Linux)
-			[ -d "$PGSQL_DIR/lib" ] && LD_LIBRARY_PATH="$PGSQL_DIR/lib:$LD_LIBRARY_PATH"
-			[ -d "$PGSQL_DIR/lib64" ] && LD_LIBRARY_PATH="$PGSQL_DIR/lib64:$LD_LIBRARY_PATH"
-			export LD_LIBRARY_PATH
-			PGSQL_LIBSTR="LD_LIBRARY_PATH=$LD_LIBRARY_PATH; export LD_LIBRARY_PATH; "
-			export PGSQL_LIBSTR
-			;;
-		Darwin)
-			DYLD_LIBRARY_PATH="$PGSQL_DIR/lib:$DYLD_LIBRARY_PATH"
-			export DYLD_LIBRARY_PATH
-			PGSQL_LIBSTR="DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH; export DYLD_LIBRARY_PATH; "
-			;;
-	esac
+	[ -d "$PGSQL_DIR/lib" ] && LD_LIBRARY_PATH="$PGSQL_DIR/lib:$LD_LIBRARY_PATH"
+	[ -d "$PGSQL_DIR/lib64" ] && LD_LIBRARY_PATH="$PGSQL_DIR/lib64:$LD_LIBRARY_PATH"
+	PGSQL_LIBSTR="LD_LIBRARY_PATH=$LD_LIBRARY_PATH; export LD_LIBRARY_PATH; "
+	export PGSQL_LIBSTR
 else
 	# Using system installed PostgreSQL package
 	PGSQL_CMD=`type psql 2>/dev/null | cut -d' ' -f3`
@@ -92,3 +85,5 @@ else
 	[ "$PGSQL_DIR" = "/" ] && PGSQL_DIR=""
 fi
 export PGSQL_BIN=$PGSQL_BIN
+[ -d "$PBS_EXEC/lib" ] && LD_LIBRARY_PATH="$PBS_EXEC/lib:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH

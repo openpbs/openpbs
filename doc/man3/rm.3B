@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH RM 3 "6 March 2019" Local "PBS"
+.TH RM 3 "6 March 2019" Local "PBS Professional"
 .SH NAME
 openrm, closerm, downrm, configrm, addreq, allreq, getreq, flushreq, activereq, fullresp \- resource monitor API
 .SH SYNOPSIS
@@ -58,14 +57,14 @@ char *host;
 unsigned int port;
 .RE
 .LP
-.B int closerm (stream)
+.B int closerm (stream) 
 .br
 .RS 6
 int stream;
 .RE
 .LP
 .B
-int downrm (stream)
+int downrm (stream)   
 .br
 .RS 6
 int stream;
@@ -84,36 +83,36 @@ char *file;
 int addreq (stream, line)
 .br
 .RS 6
-int stream;
+int stream; 
 .br
 char *line;
 .RE
 .LP
 .B
-int allreq (line)
+int allreq (line) 
 .br
 .RS 6
-char *line;
+char *line; 
 .RE
 .LP
 .B
-char *getreq(stream)
+char *getreq(stream)  
 .br
 .RS 6
 int stream;
 .RE
 .LP
 .B
-int flushreq()
+int flushreq() 
 .LP
 .B
 int activereq()
 .LP
 .B
-void fullresp(flag)
+void fullresp(flag)  
 .br
 .RS 6
-int flag;
+int flag; 
 .RE
 .SH DESCRIPTION
 .LP
@@ -126,15 +125,15 @@ In all these routines, the variable
 .B pbs_errno
 will be set when an error is indicated.
 The lower levels of network protocol are handled by the
-"Data Is Strings"
+"Data Is Strings" 
 .I DIS
-library and the "TCP based Packet Protocol"
-.I TPP
+library and the "Reliable Packet Protocol"
+.I RPP
 library.
 
 .LP
-.B configrm()
-causes the resource monitor to read the file named.
+.B configrm() 
+causes the resource monitor to read the file named. 
 .B Deprecated.
 
 .LP
@@ -184,16 +183,16 @@ is just the answer following the equal sign.
 .B activereq()
 Returns the stream number of the next stream with something
 to read or a negative number (the return from
-.I tpp_poll )
+.I rpp_poll )
 if there is no stream to read.
 
 In order to use any of the above with Windows, initialize the network
-library and link with
-.B winsock2.
-To do this, call
-.B winsock_init()
-before calling the function and link against the
-.B ws2_32.lib
+library and link with 
+.B winsock2.  
+To do this, call 
+.B winsock_init() 
+before calling the function and link against the 
+.B ws2_32.lib 
 library.
 
 .SH SEE ALSO

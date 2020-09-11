@@ -1,3 +1,5 @@
+#!/bin/bash -x
+
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -35,30 +37,23 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-version: '3'
+/workspace/etc/install-system-packages 2>&1 | tee -a /logs/build-$(hostname -s)
 
-services:
-  pbs-build:
-    image: ${CONTAINER_PLATFORM}
-    volumes:
-      - ../:/pbssrc
-      - ./:/src
-      - ./logs:/logs
-    entrypoint: /src/docker-entrypoint
-    environment: 
-      - LC_ALL=en_US.utf-8
-      - LANG=en_US.utf-8
-    env_file: .env
-    environment:
-      - LC_ALL=en_US.utf-8
-      - LANG=en_US.utf-8
-    networks:
-      ci:
-        aliases:
-          - pbs_server
-    hostname: pbs.ci
-    privileged: true
+# set environment var file
+touch /.env-file
+set >/.env-file
 
-networks:
-  ci:
-    driver: bridge
+capsh --print | grep -Eq '*cap_sys_admin*'
+if [ $? -eq 0 ]; then
+	if [ -x "/usr/lib/systemd/systemd" ]; then
+		exec /usr/lib/systemd/systemd --system
+	elif [ -x "/lib/systemd/systemd" ]; then
+		exec /lib/systemd/systemd --system
+	elif [ -x "/usr/sbin/init" ]; then
+		exec /usr/sbin/init
+	elif [ -x "/sbin/init" ]; then
+		exec /sbin/init
+	else
+		echo "Couldn't start container in systemd mode, starting in default mode"
+	fi
+fi

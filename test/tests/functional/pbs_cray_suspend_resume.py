@@ -95,10 +95,8 @@ at least resid .* is exclusive"
 
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)
-        ehost = job_stat[0]['exec_host'].partition('/')[0]
-        run_mom = self.moms[ehost]
-        s = run_mom.log_match(msg_expected, starttime=check_after, regexp=True,
-                              max_attempts=10)
+        s = self.mom.log_match(msg_expected, starttime=check_after,
+                               regexp=True, max_attempts=10)
         self.assertTrue(s)
 
     @tags('cray')
@@ -106,7 +104,7 @@ at least resid .* is exclusive"
         """
         Test basic admin-suspend funcionality for jobs and array jobs with
         restart on Cray. The restart will test if the node recovers properly
-        in maintenance. After turning off scheduling and a server restart, a
+        in maintenance. After turning off scheduling and a mom restart, a
         subjob is always requeued and node shows up as free.
         """
         j1 = Job(TEST_USER)
@@ -173,9 +171,9 @@ at least resid .* is exclusive"
         self.server.expect(NODE, {'state': 'maintenance'}, id=vname2)
         self.server.expect(NODE, {'maintenance_jobs': jid2})
 
-        # Turn off scheduling and restart server
+        # Turn off scheduling and restart mom
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        self.server.restart()
+        self.mom.restart()
 
         # Check that nodes are now free
         self.server.expect(NODE, {'state': 'free'}, id=vname1)

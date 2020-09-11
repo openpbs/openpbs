@@ -87,17 +87,16 @@
 #include <signal.h>
 #include <termios.h>
 #include <assert.h>
-#ifndef WIN32
 #include <sys/un.h>
 #include <syslog.h>
-#endif
-
 #include "pbs_ifl.h"
 #include "cmds.h"
 #include "libpbs.h"
 #include "net_connect.h"
 #include "dis.h"
 #include "port_forwarding.h"
+#include "credential.h"
+#include "ticket.h"
 
 #ifdef LOG_BUF_SIZE
 /* Also defined in port_forwarding.h */
@@ -106,12 +105,6 @@
 
 #define LOG_BUF_SIZE 1024
 #define ENV_PBS_JOBID "PBS_JOBID"
-
-#include "credential.h"
-#include "ticket.h"
-#ifdef WIN32
-#include "win_remote_shell.h"
-#endif
 #define CMDLINE 3
 
 #ifdef WIN32
@@ -135,10 +128,6 @@
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
 #endif /* HAVE_SYS_IOCTL_H */
-
-#if !defined(sgi) && !defined(linux) && !defined(WIN32)
-#include <sys/tty.h>
-#endif
 
 #if defined(FD_SET_IN_SYS_SELECT_H)
 #  include <sys/select.h>
@@ -1403,23 +1392,18 @@ no_suspend(int sig)
 
 /**
  * @brief
- *	Close a socket for both windows and unix.
+ *	Shut and Close a socket
  *
- * @return	void
  * @param	sock	file descriptor
  *
  * @return Void
  *
  */
 static void
-close_sock(int sock)
+shut_close_sock(int sock)
 {
 	shutdown(sock, 2);
-#ifdef WIN32
 	closesocket(sock);
-#else
-	close(sock);
-#endif /* WIN32 */
 }
 
 /**
@@ -1436,7 +1420,7 @@ bailout(int ret)
 {
 	int c;
 
-	close_sock(comm_sock);
+	shut_close_sock(comm_sock);
 	printf("Job %s is being deleted\n", new_jobname);
 	c = cnt2server(server_out);
 	if (c <= 0) {
@@ -2131,9 +2115,6 @@ set_sig_handlers(void)
 	signal(SIGBREAK, win_blockint);
 	signal(SIGTERM, win_blockint);
 
-	if (winsock_init()) {
-		return 1;
-	}
 	InitializeCriticalSection(&continuethread_cs);
 #else
 	/* Catch SIGPIPE on write() failures. */
@@ -2235,7 +2216,7 @@ retry:
 
 	if ((ret != CS_SUCCESS) && (ret != CS_AUTH_USE_IFF)) {
 		fprintf(stderr, "qsub: failed authentication with execution host\n");
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 
@@ -2245,19 +2226,19 @@ retry:
 		/*
 		 * We couldn't read data so try again if it is a port scan.
 		 */
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 	if (version != 1) {
 		fprintf(stderr, "qsub: unknown protocol version %d\n", version);
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 
 	jobid = disrst(news, &ret);
 	if ((ret != DIS_SUCCESS) || (strcmp(jobid, new_jobname) != 0)) {
 		fprintf(stderr, "qsub: Unknown Job Identifier %s\n", jobid);
-		close_sock(news);
+		shut_close_sock(news);
 		goto retry;
 	}
 
@@ -3487,7 +3468,7 @@ job_env_basic(void)
 #ifdef WIN32
 			back2forward_slash(c_escaped);
 #endif
-			strncpy(p, c_escaped, len - (p - job_env));
+			pbs_strncpy(p, c_escaped, len - (p - job_env));
 			free(c_escaped);
 			c_escaped = NULL;
 		} else
@@ -3636,7 +3617,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 	if ((job_env = (char *) malloc(len)) == NULL) return FALSE;
 	*job_env = '\0';
 
-	strcpy(job_env, basic_vlist);
+	pbs_strncpy(job_env, basic_vlist, len);
 
 	/* Send these variables with the job. */
 	/* POSIX requirement: If a variable is given without a value, supply the
@@ -4078,7 +4059,8 @@ recv_attrl(void *s, struct attrl **attrib)
 			 * from the front end qsub
 			 */
 			if (strcmp(p, ATTR_v) == 0 && pbs_hostvar != NULL) {
-				attr_v_val = malloc(len_v + strlen(pbs_hostvar) + 1);
+				int attr_v_len = len_v + strlen(pbs_hostvar) + 1;
+				attr_v_val = malloc(attr_v_len);
 				if (!attr_v_val)
 					return -1;
 				strcpy(attr_v_val, p + len_n);
@@ -5640,6 +5622,9 @@ main(int argc, char **argv, char **envp) /* qsub */
 	char **argv_cpy; /* copy argv for getopt */
 	int i;
 
+	if (initsocketlib())
+		return 1;
+
 	/* Set signal handlers */
 	set_sig_handlers();
 
@@ -5687,8 +5672,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 		exit(0);
 	}
 
-	strncpy(qsub_exe, argv[0], sizeof(qsub_exe)); /* note the name of the qsub executable */
-	qsub_exe[sizeof(qsub_exe) - 1] = '\0';
+	pbs_strncpy(qsub_exe, argv[0], sizeof(qsub_exe)); /* note the name of the qsub executable */
 	if (strlen(qsub_exe) != strlen(argv[0])) { /* exit with error instead of silent truncation */
 		fprintf(stderr, "qsub: Name of executable is too long\n");
 		exit_qsub(2);

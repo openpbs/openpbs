@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH TM 3 "24 February 2015" Local "PBS"
+.TH TM 3 "24 February 2015" Local "PBS Professional"
 .SH NAME
 tm_init, tm_nodeinfo, tm_poll, tm_notify, tm_spawn, tm_kill, tm_obit, tm_taskinfo, tm_atnode, tm_rescinfo, tm_publish, tm_subscribe, tm_finalize, tm_attach \- task management API
 .SH SYNOPSIS
@@ -168,7 +167,7 @@ tm_task_id tid;
 char \(**name;
 .br
 void \(**info;
-.br
+.br	
 int len;
 .br
 int \(**info_len;
@@ -202,8 +201,8 @@ management interface part of the PSCHED API.  In PBS, MOM
 provides the task manager functions.  This library opens a
 tcp socket to the MOM running on the local host and sends
 and receives messages using the DIS protocol (described in
-the PBS IDS).  The
-.B tm
+the PBS IDS).  The 
+.B tm 
 interface can only be used by a process within a PBS job.
 .LP
 The PSCHED Task Management API description used to create this
@@ -408,7 +407,7 @@ exists in the tm_node_id pointed to by
 .B tm_rescinfo(\|)
 makes a request for a string specifying the resources available on
 a node given by the argument
-.IR node .
+.IR node .  
 The string is returned in the buffer pointed to by
 .IR resource
 and is terminated by a NUL character unless the number of characters
@@ -418,7 +417,7 @@ The resource string PBS returns is formatted as follows:
 .sp
 A space separated set of strings from the
 .B uname
-system call.  The order of the strings is
+system call.  The order of the strings is 
 .B sysname,
 .B nodename,
 .B release,
@@ -454,30 +453,30 @@ than the supplied buffer, the data will have been truncated.
 .LP
 .B tm_attach(\|)
 commands MOM to create a new PBS "attached task" out of a session running on MOM's host.
-The
+The 
 .IR jobid
-parameter specifies the job which is to have a new task attached.  If it is NULL, the system
-will try to determine the correct
+parameter specifies the job which is to have a new task attached.  If it is NULL, the system 
+will try to determine the correct 
 .IR jobid.
-The
+The 
 .IR cookie
-parameter must be NULL.  The
+parameter must be NULL.  The 
 .IR pid
-parameter must be a non-zero process id for the process which is to be
-added to the job specified by
+parameter must be a non-zero process id for the process which is to be 
+added to the job specified by 
 .IR jobid.
-If
+If 
 .IR tid
-is non-NULL, it will be used to store the task id of the new task.  The
+is non-NULL, it will be used to store the task id of the new task.  The 
 .IR host
-and
-.IR port
-parameters specify where to contact MOM.
+and 
+.IR port 
+parameters specify where to contact MOM.  
 .IR host
-should be NULL.  The return value will be 0 if a new
+should be NULL.  The return value will be 0 if a new 
 task has been successfully
-created and non-zero on error.  The return value will be one of the
-TM error numbers defined in
+created and non-zero on error.  The return value will be one of the 
+TM error numbers defined in 
 .B tm.h
 as follows:
    TM_ESYSTEM          MOM cannot be contacted
@@ -494,3 +493,5 @@ the connection to MOM.
 .SH SEE ALSO
 pbs_mom(8B),
 pbs_sched(8B)
+
+

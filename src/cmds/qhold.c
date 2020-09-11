@@ -133,11 +133,8 @@ main(int argc, char **argv, char **envp) /* qhold */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	hold_type[0]='\0';
 
@@ -150,7 +147,7 @@ main(int argc, char **argv, char **envp) /* qhold */
 					errflg++;
 				}
 				else
-					strcpy(hold_type, optarg);
+					pbs_strncpy(hold_type, optarg, sizeof(hold_type));
 				break;
 			default :
 				errflg++;
@@ -173,7 +170,7 @@ main(int argc, char **argv, char **envp) /* qhold */
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qhold: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;

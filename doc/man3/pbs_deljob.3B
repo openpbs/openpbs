@@ -36,11 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-
-.TH pbs_deljob 3B "15 November 2019" Local "PBS"
+.TH pbs_deljob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_deljob
+.B pbs_deljob 
 \- delete a PBS batch job
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -50,11 +48,11 @@
 .B int pbs_deljob(int connect, char *jobID, char *extend)
 
 .SH DESCRIPTION
-Issues a batch request to delete a batch job.
+Issues a batch request to delete a batch job.  
 
-This function generates a
-.I Delete Job
-(6) batch request and sends it to the server over the connection specified by
+This function generates a 
+.I Delete Job 
+(6) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 If the batch job is running, the MoM sends the SIGTERM signal followed
@@ -65,12 +63,12 @@ sends mail to the job owner.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection over which to send batch request to server.
 
 .IP jobID 8
-ID of job, job array, subjob, or range of subjobs to be deleted.
+ID of job, job array, subjob, or range of subjobs to be deleted.  
 .br
 Format for a job:
 .br
@@ -96,7 +94,7 @@ null, it is appended to the message mailed to the job owner.
 The routine returns 0 (zero) on success.
 
 On error, the routine returns a non-zero exit value, and the error
-number is available in the global integer
+number is available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO

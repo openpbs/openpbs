@@ -421,14 +421,16 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 		if ((pg_bin = getenv("PGSQL_BIN")) == NULL) {
 			if (errmsg_cache)
 				free(errmsg_cache);
-			errmsg_cache = strdup("PGSQL_BIN not found in the environment");
+			errmsg_cache = strdup("PGSQL_BIN not found in the environment. Please run PBS_EXEC/libexec/pbs_db_env and try again.");
 			return -1;
 		}
 		sprintf(pg_ctl, "%s %s/pg_ctl -D %s/datastore", pg_libstr ? pg_libstr : "", pg_bin, pbs_conf.pbs_home_path);
 	}
 	if (pg_user == NULL) {
-		if (errmsg_cache)
+		if (errmsg_cache) {
 			free(errmsg_cache);
+			errmsg_cache = NULL;
+		}
 		errmsg = (char *)malloc(PBS_MAX_DB_CONN_INIT_ERR + 1);
 		if (errmsg == NULL) {
 			errmsg_cache = strdup("Out of memory\n");

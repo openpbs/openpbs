@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_connect 3B "15 November 2019" Local "PBS"
+.TH pbs_connect 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_connect
+.B pbs_connect 
 \- return a connection handle from a PBS batch server
 
 .SH SYNOPSIS
@@ -47,7 +46,7 @@
 .br
 #include <pbs_ifl.h>
 .sp
-.B int pbs_connect(char *server)
+.B int pbs_connect(char *server) 
 
 .SH DESCRIPTION
 This function establishes a virtual stream (TCP/IP) connection with
@@ -55,7 +54,7 @@ the specified batch server.
 
 Returns a connection handle.
 
-.B pbs_connect()
+.B pbs_connect() 
 determines whether or not the complex has a failover server
 configured.  It also determines which server is the primary and which
 is the secondary.
@@ -68,8 +67,8 @@ Specifies name of server to connect to.  Format:
 
 If you do not specify a port, PBS uses the default.
 
-If
-.I server
+If 
+.I server 
 is a null pointer or a null string, this function opens a
 connection to the default server.  The default server is specified in
 the PBS_DEFAULT environment variable or the PBS_SERVER parameter in
@@ -83,26 +82,26 @@ function.  You can send multiple requests over one connection.
 
 .SH CLEANUP
 After you are done using the connection handle, close the connection
-via a call to
+via a call to 
 .B pbs_disconnect().
 
 .SH SIDE EFFECTS
 
-The global variable
-.I pbs_server
+The global variable 
+.I pbs_server 
 is declared in pbs_ifl.h.  This
 variable is set on return to point to the server name to which
-.B pbs_connect()
+.B pbs_connect() 
 connected or attempted to connect.
 
 .SH Windows Requirement
 
-In order to use
-.B pbs_connect()
+In order to use 
+.B pbs_connect() 
 with Windows, initialize the network
 library and link with winsock2.  To do this, call winsock_init()
-before calling
-.B pbs_connect(),
+before calling 
+.B pbs_connect(), 
 and link against the ws2_32.lib library.
 
 .SH RETURN VAlUE
@@ -110,8 +109,10 @@ On success, the routine returns a connection handle which is a
 non-negative integer.
 
 If an error occurred, the routine returns -1, and the error number is
-available in the global integer
+available in the global integer 
 .I pbs_errno.
 
 .SH SEE ALSO
 pbs_disconnect(3B)
+
+

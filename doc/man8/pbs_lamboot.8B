@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_lamboot 8B "3 December 2019" Local "PBS"
+.TH pbs_lamboot 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_lamboot
+.B pbs_lamboot 
 \- PBS front end to LAM's lamboot program
 
 .SH SYNOPSIS
@@ -49,51 +48,51 @@
 --version
 
 .SH DESCRIPTION
-.B Deprecated.
-The PBS command
-.B pbs_lamboot
-replaces the standard
+.B Deprecated.  
+The PBS command 
+.B pbs_lamboot 
+replaces the standard 
 .I lamboot
 command in a PBS
-LAM MPI job, for starting LAM software on each of the
+LAM MPI job, for starting LAM software on each of the 
 PBS execution hosts running Linux 2.4 or higher.
 
 Usage is the same as for LAM's
 .I lamboot.
 All arguments except for
-.I bhost
-are passed directly to
-.I lamboot.
+.I bhost 
+are passed directly to 
+.I lamboot.  
 PBS will issue a warning saying that the
-.I bhost
-argument is ignored by PBS since input is taken automatically
-from
+.I bhost 
+argument is ignored by PBS since input is taken automatically 
+from 
 .B $PBS_NODEFILE.
-The
-.B pbs_lamboot
+The 
+.B pbs_lamboot 
 program will not redundantly consult the
 .B $PBS_NODEFILE
-if it has been instructed to boot the nodes using the
+if it has been instructed to boot the nodes using the 
 .I tm
 module.  This instruction happens when an argument is
 passed to
 .B pbs_lamboot
-containing "-ssi boot tm" or when the
-.B LAM_MPI_SSI_boot
+containing "-ssi boot tm" or when the 
+.B LAM_MPI_SSI_boot 
 environment variable exists with the value
 .I tm.
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B pbs_lamboot
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
 The operands for
-.B pbs_lamboot
-are the same as for
+.B pbs_lamboot 
+are the same as for 
 .I lamboot.
 
 
@@ -101,12 +100,9 @@ are the same as for
 
 
 .SH PATH
-The PATH on remote machines must contain
+The PATH on remote machines must contain 
 .I PBS_EXEC/bin.
 
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.LP
 lamboot(1), tm(3)

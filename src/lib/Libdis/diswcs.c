@@ -86,6 +86,5 @@ diswcs(int stream, const char *value, size_t nchars)
 	if (retval == DIS_SUCCESS && nchars > 0 &&
 		dis_puts(stream, value, nchars) != nchars)
 		retval = DIS_PROTO;
-	return ((disw_commit(stream, retval == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : retval);
+	return retval;
 }

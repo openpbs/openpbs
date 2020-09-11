@@ -66,7 +66,9 @@ chk_Jrange(char *arg)
 {
 	char *pc;
 	char *s;
-	long   x, y, z=1;
+	long start;
+	long end;
+	long step;
 
 	pc = arg;
 	if (!isdigit((int)*pc))
@@ -77,10 +79,10 @@ chk_Jrange(char *arg)
 	if (*pc != '-') {
 		return (1);
 	}
-	x = strtol(s, NULL, 10);
-	if (x < 0)
+	start = strtol(s, NULL, 10);
+	if (start < 0)
 		return 1;
-	if (x == LONG_MAX)
+	if (start == LONG_MAX)
 		return 2;
 	s = ++pc;
 	if (!isdigit((int)*pc)) {
@@ -91,10 +93,10 @@ chk_Jrange(char *arg)
 	if ((*pc != '\0') && (*pc != ':')) {
 		return (1);
 	}
-	y = strtol(s, NULL, 10);
-	if (y <= x)
+	end = strtol(s, NULL, 10);
+	if (start >= end)
 		return 1;
-	if (y == LONG_MAX)
+	if (end == LONG_MAX)
 		return 2;
 
 	if (*pc++ == ':') {
@@ -104,10 +106,10 @@ chk_Jrange(char *arg)
 		if (*pc != '\0') {
 			return (1);
 		}
-		z = strtol(s, NULL, 10);
-		if (z < 1)
+		step = strtol(s, NULL, 10);
+		if (step < 1)
 			return (1);
-		if (z == LONG_MAX)
+		if (step == LONG_MAX)
 			return (2);
 	}
 	return 0;

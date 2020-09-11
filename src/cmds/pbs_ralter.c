@@ -48,9 +48,12 @@
 #include "cmds.h"
 #include "net_connect.h"
 
+#define OPT_BUF_LEN 256
+
 static struct attrl *attrib = NULL;
 static time_t dtstart;
 static time_t dtend;
+int force_alter = FALSE;
 
 /*
  * @brief process options input to the command.
@@ -75,8 +78,9 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char	*endptr = NULL;
 	long	temp = 0;
 	char dur_buf[800];
+	int	alter_duration = FALSE;
 
-	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:l:")) != EOF) {
+	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:l:W:")) != EOF) {
 		switch (c) {
 			case 'E':
 				t = cvtdate(optarg);
@@ -131,7 +135,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					errflg++;
 					break;
 				}
-				strcpy(dest, &optarg[1]);
+				pbs_strncpy(dest, &optarg[1], OPT_BUF_LEN);
 				break;
 
 			case 'U':
@@ -144,12 +148,21 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 			case 'D':
 				snprintf(dur_buf, sizeof(dur_buf), "%s", optarg);
 				set_attr_error_exit(&attrib, ATTR_resv_duration, dur_buf);
+				alter_duration = TRUE;
 				break;
 			case 'l':
 				if (strncmp(optarg, "select=", 7) == 0)
 					set_attr_resc_error_exit(&attrib, ATTR_l, "select", (optarg + 7));
 				else {
 					fprintf(stderr, "pbs_ralter -l only allows for select\n");
+					errflg++;
+				}
+				break;
+			case 'W':
+				if (strcmp(optarg, "force") == 0)
+					force_alter = TRUE;
+				else {
+					fprintf(stderr, "pbs_ralter: illegal -W value\n");
 					errflg++;
 				}
 				break;
@@ -160,6 +173,11 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		} /* End of lengthy 'switch on option' constuction */
 	}   /* End of lengthy while loop on 'options' */
 
+	/* Check that force option is used with 'R', 'E' or 'D' option */
+	if ((force_alter == TRUE) && (dtstart == 0) && (dtend == 0) && (alter_duration == 0)) {
+		fprintf(stderr, "pbs_ralter: No support for requested service\n");
+		errflg++;
+	}
 	*attrp = attrib;
 	return (errflg);
 }
@@ -178,6 +196,7 @@ print_usage()
 	"                [-U (+/-)username[,(+/-)username]...]\n"
 	"                [-G [(+/-)group[,(+/-)group]...]]\n"
 	"                [-D duration]\n"
+	"                [-W force]\n"
 	"                resv_id\n";
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usag2);
@@ -237,23 +256,21 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 	int		errflg = 0;			/* command line option error */
 	int		connect = -1;			/* return from pbs_connect */
 	char		*errmsg = NULL;			/* return from pbs_geterrmsg */
-	char		destbuf[256] = {0};		/* buffer for option server */
+	char		destbuf[OPT_BUF_LEN] = {0};		/* buffer for option server */
 	struct attrl 	*attrib = NULL;			/* the attrib list */
 	struct		ecl_attribute_errors *err_list = NULL;
 	char		resv_id[PBS_MAXCLTJOBID] = {0};
 	char		resv_id_out[PBS_MAXCLTJOBID] = {0};
 	char		server_out[MAXSERVERNAME] = {0};
 	char		*stat = NULL;
+	char		*extend = NULL;
 
 	/*test for real deal or just version and exit*/
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	destbuf[0] = '\0';
 	errflg = process_opts(argc, argv, &attrib, destbuf); /* get cmdline options */
@@ -279,12 +296,15 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 		exit(pbs_errno);
 	}
 
-	strcpy(resv_id, argv[optind]);
+	pbs_strncpy(resv_id, argv[optind], sizeof(resv_id));
 	if (get_server(resv_id, resv_id_out, server_out)) {
 		fprintf(stderr, "pbs_ralter: illegally formed reservation identifier: %s\n", resv_id);
 		exit(2);
 	}
-	stat = pbs_modify_resv(connect, resv_id_out, (struct attropl *)attrib, NULL);
+
+	if (force_alter == TRUE)
+		extend = "force";
+	stat = pbs_modify_resv(connect, resv_id_out, (struct attropl *)attrib, extend);
 
 	if (stat == NULL) {
 		if ((err_list = pbs_get_attributes_in_error(connect)))

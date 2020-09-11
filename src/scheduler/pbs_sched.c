@@ -77,6 +77,7 @@
 #include	<errno.h>
 #include	<netdb.h>
 #include	<unistd.h>
+#include	<pwd.h>
 #include	<sys/wait.h>
 #include	<sys/time.h>
 #include        <sys/stat.h>
@@ -103,7 +104,6 @@
 #include	"server_limits.h"
 #include	"net_connect.h"
 #include	"rm.h"
-#include	"tpp.h"
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_share.h"
@@ -140,7 +140,6 @@ int		got_sigpipe = 0;
 /* used in segv restart */
 time_t segv_start_time;
 time_t segv_last_time;
-struct tpp_config tpp_conf; /* global settings for tpp */
 
 #ifdef NAS /* localmod 030 */
 extern int do_soft_cycle_interrupt;
@@ -354,7 +353,7 @@ read_config(char *file)
 
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-	if (chk_file_sec(file, 0, 0, S_IWGRP|S_IWOTH, 1))
+	if (chk_file_sec_user(file, 0, 0, S_IWGRP|S_IWOTH, 1, getuid()))
 		return (-1);
 #endif
 
@@ -487,10 +486,8 @@ badconn(char *msg)
 			strcat(buf, hold);
 		}
 	}
-	else {
-		strncpy(buf, phe->h_name, sizeof(buf));
-		buf[sizeof(buf)-1] = '\0';
-	}
+	else
+		pbs_strncpy(buf, phe->h_name, sizeof(buf));
 
 	sprintf(log_buffer, "%s on port %u %s",
 #ifdef NAS /* localmod 005 */
@@ -732,9 +729,8 @@ lock_out(int fds, int op)
 	flock.l_start  = 0;
 	flock.l_len    = 0;	/* whole file */
 	if (fcntl(fds, F_SETLK, &flock) < 0) {
-		(void)strcpy(log_buffer, "pbs_sched: another scheduler running\n");
-		log_err(errno, msg_daemonname, log_buffer);
-		fprintf(stderr, "%s", log_buffer);
+		log_err(errno, msg_daemonname, "another scheduler running");
+		fprintf(stderr, "pbs_sched: another scheduler running\n");
 		exit(1);
 	}
 }
@@ -802,10 +798,7 @@ are_we_primary()
 int
 main(int argc, char *argv[])
 {
-	fd_set selset;
-	struct timeval tv;
-	char *nodename = NULL;
-	int		go, c, rc, errflg = 0;
+	int		go, c, errflg = 0;
 	int		lockfds;
 	int		t = 1;
 	pid_t		pid;
@@ -818,7 +811,6 @@ main(int argc, char *argv[])
 	extern	char	*optarg;
 	extern	int	optind, opterr;
 	char	       *runjobid = NULL;
-	extern	int	tpp_fd;
 	fd_set		fdset;
 	int		opt_no_restart = 0;
 #ifdef NAS /* localmod 031 */
@@ -851,12 +843,11 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
-#ifndef DEBUG
-	if ((geteuid() != 0) || (getuid() != 0)) {
-		fprintf(stderr, "%s: Must be run by root\n", argv[0]);
+	if (pbs_loadconf(0) == 0)
 		return (1);
-	}
-#endif	/* DEBUG */
+
+	if (validate_running_user(argv[0]) == 0)
+		return (1);
 
 	/* disable attribute verification */
 	set_no_attribute_verification();
@@ -867,9 +858,6 @@ main(int argc, char *argv[])
 			argv[0]);
 		return (1);
 	}
-
-	if (pbs_loadconf(0) == 0)
-		return (1);
 
 	set_log_conf(pbs_conf.pbs_leaf_name, pbs_conf.pbs_mom_node_name,
 			pbs_conf.locallog, pbs_conf.syslogfac,
@@ -982,7 +970,7 @@ main(int argc, char *argv[])
 		(void)sprintf(log_buffer, "%s/sched_priv_%s", pbs_conf.pbs_home_path, sc_name);
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-	c  = chk_file_sec(log_buffer, 1, 0, S_IWGRP|S_IWOTH, 1);
+	c  = chk_file_sec_user(log_buffer, 1, 0, S_IWGRP|S_IWOTH, 1, getuid());
 	c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
 	if (c != 0) exit(1);
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
@@ -1283,51 +1271,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	tpp_fd = -1;
 	sprintf(log_buffer, "Out of memory");
-	if (pbs_conf.pbs_leaf_name) {
-		char *p;
-		nodename = strdup(pbs_conf.pbs_leaf_name);
-
-		/* reset pbs_leaf_name to only the first leaf name with port */
-		p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
-		if (p)
-			*p = '\0';
-		p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
-		if (p)
-			*p = '\0';
-	} else {
-		nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
-	}
-	if (!nodename) {
-		log_err(-1, __func__, log_buffer);
-		fprintf(stderr, "%s\n", "Unable to determine TPP node name");
-		return (1);
-	}
-
-	/* set tpp config */
-	rc = set_tpp_config(NULL, &pbs_conf, &tpp_conf, nodename, sched_port, pbs_conf.pbs_leaf_routers);
-	free(nodename);
-
-	if (rc == -1) {
-		fprintf(stderr, "Error setting TPP config\n");
-		return -1;
-	}
-
-	if ((tpp_fd = tpp_init(&tpp_conf)) == -1) {
-		fprintf(stderr, "tpp_init failed\n");
-		return -1;
-	}
-	/*
-	 * Wait for net to get restored, ie, app to connect to routers
-	 */
-	FD_ZERO(&selset);
-	FD_SET(tpp_fd, &selset);
-	tv.tv_sec = 5;
-	tv.tv_usec = 0;
-	select(FD_SETSIZE, &selset, NULL, NULL, &tv);
-
-	tpp_poll(); /* to clear off the read notification */
 
 	/* Initialize cleanup lock */
 	if (init_mutex_attr_recursive(&attr) == 0)

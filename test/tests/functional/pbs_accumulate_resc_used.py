@@ -138,12 +138,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -153,9 +150,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -165,9 +161,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         attr['flag'] = 'h'
@@ -178,9 +173,8 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
 
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match("resourcedef;copy hook-related file")
-        self.momB.log_match("resourcedef;copy hook-related file")
-        self.momC.log_match("resourcedef;copy hook-related file")
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
     def test_epilogue(self):
         """
@@ -766,34 +760,23 @@ else:
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_i2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'float'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_f2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='stra2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
+        for m in momlist:
+            m.log_match("resourcedef;copy hook-related file")
 
         # Create an epilogue hook
         hook_body = """
@@ -842,8 +825,7 @@ j.resources_used["stra2"] = '"glad"'
              'resources_used.stra2': "\"glad\"",
              'job_state': 'F'}
         self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
-                           offset=30, interval=1,
-                           max_attempts=20, id=jid)
+                           offset=30, interval=1, id=jid)
 
         # Restart server and verifies that the values are still the same
         self.server.restart()
@@ -1168,12 +1150,9 @@ e.job.resources_used["foo_f"] = 0.10
 
         # Verify the copy message in the logs to avoid
         # race conditions
-        self.momA.log_match(
-            "pro.PY;copy hook-related file", max_attempts=10)
-        self.momB.log_match(
-            "pro.PY;copy hook-related file", max_attempts=10)
-        self.momC.log_match(
-            "pro.PY;copy hook-related file", max_attempts=10)
+        momlist = [self.momA, self.momB, self.momC]
+        for m in momlist:
+            m.log_match("pro.PY;copy hook-related file")
 
         hook_body = """
 import pbs
@@ -1190,12 +1169,8 @@ e.job.resources_used["cput"] = 10
 
         # Verify the copy message in the logs to avoid
         # race conditions
-        self.momA.log_match(
-            "epi.PY;copy hook-related file", max_attempts=10)
-        self.momB.log_match(
-            "epi.PY;copy hook-related file", max_attempts=10)
-        self.momC.log_match(
-            "epi.PY;copy hook-related file", max_attempts=10)
+        for m in momlist:
+            m.log_match("epi.PY;copy hook-related file")
 
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}
@@ -1231,7 +1206,7 @@ e.job.resources_used["cput"] = 10
             'job_state': 'R',
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.3'}, attrop=PTL_AND,
-            id=jid1, max_attempts=30, interval=2)
+            id=jid1, interval=2)
 
         # Force delete the job
         self.server.deljob(id=jid1, wait=True, attr_W="force")

@@ -104,7 +104,6 @@ req_signaljob(struct batch_request *preq)
 {
 	int anygood = 0;
 	int i;
-	int j;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
 	int offset;
@@ -115,7 +114,10 @@ req_signaljob(struct batch_request *preq)
 	int suspend = 0;
 	int resume = 0;
 	char *vrange;
-	int x, y, z;
+	int start;
+	int end;
+	int step;
+	int count;
 	int err = PBSE_NONE;
 
 	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_signal.rq_jid);
@@ -224,19 +226,14 @@ req_signaljob(struct batch_request *preq)
 
 	vrange = range;
 	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		} else if (i == 1)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i >= 0) {
-				if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-					anygood++;
-				}
-			}
-			x += z;
+		for (i = start; i <= end; i += step) {
+			if (get_subjob_state(parent, numindex_to_offset(parent, i)) == JOB_STATE_RUNNING)
+				anygood++;
 		}
 		vrange = pc;
 	}
@@ -250,24 +247,18 @@ req_signaljob(struct batch_request *preq)
 	++preq->rq_refct;	/* protect the request/reply struct */
 
 	while (1) {
-		if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
+		if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			break;
 		} else if (i == 1)
 			break;
-		while (x <= y) {
-			i = numindex_to_offset(parent, x);
-			if (i < 0) {
-				x += z;
-				continue;
-			}
-
-			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
+		for (i = start; i <= end; i += step) {
+			int idx = numindex_to_offset(parent, i);
+			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
+				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
 					dup_br_for_subjob(preq, pjob, req_signaljob2);
 				}
 			}
-			x += z;
 		}
 		range = pc;
 	}
@@ -421,8 +412,8 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
 
 	newreq->rq_extra = extra;
 
-	(void)strcpy(newreq->rq_ind.rq_signal.rq_jid, pjob->ji_qs.ji_jobid);
-	(void)strncpy(newreq->rq_ind.rq_signal.rq_signame, signame, PBS_SIGNAMESZ);
+	strcpy(newreq->rq_ind.rq_signal.rq_jid, pjob->ji_qs.ji_jobid);
+	strncpy(newreq->rq_ind.rq_signal.rq_signame, signame, PBS_SIGNAMESZ);
 	return (relay_to_mom(pjob, newreq, func));
 
 	/* when MOM replies, we just free the request structure */
@@ -500,6 +491,7 @@ post_signal_req(struct work_task *pwt)
 				/* update all released resources */
 				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 				rel_resc(pjob); /* release resc and nodes */
+				job_save(pjob); /* save released resc and nodes */
 				log_suspend_resume_record(pjob, PBS_ACCT_SUSPEND);
 				/* Since our purpose is to put the node in maintenance state if "admin-suspend"
 				 * signal is used, be sure that rel_resc() is called before set_admin_suspend().

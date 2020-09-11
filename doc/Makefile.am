@@ -40,8 +40,8 @@
 #
 
 notrans_dist_man1_MANS = \
-	man1/nqs2pbs.1B \
 	man1/pbsdsh.1B \
+	man1/pbs_login.1B \
 	man1/pbs_python.1B \
 	man1/pbs_ralter.1B \
 	man1/pbs_rdel.1B \
@@ -137,15 +137,12 @@ notrans_dist_man8_MANS = \
 	man8/pbs_iff.8B \
 	man8/pbs_interactive.8B \
 	man8/pbs_lamboot.8B \
-	man8/pbs_migrate_users.8B \
-	man8/pbs_migration_assistant.bat.8B \
 	man8/pbs_mkdirs.8B \
 	man8/pbs_mom.8B \
 	man8/pbs_mpihp.8B \
 	man8/pbs_mpilam.8B \
 	man8/pbs_mpirun.8B \
 	man8/pbsnodes.8B \
-	man8/pbs_password.8B \
 	man8/pbs_probe.8B \
 	man8/pbsrun.8B \
 	man8/pbsrun_unwrap.8B \
@@ -165,4 +162,6 @@ notrans_dist_man8_MANS = \
 	man8/qstart.8B \
 	man8/qstop.8B \
 	man8/qterm.8B \
-	man8/tracejob.8B
+	man8/tracejob.8B \
+	man8/win_postinstall.py.8B
+

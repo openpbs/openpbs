@@ -159,21 +159,16 @@ PBSD_rdrpy(int c)
  */
 
 void
-PBSD_FreeReply(reply)
-struct batch_reply *reply;
+PBSD_FreeReply(struct batch_reply *reply)
 {
-	struct brp_select   *psel;
-	struct brp_select   *pselx;
-	struct brp_cmdstat  *pstc;
-	struct brp_cmdstat  *pstcx;
-	struct attrl        *pattrl;
-	struct attrl	    *pattrx;
+	struct brp_select *psel;
+	struct brp_select *pselx;
 
 	if (reply == 0)
 		return;
 	if (reply->brp_choice == BATCH_REPLY_CHOICE_Text) {
 		if (reply->brp_un.brp_txt.brp_str) {
-			(void)free(reply->brp_un.brp_txt.brp_str);
+			free(reply->brp_un.brp_txt.brp_str);
 			reply->brp_un.brp_txt.brp_str = NULL;
 			reply->brp_un.brp_txt.brp_txtlen = 0;
 		}
@@ -182,37 +177,21 @@ struct batch_reply *reply;
 		psel = reply->brp_un.brp_select;
 		while (psel) {
 			pselx = psel->brp_next;
-			(void)free(psel);
+			free(psel);
 			psel = pselx;
 		}
 
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_Status) {
-		pstc = reply->brp_un.brp_statc;
-		while (pstc) {
-			pstcx = pstc->brp_stlink;
-			pattrl = pstc->brp_attrl;
-			while (pattrl) {
-				pattrx = pattrl->next;
-				if (pattrl->name)
-					(void)free(pattrl->name);
-				if (pattrl->resource)
-					(void)free(pattrl->resource);
-				if (pattrl->value)
-					(void)free(pattrl->value);
-				(void)free(pattrl);
-				pattrl = pattrx;
-			}
-			(void)free(pstc);
-			pstc = pstcx;
-		}
+		if (reply->brp_un.brp_statc)
+			pbs_statfree(reply->brp_un.brp_statc);
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_RescQuery) {
-		(void)free(reply->brp_un.brp_rescq.brq_avail);
-		(void)free(reply->brp_un.brp_rescq.brq_alloc);
-		(void)free(reply->brp_un.brp_rescq.brq_resvd);
-		(void)free(reply->brp_un.brp_rescq.brq_down);
+		free(reply->brp_un.brp_rescq.brq_avail);
+		free(reply->brp_un.brp_rescq.brq_alloc);
+		free(reply->brp_un.brp_rescq.brq_resvd);
+		free(reply->brp_un.brp_rescq.brq_down);
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_PreemptJobs) {
-		(void)free(reply->brp_un.brp_preempt_jobs.ppj_list);
+		free(reply->brp_un.brp_preempt_jobs.ppj_list);
 	}
 
-	(void)free(reply);
+	free(reply);
 }

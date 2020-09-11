@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_sched 8B "20 November 2019" Local "PBS"
+.TH pbs_sched 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
 .B pbs_sched
 \- run a PBS scheduler
@@ -47,6 +46,7 @@
 [-a <alarm>] [-c <clientsfile>] [-d <home dir>]
           [-I <scheduler name>] [-L <logfile>] [-n] [-N]
           [-p <output file>] [-R <port number>] [-S <port number>]
+          [-t <num threads>]
 
 .B pbs_sched
 --version
@@ -151,6 +151,21 @@ in pbs.conf.
 Default value for default scheduler: 15004
 .br
 Default value for multisched: none
+
+.IP "-t <num threads>" 13
+Specifies number of threads for this scheduler.
+.br
+Scheduler automatically caps number of threads at the number of cores
+(or hyperthreads if applicable), regardless of value of
+.I num threads.
+.br
+Overrides PBS_SCHED_THREADS environment variable and PBS_SCHED_THREADS
+parameter in pbs.conf.
+.br
+Valid values:
+.I >=1
+.br
+Default: half the number of cores (or hyperthreads if applicable) on this host
 
 .IP "--version" 13
 The
@@ -265,8 +280,7 @@ Default:
 .I True all
 
 .IP cpus_per_ssinode 13
-.B Deprecated.
-Such configuration now occurs automatically.
+.B Obsolete.
 
 .IP dedicated_prefix 13
 Queue names with this prefix are treated as dedicated
@@ -468,11 +482,6 @@ Format: Quoted string
 Default: Not in force
 .RE
 
-.IP key 13
-.B Deprecated.
-Use
-.I job_sort_key.
-
 .IP load_balancing 13
 When set to
 .I True,
@@ -515,8 +524,7 @@ Default:
 .I 24:00:00
 
 .IP mem_per_ssinode 13
-.B Deprecated.
-Such configuration now occurs automatically.
+.B Obsolete.
 
 .IP mom_resources 13
 This option is used to query the MoMs to set the value of
@@ -607,18 +615,6 @@ Format: String
 Default:
 .I True all
 
-.IP preempt_checkpoint 13
-.B Deprecated.
-Add "C" to the
-.I preempt_order
-scheduler attribute.
-
-.IP preempt_fairshare 13
-.B Deprecated.
-Add "fairshare" to
-.I preempt_prio
-parameter.
-
 .IP preempt_order 13
 .B Obsolete.
 See the
@@ -637,32 +633,10 @@ See the
 .I preempt_queue_prio
 scheduler attribute.
 
-.IP preempt_requeue 13
-.B Deprecated.
-Add an "R" to the
-.I preempt_order
-scheduler attribute.
-
 .IP preempt_sort 13
 .B Obsolete.
 See the
 .I preempt_sort
-scheduler attribute.
-
-.IP preempt_starving 13
-.B Deprecated.
-Add
-.I """starving_jobs"""
-to
-.I preempt_prio
-parameter.
-
-.IP preempt_suspend 13
-.B Deprecated.
-Add an
-.I """S"""
-to the
-.I preempt_order
 scheduler attribute.
 
 .IP primetime_prefix 13
@@ -818,28 +792,30 @@ Default: Empty list
 .IP round_robin 13
 If set to
 .I True,
-this scheduler considers one job from
-the first queue, then one job from the second queue, and so on
-in a circular fashion. If
-.I sort_queues
-is set to
+this scheduler considers one job from the first queue, then one job
+from the second queue, and so on in a circular fashion.  The queues
+are ordered with the highest-priority queue first.  Each scheduling
+cycle starts with the same highest-priority queue, which will
+therefore get preferential treatment.
+
+If there are groups of queues with the same priority, and this
+parameter is set to
 .I True,
-the queues are ordered with the highest-priority queue first. Each
-scheduling cycle starts with the same highest-priority queue,
-which will therefore get preferential treatment.  If
+this scheduler round-robins through each
+group of queues before moving to the next group.
+
+If
 .I round_robin
 is set to
 .I False,
 this scheduler considers jobs according to the setting of the
 .I by_queue
-attribute.
-When
-.I True,
-overrides the
-.I by_queue
-attribute.
-.br
-Format: Boolean
+parameter.  When
+.I True, overrides the
+.I by_queue parameter.
+
+Format:
+.I Boolean
 .br
 Default:
 .I False all
@@ -874,38 +850,8 @@ Default:
 .I pack all
 .RE
 
-.IP sort_by 13
-.B Deprecated.
-Use
-.I job_sort_key.
-
 .IP sort_queues 13
-.B Deprecated.
-When set to
-.I True,
-queues are sorted so that the highest-priority queues
-are considered first. Queues are sorted by each queue's
-.I priority
-attribute. The queues are sorted in a descending
-fashion, that is, a queue with priority 6 comes before a
-queue with priority 3.
-
-When set to
-.I False,
-queues are not sorted.
-
-This is a prime option, which means it can be selectively
-applied to primetime or non-primetime.
-
-The sorted order of queues is not taken into consideration unless
-.I by_queue
-is set to
-.I True.
-.br
-Format: Boolean
-.br
-Default:
-.I True ALL
+.B Obsolete.
 
 .IP strict_fifo 13
 .B Deprecated.
@@ -932,16 +878,7 @@ Default:
 .RE
 
 .IP sync_time 13
-.B Deprecated.
-The amount of time between writing the fairshare usage
-data to disk. Requires
-.I fair_share
-to be enabled.
-.br
-Format: Duration
-.br
-Default:
-.I 1:00:00
+.B Obsolete.
 
 .IP unknown_shares 13
 The number of shares for the
@@ -1043,6 +980,4 @@ This scheduler closes its log file and shuts down.
 Zero upon normal termination.
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide,
 pbs_server(8B), pbs_mom(8B)

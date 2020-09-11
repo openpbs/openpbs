@@ -226,7 +226,7 @@ dis_reply_write(int sfds, struct batch_request *preq)
 	}
 
 	if (rc == 0) {
-		dis_flush(sfds);
+		rc = dis_flush(sfds);
 	}
 
 #ifndef WIN32
@@ -249,6 +249,24 @@ dis_reply_write(int sfds, struct batch_request *preq)
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_WARNING,
 			"dis_reply_write", log_buffer);
 		close_client(sfds);
+	}
+	return rc;
+}
+
+int
+reply_send_status_part(struct batch_request *preq)
+{
+	int rc = PBSE_SYSTEM;
+	if (preq->rq_conn >= 0) {
+		struct batch_reply *preply = &preq->rq_reply;
+		preply->brp_is_part = 1;
+		rc = dis_reply_write(preq->rq_conn, preq);
+		if (rc != PBSE_NONE)
+			return rc;
+		reply_free(&preq->rq_reply);
+		preply->brp_choice = BATCH_REPLY_CHOICE_Status;
+		CLEAR_HEAD(preply->brp_un.brp_status);
+		preply->brp_count = 0;
 	}
 	return rc;
 }
@@ -286,6 +304,8 @@ reply_send(struct batch_request *request)
 		free_br(request);
 		return 0;
 	}
+
+	request->rq_reply.brp_is_part = 0;
 
 
 	/* if this is a child request, just move the error to the parent */

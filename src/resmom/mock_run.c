@@ -54,6 +54,7 @@
 #include "mom_func.h"
 #include "pbs_error.h"
 #include "resource.h"
+#include "mom_server.h"
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #include "renew_creds.h"
@@ -110,7 +111,7 @@ mock_run_record_finish_exec(job *pjob)
 	time_resc_updated = time_now;
 	mock_run_mom_set_use(pjob);
 
-	update_ajob_status(pjob);
+	enqueue_update_for_send(pjob, IS_RESCUSED);
 	next_sample_time = min_check_poll;
 
 	return;
@@ -189,7 +190,7 @@ mock_run_mom_set_use(job *pjob)
 	}
 
 	vmemd = &svr_resc_def[RESC_VMEM];
-	
+
 	for (i = 0; rd[i] != NULL; i++) {
 		rdefp = rd[i];
 		pres = find_resc_entry(at, rdefp);
@@ -269,7 +270,7 @@ mock_run_job_purge(job *pjob)
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
-	del_job_dirs(pjob);
+	del_job_dirs(pjob, NULL);
 
 	/* delete job file */
 	del_job_related_file(pjob, JOB_FILE_SUFFIX);

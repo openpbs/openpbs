@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_statvnode 3B "15 November 2019" Local "PBS"
+.TH pbs_statvnode 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
 .B pbs_statvnode
 \- get status of PBS vnode(s) on execution hosts
@@ -48,16 +47,16 @@
 .sp
 .nf
 .B struct batch_status *
-.B pbs_statvnode(int connect, char *target, struct attrl *output_attribs,
+.B pbs_statvnode(int connect, char *target, struct attrl *output_attribs, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 
 .SH DESCRIPTION
 Issues a batch request to get the status of PBS vnodes on execution hosts.
 
-Generates a
-.I Status Node
-(58) batch request and sends it to the server over the connection specified by
+Generates a 
+.I Status Node 
+(58) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 Returns specified attributes or all attributes of specified execution
@@ -65,8 +64,8 @@ host vnode or all execution host vnodes.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection handle over which to send batch request to server.
 
 .IP target 8
@@ -76,7 +75,7 @@ attributes of all execution host vnodes known to the server.
 
 .IP output_attribs 8
 Pointer to a list of attributes to return.  If this argument is null,
-returns all attributes.  Each attribute is described in an
+returns all attributes.  Each attribute is described in an 
 .I attrl
 structure, defined in pbs_ifl.h as:
 .nf
@@ -94,33 +93,33 @@ Character string for extensions to command.  Not currently used.
 .B Members of attrl Structure
 .br
 .IP name 8
-Points to a string containing the name of the attribute.
+Points to a string containing the name of the attribute.  
 
 .IP resource 8
 Points to a string containing the name of a resource.  Used only when
 the specified attribute contains resource information.  Otherwise,
-.I resource
+.I resource 
 should be a null pointer.
 
 .IP value 8
-Points to a string containing the value of the attribute or resource.
+Points to a string containing the value of the attribute or resource.  
 
 .IP next 8
 Points to next attribute in list.  A null pointer terminates the list.
 
 .SH RETURN VALUE
 Returns a pointer to a list of
-.I batch_status
+.I batch_status 
 structures describing the vnode(s).
 
 If an error occurred, the routine returns a null pointer, and the
-error number is available in the global integer
+error number is available in the global integer 
 .I pbs_errno.
 
 .B The batch_status Structure
 .br
-The
-.I batch_status
+The 
+.I batch_status 
 structure is defined in pbs_ifl.h as
 .nf
 struct batch_status {
@@ -131,11 +130,12 @@ struct batch_status {
 }
 .fi
 
-.SH CLEANUP
-You must free the list of
-.I batch_status
-structures when no longer needed, by calling
+.SH CLEANUP 
+You must free the list of 
+.I batch_status 
+structures when no longer needed, by calling 
 .B pbs_statfree().
 
 .SH SEE ALSO
 qstat(1B), pbs_connect(3B), pbs_statfree(3B)
+

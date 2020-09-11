@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_mkdirs 8B "19 November 2019" Local "PBS"
+.TH pbs_mkdirs 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
 .B pbs_mkdirs
 - For Windows. Create, or fix the permissions of, the directories and files used by PBS
@@ -46,19 +45,19 @@
 .SH SYNOPSIS
 .B pbs_mkdirs
 .br
-.B pbs_mkdirs
+.B pbs_mkdirs 
 [ mom ]
 .br
 
 .SH DESCRIPTION
-Runs on Windows only.  If the directories and files used by PBS exist, the
-.B pbs_mkdirs
+Runs on Windows only.  If the directories and files used by PBS exist, the 
+.B pbs_mkdirs 
 command fixes their permissions.  If the directories and/or files do not
-exist, the
-.B pbs_mkdirs
+exist, the 
+.B pbs_mkdirs 
 command creates them, with the correct
-permissions.  The
-.B pbs_mkdirs
+permissions.  The 
+.B pbs_mkdirs 
 command always examines the following directories and files:
 .RS 5
 pbs.conf
@@ -77,8 +76,8 @@ You must have Administrator privilege to run this command.
 
 .SH OPTIONS
 .IP "mom" 5
-The
-.B pbs_mkdirs
+The 
+.B pbs_mkdirs 
 command examines the following additional items:
 .RS 10
 PBS_HOME/mom_priv
@@ -88,15 +87,15 @@ PBS_HOME/mom_logs
 
 
 .IP "(no options)" 5
-The
-.B pbs_mkdirs
+The 
+.B pbs_mkdirs 
 command examines all of the files and directories
-specified for the
+specified for the 
 .I mom
 option.
 
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide,
 pbs_probe(8B)
+
+

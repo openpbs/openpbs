@@ -54,6 +54,7 @@
 #include "attribute.h"
 
 #define DEFAULT_INTERACTIVE "-10"
+#define OPT_BUF_LEN 256
 
 static struct attrl *attrib = NULL;
 static int qmoveflg = FALSE;
@@ -175,7 +176,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					errflg++;
 					break;
 				}
-				strcpy(dest, &optarg[1]);
+				pbs_strncpy(dest, &optarg[1], OPT_BUF_LEN);
 				break;
 
 			case 'R':
@@ -201,7 +202,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					errflg++;
 					break;
 				}
-				strcpy(rrule, optarg);
+				pbs_strncpy(rrule, optarg, sizeof(rrule));
 				break;
 
 			case 'u':
@@ -701,7 +702,7 @@ main(int argc, char *argv[], char *envp[])
 	int errflg;			/* command line option error */
 	int connect;			/* return from pbs_connect */
 	char *errmsg;			/* return from pbs_geterrmsg */
-	char destbuf[256];		/* buffer for option server */
+	char destbuf[OPT_BUF_LEN];	/* buffer for option server */
 	struct attrl *attrib;		/* the attrib list */
 	char *new_resvname;		/* the name returned from pbs_submit_resv */
 	struct ecl_attribute_errors *err_list;
@@ -725,11 +726,8 @@ main(int argc, char *argv[], char *envp[])
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	destbuf[0] = '\0';
 	extend[0] = '\0';

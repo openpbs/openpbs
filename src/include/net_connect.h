@@ -96,30 +96,28 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
  **	Types of Inter Server messages (between Server and Mom).
  */
 #define IS_NULL                         0
-#define IS_CLUSTER_ADDRS                1
-#define IS_UPDATE                       2
-#define IS_RESCUSED                     3
-#define IS_JOBOBIT                      4
-#define IS_BADOBIT                      5
-#define IS_REPLYHELLO                   6
-#define IS_SHUTDOWN                     7
-#define IS_IDLE                         8
-#define IS_ACKOBIT                      9
-#define IS_REGISTERMOM                  10
-#define IS_UPDATE2                      11
-#define IS_DISCARD_JOB                  12
-#define IS_DISCARD_DONE                 13
-#define IS_UPDATE_FROM_HOOK             14 /* request to update vnodes from a hook running on parent mom host */
-#define IS_RESCUSED_FROM_HOOK           15 /* request from child mom for a hook */
-#define IS_HOOK_JOB_ACTION              16 /* request from hook to delete/requeue job */
-#define IS_HOOK_ACTION_ACK              17 /* acknowledge a request of the above 2    */
-#define IS_HOOK_SCHEDULER_RESTART_CYCLE 18 /* hook wish scheduler to recycle */
-#define IS_HOOK_CHECKSUMS               19 /* mom reports about hooks seen */
-#define IS_UPDATE_FROM_HOOK2            20 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
-#define IS_HELLOSVR                     21 /* hello send to server from mom to initiate a hello sequence */
-
-#define IS_CMD          40
-#define IS_CMD_REPLY    41
+#define IS_CMD                          1
+#define IS_CMD_REPLY                    2
+#define IS_CLUSTER_ADDRS                3
+#define IS_UPDATE                       4
+#define IS_RESCUSED                     5
+#define IS_JOBOBIT                      6
+#define IS_OBITREPLY                    7
+#define IS_REPLYHELLO                   8
+#define IS_SHUTDOWN                     9
+#define IS_IDLE                         10
+#define IS_REGISTERMOM                  11
+#define IS_UPDATE2                      12
+#define IS_DISCARD_JOB                  13
+#define IS_DISCARD_DONE                 14
+#define IS_UPDATE_FROM_HOOK             15 /* request to update vnodes from a hook running on parent mom host */
+#define IS_RESCUSED_FROM_HOOK           16 /* request from child mom for a hook */
+#define IS_HOOK_JOB_ACTION              17 /* request from hook to delete/requeue job */
+#define IS_HOOK_ACTION_ACK              18 /* acknowledge a request of the above 2    */
+#define IS_HOOK_SCHEDULER_RESTART_CYCLE 19 /* hook wish scheduler to recycle */
+#define IS_HOOK_CHECKSUMS               20 /* mom reports about hooks seen */
+#define IS_UPDATE_FROM_HOOK2            21 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
+#define IS_HELLOSVR                     22 /* hello send to server from mom to initiate a hello sequence */
 
 /* return codes for client_to_svr() */
 
@@ -176,7 +174,6 @@ conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*r
 conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int), int priority_flag);
 int add_conn_data(int sock, void *data); /* Adds the data to the connection */
 void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
-void close_socket(int sock);
 int  client_to_svr(pbs_net_t, unsigned int port, int);
 int  client_to_svr_extend(pbs_net_t, unsigned int port, int, char*);
 void close_conn(int socket);

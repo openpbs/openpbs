@@ -101,11 +101,6 @@ int remove_node_state(node_info *ninfo, char *state);
 int add_node_state(node_info *ninfo, char *state);
 
 /*
- *      talk_with_mom - talk to mom and get resources
- */
-int talk_with_mom(node_info *ninfo);
-
-/*
  *      node_filter - filter a node array and return a new filterd array
  */
 node_info **
@@ -193,11 +188,6 @@ int node_partition_cmp(node_info *ninfo, void *arg);
  *      update_node_on_end - update a node when a job ends
  */
 void update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state);
-
-/*
- *      should_talk_with_mom - check if we should talk to this mom
- */
-int should_talk_with_mom(node_info *ninfo);
 
 /*
  *      copy_node_ptr_array - copy an array of jobs using a different set of
@@ -335,7 +325,7 @@ int compare_selspec(selspec *sel1, selspec *sel2);
  *	combine_nspec_array - find and combine any nspec's for the same node
  *				in an nspec array
  */
-void combine_nspec_array(nspec **nspec_arr);
+nspec **combine_nspec_array(nspec **nspec_arr);
 
 /*
  *	eval_selspec - eval a select spec to see if it is satisifable
@@ -537,20 +527,6 @@ int
 set_res_on_host(char *res_name, char *res_value,
 	char *host, node_info *exclude, node_info **ninfo_arr);
 
-/*
- *	update_mom_resources - update resources set via mom_reources so all
- *			       vnodes on a host indirectly point to the
- *			       natural vnode
- *
- *	ASSUMPTION: only the 'natural' vnodes talk with mom
- *		    'natural' vnodes are vnodes whose host resource is the
- *		    same as its vnode name
- *
- *	  ninfo_arr - node array to update
- *
- *	returns 1 on success 0 on error
- */
-int update_mom_resources(node_info **ninfo_arr);
 
 /*
  *	can_fit_on_vnode - see if a chunk fit on one vnode in node list
@@ -619,17 +595,6 @@ node_info *find_node_by_rank(node_info **ninfo_arr, int rank);
 
 /* find node by index into sinfo->unordered_nodes or by unique rank */
 node_info *find_node_by_indrank(node_info **ninfo_arr, int ind, int rank);
-
-/*
- * node scratch constructor
- */
-node_scratch *new_node_scratch(void);
-
-
-/*
- * node_scratch destructor
- */
-void free_node_scratch(node_scratch *nscr);
 
 /* determine if resresv conflicts with future events on ninfo based on the exclhost state */
 int sim_exclhost(event_list *calendar, resource_resv *resresv, node_info *ninfo);

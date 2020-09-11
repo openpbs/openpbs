@@ -12037,6 +12037,7 @@ pbsv1mod_meth_get_pbs_conf(void)
 		"PBS_EXEC", pbs_conf.pbs_exec_path?pbs_conf.pbs_exec_path:"",
 		"PBS_ENVIRONMENT", pbs_conf.pbs_environment?pbs_conf.pbs_environment:"",
 		"PBS_RCP", pbs_conf.rcp_path?pbs_conf.rcp_path:"",
+		"PBS_CP", pbs_conf.cp_path?pbs_conf.cp_path:"",
 		"PBS_SCP", pbs_conf.scp_path?pbs_conf.scp_path:"",
 		"PBS_MOM_HOME", pbs_conf.pbs_mom_home?pbs_conf.pbs_mom_home:"",
 		"PBS_TMPDIR", pbs_conf.pbs_tmpdir?pbs_conf.pbs_tmpdir:"",

@@ -127,17 +127,13 @@ def checkModule(modname):
     and if not skip the test
     """
     def decorated(function):
-        def wrapper(self, *args, **kwargs):
-            import imp
-            try:
-                imp.find_module(modname)
-            except ImportError:
-                self.skipTest(reason='Module unavailable ' + modname)
-            else:
-                function(self, *args, **kwargs)
-        wrapper.__doc__ = function.__doc__
-        wrapper.__name__ = function.__name__
-        return wrapper
+        import imp
+        try:
+            imp.find_module(modname)
+        except ImportError:
+            function.__unittest_skip__ = True
+            function.__unittest_skip_why__ = 'Module unavailable ' + modname
+        return function
     return decorated
 
 
@@ -145,49 +141,24 @@ def skipOnCray(function):
     """
     Decorator to skip a test on a ``Cray`` system
     """
-
-    def wrapper(self, *args, **kwargs):
-        if self.mom.is_cray():
-            self.skipTest(reason='capability not supported on Cray')
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_cray__ = True
+    return function
 
 
 def skipOnShasta(function):
     """
     Decorator to skip a test on a ``Cray Shasta`` system
     """
-
-    def wrapper(self, *args, **kwargs):
-        if self.mom.is_shasta():
-            self.skipTest(reason='capability not supported on Cray Shasta')
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_shasta__ = True
+    return function
 
 
 def skipOnCpuSet(function):
     """
     Decorator to skip a test on a cgroup cpuset system
     """
-
-    def wrapper(self, *args, **kwargs):
-        for mom in self.moms.values():
-            if mom.is_cpuset_mom():
-                msg = 'capability not supported on cgroup cpuset system: ' +\
-                      mom.shortname
-                self.skipTest(reason=msg)
-                break
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
+    function.__skip_on_cpuset__ = True
+    return function
 
 
 def requirements(*args, **kwargs):
@@ -482,6 +453,11 @@ class PBSTestSuite(unittest.TestCase):
         cls.server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
         cls.server.restart()
         cls.log_end_setup(True)
+        # methods for skipping tests with ptl decorators
+        cls.populate_test_dict()
+        cls.skip_cray_tests()
+        cls.skip_shasta_tests()
+        cls.skip_cpuset_tests()
 
     def setUp(self):
         if 'skip-setup' in self.conf:
@@ -527,6 +503,72 @@ class PBSTestSuite(unittest.TestCase):
         self.revert_comms()
         self.log_end_setup()
         self.measurements = []
+
+    @classmethod
+    def populate_test_dict(cls):
+        cls.test_dict = {}
+        for attr in dir(cls):
+            if attr.startswith('test'):
+                obj = getattr(cls, attr)
+                if callable(obj):
+                    cls.test_dict[attr] = obj
+
+    @classmethod
+    def skip_cray_tests(cls):
+        if not cls.mom.is_cray():
+            return
+        msg = 'capability not supported on Cray'
+        if cls.__dict__.get('__skip_on_cray__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_cray__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def skip_shasta_tests(cls):
+        if not cls.mom.is_shasta():
+            return
+        msg = 'capability not supported on Cray Shasta'
+        if cls.__dict__.get('__skip_on_shasta__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_shasta__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def skip_cpuset_tests(cls):
+        skip_cpuset_tests = False
+        for mom in cls.moms.values():
+            if mom.is_cpuset_mom():
+                skip_cpuset_tests = True
+                msg = 'capability not supported on cgroup cpuset system: '
+                msg += mom.shortname
+                break
+        if not skip_cpuset_tests:
+            return
+        if cls.__dict__.get('__skip_on_cpuset__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__skip_on_cpuset__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
 
     @classmethod
     def log_enter_setup(cls, iscls=False):
@@ -626,7 +668,8 @@ class PBSTestSuite(unittest.TestCase):
                      ('mgr-users', PBS_MGR_USERS),
                      ('data-users', PBS_DATA_USERS),
                      ('root-users', PBS_ROOT_USERS),
-                     ('build-users', PBS_BUILD_USERS)]
+                     ('build-users', PBS_BUILD_USERS),
+                     ('daemon-users', PBS_DAEMON_SERVICE_USERS)]
         for k, v in users_map:
             cls._set_user(k, v)
 
@@ -976,6 +1019,12 @@ class PBSTestSuite(unittest.TestCase):
                 return socket.gethostname()
             else:
                 return None
+        elif conf == "PBS_DAEMON_SERVICE_USER":
+            # Only set if scheduler user is not default
+            if DAEMON_SERVICE_USER.name == 'root':
+                return None
+            else:
+                return DAEMON_SERVICE_USER.name
 
         return None
 
@@ -1013,9 +1062,9 @@ class PBSTestSuite(unittest.TestCase):
                                                     primary_server.hostname,
                                                     "comm", comm)
                     if val is None:
-                        self.logger.error("Couldn't revert %s in pbs.conf"
-                                          " to its default value" %
-                                          (conf))
+                        self.logger.info("Couldn't revert %s in pbs.conf"
+                                         " to its default value" %
+                                         (conf))
                         keys_to_delete.append(conf)
                     else:
                         new_pbsconf[conf] = val
@@ -1234,7 +1283,15 @@ class PBSTestSuite(unittest.TestCase):
             if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
                 new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
                 restart_pbs = True
-
+            if DAEMON_SERVICE_USER.name == 'root':
+                if "PBS_DAEMON_SERVICE_USER" in new_pbsconf:
+                    del(new_pbsconf['PBS_DAEMON_SERVICE_USER'])
+                    restart_pbs = True
+            elif (new_pbsconf["PBS_DAEMON_SERVICE_USER"] !=
+                  DAEMON_SERVICE_USER.name):
+                new_pbsconf["PBS_DAEMON_SERVICE_USER"] = \
+                    DAEMON_SERVICE_USER.name
+                restart_pbs = True
             # if shasta, set PBS_PUBLIC_HOST_NAME
             if server.platform == 'shasta':
                 localhost = socket.gethostname()
@@ -1325,6 +1382,7 @@ class PBSTestSuite(unittest.TestCase):
 
         server_vals_to_set = copy.deepcopy(vals_to_set)
 
+        server_vals_to_set["PBS_DAEMON_SERVICE_USER"] = None
         if primary_server.platform == 'shasta':
             server_vals_to_set["PBS_PUBLIC_HOST_NAME"] = None
 
@@ -1483,23 +1541,6 @@ class PBSTestSuite(unittest.TestCase):
                 conf.update({'$clienthost': self.conf['clienthost']})
             mom.apply_config(conf=conf, hup=False, restart=False)
             if mom.is_cpuset_mom():
-                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
-                # In order to avoid intermingling CF/HK/PY file copies from the
-                # create node and those caused by the following call, wait
-                # until the dialogue between MoM and the server is complete
-                time.sleep(4)
-                just_before_enable_cgroup_cset = time.time()
-                mom.enable_cgroup_cset()
-                # a high max_attempts is needed to tolerate delay receiving
-                # hook-related files, due to temporary network interruptions
-                mom.log_match('pbs_cgroups.CF;copy hook-related '
-                              'file request received', max_attempts=120,
-                              starttime=just_before_enable_cgroup_cset-1,
-                              interval=1)
-                # Make sure that the MoM will generate per-NUMA node vnodes
-                # when the natural node is created below
-                # HUP may not be enough if exechost_startup is delayed
-                restart = True
                 enabled_cpuset = True
         if restart:
             mom.restart()
@@ -1508,16 +1549,27 @@ class PBSTestSuite(unittest.TestCase):
         if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
         a = {'state': 'free'}
+        self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         if enabled_cpuset:
-            # Checking whether the CF file was copied really belongs in code
-            # that changes the config file -- i.e. after enable_cgroup_cset
-            # called above. We're not sure it is always called here,
-            # since that call is in an if
+            # In order to avoid intermingling CF/HK/PY file copies from the
+            # create node and those caused by the following call, wait
+            # until the dialogue between MoM and the server is complete
+            time.sleep(4)
+            just_before_enable_cgroup_cset = time.time()
+            mom.enable_cgroup_cset()
+            # a high max_attempts is needed to tolerate delay receiving
+            # hook-related files, due to temporary network interruptions
+            mom.log_match('pbs_cgroups.CF;copy hook-related '
+                          'file request received', max_attempts=120,
+                          starttime=just_before_enable_cgroup_cset-1,
+                          interval=1)
+            # Make sure that the MoM will generate per-NUMA node vnodes
+            # when the natural node was created above.
+            # HUP may not be enough if exechost_startup is delayed
             time.sleep(2)
             mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
-            self.server.manager(MGR_CMD_CREATE, NODE, id=mom.shortname)
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
         return mom
 
@@ -1678,6 +1730,7 @@ class PBSTestSuite(unittest.TestCase):
 
         for sched in self.scheds:
             self.scheds[sched].cleanup_files()
+        self.server.delete_sched_config()
         if self.use_cur_setup:
             self.delete_current_state(self.server, self.moms)
             ret = self.server.load_configuration(self.saved_file)

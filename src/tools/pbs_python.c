@@ -124,7 +124,6 @@ void *sched_attr_idx = NULL;
 
 char server_name[PBS_MAXSERVERNAME+1];
 char server_host[PBS_MAXHOSTNAME+1];	   /* host_name of this svr */
-int  have_blue_gene_nodes = 0;
 time_t		time_now = 0;
 struct pbsnode **pbsndlist;
 int		svr_totnodes = 0;
@@ -2295,11 +2294,10 @@ main(int argc, char *argv[], char *envp[])
 	/* The following needed so that buffered writes (e.g. fprintf) */
 	/* won't end up getting ^M */
 	_set_fmode(_O_BINARY);
-
-	if (winsock_init()) {
-		return 1;
-	}
 #endif
+
+	if (initsocketlib())
+		return 1;
 
 	/*the real deal or output pbs_version and exit?*/
 	PRINT_VERSION_AND_EXIT(argc, argv);

@@ -54,9 +54,7 @@
 #include	<sys/time.h>
 #include	<netinet/in.h>
 #include	<netdb.h>
-#ifdef WIN32
-#include	<sddl.h>
-#endif
+
 #include	"dis.h"
 #include	"tm.h"
 #include	"pbs_ifl.h"
@@ -240,11 +238,7 @@ del_event(event_info *ep)
 
 	if (--event_count == 0) {
 		CS_close_socket(local_conn);
-#ifdef WIN32
 		closesocket(local_conn);
-#else
-		close(local_conn);
-#endif
 		local_conn = -1;
 	}
 	return;
@@ -502,11 +496,10 @@ localmom()
 				case ECONNREFUSED:
 #ifdef WIN32
 				case WSAEINTR:
-					(void)closesocket(sock);
 #else
 				case EINTR:
-					(void)close(sock);
 #endif
+					closesocket(sock);
 					sleep(1);
 					continue;
 				default:
@@ -536,11 +529,7 @@ localmom()
 
 failed:
 
-#ifdef WIN32
-	(void)closesocket(sock);
-#else
-	(void)close(sock);
-#endif
+	closesocket(sock);
 	local_conn = -1;
 	return -1;
 }
@@ -592,11 +581,7 @@ startcom(int com, tm_event_t event)
 done:
 	DBPRT(("startcom: send error %s\n", dis_emsg[ret]))
 	CS_close_socket(local_conn);
-#ifdef WIN32
 	closesocket(local_conn);
-#else
-	close(local_conn);
-#endif
 	local_conn = -1;
 	return ret;
 }
@@ -1435,11 +1420,7 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	if ((ep = find_event(nevent)) == NULL) {
 		DBPRT(("%s: No event found for number %d\n", __func__, nevent));
 		CS_close_socket(local_conn);
-#ifdef WIN32
-		(void)closesocket(local_conn);
-#else
-		(void)close(local_conn);
-#endif
+		closesocket(local_conn);
 		local_conn = -1;
 		return TM_ENOEVENT;
 	}
@@ -1598,11 +1579,7 @@ err:
 	if (ep)
 		del_event(ep);
 	CS_close_socket(local_conn);
-#ifdef WIN32
-	(void)closesocket(local_conn);
-#else
-	(void)close(local_conn);
-#endif
+	closesocket(local_conn);
 	local_conn = -1;
 	return TM_ENOTCONNECTED;
 }

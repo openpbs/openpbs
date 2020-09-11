@@ -41,7 +41,6 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-
 #include <sys/param.h>
 #include <execinfo.h>
 
@@ -117,30 +116,23 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 		dbjob->ji_state     = pjob->ji_qs.ji_state;
 		dbjob->ji_substate  = pjob->ji_qs.ji_substate;
 		dbjob->ji_svrflags  = pjob->ji_qs.ji_svrflags;
-		dbjob->ji_numattr   = pjob->ji_qs.ji_numattr;
-		dbjob->ji_ordering  = pjob->ji_qs.ji_ordering;
-		dbjob->ji_priority  = pjob->ji_qs.ji_priority;
 		dbjob->ji_stime     = pjob->ji_qs.ji_stime;
-		dbjob->ji_endtBdry  = pjob->ji_qs.ji_endtBdry;
 		strcpy(dbjob->ji_queue, pjob->ji_qs.ji_queue);
 		strcpy(dbjob->ji_destin, pjob->ji_qs.ji_destin);
 		dbjob->ji_un_type   = pjob->ji_qs.ji_un_type;
 		if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_NEW) {
 			dbjob->ji_fromsock  = pjob->ji_qs.ji_un.ji_newt.ji_fromsock;
 			dbjob->ji_fromaddr  = pjob->ji_qs.ji_un.ji_newt.ji_fromaddr;
-		} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) {
-			dbjob->ji_momaddr   = pjob->ji_qs.ji_un.ji_exect.ji_momaddr;
-			dbjob->ji_momport   = pjob->ji_qs.ji_un.ji_exect.ji_momport;
+		} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC)
 			dbjob->ji_exitstat  = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
-		} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_ROUTE) {
+		else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_ROUTE) {
 			dbjob->ji_quetime   = pjob->ji_qs.ji_un.ji_routet.ji_quetime;
 			dbjob->ji_rteretry  = pjob->ji_qs.ji_un.ji_routet.ji_rteretry;
 		} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_MOM) {
 			dbjob->ji_exitstat  = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
 		}
 		/* extended portion */
-		strcpy(dbjob->ji_4jid, pjob->ji_extended.ji_ext.ji_4jid);
-		strcpy(dbjob->ji_4ash, pjob->ji_extended.ji_ext.ji_4ash);
+		strcpy(dbjob->ji_jid, pjob->ji_extended.ji_ext.ji_jid);
 		dbjob->ji_credtype  = pjob->ji_extended.ji_ext.ji_credtype;
 		dbjob->ji_qrank = pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
 	}
@@ -170,11 +162,7 @@ db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 	pjob->ji_qs.ji_state = dbjob->ji_state;
 	pjob->ji_qs.ji_substate = dbjob->ji_substate;
 	pjob->ji_qs.ji_svrflags = dbjob->ji_svrflags;
-	pjob->ji_qs.ji_numattr = dbjob->ji_numattr ;
-	pjob->ji_qs.ji_ordering = dbjob->ji_ordering;
-	pjob->ji_qs.ji_priority = dbjob->ji_priority;
 	pjob->ji_qs.ji_stime = dbjob->ji_stime;
-	pjob->ji_qs.ji_endtBdry = dbjob->ji_endtBdry;
 	strcpy(pjob->ji_qs.ji_queue, dbjob->ji_queue);
 	strcpy(pjob->ji_qs.ji_destin, dbjob->ji_destin);
 	pjob->ji_qs.ji_fileprefix[0] = 0;
@@ -183,11 +171,9 @@ db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 		pjob->ji_qs.ji_un.ji_newt.ji_fromsock = dbjob->ji_fromsock;
 		pjob->ji_qs.ji_un.ji_newt.ji_fromaddr = dbjob->ji_fromaddr;
 		pjob->ji_qs.ji_un.ji_newt.ji_scriptsz = 0;
-	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) {
-		pjob->ji_qs.ji_un.ji_exect.ji_momaddr = dbjob->ji_momaddr;
-		pjob->ji_qs.ji_un.ji_exect.ji_momport = dbjob->ji_momport;
+	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC)
 		pjob->ji_qs.ji_un.ji_exect.ji_exitstat = dbjob->ji_exitstat;
-	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_ROUTE) {
+	else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_ROUTE) {
 		pjob->ji_qs.ji_un.ji_routet.ji_quetime = dbjob->ji_quetime;
 		pjob->ji_qs.ji_un.ji_routet.ji_rteretry = dbjob->ji_rteretry;
 	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_MOM) {
@@ -198,13 +184,7 @@ db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 	}
 
 	/* extended portion */
-#if defined(__sgi)
-	pjob->ji_extended.ji_ext.ji_jid = 0;
-	pjob->ji_extended.ji_ext.ji_ash = 0;
-#else
-	strcpy(pjob->ji_extended.ji_ext.ji_4jid, dbjob->ji_4jid);
-	strcpy(pjob->ji_extended.ji_ext.ji_4ash, dbjob->ji_4ash);
-#endif
+	strcpy(pjob->ji_extended.ji_ext.ji_jid, dbjob->ji_jid);
 	pjob->ji_extended.ji_ext.ji_credtype = dbjob->ji_credtype;
 
 	if ((decode_attr_db(pjob, &dbjob->db_attr_list, job_attr_idx, job_attr_def, pjob->ji_wattr, JOB_ATR_LAST, JOB_ATR_UNKN)) != 0)
@@ -385,13 +365,6 @@ resv_to_db(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
 		strcpy(dbresv->ri_queue, presv->ri_qs.ri_queue);
 		dbresv->ri_duration = presv->ri_qs.ri_duration;
 		dbresv->ri_etime = presv->ri_qs.ri_etime;
-		dbresv->ri_un_type = presv->ri_qs.ri_un_type;
-		if (dbresv->ri_un_type == RESV_UNION_TYPE_NEW) {
-			dbresv->ri_fromaddr = presv->ri_qs.ri_un.ri_newt.ri_fromaddr;
-			dbresv->ri_fromsock = presv->ri_qs.ri_un.ri_newt.ri_fromsock;
-		}
-		dbresv->ri_numattr = presv->ri_qs.ri_numattr;
-		dbresv->ri_resvTag = presv->ri_qs.ri_resvTag;
 		dbresv->ri_state = presv->ri_qs.ri_state;
 		dbresv->ri_stime = presv->ri_qs.ri_stime;
 		dbresv->ri_substate = presv->ri_qs.ri_substate;
@@ -419,13 +392,6 @@ db_to_resv(resc_resv *presv, pbs_db_resv_info_t *dbresv)
 	strcpy(presv->ri_qs.ri_queue, dbresv->ri_queue);
 	presv->ri_qs.ri_duration = dbresv->ri_duration;
 	presv->ri_qs.ri_etime = dbresv->ri_etime;
-	presv->ri_qs.ri_un_type = dbresv->ri_un_type;
-	if (dbresv->ri_un_type == RESV_UNION_TYPE_NEW) {
-		presv->ri_qs.ri_un.ri_newt.ri_fromaddr = dbresv->ri_fromaddr;
-		presv->ri_qs.ri_un.ri_newt.ri_fromsock = dbresv->ri_fromsock;
-	}
-	presv->ri_qs.ri_numattr = dbresv->ri_numattr;
-	presv->ri_qs.ri_resvTag = dbresv->ri_resvTag;
 	presv->ri_qs.ri_state = dbresv->ri_state;
 	presv->ri_qs.ri_stime = dbresv->ri_stime;
 	presv->ri_qs.ri_substate = dbresv->ri_substate;

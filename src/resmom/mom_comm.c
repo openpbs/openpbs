@@ -46,7 +46,6 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 
-#ifndef WIN32
 #include	<unistd.h>
 #include	<dirent.h>
 #include	<pwd.h>
@@ -54,15 +53,10 @@
 #include	<sys/socket.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
-
 #include	<sys/param.h>
 #include	<sys/times.h>
 #include	<sys/time.h>
 #include	<sys/resource.h>
-#else
-#include	<sddl.h>
-#endif
-
 #include	<signal.h>
 #include	<string.h>
 #include	<ctype.h>
@@ -85,6 +79,7 @@
 #include	"tpp.h"
 #include	"dis.h"
 #include	"mom_func.h"
+#include	"mom_server.h"
 #include	"credential.h"
 #include	"ticket.h"
 #include	"pbs_nodes.h"
@@ -1921,8 +1916,7 @@ addr_to_hostname(struct sockaddr_in *ap)
 		hostname_sz = new_sz;
 		ret_hostname = tmp_str;
 	}
-	strncpy(ret_hostname, hp->h_name, hostname_sz);
-	ret_hostname[hostname_sz - 1] = '\0';
+	pbs_strncpy(ret_hostname, hp->h_name, hostname_sz);
 	return (ret_hostname);
 }
 /**
@@ -3099,12 +3093,12 @@ im_request(int stream, int version)
 			psatl = (svrattrl *)GET_NEXT(lhead);
 			while (psatl) {
 				if (!strcmp(psatl->al_name, ATTR_hashname)) {
-					strncpy(basename, psatl->al_value, MAXPATHLEN);
+					pbs_strncpy(basename, psatl->al_value, sizeof(basename));
 					break;
 				}
 				psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 			}
-			strncpy(pjob->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
+			pbs_strncpy(pjob->ji_qs.ji_jobid, jobid, sizeof(pjob->ji_qs.ji_jobid));
 			if (strlen(basename) <= PBS_JOBBASE)
 				strcpy(pjob->ji_qs.ji_fileprefix, basename);
 			else
@@ -3723,7 +3717,7 @@ join_err:
 				 * been deleted already.
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
-					(void)strncpy(pjob2->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
+					pbs_strncpy(pjob2->ji_qs.ji_jobid, jobid, sizeof(pjob2->ji_qs.ji_jobid));
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
 								runver;
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
@@ -5410,7 +5404,7 @@ join_err:
 
 			free(nodehost);
 			nodehost = NULL;
-			update_ajob_status(pjob);
+			enqueue_update_for_send(pjob, IS_RESCUSED);
 			break;
 
 		case	IM_UPDATE_JOB:
@@ -5646,11 +5640,7 @@ tm_request(int fd, int version)
 	conn_t 	*conn = get_conn(fd);
 	if (!conn) {
 		sprintf(log_buffer, "not found fd=%d in connection table", fd);
-#ifdef WIN32
-		(void)closesocket(fd);
-#else
-		(void)close(fd);
-#endif
+		closesocket(fd);
 		if (cookie)
 			free(cookie);
 		return -1;

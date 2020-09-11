@@ -36,8 +36,7 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_sched_attributes 7B "20 September 2019" Local "PBS"
+.TH pbs_sched_attributes 7B "6 May 2020" Local "PBS Professional"
 .SH NAME
 .B pbs_sched_attributes
 \- attributes of default PBS scheduler and multischeds
@@ -45,18 +44,18 @@
 These are the attributes of the default PBS scheduler and PBS multischeds.
 
 .IP comment 8
-For certain scheduler errors, PBS sets the scheduler's
+For certain scheduler errors, PBS sets the scheduler's 
 .I comment
-attribute to specific error messages.  You can use the
-.I comment
+attribute to specific error messages.  You can use the 
+.I comment 
 attribute to notify another administrator of something, but PBS does overwrite
-the value of
-.I comment
+the value of 
+.I comment 
 under certain circumstances.
 .br
 Readable by all; settable by Manager.
 .br
-Format:
+Format: 
 .I String
 .br
 Default: no default
@@ -69,34 +68,34 @@ one existing placement set.
 .br
 Readable by all; settable by Manager and Operator.
 .br
-Format:
+Format: 
 .I Boolean
 .br
 Behavior:
 .nf
-   True   The job must fit in one existing placement set.  All
-          existing placement sets are checked.  If the job fits
-          in an occupied placement set, the job waits for the
-          placement set to be available.  If the job cannot fit
+   True   The job must fit in one existing placement set.  All 
+          existing placement sets are checked.  If the job fits 
+          in an occupied placement set, the job waits for the 
+          placement set to be available.  If the job cannot fit 
           within a single placement set, it won't run.
-   False  The scheduler first attempts to place the job in a
-          single placement set, but if it cannot, it allows the
+   False  The scheduler first attempts to place the job in a 
+          single placement set, but if it cannot, it allows the 
           job to span placement sets, running on whichever
           vnodes can satisfy the job's resource request.
 .fi
-Default:
+Default: 
 .I False
 .br
 Python type: No Python type
 
 .IP job_sort_formula_threshold 8
-Lower bound for calculated priority for job.  If job priority is at
+Lower bound for calculated priority for job.  If job priority is at 
 or below this value, the job is not eligible to run in the current
-scheduler cycle.
+scheduler cycle.  
 .br
-Readable by all; settable by Manager.
+Readable by all; settable by Manager.  
 .br
-Format:
+Format: 
 .I Float
 .br
 Default: None
@@ -117,18 +116,18 @@ Default:
 Python type: No Python type
 
 .IP only_explicit_psets 8
-Specifies whether placement sets are created for unset resources.
+Specifies whether placement sets are created for unset resources.  
 .br
 Readable by all; settable by Manager and Operator.
 .br
-Format:
+Format: 
 .I Boolean
 .br
 Behavior:
 .nf
-   True   Placement sets are not created from vnodes
+   True   Placement sets are not created from vnodes 
           whose value for a resource is unset.
-   False  placement sets are created from vnodes whose
+   False  placement sets are created from vnodes whose 
           value for a resource is unset.
 .fi
 Default:
@@ -137,12 +136,12 @@ Default:
 Python type: No Python type
 
 .IP opt_backfill_fuzzy 8
-Sets the tradeoff between scheduling cycle speed and granularity of
-estimated start time calculation.
+Sets the tradeoff between scheduling cycle speed and granularity of 
+estimated start time calculation.  
 .br
 Readable by all; settable by Manager.
 .br
-Behavior:
+Behavior: 
 .RS 11
 .IP off 8
 Finest granularity; no speedup.
@@ -155,28 +154,28 @@ Coarse granularity; greatest speedup.
 .RE
 .IP
 .br
-Format:
+Format: 
 .I String
-.br
-Default: unset (behaves like
+.br 
+Default: unset (behaves like 
 .I low
 ).
 .br
 Python type: No Python type
 
 .IP partition 8
-Comma-separated list of partitions for which this scheduler is to run jobs.
+Name of partition for which this scheduler is to run jobs.
 Cannot be set on default scheduler.
 .br
 Format:
-.I String array
+.I String
 .br
 Default: "None"
 .br
 Python type: No Python type
 
 .IP pbs_version 8
-The version of PBS for this scheduler.
+The version of PBS for this scheduler.  
 .br
 Readable by Manager and Operator; not settable.
 .br
@@ -190,25 +189,25 @@ Python type: No Python type
 .IP preempt_order
 Defines the order of preemption methods which this scheduler uses on
 jobs. This order can change depending on the percentage of time
-remaining on the job. The ordering can be any combination of
-.I S, C, R,
-and
-.I D.
+remaining on the job. The ordering can be any combination of 
+.I S, C, R, 
+and 
+.I D.  
 
-Usage: an ordering
-.I (SCR)
+Usage: an ordering 
+.I (SCR) 
 optionally followed by a percentage of time remaining and another
 ordering.
 
 For example, PBS should first attempt to use suspension to preempt a
-job, and if that is unsuccessful, requeue the job:
+job, and if that is unsuccessful, requeue the job: 
 .nf
    preempt_order: "SR"
 .fi
 
-For example, if the job has between 100% and 81% of requested time
+For example, if the job has between 100% and 810f requested time
 remaining, first try to suspend the job, then try checkpoint, then
-requeue. If the job has between 80% and 51% of requested time
+requeue. If the job has between 80% and 510f requested time
 remaining, attempt suspend, then checkpoint.  Between 50% and 0% time
 remaining, just attempt to suspend the job:
 .nf
@@ -216,14 +215,14 @@ remaining, just attempt to suspend the job:
 .fi
 
 For each job percentage, each method can be used only once.  Note that
-in the example above, the
-.I S
-method appears only once per percentage.
+in the example above, the 
+.I S 
+method appears only once per percentage. 
 
 Readable by all; settable by Manager.
 .br
 Format:
-.I String,
+.I String, 
 as a quoted list
 .br
 Preemption methods:
@@ -233,7 +232,7 @@ Preemption methods:
    R   Requeue job
    S   Suspend job
 .fi
-Default:
+Default: 
 .I "SCR"
 .br
 Python type: No Python type
@@ -244,8 +243,8 @@ Two or more job types may be combined at the same priority level with
 a plus sign ("+") between them, using no whitespace.  Comma-separated
 preemption levels are evaluated left to right, with higher priority to
 the left.  Any level not specified in the
-.I preempt_prio
-list is ignored.
+.I preempt_prio 
+list is ignored.  
 
 For example, starving jobs have the highest priority, then normal
 jobs, and jobs whose entities are over their fairshare limit are third
@@ -255,8 +254,8 @@ highest:
 .fi
 
 For example, starving jobs whose entities are also over their
-fairshare limit are lower priority than normal jobs:
-.nf
+fairshare limit are lower priority than normal jobs: 
+.nf 
    preempt_prio: "normal_jobs, starving_jobs+fairshare"
 .fi
 
@@ -268,27 +267,27 @@ as quoted string
 .br
 Preemption levels:
 .nf
-   express_queue      Jobs in express queues preempt other jobs.
+   express_queue      Jobs in express queues preempt other jobs.  
 .fi
 .RS 30
-See
-.I preempt_queue_prio.
-Does not require
-.I by_queue
-to be
-.I True.
+See 
+.I preempt_queue_prio.  
+Does not require 
+.I by_queue 
+to be 
+.I True. 
 .RE
 .RS 8
 .nf
-   starving_jobs      When a job becomes starving it can preempt
-                      other jobs.
-   fairshare          When the entity owning a job exceeds its
-                      fairshare limit.
-   queue_softlimits   Jobs which are over their queue soft limits
-   server_softlimits  Jobs which are over their server soft limits
-   normal_jobs        The preemption level into which a job falls
-                      if it does not fit into any other specified
-                      level.
+   starving_jobs      When a job becomes starving it can preempt 
+                      other jobs.  
+   fairshare          When the entity owning a job exceeds its 
+                      fairshare limit.       
+   queue_softlimits   Jobs which are over their queue soft limits     
+   server_softlimits  Jobs which are over their server soft limits    
+   normal_jobs        The preemption level into which a job falls 
+                      if it does not fit into any other specified 
+                      level.     
 .fi
 
 Default:
@@ -300,8 +299,8 @@ Python type: No Python type
 .IP preempt_queue_prio 8
 Specifies the minimum queue priority required for a queue to be
 classified as an express queue.  Express queues do not require
-.I by_queue
-to be
+.I by_queue 
+to be 
 .I True.
 .br
 Readable by all; settable by Manager.
@@ -316,9 +315,7 @@ Python type: No Python type
 
 .IP preempt_sort 8
 Specifies whether jobs most eligible for preemption are sorted
-according to their start times.  See "Sorting Within Preemption Level"
-in Scheduling chapter of the
-.I PBS Administrator's Guide.
+according to their start times.  
 .br
 Readable by all; settable by Manager.
 .br
@@ -327,9 +324,9 @@ Format:
 .br
 Behavior:
 .nf
-   unset                 Preempted job will be that with
+   unset                 Preempted job will be that with 
                          longest running time.
-   min_time_since_start  First job preempted will be that with
+   min_time_since_start  First job preempted will be that with 
                          most recent start time.
 .fi
 .br
@@ -340,9 +337,9 @@ Python type: No Python type
 
 .IP scheduler_iteration 8
 Time in seconds between scheduling iterations.  If you set the
-server's
-.I scheduler_iteration
-attribute, that value is assigned to the default scheduler's
+server's 
+.I scheduler_iteration 
+attribute, that value is assigned to the default scheduler's 
 .I scheduler_iteration
 attribute, and vice versa.
 .br
@@ -360,13 +357,13 @@ Default:
 Python type: No Python type
 
 .IP scheduling 8
-Enables scheduling of jobs.
+Enables scheduling of jobs.  
 .br
-If you set the server's
-.I scheduling
+If you set the server's 
+.I scheduling 
 attribute, that value is
-assigned to the default scheduler's
-.I scheduling
+assigned to the default scheduler's 
+.I scheduling 
 attribute, and
 vice versa.
 .br
@@ -378,14 +375,14 @@ Format:
 Default value for default scheduler:
 .I True
 .br
-Default value for multischeds:
+Default value for multischeds: 
 .I False
 .br
 Python type: No Python type
 
 .IP sched_cycle_length 8
-The scheduler's maximum cycle length.
-Overwritten by the
+The scheduler's maximum cycle length.  
+Overwritten by the 
 .I -a
 option to the
 .I pbs_sched
@@ -393,27 +390,27 @@ command.
 .br
 Readable by all and settable by the PBS Manager and Operator only.
 .br
-Format:
+Format: 
 .I Duration
- expressed as integer seconds, or
+ expressed as integer seconds, or 
 .I [[hours:]minutes:]seconds[.milliseconds]
 .br
-Default:
+Default: 
 .I 20:00 (20 minutes)
 .br
 Python type: No Python type
 
 .IP sched_host 8
-The hostname of the machine on which this scheduler runs.
+The hostname of the machine on which this scheduler runs.  
 .br
 Cannot be set on default scheduler; value for default scheduler is server
-hostname.
+hostname.  
 .br
 Must be set by administrator.
 .br
 Readable by Manager and Operator.
 .br
-Format:
+Format: 
 .I String
 .br
 Default value for multischeds: server hostname
@@ -423,19 +420,18 @@ Python type: No Python type
 .IP sched_log 8
 Directory where this scheduler writes its logs.  Permissions should be
 755.  Must be owned by root.  Cannot be shared with another scheduler.
-Use default value; do not set.
 .br
-Format:
+Format: 
 .I String
 .br
-Default:
+Default: 
 .I $PBS_HOME/sched_logs_<scheduler name>
 
 .IP sched_port 8
 Port on which this scheduler listens.  Cannot be set on default scheduler.
-Must be set by administrator.
+Must be set by administrator.  
 .br
-Format:
+Format: 
 .I String
 .br
 Default: None
@@ -443,41 +439,41 @@ Default: None
 Python type: No Python type
 
 .IP sched_preempt_enforce_resumption 8
-Controls whether the scheduler treats preempted jobs as top jobs.
+Controls whether the scheduler treats preempted jobs as top jobs.  
 .br
-When
+When 
 .I True
-, preempted jobs are treated as top jobs.
+, preempted jobs are treated as top jobs.  
 .br
 Readable by all; settable by Manager.
-.br
-Format:
+.br 
+Format: 
 .I Boolean
 .br
-Default:
+Default: 
 .I False
 .br
 Python type: No Python type
 
 .IP sched_priv 8
-Directory where this scheduler keeps its fairshare usage, resource_group,
-holidays, and sched_config files. Must be owned by root.
-For default scheduler, use default value; do not set.  Settable for
+Directory where this scheduler keeps its fairshare usage, resource_group, 
+holidays, and sched_config files. Must be owned by root.  
+For default scheduler, use default value; do not set.  Settable for 
 multischeds.
 .br
 Readable by all; settable by Manager (for multischeds).
 .br
-Format:
+Format: 
 .I String
 .br
-Default:
+Default: 
 .I $PBS_HOME/sched_priv_<scheduler name>
 .br
 Python type: No Python type
 
 
 .IP state 8
-State of this scheduler.
+State of this scheduler. 
 .br
 States:
 .RS 11
@@ -488,11 +484,11 @@ Scheduler is running and is waiting for a scheduling cycle to be triggered.
 .IP scheduling
 Scheduler is running and is in a scheduling cycle.
 .RE
-.IP
+.IP 
 Format:
 .I String
 .br
-Default value for default scheduler:
+Default value for default scheduler: 
 .I idle
 .br
 Default value for multischeds:
@@ -502,34 +498,30 @@ Python type: No Python type
 
 .IP throughput_mode  8
 Allows scheduler to run faster; it doesn't have to wait for each job
-to be accepted, and doesn't wait for
-.I execjob_begin
-hooks to finish.  Also allows jobs that were changed via
-.I qalter, server_dyn_res
+to be accepted, and doesn't wait for 
+.I execjob_begin 
+hooks to finish.  Also allows jobs that were changed via 
+.I qalter, server_dyn_res 
 scripts, or peering to run in the same scheduling cycle where they
 were changed.
 .br
 Readable by all; settable by Manager and Operator.
 .br
-Format:
+Format: 
 .I Boolean
 .br
 Behavior:
 .nf
-   True    Scheduler runs asynchronously and faster.  Only available
+   True    Scheduler runs asynchronously and faster.  Only available 
            when PBS complex is in TPP mode.
    False   Scheduler does not run asynchronously
 .fi
 .br
-Default:
+Default: 
 .I True
 .br
 Python type: No Python type
 
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide,
-The
-.I PBS User's Guide,
 .B qmgr(1B)

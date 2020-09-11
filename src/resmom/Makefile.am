@@ -44,7 +44,7 @@ sbin_PROGRAMS = pbs_mom
 pbs_mom_CPPFLAGS = \
 	-DPBS_MOM \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/resmom/${PBS_MACH} \
+	-I$(top_srcdir)/src/resmom/linux \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
 	@pmix_inc@ \
@@ -65,7 +65,6 @@ pbs_mom_LDADD = \
 	@pmix_lib@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
-	@mom_mach_libs@ \
 	@libz_lib@ \
 	-lssl \
 	-lcrypto \
@@ -86,10 +85,10 @@ pbs_mom_SOURCES = \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/vnparse.c \
 	$(top_srcdir)/src/server/setup_resc.c \
-	${PBS_MACH}/mom_mach.c \
-	${PBS_MACH}/mom_mach.h \
-	${PBS_MACH}/mom_start.c \
-	${PBS_MACH}/pe_input.c \
+	linux/mom_mach.c \
+	linux/mom_mach.h \
+	linux/mom_start.c \
+	linux/pe_input.c \
 	catch_child.c \
 	job_recov_fs.c \
 	mock_run.c \
@@ -98,6 +97,7 @@ pbs_mom_SOURCES = \
 	mom_hook_func.c \
 	mom_inter.c \
 	mom_main.c \
+	mom_updates_bundle.c \
 	mom_pmix.c \
 	mom_pmix.h \
 	mom_server.c \

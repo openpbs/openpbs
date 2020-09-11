@@ -36,10 +36,9 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_statjob 3B "15 November 2019" Local "PBS"
+.TH pbs_statjob 3B "15 November 2019" Local "PBS Professional"
 .SH NAME
-.B pbs_statjob
+.B pbs_statjob 
 \- get status of PBS batch jobs
 .SH SYNOPSIS
 #include <pbs_error.h>
@@ -48,16 +47,16 @@
 .sp
 .nf
 .B struct batch_status *
-.B pbs_statjob(int connect, char *ID, struct attrl *output_attribs,
+.B pbs_statjob(int connect, char *ID, struct attrl *output_attribs, 
 .B \ \ \ \ \ \ \ \ \ \ \ \ char *extend)
 .fi
 .SH DESCRIPTION
 Issues a batch request to get the status of a specified batch job, a
 list of batch jobs, or the batch jobs at a queue or server.
 
-Generates a
-.I Status Job
-(19) batch request and sends it to the server over the connection specified by
+Generates a 
+.I Status Job 
+(19) batch request and sends it to the server over the connection specified by 
 .I connect.
 
 You can query status of jobs, job arrays, subjobs, and ranges of subjobs.
@@ -66,16 +65,16 @@ Queries all specified jobs that the user is authorized to query.
 
 .SH ARGUMENTS
 .IP connect 8
-Return value of
-.B pbs_connect().
+Return value of 
+.B pbs_connect().  
 Specifies connection handle over which to send batch request to server.
 
 .IP ID 8
-Job ID, list of job IDs, queue, server, or null.
+Job ID, list of job IDs, queue, server, or null.  
 .br
-If
-.I ID
-is a null pointer or points to a null string, gets status of jobs at connected server.
+If 
+.I ID 
+is a null pointer or points to a null string, gets status of jobs at connected server. 
 .br
 Format for a job:
 .br
@@ -109,7 +108,7 @@ Format for a server:
 
 .IP output_attribs 8
 Pointer to a list of attributes to return.  If this list is null, all
-attributes are returned.  Each attribute is described in an
+attributes are returned.  Each attribute is described in an 
 .I attrl
 structure, defined in pbs_ifl.h as:
 .nf
@@ -129,16 +128,16 @@ search.  Order of characters is not important.
 .B Members of attrl Structure
 .br
 .IP name 8
-Points to a string containing the name of the attribute.
+Points to a string containing the name of the attribute.  
 
 .IP resource 8
 Points to a string containing the name of a resource.  Used only when
 the specified attribute contains resource information.  Otherwise,
-.I resource
+.I resource 
 should be a null pointer.
 
 .IP value 8
-Points to a string containing the value of the attribute or resource.
+Points to a string containing the value of the attribute or resource.  
 
 .IP next 8
 Points to next attribute in list.  A null pointer terminates the list.
@@ -147,27 +146,27 @@ Points to next attribute in list.  A null pointer terminates the list.
 You can query status of job arrays and their subjobs, or just the parent job arrays only.
 
 To query status of job arrays and their subjobs, include the job array
-IDs in the
-.I ID
-argument, and include the "t" character in the
+IDs in the 
+.I ID 
+argument, and include the "t" character in the 
 .I extend
 argument.  The function returns the status of each parent job array
 followed by status of each subjob in that job array.
 
 To query status of one or more parent job arrays only, but not their
-subjobs, include their job IDs in the
-.I ID
-argument, but do not include anything in the
-.I extend
+subjobs, include their job IDs in the 
+.I ID 
+argument, but do not include anything in the 
+.I extend 
 argument.
 
 .SH QUERYING THE JOBS AT A QUEUE OR SERVER
-To query status of all jobs at a queue, give the queue name in the
-.I ID
+To query status of all jobs at a queue, give the queue name in the 
+.I ID 
 argument.
 
 To query status of all jobs at a server, give the server name in the
-.I ID
+.I ID 
 argument.  If you give a null ID argument, the function queries the
 default server.
 
@@ -182,9 +181,9 @@ Extends query to include finished and moved jobs.
 .B Querying Finished and Moved Jobs
 .br
 To get status for finished or moved jobs, as well as current jobs, add
-an 'x' character to the
-.I extend
-parameter (set one character to be the 'x' character).  For example:
+an 'x' character to the 
+.I extend 
+parameter (set one character to be the 'x' character).  For example: 
 .br
 .I \ \ \ pbs_statjob ( ..., ..., <extend characters>) ...
 
@@ -194,52 +193,52 @@ Subjobs are not considered finished until the parent array job is finished.
 .SH RETURN VALUES
 
 For a single job, if the job can be queried, returns a pointer to a
-.I batch_status
+.I batch_status 
 structure containing the status of the specified job.
-If the job cannot be queried, returns a NULL pointer, and
-.I pbs_errno
+If the job cannot be queried, returns a NULL pointer, and 
+.I pbs_errno 
 is set to an error number indicating the reason the job could not be queried.
 
 For a list of jobs, if any of the specified jobs can be queried,
-returns a pointer to a
-.I batch_status
+returns a pointer to a 
+.I batch_status 
 structure containing the status
 of all the queryable jobs.  If none of the jobs can be queried,
-returns a NULL pointer, and
-.I pbs_errno
+returns a NULL pointer, and 
+.I pbs_errno 
 is set to the error number that indicates the reason that the last
 job in the list could not be queried.
 
-For a queue, if the queue exists, returns a pointer to a
+For a queue, if the queue exists, returns a pointer to a 
 .I batch_status
 structure containing the status of all the queryable jobs in the
 queue.  If the queue does not exist, returns a NULL pointer, and
-.I pbs_errno
-is set to
-.I PBSE_UNKQUE (15018).
-If the queue exists but contains no queryable jobs, returns a NULL pointer, and
-.I pbs_errno
-is set to
+.I pbs_errno 
+is set to 
+.I PBSE_UNKQUE (15018).  
+If the queue exists but contains no queryable jobs, returns a NULL pointer, and 
+.I pbs_errno 
+is set to 
 .I PBSE_NONE (0).
 
 When querying a server, the connection to the server is already
-established by
-.B pbs_connect().
-If there are jobs at the server, returns a pointer to a
-.I batch_status
+established by 
+.B pbs_connect().  
+If there are jobs at the server, returns a pointer to a 
+.I batch_status 
 structure containing the status of all the queryable jobs at the
 server.  If the server does not contain any queryable jobs, returns a
-NULL pointer, and
-.I pbs_errno
-is set to
-.I PBSE_NONE (0).
+NULL pointer, and 
+.I pbs_errno 
+is set to 
+.I PBSE_NONE (0).  
 
-.B The batch_status Structure
-.br
-The
-.I batch_status
+.B The batch_status Structure 
+.br 
+The 
+.I batch_status 
 structure is defined in pbs_ifl.h as
-.nf
+.nf 
 struct batch_status {
         struct batch_status *next;
         char                *name;
@@ -248,9 +247,9 @@ struct batch_status {
 }
 
 .SH CLEANUP
-You must free the list of
-.I batch_status
-structures when no longer needed, by calling
+You must free the list of 
+.I batch_status 
+structures when no longer needed, by calling 
 .B pbs_statfree().
 
 .SH SEE ALSO

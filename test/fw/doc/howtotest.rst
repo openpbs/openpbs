@@ -62,6 +62,8 @@ PBSTestSuite offers the following:
     - conn_timeout: set a timeout in seconds after which a pbs_connect IFL call is refreshed (i.e., disconnected)
     - skip-setup: Bypasses setUp of PBSTestSuite (not custom ones)
     - skip-teardown: Bypasses tearDown of PBSTestSuite (not custom ones)
+    - repeat-count: Number of tests repetition
+    - repeat-delay: delay between two repetition
     - procinfo: Enables process monitoring thread, logged into ptl_proc_info test metrics.
     - procmon: Colon-separated process name to monitor. For example to monitor server, sched, and mom use procmon=pbs_server:pbs_sched:pbs_mom
     - procmon-freq: Sets a polling frequency for the process monitoring tool. Defaults to 10 seconds.
@@ -82,6 +84,7 @@ PBSTestSuite offers the following:
     - mgr-users: colon-separated list of manager users.
     - root-users: colon-separated list of root users.
     - build-users: colon-separated list of build users.
+    - daemon-users: colon-seperating list of daemon users.
 
   - Check required users are available or not
   - Creates servers, moms, schedulers and comms object

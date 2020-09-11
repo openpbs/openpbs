@@ -36,14 +36,13 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qrun 8B "12 November 2019" Local "PBS"
+.TH qrun 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qrun
+.B qrun 
 \- run a PBS batch job now
 
 .SH SYNOPSIS
-.B qrun
+.B qrun 
 [-a] [-H <vnode specification>] <job ID> [<job ID> ...]
 .br
 .B qrun
@@ -55,24 +54,24 @@
 .SH DESCRIPTION
 Forces a job to run, regardless of scheduling position or resource requirements.
 
-The
-.B qrun
+The 
+.B qrun 
 command can be used on jobs, subjobs, or ranges of subjobs, but
 not on job arrays.  When it is used on a range of subjobs, the
 non-running subjobs in that range are run.
 
 When preemption is enabled, the scheduler preempts other jobs in order
-to run this job.  Running a job via
-.B qrun
+to run this job.  Running a job via 
+.B qrun 
 gives the job higher preemption priority than any of the priorities defined
-in the
-.I preempt_prio
-scheduler parameter.
+in the 
+.I preempt_prio 
+scheduler parameter.  
 
 .B Required Privilege
 .br
-In order to execute
-.B qrun,
+In order to execute 
+.B qrun, 
 you must have PBS Operator or Manager privilege.
 
 .B Caveats for qrun
@@ -85,37 +84,37 @@ option to run a job, but specify insufficient vnodes or resources, the
 job may not run correctly.  Avoid using this option unless you are
 sure.
 
-If you don't use the
-.I -H
-option, the job must be in the
+If you don't use the 
+.I -H 
+option, the job must be in the 
 .I Queued
 state and reside in an execution queue.
 
-If you do use the
-.I -H
-option, the job must be in the
-.I Queued
-or
-.I Suspended
+If you do use the 
+.I -H 
+option, the job must be in the 
+.I Queued 
+or 
+.I Suspended 
 state and reside in an execution queue.
 
-If you use the
+If you use the 
 .I -H
 option, all schedulers are bypassed, and partition boundaries are ignored.
 
-The
+The 
 .B qrun
 command cannot be used on a job that is in the process of provisioning.
 .RE
 
 .SH OPTIONS
 .IP "-a" 6
-The
-.B qrun
+The 
+.B qrun 
 command exits before the job actually starts execution.
 
 .IP "(no -H option)" 6
-The job is run immediately regardless of scheduling policy as long as
+The job is run immediately regardless of scheduling policy as long as 
 the following are true:
 .RS 9
 The queue in which the job resides is an execution queue.
@@ -126,42 +125,42 @@ preempting jobs that are running.
 .RE
 
 .IP "(with -H option)" 6
-Do
+Do 
 .B NOT
 use this option unless you know exactly what you are doing.
 
 With the -H option, all scheduling policies are bypassed and the job
 is run directly.  The job is run immediately on the named or
 previously assigned vnodes, regardless of current usage on those
-vnodes or which scheduler manages the vnodes,
+vnodes or which scheduler manages the vnodes, 
 with the exception of vnode state.  The job is not run and
-the qrun request is rejected if any named vnode is down,
+the qrun request is rejected if any named vnode is down, 
 already allocated exclusively, or would need to be allocated
 exclusively and another job is already running on the vnode.  The job
-is run if the vnode is
+is run if the vnode is 
 .I offline.
 
-The
+The 
 .I -H
 option runs jobs that are queued or suspended.
 
-If the
-.B qrun -H
+If the 
+.B qrun -H 
 command is used on a job that requests an AOE, and that AOE is not instantiated
 on those vnodes, the vnodes are provisioned with the AOE.
 
-If the job requests an AOE, and that AOE is not available on the
+If the job requests an AOE, and that AOE is not available on the 
 specified vnodes, the job is held.
 .RS 6
 .IP "-H <vnode specification without resources>" 3
-The
+The 
 .I vnode specification without resources
 has this format:
 .br
 .I \ \ \ (<vchunk>)[+(<vchunk>) ...]
 .br
-where
-.I vchunk
+where 
+.I vchunk 
 has the format
 .br
 .I \ \ \ <vnode name>[+<vnode name> ...]
@@ -169,24 +168,24 @@ has the format
 Example: -H (VnodeA+VnodeB)+(VnodeC)
 
 PBS applies one requested chunk from the job's selection directive in round-robin
-fashion to each
-.I vchunk
-in the list.  Each
-.I vchunk
+fashion to each 
+.I vchunk 
+in the list.  Each 
+.I vchunk 
 must be sufficient to run the job's corresponding chunk, otherwise
 the job may not execute correctly.
 .RE
 
 .RS 6
 .IP "-H <vnode specification with resources>" 3
-The
+The 
 .I vnode specification with resources
 has this format:
 .br
 .I \ \ \ (<vchunk>)[+(<vchunk>) ...]
 .br
-where
-.I vchunk
+where 
+.I vchunk 
 has the format
 .IP "" 6
 .I <vnode name>:<vnode resources>[+<vnode name>:<vnode resources> ...]
@@ -203,43 +202,43 @@ has the format
 -H (VnodeA:mem=100kb:ncpus=1)+ (VnodeB:mem=100kb:ncpus=2+ VnodeC:mem=100kb)
 .LP
 
-PBS creates a new selection directive from the
-.I vnode specification with resources,
+PBS creates a new selection directive from the 
+.I vnode specification with resources, 
 using it instead of the original specification from the user.
 Any single resource specification results in the
-job's original selection directive being ignored.  Each
-.I vchunk
+job's original selection directive being ignored.  Each 
+.I vchunk 
 must be sufficient to run the job's corresponding chunk, otherwise
 the job may not execute correctly.
 
 If the job being run requests
 .I -l place=exclhost,
-take extra care to satisfy the
-.I exclhost
-request.  Make sure that if any vnodes are from a multi-vnoded host,
-all vnodes from that host are allocated.  Otherwise those vnodes can
+take extra care to satisfy the 
+.I exclhost 
+request.  Make sure that if any vnodes are from a multi-vnoded host, 
+all vnodes from that host are allocated.  Otherwise those vnodes can 
 be allocated to other jobs.
 .RE
 
 .IP "-H -" 3
 Runs the job on the set of resources to which it is already assigned.
-You can run a job on the set of resources already assigned to the job, without having to list the resources, by using the
+You can run a job on the set of resources already assigned to the job, without having to list the resources, by using the 
 .I -
 (dash) argument to the
-.I -H
+.I -H 
 option.
 .RE
 
 .IP "--version" 6
-The
+The 
 .B qrun
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
 .IP "Job ID" 6
-The
-.B qrun
+The 
+.B qrun 
 command accepts a list of job IDs, of the form
 .I \ \ \ <sequence number>[.<server name>][@<server name>]
 .br
@@ -251,14 +250,14 @@ Note that some shells require that you enclose a job array identifier in
 double quotes.
 
 .IP "vnode specification" 6
-The
+The 
 .I vnode specification without resources
 has this format:
 .IP "" 9
 .I (<vchunk>)[+(<vchunk>) ...]
 .br
-where
-.I vchunk
+where 
+.I vchunk 
 has the format
 .br
 .I <vnode name>[+<vnode name> ...]
@@ -266,14 +265,14 @@ has the format
 Example: -H (VnodeA+VnodeB)+(VnodeC)
 .LP
 .IP "" 6
-The
+The 
 .I vnode specification with resources
 has this format:
 .IP "" 9
 .I (<vchunk>)[+(<vchunk>) ...]
 .br
-where
-.I vchunk
+where 
+.I vchunk 
 has the format
 .br
 .I <vnode name>:<vnode resources>[+<vnode name>:<vnode resources> ...]
@@ -286,7 +285,7 @@ has the format
 
 Example: -H (VnodeA:mem=100kb:ncpus=1) + (VnodeB:mem=100kb:ncpus=2 + VnodeC:mem=100kb)
 .IP "" 6
-A
+A 
 .I vnode name
 is the name of the vnode, not the name of the host.
 
@@ -301,14 +300,11 @@ each error occurrence.
 On success
 
 .IP "Greater than zero" 6
-If the
-.B qrun
+If the 
+.B qrun 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide,
-.br
-qsub(1B),
-qmgr(8B),
+qsub(1B), 
+qmgr(8B), 
 pbs_runjob(3B)

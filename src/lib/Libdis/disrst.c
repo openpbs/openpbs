@@ -112,8 +112,6 @@ disrst(int stream, int *retval)
 			}
 		}
 	}
-	locret = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : locret;
 	if ((*retval = locret) != DIS_SUCCESS && value != NULL) {
 		free(value);
 		value = NULL;

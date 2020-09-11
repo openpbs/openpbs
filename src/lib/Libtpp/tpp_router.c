@@ -1189,9 +1189,13 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 		memcpy(&ahdr, data, sizeof(tpp_auth_pkt_hdr_t));
 
 		if (authdata == NULL) {
-			if (strcmp(ahdr.auth_method, AUTH_RESVPORT_NAME) != 0 &&
-				get_auth(ahdr.auth_method) == NULL) {
-
+			if (!is_string_in_arr(tpp_conf->supported_auth_methods, ahdr.auth_method)) {
+				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Authentication method %s not allowed in connection %s", tfd, ahdr.auth_method, tpp_netaddr(&connected_host));
+				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
+				tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
+				return 0; /* let connection be alive, so we can send error */
+			}
+			if (strcmp(ahdr.auth_method, AUTH_RESVPORT_NAME) != 0 && get_auth(ahdr.auth_method) == NULL) {
 				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Authentication method not supported in connection %s", tfd, tpp_netaddr(&connected_host));
 				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 				tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
@@ -1292,6 +1296,14 @@ router_pkt_handler(int tfd, void *data, int len, void *c, void *extra)
 						free(data_out);
 					return 0; /* let connection be alive, so we can send error */
 				} else {
+					if (!is_string_in_arr(tpp_conf->supported_auth_methods, AUTH_RESVPORT_NAME)) {
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Authentication method %s not allowed in connection %s", tfd, AUTH_RESVPORT_NAME, tpp_netaddr(&connected_host));
+						tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
+						tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, 0, tpp_get_logbuf());
+						if (data_out)
+							free(data_out);
+						return 0; /* let connection be alive, so we can send error */
+					}
 					/* reserved port based authentication, and is not yet authenticated, so check resv port */
 					if (tpp_transport_isresvport(tfd) != 0) {
 						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Connection from non-reserved port, rejected");

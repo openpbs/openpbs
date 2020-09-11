@@ -36,13 +36,12 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH qenable 8B "30 November 2017" Local "PBS"
+.TH qenable 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B qenable
+.B qenable 
 - allow a queue to accept jobs
 .SH SYNOPSIS
-.B qenable
+.B qenable 
 <destination> [<destination> ...]
 .br
 .B qenable
@@ -50,26 +49,26 @@
 .SH DESCRIPTION
 The
 .B qenable
-command allows a queue to accept batch jobs.  Sets the value of
-the queue's
+command allows a queue to accept batch jobs.  Sets the value of 
+the queue's 
 .I enabled
 attribute to
 .I True.
-If the command is accepted, the
+If the command is accepted, the 
 .I destination
 accepts
 .I "Queue Job"
-requests.
+requests.  
 
 .B Required Permission
 .br
-In order to execute
-.B qenable,
+In order to execute 
+.B qenable, 
 the user must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B qenable
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -91,15 +90,15 @@ Allows all queues at specified server to accept jobs.
 .IP " " 8
 Allows specified queue at specified server to accept jobs.
 .LP
-To allow all queues at the default server to accept jobs,
-use the
-.B qmgr
+To allow all queues at the default server to accept jobs, 
+use the 
+.B qmgr 
 command:
 .br
 .B \ \ \ Qmgr: set queue @default enabled=true
 
 .SH STANDARD ERROR
-The
+The 
 .B qenable
 command writes a diagnostic message to standard error for
 each error occurrence.
@@ -108,12 +107,9 @@ each error occurrence.
 .IP Zero 8
 Upon successful processing of all the operands
 .IP "Greater than zero" 8
-If the
-.B qenable
+If the 
+.B qenable 
 command fails to process any operand
 
 .SH SEE ALSO
-The
-.I PBS Administrator's Guide
-and the following manual pages:
 pbs_server(8B), qmgr(8B), and qenable(8B)

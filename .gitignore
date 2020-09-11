@@ -157,6 +157,7 @@ src/cmds/pbs_tmrsh
 src/cmds/pbsdsh
 src/cmds/pbsnodes
 src/cmds/pbs_release_nodes
+src/cmds/pbs_dataservice.bin
 src/cmds/pbsrun
 src/cmds/pbsrun_unwrap
 src/cmds/pbsrun_wrap
@@ -264,6 +265,8 @@ ci/logs/
 ci/logs/prev_LOGS/
 ci/.*
 ci/packages
+ci/ptl_ts_tree.json
+ci/docker-compose.json
 
 # Generated scripts
 src/cmds/scripts/modulefile

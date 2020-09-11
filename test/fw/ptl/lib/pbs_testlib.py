@@ -66,7 +66,8 @@ from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError, get_method_name
 from ptl.utils.pbs_procutils import ProcUtils
-from ptl.utils.pbs_testusers import ROOT_USER, TEST_USER, PbsUser
+from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
+                                     DAEMON_SERVICE_USER)
 
 try:
     import psycopg2
@@ -249,7 +250,7 @@ class PtlConfig(object):
             'PTL_SUDO_CMD': 'sudo -H',
             'PTL_RSH_CMD': 'ssh',
             'PTL_CP_CMD': 'scp -p',
-            'PTL_MAX_ATTEMPTS': 60,
+            'PTL_MAX_ATTEMPTS': 180,
             'PTL_ATTEMPT_INTERVAL': 0.5,
             'PTL_UPDATE_ATTRIBUTES': True,
         }
@@ -1750,8 +1751,8 @@ class BatchUtils(object):
                       l[i - count].startswith('\t')):
                     _e = len(lines) - count
                     lines[_e] = lines[_e] + l[i]
-                    if ((i + 1) < len(l)
-                            and not l[i + 1].startswith(('\t', ' '))):
+                    if ((i + 1) < len(l) and not
+                            l[i + 1].startswith(('\t', ' '))):
                         count += 1
                     else:
                         count = 1
@@ -1779,8 +1780,8 @@ class BatchUtils(object):
                 m = self.pbsobjattrval_re.match(l)
                 if m:
                     attr = m.group('attribute')
-                    if (attribs is None or attr.lower() in attribs
-                            or attr in attribs):
+                    if (attribs is None or attr.lower() in attribs or
+                            attr in attribs):
                         if attr in d:
                             d[attr] = d[attr] + "," + m.group('value')
                         else:
@@ -2366,6 +2367,12 @@ class BatchUtils(object):
                     _c.append('-i')
             return _c
 
+        elif op == IFL_RALTER:
+            if isinstance(attrs, dict):
+                if 'extend' in attrs and attrs['extend'] is 'force':
+                    ret.append('-Wforce')
+                    del attrs['extend']
+
         if attrs is None or len(attrs) == 0:
             return ret
 
@@ -2391,7 +2398,7 @@ class BatchUtils(object):
                                       self.platform == 'craysim' or
                                       self.platform == 'shasta'):
                 v = v.translate({ord(c): "\\" +
-                                 c for c in r"~`!@#$%^&*()[]{};:,./<>?\|-=_+"})
+                                 c for c in r"~`!@#$%^&*()[]{};:,/<>?\|="})
             if exclude_attrs is not None and a in exclude_attrs:
                 continue
 
@@ -3863,7 +3870,7 @@ class PBSService(PBSObject):
         """
 
     def log_lines(self, logtype, id=None, n=50, tail=True, starttime=None,
-                  endtime=None):
+                  endtime=None, host=None):
         """
         Return the last ``<n>`` lines of a PBS log file, which
         can be one of ``server``, ``scheduler``, ``MoM``, or
@@ -3887,6 +3894,8 @@ class PBSService(PBSObject):
         :type day: int
         :param starttime: date timestamp to start matching
         :param endtime: date timestamp to end matching
+        :param host: Hostname
+        :type host: str
         :returns: Last ``<n>`` lines of logfile for ``Server``,
                   ``Scheduler``, ``MoM or tracejob``
         """
@@ -3897,6 +3906,8 @@ class PBSService(PBSObject):
             endtime = time.time()
         if starttime is None:
             starttime = self.ctime
+        if host is None:
+            host = self.hostname
         try:
             if logtype == 'tracejob':
                 if id is None:
@@ -3906,7 +3917,7 @@ class PBSService(PBSObject):
                        'bin',
                        'tracejob')]
                 cmd += [str(id)]
-                lines = self.du.run_cmd(self.hostname, cmd)['out']
+                lines = self.du.run_cmd(host, cmd)['out']
                 if n != 'ALL':
                     lines = lines[-n:]
             else:
@@ -3934,7 +3945,7 @@ class PBSService(PBSObject):
                     filename = os.path.join(logdir, day)
                     if n == 'ALL':
                         day_lines = self.du.cat(
-                            self.hostname, filename, sudo=sudo,
+                            host, filename, sudo=sudo,
                             level=logging.DEBUG2)['out']
                     else:
                         if tail:
@@ -3945,7 +3956,7 @@ class PBSService(PBSObject):
                         cmd += ['-n']
                         cmd += [str(n), filename]
                         day_lines = self.du.run_cmd(
-                            self.hostname, cmd, sudo=sudo,
+                            host, cmd, sudo=sudo,
                             level=logging.DEBUG2)['out']
                     lines.extend(day_lines)
                     firstday_obj = firstday_obj + datetime.timedelta(days=1)
@@ -4065,9 +4076,13 @@ class PBSService(PBSObject):
             rv = self.logutils.match_msg(lines, msg, allmatch=allmatch,
                                          regexp=regexp, starttime=starttime,
                                          endtime=endtime)
-            if rv is None and not existence:
-                self.logger.log(level, infomsg + attemptmsg + '... OK')
-                break
+            if not existence:
+                if rv:
+                    _msg = infomsg + ' - but exists'
+                    raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+                else:
+                    self.logger.log(level, infomsg + attemptmsg + '... OK')
+                    break
             if rv:
                 self.logger.log(level, infomsg + '... OK')
                 break
@@ -4090,7 +4105,7 @@ class PBSService(PBSObject):
             lines.close()
         except:
             pass
-        if (rv is None and existence) or (rv is not None and not existence):
+        if (rv is None and existence):
             _msg = infomsg + attemptmsg
             raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
         return rv
@@ -4302,26 +4317,26 @@ class PBSService(PBSObject):
                     try:
                         rv = self.du.chmod(path=fn, mode=0o644)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         with open(fn, 'w') as fd:
                             fd.write("\n".join(v))
                         rv = self.du.run_copy(
                             self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         rv = self.du.chown(path=k, runas=ROOT_USER,
                                            uid=0, gid=0, sudo=True)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                     except:
-                        self.logger.error("Failed to restore "
-                                          + "configuration: %s" % k)
+                        self.logger.error("Failed to restore " +
+                                          "configuration: %s" % k)
                         return False
                     finally:
                         if os.path.isfile(fn):
@@ -4334,8 +4349,8 @@ class PBSService(PBSObject):
                         fn = self.du.create_temp_file()
                         rv = self.du.chmod(path=fn, mode=0o644)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         with open(fn, 'w') as fd:
                             mom_config_data = "\n".join(v) + "\n"
@@ -4343,18 +4358,18 @@ class PBSService(PBSObject):
                         rv = self.du.run_copy(
                             self.hostname, src=fn, dest=k, sudo=True)
                         if rv['rc'] != 0:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                         rv = self.du.chown(path=k, runas=ROOT_USER,
                                            uid=0, gid=0, sudo=True)
                         if not rv:
-                            self.logger.error("Failed to restore "
-                                              + "configuration: %s" % k)
+                            self.logger.error("Failed to restore " +
+                                              "configuration: %s" % k)
                             return False
                     except:
-                        self.logger.error("Failed to restore "
-                                          + "configuration: %s" % k)
+                        self.logger.error("Failed to restore " +
+                                          "configuration: %s" % k)
                         return False
                     finally:
                         if os.path.isfile(fn):
@@ -5157,11 +5172,6 @@ class Server(PBSService):
         if self.platform == 'cray' or self.platform == 'craysim':
             setdict[ATTR_restrict_res_to_release_on_suspend] = 'ncpus'
         if delhooks:
-            if (self.platform == 'cray' or self.platform == 'craysim' or
-                    self.platform == 'shasta'):
-                reverthooks = True
-            else:
-                reverthooks = False
             self.delete_site_hooks()
         if delqueues:
             revertqueues = False
@@ -6017,7 +6027,7 @@ class Server(PBSService):
                     appended to the tuple.
         :raises: PbsSubmitError
         """
-        ij = InteractiveJob(job, cmd, self.hostname)
+        ij = InteractiveJob(job, cmd, self.client)
         # start the interactive job submission thread and wait to pickup the
         # actual job identifier
         ij.start()
@@ -8268,6 +8278,8 @@ class Server(PBSService):
             pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
                                  'pbs_ralter')]
             if attrib is not None:
+                if extend is not None:
+                    attrib['extend'] = extend
                 _conf = self.default_client_pbs_conf
                 pcmd += self.utils.convert_to_cli(attrib, op=IFL_RALTER,
                                                   hostname=self.client,
@@ -8288,7 +8300,8 @@ class Server(PBSService):
                 self.last_out = ret['out']
             self.last_rc = rc
         elif runas is not None:
-            rc = self.pbs_api_as('alterresv', resvid, runas, data=attrib)
+            rc = self.pbs_api_as('alterresv', resvid, runas, data=attrib,
+                                 extend=extend)
         else:
             c = self._connect(self.hostname)
             if c < 0:
@@ -10449,12 +10462,11 @@ class Server(PBSService):
                          "attr_resource, attr_value, attr_flags)")
 
         job_stmt = ("INSERT INTO pbs.job (ji_jobid, ji_sv_name, ji_state, "
-                    "ji_substate,ji_svrflags, ji_numattr,"
-                    " ji_ordering, ji_priority, ji_stime, ji_endtbdry, "
-                    "ji_queue, ji_destin, ji_un_type, ji_momaddr, "
-                    "ji_momport, ji_exitstat, ji_quetime, ji_rteretry, "
-                    "ji_fromsock, ji_fromaddr, ji_4jid, ji_4ash, "
-                    "ji_credtype, ji_qrank, ji_savetm, ji_creattm)")
+                    "ji_substate, ji_svrflags, ji_stime, "
+                    "ji_queue, ji_destin, ji_un_type, "
+                    "ji_exitstat, ji_quetime, ji_rteretry, "
+                    "ji_fromsock, ji_fromaddr, ji_jid, "
+                    "ji_credtype, ji_savetm, ji_creattm)")
 
         all_stmts = []
 
@@ -10953,7 +10965,6 @@ class Scheduler(PBSService):
                             "resource_unset_infinite",
                             "unknown_shares",
                             "dedicated_prefix",
-                            "load_balancing",
                             "help_starving_jobs",
                             "max_starve",
                             "sort_queues",
@@ -10989,7 +11000,6 @@ class Scheduler(PBSService):
                             "key",
                             "preempt_starving",
                             "preempt_fairshare",
-                            "load_balancing_rr",
                             "assign_ssinodes",
                             "cpus_per_ssinode",
                             "mem_per_ssinode",
@@ -11022,6 +11032,7 @@ class Scheduler(PBSService):
         self.holidays_obj = None
         self.server = None
         self.db_access = None
+        self.user = None
 
         if server is not None:
             self.server = server
@@ -11049,6 +11060,8 @@ class Scheduler(PBSService):
         self.pbs_conf = self.server.pbs_conf
         self.sc_name = id
 
+        self.user = DAEMON_SERVICE_USER
+
         self.dflt_sched_config_file = os.path.join(self.pbs_conf['PBS_EXEC'],
                                                    'etc', 'pbs_sched_config')
 
@@ -11062,6 +11075,7 @@ class Scheduler(PBSService):
                                                 'etc',
                                                 'pbs_dedicated')
         self.setup_sched_priv(sched_priv)
+        self.setup_sched_logs()
 
         self.db_access = db_access
 
@@ -11082,6 +11096,9 @@ class Scheduler(PBSService):
                 sched_priv = os.path.join(self.pbs_conf['PBS_HOME'],
                                           'sched_priv')
 
+        self.du.chown(self.hostname, sched_priv, uid=self.user,
+                      recursive=True, sudo=True)
+
         self.sched_config_file = os.path.join(sched_priv, 'sched_config')
         self.resource_group_file = os.path.join(sched_priv, 'resource_group')
         self.holidays_file = os.path.join(sched_priv, 'holidays')
@@ -11099,6 +11116,16 @@ class Scheduler(PBSService):
 
         self.holidays_obj = Holidays()
         self.holidays_parse_file(level=logging.DEBUG)
+
+    def setup_sched_logs(self):
+        if 'sched_log' in self.attributes:
+            sched_logs = self.attributes['sched_log']
+        else:
+            sched_logs = os.path.join(self.pbs_conf['PBS_HOME'],
+                                      'sched_logs')
+
+        self.du.chown(self.hostname, sched_logs, uid=self.user,
+                      recursive=True, sudo=True)
 
     def initialise_service(self):
         """
@@ -11195,6 +11222,11 @@ class Scheduler(PBSService):
             self.logger.info(self.logprefix + 'stopping Scheduler on host ' +
                              self.hostname)
             return super(Scheduler, self)._stop(sig, inst=self)
+        elif self.attributes['id'] != 'default':
+            self.logger.info(self.logprefix + 'stopping MultiSched ' +
+                             self.attributes['id'] + ' on host ' +
+                             self.hostname)
+            return super(Scheduler, self)._stop(inst=self)
         else:
             try:
                 self.pi.stop_sched()
@@ -11503,7 +11535,8 @@ class Scheduler(PBSService):
             else:
                 sp = path
             self.du.run_copy(self.hostname, src=fn, dest=sp,
-                             preserve_permission=False, sudo=True)
+                             preserve_permission=False,
+                             sudo=True, uid=self.user)
             os.remove(fn)
 
             self.logger.debug(self.logprefix + "updated configuration")
@@ -11520,7 +11553,8 @@ class Scheduler(PBSService):
                                starttime=reconfig_time)
                 self.log_match("Error reading line", max_attempts=2,
                                starttime=reconfig_time, existence=False)
-            except PtlLogMatchError:
+            except PtlLogMatchError as log_error:
+                self.logger.error(log_error.msg)
                 _msg = 'Error in validating sched_config changes'
                 raise PbsSchedConfigError(rc=1, rv=False,
                                           msg=_msg)
@@ -11544,10 +11578,13 @@ class Scheduler(PBSService):
         if apply:
             try:
                 self.apply_config(validate=validate)
-            except PbsSchedConfigError:
+            except PbsSchedConfigError as sched_error:
+                _msg = sched_error.msg
+                self.logger.error(_msg)
                 for k in confs:
                     del self.sched_config[k]
                 self.apply_config(validate=validate)
+                raise PbsSchedConfigError(rc=1, rv=False, msg=_msg)
         return True
 
     def add_server_dyn_res(self, custom_resource, script_body=None,
@@ -11596,7 +11633,11 @@ class Scheduler(PBSService):
             res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
             self.du.run_copy(host, src=tmp_file, dest=res_file, sudo=True,
                              preserve_permission=False)
-            self.du.chown(hostname=host, path=res_file, uid=0, gid=0,
+
+            user = self.user
+            group = pwd.getpwnam(str(user)).pw_gid
+
+            self.du.chown(hostname=host, path=res_file, uid=user, gid=group,
                           sudo=True)
             self.du.chmod(hostname=host, path=res_file, mode=perm, sudo=True)
             if host is None:
@@ -11660,25 +11701,27 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, src=self.dflt_resource_group_file,
                              dest=self.resource_group_file,
                              preserve_permission=False,
-                             sudo=True)
+                             sudo=True, uid=self.user)
         rc = self.holidays_revert_to_default()
         if self.du.cmp(self.hostname, self.dflt_sched_config_file,
                        self.sched_config_file, sudo=True) != 0:
             self.du.run_copy(self.hostname, src=self.dflt_sched_config_file,
                              dest=self.sched_config_file,
-                             preserve_permission=False, sudo=True)
+                             preserve_permission=False,
+                             sudo=True, uid=self.user)
         if self.du.cmp(self.hostname, self.dflt_dedicated_file,
                        self.dedicated_time_file, sudo=True):
             self.du.run_copy(self.hostname, src=self.dflt_dedicated_file,
                              dest=self.dedicated_time_file,
-                             preserve_permission=False, sudo=True)
+                             preserve_permission=False, sudo=True,
+                             uid=self.user)
 
         self.signal('-HUP')
         # Revert fairshare usage
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
-        self.du.run_cmd(cmd=cmd, sudo=True)
+        self.du.run_cmd(cmd=cmd, runas=self.user)
         self.parse_sched_config()
         if self.platform == 'cray' or self.platform == 'craysim':
             self.add_resource('vntype')
@@ -11701,19 +11744,26 @@ class Scheduler(PBSService):
                                       self.attributes['sched_log'])
         if not os.path.exists(sched_priv_dir):
             self.du.mkdir(path=sched_priv_dir, sudo=True)
+            if self.user.name != 'root':
+                self.du.chown(hostname=self.hostname, path=sched_priv_dir,
+                              sudo=True, uid=self.user)
             self.du.run_copy(self.hostname, src=self.dflt_resource_group_file,
                              dest=self.resource_group_file, mode=0o644,
-                             sudo=True)
+                             sudo=True, uid=self.user)
             self.du.run_copy(self.hostname, src=self.dflt_holidays_file,
-                             dest=self.holidays_file, mode=0o644, sudo=True)
+                             dest=self.holidays_file, mode=0o644,
+                             sudo=True, uid=self.user)
             self.du.run_copy(self.hostname, src=self.dflt_sched_config_file,
                              dest=self.sched_config_file, mode=0o644,
-                             sudo=True)
+                             sudo=True, uid=self.user)
             self.du.run_copy(self.hostname, src=self.dflt_dedicated_file,
                              dest=self.dedicated_time_file, mode=0o644,
-                             sudo=True)
+                             sudo=True, uid=self.user)
         if not os.path.exists(sched_logs_dir):
             self.du.mkdir(path=sched_logs_dir, sudo=True)
+            if self.user.name != 'root':
+                self.du.chown(hostname=self.hostname, path=sched_logs_dir,
+                              sudo=True, uid=self.user)
 
         self.setup_sched_priv(sched_priv=sched_priv_dir)
 
@@ -12647,7 +12697,10 @@ class Scheduler(PBSService):
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')]
         if self.sc_name != 'default':
             cmd += ['-I', self.sc_name]
-        ret = self.du.run_cmd(self.hostname, cmd, sudo=True, logerr=False)
+
+        ret = self.du.run_cmd(self.hostname, cmd=cmd,
+                              sudo=True, logerr=False)
+
         if ret['rc'] != 0:
             raise PbsFairshareError(rc=ret['rc'], rv=None,
                                     msg=str(ret['err']))
@@ -12740,7 +12793,7 @@ class Scheduler(PBSService):
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
         cmd += ['-s', name, str(usage)]
-        ret = self.du.run_cmd(self.hostname, cmd, sudo=True)
+        ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
         if ret['rc'] == 0:
             return True
         return False
@@ -12757,7 +12810,7 @@ class Scheduler(PBSService):
             cmd += ['-I', self.sc_name]
         cmd += ['-d']
 
-        ret = self.du.run_cmd(self.hostname, cmd, sudo=True)
+        ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
         if ret['rc'] == 0:
             self.fairshare_tree = self.query_fairshare()
             return True
@@ -12791,7 +12844,7 @@ class Scheduler(PBSService):
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
         cmd += ['-c', name1, name2]
-        ret = self.du.run_cmd(self.hostname, cmd, sudo=True)
+        ret = self.du.run_cmd(self.hostname, cmd, runas=self.user)
         if ret['rc'] == 0:
             return ret['out'][0]
         return None
@@ -14038,61 +14091,6 @@ class MoM(PBSService):
         """
         pass
 
-    def add_mom_dyn_res(self, custom_resource, script_body=None,
-                        res_file=None, dirname=None, host=None, perm=0o700,
-                        prefix='PtlPbsMomDynRes', suffix='.scr'):
-        """
-        Add a root owned mom dynamic resource script or file to the mom
-        configuration
-
-        :param custom_resource: The name of the custom resource to
-                                define
-        :type custom_resource: str
-        :param script_body: The body of the mom dynamic resource
-        :param res_file: Alternatively to passing the script body, use
-                     the file instead
-        :type res_file: str or None
-        :param dirname: the file will be created in this directory
-        :type dirname: str or None
-        :param host: the hostname on which dyn res script is created
-        :type host: str or None
-        :param perm: perm to use while creating scripts
-                     (must be octal like 0o777)
-        :param prefix: the file name will begin with this prefix
-        :type prefix: str
-        :param suffix: the file name will end with this suffix
-        :type suffix: str
-        :return Absolute path of the dynamic resource script
-        """
-        if res_file is not None:
-            with open(res_file) as f:
-                script_body = f.readlines()
-                self.du.chmod(host, path=res_file, mode=perm,
-                              sudo=True)
-        else:
-            if dirname is None:
-                dirname = self.pbs_conf['PBS_HOME']
-            tmp_file = self.du.create_temp_file(prefix=prefix, suffix=suffix,
-                                                body=script_body)
-
-            res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
-            self.du.run_copy(host, src=tmp_file, dest=res_file, sudo=True,
-                             preserve_permission=False)
-            self.du.chown(hostname=host, path=res_file, uid=0, gid=0,
-                          sudo=True)
-            self.du.chmod(hostname=host, path=res_file, mode=perm, sudo=True)
-            if host is None:
-                self.dyn_created_files.append(res_file)
-
-        self.logger.info(self.logprefix + "adding mom dyn res " + res_file)
-        self.logger.info("-" * 30)
-        self.logger.info(script_body)
-        self.logger.info("-" * 30)
-
-        a = {custom_resource: '!' + res_file}
-        self.add_config(a)
-        return res_file
-
     def enable_cgroup_cset(self):
         """
         Configure and enable cgroups hook
@@ -14670,6 +14668,11 @@ class InteractiveJob(threading.Thread):
         self.cmd = cmd
         self.jobid = None
         self.hostname = host
+        self._ru = ""
+        if self.du.get_platform() == "shasta":
+            self._ru = PbsUser.get_user(job.username)
+            if self._ru.host:
+                self.hostname = self._ru.host
 
     def __del__(self):
         del self.__dict__
@@ -14712,8 +14715,22 @@ class InteractiveJob(threading.Thread):
                            ['-u', job.username] + cmd)
 
             self.logger.debug(cmd)
-
-            _p = pexpect.spawn(" ".join(cmd), timeout=_to)
+            is_local = self.du.is_localhost(self.hostname)
+            _p = ""
+            if is_local:
+                _p = pexpect.spawn(" ".join(cmd), timeout=_to)
+            else:
+                self.logger.info("Submit interactive job from a remote host")
+                if self.du.get_platform() == "shasta":
+                    ssh_cmd = self.du.rsh_cmd + \
+                        ['-p', self._ru.port,
+                         self._ru.name + '@' + self.hostname]
+                    _p = pexpect.spawn(" ".join(ssh_cmd), timeout=_to)
+                    _p.sendline(" ".join(self.cmd))
+                else:
+                    ssh_cmd = self.du.rsh_cmd + [self.hostname]
+                    _p = pexpect.spawn(" ".join(ssh_cmd), timeout=_to)
+                    _p.sendline(" ".join(cmd))
             self.job.interactive_handle = _p
             time.sleep(_st)
             expstr = "qsub: waiting for job "
@@ -14734,11 +14751,14 @@ class InteractiveJob(threading.Thread):
                 _p.expect(out)
             self.logger.info('sending exit')
             _p.sendline("exit")
-            self.logger.info('waiting for the subprocess to finish')
-            _p.wait()
-            _p.close()
+            while True:
+                try:
+                    _p.read_nonblocking(timeout=5)
+                except Exception:
+                    break
+            if _p.isalive():
+                _p.close()
             self.job.interactive_handle = None
-            self.logger.debug(_p.exitstatus)
         except Exception:
             self.logger.error(traceback.print_exc())
             return None

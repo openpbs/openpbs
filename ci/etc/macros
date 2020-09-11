@@ -1,0 +1,10 @@
+CONFIG_DIR=.config_dir
+STATUS_FILE=status
+PARAM_FILE=params
+REQUIREMENT_DECORATOR_FILE=requirements_decorator
+CONFIGURE_OPT_FILE=configure_opt
+BENCHPRESS_OPT_FILE=benchpress_opt
+CONF_JSON_FILE=conf.json
+REQ_DOCKER_VERSION=17120
+DEFAULT_PLATFORM=centos:8
+SUPPORTED_PLATFORMS=centos:7,centos:8,ubuntu:16.04,ubuntu:18.04

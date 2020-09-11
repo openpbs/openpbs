@@ -36,75 +36,74 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbsfs 8B "4 March 2019" Local "PBS"
+.TH pbsfs 8B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbsfs
+.B pbsfs 
 \- show or manipulate PBS fairshare usage data
 .SH SYNOPSIS
 
 Showing usage data:
 .br
-.B pbsfs
-[-c <entity1> <entity2>] [-g <entity>] [-I <scheduler name>]
+.B pbsfs 
+[-c <entity1> <entity2>] [-g <entity>] [-I <scheduler name>] 
       [-p] [-t]
 
 .br
 Manipulating usage data:
 .br
-.B pbsfs
+.B pbsfs 
 [-d] [-e] [-I <scheduler name>] [-s <entity> <usage value>]
 
 .br
 Printing version:
 .br
-.B pbsfs
+.B pbsfs 
 --version
 
 .SH DESCRIPTION
 
-You can use the
-.B pbsfs
+You can use the 
+.B pbsfs 
 command to print or manipulate the PBS scheduler's
 fairshare usage data.  You can print the usage data in various
-formats, described below.  Changes made using
-.B pbsfs
+formats, described below.  Changes made using 
+.B pbsfs 
 take effect in the next scheduling cycle; you do not need to restart or HUP the
-scheduler for changes to take effect.
+scheduler for changes to take effect.  
 
 We recommend that if you use the options that manipulate usage data,
 you should do this when the scheduler is not scheduling jobs, because
 scheduling while changing fairshare usage data may give unwanted
-results.
+results.  
 
 .B Prerequisites
 .br
-The server must be running in order to use the
+The server must be running in order to use the 
 .B pbsfs
 command.
 
-.B Permissions
+.B Permissions 
 .br
-You must be root to run the
-.B pbsfs
-command; if not, it will print the error message,
+You must be root to run the 
+.B pbsfs 
+command; if not, it will print the error message, 
 "Unable to access fairshare data".
 
 .SH OPTIONS
 
 .B You can safely use the following options while jobs are being scheduled:
 .IP "(no options)" 10
-Same as
+Same as 
 .B pbsfs -p
 .IP "-c <entity1> <entity2>" 10
 Compare two fairshare entities
 .IP "-g <entity>" 10
-Print a detailed listing for the specified entity, including the path
+Print a detailed listing for the specified entity, including the path 
 from the root of the tree to the entity.
 .IP "-I <scheduler name>" 10
-Specifies name of scheduler whose data is to be manipulated or shown.
-Required for multischeds; optional for default scheduler.  Name of
-default scheduler is "default".  If not specified,
+Specifies name of scheduler whose data is to be manipulated or shown.  
+Required for multischeds; optional for default scheduler.  Name of 
+default scheduler is "default".  If not specified, 
 .B pbsfs
 operates on default scheduler.
 .IP "-p" 10
@@ -115,7 +114,7 @@ vertex.
 .IP "-t" 10
 Print the fairshare tree in a hierarchical format.
 .IP "--version" 10
-The
+The 
 .B pbsfs
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -123,19 +122,19 @@ This option can only be used alone.
 
 .B It is not recommended to be scheduling jobs when you use the following options:
 .IP "-d" 10
-Decay the fairshare tree by the amount specified in the
+Decay the fairshare tree by the amount specified in the 
 .I fairshare_decay_factor
 scheduler parameter.
 .IP "-e" 10
-Trim fairshare tree to just the entities in the
-.I resource_group
+Trim fairshare tree to just the entities in the 
+.I resource_group 
 file.  Unknown entities and their usage are deleted; as a result the unknown
 group has no usage and no children.
 .IP "-s <entity> <usage value>" 10
-Set
-.I entity's
-usage value to
-.I usage value.
+Set 
+.I entity's 
+usage value to 
+.I usage value.  
 Editing a non-leaf entity is ignored.  All non-leaf entity usage
 values are calculated each time you use the pbsfs command to make
 changes.
@@ -208,24 +207,21 @@ Group ID of the entity.
 The specified fairshare tree entity.
 .IP "fairshare usage units" 10
 The resource for which the scheduler accumulates usage for fairshare
-calculations.  This defaults to
-.I cput
+calculations.  This defaults to 
+.I cput 
 (CPU seconds) but can be set in
 the scheduler's configuration file.
 .IP "fairshare_tree_usage" 10
-The entity's effective usage.  See "Computing Effective
-Usage (fairshare_tree_usage)" in the PBS Professional
-Administrator's Guide.
+The entity's effective usage.  
+
 .IP "Path from root" 10
 The path from the root of the tree to the entity.  The scheduler
 follows this path when comparing priority between two entities.
 .IP "Percentage or perc" 10
 The percentage of the shares in the tree allotted to the entity,
-computed as
-.I fairshare_perc.
-See "Computing Target Usage for Each
-Vertex (fairshare_perc)" in the PBS Professional
-Administrator's Guide.
+computed as 
+.I fairshare_perc.  
+
 .IP "Resgroup or Grp" 10
 Group ID of the entity's parent group.
 .IP "Shares" 10
@@ -237,6 +233,4 @@ The value the scheduler uses to the pick which entity has priority
 over another.  The smaller the number the higher the priority.
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide,
 pbs_sched(8B)

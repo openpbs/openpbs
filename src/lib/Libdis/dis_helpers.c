@@ -36,82 +36,24 @@
  * "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
  * subject to Altair's trademark licensing policies.
  */
-
-#include <errno.h>
-#include <assert.h>
-#include <stdlib.h>
+#include <pbs_config.h>
 #include <arpa/inet.h>
-#ifdef WIN32
-#include <winsock.h>
-#endif
+#include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
+#include "auth.h"
 #include "dis.h"
 #include "pbs_error.h"
 #include "pbs_internal.h"
-#include "auth.h"
 
-#define PKT_MAGIC "PKTV1"
+#define PKT_MAGIC    "PKTV1"
 #define PKT_MAGIC_SZ sizeof(PKT_MAGIC)
-#define DIS_HDR_FSTCHR '+'
+#define PKT_HDR_SZ   (PKT_MAGIC_SZ + 1 + sizeof(int))
 
-static pbs_dis_buf_t * dis_get_readbuf(int);
-static pbs_dis_buf_t * dis_get_writebuf(int);
-static int __transport_read(int, int);
-static void dis_pack_buf(pbs_dis_buf_t *);
-static int dis_resize_buf(pbs_dis_buf_t *, size_t, size_t);
+static pbs_dis_buf_t *dis_get_readbuf(int);
+static pbs_dis_buf_t *dis_get_writebuf(int);
+static int dis_resize_buf(pbs_dis_buf_t *, size_t);
 static int transport_chan_is_encrypted(int);
-static void transport_chan_set_old_client(int);
-static int transport_chan_is_old_client(int);
-
-/**
- * @brief
- * 	set tcp chan assosiated with given fd as old client
- *
- * @param[in] fd - file descriptor
- *
- * @return void
- *
- * @par Side Effects:
- *	By setting chan as old client, transport will fall back to
- *	send/recv data in old non-pkt format during dis_getc, dis_gets
- *	and dis_flush
- *
- * @par MT-safe: Yes
- *
- */
-static void
-transport_chan_set_old_client(int fd)
-{
-	pbs_tcp_chan_t *chan = transport_get_chan(fd);
-	if (chan == NULL)
-		return;
-	chan->is_old_client = 1;
-}
-
-/**
- * @brief
- * 	get old client status of tcp chan assosiated with given fd
- *
- * @param[in] fd - file descriptor
- *
- * @return int
- *
- * @retval -1 - error
- * @retval !-1 - status
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-static int
-transport_chan_is_old_client(int fd)
-{
-	pbs_tcp_chan_t *chan = transport_get_chan(fd);
-	if (chan == NULL)
-		return -1;
-	return chan->is_old_client;
-}
 
 /**
  * @brief
@@ -133,6 +75,7 @@ void
 transport_chan_set_ctx_status(int fd, int status, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return;
 	chan->auths[for_encrypt].ctx_status = status;
@@ -160,6 +103,7 @@ int
 transport_chan_get_ctx_status(int fd, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return -1;
 	return chan->auths[for_encrypt].ctx_status;
@@ -185,6 +129,7 @@ void
 transport_chan_set_authctx(int fd, void *authctx, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return;
 	chan->auths[for_encrypt].ctx = authctx;
@@ -212,6 +157,7 @@ void *
 transport_chan_get_authctx(int fd, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return NULL;
 	return chan->auths[for_encrypt].ctx;
@@ -237,6 +183,7 @@ void
 transport_chan_set_authdef(int fd, auth_def_t *authdef, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return;
 	chan->auths[for_encrypt].def = authdef;
@@ -264,11 +211,11 @@ auth_def_t *
 transport_chan_get_authdef(int fd, int for_encrypt)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return NULL;
 	return chan->auths[for_encrypt].def;
 }
-
 
 /**
  * @brief
@@ -291,6 +238,7 @@ static int
 transport_chan_is_encrypted(int fd)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return 0;
 	return (chan->auths[FOR_ENCRYPT].def != NULL && chan->auths[FOR_ENCRYPT].ctx_status == AUTH_STATUS_CTX_READY);
@@ -298,17 +246,18 @@ transport_chan_is_encrypted(int fd)
 
 /**
  * @brief
- * 	create_pkt - create packet based on given value
+ * 	send pkt from given DIS buffer over network
+ * 	after patching pkt header for data size and
+ * 	if not encrypted already and chan is encrypted
+ * 	then encrypt data before send
  *
- * @param[in] type - type of pkt
- * @param[in] data - data of pkt
- * @param[in] len - length of data
- * @param[out] pkt - generated pkt
- * @param[out] pkt_len - length of generated pkt
+ * @param[in] fd - file descriptor
+ * @param[in] tp - pointer to DIS buffer
+ * @param[in] encrypt_done - is data already encrypted
  *
  * @return int
  *
- * @retval 0  - success
+ * @retval >= 0  - success
  * @retval -1 - failure
  *
  * @par Side Effects:
@@ -318,91 +267,46 @@ transport_chan_is_encrypted(int fd)
  *
  */
 static int
-create_pkt(int type, void *data, size_t len, void **pkt, size_t *pkt_len)
+__send_pkt(int fd, pbs_dis_buf_t *tp, int encrypt_done)
 {
-	int ndlen = 0;
-	void *_pkt = NULL;
-	char *pos = NULL;
-	size_t pktlen = PKT_MAGIC_SZ + 1 + sizeof(int) + len;
+	int i;
 
-	*pkt = NULL;
-	*pkt_len = 0;
+	if (!encrypt_done && transport_chan_is_encrypted(fd)) {
+		void *authctx = transport_chan_get_authctx(fd, FOR_ENCRYPT);
+		auth_def_t *authdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
+		void *data_out;
+		size_t len_out;
 
-	_pkt = malloc(pktlen);
-	if (_pkt == NULL)
+		if (authdef == NULL || authdef->encrypt_data == NULL)
+			return -1;
+
+		if (authdef->encrypt_data(authctx, (void *)(tp->tdis_data + PKT_HDR_SZ), tp->tdis_len - PKT_HDR_SZ, &data_out, &len_out) != 0)
+			return -1;
+
+		dis_resize_buf(tp, len_out + PKT_HDR_SZ);
+		memcpy((void *)(tp->tdis_data + PKT_HDR_SZ), data_out, len_out);
+		free(data_out);
+		tp->tdis_len = len_out + PKT_HDR_SZ;
+	}
+
+	i = htonl(tp->tdis_len - PKT_HDR_SZ);
+	memcpy((void *) (tp->tdis_data + PKT_HDR_SZ - sizeof(int)), &i, sizeof(int));
+
+	i = transport_send(fd, (void *) tp->tdis_data, tp->tdis_len);
+	if (i < 0)
+		return i;
+	if (i != tp->tdis_len)
 		return -1;
-	pos = (char *)_pkt;
-	memcpy(pos, PKT_MAGIC, PKT_MAGIC_SZ);
-	pos += PKT_MAGIC_SZ;
-	*pos++ = (char)type;
-	ndlen = htonl(len);
-	memcpy(pos, &ndlen, sizeof(int));
-	pos += sizeof(int);
-	memcpy(pos, data, len);
-	*pkt = _pkt;
-	*pkt_len = pktlen;
-	return 0;
+	dis_clear_buf(tp);
+	return i;
 }
 
 /**
  * @brief
- * 	parse_pkt - parse given pkt into type, data and data length
- *
- * @param[in] pkt - pkt to be parsed
- * @param[in] pkt_len - length of pkt
- * @param[out] type - type of pkt
- * @param[out] data - data of pkt
- * @param[out] len - length of data
- *
- * @return int
- *
- * @retval 0  - success
- * @retval -1 - failure
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-static int
-parse_pkt(void *pkt, size_t pkt_len, int *type, void **data_out, size_t *len_out)
-{
-	char *pos = (char *)pkt;
-
-	if (strncmp(pos, PKT_MAGIC, PKT_MAGIC_SZ) != 0) {
-		*type = 0;
-		*data_out = NULL;
-		*len_out = 0;
-		return -1;
-	} else
-		pos += PKT_MAGIC_SZ;
-	*type = *((unsigned char *)pos);
-	pos++;
-	*len_out = ntohl(*((int *)pos));
-	if (*len_out != (pkt_len - PKT_MAGIC_SZ - 1 - sizeof(int))) {
-		*type = 0;
-		*data_out = NULL;
-		*len_out = 0;
-		return -1;
-	}
-	pos += sizeof(int);
-	*data_out = malloc(*len_out);
-	if (*data_out == NULL) {
-		*type = 0;
-		*len_out = 0;
-		return -1;
-	}
-	memcpy(*data_out, pos, *len_out);
-	return 0;
-}
-
-/**
- * @brief
- * 	transport_send_pkt - create pkt based on given value
+ * 	create pkt based on given value
  * 	and send it over network. If channel for given fd is
- * 	encrypted then pkt (with given data and type) will be
- * 	encrypted then AUTH_ENCRYPTED_DATA pkt will be sent
+ * 	encrypted then given data will be encrypted first
+ * 	then pkt will be sent
  *
  * @param[in] fd - file descriptor
  * @param[in] type - type of pkt
@@ -423,58 +327,117 @@ parse_pkt(void *pkt, size_t pkt_len, int *type, void **data_out, size_t *len_out
 int
 transport_send_pkt(int fd, int type, void *data_in, size_t len_in)
 {
-	int i = 0;
-	void *pkt = NULL;
-	size_t pktlen = 0;
+	pbs_dis_buf_t *tp;
+
+	if (data_in == NULL || len_in == 0 || (tp = dis_get_writebuf(fd)) == NULL)
+		return -1;
+
+	dis_clear_buf(tp);
+	dis_resize_buf(tp, len_in + PKT_HDR_SZ);
+	strcpy(tp->tdis_data, PKT_MAGIC);
+	*(tp->tdis_data + PKT_MAGIC_SZ) = (char) type;
+	tp->tdis_pos = tp->tdis_data + PKT_HDR_SZ;
 
 	if (transport_chan_is_encrypted(fd)) {
 		void *authctx = transport_chan_get_authctx(fd, FOR_ENCRYPT);
 		auth_def_t *authdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
-		void *data_out = NULL;
-		size_t len_out = 0;
+		void *data_out;
+		size_t len_out;
 
-		if (data_in == NULL || len_in == 0 || authdef == NULL || authdef->encrypt_data == NULL)
+		if (authdef == NULL || authdef->encrypt_data == NULL)
 			return -1;
 
-		if (create_pkt(type, data_in, len_in, &pkt, &pktlen) != 0)
+		if (authdef->encrypt_data(authctx, data_in, len_in, &data_out, &len_out) != 0)
 			return -1;
 
-		if (authdef->encrypt_data(authctx, pkt, pktlen, &data_out, &len_out) != 0) {
-			free(pkt);
-			return -1;
-		}
-
-		free(pkt);
-
-		if (pktlen <= 0) {
-			free(data_out);
-			return -1;
-		}
-
-		if (create_pkt(AUTH_ENCRYPTED_DATA, data_out, len_out, &pkt, &pktlen) != 0) {
-			free(data_out);
-			return -1;
-		}
+		dis_resize_buf(tp, len_out + PKT_HDR_SZ);
+		memcpy(tp->tdis_pos, data_out, len_out);
 		free(data_out);
+		tp->tdis_len = len_out;
 	} else {
-		if (create_pkt(type, data_in, len_in, &pkt, &pktlen) != 0)
-			return -1;
+		memcpy(tp->tdis_pos, data_in, len_in);
+		tp->tdis_len = len_in;
+	}
+	tp->tdis_len += PKT_HDR_SZ;
+
+	return __send_pkt(fd, tp, 1);
+}
+
+/**
+ * @brief
+ * 	receive pkt in given DIS buffer from network
+ * 	If channel for given fd is encrypted then decrypt data
+ * 	in received pkt
+ *
+ * @param[in] fd - file descriptor
+ * @param[out] type - type of pkt
+ * @param[in/out] tp - pointer to DIS buffer
+ *
+ * @return int
+ *
+ * @retval >= 0  - success
+ * @retval -1 - failure
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+static int
+__recv_pkt(int fd, int *type, pbs_dis_buf_t *tp)
+{
+	int i;
+	size_t datasz;
+	char pkthdr[PKT_HDR_SZ];
+
+	dis_clear_buf(tp);
+	i = transport_recv(fd, (void *) &pkthdr, PKT_HDR_SZ);
+	if (i != PKT_HDR_SZ)
+		return (i < 0 ? i : -1);
+	if (strncmp(pkthdr, PKT_MAGIC, PKT_MAGIC_SZ) != 0) {
+		/* no pkt magic match, reject data/connection */
+		return -1;
 	}
 
-	i = transport_send(fd, pkt, pktlen);
-	free(pkt);
-	if (i > 0 && i != pktlen)
+	*type = (int) pkthdr[PKT_MAGIC_SZ];
+	memcpy(&i, (void *) &(pkthdr[PKT_HDR_SZ - sizeof(int)]), sizeof(int));
+	datasz = ntohl(i);
+	if (datasz <= 0)
 		return -1;
-	return i;
+	dis_resize_buf(tp, datasz);
+	i = transport_recv(fd, tp->tdis_data, datasz);
+	if (i != datasz)
+		return (i < 0 ? i : -1);
+
+	if (transport_chan_is_encrypted(fd)) {
+		void *data;
+		void *authctx = transport_chan_get_authctx(fd, FOR_ENCRYPT);
+		auth_def_t *authdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
+
+		if (authdef == NULL || authdef->decrypt_data == NULL)
+			return -1;
+
+		if (authdef->decrypt_data(authctx, tp->tdis_data, i, &data, &datasz) != 0)
+			return -1;
+
+		free(tp->tdis_data);
+		tp->tdis_data = data;
+		tp->tdis_bufsize = datasz;
+	}
+	tp->tdis_pos = tp->tdis_data;
+	tp->tdis_len = datasz;
+	return datasz;
 }
 
 /**
  * @brief
  * 	transport_recv_pkt - receive pkt over network.
- * 	If channel for given fd is encrypted then we
- * 	will get AUTH_ENCRYPTED_DATA pkt (if not then its error)
- * 	once AUTH_ENCRYPTED_DATA pkt is received, decrypt it
- * 	to find actual unencrypted pkt
+ * 	If channel for given fd is encrypted then decrypt it
+ * 	and parse pkt to find pkt type, data and its length
+ *
+ * 	@warning returned data should not be free'd as it is
+ * 		 internal dis buffer
  *
  * @param[in] fd - file descriptor
  * @param[out] type - type of pkt
@@ -495,93 +458,22 @@ transport_send_pkt(int fd, int type, void *data_in, size_t len_in)
 int
 transport_recv_pkt(int fd, int *type, void **data_out, size_t *len_out)
 {
-	int i = 0;
-	char ndbuf[sizeof(int)];
-	int ndlen = 0;
-	size_t data_in_sz = 0;
-	void *data_in = NULL;
-	char pkt_magic[PKT_MAGIC_SZ];
+	int i;
+	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
 
 	*type = 0;
 	*data_out = NULL;
 	*len_out = 0;
 
-	i = transport_recv(fd, (void *)&pkt_magic, PKT_MAGIC_SZ);
+	if (tp == NULL)
+		return -1;
+	i = __recv_pkt(fd, type, tp);
 	if (i <= 0)
 		return i;
-	if (strncmp(pkt_magic, PKT_MAGIC, PKT_MAGIC_SZ) != 0) {
-		if (pkt_magic[0] == DIS_HDR_FSTCHR) {
-			/*
-			* Mark this fd as old client as it doesn't have
-			* pkt magic and first received char in data is
-			* DIS header's first char (aka DIS_HRD_FSTCHR)
-			*/
-			transport_chan_set_old_client(fd);
-			data_in = malloc(i);
-			if (data_in == NULL)
-				return -1;
-			memcpy(data_in, (void *)pkt_magic, i);
-			*data_out = data_in;
-			*len_out = i;
-			return i;
-		}
-		/* Not an old client and no pkt magic match, reject data/connection */
-		return -1;
-	}
-
-	i = transport_recv(fd, (void *)type, 1);
-	if (i != 1)
-		return i;
-
-	i = transport_recv(fd, (void *)&ndbuf, sizeof(int));
-	if (i != sizeof(int))
-		return i;
-	memcpy(&ndlen, (void *)&ndbuf, sizeof(int));
-	data_in_sz = ntohl(ndlen);
-	if (data_in_sz <= 0) {
-		return -1;
-	}
-
-	data_in = malloc(data_in_sz);
-	if (data_in == NULL)
-		return -1;
-	i = transport_recv(fd, data_in, data_in_sz);
-	if (i != data_in_sz) {
-		free(data_in);
-		return (i < 0 ? i : -1);
-	}
-
-	if (transport_chan_is_encrypted(fd)) {
-		void *authctx = transport_chan_get_authctx(fd, FOR_ENCRYPT);
-		auth_def_t *authdef = transport_chan_get_authdef(fd, FOR_ENCRYPT);
-		void *data = NULL;
-		size_t datasz = 0;
-
-		if (*type != AUTH_ENCRYPTED_DATA) {
-			free(data_in);
-			return -1;
-		}
-
-		if (authdef == NULL || authdef->decrypt_data == NULL) {
-			free(data_in);
-			return -1;
-		}
-
-		if (authdef->decrypt_data(authctx, data_in, data_in_sz, &data, &datasz) != 0) {
-			free(data_in);
-			return -1;
-		}
-
-		free(data_in);
-		if (parse_pkt(data, datasz, type, &data_in, &data_in_sz) != 0) {
-			free(data);
-			return -1;
-		}
-		free(data);
-	}
-	*data_out = data_in;
-	*len_out = data_in_sz;
-	return data_in_sz;
+	*data_out = (void *) tp->tdis_data;
+	*len_out = i;
+	dis_clear_buf(tp);
+	return *len_out;
 }
 
 /**
@@ -603,6 +495,7 @@ static pbs_dis_buf_t *
 dis_get_readbuf(int fd)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return NULL;
 	return &(chan->readbuf);
@@ -627,45 +520,10 @@ static pbs_dis_buf_t *
 dis_get_writebuf(int fd)
 {
 	pbs_tcp_chan_t *chan = transport_get_chan(fd);
+
 	if (chan == NULL)
 		return NULL;
 	return &(chan->writebuf);
-}
-
-/**
- * @brief
- * 	dis_pack_buf - pack existing data into front of dis buffer
- *
- *	Moves "uncommited" data to front of dis buffer and adjusts counters.
- *	Does a character by character move since data may over lap.
- *
- * @param[in] tp - dis buffer to pack
- *
- * @return void
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-static void
-dis_pack_buf(pbs_dis_buf_t *tp)
-{
-	size_t amt = 0;
-	size_t start = 0;
-	size_t i = 0;
-
-	start = tp->tdis_trail;
-	if (start != 0) {
-		amt = tp->tdis_eod - start;
-		for (i = 0; i < amt; ++i) {
-			*(tp->tdis_thebuf + i) = *(tp->tdis_thebuf + i + start);
-		}
-		tp->tdis_lead -= start;
-		tp->tdis_trail -= start;
-		tp->tdis_eod -= start;
-	}
 }
 
 /**
@@ -676,7 +534,6 @@ dis_pack_buf(pbs_dis_buf_t *tp)
  *
  * @param[in] tp - dis buffer to pack
  * @param[in] needed - min needed buffer size
- * @param[in] use_lead - use tdis_lead or tdis_eod to calculate new size
  *
  * @return int
  *
@@ -690,33 +547,17 @@ dis_pack_buf(pbs_dis_buf_t *tp)
  *
  */
 static int
-dis_resize_buf(pbs_dis_buf_t *tp, size_t needed, size_t use_lead)
+dis_resize_buf(pbs_dis_buf_t *tp, size_t needed)
 {
-	size_t len = 0;
-	size_t dlen = 0;
-	char *tmpcp = NULL;
-
-	if (use_lead)
-		dlen = tp->tdis_lead;
-	else
-		dlen = tp->tdis_eod;
-	len = tp->tdis_bufsize - dlen;
-	if (needed > len) {
-		size_t ru = 0;
-		size_t newsz = 0;
-		if (use_lead) {
-			ru = needed + tp->tdis_lead;
-		} else {
-			ru = needed + tp->tdis_lead + tp->tdis_eod;
-		}
-		ru = ru / PBS_DIS_BUFSZ;
-		newsz = (ru + 1) * PBS_DIS_BUFSZ;
-		tmpcp = (char *) realloc(tp->tdis_thebuf, sizeof(char) * newsz);
+	if ((tp->tdis_len + needed) >= tp->tdis_bufsize) {
+		int offset = tp->tdis_len > 0 ? (tp->tdis_pos - tp->tdis_data) : 0;
+		char *tmpcp = (char *) realloc(tp->tdis_data, tp->tdis_bufsize + needed + PBS_DIS_BUFSZ);
 		if (tmpcp == NULL) {
 			return -1; /* realloc failed */
 		} else {
-			tp->tdis_thebuf = tmpcp;
-			tp->tdis_bufsize = newsz;
+			tp->tdis_data = tmpcp;
+			tp->tdis_bufsize = tp->tdis_bufsize + needed + PBS_DIS_BUFSZ;
+			tp->tdis_pos = tp->tdis_data + offset;
 		}
 	}
 	return 0;
@@ -740,10 +581,8 @@ dis_resize_buf(pbs_dis_buf_t *tp, size_t needed, size_t use_lead)
 void
 dis_clear_buf(pbs_dis_buf_t *tp)
 {
-	tp->tdis_lead = 0;
-	tp->tdis_trail = 0;
-	tp->tdis_eod = 0;
-	tp->tdis_thebuf[0] = '\0';
+	tp->tdis_pos = tp->tdis_data;
+	tp->tdis_len = 0;
 }
 
 /**
@@ -788,76 +627,16 @@ int
 disr_skip(int fd, size_t ct)
 {
 	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
+
 	if (tp == NULL)
 		return 0;
-	if (tp->tdis_lead - tp->tdis_eod < ct)
-		ct = tp->tdis_lead - tp->tdis_eod;
-	tp->tdis_lead += ct;
-	return (int)ct;
-}
-
-/**
- * @brief
- * 	__transport_read - read data from connection to "fill" the buffer
- *	Update the various buffer pointers.
- *
- * @param[in] fd - socket descriptor
- * @param[in] need - needed bytes (used only for connection from old client)
- *
- * @return	int
- *
- * @retval	>0 	number of characters read
- * @retval	0 	if EOD (no data currently avalable)
- * @retval	-1 	if error
- * @retval	-2 	if EOF (stream closed)
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-static int
-__transport_read(int fd, int need)
-{
-	int i;
-	void *data = NULL;
-	size_t len = 0;
-	int type; /* unused */
-	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
-
-	if (tp == NULL)
-		return -1;
-	dis_pack_buf(tp);
-	/*
-	 * if connection is from old client then read only 'need' bytes
-	 * as we don't know how much data is available for read
-	 *
-	 * But in other case, we will have pkt which has length of
-	 * data and we need to read full pkt as
-	 * pkt can be encrypted, and we can't decrypt it util we
-	 * have full pkt received, so use transport_recv_pkt,
-	 * which will read full pkt, decrypt it, and give 'len'
-	 * (aka decrypted data length) so we can alloc required
-	 * space in DIS buffer and pass it in
-	 * memcpy while moving data to DIS buffer
-	 */
-	if (transport_chan_is_old_client(fd)) {
-		dis_resize_buf(tp, need, 0);
-		i = transport_recv(fd, &(tp->tdis_thebuf[tp->tdis_eod]), need);
-		if (i <= 0)
-			return i;
-		tp->tdis_eod += i;
-		return i;
+	if (ct > tp->tdis_len)
+		dis_clear_buf(tp);
+	else {
+		tp->tdis_pos += ct;
+		tp->tdis_len -= ct;
 	}
-	i = transport_recv_pkt(fd, &type, &data, &len);
-	if (i <= 0)
-		return i;
-	dis_resize_buf(tp, len, 0);
-	memcpy(&(tp->tdis_thebuf[tp->tdis_eod]), data, len);
-	tp->tdis_eod += len;
-	free(data);
-	return len;
+	return (int) ct;
 }
 
 /**
@@ -881,18 +660,25 @@ __transport_read(int fd, int need)
 int
 dis_getc(int fd)
 {
-	int x = 0;
 	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
+	int c;
 
 	if (tp == NULL)
 		return -1;
-	if (tp->tdis_lead >= tp->tdis_eod) {
+	if (tp->tdis_len <= 0) {
 		/* not enought data, try to get more */
-		x = __transport_read(fd, 1);
-		if (x <= 0)
-			return ((x == -2) ? -2 : -1);	/* Error or EOF */
+		int unused;
+
+		dis_clear_buf(tp);
+		if ((c = __recv_pkt(fd, &unused, tp)) <= 0) {
+			dis_clear_buf(tp);
+			return c;  /* Error or EOF */
+		}
 	}
-	return ((int)tp->tdis_thebuf[tp->tdis_lead++]);
+	c = *tp->tdis_pos;
+	tp->tdis_pos++;
+	tp->tdis_len--;
+	return c;
 }
 
 /**
@@ -919,22 +705,30 @@ dis_getc(int fd)
 int
 dis_gets(int fd, char *str, size_t ct)
 {
-	int x = 0;
 	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
 
 	if (tp == NULL) {
 		*str = '\0';
 		return -1;
 	}
-	while (tp->tdis_eod - tp->tdis_lead < ct) {
-		/* not enought data, try to get more */
-		x = __transport_read(fd, ct);
-		if (x <= 0)
-			return x;	/* Error or EOF */
+	if (ct == 0) {
+		*str = '\0';
+		return ct;
 	}
-	(void)memcpy(str, &tp->tdis_thebuf[tp->tdis_lead], ct);
-	tp->tdis_lead += ct;
-	return (int)ct;
+	if (tp->tdis_len <= 0) {
+		/* not enought data, try to get more */
+		int unused;
+		int c;
+
+		if ((c = __recv_pkt(fd, &unused, tp)) <= 0) {
+			dis_clear_buf(tp);
+			return c;  /* Error or EOF */
+		}
+	}
+	memcpy(str, tp->tdis_pos, ct);
+	tp->tdis_pos += ct;
+	tp->tdis_len -= ct;
+	return (int) ct;
 }
 
 /**
@@ -961,81 +755,23 @@ int
 dis_puts(int fd, const char *str, size_t ct)
 {
 	pbs_dis_buf_t *tp = dis_get_writebuf(fd);
+
 	if (tp == NULL)
 		return -1;
-	if (dis_resize_buf(tp, ct, 1) != 0)
-		return -1;
-	(void)memcpy(&tp->tdis_thebuf[tp->tdis_lead], str, ct);
-	tp->tdis_lead += ct;
+	if (tp->tdis_len <= 0) {
+		if (dis_resize_buf(tp, ct + PKT_HDR_SZ) != 0)
+			return -1;
+		strcpy(tp->tdis_data, PKT_MAGIC);
+		tp->tdis_pos = tp->tdis_data + PKT_HDR_SZ;
+		tp->tdis_len = PKT_HDR_SZ;
+	} else {
+		if (dis_resize_buf(tp, ct) != 0)
+			return -1;
+	}
+	memcpy(tp->tdis_pos, str, ct);
+	tp->tdis_pos += ct;
+	tp->tdis_len += ct;
 	return ct;
-}
-
-/**
- * @brief
- * 	disr_commit - dis support routine to commit/uncommit read data
- *
- * @param[in] fd - file descriptor
- * @param[in] commit_flag - indication for commit or uncommit
- *
- * @return int
- *
- * @retval 0 - success
- * @retval -1 - error
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-int
-disr_commit(int fd, int commit_flag)
-{
-	pbs_dis_buf_t *tp = dis_get_readbuf(fd);
-	if (tp == NULL)
-		return -1;
-	if (commit_flag) {
-		/* commit by moving trailing up */
-		tp->tdis_trail = tp->tdis_lead;
-	} else {
-		/* uncommit by moving leading back */
-		tp->tdis_lead = tp->tdis_trail;
-	}
-	return 0;
-}
-
-/**
- * @brief
- * 	disw_commit - dis support routine to commit/uncommit write data
- *
- * @param[in] fd - file descriptor
- * @param[in] commit_flag - indication for commit or uncommit
- *
- * @return int
- *
- * @retval 0 - success
- * @retval -1 - error
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-int
-disw_commit(int fd, int commit_flag)
-{
-	pbs_dis_buf_t *tp = dis_get_writebuf(fd);
-	if (tp == NULL)
-		return -1;
-	if (commit_flag) {
-		/* commit by moving trailing up */
-		tp->tdis_trail = tp->tdis_lead;
-	} else {
-		/* uncommit by moving leading back */
-		tp->tdis_lead = tp->tdis_trail;
-	}
-	return 0;
 }
 
 /**
@@ -1065,19 +801,10 @@ dis_flush(int fd)
 
 	if (tp == NULL)
 		return -1;
-	if (tp->tdis_trail == 0)
+	if (tp->tdis_len == 0)
 		return 0;
-	if (transport_chan_is_old_client(fd)) {
-		if (transport_send(fd, (void *)tp->tdis_thebuf, tp->tdis_trail) <= 0)
-			return -1;
-
-	} else {
-		/* DIS doesn't have pkt type, pass 0 always for type in transport_send_pkt */
-		if (transport_send_pkt(fd, 0, (void *)tp->tdis_thebuf, tp->tdis_trail) <= 0)
-			return -1;
-	}
-	tp->tdis_eod = tp->tdis_lead;
-	dis_pack_buf(tp);
+	if (__send_pkt(fd, tp, 0) <= 0)
+		return -1;
 	return 0;
 }
 
@@ -1110,8 +837,8 @@ dis_destroy_chan(int fd)
 				chan->auths[FOR_AUTH].def->destroy_ctx(chan->auths[FOR_AUTH].ctx);
 			}
 			if (chan->auths[FOR_ENCRYPT].def != chan->auths[FOR_AUTH].def &&
-				chan->auths[FOR_ENCRYPT].ctx &&
-				chan->auths[FOR_ENCRYPT].def) {
+			    chan->auths[FOR_ENCRYPT].ctx &&
+			    chan->auths[FOR_ENCRYPT].def) {
 				chan->auths[FOR_ENCRYPT].def->destroy_ctx(chan->auths[FOR_ENCRYPT].ctx);
 			}
 			chan->auths[FOR_AUTH].ctx = NULL;
@@ -1121,19 +848,18 @@ dis_destroy_chan(int fd)
 			chan->auths[FOR_ENCRYPT].def = NULL;
 			chan->auths[FOR_ENCRYPT].ctx_status = AUTH_STATUS_UNKNOWN;
 		}
-		if (chan->readbuf.tdis_thebuf) {
-			free(chan->readbuf.tdis_thebuf);
-			chan->readbuf.tdis_thebuf = NULL;
+		if (chan->readbuf.tdis_data) {
+			free(chan->readbuf.tdis_data);
+			chan->readbuf.tdis_data = NULL;
 		}
-		if (chan->writebuf.tdis_thebuf) {
-			free(chan->writebuf.tdis_thebuf);
-			chan->writebuf.tdis_thebuf = NULL;
+		if (chan->writebuf.tdis_data) {
+			free(chan->writebuf.tdis_data);
+			chan->writebuf.tdis_data = NULL;
 		}
 		free(chan);
 		transport_set_chan(fd, NULL);
 	}
 }
-
 
 /**
  * @brief
@@ -1150,7 +876,7 @@ dis_destroy_chan(int fd)
  *
  */
 void
-dis_setup_chan(int fd, pbs_tcp_chan_t * (*inner_transport_get_chan)(int))
+dis_setup_chan(int fd, pbs_tcp_chan_t *(*inner_transport_get_chan)(int) )
 {
 	pbs_tcp_chan_t *chan;
 	int rc;
@@ -1158,18 +884,14 @@ dis_setup_chan(int fd, pbs_tcp_chan_t * (*inner_transport_get_chan)(int))
 	/* check for bad file descriptor */
 	if (fd < 0)
 		return;
-	chan = (pbs_tcp_chan_t *)(*inner_transport_get_chan)(fd);
+	chan = (pbs_tcp_chan_t *) (*inner_transport_get_chan)(fd);
 	if (chan == NULL) {
 		if (errno == ENOTCONN)
 			return;
 		chan = (pbs_tcp_chan_t *) calloc(1, sizeof(pbs_tcp_chan_t));
 		assert(chan != NULL);
-		chan->readbuf.tdis_thebuf = calloc(1, PBS_DIS_BUFSZ);
-		assert(chan->readbuf.tdis_thebuf != NULL);
-		chan->readbuf.tdis_bufsize = PBS_DIS_BUFSZ;
-		chan->writebuf.tdis_thebuf = calloc(1, PBS_DIS_BUFSZ);
-		assert(chan->writebuf.tdis_thebuf != NULL);
-		chan->writebuf.tdis_bufsize = PBS_DIS_BUFSZ;
+		dis_resize_buf(&(chan->readbuf), PBS_DIS_BUFSZ);
+		dis_resize_buf(&(chan->writebuf), PBS_DIS_BUFSZ);
 		rc = transport_set_chan(fd, chan);
 		assert(rc == 0);
 	}

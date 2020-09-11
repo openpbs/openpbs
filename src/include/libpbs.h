@@ -150,13 +150,6 @@ struct brp_status {
 	pbs_list_head brp_attr; /* head of svrattrlist */
 };
 
-struct brp_cmdstat {
-	struct brp_cmdstat *brp_stlink;
-	int brp_objtype;
-	char brp_objname[(PBS_MAXSVRJOBID > PBS_MAXDEST ? PBS_MAXSVRJOBID : PBS_MAXDEST) + 1];
-	struct attrl *brp_attrl;
-};
-
 /* reply to Resource Query Request */
 struct brp_rescq {
 	int brq_number; /* number of items in following arrays */
@@ -192,11 +185,13 @@ struct batch_reply
 	int brp_code;
 	int brp_auxcode;
 	int brp_choice; /* the union discriminator */
+	int brp_is_part;
+	int brp_count;
 	union {
 		char brp_jid[PBS_MAXSVRJOBID + 1];
 		struct brp_select *brp_select; /* select replies */
 		pbs_list_head brp_status; /* status (svr) replies */
-		struct brp_cmdstat *brp_statc; /* status (cmd) replies) */
+		struct batch_status *brp_statc; /* status (cmd) replies) */
 		struct {
 			int brp_txtlen;
 			char *brp_str;

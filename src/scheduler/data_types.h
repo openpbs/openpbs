@@ -63,6 +63,7 @@ extern "C" {
 #include "config.h"
 #include "pbs_bitmap.h"
 #include "pbs_share.h"
+#include "range.h"
 #ifdef NAS
 #include "site_queue.h"
 #endif
@@ -117,7 +118,6 @@ typedef struct resv_info resv_info;
 typedef struct counts counts;
 typedef struct nspec nspec;
 typedef struct node_partition node_partition;
-typedef struct range range;
 typedef struct resource_resv resource_resv;
 typedef struct place place;
 typedef struct schd_error schd_error;
@@ -317,8 +317,6 @@ struct status
 	unsigned strict_fifo:1;		/* deprecated */
 	unsigned strict_ordering:1;
 	unsigned fair_share:1;
-	unsigned load_balancing:1;
-	unsigned load_balancing_rr:1;
 	unsigned help_starving_jobs:1;
 	unsigned backfill:1;
 	unsigned sort_nodes:1;
@@ -712,9 +710,6 @@ struct node_info
 	counts *group_counts;		/* group resource and running counts */
 	counts *user_counts;		/* user resource and running counts */
 
-	float max_load;		/* the load not to go over */
-	float ideal_load;		/* the ideal load of the machine */
-	float loadave;		/* current load average */
 	int max_running;		/* max number of jobs on the node */
 	int max_user_run;		/* max number of jobs running by a user */
 	int max_group_run;		/* max number of jobs running by a UNIX group */
@@ -735,7 +730,7 @@ struct node_info
 	int nodesig_ind;		/* resource signature index in server array */
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
 	node_partition *hostset;	/* other vnodes on on the same host */
-	node_scratch nscr;		/* scratch space local to node search code */
+	unsigned int nscr;		/* scratch space local to node search code */
 	char *partition;		/* partition to which node belongs to */
 	time_t last_state_change_time;	/* Node state change at time stamp */
 	time_t last_used_time;		/* Node was last active at this time */
@@ -748,6 +743,7 @@ struct node_info
 struct resv_info
 {
 	unsigned is_standing:1;		/* set to 1 for a standing reservation */
+	unsigned is_running:1;		/* the reservation is running (not necessarily in the running state) */
 	char *queuename;		/* the name of the queue */
 	char *rrule;			/* recurrence rule for standing reservations */
 	char *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
@@ -756,8 +752,12 @@ struct resv_info
 	int resv_idx;			/* the index of standing resv occurrence */
 	int count;			/* the total number of occurrences */
 	time_t req_start;		/* user requested start time of resv */
+	time_t req_start_orig;		/* For altered reservations, this has the original start time */
+	time_t req_start_standing;		/* For standing reservations, this will be used to get start time of future occurrences */
 	time_t req_end;			/* user requested end tiem of resv */
 	time_t req_duration;		/* user requested duration of resv */
+	time_t req_duration_orig;		/* For altered reservations, this has the original duration */
+	time_t req_duration_standing;	/* For standing reservations, this will be used to get duration of future occurrences */
 	time_t retry_time;		/* time at which a reservation is to be reconfirmed */
 	enum resv_states resv_state;	/* reservation state */
 	enum resv_states resv_substate;	/* reservation substate */
@@ -1106,15 +1106,6 @@ struct nameval
 	int value;
 };
 
-struct range
-{
-	int start;
-	int end;
-	int step;
-	int count;
-	range *next;
-};
-
 struct config
 {
 	/* these bits control the scheduling policy
@@ -1131,16 +1122,12 @@ struct config
 	unsigned non_prime_so	:1;
 	unsigned prime_fs	:1;	/* fair share */
 	unsigned non_prime_fs	:1;
-	unsigned prime_lb	:1;	/* load balancing */
-	unsigned non_prime_lb	:1;
 	unsigned prime_hsv	:1;	/* help starving jobs */
 	unsigned non_prime_hsv:1;
 	unsigned prime_bf	:1;	/* back filling */
 	unsigned non_prime_bf	:1;
 	unsigned prime_sn	:1;	/* sort nodes by priority */
 	unsigned non_prime_sn	:1;
-	unsigned prime_lbrr	:1;	/* round robin through load balanced nodes */
-	unsigned non_prime_lbrr:1;
 	unsigned prime_bp	:1;	/* backfill around prime time */
 	unsigned non_prime_bp	:1;	/* backfill around non prime time */
 	unsigned prime_pre	:1;	/* preemptive scheduling */

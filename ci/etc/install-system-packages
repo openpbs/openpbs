@@ -1,0 +1,243 @@
+#!/bin/bash -x
+
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+groupadd -g 1900 tstgrp00
+groupadd -g 1901 tstgrp01
+groupadd -g 1902 tstgrp02
+groupadd -g 1903 tstgrp03
+groupadd -g 1904 tstgrp04
+groupadd -g 1905 tstgrp05
+groupadd -g 1906 tstgrp06
+groupadd -g 1907 tstgrp07
+groupadd -g 901 pbs
+groupadd -g 1146 agt
+useradd -K UMASK=0022 -m -s /bin/bash -u 4357 -g tstgrp00 -G tstgrp00 pbsadmin
+useradd -K UMASK=0022 -m -s /bin/bash -u 9000 -g tstgrp00 -G tstgrp00 pbsbuild
+useradd -K UMASK=0022 -m -s /bin/bash -u 884 -g tstgrp00 -G tstgrp00 pbsdata
+useradd -K UMASK=0022 -m -s /bin/bash -u 4367 -g tstgrp00 -G tstgrp00 pbsmgr
+useradd -K UMASK=0022 -m -s /bin/bash -u 4373 -g tstgrp00 -G tstgrp00 pbsnonroot
+useradd -K UMASK=0022 -m -s /bin/bash -u 4356 -g tstgrp00 -G tstgrp00 pbsoper
+useradd -K UMASK=0022 -m -s /bin/bash -u 4358 -g tstgrp00 -G tstgrp00 pbsother
+useradd -K UMASK=0022 -m -s /bin/bash -u 4371 -g tstgrp00 -G tstgrp00 pbsroot
+useradd -K UMASK=0022 -m -s /bin/bash -u 4355 -g tstgrp00 -G tstgrp02,tstgrp00 pbstest
+useradd -K UMASK=0022 -m -s /bin/bash -u 4359 -g tstgrp00 -G tstgrp00 pbsuser
+useradd -K UMASK=0022 -m -s /bin/bash -u 4361 -g tstgrp00 -G tstgrp01,tstgrp02,tstgrp00 pbsuser1
+useradd -K UMASK=0022 -m -s /bin/bash -u 4362 -g tstgrp00 -G tstgrp01,tstgrp03,tstgrp00 pbsuser2
+useradd -K UMASK=0022 -m -s /bin/bash -u 4363 -g tstgrp00 -G tstgrp01,tstgrp04,tstgrp00 pbsuser3
+useradd -K UMASK=0022 -m -s /bin/bash -u 4364 -g tstgrp01 -G tstgrp04,tstgrp05,tstgrp01 pbsuser4
+useradd -K UMASK=0022 -m -s /bin/bash -u 4365 -g tstgrp02 -G tstgrp04,tstgrp06,tstgrp02 pbsuser5
+useradd -K UMASK=0022 -m -s /bin/bash -u 4366 -g tstgrp03 -G tstgrp04,tstgrp07,tstgrp03 pbsuser6
+useradd -K UMASK=0022 -m -s /bin/bash -u 4368 -g tstgrp01 -G tstgrp01 pbsuser7
+useradd -K UMASK=0022 -m -s /bin/bash -u 11000 -g tstgrp00 -G tstgrp00 tstusr00
+useradd -K UMASK=0022 -m -s /bin/bash -u 11001 -g tstgrp00 -G tstgrp00 tstusr01
+
+. /etc/os-release
+
+if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
+  dnf -y clean all
+  dnf -y install 'dnf-command(config-manager)'
+  dnf -y config-manager --set-enabled PowerTools
+  dnf -y install epel-release
+  dnf -y update
+  dnf -y install git gcc make m4 autoconf automake libtool rpm-build rpmdevtools \
+    hwloc-devel libX11-devel libXt-devel libXext-devel libXft-devel \
+    libedit-devel libical-devel cmake glibc-common yum-utils \
+    ncurses-devel postgresql-devel python3-devel tcl-devel tk-devel swig \
+    expat-devel openssl-devel libXext libXft expat libedit glibc-static \
+    postgresql-server python3 tcl tk libical perl tar sendmail sudo perl-Env \
+    perl-Switch gcc-c++ doxygen elfutils bison flex glibc-langpack-en \
+    which net-tools man-db time csh lsof tzdata file \
+    expect perl-App-cpanminus cpan initscripts \
+    systemd systemd-sysv libcap rsyslog \
+    openssh-clients openssh-server valgrind-devel valgrind libasan \
+    llvm bc gzip gdb rsync wget curl ccache bind-utils vim iputils pam-devel
+  dnf -y clean all
+  rpmdev-setuptree
+  __systemd_paths='/etc/systemd/system /usr/lib/systemd/system'
+elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
+  yum -y clean all
+  rpm --import https://package.perforce.com/perforce.pubkey &&
+    {
+      echo [perforce]
+      echo name=Perforce
+      echo baseurl=http://package.perforce.com/yum/rhel/7/x86_64
+      echo enabled=1
+      echo gpgcheck=1
+    } >/etc/yum.repos.d/perforce.repo
+  yum -y install epel-release
+  yum -y update
+  yum -y install git gcc make m4 autoconf automake libtool rpm-build rpmdevtools \
+    hwloc-devel libX11-devel libXt-devel libXext-devel libXft-devel \
+    libedit-devel libical-devel cmake glibc-common yum-utils \
+    ncurses-devel postgresql-devel python3-devel tcl-devel tk-devel swig \
+    expat-devel openssl-devel libXext libXft expat libedit glibc-static \
+    postgresql-server python3 tcl tk libical perl tar sendmail sudo perl-Env \
+    perl-Switch gcc-c++ doxygen elfutils bison flex postgresql-contrib \
+    which net-tools man-db time csh lsof tzdata file glibc-langpack-en \
+    expect perl-App-cpanminus cpan \
+    systemd systemd-sysv libcap rsyslog \
+    openssh-clients openssh-server valgrind-devel valgrind libasan pam-devel \
+    llvm bc gzip gdb rsync wget curl ccache bind-utils vim iputils python2-pip helix-cli
+  yum -y clean all
+  rpmdev-setuptree
+  __systemd_paths='/etc/systemd/system /usr/lib/systemd/system'
+elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
+  __on="$(grep -oP '(?<=^NAME=").*(?=")' /etc/os-release)"
+  __ov="$(grep -oP '(?<=^VERSION=").*(?=")' /etc/os-release)"
+  zypper -n addrepo -ceKfG "https://download.opensuse.org/repositories/devel:tools/${__on// /_}_${__ov// /_}/devel:tools.repo"
+  zypper -n addrepo -ceKfG "https://download.opensuse.org/repositories/devel:languages:perl/${__on// /_}_${__ov// /_}/devel:languages:perl.repo"
+  zypper -n addrepo -ceKfG "http://package.perforce.com/yum/rhel/7/x86_64" p4
+  zypper -n clean -mMa
+  zypper -n refresh -fbd
+  zypper --no-gpg-checks -n update --force-resolution
+  zypper --no-gpg-checks -n install --force-resolution git m4 \
+    gcc make autoconf automake libtool rpm-build rpmdevtools helix-cli hwloc-devel \
+    libX11-devel libXt-devel libedit-devel libical-devel cmake ncurses-devel \
+    postgresql-devel python3-devel tcl-devel tk-devel swig libexpat-devel \
+    libopenssl-devel libXext-devel libXft-devel expat libedit fontconfig net-tools-deprecated net-tools \
+    timezone python3-xml glibc-devel-static postgresql-server python3 python3-pip tcl tk \
+    perl tar sendmail sudo gcc-c++ doxygen elfutils bison flex \
+    which net-tools net-tools-deprecated man time tcsh lsof file vim \
+    expect perl-App-cpanminus perl-Parse-PMFile hostname bind-utils \
+    systemd systemd-sysvinit libcap-progs iputils rsyslog openssh pam-devel \
+    valgrind-devel valgrind llvm gdb rsync wget ccache bc gzip python-pip
+  zypper -n clean -mMa
+  zypper -n rr devel_tools
+  rpmdev-setuptree
+  __systemd_paths='/etc/systemd/system /usr/lib/systemd/system'
+elif [ "x${ID}" == "xubuntu" ]; then
+  if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
+    export DEBIAN_FRONTEND=noninteractive
+  fi
+  apt -y update
+  apt -y upgrade
+  apt -y install git build-essential gcc g++ make dpkg-dev m4 \
+    autoconf automake libtool rpm alien elfutils dh-make \
+    libhwloc-dev libx11-dev libxt-dev libedit-dev libical-dev cmake \
+    libncurses-dev libpq-dev python3-dev tcl-dev tk-dev swig libexpat1-dev \
+    libssl-dev libxext-dev libxft-dev pkg-config expat postgresql perl tar \
+    sendmail sendmail-bin sudo doxygen bison flex fakeroot libnuma1 \
+    net-tools man time csh lsof curl gzip iputils-ping \
+    expect cpanminus locales-all dnsutils tzdata vim bc file \
+    systemd systemd-sysv sysvinit-utils libcap2-bin rsyslog libpam-dev \
+    openssh-server openssh-client valgrind llvm gdb rsync wget ccache \
+    python python-pip
+  if [ "x${ID}" == "xubuntu" -a "x${VERSION_ID}" == "x16.04" ]; then
+    wget -qO - https://package.perforce.com/perforce.pubkey | apt-key add - &&
+      echo 'deb http://package.perforce.com/apt/ubuntu/ xenial release' >/etc/apt/sources.list.d/perforce.list
+  else
+    wget -qO - https://package.perforce.com/perforce.pubkey | apt-key add - &&
+      echo 'deb http://package.perforce.com/apt/ubuntu/ bionic release' >/etc/apt/sources.list.d/perforce.list
+  fi
+  apt -y update
+  apt -y install helix-cli
+  __systemd_paths='/etc/systemd/system /lib/systemd/system'
+  apt -y autoremove
+  apt -y clean
+  rm -rf /var/lib/apt/list/*
+  mkdir -p /root/rpmbuild/SOURCES
+fi
+
+# Install pip, requests and sh python modules
+set -ex &&
+  python -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org requests sh &&
+  rm -rf ~/.cache /tmp/*
+
+# QALib deps modules
+cpanm -n --no-wget --no-lwp --curl \
+  IO::Pty IPC::Run IPC::Cmd Class::Accessor Module::Build Pod::Usage \
+  Getopt::Long DateTime Date::Parse Proc::ProcessTable Test::More \
+  Unix::Process Time::HiRes File::FcntlLock File::Remote
+
+find ${__systemd_paths} -path '*.wants/*' \
+  -not -name '*journald*' \
+  -not -name '*systemd-tmpfiles*' \
+  -not -name '*systemd-user-sessions*' \
+  -not -name '*getty*' \
+  -not -name '*dbus*' \
+  -exec rm -fv {} \;
+
+cp /workspace/etc/ci-script-wrapper.service /etc/systemd/system
+systemctl set-default multi-user.target
+
+systemctl enable sshd || systemctl enable ssh
+systemctl enable sendmail
+if [ "x${ID}" != "xubuntu" -a "x${VERSION_ID}" != "x16.04" ]; then
+  systemctl disable sm-client
+  systemctl mask sm-client
+fi
+systemctl enable rsyslog
+systemctl disable getty@.service
+systemctl unmask getty.target
+systemctl unmask console-getty
+systemctl enable getty.target
+systemctl enable console-getty
+systemctl enable ci-script-wrapper
+
+cp /workspace/etc/container-env-setup.sh /etc/profile.d/0container-env-setup.sh
+cp /workspace/etc/sudoers-overrides /etc/sudoers.d/container-overrides
+
+echo '' >/etc/security/limits.conf
+rm -f /etc/security/limits.d/*.conf
+rm -rf ~/.ssh
+mkdir --mode=700 ~/.ssh
+cp /workspace/etc/id_rsa* ~/.ssh/
+chmod 0600 ~/.ssh/id_rsa
+chmod 0644 ~/.ssh/id_rsa.pub
+cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+echo 'Host *' >>/etc/ssh/ssh_config
+echo '  StrictHostKeyChecking no' >>/etc/ssh/ssh_config
+echo 'PermitRootLogin yes' >>/etc/ssh/sshd_config
+echo 'root:pbs' | chpasswd
+cat /etc/profile.d/0container-env-setup.sh >>/root/.profile
+cat /etc/profile.d/0container-env-setup.sh >>/root/.bash_profile
+cat /etc/profile.d/0container-env-setup.sh >>/root/.bashrc
+for user in $(awk -F: '/^(pbs|tst)/ {print $1}' /etc/passwd); do
+  chown -R ${user}: /home/${user}/.ssh
+  echo "${user}:pbs" | chpasswd
+  cat /etc/profile.d/0container-env-setup.sh >>/home/${user}/.profile
+  cat /etc/profile.d/0container-env-setup.sh >>/home/${user}/.bash_profile
+  cat /etc/profile.d/0container-env-setup.sh >>/home/${user}/.bashrc
+  chown ${user}: /home/${user}/.bashrc /home/${user}/.profile /home/${user}/.bash_profile
+done
+
+rm -rf ~/.cache ~/.cpanm /var/{log,cache} /tmp /var/tmp /run/*.pid /var/run/*.pid
+mkdir -p --mode=0755 /var/{log,cache}
+mkdir -p --mode=1777 /tmp /var/tmp

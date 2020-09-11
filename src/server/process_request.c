@@ -85,12 +85,10 @@
 #include <netinet/in.h>
 #include <memory.h>
 #include <assert.h>
-#ifndef WIN32
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
 #include <dlfcn.h>
-#endif
 #include <ctype.h>
 #include "libpbs.h"
 #include "pbs_error.h"
@@ -157,36 +155,25 @@ static void close_quejob(int sfds);
 int
 get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
-	int	ret;
-
-	switch (jobp->ji_extended.ji_ext.ji_credtype) {
-
-		default:
+	int ret;
 
 #ifndef PBS_MOM
+	/*
+	 * ensure job's euser exists as this can be called
+	 * from pbs_send_job who is moving a job from a routing
+	 * queue which doesn't have euser set
+	 */
+	if ((jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
+		ret = user_read_password(jobp->ji_wattr[(int) JOB_ATR_euser].at_val.at_str, data, dsize);
 
-			/*   ensure job's euser exists as this can be called */
-			/*   from pbs_send_job who is moving a job from a routing */
-			/*   queue which doesn't have euser set */
-			if ( (jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
-		         && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
-				ret = user_read_password(
-					jobp->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-					data, dsize);
-
-				/* we have credential but type is NONE, force DES */
-				if( ret == 0 && \
-		  	    (jobp->ji_extended.ji_ext.ji_credtype == \
-							PBS_CREDTYPE_NONE) )
-				jobp->ji_extended.ji_ext.ji_credtype = \
-							PBS_CREDTYPE_AES;
-			} else
-				ret = read_cred(jobp, data, dsize);
+		/* we have credential but type is NONE, force DES */
+		if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
+			jobp->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_AES;
+	} else
+		ret = read_cred(jobp, data, dsize);
 #else
-			ret = read_cred(jobp, data, dsize);
+	ret = read_cred(jobp, data, dsize);
 #endif
-			break;
-	}
 	return ret;
 }
 
@@ -302,7 +289,7 @@ process_request(int sfds)
 
 	if (!conn) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "did not find socket in connection table");
-		CLOSESOCKET(sfds);
+		closesocket(sfds);
 		return;
 	}
 
@@ -317,7 +304,6 @@ process_request(int sfds)
 		req_reject(PBSE_BADHOST, 0, request);
 		return;
 	}
-
 	/*
 	 * Read in the request and decode it to the internal request structure.
 	 */
@@ -1084,6 +1070,7 @@ struct batch_request *alloc_br(int type)
 		req->tpp_ack = 1; /* enable acks to be passed by tpp by default */
 		req->prot = PROT_TCP; /* not tpp by default */
 		req->tppcmd_msgid = NULL; /* NULL msgid to boot */
+		req->rq_reply.brp_is_part = 0;
 		req->rq_reply.brp_choice = BATCH_REPLY_CHOICE_NULL;
 		append_link(&svr_requests, &req->rq_link, req);
 	}
@@ -1586,4 +1573,3 @@ get_servername(unsigned int *port)
 
 	return name;
 }
-

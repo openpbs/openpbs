@@ -36,41 +36,37 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH mpiexec 8B "12 October 2017" Local "PBS"
+.TH mpiexec 8B "26 May 2020" Local "PBS Professional"
 .SH NAME
-.B mpiexec
+.B mpiexec 
 \- run MPI programs under PBS on Linux
 
 .SH SYNOPSIS
-.B mpiexec
+.B mpiexec 
 
-.B mpiexec
+.B mpiexec 
 --version
 
 .SH DESCRIPTION
-The PBS
+The PBS 
 .B mpiexec
 command provides the standard mpiexec interface on a system
-running supported versions of Performance Suite.
+running supported versions of Performance Suite.  
 If executed on a different system, it will assume
 it was invoked by mistake.  In this case it will use the value of
 .B PBS_O_PATH
-to search for the correct mpiexec.  If one is found, the PBS
-.B mpiexec
+to search for the correct mpiexec.  If one is found, the PBS 
+.B mpiexec 
 will
 exec it.
 
 The PBS
 .B mpiexec
-calls the HPE SGI mpirun(1).  The name of the array to use when invoking
-mpirun is user-specifiable via the
-.B PBS_MPI_SGIARRAY
-environment variable.
+calls the HPE mpirun(1).  
 
 It is transparent to the user; MPI jobs submitted outside of PBS will
 run as they would normally.  MPI jobs can be launched across multiple
-HPE SGI machines.  PBS will manage, track, and cleanly terminate multi-host MPI
+HPE machines.  PBS will manage, track, and cleanly terminate multi-host MPI
 jobs.  PBS users can run MPI jobs within specific partitions.
 
 If CSA has been configured and enabled, PBS will collect accounting
@@ -78,22 +74,22 @@ information on all tasks launched by an MPI job.  CSA information will
 be associated with the PBS job ID that invoked it, on each execution
 host.
 
-If the
-.B PBS_MPI_DEBUG
+If the 
+.B PBS_MPI_DEBUG 
 environment variable's value has a nonzero
 length, PBS will write debugging information to standard output.
 
-.SH USAGE
+.SH USAGE 
 The PBS
-.B mpiexec
-command presents the mpiexec interface described in section
-"4.1 Portable MPI Process Startup" of the "MPI-2: Extensions
-to the Message-Passing Interface" document in
+.B mpiexec 
+command presents the mpiexec interface described in section 
+"4.1 Portable MPI Process Startup" of the "MPI-2: Extensions 
+to the Message-Passing Interface" document in 
 http://www.mpi-forum.org/docs/mpi-20-html/node42.htm
 
 .SH OPTIONS
 .IP "--version" 8
-The
+The 
 .B mpiexec
 command returns its PBS version information and exits.
 This option can only be used alone.
@@ -101,73 +97,55 @@ This option can only be used alone.
 .SH REQUIREMENTS
 System running a supported version of Performance Suite.
 
-PBS uses HPE SGI's mpirun(1) command to launch MPI jobs.  HPE SGI's mpirun
+PBS uses HPE's mpirun(1) command to launch MPI jobs.  HPE's mpirun
 must be in the standard location.
 
-The location of
-.B pbs_attach()
+The location of 
+.B pbs_attach() 
 on each node of a multinode MPI job
 must be the same as it is on the mother superior node.
 
-In order to run multihost jobs, the HPE SGI Array Services must be
-correctly configured.  HPE SGI systems communicating via HPE SGI's Array
+In order to run multihost jobs, the HPE Array Services must be
+correctly configured.  HPE systems communicating via HPE's Array
 Services must all use the same version of the sgi-arraysvcs package.
-HPE SGI systems communicating via HPE SGI's Array Services must have been
+HPE systems communicating via HPE's Array Services must have been
 configured to interoperate with each other using the default array.
-See HPE SGI's array_services(5) man page.
+See HPE's array_services(5) man page.
 
 .SH ENVIRONMENT VARIABLES
-
-The PBS
-.B mpiexec
-script sets the
-.B PBS_CPUSET_DEDICATED
-environment variable to assert exclusive use of the resources in the
-assigned cpuset.
-
-The PBS
-.B mpiexec
-checks the
-.B PBS_MPI_DEBUG
+The PBS 
+.B mpiexec 
+checks the 
+.B PBS_MPI_DEBUG 
 environment variable.  If
 this variable has a nonzero length, debugging information is written.
 
-If the
-.B PBS_MPI_SGIARRAY
-environment variable is present, the PBS
-.B mpiexec
-will use its value as the name of the array to use when
-invoking mpirun.
-
-The
-.B PBS_ENVIRONMENT
+The 
+.B PBS_ENVIRONMENT 
 environment variable is used to determine whether
-.B mpiexec
+.B mpiexec 
 is being called from within a PBS job.
 
-The PBS
-.B mpiexec
-uses the value of
-.B PBS_O_PATH
+The PBS 
+.B mpiexec 
+uses the value of 
+.B PBS_O_PATH 
 to search for the correct
-.B mpiexec
+.B mpiexec 
 if it was invoked by mistake.
 
 .SH PATH
-PBS'
-.B mpiexec
-is located in
+PBS' 
+.B mpiexec 
+is located in 
 .I PBS_EXEC/bin/mpiexec.
 
 
 .SH SEE ALSO
-The
-.B PBS Administrator's Guide
-.LP
-HPE SGI man pages:
-HPE SGI's mpirun(1),
-HPE SGI's mpiexec_mpt(1),
-HPE SGI's array_services(5)
+HPE man pages: 
+HPE's mpirun(1), 
+HPE's mpiexec_mpt(1),
+HPE's array_services(5)
 .LP
 PBS man pages:
 pbs_attach(8B)

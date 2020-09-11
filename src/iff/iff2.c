@@ -154,11 +154,8 @@ main(int argc, char *argv[], char *envp[])
 		return (1);
 	}
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	/* first, make sure we have a valid server (host), and ports */
 

@@ -37,9 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifdef	WIN32
 #include	"pbs_config.h"
-#endif
+
 #include	<stdlib.h>
 #include	<string.h>
 #include	<stdio.h>

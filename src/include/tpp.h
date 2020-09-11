@@ -124,6 +124,7 @@ struct tpp_config {
 	int    buf_limit_per_conn; /* buffer limit per physical connection */
 	int    force_fault_tolerance; /* by default disabled */
 	pbs_auth_config_t *auth_config;
+	char **supported_auth_methods;
 };
 
 /* TPP specific functions */

@@ -641,7 +641,7 @@
 {
    From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
    Memcheck:Leak
-   fun:calloc
+   fun:malloc
    fun:make_auth_config
    fun:set_tpp_config
    fun:main
@@ -652,6 +652,29 @@
    fun:malloc
    fun:strdup
    fun:make_auth_config
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:malloc
+   fun:mk_hostname
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:set_tpp_config
+   fun:main
+}
+{
+   From PBS - Suppress intentional unfreed memory of auth struct inside global tpp_conf struct
+   Memcheck:Leak
+   fun:realloc
    fun:set_tpp_config
    fun:main
 }
@@ -694,5 +717,14 @@
    fun:malloc
    fun:hook_alloc
    fun:mgr_hook_create
+   ...
+}
+{
+   From PBS - Suppress uninitialized DIS buffer
+   Memcheck:Param
+   write(buf)
+   ...
+   fun:__send_pkt
+   fun:dis_flush
    ...
 }

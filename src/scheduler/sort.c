@@ -49,7 +49,6 @@
  * 	cmpres()
  * 	cmp_placement_sets()
  * 	cmp_nspec()
- * 	cmp_low_load()
  * 	cmp_queue_prio_dsc()
  * 	cmp_events()
  * 	cmp_fairshare()
@@ -213,7 +212,7 @@ cmp_placement_sets(const void *v1, const void *v2)
 int
 cmp_nspec(const void *v1, const void *v2)
 {
-	int s1, s2, ss1, ss2;
+	int s1, s2;
 	if (v1 == NULL && v2 == NULL)
 		return 0;
 
@@ -225,31 +224,21 @@ cmp_nspec(const void *v1, const void *v2)
 
 	s1 = (*(nspec**) v1)->seq_num;
 	s2 = (*(nspec**) v2)->seq_num;
-	ss1 = (*(nspec**) v1)->sub_seq_num;
-	ss2 = (*(nspec**) v2)->sub_seq_num;
 
 	if (s1 < s2)
 		return -1;
 	else if (s1 > s2)
 		return 1;
-	else {
-		if (ss1 < ss2)
-			return -1;
-		else if (ss1 > ss2)
-			return 1;
-		else
-			return 0;
-	}
+	else
+	    return cmp_nspec_by_sub_seq(v1, v2);
 }
-
-
 
 /**
  * @brief
- *		cmp_low_load - sort nodes ascending by load ave
+ * 		cmp_nspec_by_sub_seq - sort nspec by sub sequence number
  *
- * @param[in]	v1	-	node info 1
- * @param[in]	v2	-	node info 2
+ * @param[in]	v1	-	nspec 1
+ * @param[in]	v2	-	nspec 2
  *
  * @return	int
  * @retval	-1	: if v1 < v2
@@ -257,8 +246,9 @@ cmp_nspec(const void *v1, const void *v2)
  * @retval	1  	: if v1 > v2
  */
 int
-cmp_low_load(const void *v1, const void *v2)
+cmp_nspec_by_sub_seq(const void *v1, const void *v2)
 {
+	int ss1, ss2;
 	if (v1 == NULL && v2 == NULL)
 		return 0;
 
@@ -268,13 +258,17 @@ cmp_low_load(const void *v1, const void *v2)
 	if (v1 != NULL && v2 == NULL)
 		return 1;
 
-	if ((*(node_info **) v1)->loadave < (*(node_info **) v2)->loadave)
+	ss1 = (*(nspec**) v1)->sub_seq_num;
+	ss2 = (*(nspec**) v2)->sub_seq_num;
+
+	if (ss1 < ss2)
 		return -1;
-	else if ((*(node_info **) v1)->loadave > (*(node_info **) v2)->loadave)
+	else if (ss1 > ss2)
 		return 1;
 	else
 		return 0;
 }
+
 
 /**
  * @brief

@@ -102,11 +102,8 @@ char **envp;
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	warg[0]='\0';
 	strcpy(warg1, NOMAIL);
@@ -119,7 +116,7 @@ char **envp;
 					errflg++;
 					break;
 				}
-				if (strcmp(pc, FORCEDEL) == 0) {
+				if (strcmp(pc, FORCE) == 0) {
 					forcedel = TRUE;
 					break;
 				}
@@ -158,9 +155,9 @@ char **envp;
 	}
 
 	if (forcedel && deletehist)
-		snprintf(warg, sizeof(warg), "%s%s", FORCEDEL, DELETEHISTORY);
+		snprintf(warg, sizeof(warg), "%s%s", FORCE, DELETEHISTORY);
 	else if (forcedel)
-		strcpy(warg, FORCEDEL);
+		strcpy(warg, FORCE);
 	else if (deletehist)
 		strcpy(warg, DELETEHISTORY);
 
@@ -176,7 +173,7 @@ char **envp;
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qdel: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;
@@ -241,7 +238,7 @@ cnt:
 			mails_suppressed = TRUE;
 			/* current warg1 "nomail" should be at start */
 			strcat(warg1, warg);
-			strcpy(warg, warg1);
+			pbs_strncpy(warg, warg1, sizeof(warg));
 		}
 
 		stat = pbs_deljob(connect, job_id_out, warg);
@@ -258,7 +255,7 @@ cnt:
 			located = TRUE;
 			if (locate_job(job_id_out, server_out, rmt_server)) {
 				pbs_disconnect(connect);
-				strcpy(server_out, rmt_server);
+				pbs_strncpy(server_out, rmt_server, sizeof(server_out));
 				goto cnt;
 			}
 			prt_job_err("qdel", connect, job_id_out);

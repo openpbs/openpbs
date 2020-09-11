@@ -110,7 +110,7 @@ pbs_probe_LDADD = \
 	${common_libs} \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@
-pbs_probe_SOURCES = pbs_probe.c
+pbs_probe_SOURCES = pbs_probe.c $(top_srcdir)/src/lib/Libcmds/cmds_common.c
 
 pbs_python_CPPFLAGS =  \
 	-DPBS_PYTHON=1.1 \
@@ -132,7 +132,6 @@ pbs_python_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/resc_def_all.c \
 	$(top_builddir)/src/lib/Libattr/resv_attr_def.c \
 	$(top_builddir)/src/lib/Libattr/svr_attr_def.c \
-	$(top_srcdir)/src/server/svr_attr.c \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/setup_resc.c \
 	$(top_srcdir)/src/server/vnparse.c \

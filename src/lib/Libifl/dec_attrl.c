@@ -118,11 +118,7 @@ decode_DIS_attrl(int sock, struct attrl **ppatt)
 		pat->value = disrst(sock, &rc);
 		if (rc) break;
 
-#ifdef NAS /* localmod 005 */
 		pat->op = (enum batch_op) disrui(sock, &rc);
-#else
-		pat->op = disrui(sock, &rc);
-#endif /* localmod 005 */
 		if (rc) break;
 
 		if (i == 0) {

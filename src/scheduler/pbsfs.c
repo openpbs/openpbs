@@ -63,6 +63,7 @@
 #include "pbs_version.h"
 #include "sched_cmds.h"
 #include "log.h"
+#include "fifo.h"
 
 /* prototypes */
 static void print_fairshare_entity(group_info *ginfo);
@@ -142,6 +143,11 @@ main(int argc, char *argv[])
 		fprintf(stderr, "Usage: pbsfs --version\n");
 		exit(1);
 	}
+
+	if (validate_running_user(argv[0]) == 0) {
+		exit(1);
+	}
+
 	if ((flags & (FS_PRINT | FS_PRINT_TREE)) && (argc - optind) != 0) {
 		fprintf(stderr, "Usage: pbsfs -[ptdgcs] [-I sched_name]\n");
 		exit(1);
@@ -175,8 +181,7 @@ main(int argc, char *argv[])
 				struct attrl *cur_attrl;
 				for (cur_attrl = cur_bs->attribs; cur_attrl != NULL; cur_attrl = cur_attrl->next) {
 					if (strcmp(cur_attrl->name, ATTR_sched_priv) == 0) {
-						strncpy(path_buf, cur_attrl->value, sizeof(path_buf));
-						path_buf[sizeof(path_buf) - 1] = '\0';
+						pbs_strncpy(path_buf, cur_attrl->value, sizeof(path_buf));
 						break;
 					}
 				}

@@ -1,0 +1,7 @@
+Defaults	syslog = local7
+Defaults	always_set_home
+Defaults	!requiretty
+Defaults	!env_reset
+Defaults	!secure_path
+Defaults	env_keep = "*"
+ALL ALL=(ALL)       NOPASSWD: ALL

@@ -36,11 +36,10 @@
 .\" "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 .\" subject to Altair's trademark licensing policies.
 .\"
-
-.TH pbs_rdel 1B "15 October 2019" Local "PBS"
+.TH pbs_rdel 1B "6 May 2020" Local "PBS Professional"
 .SH NAME
-.B pbs_rdel
-\- delete a PBS advance, standing, or maintenance reservation
+.B pbs_rdel 
+\- delete a PBS reservation 
 .SH SYNOPSIS
 .B pbs_rdel
 <reservation ID>[,<reservation ID>...]
@@ -48,7 +47,7 @@
 .B pbs_rdel
 --version
 .SH DESCRIPTION
-The
+The 
 .B pbs_rdel
 command deletes reservations in the order specified.
 
@@ -62,17 +61,17 @@ or a PBS Manager.
 
 .SH OPTIONS
 .IP "--version" 10
-The
+The 
 .B pbs_rdel
 command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
-The pbs_rdel command accepts one or more
+The pbs_rdel command accepts one or more 
 .I reservation ID
-operands.
+operands.  
 .br
-For an advance reservation this has the form:
+For an advance or job-specific reservation this has the form:
 .RS 4
 .I "R<sequence number>[.<server name>][@<remote server>]"
 .RE
@@ -85,20 +84,16 @@ For a maintenance reservation this has the form:
 .I "M<sequence number>[.<server name>][@<remote server>]"
 .RE
 
-.I @<remote server>
+.I @<remote server> 
 specifies a reservation at a server other than the default server.
 
 .SH EXIT STATUS
-.IP "Zero" 10
+.IP "Zero" 10 
 Upon success
 .IP "Greater than zero" 10
 Upon failure to process any operand
 
 .SH SEE ALSO
-The
-.B PBS User's Guide,
-the
-.B PBS Administrator's Guide,
 pbs_rsub(1B),
 pbs_rstat(1B),
 pbs_resv_attributes(7B)

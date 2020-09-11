@@ -110,6 +110,5 @@ diswsl(int stream, long value)
 	retval = dis_puts(stream, cp,
 		(size_t)(&dis_buffer[DIS_BUFSIZ] - cp)) < 0 ?
 		DIS_PROTO : DIS_SUCCESS;
-	return ((disw_commit(stream, retval == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : retval);
+	return retval;
 }

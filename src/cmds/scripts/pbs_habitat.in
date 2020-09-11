@@ -70,7 +70,7 @@ chk_dataservice_user() {
 
 	id=`echo ${id} | cut -c5- | cut -d "(" -f1`
 	if [ "$id" = "0" ]; then
-		echo "User ${chk_usr} should not have root priviledges"
+		echo "User ${chk_usr} should not have root privileges"
 		return 1;
 	fi
 
@@ -244,13 +244,13 @@ if [ -f "$PBS_HOME/mom_priv/config" ]; then
 	done
 fi
 
-# Check for the db install script
-if [ ! -x "${PBS_EXEC}/libexec/pbs_db_utility" ]; then
-	echo "${PBS_EXEC}/libexec/pbs_db_utility not found"
-	exit 1
-fi
-
 if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
+	# Check for the db install script
+	if [ ! -x "${PBS_EXEC}/libexec/pbs_db_utility" ]; then
+		echo "${PBS_EXEC}/libexec/pbs_db_utility not found"
+		exit 1
+	fi
+
 	# Source the file that sets DB env variables
 	. "$PBS_EXEC"/libexec/pbs_db_env
 	if [ $? -ne 0 ]; then

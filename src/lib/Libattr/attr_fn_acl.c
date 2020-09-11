@@ -47,10 +47,8 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
-#ifndef WIN32
 #include <pwd.h>
 #include <grp.h>
-#endif
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"

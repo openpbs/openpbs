@@ -398,7 +398,6 @@ void
 pbs_close_stdfiles(void)
 {
 	static int already_done = 0;
-#define NULL_DEVICE "/dev/null"
 
 	if (!already_done) {
 		(void)fclose(stdin);

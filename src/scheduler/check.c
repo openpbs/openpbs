@@ -766,20 +766,25 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				return NULL;
 		}
 
-		/* if a reservation is unconfirmed or being altered, we can try and confirm it */
-		if ((resresv->is_resv) &&
-			resresv->resv->resv_state != RESV_UNCONFIRMED &&
-			resresv->resv->resv_state != RESV_BEING_ALTERED) {
+		/* There are 3 [sub]states a reservation is in that can be confirmed
+		 * 1) state = RESV_UNCONFIRMED
+		 * 2) state = RESV_BEING_ALTERED
+		 * 3) substate = RESV_DEGRADED
+		 */
+		if (resresv->is_resv && resresv->resv != NULL) {
+			int rstate = resresv->resv->resv_state;
+			int rsubstate = resresv->resv->resv_substate;
+			if (rstate != RESV_UNCONFIRMED && rstate != RESV_BEING_ALTERED && rsubstate != RESV_DEGRADED) {
+				set_schd_error_codes(err, NOT_RUN, NOT_QUEUED);
+				add_err(&prev_err, err);
 
-			set_schd_error_codes(err, NOT_RUN, NOT_QUEUED);
-			add_err(&prev_err, err);
+				if (!(flags & RETURN_ALL_ERR))
+					return NULL;
 
-			if (!(flags & RETURN_ALL_ERR))
-				return NULL;
-
-			err = new_schd_error();
-			if (err == NULL)
-				return NULL;
+				err = new_schd_error();
+				if (err == NULL)
+					return NULL;
+			}
 		}
 	}
 
@@ -1699,7 +1704,7 @@ should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *job)
 
 	/* check if a job is in a reservation */
 	if (job->is_job && job->job != NULL && job->job->resv != NULL) {
-		if (job->job->resv->resv->resv_state == RESV_RUNNING) {
+		if (job->job->resv->resv->is_running) {
 			/* if we are not checking a specific node and the job is in a
 			 * running reservation, there can't be any conflicts
 			 */
@@ -1984,7 +1989,12 @@ void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 			*spec = resresv->select;
 		}
 	} else if (resresv->is_resv && resresv->resv != NULL) {
-		if (resresv->resv->resv_state == RESV_BEING_ALTERED || resresv->resv->resv_state == RESV_RUNNING)
+		/* The execselect should be used when the resv is running.  We can't
+		 * trust the state/substate to be RESV_RUNNING when a reservation is both
+		 * RESV_DEGRADED and RESV_BEING_ALTERED and is running.
+		 */
+		if (resresv->resv->is_running)
+
 			*spec = resresv->execselect;
 		else
 			*spec = resresv->select;

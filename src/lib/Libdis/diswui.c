@@ -88,9 +88,5 @@
 int
 diswui(int stream, unsigned value)
 {
-	int		retval;
-
-	retval = diswui_(stream, value);
-	return ((disw_commit(stream, retval == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : retval);
+	return diswui_(stream, value);
 }

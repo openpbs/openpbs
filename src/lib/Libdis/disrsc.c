@@ -112,7 +112,6 @@ disrsc(int stream, int *retval)
 		case DIS_OVERFLOW:
 			value = negate ? SCHAR_MIN : SCHAR_MAX;
 	}
-	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : locret;
+	*retval = locret;
 	return (value);
 }

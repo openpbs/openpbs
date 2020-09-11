@@ -328,6 +328,7 @@ cd build
 %if %{with ptl}
 	--enable-ptl \
 %endif
+	%{?_with_swig} \
 %if %{defined suse_version}
 	--libexecdir=%{pbs_prefix}/libexec \
 %endif
@@ -475,7 +476,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %else
 %exclude %{_unitdir}/pbs.service
 %endif
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -510,7 +510,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/libexec/pbs_db_utility
 %exclude %{pbs_prefix}/sbin/pbs_comm
 %exclude %{pbs_prefix}/sbin/pbs_dataservice
-%exclude %{pbs_prefix}/sbin/pbs_systemd
 %exclude %{pbs_prefix}/sbin/pbs_ds_monitor
 %exclude %{pbs_prefix}/sbin/pbs_ds_password
 %exclude %{pbs_prefix}/sbin/pbs_ds_password.bin
@@ -519,7 +518,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -569,7 +567,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbs_upgrade_job
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service

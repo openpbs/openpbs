@@ -1,4 +1,4 @@
-#! /bin/bash -xe
+#!/bin/bash -x
 
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -37,45 +37,36 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-. /etc/os-release
+cleanup() {
+	cd ${etcdir}
+	rm -rf ./tmpptl
+}
 
-pbsdir=/pbssrc
-rpm_dir=/root/rpmbuild
-
-rm -rf /src/packages
-mkdir -p /src/packages
-mkdir -p ${rpm_dir}/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-
-cp -r $pbsdir /tmp/pbs
-cd /tmp/pbs
-./autogen.sh
-mkdir target
-cd target
-../configure --prefix=/opt/pbs --enable-ptl
-make dist
-cp *.tar.gz ${rpm_dir}/SOURCES
-cp ../*-rpmlintrc ${rpm_dir}/SOURCES
-cp *.spec ${rpm_dir}/SPECS
-cflags="-g -O2 -Wall -Werror"
-if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
-	CFLAGS="${cflags} -Wno-unused-result" rpmbuild -ba --nodeps *.spec --with ptl
+etcdir=$(dirname $(readlink -f "$0"))
+cidir=/pbssrc/ci
+cd ${etcdir}
+mkdir tmpptl
+workdir=${etcdir}/tmpptl
+cd ${workdir}
+mkdir -p ptlsrc
+/bin/cp -rf ${cidir}/../test/* ptlsrc/
+if [ -f ptlsrc/fw/setup.py.in ]; then
+	sed "s;@PBS_VERSION@;1.0.0;g" ptlsrc/fw/setup.py.in >ptlsrc/fw/setup.py
+	sed "s;@PBS_VERSION@;1.0.0;g" ptlsrc/fw/ptl/__init__.py.in >ptlsrc/fw/ptl/__init__.py
+fi
+cd ${workdir}/ptlsrc
+mkdir ../tp
+__python="$(grep -rE '^#!/usr/bin/(python|env python)[23]' fw/bin/pbs_benchpress | awk -F[/" "] '{print $NF}')"
+${__python} -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --prefix $(pwd)/tp -r fw/requirements.txt fw/.
+cd tests
+PYTHONPATH=../tp/lib/$(/bin/ls -1 ../tp/lib)/site-packages ${__python} ../tp/bin/pbs_benchpress $1 --gen-ts-tree
+ret=$?
+if [ ${ret} -ne 0 ]; then
+	echo "Failed to generate ptl json"
+	cleanup
+	exit $ret
 else
-	CFLAGS="${cflags}" rpmbuild -ba *.spec --with ptl
+	mv ptl_ts_tree.json ${cidir}
 fi
 
-mv ${rpm_dir}/RPMS/*/*pbs* /src/packages/
-mv ${rpm_dir}/SRPMS/*pbs* /src/packages/
-cd /src/packages
-rm -rf /tmp/pbs
-
-if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
-	_target_arch=$(dpkg --print-architecture)
-	fakeroot alien --to-deb --scripts --target=${_target_arch} *-debuginfo*.rpm -g
-	_dir=$(/bin/ls -1d *debuginfo* | grep -vE '(rpm|orig)')
-	mv ${_dir}/opt/pbs/usr/ ${_dir}/
-	rm -rf ${_dir}/opt
-	(cd ${_dir}; dpkg-buildpackage -d -b -us -uc)
-	rm -rf ${_dir} ${_dir}.orig *debuginfo*.buildinfo *debuginfo*.changes *debuginfo*.rpm
-	fakeroot alien --to-deb --scripts --target=${_target_arch} *.rpm
-	rm -f *.rpm
-fi
+cleanup

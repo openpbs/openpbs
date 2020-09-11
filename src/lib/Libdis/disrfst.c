@@ -110,8 +110,6 @@ disrfst(int stream, size_t achars, char *value)
 		else
 			value[count] = '\0';
 	}
-	locret = disr_commit(stream, locret == DIS_SUCCESS) ?
-		DIS_NOCOMMIT : locret;
 	if (locret != DIS_SUCCESS)
 		*value = '\0';
 	return (locret);

@@ -89,7 +89,7 @@ struct name_and_val {
 };
 
 int  gen_task_Time4resv(resc_resv*);
-void resv_revert_alter(resc_resv *presv);
+void revert_alter_reservation(resc_resv *presv);
 
 extern int     svr_totnodes;
 extern time_t  time_now;
@@ -569,6 +569,7 @@ req_confirmresv(struct batch_request *preq)
 	 * is invalid, set it to some time after the soonest occurrence is to start
 	 */
 	if (strcmp(preq->rq_extend, PBS_RESV_CONFIRM_FAIL) == 0) {
+		int force_requested = FALSE;
 		if (is_degraded && !is_being_altered) {
 			long retry_time;
 			retry_time = determine_resv_retry(presv);
@@ -589,34 +590,58 @@ req_confirmresv(struct batch_request *preq)
 				if ((presv->ri_brp != NULL) &&
 					(presv->ri_wattr[RESV_ATR_interactive].at_flags &
 					ATR_VFLAG_SET)) {
-					presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
-					snprintf(buf, sizeof(buf), "%s DENIED",
-						presv->ri_qs.ri_resvID);
-					(void)reply_text(presv->ri_brp,
-						PBSE_NONE, buf);
-					presv->ri_brp = NULL;
+					if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
+						presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
+						snprintf(buf, sizeof(buf), "%s DENIED", presv->ri_qs.ri_resvID);
+						(void)reply_text(presv->ri_brp, PBSE_NONE, buf);
+						presv->ri_brp = NULL;
+					}
 				}
 				if (!is_being_altered && !is_confirmed) {
-					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV,
-						LOG_INFO, presv->ri_qs.ri_resvID,
-						"Reservation denied");
-					(void)snprintf(log_buffer, sizeof(log_buffer),
-						"requestor=%s@%s", msg_daemonname, server_host);
+					log_event(PBS_EVENTCLASS_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, presv->ri_qs.ri_resvID, "Reservation denied");
+					(void)snprintf(log_buffer, sizeof(log_buffer), "requestor=%s@%s", msg_daemonname, server_host);
 					account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV,
-						LOG_NOTICE, presv->ri_qs.ri_resvID,
-						"reservation deleted");
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, "reservation deleted");
 					resv_purge(presv);
 				}
 			}
 		}
 		if (presv->ri_qs.ri_state == RESV_BEING_ALTERED) {
-			resv_revert_alter(presv);
-			log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-				  presv->ri_qs.ri_resvID, "Reservation alter denied");
+			if (!(presv->ri_alter.ra_flags & RESV_ALTER_FORCED)) {
+				revert_alter_reservation(presv);
+				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+					presv->ri_qs.ri_resvID, "Reservation alter denied");
+			} else if (presv->rep_sched_count >= presv->req_sched_count)
+				force_requested = TRUE;
 		}
-		reply_ack(preq);
-		return;
+		if (is_being_altered)
+			resv_attr_def[RESV_ATR_alter_revert].at_free(&presv->ri_wattr[RESV_ATR_alter_revert]);
+
+		if (force_requested == FALSE) {
+			reply_ack(preq);
+			return;
+		} else {
+			/* This can only happen when ralter was requested with -Wforce option.
+			 * Even though all schedulers have rejected the change, enforce it.
+			 */
+			presv->ri_alter.ra_flags &= ~RESV_ALTER_FORCED;
+			free(preq->rq_extend);
+			if (pbs_asprintf(&preq->rq_extend, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
+					 presv->ri_wattr[RESV_ATR_partition].at_val.at_str) == -1) {
+				req_reject(PBSE_SYSTEM, 0, preq);
+				return;
+			}
+			/* set start time and destination in the preq structure */
+			if (presv->ri_wattr[RESV_ATR_start].at_flags & ATR_VFLAG_SET)
+				preq->rq_ind.rq_run.rq_resch = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+			if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+				preq->rq_ind.rq_run.rq_destin = create_resv_destination(presv);
+				if (preq->rq_ind.rq_run.rq_destin == NULL) {
+					req_reject(PBSE_SYSTEM, 0, preq);
+					return;
+				}
+			}
+		}
 	}
 
 #ifdef NAS /* localmod 122 */
@@ -629,6 +654,9 @@ req_confirmresv(struct batch_request *preq)
 		return;
 	}
 #endif /* localmod 122 */
+
+	if (is_being_altered)
+		resv_attr_def[RESV_ATR_alter_revert].at_free(&presv->ri_wattr[RESV_ATR_alter_revert]);
 
 	petime = &presv->ri_wattr[RESV_ATR_end];
 
@@ -651,7 +679,6 @@ req_confirmresv(struct batch_request *preq)
 	 * describing the execvnodes associated to each occurrence.
 	 */
 	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
-
 		/* The number of occurrences in the standing reservation and index are parsed
 		 * from the execvnode string which is of the form:
 		 *     <num_occurrences>#<vnode1>[range1]<vnode2>[range2]...
@@ -783,28 +810,32 @@ req_confirmresv(struct batch_request *preq)
 	 * Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes.
 	 */
-	if (is_being_altered)
+	if (is_being_altered) {
+		if ((is_being_altered & RESV_SELECT_MODIFIED) && presv->ri_qs.ri_stime < time_now) {
+			/* If we are both degraded and ralter -lselect, we are fine.  We will have unset ri_giveback above */
+			if (presv->ri_giveback) {
+				set_resc_assigned((void *) presv, 1, DECR);
+				presv->ri_giveback = 0;
+			}
+		}
+
 		free_resvNodes(presv);
+	}
 	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
-	if (rc != PBSE_NONE) {
-		free(next_execvnode);
-		if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING) {
+	if (presv->ri_qs.ri_stime < time_now) {
+		if (is_degraded || is_being_altered & RESV_SELECT_MODIFIED) {
 			if (presv->ri_giveback == 0) {
 				set_resc_assigned((void *) presv, 1, INCR);
 				presv->ri_giveback = 1;
 			}
 		}
-
-		req_reject(rc, 0, preq);
-		return;
 	}
 
-	if (is_degraded && presv->ri_qs.ri_state == RESV_RUNNING) {
-		if (presv->ri_giveback == 0) {
-			set_resc_assigned((void *) presv, 1, INCR);
-			presv->ri_giveback = 1;
-		}
+	if (rc != PBSE_NONE) {
+		free(next_execvnode);
+		req_reject(rc, 0, preq);
+		return;
 	}
 
 	/* place "Time4resv" task on "task_list_timed" only if this is a
@@ -813,7 +844,7 @@ req_confirmresv(struct batch_request *preq)
 	 * the task list before
 	 */
 	if (!is_degraded && (!is_being_altered || is_being_altered & RESV_START_TIME_MODIFIED) &&
-		(rc = gen_task_Time4resv(presv)) != 0) {
+	    (rc = gen_task_Time4resv(presv)) != 0) {
 		free(next_execvnode);
 		req_reject(rc, 0, preq);
 		return;
@@ -922,13 +953,8 @@ req_confirmresv(struct batch_request *preq)
 				presv->ri_giveback = 0;
 			}
 		}
-		presv->ri_alter.ra_stime = 0;
-		presv->ri_alter.ra_etime = 0;
-
 		if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
-			free(presv->ri_alter.ra_select);
-			presv->ri_alter.ra_select = NULL;
-			job_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
+			resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
 		}
 
 		presv->ri_alter.ra_flags = 0;
@@ -983,69 +1009,4 @@ req_confirmresv(struct batch_request *preq)
 	reply_ack(preq);
 
 	return;
-}
-
-/**
- * @brief
- * resv_revert_alter -	- 	Revert a reservation to its pre-altered state in the case where an alter fails.
- *
- * @param[in] presv 	-	Reservation structure.
- */
-void
-resv_revert_alter(resc_resv *presv)
-{
-	int state = 0;
-	int sub = 0;
-
-	if (presv->ri_alter.ra_flags & RESV_START_TIME_MODIFIED) {
-		presv->ri_qs.ri_stime = presv->ri_alter.ra_stime;
-		presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter.ra_stime;
-		presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_stime = 0;
-	}
-	if (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED) {
-		presv->ri_qs.ri_etime = presv->ri_alter.ra_etime;
-		presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter.ra_etime;
-		presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
-		presv->ri_alter.ra_etime = 0;
-	}
-	if (presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) {
-		if (presv->ri_alter.ra_etime != 0) {
-			presv->ri_qs.ri_etime = presv->ri_alter.ra_etime;
-			presv->ri_wattr[RESV_ATR_end].at_val.at_long = presv->ri_alter.ra_etime;
-			presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
-			presv->ri_alter.ra_etime = 0;
-		}
-		if (presv->ri_alter.ra_stime != 0) {
-			presv->ri_qs.ri_stime = presv->ri_alter.ra_stime;
-			presv->ri_wattr[RESV_ATR_start].at_val.at_long = presv->ri_alter.ra_stime;
-			presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
-			presv->ri_alter.ra_stime = 0;
-		}
-	}
-	if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
-		resource *presc;
-		resource_def *prdef;
-
-		prdef = &svr_resc_def[RESC_SELECT];
-		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], prdef);
-		free(presc->rs_value.at_val.at_str);
-		presc->rs_value.at_val.at_str = presv->ri_alter.ra_select;
-		set_attr_svr(&presv->ri_wattr[RESV_ATR_SchedSelect], &resv_attr_def[RESV_ATR_SchedSelect],
-			     presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str);
-
-		presv->ri_alter.ra_select = NULL;
-		job_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
-		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-		set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
-	}
-
-	presv->ri_qs.ri_duration = presv->ri_qs.ri_etime - presv->ri_qs.ri_stime;
-	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
-	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
-	presv->ri_alter.ra_flags = 0;
-
-	eval_resvState(presv, RESVSTATE_alter_failed, 0, &state, &sub);
-	/* While requesting alter, substate was retained, so we use the same here. */
-	(void)resv_setResvState(presv, state, presv->ri_qs.ri_substate);
 }

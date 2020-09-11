@@ -100,7 +100,6 @@ int		 mom_send_vnode_map = 0; /* server must send vnode map to Mom */
 int		 svr_quehasnodes;
 int	 	 svr_totnodes = 0;	/* total number nodes defined       */
 /* on server shutdown, (qmgr mods)  */
-int		 is_called_by_job_purge = 0;
 
 static int mtfd_replyhello = -1;
 static int mtfd_replyhello_noinv = -1;
@@ -125,8 +124,6 @@ extern int tpp_network_up; /* from pbsd_main.c - used only in case of TPP */
 
 extern unsigned int pbs_mom_port;
 
-extern char *msg_ngbluegene; 	/* BLUE GENE only */
-extern int   have_blue_gene_nodes;
 extern char *msg_noloopbackif;
 extern char *msg_job_end_stat;
 extern char *msg_daemonname;
@@ -828,12 +825,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 	struct jbdscrd  *pdsc;
 
 	if (pjob->ji_discard == NULL) {
-		if (pjob->ji_discarding) {
-			pjob->ji_discarding = 0;
-			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				((pjob->ji_parentaj)->ji_ajtrk)->tkm_tbl[pjob->ji_subjindx].trk_discarding = pjob->ji_discarding;
-			}
-		}
+		pjob->ji_discarding = 0;
 		return;
 	}
 	if (pmom != NULL) {
@@ -909,12 +901,11 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		sprintf(log_buffer, ndreque, downmom);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_RERUN);
+		force_reque(pjob);
 		if (pjob->ji_acctrec) {
 			free(pjob->ji_acctrec);	/* logged, so clear it */
 			pjob->ji_acctrec = NULL;
 		}
-		force_reque(pjob);
 
 		/* free resc_used */
 		if ((pjob->ji_wattr[(int)JOB_ATR_resc_used].at_flags & ATR_VFLAG_SET) &&
@@ -922,9 +913,6 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 			job_attr_def[(int)JOB_ATR_resc_used].at_free(&pjob->ji_wattr[(int)JOB_ATR_resc_used]);
 
 		pjob->ji_discarding = 0;
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-			((pjob->ji_parentaj)->ji_ajtrk)->tkm_tbl[pjob->ji_subjindx].trk_discarding = pjob->ji_discarding;
-		}
 		return;
 	}
 
@@ -1995,7 +1983,7 @@ find_vnode_in_execvnode(char *big, char *little)
  */
 
 static int
-decode_stat_update(int stream, struct resc_used_update *prused)
+decode_stat_update(int stream, ruu *prused)
 {
 	int		 hc;
 	int		 rc;
@@ -2056,13 +2044,15 @@ stat_update(int stream)
 	int			 njobs;
 	job			*pjob;
 	int			 rc;
-	struct resc_used_update	 rused = {0};
+	ruu	 rused = {0};
 	svrattrl		*sattrl;
 	mominfo_t		*mp;
 
 	njobs = disrui(stream, &rc);	/* number of jobs in update */
 	if (rc)
 		return;
+
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received updates = %d", njobs);
 
 	rused.ru_next = NULL;
 	while (njobs--) {
@@ -2263,95 +2253,120 @@ stat_update(int stream)
 static void
 recv_job_obit(int stream)
 {
-	int njobs;
-	int rc;
+	int njobs = 0;
+	int i = 0;
+	char **reject_list = NULL;
+	char **ack_list = NULL;
+	int reject_count = 0;
+	int ack_count = 0;
+	mominfo_t *mp = NULL;
+	ruu rused = {0};
 
-	njobs = disrui(stream, &rc);	/* number of jobs in update */
-	if (rc)
+	njobs = disrui(stream, &i); /* number of jobs in update */
+	if (i)
 		return;
 
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received obits = %d", njobs);
+
+	reject_list = (char **)calloc(1, njobs * sizeof(char *));
+	if (reject_list == NULL)
+		goto recv_job_obit_err;
+
+	ack_list = (char **)calloc(1, njobs * sizeof(char *));
+	if (ack_list == NULL)
+		goto recv_job_obit_err;
+
 	while (njobs--) {
-		struct resc_used_update *prused;
+		CLEAR_HEAD(rused.ru_attr);
+		rused.ru_comment = NULL;
+		rused.ru_next = NULL;
+		rused.ru_pjobid = NULL;
 
-		/* IMPORTANT NOTE					      */
-		/* allocate resc_used_update here, but leave it to job_obit() */
-		/* to free it when job_obit() has completed		      */
+		if (decode_stat_update(stream, &rused) == 0) {
+			int is_reject = 0;
 
-		prused = (struct resc_used_update *)
-			malloc(sizeof(struct resc_used_update));
-		if (prused != 0) {
+			DBPRT(("recv_job_obit: decoded obit for %s\n", rused.ru_pjobid))
+			is_reject = job_obit(&rused, stream);
+			if (is_reject == 1) {
+				reject_list[reject_count++] = rused.ru_pjobid;
+				rused.ru_pjobid = NULL;
+			} else if (is_reject != -1) { /* -1 means ignore ruu */
+				ack_list[ack_count++] = rused.ru_pjobid;
+				rused.ru_pjobid = NULL;
+			}
+			free(rused.ru_comment);
+			if (rused.ru_pjobid != NULL)
+				free(rused.ru_pjobid);
+			free_attrlist(&rused.ru_attr);
+		} else
+			goto recv_job_obit_err;
+	}
 
-			prused->ru_next   = NULL;
-			prused->ru_pjobid = NULL;
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "processed obits, sending replies acks: %d, rejects: %d", ack_count, reject_count);
 
-			if (decode_stat_update(stream, prused) == 0) {
-
-				DBPRT(("recv_job_obit: decoded obit for %s\n",
-					prused->ru_pjobid))
-				job_obit(prused, stream);
-			} else {
-				mominfo_t *mp;
-
-				DBPRT(("recv_job_obit: failed to decode obit for %s\n",
-					prused->ru_pjobid))
-				/* had a error, discard rest of message */
-				if ((mp = tfind2((u_long)stream, 0, &streams)) != NULL) {
-					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-						LOG_NOTICE, mp->mi_host, "error in recv_job_obit");
-				}
-				tpp_eom(stream);
-				FREE_RUU(prused)
+	if (ack_count > 0 || reject_count > 0) {
+		if (is_compose(stream, IS_OBITREPLY) != DIS_SUCCESS)
+			goto recv_job_obit_err;
+		if (diswui(stream, ack_count) != DIS_SUCCESS)
+			goto recv_job_obit_err;
+		if (ack_count > 0) {
+			for (i = 0; i < ack_count; i++) {
+				if (diswst(stream, ack_list[i]) != DIS_SUCCESS)
+					goto recv_job_obit_err;
+				free(ack_list[i]);
+				ack_list[i] = NULL;
 			}
 		}
-
-	}
-}
-
-/**
- * @brief
- * 		received bad obit for a job from mom on "stream".
- * 		Need to tell her so.  She will then just delete the job.
- *
- * @param[in]	stream	-	the TPP stream connecting to the Mom
- * @param[in]	jobid	-	job id to be deleted.
- *
- * @return	void
- */
-void
-reject_obit(int stream, char *jobid)
-{
-	DBPRT(("reject_obit: rejecting obit for %s\n", jobid))
-	if (stream != -1) {
-		if (is_compose(stream, IS_BADOBIT) == DIS_SUCCESS) {
-			if (diswst(stream, jobid) == DIS_SUCCESS)
-				dis_flush(stream);
+		free(ack_list);
+		ack_list = NULL;
+		ack_count = 0;
+		if (diswui(stream, reject_count) != DIS_SUCCESS)
+			goto recv_job_obit_err;
+		if (reject_count > 0) {
+			for (i = 0; i < reject_count; i++) {
+				if (diswst(stream, reject_list[i]) != DIS_SUCCESS)
+					goto recv_job_obit_err;
+				free(reject_list[i]);
+				reject_list[i] = NULL;
+			}
 		}
+		dis_flush(stream);
+		free(reject_list);
+		reject_list = NULL;
+		reject_count = 0;
 	}
-}
 
-/**
- * @brief
- * 		acknowledge that we received obit for a job from mom on stream.
- *
- * @par Functionality:
- *		Normally this is taken care of by telling Mom what to do with the
- *		job, but in the case of checkpointed jobs, there isnt anything for
- *		her to do.
- *
- * @param[in]	stream	-	the TPP stream connecting to the Mom
- * @param[in]	jobid	-	job id to be deleted.
- *
- * @return	void
- */
-void
-ack_obit(int stream, char *jobid)
-{
-	DBPRT(("ack_obit: acknowledging obit for %s\n", jobid))
-	if (stream != -1) {
-		if (is_compose(stream, IS_ACKOBIT) == DIS_SUCCESS) {
-			if (diswst(stream, jobid) == DIS_SUCCESS)
-				dis_flush(stream);
+	return;
+
+recv_job_obit_err:
+	if (rused.ru_pjobid) {
+		DBPRT(("recv_job_obit: failed to decode obit for %s\n", rused.ru_pjobid))
+		log_joberr(PBSE_INTERNAL, __func__, "Failed to decode obit", rused.ru_pjobid);
+		free(rused.ru_pjobid);
+	}
+	if (rused.ru_comment)
+		free(rused.ru_comment);
+	free_attrlist(&rused.ru_attr);
+
+	/* had a error, discard rest of message */
+	if ((mp = tfind2((u_long)stream, 0, &streams)) != NULL) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, mp->mi_host, "error in recv_job_obit");
+	}
+	tpp_eom(stream);
+
+	if (reject_list != NULL) {
+		for (i = 0; i < reject_count; i++) {
+			if (reject_list[i] != NULL)
+				free(reject_list[i]);
 		}
+		free(reject_list);
+	}
+	if (ack_list != NULL) {
+		for (i = 0; i < ack_count; i++) {
+			if (ack_list[i] != NULL)
+				free(ack_list[i]);
+		}
+		free(ack_list);
 	}
 }
 
@@ -3063,10 +3078,10 @@ add_mom_mcast(mominfo_t *pmom, int *mtfd)
 /**
  * @brief
  * 		Mom multicast function to close all failed streams and close them
- * 
+ *
  * @param[in]	stm	- multi-cast stream where broadcast is attempted
  * @param[in]	ret	- failure return code
- * 
+ *
  * @return	void
  */
 void
@@ -3094,13 +3109,13 @@ close_streams(int stm, int ret)
 			log_err(-1, __func__, log_buffer);
 			stream_eof(psvrmom->msr_stream, ret, "ping no ack");
 		}
-	}	
+	}
 }
 
 /**
  * @brief
  * 		Mom multicast functions to broadcast a single command to all the moms.
- * 
+ *
  * @param[in]	ptask	- work task structure
  *
  * @return	void
@@ -3159,7 +3174,7 @@ mcast_moms(struct work_task *ptask)
 		case IS_REPLYHELLO:
 			if (mtfd_replyhello != -1)
 				if ((ret = reply_hellosvr(mtfd_replyhello, 1)) != DIS_SUCCESS)
-					close_streams(mtfd_replyhello, ret);	
+					close_streams(mtfd_replyhello, ret);
 			if (mtfd_replyhello_noinv != -1)
 				if ((ret = reply_hellosvr(mtfd_replyhello_noinv, 0)) != DIS_SUCCESS)
 					close_streams(mtfd_replyhello_noinv, ret);
@@ -3169,7 +3184,7 @@ mcast_moms(struct work_task *ptask)
 			mtfd_replyhello = -1;
 			mtfd_replyhello_noinv = -1;
 			break;
-		
+
 		default:
 			break;
 	}
@@ -3285,27 +3300,6 @@ setup_pnames(char *namestr)
 	return 0;
 }
 
-/**
- * @brief
- * 		disallow node_group_enable if bluegene nodes created BLUE GENE only
- * @see
- * 		update2_to_vnode
- * @param[in]	pnode	-	The vnode
- *
- * @return	void
- */
-static void
-set_no_node_grouping(struct pbsnode *pnode)
-{
-
-	have_blue_gene_nodes = 1;
-
-	if ((server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_flags & ATR_VFLAG_SET) && (server.sv_attr[(int)SVR_ATR_NodeGroupEnable].at_val.at_long != 0)) {
-		set_vnode_state(pnode, INUSE_OFFLINE, Nd_State_Or);
-		node_attr_def[(int)ND_ATR_Comment].at_decode(&pnode->nd_attr[(int)ND_ATR_Comment], ATTR_comment, NULL, msg_ngbluegene);
-	}
-
-}
 /**
  * @brief
  * 		add mom to the vnode list if it is not listed, and if there is no room,
@@ -3613,7 +3607,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				}
 			}
 		}
-	
+
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_flags = (ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
 
@@ -3740,13 +3734,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 							/* if ncpus, adjust virtual/subnodes */
 							j = prs->rs_value.at_val.at_long;
 							mod_node_ncpus(pnode, j, ATR_ACTION_ALTER);
-						} else if (strcasecmp("arch", resc) == 0) {
-							if (strcmp(BLUEGENE, prs->rs_value.at_val.at_str) == 0) {
-								/* BLUE GENE only */
-
-								/* disallow node_grouping */
-								set_no_node_grouping(pnode);
-							}
 						}
 					}
 					if (bad != 0) {
@@ -4230,9 +4217,6 @@ mom_running_jobs(int stream)
 				/* in Exiting or RUNNING, discard job         */
 				send_discard_job(stream, jobid, runver, "state mismatch");
 				pjob->ji_discarding = 1;
-				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-					((pjob->ji_parentaj)->ji_ajtrk)->tkm_tbl[pjob->ji_subjindx].trk_discarding = pjob->ji_discarding;
-				}
 			}
 
 			/*
@@ -4399,7 +4383,7 @@ is_request(int stream, int version)
 			add_mom_mcast(pmom, &mtfd_replyhello);
 		else
 			add_mom_mcast(pmom, &mtfd_replyhello_noinv);
-		
+
 		if (reply_send_tm <= time_now) {
 			struct work_task *ptask;
 
@@ -4409,7 +4393,7 @@ is_request(int stream, int version)
 			ptask->wt_aux = IS_REPLYHELLO;
 		}
 		return;
-		
+
 	} else {
 		/* check that machine is known */
 		DBPRT(("%s: connect from %s\n", __func__, netaddr(addr)))
@@ -4433,7 +4417,7 @@ found:
 			process_DreplyTPP(stream);
 			break;
 
-		
+
 		case IS_REGISTERMOM:
 			if (psvrmom->msr_wktask) { /* if task requeue jobs, delete it */
 				delete_task(psvrmom->msr_wktask);
@@ -4667,7 +4651,7 @@ found:
 							}
 						}
 					}
-					
+
 					/* if multiple vnodes indicated (above) and
 					 * if the vnodes (except the first) have
 					 * multiple Moms,  update the map mod
@@ -4915,9 +4899,15 @@ found:
 			jid = NULL;
 			break;
 
-		case IS_HOOK_JOB_ACTION:
-			i = disrsi(stream, &ret);    /* number of actions in request */
+		case IS_HOOK_JOB_ACTION: {
+			int *replies_seq = NULL;
+			int replies_count = 0;
+			int acts_count = 0;
+
+			acts_count = i = disrsi(stream, &ret); /* number of actions in request */
 			if (ret != DIS_SUCCESS)
+				goto err;
+			if ((replies_seq = (int *) malloc(sizeof(int) * i)) == NULL)
 				goto err;
 			while (i--) {
 				int runct;
@@ -4927,52 +4917,43 @@ found:
 				/* job id */
 				jid = disrst(stream, &ret);
 				if (ret != DIS_SUCCESS)
-					goto err;
+					goto hook_act_reply;
 				/* hook action sequence number for acknowledgement */
 				hook_seq = disrul(stream, &ret);
 				if (ret != DIS_SUCCESS)
-					goto err;
+					goto hook_act_reply;
 				/* run count of job to verify that job hasn't changed */
 				runct = disrsi(stream, &ret);
 				if (ret != DIS_SUCCESS)
-					goto err;
+					goto hook_act_reply;
 				/* action: delete or requeue */
-				hact  = disrsi(stream, &ret);
+				hact = disrsi(stream, &ret);
 				if (ret != DIS_SUCCESS)
-					goto err;
+					goto hook_act_reply;
 				/* user requesting action, not currently used */
-				(void)disrui(stream, &ret);
+				(void) disrui(stream, &ret);
 				if (ret != DIS_SUCCESS)
-					goto err;
+					goto hook_act_reply;
 
-				if (((pjob = find_job(jid)) != NULL)               &&
-					((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-					(pjob->ji_qs.ji_state == JOB_STATE_EXITING))  &&
-					(pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long == runct)) {
+				if ((pjob = find_job(jid)) != NULL &&
+				    (pjob->ji_qs.ji_state == JOB_STATE_RUNNING || pjob->ji_qs.ji_state == JOB_STATE_EXITING) &&
+				    pjob->ji_wattr[JOB_ATR_run_version].at_val.at_long == runct) {
 					/* set the Exit_status job attribute */
 					/* to be later checked in job_obit() */
 					if (hact == JOB_ACT_REQ_REQUEUE) {
-						pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-						at_val.at_long = JOB_EXEC_HOOK_RERUN;
-						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
-						snprintf(log_buffer, sizeof(log_buffer),
-							"hook request rerun %s", jid);
-						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-								LOG_INFO, pmom->mi_host, log_buffer);
+						pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long = JOB_EXEC_HOOK_RERUN;
+						pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
+						log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host, "hook request rerun %s", jid);
 					} else if (hact == JOB_ACT_REQ_DELETE) {
-						pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-						at_val.at_long = JOB_EXEC_HOOK_DELETE;
-						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
-						snprintf(log_buffer, sizeof(log_buffer),
-							"hook request delete %s", jid);
-						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-								LOG_INFO, pmom->mi_host, log_buffer);
+						pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long = JOB_EXEC_HOOK_DELETE;
+						pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
+						log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host, "hook request delete %s", jid);
 					} else if (hact == JOB_ACT_REQ_DEALLOCATE) {
 
 						/* decrement everything found in exec_vnode/exec_vnode_deallocated  */
 						if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
 							/* don't update resources_assigned if job is suspended */
-							set_resc_assigned((void *)pjob, 0,  DECR);
+							set_resc_assigned((void *) pjob, 0, DECR);
 						}
 
 						deallocate_job(pmom, pjob);
@@ -4980,36 +4961,42 @@ found:
 						/* increment everything found in new exec_vnode/exec_vnode_deallocated  */
 						if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
 							/* don't update resources_assigned if job is suspended */
-							set_resc_assigned((void *)pjob, 0,  INCR);
+							set_resc_assigned((void *) pjob, 0, INCR);
 						}
 					}
-
 				}
 				free(jid);
 				jid = NULL;
-
-				/* tell Mom we got this one, reply with the type of */
-				/* action requested and the sequence number         */
-
+				replies_seq[replies_count++] = hook_seq;
+			}
+		hook_act_reply:
+			if (replies_count > 0) {
 				if (is_compose(stream, IS_HOOK_ACTION_ACK) != DIS_SUCCESS)
 					goto err;
-
 				if (ret != DIS_SUCCESS)
 					goto err;
 				ret = diswsi(stream, IS_HOOK_JOB_ACTION);
 				if (ret != DIS_SUCCESS)
 					goto err;
-				ret = diswul(stream, hook_seq);
+				ret = diswsi(stream, replies_count);
 				if (ret != DIS_SUCCESS)
 					goto err;
+				for (i = 0; i < replies_count; i++) {
+					ret = diswul(stream, replies_seq[i]);
+					if (ret != DIS_SUCCESS)
+						goto err;
+				}
 				ret = dis_flush(stream);
 				if (ret != DIS_SUCCESS) {
 					ret = DIS_NOCOMMIT;
 					goto err;
 				}
-
 			}
-			break;
+
+			if (replies_count != acts_count)
+				goto err;
+		}
+		break;
 
 		case IS_HOOK_SCHEDULER_RESTART_CYCLE:
 			hook_euser = disrst(stream, &ret);
@@ -5088,6 +5075,9 @@ found:
 			if (ret != DIS_SUCCESS)
 				goto err;
 			ret = diswsi(stream, IS_UPDATE_FROM_HOOK);
+			if (ret != DIS_SUCCESS)
+				goto err;
+			ret = diswsi(stream, 1);
 			if (ret != DIS_SUCCESS)
 				goto err;
 			ret = diswul(stream, hook_seq);
@@ -6966,6 +6956,29 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	return 0;
 }
 
+static void
+remove_job_index_from_mom(job *pjob, struct pbsnode *pnode)
+{
+	int i;
+	int j;
+	mom_svrinfo_t *psvrmom;
+
+	if (pnode == NULL)
+		return;
+
+	for (i = 0; i < pnode->nd_nummoms; i++) {
+		if (pnode->nd_moms[i] == NULL)
+			continue;
+		psvrmom = (mom_svrinfo_t *) (pnode->nd_moms[i]->mi_data);
+
+		for (j = 0; j < psvrmom->msr_jbinxsz; j++) {
+			if (psvrmom->msr_jobindx[j] == pjob) {
+				psvrmom->msr_jobindx[j] = NULL;
+			}
+		}
+	}
+}
+
 /**
  * @brief
  * 		free nodes allocated to a job
@@ -6977,17 +6990,19 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 void
 free_nodes(job *pjob)
 {
-	struct	pbssubn	*np;
-	mom_svrinfo_t	*psvrmom;
-	struct  pbsnode *pnode;
-	struct	jobinfo	*jp, *prev, *next;
-	int     i;
-	int     j;
-	int     ivnd;
-	int     still_has_jobs;	/* still jobs on this vnode */
-	int     special_case = 0;
 
-	DBPRT(("%s: entered\n", __func__))
+	struct pbsnode *pnode;
+	mom_svrinfo_t *psvrmom;
+	char *execvnod_in = NULL;
+	char *execvncopy;
+	char *chunk;
+	char *last;
+	int hasprn;
+	char *vname;
+	int nelem;
+	struct key_value_pair *pkvp;
+	char *execvnod = NULL;
+
 
 	/* decrement number of jobs on the Mom who is the first Mom */
 	/* for the job, Mother Superior; incremented in set_nodes() */
@@ -7003,99 +7018,41 @@ free_nodes(job *pjob)
 	}
 
 	/* Now loop through the Moms and remove the jobindx entry */
-	/* and remove this jobs's jobinfo entry from each vnode   */
-	for (i = 0; i < mominfo_array_size; i++) {
-		if (mominfo_array[i] == NULL)
-			continue;
-		psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);
+	/*  remove this jobs's jobinfo entry from each vnode   */
 
-		for (j=0; j<psvrmom->msr_jbinxsz; j++) {
-			if (psvrmom->msr_jobindx[j] == pjob) {
-				psvrmom->msr_jobindx[j] = NULL;
-				if (is_called_by_job_purge)
-					special_case = 1;
-			}
-		}
+	if (pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET)
+		execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_val.at_str;
+	else if (pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET)
+		execvnod_in = pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str;
 
-		if (special_case) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "\n================================================================"
-				"======================================================\nPBS diagnostic information."
-				" Share this log with PBS Team.\n=========================================="
-				"============================================================================\n"
-				"Mom's state:%lu, number of jobs on this node: %d, number of vnodes: %d.\n"
-				"Other jobs present in the node follows:",
-				psvrmom->msr_state, psvrmom->msr_numjobs, psvrmom->msr_numvnds);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-			for (j=0; j<psvrmom->msr_jbinxsz; j++)
-				if (psvrmom->msr_jobindx[j] != NULL)
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, psvrmom->msr_jobindx[j]->ji_qs.ji_jobid);
-			sprintf(log_buffer, "===================================================================="
-				"==================================================");
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-		}
-
-		for (ivnd = 0; ivnd < psvrmom->msr_numvnds; ++ivnd) {
-			pnode = psvrmom->msr_children[ivnd];
-			still_has_jobs = 0;
-			for (np = pnode->nd_psn; np; np = np->next) {
-
-				for (prev=NULL, jp=np->jobs; jp; jp=next) {
-					next = jp->next;
-					if (jp->job != pjob) {
-						prev = jp;
-						still_has_jobs = 1; /* another job still here */
-						continue;
-					}
-
-					DBPRT(("Freeing node %s/%ld from job %s\n",
-						pnode->nd_name, np->index,
-						pjob->ji_qs.ji_jobid))
-					if (prev == NULL)
-						np->jobs = next;
-					else
-						prev->next = next;
-					if (jp->has_cpu) {
-						pnode->nd_nsnfree++;	/* up count of free */
-						if (pnode->nd_nsnfree > pnode->nd_nsn) {
-							log_event(PBSEVENT_SYSTEM,
-								PBS_EVENTCLASS_NODE, LOG_ALERT,
-								pnode->nd_name,
-								"CPU count incremented free more than total");
-						}
-					}
-					free(jp);
-					jp = NULL;
-					DBPRT(("%s: upping free count to %ld\n", __func__,
-						pnode->nd_nsnfree))
-				}
-				if (np->jobs == NULL) {
-					np->inuse &= ~(INUSE_JOB|INUSE_JOBEXCL);
-				}
-			}
-			if (still_has_jobs) {
-				/* if the vnode still has jobs, then don't clear JOBEXCL */
-				if (pnode->nd_nsnfree > 0) {
-					/* some cpus free, clear "job-busy" state */
-					set_vnode_state(pnode, ~INUSE_JOB, Nd_State_And);
-				}
-			} else {
-				/* no jobs at all, clear both JOBEXCL and "job-busy" */
-				set_vnode_state(pnode,
-					~(INUSE_JOB|INUSE_JOBEXCL),
-					Nd_State_And);
-
-				/* call function to check and free the node from the prov list
-				 and reset wait_prov flag, if set */
-				if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)
-					free_prov_vnode(pnode);
-			}
-
-		}
-		special_case = 0;
+	if (execvnod_in == NULL) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "in free_nodes and no exec_vnode");
+		return;
 	}
-	pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HasNodes;
 
-	is_called_by_job_purge = 0;
+	if (strchr(execvnod_in, (int)':') == NULL) {
+		/* need to take node only list and build a pseudo */
+		/* exec_vnode string with the resources included  */
+		execvnod = build_execvnode(pjob, execvnod_in);
+	} else {
+		execvnod = execvnod_in;
+	}
+	execvncopy = strdup(execvnod);
+	if (execvncopy == NULL)
+		return;
+
+	chunk = parse_plus_spec_r(execvncopy, &last, &hasprn);
+
+	while (chunk) {
+		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {
+			pnode = find_nodebyname(vname);
+			remove_job_index_from_mom(pjob, pnode);
+			deallocate_job_from_node(pjob, pnode);
+			chunk = parse_plus_spec_r(last, &last, &hasprn);
+		}
+	}
+	free(execvncopy);
+	pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HasNodes;
 }
 
 /**
@@ -8015,29 +7972,31 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 			return 1;
 	}
 	/* Now iterate through all of the job resources that are present on at
-	 * queue/server level and add them to resource_release_list.
+	 * queue/server level and add them to resource_release_list. Only do this if
+	 * restrict_res_to_release_on_suspend is set
 	 */
-	presc_sq = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
-	for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
-		prdef = presc_sq->rs_defin;
-		/* make sure it is a server/queue level consumable resource and not
-		 * set in resource_released_list already
-		 */
-		if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
-			(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
-			for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
-				if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
-				    prdef->rs_name) == 0) {
-					presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
-					if (presc == NULL)
-						return 1;
-					prdef->rs_set(&presc->rs_value, &presc_sq->rs_value, op);
-					break;
+	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
+		presc_sq = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+		for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
+			prdef = presc_sq->rs_defin;
+			/* make sure it is a server/queue level consumable resource and not
+			* set in resource_released_list already
+			*/
+			if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
+				(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
+				for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
+					if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
+						prdef->rs_name) == 0) {
+						presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+						if (presc == NULL)
+							return 1;
+						prdef->rs_set(&presc->rs_value, &presc_sq->rs_value, op);
+						break;
+					}
 				}
 			}
 		}
 	}
-
 	return 0;
 }
 

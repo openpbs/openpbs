@@ -58,6 +58,10 @@ int cmpres(sch_resource_t r1, sch_resource_t r2);
  */
 int cmp_nspec(const void *v1, const void *v2);
 
+/*
+ * cmp_nspec_by_sub_seq - sort nspec by sub sequence number
+ */
+int cmp_nspec_by_sub_seq(const void *v1, const void *v2);
 
 /*
  *	cmp_placement_sets - sort placement sets by
@@ -67,11 +71,6 @@ int cmp_nspec(const void *v1, const void *v2);
  *			free memory
  */
 int cmp_placement_sets(const void *v1, const void *v2);
-
-/*
- *	cmp_low_load - sort nodes ascending by load ave
- */
-int cmp_low_load(const void *v1, const void *v2);
 
 /*
  * cmp_fairshare - compare based on compare_path()

@@ -959,7 +959,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->total_user_counts = dup_counts_list(oqinfo->total_user_counts);
 	nqinfo->nodepart = dup_node_partition_array(oqinfo->nodepart, nsinfo);
 	nqinfo->allpart = dup_node_partition(oqinfo->allpart, nsinfo);
-	nqinfo->node_group_key = dup_string_array(oqinfo->node_group_key);
+	nqinfo->node_group_key = dup_string_arr(oqinfo->node_group_key);
 
 	if (oqinfo->resv != NULL) {
 		nqinfo->resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo->resv->resresv_ind, oqinfo->resv->rank);

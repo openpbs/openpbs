@@ -92,11 +92,8 @@ main(int argc, char **argv)
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	if (argc == 1) {
 		fprintf(stderr, "Usage: qdisable [queue][@server] ...\n");

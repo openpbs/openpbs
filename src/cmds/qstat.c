@@ -107,6 +107,8 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 
 #define DISPLAY_TRUNC_CHAR '*'
 
+#define NUML    5
+
 static struct attrl basic_attribs[] = {
 	{	&basic_attribs[1],
 		ATTR_N,
@@ -311,7 +313,7 @@ states(char *string, char *q, char *r, char *h, char *w, char *t, char *e, int l
 					*(f - 1) = DISPLAY_TRUNC_CHAR;
 				*f = '\0';
 			}
-			strcpy(d, s);
+			pbs_strncpy(d, s, NUML + 1);
 			if (l != '\0') c++;
 		} else {
 			while (*c != ' ' && *c != '\0') c++;
@@ -893,13 +895,13 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		queuen = blank;
 		est_time  = NULL;
 		/*		*pfs      = *blank;  */
-		(void)strcpy(pfs, blank);
+		strcpy(pfs, blank);
 		/*		*rqmem    = *blank;  */
-		(void)strcpy(rqmem, blank);
+		strcpy(rqmem, blank);
 		/*		*srfsbig  = *blank;  */
-		(void)strcpy(srfsbig, blank);
+		strcpy(srfsbig, blank);
 		/*		*srfsfast = *blank;  */
-		(void)strcpy(srfsfast, blank);
+		strcpy(srfsfast, blank);
 		usecput = 0;
 
 		pat = pstat->attribs;
@@ -936,22 +938,22 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 						trunc_value(tasks, SIZETSK, SIZETSK_W, wide);
 					}
 				} else if (strcmp(pat->resource, "mem") == 0) {
-					(void)strncpy(rqmem,
-						cnv_size(pat->value, alt_opt), sizeof(rqmem) - 1);
+					pbs_strncpy(rqmem,
+						cnv_size(pat->value, alt_opt), sizeof(rqmem));
 				} else if (strcmp(pat->resource, "walltime") == 0) {
 					rqtimewal = pat->value;
 				} else if (strcmp(pat->resource, "cput") == 0) {
 					rqtimecpu = pat->value;
 					usecput = 1;
 				} else if (strcmp(pat->resource, "srfs_big") == 0) {
-					(void)strncpy(srfsbig,
-						cnv_size(pat->value, alt_opt), sizeof(srfsbig) - 1);
+					pbs_strncpy(srfsbig,
+						cnv_size(pat->value, alt_opt), sizeof(srfsbig));
 				} else if (strcmp(pat->resource, "srfs_fast") == 0) {
-					(void)strncpy(srfsfast,
-						cnv_size(pat->value, alt_opt), sizeof(srfsfast) - 1);
+					pbs_strncpy(srfsfast,
+						cnv_size(pat->value, alt_opt), sizeof(srfsfast));
 				} else if (strcmp(pat->resource, "piofs") == 0) {
-					(void)strncpy(pfs,
-						cnv_size(pat->value, alt_opt), sizeof(pfs) - 1);
+					pbs_strncpy(pfs,
+						cnv_size(pat->value, alt_opt), sizeof(pfs));
 				}
 
 			} else if (strcmp(pat->name, ATTR_exechost) == 0) {
@@ -973,16 +975,14 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 				if (strlen(pat->value) > COMMENTLENSCOPE_SHORT) {
 					if (wide) {
 						if (strlen(pat->value) > COMMENTLENSCOPE_WIDE) {
-							strncpy(buf, pat->value, COMMENTLEN_WIDE);
-							buf[COMMENTLEN_WIDE] = '\0';
+							pbs_strncpy(buf, pat->value, COMMENTLEN_WIDE);
 							strcat(buf, "...");
 							comment = buf;
 						} else {
 							comment = pat->value;
 						}
 					} else {
-						strncpy(buf, pat->value, COMMENTLEN_SHORT);
-						buf[COMMENTLEN_SHORT] = '\0';
+						pbs_strncpy(buf, pat->value, COMMENTLEN_SHORT);
 						strcat(buf, "...");
 						comment = buf;
 					}
@@ -1116,7 +1116,7 @@ altdsp_statque(char *serv, struct batch_status *pstat, int opt)
 
 	while (pstat) {
 		/* *rmem = '\0'; */
-		(void)strncpy(rmem, "--  ", sizeof(rmem) - 1);
+		strcpy(rmem, "--  ");
 		cput  = blank;
 		wallt = blank;
 		nodect= "-- ";
@@ -1144,8 +1144,8 @@ altdsp_statque(char *serv, struct batch_status *pstat, int opt)
 				tot_jrun += jrun;
 			} else if (strcmp(pat->name, ATTR_rescmax) == 0) {
 				if (strcmp(pat->resource, "mem") == 0) {
-					(void)strncpy(rmem,
-						cnv_size(pat->value, opt), sizeof(rmem) - 1);
+					pbs_strncpy(rmem,
+						cnv_size(pat->value, opt), sizeof(rmem));
 				} else if (strcmp(pat->resource, "cput") == 0) {
 					cput = pat->value;
 				} else if (strcmp(pat->resource, "walltime")==0) {
@@ -1399,11 +1399,10 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 							 */
 							char noval[] = "UNKNOWN";
 							prt_attr(a->name, a->resource, noval, alt_opt & ALT_DISPLAY_w);
-						} else
-						{
+						} else {
 							char time_buffer[32];
-							strcpy(time_buffer,ctime(&epoch));
-							time_buffer[strlen(time_buffer)-1]='\0';
+							pbs_strncpy(time_buffer, ctime(&epoch), sizeof(time_buffer));
+							time_buffer[strlen(time_buffer)-1] = '\0';
 							prt_attr(a->name, a->resource, time_buffer, alt_opt & ALT_DISPLAY_w);
 						}
 					} else if (strcmp(a->name, ATTR_resv_state) == 0) {
@@ -1598,7 +1597,6 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 
 
 
-#define NUML    5
 #define TYPEL   4
 
 /**
@@ -2031,7 +2029,7 @@ tcl_init()
 
 	snprintf(script, sizeof(script), "%s/.qstatrc", home);
 	if (stat(script, &sb) == -1) {
-		strcpy(script, QSTATRC_PATH);
+		pbs_strncpy(script, QSTATRC_PATH, sizeof(script));
 		if (stat(script, &sb) == -1)
 			return;
 	}
@@ -2076,9 +2074,9 @@ tcl_init()
 	if (pw == NULL)
 		return;
 
-	sprintf(script, "%s/.qstatrc", pw->pw_dir);
+	snprintf(script, sizeof(script), "%s/.qstatrc", pw->pw_dir);
 	if (stat(script, &sb) == -1) {
-		strcpy(script, QSTATRC_PATH);
+		pbs_strncpy(script, QSTATRC_PATH, sizeof(script));
 		if (stat(script, &sb) == -1)
 			return;
 	}
@@ -2384,11 +2382,8 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 	PRINT_VERSION_AND_EXIT(argc, argv);
 	delay_query();
-#ifdef WIN32
-	if (winsock_init()) {
+	if (initsocketlib())
 		return 1;
-	}
-#endif
 
 	mode = JOBS; /* default */
 	alt_opt = 0;
@@ -2762,7 +2757,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 
 			case JOBS:
 				server_out[0] = '@';
-				strcpy(&server_out[1], def_server);
+				pbs_strncpy(&server_out[1], def_server, sizeof(server_out) - 1);
 				tcl_addarg(ops, server_out);
 
 				job_id_out[0] = '\0';
@@ -2770,7 +2765,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 				goto job_no_args;
 			case QUEUES:
 				server_out[0] = '@';
-				strcpy(&server_out[1], def_server);
+				pbs_strncpy(&server_out[1], def_server, sizeof(server_out) - 1);
 				tcl_addarg(ops, server_out);
 
 				queue_name_out = NULL;
@@ -2797,14 +2792,14 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 
 		located = FALSE;
 
-		strcpy(operand, argv[optind]);
+		pbs_strncpy(operand, argv[optind], sizeof(operand));
 		tcl_addarg(ops, operand);
 		switch (mode) {
 
 			case JOBS:      /* get status of batch jobs */
 				if (pbs_isjobid(operand)) {  /* must be a job-id */
 					stat_single_job = 1;
-					strcpy(job_id, operand);
+					pbs_strncpy(job_id, operand, sizeof(job_id));
 					if (get_server(job_id, job_id_out, server_out)) {
 						fprintf(stderr, "qstat: illegally formed job identifier: %s\n", job_id);
 #ifdef NAS /* localmod 071 */
@@ -2820,7 +2815,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 						if (server_out[0] == '\0' || (strcmp(server_out, def_server) == 0)) {
 							/* This is probably the first job id requested from primary server */
 							if (prev_server[0] == '\0')
-								strcpy(prev_server, def_server);
+								pbs_strncpy(prev_server, def_server, sizeof(prev_server));
 							strncat(job_list, job_id_out, job_list_size - strlen(job_list));
 							strncat(job_list, ",", job_list_size - strlen(job_list));
 							if (optind != argc -1)
@@ -2836,7 +2831,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 							if ((prev_server[0] == '\0' ) || (strcmp(server_out, prev_server) == 0)) {
 								/* This is probably the first job id requested and not from primary server */
 								if (prev_server[0] == '\0')
-									strcpy(prev_server, server_out);
+									pbs_strncpy(prev_server, server_out, sizeof(prev_server));
 								strncat(job_list, job_id_out, job_list_size - strlen(job_list));
 								strncat(job_list, ",", job_list_size - strlen(job_list));
 								if (optind != argc-1)
@@ -2863,7 +2858,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 						return 1;
 					}
 					stat_single_job = 0;
-					strcpy(destination, operand);
+					pbs_strncpy(destination, operand, sizeof(destination));
 					if (parse_destination_id(destination,
 						&queue_name_out,
 						&server_name_out)) {
@@ -2877,11 +2872,11 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 						break;
 					} else {
 						if (notNULL(server_name_out)) {
-							strcpy(server_out, server_name_out);
+							pbs_strncpy(server_out, server_name_out, sizeof(server_out));
 						} else {
 							server_out[0] = '\0';
 						}
-						(void)strcpy(job_id_out, queue_name_out);
+						pbs_strncpy(job_id_out, queue_name_out, sizeof(job_id_out));
 						if (*queue_name_out != '\0') {
 							/* add "destination" to front of list */
 							add_atropl(&new_atropl, ATTR_q, NULL, queue_name_out, EQ);
@@ -2915,7 +2910,7 @@ job_no_args:
 #ifdef NAS /* localmod 071 */
 					p_rsvstat = pbs_statresv(connect, NULL, NULL, NULL);
 #endif /* localmod 071 */
-					(void)strcpy(server_old, pbs_server);
+					pbs_strncpy(server_old, pbs_server, sizeof(server_old));
 				} else {
 					p_server = NULL;
 				}
@@ -3061,7 +3056,7 @@ job_no_args:
 				break;
 
 			case QUEUES:        /* get status of batch queues */
-				strcpy(destination, operand);
+				pbs_strncpy(destination, operand, sizeof(destination));
 				if (parse_destination_id(destination,
 					&queue_name_out,
 					&server_name_out)) {
@@ -3126,7 +3121,7 @@ que_no_args:
 				break;
 
 			case SERVERS:           /* get status of batch servers */
-				strcpy(server_out, operand);
+				pbs_strncpy(server_out, operand, sizeof(server_out));
 svr_no_args:
 				connect = cnt2server(server_out);
 				if (connect <= 0) {
@@ -3251,7 +3246,7 @@ cvtResvstate(char *pcode)
 		case RESV_DELETED:
 		case RESV_DELETING_JOBS:
 		case RESV_BEING_ALTERED:
-			strcpy(acopy, resvStrings[i]);
+			pbs_strncpy(acopy, resvStrings[i], sizeof(acopy));
 			return  acopy;
 
 		default:

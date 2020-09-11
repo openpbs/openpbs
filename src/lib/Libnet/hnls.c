@@ -37,6 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#include <pbs_config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,14 +58,9 @@
 
 #elif defined(WIN32)
 
-#include <Winsock2.h>
-#include <Ws2tcpip.h>
-#include <Iphlpapi.h>
-
 #pragma comment(lib,"Ws2_32.lib")
 #pragma comment(lib,"Iphlpapi.lib")
-#include <windows.h>
-#include "win.h"
+
 
 #else
 

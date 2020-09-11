@@ -1,8 +1,5 @@
-#!/bin/sh
-#
-#
-#
-#
+# coding: utf-8
+
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -40,50 +37,45 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
 
-# This is a simple script that generates a machine type name
-# based on the output of uname.  The generated name is in the
-# style of old PBS machine names and thus a hand generated
-# mapping needs to take place. If you port PBS to new architectures
-# you should modify the lookup table. A better way would have been
-# to name the machines in a more "standard" way but it would require
-# a considerable amount of effort to find all the dependencies in
-# the code and documentation.    lonhyn@nas.nasa.gov
-#
-
-OS=`uname -s | tr '[A-Z]' '[a-z]'`
-REL=`uname -r`
-VER=`uname -v 2> /dev/null`
-
-test "$VER" = unicosmk && OS="$VER"
-
-bad_rel=n
-
-verbose=""; export verbose
-
-test "$1" = "-v" && verbose=yes
-
-case "$OS" in
-
-  darwin*) mach=darwin ;;
-
-  linux*) mach=linux ;;
-
-  *)   test -n "$verbose" && \
-           echo $0: the operating system \"$OS\" is unknown >&2 ;
-       echo unknown ;
-       exit 1 ;;
-
-esac
+from tests.functional import *
 
 
-if test "$bad_rel" = y; then
-  test -n "$verbose" && \
-      echo $0: for operating system \"$OS\", release \"$REL\" is unknown >&2
-  echo unknown
-  exit 2
-fi
+class Test_acl_host_queue(TestFunctional):
+    """
+    This test suite is for testing the queue attributes acl_host_enable
+    and acl_hosts.
+    """
 
-echo $mach
-exit 0
+    def test_acl_host_enable_refuse(self):
+        """
+        Set acl_host_enable = True on queue and check whether or not
+        the submit is refused.
+        """
+        a = {"acl_host_enable": True,
+             "acl_hosts": "foo"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a,
+                            self.server.default_queue)
+
+        j = Job(TEST_USER)
+        try:
+            self.server.submit(j)
+        except PbsSubmitError as e:
+            error_msg = "qsub: Access from host not allowed, or unknown host"
+            self.assertEquals(e.msg[0], error_msg)
+        else:
+            self.fail("Queue is violating acl_hosts")
+
+    def test_acl_host_enable_allow(self):
+        """
+        Set acl_host_enable = True along with acl_hosts and check
+        whether or not a job can be submitted.
+        """
+        a = {"acl_host_enable": True,
+             "acl_hosts": self.server.hostname}
+        self.server.manager(MGR_CMD_SET, QUEUE, a,
+                            self.server.default_queue)
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.logger.info('Job submitted successfully: ' + jid)

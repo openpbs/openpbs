@@ -63,8 +63,7 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.get_pid()
         self.scheduler.signal('-HUP')
         self.scheduler.log_match(fp + ' file has a non-secure file access',
-                                 starttime=match_from, existence=exist,
-                                 max_attempts=10)
+                                 starttime=match_from, existence=exist)
 
     def setup_dyn_res(self, resname, restype, script_body):
         """
@@ -244,22 +243,24 @@ class TestServerDynRes(TestFunctional):
         a = {'Resource_List.foobar_small': '4'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar_small': 4}
         self.server.expect(JOB, a, id=jid)
 
+        self.server.delete(jid, wait=True)
+
         a = {'Resource_List.foobar_medium': '10'}
         # Submit job
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar_medium': 10}
         self.server.expect(JOB, a, id=jid)
+
+        self.server.delete(jid, wait=True)
 
         a = {'Resource_List.foobar_large': '18'}
         # Submit job
@@ -287,12 +288,13 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'abc'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar': 'abc'}
         self.server.expect(JOB, a, id=jid)
+
+        self.server.delete(jid, wait=True)
 
         # Submit job
         a = {'Resource_List.foobar': 'xyz'}
@@ -324,12 +326,13 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': 'red'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
         jid = self.server.submit(j)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar': 'red'}
         self.server.expect(JOB, a, id=jid)
+
+        self.server.delete(jid, wait=True)
 
         # Submit job
         a = {'Resource_List.foobar': 'green'}
@@ -361,12 +364,13 @@ class TestServerDynRes(TestFunctional):
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
         j1 = Job(TEST_USER, attrs=a)
-        j1.set_sleep_time(5)
         jid1 = self.server.submit(j1)
 
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar': '95gb'}
         self.server.expect(JOB, a, id=jid1)
+
+        self.server.delete(jid1, wait=True)
 
         # Submit job
         a = {'Resource_List.foobar': '101gb'}
@@ -596,7 +600,7 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.add_resource('foo')
 
         scr_body = ['echo "10"', 'exit 0']
-        home_dir = os.path.expanduser("~")
+        home_dir = os.path.expanduser('~%s' % (self.scheduler.user))
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=home_dir,
                                                validate=False)
@@ -615,17 +619,18 @@ class TestServerDynRes(TestFunctional):
 
         # give write permission to user only
         self.du.chmod(path=fp, mode=0o744, sudo=True)
-        if os.getuid() != 0:
-            self.check_access_log(fp, exist=True)
-        else:
-            self.check_access_log(fp, exist=False)
+        self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
-        dir_temp = self.du.create_temp_dir(mode=0o766, dirname=home_dir,
-                                           suffix=' tmp')
+        dir_temp = self.du.create_temp_dir(mode=0o766,
+                                           dirname=home_dir,
+                                           suffix=' tmp',
+                                           sudo=True)
+        self.du.chmod(path=dir_temp, mode=0o766, sudo=True)
+        self.du.chown(path=dir_temp, sudo=True, uid=self.scheduler.user)
         fp = self.scheduler.add_server_dyn_res("foo", scr_body,
                                                dirname=dir_temp,
                                                validate=False)
@@ -651,7 +656,7 @@ class TestServerDynRes(TestFunctional):
 
         # Create dynamic resource script in PBS_HOME directory and check
         # file permissions
-        # self.scheduler.add_mom_dyn_res by default creates the script in
+        # self.scheduler.add_server_dyn_res by default creates the script in
         # PBS_HOME as root
         fp = self.scheduler.add_server_dyn_res("foo", scr_body, perm=0o766,
                                                validate=False)

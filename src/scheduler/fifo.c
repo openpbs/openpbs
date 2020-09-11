@@ -66,6 +66,7 @@
  * 	find_susp_job()
  * 	scheduler_simulation_task()
  * 	next_job()
+ * 	validate_running_user()
  */
 #include <pbs_config.h>
 
@@ -86,6 +87,7 @@
 #include <sched_cmds.h>
 #include <time.h>
 #include <log.h>
+#include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -120,6 +122,7 @@
 #include "buckets.h"
 #include "multi_threading.h"
 #include "pbs_python.h"
+#include "libpbs.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -1235,6 +1238,19 @@ update_last_running(server_info *sinfo)
 }
 
 /**
+ * @brief clear and free the last running array
+ *
+ * @return void
+ */
+void
+clear_last_running()
+{
+	free_pjobs(last_running, last_running_size);
+	last_running = NULL;
+	last_running_size = 0;
+}
+
+/**
  * @brief
  *		update_job_can_not_run - do post job 'can't run' processing
  *				 mark it 'can_not_run'
@@ -1471,11 +1487,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	int ret = 0;				/* return code */
 	int pbsrc;				/* return codes from pbs IFL calls */
 	char buf[COMMENT_BUF_SIZE] = {'\0'};		/* generic buffer - comments & logging*/
-	int num_nspec;			/* number of nspecs in node solution */
+	int num_nspec;
 
 	/* used for jobs with nodes resource */
-	nspec **ns = NULL;			/* the nodes to run the job on */
-	char *execvnode = NULL;		/* the execvnode to pass to the server*/
+	nspec **ns = NULL;
+	nspec **orig_ns = NULL;
+	char *execvnode = NULL;
 	int i;
 
 	/* used for resresv array */
@@ -1541,6 +1558,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			rr = queue_subjob(resresv, sinfo, qinfo);
 			if(rr == NULL) {
 				set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
+				free_nspecs(ns_arr);
 				return -1;
 			}
 		} else
@@ -1549,20 +1567,20 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		/* Where should we run our resresv? */
 
 		/* 1) if the resresv knows where it should be run, run it there */
-		if (rr->nspec_arr != NULL) {
-			ns = rr->nspec_arr;
+		if (rr->orig_nspec_arr != NULL) {
+			orig_ns = rr->orig_nspec_arr;
 			/* we didn't use nspec_arr, we need to free it */
 			free_nspecs(ns_arr);
 			ns_arr = NULL;
 		}
 		/* 2) if we were told by our caller through ns_arr, run the resresv there */
 		else if (ns_arr != NULL)
-			ns = ns_arr;
+			orig_ns = ns_arr;
 		/* 3) calculate where to run the resresv ourselves */
 		else
-			ns = check_nodes(policy, sinfo, qinfo, rr, eval_flags, err);
+			orig_ns = check_nodes(policy, sinfo, qinfo, rr, eval_flags, err);
 
-		if (ns != NULL) {
+		if (orig_ns != NULL) {
 #ifdef RESC_SPEC /* Hack to make rescspec work with new select code */
 			if (rr->is_job && rr->job->rspec != NULL && ns[0] != NULL) {
 				struct batch_status *bs;	/* used for rescspec res assignment */
@@ -1585,20 +1603,20 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			}
 #endif
 
-			num_nspec = count_array(ns);
+			num_nspec = count_array(orig_ns);
 			if (num_nspec > 1)
-				qsort(ns, num_nspec, sizeof(nspec *), cmp_nspec);
+				qsort(orig_ns, num_nspec, sizeof(nspec *), cmp_nspec);
 
 			if (pbs_sd != SIMULATE_SD) {
 				if (rr->is_job) { /* don't bother if we're a reservation */
-					execvnode = create_execvnode(ns);
+					execvnode = create_execvnode(orig_ns);
 					if (execvnode != NULL) {
 						/* The nspec array coming out of the node selection code could
 						 * have a node appear multiple times.  This is how we need to
 						 * send the execvnode to the server.  We now need to combine
 						 * nodes into 1 entry for updating our local data structures
 						 */
-						combine_nspec_array(ns);
+						ns = combine_nspec_array(orig_ns);
 					}
 
 					if (rr->nodepart_name != NULL) {
@@ -1658,12 +1676,16 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		rr->can_not_run = 1;
 
+		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr)
+			free_nspecs(rr->nspec_arr);
 		/* The nspec array coming out of the node selection code could
 		 * have a node appear multiple times.  This is how we need to
 		 * send the execvnode to the server.  We now need to combine
 		 * nodes into 1 entry for updating our local data structures
 		 */
-		combine_nspec_array(ns);
+		if (ns == NULL)
+			ns = combine_nspec_array(orig_ns);
+		rr->orig_nspec_arr = orig_ns;
 		rr->nspec_arr = ns;
 
 		if (rr->is_job && !(flags & RURR_NOPRINT)) {
@@ -1705,11 +1727,13 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				int j;
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
-					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
-						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+					node_partition **npar = ns[i]->ninfo->np_arr;
+					for (j = 0; npar[j] != NULL; j++) {
+						modify_resource_list(npar[j]->res, ns[i]->resreq, SCHD_INCR);
 						if (!ns[i]->ninfo->is_free)
-							ns[i]->ninfo->np_arr[j]->free_nodes--;
+							npar[j]->free_nodes--;
 						sort_nodepart = 1;
+						update_buckets_for_node(npar[j]->bkts, ns[i]->ninfo);
 					}
 				}
 				/* if the node is being provisioned, it's brought down in
@@ -1809,11 +1833,15 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
 	if(err == NULL)
 		err = new_schd_error();
 
-	if (resresv == NULL)
+	if (resresv == NULL) {
+		free_nspecs(ns_arr);
 		return -1;
+	}
 
-	if (!is_resource_resv_valid(resresv, NULL))
+	if (!is_resource_resv_valid(resresv, NULL)) {
+		free_nspecs(ns_arr);
 		return -1;
+	}
 
 	sinfo = resresv->server;
 	if (resresv->is_job)
@@ -2126,7 +2154,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
  *
  * @param[in]	resvs	-	running resvs
  *
- * @return	the first job whose reservation is in RESV_RUNNING
+ * @return	the first job whose reservation is running
  * @retval	: NULL if there are not any
  *
  */
@@ -2142,7 +2170,7 @@ find_ready_resv_job(resource_resv **resvs)
 
 	for (i = 0; resvs[i] != NULL && rjob == NULL; i++) {
 		if (resvs[i]->resv != NULL) {
-			if (resvs[i]->resv->resv_state == RESV_RUNNING) {
+			if (resvs[i]->resv->is_running) {
 				if (resvs[i]->resv->resv_queue != NULL) {
 					ind = find_runnable_resresv_ind(resvs[i]->resv->resv_queue->jobs, 0);
 					if (ind != -1)
@@ -2718,7 +2746,7 @@ parse_sched_obj(struct batch_status *status)
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 					goto cleanup;
 				}
-				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE - 1);
+				strcpy(comment, "Unable to change the sched_log directory");
 				patt = attribs;
 				patt->name = ATTR_comment;
 				patt->value = comment;
@@ -2752,18 +2780,18 @@ parse_sched_obj(struct batch_status *status)
 		if (validate_priv_dir) {
 			int c = -1;
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				c  = chk_file_sec(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1);
-				c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
+				c  = chk_file_sec_user(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1, getuid());
+				c |= chk_file_sec_user(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0, getuid());
 				if (c != 0) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
-					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					priv_dir_update_fail = 1;
 				}
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 			if (c == 0) {
 				if (chdir(tmp_priv_dir) == -1) {
-					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
 					priv_dir_update_fail = 1;
@@ -2771,7 +2799,7 @@ parse_sched_obj(struct batch_status *status)
 					int lockfds;
 					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 					if (lockfds < 0) {
-						strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+						strcpy(comment, "PBS failed validation checks for sched_priv directory");
 						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 							"PBS failed validation checks for directory %s", tmp_priv_dir);
 						priv_dir_update_fail = 1;
@@ -2801,7 +2829,7 @@ parse_sched_obj(struct batch_status *status)
 			attribs = calloc(2, sizeof(struct attropl));
 			if (attribs == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
-				strncpy(comment, "Unable to change the sched_priv directory", MAX_LOG_SIZE);
+				strcpy(comment, "Unable to change the sched_priv directory");
 				goto cleanup;
 			}
 			patt = attribs;
@@ -2981,6 +3009,46 @@ set_validate_sched_attrs(int connector)
 	}
 
 	pbs_statfree(all_ss);
+
+	return 1;
+}
+
+/**
+ * @brief Validate running user.
+ * If PBS_DAEMON_SERVICE_USER is set, and user is root, change user to it.
+ *
+ * @param[in] exename - name of executable (argv[0])
+ *
+ * @retval Error code
+ * @return 0 - Failure
+ * @return 1 - Success
+ *
+ * @par Side Effects:
+ *	None
+ */
+int
+validate_running_user(char * exename) {
+	if (pbs_conf.pbs_daemon_service_user) {
+		struct passwd *user = getpwnam(pbs_conf.pbs_daemon_service_user);
+		if (user == NULL) {
+			fprintf(stderr, "%s: PBS_DAEMON_SERVICE_USER [%s] does not exist\n", exename, pbs_conf.pbs_daemon_service_user);
+			return 0;
+		}
+
+		if (geteuid() == 0) {
+			setuid(user->pw_uid);
+			pbs_strncpy(pbs_current_user, pbs_conf.pbs_daemon_service_user, PBS_MAXUSER);
+		}
+
+		if (user->pw_uid != getuid()) {
+			fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER [%s]\n", exename, pbs_conf.pbs_daemon_service_user);
+			return 0;
+		}
+	}
+	else if ((geteuid() != 0) || getuid() != 0) {
+		fprintf(stderr, "%s: Must be run by PBS_DAEMON_SERVICE_USER if set or root if not set\n", exename);
+		return 0;
+	}
 
 	return 1;
 }

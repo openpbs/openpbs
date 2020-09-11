@@ -104,7 +104,6 @@ disrull(int stream, int *retval)
 		value = 0;
 		locret = DIS_BADSIGN;
 	}
-	*retval = (disr_commit(stream, locret == DIS_SUCCESS) < 0) ?
-		DIS_NOCOMMIT : locret;
+	*retval = locret;
 	return (value);
 }
