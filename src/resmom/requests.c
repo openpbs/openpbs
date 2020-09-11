@@ -2773,14 +2773,6 @@ req_cpyfile(struct batch_request *preq)
 			req_reject(PBSE_MOMREJECT, 0, preq);
 			return;
 		}
-
-		/*
-		 * remove enironment variables PBS_JOBDIR and TMPDIR created
-		 * by "mkjobdir" since they are not used in this function
-		 * but they would be inherited by the next request handler
-		 * and will cause interference
-		 */
-		free_string_array(pjob->ji_env);
 	}
 
 	snprintf(cmdline, sizeof(cmdline), "%s/sbin/pbs_stage_file.exe", pbs_conf.pbs_exec_path);

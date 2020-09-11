@@ -53,13 +53,13 @@ extern "C" {
 #include "batch_request.h"
 #include "pbs_internal.h"
 
-/* struct var_table = used to hold environment variables for the job */
+// /* struct var_table = used to hold environment variables for the job */
 
-struct var_table {
-	char **v_envp;
-	int    v_ensize;
-	int    v_used;
-};
+// struct var_table {
+// 	char **v_envp;
+// 	int    v_ensize;
+// 	int    v_used;
+// };
 
 /* struct sig_tbl = used to hold map of local signal names to values */
 

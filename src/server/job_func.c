@@ -340,6 +340,7 @@ job_alloc(void)
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
 	pj->ji_bg_hook_task = NULL;
+	// pj->ji_env = NULL;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -892,8 +893,7 @@ job_purge(job *pjob)
 		pjob->ji_preq = NULL;
 	}
 
-	if (pjob->ji_env != NULL) 
-		free_string_array(pjob->ji_env);
+	free_string_array(pjob->ji_env.v_envp);
 
 #ifndef WIN32
 

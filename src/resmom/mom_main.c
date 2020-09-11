@@ -263,7 +263,7 @@ time_t		time_last_sample = 0;
 extern time_t		time_now;
 time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
-extern struct var_table vtable;	/* see start_exec.c */
+struct var_table vtable;	/* see start_exec.c */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 extern pbs_list_head svr_allcreds;

@@ -1359,9 +1359,9 @@ run_hook_exit:
 		char **hook_env = NULL;
 		char *pbs_hook_conf = NULL;
 
-		if ((pjob->ji_env != NULL) && (phook->user == HOOK_PBSUSER)) {
+		if ((pjob->ji_env.v_envp != NULL) && (phook->user == HOOK_PBSUSER)) {
 			/* Duplicate only when the hook user is pbsuser */ 
-			hook_env = dup_string_arr(pjob->ji_env);
+			hook_env = dup_string_arr(pjob->ji_env.v_envp);
 			if (hook_env == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					__func__, "Unable to set hook environment");
