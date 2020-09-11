@@ -89,6 +89,7 @@
 #include <sys/time.h>
 
 #include "pbs_error.h"
+#include "job.h"
 
 #ifdef HAVE_MALLOC_INFO
 #include <malloc.h>
@@ -2224,4 +2225,68 @@ int
 get_msvr_mode(void)
 {
 	return 0;
+}
+
+/**
+ * @brief
+ * 		state_char2int - return the state from character form to int form.
+ *
+ * @param[in]	stc	-	state in character form
+ *
+ * @return	state in int form
+ * @retval	-1	: failure
+ */
+
+int
+state_char2int(char stc)
+{
+	int  i;
+	char statechars[] = "TQHWREXBMF";
+
+	for (i = 0; i < PBS_NUMJOBSTATE; i++) {
+		if (statechars[i] == stc)
+			return i;
+	}
+	return -1;
+}
+
+/**
+ * @brief
+ * 		state_int2char - return the state from int form to char form.
+ *
+ * @param[in]	sti	-	state in int form
+ *
+ * @return	state in char form
+ * @retval	'0'	: failure
+ */
+
+char
+state_int2char(int sti)
+{
+	switch(sti) {
+		case JOB_STATE_TRANSIT:
+			return JOB_STATE_LTR_TRANSIT;
+		case JOB_STATE_QUEUED:
+			return JOB_STATE_LTR_QUEUED;
+		case JOB_STATE_HELD:
+			return JOB_STATE_LTR_HELD;
+		case JOB_STATE_WAITING:
+			return JOB_STATE_LTR_WAITING;
+		case JOB_STATE_RUNNING:
+			return JOB_STATE_LTR_RUNNING;
+		case JOB_STATE_EXITING:
+			return JOB_STATE_LTR_EXITING;
+		case JOB_STATE_EXPIRED:
+			return JOB_STATE_LTR_EXPIRED;
+		case JOB_STATE_BEGUN:
+			return JOB_STATE_LTR_BEGUN;
+		case JOB_STATE_MOVED:
+			return JOB_STATE_LTR_MOVED;
+		case JOB_STATE_FINISHED:
+			return JOB_STATE_LTR_FINISHED;
+		default:
+			return '0';
+	}
+
+	return '0';
 }

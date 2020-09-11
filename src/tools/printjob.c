@@ -105,9 +105,9 @@ prt_job_struct(job *pjob)
 	printf("---------------------------------------------------\n");
 	printf("jobid:\t%s\n", pjob->ji_qs.ji_jobid);
 	printf("---------------------------------------------------\n");
-	printf("state:\t\t0x%x\n", pjob->ji_qs.ji_state);
-	printf("substate:\t0x%x (%d)\n", pjob->ji_qs.ji_substate,
-		pjob->ji_qs.ji_substate);
+	printf("state:\t\t0x%c\n", pjob->ji_wattr[JOB_ATR_state].at_val.at_char);
+	printf("substate:\t0x%ld (%ld)\n", pjob->ji_wattr[JOB_ATR_substate].at_val.at_long,
+		pjob->ji_wattr[JOB_ATR_substate].at_val.at_long);
 	printf("svrflgs:\t0x%x (%d)\n", pjob->ji_qs.ji_svrflags,
 		pjob->ji_qs.ji_svrflags);
 	printf("stime:\t\t%ld\n", (long)pjob->ji_qs.ji_stime);
@@ -261,9 +261,14 @@ read_attr(int fd)
 static void
 db_2_job(job *pjob,  pbs_db_job_info_t *pdjob)
 {
+	char statec;
+
 	strcpy(pjob->ji_qs.ji_jobid, pdjob->ji_jobid);
-	pjob->ji_qs.ji_state = pdjob->ji_state;
-	pjob->ji_qs.ji_substate = pdjob->ji_substate;
+	statec = state_int2char(pdjob->ji_state);
+	if (statec != '0')
+		pjob->ji_wattr[JOB_ATR_state].at_val.at_char = statec;
+
+	pjob->ji_wattr[JOB_ATR_substate].at_val.at_long = pdjob->ji_substate;
 	pjob->ji_qs.ji_svrflags = pdjob->ji_svrflags;
 	pjob->ji_qs.ji_stime = pdjob->ji_stime;
 	pjob->ji_qs.ji_fileprefix[0] = 0;

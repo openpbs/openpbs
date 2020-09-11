@@ -145,7 +145,6 @@
 #include "simulate.h"
 #include "fairshare.h"
 #include "check.h"
-#include "pbs_sched.h"
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"

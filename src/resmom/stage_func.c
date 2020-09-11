@@ -463,19 +463,19 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 	if (which == Chkpt) return(0); /* direct write of checkpoint not supported */
 
 	/* Check if direct_write requested. */
-	if (!((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
-				(strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'd'))))
+	if (!((is_jattr_set(pjob, JOB_ATR_keep)) &&
+				(strchr(get_jattr_str(pjob, JOB_ATR_keep), 'd'))))
 		return(0);
 
 	/* Figure out what the final destination path is */
 	switch(which)
 	{
 		case StdOut:
-			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'o'))
+			if(!strchr(get_jattr_str(pjob, JOB_ATR_keep), 'o'))
 				return(0);
 			else
 				/* Make local working copy of path for call to local_or_remote */
-				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str);
+				snprintf(working_path, MAXPATHLEN + 1, "%s", get_jattr_str(pjob, JOB_ATR_outpath));
 			if (
 #ifdef WIN32
 					working_path[strlen(working_path) -1] == '\\'
@@ -488,11 +488,11 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 			}
 			break;
 		case StdErr:
-			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'e'))
+			if(!strchr(get_jattr_str(pjob, JOB_ATR_keep), 'e'))
 				return(0);
 			else
 				/* Make local working copy of path for call to local_or_remote */
-				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str);
+				snprintf(working_path, MAXPATHLEN + 1, "%s", get_jattr_str(pjob, JOB_ATR_errpath));
 		if (
 #ifdef WIN32
 				working_path[strlen(working_path) -1] == '\\'

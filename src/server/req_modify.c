@@ -145,7 +145,7 @@ req_modifyjob(struct batch_request *preq)
 	int		 add_to_am_list = 0; /* if altered during sched cycle */
 	int		 bad = 0;
 	int		 jt;		/* job type */
-	int		 newstate;
+	char		 newstate;
 	int		 newsubstate;
 	resource_def	*outsideselect = NULL;
 	job		*pjob;
@@ -196,8 +196,8 @@ req_modifyjob(struct batch_request *preq)
 	/* allow scheduler to modify job */
 	if (psched == NULL) {
 		/* provisioning job is not allowed to be modified */
-		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
-			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
+		if ((check_job_state(pjob, JOB_STATE_LTR_RUNNING)) &&
+			(check_job_substate(pjob, JOB_SUBSTATE_PROVISION))) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -205,7 +205,7 @@ req_modifyjob(struct batch_request *preq)
 
 	/* cannot be in exiting or transit, exiting has already be checked */
 
-	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT) {
+	if (check_job_state(pjob, JOB_STATE_LTR_TRANSIT)) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
@@ -224,7 +224,7 @@ req_modifyjob(struct batch_request *preq)
 	 *	   altered.
 	 */
 
-	if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
+	if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 		running = 1;
 	}
 	while (plist) {
@@ -294,11 +294,11 @@ req_modifyjob(struct batch_request *preq)
 			(plist->al_value[0] != '\0') &&
 			((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) &&
 		(atol(plist->al_value) < \
-		    pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long)) {
+		    get_jattr_long(pjob, JOB_ATR_runcount))) {
 			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
 				pjob->ji_qs.ji_jobid, "regular user %s@%s cannot decrease '%s' attribute value from %ld to %ld",
 				preq->rq_user, preq->rq_host, ATTR_runcount,
-				pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long,
+				get_jattr_long(pjob, JOB_ATR_runcount),
 				atol(plist->al_value));
 			req_reject(PBSE_PERM, 0, preq);
 			return;
@@ -341,7 +341,7 @@ req_modifyjob(struct batch_request *preq)
 	if (mod_project && (pjob->ji_wattr[(int)JOB_ATR_project].at_flags & \
 							ATR_VFLAG_SET)) {
 
-		if (strcmp(pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str,
+		if (strcmp(get_jattr_str(pjob, JOB_ATR_project),
 			PBS_DEFAULT_PROJECT) == 0) {
 			sprintf(log_buffer, msg_defproject,
 				ATTR_project, PBS_DEFAULT_PROJECT);
@@ -374,9 +374,9 @@ req_modifyjob(struct batch_request *preq)
 		log_alter_records_for_attrs(pjob, plist);
 
 	/* if job is not running, may need to change its state */
-	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
+	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 0);
-		(void)svr_setjobstate(pjob, newstate, newsubstate);
+		svr_setjobstate(pjob, newstate, newsubstate);
 	}
 
 	job_save_db(pjob); /* we must save the updates anyway, if any */
@@ -445,7 +445,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	attribute *pattr;
 	resource  *prc;
 	int	   rc;
-	int	   newstate = -1;
+	char	   newstate = -1;
 	int	   newsubstate = -1;
 	long	   newaccruetype = -1;
 
@@ -516,7 +516,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 		/* So, the following checks are made only if not the Op/Admin */
 
 		if ((perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
-			if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
+			if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 
 				/* regular user cannot raise the limits of a running job */
 
@@ -649,13 +649,13 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 			job_attr_def[i].at_free(&pattr[i]);
 			switch (i) {
 				case JOB_ATR_state:
-					newstate = state_char2int(newattr[i].at_val.at_char);
+					newstate = get_attr_c(&newattr[i]);
 					break;
 				case JOB_ATR_substate:
-					newsubstate = newattr[i].at_val.at_long;
+					newsubstate = get_attr_l(&newattr[i]);
 					break;
 				case JOB_ATR_accrue_type:
-					newaccruetype = newattr[i].at_val.at_long;
+					newaccruetype = get_attr_l(&newattr[i]);
 					break;
 				default:
 					if ((newattr[i].at_type == ATR_TYPE_LIST) ||
@@ -885,8 +885,8 @@ void revert_alter_reservation(resc_resv *presv) {
 	presdef->rs_free(&resc->rs_value);
 	set_chunk_sum(&resc2->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
 	presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-	set_attr_svr(&presv->ri_wattr[RESV_ATR_SchedSelect], &resv_attr_def[RESV_ATR_SchedSelect],
-				 presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str);
+	set_attr_generic(&presv->ri_wattr[RESV_ATR_SchedSelect], &resv_attr_def[RESV_ATR_SchedSelect],
+			presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str, NULL, SET);
 	resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
 
 	presv->ri_alter.ra_flags = 0;
@@ -1213,14 +1213,14 @@ req_modifyReservation(struct batch_request *preq)
 	if (presv->ri_wattr[(int)RESV_ATR_auth_u].at_flags & ATR_VFLAG_MODIFY) {
 		svrattrl *pattrl;
 		resv_attr_def[(int)RESV_ATR_auth_u].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_u], NULL, resv_attr_def[(int)RESV_ATR_auth_u].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
-		set_attr_svr(&presv->ri_qp->qu_attr[(int)QA_ATR_AclUsers], &que_attr_def[(int)QA_ATR_AclUsers], pattrl->al_atopl.value);
+		set_attr_generic(&presv->ri_qp->qu_attr[(int)QA_ATR_AclUsers], &que_attr_def[(int)QA_ATR_AclUsers], pattrl->al_atopl.value, NULL, SET);
 		free(pattrl);
 	}
 	if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_MODIFY) {
 		if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_SET) {
 			svrattrl *pattrl = NULL;
 			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_g], NULL, resv_attr_def[(int)RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
-			set_attr_svr(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value);
+			set_attr_generic(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value, NULL, SET);
 			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
 				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long == 0)) {
 				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;

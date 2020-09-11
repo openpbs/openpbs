@@ -328,7 +328,7 @@ typedef struct	noderes {
 
 /* individual entries in array job index table */
 struct ajtrk {
-	int trk_status;		 /* status */
+	char trk_status;		 /* status */
 	int trk_error;		 /* error code */
 	int trk_exitstat;	 /* if executed and exitstat set */
 	int trk_substate;	 /* sub state */
@@ -546,12 +546,7 @@ struct job {
 #endif
 	struct jobfix {
 		int ji_jsversion;   /* job structure version - JSVERSION */
-		int ji_state;	    /* internal copy of state */
-		int ji_substate;    /* job sub-state */
 		int ji_svrflags;    /* server flags */
-		int ji_numattr;	    /* not used */
-		int ji_ordering;    /* special scheduling ordering */
-		int ji_priority;    /* internal priority */
 		time_t ji_stime;    /* time job started execution */
 		time_t ji_endtBdry; /* estimate upper bound on end time */
 
@@ -840,6 +835,19 @@ task_find	(job		*pjob,
 #define JOB_STATE_FINISHED	9
 
 
+#define JOB_STATE_LTR_BEGUN 'B'
+#define JOB_STATE_LTR_EXITING 'E'
+#define JOB_STATE_LTR_FINISHED 'F'
+#define JOB_STATE_LTR_HELD 'H'
+#define JOB_STATE_LTR_MOVED 'M'
+#define JOB_STATE_LTR_QUEUED 'Q'
+#define JOB_STATE_LTR_RUNNING 'R'
+#define JOB_STATE_LTR_SUSPENDED 'S'
+#define JOB_STATE_LTR_TRANSIT 'T'
+#define JOB_STATE_LTR_USUSPENDED 'U'
+#define JOB_STATE_LTR_WAITING 'W'
+#define JOB_STATE_LTR_EXPIRED 'X'
+
 /*
  * job sub-states are defined by PBS (more detailed) as:
  */
@@ -996,10 +1004,10 @@ extern int   site_check_user_map(void *, int, char *);
 extern int   site_allow_u(char *user, char *host);
 extern void  svr_dequejob(job *);
 extern int   svr_enquejob(job *);
-extern void  svr_evaljobstate(job *, int *, int *, int);
-extern void  set_statechar(job *);
-extern int   svr_setjobstate(job *, int, int);
+extern void  svr_evaljobstate(job *, char *, int *, int);
+extern int   svr_setjobstate(job *, char, int);
 extern int   state_char2int(char);
+extern char	 state_int2char(int);
 extern int   uniq_nameANDfile(char*, char*, char*);
 extern long  determine_accruetype(job *);
 extern int   update_eligible_time(long, job *);
@@ -1008,6 +1016,25 @@ extern int   update_eligible_time(long, job *);
 #define	TOLERATE_NODE_FAILURES_JOB_START	"job_start"
 #define	TOLERATE_NODE_FAILURES_NONE	"none"
 extern int   do_tolerate_node_failures(job *);
+int check_job_state(const job *pjob, char state);
+int check_job_substate(const job *pjob, int substate);
+char get_job_state(const job *pjob);
+int get_job_state_num(const job *pjob);
+long get_job_substate(const job *pjob);
+char *get_jattr_str(const job *pjob, int attr_idx);
+long get_jattr_long(const job *pjob, int attr_idx);
+svrattrl *get_jattr_usr_encoded(const job *pjob, int attr_idx);
+svrattrl *get_jattr_priv_encoded(const job *pjob, int attr_idx);
+void set_job_state(job *pjob, char val);
+void set_job_substate(job *pjob, long val);
+int set_jattr_str_slim(job *pjob, int attr_idx, char *val, char *rscn);
+int set_jattr_l_slim(job *pjob, int attr_idx, long val, enum batch_op op);
+int set_jattr_b_slim(job *pjob, int attr_idx, long val, enum batch_op op);
+int set_jattr_generic(job *pjob, int attr_idx, char *val, char *rscn, enum batch_op op);
+int is_jattr_set(const job *pjob, int attr_idx);
+void free_jattr(job *pjob, int attr_idx);
+void mark_jattr_not_set(job *pjob, int attr_idx);
+void mark_jattr_set(job *pjob, int attr_idx);
 
 /*
  *	The filesystem related recovery/save routines are renamed
