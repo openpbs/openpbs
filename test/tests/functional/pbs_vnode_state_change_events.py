@@ -52,11 +52,17 @@ def get_hook_body(hook_msg):
     pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
     try:
         e = pbs.event()
-        vnode_name = e.vnode.name
+        new_vnode_name = e.vnode.name
+        old_vnode_name = e.vnode_o.name
         new_state = e.vnode.state
         old_state = e.vnode_o.state
-        pbs.logmsg(pbs.LOG_DEBUG, 'vnode_name:' + vnode_name)
+        new_lsc_time = e.vnode.last_state_change_time
+        old_lsc_time = e.vnode_o.last_state_change_time
+        pbs.logmsg(pbs.LOG_DEBUG, 'new_vnode_name:' + new_vnode_name)
+        pbs.logmsg(pbs.LOG_DEBUG, 'new_last_state_change_time: ' + str(new_lsc_time))
         pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
+        pbs.logmsg(pbs.LOG_DEBUG, 'old_vnode_name:' + old_vnode_name)
+        pbs.logmsg(pbs.LOG_DEBUG, 'old_last_state_change_time: ' + str(old_lsc_time))
         pbs.logmsg(pbs.LOG_DEBUG, 'old_state:' + hex(old_state))
         pbs.logmsg(pbs.LOG_DEBUG, '%s')
     except Exception as err:

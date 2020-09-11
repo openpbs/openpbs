@@ -5080,7 +5080,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_que = NULL;
 	PyObject *py_resv = NULL;
 	PyObject *py_margs = NULL;
-	PyObject *py_scargs = NULL;
 	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
 	PyObject *py_event_class = NULL;
@@ -6340,7 +6339,6 @@ event_set_exit:
 	Py_CLEAR(py_pid);
 	Py_CLEAR(py_resvlist);
 	Py_CLEAR(py_margs);
-	Py_CLEAR(py_scargs);
 	Py_CLEAR(py_management);
 	return (rc);
 }

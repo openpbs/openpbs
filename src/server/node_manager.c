@@ -1173,7 +1173,7 @@ copy_vnode_to_vnode_o(struct pbsnode *vnode, struct pbsnode *vnode_o)
 		vnode_o->nd_hostname = NULL;
 	}
 
-	/* FIXME: need to save ND_ATR_last_state_change_time value in vnode_o */	
+	/* FIXME: need to save ND_ATR_last_state_change_time value in vnode_o - see query_node_info() */	
 	/* FIXME: not yet complete! add/subtract members as appropriate */
 	/* For reference see initialize_pbsnode calls */
 
@@ -1227,7 +1227,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	/* 
-	 * Allocate and initialize vnode_o, then copy vnode elements into vnnode_o
+	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
 	if ((vnode_o = malloc(sizeof(struct pbsnode)))) {
 		if (initialize_pbsnode(vnode_o, strdup(pnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
