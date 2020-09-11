@@ -1582,8 +1582,10 @@ mom_set_use_all(void)
 		if (mom_get_sample() == PBSE_NONE) {
 			pjob = (job *) GET_NEXT(svr_alljobs);
 			while (pjob) {
-				if ((pjob->ji_qs.ji_state == JOB_STATE_EXITING && (pjob->ji_qs.ji_substate >= JOB_SUBSTATE_OBIT || pjob->ji_qs.ji_substate == JOB_SUBSTATE_EXITED)) ||
-					(pjob->ji_qs.ji_state == JOB_STATE_RUNNING && pjob->ji_qs.ji_substate <= JOB_SUBSTATE_PRERUN)) {
+				if ((check_job_state(pjob, JOB_STATE_LTR_EXITING) &&
+						(get_job_substate(pjob) >= JOB_SUBSTATE_OBIT ||
+								get_job_substate(pjob) == JOB_SUBSTATE_EXITED)) ||
+					(check_job_state(pjob, JOB_STATE_LTR_RUNNING) && get_job_substate(pjob) <= JOB_SUBSTATE_PRERUN)) {
 					pjob = (job *)GET_NEXT(pjob->ji_alljobs);
 					continue;
 				}

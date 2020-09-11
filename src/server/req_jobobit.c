@@ -1306,7 +1306,7 @@ job_obit(ruu *pruu, int stream)
 	int local_exitstatus = 0;
 	char *mailbuf = NULL;
 	int mailbuf_size = 0;
-	int newstate;
+	char newstate;
 	int newsubst;
 	job *pjob;
 	svrattrl *patlist;
@@ -1334,11 +1334,8 @@ job_obit(ruu *pruu, int stream)
 	}
 
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pruu->ru_pjobid,
-		   "Obit received momhop:%d serverhop:%ld state:%d substate:%d",
-		   pruu->ru_hop,
-		   pjob->ji_wattr[(int) JOB_ATR_run_version].at_val.at_long,
-		   pjob->ji_qs.ji_state,
-		   pjob->ji_qs.ji_substate);
+		   "Obit received momhop:%d serverhop:%ld state:%c substate:%d",
+		   pruu->ru_hop, get_jattr_long(pjob, JOB_ATR_run_version), get_job_state(pjob), get_job_substate(pjob));
 
 	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 		DBPRT(("%s: job %s not in running state!\n",
@@ -1701,7 +1698,7 @@ RetryJob:
 				set_jattr_str_slim(pjob, JOB_ATR_Comment,
 						"job held due to possible security breach of job tmpdir, failed to start", NULL);
 				rel_resc(pjob);
-				svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+				svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
 				free(mailbuf);
 				free(acctbuf);
 				return 0;
@@ -1764,7 +1761,7 @@ RetryJob:
 		if ((pjob->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0)
 			free_jattr(pjob, JOB_ATR_resc_used);
 
-		svr_setjobstate(pjob, JOB_STATE_EXITING, pjob->ji_qs.ji_substate);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, get_job_substate(pjob));
 		ptask = set_task(WORK_Immed, 0, on_job_rerun, (void *) pjob);
 		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 

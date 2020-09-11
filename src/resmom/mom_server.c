@@ -943,7 +943,7 @@ is_request(int stream, int version)
 				 * then it would have already synced up with the server
 				 * on status, and not end up in this race condition.
 				 */
-				if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
+				if (pjob && !pjob->ji_hook_running_bg_on && !check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
 					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, "Job removed, Server rejected Obit");
 					mom_deljob(pjob);
 				}
