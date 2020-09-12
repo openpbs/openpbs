@@ -47,7 +47,7 @@ class TestPbsJobScript(TestFunctional):
 
     def submit_job(self, addnewline=False):
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('Verylongvnodename', a, 500, self.mom)
+        self.mom.create_vnodes(a, 500, vname='Verylongvnodename')
 
         selstr = "#PBS -l select=1"
         for node in range(500):

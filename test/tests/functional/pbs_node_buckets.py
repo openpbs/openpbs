@@ -71,9 +71,9 @@ class TestNodeBuckets(TestFunctional):
         a = {'resources_available.ncpus': 2, 'resources_available.mem': '8gb'}
         # 10010 nodes since it divides into 7 evenly.
         # Each node bucket will have 1430 nodes in it
-        self.server.create_vnodes(name='vnode', attrib=a, num=10010,
-                                  mom=self.mom, sharednode=False,
-                                  expect=False, attrfunc=self.cust_attr_func)
+        self.mom.create_vnodes(attrib=a, num=10010,
+                               sharednode=False,
+                               expect=False, attrfunc=self.cust_attr_func)
         # Make sure all the nodes are in state free.  We can't let
         # create_vnodes() do this because it does a pbsnodes -v on each vnode.
         # This takes a long time.
@@ -262,7 +262,9 @@ class TestNodeBuckets(TestFunctional):
         self.scheduler.set_sched_config({'strict_ordering': 'True'})
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:vnode=vnode[2865]+1:vnode=vnode[2870]',
+        vnode = self.mom.shortname
+        select_s = '1:vnode=' + vnode + '[2865]+1:vnode=' + vnode + '[2870]'
+        a = {'Resource_List.select': select_s,
              'Resource_List.place': 'scatter:excl',
              'Resource_List.walltime': '1:00:00',
              'reserve_start': now + 3600, 'reserve_end': now + 7200}
@@ -283,8 +285,8 @@ class TestNodeBuckets(TestFunctional):
         s = self.server.status(JOB, 'exec_vnode', id=jid)
         n = j.get_vnodes(s[0]['exec_vnode'])
         msg = 'busy_later nodes not chosen first'
-        self.assertTrue('vnode[2865]' in n, msg)
-        self.assertTrue('vnode[2870]' in n, msg)
+        self.assertTrue(vnode + '[2865]' in n, msg)
+        self.assertTrue(vnode + '[2870]' in n, msg)
 
     @skipOnCpuSet
     def test_calendaring3(self):
@@ -294,9 +296,10 @@ class TestNodeBuckets(TestFunctional):
         """
 
         self.scheduler.set_sched_config({'strict_ordering': 'True'})
-
+        vnode = self.mom.shortname
         now = int(time.time())
-        a = {'Resource_List.select': '1:vnode=vnode[2865]+1:vnode=vnode[2870]',
+        select_s = '1:vnode=' + vnode + '[2865]+1:vnode=' + vnode + '[2870]'
+        a = {'Resource_List.select': select_s,
              'Resource_List.place': 'scatter:excl',
              'Resource_List.walltime': '1:00:00',
              'reserve_start': now + 3600, 'reserve_end': now + 7200}
@@ -326,8 +329,8 @@ class TestNodeBuckets(TestFunctional):
         s = self.server.status(JOB, 'estimated.exec_vnode', id=jid2)
         n = j2.get_vnodes(s[0]['estimated.exec_vnode'])
         msg = 'busy_later nodes not chosen first'
-        self.assertTrue('vnode[2865]' in n, msg)
-        self.assertTrue('vnode[2870]' in n, msg)
+        self.assertTrue(vnode + '[2865]' in n, msg)
+        self.assertTrue(vnode + '[2870]' in n, msg)
 
     @skipOnCpuSet
     def test_buckets_and_non(self):
@@ -337,8 +340,9 @@ class TestNodeBuckets(TestFunctional):
         """
 
         # vnode[1435] is orange
+        vn = self.mom.shortname
         a = {'Resource_List.ncpus': 1,
-             'Resource_List.vnode': 'vnode[1435]'}
+             'Resource_List.vnode': vn + '[1435]'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
@@ -405,10 +409,11 @@ class TestNodeBuckets(TestFunctional):
         self.check_normal_path(pl='scatter:shared')
         self.check_normal_path(pl='free')
 
+        vn = self.mom.shortname
         # can't request host or vnode resources on the bucket codepath
         self.logger.info('Test jobs requesting host and vnode')
-        self.check_normal_path(sel='1:ncpus=2:host=vnode[0]')
-        self.check_normal_path(sel='1:ncpus=2:vnode=vnode[0]')
+        self.check_normal_path(sel='1:ncpus=2:host=' + vn + '[0]')
+        self.check_normal_path(sel='1:ncpus=2:vnode=' + vn + '[0]')
 
         # suspended jobs use the normal codepath
         self.logger.info('Test suspended job')
@@ -484,8 +489,8 @@ class TestNodeBuckets(TestFunctional):
         # Jobs on multi-vnoded systems use the standard codepath
         self.logger.info('Test job on multi-vnoded system')
         a = {'resources_available.ncpus': 2, 'resources_available.mem': '8gb'}
-        self.server.create_vnodes('vnode', a, 8, self.mom,
-                                  sharednode=False, vnodes_per_host=4)
+        self.mom.create_vnodes(a, 8, sharednode=False,
+                               vnodes_per_host=4)
         self.check_normal_path(sel='2:ncpus=8')
 
     @skipOnCpuSet
@@ -495,9 +500,9 @@ class TestNodeBuckets(TestFunctional):
         multi-vnoded systems in reservations
         """
         a = {'resources_available.ncpus': 2, 'resources_available.mem': '8gb'}
-        self.server.create_vnodes('vnode', a, 12, self.mom,
-                                  sharednode=False, vnodes_per_host=4,
-                                  attrfunc=self.cust_attr_func)
+        self.mom.create_vnodes(a, 12,
+                               sharednode=False, vnodes_per_host=4,
+                               attrfunc=self.cust_attr_func)
 
         now = int(time.time())
         a = {'Resource_List.select': '8:ncpus=1',
@@ -792,9 +797,8 @@ class TestNodeBuckets(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
 
         # Take the first 14 vnodes.  This means there are two nodes per shape
-        nodes = ['vnode[0]', 'vnode[1]', 'vnode[2]', 'vnode[3]', 'vnode[4]',
-                 'vnode[5]', 'vnode[6]', 'vnode[7]', 'vnode[8]', 'vnode[9]',
-                 'vnode[10]', 'vnode[11]', 'vnode[12]', 'vnode[13]']
+        vn = self.mom.shortname
+        nodes = [vn + '[' + str(x) + ']' for x in range(14)]
         self.server.manager(MGR_CMD_SET, NODE, {'queue': 'workq2'}, id=nodes)
 
         chunk = '2:ncpus=1'
@@ -883,8 +887,9 @@ class TestNodeBuckets(TestFunctional):
         """
         Test that buckets work with nodes associated to a queue
         """
-        v1 = 'vnode[1431]'
-        v2 = 'vnode[1435]'
+        vn = self.mom.shortname
+        v1 = vn + '[1431]'
+        v2 = vn + '[1435]'
         a = {'queue_type': 'execution', 'started': 'True', 'enabled': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='q2')
 
@@ -973,14 +978,14 @@ class TestNodeBuckets(TestFunctional):
         self.mom.delete_vnode_defs()
         a = {'resources_available.ncpus': 80,
              'resources_available.bar': 'large'}
-        self.server.create_vnodes(name='vnode', attrib=a, num=8,
-                                  mom=self.mom, sharednode=False)
+        self.mom.create_vnodes(attrib=a, num=8,
+                               sharednode=False)
         self.scheduler.add_resource('foo')
         a['resources_available.foo'] = 8
         a['resources_available.ncpus'] = 8
         a['resources_available.bar'] = 'small'
         for val in range(0, 5):
-            vname = "vnode[" + str(val) + "]"
+            vname = self.mom.shortname + "[" + str(val) + "]"
             self.server.manager(MGR_CMD_SET, NODE, a, id=vname)
         chunk1 = '4:ncpus=5:foo=5'
         a = {'Resource_List.select': chunk1,

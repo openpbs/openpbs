@@ -73,8 +73,8 @@ class TestPbsResvAlter(TestFunctional):
             self.tzone = 'Asia/Kolkata'
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vnode', a, num=2, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=2,
+                               usenatvnode=True)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
@@ -1245,8 +1245,8 @@ class TestPbsResvAlter(TestFunctional):
         offset = 10
 
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vnode', a, num=256, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=256,
+                               usenatvnode=True)
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration, select="256:ncpus=4")
@@ -1361,10 +1361,10 @@ class TestPbsResvAlter(TestFunctional):
                                  sequence=seq)
         self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
                                  alter_e=True, whichMessage=mtype,
-                                 interactive=2, sequence=seq+1)
+                                 interactive=2, sequence=seq + 1)
         self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
                                  alter_e=True, whichMessage=mtype,
-                                 interactive=2, sequence=seq+1)
+                                 interactive=2, sequence=seq + 1)
 
     @skipOnCpuSet
     def test_alter_resv_name(self):
@@ -1545,13 +1545,14 @@ class TestPbsResvAlter(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, RSC, a, id='color')
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom)
+        self.mom.create_vnodes(a, 3)
 
         a = {'resources_available.color': 'red'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[0]')
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[1]')
+        vn = self.mom.shortname
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[0]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[1]')
         a = {'resources_available.color': 'green'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[2]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[2]')
 
         a = {'node_group_key': 'color', 'node_group_enable': True}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -2251,7 +2252,7 @@ class TestPbsResvAlter(TestFunctional):
 
         a = {'resources_available.ncpus': 1,
              'resources_available.mem': '8gb'}
-        self.server.create_vnodes('vnode', a, num=8, mom=self.mom)
+        self.mom.create_vnodes(a, num=8)
 
         rid, start, end = self.submit_and_confirm_reservation(offset, dur,
                                                               select=select)
@@ -2319,10 +2320,10 @@ class TestPbsResvAlter(TestFunctional):
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), 4)
         t = int(time.mktime(time.strptime(st[0]['reserve_start'], '%c')))
-        self.assertEquals(t, start+shift)
+        self.assertEquals(t, start + shift)
 
         t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
-        self.assertEquals(t, end+shift)
+        self.assertEquals(t, end + shift)
 
     def test_alter_select_with_running_jobs(self):
         """
@@ -2336,8 +2337,8 @@ class TestPbsResvAlter(TestFunctional):
         select3 = '1:ncpus=4'
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vnode', a, num=3, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=3,
+                               usenatvnode=True)
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               select=select)
@@ -2385,8 +2386,8 @@ class TestPbsResvAlter(TestFunctional):
         select2 = '1:ncpus=4'
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vnode', a, num=3, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=3,
+                               usenatvnode=True)
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               select=select)
@@ -2448,7 +2449,7 @@ class TestPbsResvAlter(TestFunctional):
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), 4)
         t = int(time.mktime(time.strptime(st[0]['reserve_start'], '%c')))
-        self.assertEquals(t, start+shift)
+        self.assertEquals(t, start + shift)
 
         t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
         self.assertEquals(t, end + shift)

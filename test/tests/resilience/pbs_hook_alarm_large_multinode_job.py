@@ -59,8 +59,7 @@ class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
         if not self.mom.is_cpuset_mom():
             a = {'resources_available.mem': '1gb',
                  'resources_available.ncpus': '1'}
-            self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom,
-                                      expect=False)
+            self.mom.create_vnodes(a, 5000, expect=False)
             # Make sure all the nodes are in state free.  We can't let
             # create_vnodes() do this because it does
             # a pbsnodes -v on each vnode.

@@ -50,7 +50,7 @@ class TestEquivClass(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         a = {'resources_available.ncpus': 8}
-        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 2047})
         # capture the start time of the test for log matching
         self.t = time.time()
@@ -965,7 +965,7 @@ class TestEquivClass(TestFunctional):
         """
 
         a = {'resources_available.ncpus': 8}
-        self.server.create_vnodes('vnode', a, 2, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 2, usenatvnode=True)
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
@@ -974,9 +974,9 @@ class TestEquivClass(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
                              'enabled': 'True'}, id='nodes_queue')
-
+        vn = self.mom.shortname + '[0]'
         self.server.manager(MGR_CMD_SET, NODE,
-                            {'queue': 'nodes_queue'}, id='vnode[0]')
+                            {'queue': 'nodes_queue'}, id=vn)
 
         self.server.manager(MGR_CMD_SET, QUEUE,
                             {'Priority': 120}, id='workq')
@@ -1405,7 +1405,7 @@ e.job.Resource_List["cput"] = 20
         # Create vnodes
         a = {'resources_available.ncpus': 4,
              'resources_available.foo_str': "foo,bar,buba"}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
 
         # Add resources to sched_config
         self.scheduler.add_resource("foo_str")
@@ -1640,7 +1640,7 @@ else:
         """
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', a, 4, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 4, usenatvnode=True)
 
         a = {'queue_type': 'e', 'started': 't',
              'enabled': 't', 'Priority': 150}
@@ -1693,7 +1693,7 @@ else:
         """
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', a, 4, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 4, usenatvnode=True)
 
         a = {'queue_type': 'e', 'started': 't',
              'enabled': 't', 'Priority': 150}
@@ -1753,7 +1753,7 @@ else:
 
         # Create 1 vnode with 3 ncpus
         a = {'resources_available.ncpus': 3}
-        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         # Create expressq
         a = {'queue_type': 'execution', 'started': 'true',
@@ -1878,7 +1878,7 @@ else:
 
         # Create vnode with 4 ncpus
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         # Create a expressq
         a = {'queue_type': 'execution', 'started': 'true',
@@ -1967,7 +1967,7 @@ else:
         """
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         a = {'Resource_List.select': '1:ncpus=1', ATTR_h: None}
         J1 = Job(TEST_USER, attrs=a)
@@ -1991,7 +1991,7 @@ else:
         """
 
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         attrs = {'queue_type': 'Execution', 'started': 'True',
                  'enabled': 'True', 'resources_available.ncpus': 1,
@@ -2133,8 +2133,8 @@ else:
         suspended.
         """
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vnode', a, 2, self.mom,
-                                  attrfunc=self.change_res)
+        self.mom.create_vnodes(a, 2,
+                               attrfunc=self.change_res)
 
         # Create an express queue
         a = {'queue_type': 'execution', 'started': 'true',

@@ -61,8 +61,8 @@ e.accept()
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='NewRes')
         self.scheduler.add_resource('NewRes', apply=True)
         attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 6, mom=self.mom,
-                                  attrfunc=self.cust_attr, usenatvnode=False)
+        self.mom.create_vnodes(attr, 6, attrfunc=self.cust_attr,
+                               usenatvnode=False)
 
     def cust_attr(self, name, totnodes, numnode, attrib):
         res_str = "ver" + str(numnode)

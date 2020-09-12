@@ -140,7 +140,7 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4800,
              'resources_available.mem': '2800mb'}
-        self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
         p = '"express_queue, normal_jobs, server_softlimits, queue_softlimits"'
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
@@ -157,7 +157,7 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4800,
              'resources_available.mem': '1500mb'}
-        self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
         p = '"express_queue, normal_jobs, server_softlimits, queue_softlimits"'
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a, runas=ROOT_USER)
@@ -179,13 +179,13 @@ class TestPreemptPerformance(TestPerformance):
 
         a = {ATTR_rescavail + ".qlist": "list1",
              ATTR_rescavail + ".ncpus": "8"}
-        self.server.create_vnodes(
-            "vn1", a, 400, self.mom, additive=True, fname="vnodedef1")
+        self.mom.create_vnodes(
+            a, 400, self.mom, additive=True, fname="vnodedef1")
 
         a = {ATTR_rescavail + ".qlist": "list2",
              ATTR_rescavail + ".ncpus": "1"}
-        self.server.create_vnodes(
-            "vn2", a, 1, self.mom, additive=True, fname="vnodedef2")
+        self.mom.create_vnodes(
+            a, 1, self.mom, additive=True, fname="vnodedef2")
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
@@ -261,18 +261,18 @@ class TestPreemptPerformance(TestPerformance):
 
         a = {ATTR_rescavail + ".qlist": "list1",
              ATTR_rescavail + ".ncpus": "8"}
-        self.server.create_vnodes(
-            "vn1", a, 400, self.mom, additive=True, fname="vnodedef1")
+        self.mom.create_vnodes(
+            a, 400, additive=True, fname="vnodedef1")
 
         a = {ATTR_rescavail + ".qlist": "list2",
              ATTR_rescavail + ".ncpus": "1"}
-        self.server.create_vnodes(
-            "vn2", a, 1, self.mom, additive=True, fname="vnodedef2")
+        self.mom.create_vnodes(
+            a, 1, additive=True, fname="vnodedef2")
 
         a = {ATTR_rescavail + ".qlist": "list3",
              ATTR_rescavail + ".ncpus": "1"}
-        self.server.create_vnodes(
-            "vn3", a, 1, self.mom, additive=True, fname="vnodedef3")
+        self.mom.create_vnodes(
+            a, 1, additive=True, fname="vnodedef3")
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
@@ -353,8 +353,8 @@ class TestPreemptPerformance(TestPerformance):
         self.server.manager(MGR_CMD_CREATE, RSC, a, id='foo')
 
         a = {ATTR_rescavail + ".ncpus": "8"}
-        self.server.create_vnodes(
-            "vn1", a, 401, self.mom, additive=True, fname="vnodedef1")
+        self.mom.create_vnodes(
+            a, 401, additive=True, fname="vnodedef1")
 
         # Make resource foo available on server
         a = {ATTR_rescavail + ".foo": 50, 'scheduling': 'False'}
@@ -422,8 +422,8 @@ class TestPreemptPerformance(TestPerformance):
         """
 
         a = {ATTR_rescavail + ".ncpus": "8"}
-        self.server.create_vnodes(
-            "vn1", a, 400, self.mom, additive=True, fname="vnodedef1")
+        self.mom.create_vnodes(
+            a, 400, additive=True, fname="vnodedef1")
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
@@ -487,8 +487,8 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4,
              'resources_available.mem': '6400mb'}
-        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False,
-                                  sharednode=False)
+        self.mom.create_vnodes(a, 500, usenatvnode=False,
+                               sharednode=False)
         p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a)
@@ -565,13 +565,13 @@ class TestPreemptPerformance(TestPerformance):
         """
         a = {'resources_available.ncpus': 4,
              'resources_available.mem': '6400mb'}
-        self.server.create_vnodes('vn', a, 500, self.mom, usenatvnode=False,
-                                  sharednode=False)
+        self.mom.create_vnodes(a, 500, usenatvnode=False,
+                               sharednode=False)
         p = "express_queue, normal_jobs, server_softlimits, queue_softlimits"
         a = {'preempt_prio': p}
         self.server.manager(MGR_CMD_SET, SCHED, a)
 
-        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER)+"=1]"}
+        a = {'max_run_res_soft.ncpus': "[u:" + str(TEST_USER) + "=1]"}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'workq')
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 

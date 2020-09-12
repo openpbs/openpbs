@@ -160,8 +160,8 @@ class TestCalendaring(TestFunctional):
         # it won't try and add it to the calendar.  To do this, we ask for
         # 1 node with 2 cpus.  There are 2 nodes with 1 cpu each.
         attrs = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', attrib=attrs, num=2,
-                                  mom=self.mom, sharednode=False)
+        self.mom.create_vnodes(attrib=attrs, num=2,
+                               sharednode=False)
 
         self.scheduler.set_sched_config({'strict_ordering': 'True ALL'})
 

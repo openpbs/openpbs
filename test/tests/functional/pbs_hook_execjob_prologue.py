@@ -126,8 +126,8 @@ class TestPbsExecutePrologue(TestFunctional):
         """
         attr = {'resources_available.mem': '2gb',
                 'resources_available.ncpus': '1'}
-        self.server.create_vnodes(self.hostC, attr, 3, self.momC,
-                                  delall=True, usenatvnode=True)
+        self.momC.create_vnodes(attr, 3,
+                                delall=True, usenatvnode=True)
         hook_name = "prologue_exception"
         hook_body = ("import pbs\n"
                      "e = pbs.event()\n"

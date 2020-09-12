@@ -489,9 +489,9 @@ class TestCheckNodeExclusivity(TestFunctional):
         """
 
         a = {'sharing': 'ignore_excl'}
-        self.server.create_vnodes(self.mom.shortname, a, 1,
-                                  self.mom, createnode=False,
-                                  delall=False, usenatvnode=True)
+        self.mom.create_vnodes(a, 1,
+                               createnode=False,
+                               delall=False, usenatvnode=True)
         self.server.expect(NODE, {'state': 'free',
                                   'sharing': 'ignore_excl'},
                            id=self.mom.shortname)

@@ -51,8 +51,8 @@ class TestRunjobWaitPerf(TestPerformance):
         """
         # Create 100 vnodes with 100 ncpus each, capable of running 10k jobs
         a = {"resources_available.ncpus": 100}
-        self.server.create_vnodes(
-            'vnode', a, 100, self.mom, sharednode=False, expect=False)
+        self.mom.create_vnodes(
+            a, 100, sharednode=False, expect=False)
         self.server.expect(NODE, {'state=free': (GE, 100)})
 
         # Start pbs_mom in mock run mode

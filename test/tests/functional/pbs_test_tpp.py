@@ -354,10 +354,12 @@ class TestTPP(TestFunctional):
         """
         Test for verifying vnode insertion when using TPP
         """
+        vn = self.mom.shortname
         if not self.mom.is_cpuset_mom():
             a = {'resources_available.ncpus': 1}
-            self.server.create_vnodes('vn', a, 2, self.mom)
-            vnode_val = "vnode=vn[0]:ncpus=1+vnode=vn[1]:ncpus=1"
+            self.mom.create_vnodes(a, 2)
+            vnode_val = "vnode=" + vn + \
+                "[0]:ncpus=1+vnode=" + vn + "[1]:ncpus=1"
         else:
             vnode_val = "vnode=%s:ncpus=1" % self.server.status(NODE)[1]['id']
             vnode_val += "+vnode=%s:ncpus=1" % self.server.status(NODE)[
@@ -374,7 +376,7 @@ class TestTPP(TestFunctional):
             vnode_list = [self.server.status(NODE)[1]['id'],
                           self.server.status(NODE)[2]['id']]
         else:
-            vnode_list = ["vn[0]", "vn[1]"]
+            vnode_list = [vn + "[0]", vn + "[1]"]
         a = {'state': (MATCH_RE, "down")}
         for vnode in vnode_list:
             self.server.expect(VNODE, a, id=vnode)

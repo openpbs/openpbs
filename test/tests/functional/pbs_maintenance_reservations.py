@@ -216,13 +216,14 @@ class TestMaintenanceReservations(TestFunctional):
                             {'managers': '%s@*' % TEST_USER})
 
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
+        vn = self.mom.shortname
 
         a = {'resv_enable': False}
         self.server.manager(MGR_CMD_SET, NODE, a,
                             id=self.mom.shortname, runas=TEST_USER)
-        self.server.manager(MGR_CMD_SET, NODE, a, 'vn[0]', runas=TEST_USER)
-        self.server.manager(MGR_CMD_SET, NODE, a, 'vn[1]', runas=TEST_USER)
+        self.server.manager(MGR_CMD_SET, NODE, a, vn + '[0]', runas=TEST_USER)
+        self.server.manager(MGR_CMD_SET, NODE, a, vn + '[1]', runas=TEST_USER)
 
         a = {'reserve_start': now + 3600,
              'reserve_end': now + 7200}
@@ -232,12 +233,12 @@ class TestMaintenanceReservations(TestFunctional):
         rid = self.server.submit(r)
 
         self.assertTrue(rid.startswith('M'))
-
+        resv_vnodes = '(' + vn + '[0]:ncpus=2)+(' + vn + '[1]:ncpus=2)'
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
                     'Resource_List.select':
                     'host=%s:ncpus=4' % self.mom.shortname,
                     'Resource_List.place': 'exclhost',
-                    'resv_nodes': '(vn[0]:ncpus=2)+(vn[1]:ncpus=2)'}
+                    'resv_nodes': resv_vnodes}
         self.server.expect(RESV, exp_attr, id=rid)
 
     def test_maintenance_delete(self):

@@ -49,7 +49,7 @@ class TestSchedAllPart(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vn', a, 2, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 2, usenatvnode=True)
 
     @skipOnCpuSet
     def test_free_nodes(self):
