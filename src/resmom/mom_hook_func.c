@@ -1356,25 +1356,28 @@ run_hook_exit:
 		}
 		(void)win_alarm(phook->alarm, run_hook_alarm);
 		char *env_string = NULL;
-		char **hook_env = NULL;
+		struct var_table hook_env;
+		hook_env.v_envp = NULL;
 		char *pbs_hook_conf = NULL;
 
 		if ((pjob->ji_env.v_envp != NULL) && (phook->user == HOOK_PBSUSER)) {
 			/* Duplicate only when the hook user is pbsuser */ 
-			hook_env = dup_string_arr(pjob->ji_env.v_envp);
-			if (hook_env == NULL) {
+			hook_env.v_envp = dup_string_arr(pjob->ji_env.v_envp);
+			if (hook_env.v_envp == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					__func__, "Unable to set hook environment");
 				goto run_hook_exit;
 			}
+			hook_env.v_ensize = pjob->ji_env.v_ensize;
+			hook_env.v_used = pjob->ji_env.v_used;
 			if (pbs_hook_conf = getenv("PBS_HOOK_CONFIG_FILE"))
-				hook_env = bld_wenv_variables("PBS_HOOK_CONFIG_FILE", pbs_hook_conf, hook_env);
-			env_string = make_envp(hook_env);
+				bld_env_variables(&hook_env, "PBS_HOOK_CONFIG_FILE", pbs_hook_conf);
+			env_string = make_envp(hook_env.v_envp);
 		}
 		run_exit = wsystem(cmdline, pwdp->pw_userlogin, env_string);
 		free(env_string);
 		(void)win_alarm(0, NULL);
-		free_string_array(hook_env);
+		free_string_array(hook_env.v_envp);
 	} else {
 		/* The following blocks until after */
 		(void) win_alarm(phook->alarm, run_hook_alarm);

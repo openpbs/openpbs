@@ -53,13 +53,6 @@ extern "C" {
 #include "batch_request.h"
 #include "pbs_internal.h"
 
-// /* struct var_table = used to hold environment variables for the job */
-
-// struct var_table {
-// 	char **v_envp;
-// 	int    v_ensize;
-// 	int    v_used;
-// };
 
 /* struct sig_tbl = used to hold map of local signal names to values */
 
@@ -352,7 +345,6 @@ extern int recv_rq_cpyfile_cred(struct rq_cpyfile *);
 extern int remdir(char *);
 extern void check_err(const char *func_name, char *buf, int len);
 #else
-extern void  bld_env_variables(struct var_table *, char *, char *);
 extern int   mktmpdir(char *, uid_t, gid_t, struct var_table *);
 extern int   mkjobdir(char *, char *, uid_t, gid_t);
 extern int   impersonate_user(uid_t, gid_t);
@@ -360,6 +352,9 @@ extern void  revert_from_user(void);
 extern int   open_file_as_user(char *path, int oflag, mode_t mode,
 	uid_t exuid, gid_t exgid);
 #endif
+extern int  find_env_slot(struct var_table *, char *);
+extern void  bld_env_variables(struct var_table *, char *, char *);
+extern void  add_envp(char **, struct var_table *);
 extern pid_t fork_me(int sock);
 
 extern ssize_t readpipe(int pfd, void *vptr, size_t nbytes);

@@ -340,7 +340,7 @@ job_alloc(void)
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
 	pj->ji_bg_hook_task = NULL;
-	// pj->ji_env = NULL;
+	pj->ji_env.v_envp = NULL;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -823,6 +823,158 @@ del_chkpt_files(job *pjob)
 		(void)remtree(namebuf);
 	}
 }
+
+
+/**
+ * @brief
+ * 	find_env_slot - find if the environment variable is already in the table,
+ *	If so, replace the existing one with the new one.
+ *
+ * @param[in] ptbl - pointer to var_table which holds environment variable for job
+ * @param[in] pstr - new environment variable
+ *
+ * @return	int
+ * @retval	!(-1)	success
+ * @retval	-1	Failure
+ *
+ */
+
+int
+find_env_slot(struct var_table *ptbl, char *pstr)
+{
+	int	 i;
+	int	 len = 1;	/* one extra for '=' */
+
+	if (pstr == NULL)
+		return (-1);
+	for (i=0; (*(pstr+i) != '=') && (*(pstr+i) != '\0'); ++i)
+		++len;
+
+	for (i=0; i<ptbl->v_used; ++i) {
+		if (strncmp(ptbl->v_envp[i], pstr, len) == 0)
+			return (i);
+	}
+	return (-1);
+}
+
+/**
+ * @brief
+ *	bld_env_variables - Add an entry to the table that defines the environment variables for a job.
+ * @par
+ * 	Note that this function returns void. It gives the caller no indication
+ * 	whether the operation failed, which it could. In the case where the
+ * 	operation does fail, the variable will not be added to the table and
+ * 	will not be present in the job's environment. The caller would have
+ * 	to check the table upon return of this function to confirm the
+ * 	variable was added/updated correctly.
+ *
+ * @param[in] vtable - variable table
+ * @param[in] name - variable name alone or a "name=value" string
+ * @param[in] value - variable value or NULL if name contains "name=value"
+ *
+ * @return - None
+ *
+ */
+void
+bld_env_variables(struct var_table *vtable, char *name, char *value)
+{
+	int     amt;
+	int     i;
+	char	*block;
+
+	if ((vtable == NULL) || (name == NULL))
+		return;
+
+	if (value == NULL) {
+		/* name must contain '=' */
+		if (strchr(name, (int) '=') == NULL)
+			return;
+	} else {
+		/* name may not contain '=' */
+		if (strchr(name, (int) '=') != NULL)
+			return;
+	}
+
+	amt = strlen(name) + 1;			/* plus 1 for terminator */
+	if (value)
+		amt += strlen(value) + 1;	/* plus 1 for "=" */
+
+	block = malloc(amt);
+	if (block == NULL)			/* no room for string */
+		return;
+
+	(void)strcpy(block, name);
+	if (value) {
+		(void)strcat(block, "=");
+		(void)strcat(block, value);
+	}
+
+	if ((i = find_env_slot(vtable, block)) < 0) {
+		/*
+		 ** See if last available slot is used.
+		 ** This needs to be one less than v_ensize
+		 ** to make sure there is a NULL termination.
+		 */
+		if (vtable->v_used+1 == vtable->v_ensize) {
+			int	newsize = vtable->v_ensize * 2;
+			char	**tt = realloc(vtable->v_envp,
+				newsize*sizeof(char *));
+
+			if (tt == NULL)
+				return;		/* no room for pointer */
+			vtable->v_ensize = newsize;
+			vtable->v_envp = tt;
+		}
+
+		*(vtable->v_envp + vtable->v_used++) = block;
+		*(vtable->v_envp + vtable->v_used) = NULL;
+	} else {
+		/* free old value */
+		free(*(vtable->v_envp + i));
+		*(vtable->v_envp + i) = block;
+	}
+}
+
+/**
+ * @brief
+ *	Add to 'array_dest' the entries in 'array1'.
+ *
+ * @param[in]	array_src  - environment array to duplicate
+ * @param[in]	array_dest - environment array in which to duplicate
+ *
+ * @return	char**
+ *	!NULL	the environment array
+ *	NULL	if an error occurred.
+ * @par MT-safe: no
+ */
+void
+add_envp(char **array_src, struct var_table *array_dest)
+{
+	char	*e_var, *e_val, *p;
+	int	i;
+
+	if (array_src == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unexpected input");
+		return;
+	}
+	i = 0;
+	while((e_var = array_src[i]) != NULL) {
+		if ((p = strchr(e_var, '=')) != NULL) {
+			*p = '\0';
+			p++;
+			e_val = p;
+		} else {
+			e_val = NULL; /* can be NULL */
+		}
+		bld_env_variables(array_dest, e_var, e_val);
+		if (e_val != NULL)
+			*(p-1) = '=';	/* restore */
+		i++;
+	}
+}
+
+
 #endif
 
 /**
