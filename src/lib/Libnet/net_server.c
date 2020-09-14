@@ -777,7 +777,7 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*r
  * @retval 1 - success
  */
 int
-set_conn_as_priority_conn(conn_t *conn)
+set_conn_as_priority(conn_t *conn)
 {
 	if (!conn || conn->cn_sock < 0)
 		return 0;
@@ -785,11 +785,11 @@ set_conn_as_priority_conn(conn_t *conn)
 	if (conn->cn_prio_flag == 1)
 		return 1;
 
-	conn->cn_prio_flag = 1;
 	if (tpp_em_add_fd(priority_context, conn->cn_sock, EM_IN | EM_HUP | EM_ERR) < 0) {
 		log_errf(errno, __func__, "could not add socket %d to the priority poll list", conn->cn_sock);
 		return 0;
 	}
+	conn->cn_prio_flag = 1;
 	return 1;
 }
 

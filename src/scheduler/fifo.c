@@ -745,20 +745,37 @@ scheduling_cycle(svr_t *sconn)
 	return 0;
 }
 
+/**
+ * @brief
+ * 	check whether given server send any priority command or not
+ *
+ * @param[in] sconn - pointer to server struct
+ *
+ * @return int
+ * @retval 1 - has priority command
+ * @retval 0 - no priority command
+ */
 static int
-has_prio_cmd(svr_t *sconn)
+has_priority_cmd(svr_t *sconn)
 {
-	sched_cmd_t pcmd;
+	svr_t sconn_copy;
 
 	if (sconn->secondary_fd == -1)
 		return 0;
 
-	if (!get_sched_cmd_noblk(sconn->secondary_fd, &pcmd))
+	/* Make copy of given server struct as we don't want to override original command */
+	sconn_copy.primary_fd = sconn->primary_fd;
+	sconn_copy.secondary_fd = sconn->secondary_fd;
+	sconn_copy.cmd.cmd = -1;
+	sconn_copy.cmd.jid = NULL;
+	CLEAR_LINK(sconn_copy.all_svrs_link);
+
+	if (!get_sched_cmd_noblk(&sconn_copy))
 		return 0;
 
-	if (pcmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
-		if (pcmd.jid)
-			free(pcmd.jid);
+	if (sconn_copy.cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+		if (sconn_copy.cmd.jid)
+			free(sconn_copy.cmd.jid);
 		return 1;
 	}
 	return 0;
@@ -1058,8 +1075,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 		}
 
 		if (!end_cycle) {
-			/* TODO: how to handle disconnet from server here */
-			if (has_prio_cmd(sconn)) {
+			if (has_priority_cmd(sconn)) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING, njob->name, "Leaving scheduling cycle as requested by server.");
 				end_cycle = 1;
 			}

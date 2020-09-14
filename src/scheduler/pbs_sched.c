@@ -730,22 +730,21 @@ reconnect_server(svr_t *sconn)
  * @return  1 - success, read one command
  */
 static int
-read_cmd(int fd, svr_t **sconn)
+read_sched_cmd(int fd, svr_t **sconn)
 {
-	svr_t *cur = NULL, *next;
+	svr_t *cur = NULL;
 	int rc = -1;
 
 	cur = GET_NEXT(servers);
 	while (cur) {
-		next = GET_NEXT(cur->all_svrs_link);
 		if (cur->secondary_fd == fd)
 			break;
-		cur = next;
+		cur = GET_NEXT(cur->all_svrs_link);
 	}
 	if (!cur) /* this shouldn't happen, unless we are completly messed up */
 		return rc;
 
-	if ((rc = get_sched_cmd(cur->secondary_fd, &cur->cmd)) == 1) {
+	if ((rc = get_sched_cmd(cur)) == 1) {
 		if (*sconn == NULL)
 			*sconn = cur;
 	} else {
@@ -770,7 +769,6 @@ wait_for_cmd(svr_t **sconn)
 	int i;
 	em_event_t *events;
 	int err;
-	int timeout = 10;
 	int hascmd = 0;
 	sigset_t emptyset;
 
@@ -780,7 +778,7 @@ again:
 
 	while (!hascmd) {
 		sigemptyset(&emptyset);
-		nfds = tpp_em_pwait(poll_context, &events, timeout, &emptyset);
+		nfds = tpp_em_pwait(poll_context, &events, -1, &emptyset);
 		err = errno;
 
 		if (nfds < 0) {
@@ -797,7 +795,7 @@ again:
 			}
 		} else {
 			for (i = 0; i < nfds; i++) {
-				err = read_cmd(EM_GET_FD(events, i), sconn);
+				err = read_sched_cmd(EM_GET_FD(events, i), sconn);
 				if (err != 1) {
 					/*
 					* looks like connection is closed by server or some error occure
@@ -807,7 +805,7 @@ again:
 					hascmd = 0;
 					goto again;
 				}
-				hascmd++;
+				hascmd = 1;
 			}
 		}
 	}
@@ -826,7 +824,9 @@ again:
 static void
 send_cycle_end(svr_t *sconn)
 {
-	if (diswsi(sconn->secondary_fd, SCHED_CYCLE_END) != DIS_SUCCESS) {
+	static int cycle_end_marker = 0;
+
+	if (diswsi(sconn->secondary_fd, cycle_end_marker) != DIS_SUCCESS) {
 		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 			   "Not able to send end of cycle, errno = %d", errno);
 		goto err;

@@ -327,12 +327,12 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 	conn->cn_origin = CONN_SCHED_SECONDARY;
 	net_add_close_func(conn->cn_sock, scheduler_close);
 	net_add_close_func(pconn->cn_sock, scheduler_close);
-	if (!set_conn_as_priority_conn(pconn)) {
+	if (!set_conn_as_priority(pconn)) {
 		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "Failed to set primary connection as priority connection");
 		rc = PBSE_INTERNAL;
 		goto rerr;
 	}
-	if (!set_conn_as_priority_conn(conn)) {
+	if (!set_conn_as_priority(conn)) {
 		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "Failed to set secondary connection as priority connection");
 		rc = PBSE_INTERNAL;
 		goto rerr;

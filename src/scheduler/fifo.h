@@ -49,8 +49,8 @@ extern "C" {
 
 extern pbs_list_head servers;
 extern void *poll_context;
-int get_sched_cmd(int, sched_cmd_t *);
-int get_sched_cmd_noblk(int, sched_cmd_t *);
+int get_sched_cmd(svr_t *);
+int get_sched_cmd_noblk(svr_t *);
 
 /*
  *      schedinit - initialize conf struct and parse conf files
