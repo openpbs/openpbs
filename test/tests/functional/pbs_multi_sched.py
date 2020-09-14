@@ -2152,7 +2152,7 @@ e.accept()
         """
         self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 40, end=now + 200)
+        self.degraded_resv_reconfirm(start=now + 600, end=now + 800)
 
     def test_advance_running_resv_reconfirm(self):
         """
@@ -2170,7 +2170,7 @@ e.accept()
         """
         self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 40, end=now + 200,
+        self.degraded_resv_reconfirm(start=now + 600, end=now + 800,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_standing_running_resv_reconfirm(self):
