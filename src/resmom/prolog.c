@@ -341,8 +341,8 @@ int   pe_io_type;
 		arg[4] = get_jattr_str(pjob, JOB_ATR_jobname);
 		sprintf(sid, "%ld", get_jattr_long(pjob, JOB_ATR_session_id));
 		arg[5] = sid;
-		arg[6] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
-		arg[7] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resc_used], resc_used, 2048);
+		arg[6] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
+		arg[7] = resc_to_string(pjob, JOB_ATR_resc_used, resc_used, 2048);
 		arg[8] = get_jattr_str(pjob, JOB_ATR_in_queue);
 		if (is_jattr_set(pjob, JOB_ATR_account))
 			arg[9] = get_jattr_str(pjob, JOB_ATR_account);
@@ -354,7 +354,7 @@ int   pe_io_type;
 
 	} else {
 #ifdef NAS /* localmod 095 */
-		arg[4] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
+		arg[4] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
 		arg[5] = NULL;
 #else
 		arg[4] = NULL;
@@ -621,7 +621,7 @@ int   pe_io_type;
 
 		} else {
 #ifdef NAS /* localmod 095 */
-			arg[4] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
+			arg[4] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
 			arg[5] = NULL;
 #else
 			arg[4] = NULL;
