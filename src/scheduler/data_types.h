@@ -184,8 +184,8 @@ typedef struct sched_cmd {
 
 typedef struct svr {
 	char *svrhost;
-	int pfd;		     /* primary connection to server - used for IFL calls */
-	int sfd;		     /* secondary connection to server - used to receive sched cmds from server */
+	int primary_fd;		     /* primary connection to server - used for IFL calls */
+	int secondary_fd;	     /* secondary connection to server - used to receive sched cmds from server */
 	sched_cmd_t cmd;	     /* command received from server */
 	pbs_list_link all_svrs_link; /* link to all servers */
 } svr_t;

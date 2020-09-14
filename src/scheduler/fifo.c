@@ -504,7 +504,7 @@ schedule(svr_t *sconn)
 			reset_global_resource_ptrs();
 
 			/* Get config from the qmgr sched object */
-			if (!set_validate_sched_attrs(sconn->pfd))
+			if (!set_validate_sched_attrs(sconn->primary_fd))
 				return 0;
 
 		case SCH_SCHEDULE_NEW:
@@ -529,7 +529,7 @@ schedule(svr_t *sconn)
 				return 0;
 
 			/* Get config from the qmgr sched object */
-			if (!set_validate_sched_attrs(sconn->pfd))
+			if (!set_validate_sched_attrs(sconn->primary_fd))
 				return 0;
 			break;
 		case SCH_QUIT:
@@ -627,7 +627,7 @@ scheduling_cycle(svr_t *sconn)
 	do_hard_cycle_interrupt = 0;
 #endif /* localmod 030 */
 	/* create the server / queue / job / node structures */
-	if ((sinfo = query_server(&cstat, sconn->pfd)) == NULL) {
+	if ((sinfo = query_server(&cstat, sconn->primary_fd)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			  "", "Problem with creating server data structure");
 		end_cycle_tasks(sinfo);
@@ -639,7 +639,7 @@ scheduling_cycle(svr_t *sconn)
 	/* don't confirm reservations if we're handling a qrun request */
 	if (sconn->cmd.jid == NULL) {
 		int rc;
-		rc = check_new_reservations(policy, sconn->pfd, sinfo->resvs, sinfo);
+		rc = check_new_reservations(policy, sconn->primary_fd, sinfo->resvs, sinfo);
 		if (rc) {
 			/* Check if there are new reservations.  If there are, we can't go any
 			 * further in the scheduling cycle since we don't have the up to date
@@ -671,7 +671,7 @@ scheduling_cycle(svr_t *sconn)
 	}
 
 
-	if (init_scheduling_cycle(policy, sconn->pfd, sinfo) == 0) {
+	if (init_scheduling_cycle(policy, sconn->primary_fd, sinfo) == 0) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, sinfo->name, "init_scheduling_cycle failed.");
 		end_cycle_tasks(sinfo);
 		return 0;
@@ -699,7 +699,7 @@ scheduling_cycle(svr_t *sconn)
 		for (i = 0; i < MAX_DEF_REPLY && def_rc != 0; i++) {
 			/* smooth sailing, the job ran */
 			if (rc == SUCCESS)
-				def_rc = pbs_defschreply(sconn->pfd, SCH_SCHEDULE_AJOB, sconn->cmd.jid, 0, NULL, NULL);
+				def_rc = pbs_defschreply(sconn->primary_fd, SCH_SCHEDULE_AJOB, sconn->cmd.jid, 0, NULL, NULL);
 
 			/* we thought the job should run, but the server had other ideas */
 			else {
@@ -716,11 +716,11 @@ scheduling_cycle(svr_t *sconn)
 					}
 				} else
 					error = PBSE_RESCUNAV;
-				def_rc = pbs_defschreply(sconn->pfd, SCH_SCHEDULE_AJOB, sconn->cmd.jid, error, log_msg, NULL);
+				def_rc = pbs_defschreply(sconn->primary_fd, SCH_SCHEDULE_AJOB, sconn->cmd.jid, error, log_msg, NULL);
 			}
 			if (def_rc != 0) {
 				char *pbs_errmsg;
-				pbs_errmsg = pbs_geterrmsg(sconn->pfd);
+				pbs_errmsg = pbs_geterrmsg(sconn->primary_fd);
 
 				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, sconn->cmd.jid, "Error in deferred reply: %s", pbs_errmsg == NULL ? "" : pbs_errmsg);
 			}
@@ -750,10 +750,10 @@ has_prio_cmd(svr_t *sconn)
 {
 	sched_cmd_t pcmd;
 
-	if (sconn->sfd == -1)
+	if (sconn->secondary_fd == -1)
 		return 0;
 
-	if (!get_sched_cmd_noblk(sconn->sfd, &pcmd))
+	if (!get_sched_cmd_noblk(sconn->secondary_fd, &pcmd))
 		return 0;
 
 	if (pcmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
@@ -876,7 +876,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 				tj = njob;
 
 			if (rc != SCHD_ERROR) {
-				if(run_update_resresv(policy, sconn->pfd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
+				if(run_update_resresv(policy, sconn->primary_fd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
 					rc = SUCCESS;
 					if (sinfo->has_soft_limit || qinfo->has_soft_limit)
 						sort_again = MUST_RESORT_JOBS;
@@ -893,7 +893,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 				free_nspecs(ns_arr);
 		}
 		else if (policy->preempting && in_runnable_state(njob) && (!njob -> can_never_run)) {
-			if (find_and_preempt_jobs(policy, sconn->pfd, njob, sinfo, err) > 0) {
+			if (find_and_preempt_jobs(policy, sconn->primary_fd, njob, sinfo, err) > 0) {
 				rc = SUCCESS;
 				sort_again = MUST_RESORT_JOBS;
 			}
@@ -925,7 +925,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 #else
 			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs) != 0) {
 #endif
-				cal_rc = add_job_to_calendar(sconn->pfd, policy, sinfo, njob, should_use_buckets);
+				cal_rc = add_job_to_calendar(sconn->primary_fd, policy, sinfo, njob, should_use_buckets);
 
 				if (cal_rc > 0) { /* Success! */
 #ifdef NAS /* localmod 034 */
@@ -990,7 +990,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 					 */
 					update_total_counts(sinfo, qinfo, njob, ALL);
 				}
-				update_accruetype(sconn->pfd, sinfo, ACCRUE_CHECK_ERR, update_accrue_err->error_code, njob);
+				update_accruetype(sconn->primary_fd, sinfo, ACCRUE_CHECK_ERR, update_accrue_err->error_code, njob);
 			}
 
 			njob->can_not_run = 1;
@@ -1000,7 +1000,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 			translate_fail_code(err, comment, log_msg);
 			if (comment[0] != '\0' &&
 				(!njob->job->is_array || !njob->job->is_begin))
-				update_job_comment(sconn->pfd, njob, comment);
+				update_job_comment(sconn->primary_fd, njob, comment);
 			if (log_msg[0] != '\0')
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, njob->name, log_msg);
@@ -1025,21 +1025,21 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 			 */
 			if (policy->strict_fifo) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
-				update_jobs_cant_run(sconn->pfd, qinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sconn->primary_fd, qinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 			else if (!policy->backfill && policy->strict_ordering) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
-				update_jobs_cant_run(sconn->pfd, sinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sconn->primary_fd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 			else if (!policy->backfill && policy->help_starving_jobs &&
 				njob->job->is_starving) {
 				set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
 				set_schd_error_arg(err, SPECMSG, "Job would conflict with starving job");
-				update_jobs_cant_run(sconn->pfd, sinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sconn->primary_fd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 			else if (policy->backfill && policy->strict_ordering && qinfo->backfill_depth == 0) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
-				update_jobs_cant_run(sconn->pfd, qinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sconn->primary_fd, qinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 		}
 
@@ -1075,7 +1075,7 @@ main_sched_loop(status *policy, svr_t *sconn, server_info *sinfo, schd_error **r
 #endif /* localmod 030 */
 
 		/* send any attribute updates to server that we've collected */
-		send_job_updates(sconn->pfd, njob);
+		send_job_updates(sconn->primary_fd, njob);
 	}
 
 	*rerr = err;

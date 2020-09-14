@@ -502,6 +502,14 @@ are_we_primary()
 	return -1;		/* cannot be neither */
 }
 
+/**
+ * @brief
+ * 	close connections to given server and free its struct
+ *
+ * @param[in] - sconn - pointer to server struct to close
+ *
+ * @return void
+ */
 static void
 close_server(svr_t *sconn)
 {
@@ -509,9 +517,9 @@ close_server(svr_t *sconn)
 		char *svrhost = sconn->svrhost;
 
 		delete_link(&sconn->all_svrs_link);
-		tpp_em_del_fd(poll_context, sconn->sfd);
-		pbs_disconnect(sconn->pfd);
-		pbs_disconnect(sconn->sfd);
+		tpp_em_del_fd(poll_context, sconn->secondary_fd);
+		pbs_disconnect(sconn->primary_fd);
+		pbs_disconnect(sconn->secondary_fd);
 		if (sconn->cmd.jid)
 			free(sconn->cmd.jid);
 		free(sconn);
@@ -521,6 +529,12 @@ close_server(svr_t *sconn)
 	}
 }
 
+/**
+ * @brief
+ * 	close connections to all servers
+ *
+ * @return void
+ */
 static void
 close_servers(void)
 {
@@ -536,6 +550,19 @@ close_servers(void)
 	CLEAR_HEAD(servers);
 }
 
+/**
+ * @brief
+ * 	connect to given host and send register sched request on it
+ * 	and wait for server reply
+ *
+ * @param[in] - host       - address of server in host[:port] format
+ * @param[in] - is_primary - is primary connection or secondary connection
+ *                           0 - secondary else primary
+ *
+ * @return int
+ * @retval -1  - failure
+ * @return !-1 - success, and opened connection fd
+ */
 static int
 connect_server_helper(char *host, int is_primary)
 {
@@ -589,45 +616,70 @@ rerr:
 	return -1;
 }
 
+/**
+ * @brief
+ * 	connect to given server, create and add server struct in servers list
+ * 	also add secondary connection to poll list
+ *
+ * @param[in] svrhost - address of server in host[:port] format
+ *
+ * @return void
+ */
 static void
 connect_server(char *svrhost)
 {
-	int pfd = -1;
-	int sfd = -1;
+	int primary_fd = -1;
+	int secondary_fd = -1;
 	svr_t *svr;
 
-	while (pfd < 0 || sfd < 0) {
-		if (pfd < 0) {
-			pfd = connect_server_helper(svrhost, 1);
-			if (pfd < 0) {
+	if (!svrhost)
+		svrhost = pbs_default();
+
+	while (primary_fd < 0 || primary_fd < 0) {
+		if (primary_fd < 0) {
+			primary_fd = connect_server_helper(svrhost, 1);
+			if (primary_fd < 0) {
+				/* wait for 2s for not to burn too much CPU, and then retry connection */
 				sleep(2);
 				continue;
 			}
 		}
-		sfd = connect_server_helper(svrhost, 0);
-		if (sfd < 0) {
+		secondary_fd = connect_server_helper(svrhost, 0);
+		if (secondary_fd < 0) {
+			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);
 			continue;
 		}
 	}
-	tpp_em_add_fd(poll_context, sfd, EM_IN | EM_HUP | EM_ERR);
+	if (tpp_em_add_fd(poll_context, secondary_fd, EM_IN | EM_HUP | EM_ERR) < 0) {
+		log_errf(-1, __func__, "Couldn't add secondary connection to poll list for server %s", svrhost);
+		pbs_disconnect(primary_fd);
+		pbs_disconnect(secondary_fd);
+		die(-1);
+	}
 
 	svr = malloc(sizeof(svr_t));
 	if (!svr) {
 		log_errf(-1, __func__, "Out of memory while allocating svr struct");
-		exit(1);
+		die(-1);
 	}
 
 	svr->svrhost = svrhost;
-	svr->pfd = pfd;
-	svr->sfd = sfd;
+	svr->primary_fd = primary_fd;
+	svr->secondary_fd = secondary_fd;
 	CLEAR_LINK(svr->all_svrs_link);
 	append_link(&servers, &svr->all_svrs_link, svr);
-	set_validate_sched_attrs(svr->pfd);
-	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO,
-		   msg_daemonname, "Connected to server %s", svrhost ? svrhost : pbs_default());
+	set_validate_sched_attrs(svr->primary_fd);
+	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to server %s", svrhost);
 }
 
+/**
+ * @brief
+ * 	Connect to all configured servers and populate servers list with
+ * 	connections to servers
+ *
+ * @return void
+ */
 static void
 connect_servers(void)
 {
@@ -637,7 +689,7 @@ connect_servers(void)
 		poll_context = tpp_em_init(max_connection);
 		if (poll_context == NULL) {
 			log_errf(-1, __func__, "Failed to init cmd connections context");
-			exit(1);
+			die(-1);
 		}
 
 		CLEAR_HEAD(servers);
@@ -646,6 +698,14 @@ connect_servers(void)
 	connect_server(NULL);
 }
 
+/**
+ * @brief
+ * 	reconnect to given server
+ *
+ * @param[in] sconn - pointer server struct to reconnect
+ *
+ * @return void
+ */
 static void
 reconnect_server(svr_t *sconn)
 {
@@ -655,8 +715,22 @@ reconnect_server(svr_t *sconn)
 	connect_server(svrhost);
 }
 
+/**
+ * @brief
+ * 	read incoming command from given secondary connection
+ * 	Also find server struct based on given connection fd
+ * 	and return it in sconn
+ *
+ * @param[in]  fd   - secondary connection to server
+ * @param[out] sconn - pointer to server struct based on sfd
+ *
+ * @return int
+ * @retval -1 - failure
+ * @return  0 - no cmd, server might have closed connection
+ * @return  1 - success, read one command
+ */
 static int
-read_cmd(int sfd, svr_t **sconn)
+read_cmd(int fd, svr_t **sconn)
 {
 	svr_t *cur = NULL, *next;
 	int rc = -1;
@@ -664,14 +738,14 @@ read_cmd(int sfd, svr_t **sconn)
 	cur = GET_NEXT(servers);
 	while (cur) {
 		next = GET_NEXT(cur->all_svrs_link);
-		if (cur->sfd == sfd)
+		if (cur->secondary_fd == fd)
 			break;
 		cur = next;
 	}
 	if (!cur) /* this shouldn't happen, unless we are completly messed up */
 		return rc;
 
-	if ((rc = get_sched_cmd(cur->sfd, &cur->cmd)) == 1) {
+	if ((rc = get_sched_cmd(cur->secondary_fd, &cur->cmd)) == 1) {
 		if (*sconn == NULL)
 			*sconn = cur;
 	} else {
@@ -681,6 +755,14 @@ read_cmd(int sfd, svr_t **sconn)
 	return rc;
 }
 
+/**
+ * @brief
+ * 	wait for commands from servers
+ *
+ * @param[out] sconn - pointer to server who send us command
+ *
+ * @return void
+ */
 static void
 wait_for_cmd(svr_t **sconn)
 {
@@ -739,17 +821,18 @@ again:
  *
  * @param[in] sconn - connection info to server
  *
+ * @return void
  */
 static void
 send_cycle_end(svr_t *sconn)
 {
-	if (diswsi(sconn->sfd, SCHED_CYCLE_END) != DIS_SUCCESS) {
+	if (diswsi(sconn->secondary_fd, SCHED_CYCLE_END) != DIS_SUCCESS) {
 		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 			   "Not able to send end of cycle, errno = %d", errno);
 		goto err;
 	}
 
-	if (dis_flush(sconn->sfd) != 0)
+	if (dis_flush(sconn->secondary_fd) != 0)
 		goto err;
 
 	return;
