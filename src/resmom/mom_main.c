@@ -8654,7 +8654,7 @@ main(int argc, char *argv[])
 	}
 
 #ifndef	DEBUG
-#ifndef  WIN32
+#ifndef  PBS_DONOT_FORK
 	if (stalone != 1) {
 	/* go into the background and become own session/process group */
 		if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) {	/* unlock so child can relock */

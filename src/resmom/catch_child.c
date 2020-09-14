@@ -404,7 +404,7 @@ void
 scan_for_exiting(void)
 {
 
-#ifndef WIN32
+#ifndef PBS_DONOT_FORK
 	pid_t			cpid;
 #endif
 	int			i;
@@ -758,20 +758,19 @@ end_loop:
 				LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		}
 
-#ifndef WIN32
 		/*
 		 ** Do dependent end of job processing if it needs to be
 		 ** done.
 		 */
 		if (job_end_final != NULL)
 			job_end_final(pjob);
-#endif
+
 		if (mock_run || !has_epilog) {
 			send_obit(pjob, 0);
 			continue;
 		}
 
-#ifndef WIN32
+#ifndef PBS_DONOT_FORK
 		/*
 		 * Parent:
 		 *  +  fork child process to run epilogue,
@@ -822,7 +821,7 @@ end_loop:
 		if (extval != 2)
 			extval = 0;
 
-#ifndef WIN32
+#ifndef PBS_DONOT_FORK
 		/* In *nix we are child so exit and parent will do send_obit() */
 		exit(extval);
 #else

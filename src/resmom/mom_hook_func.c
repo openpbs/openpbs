@@ -867,7 +867,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	if ((phook->user == HOOK_PBSUSER) && (event_type & USER_MOM_EVENTS))
 		runas_jobuser = 1;
 
-#ifndef WIN32
+#ifndef PBS_DONOT_FORK
 	child = fork();
 	if (child > 0) { /* parent */
 
@@ -915,7 +915,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		(void) setsid();
 
 		myseq = getpid();
-#else /* Windows */
+#else
 	myseq = rand();
 	child = myseq;
 	if (php)
@@ -1307,11 +1307,11 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			   "execve %s runas_jobuser=%d in child pid=%d", cmdline, runas_jobuser, myseq);
 
 		if (hook_config_path[0] == '\0') {
-#ifdef WIN32
-			/* since under Windows, this is still main mom (not forked), need to unset the hook config environment variable. */
+#ifdef PBS_DONOT_FORK
+			/* since this is still main mom (not forked), need to unset the hook config environment variable. */
 			if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
 				log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
-#endif /* WIN32 */
+#endif /* PBS_DONOT_FORK */
 		} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
 			return (-1);
