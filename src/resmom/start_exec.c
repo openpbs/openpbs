@@ -3506,13 +3506,13 @@ finish_exec(job *pjob)
 	bld_env_variables(&(pjob->ji_env), variables_else[1], pwdp->pw_name);
 
 	/* PBS_JOBNAME */
-	bld_env_variables(&vtable, variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
+	bld_env_variables(&(pjob->ji_env), variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
 
 	/* PBS_JOBID */
 	bld_env_variables(&(pjob->ji_env), variables_else[3], pjob->ji_qs.ji_jobid);
 
 	/* PBS_QUEUE */
-	bld_env_variables(&vtable, variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
+	bld_env_variables(&(pjob->ji_env), variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
 
 	/* SHELL */
 	bld_env_variables(&(pjob->ji_env), variables_else[5], shell);
@@ -3521,7 +3521,7 @@ finish_exec(job *pjob)
 	bld_env_variables(&(pjob->ji_env), variables_else[6], pwdp->pw_name);
 
 	/* PBS_JOBCOOKIE */
-	bld_env_variables(&vtable, variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
+	bld_env_variables(&(pjob->ji_env), variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
 
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
@@ -3548,7 +3548,7 @@ finish_exec(job *pjob)
 	 */
 	schedselect = get_jattr_str(pjob,  JOB_ATR_SchedSelect);
 	if (schedselect && strstr(schedselect, OMPTHREADS) != NULL)
-		bld_env_variables(&vtable, variables_else[12], buf);
+		bld_env_variables(&(pjob->ji_env), variables_else[12], buf);
 	else
 		bld_env_variables(&(pjob->ji_env), variables_else[12], "1");
 #else
@@ -3559,7 +3559,7 @@ finish_exec(job *pjob)
 	/* PBS_NODEFILE */
 
 	if (generate_pbs_nodefile(pjob, buf, sizeof(buf)-1, log_buffer, LOG_BUF_SIZE - 1) == 0)
-		bld_env_variables(&vtable, variables_else[11], buf);
+		bld_env_variables(&(pjob->ji_env), variables_else[11], buf);
 	else {
 		log_err(errno, __func__, log_buffer);
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -3567,7 +3567,7 @@ finish_exec(job *pjob)
 
 	/* PBS_ACCOUNT */
 	if (is_jattr_set(pjob, JOB_ATR_account))
-		bld_env_variables(&vtable, variables_else[13], get_jattr_str(pjob, JOB_ATR_account));
+		bld_env_variables(&(pjob->ji_env), variables_else[13], get_jattr_str(pjob, JOB_ATR_account));
 
 	/* If an Sub job of an Array job, put in the index */
 
@@ -3595,7 +3595,7 @@ finish_exec(job *pjob)
 	j = mktmpdir(pjob->ji_qs.ji_jobid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid,
-		&vtable);
+		&(pjob->ji_env));
 	if (j != 0)
 		starter_return(upfds, downfds, j, &sjr);
 
@@ -4789,18 +4789,18 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		pjob->ji_grpcache->gc_homedir);
 
 	/* PBS_JOBNAME */
-	bld_env_variables(&vtable, variables_else[2],
+	bld_env_variables(&(pjob->ji_env), variables_else[2],
 		get_jattr_str(pjob, JOB_ATR_jobname));
 
 	/* PBS_JOBID */
 	bld_env_variables(&(pjob->ji_env), variables_else[3], pjob->ji_qs.ji_jobid);
 
 	/* PBS_QUEUE */
-	bld_env_variables(&vtable, variables_else[4],
+	bld_env_variables(&(pjob->ji_env), variables_else[4],
 		get_jattr_str(pjob, JOB_ATR_in_queue));
 
 	/* PBS_JOBCOOKIE */
-	bld_env_variables(&vtable, variables_else[7],
+	bld_env_variables(&(pjob->ji_env), variables_else[7],
 		get_jattr_str(pjob, JOB_ATR_Cookie));
 
 	/* PBS_NODENUM */
@@ -4830,7 +4830,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	/* PBS_ACCOUNT */
 	if (is_jattr_set(pjob, JOB_ATR_account))
-		bld_env_variables(&vtable, variables_else[13],
+		bld_env_variables(&(pjob->ji_env), variables_else[13],
 			get_jattr_str(pjob, JOB_ATR_account));
 
 	if (is_jattr_set(pjob, JOB_ATR_umask)) {
@@ -4865,7 +4865,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	/* set PBS_JOBDIR */
 	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
 		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
-		bld_env_variables(&vtable, "PBS_JOBDIR", pbs_jobdir);
+		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pbs_jobdir);
 	} else {
 		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 	}
