@@ -269,17 +269,18 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 	pbs_sched *sched;
 	conn_t *pconn;
 	int rc;
+	int preq_conn;
 	char *user = pbs_conf.pbs_daemon_service_user ? pbs_conf.pbs_daemon_service_user : pbs_current_user;
 
 	if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(conn->cn_username, user) != 0) {
 		rc = PBSE_PERM;
 		goto rerr;
 	}
-	if (preq->rq_ind.rq_rsched.rq_conn_type == NULL || preq->rq_ind.rq_rsched.rq_name == NULL) {
+	if (preq->rq_ind.rq_register_sched.rq_name == NULL) {
 		rc = PBSE_IVALREQ;
 		goto rerr;
 	}
-	sched = find_sched(preq->rq_ind.rq_rsched.rq_name);
+	sched = find_sched(preq->rq_ind.rq_register_sched.rq_name);
 	if (sched == NULL) {
 		rc = PBSE_UNKSCHED;
 		goto rerr;
@@ -288,19 +289,15 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 		rc = PBSE_BADHOST;
 		goto rerr;
 	}
-	if (sched->sc_primary_conn != -1 || sched->sc_secondary_conn != -1) {
+	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
 	}
-	if (strcmp(preq->rq_ind.rq_rsched.rq_conn_type, "primary") == 0) {
+	if (sched->sc_tmp_primary_conn == -1 && sched->sc_primary_conn == -1) {
 		sched->sc_tmp_primary_conn = conn->cn_sock;
 		reply_ack(preq);
 		return;
-	} else if (strcmp(preq->rq_ind.rq_rsched.rq_conn_type, "secondary") == 0) {
-		if (sched->sc_tmp_primary_conn == -1) {
-			rc = PBSE_IVALREQ;
-			goto rerr;
-		}
+	} else if (sched->sc_tmp_primary_conn != -1) {
 		pconn = get_conn(sched->sc_tmp_primary_conn);
 		if (!pconn) {
 			rc = PBSE_INTERNAL;
@@ -349,8 +346,9 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 	return;
 
 rerr:
+	preq_conn = preq->rq_conn;
 	req_reject(rc, 0, preq);
-	close_client(preq->rq_conn);
+	close_client(preq_conn);
 }
 #endif
 
@@ -1516,10 +1514,7 @@ free_br(struct batch_request *preq)
 
 #ifndef PBS_MOM		/* Server Only */
 		case PBS_BATCH_RegisterSched:
-			if (preq->rq_ind.rq_rsched.rq_name)
-				free(preq->rq_ind.rq_rsched.rq_name);
-			if (preq->rq_ind.rq_rsched.rq_conn_type)
-				free(preq->rq_ind.rq_rsched.rq_conn_type);
+			free(preq->rq_ind.rq_register_sched.rq_name);
 			break;
 		case PBS_BATCH_SubmitResv:
 			free_attrlist(&preq->rq_ind.rq_queuejob.rq_attr);

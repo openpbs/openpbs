@@ -746,8 +746,7 @@ scheduling_cycle(svr_t *sconn)
 }
 
 /**
- * @brief
- * 	check whether given server send any priority command or not
+ * @brief check whether given server send any priority command or not
  *
  * @param[in] sconn - pointer to server struct
  *

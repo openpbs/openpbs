@@ -503,8 +503,7 @@ are_we_primary()
 }
 
 /**
- * @brief
- * 	close connections to given server and free its struct
+ * @brief close connections to given server and free its struct
  *
  * @param[in] - sconn - pointer to server struct to close
  *
@@ -530,8 +529,7 @@ close_server(svr_t *sconn)
 }
 
 /**
- * @brief
- * 	close connections to all servers
+ * @brief close connections to all servers
  *
  * @return void
  */
@@ -551,9 +549,8 @@ close_servers(void)
 }
 
 /**
- * @brief
- * 	connect to given host and send register sched request on it
- * 	and wait for server reply
+ * @brief connect to given host and send register sched request on it
+ *        and wait for server reply
  *
  * @param[in] - host       - address of server in host[:port] format
  * @param[in] - is_primary - is primary connection or secondary connection
@@ -569,23 +566,14 @@ connect_server_helper(char *host, int is_primary)
 	int rc;
 	int fd = -1;
 	struct batch_reply *reply = NULL;
-	char *conn_type = is_primary ? "primary" : "secondary";
 
-	while (fd < 0) {
-		fd = pbs_connect(host);
-		if (fd < 0) {
-			sleep(2);
-			continue;
-		}
-	}
-
+	fd = pbs_connect(host);
+	if (fd < 0)
+		goto rerr;
 	rc = encode_DIS_ReqHdr(fd, PBS_BATCH_RegisterSched, pbs_current_user);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
 	rc = diswst(fd, sc_name);
-	if (rc != DIS_SUCCESS)
-		goto rerr;
-	rc = diswst(fd, conn_type);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
 	rc = encode_DIS_ReqExtend(fd, NULL);
@@ -601,8 +589,9 @@ connect_server_helper(char *host, int is_primary)
 		char *errmsg = get_conn_errtxt(fd);
 		if (errmsg) {
 			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_NOTICE,
-				   msg_daemonname,
-				   "Server rejected register request for %s connection with error: %s", conn_type, errmsg);
+				   msg_daemonname, "Server rejected register request for %s connection with error: %s",
+				   is_primary ? "primary" : "secondary", errmsg);
+			die(-1);
 		}
 		goto rerr;
 	}
@@ -617,9 +606,8 @@ rerr:
 }
 
 /**
- * @brief
- * 	connect to given server, create and add server struct in servers list
- * 	also add secondary connection to poll list
+ * @brief connect to given server, create and add server struct in servers list
+ *        also add secondary connection to poll list
  *
  * @param[in] svrhost - address of server in host[:port] format
  *
@@ -674,9 +662,8 @@ connect_server(char *svrhost)
 }
 
 /**
- * @brief
- * 	Connect to all configured servers and populate servers list with
- * 	connections to servers
+ * @brief Connect to all configured servers and populate servers list with
+ *        connections to servers
  *
  * @return void
  */
@@ -699,8 +686,7 @@ connect_servers(void)
 }
 
 /**
- * @brief
- * 	reconnect to given server
+ * @brief reconnect to given server
  *
  * @param[in] sconn - pointer server struct to reconnect
  *
@@ -716,10 +702,9 @@ reconnect_server(svr_t *sconn)
 }
 
 /**
- * @brief
- * 	read incoming command from given secondary connection
- * 	Also find server struct based on given connection fd
- * 	and return it in sconn
+ * @brief read incoming command from given secondary connection
+ *        Also find server struct based on given connection fd
+ *        and return it in sconn
  *
  * @param[in]  fd   - secondary connection to server
  * @param[out] sconn - pointer to server struct based on sfd
@@ -755,8 +740,7 @@ read_sched_cmd(int fd, svr_t **sconn)
 }
 
 /**
- * @brief
- * 	wait for commands from servers
+ * @brief wait for commands from servers
  *
  * @param[out] sconn - pointer to server who send us command
  *
@@ -814,8 +798,7 @@ again:
 
 /**
  *
- * @brief
- *	sends end of cycle indication to the Server
+ * @brief sends end of cycle indication to the Server
  *
  * @param[in] sconn - connection info to server
  *
@@ -1211,11 +1194,10 @@ main(int argc, char *argv[])
 		}
 #endif
 
-		if (schedule(sconn)) /* magic happens here */ {
+		if (schedule(sconn)) /* magic happens here */
 			go = 0;
-		} else {
+		else
 			send_cycle_end(sconn);
-		}
 
 		if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
 			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");

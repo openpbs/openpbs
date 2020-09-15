@@ -767,8 +767,7 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, int (*r
 
 
 /**
- * @brief
- *	set given conn as priority connection and add it to priority poll list
+ * @brief set given conn as priority connection and add it to priority poll list
  *
  * @param[in]	conn - pointer to connection structure
  *
