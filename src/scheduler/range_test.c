@@ -64,7 +64,7 @@ char *msg_daemonname = "range_test";
 void print_range_list(range *r);
 range *get_range();
 int get_num();
-int handle_command(range *r, char *cmd, char *arg);
+int handle_command(range **r, char *cmd, char *arg);
 
 
 /*
@@ -104,9 +104,9 @@ main(int argc, char *argv[])
 
 		if (r != NULL) {
 			if (argc == 3)
-				handle_command(r, argv[2], NULL);
+				handle_command(&r, argv[2], NULL);
 			else
-				handle_command(r, argv[2], argv[3]);
+				handle_command(&r, argv[2], argv[3]);
 
 			print_range_list(r);
 
@@ -135,9 +135,9 @@ main(int argc, char *argv[])
 				return 0;
 
 			if (sscanf(buf, "%s %s", cmd, arg) == 2)
-				ret = handle_command(r, cmd, arg);
+				ret = handle_command(&r, cmd, arg);
 			else
-				ret = handle_command(r, cmd, NULL);
+				ret = handle_command(&r, cmd, NULL);
 
 			if (ret == 0) {
 				free_range_list(r);
@@ -245,7 +245,7 @@ print_range_list(range *r)
  *
  */
 int
-handle_command(range *r, char *cmd, char *arg)
+handle_command(range **r, char *cmd, char *arg)
 {
 	int num_arg = 0;
 	int num;
@@ -266,19 +266,19 @@ handle_command(range *r, char *cmd, char *arg)
 	len = strlen(cmd);
 
 	if (strncmp("print", cmd, len) == 0)
-		print_range_list(r);
+		print_range_list(*r);
 	else if (strncmp("znew", cmd, len) == 0) {
 		ret = 0;
 	}
 	else if (strncmp("dup", cmd, len) == 0) {
-		r2 = dup_range_list(r);
+		r2 = dup_range_list(*r);
 		print_range_list(r2);
 		free_range_list(r2);
 	}
 	else if (strncmp("next", cmd, len) == 0) {
 		if (arg == NULL)
 			num_arg = -1;
-		num = range_next_value(r, num_arg);
+		num = range_next_value(*r, num_arg);
 		printf("next: %d\n", num);
 	}
 	else if (strncmp("add", cmd, len) == 0) {
@@ -286,11 +286,11 @@ handle_command(range *r, char *cmd, char *arg)
 			printf("Could not add value\n");
 	}
 	else if (strncmp("remove", cmd, len) == 0) {
-		if (range_remove_value(&r, num_arg) == 0)
+		if (range_remove_value(r, num_arg) == 0)
 			printf("Could not remove value\n");
 	}
 	else if (strncmp("contains", cmd, len) == 0) {
-		if (range_contains(r, num_arg))
+		if (range_contains(*r, num_arg))
 			printf("Range contains %d\n", num_arg);
 		else
 			printf("Range does not contain %d\n", num_arg);
@@ -300,10 +300,10 @@ handle_command(range *r, char *cmd, char *arg)
 	else if (strncmp("intersection", cmd, len) == 0) {
 		r2 = get_range();
 		printf("Intersection Between r1:\n");
-		print_range_list(r);
+		print_range_list(*r);
 		printf("and r2:\n");
 		print_range_list(r2);
-		r3 = range_intersection(r2, r);
+		r3 = range_intersection(r2, *r);
 		printf("Intersection:\n");
 		print_range_list(r3);
 

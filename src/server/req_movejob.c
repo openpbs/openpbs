@@ -138,7 +138,7 @@ req_movejob(struct batch_request *req)
 			!check_job_state(jobp, JOB_STATE_LTR_HELD) &&
 			!check_job_state(jobp, JOB_STATE_LTR_WAITING)) {
 #ifndef NDEBUG
-		(void)sprintf(log_buffer, "(%s) %s, state=%d",
+		(void)sprintf(log_buffer, "(%s) %s, state=%c",
 			__func__, msg_badstate, get_job_state(jobp));
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			jobp->ji_qs.ji_jobid, log_buffer);
@@ -151,7 +151,7 @@ req_movejob(struct batch_request *req)
 		/* cannot move Subjob and can only move array job if */
 		/* no subjobs are running			     */
 		if ((jt != IS_ARRAY_ArrayJob) ||
-			(jobp->ji_ajtrk->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
+			(jobp->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
 			req_reject(PBSE_IVALREQ, 0, req);
 			return;
 		}
@@ -227,7 +227,7 @@ req_orderjob(struct batch_request *req)
 		check_job_state(pjob = pjob1, JOB_STATE_LTR_BEGUN)  ||
 		check_job_state(pjob = pjob2, JOB_STATE_LTR_BEGUN)) {
 #ifndef NDEBUG
-		(void)sprintf(log_buffer, "(%s) %s, state=%d",
+		(void)sprintf(log_buffer, "(%s) %s, state=%c",
 			__func__, msg_badstate, get_job_state(pjob));
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			pjob->ji_qs.ji_jobid, log_buffer);

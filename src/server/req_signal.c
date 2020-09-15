@@ -106,19 +106,18 @@ req_signaljob(struct batch_request *preq)
 	int i;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
-	int offset;
 	char *pc;
 	job *pjob;
 	job *parent;
 	char *range;
 	int suspend = 0;
 	int resume = 0;
-	char *vrange;
 	int start;
 	int end;
 	int step;
 	int count;
 	int err = PBSE_NONE;
+	char sjst;
 
 	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_signal.rq_jid);
 
@@ -154,32 +153,17 @@ req_signaljob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
-		char sjst;
-
 		/* single subjob, if running can signal */
-
-		offset = subjob_index_to_offset(parent, get_index_from_jid(jid));
-		if (offset == -1) {
+		pjob = get_subjob_state(parent, get_index_from_jid(jid), &sjst, NULL);
+		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
-		}
-		sjst = get_subjob_state(parent, offset);
-		if (sjst == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if (sjst == JOB_STATE_LTR_RUNNING) {
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
-				req_signaljob2(preq, pjob);
-			} else {
-				req_reject(PBSE_BADSTATE, 0, preq);
-				return;
-			}
+		} else if (pjob && sjst == JOB_STATE_LTR_RUNNING) {
+			req_signaljob2(preq, pjob);
 		} else {
 			req_reject(PBSE_BADSTATE, 0, preq);
-			return;
 		}
 		return;
-
 	} else if (jt == IS_ARRAY_ArrayJob) {
 
 		/* The Array Job itself ... */
@@ -193,19 +177,17 @@ req_signaljob(struct batch_request *preq)
 
 		++preq->rq_refct;	/* protect the request/reply struct */
 
-		for (i=0; i<parent->ji_ajtrk->tkm_ct; i++) {
-			if (get_subjob_state(parent, i) == JOB_STATE_LTR_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
-					/* if suspending,  skip those already suspended,  */
-					if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
-						continue;
-					/* if resuming, skip those not suspended         */
-					if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
-						continue;
-
-					dup_br_for_subjob(preq, pjob, req_signaljob2);
-				}
-			}
+		for (i=parent->ji_ajinfo->tkm_start; i<=parent->ji_ajinfo->tkm_end; i+=parent->ji_ajinfo->tkm_step) {
+			pjob = get_subjob_state(parent, i, &sjst, NULL);
+			if (!pjob || sjst != JOB_STATE_LTR_RUNNING)
+				continue;
+			/* if suspending,  skip those already suspended,  */
+			if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			/* if resuming, skip those not suspended         */
+			if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			dup_br_for_subjob(preq, pjob, req_signaljob2);
 		}
 		/* if not waiting on any running subjobs, can reply; else */
 		/* it is taken care of when last running subjob responds  */
@@ -217,31 +199,9 @@ req_signaljob(struct batch_request *preq)
 	/* what's left to handle is a range of subjobs, foreach subjob 	*/
 	/* if running, signal it					*/
 
-	range = get_index_from_jid(jid);
+	range = get_range_from_jid(jid);
 	if (range == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
-		return;
-	}
-
-	/* first check that any in the subrange are in fact running */
-
-	vrange = range;
-	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if (i == 1)
-			break;
-		for (i = start; i <= end; i += step) {
-			char sjst = get_subjob_state(parent, numindex_to_offset(parent, i));
-
-			if (sjst == JOB_STATE_LTR_RUNNING)
-				anygood++;
-		}
-		vrange = pc;
-	}
-	if (anygood == 0) { /* no running subjobs in the range */
-		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
@@ -256,17 +216,24 @@ req_signaljob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			char sjst;
-			int idx = numindex_to_offset(parent, i);
-
-			sjst = get_subjob_state(parent, idx);
-			if (sjst == JOB_STATE_LTR_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
-					dup_br_for_subjob(preq, pjob, req_signaljob2);
-				}
-			}
+			pjob = get_subjob_state(parent, i, &sjst, NULL);
+			if (!pjob || sjst != JOB_STATE_LTR_RUNNING)
+				continue;
+			/* if suspending,  skip those already suspended,  */
+			if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			/* if resuming, skip those not suspended         */
+			if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			anygood = 1;
+			dup_br_for_subjob(preq, pjob, req_signaljob2);
 		}
 		range = pc;
+	}
+
+	if (anygood == 0) { /* no running subjobs in the range */
+		req_reject(PBSE_BADSTATE, 0, preq);
+		return;
 	}
 
 	/* if not waiting on any running subjobs, can reply; else */

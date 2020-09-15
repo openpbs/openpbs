@@ -93,6 +93,8 @@ range *dup_range_list(range *old_r);
  */
 range *dup_range(range *old_r);
 
+int range_count(range *r);
+
 /*
  *	range_parse - parse string of ranges delimited by comma
  */
@@ -125,7 +127,7 @@ int range_contains_single(range *r, int val);
 int range_remove_value(range **r, int val);
 
 /*
- *	range_add_value - add a value to a range list 
+ *	range_add_value - add a value to a range list
  *
  */
 int range_add_value(range **r, int val, int range_step);

@@ -442,6 +442,8 @@ enum mgr_obj {
 	MGR_OBJ_HOST,		/* Host  	*/
 	MGR_OBJ_HOOK,		/* Hook         */
 	MGR_OBJ_PBS_HOOK,	/* PBS Hook     */
+	MGR_OBJ_JOBARRAY_PARENT,	/* Job array parent */
+	MGR_OBJ_SUBJOB,		/* Sub Job */
 	MGR_OBJ_LAST		/* Last entry	*/
 };
 

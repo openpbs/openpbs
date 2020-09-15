@@ -205,12 +205,11 @@ req_rerunjob(struct batch_request *preq)
 	int i;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
-	int offset;
+	char sjst;
 	char *pc;
 	job *pjob;
 	job *parent;
 	char *range;
-	char *vrange;
 	int start;
 	int end;
 	int step;
@@ -241,26 +240,13 @@ req_rerunjob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
-		char sjst;
-
 		/* single subjob, if running can signal */
-
-		offset = subjob_index_to_offset(parent, get_index_from_jid(jid));
-		if (offset == -1) {
-			req_reject(PBSE_UNKJOBID, 0, preq);
-			return;
-		}
-		sjst = get_subjob_state(parent, offset);
-		if (sjst == -1) {
+		pjob = get_subjob_state(parent, get_index_from_jid(jid), &sjst, NULL);
+		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
-		} else if (sjst == JOB_STATE_LTR_RUNNING) {
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
-				req_rerunjob2(preq, pjob);
-			} else {
-				req_reject(PBSE_BADSTATE, 0, preq);
-				return;
-			}
+		} else if (pjob && sjst == JOB_STATE_LTR_RUNNING) {
+			req_rerunjob2(preq, pjob);
 		} else {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
@@ -285,16 +271,21 @@ req_rerunjob(struct batch_request *preq)
 		/* Setting deleted subjobs count to 0,
 		 * since all the deleted subjobs will be moved to Q state
 		 */
-		parent->ji_ajtrk->tkm_dsubjsct = 0;
+		parent->ji_ajinfo->tkm_dsubjsct = 0;
 
-		for (i=0; i<parent->ji_ajtrk->tkm_ct; i++) {
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
-				if (check_job_state(pjob, JOB_STATE_LTR_RUNNING))
+		for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+			pjob = get_subjob_state(parent, i, &sjst, NULL);
+			if (sjst == JOB_STATE_LTR_UNKNOWN)
+				continue;
+			if (pjob) {
+				if (sjst == JOB_STATE_LTR_RUNNING)
 					dup_br_for_subjob(preq, pjob, req_rerunjob2);
-				else
+				else {
 					force_reque(pjob);
+					job_purge(pjob);
+				}
 			} else {
-				set_subjob_tblstate(parent, i, JOB_STATE_LTR_QUEUED);
+				update_sj_parent(parent, NULL, create_subjob_id(parent->ji_qs.ji_jobid, i), sjst, JOB_STATE_LTR_QUEUED);
 			}
 		}
 		/* if not waiting on any running subjobs, can reply; else */
@@ -308,32 +299,9 @@ req_rerunjob(struct batch_request *preq)
 	 * if running, all req_rerunjob2
 	 */
 
-	range = get_index_from_jid(jid);
+	range = get_range_from_jid(jid);
 	if (range == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
-		return;
-	}
-
-	/* first check that all in the subrange are in fact running */
-
-	vrange = range;
-	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if (i == 1)
-			break;
-		for (i = start; i <= end; i += step) {
-			char sjst;
-
-			sjst = get_subjob_state(parent, numindex_to_offset(parent, i));
-			if (sjst == JOB_STATE_LTR_RUNNING)
-				anygood++;
-		}
-		vrange = pc;
-	}
-	if (anygood == 0) {
-		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
@@ -348,15 +316,19 @@ req_rerunjob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			int idx = numindex_to_offset(parent, i);
-			char sjst = get_subjob_state(parent, idx);
-			if (sjst == JOB_STATE_LTR_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
-					dup_br_for_subjob(preq, pjob, req_rerunjob2);
-				}
+			pjob = get_subjob_state(parent, i, &sjst, NULL);
+			if (pjob && sjst == JOB_STATE_LTR_RUNNING) {
+				anygood++;
+				dup_br_for_subjob(preq, pjob, req_rerunjob2);
 			}
 		}
 		range = pc;
+	}
+
+	if (anygood == 0) {
+		preq->rq_refct--;
+		req_reject(PBSE_BADSTATE, 0, preq);
+		return;
 	}
 
 	/* if not waiting on any running subjobs, can reply; else */

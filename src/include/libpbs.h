@@ -55,6 +55,9 @@ extern "C" {
 #include "net_connect.h"
 #include "dis.h"
 
+#define VALUE(str) #str
+#define TOSTR(str) VALUE(str)
+
 /* Protocol types when connecting to another server (eg mom) */
 #define PROT_INVALID -1
 #define PROT_TCP 0 /* For TCP based connection */

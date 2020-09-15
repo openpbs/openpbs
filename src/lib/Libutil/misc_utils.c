@@ -2274,10 +2274,10 @@ state_int2char(int sti)
 		case JOB_STATE_FINISHED:
 			return JOB_STATE_LTR_FINISHED;
 		default:
-			return '0';
+			return JOB_STATE_LTR_UNKNOWN;
 	}
 
-	return '0';
+	return JOB_STATE_LTR_UNKNOWN;
 }
 
 /**
@@ -2494,4 +2494,94 @@ int
 msvr_mode(void)
 {
 	return (get_num_servers() > 1);
+}
+
+/**
+ * @brief
+ * 	get subjob index from given jobid
+ *
+ * @param[in] jid - jobid
+ *
+ * @return int
+ * @retval -1  - fail to determine index of subjob
+ * @retval !-1 - index of subjob
+ */
+int
+get_index_from_jid(char *jid)
+{
+	char *range = get_range_from_jid(jid);
+	if (range)
+		return strtoul(range, NULL, 10);
+	else
+		return -1;
+}
+/**
+ * @brief
+ * 	get range string of arrayjob from given jobid
+ *
+ * @param[in] jid - job id
+ *
+ * @return char *
+ * @retval NULL - on error
+ * @retval ptr - ptr to static char array containing range string if found
+ *
+ * @par
+ * 	MT-safe: No - uses static variables - index, indexlen.
+ */
+char *
+get_range_from_jid(char *jid)
+{
+	int           i;
+	char         *pcb;
+	char         *pce;
+	char	     *pnew;
+	size_t	      t;
+	static char  *index;
+	static size_t indexlen = 0;;
+
+	if ((pcb = strchr(jid, (int)'[')) == NULL)
+		return NULL;
+	if ((pce = strchr(jid, (int)']')) == NULL)
+		return NULL;
+	if (pce <= pcb)
+		return NULL;
+
+	if (indexlen == 0) {
+		indexlen = pce - pcb;
+		index = (char *)malloc(indexlen);
+	} else if (indexlen < (pce - pcb)) {
+		t = pce - pcb;
+		pnew = realloc(index, t);
+		if (pnew == NULL)
+			return NULL;
+		index = pnew;
+		indexlen = t;
+	}
+	if (index == NULL)
+		return NULL;
+
+
+	i = 0;
+	while (++pcb < pce)
+		index[i++] = *pcb;
+	index[i] = '\0';
+	return index;
+}
+
+char *
+create_subjob_id(char *parent_jid, int sjidx)
+{
+	static char jid[PBS_MAXSVRJOBID+1];
+	char        index[20];
+	char       *pb;
+
+	sprintf(index, "%d", sjidx);
+	strcpy(jid, parent_jid);
+
+	pb = strchr(jid, (int)'[');	/* "seqnum[" section */
+	*(pb+1) = '\0';
+	strcat(jid, index);
+	pb = strchr(parent_jid, (int)']');
+	strcat(jid, pb); /* "].hostname" section */
+	return jid;
 }
