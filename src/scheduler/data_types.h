@@ -765,6 +765,7 @@ struct resv_info
 	node_info **resv_nodes;		/* node universe for reservation */
 	char *partition;		/* name of the partition in which the reservation was confirmed */
 	selspec *select_orig;		/* original schedselect pre-alter */
+	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
@@ -809,7 +810,6 @@ struct resource_resv
 	server_info *server;		/* pointer to server which owns res resv */
 	node_info **ninfo_arr; 		/* nodes belonging to res resv */
 	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
-	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */

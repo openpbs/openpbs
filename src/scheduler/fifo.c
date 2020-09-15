@@ -1567,8 +1567,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		/* Where should we run our resresv? */
 
 		/* 1) if the resresv knows where it should be run, run it there */
-		if (rr->orig_nspec_arr != NULL) {
-			orig_ns = rr->orig_nspec_arr;
+		if (((rr->resv == NULL) && (rr->nspec_arr != NULL)) ||
+		    ((rr->resv != NULL) && (rr->resv->orig_nspec_arr != NULL))) {
+			if (rr->resv != NULL)
+				orig_ns = rr->resv->orig_nspec_arr;
+			else
+				orig_ns = rr->nspec_arr;
 			/* we didn't use nspec_arr, we need to free it */
 			free_nspecs(ns_arr);
 			ns_arr = NULL;
@@ -1676,8 +1680,13 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		rr->can_not_run = 1;
 
-		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr)
+		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr && rr->nspec_arr != orig_ns)
 			free_nspecs(rr->nspec_arr);
+
+		if (orig_ns != ns_arr) {
+			free_nspecs(ns_arr);
+			ns_arr = NULL;
+		}
 		/* The nspec array coming out of the node selection code could
 		 * have a node appear multiple times.  This is how we need to
 		 * send the execvnode to the server.  We now need to combine
@@ -1685,7 +1694,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		if (ns == NULL)
 			ns = combine_nspec_array(orig_ns);
-		rr->orig_nspec_arr = orig_ns;
+
+		if (rr->resv != NULL)
+			rr->resv->orig_nspec_arr = orig_ns;
+		else
+			free_nspecs(orig_ns);
+
 		rr->nspec_arr = ns;
 
 		if (rr->is_job && !(flags & RURR_NOPRINT)) {
