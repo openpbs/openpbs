@@ -156,7 +156,7 @@ q = s.queue("%s")
 for vn in s.vnodes():
     pbs.logmsg(pbs.LOG_DEBUG, "found vn=" + vn.name)
 pbs.event().accept()
-""" % (def_que,)
+""" % def_que
         attr = {'enabled': 'true', 'event': 'execjob_begin', 'debug': 'true'}
         self.server.create_import_hook(hname, attr, hook_body)
 
