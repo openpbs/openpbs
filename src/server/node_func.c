@@ -110,7 +110,7 @@ extern int node_delete_db(struct pbsnode *pnode);
 extern pbsnode *recov_node_cb(pbs_db_obj_info_t *, int *);
 extern int check_sign(pbsnode *, attribute *);
 extern void license_one_node(pbsnode *);
-extern int process_topology_info(struct pbsnode *pnode, char *);
+extern int process_topology_info(void **, char *);
 extern void release_lic_for_cray(struct pbsnode *pnode);
 static void remove_node_topology(char *);
 
@@ -310,8 +310,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
 	pnode->newobj = 1;
-	pnode->device.nnodes = 0;
-	pnode->device.nsockets = 0;
+	pnode->nd_lic_info = NULL;
 	pnode->nd_added_to_unlicensed_list = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
@@ -1971,7 +1970,7 @@ set_node_topology(attribute *new, void *pobj, int op)
 			}
 
 			record_node_topology(pnode->nd_name, valstr);
-			process_topology_info(pnode, valstr);
+			process_topology_info(&(pnode->nd_lic_info), valstr);
 			if (ntt == tt_Cray)
 				release_lic_for_cray(pnode);
 			license_one_node(pnode);

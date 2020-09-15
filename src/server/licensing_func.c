@@ -342,27 +342,15 @@ void
 set_node_lic_info_attr(pbsnode *pnode)
 {
 	int state;
-	long info = 0;
 	char str_val[20];
-	state = lic_state();
-	switch (state) {
-		case 0:
-			snprintf(str_val, sizeof(str_val), "%ld", info);
-			set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-			&node_attr_def[ND_ATR_LicenseInfo], str_val);
-			break;
-		case 1:
-			snprintf(str_val, sizeof(str_val), "%ld", pnode->device.nnodes);
-			set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-			&node_attr_def[ND_ATR_LicenseInfo], str_val);
-			break;
-		case 2:
-			snprintf(str_val, sizeof(str_val), "%ld", pnode->device.nsockets);
-			set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-			&node_attr_def[ND_ATR_LicenseInfo], str_val);
-			break;
-		case -3:
-			return;
+	state = lic_state(pnode->nd_lic_info);
+
+	if (state == -3)
+		return;
+	else{
+		snprintf(str_val, sizeof(str_val), "%d", state);
+		set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
+		&node_attr_def[ND_ATR_LicenseInfo], str_val);
 	}
 }
 

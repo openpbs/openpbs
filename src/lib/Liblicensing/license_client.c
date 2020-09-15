@@ -35,7 +35,7 @@
  * trademark licensing policies.
  *
  */
-#include "pbs_nodes.h"
+
 
 int
 lic_init(char *license_location)
@@ -80,13 +80,13 @@ lic_check_expiry()
 }
 
 int
-lic_state()
+lic_state(void *node_lic_ctx)
 {
 	return 0;
 }
 
 int
-process_topology_info(struct pbsnode *pnode, char *topology_str)
+process_topology_info(void **node_lic_ctx, char *topology_str)
 {
 	return 0;
 }

@@ -228,11 +228,6 @@ union ndu_ninfo {
 	unsigned int	__nd_int;
 };
 
-/* Device structure */
-struct	devices {
-	long nsockets;
-	long nnodes;
-};
 
 /*
  * Vnode structure
@@ -255,9 +250,9 @@ struct pbsnode {
 	unsigned short nd_ntype;   /* node type */
 	unsigned short nd_accted;  /* resc recorded in job acct */
 	struct pbs_queue *nd_pque; /* queue to which it belongs */
-	struct devices device;
 	attribute nd_attr[ND_ATR_LAST];
 	short newobj; /* new node ? */
+	void *nd_lic_info;			/* information set and used for licensing */
 	int nd_added_to_unlicensed_list;/* To record if the node is added to the list of unlicensed node */
 };
 

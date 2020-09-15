@@ -39,8 +39,7 @@
 lib_LTLIBRARIES = liblicensing.la
 
 liblicensing_la_CPPFLAGS = \
-	-I$(pbssrc_dir)/src/include \
-	-I$(top_srcdir)/src/include
+	-I$(pbssrc_dir)/src/include
 
 liblicensing_la_LDFLAGS = -version-info 0:0:0
 
