@@ -128,12 +128,12 @@ req_movejob(struct batch_request *req)
 		return;
 	}
 
-	if (jobp->ji_qs.ji_state != JOB_STATE_QUEUED &&
-			jobp->ji_qs.ji_state != JOB_STATE_HELD &&
-			jobp->ji_qs.ji_state != JOB_STATE_WAITING) {
+	if (!check_job_state(jobp, JOB_STATE_LTR_QUEUED) &&
+			!check_job_state(jobp, JOB_STATE_LTR_HELD) &&
+			!check_job_state(jobp, JOB_STATE_LTR_WAITING)) {
 #ifndef NDEBUG
 		(void)sprintf(log_buffer, "(%s) %s, state=%d",
-			__func__, msg_badstate, jobp->ji_qs.ji_state);
+			__func__, msg_badstate, get_job_state(jobp));
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			jobp->ji_qs.ji_jobid, log_buffer);
 #endif /* NDEBUG */
@@ -208,13 +208,13 @@ req_orderjob(struct batch_request *req)
 		return;
 	}
 
-	if (((pjob = pjob1)->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-		((pjob = pjob2)->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-		((pjob = pjob1)->ji_qs.ji_state == JOB_STATE_BEGUN)   ||
-		((pjob = pjob2)->ji_qs.ji_state == JOB_STATE_BEGUN)) {
+	if (check_job_state(pjob = pjob1, JOB_STATE_LTR_RUNNING) ||
+		check_job_state(pjob = pjob2,  JOB_STATE_LTR_RUNNING) ||
+		check_job_state(pjob = pjob1, JOB_STATE_LTR_BEGUN)  ||
+		check_job_state(pjob = pjob2, JOB_STATE_LTR_BEGUN)) {
 #ifndef NDEBUG
 		(void)sprintf(log_buffer, "(%s) %s, state=%d",
-			__func__, msg_badstate, pjob->ji_qs.ji_state);
+			__func__, msg_badstate, get_job_state(pjob));
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			pjob->ji_qs.ji_jobid, log_buffer);
 #endif	/* NDEBUG */
@@ -224,10 +224,10 @@ req_orderjob(struct batch_request *req)
 
 		/* Jobs are in different queues */
 
-		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr, pjob1->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str,
+		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr, get_jattr_str(pjob1, JOB_ATR_submit_host),
 			MOVE_TYPE_Order)) ||
 			(rc = svr_chkque(pjob2, pjob1->ji_qhdr,
-			pjob2->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str,
+			get_jattr_str(pjob2, JOB_ATR_submit_host),
 			MOVE_TYPE_Order))) {
 			req_reject(rc, 0, req);
 			return;
@@ -236,12 +236,9 @@ req_orderjob(struct batch_request *req)
 
 	/* now swap the order of the two jobs in the queue lists */
 
-	rank = pjob1->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
-	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long =
-		pjob2->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
-	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
-	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = rank;
-	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
+	rank = get_jattr_long(pjob1, JOB_ATR_qrank);
+	set_jattr_l_slim(pjob1, JOB_ATR_qrank, get_jattr_long(pjob2, JOB_ATR_qrank), SET);
+	set_jattr_l_slim(pjob2, JOB_ATR_qrank, rank, SET);
 
 	if (pjob1->ji_qhdr != pjob2->ji_qhdr) {
 		(void)strcpy(tmpqn, pjob1->ji_qs.ji_queue);

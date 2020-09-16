@@ -2657,14 +2657,14 @@ do_mom_action_script(int ae,	      /* index into action table */
 	pargs = ma->ma_args;
 	for (i = 1; i < nargs; i++, pargs++) {
 		if (**pargs == '%') {
-			if (strcmp(*pargs + 1, "jobid") == 0) {
-				(void) strcpy(buf, pjob->ji_qs.ji_jobid);
-			} else if (strcmp(*pargs + 1, "sid") == 0) {
+			if (strcmp(*pargs + 1, "jobid") == 0)
+				strcpy(buf, pjob->ji_qs.ji_jobid);
+			else if (strcmp(*pargs + 1, "sid") == 0)
 				sprintf(buf, "%d", ptask->ti_qs.ti_sid);
-			} else if (strcmp(*pargs + 1, "taskid") == 0) {
+			else if (strcmp(*pargs + 1, "taskid") == 0)
 				sprintf(buf, "%d", ptask->ti_qs.ti_task);
-			} else if (strcmp(*pargs + 1, "uid") == 0) {
-#ifdef WIN32
+			else if (strcmp(*pargs + 1, "uid") == 0) {
+#ifdef	WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
@@ -2675,14 +2675,14 @@ do_mom_action_script(int ae,	      /* index into action table */
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #endif
-			} else if (strcmp(*pargs + 1, "login") == 0) {
-				strcpy(buf, pjob->ji_wattr[(int) JOB_ATR_euser].at_val.at_str);
-			} else if (strcmp(*pargs + 1, "owner") == 0) {
-				strcpy(buf, pjob->ji_wattr[(int) JOB_ATR_job_owner].at_val.at_str);
-			} else if (strcmp(*pargs + 1, "globid") == 0) {
+			} else if (strcmp(*pargs + 1, "login") == 0)
+				strcpy(buf, get_jattr_str(pjob, JOB_ATR_euser));
+			else if (strcmp(*pargs + 1, "owner") == 0)
+				strcpy(buf, get_jattr_str(pjob, JOB_ATR_job_owner));
+			else if (strcmp(*pargs + 1, "globid") == 0)
 				strcpy(buf, "NULL");
-			} else if (strcmp(*pargs + 1, "auxid") == 0) {
-				if (pjob->ji_wattr[(int) JOB_ATR_altid].at_val.at_str)
+			else if (strcmp(*pargs + 1, "auxid") == 0) {
+				if (get_jattr_str(pjob, JOB_ATR_altid))
 					pbs_strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str, sizeof(buf));
 				else
 					strcpy(buf, "NULL");
@@ -2699,6 +2699,7 @@ do_mom_action_script(int ae,	      /* index into action table */
 			}
 		} else
 			pbs_strncpy(buf, *pargs, sizeof(buf));
+
 		*(args + i) = strdup(buf);
 		if (*(args + i) == NULL)
 			return -1;
@@ -2725,17 +2726,17 @@ do_mom_action_script(int ae,	      /* index into action table */
 	/* LOGNAME */
 	bld_wenv_variables(variables_else[1], pwdp->pw_name);
 	/* PBS_JOBNAME */
-	bld_wenv_variables(variables_else[2], pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str);
+	bld_wenv_variables(variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
 	/* PBS_JOBID */
 	bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid);
 	/* PBS_QUEUE */
-	bld_wenv_variables(variables_else[4], pjob->ji_wattr[(int) JOB_ATR_in_queue].at_val.at_str);
+	bld_wenv_variables(variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
 	/* SHELL */
 	bld_wenv_variables(variables_else[5], shell);
 	/* USER */
 	bld_wenv_variables(variables_else[6], pwdp->pw_name);
 	/* PBS_JOBCOOKIE */
-	bld_wenv_variables(variables_else[7], pjob->ji_wattr[(int) JOB_ATR_Cookie].at_val.at_str);
+	bld_wenv_variables(variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
 	bld_wenv_variables(variables_else[8], buf);
@@ -2752,7 +2753,8 @@ do_mom_action_script(int ae,	      /* index into action table */
 	sprintf(buf, "%ld", ptask->ti_qs.ti_sid);
 	bld_wenv_variables("PBS_SID", buf);
 	/* PBS_JOBDIR */
-	if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0))
+	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0))
 		bld_wenv_variables("PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 	else
 		bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
@@ -2850,11 +2852,11 @@ do_mom_action_script(int ae,	      /* index into action table */
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
 		(void) task_save(ptask);
 		/* update the job with the new session id */
-		pjob->ji_wattr[(int) JOB_ATR_session_id].at_val.at_long = ptask->ti_qs.ti_sid;
-		pjob->ji_wattr[(int) JOB_ATR_session_id].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		set_jattr_l_slim(pjob, JOB_ATR_session_id, ptask->ti_qs.ti_sid, SET);
+
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save(pjob);
 		}
 		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "task transmogrified, %s", cmd_line);
@@ -2956,17 +2958,17 @@ do_mom_action_script(int ae,	      /* index into action table */
 		/* LOGNAME */
 		bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 		/* PBS_JOBNAME */
-		bld_env_variables(&vtable, variables_else[2], pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
 		/* PBS_JOBID */
 		bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 		/* PBS_QUEUE */
-		bld_env_variables(&vtable, variables_else[4], pjob->ji_wattr[(int) JOB_ATR_in_queue].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
 		/* SHELL */
 		bld_env_variables(&vtable, variables_else[5], shell);
 		/* USER */
 		bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 		/* PBS_JOBCOOKIE */
-		bld_env_variables(&vtable, variables_else[7], pjob->ji_wattr[(int) JOB_ATR_Cookie].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
 		/* PBS_NODENUM */
 		sprintf(buf, "%d", pjob->ji_nodeid);
 		bld_env_variables(&vtable, variables_else[8], buf);
@@ -2983,9 +2985,11 @@ do_mom_action_script(int ae,	      /* index into action table */
 		sprintf(buf, "%d", ptask->ti_qs.ti_sid);
 		bld_env_variables(&vtable, "PBS_SID", buf);
 		/* PBS_JOBDIR */
-		if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0))
-			bld_env_variables(&vtable, "PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
-		else
+		if (is_jattr_set(pjob, JOB_ATR_sandbox)
+				&& strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0) {
+			bld_env_variables(&vtable, "PBS_JOBDIR",
+					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+		} else
 			bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 		mom_unnice();
 
@@ -3082,11 +3086,10 @@ do_mom_action_script(int ae,	      /* index into action table */
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
 		(void) task_save(ptask);
 		/* update the job with the new session id */
-		pjob->ji_wattr[(int) JOB_ATR_session_id].at_val.at_long = sjr.sj_session;
-		pjob->ji_wattr[(int) JOB_ATR_session_id].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		set_jattr_l_slim(pjob, JOB_ATR_session_id, sjr.sj_session, SET);
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save(pjob);
 		}
 
@@ -6567,7 +6570,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 		rd = &svr_resc_def[RESC_WALLTIME];
 		preswalltime = find_resc_entry(at_used, rd);
 		if ((preswalltime != NULL) &&
-			((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+			((is_attr_set(&preswalltime->rs_value)) != 0)) {
 			wallt = preswalltime->rs_value.at_val.at_long;
 		}
 		if (wallt <= 0)
@@ -6588,7 +6591,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 
 	*lp = (u_long)(percent*new_sample_weight + (*lp)*(1.0-new_sample_weight));
 
-	DBPRT(("cpu%% : ses %ld (new %lu - old %lu)/delta %ld = %lu%% or %ld%% weighted\n", pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long, newcput, oldcput, dur, percent, *lp))
+	DBPRT(("cpu%% : ses %ld (new %lu - old %lu)/delta %ld = %lu%% or %ld%% weighted\n", get_jattr_long(pjob, JOB_ATR_session_id), newcput, oldcput, dur, percent, *lp))
 
 }
 
@@ -6685,8 +6688,7 @@ job	*pjob;
 
 	/* Return 0 if job is interactive */
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags&ATR_VFLAG_SET) &&
-		(pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long > 0)) {
+	if (is_jattr_set(pjob, JOB_ATR_interactive) && (get_jattr_long(pjob, JOB_ATR_interactive) > 0)) {
 		DBPRT(("job is interactive\n"));
 		return (0L);
 	}
@@ -6805,7 +6807,7 @@ mom_over_limit(job *pjob)
 		rd = &svr_resc_def[RESC_CPUPERCENT];
 		prescpup = find_resc_entry(at, rd);
 		if ((prescpup != NULL) &&
-			((prescpup->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+			((is_attr_set(&prescpup->rs_value)) != 0)) {
 			num = prescpup->rs_value.at_val.at_long;
 			if ((float)num >
 				(value*100*delta_cpufactor + delta_percent_over)) {
@@ -6826,13 +6828,13 @@ mom_over_limit(job *pjob)
 			rd = &svr_resc_def[RESC_WALLTIME];
 			preswalltime = find_resc_entry(at, rd);
 			if ((preswalltime != NULL) &&
-				((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+				((is_attr_set(&preswalltime->rs_value)) != 0)) {
 				walltime_sum = preswalltime->rs_value.at_val.at_long;
 				if (walltime_sum > average_trialperiod) {
 					rd = &svr_resc_def[RESC_CPUT];
 					prescput = find_resc_entry(at, rd);
 					if ((prescput != NULL) &&
-						((prescput->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+						((is_attr_set(&prescput->rs_value)) != 0)) {
 						cput_sum = prescput->rs_value.at_val.at_long;
 						/* "value" is from ncpus */
 						if (((double)cput_sum/(double)walltime_sum) >
@@ -7059,7 +7061,7 @@ job_over_limit(job *pjob)
 		limresc != NULL;
 		limresc = (resource *)GET_NEXT(limresc->rs_link)) {
 
-		if ((limresc->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		if (!is_attr_set(&limresc->rs_value))
 			continue;
 
 		rd = limresc->rs_defin;
@@ -7071,7 +7073,7 @@ job_over_limit(job *pjob)
 		useresc = find_resc_entry(used, rd);
 		if (useresc == NULL)
 			continue;
-		if ((useresc->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		if (!is_attr_set(&useresc->rs_value))
 			continue;
 
 		if (strcmp(rd->rs_name, "cput") == 0) {
@@ -7408,10 +7410,7 @@ dorestrict_user(void)
 			if (pjob->ji_qs.ji_un.ji_momt.ji_exuid != uid)
 				continue;
 			/* job should be running */
-			if (pjob->ji_qs.ji_substate !=
-				JOB_SUBSTATE_RUNNING &&
-				pjob->ji_qs.ji_substate !=
-				JOB_SUBSTATE_PRERUN)
+			if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING) && !check_job_substate(pjob, JOB_SUBSTATE_PRERUN))
 				continue;
 
 			for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
@@ -7488,9 +7487,9 @@ dorestrict_user(void)
 			ptask->ti_flags |= TI_FLAGS_ORPHAN;
 			(void)task_save(ptask);
 
-			if (hjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-				hjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-				hjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+			if (!check_job_substate(hjob, JOB_SUBSTATE_RUNNING)) {
+				set_job_state(hjob, JOB_STATE_LTR_RUNNING);
+				set_job_substate(hjob, JOB_SUBSTATE_RUNNING);
 				job_save(hjob);
 			}
 
@@ -9436,7 +9435,7 @@ main(int argc, char *argv[])
 			}
 
 			if (do_tolerate_node_failures(pjob) &&
-				(pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) &&
+				(check_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB)) &&
 				(pjob->ji_joinalarm != 0) &&
 				(pjob->ji_joinalarm < time_now)) {
 				int rcode;
@@ -9444,7 +9443,7 @@ main(int argc, char *argv[])
 				snprintf(log_buffer, sizeof(log_buffer), "sister_join_job_alarm wait time %ld secs exceeded", joinjob_alarm_time);
 				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB,
 					  LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
+				set_job_substate(pjob, JOB_SUBSTATE_PRERUN);
 
 				rcode = pre_finish_exec(pjob, 1);
 				if (rcode == PRE_FINISH_SUCCESS)
@@ -9499,12 +9498,12 @@ main(int argc, char *argv[])
 			nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 			/* check for job stuck waiting for Svr to ack obit */
-			if (!pjob->ji_hook_running_bg_on && pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
+			if (!pjob->ji_hook_running_bg_on && check_job_substate(pjob, JOB_SUBSTATE_OBIT) &&
 				pjob->ji_sampletim < time_now - 45) {
 				send_obit(pjob, 0);	/* resend obit */
 			}
 			/* check for job stuck waiting for sister to deljob */
-			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_DELJOB) &&
+			if ((check_job_substate(pjob, JOB_SUBSTATE_DELJOB)) &&
 				(pjob->ji_sampletim < (time_now - 2 * MAX_CHECK_POLL_TIME))) {
 				/* just delete the job and let server deal */
 				if (pjob->ji_preq) {
@@ -9521,7 +9520,7 @@ main(int argc, char *argv[])
 				JOB_SVFLG_TERMJOB)) {
 				/* job is over a limit, if it is not already  */
 				/* being terminated by action script, kill it */
-				if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TERM) && (time_now >= pjob->ji_overlmt_timestamp)) {
+				if ((!check_job_substate(pjob, JOB_SUBSTATE_TERM)) && (time_now >= pjob->ji_overlmt_timestamp)) {
 					/* Unset the TERMJOB flag for KILL signal */
 					pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_TERMJOB;
 					(void)kill_job(pjob, SIGKILL);
@@ -9529,7 +9528,7 @@ main(int argc, char *argv[])
 				}
 			}
 
-			if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
+			if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
 				continue;
 
 			/* update information for my tasks */
@@ -9607,7 +9606,7 @@ main(int argc, char *argv[])
 					break;
 				}
 #endif /* localmod 153 */
-				if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
+				if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
 					continue;
 				/*
 				 ** Send message to get info from other MOM's
@@ -9691,9 +9690,9 @@ main(int argc, char *argv[])
 										PBS_EVENTCLASS_JOB, LOG_INFO,
 										pjob->ji_qs.ji_jobid, log_buffer);
 								} else {
-									(void)write(fd, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
-										strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
-									(void)write(fd, kill_msg, strlen(kill_msg));
+									write(fd, get_jattr_str(pjob, JOB_ATR_Cookie),
+										strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
+									write(fd, kill_msg, strlen(kill_msg));
 									(void)close(fd);
 								}
 							}
@@ -9712,9 +9711,9 @@ main(int argc, char *argv[])
 	if (kill_jobs_on_exit) {
 		pjob = (job *)GET_NEXT(svr_alljobs);
 		while (pjob) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING
-				|| pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND
-				|| pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)
+			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING)
+				|| check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)
+				|| check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))
 				(void)kill_job(pjob, SIGKILL);
 			else
 				term_job(pjob);
@@ -10313,7 +10312,7 @@ active_idle(job *pjob, int which)
 
 	time_now = time(0);
 	if (which == 1) {	/* suspend */
-		pjob->ji_qs.ji_substate =  JOB_SUBSTATE_SUSPEND;
+		set_job_substate(pjob, JOB_SUBSTATE_SUSPEND);
 		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
 		if ((pjob->ji_qs.ji_svrflags &
@@ -10323,7 +10322,7 @@ active_idle(job *pjob, int which)
 	} else {		/* resume */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
 			start_walltime(pjob);
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 		}
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
@@ -10353,7 +10352,7 @@ do_multinodebusy(job *pjob, int which)
 
 			stream = pjob->ji_hosts[0].hn_stream;
 			im_compose(stream, pjob->ji_qs.ji_jobid,
-				pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+				get_jattr_str(pjob, JOB_ATR_Cookie),
 				IM_REQUEUE, TM_NULL_EVENT, TM_NULL_TASK, IM_OLD_PROTOCOL_VER);
 			dis_flush(stream);
 		}
@@ -10378,7 +10377,7 @@ idle_jobs(void)
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
+		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
 			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd) == 0)) {
 			/* right now we can only handle one node jobs */
 			if (pjob->ji_numnodes == 1) {
@@ -10410,7 +10409,7 @@ activate_jobs(void)
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
+		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
 			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd) != 0)) {
 			if (pjob->ji_numnodes == 1) {
 				update_state_flag = 1;

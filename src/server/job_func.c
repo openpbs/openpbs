@@ -186,8 +186,8 @@ char *get_job_credid(char *jobid)
 	if ((pjob = find_job(jobid)) == NULL)
 		return NULL;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
-		return pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str;
+	if (is_jattr_set(pjob, JOB_ATR_cred_id)) {
+		return get_jattr_str(pjob, JOB_ATR_cred_id);
 	}
 #endif
 
@@ -217,12 +217,12 @@ job_abt(job *pjob, char *text)
 		return 0; /* nothing to do */
 	/* save old state and update state to Exiting */
 
-	old_state = pjob->ji_qs.ji_state;
+	old_state = get_job_state(pjob);
 
-	if (old_state == JOB_STATE_FINISHED)
+	if (old_state == JOB_STATE_LTR_FINISHED)
 		return 0;	/* nothing to do for this job */
 
-	old_substate = pjob->ji_qs.ji_substate;
+	old_substate = get_job_substate(pjob);
 
 	/* notify user of abort if notification was requested */
 
@@ -231,9 +231,8 @@ job_abt(job *pjob, char *text)
 		svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL, text);
 	}
 
-	if ((old_state == JOB_STATE_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
-		(void)svr_setjobstate(pjob,
-			JOB_STATE_RUNNING, JOB_SUBSTATE_ABORT);
+	if ((old_state == JOB_STATE_LTR_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT);
 		rc = issue_signal(pjob, "SIGKILL", release_req, 0);
 		if (rc != 0) {
 			(void)sprintf(log_buffer, msg_abt_err,
@@ -241,8 +240,7 @@ job_abt(job *pjob, char *text)
 			log_err(-1, __func__, log_buffer);
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 				/* notify creator that job is exited */
-				pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char
-				= 'E';
+				set_job_state(pjob, JOB_STATE_LTR_EXITING);
 				issue_track(pjob);
 			}
 			/*
@@ -250,31 +248,28 @@ job_abt(job *pjob, char *text)
 			 */
 			svr_saveorpurge_finjobhist(pjob);
 		}
-	} else if ((old_state == JOB_STATE_TRANSIT) &&
+	} else if ((old_state == JOB_STATE_LTR_TRANSIT) &&
 		(old_substate == JOB_SUBSTATE_TRNOUT)) {
 		/* I don't know of a case where this could happen */
 		(void)sprintf(log_buffer, msg_abt_err,
 			pjob->ji_qs.ji_jobid, old_substate);
 		log_err(-1, __func__, log_buffer);
 	} else if (old_substate == JOB_SUBSTATE_PROVISION) {
-		(void)svr_setjobstate(pjob, JOB_STATE_RUNNING,
-			JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT);
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
-	} else if (old_state == JOB_STATE_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
-		  (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)) {
-		(void)svr_setjobstate(pjob, JOB_STATE_HELD,
-			JOB_SUBSTATE_ABORT);
+	} else if (old_state == JOB_STATE_LTR_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
+		  (is_jattr_set(pjob, JOB_ATR_depend))) {
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_ABORT);
 		depend_on_term(pjob);
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
 	} else {
-		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-			JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_ABORT);
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 			/* notify creator that job is exited */
 			issue_track(pjob);
@@ -373,13 +368,13 @@ job_alloc(void)
 
 	job_init_wattr(pj);
 
-
 #ifndef PBS_MOM
+	set_job_state(pj, JOB_STATE_LTR_TRANSIT);
+	set_job_substate(pj, JOB_SUBSTATE_TRANSIN);
+
 	/* start accruing time from the time job was created */
-	pj->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = (long) time_now;
-	pj->ji_wattr[JOB_ATR_sample_starttime].at_flags |= ATR_VFLAG_SET;
-	pj->ji_wattr[JOB_ATR_eligible_time].at_val.at_long = 0;
-	pj->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
+	set_jattr_l_slim(pj, JOB_ATR_sample_starttime, time_now, SET);
+	set_jattr_l_slim(pj, JOB_ATR_eligible_time, 0, SET);
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
@@ -461,16 +456,16 @@ job_free(job *pj)
 #ifdef PBS_MOM
 
 #ifdef WIN32
-	if (pj->ji_wattr[(int) JOB_ATR_altid].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pj,  JOB_ATR_altid)) {
 		char *p;
 
-		p = strstr(pj->ji_wattr[(int)JOB_ATR_altid].at_val.at_str,
+		p = strstr(get_jattr_str(pj, JOB_ATR_altid),
 			"HomeDirectory=");
 		if (p) {
 			struct passwd *pwdp = NULL;
 
-			if ((pj->ji_wattr[JOB_ATR_euser].at_val.at_str) &&
-				(pwdp = getpwnam(pj->ji_wattr[JOB_ATR_euser].at_val.at_str))) {
+			if ((get_jattr_str(pj, JOB_ATR_euser)) &&
+				(pwdp = getpwnam(get_jattr_str(pj, JOB_ATR_euser)))) {
 				if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 					if (impersonate_user(pwdp->pw_userlogin) == 0) {
 						sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pwdp->pw_name);
@@ -492,7 +487,7 @@ job_free(job *pj)
 	/* remove any malloc working attribute space */
 
 	for (i = 0; i < (int)JOB_ATR_LAST; i++)
-		job_attr_def[i].at_free(&pj->ji_wattr[i]);
+		free_jattr(pj, i);
 
 #ifndef PBS_MOM
 	{
@@ -548,7 +543,7 @@ job_free(job *pj)
 		for (i = 0; i < pj->ji_numrescs; i++) {
 			free(pj->ji_resources[i].nodehost);
 			pj->ji_resources[i].nodehost = NULL;
-			if  ((pj->ji_resources[i].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
+			if  (is_attr_set(&pj->ji_resources[i].nr_used) != 0) {
 				job_attr_def[(int)JOB_ATR_resc_used].at_free(&pj->ji_resources[i].nr_used);
 			}
 		}
@@ -674,8 +669,8 @@ remove_stdouterr_files(job *pjob, char *suffix)
 int direct_write_requested(job *pjob)
 {
 	char *pj_attrk = NULL;
-	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
-		pj_attrk = pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str;
+	if ((is_jattr_set(pjob, JOB_ATR_keep))) {
+		pj_attrk = get_jattr_str(pjob, JOB_ATR_keep);
 		if (strchr(pj_attrk, 'd') && (strchr(pj_attrk, 'o') || (strchr(pj_attrk, 'e'))))
 			return 1;
 	}
@@ -778,12 +773,13 @@ del_job_dirs(job *pjob, char *taskdir)
 	/* remove the staging and execution directory when sandbox=PRIVATE
 	 ** and there are no stage-out errors
 	 */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+	if (is_jattr_set(pjob, JOB_ATR_sandbox) &&
+		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 		int	check_shared = 0;
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 			/* sister mom */
 			check_shared = 1;
+
 		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
 			if (pjob->ji_grpcache != NULL)
 				rmjobdir(pjob->ji_qs.ji_jobid,
@@ -902,8 +898,8 @@ job_purge(job *pjob)
 	if (pjob->ji_jsmpipe != -1) {
 		conn_t *connection = NULL;
 
-		if ((pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_SET) == 0 &&
-				!(pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long) &&
+		if ((is_jattr_set(pjob, JOB_ATR_session_id)) == 0 &&
+				!(get_jattr_long(pjob, JOB_ATR_session_id)) &&
 				(connection = get_conn(pjob->ji_jsmpipe)) != NULL) {
 			/*
 			 * If session id for the job is not set, retain pjob->ji_jsmpipe.
@@ -938,15 +934,15 @@ job_purge(job *pjob)
 		(void)close(pjob->ji_parent2child_moms_status_pipe);
 #endif
 #else	/* not PBS_MOM */
-	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) &&
-		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM)) {
-		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
-			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED))
-				update_subjob_state(pjob, JOB_STATE_QUEUED);
+	if ((!check_job_substate(pjob, JOB_SUBSTATE_TRANSIN)) &&
+		(!check_job_substate(pjob, JOB_SUBSTATE_TRANSICM))) {
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (!check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
+			if ((check_job_substate(pjob, JOB_SUBSTATE_RERUN3)) || (check_job_substate(pjob, JOB_SUBSTATE_QUEUED)))
+				update_subjob_state(pjob, JOB_STATE_LTR_QUEUED);
 			else {
 				if (pjob->ji_terminated && pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
 					pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
-				update_subjob_state(pjob, JOB_STATE_EXPIRED);
+				update_subjob_state(pjob, JOB_STATE_LTR_EXPIRED);
 			}
 		}
 
@@ -996,7 +992,7 @@ job_purge(job *pjob)
 
 	jrpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
 	/* remove stdout/err files if remove_files is set. */
-	if ((jrpattr->at_flags & ATR_VFLAG_SET)
+	if (is_attr_set(jrpattr)
 			&& (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK)) {
 		if (strchr(jrpattr->at_val.at_str, 'o')) {
 			(void) strcpy(namebuf, std_file_name(pjob, StdOut, &keeping));
@@ -1401,10 +1397,10 @@ do_tolerate_node_failures(job *pjob)
 	return (0);
 #endif
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_flags & ATR_VFLAG_SET) &&
-	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, TOLERATE_NODE_FAILURES_ALL) == 0) ||
-	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, TOLERATE_NODE_FAILURES_JOB_START) == 0) &&
-	    pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING))) {
+	if ((is_jattr_set(pjob, JOB_ATR_tolerate_node_failures)) &&
+	   ((strcmp(get_jattr_str(pjob, JOB_ATR_tolerate_node_failures), TOLERATE_NODE_FAILURES_ALL) == 0) ||
+	   ((strcmp(get_jattr_str(pjob, JOB_ATR_tolerate_node_failures), TOLERATE_NODE_FAILURES_JOB_START) == 0) &&
+	    !check_job_substate(pjob, JOB_SUBSTATE_RUNNING)))) {
 		return (1);
 	}
 	return (0);
@@ -1459,11 +1455,11 @@ update_resources_list(job *pjob, char *res_list_name,
 
 	/* Save current resource values in backup resource list */
 	/* if backup resources list is not already set */
-	if (pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, res_list_index)) {
 
-		if ((pjob->ji_wattr[backup_res_list_index].at_flags & ATR_VFLAG_SET) == 0) {
-			job_attr_def[backup_res_list_index].at_free(&pjob->ji_wattr[backup_res_list_index]);
-			job_attr_def[backup_res_list_index].at_set(&pjob->ji_wattr[backup_res_list_index], &pjob->ji_wattr[res_list_index], INCR);
+		if ((is_jattr_set(pjob, backup_res_list_index)) == 0) {
+			free_jattr(pjob, backup_res_list_index);
+			set_attr_with_attr(&job_attr_def[backup_res_list_index], &pjob->ji_wattr[backup_res_list_index], &pjob->ji_wattr[res_list_index], INCR);
 
 		}
 
@@ -1537,7 +1533,7 @@ update_resources_list(job *pjob, char *res_list_name,
 	}
 
 	if (always_set &&
-	   ((pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) == 0)) {
+	   ((is_jattr_set(pjob, res_list_index)) == 0)) {
 		/* this means no resources got freed during suspend */
 		/* let's put a dummy entry for ncpus=0 */
 		prdef = &svr_resc_def[RESC_NCPUS];
@@ -1560,10 +1556,9 @@ update_resources_list(job *pjob, char *res_list_name,
 	return (0);
 
 update_resources_list_error:
-	job_attr_def[backup_res_list_index].at_free(
-			&pjob->ji_wattr[backup_res_list_index]);
-	pjob->ji_wattr[backup_res_list_index].at_flags &= ~ATR_VFLAG_SET;
-	job_attr_def[res_list_index].at_set(
+	free_jattr(pjob, backup_res_list_index);
+	mark_jattr_not_set(pjob, backup_res_list_index);
+	set_attr_with_attr(&job_attr_def[res_list_index], 
 			&pjob->ji_wattr[res_list_index],
 			&pjob->ji_wattr[backup_res_list_index], INCR);
 	return (1);
@@ -1700,7 +1695,7 @@ resv_free(resc_resv *presv)
  *
  * 		This function - ASSUMES - that if the reservation is supported by a
  * 		pbs_queue that queue is empty OR having history jobs only (i.e. job
- * 		in state JOB_STATE_MOVED/JOB_STATE_FINISHED). So, whatever mechanism
+ * 		in state JOB_STATE_LTR_MOVED/JOB_STATE_LTR_FINISHED). So, whatever mechanism
  * 		is being used to remove the jobs from such a supporting queue should,
  * 		at the outset, store the value "False" into the queue's "enabled"
  * 		attribute (blocks new jobs from being placed in the queue while the
@@ -2081,15 +2076,15 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 {
 	struct rq_cpyfile *pcf;
 	struct rq_cpyfile_cred *pcfc;
-	struct rqfpair    *pair;
-	size_t		  cred_len = 0;
-	char		  *cred = NULL;
-	char		  *prq_jobid;
-	char		  *prq_owner;
-	char		  *prq_user;
-	char		  *prq_group;
-	int 		  *prq_dir;
-	pbs_list_head	  *prq_pair;
+	struct rqfpair *pair;
+	size_t cred_len = 0;
+	char *cred = NULL;
+	char *prq_jobid;
+	char *prq_owner;
+	char *prq_user;
+	char *prq_group;
+	int *prq_dir;
+	pbs_list_head *prq_pair;
 
 #ifndef PBS_MOM
 	/* if this is a sub job of an array job, then check to see if the */
@@ -2103,8 +2098,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 	if (preq == NULL) {
 		/* check that certain required attributues are valid */
 
-		if ((pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str == NULL) ||
-			(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str == NULL)) {
+		if (get_jattr_str(pjob, JOB_ATR_job_owner) == NULL || get_jattr_str(pjob, JOB_ATR_euser) == NULL) {
 			/* this case shouldn't happen, log it and don't do copy     */
 			/* use null jobid, if attr missing, jobid is likely bad too */
 
@@ -2121,7 +2115,8 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 		}
 		/* allocate and initialize the batch request struct */
 #ifndef PBS_MOM
-		if (get_credential(parse_servername(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str, NULL), pjob, PBS_GC_CPYFILE, &cred, &cred_len) == 0) {
+		if (get_credential(parse_servername(get_jattr_str(pjob, JOB_ATR_exec_vnode), NULL),
+				pjob, PBS_GC_CPYFILE, &cred, &cred_len) == 0) {
 			preq = alloc_br(PBS_BATCH_CopyFiles_Cred);
 		} else
 #endif
@@ -2138,8 +2133,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 		}
 
 		if (preq->rq_type == PBS_BATCH_CopyFiles_Cred) {
-			preq->rq_ind.rq_cpyfile_cred.rq_credtype =
-				pjob->ji_extended.ji_ext.ji_credtype;
+			preq->rq_ind.rq_cpyfile_cred.rq_credtype = pjob->ji_extended.ji_ext.ji_credtype;
 			preq->rq_ind.rq_cpyfile_cred.rq_pcred = cred;
 			preq->rq_ind.rq_cpyfile_cred.rq_credlen = cred_len;
 			pcfc = &preq->rq_ind.rq_cpyfile_cred;
@@ -2162,28 +2156,22 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 
 		/* copy jobid, owner, exec-user, group names, upto the @host part */
 
-		(void)strcpy(prq_jobid, pjob->ji_qs.ji_jobid);
-		get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
-			prq_owner);
-		get_jobowner(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-			prq_user);
-		if (((pjob->ji_wattr[(int)JOB_ATR_egroup].at_flags &
-			ATR_VFLAG_DEFLT) ==0) &&
-			(pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str != 0)) {
-			strcpy(prq_group,
-				pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str);
-		}
+		strcpy(prq_jobid, pjob->ji_qs.ji_jobid);
+		get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), prq_owner);
+		get_jobowner(get_jattr_str(pjob, JOB_ATR_euser), prq_user);
+		if ((pjob->ji_wattr[JOB_ATR_egroup].at_flags & ATR_VFLAG_DEFLT) == 0 &&
+			get_jattr_str(pjob, JOB_ATR_egroup) != 0)
+			strcpy(prq_group, get_jattr_str(pjob, JOB_ATR_egroup));
 		else
 			prq_group[0] = '\0';	/* default: use login group */
 
 		*prq_dir = direction;
 
 		/* set "sandbox=PRIVATE" mode */
-		if (pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pjob, JOB_ATR_sandbox)) {
 			/* set STAGE_JOBDIR mode based on job settings */
-			if (strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0) {
+			if (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)
 				*prq_dir |= STAGE_JOBDIR;
-			}
 		} /* O_WORKDIR check would go here */
 
 	} else {
@@ -2239,8 +2227,8 @@ is_join(job *pjob, enum job_atr ati)
 	else
 		return (0);
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
-	if (pattr->at_flags & ATR_VFLAG_SET) {
-		pd = pattr->at_val.at_str;
+	if (is_attr_set(pattr)) {
+		pd = get_attr_str(pattr);
 		if (pd && *pd && (*pd != 'n')) {
 			/* if not the first letter, and in list - is joined */
 			if ((*pd != key) && (strchr(pd+1, (int)key)))
@@ -2275,8 +2263,7 @@ cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
 
 	/* if the job is interactive, don't bother to return output file */
 
-	if (pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags &&
-		pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long)
+	if (pjob->ji_wattr[JOB_ATR_interactive].at_flags && get_jattr_long(pjob, JOB_ATR_interactive))
 		return NULL;
 
 	/* set up depending on which file */
@@ -2311,20 +2298,16 @@ cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
 	jkpattr = &pjob->ji_wattr[(int)JOB_ATR_keep];
 	if ((jkpattr->at_flags & ATR_VFLAG_SET) &&
 		strchr(jkpattr->at_val.at_str, key) && !strchr(jkpattr->at_val.at_str, 'd'))
-
 		return (preq);
 
 	/*
 	 * If the job has a remove file attribute and the job has succeeded,
 	 * std_files doesn't has to be copied.
 	 */
-	if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
-					ATR_VFLAG_SET) {
-		if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long
-				== JOB_EXEC_OK) {
+	if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
+		if (get_jattr_long(pjob, JOB_ATR_exit_status) == JOB_EXEC_OK) {
 			jkpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
-			if ((jkpattr->at_flags & ATR_VFLAG_SET)
-					&& (strchr(jkpattr->at_val.at_str, key)))
+			if (is_attr_set(jkpattr) && (strchr(jkpattr->at_val.at_str, key)))
 				return (preq);
 		}
 	}
@@ -2379,7 +2362,7 @@ cpy_stage(struct batch_request *preq, job *pjob, enum job_atr ati, int direction
 	char		     *to;
 
 	pattr = &pjob->ji_wattr[(int)ati];
-	if (pattr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(pattr)) {
 
 		/* at last, we know we have files to stage out/in */
 
@@ -2439,3 +2422,373 @@ has_stage(job *pjob)
 	}
 	return 0;
 }
+
+/**
+ * @brief	Check if the job is in the state specified
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	state - the state to check
+ *
+ * @return	int
+ * @retval	1 if the job is in the state specified
+ * @retval	0 otherwise
+ */
+int
+check_job_state(const job *pjob, char state)
+{
+	if (pjob == NULL)
+		return 0;
+
+	if (get_job_state(pjob) == state)
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief	Check if the job is in the substate specified
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	substate - the substate to check
+ *
+ * @return	int
+ * @retval	1 if the job is in the state specified
+ * @retval	0 otherwise
+ */
+int
+check_job_substate(const job *pjob, int substate)
+{
+	if (pjob == NULL)
+		return 0;
+
+	if (get_job_substate(pjob) == substate)
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief	Get the state character value of a job
+ *
+ * @param[in]	pjob - the job object
+ *
+ * @return char
+ * @return state character
+ * @return -1 for error
+ */
+char
+get_job_state(const job *pjob)
+{
+	if (pjob != NULL) {
+		return get_attr_c(&pjob->ji_wattr[JOB_ATR_state]);
+	}
+
+	return -1;
+}
+
+/**
+ * @brief	Convenience function to get the numeric representation of job state value
+ *
+ * @param[in]	pjob - job object
+ *
+ * @return int
+ * @retval numeric form of job state
+ * @retvam -1 for error
+ */
+int
+get_job_state_num(const job *pjob)
+{
+	char statec;
+	int staten;
+
+	if (pjob == NULL)
+		return -1;
+
+	statec = get_attr_c(&pjob->ji_wattr[JOB_ATR_state]);
+	if (statec == -1)
+		return -1;
+
+	staten = state_char2int(statec);
+
+	return staten;
+}
+
+/**
+ * @brief	Get the substate value of a job
+ *
+ * @param[in]	pjob - the job object
+ *
+ * @return long
+ * @return substate value
+ * @return -1 for error
+ */
+long
+get_job_substate(const job *pjob)
+{
+	if (pjob != NULL) {
+		return get_attr_l(&pjob->ji_wattr[JOB_ATR_substate]);
+	}
+
+	return -1;
+}
+
+/**
+ * @brief	Getter function for job attribute of type string
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	char *
+ * @retval	string value of the attribute
+ * @retval	NULL if pjob is NULL
+ */
+char *
+get_jattr_str(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return pjob->ji_wattr[attr_idx].at_val.at_str;
+
+	return NULL;
+}
+
+/**
+ * @brief	Getter function for job attribute of type long
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	long
+ * @retval	long value of the attribute
+ * @retval	-1 if pjob is NULL
+ */
+long
+get_jattr_long(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return pjob->ji_wattr[attr_idx].at_val.at_long;
+
+	return -1;
+}
+
+/**
+ * @brief	Getter function for job attribute's user_encoded value
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	svrattrl *
+ * @retval	user_encoded value of the attribute
+ * @retval	NULL if pjob is NULL
+ */
+svrattrl *
+get_jattr_usr_encoded(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return pjob->ji_wattr[attr_idx].at_user_encoded;
+
+	return NULL;
+}
+
+/**
+ * @brief	Getter function for job attribute's priv_encoded value
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	svrattrl *
+ * @retval	priv_encoded value of the attribute
+ * @retval	NULL if pjob is NULL
+ */
+svrattrl *
+get_jattr_priv_encoded(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return pjob->ji_wattr[attr_idx].at_priv_encoded;
+
+	return NULL;
+}
+
+/**
+ * @brief	Setter for job state
+ *
+ * @param[in]	job - pointer to job
+ * @param[in]	val - state val
+ *
+ * @return	void
+ */
+void
+set_job_state(job *pjob, char val)
+{
+	if (pjob != NULL) {
+		set_attr_c(&pjob->ji_wattr[JOB_ATR_state], val, SET);
+	}
+}
+
+/**
+ * @brief	Setter for job substate
+ *
+ * @param[in]	job - pointer to job
+ * @param[in]	val - substate val
+ *
+ * @return	void
+ */
+void
+set_job_substate(job *pjob, long val)
+{
+	if (pjob != NULL)
+		set_jattr_l_slim(pjob, JOB_ATR_substate, val, SET);
+}
+
+/**
+ * @brief	Generic Job attribute setter (call if you want at_set() action functions to be called)
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	rscn - new resource val to set, if applicable
+ * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
+int
+set_jattr_generic(job *pjob, int attr_idx, char *val, char *rscn, enum batch_op op)
+{
+	if (pjob == NULL || val == NULL)
+		return 1;
+
+	return set_attr_generic(&pjob->ji_wattr[attr_idx], &job_attr_def[attr_idx], val, rscn, op);
+}
+
+/**
+ * @brief	"fast" job attribute setter for string values
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	rscn - new resource val to set, if applicable
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
+int
+set_jattr_str_slim(job *pjob, int attr_idx, char *val, char *rscn)
+{
+	if (pjob == NULL || val == NULL)
+		return 1;
+
+	return set_attr_generic(&pjob->ji_wattr[attr_idx], &job_attr_def[attr_idx], val, rscn, INTERNAL);
+}
+
+/**
+ * @brief	"fast" job attribute setter for long values
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
+int
+set_jattr_l_slim(job *pjob, int attr_idx, long val, enum batch_op op)
+{
+	if (pjob == NULL)
+		return 1;
+
+	set_attr_l(&pjob->ji_wattr[attr_idx], val, op);
+
+	return 0;
+}
+
+/**
+ * @brief	"fast" job attribute setter for boolean values
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
+int
+set_jattr_b_slim(job *pjob, int attr_idx, long val, enum batch_op op)
+{
+	if (pjob == NULL)
+		return 1;
+
+	set_attr_b(&pjob->ji_wattr[attr_idx], val, op);
+
+	return 0;
+}
+
+/**
+ * @brief	Check if a job attribute is set
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to check
+ *
+ * @return	int
+ * @retval	1 if it is set
+ * @retval	0 otherwise
+ */
+int
+is_jattr_set(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return pjob->ji_wattr[attr_idx].at_flags & ATR_VFLAG_SET;
+
+	return 0;
+}
+
+/**
+ * @brief	Mark a job attribute as "set"
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ *
+ * @return	void
+ */
+void
+mark_jattr_not_set(job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		pjob->ji_wattr[attr_idx].at_flags &= ~ATR_VFLAG_SET;
+}
+
+/**
+ * @brief	Mark a job attribute as "not set"
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ *
+ * @return	void
+ */
+void
+mark_jattr_set(job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		pjob->ji_wattr[attr_idx].at_flags |= ATR_VFLAG_SET;
+}
+
+/**
+ * @brief	Free a job attribute
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to free
+ *
+ * @return	void
+ */
+void
+free_jattr(job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		job_attr_def[attr_idx].at_free(&pjob->ji_wattr[attr_idx]);
+}
+

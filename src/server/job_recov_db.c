@@ -101,7 +101,7 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 
 	strcpy(dbjob->ji_jobid, pjob->ji_qs.ji_jobid);
 
-	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED)
+	if (check_job_state(pjob, JOB_STATE_LTR_FINISHED))
 		save_all_attrs = 1;
 
 	if ((encode_attr_db(job_attr_def, pjob->ji_wattr, JOB_ATR_LAST, &dbjob->db_attr_list, save_all_attrs)) != 0)
@@ -111,10 +111,19 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 		savetype |= (OBJ_SAVE_NEW | OBJ_SAVE_QS);
 
 	if (compare_obj_hash(&pjob->ji_qs, sizeof(pjob->ji_qs), pjob->qs_hash) == 1) {
+		int statenum;
+
 		savetype |= OBJ_SAVE_QS;
 
-		dbjob->ji_state     = pjob->ji_qs.ji_state;
-		dbjob->ji_substate  = pjob->ji_qs.ji_substate;
+		statenum = get_job_state_num(pjob);
+		if (statenum == -1) {
+			log_errf(PBSE_INTERNAL, __func__, "get_job_state_num failed for job state %c",
+					get_job_state(pjob));
+			return -1;
+		}
+
+		dbjob->ji_state     = statenum;
+		dbjob->ji_substate  = get_job_substate(pjob);
 		dbjob->ji_svrflags  = pjob->ji_qs.ji_svrflags;
 		dbjob->ji_stime     = pjob->ji_qs.ji_stime;
 		strcpy(dbjob->ji_queue, pjob->ji_qs.ji_queue);
@@ -134,7 +143,7 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 		/* extended portion */
 		strcpy(dbjob->ji_jid, pjob->ji_extended.ji_ext.ji_jid);
 		dbjob->ji_credtype  = pjob->ji_extended.ji_ext.ji_credtype;
-		dbjob->ji_qrank = pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
+		dbjob->ji_qrank = get_jattr_long(pjob, JOB_ATR_qrank);
 	}
 
 	return savetype;
@@ -156,11 +165,20 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 static int
 db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 {
+	char statec;
+
 	/* Variables assigned constant values are not stored in the DB */
 	pjob->ji_qs.ji_jsversion = JSVERSION;
 	strcpy(pjob->ji_qs.ji_jobid, dbjob->ji_jobid);
-	pjob->ji_qs.ji_state = dbjob->ji_state;
-	pjob->ji_qs.ji_substate = dbjob->ji_substate;
+
+	statec = state_int2char(dbjob->ji_state);
+	if (statec == '0') {
+		log_errf(PBSE_INTERNAL, __func__, "state_int2char failed to convert state %d", dbjob->ji_state);
+		return 1;
+	}
+	set_job_state(pjob, statec);
+	set_job_substate(pjob, dbjob->ji_substate);
+
 	pjob->ji_qs.ji_svrflags = dbjob->ji_svrflags;
 	pjob->ji_qs.ji_stime = dbjob->ji_stime;
 	strcpy(pjob->ji_qs.ji_queue, dbjob->ji_queue);
@@ -220,7 +238,7 @@ job_save_db(job *pjob)
 	int old_mtime, old_flags;
 	char *conn_db_err = NULL;
 
-	old_mtime = pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long;
+	old_mtime = get_jattr_long(pjob, JOB_ATR_mtime);
 	old_flags = pjob->ji_wattr[JOB_ATR_mtime].at_flags;
 
 	if ((savetype = job_to_db(pjob, &dbjob)) == -1)
@@ -230,8 +248,7 @@ job_save_db(job *pjob)
 	obj.pbs_db_un.pbs_db_job = &dbjob;
 
 	/* update mtime before save, so the same value gets to the DB as well */
-	pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
-	pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_SET_MOD_MCACHE;
+	set_jattr_l_slim(pjob, JOB_ATR_mtime, time_now, SET);
 	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0)
 		pjob->newobj = 0;
 
@@ -240,7 +257,7 @@ done:
 
 	if (rc != 0) {
 		/* revert mtime, flags update */
-		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = old_mtime;
+		set_jattr_l_slim(pjob, JOB_ATR_mtime, old_mtime, SET);
 		pjob->ji_wattr[JOB_ATR_mtime].at_flags = old_flags;
 
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);

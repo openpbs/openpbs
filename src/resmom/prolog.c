@@ -92,14 +92,12 @@ extern int pe_input(char *jobid);
  */
 
 static char *
-resc_to_string(pattr, buf, buflen)
-attribute *pattr;	/* the attribute to convert */
-char      *buf;		/* the buffer into which to convert */
-int	   buflen;	/* the length of the above buffer */
+resc_to_string(job *pjob, int attr_idx, char *buf, int buflen)
 {
 	int       need;
 	svrattrl *patlist;
 	pbs_list_head svlist;
+	attribute *pattr = &pjob->ji_wattr[attr_idx];
 
 	CLEAR_HEAD(svlist);
 	*buf = '\0';
@@ -359,20 +357,20 @@ int   pe_io_type;
 
 		arg[0] = pelog;
 		arg[1] = pjob->ji_qs.ji_jobid;
-		arg[2] = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-		arg[3] = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
+		arg[2] = get_jattr_str(pjob, JOB_ATR_euser);
+		arg[3] = get_jattr_str(pjob, JOB_ATR_egroup);
 
 		/* for epilogue only */
 
 		if (which == PE_EPILOGUE) {
-			arg[4] = pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str;
-			(void)sprintf(sid, "%ld", pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long);
+			arg[4] = get_jattr_str(pjob, JOB_ATR_jobname);
+			sprintf(sid, "%ld", get_jattr_long(pjob, JOB_ATR_session_id));
 			arg[5] = sid;
-			arg[6] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
-			arg[7] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resc_used], resc_used, 2048);
-			arg[8] = pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str;
-			if ((pjob->ji_wattr[(int)JOB_ATR_account].at_flags & ATR_VFLAG_SET) && (strlen(pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str) > 0))
-				arg[9] = pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str;
+			arg[6] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
+			arg[7] = resc_to_string(pjob, JOB_ATR_resc_used, resc_used, 2048);
+			arg[8] = get_jattr_str(pjob, JOB_ATR_in_queue);
+			if ((is_jattr_set(pjob, JOB_ATR_account)) && (strlen(get_jattr_str(pjob, JOB_ATR_account)) > 0))
+				arg[9] = get_jattr_str(pjob, JOB_ATR_account);
 			else
 				arg[9] = "null";
 			sprintf(exitcode, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exitstat);
@@ -392,7 +390,7 @@ int   pe_io_type;
 
 		/* Add PBS_JOBDIR to the current process environement */
 		if (pjob->ji_grpcache) {
-			if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+			if ((is_jattr_set(pjob, JOB_ATR_sandbox)) && (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 				/* set PBS_JOBDIR to the per-job staging and execution directory*/
 				sprintf(buf, "PBS_JOBDIR=%s",
 					jobdirname(pjob->ji_qs.ji_jobid,

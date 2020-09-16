@@ -259,27 +259,27 @@ job_route(job *jobp)
 
 	/* see if the job is able to be routed */
 
-	switch (jobp->ji_qs.ji_state) {
+	switch (get_job_state(jobp)) {
 
-		case JOB_STATE_TRANSIT:
+		case JOB_STATE_LTR_TRANSIT:
 			return (0);		/* already going, ignore it */
 
-		case JOB_STATE_QUEUED:
+		case JOB_STATE_LTR_QUEUED:
 			break;			/* ok to try */
 
-		case JOB_STATE_HELD:
+		case JOB_STATE_LTR_HELD:
 			bad_state = !jobp->ji_qhdr->qu_attr[QR_ATR_RouteHeld].at_val.at_long;
 			break;
 
-		case JOB_STATE_WAITING:
+		case JOB_STATE_LTR_WAITING:
 			bad_state = !jobp->ji_qhdr->qu_attr[QR_ATR_RouteWaiting].at_val.at_long;
 			break;
 
-		case JOB_STATE_MOVED:
-		case JOB_STATE_FINISHED:
+		case JOB_STATE_LTR_MOVED:
+		case JOB_STATE_LTR_FINISHED:
 			/*
 			 * If the job in ROUTE_Q is already deleted (ji_state ==
-			 * JOB_STATE_FINISHED) or routed (ji_state == JOB_STATE_MOVED)
+			 * JOB_STATE_LTR_FINISHED) or routed (ji_state == JOB_STATE_LTR_MOVED)
 			 * and kept for history purpose, then ignore it until being
 			 * cleaned up by SERVER.
 			 */
@@ -287,7 +287,7 @@ job_route(job *jobp)
 
 		default:
 			(void)sprintf(log_buffer, "(%s) %s, state=%d",
-				__func__, msg_badstate, jobp->ji_qs.ji_state);
+				__func__, msg_badstate, get_job_state(jobp));
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				jobp->ji_qs.ji_jobid, log_buffer);
 			return (0);

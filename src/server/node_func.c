@@ -1216,7 +1216,7 @@ indirect_target_check(struct work_task *ptask)
 			pnode->nd_state & INUSE_STALE)
 			continue;
 		pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-		if (pattr->at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(pattr)) {
 			for (presc = (resource *)GET_NEXT(pattr->at_val.at_list);
 				presc;
 				presc = (resource *)GET_NEXT(presc->rs_link)) {
@@ -1530,7 +1530,7 @@ node_pcpu_action(attribute *new, void *pobj, int actmode)
 	if (prc == 0) {
 		return (0); /* if this error happens - ignore it */
 	}
-	if (((prc->rs_value.at_flags & ATR_VFLAG_SET) == 0) ||
+	if (((is_attr_set(&prc->rs_value)) == 0) ||
 		((prc->rs_value.at_flags & ATR_VFLAG_DEFLT) != 0)) {
 		if (prc->rs_value.at_val.at_long != new_np) {
 			prc->rs_value.at_val.at_long = new_np;
@@ -1607,7 +1607,7 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 
 	pnode = (struct pbsnode *)pobj;
 
-	if (pattr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(pattr)) {
 
 		pq = find_queuebyname(pattr->at_val.at_str);
 		if (pq == 0) {
@@ -1717,7 +1717,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 		return (0);
 	}
 
-	if (patr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(patr)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
 		clear_attr(patr, &node_attr_def[(int)ND_ATR_Mom]);
 	}

@@ -3108,10 +3108,14 @@ new_share_head(int cnt)
 	if (newsh == NULL)
 		return NULL;
 	ptr = (sh_amt *)(newsh + 1);
-	newsh->sh_active = ptr;		ptr += cnt;
-	newsh->sh_avail = ptr;		ptr += cnt;
-	newsh->sh_contrib = ptr;	ptr += cnt;
-	newsh->sh_total = ptr;		ptr += cnt;
+	newsh->sh_active = ptr;
+	ptr += cnt;
+	newsh->sh_avail = ptr;
+	ptr += cnt;
+	newsh->sh_contrib = ptr;
+	ptr += cnt;
+	newsh->sh_total = ptr;
+	ptr += cnt;
 	return newsh;
 }
 
@@ -3154,12 +3158,17 @@ new_share_info(char *name, int cnt)
 	si = calloc(1, sz + strlen(name) + 1);
 	if (si != NULL) {
 		ptr = (sh_amt *)(si + 1);
-		si->share_gross = ptr;		ptr += cnt;
-		si->share_net = ptr;		ptr += cnt;
-		si->share_ncpus = ptr;		ptr += cnt;
+		si->share_gross = ptr;
+		ptr += cnt;
+		si->share_net = ptr;
+		ptr += cnt;
+		si->share_ncpus = ptr;
+		ptr += cnt;
 		aptr = (sh_amt_array *) ptr;
-		si->share_inuse = aptr;		aptr += 2 * cnt;
-		si->share_demand = aptr;	aptr += 2 * cnt;
+		si->share_inuse = aptr;
+		aptr += 2 * cnt;
+		si->share_demand = aptr;
+		aptr += 2 * cnt;
 		si->name = (char *)aptr;
 		assert(si->name - (char *)si <= sz);
 		strcpy(si->name, name);
@@ -3199,12 +3208,17 @@ new_share_info_clone(share_info *old)
 		 * Adjust internal pointers
 		 */
 		ptr = (sh_amt *)(si + 1);
-		si->share_gross = ptr;		ptr += cnt;
-		si->share_net = ptr;		ptr += cnt;
-		si->share_ncpus = ptr;		ptr += cnt;
+		si->share_gross = ptr;
+	ptr += cnt;
+		si->share_net = ptr;
+	ptr += cnt;
+		si->share_ncpus = ptr;
+	ptr += cnt;
 		aptr = (sh_amt_array *) ptr;
-		si->share_inuse = aptr;		aptr += 2 * cnt;
-		si->share_demand = aptr;	aptr += 2 * cnt;
+		si->share_inuse = aptr;
+	aptr += 2 * cnt;
+		si->share_demand = aptr;
+aptr += 2 * cnt;
 	}
 	return si;
 }

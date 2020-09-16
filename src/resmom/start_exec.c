@@ -275,10 +275,10 @@ check_pwd(job *pjob)
 	struct group		*grpp;
 	struct stat		sb;
 
-	pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+	pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 	if (pwdp == NULL) {
 		(void)sprintf(log_buffer, "No Password Entry for User %s",
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_euser));
 		return NULL;
 	}
 	/* check that home directory is valid */
@@ -311,11 +311,10 @@ check_pwd(job *pjob)
 
 		/* execution group specified - not defaulting to login group */
 
-		grpp = getgrnam(pjob->ji_wattr[(int)JOB_ATR_egroup].
-			at_val.at_str);
+		grpp = getgrnam(get_jattr_str(pjob, JOB_ATR_egroup));
 		if (grpp == NULL) {
 			(void)sprintf(log_buffer, "No Group Entry for Group %s",
-				pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str);
+				get_jattr_str(pjob, JOB_ATR_egroup));
 			return NULL;
 		}
 		if (grpp->gr_gid != pwdp->pw_gid) {
@@ -479,7 +478,7 @@ exec_bail(job *pjob, int code, char *txt)
 			nodes, pjob->ji_numnodes-1);
 		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 	}
-	pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+	set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 	pjob->ji_qs.ji_un.ji_momt.ji_exitstat = code;
 	exiting_tasks = 1;
 	if (pjob->ji_stdout > 0)
@@ -569,7 +568,7 @@ open_pty(job *pjob)
 
 	/* Open the slave pty as the controlling tty */
 
-	name = pjob->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str;
+	name = get_jattr_str(pjob, JOB_ATR_outpath);
 
 	if ((pts = open(name, O_RDWR, 0600)) < 0) {
 		sprintf(log_buffer, "open_pty(%s): cannot open slave", name);
@@ -607,8 +606,7 @@ is_joined(job *pjob)
 	attribute *pattr;
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
-	if ((pattr->at_flags & ATR_VFLAG_SET) &&
-		(pattr->at_val.at_str[0] != 'n')) {
+	if (is_attr_set(pattr) && (pattr->at_val.at_str[0] != 'n')) {
 		if ((pattr->at_val.at_str[0] == 'o') &&
 			(strchr(pattr->at_val.at_str, (int)'e') != 0)) {
 			return 1;
@@ -709,9 +707,9 @@ NAS_tmpdirname(job *pjob)
 	char *ss;
 
 	ss = strstr(pbs_tmpdir, "//");
-	if (ss != NULL) {
-		strcpy(ss + 2, pjob->ji_wattr[(int) JOB_ATR_euser].at_val.at_str);
-	}
+	if (ss != NULL)
+		strcpy(ss + 2, get_jattr_str(pjob,  JOB_ATR_euser));
+
 	return tmpdirname(pjob->ji_qs.ji_jobid);
 }
 #endif /* localmod 010 */
@@ -1231,7 +1229,7 @@ becomeuser(job *pjob)
 		rgid = pjob->ji_grpcache->gc_rgid;
 	else
 		rgid = pjob->ji_qs.ji_un.ji_momt.ji_exgid;
-	if (becomeuser_args(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str, pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid, rgid) == -1) {
+	if (becomeuser_args(get_jattr_str(pjob, JOB_ATR_euser), pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid, rgid) == -1) {
 		fprintf(stderr, "unable to set user privileges, errno = %d\n",
 			errno);
 		return -1;
@@ -1497,7 +1495,7 @@ job_setup(job *pjob, struct passwd **pwdparm)
 
 	pjob->ji_chkpttype = PBS_CHECKPOINT_NONE;
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_chkpnt];
-	if (pattr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(pattr)) {
 		if ((*pattr->at_val.at_str == 'c') &&
 			(*(pattr->at_val.at_str+1) == '=')) {
 			/* has cpu checkpoint time in minutes, convert to seconds */
@@ -1802,13 +1800,10 @@ record_finish_exec(int sd)
 
 	start_walltime(pjob);
 
-	pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long
-	= sjr.sj_session;
-	pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags =
-		ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
+	set_jattr_l_slim(pjob, JOB_ATR_session_id, sjr.sj_session, SET);
 
-	pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-	pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+	set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+	set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 	job_save(pjob);
 
 	if (mom_get_sample() == PBSE_NONE) {
@@ -2334,7 +2329,7 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	}
 
 	/* add delay */
- 	r_buf = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+ 	r_buf = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 	r_size = strlen(r_buf) + 1;
 
  	if (send_string_data(pipefd_write, pipefd_ack, r_buf, r_size) != 0) {
@@ -2345,12 +2340,11 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	}
 
 	/* now send new exec_host or exec_host2 */
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
- 		r_buf = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
-	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
-		/* send new exec_host size */
- 		r_buf = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
-	} else {
+	if (is_jattr_set(pjob, JOB_ATR_exec_host2))
+ 		r_buf = get_jattr_str(pjob, JOB_ATR_exec_host2);
+	else if (is_jattr_set(pjob, JOB_ATR_exec_host))	/* send new exec_host size */
+ 		r_buf = get_jattr_str(pjob, JOB_ATR_exec_host);
+	else {
 		snprintf(log_buffer, sizeof(log_buffer),
 			 "job %s has unset exec_host and exec_host2", pjob->ji_qs.ji_jobid);
 		log_err(-1, __func__, log_buffer);
@@ -2366,7 +2360,7 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	}
 
 	/* now send schedselect */
-      	r_buf = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+      	r_buf = get_jattr_str(pjob, JOB_ATR_SchedSelect);
 
 	r_size = strlen(r_buf) + 1;
  	if (send_string_data(pipefd_write, pipefd_ack, r_buf, r_size) != 0) {
@@ -2474,7 +2468,7 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 
 	/* set job's exec_vnode */
 	snprintf(log_buffer, sizeof(log_buffer), "pruned from exec_vnode=%s",
-	     	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+	     	get_jattr_str(pjob, JOB_ATR_exec_vnode));
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
 	snprintf(log_buffer, sizeof(log_buffer),
@@ -2482,27 +2476,18 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);
 
-	(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_exec_vnode], NULL, NULL, new_exec_vnode);
+	set_jattr_str_slim(pjob, JOB_ATR_exec_vnode, new_exec_vnode, NULL);
 
 	(void)update_resources_list(pjob, ATTR_l,
 		JOB_ATR_resource, new_exec_vnode, INCR, 0,
 			JOB_ATR_resource_orig);
 
 
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
-		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
-			(char *)0,
-			(char *)0,
-			new_exec_host);
-	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
-		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-			(char *)0,
-			(char *)0,
-			new_exec_host);
-	}
+	if (is_jattr_set(pjob, JOB_ATR_exec_host2))
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host2, new_exec_host, NULL);
+	else if (is_jattr_set(pjob, JOB_ATR_exec_host))
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host, new_exec_host, NULL);
+
 
 	/* Send DELETE_JOB2 request to the sister moms not in
 	 * 'new_peh', to kill the job on that sister and
@@ -2510,11 +2495,7 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 	 */
 	(void)send_sisters_inner(pjob, IM_DELETE_JOB2, NULL, new_exec_host);
 
-	(void)job_attr_def[(int)JOB_ATR_SchedSelect].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
-		(char *)0,
-		(char *)0,
-		new_schedselect);
+	set_jattr_str_slim(pjob, JOB_ATR_SchedSelect, new_schedselect, NULL);
 
 	free(new_exec_vnode);
 	free(new_exec_host);
@@ -2558,10 +2539,9 @@ report_failed_node_hosts_task(struct work_task *ptask)
 		log_err(-1, __func__, "task structure contains reference to NULL job");
 		return;
 	}
-	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) ||
-	    (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
+	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING) ||
+	    !check_job_substate(pjob, JOB_SUBSTATE_PRERUN))
 		return;	/* job not longer waiting for healthy moms */
-	}
 
 	for (rjn = (reliable_job_node *)GET_NEXT(pjob->ji_node_list); rjn != NULL; rjn = rjn_next) {
 		rjn_next = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
@@ -2866,7 +2846,7 @@ finish_exec(job *pjob)
 
 	memset(&sjr, 0, sizeof(sjr));
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-	if (pattr->at_flags & ATR_VFLAG_SET)
+	if (is_attr_set(pattr))
 		nodemux = (int)pattr->at_val.at_long;
 
 
@@ -2878,8 +2858,8 @@ finish_exec(job *pjob)
 	/* wait until after job_setup to call jobdirname(), we need the user's home info */
 	pbs_jobdir = jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir);
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE")== 0)) {
+	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE")== 0)) {
 		/* set local variable sandbox_private */
 		sandbox_private = 1;
 	}
@@ -2925,8 +2905,7 @@ finish_exec(job *pjob)
 	}
 
 	pattri = &pjob->ji_wattr[(int)JOB_ATR_interactive];
-	if ((pattri->at_flags & ATR_VFLAG_SET) &&
-		(pattri->at_val.at_long != 0)) {
+	if (is_attr_set(pattri) && pattri->at_val.at_long != 0) {
 
 		is_interactive = 1;
 
@@ -2946,12 +2925,10 @@ finish_exec(job *pjob)
 
 		pattr = &pjob->ji_wattr[(int)JOB_ATR_outpath];
 		job_attr_def[(int)JOB_ATR_outpath].at_free(pattr);
-		(void)job_attr_def[(int)JOB_ATR_outpath].at_decode(
-			pattr, NULL, NULL, pts_name);
+		set_attr_generic(pattr, &job_attr_def[JOB_ATR_outpath], pts_name, NULL, INTERNAL);
 		pattr = &pjob->ji_wattr[(int)JOB_ATR_errpath];
 		job_attr_def[(int)JOB_ATR_errpath].at_free(pattr);
-		(void)job_attr_def[(int)JOB_ATR_errpath].at_decode(
-			pattr, NULL, NULL, pts_name);
+		set_attr_generic(pattr, &job_attr_def[JOB_ATR_errpath], pts_name, NULL, INTERNAL);
 
 #if SHELL_INVOKE == 1
 	} else {
@@ -3381,9 +3358,8 @@ finish_exec(job *pjob)
 #endif	/* SHELL_INVOKE */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pjob, JOB_ATR_cred_id))
 			send_cred_sisters(pjob);
-		}
 #endif
 
 		return;
@@ -3532,15 +3508,13 @@ finish_exec(job *pjob)
 	bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 
 	/* PBS_JOBNAME */
-	bld_env_variables(&vtable, variables_else[2],
-		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+	bld_env_variables(&vtable, variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
 
 	/* PBS_JOBID */
 	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 
 	/* PBS_QUEUE */
-	bld_env_variables(&vtable, variables_else[4],
-		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+	bld_env_variables(&vtable, variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
 
 	/* SHELL */
 	bld_env_variables(&vtable, variables_else[5], shell);
@@ -3549,8 +3523,7 @@ finish_exec(job *pjob)
 	bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 
 	/* PBS_JOBCOOKIE */
-	bld_env_variables(&vtable, variables_else[7],
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+	bld_env_variables(&vtable, variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
 
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
@@ -3575,9 +3548,9 @@ finish_exec(job *pjob)
 	 * (Cannot just leave it unset because then the MKL sparse solvers
 	 * use every CPU in the system.)
 	 */
-	schedselect = pjob->ji_wattr[(int) JOB_ATR_SchedSelect].at_val.at_str;
+	schedselect = get_jattr_str(pjob,  JOB_ATR_SchedSelect);
 	if (schedselect && strstr(schedselect, OMPTHREADS) != NULL)
-	bld_env_variables(&vtable, variables_else[12], buf);
+		bld_env_variables(&vtable, variables_else[12], buf);
 	else
 		bld_env_variables(&vtable, variables_else[12], "1");
 #else
@@ -3587,18 +3560,16 @@ finish_exec(job *pjob)
 
 	/* PBS_NODEFILE */
 
-	if (generate_pbs_nodefile(pjob, buf, sizeof(buf)-1, log_buffer,
-						LOG_BUF_SIZE-1) == 0) {
+	if (generate_pbs_nodefile(pjob, buf, sizeof(buf)-1, log_buffer, LOG_BUF_SIZE - 1) == 0)
 		bld_env_variables(&vtable, variables_else[11], buf);
-	} else {
+	else {
 		log_err(errno, __func__, log_buffer);
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 	}
 
 	/* PBS_ACCOUNT */
-	if (pjob->ji_wattr[(int)JOB_ATR_account].at_flags & ATR_VFLAG_SET)
-		bld_env_variables(&vtable, variables_else[13],
-			pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str);
+	if (is_jattr_set(pjob, JOB_ATR_account))
+		bld_env_variables(&vtable, variables_else[13], get_jattr_str(pjob, JOB_ATR_account));
 
 	/* If an Sub job of an Array job, put in the index */
 
@@ -3612,14 +3583,12 @@ finish_exec(job *pjob)
 	}
 
 	/* if user specified umask for job, set it */
-	if (pjob->ji_wattr[(int)JOB_ATR_umask].at_flags & ATR_VFLAG_SET) {
-		sprintf(buf, "%ld", pjob->ji_wattr[(int)JOB_ATR_umask].
-			at_val.at_long);
+	if (is_jattr_set(pjob, JOB_ATR_umask)) {
+		sprintf(buf, "%ld", get_jattr_long(pjob, JOB_ATR_umask));
 		sscanf(buf, "%o", &j);
 		umask(j);
-	} else {
+	} else
 		umask(077);
-	}
 
 	/* Add TMPDIR to environment */
 #ifdef NAS /* localmod 010 */
@@ -3629,9 +3598,8 @@ finish_exec(job *pjob)
 		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid,
 		&vtable);
-	if (j != 0) {
+	if (j != 0)
 		starter_return(upfds, downfds, j, &sjr);
-	}
 
 	/* set PBS_JOBDIR */
 	if (sandbox_private) {
@@ -3703,7 +3671,7 @@ finish_exec(job *pjob)
 		old_qsub_sock = qsub_sock;
 		FDMOVE(qsub_sock);
 
-		if (pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
+		if (get_jattr_str(pjob, JOB_ATR_X11_cookie)) {
 			char display[X_DISPLAY_LEN];
 
 			if ((socks = calloc(sizeof(struct pfwdsock), NUM_SOCKS)) == NULL) {
@@ -3713,7 +3681,7 @@ finish_exec(job *pjob)
 			}
 			display_number = init_x11_display(socks, 1, /* use localhost only */
 				display, pjob->ji_grpcache->gc_homedir,
-				pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str);
+				get_jattr_str(pjob, JOB_ATR_X11_cookie));
 
 			if (display_number >= 0) {
 				bld_env_variables(&vtable, "DISPLAY", display);
@@ -3802,7 +3770,7 @@ finish_exec(job *pjob)
 			(void)close(parent2child_moms_status_pipe_r);
 			(void)close(pts);
 			/*Closing the inherited post forwarded listening socket  */
-			if (pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
+			if (get_jattr_str(pjob, JOB_ATR_X11_cookie)) {
 				for (n = 0; n <NUM_SOCKS;n++) {
 					if (socks[n].active)
 						close(socks[n].sock);
@@ -3976,7 +3944,7 @@ finish_exec(job *pjob)
 						buf[0] = '\0';
 					}
 					if ((is_interactive == TRUE) &&
-						pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
+						get_jattr_str(pjob, JOB_ATR_X11_cookie)) {
 						if (sandbox_private) {
 							/* Change to $PBS_JOBDIR before
 							 blocking waiting for data */
@@ -3988,7 +3956,7 @@ finish_exec(job *pjob)
 							}
 						}
 						port_forwarder(socks, conn_qsub, phost + 1,
-							pjob->ji_wattr[JOB_ATR_X11_port].at_val.at_long,
+							get_jattr_long(pjob, JOB_ATR_X11_port),
 							qsub_sock, mom_reader_Xjob,
 							log_mom_portfw_msg);
 					} else {
@@ -4055,8 +4023,7 @@ finish_exec(job *pjob)
 				script_in = open("/dev/null", O_RDONLY, 0);
 		}
 #endif	/* SHELL_INVOKE */
-		if (!(pjob->ji_wattr[(int)JOB_ATR_executable].at_flags &
-			ATR_VFLAG_SET)) {
+		if (!is_jattr_set(pjob, JOB_ATR_executable)) {
 			/*
 			 * user has passed executable and argument list as
 			 * as command-line options to qsub (i.e after -- flag
@@ -4070,9 +4037,9 @@ finish_exec(job *pjob)
 			}
 			FDMOVE(script_in);	/* make sure descriptor > 2       */
 			if (script_in != 0) {
-				(void)close(0);
-				(void)dup(script_in);
-				(void)close(script_in);
+				close(0);
+				dup(script_in);
+				close(script_in);
 			}
 		}
 
@@ -4196,8 +4163,8 @@ finish_exec(job *pjob)
 	/*	Both normal batch and interactive job come through here 	 */
 	/*************************************************************************/
 
-	pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long = sjr.sj_session;
-	if (site_job_setup(pjob) != 0) {
+	set_jattr_l_slim(pjob, JOB_ATR_session_id, sjr.sj_session, SET);
+if (site_job_setup(pjob) != 0) {
 		starter_return(upfds, downfds,
 			JOB_EXEC_FAIL2, &sjr);		/* exits */
 	}
@@ -4242,7 +4209,7 @@ finish_exec(job *pjob)
 	endpwent();
 
 	job_has_executable = 0;
-	if (pjob->ji_wattr[(int)JOB_ATR_executable].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_executable)) {
 		/*
 		 * Call decode_xml_arg_list to decode XML string
 		 * and store executable in shell and argument list in argv.
@@ -4421,9 +4388,8 @@ finish_exec(job *pjob)
 	 * See the code for the forked parent (about 700 lines above), look for the comment:
 	 * "the parent side, still the main man, uhh that is MOM"
 	 */
-	if ((pjob->ji_wattr[(int)JOB_ATR_executable].at_flags &
-		ATR_VFLAG_SET) && (sandbox_private)) {
-		if ((!pbs_jobdir) || (chdir(pbs_jobdir) == -1)) {
+	if (is_jattr_set(pjob, JOB_ATR_executable) && sandbox_private) {
+		if (!pbs_jobdir || chdir(pbs_jobdir) == -1) {
 			log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
 				LOG_ERR, pjob->ji_qs.ji_jobid,
 				"sandbox=PRIVATE mode: Could not chdir to job directory\n");
@@ -4436,9 +4402,9 @@ finish_exec(job *pjob)
 			"Could not chdir to Home directory");
 		(void)fprintf(temp_stderr, "Could not chdir to home directory\n");
 		/* check if "qsub -k[oe]" was specified */
-		if (((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
-			((strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'o')) ||
-			(strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'e')))) &&
+		if (((is_jattr_set(pjob, JOB_ATR_keep)) &&
+			((strchr(get_jattr_str(pjob, JOB_ATR_keep), 'o')) ||
+			(strchr(get_jattr_str(pjob, JOB_ATR_keep), 'e')))) &&
 			!sandbox_private) {
 			/* user Home is required for job output if "qsub -k[oe]" was specified
 			 * and not in sandbox=private mode, so error out.
@@ -4473,7 +4439,7 @@ finish_exec(job *pjob)
 		(void)close(pjob->ji_stdout);
 		(void)close(pjob->ji_stderr);
 		if ((is_interactive == TRUE) &&
-			pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
+			get_jattr_str(pjob, JOB_ATR_X11_cookie)) {
 			char auth_display[X_DISPLAY_LEN];
 			char cmd[X_DISPLAY_LEN];
 			char format[X_DISPLAY_LEN];
@@ -4491,7 +4457,7 @@ finish_exec(job *pjob)
 
 			/*getting the cookie data from the job attributes*/
 			strcpy(x11authstr,
-				pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str);
+				get_jattr_str(pjob, JOB_ATR_X11_cookie));
 
 			/**
 			 * parsing cookie to get X11 protocol,
@@ -4750,9 +4716,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
 
 		(void)task_save(ptask);
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save(pjob);
 		}
 		(void)sprintf(log_buffer, "task %8.8X started, %s",
@@ -4826,18 +4792,18 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	/* PBS_JOBNAME */
 	bld_env_variables(&vtable, variables_else[2],
-		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_jobname));
 
 	/* PBS_JOBID */
 	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 
 	/* PBS_QUEUE */
 	bld_env_variables(&vtable, variables_else[4],
-		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_in_queue));
 
 	/* PBS_JOBCOOKIE */
 	bld_env_variables(&vtable, variables_else[7],
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_Cookie));
 
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
@@ -4865,13 +4831,12 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	bld_env_variables(&vtable, "NCPUS", buf);
 
 	/* PBS_ACCOUNT */
-	if (pjob->ji_wattr[(int)JOB_ATR_account].at_flags & ATR_VFLAG_SET)
+	if (is_jattr_set(pjob, JOB_ATR_account))
 		bld_env_variables(&vtable, variables_else[13],
-			pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_account));
 
-	if (pjob->ji_wattr[(int)JOB_ATR_umask].at_flags & ATR_VFLAG_SET) {
-		sprintf(buf, "%ld", pjob->ji_wattr[(int)JOB_ATR_umask].
-			at_val.at_long);
+	if (is_jattr_set(pjob, JOB_ATR_umask)) {
+		sprintf(buf, "%ld", get_jattr_long(pjob, JOB_ATR_umask));
 		sscanf(buf, "%o", &j);
 		umask(j);
 	} else {
@@ -4900,8 +4865,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	}
 
 	/* set PBS_JOBDIR */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 		bld_env_variables(&vtable, "PBS_JOBDIR", pbs_jobdir);
 	} else {
 		bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
@@ -5035,8 +5000,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	the_env = vtable.v_envp;
 
 	/* change working directory to PBS_JOBDIR or to User's Home */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 		if ((!pbs_jobdir) || (chdir(pbs_jobdir) == -1)) {
 			log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
 				LOG_ERR, pjob->ji_qs.ji_jobid,
@@ -5068,7 +5033,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
 	/* If nodemux is not already set by the caller, check job's JOB_ATR_nodemux attribute. */
-	if (!nodemux && (pattr->at_flags & ATR_VFLAG_SET))
+	if (!nodemux && (is_attr_set(pattr)))
 		nodemux = (int)pattr->at_val.at_long;
 
 	if (pjob->ji_numnodes > 1) {
@@ -5103,15 +5068,12 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			if (fd > 2)
 				(void)close(fd);
 
-			(void)write(1, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
-				strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
-			(void)write(2, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
-				strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
+			write(1, get_jattr_str(pjob, JOB_ATR_Cookie),
+				strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
+			write(2, get_jattr_str(pjob, JOB_ATR_Cookie),
+				strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
 		}
-	} else if ((pjob->ji_wattr[(int)JOB_ATR_interactive].
-		at_flags&ATR_VFLAG_SET) &&
-		(pjob->ji_wattr[(int)JOB_ATR_interactive].
-		at_val.at_long > 0)) {
+	} else if (is_jattr_set(pjob, JOB_ATR_interactive) && get_jattr_long(pjob, JOB_ATR_interactive) > 0) {
 		/* interactive job, single node, write to pty */
 		if ((pts = open_pty(pjob)) < 0) {
 			log_err(errno, __func__, "cannot open slave");
@@ -5356,28 +5318,28 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	if (pjob == NULL)
 		return (PBSE_INTERNAL);
-	if (!(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET))
+	if (!(is_jattr_set(pjob, JOB_ATR_exec_vnode)))
 		return (PBSE_INTERNAL);
-	if (!(pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET))
+	if (!(is_jattr_set(pjob, JOB_ATR_SchedSelect)))
 		return (PBSE_INTERNAL);
 
 	/* free what might have been done before if job is restarted */
 	nodes_free(pjob);
 
-	execvnode = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+	execvnode = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 	if (execvnode == NULL)
 		return (PBSE_INTERNAL);
 
-	schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+	schedselect = get_jattr_str(pjob, JOB_ATR_SchedSelect);
 	if (schedselect == NULL)
 		return (PBSE_INTERNAL);
 
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str != NULL) {
+	if (get_jattr_str(pjob, JOB_ATR_exec_host2) != NULL) {
 		/* Mom got information from new server */
 		enable_exechost2 = 1;
-		peh = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+		peh = get_jattr_str(pjob, JOB_ATR_exec_host2);
 	} else {
-		peh = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+		peh = get_jattr_str(pjob, JOB_ATR_exec_host);
 	}
 	if (peh == NULL)
 		return (PBSE_INTERNAL);
@@ -6015,22 +5977,14 @@ start_exec(job *pjob)
 	 * because random() and lrand48() return a long int.
 	 */
 
-	if (!(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & ATR_VFLAG_SET)) {
-		char		*tt;
-		int		i;
-
-		tt = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str = malloc(33);
-		if (tt == NULL) {
-			log_joberr(ENOMEM, __func__, "out of memory",
-				pjob->ji_qs.ji_jobid);
-			exec_bail(pjob, JOB_EXEC_RETRY, NULL);
-			return;
-		}
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags |= ATR_VFLAG_SET;
+	if (!(is_jattr_set(pjob, JOB_ATR_Cookie))) {
+		char tt[33];
+		int i;
 
 		for (i = 0; i < 33; i += sizeof(long)) {
 			snprintf(&tt[i], 33 - i, "%.*lX", (int)sizeof(long), (unsigned long)random());
 		}
+		set_jattr_str_slim(pjob, JOB_ATR_Cookie, tt, NULL);
 		DBPRT(("===== COOKIE %s\n", tt))
 	}
 
@@ -6129,7 +6083,7 @@ start_exec(job *pjob)
 		}
 
 		pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-		if (pattr->at_flags & ATR_VFLAG_SET)
+		if (is_attr_set(pattr))
 			nodemux = (int)pattr->at_val.at_long;
 
 		/*
@@ -6260,8 +6214,8 @@ start_exec(job *pjob)
 
 		free_attrlist(&phead);
 		if (do_tolerate_node_failures(pjob)) {
-			if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_WAITING_JOIN_JOB) {
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_WAITING_JOIN_JOB;
+			if (!check_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB)) {
+				set_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB);
 				pjob->ji_joinalarm = time_now + joinjob_alarm_time;
 				sprintf(log_buffer, "job waiting up to %ld secs ($sister_join_job_alarm) for all sister moms to join", joinjob_alarm_time);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
@@ -6545,13 +6499,12 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 	char *pd;
 	char *suffix = NULL;
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags&ATR_VFLAG_SET) &&
-		(pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long > 0)) {
+	if (is_jattr_set(pjob, JOB_ATR_interactive) && (get_jattr_long(pjob, JOB_ATR_interactive) > 0)) {
 
 		/* interactive job, name of pty is in outpath */
 
 		*keeping = 0;
-		return (pjob->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str);
+		return (get_jattr_str(pjob, JOB_ATR_outpath));
 	}
 
 	switch(which)
@@ -6584,29 +6537,25 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 	}
 
 	/* Is file to be kept?, if so use default name in Home directory */
-	else if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
-		strchr(pjob->ji_wattr[(int) JOB_ATR_keep].at_val.at_str, key)
-			&& !strchr(pjob->ji_wattr[(int) JOB_ATR_keep].at_val.at_str, 'd')) {
+	else if ((is_jattr_set(pjob, JOB_ATR_keep)) &&
+		strchr(get_jattr_str(pjob,  JOB_ATR_keep), key)
+			&& !strchr(get_jattr_str(pjob,  JOB_ATR_keep), 'd')) {
 		/* sandbox=private mode set the path to be the path to the */
 		/* staging and execution directory			   */
-		if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET)
-				&& (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str,
-						"PRIVATE") == 0)) {
-			strcpy(path,
-					jobdirname(pjob->ji_qs.ji_jobid,
-							pjob->ji_grpcache->gc_homedir));
+		if ((is_jattr_set(pjob, JOB_ATR_sandbox))
+				&& (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
+			strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 			*keeping = 1;
-		} else {
-			(void) strcpy(path, pjob->ji_grpcache->gc_homedir);
-		}
+		} else
+			strcpy(path, pjob->ji_grpcache->gc_homedir);
 
-		pd = strrchr(pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str, '/');
+		pd = strrchr(get_jattr_str(pjob,  JOB_ATR_jobname), '/');
 		if (pd == NULL) {
-			pd = pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str;
-			(void) strcat(path, "/");
+			pd = get_jattr_str(pjob,  JOB_ATR_jobname);
+			strcat(path, "/");
 		}
 
-		(void) strcat(path, pd); /* start with the job name */
+		strcat(path, pd); /* start with the job name */
 		len = strlen(path);
 		*(path + len++) = '.'; /* the dot        */
 		*(path + len++) = key; /* the letter     */
@@ -6614,11 +6563,10 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 		while (isdigit((int )*pd))
 			*(path + len++) = *pd++;
 		*(path + len) = '\0';
-		if (pjob->ji_wattr[(int) JOB_ATR_array_index].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pjob,  JOB_ATR_array_index)) {
 			/* this is a sub job of an Array Job, append .index */
-			(void) strcat(path, ".");
-			(void) strcat(path,
-					pjob->ji_wattr[(int) JOB_ATR_array_index].at_val.at_str);
+			strcat(path, ".");
+			strcat(path, get_jattr_str(pjob,  JOB_ATR_array_index));
 		}
 		*keeping = 1;
 	} else {
@@ -6626,19 +6574,19 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 
 #ifdef NO_SPOOL_OUTPUT
 		/* sandbox=PRIVATE mode puts output in job staging and execution directory */
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags&ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if (is_jattr_set(pjob, JOB_ATR_sandbox) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 			strcat(path, "/");
-		} else {	/* force all output to user's HOME */
-			(void)strcpy(path, pjob->ji_grpcache->gc_homedir);
-		}
-		(void)strcat(path, "/");
+		} else	/* force all output to user's HOME */
+			strcpy(path, pjob->ji_grpcache->gc_homedir);
+
+		strcat(path, "/");
 		*keeping = 1;
 #else	/* NO_SPOOL_OUTPUT */
 		/* sandbox=PRIVATE mode puts output in job staging and execution directory */
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags&ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if (is_jattr_set(pjob, JOB_ATR_sandbox) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 			strcat(path, "/");
 			*keeping = 1;
@@ -6703,7 +6651,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	 */
 
 	patr = &pjob->ji_wattr[(int)JOB_ATR_interactive];
-	if (((patr->at_flags & ATR_VFLAG_SET) != 0) &&
+	if (((is_attr_set(patr)) != 0) &&
 		(patr->at_val.at_long > 0)) {
 
 		fds = open_file_as_user(path, mode, 0644, exuid, exgid);

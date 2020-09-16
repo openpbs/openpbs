@@ -332,7 +332,7 @@ sched_recov_db(char *sname, pbs_sched *ps)
 		return ps; /* no change in sched */
 
 	if (rc == 0)
-		rc = db_to_sched(ps, &dbsched);	
+		rc = db_to_sched(ps, &dbsched);
 	else {
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
 		log_errf(PBSE_INTERNAL, __func__, "Failed to load sched %s %s", sname, conn_db_err? conn_db_err : "");

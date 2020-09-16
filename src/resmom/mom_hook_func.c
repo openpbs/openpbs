@@ -1030,7 +1030,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			if (becomeuser(pjob) != 0) {
 				char *jobuser;
 
-				jobuser = pjob->ji_wattr[(int) JOB_ATR_euser].at_val.at_str;
+				jobuser = get_jattr_str(pjob, JOB_ATR_euser);
 				log_errf(errno, __func__, "Unable to become user %s!", (jobuser ? jobuser : "<job euser unset>"));
 				goto run_hook_exit;
 			}
@@ -1815,11 +1815,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	/* copy of hook results, there will be one or more (one per hook)    */
 	/* pbs_event().hook_euser=<value> entries.  In that case, hook_euser */
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
-	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
-		pbs_strncpy(hook_euser,
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-			sizeof(hook_euser));
-	}
+	if (phook && pjob &&  (phook->user == HOOK_PBSUSER))
+		pbs_strncpy(hook_euser, get_jattr_str(pjob, JOB_ATR_euser), sizeof(hook_euser));
 
 	if ((input_file != NULL) && (*input_file != '\0')) {
 		fp = fopen(input_file, "r");
@@ -2255,7 +2252,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					line_data[0] = '\0';
 					continue;
 				}
-				if ((index == JOB_ATR_runcount) && ((pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0)) {
+				if ((index == JOB_ATR_runcount) && ((is_jattr_set(pjob2, JOB_ATR_run_version)) == 0)) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s': ignoring setting attribute %s,"
 						" talking to a server that does not allow %s modification, ",
@@ -2281,13 +2278,13 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						/* process a new line */
 						line_data[0] = '\0';
 						continue;
-					} else if ((index == JOB_ATR_runcount) && (pjob2->ji_wattr[index].at_flags & ATR_VFLAG_SET) && (dval < pjob2->ji_wattr[index].at_val.at_long)) {
+					} else if ((index == JOB_ATR_runcount) && (is_jattr_set(pjob2, index)) && (dval < get_jattr_long(pjob2, index))) {
 						snprintf(log_buffer, sizeof(log_buffer),
 							"object '%s': ignoring setting attribute %s,"
 							" executing hook has user=pbsuser, "
 							" cannot decrease value from %ld to %ld",
 							obj_name, name_str,
-							pjob2->ji_wattr[index].at_val.at_long,
+							get_jattr_long(pjob2, index),
 							dval);
 						log_err(-1, __func__, log_buffer);
 						/* process a new line */
@@ -2697,11 +2694,11 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	snprintf(phja->hja_jid, sizeof(phja->hja_jid), "%s", pjob->ji_qs.ji_jobid);
 	phja->hja_actid = ++hook_action_id;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-		phja->hja_runct = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-	} else {
-		phja->hja_runct = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-	}
+	if (is_jattr_set(pjob, JOB_ATR_run_version))
+		phja->hja_runct = get_jattr_long(pjob, JOB_ATR_run_version);
+	else
+		phja->hja_runct = get_jattr_long(pjob, JOB_ATR_runcount);
+
 	phja->hja_huser = huser;
 	phja->hja_action = action;
 	append_link(&svr_hook_job_actions, &phja->hja_link, phja);
@@ -3293,7 +3290,7 @@ reply_hook_bg(job *pjob)
 		 * IS_DISCARD_JOB can be received by sister node as well,
 		 * when node fail requeue is activated
 		 */
-		n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+		n = get_jattr_long(pjob, JOB_ATR_run_version);
 		strcpy(jobid, pjob->ji_qs.ji_jobid);
 
 		del_job_resc(pjob);	/* rm tmpdir, etc. */
@@ -3377,11 +3374,11 @@ reply_hook_bg(job *pjob)
 			case BG_IM_DELETE_JOB2:
 				strcpy(jobid, pjob->ji_qs.ji_jobid);
 				pjob->ji_hook_running_bg_on = BG_NONE;
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-				} else {
-					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-				}
+				if (is_jattr_set(pjob, JOB_ATR_run_version))
+					runver = get_jattr_long(pjob, JOB_ATR_run_version);
+				else
+					runver = get_jattr_long(pjob, JOB_ATR_runcount);
+
 				mom_deljob(pjob);
 
 				/* Needed to create a lightweight copy of the job to
@@ -3392,9 +3389,8 @@ reply_hook_bg(job *pjob)
 				 * been deleted already.
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
-					(void)snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = runver;
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
+					snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
+					set_jattr_l_slim(pjob2, JOB_ATR_run_version, runver, SET);
 					/* JOB_ACT_REQ_DEALLOCATE request will tell the
 					 * the server that this mom has completely deleted the
 					 * job and now the server can officially free up the
@@ -3713,8 +3709,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		if (((hook_event == HOOK_EVENT_EXECJOB_END) ||
 		     (hook_event == HOOK_EVENT_EXECJOB_EPILOGUE)) && !set_job_exit) {
 
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
+			set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_momt.ji_exitstat, SET);
 			set_job_exit = 1;
 		} else if ((hook_event == HOOK_EVENT_EXECJOB_LAUNCH) && (num_run >= 1)) {
 

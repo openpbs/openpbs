@@ -110,7 +110,6 @@ extern void set_admin_suspend(job *pjob, int set_remove_nstate);
 
 static char *msg_obitnotrun = "job not running, may have been requeued on node failure";
 
-
 /**
  * @brief
  * 		mom_comm - if needed, open a connection with the MOM under which
@@ -143,15 +142,12 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 		/* need to make connection, called from pbsd_init() */
 
 		if (pjob->ji_qs.ji_un.ji_exect.ji_momaddr == 0) {
-
 			peh = &pjob->ji_wattr[(int)JOB_ATR_exec_vnode];
-			if (((peh->at_flags & ATR_VFLAG_SET) == 0) ||
-				(peh->at_val.at_str == 0))
-				return (-1);
-			pjob->ji_qs.ji_un.ji_exect.ji_momaddr =
-				get_addr_of_nodebyname(peh->at_val.at_str, &dum);
+			if (!is_attr_set(peh) || peh->at_val.at_str == 0)
+				return -1;
+			pjob->ji_qs.ji_un.ji_exect.ji_momaddr = get_addr_of_nodebyname(peh->at_val.at_str, &dum);
 			if (pjob->ji_qs.ji_un.ji_exect.ji_momaddr == 0)
-				return (-1);
+				return -1;
 
 			pjob->ji_qs.ji_un.ji_exect.ji_momport = dum;
 		}
@@ -386,7 +382,7 @@ on_job_exit(struct work_task *ptask)
 	if (isdigit((int)pjob->ji_qs.ji_jobid[0]) == 0)
 		return;		/* not pointing to currently valid job */
 
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_EXITING) {
+	if (check_job_substate(pjob, JOB_SUBSTATE_EXITING)) {
 		/*
 		 * If jobs doesn't have any files to stage/delete and there is no execjob_end
 		 * hook to run, end job immediately
@@ -399,15 +395,13 @@ on_job_exit(struct work_task *ptask)
 		if (!rc && !hs) {
 			end_job(pjob, 1);
 			return;
-		} else if (rc > 0 && !hs) {
+		} else if (rc > 0 && !hs)
 			svr_setjobstate(pjob, JOB_STATE_EXITING, JOB_SUBSTATE_EXITED);
-		}
 	}
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_relnodes_on_stageout].at_flags & ATR_VFLAG_SET) &&
-	   (pjob->ji_wattr[(int)JOB_ATR_relnodes_on_stageout].at_val.at_long != 0)) {
+	if (is_jattr_set(pjob, JOB_ATR_relnodes_on_stageout) &&
+			(get_jattr_long(pjob, JOB_ATR_relnodes_on_stageout) != 0))
 		release_nodes_on_stageout = 1;
-	}
 
 	if ((handle = mom_comm(pjob, on_job_exit)) < 0)
 		return;
@@ -421,14 +415,13 @@ on_job_exit(struct work_task *ptask)
 		mom_tasklist_ptr = &(((mom_svrinfo_t *)(pmom->mi_data))->msr_deferred_cmds);
 	}
 
-	switch (pjob->ji_qs.ji_substate) {
+	switch (get_job_substate(pjob)) {
 
 		case JOB_SUBSTATE_EXITING:
 		case JOB_SUBSTATE_ABORT:
 
 
-			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_STAGEOUT);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEOUT);
 			ptask->wt_type = WORK_Immed;
 
 			/* Initialize retryok */
@@ -474,8 +467,7 @@ on_job_exit(struct work_task *ptask)
 					}
 
 				} else {		/* no files to copy, any to delete? */
-					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-						JOB_SUBSTATE_STAGEDEL);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEDEL);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -512,8 +504,7 @@ on_job_exit(struct work_task *ptask)
 				svr_mailowner(pjob, MAIL_OTHER, MAIL_FORCE, log_buffer);
 			}
 
-			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_val.at_long = stageout_status;
-			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_SET_MOD_MCACHE;
+			set_jattr_l_slim(pjob, JOB_ATR_stageout_status, stageout_status, SET);
 
 			/*
 			 * files (generally) copied ok, move on to the next phase by
@@ -522,8 +513,7 @@ on_job_exit(struct work_task *ptask)
 
 			free_br(preq);
 			preq = NULL;
-			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_STAGEDEL);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_STAGEDEL);
 			ptask->wt_type = WORK_Immed;
 
 			/* NO BREAK - FALL INTO THE NEXT CASE */
@@ -565,9 +555,7 @@ on_job_exit(struct work_task *ptask)
 					}
 
 				} else {		/* preq == 0, no files to delete   */
-
-					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-						JOB_SUBSTATE_EXITED);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -615,8 +603,7 @@ on_job_exit(struct work_task *ptask)
 			}
 			free_br(preq);
 			preq = NULL;
-			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_EXITED);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
 
 			ptask->wt_type = WORK_Immed;
 
@@ -629,7 +616,7 @@ on_job_exit(struct work_task *ptask)
 
 				/* see if have any dependencies */
 
-				if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
+				if (is_jattr_set(pjob, JOB_ATR_depend))
 					(void)depend_on_term(pjob);
 
 				/* tell mom to delete the job */
@@ -727,52 +714,51 @@ unset_extra_attributes(job *pjob)
 	if (pjob == NULL)
 		return;
 
-	if (pjob->ji_wattr[(int) JOB_ATR_resource_orig].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_resource].at_free( &pjob->ji_wattr[(int) JOB_ATR_resource]);
-		pjob->ji_wattr[(int) JOB_ATR_resource].at_flags &= ~ATR_VFLAG_SET;
-		job_attr_def[(int) JOB_ATR_resource].at_set( &pjob->ji_wattr[(int) JOB_ATR_resource], &pjob->ji_wattr[(int) JOB_ATR_resource_orig], INCR);
+	if (is_jattr_set(pjob,  JOB_ATR_resource_orig)) {
+		free_jattr(pjob, JOB_ATR_resource);
+		mark_jattr_not_set(pjob, JOB_ATR_resource);
+		set_attr_with_attr(&job_attr_def[(int) JOB_ATR_resource],  &pjob->ji_wattr[(int) JOB_ATR_resource], &pjob->ji_wattr[(int) JOB_ATR_resource_orig], INCR);
 
-		job_attr_def[(int) JOB_ATR_resource_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_resource_orig]);
-		pjob->ji_wattr[(int) JOB_ATR_resource_orig].at_flags &= ~ATR_VFLAG_SET;
+		free_jattr(pjob, JOB_ATR_resource_orig);
+		mark_jattr_not_set(pjob, JOB_ATR_resource_orig);
 	}
 
-	if (pjob->ji_wattr[(int) JOB_ATR_resc_used_update].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_resc_used_update].at_free( &pjob->ji_wattr[(int) JOB_ATR_resc_used_update]);
-		pjob->ji_wattr[(int) JOB_ATR_resc_used_update].at_flags &= ~ATR_VFLAG_SET;
+	if (is_jattr_set(pjob,  JOB_ATR_resc_used_update)) {
+		free_jattr(pjob, JOB_ATR_resc_used_update);
+		mark_jattr_not_set(pjob, JOB_ATR_resc_used_update);
 	}
 
 
-	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode_acct].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_exec_vnode_acct].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_acct]);
-		pjob->ji_wattr[(int) JOB_ATR_exec_vnode_acct].at_flags &= ~ATR_VFLAG_SET;
+	if (is_jattr_set(pjob,  JOB_ATR_exec_vnode_acct)) {
+		free_jattr(pjob, JOB_ATR_exec_vnode_acct);
+		mark_jattr_not_set(pjob, JOB_ATR_exec_vnode_acct);
 	}
 
-	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_exec_vnode_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_orig]);
-		pjob->ji_wattr[(int) JOB_ATR_exec_vnode_orig].at_flags &= ~ATR_VFLAG_SET;
+	if (is_jattr_set(pjob,  JOB_ATR_exec_vnode_orig)) {
+		free_jattr(pjob, JOB_ATR_exec_vnode_orig);
+		mark_jattr_not_set(pjob, JOB_ATR_exec_vnode_orig);
 	}
 
-	if (pjob->ji_wattr[(int) JOB_ATR_exec_host_acct].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_exec_host_acct].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_host_acct]);
-		pjob->ji_wattr[(int) JOB_ATR_exec_host_acct].at_flags &= ~ATR_VFLAG_SET;
+	if (is_jattr_set(pjob,  JOB_ATR_exec_host_acct)) {
+		free_jattr(pjob, JOB_ATR_exec_host_acct);
+		mark_jattr_not_set(pjob, JOB_ATR_exec_host_acct);
 	}
 
-	if (pjob->ji_wattr[(int) JOB_ATR_exec_host_orig].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_exec_host_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_host_orig]);
-		pjob->ji_wattr[(int) JOB_ATR_exec_host_orig].at_flags &= ~ATR_VFLAG_SET;
+	if (is_jattr_set(pjob,  JOB_ATR_exec_host_orig)) {
+		free_jattr(pjob, JOB_ATR_exec_host_orig);
+		mark_jattr_not_set(pjob, JOB_ATR_exec_host_orig);
 	}
 
-	if (pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_SchedSelect_orig)) {
+		set_jattr_str_slim(pjob, JOB_ATR_SchedSelect, get_jattr_str(pjob, JOB_ATR_SchedSelect_orig), NULL);
 
-		(void)decode_str(
-		     &pjob->ji_wattr[(int)JOB_ATR_SchedSelect], NULL, NULL, pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_val.at_str);
-		job_attr_def[(int) JOB_ATR_SchedSelect_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_SchedSelect_orig]);
-		pjob->ji_wattr[(int) JOB_ATR_SchedSelect_orig].at_flags &= ~ATR_VFLAG_SET;
+		free_jattr(pjob, JOB_ATR_SchedSelect_orig);
+		mark_jattr_not_set(pjob, JOB_ATR_SchedSelect_orig);
 	}
 
-	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated].at_flags & ATR_VFLAG_SET) {
-		job_attr_def[(int) JOB_ATR_exec_vnode_deallocated].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated]);
-		pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated].at_flags &= ~ATR_VFLAG_SET;
+	if (is_jattr_set(pjob,  JOB_ATR_exec_vnode_deallocated)) {
+		free_jattr(pjob, JOB_ATR_exec_vnode_deallocated);
+		mark_jattr_not_set(pjob, JOB_ATR_exec_vnode_deallocated);
 	}
 }
 
@@ -792,7 +778,7 @@ void
 on_job_rerun(struct work_task *ptask)
 {
 	int		      handle;
-	int		      newstate;
+	char		      newstate;
 	int		      newsubst;
 	job		     *pjob;
 	struct batch_request *preq;
@@ -826,7 +812,7 @@ on_job_rerun(struct work_task *ptask)
 		mom_tasklist_ptr = &(((mom_svrinfo_t *)(pmom->mi_data))->msr_deferred_cmds);
 	}
 
-	switch (pjob->ji_qs.ji_substate) {
+	switch (get_job_substate(pjob)) {
 
 
 		case JOB_SUBSTATE_RERUN:
@@ -836,8 +822,7 @@ on_job_rerun(struct work_task *ptask)
 
 					/* files don`t need to be moved, go to next step */
 
-					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-						JOB_SUBSTATE_RERUN1);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN1);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -888,8 +873,7 @@ on_job_rerun(struct work_task *ptask)
 				}
 				on_exitrerun_msg(pjob, msg_obitnocpy);
 			}
-			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_RERUN1);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN1);
 			ptask->wt_type = WORK_Immed;
 			free_br(preq);
 			preq = NULL;
@@ -924,8 +908,7 @@ on_job_rerun(struct work_task *ptask)
 					/* we will "fall" into the post reply side */
 
 				} else {		/* no files to copy, any to delete? */
-					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-						JOB_SUBSTATE_RERUN2);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN2);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -965,8 +948,7 @@ on_job_rerun(struct work_task *ptask)
 
 			free_br(preq);
 			preq = NULL;
-			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_RERUN2);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN2);
 			ptask->wt_type = WORK_Immed;
 
 			/* NO BREAK - FALL INTO THE NEXT CASE */
@@ -994,8 +976,7 @@ on_job_rerun(struct work_task *ptask)
 						/* we will "fall" into the post reply side */
 					}
 				} else {
-					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-						JOB_SUBSTATE_RERUN3);
+					svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN3);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
 					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
@@ -1017,8 +998,7 @@ on_job_rerun(struct work_task *ptask)
 			}
 			free_br(preq);
 			preq = NULL;
-			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_RERUN3);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_RERUN3);
 			ptask->wt_type = WORK_Immed;
 
 			/* NO BREAK, FALL THROUGH TO NEXT CASE */
@@ -1091,7 +1071,7 @@ on_job_rerun(struct work_task *ptask)
 					free(pjob->ji_acctrec);	/* logged, so clear it */
 					pjob->ji_acctrec = NULL;
 				}
-				if ((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)) {
+				if ((is_jattr_set(pjob,  JOB_ATR_resc_released))) {
 					/* If JOB_ATR_resc_released attribute is set and we are trying
 					 * to rerun a job then we need to reassign resources first because
 					 * when we suspend a job we don't decrement all of the resources.
@@ -1099,13 +1079,11 @@ on_job_rerun(struct work_task *ptask)
 					 * back again to release all other resources
 					 */
 					set_resc_assigned(pjob, 0, INCR);
-					job_attr_def[(int) JOB_ATR_resc_released].at_free(
-						&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
-					pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
-					if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
-						job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
-							&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
-						pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+					free_jattr(pjob, JOB_ATR_resc_released);
+					mark_jattr_not_set(pjob, JOB_ATR_resc_released);
+					if (is_jattr_set(pjob,  JOB_ATR_resc_released_list)) {
+						free_jattr(pjob, JOB_ATR_resc_released_list);
+						mark_jattr_not_set(pjob, JOB_ATR_resc_released_list);
 					}
 
 				}
@@ -1121,24 +1099,19 @@ on_job_rerun(struct work_task *ptask)
 				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HOTSTART) == 0) {
 					/* in case of server shutdown, don't clear exec_vnode */
 					/* will use it on hotstart when next comes up	      */
-					job_attr_def[(int)JOB_ATR_exec_vnode].at_free(
-						&pjob->ji_wattr[(int)JOB_ATR_exec_vnode]);
-					job_attr_def[(int)JOB_ATR_exec_host].at_free(
-						&pjob->ji_wattr[(int)JOB_ATR_exec_host]);
-					job_attr_def[(int)JOB_ATR_exec_host2].at_free(
-						&pjob->ji_wattr[(int)JOB_ATR_exec_host2]);
-					job_attr_def[(int)JOB_ATR_pset].at_free(
-						&pjob->ji_wattr[(int)JOB_ATR_pset]);
+					free_jattr(pjob, JOB_ATR_exec_vnode);
+					free_jattr(pjob, JOB_ATR_exec_host);
+					free_jattr(pjob, JOB_ATR_exec_host2);
+					free_jattr(pjob, JOB_ATR_pset);
 				}
 				pjob->ji_momhandle = -1;
 				pjob->ji_mom_prot = PROT_INVALID;
 				/* job dir has no meaning for re-queued jobs, so unset it */
-				job_attr_def[(int)JOB_ATR_jobdir].at_free(&pjob->
-					ji_wattr[(int)JOB_ATR_jobdir]);
+				free_jattr(pjob, JOB_ATR_jobdir);
 
 				pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_StagedIn;
 				svr_evaljobstate(pjob, &newstate, &newsubst, 0);
-				(void)svr_setjobstate(pjob, newstate, newsubst);
+				svr_setjobstate(pjob, newstate, newsubst);
 			}
 	}
 }
@@ -1157,8 +1130,8 @@ static int
 setrerun(job *pjob)
 {
 	if ((pjob->ji_qs.ji_un.ji_exect.ji_exitstat == JOB_EXEC_RETRY) ||
-		(pjob->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long != 0)) {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN;
+		(get_jattr_long(pjob, JOB_ATR_rerunable) != 0)) {
+		set_job_substate(pjob, JOB_SUBSTATE_RERUN);
 		return 0;
 	} else {
 		svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_init_abt);
@@ -1333,7 +1306,7 @@ job_obit(ruu *pruu, int stream)
 	int local_exitstatus = 0;
 	char *mailbuf = NULL;
 	int mailbuf_size = 0;
-	int newstate;
+	char newstate;
 	int newsubst;
 	job *pjob;
 	svrattrl *patlist;
@@ -1361,26 +1334,24 @@ job_obit(ruu *pruu, int stream)
 	}
 
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pruu->ru_pjobid,
-		   "Obit received momhop:%d serverhop:%ld state:%d substate:%d",
-		   pruu->ru_hop,
-		   pjob->ji_wattr[(int) JOB_ATR_run_version].at_val.at_long,
-		   pjob->ji_qs.ji_state,
-		   pjob->ji_qs.ji_substate);
+		   "Obit received momhop:%d serverhop:%ld state:%c substate:%d",
+		   pruu->ru_hop, get_jattr_long(pjob, JOB_ATR_run_version), get_job_state(pjob), get_job_substate(pjob));
 
-	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
-		DBPRT(("%s: job %s not in running state!\n", __func__, pruu->ru_pjobid))
-		if (pjob->ji_qs.ji_state != JOB_STATE_EXITING) {
-			/*
-			 * not running and not exiting - bad news
-			 * may be from old Mom and job was requeued
-			 * tell mom to trash job
-			 */
-			DBPRT(("%s: job %s not in exiting state!\n", __func__, pruu->ru_pjobid))
+	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
+		DBPRT(("%s: job %s not in running state!\n",
+			__func__, pruu->ru_pjobid))
+		if (!check_job_state(pjob, JOB_STATE_LTR_EXITING)) {
+
+			/* not running and not exiting - bad news   */
+			/* may be from old Mom and job was requeued */
+			/* tell mom to trash job		    */
+			DBPRT(("%s: job %s not in exiting state!\n",
+				__func__, pruu->ru_pjobid))
 			pjob->ji_discarding = 0;
 
-			log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pruu->ru_pjobid, msg_obitnotrun);
+		log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pruu->ru_pjobid, msg_obitnotrun);
 			return 1;
-		} else if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_TERM) {
+		} else if (!check_job_substate(pjob, JOB_SUBSTATE_TERM)) {
 			/*
 			 * not in special site script substate, Mom must have
 			 * had a problem and wants to have the post job
@@ -1412,7 +1383,7 @@ job_obit(ruu *pruu, int stream)
 				pjob->ji_momhandle = -1;
 				pjob->ji_mom_prot = PROT_INVALID;
 			}
-			if (pjob->ji_qs.ji_substate < JOB_SUBSTATE_RERUN)
+			if (get_job_substate(pjob) < JOB_SUBSTATE_RERUN)
 				eojproc = on_job_exit;
 			else
 				eojproc = on_job_rerun;
@@ -1426,7 +1397,7 @@ job_obit(ruu *pruu, int stream)
 		 */
 	}
 
-	if (pruu->ru_hop < pjob->ji_wattr[(int) JOB_ATR_run_version].at_val.at_long) {
+	if (pruu->ru_hop < get_jattr_long(pjob, JOB_ATR_run_version)) {
 		/*
 		 * Obit is for an older run version,  likely a Mom coming back
 		 * alive after being down awhile and job was requeue and run
@@ -1448,7 +1419,7 @@ job_obit(ruu *pruu, int stream)
 		extern struct tree *streams;
 
 		psendmom = tfind2(stream, 0, &streams);
-		runningnode = parse_servername(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str, NULL);
+		runningnode = parse_servername(get_jattr_str(pjob, JOB_ATR_exec_vnode), NULL);
 		if (psendmom && runningnode) {
 			for (ivndx = 0; ivndx < ((mom_svrinfo_t *) (psendmom->mi_data))->msr_numvnds; ++ivndx) {
 				sendvnp = ((mom_svrinfo_t *) (psendmom->mi_data))->msr_children[ivndx];
@@ -1468,7 +1439,7 @@ job_obit(ruu *pruu, int stream)
 	 * may not yet have been reaped.  Update accounting for job start
 	 */
 
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN || pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION) {
+	if (check_job_substate(pjob, JOB_SUBSTATE_PRERUN) || check_job_substate(pjob, JOB_SUBSTATE_PROVISION)) {
 		DBPRT(("%s: job %s in prerun state.\n", __func__, pruu->ru_pjobid))
 		complete_running(pjob);
 	}
@@ -1488,10 +1459,8 @@ job_obit(ruu *pruu, int stream)
 	if ((local_exitstatus == JOB_EXEC_HOOK_RERUN || local_exitstatus == JOB_EXEC_HOOK_DELETE) &&
 	    exitstatus != JOB_EXEC_FAILHOOK_RERUN && exitstatus != JOB_EXEC_FAILHOOK_DELETE)
 		exitstatus = local_exitstatus;
-	else {
-		pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long = exitstatus;
-		pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
-	}
+	else
+		set_jattr_l_slim(pjob, JOB_ATR_exit_status, exitstatus, SET);
 
 	patlist = (svrattrl *) GET_NEXT(pruu->ru_attr);
 
@@ -1617,10 +1586,9 @@ job_obit(ruu *pruu, int stream)
 			case JOB_EXEC_FAIL_PASSWORD:
 
 				/* put job on password hold */
-				pjob->ji_wattr[(int) JOB_ATR_hold].at_val.at_long |= HOLD_bad_password;
-				pjob->ji_wattr[(int) JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
+				set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_bad_password, INCR);
 
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_HELD;
+				set_job_substate(pjob, JOB_SUBSTATE_HELD);
 				svr_evaljobstate(pjob, &newstate, &newsubst, 0);
 				svr_setjobstate(pjob, newstate, newsubst);
 
@@ -1628,15 +1596,15 @@ job_obit(ruu *pruu, int stream)
 				mailmsg = (char *) malloc(strlen(msg) + 1 + strlen(msg_bad_password) + 1);
 				if (mailmsg) {
 					sprintf(mailmsg, "%s:%s", msg, msg_bad_password);
-
 					svr_mailowner(pjob, MAIL_BEGIN, MAIL_FORCE, mailmsg);
-					job_attr_def[(int) JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int) JOB_ATR_Comment], NULL, NULL, mailmsg);
+					set_jattr_str_slim(pjob, JOB_ATR_Comment, mailmsg, NULL);
 
-					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, mailmsg);
-					(void) free(mailmsg);
+					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+							pjob->ji_qs.ji_jobid, mailmsg);
+					free(mailmsg);
 				} else {
 					svr_mailowner(pjob, MAIL_BEGIN, MAIL_FORCE, msg_bad_password);
-					job_attr_def[(int) JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int) JOB_ATR_Comment], NULL, NULL, msg_bad_password);
+					set_jattr_str_slim(pjob, JOB_ATR_Comment, msg_bad_password, NULL);
 				}
 
 			case JOB_EXEC_RETRY:
@@ -1650,13 +1618,11 @@ job_obit(ruu *pruu, int stream)
 RetryJob:
 				/* MOM rejected job, but said retry it */
 				DBPRT(("%s: MOM rejected job %s but will retry.\n", __func__, pruu->ru_pjobid))
-				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) {
-					/* has run before, treat this as another rerun */
+				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN)	/* has run before, treat this as another rerun */
 					alreadymailed = setrerun(pjob);
-				} else {
-					/* have mom remove job files, not saving them, and requeue job */
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN2;
-				}
+				else	/* have mom remove job files, not saving them, and requeue job */
+					set_job_substate(pjob, JOB_SUBSTATE_RERUN2);
+
 				check_failed_attempts(pjob);
 				break;
 
@@ -1717,22 +1683,22 @@ RetryJob:
 
 			case JOB_EXEC_RERUN:
 			case JOB_EXEC_RERUN_SIS_FAIL:
-				if (pjob->ji_wattr[(int) JOB_ATR_rerunable].at_val.at_long)
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN;
+				if (get_jattr_long(pjob, JOB_ATR_rerunable))
+					set_job_substate(pjob, JOB_SUBSTATE_RERUN);
 				else {
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
-					svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL, "Non-rerunable job deleted on requeue");
+					set_job_substate(pjob, JOB_SUBSTATE_EXITING);
+					svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL,
+						"Non-rerunable job deleted on requeue");
 				}
 				break;
 			case JOB_EXEC_FAIL_SECURITY:
 				/* MOM rejected job with security breach fatal error, abort job */
 				DBPRT(("%s: MOM rejected job %s with security breach fatal error.\n", __func__, pruu->ru_pjobid))
-				pjob->ji_wattr[(int) JOB_ATR_hold].at_val.at_long |= HOLD_s;
-				pjob->ji_wattr[(int) JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
-				job_attr_def[(int) JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int) JOB_ATR_Comment], NULL,
-									NULL, "job held due to possible security breach of job tmpdir, failed to start");
+				set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
+				set_jattr_str_slim(pjob, JOB_ATR_Comment,
+						"job held due to possible security breach of job tmpdir, failed to start", NULL);
 				rel_resc(pjob);
-				svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+				svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
 				free(mailbuf);
 				free(acctbuf);
 				return 0;
@@ -1740,10 +1706,12 @@ RetryJob:
 	}
 
 	/* Send email if exiting (not rerun) */
-	if (exitstatus == JOB_EXEC_FAILHOOK_DELETE || exitstatus == JOB_EXEC_HOOK_DELETE ||
-	    (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN && pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN2)) {
+
+	if ((exitstatus == JOB_EXEC_FAILHOOK_DELETE) || (exitstatus == JOB_EXEC_HOOK_DELETE) ||
+		(!check_job_substate(pjob, JOB_SUBSTATE_RERUN) && !check_job_substate(pjob, JOB_SUBSTATE_RERUN2))) {
 		DBPRT(("%s: Job %s is terminating and not rerun.\n", __func__, pjob->ji_qs.ji_jobid))
-		svr_setjobstate(pjob, JOB_STATE_EXITING, JOB_SUBSTATE_EXITING);
+
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITING);
 		if (alreadymailed == 0 && mailbuf != NULL)
 			svr_mailowner(pjob, MAIL_END, MAIL_NORMAL, mailbuf);
 	}
@@ -1757,9 +1725,14 @@ RetryJob:
 
 	/* Now, what do we do with the job... */
 	if (exitstatus == JOB_EXEC_FAILHOOK_DELETE || exitstatus == JOB_EXEC_HOOK_DELETE ||
-	    (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN && pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN2)) {
-		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) && ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASHOLD)) {
-			/* non-migratable checkpoint, leave there and just requeue the job. */
+		(!check_job_substate(pjob, JOB_SUBSTATE_RERUN) && !check_job_substate(pjob, JOB_SUBSTATE_RERUN2))) {
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) && ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0)
+				&& (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASHOLD)) {
+
+			/* non-migratable checkpoint, leave there
+			 * and just requeue the job.
+			 */
+
 			rel_resc(pjob);
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HASHOLD;
@@ -1786,8 +1759,9 @@ RetryJob:
 		 */
 		DBPRT(("%s: Rerunning job %s\n", __func__, pjob->ji_qs.ji_jobid))
 		if ((pjob->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0)
-			job_attr_def[(int) JOB_ATR_resc_used].at_free(&pjob->ji_wattr[(int) JOB_ATR_resc_used]);
-		svr_setjobstate(pjob, JOB_STATE_EXITING, pjob->ji_qs.ji_substate);
+			free_jattr(pjob, JOB_ATR_resc_used);
+
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, get_job_substate(pjob));
 		ptask = set_task(WORK_Immed, 0, on_job_rerun, (void *) pjob);
 		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 

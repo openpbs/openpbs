@@ -334,23 +334,23 @@ registermom(int stream, int combine_msg)
 
 		if ((ret = diswst(stream, pjob->ji_qs.ji_jobid)) != DIS_SUCCESS)
 			goto err;
-		if ((ret = diswsi(stream, pjob->ji_qs.ji_substate)) != DIS_SUCCESS)
+		if ((ret = diswsi(stream, get_job_substate(pjob))) != DIS_SUCCESS)
 			goto err;
 
-		if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-			ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long);
-		} else {
-			ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long);
-		}
+		if (is_jattr_set(pjob, JOB_ATR_run_version))
+			ret = diswsl(stream, get_jattr_long(pjob, JOB_ATR_run_version));
+		else
+			ret = diswsl(stream, get_jattr_long(pjob, JOB_ATR_runcount));
+
 		if (ret != DIS_SUCCESS)
 			goto err;
 		/* send Node Id */
 		if ((ret = diswsi(stream, pjob->ji_nodeid)) != DIS_SUCCESS)
 			goto err;
-		if ((ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str)) != DIS_SUCCESS)
+		if ((ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_exec_vnode))) != DIS_SUCCESS)
 			goto err;
-		if (pjob->ji_wattr[(int)JOB_ATR_pset].at_flags & ATR_VFLAG_SET)
-			ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_pset].at_val.at_str);
+		if (is_jattr_set(pjob, JOB_ATR_pset))
+			ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_pset));
 		else
 			ret = diswst(stream, ""); /* send null string */
 		if (ret != DIS_SUCCESS)
@@ -903,7 +903,7 @@ is_request(int stream, int version)
 					if (!has_stage(pjob) && num_eligible_hooks(HOOK_EVENT_EXECJOB_END) == 0) {
 						mom_deljob(pjob);
 					} else {
-						pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+						set_job_state(pjob, JOB_SUBSTATE_EXITED);
 						if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
 							/*
 							* if checkpointed, save state to disk, otherwise
@@ -943,7 +943,7 @@ is_request(int stream, int version)
 				 * then it would have already synced up with the server
 				 * on status, and not end up in this race condition.
 				 */
-				if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
+				if (pjob && !pjob->ji_hook_running_bg_on && !check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
 					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, "Job removed, Server rejected Obit");
 					mom_deljob(pjob);
 				}
@@ -970,10 +970,10 @@ is_request(int stream, int version)
 			if (pjob) {
 				long runver;
 
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
-					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+				if (is_jattr_set(pjob, JOB_ATR_run_version))
+					runver = get_jattr_long(pjob, JOB_ATR_run_version);
 				else
-					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
+					runver = get_jattr_long(pjob, JOB_ATR_runcount);
 				/* a run_version of -1 means any version is to be discarded */
 				if ((n == -1) || (runver == n)) {
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,

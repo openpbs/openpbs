@@ -152,8 +152,10 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 	struct batch_reply *preply = &preq->rq_reply;
 
 	/* if history job and not asking for them, just return */
-	if (!dohistjobs && (pjob->ji_qs.ji_state == JOB_STATE_FINISHED || pjob->ji_qs.ji_state == JOB_STATE_MOVED)) {
-		return PBSE_NONE; /* just return nothing */
+	if (!dohistjobs
+			&& (check_job_state(pjob, JOB_STATE_LTR_FINISHED)
+					|| check_job_state(pjob, JOB_STATE_LTR_MOVED))) {
+		return (PBSE_NONE); /* just return nothing */
 	}
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) {

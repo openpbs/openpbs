@@ -110,7 +110,7 @@ get_cached_cred(job  *pjob)
 	while (cred) {
 		nxcred = (cred_cache *)GET_NEXT(cred->cr_link);
 
-		if (strcmp(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str) == 0 &&
+		if (strcmp(cred->credid, get_jattr_str(pjob, JOB_ATR_cred_id)) == 0 &&
 			cred->validity - svr_cred_renew_cache_period >  time_now) {
 			/* valid credential found */
 			return cred;
@@ -138,11 +138,11 @@ get_cached_cred(job  *pjob)
 		LOG_DEBUG, msg_daemonname, "using %s '%s' to acquire credentials for user: %s",
 		ATTR_cred_renew_tool,
 		server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_val.at_str,
-		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_cred_id));
 
 	snprintf(cmd, MAXPATHLEN + PBS_MAXUSER + 2, "%s %s", /* +1 for space and +1 for EOL */
 		server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_val.at_str,
-		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_cred_id));
 
 	if ((fp = popen(cmd, "r")) == NULL) {
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
@@ -175,7 +175,7 @@ get_cached_cred(job  *pjob)
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, "%s command '%s' returned invalid credentials for %s",
 			ATTR_cred_renew_tool, cmd,
-			pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_cred_id));
 
 		return NULL;
 	}
@@ -185,7 +185,7 @@ get_cached_cred(job  *pjob)
 		return NULL;
 	}
 
-	strncpy(cred->credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str, PBS_MAXUSER);
+	strncpy(cred->credid, get_jattr_str(pjob, JOB_ATR_cred_id), PBS_MAXUSER);
 	cred->credid[PBS_MAXUSER] = '\0';
 	cred->type = cred_type;
 	cred->validity = validity;
@@ -239,7 +239,7 @@ setup_cred(struct batch_request *preq, job  *pjob)
 		return NULL;
 	}
 
-	strcpy(preq->rq_ind.rq_cred.rq_credid, pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
+	strcpy(preq->rq_ind.rq_cred.rq_credid, get_jattr_str(pjob, JOB_ATR_cred_id));
 	strcpy(preq->rq_ind.rq_cred.rq_jobid, pjob->ji_qs.ji_jobid);
 	preq->rq_ind.rq_cred.rq_cred_type = cred->type;
 	preq->rq_ind.rq_cred.rq_cred_validity = cred->validity;
@@ -280,8 +280,7 @@ post_cred(struct work_task *pwt)
 		} else {
 			/* send_cred was successful  - update validity*/
 
-			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_val.at_long = preq->rq_ind.rq_cred.rq_cred_validity;
-			pjob->ji_wattr[(int) JOB_ATR_cred_validity].at_flags |= ATR_SET_MOD_MCACHE;
+			set_jattr_l_slim(pjob, JOB_ATR_cred_validity, preq->rq_ind.rq_cred.rq_cred_validity, SET);
 
 			/* save the full job */
 			(void)job_save_db(pjob);

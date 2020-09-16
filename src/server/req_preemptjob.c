@@ -242,21 +242,21 @@ static void clear_preempt_hold(job *pjob)
 	attribute temphold;
 	long old_hold;
 	int newsub;
-	int newstate;
+	char newstate;
 
 	clear_attr(&temphold, &job_attr_def[(int)JOB_ATR_hold]);
-	job_attr_def[(int)JOB_ATR_hold].at_decode(&temphold, NULL, NULL, "s");
+	set_attr_generic(&temphold, &job_attr_def[JOB_ATR_hold], "s", NULL, INTERNAL);
 
-	old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
-	job_attr_def[(int)JOB_ATR_hold].at_set(&pjob->ji_wattr[(int)JOB_ATR_hold],
+	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
+	set_attr_with_attr(&job_attr_def[(int)JOB_ATR_hold], &pjob->ji_wattr[(int)JOB_ATR_hold],
 					       &temphold, DECR);
 
-	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
+	if (old_hold != get_jattr_long(pjob, JOB_ATR_hold)) {
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
+		svr_setjobstate(pjob, newstate, newsub); /* saves job */
 	}
-	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == 0)
-		job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
+	if (get_jattr_long(pjob, JOB_ATR_hold) == 0)
+		free_jattr(pjob, JOB_ATR_Comment);
 }
 
 /**
@@ -316,16 +316,16 @@ req_preemptjobs(struct batch_request *preq)
 			continue;
 		}
 
-		if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
+		if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 			sprintf(preempt_jobs_list[preempt_index].job_id, "%s", ppj->job_id);
-			switch (pjob->ji_qs.ji_state) {
-				case JOB_STATE_QUEUED:
+			switch (get_job_state(pjob)) {
+				case JOB_STATE_LTR_QUEUED:
 					strcpy(preempt_jobs_list[preempt_index].order, "Q");
 					preempt_index++;
 					break;
-				case JOB_STATE_EXPIRED:
-				case JOB_STATE_FINISHED:
-				case JOB_STATE_MOVED:
+				case JOB_STATE_LTR_EXPIRED:
+				case JOB_STATE_LTR_FINISHED:
+				case JOB_STATE_LTR_MOVED:
 					strcpy(preempt_jobs_list[preempt_index].order, "D");
 					preempt_index++;
 					break;
@@ -409,8 +409,7 @@ reply_preempt_jobs_request(int code, int aux, struct job *pjob)
 		preempt_jobs_list = preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list;
 
 		/* successful preemption */
-		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_val.at_long = time(0);
-		pjob->ji_wattr[(int)JOB_ATR_sched_preempted].at_flags |= ATR_SET_MOD_MCACHE;
+		set_jattr_l_slim(pjob, JOB_ATR_sched_preempted, time(0), SET);
 		switch (aux) {
 			case PREEMPT_METHOD_SUSPEND:
 				strcpy(preempt_jobs_list[preempt_index].order, "S");

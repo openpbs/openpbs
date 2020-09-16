@@ -233,7 +233,7 @@ local_move(job *jobp, struct batch_request *req)
 		mtype = MOVE_TYPE_Move;		/* non-privileged move */
 	}
 
-	pbs_errno = svr_chkque(jobp, qp, get_hostPart(jobp->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str), mtype);
+	pbs_errno = svr_chkque(jobp, qp, get_hostPart(get_jattr_str(jobp, JOB_ATR_job_owner)), mtype);
 	if (pbs_errno) {
 		/* should this queue be retried? */
 		return (should_retry_route(pbs_errno));
@@ -250,16 +250,14 @@ local_move(job *jobp, struct batch_request *req)
 	gettimeofday(&tval, NULL);
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 
-	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
-	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_MOD_MCACHE;
+	set_jattr_l_slim(jobp, JOB_ATR_qrank, time_msec, SET);
 
 	pattr = &jobp->ji_wattr[(int)JOB_ATR_reserve_ID];
 	if (qp->qu_resvp) {
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr, NULL, NULL, qp->qu_resvp->ri_qs.ri_resvID);
+		set_attr_generic(pattr, &job_attr_def[JOB_ATR_reserve_ID], qp->qu_resvp->ri_qs.ri_resvID, NULL, INTERNAL);
 		jobp->ji_myResv = qp->qu_resvp;
-	} else {
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr, NULL, NULL, NULL);
-	}
+	} else
+		set_attr_generic(pattr, &job_attr_def[JOB_ATR_reserve_ID], NULL, NULL, INTERNAL);
 
 	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		newtype = determine_accruetype(jobp);
@@ -303,7 +301,7 @@ local_move(job *jobp, struct batch_request *req)
 static void
 post_routejob(struct work_task *pwt)
 {
-	int	 newstate;
+	char	 newstate;
 	int	 newsub;
 	int	 r;
 	int	 stat = pwt->wt_aux;
@@ -341,11 +339,11 @@ post_routejob(struct work_task *pwt)
 				job_purge(jobp); /* need to remove server job struct */
 			return;
 		case SEND_JOB_FATAL:		/* permanent rejection (or signal) */
-			if (jobp->ji_qs.ji_substate == JOB_SUBSTATE_ABORT) {
+			if (check_job_substate(jobp, JOB_SUBSTATE_ABORT)) {
 
 				/* Job Delete in progress, just set to queued status */
 
-				(void)svr_setjobstate(jobp, JOB_STATE_QUEUED,
+				svr_setjobstate(jobp, JOB_STATE_LTR_QUEUED,
 					JOB_SUBSTATE_ABORT);
 				return;
 			}
@@ -354,7 +352,7 @@ post_routejob(struct work_task *pwt)
 		default :	/* try routing again */
 			/* force re-eval of job state out of Transit */
 			svr_evaljobstate(jobp, &newstate, &newsub, 1);
-			(void)svr_setjobstate(jobp, newstate, newsub);
+			svr_setjobstate(jobp, newstate, newsub);
 			jobp->ji_retryok = 1;
 			if ((r = job_route(jobp)) == PBSE_ROUTEREJ)
 				(void)job_abt(jobp, msg_routebad);
@@ -383,7 +381,7 @@ static void
 post_movejob(struct work_task *pwt)
 {
 	struct batch_request *req;
-	int	newstate;
+	char	newstate;
 	int	newsub;
 	int	stat;
 	int	r;
@@ -780,11 +778,11 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	/* on new server, accrue type should be calc afresh */
 	/* Note: if job is being sent for execution on mom, then don't calc eligible time */
 
-	if ((jobp->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) &&
+	if ((get_jattr_long(jobp, JOB_ATR_accrue_type) == JOB_ELIGIBLE) &&
 		(server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) &&
 		(move_type != MOVE_TYPE_Exec)) {
-		tempval = ((long)time_now - jobp->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long);
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long += tempval;
+		tempval = ((long)time_now - get_jattr_long(jobp, JOB_ATR_sample_starttime));
+		set_jattr_l_slim(jobp, JOB_ATR_eligible_time, tempval, INCR);
 		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 	}
 
@@ -842,11 +840,10 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		 * just want to send the commit"
 		 */
 
-		if (jobp->ji_qs.ji_substate != JOB_SUBSTATE_TRNOUTCM) {
+		if (!check_job_substate(jobp, JOB_SUBSTATE_TRNOUTCM)) {
 
-			if (jobp->ji_qs.ji_substate != JOB_SUBSTATE_TRNOUT) {
-				jobp->ji_qs.ji_substate = JOB_SUBSTATE_TRNOUT;
-			}
+			if (!check_job_substate(jobp, JOB_SUBSTATE_TRNOUT))
+				set_job_substate(jobp, JOB_SUBSTATE_TRNOUT);
 
 			pqjatr = &((svrattrl *)GET_NEXT(attrl))->al_atopl;
 			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, PROT_TCP, NULL, NULL) == 0) {
@@ -920,7 +917,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 					continue;
 			}
 
-			jobp->ji_qs.ji_substate = JOB_SUBSTATE_TRNOUTCM;
+			set_job_substate(jobp, JOB_SUBSTATE_TRNOUTCM);
 		}
 
 		if (PBSD_rdytocmt(con, job_id, PROT_TCP, NULL) != 0)
@@ -1010,7 +1007,7 @@ net_move(job *jobp, struct batch_request *req)
 		data      = 0;
 	}
 
-	(void)svr_setjobstate(jobp, JOB_STATE_TRANSIT, JOB_SUBSTATE_TRNOUT);
+	svr_setjobstate(jobp, JOB_STATE_LTR_TRANSIT, JOB_SUBSTATE_TRNOUT);
 	return (send_job(jobp, hostaddr, port, move_type, post_func, data));
 }
 
