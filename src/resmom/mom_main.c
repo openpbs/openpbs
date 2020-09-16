@@ -8654,7 +8654,6 @@ main(int argc, char *argv[])
 	}
 
 #ifndef	DEBUG
-#ifndef  PBS_DONOT_FORK
 	if (stalone != 1) {
 	/* go into the background and become own session/process group */
 		if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) {	/* unlock so child can relock */
@@ -8666,7 +8665,7 @@ main(int argc, char *argv[])
 		if (fork() > 0)
 			return (0);	/* parent goes away */
 
-		if (setsid() == -1) {
+		if ((setsid() == -1) && (errno != ENOSYS)) {
 			log_err(errno, msg_daemonname, "setsid failed");
 			return (2);
 		}
@@ -8676,7 +8675,6 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	}
-#endif		
 	freopen(NULL_DEVICE, "r", stdin);
 	freopen(NULL_DEVICE, "w", stdout);
 	freopen(NULL_DEVICE, "w", stderr);

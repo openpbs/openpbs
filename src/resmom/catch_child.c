@@ -404,9 +404,7 @@ void
 scan_for_exiting(void)
 {
 
-#ifndef PBS_DONOT_FORK
 	pid_t			cpid;
-#endif
 	int			i;
 	int			extval;
 	int			found_one = 0;
@@ -770,7 +768,6 @@ end_loop:
 			continue;
 		}
 
-#ifndef PBS_DONOT_FORK
 		/*
 		 * Parent:
 		 *  +  fork child process to run epilogue,
@@ -792,9 +789,8 @@ end_loop:
 			} else {
 				break; /* 20 exiting jobs at a time is our limit */
 			}
-		} else if (cpid < 0)
+		} else if (cpid < 0 && errno != ENOSYS)
 			continue; /* curses, failed again */
-#endif
 
 		if (pjob->ji_grpcache) {
 			if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
@@ -821,14 +817,13 @@ end_loop:
 		if (extval != 2)
 			extval = 0;
 
-#ifndef PBS_DONOT_FORK
-		/* In *nix we are child so exit and parent will do send_obit() */
-		exit(extval);
-#else
+		if (!cpid)
+		/* if we are child exit and parent will do send_obit() */
+			exit(extval);
+
 		send_obit(pjob, i);
-		/* restore MOM's home since in Windows, we're in main mom */
+		/* restore MOM's home if we are foreground */
 		(void)chdir(mom_home);
-#endif
 	}
 	if (pjob == NULL)
 		exiting_tasks = 0;	/* went through all jobs */

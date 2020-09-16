@@ -144,9 +144,6 @@ extern unsigned char pbs_aes_iv[][16];
 
 /* Local Data Items */
 char rcperr[MAXPATHLEN] = {'\0'};	/* file to contain rcp error */
-char *shell = NULL;
-char *argv[BUF_SIZE] = {NULL};		/* lots of args */
-int argc = 0;
 char *pbs_jobdir = NULL;	/* path to staging and execution dir of current job */
 char *cred_buf = NULL;
 size_t cred_len = 0;
@@ -2131,43 +2128,10 @@ delete_file(char *path, char *user, char *prmt, char **bad_list)
 		}
 	}
 
-#ifdef WIN32
 	rc = remtree(path);
 	if (rc == -1 && errno == ENOENT)
 		rc = 0;
-#else
-	if (shell == NULL) {
-		rc = remtree(path);
-		if (rc == -1 && errno == ENOENT)
-			rc = 0;
-	}
-	else {
-		rc = -1;
-		pid = fork();
-		if (pid > 0) {		/* parent */
-			if (cred_pipe != -1) {
-				if (write(cred_pipe, pwd_buf,
-					cred_len) != cred_len) {
-					log_err(errno, __func__,
-						"pipe write");
-				}
-			}
-			while (((i = wait(&rc)) < 0) &&
-				(errno == EINTR)) ;
-			if (i != -1 && WIFEXITED(rc) &&
-				WEXITSTATUS(rc) == 0)
-				rc = 0;
-		}
-		else if (pid == 0) {	/* child */
-			argv[argc++] = "/bin/rm";
-			argv[argc++] = "-rf";
-			argv[argc++] = path;
-			argv[argc++] = NULL;
-			execv(shell, argv);
-			exit(13);	/* not good if we get here */
-		}
-	}
-#endif	/* WIN32 */
+
 	if (rc != 0) {
 		sprintf(log_buffer,
 			"Unable to delete file %s for user %s, error = %d",
@@ -2428,6 +2392,7 @@ req_rerunjob(struct batch_request *preq)
 	int		 sock;
 	char		*svrport;
 	struct work_task *wtask = NULL;
+	pid_t	 child;
 
 	pjob = find_job(preq->rq_ind.rq_rerun);
 	if (pjob == NULL) {
@@ -2435,13 +2400,10 @@ req_rerunjob(struct batch_request *preq)
 		return;
 	}
 
-#ifdef WIN32
-	/* WIN32 will not fork ... just do it */
-#else
-	/* fork to send files back */
+	/* try fork to send files back */
 
-	if ((rc = fork_me(preq->rq_conn)) > 0) {
-		wtask = set_task(WORK_Deferred_Child, rc, post_rerunjob, preq);
+	if ((child = fork_me(preq->rq_conn)) > 0) {
+		wtask = set_task(WORK_Deferred_Child, child, post_rerunjob, preq);
 		if (!wtask) {
 			log_err(errno, NULL, "Failed to create deferred work task, Out of memory");
 			req_reject(PBSE_SYSTEM, 0, preq);
@@ -2453,13 +2415,12 @@ req_rerunjob(struct batch_request *preq)
 		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT)
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
 		return;
-	} else if (rc < 0) {
-		req_reject(-rc, 0, preq);
+	} else if ((child < 0) && (errno != ENOSYS)) {
+		req_reject(-child, 0, preq);
 		return;
 	}
 
-#endif
-	/* UNIX: Child process ...  for each standard file generate and */
+	/* Child process ...  if fork available else continue in foreground */
 	/* send a Job Files request(s).                           */
 
 	rc = 0;
@@ -2478,38 +2439,32 @@ req_rerunjob(struct batch_request *preq)
 	if (sock < 0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING,
 			"req_rerun", "no contact with the server");
-#ifdef WIN32
-		/* TPP streams cannot be inherited.
-		 * For Unix, we create a child process,
-		 * But for Windows, we don't.
-		 * So, we need to reject the request here itself.
-		 */
-		req_reject(PBSE_NOSERVER, 0, preq);
-#endif
+		if (child) {
+			/* TPP streams cannot be inherited.
+			 * So, we need to reject the request here itself if in foreground.
+			 */
+			req_reject(PBSE_NOSERVER, 0, preq);
+		}
 		rc = 1;
 	}
 
 	if (rc == 0) {
 		if (((rc = return_file(pjob, StdOut, sock)) != 0) ||
-			((rc = return_file(pjob, StdErr, sock)) != 0))
-#ifdef WIN32
+			((rc = return_file(pjob, StdErr, sock)) != 0)) {
 		/* TPP streams cannot be inherited.
-		 * For Unix, we create a child process,
-		 * But for Windows, we don't.
-		 * So, we need to reject/ack the request here itself.
+		 * So, we need to reject/ack the request here itself if in foreground.
 		 */
-			req_reject(rc, 0, preq);
-		else
+			if (child)
+				req_reject(rc, 0, preq);
+			else
+				rc = 1;
+		} else if (child)
 			reply_ack(preq);
-#else
-	rc = 1;
-#endif
 	}
 
 	closesocket(sock);
-#ifndef WIN32
-	exit(rc);
-#endif
+	if (!child)
+		exit(rc);
 	return;
 }
 
@@ -3985,9 +3940,7 @@ local_checkpoint(job *pjob,
 	attribute	tmph;
 	pbs_task	*ptask;
 	int		hok = 1;
-#ifndef WIN32
 	pid_t		pid;
-#endif
 
 	DBPRT(("local_checkpoint: %s %s abort %s request\n",
 		pjob->ji_qs.ji_jobid,
@@ -4017,30 +3970,47 @@ local_checkpoint(job *pjob,
 		ptask->ti_flags &= ~TI_FLAGS_CHKPT;
 	}
 
-#ifndef	WIN32
-	/* now set up as child of MOM */
+	/* now try set up as child of MOM */
 	pid = fork_me(-1);
-	if (pid < 0)
+	if ((pid < 0) && (errno != ENOSYS))
 		return PBSE_SYSTEM;		/* error on fork */
 
-	if (pid == 0) {
-		/* child - does the checkpoint */
-#endif
+	if (pid > 0) {
+		/* parent, record pid in job for when child terminates */
 
-		clear_attr(&tmph, &job_attr_def[(int)JOB_ATR_hold]);
-		if (preq) {
-			pal = (svrattrl *)
-				GET_NEXT(preq->rq_ind.rq_hold.rq_orig.rq_attr);
-			if (pal) {
-				hok = job_attr_def[(int)JOB_ATR_hold].
-					at_decode(&tmph, pal->al_name,
-					NULL, pal->al_value);
-			}
+		DBPRT(("local_checkpoint: %s pid %d\n", pjob->ji_qs.ji_jobid, pid))
+		pjob->ji_momsubt = pid;
+		pjob->ji_mompost = post_chkpt;
+		pjob->ji_actalarm = 0;
+
+		/*
+		** If we are going to have tasks dieing, set a flag.
+		*/
+		if (abort) {
+			pjob->ji_flags |= MOM_CHKPT_ACTIVE;
+			pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_CHKP;
 		}
-		rc = mom_checkpoint_job(pjob, abort);
-		if ((rc == 0) && (hok == 0))
-			rc = site_mom_postchk(pjob, (int)tmph.at_val.at_long);
-#ifdef	WIN32
+		(void)job_save(pjob);
+
+		return PBSE_NONE;	/* parent return */
+	}
+
+	/* if fork available child does the checkpoint else by foreground */
+
+	clear_attr(&tmph, &job_attr_def[(int)JOB_ATR_hold]);
+	if (preq) {
+		pal = (svrattrl *)
+			GET_NEXT(preq->rq_ind.rq_hold.rq_orig.rq_attr);
+		if (pal) {
+			hok = job_attr_def[(int)JOB_ATR_hold].
+				at_decode(&tmph, pal->al_name,
+				NULL, pal->al_value);
+		}
+	}
+	rc = mom_checkpoint_job(pjob, abort);
+	if ((rc == 0) && (hok == 0))
+		rc = site_mom_postchk(pjob, (int)tmph.at_val.at_long);
+	if (pid) {
 		pjob->ji_preq = preq;
 		if (abort) {
 			pjob->ji_flags |= MOM_CHKPT_ACTIVE;
@@ -4051,31 +4021,10 @@ local_checkpoint(job *pjob,
 
 		post_chkpt(pjob, rc);
 
-		if (rc != 0) {	/* impt to reflect failure code */
-			return (rc);
-		}
-#else
+		return (rc);
+	} else
 		exit(rc);	/* zero exit tells main chkpnt ok */
-	}
 
-	/* parent, record pid in job for when child terminates */
-
-	DBPRT(("local_checkpoint: %s pid %d\n", pjob->ji_qs.ji_jobid, pid))
-	pjob->ji_momsubt = pid;
-	pjob->ji_mompost = post_chkpt;
-	pjob->ji_actalarm = 0;
-
-	/*
-	 ** If we are going to have tasks dieing, set a flag.
-	 */
-	if (abort) {
-		pjob->ji_flags |= MOM_CHKPT_ACTIVE;
-		pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_CHKP;
-	}
-	(void)job_save(pjob);
-#endif
-
-	return PBSE_NONE;	/* parent return */
 }
 
 /**
@@ -4406,9 +4355,7 @@ int
 local_restart(job *pjob,
 	struct batch_request *preq) /* may be null */
 {
-#ifndef WIN32
 	pid_t		pid;
-#endif
 	int		rc;
 	int		background = restart_background;
 
@@ -4461,39 +4408,33 @@ local_restart(job *pjob,
 	if (pjob->ji_momsubt != 0)
 		return PBSE_CKPBSY;
 
-#ifndef WIN32
 	/*
 	 * If we get to this point, restart_background is enabled, perform
 	 * the restart as a subtask of MOM.
 	 */
 	pid = fork_me(-1);
-	if (pid < 0)
+	if ((pid < 0) && (errno != ENOSYS))
 		return PBSE_SYSTEM;	/* error on fork */
 
-	if (pid == 0) {
-#endif
-		/* child - does the restart */
-		rc = mom_restart_job(pjob);
-#ifdef WIN32
+	if (pid > 0) {
+		/* parent, records pid in job for when child terminates */
+
+		DBPRT(("local_restart: %s pid %d\n", pjob->ji_qs.ji_jobid, pid))
+		pjob->ji_momsubt = pid;
+		pjob->ji_mompost = post_restart;
+		pjob->ji_actalarm = 0;
+		pjob->ji_flags |= MOM_RESTART_ACTIVE;
+		(void)job_save(pjob);
+		return PBSE_NONE;		/* parent return */
+	}
+	/* child - does the restart if fork avaialable else by foreground*/
+	rc = mom_restart_job(pjob);
+	if (pid) {
 		pjob->ji_preq = preq;
 		post_restart(pjob, rc);
-		if (rc != 0)
-			return (rc);
-#else
+		return (rc);
+	} else
 		exit(rc);	/* zero exit tells main restart ok */
-	}
-
-	/* parent, records pid in job for when child terminates */
-
-	DBPRT(("local_restart: %s pid %d\n", pjob->ji_qs.ji_jobid, pid))
-	pjob->ji_momsubt = pid;
-	pjob->ji_mompost = post_restart;
-	pjob->ji_actalarm = 0;
-	pjob->ji_flags |= MOM_RESTART_ACTIVE;
-	(void)job_save(pjob);
-#endif
-
-	return PBSE_NONE;		/* parent return */
 }
 
 /**
