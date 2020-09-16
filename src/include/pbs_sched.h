@@ -84,7 +84,6 @@ extern attribute_def sched_attr_def[];
 
 typedef struct pbs_sched {
 	pbs_list_link sc_link;					      /* link to all scheds known to server */
-	int sc_tmp_primary_conn;				      /* this is just to hold primary connection fd till secondary connection comes */
 	int sc_primary_conn;					      /* primary connection to sched */
 	int sc_secondary_conn;					      /* secondary connection to sched */
 	int svr_do_schedule;					      /* next sched command which will be sent to sched */
@@ -103,7 +102,7 @@ extern	pbs_list_head	svr_allscheds;
 extern void set_scheduler_flag(int flag, pbs_sched *psched);
 extern int find_assoc_sched_jid(char *jid, pbs_sched **target_sched);
 extern int find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched);
-extern pbs_sched *find_sched_from_sock(int sock);
+extern pbs_sched *find_sched_from_sock(int sock, conn_origin_t which);
 extern pbs_sched *find_sched(char *sched_name);
 extern int validate_job_formula(attribute *pattr, void *pobject, int actmode);
 extern pbs_sched *find_sched_from_partition(char *partition);

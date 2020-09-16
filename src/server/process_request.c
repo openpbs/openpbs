@@ -293,12 +293,13 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
 	}
-	if (sched->sc_tmp_primary_conn == -1 && sched->sc_primary_conn == -1) {
-		sched->sc_tmp_primary_conn = conn->cn_sock;
+	if (sched->sc_primary_conn == -1) {
+		sched->sc_primary_conn = conn->cn_sock;
+		net_add_close_func(conn->cn_sock, scheduler_close);
 		reply_ack(preq);
 		return;
-	} else if (sched->sc_tmp_primary_conn != -1) {
-		pconn = get_conn(sched->sc_tmp_primary_conn);
+	} else if (sched->sc_primary_conn != -1) {
+		pconn = get_conn(sched->sc_primary_conn);
 		if (!pconn) {
 			rc = PBSE_INTERNAL;
 			goto rerr;
@@ -315,7 +316,6 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 		rc = PBSE_PERM;
 		goto rerr;
 	}
-	sched->sc_tmp_primary_conn = -1;
 	sched->sc_primary_conn = pconn->cn_sock;
 	sched->sc_secondary_conn = conn->cn_sock;
 	conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_NOTIMEOUT;
@@ -1015,8 +1015,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_StatusHook:
 			/* Scheduler is allowed to make the request */
-			if ((find_sched_from_sock(request->rq_conn) == NULL) &&
-					!is_local_root(request->rq_user, request->rq_host)) {
+			if (conn->cn_origin != CONN_SCHED_PRIMARY && !is_local_root(request->rq_user, request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
 					"access hooks data from server %s",
 					request->rq_user, request->rq_host, server_host);

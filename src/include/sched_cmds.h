@@ -37,7 +37,37 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#ifndef _SCHED_CMDS_H
+#define _SCHED_CMDS_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+typedef struct sched_cmd sched_cmd;
+typedef struct sched_svrconn sched_svrconn;
+
+struct sched_cmd {
+	/* sched command */
+	int cmd;
+
+	/* jobid assisiated with cmd if any else NULL */
+	char *jid;
+
+	/*
+	 * connection to server from which we got this sched command.
+	 * This will be one of the server's secondary connection.
+	 *
+	 * This will be used in while finding server conn structure before calling
+	 * schedule() which needs primary connection to the server
+	 *
+	 */
+	int from_sock;
+};
+struct sched_svrconn {
+	char *svrhost;	    /* address of host in host[:port] format */
+	int primary_sock;   /* primary connection to server - used for IFL calls */
+	int secondary_sock; /* secondary connection to server - used to receive sched cmds from server */
+};
 
 /* server to scheduler commands: */
 #define SCH_ERROR         -1
@@ -58,3 +88,10 @@
 #define SCH_SCHEDULE_ETE_ON 15		/* eligible_time_enable is turned ON */
 #define SCH_SCHEDULE_RESV_RECONFIRM 16		/* Reconfirm a reservation */
 #define SCH_SCHEDULE_RESTART_CYCLE 17		/* Restart a scheduling cycle */
+
+int schedule(sched_svrconn *sconn, sched_cmd *cmd);
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* _SCHED_CMDS_H */

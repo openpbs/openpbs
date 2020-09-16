@@ -422,7 +422,6 @@ sched_alloc(char *sched_name)
 	psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
 	psched->sc_primary_conn = -1;
 	psched->sc_secondary_conn = -1;
-	psched->sc_tmp_primary_conn = -1;
 	psched->newobj = 1;
 	append_link(&svr_allscheds, &psched->sc_link, psched);
 
@@ -946,14 +945,10 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 		set_attr_generic(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode], ATR_TRUE, NULL, SET);
 		psched->sch_attr[SCHED_ATR_throughput_mode].at_flags |= ATR_VFLAG_DEFLT;
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_version])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_version]), &sched_attr_def[SCHED_ATR_version], PBS_VERSION, NULL, SET);
-		psched->sch_attr[SCHED_ATR_version].at_flags |= ATR_VFLAG_DEFLT;
-	}
 	if (psched == dflt_scheduler) {
 		if (!is_attr_set(&psched->sch_attr[SCHED_ATR_partition])) {
 			set_attr_generic(&(psched->sch_attr[SCHED_ATR_partition]), &sched_attr_def[SCHED_ATR_partition], DEFAULT_PARTITION, NULL, SET);
-			psched->sch_attr[SCHED_ATR_version].at_flags |= ATR_VFLAG_DEFLT;
+			psched->sch_attr[SCHED_ATR_partition].at_flags |= ATR_VFLAG_DEFLT;
 		}
 		if (!is_attr_set(&psched->sch_attr[SCHED_ATR_SchedHost])) {
 			set_attr_generic(&(psched->sch_attr[SCHED_ATR_SchedHost]), &sched_attr_def[SCHED_ATR_SchedHost], server_host, NULL, SET);

@@ -45,12 +45,10 @@ extern "C" {
 
 #include  <limits.h>
 #include "data_types.h"
-#include "list_link.h"
+#include "sched_cmds.h"
 
-extern pbs_list_head servers;
-extern void *poll_context;
-int get_sched_cmd(svr_t *);
-int get_sched_cmd_noblk(svr_t *);
+int get_sched_cmd(int sock, sched_cmd *cmd);
+int get_sched_cmd_noblk(int sock, sched_cmd *cmd);
 
 /*
  *      schedinit - initialize conf struct and parse conf files
@@ -58,24 +56,17 @@ int get_sched_cmd_noblk(svr_t *);
 int schedinit(int nthreads);
 
 /*
- *      schedule - this function gets called to start each scheduling cycle
- *                 It will handle the difference cases that caused a
- *                 scheduling cycle
- */
-int schedule(svr_t *);
-
-/*
  *	intermediate_schedule - responsible for starting/restarting scheduling
  *				cycle
  */
 
-int intermediate_schedule(svr_t *);
+int intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(svr_t *);
+int scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every
@@ -222,7 +213,7 @@ void update_cycle_status(struct status *policy, time_t current_time);
  *			     deal with normal job can't run stuff
 
  */
-int main_sched_loop(status *, svr_t *, server_info *, schd_error **);
+int main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_error **rerr);
 
 /*
  *

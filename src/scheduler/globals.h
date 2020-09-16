@@ -47,6 +47,12 @@ extern "C" {
 #include "data_types.h"
 #include "limits.h"
 #include "queue.h"
+#include "sched_cmds.h"
+
+extern sched_svrconn **servers;
+extern void *poll_context;
+extern ds_queue *sched_cmds;
+
 /* resources to check */
 extern const struct rescheck res_to_check[];
 

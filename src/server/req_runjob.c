@@ -1735,7 +1735,7 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 	}
 
 	/* If the request did not come from the scheduler, update the comment. */
-	if (find_sched_from_sock(preq->rq_conn) == NULL) {
+	if (find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY) == NULL) {
 		char comment[MAXCOMMENTLEN];
 		nspec = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 		if ((nspec != NULL) && (*nspec != '\0')) {

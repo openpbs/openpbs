@@ -60,7 +60,8 @@
  * @brief
  * 	Gets the Scheduler Command sent by the Server
  *
- * @param[in/out] sconn - pointer to server struct
+ * @param[in]     sock - secondary connection to the server
+ * @param[in/out] cmd  - pointer to sched cmd to be filled with received cmd
  *
  * @return	int
  * @retval	0	: for EOF
@@ -69,23 +70,24 @@
  *
  */
 int
-get_sched_cmd(svr_t *sconn)
+get_sched_cmd(int sock, sched_cmd *cmd)
 {
 	int i;
 	int rc = 0;
 	char *jobid = NULL;
 
-	i = disrsi(sconn->secondary_fd, &rc);
+	i = disrsi(sock, &rc);
 	if (rc != 0)
 		goto err;
 	if (i == SCH_SCHEDULE_AJOB) {
-		jobid = disrst(sconn->secondary_fd, &rc);
+		jobid = disrst(sock, &rc);
 		if (rc != 0)
 			goto err;
 	}
 
-	sconn->cmd.cmd = i;
-	sconn->cmd.jid = jobid;
+	cmd->cmd = i;
+	cmd->jid = jobid;
+	cmd->from_sock = sock;
 	return 1;
 
 err:
@@ -100,7 +102,8 @@ err:
  * @brief
  * 	This is non-blocking version of get_sched_cmd()
  *
- * @param[in/out] sconn - pointer to server struct
+ * @param[in]     sock - secondary connection to the server
+ * @param[in/out] cmd  - pointer to sched cmd to be filled with received cmd
  *
  * @return	int
  * @retval	0	for EOF,
@@ -109,7 +112,7 @@ err:
  */
 
 int
-get_sched_cmd_noblk(svr_t *sconn)
+get_sched_cmd_noblk(int sock, sched_cmd *cmd)
 {
 	struct timeval timeout;
 	fd_set fdset;
@@ -117,9 +120,9 @@ get_sched_cmd_noblk(svr_t *sconn)
 	timeout.tv_sec = 0;
 
 	FD_ZERO(&fdset);
-	FD_SET(sconn->secondary_fd, &fdset);
+	FD_SET(sock, &fdset);
 
-	if (select(FD_SETSIZE, &fdset, NULL, NULL, &timeout) != -1 && FD_ISSET(sconn->secondary_fd, &fdset))
-		return get_sched_cmd(sconn);
+	if (select(FD_SETSIZE, &fdset, NULL, NULL, &timeout) != -1 && FD_ISSET(sock, &fdset))
+		return get_sched_cmd(sock, cmd);
 	return 0;
 }

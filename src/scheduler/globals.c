@@ -132,8 +132,9 @@ struct status cstat;
 
 /* to make references happy */
 int got_sigpipe;
-pbs_list_head servers;
-void *poll_context;
+sched_svrconn **servers = NULL;
+ds_queue *sched_cmds = NULL;
+void *poll_context = NULL;
 
 /* Stuff needed for multi-threading */
 pthread_mutex_t general_lock;

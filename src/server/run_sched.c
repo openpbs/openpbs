@@ -185,24 +185,30 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 
 }
 
-
 /**
  * @brief
  * 		find_sched_from_sock - find the corresponding scheduler which is having
  * 		the given socket.
  *
  * @param[in]	sock	- socket descriptor
+ * @param[in]	which	- which connection to check, primary or secondary
+ * 			  can be one of CONN_SCHED_PRIMARY or CONN_SCHED_SECONDARY
  *
  * @retval - pointer to the corresponding pbs_sched object if success
  * 		 -  NULL if fail
  */
 pbs_sched *
-find_sched_from_sock(int sock)
+find_sched_from_sock(int sock, conn_origin_t which)
 {
 	pbs_sched *psched;
 
-	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-		if (psched->sc_primary_conn == sock || psched->sc_secondary_conn == sock)
+	if (sock < 0 || (which != CONN_SCHED_PRIMARY && which != CONN_SCHED_SECONDARY))
+		return NULL;
+
+	for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+		if (which == CONN_SCHED_PRIMARY && psched->sc_primary_conn == sock)
+			return psched;
+		if (which == CONN_SCHED_SECONDARY && psched->sc_secondary_conn == sock)
 			return psched;
 	}
 	return NULL;
@@ -221,34 +227,30 @@ find_sched_from_sock(int sock)
 int
 recv_sched_cycle_end(int sock)
 {
-	pbs_sched *psched;
+	int rc = 0;
+	pbs_sched *psched = find_sched_from_sock(sock, CONN_SCHED_SECONDARY);
 
-	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-		if (psched->sc_secondary_conn == sock) {
-			int rc;
+	if (!psched)
+		return 0;
 
-			DIS_tcp_funcs();
-			psched->sc_cycle_started = disrsi(sock, &rc);
+	DIS_tcp_funcs();
+	(void)disrsi(sock, &rc); /* read end cycle marker and ignore as we don't need its value */
+	psched->sc_cycle_started = 0;
 
-			if (rc != 0) {
-				psched->sc_cycle_started = 0;
-				set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
-			} else
-				set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_IDLE, NULL, SET);
+	if (rc != 0)
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
+	else
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_IDLE, NULL, SET);
 
-			/* clear list of jobs which were altered/modified during cycle */
-			am_jobs.am_used = 0;
-			scheduler_jobs_stat = 0;
-			handle_deferred_cycle_close();
+	/* clear list of jobs which were altered/modified during cycle */
+	am_jobs.am_used = 0;
+	scheduler_jobs_stat = 0;
+	handle_deferred_cycle_close();
 
-			if (rc == DIS_EOF)
-				rc = -1;
+	if (rc == DIS_EOF)
+		rc = -1;
 
-			return rc;
-		}
-	}
-
-	return 0;
+	return rc;
 }
 
 /**
@@ -386,24 +388,29 @@ void
 scheduler_close(int sock)
 {
 	pbs_sched *psched;
-	int other_conn;
+	int other_conn = -1;
 
-	psched = find_sched_from_sock(sock);
+	psched = find_sched_from_sock(sock, CONN_SCHED_PRIMARY);
+	if (psched == NULL) {
+		psched = find_sched_from_sock(sock, CONN_SCHED_SECONDARY);
+		if (psched == NULL)
+			return;
+	}
 
-	if (psched == NULL)
-		return;
-
-	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
-	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_CRIT, psched->sc_name, "scheduler disconnected");
 	if (sock == psched->sc_primary_conn)
 		other_conn = psched->sc_secondary_conn;
-	else
+	else if (sock == psched->sc_secondary_conn)
 		other_conn = psched->sc_primary_conn;
+	else
+		return;
+	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_CRIT, psched->sc_name, "scheduler disconnected");
+	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
 	psched->sc_secondary_conn = -1;
 	psched->sc_primary_conn = -1;
-	psched->sc_tmp_primary_conn = -1;
-	net_add_close_func(other_conn, NULL);
-	close_conn(other_conn);
+	if (other_conn != -1) {
+		net_add_close_func(other_conn, NULL);
+		close_conn(other_conn);
+	}
 	psched->sc_cycle_started = 0;
 
 	/* clear list of jobs which were altered/modified during cycle */

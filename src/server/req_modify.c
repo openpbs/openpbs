@@ -192,7 +192,7 @@ req_modifyjob(struct batch_request *preq)
 		return;
 	}
 
-	psched = find_sched_from_sock(preq->rq_conn);
+	psched = find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY);
 	/* allow scheduler to modify job */
 	if (psched == NULL) {
 		/* provisioning job is not allowed to be modified */
@@ -370,7 +370,7 @@ req_modifyjob(struct batch_request *preq)
 		return;
 	}
 
-	if (find_sched_from_sock(preq->rq_conn) == NULL)
+	if (find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY) == NULL)
 		log_alter_records_for_attrs(pjob, plist);
 
 	/* if job is not running, may need to change its state */

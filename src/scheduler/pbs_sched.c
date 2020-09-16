@@ -90,6 +90,7 @@
 #include "pbs_version.h"
 #include "portability.h"
 #include "rm.h"
+#include "misc.h"
 #include "sched_cmds.h"
 #include "server_limits.h"
 #include "tpp.h"
@@ -123,7 +124,7 @@ extern char *msg_startup1;
 static pthread_mutex_t cleanup_lock;
 
 static void close_servers();
-static void reconnect_server(svr_t *);
+static void reconnect_server(sched_svrconn *);
 
 /**
  * @brief
@@ -343,7 +344,9 @@ read_config(char *file)
 void
 restart(int sig)
 {
-	svr_t sconn = {NULL, -1, -1, {SCH_CONFIGURE, NULL}, {0}};
+	sched_svrconn sconn = {NULL, -1, -1};
+	sched_cmd cmd = {SCH_CONFIGURE, NULL, -1};
+
 	if (sig) {
 		log_close(1);
 		log_open(logfile, path_log);
@@ -356,7 +359,7 @@ restart(int sig)
 		if (read_config(configfile) != 0)
 			die(0);
 	}
-	schedule(&sconn);
+	schedule(&sconn, &cmd);
 }
 
 #ifdef NAS /* localmod 030 */
@@ -510,21 +513,17 @@ are_we_primary()
  * @return void
  */
 static void
-close_server(svr_t *sconn)
+close_server(sched_svrconn *sconn)
 {
 	if (sconn) {
-		char *svrhost = sconn->svrhost;
+		char *svrhost = sconn->svrhost ? sconn->svrhost : pbs_default();
 
-		delete_link(&sconn->all_svrs_link);
-		tpp_em_del_fd(poll_context, sconn->secondary_fd);
-		pbs_disconnect(sconn->primary_fd);
-		pbs_disconnect(sconn->secondary_fd);
-		if (sconn->cmd.jid)
-			free(sconn->cmd.jid);
-		free(sconn);
-		sconn = NULL;
+		remove_ptr_from_array(servers, sconn);
+		tpp_em_del_fd(poll_context, sconn->secondary_sock);
+		pbs_disconnect(sconn->primary_sock);
+		pbs_disconnect(sconn->secondary_sock);
 		log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO,
-			   msg_daemonname, "Disconnected from server %s", svrhost ? svrhost : pbs_default());
+			   msg_daemonname, "Disconnected from server %s", svrhost);
 	}
 }
 
@@ -536,16 +535,18 @@ close_server(svr_t *sconn)
 static void
 close_servers(void)
 {
-	svr_t *cur, *next;
-
-	cur = GET_NEXT(servers);
-	while (cur) {
-		next = GET_NEXT(cur->all_svrs_link);
-		close_server(cur);
-		cur = next;
+	while (servers[0]) {
+		sched_svrconn *sconn = servers[0];
+		close_server(sconn);
+		free(sconn->svrhost);
+		free(sconn);
 	}
+	free(servers);
+	servers = NULL;
 	tpp_em_destroy(poll_context);
-	CLEAR_HEAD(servers);
+	poll_context = NULL;
+	free_ds_queue(sched_cmds);
+	sched_cmds = NULL;
 }
 
 /**
@@ -558,35 +559,35 @@ close_servers(void)
  *
  * @return int
  * @retval -1  - failure
- * @return !-1 - success, and opened connection fd
+ * @return !-1 - success, and opened connection sock
  */
 static int
 connect_server_helper(char *host, int is_primary)
 {
 	int rc;
-	int fd = -1;
+	int sock = -1;
 	struct batch_reply *reply = NULL;
 
-	fd = pbs_connect(host);
-	if (fd < 0)
+	sock = pbs_connect(host);
+	if (sock < 0)
 		goto rerr;
-	rc = encode_DIS_ReqHdr(fd, PBS_BATCH_RegisterSched, pbs_current_user);
+	rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RegisterSched, pbs_current_user);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
-	rc = diswst(fd, sc_name);
+	rc = diswst(sock, sc_name);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
-	rc = encode_DIS_ReqExtend(fd, NULL);
+	rc = encode_DIS_ReqExtend(sock, NULL);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
-	if (dis_flush(fd) != 0)
+	if (dis_flush(sock) != 0)
 		goto rerr;
 	pbs_errno = 0;
-	reply = PBSD_rdrpy(fd);
+	reply = PBSD_rdrpy(sock);
 	if (reply == NULL)
 		goto rerr;
 	if (pbs_errno != 0) {
-		char *errmsg = get_conn_errtxt(fd);
+		char *errmsg = get_conn_errtxt(sock);
 		if (errmsg) {
 			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_NOTICE,
 				   msg_daemonname, "Server rejected register request for %s connection with error: %s",
@@ -597,10 +598,10 @@ connect_server_helper(char *host, int is_primary)
 	}
 
 	PBSD_FreeReply(reply);
-	return fd;
+	return sock;
 
 rerr:
-	pbs_disconnect(fd);
+	pbs_disconnect(sock);
 	PBSD_FreeReply(reply);
 	return -1;
 }
@@ -616,48 +617,54 @@ rerr:
 static void
 connect_server(char *svrhost)
 {
-	int primary_fd = -1;
-	int secondary_fd = -1;
-	svr_t *svr;
+	int primary_sock = -1;
+	int secondary_sock = -1;
+	sched_svrconn *svr;
+	int i;
 
 	if (!svrhost)
-		svrhost = pbs_default();
+		return;
 
-	while (primary_fd < 0 || primary_fd < 0) {
-		if (primary_fd < 0) {
-			primary_fd = connect_server_helper(svrhost, 1);
-			if (primary_fd < 0) {
+	while (primary_sock < 0 || secondary_sock < 0) {
+		if (primary_sock < 0) {
+			primary_sock = connect_server_helper(svrhost, 1);
+			if (primary_sock < 0) {
 				/* wait for 2s for not to burn too much CPU, and then retry connection */
 				sleep(2);
 				continue;
 			}
 		}
-		secondary_fd = connect_server_helper(svrhost, 0);
-		if (secondary_fd < 0) {
+		secondary_sock = connect_server_helper(svrhost, 0);
+		if (secondary_sock < 0) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);
 			continue;
 		}
 	}
-	if (tpp_em_add_fd(poll_context, secondary_fd, EM_IN | EM_HUP | EM_ERR) < 0) {
+	if (tpp_em_add_fd(poll_context, secondary_sock, EM_IN | EM_HUP | EM_ERR) < 0) {
 		log_errf(-1, __func__, "Couldn't add secondary connection to poll list for server %s", svrhost);
-		pbs_disconnect(primary_fd);
-		pbs_disconnect(secondary_fd);
+		pbs_disconnect(primary_sock);
+		pbs_disconnect(secondary_sock);
 		die(-1);
 	}
 
-	svr = malloc(sizeof(svr_t));
+	svr = malloc(sizeof(sched_svrconn));
 	if (!svr) {
-		log_errf(-1, __func__, "Out of memory while allocating svr struct");
+		log_errf(-1, __func__, MEM_ERR_MSG);
 		die(-1);
 	}
 
-	svr->svrhost = svrhost;
-	svr->primary_fd = primary_fd;
-	svr->secondary_fd = secondary_fd;
-	CLEAR_LINK(svr->all_svrs_link);
-	append_link(&servers, &svr->all_svrs_link, svr);
-	set_validate_sched_attrs(svr->primary_fd);
+	svr->svrhost = strdup(svrhost);
+	if (!svr->svrhost) {
+		free(svr);
+		log_errf(-1, __func__, MEM_ERR_MSG);
+		die(-1);
+	}
+	svr->primary_sock = primary_sock;
+	svr->secondary_sock = secondary_sock;
+	i = 0;
+	while (servers[i] != NULL) i++;
+	servers[i] = svr;
 	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to server %s", svrhost);
 }
 
@@ -679,10 +686,20 @@ connect_servers(void)
 			die(-1);
 		}
 
-		CLEAR_HEAD(servers);
+		servers = (sched_svrconn **) calloc(1, sizeof(sched_svrconn *) * max_connection + 1);
+		if (servers == NULL) {
+			log_errf(errno, __func__, MEM_ERR_MSG);
+			die(-1);
+		}
+
+		sched_cmds = new_ds_queue();
+		if (sched_cmds == NULL) {
+			log_errf(errno, __func__, MEM_ERR_MSG);
+			die(-1);
+		}
 	}
 
-	connect_server(NULL);
+	connect_server(pbs_default());
 }
 
 /**
@@ -693,48 +710,112 @@ connect_servers(void)
  * @return void
  */
 static void
-reconnect_server(svr_t *sconn)
+reconnect_server(sched_svrconn *sconn)
 {
-	char *svrhost = sconn->svrhost;
-
 	close_server(sconn);
-	connect_server(svrhost);
+	connect_server(sconn->svrhost);
+	free(sconn->svrhost);
+	free(sconn);
+}
+
+/**
+ * @brief find server structure based on given secondary connection
+ *
+ * @param[in] sock - secondary connection to server
+ *
+ * @return sched_svrconn *
+ * @retval NULL  - failure
+ * @retval !NULL - success
+ */
+static sched_svrconn *
+find_server(int sock)
+{
+	int i = 0;
+	for (; servers[i] != NULL && servers[i]->secondary_sock == sock; i++)
+		return servers[i];
+	return NULL;
 }
 
 /**
  * @brief read incoming command from given secondary connection
- *        Also find server struct based on given connection fd
- *        and return it in sconn
+ *        and add it into sched_cmds array
  *
- * @param[in]  fd   - secondary connection to server
- * @param[out] sconn - pointer to server struct based on sfd
+ * @param[in]  sock   - secondary connection to server
  *
  * @return int
- * @retval -1 - failure
+ * @retval -2 - failure due to memory optation failed
+ * @retval -1 - failure while reading command
  * @return  0 - no cmd, server might have closed connection
- * @return  1 - success, read one command
+ * @return  1 - success, read atleast one command
  */
 static int
-read_sched_cmd(int fd, svr_t **sconn)
+read_sched_cmd(int sock)
 {
-	svr_t *cur = NULL;
 	int rc = -1;
+	sched_cmd *cmd;
 
-	cur = GET_NEXT(servers);
-	while (cur) {
-		if (cur->secondary_fd == fd)
-			break;
-		cur = GET_NEXT(cur->all_svrs_link);
-	}
-	if (!cur) /* this shouldn't happen, unless we are completly messed up */
+	cmd = malloc(sizeof(sched_cmd));
+	if (cmd == NULL)
+		return -2;
+
+	rc = get_sched_cmd(sock, cmd);
+	if (rc != 1) {
+		free(cmd);
 		return rc;
-
-	if ((rc = get_sched_cmd(cur)) == 1) {
-		if (*sconn == NULL)
-			*sconn = cur;
 	} else {
-		/* force set sconn so wait_for_cmd can use it to reconnect */
-		*sconn = cur;
+		sched_cmd *cmd_prio;
+
+		if (!ds_enqueue(sched_cmds, cmd)) {
+			if (cmd->jid)
+				free(cmd->jid);
+			free(cmd);
+			/* return error if we fail to enqueue first command */
+			return -2;
+		}
+
+		/*
+		 * There is possibility that server has sent
+		 * priority command after first non-priority command,
+		 * while we were in schedule()
+		 *
+		 * so try read it in non-blocking mode, but don't
+		 * return any failure if fails to read, as we have
+		 * successfully enqueued first command
+		 */
+		cmd_prio = malloc(sizeof(sched_cmd));
+		if (cmd_prio == NULL)
+			return 1; /* return 1 as we have enqueued first command */
+		cmd_prio->cmd = -1;
+		cmd_prio->jid = NULL;
+
+		get_sched_cmd_noblk(sock, cmd);
+		/*
+		 * we got priority command,
+		 *
+		 * now check if its restart cycle cmd then ignore it
+		 * as we are not yet in cycle
+		 */
+		if (cmd_prio->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+			if (cmd_prio->jid)
+				free(cmd_prio->jid);
+			free(cmd_prio);
+			/*
+			 * no return here,
+			 * as we have successfully enqueued first command
+			 */
+		} else if (cmd_prio->cmd != -1) {
+			/* not restart cycle cmd, just enqueue it */
+			if (!ds_enqueue(sched_cmds, cmd_prio)) {
+				if (cmd_prio->jid)
+					free(cmd_prio->jid);
+				free(cmd_prio);
+				/*
+				 * no error return here,
+				 * as we have successfully enqueued first command
+				 */
+			}
+			/* no need of return here, fall to last return */
+		}
 	}
 	return rc;
 }
@@ -742,14 +823,12 @@ read_sched_cmd(int fd, svr_t **sconn)
 /**
  * @brief wait for commands from servers
  *
- * @param[out] sconn - pointer to server who send us command
- *
  * @return void
  */
 static void
-wait_for_cmd(svr_t **sconn)
+wait_for_cmds()
 {
-	int nfds;
+	int nsocks;
 	int i;
 	em_event_t *events;
 	int err;
@@ -757,15 +836,12 @@ wait_for_cmd(svr_t **sconn)
 	sigset_t emptyset;
 
 
-again:
-	*sconn = NULL;
-
 	while (!hascmd) {
 		sigemptyset(&emptyset);
-		nfds = tpp_em_pwait(poll_context, &events, -1, &emptyset);
+		nsocks = tpp_em_pwait(poll_context, &events, -1, &emptyset);
 		err = errno;
 
-		if (nfds < 0) {
+		if (nsocks < 0) {
 			if (!(err == EINTR || err == EAGAIN || err == 0)) {
 				log_errf(err, __func__, " tpp_em_wait() error, errno=%d", err);
 				sleep(1); /* wait for 1s for not to burn too much CPU */
@@ -778,18 +854,19 @@ again:
 					log_err(errno, __func__, "sigprocmask(BLOCK)");
 			}
 		} else {
-			for (i = 0; i < nfds; i++) {
-				err = read_sched_cmd(EM_GET_FD(events, i), sconn);
+			for (i = 0; i < nsocks; i++) {
+				int sock = EM_GET_FD(events, i);
+				err = read_sched_cmd(sock);
 				if (err != 1) {
-					/*
-					* looks like connection is closed by server or some error occure
-					* in both case just force reconnect to server and start wait again
-					*/
-					reconnect_server(*sconn);
-					hascmd = 0;
-					goto again;
+					/* if memory error ignore, else reconnect server */
+					if (err != -2) {
+						sched_svrconn *sconn = find_server(sock);
+						if (sconn)
+							reconnect_server(sconn);
+					}
+				} else {
+					hascmd = 1;
 				}
-				hascmd = 1;
 			}
 		}
 	}
@@ -805,17 +882,17 @@ again:
  * @return void
  */
 static void
-send_cycle_end(svr_t *sconn)
+send_cycle_end(sched_svrconn *sconn)
 {
 	static int cycle_end_marker = 0;
 
-	if (diswsi(sconn->secondary_fd, cycle_end_marker) != DIS_SUCCESS) {
+	if (diswsi(sconn->secondary_sock, cycle_end_marker) != DIS_SUCCESS) {
 		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 			   "Not able to send end of cycle, errno = %d", errno);
 		goto err;
 	}
 
-	if (dis_flush(sconn->secondary_fd) != 0)
+	if (dis_flush(sconn->secondary_sock) != 0)
 		goto err;
 
 	return;
@@ -1171,36 +1248,55 @@ main(int argc, char *argv[])
 	connect_servers();
 
 	for (go=1; go;) {
-		svr_t *sconn = NULL;
 
-		wait_for_cmd(&sconn);
+		wait_for_cmds();
+		while (go && !ds_queue_is_empty(sched_cmds)) {
+			sched_cmd *cmd = ds_dequeue(sched_cmds);
+			sched_svrconn *sconn = NULL;
+
+			if (!cmd)
+				continue;
+
+			sconn = find_server(cmd->from_sock);
+			if (!sconn) {
+				/* shouldn't happen, but if it does just continue */
+				if (cmd->jid)
+					free(cmd->jid);
+				free(cmd);
+				continue;
+			}
 
 #ifdef PBS_UNDOLR_ENABLED
-		if (sigusr1_flag)
-			undolr();
+			if (sigusr1_flag)
+				undolr();
 #endif
+			if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
+				log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
 
-		if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
-			log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
-
-		/* Keep track of time to use in SIGSEGV handler */
-		now = time(NULL);
-		if (!opt_no_restart)
-			segv_last_time = now;
+			/* Keep track of time to use in SIGSEGV handler */
+			now = time(NULL);
+			if (!opt_no_restart)
+				segv_last_time = now;
 #ifdef DEBUG
-		{
-			strftime(log_buffer, sizeof(log_buffer), "%Y-%m-%d %H:%M:%S", localtime(&now));
-			DBPRT(("%s Scheduler received command %d\n", log_buffer, sconn->cmd));
-		}
+			{
+				strftime(log_buffer, sizeof(log_buffer), "%Y-%m-%d %H:%M:%S", localtime(&now));
+				DBPRT(("%s Scheduler received command %d\n", log_buffer, sconn->cmd));
+			}
 #endif
 
-		if (schedule(sconn)) /* magic happens here */
-			go = 0;
-		else
-			send_cycle_end(sconn);
+			if (schedule(sconn, cmd)) /* magic happens here */
+				go = 0;
+			else
+				send_cycle_end(sconn);
 
-		if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
-			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
+			if (cmd->jid)
+				free(cmd->jid);
+			free(cmd);
+			cmd = NULL;
+
+			if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
+				log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
+		}
 	}
 
 	close_servers();
