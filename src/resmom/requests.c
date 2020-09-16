@@ -2109,10 +2109,6 @@ static int
 delete_file(char *path, char *user, char *prmt, char **bad_list)
 {
 	int		rc;
-#ifndef WIN32
-	pid_t		pid;
-	int		i;
-#endif
 
 	DBPRT(("%s: path %s\n", __func__, path))
 #ifdef WIN32

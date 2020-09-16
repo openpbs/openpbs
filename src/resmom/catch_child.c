@@ -97,9 +97,7 @@ extern unsigned int	default_server_port;
 extern pbs_list_head	svr_alljobs;
 extern int		exiting_tasks;
 extern char		*msg_daemonname;
-#ifdef	WIN32
 extern char		*mom_home;
-#endif
 #ifndef	WIN32
 extern int		termin_child;
 #endif

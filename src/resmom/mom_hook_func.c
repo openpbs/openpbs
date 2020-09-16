@@ -1312,7 +1312,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		if (hook_config_path[0] == '\0') {
 			if (child)
 			/* since this is still main mom (not forked), need to unset the hook config environment variable. */
-				if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
+				if (unsetenv(PBS_HOOK_CONFIG_FILE) != 0)
 					log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
 		} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
