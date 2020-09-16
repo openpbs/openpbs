@@ -2290,3 +2290,44 @@ state_int2char(int sti)
 
 	return '0';
 }
+
+
+/**
+ * @brief	Get the server name and port number from svrname:port string
+ *
+ * @param[in]	svr_id - id in the format server_name:port
+ * @param[out]	svrname - buffer to store server name
+ * @param[out]	svrport - buffer to store port number
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for error
+ */
+int
+parse_pbs_name_port(char *svr_id, char *svrname, int *svrport)
+{
+	char *ptr = NULL;
+
+	if (svr_id == NULL || svrname == NULL)
+		return 1;
+
+	ptr = strchr(svr_id, ':');
+	if (ptr != NULL) {
+		int port;
+		char *endptr;
+
+		*ptr = '\0';
+		port = strtol(ptr + 1, &endptr, 10);
+		if (*endptr != '\0')
+			return 1;
+		*svrport = port;
+	}
+	strcpy(svrname, svr_id);
+
+	if (ptr != NULL)
+		*ptr = ':';
+
+	return 0;
+}
+
+

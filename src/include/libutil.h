@@ -344,6 +344,11 @@ extern int get_fullhostname(char *, char *, int);
 
 extern int get_msvr_mode(void);
 
+/**
+ * Get the server name and port number from svrname:port string.
+ */
+extern int parse_pbs_name_port(char *, char *, int *);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)
