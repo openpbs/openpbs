@@ -52,8 +52,8 @@ class TestPbsCpuset(TestFunctional):
 
     def check_stageout_file_size(self):
         """
-        This Function will check that atleast 1gb of test.img
-        file which is to be stagedout is created in 10 seconds
+        This function will check that at least 1gb of test.img
+        file which is to be stagedout is created within 10 seconds.
         """
         fpath = os.path.join(TEST_USER.home, "test.img")
         cmd = ['stat', '-c', '%s', fpath]
@@ -244,20 +244,22 @@ time.sleep(20)
         vnodeB = execvnodeB.split(':')[0].split('(')[1]
         self.logger.info("released vnode: %s" % vnodeB)
 
-        # Submit job2 requesting the released vnode, job runs
-        j2 = Job(TEST_USER, {
-            ATTR_l + '.select': '1:ncpus=4:mem=2gb:vnode=%s' % vnodeB})
+        # Submit job2 requesting all of the released vnode's cpus, job runs
+        a = {ATTR_l + '.select': '1:ncpus=%d:mem=2gb:vnode=%s' % (
+            self.ncpus2 * 2, vnodeB)}
+        j2 = Job(TEST_USER, attrs=a)
         stime = time.time()
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, offset=20, id=jid2)
 
-        # Check if exec_vnode for job2 matches released vnode from job1
+        # Check if vnode for job2 matches released vnode from job1
         self.server.expect(JOB, 'exec_vnode', id=jid2, op=SET)
         job_stat = self.server.status(JOB, id=jid2)
         execvnode3 = job_stat[0]['exec_vnode']
-        self.assertEqual(execvnode3, execvnodeB)
-        self.logger.info("job2 exec_vnode %s is the released vnode %s" % (
-            execvnode3, execvnodeB))
+        vnode3 = execvnode3.split(':')[0].split('(')[1]
+        self.assertEqual(vnode3, vnodeB)
+        self.logger.info("job2 vnode %s is the released vnode %s" % (
+            vnode3, vnodeB))
 
     def test_release_nodes_on_cpuset_sis(self):
         """
