@@ -665,14 +665,16 @@ query_server_dyn_res(server_info *sinfo)
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-			err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-			if (err != 0) {
-				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
-					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
-					filename, res->name, err);
-				set_resource(res, res_zero, RF_AVAIL);
-				continue;
-			}
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
+				if (err != 0) {
+					log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
+						"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
+						filename, res->name, err);
+					set_resource(res, res_zero, RF_AVAIL);
+					continue;
+				}
+			#endif
 
 			if (pipe(pdes) < 0) {
 				pipe_err = errno;
