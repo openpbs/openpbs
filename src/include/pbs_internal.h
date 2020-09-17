@@ -195,7 +195,7 @@ extern "C" {
 
 /* Structure to store each server instance details */
 typedef struct pbs_server_instance {
-	char name[PBS_MAXHOSTNAME + 1];
+	char name[PBS_MAXSERVERNAME + 1];
 	int port;
 } psi_t;
 
