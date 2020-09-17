@@ -194,11 +194,10 @@ extern "C" {
 #define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
 
 /* Structure to store each server instance details */
-typedef struct pbs_server_instance
-{
-	char name[PBS_MAXHOSTNAME];
+typedef struct pbs_server_instance {
+	char name[PBS_MAXHOSTNAME + 1];
 	int port;
-} pbs_server_instance;
+} psi_t;
 
 struct pbs_config
 {
@@ -227,7 +226,7 @@ struct pbs_config
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
 	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
 	unsigned int pbs_num_servers;	/* currently configured number of instances */
-	pbs_server_instance *psi;	/* array of pbs server instances loaded from comma separated host:port[,host:port] */
+	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
 	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */

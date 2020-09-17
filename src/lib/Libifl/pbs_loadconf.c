@@ -284,20 +284,20 @@ parse_psi(char *conf_value)
 	for (i = 0; list[i] != NULL; i++)
 		;
 
-	if (!(pbs_conf.psi = calloc(i, sizeof(pbs_server_instance)))) {
-		fprintf(stderr, "Ran out of memory parsing configuration %s", conf_value);
+	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
+		fprintf(stderr, "Out of memory while parsing configuration %s", conf_value);
 		return -1;
 	}
 
 	for (i = 0; list[i] != NULL; i++) {
 		if (parse_pbs_name_port(list[i], pbs_conf.psi[i].name, &pbs_conf.psi[i].port) != 0) {
-			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES\n");
+			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
 			return -1;
 		}
 		if (pbs_conf.psi[i].name[0] == '\0')
 			strcpy(pbs_conf.psi[i].name, pbs_conf.pbs_server_name);
 		if (pbs_conf.psi[i].port == 0) {
-			if (strcmp(pbs_conf.psi[i].name, pbs_conf.pbs_server_name) == 0)
+			if (is_same_host(pbs_conf.psi[i].name, pbs_conf.pbs_server_name))
 				pbs_conf.psi[i].port = pbs_conf.batch_service_port;
 			else
 				pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
