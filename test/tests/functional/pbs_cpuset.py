@@ -367,9 +367,13 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         attr1 = {'state': 'free', 'resources_assigned.ncpus': '0kb',
                  'resources_assigned.mem': '0kb'}
         self.server.expect(VNODE, attr1, id=self.n1)
+        jobs = ''
+        for i in range(0, int(self.ncpus2)):
+            jobs += ' %s/%d,' % (jid, i)
+        jobs = jobs.strip().strip(',')
         attr2 = {'state': 'free',
-                 'jobs': '%s/0, %s/1, %s/2, %s/3' % (jid, jid, jid, jid),
-                 'resources_assigned.ncpus': 4,
+                 'jobs': jobs,
+                 'resources_assigned.ncpus': int(self.ncpus2),
                  'resources_assigned.mem': '2097152kb'}
         for vn in [self.n2, self.n3]:
             self.server.expect(VNODE, attr2, id=vn)
