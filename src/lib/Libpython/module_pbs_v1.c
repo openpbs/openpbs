@@ -242,6 +242,9 @@ extern PyObject * pbsv1mod_meth_get_queue_static(PyObject *self,
 extern char pbsv1mod_meth_get_server_data_fp_doc[];
 extern PyObject *pbsv1mod_meth_get_server_data_fp(void);
 
+extern char pbsv1mod_meth_get_server_data_file_doc[];
+extern PyObject *pbsv1mod_meth_get_server_data_file(void);
+
 extern char pbsv1mod_meth_use_static_data_doc[];
 extern PyObject *pbsv1mod_meth_use_static_data(void);
 
@@ -590,6 +593,8 @@ static PyMethodDef pbs_v1_module_methods[] = {
 		METH_VARARGS | METH_KEYWORDS, pbsv1mod_meth_get_vnode_static_doc},
 	{PY_GET_SERVER_DATA_FP_METHOD, (PyCFunction) pbsv1mod_meth_get_server_data_fp,
 		METH_NOARGS, pbsv1mod_meth_get_server_data_fp_doc},
+	{PY_GET_SERVER_DATA_FILE_METHOD, (PyCFunction) pbsv1mod_meth_get_server_data_file,
+		METH_NOARGS, pbsv1mod_meth_get_server_data_file_doc},
 	{PY_USE_STATIC_DATA_METHOD,
 		(PyCFunction) pbsv1mod_meth_use_static_data,
 		METH_NOARGS, pbsv1mod_meth_use_static_data_doc},

@@ -2775,11 +2775,16 @@ main(int argc, char *argv[], char *envp[])
 				fp_server_out = fopen(the_server_output,
 					"w");
 				if (fp_server_out == NULL) {
-					fprintf(stderr,
-						"warning: open of server output %s failed!",
+					log_eventf(PBSEVENT_DEBUG,
+						PBS_EVENTCLASS_HOOK, LOG_WARNING,
+						__func__,
+						"warning: error opening debug data file %s",
 						the_server_output);
+					pbs_python_set_hook_debug_data_fp(NULL);
+					pbs_python_set_hook_debug_data_file("");
 				} else {
 					pbs_python_set_hook_debug_data_fp(fp_server_out);
+					pbs_python_set_hook_debug_data_file(the_server_output);
 				}
 			} else if ((strcmp(plist->al_name, HOOKATT_USER) != 0) &&
 				(strcmp(plist->al_name, HOOKATT_FREQ) != 0) &&
