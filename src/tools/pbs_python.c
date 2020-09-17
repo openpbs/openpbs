@@ -871,20 +871,6 @@ action_est_start_time_freq(attribute *pattr, void *pobj, int actmode)
 	return PBSE_NONE;
 }
 
-
-int
-decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
-{
-	return 0;
-}
-
-int
-decode_project(struct attribute *patr, char *name, char *rescn, char *val)
-{
-	return 0;
-}
-
-
 int
 setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 {

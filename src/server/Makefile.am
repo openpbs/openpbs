@@ -85,6 +85,7 @@ pbs_server_bin_SOURCES = \
 	geteusernam.c \
 	hook_func.c \
 	issue_request.c \
+	jattr_get_set.c \
 	job_func.c \
 	job_recov_db.c \
 	job_route.c \

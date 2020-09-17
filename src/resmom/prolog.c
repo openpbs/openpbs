@@ -379,7 +379,7 @@ int   pe_io_type;
 
 		} else {
 #ifdef NAS /* localmod 095 */
-			arg[4] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
+			arg[4] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
 			arg[5] = NULL;
 #else
 			arg[4] = NULL;

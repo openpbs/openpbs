@@ -53,6 +53,8 @@
 #include "pbs_error.h"
 #include "libpbs.h"
 #include "pbs_idx.h"
+#include "pbs_entlim.h"
+#include "job.h"
 
 /**
  *
@@ -1731,4 +1733,74 @@ is_attr_set(const attribute *pattr)
 		return pattr->at_flags & ATR_VFLAG_SET;
 	return 0;
 }
+
+/**
+ * @brief
+ *		decode_sandbox - decode sandbox into string attribute
+ *
+ * @param[in,out]	patr - the string attribute that holds the decoded value
+ * @param[in]		name - project attribute name
+ * @param[in]		resc - resource name (unused here)
+ * @param[in]		val - project attribute value
+ *
+ * @return int
+ * @retval	0	- success
+ * @retval	>0	- error number if error.
+ *
+ * @note
+ *		argument rescn is unused here.
+ */
+
+int
+decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
+{
+	char *pc;
+
+	pc = val;
+	while (isspace((int)*pc))
+		++pc;
+	if (*pc == '\0' || !isalpha((int)*pc))
+		return PBSE_BADATVAL;
+
+	/* compare to valid values of sandbox */
+	if ((strcasecmp(pc, "HOME") != 0) &&
+		(strcasecmp(pc, "O_WORKDIR") != 0) &&
+		(strcasecmp(pc, "PRIVATE") != 0)) {
+		return PBSE_BADATVAL;
+	}
+
+	return (decode_str(patr, name, rescn, val));
+}
+
+/**
+ * @brief
+ *	Decode project into string attribute.
+ *
+ * @param[in,out]	patr - the string attribute that holds the decoded value
+ * @param[in]		name - project attribute name
+ * @param[in]		resc - resource name (unused here)
+ * @param[in]		val - project attribute value
+ *
+ * @return	int
+ * @retval      0 if success
+ * @retval      > 0 error number if error
+ * @retval      *patr members set
+ */
+
+int
+decode_project(struct attribute *patr, char *name, char *rescn, char *val)
+{
+	char *pc;
+
+	pc = val;
+	while (isspace((int)*pc))
+		++pc;
+
+	if (strpbrk(pc, ETLIM_INVALIDCHAR) != NULL)
+		return PBSE_BADATVAL;
+
+	return (decode_str(patr, name, rescn,
+		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
+}
+
 
