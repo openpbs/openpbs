@@ -2728,19 +2728,19 @@ do_mom_action_script(int ae,	      /* index into action table */
 	bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 	/* PBS_JOBNAME */
 	bld_env_variables(&vtable, variables_else[2],
-		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_jobname));
 	/* PBS_JOBID */
 	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 	/* PBS_QUEUE */
 	bld_env_variables(&vtable, variables_else[4],
-		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+		 get_jattr_str(pjob, JOB_ATR_in_queue));
 	/* SHELL */
 	bld_env_variables(&vtable, variables_else[5], shell);
 	/* USER */
 	bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 	/* PBS_JOBCOOKIE */
 	bld_env_variables(&vtable, variables_else[7],
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+		get_jattr_str(pjob, JOB_ATR_Cookie));
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
 	bld_env_variables(&vtable, variables_else[8], buf);
@@ -2758,12 +2758,11 @@ do_mom_action_script(int ae,	      /* index into action table */
 	sprintf(buf, "%ld", ptask->ti_qs.ti_sid);
 	bld_env_variables(&vtable, "PBS_SID", buf);
 	/* PBS_JOBDIR */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0))
 		bld_env_variables(&vtable, "PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
-	} else {
+	else
 		bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
-	}
 
 	/* USERPROFILE */
 	bld_env_variables(&vtable, variables_else[16],
