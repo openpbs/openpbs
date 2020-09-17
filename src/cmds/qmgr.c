@@ -110,6 +110,7 @@
 #define QMGR_TIMEOUT 900 /* qmgr connection timeout set to 15 min */
 time_t start_time = 0;
 time_t check_time = 0;
+int num_connected_svrs = 0;
 
 char prompt[]="Qmgr: "; /* Prompt if input is from terminal */
 char contin[]="Qmgr< "; /* Prompt if input is continued across lines */

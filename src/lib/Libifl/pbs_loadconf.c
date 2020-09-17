@@ -49,6 +49,7 @@
 #include <netdb.h>
 #include <pbs_ifl.h>
 #include <pwd.h>
+#include <pthread.h>
 #include "pbs_internal.h"
 #include <limits.h>
 #include <pbs_error.h>
@@ -65,6 +66,9 @@ char *pbs_conf_env = "PBS_CONF_FILE";
 
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
+
+pthread_key_t psi_key;
+static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 /*
  * Initialize the pbs_conf structure.
@@ -313,6 +317,20 @@ parse_psi(char *conf_value)
 }
 
 /**
+ * @brief	create the PSI key & set it for the main thread
+ *
+ * @param	void
+ *
+ * @return	void
+ */
+static void
+create_psi_key(void)
+{
+	pthread_key_create(&psi_key, free);
+}
+
+
+/**
  * @brief
  *	pbs_loadconf - Populate the pbs_conf structure
  *
@@ -360,6 +378,8 @@ __pbs_loadconf(int reload)
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return 0;
+
+	pthread_once(&key_once, create_psi_key);
 
 	/* this section of the code modified the procecss-wide
 	 * tcp array. Since multiple threads can get into this
@@ -1276,3 +1296,18 @@ pbs_get_tmpdir(void)
 #endif
 	return tmpdir;
 }
+
+/**
+ * @brief	Get number of servers configured in PBS complex
+ *
+ * @param	void
+ *
+ * @return	int
+ * @retval	number of configured servers
+ */
+int
+get_num_servers(void)
+{
+	return pbs_conf.pbs_num_servers;
+}
+

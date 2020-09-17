@@ -58,6 +58,14 @@ extern "C" {
  *
  */
 
+#ifdef WIN32
+#define CLOSESOCKET(X) (void)closesocket(X)
+#define ERRORNO        WSAGetLastError()
+#else
+#define CLOSESOCKET(X) (void)close(X)
+#define ERRORNO        errno
+#endif
+
 /* node-attribute values (state,ntype) */
 
 #define	ND_free			"free"

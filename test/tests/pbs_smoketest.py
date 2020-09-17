@@ -355,13 +355,14 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)
         jobs = self.server.status(JOB, id=jid, extend='x')
-        exp_eq_val = {ATTR_used+'.ncpus': '2',
+        exp_eq_val = {ATTR_used + '.ncpus': '2',
                       ATTR_exit_status: '0'}
         for key in exp_eq_val:
             self.assertEqual(exp_eq_val[key], jobs[0][key])
-        exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
-                         ATTR_used+'.cput': '00:00:00',
-                         ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
+        exp_noteq_val = {ATTR_used + '.walltime': '00:00:00',
+                         ATTR_used + '.cput': '00:00:00',
+                         ATTR_used + '.mem': '0kb',
+                         ATTR_used + '.cpupercent': '0'}
         for key in exp_noteq_val:
             self.assertNotEqual(exp_noteq_val[key], jobs[0][key])
 
@@ -1196,8 +1197,7 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.add_resource("foo, foo1, foo2, foo3", apply=True)
 
         attr = {'Resources_available.foo': True}
-        self.server.manager(MGR_CMD_SET, SERVER, attr,
-                            id=self.server.shortname)
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
 
         vnode_val = self.mom.shortname
         if self.mom.is_cpuset_mom():

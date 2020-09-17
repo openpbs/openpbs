@@ -468,6 +468,7 @@ enum mgr_obj {
 #define PBS_MAXQUEUENAME	15		/* max queue name length */
 #define PBS_MAXJOBNAME  	230		/* max job name length */
 #define PBS_MAXSERVERNAME	PBS_MAXHOSTNAME	/* max server name length */
+#define MAX_SVR_ID (PBS_MAXSERVERNAME + 6)	/* max server name + port */
 #define PBS_MAXSEQNUM		12		/* max sequence number length */
 #define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
 #define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
