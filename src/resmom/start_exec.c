@@ -5961,7 +5961,7 @@ void resume_multinode(job *pjob)
 
 		int stream = np->hn_stream;
 		im_compose(stream, pjob->ji_qs.ji_jobid,
-			pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+			get_jattr_str(pjob, JOB_ATR_Cookie),
 			com, ep->ee_event, TM_NULL_TASK,  IM_OLD_PROTOCOL_VER);
 		(void)diswsi(stream, pjob->ji_numnodes);
 		(void)diswsi(stream, pjob->ji_ports[0]);
