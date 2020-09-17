@@ -257,6 +257,7 @@ upgrade_pbs_schema_from_v1_4_0() {
 		ALTER TABLE pbs.job DROP COLUMN ji_momaddr;
 		ALTER TABLE pbs.job DROP COLUMN ji_momport;
 		ALTER TABLE pbs.job RENAME COLUMN ji_4jid to ji_jid;
+		ALTER TABLE pbs.job ALTER COLUMN ji_qrank TYPE BIGINT;
 		ALTER TABLE pbs.job DROP COLUMN ji_4ash;
 		ALTER TABLE pbs.resv DROP COLUMN ri_type;
 		ALTER TABLE pbs.resv DROP COLUMN ri_numattr;

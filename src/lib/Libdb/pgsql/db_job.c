@@ -327,7 +327,7 @@ load_job(const  PGresult *res, pbs_db_job_info_t *pj, int row)
 	GET_PARAM_BIGINT(res, row, pj->ji_fromaddr, ji_fromaddr_fnum);
 	GET_PARAM_STR(res, row, pj->ji_jid, ji_jid_fnum);
 	GET_PARAM_INTEGER(res, row, pj->ji_credtype, ji_credtype_fnum);
-	GET_PARAM_INTEGER(res, row, pj->ji_qrank, ji_qrank_fnum);
+	GET_PARAM_BIGINT(res, row, pj->ji_qrank, ji_qrank_fnum);
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
 
 	/* convert attributes from postgres raw array format */
@@ -374,7 +374,7 @@ pbs_db_save_job(void *conn, pbs_db_obj_info_t *obj, int savetype)
 		SET_PARAM_BIGINT(conn_data, pjob->ji_fromaddr, 12);
 		SET_PARAM_STR(conn_data, pjob->ji_jid, 13);
 		SET_PARAM_INTEGER(conn_data, pjob->ji_credtype, 14);
-		SET_PARAM_INTEGER(conn_data, pjob->ji_qrank, 15);
+		SET_PARAM_BIGINT(conn_data, pjob->ji_qrank, 15);
 
 		stmt = STMT_UPDATE_JOB_QUICK;
 		params = 16;
