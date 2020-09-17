@@ -1134,35 +1134,48 @@ get_vnode_state_op(enum vnode_state_op op)
  * 
  * @note
  * 	Assumes vnnode has previously been initialized and vnode_o->nd_name already set prior to invocation,
- * 	such as via a call to initialize_pbsnode(vnode_o, strdup(vnode->nd_name), NTYPE_PBS)
+ * 	via a call to initialize_pbsnode(vnode_o, strdup(vnode->nd_name), NTYPE_PBS).
+ *  Executes a shallow copy of vnode struct* and char* members.
+ *  
  * 
  * @return  void
  */
 static void
 copy_vnode_to_vnode_o(struct pbsnode *vnode, struct pbsnode *vnode_o)
 {
+	int i;
+
 	if (vnode == NULL || vnode_o == NULL) {
 		return;		
 	}
 
 	/*
-	 * Copy key vnode elements
+	 * Copy vnode elements (same order as "struct pbsnode" element definition)
 	 */
-	vnode_o->nd_state = vnode->nd_state;
-	vnode_o->nd_ntype = vnode->nd_ntype;
+	vnode_o->nd_moms = vnode->nd_moms; /* FIXME: first free the vnode_o->nd_moms if not null */
+	vnode_o->nd_nummoms = vnode->nd_nummoms;
+	vnode_o->nd_nummslots = vnode->nd_nummslots;
+	vnode_o->nd_index = vnode->nd_index;
+	vnode_o->nd_arr_index = vnode->nd_arr_index;
+	vnode_o->nd_hostname = vnode->nd_hostname;
+	vnode_o->nd_psn = vnode->nd_psn;
+	vnode_o->nd_resvp = vnode->nd_resvp;
 	vnode_o->nd_nsn = vnode->nd_nsn;
 	vnode_o->nd_nsnfree = vnode->nd_nsnfree;
-	vnode_o->nd_written = vnode->nd_written;
 	vnode_o->nd_ncpus = vnode->nd_ncpus;
-	if (vnode->nd_hostname) {
-		vnode_o->nd_hostname = strdup(vnode->nd_hostname);
-	} 
-	else {
-		vnode_o->nd_hostname = NULL;
+	vnode_o->nd_written = vnode->nd_written;
+	vnode_o->nd_state = vnode->nd_state;
+	vnode_o->nd_ntype = vnode->nd_ntype;
+	vnode_o->nd_accted = vnode->nd_accted;
+	vnode_o->nd_pque = vnode->nd_pque;
+	vnode_o->device = vnode->device;
+	for (i=0; i<(int)ND_ATR_LAST; i++) {
+		vnode_o->nd_attr[i] = vnode->nd_attr[i];
 	}
+	vnode_o->newobj = vnode->newobj;
 
 	/* FIXME: need to save ND_ATR_last_state_change_time value in vnode_o - see query_node_info() */	
-	/* FIXME: not yet complete! add/subtract members as appropriate */
+	/* FIXME: not yet complete! need to copy member attribute nd_attr[ND_ATR_LAST]; */
 	/* For reference see initialize_pbsnode calls */
 
 }
@@ -1218,6 +1231,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
 	if ((vnode_o = malloc(sizeof(struct pbsnode)))) {
+		/* FIXME: is "NTYPE_PBS" the correct param value for this call? */
 		if (initialize_pbsnode(vnode_o, strdup(pnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
 			log_err(PBSE_INTERNAL, __func__, "vnode_o initialization failed");
 			return;
