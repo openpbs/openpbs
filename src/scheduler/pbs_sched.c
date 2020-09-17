@@ -530,6 +530,14 @@ server_command(char **jid)
 	extern	int	get_sched_cmd(int sock, int *val, char **jobid);
 	fd_set		fdset;
 	struct timeval  timeout;
+	svr_conn_t *svr_conns = NULL;
+
+	svr_conns = get_conn_servers();
+	if (svr_conns == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer), "Server connections cache is NULL\n");
+		log_err(-1, __func__, log_buffer);
+		return SCH_ERROR;
+	}
 
 	slen = sizeof(saddr);
 	new_socket = accept(server_sock,
@@ -576,6 +584,15 @@ server_command(char **jid)
 		close(new_socket);
 		return SCH_ERROR;
 	}
+
+	/*
+	 * Add connector to PBS_SERVER_INSTANCES info for IFL
+	 * For now, assume single server setup
+	 */
+	svr_conns[0].sd = connector;
+	svr_conns[0].state_change_time = time(0);
+	svr_conns[0].from_sched = 1;
+
 
 	/* Obtain the second server socket connnection		*/
 	/* this second connection is for server to communicate	*/
@@ -632,6 +649,9 @@ server_command(char **jid)
 			close(second_connection);
 			second_connection = -1;
 		}
+
+		svr_conns[0].secondary_sd = second_connection;
+		svr_conns[0].state = SVR_CONN_STATE_UP;
 
 		if (jid2 != NULL) {
 			free(jid2);

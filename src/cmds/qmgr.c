@@ -110,6 +110,7 @@
 #define QMGR_TIMEOUT 900 /* qmgr connection timeout set to 15 min */
 time_t start_time = 0;
 time_t check_time = 0;
+int num_connected_svrs = 0;
 
 char prompt[]="Qmgr: "; /* Prompt if input is from terminal */
 char contin[]="Qmgr< "; /* Prompt if input is continued across lines */
@@ -766,8 +767,12 @@ main(int argc, char **argv)
 
 	if (argc > optind)
 		svrs = strings2objname(&argv[optind], argc - optind, MGR_OBJ_SERVER);
-	else
+	else {
 		svrs = default_server_name();
+
+		/* User didn't specify server, talk to all */
+		setenv(CONN_MULTI, "ENABLED", 1);
+	}
 
 	/*perform needed security library initializations (including none)*/
 

@@ -47,6 +47,53 @@
 #include <string.h>
 #include <stdio.h>
 #include "libpbs.h"
+#include "pbs_ecl.h"
+
+/**
+ * @brief
+ * 	get_available_conn:
+ *	get one of the available connection from multisvr sd
+ *
+ * @param[in] svr_connections - pointer to array of server connections
+ *
+ * @return int
+ * @retval -1: error
+ * @retval != -1 fd corresponding to the connection
+ */
+int
+get_available_conn(svr_conn_t *svr_connections)
+{
+	int i;
+
+	for (i = 0; i < get_num_servers(); i++)
+		if (svr_connections[i].state == SVR_CONN_STATE_UP)
+			return svr_connections[i].sd;
+
+	return -1;
+}
+
+/**
+ * @brief
+ * random_srv_conn:
+ *	get random server sd - It will choose a random sd from available no of servers.
+ * @param[in] svr_connections - pointer to array of server connections
+ *
+ * @return int
+ * @retval -1: error
+ * @retval != -1: fd corresponding to the connection
+ */
+int
+random_srv_conn(svr_conn_t *svr_connections)
+{
+	int ind = 0;
+
+	ind =  rand_num() % get_num_servers();
+
+	if (svr_connections[ind].state == SVR_CONN_STATE_UP)
+		return svr_connections[ind].sd;
+
+	return get_available_conn(svr_connections);
+}
 
 /**
  * @brief
@@ -116,3 +163,134 @@ PBSD_status_get(int c)
 	PBSD_FreeReply(reply);
 	return rbsp;
 }
+
+/**
+ * @brief	wrapper function for PBSD_status, aggregates output from all servers.
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - job id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for req
+ * @param[in] cmd - command
+ *
+ * @return	structure handle
+ * @retval	pointer to batch_status struct		success
+ * @retval	NULL					error
+ *
+ */
+struct batch_status *
+PBSD_status_aggregate(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object)
+{
+	int i;
+	int rc = 0;
+	struct batch_status *ret = NULL;
+	struct batch_status *next = NULL;
+	struct batch_status *cur = NULL;
+	svr_conn_t *svr_connections = get_conn_servers();
+	int num_svrs = get_num_servers();
+	int *failed_conn;
+
+	if (!svr_connections)
+		return NULL;
+
+	failed_conn = calloc(num_svrs, sizeof(int));
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	if (id == NULL)
+		id = "";
+
+	/* Send stat request to all available servers */
+	for (i = 0; i < num_svrs; i++) {
+		if (svr_connections[i].state != SVR_CONN_STATE_UP)
+			continue;
+
+		if (PBSD_status_put(svr_connections[i].sd, function, id, attrib, extend, PROT_TCP, NULL) != 0) {
+			failed_conn[i] = 1;
+			if (pbs_client_thread_unlock_connection(c) != 0)
+				return NULL;
+			continue;
+		}
+	}
+
+	/* Aggregate output */
+	for (i = 0; i < num_svrs; i++) {
+		if (svr_connections[i].state != SVR_CONN_STATE_UP)
+			continue;
+
+		if (failed_conn[i])
+			continue;
+
+		if ((next = PBSD_status_get(svr_connections[i].sd))) {
+			if (!ret)
+				ret = next;
+			else
+				cur->next = next;
+			cur = next;
+		}
+	}
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	if (rc)
+		pbs_errno = rc;
+
+	free(failed_conn);
+	return ret;
+}
+
+/**
+ * @brief
+ *	wrapper function for PBSD_status
+ *	gets status randomly from one of the configured server.
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - job id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for req
+ * @param[in] cmd - command
+ *
+ * @return	structure handle
+ * @retval	pointer to batch_status struct		success
+ * @retval	NULL					error
+ *
+ */
+struct batch_status *
+PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object)
+{
+	struct batch_status *ret = NULL;
+	svr_conn_t *svr_connections = get_conn_servers();
+
+	if (!svr_connections)
+		return NULL;
+
+	if ((c = random_srv_conn(svr_connections)) < 0)
+		return NULL;
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/* first verify the attributes, if verification is enabled */
+	if ((pbs_verify_attributes(c, function, parent_object, MGR_CMD_NONE, (struct attropl *) attrib)))
+		return NULL;
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	ret = PBSD_status(c, function, id, attrib, extend);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return ret;
+}
+

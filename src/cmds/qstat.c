@@ -2728,6 +2728,8 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 	if (def_server == NULL)
 		def_server = "";
 
+	setenv(CONN_MULTI, "ENABLED", 1);
+
 	/*perform needed security library initializations (including none)*/
 
 	if (CS_client_init() != CS_SUCCESS)

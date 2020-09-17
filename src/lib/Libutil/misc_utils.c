@@ -2340,3 +2340,24 @@ parse_servername(char *name, unsigned int *service)
 	buf[i] = '\0';
 	return (buf);
 }
+
+/**
+ * @brief
+ *	rand_num - returns a random number.
+ * 	This function will seed using micro second if already not seeded
+ *
+ */
+int
+rand_num(void)
+{
+	static int seeded = 0;
+	struct timeval tv;
+
+	if (!seeded) {
+		gettimeofday(&tv, NULL);
+		srand(1000000 * tv.tv_sec + tv.tv_usec); /* seed the random generator */
+		seeded = 1;
+	}
+
+	return rand();
+}

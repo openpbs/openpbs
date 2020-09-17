@@ -543,12 +543,15 @@ main(int argc, char **argv, char **envp) /* qselect */
 		if (parse_destination_id(destination, &queue_name_out, &server_name_out)) {
 			fprintf(stderr, "qselect: illegally formed destination: %s\n", destination);
 			exit(2);
-		} else {
-			if (notNULL(server_name_out)) {
-				pbs_strncpy(server_out, server_name_out, sizeof(server_out));
-			}
 		}
-	}
+		if (notNULL(server_name_out))
+			pbs_strncpy(server_out, server_name_out, sizeof(server_out));
+		else
+			/* User didn't specify a server, talk to all */
+			setenv(CONN_MULTI, "ENABLED", 1);
+	} else
+		setenv(CONN_MULTI, "ENABLED", 1);
+
 
 	/*perform needed security library initializations (including none)*/
 	if (CS_client_init() != CS_SUCCESS) {
