@@ -81,6 +81,7 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<arpa/inet.h>
+#include 	<libutil.h>
 
 #include	"auth.h"
 #include	"libpbs.h"

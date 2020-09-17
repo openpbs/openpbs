@@ -274,7 +274,8 @@ parse_psi(char *conf_value)
 {
 	char **list;
 	int i;
-
+	char *svrname = NULL;
+	
 	free(pbs_conf.psi);
 
 	list = break_comma_list(conf_value);
@@ -286,14 +287,19 @@ parse_psi(char *conf_value)
 
 	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
 		fprintf(stderr, "Out of memory while parsing configuration %s", conf_value);
+		free_string_array(list);
 		return -1;
 	}
 
 	for (i = 0; list[i] != NULL; i++) {
-		if (parse_pbs_name_port(list[i], pbs_conf.psi[i].name, &pbs_conf.psi[i].port) != 0) {
+		svrname = parse_servername(list[i], &(pbs_conf.psi[i].port));
+		if (svrname == NULL) {
 			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
+			free_string_array(list);
 			return -1;
-		}
+		}	
+		strcpy(pbs_conf.psi[i].name, svrname);
+
 		if (pbs_conf.psi[i].name[0] == '\0')
 			strcpy(pbs_conf.psi[i].name, pbs_conf.pbs_server_name);
 		if (pbs_conf.psi[i].port == 0) {
@@ -1185,6 +1191,9 @@ err:
 		free_string_array(pbs_conf.supported_auth_methods);
 		pbs_conf.supported_auth_methods = NULL;
 	}
+	
+	if (psi_value != NULL)
+		free(psi_value);
 
 	pbs_conf.load_failed = 1;
 	(void)pbs_client_thread_unlock_conf();

@@ -2291,43 +2291,52 @@ state_int2char(int sti)
 	return '0';
 }
 
-
 /**
- * @brief	Get the server name and port number from svrname:port string
+ * @brief
+ * 		parse_servername - parse a server/vnode name in the form:
+ *		[(]name[:service_port][:resc=value[:...]][+name...]
+ *		from exec_vnode or from exec_hostname
+ *		name[:service_port]/NUMBER[*NUMBER][+...]
+ *		or basic servername:port string
  *
- * @param[in]	svr_id - id in the format server_name:port
- * @param[out]	svrname - buffer to store server name
- * @param[out]	svrport - buffer to store port number
+ *		Returns ptr to the node name as the function value and the service_port
+ *		number (int) into service if :port is found, otherwise port is unchanged
+ *		host name is also terminated by a ':', '+' or '/' in string
  *
- * @return	int
- * @retval	0 for success
- * @retval	1 for error
+ * @param[in]	name	- server/node/exec_vnode string
+ * @param[out]	service	-  RETURN: service_port if :port
+ *
+ * @return	 ptr to the node name
+ *
+ * @par MT-safe: No
  */
-int
-parse_pbs_name_port(char *svr_id, char *svrname, int *svrport)
+
+char *
+parse_servername(char *name, unsigned int *service)
 {
-	char *ptr = NULL;
+	static char  buf[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
+	int   i = 0;
+	char *pc;
 
-	if (svr_id == NULL || svrname == NULL)
-		return 1;
+	if ((name == NULL) || (*name == '\0'))
+		return NULL;
+	if (*name ==  '(')   /* skip leading open paren found in exec_vnode */
+		name++;
 
-	ptr = strchr(svr_id, ':');
-	if (ptr != NULL) {
-		int port;
-		char *endptr;
+	/* look for a ':', '+' or '/' in the string */
 
-		*ptr = '\0';
-		port = strtol(ptr + 1, &endptr, 10);
-		if (*endptr != '\0')
-			return 1;
-		*svrport = port;
+	pc = name;
+	while (*pc && (i < PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2)) {
+		if ((*pc == '+') || (*pc == '/')) {
+			break;
+		} else if (*pc == ':') {
+			if (isdigit((int)*(pc+1)) && (service != NULL))
+				*service = (unsigned int)atoi(pc + 1);
+			break;
+		} else {
+			buf[i++] = *pc++;
+		}
 	}
-	strcpy(svrname, svr_id);
-
-	if (ptr != NULL)
-		*ptr = ':';
-
-	return 0;
+	buf[i] = '\0';
+	return (buf);
 }
-
-
