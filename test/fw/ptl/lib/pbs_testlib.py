@@ -13340,14 +13340,14 @@ class MoM(PBSService):
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 
-    def restart(self):
+    def restart(self, args=None):
         """
         Restart the PBS mom
         """
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        return self.start(args=args)
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,

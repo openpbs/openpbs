@@ -45,6 +45,7 @@
 #include	<assert.h>
 #include	<stdio.h>
 #include	<stdlib.h>
+#include	<sys/stat.h>
 
 #include	<unistd.h>
 #include	<dirent.h>
@@ -117,6 +118,7 @@ extern  char   *msg_err_malloc;
 extern int
 write_pipe_data(int upfds, void *data, int data_size);
 char	task_fmt[] = "/%8.8X";
+extern void resume_multinode(job *pjob);
 
 
 /* Function pointers
@@ -2315,7 +2317,7 @@ term_job(job *pjob)
 	int	num;
 
 	for (num=0, np = pjob->ji_hosts;
-		num<pjob->ji_numnodes;
+		num < pjob->ji_numnodes;
 		num++, np++) {
 		if (np->hn_stream >= 0) {
 			np->hn_stream = -1;
@@ -2380,6 +2382,7 @@ im_eof(int stream, int ret)
 			np->hn_stream = -1;
 			if (np->hn_eof_ts == 0)
 				np->hn_eof_ts = time(0);
+			pjob->ji_msconnected = 0;
 
 			/*
 			 ** In case connection to pbs_comm is down/recently established, do not kill a job that is actually running.
@@ -2493,6 +2496,7 @@ check_ms(int stream, job *pjob)
 		np->hn_stream = stream;
 	}
 	np->hn_eof_ts = 0;
+	pjob->ji_msconnected = 1;
 	return FALSE;
 }
 
@@ -3020,6 +3024,27 @@ im_request(int stream, int version)
 	BAIL("fromtask")
 	switch (command) {
 
+		case IM_JOIN_RECOV_JOB:
+			reply = 1;
+
+			hnodenum = disrsi(stream, &ret);
+			BAIL("JOINJOB nodenum")
+
+			np = NULL;
+			/* job should already exist */
+			pjob = find_job(jobid);
+			if( pjob == NULL ) {
+				SEND_ERR(PBSE_SYSTEM)
+				goto done;
+			}
+			pjob->ji_stdout = disrsi(stream, &ret);
+			BAIL("JOINJOB stdout")
+			pjob->ji_stderr = disrsi(stream, &ret);
+			BAIL("JOINJOB stderr")
+			pjob->ji_qs.ji_un.ji_momt.ji_exuid = pjob->ji_grpcache->gc_uid;
+			pjob->ji_qs.ji_un.ji_momt.ji_exgid = pjob->ji_grpcache->gc_gid;
+			pjob->ji_msconnected = 1;
+			goto done;
 		case IM_JOIN_JOB:
 			/*
 			 ** Sender is mom superior sending a job structure to me.
@@ -3064,6 +3089,7 @@ im_request(int stream, int version)
 				info = disrcs(stream, &len, &ret);
 				BAIL("JOINJOB credential")
 			}
+			pjob->ji_msconnected = 1;
 
 			pjob->ji_numnodes = hnodenum;
 			CLEAR_HEAD(lhead);
@@ -4030,6 +4056,7 @@ join_err:
 				op->oe_u.oe_tm.oe_node = pvnodeid;
 				op->oe_u.oe_tm.oe_event = event;
 				op->oe_u.oe_tm.oe_taskid = fromtask;
+				task_save(ptask);
 				reply = 0;
 			}
 			break;
@@ -5402,6 +5429,10 @@ join_err:
 				event, fromtask, IM_OLD_PROTOCOL_VER);
 			if (ret != DIS_SUCCESS)
 				goto err;
+			break;
+		case IM_RECONNECT_TO_MS:
+			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE)
+				resume_multinode(pjob);
 			break;
 
 		default:

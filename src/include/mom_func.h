@@ -368,7 +368,7 @@ extern pid_t fork_me(int sock);
 extern ssize_t readpipe(int pfd, void *vptr, size_t nbytes);
 extern ssize_t writepipe(int pfd, void *vptr, size_t nbytes);
 extern int   get_la(double *);
-extern void  init_abort_jobs(int);
+extern void  init_abort_jobs(int, pbs_list_head *);
 extern void  checkret(char **spot, int len);
 extern void  mom_nice(void);
 extern void  mom_unnice(void);

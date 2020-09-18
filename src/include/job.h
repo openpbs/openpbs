@@ -492,6 +492,8 @@ struct job {
 	int ji_stderr;				    /* socket for stderr */
 	int ji_ports[2];			    /* ports for stdout/err */
 	enum bg_hook_request ji_hook_running_bg_on; /* set when hook starts in the background*/
+	int		ji_msconnected; /* 0 - not connected, 1 - connected */
+	pbs_list_head	ji_multinodejobs;	/* links to recovered multinode jobs */
 #else						    /* END Mom ONLY -  start Server ONLY */
 	struct batch_request *ji_pmt_preq; /* outstanding preempt job request for deleting jobs */
 	int ji_discarding;		   /* discarding job */
@@ -592,6 +594,8 @@ struct job {
 #ifdef PBS_MOM
 			tm_host_id ji_nodeidx; /* my node id */
 			tm_task_id ji_taskidx; /* generate task id's for job */
+			int ji_stdout;
+			int ji_stderr;
 #if MOM_ALPS
 			long ji_reservation;
 			/* ALPS reservation identifier */
@@ -745,6 +749,8 @@ typedef struct	infoent {
 #define IM_EXEC_PROLOGUE	24
 #define IM_CRED 		25
 #define IM_PMIX			26
+#define IM_RECONNECT_TO_MS			27
+#define IM_JOIN_RECOV_JOB		28
 
 #define IM_ERROR		99
 #define IM_ERROR2		100
