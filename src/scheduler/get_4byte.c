@@ -56,9 +56,7 @@
 #endif
 
 /**
- *
- * @brief
- * 	Gets the Scheduler Command sent by the Server
+ * @brief Gets the Scheduler Command sent by the Server
  *
  * @param[in]     sock - secondary connection to the server
  * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
@@ -67,7 +65,6 @@
  * @retval	0	: for EOF
  * @retval	+1	: for success
  * @retval	-1	: for error
- *
  */
 int
 get_sched_cmd(int sock, sched_cmd *cmd)
@@ -98,19 +95,19 @@ err:
 }
 
 /**
- *
- * @brief
- * 	This is non-blocking version of get_sched_cmd()
+ * @brief This is non-blocking version of get_sched_cmd()
  *
  * @param[in]     sock - secondary connection to the server
  * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
  *
  * @return	int
- * @retval	0	if there is no super high priority command or EOF in case of server going down
+ * @retval	0	no command to read
  * @retval	+1	for success
- * @retval	-1	for error.
+ * @retval	-1	for error
+ * @retval	-2	for EOF
+ *
+ * @note this function uses different return code (-2) for EOF than get_sched_cmd() (which uses -1)
  */
-
 int
 get_sched_cmd_noblk(int sock, sched_cmd *cmd)
 {
@@ -122,7 +119,11 @@ get_sched_cmd_noblk(int sock, sched_cmd *cmd)
 	FD_ZERO(&fdset);
 	FD_SET(sock, &fdset);
 
-	if (select(FD_SETSIZE, &fdset, NULL, NULL, &timeout) != -1 && FD_ISSET(sock, &fdset))
-		return get_sched_cmd(sock, cmd);
+	if (select(FD_SETSIZE, &fdset, NULL, NULL, &timeout) != -1 && FD_ISSET(sock, &fdset)) {
+		int rc = get_sched_cmd(sock, cmd);
+		if (rc == 0)
+			return -2;
+		return rc;
+	}
 	return 0;
 }

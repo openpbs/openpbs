@@ -749,6 +749,9 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
  * @brief check whether any server sent us super high priority command
  *        return cmd if we have it
  *
+ * @param[out] is_conn_lost - did we lost connection to server?
+ *                            1 - yes, 0 - no
+ *
  * @return sched_cmd *
  * @retval NULL  - no super high priority command
  * @retval !NULL - super high priority command
@@ -756,19 +759,26 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
  * @warning caller has to free returned value using free_sched_cmd() once not needed
  */
 static sched_cmd *
-get_high_prio_cmd(void)
+get_high_prio_cmd(int *is_conn_lost)
 {
 	if (servers) {
 		int i = 0;
 		for (; servers[i] != NULL; i++) {
 			sched_cmd *cmd;
+			int rc;
 
 			if (servers[i]->secondary_sock <= 0)
 				continue;
 			cmd = new_sched_cmd();
-			if (!cmd)
+			if (cmd == NULL)
 				continue;
-			if (get_sched_cmd_noblk(servers[i]->secondary_sock, cmd) != 1) {
+			rc = get_sched_cmd_noblk(servers[i]->secondary_sock, cmd);
+			if (rc == -2) {
+				*is_conn_lost = 1;
+				free_sched_cmd(cmd);
+				return NULL;
+			}
+			if (rc != 1) {
 				free_sched_cmd(cmd);
 				continue;
 			}
@@ -1078,10 +1088,14 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, "",
 				"Bailed out of main job loop after checking to see if %d jobs could run.", (i + 1));
 		}
-
 		if (!end_cycle) {
-			sched_cmd *cmd = get_high_prio_cmd();
-			if (cmd && cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+			int is_conn_lost = 0;
+			sched_cmd *cmd = get_high_prio_cmd(&is_conn_lost);
+			if (is_conn_lost) {
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
+					  njob->name, "We lost connection with the server, leaving scheduling cycle");
+				end_cycle = 1;
+			} else if (cmd && cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
 					  njob->name, "Leaving scheduling cycle as requested by server.");
 				end_cycle = 1;

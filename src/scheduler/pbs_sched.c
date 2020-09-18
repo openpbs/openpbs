@@ -516,14 +516,18 @@ static void
 close_server(sched_svrconn *sconn)
 {
 	if (sconn) {
-		char *svrhost = sconn->svrhost ? sconn->svrhost : pbs_default();
-
 		remove_ptr_from_array(servers, sconn);
+		if (count_array(servers) == 0) {
+			free(servers);
+			servers = NULL;
+		}
 		tpp_em_del_fd(poll_context, sconn->secondary_sock);
 		pbs_disconnect(sconn->primary_sock);
 		pbs_disconnect(sconn->secondary_sock);
 		log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO,
-			   msg_daemonname, "Disconnected from server %s", svrhost);
+			   msg_daemonname, "Disconnected from server %s", sconn->svrhost);
+		free(sconn->svrhost);
+		free(sconn);
 	}
 }
 
@@ -535,16 +539,12 @@ close_server(sched_svrconn *sconn)
 static void
 close_servers(void)
 {
-	while (servers[0]) {
-		sched_svrconn *sconn = servers[0];
-		close_server(sconn);
-		free(sconn->svrhost);
-		free(sconn);
+	while (count_array(servers))
+		close_server(servers[0]);
+	if (poll_context) {
+		tpp_em_destroy(poll_context);
+		poll_context = NULL;
 	}
-	free(servers);
-	servers = NULL;
-	tpp_em_destroy(poll_context);
-	poll_context = NULL;
 	while (!ds_queue_is_empty(sched_cmds)) {
 		sched_cmd *cmd = ds_dequeue(sched_cmds);
 		free_sched_cmd(cmd);
@@ -626,7 +626,7 @@ connect_server(char *svrhost)
 	sched_svrconn *svr;
 	void *svrs_newarr;
 
-	if (!svrhost)
+	if (svrhost == NULL)
 		return;
 
 	while (primary_sock < 0 || secondary_sock < 0) {
@@ -669,7 +669,6 @@ connect_server(char *svrhost)
 	svrs_newarr = add_ptr_to_array(servers, svr);
 	if (svrs_newarr == NULL) {
 		close_server(svr);
-		/* no need of logging as add_ptr_to_array already logged error */
 		die(-1);
 	}
 	servers = (sched_svrconn **)svrs_newarr;
@@ -686,6 +685,7 @@ static void
 connect_servers(void)
 {
 	int max_connection = 1;
+	char *svrhost = pbs_default();
 
 	if (poll_context == NULL) {
 		poll_context = tpp_em_init(max_connection);
@@ -701,7 +701,7 @@ connect_servers(void)
 		}
 	}
 
-	connect_server(pbs_default());
+	connect_server(svrhost ? svrhost : "");
 }
 
 /**
@@ -714,10 +714,11 @@ connect_servers(void)
 static void
 reconnect_server(sched_svrconn *sconn)
 {
+	char svrhost[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
+
+	strcpy(svrhost, sconn->svrhost);
 	close_server(sconn);
-	connect_server(sconn->svrhost);
-	free(sconn->svrhost);
-	free(sconn);
+	connect_server(svrhost);
 }
 
 /**
@@ -745,7 +746,7 @@ find_server(int sock)
  * @param[in]  sock   - secondary connection to server
  *
  * @return int
- * @retval -2 - failure due to memory optation failed
+ * @retval -2 - failure due to memory operation failed
  * @retval -1 - failure while reading command
  * @return  0 - no cmd, server might have closed connection
  * @return  1 - success, read atleast one command
@@ -766,13 +767,6 @@ read_sched_cmd(int sock)
 		return rc;
 	} else {
 		sched_cmd *cmd_prio;
-
-		if (!ds_enqueue(sched_cmds, cmd)) {
-			free_sched_cmd(cmd);
-			/* return error if we fail to enqueue first command */
-			return -2;
-		}
-
 		/*
 		 * There is possibility that server has sent
 		 * priority command after first non-priority command,
@@ -786,11 +780,18 @@ read_sched_cmd(int sock)
 		 * since we are not yet in middle of schedule cycle
 		 */
 		cmd_prio = new_sched_cmd();
-		if (cmd_prio == NULL)
-			return 1; /* return 1 as we have enqueued first command */
-
-		get_sched_cmd_noblk(sock, cmd_prio);
-		free_sched_cmd(cmd_prio);
+		if (cmd_prio != NULL) {
+			int rc_prio = get_sched_cmd_noblk(sock, cmd_prio);
+			free_sched_cmd(cmd_prio);
+			if (rc_prio == -2) {
+				free_sched_cmd(cmd);
+				return 0;
+			}
+		}
+	}
+	if (!ds_enqueue(sched_cmds, cmd)) {
+		free_sched_cmd(cmd);
+		return -1;
 	}
 	return rc;
 }
