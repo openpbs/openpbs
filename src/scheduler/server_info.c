@@ -658,6 +658,10 @@ query_server_dyn_res(server_info *sinfo)
 			pid_t pid;			/* pid of child */
 			int pdes[2];
 			k = 0;
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				int err;
+				char *filename;
+			#endif
 
 			if (sinfo->res == NULL)
 				sinfo->res = res;
@@ -665,9 +669,7 @@ query_server_dyn_res(server_info *sinfo)
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
 			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-				int err;
-				char *filename = conf.dynamic_res[i].script_name;
-
+				filename = conf.dynamic_res[i].script_name;
 				err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
 				if (err != 0) {
 					log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
