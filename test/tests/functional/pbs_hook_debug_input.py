@@ -54,13 +54,21 @@ class TestHookDebugInput(TestFunctional):
             self.server_hooks_tmp_dir = \
                 os.path.join(self.server.pbs_conf['PBS_HOME'],
                              'server_priv', 'hooks', 'tmp')
+        if not hasattr(self, 'mom_hooks_tmp_dir'):
+            self.mom_hooks_tmp_dir = \
+                os.path.join(self.mom.pbs_conf['PBS_HOME'],
+                             'mom_priv', 'hooks', 'tmp')
 
-    def remove_files_match(self, pattern):
+    def remove_files_match(self, pattern, mom=False):
         """
         Remove hook debug files in hooks/tmp folder that
         match pattern
         """
-        for item in self.du.listdir(path=self.server_hooks_tmp_dir, sudo=True):
+        if mom:
+            hooks_tmp_dir = self.mom_hooks_tmp_dir
+        else:
+            hooks_tmp_dir = self.server_hooks_tmp_dir
+        for item in self.du.listdir(path=hooks_tmp_dir, sudo=True):
             if fnmatch.fnmatch(item, pattern):
                 self.du.rm(path=item, sudo=True)
 
@@ -83,6 +91,27 @@ class TestHookDebugInput(TestFunctional):
             search_str = 'pbs.event().job.queue=%s' % qname
             self.assertTrue(search_str in f.read().decode())
         self.remove_files_match(input_file_pattern)
+
+    def match_in_debug_file(self, input_file_pattern, search_list, mom=False):
+        """
+        Assert that all the strings in 'search_list' appears in the hook
+        debug file that matches input_file_pattern
+        """
+        input_file = None
+        if mom:
+            hooks_tmp_dir = self.mom_hooks_tmp_dir
+        else:
+            hooks_tmp_dir = self.server_hooks_tmp_dir
+        for item in self.du.listdir(path=hooks_tmp_dir, sudo=True):
+            if fnmatch.fnmatch(item, input_file_pattern):
+                input_file = item
+                break
+        self.assertTrue(input_file is not None)
+        with PBSLogUtils().open_log(input_file, sudo=True) as f:
+            content = f.read().decode()
+            for entry in search_list:
+                self.assertTrue(entry in content)
+        self.remove_files_match(input_file_pattern, mom)
 
     def test_queuejob_hook_debug_input_has_queue_name(self):
         """
@@ -113,3 +142,34 @@ class TestHookDebugInput(TestFunctional):
         j2 = Job(TEST_USER, attrs=attr)
         self.server.submit(j2)
         self.match_queue_name_in_input_file(input_file_pattern, new_queue)
+
+    def test_mom_hook_debug_data(self):
+        """
+        Test that a debug enabled mom hook produces expected debug data.
+        """
+        def_que = self.server.default_queue
+        hname = "debug"
+        hook_body = """
+import pbs
+s = pbs.server()
+q = s.queue("%s")
+for vn in s.vnodes():
+    pbs.logmsg(pbs.LOG_DEBUG, "found vn=" + vn.name)
+pbs.event().accept()
+""" % def_que
+        attr = {'enabled': 'true', 'event': 'execjob_begin', 'debug': 'true'}
+        self.server.create_import_hook(hname, attr, hook_body)
+
+        data_file_pattern = os.path.join(self.mom_hooks_tmp_dir,
+                                         'hook_execjob_begin_%s*.data' % hname)
+        self.remove_files_match(data_file_pattern, mom=True)
+
+        j1 = Job(TEST_USER)
+        j1.set_sleep_time(5)
+        jid = self.server.submit(j1)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+        search = ["pbs.server().queue(%s).queue_type=Execution" % def_que]
+        search.append("pbs.server().vnode(%s).ntype=0" % self.mom.shortname)
+        self.logger.info(search)
+        self.match_in_debug_file(data_file_pattern, search, mom=True)
