@@ -458,7 +458,6 @@ e.reject()
         If set to 1 and job requests a 4 node provision, the provision should
         occur 1 node at a time
         """
-        vnode = self.momA.shortname
         # Setup provisioning hook with smaller alarm.
         a = {'event': 'provision', 'enabled': 'True', 'alarm': '5'}
         rv = self.server.create_import_hook(
@@ -478,8 +477,8 @@ e.reject()
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R',
                                  'substate': 71}, attrop=PTL_AND, id=jid)
-        exp_msg = "Provisioning vnode " + vnode + \
-            "\[[0-3]\] with AOE osimage1 started"
+        exp_msg = "Provisioning vnode " + self.momA.shortname
+        exp_msg += "\[[0-3]\] with AOE osimage1 started"
         logs = self.server.log_match(msg=exp_msg, regexp=True, allmatch=True)
 
         # since max_concurrent_provision is 1, there should be only one

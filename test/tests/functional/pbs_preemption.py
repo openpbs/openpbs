@@ -426,7 +426,7 @@ exit 3
         Test to make sure that preemption happens when the resource in
         contention is vnode.
         """
-        vn = self.mom.shortname
+        vn4 = self.mom.shortname + '[4]'
         a = {'resources_available.ncpus': 2}
         self.mom.create_vnodes(attrib=a, num=11, usenatvnode=False)
 
@@ -438,16 +438,16 @@ exit 3
 
         # Randomly select a vnode with running jobs on it. Request this
         # vnode in the high priority job later.
-        self.server.expect(NODE, {'state': 'job-busy'}, id=vn + '[4]')
+        self.server.expect(NODE, {'state': 'job-busy'}, id=vn4)
 
-        a = {ATTR_q: 'expressq', 'Resource_List.vnode': vn + '[4]'}
+        a = {ATTR_q: 'expressq', 'Resource_List.vnode': vn4}
         hj = Job(TEST_USER, attrs=a)
         hjid = self.server.submit(hj)
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
 
         # Since high priority job consumed only one ncpu, vnode[4]'s
         # node state should be free now
-        self.server.expect(NODE, {'state': 'free'}, id=vn + '[4]')
+        self.server.expect(NODE, {'state': 'free'}, id=vn4)
 
     @requirements(num_moms=2)
     @skipOnCpuSet
@@ -732,7 +732,6 @@ exit 3
         to see whether the nodes they occupy are useful.
         """
         attr = {'type': 'string_array', 'flag': 'h'}
-        vn = self.mom.shortname
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
         self.scheduler.add_resource('app')
 
@@ -762,7 +761,7 @@ exit 3
 
         # submit job 1
         a = {'Resource_List.select': '1:ncpus=1:vnode=' +
-             vn + '[0]', ATTR_q: 'lopri'}
+             self.mom.shortname + '[0]', ATTR_q: 'lopri'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 

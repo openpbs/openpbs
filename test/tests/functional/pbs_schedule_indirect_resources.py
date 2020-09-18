@@ -87,27 +87,27 @@ class TestIndirectResources(TestFunctional):
         # Create 6 vnodes
         attr = {'resources_available.ncpus': 1}
         self.mom.create_vnodes(attr, 6)
-        vn = self.mom.shortname
+        vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(6)]
         # Configure a system with 6 vnodes and 'foostr' as node_group_key
         self.config_complex_for_grouping('foostr')
 
         # Set 'foostr' to 'A', 'B' and 'C' respectively for the first
         # three vnodes
         attr = {'resources_available.foostr': 'A'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, vn + '[0]')
+        self.server.manager(MGR_CMD_SET, NODE, attr, vn[0])
         attr = {'resources_available.foostr': 'B'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, vn + '[1]')
+        self.server.manager(MGR_CMD_SET, NODE, attr, vn[1])
         attr = {'resources_available.foostr': 'C'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, vn + '[2]')
+        self.server.manager(MGR_CMD_SET, NODE, attr, vn[2])
 
         # Set 'foostr' for last three vnodes as indirect resource to
         # the first three vnodes correcpondingly
-        attr = {'resources_available.foostr': '@' + vn + '[0]'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, vn + '[3]')
-        attr = {'resources_available.foostr': '@' + vn + '[1]'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, vn + '[4]')
-        attr = {'resources_available.foostr': '@' + vn + '[2]'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, vn + '[5]')
+        attr = {'resources_available.foostr': '@' + vn[0]}
+        self.server.manager(MGR_CMD_SET, NODE, attr, vn[3])
+        attr = {'resources_available.foostr': '@' + vn[1]}
+        self.server.manager(MGR_CMD_SET, NODE, attr, vn[4])
+        attr = {'resources_available.foostr': '@' + vn[2]}
+        self.server.manager(MGR_CMD_SET, NODE, attr, vn[5])
 
         # Submit 3 jobs requesting 2 vnodes and check they ran on the nodes
         # within same group

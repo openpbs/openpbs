@@ -76,7 +76,7 @@ class TestSchedJobRunWait(TestFunctional):
             prefix = 'vnode' + str(i)
             nname = prefix + "[0]"
             self.mom.create_vnodes(prefix, a, 1, delall=False,
-                                   additive=True, vname=name)
+                                   additive=True, vname=nname)
         return sc_quenames
 
     def test_throughput_mode_deprecated(self):

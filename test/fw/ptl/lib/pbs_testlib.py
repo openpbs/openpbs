@@ -13494,6 +13494,7 @@ class MoM(PBSService):
         helper function to create vnodes.
 
         :param attrib: attributes to assign to each node
+        :type attrib: dict
         :param num: the number of vnodes to create. Defaults to 1
         :type num: int
         :param additive: If True, vnodes are added to the existing

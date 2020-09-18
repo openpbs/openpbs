@@ -887,9 +887,8 @@ class TestNodeBuckets(TestFunctional):
         """
         Test that buckets work with nodes associated to a queue
         """
-        vn = self.mom.shortname
-        v1 = vn + '[1431]'
-        v2 = vn + '[1435]'
+        v1 = self.mom.shortname + '[1431]'
+        v2 = self.mom.shortname + '[1435]'
         a = {'queue_type': 'execution', 'started': 'True', 'enabled': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='q2')
 

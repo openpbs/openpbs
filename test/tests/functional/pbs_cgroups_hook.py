@@ -2705,7 +2705,7 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg4 % (self.mem, self.swapctl))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.nodes_list[0])
-        self.moms.values()[0].create_vnodes('vn_attrs, 2')
+        self.moms.values()[0].create_vnodes(vn_attrs, 2)
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.nodes_list[0])
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}

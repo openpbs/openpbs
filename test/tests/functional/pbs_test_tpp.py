@@ -358,8 +358,7 @@ class TestTPP(TestFunctional):
         if not self.mom.is_cpuset_mom():
             a = {'resources_available.ncpus': 1}
             self.mom.create_vnodes(a, 2)
-            vnode_val = "vnode=" + vn + \
-                "[0]:ncpus=1+vnode=" + vn + "[1]:ncpus=1"
+            vnode_val = "vnode=%s[0]:ncpus=1+vnode=%s[1]:ncpus=1" % (vn, vn)
         else:
             vnode_val = "vnode=%s:ncpus=1" % self.server.status(NODE)[1]['id']
             vnode_val += "+vnode=%s:ncpus=1" % self.server.status(NODE)[
@@ -373,8 +372,8 @@ class TestTPP(TestFunctional):
                           resv_set_attr=resv_set_attr)
         self.comm.stop('-KILL')
         if self.mom.is_cpuset_mom():
-            vnode_list = [self.server.status(NODE)[1]['id'],
-                          self.server.status(NODE)[2]['id']]
+            ret = self.server.status(NODE)
+            vnode_list = [ret[i]['id'] for i in range(1, 3)]
         else:
             vnode_list = [vn + "[0]", vn + "[1]"]
         a = {'state': (MATCH_RE, "down")}

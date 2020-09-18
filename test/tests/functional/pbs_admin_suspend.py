@@ -837,12 +837,12 @@ class TestAdminSuspend(TestFunctional):
         hook_body = """
 import pbs
 
-vname = str(pbs.server().name) + '[0]'
-vn = pbs.server().vnode(vname)
+vn = pbs.server().vnode('vn[0]')
 pbs.logmsg(pbs.LOG_DEBUG,\
 "list of maintenance_jobs are %s" % vn.maintenance_jobs)
 """
-
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
+        self.mom.create_vnodes(a, 1, vname='vn')
         a = {'event': 'exechost_periodic', 'enabled': 'True', 'freq': 5}
         self.server.create_import_hook(hook_name, a, hook_body)
 
