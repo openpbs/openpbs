@@ -2326,11 +2326,11 @@ parse_servername(char *name, unsigned int *service)
 	/* look for a ':', '+' or '/' in the string */
 
 	pc = name;
-	while (*pc && (i < PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2)) {
+	while (*pc && (i < PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)) {
 		if ((*pc == '+') || (*pc == '/')) {
 			break;
 		} else if (*pc == ':') {
-			if (isdigit((int)*(pc+1)) && (service != NULL))
+			if (isdigit((int)*(pc + 1)) && (service != NULL))
 				*service = (unsigned int)atoi(pc + 1);
 			break;
 		} else {
