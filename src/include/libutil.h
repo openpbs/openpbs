@@ -344,6 +344,8 @@ extern int get_fullhostname(char *, char *, int);
 
 extern int get_msvr_mode(void);
 
+extern char *parse_servername(char *, unsigned int *);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)

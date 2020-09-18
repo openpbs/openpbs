@@ -89,6 +89,7 @@
 #endif
 
 #include "svrfunc.h"
+#include <libutil.h>
 #include "acct.h"
 #include "credential.h"
 #include "net_connect.h"

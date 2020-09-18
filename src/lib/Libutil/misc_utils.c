@@ -2290,3 +2290,53 @@ state_int2char(int sti)
 
 	return '0';
 }
+
+/**
+ * @brief
+ * 		parse_servername - parse a server/vnode name in the form:
+ *		[(]name[:service_port][:resc=value[:...]][+name...]
+ *		from exec_vnode or from exec_hostname
+ *		name[:service_port]/NUMBER[*NUMBER][+...]
+ *		or basic servername:port string
+ *
+ *		Returns ptr to the node name as the function value and the service_port
+ *		number (int) into service if :port is found, otherwise port is unchanged
+ *		host name is also terminated by a ':', '+' or '/' in string
+ *
+ * @param[in]	name	- server/node/exec_vnode string
+ * @param[out]	service	-  RETURN: service_port if :port
+ *
+ * @return	 ptr to the node name
+ *
+ * @par MT-safe: No
+ */
+
+char *
+parse_servername(char *name, unsigned int *service)
+{
+	static char  buf[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
+	int   i = 0;
+	char *pc;
+
+	if ((name == NULL) || (*name == '\0'))
+		return NULL;
+	if (*name ==  '(')   /* skip leading open paren found in exec_vnode */
+		name++;
+
+	/* look for a ':', '+' or '/' in the string */
+
+	pc = name;
+	while (*pc && (i < PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)) {
+		if ((*pc == '+') || (*pc == '/')) {
+			break;
+		} else if (*pc == ':') {
+			if (isdigit((int)*(pc + 1)) && (service != NULL))
+				*service = (unsigned int)atoi(pc + 1);
+			break;
+		} else {
+			buf[i++] = *pc++;
+		}
+	}
+	buf[i] = '\0';
+	return (buf);
+}

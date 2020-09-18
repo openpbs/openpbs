@@ -88,6 +88,7 @@
 #include "pbs_idx.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include <libutil.h>
 #include "tracking.h"
 #include "acct.h"
 #include "sched_cmds.h"

@@ -97,6 +97,7 @@
 #include "net_connect.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include <libutil.h>
 #include "sched_cmds.h"
 #include "pbs_license.h"
 #include "hook.h"
