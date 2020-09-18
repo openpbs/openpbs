@@ -832,7 +832,7 @@ j.resources_used["stra2"] = '"glad"'
 
         # Below is commented out due to a problem with history jobs
         # disapearing after a server restart when the reservation is
-        # in state BD during restart. 
+        # in state BD during restart.
         # Once that bug is fixed, this test code should be uncommented
         # and run.
 
