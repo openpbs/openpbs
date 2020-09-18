@@ -545,6 +545,10 @@ close_servers(void)
 	servers = NULL;
 	tpp_em_destroy(poll_context);
 	poll_context = NULL;
+	while (!ds_queue_is_empty(sched_cmds)) {
+		sched_cmd *cmd = ds_dequeue(sched_cmds);
+		free_sched_cmd(cmd);
+	}
 	free_ds_queue(sched_cmds);
 	sched_cmds = NULL;
 }
@@ -620,7 +624,7 @@ connect_server(char *svrhost)
 	int primary_sock = -1;
 	int secondary_sock = -1;
 	sched_svrconn *svr;
-	int i;
+	void *svrs_newarr;
 
 	if (!svrhost)
 		return;
@@ -642,7 +646,7 @@ connect_server(char *svrhost)
 		}
 	}
 	if (tpp_em_add_fd(poll_context, secondary_sock, EM_IN | EM_HUP | EM_ERR) < 0) {
-		log_errf(-1, __func__, "Couldn't add secondary connection to poll list for server %s", svrhost);
+		log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svrhost);
 		pbs_disconnect(primary_sock);
 		pbs_disconnect(secondary_sock);
 		die(-1);
@@ -650,21 +654,25 @@ connect_server(char *svrhost)
 
 	svr = malloc(sizeof(sched_svrconn));
 	if (!svr) {
-		log_errf(-1, __func__, MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		die(-1);
 	}
 
 	svr->svrhost = strdup(svrhost);
 	if (!svr->svrhost) {
 		free(svr);
-		log_errf(-1, __func__, MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		die(-1);
 	}
 	svr->primary_sock = primary_sock;
 	svr->secondary_sock = secondary_sock;
-	i = 0;
-	while (servers[i] != NULL) i++;
-	servers[i] = svr;
+	svrs_newarr = add_ptr_to_array(servers, svr);
+	if (svrs_newarr == NULL) {
+		close_server(svr);
+		/* no need of logging as add_ptr_to_array already logged error */
+		die(-1);
+	}
+	servers = (sched_svrconn **)svrs_newarr;
 	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to server %s", svrhost);
 }
 
@@ -682,13 +690,7 @@ connect_servers(void)
 	if (poll_context == NULL) {
 		poll_context = tpp_em_init(max_connection);
 		if (poll_context == NULL) {
-			log_errf(-1, __func__, "Failed to init cmd connections context");
-			die(-1);
-		}
-
-		servers = (sched_svrconn **) calloc(1, sizeof(sched_svrconn *) * max_connection + 1);
-		if (servers == NULL) {
-			log_errf(errno, __func__, MEM_ERR_MSG);
+			log_err(errno, __func__, "Failed to init cmd connections context");
 			die(-1);
 		}
 
@@ -754,21 +756,19 @@ read_sched_cmd(int sock)
 	int rc = -1;
 	sched_cmd *cmd;
 
-	cmd = malloc(sizeof(sched_cmd));
+	cmd = new_sched_cmd();
 	if (cmd == NULL)
 		return -2;
 
 	rc = get_sched_cmd(sock, cmd);
 	if (rc != 1) {
-		free(cmd);
+		free_sched_cmd(cmd);
 		return rc;
 	} else {
 		sched_cmd *cmd_prio;
 
 		if (!ds_enqueue(sched_cmds, cmd)) {
-			if (cmd->jid)
-				free(cmd->jid);
-			free(cmd);
+			free_sched_cmd(cmd);
 			/* return error if we fail to enqueue first command */
 			return -2;
 		}
@@ -781,41 +781,16 @@ read_sched_cmd(int sock)
 		 * so try read it in non-blocking mode, but don't
 		 * return any failure if fails to read, as we have
 		 * successfully enqueued first command
+		 *
+		 * and if we get priority command then just ignore it
+		 * since we are not yet in middle of schedule cycle
 		 */
-		cmd_prio = malloc(sizeof(sched_cmd));
+		cmd_prio = new_sched_cmd();
 		if (cmd_prio == NULL)
 			return 1; /* return 1 as we have enqueued first command */
-		cmd_prio->cmd = -1;
-		cmd_prio->jid = NULL;
 
-		get_sched_cmd_noblk(sock, cmd);
-		/*
-		 * we got priority command,
-		 *
-		 * now check if its restart cycle cmd then ignore it
-		 * as we are not yet in cycle
-		 */
-		if (cmd_prio->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
-			if (cmd_prio->jid)
-				free(cmd_prio->jid);
-			free(cmd_prio);
-			/*
-			 * no return here,
-			 * as we have successfully enqueued first command
-			 */
-		} else if (cmd_prio->cmd != -1) {
-			/* not restart cycle cmd, just enqueue it */
-			if (!ds_enqueue(sched_cmds, cmd_prio)) {
-				if (cmd_prio->jid)
-					free(cmd_prio->jid);
-				free(cmd_prio);
-				/*
-				 * no error return here,
-				 * as we have successfully enqueued first command
-				 */
-			}
-			/* no need of return here, fall to last return */
-		}
+		get_sched_cmd_noblk(sock, cmd_prio);
+		free_sched_cmd(cmd_prio);
 	}
 	return rc;
 }
@@ -1260,9 +1235,7 @@ main(int argc, char *argv[])
 			sconn = find_server(cmd->from_sock);
 			if (!sconn) {
 				/* shouldn't happen, but if it does just continue */
-				if (cmd->jid)
-					free(cmd->jid);
-				free(cmd);
+				free_sched_cmd(cmd);
 				continue;
 			}
 
@@ -1289,10 +1262,7 @@ main(int argc, char *argv[])
 			else
 				send_cycle_end(sconn);
 
-			if (cmd->jid)
-				free(cmd->jid);
-			free(cmd);
-			cmd = NULL;
+			free_sched_cmd(cmd);
 
 			if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
 				log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");

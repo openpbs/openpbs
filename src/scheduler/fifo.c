@@ -746,6 +746,47 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 }
 
 /**
+ * @brief check whether any server sent us super high priority command
+ *        return cmd if we have it
+ *
+ * @return sched_cmd *
+ * @retval NULL  - no super high priority command
+ * @retval !NULL - super high priority command
+ *
+ * @warning caller has to free returned value using free_sched_cmd() once not needed
+ */
+static sched_cmd *
+get_high_prio_cmd(void)
+{
+	if (servers) {
+		int i = 0;
+		for (; servers[i] != NULL; i++) {
+			sched_cmd *cmd;
+
+			if (servers[i]->secondary_sock <= 0)
+				continue;
+			cmd = new_sched_cmd();
+			if (!cmd)
+				continue;
+			if (get_sched_cmd_noblk(servers[i]->secondary_sock, cmd) != 1) {
+				free_sched_cmd(cmd);
+				continue;
+			}
+			if (cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+				return cmd;
+			} else {
+				if (!ds_enqueue(sched_cmds, cmd)) {
+					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
+							__func__, "Failed to enqueue sched cmd in cmds queue: cmd=%d jid=%s", cmd->cmd, cmd->jid ? cmd->jid : "(none)");
+					free_sched_cmd(cmd);
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+/**
  * @brief
  * 		the main scheduler loop
  *		Loop until njob = next_job() returns NULL
@@ -1039,41 +1080,13 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 		}
 
 		if (!end_cycle) {
-			if (servers) {
-				int i = 0;
-				for (; servers[i] != NULL; i++) {
-					sched_cmd *cmd;
-					if (servers[i]->secondary_sock <= 0)
-						continue;
-					cmd = malloc(sizeof(sched_cmd));
-					if (cmd == NULL) {
-						log_err(errno, __func__, MEM_ERR_MSG);
-						continue;
-					}
-					cmd->jid = NULL;
-					if (get_sched_cmd_noblk(servers[i]->secondary_sock, cmd) != 1) {
-						if (cmd->jid)
-							free(cmd->jid);
-						free(cmd);
-						continue;
-					}
-					if (cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
-						log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
-							  njob->name, "Leaving scheduling cycle as requested by server.");
-						end_cycle = 1;
-						free(cmd);
-						break;
-					} else {
-						if (!ds_enqueue(sched_cmds, cmd)) {
-							log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-								   __func__, "Failed to enqueue sched cmd in cmds queue: cmd=%d jid=%s", cmd->cmd, cmd->jid ? cmd->jid : "(none)");
-							if (cmd->jid)
-								free(cmd->jid);
-							free(cmd);
-						}
-					}
-				}
+			sched_cmd *cmd = get_high_prio_cmd();
+			if (cmd && cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
+					  njob->name, "Leaving scheduling cycle as requested by server.");
+				end_cycle = 1;
 			}
+			free_sched_cmd(cmd);
 		}
 
 #ifdef NAS /* localmod 030 */

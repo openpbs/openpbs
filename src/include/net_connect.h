@@ -173,7 +173,8 @@ enum conn_type {
 typedef enum conn_origin {
 	CONN_UNKNOWN = 0,
 	CONN_SCHED_PRIMARY,
-	CONN_SCHED_SECONDARY
+	CONN_SCHED_SECONDARY,
+	CONN_SCHED_ANY
 } conn_origin_t;
 
 /* functions available in libnet.a */

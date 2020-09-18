@@ -61,7 +61,7 @@
  * 	Gets the Scheduler Command sent by the Server
  *
  * @param[in]     sock - secondary connection to the server
- * @param[in/out] cmd  - pointer to sched cmd to be filled with received cmd
+ * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
  *
  * @return	int
  * @retval	0	: for EOF
@@ -103,10 +103,10 @@ err:
  * 	This is non-blocking version of get_sched_cmd()
  *
  * @param[in]     sock - secondary connection to the server
- * @param[in/out] cmd  - pointer to sched cmd to be filled with received cmd
+ * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
  *
  * @return	int
- * @retval	0	for EOF,
+ * @retval	0	if there is no super high priority command or EOF in case of server going down
  * @retval	+1	for success
  * @retval	-1	for error.
  */

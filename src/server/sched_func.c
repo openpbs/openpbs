@@ -919,17 +919,17 @@ set_sched_default(pbs_sched *psched, int from_scheduler)
 
 	}
 	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_prio])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_prio]), &sched_attr_def[SCHED_ATR_preempt_prio], strdup(PBS_PREEMPT_PRIO_DEFAULT), NULL, SET);
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_prio]), &sched_attr_def[SCHED_ATR_preempt_prio], PBS_PREEMPT_PRIO_DEFAULT, NULL, SET);
 		psched->sch_attr[SCHED_ATR_preempt_prio].at_flags |= ATR_VFLAG_DEFLT;
 	}
 	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_order])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_order]), &sched_attr_def[SCHED_ATR_preempt_order], strdup(PBS_PREEMPT_ORDER_DEFAULT), NULL, SET);
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_order]), &sched_attr_def[SCHED_ATR_preempt_order], PBS_PREEMPT_ORDER_DEFAULT, NULL, SET);
 		action_sched_preempt_order(&psched->sch_attr[SCHED_ATR_preempt_order], psched, ATR_ACTION_ALTER);
 		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
 
 	}
 	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_sort])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_sort]), &sched_attr_def[SCHED_ATR_preempt_sort], strdup(PBS_PREEMPT_SORT_DEFAULT), NULL, SET);
+		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_sort]), &sched_attr_def[SCHED_ATR_preempt_sort], PBS_PREEMPT_SORT_DEFAULT, NULL, SET);
 		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_DEFLT;
 
 	}

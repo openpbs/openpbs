@@ -202,13 +202,13 @@ find_sched_from_sock(int sock, conn_origin_t which)
 {
 	pbs_sched *psched;
 
-	if (sock < 0 || (which != CONN_SCHED_PRIMARY && which != CONN_SCHED_SECONDARY))
+	if (sock < 0 || (which != CONN_SCHED_PRIMARY && which != CONN_SCHED_SECONDARY && which != CONN_SCHED_ANY))
 		return NULL;
 
 	for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
-		if (which == CONN_SCHED_PRIMARY && psched->sc_primary_conn == sock)
+		if ((which == CONN_SCHED_PRIMARY || which == CONN_SCHED_ANY) && psched->sc_primary_conn == sock)
 			return psched;
-		if (which == CONN_SCHED_SECONDARY && psched->sc_secondary_conn == sock)
+		if ((which == CONN_SCHED_SECONDARY || which == CONN_SCHED_ANY) && psched->sc_secondary_conn == sock)
 			return psched;
 	}
 	return NULL;
@@ -390,12 +390,9 @@ scheduler_close(int sock)
 	pbs_sched *psched;
 	int other_conn = -1;
 
-	psched = find_sched_from_sock(sock, CONN_SCHED_PRIMARY);
-	if (psched == NULL) {
-		psched = find_sched_from_sock(sock, CONN_SCHED_SECONDARY);
-		if (psched == NULL)
-			return;
-	}
+	psched = find_sched_from_sock(sock, CONN_SCHED_ANY);
+	if (psched == NULL)
+		return;
 
 	if (sock == psched->sc_primary_conn)
 		other_conn = psched->sc_secondary_conn;

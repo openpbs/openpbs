@@ -263,6 +263,14 @@ req_authenticate(conn_t *conn, struct batch_request *request)
 }
 
 #ifndef PBS_MOM
+/**
+ * @brief handle incoming register sched request
+ *
+ * @param[in] conn - pointer to connection structure on which request came
+ * @param[in] preq - pointer to incoming request structure
+ *
+ * @return void
+ */
 static void
 req_register_sched(conn_t *conn, struct batch_request *preq)
 {
