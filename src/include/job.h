@@ -61,6 +61,17 @@ extern "C" {
 #include "server_limits.h"
 #endif
 #include "work_task.h"
+
+#ifdef PBS_MOM /* For the var_table used in env funcs */
+/* struct var_table = used to hold environment variables for the job */
+
+struct var_table {
+	char **v_envp;
+	int    v_ensize;
+	int    v_used;
+};
+#endif
+
 /*
  * Dependent Job Structures
  *
@@ -461,10 +472,11 @@ struct job {
 	time_t ji_walltime_stamp;		    /* time stamp for accumulating walltime */
 	struct work_task *ji_bg_hook_task;
 #ifdef WIN32
-	HANDLE ji_momsubt; /* process HANDLE to mom subtask */
-#else			   /* not WIN32 */
-	pid_t ji_momsubt; /* pid of mom subtask   */
-#endif			   /* WIN32 */
+	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
+#else	/* not WIN32 */
+	pid_t		ji_momsubt;	/* pid of mom subtask   */
+#endif /* WIN32 */
+	struct var_table ji_env; /* environment for the job */
 	/* ptr to post processing func  */
 	void (*ji_mompost)(struct job *, int);
 	tm_event_t ji_postevent;	   /* event waiting on mompost */
