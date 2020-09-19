@@ -44,5 +44,5 @@ SUBDIRS = \
 
 lib_LTLIBRARIES = libpbsdb.la
 libpbsdb_la_LDFLAGS = -version-info 0:0:0
-libpbsdb_la_LIBADD = pgsql/libpbsdbpg.la
+libpbsdb_la_LIBADD = pgsql/libpbsdbpg.la @database_lib@
 libpbsdb_la_SOURCES =
