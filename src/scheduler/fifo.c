@@ -761,7 +761,7 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 static sched_cmd *
 get_high_prio_cmd(int *is_conn_lost)
 {
-	if (servers) {
+	if (servers != NULL) {
 		int i = 0;
 		for (; servers[i] != NULL; i++) {
 			sched_cmd *cmd;

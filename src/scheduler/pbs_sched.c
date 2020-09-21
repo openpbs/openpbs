@@ -517,7 +517,7 @@ close_server(sched_svrconn *sconn)
 {
 	if (sconn) {
 		remove_ptr_from_array(servers, sconn);
-		if (servers && servers[0] == NULL) {
+		if (servers != NULL && servers[0] == NULL) {
 			free(servers);
 			servers = NULL;
 		}
@@ -539,9 +539,9 @@ close_server(sched_svrconn *sconn)
 static void
 close_servers(void)
 {
-	while (servers && servers[0])
+	while (servers != NULL && servers[0] != NULL)
 		close_server(servers[0]);
-	if (poll_context) {
+	if (poll_context != NULL) {
 		tpp_em_destroy(poll_context);
 		poll_context = NULL;
 	}
@@ -734,7 +734,7 @@ static sched_svrconn *
 find_server(int sock)
 {
 	int i = 0;
-	for (; servers[i] != NULL && servers[i]->secondary_sock == sock; i++)
+	for (; servers != NULL && servers[i] != NULL && servers[i]->secondary_sock == sock; i++)
 		return servers[i];
 	return NULL;
 }
