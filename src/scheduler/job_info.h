@@ -406,7 +406,14 @@ long extend_soft_walltime(resource_resv *resresv, time_t server_time);
 /* Returns a list of preemptable candidates */
 resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job, schd_error *err);
 
+/*
+ * This function processes every job's depend attribute and
+ * associate the jobs with runone dependency to its dependent_jobs list.
+ */
 void associate_dependent_jobs(server_info *sinfo);
+
+/* This function associated the job passed in to its parent job */
+int associate_array_parent(resource_resv *pjob, server_info *sinfo);
 
 #ifdef	__cplusplus
 }

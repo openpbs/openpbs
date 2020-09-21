@@ -168,6 +168,7 @@ extern char *msg_force_qsub_update;
 #define NO_RERUN_ARRAY "qsub:  cannot submit non-rerunable Array Job\n"
 #define INTER_RERUN_WARN "qsub (Warning): Interactive jobs will be treated as not rerunnable\n"
 #define BAD_W "qsub: illegal -W value\n"
+#define MULTIPLE_MAX_RUN "qsub: multiple max_run_subjobs values found\n"
 
 /* Security library variables */
 static int cs_init = 0; /*1 == security library initialized, 0 == not initialized*/
@@ -320,6 +321,7 @@ static int cred_opt_o = FALSE;
 static int block_opt_o = FALSE;
 static int relnodes_on_stageout_opt_o = FALSE;
 static int tolerate_node_failures_opt_o = FALSE;
+static int max_run_opt = FALSE;
 
 extern char **environ;
 
@@ -2441,8 +2443,22 @@ process_opts(int argc, char **argv, int passet)
 					break;
 				}
 				if_cmd_line(J_opt) {
+					char *p;
 					J_opt = passet;
+					p = strpbrk(optarg,"%");
+					if (p != NULL)
+						*p = '\0';
 					set_attr_error_exit(&attrib, ATTR_J, optarg);
+					if (p != NULL) {
+						if (max_run_opt == FALSE) {
+							max_run_opt = TRUE;
+							set_attr_error_exit(&attrib, ATTR_max_run_subjobs, ++p);
+						} else {
+							fprintf(stderr, "%s", MULTIPLE_MAX_RUN);
+							errflg++;
+							break;
+						}
+					}
 				}
 				break;
 			case 'k':
@@ -2724,7 +2740,16 @@ process_opts(int argc, char **argv, int passet)
 							tolerate_node_failures_opt = passet;
 							set_attr_error_exit(&attrib, ATTR_tolerate_node_failures, valuewd);
 						}
-					} else {
+					} else if (strcmp(keyword, ATTR_max_run_subjobs) == 0) {
+						if (max_run_opt == FALSE) {
+							max_run_opt = TRUE;
+							set_attr_error_exit(&attrib, keyword, valuewd);
+						} else {
+							fprintf(stderr, "%s", MULTIPLE_MAX_RUN);
+							errflg++;
+							break;
+						}
+					}else {
 						set_attr_error_exit(&attrib, keyword, valuewd);
 					}
 					i = parse_equal_string(NULL, &keyword, &valuewd);

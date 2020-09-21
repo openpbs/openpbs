@@ -491,6 +491,10 @@ static struct fc_translation_table fctt[] = {
 		"Too few free resources",
 #endif
 	},
+	{	/* MAX_RUN_SUBJOBS */
+		"Array restricted by max_run_subjobs limit",
+		"Array restricted by max_run_subjobs limit",
+	},
 };
 
 #define	ERR2COMMENT(code)	(fctt[(code) - RET_BASE].fc_comment)
@@ -974,6 +978,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_r,
 			ATTR_depend,
 			ATTR_A,
+			ATTR_max_run_subjobs,
 			NULL
 	};
 
@@ -1313,6 +1318,11 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		/* array_indices_remaining */
 		else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
 			resresv->job->queued_subjobs = range_parse(attrp->value);
+		else if (!strcmp(attrp->name, ATTR_max_run_subjobs)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				resresv->job->max_run_subjobs = count;
+		}
 		else if (!strcmp(attrp->name, ATTR_execvnode)) {
 			nspec **tmp_nspec_arr;
 			tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, NULL);
@@ -1469,7 +1479,10 @@ new_job_info()
 
 	jinfo->array_id = NULL;
 	jinfo->array_index = UNSPECIFIED;
+	jinfo->parent_job = NULL;
 	jinfo->queued_subjobs = NULL;
+	jinfo->max_run_subjobs = UNSPECIFIED;
+	jinfo->running_subjobs = 0;
 	jinfo->attr_updates = NULL;
 	jinfo->resreleased = NULL;
 	jinfo->resreq_rel = NULL;
@@ -2050,6 +2063,12 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 				snprintf(log_msg, MAX_LOG_SIZE, "%s", spec);
 			break;
 
+		case MAX_RUN_SUBJOBS:
+			if (comment_msg != NULL)
+				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code));
+			if (log_msg != NULL)
+				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code));
+			break;
 			/* codes using arg1  */
 		case BACKFILL_CONFLICT:
 		case CANT_PREEMPT_ENOUGH_WORK:
@@ -2835,6 +2854,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->array_index = ojinfo->array_index;
 	njinfo->array_id = string_dup(ojinfo->array_id);
 	njinfo->queued_subjobs = dup_range_list(ojinfo->queued_subjobs);
+	njinfo->max_run_subjobs = ojinfo->max_run_subjobs;
 
 	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes, NULL);
 	njinfo->resreq_rel = dup_resource_req_list(ojinfo->resreq_rel);
@@ -3036,6 +3056,13 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 	/* jobs with AOE cannot preempt (atleast for now) */
 	if (hjob->aoename != NULL)
 		return 0;
+
+	/* If a job couldn't run because of max_run_subjobs limit, do not try preemption */
+	if (hjob->job->is_array && err->error_code == MAX_RUN_SUBJOBS) {
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
+			  "Job cannot run due to max_run_subjobs limit, preemption not attempted");
+		return 0;
+	}
 
 	/* using calloc - saves the trouble to put NULL at end of list */
 	if ((preempted_list = calloc((sinfo->sc.running + 1), sizeof(int))) == NULL) {
@@ -4256,6 +4283,7 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 						}
 					}
 				}
+				rresv->job->parent_job = array;
 			}
 		}
 	}
@@ -5346,6 +5374,11 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			if (find_resource_req(job->resreq, inp->err->rdef))
 				return 1;
 			break;
+		case MAX_RUN_SUBJOBS:
+			/* only subjobs of the same array parent are preemptible */
+			if (job->job->is_subjob && (job->job->parent_job == inp->job))
+				return 1;
+			break;
 		default:
 			return 0;
 	}
@@ -5415,6 +5448,8 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 		case INSUFFICIENT_RESOURCE:
 		case INSUFFICIENT_QUEUE_RESOURCE:
 		case INSUFFICIENT_SERVER_RESOURCE:
+
+		case MAX_RUN_SUBJOBS:
 			arg.job = job;
 			arg.err = err;
 			temp = resource_resv_filter(arr, arr_length, cull_preemptible_jobs, &arg, 0);
@@ -5535,4 +5570,31 @@ void associate_dependent_jobs(server_info *sinfo) {
 		}
 	}
 	return;
+}
+
+/**
+ * @brief This function associates the subjob passed in to its parent job.
+ *
+ * @param[in] pjob	The subjob that needs association
+ * @param[in] sinfo	server info structure
+ *
+ * @return int
+ * @retval 1 - Failure
+ * @retval 0 - Success
+ */
+int associate_array_parent(resource_resv *pjob, server_info *sinfo) {
+	resource_resv *parent = NULL;
+
+	if (pjob == NULL || sinfo == NULL || !pjob->job->is_subjob)
+		return 1;
+
+	parent = find_resource_resv(sinfo->jobs, pjob->job->array_id);
+	if (parent == NULL)
+		return 1;
+
+	pjob->job->parent_job = parent;
+	if (parent->job->max_run_subjobs != UNSPECIFIED)
+		parent->job->running_subjobs++;
+
+	return 0;
 }

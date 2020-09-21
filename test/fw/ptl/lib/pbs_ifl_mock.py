@@ -87,6 +87,7 @@ ATTR_N = 'Job_Name'
 ATTR_S = 'Shell_Path_List'
 ATTR_W = 'Additional_Attributes'  # Not in pbs_ifl.h
 ATTR_array_indices_submitted = ATTR_J
+ATTR_max_run_subjobs = 'max_run_subjobs'
 ATTR_depend = 'depend'
 ATTR_inter = 'interactive'
 ATTR_sandbox = 'sandbox'

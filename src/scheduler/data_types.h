@@ -595,9 +595,12 @@ struct job_info
 	/* subjob information */
 	char *array_id;			/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
+	resource_resv *parent_job;	/* pointer to the parent array job */
 
 	/* job array information */
 	range *queued_subjobs;		/* a list of ranges of queued subjob indices */
+	long max_run_subjobs;		/* Max number of running subjobs at any time */
+	long running_subjobs;		/* number of currently running subjobs */
 
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */

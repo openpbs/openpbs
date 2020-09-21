@@ -109,6 +109,7 @@ extern "C" {
 #define ATTR_X11_cookie			"forward_x11_cookie"
 #define ATTR_X11_port			"forward_x11_port"
 #define ATTR_GUI			"gui"
+#define ATTR_max_run_subjobs		"max_run_subjobs"
 
 /* Begin Standing Reservation Attributes */
 #define ATTR_resv_standing      "reserve_standing"
