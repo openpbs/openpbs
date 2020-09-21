@@ -50,7 +50,7 @@ class TestNodesQueues(TestFunctional):
         a = {'resources_available.ncpus': 4}
         self.mom.create_vnodes(
             a, 8, attrfunc=self.cust_attr)
-        vn = [self.mom.shortname + '[' + str(i) + ']' for i in range(4)]
+        self.vn = [self.mom.shortname + '[' + str(i) + ']' for i in range(4)]
         a = {'queue_type': 'execution', 'started': 't', 'enabled': 't'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
 
