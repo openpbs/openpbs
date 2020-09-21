@@ -767,7 +767,7 @@ get_high_prio_cmd(int *is_conn_lost)
 			sched_cmd *cmd;
 			int rc;
 
-			if (servers[i]->secondary_sock <= 0)
+			if (servers[i]->secondary_sock < 0)
 				continue;
 			cmd = new_sched_cmd();
 			if (cmd == NULL)
