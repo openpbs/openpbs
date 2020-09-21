@@ -4700,15 +4700,34 @@ class Server(PBSService):
     actions = ExpectActions()
 
     # these server attributes revert back to default value when unset
-    server_dflt_attrs = [ATTR_scheduling, ATTR_logevents,
-                         ATTR_mailfrom, ATTR_queryother,
-                         ATTR_rescdflt + '.ncpus', ATTR_schedit,
-                         ATTR_ResvEnable, ATTR_maxarraysize,
-                         ATTR_license_min, ATTR_license_max,
-                         ATTR_license_linger, ATTR_EligibleTimeEnable,
-                         ATTR_max_concurrent_prov]
+    __special_attr_keys = {SERVER: [ATTR_scheduling, ATTR_logevents,
+                                    ATTR_mailfrom, ATTR_queryother,
+                                    ATTR_rescdflt + '.ncpus', ATTR_schedit,
+                                    ATTR_ResvEnable, ATTR_maxarraysize,
+                                    ATTR_license_min, ATTR_license_max,
+                                    ATTR_license_linger,
+                                    ATTR_EligibleTimeEnable,
+                                    ATTR_max_concurrent_prov],
+                           SCHED: [ATTR_sched_cycle_len, ATTR_scheduling,
+                                   ATTR_schedit, ATTR_logevents,
+                                   ATTR_sched_server_dyn_res_alarm,
+                                   'preempt_prio', 'preempt_queue_prio',
+                                   'throughput_mode', 'job_run_wait',
+                                   'partition', 'sched_priv', 'sched_log'],
+                           NODE: [ATTR_rescavail + '.ncpus'],
+                           HOOK: [ATTR_HOOK_type,
+                                  ATTR_HOOK_enable,
+                                  ATTR_HOOK_event,
+                                  ATTR_HOOK_alarm,
+                                  ATTR_HOOK_order,
+                                  ATTR_HOOK_debug,
+                                  ATTR_HOOK_fail_action,
+                                  ATTR_HOOK_user]}
 
-    server_dflt_attr = {}
+    __special_attr = {SERVER: None,
+                      SCHED: None,
+                      NODE: None,
+                      HOOK: None}
 
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
                  snapmap={}, snap=None, client=None, client_pbsconf_file=None,
@@ -5274,6 +5293,59 @@ class Server(PBSService):
         if len(unsetlist) != 0:
             self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist)
 
+    def update_special_attr(self, obj_type, id=None):
+        """
+        Update special attributes(__special_attr) dictionary
+        :param obj_type: The type of object to update attribute values
+                         in special attribute dictionary.
+        :type obj_type: str
+        :param id: The id of the object to act upon
+        :type id: str
+        """
+        if not id:
+            if obj_type in (SERVER, NODE):
+                id = self.hostname
+            elif obj_type == SCHED:
+                id = 'default'
+        id_attr_dict = {}
+        obj_stat = self.status(obj_type, id=id)[0]
+        for key in obj_stat.keys():
+            if key in self.__special_attr_keys[obj_type]:
+                id_attr_dict[key] = obj_stat[key]
+
+        id_attr = {id: id_attr_dict}
+        self.__special_attr[obj_type] = id_attr
+
+    def get_special_attr_val(self, obj_type, attr, id=None):
+        """
+        Get value for given attribute from
+        special attributes(__special_attr) dictionary
+        :param obj_type: The type of object to update attribute values
+                         in special attribute dictionary.
+        :type obj_type: str
+        :param attr: The attribute for which value requested.
+        :type id: str
+        :param id: The id of the object to act upon
+        :type id: str
+        """
+
+        if not id:
+            if obj_type in (SERVER, NODE):
+                id = self.hostname
+            elif obj_type == SCHED:
+                id = 'default'
+        res_val = ATTR_rescavail + '.ncpus'
+        if obj_type in (NODE, VNODE) and attr == res_val:
+            obj_stat = self.status(obj_type, id=id)[0]
+            if 'pcpus' not in obj_stat.keys():
+                return 1
+            else:
+                return self.__special_attr[obj_type][id][attr]
+        elif obj_type == HOOK and (id == 'pbs_cgroups' and attr == 'freq'):
+            return 120
+        else:
+            return self.__special_attr[obj_type][id][attr]
+
     def delete_site_hooks(self):
         """
         Delete site hooks from PBS
@@ -5824,26 +5896,10 @@ class Server(PBSService):
                         o = self.resources
                     if id:
                         if id in o:
-                            if attrib:
-                                for attr in attrib.keys():
-                                    if attr in o[id].attributes.keys():
-                                        att[attr] = o[id].attributes[attr]
-                                ret.append(att)
-                                return ret
-                            else:
-                                return [o[id].attributes]
+                            return [o[id].attributes]
                         else:
                             return None
-                    else:
-                        if attrib:
-                            for h in o.values():
-                                for attr in attrib.keys():
-                                    if attr in h.attributes.keys():
-                                        att[attr] = h.attributes[attr]
-                            ret.append(att)
-                            return ret
-                        else:
-                            return [h.attributes for h in o.values()]
+                    return [h.attributes for h in o.values()]
                 return []
             else:
                 self.logger.error(self.logprefix + "unrecognized object type")
@@ -8523,42 +8579,14 @@ class Server(PBSService):
         else:
             if op == UNSET and obj_type in (SERVER, SCHED, NODE, HOOK, QUEUE):
                 for key in attrib.keys():
-                    vanished = False
-                    if obj_type == SERVER and key in Server.server_dflt_attrs:
-                        val = Server.server_dflt_attr[key]
-                    elif (obj_type == SCHED and
-                            key in Scheduler.sched_dflt_attrs):
-                        if (id != self.shortname and
-                                (key is 'sched_priv' or key is 'sched_log')):
-                            val = Scheduler.sched_info_dir[id][key]
-                        else:
-                            val = Scheduler.sched_dflt_attr[key]
-                    elif obj_type == NODE and key in MoM.dflt_attr:
-                        statlist = self.status(obj_type, id=id,
-                                               level=logging.DEBUG,
-                                               extend=extend,
-                                               runas=runas,
-                                               logerr=False)
-                        if 'pcpus' not in statlist[0].keys():
-                            val = 1
-                        else:
-                            val = MoM.mom_dflt_attr[id][key]
-                    elif obj_type == HOOK and key in Hook.hook_dflt_attr:
-                        if id == 'pbs_cgroups' and key == 'freq':
-                            val = 120
-                        else:
-                            val = Hook.hook_dflt_attr[key]
-                    else:
-                        vanished = True
-                if not vanished:
-                    attrib = {key: val}
-                    op = EQ
-
-                self.manager(MGR_CMD_UNSET, obj_type, key, id=id)
-                return self.expect(obj_type, attrib, id, op, attrop,
-                                   attempt, max_attempts, interval,
-                                   count, extend, runas=runas,
-                                   level=level, msg=msg)
+                    if key in self.__special_attr_keys[obj_type]:
+                        val = self.get_special_attr_val(obj_type, key, id)
+                        attrib = {key: val}
+                        op = EQ
+                        return self.expect(obj_type, attrib, id, op, attrop,
+                                           attempt, max_attempts, interval,
+                                           count, extend, runas=runas,
+                                           level=level, msg=msg)
 
         if attrib is None:
             time.sleep(interval)
@@ -9754,7 +9782,8 @@ class Server(PBSService):
         else:
             self.logger.error('hook named ' + name + ' exists')
             return False
-
+        hook_stat = self.status(HOOK, id=name)[0]
+        self.update_special_attr(HOOK, id=name)
         self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True
 
@@ -10977,16 +11006,6 @@ class Scheduler(PBSService):
             r'(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
     fs_tag = re.compile(fs_re)
 
-    # these sched attributes revert back to default value when unset
-    sched_dflt_attrs = [ATTR_sched_cycle_len, ATTR_scheduling,
-                        ATTR_schedit, ATTR_logevents,
-                        ATTR_sched_server_dyn_res_alarm,
-                        'preempt_prio', 'preempt_queue_prio',
-                        'throughput_mode', 'job_run_wait',
-                        'partition', 'sched_priv', 'sched_log']
-    sched_dflt_attr = {}
-    sched_info_dir = {}
-
     def __init__(self, hostname=None, server=None, pbsconf_file=None,
                  snapmap={}, snap=None, db_access=None, id='default',
                  sched_priv=None):
@@ -11713,10 +11732,8 @@ class Scheduler(PBSService):
                                       self.attributes['sched_priv'])
         sched_logs_dir = os.path.join(sched_home,
                                       self.attributes['sched_log'])
-        sched_dir_info = {}
-        sched_dir_info['sched_priv'] = sched_priv_dir
-        sched_dir_info['sched_log'] = sched_logs_dir
-        Scheduler.sched_info_dir[self.attributes['id']] = sched_dir_info
+        sched_stat = self.server.status(SCHED, id=self.attributes['id'])[0]
+        self.server.update_special_attr(SCHED, id=self.attributes['id'])
         if not os.path.exists(sched_priv_dir):
             self.du.mkdir(path=sched_priv_dir, sudo=True)
             if self.user.name != 'root':
@@ -13203,9 +13220,6 @@ class MoM(PBSService):
                        'PBS_MANAGER_SERVICE_PORT': '-R',
                        'PBS_HOME': '-d'}
 
-    dflt_attr = [ATTR_rescavail + '.ncpus']
-    mom_dflt_attr = {}
-
     def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):
         if server is not None:
@@ -14314,15 +14328,6 @@ class Hook(PBSObject):
     """
 
     dflt_attributes = {}
-
-    hook_dflt_attr = {ATTR_HOOK_type: 'site',
-                      ATTR_HOOK_enable: 'true',
-                      ATTR_HOOK_event: '""',
-                      ATTR_HOOK_alarm: 30,
-                      ATTR_HOOK_order: 1,
-                      ATTR_HOOK_debug: 'false',
-                      ATTR_HOOK_fail_action: 'none',
-                      ATTR_HOOK_user: 'pbsadmin'}
 
     def __init__(self, name=None, attrs={}, server=None):
         PBSObject.__init__(self, name, attrs, self.dflt_attributes)

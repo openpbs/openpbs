@@ -1476,9 +1476,7 @@ class PBSTestSuite(unittest.TestCase):
         _msg = 'No license found on server %s' % (server.shortname)
         self.assertTrue(rv, _msg)
         self.logger.info('server: %s licensed', server.hostname)
-        for key in server_stat.keys():
-            if key in Server.server_dflt_attrs:
-                Server.server_dflt_attr[key] = server_stat[key]
+        server.update_special_attr(SERVER, id=server.hostname)
 
     def revert_comm(self, comm, force=False):
         """
@@ -1508,13 +1506,7 @@ class PBSTestSuite(unittest.TestCase):
             _msg = 'Failed to revert sched %s' % (scheduler.hostname)
             self.assertTrue(rv, _msg)
         sched_stat = self.server.status(SCHED)[0]
-        for key in sched_stat.keys():
-            if key in Scheduler.sched_dflt_attrs:
-                if key == 'sched_priv' or key == 'sched_log':
-                    sched_dir_info[key] = sched_stat[key]
-                else:
-                    Scheduler.sched_dflt_attr[key] = sched_stat[key]
-        Scheduler.sched_info_dir[scheduler.hostname] = sched_dir_info
+        self.server.update_special_attr(SCHED)
 
     def revert_mom(self, mom, force=False):
         """
@@ -1578,10 +1570,8 @@ class PBSTestSuite(unittest.TestCase):
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
-            val = self.server.status(NODE,
-                                     id=mom.shortname)[0][MoM.dflt_attr[0]]
-            attr_dict[MoM.dflt_attr[0]] = val
-            MoM.mom_dflt_attr[mom.shortname] = attr_dict
+            mom_stat = self.server.status(NODE)[0]
+            self.server.update_special_attr(NODE, id=mom.shortname)
 
         return mom
 
