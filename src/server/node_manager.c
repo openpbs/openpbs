@@ -547,7 +547,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d "
 		"msr_state=0x%lx -> bits=0x%lx txt=%s mi_modtime=%ld", do_set,
 		psvrmom->msr_state, bits, txt, pmom->mi_modtime);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pmom->mi_host, local_log_buffer);
 		
 	/* Set the inuse_flag based off the value of setwhen */
@@ -1211,15 +1211,15 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 
 	int time_int_val;
+	time_now = time(NULL);
 	time_int_val = time_now;
 
 	if (pnode == NULL) {
-		log_err(PBSE_INTERNAL, __func__, "set_vnode_state failed due to NULL ptr");
 		return;
 	}
 
 	/*
-	 * Allocate space for the modifyvnode event data
+	 * Allocate space for the modifyvnode event params
 	 */
 	preq = alloc_br(PBS_BATCH_ModifyVnode);
 	if (preq == NULL) {
@@ -1265,13 +1265,12 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	/* Populate hook param rq_modifyvnode with old and new vnode states */
 	preq->rq_ind.rq_modifyvnode.rq_vnode_o = vnode_o;
 	preq->rq_ind.rq_modifyvnode.rq_vnode = pnode;
-	/* preq->rq_ind.rq_modifyvnode.rq_time = time_int_val; */
 
-
+	/* Write state change event to pbs log */
+	/* FIXME: verify we're using correct time type */
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
-		"set_vnode_state: vnode->nd_state=0x%lx-> state_bits=0x%lx "
-		"type=%d type_r=%s time=%ld vnode_o->nd_state=0x%lx", pnode->nd_state, state_bits,
-		type, get_vnode_state_op(type), time_int_val,vnode_o->nd_state);
+		"set_vnode_state: vnode->nd_name=%s vnode->nd_state=0x%lx time=%ld vnode_o->nd_state=0x%lx",
+		pnode->nd_name,pnode->nd_state, time_int_val,vnode_o->nd_state);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pnode->nd_name, local_log_buffer);
 
@@ -1285,6 +1284,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
+	/* FIXME: check we're using correct time value */
 	if (vnode_o->nd_state != pnode->nd_state) {
 		char str_val[STR_TIME_SZ];
 
