@@ -151,6 +151,7 @@ extern	int		internal_state_update; /* flag for sending mom information update to
 
 extern int		server_stream;
 
+extern char **environ;
 
 /**
  * @brief
@@ -1347,7 +1348,7 @@ run_hook_exit:
 		    event_type == HOOK_EVENT_EXECJOB_PRETERM) {
 			int ret = 0;
 			if ( ret != 0 ) {
-				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s", 
+				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s",
 					pjob->ji_qs.ji_jobid);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					__func__, log_buffer);
@@ -1361,7 +1362,7 @@ run_hook_exit:
 		char *pbs_hook_conf = NULL;
 
 		if ((pjob->ji_env.v_envp != NULL) && (phook->user == HOOK_PBSUSER)) {
-			/* Duplicate only when the hook user is pbsuser */ 
+			/* Duplicate only when the hook user is pbsuser */
 			hook_env.v_envp = dup_string_arr(pjob->ji_env.v_envp);
 			if (hook_env.v_envp == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,

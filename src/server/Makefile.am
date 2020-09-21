@@ -43,14 +43,11 @@ sbin_PROGRAMS = pbs_server.bin pbs_comm
 
 pbs_server_bin_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@database_inc@ \
 	@expat_inc@ \
 	@libical_inc@ \
 	@libz_inc@ \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
-
-pbs_server_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 
 pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
@@ -61,9 +58,8 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	@database_ldflags@ \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \

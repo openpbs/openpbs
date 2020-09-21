@@ -49,9 +49,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#ifndef SIGKILL
 #include <signal.h>
-#endif
 #include <memory.h>
 #include <fcntl.h>
 #include <stdio.h>
