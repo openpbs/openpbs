@@ -517,7 +517,7 @@ close_server(sched_svrconn *sconn)
 {
 	if (sconn) {
 		remove_ptr_from_array(servers, sconn);
-		if (count_array(servers) == 0) {
+		if (servers && servers[0] == NULL) {
 			free(servers);
 			servers = NULL;
 		}
@@ -539,7 +539,7 @@ close_server(sched_svrconn *sconn)
 static void
 close_servers(void)
 {
-	while (count_array(servers))
+	while (servers && servers[0])
 		close_server(servers[0]);
 	if (poll_context) {
 		tpp_em_destroy(poll_context);
@@ -701,7 +701,7 @@ connect_servers(void)
 		}
 	}
 
-	connect_server(svrhost ? svrhost : "");
+	connect_server(svrhost != NULL ? svrhost : "");
 }
 
 /**
