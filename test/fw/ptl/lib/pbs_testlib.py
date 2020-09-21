@@ -5867,15 +5867,6 @@ class Server(PBSService):
                 if id:
                     pcmd += [id]
             elif obj_type in (SCHED, PBS_HOOK, HOOK, RSC):
-                if isinstance(attrib, str):
-                    attrib = {attrib: ''}
-                elif isinstance(attrib, list):
-                    d = {}
-                    for l in attrib:
-                        d[l] = ''
-                    attrib = d
-                ret = []
-                att = {}
                 try:
                     rc = self.manager(MGR_CMD_LIST, obj_type, attrib, id,
                                       runas=runas, level=level, logerr=logerr)
@@ -5901,6 +5892,7 @@ class Server(PBSService):
                             return None
                     return [h.attributes for h in o.values()]
                 return []
+
             else:
                 self.logger.error(self.logprefix + "unrecognized object type")
                 raise PbsStatusError(rc=-1, rv=[],
@@ -6953,7 +6945,7 @@ class Server(PBSService):
                             for k in obj.keys():
                                 if k in attrib:
                                     dnew[k] = obj[k]
-                                bsl_attr.append(dnew)
+                            bsl_attr.append(dnew)
                         bsl = bsl_attr
             else:
                 # Need to rework setting error, this is not thread safe
@@ -9782,7 +9774,6 @@ class Server(PBSService):
         else:
             self.logger.error('hook named ' + name + ' exists')
             return False
-        hook_stat = self.status(HOOK, id=name)[0]
         self.update_special_attr(HOOK, id=name)
         self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True

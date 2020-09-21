@@ -1493,7 +1493,6 @@ class PBSTestSuite(unittest.TestCase):
         """
         Revert the values set for scheduler
         """
-        sched_dir_info = {}
         rv = scheduler.isUp()
         if not rv:
             self.logger.error('scheduler ' + scheduler.hostname + ' is down')
@@ -1505,7 +1504,6 @@ class PBSTestSuite(unittest.TestCase):
             rv = scheduler.revert_to_defaults()
             _msg = 'Failed to revert sched %s' % (scheduler.hostname)
             self.assertTrue(rv, _msg)
-        sched_stat = self.server.status(SCHED)[0]
         self.server.update_special_attr(SCHED)
 
     def revert_mom(self, mom, force=False):
@@ -1523,7 +1521,6 @@ class PBSTestSuite(unittest.TestCase):
             msg = 'Failed to restart mom ' + mom.hostname
             self.assertTrue(mom.isUp(), msg)
         mom.pbs_version()
-        attr_dict = {}
         restart = False
         enabled_cpuset = False
         if ((self.revert_to_defaults and self.mom_revert_to_defaults and
@@ -1570,7 +1567,6 @@ class PBSTestSuite(unittest.TestCase):
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
-            mom_stat = self.server.status(NODE)[0]
             self.server.update_special_attr(NODE, id=mom.shortname)
 
         return mom
