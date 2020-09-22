@@ -822,13 +822,6 @@ wait_for_cmds()
 				log_errf(err, __func__, " tpp_em_wait() error, errno=%d", err);
 				sleep(1); /* wait for 1s for not to burn too much CPU */
 			}
-			if (err == EINTR) {
-				/* wait woke up on signal, allow small window to proccess signal */
-				if (sigprocmask(SIG_UNBLOCK, &allsigs, NULL) == -1)
-					log_err(errno, __func__, "sigprocmask(UNBLOCK)");
-				if (sigprocmask(SIG_BLOCK, &allsigs, NULL) == -1)
-					log_err(errno, __func__, "sigprocmask(BLOCK)");
-			}
 		} else {
 			for (i = 0; i < nsocks; i++) {
 				int sock = EM_GET_FD(events, i);
