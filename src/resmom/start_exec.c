@@ -5925,51 +5925,6 @@ job_nodes(struct job *pjob)
 	return job_nodes_inner(pjob, NULL);
 }
 
-/**
- * @brief
- * 	Resume multinode job after one or more sisters has been restarted
- *
- * @param[in] pjob - job pointer
- *
- * @return	Void
- *
- */
-
-void resume_multinode(job *pjob)
-{
-	if (pjob->ji_hosts == NULL)
-		return;
-
-	int com = IM_JOIN_RECOV_JOB;
-	hnodent *np = NULL;
-	eventent *ep = NULL;
-	int i;
-	for(i = 1; i < pjob->ji_numnodes; i++) {
-		np = &pjob->ji_hosts[i];
-
-		if( i == 1 )
-			ep = event_alloc(pjob, com, -1, np, TM_NULL_EVENT, TM_NULL_TASK);
-		else
-			ep = event_dup(ep, pjob, np);
-
-		if (ep == NULL) {
-			exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
-			return;
-		}
-
-		int stream = np->hn_stream;
-		im_compose(stream, pjob->ji_qs.ji_jobid,
-			get_jattr_str(pjob, JOB_ATR_Cookie),
-			com, ep->ee_event, TM_NULL_TASK,  IM_OLD_PROTOCOL_VER);
-		(void)diswsi(stream, pjob->ji_numnodes);
-		(void)diswsi(stream, pjob->ji_ports[0]);
-		(void)diswsi(stream, pjob->ji_ports[1]);
-		dis_flush(stream);
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-		send_cred_sisters(pjob);
-#endif
-	}
-}
 
 /**
  * @brief
