@@ -52,14 +52,14 @@ class TestPbsCpuset(TestFunctional):
 
     def check_stageout_file_size(self):
         """
-        This function will check that at least 1gb of test.img
-        file which is to be stagedout is created within 10 seconds.
+        This Function will check that atleast 1gb of test.img
+        file which is to be stagedout is created in 10 seconds
         """
         fpath = os.path.join(TEST_USER.home, "test.img")
         cmd = ['stat', '-c', '%s', fpath]
         fsize = 0
         for i in range(11):
-            rc = self.du.run_cmd(hosts=self.n0, cmd=cmd,
+            rc = self.du.run_cmd(hosts=self.h0, cmd=cmd,
                                  runas=TEST_USER)
             if rc['rc'] == 0 and len(rc['out']) == 1:
                 try:
@@ -85,11 +85,20 @@ class TestPbsCpuset(TestFunctional):
         if no_csetmom:
             self.skipTest("Skip on cluster without cgroup cpuset system.")
 
-        # Various node names
-        self.n0 = self.moms.values()[0].shortname
-        self.n1 = self.moms.values()[1].shortname
-        self.n2 = '%s[0]' % (self.n1,)
-        self.n3 = '%s[1]' % (self.n1,)
+        # Various host names
+        self.h0 = self.moms.values()[0].shortname
+        self.h1 = self.moms.values()[1].shortname
+        self.hostA = socket.getfqdn(self.h0)
+        self.hostB = socket.getfqdn(self.h1)
+        # Various node names. First mom may or may not be a cpuset system.
+        try:
+            self.n0 = self.server.status(
+                NODE, id='%s[0]' % (self.h0))[0]['id']
+        except PbsStatusError:
+            self.n0 = self.h0
+        self.n1 = self.h1
+        self.n2 = '%s[0]' % (self.n1)
+        self.n3 = '%s[1]' % (self.n1)
 
         # Skip if there are less than four vnodes. There should be
         # three from cpuset system (natural + two NUMA vnodes)
@@ -97,21 +106,22 @@ class TestPbsCpuset(TestFunctional):
         if len(nodeinfo) < 4:
             self.skipTest("Not enough vnodes to run the test.")
         # skip if second mom has less than two NUMA vnodes
-        if nodeinfo[3]['id'] != self.n3:
-            self.skipTest("Second mom has less than 2 vnodes")
-        # skip if none of the vnodes are in free state
+        try:
+            self.server.status(NODE, id=self.n3)
+        except PbsStatusError:
+            self.skipTest("vnode %s doesn't exist on pbs server" % (self.n3))
+        # skip if vnodes are not in free state
         for node in nodeinfo:
             if node['state'] != 'free':
                 self.skipTest("Not all the vnodes are in free state")
 
         self.pbs_release_nodes_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
-
         # number of resource ncpus to request initially
         ncpus = self.server.status(NODE, 'resources_available.ncpus',
                                    id=self.n3)[0]
+        # request a partial amount of ncpus in self.n3
         self.ncpus2 = int(ncpus['resources_available.ncpus']) / 2
-
         # cgroup cpuset path on second node
         cmd = ['grep cgroup', '/proc/mounts', '|', 'grep cpuset', '|',
                'grep -v', '/dev/cpuset']
@@ -133,7 +143,7 @@ for vn in e.vnode_list_fail:
     v = e.vnode_list_fail[vn]
     pbs.logjobmsg(e.job.id, "launch: found vnode_list_fail[" + v.name + "]")
 if e.job.in_ms_mom():
-    pj = e.job.release_nodes(keep_select="ncpus=1:mem=2gb")
+    pj = e.job.release_nodes(keep_select="ncpus=1:mem=1gb")
     if pj is None:
         e.job.Hold_Types = pbs.hold_types("s")
         e.job.rerun()
@@ -143,32 +153,32 @@ time.sleep(20)
 """
 
         self.script = {}
-        self.job1_select = "ncpus=1:mem=2gb+" + \
-            "ncpus=%d:mem=2gb:vnode=%s+" % (self.ncpus2, self.n2) + \
-            "ncpus=%d:mem=2gb:vnode=%s" % (self.ncpus2, self.n3)
+        self.job1_select = "ncpus=1:mem=1gb+" + \
+            "ncpus=%d:mem=1gb:vnode=%s+" % (self.ncpus2, self.n2) + \
+            "ncpus=%d:mem=1gb:vnode=%s" % (self.ncpus2, self.n3)
         self.job1_place = "vscatter"
 
         # expected values upon successful job submission
-        self.job1_schedselect = "1:ncpus=1:mem=2gb+" + \
-            "1:ncpus=%d:mem=2gb:vnode=%s+" % (self.ncpus2, self.n2) + \
-            "1:ncpus=%d:mem=2gb:vnode=%s" % (self.ncpus2, self.n3)
+        self.job1_schedselect = "1:ncpus=1:mem=1gb+" + \
+            "1:ncpus=%d:mem=1gb:vnode=%s+" % (self.ncpus2, self.n2) + \
+            "1:ncpus=%d:mem=1gb:vnode=%s" % (self.ncpus2, self.n3)
         self.job1_exec_host = "%s/0+%s/0*%d+%s/1*%d" % (
-            self.n0, self.n1, self.ncpus2, self.n1, self.ncpus2)
-        self.job1_exec_vnode = "(%s:ncpus=1:mem=2097152kb)+" % (self.n0,) + \
-            "(%s:ncpus=%d:mem=2097152kb)+" % (self.n2, self.ncpus2) + \
-            "(%s:ncpus=%d:mem=2097152kb)" % (self.n3, self.ncpus2)
+            self.h0, self.h1, self.ncpus2, self.n1, self.ncpus2)
+        self.job1_exec_vnode = "(%s:ncpus=1:mem=1048576kb)+" % (self.n0,) + \
+            "(%s:ncpus=%d:mem=1048576kb)+" % (self.n2, self.ncpus2) + \
+            "(%s:ncpus=%d:mem=1048576kb)" % (self.n3, self.ncpus2)
 
         # expected values after release of vnode of self.n3
-        self.job1_schedsel1 = "1:ncpus=1:mem=2097152kb+" + \
-            "1:ncpus=%d:mem=2097152kb:vnode=%s" % (self.ncpus2, self.n2)
-        self.job1_exec_host1 = "%s/0+%s/0*%d" % (self.n0, self.n1, self.ncpus2)
-        self.job1_exec_vnode1 = "(%s:ncpus=1:mem=2097152kb)+" % (self.n0,) + \
-            "(%s:ncpus=%d:mem=2097152kb)" % (self.n2, self.ncpus2)
+        self.job1_schedsel1 = "1:ncpus=1:mem=1048576kb+" + \
+            "1:ncpus=%d:mem=1048576kb:vnode=%s" % (self.ncpus2, self.n2)
+        self.job1_exec_host1 = "%s/0+%s/0*%d" % (self.h0, self.h1, self.ncpus2)
+        self.job1_exec_vnode1 = "(%s:ncpus=1:mem=1048576kb)+" % (self.n0,) + \
+            "(%s:ncpus=%d:mem=1048576kb)" % (self.n2, self.ncpus2)
 
         # expected values during lengthy stageout
-        self.job1_newsel = "1:ncpus=1:mem=2097152kb"
-        self.job1_new_exec_host = "%s/0" % self.n0
-        self.job1_new_exec_vnode = "(%s:ncpus=1:mem=2097152kb)" % self.n0
+        self.job1_newsel = "1:ncpus=1:mem=1048576kb"
+        self.job1_new_exec_host = "%s/0" % self.h0
+        self.job1_new_exec_vnode = "(%s:ncpus=1:mem=1048576kb)" % self.n0
 
         # values to use when matching accounting logs
         self.job1_exec_host_esc = self.job1_exec_host.replace(
@@ -184,7 +194,7 @@ time.sleep(20)
             ")", "\)").replace("+", "\+")
 
     def tearDown(self):
-        for host in [self.n0, self.n1]:
+        for host in [self.h0, self.h1]:
             test_img = os.path.join("/home", "pbsuser", "test.img")
             self.du.rm(hostname=host, path=test_img, force=True,
                        runas=TEST_USER)
@@ -205,7 +215,7 @@ time.sleep(20)
 
         # Check mom logs that the launch hook got propagated
         msg = "Hook;launch.PY;copy hook-related file request received"
-        self.moms.values()[1].log_match(msg, starttime=stime, interval=2)
+        self.moms.values()[1].log_match(msg, starttime=stime)
 
         # Submit job1 that uses second mom's two NUMA nodes, in R state
         a = {ATTR_l + '.select': self.job1_select,
@@ -244,22 +254,20 @@ time.sleep(20)
         vnodeB = execvnodeB.split(':')[0].split('(')[1]
         self.logger.info("released vnode: %s" % vnodeB)
 
-        # Submit job2 requesting all of the released vnode's cpus, job runs
-        a = {ATTR_l + '.select': '1:ncpus=%d:mem=2gb:vnode=%s' % (
-            self.ncpus2 * 2, vnodeB)}
-        j2 = Job(TEST_USER, attrs=a)
+        # Submit job2 requesting the released vnode, job runs
+        j2 = Job(TEST_USER, {
+            ATTR_l + '.select': '1:ncpus=4:mem=1gb:vnode=%s' % vnodeB})
         stime = time.time()
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, offset=20, id=jid2)
 
-        # Check if vnode for job2 matches released vnode from job1
+        # Check if exec_vnode for job2 matches released vnode from job1
         self.server.expect(JOB, 'exec_vnode', id=jid2, op=SET)
         job_stat = self.server.status(JOB, id=jid2)
         execvnode3 = job_stat[0]['exec_vnode']
-        vnode3 = execvnode3.split(':')[0].split('(')[1]
-        self.assertEqual(vnode3, vnodeB)
-        self.logger.info("job2 vnode %s is the released vnode %s" % (
-            vnode3, vnodeB))
+        self.assertEqual(execvnode3, execvnodeB)
+        self.logger.info("job2 exec_vnode %s is the released vnode %s" % (
+            execvnode3, execvnodeB))
 
     def test_release_nodes_on_cpuset_sis(self):
         """
@@ -276,7 +284,7 @@ time.sleep(20)
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.mem': '3gb',
                                  'Resource_List.ncpus': 1 + self.ncpus2 * 2,
                                  'Resource_List.nodect': 3,
                                  'schedselect': self.job1_schedselect,
@@ -322,7 +330,7 @@ time.sleep(20)
         """
         Submit a job, with -W release_nodes_on_stageout=true as a PBS directive
         in the job script, that will use cpus and mem on two NUMA vnodes on the
-        second mom. The job goes in R state. The job creates a huge staegout
+        second mom. The job goes in R state. The job creates a huge stageout
         file. When the job is deleted the sister NUMA vnodes are released
         during lengthy stageout and only the primary execution host's vnode
         is left assigned to the job.
@@ -351,7 +359,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R',
                                  'release_nodes_on_stageout': 'True',
-                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.mem': '3gb',
                                  'Resource_List.ncpus': 1 + self.ncpus2 * 2,
                                  'Resource_List.nodect': 3,
                                  'Resource_List.select': self.job1_select,
@@ -360,31 +368,25 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
                                  'exec_host': self.job1_exec_host,
                                  'exec_vnode': self.job1_exec_vnode}, id=jid)
         # Check various vnode status.
-        attr0 = {'state': 'free', 'jobs': jid + '/0',
+        attr0 = {'state': 'job-busy', 'jobs': jid + '/0',
                  'resources_assigned.ncpus': 1,
-                 'resources_assigned.mem': '2097152kb'}
+                 'resources_assigned.mem': '1048576kb'}
         self.server.expect(VNODE, attr0, id=self.n0)
-        attr1 = {'state': 'free', 'resources_assigned.ncpus': '0kb',
+        attr1 = {'state': 'free', 'resources_assigned.ncpus': 0,
                  'resources_assigned.mem': '0kb'}
         self.server.expect(VNODE, attr1, id=self.n1)
-        jobs = ''
-        for i in range(0, int(self.ncpus2)):
-            jobs += ' %s/%d,' % (jid, i)
-        jobs = jobs.strip().strip(',')
         attr2 = {'state': 'free',
-                 'jobs': jobs,
-                 'resources_assigned.ncpus': int(self.ncpus2),
-                 'resources_assigned.mem': '2097152kb'}
+                 'jobs': '%s/0, %s/1, %s/2, %s/3' % (jid, jid, jid, jid),
+                 'resources_assigned.ncpus': 4,
+                 'resources_assigned.mem': '1048576kb'}
         for vn in [self.n2, self.n3]:
             self.server.expect(VNODE, attr2, id=vn)
         # job's PBS_NODEFILE contents should match exec_host
         pbs_nodefile = os.path.join(self.server.
                                     pbs_conf['PBS_HOME'], 'aux', jid)
         cmd = ['cat', pbs_nodefile]
-        ret = self.server.du.run_cmd(self.n0, cmd, sudo=False)
-        hostA = socket.getfqdn(self.n0)
-        hostB = socket.getfqdn(self.n1)
-        self.assertTrue(hostA and hostB in ret['out'])
+        ret = self.server.du.run_cmd(self.h0, cmd, sudo=False)
+        self.assertTrue(self.hostA and self.hostB in ret['out'])
 
         # The job will write out enough file size to have a lengthy stageout
         self.check_stageout_file_size()
@@ -396,7 +398,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
 
         # Verify remaining job resources.
         self.server.expect(JOB, {'job_state': 'E',
-                                 'Resource_List.mem': '2gb',
+                                 'Resource_List.mem': '1gb',
                                  'Resource_List.ncpus': 1,
                                  'Resource_List.select': self.job1_newsel,
                                  'Resource_List.place': self.job1_place,
@@ -406,18 +408,18 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
                                  'exec_vnode': self.job1_new_exec_vnode},
                            id=jid)
         # Check various vnode status
-        attr0 = {'state': 'free', 'jobs': jid + '/0',
+        attr0 = {'state': 'job-busy', 'jobs': jid + '/0',
                  'resources_assigned.ncpus': 1,
-                 'resources_assigned.mem': '2097152kb'}
+                 'resources_assigned.mem': '1048576kb'}
         self.server.expect(VNODE, attr0, id=self.n0)
-        attr1 = {'state': 'free', 'resources_assigned.ncpus': '0kb',
+        attr1 = {'state': 'free', 'resources_assigned.ncpus': '0',
                  'resources_assigned.mem': '0kb'}
         for vn in [self.n1, self.n2, self.n3]:
             self.server.expect(VNODE, attr1, id=vn)
         # job's PBS_NODEFILE contents should match exec_host
-        ret = self.server.du.run_cmd(self.n0, cmd, sudo=False)
-        self.assertTrue(hostA in ret['out'])
-        self.assertFalse(hostB in ret['out'])
+        ret = self.server.du.run_cmd(self.h0, cmd, sudo=False)
+        self.assertTrue(self.hostA in ret['out'])
+        self.assertFalse(self.hostB in ret['out'])
         # Verify mom_logs
         self.moms.values()[0].log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.n1), n=10, regexp=True)
@@ -426,7 +428,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Check account update ('u') record
         msg0 = ".*%s;%s.*exec_host=%s" % ('u', jid, self.job1_exec_host_esc)
         msg1 = ".*exec_vnode=%s" % self.job1_exec_vnode_esc
-        msg2 = ".*Resource_List\.mem=%s" % '6gb'
+        msg2 = ".*Resource_List\.mem=%s" % '3gb'
         msg3 = ".*Resource_List\.ncpus=%d" % 9
         msg4 = ".*Resource_List\.place=%s" % self.job1_place
         msg5 = ".*Resource_List\.select=%s.*" % self.job1_sel_esc
@@ -436,7 +438,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Check to make sure 'c' (next) record got generated
         msg0 = ".*%s;%s.*exec_host=%s" % ('c', jid, self.job1_new_exec_host)
         msg1 = ".*exec_vnode=%s" % self.job1_new_exec_vnode_esc
-        msg2 = ".*Resource_List\.mem=%s" % '2097152kb'
+        msg2 = ".*Resource_List\.mem=%s" % '1048576kb'
         msg3 = ".*Resource_List\.ncpus=%d" % 1
         msg4 = ".*Resource_List\.place=%s" % self.job1_place
         msg5 = ".*Resource_List\.select=%s.*" % self.job1_newsel
