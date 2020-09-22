@@ -2065,9 +2065,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 
 		case MAX_RUN_SUBJOBS:
 			if (comment_msg != NULL)
-				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code));
+				snprintf(commentbuf, sizeof(commentbuf), "%s", ERR2COMMENT(err->error_code));
 			if (log_msg != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code));
+				snprintf(log_msg, MAX_LOG_SIZE, "%s", ERR2INFO(err->error_code));
 			break;
 			/* codes using arg1  */
 		case BACKFILL_CONFLICT:
