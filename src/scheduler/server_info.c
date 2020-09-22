@@ -393,7 +393,7 @@ query_server(status *pol, int pbs_sd)
 			 * subjobs to their parent.
 			 */
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
-			    (1 == associate_array_parent(sinfo->running_jobs[i], sinfo))) {
+			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
 				sinfo->fairshare = NULL;
 				free_server(sinfo);
 				return NULL;
@@ -404,7 +404,7 @@ query_server(status *pol, int pbs_sd)
 	if (job_arrays_associated == FALSE) {
 		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
-			    (1 == associate_array_parent(sinfo->running_jobs[i], sinfo))) {
+			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
 				sinfo->fairshare = NULL;
 				free_server(sinfo);
 				return NULL;
@@ -2330,7 +2330,7 @@ dup_server_info(server_info *osinfo)
 
 	for (i = 0; nsinfo->running_jobs[i] != NULL; i++) {
 		if ((nsinfo->running_jobs[i]->job->is_subjob) &&
-		    (1 == associate_array_parent(nsinfo->running_jobs[i], nsinfo))) {
+		    (associate_array_parent(nsinfo->running_jobs[i], nsinfo) == 1)) {
 			free_server_info(nsinfo);
 			return NULL;
 		}

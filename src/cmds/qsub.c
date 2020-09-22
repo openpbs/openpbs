@@ -2445,7 +2445,7 @@ process_opts(int argc, char **argv, int passet)
 				if_cmd_line(J_opt) {
 					char *p;
 					J_opt = passet;
-					p = strpbrk(optarg,"%");
+					p = strpbrk(optarg, "%");
 					if (p != NULL)
 						*p = '\0';
 					set_attr_error_exit(&attrib, ATTR_J, optarg);

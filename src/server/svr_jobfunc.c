@@ -5671,3 +5671,28 @@ recreate_exec_vnode_exit:
 
 	return (rc);
 }
+
+/**
+ * @brief
+ *  action_max_run_subjobs This is action function for max_run_subjobs attribute.
+ *			   It verifies that the attribute is being set only on array jobs.
+ *
+ * @param[in]	pattr	-	attribute structure
+ * @param[in]	pobject	-	job object
+ * @param[in]	actmode	-	action mode
+ */
+int
+action_max_run_subjobs(attribute *pattr, void *pobject, int actmode)
+{
+	job * pjob = (job*)pobject;
+	int jtype;
+
+	if (pjob == NULL)
+		return PBSE_INTERNAL;
+
+	jtype = is_job_array(pjob->ji_qs.ji_jobid);
+	if (jtype != IS_ARRAY_ArrayJob)
+		return PBSE_NOTARRAY;
+
+	return PBSE_NONE;
+}

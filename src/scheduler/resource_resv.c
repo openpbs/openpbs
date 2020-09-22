@@ -1627,8 +1627,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 				resresv->job->resreq_rel = NULL;
 			}
 		} else {
-			if (resresv->job->is_subjob && resresv->job->parent_job &&
-			    resresv->job->parent_job->job->max_run_subjobs != UNSPECIFIED)
+			if (resresv->job->is_subjob && resresv->job->parent_job)
 				resresv->job->parent_job->job->running_subjobs++;
 		}
 
@@ -1732,12 +1731,8 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 				ns[i]->ninfo->num_susp_jobs++;
 		} else {
 			if (resresv->job->is_subjob && resresv->job->parent_job &&
-			    resresv->job->parent_job->job->max_run_subjobs != UNSPECIFIED) {
+			    resresv->job->parent_job->job->max_run_subjobs != UNSPECIFIED)
 				resresv->job->parent_job->job->running_subjobs--;
-				if (resresv->job->parent_job->job->running_subjobs <
-				    resresv->job->parent_job->job->max_run_subjobs)
-					resresv->job->parent_job->can_not_run = 0;
-			}
 		}
 
 		resresv->job->is_provisioning = 0;

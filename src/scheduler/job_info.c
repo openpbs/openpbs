@@ -473,7 +473,11 @@ static struct fc_translation_table fctt[] = {
 	},
 	{	/* JOB_UNDER_THRESHOLD */
 		"Job is under job_sort_formula threshold value",
-		"Job is under job_sort_formula threshold value"
+		"Job is under job_sort_formula threshold value",
+	},
+	{	/* MAX_RUN_SUBJOBS */
+		"Number of concurrent running subjobs limit reached",
+		"Number of concurrent running subjobs limit reached",
 #ifdef NAS
 	},
 	/* localmod 034 */
@@ -490,10 +494,6 @@ static struct fc_translation_table fctt[] = {
 		"Too few free resources",
 		"Too few free resources",
 #endif
-	},
-	{	/* MAX_RUN_SUBJOBS */
-		"Array restricted by max_run_subjobs limit",
-		"Array restricted by max_run_subjobs limit",
 	},
 };
 
@@ -3057,13 +3057,6 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 	if (hjob->aoename != NULL)
 		return 0;
 
-	/* If a job couldn't run because of max_run_subjobs limit, do not try preemption */
-	if (hjob->job->is_array && err->error_code == MAX_RUN_SUBJOBS) {
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
-			  "Job cannot run due to max_run_subjobs limit, preemption not attempted");
-		return 0;
-	}
-
 	/* using calloc - saves the trouble to put NULL at end of list */
 	if ((preempted_list = calloc((sinfo->sc.running + 1), sizeof(int))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -3354,6 +3347,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			case CANT_SPAN_PSET:
 			case RESERVATION_INTERFERENCE:
 			case PROV_DISABLE_ON_SERVER:
+			case MAX_RUN_SUBJOBS:
 				cant_preempt = 1;
 				break;
 		}
@@ -5374,11 +5368,6 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			if (find_resource_req(job->resreq, inp->err->rdef))
 				return 1;
 			break;
-		case MAX_RUN_SUBJOBS:
-			/* only subjobs of the same array parent are preemptible */
-			if (job->job->is_subjob && (job->job->parent_job == inp->job))
-				return 1;
-			break;
 		default:
 			return 0;
 	}
@@ -5593,8 +5582,7 @@ int associate_array_parent(resource_resv *pjob, server_info *sinfo) {
 		return 1;
 
 	pjob->job->parent_job = parent;
-	if (parent->job->max_run_subjobs != UNSPECIFIED)
-		parent->job->running_subjobs++;
+	parent->job->running_subjobs++;
 
 	return 0;
 }
