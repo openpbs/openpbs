@@ -475,8 +475,7 @@ class TestMultipleSchedulers(TestFunctional):
 
         n = {'resources_available.ncpus': 20}
         vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(2)]
-        self.server.manager(MGR_CMD_SET, NODE, n, id=vn[0])
-        self.server.manager(MGR_CMD_SET, NODE, n, id=vn[1])
+        self.server.manager(MGR_CMD_SET, NODE, n, id=vn)
 
         jids1 = []
         job_attrs = {'Resource_List.select': '1:ncpus=1', 'queue': 'wq1'}
@@ -1308,7 +1307,7 @@ class TestMultipleSchedulers(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         j2id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
-        nodes = [vn[3], vn[4]]
+        nodes = vn[3:5]
         self.check_vnodes(j, nodes, j2id)
         a = {'Resource_List.select': '3:ncpus=2'}
         j = Job(TEST_USER, attrs=a)

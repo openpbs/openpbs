@@ -50,19 +50,12 @@ class TestNodesQueues(TestFunctional):
         a = {'resources_available.ncpus': 4}
         self.mom.create_vnodes(
             a, 8, attrfunc=self.cust_attr)
-        self.vn = [self.mom.shortname + '[' + str(i) + ']' for i in range(4)]
+        self.vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(4)]
         a = {'queue_type': 'execution', 'started': 't', 'enabled': 't'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
 
         self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id=self.vn[0])
-        self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id=self.vn[1])
-        self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id=self.vn[2])
-        self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id=self.vn[3])
-
+                            'queue': 'workq2'}, id=self.vn)
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'foo'})
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_enable': 't'})
 

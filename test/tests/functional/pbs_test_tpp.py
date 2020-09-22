@@ -373,7 +373,7 @@ class TestTPP(TestFunctional):
         self.comm.stop('-KILL')
         if self.mom.is_cpuset_mom():
             ret = self.server.status(NODE)
-            vnode_list = [ret[i]['id'] for i in range(1, 3)]
+            vnode_list = [ret[1]['id'], ret[2]['id']]
         else:
             vnode_list = [vn + "[0]", vn + "[1]"]
         a = {'state': (MATCH_RE, "down")}
