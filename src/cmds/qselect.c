@@ -146,8 +146,7 @@ check_op(char *optarg, enum batch_op *op, char *optargout)
 	cp_pos = 0;
 
 	if (optarg[0] == '.') {
-		strncpy(opstring, &optarg[1], OP_LEN);
-		opstring[OP_LEN] = '\0';
+		pbs_strncpy(opstring, &optarg[1], OP_LEN + 1);
 		cp_pos = OPSTRING_LEN;
 		for (i=0; i<OP_ENUM_LEN; i++) {
 			if (strncmp(opstring, opstring_vals[i], OP_LEN) == 0) {
@@ -156,8 +155,7 @@ check_op(char *optarg, enum batch_op *op, char *optargout)
 			}
 		}
 	}
-	strncpy(optargout, &optarg[cp_pos], MAX_OPTARG_LEN+1);
-	optargout[MAX_OPTARG_LEN] = '\0';
+	pbs_strncpy(optargout, &optarg[cp_pos], MAX_OPTARG_LEN + 1);
 	return;
 }
 
@@ -245,13 +243,11 @@ check_res_op(char *optarg, char *resource_name, enum batch_op *op, char *resourc
 		return (1);
 	}
 	else {
-		strncpy(resource_name, optarg, p-optarg);
-		resource_name[p-optarg] = '\0';
+		pbs_strncpy(resource_name, optarg, p - optarg + 1);
 		*res_pos = p + OPSTRING_LEN;
 	}
 	if (p[0] == '.') {
-		strncpy(opstring, &p[1] , OP_LEN);
-		opstring[OP_LEN] = '\0';
+		pbs_strncpy(opstring, &p[1] , OP_LEN + 1);
 		hit = 0;
 		for (i=0; i<OP_ENUM_LEN; i++) {
 			if (strncmp(opstring, opstring_vals[i], OP_LEN) == 0) {
@@ -270,8 +266,7 @@ check_res_op(char *optarg, char *resource_name, enum batch_op *op, char *resourc
 	if (p == NULL) {
 		p = strchr(*res_pos, '\0');
 	}
-	strncpy(resource_value, *res_pos, p-(*res_pos));
-	resource_value[p-(*res_pos)] = '\0';
+	pbs_strncpy(resource_value, *res_pos, p - (*res_pos) + 1);
 	if (strlen(resource_value) == 0) {
 		fprintf(stderr, "qselect: illegal -l value\n");
 		fprintf(stderr, "resource_list: %s\n", optarg);
@@ -467,8 +462,7 @@ main(int argc, char **argv, char **envp) /* qselect */
 				set_attrop(&select_list, ATTR_p, NULL, optargout, op);
 				break;
 			case 'q':
-				strncpy(destination, optarg, sizeof(destination));
-				destination[sizeof(destination) - 1] = '\0';
+				pbs_strncpy(destination, optarg, sizeof(destination));
 				check_op(optarg, pop, optargout);
 				set_attrop(&select_list, ATTR_q, NULL, optargout, op);
 				break;
@@ -551,8 +545,7 @@ main(int argc, char **argv, char **envp) /* qselect */
 			exit(2);
 		} else {
 			if (notNULL(server_name_out)) {
-				strncpy(server_out, server_name_out, sizeof(server_out));
-				server_out[sizeof(server_out) - 1] = '\0';
+				pbs_strncpy(server_out, server_name_out, sizeof(server_out));
 			}
 		}
 	}

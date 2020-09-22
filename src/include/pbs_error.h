@@ -175,7 +175,7 @@ extern "C" {
 #define PBSE_PLACENOSELECT	     15111 /* cannot have place w/o select */
 #define PBSE_INDIRECTHOP	     15112 /* too many indirect resc levels */
 #define PBSE_INDIRECTBT		     15113 /* target resc undefined */
-#define PBSE_NGBLUEGENE		     15114 /* No node_group_enable and bgl */
+/* Error number 15114 not used */
 #define PBSE_NODESTALE		     15115 /* Cannot change state of stale nd */
 #define PBSE_DUPRESC		     15116 /* cannot dup resc within a chunk */
 #define PBSE_CONNFULL		     15117 /* server connection table full */

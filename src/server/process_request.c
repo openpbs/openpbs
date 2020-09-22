@@ -107,6 +107,7 @@
 #include "dis.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include <libutil.h>
 #include "pbs_sched.h"
 #include "auth.h"
 
@@ -155,36 +156,25 @@ static void close_quejob(int sfds);
 int
 get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
-	int	ret;
-
-	switch (jobp->ji_extended.ji_ext.ji_credtype) {
-
-		default:
+	int ret;
 
 #ifndef PBS_MOM
+	/*
+	 * ensure job's euser exists as this can be called
+	 * from pbs_send_job who is moving a job from a routing
+	 * queue which doesn't have euser set
+	 */
+	if (is_jattr_set(jobp, JOB_ATR_euser) && get_jattr_str(jobp, JOB_ATR_euser)) {
+		ret = user_read_password(get_jattr_str(jobp, JOB_ATR_euser), data, dsize);
 
-			/*   ensure job's euser exists as this can be called */
-			/*   from pbs_send_job who is moving a job from a routing */
-			/*   queue which doesn't have euser set */
-			if ( (jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
-		         && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
-				ret = user_read_password(
-					jobp->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-					data, dsize);
-
-				/* we have credential but type is NONE, force DES */
-				if( ret == 0 && \
-		  	    (jobp->ji_extended.ji_ext.ji_credtype == \
-							PBS_CREDTYPE_NONE) )
-				jobp->ji_extended.ji_ext.ji_credtype = \
-							PBS_CREDTYPE_AES;
-			} else
-				ret = read_cred(jobp, data, dsize);
+		/* we have credential but type is NONE, force DES */
+		if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
+			jobp->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_AES;
+	} else
+		ret = read_cred(jobp, data, dsize);
 #else
-			ret = read_cred(jobp, data, dsize);
+	ret = read_cred(jobp, data, dsize);
 #endif
-			break;
-	}
 	return ret;
 }
 
@@ -1104,7 +1094,7 @@ close_quejob(int sfds)
 	pjob = (job *)GET_NEXT(svr_newjobs);
 	while (pjob  != NULL) {
 		if (pjob->ji_qs.ji_un.ji_newt.ji_fromsock == sfds) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSICM) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_TRANSICM)) {
 
 #ifndef PBS_MOM
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
@@ -1116,8 +1106,8 @@ close_quejob(int sfds)
 					 * server again to commit.
 					 */
 					delete_link(&pjob->ji_alljobs);
-					pjob->ji_qs.ji_state = JOB_STATE_QUEUED;
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_QUEUED;
+					set_job_state(pjob, JOB_STATE_LTR_QUEUED);
+					set_job_substate(pjob, JOB_SUBSTATE_QUEUED);
 					if (svr_enquejob(pjob))
 						(void)job_abt(pjob, msg_err_noqueue);
 
@@ -1510,55 +1500,7 @@ freebr_cpyfile_cred(struct rq_cpyfile_cred *pcfc)
 		free(pcfc->rq_pcred);
 }
 
-/**
- * @brief
- * 		parse_servername - parse a server/vnode name in the form:
- *		[(]name[:service_port][:resc=value[:...]][+name...]
- *		from exec_vnode or from exec_hostname
- *		name[:service_port]/NUMBER[*NUMBER][+...]
- *		or basic servername:port string
- *
- *		Returns ptr to the node name as the function value and the service_port
- *		number (int) into service if :port is found, otherwise port is unchanged
- *		host name is also terminated by a ':', '+' or '/' in string
- *
- * @param[in]	name	- server/node/exec_vnode string
- * @param[out]	service	-  RETURN: service_port if :port
- *
- * @return	 ptr to the node name
- *
- * @par MT-safe: No
- */
 
-char *
-parse_servername(char *name, unsigned int *service)
-{
-	static char  buf[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
-	int   i = 0;
-	char *pc;
-
-	if ((name == NULL) || (*name == '\0'))
-		return NULL;
-	if (*name ==  '(')   /* skip leading open paren found in exec_vnode */
-		name++;
-
-	/* look for a ':', '+' or '/' in the string */
-
-	pc = name;
-	while (*pc && (i < PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2)) {
-		if ((*pc == '+') || (*pc == '/')) {
-			break;
-		} else if (*pc == ':') {
-			if (isdigit((int)*(pc+1)) && (service != NULL))
-				*service = (unsigned int)atoi(pc + 1);
-			break;
-		} else {
-			buf[i++] = *pc++;
-		}
-	}
-	buf[i] = '\0';
-	return (buf);
-}
 
 /**
  * @brief

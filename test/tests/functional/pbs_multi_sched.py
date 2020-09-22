@@ -796,11 +796,11 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
-        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
-                            id='sc1')
         # need to delete the running job because PBS has only 1 ncpu and
         # our work is also done with the job.
         # this step will decrease the execution time as well
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
         self.server.delete(sc1_jid1, wait=True)
         # pbsuser3 job will run after pbsuser1
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid3)
@@ -825,8 +825,16 @@ class TestMultipleSchedulers(TestFunctional):
         sc1_fs_user4 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER4))
         self.assertEqual(sc1_fs_user4.usage, 1)
         # Restart the scheduler
+        t = time.time()
         self.scheds['sc1'].restart()
         # Check the multisched 'sc1' usage file whether it's updating or not
+        self.assertTrue(self.scheds['sc1'].isUp())
+        # The scheduler will set scheduler attributes on the first scheduling
+        # cycle, so we need to trigger a cycle, have the scheduler configure,
+        # then turn it off again
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        self.scheds['sc1'].log_match("Scheduler is reconfiguring", starttime=t)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
                             id='sc1')
         sc1_J1 = Job(TEST_USER1, attrs=sc1_attr)
@@ -2144,7 +2152,7 @@ e.accept()
         """
         self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200)
+        self.degraded_resv_reconfirm(start=now + 600, end=now + 800)
 
     def test_advance_running_resv_reconfirm(self):
         """
@@ -2162,7 +2170,7 @@ e.accept()
         """
         self.common_setup()
         now = int(time.time())
-        self.degraded_resv_reconfirm(start=now + 20, end=now + 200,
+        self.degraded_resv_reconfirm(start=now + 600, end=now + 800,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
     def test_standing_running_resv_reconfirm(self):

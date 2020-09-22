@@ -88,6 +88,7 @@
 #include "pbs_idx.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include <libutil.h>
 #include "tracking.h"
 #include "acct.h"
 #include "sched_cmds.h"
@@ -264,8 +265,6 @@ void *svr_attr_idx;
 void *sched_attr_idx;
 
 sigset_t	allsigs;
-
-int	have_blue_gene_nodes = 0;	/* BLUE GENE only */
 
 /* private data */
 static char    *suffix_slash = "/";
@@ -503,7 +502,6 @@ void
 pbs_close_stdfiles(void)
 {
 	static int already_done = 0;
-#define NULL_DEVICE "/dev/null"
 
 	if (!already_done) {
 		FILE *dummyfile;
@@ -533,7 +531,6 @@ pbs_close_stdfiles(void)
  *		shut down may have there exec_vnode left to assist in HOT start.
  *		If left set, the job is trapped into requiring those nodes.
  *		Clear on any job not running and without a restart file.
- *		Also clear "pset" for BlueGene
  */
 static void
 clear_exec_vnode()
@@ -542,22 +539,15 @@ clear_exec_vnode()
 
 	for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) &&
-			(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
-			(pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-			(pjob->ji_qs.ji_state != JOB_STATE_EXITING)) {
-			if (((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags &
-				ATR_VFLAG_SET) != 0) &&
-				((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) == 0)) {
-
-				job_attr_def[(int)JOB_ATR_exec_vnode].at_free(
-					&pjob->ji_wattr[(int)JOB_ATR_exec_vnode]);
-				job_attr_def[(int)JOB_ATR_exec_host].at_free(
-					&pjob->ji_wattr[(int)JOB_ATR_exec_host]);
-				job_attr_def[(int)JOB_ATR_exec_host2].at_free(
-					&pjob->ji_wattr[(int)JOB_ATR_exec_host2]);
-				job_attr_def[(int)JOB_ATR_pset].at_free(
-					&pjob->ji_wattr[(int)JOB_ATR_pset]);
+		if ((!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) &&
+			(!check_job_state(pjob, JOB_STATE_LTR_FINISHED)) &&
+			(!check_job_state(pjob, JOB_STATE_LTR_MOVED)) &&
+			(!check_job_state(pjob, JOB_STATE_LTR_EXITING))) {
+			if (is_jattr_set(pjob, JOB_ATR_exec_vnode) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) == 0) {
+				free_jattr(pjob, JOB_ATR_exec_vnode);
+				free_jattr(pjob, JOB_ATR_exec_host);
+				free_jattr(pjob, JOB_ATR_exec_host2);
+				free_jattr(pjob, JOB_ATR_pset);
 			}
 
 		}
@@ -1802,13 +1792,12 @@ start_hot_jobs()
 
 	pjob = (job *)GET_NEXT(svr_alljobs);
 	while (pjob) {
-		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED) &&
+		if ((check_job_substate(pjob, JOB_SUBSTATE_QUEUED)) &&
 			(pjob->ji_qs.ji_svrflags & JOB_SVFLG_HOTSTART)) {
-			if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags &
-				ATR_VFLAG_SET) != 0) {
+			if (is_jattr_set(pjob, JOB_ATR_exec_vnode)) {
 				ct++;
 				/* find Mother Superior node and see if she is up */
-				nodename = parse_servername(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str, NULL);
+				nodename = parse_servername(get_jattr_str(pjob, JOB_ATR_exec_vnode), NULL);
 				if (is_vnode_up(nodename)) {
 					/* she is up so can send her the job */
 					/* else we will try later            */

@@ -61,9 +61,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-#ifndef SIGKILL
 #include <signal.h>
-#endif
 #include "server_limits.h"
 #include "list_link.h"
 #include "log.h"
@@ -153,7 +151,7 @@ long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for nod
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
 
 extern int do_sync_mom_hookfiles;
-extern int sync_mom_hookfiles_proc_running;
+extern int sync_mom_hookfiles_replies_pending;
 
 char primary_host[PBS_MAXHOSTNAME+1]; /* host_name of primary */
 
@@ -274,18 +272,18 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 		}
 
 		rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
-		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) ||
-			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)) {
+		if ((check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)) ||
+			(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))) {
 			/* If resources_released attribute is not set for this suspended job then use release all
 			 * resources assigned to the job */
-			if ((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) == 0)
+			if ((is_jattr_set(pjob,  JOB_ATR_resc_released)) == 0)
 				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
 			else {
 				/* Use resource_released_list for updating queue/server resources,
 				 * If resource_released_list is not present then create it by
 				 * using resources_released attribute.
 				 */
-				if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET)
+				if (is_jattr_set(pjob,  JOB_ATR_resc_released_list))
 					rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
 				else {
 					if (update_resources_rel(pjob, &pjob->ji_wattr[(int) JOB_ATR_resc_released], INCR) != 0)
@@ -297,7 +295,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 		} else {
 			/* If job is not suspended then just release all resources assigned to the job */
 			rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
-			if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET)
+			if (is_jattr_set(pjob,  JOB_ATR_resc_released_list))
 				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
 		}
 		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
@@ -367,7 +365,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 
 		/* if resource usage is to be tracked */
 		if ((rscdef->rs_flags & ATR_DFLAG_RASSN) &&
-			(rescp->rs_value.at_flags & ATR_VFLAG_SET)) {
+			(is_attr_set(&rescp->rs_value))) {
 
 			/* update system attribute of resources assigned */
 
@@ -402,13 +400,13 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 	if (objtype == 1)
 		update_node_rassn(&presv->ri_wattr[(int)RESV_ATR_resv_nodes], op);
 	else if ((objtype == 0) && (pjob->ji_myResv == NULL)) {
-		if (pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)
+		if (is_jattr_set(pjob,  JOB_ATR_resc_released))
 			/* This is just the normal case when job was not suspended but trying to run| end */
 			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_resc_released], op);
 		else
 			/* updating all resources from exec vnode attribute */
 			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_exec_vnode], op);
-		if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
 			update_job_node_rassn(pjob, &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated], op);
 		}
 	}
@@ -486,7 +484,7 @@ int
 keepfiles_action(attribute *pattr, void *pobject, int mode) {
     if ((mode != ATR_ACTION_ALTER) && (mode != ATR_ACTION_NEW))
         return PBSE_NONE;
-    if (pobject && ((job *)pobject)->ji_qs.ji_state == JOB_STATE_RUNNING)
+    if (pobject && check_job_state((job *) pobject, JOB_STATE_LTR_RUNNING))
         return PBSE_MODATRRUN;
     return verify_keepfiles_common(pattr->at_val.at_str);
 }
@@ -508,7 +506,7 @@ int
 removefiles_action(attribute *pattr, void *pobject, int mode) {
     if ((mode != ATR_ACTION_ALTER) && (mode != ATR_ACTION_NEW))
         return PBSE_NONE;
-    if (pobject && ((job *)pobject)->ji_qs.ji_state == JOB_STATE_RUNNING)
+    if (pobject && check_job_state((job *) pobject, JOB_STATE_LTR_RUNNING))
         return PBSE_MODATRRUN;
     return verify_removefiles_common(pattr->at_val.at_str);
 }
@@ -727,7 +725,7 @@ is_valid_resource(attribute *pattr, void *pobject, int actmode)
 	if (actmode == ATR_ACTION_FREE)
 		return (PBSE_NONE);
 
-	if ((pattr->at_flags & ATR_VFLAG_SET) == 0)
+	if (is_attr_set(pattr) == 0)
 		return (PBSE_NONE);
 
 	for (i=0; i<pattr->at_val.at_arst->as_usedptr; ++i) {
@@ -823,7 +821,7 @@ deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 	}
 	*nkv = 0;
 
-	if (((pattr->at_flags & ATR_VFLAG_SET) == 0) ||
+	if (((is_attr_set(pattr)) == 0) ||
 		(mode == ATR_ACTION_FREE))
 		return 0;
 
@@ -1227,8 +1225,8 @@ unset_job_history_enable(void)
 	svr_history_enable = 0;
 
 	/*
-	 * Find all the history jobs (jobs with state JOB_STATE_MOVED
-	 * and JOB_STATE_FINISHED) in the server and purge them right
+	 * Find all the history jobs (jobs with state JOB_STATE_LTR_MOVED
+	 * and JOB_STATE_LTR_FINISHED) in the server and purge them right
 	 * now as job_history_enable has been UNSET OR SET to FALSE.
 	 */
 	pjob = (job *)GET_NEXT(svr_alljobs);
@@ -1236,9 +1234,9 @@ unset_job_history_enable(void)
 		/* save the next */
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
-		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED)) {
+		if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+			(check_job_state(pjob, JOB_STATE_LTR_FINISHED)) ||
+			(check_job_state(pjob, JOB_STATE_LTR_EXPIRED))) {
 			job_purge(pjob);
 			pjob = NULL;
 		}
@@ -1746,7 +1744,7 @@ entlim_resum(struct work_task *pwt)
 
 	ctx = pattr->at_val.at_enty.ae_tree;
 	while ((plf = entlim_get_next(ctx, (void **)&key)) != NULL) {
-		if ((plf->slf_sum.at_flags & ATR_VFLAG_SET) != 0) {
+		if (is_attr_set(&plf->slf_sum)) {
 			plf->slf_rescd->rs_free(&plf->slf_sum);
 			DBPRT(("clearing %s\n", key))
 		}
@@ -1755,7 +1753,7 @@ entlim_resum(struct work_task *pwt)
 	ctx = pattr2->at_val.at_enty.ae_tree;
 	key = NULL;
 	while ((plf = entlim_get_next(ctx, (void **)&key)) != NULL) {
-		if ((plf->slf_sum.at_flags & ATR_VFLAG_SET) != 0) {
+		if (is_attr_set(&plf->slf_sum)) {
 			plf->slf_rescd->rs_free(&plf->slf_sum);
 			DBPRT(("clearing %s\n", key))
 		}
@@ -1964,7 +1962,7 @@ check_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, int s
 	free(kstr);
 
 	ET_LIM_DBG("count is %d", __func__, count)
-	if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
+	if (plf && (is_attr_set(&plf->slf_limit))) {
 		if (count > plf->slf_limit.at_val.at_long) {
 			ET_LIM_DBG("exiting, ret Exceeds_Limit [specific limit]", __func__)
 			return Exceeds_Limit;
@@ -1980,7 +1978,7 @@ check_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, int s
 			return No_Limit;
 		}
 		plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
-		if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
+		if (plf && (is_attr_set(&plf->slf_limit))) {
 			ET_LIM_DBG("ct generic limit for %s is %ld", __func__, kstr, plf->slf_limit.at_val.at_long)
 			free(kstr);
 			if (count > plf->slf_limit.at_val.at_long) {
@@ -2052,12 +2050,12 @@ check_single_entity_res(enum lim_keytypes kt, char *ename,
 		if (will_log_event(PBSEVENT_DEBUG4)) {
 			svrattrl *sum = NULL,*limit = NULL;
 			char *sum_val,*limit_val;
-			if (plf->slf_sum.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&plf->slf_sum)) {
 				plf->slf_rescd->rs_encode(&plf->slf_sum, NULL, "sumval", NULL, ATR_ENCODE_CLIENT, &sum);
 				sum_val = sum->al_value;
 			} else
 				sum_val = "(not_set)";
-			if (plf->slf_limit.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&plf->slf_limit)) {
 				plf->slf_rescd->rs_encode(&plf->slf_limit, NULL, "limval", NULL, ATR_ENCODE_CLIENT, &limit);
 				limit_val = limit->al_value;
 			} else
@@ -2069,7 +2067,7 @@ check_single_entity_res(enum lim_keytypes kt, char *ename,
 		}
 	}
 	free(kstr);
-	if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
+	if (plf && (is_attr_set(&plf->slf_limit))) {
 		/* check the specific user's limit */
 		rc = plf->slf_rescd->rs_comp(&tmpval, &plf->slf_limit);
 		if (rc > 0) {
@@ -2086,13 +2084,13 @@ check_single_entity_res(enum lim_keytypes kt, char *ename,
 			return No_Limit;
 		}
 		plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
-		if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
-			if (!(tmpval.at_flags & ATR_VFLAG_SET)) {  /* for no recorded usage for entity */
+		if (plf && (is_attr_set(&plf->slf_limit))) {
+			if (!(is_attr_set(&tmpval))) {  /* for no recorded usage for entity */
 				plf->slf_rescd->rs_set(&tmpval, &newr->rs_value, SET);
 				for (i = 0; i < (subjobs-1); i++) {
 					plf->slf_rescd->rs_set(&tmpval, &newr->rs_value, INCR);
 				}
-				if (will_log_event(PBSEVENT_DEBUG4) && (tmpval.at_flags & ATR_VFLAG_SET)) {
+				if (will_log_event(PBSEVENT_DEBUG4) && (is_attr_set(&tmpval))) {
 					svrattrl *count;
 					plf->slf_rescd->rs_encode(&tmpval, NULL, "tmpval", NULL, ATR_ENCODE_CLIENT, &count);
 					ET_LIM_DBG("res generic limit for %s is %s", __func__, kstr, count->al_value)
@@ -2159,9 +2157,9 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 	extern char *msg_et_sus_q;
 
 	ET_LIM_DBG("entered for %s", __func__, pque ? pque->qu_qs.qu_name : "server")
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 	if (pjob->ji_clterrmsg) {
 		free(pjob->ji_clterrmsg);
 		pjob->ji_clterrmsg = NULL;
@@ -2171,7 +2169,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 	else
 		pqueued_jobs_threshold = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold];
 
-	if ((pqueued_jobs_threshold->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pqueued_jobs_threshold)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;	/* no limits set */
 	}
@@ -2343,9 +2341,9 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 	extern char *msg_et_sus;
 
 	ET_LIM_DBG("entered for %s", __func__, pque ? pque->qu_qs.qu_name : "server")
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 	if (pjob->ji_clterrmsg) {
 		free(pjob->ji_clterrmsg);
 		pjob->ji_clterrmsg = NULL;
@@ -2355,7 +2353,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 	else
 		pmax_queued = &server.sv_attr[(int)SVR_ATR_max_queued];
 
-	if ((pmax_queued->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pmax_queued)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;	/* no limits set */
 	}
@@ -2544,9 +2542,9 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 	extern char *msg_et_rsus_q;
 
 	ET_LIM_DBG("entered for %s, alt_res %p", __func__, pque ? pque->qu_qs.qu_name : "server", altered_resc)
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 	if (pjob->ji_clterrmsg) {
 		free(pjob->ji_clterrmsg);
 		pjob->ji_clterrmsg = NULL;
@@ -2556,7 +2554,7 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 	else
 		pmaxqresc = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
 	}
@@ -2580,7 +2578,7 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 		char *rescn = presc_new->rs_defin->rs_name;
 		/* is there an entity limit set for this resource */
-		if  (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
+		if  (!(is_attr_set(&presc_new->rs_value))
 			|| (presc_new->rs_defin->rs_entlimflg != PBS_ENTLIM_LIMITSET))
 			continue;	/* no limit set */
 
@@ -2797,9 +2795,9 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 	extern char *msg_et_rsus;
 
 	ET_LIM_DBG("entered for %s, alt_res %p", __func__, pque ? pque->qu_qs.qu_name : "server", altered_resc)
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 	if (pjob->ji_clterrmsg) {
 		free(pjob->ji_clterrmsg);
 		pjob->ji_clterrmsg = NULL;
@@ -2809,7 +2807,7 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 	else
 		pmaxqresc = &server.sv_attr[(int)SVR_ATR_max_queued_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
 	}
@@ -2833,7 +2831,7 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 		char *rescn = presc_new->rs_defin->rs_name;
 		/* is there an entity limit set for this resource */
-		if  (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
+		if  (!(is_attr_set(&presc_new->rs_value))
 			|| (presc_new->rs_defin->rs_entlimflg != PBS_ENTLIM_LIMITSET))
 			continue;	/* no limit set */
 
@@ -3041,7 +3039,7 @@ set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, job *pj
 			}
 		}
 		plf->slf_sum.at_val.at_long += subjobs;
-		plf->slf_sum.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&plf->slf_sum);
 		ET_LIM_DBG("usage INCR to %ld, by %d", __func__, plf->slf_sum.at_val.at_long, subjobs)
 	} else {
 		if (plf == NULL) {
@@ -3051,7 +3049,7 @@ set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, job *pj
 			return (PBSE_INTERNAL);
 		}
 		plf->slf_sum.at_val.at_long -= subjobs;
-		plf->slf_sum.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&plf->slf_sum);
 		ET_LIM_DBG("usage DECR to %ld, by %d", __func__, plf->slf_sum.at_val.at_long, subjobs)
 
 		if (plf->slf_sum.at_val.at_long < 0L) {
@@ -3121,17 +3119,17 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 			svrattrl *new, *old, *diff;
 			char *new_val, *old_val, *diff_val;
 			new = old = diff = NULL;
-			if (newval->rs_value.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&newval->rs_value)) {
 				plf->slf_rescd->rs_encode(&newval->rs_value, NULL, "newval", NULL, ATR_ENCODE_CLIENT, &new);
 				new_val = new->al_value;
 			} else
 				new_val = "(not_set)";
-			if (oldval->rs_value.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&oldval->rs_value)) {
 				plf->slf_rescd->rs_encode(&oldval->rs_value, NULL, "oldval", NULL, ATR_ENCODE_CLIENT, &old);
 				old_val = old->al_value;
 			} else
 				old_val = "(not_set)";
-			if (tmpval.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&tmpval)) {
 				plf->slf_rescd->rs_encode(&tmpval, NULL, "diffval", NULL, ATR_ENCODE_CLIENT, &diff);
 				diff_val = diff->al_value;
 			} else
@@ -3169,7 +3167,7 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 			(void)plf->slf_rescd->rs_set(&plf->slf_sum,
 				&tmpval, INCR);
 		}
-		if (will_log_event(PBSEVENT_DEBUG4) && (plf->slf_sum.at_flags & ATR_VFLAG_SET)) {
+		if (will_log_event(PBSEVENT_DEBUG4) && (is_attr_set(&plf->slf_sum))) {
 			svrattrl *sum;
 			plf->slf_rescd->rs_encode(&plf->slf_sum, NULL, "sumval", NULL, ATR_ENCODE_CLIENT, &sum);
 			ET_LIM_DBG("usage INCR to %s", __func__, sum->al_value)
@@ -3193,7 +3191,7 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 			(void)plf->slf_rescd->rs_set(&plf->slf_sum, &tmpval, DECR);
 		}
 
-		if (will_log_event(PBSEVENT_DEBUG4) && (plf->slf_sum.at_flags & ATR_VFLAG_SET)) {
+		if (will_log_event(PBSEVENT_DEBUG4) && (is_attr_set(&plf->slf_sum))) {
 			svrattrl *sum;
 			plf->slf_rescd->rs_encode(&plf->slf_sum, NULL, "sumval", NULL, ATR_ENCODE_CLIENT, &sum);
 			ET_LIM_DBG("usage DECR to %s", __func__, sum->al_value)
@@ -3245,17 +3243,17 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 	int 	    rc;
 	int 	    subjobs;
 
-	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
+	/* if the job is in states JOB_STATE_LTR_MOVED or JOB_STATE_LTR_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
 	/* also return if the entity limits for this job were 		  */
 	/* decremented before.						  */
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (op == INCR))) {
-		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) ||
+		((check_job_state(pjob, JOB_STATE_LTR_RUNNING)) && (op == INCR))) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, get_job_state(pjob))
 		return 0;
 	}
 
@@ -3270,14 +3268,14 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 	else
 		pqueued_jobs_threshold = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold];
 
-	if ((pqueued_jobs_threshold->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pqueued_jobs_threshold)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;	/* no limits set */
 	}
 
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 
 	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
 		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
@@ -3360,14 +3358,14 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 	int 	    rc;
 	int 	    subjobs;
 
-	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
+	/* if the job is in states JOB_STATE_LTR_MOVED or JOB_STATE_LTR_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, get_job_state(pjob))
 		return 0;
 	}
 
@@ -3382,14 +3380,14 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 	else
 		pmax_queued = &server.sv_attr[(int)SVR_ATR_max_queued];
 
-	if ((pmax_queued->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pmax_queued)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;
 	}
 
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 
 	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
 		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
@@ -3468,9 +3466,9 @@ int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old,
 {
 
 	int res_flag=1;
-	char *euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	char *egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	char *project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	char *euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	char *egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	char *project = get_jattr_str(pjob, JOB_ATR_project);
 
 	if ( pmaxqresc && presc_new && presc_first && euser && egroup && project ) {
 
@@ -3480,7 +3478,7 @@ int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old,
 
 			if (presc_new == presc_first)
 				res_flag=0;
-			if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET) || ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
+			if (!(is_attr_set(&presc_new->rs_value)) || ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
 				continue;
 
 			/* If this is from qalter where presc_old is set, see if    */
@@ -3542,17 +3540,17 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	enum batch_op rev_op;
 
 	ET_LIM_DBG("entered [alt_res %p]", __func__, altered_resc)
-	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
+	/* if the job is in states JOB_STATE_LTR_MOVED or JOB_STATE_LTR_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
 	/* also return if the entity limits for this job were 		  */
 	/* decremented before.						  */
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (op == INCR))) {
-		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) ||
+		((check_job_state(pjob, JOB_STATE_LTR_RUNNING)) && (op == INCR))) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, get_job_state(pjob))
 		return 0;
 	}
 
@@ -3567,7 +3565,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	else
 		pmaxqresc = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
 	}
@@ -3580,9 +3578,9 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pattr_old = NULL;	/* null */
 	}
 
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 
 	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0)
 		rc = PBSE_INTERNAL;
@@ -3613,7 +3611,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 
 		char *rescn;
-		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
+		if (!(is_attr_set(&presc_new->rs_value))
 			|| ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
 			continue;
 
@@ -3782,14 +3780,14 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	enum batch_op rev_op;
 
 	ET_LIM_DBG("entered [alt_res %p]", __func__, altered_resc)
-	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
+	/* if the job is in states JOB_STATE_LTR_MOVED or JOB_STATE_LTR_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, get_job_state(pjob))
 		return 0;
 	}
 
@@ -3804,7 +3802,7 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	else
 		pmaxqresc = &server.sv_attr[(int)SVR_ATR_max_queued_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
 	}
@@ -3817,9 +3815,9 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pattr_old = NULL;	/* null */
 	}
 
-	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
-	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
-	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+	euser  = get_jattr_str(pjob, JOB_ATR_euser);
+	egroup = get_jattr_str(pjob, JOB_ATR_egroup);
+	project = get_jattr_str(pjob, JOB_ATR_project);
 
 	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
 		rc = PBSE_INTERNAL;
@@ -3850,7 +3848,7 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 		char *rescn;
-		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
+		if (!(is_attr_set(&presc_new->rs_value))
 			|| ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
 			continue;
 
@@ -4606,8 +4604,8 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 	char		*pbuf = NULL;
 	char		*execvnod = NULL;
 
-	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET)
-		execvnod = pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str;
+	if (is_jattr_set(pjob,  JOB_ATR_exec_vnode))
+		execvnod = get_jattr_str(pjob,  JOB_ATR_exec_vnode);
 
 	if (execvnod == NULL) {
 		DBPRT(("%s: invalid params\n", __func__))
@@ -4717,9 +4715,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 		strcat(pbuf, ":aoe=");
 		strcat(pbuf, (*aoe_name));
 	}
-	(void) job_attr_def[(int) JOB_ATR_prov_vnode].at_decode(
-		&pjob->ji_wattr[(int) JOB_ATR_prov_vnode],
-		NULL, NULL, pbuf);
+	set_jattr_str_slim(pjob, JOB_ATR_prov_vnode, pbuf, NULL);
 
 	DBPRT(("%s: prov_vnode: %s\n", __func__, pbuf))
 
@@ -4862,9 +4858,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 
 	aoe_req = pvnfo->pvnfo_aoe_req;
 
-	num_of_prov_vnodes = parse_prov_vnode(
-		pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str,
-		&prov_vnode_list);
+	num_of_prov_vnodes = parse_prov_vnode(get_jattr_str(pjob, JOB_ATR_prov_vnode), &prov_vnode_list);
 
 	if (num_of_prov_vnodes == -1) {
 		if (prov_vnode_list)
@@ -4876,7 +4870,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 	/* failed to provision. Since, first vnode will return later, this is */
 	/* a catch to stop processing further since job would have already */
 	/* been held or re queued */
-	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PROVISION) {
+	if (!check_job_substate(pjob, JOB_SUBSTATE_PROVISION)) {
 		DBPRT(("%s: stray provisioning for job %s\n", __func__,
 			pjob->ji_qs.ji_jobid))
 		eflag = -4;
@@ -5021,13 +5015,9 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 	if (hold_or_que == 0) {
 		rel_resc(pjob);
 		clear_exec_on_run_fail(pjob);
-		pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-		pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
-		job_attr_def[(int)JOB_ATR_Comment].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			NULL, NULL,
-			"job held, provisioning failed to start");
-		svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+		set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
+		set_jattr_str_slim(pjob, JOB_ATR_Comment, "job held, provisioning failed to start", NULL);
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
 	} else if (hold_or_que == 1) {
 		/* don't purge job, instead requeue */
 		(void)force_reque(pjob);
@@ -5044,9 +5034,7 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 	 * from them, so future calls to fail_vnode_job from pending
 	 * work tasks would return without performing any action
 	 */
-	cnt = parse_prov_vnode(
-		pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str,
-		&prov_vnode_list);
+	cnt = parse_prov_vnode(get_jattr_str(pjob, JOB_ATR_prov_vnode), &prov_vnode_list);
 	for (i = 0; i < cnt; i++) {
 		if ((np = find_nodebyname(prov_vnode_list[i]))) {
 			if ((ptracking = get_prov_record_by_vnode(np->nd_name))) {
@@ -5060,10 +5048,8 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 		free(prov_vnode_list);
 
 	/* remove the prov_node attribute from the job here */
-	if (pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_flags & ATR_VFLAG_SET) {
-		(void)job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
-	}
+	if (is_jattr_set(pjob, JOB_ATR_prov_vnode))
+		free_jattr(pjob, JOB_ATR_prov_vnode);
 }
 
 /**
@@ -5467,9 +5453,7 @@ prov_vnode_pending_hook_copy(job *pjob)
 
 	DBPRT(("%s: Entered jobid=%s\n", __func__, pjob->ji_qs.ji_jobid))
 
-	num_of_prov_vnodes = parse_prov_vnode(
-		pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str,
-		&prov_vnode_list);
+	num_of_prov_vnodes = parse_prov_vnode(get_jattr_str(pjob, JOB_ATR_prov_vnode), &prov_vnode_list);
 
 	if (num_of_prov_vnodes == -1) {
 		if (prov_vnode_list)
@@ -5488,7 +5472,6 @@ prov_vnode_pending_hook_copy(job *pjob)
 		}
 		/* hook has not been sent */
 		for (j = 0; j < np->nd_nummoms; j++) {
-
 			if ((np->nd_moms[j] != NULL) && (sync_mom_hookfiles_count(np->nd_moms[j]) > 0)) {
 				log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_WARNING, pjob->ji_qs.ji_jobid, "prov vnode %s's parent mom %s:%d has a pending copy hook or delete hook request", np->nd_name,  np->nd_moms[j]->mi_host, np->nd_moms[j]->mi_port);
 				rcode = 1;
@@ -5530,7 +5513,7 @@ prov_startjob(struct work_task *ptask)
 	}
 	/* task being serviced here */
 	pjob->ji_prov_startjob_task = NULL;
-	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_proc_running) &&
+	if ((do_sync_mom_hookfiles || sync_mom_hookfiles_replies_pending) &&
 	    (prov_vnode_pending_hook_copy(pjob))) {
 
 		/**
@@ -5569,11 +5552,8 @@ prov_startjob(struct work_task *ptask)
 		__func__,  pjob->ji_qs.ji_jobid))
 
 	/* now prov_vnode is stale, remove it */
-	if (pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_flags &
-		ATR_VFLAG_SET) {
-		job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
-	}
+	if (is_jattr_set(pjob, JOB_ATR_prov_vnode))
+		free_jattr(pjob, JOB_ATR_prov_vnode);
 
 	DBPRT(("%s: calling [svr_startjob] from prov_startjob\n", __func__))
 	/* Move the job to MOM */
@@ -6517,8 +6497,8 @@ set_srv_pwr_prov_attribute()
 		val = 1;
 
 	snprintf(str_val, sizeof(str_val), "%d", val);
-	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_PowerProvisioning]),
-			&svr_attr_def[(int) SVR_ATR_PowerProvisioning], str_val);
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_PowerProvisioning]),
+			&svr_attr_def[(int) SVR_ATR_PowerProvisioning], str_val, NULL, SET);
 
 	/*
 	 * The enabled attribute is changed so send the attributes.
@@ -6828,7 +6808,7 @@ default_queue_chk(attribute *pattr, void *pobj, int actmode)
 	}
 
 	if (actmode == ATR_ACTION_ALTER) {
-		if (pattr->at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(pattr)) {
 			pq = find_queuebyname(pattr->at_val.at_str);
 			if (pq == NULL) {
 				return (PBSE_UNKQUE);
@@ -6920,43 +6900,6 @@ enum failover_state are_we_primary(void)
 
 	return FAILOVER_CONFIG_ERROR;	    /* cannot be neither */
 }
-
-/**
- * @brief
- * 		sets the given value for an attribute of any object from server
- *
- * @param[in]	pattr	-	pointer to attribute being set
- * @param[in]	pobj	-	pointer to attribute definition
- * @param[in]	value	-	value to be set
- *
- * @return	void
- *
- * @par MT-Safe: No
- * @par Side Effects: None
- *
- */
-void
-set_attr_svr(attribute *pattr, attribute_def *pdef, char *value)
-{
-	attribute tempat;
-	int rc;
-
-	if (pattr == NULL || pdef == NULL) {
-		snprintf(log_buffer, sizeof(log_buffer), "Invalid pointer to attribute or its definition");
-		log_err(-1, __func__, log_buffer);
-		return;
-	}
-	clear_attr(&tempat, pdef);
-	if ((rc = pdef->at_decode(&tempat, pdef->at_name, NULL, value)) != 0) {
-		snprintf(log_buffer,  sizeof(log_buffer), "decode of %s failed", pdef->at_name);
-		log_err(rc, __func__, log_buffer);
-	} else if ((rc = pdef->at_set(pattr, &tempat, SET)) != 0) {
-		snprintf(log_buffer, sizeof(log_buffer), "set of %s failed", pdef->at_name);
-		log_err(rc, __func__, log_buffer);
-	}
-	pdef->at_free(&tempat);
-}
-
 
 /**
  * @brief

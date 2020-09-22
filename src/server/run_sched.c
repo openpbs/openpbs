@@ -221,7 +221,7 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 		}
 		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-			if (part_attr->at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(part_attr)) {
 				if(!strcmp(part_attr->at_val.at_str, pq->qu_attr[QA_ATR_partition].at_val.at_str)) {
 					*target_sched = psched;
 					return 1;
@@ -362,7 +362,7 @@ schedule_high(pbs_sched *psched)
 
 	if (psched->scheduler_sock == -1) {
 		if ((s = contact_sched(psched->svr_do_sched_high, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0) {
-			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_DOWN);
+			set_attr_generic(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
 			return (-1);
 		}
 		set_sched_sock(s, psched);
@@ -374,7 +374,7 @@ schedule_high(pbs_sched *psched)
 		return 0;
 	}
 
-	set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_SCHEDULING);
+	set_attr_generic(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_SCHEDULING, NULL, SET);
 
 	return 1;
 }
@@ -439,7 +439,7 @@ schedule_jobs(pbs_sched *psched)
 		}
 
 		if ((s = contact_sched(cmd, jid, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0) {
-			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_DOWN);
+			set_attr_generic(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
 			return (-1);
 		}
 		else if (pdefr != NULL)
@@ -451,7 +451,7 @@ schedule_jobs(pbs_sched *psched)
 		}
 		psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 
-		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_SCHEDULING);
+		set_attr_generic(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_SCHEDULING, NULL, SET);
 
 		first_time = 0;
 
@@ -502,7 +502,7 @@ scheduler_close(int sock)
 	if (psched == NULL)
 		return;
 
-	set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_IDLE);
+	set_attr_generic(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_IDLE, NULL, SET);
 
 	if ((sock != -1) && (sock == psched->scheduler_sock2)) {
 		psched->scheduler_sock2 = -1;

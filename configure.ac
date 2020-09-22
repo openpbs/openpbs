@@ -127,25 +127,20 @@ AC_CHECK_HEADERS([ \
 	stdio.h \
 	alloca.h \
 	arpa/inet.h \
-	asm/types.h \
 	assert.h \
-	crypt.h \
 	ctype.h \
 	dirent.h \
 	dlfcn.h \
 	execinfo.h \
 	fcntl.h \
-	features.h \
 	float.h \
 	fstab.h \
 	ftw.h \
 	grp.h \
 	libgen.h \
 	limits.h \
-	malloc.h \
 	math.h \
 	memory.h \
-	mntent.h \
 	netdb.h \
 	netinet/in.h \
 	netinet/in_systm.h \
@@ -168,9 +163,7 @@ AC_CHECK_HEADERS([ \
 	stdlib.h \
 	string.h \
 	strings.h \
-	syscall.h \
 	syslog.h \
-	sys/epoll.h \
 	sys/fcntl.h \
 	sys/file.h \
 	sys/ioctl.h \
@@ -178,18 +171,13 @@ AC_CHECK_HEADERS([ \
 	sys/mount.h \
 	sys/param.h \
 	sys/poll.h \
-	sys/prctl.h \
-	sys/procfs.h \
 	sys/quota.h \
 	sys/resource.h \
 	sys/select.h \
 	sys/signal.h \
 	sys/socket.h \
-	sys/statfs.h \
 	sys/stat.h \
 	sys/statvfs.h \
-	sys/sysinfo.h \
-	sys/sysmacros.h \
 	sys/time.h \
 	sys/timeb.h \
 	sys/times.h \
@@ -199,7 +187,6 @@ AC_CHECK_HEADERS([ \
 	sys/unistd.h \
 	sys/user.h \
 	sys/utsname.h \
-	sys/vfs.h \
 	sys/wait.h \
 	termios.h \
 	time.h \
@@ -311,7 +298,6 @@ m4_ifdef([PKG_INSTALLDIR],
 
 # PBS macros (order matters for some of these)
 PBS_AC_PBS_VERSION
-PBS_AC_MACHINE_TYPE
 PBS_AC_DECL_H_ERRNO
 PBS_AC_DECL_SOCKLEN_T
 PBS_AC_DECL_EPOLL
@@ -360,7 +346,6 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/cmds/Makefile
 	src/cmds/mpiexec
-	src/cmds/nqs2pbs
 	src/cmds/pbs_lamboot
 	src/cmds/pbs_mpihp
 	src/cmds/pbs_mpilam

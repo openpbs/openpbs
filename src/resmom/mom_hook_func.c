@@ -79,6 +79,7 @@
 #include "pbs_nodes.h"
 #include "net_connect.h"
 #include "mom_hook_func.h"
+#include "mom_server.h"
 #include "hook.h"
 #include "pbs_reliable.h"
 #include "pbs_version.h"
@@ -126,7 +127,6 @@ extern	pbs_list_head       task_list_immed;
 extern	pbs_list_head       task_list_timed;
 extern	pbs_list_head       task_list_event;
 extern	pbs_list_head	svr_alljobs;
-extern	int		svr_hook_resend_job_attrs;
 
 extern	char		*msg_err_malloc;
 
@@ -151,36 +151,7 @@ extern	int		internal_state_update; /* flag for sending mom information update to
 
 extern int		server_stream;
 
-#ifdef WIN32
-extern int get_sha(job *, char **);
-static
-int hook_env_setup(job *pjob, hook *phook)
-{
-	char *hex_digest = NULL;
-
-	if (get_sha(pjob, &hex_digest) == 0) {
-		if (setenv(ENV_AUTH_KEY, hex_digest, 1) != 0) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name, "Failed to set PBS_AUTH_KEY");
-			goto err;
-		}
-		free(hex_digest);
-		hex_digest = NULL;
-		return 0;
-	} else {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			LOG_ERR, phook->hook_name, "Unable to get hash of encrypted password");
-		goto err;
-	}
-
-err:
-	if (hex_digest) {
-		free(hex_digest);
-		hex_digest = NULL;
-	}
-	return 1;
-}
-#endif
+extern char **environ;
 
 /**
  * @brief
@@ -571,7 +542,7 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		"Administrators",
 	READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 							      == 0 ) {
-		snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the file for user: %s, file: %s", 
+		snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the file for user: %s, file: %s",
 			pjob->ji_user->pw_name, dest_file);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 			__func__, log_buffer);
@@ -744,62 +715,61 @@ mom_process_hooks_params_t
  */
 static int
 run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
-	char *req_user, char *req_host,
-	int parent_wait,  void (*post_func)(struct work_task *),
-	char *file_in,  char *file_out, char *file_data, size_t file_size,
-	mom_process_hooks_params_t *php)
+	 char *req_user, char *req_host,
+	 int parent_wait, void (*post_func)(struct work_task *),
+	 char *file_in, char *file_out, char *file_data, size_t file_size,
+	 mom_process_hooks_params_t *php)
 {
 
-	FILE		*fp = NULL;
-	char		in_data[LOG_BUF_SIZE+1];
-	char		hook_inputfile[MAXPATHLEN+1];
-	char		hook_outputfile[MAXPATHLEN+1];
-	char		hook_datafile[MAXPATHLEN+1];
-	char		script_copy[MAXPATHLEN+1];
-	char		hook_config_copy[MAXPATHLEN+1];
-	char		rescdef_copy[MAXPATHLEN+1];
-	char		log_file[MAXPATHLEN+1];
-	char		*script_file = NULL;
-	char		*rescdef_file = NULL;
-	int		waitst = 0;
-	char		pypath[MAXPATHLEN+1];
-	pid_t		child;
-	struct stat	sbuf;
-	int		runas_jobuser = 0; /* if 1, run as job's euser */
-	struct	work_task *ptask;
-	vnl_t		*vnl = NULL;
-	vnl_t		*vnl_fail = NULL;
-	pbs_list_head	*failed_mom_list = NULL;
-	pbs_list_head	*succeeded_mom_list = NULL;
-	vnl_t		*nv = NULL;
-	int		vnl_created = 0;
-	job		*pjob = NULL;
-	int		matched_nvnode = 0; /* match natural vnode */
-	char		*arg[14];
-	pid_t		myseq;	/* just some unique sequence number */
-	char		logmask[BUFSIZ];
-	char		path_hooks_rescdef[MAXPATHLEN+1];
-	char		cmdline[2*BUFSIZ+1];
-	struct passwd	*pwdp = NULL;
+	FILE *fp = NULL;
+	char in_data[LOG_BUF_SIZE + 1];
+	char hook_inputfile[MAXPATHLEN + 1];
+	char hook_outputfile[MAXPATHLEN + 1];
+	char hook_datafile[MAXPATHLEN + 1];
+	char script_copy[MAXPATHLEN + 1];
+	char hook_config_copy[MAXPATHLEN + 1];
+	char rescdef_copy[MAXPATHLEN + 1];
+	char log_file[MAXPATHLEN + 1];
+	char *script_file = NULL;
+	char *rescdef_file = NULL;
+	int waitst = 0;
+	char pypath[MAXPATHLEN + 1];
+	pid_t child;
+	struct stat sbuf;
+	int runas_jobuser = 0; /* if 1, run as job's euser */
+	struct work_task *ptask;
+	vnl_t *vnl = NULL;
+	vnl_t *vnl_fail = NULL;
+	pbs_list_head *failed_mom_list = NULL;
+	pbs_list_head *succeeded_mom_list = NULL;
+	vnl_t *nv = NULL;
+	int vnl_created = 0;
+	job *pjob = NULL;
+	int matched_nvnode = 0; /* match natural vnode */
+	char *arg[14];
+	pid_t myseq; /* just some unique sequence number */
+	char logmask[BUFSIZ];
+	char path_hooks_rescdef[MAXPATHLEN + 1];
+	char cmdline[2 * BUFSIZ + 1];
+	struct passwd *pwdp = NULL;
 #ifdef WIN32
-	FILE		*fp2 = NULL;
-	pio_handles	pio;
+	FILE *fp2 = NULL;
+	pio_handles pio;
 #endif
-	char		*progname = NULL;
-	char		**argv = NULL;
-	char		**env = NULL;
-	char		*env_str = NULL;
-	pid_t		pid = -1;
-	int		k;
-	char		script_path[MAXPATHLEN+1];
-	char		hook_config_path[MAXPATHLEN+1];
-	char		*p;
-	pbs_list_head	*jobs_list = NULL;
-	char		*pc;
-	int		keeping = 0;
-	char		*std_file = NULL;
-	char		*msgbuf;
-	reliable_job_node	*rjn;
+	char *progname = NULL;
+	char **argv = NULL;
+	char **env = NULL;
+	char *env_str = NULL;
+	pid_t pid = -1;
+	int k;
+	char script_path[MAXPATHLEN + 1];
+	char hook_config_path[MAXPATHLEN + 1];
+	char *p;
+	pbs_list_head *jobs_list = NULL;
+	char *pc;
+	int keeping = 0;
+	char *std_file = NULL;
+	reliable_job_node *rjn;
 
 	if ((phook == NULL) || (req_user == NULL) || (req_host == NULL)) {
 		log_err(-1, __func__, "Bad input received!");
@@ -812,10 +782,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	}
 
 	if (phook->script == NULL) {
-		snprintf(log_buffer, sizeof(log_buffer),
-			"hook %s has no script value",
-			phook->hook_name);
-		log_err(-1, __func__, log_buffer);
+		log_errf(-1, __func__, "hook %s has no script value", phook->hook_name);
 		return -1;
 	}
 	if (hook_input == NULL) {
@@ -834,7 +801,6 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				env = hook_input->env;
 			} else {
 				pid = hook_input->pid;
-
 			}
 			/* falls through */
 		case HOOK_EVENT_EXECJOB_BEGIN:
@@ -848,9 +814,9 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		case HOOK_EVENT_EXECJOB_PRERESUME:
 			pjob = hook_input->pjob;
 			if ((event_type == HOOK_EVENT_EXECJOB_LAUNCH) ||
-			    (event_type == HOOK_EVENT_EXECJOB_PROLOGUE)) {
-				vnl = (vnl_t *)hook_input->vnl;
-				vnl_fail = (vnl_t *)hook_input->vnl_fail;
+			(event_type == HOOK_EVENT_EXECJOB_PROLOGUE)) {
+				vnl = (vnl_t *) hook_input->vnl;
+				vnl_fail = (vnl_t *) hook_input->vnl_fail;
 				failed_mom_list = hook_input->failed_mom_list;
 				succeeded_mom_list = hook_input->succeeded_mom_list;
 			}
@@ -866,8 +832,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			return (-1);
 	}
 
-	snprintf(pypath, MAXPATHLEN, "%s/bin/pbs_python",
-		pbs_conf.pbs_exec_path);
+	snprintf(pypath, MAXPATHLEN, "%s/bin/pbs_python", pbs_conf.pbs_exec_path);
 	run_exit = 0;
 
 	if ((phook->user == HOOK_PBSUSER) && (event_type & USER_MOM_EVENTS))
@@ -875,27 +840,27 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 
 #ifndef WIN32
 	child = fork();
-	if (child > 0) {	/* parent */
+	if (child > 0) { /* parent */
 
 		if (!parent_wait) {
 			ptask = set_task(WORK_Deferred_Child, child,
-				post_func, phook);
+					 post_func, phook);
 			if (!ptask) {
 				log_err(errno, __func__, msg_err_malloc);
 				return (-1);
 			}
-		 	if (php) {
-				ptask->wt_parm2 = (void *)php;
+			if (php) {
+				ptask->wt_parm2 = (void *) php;
 				if (php->hook_input && php->hook_input->pjob)
 					php->hook_input->pjob->ji_bg_hook_task = ptask;
 			}
-			return (0);	/* no hook output file at this time */
+			return (0); /* no hook output file at this time */
 		} else if (php)
 			php->child = child;
 
 		set_alarm(phook->alarm, run_hook_alarm);
-		while (waitpid(child, &waitst, 0) < 0) {	/* error on wait */
-			if (errno != EINTR) {			/* continue loop on signal */
+		while (waitpid(child, &waitst, 0) < 0) { /* error on wait */
+			if (errno != EINTR) {		 /* continue loop on signal */
 				run_exit = -5;
 				break;
 			}
@@ -910,600 +875,458 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				run_exit = -4;
 			}
 		} else {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"prematurely completed %s, exit=%d",
-				((struct python_script *)(phook->script))->path,
-				run_exit);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_INFO,
-				phook->hook_name, log_buffer);
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_INFO, phook->hook_name,
+				   "prematurely completed %s, exit=%d", ((struct python_script *) (phook->script))->path, run_exit);
 		}
 
-	} else {		/* child */
+	} else { /* child */
 		/* releasing ports */
 		tpp_terminate();
 		net_close(-1);
-		(void)setsid();
+		(void) setsid();
 
 		myseq = getpid();
-#else	/* Windows */
+#else /* Windows */
 	myseq = rand();
 	child = myseq;
 	if (php)
 		php->child = child;
 #endif
 
-	run_exit = 255;
+		run_exit = 255;
 
-	snprintf(path_hooks_rescdef, MAXPATHLEN, "%s%s", path_hooks, PBS_RESCDEF);
-
-	strncpy(hook_config_path, ((struct python_script *)phook->script)->path,
-		sizeof(hook_config_path)-1);
-	p = strstr(hook_config_path, HOOK_SCRIPT_SUFFIX);
-	if (p != NULL) {
-		/* replace <HOOK_SCRIPT_SUFFIX> with <HOOK_CONFIG_SUFFIX>: */
-		/* must copy up to HOOK_SCRIPT_SUFFIX length so as to not */
-		/* overflow */
-		snprintf(p, sizeof(hook_config_path) - (p - hook_config_path),
-			"%s", HOOK_CONFIG_SUFFIX);
-		if (stat(hook_config_path, &sbuf) != 0) {
+		snprintf(path_hooks_rescdef, MAXPATHLEN, "%s%s", path_hooks, PBS_RESCDEF);
+		pbs_strncpy(hook_config_path, ((struct python_script *) phook->script)->path, sizeof(hook_config_path));
+		p = strstr(hook_config_path, HOOK_SCRIPT_SUFFIX);
+		if (p != NULL) {
+			/* replace <HOOK_SCRIPT_SUFFIX> with <HOOK_CONFIG_SUFFIX>: */
+			/* must copy up to HOOK_SCRIPT_SUFFIX length so as to not */
+			/* overflow */
+			snprintf(p, sizeof(hook_config_path) - (p - hook_config_path), "%s", HOOK_CONFIG_SUFFIX);
+			if (stat(hook_config_path, &sbuf) != 0) {
+				hook_config_path[0] = '\0';
+			}
+		} else
 			hook_config_path[0] = '\0';
-		}
-	} else
-		hook_config_path[0] = '\0';
 
-	if (runas_jobuser) {
+		if (runas_jobuser) {
 
-		/* use world writable spool directory */
+			/* use world writable spool directory */
 
-		snprintf(hook_inputfile, MAXPATHLEN,
-			FMT_HOOK_INFILE, path_spool,
-			hook_event_as_string(event_type),
-			phook->hook_name, myseq);
-		snprintf(hook_outputfile, MAXPATHLEN,
-			FMT_HOOK_OUTFILE, path_spool,
-			hook_event_as_string(event_type),
-			phook->hook_name, myseq);
-		snprintf(hook_datafile, MAXPATHLEN,
-			FMT_HOOK_DATAFILE, path_spool,
-			hook_event_as_string(event_type),
-			phook->hook_name, myseq);
-		snprintf(script_copy, MAXPATHLEN,
-			FMT_HOOK_SCRIPT, path_spool, myseq);
-		snprintf(hook_config_copy, MAXPATHLEN,
-			FMT_HOOK_CONFIG, path_spool, myseq);
-		snprintf(rescdef_copy, MAXPATHLEN,
-			FMT_HOOK_RESCDEF, path_spool, myseq);
-		snprintf(log_file, MAXPATHLEN,
-			FMT_HOOK_LOG, path_spool, myseq);
+			snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_spool, hook_event_as_string(event_type), phook->hook_name, myseq);
+			snprintf(hook_outputfile, MAXPATHLEN, FMT_HOOK_OUTFILE, path_spool, hook_event_as_string(event_type), phook->hook_name, myseq);
+			snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE, path_spool, hook_event_as_string(event_type), phook->hook_name, myseq);
+			snprintf(script_copy, MAXPATHLEN, FMT_HOOK_SCRIPT, path_spool, myseq);
+			snprintf(hook_config_copy, MAXPATHLEN, FMT_HOOK_CONFIG, path_spool, myseq);
+			snprintf(rescdef_copy, MAXPATHLEN, FMT_HOOK_RESCDEF, path_spool, myseq);
+			snprintf(log_file, MAXPATHLEN, FMT_HOOK_LOG, path_spool, myseq);
 
-		/*
-		 * get the password entry for the user under which the
-		 * job is to be run we do this now to save a few things
-		 * in the job structure
-		 * All this info needed to pre-fetch for becomeuser()
-		 * to work.
-		 */
+			/*
+			 * get the password entry for the user under which the
+			 * job is to be run we do this now to save a few things
+			 * in the job structure
+			 * All this info needed to pre-fetch for becomeuser()
+			 * to work.
+			 */
 
-		if (pjob == NULL) {
-			log_err(-1, __func__, "No job parameter passed!");
-			goto run_hook_exit;
-		}
-
-		pwdp = check_pwd(pjob);
-		if (pwdp == NULL) {
-			log_event(PBSEVENT_JOB | PBSEVENT_SECURITY,
-				PBS_EVENTCLASS_JOB,
-				LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
-			goto run_hook_exit;
-		}
-
-		if (pjob->ji_grpcache == NULL) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"job %s has no ji_grpcache value",
-				pjob->ji_qs.ji_jobid);
-			log_err(-1, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-
-		pjob->ji_qs.ji_un.ji_momt.ji_exuid = \
-					pjob->ji_grpcache->gc_uid;
-		pjob->ji_qs.ji_un.ji_momt.ji_exgid = \
-					pjob->ji_grpcache->gc_gid;
-
-		strncpy(script_path,
-			((struct python_script *)phook->script)->path,
-			MAXPATHLEN);
-
-		/* copy hook_config_path to user-accessible */
-		/* [PBS_HOME]/path_spool. */
-		if (hook_config_path[0] != '\0') {
-			if (copy_file_and_set_owner(hook_config_path,
-				hook_config_copy, pjob) == -1) {
-				goto run_hook_exit;
-			}
-			/* set hook_config_path to hook_config_copy */
-			/* if the copying was successful */
-			snprintf(hook_config_path, sizeof(hook_config_path),
-				"%s", hook_config_copy);
-		}
-		/* copy script_path to user-accessible */
-		/* [PBS_HOME]/path_spool */
-
-		if (copy_file_and_set_owner(script_path, script_copy,
-			pjob) == -1) {
-			goto run_hook_exit;
-		}
-		if (stat(path_hooks_rescdef, &sbuf) == 0) {
-			if (copy_file_and_set_owner(path_hooks_rescdef,
-				rescdef_copy, pjob) == -1) {
-				goto run_hook_exit;
-			}
-			rescdef_file = (char *)rescdef_copy;
-		}
-		script_file = (char *)script_copy;
-
-#ifndef WIN32
-		if (chown(script_file,
-			pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-			pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"chown: %s", script_file);
-			log_err(errno, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-#else	/* Windows */
-
-		if (secure_file2(script_file,
-			pjob->ji_user->pw_name,
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-			"Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
-								      == 0 ) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the script file for user: %s, file: %s", 
-				pjob->ji_user->pw_name, script_file);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, log_buffer);
-			goto run_hook_exit;
-		}
-#endif
-
-		if ((fp=fopen(hook_inputfile, "w")) == NULL) {
-			sprintf(log_buffer,
-				"open of input file %s failed!",
-				hook_inputfile);
-			log_err(errno, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-
-#ifndef WIN32
-		if (chown(hook_inputfile,
-			pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-			pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"chown: %s", hook_inputfile);
-			log_err(errno, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-
-		/* NOTE: "launch" hook is already running as the user */
-		if (becomeuser(pjob) != 0) {
-			char *jobuser;
-
-			jobuser = pjob->ji_wattr[(int)JOB_ATR_euser].\
-								  at_val.at_str;
-			snprintf(log_buffer, sizeof(log_buffer),
-				"Unable to become user %s!",
-				(jobuser?jobuser:"<job euser unset>"));
-			log_err(errno, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-#else
-		if (secure_file2(hook_inputfile,
-			pjob->ji_user->pw_name,
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-			"Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
-								      == 0 ) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the hook input file for user: %s, file: %s", 
-				pjob->ji_user->pw_name, hook_inputfile);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, log_buffer);
-			goto run_hook_exit;
-
-		}
-
-		/* Force create the log file, to secure afterwards */
-		if ((fp2=fopen(log_file, "w")) == NULL) {
-			sprintf(log_buffer,
-				"open of log file %s failed!",
-				log_file);
-			log_err(errno, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-		fclose(fp2);
-		fp2 = NULL;
-
-		if (secure_file2(log_file,
-			pjob->ji_user->pw_name,
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-			"Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
-								      == 0 ) {
-			snprintf(log_buffer, LOG_BUF_SIZE, "Unable to change permissions of the log file for user: %s, file: %s", 
-				pjob->ji_user->pw_name, log_file);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, log_buffer);
-			goto run_hook_exit;
-		}
-#endif
-
-		/* chdir to path_spool like a job */
-		/* NOTE: For launch hooks, it is already in the */
-		/* environment of the job, so we don't want to */
-		/* disturb its current working directory. */
-		if (chdir(path_spool) != 0) {
-			log_event(PBSEVENT_DEBUG2,
-				PBS_EVENTCLASS_HOOK, LOG_WARNING,
-				phook->hook_name,
-				"unable to go to spool directory");
-		}
-	} else { /* run as root */
-		snprintf(hook_inputfile, MAXPATHLEN,
-			FMT_HOOK_INFILE, path_hooks_workdir,
-			hook_event_as_string(event_type),
-			phook->hook_name, myseq);
-		snprintf(hook_outputfile, MAXPATHLEN,
-			FMT_HOOK_OUTFILE, path_hooks_workdir,
-			hook_event_as_string(event_type),
-			phook->hook_name, myseq);
-		snprintf(hook_datafile, MAXPATHLEN,
-			FMT_HOOK_DATAFILE, path_hooks_workdir,
-			hook_event_as_string(event_type),
-			phook->hook_name, myseq);
-
-		script_file = ((struct python_script *)phook->script)->path;
-
-		if (script_file == NULL) {
-			log_event(PBSEVENT_DEBUG,
-				PBS_EVENTCLASS_HOOK, LOG_ERR,
-				phook->hook_name,
-				"No script file found!");
-			goto run_hook_exit;
-		}
-
-		if (stat(path_hooks_rescdef, &sbuf) == 0)
-			rescdef_file = path_hooks_rescdef;
-
-		log_file[0] = '\0';
-
-		if ((fp = fopen(hook_inputfile, "w")) == NULL) {
-			sprintf(log_buffer,
-				"open of input file %s failed!",
-				hook_inputfile);
-			log_err(errno, __func__, log_buffer);
-			goto run_hook_exit;
-		}
-
-#ifdef	WIN32
-		if(secure_file(hook_inputfile, "Administrators",
-			READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0)
-			snprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", hook_inputfile);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				__func__, log_buffer);
-#endif
-		/* Still need to chdir() here. A periodic hook may be */
-		/* running the hook periodically and may no longer in the */
-		/* original working directory */
-		if (chdir(path_hooks_workdir) != 0) {
-			log_event(PBSEVENT_DEBUG2,
-				PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name,
-				"unable to go to hooks tmp directory");
-		}
-
-	}
-
-	switch (event_type) {
-		case HOOK_EVENT_EXECJOB_LAUNCH:
-		case HOOK_EVENT_EXECJOB_ATTACH:
-			if (event_type == HOOK_EVENT_EXECJOB_LAUNCH) {
-
-				if ((progname != NULL) && (progname[0] != '\0')) {
-					fprintf(fp, "%s.%s=%s\n",
-						EVENT_OBJECT, PY_EVENT_PARAM_PROGNAME,
-						progname);
-				}
-
-				if (argv != NULL) {
-					k=0;
-					while (argv[k]) {
-						fprintf(fp, "%s.%s[%d]=%s\n",
-							EVENT_OBJECT,
-							PY_EVENT_PARAM_ARGLIST, k,
-							argv[k]);
-						k++;
-					}
-				}
-
-				env_str = env_array_to_str(env, ',');
-				if (env_str != NULL) {
-					if (env_str[0] != '\0') {
-						fprintf(fp, "%s.%s=\"\"\"%s\"\"\"\n",
-							EVENT_OBJECT,
-							PY_EVENT_PARAM_ENV,
-							env_str);
-					}
-					free(env_str);
-				}
-			} else {
-				fprintf(fp, "%s.%s=%d\n",
-					EVENT_OBJECT, PY_EVENT_PARAM_PID, pid);
-			}
-			/* fall through */
-		case HOOK_EVENT_EXECJOB_BEGIN:
-		case HOOK_EVENT_EXECJOB_RESIZE:
-		case HOOK_EVENT_EXECJOB_PROLOGUE:
-		case HOOK_EVENT_EXECJOB_EPILOGUE:
-		case HOOK_EVENT_EXECJOB_END:
-		case HOOK_EVENT_EXECJOB_PRETERM:
-		case HOOK_EVENT_EXECJOB_ABORT:
-		case HOOK_EVENT_EXECJOB_POSTSUSPEND:
-		case HOOK_EVENT_EXECJOB_PRERESUME:
 			if (pjob == NULL) {
 				log_err(-1, __func__, "No job parameter passed!");
 				goto run_hook_exit;
 			}
 
-			/* pass job parameter */
-			fprintf_job_struct(fp, pjob);
-			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
-				fprintf(fp, "%s._checkpointed=True\n",
-					EVENT_JOB_OBJECT);
+			pwdp = check_pwd(pjob);
+			if (pwdp == NULL) {
+				log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
+				goto run_hook_exit;
 			}
-			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) != 0) {
-				fprintf(fp, "%s._msmom=True\n",
-					EVENT_JOB_OBJECT);
+
+			if (pjob->ji_grpcache == NULL) {
+				log_errf(-1, __func__, "job %s has no ji_grpcache value", pjob->ji_qs.ji_jobid);
+				goto run_hook_exit;
 			}
-			std_file = std_file_name(pjob, StdOut, &keeping);
-			fprintf(fp, "%s._stdout_file=%s\n",
-				EVENT_JOB_OBJECT, std_file?std_file:"");
-			std_file = std_file_name(pjob, StdErr, &keeping);
-			fprintf(fp, "%s._stderr_file=%s\n",
-				EVENT_JOB_OBJECT, std_file?std_file:"");
 
-			/* pass vnode list parameter */
-			if (vnl == NULL) {
-				int	errcode;
+			pjob->ji_qs.ji_un.ji_momt.ji_exuid = pjob->ji_grpcache->gc_uid;
+			pjob->ji_qs.ji_un.ji_momt.ji_exgid = pjob->ji_grpcache->gc_gid;
 
-				if (vnl_alloc(&vnl) == NULL) {
-					log_err(errno, __func__,
-						"Failed to allocate a vnlp structure");
+			pbs_strncpy(script_path, ((struct python_script *) phook->script)->path, sizeof(script_path));
+
+			/* copy hook_config_path to user-accessible [PBS_HOME]/path_spool. */
+			if (hook_config_path[0] != '\0') {
+				if (copy_file_and_set_owner(hook_config_path, hook_config_copy, pjob) == -1)
+					goto run_hook_exit;
+				/* set hook_config_path to hook_config_copy if the copying was successful */
+				snprintf(hook_config_path, sizeof(hook_config_path), "%s", hook_config_copy);
+			}
+			/* copy script_path to user-accessible [PBS_HOME]/path_spool */
+			if (copy_file_and_set_owner(script_path, script_copy, pjob) == -1)
+				goto run_hook_exit;
+			if (stat(path_hooks_rescdef, &sbuf) == 0) {
+				if (copy_file_and_set_owner(path_hooks_rescdef, rescdef_copy, pjob) == -1)
+					goto run_hook_exit;
+				rescdef_file = (char *) rescdef_copy;
+			}
+			script_file = (char *) script_copy;
+
+#ifndef WIN32
+			if (chown(script_file, pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
+				log_errf(errno, __func__, "chown: %s", script_file);
+				goto run_hook_exit;
+			}
+#else /* Windows */
+
+		if (secure_file2(script_file, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
+				 "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+				   "Unable to change permissions of the script file for user: %s, file: %s",
+				   pjob->ji_user->pw_name, script_file);
+			goto run_hook_exit;
+		}
+#endif
+
+			if ((fp = fopen(hook_inputfile, "w")) == NULL) {
+				log_errf(errno, __func__, "open of input file %s failed!", hook_inputfile);
+				goto run_hook_exit;
+			}
+
+#ifndef WIN32
+			if (chown(hook_inputfile, pjob->ji_qs.ji_un.ji_momt.ji_exuid, pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
+				log_errf(errno, __func__, "chown: %s", hook_inputfile);
+				goto run_hook_exit;
+			}
+
+			/* NOTE: "launch" hook is already running as the user */
+			if (becomeuser(pjob) != 0) {
+				char *jobuser;
+
+				jobuser = get_jattr_str(pjob, JOB_ATR_euser);
+				log_errf(errno, __func__, "Unable to become user %s!", (jobuser ? jobuser : "<job euser unset>"));
+				goto run_hook_exit;
+			}
+#else
+		if (secure_file2(hook_inputfile, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
+				 "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+				   "Unable to change permissions of the hook input file for user: %s, file: %s",
+				   pjob->ji_user->pw_name, hook_inputfile);
+			goto run_hook_exit;
+		}
+
+		/* Force create the log file, to secure afterwards */
+		if ((fp2 = fopen(log_file, "w")) == NULL) {
+			log_errf(errno, __func__, "open of log file %s failed!", log_file);
+			goto run_hook_exit;
+		}
+		fclose(fp2);
+		fp2 = NULL;
+
+		if (secure_file2(log_file, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
+				 "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+				   "Unable to change permissions of the log file for user: %s, file: %s",
+				   pjob->ji_user->pw_name, log_file);
+			goto run_hook_exit;
+		}
+#endif
+
+			/*
+			 * chdir to path_spool like a job
+			 * NOTE: For launch hooks, it is already in the
+			 * environment of the job, so we don't want to
+			 * disturb its current working directory.
+			 */
+			if (chdir(path_spool) != 0)
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name, "unable to go to spool directory");
+		} else { /* run as root */
+			snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, myseq);
+			snprintf(hook_outputfile, MAXPATHLEN, FMT_HOOK_OUTFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, myseq);
+			snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, myseq);
+
+			script_file = ((struct python_script *) phook->script)->path;
+			if (script_file == NULL) {
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, "No script file found!");
+				goto run_hook_exit;
+			}
+
+			if (stat(path_hooks_rescdef, &sbuf) == 0)
+				rescdef_file = path_hooks_rescdef;
+
+			log_file[0] = '\0';
+
+			if ((fp = fopen(hook_inputfile, "w")) == NULL) {
+				log_errf(errno, __func__, "open of input file %s failed!", hook_inputfile);
+				goto run_hook_exit;
+			}
+
+#ifdef WIN32
+			if (secure_file(hook_inputfile, "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0)
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+					   "Failed to change hook input file permissions for file: %s", hook_inputfile);
+#endif
+			/*
+			 * still need to chdir() here. A periodic hook may be
+			 * running the hook periodically and may no longer in the
+			 * original working directory
+			 */
+			if (chdir(path_hooks_workdir) != 0)
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name, "unable to go to hooks tmp directory");
+		}
+
+		switch (event_type) {
+			case HOOK_EVENT_EXECJOB_LAUNCH:
+			case HOOK_EVENT_EXECJOB_ATTACH:
+				if (event_type == HOOK_EVENT_EXECJOB_LAUNCH) {
+
+					if ((progname != NULL) && (progname[0] != '\0'))
+						fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_PARAM_PROGNAME, progname);
+
+					if (argv != NULL) {
+						k = 0;
+						while (argv[k]) {
+							fprintf(fp, "%s.%s[%d]=%s\n", EVENT_OBJECT, PY_EVENT_PARAM_ARGLIST, k, argv[k]);
+							k++;
+						}
+					}
+
+					env_str = env_array_to_str(env, ',');
+					if (env_str != NULL) {
+						if (env_str[0] != '\0')
+							fprintf(fp, "%s.%s=\"\"\"%s\"\"\"\n", EVENT_OBJECT, PY_EVENT_PARAM_ENV, env_str);
+						free(env_str);
+					}
+				} else
+					fprintf(fp, "%s.%s=%d\n", EVENT_OBJECT, PY_EVENT_PARAM_PID, pid);
+				/* fall through */
+			case HOOK_EVENT_EXECJOB_BEGIN:
+			case HOOK_EVENT_EXECJOB_RESIZE:
+			case HOOK_EVENT_EXECJOB_PROLOGUE:
+			case HOOK_EVENT_EXECJOB_EPILOGUE:
+			case HOOK_EVENT_EXECJOB_END:
+			case HOOK_EVENT_EXECJOB_PRETERM:
+			case HOOK_EVENT_EXECJOB_ABORT:
+			case HOOK_EVENT_EXECJOB_POSTSUSPEND:
+			case HOOK_EVENT_EXECJOB_PRERESUME:
+				if (pjob == NULL) {
+					log_err(-1, __func__, "No job parameter passed!");
 					goto run_hook_exit;
 				}
-				vnl_created = 1;
 
-				if (pjob->ji_numnodes == 0) {
-					/* this executes in a child process */
-					if ((errcode = job_nodes(pjob)) != 0) {
-						snprintf(log_buffer,
-							sizeof(log_buffer),
-							"job_nodes failed with error %d",
-							errcode);
-						log_err(-1, __func__, log_buffer);
+				/* pass job parameter */
+				fprintf_job_struct(fp, pjob);
+				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT)
+					fprintf(fp, "%s._checkpointed=True\n", EVENT_JOB_OBJECT);
+				if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) != 0)
+					fprintf(fp, "%s._msmom=True\n", EVENT_JOB_OBJECT);
+				std_file = std_file_name(pjob, StdOut, &keeping);
+				fprintf(fp, "%s._stdout_file=%s\n", EVENT_JOB_OBJECT, std_file ? std_file : "");
+				std_file = std_file_name(pjob, StdErr, &keeping);
+				fprintf(fp, "%s._stderr_file=%s\n", EVENT_JOB_OBJECT, std_file ? std_file : "");
+
+				/* pass vnode list parameter */
+				if (vnl == NULL) {
+					int errcode;
+
+					if (vnl_alloc(&vnl) == NULL) {
+						log_err(errno, __func__, "Failed to allocate a vnlp structure");
 						goto run_hook_exit;
+					}
+					vnl_created = 1;
+
+					if (pjob->ji_numnodes == 0) {
+						/* this executes in a child process */
+						if ((errcode = job_nodes(pjob)) != 0) {
+							log_errf(-1, __func__, "job_nodes failed with error %d", errcode);
+							goto run_hook_exit;
+						}
+					}
+
+					/*
+					* This looks into pjob->ji_assn_vnodes[] whose
+					* entries map exec_vnode, the vnodes
+					* assigned to the job along with the
+					* allocated cpus and mem for each vnode.
+					* For example, given
+					*   exec_vnode=(hostA[0]:ncpus=3:mem=100kb)+
+					*              (hostB[0]:mem=400kb:ncpus=1)+
+					*              (hostA[0]:ncpus=2:mem=200kb)
+					* vnl would end up getting accumulated
+					* entries:
+					*	(hostA[0],ncpus=5,mem=300kb)
+					*	(hostB[0],ncpus=1,mem=400kb)
+					*/
+
+					if ((vnl_add_vnode_entries(vnl, pjob->ji_assn_vnodes, pjob->ji_num_assn_vnodes, &matched_nvnode) == -1))
+						goto run_hook_exit;
+
+					if (matched_nvnode)
+						add_natural_vnode_info(&vnl);
+				}
+				fprint_vnl(fp, EVENT_VNODELIST_OBJECT, vnl);
+				if (vnl_fail != NULL)
+					fprint_vnl(fp, EVENT_VNODELIST_FAIL_OBJECT, vnl_fail);
+
+				if (failed_mom_list != NULL) {
+					rjn = (reliable_job_node *) GET_NEXT(*failed_mom_list);
+					while (rjn) {
+						fprintf(fp, "%s=%s\n", JOB_FAILED_MOM_LIST_OBJECT, rjn->rjn_host);
+						rjn = (reliable_job_node *) GET_NEXT(rjn->rjn_link);
 					}
 				}
 
-				/* This looks into pjob->ji_assn_vnodes[] whose     */
-				/* entries map exec_vnode, the vnodes         */
-				/* assigned to the job along with the         */
-				/* allocated cpus and mem for each vnode.     */
-				/* For example, given			      */
-				/*   exec_vnode=(hostA[0]:ncpus=3:mem=100kb)+ */
-				/*              (hostB[0]:mem=400kb:ncpus=1)+ */
-				/*		(hostA[0]:ncpus=2:mem=200kb)  */
-				/* vnl would end up getting accumulated       */
-				/* entries:      			      */
-				/*	(hostA[0],ncpus=5,mem=300kb)	      */
-				/*	(hostB[0],ncpus=1,mem=400kb) 	      */
+				if (succeeded_mom_list != NULL) {
+					rjn = (reliable_job_node *) GET_NEXT(*succeeded_mom_list);
+					while (rjn) {
+						fprintf(fp, "%s=%s\n", JOB_SUCCEEDED_MOM_LIST_OBJECT, rjn->rjn_host);
+						rjn = (reliable_job_node *) GET_NEXT(rjn->rjn_link);
+					}
+				}
 
-				if ((vnl_add_vnode_entries(vnl, pjob->ji_assn_vnodes,
-					pjob->ji_num_assn_vnodes,
-					&matched_nvnode) == -1))
-					goto run_hook_exit;
+				if (vnl_created) {
+					vnl_free(vnl);
+					vnl_created = 0;
+				}
+				break;
 
-				if (matched_nvnode) {
+			case HOOK_EVENT_EXECHOST_PERIODIC:
+				fprintf(fp, "%s.%s=%d\n", EVENT_OBJECT, "freq", phook->freq);
+				add_natural_vnode_info(&nv);
+				if (nv == NULL)
+					fprint_vnl(fp, EVENT_VNODELIST_OBJECT, vnl);
+				else {
+					if (vnl != NULL)
+						vn_merge(nv, vnl, NULL);
+					fprint_vnl(fp, EVENT_VNODELIST_OBJECT, nv);
+					vnl_free(nv);
+				}
+
+				fprint_joblist(fp, EVENT_JOBLIST_OBJECT, jobs_list);
+
+				break;
+			case HOOK_EVENT_EXECHOST_STARTUP:
+				if (vnl == NULL) {
+					/*
+					* create a default vnode_list containing
+					* the natural vnode, to be used as hook
+					* input
+					*/
 					add_natural_vnode_info(&vnl);
+					vnl_created = 1;
 				}
-			}
-			fprint_vnl(fp, EVENT_VNODELIST_OBJECT, vnl);
-			if (vnl_fail != NULL) {
-				fprint_vnl(fp,
-				  EVENT_VNODELIST_FAIL_OBJECT, vnl_fail);
-			}
-
-			if (failed_mom_list != NULL) {
-				rjn = (reliable_job_node *)GET_NEXT(*failed_mom_list);
-				while (rjn) {
-					fprintf(fp,  "%s=%s\n", JOB_FAILED_MOM_LIST_OBJECT, rjn->rjn_host);
-					rjn = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
-				}
-			}
-
-			if (succeeded_mom_list != NULL) {
-				rjn = (reliable_job_node *)GET_NEXT(*succeeded_mom_list);
-				while (rjn) {
-					fprintf(fp,  "%s=%s\n", JOB_SUCCEEDED_MOM_LIST_OBJECT, rjn->rjn_host);
-					rjn = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
-				}
-			}
-
-			if (vnl_created) {
-				vnl_free(vnl);
-				vnl_created = 0;
-			}
-			break;
-
-		case HOOK_EVENT_EXECHOST_PERIODIC:
-			fprintf(fp, "%s.%s=%d\n", EVENT_OBJECT, "freq",
-				phook->freq);
-			add_natural_vnode_info(&nv);
-			if (nv == NULL) {
 				fprint_vnl(fp, EVENT_VNODELIST_OBJECT, vnl);
-			} else {
-				if (vnl != NULL) {
-					vn_merge(nv, vnl, NULL);
+				if (vnl_created) {
+					vnl_free(vnl);
+					vnl_created = 0;
+					vnl = NULL;
 				}
-				fprint_vnl(fp, EVENT_VNODELIST_OBJECT, nv);
-				vnl_free(nv);
-			}
-
-			fprint_joblist(fp, EVENT_JOBLIST_OBJECT, jobs_list);
-
-			break;
-		case HOOK_EVENT_EXECHOST_STARTUP:
-			if (vnl == NULL) {
-				/* create a default vnode_list containing */
-				/* the natural vnode, to be used as hook */
-				/* input */
-				add_natural_vnode_info(&vnl);
-				vnl_created = 1;
-			}
-			fprint_vnl(fp, EVENT_VNODELIST_OBJECT, vnl);
-			if (vnl_created) {
-				vnl_free(vnl);
-				vnl_created = 0;
-				vnl = NULL;
-			}
-			break;
-		default:
-			snprintf(log_buffer, sizeof(log_buffer),
-				"Unknown event type %d", event_type);
-			log_err(-1, __func__, log_buffer);
-			goto run_hook_exit;
-	}
-
-	fprintf(fp, "%s.%s=%s\n", PBS_OBJ, GET_NODE_NAME_FUNC,
-		(char *)mom_short_name);
-	fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_TYPE,
-		hook_event_as_string(event_type));
-	fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_NAME,
-		phook->hook_name);
-	fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_TYPE,
-		hook_type_as_string(phook->type));
-	fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "requestor",
-		req_user);
-	fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "requestor_host",
-		req_host);
-	fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "user", hook_user_as_string(phook->user));
-	fprintf(fp, "%s.%s=%d\n", EVENT_OBJECT, "alarm", phook->alarm);
-
-	if (phook->debug) {
-		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "debug", hook_datafile);
-	}
-
-	fclose(fp);
-	fp = NULL;
-
-	arg[0] = (char *)pypath;
-	arg[1] = "--hook";
-	arg[2] = "-i";
-	arg[3] = (char *)hook_inputfile;
-	arg[4] = "-o";
-	arg[5] = (char *)hook_outputfile;
-
-	if (log_file[0] == '\0') {
-		arg[6] = "-L";
-		arg[7] = (char *)path_log;
-	} else {
-		arg[6] = "-l";
-		arg[7] = (char *)log_file;
-	}
-	arg[8] = "-e";
-	snprintf(logmask, sizeof(logmask), "%ld", *log_event_mask);
-	arg[9] = (char *)logmask;
-
-	if (rescdef_file != NULL) {
-		arg[10] = "-r";
-		arg[11] = (char *)rescdef_file;
-		arg[12] = script_file;
-		snprintf(cmdline, sizeof(cmdline),
-			"%s %s %s %s %s %s %s %s %s %s %s %s %s",
-			arg[0], arg[1], arg[2], arg[3], arg[4], arg[5],
-			arg[6], arg[7], arg[8], arg[9], arg[10], arg[11],
-			arg[12]);
-		arg[13] = NULL;
-	} else {
-		arg[10] = script_file;
-		snprintf(cmdline, sizeof(cmdline),
-			"%s %s %s %s %s %s %s %s %s %s %s",
-			arg[0], arg[1], arg[2], arg[3], arg[4], arg[5],
-			arg[6], arg[7], arg[8], arg[9], arg[10]);
-		arg[11] = NULL;
-
-	}
-	pbs_asprintf(&msgbuf, "execve %s runas_jobuser=%d in child pid=%d",
-		cmdline, runas_jobuser, myseq);
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO,
-		phook->hook_name, msgbuf);
-	free(msgbuf);
-
-	if (hook_config_path[0] == '\0') {
-#ifdef WIN32
-		/* since under Windows, this is still main mom (not forked), */
-		/* need to unset the hook config environment variable. */
-		if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
-			log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
-#endif /* WIN32 */
-	} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
-		return (-1);
-	}
-
-#ifndef WIN32
-	/* We're passing the calling process' (mom's) environment  */
-	/* to python hook execution here, so as to match what's    */
-	/* done on Windows. Also, this allows us to control 	   */
-	/* pbs_python's execution environment via PBS'             */
-	/* pbs_environment file (better security). 		   */
-	/* We can provide a  workaround, in case pbs_python does   */
-	/* not execute unless a particular variable is set,        */
-	/* perhaps due to an incorrectly setup host.		   */
-
-	if (pbs_conf.pbs_conf_file != NULL) {
-		if (setenv("PBS_CONF_FILE", pbs_conf.pbs_conf_file, 1) != 0 ) {
-			log_err(errno, __func__, "Failed to set PBS_CONF_FILE");
-			goto run_hook_exit;
+				break;
+			default:
+				log_errf(-1, __func__, "Unknown event type %d", event_type);
+				goto run_hook_exit;
 		}
-	}
 
-	execve(pypath, arg, environ);
-run_hook_exit:
-	if (fp != NULL) {
+		fprintf(fp, "%s.%s=%s\n", PBS_OBJ, GET_NODE_NAME_FUNC, (char *) mom_short_name);
+		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_TYPE, hook_event_as_string(event_type));
+		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_NAME, phook->hook_name);
+		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_TYPE, hook_type_as_string(phook->type));
+		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "requestor", req_user);
+		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "requestor_host", req_host);
+		fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "user", hook_user_as_string(phook->user));
+		fprintf(fp, "%s.%s=%d\n", EVENT_OBJECT, "alarm", phook->alarm);
+
+		if (phook->debug)
+			fprintf(fp, "%s.%s=%s\n", EVENT_OBJECT, "debug", hook_datafile);
+
 		fclose(fp);
 		fp = NULL;
+
+		arg[0] = (char *) pypath;
+		arg[1] = "--hook";
+		arg[2] = "-i";
+		arg[3] = (char *) hook_inputfile;
+		arg[4] = "-o";
+		arg[5] = (char *) hook_outputfile;
+
+		if (log_file[0] == '\0') {
+			arg[6] = "-L";
+			arg[7] = (char *) path_log;
+		} else {
+			arg[6] = "-l";
+			arg[7] = (char *) log_file;
+		}
+		arg[8] = "-e";
+		snprintf(logmask, sizeof(logmask), "%ld", *log_event_mask);
+		arg[9] = (char *) logmask;
+
+		if (rescdef_file != NULL) {
+			arg[10] = "-r";
+			arg[11] = (char *) rescdef_file;
+			arg[12] = script_file;
+			snprintf(cmdline, sizeof(cmdline),
+				 "%s %s %s %s %s %s %s %s %s %s %s %s %s",
+				 arg[0], arg[1], arg[2], arg[3], arg[4], arg[5],
+				 arg[6], arg[7], arg[8], arg[9], arg[10], arg[11],
+				 arg[12]);
+			arg[13] = NULL;
+		} else {
+			arg[10] = script_file;
+			snprintf(cmdline, sizeof(cmdline),
+				 "%s %s %s %s %s %s %s %s %s %s %s",
+				 arg[0], arg[1], arg[2], arg[3], arg[4], arg[5],
+				 arg[6], arg[7], arg[8], arg[9], arg[10]);
+			arg[11] = NULL;
+		}
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, phook->hook_name,
+			   "execve %s runas_jobuser=%d in child pid=%d", cmdline, runas_jobuser, myseq);
+
+		if (hook_config_path[0] == '\0') {
+#ifdef WIN32
+			/* since under Windows, this is still main mom (not forked), need to unset the hook config environment variable. */
+			if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
+				log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
+#endif /* WIN32 */
+		} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
+			return (-1);
+		}
+
+#ifndef WIN32
+		/*
+		 * We're passing the calling process' (mom's) environment
+		 * to python hook execution here, so as to match what's
+		 * done on Windows. Also, this allows us to control
+		 * pbs_python's execution environment via PBS'
+		 * pbs_environment file (better security).
+		 * We can provide a  workaround, in case pbs_python does
+		 * not execute unless a particular variable is set,
+		 * perhaps due to an incorrectly setup host.
+		 */
+		if (pbs_conf.pbs_conf_file != NULL) {
+			if (setenv("PBS_CONF_FILE", pbs_conf.pbs_conf_file, 1) != 0) {
+				log_err(errno, __func__, "Failed to set PBS_CONF_FILE");
+				goto run_hook_exit;
+			}
+		}
+
+		execve(pypath, arg, environ);
+run_hook_exit:
+		if (fp != NULL) {
+			fclose(fp);
+			fp = NULL;
+		}
+		if (vnl_created)
+			vnl_free(vnl);
+		log_err(-1, __func__, "execv of hook");
+		exit(run_exit);
 	}
-	if (vnl_created) {
-		vnl_free(vnl);
-	}
-	log_err(-1, __func__, "execv of hook");
-	exit(run_exit);
-}
 #else
 	if (!parent_wait) {
 		if (win_popen(cmdline, "w", &pio, NULL) == 0) {
 			errno = GetLastError();
 			pbs_errno = errno;
-			(void)sprintf(log_buffer,
-				"executing %s failed errno=%d", cmdline, errno);
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, __func__, log_buffer);
-
+			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "executing %s failed errno=%d", cmdline, errno);
 			win_pclose(&pio);
 			return (-1);
 		}
-		ptask = set_task(WORK_Deferred_Child,
-			(long)pio.pi.hProcess, post_func, phook);
+		ptask = set_task(WORK_Deferred_Child, (long) pio.pi.hProcess, post_func, phook);
 		if (!ptask) {
 			log_err(errno, __func__, msg_err_malloc);
 			win_pclose(&pio);
@@ -1512,22 +1335,20 @@ run_hook_exit:
 		ptask->wt_aux2 = myseq;
 		addpid(pio.pi.hProcess);
 		win_pclose2(&pio); /* closes all handles except the process handle */
-		ptask->wt_parm2 = (void *)php;
-		return (0);	/* no hook output file at this time */
+		ptask->wt_parm2 = (void *) php;
+		return (0); /* no hook output file at this time */
 	} else if (runas_jobuser) {
 		if (pwdp == NULL) {
-			log_err(-1, __func__,
-				"runas_jobuser does not have credential set!");
+			log_err(-1, __func__, "runas_jobuser does not have credential set!");
 			run_exit = 255;
 			goto run_hook_exit;
 		}
 		if (event_type == HOOK_EVENT_EXECJOB_EPILOGUE ||
-				event_type == HOOK_EVENT_EXECJOB_PROLOGUE ||
-				event_type == HOOK_EVENT_EXECJOB_PRETERM) {
+		    event_type == HOOK_EVENT_EXECJOB_PROLOGUE ||
+		    event_type == HOOK_EVENT_EXECJOB_PRETERM) {
 			int ret = 0;
-			ret = hook_env_setup(pjob, phook);
 			if ( ret != 0 ) {
-				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s", 
+				snprintf(log_buffer, LOG_BUF_SIZE, "Unable to set the environment for the job: %s",
 					pjob->ji_qs.ji_jobid);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					__func__, log_buffer);
@@ -1535,28 +1356,43 @@ run_hook_exit:
 			}
 		}
 		(void)win_alarm(phook->alarm, run_hook_alarm);
-		run_exit = wsystem(cmdline, pwdp->pw_userlogin);
+		char *env_string = NULL;
+		struct var_table hook_env;
+		hook_env.v_envp = NULL;
+		char *pbs_hook_conf = NULL;
+
+		if ((pjob->ji_env.v_envp != NULL) && (phook->user == HOOK_PBSUSER)) {
+			/* Duplicate only when the hook user is pbsuser */
+			hook_env.v_envp = dup_string_arr(pjob->ji_env.v_envp);
+			if (hook_env.v_envp == NULL) {
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+					__func__, "Unable to set hook environment");
+				goto run_hook_exit;
+			}
+			hook_env.v_ensize = pjob->ji_env.v_ensize;
+			hook_env.v_used = pjob->ji_env.v_used;
+			if (pbs_hook_conf = getenv("PBS_HOOK_CONFIG_FILE"))
+				bld_env_variables(&hook_env, "PBS_HOOK_CONFIG_FILE", pbs_hook_conf);
+			env_string = make_envp(hook_env.v_envp);
+		}
+		run_exit = wsystem(cmdline, pwdp->pw_userlogin, env_string);
+		free(env_string);
 		(void)win_alarm(0, NULL);
-		setenv(ENV_AUTH_KEY, NULL, 1);
+		free_string_array(hook_env.v_envp);
 	} else {
 		/* The following blocks until after */
-		(void)win_alarm(phook->alarm, run_hook_alarm);
+		(void) win_alarm(phook->alarm, run_hook_alarm);
 		if (win_popen(cmdline, "r", &pio, NULL) == 0) {
 			errno = GetLastError();
 			pbs_errno = errno;
-			(void)sprintf(log_buffer,
-				"executing %s failed errno=%d", cmdline, errno);
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, __func__, log_buffer);
+			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "executing %s failed errno=%d", cmdline, errno);
 
-		} else if ((GetExitCodeProcess(pio.pi.hProcess,
-			&run_exit) == 0) ||
-			(run_exit == STILL_ACTIVE)) {
+		} else if (GetExitCodeProcess(pio.pi.hProcess, &run_exit) == 0 || run_exit == STILL_ACTIVE) {
 			log_err(-1, __func__, "GetExitCodeProcess failed");
 			run_exit = 255;
 		}
 		win_pclose(&pio);
-		(void)win_alarm(0, NULL);
+		(void) win_alarm(0, NULL);
 	}
 	if (php)
 		php->child = child;
@@ -1564,121 +1400,79 @@ run_hook_exit:
 	if (fp != NULL)
 		fclose(fp);
 
-	if (vnl_created) {
+	if (vnl_created)
 		vnl_free(vnl);
-	}
 
 #endif
 
-	if (run_exit != 0) {
-		snprintf(log_buffer, sizeof(log_buffer), "execv of %s resulted in nonzero exit status=%d", pypath, run_exit);
-		log_err(-1, __func__, log_buffer);
-
-	}
-
+	if (run_exit != 0)
+		log_errf(-1, __func__, "execv of %s resulted in nonzero exit status=%d", pypath, run_exit);
 
 	if (file_in != NULL)
-		snprintf(file_in, file_size,
-			FMT_HOOK_INFILE, path_hooks_workdir,
-			hook_event_as_string(event_type),
-			phook->hook_name, child);
+		snprintf(file_in, file_size, FMT_HOOK_INFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, child);
 	if (file_out != NULL)
-		snprintf(file_out, file_size,
-			FMT_HOOK_OUTFILE, path_hooks_workdir,
-			hook_event_as_string(event_type),
-			phook->hook_name, child);
+		snprintf(file_out, file_size, FMT_HOOK_OUTFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, child);
 
 	if (file_data != NULL)
-		snprintf(file_data, file_size,
-			FMT_HOOK_DATAFILE, path_hooks_workdir,
-			hook_event_as_string(event_type),
-			phook->hook_name, child);
+		snprintf(file_data, file_size, FMT_HOOK_DATAFILE, path_hooks_workdir, hook_event_as_string(event_type), phook->hook_name, child);
 
 	if (runas_jobuser) {
 
-		/* move [PATH_SPOOL]/<hook input file> to <file_in> */
-		/* where <file_in> is in [PBS_HOME]/mom_priv/hooks/tmp. */
-		snprintf(hook_inputfile, MAXPATHLEN,
-			FMT_HOOK_INFILE, path_spool,
-			hook_event_as_string(event_type),
-			phook->hook_name, child);
-		if ((stat(hook_inputfile, &sbuf) == 0) &&
-			(file_in != NULL)) {
-			(void)rename(hook_inputfile, file_in);
-		}
+		/* move [PATH_SPOOL]/<hook input file> to <file_in> where <file_in> is in [PBS_HOME]/mom_priv/hooks/tmp. */
+		snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_spool, hook_event_as_string(event_type), phook->hook_name, child);
+		if (stat(hook_inputfile, &sbuf) == 0 && file_in != NULL)
+			(void) rename(hook_inputfile, file_in);
 
-		/* move [PATH_SPOOL]/<hook output file> to <file_out> */
-		/* where <file_out> is in [PBS_HOME]/mom_priv/hooks/tmp. */
-		snprintf(hook_outputfile, MAXPATHLEN,
-			FMT_HOOK_OUTFILE, path_spool,
-			hook_event_as_string(event_type),
-			phook->hook_name, child);
-		if ((stat(hook_outputfile, &sbuf) == 0) &&
-			(file_out != NULL)  ) {
-			(void)rename(hook_outputfile, file_out);
-		}
+		/* move [PATH_SPOOL]/<hook output file> to <file_out> where <file_out> is in [PBS_HOME]/mom_priv/hooks/tmp. */
+		snprintf(hook_outputfile, MAXPATHLEN, FMT_HOOK_OUTFILE, path_spool, hook_event_as_string(event_type), phook->hook_name, child);
+		if (stat(hook_outputfile, &sbuf) == 0 && file_out != NULL)
+			(void) rename(hook_outputfile, file_out);
 
-		/* move [PATH_SPOOL]/<hook data file> to <file_data> */
-		/* where <file_data> is in [PBS_HOME]/mom_priv/hooks/tmp. */
-		snprintf(hook_datafile, MAXPATHLEN,
-			FMT_HOOK_DATAFILE, path_spool,
-			hook_event_as_string(event_type),
-			phook->hook_name, child);
-		if ((stat(hook_datafile, &sbuf) == 0) &&
-			(file_data != NULL)) {
-			(void)rename(hook_datafile, file_data);
-		}
-		strncpy(script_path,
-			((struct python_script *)phook->script)->path,
-			MAXPATHLEN);
+		/* move [PATH_SPOOL]/<hook data file> to <file_data> where <file_data> is in [PBS_HOME]/mom_priv/hooks/tmp. */
+		snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE, path_spool, hook_event_as_string(event_type), phook->hook_name, child);
+		if (stat(hook_datafile, &sbuf) == 0 && file_data != NULL)
+			(void) rename(hook_datafile, file_data);
+		pbs_strncpy(script_path, ((struct python_script *) phook->script)->path, sizeof(script_path));
 		pc = strrchr(script_path, '/');
-		if (pc == NULL) {
-			pc = (char *)script_path;
-		} else {
+		if (pc == NULL)
+			pc = (char *) script_path;
+		else
 			pc++;
-		}
 
 		/* delete [PATH_SPOOL]/<hook script file copy> */
-		snprintf(script_copy, MAXPATHLEN,
-				FMT_HOOK_SCRIPT, path_spool, child);
+		snprintf(script_copy, MAXPATHLEN, FMT_HOOK_SCRIPT, path_spool, child);
 
 		if (stat(script_copy, &sbuf) == 0)
-			(void)unlink(script_copy);
+			(void) unlink(script_copy);
 
 		/* delete [PATH_SPOOL]/<hook config file copy> */
-		snprintf(hook_config_copy, MAXPATHLEN,
-				FMT_HOOK_CONFIG, path_spool, child);
+		snprintf(hook_config_copy, MAXPATHLEN, FMT_HOOK_CONFIG, path_spool, child);
 
-		if (stat(hook_config_copy, &sbuf) == 0) {
-			(void)unlink(hook_config_copy);
-		}
+		if (stat(hook_config_copy, &sbuf) == 0)
+			(void) unlink(hook_config_copy);
 
 		/* delete [PATH_SPOOL]/<resourcedef copy> */
-		snprintf(rescdef_copy, MAXPATHLEN,
-				FMT_HOOK_RESCDEF, path_spool, child);
+		snprintf(rescdef_copy, MAXPATHLEN, FMT_HOOK_RESCDEF, path_spool, child);
 
 		if (stat(rescdef_copy, &sbuf) == 0)
-			(void)unlink(rescdef_copy);
+			(void) unlink(rescdef_copy);
 
-		snprintf(log_file, MAXPATHLEN,
-			FMT_HOOK_LOG, path_spool, child);
+		snprintf(log_file, MAXPATHLEN, FMT_HOOK_LOG, path_spool, child);
 
-		/* Log file generated in [PATH_SPOOL] should be appended to */
-		/* main mom_logs. */
-		if ((fp=fopen(log_file, "r")) != NULL) {
-			size_t	ll;
-			char	*p;
-			char	*jobid = NULL;
-			int	semicolons;
+		/* Log file generated in [PATH_SPOOL] should be appended to main mom_logs. */
+		if ((fp = fopen(log_file, "r")) != NULL) {
+			size_t ll;
+			char *p;
+			char *jobid = NULL;
+			int semicolons;
 
 			jobid = pjob->ji_qs.ji_jobid;
 
-			while( fgets(in_data, sizeof(in_data), fp) != \
-								NULL ) {
+			while (fgets(in_data, sizeof(in_data), fp) != NULL) {
 				ll = strlen(in_data);
-				if (in_data[ll-1] == '\n')
+				if (in_data[ll - 1] == '\n')
 					/* remove newline */
-					in_data[ll-1] = '\0';
+					in_data[ll - 1] = '\0';
 
 				/* Format of pbs logfile is as follows: */
 				/* <time>;<event>;<prog>;<class>;<obj>;<msg> */
@@ -1686,7 +1480,7 @@ run_hook_exit:
 				/* which is the one we need to get. */
 				p = in_data;
 				semicolons = 0;
-				while( *p != '\0') {
+				while (*p != '\0') {
 					if (*p == ';') {
 						semicolons++;
 						if (semicolons == 5)
@@ -1698,36 +1492,25 @@ run_hook_exit:
 				if (*p != '\0') {
 					*p = '\0';
 					p++;
-					if (*p  != '\0') {
+					if (*p != '\0') {
 
 						if (strstr(in_data, ";Job;") != NULL)
-							log_event(PBSEVENT_JOB,
-								PBS_EVENTCLASS_JOB, LOG_DEBUG,
-								jobid?jobid:"", p);
+							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid ? jobid : "", p);
 						else
-						log_event(PBSEVENT_ADMIN|\
-					   		PBSEVENT_SYSTEM,
-								PBS_EVENTCLASS_HOOK,
-								LOG_DEBUG,
-								"pbs_python", p);
+							log_event(PBSEVENT_ADMIN | PBSEVENT_SYSTEM, PBS_EVENTCLASS_HOOK, LOG_DEBUG, "pbs_python", p);
 					}
 				}
 			}
 			fclose(fp);
-			if (unlink(log_file) == -1) {
+			if (unlink(log_file) == -1)
 				log_err(errno, __func__, log_file);
-			}
 		}
 	}
 
 #ifdef WIN32
-	if(secure_file(file_out, "Administrators",
-		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) == 0) 
-		sprintf(log_buffer, LOG_BUF_SIZE, "Failed to change hook input file permissions for file: %s", file_out);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, log_buffer);
+	if (secure_file(file_out, "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0)
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, "Failed to change hook input file permissions for file: %s", file_out);
 #endif
-
 
 	return (run_exit);
 }
@@ -1752,7 +1535,7 @@ python_script_free(struct python_script *py_script)
 	}
 	else
 		log_err(PBSE_HOOKERROR, __func__, "Python Script is NULL");
-	
+
 }
 
 /**
@@ -2020,11 +1803,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	/* copy of hook results, there will be one or more (one per hook)    */
 	/* pbs_event().hook_euser=<value> entries.  In that case, hook_euser */
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
-	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
-		strncpy(hook_euser,
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-			PBS_MAXUSER);
-	}
+	if (phook && pjob &&  (phook->user == HOOK_PBSUSER))
+		pbs_strncpy(hook_euser, get_jattr_str(pjob, JOB_ATR_euser), sizeof(hook_euser));
 
 	if ((input_file != NULL) && (*input_file != '\0')) {
 		fp = fopen(input_file, "r");
@@ -2267,7 +2047,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 
 		if (strcmp(obj_name, EVENT_OBJECT) == 0) {
 			if (strcmp(name_str, "hook_euser") == 0) {
-				strncpy(hook_euser, data_value, PBS_MAXUSER);
+				pbs_strncpy(hook_euser, data_value, sizeof(hook_euser));
 				start_new_vnl = 1;
 				/* Need to also clear 'hvnlp' as previous  */
 				/* one would have already been saved in */
@@ -2293,8 +2073,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					*reject_flag = 0;
 			} else if ((reject_msg != NULL) &&
 				(strcmp(name_str, "reject_msg") == 0)) {
-				strncpy(reject_msg, data_value,
-					reject_msg_size-1);
+				pbs_strncpy(reject_msg, data_value,
+					reject_msg_size);
 			} else if (strcmp(name_str, PY_EVENT_PARAM_PROGNAME) == 0) {
 				char	**prog;
 				if (hook_output != NULL) {
@@ -2384,17 +2164,10 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					/* working on a new list of job data */
 					if (pjob2_prev != NULL) {
 						if (*reject_deletejob) {
-							/* deletejob takes */
-							/* precedence */
-							new_job_action_req(pjob2,
-							phook?phook->user:\
-							   HOOK_PBSADMIN,
-								JOB_ACT_REQ_DELETE);
+							/* deletejob takes precedence */
+							new_job_action_req(pjob2, phook ? phook->user: HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 						} else if (*reject_rerunjob) {
-							new_job_action_req(pjob2,
-							phook?phook->user:\
-								HOOK_PBSADMIN,
-								JOB_ACT_REQ_REQUEUE);
+							new_job_action_req(pjob2, phook ? phook->user: HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 						}
 						/* already sent the action */
 						found_rerunjob_action = 0;
@@ -2467,7 +2240,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					line_data[0] = '\0';
 					continue;
 				}
-				if ((index == JOB_ATR_runcount) && ((pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0)) {
+				if ((index == JOB_ATR_runcount) && ((is_jattr_set(pjob2, JOB_ATR_run_version)) == 0)) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s': ignoring setting attribute %s,"
 						" talking to a server that does not allow %s modification, ",
@@ -2493,13 +2266,13 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						/* process a new line */
 						line_data[0] = '\0';
 						continue;
-					} else if ((index == JOB_ATR_runcount) && (pjob2->ji_wattr[index].at_flags & ATR_VFLAG_SET) && (dval < pjob2->ji_wattr[index].at_val.at_long)) {
+					} else if ((index == JOB_ATR_runcount) && (is_jattr_set(pjob2, index)) && (dval < get_jattr_long(pjob2, index))) {
 						snprintf(log_buffer, sizeof(log_buffer),
 							"object '%s': ignoring setting attribute %s,"
 							" executing hook has user=pbsuser, "
 							" cannot decrease value from %ld to %ld",
 							obj_name, name_str,
-							pjob2->ji_wattr[index].at_val.at_long,
+							get_jattr_long(pjob2, index),
 							dval);
 						log_err(-1, __func__, log_buffer);
 						/* process a new line */
@@ -2586,11 +2359,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				}
 				/* attributes in a hook should be flagged */
 				/* with ATR_VFLAG_HOOK                    */
-				pjob2->ji_wattr[index].at_flags |=
-					ATR_VFLAG_HOOK;
-				if (svr_hook_resend_job_attrs == 0) {
-					svr_hook_resend_job_attrs = 1;
-				}
+				pjob2->ji_wattr[index].at_flags |= ATR_VFLAG_HOOK;
 			}
 
 		} if ((strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT,
@@ -2780,7 +2549,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 			} else if ((reboot_cmd != NULL) &&
 				(strcmp(name_str,
 				PBS_REBOOT_CMD_OBJECT) == 0)) {
-				strncpy(reboot_cmd, data_value, HOOK_BUF_SIZE-1);
+				pbs_strncpy(reboot_cmd, data_value, HOOK_BUF_SIZE);
 			}
 		}
 
@@ -2798,11 +2567,9 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	if (found_joblist && (found_rerunjob_action || found_deletejob_action)) {
 		if ((reject_deletejob != NULL) && (*reject_deletejob)) {
 			/* deletejob takes precedence */
-			new_job_action_req(pjob2,
-				phook?phook->user:HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
+			new_job_action_req(pjob2, phook ? phook->user : HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 		} else if ((reject_rerunjob != NULL) && (*reject_rerunjob)) {
-			new_job_action_req(pjob2,
-				phook?phook->user:HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
+			new_job_action_req(pjob2, phook ? phook->user : HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 		}
 	}
 	rc = 0;
@@ -2857,9 +2624,9 @@ do_reboot(char *reboot_cmd)
 	int	rcode;
 
 	if ((reboot_cmd == NULL) || (*reboot_cmd == '\0'))
-		strncpy(bootcmd, REBOOT_CMD, HOOK_BUF_SIZE-1);
+		pbs_strncpy(bootcmd, REBOOT_CMD, sizeof(bootcmd));
 	else
-		strncpy(bootcmd, reboot_cmd, HOOK_BUF_SIZE-1);
+		pbs_strncpy(bootcmd, reboot_cmd, sizeof(bootcmd));
 
 	snprintf(log_buffer, sizeof(log_buffer), "issuing cmd %s", bootcmd);
 	log_event(PBSEVENT_DEBUG3, 0,
@@ -2915,11 +2682,11 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	snprintf(phja->hja_jid, sizeof(phja->hja_jid), "%s", pjob->ji_qs.ji_jobid);
 	phja->hja_actid = ++hook_action_id;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-		phja->hja_runct = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-	} else {
-		phja->hja_runct = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-	}
+	if (is_jattr_set(pjob, JOB_ATR_run_version))
+		phja->hja_runct = get_jattr_long(pjob, JOB_ATR_run_version);
+	else
+		phja->hja_runct = get_jattr_long(pjob, JOB_ATR_runcount);
+
 	phja->hja_huser = huser;
 	phja->hja_action = action;
 	append_link(&svr_hook_job_actions, &phja->hja_link, phja);
@@ -2939,8 +2706,7 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
  *
  */
 static void
-post_periodic_hook(pwt)
-struct work_task *pwt;
+post_periodic_hook(struct work_task *pwt)
 {
 	int	 wstat = pwt->wt_aux;
 	hook	 *phook = (hook *)pwt->wt_parm1;
@@ -3169,7 +2935,7 @@ record_job_last_hook_executed(unsigned int hook_event,
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
 			  LOG_ERR, __func__, "Job not received");
 		return;
-	} 
+	}
 
 	if (hook_name == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
@@ -3388,17 +3154,14 @@ post_run_hook(struct work_task *ptask)
 				/* hook script executed by PBSADMIN or not. */
 				if (reject_deletejob) {
 					/* deletejob takes precedence */
-					new_job_action_req(pjob, phook->user,
-						JOB_ACT_REQ_DELETE);
+					new_job_action_req(pjob, phook->user, JOB_ACT_REQ_DELETE);
 				} else if (reject_rerunjob) {
-					new_job_action_req(pjob, phook->user,
-						JOB_ACT_REQ_REQUEUE);
+					new_job_action_req(pjob, phook->user, JOB_ACT_REQ_REQUEUE);
 				}
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
-				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 0);
+				enqueue_update_for_send(pjob, IS_RESCUSED_FROM_HOOK);
 			}
 
 
@@ -3515,7 +3278,7 @@ reply_hook_bg(job *pjob)
 		 * IS_DISCARD_JOB can be received by sister node as well,
 		 * when node fail requeue is activated
 		 */
-		n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+		n = get_jattr_long(pjob, JOB_ATR_run_version);
 		strcpy(jobid, pjob->ji_qs.ji_jobid);
 
 		del_job_resc(pjob);	/* rm tmpdir, etc. */
@@ -3599,11 +3362,11 @@ reply_hook_bg(job *pjob)
 			case BG_IM_DELETE_JOB2:
 				strcpy(jobid, pjob->ji_qs.ji_jobid);
 				pjob->ji_hook_running_bg_on = BG_NONE;
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-				} else {
-					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-				}
+				if (is_jattr_set(pjob, JOB_ATR_run_version))
+					runver = get_jattr_long(pjob, JOB_ATR_run_version);
+				else
+					runver = get_jattr_long(pjob, JOB_ATR_runcount);
+
 				mom_deljob(pjob);
 
 				/* Needed to create a lightweight copy of the job to
@@ -3614,10 +3377,8 @@ reply_hook_bg(job *pjob)
 				 * been deleted already.
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
-					(void)snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
-							runver;
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
+					snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
+					set_jattr_l_slim(pjob2, JOB_ATR_run_version, runver, SET);
 					/* JOB_ACT_REQ_DEALLOCATE request will tell the
 					 * the server that this mom has completely deleted the
 					 * job and now the server can officially free up the
@@ -3936,8 +3697,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		if (((hook_event == HOOK_EVENT_EXECJOB_END) ||
 		     (hook_event == HOOK_EVENT_EXECJOB_EPILOGUE)) && !set_job_exit) {
 
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
+			set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_momt.ji_exitstat, SET);
 			set_job_exit = 1;
 		} else if ((hook_event == HOOK_EVENT_EXECJOB_LAUNCH) && (num_run >= 1)) {
 
@@ -4082,130 +3842,6 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 
 	free(php);
 	return (1);
-}
-
-
-/**
- * @brief
- *
- *	Returns the number of hook scripts that are eligible to
- *	be executed for the specified 'hook_event'.
- *	This means the hook is enabled and has a hook content.
- *
- * @param[in] 	hook_event - the event of the hooks to count
- * @return	int
- * @retval 	<n> number of hooks
- *
- */
-int
-num_eligible_hooks(unsigned int hook_event)
-{
-	hook			*phook;
-	hook			*phook_next = NULL;
-	pbs_list_head		*head_ptr;
-	int			num_hooks = 0;
-
-	switch (hook_event) {
-
-		case HOOK_EVENT_EXECJOB_BEGIN:
-			head_ptr = &svr_execjob_begin_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_PROLOGUE:
-			head_ptr = &svr_execjob_prologue_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_EPILOGUE:
-			head_ptr = &svr_execjob_epilogue_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_END:
-			head_ptr = &svr_execjob_end_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_PRETERM:
-			head_ptr = &svr_execjob_preterm_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_LAUNCH:
-			head_ptr = &svr_execjob_launch_hooks;
-			break;
-		case HOOK_EVENT_EXECHOST_PERIODIC:
-			head_ptr = &svr_exechost_periodic_hooks;
-			break;
-		case HOOK_EVENT_EXECHOST_STARTUP:
-			head_ptr = &svr_exechost_startup_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_ATTACH:
-			head_ptr = &svr_execjob_attach_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_RESIZE:
-			head_ptr = &svr_execjob_resize_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_ABORT:
-			head_ptr = &svr_execjob_abort_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_POSTSUSPEND:
-			head_ptr = &svr_execjob_postsuspend_hooks;
-			break;
-		case HOOK_EVENT_EXECJOB_PRERESUME:
-			head_ptr = &svr_execjob_preresume_hooks;
-			break;
-		default:
-			return (0); /* unexpected event encountered */
-	}
-
-	for (phook = (hook *)GET_NEXT(*head_ptr); phook; phook = phook_next) {
-		switch (hook_event) {
-
-			case HOOK_EVENT_EXECJOB_BEGIN:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_begin_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_PROLOGUE:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_prologue_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_EPILOGUE:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_epilogue_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_END:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_end_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_PRETERM:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_preterm_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_LAUNCH:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_launch_hooks);
-				break;
-			case HOOK_EVENT_EXECHOST_PERIODIC:
-				phook_next = (hook *)GET_NEXT(phook->hi_exechost_periodic_hooks);
-				break;
-			case HOOK_EVENT_EXECHOST_STARTUP:
-				phook_next = (hook *)GET_NEXT(phook->hi_exechost_startup_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_ATTACH:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_attach_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_RESIZE:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_ABORT:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_POSTSUSPEND:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_postsuspend_hooks);
-				break;
-			case HOOK_EVENT_EXECJOB_PRERESUME:
-				phook_next = (hook *)GET_NEXT(phook->hi_execjob_preresume_hooks);
-				break;
-			default:
-				return (0); /*  should not get here */
-		}
-
-		if (phook->enabled == FALSE)
-			continue;
-
-		if (phook->script == NULL)
-			continue;
-
-		num_hooks++;
-	}
-
-	return (num_hooks);
 }
 
 /**

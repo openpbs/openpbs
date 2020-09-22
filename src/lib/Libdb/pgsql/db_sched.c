@@ -176,7 +176,8 @@ static int
 load_sched(PGresult *res, pbs_db_sched_info_t *psch, int row)
 {
 	char *raw_array;
-	static int sched_name_fnum, attributes_fnum;
+	static int sched_name_fnum;
+	static int attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {

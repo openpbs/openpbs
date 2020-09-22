@@ -44,6 +44,8 @@
 #define initsocketlib() 0
 #define SOCK_ERRNO        errno
 
+#define NULL_DEVICE "/dev/null"
+
 #undef DLLEXPORT
 #define DLLEXPORT
 

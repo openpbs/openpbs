@@ -190,7 +190,6 @@ PyInit__pbs_v1(void) {
  * needed to link the loadable pbs_v1 Python module.
  */
 
-int have_blue_gene_nodes = 0;
 time_t time_now = 0;
 struct pbsnode **pbsndlist = NULL;
 int svr_totnodes = 0;
@@ -736,15 +735,6 @@ removefiles_action(attribute *pattr, void *pobject, int actmode) {
 int
 action_est_start_time_freq(attribute *pattr, void *pobj, int actmode) {
 	return PBSE_NONE;
-}
-
-int
-decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val) {
-	return 0;
-}
-int
-decode_project(struct attribute *patr, char *name, char *rescn, char *val) {
-	return 0;
 }
 
 int

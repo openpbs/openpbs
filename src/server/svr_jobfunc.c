@@ -164,7 +164,7 @@ clear_default_resc(job *pjob)
 	resource  *presc;
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_resource];
-	if (pattr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(pattr)) {
 		presc = (resource *)GET_NEXT(pattr->at_val.at_list);
 		while (presc) {
 			if (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)
@@ -216,6 +216,9 @@ svr_enquejob(job *pjob)
 	pbs_queue *pque;
 	int rc;
 	pbs_sched *psched;
+	int state_num;
+
+	state_num = get_job_state_num(pjob);
 
 	/* make sure queue is still there, there exist a small window ... */
 
@@ -228,9 +231,8 @@ svr_enquejob(job *pjob)
 		 * 0 (SUCCESS). INFO: The job is not associated with any
 		 * queue as the queue has been already purged.
 		 */
-		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
-
+		if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+			(check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
 			if (is_linked(&svr_alljobs, &pjob->ji_alljobs) == 0) {
 				if (pbs_idx_insert(jobs_idx, pjob->ji_qs.ji_jobid, pjob) != PBS_IDX_RET_OK) {
 					log_joberr(PBSE_INTERNAL, __func__, "Failed add history job in index", pjob->ji_qs.ji_jobid);
@@ -239,14 +241,15 @@ svr_enquejob(job *pjob)
 				append_link(&svr_alljobs, &pjob->ji_alljobs, pjob);
 			}
 			server.sv_qs.sv_numjobs++;
-			server.sv_jobstates[pjob->ji_qs.ji_state]++;
+			if (state_num != -1)
+				server.sv_jobstates[state_num]++;
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 				struct ajtrkhd *ptbl = pjob->ji_ajtrk;
 				if (ptbl) {
 					int indx;
 
 					for (indx = 0; indx < ptbl->tkm_ct; ++indx)
-						set_subjob_tblstate(pjob, indx, pjob->ji_qs.ji_state);
+						set_subjob_tblstate(pjob, indx, get_job_state(pjob));
 				}
 			}
 			return (0);
@@ -258,9 +261,9 @@ svr_enquejob(job *pjob)
 	/* add job to server's all job list and update server counts */
 
 #ifndef NDEBUG
-	(void)sprintf(log_buffer, "enqueuing into %s, state %x hop %ld",
-		pque->qu_qs.qu_name, pjob->ji_qs.ji_state,
-		pjob->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long);
+	(void)sprintf(log_buffer, "enqueuing into %s, state %c hop %ld",
+		pque->qu_qs.qu_name, get_job_state(pjob),
+		get_jattr_long(pjob, JOB_ATR_hopcount));
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		pjob->ji_qs.ji_jobid, log_buffer);
 #endif	/* NDEBUG */
@@ -272,10 +275,7 @@ svr_enquejob(job *pjob)
 
 	pjcur = (job *)GET_PRIOR(svr_alljobs);
 	while (pjcur) {
-		if ((unsigned long)pjob->ji_wattr[(int)JOB_ATR_qrank].
-			at_val.at_long >=
-			(unsigned long)pjcur->ji_wattr[(int)JOB_ATR_qrank].
-			at_val.at_long)
+		if (get_jattr_long(pjob, JOB_ATR_qrank) >= get_jattr_long(pjcur, JOB_ATR_qrank))
 			break;
 		pjcur = (job *)GET_PRIOR(pjcur->ji_alljobs);
 	}
@@ -290,7 +290,8 @@ svr_enquejob(job *pjob)
 	}
 
 	server.sv_qs.sv_numjobs++;
-	server.sv_jobstates[pjob->ji_qs.ji_state]++;
+	if (state_num != -1)
+		server.sv_jobstates[state_num]++;
 
 	/* place into queue in order of queue rank starting at end */
 
@@ -298,10 +299,7 @@ svr_enquejob(job *pjob)
 
 	pjcur = (job *)GET_PRIOR(pque->qu_jobs);
 	while (pjcur) {
-		if ((unsigned long)pjob->ji_wattr[(int)JOB_ATR_qrank].
-			at_val.at_long >=
-			(unsigned long)pjcur->ji_wattr[(int)JOB_ATR_qrank].
-			at_val.at_long)
+		if (get_jattr_long(pjob, JOB_ATR_qrank) >= get_jattr_long(pjcur, JOB_ATR_qrank))
 			break;
 		pjcur = (job *)GET_PRIOR(pjcur->ji_jobque);
 	}
@@ -318,10 +316,11 @@ svr_enquejob(job *pjob)
 	/* update counts: queue and queue by state */
 
 	pque->qu_numjobs++;
-	pque->qu_njstate[pjob->ji_qs.ji_state]++;
+	if (state_num != -1)
+		pque->qu_njstate[state_num]++;
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 			int indx;
 			struct ajtrkhd *ptbl = pjob->ji_ajtrk;
@@ -329,7 +328,7 @@ svr_enquejob(job *pjob)
 				for (indx = 0; indx < ptbl->tkm_ct; ++indx)
 					set_subjob_tblstate(pjob,
 						indx,
-						pjob->ji_qs.ji_state);
+						get_job_state(pjob));
 			}
 		}
 		return (0);
@@ -340,7 +339,7 @@ svr_enquejob(job *pjob)
 	pdef    = &job_attr_def[(int)JOB_ATR_in_queue];
 	pattrjb = &pjob->ji_wattr[(int)JOB_ATR_in_queue];
 	pdef->at_free(pattrjb);
-	pdef->at_decode(pattrjb, NULL, NULL, pque->qu_qs.qu_name);
+	set_attr_generic(pattrjb, pdef, pque->qu_qs.qu_name, NULL, SET);
 
 	if (pque->qu_attr[(int)QA_ATR_QType].at_val.at_str == NULL) {
 		sprintf(log_buffer, "queue type must be set for queue `%s`",
@@ -349,13 +348,10 @@ svr_enquejob(job *pjob)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		return PBSE_NEEDQUET;
 	}
-	pjob->ji_wattr[(int)JOB_ATR_queuetype].at_val.at_char = *pque->qu_attr[(int)QA_ATR_QType].at_val.at_str;
-	pjob->ji_wattr[(int)JOB_ATR_queuetype].at_flags |= ATR_SET_MOD_MCACHE;
+	set_attr_c(&pjob->ji_wattr[JOB_ATR_queuetype], *pque->qu_attr[(int)QA_ATR_QType].at_val.at_str, SET);
 
-	if ((pjob->ji_wattr[JOB_ATR_qtime].at_flags & ATR_VFLAG_SET) == 0) {
-		pjob->ji_wattr[JOB_ATR_qtime].at_val.at_long = time_now;
-		pjob->ji_wattr[JOB_ATR_qtime].at_flags |= ATR_SET_MOD_MCACHE;
-	}
+	if (!is_jattr_set(pjob, JOB_ATR_qtime))
+		set_jattr_l_slim(pjob, JOB_ATR_qtime, time_now, SET);
 
 	/*
 	 * set any "unspecified" resources which have default values,
@@ -370,18 +366,15 @@ svr_enquejob(job *pjob)
 	 * Ensure that all jobs has JOB_ATR_project set.
 	 * It could be unset if coming from an overlay upgrade.
 	 */
-	if ( (pjob->ji_wattr[(int)JOB_ATR_project].at_flags & \
-							ATR_VFLAG_SET) == 0 ) {
-		job_attr_def[(int)JOB_ATR_project].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_project],
-			NULL, NULL, PBS_DEFAULT_PROJECT);
-	}
+	if (!is_jattr_set(pjob, JOB_ATR_project))
+		set_jattr_str_slim(pjob, JOB_ATR_project, PBS_DEFAULT_PROJECT, NULL);
 
 	/* update any entity count and entity resources usage for the queue */
 
-	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) || (server.sv_attr[(int)SVR_ATR_State].at_val.at_long == SV_STATE_INIT)) {
+	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) ||
+			(server.sv_attr[SVR_ATR_State].at_val.at_long == SV_STATE_INIT))
 		account_entity_limit_usages(pjob, pque, NULL, INCR, ETLIM_ACC_ALL);
-	}
+
 
 	/*
 	 * See if we need to do anything special based on type of queue
@@ -410,7 +403,7 @@ svr_enquejob(job *pjob)
 		 */
 
 		if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long != SV_STATE_INIT) {
-			if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET) {
+			if (is_jattr_set(pjob, JOB_ATR_depend)) {
 				rc = depend_on_que(&pjob->ji_wattr[(int)JOB_ATR_depend], pjob, ATR_ACTION_NOOP);
 				if (rc)
 					return rc;
@@ -419,11 +412,8 @@ svr_enquejob(job *pjob)
 
 		/* set eligible time */
 
-		if (((pjob->ji_wattr[(int)JOB_ATR_etime].at_flags &
-			ATR_VFLAG_SET) == 0) &&
-			(pjob->ji_qs.ji_state == JOB_STATE_QUEUED)) {
-			pjob->ji_wattr[(int)JOB_ATR_etime].at_val.at_long = time_now;
-			pjob->ji_wattr[(int)JOB_ATR_etime].at_flags |= ATR_SET_MOD_MCACHE;
+		if (!is_jattr_set(pjob, JOB_ATR_etime) && check_job_state(pjob, JOB_STATE_LTR_QUEUED)) {
+			set_jattr_l_slim(pjob, JOB_ATR_etime, time_now, SET);
 
 			/* better notify the Scheduler we have a new job */
 
@@ -470,10 +460,13 @@ svr_dequejob(job *pjob)
 {
 	int	   bad_ct = 0;
 	pbs_queue *pque;
+	int state_num;
 
 	/* remove job from server's all job list and reduce server counts */
 
 	if (is_linked(&svr_alljobs, &pjob->ji_alljobs)) {
+		int state_num;
+
 		delete_link(&pjob->ji_alljobs);
 		delete_link(&pjob->ji_unlicjobs);
 		if (pbs_idx_delete(jobs_idx, pjob->ji_qs.ji_jobid) != PBS_IDX_RET_OK)
@@ -481,7 +474,8 @@ svr_dequejob(job *pjob)
 		if (--server.sv_qs.sv_numjobs < 0)
 			bad_ct = 1;
 
-		if (--server.sv_jobstates[pjob->ji_qs.ji_state] < 0)
+		state_num = get_job_state_num(pjob);
+		if (state_num != -1 && --server.sv_jobstates[state_num] < 0)
 			bad_ct = 1;
 	}
 
@@ -497,22 +491,24 @@ svr_dequejob(job *pjob)
 			delete_link(&pjob->ji_jobque);
 			if (--pque->qu_numjobs < 0)
 				bad_ct = 1;
-			if (--pque->qu_njstate[pjob->ji_qs.ji_state] < 0)
+
+			state_num = get_job_state_num(pjob);
+			if (state_num != -1 && --pque->qu_njstate[state_num] < 0)
 				bad_ct = 1;
 		}
 		pjob->ji_qhdr = NULL;
 	}
 
 #ifndef NDEBUG
-	sprintf(log_buffer, "dequeuing from %s, state %x",
-		pque ? pque->qu_qs.qu_name : "", pjob->ji_qs.ji_state);
+	sprintf(log_buffer, "dequeuing from %s, state %c",
+		pque ? pque->qu_qs.qu_name : "", get_job_state(pjob));
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		pjob->ji_qs.ji_jobid, log_buffer);
 	if (bad_ct) 		/* state counts are all messed up */
 		correct_ct(pque);
 #endif	/* NDEBUG */
 
-	pjob->ji_wattr[JOB_ATR_qtime].at_flags &= ~ATR_VFLAG_SET;
+	mark_jattr_not_set(pjob, JOB_ATR_qtime);
 
 	/* clear any default resource values */
 	clear_default_resc(pjob);
@@ -533,7 +529,7 @@ svr_dequejob(job *pjob)
  */
 
 int
-svr_setjobstate(job *pjob, int newstate, int newsubstate)
+svr_setjobstate(job *pjob, char newstate, int newsubstate)
 {
 	pbs_queue *pque = pjob->ji_qhdr;
 	pbs_sched *psched;
@@ -542,8 +538,8 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	 * If the job has already finished, then do not make any new changes
 	 * to job state or substate.
 	 */
-	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED ||
-		((pjob->ji_qs.ji_state == newstate) && (pjob->ji_qs.ji_substate == newsubstate)))
+	if (check_job_state(pjob, JOB_STATE_LTR_FINISHED) ||
+		(check_job_state(pjob, newstate) && (check_job_substate(pjob, newsubstate))))
 		return (0);
 
 	/*
@@ -551,18 +547,26 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	 * take care of that, also req_commit() will see that the job is saved.
 	 */
 
-	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM) {
-		int oldstate;
+	if (!check_job_substate(pjob, JOB_SUBSTATE_TRANSICM)) {
+		char oldstate = get_job_state(pjob);
 
 		/* if the state is changing, also update the state counts */
 
-		if ((oldstate = pjob->ji_qs.ji_state) != (long)newstate) {
-			server.sv_jobstates[oldstate]--;
-			server.sv_jobstates[newstate]++;
-			if (pque != NULL) {
+		if (oldstate != newstate) {
+			int oldstatenum;
+			int newstatenum;
 
-				pque->qu_njstate[oldstate]--;
-				pque->qu_njstate[newstate]++;
+			oldstatenum = state_char2int(oldstate);
+			newstatenum = state_char2int(newstate);
+			if (oldstatenum != -1)
+				server.sv_jobstates[oldstatenum]--;
+			if (newstatenum != -1)
+				server.sv_jobstates[newstatenum]++;
+			if (pque != NULL) {
+				if (oldstatenum != -1)
+					pque->qu_njstate[oldstatenum]--;
+				if (newstatenum != -1)
+					pque->qu_njstate[newstatenum]++;
 
 				/*
 				 * if execution queue, and eligability to run
@@ -570,7 +574,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 				 */
 
 				if ((pque->qu_qs.qu_type == QTYPE_Execution) &&
-					(newstate == JOB_STATE_QUEUED)) {
+					(newstate == JOB_STATE_LTR_QUEUED)) {
 					attribute *etime = &pjob->ji_wattr[(int)JOB_ATR_etime];
 
 					if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
@@ -580,16 +584,15 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 						log_err(-1, __func__, log_buffer);
 					}
 
-					if ((etime->at_flags & ATR_VFLAG_SET) == 0) {
-						etime->at_val.at_long = time_now;
-						etime->at_flags |= ATR_SET_MOD_MCACHE;
-					}
-					/* clear start time (stime) */
-					job_attr_def[(int)JOB_ATR_stime].at_free(&pjob->ji_wattr[(int)JOB_ATR_stime]);
+					if (!is_attr_set(etime))
+						set_attr_l(etime, time_now, SET);
 
-				} else if ((newstate == JOB_STATE_HELD) || (newstate == JOB_STATE_WAITING)) {
+					/* clear start time (stime) */
+					free_jattr(pjob, JOB_ATR_stime);
+
+				} else if ((newstate == JOB_STATE_LTR_HELD) || (newstate == JOB_STATE_LTR_WAITING)) {
 					/* on hold or wait, clear etime */
-					job_attr_def[(int)JOB_ATR_etime].at_free(&pjob->ji_wattr[(int)JOB_ATR_etime]);
+					free_jattr(pjob, JOB_ATR_etime);
 					/* TODO: remove attr etime from database */
 				}
 			}
@@ -601,12 +604,8 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	}
 
 	/* set the states accordingly */
-	pjob->ji_qs.ji_state = newstate;
-	pjob->ji_qs.ji_substate = newsubstate;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = newsubstate;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_MOD_MCACHE;
-
-	set_statechar(pjob);
+	set_job_state(pjob, newstate);
+	set_job_substate(pjob, newsubstate);
 
 	/* eligible_time_enable */
 	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
@@ -618,7 +617,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 
 	/* update the job file */
 
-	if (newstate == JOB_STATE_RUNNING) {
+	if (newstate == JOB_STATE_LTR_RUNNING) {
 		if (pjob->ji_etlimit_decr_queued == FALSE) {
 			account_entity_limit_usages(pjob, NULL, NULL, DECR, ETLIM_ACC_ALL_QUEUED);
 			account_entity_limit_usages(pjob, pjob->ji_qhdr, NULL, DECR, ETLIM_ACC_ALL_QUEUED);
@@ -651,7 +650,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
  * @return	void
  */
 void
-svr_evaljobstate(job *pjob, int *newstate, int *newsub, int forceeval)
+svr_evaljobstate(job *pjob, char *newstate, int *newsub, int forceeval)
 {
 	/*
 	 * A value MUST be assigned to newstate and newsub because
@@ -660,44 +659,43 @@ svr_evaljobstate(job *pjob, int *newstate, int *newsub, int forceeval)
 	 * on subsequent cycles and not schedule ANY work. The
 	 * safest thing to do is to hold the job by default.
 	 */
-	*newstate = JOB_STATE_HELD;
+	*newstate = JOB_STATE_LTR_HELD;
 	*newsub = JOB_SUBSTATE_HELD;
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
 
 		/* History job, just return state/sub-state. */
-		*newstate = pjob->ji_qs.ji_state;
-		*newsub   = pjob->ji_qs.ji_substate;
+		*newstate = get_job_state(pjob);
+		*newsub   = get_job_substate(pjob);
 
 	} else if ((forceeval == 0) &&
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_TRANSIT))) {
+			(check_job_state(pjob, JOB_STATE_LTR_TRANSIT) ||
+			check_job_state(pjob, JOB_STATE_LTR_RUNNING))) {
 
 		/* Leave as is. */
-		*newstate = pjob->ji_qs.ji_state;
-		*newsub   = pjob->ji_qs.ji_substate;
+		*newstate = get_job_state(pjob);
+		*newsub   = get_job_substate(pjob);
+	} else if (get_jattr_long(pjob, JOB_ATR_hold)) {
 
-	} else if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
-
-		*newstate = JOB_STATE_HELD;
+		*newstate = JOB_STATE_LTR_HELD;
 		/* is the hold due to a dependency? */
-		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SYNCHOLD) ||
-			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)) {
+		if ((check_job_substate(pjob, JOB_SUBSTATE_SYNCHOLD)) ||
+			(check_job_substate(pjob, JOB_SUBSTATE_DEPNHOLD))) {
 			/* Retain substate. */
-			*newsub   = pjob->ji_qs.ji_substate;
+			*newsub   = get_job_substate(pjob);
 		} else {
 			*newsub   = JOB_SUBSTATE_HELD;
 		}
 
-	} else if (pjob->ji_wattr[(int)JOB_ATR_exectime].at_val.at_long > (long)time_now) {
+	} else if (get_jattr_long(pjob, JOB_ATR_exectime) > (long)time_now) {
 
-		*newstate = JOB_STATE_WAITING;
+		*newstate = JOB_STATE_LTR_WAITING;
 		*newsub   = JOB_SUBSTATE_WAITING;
 
-	} else if (pjob->ji_wattr[(int)JOB_ATR_stagein].at_flags & ATR_VFLAG_SET) {
+	} else if (is_jattr_set(pjob, JOB_ATR_stagein)) {
 
-		*newstate = JOB_STATE_QUEUED;
+		*newstate = JOB_STATE_LTR_QUEUED;
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_StagedIn) {
 			*newsub = JOB_SUBSTATE_STAGECMP;
 		} else {
@@ -706,31 +704,30 @@ svr_evaljobstate(job *pjob, int *newstate, int *newsub, int forceeval)
 
 	} else {
 
-		if (pjob->ji_qs.ji_svrflags&JOB_SVFLG_ArrayJob) {
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 			/* This is an array job. */
 			struct ajtrkhd  *ptbl = pjob->ji_ajtrk;
 			if (ptbl) {
 				if  (ptbl->tkm_subjsct[JOB_STATE_QUEUED] +
 				       ptbl->tkm_dsubjsct < ptbl->tkm_ct) {
-					*newstate = JOB_STATE_BEGUN;
+					*newstate = JOB_STATE_LTR_BEGUN;
 					*newsub   = JOB_SUBSTATE_BEGUN;
 				} else {
 					/* All subjobs are queued. */
-					*newstate = JOB_STATE_QUEUED;
+					*newstate = JOB_STATE_LTR_QUEUED;
 					*newsub   = JOB_SUBSTATE_QUEUED;
 				}
 			} else {
 				sprintf(log_buffer, "Array job has no tracking table!");
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_ERR,
 					pjob->ji_qs.ji_jobid, log_buffer);
-				*newstate = JOB_STATE_HELD;
+				*newstate = JOB_STATE_LTR_HELD;
 				*newsub = JOB_SUBSTATE_HELD;
 			}
 		} else {
-			*newstate = JOB_STATE_QUEUED;
+			*newstate = JOB_STATE_LTR_QUEUED;
 			*newsub   = JOB_SUBSTATE_QUEUED;
 		}
-
 	}
 }
 
@@ -830,15 +827,15 @@ chk_svr_resc_limit(attribute *jobatr, attribute *queatr,
 	jbrc = (resource *)GET_NEXT(jobatr->at_val.at_list);
 	while (jbrc) {
 		cmpwith = 0;
-		if (jbrc->rs_value.at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(&jbrc->rs_value)) {
 			qurc = find_resc_entry(queatr, jbrc->rs_defin);
 			if ((qurc == 0) ||
-				((qurc->rs_value.at_flags & ATR_VFLAG_SET)==0)) {
+				((is_attr_set(&qurc->rs_value))==0)) {
 				/* queue limit not set, check server's */
 
 				svrc = find_resc_entry(svratr, jbrc->rs_defin);
 				if ((svrc != 0) &&
-					(svrc->rs_value.at_flags & ATR_VFLAG_SET)) {
+					(is_attr_set(&svrc->rs_value))) {
 					cmpwith = svrc;
 				}
 
@@ -881,7 +878,7 @@ get_wt_limit(attribute *plimit_attr, attribute *wt_attr)
 	wiresc = (resource *)GET_NEXT(plimit_attr->at_val.at_list);
 	while (wiresc != NULL) {
 		if ((strcasecmp(wiresc->rs_defin->rs_name, WALLTIME) == 0)
-			&& (wiresc->rs_value.at_flags & ATR_VFLAG_SET)) {
+			&& (is_attr_set(&wiresc->rs_value))) {
 			*wt_attr = wiresc->rs_value;
 			return 0;
 		}
@@ -907,7 +904,7 @@ comp_wt_limits_STF(resource *resc_minmaxwt, attribute limit_attr, int min_or_max
 {
 	int rc = 0;
 
-	if (resc_minmaxwt == NULL || !(resc_minmaxwt->rs_value.at_flags & ATR_VFLAG_SET))
+	if (resc_minmaxwt == NULL || !(is_attr_set(&resc_minmaxwt->rs_value)))
 		return 0;
 
 	/* Check minimum walltime limit if min_or_max == MIN_WALLTIME_LIMIT */
@@ -976,7 +973,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 			new_res->rs_defin->rs_set(&new_res->rs_value, &wt_max_queue_limit, SET);
 		else if (have_max_server_limit)
 			new_res->rs_defin->rs_set(&new_res->rs_value, &wt_max_server_limit, SET);
-		new_res->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&new_res->rs_value);
 	}
 #endif /* localmod 026 */
 	/* Check against queue maximum */
@@ -1082,10 +1079,7 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 	/* if not already set, set up a uid/gid/name */
 
-	if (!(pjob->ji_wattr[(int)JOB_ATR_euser].at_flags &
-		ATR_VFLAG_SET) ||
-		!(pjob->ji_wattr[(int)JOB_ATR_egroup].at_flags &
-		ATR_VFLAG_SET)) {
+	if (!is_jattr_set(pjob, JOB_ATR_euser) || !is_jattr_set(pjob, JOB_ATR_egroup)) {
 		if ((i = set_objexid((void*)pjob, JOB_OBJECT, pjob->ji_wattr)) != 0)
 			return (i);  /* PBSE_BADUSER or GRP */
 	}
@@ -1111,7 +1105,7 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 		/* 1d. cannot have an unknown attribute */
 
-		if (pjob->ji_wattr[(int)JOB_ATR_UNKN].at_flags & ATR_VFLAG_SET)
+		if (is_jattr_set(pjob, JOB_ATR_UNKN))
 			return (PBSE_NOATTR);
 
 	}
@@ -1155,9 +1149,9 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 		/* 3. If "from_route_only" is true, only local route allowed */
 
-		if ((pque->qu_attr[QA_ATR_FromRouteOnly].at_flags&ATR_VFLAG_SET) &&
+		if (is_attr_set(&pque->qu_attr[QA_ATR_FromRouteOnly]) &&
 			(pque->qu_attr[QA_ATR_FromRouteOnly].at_val.at_long == 1))
-			if (mtype == MOVE_TYPE_Move)  /* ok if not plain user */
+			if (mtype == MOVE_TYPE_Move)  /* ok if not plain user or scheduler */
 				return (PBSE_QACESS);
 	}
 
@@ -1173,8 +1167,7 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 	if (pque->qu_attr[QA_ATR_AclUserEnabled].at_val.at_long)
 		if (acl_check(&pque->qu_attr[QA_ATR_AclUsers],
-			pjob->ji_wattr[(int)JOB_ATR_job_owner].
-			at_val.at_str, ACL_User) == 0)
+			get_jattr_str(pjob, JOB_ATR_job_owner), ACL_User) == 0)
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
 				return (PBSE_PERM);
 
@@ -1182,7 +1175,7 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 	if (pque->qu_attr[QE_ATR_AclGroupEnabled].at_val.at_long)
 		if (acl_check(&pque->qu_attr[QE_ATR_AclGroup],
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
+			get_jattr_str(pjob, JOB_ATR_euser),
 			ACL_Group) == 0)
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
 				return (PBSE_PERM);
@@ -1193,15 +1186,12 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 		pque->qu_attr[QA_ATR_ReqCredEnable].at_val.at_long &&
 		(pque->qu_attr[QA_ATR_ReqCred].at_flags & ATR_VFLAG_SET)) {
 		char	*reqc = pque->qu_attr[QA_ATR_ReqCred].at_val.at_str;
-		char	*jobc = pjob->ji_wattr[(int)JOB_ATR_cred].at_val.at_str;
+		char	*jobc = get_jattr_str(pjob, JOB_ATR_cred);
 		/*
 		 **	The queue requires a cred, if job has none, or
-		 **	it is the wrong one, reject.
+		 **	it is the wrong one, and if not mgr, reject.
 		 */
-		if (((pjob->ji_wattr[(int)JOB_ATR_cred].at_flags &
-			ATR_VFLAG_SET) == 0 ||
-			strcmp(reqc, jobc) != 0) &&
-			(mtype != MOVE_TYPE_MgrMv))	/* ok if mgr */
+		if ((!is_jattr_set(pjob, JOB_ATR_cred) || strcmp(reqc, jobc) != 0) && mtype != MOVE_TYPE_MgrMv)
 			return PBSE_BADCRED;
 	}
 
@@ -1220,8 +1210,8 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 			return i;
 
 		/* 7b. Check limit on number of jobs per entity in server only if */
-		/*     this is a new job defined by state == JOB_STATE_TRANSIT    */
-		if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT) {
+		/*     this is a new job defined by state == JOB_STATE_LTR_TRANSIT    */
+		if (check_job_state(pjob, JOB_STATE_LTR_TRANSIT)) {
 			i = check_entity_ct_limit_max(pjob, NULL);
 			if (i != 0)
 				return i;
@@ -1420,12 +1410,12 @@ check_block(job *pjob, char *message)
 	char			*jobid = pjob->ji_qs.ji_jobid;
 	struct 			block_job_reply *blockj;
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
+	if ((is_jattr_set(pjob, JOB_ATR_block)) == 0)
 		return;
-	if ((pjob->ji_wattr[(int) JOB_ATR_block].at_val.at_long) == -1)
+	if ((get_jattr_long(pjob,  JOB_ATR_block)) == -1)
 		return;
 
-	port = (int)pjob->ji_wattr[(int)JOB_ATR_block].at_val.at_long;
+	port = (int)get_jattr_long(pjob, JOB_ATR_block);
 	/*
 	 * The blocking attribute of the job needs to be unset . This contains the port number on which the job
 	 * submission host is waiting for the exit status of the job . This is done here i.e check_block() as it is the
@@ -1435,10 +1425,10 @@ check_block(job *pjob, char *message)
 	 * port number to an impossible value instead of clearing it so that the database only contains
 	 * a reference to the fact that a history job was a blocking job . Port number need not be recorded .
 	 */
-	pjob->ji_wattr[(int) JOB_ATR_block].at_val.at_long = -1;
-	pjob->ji_wattr[(int) JOB_ATR_block].at_flags |= ATR_MOD_MCACHE;
+	set_jattr_l_slim(pjob, JOB_ATR_block, -1, SET);
+pjob->ji_wattr[(int) JOB_ATR_block].at_flags |= ATR_MOD_MCACHE;
 
-	phost = pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
+	phost = get_jattr_str(pjob, JOB_ATR_submit_host);
 	if (port == 0 || phost == NULL) {
 		sprintf(log_buffer, "%s: cannot reply %s:%d", __func__,
 			phost == NULL ? "<no host>" : phost, port);
@@ -1484,22 +1474,21 @@ check_block(job *pjob, char *message)
 static void
 job_wait_over(struct work_task *pwt)
 {
-	int	 newstate;
+	char	 newstate;
 	int	 newsub;
 	job     *pjob;
 
 	pjob = (job *)pwt->wt_parm1;
 
 	/* If history job, just return from here */
-	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED))
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_FINISHED)))
 		return;
 
 #ifndef NDEBUG
 	{
 		time_t now = time(NULL);
-		time_t when = ((job *)pjob)->ji_wattr[(int)JOB_ATR_exectime].
-			at_val.at_long;
+		time_t when = get_jattr_long((job *)pjob, JOB_ATR_exectime);
 		struct work_task *ptask;
 
 		if (when > now) {
@@ -1520,10 +1509,9 @@ job_wait_over(struct work_task *pwt)
 	pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HASWAIT;
 
 	/* clear the exectime attribute */
-	job_attr_def[(int)JOB_ATR_exectime].
-	at_free(&pjob->ji_wattr[(int)JOB_ATR_exectime]);
+	free_jattr(pjob, JOB_ATR_exectime);
 	svr_evaljobstate(pjob, &newstate, &newsub, 0);
-	(void)svr_setjobstate(pjob, newstate, newsub);
+	svr_setjobstate(pjob, newstate, newsub);
 }
 
 /**
@@ -1554,11 +1542,10 @@ job_set_wait(attribute *pattr, void *pjob, int mode)
 	long		  when;
 
 	/* Return 0 if it is history job */
-	if ((((job *)pjob)->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(((job *)pjob)->ji_qs.ji_state == JOB_STATE_FINISHED))
+	if (check_job_state((job *) pjob, JOB_STATE_LTR_MOVED) || check_job_state((job *) pjob, JOB_STATE_LTR_FINISHED))
 		return (0);
 
-	if ((pattr->at_flags & ATR_VFLAG_SET) == 0)
+	if (!is_attr_set(pattr))
 		return (0);
 	when  = pattr->at_val.at_long;
 	ptask = (struct work_task *)GET_NEXT(((job *)pjob)->ji_svrtask);
@@ -1611,11 +1598,11 @@ default_std(job *pjob, int key, char *to)
 	char *pd;
 
 
-	pd = strrchr(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str, '/');
+	pd = strrchr(get_jattr_str(pjob, JOB_ATR_jobname), '/');
 	if (pd)
 		++pd;
 	else
-		pd = pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str;
+		pd = get_jattr_str(pjob, JOB_ATR_jobname);
 	len = strlen(pd);
 
 	(void)strcpy(to, pd);		/* start with the job name */
@@ -1656,13 +1643,13 @@ prefix_std_file(job *pjob, int key)
 	if (pbs_conf.pbs_output_host_name)
 		outputhost = pbs_conf.pbs_output_host_name;
 	else
-		outputhost = pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
+		outputhost = get_jattr_str(pjob, JOB_ATR_submit_host);
 	wdir     = get_variable(pjob, "PBS_O_WORKDIR");
 	if (outputhost) {
 		int len;
 
 		len = strlen(outputhost) +
-			strlen(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str)
+			strlen(get_jattr_str(pjob, JOB_ATR_jobname))
 		+ PBS_MAXSEQNUM + strlen(PBS_FILE_ARRAY_INDEX_TAG) + 6;
 		if (wdir)
 			len += strlen(wdir);
@@ -1704,35 +1691,13 @@ cat_default_std(job *pjob, int key, char *in, char **out)
 	char *result;
 	int  len;
 	len = strlen(in) +
-		strlen(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str) +
+		strlen(get_jattr_str(pjob, JOB_ATR_jobname)) +
 	PBS_MAXSEQNUM + 5 + strlen(PBS_FILE_ARRAY_INDEX_TAG) + 1;
 	if ((result = malloc(len))) {
 		strcpy(result, in);
 		default_std(pjob, key, &result[strlen(result)]);
 	}
 	*out = result;
-}
-
-
-/**
- * @brief
- * 		get_jobowner - copy the basic job owner's name, without the @host suffix.
- *		The "to" buffer must be large enough (PBS_MAXUSER+1).
- *
- * @param[in]	from	-	 basic job owner's name
- * @param[out]	to	-	"to" buffer where name is copied.
- */
-void
-get_jobowner(char *from, char *to)
-{
-	int i;
-
-	for (i=0; i<PBS_MAXUSER; ++i) {
-		if ((*(from+i) == '@') || (*(from+i) == '\0'))
-			break;
-		*(to+i) = *(from+i);
-	}
-	*(to+i) = '\0';
 }
 
 /**
@@ -2019,7 +1984,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 							0, pkvp[j].kv_val);
 						if (rc != 0)
 							return rc;
-						else if ((tmpatr.at_flags & ATR_VFLAG_SET) == 0)
+						else if (!is_attr_set(&tmpatr))
 							return PBSE_BADATVAL;	/* illegal null value */
 						if (svr_resc_sum[i].rs_def->rs_type == ATR_TYPE_SIZE)
 							tmpatr.at_val.at_size.atsv_num *= nchk;
@@ -2148,7 +2113,7 @@ set_deflt_resc(attribute *jb, attribute *dflt, int selflg)
 	seldef = &svr_resc_def[RESC_SELECT];
 	plcdef = &svr_resc_def[RESC_PLACE];
 
-	if (dflt->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(dflt)) {
 
 		/* for each resource in the default value list */
 
@@ -2162,7 +2127,7 @@ set_deflt_resc(attribute *jb, attribute *dflt, int selflg)
 					continue; /* dont use select/place */
 			}
 
-			if (prescdt->rs_value.at_flags & ATR_VFLAG_SET) {
+			if (is_attr_set(&prescdt->rs_value)) {
 				/* see if the job already has that resource */
 				prescjb = find_resc_entry(jb, prescdt->rs_defin);
 				if ((prescjb == NULL) ||
@@ -2261,14 +2226,14 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	prdefsl = &svr_resc_def[RESC_SELECT];
 	presc   = find_resc_entry(pdest, prdefsl);
 	/* if not set, set select/place */
-	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0))
+	if ((presc == NULL) || ((is_attr_set(&presc->rs_value)) == 0))
 		if ((rc = set_select_and_place(objtype, pobj, pdest)) != 0)
 			return rc;
 
 	prdefpc = &svr_resc_def[RESC_PLACE];
 	presc = find_resc_entry(pdest, prdefpc);
 	/* if "place" still not set, force to "free" */
-	if ((presc == NULL) || ((presc->rs_value.at_flags & ATR_VFLAG_SET) == 0)) {
+	if ((presc == NULL) || ((is_attr_set(&presc->rs_value)) == 0)) {
 		presc = add_resource_entry(pdest, prdefpc);
 		if (presc == NULL)
 			return PBSE_SYSTEM;
@@ -2290,56 +2255,6 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 
 /**
  * @brief
- * 		set_statechar - set the job state attribute to the letter that corresponds
- *		to its current state.
- *
- * @param[in,out]	pjob	-	job whose state attribute needs to e set.
- */
-
-void
-set_statechar(job *pjob)
-{
-	if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
-		static char suspend = 'S';
-		static char useractive = 'U';
-
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend)
-			pjob->ji_wattr[JOB_ATR_state].at_val.at_char = suspend;
-		else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd)
-			pjob->ji_wattr[JOB_ATR_state].at_val.at_char = useractive;
-		else
-			pjob->ji_wattr[JOB_ATR_state].at_val.at_char =
-				*(statechars + pjob->ji_qs.ji_state);
-	} else
-		pjob->ji_wattr[JOB_ATR_state].at_val.at_char = *(statechars + pjob->ji_qs.ji_state);
-	pjob->ji_wattr[JOB_ATR_state].at_flags |= ATR_MOD_MCACHE;
-}
-
-/**
- * @brief
- * 		state_char2int - return the state from character form to int form.
- *
- * @param[in]	stc	-	state in character form
- *
- * @return	state in int form
- * @retval	-1	: failure
- */
-
-int
-state_char2int(char stc)
-{
-	int  i;
-
-	for (i=0; i < strlen(statechars); i++) {
-		if (statechars[i] == stc)
-			return (i);
-	}
-	return (-1);
-}
-
-
-/**
- * @brief
  * 		eval_chkpnt - if the job's checkpoint attribute is "c=nnnn" and
  * 		nnnn is less than the queue' minimum checkpoint time, reset
  *		to the queue min time.
@@ -2353,7 +2268,7 @@ eval_chkpnt(attribute *jobckp, attribute *queckp)
 {
 	char *pv;
 
-	if (((jobckp->at_flags & ATR_VFLAG_SET) == 0)  ||
+	if (((is_attr_set(jobckp)) == 0)  ||
 		((queckp->at_flags & ATR_VFLAG_SET) == 0))
 		return;		/* need do nothing */
 
@@ -2370,7 +2285,7 @@ eval_chkpnt(attribute *jobckp, attribute *queckp)
 		if (jobs < queckp->at_val.at_long) {
 			(void)sprintf(queues, "%c=%ld", ckt, queckp->at_val.at_long);
 			free_str(jobckp);
-			(void)decode_str(jobckp, 0, 0, queues);
+			set_attr_generic(jobckp, &job_attr_def[JOB_ATR_chkpnt], queues, NULL, INTERNAL);
 		}
 	}
 }
@@ -2426,11 +2341,16 @@ correct_ct(pbs_queue *pqj)
 
 	for (pjob = (job *)GET_NEXT(svr_alljobs); pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+		int state_num;
+
+		state_num = get_job_state(pjob);
 		server.sv_qs.sv_numjobs++;
-		server.sv_jobstates[pjob->ji_qs.ji_state]++;
+		if (state_num != -1)
+			server.sv_jobstates[state_num]++;
 		if (pjob->ji_qhdr) {
 			(pjob->ji_qhdr)->qu_numjobs++;
-			(pjob->ji_qhdr)->qu_njstate[pjob->ji_qs.ji_state]++;
+			if (state_num != -1)
+				(pjob->ji_qhdr)->qu_njstate[state_num]++;
 		}
 	}
 	return;
@@ -2463,7 +2383,7 @@ get_wall(job *jp)
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
 	if (pres == 0)
 		return (-1);
-	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+	else if (!is_attr_set(&pres->rs_value))
 		return (-1);
 	else
 		return pres->rs_value.at_val.at_long;   /*wall time value*/
@@ -2497,7 +2417,7 @@ get_used_wall(job *jp)
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resc_used], rscdef);
 	if (pres == 0)
 		return (-1);
-	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+	else if (!is_attr_set(&pres->rs_value))
 		return (-1);
 	else
 		return pres->rs_value.at_val.at_long;   /*wall time value*/
@@ -2528,7 +2448,7 @@ get_softwall(job *jp)
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
 	if (pres == 0)
 		return (-1);
-	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+	else if (!is_attr_set(&pres->rs_value))
 		return (-1);
 	else
 		return pres->rs_value.at_val.at_long;   /*wall time value*/
@@ -2559,7 +2479,7 @@ get_cput(job *jp)
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
 	if (pres == 0)
 		return (-1);
-	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+	else if (!is_attr_set(&pres->rs_value))
 		return (-1);
 	else
 		return pres->rs_value.at_val.at_long;   /*wall time value*/
@@ -2593,7 +2513,7 @@ get_used_cput(job *jp)
 	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resc_used], rscdef);
 	if (pres == 0)
 		return (-1);
-	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+	else if (!is_attr_set(&pres->rs_value))
 		return (-1);
 	else
 		return pres->rs_value.at_val.at_long;   /*wall time value*/
@@ -3198,7 +3118,7 @@ delete_occurrence_jobs(resc_resv *presv)
 		 * of job_abt
 		 */
 		pnxj = (job *)GET_NEXT(pjob->ji_jobque);
-		if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING && pjob->ji_qs.ji_substate != JOB_SUBSTATE_ABORT)
+		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) && !check_job_substate(pjob, JOB_SUBSTATE_ABORT))
 			(void) job_abt(pjob, "Deleting running job at end of reservation occurrence");
 
 		pjob = pnxj;
@@ -4169,11 +4089,11 @@ start_end_dur_wall(resc_resv *presv)
 	check_start = !(presv->ri_wattr[RESV_ATR_job].at_flags & ATR_VFLAG_SET);
 
 	if (pstate != RESV_BEING_ALTERED) {
-		if (pstime->at_flags & ATR_VFLAG_SET)
+		if (is_attr_set(pstime))
 			swcode += 1;			/* have start */
-		if (petime->at_flags & ATR_VFLAG_SET)
+		if (is_attr_set(petime))
 			swcode += 2;			/* have end */
-		if (pduration->at_flags & ATR_VFLAG_SET)
+		if (is_attr_set(pduration))
 			swcode += 4;			/* have duration */
 		if (prsc)
 			swcode += 8;			/* have walltime */
@@ -4218,10 +4138,8 @@ start_end_dur_wall(resc_resv *presv)
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
 				}
-				petime->at_flags |= ATR_SET_MOD_MCACHE;
-				petime->at_val.at_long = pstime->at_val.at_long +
-					pduration->at_val.at_long;
-				atemp.at_val.at_long = pduration->at_val.at_long;
+				set_attr_l(petime, pstime->at_val.at_long + pduration->at_val.at_long, SET);
+				set_attr_l(&atemp, pduration->at_val.at_long, SET);
 				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
@@ -4491,30 +4409,30 @@ determine_accruetype(job* pjob)
 	/* have to determine accrue type */
 
 	/* if job is truely running or provisioning */
-	if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING &&
-		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING ||
-		pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))
+	if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
+		(check_job_substate(pjob, JOB_SUBSTATE_RUNNING) ||
+		check_job_substate(pjob, JOB_SUBSTATE_PROVISION)))
 		return JOB_RUNNING;
 
 	/* if job exit */
-	if (pjob->ji_qs.ji_state == JOB_STATE_EXITING)
+	if (check_job_state(pjob, JOB_STATE_LTR_EXITING))
 		return JOB_EXIT;
 
 	/* handling qsub -a, waiting with substate 30 ; accrue ineligible time */
-	if (pjob->ji_wattr[(int)JOB_ATR_exectime].at_val.at_long)
+	if (get_jattr_long(pjob, JOB_ATR_exectime))
 		return JOB_INELIGIBLE;
 
 	/* 'user' hold applied ; accrue ineligible time */
-	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long & HOLD_u)
+	if (get_jattr_long(pjob, JOB_ATR_hold) & HOLD_u)
 		return JOB_INELIGIBLE;
 
 	/* other than 'user' hold applied */
 	/* accrue type is set to JOB_INELIGIBLE incase a job has dependency */
 	/* on another job and hold type is set to system hold. */
 	/* For all other cases accrue type is set to JOB_ELIGIBLE. */
-	temphold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+	temphold = get_jattr_long(pjob, JOB_ATR_hold);
 	if (temphold & HOLD_o || temphold & HOLD_bad_password || temphold & HOLD_s) {
-		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)
+		if ((check_job_substate(pjob, JOB_SUBSTATE_DEPNHOLD))
 			&& (temphold & HOLD_s))
 			return JOB_INELIGIBLE;
 
@@ -4522,11 +4440,11 @@ determine_accruetype(job* pjob)
 	}
 
 	/* scheduler suspend job ; accrue eligible time */
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)
+	if (check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))
 		return JOB_ELIGIBLE;
 
 	/* qsig suspended job ; accrue eligible time */
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND)
+	if (check_job_substate(pjob, JOB_SUBSTATE_SUSPEND))
 		return JOB_ELIGIBLE;
 
 	/* check for stopped queue: routing and execute ; accrue eligible time */
@@ -4536,8 +4454,8 @@ determine_accruetype(job* pjob)
 			return JOB_ELIGIBLE;
 
 	/* The job doesn't have any reason to not accrue eligible time (e.g. on hold), so it should accrue it */
-	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT &&
-		pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSIN)
+	if (check_job_state(pjob, JOB_STATE_LTR_TRANSIT) &&
+		check_job_substate(pjob, JOB_SUBSTATE_TRANSIN))
 		return JOB_ELIGIBLE;
 
 	return -1;
@@ -4566,7 +4484,7 @@ update_eligible_time(long newaccruetype, job *pjob)
 	static char errtime[] = "00:00:00";
 	char str[256];
 	long accrued_time = 0;			/* accrued time */
-	long oldaccruetype = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
+	long oldaccruetype = get_jattr_long(pjob, JOB_ATR_accrue_type);
 	long timestamp = (long) time_now; 	/* time since accrual begins */
 	unsigned int flags = ATR_SET_MOD_MCACHE;
 
@@ -4575,21 +4493,21 @@ update_eligible_time(long newaccruetype, job *pjob)
 		return 1;
 
 	/* time since accrue type last changed  */
-	accrued_time = timestamp - pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long;
+	accrued_time = timestamp - get_jattr_long(pjob, JOB_ATR_sample_starttime);
 
 	if (oldaccruetype == JOB_ELIGIBLE && accrued_time > 0) {
-		pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += accrued_time;
+		set_jattr_l_slim(pjob, JOB_ATR_eligible_time, accrued_time, INCR);
 		pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= flags;
 	}
 
 	/* change type to new accrue type, update start time to mark change of accrue type */
-	pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long = newaccruetype;
-	pjob->ji_wattr[JOB_ATR_accrue_type].at_flags |= flags;
-	pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = timestamp;
-	pjob->ji_wattr[JOB_ATR_sample_starttime].at_flags |= flags;
+	set_jattr_l_slim(pjob, JOB_ATR_accrue_type, newaccruetype, SET);
+pjob->ji_wattr[JOB_ATR_accrue_type].at_flags |= flags;
+	set_jattr_l_slim(pjob, JOB_ATR_sample_starttime, timestamp, SET);
+pjob->ji_wattr[JOB_ATR_sample_starttime].at_flags |= flags;
 
 	/* Prepare and print log message */
-	strtime = convert_long_to_time(pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long);
+	strtime = convert_long_to_time(get_jattr_long(pjob, JOB_ATR_eligible_time));
 	if (strtime == NULL)
 		strtime = errtime;
 
@@ -4625,7 +4543,7 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 	static char errtime[] = "00:00:00";
 	long timestamp = (long)time_now; /* accrual begins from here */
 	job * pjob = (job*)pobject;
-	long oldaccruetype = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
+	long oldaccruetype = get_jattr_long(pjob, JOB_ATR_accrue_type);
 	long newaccruetype = oldaccruetype; /* We are not changing accrue type */
 
 	/* distinguish between genuine qalter and call by action */
@@ -4647,11 +4565,10 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 			};
 
 			accrued_time = (long)time_now -
-				pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long;
+				get_jattr_long(pjob, JOB_ATR_sample_starttime);
 
 			/* Sample time accrual continues with this time .... */
-			pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long = timestamp;
-
+			set_jattr_l_slim(pjob, JOB_ATR_sample_starttime, timestamp, SET);
 			/* eligible_time is set to new value again in modify_job_attr.
 			 * this is for log message, we have the new value anyways.
 			 */
@@ -4708,13 +4625,12 @@ svr_saveorpurge_finjobhist(job *pjob)
 		 */
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 			if (pjob->ji_terminated)
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_TERMINATED;
-			else if ((pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags) &
-				 ATR_VFLAG_SET) {
-				if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long)
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_FAILED;
-				else if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_EXITED)
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_FINISHED;
+				set_job_substate(pjob, JOB_SUBSTATE_TERMINATED);
+			else if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
+				if (get_jattr_long(pjob,  JOB_ATR_exit_status))
+					set_job_substate(pjob, JOB_SUBSTATE_FAILED);
+				else if (check_job_substate(pjob, JOB_SUBSTATE_EXITED))
+					set_job_substate(pjob, JOB_SUBSTATE_FINISHED);
 			}
 		}
 		job_purge(pjob);
@@ -4759,7 +4675,7 @@ svr_clean_job_history(struct work_task *pwt)
 
 	/*
 	 * Traverse through the SERVER job list and find the history
-	 * jobs (job with state JOB_STATE_MOVED and JOB_STATE_FINISHED)
+	 * jobs (job with state JOB_STATE_LTR_MOVED and JOB_STATE_LTR_FINISHED)
 	 * which exceed the configured job_history_duration value and
 	 * purge them immediately.
 	 */
@@ -4769,29 +4685,29 @@ svr_clean_job_history(struct work_task *pwt)
 		/* save the next job */
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
-		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED && pjob->ji_qs.ji_substate == JOB_SUBSTATE_FINISHED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED)) {
+		if ((check_job_state(pjob, JOB_STATE_LTR_MOVED) && check_job_substate(pjob, JOB_SUBSTATE_FINISHED)) ||
+			(check_job_state(pjob, JOB_STATE_LTR_FINISHED)) ||
+			(check_job_state(pjob, JOB_STATE_LTR_EXPIRED))) {
 
-			if (!(pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_flags & ATR_VFLAG_SET)) {
-				if (pjob->ji_qs.ji_state == JOB_STATE_MOVED)
-					pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_val.at_long = time_now;
-				else {
+			if (!(is_jattr_set(pjob,  JOB_ATR_history_timestamp))) {
+				if (check_job_state(pjob, JOB_STATE_LTR_MOVED))
+					set_jattr_l_slim(pjob, JOB_ATR_history_timestamp, time_now, SET);
+			else {
 					if (((walltime_used = get_used_wall(pjob)) == -1) ||
-						!(pjob->ji_wattr[(int) JOB_ATR_stime].at_flags & ATR_VFLAG_SET)) {
+						!(is_jattr_set(pjob,  JOB_ATR_stime))) {
 						log_err(-1, "svr_clean_job_history",
 							"Finished job missing start-time/walltime used, cannot clean history");
 						pjob = nxpjob;
 						continue;
 					}
-					pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_val.at_long =
-						pjob->ji_wattr[(int) JOB_ATR_stime].at_val.at_long + walltime_used;
+					set_jattr_l_slim(pjob, JOB_ATR_history_timestamp,
+							get_jattr_long(pjob, JOB_ATR_stime) + walltime_used, SET);
 				}
 				pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_flags |= ATR_SET_MOD_MCACHE;
 				job_save_db(pjob);
 			}
 
-			if (time_now >= (pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_val.at_long + svr_history_duration)) {
+			if (time_now >= (get_jattr_long(pjob,  JOB_ATR_history_timestamp) + svr_history_duration)) {
 				job_purge(pjob);
 				pjob = NULL;
 			}
@@ -4874,24 +4790,32 @@ svr_clean_job_history(struct work_task *pwt)
  * @return	Nothing
  */
 void
-svr_histjob_update(job * pjob, int newstate, int newsubstate)
+svr_histjob_update(job * pjob, char newstate, int newsubstate)
 {
-	int oldstate = pjob->ji_qs.ji_state;
+	char oldstate = get_job_state(pjob);
 	pbs_queue *pque = pjob->ji_qhdr;
 
 	/* update the state count in queue and server */
 	if (oldstate != newstate) {
-		server.sv_jobstates[oldstate]--;
-		server.sv_jobstates[newstate]++;
+		int oldstatenum;
+		int newstatenum;
+
+		oldstatenum = state_char2int(oldstate);
+		newstatenum = state_char2int(newstate);
+		if (oldstatenum != -1)
+			server.sv_jobstates[oldstatenum]--;
+		if (newstatenum != -1)
+			server.sv_jobstates[newstatenum]++;
 		if (pque != NULL) {
-			pque->qu_njstate[oldstate]--;
-			pque->qu_njstate[newstate]++;
+			if (oldstatenum != -1)
+				pque->qu_njstate[oldstatenum]--;
+			if (newstatenum != -1)
+				pque->qu_njstate[newstatenum]++;
 		}
 	}
 	/* set the job state and state char */
-	pjob->ji_qs.ji_state = newstate;
-	pjob->ji_qs.ji_substate = newsubstate;
-	set_statechar(pjob);
+	set_job_state(pjob, newstate);
+	set_job_substate(pjob, newsubstate);
 
 	/* For subjob update the state */
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
@@ -4906,16 +4830,19 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 			/* update the subjob state table */
 			for (indx = 0; indx < ptbl->tkm_ct; ++indx) {
 				job *psubj = ptbl->tkm_tbl[indx].trk_psubjob;
-				if (psubj)
-					svr_histjob_update(psubj, newstate, newsubstate);
-				else
+				if (psubj) {
+					if (!check_job_substate(psubj, JOB_SUBSTATE_TERMINATED) &&
+						!check_job_substate(psubj, JOB_SUBSTATE_FINISHED) &&
+						!check_job_substate(psubj, JOB_SUBSTATE_FAILED) &&
+						!check_job_substate(psubj, JOB_SUBSTATE_MOVED))
+						svr_histjob_update(psubj, newstate, newsubstate);
+					else
+						svr_histjob_update(psubj, newstate, get_job_substate(psubj));
+				} else
 					set_subjob_tblstate(pjob, indx, newstate);
 			}
 		}
 	}
-	/* set the substate attr and cache it */
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = newsubstate;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_MOD_MCACHE;
 
 	job_save_db(pjob);
 }
@@ -4950,35 +4877,31 @@ void
 update_job_finish_comment(job *pjob, int newsubstate, char *user)
 {
 	char buffer[LOG_BUF_SIZE + 1] = {'\0'};
-	if ((pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_Comment)) == 0) {
 		return;
 	}
 
 	if (newsubstate == JOB_SUBSTATE_FINISHED) {
 		snprintf(buffer, LOG_BUF_SIZE, "%s and finished",
-			pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_Comment));
 	} else if (newsubstate == JOB_SUBSTATE_FAILED) {
 		snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
-			pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_Comment));
 	} else if (newsubstate == JOB_SUBSTATE_TERMINATED) {
 		/* Don't overwrite the comment; if already set by req_deletejob2 */
-		if (strstr(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str, "terminated") == NULL) {
+		if (strstr(get_jattr_str(pjob, JOB_ATR_Comment), "terminated") == NULL) {
 			if (user != NULL) {
 				snprintf(buffer, LOG_BUF_SIZE, "%s and terminated by %s",
-					pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str,
+					get_jattr_str(pjob, JOB_ATR_Comment),
 					user);
 			} else {
 				snprintf(buffer, LOG_BUF_SIZE, "%s and terminated",
-					pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
+					get_jattr_str(pjob, JOB_ATR_Comment));
 			}
 		}
 	}
 	if (buffer[0] != '\0') {
-		(void)job_attr_def[(int)JOB_ATR_Comment].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			NULL,
-			NULL,
-			buffer);
+		set_jattr_str_slim(pjob, JOB_ATR_Comment, buffer, NULL);
 	}
 }
 
@@ -5004,7 +4927,7 @@ update_job_finish_comment(job *pjob, int newsubstate, char *user)
 void
 svr_setjob_histinfo(job *pjob, histjob_type type)
 {
-	int newstate = 0;
+	char newstate = 'T';
 	int newsubstate = 0;
 	struct ajtrkhd *ptbl = NULL;
 
@@ -5053,26 +4976,18 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 			"%.*s", PBS_MAXQUEUENAME, qname);
 
 		/* Set the queue attribute to destination */
-		(void)job_attr_def[(int)JOB_ATR_in_queue].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_in_queue],
-			NULL,
-			NULL,
-			destination);
+		set_jattr_generic(pjob, JOB_ATR_in_queue, destination, NULL, SET);
 
 		/* set the job comment attr with destination */
-		sprintf(log_buffer, "Job has been moved to \"%s\"",
-			destination);
-		(void)job_attr_def[(int)JOB_ATR_Comment].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			NULL,
-			NULL,
-			log_buffer);
+		sprintf(log_buffer, "Job has been moved to \"%s\"", destination);
+		set_jattr_generic(pjob, JOB_ATR_Comment, log_buffer, NULL, SET);
+
 		/*
 		 * SET the NEW STATE/SUB-STATE for the job (which is moved).
-		 * New STATE for the job will be JOB_STATE_MOVED and new
+		 * New STATE for the job will be JOB_STATE_LTR_MOVED and new
 		 * SUBSTATE will be JOB_SUBSTATE_MOVED.
 		 */
-		newstate = JOB_STATE_MOVED;
+		newstate = JOB_STATE_LTR_MOVED;
 		newsubstate = JOB_SUBSTATE_MOVED;
 
 	} else if (type == T_FIN_JOB) {
@@ -5085,7 +5000,7 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 		 * otherwise FINISHED.
 		 */
 		newstate = (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) ?
-				JOB_STATE_EXPIRED : JOB_STATE_FINISHED; /* default X for subjob, F for other jobs */
+				JOB_STATE_LTR_EXPIRED : JOB_STATE_LTR_FINISHED; /* default X for subjob, F for other jobs */
 		newsubstate = JOB_SUBSTATE_FINISHED; /* default */
 
 		/* If Array job, handle here */
@@ -5102,13 +5017,13 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 				}
 			}
 			if (stgout_status != -1) {
-				pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_val.at_long = stgout_status;
-				pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_SET_MOD_MCACHE;
+				set_jattr_l_slim(pjob, JOB_ATR_stageout_status, stgout_status, SET);
+			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_SET_MOD_MCACHE;
 			}
 			for (i=0; i<ptbl->tkm_ct; i++) {
 				if (ptbl->tkm_tbl[i].trk_exitstat) {
-					pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
-					pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
+					set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_exect.ji_exitstat, SET);
+				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
 					break;
 				}
 			}
@@ -5128,15 +5043,14 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 		} else { /* Non-Array job */
 			if (pjob->ji_terminated) {
 				newsubstate = JOB_SUBSTATE_TERMINATED;
-			} else if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
-				ATR_VFLAG_SET) {
-				if (pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long)
+			} else if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
+				if (get_jattr_long(pjob, JOB_ATR_exit_status))
 					newsubstate = JOB_SUBSTATE_FAILED;
 			}
 		}
 		update_job_finish_comment(pjob, newsubstate, NULL);
 	} else if (type == T_MOM_DOWN) {
-		newstate = JOB_STATE_FINISHED;
+		newstate = JOB_STATE_LTR_FINISHED;
 		newsubstate = JOB_SUBSTATE_FAILED;
 	}
 
@@ -5144,9 +5058,9 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	/* if the job is not already in MOVED or FINISHED state, then */
 	/* decrement the entity job counts and entity resource sums   */
 
-	if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
+	if (!check_job_state(pjob, JOB_STATE_LTR_MOVED) &&
+		!check_job_state(pjob, JOB_STATE_LTR_EXPIRED) &&
+		!check_job_state(pjob, JOB_STATE_LTR_FINISHED)) {
 		account_entity_limit_usages(pjob, NULL, NULL, DECR,
 				pjob->ji_etlimit_decr_queued ? ETLIM_ACC_ALL_MAX : ETLIM_ACC_ALL);
 		account_entity_limit_usages(pjob, pjob->ji_qhdr, NULL, DECR,
@@ -5154,8 +5068,8 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	}
 
 	/* set the history timestamp */
-	pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_val.at_long = time_now;
-	pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_flags |= ATR_SET_MOD_MCACHE;
+	set_jattr_l_slim(pjob, JOB_ATR_history_timestamp, time_now, SET);
+pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_flags |= ATR_SET_MOD_MCACHE;
 	/* update the history job state and substate */
 	svr_histjob_update(pjob, newstate, newsubstate);
 
@@ -5198,12 +5112,12 @@ svr_chk_histjob(job *pjob)
 	 * return PBSE_HISTJOBID otherwise PBSE_NONE.
 	 */
 	if (pjob) {
-		switch (pjob->ji_qs.ji_state) {
-			case JOB_STATE_FINISHED:
+		switch (get_job_state(pjob)) {
+			case JOB_STATE_LTR_FINISHED:
 				rc = PBSE_HISTJOBID;
 				break;
-			case JOB_STATE_MOVED:
-				if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_FINISHED)
+			case JOB_STATE_LTR_MOVED:
+				if (check_job_substate(pjob, JOB_SUBSTATE_FINISHED))
 					rc = PBSE_HISTJOBID;
 				else /* other than JOB_SUBSTATE_FINISHED */
 					rc = PBSE_UNKJOBID;
@@ -5324,9 +5238,9 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	(void)strcpy(newreq->rq_ind.rq_modify.rq_objname,
                                         pjob->ji_qs.ji_jobid);
 
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_exec_vnode)) {
 	 	new_exec_vnode =
-		  pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+		  get_jattr_str(pjob, JOB_ATR_exec_vnode);
 
 		if (add_to_svrattrl_list(
 			&(newreq->rq_ind.rq_modify.rq_attr),
@@ -5341,9 +5255,9 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		num_updates++;
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_exec_host)) {
 		new_exec_host =
-		   pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+		   get_jattr_str(pjob, JOB_ATR_exec_host);
 
 		if (add_to_svrattrl_list(
 			&(newreq->rq_ind.rq_modify.rq_attr),
@@ -5357,9 +5271,9 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		num_updates++;
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_exec_host2)) {
 		new_exec_host2 =
-		  pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+		  get_jattr_str(pjob, JOB_ATR_exec_host2);
 
 		if (add_to_svrattrl_list(
 			&(newreq->rq_ind.rq_modify.rq_attr),
@@ -5374,7 +5288,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	}
 
 	psched = &pjob->ji_wattr[(int)JOB_ATR_SchedSelect];
-	if ((psched->at_flags & ATR_VFLAG_SET) != 0) {
+	if (is_attr_set(psched)) {
 		if (add_to_svrattrl_list(
 			&(newreq->rq_ind.rq_modify.rq_attr),
 			ATTR_SchedSelect, NULL,
@@ -5389,7 +5303,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	}
 
 
-	if ((pjob->ji_wattr[JOB_ATR_resource].at_flags & ATR_VFLAG_SET) != 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_resource)) != 0) {
 		pbs_list_head    collectresc;
 		svrattrl 	*psvrl;
 		attribute_def	*objatrdef;
@@ -5575,43 +5489,43 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		return (1);
 	}
 
-	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) &&
-	    (pjob->ji_qs.ji_state != JOB_STATE_EXITING)) {
+	if ((!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) &&
+	    (!check_job_state(pjob, JOB_STATE_LTR_EXITING))) {
 		log_err(-1, __func__, "job not in running or exiting state");
 		return (1);
 
 	}
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_exec_vnode)) == 0) {
 		log_err(-1, __func__, "exec_vnode is not set");
 		return (1);
 	}
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_exec_host)) == 0) {
 		log_err(-1, __func__, "exec_host is not set");
 		return (1);
 	}
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_exec_host2)) == 0) {
 		log_err(-1, __func__, "exec_host2 is not set");
 		return (1);
 	}
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_SchedSelect)) == 0) {
 		log_err(-1, __func__, "schedselect is not set");
 		return (1);
 	}
 
-	exec_vnode = pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str;
+	exec_vnode = get_jattr_str(pjob,  JOB_ATR_exec_vnode);
 
-	exec_host = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+	exec_host = get_jattr_str(pjob, JOB_ATR_exec_host);
 
-	exec_host2 = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+	exec_host2 = get_jattr_str(pjob, JOB_ATR_exec_host2);
 
-	schedselect = pjob->ji_wattr[JOB_ATR_SchedSelect].at_val.at_str;
+	schedselect = get_jattr_str(pjob, JOB_ATR_SchedSelect);
 
 	deallocated_execvnode_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
-	if (deallocated_execvnode_attr.at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(&deallocated_execvnode_attr)) {
 		deallocated_execvnode = deallocated_execvnode_attr.at_val.at_str;
 	}
 
@@ -5654,7 +5568,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 
 	if (new_exec_vnode && (new_exec_vnode[0] != '\0')) {
 
-		if (strcmp(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str,
+		if (strcmp(get_jattr_str(pjob,  JOB_ATR_exec_vnode),
 						 new_exec_vnode) == 0) {
 			/* no change */
 
@@ -5664,33 +5578,22 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 			}
 			goto recreate_exec_vnode_exit;
 		}
-		(void)job_attr_def[(int)JOB_ATR_exec_vnode_acct].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_acct],
-			NULL,
-			NULL,
-		pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_vnode_acct, get_jattr_str(pjob,  JOB_ATR_exec_vnode), NULL);
 
 		/* save original value which will be used later in the accounting end record */
-		if ((pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET) == 0) {
-			(void)job_attr_def[(int)JOB_ATR_exec_vnode_orig].at_decode(
-				&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_orig],
-				NULL,
-				NULL,
-				pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
+		if ((is_jattr_set(pjob, JOB_ATR_exec_vnode_orig)) == 0) {
+			set_jattr_str_slim(pjob, JOB_ATR_exec_vnode_orig,
+					get_jattr_str(pjob,  JOB_ATR_exec_vnode), NULL);
 		}
 
-		if ((pjob->ji_wattr[JOB_ATR_resource_acct].at_flags & ATR_VFLAG_SET) != 0) {
-			job_attr_def[JOB_ATR_resource_acct].at_free(&pjob->ji_wattr[JOB_ATR_resource_acct]);
-			pjob->ji_wattr[JOB_ATR_resource_acct].at_flags &= ~ATR_VFLAG_SET;
+		if ((is_jattr_set(pjob, JOB_ATR_resource_acct)) != 0) {
+			free_jattr(pjob, JOB_ATR_resource_acct);
+			mark_jattr_not_set(pjob, JOB_ATR_resource_acct);
 		}
-		job_attr_def[JOB_ATR_resource_acct].at_set(&pjob->ji_wattr[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource], INCR);
+		set_attr_with_attr(&job_attr_def[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource], INCR);
 
 
-		(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
-			NULL,
-			NULL,
-			new_exec_vnode);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_vnode, new_exec_vnode, NULL);
 
 		(void)update_resources_list(pjob, ATTR_l,
 			JOB_ATR_resource, new_exec_vnode, INCR, 0,
@@ -5701,35 +5604,19 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 	}
 
 	if (!keep_select && new_deallocated_execvnode && *new_deallocated_execvnode) {
-		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
-			NULL,
-			NULL,
-			new_deallocated_execvnode);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_vnode_deallocated, new_deallocated_execvnode, NULL);
 	}
 
 	if (new_exec_host && *new_exec_host) {
 
-		(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
-			NULL,
-			NULL,
-		  pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host_acct, get_jattr_str(pjob, JOB_ATR_exec_host), NULL);
 
 		/* save original value which will be used later in the accounting end record */
-		if ((pjob->ji_wattr[JOB_ATR_exec_host_orig].at_flags & ATR_VFLAG_SET) == 0) {
-			(void)job_attr_def[(int)JOB_ATR_exec_host_orig].at_decode(
-				&pjob->ji_wattr[(int)JOB_ATR_exec_host_orig],
-				NULL,
-				NULL,
-		  	pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+		if ((is_jattr_set(pjob, JOB_ATR_exec_host_orig)) == 0) {
+			set_jattr_str_slim(pjob, JOB_ATR_exec_host_orig, get_jattr_str(pjob, JOB_ATR_exec_host), NULL);
 		}
 
-		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-			NULL,
-			NULL,
-			new_exec_host);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host, new_exec_host, NULL);
 	} else {
 		log_err(-1, __func__, "new_exec_host is null or empty string");
 		goto recreate_exec_vnode_exit;
@@ -5737,11 +5624,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 
 	if (new_exec_host2 && *new_exec_host2) {
 
-		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
-			NULL,
-			NULL,
-			new_exec_host2);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host2, new_exec_host2, NULL);
 	} else {
 		log_err(-1, __func__, "new_exec_host2 is null or empty string");
 		goto recreate_exec_vnode_exit;
@@ -5764,24 +5647,15 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *keep_select, char *err_msg
 		}
 		/* re-generate "schedselect" attribute */
 
-		if ((pjob->ji_wattr[JOB_ATR_SchedSelect].\
-				at_flags & ATR_VFLAG_SET) != 0) {
+		if (is_jattr_set(pjob, JOB_ATR_SchedSelect)) {
 			/* Save current SchedSelect value if not */
 			/* already saved in *_orig */
-			if ((pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_flags & ATR_VFLAG_SET) == 0) {
-				(void)decode_str(
-                         		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect_orig],
-					NULL,
-                                        NULL,
-					pjob->ji_wattr[JOB_ATR_SchedSelect].at_val.at_str);
-
-			}
+			if (!is_jattr_set(pjob, JOB_ATR_SchedSelect_orig))
+				set_jattr_str_slim(pjob, JOB_ATR_SchedSelect_orig, get_jattr_str(pjob, JOB_ATR_SchedSelect), NULL);
 		}
-		(void)decode_str(
-			&pjob->ji_wattr[(int)JOB_ATR_SchedSelect], NULL,
-						NULL, new_select);
+		set_jattr_str_slim(pjob, JOB_ATR_SchedSelect, new_select, NULL);
 		/* re-generate nodect */
-		(void)set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
+		set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
 					&pjob->ji_wattr[(int)JOB_ATR_resource]);
 
 	} else {

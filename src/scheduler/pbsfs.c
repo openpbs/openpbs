@@ -181,8 +181,7 @@ main(int argc, char *argv[])
 				struct attrl *cur_attrl;
 				for (cur_attrl = cur_bs->attribs; cur_attrl != NULL; cur_attrl = cur_attrl->next) {
 					if (strcmp(cur_attrl->name, ATTR_sched_priv) == 0) {
-						strncpy(path_buf, cur_attrl->value, sizeof(path_buf));
-						path_buf[sizeof(path_buf) - 1] = '\0';
+						pbs_strncpy(path_buf, cur_attrl->value, sizeof(path_buf));
 						break;
 					}
 				}

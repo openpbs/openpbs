@@ -124,7 +124,6 @@ void *sched_attr_idx = NULL;
 
 char server_name[PBS_MAXSERVERNAME+1];
 char server_host[PBS_MAXHOSTNAME+1];	   /* host_name of this svr */
-int  have_blue_gene_nodes = 0;
 time_t		time_now = 0;
 struct pbsnode **pbsndlist;
 int		svr_totnodes = 0;
@@ -871,20 +870,6 @@ action_est_start_time_freq(attribute *pattr, void *pobj, int actmode)
 {
 	return PBSE_NONE;
 }
-
-
-int
-decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
-{
-	return 0;
-}
-
-int
-decode_project(struct attribute *patr, char *name, char *rescn, char *val)
-{
-	return 0;
-}
-
 
 int
 setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
@@ -2379,7 +2364,7 @@ main(int argc, char *argv[], char *envp[])
 			strncat(python_cmdline, argv[i], sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 			strncat(python_cmdline, "\"", sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 		}
-		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE);
+		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE, NULL);
 #else
 		char in_data[MAXBUF+1];
 		char *largv[3];
@@ -2790,11 +2775,16 @@ main(int argc, char *argv[], char *envp[])
 				fp_server_out = fopen(the_server_output,
 					"w");
 				if (fp_server_out == NULL) {
-					fprintf(stderr,
-						"warning: open of server output %s failed!",
+					log_eventf(PBSEVENT_DEBUG,
+						PBS_EVENTCLASS_HOOK, LOG_WARNING,
+						__func__,
+						"warning: error opening debug data file %s",
 						the_server_output);
+					pbs_python_set_hook_debug_data_fp(NULL);
+					pbs_python_set_hook_debug_data_file("");
 				} else {
 					pbs_python_set_hook_debug_data_fp(fp_server_out);
+					pbs_python_set_hook_debug_data_file(the_server_output);
 				}
 			} else if ((strcmp(plist->al_name, HOOKATT_USER) != 0) &&
 				(strcmp(plist->al_name, HOOKATT_FREQ) != 0) &&

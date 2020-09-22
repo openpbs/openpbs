@@ -486,10 +486,8 @@ badconn(char *msg)
 			strcat(buf, hold);
 		}
 	}
-	else {
-		strncpy(buf, phe->h_name, sizeof(buf));
-		buf[sizeof(buf)-1] = '\0';
-	}
+	else
+		pbs_strncpy(buf, phe->h_name, sizeof(buf));
 
 	sprintf(log_buffer, "%s on port %u %s",
 #ifdef NAS /* localmod 005 */

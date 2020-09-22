@@ -93,6 +93,7 @@
 #include "sort.h"
 #include "parse.h"
 #include "limits_if.h"
+#include "fifo.h"
 
 
 
@@ -576,6 +577,8 @@ reset_global_resource_ptrs(void)
 		boolres = NULL;
 	}
 	update_sorting_defs(SD_FREE);
+
+	clear_last_running();
 
 	/* The above references into this array.  We now free the memory */
 	if (allres != NULL) {

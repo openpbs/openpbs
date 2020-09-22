@@ -321,6 +321,8 @@ static int block_opt_o = FALSE;
 static int relnodes_on_stageout_opt_o = FALSE;
 static int tolerate_node_failures_opt_o = FALSE;
 
+extern char **environ;
+
 /* The following are "Utility" functions. */
 
 /**
@@ -3468,7 +3470,7 @@ job_env_basic(void)
 #ifdef WIN32
 			back2forward_slash(c_escaped);
 #endif
-			strncpy(p, c_escaped, len - (p - job_env));
+			pbs_strncpy(p, c_escaped, len - (p - job_env));
 			free(c_escaped);
 			c_escaped = NULL;
 		} else
@@ -3617,7 +3619,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 	if ((job_env = (char *) malloc(len)) == NULL) return FALSE;
 	*job_env = '\0';
 
-	strcpy(job_env, basic_vlist);
+	pbs_strncpy(job_env, basic_vlist, len);
 
 	/* Send these variables with the job. */
 	/* POSIX requirement: If a variable is given without a value, supply the
@@ -4059,7 +4061,8 @@ recv_attrl(void *s, struct attrl **attrib)
 			 * from the front end qsub
 			 */
 			if (strcmp(p, ATTR_v) == 0 && pbs_hostvar != NULL) {
-				attr_v_val = malloc(len_v + strlen(pbs_hostvar) + 1);
+				int attr_v_len = len_v + strlen(pbs_hostvar) + 1;
+				attr_v_val = malloc(attr_v_len);
 				if (!attr_v_val)
 					return -1;
 				strcpy(attr_v_val, p + len_n);
@@ -5671,8 +5674,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 		exit(0);
 	}
 
-	strncpy(qsub_exe, argv[0], sizeof(qsub_exe)); /* note the name of the qsub executable */
-	qsub_exe[sizeof(qsub_exe) - 1] = '\0';
+	pbs_strncpy(qsub_exe, argv[0], sizeof(qsub_exe)); /* note the name of the qsub executable */
 	if (strlen(qsub_exe) != strlen(argv[0])) { /* exit with error instead of silent truncation */
 		fprintf(stderr, "qsub: Name of executable is too long\n");
 		exit_qsub(2);

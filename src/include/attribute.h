@@ -571,7 +571,6 @@ extern int eligibletime_action(attribute *pattr,  void *pobject,  int actmode);
 extern int decode_formula(attribute *patr,  char *name,  char *rn,  char *val);
 extern int action_backfill_depth(attribute *pattr,  void *pobj,  int actmode);
 extern int action_est_start_time_freq(attribute *pattr,  void *pobj,  int actmode);
-extern int check_for_bgl_nodes(attribute *patr,  void *pobject,  int actmode);
 extern int action_sched_iteration(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_priv(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_log(attribute *pattr, void *pobj, int actmode);
@@ -607,6 +606,21 @@ extern int set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_
 
 extern svrattrl *make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags);
 extern void *cr_attrdef_idx(struct attribute_def *adef, int limit);
+
+/* Attr setters */
+int set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn, enum batch_op op);
+int set_attr_with_attr(attribute_def *pdef, attribute *oattr, attribute *nattr, enum batch_op op);
+void set_attr_l(attribute *pattr, long value, enum batch_op op);
+void set_attr_c(attribute *pattr, char value, enum batch_op op);
+void set_attr_b(attribute *pattr, long val, enum batch_op op);
+void mark_attr_not_set(attribute *attr);
+void mark_attr_set(attribute *attr);
+
+/* Attr getters */
+char get_attr_c(const attribute *pattr);
+long get_attr_l(const attribute *pattr);
+char *get_attr_str(const attribute *pattr);
+int is_attr_set(const attribute *pattr);
 
 /* "type" to pass to acl_check() */
 #define ACL_Host  1

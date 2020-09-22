@@ -212,7 +212,7 @@ cmp_placement_sets(const void *v1, const void *v2)
 int
 cmp_nspec(const void *v1, const void *v2)
 {
-	int s1, s2, ss1, ss2;
+	int s1, s2;
 	if (v1 == NULL && v2 == NULL)
 		return 0;
 
@@ -224,23 +224,50 @@ cmp_nspec(const void *v1, const void *v2)
 
 	s1 = (*(nspec**) v1)->seq_num;
 	s2 = (*(nspec**) v2)->seq_num;
-	ss1 = (*(nspec**) v1)->sub_seq_num;
-	ss2 = (*(nspec**) v2)->sub_seq_num;
 
 	if (s1 < s2)
 		return -1;
 	else if (s1 > s2)
 		return 1;
-	else {
-		if (ss1 < ss2)
-			return -1;
-		else if (ss1 > ss2)
-			return 1;
-		else
-			return 0;
-	}
+	else
+	    return cmp_nspec_by_sub_seq(v1, v2);
 }
 
+/**
+ * @brief
+ * 		cmp_nspec_by_sub_seq - sort nspec by sub sequence number
+ *
+ * @param[in]	v1	-	nspec 1
+ * @param[in]	v2	-	nspec 2
+ *
+ * @return	int
+ * @retval	-1	: if v1 < v2
+ * @retval	0 	: if v1 == v2
+ * @retval	1  	: if v1 > v2
+ */
+int
+cmp_nspec_by_sub_seq(const void *v1, const void *v2)
+{
+	int ss1, ss2;
+	if (v1 == NULL && v2 == NULL)
+		return 0;
+
+	if (v1 == NULL && v2 != NULL)
+		return -1;
+
+	if (v1 != NULL && v2 == NULL)
+		return 1;
+
+	ss1 = (*(nspec**) v1)->sub_seq_num;
+	ss2 = (*(nspec**) v2)->sub_seq_num;
+
+	if (ss1 < ss2)
+		return -1;
+	else if (ss1 > ss2)
+		return 1;
+	else
+		return 0;
+}
 
 
 /**

@@ -53,6 +53,8 @@
 #include "pbs_error.h"
 #include "libpbs.h"
 #include "pbs_idx.h"
+#include "pbs_entlim.h"
+#include "job.h"
 
 /**
  *
@@ -1594,4 +1596,211 @@ void free_attrl_list(struct attrl *at_list)
 	}
 
 }
+
+/**
+ * @brief	Generic attribute setter function, accepts all values as string regardless of the type
+ * 			Tip: use this when you want at_set() and at_decode() to be invoked, otherwise use the
+ * 			type based setters below
+ *
+ * @param[in]	pattr	-	pointer to attribute being set
+ * @param[in]	pdef 	-	attribute definition
+ * @param[in]	value	-	value to be set
+ * @param[in]	resc	-	value of resource, if applicable
+ * @param[in]	op	-	the batch_op op to perform (SET, INCR, etc.)
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+int
+set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn, enum batch_op op)
+{
+	int rc;
+	attribute tempat;
+
+	if (pattr == NULL || pdef == NULL) {
+		log_err(-1, __func__, "Invalid pointer to attribute or its definition");
+		return 1;
+	}
+
+	/* Just call decode and set the value of attribute directly */
+	if (op == INTERNAL) {
+		if ((rc = pdef->at_decode(pattr, pdef->at_name, rescn, value)) != 0) {
+			log_errf(rc, __func__, "decode of %s failed", pdef->at_name);
+			return 1;
+		}
+		return 0;
+	}
+
+	clear_attr(&tempat, pdef);
+	if ((rc = pdef->at_decode(&tempat, pdef->at_name, rescn, value)) != 0) {
+		log_errf(rc, __func__, "decode of %s failed", pdef->at_name);
+		return 1;
+	}
+
+	rc = set_attr_with_attr(pdef, pattr, &tempat, op);
+
+	pdef->at_free(&tempat);
+
+	return rc;
+}
+
+
+
+/**
+ * @brief	Set attribute using another attribute
+ *
+ * @param[in]	pdef 	-	attribute definition
+ * @param[in]	oattr	-	pointer to attribute being set
+ * @param[in]	nattr	-	pointer to attribute to set with
+ * @param[in]	op		-	operation to do
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+int
+set_attr_with_attr(attribute_def *pdef, attribute *oattr, attribute *nattr, enum batch_op op)
+{
+	int rc;
+
+	if ((rc = pdef->at_set(oattr, nattr, op)) != 0)
+		log_errf(rc, __func__, "set of %s failed", pdef->at_name);
+
+	return rc;
+}
+
+/**
+ * @brief	Mark an attribute as "not set"
+ *
+ * @param[in]	attr	-	pointer to attribute being modified
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+mark_attr_not_set(attribute *attr)
+{
+	if (attr != NULL)
+		attr->at_flags &= ~ATR_VFLAG_SET;
+}
+
+/**
+ * @brief	Mark an attribute as "set"
+ *
+ * @param[in]	attr	-	pointer to attribute being modified
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+mark_attr_set(attribute *attr)
+{
+	if (attr != NULL)
+		attr->at_flags |= ATR_VFLAG_SET;
+}
+
+/**
+ * @brief	Check if an attribute is set
+ *
+ * @param[in]	pattr	-	pointer to the attribute
+ *
+ * @return	int
+ * @retval	1 if the attribute is set
+ * @retval	0 otherwise
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ */
+int
+is_attr_set(const attribute *pattr)
+{
+	if (pattr != NULL)
+		return pattr->at_flags & ATR_VFLAG_SET;
+	return 0;
+}
+
+/**
+ * @brief
+ *		decode_sandbox - decode sandbox into string attribute
+ *
+ * @param[in,out]	patr - the string attribute that holds the decoded value
+ * @param[in]		name - project attribute name
+ * @param[in]		resc - resource name (unused here)
+ * @param[in]		val - project attribute value
+ *
+ * @return int
+ * @retval	0	- success
+ * @retval	>0	- error number if error.
+ *
+ * @note
+ *		argument rescn is unused here.
+ */
+
+int
+decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
+{
+	char *pc;
+
+	pc = val;
+	while (isspace((int)*pc))
+		++pc;
+	if (*pc == '\0' || !isalpha((int)*pc))
+		return PBSE_BADATVAL;
+
+	/* compare to valid values of sandbox */
+	if ((strcasecmp(pc, "HOME") != 0) &&
+		(strcasecmp(pc, "O_WORKDIR") != 0) &&
+		(strcasecmp(pc, "PRIVATE") != 0)) {
+		return PBSE_BADATVAL;
+	}
+
+	return (decode_str(patr, name, rescn, val));
+}
+
+/**
+ * @brief
+ *	Decode project into string attribute.
+ *
+ * @param[in,out]	patr - the string attribute that holds the decoded value
+ * @param[in]		name - project attribute name
+ * @param[in]		resc - resource name (unused here)
+ * @param[in]		val - project attribute value
+ *
+ * @return	int
+ * @retval      0 if success
+ * @retval      > 0 error number if error
+ * @retval      *patr members set
+ */
+
+int
+decode_project(struct attribute *patr, char *name, char *rescn, char *val)
+{
+	char *pc;
+
+	pc = val;
+	while (isspace((int)*pc))
+		++pc;
+
+	if (strpbrk(pc, ETLIM_INVALIDCHAR) != NULL)
+		return PBSE_BADATVAL;
+
+	return (decode_str(patr, name, rescn,
+		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
+}
+
 

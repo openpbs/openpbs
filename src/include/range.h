@@ -41,8 +41,6 @@
 #ifndef _RANGE_H
 #define _RANGE_H
 
-#include "data_types.h"
-
 /**
  * Control whether to consider stepping or not
  */
@@ -51,14 +49,25 @@ enum range_step_type {
 	ENABLE_SUBRANGE_STEPPING
 };
 
+typedef struct range
+{
+	int start;
+	int end;
+	int step;
+	int count;
+	struct range *next;
+} range;
+
+/* Error message when we fail to allocate memory */
+#define RANGE_MEM_ERR_MSG "Unable to allocate memory (malloc error)"
+
+#define INIT_RANGE_ARR_SIZE 2048
+
 /*
  *	new_range - allocate and initialize a range structure
  */
-#ifdef NAS /* localmod 005 */
-range *new_range(void);
-#else
-range *new_range();
-#endif /* localmod 005 */
+
+range *new_range(int start, int end, int step, int count, range *next);
 
 /*
  *	free_range_list - free a list of ranges
@@ -107,16 +116,15 @@ int range_contains_single(range *r, int val);
 
 /*
  *	range_remove_value - remove a value from a range list
- *	NOTE: only supports removing values from either the start or end
- *	      of a range, not in the middle
+ *
  */
 int range_remove_value(range **r, int val);
 
 /*
- *	range_add_value - add a value to a range list by adding it to the end
- *			  of the list
+ *	range_add_value - add a value to a range list 
+ *
  */
-int range_add_value(range *r, int val, enum range_step_type type);
+int range_add_value(range **r, int val, int range_step);
 
 /*
  *	range_intersection - create an intersection between two ranges

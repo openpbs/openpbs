@@ -63,6 +63,7 @@ extern "C" {
 #include "config.h"
 #include "pbs_bitmap.h"
 #include "pbs_share.h"
+#include "range.h"
 #ifdef NAS
 #include "site_queue.h"
 #endif
@@ -117,7 +118,6 @@ typedef struct resv_info resv_info;
 typedef struct counts counts;
 typedef struct nspec nspec;
 typedef struct node_partition node_partition;
-typedef struct range range;
 typedef struct resource_resv resource_resv;
 typedef struct place place;
 typedef struct schd_error schd_error;
@@ -765,6 +765,7 @@ struct resv_info
 	node_info **resv_nodes;		/* node universe for reservation */
 	char *partition;		/* name of the partition in which the reservation was confirmed */
 	selspec *select_orig;		/* original schedselect pre-alter */
+	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
@@ -809,7 +810,6 @@ struct resource_resv
 	server_info *server;		/* pointer to server which owns res resv */
 	node_info **ninfo_arr; 		/* nodes belonging to res resv */
 	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
-	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */
@@ -1104,15 +1104,6 @@ struct nameval
 	unsigned int is_set:1;
 	char *str;
 	int value;
-};
-
-struct range
-{
-	int start;
-	int end;
-	int step;
-	int count;
-	range *next;
 };
 
 struct config

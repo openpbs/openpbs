@@ -84,8 +84,8 @@ main(int argc, char **argv, char **envp)
 		exit(2);
 	}
 
-	strcpy(job_id1, argv[1]);
-	strcpy(job_id2, argv[2]);
+	pbs_strncpy(job_id1, argv[1], sizeof(job_id1));
+	pbs_strncpy(job_id2, argv[2], sizeof(job_id2));
 	svrtmp[0] = '\0';
 	if (get_server(job_id1, job_id1_out, svrtmp)) {
 		fprintf(stderr, "qorder: illegally formed job identifier: %s\n", job_id1);
@@ -93,7 +93,7 @@ main(int argc, char **argv, char **envp)
 	}
 	if (*svrtmp == '\0') {
 		if ((pn = pbs_default()) != NULL) {
-			(void)strcpy(svrtmp, pn);
+			pbs_strncpy(svrtmp, pn, sizeof(svrtmp));
 		} else {
 			fprintf(stderr, "qorder: could not get default server: %s\n", job_id1);
 			exit(1);
@@ -116,7 +116,7 @@ main(int argc, char **argv, char **envp)
 	}
 	if (*svrtmp == '\0') {
 		if ((pn = pbs_default()) != NULL) {
-			(void)strcpy(svrtmp, pn);
+			pbs_strncpy(svrtmp, pn, sizeof(svrtmp));
 		} else {
 			fprintf(stderr, "qorder: could not get default server: %s\n", job_id1);
 			exit(1);

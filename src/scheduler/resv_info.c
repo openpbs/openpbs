@@ -535,9 +535,9 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					 */
 					release_nodes(resresv_ocr);
 
-					resresv_ocr->orig_nspec_arr = parse_execvnode(
+					resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
 						execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
-					resresv_ocr->nspec_arr = combine_nspec_array(resresv_ocr->orig_nspec_arr);
+					resresv_ocr->nspec_arr = combine_nspec_array(resresv_ocr->resv->orig_nspec_arr);
 					resresv_ocr->ninfo_arr = create_node_array_from_nspec(resresv_ocr->nspec_arr);
 					resresv_ocr->resv->resv_nodes = create_resv_nodes(
 						resresv_ocr->nspec_arr, sinfo);
@@ -781,15 +781,15 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			sel = advresv->resv->select_orig;
 		else
 			sel = advresv->select;
-		advresv->orig_nspec_arr = parse_execvnode(resv_nodes, sinfo, sel);
-		advresv->nspec_arr = combine_nspec_array(advresv->orig_nspec_arr);
+		advresv->resv->orig_nspec_arr = parse_execvnode(resv_nodes, sinfo, sel);
+		advresv->nspec_arr = combine_nspec_array(advresv->resv->orig_nspec_arr);
 		advresv->ninfo_arr = create_node_array_from_nspec(advresv->nspec_arr);
 
 		/* create a node info array by copying the nodes and setting
 		 * available resources to only the ones assigned to the reservation
 		 */
 		advresv->resv->resv_nodes = create_resv_nodes(advresv->nspec_arr, sinfo);
-		selectspec = create_select_from_nspec(advresv->orig_nspec_arr);
+		selectspec = create_select_from_nspec(advresv->resv->orig_nspec_arr);
 		advresv->execselect = parse_selspec(selectspec);
 		free(selectspec);
 	}
@@ -867,6 +867,7 @@ new_resv_info()
 	rinfo->occr_start_arr = NULL;
 	rinfo->partition = NULL;
 	rinfo->select_orig = NULL;
+	rinfo->orig_nspec_arr = NULL;
 
 	return rinfo;
 }
@@ -906,6 +907,9 @@ free_resv_info(resv_info *rinfo)
 
 	if (rinfo->select_orig != NULL)
 		free_selspec(rinfo->select_orig);
+
+	if (rinfo->orig_nspec_arr != NULL)
+		free_nspecs(rinfo->orig_nspec_arr);
 
 	free(rinfo);
 
@@ -1159,9 +1163,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * the required fields.
 						 */
 						release_nodes(nresv_copy);
-						nresv_copy->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
+						nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
 						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
-						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->orig_nspec_arr);
+						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
 						nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 					}
 
@@ -1516,13 +1520,18 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				nresv->resv->resv_state == RESV_BEING_ALTERED) {
 				if (nresv->resv->is_running) {
 					char *sel;
+					int ind;
 					free_selspec(nresv->execselect);
-					/* Use orig_nspec_arr over nspec_arr because
+					/* Use resv->orig_nspec_arr over nspec_arr because
 					 * A) we modified it above in check_vnodes_unavailable() for reconfirmation
 					 * B) it will allow us to map the original select back to the new resv_nodes
 					 */
-					sel = create_select_from_nspec(nresv->orig_nspec_arr);
+					sel = create_select_from_nspec(nresv->resv->orig_nspec_arr);
 					nresv->execselect = parse_selspec(sel);
+					for (ind = 0; nresv->resv->orig_nspec_arr[ind] != NULL; ind++) {
+					    nresv->execselect->chunks[ind]->seq_num = nresv->resv->orig_nspec_arr[ind]->seq_num;
+					}
+
 					free(sel);
 					release_running_resv_nodes(nresv, nsinfo);
 				}
@@ -1533,7 +1542,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				 * this occurrence's execvnodes to the sequence of execvnodes
 				 */
 				confirmd_occr++;
-				tmp = create_execvnode(nresv->orig_nspec_arr);
+				tmp = create_execvnode(nresv->resv->orig_nspec_arr);
 				if (j == 0)
 					execvnodes = string_dup(tmp);
 				else  { /* subsequent occurrences */
@@ -1589,6 +1598,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		if (!(simrc & TIMED_ERROR) && resv_start_time >= 0) {
 			clear_schd_error(err);
 			if ((ns = is_ok_to_run(nsinfo->policy, nsinfo, NULL, nresv, NO_ALLPART, err)) != NULL) {
+				qsort(ns, count_array(ns), sizeof(nspec *), cmp_nspec);
 				tmp = create_execvnode(ns);
 				free_nspecs(ns);
 				if (tmp == NULL) {
@@ -1773,8 +1783,8 @@ check_down_running(resource_resv *resv, int chunk_ind)
 	if (resv == NULL || chunk_ind < 0 || !resv->is_resv)
 		return -3;
 
-	for (i = chunk_ind; resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {
-		nspec *ns = resv->orig_nspec_arr[i];
+	for (i = chunk_ind; resv->resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {
+		nspec *ns = resv->resv->orig_nspec_arr[i];
 		node_info *ninfo = ns->ninfo;
 
 		if (ninfo != NULL) {
@@ -1811,7 +1821,7 @@ check_down_running(resource_resv *resv, int chunk_ind)
  * 	we are removing unavailable nodes or available nodes
  *
  * @param[in] resv - reservation to remove nodes from
- * @param[in] start_of_chk - index into orig_nspec_arr of where to start
+ * @param[in] start_of_chk - index into resv->orig_nspec_arr of where to start
  * @param[in] chk_seq_num - sequence number of chunk to remove nodes from
  * @param[in] num_chks - number of nodes to remove.  Depending on node_type, it is OK to remove less than this
  * @param[in] node_type - type of node to remove: -1 unavailable, 0 normal, 1 either all with no running jobs
@@ -1829,7 +1839,7 @@ int ralter_remove_nodes(resource_resv *resv, int start_of_chk, int chk_seq_num, 
 	cur_chks = num_chks;
 	nspec **nspec_arr;
 
-	nspec_arr = resv->orig_nspec_arr;
+	nspec_arr = resv->resv->orig_nspec_arr;
 
 	for (i = start_of_chk; nspec_arr[i] != NULL && cur_chks; i++) {
 		int ret;
@@ -1884,7 +1894,7 @@ ralter_reduce_chunks(resource_resv *resv)
 	if (resv->resv->select_orig == NULL)
 		return 0;
 
-	cnt = count_array(resv->orig_nspec_arr);
+	cnt = count_array(resv->resv->orig_nspec_arr);
 	j = 0;
 	chks_orig = resv->resv->select_orig->chunks;
 	chks = resv->select->chunks;
@@ -1922,21 +1932,21 @@ ralter_reduce_chunks(resource_resv *resv)
 
 			j++;
 		}
-		for (k = start_of_chunk; k < cnt && resv->orig_nspec_arr[k]->chk->seq_num == chks_orig[i]->seq_num; k++)
+		for (k = start_of_chunk; k < cnt && resv->resv->orig_nspec_arr[k]->chk->seq_num == chks_orig[i]->seq_num; k++)
 			;
 		start_of_chunk = k;
 	}
 	i = 0;
-	while (resv->orig_nspec_arr[i] != NULL) {
-		if (resv->orig_nspec_arr[i]->ninfo == NULL) {
-			free_nspec(resv->orig_nspec_arr[i]);
-			for (j = i; resv->orig_nspec_arr[j] != NULL; j++)
-				resv->orig_nspec_arr[j] = resv->orig_nspec_arr[j + 1];
+	while (resv->resv->orig_nspec_arr[i] != NULL) {
+		if (resv->resv->orig_nspec_arr[i]->ninfo == NULL) {
+			free_nspec(resv->resv->orig_nspec_arr[i]);
+			for (j = i; resv->resv->orig_nspec_arr[j] != NULL; j++)
+				resv->resv->orig_nspec_arr[j] = resv->resv->orig_nspec_arr[j + 1];
 		} else
 			i++;
 	}
 	free_nspecs(resv->nspec_arr);
-	resv->nspec_arr = combine_nspec_array(resv->orig_nspec_arr);
+	resv->nspec_arr = combine_nspec_array(resv->resv->orig_nspec_arr);
 
 	return 1;
 }
@@ -1969,8 +1979,8 @@ check_vnodes_unavailable(resource_resv *resv)
 	if (resv == NULL || resv->nspec_arr == NULL)
 		return -3;
 
-	for (i = 0; resv->orig_nspec_arr[i] != NULL; i++) {
-		if (!resv->orig_nspec_arr[i]->end_of_chunk)
+	for (i = 0; resv->resv->orig_nspec_arr[i] != NULL; i++) {
+		if (!resv->resv->orig_nspec_arr[i]->end_of_chunk)
 			has_superchunk = 1;
 		num_chunks++;
 	}
@@ -1982,16 +1992,16 @@ check_vnodes_unavailable(resource_resv *resv)
 		}
 	}
 
-	for (i = 0; resv->orig_nspec_arr[i] != NULL; i++) {
+	for (i = 0; resv->resv->orig_nspec_arr[i] != NULL; i++) {
 
 		/* If the original select chunks haven't been mapped to the resv_nodes and the reservation is running, we can't continue */
-		if (resv->resv->is_running && resv->orig_nspec_arr[i]->chk == NULL) {
+		if (resv->resv->is_running && resv->resv->orig_nspec_arr[i]->chk == NULL) {
 			free(chunks_to_remove);
 			return -2;
 		}
 
 		/* Part of a superchunk we've already handled */
-		if (resv->orig_nspec_arr[i]->ninfo == NULL)
+		if (resv->resv->orig_nspec_arr[i]->ninfo == NULL)
 			continue;
 
 		ret = check_down_running(resv, i);
@@ -2004,27 +2014,27 @@ check_vnodes_unavailable(resource_resv *resv)
 		else if (ret == -1) {
 			int j;
 			has_down_node = 1;
-			for (j = i; resv->orig_nspec_arr[j] != NULL && !resv->orig_nspec_arr[j]->end_of_chunk; j++) {
-				resv->orig_nspec_arr[j]->ninfo = NULL;
+			for (j = i; resv->resv->orig_nspec_arr[j] != NULL && !resv->resv->orig_nspec_arr[j]->end_of_chunk; j++) {
+				resv->resv->orig_nspec_arr[j]->ninfo = NULL;
 				if (has_superchunk)
-					chunks_to_remove[del_i++] = resv->orig_nspec_arr[j];
+					chunks_to_remove[del_i++] = resv->resv->orig_nspec_arr[j];
 			}
 			/* We ran into an error where we ran into the end of the array before the end of the chunk
 			 * The entire chunk is in chunks_to_remove, so we'll just remove it.
 			 */
-			if (resv->orig_nspec_arr[j] == NULL)
+			if (resv->resv->orig_nspec_arr[j] == NULL)
 				break;
 
-			resv->orig_nspec_arr[j]->ninfo = NULL;
+			resv->resv->orig_nspec_arr[j]->ninfo = NULL;
 			/*
 			 * The nspec_arr only has consumable resources.  When replacing a vnode we need
 			 * to make sure to replace it with the right type of node matching the non-consumables
 			 */
-			free_resource_req_list(resv->orig_nspec_arr[j]->resreq);
-			resv->orig_nspec_arr[j]->resreq = dup_resource_req_list(resv->orig_nspec_arr[j]->chk->req);
-			resv->orig_nspec_arr[j]->sub_seq_num = 1;
+			free_resource_req_list(resv->resv->orig_nspec_arr[j]->resreq);
+			resv->resv->orig_nspec_arr[j]->resreq = dup_resource_req_list(resv->resv->orig_nspec_arr[j]->chk->req);
+			resv->resv->orig_nspec_arr[j]->sub_seq_num = 1;
 		} else /* Node is available for use */
-			resv->orig_nspec_arr[i]->sub_seq_num = 0;
+			resv->resv->orig_nspec_arr[i]->sub_seq_num = 0;
 	}
 
 	if (has_superchunk) {
@@ -2032,11 +2042,15 @@ check_vnodes_unavailable(resource_resv *resv)
 
 		for(i = 0; chunks_to_remove[i] != NULL; i++) {
 			free_nspec(chunks_to_remove[i]);
-			remove_ptr_from_array(resv->orig_nspec_arr, chunks_to_remove[i]);
+			remove_ptr_from_array(resv->resv->orig_nspec_arr, chunks_to_remove[i]);
 		}
 	}
-
-	qsort(resv->orig_nspec_arr, count_array(resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec);
+	if (has_down_node == 1)
+		/* Move all the specific chunks ahead of the generic chunks.
+		 * This will ensure that we get all the nodes back we need to,
+		 * before we start looking for replacements
+		 */
+		qsort(resv->resv->orig_nspec_arr, count_array(resv->resv->orig_nspec_arr), sizeof(nspec *), cmp_nspec_by_sub_seq);
 
 	free(chunks_to_remove);
 
@@ -2063,8 +2077,8 @@ release_nodes(resource_resv *resresv)
 	free_nspecs(resresv->nspec_arr);
 	resresv->nspec_arr = NULL;
 
-	free_nspecs(resresv->orig_nspec_arr);
-	resresv->orig_nspec_arr = NULL;
+	free_nspecs(resresv->resv->orig_nspec_arr);
+	resresv->resv->orig_nspec_arr = NULL;
 
 	if (resresv->nodepart_name != NULL) {
 		free(resresv->nodepart_name);

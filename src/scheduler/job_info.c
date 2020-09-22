@@ -973,6 +973,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_c,
 			ATTR_r,
 			ATTR_depend,
+			ATTR_A,
 			NULL
 	};
 
@@ -1146,7 +1147,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 	long count;			/* long used in string->long conversion */
 	char *endp;			/* used for strtol() */
 	resource_req *resreq;		/* resource_req list for resources requested  */
-	char *execvnode = NULL;		/* Hold the exec_vnode until the end of the parsing */
 
 	if ((resresv = new_resource_resv()) == NULL)
 		return NULL;
@@ -1313,9 +1313,15 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		/* array_indices_remaining */
 		else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
 			resresv->job->queued_subjobs = range_parse(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_execvnode))
-			execvnode = attrp->value;
-		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
+		else if (!strcmp(attrp->name, ATTR_execvnode)) {
+			nspec **tmp_nspec_arr;
+			tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, NULL);
+			resresv->nspec_arr = combine_nspec_array(tmp_nspec_arr);
+			free_nspecs(tmp_nspec_arr);
+
+			if (resresv->nspec_arr != NULL)
+				resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
+		} else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
 			if (resreq == NULL) {
 				free_resource_resv(resresv);
@@ -1393,14 +1399,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		}
 
 		attrp = attrp->next;
-	}
-
-	if (execvnode != NULL) {
-		resresv->orig_nspec_arr = parse_execvnode(execvnode, sinfo, resresv->select);
-		resresv->nspec_arr = combine_nspec_array(resresv->orig_nspec_arr);
-
-		if (resresv->nspec_arr != NULL)
-			resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
 	}
 
 	return resresv;
@@ -3976,8 +3974,7 @@ create_subjob_name(char *array_id, int index)
 	if (*rest != ']')
 		return NULL;
 
-	strncpy(tmpid, array_id, spn+1);
-	tmpid[spn+1] = '\0';
+	pbs_strncpy(tmpid, array_id, spn+2);
 	sprintf(buf, "%s%d%s", tmpid, index, rest);
 
 	return string_dup(buf);

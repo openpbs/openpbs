@@ -104,8 +104,6 @@ libpbs_sched_a_SOURCES = \
 	queue.h \
 	queue_info.c \
 	queue_info.h \
-	range.c \
-	range.h \
 	resource.h \
 	resource_resv.c \
 	resource_resv.h \

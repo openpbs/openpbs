@@ -981,7 +981,7 @@ set_node_info_state(node_info *ninfo, char *state)
 		ninfo->is_resv_exclusive = ninfo->is_job_exclusive = 0;
 		ninfo->is_sleeping = ninfo->is_maintenance = 0;
 
-		pbs_strncpy(statebuf, state, sizeof(statebuf));
+		strcpy(statebuf, state);
 		tok = strtok_r(statebuf, ",", &saveptr);
 
 		while (tok != NULL) {
@@ -1974,8 +1974,6 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 		pbs_bitmap_bit_on(bkt->busy_pool->truth, ind);
 		bkt->busy_pool->truth_ct++;
 	}
-
-
 }
 
 /**
@@ -2085,7 +2083,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 	}
 
 	ind = ninfo->node_ind;
-	if (ind != -1 && ninfo->bucket_ind != -1) {
+	if (ind != -1 && ninfo->bucket_ind != -1 && ninfo->num_jobs == 0) {
 		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
 
 		if (ninfo->node_events == NULL) {
@@ -2726,10 +2724,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes == 0) {
-							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
-							reason[MAX_LOG_SIZE - 1] = '\0';
-						}
+						if (hostsets[i]->free_nodes == 0)
+							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
 
@@ -2797,10 +2793,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes == 0) {
-							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
-							reason[MAX_LOG_SIZE - 1] = '\0';
-						}
+						if (hostsets[i]->free_nodes == 0)
+							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
 
@@ -2900,10 +2894,8 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes ==0) {
-							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
-							reason[MAX_LOG_SIZE - 1] = '\0';
-						}
+						if (hostsets[i]->free_nodes ==0)
+							strcpy(reason, "No free nodes available");
 						else
 							translate_fail_code(err, NULL, reason);
 
@@ -4001,15 +3993,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 
 				is_run_event = (event->event_type == TIMED_RUN_EVENT);
 
-
-				/* Normally when one job starts immediately after another (J1 end time == J2 start time)
-				 * we have no conflict between the two jobs.  When jobs do not request walltime,
-				 * they all have the same (5yr) walltime and fall one after another.
-				 * Using <= instead of < has the same effect as the jobs having a 1 second overlap.
-				 * Now all non-walltime jobs will overlap with the job before it and cause calendaring to occur.
-				 */
-				if (((resresv->duration == FIVE_YRS)?(event_time <= end_time):(event_time < end_time))
-					&& resresv != resc_resv && ns != NULL) {
+				if ((event_time < end_time) && resresv != resc_resv && ns != NULL) {
 					/* One event will need provisioning while the other will not,
 					 * they cannot co exist at same time.
 					 */
@@ -4438,7 +4422,7 @@ create_execvnode(nspec **ns)
 
 	for (i = 0; ns[i] != NULL; i++) {
 		if (i > 0)
-			pbs_strncpy(buf, "+", bufsize);
+			strcpy(buf, "+");
 		else
 			buf[0] = '\0';
 
@@ -4469,7 +4453,7 @@ create_execvnode(nspec **ns)
 					return NULL;
 			}
 			else if (ns[i]->go_provision && strcmp(req->name, "aoe") ==0) {
-				pbs_strncpy(buf2, ":aoe=", sizeof(buf2));
+				strcpy(buf2, ":aoe=");
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
 				if (pbs_strcat(&buf, &bufsize, req->res_str) == NULL)

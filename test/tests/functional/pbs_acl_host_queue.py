@@ -1,5 +1,5 @@
+# coding: utf-8
 
-#
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -37,15 +37,45 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
 
-AC_DEFUN([PBS_AC_MACHINE_TYPE],
-[
-  AC_MSG_CHECKING([for machine type])
-  [PBS_MACH=`$ac_aux_dir/pbs_mach_type`]
-  AC_MSG_RESULT([$PBS_MACH])
-  AC_SUBST(PBS_MACH)
-  AC_DEFINE_UNQUOTED([PBS_MACH], ["$PBS_MACH"], [PBS machine type])
-    [mom_mach_libs=""]
-  AC_SUBST(mom_mach_libs)
-])
+from tests.functional import *
+
+
+class Test_acl_host_queue(TestFunctional):
+    """
+    This test suite is for testing the queue attributes acl_host_enable
+    and acl_hosts.
+    """
+
+    def test_acl_host_enable_refuse(self):
+        """
+        Set acl_host_enable = True on queue and check whether or not
+        the submit is refused.
+        """
+        a = {"acl_host_enable": True,
+             "acl_hosts": "foo"}
+        self.server.manager(MGR_CMD_SET, QUEUE, a,
+                            self.server.default_queue)
+
+        j = Job(TEST_USER)
+        try:
+            self.server.submit(j)
+        except PbsSubmitError as e:
+            error_msg = "qsub: Access from host not allowed, or unknown host"
+            self.assertEquals(e.msg[0], error_msg)
+        else:
+            self.fail("Queue is violating acl_hosts")
+
+    def test_acl_host_enable_allow(self):
+        """
+        Set acl_host_enable = True along with acl_hosts and check
+        whether or not a job can be submitted.
+        """
+        a = {"acl_host_enable": True,
+             "acl_hosts": self.server.hostname}
+        self.server.manager(MGR_CMD_SET, QUEUE, a,
+                            self.server.default_queue)
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.logger.info('Job submitted successfully: ' + jid)

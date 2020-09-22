@@ -1059,3 +1059,74 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.sigjob(jobid=jid1, signal="resume")
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.server.expect(NODE, 'jobs', op=SET, id=self.mom.shortname)
+
+    def test_server_restart_with_suspened_job_unset(self):
+        """
+        Test that when the attribute is set and unset,
+        the server does not crash on restart with a suspended job.
+        """
+        a = {'type': 'long', 'flag': 'q'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='l1')
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='l2')
+
+        self.scheduler.add_resource('l1, l2', apply=True)
+
+        a = {'Resources_available.l1': 5, 'Resources_available.l2': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {ATTR_restrict_res_to_release_on_suspend: ['ncpus', 'l1']}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:mem=1024kb',
+             'Resource_List.l1': 1,
+             'Resource_List.l2': 1}
+
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        node = self.server.status(NODE, id=self.mom.shortname)
+        self.assertIn(jid1, node[0]['jobs'])
+        self.server.expect(NODE,
+                           {'resources_assigned.ncpus': 1,
+                            'resources_assigned.mem': '1024kb'},
+                           id=self.mom.shortname)
+        self.server.expect(SERVER,
+                           {'resources_assigned.l1': 1,
+                            'resources_assigned.l2': 1})
+
+        self.server.sigjob(jobid=jid1, signal="suspend")
+        self.server.expect(NODE,
+                           {'resources_assigned.ncpus': 0,
+                            'resources_assigned.mem': '1024kb'},
+                           id=self.mom.shortname)
+        self.server.expect(SERVER,
+                           {'resources_assigned.l1': 0,
+                            'resources_assigned.l2': 1})
+
+        a = [ATTR_restrict_res_to_release_on_suspend]
+        self.server.manager(MGR_CMD_UNSET, SERVER, a)
+
+        self.server.restart()
+
+        self.assertTrue(self.server.isUp())
+        self.server.expect(NODE,
+                           {'state': 'free',
+                            'resources_assigned.ncpus': 0,
+                            'resources_assigned.mem': '1024kb'},
+                           id=self.mom.shortname)
+        self.server.expect(SERVER,
+                           {'resources_assigned.l1': 0,
+                            'resources_assigned.l2': 1})
+        self.server.expect(NODE, 'jobs', op=UNSET, id=self.mom.shortname)
+
+        self.server.sigjob(jobid=jid1, signal="resume")
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(NODE, 'jobs', op=SET, id=self.mom.shortname)
+        self.server.expect(NODE,
+                           {'resources_assigned.ncpus': 1,
+                            'resources_assigned.mem': '1024kb'},
+                           id=self.mom.shortname)
+        self.server.expect(SERVER,
+                           {'resources_assigned.l1': 1,
+                            'resources_assigned.l2': 1})

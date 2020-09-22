@@ -97,6 +97,8 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
 	NULL,					/* PBS server id */
+	0,					/* single pbs server instance by default */
+	NULL,					/* pbs_server_instances */
 	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
@@ -255,6 +257,64 @@ parse_config_line(FILE *fp, char **key, char **val)
 	return ret;
 }
 
+
+/**
+ * @brief
+ * parse_psi - parses the PBS_SERVER_INSTANCES
+ *    
+ * @param[in] conf_value  configuration value set in pbs.conf
+ * 
+ * @return int
+ * @retval -1, For error
+ * @retval 0, For success
+ */
+
+int
+parse_psi(char *conf_value)
+{
+	char **list;
+	int i;
+	char *svrname = NULL;
+	
+	free(pbs_conf.psi);
+
+	list = break_comma_list(conf_value);
+	if (list == NULL)
+		return -1;
+
+	for (i = 0; list[i] != NULL; i++)
+		;
+
+	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
+		fprintf(stderr, "Out of memory while parsing configuration %s", conf_value);
+		free_string_array(list);
+		return -1;
+	}
+
+	for (i = 0; list[i] != NULL; i++) {
+		svrname = parse_servername(list[i], &(pbs_conf.psi[i].port));
+		if (svrname == NULL) {
+			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
+			free_string_array(list);
+			return -1;
+		}	
+		strcpy(pbs_conf.psi[i].name, svrname);
+
+		if (pbs_conf.psi[i].name[0] == '\0')
+			strcpy(pbs_conf.psi[i].name, pbs_conf.pbs_server_name);
+		if (pbs_conf.psi[i].port == 0) {
+			if (is_same_host(pbs_conf.psi[i].name, pbs_conf.pbs_server_name))
+				pbs_conf.psi[i].port = pbs_conf.batch_service_port;
+			else
+				pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
+		}
+	}
+	free_string_array(list);
+	pbs_conf.pbs_num_servers = i;
+
+	return 0;
+}
+
 /**
  * @brief
  *	pbs_loadconf - Populate the pbs_conf structure
@@ -291,13 +351,14 @@ __pbs_loadconf(int reload)
 	char *conf_value;		/* the value from the conf file or env*/
 	char *gvalue;			/* used with getenv() */
 	unsigned int uvalue;		/* used with sscanf() */
+	struct passwd *pw;
+	uid_t pbs_current_uid;
 #ifndef WIN32
 	struct servent *servent;	/* for use with getservent */
 	char **servalias;		/* service alias list */
 	unsigned int *pui;		/* for use with identify_service_entry */
-	struct passwd *pw;
-	uid_t pbs_current_uid;
 #endif
+	char *psi_value = NULL;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -504,6 +565,10 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_server_name);
 				pbs_conf.pbs_server_name = strdup(conf_value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_SERVER_INSTANCES)) {
+				if ((psi_value = strdup(conf_value)) == NULL)
+					goto err;
+			}
 			else if (!strcmp(conf_name, PBS_CONF_RCP)) {
 				free(pbs_conf.rcp_path);
 				pbs_conf.rcp_path = shorten_and_cleanup_path(conf_value);
@@ -703,6 +768,11 @@ __pbs_loadconf(int reload)
 			goto err;
 		}
 	}
+	if ((gvalue = getenv(PBS_CONF_SERVER_INSTANCES)) != NULL) {
+		free(psi_value);
+		if ((psi_value = strdup(gvalue)) == NULL)
+			goto err;
+	}
 	if ((gvalue = getenv(PBS_CONF_RCP)) != NULL) {
 		free(pbs_conf.rcp_path);
 		pbs_conf.rcp_path = shorten_and_cleanup_path(gvalue);
@@ -869,6 +939,11 @@ __pbs_loadconf(int reload)
 		fprintf(stderr, "pbsconf error: pbs conf variables not found: %s\n", buf);
 		goto err;
 	}
+
+	if (parse_psi(psi_value ? psi_value : pbs_conf.pbs_server_name) == -1)
+		goto err;
+	free(psi_value);
+
 
 	/*
 	 * Perform sanity checks on PBS_*_HOST_NAME values and PBS_CONF_SMTP_SERVER_NAME.
@@ -1116,6 +1191,9 @@ err:
 		free_string_array(pbs_conf.supported_auth_methods);
 		pbs_conf.supported_auth_methods = NULL;
 	}
+	
+	if (psi_value != NULL)
+		free(psi_value);
 
 	pbs_conf.load_failed = 1;
 	(void)pbs_client_thread_unlock_conf();

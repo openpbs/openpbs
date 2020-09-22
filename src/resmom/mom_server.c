@@ -113,7 +113,6 @@ extern	pbs_list_head	svr_alljobs;
 extern	pbs_list_head	svr_hook_job_actions;
 extern	pbs_list_head	svr_hook_vnl_actions;
 extern	pbs_list_head	svr_allhooks;
-extern  int		svr_hook_resend_job_attrs;
 extern  int 		mom_recvd_ip_cluster_addrs;
 
 extern  int		server_stream;
@@ -125,7 +124,6 @@ extern  char		*msg_request;
 extern void req_commit(struct batch_request *preq);
 extern void req_quejob(struct batch_request *preq);
 extern void req_jobscript(struct batch_request *preq);
-
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
 extern	char	*path_hooks;
 extern	unsigned long	hooks_rescdef_checksum;
@@ -336,23 +334,23 @@ registermom(int stream, int combine_msg)
 
 		if ((ret = diswst(stream, pjob->ji_qs.ji_jobid)) != DIS_SUCCESS)
 			goto err;
-		if ((ret = diswsi(stream, pjob->ji_qs.ji_substate)) != DIS_SUCCESS)
+		if ((ret = diswsi(stream, get_job_substate(pjob))) != DIS_SUCCESS)
 			goto err;
 
-		if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-			ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long);
-		} else {
-			ret = diswsl(stream, pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long);
-		}
+		if (is_jattr_set(pjob, JOB_ATR_run_version))
+			ret = diswsl(stream, get_jattr_long(pjob, JOB_ATR_run_version));
+		else
+			ret = diswsl(stream, get_jattr_long(pjob, JOB_ATR_runcount));
+
 		if (ret != DIS_SUCCESS)
 			goto err;
 		/* send Node Id */
 		if ((ret = diswsi(stream, pjob->ji_nodeid)) != DIS_SUCCESS)
 			goto err;
-		if ((ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str)) != DIS_SUCCESS)
+		if ((ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_exec_vnode))) != DIS_SUCCESS)
 			goto err;
-		if (pjob->ji_wattr[(int)JOB_ATR_pset].at_flags & ATR_VFLAG_SET)
-			ret = diswst(stream, pjob->ji_wattr[(int)JOB_ATR_pset].at_val.at_str);
+		if (is_jattr_set(pjob, JOB_ATR_pset))
+			ret = diswst(stream, get_jattr_str(pjob, JOB_ATR_pset));
 		else
 			ret = diswst(stream, ""); /* send null string */
 		if (ret != DIS_SUCCESS)
@@ -369,7 +367,7 @@ err:
 
 	if (errno != 10054)
 #endif
-		log_err(errno, "send_resc_used", log_buffer);
+		log_err(errno, __func__, log_buffer);
 	tpp_close(stream);
 	return ret;
 }
@@ -437,7 +435,7 @@ process_IS_CMD(int stream)
 	}
 
 	request->rq_conn = stream;
-	strcpy(request->rq_host, netaddr(addr));
+	pbs_strncpy(request->rq_host, netaddr(addr), sizeof(request->rq_host));
 	request->rq_fromsvr = 1;
 	request->prot = PROT_TPP;
 	request->tppcmd_msgid = msgid;
@@ -665,7 +663,7 @@ err:
  *	This function will process the rpp values from the server stream.
  *
  * @param[in]	stream - the communication stream
- * 
+ *
  * @return	int
  * @retval	0: success
  * @retval	!0: Error code
@@ -713,7 +711,7 @@ process_rpp_values(int stream) {
  *	This function will process the cluster addresses from the server stream.
  *
  * @param[in]	stream - the communication stream
- * 
+ *
  * @return	int
  * @retval	0: success
  * @retval	!0: Error code
@@ -867,7 +865,6 @@ is_request(int stream, int version)
 			/* send any unacknowledged hook job and vnl action requests */
 			send_hook_job_action(NULL);
 			hook_requests_to_server(&svr_hook_vnl_actions);
-			svr_hook_resend_job_attrs = 1;
 
 			/* send any vnode changes made by */
 			/* exechost_startup hook */
@@ -885,45 +882,76 @@ is_request(int stream, int version)
 				goto err;
 			break;
 
-		case IS_BADOBIT:
-			DBPRT(("%s: IS_BADOBIT\n", __func__))
-			jobid = disrst(stream, &ret);
+		case IS_OBITREPLY: {
+			int njobs = 0;
+
+			njobs = disrui(stream, &ret); /* number of acks in reply */
 			if (ret != DIS_SUCCESS)
 				goto err;
 
-			pjob = find_job(jobid);
+			DBPRT(("%s: IS_OBITREPLY ack njobs: %d\n", __func__, njobs))
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received ack obits = %d", njobs);
 
-			/* Allowing only to delete a job that has actually
-			 * started (i.e. not in JOB_SUBSTATE_PRERUN), would
-			 * avoid the race condition resulting in a hung job:
-			 * server force reruns a job which is lingering in
-			 * PRERUN state, and an Obit request for the previous
-			 * instance of the job is received by the server and
-			 * rejected, causing mom to delete the new instance of
-			 * the job. If the job has passed the PRERUN stage,
-			 * then it would have already synced up with the server
-			 * on status, and not end up in this race condition.
-		 	 */
-			if (pjob && !pjob->ji_hook_running_bg_on && (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, "Job removed, Server rejected Obit");
-				mom_deljob(pjob);
+			while (njobs-- > 0) {
+				jobid = disrst(stream, &ret);
+				if (ret != DIS_SUCCESS)
+					goto err;
+
+				pjob = find_job(jobid);
+				if (pjob) {
+					/* note: see on_job_exit() for more info */
+					if (!has_stage(pjob) && num_eligible_hooks(HOOK_EVENT_EXECJOB_END) == 0) {
+						mom_deljob(pjob);
+					} else {
+						set_job_state(pjob, JOB_SUBSTATE_EXITED);
+						if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
+							/*
+							* if checkpointed, save state to disk, otherwise
+							* leave unchanges on disk so recovery will resend
+							* obit to server
+							*/
+							job_save(pjob);
+						}
+					}
+				}
+				free(jobid);
+				jobid = NULL;
 			}
-			free(jobid);
-			jobid = NULL;
-			break;
 
-		case IS_ACKOBIT:
-			DBPRT(("%s: IS_ACKOBIT\n", __func__))
-			jobid = disrst(stream, &ret);
+			njobs = disrui(stream, &ret); /* number of rejects in reply */
 			if (ret != DIS_SUCCESS)
 				goto err;
 
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-				jobid, "Job exited, Server acknowledged Obit");
-			set_job_toexited(jobid);
-			free(jobid);
-			jobid = NULL;
-			break;
+			DBPRT(("%s: IS_OBITREPLY reject njobs: %d\n", __func__, njobs))
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, "received reject obits = %d", njobs);
+
+			while (njobs-- > 0) {
+				jobid = disrst(stream, &ret);
+				if (ret != DIS_SUCCESS)
+					goto err;
+
+				pjob = find_job(jobid);
+				/*
+				 * Allowing only to delete a job that has actually
+				 * started (i.e. not in JOB_SUBSTATE_PRERUN), would
+				 * avoid the race condition resulting in a hung job:
+				 * server force reruns a job which is lingering in
+				 * PRERUN state, and an Obit request for the previous
+				 * instance of the job is received by the server and
+				 * rejected, causing mom to delete the new instance of
+				 * the job. If the job has passed the PRERUN stage,
+				 * then it would have already synced up with the server
+				 * on status, and not end up in this race condition.
+				 */
+				if (pjob && !pjob->ji_hook_running_bg_on && !check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, jobid, "Job removed, Server rejected Obit");
+					mom_deljob(pjob);
+				}
+				free(jobid);
+				jobid = NULL;
+			}
+		}
+		break;
 
 		case IS_SHUTDOWN:
 			DBPRT(("%s: IS_SHUTDOWN\n", __func__))
@@ -942,10 +970,10 @@ is_request(int stream, int version)
 			if (pjob) {
 				long runver;
 
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
-					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+				if (is_jattr_set(pjob, JOB_ATR_run_version))
+					runver = get_jattr_long(pjob, JOB_ATR_run_version);
 				else
-					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
+					runver = get_jattr_long(pjob, JOB_ATR_runcount);
 				/* a run_version of -1 means any version is to be discarded */
 				if ((n == -1) || (runver == n)) {
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
@@ -1020,62 +1048,61 @@ is_request(int stream, int version)
 			process_IS_CMD(stream);
 			break;
 
-		case IS_HOOK_ACTION_ACK:
-			/* the Server is sending an acknowledgement that it received */
-			/* and processed an IS_HOOK_JOB_ACTION request for a job.    */
-			/* The Server will send one such per job		     */
+		case IS_HOOK_ACTION_ACK: {
+			int nacks = 0;
+			static char **vnl_allow_attrs = NULL;
+
+			/*
+			 * the Server is sending an acknowledgement that it received
+			 * and processed an IS_HOOK_JOB_ACTION request for a job.
+			 * The Server will send one such per job
+			 */
 
 			hktype = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
 				goto err;
-			hkseq = disrsi(stream, &ret);
+			nacks = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
 				goto err;
-
-			if (hktype == IS_HOOK_JOB_ACTION) {
-				for (phjba = GET_NEXT(svr_hook_job_actions);
-					phjba;
-					phjba = GET_NEXT(phjba->hja_link)) {
-					if (hkseq == phjba->hja_actid) {
-						delete_link(&phjba->hja_link);
-						free(phjba);
-						break;
-					}
-				}
-			} else if ((hktype == IS_UPDATE_FROM_HOOK) ||
-			           (hktype == IS_UPDATE_FROM_HOOK2)) {
-
-				for (phvna = GET_NEXT(svr_hook_vnl_actions);
-					phvna;
-					phvna = GET_NEXT(phvna->hva_link)) {
-
-					if (hkseq == phvna->hva_actid) {
-						delete_link(&phvna->hva_link);
-						/* save admin vnode changes */
-						/* done by various hooks */
-						if (phvna->hva_euser [0] == \
-									'\0') {
-
-							if ((vnlp != NULL) ||\
-						    (vnl_alloc(&vnlp) \
-						    		      != NULL)) {
-								vnlp->vnl_modtime = time(NULL);
-								vn_merge2(vnlp,
-									phvna->hva_vnl,
-									HOOK_VNL_PERSISTENT_ATTRIBS, NULL);
-								mom_vnlp_report(\
-							       vnlp, "vnlp");
-							}
+			while (nacks--) {
+				hkseq = disrsi(stream, &ret);
+				if (ret != DIS_SUCCESS)
+					goto err;
+				if (hktype == IS_HOOK_JOB_ACTION) {
+					phjba = GET_NEXT(svr_hook_job_actions);
+					for (; phjba; phjba = GET_NEXT(phjba->hja_link)) {
+						if (hkseq == phjba->hja_actid) {
+							delete_link(&phjba->hja_link);
+							free(phjba);
+							break;
 						}
-						vnl_free(phvna->hva_vnl);
-						free(phvna);
-						break;
+					}
+				} else if (hktype == IS_UPDATE_FROM_HOOK || hktype == IS_UPDATE_FROM_HOOK2) {
+					if (vnl_allow_attrs == NULL) {
+						vnl_allow_attrs = break_delimited_str(HOOK_VNL_PERSISTENT_ATTRIBS, ' ');
+						if (vnl_allow_attrs == NULL)
+							continue;
+					}
+					phvna = GET_NEXT(svr_hook_vnl_actions);
+					for (; phvna; phvna = GET_NEXT(phvna->hva_link)) {
+						if (hkseq == phvna->hva_actid) {
+							delete_link(&phvna->hva_link);
+							/* save admin vnode changes done by various hooks */
+							if (phvna->hva_euser[0] == '\0') {
+								if (vnlp != NULL || vnl_alloc(&vnlp) != NULL) {
+									vnlp->vnl_modtime = time(NULL);
+									vn_merge2(vnlp, phvna->hva_vnl, vnl_allow_attrs, NULL);
+									mom_vnlp_report(vnlp, "vnlp");
+								}
+							}
+							vnl_free(phvna->hva_vnl);
+							free(phvna);
+							break;
+						}
 					}
 				}
 			}
-			free(jobid);
-			jobid = NULL;
-			break;
+		} break;
 
 		default:
 			sprintf(log_buffer, "unknown command %d sent", command);
@@ -1320,95 +1347,6 @@ err:
 	tpp_close(server_stream);
 	server_stream = -1;
 	return ret;
-}
-
-/**
- * @brief
- * 	Send the amount of resouces used by jobs to the server
- *	This function used to encode and send the data for IS_RESCUSED,
- *	IS_JOBOBIT, IS_RESCUSED_FROM_HOOK.
- * @param[in]	cmd	- communication command to use
- * @param[in]	count	- number of  jobs to update.
- * @param[in]	rud	- input structure containing info about the jobs,
- *			  resources used, etc...
- *
- * @note
- *	If cmd is IS_RESCUSED_FROM_HOOK and there's an error communicating
- *	to the server, the server_stream connection is not closed automatically.
- *	It's possible it could be a transient error, and this function may
- *	have been called from a child mom. Closing the server_stream would
- *	cause the server to see mom as down.
- *
- * @return Void
- *
- */
-
-void
-send_resc_used(int cmd, int count, struct resc_used_update *rud)
-{
-	int	ret;
-
-	if (count == 0 || rud == NULL || server_stream < 0)
-		return;
-	DBPRT(("send_resc_used update to server on stream %d\n", server_stream))
-
-	ret = is_compose(server_stream, cmd);
-	if (ret != DIS_SUCCESS)
-		goto err;
-
-	ret = diswui(server_stream, count);
-	if (ret != DIS_SUCCESS)
-		goto err;
-
-	while (rud) {
-		ret = diswst(server_stream, rud->ru_pjobid);
-		if (ret != DIS_SUCCESS)
-			goto err;
-
-		if (rud->ru_comment) {
-			/* non-null comment: send "1" followed by comment */
-			ret = diswsi(server_stream, 1);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			ret = diswst(server_stream, rud->ru_comment);
-			if (ret != DIS_SUCCESS)
-				goto err;
-		} else {
-			/* null comment: send "0" */
-			ret = diswsi(server_stream, 0);
-			if (ret != DIS_SUCCESS)
-				goto err;
-		}
-		ret =diswsi(server_stream, rud->ru_status);
-		if (ret != DIS_SUCCESS)
-			goto err;
-
-		ret = diswsi(server_stream, rud->ru_hop);
-		if (ret != DIS_SUCCESS)
-			goto err;
-
-		ret = encode_DIS_svrattrl(server_stream,
-			(svrattrl *)GET_NEXT(rud->ru_attr));
-		if (ret != DIS_SUCCESS)
-			goto err;
-
-		rud = rud->ru_next;
-	}
-	dis_flush(server_stream);
-	return;
-
-err:
-	sprintf(log_buffer, "%s for %d", dis_emsg[ret], cmd);
-#ifdef WIN32
-	if (errno != 10054)
-#endif
-		log_err(errno, "send_resc_used", log_buffer);
-
-	if (cmd != IS_RESCUSED_FROM_HOOK) {
-		tpp_close(server_stream);
-		server_stream = -1;
-	}
-	return;
 }
 
 /**

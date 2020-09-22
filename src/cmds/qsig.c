@@ -86,7 +86,7 @@ main(int argc, char **argv, char **envp) /* qsig */
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF)
 		switch (c) {
 			case 's':
-				strcpy(sig_string, optarg);
+				pbs_strncpy(sig_string, optarg, sizeof(sig_string));
 				break;
 			default :
 				errflg++;
@@ -112,7 +112,7 @@ main(int argc, char **argv, char **envp) /* qsig */
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qsig: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;
@@ -135,7 +135,7 @@ cnt:
 			located = TRUE;
 			if (locate_job(job_id_out, server_out, rmt_server)) {
 				pbs_disconnect(connect);
-				strcpy(server_out, rmt_server);
+				pbs_strncpy(server_out, rmt_server, sizeof(server_out));
 				goto cnt;
 			}
 			prt_job_err("qsig", connect, job_id_out);

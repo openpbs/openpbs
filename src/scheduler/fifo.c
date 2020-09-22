@@ -1238,6 +1238,19 @@ update_last_running(server_info *sinfo)
 }
 
 /**
+ * @brief clear and free the last running array
+ *
+ * @return void
+ */
+void
+clear_last_running()
+{
+	free_pjobs(last_running, last_running_size);
+	last_running = NULL;
+	last_running_size = 0;
+}
+
+/**
  * @brief
  *		update_job_can_not_run - do post job 'can't run' processing
  *				 mark it 'can_not_run'
@@ -1554,8 +1567,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		/* Where should we run our resresv? */
 
 		/* 1) if the resresv knows where it should be run, run it there */
-		if (rr->orig_nspec_arr != NULL) {
-			orig_ns = rr->orig_nspec_arr;
+		if (((rr->resv == NULL) && (rr->nspec_arr != NULL)) ||
+		    ((rr->resv != NULL) && (rr->resv->orig_nspec_arr != NULL))) {
+			if (rr->resv != NULL)
+				orig_ns = rr->resv->orig_nspec_arr;
+			else
+				orig_ns = rr->nspec_arr;
 			/* we didn't use nspec_arr, we need to free it */
 			free_nspecs(ns_arr);
 			ns_arr = NULL;
@@ -1663,8 +1680,13 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		rr->can_not_run = 1;
 
-		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr)
+		if (rr->nspec_arr != NULL && rr->nspec_arr != ns && rr->nspec_arr != ns_arr && rr->nspec_arr != orig_ns)
 			free_nspecs(rr->nspec_arr);
+
+		if (orig_ns != ns_arr) {
+			free_nspecs(ns_arr);
+			ns_arr = NULL;
+		}
 		/* The nspec array coming out of the node selection code could
 		 * have a node appear multiple times.  This is how we need to
 		 * send the execvnode to the server.  We now need to combine
@@ -1672,7 +1694,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		if (ns == NULL)
 			ns = combine_nspec_array(orig_ns);
-		rr->orig_nspec_arr = orig_ns;
+
+		if (rr->resv != NULL)
+			rr->resv->orig_nspec_arr = orig_ns;
+		else
+			free_nspecs(orig_ns);
+
 		rr->nspec_arr = ns;
 
 		if (rr->is_job && !(flags & RURR_NOPRINT)) {
@@ -1714,11 +1741,13 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				int j;
 				update_node_on_run(ns[i], rr, &old_state);
 				if (ns[i]->ninfo->np_arr != NULL) {
-					for (j = 0; ns[i]->ninfo->np_arr[j] != NULL; j++) {
-						modify_resource_list(ns[i]->ninfo->np_arr[j]->res, ns[i]->resreq, SCHD_INCR);
+					node_partition **npar = ns[i]->ninfo->np_arr;
+					for (j = 0; npar[j] != NULL; j++) {
+						modify_resource_list(npar[j]->res, ns[i]->resreq, SCHD_INCR);
 						if (!ns[i]->ninfo->is_free)
-							ns[i]->ninfo->np_arr[j]->free_nodes--;
+							npar[j]->free_nodes--;
 						sort_nodepart = 1;
+						update_buckets_for_node(npar[j]->bkts, ns[i]->ninfo);
 					}
 				}
 				/* if the node is being provisioned, it's brought down in
@@ -2731,7 +2760,7 @@ parse_sched_obj(struct batch_status *status)
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 					goto cleanup;
 				}
-				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE - 1);
+				strcpy(comment, "Unable to change the sched_log directory");
 				patt = attribs;
 				patt->name = ATTR_comment;
 				patt->value = comment;
@@ -2770,13 +2799,13 @@ parse_sched_obj(struct batch_status *status)
 				if (c != 0) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
-					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					priv_dir_update_fail = 1;
 				}
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 			if (c == 0) {
 				if (chdir(tmp_priv_dir) == -1) {
-					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+					strcpy(comment, "PBS failed validation checks for sched_priv directory");
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 						"PBS failed validation checks for directory %s", tmp_priv_dir);
 					priv_dir_update_fail = 1;
@@ -2784,7 +2813,7 @@ parse_sched_obj(struct batch_status *status)
 					int lockfds;
 					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 					if (lockfds < 0) {
-						strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
+						strcpy(comment, "PBS failed validation checks for sched_priv directory");
 						log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 							"PBS failed validation checks for directory %s", tmp_priv_dir);
 						priv_dir_update_fail = 1;
@@ -2814,7 +2843,7 @@ parse_sched_obj(struct batch_status *status)
 			attribs = calloc(2, sizeof(struct attropl));
 			if (attribs == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
-				strncpy(comment, "Unable to change the sched_priv directory", MAX_LOG_SIZE);
+				strcpy(comment, "Unable to change the sched_priv directory");
 				goto cleanup;
 			}
 			patt = attribs;

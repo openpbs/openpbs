@@ -38,8 +38,9 @@
 # subject to Altair's trademark licensing policies.
 
 
-from tests.functional import *
 import time
+
+from tests.functional import *
 
 
 @tags('reservations')
@@ -1583,10 +1584,10 @@ class TestReservations(TestFunctional):
         self.common_steps()
 
         # Submit job j to consume all resources
-        a = {'Resource_List.walltime': '5',
+        a = {'Resource_List.walltime': '10',
              'Resource_List.select': '1:ncpus=4'}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(5)
+        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -2270,3 +2271,43 @@ class TestReservations(TestFunctional):
         J = Job(TEST_USER, attrs=a)
         jid = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+    def test_resv_reconfirm_holding_partial_nodes(self):
+        """
+        Test that scheduler is able to reconfirm a reservation when
+        only some of the nodes reservation was running on goes down.
+        Also make sure it hangs on to the node that was not down.
+        """
+        a = {'reserve_retry_time': 5}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes('vn', a, num=3, mom=self.mom)
+        vn_list = ['vn[0]', 'vn[1]', 'vn[2]']
+
+        now = int(time.time())
+        sel = '1:ncpus=2+1:ncpus=1'
+        rid = self.submit_reservation(user=TEST_USER, select=sel,
+                                      start=now + 5, end=now + 300)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node_list = self.server.reservations[rid].get_vnodes()
+        resv_node = resv_node_list[0]
+        resv_node2 = resv_node_list[1]
+        vn = [i for i in vn_list if i not in resv_node_list]
+
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'},
+                            id=resv_node)
+        self.server.expect(RESV, {'reserve_substate': 10}, id=rid)
+
+        a = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        solution = '(' + vn[0] + ':ncpus=2)+(' + resv_node2 + ':ncpus=1)'
+        a = {'reserve_substate': '5', 'resv_nodes': solution}
+        self.server.expect(RESV, a, id=rid)

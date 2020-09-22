@@ -5166,11 +5166,6 @@ class Server(PBSService):
         if self.platform == 'cray' or self.platform == 'craysim':
             setdict[ATTR_restrict_res_to_release_on_suspend] = 'ncpus'
         if delhooks:
-            if (self.platform == 'cray' or self.platform == 'craysim' or
-                    self.platform == 'shasta'):
-                reverthooks = True
-            else:
-                reverthooks = False
             self.delete_site_hooks()
         if delqueues:
             revertqueues = False
@@ -10436,12 +10431,11 @@ class Server(PBSService):
                          "attr_resource, attr_value, attr_flags)")
 
         job_stmt = ("INSERT INTO pbs.job (ji_jobid, ji_sv_name, ji_state, "
-                    "ji_substate,ji_svrflags, ji_numattr,"
-                    " ji_ordering, ji_priority, ji_stime, ji_endtbdry, "
-                    "ji_queue, ji_destin, ji_un_type, ji_momaddr, "
-                    "ji_momport, ji_exitstat, ji_quetime, ji_rteretry, "
-                    "ji_fromsock, ji_fromaddr, ji_4jid, ji_4ash, "
-                    "ji_credtype, ji_qrank, ji_savetm, ji_creattm)")
+                    "ji_substate, ji_svrflags, ji_stime, "
+                    "ji_queue, ji_destin, ji_un_type, "
+                    "ji_exitstat, ji_quetime, ji_rteretry, "
+                    "ji_fromsock, ji_fromaddr, ji_jid, "
+                    "ji_credtype, ji_savetm, ji_creattm)")
 
         all_stmts = []
 
@@ -11197,6 +11191,11 @@ class Scheduler(PBSService):
             self.logger.info(self.logprefix + 'stopping Scheduler on host ' +
                              self.hostname)
             return super(Scheduler, self)._stop(sig, inst=self)
+        elif self.attributes['id'] != 'default':
+            self.logger.info(self.logprefix + 'stopping MultiSched ' +
+                             self.attributes['id'] + ' on host ' +
+                             self.hostname)
+            return super(Scheduler, self)._stop(inst=self)
         else:
             try:
                 self.pi.stop_sched()
@@ -13341,14 +13340,14 @@ class MoM(PBSService):
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 
-    def restart(self):
+    def restart(self, args=None):
         """
         Restart the PBS mom
         """
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        return self.start(args=args)
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,

@@ -232,7 +232,7 @@ fork_to_user(struct batch_request *preq, job *pjob)
 	}
 
 	if (pjob)
-		pwdp = getpwnam(pjob->ji_wattr[(int) JOB_ATR_euser].at_val.at_str);
+		pwdp = getpwnam(get_jattr_str(pjob,  JOB_ATR_euser));
 
 	/* we're trying to reuse old pw_userlogin since a mapped UNC */
 	/* path maybe hanging off it. With pbs_mom running under     */
@@ -256,10 +256,10 @@ fork_to_user(struct batch_request *preq, job *pjob)
 	} else
 		return (INVALID_HANDLE_VALUE);
 
-	strncpy(lpath, save_actual_homedir(pwdp, pjob), MAXPATHLEN + 1);
+	pbs_strncpy(lpath, save_actual_homedir(pwdp, pjob), sizeof(lpath));
 	CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 	if (chdir(lpath) == -1) {
-		strcpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user));
+		pbs_strncpy(lpath, set_homedir_to_local_default(pjob, preq->rq_ind.rq_cpyfile.rq_user), sizeof(lpath));
 		CreateDirectory(lpath, 0); /* user homedir may not exist yet */
 		(void) chdir(lpath);
 	}
@@ -463,8 +463,8 @@ return_file(job *pjob, enum job_file which, int sock)
 
 	char                  path[MAXPATHLEN+1]; /* needed by is_direct_write */
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags & ATR_VFLAG_SET)
-		&& (pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long > 0)) {
+	if ((is_jattr_set(pjob, JOB_ATR_interactive))
+		&& (get_jattr_long(pjob, JOB_ATR_interactive) > 0)) {
 		return (0);	/* interactive job, no file to copy */
 	}
 
@@ -685,8 +685,8 @@ req_holdjob(struct batch_request *preq)
 	} else if (pjob->ji_flags & MOM_RESTART_ACTIVE) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		sprintf(log_buffer, "req_holdjob failed: Restart active.");
-	} else if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING &&
-		pjob->ji_qs.ji_substate != JOB_SUBSTATE_SUSPEND) {
+	} else if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING) &&
+		!check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		sprintf(log_buffer,
 			"req_holdjob failed: Job not running or suspended.");
@@ -1066,12 +1066,10 @@ req_modifyjob(struct batch_request *preq)
 		}
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str != NULL) {
-		/* Mom got information from new server */
-		new_peh = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
-	} else {
-		new_peh = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
-	}
+	if (get_jattr_str(pjob, JOB_ATR_exec_host2) != NULL)	/* Mom got information from new server */
+		new_peh = get_jattr_str(pjob, JOB_ATR_exec_host2);
+	else
+		new_peh = get_jattr_str(pjob, JOB_ATR_exec_host);
 
 	if (recreate_nodes == 5) {
 
@@ -1192,8 +1190,14 @@ post_reply(job *pjob, int err)
 	if (pjob->ji_postevent == TM_NULL_EVENT)	/* no event */
 		return;
 
+	if (pjob->ji_hosts == NULL) {           /* No one to talk to */
+		pjob->ji_postevent = TM_NULL_EVENT;
+		pjob->ji_taskid = TM_NULL_TASK;
+		return;
+	}
+
 	stream = pjob->ji_hosts[0].hn_stream;	/* MS stream */
-	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
+	cookie = get_jattr_str(pjob, JOB_ATR_Cookie);
 	jobid = pjob->ji_qs.ji_jobid;
 
 	/*
@@ -1301,7 +1305,7 @@ post_suspend(job *pjob, int err)
 		stop_walltime(pjob);
 
 		pjob->ji_polltime = 0;	/* don't check polling */
-		if (pjob->ji_qs.ji_substate < JOB_SUBSTATE_EXITING) {
+		if (get_job_substate(pjob) < JOB_SUBSTATE_EXITING) {
 			mom_hook_input_t  hook_input;
 			mom_hook_output_t hook_output;
 			char		  hook_msg[HOOK_MSG_SIZE+1];
@@ -1309,7 +1313,7 @@ post_suspend(job *pjob, int err)
 			unsigned int	hook_fail_action =  0;
 			int		reject_errcode = 0;
 
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
+			set_job_substate(pjob, JOB_SUBSTATE_SUSPEND);
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
 			(void)job_save(pjob);
 
@@ -1332,7 +1336,7 @@ post_suspend(job *pjob, int err)
 		else
 		{
 			snprintf(log_buffer, sizeof(log_buffer),
-				"This job can't be suspended, since the job was in %d substate",pjob->ji_qs.ji_substate);
+				"This job can't be suspended, since the job was in %ld substate",get_job_substate(pjob));
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
 				log_buffer);
 		}
@@ -1368,7 +1372,7 @@ post_resume(job *pjob, int err)
 		/* if I'm not MS, start to check for polling again */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 			pjob->ji_polltime = time_now;
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Suspend;
 		(void)job_save(pjob);
 	}
@@ -1561,13 +1565,6 @@ do_susres(job *pjob, int which)
 			LOG_ERR, "do_susres", "The job information is NULL");
 		return (PBSE_SYSTEM);
 	}
-
-
-#if     MOM_BGL
-	return (PBSE_NOSUP);     /* don't support suspend/resume as */
-	/* interferes with user running mpirun on a */
-	/* BGL partition; can't migrate "processes" */
-#endif  /* MOM_BGL */
 
 #if MOM_ALPS
 	/* if we're trying to suspend, then ask ALPS to suspend, before
@@ -1801,7 +1798,7 @@ post_terminate(job *pjob, int err)
 		/* kill job */
 		if (kill_job(pjob, SIGKILL) == 0) {
 			/* no processes around, force into exiting */
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+			set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 			exiting_tasks = 1;
 		}
 	}
@@ -1846,8 +1843,8 @@ terminate_job(job *pjob, int internal)
 	if ((chk_mom_action(TerminateAction) == Script) &&
 		((i = do_mom_action_script(TerminateAction, pjob, NULL, NULL,
 		post_terminate)) == 1)) {
-		pjob->ji_qs.ji_state    = JOB_STATE_EXITING;
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_TERM;
+		set_job_state(pjob, JOB_STATE_LTR_EXITING);
+		set_job_substate(pjob, JOB_SUBSTATE_TERM);
 	} else {
 		if (internal == -1)
 			s = SIGKILL;
@@ -1863,8 +1860,7 @@ terminate_job(job *pjob, int internal)
 			next_sample_time = min_check_poll;
 		}
 		if (kill_job(pjob, s) == 0) {
-			/* no processes around, force into exiting */
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+			/* no processes around, time to exit */
 			exiting_tasks = 1;
 		}
 		i = -2;
@@ -1921,14 +1917,14 @@ req_signaljob(struct batch_request *preq)
 	 *	Apparently the Server didn't receive or process an Obit sent earlier.
 	 *	Just force a resend of the obit.
 	 */
-	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT) {
+	if (check_job_substate(pjob, JOB_SUBSTATE_OBIT)) {
 		send_obit(pjob, 0);
 		if (strcmp(sname, SIG_RESUME) == 0)
 			req_reject(PBSE_BADSTATE, 0, preq);
 		else
 			reply_ack(preq);
 		return;
-	} else if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNEPILOG) &&
+	} else if ((check_job_substate(pjob, JOB_SUBSTATE_RUNEPILOG)) &&
 		(strcmp(sname, "SIGKILL") != 0)) {
 		/* If epilogue is running and signal is not SIGKILL, */
 		/* disallow request;  note SIGKILL sent on qdel -w force */
@@ -1997,12 +1993,12 @@ req_signaljob(struct batch_request *preq)
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
-		switch (pjob->ji_qs.ji_substate) {
+		switch (get_job_substate(pjob)) {
 			case JOB_SUBSTATE_RUNNING:
 				break;
 			default:
-				sprintf(log_buffer, "suspend failed, job substate = %d",
-					pjob->ji_qs.ji_substate);
+				sprintf(log_buffer, "suspend failed, job substate = %ld",
+					get_job_substate(pjob));
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 					pjob->ji_qs.ji_jobid, log_buffer);
 				req_reject(PBSE_BADSTATE, 0, preq);
@@ -2022,13 +2018,13 @@ req_signaljob(struct batch_request *preq)
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
-		switch (pjob->ji_qs.ji_substate) {
+		switch (get_job_substate(pjob)) {
 			case JOB_SUBSTATE_SUSPEND:
 			case JOB_SUBSTATE_SCHSUSP:
 				break;
 			default:
-				sprintf(log_buffer, "resume failed, job substate = %d",
-					pjob->ji_qs.ji_substate);
+				sprintf(log_buffer, "resume failed, job substate = %ld",
+					get_job_substate(pjob));
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 					pjob->ji_qs.ji_jobid, log_buffer);
 				req_reject(PBSE_BADSTATE, 0, preq);
@@ -2061,13 +2057,13 @@ req_signaljob(struct batch_request *preq)
 	}
 #ifdef SIGKILL
 	if ((sig != SIGKILL) &&
-		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING))
+		(!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)))
 #else
-	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
+	if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
 #endif
 	{
-		sprintf(log_buffer, "cannot signal job, job substate = %d",
-			pjob->ji_qs.ji_substate);
+		sprintf(log_buffer, "cannot signal job, job substate = %ld",
+			get_job_substate(pjob));
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
 		req_reject(PBSE_BADSTATE, 0, preq);
@@ -2075,16 +2071,16 @@ req_signaljob(struct batch_request *preq)
 	}
 	/* Now, send signal to the MOM's child process */
 	if (kill_job(pjob, sig) == 0) {
-		if ((pjob->ji_qs.ji_substate <= JOB_SUBSTATE_EXITING) ||
-			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_TERM)) {
+		if ((get_job_substate(pjob) <= JOB_SUBSTATE_EXITING) ||
+			(check_job_substate(pjob, JOB_SUBSTATE_TERM))) {
 			/* No procs found, force job to exiting */
 			/* force issue of (another) job obit */
 			(void)sprintf(log_buffer,
-				"Job recycled into exiting on signal from substate %d",
-				pjob->ji_qs.ji_substate);
+				"Job recycled into exiting on signal from substate %ld",
+				get_job_substate(pjob));
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, log_buffer);
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+			set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 			ptask = GET_NEXT(pjob->ji_tasks);
 			if (ptask)
 				ptask->ti_qs.ti_status = TI_STATE_EXITED;
@@ -2247,13 +2243,13 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 		if (*rmt_file != '\0')
 			strcpy(prmt, rmt_file);
 		else
-			strcpy(prmt, pair->fp_rmt);
+			pbs_strncpy(prmt, pair->fp_rmt, sizeof(prmt));
 		path[0] = '\0';
 		if (pair->fp_flag == STDJOBFILE) { /* standard out or error */
 #ifndef NO_SPOOL_OUTPUT
 			if (!sandbox_private) {
 				DBPRT(("%s:, STDJOBFILE in %s\n", __func__, path_spool))
-				(void) strcpy(path, path_spool);
+				pbs_strncpy(path, path_spool, sizeof(path));
 			}
 #endif /* NO_SPOOL_OUTPUT */
 		}
@@ -2325,8 +2321,7 @@ del_files(struct rq_cpyfile *rqcpf, job *pjob, char **pbadfile)
 			/* has prefix path, save parent directory name */
 			int len = (int) (ps - path) + 1;
 
-			strncpy(dname, path, len);
-			dname[len] = '\0';
+			pbs_strncpy(dname, path, len);
 			ps++;
 		} else { /* no prefix path */
 			/*
@@ -2453,8 +2448,8 @@ req_rerunjob(struct batch_request *preq)
 
 		/* change substate so Mom doesn't send another obit     */
 		/* do not record to disk, so Obit is resent on recovery */
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT)
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+		if (check_job_substate(pjob, JOB_SUBSTATE_OBIT))
+			set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 		return;
 	} else if (rc < 0) {
 		req_reject(-rc, 0, preq);
@@ -2466,7 +2461,7 @@ req_rerunjob(struct batch_request *preq)
 	/* send a Job Files request(s).                           */
 
 	rc = 0;
-	svrport = strchr(pjob->ji_wattr[(int)JOB_ATR_at_server].at_val.at_str,
+	svrport = strchr(get_jattr_str(pjob, JOB_ATR_at_server),
 		(int)':');
 	if (svrport)
 		port = atoi(svrport+1);
@@ -2567,7 +2562,7 @@ post_cpyfile(struct work_task *pwt)
 				 * on to next step in End of Job processing quickly
 				 * we will resend obit, see mom_main.c
 				 */
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
+				set_job_substate(pjob, JOB_SUBSTATE_OBIT);
 				pjob->ji_sampletim = time(0);
 			}
 			reply_ack(preq);
@@ -2714,8 +2709,8 @@ req_cpyfile(struct batch_request *preq)
 		 * change substate so Mom doesn't send another obit
 		 * do not record to disk, so Obit is resent on recovery
 		 */
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT)
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+		if (check_job_substate(pjob, JOB_SUBSTATE_OBIT))
+			set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 	}
 
 	dir  = (rqcpf->rq_dir & STAGE_DIRECTION)? STAGE_DIR_OUT : STAGE_DIR_IN;
@@ -2740,7 +2735,7 @@ req_cpyfile(struct batch_request *preq)
 		 * attribute, so we call map_unc_path to get it now
 		 */
 		if ((pw=getpwnam(preq->rq_ind.rq_cpyfile.rq_user)) != NULL) {
-			strncpy(actual_homedir,
+			pbs_strncpy(actual_homedir,
 				map_unc_path(pw->pw_dir, pw), sizeof(actual_homedir));
 			pbs_jobdir = jobdirname(rqcpf->rq_jobid, actual_homedir);
 		} else {
@@ -2778,14 +2773,6 @@ req_cpyfile(struct batch_request *preq)
 			req_reject(PBSE_MOMREJECT, 0, preq);
 			return;
 		}
-
-		/*
-		 * remove enironment variables PBS_JOBDIR and TMPDIR created
-		 * by "mkjobdir" since they are not used in this function
-		 * but they would be inherited by the next request handler
-		 * and will cause interference
-		 */
-		init_envp();
 	}
 
 	snprintf(cmdline, sizeof(cmdline), "%s/sbin/pbs_stage_file.exe", pbs_conf.pbs_exec_path);
@@ -2963,11 +2950,11 @@ req_delfile(struct batch_request *preq)
 			(void) job_save(pjob);
 		}
 
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT) {
+		if (check_job_substate(pjob, JOB_SUBSTATE_OBIT)) {
 			/* change substate so Mom doesn't send another obit
 			 * do not record to disk, so Obit is resent on recovery
 			 */
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+			set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 		}
 	}
 
@@ -3044,8 +3031,8 @@ post_cpyfile(job *pjob, int ev)
 		if (pjob->ji_preq)
 			req_reject(PBSE_NOCOPYFILE, 0, pjob->ji_preq);
 		pjob->ji_preq = NULL;
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") ==0) &&
+		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") ==0) &&
 			(ev == STAGEOUT_FAILURE)) {
 			/* We are in sandbox=private mode and there was */
 			/* a stageout failure */
@@ -3064,7 +3051,7 @@ post_cpyfile(job *pjob, int ev)
 		/* reset substate to OBIT,  if server doesn't move  */
 		/* on to next step in End of Job processing quickly */
 		/* we will resend obit, see mom_main.c              */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
+		set_job_substate(pjob, JOB_SUBSTATE_OBIT);
 		pjob->ji_sampletim = time(0);
 	}
 }
@@ -3107,6 +3094,9 @@ req_cpyfile(struct batch_request *preq)
 	char			*prmt;
 	char			dup_rqcpf_jobid[PBS_MAXSVRJOBID+1];
 	struct work_task	*wtask = NULL;
+	int			tot_copies = 0;
+	bool			copy_failed = FALSE;
+
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	struct krb_holder	*ticket = NULL;
 	char 			*krbccname = NULL;
@@ -3150,8 +3140,8 @@ req_cpyfile(struct batch_request *preq)
 		}
 		/* change substate so Mom doesn't send another obit     */
 		/* do not record to disk, so Obit is resent on recovery */
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT)
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+		if (check_job_substate(pjob, JOB_SUBSTATE_OBIT))
+			set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 	}
 
 	dir  = (rqcpf->rq_dir & STAGE_DIRECTION)? STAGE_DIR_OUT : STAGE_DIR_IN;
@@ -3217,8 +3207,8 @@ req_cpyfile(struct batch_request *preq)
 		if (pjob) {
 			/* change substate so Mom doesn't send another obit     */
 			/* do not record to disk, so Obit is resent on recovery */
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT)
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+			if (check_job_substate(pjob, JOB_SUBSTATE_OBIT))
+				set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 			pjob->ji_momsubt = pid;
 			pjob->ji_mompost = post_cpyfile;
 			if (preq->prot == PROT_TPP)
@@ -3267,12 +3257,13 @@ req_cpyfile(struct batch_request *preq)
 	copy_start = time(0);
 	for (pair=(struct rqfpair *)GET_NEXT(rqcpf->rq_pair);
 		pair != 0;
-		pair = (struct rqfpair *)GET_NEXT(pair->fp_link)) {
+		pair = (struct rqfpair *)GET_NEXT(pair->fp_link), tot_copies++) {
+		if (copy_failed)
+			continue;	
 		DBPRT(("%s: local %s remote %s\n", __func__, pair->fp_local, pair->fp_rmt))
 
 		stage_inout.from_spool = 0;
 		prmt = pair->fp_rmt;
-		num_copies++;
 
 		if (local_or_remote(&prmt) == 0) {
 			/* destination host is this host, use cp */
@@ -3283,13 +3274,16 @@ req_cpyfile(struct batch_request *preq)
 		}
 
 		rc = stage_file(dir, rmtflag, rqcpf->rq_owner,
-			pair, preq->rq_conn, &stage_inout, prmt);
+			pair, preq->rq_conn, &stage_inout, prmt, rqcpf->rq_jobid);
 		/*
 		 ** Here we break out of the the loop on error.
 		 ** This will only happen on a stagein failure.
 		 */
-		if (rc != 0)
-			break;
+		if (rc != 0) {
+			copy_failed = TRUE;
+			continue;
+		}
+		num_copies++;
 	}
 	copy_stop = time(0);
 
@@ -3301,10 +3295,10 @@ req_cpyfile(struct batch_request *preq)
 		/* cd to user's home to be out of   */
 		/* the sandbox so it can be deleted */
 		chdir(pwdp->pw_dir);
-		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid);
+		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid, 0);
 	}
 
-	strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid) - 1);
+	pbs_strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid));
 	if (preq->prot == PROT_TCP) {
 		if (stage_inout.bad_files) {
 			reply_text(preq, PBSE_NOCOPYFILE, stage_inout.bad_list);
@@ -3337,14 +3331,15 @@ req_cpyfile(struct batch_request *preq)
 
 	/* log the number of files/directories copied and the time it took */
 	copy_stop = copy_stop - copy_start;
+	
 #ifdef NAS /* localmod 005 */
-	sprintf(log_buffer, "staged %d items %s over %ld:%02ld:%02ld",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+	sprintf(log_buffer, "Staged %d/%d items %s over %ld:%02ld:%02ld",
+		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 		(long)copy_stop/3600, ((long)copy_stop%3600)/60,
 		(long)copy_stop%60);
 #else
-	sprintf(log_buffer, "staged %d items %s over %d:%02d:%02d",
-		num_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
+	sprintf(log_buffer, "Staged %d/%d items %s over %d:%02d:%02d",
+		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
 		(int)copy_stop/3600, ((int)copy_stop%3600)/60,
 		(int)copy_stop%60);
 #endif /* localmod 005 */
@@ -3396,7 +3391,7 @@ post_delfile(job *pjob, int ev)
 		/* reset substate to OBIT,  if server doesn't move  */
 		/* on to next step in End of Job processing quickly */
 		/* we will resend obit, see mom_main.c              */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
+		set_job_substate(pjob, JOB_SUBSTATE_OBIT);
 		pjob->ji_sampletim = time(0);
 	} else {
 		/* child that was doing file copies had major error */
@@ -3472,7 +3467,7 @@ req_delfile(struct batch_request *preq)
 			pjob->ji_momsubt = pid;
 			pjob->ji_mompost = post_delfile;
 			pjob->ji_sampletim = time(0);
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
+			set_job_substate(pjob, JOB_SUBSTATE_EXITED);
 		}
 		return; /* parent - continue with someother task */
 	} else if (pid < 0) {
@@ -3558,7 +3553,7 @@ mom_checkpoint_job(job *pjob, int abort)
 	DBPRT(("mom_checkpoint_job: %s %s abort\n", pjob->ji_qs.ji_jobid,
 		abort ? "with" : "no"))
 
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -3589,33 +3584,31 @@ mom_checkpoint_job(job *pjob, int abort)
 	/* Change to user's home to pick up .cpr */
 #ifdef	WIN32
 	if ((cwdname = getcwd(NULL, _MAX_PATH+2)) != NULL) {
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") ==0)) {
+		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") ==0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
 				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid,
 					save_actual_homedir(pwdp, pjob)));
 			}
 		} else {
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].
-				at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
 				(void)chdir(save_actual_homedir(pwdp, pjob));
 		}
 	}
 #else
 	if ((cwdname = getcwd(NULL, PATH_MAX+2)) != NULL) {
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
 				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir));
 			}
 		} else {
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].
-				at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
 				chdir(pwdp->pw_dir);
 		}
@@ -3820,7 +3813,7 @@ post_chkpt(job *pjob, int  ev)
 	/*
 	 ** Set the TI_FLAGS_CHKPT flag for each task that was checkpointed.
 	 */
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -4165,7 +4158,7 @@ mom_restart_job(job *pjob)
 		goto done;
 	}
 
-	strcpy(path, path_checkpoint);
+	pbs_strncpy(path, path_checkpoint, sizeof(path));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(path, pjob->ji_qs.ji_fileprefix);
 	else
@@ -4178,32 +4171,30 @@ mom_restart_job(job *pjob)
 	/* Change to user's home or PBS_JOBDIR to pick up .cpr */
 #ifdef	WIN32
 	if ((cwdname = getcwd(NULL, _MAX_PATH+2)) != NULL) {
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL) {
 				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid,
 					save_actual_homedir(pwdp, pjob)));
 			}
 		} else {
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].
-				at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
 				chdir(save_actual_homedir(pwdp, pjob));
 		}
 	}
 #else
 	if ((cwdname = getcwd(NULL, PATH_MAX+2)) != NULL) {
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
 				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid, pwdp->pw_dir));
 		} else {
-			pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].
-				at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pjob, JOB_ATR_euser));
 			if (pwdp != NULL)
 				chdir(pwdp->pw_dir);
 		}
@@ -4336,7 +4327,7 @@ post_restart(job *pjob, int ev)
 		/*
 		 ** If we get here, an error happened.
 		 */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+		set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 		exiting_tasks = 1;
 		return;
 	}
@@ -4373,7 +4364,7 @@ post_restart(job *pjob, int ev)
 			}
 		}
 
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 		start_walltime(pjob);
 
 		if (mom_get_sample() != PBSE_NONE) {
@@ -4381,7 +4372,7 @@ post_restart(job *pjob, int ev)
 			(void)mom_set_use(pjob);
 		}
 	} else {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
+		set_job_substate(pjob, JOB_SUBSTATE_SUSPEND);
 		stop_walltime(pjob);
 	}
 	if (pjob->ji_preq) {

@@ -173,7 +173,7 @@ char **envp;
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qdel: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;
@@ -238,7 +238,7 @@ cnt:
 			mails_suppressed = TRUE;
 			/* current warg1 "nomail" should be at start */
 			strcat(warg1, warg);
-			strcpy(warg, warg1);
+			pbs_strncpy(warg, warg1, sizeof(warg));
 		}
 
 		stat = pbs_deljob(connect, job_id_out, warg);
@@ -255,7 +255,7 @@ cnt:
 			located = TRUE;
 			if (locate_job(job_id_out, server_out, rmt_server)) {
 				pbs_disconnect(connect);
-				strcpy(server_out, rmt_server);
+				pbs_strncpy(server_out, rmt_server, sizeof(server_out));
 				goto cnt;
 			}
 			prt_job_err("qdel", connect, job_id_out);

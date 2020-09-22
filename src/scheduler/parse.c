@@ -365,7 +365,7 @@ parse_config(char *fname)
 					 * done by default prior to 7.1.
 					 */
 					if (strstr(config_value, "host") == NULL)
-						pbs_strncpy(buf2, "host,", sizeof(buf2));
+						strcpy(buf2, "host,");
 
 					/* hack: add in "vnode" in 8.0 */
 					if (strstr(config_value, "vnode") == NULL)

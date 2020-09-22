@@ -71,7 +71,6 @@ _pbs_v1_la_SOURCES = \
 	$(top_srcdir)/src/lib/Libutil/entlim.c \
 	$(top_srcdir)/src/lib/Libutil/hook.c \
 	$(top_srcdir)/src/lib/Libutil/work_task.c \
-	$(top_srcdir)/src/server/svr_attr.c \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/setup_resc.c \
 	$(top_srcdir)/src/server/vnparse.c \

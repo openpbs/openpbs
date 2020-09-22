@@ -81,6 +81,7 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<arpa/inet.h>
+#include 	<libutil.h>
 
 #include	"auth.h"
 #include	"libpbs.h"
@@ -107,7 +108,7 @@
 #include	"pbs_ecl.h"
 #include	"pbs_internal.h"
 #include	"pbs_idx.h"
-#ifdef HWLOC	
+#ifdef HWLOC
 #ifndef NAS /* localmod 113 */
 #include	"hwloc.h"
 #endif /* localmod 113 */
@@ -117,9 +118,9 @@
 #include	"work_task.h"
 #include	"pbs_share.h"
 #include	"mom_server.h"
-#if	MOM_CSA || MOM_ALPS
+#if	MOM_ALPS
 #include	"mom_mach.h"
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 #include	"pbs_reliable.h"
 #ifdef PMIX
 #include	"mom_pmix.h"
@@ -184,6 +185,7 @@ char		*mom_domain;
 #endif	/* WIN32 */
 
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
+extern void		resume_multinode(job *pjob);
 
 int		alien_attach = 0;		/* attach alien procs */
 int		alien_kill = 0;			/* kill alien procs */
@@ -234,6 +236,7 @@ char            pbs_jobdir_root[MAX_PATH]= "";
 char            pbs_tmpdir[_POSIX_PATH_MAX] = TMP_DIR;
 char            pbs_jobdir_root[_POSIX_PATH_MAX]= "";
 #endif
+int		pbs_jobdir_root_shared = FALSE;
 vnl_t		*vnlp = NULL;			/* vnode list */
 unsigned long	hooks_rescdef_checksum = 0;
 
@@ -262,7 +265,7 @@ time_t		time_last_sample = 0;
 extern time_t		time_now;
 time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
-extern struct var_table vtable;	/* see start_exec.c */
+struct var_table vtable;	/* see start_exec.c */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 extern pbs_list_head svr_allcreds;
@@ -333,6 +336,7 @@ pbs_list_head	killed_procs;		/* procs killed by dorestrict_user() */
 #endif /* localmod 011 */
 
 void *jobs_idx = NULL;
+pbs_list_head mom_pending_ruu;
 
 unsigned long	hook_action_id = 0;
 
@@ -349,7 +353,6 @@ pbs_list_head	svr_provision_hooks;
 pbs_list_head	svr_resv_end_hooks;
 pbs_list_head	svr_hook_job_actions;
 pbs_list_head   svr_hook_vnl_actions;
-int		svr_hook_resend_job_attrs = 0;
 int		mom_recvd_ip_cluster_addrs = 0;
 
 /* the mom hooks */
@@ -505,18 +508,11 @@ static handler_ret_t	set_reject_root_scripts(char *);
 static handler_ret_t	set_report_hook_checksums(char *);
 static handler_ret_t	setmaxload(char *);
 static handler_ret_t	set_max_poll_downtime(char *);
-#if	MOM_BGL
-static handler_ret_t	set_bgl_reserve_partitions(char *);
-#endif	/* MOM_BGL */
 static handler_ret_t	usecp(char *);
 static handler_ret_t	wallmult(char *);
 #ifdef NAS /* localmod 015 */
 static handler_ret_t	set_spoolsize(char *);
 #endif /* localmod 015 */
-
-#if defined(__sgi)
-extern handler_ret_t	set_checkpoint_upgrade(char *);
-#endif /* __sgi */
 
 static struct	specials {
 	char		*name;
@@ -543,13 +539,7 @@ static struct	specials {
 	{ "alps_confirm_switch_timeout",set_alps_confirm_switch_timeout },
 #endif	/* MOM_ALPS */
 	{ "attach_allow",		set_attach_allow },
-#if	MOM_BGL
-	{ "bgl_reserve_partitions",	set_bgl_reserve_partitions },
-#endif	/* MOM_BGL */
 	{ "checkpoint_path",		set_checkpoint_path },
-#if	defined(__sgi)
-	{ "checkpoint_upgrade",		set_checkpoint_upgrade },
-#endif	/* __sgi */
 	{ "clienthost",			addclient },
 	{ "configversion",		config_verscheck },
 	{ "cputmult",			cputmult },
@@ -648,9 +638,8 @@ extern	void	dep_initialize(void);
 extern	void	dep_cleanup(void);
 
 /* External Functions */
-
 extern	void	catch_child(int);
-extern	void	init_abort_jobs(int);
+extern	void	init_abort_jobs(int, pbs_list_head *);
 extern	void	scan_for_exiting(void);
 #ifdef NAS /* localmod 015 */
 extern	int	to_size(char *, struct size_value *);
@@ -667,7 +656,6 @@ void stop_me(int);
 extern	void	cleanup_hooks_workdir(struct work_task *);
 
 /* Local private functions */
-
 static char *mk_dirs(char *);
 static void check_busy(double);
 
@@ -2054,35 +2042,6 @@ addclient(char *name)
 		return HANDLER_SUCCESS;
 }
 
-#if	MOM_BGL
-/**
- * @brief
- *	sets reserve partitions.
- *
- * @param[in] part_list - partition list
- *
- * @return      handler_ret_t (return value)
- * @retval      HANDLER_FAIL(0)                 Failure
- * @retval      HANDLER_SUCCESS(1)              Success
- *
- */
-
-static handler_ret_t
-set_bgl_reserve_partitions(char *part_list)
-{
-	reserve_bglpartitions = strdup(part_list);
-	if (reserve_bglpartitions) {
-		sprintf(log_buffer, "bgl_reserve_partitions %s", part_list);
-		log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer);
-		return HANDLER_SUCCESS;
-	} else {
-		log_err(errno, __func__, "strdup failed");
-		return HANDLER_FAIL;
-	}
-
-}
-#endif	/* MOM_BGL */
-
 /**
  * @brief
  *	sets the log event
@@ -2574,17 +2533,17 @@ chk_mom_action(enum Action_Event ae)
  *
  */
 int
-do_mom_action_script(int	ae,	/* index into action table */
-	job		*pjob,	/* ptr to job */
-	pbs_task	*ptask,	/* ptr to task */
-	char		*path,
-	void		(*post)(job *p, int e)) /* post action func */
+do_mom_action_script(int ae,	      /* index into action table */
+		     job *pjob,	      /* ptr to job */
+		     pbs_task *ptask, /* ptr to task */
+		     char *path,
+		     void (*post)(job *p, int e)) /* post action func */
 {
-	char		**args = NULL;
-#ifdef	WIN32
-	char		buf[MAX_PATH + 1];
+	char **args = NULL;
+#ifdef WIN32
+	char buf[MAX_PATH + 1];
 #else
-	char		buf[MAXPATHLEN + 1];
+	char buf[MAXPATHLEN + 1];
 #endif
 	int		i;
 	int		nargs;
@@ -2601,43 +2560,39 @@ do_mom_action_script(int	ae,	/* index into action table */
 		CREATE_NEW_PROCESS_GROUP;
 	STARTUPINFO             si = { 0 };
 	PROCESS_INFORMATION     pi = { 0 };
-	char	*env_block;
+	char	*env_block = NULL;
 	char	*shell;
 	extern	char	*variables_else[];
 	DWORD	ret;
 	HANDLE	hjob;
 #else
-	int	j;
-	int	pipes[2], kid_read = -1, kid_write = -1;
-	int	parent_read = -1, parent_write = -1;
-	struct	startjob_rtn	sjr;
-	pid_t	child;
+	int j;
+	int pipes[2], kid_read = -1, kid_write = -1;
+	int parent_read = -1, parent_write = -1;
+	struct startjob_rtn sjr;
+	pid_t child;
 
 	memset(&sjr, 0, sizeof(sjr));
-#endif	/* WIN32 */
+#endif /* WIN32 */
 
-	assert((0 <= ae) && (ae < (int)LastAction));
+	assert((0 <= ae) && (ae < (int) LastAction));
 
 	ma = &mom_action[ae];
-	if ((ma == NULL) || (ma->ma_script == NULL))
+	if (ma == NULL || ma->ma_script == NULL)
 		return -2;
 
-	/* does script really exist? */
-#ifdef	WIN32
+		/* does script really exist? */
+#ifdef WIN32
 	pnoq = remove_quotes(ma->ma_script);
 	if (stat(pnoq, &sb) == -1) {
-		sprintf(log_buffer, "action %s script %s does not exist",
-			ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s does not exist", ma->ma_name, ma->ma_script);
 		if (pnoq)
 			free(pnoq);
 		return -1;
-	} else if (pnoq && chk_file_sec(pnoq, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0)) {
-		sprintf(log_buffer, "action %s script %s cannot be executed "
-			"due to permissions", ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	} else if (pnoq && chk_file_sec(pnoq, 0, 0, WRITES_MASK ^ FILE_WRITE_EA, 0)) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot be executed due to permissions", ma->ma_name, ma->ma_script);
 		if (pnoq)
 			free(pnoq);
 		return -1;
@@ -2647,30 +2602,22 @@ do_mom_action_script(int	ae,	/* index into action table */
 		free(pnoq);
 #else
 	if (stat(ma->ma_script, &sb) == -1) {
-		sprintf(log_buffer, "action %s script %s does not exist",
-			ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s does not exist", ma->ma_name, ma->ma_script);
 		return -1;
-	} else if ((sb.st_uid != 0) || (sb.st_gid > 10) ||
-		((sb.st_mode & S_IXUSR) != S_IXUSR) ||
-		((sb.st_mode & S_IWOTH) != 0)) {
-		sprintf(log_buffer, "action %s script %s cannot be executed "
-			"due to permissions", ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	} else if (sb.st_uid != 0 || sb.st_gid > 10 || (sb.st_mode & S_IXUSR) != S_IXUSR || (sb.st_mode & S_IWOTH) != 0) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot be executed due to permissions", ma->ma_name, ma->ma_script);
 		return -1;
 	}
-#endif	/* WIN32 */
+#endif /* WIN32 */
 
 	if (ptask == NULL)
-		ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
+		ptask = (pbs_task *) GET_NEXT(pjob->ji_tasks);
 
 	if (ptask == NULL) {
-		sprintf(log_buffer, "action %s script %s cannot run because"
-			" job has no tasks", ma->ma_name, ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot run because job has no tasks", ma->ma_name, ma->ma_script);
 		return -1;
 	}
 
@@ -2679,17 +2626,13 @@ do_mom_action_script(int	ae,	/* index into action table */
 	 ** the ji_momsubt field has to be free to track the pid.
 	 */
 	if (post != NULL && pjob->ji_momsubt) {
-		sprintf(log_buffer, "action %s script %s cannot be run"
-			" due to existing subtask", ma->ma_name,
-			ma->ma_script);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s cannot be run due to existing subtask", ma->ma_name, ma->ma_script);
 		return -1;
 	}
 
 	if ((pwdp = check_pwd(pjob)) == NULL) {
-		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
-			LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
+		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB, LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
 		return -1;
 	}
 
@@ -2702,7 +2645,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 	if (args == NULL)
 		return -1;
 
-#ifdef	WIN32
+#ifdef WIN32
 	strcpy(cmd_line, "cmd /q /c ");
 	strcat(cmd_line, ma->ma_script);
 #endif
@@ -2717,130 +2660,119 @@ do_mom_action_script(int	ae,	/* index into action table */
 	pargs = ma->ma_args;
 	for (i = 1; i < nargs; i++, pargs++) {
 		if (**pargs == '%') {
-			if (strcmp(*pargs + 1, "jobid") == 0) {
-				(void)strcpy(buf, pjob->ji_qs.ji_jobid);
-			} else if (strcmp(*pargs + 1, "sid") == 0) {
+			if (strcmp(*pargs + 1, "jobid") == 0)
+				strcpy(buf, pjob->ji_qs.ji_jobid);
+			else if (strcmp(*pargs + 1, "sid") == 0)
 				sprintf(buf, "%d", ptask->ti_qs.ti_sid);
-			} else if (strcmp(*pargs + 1, "taskid") == 0) {
+			else if (strcmp(*pargs + 1, "taskid") == 0)
 				sprintf(buf, "%d", ptask->ti_qs.ti_task);
-			} else if (strcmp(*pargs + 1, "uid") == 0) {
+			else if (strcmp(*pargs + 1, "uid") == 0) {
 #ifdef	WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #endif
 			} else if (strcmp(*pargs + 1, "gid") == 0) {
-#ifdef	WIN32
+#ifdef WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #endif
-			} else if (strcmp(*pargs + 1, "login") == 0) {
-				strcpy(buf,
-					pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
-			} else if (strcmp(*pargs + 1, "owner") == 0) {
-				strcpy(buf,
-					pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
-			} else if (strcmp(*pargs + 1, "globid") == 0) {
+			} else if (strcmp(*pargs + 1, "login") == 0)
+				strcpy(buf, get_jattr_str(pjob, JOB_ATR_euser));
+			else if (strcmp(*pargs + 1, "owner") == 0)
+				strcpy(buf, get_jattr_str(pjob, JOB_ATR_job_owner));
+			else if (strcmp(*pargs + 1, "globid") == 0)
 				strcpy(buf, "NULL");
-			} else if (strcmp(*pargs + 1, "auxid") == 0) {
-				if (pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str) {
-					strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].
-						at_val.at_str, sizeof(buf)-1);
-					buf[sizeof(buf)-1] = '\0';
-				} else
+			else if (strcmp(*pargs + 1, "auxid") == 0) {
+				if (get_jattr_str(pjob, JOB_ATR_altid))
+					pbs_strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str, sizeof(buf));
+				else
 					strcpy(buf, "NULL");
 			} else if (strcmp(*pargs + 1, "path") == 0) {
-				if (path != NULL) {
-					strncpy(buf, path, sizeof(buf)-1);
-					buf[sizeof(buf)-1] = '\0';
-				} else
+				if (path != NULL)
+					pbs_strncpy(buf, path, sizeof(buf));
+				else
 					strcpy(buf, "NULL");
 			} else {
-				sprintf(log_buffer, "action %s script %s cannot be run"
-					" due to unknown parameter %s",
-					ma->ma_name, ma->ma_script,
-					*pargs);
-				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-					pjob->ji_qs.ji_jobid, log_buffer);
+				log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+					   "action %s script %s cannot be run due to unknown parameter %s",
+					   ma->ma_name, ma->ma_script, *pargs);
 				goto done;
 			}
-		} else {
-			(void)strcpy(buf, *pargs);
-		}
+		} else
+			pbs_strncpy(buf, *pargs, sizeof(buf));
+
 		*(args + i) = strdup(buf);
 		if (*(args + i) == NULL)
 			return -1;
-#ifdef	WIN32
+#ifdef WIN32
 		strcat(cmd_line, " ");
 		strcat(cmd_line, buf);
 #endif
 	}
 
-#ifdef	WIN32
-	shell = set_shell(pjob, pwdp);	/* machine dependent */
-
-	init_envp();
+#ifdef WIN32
+	shell = set_shell(pjob, pwdp); /* machine dependent */
 
 	/*
 	 **	Setup environment
 	 */
 	/* UID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
-	bld_wenv_variables("UID", buf);
+	bld_env_variables(&vtable, "UID", buf);
 	/* GID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-	bld_wenv_variables("GID", buf);
+	bld_env_variables(&vtable, "GID", buf);
 	/* HOME */
-	bld_wenv_variables(variables_else[0], pwdp->pw_dir);
+	bld_env_variables(&vtable, variables_else[0], pwdp->pw_dir);
 	/* LOGNAME */
-	bld_wenv_variables(variables_else[1], pwdp->pw_name);
+	bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 	/* PBS_JOBNAME */
-	bld_wenv_variables(variables_else[2],
-		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+	bld_env_variables(&vtable, variables_else[2],
+		get_jattr_str(pjob, JOB_ATR_jobname));
 	/* PBS_JOBID */
-	bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid);
+	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 	/* PBS_QUEUE */
-	bld_wenv_variables(variables_else[4],
-		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+	bld_env_variables(&vtable, variables_else[4],
+		 get_jattr_str(pjob, JOB_ATR_in_queue));
 	/* SHELL */
-	bld_wenv_variables(variables_else[5], shell);
+	bld_env_variables(&vtable, variables_else[5], shell);
 	/* USER */
-	bld_wenv_variables(variables_else[6], pwdp->pw_name);
+	bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 	/* PBS_JOBCOOKIE */
-	bld_wenv_variables(variables_else[7],
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+	bld_env_variables(&vtable, variables_else[7],
+		get_jattr_str(pjob, JOB_ATR_Cookie));
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
-	bld_wenv_variables(variables_else[8], buf);
+	bld_env_variables(&vtable, variables_else[8], buf);
 	/* PBS_TASKNUM */
 	sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
-	bld_wenv_variables(variables_else[9], buf);
+	bld_env_variables(&vtable, variables_else[9], buf);
 	/* PBS_MOMPORT */
 	sprintf(buf, "%d", pbs_rm_port);
-	bld_wenv_variables(variables_else[10], buf);
+	bld_env_variables(&vtable, variables_else[10], buf);
 	/* PBS_NODEFILE */
 	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path,
 		pjob->ji_qs.ji_jobid);
-	bld_wenv_variables(variables_else[11], buf);
+	bld_env_variables(&vtable, variables_else[11], buf);
 	/* PBS_SID */
 	sprintf(buf, "%ld", ptask->ti_qs.ti_sid);
-	bld_wenv_variables("PBS_SID", buf);
+	bld_env_variables(&vtable, "PBS_SID", buf);
 	/* PBS_JOBDIR */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-		bld_wenv_variables("PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
-	} else {
-		bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
-	}
+	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0))
+		bld_env_variables(&vtable, "PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+	else
+		bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 
 	/* USERPROFILE */
-	bld_wenv_variables(variables_else[16],
+	bld_env_variables(&vtable, variables_else[16],
 		default_local_homedir(pwdp->pw_name,
 		pwdp->pw_userlogin, 1));
 
 	/* USERNAME */
-	bld_wenv_variables(variables_else[17], pwdp->pw_name);
+	bld_env_variables(&vtable, variables_else[17], pwdp->pw_name);
 
 	/*
 	 ** Special case for restart_transmogrify.
@@ -2849,44 +2781,36 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pjob->ji_hJob == INVALID_HANDLE_VALUE) {
 			hjob = CreateJobObject(NULL, pjob->ji_qs.ji_jobid);
 			if (hjob == NULL) {
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-					LOG_WARNING, pjob->ji_qs.ji_jobid,
-					"Unable to create job");
+				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, "Unable to create job");
 				goto done;
 			}
 			pjob->ji_hJob = hjob;
 		}
 		if ((i = mom_set_limits(pjob, SET_LIMIT_SET)) != PBSE_NONE) {
-			sprintf(log_buffer, "Unable to set limits, err=%d", i);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, "Unable to set limits, err=%d", i);
 			goto done;
 		}
 		flags |= CREATE_SUSPENDED;
 	}
 
-	env_block = make_envp();
+	env_block = make_envp(vtable.v_envp);
 	si.cb = sizeof(si);
 	si.lpDesktop = "";
 
-	ret = CreateProcess(NULL, cmd_line,
-		NULL, NULL, TRUE, flags,
-		env_block, NULL, &si, &pi);
+	ret = CreateProcess(NULL, cmd_line, NULL, NULL, TRUE, flags, env_block, NULL, &si, &pi);
 
 	/* could be sitting on a user's network directory (checkpoint action) */
 	if ((ret == 0) && (GetLastError() == ERROR_ACCESS_DENIED)) {
-		char    current_dir[MAX_PATH+1];
-		char    *temp_dir = NULL;
+		char current_dir[MAX_PATH + 1];
+		char *temp_dir = NULL;
 
 		current_dir[0] = '\0';
-		_getcwd(current_dir, MAX_PATH+1);
+		_getcwd(current_dir, MAX_PATH + 1);
 
 		temp_dir = get_saved_env("SYSTEMROOT");
-		chdir(temp_dir?temp_dir:"C:\\");
+		chdir(temp_dir ? temp_dir : "C:\\");
 
-		ret = CreateProcess(NULL, cmd_line,
-			NULL, NULL, TRUE, flags,
-			env_block, NULL, &si, &pi);
+		ret = CreateProcess(NULL, cmd_line, NULL, NULL, TRUE, flags, env_block, NULL, &si, &pi);
 
 		/* restore current working directory */
 		chdir(current_dir);
@@ -2895,15 +2819,11 @@ do_mom_action_script(int	ae,	/* index into action table */
 		free(env_block);
 
 	if (ret == 0) {
-		sprintf(log_buffer, "action script %s cannot be run due to"
-			" CreateProcess failure %d", ma->ma_script,
-			WSAGetLastError());
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "action script %s cannot be run due to CreateProcess failure %d", ma->ma_script, WSAGetLastError());
 		goto done;
 	}
 
-	if (post != NULL) {	/* post func means we do not wait */
+	if (post != NULL) { /* post func means we do not wait */
 		/* hook action process to pjob so that when pjob gets killed */
 		/* all action processes will get cleared */
 		if (pjob->ji_hJob != INVALID_HANDLE_VALUE)
@@ -2919,7 +2839,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		goto done;
 	}
 
-	if (transmog) {		/* setup new task */
+	if (transmog) { /* setup new task */
 		/*
 		 * call to daemon_protect() to unprotect not needed
 		 * for Windows as the created process does not inherit
@@ -2935,26 +2855,20 @@ do_mom_action_script(int	ae,	/* index into action table */
 			goto done;
 		}
 
-		/*
-		 **	After adding process to job
-		 */
+		/* After adding process to job */
 		ptask->ti_hProc = pi.hProcess;
 		ptask->ti_qs.ti_sid = pi.dwProcessId;
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-		(void)task_save(ptask);
+		(void) task_save(ptask);
 		/* update the job with the new session id */
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long
-		= ptask->ti_qs.ti_sid;
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags =
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		set_jattr_l_slim(pjob, JOB_ATR_session_id, ptask->ti_qs.ti_sid, SET);
+
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save(pjob);
 		}
-		(void)sprintf(log_buffer, "task transmogrified, %s", cmd_line);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "task transmogrified, %s", cmd_line);
 
 		ret = ResumeThread(pi.hThread);
 		if (ret == -1) {
@@ -2965,31 +2879,19 @@ do_mom_action_script(int	ae,	/* index into action table */
 			goto done;
 		}
 		CloseHandle(pi.hThread);
-		/* send updated session id to server */
-		update_ajob_status(pjob);
+		enqueue_update_for_send(pjob, IS_RESCUSED);
 		rc = 0;
-	}
-	else {			/* wait for script */
-		ret = WaitForSingleObject(pi.hProcess, ma->ma_timeout*1000);
+	} else { /* wait for script */
+		ret = WaitForSingleObject(pi.hProcess, ma->ma_timeout * 1000);
 		if (ret == WAIT_TIMEOUT) {
-			sprintf(log_buffer, "%s script %s: timed out",
-				ma->ma_name, ma->ma_script);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: timed out", ma->ma_name, ma->ma_script);
 			rc = -1;
 		} else if (ret == WAIT_FAILED) { /* abnormal exit */
-			sprintf(log_buffer, "%s script %s: wait failed %d",
-				ma->ma_name, ma->ma_script, GetLastError());
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: wait failed %d", ma->ma_name, ma->ma_script, GetLastError());
 			rc = -1;
 		} else {
-			GetExitCodeProcess(pi.hProcess, (DWORD *)&rc);
-			sprintf(log_buffer, "%s script %s: exit code %d",
-				ma->ma_name, ma->ma_script, rc);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			GetExitCodeProcess(pi.hProcess, (DWORD *) &rc);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: exit code %d", ma->ma_name, ma->ma_script, rc);
 		}
 
 		/* The following is iffy --
@@ -3000,28 +2902,24 @@ do_mom_action_script(int	ae,	/* index into action table */
 		}
 	}
 
-	init_envp();
+	free_string_array(vtable.v_envp);
 #else
 	/*
-	 ** Special case for restart_transmogrify.
-	 ** The script is going to morf into the task so we have to
-	 ** setup pipes just like in start_process()
+	 * Special case for restart_transmogrify.
+	 * The script is going to morf into the task so we have to
+	 * setup pipes just like in start_process()
 	 */
 	if ((transmog = (ae == RestartAction) && restart_transmogrify)) {
-		sprintf(log_buffer, "action %s script %s preparing "
-			"to transmogrify task %8.8X",
-			ma->ma_name, ma->ma_script,
-			ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s preparing to transmogrify task %8.8X",
+			   ma->ma_name, ma->ma_script, ptask->ti_qs.ti_task);
 
 		if (pipe(pipes) == -1)
 			goto done;
 		if (pipes[1] < 3) {
 			kid_write = fcntl(pipes[1], F_DUPFD, 3);
 			close(pipes[1]);
-		}
-		else
+		} else
 			kid_write = pipes[1];
 		parent_read = pipes[0];
 
@@ -3033,40 +2931,31 @@ do_mom_action_script(int	ae,	/* index into action table */
 		if (pipes[0] < 3) {
 			kid_read = fcntl(pipes[0], F_DUPFD, 3);
 			close(pipes[0]);
-		}
-		else
+		} else
 			kid_read = pipes[0];
 		parent_write = pipes[1];
-	}
-	else if (ae == RestartAction) {
-		sprintf(log_buffer, "action %s script %s preparing "
-			"to restart task %8.8X",
-			ma->ma_name, ma->ma_script,
-			ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
-	}
+	} else if (ae == RestartAction)
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "action %s script %s preparing to restart task %8.8X",
+			   ma->ma_name, ma->ma_script, ptask->ti_qs.ti_task);
 
-	if ((child = fork_me(-1)) == 0) {		/* child */
-		extern	char	*variables_else[];
-		char		*shell;
+	if ((child = fork_me(-1)) == 0) { /* child */
+		extern char *variables_else[];
+		char *shell;
 
 		/* unprotect the child process which becomes the job */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
-		shell = set_shell(pjob, pwdp);	/* machine dependent */
+		shell = set_shell(pjob, pwdp); /* machine dependent */
 		vtable.v_ensize = 30;
 		vtable.v_used = 0;
-		vtable.v_envp = (char **)calloc(vtable.v_ensize,
-			sizeof(char *));
+		vtable.v_envp = (char **) calloc(vtable.v_ensize, sizeof(char *));
 		if (vtable.v_envp == NULL) {
 			free(args);
 			log_err(errno, "setup environment", "out of memory");
 			return -1;
 		}
-		/*
-		 **	Setup environment
-		 */
+		/* setup environment */
 		/* UID */
 		sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 		bld_env_variables(&vtable, "UID", buf);
@@ -3078,59 +2967,40 @@ do_mom_action_script(int	ae,	/* index into action table */
 		/* LOGNAME */
 		bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 		/* PBS_JOBNAME */
-		bld_env_variables(&vtable, variables_else[2],
-			pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
 		/* PBS_JOBID */
-		bld_env_variables(&vtable, variables_else[3],
-			pjob->ji_qs.ji_jobid);
+		bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 		/* PBS_QUEUE */
-		bld_env_variables(&vtable, variables_else[4],
-			pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
 		/* SHELL */
 		bld_env_variables(&vtable, variables_else[5], shell);
 		/* USER */
 		bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 		/* PBS_JOBCOOKIE */
-		bld_env_variables(&vtable, variables_else[7],
-			pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
+		bld_env_variables(&vtable, variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
 		/* PBS_NODENUM */
 		sprintf(buf, "%d", pjob->ji_nodeid);
 		bld_env_variables(&vtable, variables_else[8], buf);
 		/* PBS_TASKNUM */
-		sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
+		sprintf(buf, "%ld", (long) ptask->ti_qs.ti_task);
 		bld_env_variables(&vtable, variables_else[9], buf);
 		/* PBS_MOMPORT */
 		sprintf(buf, "%d", pbs_rm_port);
 		bld_env_variables(&vtable, variables_else[10], buf);
 		/* PBS_NODEFILE */
-		sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path,
-			pjob->ji_qs.ji_jobid);
+		sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
 		bld_env_variables(&vtable, variables_else[11], buf);
 		/* PBS_SID */
 		sprintf(buf, "%d", ptask->ti_qs.ti_sid);
 		bld_env_variables(&vtable, "PBS_SID", buf);
 		/* PBS_JOBDIR */
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags &
-			ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].
-			at_val.at_str, "PRIVATE") == 0)) {
+		if (is_jattr_set(pjob, JOB_ATR_sandbox)
+				&& strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0) {
 			bld_env_variables(&vtable, "PBS_JOBDIR",
-				jobdirname(pjob->ji_qs.ji_jobid,
-				pjob->ji_grpcache->gc_homedir));
-		} else {
-			bld_env_variables(&vtable, "PBS_JOBDIR",
-				pjob->ji_grpcache->gc_homedir);
-		}
+					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+		} else
+			bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 		mom_unnice();
-
-		if (set_mach_vars(pjob, &vtable) != 0) {
-			log_event(PBSEVENT_JOB | PBSEVENT_SECURITY,
-				PBS_EVENTCLASS_JOB,
-				LOG_ERR, pjob->ji_qs.ji_jobid,
-				"failed to setup dependent environment!");
-			free(args);
-			return -1;
-		}
 
 		/*
 		 ** Do the same operations as start_process() but we don't
@@ -3140,24 +3010,19 @@ do_mom_action_script(int	ae,	/* index into action table */
 			close(parent_read);
 			close(parent_write);
 
-#if			MOM_ALPS
+#if MOM_ALPS
 			/*
 			 * ALPS jobs need a new PAGG when
 			 * being restarted.
 			 */
-			memset(pjob->ji_extended.ji_ext.ji_4jid, 0,
-				sizeof(pjob->ji_extended.ji_ext.ji_4jid));
+			memset(pjob->ji_extended.ji_ext.ji_jid, 0, sizeof(pjob->ji_extended.ji_ext.ji_jid));
 #endif
 			j = set_job(pjob, &sjr);
 			if (j < 0) {
-				if (j == -1) {
-					strcpy(log_buffer,
-						"Unable to set task session");
-				}
+				if (j == -1)
+					strcpy(log_buffer, "Unable to set task session");
 				DBPRT(("%s: %s\n", __func__, log_buffer))
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-					LOG_NOTICE, pjob->ji_qs.ji_jobid,
-					log_buffer);
+				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 				if (j == -3)
 					j = JOB_EXEC_FAIL2;
 				else
@@ -3167,11 +3032,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 			ptask->ti_qs.ti_sid = sjr.sj_session;
 			i = mom_set_limits(pjob, SET_LIMIT_SET);
 			if (i != PBSE_NONE) {
-				sprintf(log_buffer,
-					"Unable to set limits, err=%d", i);
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-					LOG_WARNING, pjob->ji_qs.ji_jobid,
-					log_buffer);
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, "Unable to set limits, err=%d", i);
 				if (i == PBSE_RESCUNAV)
 					j = JOB_EXEC_RETRY;
 				else
@@ -3180,8 +3041,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 			}
 			log_close(0);
 			starter_return(kid_write, kid_read, JOB_EXEC_OK, &sjr);
-		}
-		else {	/* just close down anything hanging */
+		} else { /* just close down anything hanging */
 			close(0);
 			close(1);
 			close(2);
@@ -3191,15 +3051,12 @@ do_mom_action_script(int	ae,	/* index into action table */
 		exit(254);
 	}
 
-	if (child == -1) {		/* error */
-		sprintf(log_buffer, "action script %s cannot be run due to"
-			" fork failure %d", ma->ma_script, errno);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	if (child == -1) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "action script %s cannot be run due to fork failure %d", ma->ma_script, errno);
 		goto done;
 	}
 
-	if (post != NULL) {	/* post func means we do not wait */
+	if (post != NULL) { /* post func means we do not wait */
 		rc = 1;
 		pjob->ji_momsubt = child;
 		pjob->ji_mompost = post;
@@ -3210,7 +3067,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 		goto done;
 	}
 
-	if (transmog) {		/* setup new task */
+	if (transmog) { /* setup new task */
 		close(kid_read);
 		close(kid_write);
 
@@ -3219,103 +3076,66 @@ do_mom_action_script(int	ae,	/* index into action table */
 		j = errno;
 		close(parent_read);
 		if (i != sizeof(sjr)) {
-			sprintf(log_buffer,
-				"read of pipe for pid job %s got %d not %d",
-				pjob->ji_qs.ji_jobid, i, (int)sizeof(sjr));
-			log_err(j, __func__, log_buffer);
+			log_errf(j, __func__, "read of pipe for pid job %s got %d not %d", pjob->ji_qs.ji_jobid, i, (int) sizeof(sjr));
 			close(parent_write);
 			goto done;
 		}
 		/* send info back as an acknowlegment */
 		writepipe(parent_write, &sjr, sizeof(sjr));
 		close(parent_write);
-		DBPRT(("%s: read start return %d %d\n", __func__,
-			sjr.sj_code, sjr.sj_session))
+		DBPRT(("%s: read start return %d %d\n", __func__, sjr.sj_code, sjr.sj_session))
 		/* update system specific ids and information from set_job() */
 		set_globid(pjob, &sjr);
 		if (sjr.sj_code < 0) {
-			sprintf(log_buffer, "task %8.8X not started, %s %d",
-				(unsigned int)ptask->ti_qs.ti_task,
-				(sjr.sj_code == JOB_EXEC_RETRY) ?
-				"Retry" : "Failure",
-				sjr.sj_code);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid,
+				   "task %8.8X not started, %s %d", (unsigned int) ptask->ti_qs.ti_task, (sjr.sj_code == JOB_EXEC_RETRY) ? "Retry" : "Failure", sjr.sj_code);
 			goto done;
 		}
 		ptask->ti_qs.ti_sid = sjr.sj_session;
 		ptask->ti_qs.ti_status = TI_STATE_RUNNING;
-		(void)task_save(ptask);
+		(void) task_save(ptask);
 		/* update the job with the new session id */
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long
-		= sjr.sj_session;
-		pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags =
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		set_jattr_l_slim(pjob, JOB_ATR_session_id, sjr.sj_session, SET);
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save(pjob);
 		}
 
 		rc = 0;
-		sprintf(log_buffer, "task %8.8X transmogrified",
-			(unsigned int)ptask->ti_qs.ti_task);
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
-		/* send updated session id to server */
-		update_ajob_status(pjob);
-	}
-	else {			/* wait for script */
+		log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "task %8.8X transmogrified", (unsigned int) ptask->ti_qs.ti_task);
+		enqueue_update_for_send(pjob, IS_RESCUSED);
+	} else { /* wait for script */
 		DBPRT(("action: setting alarm %d\n", ma->ma_timeout))
-		(void)alarm(ma->ma_timeout);
+		(void) alarm(ma->ma_timeout);
 		rc = 0;
 		if (waitpid(child, &rc, 0) == -1) {
-			sprintf(log_buffer,
-				"%s script %s: wait failed %d",
-				ma->ma_name, ma->ma_script, errno);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
-			(void)kill(child, SIGKILL);
-			(void)waitpid(child, &rc, 0);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: wait failed %d", ma->ma_name, ma->ma_script, errno);
+			(void) kill(child, SIGKILL);
+			(void) waitpid(child, &rc, 0);
 		}
-		(void)alarm(0);
+		(void) alarm(0);
 		if (WIFEXITED(rc)) {
 			rc = WEXITSTATUS(rc);
-			sprintf(log_buffer,
-				"%s script %s: exit code %d",
-				ma->ma_name, ma->ma_script, rc);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: exit code %d", ma->ma_name, ma->ma_script, rc);
 			if (rc != 0)
 				rc = -1;
 		} else if (WIFSIGNALED(rc)) {
 			rc = WTERMSIG(rc);
-			sprintf(log_buffer,
-				"%s script %s: got signal %d",
-				ma->ma_name, ma->ma_script, rc);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: got signal %d", ma->ma_name, ma->ma_script, rc);
 			rc = -1;
 		} else {
-			sprintf(log_buffer,
-				"%s script %s: exited abnormally",
-				ma->ma_name, ma->ma_script);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-				LOG_INFO, pjob->ji_qs.ji_jobid,
-				log_buffer);
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, "%s script %s: exited abnormally", ma->ma_name, ma->ma_script);
 			rc = -1;
 		}
 	}
-#endif	/* WIN32 */
+#endif /* WIN32 */
 
 done:
 	/* free args arrays */
 	for (pargs = args; *pargs; pargs++)
-		(void)free(*pargs);
-	(void)free(args);
+		(void) free(*pargs);
+	(void) free(args);
 
 	return rc;
 }
@@ -3667,7 +3487,13 @@ static handler_ret_t
 set_jobdir_root(char *value)
 {
 	char	*cleaned_value;
+	char    *savep = NULL;
+	char	*directive;
+	char	*p;
 
+	p = value;
+	value = strtok_r(p, " ", &savep);
+	directive = strtok_r(NULL, " ", &savep);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, __func__, value);
 	cleaned_value = remove_quotes(value); /* remove quotes if any present */
@@ -3697,6 +3523,11 @@ set_jobdir_root(char *value)
 
 	strcpy(pbs_jobdir_root, cleaned_value);
 	free(cleaned_value);
+
+	if (directive != NULL) {
+		if (strcmp(directive, "shared") == 0)
+			pbs_jobdir_root_shared = TRUE;
+	}
 	return HANDLER_SUCCESS;
 }
 
@@ -4100,26 +3931,27 @@ set_checkpoint_path(char *value)
 	if (path_checkpoint_from_getopt) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using checkpoint path from command line.");
-		strcpy(newpath, path_checkpoint_from_getopt);
+		pbs_strncpy(newpath, path_checkpoint_from_getopt, sizeof(newpath));
 	} else if (path_checkpoint_from_getenv) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using checkpoint path from environment.");
-		strcpy(newpath, path_checkpoint_from_getenv);
+		pbs_strncpy(newpath, path_checkpoint_from_getenv, sizeof(newpath));
 	} else if (value) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using checkpoint path from config file.");
-		strcpy(newpath, value);
+		pbs_strncpy(newpath, value, sizeof(newpath));
 	} else {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Using default checkpoint path.");
-		strcpy(newpath, path_checkpoint_default);
+		pbs_strncpy(newpath, path_checkpoint_default, sizeof(newpath));
 	}
 	if (strlen(newpath) == 0) {
 		/* Bad mojo, fall back to existing or default. */
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			__func__, "Empty checkpoint path specified, ignoring.");
 		if (*path_checkpoint == '\0')
-			strcpy(path_checkpoint, path_checkpoint_default);
+			/* path_checkpoint is never allocated memory, it points to path_checkpoint_buf */
+			pbs_strncpy(path_checkpoint, path_checkpoint_default, sizeof(path_checkpoint_buf));
 		return HANDLER_FAIL;	/* error */
 	}
 	if (*(newpath+strlen(newpath)-1) != '/') {
@@ -4842,14 +4674,6 @@ read_config(char *file)
 	struct	config		*ap;
 	int			i, j;
 	int			addconfig_ret;
-
-#if	MOM_BGL
-	if (reserve_bglpartitions) {
-		(void)free(reserve_bglpartitions);
-		reserve_bglpartitions = NULL;
-	}
-
-#endif
 
 	/*	initialize variable that can be set by config entries in case	*/
 	/*	they are removed and we are HUPped				*/
@@ -5647,12 +5471,6 @@ process_hup(void)
 
 	call_hup = HUP_CLEAR;
 
-#if	MOM_BGL
-	log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__,
-		"HUP is a no-op under Blue Gene mom");
-	return;
-#else
-
 	if (real_hup) {
 		log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__, "reset");
 		log_close(1);
@@ -5692,18 +5510,15 @@ process_hup(void)
 	cleanup();
 	initialize();
 
-#if	MOM_CSA || MOM_ALPS /* ALPS needs libjob support */
+#if	MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 
 	if (!real_hup)		/* no need to go on */
 		return;
-
-
-#endif	/* MOM_BGL */
 }
 
 /**
@@ -6477,6 +6292,9 @@ finish_loop(time_t waittime)
 		waittime = 1;	/* want faster time around to next loop */
 	}
 
+	if (GET_NEXT(mom_pending_ruu) != NULL)
+		waittime = 1;
+
 	if (waittime > next_sample_time)
 		waittime = next_sample_time;
 	DBPRT(("%s: waittime %lu\n", __func__, (unsigned long) waittime))
@@ -6488,75 +6306,6 @@ finish_loop(time_t waittime)
 #endif	/* WIN32 */
 
 }
-
-
-#ifdef	WIN32
-
-/**
- * @brief
- *	locks mom and logs error msg
- *
- * @param[in] fds - file descriptor
- * @param[in] op - type of lock
- *
- * @return Void
- *
- */
-
-static void
-mom_lock(int fds,
-	int op /* F_WRLCK  or  F_UNLCK */)
-{
-	struct stat  sbuf;
-
-	if (fstat(fds, &sbuf) == -1) {
-		log_err(errno, "mom_lock", "can't stat lock file");
-		exit(1);
-	}
-	if (_locking(fds, op, (long)sbuf.st_size) == -1) {
-		if (op == F_WRLCK) {
-			(void)strcpy(log_buffer,
-				"pbs_mom: another Mom running\n");
-			log_err(errno, msg_daemonname, log_buffer);
-			fprintf(stderr, log_buffer);
-			exit(1);
-		}
-	}
-
-}
-#else
-
-/**
- * @brief
- *	lock out other MOMs from this directory.
- *
- * @param[in] fds - file descriptor
- * @param[in] op - type of lock
- *
- * @return Void
- *
- */
-
-static void
-mom_lock(int fds,
-	int op /* F_WRLCK  or  F_UNLCK */)
-{
-	struct flock flock;
-
-	(void)lseek(fds, (off_t)0, SEEK_SET);
-	flock.l_type   = op;
-	flock.l_whence = SEEK_SET;
-	flock.l_start  = 0;
-	flock.l_len    = 0;	/* whole file */
-	if (fcntl(fds, F_SETLK, &flock) < 0) {
-		(void)strcpy(log_buffer, "pbs_mom: another mom running");
-		log_err(errno, msg_daemonname, log_buffer);
-		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, "%s", log_buffer);
-		exit(1);
-	}
-}
-#endif	/* WIN32 */
 
 /**
  * @brief
@@ -6666,23 +6415,11 @@ gettime(resource *pres)
  *
  */
 int
-local_getsize(resource *pres,
-#if defined(__sgi)
-	rlim64_t	*ret
-#else
-	u_long	*ret
-#endif	/* __sgi */
-	)
+local_getsize(resource *pres, u_long *ret)
 {
-#if defined(__sgi)
-	rlim64_t	value;
-#define PBS_RLIM_MAX (~(rlim64_t)0)
-#define PBS_RLIM_TYPE	rlim64_t
-#else
 	u_Long		value;
 #define PBS_RLIM_MAX ULONG_MAX
 #define PBS_RLIM_TYPE	u_long
-#endif	/* __sgi */
 
 	/*
 	 * If the resource pointer(pres) is NULL, then just
@@ -6842,7 +6579,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 		rd = &svr_resc_def[RESC_WALLTIME];
 		preswalltime = find_resc_entry(at_used, rd);
 		if ((preswalltime != NULL) &&
-			((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+			((is_attr_set(&preswalltime->rs_value)) != 0)) {
 			wallt = preswalltime->rs_value.at_val.at_long;
 		}
 		if (wallt <= 0)
@@ -6863,7 +6600,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 
 	*lp = (u_long)(percent*new_sample_weight + (*lp)*(1.0-new_sample_weight));
 
-	DBPRT(("cpu%% : ses %ld (new %lu - old %lu)/delta %ld = %lu%% or %ld%% weighted\n", pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long, newcput, oldcput, dur, percent, *lp))
+	DBPRT(("cpu%% : ses %ld (new %lu - old %lu)/delta %ld = %lu%% or %ld%% weighted\n", get_jattr_long(pjob, JOB_ATR_session_id), newcput, oldcput, dur, percent, *lp))
 
 }
 
@@ -6960,8 +6697,7 @@ job	*pjob;
 
 	/* Return 0 if job is interactive */
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags&ATR_VFLAG_SET) &&
-		(pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long > 0)) {
+	if (is_jattr_set(pjob, JOB_ATR_interactive) && (get_jattr_long(pjob, JOB_ATR_interactive) > 0)) {
 		DBPRT(("job is interactive\n"));
 		return (0L);
 	}
@@ -7049,11 +6785,7 @@ mom_over_limit(job *pjob)
 {
 	char		*pname;
 	int		retval;
-#if defined(__sgi)
-	rlim64_t	llvalue, llnum;
-#else
 	u_long		llvalue, llnum;
-#endif
 	u_long		value, num;
 	resource	*pres;
 	resource	*used;
@@ -7080,11 +6812,11 @@ mom_over_limit(job *pjob)
 
 		at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
 		assert(at->at_type == ATR_TYPE_RESC);
-		
+
 		rd = &svr_resc_def[RESC_CPUPERCENT];
 		prescpup = find_resc_entry(at, rd);
 		if ((prescpup != NULL) &&
-			((prescpup->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+			((is_attr_set(&prescpup->rs_value)) != 0)) {
 			num = prescpup->rs_value.at_val.at_long;
 			if ((float)num >
 				(value*100*delta_cpufactor + delta_percent_over)) {
@@ -7105,13 +6837,13 @@ mom_over_limit(job *pjob)
 			rd = &svr_resc_def[RESC_WALLTIME];
 			preswalltime = find_resc_entry(at, rd);
 			if ((preswalltime != NULL) &&
-				((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+				((is_attr_set(&preswalltime->rs_value)) != 0)) {
 				walltime_sum = preswalltime->rs_value.at_val.at_long;
 				if (walltime_sum > average_trialperiod) {
 					rd = &svr_resc_def[RESC_CPUT];
 					prescput = find_resc_entry(at, rd);
 					if ((prescput != NULL) &&
-						((prescput->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+						((is_attr_set(&prescput->rs_value)) != 0)) {
 						cput_sum = prescput->rs_value.at_val.at_long;
 						/* "value" is from ncpus */
 						if (((double)cput_sum/(double)walltime_sum) >
@@ -7145,15 +6877,7 @@ mom_over_limit(job *pjob)
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
 			if (llnum > llvalue) {
-#if defined(__sgi)
-				sprintf(log_buffer,
-					"vmem %llukb exceeded limit %llukb",
-					llnum/1024, llvalue/1024);
-#else
-				sprintf(log_buffer,
-					"vmem %lukb exceeded limit %lukb",
-					llnum/1024, llvalue/1024);
-#endif
+				sprintf(log_buffer, "vmem %lukb exceeded limit %lukb", llnum/1024, llvalue/1024);
 				return (TRUE);
 			}
 		}
@@ -7167,15 +6891,7 @@ mom_over_limit(job *pjob)
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
 			if ((llnum > llvalue) && enforce_mem) {
-#if defined(__sgi)
-				sprintf(log_buffer,
-					"mem %llukb exceeded limit %llukb",
-					llnum/1024, llvalue/1024);
-#else
-				sprintf(log_buffer,
-					"mem %lukb exceeded limit %lukb",
-					llnum/1024, llvalue/1024);
-#endif
+				sprintf(log_buffer, "mem %lukb exceeded limit %lukb", llnum/1024, llvalue/1024);
 				return (TRUE);
 			}
 		}
@@ -7190,8 +6906,6 @@ mom_over_limit(job *pjob)
 		used = find_resc_entry(uattr, pres->rs_defin);
 		assert(pname != NULL);
 		assert(*pname != '\0');
-
-
 
 		/* The checks for cput and walltime (job wide limits) should
 		 * only be done on the MS.  We are leaving the Cray specific
@@ -7268,6 +6982,7 @@ mom_over_limit(job *pjob)
  *	check attr value limits of job
  *
  * @param[in] pjob - pointer to job
+ * @param[in] recover - recovering mode for MoM
  *
  * @return	int
  * @retval	0	Failure
@@ -7276,7 +6991,7 @@ mom_over_limit(job *pjob)
  */
 
 int
-job_over_limit(job *pjob)
+job_over_limit(job *pjob, int recover)
 {
 	attribute		*attr;
 	attribute		*used;
@@ -7309,7 +7024,7 @@ job_over_limit(job *pjob)
 
 		/* special case EOF */
 		if (pnode->hn_sister == SISTER_EOF) {
-			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob))) {
+			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob)) || recover == 2) {
 			 	snprintf(log_buffer, sizeof(log_buffer), "ignoring node EOF %d from failed mom %s as job is tolerant of node failures", pjob->ji_nodekill, pnode->hn_host?pnode->hn_host:"");
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 				return 0;
@@ -7356,7 +7071,7 @@ job_over_limit(job *pjob)
 		limresc != NULL;
 		limresc = (resource *)GET_NEXT(limresc->rs_link)) {
 
-		if ((limresc->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		if (!is_attr_set(&limresc->rs_value))
 			continue;
 
 		rd = limresc->rs_defin;
@@ -7368,7 +7083,7 @@ job_over_limit(job *pjob)
 		useresc = find_resc_entry(used, rd);
 		if (useresc == NULL)
 			continue;
-		if ((useresc->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		if (!is_attr_set(&useresc->rs_value))
 			continue;
 
 		if (strcmp(rd->rs_name, "cput") == 0) {
@@ -7705,10 +7420,7 @@ dorestrict_user(void)
 			if (pjob->ji_qs.ji_un.ji_momt.ji_exuid != uid)
 				continue;
 			/* job should be running */
-			if (pjob->ji_qs.ji_substate !=
-				JOB_SUBSTATE_RUNNING &&
-				pjob->ji_qs.ji_substate !=
-				JOB_SUBSTATE_PRERUN)
+			if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING) && !check_job_substate(pjob, JOB_SUBSTATE_PRERUN))
 				continue;
 
 			for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
@@ -7785,9 +7497,9 @@ dorestrict_user(void)
 			ptask->ti_flags |= TI_FLAGS_ORPHAN;
 			(void)task_save(ptask);
 
-			if (hjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-				hjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-				hjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+			if (!check_job_substate(hjob, JOB_SUBSTATE_RUNNING)) {
+				set_job_state(hjob, JOB_STATE_LTR_RUNNING);
+				set_job_substate(hjob, JOB_SUBSTATE_RUNNING);
 				job_save(hjob);
 			}
 
@@ -8133,10 +7845,6 @@ main(int argc, char *argv[])
 	extern int		optind;
 #endif /* WIN32 */
 
-#ifndef	DEBUG
-	FILE				*dummyfile;
-#endif
-
 #ifdef _POSIX_MEMLOCK
 	int					do_mlockall = 0;
 #endif
@@ -8171,7 +7879,7 @@ main(int argc, char *argv[])
 		pch = pch + strlen("PBS_MOM");
 		if ((pbs_conf_env = (char*) malloc(strlen(pbsconf_temp)+ strlen(pch) + 1)) != NULL) {
 			memset(pbs_conf_env, 0, strlen(pbsconf_temp)+ strlen(pch) + 1);
-			strncpy(pbs_conf_env, pbsconf_temp, strlen(pbsconf_temp)+ strlen(pch));
+			pbs_strncpy(pbs_conf_env, pbsconf_temp, strlen(pbsconf_temp)+ strlen(pch) + 1);
 			pbs_conf_env = strcat(pbs_conf_env, pch);
 		} else {
 			g_dwCurrentState = SERVICE_STOPPED;
@@ -8319,7 +8027,7 @@ main(int argc, char *argv[])
 				break;
 			case 'c':	/* config file */
 				config_file_specified = 1;
-				strcpy(config_file, optarg);	/* remember name */
+				pbs_strncpy(config_file, optarg, sizeof(config_file));	/* remember name */
 				break;
 			case 'M':
 				pbs_mom_port = (unsigned int)atoi(optarg);
@@ -8763,8 +8471,7 @@ main(int argc, char *argv[])
 		 */
 		c = 0;
 		if (pbs_conf.pbs_mom_node_name) {
-			(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
-			mom_host[(sizeof(mom_host) - 1)] = '\0';
+			pbs_strncpy(mom_host, pbs_conf.pbs_mom_node_name, sizeof(mom_host));
 			ptr = mom_host;
 			/* First character must be alpha-numeric */
 			if (isalnum((int)*ptr)) {
@@ -8795,14 +8502,12 @@ main(int argc, char *argv[])
 	 * Otherwise, set mom_short_name to the return value of
 	 * gethostname(), truncated to first dot.
 	 */
-	if (pbs_conf.pbs_mom_node_name) {
+	if (pbs_conf.pbs_mom_node_name)
 		/* mom_short_name was specified explicitly using PBS_MOM_NODE_NAME */
-		(void)strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, (sizeof(mom_short_name) - 1));
-		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
-	} else {
+		pbs_strncpy(mom_short_name, pbs_conf.pbs_mom_node_name, sizeof(mom_short_name));
+	else {
 		/* use gethostname(), truncated to first dot */
-		(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
-		mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
+		pbs_strncpy(mom_short_name, mom_host, sizeof(mom_short_name));
 		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
 			*ptr = '\0';  /* terminate at first dot */
 	}
@@ -8846,8 +8551,12 @@ main(int argc, char *argv[])
 	secure_file("mom.lock", "Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 #endif
-	mom_lock(lockfds, F_WRLCK);	/* See if other MOMs are running */
-
+	if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) {	/* See if other MOMs are running */
+		log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+		fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+		exit(1);
+	}
+	
 	if (read_config(NULL)) {
 		fprintf(stderr, "%s: config file(s) parsing failed\n", argv[0]);
 #ifdef	WIN32
@@ -8869,13 +8578,13 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
-#if	MOM_CSA || MOM_ALPS /* ALPS needs libjob support */
+#if	MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read and before MOM
 	 * forks so the exit value can be seen if there is a bad flag combination.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 
 	/* initialize the network interface */
 
@@ -8953,34 +8662,15 @@ main(int argc, char *argv[])
 		}
 	}
 
-#ifdef	WIN32 /* ------------------------------------------------------------*/
 #ifndef	DEBUG
+#ifndef  WIN32
 	if (stalone != 1) {
-		(void)fclose(stdin);
-		(void)fclose(stdout);
-		(void)fclose(stderr);
-		freopen("nul", "r", stdin);
-		freopen("nul", "w", stdout);
-		freopen("nul", "w", stderr);
-	}
-
-#else	/* DEBUG */
-	(void)setvbuf(stdout, NULL, _IONBF, 0);
-	(void)setvbuf(stderr, NULL, _IONBF, 0);
-#endif /* DEBUG */
-
-	mom_pid = (pid_t)getpid();
-	(void)lseek(lockfds, (off_t)0, SEEK_SET);
-	(void)sprintf(log_buffer, "%d\n", mom_pid);
-	(void)write(lockfds, log_buffer, strlen(log_buffer));
-
-#else /* ! WIN32 ------------------------------------------------------------*/
-
 	/* go into the background and become own session/process group */
-
-#ifndef	DEBUG
-	if (stalone != 1) {
-		mom_lock(lockfds, F_UNLCK);	/* unlock so child can relock */
+		if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0)) {	/* unlock so child can relock */
+			log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
+			fprintf(stderr, "%s\n", "failed to unlock mom.lock file");
+			exit(1);
+		}
 
 		if (fork() > 0)
 			return (0);	/* parent goes away */
@@ -8989,38 +8679,31 @@ main(int argc, char *argv[])
 			log_err(errno, msg_daemonname, "setsid failed");
 			return (2);
 		}
-		mom_lock(lockfds, F_WRLCK);	/* lock out other MOMs */
+		if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) {		/* lock out other MOMs */
+			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
+			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
+			exit(1);
+		}
 	}
-	mom_pid = getpid();
-
-	(void)fclose(stdin);
-	(void)fclose(stdout);
-	(void)fclose(stderr);
-	dummyfile = fopen("/dev/null", "r");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 0));
-	dummyfile = fopen("/dev/null", "w");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 1));
-	dummyfile = fopen("/dev/null", "w");
-	assert((dummyfile != 0) && (fileno(dummyfile) == 2));
+#endif		
+	freopen(NULL_DEVICE, "r", stdin);
+	freopen(NULL_DEVICE, "w", stdout);
+	freopen(NULL_DEVICE, "w", stderr);
 #else	/* DEBUG */
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 	if (stalone != 1) {
-		(void) sprintf(log_buffer, "Debug build does not fork.");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-				__func__, log_buffer);
+				__func__, "Debug build does not fork.");
 	}
-	mom_pid = getpid();
-	(void)setvbuf(stdout, NULL, _IOLBF, 0);
-	(void)setvbuf(stderr, NULL, _IOLBF, 0);
 #endif	/* DEBUG */
 
-	/* write MOM's pid into lockfile */
-#ifdef	WIN32
-	lseek(lockfds, (off_t)0, SEEK_SET);
-#else
-	(void)ftruncate(lockfds, (off_t)0);
-#endif
-	(void)sprintf(log_buffer, "%d\n", mom_pid);
-	(void)write(lockfds, log_buffer, strlen(log_buffer));
+	mom_pid = getpid();
+	sprintf(log_buffer, "%d\n", mom_pid);
+	ftruncate(lockfds, 0);
+	write(lockfds, log_buffer, strlen(log_buffer));
+
+#ifndef	WIN32 /* ------------------------------------------------------------*/
 
 	daemon_protect(0, PBS_DAEMON_PROTECT_ON);
 #ifdef _POSIX_MEMLOCK
@@ -9102,6 +8785,7 @@ main(int argc, char *argv[])
 		return (-1);
 	}
 
+	CLEAR_HEAD(mom_pending_ruu);
 
 	CLEAR_HEAD(svr_newjobs);
 	CLEAR_HEAD(svr_alljobs);
@@ -9543,8 +9227,10 @@ main(int argc, char *argv[])
 		log_err(c, msg_daemonname, "unable to recover vnode to host mapping");
 	}
 
+	pbs_list_link multinode_jobs;
+
 	/* recover & abort Jobs which were under MOM's control */
-	init_abort_jobs(recover);
+	init_abort_jobs(recover, &multinode_jobs);
 
 	/* deploy periodic hooks */
 	mom_hook_input_init(&hook_input);
@@ -9598,11 +9284,28 @@ main(int argc, char *argv[])
 			if (time_now > time_next_hello) {
 				send_hellosvr(server_stream);
 				time_next_hello = time_now + time_delta_hellosvr(MOM_DELTA_NORMAL);
+				if (server_stream != -1) {
+					job *m_job;
+					for (m_job = (job *)GET_NEXT(multinode_jobs); m_job;
+						m_job = (job *)GET_NEXT(m_job->ji_multinodejobs)) {
+						if (m_job->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+							/* I am MS */
+							resume_multinode(m_job);
+						} else {
+							/* I am sister */
+							send_sisters(m_job, IM_RECONNECT_TO_MS, NULL);
+						}
+					}
+					CLEAR_HEAD(multinode_jobs);
+				}
 			}
-		}
+		} else
+			send_pending_updates();
 
 		wait_time = default_next_task();
+#ifdef WIN32
 		end_proc();
+#endif
 
 		dorestrict_user();
 
@@ -9760,7 +9463,7 @@ main(int argc, char *argv[])
 			}
 
 			if (do_tolerate_node_failures(pjob) &&
-				(pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) &&
+				(check_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB)) &&
 				(pjob->ji_joinalarm != 0) &&
 				(pjob->ji_joinalarm < time_now)) {
 				int rcode;
@@ -9768,7 +9471,7 @@ main(int argc, char *argv[])
 				snprintf(log_buffer, sizeof(log_buffer), "sister_join_job_alarm wait time %ld secs exceeded", joinjob_alarm_time);
 				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB,
 					  LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
+				set_job_substate(pjob, JOB_SUBSTATE_PRERUN);
 
 				rcode = pre_finish_exec(pjob, 1);
 				if (rcode == PRE_FINISH_SUCCESS)
@@ -9823,12 +9526,12 @@ main(int argc, char *argv[])
 			nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 			/* check for job stuck waiting for Svr to ack obit */
-			if (!pjob->ji_hook_running_bg_on && pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT &&
+			if (!pjob->ji_hook_running_bg_on && check_job_substate(pjob, JOB_SUBSTATE_OBIT) &&
 				pjob->ji_sampletim < time_now - 45) {
 				send_obit(pjob, 0);	/* resend obit */
 			}
 			/* check for job stuck waiting for sister to deljob */
-			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_DELJOB) &&
+			if ((check_job_substate(pjob, JOB_SUBSTATE_DELJOB)) &&
 				(pjob->ji_sampletim < (time_now - 2 * MAX_CHECK_POLL_TIME))) {
 				/* just delete the job and let server deal */
 				if (pjob->ji_preq) {
@@ -9845,7 +9548,7 @@ main(int argc, char *argv[])
 				JOB_SVFLG_TERMJOB)) {
 				/* job is over a limit, if it is not already  */
 				/* being terminated by action script, kill it */
-				if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TERM) && (time_now >= pjob->ji_overlmt_timestamp)) {
+				if ((!check_job_substate(pjob, JOB_SUBSTATE_TERM)) && (time_now >= pjob->ji_overlmt_timestamp)) {
 					/* Unset the TERMJOB flag for KILL signal */
 					pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_TERMJOB;
 					(void)kill_job(pjob, SIGKILL);
@@ -9853,7 +9556,7 @@ main(int argc, char *argv[])
 				}
 			}
 
-			if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
+			if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
 				continue;
 
 			/* update information for my tasks */
@@ -9931,7 +9634,7 @@ main(int argc, char *argv[])
 					break;
 				}
 #endif /* localmod 153 */
-				if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
+				if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
 					continue;
 				/*
 				 ** Send message to get info from other MOM's
@@ -9984,7 +9687,7 @@ main(int argc, char *argv[])
 				if (c & (JOB_SVFLG_OVERLMT1 | JOB_SVFLG_OVERLMT2 | JOB_SVFLG_TERMJOB))
 					continue;
 
-				if (job_over_limit(pjob)) {
+				if (job_over_limit(pjob, recover)) {
 
 					char	*kill_msg;
 					log_event(PBSEVENT_JOB | PBSEVENT_FORCE,
@@ -10015,9 +9718,9 @@ main(int argc, char *argv[])
 										PBS_EVENTCLASS_JOB, LOG_INFO,
 										pjob->ji_qs.ji_jobid, log_buffer);
 								} else {
-									(void)write(fd, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
-										strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
-									(void)write(fd, kill_msg, strlen(kill_msg));
+									write(fd, get_jattr_str(pjob, JOB_ATR_Cookie),
+										strlen(get_jattr_str(pjob, JOB_ATR_Cookie)));
+									write(fd, kill_msg, strlen(kill_msg));
 									(void)close(fd);
 								}
 							}
@@ -10036,9 +9739,9 @@ main(int argc, char *argv[])
 	if (kill_jobs_on_exit) {
 		pjob = (job *)GET_NEXT(svr_alljobs);
 		while (pjob) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING
-				|| pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND
-				|| pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)
+			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING)
+				|| check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)
+				|| check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))
 				(void)kill_job(pjob, SIGKILL);
 			else
 				term_job(pjob);
@@ -10055,6 +9758,7 @@ main(int argc, char *argv[])
 	if (exiting_tasks)
 		scan_for_exiting();
 	(void)mom_close_poll();
+	send_pending_updates();
 
 	net_close(-1);		/* close all network connections */
 	tpp_shutdown();
@@ -10084,11 +9788,12 @@ main(int argc, char *argv[])
 		LOG_NOTICE, msg_daemonname, "Is down");
 	pbs_idx_destroy(jobs_idx);
 	unload_auths();
+	if (lock_file(lockfds, F_UNLCK, "mom.lock", 1, NULL, 0))
+		log_errf(errno, msg_daemonname, "failed to unlock mom.lock file");
 	log_close(1);
+	close(lockfds);
+	unlink("mom.lock");
 #ifdef	WIN32
-	mom_lock(lockfds, F_UNLCK);     /* unlock  */
-	(void)close(lockfds);
-	(void)unlink("mom.lock");
 	CloseDesktop(pbs_desktop);
 	CloseWindowStation(pbs_winsta);
 #endif
@@ -10635,7 +10340,7 @@ active_idle(job *pjob, int which)
 
 	time_now = time(0);
 	if (which == 1) {	/* suspend */
-		pjob->ji_qs.ji_substate =  JOB_SUBSTATE_SUSPEND;
+		set_job_substate(pjob, JOB_SUBSTATE_SUSPEND);
 		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
 		if ((pjob->ji_qs.ji_svrflags &
@@ -10645,7 +10350,7 @@ active_idle(job *pjob, int which)
 	} else {		/* resume */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
 			start_walltime(pjob);
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 		}
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
@@ -10675,7 +10380,7 @@ do_multinodebusy(job *pjob, int which)
 
 			stream = pjob->ji_hosts[0].hn_stream;
 			im_compose(stream, pjob->ji_qs.ji_jobid,
-				pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+				get_jattr_str(pjob, JOB_ATR_Cookie),
 				IM_REQUEUE, TM_NULL_EVENT, TM_NULL_TASK, IM_OLD_PROTOCOL_VER);
 			dis_flush(stream);
 		}
@@ -10700,7 +10405,7 @@ idle_jobs(void)
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
+		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
 			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd) == 0)) {
 			/* right now we can only handle one node jobs */
 			if (pjob->ji_numnodes == 1) {
@@ -10732,7 +10437,7 @@ activate_jobs(void)
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
+		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
 			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd) != 0)) {
 			if (pjob->ji_numnodes == 1) {
 				update_state_flag = 1;

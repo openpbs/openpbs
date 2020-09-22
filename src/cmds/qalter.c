@@ -329,7 +329,7 @@ main(int argc, char **argv, char **envp) /* qalter */
 		int stat=0;
 		int located = FALSE;
 
-		strcpy(job_id, argv[optind]);
+		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
 		if (get_server(job_id, job_id_out, server_out)) {
 			fprintf(stderr, "qalter: illegally formed job identifier: %s\n", job_id);
 			any_failed = 1;

@@ -476,7 +476,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %else
 %exclude %{_unitdir}/pbs.service
 %endif
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -519,7 +518,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -569,7 +567,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbs_upgrade_job
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
