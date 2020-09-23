@@ -200,7 +200,7 @@ char *pbs_strcat(char **strbuf, int *ssize, char *str);
  * like strcpy, but returns pointer to end of copied data
  * useful for chain copies instead of sprintf which is very
  * slow
- * 
+ *
  */
 char *pbs_strcpy(char *dest, const char *src);
 
@@ -344,6 +344,8 @@ extern int get_fullhostname(char *, char *, int);
 
 extern int get_msvr_mode(void);
 
+extern char *parse_servername(char *, unsigned int *);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)
@@ -355,9 +357,10 @@ DECLDIR void encode_SHA(char*, size_t, char **);
 void encode_SHA(char*, size_t, char **);
 #endif
 
+void set_proc_limits(char *, int);
+
 
 #ifdef  __cplusplus
 }
 #endif
 #endif
-

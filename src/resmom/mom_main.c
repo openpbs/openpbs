@@ -81,6 +81,7 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<arpa/inet.h>
+#include 	<libutil.h>
 
 #include	"auth.h"
 #include	"libpbs.h"
@@ -255,7 +256,7 @@ time_t		time_last_sample = 0;
 extern time_t		time_now;
 time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
-extern struct var_table vtable;	/* see start_exec.c */
+struct var_table vtable;	/* see start_exec.c */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 extern pbs_list_head svr_allcreds;
@@ -606,7 +607,7 @@ extern	void	dep_cleanup(void);
 
 /* External Functions */
 extern	void	catch_child(int);
-extern	void	init_abort_jobs(int);
+extern	void	init_abort_jobs(int, pbs_list_head *);
 extern	void	scan_for_exiting(void);
 #ifdef NAS /* localmod 015 */
 extern	int	to_size(char *, struct size_value *);
@@ -630,6 +631,9 @@ extern void catch_USR2(int);
 extern void catch_hup(int);
 extern void toolong(int);
 #endif
+
+extern	void	cleanup_hooks_workdir(struct work_task *);
+extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
 
 /* Local private functions */
 static char *mk_dirs(char *);
@@ -2126,25 +2130,26 @@ do_mom_action_script(int ae,	      /* index into action table */
 #else
 	char buf[MAXPATHLEN + 1];
 #endif
-	int i;
-	int nargs;
-	char **pargs;
-	struct stat sb;
-	struct passwd *pwdp;
-	int rc = -1;
-	struct mom_action *ma;
-	int transmog = 0;
-#ifdef WIN32
-	char *pnoq = 0;
-	char cmd_line[4096];
-	int flags = CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP;
-	STARTUPINFO si = {0};
-	PROCESS_INFORMATION pi = {0};
-	char *env_block;
-	char *shell;
-	extern char *variables_else[];
-	DWORD ret;
-	HANDLE hjob;
+	int		i;
+	int		nargs;
+	char		**pargs;
+	struct	stat	sb;
+	struct	passwd	*pwdp;
+	int		rc = -1;
+	struct mom_action	*ma;
+	int	transmog = 0;
+#ifdef	WIN32
+	char	*pnoq = 0;
+	char	cmd_line[4096];
+	int	flags = CREATE_DEFAULT_ERROR_MODE|CREATE_NEW_CONSOLE|
+		CREATE_NEW_PROCESS_GROUP;
+	STARTUPINFO             si = { 0 };
+	PROCESS_INFORMATION     pi = { 0 };
+	char	*env_block = NULL;
+	char	*shell;
+	extern	char	*variables_else[];
+	DWORD	ret;
+	HANDLE	hjob;
 #else
 	int j;
 	int pipes[2], kid_read = -1, kid_write = -1;
@@ -2295,58 +2300,64 @@ do_mom_action_script(int ae,	      /* index into action table */
 #ifdef WIN32
 	shell = set_shell(pjob, pwdp); /* machine dependent */
 
-	init_envp();
-
-	/* Setup environment */
+	/*
+	 **	Setup environment
+	 */
 	/* UID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
-	bld_wenv_variables("UID", buf);
+	bld_env_variables(&vtable, "UID", buf);
 	/* GID */
 	sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-	bld_wenv_variables("GID", buf);
+	bld_env_variables(&vtable, "GID", buf);
 	/* HOME */
-	bld_wenv_variables(variables_else[0], pwdp->pw_dir);
+	bld_env_variables(&vtable, variables_else[0], pwdp->pw_dir);
 	/* LOGNAME */
-	bld_wenv_variables(variables_else[1], pwdp->pw_name);
+	bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
 	/* PBS_JOBNAME */
-	bld_wenv_variables(variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
+	bld_env_variables(&vtable, variables_else[2],
+		get_jattr_str(pjob, JOB_ATR_jobname));
 	/* PBS_JOBID */
-	bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid);
+	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
 	/* PBS_QUEUE */
-	bld_wenv_variables(variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
+	bld_env_variables(&vtable, variables_else[4],
+		 get_jattr_str(pjob, JOB_ATR_in_queue));
 	/* SHELL */
-	bld_wenv_variables(variables_else[5], shell);
+	bld_env_variables(&vtable, variables_else[5], shell);
 	/* USER */
-	bld_wenv_variables(variables_else[6], pwdp->pw_name);
+	bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
 	/* PBS_JOBCOOKIE */
-	bld_wenv_variables(variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
+	bld_env_variables(&vtable, variables_else[7],
+		get_jattr_str(pjob, JOB_ATR_Cookie));
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
-	bld_wenv_variables(variables_else[8], buf);
+	bld_env_variables(&vtable, variables_else[8], buf);
 	/* PBS_TASKNUM */
-	sprintf(buf, "%ld", (long) ptask->ti_qs.ti_task);
-	bld_wenv_variables(variables_else[9], buf);
+	sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
+	bld_env_variables(&vtable, variables_else[9], buf);
 	/* PBS_MOMPORT */
 	sprintf(buf, "%d", pbs_rm_port);
-	bld_wenv_variables(variables_else[10], buf);
+	bld_env_variables(&vtable, variables_else[10], buf);
 	/* PBS_NODEFILE */
-	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
-	bld_wenv_variables(variables_else[11], buf);
+	sprintf(buf, "%s/aux/%s", pbs_conf.pbs_home_path,
+		pjob->ji_qs.ji_jobid);
+	bld_env_variables(&vtable, variables_else[11], buf);
 	/* PBS_SID */
 	sprintf(buf, "%ld", ptask->ti_qs.ti_sid);
-	bld_wenv_variables("PBS_SID", buf);
+	bld_env_variables(&vtable, "PBS_SID", buf);
 	/* PBS_JOBDIR */
 	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
 			(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0))
-		bld_wenv_variables("PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+		bld_env_variables(&vtable, "PBS_JOBDIR", jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 	else
-		bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
+		bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 
 	/* USERPROFILE */
-	bld_wenv_variables(variables_else[16], default_local_homedir(pwdp->pw_name, pwdp->pw_userlogin, 1));
+	bld_env_variables(&vtable, variables_else[16],
+		default_local_homedir(pwdp->pw_name,
+		pwdp->pw_userlogin, 1));
 
 	/* USERNAME */
-	bld_wenv_variables(variables_else[17], pwdp->pw_name);
+	bld_env_variables(&vtable, variables_else[17], pwdp->pw_name);
 
 	/*
 	 ** Special case for restart_transmogrify.
@@ -2367,7 +2378,7 @@ do_mom_action_script(int ae,	      /* index into action table */
 		flags |= CREATE_SUSPENDED;
 	}
 
-	env_block = make_envp();
+	env_block = make_envp(vtable.v_envp);
 	si.cb = sizeof(si);
 	si.lpDesktop = "";
 
@@ -2476,7 +2487,7 @@ do_mom_action_script(int ae,	      /* index into action table */
 		}
 	}
 
-	init_envp();
+	free_string_array(vtable.v_envp);
 #else
 	/*
 	 * Special case for restart_transmogrify.
@@ -6295,6 +6306,7 @@ mom_over_limit(job *pjob)
  *	check attr value limits of job
  *
  * @param[in] pjob - pointer to job
+ * @param[in] recover - recovering mode for MoM
  *
  * @return	int
  * @retval	0	Failure
@@ -6303,7 +6315,7 @@ mom_over_limit(job *pjob)
  */
 
 int
-job_over_limit(job *pjob)
+job_over_limit(job *pjob, int recover)
 {
 	attribute		*attr;
 	attribute		*used;
@@ -6336,7 +6348,7 @@ job_over_limit(job *pjob)
 
 		/* special case EOF */
 		if (pnode->hn_sister == SISTER_EOF) {
-			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob))) {
+			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob)) || recover == 2) {
 			 	snprintf(log_buffer, sizeof(log_buffer), "ignoring node EOF %d from failed mom %s as job is tolerant of node failures", pjob->ji_nodekill, pnode->hn_host?pnode->hn_host:"");
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 				return 0;
@@ -7021,6 +7033,52 @@ time_delta_hellosvr(int mode)
 		cnt--;
 
 	return delta;
+}
+
+/**
+ * @brief
+ * 	Resume multinode job after one or more sisters has been restarted
+ *
+ * @param[in] pjob - job pointer
+ *
+ * @return	Void
+ *
+ */
+
+void resume_multinode(job *pjob)
+{
+	if (pjob->ji_hosts == NULL)
+		return;
+
+	int com = IM_JOIN_RECOV_JOB;
+	hnodent *np = NULL;
+	eventent *ep = NULL;
+	int i;
+	for(i = 1; i < pjob->ji_numnodes; i++) {
+		np = &pjob->ji_hosts[i];
+
+		if( i == 1 )
+			ep = event_alloc(pjob, com, -1, np, TM_NULL_EVENT, TM_NULL_TASK);
+		else
+			ep = event_dup(ep, pjob, np);
+
+		if (ep == NULL) {
+			exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
+			return;
+		}
+
+		int stream = np->hn_stream;
+		im_compose(stream, pjob->ji_qs.ji_jobid,
+			get_jattr_str(pjob, JOB_ATR_Cookie),
+			com, ep->ee_event, TM_NULL_TASK,  IM_OLD_PROTOCOL_VER);
+		(void)diswsi(stream, pjob->ji_numnodes);
+		(void)diswsi(stream, pjob->ji_ports[0]);
+		(void)diswsi(stream, pjob->ji_ports[1]);
+		dis_flush(stream);
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		send_cred_sisters(pjob);
+#endif
+	}
 }
 
 #ifdef	WIN32
@@ -8478,8 +8536,10 @@ main(int argc, char *argv[])
 		log_err(c, msg_daemonname, "unable to recover vnode to host mapping");
 	}
 
+	pbs_list_link multinode_jobs;
+
 	/* recover & abort Jobs which were under MOM's control */
-	init_abort_jobs(recover);
+	init_abort_jobs(recover, &multinode_jobs);
 
 	/* deploy periodic hooks */
 	mom_hook_input_init(&hook_input);
@@ -8533,6 +8593,20 @@ main(int argc, char *argv[])
 			if (time_now > time_next_hello) {
 				send_hellosvr(server_stream);
 				time_next_hello = time_now + time_delta_hellosvr(MOM_DELTA_NORMAL);
+				if (server_stream != -1) {
+					job *m_job;
+					for (m_job = (job *)GET_NEXT(multinode_jobs); m_job;
+						m_job = (job *)GET_NEXT(m_job->ji_multinodejobs)) {
+						if (m_job->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+							/* I am MS */
+							resume_multinode(m_job);
+						} else {
+							/* I am sister */
+							send_sisters(m_job, IM_RECONNECT_TO_MS, NULL);
+						}
+					}
+					CLEAR_HEAD(multinode_jobs);
+				}
 			}
 		} else
 			send_pending_updates();
@@ -8922,7 +8996,7 @@ main(int argc, char *argv[])
 				if (c & (JOB_SVFLG_OVERLMT1 | JOB_SVFLG_OVERLMT2 | JOB_SVFLG_TERMJOB))
 					continue;
 
-				if (job_over_limit(pjob)) {
+				if (job_over_limit(pjob, recover)) {
 
 					char	*kill_msg;
 					log_event(PBSEVENT_JOB | PBSEVENT_FORCE,

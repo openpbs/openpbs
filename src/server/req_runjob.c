@@ -97,6 +97,7 @@
 #include "net_connect.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include <libutil.h>
 #include "sched_cmds.h"
 #include "pbs_license.h"
 #include "hook.h"
@@ -341,7 +342,7 @@ req_runjob(struct batch_request *preq)
 	}
 
 #ifndef NAS /* localmod 133 */
-	if ((psched->scheduler_sock != -1) && was_job_alteredmoved(parent)) {
+	if ((psched->sc_cycle_started != -1) && was_job_alteredmoved(parent)) {
 		/* Reject run request for altered/moved jobs if job_run_wait is set to "execjob_hook" */
 		if (!(psched->sch_attr[SCHED_ATR_job_run_wait].at_flags & ATR_VFLAG_SET) ||
 		    (!strcmp(psched->sch_attr[SCHED_ATR_job_run_wait].at_val.at_str, RUN_WAIT_EXECJOB_HOOK))) {
@@ -432,7 +433,7 @@ req_runjob(struct batch_request *preq)
 		char fixjid[PBS_MAXSVRJOBID + 1];
 
 		/* if runjob request is from the Scheduler, it must have a destination specified */
-		if (preq->rq_conn == psched->scheduler_sock) {
+		if (preq->rq_conn == psched->sc_primary_conn) {
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO, jid, "runjob request from scheduler with null destination");
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
@@ -1734,7 +1735,7 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 	}
 
 	/* If the request did not come from the scheduler, update the comment. */
-	if (find_sched_from_sock(preq->rq_conn) == NULL) {
+	if (find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY) == NULL) {
 		char comment[MAXCOMMENTLEN];
 		nspec = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 		if ((nspec != NULL) && (*nspec != '\0')) {

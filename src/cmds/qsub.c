@@ -321,6 +321,8 @@ static int block_opt_o = FALSE;
 static int relnodes_on_stageout_opt_o = FALSE;
 static int tolerate_node_failures_opt_o = FALSE;
 
+extern char **environ;
+
 /* The following are "Utility" functions. */
 
 /**

@@ -87,6 +87,7 @@
 #include <grp.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 
 #include "pbs_error.h"
 #include "job.h"
@@ -309,15 +310,15 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
  * @brief special purpose strcpy for chain copying strings
  *        primary difference with normal strcpy is that it
  *        returns the destination buffer position just past
- *        the copied data. Thus the next string can be just 
- *        added to the returned pointer.  
+ *        the copied data. Thus the next string can be just
+ *        added to the returned pointer.
  *
  * @param[in] dest - pointer to the destination buffer
  * @param[in] src  - pointer to the source buffer
  *
  * @return char *
  * @retval pointer to the end of the resulting string
- *	
+ *
  * @note: Caller needs to ensure space and non-NULL pointers
  *        This function is created for performance so does not
  *        verify any paramaters
@@ -2221,7 +2222,7 @@ crc_file(char *filepath)
  *
  * @return int
  */
-int 
+int
 get_msvr_mode(void)
 {
 	return 0;
@@ -2290,3 +2291,186 @@ state_int2char(int sti)
 
 	return '0';
 }
+
+/**
+ * @brief
+ * 		parse_servername - parse a server/vnode name in the form:
+ *		[(]name[:service_port][:resc=value[:...]][+name...]
+ *		from exec_vnode or from exec_hostname
+ *		name[:service_port]/NUMBER[*NUMBER][+...]
+ *		or basic servername:port string
+ *
+ *		Returns ptr to the node name as the function value and the service_port
+ *		number (int) into service if :port is found, otherwise port is unchanged
+ *		host name is also terminated by a ':', '+' or '/' in string
+ *
+ * @param[in]	name	- server/node/exec_vnode string
+ * @param[out]	service	-  RETURN: service_port if :port
+ *
+ * @return	 ptr to the node name
+ *
+ * @par MT-safe: No
+ */
+
+char *
+parse_servername(char *name, unsigned int *service)
+{
+	static char  buf[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
+	int   i = 0;
+	char *pc;
+
+	if ((name == NULL) || (*name == '\0'))
+		return NULL;
+	if (*name ==  '(')   /* skip leading open paren found in exec_vnode */
+		name++;
+
+	/* look for a ':', '+' or '/' in the string */
+
+	pc = name;
+	while (*pc && (i < PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2)) {
+		if ((*pc == '+') || (*pc == '/')) {
+			break;
+		} else if (*pc == ':') {
+			if (isdigit((int)*(pc + 1)) && (service != NULL))
+				*service = (unsigned int)atoi(pc + 1);
+			break;
+		} else {
+			buf[i++] = *pc++;
+		}
+	}
+	buf[i] = '\0';
+	return (buf);
+}
+
+#ifndef WIN32
+/**
+ * @brief
+ * 	set limits for the current process
+ *
+ * @param[in] core_limit - core limit in string (this is usally pbs_conf.pbs_core_limit)
+ * @param[in] fdlimit - max open fd limit (can be 0 to not to change limit)
+ *
+ * @return void
+ *
+ */
+void
+set_proc_limits(char *core_limit, int fdlimit)
+{
+#ifdef RLIMIT_CORE
+	int char_in_cname = 0;
+	extern char *msg_corelimit;
+
+	if (core_limit) {
+		char *pc = core_limit;
+		while (*pc != '\0') {
+			if (!isdigit(*pc)) {
+				/* there is a character in core limit */
+				char_in_cname = 1;
+				break;
+			}
+			pc++;
+		}
+	}
+#endif /* RLIMIT_CORE */
+
+#if defined(RLIM64_INFINITY)
+	{
+		struct rlimit64 rlimit;
+
+		if (fdlimit) {
+			rlimit.rlim_cur = fdlimit;
+			rlimit.rlim_max = fdlimit;
+			if (setrlimit64(RLIMIT_NOFILE, &rlimit) == -1) {
+				log_err(errno, __func__, "could not set max open files limit");
+			}
+		}
+
+		rlimit.rlim_cur = RLIM64_INFINITY;
+		rlimit.rlim_max = RLIM64_INFINITY;
+		(void) setrlimit64(RLIMIT_CPU, &rlimit);
+		(void) setrlimit64(RLIMIT_FSIZE, &rlimit);
+		(void) setrlimit64(RLIMIT_DATA, &rlimit);
+		(void) setrlimit64(RLIMIT_STACK, &rlimit);
+#ifdef RLIMIT_RSS
+		(void) setrlimit64(RLIMIT_RSS, &rlimit);
+#endif /* RLIMIT_RSS */
+#ifdef RLIMIT_VMEM
+		(void) setrlimit64(RLIMIT_VMEM, &rlimit);
+#endif /* RLIMIT_VMEM */
+#ifdef RLIMIT_CORE
+		if (core_limit) {
+			struct rlimit64 corelimit;
+			corelimit.rlim_max = RLIM64_INFINITY;
+			if (strcmp("unlimited", core_limit) == 0)
+				corelimit.rlim_cur = RLIM64_INFINITY;
+			else if (char_in_cname == 1) {
+				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_WARNING,
+					   __func__, msg_corelimit);
+				corelimit.rlim_cur = RLIM64_INFINITY;
+			} else
+				corelimit.rlim_cur = (rlim64_t) atol(core_limit);
+			(void) setrlimit64(RLIMIT_CORE, &corelimit);
+		}
+#endif /* RLIMIT_CORE */
+	}
+
+#else /* setrlimit 32 bit */
+	{
+		struct rlimit rlimit;
+
+		if (fdlimit) {
+			rlimit.rlim_cur = fdlimit;
+			rlimit.rlim_max = fdlimit;
+			if (setrlimit(RLIMIT_NOFILE, &rlimit) == -1) {
+				log_err(errno, __func__, "could not set max open files limit");
+			}
+		}
+		rlimit.rlim_cur = RLIM_INFINITY;
+		rlimit.rlim_max = RLIM_INFINITY;
+		(void) setrlimit(RLIMIT_CPU, &rlimit);
+#ifdef RLIMIT_RSS
+		(void) setrlimit(RLIMIT_RSS, &rlimit);
+#endif /* RLIMIT_RSS */
+#ifdef RLIMIT_VMEM
+		(void) setrlimit(RLIMIT_VMEM, &rlimit);
+#endif /* RLIMIT_VMEM */
+#ifdef RLIMIT_CORE
+		if (core_limit) {
+			struct rlimit corelimit;
+			corelimit.rlim_max = RLIM_INFINITY;
+			if (strcmp("unlimited", core_limit) == 0)
+				corelimit.rlim_cur = RLIM_INFINITY;
+			else if (char_in_cname == 1) {
+				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_WARNING,
+					   (char *) __func__, msg_corelimit);
+				corelimit.rlim_cur = RLIM_INFINITY;
+			} else
+				corelimit.rlim_cur =
+					(rlim_t) atol(core_limit);
+
+			(void) setrlimit(RLIMIT_CORE, &corelimit);
+		}
+#endif /* RLIMIT_CORE */
+#ifndef linux
+		(void) setrlimit(RLIMIT_FSIZE, &rlimit);
+		(void) setrlimit(RLIMIT_DATA, &rlimit);
+		(void) setrlimit(RLIMIT_STACK, &rlimit);
+#else
+		if (getrlimit(RLIMIT_STACK, &rlimit) != -1) {
+			if ((rlimit.rlim_cur != RLIM_INFINITY) && (rlimit.rlim_cur < MIN_STACK_LIMIT)) {
+				rlimit.rlim_cur = MIN_STACK_LIMIT;
+				rlimit.rlim_max = MIN_STACK_LIMIT;
+				if (setrlimit(RLIMIT_STACK, &rlimit) == -1) {
+					log_err(errno, __func__, "setting stack limit failed");
+					exit(1);
+				}
+			}
+		} else {
+			log_err(errno, __func__, "getting current stack limit failed");
+			exit(1);
+		}
+#endif /* not linux */
+	}
+#endif /* !RLIM64_INFINITY */
+}
+#endif

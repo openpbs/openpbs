@@ -46,32 +46,27 @@ AC_DEFUN([PBS_AC_WITH_EDITLINE],
       [Specify the directory where editline is installed.]
     )
   )
-  AS_IF([test "x$with_editline" != "x"],
-    editline_dir=["$with_editline"],
-    editline_dir=["/usr"]
-  )
+  [editline_dir="$with_editline"]
   AC_MSG_CHECKING([for editline])
-  AS_IF([test -r "$editline_dir/include/histedit.h"],
-    AS_IF([test "$editline_dir" != "/usr"],
-      [editline_inc="-I$editline_dir/include"]),
-    AC_MSG_ERROR([editline headers not found.]))
-  AS_IF([test "$editline_dir" = "/usr"],
+  AS_IF(
+    [test "$editline_dir" = ""],
+    AC_CHECK_HEADER([histedit.h], [], AC_MSG_ERROR([editline headers not found.])),
+    [test -r "$editline_dir/include/histedit.h"],
+    [editline_inc="-I$editline_dir/include"],
+    AC_MSG_ERROR([editline headers not found.])
+  )
+  AS_IF(
     # Using system installed editline
-    AS_IF([test -r /usr/lib64/libedit.so],
+    [test "$editline_dir" = ""],
+    AC_CHECK_LIB([edit], [el_init],
       [editline_lib="-ledit"],
-      AS_IF([test -r /usr/lib/libedit.so],
-        [editline_lib="-ledit"],
-        AS_IF([test -r /usr/lib/x86_64-linux-gnu/libedit.so],
-          [editline_lib="-ledit"],
-          AC_MSG_ERROR([editline shared object library not found.])))),
+      AC_MSG_ERROR([editline shared object library not found.])),
     # Using developer installed editline
-    AS_IF([test -r "${editline_dir}/lib64/libedit.a"],
-      [editline_lib="${editline_dir}/lib64/libedit.a"],
-      AS_IF([test -r "${editline_dir}/lib/libedit.a"],
-        [editline_lib="${editline_dir}/lib/libedit.a"],
-        AC_MSG_ERROR([editline library not found.])
-      )
-    )
+    [test -r "${editline_dir}/lib64/libedit.a"],
+    [editline_lib="${editline_dir}/lib64/libedit.a"],
+    [test -r "${editline_dir}/lib/libedit.a"],
+    [editline_lib="${editline_dir}/lib/libedit.a"],
+    AC_MSG_ERROR([editline library not found.])
   )
   AC_MSG_RESULT([$editline_dir])
   AC_CHECK_LIB([ncurses], [tgetent],

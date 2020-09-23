@@ -47,6 +47,12 @@ extern "C" {
 #include "data_types.h"
 #include "limits.h"
 #include "queue.h"
+#include "sched_cmds.h"
+
+extern sched_svrconn **servers;
+extern void *poll_context;
+extern ds_queue *sched_cmds;
+
 /* resources to check */
 extern const struct rescheck res_to_check[];
 
@@ -69,7 +75,6 @@ extern struct status cstat;
 extern const int num_resget;
 
 /* Variables from pbs_sched code */
-extern int pbs_rm_port;
 extern int got_sigpipe;
 
 /* static indexes into allres */
@@ -94,7 +99,6 @@ extern resdef **consres;
 extern resdef **boolres;
 
 extern char *sc_name;
-extern int sched_port;
 extern char *logfile;
 
 extern int preempt_normal;			/* preempt priority of normal_jobs */

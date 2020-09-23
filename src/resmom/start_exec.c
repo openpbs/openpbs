@@ -127,7 +127,6 @@ extern char		*path_hooks_workdir;
 extern	long		joinjob_alarm_time;
 extern	long		job_launch_delay;
 int              mom_reader_go;		/* see catchinter() & mom_writer() */
-struct var_table vtable;		/* for building up Job's environ */
 
 extern int x11_reader_go;
 extern int enable_exechost2;
@@ -177,7 +176,6 @@ char *variables_else[] = {	/* variables to add, value computed */
 
 static	int num_var_else = sizeof(variables_else) / sizeof(char *);
 static	void catchinter(int);
-static int find_env_slot(struct var_table *, char *);
 
 extern int is_direct_write(job *, enum job_file, char *, int *);
 static int direct_write_possible = 1;
@@ -1242,7 +1240,7 @@ becomeuser(job *pjob)
  * 	Expects the current process will invoke some external program,
  * 	and this sets the process to have the special credential
  * 	stored in the job, along with 'shell', arguments array (argarray),
- * 	and global 'vtable' values.
+ * 	and 'pjob->ji_env' values.
  *
  * @param[in] pjob - job in question
  * @param[out] shell - if not NULL, filled in with shell to use for future
@@ -1337,7 +1335,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 				close(fds[0]);
 			} else {
 				sprintf(buf, "%d", fds[0]);
-				bld_env_variables(&vtable, "PBS_PWPIPE", buf);
+				bld_env_variables(&pjob->ji_env, "PBS_PWPIPE", buf);
 			}
 			if (name != NULL) {
 				memset(name, 0, cred_len);
@@ -3463,11 +3461,11 @@ finish_exec(job *pjob)
 	 * set up the Environmental Variables to be given to the job
 	 */
 	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
-	vtable.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
+	pjob->ji_env.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		EXTRA_ENV_PTRS;
-	vtable.v_used   = 0;
-	vtable.v_envp = (char **)calloc(vtable.v_ensize, sizeof(char *));
-	if (vtable.v_envp == NULL) {
+	pjob->ji_env.v_used   = 0;
+	pjob->ji_env.v_envp = (char **)calloc(pjob->ji_env.v_ensize, sizeof(char *));
+	if (pjob->ji_env.v_envp == NULL) {
 		log_err(ENOMEM, __func__, "out of memory");
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 	}
@@ -3490,52 +3488,52 @@ finish_exec(job *pjob)
 	/*  First variables from the local environment */
 
 	for (j = 0; j < num_var_env; ++j)
-		bld_env_variables(&vtable, environ[j], NULL);
+		bld_env_variables(&(pjob->ji_env), environ[j], NULL);
 
 	/* Second, the variables passed with the job.  They may */
 	/* be overwritten with new correct values for this job	*/
 
 	for (j = 0; j < vstrs->as_usedptr; ++j)
-		bld_env_variables(&vtable, vstrs->as_string[j], NULL);
+		bld_env_variables(&(pjob->ji_env), vstrs->as_string[j], NULL);
 
 	/* .. Next the critical variables: home, path, logname, ... */
 	/* these may replace some passed in with the job	    */
 
 	/* HOME */
-	bld_env_variables(&vtable, variables_else[0], pwdp->pw_dir); /* HOME */
+	bld_env_variables(&(pjob->ji_env), variables_else[0], pwdp->pw_dir); /* HOME */
 
 	/* LOGNAME */
-	bld_env_variables(&vtable, variables_else[1], pwdp->pw_name);
+	bld_env_variables(&(pjob->ji_env), variables_else[1], pwdp->pw_name);
 
 	/* PBS_JOBNAME */
-	bld_env_variables(&vtable, variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
+	bld_env_variables(&(pjob->ji_env), variables_else[2], get_jattr_str(pjob, JOB_ATR_jobname));
 
 	/* PBS_JOBID */
-	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
+	bld_env_variables(&(pjob->ji_env), variables_else[3], pjob->ji_qs.ji_jobid);
 
 	/* PBS_QUEUE */
-	bld_env_variables(&vtable, variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
+	bld_env_variables(&(pjob->ji_env), variables_else[4], get_jattr_str(pjob, JOB_ATR_in_queue));
 
 	/* SHELL */
-	bld_env_variables(&vtable, variables_else[5], shell);
+	bld_env_variables(&(pjob->ji_env), variables_else[5], shell);
 
 	/* USER, for compatability */
-	bld_env_variables(&vtable, variables_else[6], pwdp->pw_name);
+	bld_env_variables(&(pjob->ji_env), variables_else[6], pwdp->pw_name);
 
 	/* PBS_JOBCOOKIE */
-	bld_env_variables(&vtable, variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
+	bld_env_variables(&(pjob->ji_env), variables_else[7], get_jattr_str(pjob, JOB_ATR_Cookie));
 
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
-	bld_env_variables(&vtable, variables_else[8], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[8], buf);
 
 	/* PBS_TASKNUM */
 	sprintf(buf, "%u", ptask->ti_qs.ti_task);
-	bld_env_variables(&vtable, variables_else[9], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[9], buf);
 
 	/* PBS_MOMPORT */
 	sprintf(buf, "%u", pbs_rm_port);
-	bld_env_variables(&vtable, variables_else[10], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[10], buf);
 
 	/* OMP_NUM_THREADS and NCPUS eq to number of cpus */
 
@@ -3550,18 +3548,18 @@ finish_exec(job *pjob)
 	 */
 	schedselect = get_jattr_str(pjob,  JOB_ATR_SchedSelect);
 	if (schedselect && strstr(schedselect, OMPTHREADS) != NULL)
-		bld_env_variables(&vtable, variables_else[12], buf);
+		bld_env_variables(&(pjob->ji_env), variables_else[12], buf);
 	else
-		bld_env_variables(&vtable, variables_else[12], "1");
+		bld_env_variables(&(pjob->ji_env), variables_else[12], "1");
 #else
-	bld_env_variables(&vtable, variables_else[12], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[12], buf);
 #endif /* localmod 020 */
-	bld_env_variables(&vtable, "NCPUS", buf);
+	bld_env_variables(&(pjob->ji_env), "NCPUS", buf);
 
 	/* PBS_NODEFILE */
 
 	if (generate_pbs_nodefile(pjob, buf, sizeof(buf)-1, log_buffer, LOG_BUF_SIZE - 1) == 0)
-		bld_env_variables(&vtable, variables_else[11], buf);
+		bld_env_variables(&(pjob->ji_env), variables_else[11], buf);
 	else {
 		log_err(errno, __func__, log_buffer);
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -3569,7 +3567,7 @@ finish_exec(job *pjob)
 
 	/* PBS_ACCOUNT */
 	if (is_jattr_set(pjob, JOB_ATR_account))
-		bld_env_variables(&vtable, variables_else[13], get_jattr_str(pjob, JOB_ATR_account));
+		bld_env_variables(&(pjob->ji_env), variables_else[13], get_jattr_str(pjob, JOB_ATR_account));
 
 	/* If an Sub job of an Array job, put in the index */
 
@@ -3578,8 +3576,8 @@ finish_exec(job *pjob)
 		char *pindex;
 
 		get_index_and_parent(pjob->ji_qs.ji_jobid, &pparent, &pindex);
-		bld_env_variables(&vtable, variables_else[14], pindex);
-		bld_env_variables(&vtable, variables_else[15], pparent);
+		bld_env_variables(&(pjob->ji_env), variables_else[14], pindex);
+		bld_env_variables(&(pjob->ji_env), variables_else[15], pparent);
 	}
 
 	/* if user specified umask for job, set it */
@@ -3597,7 +3595,7 @@ finish_exec(job *pjob)
 	j = mktmpdir(pjob->ji_qs.ji_jobid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid,
-		&vtable);
+		&(pjob->ji_env));
 	if (j != 0)
 		starter_return(upfds, downfds, j, &sjr);
 
@@ -3614,9 +3612,9 @@ finish_exec(job *pjob)
 			log_joberr(errno, __func__ , log_buffer, pjob->ji_qs.ji_jobid);
 			starter_return(upfds, downfds, j, &sjr); /* exits */
 		}
-		bld_env_variables(&vtable, "PBS_JOBDIR", pbs_jobdir);
+		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pbs_jobdir);
 	} else {
-		bld_env_variables(&vtable, "PBS_JOBDIR", pwdp->pw_dir);
+		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pwdp->pw_dir);
 	}
 
 	mom_unnice();
@@ -3647,7 +3645,7 @@ finish_exec(job *pjob)
 
 		/* Set environment to reflect interactive */
 
-		bld_env_variables(&vtable, "PBS_ENVIRONMENT", "PBS_INTERACTIVE");
+		bld_env_variables(&(pjob->ji_env), "PBS_ENVIRONMENT", "PBS_INTERACTIVE");
 
 		/* get host where qsub resides */
 
@@ -3684,7 +3682,7 @@ finish_exec(job *pjob)
 				get_jattr_str(pjob, JOB_ATR_X11_cookie));
 
 			if (display_number >= 0) {
-				bld_env_variables(&vtable, "DISPLAY", display);
+				bld_env_variables(&(pjob->ji_env), "DISPLAY", display);
 			} else {
 				log_err(errno, __func__, "PBS: X11 forwarding init failed\n");
 				starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -3713,7 +3711,7 @@ finish_exec(job *pjob)
 		if ((termtype = rcvttype(qsub_sock)) == NULL)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 
-		bld_env_variables(&vtable, termtype, NULL);
+		bld_env_variables(&(pjob->ji_env), termtype, NULL);
 
 		if (rcvwinsize(qsub_sock) == -1)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -4001,8 +3999,8 @@ finish_exec(job *pjob)
 
 		/* set Environment to reflect batch */
 
-		bld_env_variables(&vtable, "PBS_ENVIRONMENT", "PBS_BATCH");
-		bld_env_variables(&vtable, "ENVIRONMENT", "BATCH");
+		bld_env_variables(&(pjob->ji_env), "PBS_ENVIRONMENT", "PBS_BATCH");
+		bld_env_variables(&(pjob->ji_env), "ENVIRONMENT", "BATCH");
 
 #if SHELL_INVOKE == 1
 		/* if passing script file name as input to shell */
@@ -4245,8 +4243,8 @@ if (site_job_setup(pjob) != 0) {
 	the_argv = argv;
 
 	/* NULL terminate the envp array */
-	*(vtable.v_envp + vtable.v_used) = NULL;
-	the_env = vtable.v_envp;
+	*((pjob->ji_env).v_envp + (pjob->ji_env).v_used) = NULL;
+	the_env = (pjob->ji_env).v_envp;
 
 	mom_hook_input_init(&hook_input);
 	hook_input.pjob = pjob;
@@ -4323,8 +4321,8 @@ if (site_job_setup(pjob) != 0) {
 			}
 
 			/* clear the env array */
-			vtable.v_used = 0;
-			vtable.v_envp[0] = NULL;
+			(pjob->ji_env).v_used = 0;
+			(pjob->ji_env).v_envp[0] = NULL;
 
 			/* need to also set vtable as that would */
 			/* get appended to later in the code */
@@ -4338,13 +4336,13 @@ if (site_job_setup(pjob) != 0) {
 					*p = '\0';
 					n = res_env[k];
 					v = p+1;
-					bld_env_variables(&vtable,
+					bld_env_variables(&(pjob->ji_env),
 							  n, v);
 					*p = '=';
 				}
 				k++;
 			}
-			the_env = vtable.v_envp;
+			the_env = pjob->ji_env.v_envp;
 			if (do_tolerate_node_failures(pjob))
 				send_update_job(pjob, child2parent_job_update_pipe_w, parent2child_job_update_pipe_r, parent2child_job_update_status_pipe_r);
 
@@ -4370,8 +4368,8 @@ if (site_job_setup(pjob) != 0) {
 	}
 
 	/* include any new env settings added by set_credential. */
-	the_env = vtable.v_envp;
-	*(vtable.v_envp + vtable.v_used) = NULL;
+	the_env = pjob->ji_env.v_envp;
+	*(pjob->ji_env.v_envp + pjob->ji_env.v_used) = NULL;
 
 	/*
 	 * If JOB_ATR_executable is set, and job is in "sandbox=PRIVATE" mode,
@@ -4487,8 +4485,8 @@ if (site_job_setup(pjob) != 0) {
 			if (!sandbox_private) {
 				/*Fetching XAUTHORITY from job environment if present*/
 				int xauth_index;
-				if ((xauth_index = find_env_slot( &vtable, "XAUTHORITY=" )) != -1){
-					char *xauth_file = strchr( vtable.v_envp [xauth_index] , (int)'=' ) + 1;
+				if ((xauth_index = find_env_slot( &(pjob->ji_env), "XAUTHORITY=" )) != -1){
+					char *xauth_file = strchr( pjob->ji_env.v_envp [xauth_index] , (int)'=' ) + 1;
 					ret = snprintf(cmd, sizeof(cmd), "%s -f %s -q -", XAUTH_BINARY, xauth_file);
 				}else{
 					ret =  snprintf(cmd, sizeof(cmd), "%s -q -",
@@ -4510,7 +4508,7 @@ if (site_job_setup(pjob) != 0) {
 					log_close(0);
 					return;
 				}
-				bld_env_variables(&vtable, "XAUTHORITY", var);
+				bld_env_variables(&(pjob->ji_env), "XAUTHORITY", var);
 			}
 			f = popen(cmd, "w");
 			if (f != NULL) {
@@ -4532,8 +4530,8 @@ if (site_job_setup(pjob) != 0) {
 		}
 
 		/* include any new env settings added. */
-		the_env = vtable.v_envp;
-		*(vtable.v_envp + vtable.v_used) = NULL;
+		the_env = pjob->ji_env.v_envp;
+		*(pjob->ji_env.v_envp + pjob->ji_env.v_used) = NULL;
 
 		execve(the_progname, the_argv, the_env);
 		free(progname);
@@ -4570,7 +4568,7 @@ if (site_job_setup(pjob) != 0) {
 		/* do an fclose(<logfile>), but its file position */
 		/* is still shared with the parent mom, which */
 		/* could be writing to the <logfile>. */
-		execve(shell, arg, vtable.v_envp);
+		execve(shell, arg, pjob->ji_env.v_envp);
 	}
 	fprintf(temp_stderr, "pbs_mom, exec of %s failed with error: %s\n",
 		shell, strerror(errno));
@@ -4745,11 +4743,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	for (j=0, ebsize=0; envp[j]; j++)
 		ebsize += strlen(envp[j]);
 	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
-	vtable.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
+	pjob->ji_env.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		j + EXTRA_ENV_PTRS;
-	vtable.v_used   = 0;
-	vtable.v_envp = (char **)malloc(vtable.v_ensize * sizeof(char *));
-	if (vtable.v_envp == NULL) {
+	pjob->ji_env.v_used   = 0;
+	pjob->ji_env.v_envp = (char **)malloc(pjob->ji_env.v_ensize * sizeof(char *));
+	if (pjob->ji_env.v_envp == NULL) {
 		return PBSE_SYSTEM;
 	}
 
@@ -4778,44 +4776,44 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	/* First variables from the local environment */
 	for (j = 0; j < num_var_env; ++j)
-		bld_env_variables(&vtable, environ[j], NULL);
+		bld_env_variables(&(pjob->ji_env), environ[j], NULL);
 
 	/* Next, the variables passed with the job.  They may   */
 	/* be overwritten with new correct values for this job	*/
 
 	for (j = 0; j < vstrs->as_usedptr; ++j)
-		bld_env_variables(&vtable, vstrs->as_string[j], NULL);
+		bld_env_variables(&(pjob->ji_env), vstrs->as_string[j], NULL);
 
 	/* HOME */
-	bld_env_variables(&vtable, variables_else[0],
+	bld_env_variables(&(pjob->ji_env), variables_else[0],
 		pjob->ji_grpcache->gc_homedir);
 
 	/* PBS_JOBNAME */
-	bld_env_variables(&vtable, variables_else[2],
+	bld_env_variables(&(pjob->ji_env), variables_else[2],
 		get_jattr_str(pjob, JOB_ATR_jobname));
 
 	/* PBS_JOBID */
-	bld_env_variables(&vtable, variables_else[3], pjob->ji_qs.ji_jobid);
+	bld_env_variables(&(pjob->ji_env), variables_else[3], pjob->ji_qs.ji_jobid);
 
 	/* PBS_QUEUE */
-	bld_env_variables(&vtable, variables_else[4],
+	bld_env_variables(&(pjob->ji_env), variables_else[4],
 		get_jattr_str(pjob, JOB_ATR_in_queue));
 
 	/* PBS_JOBCOOKIE */
-	bld_env_variables(&vtable, variables_else[7],
+	bld_env_variables(&(pjob->ji_env), variables_else[7],
 		get_jattr_str(pjob, JOB_ATR_Cookie));
 
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
-	bld_env_variables(&vtable, variables_else[8], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[8], buf);
 
 	/* PBS_TASKNUM */
 	sprintf(buf, "%8.8X", ptask->ti_qs.ti_task);
-	bld_env_variables(&vtable, variables_else[9], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[9], buf);
 
 	/* PBS_MOMPORT */
 	sprintf(buf, "%d", pbs_rm_port);
-	bld_env_variables(&vtable, variables_else[10], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[10], buf);
 
 	/* OMP_NUM_THREADS and NCPUS eq to number of cpus */
 	sprintf(buf, "%d", pjob->ji_vnods[ptask->ti_qs.ti_myvnode].vn_threads);
@@ -4824,15 +4822,15 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	 * If you've ever seen a 256 process MPI program try to start 256
 	 * threads for each process, you'd know why.
 	 */
-	bld_env_variables(&vtable, variables_else[12], "1");
+	bld_env_variables(&(pjob->ji_env), variables_else[12], "1");
 #else
-	bld_env_variables(&vtable, variables_else[12], buf);
+	bld_env_variables(&(pjob->ji_env), variables_else[12], buf);
 #endif /* localmod 020 */
-	bld_env_variables(&vtable, "NCPUS", buf);
+	bld_env_variables(&(pjob->ji_env), "NCPUS", buf);
 
 	/* PBS_ACCOUNT */
 	if (is_jattr_set(pjob, JOB_ATR_account))
-		bld_env_variables(&vtable, variables_else[13],
+		bld_env_variables(&(pjob->ji_env), variables_else[13],
 			get_jattr_str(pjob, JOB_ATR_account));
 
 	if (is_jattr_set(pjob, JOB_ATR_umask)) {
@@ -4846,11 +4844,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	mom_unnice();
 
 	/* set Environment to reflect batch */
-	bld_env_variables(&vtable, "PBS_ENVIRONMENT", "PBS_BATCH");
-	bld_env_variables(&vtable, "ENVIRONMENT", "BATCH");
+	bld_env_variables(&(pjob->ji_env), "PBS_ENVIRONMENT", "PBS_BATCH");
+	bld_env_variables(&(pjob->ji_env), "ENVIRONMENT", "BATCH");
 
 	for (i=0; envp[i]; i++)
-		bld_env_variables(&vtable, envp[i], NULL);
+		bld_env_variables(&(pjob->ji_env), envp[i], NULL);
 
 	/* Add TMPDIR to environment */
 #ifdef NAS /* localmod 010 */
@@ -4859,7 +4857,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	j = mktmpdir(pjob->ji_qs.ji_jobid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exuid,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid,
-		&vtable);
+		&(pjob->ji_env));
 	if (j != 0) {
 		starter_return(kid_write, kid_read, j, &sjr);
 	}
@@ -4867,9 +4865,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	/* set PBS_JOBDIR */
 	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
 		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
-		bld_env_variables(&vtable, "PBS_JOBDIR", pbs_jobdir);
+		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pbs_jobdir);
 	} else {
-		bld_env_variables(&vtable, "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
+		bld_env_variables(&(pjob->ji_env), "PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 	}
 
 	j = set_job(pjob, &sjr);
@@ -4901,8 +4899,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	the_progname = argv[0];
 	the_argv = argv;
 
-	*(vtable.v_envp + vtable.v_used) = NULL;
-	the_env = vtable.v_envp;
+	*(pjob->ji_env.v_envp + pjob->ji_env.v_used) = NULL;
+	the_env = pjob->ji_env.v_envp;
 
 	mom_hook_input_init(&hook_input);
 	hook_input.pjob = pjob;
@@ -4958,8 +4956,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			}
 
 			/* clear the env array */
-			vtable.v_used = 0;
-			vtable.v_envp[0] = NULL;
+			pjob->ji_env.v_used = 0;
+			pjob->ji_env.v_envp[0] = NULL;
 
 			/* need to also set vtable as that would */
 			/* get appended to later in the code */
@@ -4973,13 +4971,13 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 					*p = '\0';
 					n = res_env[k];
 					v = p+1;
-					bld_env_variables(&vtable,
+					bld_env_variables(&(pjob->ji_env),
 								n, v);
 					*p = '=';
 				}
 				k++;
 			}
-			the_env = vtable.v_envp;
+			the_env = pjob->ji_env.v_envp;
 
 			break;
 		case 2:	  /* no hook script executed - go ahead and accept event */
@@ -4996,8 +4994,8 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	/* Pick up any env settings added by set_credential(), and NULL */
 	/* terminate the envp array. */
-	*(vtable.v_envp + vtable.v_used) = NULL;
-	the_env = vtable.v_envp;
+	*(pjob->ji_env.v_envp + pjob->ji_env.v_used) = NULL;
+	the_env = pjob->ji_env.v_envp;
 
 	/* change working directory to PBS_JOBDIR or to User's Home */
 	if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
@@ -5113,7 +5111,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	 ** This is for a shell to run the command.
 	 */
 	if (argv[0][0] == '/')		/* full path exe */
-		execve(argv[0], argv, vtable.v_envp);
+		execve(argv[0], argv, pjob->ji_env.v_envp);
 	else {
 		struct	passwd	*pwent;
 		char	*shell = "/bin/sh";
@@ -5138,7 +5136,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		args[3] = NULL;
 
 		printf("%s %s %s\n", args[0], args[1], args[2]);
-		execve(shell, args, vtable.v_envp);
+		execve(shell, args, pjob->ji_env.v_envp);
 	}
 #endif
 	fprintf(temp_stderr, "%s: %s\n", argv[0], strerror(errno));
@@ -5927,6 +5925,7 @@ job_nodes(struct job *pjob)
 	return job_nodes_inner(pjob, NULL);
 }
 
+
 /**
  * @brief
  * 	start_exec() - start execution of a job
@@ -6189,6 +6188,8 @@ start_exec(job *pjob)
 			}
 			pjob->ji_stdout = socks[0];
 			pjob->ji_stderr = socks[1];
+			pjob->ji_extended.ji_ext.ji_stdout = pjob->ji_ports[0];
+			pjob->ji_extended.ji_ext.ji_stderr = pjob->ji_ports[1];
 		}
 
 		for (i = 1; i < nodenum; i++) {
@@ -6735,115 +6736,6 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	return (fds);
 }
 
-/**
- * @brief
- * 	find_env_slot - find if the environment variable is already in the table,
- *	If so, replace the existing one with the new one.
- *
- * @param[in] ptbl - pointer to var_table which holds environment variable for job
- * @param[in] pstr - new environment variable
- *
- * @return	int
- * @retval	!(-1)	success
- * @retval	-1	Failure
- *
- */
-
-static int
-find_env_slot(struct var_table *ptbl, char *pstr)
-{
-	int	 i;
-	int	 len = 1;	/* one extra for '=' */
-
-	if (pstr == NULL)
-		return (-1);
-	for (i=0; (*(pstr+i) != '=') && (*(pstr+i) != '\0'); ++i)
-		++len;
-
-	for (i=0; i<ptbl->v_used; ++i) {
-		if (strncmp(ptbl->v_envp[i], pstr, len) == 0)
-			return (i);
-	}
-	return (-1);
-}
-
-/**
- * @brief
- *	bld_env_variables - Add an entry to the table that defines the environment variables for a job.
- * @par
- * 	Note that this function returns void. It gives the caller no indication
- * 	whether the operation failed, which it could. In the case where the
- * 	operation does fail, the variable will not be added to the table and
- * 	will not be present in the job's environment. The caller would have
- * 	to check the table upon return of this function to confirm the
- * 	variable was added/updated correctly.
- *
- * @param[in] vtable - variable table
- * @param[in] name - variable name alone or a "name=value" string
- * @param[in] value - variable value or NULL if name contains "name=value"
- *
- * @return - None
- *
- */
-void
-bld_env_variables(struct var_table *vtable, char *name, char *value)
-{
-	int     amt;
-	int     i;
-	char	*block;
-
-	if ((vtable == NULL) || (name == NULL))
-		return;
-
-	if (value == NULL) {
-		/* name must contain '=' */
-		if (strchr(name, (int) '=') == NULL)
-			return;
-	} else {
-		/* name may not contain '=' */
-		if (strchr(name, (int) '=') != NULL)
-			return;
-	}
-
-	amt = strlen(name) + 1;			/* plus 1 for terminator */
-	if (value)
-		amt += strlen(value) + 1;	/* plus 1 for "=" */
-
-	block = malloc(amt);
-	if (block == NULL)			/* no room for string */
-		return;
-
-	(void)strcpy(block, name);
-	if (value) {
-		(void)strcat(block, "=");
-		(void)strcat(block, value);
-	}
-
-	if ((i = find_env_slot(vtable, block)) < 0) {
-		/*
-		 ** See if last available slot is used.
-		 ** This needs to be one less than v_ensize
-		 ** to make sure there is a NULL termination.
-		 */
-		if (vtable->v_used+1 == vtable->v_ensize) {
-			int	newsize = vtable->v_ensize * 2;
-			char	**tt = realloc(vtable->v_envp,
-				newsize*sizeof(char *));
-
-			if (tt == NULL)
-				return;		/* no room for pointer */
-			vtable->v_ensize = newsize;
-			vtable->v_envp = tt;
-		}
-
-		*(vtable->v_envp + vtable->v_used++) = block;
-		*(vtable->v_envp + vtable->v_used) = NULL;
-	} else {
-		/* free old value */
-		free(*(vtable->v_envp + i));
-		*(vtable->v_envp + i) = block;
-	}
-}
 
 /**
  * @brief

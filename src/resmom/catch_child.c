@@ -81,6 +81,7 @@
 #include "hook.h"
 #include "renew_creds.h"
 #include "mock_run.h"
+#include <libutil.h>
 
 /**
  * @file	catch_child.c
@@ -442,6 +443,9 @@ scan_for_exiting(void)
 	 */
 	for (pjob = (job *)GET_NEXT(svr_alljobs); pjob; pjob = nxjob) {
 		nxjob = (job *)GET_NEXT(pjob->ji_alljobs);
+
+		if (pjob->ji_numnodes > 1 && !pjob->ji_msconnected && pjob->ji_nodeid) /* assume that MS has a connection to itself at all times */
+			continue;
 
 		/*
 		 ** If a restart is active, skip this job since
@@ -938,11 +942,12 @@ err:
  *	   terminated and requeued.
  *
  * @param [in]	recover - Specify recovering mode for MoM.
+ * @param [in]	multinode_jobs - Pointer to list of pointers to recovered multinode jobs
  *
  */
 
 void
-init_abort_jobs(int recover)
+init_abort_jobs(int recover, pbs_list_head *multinode_jobs)
 {
 	DIR		*dir;
 	int		i, sisters;
@@ -957,6 +962,8 @@ init_abort_jobs(int recover)
 	struct	stat	statbuf;
 	extern	char	*path_checkpoint;
 	extern	char	*path_spool;
+
+	CLEAR_HEAD((*multinode_jobs));
 
 	dir = opendir(path_jobs);
 	if (dir == NULL) {
@@ -1021,8 +1028,10 @@ init_abort_jobs(int recover)
 		 */
 		if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 			/* I am sister, junk the job files */
-			mom_deljob(pj);
-			continue;
+			if( recover != 2 ) {
+				mom_deljob(pj);
+				continue;
+			}
 		}
 
 		sisters = pj->ji_numnodes - 1;
@@ -1121,6 +1130,15 @@ init_abort_jobs(int recover)
 
 			if (mom_do_poll(pj))
 				append_link(&mom_polljobs, &pj->ji_jobque, pj);
+
+			if (sisters > 0)
+				append_link(multinode_jobs, &pj->ji_multinodejobs, pj);
+
+			if (pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+				/* I am MS */
+				pj->ji_stdout = pj->ji_ports[0] = pj->ji_extended.ji_ext.ji_stdout;
+				pj->ji_stderr = pj->ji_ports[1] = pj->ji_extended.ji_ext.ji_stdout;
+			}
 		}
 	}
 	if (errno != 0 && errno != ENOENT) {

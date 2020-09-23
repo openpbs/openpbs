@@ -66,8 +66,8 @@ from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
 from ptl.utils.pbs_procutils import ProcUtils
-from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
-                                     DAEMON_SERVICE_USER)
+from ptl.utils.pbs_testusers import (DAEMON_SERVICE_USER, ROOT_USER, TEST_USER,
+                                     PbsUser)
 
 try:
     import psycopg2
@@ -11155,7 +11155,6 @@ class Scheduler(PBSService):
             cmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
                                 'sbin', 'pbs_sched')]
             cmd += ['-I', self.attributes['id']]
-            cmd += ['-S', str(self.attributes['sched_port'])]
             if sched_home is not None:
                 cmd += ['-d', sched_home]
             try:
@@ -11656,8 +11655,7 @@ class Scheduler(PBSService):
         self.logger.info(self.logprefix +
                          "reverting configuration to defaults")
 
-        ignore_attrs = ['id', 'pbs_version', 'sched_host',
-                        'state', 'sched_port']
+        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:
@@ -13340,14 +13338,14 @@ class MoM(PBSService):
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 
-    def restart(self):
+    def restart(self, args=None):
         """
         Restart the PBS mom
         """
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        return self.start(args=args)
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,

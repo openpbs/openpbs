@@ -298,12 +298,6 @@ int	   actmode;
 }
 
 int
-action_sched_port(attribute *pattr, void *pobj, int actmode)
-{
-	return 0;
-}
-
-int
 action_sched_priv(attribute *pattr, void *pobj, int actmode)
 {
 	return 0;
@@ -632,31 +626,31 @@ node_current_aoe_action(attribute *new, void *pobj, int act)
 	return PBSE_NONE;
 }
 
-int 
+int
 action_sched_host(attribute *new, void *pobj, int act)
 {
 	return PBSE_NONE;
 }
 
-int 
+int
 action_throughput_mode(attribute *new, void *pobj, int act)
 {
 	return PBSE_NONE;
 }
 
-int 
+int
 action_job_run_wait(attribute *new, void *pobj, int act)
 {
 	return PBSE_NONE;
 }
 
-int 
+int
 action_opt_bf_fuzzy(attribute *new, void *pobj, int act)
 {
 	return PBSE_NONE;
 }
 
-int 
+int
 action_sched_partition(attribute *new, void *pobj, int act)
 {
 	return PBSE_NONE;
@@ -2364,7 +2358,7 @@ main(int argc, char *argv[], char *envp[])
 			strncat(python_cmdline, argv[i], sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 			strncat(python_cmdline, "\"", sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 		}
-		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE);
+		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE, NULL);
 #else
 		char in_data[MAXBUF+1];
 		char *largv[3];

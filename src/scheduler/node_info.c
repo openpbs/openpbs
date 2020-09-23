@@ -477,15 +477,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 				return NULL;
 			}
 		}
-		/* TCP port for mom/server communication
-		 * we need the resource monitor port which is
-		 * defined as mom/server port + 1
-		 */
-		else if (!strcmp(attrp->name, ATTR_NODE_Port)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp == '\0')
-				ninfo->port = count + 1;
-		}
 		else if(!strcmp(attrp->name, ATTR_partition)) {
 			ninfo->partition = string_dup(attrp->value);
 			if (ninfo->partition == NULL) {
@@ -697,7 +688,6 @@ new_node_info()
 
 	new->name = NULL;
 	new->mom = NULL;
-	new->port = pbs_rm_port;
 	new->jobs = NULL;
 	new->resvs = NULL;
 	new->job_arr = NULL;
@@ -1525,7 +1515,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 
 	nnode->sharing = onode->sharing;
 
-	nnode->port = onode->port;
 	nnode->lic_lock = onode->lic_lock;
 	nnode->pcpus = onode->pcpus;
 

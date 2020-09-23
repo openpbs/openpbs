@@ -247,10 +247,10 @@ auth_def_t * transport_chan_get_authdef(int, int);
 int transport_send_pkt(int, int, void *, size_t);
 int transport_recv_pkt(int, int *, void **, size_t *);
 
-pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
-int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
-int (*pfn_transport_recv)(int, void *, int);
-int (*pfn_transport_send)(int, void *, int);
+extern pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
+extern int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
+extern int (*pfn_transport_recv)(int, void *, int);
+extern int (*pfn_transport_send)(int, void *, int);
 
 #define transport_recv(x, y, z) (*pfn_transport_recv)(x, y, z)
 #define transport_send(x, y, z) (*pfn_transport_send)(x, y, z)
