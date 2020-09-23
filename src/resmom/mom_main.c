@@ -2928,7 +2928,6 @@ set_kbd_idle(char *value)
 {
 	char *sbuf;
 	char *ebuf;
-	handler_ret_t	ret;
 
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 		LOG_INFO, "idle_avail", value);
@@ -2961,11 +2960,7 @@ set_kbd_idle(char *value)
 
 	/* check whether PBS_INTERACTIVE service is registered or not? */
 chk_for_interactive:
-	ret =  check_interactive_service();
-	if (ret == HANDLER_FAIL)
-		return HANDLER_FAIL;
-
-	return HANDLER_SUCCESS;
+	return check_interactive_service();
 }
 
 /**

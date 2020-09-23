@@ -349,7 +349,7 @@ toolong(int sig)
 void
 usage(char *prog)
 {
-	static char	configusage[] = "%s -s insert scriptname inputfile\n"
+	const char *configusage = "%s -s insert scriptname inputfile\n"
 			"%s -s [ remove | show ] scriptname\n"
 			"%s -s list\n";
 	fprintf(stderr,
