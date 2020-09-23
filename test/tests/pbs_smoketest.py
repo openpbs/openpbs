@@ -1474,7 +1474,7 @@ class SmokeTest(PBSTestSuite):
         PBS_EXEC/{lib,lib64}/python/altair.
         """
         sys.path.append(os.path.join(
-            self.server.pbs_conf['PBS_EXEC'], 'lib','python', 'altair'))
+            self.server.pbs_conf['PBS_EXEC'], 'lib', 'python', 'altair'))
         import pbs
         msg = "pbs.JOB_STATE_RUNNING=%s" % (pbs.JOB_STATE_RUNNING,)
         self.logger.info(msg)
@@ -1488,7 +1488,7 @@ class SmokeTest(PBSTestSuite):
         """
         import pbs_ifl
         sys.path.append(os.path.join(
-            self.server.pbs_conf['PBS_EXEC'], 'lib','python', 'altair'))
+            self.server.pbs_conf['PBS_EXEC'], 'lib', 'python', 'altair'))
         server_conn = pbs_ifl.pbs_connect(None)
         server_stat = pbs_ifl.pbs_statserver(server_conn, None, None)
         pbs_ifl.pbs_disconnect(server_conn)
