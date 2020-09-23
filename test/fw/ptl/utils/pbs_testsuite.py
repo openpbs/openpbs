@@ -53,13 +53,6 @@ from distutils.util import strtobool
 
 import ptl
 from ptl.lib.pbs_testlib import *
-from ptl.lib.ptl_job import *
-from ptl.lib.ptl_resources import *
-from ptl.lib.ptl_expect_action import *
-from ptl.lib.ptl_mom import *
-from ptl.lib.ptl_server import *
-from ptl.lib.ptl_comm import *
-from ptl.lib.ptl_sched import *
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogAnalyzer

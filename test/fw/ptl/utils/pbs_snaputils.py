@@ -51,10 +51,7 @@ import time
 from subprocess import STDOUT
 
 from ptl.lib.pbs_ifl_mock import *
-from ptl.lib.pbs_testlib import SCHED
-from ptl.lib.ptl_batchutils import *
-from ptl.lib.ptl_sched import *
-from ptl.lib.ptl_server import *
+from ptl.lib.pbs_testlib import SCHED, BatchUtils, Scheduler, Server
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
 

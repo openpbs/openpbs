@@ -49,12 +49,7 @@ import time
 
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
-
 from ptl.lib.pbs_testlib import *
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_expect_action import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_object import *
 
 
 class Resource(PBSObject):

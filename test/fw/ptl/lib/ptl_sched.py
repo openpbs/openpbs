@@ -70,24 +70,15 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_expect_action import *
-from ptl.lib.ptl_batchutils import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import *
-from ptl.lib.ptl_resources import *
-
+from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_fairshare import *
 
 def get_sched_obj(hostname=None, server=None, pbsconf_file=None,
                   snapmap={}, snap=None, db_access=None, id='default',
                   sched_priv=None):
     return Scheduler(hostname, server, pbsconf_file, snapmap, snap, db_access,
                      id, sched_priv)
-
 from ptl.lib.ptl_server import get_server_obj
-from ptl.lib.pbs_testlib import *
-from ptl.lib.ptl_fairshare import *
 
 
 class Scheduler(PBSService):
@@ -371,7 +362,6 @@ class Scheduler(PBSService):
             cmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
                                 'sbin', 'pbs_sched')]
             cmd += ['-I', self.attributes['id']]
-            cmd += ['-S', str(self.attributes['sched_port'])]
             if sched_home is not None:
                 cmd += ['-d', sched_home]
             try:
@@ -872,8 +862,7 @@ class Scheduler(PBSService):
         self.logger.info(self.logprefix +
                          "reverting configuration to defaults")
 
-        ignore_attrs = ['id', 'pbs_version', 'sched_host',
-                        'state', 'sched_port']
+        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:

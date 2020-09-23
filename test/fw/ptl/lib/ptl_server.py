@@ -87,25 +87,17 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.ptl_expect_action import *
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_batchutils import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import *
-from ptl.lib.ptl_resources import *
+from ptl.lib.ptl_entities import *
 from ptl.lib.ptl_job import *
-
+from ptl.lib.pbs_testlib import *
 
 def get_server_obj(name=None, attrs={}, defaults={}, pbsconf_file=None,
                    snapmap={}, snap=None, client=None,
                    client_pbsconf_file=None, db_access=None, stat=True):
     return Server(name, attrs, defaults, pbsconf_file, snapmap, snap, client,
                   client_pbsconf_file, db_access, stat)
-
-from ptl.lib.ptl_mom import get_mom_obj
 from ptl.lib.ptl_sched import get_sched_obj
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_mom import get_mom_obj
 
 
 class Server(PBSService):

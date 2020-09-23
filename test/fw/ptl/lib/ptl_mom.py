@@ -70,20 +70,12 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_expect_action import *
-from ptl.lib.ptl_batchutils import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import *
-
+from ptl.lib.pbs_testlib import *
 
 def get_mom_obj(name=None, attrs={}, pbsconf_file=None, snapmap={},
                 snap=None, server=None, db_access=None):
     return MoM(name, attrs, pbsconf_file, snapmap, snap, server, db_access)
-
 from ptl.lib.ptl_server import get_server_obj
-from ptl.lib.pbs_testlib import *
 
 
 class MoM(PBSService):
@@ -262,14 +254,14 @@ class MoM(PBSService):
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 
-    def restart(self):
+    def restart(self, args=None):
         """
         Restart the PBS mom
         """
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        return self.start(args=args)
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,

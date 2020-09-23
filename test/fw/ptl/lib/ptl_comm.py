@@ -59,20 +59,13 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_expect_action import *
-from ptl.lib.ptl_batchutils import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import *
 
+from ptl.lib.pbs_testlib import *
 
 def get_comm_obj(name=None, attrs={}, pbsconf_file=None, snapmap={},
                  snap=None, server=None, db_access=None):
     return Comm(name, attrs, pbsconf_file, snapmap, snap, server, db_access)
-
 from ptl.lib.ptl_server import get_server_obj
-from ptl.lib.pbs_testlib import *
 
 
 class Comm(PBSService):
