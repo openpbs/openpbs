@@ -52,8 +52,8 @@ class TestPbsCpuset(TestFunctional):
 
     def check_stageout_file_size(self):
         """
-        This Function will check that at least 1gb of test.img
-        file which is to be stagedout is created within 10 seconds
+        This function will check that at least 1gb of test.img
+        file which is to be stagedout is created within 10 seconds.
         """
         fpath = os.path.join(TEST_USER.home, "test.img")
         cmd = ['stat', '-c', '%s', fpath]
