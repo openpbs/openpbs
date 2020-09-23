@@ -56,7 +56,6 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_testsuite import default_requirements
 from ptl.utils.plugins.ptl_report_json import PTLJsonData
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
-from ptl.utils.plugins.ptl_test_runner import PtlTextTestRunner
 
 # Following dance require because PTLTestDb().process_output() from this file
 # is used in pbs_loganalyzer script which is shipped with PBS package
@@ -1613,39 +1612,18 @@ class JSONDb(DBType):
             raise PTLDbError(rc=1, rv=False, msg=_msg)
         elif not self.dbpath.endswith('.json'):
             self.dbpath = self.dbpath.rstrip('.db') + '.json'
-        self._data = {}
         self.jdata = {}
-        self.cur_repeat_count = 1
         self.__cmd = [os.path.basename(sys.argv[0])]
         self.__cmd += sys.argv[1:]
         self.__cmd = ' '.join(self.__cmd)
         self.res_data = PTLJsonData(command=self.__cmd)
 
     def __write_test_data(self, data):
-
-        FMT = '%H:%M:%S.%f'
-        self.run_count = "Test_run_count: " + str(self.cur_repeat_count)
-        if self.cur_repeat_count != PtlTextTestRunner.cur_repeat_count:
-            start = self._data['test_summary']['test_start_time'].split()[1]
-            end = self._data['test_summary']['test_end_time'].split()[1]
-            dur = str(datetime.datetime.strptime(end, FMT) -
-                      datetime.datetime.strptime(start, FMT))
-            self.jdata[self.run_count] = self._data
-            self.jdata[self.run_count]['test_summary']['tests_duration'] = dur
-            self._data = self.res_data.get_json(data=data)
-            self.cur_repeat_count = PtlTextTestRunner.cur_repeat_count
-            self.run_count = "Test_run_count: " + str(self.cur_repeat_count)
-            self.jdata[self.run_count] = self._data
-            with open(self.dbpath, 'w') as fd:
-                    json.dump(self.jdata, fd, indent=2)
-                    fd.write("\n")
-        else:
-            prev = copy.deepcopy(self._data)
-            self._data = self.res_data.get_json(data=data, prev_data=prev)
-            self.jdata[self.run_count] = self._data
-            with open(self.dbpath, 'w') as fd:
-                json.dump(self.jdata, fd, indent=2)
-                fd.write("\n")
+        prev_data = copy.deepcopy(self.jdata)
+        self.jdata = self.res_data.get_json(data=data, prev_data=prev_data)
+        with open(self.dbpath, 'w') as fd:
+            json.dump(self.jdata, fd, indent=2)
+            fd.write("\n")
 
     def write(self, data, logfile=None):
         if len(data) == 0:
@@ -1654,15 +1632,11 @@ class JSONDb(DBType):
             self.__write_test_data(data['testdata'])
 
     def close(self, result=None):
-        FMT = '%H:%M:%S.%f'
-        start = self._data['test_summary']['test_start_time'].split()[1]
-        end = self._data['test_summary']['test_end_time'].split()[1]
-        dur = str(datetime.datetime.strptime(end, FMT) -
-                  datetime.datetime.strptime(start, FMT))
-        self.jdata[self.run_count]['test_summary']['tests_duration'] = dur
         if result is not None:
             dur = str(result.stop - result.start)
-            self.jdata['Total_run_time'] = dur
+            self.jdata['result']['start'] = str(result.start)
+            self.jdata['result']["end"] = str(result.stop)
+            self.jdata['result']['duration'] = dur
             with open(self.dbpath, 'w') as fd:
                 json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")
