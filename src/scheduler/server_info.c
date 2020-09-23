@@ -652,27 +652,33 @@ query_server_dyn_res(server_info *sinfo)
 	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
 		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
 		if (res != NULL) {
-			int err, ret;
+			int ret;
 			fd_set set;
-			char *filename = conf.dynamic_res[i].script_name;
 			sigset_t allsigs;
 			pid_t pid;			/* pid of child */
 			int pdes[2];
 			k = 0;
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				int err;
+				char *filename;
+			#endif
 
 			if (sinfo->res == NULL)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-			err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-			if (err != 0) {
-				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
-					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
-					filename, res->name, err);
-				set_resource(res, res_zero, RF_AVAIL);
-				continue;
-			}
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				filename = conf.dynamic_res[i].script_name;
+				err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
+				if (err != 0) {
+					log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
+						"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
+						filename, res->name, err);
+					set_resource(res, res_zero, RF_AVAIL);
+					continue;
+				}
+			#endif
 
 			if (pipe(pdes) < 0) {
 				pipe_err = errno;

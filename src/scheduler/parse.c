@@ -592,13 +592,15 @@ parse_config(char *fname)
 								if (filename == NULL)
 									error = 1;
 								else {
-									int err;
-									err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-									if (err != 0) {
-										snprintf(errbuf, sizeof(errbuf),
-											"error: %s file has a non-secure file access, errno: %d", filename, err);
-										error = 1;
-									}
+									#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+										int err;
+										err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
+										if (err != 0) {
+											snprintf(errbuf, sizeof(errbuf),
+												"error: %s file has a non-secure file access, errno: %d", filename, err);
+											error = 1;
+										}
+									#endif
 									conf.dynamic_res[res_num].res = tmp1;
 									conf.dynamic_res[res_num].command_line = tmp2;
 									conf.dynamic_res[res_num].script_name = filename;
