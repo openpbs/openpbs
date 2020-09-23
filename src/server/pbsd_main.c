@@ -122,8 +122,6 @@ extern void stop_db();
 extern int chk_and_update_db_svrhost();
 #endif /* localmod 005 */
 
-extern int put_sched_cmd(int sock, int cmd, char *jobid);
-
 /* External data items */
 extern  pbs_list_head svr_requests;
 extern char     *msg_err_malloc;
@@ -239,7 +237,7 @@ net_down_handler(void *data)
 
 static int lockfds = -1;
 static int already_forked = 0; /* we check this variable even in non-debug mode, so dont condition compile it */
-static int background = 0; 
+static int background = 0;
 
 #ifndef DEBUG
 /**
@@ -516,20 +514,6 @@ reap_child(void)
 	}
 }
 
-/**
- * @brief
- * 		checks if PBS server can schedule jobs
- *
- * @return	int
- * @return	1	- PBS server can schedule jobs
- * @return	0	- can't schedule jobs
- */
-static int
-can_schedule()
-{
-	return (1);
-}
-
 
 
 /**
@@ -648,9 +632,6 @@ main(int argc, char **argv)
 	};
 	static int		first_run = 1;
 
-	pbs_net_t		pbs_scheduler_addr;
-	unsigned int		pbs_scheduler_port;
-
 	extern int		optind;
 	extern char		*optarg;
 	extern char		*msg_svrdown;	/* log message */
@@ -736,7 +717,6 @@ main(int argc, char **argv)
 	/* initialize service port numbers for self, Scheduler, and MOM */
 
 	pbs_server_port_dis = pbs_conf.batch_service_port;
-	pbs_scheduler_port = pbs_conf.scheduler_service_port;
 	pbs_mom_port = pbs_conf.mom_service_port;
 	pbs_rm_port = pbs_conf.manager_service_port;
 
@@ -753,19 +733,9 @@ main(int argc, char **argv)
 	pbs_server_addr = get_hostaddr(server_host);
 	pbs_mom_addr = pbs_server_addr;		/* assume on same host */
 
-	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL)) {
-		/* if not a failover configuration, by default the */
-		/* Scheduler is on the same host as the Server */
-		pbs_scheduler_addr = pbs_server_addr;
-	} else {
-		/* in a failover configuration, the default */
-		/* Scheduler is on the primary host */
-		pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_primary);
-	}
-
 	/* parse the parameters from the command line */
 
-	while ((c = getopt(argc, argv, "A:a:Cd:e:F:p:t:lL:M:NR:S:g:G:s:P:-:")) != -1) {
+	while ((c = getopt(argc, argv, "A:a:Cd:e:F:p:t:lL:M:NR:g:G:s:P:-:")) != -1) {
 		switch (c) {
 			case 'a':
 				if (decode_b(&server.sv_attr[(int)SVR_ATR_scheduling], NULL,
@@ -854,13 +824,6 @@ main(int argc, char **argv)
 					(void)fprintf(stderr, "%s: bad -R %s\n",
 						argv[0], optarg);
 					return 1;
-				}
-				break;
-			case 'S':
-				if (get_port(optarg, &pbs_scheduler_port,
-					&pbs_scheduler_addr)) {
-					(void)fprintf(stderr, "%s: bad -S %s\n", argv[0], optarg);
-					return (1);
 				}
 				break;
 
@@ -1139,8 +1102,8 @@ main(int argc, char **argv)
 
 	if ((sock = init_network(pbs_server_port_dis)) < 0) {
 		(void) sprintf(log_buffer,
-			"init_network failed using ports Server:%u Scheduler:%u MOM:%u RM:%u",
-			pbs_server_port_dis, pbs_scheduler_port, pbs_mom_port, pbs_rm_port);
+			"init_network failed using ports Server:%u MOM:%u RM:%u",
+			pbs_server_port_dis, pbs_mom_port, pbs_rm_port);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, log_buffer);
 		fprintf(stderr, "%s\n", log_buffer);
@@ -1264,8 +1227,7 @@ main(int argc, char **argv)
 		svr_mailowner(0, 0, 1, log_buffer);
 		if (server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long) {
 			/* Bring up scheduler here */
-			pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_secondary);
-			if (contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port) < 0) {
+			if (dflt_scheduler->sc_primary_conn == -1) {
 				char **workenv;
 				char schedcmd[MAXPATHLEN + 1];
 				/* save the current, "safe", environment.
@@ -1293,15 +1255,10 @@ main(int argc, char **argv)
 		(void)set_task(WORK_Timed, time_now, primary_handshake, NULL);
 
 	}
-	dflt_scheduler->pbs_scheduler_addr = pbs_scheduler_addr;
-	dflt_scheduler->pbs_scheduler_port = pbs_scheduler_port;
 
-	sprintf(log_buffer, msg_startup2, sid, pbs_server_port_dis,
-		pbs_scheduler_port, pbs_mom_port, pbs_rm_port);
-
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-		LOG_INFO, msg_daemonname, log_buffer);
-
+	log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO,
+		   msg_daemonname, msg_startup2,
+		   sid, pbs_server_port_dis, pbs_mom_port, pbs_rm_port);
 
 	/*
 	 * Now at last, we are read to do some batch work, the
@@ -1357,13 +1314,6 @@ main(int argc, char **argv)
 	process_hooks(periodic_req, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
 	/*
-	 * Make the scheduler (re)-read the configuration
-	 * and fairshare usage.
-	 */
-	(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port);
-	(void)contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port);
-
-	/*
 	 * main loop of server
 	 * stays in this loop until server's state is either
 	 * 	_DOWN - time to complete shutdown and exit, or
@@ -1403,40 +1353,22 @@ main(int argc, char **argv)
 				clear_exec_vnode();
 				first_run = 0;
 			}
-			for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-				/* if time or event says to run scheduler, do it */
+			for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
+
+				/* schedule anything only if sched is connected */
+				if (psched->sc_primary_conn == -1 || psched->sc_secondary_conn == -1)
+					continue;
 
 				/* if we have a high prio sched command, send it 1st */
 				if (psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
 					schedule_high(psched);
 				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
-
-					/* send only to existing connection */
-					/* since it is for interrupting current */
-					/* cycle */
-					/* NOTE: both primary and secondary scheduler */
-					/* connect must have been setup to be valid */
-					if ((psched->scheduler_sock2 != -1) &&
-						(psched->scheduler_sock != -1)) {
-
-						if (put_sched_cmd(psched->scheduler_sock2,
-								psched->svr_do_schedule, NULL) == 0) {
-							sprintf(log_buffer, "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
-							log_event(PBSEVENT_DEBUG2,
-								PBS_EVENTCLASS_SERVER,
-								LOG_NOTICE, msg_daemonname, log_buffer);
-						}
-					} else {
-						sprintf(log_buffer, "no valid secondary connection to scheduler %s: restart scheduling cycle request ignored",
-								psched->sc_name);
-						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_SERVER,
-							LOG_NOTICE, msg_daemonname, log_buffer);
-					}
-					psched->svr_do_schedule = SCH_SCHEDULE_NULL;
-				} else if (((svr_unsent_qrun_req) || ((psched->svr_do_schedule != SCH_SCHEDULE_NULL) &&
-					psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long))
-					&& can_schedule()) {
+					if (!send_sched_cmd(psched, psched->svr_do_schedule, NULL)) {
+						log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+							   "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
+					} else
+						psched->svr_do_schedule = SCH_SCHEDULE_NULL;
+				} else if (svr_unsent_qrun_req || (psched->svr_do_schedule != SCH_SCHEDULE_NULL && psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long)) {
 					/*
 					 * If svr_unsent_qrun_req is set to one there are pending qrun
 					 * request, then do schedule_jobs irrespective of the server scheduling
@@ -1445,9 +1377,8 @@ main(int argc, char **argv)
 					 * scheduling only if server scheduling is turned on.
 					 */
 
-					psched->sch_next_schedule = time_now +
-							psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
-					if ((schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
+					psched->sch_next_schedule = time_now + psched->sch_attr[SCHED_ATR_schediteration].at_val.at_long;
+					if (schedule_jobs(psched) == 0 && svr_unsent_qrun_req)
 						svr_unsent_qrun_req = 0;
 				}
 			}
@@ -1520,7 +1451,7 @@ main(int argc, char **argv)
 	/* if brought up the Secondary Scheduler, take it down */
 
 	if (brought_up_alt_sched == 1)
-		(void)contact_sched(SCH_QUIT, NULL, pbs_scheduler_addr, pbs_scheduler_port);
+		send_sched_cmd(dflt_scheduler, SCH_QUIT, NULL);
 
 	/* if Moms are to to down as well, tell them */
 

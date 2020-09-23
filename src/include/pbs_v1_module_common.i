@@ -237,11 +237,6 @@ poke_scheduler(attribute *attr, void *pobj, int actmode) {
 }
 
 int
-action_sched_port(attribute *pattr, void *pobj, int actmode) {
-	return 0;
-}
-
-int
 action_sched_priv(attribute *pattr, void *pobj, int actmode) {
 	return 0;
 }

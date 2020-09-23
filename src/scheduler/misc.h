@@ -47,6 +47,7 @@ extern "C" {
 #include "server_info.h"
 #include "queue_info.h"
 #include "job_info.h"
+#include "sched_cmds.h"
 
 /*
  *	string_dup - duplicate a string
@@ -171,6 +172,17 @@ void **dup_array(void *ptr);
  */
 int remove_ptr_from_array(void *arr, void *ptr);
 
+/**
+ * @brief add pointer to NULL terminated pointer array
+ * @param[in] ptr_arr - pointer array to add to
+ * @param[in] ptr - pointer to add
+ *
+ * @return void *
+ * @retval pointer array with new element added
+ * @retval NULL on error
+ */
+void *add_ptr_to_array(void *ptr_arr, void *ptr);
+
 /*
  *	remove_str_from_array - remove a string from a ptr list and move
  *				the rest of the pointers up to fill the hole
@@ -283,6 +295,26 @@ add_str_to_unique_array(char ***str_arr, char *str);
  * helper function to free an array of pointers
  */
 void free_ptr_array (void *inp);
+
+/**
+ * @brief create new sched cmd structure and return
+ *
+ * @return sched_cmd *
+ * @retval NULL  - failure
+ * @return !NULL - success
+ *
+ * @warning caller has to free returned value using free_sched_cmd() when not needed
+ */
+sched_cmd *new_sched_cmd(void);
+
+/**
+ * @brief free given sched cmd structure
+ *
+ * @param[in] cmd - pointer to sched cmd structure
+ *
+ * @return void
+ */
+void free_sched_cmd(sched_cmd *cmd);
 
 #ifdef	__cplusplus
 }

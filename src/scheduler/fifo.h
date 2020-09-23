@@ -45,7 +45,36 @@ extern "C" {
 
 #include  <limits.h>
 #include "data_types.h"
-int connector;
+#include "sched_cmds.h"
+
+/**
+ * @brief Gets the Scheduler Command sent by the Server
+ *
+ * @param[in]     sock - secondary connection to the server
+ * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
+ *
+ * @return	int
+ * @retval	0	: for EOF
+ * @retval	+1	: for success
+ * @retval	-1	: for error
+ */
+int get_sched_cmd(int sock, sched_cmd *cmd);
+
+/**
+ * @brief This is non-blocking version of get_sched_cmd()
+ *
+ * @param[in]     sock - secondary connection to the server
+ * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
+ *
+ * @return	int
+ * @retval	0	no super high priority command
+ * @retval	+1	for success
+ * @retval	-1	for error
+ * @retval	-2	for EOF
+ *
+ * @note this function uses different return code (-2) for EOF than get_sched_cmd() (-1)
+ */
+int get_sched_cmd_noblk(int sock, sched_cmd *cmd);
 
 /*
  *      schedinit - initialize conf struct and parse conf files
@@ -53,24 +82,17 @@ int connector;
 int schedinit(int nthreads);
 
 /*
- *      schedule - this function gets called to start each scheduling cycle
- *                 It will handle the difference cases that caused a
- *                 scheduling cycle
- */
-int schedule(int cmd, int sd, char *runjobid);
-
-/*
  *	intermediate_schedule - responsible for starting/restarting scheduling
  *				cycle
  */
 
-int intermediate_schedule(int sd, char *jobid);
+int intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(int sd, char *jobid);
+int scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every
@@ -217,7 +239,7 @@ void update_cycle_status(struct status *policy, time_t current_time);
  *			     deal with normal job can't run stuff
 
  */
-int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr);
+int main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_error **rerr);
 
 /*
  *
@@ -230,9 +252,7 @@ int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rer
  */
 int scheduler_simulation_task(int pbs_sd, int debug);
 
-int update_svr_schedobj(int connector, int cmd, int alarm_time);
-
-int set_validate_sched_attrs(int connector);
+int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
 

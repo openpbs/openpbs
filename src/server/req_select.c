@@ -356,7 +356,7 @@ req_selectjobs(struct batch_request *preq)
 	 * approach to query for jobs, e.g., by issuing a single pbs_statjob()
 	 * instead of a per-queue selstat()
 	 */
-	psched = find_sched_from_sock(preq->rq_conn);
+	psched = find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY);
 	if (psched != NULL && psched == dflt_scheduler && !scheduler_jobs_stat)
 		scheduler_jobs_stat = 1;
 

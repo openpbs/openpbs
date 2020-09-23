@@ -3143,7 +3143,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
  * 		resolve_indirect_resources - resolve indirect resources for node
  *		array
  *
- * @param[in/out]	nodes	-	the nodes to resolve
+ * @param[in,out]	nodes	-	the nodes to resolve
  *
  * @return	int
  * @retval	1	: if successful
@@ -3949,41 +3949,4 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	new_unordered_nodes[ct1] = NULL;
 
 	return new_unordered_nodes;
-}
-
-/**
- * @brief add pointer to NULL terminated pointer array
- * @param[in] ptr_arr - pointer array to add to
- * @param[in] ptr - pointer to add
- *
- * @return void *
- * @retval pointer array with new element added
- * @retval NULL on error
- */
-void *
-add_ptr_to_array(void *ptr_arr, void *ptr)
-{
-	void **arr;
-	int cnt;
-
-	cnt = count_array(ptr_arr);
-
-	if (cnt == 0) {
-		arr = malloc(sizeof(void *) * 2);
-		if (arr == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
-		}
-		arr[0] = ptr;
-		arr[1] = NULL;
-	} else {
-		arr = realloc(ptr_arr, (cnt + 1) * sizeof(void *));
-		if (arr == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
-		}
-		arr[cnt - 1] = ptr;
-		arr[cnt] = NULL;
-	}
-	return arr;
 }
