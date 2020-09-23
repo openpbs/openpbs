@@ -68,19 +68,25 @@ if j.max_run_subjobs != 0:
 pbs.logmsg(pbs.LOG_DEBUG, "max_run_subjobs set to %%d" %% j.max_run_subjobs)
 e.accept()
 """
+    mjh2 = """
+import pbs
 
-    def create_max_run_subjobs_hook(self, max_run, event, name):
+e = pbs.event()
+j = e.job
+j.max_run_subjobs = %d
+pbs.logmsg(pbs.LOG_DEBUG, "max_run_subjobs set to %%d" %% j.max_run_subjobs)
+e.accept()
+"""
+
+    def create_max_run_subjobs_hook(self, max_run, event, name, script):
         """
         function to create a hook
         - max_run Number of subjobs that can concurrently run
         - event queuejob or modifyjob
         - name hook name
+        - script hook script
         """
-        if event is "queuejob":
-            hs = self.qjh
-        else:
-            hs = self.mjh
-        hook = hs % int(max_run)
+        hook = script % int(max_run)
         attrs = {'event': event}
         self.server.create_import_hook(name, attrs, hook, overwrite=True)
 
@@ -846,7 +852,7 @@ e.accept()
         a = {'resources_available.ncpus': 8}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
-        self.create_max_run_subjobs_hook(3, "queuejob", "h1")
+        self.create_max_run_subjobs_hook(3, "queuejob", "h1", self.qjh)
         j1 = Job(attrs={ATTR_J: '1-20'})
         jid1 = self.server.submit(j1)
         self.server.log_match("max_run_subjobs set to 3")
@@ -868,7 +874,7 @@ e.accept()
         a = {'resources_available.ncpus': 20}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
-        self.create_max_run_subjobs_hook(3, "modifyjob", "h1")
+        self.create_max_run_subjobs_hook(3, "modifyjob", "h1", self.mjh)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         j = Job(attrs={ATTR_J: '1-50'})
         jid = self.server.submit(j)
@@ -880,10 +886,11 @@ e.accept()
 
         # Modify a normal job and see if queuejob hook cannot set the
         # attribute.
+        self.create_max_run_subjobs_hook(3, "modifyjob", "h1", self.mjh2)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         nj = self.server.submit(Job())
         with self.assertRaises(PbsAlterError) as e:
-            self.server.alterjob(nj, {ATTR_W: 'max_run_subjobs=20'})
+            self.server.alterjob(nj, {'Resource_List.soft_walltime': 50})
         self.assertIn("Not an array job", e.exception.msg[0])
 
     @skipOnCpuSet
