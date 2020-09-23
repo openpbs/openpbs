@@ -2063,24 +2063,14 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 				snprintf(log_msg, MAX_LOG_SIZE, "%s", spec);
 			break;
 
+		/* codes using no args */
 		case MAX_RUN_SUBJOBS:
-			if (comment_msg != NULL)
-				snprintf(commentbuf, sizeof(commentbuf), "%s", ERR2COMMENT(err->error_code));
-			if (log_msg != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, "%s", ERR2INFO(err->error_code));
-			break;
-			/* codes using arg1  */
 		case BACKFILL_CONFLICT:
 		case CANT_PREEMPT_ENOUGH_WORK:
 		case CROSS_DED_TIME_BOUNDRY:
 		case DED_TIME:
-#ifndef NAS /* localmod 031 */
-		case INVALID_NODE_STATE:
-#endif /* localmod 031 */
-		case INVALID_NODE_TYPE:
 		case NODE_GROUP_LIMIT_REACHED:
 		case NODE_JOB_LIMIT_REACHED:
-		case NODE_NOT_EXCL:
 		case NODE_NO_MULT_JOBS:
 		case NODE_PLACE_PACK:
 		case NODE_RESV_ENABLE:
@@ -2092,16 +2082,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case NO_NODE_RESOURCES:
 		case NO_SMALL_CPUSETS:
 		case PRIME_ONLY:
-		case QUEUE_GROUP_LIMIT_REACHED:
-		case QUEUE_PROJECT_LIMIT_REACHED:
-		case QUEUE_JOB_LIMIT_REACHED:
 		case QUEUE_NOT_STARTED:
-		case QUEUE_USER_LIMIT_REACHED:
 		case RESERVATION_CONFLICT:
 		case SCHD_ERROR:
-		case SERVER_BYGROUP_JOB_LIMIT_REACHED:
-		case SERVER_BYPROJECT_JOB_LIMIT_REACHED:
-		case SERVER_BYUSER_JOB_LIMIT_REACHED:
 		case SERVER_GROUP_LIMIT_REACHED:
 		case SERVER_PROJECT_LIMIT_REACHED:
 		case SERVER_JOB_LIMIT_REACHED:
@@ -2112,13 +2095,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case PROV_BACKFILL_CONFLICT:
 		case CANT_SPAN_PSET:
 		case IS_MULTI_VNODE:
-		case AOE_NOT_AVALBL:
-		case EOE_NOT_AVALBL:
 		case PROV_RESRESV_CONFLICT:
-		case CROSS_PRIME_BOUNDARY:
 		case NO_FREE_NODES:
 		case NO_TOTAL_NODES:
-		case INVALID_RESRESV:
 		case JOB_UNDER_THRESHOLD:
 #ifdef NAS
 			/* localmod 034 */
@@ -2128,12 +2107,34 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case RESOURCES_INSUFFICIENT:
 #endif
 			if (comment_msg != NULL)
+				snprintf(commentbuf, sizeof(commentbuf), "%s", ERR2COMMENT(err->error_code));
+			if (log_msg != NULL)
+				snprintf(log_msg, MAX_LOG_SIZE, "%s", ERR2INFO(err->error_code));
+			break;
+		/* codes using arg1  */
+#ifndef NAS /* localmod 031 */
+		case INVALID_NODE_STATE:
+#endif /* localmod 031 */
+		case INVALID_NODE_TYPE:
+		case NODE_NOT_EXCL:
+		case QUEUE_GROUP_LIMIT_REACHED:
+		case QUEUE_PROJECT_LIMIT_REACHED:
+		case QUEUE_JOB_LIMIT_REACHED:
+		case QUEUE_USER_LIMIT_REACHED:
+		case SERVER_BYGROUP_JOB_LIMIT_REACHED:
+		case SERVER_BYPROJECT_JOB_LIMIT_REACHED:
+		case SERVER_BYUSER_JOB_LIMIT_REACHED:
+		case AOE_NOT_AVALBL:
+		case EOE_NOT_AVALBL:
+		case CROSS_PRIME_BOUNDARY:
+		case INVALID_RESRESV:
+			if (comment_msg != NULL)
 				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg1);
 			if (log_msg != NULL)
 				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg1);
 			break;
 
-			/* codes using two arguments */
+		/* codes using two arguments */
 #ifdef NAS /* localmod 031 */
 		case INVALID_NODE_STATE:
 #endif /* localmod 031 */
