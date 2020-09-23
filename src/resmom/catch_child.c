@@ -81,6 +81,7 @@
 #include "hook.h"
 #include "renew_creds.h"
 #include "mock_run.h"
+#include <libutil.h>
 
 /**
  * @file	catch_child.c

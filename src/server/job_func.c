@@ -49,9 +49,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#ifndef SIGKILL
 #include <signal.h>
-#endif
 #include <memory.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -89,6 +87,7 @@
 #endif
 
 #include "svrfunc.h"
+#include <libutil.h>
 #include "acct.h"
 #include "credential.h"
 #include "net_connect.h"
@@ -424,7 +423,7 @@ free_job_work_tasks(job *pj)
 				 * If so, then reject the request.
 				 */
 				if ((tbr->rq_orgconn != -1) &&
-					(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
+					(find_sched_from_sock(tbr->rq_orgconn, CONN_SCHED_PRIMARY) != NULL)) {
 					tbr->rq_conn = tbr->rq_orgconn;
 					req_reject(PBSE_HISTJOBID, 0, tbr);
 				}
@@ -727,7 +726,7 @@ rename_taskdir(job *pjob)
 {
 	char *namebuf = NULL;
 	char *renamebuf = NULL;
-	char *fprefix;	
+	char *fprefix;
 
 	if ((pjob == NULL) || (path_jobs == NULL))
 		return (NULL);
@@ -1652,7 +1651,7 @@ update_resources_list(job *pjob, char *res_list_name,
 update_resources_list_error:
 	free_jattr(pjob, backup_res_list_index);
 	mark_jattr_not_set(pjob, backup_res_list_index);
-	set_attr_with_attr(&job_attr_def[res_list_index], 
+	set_attr_with_attr(&job_attr_def[res_list_index],
 			&pjob->ji_wattr[res_list_index],
 			&pjob->ji_wattr[backup_res_list_index], INCR);
 	return (1);

@@ -46,28 +46,27 @@ AC_DEFUN([PBS_AC_WITH_EXPAT],
       [Specify the directory where expat is installed.]
     )
   )
-  AS_IF([test "x$with_expat" != "x"],
-    expat_dir=["$with_expat"],
-    expat_dir=["/usr"]
-  )
+  [expat_dir="$with_expat"]
   AC_MSG_CHECKING([for expat])
-  AS_IF([test -r "$expat_dir/include/expat.h"],
-    AS_IF([test "$expat_dir" != "/usr"],
-      [expat_inc="-I$expat_dir/include"]),
-    AC_MSG_ERROR([expat headers not found.]))
-  AS_IF([test "$expat_dir" = "/usr"],
+  AS_IF(
+    [test "$expat_dir" = ""],
+    AC_CHECK_HEADER([expat.h], [], AC_MSG_ERROR([expat headers not found.])),
+    [test -r "$expat_dir/include/expat.h"],
+    [expat_inc="-I$expat_dir/include"],
+    AC_MSG_ERROR([expat headers not found.])
+  )
+  AS_IF(
+    [test "$expat_dir" = ""],
     # Using system installed expat
-    AS_IF([test -r "/usr/lib64/libexpat.so" -o -r "/usr/lib/libexpat.so" -o -r "/usr/lib/x86_64-linux-gnu/libexpat.so"],
+    AC_CHECK_LIB([expat], [XML_Parse],
       [expat_lib="-lexpat"],
       AC_MSG_ERROR([expat shared object library not found.])),
     # Using developer installed expat
-    AS_IF([test -r "${expat_dir}/lib64/libexpat.a"],
-      [expat_lib="${expat_dir}/lib64/libexpat.a"],
-      AS_IF([test -r "${expat_dir}/lib/libexpat.a"],
-        [expat_lib="${expat_dir}/lib/libexpat.a"],
-        AC_MSG_ERROR([expat library not found.])
-      )
-    )
+    [test -r "${expat_dir}/lib64/libexpat.a"],
+    [expat_lib="${expat_dir}/lib64/libexpat.a"],
+    [test -r "${expat_dir}/lib/libexpat.a"],
+    [expat_lib="${expat_dir}/lib/libexpat.a"],
+    AC_MSG_ERROR([expat library not found.])
   )
   AC_MSG_RESULT([$expat_dir])
   AC_SUBST(expat_inc)

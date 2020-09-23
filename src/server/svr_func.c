@@ -61,9 +61,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-#ifndef SIGKILL
 #include <signal.h>
-#endif
 #include "server_limits.h"
 #include "list_link.h"
 #include "log.h"
@@ -207,7 +205,7 @@ encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char
 	if (pattr->at_val.at_long == SV_STATE_RUN) {
 		if (server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long == 0)
 			psname = svr_idle;
-		else if (dflt_scheduler->scheduler_sock != -1)
+		else if (dflt_scheduler && dflt_scheduler->sc_cycle_started == 1)
 			psname = svr_sched;
 	}
 
@@ -686,22 +684,6 @@ set_rpp_highwater(attribute *pattr, void *pobj, int actmode)
 	}
 
 	return PBSE_NONE;
-}
-
-/**
- * @brief
- * 		set_sched_sock - set the internal socket used to communicate with the
- *		scheduler.   Done here because also need to invalidate the server
- *		state attribute cache.
- *
- * @param[in] s		-	internal socket used to communicate with the scheduler
- * @param[in] psched	-	pointer to sched object
- */
-void
-set_sched_sock(int s, pbs_sched *psched)
-{
-	psched->scheduler_sock = s;
-	server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
 }
 
 
@@ -5430,7 +5412,7 @@ is_vnode_prov_done(char * vnode)
  * @retval	1	: job has a pending hook-related copy action on at least
  *			  of its provisioning vnodes.
  * @retval	0	: either no pending hook-related action detected, or an
- *			  an error has occurred. 
+ *			  an error has occurred.
  *
  * @par Side Effects:
  *      Unknown

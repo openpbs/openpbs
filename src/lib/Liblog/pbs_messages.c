@@ -131,7 +131,7 @@ char *msg_hookfile_write = "Unable to write hook-related file";
 char *msg_shutdown_op	= "Shutdown request from %s@%s ";
 char *msg_shutdown_start = "Starting to shutdown the server, type is ";
 char *msg_startup1	= "Version %s, started, initialization type = %d";
-char *msg_startup2	= "Server pid = %d ready;  using ports Server:%d Scheduler:%d MOM:%d RM:%d";
+char *msg_startup2	= "Server pid = %d ready;  using ports Server:%d MOM:%d RM:%d";
 char *msg_startup3	= "%s %s: %s mode and %s, \ndo you wish to continue y/(n)?";
 char *msg_svdbopen	= "Unable to open server data base";
 char *msg_svdbnosv	= "Unable to save server data base ";
@@ -419,6 +419,7 @@ char *msg_node_busy = "Node is busy";
 char *msg_default_partition = "Default partition name is not allowed";
 char *msg_depend_runone = "Job deleted, a dependent job ran";
 char *msg_histdepend = "Finished job did not satisfy dependency";
+char *msg_sched_already_connected = "Scheduler already connected";
 
 /*
  * The following table connects error numbers with text
@@ -597,6 +598,7 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_NODE_BUSY, &msg_node_busy},
 	{PBSE_DEFAULT_PARTITION, &msg_default_partition},
 	{PBSE_HISTDEPEND, &msg_histdepend},
+	{PBSE_SCHEDCONNECTED, &msg_sched_already_connected},
 	{0, NULL} /* MUST be the last entry */
 };
 

@@ -486,8 +486,6 @@ int compare_resource_avail(schd_resource *r1, schd_resource *r2);
 
 node_info **dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes);
 
-void *add_ptr_to_array(void *ptr_arr, void *ptr);
-
 #ifdef	__cplusplus
 }
 #endif

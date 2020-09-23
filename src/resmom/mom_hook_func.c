@@ -151,6 +151,7 @@ extern	int		internal_state_update; /* flag for sending mom information update to
 
 extern int		server_stream;
 
+extern char **environ;
 
 /**
  * @brief
@@ -1353,7 +1354,7 @@ run_hook_exit:
 			char *pbs_hook_conf = NULL;
 
 			if ((pjob->ji_env.v_envp != NULL) && (phook->user == HOOK_PBSUSER)) {
-				/* Duplicate only when the hook user is pbsuser */ 
+				/* Duplicate only when the hook user is pbsuser */
 				hook_env.v_envp = dup_string_arr(pjob->ji_env.v_envp);
 				if (hook_env.v_envp == NULL) {
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
