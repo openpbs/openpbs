@@ -632,7 +632,6 @@ extern void catch_hup(int);
 extern void toolong(int);
 #endif
 
-extern	void	cleanup_hooks_workdir(struct work_task *);
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
 
 /* Local private functions */
