@@ -51,8 +51,7 @@ class TestMultipleSchedulers(TestFunctional):
 
     def setup_sc1(self):
         a = {'partition': 'P1',
-             'sched_host': self.server.hostname,
-             'sched_port': '15050'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc1")
         self.scheds['sc1'].create_scheduler()
@@ -68,8 +67,7 @@ class TestMultipleSchedulers(TestFunctional):
         a = {'partition': 'P2',
              'sched_priv': os.path.join(dir_path, 'sched_priv_sc2'),
              'sched_log': os.path.join(dir_path, 'sched_logs_sc2'),
-             'sched_host': self.server.hostname,
-             'sched_port': '15051'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc2")
         self.scheds['sc2'].create_scheduler(dir_path)
@@ -79,8 +77,7 @@ class TestMultipleSchedulers(TestFunctional):
 
     def setup_sc3(self):
         a = {'partition': 'P3',
-             'sched_host': self.server.hostname,
-             'sched_port': '15052'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc3")
         self.scheds['sc3'].create_scheduler()
@@ -276,7 +273,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             id="sc5")
         a = {'sched_host': self.server.hostname,
-             'sched_port': '15055',
              'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SCHED, a, id="sc5")
         # Try starting without sched_priv and sched_logs
@@ -589,8 +585,7 @@ class TestMultipleSchedulers(TestFunctional):
             self.server.pbs_conf['PBS_HOME'], 'sched_priv_sc1')
         sched_logs = os.path.join(
             self.server.pbs_conf['PBS_HOME'], 'sched_logs_sc1')
-        a = {'sched_port': 15050,
-             'sched_host': self.server.hostname,
+        a = {'sched_host': self.server.hostname,
              'sched_priv': sched_priv,
              'sched_log': sched_logs,
              'scheduling': 'True',
@@ -957,8 +952,7 @@ class TestMultipleSchedulers(TestFunctional):
         does not exist
         """
         a = {'partition': 'P5',
-             'sched_host': self.server.hostname,
-             'sched_port': '15050'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED, a, id="sc5")
         err_msg = 'Unable to access fairshare data: No such file or directory'
         try:
@@ -1176,8 +1170,7 @@ class TestMultipleSchedulers(TestFunctional):
         a = {'partition': 'P2',
              'sched_priv': os.path.join(dir_path, 'sched_priv_sc2'),
              'sched_log': os.path.join(dir_path, 'sched_logs_sc2'),
-             'sched_host': self.server.hostname,
-             'sched_port': '15051'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_LIST, SCHED, a, id="sc2")
 
         self.server.manager(MGR_CMD_LIST, SCHED, id="sc3")

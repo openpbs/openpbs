@@ -131,10 +131,10 @@ struct config conf;
 struct status cstat;
 
 /* to make references happy */
-int pbs_rm_port;
 int got_sigpipe;
-
-int	second_connection;
+sched_svrconn **servers = NULL;
+ds_queue *sched_cmds = NULL;
+void *poll_context = NULL;
 
 /* Stuff needed for multi-threading */
 pthread_mutex_t general_lock;
@@ -163,7 +163,6 @@ resdef **boolres = NULL;
 char *cmp_aoename = NULL;
 
 char *sc_name = NULL;
-int sched_port = -1;
 char *logfile = NULL;
 
 int preempt_normal;			/* preempt priority of normal_jobs */

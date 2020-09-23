@@ -68,7 +68,8 @@ extern "C" {
 extern int check_num_cpus(void);
 extern int chk_hold_priv(long, int);
 extern void close_client(int);
-extern int contact_sched(int, char *, pbs_net_t, unsigned int);
+extern void scheduler_close(int);
+extern int send_sched_cmd(pbs_sched *, int, char *);
 extern void count_node_cpus(void);
 extern int ctcpus(char *, int *);
 extern void cvrt_fqn_to_name(char *, char *);
@@ -103,7 +104,6 @@ extern void mark_node_down(char *, char *);
 extern void mark_node_offline_by_mom(char *, char *);
 extern void clear_node_offline_by_mom(char *, char *);
 extern void mark_which_queues_have_nodes(void);
-extern void set_sched_sock(int, pbs_sched *);
 extern void pbs_close_stdfiles(void);
 extern int is_job_array(char *);
 extern int get_queued_subjobs_ct(job *);

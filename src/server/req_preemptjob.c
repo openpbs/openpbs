@@ -283,7 +283,7 @@ req_preemptjobs(struct batch_request *preq)
 
 	preq->rq_reply.brp_code = 0;
 	count = preq->rq_ind.rq_preempt.count;
-	psched = find_sched_from_sock(preq->rq_conn);
+	psched = find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY);
 	preempt_total = preq->rq_ind.rq_preempt.count;
 
 	if (psched == NULL) {

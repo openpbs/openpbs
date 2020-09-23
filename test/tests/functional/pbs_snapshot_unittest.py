@@ -98,8 +98,7 @@ class TestPBSSnapshot(TestFunctional):
         :type sched_log: str
         """
         a = {'partition': partition,
-             'sched_host': self.server.hostname,
-             'sched_port': port}
+             'sched_host': self.server.hostname}
         if sched_priv is not None:
             a['sched_priv'] = sched_priv
         if sched_log is not None:

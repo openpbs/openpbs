@@ -68,8 +68,6 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define PBS_NET_CONN_NOTIMEOUT	   0x04
 #define PBS_NET_CONN_FROM_QSUB_DAEMON	0x08
 #define PBS_NET_CONN_FORCE_QSUB_UPDATE	0x10
-/* Unused - #define PBS_NET_CONN_GSSAPIAUTH 0x20 */
-#define PBS_NET_CONN_TO_SCHED	0x40
 
 #define	QSUB_DAEMON	"qsub-daemon"
 
@@ -168,10 +166,21 @@ enum conn_type {
 	Idle
 };
 
+/*
+ * This is used to know where the connection is originated from.
+ * This can be extended to have MOM and other clients of Server in future.
+ */
+typedef enum conn_origin {
+	CONN_UNKNOWN = 0,
+	CONN_SCHED_PRIMARY,
+	CONN_SCHED_SECONDARY,
+	CONN_SCHED_ANY
+} conn_origin_t;
+
 /* functions available in libnet.a */
 
 conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int));
-conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int), int priority_flag);
+int set_conn_as_priority(conn_t *);
 int add_conn_data(int sock, void *data); /* Adds the data to the connection */
 void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
 int  client_to_svr(pbs_net_t, unsigned int port, int);
@@ -219,5 +228,6 @@ struct connection {
 	char            *cn_credid;
 	char            cn_physhost[PBS_MAXHOSTNAME + 1];
 	pbs_auth_config_t   *cn_auth_config;
+	conn_origin_t	cn_origin; /* used to know the origin of the connection i.e. Scheduler, MOM etc. */
 };
 #endif	/* _NET_CONNECT_H */

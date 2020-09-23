@@ -90,7 +90,6 @@ struct pbs_config pbs_conf = {
 	PBS_BATCH_SERVICE_PORT_DIS,		/* batch_service_port_dis */
 	PBS_MOM_SERVICE_PORT,			/* mom_service_port */
 	PBS_MANAGER_SERVICE_PORT,		/* manager_service_port */
-	PBS_SCHEDULER_SERVICE_PORT,		/* scheduler_service_port */
 	PBS_DATA_SERVICE_PORT,			/* pbs data service port */
 	NULL,					/* pbs_conf_file */
 	NULL,					/* pbs_home_path */
@@ -166,8 +165,6 @@ identify_service_entry(char *name)
 		p = &pbs_conf.mom_service_port;
 	} else if (strcmp(name, PBS_MANAGER_SERVICE_NAME) == 0) {
 		p = &pbs_conf.manager_service_port;
-	} else if (strcmp(name, PBS_SCHEDULER_SERVICE_NAME) == 0) {
-		p = &pbs_conf.scheduler_service_port;
 	} else if (strcmp(name, PBS_DATA_SERVICE_NAME) == 0) {
 		p = &pbs_conf.pbs_data_service_port;
 	}
@@ -400,9 +397,6 @@ __pbs_loadconf(int reload)
 	pbs_conf.manager_service_port = get_svrport(
 		PBS_MANAGER_SERVICE_NAME, "tcp",
 		pbs_conf.manager_service_port);
-	pbs_conf.scheduler_service_port = get_svrport(
-		PBS_SCHEDULER_SERVICE_NAME, "tcp",
-		pbs_conf.scheduler_service_port);
 	pbs_conf.pbs_data_service_port = get_svrport(
 		PBS_DATA_SERVICE_NAME, "tcp",
 		pbs_conf.pbs_data_service_port);
@@ -493,11 +487,6 @@ __pbs_loadconf(int reload)
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.manager_service_port =
 						((uvalue <= 65535) ? uvalue : pbs_conf.manager_service_port);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SCHEDULER_SERVICE_PORT)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.scheduler_service_port =
-						((uvalue <= 65535) ? uvalue : pbs_conf.scheduler_service_port);
 			}
 			else if (!strcmp(conf_name, PBS_CONF_DATA_SERVICE_PORT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
@@ -741,11 +730,6 @@ __pbs_loadconf(int reload)
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.manager_service_port =
 				((uvalue <= 65535) ? uvalue : pbs_conf.manager_service_port);
-	}
-	if ((gvalue = getenv(PBS_CONF_SCHEDULER_SERVICE_PORT)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.scheduler_service_port =
-				((uvalue <= 65535) ? uvalue : pbs_conf.scheduler_service_port);
 	}
 	if ((gvalue = getenv(PBS_CONF_HOME)) != NULL) {
 		free(pbs_conf.pbs_home_path);

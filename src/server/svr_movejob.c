@@ -228,7 +228,7 @@ local_move(job *jobp, struct batch_request *req)
 
 	if (req == NULL) {
 		mtype = MOVE_TYPE_Route;	/* route */
-	} else if (req->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR) && find_sched_from_sock(req->rq_conn) == NULL) {
+	} else if (req->rq_perm & (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR) && find_sched_from_sock(req->rq_conn, CONN_SCHED_PRIMARY) == NULL) {
 		mtype =	MOVE_TYPE_MgrMv;	/* privileged move */
 	} else {
 		mtype = MOVE_TYPE_Move;		/* non-privileged move */
@@ -279,7 +279,7 @@ local_move(job *jobp, struct batch_request *req)
 	 * had changes resulting from the move that would impact scheduling or
 	 * placement, add job to list of jobs which cannot be run in this cycle.
 	 */
-	if ((req == NULL || (find_sched_from_sock(req->rq_conn) == NULL)) && (scheduler_jobs_stat))
+	if ((req == NULL || (find_sched_from_sock(req->rq_conn, CONN_SCHED_PRIMARY) == NULL)) && (scheduler_jobs_stat))
 		am_jobs_add(jobp);
 
 	return 0;

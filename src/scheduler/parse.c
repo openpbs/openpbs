@@ -384,8 +384,6 @@ parse_config(char *fname)
 					}
 					free(valbuf);
 				}
-				else if (!strcmp(config_name, PARSE_MOM_RESOURCES))
-					conf.dyn_res_to_get = break_comma_list(config_value);
 				else if (!strcmp(config_name, PARSE_DEDICATED_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
@@ -865,8 +863,6 @@ init_config()
 	}
 	if (conf.res_to_check != NULL)
 		free_string_array(conf.res_to_check);
-	if (conf.dyn_res_to_get != NULL)
-		free_string_array(conf.dyn_res_to_get);
 
 	if (conf.dynamic_res[0].res != NULL) {
 		int i;
