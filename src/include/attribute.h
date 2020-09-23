@@ -434,6 +434,7 @@ extern int   comp_f(attribute *attr, attribute *with);
 extern int   comp_l(attribute *attr, attribute *with);
 extern int   comp_ll(attribute *attr, attribute *with);
 extern int   comp_size  (attribute *attr, attribute *with);
+extern void  from_size  (const struct size_value *, char *);
 extern int   comp_str  (attribute *attr, attribute *with);
 extern int   comp_arst(attribute *attr, attribute *with);
 extern int   comp_resc(attribute *attr, attribute *with);

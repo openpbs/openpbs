@@ -80,6 +80,7 @@ static void states();
 static char *	cvtResvstate(char *);
 static int cmp_est_time(struct batch_status *a, struct batch_status *b);
 char *cnvt_est_start_time(char *start_time, int shortform);
+static void show_svr_inst_fail(int);
 
 
 #if !defined(PBS_NO_POSIX_VIOLATION)
@@ -165,6 +166,7 @@ static char *dsv_delim = "|";
 static char *delimiter = "\n";
 static char *prev_resc_name = NULL;
 static int  first_stat = 1;
+static int conn;
 
 static struct attrl *display_attribs = &basic_attribs[0];
 
@@ -804,7 +806,31 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		pstat = bs_isort(pstat, cmp_est_time);
 
 	if (prtheader) {
-		printf("\n%s: ", prtheader->name);
+		svr_conn_t *svr_connections = get_conn_servers(conn);
+		int num_cfg_svrs = get_num_servers();
+		int num_active_svrs = 0;
+		int i = 0;
+		int j = 0;
+		
+		if (msvr_mode() && svr_connections) {
+			for (i = 0; i < num_cfg_svrs; i++) {
+				if (svr_connections[i].state == SVR_CONN_STATE_UP)
+					num_active_svrs++;	
+			}
+			printf("\n");
+			for (i = 0; i < num_cfg_svrs; i++) {
+				if (svr_connections[i].state == SVR_CONN_STATE_UP) {
+					printf("%s", pbs_conf.psi[i].name);
+					if (j  == num_active_svrs - 1)
+						printf(": ");
+					else
+						printf(", ");
+					j++;
+				}
+			}
+		} else
+			printf("\n%s: ", prtheader->name);
+
 		pc = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (pc)
 			printf("%s", show_nonprint_chars(pc));
@@ -2788,12 +2814,12 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 		qsort(&argv[optind], (argc - optind), sizeof(char *), cmp_jobs);
 	}
 	for (; optind < argc; optind++) {
-		int connect;
 
 		located = FALSE;
 
 		pbs_strncpy(operand, argv[optind], sizeof(operand));
 		tcl_addarg(ops, operand);
+
 		switch (mode) {
 
 			case JOBS:      /* get status of batch jobs */
@@ -2889,26 +2915,28 @@ job_no_args:
 				pbs_statfree(p_server);
 				p_server = NULL;
 				if (E_opt == 1)
-					connect = cnt2server(prev_server);
+					conn = cnt2server(prev_server);
 				else
-					connect = cnt2server(server_out);
+					conn = cnt2server(server_out);
 
-				if (connect <= 0) {
-					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
+				if (conn <= 0) {
+					fprintf(stderr, "qstat: cannot conn to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
 					(void)tcl_stat(error, NULL, f_opt);
 #endif /* localmod 071 */
-					any_failed = connect;
+					any_failed = conn;
 					break;
 				}
+				show_svr_inst_fail(conn);
+				
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
-					p_server = pbs_statserver(connect, NULL, NULL);
+					p_server = pbs_statserver(conn, NULL, NULL);
 #ifdef NAS /* localmod 071 */
-					p_rsvstat = pbs_statresv(connect, NULL, NULL, NULL);
+					p_rsvstat = pbs_statresv(conn, NULL, NULL, NULL);
 #endif /* localmod 071 */
 					pbs_strncpy(server_old, pbs_server, sizeof(server_old));
 				} else {
@@ -2917,7 +2945,7 @@ job_no_args:
 
 				if (p_server == NULL && pbs_errno != PBSE_NONE) {
 					any_failed = pbs_errno;
-					if ((errmsg = pbs_geterrmsg(connect)) != NULL)
+					if ((errmsg = pbs_geterrmsg(conn)) != NULL)
 						fprintf(stderr, "qstat: %s\n", errmsg);
 					else
 						fprintf(stderr, "qstat: Error %d\n", pbs_errno);
@@ -2935,11 +2963,11 @@ job_no_args:
 
 				if ((stat_single_job == 1) || (new_atropl == 0)) {
 					if (E_opt == 1)
-						p_status = pbs_statjob(connect, query_job_list, display_attribs, extend);
+						p_status = pbs_statjob(conn, query_job_list, display_attribs, extend);
 					else
-						p_status = pbs_statjob(connect, job_id_out, display_attribs, extend);
+						p_status = pbs_statjob(conn, job_id_out, display_attribs, extend);
 				} else {
-					p_status = pbs_selstat(connect, new_atropl, NULL, extend);
+					p_status = pbs_selstat(conn, new_atropl, NULL, extend);
 				}
 
 				if (added_queue) {
@@ -2953,7 +2981,7 @@ job_no_args:
 					if ((pbs_errno == PBSE_UNKJOBID) && !located) {
 						located = TRUE;
 						if (locate_job(job_id_out, server_out, rmt_server)) {
-							pbs_disconnect(connect);
+							pbs_disconnect(conn);
 							strcpy(server_out, rmt_server);
 							goto job_no_args;
 						}
@@ -2963,7 +2991,7 @@ job_no_args:
 						(void)tcl_stat("job", NULL, f_opt);
 #endif /* localmod 071 */
 						if (pbs_errno != PBSE_HISTJOBID) {
-							prt_job_err("qstat", connect, job_id_out);
+							prt_job_err("qstat", conn, job_id_out);
 							any_failed = pbs_errno;
 						}
 					} else {
@@ -2976,11 +3004,11 @@ job_no_args:
 #else
 						(void)tcl_stat("job", NULL, f_opt);
 #endif /* localmod 071 */
-						if (pbs_errno != PBSE_NONE && pbs_errno != PBSE_HISTJOBID) {
+						if (pbs_errno != PBSE_NONE && pbs_errno != PBSE_HISTJOBID && pbs_errno != PBSE_NOSERVER) {
 							if (pbs_errno == PBSE_ATTRRO && alt_opt & ALT_DISPLAY_T)
 								fprintf(stderr, "qstat: -T option is unavailable.\n");
 							else
-								prt_job_err("qstat", connect, job_id_out);
+								prt_job_err("qstat", conn, job_id_out);
 							any_failed = pbs_errno;
 						}
 					}
@@ -2991,7 +3019,7 @@ job_no_args:
 					 * are adding some extra message.
 					 */
 					if (pbs_errno == PBSE_HISTJOBID) {
-						errmsg = pbs_geterrmsg(connect);
+						errmsg = pbs_geterrmsg(conn);
 						if (errmsg) {
 							fprintf(stderr,
 								"qstat: %s %s, use -x or -H to obtain historical job information\n",
@@ -3026,7 +3054,7 @@ job_no_args:
 				}
 				pbs_statfree(p_server);
 				p_server = NULL;
-				pbs_disconnect(connect);
+				pbs_disconnect(conn);
 				if (E_opt == 1) {
 					free(query_job_list);
 					query_job_list = NULL;
@@ -3076,21 +3104,21 @@ job_no_args:
 						server_out[0] = '\0';
 				}
 que_no_args:
-				connect = cnt2server(server_out);
-				if (connect <= 0) {
-					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n", pbs_server, pbs_errno);
+				conn = cnt2server(server_out);
+				if (conn <= 0) {
+					fprintf(stderr, "qstat: cannot conn to server %s (errno=%d)\n", pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
 					(void)tcl_stat(error, NULL, f_opt);
 #endif /* localmod 071 */
-					any_failed = connect;
+					any_failed = conn;
 					break;
 				}
-				p_status = pbs_statque(connect, queue_name_out, NULL, NULL);
+				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
 				if (p_status == NULL) {
-					if (pbs_errno) {
-						errmsg = pbs_geterrmsg(connect);
+					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+						errmsg = pbs_geterrmsg(conn);
 						if (errmsg != NULL) {
 							fprintf(stderr, "qstat: %s ", errmsg);
 						} else
@@ -3117,28 +3145,28 @@ que_no_args:
 					p_header = FALSE;
 					pbs_statfree(p_status);
 				}
-				pbs_disconnect(connect);
+				pbs_disconnect(conn);
 				break;
 
 			case SERVERS:           /* get status of batch servers */
 				pbs_strncpy(server_out, operand, sizeof(server_out));
 svr_no_args:
-				connect = cnt2server(server_out);
-				if (connect <= 0) {
-					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
+				conn = cnt2server(server_out);
+				if (conn <= 0) {
+					fprintf(stderr, "qstat: cannot conn to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
 					(void)tcl_stat(error, NULL, f_opt);
 #endif /* localmod 071 */
-					any_failed = connect;
+					any_failed = conn;
 					break;
 				}
-				p_status = pbs_statserver(connect, NULL, NULL);
+				p_status = pbs_statserver(conn, NULL, NULL);
 				if (p_status == NULL) {
-					if (pbs_errno) {
-						errmsg = pbs_geterrmsg(connect);
+					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+						errmsg = pbs_geterrmsg(conn);
 						if (errmsg != NULL) {
 							fprintf(stderr, "qstat: %s ", errmsg);
 						} else
@@ -3162,7 +3190,7 @@ svr_no_args:
 					p_header = FALSE;
 					pbs_statfree(p_status);
 				}
-				pbs_disconnect(connect);
+				pbs_disconnect(conn);
 				break;
 
 		} /* switch */
@@ -3406,4 +3434,22 @@ cnvt_est_start_time(char *est_time, int wide)
 	}
 
 	return timebuf;
+}
+
+/**
+ * @brief used to display server instance failures in case of  MULTI_SERVER
+ * 
+ * @return void
+ */
+static void
+show_svr_inst_fail(int fd)
+{
+	if (msvr_mode()) {
+		int i;
+		svr_conn_t *svr_connections = get_conn_servers(fd);
+		for (i = 0; i < get_num_servers(); i++) {
+			if (svr_connections[i].state != SVR_CONN_STATE_UP)
+				fprintf(stderr, "qstat: cannot conn to server %s\n", pbs_conf.psi[i].name);
+		}
+	}
 }

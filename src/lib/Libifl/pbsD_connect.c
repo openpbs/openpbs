@@ -126,7 +126,7 @@ __pbs_default()
  * @retval	servr name	success
  *
  */
-static char *
+char *
 PBS_get_server(char *server, char *server_name, unsigned int *port)
 {
 	int   i;

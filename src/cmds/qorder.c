@@ -67,7 +67,6 @@ main(int argc, char **argv, char **envp)
 	int connect;
 	int stat=0;
 	int rc = 0;
-	extern char *PBS_get_server();
 
 	/*test for real deal or just version and exit*/
 

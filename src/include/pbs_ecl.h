@@ -69,6 +69,8 @@ extern int   ecl_svr_attr_size;
 extern int   ecl_sched_attr_size;
 
 void set_no_attribute_verification(void);
+int pbs_verify_attributes_wrapper(int batch_request,
+	int parent_object, int cmd, struct attropl *attribute_list);
 
 extern int (*pfn_pbs_verify_attributes)(int connect, int batch_request,
 	int parent_object,  int command, struct attropl * attribute_list);

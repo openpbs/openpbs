@@ -2808,8 +2808,18 @@ do_connect(char *server_out, char *retmsg)
 	}
 
 	refresh_dfltqsubargs();
-	if (pbs_errno != PBSE_NONE)
-		return (pbs_errno);
+
+	if (pbs_errno != PBSE_NONE) {
+		if (msvr_mode() && (pbs_errno == PBSE_NOSERVER)) {
+			int i;
+			svr_conn_t *svr_connections = get_conn_servers(sd_svr);
+			for (i = 0; i < get_num_servers(); i++) {
+				if (svr_connections[i].state != SVR_CONN_STATE_UP)
+					sprintf(retmsg, "qsub: cannot connect to server %s (errno=%d)\n", svr_connections[i].name, pbs_errno);
+			}
+		}
+		return pbs_errno;
+	}
 
 	pbs_hostvar = malloc(pbs_o_hostsize + PBS_MAXHOSTNAME + 1);
 	if (!pbs_hostvar) {
