@@ -1466,7 +1466,6 @@ class SmokeTest(PBSTestSuite):
         self.server.log_match("Req;req_reject;Reject reply code=15175",
                               max_attempts=5)
 
-    @checkModule("pbs")
     def test_import_pbs_module(self):
         """
         Test that the pbs module located in the PBS installation directory is
@@ -1474,11 +1473,12 @@ class SmokeTest(PBSTestSuite):
         the PYTHONPATH environment variable contain the path
         PBS_EXEC/{lib,lib64}/python/altair.
         """
+        sys.path.append(os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'lib','python', 'altair'))
         import pbs
         msg = "pbs.JOB_STATE_RUNNING=%s" % (pbs.JOB_STATE_RUNNING,)
         self.logger.info(msg)
 
-    @checkModule("pbs_ifl")
     def test_import_pbs_ifl_module(self):
         """
         Test that the pbs_ifl module located in the PBS installation directory
@@ -1487,6 +1487,8 @@ class SmokeTest(PBSTestSuite):
         PBS_EXEC/{lib,lib64}/python/altair.
         """
         import pbs_ifl
+        sys.path.append(os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'lib','python', 'altair'))
         server_conn = pbs_ifl.pbs_connect(None)
         server_stat = pbs_ifl.pbs_statserver(server_conn, None, None)
         pbs_ifl.pbs_disconnect(server_conn)
