@@ -3449,7 +3449,6 @@ set_checkpoint_path(char *value)
 {
 	int		rc = 0;
 	char		newpath[_POSIX_PATH_MAX] = "\0";
-	int	perm;
 
 	/*
 	 * If value and path_checkpoint both contain the same address,
@@ -3496,6 +3495,7 @@ set_checkpoint_path(char *value)
 		strcat(newpath, "/");
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+	int	perm;
 	perm = get_permission("write");
 	rc = chk_file_sec(newpath, 1, 0, perm, 0);
 #else
@@ -4194,7 +4194,6 @@ read_config(char *file)
 	struct	config		*ap;
 	int			i, j;
 	int			addconfig_ret;
-	int perm;
 
 	/*	initialize variable that can be set by config entries in case	*/
 	/*	they are removed and we are HUPped				*/
@@ -4285,6 +4284,7 @@ read_config(char *file)
 			return 0;	/* ok for "config" not to be there  */
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+	int perm;
 	perm = get_permission("write");
 	if (chk_file_sec(file, 0, 0, perm, FULLPATH)) {
 		sprintf(log_buffer,
