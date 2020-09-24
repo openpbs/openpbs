@@ -538,7 +538,7 @@ process_socket(int sock)
  *
  */
 int
-wait_request(time_t waittime, void *priority_context)
+wait_request(float waittime, void *priority_context)
 {
 	int nfds;
 	int pnfds;
