@@ -287,7 +287,7 @@ extern "C" {
 #define PBSE_DEFAULT_PARTITION 15228	/* Default partition name is not allowed */
 #define PBSE_HISTDEPEND  15229		/* Finished job did not satisfy dependency */
 #define PBSE_SCHEDCONNECTED	15230
-#define PBSE_NOTARRAY  15231		/* Not an array job */
+#define PBSE_NOTARRAY_ATTR  15231		/* Not an array job */
 
 
 /* the following structure is used to tie error number      */

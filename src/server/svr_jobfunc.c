@@ -5692,7 +5692,7 @@ action_max_run_subjobs(attribute *pattr, void *pobject, int actmode)
 
 	jtype = is_job_array(pjob->ji_qs.ji_jobid);
 	if (jtype != IS_ARRAY_ArrayJob)
-		return PBSE_NOTARRAY;
+		return PBSE_NOTARRAY_ATTR;
 
 	return PBSE_NONE;
 }

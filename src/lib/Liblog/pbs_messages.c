@@ -600,7 +600,7 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_DEFAULT_PARTITION, &msg_default_partition},
 	{PBSE_HISTDEPEND, &msg_histdepend},
 	{PBSE_SCHEDCONNECTED, &msg_sched_already_connected},
-	{PBSE_NOTARRAY, &msg_notarray_attr},
+	{PBSE_NOTARRAY_ATTR, &msg_notarray_attr},
 	{0, NULL} /* MUST be the last entry */
 };
 
