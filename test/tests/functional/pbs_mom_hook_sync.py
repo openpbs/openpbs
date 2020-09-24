@@ -402,8 +402,8 @@ class TestMomHookSync(TestFunctional):
         self.compare_rescourcedef()
 
         # delete node
-        self.server.manager(MGR_CMD_DELETE, NODE, id=self.momB.hostname)
-        self.server.expect(NODE, 'state', id=self.momB.hostname, op=UNSET)
+        self.server.manager(MGR_CMD_DELETE, NODE, id=self.momB.shortname)
+        self.server.expect(NODE, 'state', id=self.momB.shortname, op=UNSET)
 
         # check if rescdef is deleted
         file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
@@ -413,10 +413,10 @@ class TestMomHookSync(TestFunctional):
             "resourcedef not deleted at mom")
 
         # recreate node
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.momB.hostname)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.momB.shortname)
 
         # check for status of the node
-        self.server.expect(NODE, {'state': 'free'}, id=self.momB.hostname)
+        self.server.expect(NODE, {'state': 'free'}, id=self.momB.shortname)
 
         # compare rescdef files between mom and server
         self.compare_rescourcedef()
