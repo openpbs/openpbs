@@ -5684,7 +5684,7 @@ recreate_exec_vnode_exit:
 int
 action_max_run_subjobs(attribute *pattr, void *pobject, int actmode)
 {
-	job * pjob = (job*)pobject;
+	job *pjob = (job*)pobject;
 	int jtype;
 
 	if (pjob == NULL)

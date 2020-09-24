@@ -863,7 +863,8 @@ e.accept()
         # attribute.
         with self.assertRaises(PbsSubmitError) as e:
             self.server.submit(Job())
-        self.assertIn("Not an array job", e.exception.msg[0])
+        self.assertIn("Attribute has to be set on an array job",
+                      e.exception.msg[0])
 
     @skipOnCpuSet
     def test_max_run_subjobs_modifyjob_hook(self):
@@ -891,7 +892,8 @@ e.accept()
         nj = self.server.submit(Job())
         with self.assertRaises(PbsAlterError) as e:
             self.server.alterjob(nj, {'Resource_List.soft_walltime': 50})
-        self.assertIn("Not an array job", e.exception.msg[0])
+        self.assertIn("Attribute has to be set on an array job",
+                      e.exception.msg[0])
 
     @skipOnCpuSet
     def test_max_run_subjobs_preemption(self):
@@ -999,14 +1001,11 @@ e.accept()
         """
         Test that setting max_run_subjobs on non-array jobs is rejected.
         """
-
-        qsub_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                'bin', 'qsub')
-
-        cmd = [qsub_cmd, '-Wmax_run_subjobs=4', '--', '/bin/sleep 100']
-        rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
-        self.assertNotEqual(rv['rc'], 0, 'qsub must fail')
-        self.assertEqual(rv['err'][0], "qsub: Not an array job")
+        a = {ATTR_W: 'max_run_subjobs=4'}
+        with self.assertRaises(PbsSubmitError) as e:
+            self.server.submit(Job(attrs=a))
+        self.assertIn("Attribute has to be set on an array job",
+                      e.exception.msg[0])
 
     def test_multiple_max_run_subjobs_values(self):
         """
