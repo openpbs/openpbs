@@ -187,15 +187,15 @@ distribute_licenseinfo(mominfo_t *pmom, int lic_count)
 		pnode = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
 		if (lic_rem) {
 			snprintf(str_val, sizeof(str_val), "%d", ((lic_count / (numvnds - 1)) + 1));
-			set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
+			set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
 						 &node_attr_def[ND_ATR_LicenseInfo],
-						 str_val);
+						 str_val, NULL, SET);
 			lic_rem -= 1;
 		} else {
 			snprintf(str_val, sizeof(str_val), "%d", (lic_count / (numvnds - 1)));
-			set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
+			set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
 						 &node_attr_def[ND_ATR_LicenseInfo],
-						 str_val);
+						 str_val, NULL, SET);
 		}
 	}
 }
@@ -297,9 +297,9 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
 		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
 
-		set_attr_svr(&(n->nd_attr[ND_ATR_License]),
+		set_attr_generic(&(n->nd_attr[ND_ATR_License]),
 					 &node_attr_def[ND_ATR_License],
-					 ND_LIC_locked_str);
+					 ND_LIC_locked_str, NULL, SET);
 		snprintf(log_buffer, sizeof(log_buffer),
 			"nd_attr[ND_ATR_License] copied from %s to %s",
 			pfrom_Lic->nd_name, n->nd_name);
@@ -349,8 +349,9 @@ set_node_lic_info_attr(pbsnode *pnode)
 		return;
 	else{
 		snprintf(str_val, sizeof(str_val), "%d", state);
-		set_attr_svr(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-		&node_attr_def[ND_ATR_LicenseInfo], str_val);
+		set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
+		&node_attr_def[ND_ATR_LicenseInfo], str_val, NULL, SET);
+		node_save_db(pnode);
 	}
 }
 
@@ -537,9 +538,9 @@ license_one_node(pbsnode *pnode)
 	if (license_counts.licenses_global > 0 || license_counts.licenses_used > 0) {
 		if (pnode->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked) {
 			if (consume_licenses(pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long) == 0) {
-				set_attr_svr(&(pnode->nd_attr[ND_ATR_License]),
+				set_attr_generic(&(pnode->nd_attr[ND_ATR_License]),
 					&node_attr_def[ND_ATR_License],
-					ND_LIC_locked_str);
+					ND_LIC_locked_str, NULL, SET);
 				update_license_highuse();
 			} else {
 				add_to_unlicensed_node_list(pnode);
@@ -610,9 +611,9 @@ license_nodes()
 		if ((np->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked)) {
 			if (np->nd_attr[(int)ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET) {
 				if (consume_licenses(np->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
-					set_attr_svr(&(np->nd_attr[(int)ND_ATR_License]),
+					set_attr_generic(&(np->nd_attr[(int)ND_ATR_License]),
 						 &node_attr_def[(int)ND_ATR_License],
-						 ND_LIC_locked_str);
+						 ND_LIC_locked_str, NULL, SET);
 					delete_link(&punodes->link);
 					free(punodes);
 				}
@@ -688,7 +689,6 @@ init_licensing(struct work_task *ptask)
 			  LOG_NOTICE, msg_daemonname, log_buffer);
 		return;
 	}
-
 	for (i = 0; i < svr_totnodes; i++) {
 	 	clear_node_lic_attrs(pbsndlist[i], 0);
 		if (pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long) {
@@ -760,7 +760,7 @@ validate_sign(char *sign, struct pbsnode *pnode)
 				clear_attr(ppnl, pnadl);
 				clear_attr(ppnli, pnadli);
 			}
-			set_attr_svr(ppnl, pnadl, ND_LIC_cloud_str);
+			set_attr_generic(ppnl, pnadl, ND_LIC_cloud_str, NULL, SET);
 			break;
 		case 1:
 			snprintf(log_buffer, sizeof(log_buffer),
@@ -901,6 +901,7 @@ unlicense_nodes(void)
 				&node_attr_def[ND_ATR_License]);
 			clear_attr(&np->nd_attr[ND_ATR_LicenseInfo],
 				&node_attr_def[ND_ATR_LicenseInfo]);
+			node_save_db(np);
 			if (first) {
 				first = 0;
 				sprintf(log_buffer, msg_node_unlicensed,
