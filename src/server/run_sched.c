@@ -216,7 +216,8 @@ find_sched_from_sock(int sock, conn_origin_t which)
 
 /**
  * @brief
- * Sets SCHED_ATR_sched_state, sets falgs on SVR_ATR_State, and saves the server
+ * Sets SCHED_ATR_sched_state and then sets flags on SVR_ATR_State if default scheduler.
+ * We need to set MOD_MCACHE so the attribute can get re-encoded
  *
  * @param[in] psched - scheduler to set state on
  * @param[in] state - state of scheduler
@@ -228,8 +229,8 @@ set_sched_state(pbs_sched *psched, char *state) {
 		return;
 
 	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], state, NULL, SET);
-	server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
-	svr_save_db(&server);
+	if (psched == dflt_scheduler)
+		server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
 }
 
 /**
