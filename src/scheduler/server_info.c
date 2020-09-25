@@ -189,6 +189,7 @@ query_server(status *pol, int pbs_sd)
 	char *errmsg;
 	resource_resv **jobs_alive;
 	status *policy;
+	int job_arrays_associated = FALSE;
 
 	if (pol == NULL)
 		return NULL;
@@ -361,7 +362,7 @@ query_server(status *pol, int pbs_sd)
 		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 		if (sinfo->alljobcounts == NULL)
 			sinfo->alljobcounts = allcts;
-
+		job_arrays_associated = TRUE;
 		/* set the user, group , project counts */
 		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			cts = find_alloc_counts(sinfo->user_counts,
@@ -388,8 +389,27 @@ query_server(status *pol, int pbs_sd)
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
 			update_counts_on_run(allcts, sinfo->running_jobs[i]->resreq);
+			/* Since we are already looping on running jobs, associcate running
+			 * subjobs to their parent.
+			 */
+			if ((sinfo->running_jobs[i]->job->is_subjob) &&
+			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
+				sinfo->fairshare = NULL;
+				free_server(sinfo);
+				return NULL;
+			}
 		}
 		create_total_counts(sinfo, NULL, NULL, SERVER);
+	}
+	if (job_arrays_associated == FALSE) {
+		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
+			if ((sinfo->running_jobs[i]->job->is_subjob) &&
+			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
+				sinfo->fairshare = NULL;
+				free_server(sinfo);
+				return NULL;
+			}
+		}
 	}
 
 	policy->equiv_class_resdef = create_resresv_sets_resdef(policy, sinfo);
@@ -2313,6 +2333,14 @@ dup_server_info(server_info *osinfo)
 	 * jobs to each other if they have runone dependency
 	 */
 	associate_dependent_jobs(nsinfo);
+
+	for (i = 0; nsinfo->running_jobs[i] != NULL; i++) {
+		if ((nsinfo->running_jobs[i]->job->is_subjob) &&
+		    (associate_array_parent(nsinfo->running_jobs[i], nsinfo) == 1)) {
+			free_server_info(nsinfo);
+			return NULL;
+		}
+	}
 
 	if (osinfo->job_sort_formula != NULL) {
 		nsinfo->job_sort_formula = string_dup(osinfo->job_sort_formula);

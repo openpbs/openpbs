@@ -656,6 +656,12 @@ action_sched_partition(attribute *new, void *pobj, int act)
 	return PBSE_NONE;
 }
 
+int
+action_max_run_subjobs(attribute *pattr, void *pobject, int actmode)
+{
+	return 0;
+}
+
 /**
  * @brief
  * 		decode_rcost - decode string into resource cost value
