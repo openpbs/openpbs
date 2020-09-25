@@ -358,7 +358,7 @@ schedule_jobs(pbs_sched *psched)
 		}
 
 		if (!send_sched_cmd(psched, cmd, jid)) {
-			set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
+			set_sched_state(psched, SC_DOWN);
 			return -1;
 		} else if (pdefr != NULL)
 			pdefr->dr_sent = 1;   /* mark entry as sent to sched */
