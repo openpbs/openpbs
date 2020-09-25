@@ -216,6 +216,24 @@ find_sched_from_sock(int sock, conn_origin_t which)
 
 /**
  * @brief
+ * Sets SCHED_ATR_sched_state, sets falgs on SVR_ATR_State, and saves the server
+ *
+ * @param[in] psched - scheduler to set state on
+ * @param[in] state - state of scheduler
+ *
+ */
+static void
+set_sched_state(pbs_sched *psched, char *state) {
+	if (psched == NULL)
+		return;
+
+	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], state, NULL, SET);
+	server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
+	svr_save_db(&server);
+}
+
+/**
+ * @brief
  * 	Receives end of cycle notification from the corresponding Scheduler
  *
  * @param[in] sock - socket to read
@@ -229,6 +247,7 @@ recv_sched_cycle_end(int sock)
 {
 	int rc = 0;
 	pbs_sched *psched = find_sched_from_sock(sock, CONN_SCHED_SECONDARY);
+	char *state = SC_IDLE;
 
 	if (!psched)
 		return 0;
@@ -238,12 +257,9 @@ recv_sched_cycle_end(int sock)
 	psched->sc_cycle_started = 0;
 
 	if (rc != 0)
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
-	else
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_IDLE, NULL, SET);
+		state = SC_DOWN;
 
-	server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
-	svr_save_db(&server);
+	set_sched_state(psched, state);
 
 	/* clear list of jobs which were altered/modified during cycle */
 	am_jobs.am_used = 0;
@@ -272,15 +288,11 @@ schedule_high(pbs_sched *psched)
 		return -1;
 	if (psched->sc_cycle_started == 0) {
 		if (!send_sched_cmd(psched, psched->svr_do_sched_high, NULL)) {
-			set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
-			server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
-			svr_save_db(&server);
+			set_sched_state(psched, SC_DOWN);
 			return -1;
 		}
 		psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_SCHEDULING, NULL, SET);
-		server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
-		svr_save_db(&server);
+		set_sched_state(psched, SC_SCHEDULING);
 		return 0;
 	}
 	return 1;
@@ -352,9 +364,7 @@ schedule_jobs(pbs_sched *psched)
 			pdefr->dr_sent = 1;   /* mark entry as sent to sched */
 
 		psched->svr_do_schedule = SCH_SCHEDULE_NULL;
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_SCHEDULING, NULL, SET);
-		server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
-		svr_save_db(&server);
+		set_sched_state(psched, SC_SCHEDULING);
 
 		first_time = 0;
 
@@ -410,7 +420,6 @@ scheduler_close(int sock)
 	else
 		return;
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_CRIT, psched->sc_name, "scheduler disconnected");
-	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], SC_DOWN, NULL, SET);
 	psched->sc_secondary_conn = -1;
 	psched->sc_primary_conn = -1;
 	if (other_conn != -1) {
@@ -418,8 +427,7 @@ scheduler_close(int sock)
 		close_conn(other_conn);
 	}
 	psched->sc_cycle_started = 0;
-	server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
-	svr_save_db(&server);
+	set_sched_state(psched, SC_DOWN);
 
 	/* clear list of jobs which were altered/modified during cycle */
 	am_jobs.am_used = 0;
