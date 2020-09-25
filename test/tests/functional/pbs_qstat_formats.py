@@ -580,6 +580,20 @@ class TestQstatFormats(TestFunctional):
         """
         os.environ["DOUBLEQUOTES"] = 'hi"ha'
         os.environ["REVERSESOLIDUS"] = r'hi\ha'
+        os.environ["MYVAR"] = """\'\"asads\"\'"""
+        os.environ["MYVAR2"] = """/home/pbstest01/Mo\\'"""
+        os.environ["FOO"] = """005"""
+        os.environ["MYVAR1"] = """\'"""
+        os.environ["MYVAR2"] = """\\'"""
+        os.environ["MYVAR3"] = """\\\\'"""
+        os.environ["MYVAR4"] = """\\\\\\'"""
+        os.environ["MYVAR5"] = """\\\\\\\\\\'"""
+        os.environ["MYVAR6"] = """\,"""
+        os.environ["MYVAR7"] = """\\,"""
+        os.environ["MYVAR8"] = """\\\\,"""
+        os.environ["MYVAR9"] = """\\\\\\,"""
+        os.environ["MYVAR10"] = """\\\\\\\\\\,"""
+        os.environ["MYVAR11"] = """apple\,delight"""
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'default_qsub_arguments': '-V'})
@@ -593,6 +607,7 @@ class TestQstatFormats(TestFunctional):
             ' -f -F json ' + str(jid)
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
         qstat_out = "\n".join(ret['out'])
+        self.logger.info(qstat_out)
         try:
             json.loads(qstat_out)
         except ValueError:
