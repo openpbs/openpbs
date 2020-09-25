@@ -147,6 +147,7 @@ typedef struct svr_conn {
 	char name[PBS_MAXSERVERNAME + 1];  /* server name */
 	int port;                    /* server port */
 	int from_sched;              /* flag to indicate whether this conn is from sched or not */
+	int registered;
 } svr_conn_t;
 
 typedef struct svr_conns_list {

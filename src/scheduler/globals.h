@@ -49,7 +49,6 @@ extern "C" {
 #include "queue.h"
 #include "sched_cmds.h"
 
-extern sched_svrconn **servers;
 extern void *poll_context;
 extern ds_queue *sched_cmds;
 
@@ -111,6 +110,10 @@ extern struct schedattrs sc_attrs;
 extern time_t last_attr_updates;    /* timestamp of the last time attr updates were sent */
 
 extern int send_job_attr_updates;
+
+extern int clust_primary_sock;
+
+extern int clust_secondary_sock;
 
 /**
  * @brief

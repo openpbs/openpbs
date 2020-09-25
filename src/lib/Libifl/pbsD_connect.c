@@ -391,6 +391,7 @@ get_conn_svr_instances(int parentfd)
 			msvr_conns[i].port = pbs_conf.psi[i].port;
 			msvr_conns[i].sd = -1;
 			msvr_conns[i].state = SVR_CONN_STATE_DOWN;
+			msvr_conns[i].registered = 0;
 		}
 		new_conns->conn_arr = msvr_conns;
 		new_conns->next = conn_list;
@@ -705,6 +706,7 @@ __pbs_disconnect(int connect)
 
 			svr_conns[i].sd = -1;
 			svr_conns[i].state = SVR_CONN_STATE_DOWN;
+			svr_conns[i].registered = 0;
 		}
 	} else {
 		/* fd doesn't belong to a multi-server setup, just disconnect and exit */

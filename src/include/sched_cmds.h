@@ -43,8 +43,8 @@
 extern "C" {
 #endif
 
+#include "pbs_ifl.h"
 typedef struct sched_cmd sched_cmd;
-typedef struct sched_svrconn sched_svrconn;
 
 struct sched_cmd {
 	/* sched command */
@@ -62,11 +62,6 @@ struct sched_cmd {
 	 *
 	 */
 	int from_sock;
-};
-struct sched_svrconn {
-	char *svrhost;	    /* address of host in host[:port] format */
-	int primary_sock;   /* primary connection to server - used for IFL calls */
-	int secondary_sock; /* secondary connection to server - used to receive sched cmds from server */
 };
 
 /* server to scheduler commands: */
@@ -89,7 +84,7 @@ struct sched_svrconn {
 #define SCH_SCHEDULE_RESV_RECONFIRM 16		/* Reconfirm a reservation */
 #define SCH_SCHEDULE_RESTART_CYCLE 17		/* Restart a scheduling cycle */
 
-int schedule(sched_svrconn *sconn, sched_cmd *cmd);
+int schedule(int sd, sched_cmd *cmd);
 
 #ifdef __cplusplus
 }
