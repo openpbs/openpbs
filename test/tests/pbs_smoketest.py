@@ -1469,12 +1469,9 @@ class SmokeTest(PBSTestSuite):
     def test_import_pbs_module(self):
         """
         Test that the pbs module located in the PBS installation directory is
-        able to be loaded and symbols within it accessed.  This test requires
-        the PYTHONPATH environment variable contain the path
-        PBS_EXEC/{lib,lib64}/python/altair.
+        able to be loaded and symbols within it accessed.
         """
-        sys.path.append(os.path.join(
-            self.server.pbs_conf['PBS_EXEC'], 'lib', 'python', 'altair'))
+        self.add_pbs_python_path_to_sys_path()
         import pbs
         msg = "pbs.JOB_STATE_RUNNING=%s" % (pbs.JOB_STATE_RUNNING,)
         self.logger.info(msg)
@@ -1483,12 +1480,9 @@ class SmokeTest(PBSTestSuite):
         """
         Test that the pbs_ifl module located in the PBS installation directory
         is able to be loaded and a connection to the server can be established.
-        This test requires the PYTHONPATH environment variable contain the path
-        PBS_EXEC/{lib,lib64}/python/altair.
         """
+        self.add_pbs_python_path_to_sys_path()
         import pbs_ifl
-        sys.path.append(os.path.join(
-            self.server.pbs_conf['PBS_EXEC'], 'lib', 'python', 'altair'))
         server_conn = pbs_ifl.pbs_connect(None)
         server_stat = pbs_ifl.pbs_statserver(server_conn, None, None)
         pbs_ifl.pbs_disconnect(server_conn)
