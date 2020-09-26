@@ -75,7 +75,7 @@ PBSD_preempt_jobs(int connect, char **preempt_jobs_list)
 	/* first, set up the body of the Preempt Jobs request */
 
 	if ((rc = encode_DIS_ReqHdr(connect, PBS_BATCH_PreemptJobs, pbs_current_user)) ||
-		(rc = encode_DIS_PreemptJobs(connect, preempt_jobs_list)) ||
+		(rc = encode_DIS_JobsList(connect, preempt_jobs_list)) ||
 		(rc = encode_DIS_ReqExtend(connect, NULL))) {
 			if (set_conn_errtxt(connect, dis_emsg[rc]) != 0) {
 				pbs_errno = PBSE_SYSTEM;

@@ -183,7 +183,7 @@ static struct batch_request *create_delete_request(char *job_id)
 	newreq = alloc_br(PBS_BATCH_DeleteJob);
 	if (newreq == NULL)
 		return NULL;
-	snprintf(newreq->rq_ind.rq_delete.rq_objname, sizeof(newreq->rq_ind.rq_delete.rq_objname), "%s", job_id);
+	newreq->rq_ind.rq_delete.rq_objname = strdup(job_id);
 	return newreq;
 }
 

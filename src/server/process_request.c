@@ -842,6 +842,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				net_add_close_func(sfds, (void (*)(int))0);
 			break;
 
+		case PBS_BATCH_DeleteJobList:
 		case PBS_BATCH_DeleteJob:
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				request->rq_ind.rq_delete.rq_objname,
@@ -1422,8 +1423,16 @@ free_br(struct batch_request *preq)
 		 * goes to zero,  reply_send() it
 		 */
 		if (preq->rq_parentbr->rq_refct > 0) {
-			if (--preq->rq_parentbr->rq_refct == 0)
-				reply_send(preq->rq_parentbr);
+			if (--preq->rq_parentbr->rq_refct == 0) {
+				if (preq->rq_parentbr->rq_type == PBS_BATCH_DeleteJobList) {
+					preq->rq_parentbr->rq_ind.rq_delete.tot_rpys += preq->rq_parentbr->rq_ind.rq_delete.tot_arr_jobs ;
+					if (preq->rq_parentbr->rq_ind.rq_delete.tot_rpys == preq->rq_parentbr->rq_ind.rq_delete.tot_jobs) {
+						log_err(-1, "reply_send", "reply_send called!\n");
+						reply_send(preq->rq_parentbr);
+					}
+				} else 
+					reply_send(preq->rq_parentbr);
+			}
 		}
 
 		if (preq->tppcmd_msgid)
@@ -1501,6 +1510,11 @@ free_br(struct batch_request *preq)
 			if (preq->rq_ind.rq_status.rq_id)
 				free(preq->rq_ind.rq_status.rq_id);
 			free_attrlist(&preq->rq_ind.rq_status.rq_attr);
+			break;
+		case PBS_BATCH_DeleteJobList:
+		case PBS_BATCH_DeleteJob:
+			if (preq->rq_ind.rq_delete.rq_objname)
+				free(preq->rq_ind.rq_delete.rq_objname);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:

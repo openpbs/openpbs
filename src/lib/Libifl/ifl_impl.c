@@ -215,6 +215,26 @@ pbs_deljob(int c, char *jobid, char *extend) {
 	return (*pfn_pbs_deljob)(c, jobid, extend);
 }
 
+/**
+ * @brief
+ *	Pass-through call to send the delete Job request
+ * 	really just an instance of the manager request
+ *
+ * @param[in] c - connection handler
+ * @param[in] jobid - job identifier
+ * @param[in] extend - string to encode req
+ *
+ * @return	struct batch_status *
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+struct batch_deljob_status *
+pbs_deljoblist(int c, char **jobid, char *extend) {
+	return (*pfn_pbs_deljoblist)(c, jobid, extend);
+}
+
+
 
 /**
  * @brief
@@ -529,6 +549,21 @@ void
 pbs_statfree(struct batch_status *bsp) {
 	(*pfn_pbs_statfree)(bsp);
 }
+
+/**
+ * @brief
+ *	-Pass-through call to deallocates a "batch_deljob_status" structure
+ *
+ * @param[in] bsp - pointer to batch request.
+ *
+ * @return	Void
+ *
+ */
+void
+pbs_delstatfree(struct batch_deljob_status *bdsp) {
+	(*pfn_pbs_delstatfree)(bdsp);
+}
+
 
 /**
  * @brief

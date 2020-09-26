@@ -66,6 +66,8 @@ char *__pbs_default(void);
 
 int __pbs_deljob(int, char *, char *);
 
+struct batch_deljob_status * __pbs_deljoblist(int, char **, char *);
+
 int __pbs_disconnect(int);
 
 char *__pbs_geterrmsg(int);
@@ -95,6 +97,8 @@ char **__pbs_selectjob(int, struct attropl *, char *);
 int __pbs_sigjob(int, char *, char *, char *);
 
 void __pbs_statfree(struct batch_status *);
+
+void __pbs_delstatfree(struct batch_deljob_status *);
 
 struct batch_status *__pbs_statrsc(int, char *, struct attrl *, char *);
 
