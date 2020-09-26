@@ -228,7 +228,7 @@ set_sched_state(pbs_sched *psched, char *state) {
 	if (psched == NULL)
 		return;
 
-	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], state, NULL, SET);
+	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], state, NULL, INTERNAL);
 	if (psched == dflt_scheduler)
 		server.sv_attr[(int)SVR_ATR_State].at_flags |= ATR_MOD_MCACHE;
 }
