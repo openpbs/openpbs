@@ -76,6 +76,28 @@ def get_hook_body(hook_msg):
     hook_body = textwrap.dedent(hook_body)
     return hook_body
 
+def get_hook_body_vnode_rpt():
+    hook_body = """
+    import pbs
+    import os, sys
+    try:
+        e = pbs.event()
+        v = e.vnode
+        v_o = e.vnode_o
+        lsct = v.last_state_change_time
+        lsct_o= v_o.last_state_change_time
+        pbs.logmsg(pbs.LOG_DEBUG, "comment: v=%s, v_o=%s" % (v.comment, v_o.comment))
+        pbs.logmsg(pbs.LOG_DEBUG, "state: v=%s, v_o=%s" % (hex(v.state), hex(v_o.state)))
+        pbs.logmsg(pbs.LOG_DEBUG, "last change time: v=%s, v_o=%s" % (str(lsct), str(lsct_o)))
+        e.accept()
+    except SystemExit:
+        pass
+    except:
+        pbs.event().reject("%s hook failed with %s" % (pbs.event().hook_name, sys.exc_info()[:2]))
+    """
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
+
 
 class TestPbsVnodeStateChangeEvents(TestFunctional):
 
@@ -243,4 +265,45 @@ class TestPbsVnodeStateChangeEvents(TestFunctional):
             self.server.log_match(hook_msg_00, starttime=start_time)
             self.server.log_match("vnode_name:%s" % hostbasename,
                                   starttime=start_time)
+        self.logger.info("---- TEST ENDED ----")
+        
+    @requirements(num_moms=2)
+    def test_hook_up_and_down_rpt_00(self):
+        """
+        Test:  this will test three things:
+        1.  The stopping and starting of a mom and the proper log messages.
+        2.  The testing of vnode and vnode_o hook param contents
+        3.  The stopping and starting of a mom and the proper hook firing.
+        """
+        self.logger.info("---- TEST STARTED ----")
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
+
+        attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
+        hook_name_00 = 'mvn00'
+        hook_msg_00 = 'running %s' % get_method_name(self)
+        hook_body_00 = get_hook_body_vnode_rpt()
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        self.logger.error("socket.gethostname():%s", socket.gethostname())
+        self.logger.error("***self.server.name:%s", str(self.server.name))
+        self.logger.error("self.server.moms:%s", str(self.server.moms))
+        for name, value in self.server.moms.items():
+            start_time = int(time.time())
+            self.logger.error("    ***%s:%s, type:%s", name, value,
+                              type(value))
+            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
+            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
+            self.logger.error("    ***stopping mom:%s", value)
+            value.stop()
+            self.logger.error("    ***start    mom:%s", value)
+            value.start()
+            self.logger.error("    ***restart  mom:%s", value)
+            value.restart()
+            self.server.log_match("Node;%s;node up" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+            # self.server.log_match(hook_msg_00, starttime=start_time)
         self.logger.info("---- TEST ENDED ----")

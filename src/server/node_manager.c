@@ -547,7 +547,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state->mom: do_set=%d "
 		"msr_state=0x%lx -> bits=0x%lx txt=%s mi_modtime=%ld", do_set,
 		psvrmom->msr_state, bits, txt, pmom->mi_modtime);
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_INFO,
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pmom->mi_host, local_log_buffer);
 		
 	/* Set the inuse_flag based off the value of setwhen */
@@ -1127,57 +1127,93 @@ get_vnode_state_op(enum vnode_state_op op)
 
 /**
  * @brief
- * 		Copy elements of a source vnode into a destination vnode_o
+ * 		Free a duplicated vnode
  *
- * @param[in]	vnode - the source
- * @param[in]	vnnode_o - the destination
- * 
- * @note
- * 	Assumes vnnode has previously been initialized and vnode_o->nd_name already set prior to invocation,
- * 	via a call to initialize_pbsnode(vnode_o, strdup(vnode->nd_name), NTYPE_PBS).
- *  Executes a shallow copy of vnode struct* and char* members.
+ * @param[in]	vnode - the vnode to free
  *  
- * 
- * @return  void
+ * @return void
  */
 static void
-copy_vnode_to_vnode_o(struct pbsnode *vnode, struct pbsnode *vnode_o)
+shallow_vnode_free(struct pbsnode *vnode)
+{
+	if (vnode) {
+		free(vnode);
+		vnode = NULL;
+	}
+}
+
+/**
+ * @brief
+ * 		Create a duplicate of the specified vnode
+ *
+ * @param[in]	vnode - the vnode to duplicate
+ * 
+ * @note
+ *  Creates a shallow duplicate of struct* and char* members.
+ *  
+ * 
+ * @return  duplicated vnode
+ */
+static struct pbsnode *
+shallow_vnode_dup(struct pbsnode *vnode)
 {
 	int i;
+	struct pbsnode *vnode_dup = NULL;
 
-	if (vnode == NULL || vnode_o == NULL) {
+	if (vnode == NULL) {
 		return;		
+	}
+
+	/* 
+	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
+	 */
+	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
+		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
+			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
+			shallow_vnode_free(vnode_dup);
+			return NULL;
+		}
+	} else {
+		log_err(PBSE_INTERNAL, __func__, "vnode_dup alloc failed");
+		return NULL;
 	}
 
 	/*
 	 * Copy vnode elements (same order as "struct pbsnode" element definition)
 	 */
-	vnode_o->nd_moms = vnode->nd_moms; /* FIXME: first free the vnode_o->nd_moms if not null */
-	vnode_o->nd_nummoms = vnode->nd_nummoms;
-	vnode_o->nd_nummslots = vnode->nd_nummslots;
-	vnode_o->nd_index = vnode->nd_index;
-	vnode_o->nd_arr_index = vnode->nd_arr_index;
-	vnode_o->nd_hostname = vnode->nd_hostname;
-	vnode_o->nd_psn = vnode->nd_psn;
-	vnode_o->nd_resvp = vnode->nd_resvp;
-	vnode_o->nd_nsn = vnode->nd_nsn;
-	vnode_o->nd_nsnfree = vnode->nd_nsnfree;
-	vnode_o->nd_ncpus = vnode->nd_ncpus;
-	vnode_o->nd_written = vnode->nd_written;
-	vnode_o->nd_state = vnode->nd_state;
-	vnode_o->nd_ntype = vnode->nd_ntype;
-	vnode_o->nd_accted = vnode->nd_accted;
-	vnode_o->nd_pque = vnode->nd_pque;
-	vnode_o->device = vnode->device;
-	for (i=0; i<(int)ND_ATR_LAST; i++) {
-		vnode_o->nd_attr[i] = vnode->nd_attr[i];
+	/* clear_attr the mom attribute does the free? */
+	if (vnode_dup->nd_moms) {
+		free(vnode_dup->nd_moms); /* free the initialize_pbsnode() allocation before assigning */
+		vnode_dup->nd_moms = NULL;
 	}
-	vnode_o->newobj = vnode->newobj;
-
-	/* FIXME: need to save ND_ATR_last_state_change_time value in vnode_o - see query_node_info() */	
-	/* FIXME: not yet complete! need to copy member attribute nd_attr[ND_ATR_LAST]; */
-	/* For reference see initialize_pbsnode calls */
-
+	vnode_dup->nd_moms = vnode->nd_moms;
+	vnode_dup->nd_nummoms = vnode->nd_nummoms;
+	vnode_dup->nd_nummslots = vnode->nd_nummslots;
+	vnode_dup->nd_index = vnode->nd_index;
+	vnode_dup->nd_arr_index = vnode->nd_arr_index;
+	vnode_dup->nd_hostname = vnode->nd_hostname;
+	vnode_dup->nd_psn = vnode->nd_psn;
+	vnode_dup->nd_resvp = vnode->nd_resvp;
+	vnode_dup->nd_nsn = vnode->nd_nsn;
+	vnode_dup->nd_nsnfree = vnode->nd_nsnfree;
+	vnode_dup->nd_ncpus = vnode->nd_ncpus;
+	vnode_dup->nd_written = vnode->nd_written;
+	vnode_dup->nd_state = vnode->nd_state;
+	vnode_dup->nd_ntype = vnode->nd_ntype;
+	vnode_dup->nd_accted = vnode->nd_accted;
+	vnode_dup->nd_pque = vnode->nd_pque;
+	vnode_dup->device = vnode->device;
+	vnode_dup->newobj = vnode->newobj;
+	for (i=0; i<(int)ND_ATR_LAST; i++) {
+		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
+		/* FIXME:
+		** if (i == ND_ATR_last_state_change_time) we might call (only for the last change time attr):
+		**    set_attr_svr(&(vnode_dup->nd_attr[i]), &node_attr_def[i], vnode->nd_attr[i].at_val.at_str)
+		** however the call was blowing up during my tests. Revisit/decide after merging w/master because
+		** in master set_attr_svr() has been replaced with set_attr_generic()
+		*/
+	}
+	return vnode_dup;
 }
 
 /**
@@ -1219,7 +1255,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	/*
-	 * Allocate space for the modifyvnode event params
+	 * Allocate space for the modifyvnode hook event params
 	 */
 	preq = alloc_br(PBS_BATCH_ModifyVnode);
 	if (preq == NULL) {
@@ -1228,22 +1264,12 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	/* 
-	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
+	 * Create a duplicate of the vnode
 	 */
-	if ((vnode_o = malloc(sizeof(struct pbsnode)))) {
-		/* FIXME: is "NTYPE_PBS" the correct param value for this call? */
-		if (initialize_pbsnode(vnode_o, strdup(pnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
-			log_err(PBSE_INTERNAL, __func__, "vnode_o initialization failed");
-			return;
-		}
-	} else {
-		log_err(PBSE_INTERNAL, __func__, "vnode_o alloc failed");
-		return;
-	}
-	copy_vnode_to_vnode_o(pnode, vnode_o);
+	vnode_o = shallow_vnode_dup(pnode);
 
 	/*
-	 * Apply specified state operation
+	 * Apply specified state operation (to the vnode only)
 	 */
 	switch (type) {
 		case Nd_State_Set:
@@ -1269,8 +1295,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	/* Write state change event to pbs log */
 	/* FIXME: verify we're using correct time type */
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
-		"set_vnode_state: vnode->nd_name=%s vnode->nd_state=0x%lx time=%ld vnode_o->nd_state=0x%lx",
-		pnode->nd_name,pnode->nd_state, time_int_val,vnode_o->nd_state);
+		"set_vnode_state: vnode->nd_state=0x%lx-> state_bits=0x%lx "
+		"type=%d type_r=%s time=%d vnode_o->nd_state=0x%lx", pnode->nd_state, state_bits,
+		type, get_vnode_state_op(type),time_int_val,vnode_o->nd_state);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pnode->nd_name, local_log_buffer);
 
@@ -1324,7 +1351,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		/* while node is provisioning, we don't want the reservation
 		 * to degrade, hence returning.
 		 */
-		goto fn_return;
+		goto fn_fire_event;
 	}
 
 	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
@@ -1346,12 +1373,16 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		(void) vnode_available(pnode);
 	}
 
-fn_return: 
+fn_fire_event: 
 	/* Fire off the vnode state change event */
 	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
-	free_br(preq);
-	preq = NULL;
-	/* FIXME: make sure vnode_o is appropriately freed */
+
+fn_free_and_return:
+	shallow_vnode_free(vnode_o);
+	if (preq) {
+		free_br(preq);
+		preq = NULL;
+	}
 }
 
 /**
