@@ -97,7 +97,7 @@ create_prev_job_info(resource_resv **jobs, int size)
 	if (local_size == 0)
 		return NULL;
 
-	if ((npji = (prev_job_info *) calloc(local_size, sizeof(prev_job_info))) == NULL) {
+	if ((npji = static_cast<prev_job_info *>(calloc(local_size, sizeof(prev_job_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

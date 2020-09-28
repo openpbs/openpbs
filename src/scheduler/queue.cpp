@@ -61,7 +61,7 @@ new_ds_queue(void)
 {
 	ds_queue *ret_obj = NULL;
 
-	ret_obj = (ds_queue *)malloc(sizeof(ds_queue));
+	ret_obj = static_cast<ds_queue *>(malloc(sizeof(ds_queue)));
 	if (ret_obj == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -125,7 +125,7 @@ ds_enqueue(ds_queue *queue, void *obj)
 		else
 			new_qsize = 2 * curr_qsize;
 
-		realloc_ptr = (void **)realloc(queue->content_arr, new_qsize * sizeof(void *));
+		realloc_ptr = static_cast<void **>(realloc(queue->content_arr, new_qsize * sizeof(void *)));
 		if (realloc_ptr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;

@@ -428,7 +428,7 @@ query_server(status *pol, int pbs_sd)
 
 	collect_resvs_on_nodes(sinfo->nodes, sinfo->resvs, sinfo->num_resvs);
 
-	sinfo->unordered_nodes = (node_info **)malloc((sinfo->num_nodes+1) * sizeof(node_info*));
+	sinfo->unordered_nodes = static_cast<node_info **>(malloc((sinfo->num_nodes+1) * sizeof(node_info*)));
 	if(sinfo->unordered_nodes == NULL) {
 		sinfo->fairshare = NULL;
 		free_server(sinfo);
@@ -1100,7 +1100,7 @@ new_server_info(int limallocflag)
 {
 	server_info *sinfo;			/* the new server */
 
-	if ((sinfo = (server_info *) malloc(sizeof(server_info))) == NULL) {
+	if ((sinfo = static_cast<server_info *>(malloc(sizeof(server_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1192,7 +1192,7 @@ new_resource()
 {
 	schd_resource *resp;		/* the new resource */
 
-	if ((resp = (schd_resource *)calloc(1,  sizeof(schd_resource))) == NULL) {
+	if ((resp = static_cast<schd_resource *>(calloc(1,  sizeof(schd_resource)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1837,14 +1837,13 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 	if (nsinfo == NULL || osinfo == NULL)
 		return 0;
 
-	if ((job_arr = (resource_resv **)
-		calloc((osinfo->sc.total + 1), sizeof(resource_resv *))) == NULL) {
+	if ((job_arr = static_cast<resource_resv **>(calloc((osinfo->sc.total + 1), sizeof(resource_resv *)))) == NULL) {
 		log_err(errno, __func__, "Error allocating memory");
 		return 0;
 	}
 
-	if ((all_arr = (resource_resv **) calloc((osinfo->sc.total + osinfo->num_resvs + 1),
-						 sizeof(resource_resv *))) == NULL) {
+	if ((all_arr = static_cast<resource_resv **>(calloc((osinfo->sc.total + osinfo->num_resvs + 1),
+						 sizeof(resource_resv *)))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, "Error allocating memory");
 		return 0;
@@ -1893,14 +1892,13 @@ create_server_arrays(server_info *sinfo)
 	resource_resv **resresv_arr;	/* used as source array to copy */
 	int i = 0, j;
 
-	if ((job_arr = (resource_resv **)
-		malloc(sizeof(resource_resv *) * (sinfo->sc.total + 1))) ==NULL) {
+	if ((job_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (sinfo->sc.total + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
-	if ((all_arr = (resource_resv **) malloc(sizeof(resource_resv *) *
-		(sinfo->sc.total + sinfo->num_resvs + 1))) == NULL) {
+	if ((all_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) *
+		(sinfo->sc.total + sinfo->num_resvs + 1)))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
@@ -2564,7 +2562,7 @@ new_counts(void)
 
 	counts *cts;
 
-	if ((cts = (struct counts *)malloc(sizeof(struct counts)))  == NULL) {
+	if ((cts = static_cast<struct counts *>(malloc(sizeof(struct counts)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -3284,7 +3282,7 @@ read_formula(void)
 		return NULL;
 	}
 
-	if ((form = (char *)malloc(bufsize + 1)) == NULL) {
+	if ((form = static_cast<char *>(malloc(bufsize + 1))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		fclose(fp);
 		return NULL;
@@ -3298,7 +3296,7 @@ read_formula(void)
 	while (fgets(buf, RF_BUFSIZE, fp) != NULL) {
 		len = strlen(form) + strlen(buf);
 		if (len > bufsize) {
-			tmp = (char *)realloc(form, len*2 + 1);
+			tmp = static_cast<char *>(realloc(form, len*2 + 1));
 			if (tmp == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free(form);
@@ -3330,7 +3328,7 @@ new_status(void)
 {
 	status *st;
 
-	st = (status *)malloc(sizeof(status));
+	st = static_cast<status *>(malloc(sizeof(status)));
 
 	if (st == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -3964,7 +3962,7 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	if(ct1 != ct2)
 		return NULL;
 
-	new_unordered_nodes = (node_info **)calloc((ct1 + 1), sizeof(node_info *));
+	new_unordered_nodes = static_cast<node_info **>(calloc((ct1 + 1), sizeof(node_info *)));
 	if (new_unordered_nodes == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;

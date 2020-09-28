@@ -84,7 +84,7 @@ string_dup(const char *str)
 	if (str == NULL)
 		return NULL;
 	len = strlen(str) + 1;
-	if ((newstr = (char *) malloc(len)) == NULL) {
+	if ((newstr = static_cast<char *>(malloc(len))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -369,7 +369,7 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 
 	size = count_array(ptrarr);
 
-	if ((new_arr = (void **) malloc((size + 1) * sizeof(void *))) == NULL) {
+	if ((new_arr = static_cast<void **>(malloc((size + 1) * sizeof(void *)))) == NULL) {
 		log_err(errno, __func__, "Error allocating memory");
 		return NULL;
 	}

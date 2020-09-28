@@ -153,7 +153,7 @@ query_resources(int pbs_sd)
 	 * allocated RES_HIGH resources for the expected resources and overrun our
 	 * array.  Better to waste a wee bit of memory for this case.
 	 */
-	defarr = (resdef **)malloc((num_defs + RES_HIGH + 1) * sizeof(resdef*));
+	defarr = static_cast<resdef **>(malloc((num_defs + RES_HIGH + 1) * sizeof(resdef*)));
 	if (defarr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -321,7 +321,7 @@ new_resdef(void)
 {
 	resdef *newdef;
 
-	if ((newdef = (resdef *)calloc(1, sizeof(resdef))) == NULL) {
+	if ((newdef = static_cast<resdef *>(calloc(1, sizeof(resdef)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -382,7 +382,7 @@ dup_resdef_array(resdef **odef_arr)
 
 	ct = count_array(odef_arr);
 
-	ndef_arr = (resdef **)malloc((ct + 1) * sizeof(resdef*));
+	ndef_arr = static_cast<resdef **>(malloc((ct + 1) * sizeof(resdef*)));
 	if (ndef_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -439,7 +439,7 @@ add_resdef_to_array(resdef ***resdef_arr, resdef *def)
 
 	cnt = count_array(*resdef_arr);
 
-	tmp_arr = (resdef **) realloc(*resdef_arr, (cnt + 2) * sizeof(resdef*));
+	tmp_arr = static_cast<resdef **>(realloc(*resdef_arr, (cnt + 2) * sizeof(resdef*)));
 	if (tmp_arr == NULL)
 		return -1;
 
@@ -472,7 +472,7 @@ copy_resdef_array(resdef **deflist)
 		return NULL;
 
 	cnt = count_array(deflist);
-	new_deflist = (resdef **)malloc((cnt + 1) * sizeof(resdef*));
+	new_deflist = static_cast<resdef **>(malloc((cnt + 1) * sizeof(resdef*)));
 	if (new_deflist == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -671,7 +671,7 @@ create_resource_signature(schd_resource *reslist, resdef **resources, unsigned i
 	if (reslist == NULL || resources == NULL)
 		return NULL;
 
-	if ((sig = (char *)malloc(1024)) == NULL) {
+	if ((sig = static_cast<char *>(malloc(1024))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -810,7 +810,7 @@ resstr_to_resdef(char **resstr)
 		return NULL;
 
 	cnt = count_array(resstr);
-	if ((tmparr = (resdef **)malloc((cnt + 1) * sizeof(resdef *))) == NULL) {
+	if ((tmparr = static_cast<resdef **>(malloc((cnt + 1) * sizeof(resdef *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

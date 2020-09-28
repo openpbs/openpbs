@@ -542,7 +542,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		return;
 	}
 
-	resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *) * (num_jobs_chunk + 1));
+	resresv_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (num_jobs_chunk + 1)));
 	if (resresv_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		data->error = 1;
@@ -865,7 +865,7 @@ alloc_tdata_jquery(status *policy, int pbs_sd, struct batch_status *jobs, queue_
 {
 	th_data_query_jinfo *tdata = NULL;
 
-	tdata = (th_data_query_jinfo *)malloc(sizeof(th_data_query_jinfo));
+	tdata = static_cast<th_data_query_jinfo *>(malloc(sizeof(th_data_query_jinfo)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -1028,7 +1028,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 
 	/* allocate enough space for all the jobs and the NULL sentinal */
-	resresv_arr = (resource_resv **) realloc(pjobs, sizeof(resource_resv*) * (num_jobs + 1));
+	resresv_arr = static_cast<resource_resv **>(realloc(pjobs, sizeof(resource_resv*) * (num_jobs + 1)));
 
 	if (resresv_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1069,7 +1069,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 				th_err = 1;
 				break;
 			}
-			task = (th_task_info *)malloc(sizeof(th_task_info));
+			task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 			if (task == NULL) {
 				free(tdata);
 				log_err(errno, __func__, MEM_ERR_MSG);
@@ -1085,7 +1085,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			pthread_cond_signal(&work_cond);
 			pthread_mutex_unlock(&work_lock);
 		}
-		jinfo_arrs_tasks = (resource_resv ***)malloc(num_tasks * sizeof(resource_resv**));
+		jinfo_arrs_tasks = static_cast<resource_resv ***>(malloc(num_tasks * sizeof(resource_resv**)));
 		if (jinfo_arrs_tasks == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			th_err = 1;
@@ -1425,7 +1425,7 @@ new_job_info()
 {
 	job_info *jinfo;
 
-	if ((jinfo = (job_info *) malloc(sizeof(job_info))) == NULL) {
+	if ((jinfo = static_cast<job_info *>(malloc(sizeof(job_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2270,7 +2270,7 @@ new_resresv_set(void)
 {
 	resresv_set *rset;
 
-	rset = (resresv_set *)malloc(sizeof(resresv_set));
+	rset = static_cast<resresv_set *>(malloc(sizeof(resresv_set)));
 	if (rset == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2393,7 +2393,7 @@ dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
 
 	len = count_array(osets);
 
-	rsets = (resresv_set **)malloc((len + 1) * sizeof(resresv_set *));
+	rsets = static_cast<resresv_set **>(malloc((len + 1) * sizeof(resresv_set *)));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2552,7 +2552,7 @@ create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 
 	def_ct = count_array(policy->resdef_to_check);
 	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
-	defs = (resdef **)malloc((def_ct + limres_ct + 6) * sizeof(resdef *));
+	defs = static_cast<resdef **>(malloc((def_ct + limres_ct + 6) * sizeof(resdef *)));
 
 	for (i = 0; i < def_ct; i++)
 		defs[i] = policy->resdef_to_check[i];
@@ -2746,7 +2746,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	resresvs = sinfo->jobs;
 
 	len = count_array(resresvs);
-	rsets = (resresv_set **)malloc((len + 1) * sizeof(resresv_set *));
+	rsets = static_cast<resresv_set **>(malloc((len + 1) * sizeof(resresv_set *)));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2773,7 +2773,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 		resresvs[i]->ec_index = cur_ind;
 	}
 
-	tmp_rset_arr = (resresv_set **)realloc(rsets,(j + 1) * sizeof(resresv_set *));
+	tmp_rset_arr = static_cast<resresv_set **>(realloc(rsets,(j + 1) * sizeof(resresv_set *)));
 	if (tmp_rset_arr != NULL)
 		rsets = tmp_rset_arr;
 	rset_len = count_array(rsets);
@@ -3059,12 +3059,12 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		return 0;
 
 	/* using calloc - saves the trouble to put NULL at end of list */
-	if ((preempted_list = (int *)calloc((sinfo->sc.running + 1), sizeof(int))) == NULL) {
+	if ((preempted_list = static_cast<int *>(calloc((sinfo->sc.running + 1), sizeof(int)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return -1;
 	}
 
-	if ((fail_list = (int *)calloc((sinfo->sc.running + 1), sizeof(int))) == NULL) {
+	if ((fail_list = static_cast<int *>(calloc((sinfo->sc.running + 1), sizeof(int)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free(preempted_list);
 		return -1;
@@ -3079,7 +3079,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		num_tries < MAX_PREEMPT_RETRIES) {
 		done = 1;
 
-		if ((preempt_jobs_list = (char **)calloc(no_of_jobs + 1, sizeof(char *))) == NULL) {
+		if ((preempt_jobs_list = static_cast<char **>(calloc(no_of_jobs + 1, sizeof(char *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			free(preempted_list);
 			free(fail_list);
@@ -3363,7 +3363,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		}
 	}
 
-	if ((pjobs = (resource_resv **) malloc(sizeof(resource_resv *) * (sinfo->sc.running + 1))) == NULL) {
+	if ((pjobs = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (sinfo->sc.running + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_schd_error_list(full_err);
 		return NULL;
@@ -3617,7 +3617,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	 */
 
 	if (rc > 0) {
-		if ((pjobs_list = (int *)calloc((j + 1), sizeof(int))) == NULL) {
+		if ((pjobs_list = static_cast<int *>(calloc((j + 1), sizeof(int)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			goto cleanup;
 		}
@@ -3814,7 +3814,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 							max_resdefs = count_array(policy->resdef_to_check);
 
 						if (max_resdefs > 0)    {
-							rdtc_non_consumable = (resdef **) calloc(sizeof(resdef *),(size_t) max_resdefs + 1);
+							rdtc_non_consumable = static_cast<resdef **>(calloc(sizeof(resdef *),(size_t) max_resdefs + 1));
 							if (rdtc_non_consumable != NULL) {
 								long resdef_index = 0;
 								long rdtc_nc_index = 0;
@@ -4329,13 +4329,13 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 
 	formula_buf_len = sizeof(buf) + strlen(formula) + 1;
 
-	formula_buf = (char *)malloc(formula_buf_len);
+	formula_buf = static_cast<char *>(malloc(formula_buf_len));
 	if (formula_buf == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
-	if ((globals = (char *)malloc(globals_size * sizeof(char))) == NULL  ) {
+	if ((globals = static_cast<char *>(malloc(globals_size * sizeof(char)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free(formula_buf);
 		return 0;
@@ -5450,7 +5450,7 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 			return temp;
 		default:
 			/* For all other errors return the copy of list back again */
-			temp = (resource_resv **)malloc((arr_length + 1) * sizeof(resource_resv *));
+			temp = static_cast<resource_resv **>(malloc((arr_length + 1) * sizeof(resource_resv *)));
 			if (temp == NULL) {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, MEM_ERR_MSG);
 				return NULL;
@@ -5500,7 +5500,7 @@ static char **parse_runone_job_list(char *depend_val) {
 			len++;
 	}
 
-	ret = (char **)calloc(len + 1, sizeof(char *));
+	ret = static_cast<char **>(calloc(len + 1, sizeof(char *)));
 	if (ret == NULL) {
 		free(depend_str);
 		return NULL;
@@ -5541,7 +5541,7 @@ void associate_dependent_jobs(server_info *sinfo) {
 			if (job_arr != NULL) {
 				int j;
 				int len = count_array(job_arr);
-				sinfo->jobs[i]->job->dependent_jobs = (resource_resv **)calloc((len + 1), sizeof(resource_resv *));
+				sinfo->jobs[i]->job->dependent_jobs = static_cast<resource_resv **>(calloc((len + 1), sizeof(resource_resv *)));
 				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
 				for (j = 0; job_arr[j] != NULL; j++) {
 					resource_resv *jptr = NULL;

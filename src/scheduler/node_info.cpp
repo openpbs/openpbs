@@ -179,7 +179,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 	end = data->eidx;
 	num_nodes_chunk = end - start + 1;
 
-	if ((ninfo_arr = (node_info **) malloc((num_nodes_chunk + 1) * sizeof(node_info *))) == NULL) {
+	if ((ninfo_arr = static_cast<node_info **>(malloc((num_nodes_chunk + 1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		data->error = 1;
 		return;
@@ -341,7 +341,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 		ninfo_arr[nidx] = NULL;
 	} else {
-		if ((ninfo_arr = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
+		if ((ninfo_arr = static_cast<node_info **>(malloc((num_nodes + 1) * sizeof(node_info *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			pbs_statfree(nodes);
 			return NULL;
@@ -641,7 +641,7 @@ new_node_info()
 {
 	node_info *nnode;
 
-	if ((nnode = (node_info *) malloc(sizeof(node_info))) == NULL) {
+	if ((nnode = static_cast<node_info *>(malloc(sizeof(node_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1160,7 +1160,7 @@ node_filter(node_info **nodes, int size,
 	if (size < 0)
 		size = count_array(nodes);
 
-	if ((new_nodes = (node_info **) malloc((size + 1) * sizeof(node_info *))) == NULL) {
+	if ((new_nodes = static_cast<node_info **>(malloc((size + 1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1174,7 +1174,7 @@ node_filter(node_info **nodes, int size,
 	new_nodes[j] = NULL;
 
 	if (!(flags & FILTER_FULL)) {
-		if ((new_nodes_tmp = (node_info **) realloc(new_nodes, (j+1) * sizeof(node_info *))) == NULL)
+		if ((new_nodes_tmp = static_cast<node_info **>(realloc(new_nodes, (j+1) * sizeof(node_info *)))) == NULL)
 			log_err(errno, __func__, MEM_ERR_MSG);
 		else
 			new_nodes = new_nodes_tmp;
@@ -1347,7 +1347,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 
 	num_nodes = thread_node_ct_left = count_array(onodes);
 
-	if ((nnodes = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
+	if ((nnodes = static_cast<node_info **>(malloc((num_nodes + 1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2091,7 +2091,7 @@ new_nspec()
 {
 	nspec *ns;
 
-	if ((ns = (nspec *) malloc(sizeof(nspec))) == NULL) {
+	if ((ns = static_cast<nspec *>(malloc(sizeof(nspec)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2188,7 +2188,7 @@ dup_nspecs(nspec **onspecs, node_info **ninfo_arr, selspec *sel)
 	for (num_ns = 0; onspecs[num_ns] != NULL; num_ns++)
 		;
 
-	if ((nnspecs = (nspec **) malloc(sizeof(nspec *) * (num_ns + 1))) == NULL)
+	if ((nnspecs = static_cast<nspec **>(malloc(sizeof(nspec *) * (num_ns + 1)))) == NULL)
 		return NULL;
 
 	for (i = 0; onspecs[i] != NULL; i++)
@@ -2372,7 +2372,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	else
 		num_nspecs = spec->total_chunks;
 
-	if ((*nspec_arr = (nspec **) calloc(num_nspecs + 1, sizeof(nspec*))) == NULL) {
+	if ((*nspec_arr = static_cast<nspec **>(calloc(num_nspecs + 1, sizeof(nspec*)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
@@ -4427,7 +4427,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	if (sel != NULL && num_paren != sel->total_chunks)
 		sel = NULL;
 
-	if ((nspec_arr = (nspec **) calloc(num_chunk + 1, sizeof(nspec *))) == NULL) {
+	if ((nspec_arr = static_cast<nspec **>(calloc(num_chunk + 1, sizeof(nspec *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

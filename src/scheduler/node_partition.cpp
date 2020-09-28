@@ -105,7 +105,7 @@ new_node_partition()
 {
 	node_partition *np;
 
-	if ((np = (node_partition *)malloc(sizeof(node_partition))) == NULL) {
+	if ((np = static_cast<node_partition *>(malloc(sizeof(node_partition)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -204,7 +204,7 @@ dup_node_partition_array(node_partition **onp_arr, server_info *nsinfo)
 	for (i = 0; onp_arr[i] != NULL; i++)
 		;
 
-	if ((nnp_arr = (node_partition **)malloc((i+1) * sizeof(node_partition *))) == NULL) {
+	if ((nnp_arr = static_cast<node_partition **>(malloc((i+1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -290,7 +290,7 @@ copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps
 		return NULL;
 
 	cnt = count_array(onp_arr);
-	if ((nnp_arr = (node_partition **)malloc((cnt + 1) * sizeof(node_partition *))) == NULL) {
+	if ((nnp_arr = static_cast<node_partition **>(malloc((cnt + 1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -416,8 +416,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 
 	num_nodes = count_array(nodes);
 
-	if ((np_arr = (node_partition **)
-		malloc((num_nodes + 1) * sizeof(node_partition *))) == NULL) {
+	if ((np_arr = static_cast<node_partition **>(malloc((num_nodes + 1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -467,8 +466,8 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 					np = find_node_partition(np_arr, str);
 					if (np == NULL) {
 						if (np_i >= np_arr_size) {
-							tmp_arr = (node_partition **)realloc(np_arr,
-								(np_arr_size * 2 + 1) * sizeof(node_partition *));
+							tmp_arr = static_cast<node_partition **>(realloc(np_arr,
+								(np_arr_size * 2 + 1) * sizeof(node_partition *)));
 							if (tmp_arr == NULL) {
 								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
@@ -539,7 +538,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 		hostres = NULL;
 
 		np_arr[np_i]->ninfo_arr =
-			(node_info **)malloc((np_arr[np_i]->tot_nodes + 1) * sizeof(node_info *));
+			static_cast<node_info **>(malloc((np_arr[np_i]->tot_nodes + 1) * sizeof(node_info *)));
 
 		if (np_arr[np_i]->ninfo_arr == NULL) {
 			free_node_partition_array(np_arr);
@@ -781,7 +780,7 @@ new_np_cache(void)
 {
 	np_cache *npc;
 
-	if ((npc = (np_cache *)malloc(sizeof(np_cache))) == NULL) {
+	if ((npc = static_cast<np_cache *>(malloc(sizeof(np_cache)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -975,7 +974,7 @@ add_np_cache(np_cache ***npc_arr, np_cache *npc)
 	ct = count_array(cur_cache);
 
 	/* ct+2: 1 for new element 1 for NULL ptr */
-	new_cache = (np_cache **)realloc(cur_cache, (ct+2) * sizeof(np_cache *));
+	new_cache = static_cast<np_cache **>(realloc(cur_cache, (ct+2) * sizeof(np_cache *)));
 
 	if (new_cache == NULL)
 		return 0;
@@ -1176,7 +1175,7 @@ create_specific_nodepart(status *policy, const char *name, node_info **nodes, in
 	np->res_val = string_dup("none");
 	np->rank = get_sched_rank();
 
-	np->ninfo_arr = (node_info **)malloc((cnt + 1) * sizeof(node_info*));
+	np->ninfo_arr = static_cast<node_info **>(malloc((cnt + 1) * sizeof(node_info*)));
 	if (np->ninfo_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_node_partition(np);

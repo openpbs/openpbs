@@ -881,26 +881,26 @@ init_config()
 	memset(&conf, 0, sizeof(struct config));
 	memset(&cstat, 0, sizeof(struct status));
 
-	if ((conf.prime_sort = (sort_info *)malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.prime_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.prime_sort, 0, (MAX_SORTS + 1) * sizeof(struct sort_info));
 
-	if ((conf.non_prime_sort = (sort_info *)malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.non_prime_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.non_prime_sort, 0, (MAX_SORTS + 1) *
 		sizeof(struct sort_info));
 
-	if ((conf.prime_node_sort = (sort_info *)malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.prime_node_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.prime_node_sort, 0, (MAX_SORTS + 1) * sizeof(struct sort_info));
 
-	if ((conf.non_prime_node_sort = (sort_info *)malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.non_prime_node_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}

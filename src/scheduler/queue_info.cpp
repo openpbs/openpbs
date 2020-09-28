@@ -167,7 +167,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		cur_queue = cur_queue->next;
 	}
 
-	if ((qinfo_arr = (queue_info **) malloc(sizeof(queue_info *) * (num_queues + 1))) == NULL) {
+	if ((qinfo_arr = static_cast<queue_info **>(malloc(sizeof(queue_info *) * (num_queues + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		pbs_statfree(queues);
 		free_schd_error(sch_err);
@@ -531,7 +531,7 @@ new_queue_info(int limallocflag)
 {
 	queue_info *qinfo;
 
-	if ((qinfo = (queue_info *)malloc(sizeof(queue_info))) == NULL) {
+	if ((qinfo = static_cast<queue_info *>(malloc(sizeof(queue_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -875,8 +875,8 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
 	if (oqueues == NULL)
 		return NULL;
 
-	if ((new_queues = (queue_info **) malloc(
-		(nsinfo->num_queues + 1) * sizeof(queue_info*))) == NULL) {
+	if ((new_queues = static_cast<queue_info **>(malloc(
+		(nsinfo->num_queues + 1) * sizeof(queue_info*)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

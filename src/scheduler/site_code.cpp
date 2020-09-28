@@ -529,7 +529,7 @@ site_dup_share_amts(sh_amt *oldp)
 	if (oldp == NULL)
 		return NULL;
 	sz = shr_class_count * sizeof(*newp);
-	newp = (sh_amt *)malloc(sz);
+	newp = static_cast<sh_amt *>(malloc(sz);
 	if (newp == NULL)
 		return NULL;
 	memcpy(newp, oldp, sz);
@@ -610,7 +610,7 @@ site_free_shares(server_info *sinfo)
 
 /*
  *=====================================================================
- * site_get_share( resresv ) - Get ratio of cpus used to allocated
+ * site_get_sharestatic_cast< resresv >(Get ratio of cpus used to allocated
  * Entry:	resresv = pointer to resource_resv
  * Returns:	Approximate ratio of current CPUs in use to allocation
  *		for job's group.
@@ -651,7 +651,7 @@ site_get_share(resource_resv *resresv)
 
 /*
  *=====================================================================
- * site_init_alloc( sinfo ) - Initialize allocated shares CPUs data
+ * site_init_allocstatic_cast< sinfo >(Initialize allocated shares CPUs data
  * Entry:	sinfo = ptr to server_info, with all data about jobs,
  *			queues, nodes, etc, already collected.
  * Exit:	alloc info updated
@@ -1003,7 +1003,7 @@ site_parse_shares(char *fname)
 			 * Set up default class and type entries
 			 */
 			strcpy(log_buffer, "Malloc failure"); /* just in case */
-			tclass = (shr_class *)malloc(sizeof(*tclass));
+			tclass = static_cast<shr_class *>(malloc(sizeof(*tclass));
 			if (tclass == NULL) {
 				goto err_out_l;
 			}
@@ -1013,7 +1013,7 @@ site_parse_shares(char *fname)
 			new_shr_clses = tclass;
 			new_cls_tail = tclass;
 
-			ttype = (shr_type *)malloc(sizeof(*ttype));
+			ttype = static_cast<shr_type *>(malloc(sizeof(*ttype));
 			if (ttype == NULL) {
 				goto err_out_l;
 			}
@@ -1060,7 +1060,7 @@ site_parse_shares(char *fname)
 						/*
 						 * New class.  Add to list.
 						 */
-						tclass = (shr_class *)malloc(sizeof(*tclass)
+						tclass = static_cast<shr_class *>(malloc(sizeof(*tclass)
 							+ strlen(sp));
 						if (tclass == NULL)
 							goto err_out_l;
@@ -1088,7 +1088,7 @@ site_parse_shares(char *fname)
 					}
 				}
 				if (ttype == NULL) {
-					ttype = (shr_type *)malloc(sizeof(*ttype) + strlen(sp2));
+					ttype = static_cast<shr_type *>(malloc(sizeof(*ttype) + strlen(sp2));
 					if (ttype == NULL)
 						goto err_out_l;
 					ttype->sh_tidx = new_type_cnt++;
@@ -1106,7 +1106,7 @@ site_parse_shares(char *fname)
 				}
 			}
 			++state;
-			tshares = (sh_amt *)malloc(new_cls_cnt * sizeof(*tshares));
+			tshares = static_cast<sh_amt *>(malloc(new_cls_cnt * sizeof(*tshares));
 			if (tshares == NULL) {
 				goto err_out_l;
 			}
@@ -1259,7 +1259,7 @@ site_parse_shares(char *fname)
 		if (strpbrk(pattern, "|*.\\(){}[]+") != NULL) {
 			int result;
 			enum share_info::pattern_type ptype = share_info::pattern_type::PATTERN_COMBINED;
-			char *t = (char *)malloc(strlen(pattern) + 3);
+			char *t = static_cast<char *>(malloc(strlen(pattern) + 3);
 			char *t2 = pattern;
 			if (t != NULL) {
 				if (*t2 == '+') {
@@ -1601,7 +1601,7 @@ site_set_job_share(resource_resv *resresv)
 	if (shr_class_count == 0 || shr_selector == NULL)
 		return;
 	if ((sh_amts = job->sh_amts) == NULL) {
-		sh_amts = (sh_amt *)malloc(shr_class_count * sizeof(*sh_amts));
+		sh_amts = static_cast<sh_amt *>(malloc(shr_class_count * sizeof(*sh_amts));
 		if (sh_amts == NULL)
 			return;
 		job->sh_amts = sh_amts;

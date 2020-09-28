@@ -181,7 +181,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 		cur_resv = cur_resv->next;
 	}
 
-	if ((resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *) * (num_resv + 1))) == NULL) {
+	if ((resresv_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (num_resv + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_schd_error(err);
 		return NULL;
@@ -464,8 +464,8 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			sinfo->num_resvs += count - occr_idx;
 
 			/* Resize the reservations array to append each occurrence */
-			if ((tmp = (resource_resv **) realloc(resresv_arr,
-				sizeof(resource_resv *) * (sinfo->num_resvs + 1))) == NULL) {
+			if ((tmp = static_cast<resource_resv **>(realloc(resresv_arr,
+				sizeof(resource_resv *) * (sinfo->num_resvs + 1)))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resource_resv_array(resresv_arr);
 				free_resource_resv(resresv);
@@ -846,7 +846,7 @@ new_resv_info()
 {
 	resv_info *rinfo;
 
-	if ((rinfo = (resv_info *) malloc(sizeof(resv_info))) == NULL) {
+	if ((rinfo = static_cast<resv_info *>(malloc(sizeof(resv_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1121,7 +1121,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					 * reservations, we create an array with a single entry to hold the
 					 * advance reservation's execvnode.
 					 */
-					occr_execvnodes_arr = (char **)malloc(sizeof(char *));
+					occr_execvnodes_arr = static_cast<char **>(malloc(sizeof(char *)));
 					if (occr_execvnodes_arr == NULL) {
 						free_server(nsinfo);
 						log_err(errno, __func__, MEM_ERR_MSG);
@@ -1408,7 +1408,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			occr_count = 1;
 	}
 
-	if ((occr_start_arr = (time_t *) calloc(sizeof(time_t), occr_count)) == NULL) {
+	if ((occr_start_arr = static_cast<time_t *>(calloc(sizeof(time_t), occr_count))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return RESV_CONFIRM_FAIL;
 	}
@@ -2001,7 +2001,7 @@ check_vnodes_unavailable(resource_resv *resv)
 	}
 
 	if (has_superchunk) {
-		if ((chunks_to_remove = (nspec **)malloc((num_chunks + 1) * sizeof(nspec *))) == NULL) {
+		if ((chunks_to_remove = static_cast<nspec **>(malloc((num_chunks + 1) * sizeof(nspec *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return -3;
 		}
@@ -2124,7 +2124,7 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 	if (nspec_arr != NULL) {
 		for (i = 0; nspec_arr[i] != NULL; i++)
 			;
-		nodes = (node_info **)malloc((i+1) * sizeof(node_info *));
+		nodes = static_cast<node_info **>(malloc((i+1) * sizeof(node_info *)));
 		if (nodes != NULL) {
 			for (i = 0; nspec_arr[i] != NULL; i++) {
 				/* please note - the new duplicated nodes will NOT be part

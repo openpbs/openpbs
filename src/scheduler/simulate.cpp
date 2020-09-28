@@ -871,7 +871,7 @@ create_events(server_info *sinfo)
 	 * Once the first non-timed event is reached, we're done
 	 */
 	all_resresv_len = count_array(sinfo->all_resresv);
-	all_resresv_copy = (resource_resv **)malloc((all_resresv_len + 1) * sizeof(resource_resv *));
+	all_resresv_copy = static_cast<resource_resv **>(malloc((all_resresv_len + 1) * sizeof(resource_resv *)));
 	if (all_resresv_copy == NULL)
 		return 0;
 	for (i = 0; sinfo->all_resresv[i] != NULL; i++)
@@ -944,7 +944,7 @@ new_event_list()
 {
 	event_list *elist;
 
-	if ((elist = (event_list *)malloc(sizeof(event_list))) == NULL) {
+	if ((elist = static_cast<event_list *>(malloc(sizeof(event_list)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1051,7 +1051,7 @@ new_timed_event()
 {
 	timed_event *te;
 
-	if ((te = (timed_event *)malloc(sizeof(timed_event))) == NULL) {
+	if ((te = static_cast<timed_event *>(malloc(sizeof(timed_event)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1110,7 +1110,7 @@ dup_timed_event(timed_event *ote, server_info *nsinfo)
 te_list *
 new_te_list() {
 	te_list *tel;
-	tel = (te_list *)malloc(sizeof(te_list));
+	tel = static_cast<te_list *>(malloc(sizeof(te_list)));
 
 	if(tel == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
