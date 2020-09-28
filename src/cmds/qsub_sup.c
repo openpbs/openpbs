@@ -125,7 +125,6 @@ extern int	Forwardx11_opt;
 extern int	sd_svr; /* return from pbs_connect */
 extern int	is_background;
 extern size_t	cred_len;
-extern int pid;
 
 
 extern int recv_attrl(void *s, struct attrl **attrib);
@@ -542,8 +541,11 @@ port_X11(void)
  *
  */
 void
-do_daemon_stuff(char *fname, char *handle, char *server)
+do_daemon_stuff()
 {
+	int pid;
+
+	pid = fork();
 	if (pid == 0) {
 		/*
 		 * Try to become the session leader.
@@ -1681,7 +1683,7 @@ error:
  * @return     rc                - Error code
  */
 int
-daemon_submit(int *daemon_up, int *do_regular_submit, char *qsub)
+daemon_submit(int *daemon_up, int *do_regular_submit)
 {
 	int sock; /* UNIX domain socket for talking to daemon */
 	struct sockaddr_un s_un;
@@ -1774,19 +1776,4 @@ again:
 		close(sock);
 	}
 	return rc;
-}
-
-
-
-int 
-check_for_background(int argc, char** argv)
-{
-	int back_exists = 0;
-	back_exists = check_qsub_daemon(fl);
-	if (back_exists == 1) {
-		return 1;
-	} else {
-		pid = fork();
-		return 0;
-	}
 }

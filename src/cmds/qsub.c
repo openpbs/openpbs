@@ -185,7 +185,6 @@ char server_out[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2]; /* Destination server, 
 char script_tmp[MAXPATHLEN + 1] = { '\0' }; /* name of script file copy */
 int  sd_svr; /* return from pbs_connect */
 char *display; /* environment variable DISPLAY */
-char qsub_exe[MAXPATHLEN + 1];
 struct attrl *attrib = NULL; /* Attribute list */
 static struct attrl *attrib_o = NULL; /* Original attribute list, before applying default_qsub_arguments */
 static char dir_prefix[MAX_QSUB_PREFIX_LEN + 1]; /* Directive Prefix, specified by C opt */
@@ -296,7 +295,7 @@ static int max_run_opt = FALSE;
 extern char **environ;
 
 extern void blockint(int sig);
-extern void do_daemon_stuff(char *, char *, char *);
+extern void do_daemon_stuff();
 extern void enable_gui(void);
 extern void set_sig_handlers(void);
 extern void interactive(void);
@@ -3194,6 +3193,7 @@ regular_submit(int daemon_up)
 		else
 			rc = -1;
 	}
+	do_daemon_stuff();
 	return rc;
 }
 
@@ -3215,9 +3215,6 @@ main(int argc, char **argv, char **envp) /* qsub */
 	char **argv_cpy; /* copy argv for getopt */
 	int i;
 
-	if (initsocketlib())
-		return 1;
-
 	/* Set signal handlers */
 	(void)set_sig_handlers();
 
@@ -3237,15 +3234,6 @@ main(int argc, char **argv, char **envp) /* qsub */
 		exit_qsub(2);
 	}
 
-	// Check if a background qsub exists
-	no_background = check_for_background(argc, argv);
-
-	if (no_background == 0) {
-		if (argc == 4)
-			do_daemon_stuff(argv[2], argv[3], NULL);
-		else
-			do_daemon_stuff(argv[2], argv[3], argv[4]);
-	}
 
 	/*
 	 * If qsub command is submitted with arguments, then capture them and
@@ -3298,7 +3286,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 
 	/* Parse destination string */
 	server_out[0] = '\0';
-	if (parse_destination_id(destination, &q_n_out, &s_n_out)) { // This call may be needed
+	if (parse_destination_id(destination, &q_n_out, &s_n_out)) {
 		fprintf(stderr, "qsub: illegally formed destination: %s\n", destination);
 		(void)unlink(script_tmp);
 		exit_qsub(2);
@@ -3332,7 +3320,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 	 */
 	if ((Interact_opt || block_opt || no_background) == 0) {
 		/* Try to submit jobs using a daemon */
-		rc = daemon_submit(&daemon_up, &do_regular_submit, qsub_exe);
+		rc = daemon_submit(&daemon_up, &do_regular_submit);
 	}
 
 	if (do_regular_submit == 1)
