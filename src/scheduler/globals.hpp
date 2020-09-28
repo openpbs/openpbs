@@ -120,8 +120,6 @@ extern int send_job_attr_updates;
  */
 extern char *cmp_aoename;
 
-struct schedattrs * get_sc_attrs(void);
-
 #ifdef	__cplusplus
 }
 #endif

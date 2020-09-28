@@ -181,7 +181,3 @@ struct schedattrs sc_attrs;
 time_t last_attr_updates = 0;
 
 int send_job_attr_updates = 1;
-
-struct schedattrs * get_sc_attrs(void) {
-	return &sc_attrs;
-}
