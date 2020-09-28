@@ -639,92 +639,92 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 node_info *
 new_node_info()
 {
-	node_info *new_;
+	node_info *nnode;
 
-	if ((new_ = (node_info *) malloc(sizeof(node_info))) == NULL) {
+	if ((nnode = (node_info *) malloc(sizeof(node_info))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	new_->is_down = 0;
-	new_->is_free = 0;
-	new_->is_offline = 0;
-	new_->is_unknown = 0;
-	new_->is_exclusive = 0;
-	new_->is_job_exclusive = 0;
-	new_->is_resv_exclusive = 0;
-	new_->is_sharing = 0;
-	new_->is_pbsnode = 0;
-	new_->is_busy = 0;
-	new_->is_job_busy = 0;
-	new_->is_stale = 0;
-	new_->is_maintenance = 0;
-	new_->is_provisioning = 0;
-	new_->is_sleeping = 0;
-	new_->is_multivnoded = 0;
-	new_->has_ghost_job = 0;
+	nnode->is_down = 0;
+	nnode->is_free = 0;
+	nnode->is_offline = 0;
+	nnode->is_unknown = 0;
+	nnode->is_exclusive = 0;
+	nnode->is_job_exclusive = 0;
+	nnode->is_resv_exclusive = 0;
+	nnode->is_sharing = 0;
+	nnode->is_pbsnode = 0;
+	nnode->is_busy = 0;
+	nnode->is_job_busy = 0;
+	nnode->is_stale = 0;
+	nnode->is_maintenance = 0;
+	nnode->is_provisioning = 0;
+	nnode->is_sleeping = 0;
+	nnode->is_multivnoded = 0;
+	nnode->has_ghost_job = 0;
 
-	new_->lic_lock = 0;
+	nnode->lic_lock = 0;
 
-	new_->has_hard_limit = 0;
-	new_->no_multinode_jobs = 0;
-	new_->resv_enable = 0;
-	new_->provision_enable = 0;
-	new_->power_provisioning = 0;
+	nnode->has_hard_limit = 0;
+	nnode->no_multinode_jobs = 0;
+	nnode->resv_enable = 0;
+	nnode->provision_enable = 0;
+	nnode->power_provisioning = 0;
 
-	new_->sharing = VNS_DFLT_SHARED;
+	nnode->sharing = VNS_DFLT_SHARED;
 
-	new_->num_jobs = 0;
-	new_->num_run_resv = 0;
-	new_->num_susp_jobs = 0;
+	nnode->num_jobs = 0;
+	nnode->num_run_resv = 0;
+	nnode->num_susp_jobs = 0;
 
-	new_->priority = 0;
+	nnode->priority = 0;
 
-	new_->pcpus = 0;
+	nnode->pcpus = 0;
 
-	new_->rank = 0;
+	nnode->rank = 0;
 
-	new_->nodesig_ind = -1;
+	nnode->nodesig_ind = -1;
 
-	new_->name = NULL;
-	new_->mom = NULL;
-	new_->jobs = NULL;
-	new_->resvs = NULL;
-	new_->job_arr = NULL;
-	new_->run_resvs_arr = NULL;
-	new_->res = NULL;
-	new_->server = NULL;
-	new_->queue_name = NULL;
-	new_->group_counts = NULL;
-	new_->user_counts = NULL;
+	nnode->name = NULL;
+	nnode->mom = NULL;
+	nnode->jobs = NULL;
+	nnode->resvs = NULL;
+	nnode->job_arr = NULL;
+	nnode->run_resvs_arr = NULL;
+	nnode->res = NULL;
+	nnode->server = NULL;
+	nnode->queue_name = NULL;
+	nnode->group_counts = NULL;
+	nnode->user_counts = NULL;
 
-	new_->max_running = SCHD_INFINITY;
-	new_->max_user_run = SCHD_INFINITY;
-	new_->max_group_run = SCHD_INFINITY;
+	nnode->max_running = SCHD_INFINITY;
+	nnode->max_user_run = SCHD_INFINITY;
+	nnode->max_group_run = SCHD_INFINITY;
 
-	new_->current_aoe = NULL;
-	new_->current_eoe = NULL;
-	new_->nodesig = NULL;
-	new_->last_state_change_time = 0;
-	new_->last_used_time = 0;
+	nnode->current_aoe = NULL;
+	nnode->current_eoe = NULL;
+	nnode->nodesig = NULL;
+	nnode->last_state_change_time = 0;
+	nnode->last_used_time = 0;
 
-	new_->svr_node = NULL;
-	new_->hostset = NULL;
+	nnode->svr_node = NULL;
+	nnode->hostset = NULL;
 
-	new_->node_events = NULL;
-	new_->bucket_ind = -1;
-	new_->node_ind = -1;
+	nnode->node_events = NULL;
+	nnode->bucket_ind = -1;
+	nnode->node_ind = -1;
 
-	new_->nscr = NSCR_NONE;
+	nnode->nscr = NSCR_NONE;
 
 #ifdef NAS
 	/* localmod 034 */
-	new_->sh_type = 0;
-	new_->sh_cls = 0;
+	nnode->sh_type = 0;
+	nnode->sh_cls = 0;
 #endif
-	new_->partition = NULL;
-	new_->np_arr = NULL;
-	return new_;
+	nnode->partition = NULL;
+	nnode->np_arr = NULL;
+	return nnode;
 }
 
 /**

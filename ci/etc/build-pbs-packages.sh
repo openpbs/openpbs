@@ -75,7 +75,7 @@ cp *.tar.gz ${rpm_dir}/SOURCES
 cp ../*-rpmlintrc ${rpm_dir}/SOURCES
 cp *.spec ${rpm_dir}/SPECS
 cflags="-g -O2 -Wall -Werror"
-cxxflags="-g -O2 -Wall"
+cxxflags="-g -O2 -Wall -Werror"
 if [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
 	CFLAGS="${cflags} -Wno-unused-result" CXXFLAGS="${cxxflags} -Wno-unused-result" rpmbuild -ba --nodeps *.spec --with ptl
 else

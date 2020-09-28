@@ -2743,7 +2743,7 @@ counts *
 find_alloc_counts(counts *ctslist, const char *name)
 {
 	counts *cur, *prev;
-	counts *new_;
+	counts *ncounts;
 
 	if (name == NULL)
 		return NULL;
@@ -2756,15 +2756,15 @@ find_alloc_counts(counts *ctslist, const char *name)
 	}
 
 	if (cur == NULL) {
-		new_ = new_counts();
+		ncounts = new_counts();
 
-		if (new_ != NULL)
-			new_->name = string_dup(name);
+		if (ncounts != NULL)
+			ncounts->name = string_dup(name);
 
 		if (prev != NULL)
-			prev->next = new_;
+			prev->next = ncounts;
 
-		return new_;
+		return ncounts;
 	} else
 		return cur;
 }
@@ -2860,7 +2860,7 @@ update_counts_on_end(counts *cts, resource_req *resreq)
  * @retval	NULL : error
  */
 counts *
-counts_max(counts *cmax, counts *new_)
+counts_max(counts *cmax, counts *ncounts)
 {
 	counts *cur;
 	counts *cur_fmax;
@@ -2868,15 +2868,15 @@ counts_max(counts *cmax, counts *new_)
 	resource_count *cur_res;
 	resource_count *cur_res_max;
 
-	if (new_ == NULL)
+	if (ncounts == NULL)
 		return cmax;
 
 	if (cmax == NULL)
-		return dup_counts_list(new_);
+		return dup_counts_list(ncounts);
 
 	cmax_head = cmax;
 
-	for (cur = new_; cur != NULL; cur = cur->next) {
+	for (cur = ncounts; cur != NULL; cur = cur->next) {
 		cur_fmax = find_counts(cmax, cur->name);
 		if (cur_fmax == NULL) {
 			cur_fmax = dup_counts(cur);

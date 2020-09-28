@@ -195,7 +195,7 @@ struct attribute_def {
 	char *at_name;
 	int	(*at_decode)(attribute *patr, char *name, char *rn, char *val);
 	int	(*at_encode)(const attribute *pattr, pbs_list_head *phead, char *aname, char *rsname, int mode, svrattrl **rtnl);
-	int	(*at_set)(attribute *pattr, attribute *new_, enum batch_op);
+	int	(*at_set)(attribute *pattr, attribute *nattr, enum batch_op);
 	int	(*at_comp)(attribute *pattr, attribute *with);
 	void (*at_free)(attribute *pattr);
 	int	(*at_action)(attribute *pattr, void *pobject, int actmode);
@@ -323,13 +323,13 @@ extern void free_svrattrl(svrattrl *pal);
 extern void free_attrlist(pbs_list_head *attrhead);
 extern void free_svrcache(struct attribute *attr);
 extern int  attr_atomic_set(svrattrl *plist, attribute *old,
-	attribute *new_, void *adef_idx, attribute_def *pdef, int limit,
+	attribute *nattr, void *adef_idx, attribute_def *pdef, int limit,
 	int unkn, int privil, int *badattr);
 extern int  attr_atomic_node_set(svrattrl *plist, attribute *old,
-	attribute *new_, attribute_def *pdef, int limit,
+	attribute *nattr, attribute_def *pdef, int limit,
 	int unkn, int privil, int *badattr);
 extern void attr_atomic_kill(attribute *temp, attribute_def *pdef, int);
-extern void attr_atomic_copy(attribute *old, attribute *new_, attribute_def *pdef, int limit);
+extern void attr_atomic_copy(attribute *old, attribute *nattr, attribute_def *pdef, int limit);
 
 extern int copy_svrattrl_list(pbs_list_head *from_phead, pbs_list_head *to_head);
 extern int  compare_svrattrl_list(pbs_list_head *list1, pbs_list_head *list2);
@@ -408,23 +408,23 @@ extern int encode_depend(const attribute *attr, pbs_list_head *phead, char *atna
 extern int encode_hold(const attribute *attr, pbs_list_head *phead, char *atname,
 					   char *rsname, int mode, svrattrl **rtnl);
 
-extern int set_b(attribute *attr, attribute *new_, enum batch_op);
-extern int set_c(attribute *attr, attribute *new_, enum batch_op);
-extern int set_entlim(attribute *attr, attribute *new_, enum batch_op);
-extern int set_entlim_res(attribute *attr, attribute *new_, enum batch_op);
-extern int set_f(attribute *attr, attribute *new_, enum batch_op);
-extern int set_l(attribute *attr, attribute *new_, enum batch_op);
-extern int set_ll(attribute *attr, attribute *new_, enum batch_op);
-extern int set_size  (attribute *attr, attribute *new_, enum batch_op);
-extern int set_str  (attribute *attr, attribute *new_, enum batch_op);
-extern int set_arst(attribute *attr, attribute *new_, enum batch_op);
-extern int set_arst_uniq(attribute *attr, attribute *new_, enum batch_op);
-extern int set_resc(attribute *attr, attribute *new_, enum batch_op);
-extern int set_hostacl  (attribute *attr, attribute *new_, enum batch_op);
-extern int set_uacl  (attribute *attr, attribute *new_, enum batch_op);
-extern int set_gacl  (attribute *attr, attribute *new_, enum batch_op);
-extern int set_unkn(attribute *attr, attribute *new_, enum batch_op);
-extern int set_depend(attribute *attr, attribute *new_, enum batch_op);
+extern int set_b(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_c(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_entlim(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_entlim_res(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_f(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_l(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_ll(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_size  (attribute *attr, attribute *nattr, enum batch_op);
+extern int set_str  (attribute *attr, attribute *nattr, enum batch_op);
+extern int set_arst(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_arst_uniq(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_resc(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_hostacl  (attribute *attr, attribute *nattr, enum batch_op);
+extern int set_uacl  (attribute *attr, attribute *nattr, enum batch_op);
+extern int set_gacl  (attribute *attr, attribute *nattr, enum batch_op);
+extern int set_unkn(attribute *attr, attribute *nattr, enum batch_op);
+extern int set_depend(attribute *attr, attribute *nattr, enum batch_op);
 extern u_Long get_kilobytes_from_attr(struct attribute *);
 extern u_Long get_bytes_from_attr(struct attribute *);
 
@@ -564,10 +564,10 @@ extern int encode_svrstate(const attribute *pattr,  pbs_list_head *phead,  char 
 extern int decode_rcost(attribute *patr,  char *name,  char *rn,  char *val);
 extern int encode_rcost(const attribute *attr,  pbs_list_head *phead,  char *atname,
 	char *rsname,  int mode,  svrattrl **rtnl);
-extern int set_rcost(attribute *attr,  attribute *new_,  enum batch_op);
+extern int set_rcost(attribute *attr,  attribute *nattr,  enum batch_op);
 extern void free_rcost(attribute *attr);
 extern int decode_null(attribute *patr,  char *name,  char *rn,  char *val);
-extern int set_null(attribute *patr,  attribute *new_,  enum batch_op op);
+extern int set_null(attribute *patr,  attribute *nattr,  enum batch_op op);
 extern int eligibletime_action(attribute *pattr,  void *pobject,  int actmode);
 extern int decode_formula(attribute *patr,  char *name,  char *rn,  char *val);
 extern int action_backfill_depth(attribute *pattr,  void *pobj,  int actmode);
@@ -585,7 +585,7 @@ extern int action_throughput_mode(attribute *pattr, void *pobj, int actmode);
 
 /* Extern functions from queue_attr_def */
 extern int decode_null(attribute *patr, char *name, char *rn, char *val);
-extern int set_null(attribute *patr, attribute *new_, enum batch_op op);
+extern int set_null(attribute *patr, attribute *nattr, enum batch_op op);
 extern int cred_name_okay(attribute *pattr, void *pobject, int actmode);
 extern int action_resc_dflt_queue(attribute *pattr, void *pobj, int actmode);
 extern int action_queue_partition(attribute *pattr, void *pobj, int actmode);

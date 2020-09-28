@@ -1181,12 +1181,12 @@ free_schd_error_list(schd_error *err_list) {
  */
 schd_error *create_schd_error(int error_code, int status_code)
 {
-	schd_error *new_;
-	new_ = new_schd_error();
-	if(new_ == NULL)
+	schd_error *nse;
+	nse = new_schd_error();
+	if(nse == NULL)
 		return NULL;
-	set_schd_error_codes(new_, static_cast<schd_err_status>(status_code), static_cast<sched_error>(error_code));
-	return new_;
+	set_schd_error_codes(nse, static_cast<schd_err_status>(status_code), static_cast<sched_error>(error_code));
+	return nse;
 }
 
 /**

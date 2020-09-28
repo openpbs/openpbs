@@ -306,7 +306,7 @@ void update_counts_on_end(counts *cts, resource_req *resreq);
  *
  *	  returns the new max or NULL on error
  */
-counts *counts_max(counts *cmax, counts *new_);
+counts *counts_max(counts *cmax, counts *ncounts);
 
 /*
  *      check_run_job - function used by resource_resv_filter to filter out
