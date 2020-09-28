@@ -1666,10 +1666,10 @@ class PBSTestSuite(unittest.TestCase):
         for lib_dir in ['lib64', 'lib']:
             pbs_python_path = os.path.join(
                 self.server.pbs_conf['PBS_EXEC'], lib_dir, 'python', 'altair')
-        if os.path.isdir(pbs_python_path):
-            if pbs_python_path not in sys.path:
-                sys.path.append(pbs_python_path)
-            return
+            if os.path.isdir(pbs_python_path):
+                if pbs_python_path not in sys.path:
+                    sys.path.append(pbs_python_path)
+                return
         raise Exception(
             "Unable to determine the path to the PBS Python modules in the " +
             "PBS installation directory.")
