@@ -739,18 +739,19 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		return NULL;
 	}
 
-	if (resresv->is_job && qinfo == NULL) {
-		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-		add_err(&prev_err, err);
+	if (resresv->is_job) {
+		if (qinfo == NULL) {
+			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
+			add_err(&prev_err, err);
 
-		if (!(flags & RETURN_ALL_ERR))
-			return NULL;
-		else {
-			err = new_schd_error();
-			if (err == NULL)
+			if (!(flags & RETURN_ALL_ERR))
 				return NULL;
+			else {
+				err = new_schd_error();
+				if (err == NULL)
+					return NULL;
+			}
 		}
-
 	}
 
 	if (!in_runnable_state(resresv)) {
@@ -853,6 +854,20 @@ is_ok_to_run(status *policy, server_info *sinfo,
 				if (err == NULL)
 					return NULL;
 
+			}
+			/* check for max_run_subjobs limits only when its not a qrun job */
+			if (resresv->job->is_array && (resresv->job->max_run_subjobs != UNSPECIFIED) &&
+			   (resresv->job->running_subjobs >= resresv->job->max_run_subjobs)) {
+				set_schd_error_codes(err, NOT_RUN, MAX_RUN_SUBJOBS);
+				add_err(&prev_err, err);
+
+				if (!(flags & RETURN_ALL_ERR))
+					return NULL;
+				else {
+					err = new_schd_error();
+					if (err == NULL)
+						return NULL;
+				}
 			}
 
 			if ((rc = check_prime_boundary(policy, resresv, err))) {

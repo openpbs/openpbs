@@ -180,10 +180,7 @@ HANDLE                  g_hthreadMain = 0;
 SERVICE_STATUS_HANDLE   g_ssHandle = 0;
 DWORD                   g_dwCurrentState = SERVICE_START_PENDING;
 HANDLE	hStop = NULL;
-#else
-char		*mom_domain;
 #endif	/* WIN32 */
-
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
 
 int		alien_attach = 0;		/* attach alien procs */
@@ -228,13 +225,8 @@ DIR		*dir;
 /*char		pbs_current_user[PBS_MAXUSER] = "pbs_mom";*/  /* for libpbs.a */
 /* above is TLS data now, strcpy the value "pbs_mom" into it in main */
 
-#ifdef WIN32
-char            pbs_tmpdir[MAX_PATH] = TMP_DIR;
-char            pbs_jobdir_root[MAX_PATH]= "";
-#else
 char            pbs_tmpdir[_POSIX_PATH_MAX] = TMP_DIR;
 char            pbs_jobdir_root[_POSIX_PATH_MAX]= "";
-#endif
 int		pbs_jobdir_root_shared = FALSE;
 vnl_t		*vnlp = NULL;			/* vnode list */
 unsigned long	hooks_rescdef_checksum = 0;
@@ -397,36 +389,18 @@ static int	nconfig;		/* items in conf file */
 static time_t	idle_avail =  0;	/* seconds for keyboard to be idle */
 static time_t	idle_busy  = 10;	/* seconds for keyboard to remain */
 static int	idle_check = -1;	/* indicate if doing idle check */
-static time_t	idle_poll  =  1;	/* rate to poll keyboard when ! busy */
+time_t	idle_poll  =  1;	/* rate to poll keyboard when ! busy */
 static time_t	went_busy  =  0;	/* time keyboard went busy */
 static time_t	prior_key  =  0;	/* time of prior keystroke/mouse */
 static int	restrictrm = 0;		/* restricted RM request */
-static int	kill_jobs_on_exit = 0;	/* kill running jobs on Mom exit */
+int	kill_jobs_on_exit = 0;	/* kill running jobs on Mom exit */
 static char    *path_checkpoint_from_getopt = NULL;
 static char    *path_checkpoint_from_getenv = NULL;
 static char    *path_checkpoint_default = NULL;
-#ifdef	WIN32
-static char     path_checkpoint_buf[MAX_PATH] = "\0";
-#else
 static char     path_checkpoint_buf[_POSIX_PATH_MAX] = "\0";
-#endif
 static time_t	maxtm;			/* see getkbdtime() */
 
 #ifdef WIN32
-
-#define IDLE_POLL_BUFSIZE 512
-
-/**
- * This global variable is used to store name of pbs interative service
- * which is used to control the pbs interactive service (i.e. start/stop/check)
- */
-const TCHAR *const g_PbsInteractiveName = __TEXT("PBS_INTERACTIVE");
-
-/**
- * This global variable is used to store PBS_INTERACTIVE Service Control Handle
- * which is used to control the pbs interactive service (i.e. start/stop/check)
- */
-SC_HANDLE schPbsInteractive = INVALID_HANDLE_VALUE;
 
 /**
  * This global variable is used to indicate whether PBS_INTERACTIVE service
@@ -585,42 +559,37 @@ static struct specials addspecial[] = {
 	{ NULL, NULL }
 };
 
-void *job_attr_idx = NULL;
+void	*job_attr_idx = NULL;
 char	*log_file = NULL;
 char	*path_log;
-
-
-char			*ret_string;
-int			ret_size;
-struct	config		*config_array = NULL;
-struct	config_list	*config_list = NULL;
 #ifndef	WIN32
 sigset_t		allsigs;
 #endif
-int			rm_errno;
-unsigned	int	reqnum = 0;		/* the packet number */
-int			port_care = 1;		/* secure connecting ports */
-uid_t			uid = 0;		/* uid we are running with */
-int			alarm_time = 10;	/* time before alarm */
-int                     nice_val = 0;           /* nice daemon by this much */
+char	*ret_string;
+int		ret_size;
+struct config	*config_array = NULL;
+struct config_list	*config_list = NULL;
+int		rm_errno;
+unsigned int	reqnum = 0;		/* the packet number */
+int	port_care = 1;		/* secure connecting ports */
+uid_t	uid = 0;		/* uid we are running with */
+int	alarm_time = 10;	/* time before alarm */
+int	nice_val = 0;           /* nice daemon by this much */
 
-char			**maskclient = NULL;	/* wildcard connections */
-int			mask_num = 0;
-int			mask_max = 0;
-u_long			localaddr = 0;
+char	**maskclient = NULL;	/* wildcard connections */
+int	mask_num = 0;
+int	mask_max = 0;
+u_long	localaddr = 0;
 
-char			extra_parm[] = "extra parameter(s)";
-char			no_parm[] = "required parameter not found";
+char	extra_parm[] = "extra parameter(s)";
+char	no_parm[] = "required parameter not found";
 
-int			cphosts_num = 0;
-struct	cphosts		*pcphosts = 0;
-int enable_exechost2 = 0;
-static	int		config_file_specified = 0;
-#ifdef	WIN32
-static	char		config_file[MAX_PATH] = "config";
-#else
-static	char		config_file[_POSIX_PATH_MAX] = "config";
-#endif
+int	cphosts_num = 0;
+struct cphosts	*pcphosts = 0;
+int	enable_exechost2 = 0;
+static int	config_file_specified = 0;
+static char	config_file[_POSIX_PATH_MAX] = "config";
+
 
 struct	mom_action	mom_action[(int)LastAction] = {
 	{ "terminate",        0, Default, NULL, NULL },
@@ -644,58 +613,31 @@ extern	void	scan_for_exiting(void);
 extern	int	to_size(char *, struct size_value *);
 #endif /* localmod 015 */
 
+extern	void	cleanup_hooks_workdir(struct work_task *);
+
+extern char * getuname(void);
+extern int get_permission(char *perm);
+extern handler_ret_t check_interactive_service();
+extern void finish_loop(time_t waittime);
+extern void usage(char *prog);
+
 #ifndef	WIN32
 extern  void    scan_for_terminated(void);
 
 /* Local public functions */
 
-void stop_me(int);
+extern void stop_me(int);
+extern void catch_USR2(int);
+extern void catch_hup(int);
+extern void toolong(int);
 #endif
 
-extern	void	cleanup_hooks_workdir(struct work_task *);
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
 
 /* Local private functions */
 static char *mk_dirs(char *);
 static void check_busy(double);
 
-/**
- * @brief
- *	'windows' only function to check for an existence
- *	of directory.
- *
- * @param[in] path - directory path
- * @param[in] id   - char pointer holding which directory
- *
- * @retval 0 success
- * @retval -1 failure
- *
- */
-#ifdef WIN32
-static int
-check_directory(char *path, char *id)
-{
-	struct stat sb;
-
-	/*
-	 * Do some minimal sanity checking, like
-	 * does the cleaned_value exist?
-	 * and is it a directory?
-	 */
-	if (stat(path, &sb) == -1) {
-		sprintf(log_buffer, "\"%s\" does not exist", path);
-		log_err(-1, id, log_buffer);
-		return -1;
-	}
-	if (!S_ISDIR(sb.st_mode)) {
-		sprintf(log_buffer, "\"%s\" is not a directory", path);
-		log_event(PBSEVENT_SYSTEM, 0, LOG_ERR, id, log_buffer);
-		return -1;
-	}
-	return 0;
-
-}
-#endif
 
 /**
  * @brief
@@ -741,50 +683,6 @@ arch(struct rm_attribute *attrib)
 		return PBS_MACH;
 }
 
-/**
- * @brief
- *	returns username
- *
- * @return string
- * @retval user name
- *
- */
-char *
-getuname(void)
-{
-	static	char	*name = NULL;
-
-#ifndef	WIN32
-	struct	utsname	n;
-
-	if (name == NULL) {
-		if (uname(&n) == -1)
-			return NULL;
-		sprintf(ret_string, "%s %s %s %s %s", n.sysname,
-			n.nodename, n.release, n.version, n.machine);
-		name = strdup(ret_string);
-	}
-#else
-	OSVERSIONINFO osvi;
-
-	if (name == NULL) {
-		char	hostname[PBS_MAXHOSTNAME+1];
-
-		if (gethostname(hostname, (sizeof(hostname) - 1)) != 0)
-			return NULL;
-
-		ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
-		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-
-		GetVersionEx(&osvi);
-		sprintf(ret_string, "WIN2000 %s %d.%d %d i386",
-			hostname, osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
-		name = strdup(ret_string);
-	}
-#endif	/* WIN32 */
-
-	return name;
-}
 
 /**
  * @brief
@@ -1430,11 +1328,7 @@ tokcpy(char *str, char *tok, size_t len)
 	size_t	i;
 
 	for (i=0; *str && (i<len); str++, tok++, i++) {
-#ifdef	WIN32
-		if (!isalnum(*str) && *str != ':' && *str != '_' && *str != '\\')
-#else
-		if (!isalnum(*str) && *str != ':' && *str != '_')
-#endif
+		if (!isalnum(*str) && *str != ':' && *str != '_' && check_spl_ch(*str))
 			break;
 		*tok = *str;
 	}
@@ -1491,40 +1385,6 @@ wtokcpy(char *str, char *tok, int len)
 	return str;
 }
 
-#ifdef	WIN32
-/**
- * @brief
- *	Similar to tokcpy() except that we respect any double quoted strings and
- *	we only accept a whitespace character that is outside
- *	of any enclosing double quotes as being a valid terminator.
- *
- * @param[in] str - string to be copied
- * @param[in] tok - destination string to be copied to
- * @param[in] len - size of string str
- *
- * @return string
- * @retval processed destination string "tok"
- *
- */
-
-char *
-qwtokcpy(char *str, char *tok, int len)
-{
-	int  i;
-	unsigned char  oq = 0x0;	    /* open quote mark toggle */
-
-	for (i=0; *str && (i<len); str++, tok++, i++) {
-		if (isspace((int)*str) && !oq)
-			break;
-		if (*str == '"')
-			oq ^=  0x1;
-		*tok = *str;
-	}
-	*tok = '\0';
-	return str;
-}
-#endif	/* WIN32 */
-
 /**
  * @brief
  *	malloc memory and make a copy of the path input string that does not
@@ -1555,258 +1415,7 @@ remove_quotes(char *path)
 }
 
 #ifdef WIN32
-/**
- * @Brief
- *      Check whether PBS_INTERACTIVE service is registered or not into Service Control Manager?
- *		if PBS_INTERACTIVE service is registered then open Service Control Handle for PBS_INTERACTIVE service and
- *		store into global variable schPbsInteractive and set the value of interactive_svc_avail variable to 1 and
- *		return success.
- *		if PBS_INTERACTIVE service is not registered in to Service Control Manager the set the value
- *		of interactive_svc_avail variable to -1 and return success.
- *		on any error set value of interactive_svc_avail variable to 0 and return failure.
- *
- * @return	int
- * @retval	0  - On Success
- * @retval	1  - On Error
- *
- */
-int
-check_pbs_interactive()
-{
-	SC_HANDLE schPbsInteractiveMngr = INVALID_HANDLE_VALUE;
-
-	/* Open Service Control Handle for Service Control Manager */
-	schPbsInteractiveMngr = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
-	if (schPbsInteractiveMngr == 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not open Service Control Manager");
-		log_err(-1, __func__, log_buffer);
-		return 1;
-	}
-
-	/* Trying to open Service Control Handle for PBS_INTERACTIVE service */
-	schPbsInteractive = OpenService(schPbsInteractiveMngr, g_PbsInteractiveName, SERVICE_ALL_ACCESS);
-	if (schPbsInteractive == 0) {
-		/* Check why openning of Service Control Handle for PBS_INTERACTIVE service is failed? */
-		if (GetLastError() == ERROR_SERVICE_DOES_NOT_EXIST) {
-			/* Service does not exist */
-			interactive_svc_avail = -1;
-			CloseServiceHandle(schPbsInteractiveMngr);
-			return 0;
-		} else {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not open %s service", g_PbsInteractiveName);
-			log_err(-1, __func__, log_buffer);
-			CloseServiceHandle(schPbsInteractiveMngr);
-			return 1;
-		}
-	}
-
-	/* Service exists and service control handle successfully created */
-	interactive_svc_avail = 1;
-	CloseServiceHandle(schPbsInteractiveMngr);
-	return 0;
-}
-
-/**
- * @brief
- *      Start PBS_INTERACTIVE service with one argument as full path of pbs_idled binary
- *
- * @return	int
- * @retval	0  - On Success
- * @retval	1  - On Error
- *
- */
-int
-start_pbs_interactive()
-{
-	char *SvcArgv[1];
-	char ExeFile_path[MAX_PATH];
-
-	/* Check whether PBS_INTERACTIVE is registered of not? */
-	if (interactive_svc_avail == -1) {
-		/* PBS_INTERACTIVE service is not registered, log that and return success
-		 * because here we assume that user want to use logon/logoff script
-		 */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not find %s service, Continuing Cycle Harvesting with Logon/Logoff Script", g_PbsInteractiveName);
-		log_event(PBSEVENT_SYSTEM, 0, LOG_WARNING, g_PbsInteractiveName, log_buffer);
-		return 0;
-	} else if (interactive_svc_avail == 0) {
-		/* Error occured */
-		return 1;
-	}
-
-	/* Create full path of pbs_idled binary */
-	snprintf(ExeFile_path, MAX_PATH, "%s/%s", pbs_conf.pbs_exec_path, "bin/pbs_idled");
-
-	/* Initialize argument array for PBS_INTERACTIVE service */
-	SvcArgv[0] = ExeFile_path;
-
-	/* Start service, pass SvcArgv as arguments*/
-	if (!StartService(schPbsInteractive, 1, SvcArgv)) {
-		/* Failed to start PBS_INTERACTIVE service, return error */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not start %s service", g_PbsInteractiveName);
-		log_err(-1, __func__, log_buffer);
-		return 1;
-	}
-
-	return 0;
-}
-
-/**
- * @Brief
- *      Stop PBS_INTERACTIVE service
- *
- * @return	void (Nothing)
- *
- */
-void
-stop_pbs_interactive()
-{
-	SERVICE_STATUS SvcSts;
-	char temp_path[MAX_PATH];
-
-	/* Check whether PBS_INTERACTIVE service is registered or not? */
-	if (interactive_svc_avail == -1) {
-		/* PBS_INTERACTIVE service is not registered, return success */
-		return;
-	} else if (interactive_svc_avail == 0) {
-		/* Error occured */
-		return;
-	}
-
-	/* PBS_INTERACTIVE service is registered */
-	/* Get information about PBS_INTERACTIVE service */
-	if (!QueryServiceStatus(schPbsInteractive, &SvcSts)) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "1st: Can not get information about %s service", g_PbsInteractiveName);
-		log_err(-1, __func__, log_buffer);
-		CloseServiceHandle(schPbsInteractive);
-		return;
-	}
-
-	/* Check whether current status of service is RUNNING or not?
-	 * if Yes, then stop service otherwise continue
-	 */
-	if (SvcSts.dwCurrentState == SERVICE_RUNNING) {
-		/* Service is RUNNING, Now stop service */
-		if (!ControlService(schPbsInteractive, SERVICE_CONTROL_STOP, &SvcSts)) {
-			/* Stopping of service is failed, return Error */
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not stop %s service", g_PbsInteractiveName);
-			log_err(-1, __func__, log_buffer);
-			CloseServiceHandle(schPbsInteractive);
-			return;
-		}
-
-		Sleep(SvcSts.dwWaitHint);
-
-		/* Get information about PBS_INTERACTIVE service again */
-		if (!QueryServiceStatus(schPbsInteractive, &SvcSts)) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "2nd: Can not get information about %s service", g_PbsInteractiveName);
-			log_err(-1, __func__, log_buffer);
-			CloseServiceHandle(schPbsInteractive);
-			return;
-		}
-
-		/* Check whether stopping of service is success or not? */
-		if (SvcSts.dwCurrentState != SERVICE_STOPPED) {
-			/* Stopping of service is failed, return Error */
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "%s service did not respond in timely fashion", g_PbsInteractiveName);
-			SetLastError(ERROR_SERVICE_REQUEST_TIMEOUT);
-			log_err(-1, __func__, log_buffer);
-			CloseServiceHandle(schPbsInteractive);
-			return;
-		}
-	}
-
-	/* Create full path of idle_poll_time file */
-	snprintf(temp_path, MAX_PATH, "%s/%s", pbs_conf.pbs_home_path, "spool/idle_poll_time");
-
-	/* Delete idle_poll_time file as it not needed any more */
-	DeleteFile(temp_path);
-
-	/* Create full path of idle_touch file */
-	snprintf(temp_path, MAX_PATH, "%s/%s", pbs_conf.pbs_home_path, "spool/idle_touch");
-
-	/* Delete idle_touch file as it not needed any more */
-	DeleteFile(temp_path);
-
-	/* Stopping of PBS_INTERACTIVE service is successful */
-	CloseServiceHandle(schPbsInteractive);
-	return;
-}
-
-/**
- * @brief
- *      Create idle_touch and idle_poll_time file in PBS_HOME/spool directory
- *	assign read/write permission to everyone to both file
- *	write idle_poll time to idle_poll_time file
- *
- * @return	int
- * @retval	0  - On Success
- * @retval	1  - On Error
- *
- */
-int
-create_idle_files()
-{
-	char idle_poll_buf[IDLE_POLL_BUFSIZE];
-	char WrittenBuf[IDLE_POLL_BUFSIZE];
-	HANDLE FileHandle = INVALID_HANDLE_VALUE;
-	char idle_touchFile[MAX_PATH]; /* To store full path of idle_touch file */
-	char idle_pollFile[MAX_PATH]; /* To store full path of idle_poll_time file */
-
-	/* Create full path of idle_poll_time file */
-	snprintf(idle_pollFile, MAX_PATH, "%s/%s", pbs_conf.pbs_home_path, "spool/idle_poll_time");
-
-	/* Create full path of idle_touch file */
-	snprintf(idle_touchFile, MAX_PATH, "%s/%s", pbs_conf.pbs_home_path, "spool/idle_touch");
-
-	/* Convert idle_poll time value into string */
-	_itoa_s(idle_poll, idle_poll_buf, BUF_SIZE, 10);
-
-	/* Create idle_poll_time file in PBS_HOME/spool directory */
-	FileHandle = CreateFile(idle_pollFile, GENERIC_ALL, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (FileHandle == INVALID_HANDLE_VALUE) {
-		/* idle_poll_time file creation failed */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not create file %s", idle_pollFile);
-		log_err(-1, __func__, log_buffer);
-		return 1;
-	} else {
-		/* idle_poll_time file created */
-		/* secure idle_poll_time file for everyone with read/write permission */
-		secure_file(idle_pollFile, "Everyone", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-
-		/* idle_poll_time file is secured, write idle_poll time into idle_poll_time file */
-		if (!WriteFile(FileHandle, idle_poll_buf, strlen(idle_poll_buf), (LPDWORD)&WrittenBuf, NULL)) {
-			/* Writing idle_poll time into idle_poll_time file failed */
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not write idle_poll time into %s file", idle_pollFile);
-			log_err(-1, __func__, log_buffer);
-			CloseHandle(FileHandle);
-			return 1;
-		}
-	}
-
-	/* idle_poll_time file created, secured and idle_poll time written sucessfully */
-	if (FileHandle)
-		CloseHandle(FileHandle);
-
-	/* Create idle_touch file in PBS_HOME/spool directory */
-	FileHandle = CreateFile(idle_touchFile, GENERIC_ALL, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (FileHandle == INVALID_HANDLE_VALUE) {
-		/* idle_touch file creation failed */
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "Can not create file %s", idle_touchFile);
-		log_err(-1, __func__, log_buffer);
-		return 1;
-	} else {
-		/* idle_touch file created */
-		/* secure idle_touch file for everyone with read/write permission */
-		secure_file(idle_touchFile, "Everyone", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-	}
-
-	/* idle_touch file created and secured sucessfully */
-	if (FileHandle)
-		CloseHandle(FileHandle);
-
-	return 0;
-}
+extern void stop_pbs_interactive();
 #endif
 
 /**
@@ -1865,15 +1474,9 @@ add_mom_action(char *str)
 	if (*str == '!') {
 
 		/* script specified */
-
-#ifdef	WIN32
-		str = qwtokcpy(++str, arg, _POSIX_PATH_MAX);
-#else
-		str = wtokcpy(++str, arg, _POSIX_PATH_MAX);
-#endif
+		str = process_string(++str, arg, _POSIX_PATH_MAX);
 		str = skipwhite(str);
 
-#ifdef	WIN32
 		if (is_full_path(arg)) {
 
 			scp = malloc(strlen(arg) + 1);
@@ -1893,25 +1496,6 @@ add_mom_action(char *str)
 			strcat(scp, "/");
 			strcat(scp, arg);
 		}
-#else
-		if (*arg != '/') {
-			/* need to make relative path absolute to */
-			/* PBS_HOME/mom_priv                      */
-			scp = malloc(strlen(arg) + strlen(mom_home) + 2);
-			if (scp == NULL) {
-				return HANDLER_FAIL;
-			}
-			strcpy(scp, mom_home);
-			strcat(scp, "/");
-			strcat(scp, arg);
-		} else {
-			scp = malloc(strlen(arg) + 1);
-			if (scp == NULL) {
-				return HANDLER_FAIL;
-			}
-			strcpy(scp, arg);
-		}
-#endif	/* WIN32 */
 
 		/* now count up the number of args */
 
@@ -3191,7 +2775,7 @@ add_static(char *str, char *file, int linenum)
 	int	 i;
 	char	 name[256];
 	struct	config_list	*cp;
-
+	int	perm;
 
 	str = TOKCPY(str, name);/* resource name */
 	str = skipwhite(str);	/* resource value */
@@ -3202,11 +2786,9 @@ add_static(char *str, char *file, int linenum)
 		filename = get_script_name(&str[1]);
 		if (filename == NULL)
 			return 1;
-#ifdef  WIN32
-		err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
-#else
-		err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
-#endif
+		perm = get_permission("write");
+		err = tmp_file_sec(filename, 0, 1, perm, 1);
+
 		if (err != 0) {
 			snprintf(log_buffer, sizeof(log_buffer),
 				"error: %s file has a non-secure file access, errno: %d", filename, err);
@@ -3388,28 +2970,7 @@ set_kbd_idle(char *value)
 
 	/* check whether PBS_INTERACTIVE service is registered or not? */
 chk_for_interactive:
-#ifdef WIN32
-	/* create idle_touch and idle_poll_time file in PBS_HOME/spool/
-	 *    idle_touch file	  - To get kbd/mouse time information from pbs_idled process
-	 *    idle_poll_time file - To inform about idle_poll time from MOM config to pbs_idled process
-	 */
-	if (create_idle_files())
-		return HANDLER_FAIL;
-
-	/* Check whether PBS_INTERACTIVE service is registered or not? */
-	if (check_pbs_interactive()) {
-		/* check for registration of PBS_INTERACTIVE service is failed, return failure */
-		return HANDLER_FAIL;
-	} else {
-		/* check for registration of PBS_INTERACTIVE service is successed
-		 * trying to start PBS_INTERACTIVE service */
-		if (start_pbs_interactive()) {
-			/* starting of PBS_INTERACTIVE service is failed, return failure */
-			return HANDLER_FAIL;
-		}
-	}
-#endif
-	return HANDLER_SUCCESS;
+	return check_interactive_service();
 }
 
 /**
@@ -3438,11 +2999,7 @@ set_tmpdir(char *value)
 
 	/* Remove trailing separator */
 	for (i = (strlen(cleaned_value) - 1); i >= 0; i--) {
-#ifdef	WIN32
-		if (cleaned_value[i] != '\\')
-#else
-		if (cleaned_value[i] != '/')
-#endif
+		if (cleaned_value[i] != TRAILING_CHAR)
 			break;
 		cleaned_value[i] = '\0';
 	}
@@ -3453,17 +3010,10 @@ set_tmpdir(char *value)
 	}
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef	WIN32
-	if (check_directory(cleaned_value, "set_tmpdir") == -1) {
-		free(cleaned_value);
-		return HANDLER_FAIL;
-	}
-#else	/* Unix Only */
-	if (tmp_file_sec(cleaned_value, 1, 1, 0, 1)) {
+	if (verify_dir(cleaned_value, 1, 1, 0, 1)) {
 		free(cleaned_value);
 		return HANDLER_FAIL;		/* error */
 	}
-#endif	/* WIN32 */
 #endif	/* NO_SECURITY_CHECK */
 
 	strcpy(pbs_tmpdir, cleaned_value);
@@ -3506,19 +3056,10 @@ set_jobdir_root(char *value)
 	}
 
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef	WIN32
-
-	if (check_directory(cleaned_value, __func__)  == -1) {
+	if (verify_dir(cleaned_value, 1, 1, 0, 1)) {
 		free(cleaned_value);
 		return HANDLER_FAIL;
 	}
-
-#else /* UNIX only */
-	if (tmp_file_sec(cleaned_value, 1, 1, 0, 1)) {
-		free(cleaned_value);
-		return HANDLER_FAIL;
-	}
-#endif	/* WIN32 */
 #endif	/* NO_SECURITY_CHECK */
 
 	strcpy(pbs_jobdir_root, cleaned_value);
@@ -3907,11 +3448,7 @@ static handler_ret_t
 set_checkpoint_path(char *value)
 {
 	int		rc = 0;
-#ifdef	WIN32
-	char		newpath[MAX_PATH] = "\0";
-#else
 	char		newpath[_POSIX_PATH_MAX] = "\0";
-#endif
 
 	/*
 	 * If value and path_checkpoint both contain the same address,
@@ -3958,26 +3495,16 @@ set_checkpoint_path(char *value)
 		strcat(newpath, "/");
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef	WIN32
-	rc = chk_file_sec(newpath, 1, 0, WRITES_MASK^FILE_WRITE_EA, 0);
-#else
-	rc = chk_file_sec(newpath, 1, 0, S_IWGRP|S_IWOTH, 0);
-#endif	/* WIN32 */
+	int	perm;
+	perm = get_permission("write");
+	rc = chk_file_sec(newpath, 1, 0, perm, 0);
 #else
 	{
 		struct stat	sb;
-#ifdef	WIN32
-		/* use windowed lstat for it works */
-		if (lstat(newpath, &sb) == -1)
-			rc = errno;
-		else
-			rc = 0;
-#else
 		if (stat(newpath, &sb) == -1)
 			rc = errno;
 		else
 			rc = 0;
-#endif	/* WIN32 */
 	}
 #endif	/* !DEBUG && !NO_SECURITY_CHECK */
 	if (rc == 0) {
@@ -4265,9 +3792,6 @@ parse_config(char *file)
 	int		err = 0;
 	int		num_newstaticdefs;
 	handler_ret_t	handler_ret = HANDLER_SUCCESS; /* init to success */
-#ifdef	WIN32
-	char		*p;
-#endif
 
 	if ((conf = fopen(file, "r")) == NULL) {
 		sprintf(log_buffer, "fopen: %s", file);
@@ -4289,11 +3813,7 @@ parse_config(char *file)
 		if (*str == '\0')
 			continue;
 
-#ifdef	WIN32
-		/* under Windows, skip troublesome trailing ^M chars */
-		if (p = strrchr(line, 13))
-			*p = ' ';
-#endif
+		skip_trailing_spcl_char(line, 13);
 
 		if (*str == '$') {	/* special command */
 			str = TOKCPY(++str, name);/* resource name */
@@ -4764,17 +4284,14 @@ read_config(char *file)
 			return 0;	/* ok for "config" not to be there  */
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
-#ifdef	WIN32
-	if (chk_file_sec(file, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0)) {
+	int perm;
+	perm = get_permission("write");
+	if (chk_file_sec(file, 0, 0, perm, FULLPATH)) {
 		sprintf(log_buffer,
 			"warning: %s file has a non-secure file access mask", file);
 		log_err(errno, __func__, log_buffer);
 		return 1;
 	}
-#else
-	if (chk_file_sec(file, 0, 0, S_IWGRP|S_IWOTH, 1))
-		return 1;
-#endif	/* WIN32 */
 #endif	/* NO_SECURITY_CHECK */
 
 	nconfig = 0;
@@ -5238,6 +4755,7 @@ conf_res(char *s, struct rm_attribute *attr)
 	int	child_len;
 	int	secondalarm = 0;
 	int	err;
+	int perm;
 
 	if (*s != '!') {	/* static value */
 		if (attr) {
@@ -5310,11 +4828,9 @@ conf_res(char *s, struct rm_attribute *attr)
 	if (filename == NULL)
 		return NULL;
 	/* Make sure file does not have open permissions */
-#ifdef  WIN32
-	err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
-#else
-	err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
-#endif
+	perm = get_permission("write");
+	err = tmp_file_sec(filename, 0, 1, perm, 1);
+
 	if (err != 0) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"error: %s file has a non-secure file access, errno: %d", filename, err);
@@ -5430,147 +4946,9 @@ done:
 	free(filename);
 	return ret_string;
 }
-
 #ifndef	WIN32
-/**
- * @brief
- *	Function to catch HUP signal.
- *	Set call_hup = 1.
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-catch_hup(int sig)
-{
-	sprintf(log_buffer, "caught signal %d", sig);
-	log_event(PBSEVENT_SYSTEM, 0,  LOG_INFO, "catch_hup", log_buffer);
-	call_hup = HUP_REAL;
-}
-
-/**
- * @brief
- *	Do a restart of resmom.
- *	Read the last seen config file and
- *	Clean up and reinit the dependent code.
- *
- * @return Void
- *
- */
-static void
-process_hup(void)
-{
-	/**
-	 * When call_hup == HUP_REAL, the catch_hup function has been called.
-	 * When call_hup == HUP_INIT, we couldn't start a job so the ALPS
-	 * inventory needs to be refreshed.
-	 * When real_hup is false, some actions don't need to be done.
-	 */
-	int	real_hup = (call_hup == HUP_REAL);
-
-	call_hup = HUP_CLEAR;
-
-	if (real_hup) {
-		log_event(PBSEVENT_SYSTEM, 0, LOG_INFO, __func__, "reset");
-		log_close(1);
-		log_open(log_file, path_log);
-
-		if ((num_var_env = setup_env(pbs_conf.pbs_environment)) == -1) {
-			mom_run_state = 0;
-			return;
-		}
-	}
-
-	/*
-	 ** See if we need to get rid of the previous vnode state.
-	 */
-	if (!vnode_additive) {
-		if (vnlp != NULL) {
-			vnl_free(vnlp);
-			vnlp = NULL;
-		}
-		if (vnlp_from_hook != NULL) {
-			vnl_free(vnlp_from_hook);
-			vnlp_from_hook = NULL;
-		}
-	}
-
-	if (read_config(NULL) != 0) {
-		cleanup();
-		log_close(1);
-		tpp_shutdown();
-#ifdef	WIN32
-		ExitThread(1);
-#else
-		exit(1);
+extern void process_hup(void);
 #endif
-	}
-
-	cleanup();
-	initialize();
-
-#if	MOM_ALPS /* ALPS needs libjob support */
-	/*
-	 * This needs to be called after the config file is read.
-	 */
-	ck_acct_facility_present();
-#endif	/* MOM_ALPS */
-
-	if (!real_hup)		/* no need to go on */
-		return;
-}
-
-/**
- * @brief
- *	signal handler for SIG_USR2
- *
- * @return Void
- *
- */
-
-static void
-catch_USR2(int sig)
-{
-	do_debug_report = 1;
-}
-
-/**
- * @brief
- *	Cause useful information to be logged.  This function is called from
- *	MoM's main loop after catching a SIGUSR2.
- *
- * @return Void
- *
- */
-
-void
-debug_report(void)
-{
-extern void	mom_CPUs_report(void);
-
-	mom_CPUs_report();
-	mom_vnlp_report(vnlp, NULL);
-	do_debug_report = 0;
-}
-
-/**
- * @brief
- *	Got an alarm call.
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-void
-toolong(int sig)
-{
-
-	log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, __func__, "alarm call");
-	DBPRT(("alarm call\n"))
-}
-#endif	/* !WIN32 */
 
 #ifdef	DEBUG
 /**
@@ -6250,61 +5628,6 @@ kill_job(job *pjob, int sig)
 	DBPRT(("%s: done %s killed %d\n", __func__, pjob->ji_qs.ji_jobid, ct))
 	return ct;
 #endif	/* WIN32 */
-}
-
-/**
- * @brief
- *	The finish of MOM's main loop
- *	Actually the heart of the loop
- *
- * @param[in] waittime - wait time
- *
- * @return Void
- *
- */
-static void
-finish_loop(time_t waittime)
-{
-#ifdef	WIN32
-	time_t	i;
-
-	/* wait for a request to process or exiting procs */
-	for (i = 0; i < waittime; i++) {
-		wait_action();
-
-		if (exiting_tasks)
-			scan_for_exiting();
-		wait_request(1, NULL);
-	}
-#else
-#ifdef PBS_UNDOLR_ENABLED
-	if (sigusr1_flag)
-		undolr();
-#endif
-	if (do_debug_report)
-		debug_report();
-	if (termin_child) {
-		scan_for_terminated();
-		waittime = 1;	/* want faster time around to next loop */
-	}
-	if (exiting_tasks) {
-		scan_for_exiting();
-		waittime = 1;	/* want faster time around to next loop */
-	}
-
-	if (GET_NEXT(mom_pending_ruu) != NULL)
-		waittime = 1;
-
-	if (waittime > next_sample_time)
-		waittime = next_sample_time;
-	DBPRT(("%s: waittime %lu\n", __func__, (unsigned long) waittime))
-
-	/* wait for a request to process */
-	if (wait_request(waittime, NULL) != 0)
-		log_err(-1, msg_daemonname, "wait_request failed");
-
-#endif	/* WIN32 */
-
 }
 
 /**
@@ -7113,67 +6436,6 @@ job_over_limit(job *pjob, int recover)
 	pjob->ji_nodekill = pjob->ji_nodeid;
 	return 1;
 }
-
-static char	configusage[] = "%s -s insert scriptname inputfile\n"
-	"%s -s [ remove | show ] scriptname\n"
-"%s -s list\n";
-
-/**
- * @brief
- *	Prints usage for prog
- *
- * @param[in] prog - char pointer which holds program name
- *
- * @return Void
- *
- */
-
-void
-usage(char *prog)
-{
-#ifdef	WIN32
-	fprintf(stderr,
-		"Usage: %s [-C chkdirectory][-d dir][-c configfile][-r|-p][-R port][-M port][-S port][-L log][-a alarm][-n nice]\n", prog);
-#else
-	fprintf(stderr,
-		"Usage: %s [-C chkdirectory][-d dir][-c configfile][-r|-p][-R port][-M port][-L log][-a alarm][-n nice]\n", prog);
-#endif
-	fprintf(stderr, "or\n");
-	fprintf(stderr, configusage, prog, prog, prog);
-	fprintf(stderr, "%s --version\n", prog);
-	exit(1);
-}
-
-#ifdef	WIN32
-/**
- * @brief
- *      Prints usage for prog
- *
- * @param[in] prog - char pointer which holds program name
- *
- * @return Void
- *
- */
-
-void
-usage2(prog)
-char	*prog;
-{
-	printf("================================================================================\n");
-	printf("Usage Info: %s [-R|-U|-N] <other options...>\n", prog);
-	printf("\nTo run as a standalone server: %s -N <other options...>\n",
-		prog);
-	printf("where <other options...>  are: [-C chkdirectory][-d dir]"
-		"[-c configfile][-r|-p][-R port][-M port][-S port]"
-		"[-L log][-n nice]\n");
-	printf("To register as a service: %s -R\n", prog);
-	printf("To unregister the service: %s -U\n", prog);
-	printf("To run as a service: %s <other options...>\n", prog);
-	printf("To output version and exit: %s --version\n", prog);
-	printf("================================================================================\n");
-
-}
-#endif
 
 #ifdef NAS_UNKILL /* localmod 011 */
 
@@ -10159,41 +9421,7 @@ PbsMomHandler(DWORD dwControl)
 }
 #else	/* WIN32 */
 
-/**
- * @brief
- *	signal handler for SIGTERM and SIGINT
- *	TERM kills running jobs
- *	INT  leaves them running
- *
- * @param[in] sig - signal number
- *
- * @return	Void
- *
- */
 
-void
-stop_me(int sig)
-{
-	sprintf(log_buffer, "caught signal %d", sig);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-		LOG_NOTICE, msg_daemonname, log_buffer);
-
-	switch (sig) {
-		case SIGPIPE:
-		case SIGUSR1:
-#ifdef	SIGINFO
-		case SIGINFO:
-#endif
-			return;
-
-		default:
-			break;
-	}
-
-	mom_run_state = 0;
-	if (sig == SIGTERM)
-		kill_jobs_on_exit = 1;
-}
 #endif	/* WIN32 */
 
 /* the following is used in support of the getkbdtime() function */

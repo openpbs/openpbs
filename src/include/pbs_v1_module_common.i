@@ -516,6 +516,12 @@ action_sched_partition(attribute *new, void *pobj, int act)
 }
 
 int
+action_max_run_subjobs(attribute *pattr, void *pobject, int actmode)
+{
+	return 0;
+}
+
+int
 decode_rcost(struct attribute *patr, char *name, char *rescn, char *val) {
 	return 0;
 }

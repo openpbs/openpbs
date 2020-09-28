@@ -528,6 +528,7 @@ extern int removefiles_action(attribute *pattr, void *pobject, int actmode);
 /*extern int depend_on_que(attribute *, void *, int);*/
 extern int comp_chkpnt(attribute *, attribute *);
 extern int alter_eligibletime(attribute *, void *, int);
+extern int action_max_run_subjobs(attribute *, void *, int);
 /* Extern functions from svr_attr_def */
 extern int manager_oper_chk(attribute *pattr, void *pobject, int actmode);
 extern int poke_scheduler(attribute *pattr, void *pobject, int actmode);
