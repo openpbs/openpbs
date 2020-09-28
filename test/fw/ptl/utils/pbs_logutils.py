@@ -38,6 +38,7 @@
 # subject to Altair's trademark licensing policies.
 
 
+import collections
 import copy
 import logging
 import math
@@ -49,7 +50,7 @@ from datetime import datetime, timedelta, tzinfo
 from subprocess import PIPE, Popen
 
 from ptl.lib.pbs_testlib import (EQ, JOB, NODE, SET, BatchUtils, ResourceResv,
-                                 Server)
+                                 Server, BatchutilsTypes)
 from ptl.utils.pbs_dshutils import DshUtils
 
 """
@@ -251,7 +252,7 @@ class PBSLogUtils(object):
 
         try:
             # Get datetime object
-            t = datetime.datetime.strptime(dt, fmt)
+            t = datetime.strptime(dt, fmt)
             # Get epoch-timestamp assuming local timezone
             tm = t.timestamp()
         except ValueError:
@@ -1915,7 +1916,7 @@ class PBSAccountingLog(PBSLogAnalyzer):
                         self.parser_errors += 1
                         return PARSER_OK_CONTINUE
                     for k in attrs.keys():
-                        attrs[k] = self.utils.decode_value(attrs[k])
+                        attrs[k] = BatchutilsTypes.decode_value(attrs[k])
                     running_time = (int(attrs['end']) - int(attrs['start']))
                     attrs['running_time'] = str(running_time)
                     attrs['schedselect'] = attrs['Resource_List.select']

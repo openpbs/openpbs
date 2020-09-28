@@ -46,7 +46,6 @@ import sys
 import time
 from collections import OrderedDict
 
-from ptl.lib.pbs_testlib import *
 from ptl.lib.ptl_batchutils import *
 
 

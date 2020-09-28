@@ -154,13 +154,14 @@ def usage():
 def process_config(hosts, process_obj, conf_file=None, type='default',
                    delqueues=False, delhooks=False):
     for host in hosts:
+        svr_obj = Server(host)
         if MGR_OBJ_SCHED in process_obj:
             if type == 'default':
-                Scheduler(host).revert_to_defaults()
+                Scheduler(svr_obj, host).revert_to_defaults()
             elif type == 'load':
-                Scheduler(host).load_configuration(conf_file)
+                Scheduler(svr_obj, host).load_configuration(conf_file)
             elif type == 'save':
-                Scheduler(host).save_configuration(conf_file)
+                Scheduler(svr_obj, host).save_configuration(conf_file)
         if MGR_OBJ_SERVER in process_obj:
             if type == 'default':
                 Server(host).revert_to_defaults(delhooks=delhooks,
@@ -171,11 +172,11 @@ def process_config(hosts, process_obj, conf_file=None, type='default',
                 Server(host).save_configuration(conf_file)
         if MGR_OBJ_NODE in process_obj:
             if type == 'default':
-                MoM(host).revert_to_defaults()
+                MoM(svr_obj, host).revert_to_defaults()
             elif type == 'load':
-                MoM(host).load_configuration(conf_file)
+                MoM(svr_obj, host).load_configuration(conf_file)
             elif type == 'save':
-                MoM(host).save_configuration(conf_file)
+                MoM(svr_obj, host).save_configuration(conf_file)
 
 
 def process_attributes(attrs):
@@ -480,7 +481,9 @@ if __name__ == '__main__':
         if filename:
             vdef = BatchUtils().file_to_vnodedef(filename)
             if vdef:
-                MoM(hostname, pbsconf_file=conf_file).insert_vnode_def(vdef)
+                svr_obj = Server(hostname, pbsconf_file=conf_file)
+                MoM(svr_obj, hostname,
+                    pbsconf_file=conf_file).insert_vnode_def(vdef)
         elif num_vnodes is None:
             logging.error('A number of vnodes to create is required\n')
             sys.exit(1)
@@ -488,7 +491,8 @@ if __name__ == '__main__':
             nattrs = process_attributes(attrs)
             for hostname in hosts:
                 s = Server(hostname)
-                m = MoM(hostname, pbsconf_file=conf_file)
+                svr_obj = Server(hostname, pbsconf_file=conf_file)
+                m = MoM(svr_obj, hostname, pbsconf_file=conf_file)
                 m.create_vnodes(nattrs, num_vnodes,
                                 additive, sharedhost, restart, delall,
                                 natvnode, usenatvnode, fname=vdefname,

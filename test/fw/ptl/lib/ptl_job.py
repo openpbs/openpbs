@@ -56,7 +56,9 @@ from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
 
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_object import *
+from ptl.lib.ptl_constants import *
 from ptl.lib.ptl_entities import ResourceResv
 
 

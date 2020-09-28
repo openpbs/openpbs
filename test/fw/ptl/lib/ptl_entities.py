@@ -49,7 +49,12 @@ import time
 
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_types import *
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_object import *
+from ptl.lib.ptl_service import *
+from ptl.lib.ptl_batchutils import *
+from ptl.lib.ptl_server import *
 
 
 class Resource(PBSObject):
@@ -334,3 +339,268 @@ class Queue(PBSObject):
 
         if len(setdict.keys()) != 0 and self.server is not None:
             self.server.manager(MGR_CMD_SET, MGR_OBJ_QUEUE, setdict)
+
+
+class Entity(object):
+
+    """
+    Abstract representation of a PBS consumer that has an
+    external relationship to the PBS system. For example, a
+    user associated to an OS identifier (uid) maps to a PBS
+    user entity.
+
+    Entities may be subject to policies, such as limits, consume
+    a certain amount of resource and/or fairshare usage.
+
+    :param etype: Entity type
+    :type etype: str or None
+    :param name: Entity name
+    :type name: str or None
+    """
+
+    def __init__(self, etype=None, name=None):
+        self.type = etype
+        self.name = name
+        self.limits = []
+        self.resource_usage = {}
+        self.fairshare_usage = 0
+
+    def set_limit(self, limit=None):
+        """
+        :param limit: Limit to be set
+        :type limit: str or None
+        """
+        for l in self.limits:
+            if str(limit) == str(l):
+                return
+        self.limits.append(limit)
+
+    def set_resource_usage(self, container=None, resource=None, usage=None):
+        """
+        Set the resource type
+
+        :param resource: PBS resource
+        :type resource: str or None
+        :param usage: Resource usage value
+        :type usage: str or None
+        """
+        if self.type:
+            if container in self.resource_usage:
+                if self.resource_usage[self.type]:
+                    if resource in self.resource_usage[container]:
+                        self.resource_usage[container][resource] += usage
+                    else:
+                        self.resource_usage[container][resource] = usage
+                else:
+                    self.resource_usage[container] = {resource: usage}
+
+    def set_fairshare_usage(self, usage=0):
+        """
+        Set fairshare usage
+
+        :param usage: Fairshare usage value
+        :type usage: int
+        """
+        self.fairshare_usage += usage
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return str(self.limits) + ' ' + str(self.resource_usage) + ' ' + \
+            str(self.fairshare_usage)
+
+
+class Policy(object):
+
+    """
+    Abstract PBS policy. Can be one of ``limits``,
+    ``access control``, ``scheduling policy``, etc...this
+    class does not currently support any operations
+    """
+
+    def __init__(self):
+        pass
+
+
+class Limit(Policy):
+
+    """
+    Representation of a PBS limit
+    Limits apply to containers, are of a certain type
+    (e.g., max_run_res.ncpus) associated to a given resource
+    (e.g., resource), on a given entity (e.g.,user Bob) and
+    have a certain value.
+
+    :param limit_type: Type of the limit
+    :type limit_type: str or None
+    :param resource: PBS resource
+    :type resource: str or None
+    :param entity_obj: Entity object
+    :param value: Limit value
+    :type value: int
+    """
+
+    def __init__(self, limit_type=None, resource=None,
+                 entity_obj=None, value=None, container=None,
+                 container_id=None):
+        self.set_container(container, container_id)
+        self.soft_limit = False
+        self.hard_limit = False
+        self.set_limit_type(limit_type)
+        self.set_resource(resource)
+        self.set_value(value)
+        self.entity = entity_obj
+
+    def set_container(self, container, container_id):
+        """
+        Set the container
+
+        :param container: Container which is to be set
+        :type container: str
+        :param container_id: Container id
+        """
+        self.container = container
+        self.container_id = container_id
+
+    def set_limit_type(self, t):
+        """
+        Set the limit type
+
+        :param t: Limit type
+        :type t: str
+        """
+        self.limit_type = t
+        if '_soft' in t:
+            self.soft_limit = True
+        else:
+            self.hard_limit = True
+
+    def set_resource(self, resource):
+        """
+        Set the resource
+
+        :param resource: resource value to set
+        :type resource: str
+        """
+        self.resource = resource
+
+    def set_value(self, value):
+        """
+        Set the resource value
+
+        :param value: Resource value
+        :type value: str
+        """
+        self.value = value
+
+    def __eq__(self, value):
+        if str(self) == str(value):
+            return True
+        return False
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        l = [self.container_id, self.limit_type, self.resource, '[',
+             self.entity.type, ':', self.entity.name, '=', self.value, ']']
+        return " ".join(l)
+
+
+class EquivClass(PBSObject):
+
+    """
+    Equivalence class holds information on a collection of entities
+    grouped according to a set of attributes
+    :param attributes: Dictionary of attributes
+    :type attributes: Dictionary
+    :param entities: List of entities
+    :type entities: List
+    """
+
+    def __init__(self, name, attributes={}, entities=[]):
+        self.name = name
+        self.attributes = attributes
+        self.entities = entities
+
+    def add_entity(self, entity):
+        """
+        Add entities
+
+        :param entity: Entity to add
+        :type entity: str
+        """
+        if entity not in self.entities:
+            self.entities.append(entity)
+
+    def __str__(self):
+        s = [str(len(self.entities)), ":", ":".join(self.name)]
+        return "".join(s)
+
+    def show(self, showobj=False):
+        """
+        Show the entities
+
+        :param showobj: If true then show the entities
+        :type showobj: bool
+        """
+        s = " && ".join(self.name) + ': '
+        if showobj:
+            s += str(self.entities)
+        else:
+            s += str(len(self.entities))
+        print(s)
+        return s
+
+
+class Holidays():
+    """
+    Descriptive calss for Holiday file.
+    """
+
+    def __init__(self):
+        self.year = {'id': "YEAR", 'value': None, 'valid': False}
+        self.weekday = {'id': "weekday", 'p': None, 'np': None, 'valid': None,
+                        'position': None}
+        self.monday = {'id': "monday", 'p': None, 'np': None, 'valid': None,
+                       'position': None}
+        self.tuesday = {'id': "tuesday", 'p': None, 'np': None, 'valid': None,
+                        'position': None}
+        self.wednesday = {'id': "wednesday", 'p': None, 'np': None,
+                          'valid': None, 'position': None}
+        self.thursday = {'id': "thursday", 'p': None, 'np': None,
+                         'valid': None, 'position': None}
+        self.friday = {'id': "friday", 'p': None, 'np': None, 'valid': None,
+                       'position': None}
+        self.saturday = {'id': "saturday", 'p': None, 'np': None,
+                         'valid': None, 'position': None}
+        self.sunday = {'id': "sunday", 'p': None, 'np': None, 'valid': None,
+                       'position': None}
+
+        self.days_set = []  # list of set days
+        self._days_map = {'weekday': self.weekday, 'monday': self.monday,
+                          'tuesday': self.tuesday, 'wednesday': self.wednesday,
+                          'thursday': self.thursday, 'friday': self.friday,
+                          'saturday': self.saturday, 'sunday': self.sunday}
+        self.holidays = []  # list of calendar holidays
+
+    def __str__(self):
+        """
+        Return the content to write to holidays file as a string
+        """
+        content = []
+        if self.year['valid']:
+            content.append(self.year['id'] + "\t" +
+                           self.year['value'])
+
+        for i in range(0, len(self.days_set)):
+            content.append(self.days_set[i]['id'] + "\t" +
+                           self.days_set[i]['p'] + "\t" +
+                           self.days_set[i]['np'])
+
+        # Add calendar holidays
+        for day in self.holidays:
+            content.append(day)
+
+        return "\n".join(content)

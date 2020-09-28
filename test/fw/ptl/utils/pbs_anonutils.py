@@ -44,7 +44,8 @@ import copy
 import shlex
 import re
 
-from ptl.lib.ptl_types import BatchUtils,  PbsTypeFGCLimit
+from ptl.lib.pbs_teslib import (PbsTypeFGCLimit,
+                                BatchutilsTypes)
 from ptl.lib.pbs_ifl_mock import *
 from ptl.utils.pbs_dshutils import DshUtils
 
@@ -125,7 +126,7 @@ class PBSAnonymizer(object):
         if key in attr_map.keys():
             anon_key = attr_map[key]
         else:
-            anon_key = self.utils.random_str(len(key))
+            anon_key = BatchutilsTypes.random_str(len(key))
             attr_map[key] = anon_key
 
         return anon_key
@@ -208,7 +209,7 @@ class PBSAnonymizer(object):
                 value_map = kv_map[key]
                 anon_val = self.__get_anon_key(val, value_map)
             else:
-                anon_val = self.utils.random_str(len(val))
+                anon_val = BatchutilsTypes.random_str(len(val))
                 kv_map[key] = {val: anon_val}
             value = value.replace(val, anon_val)
 
@@ -356,7 +357,7 @@ class PBSAnonymizer(object):
                         self.gmap_attr_val[ANON_USER_K] = {}
 
                 if euser is not None and anon_euser is None:
-                    anon_euser = self.utils.random_str(len(euser))
+                    anon_euser = BatchutilsTypes.random_str(len(euser))
                     self.gmap_attr_val[ANON_USER_K][euser] = anon_euser
 
                 if "egroup" not in self.attr_val:
@@ -373,7 +374,7 @@ class PBSAnonymizer(object):
                             self.gmap_attr_val[ANON_GROUP_K] = {}
 
                 if egroup is not None and anon_egroup is None:
-                    anon_egroup = self.utils.random_str(len(egroup))
+                    anon_egroup = BatchutilsTypes.random_str(len(egroup))
                     self.gmap_attr_val[ANON_GROUP_K][egroup] = anon_egroup
 
                 # reconstruct the fairshare info by combining euser and egroup
@@ -410,7 +411,7 @@ class PBSAnonymizer(object):
                     if curr_anon_resc in self.gmap_resc_key:
                         val = self.gmap_resc_key[curr_anon_resc]
                     else:
-                        val = self.utils.random_str(len(curr_anon_resc))
+                        val = BatchutilsTypes.random_str(len(curr_anon_resc))
                 elif curr_anon_resc not in self.gmap_resc_key:
                     self.gmap_resc_key[curr_anon_resc] = val
                 tmp_resc.set_name(val)
@@ -444,7 +445,7 @@ class PBSAnonymizer(object):
                         if nm in ar and ename in ar[nm]:
                             obf_ename = ar[nm][ename]
                         else:
-                            obf_ename = self.utils.random_str(len(ename))
+                            obf_ename = BatchutilsTypes.random_str(len(ename))
                         self.gmap_attr_val[nm] = {ename: obf_ename}
                     elif ename in self.gmap_attr_val[nm]:
                         if ename in self.gmap_attr_val[nm]:
@@ -489,7 +490,7 @@ class PBSAnonymizer(object):
                 elif name in m and v in m[name]:
                     r = m[name][v]
                 else:
-                    r = self.utils.random_str(len(v))
+                    r = BatchutilsTypes.random_str(len(v))
                     if not isinstance(ar[name], dict):
                         ar[name] = {}
                     ar[name][v] = r
@@ -518,7 +519,7 @@ class PBSAnonymizer(object):
             if name in m:
                 ar[name] = m[name]
             else:
-                randstr = self.utils.random_str(len(name))
+                randstr = BatchutilsTypes.random_str(len(name))
                 ar[name] = randstr
                 m[name] = randstr
 
@@ -614,7 +615,7 @@ class PBSAnonymizer(object):
                             if r in val:
                                 if r not in self.gmap_resc_key:
                                     self.gmap_resc_key[
-                                        r] = self.utils.random_str(len(r))
+                                        r] = BatchutilsTypes.random_str(len(r))
                                 val = val.replace(r, self.gmap_resc_key[r])
                                 setattr(self, attr, val)
 
@@ -1168,7 +1169,7 @@ class PBSAnonymizer(object):
                     if sres in self.gmap_resc_key:
                         sr[i] = self.gmap_resc_key[sres]
                     else:
-                        anon_res = self.utils.random_str(len(sres))
+                        anon_res = BatchutilsTypes.random_str(len(sres))
                         self.gmap_resc_key[sres] = anon_res
                         sr[i] = anon_res
 

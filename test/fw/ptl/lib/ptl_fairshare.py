@@ -47,7 +47,6 @@ import sys
 import time
 
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.lib.pbs_testlib import *
 
 
 class FairshareTree(object):

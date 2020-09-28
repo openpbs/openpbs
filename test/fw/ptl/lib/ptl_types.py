@@ -37,14 +37,181 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
+import collections
 import datetime
 import os
 import re
 import sys
 import time
+import string
+import random
 
-from ptl.lib.ptl_batchutils import get_batchutils_obj
+
+class BatchutilsTypes(object):
+    @classmethod
+    def isfloat(cls, value):
+        """
+        returns true if value is a float or a string representation
+        of a float returns false otherwise
+
+        :param value: value to be checked
+        :type value: str or int or float
+        :returns: True or False
+        """
+        if isinstance(value, float):
+            return True
+        if isinstance(value, str):
+            try:
+                float(value)
+                return True
+            except ValueError:
+                return False
+
+    @classmethod
+    def decode_value(cls, value):
+        """
+        Decode an attribute/resource value, if a value is
+        made up of digits only then return the numeric value
+        of it, if it is made of alphanumeric values only, return
+        it as a string, if it is of type size, i.e., with a memory
+        unit such as b,kb,mb,gb then return the converted size to
+        kb without the unit
+
+        :param value: attribute/resource value
+        :type value: str or int
+        :returns: int or float or string
+        """
+
+        if value is None or isinstance(value, collections.Callable):
+            return value
+
+        if isinstance(value, (int, float)):
+            return value
+
+        if value.isdigit():
+            return int(value)
+
+        if value.isalpha() or value == '':
+            return value
+
+        if cls.isfloat(value):
+            return float(value)
+
+        if ':' in value:
+            try:
+                value = int(PbsTypeDuration(value))
+            except ValueError:
+                pass
+            return value
+
+        # TODO revisit:  assume (this could be the wrong type, need a real
+        # data model anyway) that the remaining is a memory expression
+        try:
+            value = PbsTypeSize(value)
+            return value.value
+        except ValueError:
+            pass
+        except TypeError:
+            # if not then we pass to return the value as is
+            pass
+
+        return value
+
+    @classmethod
+    def random_str(cls, length=1, prefix=''):
+        """
+        Generates the random string
+
+        :param length: Length of the string
+        :type length: int
+        :param prefix: Prefix of the string
+        :type prefix: str
+        :returns: Random string
+        """
+        r = [random.choice(string.ascii_letters) for _ in range(length)]
+        r = ''.join([prefix] + r)
+        if hasattr(cls, '__uniq_rstr'):
+            while r in cls.__uniq_rstr:
+                r = [random.choice(string.ascii_letters)
+                     for _ in range(length)]
+                r = ''.join([prefix] + r)
+            cls.__uniq_rstr.append(r)
+        else:
+            cls.__uniq_rstr = [r]
+
+        return r
+
+
+class PbsAttribute(object):
+    """
+    Descriptor class for PBS attribute
+
+    :param name: PBS attribute name
+    :type name: str
+    :param value: Value for the attribute
+    :type value: str or int or float
+    """
+
+    def __init__(self, name=None, value=None):
+        self.set_name(name)
+        self.set_value(value)
+
+    def set_name(self, name):
+        """
+        Set PBS attribute name
+
+        :param name: PBS attribute
+        :type name: str
+        """
+        self.name = name
+        if name is not None and '.' in name:
+            self.is_resource = True
+            self.resource_type, self.resource_name = self.name.split('.')
+        else:
+            self.is_resource = False
+            self.resource_type = self.resource_name = None
+
+    def set_value(self, value):
+        """
+        Set PBS attribute value
+
+        :param value: Value of PBS attribute
+        :type value: str or int or float
+        """
+        self.value = value
+        if isinstance(value, (int, float)) or str(value).isdigit():
+            self.is_consumable = True
+        else:
+            self.is_consumable = False
+
+    def obfuscate_name(self, a=None):
+        """
+        Obfuscate PBS attribute name
+        """
+        if a is not None:
+            on = a
+        else:
+            on = BatchutilsTypes.random_str(len(self.name))
+
+        self.decoded_name = self.name
+        if self.is_resource:
+            self.set_name(self.resource_name + '.' + on)
+
+    def obfuscate_value(self, v=None):
+        """
+        Obfuscate PBS attribute value
+        """
+        if not self.is_consuable:
+            self.decoded_value = self.value
+            return
+
+        if v is not None:
+            ov = v
+        else:
+            ov = BatchutilsTypes.random_str(len(self.value))
+
+        self.decoded_value = self.value
+        self.set_value(ov)
 
 
 class PbsTypeSize(str):
@@ -711,7 +878,6 @@ class PbsTypeFGCLimit(object):
     fgc_attr_pat = re.compile(r"(?P<ltype>[a-z_]+)[\.]*(?P<resource>[\w\d-]*)")
     fgc_val_pat = re.compile(r"[\s]*\[(?P<etype>[ugpo]):(?P<ename>[\w\d-]+)"
                              r"=(?P<eval>[\d]+)\][\s]*")
-    utils = get_batchutils_obj
 
     def __init__(self, attr, val):
 
@@ -728,7 +894,7 @@ class PbsTypeFGCLimit(object):
 
         v = self.fgc_val_pat.match(val)
         if v:
-            self.lim_value = self.utils.decode_value(v.group('eval'))
+            self.lim_value = BatchutilsTypes.decode_value(v.group('eval'))
             self.entity_type = v.group('etype')
             self.entity_name = v.group('ename')
         else:
@@ -754,5 +920,5 @@ class PbsTypeAttribute(dict):
     """
 
     def __getitem__(self, name):
-        return get_batchutils_obj.decode_value(super(PbsTypeAttribute,
-                                                     self).__getitem__(name))
+        return BatchutilsTypes.decode_value(super(PbsTypeAttribute,
+                                                  self).__getitem__(name))

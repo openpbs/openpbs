@@ -86,18 +86,15 @@ except:
                          "to make it\n")
         raise ImportError
     API_OK = False
-
 from ptl.lib.ptl_entities import *
 from ptl.lib.ptl_job import *
-from ptl.lib.pbs_testlib import *
-
-def get_server_obj(name=None, attrs={}, defaults={}, pbsconf_file=None,
-                   snapmap={}, snap=None, client=None,
-                   client_pbsconf_file=None, db_access=None, stat=True):
-    return Server(name, attrs, defaults, pbsconf_file, snapmap, snap, client,
-                  client_pbsconf_file, db_access, stat)
-from ptl.lib.ptl_sched import get_sched_obj
-from ptl.lib.ptl_mom import get_mom_obj
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_types import *
+from ptl.lib.ptl_constants import *
+from ptl.lib.ptl_sched import *
+from ptl.lib.ptl_mom import *
+from ptl.lib.ptl_batchutils import *
+from ptl.lib.ptl_service import *
 
 
 class Server(PBSService):
@@ -1148,8 +1145,8 @@ class Server(PBSService):
                 bsl = self.status(
                     JOB, 'Resource_List.select', id=id, extend='t')
             if self.schedulers[self.dflt_sched_name] is None:
-                self.schedulers[self.dflt_sched_name] = get_sched_obj(
-                    self.hostname)
+                self.schedulers[self.dflt_sched_name] = Scheduler(
+                    self, name=self.hostname)
             _prev_events = self.status(SCHED, 'log_events',
                                        id=self.dflt_schd_name)[0]['log_events']
 
@@ -1712,7 +1709,7 @@ class Server(PBSService):
 
                     if (ATTR_o not in obj.attributes or
                             ATTR_e not in obj.attributes):
-                        fn = self.utils.random_str(
+                        fn = BatchutilsTypes.random_str(
                             length=4, prefix='PtlPbsJob')
                         tmp = self.du.get_tempdir(self.hostname)
                         fn = os.path.join(tmp, fn)
@@ -4001,8 +3998,8 @@ class Server(PBSService):
                     else:
                         v = rv
 
-                stat_v = self.utils.decode_value(stat_v)
-                v = self.utils.decode_value(str(v))
+                stat_v = BatchutilsTypes.decode_value(stat_v)
+                v = BatchutilsTypes.decode_value(str(v))
 
                 if stat_k == ATTR_version:
                     stat_v = LooseVersion(str(stat_v))
@@ -4192,9 +4189,8 @@ class Server(PBSService):
                     else:
                         self.nodes[id].attributes.update(binfo)
                 else:
-                    self.nodes[id] = get_mom_obj(id, binfo,
-                                                 snapmap={NODE: None},
-                                                 server=self)
+                    self.nodes[id] = MoM(self, id, binfo,
+                                         snapmap={NODE: None})
                 obj = self.nodes[id]
             elif obj_type == SERVER:
                 if overwrite:
@@ -4261,12 +4257,12 @@ class Server(PBSService):
                     spriv = None
                     if 'sched_priv' in binfo:
                         spriv = binfo['sched_priv']
-                    self.schedulers[id] = get_sched_obj(hostname=hostname,
-                                                        server=self,
-                                                        snap=snap,
-                                                        snapmap=snapmap,
-                                                        id=id,
-                                                        sched_priv=spriv)
+                    self.schedulers[id] = Scheduler(server=self,
+                                                    hostname=hostname,
+                                                    snap=snap,
+                                                    snapmap=snapmap,
+                                                    id=id,
+                                                    sched_priv=spriv)
                     if overwrite:
                         self.schedulers[id].attributes = copy.deepcopy(binfo)
                     else:
@@ -4426,7 +4422,7 @@ class Server(PBSService):
                         if mode == PTL_COUNTER:
                             amt = 1
                             if grandtotal:
-                                amt = self.utils.decode_value(bs[a])
+                                amt = BatchutilsTypes.decode_value(bs[a])
                                 if not isinstance(amt, (int, float)):
                                     amt = 1
                                 if a in total:
@@ -4466,16 +4462,16 @@ class Server(PBSService):
                             break
                         else:
                             continue
-                    amt = self.utils.decode_value(bs[k])
+                    amt = BatchutilsTypes.decode_value(bs[k])
                     if isinstance(v, tuple):
                         op = v[0]
-                        val = self.utils.decode_value(v[1])
+                        val = BatchutilsTypes.decode_value(v[1])
                     elif op == SET:
                         val = None
                         pass
                     else:
                         op = EQ
-                        val = self.utils.decode_value(v)
+                        val = BatchutilsTypes.decode_value(v)
 
                     if ((op == LT and amt < val) or
                             (op == LE and amt <= val) or
@@ -4639,12 +4635,12 @@ class Server(PBSService):
             # Filter the batch attributes by the attribs requested
             for a in attrib:
                 if a in bs:
-                    amt = self.utils.decode_value(bs[a])
+                    amt = BatchutilsTypes.decode_value(bs[a])
                     if a.startswith('resources_available.'):
                         val = a.replace('resources_available.', '')
                         if (op == RESOURCES_AVAILABLE and
                                 'resources_assigned.' + val in bs):
-                            amt = (int(amt) - int(self.utils.decode_value(
+                            amt = (int(amt) - int(BatchutilsTypes.decode_value(
                                    bs['resources_assigned.' + val])))
                         # this case where amt goes negative is not a bug, it
                         # may happen when computing whats_available due to the
@@ -4826,7 +4822,7 @@ class Server(PBSService):
         # if there is a dedicated time, move the availaility time up to that
         # time as necessary
         if self.schedulers[self.dflt_sched_name] is None:
-            self.schedulers[self.dflt_sched_name] = get_sched_obj(server=self)
+            self.schedulers[self.dflt_sched_name] = Scheduler(server=self)
 
         self.schedulers[self.dflt_sched_name].parse_dedicated_time()
 
@@ -4939,7 +4935,7 @@ class Server(PBSService):
                     for res in rescs:
                         r = 'Resource_List.' + res
                         if r in job:
-                            tmpr = int(self.utils.decode_value(job[r]))
+                            tmpr = int(BatchutilsTypes.decode_value(job[r]))
                             resassigned[res] += tmpr
                     if 'exec_host' in job:
                         hosts = ResourceResv.get_hosts(job['exec_host'])
@@ -4968,7 +4964,7 @@ class Server(PBSService):
             for res in rescs:
                 avail = 'resources_available.' + res
                 if avail in node:
-                    val = self.utils.decode_value(node[avail])
+                    val = BatchutilsTypes.decode_value(node[avail])
                     if isinstance(val, int):
                         resavail[res] += val
 
@@ -4977,7 +4973,8 @@ class Server(PBSService):
                         if len(entity) == 0:
                             assigned = 'resources_assigned.' + res
                             if assigned in node:
-                                val = self.utils.decode_value(node[assigned])
+                                val = BatchutilsTypes.decode_value(
+                                    node[assigned])
                                 if isinstance(val, int):
                                     resassigned[res] += val
 
@@ -5181,7 +5178,7 @@ class Server(PBSService):
                 self.du.set_pbs_config(hostname, fout=_n_pbsconf,
                                        confs=_np_conf)
                 pi.initd(hostname, conf_file=_n_pbsconf, op='start')
-                m = get_mom_obj(hostname, pbsconf_file=_n_pbsconf)
+                m = MoM(self, hostname, pbsconf_file=_n_pbsconf)
                 if m.isUp():
                     m.stop()
                 if hostname != self.hostname:
@@ -5530,7 +5527,7 @@ class Server(PBSService):
                         job['eligible_time'])
             if 'fair_share_perc' in fres:
                 if self.schedulers[self.dflt_sched_name] is None:
-                    self.schedulers[self.dflt_sched_name] = get_sched_obj(
+                    self.schedulers[self.dflt_sched_name] = Scheduler(
                         server=self)
 
                 if 'fairshare_entity' in self.schedulers[
@@ -5559,7 +5556,7 @@ class Server(PBSService):
                     f_value['fair_share_perc'] = 0
 
             for job_res, val in job.items():
-                val = self.utils.decode_value(val)
+                val = BatchutilsTypes.decode_value(val)
                 if job_res.startswith('Resource_List.'):
                     job_res = job_res.replace('Resource_List.', '')
                 if job_res in fres and job_res not in _f_builtins:
@@ -5762,14 +5759,14 @@ class Server(PBSService):
                 if entity not in usage:
                     if resource:
                         usage[entity] = int(
-                            self.utils.decode_value(
+                            BatchutilsTypes.decode_value(
                                 j['Resource_List.' + resource]))
                     else:
                         usage[entity] = 1
                 else:
                     if resource:
                         usage[entity] += int(
-                            self.utils.decode_value(
+                            BatchutilsTypes.decode_value(
                                 j['Resource_List.' + resource]))
                     else:
                         usage[entity] += 1
@@ -6152,7 +6149,7 @@ class Server(PBSService):
                         svr.manager(MGR_CMD_DELETE, NODE, None, "")
                     except:
                         pass
-                    get_mom_obj(h, pbsconf_file=conf_file).insert_vnode_def(
+                    MoM(self, h, pbsconf_file=conf_file).insert_vnode_def(
                         vdef)
                     svr.restart()
                     svr.manager(MGR_CMD_CREATE, NODE, id=svr.shortname)

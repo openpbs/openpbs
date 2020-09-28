@@ -75,8 +75,11 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_types import *
+from ptl.lib.ptl_constants import *
 from ptl.lib.ptl_object import *
+from ptl.lib.ptl_expect_action import *
 
 
 class PBSInitServices(object):

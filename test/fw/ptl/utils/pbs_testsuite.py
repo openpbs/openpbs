@@ -901,8 +901,8 @@ class PBSTestSuite(unittest.TestCase):
         try:
             server = cls.servers[server]
         except BaseException:
-            server = None
-        return Comm(hostname, pbsconf_file=pbsconf_file, server=server)
+            server = Server(hostname, pbsconf_file=pbsconf_file)
+        return Comm(server, hostname, pbsconf_file=pbsconf_file)
 
     @classmethod
     def init_scheduler(cls, hostname, pbsconf_file=None, server=None):
@@ -921,8 +921,8 @@ class PBSTestSuite(unittest.TestCase):
         try:
             server = cls.servers[server]
         except BaseException:
-            server = None
-        return Scheduler(hostname=hostname, server=server,
+            server = Server(hostname, pbsconf_file=pbsconf_file)
+        return Scheduler(server, hostname=hostname,
                          pbsconf_file=pbsconf_file)
 
     @classmethod
@@ -941,8 +941,8 @@ class PBSTestSuite(unittest.TestCase):
         try:
             server = cls.servers[server]
         except BaseException:
-            server = None
-        return MoM(hostname, pbsconf_file=pbsconf_file, server=server)
+            server = Server(hostname, pbsconf_file=pbsconf_file)
+        return MoM(server, hostname, pbsconf_file=pbsconf_file)
 
     def init_proc_mon(self):
         """

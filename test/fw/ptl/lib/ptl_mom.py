@@ -70,12 +70,12 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.pbs_testlib import *
-
-def get_mom_obj(name=None, attrs={}, pbsconf_file=None, snapmap={},
-                snap=None, server=None, db_access=None):
-    return MoM(name, attrs, pbsconf_file, snapmap, snap, server, db_access)
-from ptl.lib.ptl_server import get_server_obj
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_types import *
+from ptl.lib.ptl_constants import *
+from ptl.lib.ptl_object import *
+from ptl.lib.ptl_service import *
+from ptl.lib.ptl_entities import *
 
 
 class MoM(PBSService):
@@ -111,18 +111,13 @@ class MoM(PBSService):
                        'PBS_MANAGER_SERVICE_PORT': '-R',
                        'PBS_HOME': '-d'}
 
-    def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
-                 snap=None, server=None, db_access=None):
-        if server is not None:
-            self.server = server
-            if snap is None and self.server.snap is not None:
-                snap = self.server.snap
-            if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
-                snapmap = self.server.snapmap
-        else:
-            self.server = get_server_obj(name, pbsconf_file=pbsconf_file,
-                                         db_access=db_access, snap=snap,
-                                         snapmap=snapmap)
+    def __init__(self, server, name=None, attrs={}, pbsconf_file=None,
+                 snapmap={}, snap=None, db_access=None):
+        self.server = server
+        if snap is None and self.server.snap is not None:
+            snap = self.server.snap
+        if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
+            snapmap = self.server.snapmap
 
         PBSService.__init__(self, name, attrs, self.dflt_attributes,
                             pbsconf_file, snap=snap, snapmap=snapmap)

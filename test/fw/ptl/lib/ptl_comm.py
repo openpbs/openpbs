@@ -59,13 +59,7 @@ except:
         raise ImportError
     API_OK = False
 
-
 from ptl.lib.pbs_testlib import *
-
-def get_comm_obj(name=None, attrs={}, pbsconf_file=None, snapmap={},
-                 snap=None, server=None, db_access=None):
-    return Comm(name, attrs, pbsconf_file, snapmap, snap, server, db_access)
-from ptl.lib.ptl_server import get_server_obj
 
 
 class Comm(PBSService):
@@ -97,18 +91,13 @@ class Comm(PBSService):
         """
     dflt_attributes = {}
 
-    def __init__(self, name=None, attrs={}, pbsconf_file=None, snapmap={},
-                 snap=None, server=None, db_access=None):
-        if server is not None:
-            self.server = server
-            if snap is None and self.server.snap is not None:
-                snap = self.server.snap
-            if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
-                snapmap = self.server.snapmap
-        else:
-            self.server = get_server_obj(name, pbsconf_file=pbsconf_file,
-                                         db_access=db_access, snap=snap,
-                                         snapmap=snapmap)
+    def __init__(self, server, name=None, attrs={}, pbsconf_file=None,
+                 snapmap={}, snap=None, db_access=None):
+        self.server = server
+        if snap is None and self.server.snap is not None:
+            snap = self.server.snap
+        if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
+            snapmap = self.server.snapmap
         PBSService.__init__(self, name, attrs, self.dflt_attributes,
                             pbsconf_file, snapmap, snap)
         _m = ['Comm ', self.shortname]

@@ -54,12 +54,10 @@ from distutils.version import LooseVersion
 
 from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_constants import *
 
-
-def get_batchutils_obj():
-    return BatchUtils()
-from ptl.lib.ptl_types import PbsTypeSize, PbsTypeChunk, PbsTypeDuration
+from ptl.lib.ptl_types import (PbsTypeSize, PbsTypeChunk,
+                               PbsTypeDuration, BatchutilsTypes)
 
 
 class BatchUtils(object):
@@ -634,7 +632,7 @@ class BatchUtils(object):
                 if ',' in v:
                     _jdict[k] = v.split(',')
                 else:
-                    _jdict[k] = self.decode_value(v)
+                    _jdict[k] = BatchutilsTypes.decode_value(v)
             _js.append(_jdict)
         return _js
 
@@ -967,75 +965,6 @@ class BatchUtils(object):
                 info.append(resources)
 
         return info
-
-    @classmethod
-    def isfloat(cls, value):
-        """
-        returns true if value is a float or a string representation
-        of a float returns false otherwise
-
-        :param value: value to be checked
-        :type value: str or int or float
-        :returns: True or False
-        """
-        if isinstance(value, float):
-            return True
-        if isinstance(value, str):
-            try:
-                float(value)
-                return True
-            except ValueError:
-                return False
-
-    @classmethod
-    def decode_value(cls, value):
-        """
-        Decode an attribute/resource value, if a value is
-        made up of digits only then return the numeric value
-        of it, if it is made of alphanumeric values only, return
-        it as a string, if it is of type size, i.e., with a memory
-        unit such as b,kb,mb,gb then return the converted size to
-        kb without the unit
-
-        :param value: attribute/resource value
-        :type value: str or int
-        :returns: int or float or string
-        """
-
-        if value is None or isinstance(value, collections.Callable):
-            return value
-
-        if isinstance(value, (int, float)):
-            return value
-
-        if value.isdigit():
-            return int(value)
-
-        if value.isalpha() or value == '':
-            return value
-
-        if cls.isfloat(value):
-            return float(value)
-
-        if ':' in value:
-            try:
-                value = int(PbsTypeDuration(value))
-            except ValueError:
-                pass
-            return value
-
-        # TODO revisit:  assume (this could be the wrong type, need a real
-        # data model anyway) that the remaining is a memory expression
-        try:
-            value = PbsTypeSize(value)
-            return value.value
-        except ValueError:
-            pass
-        except TypeError:
-            # if not then we pass to return the value as is
-            pass
-
-        return value
 
     def convert_time(self, val, fmt='%a %b %d %H:%M:%S %Y'):
         """
@@ -1554,30 +1483,6 @@ class BatchUtils(object):
 
             return 1
 
-    @classmethod
-    def random_str(cls, length=1, prefix=''):
-        """
-        Generates the random string
-
-        :param length: Length of the string
-        :type length: int
-        :param prefix: Prefix of the string
-        :type prefix: str
-        :returns: Random string
-        """
-        r = [random.choice(string.ascii_letters) for _ in range(length)]
-        r = ''.join([prefix] + r)
-        if hasattr(cls, '__uniq_rstr'):
-            while r in cls.__uniq_rstr:
-                r = [random.choice(string.ascii_letters)
-                     for _ in range(length)]
-                r = ''.join([prefix] + r)
-            cls.__uniq_rstr.append(r)
-        else:
-            cls.__uniq_rstr = [r]
-
-        return r
-
     def _make_template_formula(self, formula):
         """
         Create a template of the formula
@@ -1627,7 +1532,7 @@ class BatchUtils(object):
         """
         m = self.lim_tag.match(limstr)
         if m:
-            _v = str(self.decode_value(m.group('entity_value')))
+            _v = str(BatchutilsTypes.decode_value(m.group('entity_value')))
             return (m.group('limtype'), m.group('resource'),
                     m.group('entity_type'), m.group('entity_name'), _v)
         return None

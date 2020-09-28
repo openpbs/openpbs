@@ -70,15 +70,12 @@ except:
         raise ImportError
     API_OK = False
 
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_types import *
+from ptl.lib.ptl_error import *
+from ptl.lib.ptl_constants import *
+from ptl.lib.ptl_service import *
 from ptl.lib.ptl_fairshare import *
-
-def get_sched_obj(hostname=None, server=None, pbsconf_file=None,
-                  snapmap={}, snap=None, db_access=None, id='default',
-                  sched_priv=None):
-    return Scheduler(hostname, server, pbsconf_file, snapmap, snap, db_access,
-                     id, sched_priv)
-from ptl.lib.ptl_server import get_server_obj
+from ptl.lib.ptl_entities import *
 
 
 class Scheduler(PBSService):
@@ -190,7 +187,7 @@ class Scheduler(PBSService):
             r'(?P<Usage>[0-9]+)[\s]*Perc:[\s]*(?P<Perc>.*)%'
     fs_tag = re.compile(fs_re)
 
-    def __init__(self, hostname=None, server=None, pbsconf_file=None,
+    def __init__(self, server, hostname=None, pbsconf_file=None,
                  snapmap={}, snap=None, db_access=None, id='default',
                  sched_priv=None):
 
@@ -210,16 +207,11 @@ class Scheduler(PBSService):
         self.db_access = None
         self.user = None
 
-        if server is not None:
-            self.server = server
-            if snap is None and self.server.snap is not None:
-                snap = self.server.snap
-            if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
-                snapmap = self.server.snapmap
-        else:
-            self.server = get_server_obj(hostname, pbsconf_file=pbsconf_file,
-                                         db_access=db_access, snap=snap,
-                                         snapmap=snapmap)
+        self.server = server
+        if snap is None and self.server.snap is not None:
+            snap = self.server.snap
+        if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
+            snapmap = self.server.snapmap
 
         if hostname is None:
             hostname = self.server.hostname
