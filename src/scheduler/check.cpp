@@ -120,10 +120,10 @@
  *
  */
 
-sched_error
+sched_error_code
 is_ok_to_run_queue(status *policy, queue_info *qinfo)
 {
-	sched_error rc = SE_NONE;			/* Return Code */
+	sched_error_code rc = SE_NONE;			/* Return Code */
 
 	if (!qinfo->is_exec)
 		return QUEUE_NOT_EXEC;
@@ -714,7 +714,7 @@ nspec **
 is_ok_to_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
-	enum sched_error rc = static_cast<enum sched_error>(0);			/* Return Code */
+	enum sched_error_code rc = static_cast<enum sched_error_code>(0);			/* Return Code */
 	schd_resource	*res = NULL;		/* resource list to check */
 	int		endtime = 0;		/* end time of job if started now */
 	nspec		**ns_arr = NULL;	/* node solution of where request will run */
@@ -843,7 +843,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		if (resresv->job == NULL || resresv->job->priority != NAS_HWY101)
 #endif /* localmod 032 */
 		if (resresv->is_job) {
-			if ((rc = check_limits(sinfo, qinfo, resresv, err, flags | CHECK_LIMIT))) {
+			if ((rc = static_cast<sched_error_code>(check_limits(sinfo, qinfo, resresv, err, flags | CHECK_LIMIT)))) {
 
 				add_err(&prev_err, err);
 				if (rc == SCHD_ERROR)
@@ -1108,7 +1108,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 	unsigned int flags, resdef **checklist,
-	enum sched_error fail_code, schd_error *perr)
+	enum sched_error_code fail_code, schd_error *perr)
 {
 	/* The resource needs to be found on the server and the requested resource
 	 * needs to be found from the job, these pointers are used to store the
@@ -1345,7 +1345,7 @@ find_counts_elm(counts *cts_list, const char *name, resdef *rdef, counts **cnt, 
  * @retval	0	: will not cross a ded time boundary
  * @retval	CROSS_DED_TIME_BOUNDRY	: will cross a ded time boundary
  */
-enum sched_error
+enum sched_error_code
 check_ded_time_boundary(resource_resv *resresv)
 {
 	sch_resource_t time_left;
@@ -1631,10 +1631,10 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
  * @retval	SCHD_ERROR	: An error has occurred.
  *
  */
-enum sched_error
+enum sched_error_code
 check_ded_time_queue(queue_info *qinfo)
 {
-	enum sched_error rc = SE_NONE;		/* return code */
+	enum sched_error_code rc = SE_NONE;		/* return code */
 
 	if (qinfo == NULL || qinfo->server == NULL)
 		return SCHD_ERROR;
@@ -1735,7 +1735,7 @@ should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *job)
  * @retval	PRIME_ONLY	: its a primetime queue and its not primetime
  *
  */
-enum sched_error
+enum sched_error_code
 check_prime_queue(status *policy, queue_info *qinfo)
 {
 	/* if the queue is an anytime queue, allow jobs to run */
@@ -1763,7 +1763,7 @@ check_prime_queue(status *policy, queue_info *qinfo)
  * @retval	NONPRIME_ONLY	: its a nonprime queue and its primetime
  *
  */
-enum sched_error
+enum sched_error_code
 check_nonprime_queue(status *policy, queue_info *qinfo)
 {
 	/* if the queue is an anytime queue, allow jobs to run */
@@ -1790,7 +1790,7 @@ check_nonprime_queue(status *policy, queue_info *qinfo)
  * @retval	SCHD_ERROR	: on error
  *
  */
-enum sched_error
+enum sched_error_code
 check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error *err)
 {
 	sch_resource_t time_left;

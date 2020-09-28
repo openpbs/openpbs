@@ -254,7 +254,7 @@ struct th_data_free_resresv
 
 struct schd_error
 {
-	enum sched_error error_code;	/* scheduler error code (see constant.h) */
+	enum sched_error_code error_code;	/* scheduler error code (see constant.h) */
 	enum schd_err_status status_code; /* error status */
 	resdef *rdef;			/* resource def if error contains a resource*/
 	char *arg1;			/* buffer for error code specific string */

@@ -264,7 +264,7 @@ sch_resource_t formula_evaluate(char *formula, resource_resv *resresv, resource_
  *
  */
 
-void update_accruetype(int pbs_sd, server_info *sinfo, enum update_accruetype_mode mode, enum sched_error err_code, resource_resv *resresv);
+void update_accruetype(int pbs_sd, server_info *sinfo, enum update_accruetype_mode mode, enum sched_error_code err_code, resource_resv *resresv);
 
 /**
  * @brief

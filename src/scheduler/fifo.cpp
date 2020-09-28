@@ -1013,7 +1013,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 				 */
 				clear_schd_error(chk_lim_err);
 				if (sinfo->qrun_job == NULL) {
-					chk_lim_err->error_code = (enum sched_error)check_limits(sinfo,
+					chk_lim_err->error_code = (enum sched_error_code)check_limits(sinfo,
 						qinfo, njob, chk_lim_err, CHECK_CUMULATIVE_LIMIT);
 					if (chk_lim_err->error_code != 0) {
 						update_accrue_err = chk_lim_err;
@@ -1804,7 +1804,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 		/* received 'batch protocol error' */
 		if (pbs_errno == PBSE_PROTOCOL) {
-			set_schd_error_codes(err, NOT_RUN, static_cast<enum sched_error>(PBSE_PROTOCOL));
+			set_schd_error_codes(err, NOT_RUN, static_cast<enum sched_error_code>(PBSE_PROTOCOL));
 			return -1;
 		}
 	}

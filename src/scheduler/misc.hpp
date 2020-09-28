@@ -261,7 +261,7 @@ void copy_schd_error(schd_error *err, schd_error *oerr);
 void set_schd_error_arg(schd_error *err, int arg_field, const char *arg);
 
 /* set the status code and error code of a schd_error structure to ensure both are set together  */
-void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error error_code);
+void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code);
 
 /* schd_error destuctor */
 void

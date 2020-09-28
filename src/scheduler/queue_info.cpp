@@ -117,7 +117,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	queue_info *qinfo;
 
 	/* return code */
-	sched_error ret;
+	sched_error_code ret;
 
 	/* buffer to store comment message */
 	char comment[MAX_LOG_SIZE];

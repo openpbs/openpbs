@@ -275,7 +275,7 @@ check_queue_max_run_soft(server_info *, queue_info *,
  *				new error case to update_accruetype() so that the job is
  *				marked as ineligible
  *
- * @see	sched_error in constant.h
+ * @see	sched_error_code in constant.h
  * @see	fc_translation_table in job_info.c
  */
 typedef	int	(*limfunc_t)(server_info *, queue_info *, resource_resv *,
@@ -817,7 +817,7 @@ make_limcounts(counts *user, counts *group, counts *project, counts *all)
  * @param[in]	si	-	server_info structure to use for limit evaluation
  * @param[in]	qi	-	queue_info structure to use for limit evaluation
  * @param[in]	rr	-	resource_resv structure to use for limit evaluation
- * @param[out]	err	-	sched_error structure to return error information
+ * @param[out]	err	-	sched_error_code structure to return error information
  * @param[in]	flags	-	CHECK_LIMITS - check real limits
  *                      CHECK_CUMULATIVE_LIMIT - check limits against total counts
  *                      RETURN_ALL_ERR - check all limits and return an err for all failed limits *
@@ -827,10 +827,10 @@ make_limcounts(counts *user, counts *group, counts *project, counts *all)
  * @retval	0	: if limit is not exceeded.
  */
 
-enum sched_error
+int
 check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err, unsigned int flags)
 {
-	enum sched_error rc;
+	enum sched_error_code rc;
 	int	any_fail_rc = 0;
 	size_t	i;
 	limcounts *svr_counts = NULL;
@@ -1100,7 +1100,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 		}
 	}
 	for (i = 0; i < sizeof(limfuncs) / sizeof(limfuncs[0]); i++) {
-		rc = static_cast<enum sched_error>((limfuncs[i])(si, qi, rr, server_lim, queue_lim, err));
+		rc = static_cast<enum sched_error_code>((limfuncs[i])(si, qi, rr, server_lim, queue_lim, err));
 		if (rc != 0) {
 			if ((flags & RETURN_ALL_ERR)) {
 				if (any_fail_rc == 0)
@@ -1132,7 +1132,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	}
 
 	if (any_fail_rc)
-		return static_cast<enum sched_error>(any_fail_rc);
+		return static_cast<enum sched_error_code>(any_fail_rc);
 
 	return rc;
 }
@@ -1248,10 +1248,10 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1318,10 +1318,10 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1389,10 +1389,10 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1445,10 +1445,10 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see		#sched_error in constant.h
+ * @see		#sched_error_code in constant.h
  */
 static int
 check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1501,9 +1501,9 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	-	if limit is not exceeded
- * @retval	sched_error enum	-	if limit is exceeded
+ * @retval	sched_error_code enum	-	if limit is exceeded
  * @retval	SCHD_ERROR	-	on error
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1571,7 +1571,7 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  * @see	#sched_error	: in constant.h
  */
@@ -1640,7 +1640,7 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer	: indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
  * @see	#sched_error	: in constant.h
@@ -1697,10 +1697,10 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1754,10 +1754,10 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1828,10 +1828,10 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1901,10 +1901,10 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1955,10 +1955,10 @@ check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -3620,10 +3620,10 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -3789,10 +3789,10 @@ check_server_max_project_res_soft(server_info *si, queue_info *qi,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -3958,10 +3958,10 @@ check_queue_max_project_res_soft(server_info *si, queue_info *qi,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -4035,10 +4035,10 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,

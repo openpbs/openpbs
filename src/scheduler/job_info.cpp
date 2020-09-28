@@ -136,8 +136,8 @@ extern char *pbse_to_txt(int err);
 
 /**
  *	This table contains job comment and information messages that correspond
- *	to the sched_error enums in "constant.hpp".  The order of the strings in
- *	the table must match the numeric order of the sched_error enum values.
+ *	to the sched_error_code enums in "constant.hpp".  The order of the strings in
+ *	the table must match the numeric order of the sched_error_code enum values.
  *	The length of the resultant strings (including any arguments inserted
  *	via % formatting directives by translate_fail_code(), q.v.) must not
  *	exceed the dimensions of the schd_error elements.  See data_types.h.
@@ -3258,7 +3258,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	nspec **ns_arr = NULL;
 	schd_error *err = NULL;
 
-	enum sched_error old_errorcode = SUCCESS;
+	enum sched_error_code old_errorcode = SUCCESS;
 	resdef *old_rdef = NULL;
 	long indexfound;
 	long skipto;
@@ -4485,7 +4485,7 @@ make_ineligible(int pbs_sd, resource_resv *resresv)
  * @param[in]	pbs_sd	-	connection to pbs_server
  * @param[in]	sinfo	-	pointer to server
  * @param[in]	mode	-	mode of operation
- * @param[in]	err_code	-	sched_error value
+ * @param[in]	err_code	-	sched_error_code value
  * @param[in,out]	resresv	-	pointer to job
  *
  * @return void
@@ -4493,7 +4493,7 @@ make_ineligible(int pbs_sd, resource_resv *resresv)
  */
 void
 update_accruetype(int pbs_sd, server_info *sinfo,
-	enum update_accruetype_mode mode, enum sched_error err_code,
+	enum update_accruetype_mode mode, enum sched_error_code err_code,
 	resource_resv *resresv)
 {
 	if (sinfo == NULL || resresv == NULL || resresv->job == NULL)

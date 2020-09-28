@@ -1116,7 +1116,7 @@ void set_schd_error_arg(schd_error *err, int arg_field, const char *arg) {
  *
  * @return	nothing
  */
-void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error error_code)
+void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code)
 {
 	if(err == NULL)
 		return;
@@ -1185,7 +1185,7 @@ schd_error *create_schd_error(int error_code, int status_code)
 	nse = new_schd_error();
 	if(nse == NULL)
 		return NULL;
-	set_schd_error_codes(nse, static_cast<schd_err_status>(status_code), static_cast<sched_error>(error_code));
+	set_schd_error_codes(nse, static_cast<schd_err_status>(status_code), static_cast<sched_error_code>(error_code));
 	return nse;
 }
 

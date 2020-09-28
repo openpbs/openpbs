@@ -1056,7 +1056,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	 * we know we need at least as many nodes as requested chunks */
 	if (resresv->place_spec->scatter || resresv->place_spec->vscatter) {
 		int nodect;
-		enum sched_error error_code;
+		enum sched_error_code error_code;
 		enum schd_err_status status_code;
 		if ( (flags & COMPARE_TOTAL) ) {
 			nodect = np->tot_nodes;

@@ -186,7 +186,7 @@ enum thread_task_type
  * codes less then RET_BASE are standard PBSE pbs error codes
  * NOTE: RET_BASE MUST be greater than the highest PBSE error code
  */
-enum sched_error
+enum sched_error_code
 {
 	SE_NONE = 0,
 	RET_BASE = 16300,

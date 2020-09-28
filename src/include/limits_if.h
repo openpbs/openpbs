@@ -188,7 +188,7 @@ extern int	lim_setlimits(const struct attrl *, enum limtype, void *);
  *
  *	@par MT-safe:	No
  */
-extern enum sched_error	check_limits(server_info *, queue_info *, resource_resv *,
+extern int	check_limits(server_info *, queue_info *, resource_resv *,
 	schd_error *, unsigned int);
 
 /**	@fn int check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
