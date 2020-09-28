@@ -217,28 +217,28 @@ dup_node_bucket(node_bucket *onb, server_info *nsinfo) {
 /* node_bucket array copy constructor */
 node_bucket **
 dup_node_bucket_array(node_bucket **old, server_info *nsinfo) {
-	node_bucket **new_;
+	node_bucket **nnb;
 	int i;
 	if (old == NULL)
 		return NULL;
 
-	new_ = static_cast<node_bucket **>(malloc((count_array(old) + 1) * sizeof(node_bucket *)));
-	if (new_ == NULL) {
+	nnb = static_cast<node_bucket **>(malloc((count_array(old) + 1) * sizeof(node_bucket *)));
+	if (nnb == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	for (i = 0; old[i] != NULL; i++) {
-		new_[i] = dup_node_bucket(old[i], nsinfo);
-		if (new_[i] == NULL) {
-			free_node_bucket_array(new_);
+		nnb[i] = dup_node_bucket(old[i], nsinfo);
+		if (nnb[i] == NULL) {
+			free_node_bucket_array(nnb);
 			return NULL;
 		}
 	}
 
-	new_[i] = NULL;
+	nnb[i] = NULL;
 
-	return new_;
+	return nnb;
 }
 
 /* node_bucket destructor */

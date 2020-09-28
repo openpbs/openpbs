@@ -1206,25 +1206,25 @@ schd_error *create_schd_error(int error_code, int status_code)
  */
 schd_error *create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
 {
-	schd_error *new_;
+	schd_error *nse;
 
-	new_ = create_schd_error(error_code, status_code);
-	if(new_ == NULL)
+	nse = create_schd_error(error_code, status_code);
+	if(nse == NULL)
 		return NULL;
 
 	if(arg1 != NULL)
-		set_schd_error_arg(new_, ARG1, arg1);
+		set_schd_error_arg(nse, ARG1, arg1);
 
 	if(arg2 != NULL)
-		set_schd_error_arg(new_, ARG2, arg2);
+		set_schd_error_arg(nse, ARG2, arg2);
 
 	if(arg3 != NULL)
-		set_schd_error_arg(new_, ARG3, arg3);
+		set_schd_error_arg(nse, ARG3, arg3);
 
 	if(specmsg != NULL)
-		set_schd_error_arg(new_, SPECMSG, specmsg);
+		set_schd_error_arg(nse, SPECMSG, specmsg);
 
-	return new_;
+	return nse;
 }
 /**
  * @brief

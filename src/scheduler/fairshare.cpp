@@ -215,28 +215,28 @@ find_alloc_ginfo(char *name, group_info *root)
 group_info *
 new_group_info()
 {
-	group_info *new_;		/* the new group */
+	group_info *ngi;		/* the new group */
 
-	if ((new_ = static_cast<group_info *>(malloc(sizeof(group_info)))) == NULL) {
+	if ((ngi = static_cast<group_info *>(malloc(sizeof(group_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	new_->name = NULL;
-	new_->resgroup = UNSPECIFIED;
-	new_->cresgroup = UNSPECIFIED;
-	new_->shares = UNSPECIFIED;
-	new_->tree_percentage = 0.0;
-	new_->group_percentage = 0.0;
-	new_->usage = FAIRSHARE_MIN_USAGE;
-	new_->temp_usage = FAIRSHARE_MIN_USAGE;
-	new_->usage_factor = 0.0;
-	new_->gpath = NULL;
-	new_->parent = NULL;
-	new_->sibling = NULL;
-	new_->child = NULL;
+	ngi->name = NULL;
+	ngi->resgroup = UNSPECIFIED;
+	ngi->cresgroup = UNSPECIFIED;
+	ngi->shares = UNSPECIFIED;
+	ngi->tree_percentage = 0.0;
+	ngi->group_percentage = 0.0;
+	ngi->usage = FAIRSHARE_MIN_USAGE;
+	ngi->temp_usage = FAIRSHARE_MIN_USAGE;
+	ngi->usage_factor = 0.0;
+	ngi->gpath = NULL;
+	ngi->parent = NULL;
+	ngi->sibling = NULL;
+	ngi->child = NULL;
 
-	return new_;
+	return ngi;
 }
 
 /**
@@ -848,17 +848,17 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
  */
 struct group_path *new_group_path()
 {
-	struct group_path *new_;
+	struct group_path *ngp;
 
-	if ((new_ = static_cast<group_path *>(malloc(sizeof(struct group_path)))) == NULL) {
+	if ((ngp = static_cast<group_path *>(malloc(sizeof(struct group_path)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	new_->ginfo = NULL;
-	new_->next = NULL;
+	ngp->ginfo = NULL;
+	ngp->next = NULL;
 
-	return new_;
+	return ngp;
 }
 
 /**
