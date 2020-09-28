@@ -51,8 +51,6 @@
 extern "C" {
 #endif
 
-#include "limits.h"
-
 #include "pbs_ifl.h"
 
 /* Formula special case constants */

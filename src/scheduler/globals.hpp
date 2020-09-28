@@ -46,7 +46,6 @@ extern "C" {
 #include <limits.h>
 
 #include "data_types.hpp"
-#include "limits.h"
 #include "queue.hpp"
 #include "sched_cmds.h"
 
