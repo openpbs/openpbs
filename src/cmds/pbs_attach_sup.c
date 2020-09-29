@@ -75,7 +75,7 @@ usage(char *id)
  * @brief
  *	attach the process session to a job via TM
  *
- * @param[in] use_cmd : if TRUE, launch the process using a new command shell.
+ * @param[in] use_cmd : if TRUE, launch the process using a new command shell. (Not used)
  * @param[in] newsid : if TRUE, create a new process group for the newly spawned process
  * @param[in] port : port to connect to Mom
  * @param[in] doparent : if non-zero, attach the parent pid

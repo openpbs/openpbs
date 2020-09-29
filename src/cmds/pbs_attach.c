@@ -47,8 +47,6 @@
 #include "cmds.h"
 #include "pbs_version.h"
 
-extern char *get_ecname(int);
-
 extern char *getoptargstr;
 
 extern void usage(char *);
