@@ -1626,6 +1626,9 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 				free_resource_req_list(resresv->job->resreq_rel);
 				resresv->job->resreq_rel = NULL;
 			}
+		} else {
+			if (resresv->job->is_subjob && resresv->job->parent_job)
+				resresv->job->parent_job->job->running_subjobs++;
 		}
 
 		set_job_state("R", resresv->job);
@@ -1726,6 +1729,10 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 			resresv->job->is_susp_sched = 1;
 			for (i = 0; ns[i] != NULL; i++)
 				ns[i]->ninfo->num_susp_jobs++;
+		} else {
+			if (resresv->job->is_subjob && resresv->job->parent_job &&
+			    resresv->job->parent_job->job->max_run_subjobs != UNSPECIFIED)
+				resresv->job->parent_job->job->running_subjobs--;
 		}
 
 		resresv->job->is_provisioning = 0;
@@ -2572,7 +2579,7 @@ in_runnable_state(resource_resv *resresv)
 	if (resresv->is_job && resresv->job !=NULL) {
 		if (resresv->job->is_array) {
 			if (range_next_value(resresv->job->queued_subjobs, -1) >= 0 ) {
-				if(resresv->job->is_begin || resresv->job->is_queued)
+				if (resresv->job->is_begin || resresv->job->is_queued)
 					return 1;
 			}
 			else

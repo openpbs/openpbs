@@ -222,14 +222,13 @@ chmod 0600 ~/.ssh/id_rsa
 chmod 0644 ~/.ssh/id_rsa.pub
 cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
 chmod 0600 ~/.ssh/authorized_keys
-echo 'Host *' >>/etc/ssh/ssh_config
-echo '  StrictHostKeyChecking no' >>/etc/ssh/ssh_config
-echo 'PermitRootLogin yes' >>/etc/ssh/sshd_config
 echo 'root:pbs' | chpasswd
 cat /etc/profile.d/0container-env-setup.sh >>/root/.profile
 cat /etc/profile.d/0container-env-setup.sh >>/root/.bash_profile
 cat /etc/profile.d/0container-env-setup.sh >>/root/.bashrc
 for user in $(awk -F: '/^(pbs|tst)/ {print $1}' /etc/passwd); do
+  rm -rf /home/${user}/.ssh
+  cp -rfp ~/.ssh /home/${user}/
   chown -R ${user}: /home/${user}/.ssh
   echo "${user}:pbs" | chpasswd
   cat /etc/profile.d/0container-env-setup.sh >>/home/${user}/.profile
@@ -237,6 +236,16 @@ for user in $(awk -F: '/^(pbs|tst)/ {print $1}' /etc/passwd); do
   cat /etc/profile.d/0container-env-setup.sh >>/home/${user}/.bashrc
   chown ${user}: /home/${user}/.bashrc /home/${user}/.profile /home/${user}/.bash_profile
 done
+echo 'Host *' >>/etc/ssh/ssh_config
+echo '  StrictHostKeyChecking no' >>/etc/ssh/ssh_config
+echo '  ConnectionAttempts 3' >>/etc/ssh/ssh_config
+echo '  IdentityFile ~/.ssh/id_rsa' >>/etc/ssh/ssh_config
+echo '  PreferredAuthentications publickey,password' >>/etc/ssh/ssh_config
+echo 'PermitRootLogin yes' >>/etc/ssh/sshd_config
+echo 'UseDNS no' >>/etc/ssh/sshd_config
+sed -i 's/AcceptEnv/# AcceptEnv/g' /etc/ssh/sshd_config
+ssh-keygen -A
+rm -f /var/run/*.pid /run/nologin
 
 rm -rf ~/.cache ~/.cpanm /var/{log,cache} /tmp /var/tmp /run/*.pid /var/run/*.pid
 mkdir -p --mode=0755 /var/{log,cache}

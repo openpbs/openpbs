@@ -4988,6 +4988,9 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			req_reject(PBSE_INTERNAL, 0, preq);
 			mark_hook_file_bad(namebuf);
 		}
+	} else {
+		if (!strcmp(preq->rq_ind.rq_hookfile.rq_filename, PBS_RESCDEF))
+			hooks_rescdef_checksum = 0LU;
 	}
 
 	reply_ack(preq);

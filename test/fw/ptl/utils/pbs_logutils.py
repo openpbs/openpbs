@@ -927,7 +927,7 @@ class PBSServerLog(PBSLogAnalyzer):
     server_run_tag = re.compile(tm_re + ".*" + job_re + ".*;Job Run at.*")
     server_nodeup_tag = re.compile(tm_re + ".*Node;.*;node up.*")
     server_enquejob_tag = re.compile(tm_re + ".*" + job_re +
-                                     ".*enqueuing into.*state R .*")
+                                     ".*enqueuing into.*state Q .*")
     server_endjob_tag = re.compile(tm_re + ".*" + job_re +
                                    ".*;Exit_status.*")
 
