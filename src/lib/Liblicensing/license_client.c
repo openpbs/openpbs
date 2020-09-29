@@ -80,7 +80,7 @@ lic_check_expiry()
 }
 
 int
-lic_state(void *node_lic_ctx)
+lic_needed_for_node(void *node_lic_ctx)
 {
 	return 0;
 }

@@ -343,11 +343,11 @@ set_node_lic_info_attr(pbsnode *pnode)
 {
 	int state;
 	char str_val[20];
-	state = lic_state(pnode->nd_lic_info);
+	state = lic_needed_for_node(pnode->nd_lic_info);
 
 	if (state == -3)
 		return;
-	else{
+	else {
 		snprintf(str_val, sizeof(str_val), "%d", state);
 		set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
 		&node_attr_def[ND_ATR_LicenseInfo], str_val, NULL, SET);

@@ -37,11 +37,10 @@
  */
 
 int lic_init(char *license_location);
-int lic_needed_for_node(char *path_to_topology_file, void *node_lic_ctx);
 int lic_obtainable();
 int lic_get(int count);
 char *lic_get_error();
 int checkkey(char **cred_list, char *nd_name, time_t *expiry);
 void lic_close();
 char *lic_check_expiry();
-int lic_state();
+int lic_needed_for_node(void *node_lic_ctx);
