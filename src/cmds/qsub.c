@@ -301,7 +301,7 @@ extern void set_sig_handlers(void);
 extern void interactive(void);
 extern int  dorecv(void *, char *, int);
 extern int  dosend(void *, char *, int);
-extern int  daemon_submit(int *, int *, char *);
+extern int  daemon_submit(int *, int *);
 extern int  get_script(FILE *, char *, char *);
 extern int  check_for_background(int, char **);
 
