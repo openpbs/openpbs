@@ -1300,7 +1300,7 @@ pbsd_init_job(job *pjob, int type)
 	/* update at_server attribute in case name changed */
 
 	free_jattr(pjob, JOB_ATR_at_server);
-	set_attr_generic(&pjob->ji_wattr[JOB_ATR_at_server], &job_attr_def[JOB_ATR_at_server], server_name, NULL, SET);
+	set_jattr_generic(pjob, JOB_ATR_at_server, server_name, NULL, SET);
 
 	/* now based on the initialization type */
 

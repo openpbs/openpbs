@@ -357,6 +357,30 @@ set_jattr_b_slim(job *pjob, int attr_idx, long val, enum batch_op op)
 }
 
 /**
+ * @brief	"fast" job attribute setter for char values
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
+int
+set_jattr_c_slim(job *pjob, int attr_idx, char val, enum batch_op op)
+{
+	if (pjob == NULL)
+		return 1;
+
+	set_attr_c(&pjob->ji_wattr[attr_idx], val, op);
+
+	return 0;
+}
+
+
+/**
  * @brief	Check if a job attribute is set
  *
  * @param[in]	pjob - pointer to job

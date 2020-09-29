@@ -266,7 +266,6 @@ req_quejob(struct batch_request *preq)
 #ifndef PBS_MOM
 	int set_project = 0;
 	int i;
-	attribute tempattr;
 	char jidbuf[PBS_MAXSVRJOBID+1];
 	pbs_queue *pque;
 	char *qname;
@@ -836,21 +835,15 @@ req_quejob(struct batch_request *preq)
 		set_jattr_l_slim(pj, JOB_ATR_hopcount, 1, SET);
 
 		/* need to set certain environmental variables per POSIX */
-
-		clear_attr(&tempattr, &job_attr_def[(int)JOB_ATR_variables]);
-		(void)strcpy(buf, pbs_o_que);
-		(void)strcat(buf, pque->qu_qs.qu_name);
+		strcpy(buf, pbs_o_que);
+		strcat(buf, pque->qu_qs.qu_name);
 		if (get_variable(pj, pbs_o_host) == NULL) {
-			(void)strcat(buf, ",");
-			(void)strcat(buf, pbs_o_host);
-			(void)strcat(buf, "=");
-			(void)strcat(buf, conn->cn_physhost);
+			strcat(buf, ",");
+			strcat(buf, pbs_o_host);
+			strcat(buf, "=");
+			strcat(buf, conn->cn_physhost);
 		}
-		set_attr_generic(&tempattr, &job_attr_def[JOB_ATR_variables], buf, NULL, INTERNAL);
-		set_attr_with_attr(&job_attr_def[(int)JOB_ATR_variables], 
-			&pj->ji_wattr[(int)JOB_ATR_variables],
-			&tempattr, INCR);
-		job_attr_def[(int)JOB_ATR_variables].at_free(&tempattr);
+		set_jattr_generic(pj, JOB_ATR_variables, buf, NULL, INCR);
 
 		/* if JOB_ATR_outpath/JOB_ATR_errpath not set, set default */
 

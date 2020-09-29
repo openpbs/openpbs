@@ -789,8 +789,8 @@ post_stagein(struct work_task *pwt)
 				paltjob = pjob;
 			}
 			pwait = &paltjob->ji_wattr[(int)JOB_ATR_exectime];
-			if (!is_attr_set(pwait)) {
-				set_attr_l(pwait, time_now + PBS_STAGEFAIL_WAIT, SET);
+			if (!is_jattr_set(paltjob, JOB_ATR_exectime)) {
+				set_jattr_l_slim(paltjob, JOB_ATR_exectime, time_now + PBS_STAGEFAIL_WAIT, SET);
 				job_set_wait(pwait, paltjob, 0);
 			}
 			svr_setjobstate(paltjob, JOB_STATE_LTR_WAITING, JOB_SUBSTATE_STAGEFAIL);

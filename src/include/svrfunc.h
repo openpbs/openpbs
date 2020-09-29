@@ -218,7 +218,7 @@ extern int set_entity_ct_sum_queued(job *, pbs_queue *, enum batch_op);
 extern int set_entity_resc_sum_max(job *, pbs_queue *, attribute *, enum batch_op);
 extern int set_entity_resc_sum_queued(job *, pbs_queue *, attribute *, enum batch_op);
 extern int account_entity_limit_usages(job *, pbs_queue *, attribute *, enum batch_op, int);
-extern void eval_chkpnt(attribute *, attribute *);
+extern void eval_chkpnt(job *pjob, attribute *queckp);
 #endif /* _QUEUE_H */
 
 #ifdef _BATCH_REQUEST_H

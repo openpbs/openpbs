@@ -393,13 +393,13 @@ update_array_indices_remaining_attr(job *parent)
 	struct ajtrkhd	*ptbl = parent->ji_ajtrk;
 
 	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
-		attribute *premain = &parent->ji_wattr[JOB_ATR_array_indices_remaining];
 		char *pnewstr = range_to_str(parent->ji_ajtrk->trk_rlist);
 
 		if ((pnewstr == NULL) || (*pnewstr == '\0'))
 			pnewstr = "-";
-		job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
-		set_attr_generic(premain, &job_attr_def[JOB_ATR_array_indices_remaining], pnewstr, 0, INTERNAL);
+
+		free_jattr(parent, JOB_ATR_array_indices_remaining);
+		set_jattr_generic(parent, JOB_ATR_array_indices_remaining, pnewstr, NULL, INTERNAL);
 		/* also update value of attribute "array_state_count" */
 		update_subjob_state_ct(parent);
 		ptbl->tkm_flags &= ~TKMFLG_REVAL_IND_REMAINING;
@@ -907,12 +907,8 @@ create_subjob(job *parent, char *newjid, int *rc)
 		}
 	}
 
-	psub = &subj->ji_wattr[(int)JOB_ATR_array_id];
-	set_attr_generic(psub, &job_attr_def[JOB_ATR_array_id],
-		parent->ji_qs.ji_jobid, NULL, INTERNAL);
-
-	psub = &subj->ji_wattr[(int)JOB_ATR_array_index];
-	set_attr_generic(psub, &job_attr_def[JOB_ATR_array_index], index, NULL, INTERNAL);
+	set_jattr_generic(subj, JOB_ATR_array_id, parent->ji_qs.ji_jobid, NULL, INTERNAL);
+	set_jattr_generic(subj, JOB_ATR_array_index, index, NULL, INTERNAL);
 
 	/* Lastly, set or clear a few flags and link in the structure */
 
@@ -944,15 +940,11 @@ create_subjob(job *parent, char *newjid, int *rc)
 		return NULL;
 	}
 
-	psub = &subj->ji_wattr[JOB_ATR_outpath];
 	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
-	set_attr_generic(psub, &job_attr_def[JOB_ATR_outpath],
-		subst_array_index(subj, tmp_path), NULL, INTERNAL);
+	set_jattr_generic(subj, JOB_ATR_outpath, subst_array_index(subj, tmp_path), NULL, INTERNAL);
 
-	psub = &subj->ji_wattr[JOB_ATR_errpath];
 	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
-	set_attr_generic(psub, &job_attr_def[JOB_ATR_errpath],
-		subst_array_index(subj, tmp_path), NULL, INTERNAL);
+	set_jattr_generic(subj, JOB_ATR_errpath, subst_array_index(subj, tmp_path), NULL, INTERNAL);
 
 	*rc = PBSE_NONE;
 	return subj;
