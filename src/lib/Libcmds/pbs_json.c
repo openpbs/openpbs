@@ -275,7 +275,7 @@ free_json_node_list()
  *
  */
 static int
-whitespace_only(char *str) {
+whitespace_only(const char *str) {
 
 	if (str == NULL)
 		return (0);
