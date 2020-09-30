@@ -457,22 +457,6 @@ connect_to_servers(char *server_name, uint port, char *extend_data)
 	if (svr_connections == NULL)
 		return -1;
 
-	if (server_name != NULL) {
-		int found = 0;
-
-		/* Make sure that the server is known */
-		for (i = 0; i < num_conf_servers; i++) {
-			if (strcmp(server_name, svr_connections[i].name) == 0) {
-				found = 1;
-				break;
-			}
-		}
-		if (!found) {
-			pbs_errno = PBSE_BADHOST;
-			return -1;
-		}
-	}
-
 	/* Try to connect to as many as possible */
 	for (i = 0; i < num_conf_servers; i++) {
 		fd = connect_to_server(i, svr_connections, extend_data);
