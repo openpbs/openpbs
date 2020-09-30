@@ -462,7 +462,7 @@ ck_chkpnt(attribute *pattr, void *pobject, int mode)
 	if (mode == ATR_ACTION_ALTER) {
 		pque = ((job *)pobject)->ji_qhdr;
 
-		eval_chkpnt(pattr, &pque->qu_attr[(int)QE_ATR_ChkptMin]);
+		eval_chkpnt((job *)pobject, &pque->qu_attr[(int)QE_ATR_ChkptMin]);
 	}
 	return (0);
 }
