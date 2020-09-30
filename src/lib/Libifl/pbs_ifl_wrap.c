@@ -8459,7 +8459,6 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_status",SWIG_FromCharPtr("server_state"));
   SWIG_Python_SetConstant(d, "ATTR_syscost",SWIG_FromCharPtr("system_cost"));
   SWIG_Python_SetConstant(d, "ATTR_FlatUID",SWIG_FromCharPtr("flatuid"));
-  SWIG_Python_SetConstant(d, "ATTR_FLicenses",SWIG_FromCharPtr("FLicenses"));
   SWIG_Python_SetConstant(d, "ATTR_ResvEnable",SWIG_FromCharPtr("resv_enable"));
   SWIG_Python_SetConstant(d, "ATTR_aclResvgren",SWIG_FromCharPtr("acl_resv_group_enable"));
   SWIG_Python_SetConstant(d, "ATTR_aclResvgroup",SWIG_FromCharPtr("acl_resv_groups"));

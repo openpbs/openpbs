@@ -1,4 +1,3 @@
-
 #
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -37,18 +36,12 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
+lib_LTLIBRARIES = liblicensing.la
 
-SUBDIRS = \
-	Libattr \
-	Libdb \
-	Liblog \
-	Libnet \
-	Libpbs \
-	Libpython \
-	Libsite \
-	Libsec \
-	Libtpp \
-	Libutil \
-	Libauth \
-	Liblicensing
+liblicensing_la_CPPFLAGS = \
+	-I$(pbssrc_dir)/src/include
+
+liblicensing_la_LDFLAGS = -version-info 0:0:0
+
+liblicensing_la_SOURCES = license_client.c \
+			  liblicense.h
