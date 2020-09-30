@@ -43,13 +43,19 @@ AC_DEFUN([PBS_AC_PATCH_LIBTOOL], [
 	AC_CONFIG_COMMANDS([patch-libtool], [
 		AS_IF([! grep '[[-]]fsanitize=\*' libtool 2>&1 >/dev/null], [
 			AC_MSG_NOTICE([patching libtool to support -fsanitize])
-			mv libtool libtool.orig
-			sed -e 's/\(-fuse-linker-plugin\)\([[|)]]\)/\1|-fsanitize=\*\2/' \
-				libtool.orig >libtool
-			rm -f libtool.orig
-			AS_IF([! grep '[[-]]fsanitize=\*' libtool 2>&1 >/dev/null], [
+			AS_IF([! grep '[[-]]pg[[|)]]' libtool 2>&1 >/dev/null], [
+				grep -A 30 'Flags to be passed through unchanged' libtool \
+					>libtool.patched.err
+				AC_MSG_ERROR([libtool does not pass through -pg])
+			])
+			$SED 's/\(-pg\)\([[|)]]\)/\1|-fsanitize=\*\2/' \
+				libtool >libtool.patched 2>libtool.patched.err
+			AS_IF([! grep '[[-]]fsanitize=\*' libtool.patched \
+					2>&1 >/dev/null ], [
 				AC_MSG_ERROR([Failed to patch libtool])
 			], [])
+			mv -f libtool.patched libtool
+			rm -f libtool.patched.err
 		])
 	])
 ])
