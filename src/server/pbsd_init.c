@@ -99,6 +99,7 @@
 #include "hook_func.h"
 #include "pbs_share.h"
 #include "pbs_undolr.h"
+#include "liblicense.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -148,8 +149,6 @@ extern time_t	 time_now;
 
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
-struct license_block licenses;
-struct license_used  usedlicenses;
 extern char   *path_hooks;
 extern char   *path_hooks_workdir;
 extern pbs_list_head       prov_allvnodes;
@@ -172,7 +171,7 @@ extern resc_resv *recov_resv_cb(pbs_db_obj_info_t *, int *);
 extern pbs_queue *recov_queue_cb(pbs_db_obj_info_t *, int *);
 extern pbs_sched *recov_sched_cb(pbs_db_obj_info_t *, int *);
 extern void revert_alter_reservation(resc_resv *presv);
-
+extern void log_licenses(pbs_licenses_high_use *pu);
 /* Private functions in this file */
 
 static void  catch_child(int);
@@ -191,7 +190,7 @@ static void  call_log_license(struct work_task *);
 #define CHANGE_STATE 1
 #define KEEP_STATE   0
 static char badlicense[] = "One or more PBS license keys are invalid, jobs may not run";
-
+char *pbs_licensing_location  = NULL;
 /**
  * @brief
  *		Initializes the server attribute array with default values which are
@@ -234,15 +233,15 @@ init_server_attrs()
 
 	server.sv_attr[(int)SVR_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
 	server.sv_attr[(int)SVR_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	licensing_control.licenses_min = PBS_MIN_LICENSING_LICENSES;
 
 	server.sv_attr[(int)SVR_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
 	server.sv_attr[(int)SVR_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	licensing_control.licenses_max = PBS_MAX_LICENSING_LICENSES;
 
 	server.sv_attr[(int)SVR_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
 	server.sv_attr[(int)SVR_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
-
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	licensing_control.licenses_linger_time = PBS_LIC_LINGER_TIME;
 
 	server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long = 0;
 	server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
@@ -264,14 +263,13 @@ init_server_attrs()
 
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events], dflt_log_event, NULL, SET);
 
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailer]), &svr_attr_def[(int) SVR_ATR_mailer], SENDMAIL_CMD, NULL, SET);
+
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailfrom]), &svr_attr_def[(int) SVR_ATR_mailfrom], PBS_DEFAULT_MAIL, NULL, SET);
 
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_query_others]), &svr_attr_def[(int) SVR_ATR_query_others], ATR_TRUE, NULL, SET);
 
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_scheduling]), &svr_attr_def[(int) SVR_ATR_scheduling], ATR_TRUE, NULL, SET);
-
-	/* an update_to FLicenses()  and pbs_float_lic must already exist */
-	pbs_float_lic = &server.sv_attr[(int)SVR_ATR_FLicenses];
 
 	prdef = &svr_resc_def[RESC_NCPUS];
 	if (prdef) {
@@ -599,20 +597,20 @@ pbsd_init(int type)
 
 	/* 4. Check License information */
 
-	init_fl_license_attrs(&licenses);
+	reset_license_counters(&license_counts);
 
 	fd = open(path_usedlicenses, O_RDONLY, 0400);
 
 	if ((fd == -1) ||
-		(read(fd, &usedlicenses, sizeof(usedlicenses)) !=
-		sizeof(usedlicenses))) {
-		usedlicenses.lu_max_hr      = 0;
-		usedlicenses.lu_max_day     = 0;
-		usedlicenses.lu_max_month   = 0;
-		usedlicenses.lu_max_forever = 0;
+		(read(fd, &(license_counts.licenses_high_use), sizeof(pbs_licenses_high_use)) !=
+		sizeof(pbs_licenses_high_use))) {
+		license_counts.licenses_high_use.lu_max_hr      = 0;
+		license_counts.licenses_high_use.lu_max_day     = 0;
+		license_counts.licenses_high_use.lu_max_month   = 0;
+		license_counts.licenses_high_use.lu_max_forever = 0;
 		ptm = localtime(&time_now);
-		usedlicenses.lu_day   = ptm->tm_mday;
-		usedlicenses.lu_month = ptm->tm_mon;
+		license_counts.licenses_high_use.lu_day   = ptm->tm_mday;
+		license_counts.licenses_high_use.lu_month = ptm->tm_mon;
 	}
 	if (fd != -1)
 		close(fd);
@@ -620,36 +618,33 @@ pbsd_init(int type)
 	(void)svr_attr_def[(int)SVR_ATR_version].at_decode(
 		&server.sv_attr[(int)SVR_ATR_version], 0, 0,
 		PBS_VERSION);
-
-	if ((pbs_licensing_license_location == NULL) && (licenses.lb_aval_floating == 0)) {
+	
+	if ((pbs_licensing_location == NULL) && (license_counts.licenses_local == 0)) {
 		printf("%s\n", badlicense);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, badlicense);
 	}
 
-	if (ext_license_server) {
+	if (pbs_licensing_location) {
 		sprintf(log_buffer, "Using license server at %s",
 			PBS_LICENSE_LOCATION);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
-	}
-	if (licenses.lb_aval_floating > 0) {
+	} 
+	if (license_counts.licenses_local > 0) {
 		sprintf(log_buffer,
-			"Licenses valid for %d Floating hosts",
-			licenses.lb_aval_floating);
+			"Licenses valid for %ld Floating hosts",
+			license_counts.licenses_local);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
 	}
 
 	/* start a timed-event every hour to long the number of floating used */
-	if ((licenses.lb_aval_floating > 0) || ext_license_server)
-		(void)set_task(WORK_Timed, (long)(((time_now+3600)/3600)*3600),
+	if ((license_counts.licenses_local > 0))
+		(void)set_task(WORK_Timed, (long)(((time_now + 3600) / 3600) * 3600),
 			call_log_license, 0);
-
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = licenses.lb_aval_floating + licenses.lb_glob_floating;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_SET_MOD_MCACHE;
 
 	/* 6. open accounting file */
 
@@ -699,7 +694,6 @@ pbsd_init(int type)
 		return (-1);
 	}
 	mark_which_queues_have_nodes();
-	(void) license_sanity_check();
 
 	/* at this point, we know all the resource types have been defined,        */
 	/* build the resource summation table for validating the Select directives */
@@ -1300,7 +1294,7 @@ pbsd_init_job(job *pjob, int type)
 	/* update at_server attribute in case name changed */
 
 	free_jattr(pjob, JOB_ATR_at_server);
-	set_attr_generic(&pjob->ji_wattr[JOB_ATR_at_server], &job_attr_def[JOB_ATR_at_server], server_name, NULL, SET);
+	set_jattr_generic(pjob, JOB_ATR_at_server, server_name, NULL, SET);
 
 	/* now based on the initialization type */
 
@@ -1947,30 +1941,30 @@ call_log_license(struct work_task *ptask)
 
 	/* log the floating license info */
 
-	log_licenses(&usedlicenses);
+	log_licenses(&license_counts.licenses_high_use);
 
 	/* reset values for time periods that have passed */
 
-	usedlicenses.lu_max_hr = 0;
+	license_counts.licenses_high_use.lu_max_hr = 0;
 	ntime = ptask->wt_event;
 	tms = localtime((time_t *)&ntime);
-	if (tms->tm_mday != usedlicenses.lu_day) {
-		usedlicenses.lu_max_day = 0;
-		usedlicenses.lu_day = tms->tm_mday;
+	if (tms->tm_mday != license_counts.licenses_high_use.lu_day) {
+		license_counts.licenses_high_use.lu_max_day = 0;
+		license_counts.licenses_high_use.lu_day = tms->tm_mday;
 	}
-	if (tms->tm_mon != usedlicenses.lu_month) {
-		usedlicenses.lu_max_month = 0;
-		usedlicenses.lu_month = tms->tm_mon;
+	if (tms->tm_mon != license_counts.licenses_high_use.lu_month) {
+		license_counts.licenses_high_use.lu_max_month = 0;
+		license_counts.licenses_high_use.lu_month = tms->tm_mon;
 	}
 
 	/* write current info to file */
 	fd = open(path_usedlicenses, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (fd != -1) {
-		(void)write(fd, &usedlicenses, sizeof(usedlicenses));
+		(void)write(fd, &license_counts.licenses_high_use, sizeof(license_counts.licenses_high_use));
 		close(fd);
 	}
 
 	/* call myself again at the top of the next hour */
-	ntime = ((ntime+3601)/3600)*3600;
+	ntime = ((ntime + 3601) / 3600) * 3600;
 	(void)set_task(WORK_Timed, ntime, call_log_license, 0);
 }

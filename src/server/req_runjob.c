@@ -130,7 +130,6 @@ static job *where_to_runjob(struct batch_request *preq, job *);
 static void convert_job_to_resv(job *pjob);
 /* Global Data Items: */
 
-extern int       license_expired;
 extern pbs_net_t pbs_mom_addr;
 extern int	 pbs_mom_port;
 extern struct server server;
@@ -312,11 +311,6 @@ req_runjob(struct batch_request *preq)
 	struct deferred_request *pdefr;
 	char hook_msg[HOOK_MSG_SIZE];
 	pbs_sched *psched;
-
-	if (license_expired) {
-		req_reject(PBSE_LICENSEINV, 0, preq);
-		return;
-	}
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -789,8 +783,8 @@ post_stagein(struct work_task *pwt)
 				paltjob = pjob;
 			}
 			pwait = &paltjob->ji_wattr[(int)JOB_ATR_exectime];
-			if (!is_attr_set(pwait)) {
-				set_attr_l(pwait, time_now + PBS_STAGEFAIL_WAIT, SET);
+			if (!is_jattr_set(paltjob, JOB_ATR_exectime)) {
+				set_jattr_l_slim(paltjob, JOB_ATR_exectime, time_now + PBS_STAGEFAIL_WAIT, SET);
 				job_set_wait(pwait, paltjob, 0);
 			}
 			svr_setjobstate(paltjob, JOB_STATE_LTR_WAITING, JOB_SUBSTATE_STAGEFAIL);

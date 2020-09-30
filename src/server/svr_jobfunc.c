@@ -132,7 +132,7 @@ extern int    comp_resc_gt;
 extern time_t time_now;
 extern char  *resc_in_err;
 
-extern struct   license_used  usedlicenses;
+extern struct licenses_high_use usedlicenses;
 
 /* For history jobs only */
 extern long 	svr_history_enable;
@@ -210,8 +210,6 @@ tickle_for_reply(void)
 int
 svr_enquejob(job *pjob)
 {
-	attribute *pattrjb;
-	attribute_def *pdef;
 	job *pjcur;
 	pbs_queue *pque;
 	int rc;
@@ -335,11 +333,7 @@ svr_enquejob(job *pjob)
 	}
 
 	/* update the current location and type attribute */
-
-	pdef    = &job_attr_def[(int)JOB_ATR_in_queue];
-	pattrjb = &pjob->ji_wattr[(int)JOB_ATR_in_queue];
-	pdef->at_free(pattrjb);
-	set_attr_generic(pattrjb, pdef, pque->qu_qs.qu_name, NULL, SET);
+	set_jattr_generic(pjob, JOB_ATR_in_queue, pque->qu_qs.qu_name, NULL, SET);
 
 	if (pque->qu_attr[(int)QA_ATR_QType].at_val.at_str == NULL) {
 		sprintf(log_buffer, "queue type must be set for queue `%s`",
@@ -348,7 +342,7 @@ svr_enquejob(job *pjob)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		return PBSE_NEEDQUET;
 	}
-	set_attr_c(&pjob->ji_wattr[JOB_ATR_queuetype], *pque->qu_attr[(int)QA_ATR_QType].at_val.at_str, SET);
+	set_jattr_c_slim(pjob, JOB_ATR_queuetype, *pque->qu_attr[QA_ATR_QType].at_val.at_str, SET);
 
 	if (!is_jattr_set(pjob, JOB_ATR_qtime))
 		set_jattr_l_slim(pjob, JOB_ATR_qtime, time_now, SET);
@@ -393,8 +387,7 @@ svr_enquejob(job *pjob)
 
 		/* check the job checkpoint against the queue's  min */
 
-		eval_chkpnt(&pjob->ji_wattr[(int)JOB_ATR_chkpnt],
-			&pque->qu_attr[(int)QE_ATR_ChkptMin]);
+		eval_chkpnt(pjob, &pque->qu_attr[QE_ATR_ChkptMin]);
 
 		/*
 		 * do anything needed doing regarding job dependencies,
@@ -575,8 +568,6 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 
 				if ((pque->qu_qs.qu_type == QTYPE_Execution) &&
 					(newstate == JOB_STATE_LTR_QUEUED)) {
-					attribute *etime = &pjob->ji_wattr[(int)JOB_ATR_etime];
-
 					if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 						set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 					else {
@@ -584,8 +575,8 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 						log_err(-1, __func__, log_buffer);
 					}
 
-					if (!is_attr_set(etime))
-						set_attr_l(etime, time_now, SET);
+					if (!is_jattr_set(pjob, JOB_ATR_etime))
+						set_jattr_l_slim(pjob, JOB_ATR_etime, time_now, SET);
 
 					/* clear start time (stime) */
 					free_jattr(pjob, JOB_ATR_stime);
@@ -2264,15 +2255,13 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
  */
 
 void
-eval_chkpnt(attribute *jobckp, attribute *queckp)
+eval_chkpnt(job *pjob, attribute *queckp)
 {
-	char *pv;
+	char *pv = get_jattr_str(pjob, JOB_ATR_chkpnt);
 
-	if (((is_attr_set(jobckp)) == 0)  ||
-		((queckp->at_flags & ATR_VFLAG_SET) == 0))
+	if (!is_jattr_set(pjob, JOB_ATR_chkpnt) || !is_attr_set(queckp))
 		return;		/* need do nothing */
 
-	pv = jobckp->at_val.at_str;
 	if ((*pv == 'c') || (*pv == 'w')) {
 		int jobs;
 		char queues[30];
@@ -2283,9 +2272,8 @@ eval_chkpnt(attribute *jobckp, attribute *queckp)
 			pv++;
 		jobs = atoi(pv);
 		if (jobs < queckp->at_val.at_long) {
-			(void)sprintf(queues, "%c=%ld", ckt, queckp->at_val.at_long);
-			free_str(jobckp);
-			set_attr_generic(jobckp, &job_attr_def[JOB_ATR_chkpnt], queues, NULL, INTERNAL);
+			sprintf(queues, "%c=%ld", ckt, queckp->at_val.at_long);
+			set_jattr_generic(pjob, JOB_ATR_chkpnt, queues, NULL, INTERNAL);
 		}
 	}
 }

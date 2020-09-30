@@ -1,0 +1,474 @@
+#!/usr/bin/env python3
+
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of both the OpenPBS software ("OpenPBS")
+# and the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# OpenPBS is free software. You can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# OpenPBS is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# PBS Pro is commercially licensed software that shares a common core with
+# the OpenPBS software.  For a copy of the commercial license terms and
+# conditions, go to: (http://www.pbspro.com/agreement.html) or contact the
+# Altair Legal Department.
+#
+# Altair's dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of OpenPBS and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair's trademarks, including but not limited to "PBS™",
+# "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
+# subject to Altair's trademark licensing policies.
+
+import sys
+import time
+import sqlite3
+import subprocess
+import socket
+import json
+import os
+import atexit
+import re
+from signal import SIGTERM
+
+
+#
+# CLASS Daemon
+#
+class Daemon(object):
+    """
+    Deamon class
+    """
+
+    sleeptime = 5
+
+    def __init__(self, pidfile, debug):
+        self.pidfile = pidfile
+        self.debug = debug
+
+    def daemonize(self):
+        """
+        Daemonize me
+        """
+
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except Exception as err:
+            printf("fork failed: %s" % err)
+            sys.exit(1)
+
+        os.chdir("/")
+        os.setsid()
+        os.umask(0)
+
+        atexit.register(self.delPID)
+        pid = str(os.getpid())
+        open(self.pidfile, 'w+').write("%s\n" % pid)
+
+    def delPID(self):
+        """
+        Delete PID file
+        """
+
+        try:
+            os.remove(self.pidfile)
+        except:
+            pass
+
+    def status(self):
+        """
+        Check status of daemon
+        """
+
+        try:
+            f = open(self.pidfile, 'r')
+            pid = int(f.read().strip())
+            f.close()
+        except IOError:
+            return None
+
+        try:
+            os.kill(pid, 0)
+        except:
+            self.delPID()
+            return None
+
+        return pid
+
+    def start(self):
+        """
+        Daemonize and start main process: run()
+        """
+
+        pid = self.status()
+
+        if pid:
+            print("Daemon already running with pid %d" % pid)
+            sys.exit(1)
+
+        if not self.debug:
+            if self.daemonize():
+                sys.exit(1)
+
+        try:
+            self.run()
+        except Exception as err:
+            if self.debug:
+                print("run() failed: %s" % err)
+            return(1)
+
+        return(0)
+
+    def stop(self):
+        """
+        Stop process
+        """
+
+        try:
+            f = open(self.pidfile, 'r')
+            pid = int(f.read().strip())
+            f.close()
+        except IOError:
+            pid = None
+
+        if not pid:
+            return(0)
+
+        try:
+            while True:
+                os.kill(pid, SIGTERM)
+                time.sleep(0.1)
+        except OSError as err:
+            err = str(err)
+            if err.find("No such process") > 0:
+                if os.path.exists(self.pidfile):
+                    self.delPID()
+            else:
+                return(1)
+
+        return(0)
+
+    def restart(self):
+        """
+        Restart process - stop and start again
+        """
+
+        if self.stop() == 0:
+            return self.start()
+
+        return 1
+
+    def run(self):
+        """
+        Main loop
+        """
+
+        while True:
+            time.sleep(self.sleeptime)
+
+
+#
+# CLASS sender
+#
+class PBS_mail_sender(Daemon):
+    """
+    Email sender class
+    """
+
+    pidfile = "/var/spool/pbs/pbs_mail.pid"
+    sqlite_db = "/var/spool/pbs/mail.sqlite"
+    tb_name_emails = "pbs_emails"
+    tb_name_timestamps = "pbs_users_timestamp"
+    gathering_period = 1800
+    mailer_cycle_sleep = 60
+    sendmail = "/usr/sbin/sendmail"
+    add_servername = True
+    send_begin_immediately = False
+
+    def __init__(self, debug):
+        config = {}
+        try:
+            config_file = "pbs_mail.json"
+            paths = []
+
+            abspath = os.path.dirname(os.path.abspath(__file__))
+            paths.append(os.path.join(abspath, config_file))
+            paths.append(os.path.join(abspath, '..', 'etc', config_file))
+            paths.append(os.path.join('/etc', config_file))
+            paths.append(os.path.join('/opt', 'pbs', 'etc', config_file))
+
+            for path in paths:
+                if os.path.isfile(path):
+                    config_file = path
+                    break
+
+            f = open(os.path.join(path, config_file),)
+            config = json.load(f)
+            f.close()
+
+            self.pidfile = config["pidfile"]
+            self.sqlite_db = config["sqlite_db"]
+            self.gathering_period = config["gathering_period"]
+            self.mailer_cycle_sleep = config["mailer_cycle_sleep"]
+            self.sendmail = config["sendmail"]
+            self.add_servername = config["add_servername"]
+            self.send_begin_immediately = \
+                config["send_begin_immediately"]
+
+        except Exception as err:
+            print("Failed to load configuration: %s" % err)
+            sys.exit(1)
+
+        super(PBS_mail_sender, self).__init__(self.pidfile, debug)
+
+    def db_delete_emails(self, c):
+        """
+        Delete 'emails_to_delete' from sqllite db
+        """
+
+        for rowid in self.emails_to_delete:
+            c.execute("DELETE FROM '%s' WHERE rowid == %d" % (
+                self.tb_name_emails,
+                rowid))
+        self.emails_to_delete = []
+
+    def send_mail(self, email_to, email_from, subject, body):
+        """
+        Real email sending
+        """
+
+        p = subprocess.Popen([self.sendmail, '-f ' + email_from, email_to],
+                             stdout=subprocess.PIPE,
+                             stdin=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+
+        email_input = "To: %s\n" % email_to
+        email_input += "Subject: %s\n\n" % subject
+        email_input += body
+        p.communicate(input=str.encode(email_input))
+
+    def run(self):
+        """
+        Main
+        """
+
+        while True:
+            now = int(time.time())
+
+            try:
+                conn = sqlite3.connect(self.sqlite_db)
+
+                def regexp(expr, item):
+                    reg = re.compile(expr)
+                    return reg.search(item) is not None
+                conn.create_function("REGEXP", 2, regexp)
+
+                c = conn.cursor()
+                req = "SELECT name FROM sqlite_master \
+                      WHERE type='table' AND name='%s'" % \
+                      self.tb_name_emails
+                c.execute(req)
+                if c.fetchone() is None:
+                    conn.commit()
+                    conn.close()
+                    time.sleep(self.mailer_cycle_sleep)
+                    continue
+            except Exception as err:
+                print(str(err))
+                conn.commit()
+                conn.close()
+                time.sleep(self.mailer_cycle_sleep)
+                continue
+
+            emails_to_send = {}
+            self.emails_to_delete = []
+            threshold = now - self.gathering_period
+
+            if self.send_begin_immediately:
+                req = "SELECT rowid, date, email_to, email_from, subject, body \
+                      FROM '%s' \
+                      WHERE body REGEXP \
+                      '.*Begun execution.*|\
+.*Reservation period starting.*'" % self.tb_name_emails
+                for email in c.execute(req):
+                    (rowid,
+                        timestamp,
+                        email_to,
+                        email_from,
+                        subject,
+                        body) = email
+
+                    if email_to not in emails_to_send.keys():
+                        emails_to_send[email_to] = []
+
+                    emails_to_send[email_to].append([email_from,
+                                                    subject,
+                                                    body])
+                    self.emails_to_delete.append(rowid)
+
+            self.db_delete_emails(c)
+
+            req = "SELECT name FROM sqlite_master \
+                  WHERE type='table' AND name='%s'" % \
+                  self.tb_name_timestamps
+            c.execute(req)
+            if c.fetchone() is None:
+                req = "CREATE TABLE %s \
+                      (date integer, recipient text UNIQUE)" % \
+                      self.tb_name_timestamps
+                c.execute(req)
+
+            recipients = {}
+
+            req = "SELECT DISTINCT email_to FROM '%s'" % self.tb_name_emails
+            for email_to, in c.execute(req):
+                recipients[email_to] = 1
+
+            req = "SELECT date, recipient FROM '%s'" % self.tb_name_timestamps
+            for timestamp, email_to in c.execute(req):
+                recipients[email_to] = timestamp
+
+            for i in recipients.keys():
+                req = "SELECT rowid, date, email_to, email_from, subject, body \
+                      FROM '%s' WHERE email_to = '%s'" % (
+                      self.tb_name_emails,
+                      i)
+                for email in c.execute(req):
+                    (rowid,
+                        timestamp,
+                        email_to,
+                        email_from,
+                        subject,
+                        body) = email
+
+                    is_time = recipients[email_to] < \
+                        now - self.gathering_period
+                    is_present = email_to in emails_to_send.keys()
+                    if is_time or is_present:
+                        if email_to not in emails_to_send.keys():
+                            emails_to_send[email_to] = []
+
+                        emails_to_send[email_to].append([
+                            email_from,
+                            subject,
+                            body])
+                        self.emails_to_delete.append(rowid)
+
+            self.db_delete_emails(c)
+
+            for email_to in emails_to_send.keys():
+                req = "SELECT recipient FROM '%s' \
+                      WHERE recipient='%s'" % (
+                      self.tb_name_timestamps,
+                      email_to)
+                c.execute(req)
+                if c.fetchone() is None:
+                    req = "INSERT INTO %s VALUES (%d, '%s')" % (
+                          self.tb_name_timestamps,
+                          now,
+                          email_to)
+                else:
+                    req = "UPDATE '%s' SET date = %d \
+                          WHERE recipient = '%s'" % (
+                          self.tb_name_timestamps,
+                          now,
+                          email_to)
+                c.execute(req)
+
+            conn.commit()
+            conn.close()
+
+            for email_to in emails_to_send.keys():
+                email_from = ""
+                email_body = ""
+                subject = "PBS report"
+                subjects = []
+
+                for email in emails_to_send[email_to]:
+                    email_from = email[0]
+                    if self.add_servername:
+                        email_body += email[1] \
+                                      + "@" \
+                                      + socket.gethostname()\
+                                      + "\n\t"
+                    else:
+                        email_body += email[1] + "\n\t"
+                    email_body += email[2].replace("\n", "\n\t") + "\n\n"
+                    subjects.append(email[1])
+
+                if len(subjects) == 1:
+                    subject = subjects[0]
+                else:
+                    is_job = False
+                    is_resv = False
+                    for s in subjects:
+                        if s.startswith("PBS JOB"):
+                            is_job = True
+                        if s.startswith("PBS RESERVATION"):
+                            is_resv = True
+                    subject = "PBS "
+                    if is_job:
+                        subject += "JOB"
+                    if is_job and is_resv:
+                        subject += "|"
+                    if is_resv:
+                        subject += "RESERVATION"
+                    subject += " squashed report"
+                    email_body = "This e-mail is a squashed report of " \
+                                 + str(len(subjects)) \
+                                 + " e-mails from PBS.\n\n" \
+                                 + email_body
+                self.send_mail(email_to, email_from, subject, email_body)
+
+            time.sleep(self.mailer_cycle_sleep)
+
+
+if __name__ == "__main__":
+    debug = False
+    if "--debug" in sys.argv or "-d" in sys.argv:
+        debug = True
+
+    sender = PBS_mail_sender(debug)
+
+    if len(sys.argv) > 1:
+        if 'restart' in sys.argv:
+            if sender.stop() != 0 or sender.start() != 0:
+                print("Restarting failed")
+
+        elif 'stop' in sys.argv:
+            if sender.stop() > 0:
+                print("Stopping failed")
+
+        elif 'start' in sys.argv:
+            if sender.start() > 0:
+                print("Starting failed")
+
+        else:
+            print("Unknown deamon command: %s" % " ".join(sys.argv))
+            print("usage: %s start|stop|restart [-d|--debug]" % sys.argv[0])
+            sys.exit(1)
+
+        sys.exit(0)
+
+    else:
+        print("usage: %s start|stop|restart [-d|--debug]" % sys.argv[0])
+        sys.exit(1)

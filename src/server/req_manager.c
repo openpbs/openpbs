@@ -964,11 +964,11 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 
 		/* have we privilege to unset the attribute ? */
 
-		if ((privil != -1) && ((pdef+index)->at_flags & privil & ATR_DFLAG_WRACC) == 0) {
+		if ((privil != -1) && ((pdef + index)->at_flags & privil & ATR_DFLAG_WRACC) == 0) {
 			*bad = ord;
 			return (PBSE_ATTRRO);
 		}
-		if (((pdef+index)->at_type == ATR_TYPE_RESC) &&
+		if (((pdef + index)->at_type == ATR_TYPE_RESC) &&
 			(pl->al_resc != NULL)) {
 
 			/* check the individual resource */
@@ -982,7 +982,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 				*bad = ord;
 				return (PBSE_PERM);
 			}
-			presc = find_resc_entry(pattr+index, prsdef);
+			presc = find_resc_entry(pattr + index, prsdef);
 			if (presc &&
 				(presc->rs_value.at_flags & ATR_VFLAG_TARGET)) {
 				if (rflag == INDIRECT_RES_UNLINK) {
@@ -999,7 +999,7 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 			}
 		}
 		if ((pnode->nd_state & INUSE_PROV) &&
-			!strcmp((pdef+index)->at_name, ATTR_NODE_current_aoe)) {
+			!strcmp((pdef + index)->at_name, ATTR_NODE_current_aoe)) {
 			*bad = ord;
 			return (PBSE_NODEPROV_NOACTION);
 		}
@@ -1016,14 +1016,14 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 		if (encode_single_attr_db((pdef + index), (pattr + index), &db_attr_list) != 0)
 			return (PBSE_NOATTR);
 
-		if (((pdef+index)->at_type == ATR_TYPE_RESC) &&
+		if (((pdef + index)->at_type == ATR_TYPE_RESC) &&
 			(plist->al_resc != NULL)) {
 
 			/* attribute of type resource and specified resource */
 			/* free resource member, not the attribute */
 
 			prsdef = find_resc_def(svr_resc_def, plist->al_resc);
-			presc = find_resc_entry(pattr+index, prsdef);
+			presc = find_resc_entry(pattr + index, prsdef);
 			if (presc) {
 				if ((ptype != PARENT_TYPE_SERVER) ||
 					(index != (int)SVR_ATR_resource_cost)) {
@@ -1041,28 +1041,28 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 			}
 			/* If the last resource has been delinked from  */
 			/* the attribute,  "unset" the attribute itself */
-			presc = (resource *)GET_NEXT((pattr+index)->at_val.at_list);
+			presc = (resource *)GET_NEXT((pattr + index)->at_val.at_list);
 			if (presc == NULL)
 				mark_attr_not_set(pattr+index);
 			(pattr+index)->at_flags |= ATR_MOD_MCACHE;
 
-		} else if (((pdef+index)->at_type == ATR_TYPE_ENTITY) &&
+		} else if (((pdef + index)->at_type == ATR_TYPE_ENTITY) &&
 			(plist->al_resc != NULL)) {
 
 			/* attribute of type ENTITY and specifed resource */
 			/* unset the entity limit on that resource for    */
 			/* all entities */
 
-			unset_entlim_resc(pattr+index, plist->al_resc);
+			unset_entlim_resc(pattr + index, plist->al_resc);
 
 		} else {
 
 			/* either the attribute is not of type ENTITY or RESC */
 			/* or there is no specific resource specified         */
-			if ((pdef+index)->at_type == ATR_TYPE_RESC) {
+			if ((pdef + index)->at_type == ATR_TYPE_RESC) {
 
 				/* if a resource type, check each for being indirect */
-				presc = (resource *)GET_NEXT((pattr+index)->at_val.at_list);
+				presc = (resource *)GET_NEXT((pattr + index)->at_val.at_list);
 				while (presc) {
 					if (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
 						unset_indirect(presc, pidx, pdef, plist->al_name, pobj, ptype);
@@ -1074,8 +1074,8 @@ mgr_unset_attr(attribute *pattr, void *pidx, attribute_def *pdef, int limit, svr
 
 			/* now free the whole attribute */
 
-			(pdef+index)->at_free(pattr+index);
-			(pattr+index)->at_flags |= ATR_VFLAG_MODIFY;
+			(pdef + index)->at_free(pattr + index);
+			(pattr + index)->at_flags |= ATR_VFLAG_MODIFY;
 		}
 		plist = (svrattrl *)GET_NEXT(plist->al_link);
 	}
@@ -1536,6 +1536,9 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events],
 					     dflt_log_event, NULL, SET);
 			}
+			else if (strcasecmp(plist->al_name, ATTR_mailer) == 0)
+				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailer]),
+					    &svr_attr_def[(int)SVR_ATR_mailer], SENDMAIL_CMD, NULL, SET);
 			else if (strcasecmp(plist->al_name, ATTR_mailfrom) == 0)
 				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailfrom]),
 					    &svr_attr_def[(int)SVR_ATR_mailfrom], PBS_DEFAULT_MAIL, NULL, SET);
@@ -1557,13 +1560,16 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 			else if(strcasecmp(plist->al_name, ATTR_EligibleTimeEnable) == 0)
 				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_EligibleTimeEnable]),
 					    &svr_attr_def[(int)SVR_ATR_EligibleTimeEnable], "FALSE", NULL, SET);
-			else if(strcasecmp(plist->al_name, ATTR_license_linger) == 0)
+			else if(strcasecmp(plist->al_name, ATTR_license_linger) == 0) {
 				set_attr_l(&(server.sv_attr[SVR_ATR_license_linger]), PBS_LIC_LINGER_TIME, SET);
-			else if(strcasecmp(plist->al_name, ATTR_license_max) == 0)
+				licensing_control.licenses_linger_time = PBS_LIC_LINGER_TIME;
+			} else if(strcasecmp(plist->al_name, ATTR_license_max) == 0) {
 				set_attr_l(&(server.sv_attr[SVR_ATR_license_max]), PBS_MAX_LICENSING_LICENSES, SET);
-			else if(strcasecmp(plist->al_name, ATTR_license_min) == 0)
+				licensing_control.licenses_max = PBS_MAX_LICENSING_LICENSES;
+			} else if(strcasecmp(plist->al_name, ATTR_license_min) == 0) {
 				set_attr_l(&(server.sv_attr[SVR_ATR_license_min]), PBS_MIN_LICENSING_LICENSES, SET);
-			else if (strcasecmp(plist->al_name, ATTR_rescdflt) == 0) {
+				licensing_control.licenses_min = PBS_MIN_LICENSING_LICENSES;
+			} else if (strcasecmp(plist->al_name, ATTR_rescdflt) == 0) {
 				if (plist->al_resc != NULL && strcasecmp(plist->al_resc, "ncpus") == 0) {
 					svrattrl *tm_list;
 					tm_list = attrlist_create(plist->al_name, "ncpus", 8);
@@ -2736,7 +2742,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		return (rc);
 
 
-	if ((pnode=find_nodebyname(pname)) == NULL) {
+	if ((pnode = find_nodebyname(pname)) == NULL) {
 
 		/* need to create the pbs_node entry */
 

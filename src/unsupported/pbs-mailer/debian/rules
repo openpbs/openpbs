@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with-systemd
+
+override_dh_auto_install:
+	mkdir -p $(CURDIR)/debian/pbs-mailer/opt/pbs/bin
+	mkdir -p $(CURDIR)/debian/pbs-mailer/opt/pbs/etc
+	cp $(CURDIR)/pbs_mail.json $(CURDIR)/debian/pbs-mailer/opt/pbs/etc/
+	cp $(CURDIR)/pbs_mail_saver $(CURDIR)/debian/pbs-mailer/opt/pbs/bin/
+	cp $(CURDIR)/pbs_mail_sender $(CURDIR)/debian/pbs-mailer/opt/pbs/bin/
+	dh_auto_install
+	dh_systemd_enable || true
+	dh_systemd_start || true
+
+clean:
+	dh_testdir
+	dh_testroot
+	dh_clean

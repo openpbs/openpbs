@@ -1,0 +1,12 @@
+Source: pbs-mailer
+Section: unknown
+Priority: optional
+Maintainer: Altair Engineering, Inc. <https://www.openpbs.org/>
+Build-Depends: debhelper
+Standards-Version: 3.8.4
+ 
+Package: pbs-mailer
+Depends: python3
+Section: utils
+Architecture: all
+Description: Mailing service for PBS software.

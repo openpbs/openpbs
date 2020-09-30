@@ -1324,12 +1324,12 @@ writeit:
  * @see
  *	call_log_license
  *
- * @param[in]   pu	-	pointer to license_used
+ * @param[in]   pu	-	pointer to licenses_high_use
  *
  * @return      void
  */
 void
-log_licenses(struct license_used *pu)
+log_licenses(pbs_licenses_high_use *pu)
 {
 	sprintf(acct_buf, "floating license hour:%d day:%d month:%d max:%d",
 		pu->lu_max_hr,

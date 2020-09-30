@@ -112,10 +112,6 @@ extern int	 server_init_type;
 extern int	ctnodes(char *);
 extern char	*resc_in_err;
 extern struct	server	server;
-extern struct	license_block licenses;
-extern struct	license_used  usedlicenses;
-extern struct	license_block licenses;
-extern struct	license_used  usedlicenses;
 extern int tpp_network_up; /* from pbsd_main.c - used only in case of TPP */
 
 extern unsigned int pbs_mom_port;
@@ -146,6 +142,8 @@ extern void svr_renew_job_cred(struct work_task *pwt);
 #endif
 
 extern long node_fail_requeue;
+
+extern void propagate_licenses_to_vnodes(mominfo_t *pmom);
 
 #define		SKIP_NONE	0
 #define		SKIP_EXCLUSIVE	1
@@ -3351,7 +3349,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			append_link(&atrlist, &pal->al_link, pal);
 		}
 		pal = GET_NEXT(atrlist);
-		bad =create_pbs_node(pvnal->vnal_id, pal, ATR_DFLAG_MGWR,
+		bad = create_pbs_node(pvnal->vnal_id, pal, ATR_DFLAG_MGWR,
 			&bad, &pnode, FALSE);
 		free_attrlist(&atrlist);
 		if (bad != 0) {
@@ -3472,7 +3470,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
 		pnode->nd_attr[(int)ND_ATR_Sharing].at_flags = (ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
 
-		(void)release_node_lic(pnode);
 	}
 
 	/* set attributes/resources if they are default */
@@ -4525,7 +4522,7 @@ found:
 							}
 						}
 					}
-					propagate_socket_licensing(pmom);
+					propagate_licenses_to_vnodes(pmom);
 				}
 				vnl_free(vnlp);
 				vnlp = NULL;
@@ -5815,35 +5812,6 @@ cvt_realloc(char **bp, size_t *bplen, char **curbp, size_t *bpfree)
 		*curbp = newbp + curoffset;
 		return 1;
 	}
-}
-
-/**
- * @brief
- * 		update the Server FLicenses attribute
- *
- * 		pbs_max_license maintains count of maximum licenses a server can have.
- * 		In some cases actual licenses remaining (pbs_max_license - used) could be
- * 		lesser than the sum of available and global floating licenses.
- * 		In such cases FLicense count is updated by number of licenses that can
- * 		actually be used. This is done to make sure that scheduler gets the right
- * 		count of floating licenses to schedule jobs.
- *
- * @par
- *		lb_aval_floating is number of licenses available here,
- *		either local PBS floating or license manager that are checked
- *		out to me
- *		lb_glob_floating is the number license manager reports as being free
- *
- * @return	void
- */
-void
-update_FLic_attr(void)
-{
-	pbs_float_lic->at_val.at_long = licenses.lb_aval_floating + licenses.lb_glob_floating;
-	if ((pbs_max_licenses - licenses.lb_used_floating) < pbs_float_lic->at_val.at_long)
-		pbs_float_lic->at_val.at_long = pbs_max_licenses - licenses.lb_used_floating;
-
-	pbs_float_lic->at_flags |= ATR_MOD_MCACHE;
 }
 
 #define JBINXSZ_GROW 16;

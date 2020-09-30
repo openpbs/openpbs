@@ -239,17 +239,12 @@ static int issue_preempt_request(int preempt_method, job *pjob, struct batch_req
  */
 static void clear_preempt_hold(job *pjob)
 {
-	attribute temphold;
 	long old_hold;
 	int newsub;
 	char newstate;
 
-	clear_attr(&temphold, &job_attr_def[(int)JOB_ATR_hold]);
-	set_attr_generic(&temphold, &job_attr_def[JOB_ATR_hold], "s", NULL, INTERNAL);
-
 	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
-	set_attr_with_attr(&job_attr_def[(int)JOB_ATR_hold], &pjob->ji_wattr[(int)JOB_ATR_hold],
-					       &temphold, DECR);
+	set_jattr_generic(pjob, JOB_ATR_hold, "s", NULL, DECR);
 
 	if (old_hold != get_jattr_long(pjob, JOB_ATR_hold)) {
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);

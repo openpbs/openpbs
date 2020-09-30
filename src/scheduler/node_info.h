@@ -396,7 +396,6 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
  *	  IN: resresv - the job the spec if from (needed for reservations)
  *        IN: flags - flags to change functions behavior
  *            EVAL_OKBREAK - ok to break chunck up across vnodes
- *	  IN: flt_lic - the number of floating licenses available
  *	  OUT: nspec_arr - array of struct nspec's describing the chosen nodes
  *
  * 	returns 1 if the select spec is satifiable
@@ -405,7 +404,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 int
 eval_simple_selspec(status *policy, chunk *chk, node_info **ninfo_arr,
 	place *pl, resource_resv *resresv, unsigned int flags,
-	int flt_lic, nspec ***nspec_arr, schd_error *err);
+	nspec ***nspec_arr, schd_error *err);
 
 /* evaluate one node to see if it is eligible at the job/resv level */
 int
@@ -426,7 +425,6 @@ int is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
  *        IN: node - the node to evaluate
  *        IN: pl - place spec for request
  *        IN: resresv - resource resv which is requesting
- IN: cur_flt_lic - current number of PBS floating licenses available
  *        IN: flags - flags to change behavior of function
  *              EVAL_OKBREAK - OK to break chunk across vnodes
  *        OUT: err - error status if node is ineligible
@@ -436,8 +434,8 @@ int is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
  */
 int
 resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
-	place *pl, resource_resv *resresv, int cur_flt_lic,
-	unsigned int flags, nspec *ns, schd_error *err);
+	place *pl, resource_resv *resresv, unsigned int flags,
+	nspec *ns, schd_error *err);
 
 /*
  *	check_resources_for_node - check to see how many chunks can fit on a

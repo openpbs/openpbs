@@ -205,7 +205,6 @@ local_move(job *jobp, struct batch_request *req)
 	pbs_queue *qp;
 	char	  *destination = jobp->ji_qs.ji_destin;
 	int	   mtype;
-	attribute *pattr;
 	long	newtype = -1;
 	long	time_msec;
 	struct timeval	tval;
@@ -253,12 +252,11 @@ local_move(job *jobp, struct batch_request *req)
 
 	set_jattr_l_slim(jobp, JOB_ATR_qrank, time_msec, SET);
 
-	pattr = &jobp->ji_wattr[(int)JOB_ATR_reserve_ID];
 	if (qp->qu_resvp) {
-		set_attr_generic(pattr, &job_attr_def[JOB_ATR_reserve_ID], qp->qu_resvp->ri_qs.ri_resvID, NULL, INTERNAL);
+		set_jattr_generic(jobp, JOB_ATR_reserve_ID, qp->qu_resvp->ri_qs.ri_resvID, NULL, INTERNAL);
 		jobp->ji_myResv = qp->qu_resvp;
 	} else
-		set_attr_generic(pattr, &job_attr_def[JOB_ATR_reserve_ID], NULL, NULL, INTERNAL);
+		set_jattr_generic(jobp, JOB_ATR_reserve_ID, NULL, NULL, INTERNAL);
 
 	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
 		newtype = determine_accruetype(jobp);
