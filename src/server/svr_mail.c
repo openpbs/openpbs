@@ -127,7 +127,7 @@ svr_exec_mailer(char *mailer, char *mailfrom, char *mailto)
 		exit(1);
 
 	mcpid = fork();
-	if(mcpid == 0) {
+	if (mcpid == 0) {
 		/* this child will be sendmail with its stdin set to the pipe */
 		close(mfds[1]);
 		if (mfds[0] != 0) {

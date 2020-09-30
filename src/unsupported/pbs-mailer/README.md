@@ -1,6 +1,6 @@
 ### pbs-mailer
 
-OpenPBS can easily send a huge amount of emails to one user/email. pbs-mailer is a service for an aggregation of emails send by OpenPBS to the same user/email. The first email is send immediately and subsequent emails are sent after configurable time. The emails are squashed into one email.
+OpenPBS can easily send a huge amount of emails to one user/email. pbs-mailer is a service for an aggregation of emails sent by OpenPBS to the same user/email. The first email is sent immediately and subsequent emails are sent after a configurable time period. The emails are squashed into one email.
 
 ### Building package
 
