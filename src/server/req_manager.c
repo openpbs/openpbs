@@ -1536,6 +1536,9 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events],
 					     dflt_log_event, NULL, SET);
 			}
+			else if (strcasecmp(plist->al_name, ATTR_mailer) == 0)
+				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailer]),
+					    &svr_attr_def[(int)SVR_ATR_mailer], SENDMAIL_CMD, NULL, SET);
 			else if (strcasecmp(plist->al_name, ATTR_mailfrom) == 0)
 				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailfrom]),
 					    &svr_attr_def[(int)SVR_ATR_mailfrom], PBS_DEFAULT_MAIL, NULL, SET);

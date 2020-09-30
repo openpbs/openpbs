@@ -263,6 +263,8 @@ init_server_attrs()
 
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events], dflt_log_event, NULL, SET);
 
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailer]), &svr_attr_def[(int) SVR_ATR_mailer], SENDMAIL_CMD, NULL, SET);
+
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailfrom]), &svr_attr_def[(int) SVR_ATR_mailfrom], PBS_DEFAULT_MAIL, NULL, SET);
 
 	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_query_others]), &svr_attr_def[(int) SVR_ATR_query_others], ATR_TRUE, NULL, SET);

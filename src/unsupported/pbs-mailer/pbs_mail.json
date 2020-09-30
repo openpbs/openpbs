@@ -1,0 +1,9 @@
+{
+	"pidfile": "/var/spool/pbs/pbs_mail.pid",
+	"sqlite_db": "/var/spool/pbs/pbs_mail.sqlite",
+	"sendmail": "/usr/sbin/sendmail",
+	"gathering_period": 1800,
+	"mailer_cycle_sleep": 60,
+	"add_servername": true,
+	"send_begin_immediately": false
+}

@@ -1,0 +1,5 @@
+pbs-mailer (1.0-1) unstable; urgency=low
+
+  * initial package
+
+ -- Altair Engineering, Inc. <https://www.openpbs.org/>  Mon, 14 Sep 2020 11:30:00 +0100
