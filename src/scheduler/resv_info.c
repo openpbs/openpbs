@@ -535,6 +535,9 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					 */
 					release_nodes(resresv_ocr);
 
+					free_selspec(resresv_ocr->select);
+					resresv_ocr->select = dup_selspec(resresv_ocr->resv->select_standing);
+
 					resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
 						execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
 					resresv_ocr->nspec_arr = combine_nspec_array(resresv_ocr->resv->orig_nspec_arr);
@@ -683,6 +686,8 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 				advresv->resv->req_start_standing = count;
 			} else if (!strcmp(attrp->resource, "walltime")) {
 				advresv->resv->req_duration_standing = (time_t) res_to_num(attrp->value, NULL);
+			} else if (!strcmp(attrp->resource, "select")) {
+				advresv->resv->select_standing = parse_selspec(attrp->value);
 			}
 		}
 		else if (!strcmp(attrp->name, ATTR_resv_retry)) {
@@ -867,6 +872,7 @@ new_resv_info()
 	rinfo->occr_start_arr = NULL;
 	rinfo->partition = NULL;
 	rinfo->select_orig = NULL;
+	rinfo->select_standing = NULL;
 	rinfo->orig_nspec_arr = NULL;
 
 	return rinfo;
@@ -960,6 +966,8 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 		nrinfo->partition = string_dup(rinfo->partition);
 	if (rinfo->select_orig != NULL)
 		nrinfo->select_orig = dup_selspec(rinfo->select_orig);
+	if (rinfo->select_standing != NULL)
+		nrinfo->select_standing = dup_selspec(rinfo->select_standing);
 
 	/* the queues may not be available right now.  If they aren't, we'll
 	 * catch this when we duplicate the queues
@@ -1163,6 +1171,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * the required fields.
 						 */
 						release_nodes(nresv_copy);
+
+						free_selspec(nresv_copy->select);
+						nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
 						nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
 						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
 						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);

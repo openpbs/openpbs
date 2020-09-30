@@ -2843,3 +2843,42 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV, attrs, id=rid)
         wait = start - time.time()
         self.check_resv_running(rid, offset=wait)
+
+    def test_alter_degrade_reconfirm_standing(self):
+        """
+        Test that if a standing reservation is altered, degraded,
+        then reconfirmed, the reservation will use the original
+        select
+        """
+        duration = 20
+        offset = 20
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 2})
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, standing=True, select="2:ncpus=2")
+
+        confirmed = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, confirmed, id=rid)
+
+        self.server.alterresv(rid, {ATTR_l: "select=1:ncpus=2"})
+        self.server.expect(RESV, confirmed, id=rid)
+
+        self.server.status(RESV, id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        offline = {'state': 'offline'}
+        self.server.manager(MGR_CMD_SET, NODE, offline, id=resv_node)
+        degraded = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
+        self.server.expect(RESV, degraded, id=rid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        self.server.expect(RESV, confirmed, id=rid)
+
+        stat = self.server.status(RESV, id=rid)[0]
+        resvnodes = stat['resv_nodes']
+        self.assertEquals(1, len(resvnodes.split('+')))
+
+        self.check_occr_finish(rid, end - time.time())
+        stat = self.server.status(RESV, id=rid)[0]
+        resvnodes = stat['resv_nodes']
+        self.assertEquals(2, len(resvnodes.split('+')))
