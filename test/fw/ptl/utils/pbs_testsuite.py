@@ -1721,6 +1721,8 @@ class PBSTestSuite(unittest.TestCase):
 
         for mom in self.moms.values():
             mom.cleanup_files()
+            for u in PBS_USERS:
+                mom.cleanup_homedir(u.name)
 
         for sched in self.scheds:
             self.scheds[sched].cleanup_files()

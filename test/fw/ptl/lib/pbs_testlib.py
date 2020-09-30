@@ -14107,6 +14107,31 @@ class MoM(PBSService):
                               self.hostname)
             raise AssertionError('cgroup subsystems not mounted')
 
+    def cleanup_homedir(self, user):
+        self.logger.info('Cleaning %s\'s home directory' % (str(user)))
+        runas = PbsUser.get_user(user)
+        hostname = self.hostname
+        ret = self.du.run_cmd(hostname, cmd=['echo', '$HOME'], sudo=True,
+                              runas=runas, logerr=False, as_script=True)
+        if ret['rc'] == 0:
+            path = ret['out'][0].strip()
+        else:
+            return None
+
+        ftd = []
+        files = self.du.listdir(hostname, path=path, runas=user)
+        bn = os.path.basename
+        ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
+        ftd.extend([f for f in files if bn(f).startswith('STDIN')])
+        ftd.extend([f for f in files if re.match('.*\.o.*', f)])
+        ftd.extend([f for f in files if re.match('.*\.e.*', f)])
+
+        if len(ftd) > 1000:
+            for i in range(0, len(ftd), 1000):
+                j = i + 1000
+                self.du.rm(hostname, path=ftd[i:j], runas=user,
+                           force=True, level=logging.DEBUG2)
+
 
 class Hook(PBSObject):
 
