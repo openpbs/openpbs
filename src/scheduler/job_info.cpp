@@ -3243,7 +3243,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	int i;
 	int j = 0;
 	int has_lower_jobs = 0;	/* there are jobs of a lower preempt priority */
-	int prev_prio;		/* jinfo's preempt field before simulation */
+	unsigned int prev_prio;		/* jinfo's preempt field before simulation */
 	server_info *nsinfo;
 	status *npolicy;
 	resource_resv **rjobs = NULL;	/* the running jobs to choose from */
@@ -3876,7 +3876,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
  *
  */
 int
-preempt_level(int prio)
+preempt_level(unsigned int prio)
 {
 	int level = NUM_PPRIO;
 	int i;
@@ -3954,7 +3954,7 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
 
 	for (i = 0; i < NUM_PPRIO && sc_attrs.preempt_prio[i][0] != 0 &&
 		jinfo->preempt == 0; i++) {
-		if (static_cast<int>(jinfo->preempt_status & sc_attrs.preempt_prio[i][0]) == sc_attrs.preempt_prio[i][0]) {
+		if ((jinfo->preempt_status & sc_attrs.preempt_prio[i][0]) == sc_attrs.preempt_prio[i][0]) {
 			jinfo->preempt = sc_attrs.preempt_prio[i][1];
 			/* if the express bit is on, then we'll add the priority of that
 			 * queue into our priority to allow for multiple express queues

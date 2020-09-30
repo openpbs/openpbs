@@ -101,7 +101,7 @@ extern resdef **boolres;
 extern const char *sc_name;
 extern char *logfile;
 
-extern int preempt_normal;			/* preempt priority of normal_jobs */
+extern unsigned int preempt_normal;			/* preempt priority of normal_jobs */
 
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;

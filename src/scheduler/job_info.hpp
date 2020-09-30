@@ -172,7 +172,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
  *      preempt_level - take a preemption priority and return a preemption
  *                      level
  */
-int preempt_level(int prio);
+int preempt_level(unsigned int prio);
 
 /*
  *      set_preempt_prio - set a job's preempt field to the correct value

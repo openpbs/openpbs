@@ -171,7 +171,7 @@ char *cmp_aoename = NULL;
 const char *sc_name = NULL;
 char *logfile = NULL;
 
-int preempt_normal;			/* preempt priority of normal_jobs */
+unsigned int preempt_normal;			/* preempt priority of normal_jobs */
 
 char path_log[_POSIX_PATH_MAX];
 int dflt_sched = 0;

@@ -377,7 +377,7 @@ struct schedattrs
 	int opt_backfill_fuzzy;
 	char *partition;
 	long preempt_queue_prio;
-	int preempt_prio[NUM_PPRIO][2];
+	unsigned int preempt_prio[NUM_PPRIO][2];
 	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
 	enum preempt_sort_vals preempt_sort;
 	enum runjob_mode runjob_mode; /* set to a numeric version of job_run_wait attribute value */
@@ -585,7 +585,7 @@ struct job_info
 	time_t time_preempted;		/* time when the job was preempted */
 	char *est_execvnode;		/* scheduler estimated execvnode of job */
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
-	int preempt;			/* preempt priority */
+	unsigned int preempt;			/* preempt priority */
 	int peer_sd;			/* connection descriptor to peer server */
 	long long job_id;		/* numeric portion of the job id */
 	resource_req *resused;		/* a list of resources used */
