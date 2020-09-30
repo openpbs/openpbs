@@ -1101,7 +1101,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	}
 	for (i = 0; i < sizeof(limfuncs) / sizeof(limfuncs[0]); i++) {
 		rc = static_cast<enum sched_error_code>((limfuncs[i])(si, qi, rr, server_lim, queue_lim, err));
-		if (rc != 0) {
+		if (rc != SE_NONE) {
 			if ((flags & RETURN_ALL_ERR)) {
 				if (any_fail_rc == 0)
 					any_fail_rc = rc;
@@ -1132,7 +1132,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	}
 
 	if (any_fail_rc)
-		return static_cast<enum sched_error_code>(any_fail_rc);
+		return any_fail_rc;
 
 	return rc;
 }

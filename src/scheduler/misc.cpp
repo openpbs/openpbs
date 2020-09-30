@@ -315,7 +315,7 @@ skip_line(char *line)
  *	@return nothing
  */
 void
-schdlogerr(int event, int class_, int sev, const char *name, const char *text,
+schdlogerr(int event, int event_class, int sev, const char *name, const char *text,
 	schd_error *err)
 {
 	char logbuf[MAX_LOG_SIZE];
@@ -326,9 +326,9 @@ schdlogerr(int event, int class_, int sev, const char *name, const char *text,
 	if (will_log_event(event)) {
 		translate_fail_code(err, NULL, logbuf);
 		if (text == NULL)
-			log_event(event, class_, sev, name, logbuf);
+			log_event(event, event_class, sev, name, logbuf);
 		else
-			log_eventf(event, class_, sev, name, "%s %s", text, logbuf);
+			log_eventf(event, event_class, sev, name, "%s %s", text, logbuf);
 	}
 }
 
@@ -404,9 +404,9 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
  * @return	value from match_string_array()
  *
  */
-enum match_string_array_ret match_string_to_array(char *str, const char * const *strarr)
+enum match_string_array_ret match_string_to_array(const char *str, const char * const *strarr)
 {
-	char *mockarr[2];
+	const char *mockarr[2];
 
 	mockarr[0] = str;
 	mockarr[1] = NULL;
@@ -1063,7 +1063,7 @@ copy_schd_error(schd_error *err, schd_error *oerr)
  *
  * @return	nothing
  */
-void set_schd_error_arg(schd_error *err, int arg_field, const char *arg) {
+void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const char *arg) {
 
 	if(err == NULL)
 		return;
@@ -1179,13 +1179,13 @@ free_schd_error_list(schd_error *err_list) {
  *
  * @return	new schd_error
  */
-schd_error *create_schd_error(int error_code, int status_code)
+schd_error *create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code)
 {
 	schd_error *nse;
 	nse = new_schd_error();
 	if(nse == NULL)
 		return NULL;
-	set_schd_error_codes(nse, static_cast<schd_err_status>(status_code), static_cast<sched_error_code>(error_code));
+	set_schd_error_codes(nse, status_code, error_code);
 	return nse;
 }
 
@@ -1204,7 +1204,7 @@ schd_error *create_schd_error(int error_code, int status_code)
  *
  * @return	new schd_error
  */
-schd_error *create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
+schd_error *create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
 {
 	schd_error *nse;
 

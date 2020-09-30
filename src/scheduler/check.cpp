@@ -123,7 +123,7 @@
 sched_error_code
 is_ok_to_run_queue(status *policy, queue_info *qinfo)
 {
-	sched_error_code rc = SE_NONE;			/* Return Code */
+	enum sched_error_code rc = SE_NONE;			/* Return Code */
 
 	if (!qinfo->is_exec)
 		return QUEUE_NOT_EXEC;
@@ -714,7 +714,7 @@ nspec **
 is_ok_to_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
-	enum sched_error_code rc = static_cast<enum sched_error_code>(0);			/* Return Code */
+	enum sched_error_code rc = SE_NONE;			/* Return Code */
 	schd_resource	*res = NULL;		/* resource list to check */
 	int		endtime = 0;		/* end time of job if started now */
 	nspec		**ns_arr = NULL;	/* node solution of where request will run */

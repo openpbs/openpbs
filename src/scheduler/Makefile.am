@@ -126,12 +126,10 @@ libpbs_sched_a_SOURCES = \
 sbin_PROGRAMS = pbs_sched pbsfs
 
 pbs_sched_CPPFLAGS = ${common_cflags}
-#pbs_sched_CXXFLAGS = ${common_cflags}
 pbs_sched_LDADD = ${common_libs} @libundolr_lib@
 pbs_sched_SOURCES = pbs_sched.cpp
 
 pbsfs_CPPFLAGS = ${common_cflags}
-#pbsfs_CXXFLAGS = ${common_cflags}
 pbsfs_LDADD = ${common_libs}
 pbsfs_SOURCES = pbsfs.cpp
 

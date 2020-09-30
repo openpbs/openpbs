@@ -529,7 +529,7 @@ site_dup_share_amts(sh_amt *oldp)
 	if (oldp == NULL)
 		return NULL;
 	sz = shr_class_count * sizeof(*newp);
-	newp = static_cast<sh_amt *>(malloc(sz);
+	newp = static_cast<sh_amt *>(malloc(sz));
 	if (newp == NULL)
 		return NULL;
 	memcpy(newp, oldp, sz);
@@ -563,7 +563,7 @@ site_find_alloc_share(server_info *sinfo, char *name)
 		 */
 		return sinfo->share_head->root;
 	}
-	if (si && si->pattern_type == share_info::pattern_type::PATTERN_SEPARATE &&
+	if (si && si->pattern_type == share_info::PATTERN_SEPARATE &&
 		strcmp(name, si->name) != 0) {
 		/*
 		 * On match against SEPARATE pattern, create new entry with
@@ -571,7 +571,7 @@ site_find_alloc_share(server_info *sinfo, char *name)
 		 */
 		nsi = new_share_info(name, shr_class_count);
 		if (nsi != NULL) {
-			nsi->pattern_type = share_info::pattern_type::PATTERN_NONE;
+			nsi->pattern_type = share_info::PATTERN_NONE;
 			nsi->leader = si->leader;
 			nsi->parent = si;
 			if (si->child) {
@@ -1003,7 +1003,7 @@ site_parse_shares(char *fname)
 			 * Set up default class and type entries
 			 */
 			strcpy(log_buffer, "Malloc failure"); /* just in case */
-			tclass = static_cast<shr_class *>(malloc(sizeof(*tclass));
+			tclass = static_cast<shr_class *>(malloc(sizeof(*tclass)));
 			if (tclass == NULL) {
 				goto err_out_l;
 			}
@@ -1013,7 +1013,7 @@ site_parse_shares(char *fname)
 			new_shr_clses = tclass;
 			new_cls_tail = tclass;
 
-			ttype = static_cast<shr_type *>(malloc(sizeof(*ttype));
+			ttype = static_cast<shr_type *>(malloc(sizeof(*ttype)));
 			if (ttype == NULL) {
 				goto err_out_l;
 			}
@@ -1061,7 +1061,7 @@ site_parse_shares(char *fname)
 						 * New class.  Add to list.
 						 */
 						tclass = static_cast<shr_class *>(malloc(sizeof(*tclass)
-							+ strlen(sp));
+							+ strlen(sp)));
 						if (tclass == NULL)
 							goto err_out_l;
 						tclass->next = NULL;
@@ -1088,7 +1088,7 @@ site_parse_shares(char *fname)
 					}
 				}
 				if (ttype == NULL) {
-					ttype = static_cast<shr_type *>(malloc(sizeof(*ttype) + strlen(sp2));
+					ttype = static_cast<shr_type *>(malloc(sizeof(*ttype) + strlen(sp2)));
 					if (ttype == NULL)
 						goto err_out_l;
 					ttype->sh_tidx = new_type_cnt++;
@@ -1106,7 +1106,7 @@ site_parse_shares(char *fname)
 				}
 			}
 			++state;
-			tshares = static_cast<sh_amt *>(malloc(new_cls_cnt * sizeof(*tshares));
+			tshares = static_cast<sh_amt *>(malloc(new_cls_cnt * sizeof(*tshares)));
 			if (tshares == NULL) {
 				goto err_out_l;
 			}
@@ -1259,7 +1259,7 @@ site_parse_shares(char *fname)
 		if (strpbrk(pattern, "|*.\\(){}[]+") != NULL) {
 			int result;
 			enum share_info::pattern_type ptype = share_info::pattern_type::PATTERN_COMBINED;
-			char *t = static_cast<char *>(malloc(strlen(pattern) + 3);
+			char *t = static_cast<char *>(malloc(strlen(pattern) + 3));
 			char *t2 = pattern;
 			if (t != NULL) {
 				if (*t2 == '+') {
@@ -1601,7 +1601,7 @@ site_set_job_share(resource_resv *resresv)
 	if (shr_class_count == 0 || shr_selector == NULL)
 		return;
 	if ((sh_amts = job->sh_amts) == NULL) {
-		sh_amts = static_cast<sh_amt *>(malloc(shr_class_count * sizeof(*sh_amts));
+		sh_amts = static_cast<sh_amt *>(malloc(shr_class_count * sizeof(*sh_amts)));
 		if (sh_amts == NULL)
 			return;
 		job->sh_amts = sh_amts;
@@ -2529,7 +2529,7 @@ find_entity_share(char *name, share_info *node)
 		return node;		/* Simple match */
 	}
 	best_si = NULL;
-	if (node->pattern_type != PATTERN_NONE) {
+	if (node->pattern_type != share_info::pattern_type::PATTERN_NONE) {
 		if (regexec(&node->pattern, name, 0, NULL, 0) == 0) {
 			/* Found one match */
 			best_si = node;
@@ -2538,7 +2538,7 @@ find_entity_share(char *name, share_info *node)
 	for (child = node->child; child; child = child->sibling) {
 		si = find_entity_share(name, child);
 		if (si) {
-			if (si->pattern_type == PATTERN_NONE) {
+			if (si->pattern_type == share_info::pattern_type::PATTERN_NONE) {
 				/* Found simple match in sub-tree */
 				best_si = si;
 				break;
@@ -2769,7 +2769,7 @@ free_share_tree(share_info *root)
 	free_share_tree(root->child);
 	free_share_tree(root->sibling);
 	if (!root->am_clone) {
-		if (root->pattern_type != PATTERN_NONE) {
+		if (root->pattern_type != share_info::pattern_type::PATTERN_NONE) {
 			regfree(&root->pattern);
 		}
 	}

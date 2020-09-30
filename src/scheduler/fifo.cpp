@@ -104,8 +104,6 @@
 static prev_job_info *last_running = NULL;
 static int last_running_size = 0;
 
-// extern int	get_sched_cmd_noblk(int sock, sched_cmd *cmd);
-
 /**
  * @brief
  * 		initialize conf struct and parse conf files
@@ -1013,8 +1011,8 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 				 */
 				clear_schd_error(chk_lim_err);
 				if (sinfo->qrun_job == NULL) {
-					chk_lim_err->error_code = (enum sched_error_code)check_limits(sinfo,
-						qinfo, njob, chk_lim_err, CHECK_CUMULATIVE_LIMIT);
+					chk_lim_err->error_code = static_cast<enum sched_error_code>(check_limits(sinfo,
+						qinfo, njob, chk_lim_err, CHECK_CUMULATIVE_LIMIT));
 					if (chk_lim_err->error_code != 0) {
 						update_accrue_err = chk_lim_err;
 					}

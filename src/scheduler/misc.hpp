@@ -75,7 +75,7 @@ int skip_line(char *line);
  *                   error will be printed after the message
  */
 void
-schdlogerr(int event, int class_, int sev, const char *name, const char *text,
+schdlogerr(int event, int event_class, int sev, const char *name, const char *text,
 	schd_error *err);
 
 /*
@@ -127,7 +127,7 @@ enum match_string_array_ret match_string_array(const char * const *strarr1, cons
  *	returns value from match_string_array()
  *
  */
-enum match_string_array_ret match_string_to_array(char *str, const char * const *strarr);
+enum match_string_array_ret match_string_to_array(const char *str, const char * const *strarr);
 
 /*
  * convert a string array into a printable string
@@ -258,7 +258,7 @@ void move_schd_error(schd_error *err, schd_error *oerr);
 void copy_schd_error(schd_error *err, schd_error *oerr);
 
 /* safely set the schd_config arg buffers without worrying about leaking */
-void set_schd_error_arg(schd_error *err, int arg_field, const char *arg);
+void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const char *arg);
 
 /* set the status code and error code of a schd_error structure to ensure both are set together  */
 void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code);
@@ -271,9 +271,9 @@ free_schd_error_list(schd_error *err_list);
 
 /* helper functions to create schd_errors*/
 schd_error *
-create_schd_error(int error_code, int status_code) ;
+create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code);
 schd_error *
-create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *errbuf);
+create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *errbuf);
 
 /* add schd_errors to linked list */
 void

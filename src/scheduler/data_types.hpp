@@ -1152,7 +1152,7 @@ struct config
 	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
-	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
+	struct t prime[HIGH_DAY][2];	/* prime time start and prime time end*/
 	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
 	int num_holidays;			/* number of actual holidays */
