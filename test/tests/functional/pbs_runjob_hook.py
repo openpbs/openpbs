@@ -117,7 +117,7 @@ else:
         lower = 1
         upper = 3
         j1 = Job(TEST_USER)
-        j1.set_sleep_time(3)
+        j1.set_sleep_time(10)
         j1.set_attributes({ATTR_J: '%d-%d' % (lower, upper)})
         jid = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)

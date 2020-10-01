@@ -354,7 +354,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
-            'sleep 4\n' \
+            'sleep 10\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
