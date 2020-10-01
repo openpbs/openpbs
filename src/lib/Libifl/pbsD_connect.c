@@ -457,17 +457,9 @@ connect_to_servers(char *server_name, uint port, char *extend_data)
 	if (svr_connections == NULL)
 		return -1;
 
-	if (server_name != NULL && server_name[0] != '\0') {
-		int found = 0;
-
-		/* Make sure that the server is known */
-		for (i = 0; i < num_conf_servers; i++) {
-			if (is_same_host(server_name, svr_connections[i].name)) {
-				found = 1;
-				break;
-			}
-		}
-		if (!found) {
+	if (server_name != NULL && pbs_conf.pbs_server_name != NULL) {
+		/* Make sure that the name matches PBS_SERVER_NAME */
+		if (!is_same_host(server_name, pbs_conf.pbs_server_name)) {
 			pbs_errno = PBSE_BADHOST;
 			return -1;
 		}
