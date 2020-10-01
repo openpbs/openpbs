@@ -507,10 +507,8 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	if ((sock = connect_to_servers(server_name, server_port, extend_data)) == -1) {
-		pbs_errno = PBSE_INTERNAL;
+	if ((sock = connect_to_servers(server_name, server_port, extend_data)) == -1)
 		return -1;
-	}
 
 	return sock;
 }
