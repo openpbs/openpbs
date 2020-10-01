@@ -462,7 +462,7 @@ connect_to_servers(char *server_name, uint port, char *extend_data)
 
 		/* Make sure that the server is known */
 		for (i = 0; i < num_conf_servers; i++) {
-			if (strcmp(server_name, svr_connections[i].name) == 0) {
+			if (is_same_host(server_name, svr_connections[i].name)) {
 				found = 1;
 				break;
 			}
