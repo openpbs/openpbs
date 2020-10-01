@@ -544,8 +544,8 @@ license_one_node(pbsnode *pnode)
 				update_license_highuse();
 			} else {
 				add_to_unlicensed_node_list(pnode);
-				if (pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long) {
-					licensing_control.licenses_total_needed += pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+				if (is_attr_set(&(pnode->nd_attr[ND_ATR_LicenseInfo]))) {
+					licensing_control.licenses_total_needed += get_attr_l(&(pnode->nd_attr[ND_ATR_LicenseInfo]));
 				}
 				if (get_more_licenses_task)
 					delete_task(get_more_licenses_task);
@@ -694,12 +694,12 @@ init_licensing(struct work_task *ptask)
 	}
 	for (i = 0; i < svr_totnodes; i++) {
 	 	clear_node_lic_attrs(pbsndlist[i], 0);
-		if (pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long) {
-			licensing_control.licenses_total_needed += pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+		if (is_attr_set(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]))) {
+			licensing_control.licenses_total_needed += get_attr_l(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]));
 		} else {
 			if (pbsndlist[i]->nd_lic_info != NULL) {
 				set_node_lic_info_attr(pbsndlist[i]);
-				licensing_control.licenses_total_needed += pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+				licensing_control.licenses_total_needed += get_attr_l(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]));
 			}
 		}
 		add_to_unlicensed_node_list(pbsndlist[i]);
