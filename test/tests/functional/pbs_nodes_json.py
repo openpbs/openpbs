@@ -138,31 +138,8 @@ class TestPbsnodes_json(TestFunctional):
                            'bin', 'pbsnodes') + ' -av -Fjson'
         ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
         n_out = "\n".join(ret['out'])
-        self.logger.info(n_out)
         try:
             json.loads(n_out)
         except ValueError:
-            self.assertFalse(True, "Json failed to load")
-
-    def test_empty_job_pset_json(self):
-        """
-        Test an empty pset resource value under json.
-        """
-        # create a custom resource
-        self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'string', 'flag': 'h'}, id='iru')
-        attr = {'node_group_enable': 'True', 'node_group_key': 'iru'}
-        self.server.manager(MGR_CMD_SET, SERVER, attr)
-
-        j = Job(TEST_USER)
-        jid = self.server.submit(j)
-        # when job runs, pset will be set to iru="""
-        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
-                                      'qstat') + ' -f -F json ' + str(jid)
-        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
-        qstat_out = "\n".join(ret['out'])
-        self.logger.info(qstat_out)
-        try:
-            json.loads(qstat_out)
-        except ValueError:
+            self.logger.info(n_out)
             self.assertFalse(True, "Json failed to load")

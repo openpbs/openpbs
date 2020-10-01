@@ -184,21 +184,12 @@ strdup_escape(JsonEscapeType esc_type, const char *str)
 				if (esc_type == JSON_ESCAPE) {
 					bufstr = str + 1;
 					if (*bufstr && ((*bufstr == '\'') || (*bufstr == ','))) {
-						int slash_ct = 0;
-						bufstr--;
-						while ((bufstr >= orig_str) && (*bufstr == '\\')) {
-							slash_ct++;
-							bufstr--;
-						}
-						/* detected balanced escaping (even # slashes) */
-						if ((slash_ct % 2) == 0) {
-							buf[i++] = *str++;
-						} else {
-							str++;
-						}
-
+						str++;
+						buf[i++] = *str++;
 					} else {
 						buf[i++] = *str++;
+						if (*bufstr)
+							buf[i++] = *str++;
 					}
 					break;
 				} /* else JSON_FULLESCAPE */
