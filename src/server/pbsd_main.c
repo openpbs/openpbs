@@ -107,6 +107,8 @@
 #include "pbs_undolr.h"
 #include "auth.h"
 
+#include "pbs_v1_module_common.i"
+
 /* External functions called */
 
 extern int  pbsd_init(int);
@@ -146,11 +148,8 @@ char		*path_usedlicenses;
 char		path_log[MAXPATHLEN+1];
 char		*path_priv;
 char		*path_jobs;
-char		*path_hooks;
-char		*path_hooks_workdir;
 char		*path_hooks_tracking;
 char		*path_users;
-char		*path_rescdef;
 char		*path_hooks_rescdef;
 char		*path_spool;
 char		*path_track;
@@ -163,103 +162,23 @@ unsigned int	pbs_mom_port;
 unsigned int	pbs_rm_port;
 pbs_net_t	pbs_server_addr;
 unsigned int	pbs_server_port_dis;
-/*
- * the names of the Server:
- *    pbs_server_name - from PBS_SERVER_HOST_NAME
- *	  server_name - from PBS_SERVER
- *	  server_host - Set as follows:
- *	  		1. FQDN of pbs_server_name if set
- *	  		2. FQDN of server_name if set
- *	  		3. Call gethostname()
- *
- * The following is an excerpt from the EDD for SPID 4534 that explains
- * how PBS_SERVER_HOST_NAME is used:
- *
- * I.1.2.3	Synopsis:
- * Add new optional entry in PBS Configuration whose value is the fully
- * qualified domain name (FQDN) of the host on which the PBS Server is
- * running.
- *	I.1.2.3.1	This name is used by clients to contact the Server.
- *	I.1.2.3.2	If PBS Failover is configured (PBS_PRIMARY and
- *			PBS_SECONDARY in the PBS Configuration), this symbol
- *			and its value will be ignored and the values of
- *			PBS_PRIMARY and PBS_SECONDARY will be use as per
- *			sectionI.1.1.1.
- *	I.1.2.3.3	When  PBS failover is not configured and
- *			PBS_SERVER_HOST_NAME is specified, if the server_name
- *			is not specified by the client or is specified and
- *			matches the value of PBS_SERVER, then the value of
- *			PBS_SERVER_HOST_NAME is used as the name of the Server
- *			to contact.
- *	I.1.2.3.4	Note: When PBS_SERVER_HOST_NAME is not specified,
- *			the current behavior for determining the name of the
- *			Server to contact will still apply.
- *	I.1.2.3.5	The value of the configuration variable should be a
- *			fully qualified host name to avoid the possibility of
- *			host name collisions (e.g. master.foo.domain.name and
- *			master.bar.domain.name).
- */
-
-char	       *pbs_server_name;
-char		server_name[PBS_MAXSERVERNAME+1]; /* host_name[:service|port] */
-char		server_host[PBS_MAXHOSTNAME+1];	  /* host_name of this svr */
 int		reap_child_flag = 0;
 time_t		secondary_delay = 30;
-struct server	server = {{0}};		/* the server structure */
 pbs_sched	*dflt_scheduler = NULL; /* the default scheduler */
 int		shutdown_who;		/* see req_shutdown() */
 char		*mom_host = server_host;
 long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
-int		svr_delay_entry = 0;
 pbs_list_head	svr_deferred_req;
-pbs_list_head	svr_queues;            /* list of queues                   */
-pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
-pbs_list_head	svr_allresvs;          /* all reservations in server */
-pbs_list_head	task_list_immed;
-pbs_list_head	task_list_timed;
-pbs_list_head	task_list_event;
-pbs_list_head	svr_allhooks;
-pbs_list_head	svr_queuejob_hooks;
-pbs_list_head	svr_modifyjob_hooks;
-pbs_list_head	svr_resvsub_hooks;
-pbs_list_head	svr_movejob_hooks;
-pbs_list_head	svr_runjob_hooks;
-pbs_list_head	svr_management_hooks;
-pbs_list_head	svr_provision_hooks;
-pbs_list_head	svr_periodic_hooks;
-pbs_list_head	svr_resv_end_hooks;
-pbs_list_head	svr_execjob_begin_hooks;
-pbs_list_head	svr_execjob_prologue_hooks;
-pbs_list_head	svr_execjob_epilogue_hooks;
-pbs_list_head	svr_execjob_preterm_hooks;
-pbs_list_head	svr_execjob_launch_hooks;
-pbs_list_head	svr_execjob_end_hooks;
-pbs_list_head	svr_exechost_periodic_hooks;
-pbs_list_head	svr_exechost_startup_hooks;
-pbs_list_head	svr_execjob_attach_hooks;
-pbs_list_head	svr_execjob_resize_hooks;
-pbs_list_head	svr_execjob_abort_hooks;
-pbs_list_head	svr_execjob_postsuspend_hooks;
-pbs_list_head	svr_execjob_preresume_hooks;
 pbs_list_head	svr_allscheds;
 extern pbs_list_head	svr_creds_cache; /* all credentials available to send */
-time_t		time_now;
 struct batch_request	*saved_takeover_req;
-struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
 void *jobs_idx;
 void *queues_idx;
 void *resvs_idx;
-
-void *job_attr_idx;
-void *resv_attr_idx;
-void *node_attr_idx;
-void *que_attr_idx;
-void *svr_attr_idx;
-void *sched_attr_idx;
 
 sigset_t	allsigs;
 

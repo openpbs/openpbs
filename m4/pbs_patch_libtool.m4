@@ -39,41 +39,23 @@
 
 #
 
-noinst_LIBRARIES = libpbspython.a libpbspython_svr.a
-
-libpbspython_a_CPPFLAGS = \
-	-I$(top_srcdir)/src/include \
-	@PYTHON_INCLUDES@ \
-	@KRB5_CFLAGS@
-
-libpbspython_a_SOURCES = \
-	shared_python_utils.c \
-	common_python_utils.c \
-	pbs_python_external.c \
-	pbs_python_svr_external.c \
-	module_pbs_v1.c \
-	pbs_python_svr_internal.c \
-	pbs_python_svr_size_type.c \
-	pbs_python_import_types.c
-
-nodist_libpbspython_a_SOURCES = \
-	$(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
-
-libpbspython_svr_a_CPPFLAGS = \
-	-DLIBPYTHONSVR \
-	-I$(top_srcdir)/src/include \
-	@PYTHON_INCLUDES@ \
-	@KRB5_CFLAGS@
-
-libpbspython_svr_a_SOURCES = \
-	shared_python_utils.c \
-	common_python_utils.c \
-	pbs_python_external.c \
-	pbs_python_svr_external.c \
-	module_pbs_v1.c \
-	pbs_python_svr_internal.c \
-	pbs_python_svr_size_type.c \
-	pbs_python_import_types.c
-
-nodist_libpbspython_svr_a_SOURCES = \
-	$(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
+AC_DEFUN([PBS_AC_PATCH_LIBTOOL], [
+	AC_CONFIG_COMMANDS([patch-libtool], [
+		AS_IF([! grep '[[-]]fsanitize=\*' libtool 2>&1 >/dev/null], [
+			AC_MSG_NOTICE([patching libtool to support -fsanitize])
+			AS_IF([! grep '[[-]]pg[[|)]]' libtool 2>&1 >/dev/null], [
+				grep -A 30 'Flags to be passed through unchanged' libtool \
+					>libtool.patched.err
+				AC_MSG_ERROR([libtool does not pass through -pg])
+			])
+			$SED 's/\(-pg\)\([[|)]]\)/\1|-fsanitize=\*\2/' \
+				libtool >libtool.patched 2>libtool.patched.err
+			AS_IF([! grep '[[-]]fsanitize=\*' libtool.patched \
+					2>&1 >/dev/null ], [
+				AC_MSG_ERROR([Failed to patch libtool])
+			], [])
+			mv -f libtool.patched libtool
+			rm -f libtool.patched.err
+		])
+	])
+])

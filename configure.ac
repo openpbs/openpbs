@@ -333,6 +333,7 @@ PBS_AC_WITH_LIBZ
 PBS_AC_ENABLE_PTL
 PBS_AC_SYSTEMD_UNITDIR
 PBS_AC_WITH_LIBUNDOLR
+PBS_AC_PATCH_LIBTOOL
 
 AC_CONFIG_FILES([
 	openpbs.spec
@@ -370,6 +371,7 @@ AC_CONFIG_FILES([
 	src/lib/Libattr/Makefile
 	src/lib/Libdb/Makefile
 	src/lib/Libdb/pgsql/Makefile
+	src/lib/Libifl/Makefile
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile

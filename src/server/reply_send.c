@@ -88,7 +88,7 @@ extern char *msg_system;
 #ifndef PBS_MOM
 extern pbs_list_head task_list_event;
 extern pbs_list_head task_list_immed;
-char   *resc_in_err = NULL;
+extern char *resc_in_err;
 #endif	/* PBS_MOM */
 
 #ifndef WIN32

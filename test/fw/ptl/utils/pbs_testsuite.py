@@ -1657,6 +1657,23 @@ class PBSTestSuite(unittest.TestCase):
 
     skip_test = skipTest
 
+    def add_pbs_python_path_to_sys_path(self):
+        """
+        Add the path to the installed PBS Python modules located in the PBS
+        installation directory to the module search path if the path is not
+        already present.
+        """
+        for lib_dir in ['lib64', 'lib']:
+            pbs_python_path = os.path.join(
+                self.server.pbs_conf['PBS_EXEC'], lib_dir, 'python', 'altair')
+            if os.path.isdir(pbs_python_path):
+                if pbs_python_path not in sys.path:
+                    sys.path.append(pbs_python_path)
+                return
+        raise Exception(
+            "Unable to determine the path to the PBS Python modules in the " +
+            "PBS installation directory.")
+
     @classmethod
     def log_enter_teardown(cls, iscls=False):
         _m = ' Entered ' + cls.__name__ + ' tearDown'

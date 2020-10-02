@@ -39,6 +39,67 @@
 
 #
 
+pbs_v1_sodir = $(libdir)/python/altair
+
+pbs_v1_so_LTLIBRARIES = \
+	_pbs_v1.la \
+	_pbs_ifl.la
+
+nodist_pbs_v1_so_PYTHON = $(top_builddir)/src/lib/Libifl/pbs_ifl.py
+
+_pbs_v1_la_SOURCES = \
+	$(top_builddir)/src/lib/Libattr/attr_fn_acl.c \
+	$(top_builddir)/src/lib/Libattr/attr_fn_entlim.c \
+	$(top_builddir)/src/lib/Libattr/attr_fn_resc.c \
+	$(top_builddir)/src/lib/Libattr/attr_fn_time.c \
+	$(top_builddir)/src/lib/Libattr/attr_node_func.c \
+	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/node_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/queue_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/resc_def_all.c \
+	$(top_builddir)/src/lib/Libattr/resv_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/sched_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/svr_attr_def.c \
+	$(top_srcdir)/src/lib/Libpython/shared_python_utils.c \
+	$(top_srcdir)/src/lib/Libpython/common_python_utils.c \
+	$(top_srcdir)/src/lib/Libpython/pbs_python_external.c \
+	$(top_srcdir)/src/lib/Libpython/pbs_python_svr_external.c \
+	$(top_srcdir)/src/lib/Libpython/module_pbs_v1.c \
+	$(top_srcdir)/src/lib/Libpython/pbs_python_svr_internal.c \
+	$(top_srcdir)/src/lib/Libpython/pbs_python_svr_size_type.c \
+	$(top_srcdir)/src/lib/Libpython/pbs_python_import_types.c \
+	$(top_srcdir)/src/lib/Libutil/entlim.c \
+	$(top_srcdir)/src/lib/Libutil/hook.c \
+	$(top_srcdir)/src/lib/Libutil/work_task.c \
+	$(top_srcdir)/src/server/resc_attr.c \
+	$(top_srcdir)/src/server/setup_resc.c \
+	$(top_srcdir)/src/server/vnparse.c \
+	pbs_v1_module_init.c
+_pbs_v1_la_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@PYTHON_INCLUDES@ \
+	@KRB5_CFLAGS@
+_pbs_v1_la_LDFLAGS = \
+	-module \
+	-shared \
+	-export-dynamic \
+	-avoid-version
+_pbs_v1_la_LIBADD = \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la
+
+nodist__pbs_ifl_la_SOURCES = $(top_builddir)/src/lib/Libifl/pbs_ifl_wrap.c
+_pbs_ifl_la_CPPFLAGS = \
+	-I$(top_srcdir)/src/include \
+	@PYTHON_INCLUDES@
+_pbs_ifl_la_LDFLAGS = \
+	-module \
+	-shared \
+	-export-dynamic \
+	-avoid-version \
+	-no-undefined
+_pbs_ifl_la_LIBADD = \
+	$(top_builddir)/src/lib/Libpbs/libpbs.la
+
 pbsmoduledir = $(libdir)/python/altair/pbs
 
 pbsmodule_PYTHON = pbs/__init__.py
@@ -46,7 +107,6 @@ pbsmodule_PYTHON = pbs/__init__.py
 pbsv1moduledir = $(libdir)/python/altair/pbs/v1
 
 pbsv1module_PYTHON = \
-	$(top_builddir)/src/lib/Libpython/pbs_ifl.py \
 	pbs/v1/__init__.py \
 	pbs/v1/_attr_types.py \
 	pbs/v1/_base_types.py \

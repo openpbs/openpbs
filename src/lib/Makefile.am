@@ -44,6 +44,7 @@ SUBDIRS = \
 	Libdb \
 	Liblog \
 	Libnet \
+	Libifl \
 	Libpbs \
 	Libpython \
 	Libsite \

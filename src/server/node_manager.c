@@ -98,13 +98,9 @@ extern int h_errno;
 
 int		 mom_send_vnode_map = 0; /* server must send vnode map to Mom */
 int		 svr_quehasnodes;
-int	 	 svr_totnodes = 0;	/* total number nodes defined       */
-/* on server shutdown, (qmgr mods)  */
 
 static int mtfd_replyhello = -1;
 static int mtfd_replyhello_noinv = -1;
-
-struct pbsnode **pbsndlist = NULL;
 
 static int	 cvt_overflow(size_t, size_t);
 static int	 cvt_realloc(char **, size_t *, char **, size_t *);
