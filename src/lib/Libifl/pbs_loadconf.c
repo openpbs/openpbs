@@ -279,6 +279,9 @@ parse_psi(char *conf_value)
 	
 	free(pbs_conf.psi);
 
+	if (conf_value == NULL)
+		return -1;
+
 	list = break_comma_list(conf_value);
 	if (list == NULL)
 		return -1;
@@ -944,10 +947,6 @@ __pbs_loadconf(int reload)
 		goto err;
 	}
 
-	if (parse_psi(psi_value ? psi_value : pbs_conf.pbs_server_name) == -1)
-		goto err;
-	free(psi_value);
-
 
 	/*
 	 * Perform sanity checks on PBS_*_HOST_NAME values and PBS_CONF_SMTP_SERVER_NAME.
@@ -1128,6 +1127,12 @@ __pbs_loadconf(int reload)
 
 
 	pbs_conf.loaded = 1;
+
+	if (parse_psi(psi_value ? psi_value : pbs_default()) == -1) {
+		fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
+		free(psi_value);
+		goto err;
+	}
 
 	if (pbs_client_thread_unlock_conf() != 0)
 		return 0;

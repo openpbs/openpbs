@@ -253,9 +253,8 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 		return -1;
 	}
 
-	pbs_strncpy(pbs_server, hostname, sizeof(pbs_server)-1); /* set for error messages from commands */
-	pbs_server[sizeof(pbs_server) - 1] = '\0';
-		/* and connect... */
+	pbs_strncpy(pbs_server, hostname, sizeof(pbs_server)); /* set for error messages from commands */
+	/* and connect... */
 
 	if (get_hostsockaddr(hostname, &server_addr) != 0)
 		return -1;
@@ -491,7 +490,6 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 int
 __pbs_connect_extend(char *server, char *extend_data)
 {
-	int sock;
 	char server_name[PBS_MAXSERVERNAME + 1];
 	unsigned int server_port;
 
@@ -508,10 +506,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	if ((sock = connect_to_servers(server_name, server_port, extend_data)) == -1)
-		return -1;
-
-	return sock;
+	return connect_to_servers(server_name, server_port, extend_data);
 }
 
 /**
