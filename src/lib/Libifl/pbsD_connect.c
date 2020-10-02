@@ -216,7 +216,7 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 }
 
 /**
- * @brief	This function establishes the network connection to the choose server.
+ * @brief	This function establishes a network connection to the given server.
  *
  * @param[in]   server - The hostname of the pbs server to connect to.
  * @param[in]   port - Port number of the pbs server to connect to.
@@ -229,13 +229,12 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
  */
 
 static int
-tcp_connect(char *server, int server_port, char *extend_data)
+tcp_connect(char *hostname, int server_port, char *extend_data)
 {
 	int i;
 	int sd;
 	int rc;
 	struct sockaddr_in server_addr;
-	struct sockaddr_in my_sockaddr;
 	struct batch_reply	*reply;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
 
@@ -254,22 +253,11 @@ tcp_connect(char *server, int server_port, char *extend_data)
 		return -1;
 	}
 
-	pbs_strncpy(pbs_server, server, sizeof(pbs_server)-1); /* set for error messages from commands */
+	pbs_strncpy(pbs_server, hostname, sizeof(pbs_server)-1); /* set for error messages from commands */
 	pbs_server[sizeof(pbs_server) - 1] = '\0';
 		/* and connect... */
 
-	/* If a specific host name is defined which the client should use */
-	if (pbs_conf.pbs_public_host_name) {
-		if (get_hostsockaddr(pbs_conf.pbs_public_host_name, &my_sockaddr) != 0)
-			return -1; /* pbs_errno was set */
-		/* my address will be in my_sockaddr,  bind the socket to it */
-		my_sockaddr.sin_port = 0;
-		if (bind(sd, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
-			return -1;
-		}
-	}
-
-	if (get_hostsockaddr(server, &server_addr) != 0)
+	if (get_hostsockaddr(hostname, &server_addr) != 0)
 		return -1;
 
 	server_addr.sin_port = htons(server_port);
@@ -286,7 +274,6 @@ tcp_connect(char *server, int server_port, char *extend_data)
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
-
 
 	/*
 	 * No need for global lock now on, since rest of the code
@@ -333,7 +320,7 @@ tcp_connect(char *server, int server_port, char *extend_data)
 		return -1;
 	}
 
-	if (engage_client_auth(sd, server, server_port, errbuf, sizeof(errbuf)) != 0) {
+	if (engage_client_auth(sd, hostname, server_port, errbuf, sizeof(errbuf)) != 0) {
 		if (pbs_errno == 0)
 			pbs_errno = PBSE_PERM;
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
@@ -419,6 +406,18 @@ static int
 connect_to_server(int idx, svr_conn_t *conn_arr, char *extend_data)
 {
 	int sd = conn_arr[idx].sd;
+	struct sockaddr_in my_sockaddr;
+
+	/* bind to pbs_public_host_name if given  */
+	if (pbs_conf.pbs_public_host_name) {
+		if (get_hostsockaddr(pbs_conf.pbs_public_host_name, &my_sockaddr) != 0)
+			return -1; /* pbs_errno was set */
+		/* my address will be in my_sockaddr,  bind the socket to it */
+		my_sockaddr.sin_port = 0;
+		if (bind(sd, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
+			return -1;
+		}
+	}
 
 	if (conn_arr[idx].state != SVR_CONN_STATE_UP || conn_arr[idx].secondary_sd < 0) {
 		if ((sd = tcp_connect(conn_arr[idx].name, conn_arr[idx].port, extend_data)) != -1) {
@@ -437,7 +436,7 @@ connect_to_server(int idx, svr_conn_t *conn_arr, char *extend_data)
 /**
  * @brief	To connect to all the servers
  *
- * @param[in]	server_name - name of the server to connect to (NULL if not known)
+ * @param[in]	svrhost - valid host name of one of the servers
  * @param[in]	port - port of the server to connect to (considered if server_name is not NULL)
  * @param[in]	extend_data
  *
@@ -446,7 +445,7 @@ connect_to_server(int idx, svr_conn_t *conn_arr, char *extend_data)
  * @retval -1 - error
  */
 static int
-connect_to_servers(char *server_name, uint port, char *extend_data)
+connect_to_servers(char *svrhost, uint port, char *extend_data)
 {
 	int i;
 	int fd = -1;
@@ -457,15 +456,17 @@ connect_to_servers(char *server_name, uint port, char *extend_data)
 	if (svr_connections == NULL)
 		return -1;
 
-	if (server_name != NULL && pbs_conf.pbs_server_name != NULL) {
-		/* Make sure that the name matches PBS_SERVER_NAME */
-		if (!is_same_host(server_name, pbs_conf.pbs_server_name)) {
+	if (svrhost != NULL) {
+		struct sockaddr_in tmp_sockaddr;
+
+		/* Check that this host is reachable */
+		if (get_hostsockaddr(svrhost, &tmp_sockaddr) != 0) {
 			pbs_errno = PBSE_BADHOST;
 			return -1;
 		}
 	}
 
-	/* Try to connect to as many as possible */
+	/* Try to connect to all servers in the cluster */
 	for (i = 0; i < num_conf_servers; i++) {
 		fd = connect_to_server(i, svr_connections, extend_data);
 
@@ -567,7 +568,7 @@ __pbs_connect(char *server)
  * @retval	-1	error
  */
 static int
-__pbs_disconnect_2(int connect)
+disconnect_from_server(int connect)
 {
 	char x;
 
@@ -644,22 +645,23 @@ __pbs_disconnect(int connect)
 {
 	svr_conn_t *svr_conns = NULL;
 
-	if (__pbs_disconnect_2(connect) != 0)
+	if (connect <= 0)
 		return -1;
 
-	/* Update the server connection cache */
+	/* Disconnect from all servers in the cluster */
 	svr_conns = get_conn_servers();
 	if (svr_conns != NULL) {
 		int i;
 
 		for (i = 0; i < get_num_servers(); i++) {
-			if (svr_conns[i].sd == connect) {
-				svr_conns[i].sd = -1;
-				if (svr_conns[i].secondary_sd > 0)
-					__pbs_disconnect_2(svr_conns[i].secondary_sd);
-				svr_conns[i].secondary_sd = -1;
-				svr_conns[i].state = SVR_CONN_STATE_DOWN;
-			}
+			if (disconnect_from_server(svr_conns[i].sd) != 0)
+				return -1;
+
+			svr_conns[i].sd = -1;
+			if (svr_conns[i].secondary_sd > 0)
+				disconnect_from_server(svr_conns[i].secondary_sd);
+			svr_conns[i].secondary_sd = -1;
+			svr_conns[i].state = SVR_CONN_STATE_DOWN;
 		}
 	}
 

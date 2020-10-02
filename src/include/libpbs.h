@@ -145,7 +145,7 @@ typedef struct svr_conn {
 	int secondary_sd;            /* Secondary File descriptor for the open socket */
 	int state;                   /* Connection state */
 	time_t last_used_time;       /* Last used time for the connection */
-	char name[PBS_MAXSERVERNAME];  /* server name */
+	char name[PBS_MAXSERVERNAME + 1];  /* server name */
 	int port;                    /* server port */
 	int from_sched;              /* flag to indicate whether this conn is from sched or not */
 } svr_conn_t;
