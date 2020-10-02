@@ -694,3 +694,25 @@ class TestMaintenanceReservations(TestFunctional):
         a = {'comment': 'Can Never Run: Reservation is in an invalid state',
              'job_state': 'Q'}
         self.server.expect(JOB, a, id=jid)
+
+    def test_maintenance_parse_numerous_hosts(self):
+        """
+        Test if the parsing of numerous hosts succeed.
+        """
+        now = int(time.time())
+
+        a = {'reserve_start': now + 3600,
+             'reserve_end': now + 7200}
+        chars = 'abcdefghijklmnopqrstuvwxyz'
+        h = [''.join(random.choices(chars, k=8)) for i in range(200)]
+        r = Reservation(TEST_USER, attrs=a, hosts=h)
+
+        msg = ""
+
+        try:
+            self.server.submit(r)
+        except PbsSubmitError as err:
+            msg = err.msg[0].strip()
+
+        regex = "^pbs_rsub: Host with resources not found: .*"
+        self.assertTrue(re.search(regex, msg))
