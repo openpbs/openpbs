@@ -99,10 +99,13 @@ class TestMultipleSchedulers(TestFunctional):
         p3 = {'partition': 'P3'}
         self.server.manager(MGR_CMD_SET, QUEUE, p3, id='wq3')
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
-        self.server.manager(MGR_CMD_SET, NODE, p1, id='vnode[0]')
-        self.server.manager(MGR_CMD_SET, NODE, p2, id='vnode[1]')
-        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[2]')
+        self.mom.create_vnodes(a, 4)
+        vnode0 = self.mom.shortname + '[0]'
+        vnode1 = self.mom.shortname + '[1]'
+        vnode2 = self.mom.shortname + '[2]'
+        self.server.manager(MGR_CMD_SET, NODE, p1, id=vnode0)
+        self.server.manager(MGR_CMD_SET, NODE, p2, id=vnode1)
+        self.server.manager(MGR_CMD_SET, NODE, p3, id=vnode2)
 
     def common_setup(self):
         self.setup_sc1()
@@ -301,7 +304,8 @@ class TestMultipleSchedulers(TestFunctional):
                             {'Scheduling': 'True'}, id="sc5")
         self.server.expect(SCHED, {'state': 'idle'}, id='sc5', max_attempts=10)
         a = {'resources_available.ncpus': 100}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]')
+        vn = self.mom.shortname
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[2]')
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc5")
         for _ in range(500):
@@ -368,11 +372,12 @@ class TestMultipleSchedulers(TestFunctional):
         into a node associated with that partition.
         """
         self.common_setup()
+        vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(3)]
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
                                    'Resource_List.select': '1:ncpus=2'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.check_vnodes(j, ['vnode[0]'], jid)
+        self.check_vnodes(j, [vn[0]], jid)
         self.scheds['sc1'].log_match(
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
@@ -380,7 +385,7 @@ class TestMultipleSchedulers(TestFunctional):
                                    'Resource_List.select': '1:ncpus=2'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.check_vnodes(j, ['vnode[1]'], jid)
+        self.check_vnodes(j, [vn[1]], jid)
         self.scheds['sc2'].log_match(
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
@@ -388,7 +393,7 @@ class TestMultipleSchedulers(TestFunctional):
                                    'Resource_List.select': '1:ncpus=2'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.check_vnodes(j, ['vnode[2]'], jid)
+        self.check_vnodes(j, [vn[2]], jid)
         self.scheds['sc3'].log_match(
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
@@ -401,11 +406,12 @@ class TestMultipleSchedulers(TestFunctional):
         """
         self.setup_sc1()
         self.setup_queues_nodes()
+        vn0 = self.mom.shortname + '[0]'
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
                                    'Resource_List.select': '1:ncpus=1'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.check_vnodes(j, ['vnode[0]'], jid)
+        self.check_vnodes(j, [vn0], jid)
         self.scheds['sc1'].log_match(
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
@@ -415,7 +421,7 @@ class TestMultipleSchedulers(TestFunctional):
                                    'Resource_List.select': '1:ncpus=1'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.check_vnodes(j, ['vnode[0]'], jid)
+        self.check_vnodes(j, [vn0], jid)
         self.scheds['sc1'].log_match(
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
@@ -464,8 +470,8 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, QUEUE, q, id='highp_P2')
 
         n = {'resources_available.ncpus': 20}
-        self.server.manager(MGR_CMD_SET, NODE, n, id='vnode[0]')
-        self.server.manager(MGR_CMD_SET, NODE, n, id='vnode[1]')
+        vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(2)]
+        self.server.manager(MGR_CMD_SET, NODE, n, id=vn)
 
         jids1 = []
         job_attrs = {'Resource_List.select': '1:ncpus=1', 'queue': 'wq1'}
@@ -1224,8 +1230,9 @@ class TestMultipleSchedulers(TestFunctional):
         a.update(p3)
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vnode', a, 2, self.mom)
-        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[0]')
+        self.mom.create_vnodes(a, 2)
+        vn0 = self.mom.shortname + '[0]'
+        self.server.manager(MGR_CMD_SET, NODE, p3, id=vn0)
         # Set job_sort_formula on the server
         self.server.manager(MGR_CMD_SET, SERVER, {'job_sort_formula': 'ncpus'})
         # Set job_sort_formula_threshold on the multisched
@@ -1264,8 +1271,8 @@ class TestMultipleSchedulers(TestFunctional):
     def setup_placement_set(self):
         self.server.add_resource('switch', 'string_array', 'h')
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes(
-            'vnode', a, 12, self.mom, attrfunc=self.cust_attr)
+        self.mom.create_vnodes(
+            a, 12, attrfunc=self.cust_attr)
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'switch'})
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_enable': 't'})
 
@@ -1286,34 +1293,33 @@ class TestMultipleSchedulers(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         j1id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
-        nodes = ['vnode[5]']
+        vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(10)]
+        nodes = [vn[5]]
         self.check_vnodes(j, nodes, j1id)
         a = {'Resource_List.select': '2:ncpus=2'}
         j = Job(TEST_USER, attrs=a)
         j2id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
-        nodes = ['vnode[3]', 'vnode[4]']
+        nodes = vn[3:5]
         self.check_vnodes(j, nodes, j2id)
         a = {'Resource_List.select': '3:ncpus=2'}
         j = Job(TEST_USER, attrs=a)
         j3id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j3id)
-        nodes = ['vnode[0]', 'vnode[1]', 'vnode[2]']
-        self.check_vnodes(j, nodes, j3id)
+        self.check_vnodes(j, vn[0:3], j3id)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'only_explicit_psets': 't'}, id='sc2')
         a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq2'}
         j = Job(TEST_USER, attrs=a)
         j4id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j4id)
-        nodes = ['vnode[9]']
+        nodes = [vn[9]]
         self.check_vnodes(j, nodes, j4id)
         a = {'Resource_List.select': '2:ncpus=2', ATTR_queue: 'wq2'}
         j = Job(TEST_USER, attrs=a)
         j5id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j5id)
-        nodes = ['vnode[6]', 'vnode[7]']
-        self.check_vnodes(j, nodes, j5id)
+        self.check_vnodes(j, vn[6:8], j5id)
         a = {'Resource_List.select': '3:ncpus=2', ATTR_queue: 'wq2'}
         j = Job(TEST_USER, attrs=a)
         j6id = self.server.submit(j)
@@ -1701,7 +1707,8 @@ class TestMultipleSchedulers(TestFunctional):
         # queue associated to it. Expectation is in this case scheduler won't
         # crash
         a = {ATTR_queue: 'wq1'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]')
+        vn = self.mom.shortname
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[0]')
 
         self.scheds['sc1'].terminate()
 
@@ -1745,17 +1752,18 @@ class TestMultipleSchedulers(TestFunctional):
         self.setup_sc1()
         self.setup_queues_nodes()
         a = {'partition': 'P1'}
+        vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(4)]
         self.server.manager(MGR_CMD_SET, NODE, a, id='@default')
         a = {'node_sort_key': '"ncpus HIGH " ALL'}
         self.scheds['sc1'].set_sched_config(a)
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn[0])
         a = {'resources_available.ncpus': 2}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[1]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn[1])
         a = {'resources_available.ncpus': 3}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn[2])
         a = {'resources_available.ncpus': 4}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn[3])
 
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl',
@@ -1763,19 +1771,19 @@ class TestMultipleSchedulers(TestFunctional):
         j = Job(TEST_USER1, a)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.check_vnodes(j, ['vnode[3]'], jid1)
+        self.check_vnodes(j, [vn[3]], jid1)
         j = Job(TEST_USER1, a)
         jid2 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.check_vnodes(j, ['vnode[2]'], jid2)
+        self.check_vnodes(j, [vn[2]], jid2)
         j = Job(TEST_USER1, a)
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.check_vnodes(j, ['vnode[1]'], jid3)
+        self.check_vnodes(j, [vn[1]], jid3)
         j = Job(TEST_USER1, a)
         jid4 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
-        self.check_vnodes(j, ['vnode[0]'], jid4)
+        self.check_vnodes(j, [vn[0]], jid4)
 
     @skipOnCpuSet
     def test_multi_sched_priority_sockets(self):
@@ -1845,7 +1853,8 @@ class TestMultipleSchedulers(TestFunctional):
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, rid)
-        rnodes = {'resv_nodes': '(vnode[1]:ncpus=2)'}
+        vn1 = self.mom.shortname + '[1]'
+        rnodes = {'resv_nodes': '(' + vn1 + ':ncpus=2)'}
         self.server.expect(RESV, rnodes, id=rid)
 
         # Wait for reservation to run and then submit a job to the
@@ -1855,7 +1864,7 @@ class TestMultipleSchedulers(TestFunctional):
         a = {ATTR_q: rid.split('.')[0]}
         j4 = Job(TEST_USER, attrs=a)
         jid4 = self.server.submit(j4)
-        result = {'job_state': 'R', 'exec_vnode': '(vnode[1]:ncpus=1)'}
+        result = {'job_state': 'R', 'exec_vnode': '(' + vn1 + ':ncpus=1)'}
         self.server.expect(JOB, result, id=jid4)
 
     @skipOnCpuSet
@@ -1914,7 +1923,8 @@ class TestMultipleSchedulers(TestFunctional):
         rid = self.server.submit(r)
         exp_attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
         self.server.expect(RESV, exp_attrs, id=rid)
-        result = {'job_state': 'R', 'exec_vnode': '(vnode[2]:ncpus=2)'}
+        exec_vn = '(' + self.mom.shortname + '[2]:ncpus=2)'
+        result = {'job_state': 'R', 'exec_vnode': exec_vn}
         self.server.expect(JOB, result, id=jid)
 
     def test_standing_resv_reject(self):
@@ -2048,7 +2058,8 @@ e.accept()
         attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
                 'partition': 'P1'}
         self.server.expect(RESV, attr, modify_resv)
-        rnodes = {'resv_nodes': '(vnode[0]:ncpus=2)'}
+        vn = self.mom.shortname
+        rnodes = {'resv_nodes': '(' + vn + '[0]:ncpus=2)'}
         self.server.expect(RESV, rnodes, id=modify_resv)
         msg = modify_resv + ";Reservation Confirmed"
         self.scheds['sc1'].log_match(msg, starttime=time_now)
@@ -2065,7 +2076,8 @@ e.accept()
         self.assertIn("Default partition name is not allowed",
                       e.exception.msg[0])
         with self.assertRaises(PbsManagerError) as e:
-            self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]')
+            vn3 = self.mom.shortname + '[3]'
+            self.server.manager(MGR_CMD_SET, NODE, a, id=vn3)
         self.assertIn("Default partition name is not allowed",
                       e.exception.msg[0])
         with self.assertRaises(PbsManagerError) as e:
@@ -2081,7 +2093,8 @@ e.accept()
         # schedulers serving partition P2 and P3. Make scheduler sc1 serve
         # only partition P1 (vnode[0], vnode[1]).
         p1 = {'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, NODE, p1, id="vnode[1]")
+        vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(2)]
+        self.server.manager(MGR_CMD_SET, NODE, p1, id=vn[1])
         self.server.expect(SCHED, p1, id="sc1")
 
         a = {'reserve_retry_time': 5}
@@ -2125,10 +2138,7 @@ e.accept()
 
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id="sc1")
-
-        other_node = "vnode[1]"
-        if resv_node == "vnode[1]":
-            other_node = "vnode[0]"
+        other_node = vn[resv_node == vn[0]]
 
         if run:
             a = {'reserve_substate': 5}

@@ -212,8 +212,7 @@ exit 1
         # set node share attribute to force_exclhost
         a = {'resources_available.ncpus': '1',
              'sharing': 'force_exclhost'}
-        self.server.create_vnodes(name=self.mom.shortname, attrib=a, num=0,
-                                  mom=self.mom)
+        self.mom.create_vnodes(attrib=a, num=0)
         start_time = time.time()
         self.submit_and_preempt_jobs(preempt_order='R')
         self.scheduler.log_match(
@@ -427,10 +426,9 @@ exit 3
         Test to make sure that preemption happens when the resource in
         contention is vnode.
         """
-
+        vn4 = self.mom.shortname + '[4]'
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes(name='vnode', attrib=a, num=11,
-                                  mom=self.mom, usenatvnode=False)
+        self.mom.create_vnodes(attrib=a, num=11, usenatvnode=False)
 
         a = {'Resource_List.select': '1:ncpus=2+1:ncpus=2'}
         for _ in range(5):
@@ -440,16 +438,16 @@ exit 3
 
         # Randomly select a vnode with running jobs on it. Request this
         # vnode in the high priority job later.
-        self.server.expect(NODE, {'state': 'job-busy'}, id='vnode[4]')
+        self.server.expect(NODE, {'state': 'job-busy'}, id=vn4)
 
-        a = {ATTR_q: 'expressq', 'Resource_List.vnode': 'vnode[4]'}
+        a = {ATTR_q: 'expressq', 'Resource_List.vnode': vn4}
         hj = Job(TEST_USER, attrs=a)
         hjid = self.server.submit(hj)
         self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
 
         # Since high priority job consumed only one ncpu, vnode[4]'s
         # node state should be free now
-        self.server.expect(NODE, {'state': 'free'}, id='vnode[4]')
+        self.server.expect(NODE, {'state': 'free'}, id=vn4)
 
     @requirements(num_moms=2)
     @skipOnCpuSet
@@ -734,16 +732,15 @@ exit 3
         to see whether the nodes they occupy are useful.
         """
         attr = {'type': 'string_array', 'flag': 'h'}
-
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='app')
         self.scheduler.add_resource('app')
 
         a = {'resources_available.ncpus': 1, 'resources_available.app': 'appA'}
-        self.server.create_vnodes('vna', a, num=1, mom=self.mom,
-                                  usenatvnode=False)
+        self.mom.create_vnodes(a, num=1,
+                               usenatvnode=False)
         b = {'resources_available.ncpus': 1, 'resources_available.app': 'appB'}
-        self.server.create_vnodes('vnb', b, num=1, mom=self.mom,
-                                  usenatvnode=False, additive=True)
+        self.mom.create_vnodes(b, num=1,
+                               usenatvnode=False, additive=True)
 
         # set the preempt_order to kill/requeue only -- try old and new syntax
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
@@ -763,7 +760,8 @@ exit 3
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "lopri")
 
         # submit job 1
-        a = {'Resource_List.select': '1:ncpus=1:vnode=vna[0]', ATTR_q: 'lopri'}
+        a = {'Resource_List.select': '1:ncpus=1:vnode=' +
+             self.mom.shortname + '[0]', ATTR_q: 'lopri'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 

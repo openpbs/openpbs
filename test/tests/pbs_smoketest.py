@@ -151,7 +151,7 @@ class SmokeTest(PBSTestSuite):
         a = {'reserve_retry_init': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
         a = {'Resource_List.select': '1:ncpus=4',
              'reserve_start': now + 3600,
              'reserve_end': now + 7200}
@@ -291,7 +291,7 @@ class SmokeTest(PBSTestSuite):
         Test for limits
         """
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('lt', a, 2, self.mom)
+        self.mom.create_vnodes(a, 2)
         a = {'max_run': '[u:' + str(TEST_USER) + '=2]'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(SERVER, a)
@@ -312,7 +312,7 @@ class SmokeTest(PBSTestSuite):
         Test for limits
         """
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '2gb'}
-        self.server.create_vnodes('lt', a, 2, self.mom)
+        self.mom.create_vnodes(a, 2)
         a = {'max_run_res.ncpus': '[u:' + str(TEST_USER) + '=2]'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         for _ in range(3):
@@ -355,13 +355,14 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)
         jobs = self.server.status(JOB, id=jid, extend='x')
-        exp_eq_val = {ATTR_used+'.ncpus': '2',
+        exp_eq_val = {ATTR_used + '.ncpus': '2',
                       ATTR_exit_status: '0'}
         for key in exp_eq_val:
             self.assertEqual(exp_eq_val[key], jobs[0][key])
-        exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
-                         ATTR_used+'.cput': '00:00:00',
-                         ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
+        exp_noteq_val = {ATTR_used + '.walltime': '00:00:00',
+                         ATTR_used + '.cput': '00:00:00',
+                         ATTR_used + '.mem': '0kb',
+                         ATTR_used + '.cpupercent': '0'}
         for key in exp_noteq_val:
             self.assertNotEqual(exp_noteq_val[key], jobs[0][key])
 
@@ -464,7 +465,7 @@ class SmokeTest(PBSTestSuite):
              'unknown_shares': 10}
         self.scheduler.set_sched_config(a)
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
         a = {'Resource_List.select': '1:ncpus=4'}
         for _ in range(10):
             j = Job(TEST_USER1, a)
@@ -851,7 +852,7 @@ class SmokeTest(PBSTestSuite):
              'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '2gb'}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
         j1 = Job(TEST_USER)
         j1.set_attributes(
             {'Resource_List.select': '4:ncpus=4',
@@ -885,7 +886,7 @@ class SmokeTest(PBSTestSuite):
              'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '2gb'}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
         j1 = Job(TEST_USER)
         j1.set_attributes({'Resource_List.select': '4:ncpus=4',
                            'Resource_List.walltime': 3600})
@@ -1081,8 +1082,7 @@ class SmokeTest(PBSTestSuite):
             a = {'resources_available.ncpus': 3}
         else:
             a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, 1,
-                                  mom=self.mom)
+        self.mom.create_vnodes(a, 1)
         if isWithPreempt:
             self.do_preempt_config()
         j1 = Job(TEST_USER, attrs={'Resource_List.walltime': 100})
@@ -1425,10 +1425,11 @@ class SmokeTest(PBSTestSuite):
         with a running job on it.
         """
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vn', a, 8, sharednode=False,
-                                  vnodes_per_host=4, mom=self.mom)
-
-        J1 = Job(TEST_USER, {'Resource_List.select': '1:ncpus=1:vnode=vn[3]'})
+        self.mom.create_vnodes(a, 8, sharednode=False,
+                               vnodes_per_host=4)
+        vn = self.mom.shortname
+        req_nodes = '1:ncpus=1:vnode=' + vn + '[3]'
+        J1 = Job(TEST_USER, {'Resource_List.select': req_nodes})
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
@@ -1440,7 +1441,7 @@ class SmokeTest(PBSTestSuite):
 
         st = self.server.status(JOB, 'exec_vnode', id=jid2)
         vnodes = J2.get_vnodes(st[0]['exec_vnode'])
-        expected_vnodes = ['vn[4]', 'vn[5]', 'vn[6]', 'vn[7]']
+        expected_vnodes = [vn + '[4]', vn + '[5]', vn + '[6]', vn + '[7]']
 
         for v in vnodes:
             self.assertIn(v, expected_vnodes)

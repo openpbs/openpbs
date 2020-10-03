@@ -489,7 +489,7 @@ if __name__ == '__main__':
             for hostname in hosts:
                 s = Server(hostname)
                 m = MoM(hostname, pbsconf_file=conf_file)
-                s.create_vnodes(vnodeprefix, nattrs, num_vnodes, m,
+                m.create_vnodes(nattrs, num_vnodes,
                                 additive, sharedhost, restart, delall,
                                 natvnode, usenatvnode, fname=vdefname,
                                 vnodes_per_host=vnodes_per_host)

@@ -121,7 +121,7 @@ class TestQmgr(TestFunctional):
             long_string += blah
             # Create a new vnode
             attrs = {ATTR_rescavail + ".ncpus": 2}
-            self.server.create_vnodes(node_prefix, attrs, 1, self.mom)
+            self.mom.create_vnodes(attrs, 1, vname=node_prefix)
             # Set 'comment' attribute to the long string we created above
             attrs = {ATTR_comment: long_string}
             self.server.manager(MGR_CMD_SET, VNODE, attrs, nodename)

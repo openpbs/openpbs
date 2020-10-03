@@ -115,8 +115,8 @@ class TestReservations(TestFunctional):
         self.scheduler.add_resource('color')
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=5, mom=self.mom,
-                                  attrfunc=self.cust_attr)
+        self.mom.create_vnodes(a, num=5,
+                               attrfunc=self.cust_attr)
 
         now = int(time.time())
 
@@ -180,7 +180,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
 
         now = time.time()
 
@@ -340,7 +340,7 @@ class TestReservations(TestFunctional):
         """
         retry = 15
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=6, mom=self.mom)
+        self.mom.create_vnodes(a, num=6)
         self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': retry})
 
         now = int(time.time())
@@ -386,7 +386,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, 5, self.mom)
+        self.mom.create_vnodes(a, 5)
 
         # Submit two jobs to take up nodes 0 and 1. This forces the reservation
         # onto nodes 3 and 4. The idea is to delete the two jobs and see
@@ -446,7 +446,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
 
         start_time = time.time()
         now = int(start_time)
@@ -506,7 +506,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
 
         now = int(time.time())
         start = now + 25
@@ -549,7 +549,7 @@ class TestReservations(TestFunctional):
         """
 
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         now = int(time.time())
         start1 = now + 15
@@ -1207,7 +1207,7 @@ class TestReservations(TestFunctional):
         with current reservations on a multi-vnoded host
         """
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vn', a, num=3, mom=self.mom)
+        self.mom.create_vnodes(a, num=3)
 
         # Submit a long term standing reservation with
         # exclusive nodes.
@@ -1255,7 +1255,7 @@ class TestReservations(TestFunctional):
         reservations on a multi-vnoded host
         """
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vn', a, num=3, mom=self.mom)
+        self.mom.create_vnodes(a, num=3)
 
         # Submit 3 exclusive jobs, so all the nodes are busy
         # j1 requesting 4 cpus, j2 requesting 4 cpus and j3
@@ -2053,8 +2053,8 @@ class TestReservations(TestFunctional):
         "test_standing_resv_with_multivnode_job_array"
         """
         vn_attrs = {ATTR_rescavail + '.ncpus': 4}
-        self.server.create_vnodes("vnode1", vn_attrs, 2,
-                                  self.mom, fname="vnodedef1")
+        self.mom.create_vnodes(vn_attrs, 2,
+                               fname="vnodedef1")
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_history_enable': 'True'})
 
@@ -2230,7 +2230,7 @@ class TestReservations(TestFunctional):
         """
 
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
         now = int(time.time())
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                       start=now + 5, end=now + 300)
@@ -2281,7 +2281,7 @@ class TestReservations(TestFunctional):
         a = {'reserve_retry_time': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vn', a, num=3, mom=self.mom)
+        self.mom.create_vnodes(a, num=3)
         vn_list = ['vn[0]', 'vn[1]', 'vn[2]']
 
         now = int(time.time())

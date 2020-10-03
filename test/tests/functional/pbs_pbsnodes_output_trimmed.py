@@ -60,7 +60,7 @@ class TestPbsnodesOutputTrimmed(TestFunctional):
                                 "bin", "pbsnodes")
         hname = "long123456789012345678901234567890.pbs.com"
         a = {'resources_available.ncpus': 4}
-        rc = self.server.create_vnodes(hname, a, 1, self.mom)
+        rc = self.mom.create_vnodes(a, 1, vname=hname)
         command = pbsnodes + " -s " + self.server.hostname + \
             ' -v ' + hname + "[0]"
         rc = self.du.run_cmd(cmd=command, sudo=True)

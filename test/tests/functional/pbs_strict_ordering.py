@@ -55,7 +55,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
     def test_t1(self):
 
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',
@@ -167,7 +167,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         and backfill_depth is set to 0 on the queue
         """
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',
@@ -247,7 +247,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         enabled on another queue.
         """
         a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 1, usenatvnode=True)
 
         rv = self.scheduler.set_sched_config(
             {'round_robin': 'false all', 'by_queue': 'false all',

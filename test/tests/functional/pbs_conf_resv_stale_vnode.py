@@ -53,18 +53,18 @@ class TestResvStaleVnode(TestFunctional):
         # This allows us to delete a vnodedef file and make that node stale
         self.mom.add_config(conf={'$vnodedef_additive': 'False'})
         a = {'resources_available.ncpus': 1, 'priority': 100}
-        self.server.create_vnodes('foo', a, 1, fname='nat', restart=False,
-                                  mom=self.mom, usenatvnode=True, expect=False)
+        self.mom.create_vnodes(a, 1, fname='nat', restart=False,
+                               usenatvnode=True, expect=False, vname='foo')
         a['priority'] = 10
-        self.server.create_vnodes('vn', a, 1, fname='fname1', delall=False,
-                                  restart=False, additive=True, mom=self.mom,
-                                  expect=False)
+        self.mom.create_vnodes(a, 1, fname='fname1', delall=False,
+                               restart=False, additive=True,
+                               expect=False, vname='vn')
         a['priority'] = 1
-        self.server.create_vnodes('vnode', a, 1, fname='fname2', delall=False,
-                                  additive=True, mom=self.mom, expect=False)
+        self.mom.create_vnodes(a, 1, fname='fname2', delall=False,
+                               additive=True, expect=False, vname='vnode')
 
         self.scheduler.set_sched_config({'node_sort_key':
-                                        '\"sort_priority HIGH\"'})
+                                         '\"sort_priority HIGH\"'})
 
     @skipOnCpuSet
     def test_conf_resv_stale_vnode(self):

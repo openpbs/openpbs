@@ -224,13 +224,13 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 8,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode1", vn_attrs, 1,
-                                  self.mom, fname="vnodedef1")
+        self.mom.create_vnodes(vn_attrs, 1,
+                               fname="vnodedef1", vname="vnode1")
         # Append a vnode
         vn_attrs = {ATTR_rescavail + '.ncpus': 6,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode2", vn_attrs, 1,
-                                  self.mom, additive=True, fname="vnodedef2")
+        self.mom.create_vnodes(vn_attrs, 1, additive=True,
+                               fname="vnodedef2", vname="vnode2")
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -374,13 +374,13 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 8,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode1", vn_attrs, 1,
-                                  self.mom, fname="vnodedef1")
+        self.mom.create_vnodes(vn_attrs, 1,
+                               fname="vnodedef1", vname="vnode1")
         # Append a vnode
         vn_attrs = {ATTR_rescavail + '.ncpus': 6,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode2", vn_attrs, 1,
-                                  self.mom, additive=True, fname="vnodedef2")
+        self.mom.create_vnodes(vn_attrs, 1, additive=True,
+                               fname="vnodedef2", vname="vnode2")
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
@@ -782,13 +782,13 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 2,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode1", vn_attrs, 1,
-                                  self.mom, fname="vnodedef1")
+        self.mom.create_vnodes(vn_attrs, 1, fname="vnodedef1",
+                               vname="vnode1")
         # Append a vnode
         vn_attrs = {ATTR_rescavail + '.ncpus': 6,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode2", vn_attrs, 1,
-                                  self.mom, additive=True, fname="vnodedef2")
+        self.mom.create_vnodes(vn_attrs, 1, additive=True,
+                               fname="vnodedef2", vname="vnode2")
         j1 = Job(TEST_USER)
         j1.set_attributes({ATTR_l + '.select':
                            '1:ncpus=2+1:ncpus=6',
