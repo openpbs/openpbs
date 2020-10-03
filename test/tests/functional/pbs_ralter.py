@@ -2850,8 +2850,8 @@ class TestPbsResvAlter(TestFunctional):
         then reconfirmed, the reservation will use the original
         select
         """
-        duration = 20
-        offset = 20
+        duration = 60
+        offset = 60
 
         self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 2})
 
