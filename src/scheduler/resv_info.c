@@ -1164,6 +1164,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL, err);
 							if (nresv_copy == NULL)
 								break;
+
+							free_selspec(nresv_copy->select);
+							nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
 						}
 						/* Duplication deep-copies node info array. This array gets
 						 * overwritten and needs to be freed. This is an alternative
@@ -1172,8 +1175,6 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 */
 						release_nodes(nresv_copy);
 
-						free_selspec(nresv_copy->select);
-						nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
 						nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
 						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
 						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);

@@ -2853,7 +2853,7 @@ class TestPbsResvAlter(TestFunctional):
         duration = 60
         offset = 60
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 2})
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration, standing=True, select="2:ncpus=2")
@@ -2867,6 +2867,7 @@ class TestPbsResvAlter(TestFunctional):
         self.server.status(RESV, id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
 
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
         offline = {'state': 'offline'}
         self.server.manager(MGR_CMD_SET, NODE, offline, id=resv_node)
         degraded = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
@@ -2876,6 +2877,7 @@ class TestPbsResvAlter(TestFunctional):
 
         stat = self.server.status(RESV, id=rid)[0]
         resvnodes = stat['resv_nodes']
+        self.assertNotEquals(resv_node, resvnodes)
         self.assertEquals(1, len(resvnodes.split('+')))
 
         self.check_occr_finish(rid, end - time.time())
