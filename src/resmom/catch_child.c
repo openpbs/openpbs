@@ -98,9 +98,7 @@ extern unsigned int	default_server_port;
 extern pbs_list_head	svr_alljobs;
 extern int		exiting_tasks;
 extern char		*msg_daemonname;
-#ifdef	WIN32
 extern char		*mom_home;
-#endif
 #ifndef	WIN32
 extern int		termin_child;
 #endif
@@ -408,9 +406,7 @@ void
 scan_for_exiting(void)
 {
 
-#ifndef WIN32
 	pid_t			cpid;
-#endif
 	int			i;
 	int			extval;
 	int			found_one = 0;
@@ -760,20 +756,18 @@ end_loop:
 				LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		}
 
-#ifndef WIN32
 		/*
 		 ** Do dependent end of job processing if it needs to be
 		 ** done.
 		 */
 		if (job_end_final != NULL)
 			job_end_final(pjob);
-#endif
+
 		if (mock_run || !has_epilog) {
 			send_obit(pjob, 0);
 			continue;
 		}
 
-#ifndef WIN32
 		/*
 		 * Parent:
 		 *  +  fork child process to run epilogue,
@@ -795,9 +789,8 @@ end_loop:
 			} else {
 				break; /* 20 exiting jobs at a time is our limit */
 			}
-		} else if (cpid < 0)
+		} else if (cpid < 0 && errno != ENOSYS)
 			continue; /* curses, failed again */
-#endif
 
 		if (pjob->ji_grpcache) {
 			if ((is_jattr_set(pjob, JOB_ATR_sandbox)) && (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
@@ -824,14 +817,13 @@ end_loop:
 		if (extval != 2)
 			extval = 0;
 
-#ifndef WIN32
-		/* In *nix we are child so exit and parent will do send_obit() */
-		exit(extval);
-#else
+		if (!cpid)
+		/* if we are child exit and parent will do send_obit() */
+			exit(extval);
+
 		send_obit(pjob, i);
-		/* restore MOM's home since in Windows, we're in main mom */
+		/* restore MOM's home if we are foreground */
 		(void)chdir(mom_home);
-#endif
 	}
 	if (pjob == NULL)
 		exiting_tasks = 0;	/* went through all jobs */

@@ -68,23 +68,8 @@
 unsigned int pe_alarm_time = PBS_PROLOG_TIME;
 static pid_t	child;
 static int	run_exit;
-#ifdef	WIN32
-static HANDLE	pelog_handle = INVALID_HANDLE_VALUE;
-#endif
 
 extern int pe_input(char *jobid);
-
-#ifdef	WIN32
-static void
-pelog_timeout(void)
-{
-	if (pelog_handle != INVALID_HANDLE_VALUE) {
-		if (!TerminateJobObject(pelog_handle, 2))
-			log_err(-1, __func__, "TerminateJobObject failed: Could not terminate pelog object");
-		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, __func__, "terminated pelog object");
-	}
-}
-#endif
 
 /**
  * @brief
@@ -113,9 +98,6 @@ resc_to_string(job *pjob, int attr_idx, char *buf, int buflen)
 	svrattrl *patlist;
 	pbs_list_head svlist;
 	attribute *pattr = &pjob->ji_wattr[attr_idx];
-#ifdef WIN32
-	int tmp_buflen = buflen;
-#endif
 
 	CLEAR_HEAD(svlist);
 	*buf = '\0';
@@ -136,19 +118,6 @@ resc_to_string(job *pjob, int attr_idx, char *buf, int buflen)
 		if (patlist)
 			(void)strcat(buf, ",");
 	}
-#ifdef WIN32
-	if ((buf[0] != '\0') && buflen >= 3) {
-		char *buf2=(char*)malloc(tmp_buflen * sizeof(char));
-		if (buf2 == NULL) {
-			log_err(errno, __func__, "malloc failure");
-			buf[0] = '\0';
-		} else {
-			snprintf(buf2, tmp_buflen, "\"%s\"", buf);
-			(void)strcpy(buf, buf2);
-			free(buf2);
-		}
-	}
-#endif
 	return (buf);
 }
 
@@ -179,7 +148,6 @@ char *text;
 	return (n);
 }
 
-#ifndef WIN32
 /**
  * @brief
  *	pelogalm() - alarm handler for run_pelog()
@@ -195,7 +163,6 @@ int sig;
 {
 	run_exit = -4;
 }
-#endif
 
 /**
  * @brief
@@ -246,24 +213,10 @@ int   pe_io_type;
 	char		resc_used[2048];
 	struct stat	sbuf;
 	char		sid[20];
-#ifdef WIN32
-	int		 fd_out, fd_err;
-	HANDLE		 hOut;
-	HANDLE		 hErr;
-	STARTUPINFO		si = { 0 };
-	PROCESS_INFORMATION	pi = { 0 };
-	int		flags = CREATE_DEFAULT_ERROR_MODE|CREATE_NEW_CONSOLE|
-		CREATE_NEW_PROCESS_GROUP;
-	int		rc, run_exit;
-	char		cmd_line[PBS_CMDLINE_LENGTH] = {'\0'};
-	char		action_name[_MAX_PATH+1];
-	char            cmd_shell[MAX_PATH+1] = {'\0'};
-#else
 	struct sigaction act;
 	int		fd_input;
 	int		waitst;
 	char	 buf[MAXNAMLEN + MAXPATHLEN + 2];
-#endif
 
 	if (stat(pelog, &sbuf) == -1) {
 		if (errno == ENOENT)
@@ -271,207 +224,12 @@ int   pe_io_type;
 		else
 			return (pelog_err(pjob, pelog, errno, "cannot stat"));
 	}
-#ifdef WIN32
-	else if (chk_file_sec(pelog, 0, 0, WRITES_MASK^FILE_WRITE_EA, 0))
-#else
 	else if ((sbuf.st_uid != 0) ||
 		(! S_ISREG(sbuf.st_mode)) ||
 		((sbuf.st_mode & (S_IRUSR|S_IXUSR)) !=
 		(S_IRUSR|S_IXUSR)) ||
 		(sbuf.st_mode & (S_IWGRP|S_IWOTH)))
-#endif
 		return (pelog_err(pjob, pelog, -1, "Permission Error"));
-
-#ifdef WIN32
-
-	/*
-	 * if pe_io_type == PE_IO_TYPE_NULL, No Output, force to /dev/null
-	 * otherwise, default to /dev/null in case of errors.
-	 */
-	hOut = INVALID_HANDLE_VALUE;
-	hErr = INVALID_HANDLE_VALUE;
-	if (pe_io_type == PE_IO_TYPE_STD) {
-		int mode = O_CREAT | O_WRONLY | O_APPEND;
-		/* open job standard out/error */
-		fd_out = open_std_file(pjob, StdOut, O_APPEND|O_WRONLY,
-			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-		if (fd_out != -1) {
-			hOut = (HANDLE)_get_osfhandle(fd_out);
-			DWORD dwPtr = SetFilePointer(hOut, (LONG)NULL, (PLONG)NULL, FILE_END);
-			if (dwPtr == INVALID_SET_FILE_POINTER)
-				log_err(-1, __func__, "SetFilePointer failed for out file handle");
-		}
-		fd_err = open_std_file(pjob, StdErr, O_APPEND|O_WRONLY,
-			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-		if (fd_err != -1) {
-			hErr = (HANDLE)_get_osfhandle(fd_err);
-			DWORD dwPtr = SetFilePointer(hErr, (LONG)NULL, (PLONG)NULL, FILE_END);
-			if (dwPtr == INVALID_SET_FILE_POINTER)
-				log_err(-1, __func__, "SetFilePointer failed for error file handle");
-		}
-		if (fd_out == -1 || fd_err == -1) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING,
-				pjob->ji_qs.ji_jobid, "problem opening job output file(s)");
-		}
-	} else if (pe_io_type == PE_IO_TYPE_ASIS) {
-		/* If PE_IO_TYPE_ASIS, setup in finish_exec */
-		extern	int	script_out;
-		extern	int	script_err;
-
-		if (script_out != -1) {
-			hOut = (HANDLE)_get_osfhandle(script_out);
-			if (hOut == INVALID_HANDLE_VALUE)
-				log_err(errno, __func__, "_get_osfhandle failed for out file handle");
-		}
-		if (script_err != -1) {
-			hErr = (HANDLE)_get_osfhandle(script_err);
-			if (hErr == INVALID_HANDLE_VALUE)
-				log_err(errno, __func__, "_get_osfhandle failed for error file handle");
-		}
-	}
-
-	/* for both prologue and epilogue */
-	arg[0] = pelog;
-	arg[1] = pjob->ji_qs.ji_jobid;
-	arg[2] = get_jattr_str(pjob, JOB_ATR_euser);
-	arg[3] = get_jattr_str(pjob, JOB_ATR_egroup);
-
-	/* for epilogue only */
-	if (which == PE_EPILOGUE) {
-		arg[4] = get_jattr_str(pjob, JOB_ATR_jobname);
-		sprintf(sid, "%ld", get_jattr_long(pjob, JOB_ATR_session_id));
-		arg[5] = sid;
-		arg[6] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
-		arg[7] = resc_to_string(pjob, JOB_ATR_resc_used, resc_used, 2048);
-		arg[8] = get_jattr_str(pjob, JOB_ATR_in_queue);
-		if (is_jattr_set(pjob, JOB_ATR_account))
-			arg[9] = get_jattr_str(pjob, JOB_ATR_account);
-		else
-			arg[9] = "null";
-		sprintf(exitcode, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exitstat);
-		arg[10] = exitcode;
-		arg[11] = NULL;
-
-	} else {
-#ifdef NAS /* localmod 095 */
-		arg[4] = resc_to_string(pjob, JOB_ATR_resource, resc_list, 2048);
-		arg[5] = NULL;
-#else
-		arg[4] = NULL;
-#endif /* localmod 095 */
-	}
-
-
-	si.cb = sizeof(si);
-	si.lpDesktop = "";
-	si.dwFlags = STARTF_USESTDHANDLES;
-	si.hStdInput = INVALID_HANDLE_VALUE;
-	si.hStdOutput = hOut;
-	si.hStdError = hErr;
-
-	/* If we fail to get cmd shell(unlikely), use "cmd.exe" as shell */
-	if (0 != get_cmd_shell(cmd_shell, sizeof(cmd_shell)))
-		(void)snprintf(cmd_shell, sizeof(cmd_shell) - 1, "cmd.exe");
-	(void)snprintf(cmd_line, PBS_CMDLINE_LENGTH - 1, "%s /c", cmd_shell);
-
-	for (rc=0; arg[rc]; rc++) {
-		strcat(cmd_line, " ");
-		strcat(cmd_line, replace_space(arg[rc], ""));
-	}
-
-	sprintf(action_name, "pbs_pelog%d_%d", which, _getpid());
-	pelog_handle = CreateJobObject(NULL, action_name);
-
-	if ((pelog_handle == INVALID_HANDLE_VALUE) || (pelog_handle == NULL)) {
-		run_exit = 254;
-		(void)pelog_err(pjob, pelog, run_exit, "nonzero p/e exit status");
-		return run_exit;
-	}
-
-	/* temporary add PBS_JOBDIR to the current process environement */
-	if (pjob->ji_grpcache) {
-		if ((is_jattr_set(pjob, JOB_ATR_sandbox)) && (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
-			/* set PBS_JOBDIR to the per-job staging and */
-			/* execution directory*/
-			if (!SetEnvironmentVariable("PBS_JOBDIR",
-				jobdirname(pjob->ji_qs.ji_jobid,
-				pjob->ji_grpcache->gc_homedir)))
-				log_err(-1, __func__, "Unable to set environment variable PBS_JOBDIR for sandbox=PRIVATE");
-		} else {
-			/* set PBS_JOBDIR to user HOME*/
-			if (!SetEnvironmentVariable("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir))
-				log_err(-1, __func__, "Unable to set environment variable PBS_JOBDIR to user HOME");
-		}
-	}
-
-	/* in Windows, created process does not need to be unprotected */
-	/* it doesn't inherit the protection value from the parent     */
-	rc = CreateProcess(NULL, cmd_line,
-		NULL, NULL, TRUE, flags,
-		NULL, NULL, &si, &pi);
-
-	/* could be sitting on a user's working directory (epilogue) */
-	if ((rc == 0) && (GetLastError() == ERROR_ACCESS_DENIED)) {
-		char    current_dir[MAX_PATH+1];
-		char    *temp_dir = NULL;
-
-		current_dir[0] = '\0';
-		_getcwd(current_dir, MAX_PATH+1);
-
-		temp_dir = get_saved_env("SYSTEMROOT");
-		chdir(temp_dir?temp_dir:"C:\\");
-
-		rc = CreateProcess(NULL, cmd_line,
-			NULL, NULL, TRUE, flags,
-			NULL, NULL, &si, &pi);
-
-		/* restore current working directory */
-		chdir(current_dir);
-	}
-
-	/* remove PBS_JOBDIR from the current process environement */
-	if (!SetEnvironmentVariable("PBS_JOBDIR", NULL))
-		log_err(-1, __func__, "unset environment variable PBS_JOBDIR");
-
-	if (pe_io_type == PE_IO_TYPE_STD) {
-		if (fd_out != -1)
-			close(fd_out);
-		if (fd_err != -1)
-			close(fd_err);
-	}
-
-	run_exit = 255;
-	if (rc == 0) {
-		log_err(-1, __func__, "CreateProcess failed");
-	} else {
-		sprintf(log_buffer, "running %s",
-			which == PE_PROLOGUE ? "prologue" : "epilogue");
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
-
-		(void)win_alarm(pe_alarm_time, pelog_timeout);
-
-		if (!AssignProcessToJobObject(pelog_handle, pi.hProcess))
-			log_err(-1, __func__, "AssignProcessToJobObject");
-
-		if (WaitForSingleObject(pi.hProcess, INFINITE) == WAIT_OBJECT_0) {
-			if (!GetExitCodeProcess(pi.hProcess, &run_exit))
-				log_err(-1, __func__, "GetExitCodeProcess");
-		}
-		else
-			log_err(-1, __func__, "WaitForSingleObject");
-
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-		if (pelog_handle != INVALID_HANDLE_VALUE) {
-			CloseHandle(pelog_handle);
-			pelog_handle = INVALID_HANDLE_VALUE;
-		}
-
-		(void)win_alarm(0, NULL);
-	}
-
-#else	/* Non-Windows code follows. */
 
 	fd_input = pe_input(pjob->ji_qs.ji_jobid);
 	if (fd_input < 0) {
@@ -650,8 +408,6 @@ int   pe_io_type;
 		log_err(errno, "run_pelog", "execle of prologue failed");
 		exit(255);
 	}
-
-#endif	/* WIN32 */
 
 	if (run_exit)
 		(void)pelog_err(pjob, pelog, run_exit, "nonzero p/e exit status");

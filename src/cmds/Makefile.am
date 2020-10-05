@@ -113,7 +113,7 @@ pbsnodes_SOURCES = pbsnodes.c ${common_sources}
 
 pbs_attach_CPPFLAGS = ${common_cflags}
 pbs_attach_LDADD = ${common_libs}
-pbs_attach_SOURCES = pbs_attach.c ${common_sources}
+pbs_attach_SOURCES = pbs_attach.c pbs_attach_sup.c ${common_sources}
 
 pbs_demux_CPPFLAGS = ${common_cflags}
 pbs_demux_LDADD = ${common_libs}

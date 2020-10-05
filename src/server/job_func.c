@@ -1006,10 +1006,8 @@ job_purge(job *pjob)
 	attribute *jrpattr = NULL;
 	char *taskdir_path = NULL;
 
-#ifndef WIN32
 	pid_t pid = -1;
 	int child_process = 0;
-#endif
 
 #else
 	extern char *msg_err_purgejob_db;
@@ -1119,7 +1117,6 @@ job_purge(job *pjob)
 
 #ifdef PBS_MOM
 
-#ifndef WIN32
 	/* on the mom end, perform file-system related cleanup in a forked process
 	 * only if job is executed successfully with exit status 0(JOB_EXEC_OK)
 	 */
@@ -1128,7 +1125,6 @@ job_purge(job *pjob)
 		 * reruns. It will be removed later in the child process.
 		 */
 		taskdir_path = rename_taskdir(pjob);
-		child_process = 1;
 		pid = fork();
 		if (pid > 0) {
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -1139,9 +1135,10 @@ job_purge(job *pjob)
 			free(taskdir_path);
 			return;
 		}
+		if (!pid)
+			child_process = 1;
 	}
 	/* Parent Mom process will continue the job cleanup itself, if call to fork is failed */
-#endif
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
@@ -1228,14 +1225,12 @@ job_purge(job *pjob)
 	job_free(pjob);
 
 #ifdef PBS_MOM
-#ifndef WIN32
-	if (child_process && pid == 0) {
+	if (child_process) {
 		/* I am child of the forked process. Deleted all the
 		 * particular job related files, thus exiting.
 		 */
 		exit(0);
 	}
-#endif
 #endif
 
 	return;
