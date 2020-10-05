@@ -51,7 +51,7 @@ extern "C" {
 /*
  *	is_ok_to_run_in_queue - check to see if jobs can be run in queue
  */
-sched_error_code is_ok_to_run_queue(status *policy, queue_info *qinfo);
+enum sched_error_code is_ok_to_run_queue(status *policy, queue_info *qinfo);
 
 /*
  *	is_ok_to_run - check to see if it ok to run a job on the server

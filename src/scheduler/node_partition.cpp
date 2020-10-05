@@ -574,7 +574,7 @@ create_node_partitions(status *policy, node_info **nodes, const char * const *re
 						}
 					}
 					if (!(NP_NO_ADD_NP_ARR & flags)) {
-						tmp_arr = (node_partition **)add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]);
+						tmp_arr = static_cast<node_partition **>(add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]));
 						if (tmp_arr == NULL) {
 							free_node_partition_array(np_arr);
 							return NULL;
@@ -1186,7 +1186,7 @@ create_specific_nodepart(status *policy, const char *name, node_info **nodes, in
 	for (i = 0; i < cnt; i++) {
 		if (!nodes[i]->is_stale) {
 			if (!(flags & NP_NO_ADD_NP_ARR)) {
-				tmp_arr = (node_partition **)add_ptr_to_array(nodes[i]->np_arr, np);
+				tmp_arr = static_cast<node_partition **>(add_ptr_to_array(nodes[i]->np_arr, np));
 				if (tmp_arr == NULL) {
 					free_node_partition(np);
 					return NULL;

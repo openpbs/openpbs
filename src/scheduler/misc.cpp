@@ -305,7 +305,7 @@ skip_line(char *line)
  *		error will be printed after the message
  *
  *	@param[in] event - the event type
- *	@param[in] class - the event class
+ *	@param[in] event_class - the event class
  *	@param[in] sev   - the severity of the log message
  *	@param[in] name  - the name of the object
  *	@param[in] text  - the text of the message

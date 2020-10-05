@@ -111,7 +111,7 @@
  * @param[in]	policy	-	policy info
  * @param[in]	qinfo	-	queue in question
  *
- * @return	int
+ * @return	enum sched_error_code
  * @retval	SUCCESS	: on success or
  * @retval	scheduler failure code	: jobs can' run in queue
  *
@@ -120,7 +120,7 @@
  *
  */
 
-sched_error_code
+enum sched_error_code
 is_ok_to_run_queue(status *policy, queue_info *qinfo)
 {
 	enum sched_error_code rc = SE_NONE;			/* Return Code */
@@ -1342,7 +1342,7 @@ find_counts_elm(counts *cts_list, const char *name, resdef *rdef, counts **cnt, 
  *
  * @param[in]	resresv	-	the resource resv to check
  *
- * @retval	0	: will not cross a ded time boundary
+ * @retval	SE_NONE	: will not cross a ded time boundary
  * @retval	CROSS_DED_TIME_BOUNDRY	: will cross a ded time boundary
  */
 enum sched_error_code
@@ -1625,7 +1625,7 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
  * @param[in]	qinfo	-	the queue
  *
  * @return	int
- * @retval	0	: if it is dedtime and qinfo is a dedtime queue or
+ * @retval	SE_NONE	: if it is dedtime and qinfo is a dedtime queue or
  *	     			if it is not dedtime and qinfo is not a dedtime queue
  * @retval	DED_TIME	: if jobs can not run in queue because of dedtime restrictions
  * @retval	SCHD_ERROR	: An error has occurred.
@@ -1730,7 +1730,7 @@ should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *job)
  * @param[in]	policy	-	policy info
  * @param[in]	qinfo	-	the queue to check
  *
- * @retval	0	: if the queue is an anytime queue or if it is a primetime
+ * @retval	SE_NONE	: if the queue is an anytime queue or if it is a primetime
  * 					queue and its is currently primetime
  * @retval	PRIME_ONLY	: its a primetime queue and its not primetime
  *
@@ -1758,7 +1758,7 @@ check_prime_queue(status *policy, queue_info *qinfo)
  * @param[in]	qinfo	-	the queue to check
  *
  * @return	int
- * @retval	0	: if the queue is an anytime queue or if it is nonprimetime
+ * @retval	SE_NONE	: if the queue is an anytime queue or if it is nonprimetime
  * 	             	and the queue is a nonprimetime queue
  * @retval	NONPRIME_ONLY	: its a nonprime queue and its primetime
  *
@@ -1786,7 +1786,7 @@ check_nonprime_queue(status *policy, queue_info *qinfo)
  * @param[out]	err     -	error structure to return
  *
  * @retval	CROSS_PRIME_BOUNDARY	: if the resource resv crosses
- * @retval	0	: if it doesn't
+ * @retval	SE_NONE	: if it doesn't
  * @retval	SCHD_ERROR	: on error
  *
  */

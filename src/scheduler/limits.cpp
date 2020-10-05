@@ -3193,7 +3193,7 @@ lim_dup_ctx(void *ctx)
 		return(NULL);
 	}
 
-	while ((value = (char *)entlim_get_next(ctx, (void **)&key)) != NULL) {
+	while ((value = static_cast<char *>(entlim_get_next(ctx, (void **)&key))) != NULL) {
 		if ((newval = strdup(value)) == NULL) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup value failed");
 			(void) entlim_free_ctx(newctx, free);
@@ -3360,7 +3360,7 @@ lim_get(const char *param, void *ctx)
 {
 	char		*retptr;
 
-	retptr = (char *)entlim_get(param, ctx);
+	retptr = static_cast<char *>(entlim_get(param, ctx));
 	if (retptr != NULL) {
 		sch_resource_t	v;
 

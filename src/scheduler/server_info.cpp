@@ -3690,7 +3690,7 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
 		}
-		*qlhead = list_head = (queue_info ***)temp;
+		*qlhead = list_head = static_cast<queue_info ***>(temp);
 		list_head[queue_list_size] = NULL;
 		list_head[queue_list_size + 1] = NULL;
 		if (append_to_queue_list(&list_head[queue_list_size], qinfo) == NULL)

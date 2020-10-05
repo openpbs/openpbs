@@ -312,8 +312,8 @@ free_resource_resv_array(resource_resv **resresv_arr)
 		while (ds_queue_is_empty(result_queue))
 			pthread_cond_wait(&result_cond, &result_lock);
 		while (!ds_queue_is_empty(result_queue)) {
-			task = (th_task_info *) ds_dequeue(result_queue);
-			tdata = (th_data_free_resresv *)task->thread_data;
+			task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+			tdata = static_cast<th_data_free_resresv *>(task->thread_data);
 			free(tdata);
 			free(task);
 			i++;

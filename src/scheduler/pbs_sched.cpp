@@ -109,7 +109,6 @@ sigset_t allsigs;
 
 
 /* if we received a sigpipe, this probably means the server went away. */
-// int got_sigpipe = 0;
 
 /* used in segv restart */
 time_t segv_start_time;

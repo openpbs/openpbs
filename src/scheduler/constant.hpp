@@ -440,7 +440,6 @@ enum prime_time
 {
 	NON_PRIME = 0,
 	PRIME = 1,
-	HIGH_PRIME,
 	PT_ALL,
 	PT_NONE
 };

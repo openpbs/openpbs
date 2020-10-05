@@ -241,7 +241,6 @@ is_holiday(long date)
 static void
 handle_missing_prime_info(void)
 {
-	//enum days d;
 	int d;
 
 	for (d = SUNDAY; d < HIGH_DAY; d++) {

@@ -651,7 +651,7 @@ site_get_share(resource_resv *resresv)
 
 /*
  *=====================================================================
- * site_init_allocstatic_cast< sinfo >(Initialize allocated shares CPUs data
+ * site_init_alloc( sinfo ) - Initialize allocated shares CPUs data
  * Entry:	sinfo = ptr to server_info, with all data about jobs,
  *			queues, nodes, etc, already collected.
  * Exit:	alloc info updated
