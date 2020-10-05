@@ -1396,7 +1396,7 @@ wtokcpy(char *str, char *tok, int len)
  * @retval processed path string
  *
  */
-static char *
+char *
 remove_quotes(char *path)
 {
 	char *dp, *dup;
