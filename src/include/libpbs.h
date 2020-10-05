@@ -142,13 +142,18 @@ int get_num_servers(void);
 
 typedef struct svr_conn {
 	int sd;                      /* File descriptor for the open socket */
-	int secondary_sd;            /* Secondary File descriptor for the open socket */
 	int state;                   /* Connection state */
 	time_t last_used_time;       /* Last used time for the connection */
 	char name[PBS_MAXSERVERNAME + 1];  /* server name */
 	int port;                    /* server port */
 	int from_sched;              /* flag to indicate whether this conn is from sched or not */
 } svr_conn_t;
+
+typedef struct svr_conns_list {
+	svr_conn_t *conn_arr;
+	struct svr_conns_list *next; /* Pointer to next set of server connections,
+								in case client calls pbs_connect multiple times */
+} svr_conns_list_t;
 
 /* PBS Batch Reply Structure */
 
@@ -379,7 +384,8 @@ int tcp_pre_process(conn_t *);
 char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
-void *get_conn_servers(void);
+void *get_conn_servers(int);
+void dealloc_conn_list_single(int parentfd);
 
 #ifdef __cplusplus
 }
