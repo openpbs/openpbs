@@ -2853,24 +2853,22 @@ class TestPbsResvAlter(TestFunctional):
         duration = 60
         offset = 60
 
+        confirmed = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        degraded = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
+        offline = {'state': 'offline'}
+
         self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration, standing=True, select="2:ncpus=2")
 
-        confirmed = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, confirmed, id=rid)
-
-        self.server.alterresv(rid, {ATTR_l: "select=1:ncpus=2"})
-        self.server.expect(RESV, confirmed, id=rid)
+        self.alter_a_reservation(rid, start, end, select="1:ncpus=2")
 
         self.server.status(RESV, id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
-        offline = {'state': 'offline'}
         self.server.manager(MGR_CMD_SET, NODE, offline, id=resv_node)
-        degraded = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         self.server.expect(RESV, degraded, id=rid)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
         self.server.expect(RESV, confirmed, id=rid)

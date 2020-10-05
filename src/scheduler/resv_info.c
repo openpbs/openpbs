@@ -535,8 +535,10 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					 */
 					release_nodes(resresv_ocr);
 
-					free_selspec(resresv_ocr->select);
-					resresv_ocr->select = dup_selspec(resresv_ocr->resv->select_standing);
+					if (resresv_ocr->resv->select_standing) {
+						free_selspec(resresv_ocr->select);
+						resresv_ocr->select = dup_selspec(resresv_ocr->resv->select_standing);
+					}
 
 					resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
 						execvnode_ptr[degraded_idx - 1], sinfo, resresv_ocr->select);
@@ -1164,9 +1166,10 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL, err);
 							if (nresv_copy == NULL)
 								break;
-
-							free_selspec(nresv_copy->select);
-							nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
+							if (nresv_copy->resv->select_standing) {
+								free_selspec(nresv_copy->select);
+								nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
+							}
 						}
 						/* Duplication deep-copies node info array. This array gets
 						 * overwritten and needs to be freed. This is an alternative
