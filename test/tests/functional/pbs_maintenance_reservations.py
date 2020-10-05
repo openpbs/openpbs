@@ -62,12 +62,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [self.mom.shortname]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: Unauthorized Request", msg)
 
@@ -86,12 +84,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [self.mom.shortname]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: can't use -l with --hosts", msg)
 
@@ -101,12 +97,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [self.mom.shortname]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: can't use -l with --hosts", msg)
 
@@ -116,12 +110,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [self.mom.shortname]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: can't use -I with --hosts", msg)
 
@@ -155,12 +147,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [self.mom.shortname, "foo"]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: Host with resources not found: foo", msg)
 
@@ -169,12 +159,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [""]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: missing host(s)", msg)
 
@@ -192,12 +180,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = ["foo", "foo"]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rsub: Duplicate host: foo", msg)
 
@@ -262,12 +248,10 @@ class TestMaintenanceReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'managers': (DECR, '%s@*' % TEST_USER)})
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsDeleteError) as err:
             self.server.delete(rid, runas=TEST_USER)
-        except PbsDeleteError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         self.assertEqual("pbs_rdel: Unauthorized Request  " + rid, msg)
 
@@ -707,12 +691,10 @@ class TestMaintenanceReservations(TestFunctional):
         h = [''.join(random.choices(chars, k=8)) for i in range(200)]
         r = Reservation(TEST_USER, attrs=a, hosts=h)
 
-        msg = ""
-
-        try:
+        with self.assertRaises(PbsSubmitError) as err:
             self.server.submit(r)
-        except PbsSubmitError as err:
-            msg = err.msg[0].strip()
+
+        msg = err.exception.msg[0].strip()
 
         regex = "^pbs_rsub: Host with resources not found: .*"
         self.assertTrue(re.search(regex, msg))
