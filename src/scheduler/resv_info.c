@@ -535,7 +535,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					 */
 					release_nodes(resresv_ocr);
 
-					if (resresv_ocr->resv->select_standing) {
+					if (resresv_ocr->resv->select_standing != NULL) {
 						free_selspec(resresv_ocr->select);
 						resresv_ocr->select = dup_selspec(resresv_ocr->resv->select_standing);
 					}
@@ -1166,7 +1166,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL, err);
 							if (nresv_copy == NULL)
 								break;
-							if (nresv_copy->resv->select_standing) {
+							if (nresv_copy->resv->select_standing != NULL) {
 								free_selspec(nresv_copy->select);
 								nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
 							}
