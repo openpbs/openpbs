@@ -45,8 +45,8 @@ if [ $? -eq 0 ] ; then
 fi
 if [ $is_systemd -eq 1 ] ; then
     SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`
-    if [ ! -d $SYSTEMD_CGROUP/system.slice/pbs.service ] ; then
-        mkdir -p $SYSTEMD_CGROUP/system.slice/pbs.service
+    if [ ! -d $SYSTEMD_CGROUP/system.slice/pbs_server.service ] ; then
+        mkdir -p $SYSTEMD_CGROUP/system.slice/pbs_server.service
     fi
 
     pstmstr_pid_found=0
@@ -63,11 +63,11 @@ if [ $is_systemd -eq 1 ] ; then
     if [ $pstmstr_pid_found -eq 1 ] ; then
         P_PID=`head -n 1 ${PBS_HOME}/datastore/postmaster.pid`
         if [ -n "$P_PID" ] ; then
-            echo $P_PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
+            echo $P_PID >> $SYSTEMD_CGROUP/system.slice/pbs_server.service/tasks
             pidlist=`pgrep -P $P_PID`
             if [ -n "$pidlist" ] ; then
                 for PID in $pidlist; do
-                    echo $PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
+                    echo $PID >> $SYSTEMD_CGROUP/system.slice/pbs_server.service/tasks
                 done
             fi
         fi

@@ -1,5 +1,3 @@
-
-#
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -37,76 +35,39 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
 
-libinitdir = $(libdir)/init.d
 
-dist_libinit_DATA = \
-	limits.pbs_mom \
-	limits.pbs_mom.compat \
-	limits.post_services \
-	limits.post_services.compat 
 
-libmpidir = $(libdir)/MPI
+# It's not recommended to modify this file in-place, because it will be
+# overwritten during package upgrades.  If you want to customize, the
+# best way is to create a file "/etc/systemd/system/pbs.service",
+# containing
+#       .include /lib/systemd/system/pbs.service
+#       ...make your changes here...
+# For more info about custom unit files, see -
+# http://fedoraproject.org/wiki/Systemd#How_do_I_customize_a_unit_file.2F_add_a_custom_unit_file.3F
 
-dist_libmpi_DATA = \
-	pbsrun.ch_gm.init.in \
-	pbsrun.ch_mx.init.in \
-	pbsrun.gm_mpd.init.in \
-	pbsrun.intelmpi.init.in \
-	pbsrun.mpich2.init.in \
-	pbsrun.mvapich1.init.in \
-	pbsrun.mvapich2.init.in \
-	pbsrun.mx_mpd.init.in \
-	sgiMPI.awk
 
-pythonlibdir = $(libdir)/python
+[Unit]
+Documentation=man:pbs(8)
+SourcePath=@prefix@/libexec/pbs_init.d
+Description=Portable Batch System
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
+DefaultDependencies=true
 
-dist_pythonlib_PYTHON = \
-	pbs_bootcheck.py \
-	pbs_topologyinfo.py
+[Service]
+Type=forking
+Restart=no
+TimeoutStartSec=0
+TimeoutStopSec=5min
+Delegate=yes
+IgnoreSIGPIPE=no
+GuessMainPID=no
+KillMode=process
+ExecStart=@prefix@/libexec/pbs_init.d start pbs_mom
+ExecStop=@prefix@/libexec/pbs_init.d stop pbs_mom
+TasksMax=infinity
 
-sysprofiledir = /etc/profile.d
-
-dist_sysprofile_DATA = \
-	pbs.csh \
-	pbs.sh
-
-unitfiledir = @_unitdir@
-
-dist_unitfile_DATA = \
-	pbs_server.service \
-	pbs_mom.service \
-	pbs_sched.service \
-	pbs_comm.service
-
-dist_libexec_SCRIPTS = \
-	pbs_habitat \
-	pbs_init.d \
-	pbs_postinstall \
-	pbs_preuninstall \
-	pbs_posttrans
-
-dist_bin_SCRIPTS = \
-	pbs_topologyinfo \
-	printjob
-
-dist_sbin_SCRIPTS = \
-	pbs_dataservice \
-	pbs_ds_password \
-	pbs_server \
-	pbs_snapshot
-
-dist_sysconf_DATA = \
-	modulefile 
-
-CLEANFILES = \
-	pbs_init.d \
-	limits.pbs_mom \
-	limits.post_services
-
-limits.pbs_mom: $(srcdir)/limits.pbs_mom.compat
-	cp $? $@
-
-limits.post_services: $(srcdir)/limits.post_services.compat
-	cp $? $@
+[Install]
+WantedBy=multi-user.target

@@ -473,9 +473,15 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{_sysconfdir}/profile.d/ptl.csh
 %exclude %{_sysconfdir}/profile.d/ptl.sh
 %if %{defined have_systemd}
-%attr(644, root, root) %{_unitdir}/pbs.service
+%attr(644, root, root) %{_unitdir}/pbs_server.service
+%attr(644, root, root) %{_unitdir}/pbs_mom.service
+%attr(644, root, root) %{_unitdir}/pbs_sched.service
+%attr(644, root, root) %{_unitdir}/pbs_comm.service
 %else
-%exclude %{_unitdir}/pbs.service
+%exclude %{_unitdir}/pbs_sever.service
+%exclude %{_unitdir}/pbs_mom.service
+%exclude %{_unitdir}/pbs_sched.service
+%exclude %{_unitdir}/pbs_comm.service
 %endif
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
@@ -497,9 +503,15 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{_sysconfdir}/profile.d/ptl.csh
 %exclude %{_sysconfdir}/profile.d/ptl.sh
 %if %{defined have_systemd}
-%attr(644, root, root) %{_unitdir}/pbs.service
+%attr(644, root, root) %{_unitdir}/pbs_server.service
+%attr(644, root, root) %{_unitdir}/pbs_mom.service
+%attr(644, root, root) %{_unitdir}/pbs_sched.service
+%attr(644, root, root) %{_unitdir}/pbs_comm.service
 %else
-%exclude %{_unitdir}/pbs.service
+%exclude %{_unitdir}/pbs_sever.service
+%exclude %{_unitdir}/pbs_mom.service
+%exclude %{_unitdir}/pbs_sched.service
+%exclude %{_unitdir}/pbs_comm.service
 %endif
 %exclude %{pbs_prefix}/bin/printjob_svr.bin
 %exclude %{pbs_prefix}/etc/pbs_dedicated
@@ -570,7 +582,10 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
-%exclude %{_unitdir}/pbs.service
+%exclude %{_unitdir}/pbs_sever.service
+%exclude %{_unitdir}/pbs_mom.service
+%exclude %{_unitdir}/pbs_sched.service
+%exclude %{_unitdir}/pbs_comm.service
 %exclude %{pbs_prefix}/lib*/*.a
 %exclude %{pbs_prefix}/include/*
 %exclude /etc/init.d/pbs

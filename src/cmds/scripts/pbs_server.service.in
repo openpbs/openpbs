@@ -64,8 +64,8 @@ TimeoutStopSec=5min
 Delegate=yes
 IgnoreSIGPIPE=no
 GuessMainPID=no
-ExecStart=@prefix@/libexec/pbs_init.d start
-ExecStop=@prefix@/libexec/pbs_init.d stop
+ExecStart=@prefix@/libexec/pbs_init.d start pbs_server
+ExecStop=@prefix@/libexec/pbs_init.d stop pbs_server
 TasksMax=infinity
 
 [Install]

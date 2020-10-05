@@ -188,10 +188,6 @@ create_conf() {
 			PBS_SERVER='CHANGE_THIS_TO_PBS_SERVER_HOSTNAME'
 			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 		fi
-		[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
-		[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
-		[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
-		[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
 	else
 		case $INSTALL_PACKAGE in
 		server)
@@ -199,33 +195,26 @@ create_conf() {
 				PBS_SERVER=`hostname | awk -F. '{print $1}'`
 				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 			fi
-			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=1" >>"$newconf"
-			[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=1" >>"$newconf"
-			[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=1" >>"$newconf"
-			[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
 			;;
 		execution)
 			if [ -z "$PBS_SERVER" ]; then
 				PBS_SERVER='CHANGE_THIS_TO_PBS_SERVER_HOSTNAME'
 				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 			fi
-			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
-			[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
-			[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
-			[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=1" >>"$newconf"
 			;;
 		client)
 			if [ -z "$PBS_SERVER" ]; then
 				PBS_SERVER='CHANGE_THIS_TO_PBS_SERVER_HOSTNAME'
 				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 			fi
-			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
-			[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
-			[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
-			[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
 			;;
 		esac
 	fi
+
+	[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
+	[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
+	[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
+	[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
 
 	[ -z "$PBS_EXEC" ] && echo "PBS_EXEC=$newpbs_exec" >>"$newconf"
 	[ -z "$PBS_HOME" -a -n "$newpbs_home" ] && echo "PBS_HOME=$newpbs_home" >>"$newconf"
@@ -243,22 +232,42 @@ create_conf() {
 
 perform_checks() {
 	fail=0
-	if [ ${PBS_START_SERVER} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_server ] ;then
-		echo "*** Server does not exist!"
-		fail=1
+	if command -v systemctl >/dev/null 2>&1; then
+		if [ ! -x ${PBS_EXEC}/sbin/pbs_server ] ;then
+			echo "*** Server does not exist!"
+			fail=1
+		fi
+		if [ ! -x ${PBS_EXEC}/sbin/pbs_sched ] ;then
+			echo "*** Scheduler does not exist!"
+			fail=1
+		fi
+		if [ ! -x ${PBS_EXEC}/sbin/pbs_comm ] ;then
+			echo "*** Communication agent does not exist!"
+			fail=1
+		fi
+		if [ ! -x ${PBS_EXEC}/sbin/pbs_mom ] ;then
+			echo "*** MOM does not exist!"
+			fail=1
+		fi
+	else
+		if [ ${PBS_START_SERVER} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_server ] ;then
+			echo "*** Server does not exist!"
+			fail=1
+		fi
+		if [ ${PBS_START_SCHED} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_sched ] ;then
+			echo "*** Scheduler does not exist!"
+			fail=1
+		fi
+		if [ ${PBS_START_COMM} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_comm ] ;then
+			echo "*** Communication agent does not exist!"
+			fail=1
+		fi
+		if [ ${PBS_START_MOM} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_mom ] ;then
+			echo "*** MOM does not exist!"
+			fail=1
+		fi
 	fi
-	if [ ${PBS_START_SCHED} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_sched ] ;then
-		echo "*** Scheduler does not exist!"
-		fail=1
-	fi
-	if [ ${PBS_START_COMM} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_comm ] ;then
-		echo "*** Communication agent does not exist!"
-		fail=1
-	fi
-	if [ ${PBS_START_MOM} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_mom ] ;then
-		echo "*** MOM does not exist!"
-		fail=1
-	fi
+
 	if [ $fail -ne 0 ] ;then
 		echo "***"
 		echo "*** A required PBS executable is missing. This could be"
@@ -346,7 +355,7 @@ install_pbsinitd() {
 			if [ -x /sbin/chkconfig ] ; then
 				/sbin/chkconfig --add pbs
 			elif [ -x /usr/sbin/update-rc.d ] ; then
-				/usr/sbin/update-rc.d pbs enable
+				/usr/sbin/update-rc.d pbs enable 
 			else
 				ln -sf $initscript /etc/rc.d/rc0.d/K10pbs
 				ln -sf $initscript /etc/rc.d/rc1.d/K10pbs
@@ -361,17 +370,65 @@ install_pbsinitd() {
 				[ -f /etc/profile.d/pbs.sh ] || cp ${PBS_EXEC}/etc/pbs.sh /etc/profile.d
 			fi
 
-			pbs_unitfile="@_unitdir@/pbs.service"
+			pbs_unitfile="@_unitdir@/pbs_server.service"
 			if [ -f "${pbs_unitfile}" ]; then
 				presetdir="@_unitdir@-preset"
 				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				if command -v systemctl >/dev/null 2>&1; then
-					systemctl enable pbs && systemctl daemon-reload
+					systemctl enable pbs_server && systemctl daemon-reload
 					if [ $? != 0 -a -d "${presetdir}" ]; then
 						echo "*** Creating preset file ${presetdir}/95-pbs.preset"
-						echo "enable pbs.service" > "${presetdir}/95-pbs.preset"
+						echo "enable pbs_server.service" > "${presetdir}/95-pbs.preset"
+					fi
+				else
+					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+				fi
+			fi
+			pbs_unitfile="@_unitdir@/pbs_mom.service"
+			if [ -f "${pbs_unitfile}" ]; then
+				presetdir="@_unitdir@-preset"
+				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				if command -v systemctl >/dev/null 2>&1; then
+					systemctl enable pbs_mom && systemctl daemon-reload
+					if [ $? != 0 -a -d "${presetdir}" ]; then
+						echo "*** Creating preset file ${presetdir}/95-pbs.preset"
+						echo "enable pbs_mom.service" > "${presetdir}/95-pbs.preset"
+					fi
+				else
+					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+				fi
+			fi
+			pbs_unitfile="@_unitdir@/pbs_sched.service"
+			if [ -f "${pbs_unitfile}" ]; then
+				presetdir="@_unitdir@-preset"
+				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				if command -v systemctl >/dev/null 2>&1; then
+					systemctl enable pbs_sched && systemctl daemon-reload
+					if [ $? != 0 -a -d "${presetdir}" ]; then
+						echo "*** Creating preset file ${presetdir}/95-pbs.preset"
+						echo "enable pbs_sched.service" > "${presetdir}/95-pbs.preset"
+					fi
+				else
+					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+				fi
+			fi
+			pbs_unitfile="@_unitdir@/pbs_comm.service"
+			if [ -f "${pbs_unitfile}" ]; then
+				presetdir="@_unitdir@-preset"
+				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				if command -v systemctl >/dev/null 2>&1; then
+					systemctl enable pbs_comm && systemctl daemon-reload
+					if [ $? != 0 -a -d "${presetdir}" ]; then
+						echo "*** Creating preset file ${presetdir}/95-pbs.preset"
+						echo "enable pbs_comm.service" > "${presetdir}/95-pbs.preset"
 					fi
 				else
 					echo "*** Systemctl binary is not available; Failed to register PBS as a service"

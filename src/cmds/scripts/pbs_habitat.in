@@ -244,7 +244,7 @@ if [ -f "$PBS_HOME/mom_priv/config" ]; then
 	done
 fi
 
-if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
+if [ "${PBS_START_SERVER:-0}" != 0 -o "$1" == "pbs_server" ] ; then
 	# Check for the db install script
 	if [ ! -x "${PBS_EXEC}/libexec/pbs_db_utility" ]; then
 		echo "${PBS_EXEC}/libexec/pbs_db_utility not found"
