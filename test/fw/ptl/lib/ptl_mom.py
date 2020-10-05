@@ -492,6 +492,108 @@ class MoM(PBSService):
             self._is_cpuset_mom = False
         return self._is_cpuset_mom
 
+    def create_vnodes(self, attrib=None, num=1,
+                      additive=False, sharednode=True, restart=True,
+                      delall=True, natvnode=None, usenatvnode=False,
+                      attrfunc=None, fname=None, vnodes_per_host=1,
+                      createnode=True, expect=True, vname=None):
+        """
+        helper function to create vnodes.
+        :param attrib: attributes to assign to each node
+        :type attrib: dict
+        :param num: the number of vnodes to create. Defaults to 1
+        :type num: int
+        :param additive: If True, vnodes are added to the existing
+                         vnode defs.Defaults to False.
+        :type additive: bool
+        :param sharednode: If True, all vnodes will share the same
+                           host.Defaults to True.
+        :type sharednode: bool
+        :param restart: If True the MoM will be restarted.
+        :type restart: bool
+        :param delall: If True delete all server nodes prior to
+                       inserting vnodes
+        :type delall: bool
+        :param natvnode: name of the natural vnode.i.e. The node
+                         name in qmgr -c "create node <name>"
+        :type natvnode: str or None
+        :param usenatvnode: count the natural vnode as an
+                            allocatable node.
+        :type usenatvnode: bool
+        :param attrfunc: an attribute=value function generator,
+                         see create_vnode_def
+        :param fname: optional name of the vnode def file
+        :type fname: str or None
+        :param vnodes_per_host: number of vnodes per host
+        :type vnodes_per_host: int
+        :param createnode: whether to create the node via manage or
+                           not. Defaults to True
+        :type createnode: bool
+        :param expect: whether to expect attributes to be set or
+                       not. Defaults to True
+        :type expect: bool
+        :returns: True on success and False otherwise
+        :param vname: optional vnode prefix name to be used
+                      only if vnodes cannot have mom hostname
+                      as vnode prefix under some condition
+        :type vname: str or None
+        """
+        if attrib is None:
+            self.logger.error("attributes are required")
+            return False
+
+        if natvnode is None:
+            natvnode = self.shortname
+
+        if vname is None:
+            vname = self.shortname
+
+        if delall:
+            try:
+                rv = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+                if rv != 0:
+                    return False
+            except PbsManagerError:
+                pass
+
+        vdef = self.create_vnode_def(vname, attrib, num, sharednode,
+                                     usenatvnode=usenatvnode,
+                                     attrfunc=attrfunc,
+                                     vnodes_per_host=vnodes_per_host)
+        self.insert_vnode_def(vdef, fname=fname, additive=additive,
+                              restart=restart)
+
+        new_vnodelist = []
+        if usenatvnode:
+            new_vnodelist.append(natvnode)
+            num_check = num - 1
+        else:
+            num_check = num
+        for i in range(num_check):
+            new_vnodelist.append("%s[%s]" % (vname, i))
+
+        if createnode:
+            try:
+                statm = self.server.status(NODE, id=natvnode)
+            except:
+                statm = []
+            if len(statm) >= 1:
+                _m = 'Mom %s already exists, not creating' % (natvnode)
+                self.logger.info(_m)
+            else:
+                if self.pbs_conf and 'PBS_MOM_SERVICE_PORT' in self.pbs_conf:
+                    m_attr = {'port': self.pbs_conf['PBS_MOM_SERVICE_PORT']}
+                else:
+                    m_attr = None
+                self.server.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
+        # only expect if vnodes were added rather than the nat vnode modified
+        if expect and num > 0:
+            attrs = {'state': 'free'}
+            attrs.update(attrib)
+            for vn in new_vnodelist:
+                self.server.expect(VNODE, attrs, id=vn)
+        return True
+
     def create_vnode_def(self, name, attrs={}, numnodes=1, sharednode=True,
                          pre='[', post=']', usenatvnode=False, attrfunc=None,
                          vnodes_per_host=1):
