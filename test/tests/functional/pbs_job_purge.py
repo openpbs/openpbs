@@ -58,12 +58,12 @@ class TestJobPurge(TestFunctional):
             self.server.pbs_conf['PBS_HOME'], 'mom_priv', 'jobs/')
         # Submit a normal and an array job
         j = Job(TEST_USER)
-        j.create_script(body="sleep 5")
+        j.create_script(body="sleep 20")
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
         j1 = Job(TEST_USER)
-        j1.create_script(body="sleep 5")
+        j1.create_script(body="sleep 20")
         j1.set_attributes({ATTR_J: '1-2'})
         jid_1 = self.server.submit(j1)
         jobid_list = [jid, j1.create_subjob_id(jid_1, 1),
