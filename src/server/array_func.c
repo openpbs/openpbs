@@ -369,7 +369,7 @@ set_subjob_tblstate(job *parent, int offset, char newstate)
 		ptbl->tkm_subjsct[ostatenum]--;
 	if (nstatenum != -1)
 		ptbl->tkm_subjsct[nstatenum]++;
-	
+
 	if (oldstate == JOB_STATE_LTR_QUEUED)
 		range_remove_value(&ptbl->trk_rlist , SJ_TBLIDX_2_IDX(parent, offset));
 	else if (newstate == JOB_STATE_LTR_QUEUED)
@@ -569,23 +569,20 @@ get_subjob_state(job *parent, int iindx)
 void
 update_subjob_state_ct(job *pjob)
 {
-	char *buf;
+	char buf[BUF_SIZE];
 	static char *statename[] = {
 		"Transit", "Queued", "Held", "Waiting", "Running",
-		"Exiting", "Expired", "Beginning", "Moved", "Finished" };
+		"Exiting", "Expired", "Beginning", "Moved", "Finished"};
 
-
-	buf = malloc(150);
-	if (buf == NULL)
-		return;
 	buf[0] = '\0';
-	sprintf(buf+strlen(buf), "%s:%d ", statename[JOB_STATE_QUEUED],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED]);
-	sprintf(buf+strlen(buf), "%s:%d ", statename[JOB_STATE_RUNNING],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_RUNNING]);
-	sprintf(buf+strlen(buf), "%s:%d ", statename[JOB_STATE_EXITING],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_EXITING]);
-	sprintf(buf+strlen(buf), "%s:%d ", statename[JOB_STATE_EXPIRED],
+	sprintf(buf, "%s:%d %s:%d %s:%d %s:%d",
+		statename[JOB_STATE_QUEUED],
+		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED],
+		statename[JOB_STATE_RUNNING],
+		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_RUNNING],
+		statename[JOB_STATE_EXITING],
+		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_EXITING],
+		statename[JOB_STATE_EXPIRED],
 		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_EXPIRED]);
 
 	set_jattr_str_slim(pjob, JOB_ATR_array_state_count, buf, NULL);
@@ -725,10 +722,10 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(get_jattr_str(pjob, JOB_ATR_array_indices_submitted),
 			                                      JOB_STATE_LTR_QUEUED, &pbs_error, mode)) == NULL)
 			return pbs_error;
-			
+
 		if ((pjob->ji_ajtrk->trk_rlist = range_parse(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str)) == NULL)
 			return pbs_error;
-		
+
 	}
 
 	if (mode == ATR_ACTION_RECOV) {
@@ -1132,4 +1129,3 @@ cvt_range(job *pjob, char state)
 
 	return buf;
 }
-
