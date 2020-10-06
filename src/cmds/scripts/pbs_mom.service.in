@@ -40,9 +40,9 @@
 
 # It's not recommended to modify this file in-place, because it will be
 # overwritten during package upgrades.  If you want to customize, the
-# best way is to create a file "/etc/systemd/system/pbs.service",
+# best way is to create a file "/etc/systemd/system/pbs_mom.service",
 # containing
-#       .include /lib/systemd/system/pbs.service
+#       .include /lib/systemd/system/pbs_mom.service
 #       ...make your changes here...
 # For more info about custom unit files, see -
 # http://fedoraproject.org/wiki/Systemd#How_do_I_customize_a_unit_file.2F_add_a_custom_unit_file.3F
@@ -51,7 +51,7 @@
 [Unit]
 Documentation=man:pbs(8)
 SourcePath=@prefix@/libexec/pbs_init.d
-Description=Portable Batch System
+Description=Portable Batch System Mom
 After=network-online.target remote-fs.target nss-lookup.target
 Wants=network-online.target
 DefaultDependencies=true

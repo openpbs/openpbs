@@ -245,6 +245,9 @@ if [ "x${ONLY_TEST}" != "x1" ]; then
   if [ "x${DONT_START_PBS}" != "x1" ]; then
     ${prefix}/libexec/pbs_postinstall server
     sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
+    sed -i "s@PBS_START_SERVER=0@PBS_START_SERVER=1@" /etc/pbs.conf
+    sed -i "s@PBS_START_COMM=0@PBS_START_COMM=1@" /etc/pbs.conf
+    sed -i "s@PBS_START_SCHED=0@PBS_START_SCHED=1@" /etc/pbs.conf
     if [ "x$IS_CI_BUILD" == "x1" ]; then
       /src/etc/configure_node.sh
     fi
