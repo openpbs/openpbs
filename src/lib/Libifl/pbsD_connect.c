@@ -505,11 +505,38 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 
 	if (svrhost != NULL) {
 		struct sockaddr_in tmp_sockaddr;
+		char *dflt_server = NULL;
 
 		/* Check that this host is reachable */
 		if (get_hostsockaddr(svrhost, &tmp_sockaddr) != 0) {
 			pbs_errno = PBSE_BADHOST;
 			return -1;
+		}
+
+		/* Is this different than our default cluster? */
+		dflt_server = pbs_default();
+		if (dflt_server != NULL) {
+			struct sockaddr_in dflt_sockaddr;
+
+			if (get_hostsockaddr(dflt_server, &dflt_sockaddr) == 0) {
+				char ipstr1[INET_ADDRSTRLEN];
+				char ipstr2[INET_ADDRSTRLEN];
+				void *ipaddr1;
+				void *ipaddr2;
+
+
+				ipaddr1 = &(dflt_sockaddr.sin_addr);
+				ipaddr2 = &(tmp_sockaddr.sin_addr);
+				inet_ntop(AF_INET, ipaddr1, ipstr1, sizeof(ipstr1));
+				inet_ntop(AF_INET, ipaddr2, ipstr2, sizeof(ipstr2));
+				if (strcmp(ipstr1, ipstr2) != 0) {
+					/* The client is trying to reach a different cluster than what's known
+					 * So, just reach out to the one host provided and reply back instead
+					 * of connecting to the PBS_SERVER_INSTANCES of the default cluster
+					 */
+					return connect_to_server(0, svr_connections, extend_data);
+				}
+			}
 		}
 	}
 
