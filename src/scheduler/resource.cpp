@@ -81,19 +81,19 @@
 
 #include <pbs_ifl.h>
 #include <log.h>
-#include "resource.hpp"
-#include "constant.hpp"
-#include "config.hpp"
-#include "data_types.hpp"
-#include "misc.hpp"
-#include "globals.hpp"
-#include "resource_resv.hpp"
+#include "resource.h"
+#include "constant.h"
+#include "config.h"
+#include "data_types.h"
+#include "misc.h"
+#include "globals.h"
+#include "resource_resv.h"
 #include "pbs_internal.h"
 #include "limits_if.h"
-#include "sort.hpp"
-#include "parse.hpp"
+#include "sort.h"
+#include "parse.h"
 #include "limits_if.h"
-#include "fifo.hpp"
+#include "fifo.h"
 
 
 

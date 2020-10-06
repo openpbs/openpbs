@@ -44,9 +44,9 @@
 extern "C" {
 #endif
 
-#include "server_info.hpp"
-#include "queue_info.hpp"
-#include "job_info.hpp"
+#include "server_info.h"
+#include "queue_info.h"
+#include "job_info.h"
 
 /*
  *	is_ok_to_run_in_queue - check to see if jobs can be run in queue

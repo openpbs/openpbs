@@ -37,7 +37,7 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#include "data_types.hpp"
+#include "data_types.h"
 #ifndef _RESOURCE_H
 #define _RESOURCE_H
 

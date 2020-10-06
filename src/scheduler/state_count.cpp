@@ -59,9 +59,9 @@
 #include <pbs_error.h>
 #include <pbs_ifl.h>
 #include <log.h>
-#include "state_count.hpp"
-#include "constant.hpp"
-#include "misc.hpp"
+#include "state_count.h"
+#include "constant.h"
+#include "misc.h"
 
 /**
  * @brief

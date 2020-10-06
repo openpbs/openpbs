@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-#include "data_types.hpp"
+#include "data_types.h"
 #include <pbs_ifl.h>
 
 

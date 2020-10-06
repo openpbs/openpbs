@@ -43,8 +43,8 @@
 extern "C" {
 #endif
 
-#include "data_types.hpp"
-#include "constant.hpp"
+#include "data_types.h"
+#include "constant.h"
 
 /*
  *	simulate_events - simulate the future of a PBS universe

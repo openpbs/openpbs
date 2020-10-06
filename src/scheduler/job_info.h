@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #include <pbs_ifl.h>
-#include "data_types.hpp"
+#include "data_types.h"
 
 /*
  *	query_job - takes info from a batch_status about a job and puts

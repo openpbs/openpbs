@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-#include "data_types.hpp"
+#include "data_types.h"
 
 /*
  *      new_resource_resv() - allocate and initialize a resource_resv struct

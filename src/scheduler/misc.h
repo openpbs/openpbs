@@ -44,10 +44,10 @@
 extern "C" {
 #endif
 
-#include "data_types.hpp"
-#include "server_info.hpp"
-#include "queue_info.hpp"
-#include "job_info.hpp"
+#include "data_types.h"
+#include "server_info.h"
+#include "queue_info.h"
+#include "job_info.h"
 #include "sched_cmds.h"
 
 /*

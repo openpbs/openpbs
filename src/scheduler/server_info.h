@@ -44,9 +44,9 @@ extern "C" {
 #endif
 
 #include <pbs_ifl.h>
-#include "state_count.hpp"
-#include "data_types.hpp"
-#include "constant.hpp"
+#include "state_count.h"
+#include "data_types.h"
+#include "constant.h"
 
 /* Modes passed to update_total_counts_on_run() */
 #define SERVER 1

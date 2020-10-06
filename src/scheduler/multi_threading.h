@@ -37,36 +37,25 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_STATE_COUNT_H
-#define	_STATE_COUNT_H
+
+#ifndef SRC_SCHEDULER_MULTI_THREADING_H_
+#define SRC_SCHEDULER_MULTI_THREADING_H_
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
+#include "data_types.h"
 
-#include "data_types.hpp"
+#define MT_CHUNK_SIZE_MIN 1024
+#define MT_CHUNK_SIZE_MAX 8192
 
-/*
- *	init_state_count - initalize state count struct
- */
-void init_state_count(state_count *sc);
+int init_multi_threading(int nthreads);
+void kill_threads(void);
+void *worker(void *);
+void queue_work_for_threads(th_task_info *task);
+int init_mutex_attr_recursive(pthread_mutexattr_t *attr);
 
-/*
- *      count_states - count the jobs in each state and set the state counts
- */
-void count_states(resource_resv **jobs, state_count *sc);
-
-/*
- *	accumulate states from one state_count into another
- */
-void total_states(state_count *sc1, state_count *sc2);
-
-/*
- *      state_count_add - add a certain amount to a a state count element
- *                        based on a job state letter
- *                        it increment, pass in 1, to decrement pass in -1
- */
-void state_count_add(state_count *sc, const char *job_state, int amount);
 #ifdef	__cplusplus
 }
 #endif
-#endif	/* _STATE_COUNT_H */
+#endif /* SRC_SCHEDULER_MULTI_THREADING_H_ */

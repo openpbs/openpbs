@@ -41,7 +41,7 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-#include "constant.hpp"
+#include "constant.h"
 
 /* the level of schd_priority that a suspended job has */
 #define SUSPEND_PRIO 500000

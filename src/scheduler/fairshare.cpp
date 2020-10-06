@@ -86,20 +86,20 @@
 
 #include <log.h>
 
-#include "data_types.hpp"
-#include "job_info.hpp"
-#include "constant.hpp"
-#include "fairshare.hpp"
-#include "globals.hpp"
-#include "misc.hpp"
-#include "constant.hpp"
-#include "config.hpp"
+#include "data_types.h"
+#include "job_info.h"
+#include "constant.h"
+#include "fairshare.h"
+#include "globals.h"
+#include "misc.h"
+#include "constant.h"
+#include "config.h"
 #include "log.h"
-#include "fifo.hpp"
-#include "resource_resv.hpp"
-#include "resource.hpp"
+#include "fifo.h"
+#include "resource_resv.h"
+#include "resource.h"
 #ifdef NAS /* localmod 041 */
-#include "sort.hpp"
+#include "sort.h"
 #endif
 
 

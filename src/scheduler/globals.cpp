@@ -43,12 +43,12 @@
 #include <pthread.h>
 #include <limits.h>
 
-#include "globals.hpp"
-#include "constant.hpp"
-#include "sort.hpp"
-#include "config.hpp"
-#include "data_types.hpp"
-#include "queue.hpp"
+#include "globals.h"
+#include "constant.h"
+#include "sort.h"
+#include "config.h"
+#include "data_types.h"
+#include "queue.h"
 
 
 

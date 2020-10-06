@@ -76,20 +76,20 @@
 #include <log.h>
 #include <pbs_ifl.h>
 #include <pbs_internal.h>
-#include "config.hpp"
-#include "constant.hpp"
-#include "data_types.hpp"
-#include "server_info.hpp"
-#include "queue_info.hpp"
-#include "node_info.hpp"
-#include "resource_resv.hpp"
-#include "resource.hpp"
-#include "misc.hpp"
-#include "node_partition.hpp"
-#include "check.hpp"
-#include "globals.hpp"
-#include "sort.hpp"
-#include "buckets.hpp"
+#include "config.h"
+#include "constant.h"
+#include "data_types.h"
+#include "server_info.h"
+#include "queue_info.h"
+#include "node_info.h"
+#include "resource_resv.h"
+#include "resource.h"
+#include "misc.h"
+#include "node_partition.h"
+#include "check.h"
+#include "globals.h"
+#include "sort.h"
+#include "buckets.h"
 
 
 /**

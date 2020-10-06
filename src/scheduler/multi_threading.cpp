@@ -50,15 +50,15 @@
 #include "log.h"
 #include "pbs_idx.h"
 
-#include "constant.hpp"
-#include "misc.hpp"
-#include "data_types.hpp"
-#include "globals.hpp"
-#include "node_info.hpp"
-#include "queue.hpp"
-#include "fifo.hpp"
-#include "resource_resv.hpp"
-#include "multi_threading.hpp"
+#include "constant.h"
+#include "misc.h"
+#include "data_types.h"
+#include "globals.h"
+#include "node_info.h"
+#include "queue.h"
+#include "fifo.h"
+#include "resource_resv.h"
+#include "multi_threading.h"
 
 
 /**

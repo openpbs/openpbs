@@ -45,8 +45,8 @@ extern "C" {
 #include <pthread.h>
 #include <limits.h>
 
-#include "data_types.hpp"
-#include "queue.hpp"
+#include "data_types.h"
+#include "queue.h"
 #include "sched_cmds.h"
 
 extern sched_svrconn **servers;

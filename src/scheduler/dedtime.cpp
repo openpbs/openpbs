@@ -60,9 +60,9 @@
 
 #include <log.h>
 
-#include "misc.hpp"
-#include "dedtime.hpp"
-#include "globals.hpp"
+#include "misc.h"
+#include "dedtime.h"
+#include "globals.h"
 
 
 /**

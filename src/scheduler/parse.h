@@ -37,25 +37,69 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-#ifndef SRC_SCHEDULER_MULTI_THREADING_H_
-#define SRC_SCHEDULER_MULTI_THREADING_H_
-
+#ifndef	_PARSE_H
+#define	_PARSE_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
-#include "data_types.hpp"
 
-#define MT_CHUNK_SIZE_MIN 1024
-#define MT_CHUNK_SIZE_MAX 8192
+#include "data_types.h"
+#include "globals.h"
 
-int init_multi_threading(int nthreads);
-void kill_threads(void);
-void *worker(void *);
-void queue_work_for_threads(th_task_info *task);
-int init_mutex_attr_recursive(pthread_mutexattr_t *attr);
+/*
+ *	parse_config - parse the config file and set a struct config
+ *
+ *	FILE FORMAT:
+ *	config_name [white space ] : [ white space ] config_value
+ */
+int parse_config(const char *fname);
+
+/*
+ *      init_config - initalize the config struture
+ */
+#ifdef NAS /* localmod 005 */
+int init_config(void);
+#else
+int init_config();
+#endif /* localmod 005 */
+
+/*
+ *      scan - Scan through the string looking for a white space delemeted word
+ *             or quoted string.
+ */
+char *scan(char *str, char target);
+
+/*
+ * sort compare function for preempt status's
+ * sort by decending number of bits in the bitfields (most number of preempt
+ * statuses at the top) and then priorities
+ */
+int preempt_cmp(const void *p1, const void *p2);
+
+/*
+ *      preempt_bit_field - take list of preempt names seperated by +'s and
+ *                          create a bitfield representing it.  The bitfield
+ *                          is created by taking the name in the prempt enum
+ *                          and shifting a bit into that position.
+ */
+int preempt_bit_field(char * plist);
+
+/*
+ *      valid_config - perform validity checks on scheduler configuration
+ *                     In a warning situation, we will fix it the best we can
+ *                     and continue
+ *
+ *      returns 1: valid config (perfectly valid or with warnings)
+ *              0: invalid config
+ */
+int valid_config(void);
+
+/* Check if string is a valid special case sorting string */
+int is_speccase_sort(char *sort_res, int sort_type);
+
+void free_sort_info(enum sort_info_type si_type);
 
 #ifdef	__cplusplus
 }
 #endif
-#endif /* SRC_SCHEDULER_MULTI_THREADING_H_ */
+#endif	/* _PARSE_H */

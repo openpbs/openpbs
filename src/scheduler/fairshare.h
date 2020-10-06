@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-#include "data_types.hpp"
+#include "data_types.h"
 /*
  *      add_child - add a ginfo to the resource group tree
  */

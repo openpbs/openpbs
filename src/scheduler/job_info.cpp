@@ -105,29 +105,29 @@
 #include <pbs_share.h>
 #include <pbs_internal.h>
 #include <pbs_error.h>
-#include "queue_info.hpp"
-#include "job_info.hpp"
-#include "resv_info.hpp"
-#include "constant.hpp"
-#include "misc.hpp"
-#include "config.hpp"
-#include "globals.hpp"
-#include "fairshare.hpp"
-#include "node_info.hpp"
-#include "check.hpp"
-#include "sort.hpp"
-#include "fifo.hpp"
+#include "queue_info.h"
+#include "job_info.h"
+#include "resv_info.h"
+#include "constant.h"
+#include "misc.h"
+#include "config.h"
+#include "globals.h"
+#include "fairshare.h"
+#include "node_info.h"
+#include "check.h"
+#include "sort.h"
+#include "fifo.h"
 #include "range.h"
-#include "resource_resv.hpp"
+#include "resource_resv.h"
 #include "limits_if.h"
-#include "simulate.hpp"
-#include "resource.hpp"
-#include "server_info.hpp"
+#include "simulate.h"
+#include "resource.h"
+#include "server_info.h"
 #include "attribute.h"
-#include "multi_threading.hpp"
+#include "multi_threading.h"
 
 #ifdef NAS
-#include "site_code.hpp"
+#include "site_code.h"
 #include "site_queue.h"
 #endif
 
@@ -136,7 +136,7 @@ extern char *pbse_to_txt(int err);
 
 /**
  *	This table contains job comment and information messages that correspond
- *	to the sched_error_code enums in "constant.hpp".  The order of the strings in
+ *	to the sched_error_code enums in "constant.h".  The order of the strings in
  *	the table must match the numeric order of the sched_error_code enum values.
  *	The length of the resultant strings (including any arguments inserted
  *	via % formatting directives by translate_fail_code(), q.v.) must not

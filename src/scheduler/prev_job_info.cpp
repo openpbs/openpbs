@@ -55,10 +55,10 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <log.h>
-#include "prev_job_info.hpp"
-#include "job_info.hpp"
-#include "misc.hpp"
-#include "resource_resv.hpp"
+#include "prev_job_info.h"
+#include "job_info.h"
+#include "misc.h"
+#include "resource_resv.h"
 
 
 /**

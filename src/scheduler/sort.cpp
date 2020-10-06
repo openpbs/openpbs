@@ -82,21 +82,21 @@
 #include <string.h>
 #include <errno.h>
 #include <log.h>
-#include "data_types.hpp"
-#include "sort.hpp"
-#include "resource_resv.hpp"
-#include "misc.hpp"
-#include "globals.hpp"
-#include "fairshare.hpp"
-#include "fifo.hpp"
-#include "node_info.hpp"
-#include "check.hpp"
-#include "constant.hpp"
-#include "server_info.hpp"
-#include "resource.hpp"
+#include "data_types.h"
+#include "sort.h"
+#include "resource_resv.h"
+#include "misc.h"
+#include "globals.h"
+#include "fairshare.h"
+#include "fifo.h"
+#include "node_info.h"
+#include "check.h"
+#include "constant.h"
+#include "server_info.h"
+#include "resource.h"
 
 #ifdef NAS
-#include "site_code.hpp"
+#include "site_code.h"
 #endif
 
 

@@ -59,9 +59,9 @@ extern "C" {
 #include <time.h>
 #include <pbs_ifl.h>
 #include <libutil.h>
-#include "constant.hpp"
-#include "config.hpp"
-#include "pbs_bitmap.hpp"
+#include "constant.h"
+#include "config.h"
+#include "pbs_bitmap.h"
 #include "pbs_share.h"
 #include "range.h"
 #ifdef NAS

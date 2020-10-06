@@ -56,13 +56,13 @@
 #include <log.h>
 #include <pbs_share.h>
 #include <libutil.h>
-#include "config.hpp"
-#include "constant.hpp"
-#include "misc.hpp"
-#include "globals.hpp"
-#include "fairshare.hpp"
-#include "resource_resv.hpp"
-#include "resource.hpp"
+#include "config.h"
+#include "constant.h"
+#include "misc.h"
+#include "globals.h"
+#include "fairshare.h"
+#include "resource_resv.h"
+#include "resource.h"
 
 
 /**

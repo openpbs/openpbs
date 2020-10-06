@@ -121,15 +121,15 @@
 #include	<assert.h>
 #include	"pbs_config.h"
 #include	"pbs_ifl.h"
-#include	"data_types.hpp"
-#include	"resource_resv.hpp"
-#include	"misc.hpp"
+#include	"data_types.h"
+#include	"resource_resv.h"
+#include	"misc.h"
 #include	"log.h"
-#include	"check.hpp"
+#include	"check.h"
 #include	"limits_if.h"
-#include	"simulate.hpp"
-#include	"resource.hpp"
-#include	"globals.hpp"
+#include	"simulate.h"
+#include	"resource.h"
+#include	"globals.h"
 
 struct limcounts
 {

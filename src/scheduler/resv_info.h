@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #include <pbs_config.h>
-#include "data_types.hpp"
+#include "data_types.h"
 
 /*
  *	stat_resvs - status the reservations in batch_status form from the

@@ -92,25 +92,25 @@
 #include <errno.h>
 #include <log.h>
 
-#include "simulate.hpp"
-#include "data_types.hpp"
-#include "resource_resv.hpp"
-#include "resv_info.hpp"
-#include "node_info.hpp"
-#include "server_info.hpp"
-#include "queue_info.hpp"
-#include "fifo.hpp"
-#include "constant.hpp"
-#include "sort.hpp"
-#include "check.hpp"
+#include "simulate.h"
+#include "data_types.h"
+#include "resource_resv.h"
+#include "resv_info.h"
+#include "node_info.h"
+#include "server_info.h"
+#include "queue_info.h"
+#include "fifo.h"
+#include "constant.h"
+#include "sort.h"
+#include "check.h"
 #include "log.h"
-#include "misc.hpp"
-#include "prime.hpp"
-#include "globals.hpp"
-#include "check.hpp"
-#include "buckets.hpp"
+#include "misc.h"
+#include "prime.h"
+#include "globals.h"
+#include "check.h"
+#include "buckets.h"
 #ifdef NAS /* localmod 030 */
-#include "site_code.hpp"
+#include "site_code.h"
 #endif /* localmod 030 */
 
 /** @struct	policy_change_func_name

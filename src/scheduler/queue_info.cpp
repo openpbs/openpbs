@@ -68,26 +68,26 @@
 #include <pbs_error.h>
 #include <pbs_ifl.h>
 #include <log.h>
-#include "queue_info.hpp"
-#include "job_info.hpp"
-#include "resv_info.hpp"
-#include "constant.hpp"
-#include "misc.hpp"
-#include "check.hpp"
-#include "config.hpp"
-#include "globals.hpp"
-#include "node_info.hpp"
-#include "sort.hpp"
-#include "resource_resv.hpp"
-#include "resource.hpp"
-#include "state_count.hpp"
+#include "queue_info.h"
+#include "job_info.h"
+#include "resv_info.h"
+#include "constant.h"
+#include "misc.h"
+#include "check.h"
+#include "config.h"
+#include "globals.h"
+#include "node_info.h"
+#include "sort.h"
+#include "resource_resv.h"
+#include "resource.h"
+#include "state_count.h"
 #ifdef NAS
-#include "site_code.hpp"
+#include "site_code.h"
 #endif
-#include "node_partition.hpp"
+#include "node_partition.h"
 #include "limits_if.h"
 #include "pbs_internal.h"
-#include "fifo.hpp"
+#include "fifo.h"
 
 /**
  * @brief

@@ -42,9 +42,9 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "constant.hpp"
+#include "constant.h"
 #include "log.h"
-#include "queue.hpp"
+#include "queue.h"
 
 
 /**

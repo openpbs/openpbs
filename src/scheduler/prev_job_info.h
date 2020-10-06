@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-#include "data_types.hpp"
+#include "data_types.h"
 
 /*
  *      create_prev_job_info - create the prev_job_info array from an array

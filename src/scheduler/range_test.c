@@ -41,7 +41,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "data_types.hpp"
+#include "data_types.h"
 #include "range.h"
 
 /* to make references happy */

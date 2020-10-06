@@ -64,16 +64,16 @@
 #include <log.h>
 #include <libutil.h>
 #include <unistd.h>
-#include "data_types.hpp"
-#include "parse.hpp"
-#include "constant.hpp"
-#include "config.hpp"
-#include "misc.hpp"
-#include "globals.hpp"
-#include "fairshare.hpp"
-#include "prime.hpp"
-#include "node_info.hpp"
-#include "resource.hpp"
+#include "data_types.h"
+#include "parse.h"
+#include "constant.h"
+#include "config.h"
+#include "misc.h"
+#include "globals.h"
+#include "fairshare.h"
+#include "prime.h"
+#include "node_info.h"
+#include "resource.h"
 #include "pbs_internal.h"
 
 

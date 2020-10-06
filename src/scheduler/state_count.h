@@ -37,69 +37,36 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_PARSE_H
-#define	_PARSE_H
+#ifndef	_STATE_COUNT_H
+#define	_STATE_COUNT_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
-#include "data_types.hpp"
-#include "globals.hpp"
+#include "data_types.h"
 
 /*
- *	parse_config - parse the config file and set a struct config
- *
- *	FILE FORMAT:
- *	config_name [white space ] : [ white space ] config_value
+ *	init_state_count - initalize state count struct
  */
-int parse_config(const char *fname);
+void init_state_count(state_count *sc);
 
 /*
- *      init_config - initalize the config struture
+ *      count_states - count the jobs in each state and set the state counts
  */
-#ifdef NAS /* localmod 005 */
-int init_config(void);
-#else
-int init_config();
-#endif /* localmod 005 */
+void count_states(resource_resv **jobs, state_count *sc);
 
 /*
- *      scan - Scan through the string looking for a white space delemeted word
- *             or quoted string.
+ *	accumulate states from one state_count into another
  */
-char *scan(char *str, char target);
+void total_states(state_count *sc1, state_count *sc2);
 
 /*
- * sort compare function for preempt status's
- * sort by decending number of bits in the bitfields (most number of preempt
- * statuses at the top) and then priorities
+ *      state_count_add - add a certain amount to a a state count element
+ *                        based on a job state letter
+ *                        it increment, pass in 1, to decrement pass in -1
  */
-int preempt_cmp(const void *p1, const void *p2);
-
-/*
- *      preempt_bit_field - take list of preempt names seperated by +'s and
- *                          create a bitfield representing it.  The bitfield
- *                          is created by taking the name in the prempt enum
- *                          and shifting a bit into that position.
- */
-int preempt_bit_field(char * plist);
-
-/*
- *      valid_config - perform validity checks on scheduler configuration
- *                     In a warning situation, we will fix it the best we can
- *                     and continue
- *
- *      returns 1: valid config (perfectly valid or with warnings)
- *              0: invalid config
- */
-int valid_config(void);
-
-/* Check if string is a valid special case sorting string */
-int is_speccase_sort(char *sort_res, int sort_type);
-
-void free_sort_info(enum sort_info_type si_type);
-
+void state_count_add(state_count *sc, const char *job_state, int amount);
 #ifdef	__cplusplus
 }
 #endif
-#endif	/* _PARSE_H */
+#endif	/* _STATE_COUNT_H */

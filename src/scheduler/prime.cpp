@@ -68,10 +68,10 @@
 #include <pbs_ifl.h>
 #include <log.h>
 
-#include "constant.hpp"
-#include "globals.hpp"
-#include "prime.hpp"
-#include "misc.hpp"
+#include "constant.h"
+#include "globals.h"
+#include "prime.h"
+#include "misc.h"
 
 
 /**

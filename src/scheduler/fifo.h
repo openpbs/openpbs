@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #include  <limits.h>
-#include "data_types.hpp"
+#include "data_types.h"
 #include "sched_cmds.h"
 
 /**

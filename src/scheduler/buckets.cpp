@@ -44,19 +44,19 @@
 #include <string.h>
 #include <errno.h>
 #include <log.h>
-#include "data_types.hpp"
-#include "pbs_bitmap.hpp"
-#include "node_info.hpp"
-#include "server_info.hpp"
-#include "buckets.hpp"
-#include "globals.hpp"
-#include "resource.hpp"
-#include "resource_resv.hpp"
-#include "simulate.hpp"
-#include "misc.hpp"
-#include "sort.hpp"
-#include "node_partition.hpp"
-#include "check.hpp"
+#include "data_types.h"
+#include "pbs_bitmap.h"
+#include "node_info.h"
+#include "server_info.h"
+#include "buckets.h"
+#include "globals.h"
+#include "resource.h"
+#include "resource_resv.h"
+#include "simulate.h"
+#include "misc.h"
+#include "sort.h"
+#include "node_partition.h"
+#include "check.h"
 
 /* bucket_bitpool constructor */
 bucket_bitpool *

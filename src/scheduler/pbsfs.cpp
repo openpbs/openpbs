@@ -55,15 +55,15 @@
 #include <unistd.h>
 #include <libpbs.h>
 #include <pbs_ifl.h>
-#include "data_types.hpp"
-#include "constant.hpp"
-#include "config.hpp"
-#include "fairshare.hpp"
-#include "parse.hpp"
+#include "data_types.h"
+#include "constant.h"
+#include "config.h"
+#include "fairshare.h"
+#include "parse.h"
 #include "pbs_version.h"
 #include "sched_cmds.h"
 #include "log.h"
-#include "fifo.hpp"
+#include "fifo.h"
 
 /* prototypes */
 static void print_fairshare_entity(group_info *ginfo);
