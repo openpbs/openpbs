@@ -261,14 +261,14 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 	server_addr.sin_port = htons(server_port);
 	if (connect(sd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) != 0) {
 		/* connect attempt failed */
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		pbs_errno = errno;
 		return -1;
 	}
 
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(sd) != 0) {
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -281,7 +281,7 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 	 */
 
 	if (load_auths(AUTH_CLIENT)) {
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -301,12 +301,12 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 	 */
 	if ((i = encode_DIS_ReqHdr(sd, PBS_BATCH_Connect, pbs_current_user)) ||
 		(i = encode_DIS_ReqExtend(sd, extend_data))) {
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 	if (dis_flush(sd)) {
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -315,7 +315,7 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 	reply = PBSD_rdrpy(sd);
 	PBSD_FreeReply(reply);
 	if (pbs_errno != PBSE_NONE) {
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		return -1;
 	}
 
@@ -325,7 +325,7 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		return -1;
 	}
 
@@ -336,7 +336,7 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 	 * Nagle's algorithm is hurting cmd-server communication.
 	 */
 	if (pbs_connection_set_nodelay(sd) == -1) {
-		CLOSESOCKET(sd);
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -534,9 +534,8 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 					 * So, just reach out to the one host provided and reply back instead
 					 * of connecting to the PBS_SERVER_INSTANCES of the default cluster
 					 */
-					free(svr_connections[0]->name);
-					svr_connections[0]->name = strdup(svrhost);
-					svr_connections[0]->port = port;
+					strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
+					svr_connections[0].port = port;
 					return connect_to_server(0, svr_connections, extend_data);
 				}
 			}
