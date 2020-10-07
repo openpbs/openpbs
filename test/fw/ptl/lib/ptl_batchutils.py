@@ -57,7 +57,7 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.lib.ptl_constants import *
 
 from ptl.lib.ptl_types import (PbsTypeSize, PbsTypeChunk,
-                               PbsTypeDuration, BatchutilsTypes)
+                               PbsTypeDuration, PbsAttribute)
 
 
 class BatchUtils(object):
@@ -632,7 +632,7 @@ class BatchUtils(object):
                 if ',' in v:
                     _jdict[k] = v.split(',')
                 else:
-                    _jdict[k] = BatchutilsTypes.decode_value(v)
+                    _jdict[k] = PbsAttribute.decode_value(v)
             _js.append(_jdict)
         return _js
 
@@ -1532,7 +1532,7 @@ class BatchUtils(object):
         """
         m = self.lim_tag.match(limstr)
         if m:
-            _v = str(BatchutilsTypes.decode_value(m.group('entity_value')))
+            _v = str(PbsAttribute.decode_value(m.group('entity_value')))
             return (m.group('limtype'), m.group('resource'),
                     m.group('entity_type'), m.group('entity_name'), _v)
         return None

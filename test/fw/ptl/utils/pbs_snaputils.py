@@ -53,7 +53,7 @@ from subprocess import STDOUT
 
 from ptl.lib.pbs_ifl_mock import *
 from ptl.lib.pbs_testlib import (SCHED, BatchUtils, Scheduler, Server,
-                                 BatchutilsTypes)
+                                 PbsAttribute)
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
 
@@ -295,7 +295,7 @@ class ObfuscateSnapshot(object):
                             if _val in self.skip_vals:
                                 obf = _val
                             elif _val not in self.val_obf_map:
-                                obf = BatchutilsTypes.random_str(
+                                obf = PbsAttribute.random_str(
                                     length=random.randint(8, 30))
                                 self.val_obf_map[_val] = obf
                             else:
@@ -389,7 +389,7 @@ class ObfuscateSnapshot(object):
                             if _val == "_pbs_project_default":
                                 obf.append(_val)
                             elif _val not in self.val_obf_map:
-                                obf_v = BatchutilsTypes.random_str(
+                                obf_v = PbsAttribute.random_str(
                                     length=random.randint(8, 30))
                                 self.val_obf_map[_val] = obf_v
                                 obf.append(obf_v)
@@ -496,7 +496,7 @@ class ObfuscateSnapshot(object):
                     custom_rscs.append(rscs_name.strip())
         for rscs in custom_rscs:
             if rscs not in self.val_obf_map:
-                obf = BatchutilsTypes.random_str(length=random.randint(8, 30))
+                obf = PbsAttribute.random_str(length=random.randint(8, 30))
                 self.val_obf_map[rscs] = obf
 
         # Obfuscate accounting logs

@@ -56,10 +56,153 @@ from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
 
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_constants import *
-from ptl.lib.ptl_entities import ResourceResv
+from ptl.lib.ptl_object import PBSObject
+from ptl.lib.ptl_constants import (ATTR_N, ATTR_j, ATTR_m, ATTR_v, ATTR_k,
+                                   ATTR_p, ATTR_r, ATTR_Arglist,
+                                   ATTR_executable)
+
+
+class ResourceResv(PBSObject):
+
+    """
+    Generic PBS resource reservation, i.e., job or
+    ``advance/standing`` reservation
+    """
+
+    def execvnode(self, attr='exec_vnode'):
+        """
+        PBS type execution vnode
+        """
+        if attr in self.attributes:
+            return PbsTypeExecVnode(self.attributes[attr])
+        else:
+            return None
+
+    def exechost(self):
+        """
+        PBS type execution host
+        """
+        if 'exec_host' in self.attributes:
+            return PbsTypeExecHost(self.attributes['exec_host'])
+        else:
+            return None
+
+    def resvnodes(self):
+        """
+        nodes assigned to a reservation
+        """
+        if 'resv_nodes' in self.attributes:
+            return self.attributes['resv_nodes']
+        else:
+            return None
+
+    def select(self):
+        if hasattr(self, '_select') and self._select is not None:
+            return self._select
+
+        if 'schedselect' in self.attributes:
+            self._select = PbsTypeSelect(self.attributes['schedselect'])
+
+        elif 'select' in self.attributes:
+            self._select = PbsTypeSelect(self.attributes['select'])
+        else:
+            return None
+
+        return self._select
+
+    @classmethod
+    def get_hosts(cls, exechost=None):
+        """
+        :returns: The hosts portion of the exec_host
+        """
+        hosts = []
+        exechosts = cls.utils.parse_exechost(exechost)
+        if exechosts:
+            for h in exechosts:
+                eh = list(h.keys())[0]
+                if eh not in hosts:
+                    hosts.append(eh)
+        return hosts
+
+    def get_vnodes(self, execvnode=None):
+        """
+        :returns: The unique vnode names of an execvnode as a list
+        """
+        if execvnode is None:
+            if 'exec_vnode' in self.attributes:
+                execvnode = self.attributes['exec_vnode']
+            elif 'resv_nodes' in self.attributes:
+                execvnode = self.attributes['resv_nodes']
+            else:
+                return []
+
+        vnodes = []
+        execvnodes = PbsTypeExecVnode(execvnode)
+        if execvnodes:
+            for n in execvnodes:
+                ev = list(n.keys())[0]
+                if ev not in vnodes:
+                    vnodes.append(ev)
+        return vnodes
+
+    def walltime(self, attr='Resource_List.walltime'):
+        if attr in self.attributes:
+            return self.utils.convert_duration(self.attributes[attr])
+
+
+class Reservation(ResourceResv):
+
+    """
+    PBS Reservation. Attributes and Resources
+    :param attrs: Reservation attributes
+    :type attrs: Dictionary
+    :param hosts: List of hosts for maintenance
+    :type hosts: List
+    """
+
+    dflt_attributes = {}
+
+    def __init__(self, username=TEST_USER, attrs=None, hosts=None):
+        self.server = {}
+        self.script = None
+
+        if attrs:
+            self.attributes = attrs
+        else:
+            self.attributes = {}
+
+        if hosts:
+            self.hosts = hosts
+        else:
+            self.hosts = []
+
+        if username is None:
+            userinfo = pwd.getpwuid(os.getuid())
+            self.username = userinfo[0]
+        else:
+            self.username = str(username)
+
+        # These are not in dflt_attributes because of the conversion to CLI
+        # options is done strictly
+        if ATTR_resv_start not in self.attributes and \
+           ATTR_job not in self.attributes:
+            self.attributes[ATTR_resv_start] = str(int(time.time()) +
+                                                   36 * 3600)
+
+        if ATTR_resv_end not in self.attributes and \
+           ATTR_job not in self.attributes:
+            if ATTR_resv_duration not in self.attributes:
+                self.attributes[ATTR_resv_end] = str(int(time.time()) +
+                                                     72 * 3600)
+
+        PBSObject.__init__(self, None, self.attributes, self.dflt_attributes)
+        self.set_attributes()
+
+    def __del__(self):
+        del self.__dict__
+
+    def set_variable_list(self, user, workdir=None):
+        pass
 
 
 class Job(ResourceResv):

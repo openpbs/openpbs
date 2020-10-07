@@ -48,7 +48,7 @@ import sys
 import time
 
 from ptl.utils.pbs_dshutils import DshUtils
-from ptl.lib.ptl_object import *
+from ptl.lib.ptl_object import PBSObject
 
 
 class PtlConfig(object):

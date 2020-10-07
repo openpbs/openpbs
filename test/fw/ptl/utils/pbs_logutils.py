@@ -50,7 +50,7 @@ from datetime import datetime, timedelta, tzinfo
 from subprocess import PIPE, Popen
 
 from ptl.lib.pbs_testlib import (EQ, JOB, NODE, SET, BatchUtils, ResourceResv,
-                                 Server, BatchutilsTypes)
+                                 Server, PbsAttribute)
 from ptl.utils.pbs_dshutils import DshUtils
 
 """
@@ -1916,7 +1916,7 @@ class PBSAccountingLog(PBSLogAnalyzer):
                         self.parser_errors += 1
                         return PARSER_OK_CONTINUE
                     for k in attrs.keys():
-                        attrs[k] = BatchutilsTypes.decode_value(attrs[k])
+                        attrs[k] = PbsAttribute.decode_value(attrs[k])
                     running_time = (int(attrs['end']) - int(attrs['start']))
                     attrs['running_time'] = str(running_time)
                     attrs['schedselect'] = attrs['Resource_List.select']

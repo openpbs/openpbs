@@ -56,30 +56,9 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
-
-try:
-    import psycopg2
-    PSYCOPG = True
-except:
-    PSYCOPG = False
-
-try:
-    from ptl.lib.pbs_ifl import *
-    API_OK = True
-except:
-    try:
-        from ptl.lib.pbs_ifl_mock import *
-    except:
-        sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
-                         "to make it\n")
-        raise ImportError
-    API_OK = False
-
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_constants import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_expect_action import *
+from ptl.lib.ptl_error import (PbsInitServicesError, PbsServiceError,
+                               PtlLogMatchError)
+from ptl.lib.ptl_object import PBSObject
 
 
 class PBSInitServices(object):

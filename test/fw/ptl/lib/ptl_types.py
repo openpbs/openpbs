@@ -47,7 +47,20 @@ import string
 import random
 
 
-class BatchutilsTypes(object):
+class PbsAttribute(object):
+    """
+    Descriptor class for PBS attribute
+
+    :param name: PBS attribute name
+    :type name: str
+    :param value: Value for the attribute
+    :type value: str or int or float
+    """
+
+    def __init__(self, name=None, value=None):
+        self.set_name(name)
+        self.set_value(value)
+
     @classmethod
     def isfloat(cls, value):
         """
@@ -141,21 +154,6 @@ class BatchutilsTypes(object):
 
         return r
 
-
-class PbsAttribute(object):
-    """
-    Descriptor class for PBS attribute
-
-    :param name: PBS attribute name
-    :type name: str
-    :param value: Value for the attribute
-    :type value: str or int or float
-    """
-
-    def __init__(self, name=None, value=None):
-        self.set_name(name)
-        self.set_value(value)
-
     def set_name(self, name):
         """
         Set PBS attribute name
@@ -191,7 +189,7 @@ class PbsAttribute(object):
         if a is not None:
             on = a
         else:
-            on = BatchutilsTypes.random_str(len(self.name))
+            on = cls.random_str(len(self.name))
 
         self.decoded_name = self.name
         if self.is_resource:
@@ -208,7 +206,7 @@ class PbsAttribute(object):
         if v is not None:
             ov = v
         else:
-            ov = BatchutilsTypes.random_str(len(self.value))
+            ov = cls.random_str(len(self.value))
 
         self.decoded_value = self.value
         self.set_value(ov)
@@ -894,7 +892,7 @@ class PbsTypeFGCLimit(object):
 
         v = self.fgc_val_pat.match(val)
         if v:
-            self.lim_value = BatchutilsTypes.decode_value(v.group('eval'))
+            self.lim_value = PbsAttribute.decode_value(v.group('eval'))
             self.entity_type = v.group('etype')
             self.entity_name = v.group('ename')
         else:
@@ -920,5 +918,5 @@ class PbsTypeAttribute(dict):
     """
 
     def __getitem__(self, name):
-        return BatchutilsTypes.decode_value(super(PbsTypeAttribute,
-                                                  self).__getitem__(name))
+        return PbsAttribute.decode_value(super(PbsTypeAttribute,
+                                               self).__getitem__(name))

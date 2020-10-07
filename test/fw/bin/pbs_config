@@ -490,7 +490,6 @@ if __name__ == '__main__':
         else:
             nattrs = process_attributes(attrs)
             for hostname in hosts:
-                s = Server(hostname)
                 svr_obj = Server(hostname, pbsconf_file=conf_file)
                 m = MoM(svr_obj, hostname, pbsconf_file=conf_file)
                 m.create_vnodes(nattrs, num_vnodes,

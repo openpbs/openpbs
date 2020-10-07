@@ -47,19 +47,7 @@ import socket
 import string
 import sys
 import time
-try:
-    from ptl.lib.pbs_ifl import *
-    API_OK = True
-except:
-    try:
-        from ptl.lib.pbs_ifl_mock import *
-    except:
-        sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
-                         "to make it\n")
-        raise ImportError
-    API_OK = False
-
-from ptl.lib.pbs_testlib import *
+from ptl.lib.ptl_service import PBSService, PBSInitServices
 
 
 class Comm(PBSService):

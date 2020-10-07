@@ -58,24 +58,15 @@ from operator import itemgetter
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
-try:
-    from ptl.lib.pbs_ifl import *
-    API_OK = True
-except:
-    try:
-        from ptl.lib.pbs_ifl_mock import *
-    except:
-        sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
-                         "to make it\n")
-        raise ImportError
-    API_OK = False
-
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_constants import *
-from ptl.lib.ptl_service import *
-from ptl.lib.ptl_fairshare import *
-from ptl.lib.ptl_entities import *
+from ptl.lib.ptl_service import PBSService, PBSInitServices
+from ptl.lib.ptl_fairshare import FairshareTree, FairshareNode
+from ptl.lib.ptl_entities import Holidays
+from ptl.lib.ptl_error import (PbsManagerError, PbsStatusError,
+                               PbsInitServicesError, PbsServiceError,
+                               PtlLogMatchError, PbsSchedConfigError,
+                               PbsFairshareError)
+from ptl.lib.ptl_constants import (SCHED, MGR_CMD_SET, MGR_CMD_UNSET,
+                                   MGR_CMD_LIST, MGR_OBJ_SCHED)
 
 
 class Scheduler(PBSService):

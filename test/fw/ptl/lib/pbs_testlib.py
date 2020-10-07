@@ -50,6 +50,6 @@ from ptl.lib.ptl_server import *
 from ptl.lib.ptl_sched import *
 from ptl.lib.ptl_mom import *
 from ptl.lib.ptl_comm import *
-from ptl.lib.ptl_job import *
+from ptl.lib.ptl_resourceresv import *
 from ptl.lib.ptl_fairshare import *
 from ptl.lib.ptl_entities import *
