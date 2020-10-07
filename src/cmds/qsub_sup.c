@@ -96,7 +96,6 @@ char usage[]=
 	"\t[-k keep] [-l resource_list] [-m mail_options] [-M user_list]\n"
 	"\t[-N jobname] [-o path] [-p priority] [-P project] [-q queue] [-r y|n]\n"
 	"\t[-R o|e|oe] [-S path] [-u user_list] [-W otherattributes=value...]\n"
-	"\t[-S path] [-u user_list] [-W otherattributes=value...]\n"
 	"\t[-v variable_list] [-V ] [-z] [script | -- command [arg1 ...]]\n";
 
 char read_script_msg[]=

@@ -779,11 +779,7 @@ static void
 shut_close_sock(int sock)
 {
 	shutdown(sock, 2);
-#ifdef WIN32
 	closesocket(sock);
-#else
-	close(sock);
-#endif /* WIN32 */
 }
 
 /**
