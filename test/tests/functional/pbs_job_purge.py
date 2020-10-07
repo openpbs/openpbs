@@ -58,18 +58,18 @@ class TestJobPurge(TestFunctional):
             self.server.pbs_conf['PBS_HOME'], 'mom_priv', 'jobs/')
         # Submit a normal and an array job
         j = Job(TEST_USER)
-        j.create_script(body="sleep 5")
+        j.set_sleep_time(30)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=25)
         j1 = Job(TEST_USER)
-        j1.create_script(body="sleep 5")
+        j1.set_sleep_time(30)
         j1.set_attributes({ATTR_J: '1-2'})
         jid_1 = self.server.submit(j1)
         jobid_list = [jid, j1.create_subjob_id(jid_1, 1),
                       j1.create_subjob_id(jid_1, 2)]
         self.server.expect(JOB, {'job_state': 'B'}, id=jid_1)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid_1, offset=25)
         # Checking the job control(.JB) file, job script(.SC) file
         # and job task(.TK) directory after successful job execution
         jobs_suffix_list = ['.JB', '.SC', '.TK']
