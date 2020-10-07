@@ -102,64 +102,6 @@ return_licenses(long count)
 
 /**
  * @brief
- * 	add_to_unlicensed_node_list - add a node to the list
- * 				      of unlicensed nodes
- *
- * @param[in]	- index - index of the node
- *
- * @return void
- */
-static void
-add_to_unlicensed_node_list(struct pbsnode *pnode)
-{
-	unlicensed_node *pun;
-
-	if (pnode->nd_added_to_unlicensed_list)
-		return;
-
-	pun = malloc(sizeof(unlicensed_node));
-	if (!pun)
-		return;
-
-	pun->pnode = pnode;
-	CLEAR_LINK(pun->link);
-
-	append_link(&unlicensed_nodes_list, &pun->link, pun);
-	pnode->nd_added_to_unlicensed_list = 1;
-}
-
-/**
- * @brief
- * 	remove_from_unlicensed_node_list - remove a node from
- * 					   the list of
- * 					   unlicensed nodes.
- *
- * @param[in]	- index	- index of the node
- *
- * @return void
- */
-void
-remove_from_unlicensed_node_list(struct pbsnode *pnode)
-{
-	unlicensed_node *pun;
-	if(!pnode->nd_added_to_unlicensed_list)
-		return;
-
-	pnode->nd_added_to_unlicensed_list = 0;
-	pun = (unlicensed_node *) GET_NEXT(unlicensed_nodes_list);
-	while (pun != NULL) {
-		if (!strcmp(pun->pnode->nd_name, pnode->nd_name)) {
-			licensing_control.licenses_total_needed -= pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
-			delete_link(&pun->link);
-			free(pun);
-			break;
-		} else
-			pun = (unlicensed_node *) GET_NEXT(pun->link);
-	}
-}
-
-/**
- * @brief
  *	distribute_licenseinfo - for cray all the inventory is reported by the first vnode.
  *		so it has to be distributed to subsidiary vnodes.
  *		The distribution may not be even but we are trying our best.
@@ -326,7 +268,6 @@ clear_node_lic_attrs(pbsnode *pnode, int clear_license_info)
 
 	if (pnode->nd_attr[ND_ATR_License].at_flags & ATR_VFLAG_SET)
 			clear_attr(&pnode->nd_attr[ND_ATR_License], &node_attr_def[ND_ATR_License]);
-	pnode->nd_added_to_unlicensed_list = 0;
 }
 
 /**
@@ -543,7 +484,6 @@ license_one_node(pbsnode *pnode)
 					ND_LIC_locked_str, NULL, SET);
 				update_license_highuse();
 			} else {
-				add_to_unlicensed_node_list(pnode);
 				if (is_attr_set(&(pnode->nd_attr[ND_ATR_LicenseInfo]))) {
 					licensing_control.licenses_total_needed += get_attr_l(&(pnode->nd_attr[ND_ATR_LicenseInfo]));
 				}
@@ -552,8 +492,7 @@ license_one_node(pbsnode *pnode)
 				get_more_licenses_task = set_task(WORK_Timed, time_now + 2, get_more_licenses, NULL);
 			}
 		}
-	} else
-		add_to_unlicensed_node_list(pnode);
+	}
 }
 
 /**
@@ -602,30 +541,23 @@ release_lic_for_cray(struct pbsnode *pnode)
 void
 license_nodes()
 {
-	int i;
+	int i, j;
 	pbsnode *np;
-	unlicensed_node *punodes;
-	unlicensed_node *pnext;
 
-	punodes = (unlicensed_node *) GET_NEXT(unlicensed_nodes_list);
-	while (punodes != NULL) {
-		np = punodes->pnode;
-		pnext = (unlicensed_node *) GET_NEXT(punodes->link);
+	for (j = 0; j < svr_totnodes; j++) {
+		np = pbsndlist[j];
 		if ((np->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked)) {
 			if (np->nd_attr[(int)ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET) {
 				if (consume_licenses(np->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
 					set_attr_generic(&(np->nd_attr[(int)ND_ATR_License]),
 						 &node_attr_def[(int)ND_ATR_License],
 						 ND_LIC_locked_str, NULL, SET);
-					delete_link(&punodes->link);
-					free(punodes);
 				}
-			} else {
+			} else if (strcmp(np->nd_name, np->nd_hostname)) {
 				for (i = 0; i < np->nd_nummoms; i++)
 					propagate_licenses_to_vnodes(np->nd_moms[i]);
 			}
 		}
-		punodes = pnext;
 	}
 	update_license_highuse();
 	return;
@@ -668,7 +600,6 @@ init_licensing(struct work_task *ptask)
 	if (count < 0) {
 		for (i = 0; i < svr_totnodes; i++) {
 			clear_node_lic_attrs(pbsndlist[i], 1);
-			add_to_unlicensed_node_list(pbsndlist[i]);
 		}
 
 		switch (count) {
@@ -702,7 +633,6 @@ init_licensing(struct work_task *ptask)
 				licensing_control.licenses_total_needed += get_attr_l(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]));
 			}
 		}
-		add_to_unlicensed_node_list(pbsndlist[i]);
 	}
 
 	/* Determine how many licenses we can check out */
@@ -844,11 +774,12 @@ release_node_lic(void *pobj)
 		attribute *ppnl = &pnode->nd_attr[ND_ATR_License];
 		attribute *ppnli = &pnode->nd_attr[ND_ATR_LicenseInfo];
 
+		licensing_control.licenses_total_needed -= pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+
 		/* release license if node is locked */
 		if ((ppnl->at_val.at_char == ND_LIC_TYPE_locked) &&
 						(ppnli->at_flags & ATR_VFLAG_SET)) {
 			return_licenses(pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long);
-			licensing_control.licenses_total_needed -= pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
 			clear_attr(ppnl, &node_attr_def[ND_ATR_License]);
 			clear_attr(ppnli, &node_attr_def[ND_ATR_LicenseInfo]);
 			return 1;

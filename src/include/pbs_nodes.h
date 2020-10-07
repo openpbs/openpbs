@@ -253,7 +253,6 @@ struct pbsnode {
 	attribute nd_attr[ND_ATR_LAST];
 	short newobj; /* new node ? */
 	void *nd_lic_info;			/* information set and used for licensing */
-	int nd_added_to_unlicensed_list;/* To record if the node is added to the list of unlicensed node */
 };
 
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };

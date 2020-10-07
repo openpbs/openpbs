@@ -311,7 +311,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_nummoms = 0;
 	pnode->newobj = 1;
 	pnode->nd_lic_info = NULL;
-	pnode->nd_added_to_unlicensed_list = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
@@ -511,6 +510,7 @@ free_pnode(struct pbsnode *pnode)
 		(void)free(pnode->nd_name);
 		(void)free(pnode->nd_hostname);
 		(void)free(pnode->nd_moms);
+		(void)free(pnode->nd_lic_info);
 		(void)free(pnode); /* delete the pnode from memory */
 	}
 }
@@ -542,7 +542,6 @@ effective_node_delete(struct pbsnode *pnode)
 		psubn = pnxt;
 	}
 
-	remove_from_unlicensed_node_list(pnode);
 	lic_released = release_node_lic(pnode);
 
         /* free attributes */
