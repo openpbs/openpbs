@@ -534,7 +534,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 					 * So, just reach out to the one host provided and reply back instead
 					 * of connecting to the PBS_SERVER_INSTANCES of the default cluster
 					 */
-					strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
+					pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
 					svr_connections[0].port = port;
 					return connect_to_server(0, svr_connections, extend_data);
 				}
