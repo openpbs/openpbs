@@ -517,6 +517,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 		dflt_server = pbs_default();
 		if (dflt_server != NULL) {
 			struct sockaddr_in dflt_sockaddr;
+			int connect_directly = 0;
 
 			if (get_hostsockaddr(dflt_server, &dflt_sockaddr) == 0) {
 				char ipstr1[INET_ADDRSTRLEN];
@@ -529,15 +530,19 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 				ipaddr2 = &(tmp_sockaddr.sin_addr);
 				inet_ntop(AF_INET, ipaddr1, ipstr1, sizeof(ipstr1));
 				inet_ntop(AF_INET, ipaddr2, ipstr2, sizeof(ipstr2));
-				if (strcmp(ipstr1, ipstr2) != 0) {
-					/* The client is trying to reach a different cluster than what's known
-					 * So, just reach out to the one host provided and reply back instead
-					 * of connecting to the PBS_SERVER_INSTANCES of the default cluster
-					 */
-					pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
-					svr_connections[0].port = port;
-					return connect_to_server(0, svr_connections, extend_data);
-				}
+				if (strcmp(ipstr1, ipstr2) != 0)
+					connect_directly = 1;
+			} else
+				connect_directly = 1;	/* host info in pbs.conf is unreliable, go with what user provided */
+
+			if (connect_directly) {
+				/* The client is trying to reach a different cluster than what's known
+				 * So, just reach out to the one host provided and reply back instead
+				 * of connecting to the PBS_SERVER_INSTANCES of the default cluster
+				 */
+				pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
+				svr_connections[0].port = port;
+				return connect_to_server(0, svr_connections, extend_data);
 			}
 		}
 	}
