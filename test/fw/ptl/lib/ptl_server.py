@@ -74,18 +74,6 @@ try:
     PSYCOPG = True
 except:
     PSYCOPG = False
-
-try:
-    from ptl.lib.pbs_ifl import *
-    API_OK = True
-except:
-    try:
-        from ptl.lib.pbs_ifl_mock import *
-    except:
-        sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
-                         "to make it\n")
-        raise ImportError
-    API_OK = False
 from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsDeljobError, PbsDelresvError,
                                PbsDeleteError, PbsSelectError,
@@ -98,12 +86,12 @@ from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsQstopError, PbsResourceError,
                                PbsResvAlterError, PtlExpectError,
                                PbsConnectError, PbsServiceError,
-                               PbsInitServicesError)
+                               PbsInitServicesError, PbsMessageError)
 from ptl.lib.ptl_types import PbsAttribute
 from ptl.lib.ptl_constants import *
 from ptl.lib.ptl_entities import (Hook, Queue, Entity, Limit,
-                                  EquivClass)
-from ptl.lib.ptl_resourceresv import Job, Reservation
+                                  EquivClass, Resource)
+from ptl.lib.ptl_resourceresv import Job, Reservation, InteractiveJob
 from ptl.lib.ptl_sched import Scheduler
 from ptl.lib.ptl_mom import MoM
 from ptl.lib.ptl_service import PBSService, PBSInitServices

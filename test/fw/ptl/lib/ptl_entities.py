@@ -51,6 +51,10 @@ from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
 from ptl.lib.ptl_error import PbsManagerError
 from ptl.lib.ptl_object import PBSObject
+from ptl.lib.ptl_constants import (ATTR_resv_start, ATTR_job,
+                                   ATTR_resv_end, ATTR_resv_duration,
+                                   ATTR_count, ATTR_rescassn, ATTR_qtype,
+                                   ATTR_enable, ATTR_start, ATTR_total)
 
 
 class Resource(PBSObject):

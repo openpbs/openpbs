@@ -59,7 +59,11 @@ from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
 from ptl.lib.ptl_object import PBSObject
 from ptl.lib.ptl_constants import (ATTR_N, ATTR_j, ATTR_m, ATTR_v, ATTR_k,
                                    ATTR_p, ATTR_r, ATTR_Arglist,
-                                   ATTR_executable)
+                                   ATTR_executable, ATTR_S, ATTR_resv_start,
+                                   ATTR_job, ATTR_resv_end,
+                                   ATTR_resv_duration)
+from ptl.lib.ptl_types import (PbsTypeExecVnode, PbsTypeExecHost,
+                               PbsTypeSelect)
 
 
 class ResourceResv(PBSObject):
