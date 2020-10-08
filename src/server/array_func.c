@@ -570,12 +570,12 @@ void
 update_subjob_state_ct(job *pjob)
 {
 	char buf[BUF_SIZE];
-	static char *statename[] = {
+	const char *statename[] = {
 		"Transit", "Queued", "Held", "Waiting", "Running",
 		"Exiting", "Expired", "Beginning", "Moved", "Finished"};
 
 	buf[0] = '\0';
-	sprintf(buf, "%s:%d %s:%d %s:%d %s:%d",
+	snprintf(buf, sizeof(buf) - 1, "%s:%d %s:%d %s:%d %s:%d",
 		statename[JOB_STATE_QUEUED],
 		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED],
 		statename[JOB_STATE_RUNNING],
