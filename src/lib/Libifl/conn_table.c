@@ -45,10 +45,10 @@ static pbs_conn_t **connection = NULL;
 static int curr_connection_sz = 0;
 static int allocated_connection = 0;
 
-static int add_connection(int);
 static pbs_conn_t * get_connection(int);
 static int destroy_conntable(void);
 static void _destroy_connection(int);
+static int add_connection(int fd);
 
 #ifdef WIN32
 #define INVALID_SOCK(x) (x == INVALID_SOCKET || x < 0 || x >= PBS_LOCAL_CONNECTION)
@@ -128,12 +128,14 @@ add_connection(int fd)
 		if (pthread_mutex_init(&(connection[fd]->ch_mutex), &attr) != 0)
 			goto add_connection_err;
 		(void)pthread_mutexattr_destroy(&attr);
+		allocated_connection++;
 	} else {
 		if (connection[fd]->ch_errtxt)
 			free(connection[fd]->ch_errtxt);
 		connection[fd]->ch_errtxt = NULL;
 		connection[fd]->ch_errno = 0;
 	}
+
 	return 0;
 
 add_connection_err:
@@ -260,7 +262,6 @@ get_connection(int fd)
 	if ((fd >= curr_connection_sz) || (connection[fd] == NULL)) {
 		if (add_connection(fd) != 0)
 			return NULL;
-		allocated_connection++;
 	}
 	return connection[fd];
 }

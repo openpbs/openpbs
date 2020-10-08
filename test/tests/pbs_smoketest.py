@@ -1196,8 +1196,7 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.add_resource("foo, foo1, foo2, foo3", apply=True)
 
         attr = {'Resources_available.foo': True}
-        self.server.manager(MGR_CMD_SET, SERVER, attr,
-                            id=self.server.shortname)
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
 
         vnode_val = self.mom.shortname
         if self.mom.is_cpuset_mom():

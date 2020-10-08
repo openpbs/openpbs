@@ -261,7 +261,7 @@ main(int argc, char *argv[], char *envp[])
 		return (1);
 	}
 
-	(void)pbs_disconnect(sock);
+	(void)close(sock);
 	(void)fclose(stdout);
 	return (0);
 }
