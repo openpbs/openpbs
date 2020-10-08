@@ -331,7 +331,7 @@ e.reject()
         j.set_attributes({'Resource_List.select':
                           '1:ncpus=1:aoe=App1+1:ncpus=1',
                           'Resource_List.place': 'pack'})
-        j.set_sleep_time(5)
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.expect(JOB, ATTR_execvnode, id=jid, op=SET)
@@ -353,7 +353,7 @@ e.reject()
         j.set_attributes({'Resource_List.select':
                           '1:ncpus=1:aoe=App1+1:ncpus=1',
                           'Resource_List.place': 'scatter'})
-        j.set_sleep_time(5)
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
         self.server.expect(JOB, ATTR_execvnode, id=jid, op=SET)
         nodes = j.get_vnodes(j.exec_vnode)
