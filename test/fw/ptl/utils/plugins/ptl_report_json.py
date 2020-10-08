@@ -69,8 +69,7 @@ class PTLJsonData(object):
         :returns a formatted dictionary of the data
         """
         FMT = '%H:%M:%S.%f'
-        run_count = "Tests_run_count: " + \
-            str(PtlTextTestRunner.cur_repeat_count)
+        run_count = str(PtlTextTestRunner.cur_repeat_count)
         data_json = None
         if not prev_data:
             PTLJsonData.cur_repeat_count = 1
@@ -207,6 +206,7 @@ class PTLJsonData(object):
             m_avg['testsuites'][tsname] = {
                 'testcases': {}
             }
+            test_status = "PASS"
             for tcname in data_json['testsuites'][tsname]['testcases']:
                 m_avg['testsuites'][tsname]['testcases'][tcname] = []
                 t_sum = []
@@ -215,9 +215,11 @@ class PTLJsonData(object):
                 measurements_data = []
                 for key in j_data['results'].keys():
                     count += 1
-                    r_count = 'Tests_run_count: ' + str(count)
+                    r_count = str(count)
                     m_case = data_json['testsuites'][tsname]['testcases']
                     m = m_case[tcname]['results'][r_count]['measurements']
+                    if j_data['results'][r_count]['status'] is not "PASS":
+                        test_status = "FAIL"
                     m_sum = []
                     for i in range(len(m)):
                         sum_mean = 0
@@ -253,18 +255,18 @@ class PTLJsonData(object):
                     else:
                         t_sum = m_sum
                 m_list = []
-                for i in range(len(measurements_data)):
-                    m_data = {}
-                    if "test_measure" in measurements_data[i].keys():
-                        m_data = copy.deepcopy(measurements_data[i])
-                        m_data['test_data']['mean'] = t_sum[i][0] / count
-                        m_data['test_data']['std_dev'] = t_sum[i][1] / count
-                        m_data['test_data']['minimum'] = t_sum[i][2] / count
-                        m_data['test_data']['maximum'] = t_sum[i][3] / count
-                    else:
-                        m_data = measurements_data[i]
-                    m_list.append(m_data)
-                m_avg['testsuites'][tsname]['testcases'][tcname] = m_list
+                if test_status == "PASS":
+                    for i in range(len(measurements_data)):
+                        m_data = {}
+                        if "test_measure" in measurements_data[i].keys():
+                            m_data = copy.deepcopy(measurements_data[i])
+                            div = count
+                            m_data['test_data']['mean'] = t_sum[i][0] / div
+                            m_data['test_data']['std_dev'] = t_sum[i][1] / div
+                            m_data['test_data']['minimum'] = t_sum[i][2] / div
+                            m_data['test_data']['maximum'] = t_sum[i][3] / div
+                        m_list.append(m_data)
+                    m_avg['testsuites'][tsname]['testcases'][tcname] = m_list
         data_json["avg_measurements"] = m_avg
 
         data_json['result']['end'] = str(data['end_time'])
@@ -275,7 +277,7 @@ class PTLJsonData(object):
         fail_tests = []
         fail_ts = []
         for count in range(PtlTextTestRunner.cur_repeat_count):
-            r_count = 'Tests_run_count: ' + str(count + 1)
+            r_count = str(count + 1)
             fail_tests.extend(
                 data_json['test_summary'][r_count]['tests_with_failures'])
             fail_ts.extend(data_json['test_summary']
