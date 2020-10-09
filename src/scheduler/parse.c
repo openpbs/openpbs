@@ -522,19 +522,21 @@ parse_config(char *fname)
 						else
 							error = 1;
 
-						tok = strtok(NULL, DELIM);
-						if (tok == NULL)
-							sort_type = RF_AVAIL;
-						else {
-							if (!strcmp(tok, "total"))
+						if (!error) {
+							tok = strtok(NULL, DELIM);
+							if (tok == NULL)
 								sort_type = RF_AVAIL;
-							else if (!strcmp(tok, "assigned"))
-								sort_type = RF_ASSN;
-							else if (!strcmp(tok, "unused"))
-								sort_type = RF_UNUSED;
 							else {
-								free(sort_res_name);
-								error = 1;
+								if (!strcmp(tok, "total"))
+									sort_type = RF_AVAIL;
+								else if (!strcmp(tok, "assigned"))
+									sort_type = RF_ASSN;
+								else if (!strcmp(tok, "unused"))
+									sort_type = RF_UNUSED;
+								else {
+									free(sort_res_name);
+									error = 1;
+								}
 							}
 						}
 
