@@ -396,7 +396,7 @@ on_job_exit(struct work_task *ptask)
 			end_job(pjob, 1);
 			return;
 		} else if (rc > 0 && !hs)
-			svr_setjobstate(pjob, JOB_STATE_EXITING, JOB_SUBSTATE_EXITED);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
 	}
 
 	if (is_jattr_set(pjob, JOB_ATR_relnodes_on_stageout) &&

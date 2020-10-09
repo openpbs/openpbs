@@ -86,8 +86,10 @@ new_ds_queue(void)
 void
 free_ds_queue(ds_queue *queue)
 {
-	free(queue->content_arr);
-	free(queue);
+	if (queue != NULL) {
+		free(queue->content_arr);
+		free(queue);
+	}
 }
 
 
@@ -176,12 +178,13 @@ ds_dequeue(ds_queue *queue)
 int
 ds_queue_is_empty(ds_queue *queue)
 {
-	if (queue == NULL || queue->front == queue->rear) {
+	if (queue == NULL)
+		return 1;
+	if (queue->front == queue->rear) {
 		/* Make sure front and rear pointers are set to 0 */
 		queue->front = 0;
 		queue->rear = 0;
 		return 1;
-	}
-	else
+	} else
 		return 0;
 }
