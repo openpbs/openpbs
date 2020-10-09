@@ -2332,7 +2332,7 @@ class TestReservations(TestFunctional):
         runcmd = [os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                'pbs_rsub')]
         tz = ['PBS_TZID=' + self.get_tz()]
-        rule = ["-r \"freq=WEEKLY;BYDAY=SU;COUNT=3\""]
+        rule = ["-r 'freq=WEEKLY;BYDAY=SU;COUNT=3'"]
 
         runcmd = tz + runcmd + start + end + rule
         ret = self.du.run_cmd(self.server.hostname, runcmd, as_script=True)
@@ -2347,7 +2347,8 @@ class TestReservations(TestFunctional):
         # We calculate how far away is today than Sunday and move
         # the day ahead.
         n = d.weekday()
-        d += datetime.timedelta(6-n)
+        # If today is Sunday, move 7 days ahead, else move "6 - weekday()"
+        d += datetime.timedelta((6-n) if (6-n > 0) else 7)
         sunday = d.strftime('%a %b %d')
         start = time.strftime('%H:%M', time.localtime(now - 3600))
         sunday = sunday + " " + start
