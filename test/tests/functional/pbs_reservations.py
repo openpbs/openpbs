@@ -1340,7 +1340,7 @@ class TestReservations(TestFunctional):
 
         a = {ATTR_q: rid_q, ATTR_J: '1-4'}
         j2 = Job(TEST_USER, attrs=a)
-        j2.set_sleep_time(10)
+        j2.set_sleep_time(20)
         jid2 = self.server.submit(j2)
         subjid = []
         for i in range(1, 5):
@@ -1397,7 +1397,7 @@ class TestReservations(TestFunctional):
         # Submit another job-array with small sleep time than job j2
         a = {ATTR_q: rid_q, ATTR_J: '1-4'}
         j3 = Job(TEST_USER, attrs=a)
-        j3.set_sleep_time(10)
+        j3.set_sleep_time(20)
         jid3 = self.server.submit(j3)
         subjid2 = []
         for i in range(1, 5):
