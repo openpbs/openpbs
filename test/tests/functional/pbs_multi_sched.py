@@ -136,7 +136,6 @@ class TestMultipleSchedulers(TestFunctional):
                 self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': op},
                                     id=each)
 
-    @skipOnCpuSet
     def test_job_sort_formula_multisched(self):
         """
         Test that job_sort_formula can be set for each sched
@@ -204,7 +203,6 @@ class TestMultipleSchedulers(TestFunctional):
                 self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
                 self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-    @skipOnCpuSet
     def test_set_sched_priv(self):
         """
         Test sched_priv can be only set to valid paths
@@ -264,7 +262,6 @@ class TestMultipleSchedulers(TestFunctional):
         # Blocked by PP-1202 will revisit once its fixed
         # self.server.expect(SCHED, 'comment', id='sc1', op=UNSET)
 
-    @skipOnCpuSet
     def test_start_scheduler(self):
         """
         Test that scheduler wont start without appropriate folders created.
@@ -316,7 +313,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, {'state': 'scheduling'},
                            id='sc5', max_attempts=10)
 
-    @skipOnCpuSet
     def test_resource_sched_reconfigure(self):
         """
         Test all schedulers will reconfigure while creating,
@@ -365,7 +361,6 @@ class TestMultipleSchedulers(TestFunctional):
         # Blocked by PP-1202 will revisit once its fixed
         # self.server.manager(MGR_CMD_UNSET, SCHED, 'partition', id="sc2")
 
-    @skipOnCpuSet
     def test_job_queue_partition(self):
         """
         Test job submitted to a queue associated to a partition will land
@@ -398,7 +393,6 @@ class TestMultipleSchedulers(TestFunctional):
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
 
-    @skipOnCpuSet
     def test_multiple_queue_same_partition(self):
         """
         Test multiple queue associated with same partition
@@ -426,7 +420,6 @@ class TestMultipleSchedulers(TestFunctional):
             jid + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
 
-    @skipOnCpuSet
     def test_preemption_highp_queue(self):
         """
         Test preemption occures only within queues which are assigned
@@ -456,7 +449,6 @@ class TestMultipleSchedulers(TestFunctional):
             jid1 + ';Job preempted by suspension',
             max_attempts=10, starttime=t)
 
-    @skipOnCpuSet
     def test_preemption_two_sched(self):
         """
         Test two schedulers preempting jobs at the same time
@@ -516,7 +508,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=hj1_jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=hj2_jid)
 
-    @skipOnCpuSet
     def test_backfill_per_scheduler(self):
         """
         Test backfilling is applicable only per scheduler
@@ -548,7 +539,6 @@ class TestMultipleSchedulers(TestFunctional):
             jid4 + ';Job is a top job and will run at',
             max_attempts=5, starttime=t, existence=False)
 
-    @skipOnCpuSet
     def test_resource_per_scheduler(self):
         """
         Test resources will be considered only by scheduler
@@ -610,7 +600,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, a, id='sc1',
                            attrop=PTL_AND, max_attempts=10)
 
-    @skipOnCpuSet
     def test_job_sorted_per_scheduler(self):
         """
         Test jobs are sorted as per job_sort_formula
@@ -644,7 +633,6 @@ class TestMultipleSchedulers(TestFunctional):
                             {'scheduling': 'True'}, id="sc3")
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
 
-    @skipOnCpuSet
     def test_qrun_job(self):
         """
         Test jobs can be run by qrun by a newly created scheduler.
@@ -660,7 +648,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.runjob(jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-    @skipOnCpuSet
     def test_run_limts_per_scheduler(self):
         """
         Test run_limits applied at server level is
@@ -689,7 +676,6 @@ class TestMultipleSchedulers(TestFunctional):
         jc = "Not Running: User has reached server running job limit."
         self.server.expect(JOB, {'comment': jc}, id=jid4)
 
-    @skipOnCpuSet
     def test_multi_fairshare(self):
         """
         Test different schedulers have their own fairshare trees with
@@ -746,7 +732,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.assertEqual(n.nshares, sc3_shares)
         self.assertEqual(n.usage, sc3_usage)
 
-    @skipOnCpuSet
     def test_fairshare_usage(self):
         """
         Test the schedulers fairshare usage file and
@@ -982,7 +967,6 @@ class TestMultipleSchedulers(TestFunctional):
         n = self.scheds['sc1'].query_fairshare().get_node(name=str(TEST_USER))
         self.assertTrue(n.usage, 25)
 
-    @skipOnCpuSet
     def test_pbsfs_revert_to_defaults(self):
         """
         Test if revert_to_defaults() works properly with multi scheds.
@@ -1079,7 +1063,6 @@ class TestMultipleSchedulers(TestFunctional):
 
         return ret_jids
 
-    @skipOnCpuSet
     def test_equiv_multisched(self):
         """
         Test the basic behavior of job equivalence classes: submit two
@@ -1116,7 +1099,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc2'].log_match("Number of job equivalence classes: 2",
                                      max_attempts=10, starttime=t)
 
-    @skipOnCpuSet
     def test_limits_queues(self):
         """
         Test to see that jobs from different users fall into different
@@ -1216,7 +1198,6 @@ class TestMultipleSchedulers(TestFunctional):
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
 
-    @skipOnCpuSet
     def test_job_sort_formula_threshold(self):
         """
         Test the scheduler attribute job_sort_formula_threshold for multisched
@@ -1276,7 +1257,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'switch'})
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_enable': 't'})
 
-    @skipOnCpuSet
     def test_multi_sched_explicit_ps(self):
         """
         Test only_explicit_ps set to sched attr will be in affect
@@ -1328,7 +1308,6 @@ class TestMultipleSchedulers(TestFunctional):
                            'comment': 'Not Running: Placement set switch=A'
                            ' has too few free resources'}, id=j6id)
 
-    @skipOnCpuSet
     def test_jobs_do_not_span_ps(self):
         """
         Test do_not_span_psets set to sched attr will be in affect
@@ -1358,7 +1337,6 @@ class TestMultipleSchedulers(TestFunctional):
         j2id = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
 
-    @skipOnCpuSet
     def test_sched_preempt_enforce_resumption(self):
         """
         Test sched_preempt_enforce_resumption can be set to a multi sched
@@ -1443,7 +1421,6 @@ class TestMultipleSchedulers(TestFunctional):
         p_day = 'sunday'
         self.scheds[scid].holidays_set_day(p_day, p_hhmm, np_hhmm)
 
-    @skipOnCpuSet
     def test_prime_time_backfill(self):
         """
         Test opt_backfill_fuzzy can be set to a multi sched and
@@ -1487,7 +1464,6 @@ class TestMultipleSchedulers(TestFunctional):
         prime_mod = prime_start % 60  # ignoring the seconds
         self.assertEqual((prime_start - prime_mod), est_epoch)
 
-    @skipOnCpuSet
     def test_prime_time_multisched(self):
         """
         Test prime time queue can be set partition and multi sched
@@ -1516,7 +1492,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc2'].log_match(jid2 + ";Job only runs in primetime",
                                      starttime=self.server.ctime)
 
-    @skipOnCpuSet
     def test_dedicated_time_multisched(self):
         """
         Test dedicated time queue can be set partition and multi sched
@@ -1658,7 +1633,6 @@ class TestMultipleSchedulers(TestFunctional):
             "scheduler priv directory has changed to " + new_sched_priv,
             max_attempts=10, starttime=self.server.ctime)
 
-    @skipOnCpuSet
     def test_set_msched_update_inbuilt_attrs_accrue_type(self):
         """
         Test to make sure Multisched is able to update any one of the builtin
@@ -1690,7 +1664,6 @@ class TestMultipleSchedulers(TestFunctional):
         # This makes sure that accrue_type is indeed getting changed
         self.server.expect(JOB, {ATTR_accrue_type: 3}, id=jid2)
 
-    @skipOnCpuSet
     def test_multisched_not_crash(self):
         """
         Test to make sure Multisched does not crash when all nodes in partition
@@ -1720,7 +1693,6 @@ class TestMultipleSchedulers(TestFunctional):
         # If job goes to R state means scheduler is still alive.
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-    @skipOnCpuSet
     def test_multi_sched_job_sort_key(self):
         """
         Test to make sure that jobs are sorted as per
@@ -1743,7 +1715,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
-    @skipOnCpuSet
     def test_multi_sched_node_sort_key(self):
         """
         Test to make sure nodes are sorted in the order
@@ -1785,7 +1756,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
         self.check_vnodes(j, [vn[0]], jid4)
 
-    @skipOnCpuSet
     def test_multi_sched_priority_sockets(self):
         """
         Test scheduler socket connections from all the schedulers
@@ -1815,7 +1785,6 @@ class TestMultipleSchedulers(TestFunctional):
                             {'scheduling': 'True'}, id='sc2')
         self.server.log_match("processing priority socket", starttime=t)
 
-    @skipOnCpuSet
     def test_advance_resv_in_multi_sched(self):
         """
         Test that advance reservations in a multi-sched environment can be
@@ -1867,7 +1836,6 @@ class TestMultipleSchedulers(TestFunctional):
         result = {'job_state': 'R', 'exec_vnode': '(' + vn1 + ':ncpus=1)'}
         self.server.expect(JOB, result, id=jid4)
 
-    @skipOnCpuSet
     def test_resv_in_empty_multi_sched_env(self):
         """
         Test that advance reservations gets confirmed by all the schedulers
@@ -1894,7 +1862,6 @@ class TestMultipleSchedulers(TestFunctional):
         msg = "Resv;" + rid + ";Reservation denied"
         self.server.log_match(msg)
 
-    @skipOnCpuSet
     def test_asap_resv(self):
         """
         Test ASAP reservation in multisched environment. It should not
@@ -2026,7 +1993,6 @@ e.accept()
         self.assertIn("hook 'h1' encountered an exception",
                       e.exception.msg[0])
 
-    @skipOnCpuSet
     def test_resv_alter(self):
         """
         Test if a reservation confirmed by a multi-sched can be altered by the
@@ -2186,7 +2152,6 @@ e.accept()
         self.degraded_resv_reconfirm(start=now + 20, end=now + 200, run=True,
                                      rrule='FREQ=HOURLY;COUNT=2')
 
-    @skipOnCpuSet
     def test_resv_from_job_in_multi_sched_using_qsub(self):
         """
         Test that a user is able to create a reservation out of a job using
@@ -2209,7 +2174,6 @@ e.accept()
              'partition': 'P1'}
         self.server.expect(RESV, a, id=rid)
 
-    @skipOnCpuSet
     def test_resv_from_job_in_multi_sched_using_rsub(self):
         """
         Test that a user is able to create a reservation out of a job using

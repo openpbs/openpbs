@@ -46,7 +46,6 @@ class TestJobPurge(TestFunctional):
     This test suite tests the Job purge process
     """
 
-    @skipOnCpuSet
     def test_job_files_after_execution(self):
         """
         Checks the job related files and ensures that files are

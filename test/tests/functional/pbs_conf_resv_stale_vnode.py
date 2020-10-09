@@ -66,7 +66,6 @@ class TestResvStaleVnode(TestFunctional):
         self.scheduler.set_sched_config({'node_sort_key':
                                          '\"sort_priority HIGH\"'})
 
-    @skipOnCpuSet
     def test_conf_resv_stale_vnode(self):
         """
         Test that the scheduler won't confirm a reservation on a stale node.
@@ -99,7 +98,6 @@ class TestResvStaleVnode(TestFunctional):
         self.server.expect(RESV, a, id=rid)
         self.server.expect(RESV, a2, id=rid)
 
-    @skipOnCpuSet
     def test_stale_degraded(self):
         """
         Test that a reservation goes into the degraded state

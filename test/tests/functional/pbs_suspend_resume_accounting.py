@@ -72,7 +72,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
-    @skipOnCpuSet
     def test_suspend_resume_job_array_signal(self):
         """
         Test case to verify accounting suspend
@@ -134,7 +133,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
-    @skipOnCpuSet
     def test_suspend_resume_job_scheduler(self):
         """
         Test case to verify accounting suspend
@@ -233,7 +231,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
-    @skipOnCpuSet
     def test_resc_released_susp_resume_multi_vnode(self):
         """
         Test case to verify accounting of suspend/resume
@@ -282,7 +279,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         line = self.server.accounting_match(msg=record, id=jid1)[1]
         self.assertIn(resc_released, line)
 
-    @skipOnCpuSet
     def test_higher_priority_job_hook_reject(self):
         """
         Test case to verify accounting of suspend/resume

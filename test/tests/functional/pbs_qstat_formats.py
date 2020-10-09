@@ -309,7 +309,7 @@ class TestQstatFormats(TestFunctional):
         oneline_attr_count = sum(1 for line in open(
             qstat_oneline_out) if not line.isspace())
         map(os.remove, [qstat_dsv_script, qstat_dsv_out,
-            qstat_oneline_script, qstat_oneline_out])
+                        qstat_oneline_script, qstat_oneline_out])
         self.assertEqual(dsv_attr_count, oneline_attr_count)
 
     def test_json(self):
@@ -412,7 +412,6 @@ class TestQstatFormats(TestFunctional):
         except ValueError:
             self.assertTrue(False)
 
-    @skipOnCpuSet
     def test_qstat_json_valid_multiple_jobs_p(self):
         """
         Test json output of qstat -f is in valid format when multiple jobs are

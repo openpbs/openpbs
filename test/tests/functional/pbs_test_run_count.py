@@ -119,14 +119,16 @@ class Test_run_count(TestFunctional):
         self.server.expect(JOB, {ATTR_state: "H", ATTR_runcount: maxruncount},
                            attrop=PTL_AND, id=sjid)
         ja_comment = "Job Array Held, too many failed attempts to run subjob"
-        self.server.expect(JOB, {ATTR_state: "H", ATTR_comment: (MATCH_RE,
-                           ja_comment)}, attrop=PTL_AND, id=jid)
+        self.server.expect(JOB, {ATTR_state: "H",
+                                 ATTR_comment: (MATCH_RE, ja_comment)},
+                           attrop=PTL_AND, id=jid)
         self.disable_reject_begin_hook()
         self.server.rlsjob(jid, 's')
         self.server.expect(JOB, {ATTR_state: "R"}, id=sjid)
         ja_comment = "Job Array Began at"
-        self.server.expect(JOB, {ATTR_state: "B", ATTR_comment: (MATCH_RE,
-                           ja_comment)}, attrop=PTL_AND, id=jid)
+        self.server.expect(JOB, {ATTR_state: "B",
+                                 ATTR_comment: (MATCH_RE, ja_comment)},
+                           attrop=PTL_AND, id=jid)
 
     def test_run_count_subjob(self):
         """
@@ -141,7 +143,6 @@ class Test_run_count(TestFunctional):
         jid = self.server.submit(j)
         self.subjob_check(jid=jid, sjid=j.create_subjob_id(jid, 1))
 
-    @skipOnCpuSet
     def test_run_count_subjob_in_x(self):
         """
         Submit a job array and check if the subjob and the parent are getting
@@ -182,7 +183,6 @@ class Test_run_count(TestFunctional):
         self.subjob_check(jid, sjid, maxruncount="40")
         return sjid
 
-    @skipOnCpuSet
     def test_large_run_count_subjob_in_x(self):
         """
         Submit a job array and check if the subjob and the parent are getting

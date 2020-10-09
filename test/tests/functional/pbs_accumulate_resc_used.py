@@ -492,7 +492,6 @@ else:
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
-    @skipOnCpuSet
     def test_periodic(self):
         """
         Test accumulatinon of resources from an exechost_periodic hook.

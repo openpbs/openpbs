@@ -307,7 +307,6 @@ exit 0
             seq_id = {ATTR_max_job_sequence_id: val}
             self.server.manager(MGR_CMD_SET, SERVER, seq_id, runas=ROOT_USER)
 
-    @skipOnCpuSet
     def test_max_job_sequence_id_wrap(self):
         """
         Test to check the jobid's/resvid's are wrapping it to zero or not,

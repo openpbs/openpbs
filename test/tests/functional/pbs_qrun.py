@@ -53,7 +53,6 @@ class TestQrun(TestFunctional):
         self.pbs_exec = self.server.pbs_conf['PBS_EXEC']
         self.qrun = os.path.join(self.pbs_exec, 'bin', 'qrun')
 
-    @skipOnCpuSet
     def test_invalid_host_val(self):
         """
         Tests that pbs_server should not crash when the node list in
@@ -63,7 +62,7 @@ class TestQrun(TestFunctional):
         # submit a multi-chunk job
         j1 = Job(attrs={'Resource_List.select':
                         'ncpus=2:host=%s+ncpus=2:host=%s' %
-                 (self.mom.shortname, self.mom.shortname)})
+                        (self.mom.shortname, self.mom.shortname)})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
         exec_vnode = '"\'(%s)+(%s)\'"' % \
@@ -98,7 +97,6 @@ class TestQrun(TestFunctional):
         self.assertTrue(self.server.isUp(), msg)
         self.logger.info("As expected server is up and running")
 
-    @skipOnCpuSet
     def test_qrun_hangs(self):
         """
         This test submit 500 jobs with differnt equivalence class,
@@ -144,7 +142,6 @@ class TestQrun(TestFunctional):
                 self.logger.info("Runjob hung. Child process exit.")
                 self.fail("Qrun didn't start another sched cycle")
 
-    @skipOnCpuSet
     def test_qrun_subjob(self):
         """
         This test tests if PBS is able to qrun an array subjob

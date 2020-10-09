@@ -462,7 +462,6 @@ e.accept()
         self.server.expect(JOB, {'estimated.soft_walltime': 65}, op=GE,
                            id=jid)
 
-    @skipOnCpuSet
     def test_resv_conf_soft(self):
         """
         Test that there is no change in the reservation behavior with
@@ -485,7 +484,6 @@ e.accept()
         rid = self.server.submit(R)
         self.server.log_match(rid + ';reservation deleted', max_attempts=5)
 
-    @skipOnCpuSet
     def test_resv_conf_soft_with_hard(self):
         """
         Test that there is no change in the reservation behavior with
@@ -510,7 +508,6 @@ e.accept()
         rid = self.server.submit(R)
         self.server.log_match(rid + ';reservation deleted', max_attempts=5)
 
-    @skipOnCpuSet
     def test_resv_job_soft(self):
         """
         Test to see that a job with a soft walltime which would "end" before
@@ -539,7 +536,6 @@ e.accept()
              'Not Running: Job would conflict with reservation or top job'}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_resv_job_soft_hard(self):
         """
         Test to see that a job with a soft walltime and a hard walltime does
@@ -570,7 +566,6 @@ e.accept()
              'Not Running: Job would conflict with reservation or top job'}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_topjob(self):
         """
         Test that soft_walltime is used for calendaring of topjobs
@@ -612,7 +607,6 @@ e.accept()
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.compare_estimates(jid2, [jid3, jid4])
 
-    @skipOnCpuSet
     def test_topjob2(self):
         """
         Test a mixture of soft_walltime and walltime used in the calendar
@@ -656,7 +650,6 @@ e.accept()
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.compare_estimates(jid2, [jid3, jid4, jid5])
 
-    @skipOnCpuSet
     def test_filler_job(self):
         """
         Test to see if filler jobs will run based on their soft_walltime
@@ -691,7 +684,6 @@ e.accept()
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
 
-    @skipOnCpuSet
     def test_preempt_order(self):
         """
         Test if soft_walltime is used for preempt_order.  It should be used
@@ -1031,7 +1023,6 @@ e.accept()
                             est_soft_walltime}, op=GE,
                            extend='x', attrop=PTL_AND, id=jid)
 
-    @skipOnCpuSet
     def test_soft_job_array(self):
         """
         Test that soft walltime works similar way with subjobs as

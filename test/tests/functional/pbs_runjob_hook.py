@@ -78,7 +78,6 @@ else:
     j.Resource_List['foo_str'] = "foo_value"
 """
 
-    @skipOnCpuSet
     def test_array_sub_job_index(self):
         """
         Submit a job array. Check the array sub-job index value
@@ -100,7 +99,6 @@ else:
             self.server.log_match("sub_job_array_index=%d" % (i),
                                   starttime=self.server.ctime)
 
-    @skipOnCpuSet
     def test_array_sub_new_res_in_hook(self):
         """
         Insert site resource in runjob hook. Submit a job array.
@@ -130,7 +128,6 @@ else:
             m = 'E;' + re.escape(sid) + ';.*Resource_List.site=site_value'
             self.server.accounting_match(m, regexp=True)
 
-    @skipOnCpuSet
     def test_array_sub_res_persist_in_hook_forcereque(self):
         """
         set custom resource in runjob hook. Submit a job array.
@@ -191,7 +188,6 @@ else:
         for i in range(lower, upper + 1):
             self.server.log_match(m % (sid[i]), start_time)
 
-    @skipOnCpuSet
     def test_array_sub_res_persist_in_hook_qrerun(self):
         """
         set custom resource in runjob hook. Submit a job array.
@@ -259,7 +255,6 @@ else:
         self.server.log_match("sub_job_array_index=None",
                               starttime=self.server.ctime)
 
-    @skipOnCpuSet
     def test_reject_array_sub_job(self):
         """
         Test to check array subjobs,

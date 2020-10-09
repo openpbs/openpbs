@@ -42,7 +42,7 @@ from tests.functional import *
 
 
 class TestMomMockRun(TestFunctional):
-    @skipOnCpuSet
+
     def test_rsc_used(self):
         """
         Test that resources_used are set correctly by mom under mock run
