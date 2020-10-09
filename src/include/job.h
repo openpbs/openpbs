@@ -471,6 +471,7 @@ struct job {
 	int ji_updated;				    /* set to 1 if job's node assignment was updated */
 	time_t ji_walltime_stamp;		    /* time stamp for accumulating walltime */
 	struct work_task *ji_bg_hook_task;
+	struct work_task *ji_report_task;
 #ifdef WIN32
 	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
 #else	/* not WIN32 */

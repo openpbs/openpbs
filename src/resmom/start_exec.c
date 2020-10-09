@@ -2537,6 +2537,9 @@ report_failed_node_hosts_task(struct work_task *ptask)
 		log_err(-1, __func__, "task structure contains reference to NULL job");
 		return;
 	}
+	if (pjob->ji_report_task)
+		pjob->ji_report_task = NULL;
+
 	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING) ||
 	    !check_job_substate(pjob, JOB_SUBSTATE_PRERUN))
 		return;	/* job not longer waiting for healthy moms */
@@ -2626,7 +2629,7 @@ receive_pipe_request(int sd)
 			 * out on job_launch_delay.
 			 */
  			delay_value = 0.95 * job_launch_delay;
-			(void)set_task(WORK_Timed, time_now + delay_value, report_failed_node_hosts_task, pjob);
+			pjob->ji_report_task = set_task(WORK_Timed, time_now + delay_value, report_failed_node_hosts_task, pjob);
 		}
 	} else {
 		snprintf(msg, sizeof(msg), "ignoring unknown cmd %d", cmd);

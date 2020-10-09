@@ -339,6 +339,7 @@ job_alloc(void)
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
 	pj->ji_bg_hook_task = NULL;
+	pj->ji_report_task = NULL;
 	pj->ji_env.v_envp = NULL;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
@@ -573,6 +574,9 @@ job_free(job *pj)
 		}
 		delete_task(pj->ji_bg_hook_task);
 	}
+
+	if (pj->ji_report_task)
+		delete_task(pj->ji_report_task);
 
 	/*
 	 ** This gets rid of any dependent job structure(s) from ji_setup.
