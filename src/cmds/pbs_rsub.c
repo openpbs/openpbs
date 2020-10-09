@@ -94,6 +94,8 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char *keyword;
 	char *valuewd;
 	time_t t;
+	char *pc;
+	int hhmm = FALSE;
 
 	char time_buf[80];
 	char dur_buf[800];
@@ -101,7 +103,9 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	int opt_re_flg = FALSE;
 	int opt_inter_flg = FALSE;
 	int opt_res_req_flg = FALSE;
+	time_t time_now;
 
+	time_now = time(0);
 	while ((c = getopt(argc, argv, "D:E:I:l:m:M:N:q:r:R:u:U:g:G:H:W:-:")) != EOF) {
 		switch (c) {
 			case 'D':
@@ -114,7 +118,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 			case 'E':
 				opt_re_flg = TRUE;
-				t = cvtdate(optarg);
+				t = cvtdate(optarg, DONT_ADVANCE_DAY);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
 					set_attr_error_exit(&attrib, ATTR_resv_end, time_buf);
@@ -181,7 +185,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 			case 'R':
 				opt_re_flg = TRUE;
-				t = cvtdate(optarg);
+				t = cvtdate(optarg, DONT_ADVANCE_DAY);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
 					set_attr_error_exit(&attrib, ATTR_resv_start, time_buf);
@@ -191,6 +195,11 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					fprintf(stderr, "pbs_rsub: illegal -R time value\n");
 					errflg++;
 				}
+				if ((pc = strchr(optarg, (int)'.')) != 0) {
+					if ((pc - optarg) == 4)
+						hhmm = TRUE;
+				} else if ((strlen(optarg)) == 4)
+					hhmm = TRUE;
 				break;
 
 			case 'r':
@@ -336,6 +345,19 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		fprintf(stderr, "pbs_rsub: Start/End time cannot be used with --job option");
 		fprintf(stderr, "\n");
 		return (++errflg);
+	}
+
+	if ((hhmm == TRUE) && (dtstart < time_now)) {
+		/* if start time is in the past, move it to the next day */
+		time_t skew = 60*60*24;
+		dtstart += skew;
+		sprintf(time_buf, "%ld", (long)dtstart);
+		set_attr_error_exit(&attrib, ATTR_resv_start, time_buf);
+		if (dtend != 0) {
+			dtend += skew;
+			sprintf(time_buf, "%ld", (long)dtend);
+			set_attr_error_exit(&attrib, ATTR_resv_end, time_buf);
+		}
 	}
 
 	if (!errflg) {

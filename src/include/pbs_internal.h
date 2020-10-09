@@ -355,6 +355,12 @@ enum accrue_types {
 	JOB_EXIT
 };
 
+/* flag for cvtdate */
+enum cvtdate_flags {
+	DONT_ADVANCE_DAY = 0x01,
+	ADVANCE_DAY = 0x02
+};
+
 #define	ACCRUE_NEW	"0"
 #define	ACCRUE_INEL	"1"
 #define	ACCRUE_ELIG	"2"
@@ -458,7 +464,7 @@ DECLDIR char    *pbs_ispbsdir(char *, char *);
 DECLDIR int      pbs_isjobid(char *);
 DECLDIR int      check_job_name(char *, int);
 DECLDIR int      chk_Jrange(char *);
-DECLDIR time_t   cvtdate(char *);
+DECLDIR time_t   cvtdate(char *, int);
 DECLDIR int      locate_job(char *, char *, char *);
 DECLDIR int      parse_destination_id(char *, char **, char **);
 DECLDIR int      parse_at_list(char *, int, int);
@@ -534,7 +540,7 @@ extern char 	*pbs_ispbsdir(char *, char *);
 extern int 	pbs_isjobid(char *);
 extern int      check_job_name(char *, int);
 extern int      chk_Jrange(char *);
-extern time_t   cvtdate(char *);
+extern time_t   cvtdate(char *, int);
 extern int      locate_job(char *, char *, char *);
 extern int      parse_destination_id(char *, char **, char **);
 extern int      parse_at_list(char *, int, int);

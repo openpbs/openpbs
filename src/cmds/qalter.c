@@ -199,7 +199,7 @@ main(int argc, char **argv, char **envp) /* qalter */
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF)
 		switch (c) {
 			case 'a':
-				if ((after = cvtdate(optarg)) < 0) {
+				if ((after = cvtdate(optarg, ADVANCE_DAY)) < 0) {
 					fprintf(stderr, "qalter: illegal -a value\n");
 					errflg++;
 					break;
