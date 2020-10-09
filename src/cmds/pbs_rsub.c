@@ -94,6 +94,8 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	char *keyword;
 	char *valuewd;
 	time_t t;
+	char *pc;
+	int hhmm = FALSE;
 
 	char time_buf[80];
 	char dur_buf[800];
@@ -191,6 +193,11 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 					fprintf(stderr, "pbs_rsub: illegal -R time value\n");
 					errflg++;
 				}
+				if ((pc = strchr(optarg, (int)'.')) != 0) {
+					if ((pc - optarg) == 4)
+						hhmm = TRUE;
+				} else if ((strlen(optarg)) == 4)
+					hhmm = TRUE;
 				break;
 
 			case 'r':
@@ -336,6 +343,14 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 		fprintf(stderr, "pbs_rsub: Start/End time cannot be used with --job option");
 		fprintf(stderr, "\n");
 		return (++errflg);
+	}
+
+	if ((hhmm == TRUE) && (dtend != 0) && (dtend < dtstart)) {
+		/* if end time is behind the start time, move it to the next day */
+		time_t skew = 60*60*24;
+		dtend += skew;
+		sprintf(time_buf, "%ld", (long)dtend);
+		set_attr_error_exit(&attrib, ATTR_resv_end, time_buf);
 	}
 
 	if (!errflg) {

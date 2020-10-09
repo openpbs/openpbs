@@ -50,6 +50,16 @@ class TestReservations(TestFunctional):
     reservations
     """
 
+    def get_tz(self):
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+        return tzone
+
     def submit_reservation(self, select, start, end, user, rrule=None,
                            place='free', extra_attrs=None):
         """
@@ -61,14 +71,7 @@ class TestReservations(TestFunctional):
              'reserve_end': end,
              }
         if rrule is not None:
-            if 'PBS_TZID' in self.conf:
-                tzone = self.conf['PBS_TZID']
-            elif 'PBS_TZID' in os.environ:
-                tzone = os.environ['PBS_TZID']
-            else:
-                self.logger.info('Missing timezone, using America/Los_Angeles')
-                tzone = 'America/Los_Angeles'
-
+            tzone = self.get_tz()
             a.update({ATTR_resv_rrule: rrule, ATTR_resv_timezone: tzone})
 
         if extra_attrs:
@@ -2275,3 +2278,45 @@ class TestReservations(TestFunctional):
         solution = '(' + vn[0] + ':ncpus=2)+(' + resv_node2 + ':ncpus=1)'
         a = {'reserve_substate': '5', 'resv_nodes': solution}
         self.server.expect(RESV, a, id=rid)
+
+    def test_standing_resv_with_start_in_past(self):
+        """
+        Test that PBS accepts standing reservations with its start time in the
+        past and end time in future. Check that PBS treats this kind of
+        reservation as a reservation for the next day.
+        """
+
+        now = int(time.time())
+
+        # we cannot use self.server.submit to submit the reservation
+        # because we don't want to specify date in start and end options
+        start = [" -R " + time.strftime('%H%M', time.localtime(now - 3600))]
+        end = [" -E " + time.strftime('%H%M', time.localtime(now + 3600))]
+
+        runcmd = [os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                               'pbs_rsub')]
+        tz = ['PBS_TZID=' + self.get_tz()]
+        rule = ["-r 'freq=WEEKLY;BYDAY=SU;COUNT=3'"]
+
+        runcmd = tz + runcmd + start + end + rule
+        ret = self.du.run_cmd(self.server.hostname, runcmd, as_script=True)
+        self.assertEqual(ret['rc'], 0)
+        rid = ret['out'][0].split()[0]
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+        d = datetime.datetime.today()
+
+        # weekday() returns the weekday's index. Monday to Sunday (0 to 6)
+        # We calculate how far away is today than Sunday and move
+        # the day ahead.
+        n = d.weekday()
+        # If today is Sunday, move 7 days ahead, else move "6 - weekday()"
+        delta = (6 - n) if (6 - n > 0) else 7
+        d += datetime.timedelta(days=delta)
+        sunday = d.strftime('%a %b %d')
+        start = time.strftime('%H:%M', time.localtime(now - 3600))
+        sunday = sunday + " " + start
+
+        stat = self.server.status(RESV, 'reserve_start', id=rid)
+        self.assertIn(sunday, stat[0]['reserve_start'])
