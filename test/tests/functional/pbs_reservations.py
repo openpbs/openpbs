@@ -2348,7 +2348,8 @@ class TestReservations(TestFunctional):
         # the day ahead.
         n = d.weekday()
         # If today is Sunday, move 7 days ahead, else move "6 - weekday()"
-        d += datetime.timedelta((6-n) if (6-n > 0) else 7)
+        delta = (6 - n) if (6 - n > 0) else 7
+        d += datetime.timedelta(days=delta)
         sunday = d.strftime('%a %b %d')
         start = time.strftime('%H:%M', time.localtime(now - 3600))
         sunday = sunday + " " + start
