@@ -627,9 +627,9 @@ class TestPbsResvAlter(TestFunctional):
         The above operation is expected to be successful.
         """
         duration = 20
-        shift = 10
+        shift = 30
         offset = 10
-        sleep = 25
+        sleep = 45
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
         # Submit a job to the reservation.
@@ -1348,19 +1348,19 @@ class TestPbsResvAlter(TestFunctional):
         This test checks the alter of reservation name.
         """
         duration = 30
-        offset = 5
+        offset = 10
 
         rid1 = self.submit_and_confirm_reservation(
             offset, duration)
-        rid2 = self.submit_and_confirm_reservation(
-            offset, duration, standing=True)
         attr1 = {ATTR_N: "Adv_Resv"}
         self.server.alterresv(rid1[0], attr1)
+        attr1 = {'Reserve_Name': "Adv_Resv"}
+        self.server.expect(RESV, attr1, id=rid1[0])
+        rid2 = self.submit_and_confirm_reservation(
+            offset, duration, standing=True)
         attr2 = {ATTR_N: "Std_Resv"}
         self.server.alterresv(rid2[0], attr2)
-        attr1 = {'Reserve_Name': "Adv_Resv"}
         attr2 = {'Reserve_Name': "Std_Resv"}
-        self.server.expect(RESV, attr1, id=rid1[0])
         self.server.expect(RESV, attr2, id=rid2[0])
 
     def test_alter_user_permission(self):
