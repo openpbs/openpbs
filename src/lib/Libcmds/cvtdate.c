@@ -70,16 +70,13 @@
  *		mm = minute, [00, 59]
  *		SS = seconds, [00, 59]
  *
- * @param[in]	flag - flag to tell whether or not to advance a day when
- *		       day is not mentioned and time passed is in past.
- *
  * @return	time_t
  * @retval	number of seconds since epoch (Coordinated Univ. Time)
  * @retval	-1 if error.
  */
 
 time_t
-cvtdate(char *datestr, int flag)
+cvtdate(char *datestr)
 {
 	char	   buf[3];
 	time_t	   clock;
@@ -197,9 +194,9 @@ cvtdate(char *datestr, int flag)
 			if (tm.tm_min > 59)
 				return (-1);
 			if (day == 0)			/* day not specified */
-				if ((flag & ADVANCE_DAY) && ((tm.tm_hour < ptm->tm_hour) ||
+				if ((tm.tm_hour < ptm->tm_hour) ||
 					((tm.tm_hour == ptm->tm_hour) &&
-					(tm.tm_min <= ptm->tm_min))))
+					(tm.tm_min <= ptm->tm_min)))
 					tm.tm_mday++;	/* time for tomorrow */
 
 			break;

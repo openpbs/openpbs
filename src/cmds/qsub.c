@@ -2348,7 +2348,7 @@ process_opts(int argc, char **argv, int passet)
 			case 'a':
 				if_cmd_line(a_opt) {
 					a_opt = passet;
-					if ((after = cvtdate(optarg, ADVANCE_DAY)) < 0) {
+					if ((after = cvtdate(optarg)) < 0) {
 						fprintf(stderr, "qsub: illegal -a value\n");
 						errflg++;
 						break;
@@ -2710,7 +2710,7 @@ process_opts(int argc, char **argv, int passet)
 					} else if (strcmp(keyword, ATTR_resv_start) == 0) {
 						if_cmd_line(Resvstart_opt) {
 							Resvstart_opt = passet;
-							if ((after = cvtdate(valuewd, ADVANCE_DAY)) < 0) {
+							if ((after = cvtdate(valuewd)) < 0) {
 								fprintf(stderr, "%s", BAD_W);
 								errflg++;
 								break;
@@ -2721,7 +2721,7 @@ process_opts(int argc, char **argv, int passet)
 					} else if (strcmp(keyword, ATTR_resv_end) == 0) {
 						if_cmd_line(Resvend_opt) {
 							Resvend_opt = passet;
-							if ((after = cvtdate(valuewd, ADVANCE_DAY)) < 0) {
+							if ((after = cvtdate(valuewd)) < 0) {
 								fprintf(stderr, "%s", BAD_W);
 								errflg++;
 								break;

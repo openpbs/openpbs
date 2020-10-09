@@ -540,7 +540,7 @@ extern char 	*pbs_ispbsdir(char *, char *);
 extern int 	pbs_isjobid(char *);
 extern int      check_job_name(char *, int);
 extern int      chk_Jrange(char *);
-extern time_t   cvtdate(char *, int);
+extern time_t   cvtdate(char *);
 extern int      locate_job(char *, char *, char *);
 extern int      parse_destination_id(char *, char **, char **);
 extern int      parse_at_list(char *, int, int);

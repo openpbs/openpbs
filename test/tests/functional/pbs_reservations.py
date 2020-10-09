@@ -2342,6 +2342,10 @@ class TestReservations(TestFunctional):
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
         d = datetime.datetime.today()
+
+        # weekday() returns the weekday's index. Monday to Sunday (0 to 6)
+        # We calculate how far away is today than Sunday and move
+        # the day ahead.
         n = d.weekday()
         d += datetime.timedelta(6-n)
         sunday = d.strftime('%a %b %d')

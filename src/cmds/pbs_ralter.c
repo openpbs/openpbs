@@ -83,7 +83,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:U:G:D:l:W:")) != EOF) {
 		switch (c) {
 			case 'E':
-				t = cvtdate(optarg, ADVANCE_DAY);
+				t = cvtdate(optarg);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
 					set_attr_error_exit(&attrib, ATTR_resv_end, time_buf);
@@ -117,7 +117,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'R':
-				t = cvtdate(optarg, ADVANCE_DAY);
+				t = cvtdate(optarg);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
 					set_attr_error_exit(&attrib, ATTR_resv_start, time_buf);

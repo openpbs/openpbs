@@ -418,7 +418,7 @@ main(int argc, char **argv, char **envp) /* qselect */
 		switch (c) {
 			case 'a':
 				check_op(optarg, pop, optargout);
-				if ((after = cvtdate(optargout, ADVANCE_DAY)) < 0) {
+				if ((after = cvtdate(optargout)) < 0) {
 					fprintf(stderr, "qselect: illegal -a value\n");
 					errflg++;
 					break;
@@ -492,7 +492,7 @@ main(int argc, char **argv, char **envp) /* qselect */
 				/* 1st character possess the subopt, so send optarg++ */
 				optarg ++;
 				check_op(optarg, pop, optargout);
-				if ((after = cvtdate(optargout, ADVANCE_DAY)) < 0) {
+				if ((after = cvtdate(optargout)) < 0) {
 					fprintf(stderr, "qselect: illegal -t value\n");
 					errflg++;
 					break;
