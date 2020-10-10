@@ -58,24 +58,15 @@ from distutils.version import LooseVersion
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
 
-try:
-    from ptl.lib.pbs_ifl import *
-    API_OK = True
-except:
-    try:
-        from ptl.lib.pbs_ifl_mock import *
-    except:
-        sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
-                         "to make it\n")
-        raise ImportError
-    API_OK = False
-
-from ptl.lib.ptl_error import *
-from ptl.lib.ptl_types import *
-from ptl.lib.ptl_constants import *
-from ptl.lib.ptl_object import *
-from ptl.lib.ptl_service import *
-from ptl.lib.ptl_entities import *
+from ptl.lib.ptl_error import (PtlExpectError, PbsServiceError,
+                               PbsInitServicesError, PtlLogMatchError,
+                               PbsStatusError, PbsManagerError,
+                               PbsMomConfigError)
+from ptl.lib.ptl_constants import (MGR_CMD_DELETE, MGR_OBJ_NODE,
+                                   MGR_CMD_CREATE, MGR_CMD_IMPORT,
+                                   MGR_CMD_SET, ATTR_rescavail,
+                                   NODE, VNODE, HOOK, HOST)
+from ptl.lib.ptl_service import PBSService, PBSInitServices
 
 
 class MoM(PBSService):
@@ -158,10 +149,7 @@ class MoM(PBSService):
         # required by a test
         self.revert_to_default = True
 
-    def __del__(self):
-        del self.__dict__
-
-    def isUp(self, max_attempts=None):
+    def isUp(self, inst, max_attempts=None):
         """
         Check for PBS mom up
         """
@@ -169,7 +157,7 @@ class MoM(PBSService):
         if max_attempts is None:
             max_attempts = self.ptl_conf['max_attempts']
         for _ in range(max_attempts):
-            rv = super(MoM, self)._isUp(self)
+            rv = super(MoM, self)._isUp(inst)
             if rv:
                 break
             time.sleep(1)
@@ -187,25 +175,6 @@ class MoM(PBSService):
             except PtlExpectError:
                 rv = False
         return rv
-
-    def signal(self, sig):
-        """
-        Send signal to PBS mom
-        """
-        self.logger.info(self.logprefix + 'sent signal ' + sig)
-        return super(MoM, self)._signal(sig, inst=self)
-
-    def get_pid(self):
-        """
-        Get the PBS mom pid
-        """
-        return super(MoM, self)._get_pid(inst=self)
-
-    def all_instance_pids(self):
-        """
-        Get all pids of a instance
-        """
-        return super(MoM, self)._all_instance_pids(inst=self)
 
     def start(self, args=None, launcher=None):
         """
@@ -253,7 +222,7 @@ class MoM(PBSService):
         """
         Restart the PBS mom
         """
-        if self.isUp():
+        if self.isUp(self):
             if not self.stop():
                 return False
         return self.start(args=args)
@@ -404,8 +373,8 @@ class MoM(PBSService):
             if restart:
                 self.restart()
             else:
-                self.signal('-HUP')
-            return self.isUp()
+                self.signal(self, '-HUP')
+            return self.isUp(self)
         return True
 
     def save_configuration(self, outfile=None, mode='w'):
@@ -453,7 +422,7 @@ class MoM(PBSService):
         load mom configuration from saved file infile
         """
         rv = self._load_configuration(infile, MGR_OBJ_NODE)
-        self.signal('-HUP')
+        self.signal(self, '-HUP')
         return rv
 
     def is_cray(self):
@@ -851,7 +820,7 @@ class MoM(PBSService):
         if restart:
             return self.restart()
         elif hup:
-            return self.signal('-HUP')
+            return self.signal(self, '-HUP')
 
         return True
 

@@ -53,7 +53,7 @@ class TestMomJobDir(TestFunctional):
         and starts the server again.
         """
         self.server.stop()
-        self.assertFalse(self.server.isUp(), 'Failed to stop PBS')
+        self.assertFalse(self.server.isUp(self.server), 'Failed to stop PBS')
 
         conf = self.du.parse_pbs_config(self.server.hostname)
         self.du.set_pbs_config(
@@ -62,7 +62,7 @@ class TestMomJobDir(TestFunctional):
                    'PBS_SERVER': servername})
 
         self.server.start()
-        self.assertTrue(self.server.isUp(), 'Failed to start PBS')
+        self.assertTrue(self.server.isUp(self.server), 'Failed to start PBS')
         return
 
     def test_existing_directory_longid(self):

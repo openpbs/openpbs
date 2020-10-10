@@ -100,7 +100,7 @@ class TestHookTimeout(TestFunctional):
 
         # Make momB unresponsive
         self.logger.info("Stopping MomB")
-        self.momB.signal("-STOP")
+        self.momB.signal(self.momB, "-STOP")
 
         start_time = time.time()
 
@@ -184,5 +184,5 @@ class TestHookTimeout(TestFunctional):
             starttime=start_time)
 
     def tearDown(self):
-        self.momB.signal("-CONT")
+        self.momB.signal(self.momB, "-CONT")
         TestFunctional.tearDown(self)

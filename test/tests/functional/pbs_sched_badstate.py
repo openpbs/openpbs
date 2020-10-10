@@ -57,7 +57,7 @@ class TestSchedBadstate(TestFunctional):
           endless loop and test case has failed.
         """
 
-        self.mom.signal('-KILL')
+        self.mom.signal(self.mom, '-KILL')
 
         attr = {'state': 'free', 'resources_available.ncpus': '2'}
         self.server.manager(MGR_CMD_SET, NODE, attr, self.mom.shortname)
@@ -165,7 +165,7 @@ class TestSchedBadstate(TestFunctional):
         J = Job(attrs=a)
         jid3 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.mom.signal('-KILL')
+        self.mom.signal(self.mom, '-KILL')
         if self.mom.is_cpuset_mom():
             self.server.expect(VNODE, {'state': 'down,job-busy'},
                                id=vnode_id)

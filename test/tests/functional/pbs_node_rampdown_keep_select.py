@@ -257,11 +257,11 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
 
     def tearDown(self):
-        self.momA.signal("-CONT")
-        self.momB.signal("-CONT")
-        self.momC.signal("-CONT")
-        self.momD.signal("-CONT")
-        self.momE.signal("-CONT")
+        self.momA.signal(self.momA, "-CONT")
+        self.momB.signal(self.momB, "-CONT")
+        self.momC.signal(self.momC, "-CONT")
+        self.momD.signal(self.momD, "-CONT")
+        self.momE.signal(self.momE, "-CONT")
         TestFunctional.tearDown(self)
         # Delete managers and operators if added
         attrib = ['operators', 'managers']

@@ -240,9 +240,6 @@ class Scheduler(PBSService):
 
         self.version = None
 
-    def __del__(self):
-        del self.__dict__
-
     def setup_sched_priv(self, sched_priv=None):
         """
         Initialize Scheduler() member variables on initialization or if
@@ -299,37 +296,6 @@ class Scheduler(PBSService):
                 self.attributes = attrs[0]
         except (PbsManagerError, PbsStatusError) as e:
             self.logger.error('Error querying scheduler %s' % e.msg)
-
-    def isUp(self):
-        """
-        Check for PBS scheduler up
-        """
-        for _ in range(self.ptl_conf['max_attempts']):
-            rv = super(Scheduler, self)._isUp(self)
-            if rv:
-                break
-            time.sleep(1)
-        return rv
-
-    def signal(self, sig):
-        """
-        Send a signal to PBS scheduler
-        """
-        self.logger.info('scheduler ' + self.shortname + ': sent signal ' +
-                         sig)
-        return super(Scheduler, self)._signal(sig, inst=self)
-
-    def get_pid(self):
-        """
-        Get the PBS scheduler pid
-        """
-        return super(Scheduler, self)._get_pid(inst=self)
-
-    def all_instance_pids(self):
-        """
-        Get the all pids for the instance
-        """
-        return super(Scheduler, self)._all_instance_pids(inst=self)
 
     def start(self, sched_home=None, args=None, launcher=None):
         """
@@ -396,7 +362,7 @@ class Scheduler(PBSService):
         """
         Restart the PBS scheduler
         """
-        if self.isUp():
+        if self.isUp(self):
             if not self.stop():
                 return False
         return self.start()
@@ -704,8 +670,8 @@ class Scheduler(PBSService):
             raise PbsSchedConfigError(rc=1, rv=False, msg=m)
 
         if validate:
-            self.get_pid()
-            self.signal('-HUP')
+            self.get_pid(self)
+            self.signal(self, '-HUP')
             try:
                 self.log_match("Sched;reconfigure;Scheduler is reconfiguring",
                                starttime=reconfig_time)
@@ -873,7 +839,7 @@ class Scheduler(PBSService):
                              preserve_permission=False, sudo=True,
                              uid=self.user)
 
-        self.signal('-HUP')
+        self.signal(self, '-HUP')
         # Revert fairshare usage
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
         if self.sc_name is not 'default':
@@ -885,7 +851,7 @@ class Scheduler(PBSService):
             self.add_resource('hbmem')
         self.fairshare_tree = None
         self.resource_group = None
-        return self.isUp()
+        return self.isUp(self)
 
     def create_scheduler(self, sched_home=None):
         """
@@ -969,7 +935,7 @@ class Scheduler(PBSService):
         load scheduler configuration from saved file infile
         """
         rv = self._load_configuration(infile, MGR_OBJ_SCHED)
-        self.signal('-HUP')
+        self.signal(self, '-HUP')
         return rv
 
     def get_resources(self, exclude=[]):
@@ -1617,7 +1583,7 @@ class Scheduler(PBSService):
                                       msg=('error applying holidays file' +
                                            ret['err']))
         if hup:
-            rv = self.signal('-HUP')
+            rv = self.signal(self, '-HUP')
             if not rv:
                 raise PbsSchedConfigError(rc=1, rv=False,
                                           msg='error applying holidays file')
@@ -1745,7 +1711,7 @@ class Scheduler(PBSService):
                                       msg='error adding dedicated time')
 
         if hup:
-            ret = self.signal('-HUP')
+            ret = self.signal(self, '-HUP')
             if ret['rc'] != 0:
                 raise PbsSchedConfigError(rc=1, rv=False,
                                           msg='error adding dedicated time')
@@ -1753,13 +1719,13 @@ class Scheduler(PBSService):
         return True
 
     def terminate(self):
-        self.signal('-KILL')
+        self.signal(self, '-KILL')
 
     def valgrind(self):
         """
         run scheduler instance through valgrind
         """
-        if self.isUp():
+        if self.isUp(self):
             self.terminate()
 
         rv = CliUtils().check_bin('valgrind')
@@ -2071,8 +2037,8 @@ class Scheduler(PBSService):
                                              parent_name=parent,
                                              nshares=nshares)
         if validate:
-            self.get_pid()
-            self.signal('-HUP')
+            self.get_pid(self)
+            self.signal(self, '-HUP')
             try:
                 self.log_match("Sched;reconfigure;Scheduler is reconfiguring",
                                starttime=reconfig_time)

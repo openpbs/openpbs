@@ -60,7 +60,7 @@ class Test_job_status_after_mom_hup(TestFunctional):
         jid = self.server.submit(job)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        self.mom.signal('-HUP')
+        self.mom.signal(self.mom, '-HUP')
 
         sleep(2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)

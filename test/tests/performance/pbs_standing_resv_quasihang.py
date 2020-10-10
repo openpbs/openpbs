@@ -88,7 +88,7 @@ class StandingResvQuasihang(TestPerformance):
         # confirmed, hence the interval of 5 seconds.
         self.server.expect(RESV, attrs, id=rid, interval=5)
 
-        self.mom.signal('-HUP')
+        self.mom.signal(self.mom, '-HUP')
 
         # sleep for 5 seconds so that the HUP takes its effect.
         time.sleep(5)

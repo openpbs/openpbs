@@ -53,7 +53,7 @@ class Test_hook_perf_stat(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         self.mom.add_config({'$logevent': 4095})
-        self.mom.signal('-HUP')
+        self.mom.signal(self.mom, '-HUP')
 
         self.hook_content = """
 import pbs

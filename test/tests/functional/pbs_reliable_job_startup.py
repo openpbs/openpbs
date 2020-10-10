@@ -1188,11 +1188,11 @@ if e.job.in_ms_mom():
         self.stime = time.time()
 
     def tearDown(self):
-        self.momA.signal("-CONT")
-        self.momB.signal("-CONT")
-        self.momC.signal("-CONT")
-        self.momD.signal("-CONT")
-        self.momE.signal("-CONT")
+        self.momA.signal(self.momA, "-CONT")
+        self.momB.signal(self.momB, "-CONT")
+        self.momC.signal(self.momC, "-CONT")
+        self.momD.signal(self.momD, "-CONT")
+        self.momE.signal(self.momE, "-CONT")
         self.momA.unset_mom_config('$sister_join_job_alarm', False)
         self.momA.unset_mom_config('$job_launch_delay', False)
         a = {'state': (DECR, 'offline')}
@@ -1580,7 +1580,7 @@ pbs_tmrsh %s hostname
         c = {'$job_launch_delay': job_launch_delay}
         self.momA.add_config(c)
 
-        self.momA.signal("-HUP")
+        self.momA.signal(self.momA, "-HUP")
 
         self.momA.log_match(
             "sister_join_job_alarm;%d" % (sis_join_alarm,), max_attempts=5,
@@ -1618,7 +1618,7 @@ pbs_tmrsh %s hostname
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # temporarily suspend momB, simulating a failed mom host.
-        self.momB.signal("-STOP")
+        self.momB.signal(self.momB, "-STOP")
         jid = self.create_and_submit_job('job1')
         # Job gets queued and reflects the incremented values from queuejob
         # hook
@@ -1976,7 +1976,7 @@ if not e.job.in_ms_mom() and (localnode == '%s'):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         # temporarily suspend momB, simulating a failed mom host.
-        self.momB.signal("-STOP")
+        self.momB.signal(self.momB, "-STOP")
 
         jid = self.create_and_submit_job('job1')
         # Job gets queued and reflects the incremented values from queuejob
@@ -3582,7 +3582,7 @@ pbs_tmrsh %s hostname
                                   self.job1_sel_esc)
 
         # temporarily suspend momD, simulating a failed mom host.
-        self.momD.signal("-KILL")
+        self.momD.signal(self.momD, "-KILL")
         self.momA.log_match("im_eof, Premature end of message.+on stream 4",
                             n=10, max_attempts=30, interval=2, regexp=True)
 
@@ -3838,7 +3838,7 @@ pbsdsh -n 2 hostname
                                   self.job1_sel_esc)
 
         # temporarily suspend momD, simulating a failed mom host.
-        self.momD.signal("-KILL")
+        self.momD.signal(self.momD, "-KILL")
 
         self.momA.log_match(
             "Job;%s;im_eof, lost communication with %s.+killing job now" % (
@@ -5522,13 +5522,13 @@ pbs_tmrsh %s hostname
             "Job;%s;sleeping for 30 secs" % (jid, ), n=10)
 
         # temporarily suspend momE, simulating a radio silent mom.
-        self.momE.signal("-STOP")
+        self.momE.signal(self.momE, "-STOP")
 
         self.momC.log_match(
             "Job;%s;sleeping for 30 secs" % (jid, ), n=10)
 
         # temporarily suspend momC, simulating a radio silent mom.
-        self.momC.signal("-STOP")
+        self.momC.signal(self.momC, "-STOP")
 
         # sleep as long as the time primary mom waits for all
         # prologue hook acknowledgement from the sister moms

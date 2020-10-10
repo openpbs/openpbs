@@ -1290,7 +1290,7 @@ class TestPbsResvAlter(TestFunctional):
             offset, duration, select="1:ncpus=2", standing=True)
         self.mom.stop()
         msg = 'mom is not down'
-        self.assertFalse(self.mom.isUp(max_attempts=5), msg)
+        self.assertFalse(self.mom.isUp(self.mom, max_attempts=5), msg)
         attrs = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         self.server.expect(RESV, attrs, id=rid1)
         self.server.expect(RESV, attrs, id=rid2)

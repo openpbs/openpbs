@@ -1024,7 +1024,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         self.server.restart()
 
-        self.assertTrue(self.server.isUp())
+        self.assertTrue(self.server.isUp(self.server))
         self.server.expect(NODE, {'state': 'free'}, id=self.mom.shortname)
         self.server.expect(NODE, 'jobs', op=UNSET, id=self.mom.shortname)
 
@@ -1082,7 +1082,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         self.server.restart()
 
-        self.assertTrue(self.server.isUp())
+        self.assertTrue(self.server.isUp(self.server))
         self.server.expect(NODE,
                            {'state': 'free',
                             'resources_assigned.ncpus': 0,

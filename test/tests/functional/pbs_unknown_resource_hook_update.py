@@ -71,7 +71,7 @@ class TestUnknownResourceHookUpdate(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
 
         # Make sure the server is still up
-        self.server.isUp()
+        self.server.isUp(self.server)
 
         # Server_logs would only show the first resource it has failed to
         # update

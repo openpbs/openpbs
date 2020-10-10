@@ -110,7 +110,7 @@ exit 0
         # Stop the PBS server
         self.server.stop()
         stop_msg = 'Failed to stop PBS'
-        self.assertFalse(self.server.isUp(), stop_msg)
+        self.assertFalse(self.server.isUp(self.server), stop_msg)
         # Create a shell script file and update the database
         conf_path = self.du.get_pbs_conf_file()
         fn = self.du.create_temp_file(
@@ -123,7 +123,7 @@ exit 0
         # Start the PBS server
         start_msg = 'Failed to restart PBS'
         self.server.start()
-        self.assertTrue(self.server.isUp(), start_msg)
+        self.assertTrue(self.server.isUp(self.server), start_msg)
 
     def stop_and_restart_svr(self, restart_type):
         """
@@ -144,7 +144,7 @@ exit 0
             # The server failed to start
             raise self.failureException("Server failed to start:" + e.msg)
         restart_msg = 'Failed to restart PBS'
-        self.assertTrue(self.server.isUp(), restart_msg)
+        self.assertTrue(self.server.isUp(self.server), restart_msg)
 
     def submit_job(self, sleep=10, lower=0,
                    upper=0, job_id=None, job_msg=None, verify=False):

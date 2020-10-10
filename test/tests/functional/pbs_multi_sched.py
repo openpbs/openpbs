@@ -814,7 +814,7 @@ class TestMultipleSchedulers(TestFunctional):
         t = time.time()
         self.scheds['sc1'].restart()
         # Check the multisched 'sc1' usage file whether it's updating or not
-        self.assertTrue(self.scheds['sc1'].isUp())
+        self.assertTrue(self.scheds['sc1'].isUp(self.scheds['sc1']))
         # The scheduler will set scheduler attributes on the first scheduling
         # cycle, so we need to trigger a cycle, have the scheduler configure,
         # then turn it off again

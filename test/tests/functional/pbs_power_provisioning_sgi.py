@@ -212,7 +212,7 @@ def NodesetDelete( nodeset_name ):
                 "Hook;PBS_power.HK;copy hook-related file request received",
                 starttime=self.server.ctime, max_attempts=60)
             self.assertTrue(s)
-            mom.signal("-HUP")
+            mom.signal(mom, "-HUP")
 
     def submit_job(self, secs=10, attr=None):
         """

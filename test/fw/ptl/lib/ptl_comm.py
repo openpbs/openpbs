@@ -86,7 +86,7 @@ class Comm(PBSService):
             snap = self.server.snap
         if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
             snapmap = self.server.snapmap
-        PBSService.__init__(self, name, attrs, self.dflt_attributes,
+        super.__init__(name, attrs, self.dflt_attributes,
                             pbsconf_file, snapmap, snap)
         _m = ['Comm ', self.shortname]
         if pbsconf_file is not None:
@@ -99,39 +99,6 @@ class Comm(PBSService):
         }
         self.pi = PBSInitServices(hostname=self.hostname,
                                   conf=self.pbs_conf_file)
-
-    def __del__(self):
-        del self.__dict__
-
-    def isUp(self):
-        """
-        Check for comm up
-        """
-        for _ in range(self.ptl_conf['max_attempts']):
-            rv = super(Comm, self)._isUp(self)
-            if rv:
-                break
-            time.sleep(1)
-        return rv
-
-    def signal(self, sig):
-        """
-        Send signal to comm
-        """
-        self.logger.info(self.logprefix + 'sent signal ' + sig)
-        return super(Comm, self)._signal(sig, inst=self)
-
-    def get_pid(self):
-        """
-        Get the comm pid
-        """
-        return super(Comm, self)._get_pid(inst=self)
-
-    def all_instance_pids(self):
-        """
-        Get all pids of given instance
-        """
-        return super(Comm, self)._all_instance_pids(inst=self)
 
     def start(self, args=None, launcher=None):
         """
@@ -179,7 +146,7 @@ class Comm(PBSService):
         """
         Restart the comm.
         """
-        if self.isUp():
+        if self.isUp(self):
             if not self.stop():
                 return False
         return self.start()

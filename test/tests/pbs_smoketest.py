@@ -780,8 +780,8 @@ class SmokeTest(PBSTestSuite):
         """
         svr_obj = Server()
         comm = Comm(svr_obj)
-        comm.isUp()
-        comm.signal('-HUP')
+        comm.isUp(comm)
+        comm.signal(comm, '-HUP')
         comm.stop()
         comm.start()
         comm.log_match('Thread')

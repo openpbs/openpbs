@@ -1639,9 +1639,9 @@ class TestReservations(TestFunctional):
                                id=job, extend='x')
 
         # Verify pbs_server and pbs_scheduler is up
-        if not self.server.isUp():
+        if not self.server.isUp(self.server):
             self.fail("Server is not up")
-        if not self.scheduler.isUp():
+        if not self.scheduler.isUp(self.server):
             self.fail("Scheduler is not up")
 
     def test_standing_resv_with_job_array(self):
@@ -2101,9 +2101,9 @@ class TestReservations(TestFunctional):
         for jid in jids:
             self.server.expect(JOB, exp_attrib, id=jid, extend='x')
         # Verify all the PBS daemons are up and running upon resv completion
-        self.server.isUp()
-        self.mom.isUp()
-        self.scheduler.isUp()
+        self.server.isUp(self.server)
+        self.mom.isUp(self.mom)
+        self.scheduler.isUp(self.scheduler)
 
     def test_standing_resv_with_multivnode_job_array(self):
         """

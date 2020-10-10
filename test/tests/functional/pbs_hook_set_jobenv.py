@@ -993,7 +993,7 @@ pbs.logmsg(pbs.LOG_DEBUG,
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
         # kill -9 mom
-        self.mom.signal('-KILL')
+        self.mom.signal(self.mom, '-KILL')
 
         # now restart mom
         self.mom.start()

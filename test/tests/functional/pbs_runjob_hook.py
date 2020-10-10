@@ -177,7 +177,7 @@ else:
         # bring back mom
         self.mom.start()
         start_time = time.time()
-        self.mom.isUp()
+        self.mom.isUp(self.mom)
         # let subjobs get rerun from sched Q->R
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})

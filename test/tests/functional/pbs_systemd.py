@@ -55,29 +55,29 @@ class Test_systemd(TestFunctional):
             self.skipTest("Systemctl command not found")
 
     def shutdown_all(self):
-        if self.server.isUp():
+        if self.server.isUp(self.server):
             self.server.stop()
-        if self.scheduler.isUp():
+        if self.scheduler.isUp(self.scheduler):
             self.scheduler.stop()
-        if self.comm.isUp():
+        if self.comm.isUp(self.comm):
             self.comm.stop()
-        if self.mom.isUp():
+        if self.mom.isUp(self.mom):
             self.mom.stop()
 
     def start_using_systemd(self):
         cmd = "systemctl start pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if ('1' == self.server.pbs_conf['PBS_START_SERVER'] and
-                not self.server.isUp()):
+                not self.server.isUp(self.server)):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_SCHED'] and
-                not self.scheduler.isUp()):
+                not self.scheduler.isUp(self.scheduler)):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_COMM'] and
-                not self.comm.isUp()):
+                not self.comm.isUp(self.comm):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_MOM'] and
-                not self.mom.isUp()):
+                not self.mom.isUp(self.mom)):
             return False
         return True
 
@@ -85,14 +85,16 @@ class Test_systemd(TestFunctional):
         cmd = "systemctl stop pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if ('1' == self.server.pbs_conf['PBS_START_SERVER'] and
-                self.server.isUp()):
+                self.server.isUp(self.server)):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_SCHED'] and
-                self.scheduler.isUp()):
+                self.scheduler.isUp(self.scheduler)):
             return False
-        if '1' == self.server.pbs_conf['PBS_START_COMM'] and self.comm.isUp():
+        if ('1' == self.server.pbs_conf['PBS_START_COMM'] and
+                self.comm.isUp(self.comm)):
             return False
-        if '1' == self.server.pbs_conf['PBS_START_MOM'] and self.mom.isUp():
+        if ('1' == self.server.pbs_conf['PBS_START_MOM'] and
+                self.mom.isUp(self.mom)):
             return False
         return True
 

@@ -158,7 +158,7 @@ class TestVnodePool(TestFunctional):
         start_time = time.time()
 
         # Kill inventory mom
-        inv_mom.signal('-KILL')
+        inv_mom.signal(inv_mom, '-KILL')
 
         # Check that former inventory mom is down
         rv = self.server.expect(

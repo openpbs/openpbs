@@ -92,7 +92,7 @@ class TestHighResLogging(TestFunctional):
         a = {'PBS_LOG_HIGHRES_TIMESTAMP': highrestimestamp}
         self.du.set_pbs_config(hostname=hostname, confs=a, append=True)
         PBSInitServices().restart()
-        self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
+        self.assertTrue(self.server.isUp(self.server), 'Failed to restart PBS Daemons')
 
     def test_disabled(self):
         """

@@ -210,14 +210,14 @@ time.sleep(2)
 
         # Simulate a sister failure to join job
         # kill -STOP momC, submit a multi-node job, kill -9 momC
-        self.momC.signal("-STOP")
+        self.momC.signal(self.momC, "-STOP")
         stime = time.time()
         jid = self.server.submit(self.j)
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)
         exechost = job_stat[0]['exec_host'].split('/')[0]
         pri_mom = self.moms[exechost]
-        self.momC.signal("-KILL")
+        self.momC.signal(self.momC, "-KILL")
         msg = "Job;%s;job_start_error.+from node %s " % (
             jid, self.momC.hostname) + "could not JOIN_JOB successfully"
         msg_abort = "called execjob_abort hook"
@@ -256,14 +256,14 @@ time.sleep(2)
 
         # Simulate a sister failure to join job
         # kill -STOP momC, submit a multi-node job, kill -9 momC
-        self.momC.signal("-STOP")
+        self.momC.signal(self.momC, "-STOP")
         stime = time.time()
         jid = self.server.submit(self.j)
         self.server.expect(JOB, 'exec_host', id=jid, op=SET)
         job_stat = self.server.status(JOB, id=jid)
         exechost = job_stat[0]['exec_host'].split('/')[0]
         pri_mom = self.moms[exechost]
-        self.momC.signal("-KILL")
+        self.momC.signal(self.momC, "-KILL")
 
         msg = "Job;%s;job_start_error.+from node %s " % (
             jid, self.momC.hostname) + "could not JOIN_JOB successfully"

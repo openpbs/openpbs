@@ -388,17 +388,19 @@ class Server(PBSService):
         super(Server, self).set_attributes(a)
         self.__dict__.update(a)
 
-    def isUp(self):
+    def isUp(self, inst, max_attempts=None):
         """
         returns ``True`` if server is up and ``False`` otherwise
         """
+        if max_attempts is None:
+            max_attempts = self.ptl_conf['max_attempts']
         if self.has_snap:
             return True
         i = 0
         op_mode = self.get_op_mode()
         if ((op_mode == PTL_API) and (self._conn is not None)):
             self._disconnect(self._conn, force=True)
-        while i < self.ptl_conf['max_attempts']:
+        while i < max_attempts:
             rv = False
             try:
                 if op_mode == PTL_CLI:
@@ -411,7 +413,7 @@ class Server(PBSService):
                 # if the status/connect operation fails then there might be
                 # chances that server process is running but not responsive
                 # so we wait until the server is reported operational.
-                rv = self._isUp(self)
+                rv = self._isUp(inst)
                 # We really mean to check != False rather than just "rv"
                 if str(rv) != 'False':
                     self.logger.warning('Server process started' +
@@ -423,28 +425,6 @@ class Server(PBSService):
                     # server is actually down
                     return False
         return False
-
-    def signal(self, sig):
-        """
-        Send signal to server
-
-        :param sig: Signal to send
-        :type sig: str
-        """
-        self.logger.info('server ' + self.shortname + ': sent signal ' + sig)
-        return super(Server, self)._signal(sig, inst=self)
-
-    def get_pid(self):
-        """
-        Get the server pid
-        """
-        return super(Server, self)._get_pid(inst=self)
-
-    def all_instance_pids(self):
-        """
-        Get all pids for a given instance
-        """
-        return super(Server, self)._all_instance_pids(inst=self)
 
     def start(self, args=None, launcher=None):
         """
@@ -467,7 +447,7 @@ class Server(PBSService):
                                           msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
-        if self.isUp():
+        if self.isUp(self):
             return rv
         else:
             raise PbsServiceError(rv=False, rc=1, msg=rv['err'])
@@ -498,7 +478,7 @@ class Server(PBSService):
         """
         Terminate and start a PBS server.
         """
-        if self.isUp():
+        if self.isUp(self):
             if not self.stop():
                 return False
         return self.start()
@@ -658,7 +638,7 @@ class Server(PBSService):
                                      dest=self.atom_cf, mode=0o644, sudo=True)
                     dohup = True
                 if dohup:
-                    self.signal('-HUP')
+                    self.signal(self, '-HUP')
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
             a = {ATTR_enable: 'false'}
@@ -1081,9 +1061,6 @@ class Server(PBSService):
 #
 # Begin IFL Wrappers
 #
-
-    def __del__(self):
-        del self.__dict__
 
     def status(self, obj_type=SERVER, attrib=None, id=None,
                extend=None, level=logging.INFO, db_access=None, runas=None,
@@ -4991,6 +4968,104 @@ class Server(PBSService):
 
         return utilization
 
+    def create_vnodes(self, name=None, attrib=None, num=1, mom=None,
+                      additive=False, sharednode=True, restart=True,
+                      delall=True, natvnode=None, usenatvnode=False,
+                      attrfunc=None, fname=None, vnodes_per_host=1,
+                      createnode=True, expect=True):
+        """
+        helper function to create vnodes.
+
+        :param name: prefix name of the vnode(s) to create
+        :type name: str or None
+        :param attrib: attributes to assign to each node
+        :param num: the number of vnodes to create. Defaults to 1
+        :type num: int
+        :param mom: the MoM object on which the vnode definition is
+                    to be inserted
+        :param additive: If True, vnodes are added to the existing
+                         vnode defs.Defaults to False.
+        :type additive: bool
+        :param sharednode: If True, all vnodes will share the same
+                           host.Defaults to True.
+        :type sharednode: bool
+        :param restart: If True the MoM will be restarted.
+        :type restart: bool
+        :param delall: If True delete all server nodes prior to
+                       inserting vnodes
+        :type delall: bool
+        :param natvnode: name of the natural vnode.i.e. The node
+                         name in qmgr -c "create node <name>"
+        :type natvnode: str or None
+        :param usenatvnode: count the natural vnode as an
+                            allocatable node.
+        :type usenatvnode: bool
+        :param attrfunc: an attribute=value function generator,
+                         see create_vnode_def
+        :param fname: optional name of the vnode def file
+        :type fname: str or None
+        :param vnodes_per_host: number of vnodes per host
+        :type vnodes_per_host: int
+        :param createnode: whether to create the node via manage or
+                           not. Defaults to True
+        :type createnode: bool
+        :param expect: whether to expect attributes to be set or
+                       not. Defaults to True
+        :type expect: bool
+        :returns: True on success and False otherwise
+        """
+        if mom is None or name is None or attrib is None:
+            self.logger.error("name, attributes, and mom object are required")
+            return False
+
+        if natvnode is None:
+            natvnode = mom.shortname
+
+        if delall:
+            try:
+                rv = self.manager(MGR_CMD_DELETE, NODE, None, "")
+                if rv != 0:
+                    return False
+            except PbsManagerError:
+                pass
+
+        vdef = mom.create_vnode_def(name, attrib, num, sharednode,
+                                    usenatvnode=usenatvnode, attrfunc=attrfunc,
+                                    vnodes_per_host=vnodes_per_host)
+        mom.insert_vnode_def(vdef, fname=fname, additive=additive,
+                             restart=restart)
+
+        new_vnodelist = []
+        if usenatvnode:
+            new_vnodelist.append(natvnode)
+            num_check = num - 1
+        else:
+            num_check = num
+        for i in range(num_check):
+            new_vnodelist.append("%s[%s]" % (name, i))
+
+        if createnode:
+            try:
+                statm = self.status(NODE, id=natvnode)
+            except:
+                statm = []
+            if len(statm) >= 1:
+                _m = 'Mom %s already exists, not creating' % (natvnode)
+                self.logger.info(_m)
+            else:
+                if mom.pbs_conf and 'PBS_MOM_SERVICE_PORT' in mom.pbs_conf:
+                    m_attr = {'port': mom.pbs_conf['PBS_MOM_SERVICE_PORT']}
+                else:
+                    m_attr = None
+                self.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
+        # only expect if vnodes were added rather than the nat vnode modified
+        if expect and num > 0:
+            attrs = {'state': 'free'}
+            attrs.update(attrib)
+            for vn in new_vnodelist:
+                self.expect(VNODE, attrs, id=vn)
+        return True
+
     def create_moms(self, name=None, attrib=None, num=1, delall=True,
                     createnode=True, conf_prefix='pbs.conf_m',
                     home_prefix='pbs_m', momhosts=None, init_port=15011,
@@ -5035,7 +5110,7 @@ class Server(PBSService):
                   The step number must be greater or equal to 2.
         """
 
-        if not self.isUp():
+        if not self.isUp(self):
             logging.error("An up and running PBS server on " + self.hostname +
                           " is required")
             return False
@@ -5082,7 +5157,7 @@ class Server(PBSService):
                                        confs=_np_conf)
                 pi.initd(hostname, conf_file=_n_pbsconf, op='start')
                 m = MoM(self, hostname, pbsconf_file=_n_pbsconf)
-                if m.isUp():
+                if m.isUp(m):
                     m.stop()
                 if hostname != self.hostname:
                     m.add_config({'$clienthost': self.hostname})
