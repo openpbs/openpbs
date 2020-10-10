@@ -2135,6 +2135,20 @@ class Server(PBSService):
         :raises: PbsManagerError
         """
 
+        if cmd == MGR_CMD_SET and id is not None and obj_type == NODE:
+            for cmom, momobj in self.moms.items():
+                cpuset_nodes = []
+                if momobj.is_cpuset_mom():
+                    momobj.check_mem_request(attrib)
+                    if len(attrib) == 0:
+                        return True
+                    vnodes = self.status(HOST, id=cmom)
+                    del vnodes[0]  # don't set anything on a naturalnode
+                    for vn in vnodes:
+                        momobj.check_ncpus_request(attrib, vn)
+                    if len(attrib) == 0:
+                        return True
+
         if isinstance(id, str):
             oid = id.split(',')
         else:
@@ -4967,7 +4981,7 @@ class Server(PBSService):
             utilization['nodes'] = [usednodes, totnodes]
 
         return utilization
- 
+
     def create_moms(self, name=None, attrib=None, num=1, delall=True,
                     createnode=True, conf_prefix='pbs.conf_m',
                     home_prefix='pbs_m', momhosts=None, init_port=15011,

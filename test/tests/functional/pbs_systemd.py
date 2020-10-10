@@ -74,7 +74,7 @@ class Test_systemd(TestFunctional):
                 not self.scheduler.isUp(self.scheduler)):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_COMM'] and
-                not self.comm.isUp(self.comm):
+                not self.comm.isUp(self.comm)):
             return False
         if ('1' == self.server.pbs_conf['PBS_START_MOM'] and
                 not self.mom.isUp(self.mom)):

@@ -58,6 +58,12 @@ from distutils.version import LooseVersion
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
                                      DAEMON_SERVICE_USER)
 
+try:
+    from nose.plugins.skip import SkipTest
+except ImportError:
+    class SkipTest(Exception):
+        pass
+
 from ptl.lib.ptl_error import (PtlExpectError, PbsServiceError,
                                PbsInitServicesError, PtlLogMatchError,
                                PbsStatusError, PbsManagerError,
@@ -461,6 +467,48 @@ class MoM(PBSService):
             self._is_cpuset_mom = False
         return self._is_cpuset_mom
 
+    def skipTest(self, reason=None):
+        """
+        Skip Test
+        :param reason: message to indicate why test is skipped
+        :type reason: str or None
+        """
+        if reason:
+            self.logger.warning('test skipped: ' + reason)
+        else:
+            reason = 'unknown'
+        raise SkipTest(reason)
+
+    def check_mem_request(self, attrib):
+        if 'resources_available.mem' in attrib:
+            del attrib['resources_available.mem']
+            self.skipTest(
+                'mem requested cannot be set on cpuset mom')
+
+    def check_ncpus_request(self, attrib, vn):
+        skipmsg = 'ncpus requested are not same as available'
+        skipmsg += ' on a cpuset node'
+        at = 'resources_available.ncpus'
+        if at in attrib:
+            if int(attrib[at]) != int(vn[at]):
+                self.skipTest(skipmsg)
+            else:
+                del attrib['resources_available.ncpus']
+
+    def set_node_attrib(self, vnode, attrib):
+        """
+        set attribute on a node
+        """
+        for res, value in attrib.items():
+            ecmd = 'set node '
+            ecmd += vnode['id'] + ' ' + res + '=' + str(value)
+            pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qmgr'), '-c', ecmd]
+            ret = self.du.run_cmd(self.hostname, pcmd,
+                                  sudo=True,
+                                  level=logging.INFOCLI,
+                                  logerr=True)
+
     def create_vnodes(self, attrib=None, num=1,
                       additive=False, sharednode=True, restart=True,
                       delall=True, natvnode=None, usenatvnode=False,
@@ -510,6 +558,38 @@ class MoM(PBSService):
         if attrib is None:
             self.logger.error("attributes are required")
             return False
+
+        if self.is_cpuset_mom():
+            if vname:
+                msg = "cpuset nodes cannot have vnode names"
+                self.skipTest(msg)
+            self.check_mem_request(attrib)
+            if len(attrib) == 0:
+                return True
+            nodes = self.server.status(HOST, id=self.shortname)
+            del nodes[0]  # don't set any attribute on natural node
+            if len(nodes) < num:
+                msg = 'cpuset mom does not have required number of nodes'
+                self.skipTest(msg)
+            elif len(nodes) == num:
+                if attrib:
+                    for vnode in nodes:
+                        self.check_ncpus_request(attrib, vnode)
+                        if len(attrib) != 0:
+                            self.set_node_attrib(vnode, attrib)
+                return True
+            else:
+                i = 0
+                for vnode in nodes:
+                    if i < num:
+                        i += 1
+                        self.check_ncpus_request(attrib, vnode)
+                        if len(attrib) != 0:
+                            self.set_node_attrib(vnode, attrib)
+                    else:
+                        at = {'state': 'offline'}
+                        self.set_node_attrib(vnode, at)
+                return True
 
         if natvnode is None:
             natvnode = self.shortname
@@ -853,6 +933,11 @@ class MoM(PBSService):
         :param restart: If True, restart the MoM. Default is True
         :type restart: bool
         """
+
+        if self.is_cpuset_mom():
+            msg = 'Creating multiple vnodes is not supported on cpuset mom'
+            self.skipTest(msg)
+
         try:
             fn = self.du.create_temp_file(self.hostname, body=vdef)
         except:

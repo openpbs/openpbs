@@ -87,7 +87,7 @@ class Comm(PBSService):
         if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
             snapmap = self.server.snapmap
         super.__init__(name, attrs, self.dflt_attributes,
-                            pbsconf_file, snapmap, snap)
+                       pbsconf_file, snapmap, snap)
         _m = ['Comm ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
