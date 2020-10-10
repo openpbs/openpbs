@@ -168,7 +168,7 @@ class TestVerifyLogOutput(TestFunctional):
         self.comm.restart()
         resvport_msg = 'Supported authentication method: ' + 'resvport'
         if (self.server.isUp(self.server) and
-                self.comm.isUp(self.comm):
+                self.comm.isUp(self.comm)):
             self.server.log_match(resvport_msg, starttime=started_time)
             self.comm.log_match(resvport_msg, starttime=started_time)
 
