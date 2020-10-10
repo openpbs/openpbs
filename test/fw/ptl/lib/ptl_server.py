@@ -4967,7 +4967,7 @@ class Server(PBSService):
             utilization['nodes'] = [usednodes, totnodes]
 
         return utilization
-        
+ 
     def create_moms(self, name=None, attrib=None, num=1, delall=True,
                     createnode=True, conf_prefix='pbs.conf_m',
                     home_prefix='pbs_m', momhosts=None, init_port=15011,
