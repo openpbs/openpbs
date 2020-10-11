@@ -1318,6 +1318,10 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
 		set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
 			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val);
+		snprintf(local_log_buffer, LOG_BUF_SIZE-1,
+			"setting last_state_change_time of vnode to %s", str_val);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_INFO,
+			pnode->nd_name, local_log_buffer);
 	}
 
 	if (pnode->nd_state & INUSE_PROV) {
