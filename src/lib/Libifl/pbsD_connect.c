@@ -999,3 +999,95 @@ err:
 
 	return sock;
 }
+
+/**
+ * @brief Registers the given socket with the Server by sending PBS_BATCH_RegisterSched
+ *
+ * param[in]	client_id - client identifier which is known to server
+ * @return int
+ * @retval 0  - failure
+ * @return 1  - success
+ */
+static int
+send_register_sched(int sock, char *client_id)
+{
+	int rc;
+	struct batch_reply *reply = NULL;
+
+	if (client_id == NULL)
+		return 0;
+
+	rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RegisterSched, pbs_current_user);
+	if (rc != DIS_SUCCESS)
+		goto rerr;
+	rc = diswst(sock, client_id);
+	if (rc != DIS_SUCCESS)
+		goto rerr;
+	rc = encode_DIS_ReqExtend(sock, NULL);
+	if (rc != DIS_SUCCESS)
+		goto rerr;
+	if (dis_flush(sock) != 0)
+		goto rerr;
+
+	pbs_errno = 0;
+	reply = PBSD_rdrpy(sock);
+	if (reply == NULL)
+		goto rerr;
+
+	if (pbs_errno != 0)
+		goto rerr;
+
+	PBSD_FreeReply(reply);
+	return 1;
+
+rerr:
+	pbs_disconnect(sock);
+	PBSD_FreeReply(reply);
+	return 0;	
+}
+
+/**
+ * @brief Registers the Scheduler with all the Servers configured
+ *
+ * param[in]	client_id -  client identifier which is known to server
+ * @return int
+ * @retval 0  - failure
+ * @return 1  - success
+ */
+int
+pbs_register_sched(char *client_id)
+{
+	int i;
+	svr_conns_list_t *conn_list;
+	svr_conn_t *svr_conns_primary = NULL;
+	svr_conn_t *svr_conns_secondary = NULL;
+	svr_conns_list_t *iter_conns = NULL;
+
+	if (client_id == NULL)
+		return 0;
+
+	conn_list = pthread_getspecific(psi_key);
+
+	for (iter_conns = conn_list; iter_conns != NULL; iter_conns = iter_conns->next) {
+		/* conn_list has secondary set first followed by primary set of connections */
+		if (svr_conns_secondary == NULL)
+			svr_conns_secondary = get_conn_servers(iter_conns->conn_arr[0].sd);
+		else if (svr_conns_primary == NULL)
+			svr_conns_primary = get_conn_servers(iter_conns->conn_arr[0].sd);
+	}
+
+	for (i = 0; i < get_num_servers(); i++) {
+		if (!svr_conns_primary[i].registered) {
+			if (send_register_sched(svr_conns_primary[i].sd, client_id) == 0)
+				return 0;	
+			svr_conns_primary[i].registered = 1;
+		}
+		if (!svr_conns_secondary[i].registered) {
+			if (send_register_sched(svr_conns_secondary[i].sd, client_id) == 0)
+				return 0;
+			svr_conns_secondary[i].registered = 1;
+		}
+	}
+
+	return 1;
+}

@@ -390,6 +390,7 @@ int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 void *get_conn_svr_instances(int);
 void dealloc_conn_list_single(int parentfd);
+int pbs_register_sched(char *client_id);
 
 #ifdef __cplusplus
 }

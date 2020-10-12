@@ -125,8 +125,6 @@ static pthread_mutex_t cleanup_lock;
 
 static void close_servers();
 static void reconnect_servers();
-static int pbs_register_sched();
-static int send_register_sched(int sock);
 static void sched_svr_init(void);
 static void connect_svrpool();
 static int compare_modify_sched_cmd(sched_cmd *cmd_cache, sched_cmd *new_cmd);
@@ -553,84 +551,6 @@ rerr:
 }
 
 /**
- * @brief Registers the Scheduler with all the Servers configured
- *
- * @return int
- * @retval 0  - failure
- * @return 1  - success
- */
-static int
-pbs_register_sched()
-{
-	int i;
-	svr_conn_t *svr_conns_primary = get_conn_servers(clust_primary_sock);
-	svr_conn_t *svr_conns_secondary = get_conn_servers(clust_secondary_sock);
-
-	for (i = 0; i < get_num_servers(); i++) {
-		if (!svr_conns_primary[i].registered) {
-			if (send_register_sched(svr_conns_primary[i].sd) == 0)
-				return 0;	
-			svr_conns_primary[i].registered = 1;
-		}
-		if (!svr_conns_secondary[i].registered) {
-			if (send_register_sched(svr_conns_secondary[i].sd) == 0)
-				return 0;
-			svr_conns_secondary[i].registered = 1;
-		}
-	}
-
-	return 1;
-}
-
-/**
- * @brief Registers the given socket with the Server by sending PBS_BATCH_RegisterSched
- *
- * @return int
- * @retval 0  - failure
- * @return 1  - success
- */
-static int
-send_register_sched(int sock)
-{
-	int rc;
-	struct batch_reply *reply = NULL;
-
-	rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RegisterSched, pbs_current_user);
-	if (rc != DIS_SUCCESS)
-		goto rerr;
-	rc = diswst(sock, sc_name);
-	if (rc != DIS_SUCCESS)
-		goto rerr;
-	rc = encode_DIS_ReqExtend(sock, NULL);
-	if (rc != DIS_SUCCESS)
-		goto rerr;
-	if (dis_flush(sock) != 0)
-		goto rerr;
-	pbs_errno = 0;
-	reply = PBSD_rdrpy(sock);
-	if (reply == NULL)
-		goto rerr;
-	if (pbs_errno != 0) {
-		char *errmsg = get_conn_errtxt(sock);
-		if (errmsg) {
-			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_NOTICE,
-				   msg_daemonname, "Server rejected register request for %d connection with error: %s",
-				   sock, errmsg);
-			return 0;
-		}
-		goto rerr;
-	}
-
-	PBSD_FreeReply(reply);
-	return 1;
-
-rerr:
-	pbs_disconnect(sock);
-	PBSD_FreeReply(reply);
-	return 0;	
-}
-
-/**
  * @brief connect to all the servers configured. Also add secondary connections
  *              of individual servers secondary sd's to the poll list
  *
@@ -661,7 +581,8 @@ connect_svrpool()
 			continue;
 		}
 
-		if (pbs_register_sched() == 0) {
+		if (pbs_register_sched(sc_name) == 0) {
+			log_errf(pbs_errno, __func__, "Couldn't register the Scheuduler %s with the configured servers", sc_name);
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);			
 			continue;
