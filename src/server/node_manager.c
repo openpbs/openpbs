@@ -1194,7 +1194,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_ntype = vnode->nd_ntype;
 	vnode_dup->nd_accted = vnode->nd_accted;
 	vnode_dup->nd_pque = vnode->nd_pque;
-	vnode_dup->device = vnode->device;
+	/* vnode_dup->device = vnode->device; */
 	vnode_dup->newobj = vnode->newobj;
 	for (i=0; i<(int)ND_ATR_LAST; i++) {
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
