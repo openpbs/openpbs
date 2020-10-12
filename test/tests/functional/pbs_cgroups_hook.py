@@ -354,7 +354,7 @@ if sleeptime2 > 0 and (end_time2 - start_time2) < sleeptime2 :
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'sync\n' \
-            'sleep 4\n' \
+            'sleep 10\n' \
             'python_path=`which python 2>/dev/null`\n' \
             'python3_path=`which python3 2>/dev/null`\n' \
             'python2_path=`which python2 2>/dev/null`\n' \
@@ -2705,8 +2705,7 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg4 % (self.mem, self.swapctl))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.nodes_list[0])
-        self.server.create_vnodes('vnode', vn_attrs, 2,
-                                  self.moms.values()[0])
+        self.moms.values()[0].create_vnodes(vn_attrs, 2)
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.nodes_list[0])
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}

@@ -473,7 +473,11 @@ static struct fc_translation_table fctt[] = {
 	},
 	{	/* JOB_UNDER_THRESHOLD */
 		"Job is under job_sort_formula threshold value",
-		"Job is under job_sort_formula threshold value"
+		"Job is under job_sort_formula threshold value",
+	},
+	{	/* MAX_RUN_SUBJOBS */
+		"Number of concurrent running subjobs limit reached",
+		"Number of concurrent running subjobs limit reached",
 #ifdef NAS
 	},
 	/* localmod 034 */
@@ -974,6 +978,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_r,
 			ATTR_depend,
 			ATTR_A,
+			ATTR_max_run_subjobs,
 			NULL
 	};
 
@@ -1147,7 +1152,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 	long count;			/* long used in string->long conversion */
 	char *endp;			/* used for strtol() */
 	resource_req *resreq;		/* resource_req list for resources requested  */
-	char *execvnode = NULL;		/* Hold the exec_vnode until the end of the parsing */
 
 	if ((resresv = new_resource_resv()) == NULL)
 		return NULL;
@@ -1314,9 +1318,20 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		/* array_indices_remaining */
 		else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
 			resresv->job->queued_subjobs = range_parse(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_execvnode))
-			execvnode = attrp->value;
-		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
+		else if (!strcmp(attrp->name, ATTR_max_run_subjobs)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				resresv->job->max_run_subjobs = count;
+		}
+		else if (!strcmp(attrp->name, ATTR_execvnode)) {
+			nspec **tmp_nspec_arr;
+			tmp_nspec_arr = parse_execvnode(attrp->value, sinfo, NULL);
+			resresv->nspec_arr = combine_nspec_array(tmp_nspec_arr);
+			free_nspecs(tmp_nspec_arr);
+
+			if (resresv->nspec_arr != NULL)
+				resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
+		} else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
 			if (resreq == NULL) {
 				free_resource_resv(resresv);
@@ -1396,14 +1411,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		attrp = attrp->next;
 	}
 
-	if (execvnode != NULL) {
-		resresv->orig_nspec_arr = parse_execvnode(execvnode, sinfo, resresv->select);
-		resresv->nspec_arr = combine_nspec_array(resresv->orig_nspec_arr);
-
-		if (resresv->nspec_arr != NULL)
-			resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
-	}
-
 	return resresv;
 }
 
@@ -1472,7 +1479,10 @@ new_job_info()
 
 	jinfo->array_id = NULL;
 	jinfo->array_index = UNSPECIFIED;
+	jinfo->parent_job = NULL;
 	jinfo->queued_subjobs = NULL;
+	jinfo->max_run_subjobs = UNSPECIFIED;
+	jinfo->running_subjobs = 0;
 	jinfo->attr_updates = NULL;
 	jinfo->resreleased = NULL;
 	jinfo->resreq_rel = NULL;
@@ -2053,18 +2063,14 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 				snprintf(log_msg, MAX_LOG_SIZE, "%s", spec);
 			break;
 
-			/* codes using arg1  */
+		/* codes using no args */
+		case MAX_RUN_SUBJOBS:
 		case BACKFILL_CONFLICT:
 		case CANT_PREEMPT_ENOUGH_WORK:
 		case CROSS_DED_TIME_BOUNDRY:
 		case DED_TIME:
-#ifndef NAS /* localmod 031 */
-		case INVALID_NODE_STATE:
-#endif /* localmod 031 */
-		case INVALID_NODE_TYPE:
 		case NODE_GROUP_LIMIT_REACHED:
 		case NODE_JOB_LIMIT_REACHED:
-		case NODE_NOT_EXCL:
 		case NODE_NO_MULT_JOBS:
 		case NODE_PLACE_PACK:
 		case NODE_RESV_ENABLE:
@@ -2076,16 +2082,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case NO_NODE_RESOURCES:
 		case NO_SMALL_CPUSETS:
 		case PRIME_ONLY:
-		case QUEUE_GROUP_LIMIT_REACHED:
-		case QUEUE_PROJECT_LIMIT_REACHED:
-		case QUEUE_JOB_LIMIT_REACHED:
 		case QUEUE_NOT_STARTED:
-		case QUEUE_USER_LIMIT_REACHED:
 		case RESERVATION_CONFLICT:
 		case SCHD_ERROR:
-		case SERVER_BYGROUP_JOB_LIMIT_REACHED:
-		case SERVER_BYPROJECT_JOB_LIMIT_REACHED:
-		case SERVER_BYUSER_JOB_LIMIT_REACHED:
 		case SERVER_GROUP_LIMIT_REACHED:
 		case SERVER_PROJECT_LIMIT_REACHED:
 		case SERVER_JOB_LIMIT_REACHED:
@@ -2096,13 +2095,9 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case PROV_BACKFILL_CONFLICT:
 		case CANT_SPAN_PSET:
 		case IS_MULTI_VNODE:
-		case AOE_NOT_AVALBL:
-		case EOE_NOT_AVALBL:
 		case PROV_RESRESV_CONFLICT:
-		case CROSS_PRIME_BOUNDARY:
 		case NO_FREE_NODES:
 		case NO_TOTAL_NODES:
-		case INVALID_RESRESV:
 		case JOB_UNDER_THRESHOLD:
 #ifdef NAS
 			/* localmod 034 */
@@ -2112,12 +2107,34 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case RESOURCES_INSUFFICIENT:
 #endif
 			if (comment_msg != NULL)
+				snprintf(commentbuf, sizeof(commentbuf), "%s", ERR2COMMENT(err->error_code));
+			if (log_msg != NULL)
+				snprintf(log_msg, MAX_LOG_SIZE, "%s", ERR2INFO(err->error_code));
+			break;
+		/* codes using arg1  */
+#ifndef NAS /* localmod 031 */
+		case INVALID_NODE_STATE:
+#endif /* localmod 031 */
+		case INVALID_NODE_TYPE:
+		case NODE_NOT_EXCL:
+		case QUEUE_GROUP_LIMIT_REACHED:
+		case QUEUE_PROJECT_LIMIT_REACHED:
+		case QUEUE_JOB_LIMIT_REACHED:
+		case QUEUE_USER_LIMIT_REACHED:
+		case SERVER_BYGROUP_JOB_LIMIT_REACHED:
+		case SERVER_BYPROJECT_JOB_LIMIT_REACHED:
+		case SERVER_BYUSER_JOB_LIMIT_REACHED:
+		case AOE_NOT_AVALBL:
+		case EOE_NOT_AVALBL:
+		case CROSS_PRIME_BOUNDARY:
+		case INVALID_RESRESV:
+			if (comment_msg != NULL)
 				snprintf(commentbuf, sizeof(commentbuf), ERR2COMMENT(err->error_code), arg1);
 			if (log_msg != NULL)
 				snprintf(log_msg, MAX_LOG_SIZE, ERR2INFO(err->error_code), arg1);
 			break;
 
-			/* codes using two arguments */
+		/* codes using two arguments */
 #ifdef NAS /* localmod 031 */
 		case INVALID_NODE_STATE:
 #endif /* localmod 031 */
@@ -2838,6 +2855,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->array_index = ojinfo->array_index;
 	njinfo->array_id = string_dup(ojinfo->array_id);
 	njinfo->queued_subjobs = dup_range_list(ojinfo->queued_subjobs);
+	njinfo->max_run_subjobs = ojinfo->max_run_subjobs;
 
 	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes, NULL);
 	njinfo->resreq_rel = dup_resource_req_list(ojinfo->resreq_rel);
@@ -3330,6 +3348,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			case CANT_SPAN_PSET:
 			case RESERVATION_INTERFERENCE:
 			case PROV_DISABLE_ON_SERVER:
+			case MAX_RUN_SUBJOBS:
 				cant_preempt = 1;
 				break;
 		}
@@ -4259,6 +4278,7 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 						}
 					}
 				}
+				rresv->job->parent_job = array;
 			}
 		}
 	}
@@ -5538,4 +5558,30 @@ void associate_dependent_jobs(server_info *sinfo) {
 		}
 	}
 	return;
+}
+
+/**
+ * @brief This function associates the subjob passed in to its parent job.
+ *
+ * @param[in] pjob	The subjob that needs association
+ * @param[in] sinfo	server info structure
+ *
+ * @return int
+ * @retval 1 - Failure
+ * @retval 0 - Success
+ */
+int associate_array_parent(resource_resv *pjob, server_info *sinfo) {
+	resource_resv *parent = NULL;
+
+	if (pjob == NULL || sinfo == NULL || !pjob->job->is_subjob)
+		return 1;
+
+	parent = find_resource_resv(sinfo->jobs, pjob->job->array_id);
+	if (parent == NULL)
+		return 1;
+
+	pjob->job->parent_job = parent;
+	parent->job->running_subjobs++;
+
+	return 0;
 }

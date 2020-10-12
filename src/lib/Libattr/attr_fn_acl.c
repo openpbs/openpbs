@@ -49,6 +49,7 @@
 #include <string.h>
 #include <pwd.h>
 #include <grp.h>
+#include <unistd.h>
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"

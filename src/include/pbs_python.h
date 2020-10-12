@@ -401,6 +401,7 @@ extern int get_py_progname(char **);
 #define PY_GET_VNODE_STATIC_METHOD	"get_vnode_static"
 #define PY_GET_QUEUE_STATIC_METHOD	"get_queue_static"
 #define PY_GET_SERVER_DATA_FP_METHOD	"get_server_data_fp"
+#define PY_GET_SERVER_DATA_FILE_METHOD	"get_server_data_file"
 #define PY_USE_STATIC_DATA_METHOD	"use_static_data"
 
 /* Event parameter names */

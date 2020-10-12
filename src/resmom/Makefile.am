@@ -78,6 +78,7 @@ pbs_mom_SOURCES = \
 	$(top_srcdir)/src/server/mom_info.c \
 	$(top_srcdir)/src/server/attr_recov.c \
 	$(top_srcdir)/src/server/dis_read.c \
+	$(top_srcdir)/src/server/jattr_get_set.c \
 	$(top_srcdir)/src/server/job_func.c \
 	$(top_srcdir)/src/server/process_request.c \
 	$(top_srcdir)/src/server/reply_send.c \
@@ -96,6 +97,7 @@ pbs_mom_SOURCES = \
 	mom_comm.c \
 	mom_hook_func.c \
 	mom_inter.c \
+	linux/mom_func.c \
 	mom_main.c \
 	mom_updates_bundle.c \
 	mom_pmix.c \

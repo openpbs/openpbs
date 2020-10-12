@@ -45,6 +45,7 @@
 #include	<assert.h>
 #include	<stdio.h>
 #include	<stdlib.h>
+#include	<sys/stat.h>
 
 #include	<unistd.h>
 #include	<dirent.h>
@@ -117,6 +118,7 @@ extern  char   *msg_err_malloc;
 extern int
 write_pipe_data(int upfds, void *data, int data_size);
 char	task_fmt[] = "/%8.8X";
+extern void resume_multinode(job *pjob);
 
 
 /* Function pointers
@@ -887,31 +889,31 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 		return (1);
 	}
 
-	if (((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) ||
-	    (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str == NULL)) {
+	if (((is_jattr_set(pjob, JOB_ATR_exec_vnode)) == 0) ||
+	    (get_jattr_str(pjob, JOB_ATR_exec_vnode) == NULL)) {
 		log_err(-1, __func__, "no execvnode");
 		return (1);
 	}
 
-	execvnode = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+	execvnode = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 	if (execvnode == NULL) {
 		log_err(-1, __func__, "execvnode is NULL");
 		return (1);
 	}
 
-	if (((pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) != 0) &&
-	    (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str != NULL)) {
-		exechost = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+	if (((is_jattr_set(pjob, JOB_ATR_exec_host)) != 0) &&
+	    (get_jattr_str(pjob, JOB_ATR_exec_host) != NULL)) {
+		exechost = get_jattr_str(pjob, JOB_ATR_exec_host);
 	}
 
-	if (((pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) != 0) &&
-	    (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str != NULL)) {
-		exechost2 = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+	if (((is_jattr_set(pjob, JOB_ATR_exec_host2)) != 0) &&
+	    (get_jattr_str(pjob, JOB_ATR_exec_host2) != NULL)) {
+		exechost2 = get_jattr_str(pjob, JOB_ATR_exec_host2);
 	}
 
-	if (((pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) != 0) &&
-	    (pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str != NULL)) {
-		schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+	if (((is_jattr_set(pjob, JOB_ATR_SchedSelect)) != 0) &&
+	    (get_jattr_str(pjob, JOB_ATR_SchedSelect) != NULL)) {
+		schedselect = get_jattr_str(pjob, JOB_ATR_SchedSelect);
 	}
 
 	if ((exechost == NULL) && (exechost2 == NULL)) {
@@ -971,11 +973,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 		if (new_exec_vnode[entry] == '+')
 			new_exec_vnode[entry] = '\0';
 
-		(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
-			(char *)0,
-			(char *)0,
-			new_exec_vnode);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_vnode, new_exec_vnode, NULL);
 
 		(void)update_resources_list(pjob, ATTR_l, JOB_ATR_resource, new_exec_vnode, INCR, 0, JOB_ATR_resource_orig);
 	}
@@ -984,30 +982,18 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 		entry = strlen(new_exec_host) - 1;
 		if (new_exec_host[entry] == '+')
 			new_exec_host[entry] = '\0';
-		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-			(char *)0,
-			(char *)0,
-			new_exec_host);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host, new_exec_host, NULL);
 	}
 
 	if (new_exec_host2 != NULL) {
 		entry = strlen(new_exec_host2) - 1;
 		if (new_exec_host2[entry] == '+')
 			new_exec_host2[entry] = '\0';
-		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
-			(char *)0,
-			(char *)0,
-			new_exec_host2);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host2, new_exec_host2, NULL);
 	}
 
 	if (new_schedselect != NULL) {
-		(void)job_attr_def[(int)JOB_ATR_SchedSelect].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
-			(char *)0,
-			(char *)0,
-			new_schedselect);
+		set_jattr_str_slim(pjob, JOB_ATR_SchedSelect, new_schedselect, NULL);
 	}
 
 	rc = 0;
@@ -1060,7 +1046,7 @@ send_sisters_job_update(job *pjob)
 		return (-1);
 	}
 
-	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
+	cookie = get_jattr_str(pjob, JOB_ATR_Cookie);
 
 	CLEAR_HEAD(phead);
 
@@ -1488,9 +1474,9 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 	int		mtfd;
 
 	DBPRT(("send_sisters_mcast: command %d\n", com))
-	if (!(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & ATR_VFLAG_SET))
+	if (!(is_jattr_set(pjob, JOB_ATR_Cookie)))
 		return 0;
-	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
+	cookie = get_jattr_str(pjob, JOB_ATR_Cookie);
 	num = 0;
 
 	/* open the tpp mcast channel here */
@@ -1649,10 +1635,10 @@ send_sisters_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 						exclude_exec_host);
 
 	DBPRT(("send_sisters: command %d\n", com))
-	if (!(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & ATR_VFLAG_SET))
+	if (!(is_jattr_set(pjob, JOB_ATR_Cookie)))
 		return 0;
 
-	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
+	cookie = get_jattr_str(pjob, JOB_ATR_Cookie);
 	num = 0;
 	for (i=0; i<pjob->ji_numnodes; i++) {
 		hnodent		*np = &pjob->ji_hosts[i];
@@ -1969,7 +1955,7 @@ job_start_error(job *pjob, int code, char *nodename, char *cmd)
 #endif
 		return;
 	}
-	if (pjob->ji_qs.ji_substate >= JOB_SUBSTATE_EXITING)
+	if (get_job_substate(pjob) >= JOB_SUBSTATE_EXITING)
 		return;
 
 	if (code == PBSE_HOOK_REJECT_DELETEJOB)
@@ -2199,9 +2185,9 @@ node_bailout(job *pjob, hnodent *np)
 						break;
 				}
 				if (i == pjob->ji_numnodes) {	/* all dead */
-					if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_KILLSIS) {
-						pjob->ji_qs.ji_state    = JOB_STATE_EXITING;
-						pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+					if (check_job_substate(pjob, JOB_SUBSTATE_KILLSIS)) {
+						set_job_state(pjob, JOB_STATE_LTR_EXITING);
+						set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 						exiting_tasks = 1;
 					}
 				}
@@ -2331,7 +2317,7 @@ term_job(job *pjob)
 	int	num;
 
 	for (num=0, np = pjob->ji_hosts;
-		num<pjob->ji_numnodes;
+		num < pjob->ji_numnodes;
 		num++, np++) {
 		if (np->hn_stream >= 0) {
 			np->hn_stream = -1;
@@ -2396,18 +2382,19 @@ im_eof(int stream, int ret)
 			np->hn_stream = -1;
 			if (np->hn_eof_ts == 0)
 				np->hn_eof_ts = time(0);
+			pjob->ji_msconnected = 0;
 
 			/*
 			 ** In case connection to pbs_comm is down/recently established, do not kill a job that is actually running.
 			 ** If this is the MS, we check job substate == JOB_SUBSTATE_RUNNING to see if job is running.
-			 ** If this is a sister, we check pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN || JOB_SUBSTATE_RUNNING
+			 ** If this is a sister, we check is substate is JOB_SUBSTATE_PRERUN or JOB_SUBSTATE_RUNNING
 			 ** We include PRERUN in case of jobs at sisters since at sister moms job substate stays at PRERUN
 			 ** till a tm task is initiated on it by the MS
-                         ** We also check for substate JOB_SUBSTATE_SUSPEND to retain suspended jobs.
+             ** We also check for substate JOB_SUBSTATE_SUSPEND to retain suspended jobs.
 			 **
 			 */
-			if ((((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)) ||
-                                (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND)) {
+			if ((((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) && (check_job_substate(pjob, JOB_SUBSTATE_PRERUN))) ||
+                                (check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) || (check_job_substate(pjob, JOB_SUBSTATE_SUSPEND))) {
 				if (do_tolerate_node_failures(pjob)) {
 					sprintf(log_buffer, "ignoring lost communication with %s as job is tolerant of node failures", np->hn_host);
 					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
@@ -2455,7 +2442,7 @@ im_eof(int stream, int ret)
 				"lost connection to MS on %s", np->hn_host);
 			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			kill_job(pjob, SIGKILL);
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+			set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 			exiting_tasks = 1;
 		}
 	}
@@ -2509,6 +2496,7 @@ check_ms(int stream, job *pjob)
 		np->hn_stream = stream;
 	}
 	np->hn_eof_ts = 0;
+	pjob->ji_msconnected = 1;
 	return FALSE;
 }
 
@@ -2834,7 +2822,7 @@ recv_resc_used_from_sister(int stream, job *pjob, int nodeidx)
 		sprintf(log_buffer, "decode_DIS_svrattrl failed");
 		return (-1);
 	}
-	if ((pjob->ji_resources[nodeidx].nr_used.at_flags & ATR_VFLAG_SET) != 0)
+	if (is_attr_set(&pjob->ji_resources[nodeidx].nr_used) != 0)
 		pdef->at_free(&pjob->ji_resources[nodeidx].nr_used);
 	/* decode attributes from request into job structure */
 	clear_attr(&pjob->ji_resources[nodeidx].nr_used, &job_attr_def[JOB_ATR_resc_used]);
@@ -3036,6 +3024,27 @@ im_request(int stream, int version)
 	BAIL("fromtask")
 	switch (command) {
 
+		case IM_JOIN_RECOV_JOB:
+			reply = 1;
+
+			hnodenum = disrsi(stream, &ret);
+			BAIL("JOINJOB nodenum")
+
+			np = NULL;
+			/* job should already exist */
+			pjob = find_job(jobid);
+			if( pjob == NULL ) {
+				SEND_ERR(PBSE_SYSTEM)
+				goto done;
+			}
+			pjob->ji_stdout = disrsi(stream, &ret);
+			BAIL("JOINJOB stdout")
+			pjob->ji_stderr = disrsi(stream, &ret);
+			BAIL("JOINJOB stderr")
+			pjob->ji_qs.ji_un.ji_momt.ji_exuid = pjob->ji_grpcache->gc_uid;
+			pjob->ji_qs.ji_un.ji_momt.ji_exgid = pjob->ji_grpcache->gc_gid;
+			pjob->ji_msconnected = 1;
+			goto done;
 		case IM_JOIN_JOB:
 			/*
 			 ** Sender is mom superior sending a job structure to me.
@@ -3080,6 +3089,7 @@ im_request(int stream, int version)
 				info = disrcs(stream, &len, &ret);
 				BAIL("JOINJOB credential")
 			}
+			pjob->ji_msconnected = 1;
 
 			pjob->ji_numnodes = hnodenum;
 			CLEAR_HEAD(lhead);
@@ -3165,7 +3175,7 @@ im_request(int stream, int version)
 
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_CRIT, pjob->ji_qs.ji_jobid, log_buffer);
 
-				if ((eh2 = pjob->ji_wattr[(int) JOB_ATR_exec_host2].at_val.at_str) != NULL) {
+				if ((eh2 = get_jattr_str(pjob,  JOB_ATR_exec_host2)) != NULL) {
 					snprintf(log_buffer, sizeof(log_buffer), "exec_host2 = %s", eh2);
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
 					LOG_CRIT, pjob->ji_qs.ji_jobid, log_buffer);
@@ -3177,12 +3187,11 @@ im_request(int stream, int version)
 			}
 
 			/* set remaining job structure elements */
-			pjob->ji_qs.ji_state =    JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_PRERUN);
+			set_jattr_l_slim(pjob, JOB_ATR_mtime, time_now, SET);
 			pjob->ji_qs.ji_stime = time_now;
 			pjob->ji_polltime = time_now;
-			pjob->ji_wattr[(int)JOB_ATR_mtime].at_val.at_long = (long)time_now;
-			pjob->ji_wattr[(int)JOB_ATR_mtime].at_flags |= ATR_VFLAG_SET;
 
 			/* np is set from job_nodes_inner */
 
@@ -3336,8 +3345,8 @@ im_request(int stream, int version)
 			/* create staging and execution dir if sandbox=PRIVATE mode is enabled */
 			/* this code should appear after check_pwd() since */
 			/* mkjobdir() depends on job uid and gid being set correctly */
-			if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-				(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+			if ((is_jattr_set(pjob, JOB_ATR_sandbox)) &&
+				(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 #ifdef WIN32
 				if (mkjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
@@ -3359,9 +3368,8 @@ im_request(int stream, int version)
 				mode_t j;
 				int    e;
 
-				if (pjob->ji_wattr[(int)JOB_ATR_umask].at_flags&ATR_VFLAG_SET) {
-					sprintf(maskbuf, "%ld",
-						pjob->ji_wattr[(int)JOB_ATR_umask].at_val.at_long);
+				if (is_jattr_set(pjob, JOB_ATR_umask)) {
+					sprintf(maskbuf, "%ld", get_jattr_long(pjob, JOB_ATR_umask));
 					sscanf(maskbuf, "%o", &j);
 					myumask = umask(j);
 				} else {
@@ -3464,15 +3472,14 @@ join_err:
 	}
 
 	/* check cookie */
-	if (!(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & ATR_VFLAG_SET)) {
+	if (!(is_jattr_set(pjob, JOB_ATR_Cookie))) {
 		DBPRT(("%s: job %s has no cookie\n", __func__, jobid))
 		SEND_ERR(PBSE_BADSTATE)
 		goto done;
 	}
-	oreo = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
+	oreo = get_jattr_str(pjob, JOB_ATR_Cookie);
 	if (strcmp(oreo, cookie) != 0) {
-		DBPRT(("%s: job %s cookie %s message %s\n", __func__,
-			jobid, oreo, cookie))
+		DBPRT(("%s: job %s cookie %s message %s\n", __func__, jobid, oreo, cookie))
 		SEND_ERR(PBSE_BADSTATE)
 		goto done;
 	}
@@ -3579,8 +3586,8 @@ join_err:
 			DBPRT(("%s: KILL_JOB %s\n", __func__, jobid))
 			reply = 0;	/* reply will be deferred */
 			kill_job(pjob, SIGKILL);
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
-			pjob->ji_qs.ji_state    = JOB_STATE_EXITING;
+			set_job_substate(pjob, JOB_SUBSTATE_EXITING);
+			set_job_state(pjob, JOB_STATE_LTR_EXITING);
 			pjob->ji_obit = event;
 			exiting_tasks = 1;
 
@@ -3696,11 +3703,11 @@ join_err:
 				ret = diswul(stream, resc_used(pjob,
 						"cpupercent", gettime));
 				BAIL("resources_used.cpupercent")
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-				} else {
-					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-				}
+				if (is_jattr_set(pjob, JOB_ATR_run_version))
+					runver = get_jattr_long(pjob, JOB_ATR_run_version);
+				else
+					runver = get_jattr_long(pjob, JOB_ATR_runcount);
+
 				/* Call the execjob_end hook now */
 				if (mom_process_hooks(HOOK_EVENT_EXECJOB_END, PBS_MOM_SERVICE_NAME, mom_host, hook_input_ptr,
 						hook_output_ptr, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
@@ -3718,9 +3725,7 @@ join_err:
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
 					pbs_strncpy(pjob2->ji_qs.ji_jobid, jobid, sizeof(pjob2->ji_qs.ji_jobid));
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
-								runver;
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
+					set_jattr_l_slim(pjob2, JOB_ATR_run_version, runver, SET);
 				 	/* JOB_ACT_REQ_DEALLOCATE request will tell the
 				 	 * the server that this mom has completely deleted the
 				 	 * job and now the server can officially free up the
@@ -4051,6 +4056,7 @@ join_err:
 				op->oe_u.oe_tm.oe_node = pvnodeid;
 				op->oe_u.oe_tm.oe_event = event;
 				op->oe_u.oe_tm.oe_taskid = fromtask;
+				task_save(ptask);
 				reply = 0;
 			}
 			break;
@@ -4527,9 +4533,9 @@ join_err:
 						 ** At this point, we are ready to call
 						 ** finish_exec and launch the job.
 						 */
- 						if (!do_tolerate_node_failures(pjob) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB)) {
-							if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) {
-								pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
+ 						if (!do_tolerate_node_failures(pjob) || (check_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB))) {
+							if (check_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB)) {
+								set_job_substate(pjob, JOB_SUBSTATE_PRERUN);
 								job_save(pjob);
 							}
 							finish_exec(pjob);
@@ -4664,9 +4670,9 @@ join_err:
 					}
 					if (i == pjob->ji_numnodes) { /* all dead */
 						DBPRT(("%s: ALL DONE, set EXITING job %s\n", __func__, jobid))
-						if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_KILLSIS) {
-							pjob->ji_qs.ji_state = JOB_STATE_EXITING;
-							pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+						if (check_job_substate(pjob, JOB_SUBSTATE_KILLSIS)) {
+							set_job_state(pjob, JOB_STATE_LTR_EXITING);
+							set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 							exiting_tasks = 1;
 						}
 					}
@@ -5054,8 +5060,8 @@ join_err:
 						 ** At this point, we are ready to call
 						 ** finish_exec and launch the job.
 						 */
-						if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) {
-							pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
+						if (check_job_substate(pjob, JOB_SUBSTATE_WAITING_JOIN_JOB)) {
+							set_job_substate(pjob, JOB_SUBSTATE_PRERUN);
 							job_save(pjob);
 						}
 						finish_exec(pjob);
@@ -5207,8 +5213,8 @@ join_err:
 							break;
 					}
 					if (i == pjob->ji_numnodes) {	/* all dead */
-						if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_KILLSIS) {
-							pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+						if (check_job_substate(pjob, JOB_SUBSTATE_KILLSIS)) {
+							set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 							exiting_tasks = 1;
 						}
 					}
@@ -5423,6 +5429,10 @@ join_err:
 				event, fromtask, IM_OLD_PROTOCOL_VER);
 			if (ret != DIS_SUCCESS)
 				goto err;
+			break;
+		case IM_RECONNECT_TO_MS:
+			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE)
+				resume_multinode(pjob);
 			break;
 
 		default:
@@ -5732,10 +5742,7 @@ tm_request(int fd, int version)
 #endif
 					continue;
 
-				if (pj->ji_qs.ji_substate !=
-					JOB_SUBSTATE_RUNNING &&
-					pj->ji_qs.ji_substate !=
-					JOB_SUBSTATE_PRERUN)
+				if (!check_job_substate(pj, JOB_SUBSTATE_RUNNING) && !check_job_substate(pj, JOB_SUBSTATE_PRERUN))
 					continue;
 				i++;
 				pjob = pj;
@@ -5758,10 +5765,7 @@ tm_request(int fd, int version)
 				i = TM_ENOTFOUND;
 				goto aterr;
 			}
-			if (pjob->ji_qs.ji_substate !=
-				JOB_SUBSTATE_RUNNING &&
-				pjob->ji_qs.ji_substate !=
-				JOB_SUBSTATE_PRERUN) {
+			if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING) && !check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
 				sprintf(log_buffer, "job not running");
 				i = TM_ENOTFOUND;
 				goto aterr;
@@ -5949,9 +5953,9 @@ tm_request(int fd, int version)
 		ptask->ti_flags |= TI_FLAGS_ORPHAN;
 		(void)task_save(ptask);
 
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
-			pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+			set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			job_save(pjob);
 		}
 
@@ -6005,7 +6009,7 @@ aterr:
 
 	/* see if the cookie matches */
 	at = &pjob->ji_wattr[(int)JOB_ATR_Cookie];
-	if (!(at->at_flags & ATR_VFLAG_SET)) {
+	if (!(is_attr_set(at))) {
 		sprintf(log_buffer, "job has no cookie");
 		goto err;
 	}
@@ -6727,7 +6731,7 @@ send_join_job_restart(int com, eventent *ep, int nth, job *pjob, pbs_list_head *
 
 	/* send message header */
 	im_compose(stream, pjob->ji_qs.ji_jobid,
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+		get_jattr_str(pjob, JOB_ATR_Cookie),
 		com, ep->ee_event, TM_NULL_TASK,  IM_OLD_PROTOCOL_VER);
 
 	if (com == IM_JOIN_JOB) {
@@ -6794,7 +6798,7 @@ send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob,
 
 	/* send message header */
 	im_compose(stream, pjob->ji_qs.ji_jobid,
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+		get_jattr_str(pjob, JOB_ATR_Cookie),
 		com, ep->ee_event, TM_NULL_TASK, IM_OLD_PROTOCOL_VER);
 
 	if (com == IM_JOIN_JOB) {

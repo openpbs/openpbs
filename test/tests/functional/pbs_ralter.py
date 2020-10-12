@@ -73,8 +73,8 @@ class TestPbsResvAlter(TestFunctional):
             self.tzone = 'Asia/Kolkata'
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vnode', a, num=2, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=2,
+                               usenatvnode=True)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
@@ -525,7 +525,6 @@ class TestPbsResvAlter(TestFunctional):
                                                    ['reserve_start'])
         return t_duration, t_start, t_end
 
-    @skipOnCpuSet
     def test_alter_advance_resv_start_time_before_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -557,7 +556,6 @@ class TestPbsResvAlter(TestFunctional):
                                                       -shift, alter_s=True,
                                                       sequence=3)
 
-    @skipOnCpuSet
     def test_alter_advance_resv_start_time_after_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -589,7 +587,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid, start, end, shift, alter_s=True,
                                  whichMessage=0)
 
-    @skipOnCpuSet
     def test_alter_advance_resv_end_time_before_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -620,7 +617,6 @@ class TestPbsResvAlter(TestFunctional):
                                                       shift, alter_e=True,
                                                       sequence=3)
 
-    @skipOnCpuSet
     def test_alter_advance_resv_end_time_after_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -631,9 +627,9 @@ class TestPbsResvAlter(TestFunctional):
         The above operation is expected to be successful.
         """
         duration = 20
-        shift = 10
+        shift = 30
         offset = 10
-        sleep = 25
+        sleep = 45
         rid, start, end = self.submit_and_confirm_reservation(offset, duration)
 
         # Submit a job to the reservation.
@@ -648,7 +644,6 @@ class TestPbsResvAlter(TestFunctional):
         self.check_resv_running(rid, duration, 0)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
 
-    @skipOnCpuSet
     def test_alter_advance_resv_both_times_before_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -680,7 +675,6 @@ class TestPbsResvAlter(TestFunctional):
                                                       -shift, alter_s=True,
                                                       alter_e=True, sequence=3)
 
-    @skipOnCpuSet
     def test_alter_advance_resv_both_times_after_run(self):
         """
         This test case covers the below scenarios for an advance reservation
@@ -715,7 +709,6 @@ class TestPbsResvAlter(TestFunctional):
                                  shift, alter_s=True,
                                  alter_e=True, whichMessage=0)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_start_time_before_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -763,7 +756,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_start_time_after_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -808,7 +800,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_end_time_before_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -863,7 +854,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_end_time_after_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -907,7 +897,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_both_times_before_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -956,7 +945,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_both_times_after_run(self):
         """
         This test case covers the below scenarios for a standing reservation
@@ -1005,7 +993,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_conflict_two_advance_resvs(self):
         """
         This test confirms that an advance reservation cannot be extended
@@ -1036,7 +1023,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid2, start2, end2, -shift, alter_s=True,
                                  whichMessage=3, interactive=5, sequence=2)
 
-    @skipOnCpuSet
     def test_conflict_two_standing_resvs(self):
         """
         This test confirms that an occurrence of a standing reservation cannot
@@ -1067,7 +1053,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid2, start2, end2, -shift, alter_s=True,
                                  whichMessage=3, interactive=5, sequence=2)
 
-    @skipOnCpuSet
     def test_check_alternate_nodes_advance_resv_endtime(self):
         """
         This test confirms that an advance reservation can be extended even if
@@ -1102,7 +1087,6 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
-    @skipOnCpuSet
     def test_check_alternate_nodes_advance_resv_starttime(self):
         """
         This test confirms that an advance reservation can be extended even if
@@ -1138,7 +1122,6 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
-    @skipOnCpuSet
     def test_check_alternate_nodes_standing_resv_endtime(self):
         """
         This test confirms that an occurrence of a standing reservation can be
@@ -1176,7 +1159,6 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
-    @skipOnCpuSet
     def test_check_alternate_nodes_standing_resv_starttime(self):
         """
         This test confirms that an advance reservation can be extended even if
@@ -1213,7 +1195,6 @@ class TestPbsResvAlter(TestFunctional):
         attrs = {'resv_nodes': (MATCH_RE, re.escape(free_node))}
         self.server.expect(RESV, attrs, id=rid1)
 
-    @skipOnCpuSet
     def test_conflict_standing_resv_occurrence(self):
         """
         This test confirms that if the requested time while altering an
@@ -1232,7 +1213,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid, start, end, shift, alter_e=True,
                                  whichMessage=0)
 
-    @skipOnCpuSet
     def test_large_resv_nodes_server_crash(self):
         """
         This test is to test whether the server crashes or not when a very
@@ -1245,15 +1225,14 @@ class TestPbsResvAlter(TestFunctional):
         offset = 10
 
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vnode', a, num=256, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=256,
+                               usenatvnode=True)
 
         rid, start, end = self.submit_and_confirm_reservation(
             offset, duration, select="256:ncpus=4")
 
         self.alter_a_reservation(rid, start, end, shift, alter_s=True)
 
-    @skipOnCpuSet
     def test_alter_advance_resv_boundary_values(self):
         """
         This test checks the alter of start and end times at the boundary
@@ -1275,7 +1254,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(
             rid, start, end, -shift, alter_s=True, sequence=4)
 
-    @skipOnCpuSet
     def test_alter_standing_resv_boundary_values(self):
         """
         This test checks the alter of start and end times at the boundary
@@ -1297,7 +1275,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(
             rid, start, end, -shift, alter_s=True, sequence=4)
 
-    @skipOnCpuSet
     def test_alter_degraded_resv_mom_down(self):
         """
         This test checks the alter of start and end times of reservations
@@ -1361,33 +1338,31 @@ class TestPbsResvAlter(TestFunctional):
                                  sequence=seq)
         self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
                                  alter_e=True, whichMessage=mtype,
-                                 interactive=2, sequence=seq+1)
+                                 interactive=2, sequence=seq + 1)
         self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
                                  alter_e=True, whichMessage=mtype,
-                                 interactive=2, sequence=seq+1)
+                                 interactive=2, sequence=seq + 1)
 
-    @skipOnCpuSet
     def test_alter_resv_name(self):
         """
         This test checks the alter of reservation name.
         """
         duration = 30
-        offset = 5
+        offset = 10
 
         rid1 = self.submit_and_confirm_reservation(
             offset, duration)
-        rid2 = self.submit_and_confirm_reservation(
-            offset, duration, standing=True)
         attr1 = {ATTR_N: "Adv_Resv"}
         self.server.alterresv(rid1[0], attr1)
+        attr1 = {'Reserve_Name': "Adv_Resv"}
+        self.server.expect(RESV, attr1, id=rid1[0])
+        rid2 = self.submit_and_confirm_reservation(
+            offset, duration, standing=True)
         attr2 = {ATTR_N: "Std_Resv"}
         self.server.alterresv(rid2[0], attr2)
-        attr1 = {'Reserve_Name': "Adv_Resv"}
         attr2 = {'Reserve_Name': "Std_Resv"}
-        self.server.expect(RESV, attr1, id=rid1[0])
         self.server.expect(RESV, attr2, id=rid2[0])
 
-    @skipOnCpuSet
     def test_alter_user_permission(self):
         """
         This test checks the user permissions for pbs_ralter.
@@ -1531,7 +1506,6 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV, attr, op=UNSET, id=rid, max_attempts=5)
         self.server.expect(QUEUE, attr2, op=UNSET, id=qid, max_attempts=5)
 
-    @skipOnCpuSet
     def test_ralter_psets(self):
         """
         Test that PBS will not place a job across placement sets after
@@ -1545,13 +1519,14 @@ class TestPbsResvAlter(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, RSC, a, id='color')
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom)
+        self.mom.create_vnodes(a, 3)
 
         a = {'resources_available.color': 'red'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[0]')
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[1]')
+        vn = self.mom.shortname
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[0]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[1]')
         a = {'resources_available.color': 'green'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id='vn[2]')
+        self.server.manager(MGR_CMD_SET, NODE, a, id=vn + '[2]')
 
         a = {'node_group_key': 'color', 'node_group_enable': True}
         self.server.manager(MGR_CMD_SET, SERVER, a)
@@ -1584,7 +1559,6 @@ class TestPbsResvAlter(TestFunctional):
         self.alter_a_reservation(rid1, start1, end1, shift=300,
                                  alter_e=True, sequence=2, whichMessage=3)
 
-    @skipOnCpuSet
     def test_failed_ralter(self):
         """
         Test that a failed ralter does not allow jobs to interfere with
@@ -1619,7 +1593,6 @@ class TestPbsResvAlter(TestFunctional):
                                  alter_e=True, sequence=2, whichMessage=3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
 
-    @skipOnCpuSet
     def test_adv_resv_duration_before_start(self):
         """
         Test duration of reservation can be changed. In this case end
@@ -1662,7 +1635,6 @@ class TestPbsResvAlter(TestFunctional):
                            {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
                            id=rid, max_attempts=5, offset=sleepdur)
 
-    @skipOnCpuSet
     def test_adv_resv_dur_and_endtime_before_start(self):
         """
         Test that duration and end time of reservation can be changed together.
@@ -1699,7 +1671,6 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_start, t_end - t_duration)
         self.assertEqual(t_duration, new_duration2)
 
-    @skipOnCpuSet
     def test_adv_resv_dur_and_starttime_before_start(self):
         """
         Test duration and starttime of reservation can be changed together.
@@ -1909,7 +1880,6 @@ class TestPbsResvAlter(TestFunctional):
         # Check that duration of the second occurrence is not altered.
         self.check_standing_resv_second_occurrence(rid, start, end)
 
-    @skipOnCpuSet
     def test_conflict_standing_resv_occurrence_duration(self):
         """
         This test confirms that if the requested duration while altering an
@@ -1937,7 +1907,6 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(int(t_duration), duration)
         self.assertEqual(int(t_end), end)
 
-    @skipOnCpuSet
     def test_alter_empty_fail(self):
         """
         This test confirms that if a requested ralter fails due to the
@@ -1996,7 +1965,6 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(int(t_duration), new_duration_in_sec)
         self.assertEqual(int(t_end), new_end)
 
-    @skipOnCpuSet
     def test_adv_resv_dur_and_endtime_with_running_jobs(self):
         """
         Test that duration and end time of reservation cannot be changed
@@ -2034,7 +2002,6 @@ class TestPbsResvAlter(TestFunctional):
         self.assertEqual(t_start, start)
         self.assertEqual(t_duration, duration)
 
-    @skipOnCpuSet
     def test_standing_resv_dur_and_endtime_with_running_jobs(self):
         """
         Change duration and endtime of standing reservation with
@@ -2251,7 +2218,7 @@ class TestPbsResvAlter(TestFunctional):
 
         a = {'resources_available.ncpus': 1,
              'resources_available.mem': '8gb'}
-        self.server.create_vnodes('vnode', a, num=8, mom=self.mom)
+        self.mom.create_vnodes(a, num=8)
 
         rid, start, end = self.submit_and_confirm_reservation(offset, dur,
                                                               select=select)
@@ -2319,10 +2286,10 @@ class TestPbsResvAlter(TestFunctional):
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), 4)
         t = int(time.mktime(time.strptime(st[0]['reserve_start'], '%c')))
-        self.assertEquals(t, start+shift)
+        self.assertEquals(t, start + shift)
 
         t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
-        self.assertEquals(t, end+shift)
+        self.assertEquals(t, end + shift)
 
     def test_alter_select_with_running_jobs(self):
         """
@@ -2336,8 +2303,8 @@ class TestPbsResvAlter(TestFunctional):
         select3 = '1:ncpus=4'
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vnode', a, num=3, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=3,
+                               usenatvnode=True)
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               select=select)
@@ -2385,8 +2352,8 @@ class TestPbsResvAlter(TestFunctional):
         select2 = '1:ncpus=4'
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '1gb'}
-        self.server.create_vnodes('vnode', a, num=3, mom=self.mom,
-                                  usenatvnode=True)
+        self.mom.create_vnodes(a, num=3,
+                               usenatvnode=True)
 
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               select=select)
@@ -2448,7 +2415,7 @@ class TestPbsResvAlter(TestFunctional):
         st = self.server.status(RESV)
         self.assertEquals(len(st[0]['resv_nodes'].split('+')), 4)
         t = int(time.mktime(time.strptime(st[0]['reserve_start'], '%c')))
-        self.assertEquals(t, start+shift)
+        self.assertEquals(t, start + shift)
 
         t = int(time.mktime(time.strptime(st[0]['reserve_end'], '%c')))
         self.assertEquals(t, end + shift)
@@ -2842,3 +2809,42 @@ class TestPbsResvAlter(TestFunctional):
         self.server.expect(RESV, attrs, id=rid)
         wait = start - time.time()
         self.check_resv_running(rid, offset=wait)
+
+    def test_alter_degrade_reconfirm_standing(self):
+        """
+        Test that if a standing reservation is altered, degraded,
+        then reconfirmed, the reservation will use the original
+        select
+        """
+        duration = 60
+        offset = 60
+
+        confirmed = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        degraded = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
+        offline = {'state': 'offline'}
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, standing=True, select="2:ncpus=2")
+
+        self.alter_a_reservation(rid, start, end, select="1:ncpus=2")
+
+        self.server.status(RESV, id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
+        self.server.manager(MGR_CMD_SET, NODE, offline, id=resv_node)
+        self.server.expect(RESV, degraded, id=rid)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
+        self.server.expect(RESV, confirmed, id=rid)
+
+        stat = self.server.status(RESV, id=rid)[0]
+        resvnodes = stat['resv_nodes']
+        self.assertNotEquals(resv_node, resvnodes)
+        self.assertEquals(1, len(resvnodes.split('+')))
+
+        self.check_occr_finish(rid, end - time.time())
+        stat = self.server.status(RESV, id=rid)[0]
+        resvnodes = stat['resv_nodes']
+        self.assertEquals(2, len(resvnodes.split('+')))

@@ -477,15 +477,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 				return NULL;
 			}
 		}
-		/* TCP port for mom/server communication
-		 * we need the resource monitor port which is
-		 * defined as mom/server port + 1
-		 */
-		else if (!strcmp(attrp->name, ATTR_NODE_Port)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp == '\0')
-				ninfo->port = count + 1;
-		}
 		else if(!strcmp(attrp->name, ATTR_partition)) {
 			ninfo->partition = string_dup(attrp->value);
 			if (ninfo->partition == NULL) {
@@ -697,7 +688,6 @@ new_node_info()
 
 	new->name = NULL;
 	new->mom = NULL;
-	new->port = pbs_rm_port;
 	new->jobs = NULL;
 	new->resvs = NULL;
 	new->job_arr = NULL;
@@ -1525,7 +1515,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 
 	nnode->sharing = onode->sharing;
 
-	nnode->port = onode->port;
 	nnode->lic_lock = onode->lic_lock;
 	nnode->pcpus = onode->pcpus;
 
@@ -1892,8 +1881,6 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 
 				if (res->def  == getallres(RES_NCPUS)) {
 					ncpusres = res;
-					if (!ninfo->lic_lock)
-						ninfo->server->flt_lic -= resreq->amount;
 				}
 			}
 		}
@@ -2057,11 +2044,6 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 							log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, ninfo->name,
 								"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 							res->assigned = 0;
-						}
-						if (res->def == getallres(RES_NCPUS)) {
-
-							if (!ninfo->lic_lock)
-								ninfo->server->flt_lic += resreq->amount;
 						}
 					}
 				}
@@ -2549,7 +2531,6 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	int			k = 0;
 	int			tot = 0;
 	int			c = -1;
-	int			cur_flt_lic;
 	nspec			**nsa = NULL;
 	nspec			**ns_head = NULL;
 	char			reason[MAX_LOG_SIZE] = {0};
@@ -2612,8 +2593,6 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		if (npc != NULL)
 			hostsets = npc->nodepart;
 	}
-
-	cur_flt_lic = resresv->server->flt_lic;
 
 	if (hostsets != NULL) {
 		nsa = *nspec_arr;
@@ -2694,19 +2673,12 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 							dninfo_arr[k]->nscr &= ~NSCR_VISITED;
 						while (rc > 0 && dselspec->chunks[c]->num_chunks > 0) {
 							rc = eval_simple_selspec(policy, spec->chunks[c], dninfo_arr, pl,
-								resresv, flags, cur_flt_lic, &nsa, err);
+								resresv, flags, &nsa, err);
 
 							if (rc > 0) {
 								any_succ_rc = 1;
 								tot++;
 								dselspec->chunks[c]->num_chunks--;
-								/* if one vnode on a host is unlicensed, they all are */
-								if (!hostsets[i]->ninfo_arr[0]->lic_lock) {
-
-									req = find_resource_req(spec->chunks[c]->req, getallres(RES_NCPUS));
-									if (req != NULL)
-										cur_flt_lic -= req->amount;
-								}
 
 								for (; *nsa != NULL; nsa++) {
 									node_info *vn;
@@ -2769,15 +2741,12 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 
 							rc = eval_simple_selspec(policy, spec->chunks[c],
 								dninfo_arr, pl, resresv, flags| EVAL_OKBREAK,
-								cur_flt_lic, &nsa, err);
+								&nsa, err);
 
 							if (rc > 0) {
 								any_succ_rc = 1;
 								tot++;
 								dselspec->chunks[c]->num_chunks--;
-								req = find_resource_req(spec->chunks[c]->req, getallres(RES_NCPUS));
-								if (req != NULL)
-									cur_flt_lic -= req->amount;
 
 								while (*nsa != NULL)
 									nsa++;
@@ -2849,7 +2818,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 								dup_ninfo_arr[k]->nscr &= ~NSCR_VISITED;
 							do {
 								rc = eval_simple_selspec(policy, dselspec->chunks[c], dup_ninfo_arr,
-									pl, resresv, flags | EVAL_OKBREAK, cur_flt_lic, &nsa, err);
+									pl, resresv, flags | EVAL_OKBREAK, &nsa, err);
 
 								if (rc > 0) {
 									any_succ_rc = 1;
@@ -2867,10 +2836,6 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 														res = res->indirect_res;
 
 													res->assigned += req->amount;
-												}
-												if (!(*nsa)->ninfo->lic_lock &&
-													(req->def == getallres(RES_NCPUS))) {
-													cur_flt_lic -= req->amount;
 												}
 											}
 											req = req->next;
@@ -2975,7 +2940,6 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	node_info **nodes;    /* nodes to search through (possibly duplicated) */
 	int rc = 1;		/* used as a return code in the complex spec case */
 	int tot_nodes;	/* total number of nodes on the server */
-	int cur_flt_lic;	/* current number of floating licenses */
 	int num_nodes_used = 0;/* number of nodes used to satisfy spec */
 
 	/* number of nodes used with the no_multinode_job flag set */
@@ -2994,8 +2958,8 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 
 	/* we have a simple selspec... just pass it along */
 	if (spec->total_chunks == 1)
-		return eval_simple_selspec(policy, spec->chunks[0], ninfo_arr, pl, resresv,
-			flags, resresv->server->flt_lic, nspec_arr, err);
+		return eval_simple_selspec(policy, spec->chunks[0], ninfo_arr,
+						pl, resresv, flags, nspec_arr, err);
 
 	tot_nodes = count_array(ninfo_arr);
 
@@ -3012,8 +2976,6 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	 * We'll go through the nodes once since it'll probably be fine for most
 	 * cases.
 	 */
-
-	cur_flt_lic = resresv->server->flt_lic;
 
 	if (pl->scatter || pl->vscatter) {
 		nodes = ninfo_arr;
@@ -3037,16 +2999,10 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 		}
 
 		rc = eval_simple_selspec(policy, spec->chunks[n], nodes, pl, resresv,
-			flags, cur_flt_lic, &nsa, err);
+			flags, &nsa, err);
 
 		if (rc > 0) {
 			while (*nsa != NULL) {
-				if (!(*nsa)->ninfo->lic_lock) {
-					req = find_resource_req((*nsa)->resreq, getallres(RES_NCPUS));
-					if (req != NULL)
-						cur_flt_lic -= req->amount;
-				}
-
 				num_nodes_used++;
 				if ((*nsa)->ninfo->no_multinode_jobs)
 					num_no_multi_nodes++;
@@ -3111,7 +3067,6 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
  * @param[in]	flags	-	flags to change functions behavior
  *	      					EVAL_OKBREAK - ok to break chunck up across vnodes
  *	      					EVAL_EXCLSET - allocate entire nodelist exclusively
- * @param[in]	flt_lic	-	the number of floating licenses available
  * @param[out]	nspec_arr	-	the node solution
  * @param[out]	err	-	error structure to return error information
  *
@@ -3123,7 +3078,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 int
 eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	place *pl, resource_resv *resresv, unsigned int flags,
-	int flt_lic, nspec ***nspec_arr, schd_error *err)
+	nspec ***nspec_arr, schd_error *err)
 {
 	int		chunks_found = 0;	/* number of nodes found to satisfy a subspec */
 	nspec		*ns = NULL;		/* current nspec */
@@ -3147,11 +3102,6 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 
 	static schd_error *failerr = NULL;
 
-	/* used for floating licensing */
-	int		cur_flt_lic = 0;	/* current number of floating licenses */
-	int		cur_ncpus = 0;		/* current number of ncpus left to license */
-	int		licenses_allocated = 0;	/* licenses allocated to a job on a node */
-	resource_req	*ncpusreq = NULL;
 	resource_req	*aoereq = NULL;
 
 	if (chk == NULL || pninfo_arr == NULL || resresv== NULL || pl == NULL || nspec_arr == NULL)
@@ -3162,7 +3112,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 
 	if (failerr == NULL) {
 		failerr = new_schd_error();
-		if(failerr == NULL) {
+		if (failerr == NULL) {
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 			return 0;
 		}
@@ -3239,7 +3189,6 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	else
 		specreq_noncons = NULL;	/* no non-consumable resources */
 
-	cur_flt_lic = flt_lic;
 	nsa = *nspec_arr;
 
 	for (i = 0, j = 0; ninfo_arr[i] != NULL && chunks_found == 0; i++) {
@@ -3247,9 +3196,8 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 			continue;
 
 		allocated = 0;
-		licenses_allocated = 0;
 		clear_schd_error(err);
-		if (ninfo_arr[i]->lic_lock || cur_flt_lic > 0) {
+		if (ninfo_arr[i]->lic_lock) {
 			if (need_new_nspec) {
 				need_new_nspec = 0;
 				nsa[j] = new_nspec();
@@ -3270,17 +3218,9 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 			}
 
 			if (is_vnode_eligible_chunk(specreq_noncons, ninfo_arr[i], resresv, err)) {
-				if (!ninfo_arr[i]->lic_lock) {
-					ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
-					if (ncpusreq != NULL)
-						cur_ncpus = ncpusreq->amount;
-					else
-						cur_ncpus = 0;
-				}
-
 				if (specreq_cons != NULL)
 					allocated = resources_avail_on_vnode(specreq_cons, ninfo_arr[i],
-						pl, resresv, cur_flt_lic, flags, ns, err);
+						pl, resresv, flags, ns, err);
 				if (allocated) {
 					need_new_nspec = 1;
 					ns->seq_num = chk->seq_num;
@@ -3301,8 +3241,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 									req = prevreq->next = req->next;
 
 								free_resource_req(tmpreq);
-							}
-							else {
+							} else {
 								prevreq = req;
 								req = req->next;
 							}
@@ -3319,27 +3258,12 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 								/* Need to call find_node_by_rank() over indrank since eval_placement might dup the nodes */
 								ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
 						}
-						if (!ninfo_arr[i]->lic_lock) {
-							ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
-							if (ncpusreq != NULL)
-								licenses_allocated = cur_ncpus - ncpusreq->amount;
-							else
-								licenses_allocated = cur_ncpus;
-						}
-					}
-					else {
+					} else {
 						chunks_found = 1;
 						/* we found our solution, we don't need any more nspec's */
 						need_new_nspec = 0;
 						ns->end_of_chunk = 1;
 
-						if (!ninfo_arr[i]->lic_lock) {
-							ncpusreq = find_resource_req(specreq_noncons, getallres(RES_NCPUS));
-							if (ncpusreq != NULL)
-								licenses_allocated = ncpusreq->amount;
-							else
-								licenses_allocated = 0;
-						}
 					}
 				}
 				else {
@@ -3354,10 +3278,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 					copy_schd_error(failerr, err);
 			}
 
-			if (licenses_allocated > 0)
-				cur_flt_lic -= licenses_allocated;
-		}
-		else
+		} else
 			set_schd_error_codes(err, NOT_RUN, NODE_UNLICENSED);
 
 		if (err->error_code != SUCCESS) {
@@ -3669,7 +3590,6 @@ is_powerok(node_info *node, resource_resv *resresv, schd_error *err)
  * @param[in]	node	-	the node to evaluate
  * @param[in]	pl	-	place spec for request
  * @param[in]	resresv	-	resource resv which is requesting
- * @param[in]	cur_flt_lic	-	current number of PBS licenses available
  * @param[in]	flags	-	flags to change behavior of function
  *              			EVAL_OKBREAK - OK to break chunk across vnodes
  * @param[out]	err	-	error status if node is ineligible
@@ -3679,7 +3599,7 @@ is_powerok(node_info *node, resource_resv *resresv, schd_error *err)
  */
 int
 resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
-	place *pl, resource_resv *resresv, int cur_flt_lic, unsigned int flags,
+	place *pl, resource_resv *resresv, unsigned int flags,
 	nspec *ns, schd_error *err)
 {
 	/* used for allocating partial chunks */
@@ -3710,15 +3630,6 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 				tmpreq.def = req->def;
 				tmpreq.next = NULL;
 				num_chunks = check_resources_for_node(&tmpreq, node, resresv, err);
-
-				if (!node->lic_lock && (cur_flt_lic < num_chunks) &&
-					!strcmp(req->name, "ncpus"))
-					/* if we can allocate more cpus than we have floating licenses,
-					 * we will allocate the number of floating licenses we have.  It
-					 * is still possible that more nodelocked licensed nodes are farther
-					 * down the node list and we can still satisfy the request.
-					 */
-					num_chunks = cur_flt_lic;
 
 				if (num_chunks > 0) {
 					is_p = is_provisionable(node, resresv, err);
@@ -3833,18 +3744,6 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 				if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1) {
 					set_current_eoe(node, resresv->eoename);
 				}
-			}
-		}
-
-		if (!node->lic_lock) {
-			req = find_resource_req(specreq_cons, getallres(RES_NCPUS));
-			if (req != NULL)
-				num = req->amount;
-			else
-				num = 0;
-			if (cur_flt_lic < num) {
-				num_chunks = 0;
-				set_schd_error_codes(err, NOT_RUN, NODE_UNLICENSED);
 			}
 		}
 
@@ -3993,15 +3892,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 
 				is_run_event = (event->event_type == TIMED_RUN_EVENT);
 
-
-				/* Normally when one job starts immediately after another (J1 end time == J2 start time)
-				 * we have no conflict between the two jobs.  When jobs do not request walltime,
-				 * they all have the same (5yr) walltime and fall one after another.
-				 * Using <= instead of < has the same effect as the jobs having a 1 second overlap.
-				 * Now all non-walltime jobs will overlap with the job before it and cause calendaring to occur.
-				 */
-				if (((resresv->duration == FIVE_YRS)?(event_time <= end_time):(event_time < end_time))
-					&& resresv != resc_resv && ns != NULL) {
+				if ((event_time < end_time) && resresv != resc_resv && ns != NULL) {
 					/* One event will need provisioning while the other will not,
 					 * they cannot co exist at same time.
 					 */

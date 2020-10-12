@@ -147,9 +147,8 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 		ATR_UNSET(patr);
 		return (0);
 	}
-	if (patr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(patr))
 		free_rcost(patr);
-	}
 
 	prdef = find_resc_def(svr_resc_def, rescn);
 	if (prdef == NULL)
@@ -198,7 +197,7 @@ encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname, char *rs
 
 	if (!attr)
 		return (-1);
-	if (!(attr->at_flags & ATR_VFLAG_SET))
+	if (!(is_attr_set(attr)))
 		return (0);
 
 	pcost = (struct resource_cost *)GET_NEXT(attr->at_val.at_list);
@@ -245,7 +244,7 @@ set_rcost(struct attribute *old, struct attribute *new, enum batch_op op)
 	struct resource_cost *pcnew;
 	struct resource_cost *pcold;
 
-	assert(old && new && (new->at_flags & ATR_VFLAG_SET));
+	assert(old && new && (is_attr_set(new)));
 
 	pcnew = (struct resource_cost *)GET_NEXT(new->at_val.at_list);
 	while (pcnew) {
@@ -295,5 +294,5 @@ free_rcost(attribute *pattr)
 		delete_link(&pcost->rc_link);
 		(void)free(pcost);
 	}
-	pattr->at_flags &= ~ATR_VFLAG_SET;
+	mark_attr_not_set(pattr);
 }

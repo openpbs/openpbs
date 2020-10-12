@@ -74,9 +74,6 @@ extern char *pbs_jobdir;			/* path to staging and execution dir of current job *
 extern char *cred_buf;				/* cred buffer */
 extern size_t cred_len;				/* length of cred buffer */
 #ifndef WIN32
-extern char *shell;
-extern char *argv[BUF_SIZE];		/* lots of args */
-extern int argc;
 extern int cred_pipe;
 extern char *pwd_buf;
 #endif
@@ -463,19 +460,19 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 	if (which == Chkpt) return(0); /* direct write of checkpoint not supported */
 
 	/* Check if direct_write requested. */
-	if (!((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
-				(strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'd'))))
+	if (!((is_jattr_set(pjob, JOB_ATR_keep)) &&
+				(strchr(get_jattr_str(pjob, JOB_ATR_keep), 'd'))))
 		return(0);
 
 	/* Figure out what the final destination path is */
 	switch(which)
 	{
 		case StdOut:
-			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'o'))
+			if(!strchr(get_jattr_str(pjob, JOB_ATR_keep), 'o'))
 				return(0);
 			else
 				/* Make local working copy of path for call to local_or_remote */
-				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str);
+				snprintf(working_path, MAXPATHLEN + 1, "%s", get_jattr_str(pjob, JOB_ATR_outpath));
 			if (
 #ifdef WIN32
 					working_path[strlen(working_path) -1] == '\\'
@@ -488,11 +485,11 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 			}
 			break;
 		case StdErr:
-			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'e'))
+			if(!strchr(get_jattr_str(pjob, JOB_ATR_keep), 'e'))
 				return(0);
 			else
 				/* Make local working copy of path for call to local_or_remote */
-				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str);
+				snprintf(working_path, MAXPATHLEN + 1, "%s", get_jattr_str(pjob, JOB_ATR_errpath));
 		if (
 #ifdef WIN32
 				working_path[strlen(working_path) -1] == '\\'
@@ -1735,49 +1732,16 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 			if (original == time(NULL))
 				sleep(1);
 
-			if (shell == NULL)
-				execl(ag0, ag0, ag1, ag2, ag3, NULL);
-			else {
-				argv[argc++] = ag0;
-				argv[argc++] = ag1;
-				argv[argc++] = ag2;
-				argv[argc++] = ag3;
-				argv[argc++] = NULL;
-				execv(shell, argv);
-			}
-			if (shell == NULL) {
-				sprintf(log_buffer,
-					"command: %s %s %s %s execl failed %d",
-					ag0, ag1, ag2, ag3, errno);
-			}
-			else {
-				sprintf(log_buffer,
-					"command: execv failed %d: %s", errno, shell);
-				for (i=0; argv[i]; i++) {
-					strcat(log_buffer, " ");
-					strcat(log_buffer, argv[i]);
-				}
-			}
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG,
-				__func__, log_buffer);
+			execl(ag0, ag0, ag1, ag2, ag3, NULL);
+			sprintf(log_buffer, "command: %s %s %s %s execl failed %d", ag0, ag1, ag2, ag3, errno);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__, log_buffer);
 			exit(13);	/* 13, an unluckly number */
 		}
 
 		/* copy did not work, try again */
 
-		if (shell == NULL) {
-			sprintf(log_buffer, "command: %s %s %s %s status=%d, try=%d",
-				ag0, ag1, ag2, ag3, rc, loop);
-		} else {
-			sprintf(log_buffer, "status=%d, try=%d: command: %s",
-				rc, loop, shell);
-			for (i=0; argv[i]; i++) {
-				strcat(log_buffer, " ");
-				strcat(log_buffer, argv[i]);
-			}
-		}
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG,
-			__func__, log_buffer);
+		sprintf(log_buffer, "command: %s %s %s %s status=%d, try=%d", ag0, ag1, ag2, ag3, rc, loop);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, __func__, log_buffer);
 		if ((loop % 2) == 0)	/* don't sleep between scp and rcp */
 			sleep(loop/2 * 10 + 1);
 

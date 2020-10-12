@@ -403,6 +403,7 @@ find_in_lib(void *handle, char * plnam, char *psnam, void ** psp)
 
 #endif /* MOM_ALPS */
 
+
 /* Private variables */
 
 /**
@@ -592,7 +593,7 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 	pjob->ji_extended.ji_ext.ji_pagg = sjr->sj_pagg;
 	pjob->ji_extended.ji_ext.ji_reservation = sjr->sj_reservation;
 	sprintf(altid_buf, "%ld", sjr->sj_reservation);
-	job_attr_def[(int)JOB_ATR_altid].at_decode(&pjob->ji_wattr[(int)JOB_ATR_altid], job_attr_def[(int)JOB_ATR_altid].at_name, NULL, altid_buf);
+	set_jattr_str_slim(pjob, JOB_ATR_altid, altid_buf, NULL);
 
 #endif	/* MOM_ALPS */
 }
@@ -620,7 +621,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 	 */
 
 	shell = pwdp->pw_shell;
-	if ((pjob->ji_wattr[(int)JOB_ATR_shell].at_flags & ATR_VFLAG_SET) &&
+	if ((is_jattr_set(pjob, JOB_ATR_shell)) &&
 		(vstrs = pjob->ji_wattr[(int)JOB_ATR_shell].at_val.at_arst)) {
 		for (i = 0; i < vstrs->as_usedptr; ++i) {
 			cp = strchr(vstrs->as_string[i], '@');
@@ -894,7 +895,9 @@ struct sig_tbl sig_tbl[] = {
 	{ "TTIN", SIGTTIN },
 	{ "TTOU", SIGTTOU },
 	{ "IO", SIGIO },
+#ifdef __linux__
 	{ "POLL", SIGPOLL },
+#endif
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
 	{ "VTALRM", SIGVTALRM },

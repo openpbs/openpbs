@@ -36,18 +36,16 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-lib_LTLIBRARIES = libdb.la
+noinst_LTLIBRARIES = libpbsdbpg.la
 
-libdb_la_CPPFLAGS = \
+libpbsdbpg_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@database_inc@
 
-libdb_la_LDFLAGS = -version-info 0:0:0
-
-libdb_la_LIBADD = \
+libpbsdbpg_la_LIBADD = \
 	@database_lib@
 
-libdb_la_SOURCES = \
+libpbsdbpg_la_SOURCES = \
 	db_postgres.h \
 	db_common.c \
 	db_attr.c \
@@ -66,8 +64,3 @@ dist_libexec_SCRIPTS = \
 
 dist_sbin_SCRIPTS = \
 	pbs_ds_systemd
-
-install-exec-hook:
-	install -D $(DESTDIR)$(libdir)/libdb.so.0.0.0 $(DESTDIR)$(libdir)/libdb_pg.so
-uninstall:
-	rm -f $(DESTDIR)$(libdir)/libdb_pg.so

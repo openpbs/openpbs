@@ -383,7 +383,6 @@ struct schedattrs
 	enum runjob_mode runjob_mode; /* set to a numeric version of job_run_wait attribute value */
 	long sched_cycle_length;
 	char *sched_log;
-	char *sched_port;
 	char *sched_priv;
 	long server_dyn_res_alarm;
 };
@@ -413,7 +412,6 @@ struct server_info
 	char *name;			/* name of server */
 	struct schd_resource *res;	/* list of resources */
 	void *liminfo;			/* limit storage information */
-	int flt_lic;			/* number of free floating licences */
 	int num_queues;			/* number of queues that reside on the server */
 	int num_nodes;			/* number of nodes associated with the server */
 	int num_resvs;			/* number of reservations on the server */
@@ -596,9 +594,12 @@ struct job_info
 	/* subjob information */
 	char *array_id;			/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
+	resource_resv *parent_job;	/* pointer to the parent array job */
 
 	/* job array information */
 	range *queued_subjobs;		/* a list of ranges of queued subjob indices */
+	long max_run_subjobs;		/* Max number of running subjobs at any time */
+	long running_subjobs;		/* number of currently running subjobs */
 
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */
@@ -683,7 +684,6 @@ struct node_info
 
 	char *name;			/* name of the node */
 	char *mom;			/* host name on which mom resides */
-	int   port;			/* port on which Mom is listening */
 
 	char **jobs;			/* the name of the jobs currently on the node */
 	char **resvs;			/* the name of the reservations currently on the node */
@@ -765,6 +765,8 @@ struct resv_info
 	node_info **resv_nodes;		/* node universe for reservation */
 	char *partition;		/* name of the partition in which the reservation was confirmed */
 	selspec *select_orig;		/* original schedselect pre-alter */
+	selspec *select_standing;	/* original schedselect for standing reservations */
+	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
@@ -809,7 +811,6 @@ struct resource_resv
 	server_info *server;		/* pointer to server which owns res resv */
 	node_info **ninfo_arr; 		/* nodes belonging to res resv */
 	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
-	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */
@@ -885,13 +886,6 @@ struct prev_job_info
 	char *name;			/* name of job */
 	char *entity_name;		/* fair share entity of job */
 	resource_req *resused;	/* resources used by the job */
-};
-
-struct mom_res
-{
-	char name[MAX_RES_NAME_SIZE];		/* name of resources for addreq() */
-	char ans[MAX_RES_RET_SIZE];		/* what is returned from getreq() */
-	unsigned eol:1;			/* set for sentinal value */
 };
 
 struct counts
@@ -1172,7 +1166,6 @@ struct config
 	char *fairshare_res;			/* resource to calc fairshare usage */
 	float fairshare_decay_factor;		/* decay factor used when decaying fairshare tree */
 	char *fairshare_ent;			/* job attribute to use as fs entity */
-	char **dyn_res_to_get;			/* dynamic resources to get from moms */
 	char **res_to_check;			/* the resources schedule on */
 	resdef **resdef_to_check;		/* the res to schedule on in def form */
 	char **ignore_res;			/* resources - unset implies infinite */

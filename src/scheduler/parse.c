@@ -384,8 +384,6 @@ parse_config(char *fname)
 					}
 					free(valbuf);
 				}
-				else if (!strcmp(config_name, PARSE_MOM_RESOURCES))
-					conf.dyn_res_to_get = break_comma_list(config_value);
 				else if (!strcmp(config_name, PARSE_DEDICATED_PREFIX)) {
 					if (strlen(config_value) > PBS_MAXQUEUENAME)
 						error = 1;
@@ -524,19 +522,21 @@ parse_config(char *fname)
 						else
 							error = 1;
 
-						tok = strtok(NULL, DELIM);
-						if (tok == NULL)
-							sort_type = RF_AVAIL;
-						else {
-							if (!strcmp(tok, "total"))
+						if (!error) {
+							tok = strtok(NULL, DELIM);
+							if (tok == NULL)
 								sort_type = RF_AVAIL;
-							else if (!strcmp(tok, "assigned"))
-								sort_type = RF_ASSN;
-							else if (!strcmp(tok, "unused"))
-								sort_type = RF_UNUSED;
 							else {
-								free(sort_res_name);
-								error = 1;
+								if (!strcmp(tok, "total"))
+									sort_type = RF_AVAIL;
+								else if (!strcmp(tok, "assigned"))
+									sort_type = RF_ASSN;
+								else if (!strcmp(tok, "unused"))
+									sort_type = RF_UNUSED;
+								else {
+									free(sort_res_name);
+									error = 1;
+								}
 							}
 						}
 
@@ -594,13 +594,15 @@ parse_config(char *fname)
 								if (filename == NULL)
 									error = 1;
 								else {
-									int err;
-									err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-									if (err != 0) {
-										snprintf(errbuf, sizeof(errbuf),
-											"error: %s file has a non-secure file access, errno: %d", filename, err);
-										error = 1;
-									}
+									#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+										int err;
+										err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
+										if (err != 0) {
+											snprintf(errbuf, sizeof(errbuf),
+												"error: %s file has a non-secure file access, errno: %d", filename, err);
+											error = 1;
+										}
+									#endif
 									conf.dynamic_res[res_num].res = tmp1;
 									conf.dynamic_res[res_num].command_line = tmp2;
 									conf.dynamic_res[res_num].script_name = filename;
@@ -865,8 +867,6 @@ init_config()
 	}
 	if (conf.res_to_check != NULL)
 		free_string_array(conf.res_to_check);
-	if (conf.dyn_res_to_get != NULL)
-		free_string_array(conf.dyn_res_to_get);
 
 	if (conf.dynamic_res[0].res != NULL) {
 		int i;

@@ -670,7 +670,7 @@ def job_is_running(jobid):
     Returns True if job shows a running state and substate
     """
     jobinfo = printjob_info(jobid)
-    if 'state' in jobinfo and jobinfo['state'] != 4:
+    if 'state' in jobinfo and jobinfo['state'] != 'R':
         return False
     if 'substate' in jobinfo:
         return jobinfo['substate'] == 42
@@ -2455,7 +2455,7 @@ class NodeUtils(object):
         for vnode_name in vnode_comments:
             if vnode_comments[vnode_name] != self.offline_msg:
                 pbs.logmsg(pbs.EVENT_DEBUG, ('%s: Comment for vnode %s '
-                           + 'was not set by this hook')
+                                             + 'was not set by this hook')
                            % (caller_name(), vnode_name))
                 continue
             vnode = pbs.event().vnode_list[vnode_name]
@@ -2825,7 +2825,7 @@ class CgroupUtils(object):
                 config_dict['enabled'] = False
             if (config_dict['enabled'] and
                     any([fnmatch.fnmatch(vntype, p)
-                        for p in config_dict['exclude_vntypes']])):
+                         for p in config_dict['exclude_vntypes']])):
                 config_dict['enabled'] = False
                 if subsection is None:
                     subname = 'all subsystems'
@@ -2853,7 +2853,7 @@ class CgroupUtils(object):
                 config_dict['enabled'] = False
             if (config_dict['enabled'] and
                 any([fnmatch.fnmatch(self.hostname, p)
-                    for p in config_dict['exclude_hosts']])):
+                     for p in config_dict['exclude_hosts']])):
                 config_dict['enabled'] = False
                 if subsection is None:
                     subname = 'all subsystems'
@@ -2880,7 +2880,7 @@ class CgroupUtils(object):
                     or not isinstance(config_dict['enabled'], bool)):
                 config_dict['enabled'] = \
                     (any([fnmatch.fnmatch(self.hostname, p)
-                         for p in config_dict['include_hosts']]))
+                          for p in config_dict['include_hosts']]))
             else:
                 config_dict['enabled'] = \
                     (config_dict['enabled']
@@ -2906,7 +2906,7 @@ class CgroupUtils(object):
             config_dict['enabled'] = \
                 (config_dict['enabled']
                  and any([fnmatch.fnmatch(self.hostname, p)
-                         for p in config_dict['run_only_on_hosts']]))
+                          for p in config_dict['run_only_on_hosts']]))
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        "%s: Config file parsing,"
                        " set %s to %s based on run_only_on_hosts"
@@ -4255,7 +4255,8 @@ class CgroupUtils(object):
                                                  ['cpu']
                                                  ['zero_cpus_shares_fraction'])
                     # Note that the minimum in the kernel is 2
-                    self.write_value(path, int(max(2, weightless_shares*1000)))
+                    self.write_value(
+                        path, int(max(2, weightless_shares * 1000)))
                     value = (self.cfg['cgroup']
                                      ['cpu']
                                      ['zero_cpus_quota_fraction'])
@@ -5127,7 +5128,7 @@ class CgroupUtils(object):
         # default for _cgroup_path for parent is empty string
         try:
             with open(self._cgroup_path('cpu', 'cfs_quota_us',
-                      jobid), 'r') as fd:
+                                        jobid), 'r') as fd:
                 return int(fd.readline().strip())
         except Exception:
             return None

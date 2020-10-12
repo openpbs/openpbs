@@ -675,8 +675,8 @@ get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_inf
 	size_t len;
 	char *ccname = NULL;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET)
-		krb_principal = strdup(pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str);
+	if (is_jattr_set(pjob, JOB_ATR_cred_id))
+		krb_principal = strdup(get_jattr_str(pjob, JOB_ATR_cred_id));
 	else {
 		log_err(-1, __func__, "No ticket found on job.");
 		return PBS_KRB5_ERR_NO_KRB_PRINC;
@@ -702,13 +702,13 @@ get_job_info_from_job(const job *pjob, const task *ptask, eexec_job_info job_inf
 		return PBS_KRB5_ERR_INTERNAL;
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str == NULL) {
+	if (get_jattr_str(pjob, JOB_ATR_euser) == NULL) {
 		free(krb_principal);
 		free(ccname);
 		return PBS_KRB5_ERR_NO_USERNAME;
 	}
 
-	char *username = strdup(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+	char *username = strdup(get_jattr_str(pjob, JOB_ATR_euser));
 	if (username == NULL) {
 		free(krb_principal);
 		free(ccname);
@@ -1144,7 +1144,7 @@ im_cred_read(job *pjob, hnodent *np, int stream)
 		"credentials from superior mom received");
 
 	store_or_update_cred(pjob->ji_qs.ji_jobid,
-		pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str,
+		get_jattr_str(pjob, JOB_ATR_cred_id),
 		cred_type,
 		data,
 		NULL,

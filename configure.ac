@@ -127,25 +127,20 @@ AC_CHECK_HEADERS([ \
 	stdio.h \
 	alloca.h \
 	arpa/inet.h \
-	asm/types.h \
 	assert.h \
-	crypt.h \
 	ctype.h \
 	dirent.h \
 	dlfcn.h \
 	execinfo.h \
 	fcntl.h \
-	features.h \
 	float.h \
 	fstab.h \
 	ftw.h \
 	grp.h \
 	libgen.h \
 	limits.h \
-	malloc.h \
 	math.h \
 	memory.h \
-	mntent.h \
 	netdb.h \
 	netinet/in.h \
 	netinet/in_systm.h \
@@ -168,9 +163,7 @@ AC_CHECK_HEADERS([ \
 	stdlib.h \
 	string.h \
 	strings.h \
-	syscall.h \
 	syslog.h \
-	sys/epoll.h \
 	sys/fcntl.h \
 	sys/file.h \
 	sys/ioctl.h \
@@ -178,18 +171,13 @@ AC_CHECK_HEADERS([ \
 	sys/mount.h \
 	sys/param.h \
 	sys/poll.h \
-	sys/prctl.h \
-	sys/procfs.h \
 	sys/quota.h \
 	sys/resource.h \
 	sys/select.h \
 	sys/signal.h \
 	sys/socket.h \
-	sys/statfs.h \
 	sys/stat.h \
 	sys/statvfs.h \
-	sys/sysinfo.h \
-	sys/sysmacros.h \
 	sys/time.h \
 	sys/timeb.h \
 	sys/times.h \
@@ -199,7 +187,6 @@ AC_CHECK_HEADERS([ \
 	sys/unistd.h \
 	sys/user.h \
 	sys/utsname.h \
-	sys/vfs.h \
 	sys/wait.h \
 	termios.h \
 	time.h \
@@ -340,11 +327,13 @@ PBS_AC_WITH_KRBAUTH
 PBS_AC_WITH_MIN_STACK_LIMIT
 PBS_AC_DISABLE_SHELL_PIPE
 PBS_AC_DISABLE_SYSLOG
+PBS_AC_DISABLE_SECURITY_CHECK
 PBS_AC_ENABLE_ALPS
 PBS_AC_WITH_LIBZ
 PBS_AC_ENABLE_PTL
 PBS_AC_SYSTEMD_UNITDIR
 PBS_AC_WITH_LIBUNDOLR
+PBS_AC_PATCH_LIBTOOL
 
 AC_CONFIG_FILES([
 	openpbs.spec
@@ -382,6 +371,7 @@ AC_CONFIG_FILES([
 	src/lib/Libattr/Makefile
 	src/lib/Libdb/Makefile
 	src/lib/Libdb/pgsql/Makefile
+	src/lib/Libifl/Makefile
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile
@@ -394,6 +384,7 @@ AC_CONFIG_FILES([
 	src/lib/Libauth/Makefile
 	src/lib/Libauth/gss/Makefile
 	src/lib/Libauth/munge/Makefile
+	src/lib/Liblicensing/Makefile
 	src/lib/Makefile
 	src/modules/Makefile
 	src/modules/python/Makefile

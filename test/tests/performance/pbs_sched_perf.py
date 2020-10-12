@@ -38,8 +38,8 @@
 # subject to Altair's trademark licensing policies.
 
 
-from tests.performance import *
 from ptl.utils.pbs_logutils import PBSLogUtils
+from tests.performance import *
 
 
 class TestSchedPerf(TestPerformance):
@@ -56,9 +56,9 @@ class TestSchedPerf(TestPerformance):
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
         # 10010 nodes since it divides into 7 evenly.
         # Each node bucket will have 1430 nodes in it
-        self.server.create_vnodes('vnode', a, 10010, self.mom,
-                                  sharednode=False,
-                                  attrfunc=self.cust_attr_func, expect=False)
+        self.mom.create_vnodes(a, 10010,
+                               sharednode=False,
+                               attrfunc=self.cust_attr_func, expect=False)
         self.server.expect(NODE, {'state=free': (GE, 10010)})
         self.scheduler.add_resource('color')
 
@@ -326,7 +326,7 @@ class TestSchedPerf(TestPerformance):
         """
         # Create 1 node with 1 cpu
         a = {"resources_available.ncpus": 1}
-        self.server.create_vnodes('vnode', a, 1, self.mom, sharednode=False)
+        self.mom.create_vnodes(a, 1, sharednode=False)
 
         a = {"attr_update_period": 10000, "scheduling": "False"}
         self.server.manager(MGR_CMD_SET, SCHED, a, id="default")
@@ -365,11 +365,9 @@ class TestSchedPerf(TestPerformance):
     def setup_scheds(self):
         for i in range(1, 6):
             partition = 'P' + str(i)
-            sched_port = 15049 + i
             sched_name = 'sc' + str(i)
             a = {'partition': partition,
-                 'sched_host': self.server.hostname,
-                 'sched_port': sched_port}
+                 'sched_host': self.server.hostname}
             self.server.manager(MGR_CMD_CREATE, SCHED,
                                 a, id=sched_name)
             self.scheds[sched_name].create_scheduler()
@@ -412,7 +410,7 @@ class TestSchedPerf(TestPerformance):
         single scheduler and workload divided among 5 schedulers.
         """
         a = {'resources_available.ncpus': 1000}
-        self.server.create_vnodes(self.mom.shortname, a, 5, self.mom)
+        self.mom.create_vnodes(a, 5)
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.submit_njobs(5000)

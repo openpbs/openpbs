@@ -739,18 +739,19 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		return NULL;
 	}
 
-	if (resresv->is_job && qinfo == NULL) {
-		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-		add_err(&prev_err, err);
+	if (resresv->is_job) {
+		if (qinfo == NULL) {
+			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
+			add_err(&prev_err, err);
 
-		if (!(flags & RETURN_ALL_ERR))
-			return NULL;
-		else {
-			err = new_schd_error();
-			if (err == NULL)
+			if (!(flags & RETURN_ALL_ERR))
 				return NULL;
+			else {
+				err = new_schd_error();
+				if (err == NULL)
+					return NULL;
+			}
 		}
-
 	}
 
 	if (!in_runnable_state(resresv)) {
@@ -854,6 +855,20 @@ is_ok_to_run(status *policy, server_info *sinfo,
 					return NULL;
 
 			}
+			/* check for max_run_subjobs limits only when its not a qrun job */
+			if (resresv->job->is_array && (resresv->job->max_run_subjobs != UNSPECIFIED) &&
+			   (resresv->job->running_subjobs >= resresv->job->max_run_subjobs)) {
+				set_schd_error_codes(err, NOT_RUN, MAX_RUN_SUBJOBS);
+				add_err(&prev_err, err);
+
+				if (!(flags & RETURN_ALL_ERR))
+					return NULL;
+				else {
+					err = new_schd_error();
+					if (err == NULL)
+						return NULL;
+				}
+			}
 
 			if ((rc = check_prime_boundary(policy, resresv, err))) {
 				add_err(&prev_err, err);
@@ -927,40 +942,6 @@ is_ok_to_run(status *policy, server_info *sinfo,
 			if (err == NULL)
 				return NULL;
 		}
-	}
-
-
-	if ((sinfo->has_nonCPU_licenses == 0) &&
-		(resresv->select->total_cpus  >  sinfo->flt_lic)) {
-		char errbuf[MAX_LOG_SIZE];
-		set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
-		if (resresv->is_job && resresv->job !=NULL) {
-			snprintf(errbuf, sizeof(errbuf),
-				"Could not %s job - nodes are not licensed or unable to obtain"
-				" %d cpu licenses. avail_licenses=%d",
-				(resresv->job->is_suspended?"resume":"run"),
-				resresv->select->total_cpus, sinfo->flt_lic);
-			set_schd_error_arg(err, SPECMSG, errbuf);
-		}
-		else if (resresv->is_resv && resresv->resv !=NULL) {
-			sprintf(errbuf,
-				"Could not confirm reservation - nodes are not licensed or"
-				" unable to obtain %d cpu licenses at requested time."
-				" avail_licenses=%d", resresv->select->total_cpus, sinfo->flt_lic);
-			set_schd_error_arg(err, SPECMSG, errbuf);
-
-		}
-		else
-			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-
-		add_err(&prev_err, err);
-
-		if (!(flags & RETURN_ALL_ERR))
-			return NULL;
-
-		err = new_schd_error();
-		if(err == NULL)
-			return NULL;
 	}
 
 	if (exists_resv_event(sinfo->calendar, sinfo->server_time + resresv->hard_duration))

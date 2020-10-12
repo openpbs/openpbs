@@ -88,7 +88,7 @@ AC_DEFUN([KRB5_CONFIG],
   LDFLAGS="$ac_save_ldflags"],
   [])
 
-  AS_IF([test "x$_KRB5_KAFS_LIBS" == "x"],
+  AS_IF([test "x$_KRB5_KAFS_LIBS" = "x"],
     [
     AC_CHECK_LIB([kafs],[k_hasafs],
       [_KRB5_KAFS_LIBS="-lkafs"],

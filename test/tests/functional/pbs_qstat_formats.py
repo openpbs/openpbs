@@ -309,7 +309,7 @@ class TestQstatFormats(TestFunctional):
         oneline_attr_count = sum(1 for line in open(
             qstat_oneline_out) if not line.isspace())
         map(os.remove, [qstat_dsv_script, qstat_dsv_out,
-            qstat_oneline_script, qstat_oneline_out])
+                        qstat_oneline_script, qstat_oneline_out])
         self.assertEqual(dsv_attr_count, oneline_attr_count)
 
     def test_json(self):
@@ -412,7 +412,6 @@ class TestQstatFormats(TestFunctional):
         except ValueError:
             self.assertTrue(False)
 
-    @skipOnCpuSet
     def test_qstat_json_valid_multiple_jobs_p(self):
         """
         Test json output of qstat -f is in valid format when multiple jobs are
@@ -580,6 +579,22 @@ class TestQstatFormats(TestFunctional):
         """
         os.environ["DOUBLEQUOTES"] = 'hi"ha'
         os.environ["REVERSESOLIDUS"] = r'hi\ha'
+        os.environ["MYVAR"] = """\'\"asads\"\'"""
+        os.environ["MYHOME"] = """/home/pbstest01/Mo\\'"""
+        os.environ["FOO"] = """005"""
+        os.environ["MYVAR0"] = """\'"""
+        os.environ["MYVAR1"] = """\\'"""
+        os.environ["MYVAR2"] = """\\\'"""
+        os.environ["MYVAR3"] = """\\\\'"""
+        os.environ["MYVAR4"] = """\\\\\\'"""
+        os.environ["MYVAR5"] = """\\\\\\\\\\'"""
+        os.environ["MYVAR6"] = """\,"""
+        os.environ["MYVAR7"] = """\\,"""
+        os.environ["MYVAR8"] = """\\\,"""
+        os.environ["MYVAR9"] = """\\\\,"""
+        os.environ["MYVAR10"] = """\\\\\\,"""
+        os.environ["MYVAR11"] = """\\\\\\\\\\,"""
+        os.environ["MYVAR12"] = """apple\,delight"""
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'default_qsub_arguments': '-V'})
@@ -596,6 +611,7 @@ class TestQstatFormats(TestFunctional):
         try:
             json.loads(qstat_out)
         except ValueError:
+            self.logger.info(qstat_out)
             self.assertTrue(False)
 
     def test_qstat_json_valid_job_longint_env(self):
@@ -719,3 +735,27 @@ class TestQstatFormats(TestFunctional):
         self.assertNotIn(jid, qstat_out)
         self.assertNotIn(jname, qstat_out)
         self.assertNotIn(qname, qstat_out)
+
+    def test_qstat_json_empty_job_pset(self):
+        """
+        Test an empty pset resource value under json.
+        """
+        # create a custom resource
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'string', 'flag': 'h'}, id='iru')
+        attr = {'node_group_enable': 'True', 'node_group_key': 'iru'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        time.sleep(6)
+        # when job runs, pset will be set to iru="""
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + ' -f -F json ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            json.loads(qstat_out)
+        except ValueError:
+            self.logger.info(qstat_out)
+            self.assertFalse(True, "Json failed to load")

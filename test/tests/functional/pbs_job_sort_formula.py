@@ -46,7 +46,6 @@ class TestJobSortFormula(TestFunctional):
     Tests for the job_sort_formula
     """
 
-    @skipOnCpuSet
     def test_job_sort_formula_negative_value(self):
         """
         Test to see that negative values in the

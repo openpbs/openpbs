@@ -113,32 +113,26 @@ pbsnodes_SOURCES = pbsnodes.c ${common_sources}
 
 pbs_attach_CPPFLAGS = ${common_cflags}
 pbs_attach_LDADD = ${common_libs}
-pbs_attach_SOURCES = pbs_attach.c ${common_sources}
+pbs_attach_SOURCES = pbs_attach.c pbs_attach_sup.c ${common_sources}
 
 pbs_demux_CPPFLAGS = ${common_cflags}
 pbs_demux_LDADD = ${common_libs}
 pbs_demux_SOURCES = pbs_demux.c
 
 pbs_dataservice_bin_CPPFLAGS = \
-	${common_cflags} \
-	@database_inc@
-pbs_dataservice_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
+	${common_cflags}
 pbs_dataservice_bin_LDADD = \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
-	@database_lib@ \
 	-lssl \
 	-lcrypto
 pbs_dataservice_bin_SOURCES = pbs_dataservice.c ${common_sources}
 
 pbs_ds_password_bin_CPPFLAGS = \
-	${common_cflags} \
-	@database_inc@
-pbs_ds_password_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
+	${common_cflags}
 pbs_ds_password_bin_LDADD = \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	${common_libs} \
-	@database_lib@ \
 	-lssl \
 	-lcrypto
 pbs_ds_password_bin_SOURCES = pbs_ds_password.c ${common_sources}

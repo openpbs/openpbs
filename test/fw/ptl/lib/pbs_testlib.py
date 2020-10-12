@@ -66,8 +66,8 @@ from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError, get_method_name
 from ptl.utils.pbs_procutils import ProcUtils
-from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
-                                     DAEMON_SERVICE_USER)
+from ptl.utils.pbs_testusers import (DAEMON_SERVICE_USER, ROOT_USER, TEST_USER,
+                                     PbsUser)
 
 try:
     import psycopg2
@@ -87,6 +87,11 @@ except:
         raise ImportError
     API_OK = False
 
+try:
+    from nose.plugins.skip import SkipTest
+except ImportError:
+    class SkipTest(Exception):
+        pass
 
 # suppress logging exceptions
 logging.raiseExceptions = False
@@ -6724,6 +6729,19 @@ class Server(PBSService):
         :type logerr: bool
         :raises: PbsManagerError
         """
+        if cmd == MGR_CMD_SET and id is not None and obj_type == NODE:
+            for cmom, momobj in self.moms.items():
+                cpuset_nodes = []
+                if momobj.is_cpuset_mom():
+                    momobj.check_mem_request(attrib)
+                    if len(attrib) == 0:
+                        return True
+                    vnodes = self.status(HOST, id=cmom)
+                    del vnodes[0]  # don't set anything on a naturalnode
+                    for vn in vnodes:
+                        momobj.check_ncpus_request(attrib, vn)
+                    if len(attrib) == 0:
+                        return True
 
         if isinstance(id, str):
             oid = id.split(',')
@@ -9557,104 +9575,6 @@ class Server(PBSService):
 
         return utilization
 
-    def create_vnodes(self, name=None, attrib=None, num=1, mom=None,
-                      additive=False, sharednode=True, restart=True,
-                      delall=True, natvnode=None, usenatvnode=False,
-                      attrfunc=None, fname=None, vnodes_per_host=1,
-                      createnode=True, expect=True):
-        """
-        helper function to create vnodes.
-
-        :param name: prefix name of the vnode(s) to create
-        :type name: str or None
-        :param attrib: attributes to assign to each node
-        :param num: the number of vnodes to create. Defaults to 1
-        :type num: int
-        :param mom: the MoM object on which the vnode definition is
-                    to be inserted
-        :param additive: If True, vnodes are added to the existing
-                         vnode defs.Defaults to False.
-        :type additive: bool
-        :param sharednode: If True, all vnodes will share the same
-                           host.Defaults to True.
-        :type sharednode: bool
-        :param restart: If True the MoM will be restarted.
-        :type restart: bool
-        :param delall: If True delete all server nodes prior to
-                       inserting vnodes
-        :type delall: bool
-        :param natvnode: name of the natural vnode.i.e. The node
-                         name in qmgr -c "create node <name>"
-        :type natvnode: str or None
-        :param usenatvnode: count the natural vnode as an
-                            allocatable node.
-        :type usenatvnode: bool
-        :param attrfunc: an attribute=value function generator,
-                         see create_vnode_def
-        :param fname: optional name of the vnode def file
-        :type fname: str or None
-        :param vnodes_per_host: number of vnodes per host
-        :type vnodes_per_host: int
-        :param createnode: whether to create the node via manage or
-                           not. Defaults to True
-        :type createnode: bool
-        :param expect: whether to expect attributes to be set or
-                       not. Defaults to True
-        :type expect: bool
-        :returns: True on success and False otherwise
-        """
-        if mom is None or name is None or attrib is None:
-            self.logger.error("name, attributes, and mom object are required")
-            return False
-
-        if natvnode is None:
-            natvnode = mom.shortname
-
-        if delall:
-            try:
-                rv = self.manager(MGR_CMD_DELETE, NODE, None, "")
-                if rv != 0:
-                    return False
-            except PbsManagerError:
-                pass
-
-        vdef = mom.create_vnode_def(name, attrib, num, sharednode,
-                                    usenatvnode=usenatvnode, attrfunc=attrfunc,
-                                    vnodes_per_host=vnodes_per_host)
-        mom.insert_vnode_def(vdef, fname=fname, additive=additive,
-                             restart=restart)
-
-        new_vnodelist = []
-        if usenatvnode:
-            new_vnodelist.append(natvnode)
-            num_check = num - 1
-        else:
-            num_check = num
-        for i in range(num_check):
-            new_vnodelist.append("%s[%s]" % (name, i))
-
-        if createnode:
-            try:
-                statm = self.status(NODE, id=natvnode)
-            except:
-                statm = []
-            if len(statm) >= 1:
-                _m = 'Mom %s already exists, not creating' % (natvnode)
-                self.logger.info(_m)
-            else:
-                if mom.pbs_conf and 'PBS_MOM_SERVICE_PORT' in mom.pbs_conf:
-                    m_attr = {'port': mom.pbs_conf['PBS_MOM_SERVICE_PORT']}
-                else:
-                    m_attr = None
-                self.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
-        # only expect if vnodes were added rather than the nat vnode modified
-        if expect and num > 0:
-            attrs = {'state': 'free'}
-            attrs.update(attrib)
-            for vn in new_vnodelist:
-                self.expect(VNODE, attrs, id=vn)
-        return True
-
     def create_moms(self, name=None, attrib=None, num=1, delall=True,
                     createnode=True, conf_prefix='pbs.conf_m',
                     home_prefix='pbs_m', momhosts=None, init_port=15011,
@@ -11186,7 +11106,6 @@ class Scheduler(PBSService):
             cmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
                                 'sbin', 'pbs_sched')]
             cmd += ['-I', self.attributes['id']]
-            cmd += ['-S', str(self.attributes['sched_port'])]
             if sched_home is not None:
                 cmd += ['-d', sched_home]
             try:
@@ -11687,8 +11606,7 @@ class Scheduler(PBSService):
         self.logger.info(self.logprefix +
                          "reverting configuration to defaults")
 
-        ignore_attrs = ['id', 'pbs_version', 'sched_host',
-                        'state', 'sched_port']
+        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:
@@ -13371,14 +13289,14 @@ class MoM(PBSService):
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
 
-    def restart(self):
+    def restart(self, args=None):
         """
         Restart the PBS mom
         """
         if self.isUp():
             if not self.stop():
                 return False
-        return self.start()
+        return self.start(args=args)
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
@@ -13614,6 +13532,184 @@ class MoM(PBSService):
             self._is_cpuset_mom = False
         return self._is_cpuset_mom
 
+    def skipTest(self, reason=None):
+        """
+        Skip Test
+
+        :param reason: message to indicate why test is skipped
+        :type reason: str or None
+        """
+        if reason:
+            self.logger.warning('test skipped: ' + reason)
+        else:
+            reason = 'unknown'
+        raise SkipTest(reason)
+
+    def check_mem_request(self, attrib):
+        if 'resources_available.mem' in attrib:
+            del attrib['resources_available.mem']
+            self.skipTest(
+                'mem requested cannot be set on cpuset mom')
+
+    def check_ncpus_request(self, attrib, vn):
+        skipmsg = 'ncpus requested are not same as available'
+        skipmsg += ' on a cpuset node'
+        at = 'resources_available.ncpus'
+        if at in attrib:
+            if int(attrib[at]) != int(vn[at]):
+                self.skipTest(skipmsg)
+            else:
+                del attrib['resources_available.ncpus']
+
+    def set_node_attrib(self, vnode, attrib):
+        """
+        set attribute on a node
+        """
+        for res, value in attrib.items():
+            ecmd = 'set node '
+            ecmd += vnode['id'] + ' ' + res + '=' + str(value)
+            pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
+                                 'bin', 'qmgr'), '-c', ecmd]
+            ret = self.du.run_cmd(self.hostname, pcmd,
+                                  sudo=True,
+                                  level=logging.INFOCLI,
+                                  logerr=True)
+
+    def create_vnodes(self, attrib=None, num=1,
+                      additive=False, sharednode=True, restart=True,
+                      delall=True, natvnode=None, usenatvnode=False,
+                      attrfunc=None, fname=None, vnodes_per_host=1,
+                      createnode=True, expect=True, vname=None):
+        """
+        helper function to create vnodes.
+
+        :param attrib: attributes to assign to each node
+        :type attrib: dict
+        :param num: the number of vnodes to create. Defaults to 1
+        :type num: int
+        :param additive: If True, vnodes are added to the existing
+                         vnode defs.Defaults to False.
+        :type additive: bool
+        :param sharednode: If True, all vnodes will share the same
+                           host.Defaults to True.
+        :type sharednode: bool
+        :param restart: If True the MoM will be restarted.
+        :type restart: bool
+        :param delall: If True delete all server nodes prior to
+                       inserting vnodes
+        :type delall: bool
+        :param natvnode: name of the natural vnode.i.e. The node
+                         name in qmgr -c "create node <name>"
+        :type natvnode: str or None
+        :param usenatvnode: count the natural vnode as an
+                            allocatable node.
+        :type usenatvnode: bool
+        :param attrfunc: an attribute=value function generator,
+                         see create_vnode_def
+        :param fname: optional name of the vnode def file
+        :type fname: str or None
+        :param vnodes_per_host: number of vnodes per host
+        :type vnodes_per_host: int
+        :param createnode: whether to create the node via manage or
+                           not. Defaults to True
+        :type createnode: bool
+        :param expect: whether to expect attributes to be set or
+                       not. Defaults to True
+        :type expect: bool
+        :returns: True on success and False otherwise
+        :param vname: optional vnode prefix name to be used
+                      only if vnodes cannot have mom hostname
+                      as vnode prefix under some condition
+        :type vname: str or None
+        """
+        if attrib is None:
+            self.logger.error("attributes are required")
+            return False
+
+        if self.is_cpuset_mom():
+            if vname:
+                msg = "cpuset nodes cannot have vnode names"
+                self.skipTest(msg)
+            self.check_mem_request(attrib)
+            if len(attrib) == 0:
+                return True
+            nodes = self.server.status(HOST, id=self.shortname)
+            del nodes[0]  # don't set any attribute on natural node
+            if len(nodes) < num:
+                msg = 'cpuset mom does not have required number of nodes'
+                self.skipTest(msg)
+            elif len(nodes) == num:
+                if attrib:
+                    for vnode in nodes:
+                        self.check_ncpus_request(attrib, vnode)
+                        if len(attrib) != 0:
+                            self.set_node_attrib(vnode, attrib)
+                return True
+            else:
+                i = 0
+                for vnode in nodes:
+                    if i < num:
+                        i += 1
+                        self.check_ncpus_request(attrib, vnode)
+                        if len(attrib) != 0:
+                            self.set_node_attrib(vnode, attrib)
+                    else:
+                        at = {'state': 'offline'}
+                        self.set_node_attrib(vnode, at)
+                return True
+
+        if natvnode is None:
+            natvnode = self.shortname
+
+        if vname is None:
+            vname = self.shortname
+
+        if delall:
+            try:
+                rv = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+                if rv != 0:
+                    return False
+            except PbsManagerError:
+                pass
+
+        vdef = self.create_vnode_def(vname, attrib, num, sharednode,
+                                     usenatvnode=usenatvnode,
+                                     attrfunc=attrfunc,
+                                     vnodes_per_host=vnodes_per_host)
+        self.insert_vnode_def(vdef, fname=fname, additive=additive,
+                              restart=restart)
+
+        new_vnodelist = []
+        if usenatvnode:
+            new_vnodelist.append(natvnode)
+            num_check = num - 1
+        else:
+            num_check = num
+        for i in range(num_check):
+            new_vnodelist.append("%s[%s]" % (vname, i))
+
+        if createnode:
+            try:
+                statm = self.server.status(NODE, id=natvnode)
+            except:
+                statm = []
+            if len(statm) >= 1:
+                _m = 'Mom %s already exists, not creating' % (natvnode)
+                self.logger.info(_m)
+            else:
+                if self.pbs_conf and 'PBS_MOM_SERVICE_PORT' in self.pbs_conf:
+                    m_attr = {'port': self.pbs_conf['PBS_MOM_SERVICE_PORT']}
+                else:
+                    m_attr = None
+                self.server.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
+        # only expect if vnodes were added rather than the nat vnode modified
+        if expect and num > 0:
+            attrs = {'state': 'free'}
+            attrs.update(attrib)
+            for vn in new_vnodelist:
+                self.server.expect(VNODE, attrs, id=vn)
+        return True
+
     def create_vnode_def(self, name, attrs={}, numnodes=1, sharednode=True,
                          pre='[', post=']', usenatvnode=False, attrfunc=None,
                          vnodes_per_host=1):
@@ -13654,7 +13750,6 @@ class MoM(PBSService):
                   file
         """
         sethost = False
-
         attribs = attrs.copy()
         if not sharednode and 'resources_available.host' not in attrs:
             sethost = True
@@ -13904,6 +13999,10 @@ class MoM(PBSService):
         :param restart: If True, restart the MoM. Default is True
         :type restart: bool
         """
+        if self.is_cpuset_mom():
+            msg = 'Creating multiple vnodes is not supported on cpuset mom'
+            self.skipTest(msg)
+
         try:
             fn = self.du.create_temp_file(self.hostname, body=vdef)
         except:

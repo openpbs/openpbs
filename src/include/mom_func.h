@@ -53,13 +53,6 @@ extern "C" {
 #include "batch_request.h"
 #include "pbs_internal.h"
 
-/* struct var_table = used to hold environment variables for the job */
-
-struct var_table {
-	char **v_envp;
-	int    v_ensize;
-	int    v_used;
-};
 
 /* struct sig_tbl = used to hold map of local signal names to values */
 
@@ -342,9 +335,6 @@ extern int pbs_glob(char *, char *);
 extern void  rmjobdir(char *, char *, uid_t, gid_t, int);
 extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
 #ifdef WIN32
-extern void  bld_wenv_variables(char *, char *);
-extern void  init_envp(void);
-extern char  *make_envp(void);
 extern int   mktmpdir(char *, char *);
 extern int   mkjobdir(char *, char *, char *, HANDLE login_handle);
 extern int isdriveletter(int);
@@ -355,7 +345,6 @@ extern int recv_rq_cpyfile_cred(struct rq_cpyfile *);
 extern int remdir(char *);
 extern void check_err(const char *func_name, char *buf, int len);
 #else
-extern void  bld_env_variables(struct var_table *, char *, char *);
 extern int   mktmpdir(char *, uid_t, gid_t, struct var_table *);
 extern int   mkjobdir(char *, char *, uid_t, gid_t);
 extern int   impersonate_user(uid_t, gid_t);
@@ -363,12 +352,15 @@ extern void  revert_from_user(void);
 extern int   open_file_as_user(char *path, int oflag, mode_t mode,
 	uid_t exuid, gid_t exgid);
 #endif
+extern int  find_env_slot(struct var_table *, char *);
+extern void  bld_env_variables(struct var_table *, char *, char *);
+extern void  add_envp(char **, struct var_table *);
 extern pid_t fork_me(int sock);
 
 extern ssize_t readpipe(int pfd, void *vptr, size_t nbytes);
 extern ssize_t writepipe(int pfd, void *vptr, size_t nbytes);
 extern int   get_la(double *);
-extern void  init_abort_jobs(int);
+extern void  init_abort_jobs(int, pbs_list_head *);
 extern void  checkret(char **spot, int len);
 extern void  mom_nice(void);
 extern void  mom_unnice(void);

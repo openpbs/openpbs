@@ -151,36 +151,7 @@ extern	int		internal_state_update; /* flag for sending mom information update to
 
 extern int		server_stream;
 
-#ifdef WIN32
-extern int get_sha(job *, char **);
-static
-int hook_env_setup(job *pjob, hook *phook)
-{
-	char *hex_digest = NULL;
-
-	if (get_sha(pjob, &hex_digest) == 0) {
-		if (setenv(ENV_AUTH_KEY, hex_digest, 1) != 0) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name, "Failed to set PBS_AUTH_KEY");
-			goto err;
-		}
-		free(hex_digest);
-		hex_digest = NULL;
-		return 0;
-	} else {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			LOG_ERR, phook->hook_name, "Unable to get hash of encrypted password");
-		goto err;
-	}
-
-err:
-	if (hex_digest) {
-		free(hex_digest);
-		hex_digest = NULL;
-	}
-	return 1;
-}
-#endif
+extern char **environ;
 
 /**
  * @brief
@@ -867,7 +838,6 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	if ((phook->user == HOOK_PBSUSER) && (event_type & USER_MOM_EVENTS))
 		runas_jobuser = 1;
 
-#ifndef WIN32
 	child = fork();
 	if (child > 0) { /* parent */
 
@@ -908,21 +878,25 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				   "prematurely completed %s, exit=%d", ((struct python_script *) (phook->script))->path, run_exit);
 		}
 
-	} else { /* child */
-		/* releasing ports */
-		tpp_terminate();
-		net_close(-1);
-		(void) setsid();
-
-		myseq = getpid();
-#else /* Windows */
-	myseq = rand();
-	child = myseq;
-	if (php)
-		php->child = child;
-#endif
-
+	} else {
 		run_exit = 255;
+		if (!child) { /* child */
+			/* releasing ports */
+			tpp_terminate();
+			net_close(-1);
+			setsid();
+
+			myseq = getpid();
+		} else if (errno == ENOSYS) {
+			/* fork not available continue in foreground */
+			myseq = rand();
+			child = myseq;
+			if (php)
+				php->child = child;
+		} else {
+			log_err(errno, __func__, "fork failed");
+			goto run_hook_exit;
+		}
 
 		snprintf(path_hooks_rescdef, MAXPATHLEN, "%s%s", path_hooks, PBS_RESCDEF);
 		pbs_strncpy(hook_config_path, ((struct python_script *) phook->script)->path, sizeof(hook_config_path));
@@ -1003,13 +977,13 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			}
 #else /* Windows */
 
-		if (secure_file2(script_file, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
-				 "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
-				   "Unable to change permissions of the script file for user: %s, file: %s",
-				   pjob->ji_user->pw_name, script_file);
-			goto run_hook_exit;
-		}
+			if (secure_file2(script_file, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
+					"Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+					"Unable to change permissions of the script file for user: %s, file: %s",
+					pjob->ji_user->pw_name, script_file);
+				goto run_hook_exit;
+			}
 #endif
 
 			if ((fp = fopen(hook_inputfile, "w")) == NULL) {
@@ -1027,34 +1001,34 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			if (becomeuser(pjob) != 0) {
 				char *jobuser;
 
-				jobuser = pjob->ji_wattr[(int) JOB_ATR_euser].at_val.at_str;
+				jobuser = get_jattr_str(pjob, JOB_ATR_euser);
 				log_errf(errno, __func__, "Unable to become user %s!", (jobuser ? jobuser : "<job euser unset>"));
 				goto run_hook_exit;
 			}
 #else
-		if (secure_file2(hook_inputfile, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
-				 "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
-				   "Unable to change permissions of the hook input file for user: %s, file: %s",
-				   pjob->ji_user->pw_name, hook_inputfile);
-			goto run_hook_exit;
-		}
+			if (secure_file2(hook_inputfile, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
+					"Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+					"Unable to change permissions of the hook input file for user: %s, file: %s",
+					pjob->ji_user->pw_name, hook_inputfile);
+				goto run_hook_exit;
+			}
 
-		/* Force create the log file, to secure afterwards */
-		if ((fp2 = fopen(log_file, "w")) == NULL) {
-			log_errf(errno, __func__, "open of log file %s failed!", log_file);
-			goto run_hook_exit;
-		}
-		fclose(fp2);
-		fp2 = NULL;
+			/* Force create the log file, to secure afterwards */
+			if ((fp2 = fopen(log_file, "w")) == NULL) {
+				log_errf(errno, __func__, "open of log file %s failed!", log_file);
+				goto run_hook_exit;
+			}
+			fclose(fp2);
+			fp2 = NULL;
 
-		if (secure_file2(log_file, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
-				 "Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
-			log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
-				   "Unable to change permissions of the log file for user: %s, file: %s",
-				   pjob->ji_user->pw_name, log_file);
-			goto run_hook_exit;
-		}
+			if (secure_file2(log_file, pjob->ji_user->pw_name, READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED,
+					"Administrators", READS_MASK | WRITES_MASK | STANDARD_RIGHTS_REQUIRED) == 0) {
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
+					"Unable to change permissions of the log file for user: %s, file: %s",
+					pjob->ji_user->pw_name, log_file);
+				goto run_hook_exit;
+			}
 #endif
 
 			/*
@@ -1307,11 +1281,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			   "execve %s runas_jobuser=%d in child pid=%d", cmdline, runas_jobuser, myseq);
 
 		if (hook_config_path[0] == '\0') {
-#ifdef WIN32
-			/* since under Windows, this is still main mom (not forked), need to unset the hook config environment variable. */
-			if (setenv(PBS_HOOK_CONFIG_FILE, NULL, 1) != 0)
-				log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
-#endif /* WIN32 */
+			if (child)
+			/* since this is still main mom (not forked), need to unset the hook config environment variable. */
+				if (unsetenv(PBS_HOOK_CONFIG_FILE) != 0)
+					log_err(-1, __func__, "Failed to unset PBS_HOOK_CONFIG_FILE");
 		} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
 			return (-1);
@@ -1344,73 +1317,84 @@ run_hook_exit:
 		if (vnl_created)
 			vnl_free(vnl);
 		log_err(-1, __func__, "execv of hook");
+		if (child)
+			return run_exit;
 		exit(run_exit);
 	}
 #else
-	if (!parent_wait) {
-		if (win_popen(cmdline, "w", &pio, NULL) == 0) {
-			errno = GetLastError();
-			pbs_errno = errno;
-			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "executing %s failed errno=%d", cmdline, errno);
-			win_pclose(&pio);
-			return (-1);
-		}
-		ptask = set_task(WORK_Deferred_Child, (long) pio.pi.hProcess, post_func, phook);
-		if (!ptask) {
-			log_err(errno, __func__, msg_err_malloc);
-			win_pclose(&pio);
-			return (-1);
-		}
-		ptask->wt_aux2 = myseq;
-		addpid(pio.pi.hProcess);
-		win_pclose2(&pio); /* closes all handles except the process handle */
-		ptask->wt_parm2 = (void *) php;
-		return (0); /* no hook output file at this time */
-	} else if (runas_jobuser) {
-		if (pwdp == NULL) {
-			log_err(-1, __func__, "runas_jobuser does not have credential set!");
-			run_exit = 255;
-			goto run_hook_exit;
-		}
-		if (event_type == HOOK_EVENT_EXECJOB_EPILOGUE ||
-		    event_type == HOOK_EVENT_EXECJOB_PROLOGUE ||
-		    event_type == HOOK_EVENT_EXECJOB_PRETERM) {
-			int ret = 0;
-			ret = hook_env_setup(pjob, phook);
-			if (ret != 0) {
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__,
-					   "Unable to set the environment for the job: %s", pjob->ji_qs.ji_jobid);
+		if (!parent_wait) {
+			if (win_popen(cmdline, "w", &pio, NULL) == 0) {
+				errno = GetLastError();
+				pbs_errno = errno;
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "executing %s failed errno=%d", cmdline, errno);
+				win_pclose(&pio);
+				return (-1);
+			}
+			ptask = set_task(WORK_Deferred_Child, (long) pio.pi.hProcess, post_func, phook);
+			if (!ptask) {
+				log_err(errno, __func__, msg_err_malloc);
+				win_pclose(&pio);
+				return (-1);
+			}
+			ptask->wt_aux2 = myseq;
+			addpid(pio.pi.hProcess);
+			win_pclose2(&pio); /* closes all handles except the process handle */
+			ptask->wt_parm2 = (void *) php;
+			return (0); /* no hook output file at this time */
+		} else if (runas_jobuser) {
+			if (pwdp == NULL) {
+				log_err(-1, __func__, "runas_jobuser does not have credential set!");
+				run_exit = 255;
 				goto run_hook_exit;
 			}
-		}
-		(void) win_alarm(phook->alarm, run_hook_alarm);
-		run_exit = wsystem(cmdline, pwdp->pw_userlogin);
-		(void) win_alarm(0, NULL);
-		setenv(ENV_AUTH_KEY, NULL, 1);
-	} else {
-		/* The following blocks until after */
-		(void) win_alarm(phook->alarm, run_hook_alarm);
-		if (win_popen(cmdline, "r", &pio, NULL) == 0) {
-			errno = GetLastError();
-			pbs_errno = errno;
-			log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "executing %s failed errno=%d", cmdline, errno);
+			(void)win_alarm(phook->alarm, run_hook_alarm);
+			char *env_string = NULL;
+			struct var_table hook_env;
+			hook_env.v_envp = NULL;
+			char *pbs_hook_conf = NULL;
 
-		} else if (GetExitCodeProcess(pio.pi.hProcess, &run_exit) == 0 || run_exit == STILL_ACTIVE) {
-			log_err(-1, __func__, "GetExitCodeProcess failed");
-			run_exit = 255;
+			if ((pjob->ji_env.v_envp != NULL) && (phook->user == HOOK_PBSUSER)) {
+				/* Duplicate only when the hook user is pbsuser */
+				hook_env.v_envp = dup_string_arr(pjob->ji_env.v_envp);
+				if (hook_env.v_envp == NULL) {
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+						__func__, "Unable to set hook environment");
+					goto run_hook_exit;
+				}
+				hook_env.v_ensize = pjob->ji_env.v_ensize;
+				hook_env.v_used = pjob->ji_env.v_used;
+				if (pbs_hook_conf = getenv("PBS_HOOK_CONFIG_FILE"))
+					bld_env_variables(&hook_env, "PBS_HOOK_CONFIG_FILE", pbs_hook_conf);
+				env_string = make_envp(hook_env.v_envp);
+			}
+			run_exit = wsystem(cmdline, pwdp->pw_userlogin, env_string);
+			free(env_string);
+			(void)win_alarm(0, NULL);
+			free_string_array(hook_env.v_envp);
+		} else {
+			/* The following blocks until after */
+			(void) win_alarm(phook->alarm, run_hook_alarm);
+			if (win_popen(cmdline, "r", &pio, NULL) == 0) {
+				errno = GetLastError();
+				pbs_errno = errno;
+				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "executing %s failed errno=%d", cmdline, errno);
+
+			} else if (GetExitCodeProcess(pio.pi.hProcess, &run_exit) == 0 || run_exit == STILL_ACTIVE) {
+				log_err(-1, __func__, "GetExitCodeProcess failed");
+				run_exit = 255;
+			}
+			win_pclose(&pio);
+			(void) win_alarm(0, NULL);
 		}
-		win_pclose(&pio);
-		(void) win_alarm(0, NULL);
-	}
-	if (php)
-		php->child = child;
+		if (php)
+			php->child = child;
 run_hook_exit:
-	if (fp != NULL)
-		fclose(fp);
+		if (fp != NULL)
+			fclose(fp);
 
-	if (vnl_created)
-		vnl_free(vnl);
-
+		if (vnl_created)
+			vnl_free(vnl);
+	}
 #endif
 
 	if (run_exit != 0)
@@ -1811,11 +1795,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	/* copy of hook results, there will be one or more (one per hook)    */
 	/* pbs_event().hook_euser=<value> entries.  In that case, hook_euser */
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
-	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
-		pbs_strncpy(hook_euser,
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-			sizeof(hook_euser));
-	}
+	if (phook && pjob &&  (phook->user == HOOK_PBSUSER))
+		pbs_strncpy(hook_euser, get_jattr_str(pjob, JOB_ATR_euser), sizeof(hook_euser));
 
 	if ((input_file != NULL) && (*input_file != '\0')) {
 		fp = fopen(input_file, "r");
@@ -2251,7 +2232,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					line_data[0] = '\0';
 					continue;
 				}
-				if ((index == JOB_ATR_runcount) && ((pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0)) {
+				if ((index == JOB_ATR_runcount) && ((is_jattr_set(pjob2, JOB_ATR_run_version)) == 0)) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s': ignoring setting attribute %s,"
 						" talking to a server that does not allow %s modification, ",
@@ -2277,13 +2258,13 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						/* process a new line */
 						line_data[0] = '\0';
 						continue;
-					} else if ((index == JOB_ATR_runcount) && (pjob2->ji_wattr[index].at_flags & ATR_VFLAG_SET) && (dval < pjob2->ji_wattr[index].at_val.at_long)) {
+					} else if ((index == JOB_ATR_runcount) && (is_jattr_set(pjob2, index)) && (dval < get_jattr_long(pjob2, index))) {
 						snprintf(log_buffer, sizeof(log_buffer),
 							"object '%s': ignoring setting attribute %s,"
 							" executing hook has user=pbsuser, "
 							" cannot decrease value from %ld to %ld",
 							obj_name, name_str,
-							pjob2->ji_wattr[index].at_val.at_long,
+							get_jattr_long(pjob2, index),
 							dval);
 						log_err(-1, __func__, log_buffer);
 						/* process a new line */
@@ -2693,11 +2674,11 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	snprintf(phja->hja_jid, sizeof(phja->hja_jid), "%s", pjob->ji_qs.ji_jobid);
 	phja->hja_actid = ++hook_action_id;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-		phja->hja_runct = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-	} else {
-		phja->hja_runct = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-	}
+	if (is_jattr_set(pjob, JOB_ATR_run_version))
+		phja->hja_runct = get_jattr_long(pjob, JOB_ATR_run_version);
+	else
+		phja->hja_runct = get_jattr_long(pjob, JOB_ATR_runcount);
+
 	phja->hja_huser = huser;
 	phja->hja_action = action;
 	append_link(&svr_hook_job_actions, &phja->hja_link, phja);
@@ -3289,7 +3270,7 @@ reply_hook_bg(job *pjob)
 		 * IS_DISCARD_JOB can be received by sister node as well,
 		 * when node fail requeue is activated
 		 */
-		n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+		n = get_jattr_long(pjob, JOB_ATR_run_version);
 		strcpy(jobid, pjob->ji_qs.ji_jobid);
 
 		del_job_resc(pjob);	/* rm tmpdir, etc. */
@@ -3373,11 +3354,11 @@ reply_hook_bg(job *pjob)
 			case BG_IM_DELETE_JOB2:
 				strcpy(jobid, pjob->ji_qs.ji_jobid);
 				pjob->ji_hook_running_bg_on = BG_NONE;
-				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-				} else {
-					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-				}
+				if (is_jattr_set(pjob, JOB_ATR_run_version))
+					runver = get_jattr_long(pjob, JOB_ATR_run_version);
+				else
+					runver = get_jattr_long(pjob, JOB_ATR_runcount);
+
 				mom_deljob(pjob);
 
 				/* Needed to create a lightweight copy of the job to
@@ -3388,9 +3369,8 @@ reply_hook_bg(job *pjob)
 				 * been deleted already.
 				 */
 				if ((pjob2 = job_alloc()) != NULL) {
-					(void)snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = runver;
-					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
+					snprintf(pjob2->ji_qs.ji_jobid, sizeof(pjob2->ji_qs.ji_jobid), "%s", jobid);
+					set_jattr_l_slim(pjob2, JOB_ATR_run_version, runver, SET);
 					/* JOB_ACT_REQ_DEALLOCATE request will tell the
 					 * the server that this mom has completely deleted the
 					 * job and now the server can officially free up the
@@ -3709,8 +3689,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		if (((hook_event == HOOK_EVENT_EXECJOB_END) ||
 		     (hook_event == HOOK_EVENT_EXECJOB_EPILOGUE)) && !set_job_exit) {
 
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= ATR_SET_MOD_MCACHE;
+			set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_momt.ji_exitstat, SET);
 			set_job_exit = 1;
 		} else if ((hook_event == HOOK_EVENT_EXECJOB_LAUNCH) && (num_run >= 1)) {
 

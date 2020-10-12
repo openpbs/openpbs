@@ -8517,7 +8517,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 			if (job_attr_def[attr_idx].at_decode) {
 
 				clear_attr(&attr, job_attr_def);
-				rc = job_attr_def[attr_idx].at_decode(&attr, name, NULL, value_tmp);
+				rc = set_attr_generic(&attr, &job_attr_def[attr_idx], value_tmp, NULL, INTERNAL);
 				if (job_attr_def[attr_idx].at_free) {
 					job_attr_def[attr_idx].at_free(&attr);
 				}
@@ -9035,9 +9035,9 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 					/* skip jobs according to filters requested for the iterator */
 					job *njob = (job *) iter_entry->data;
 					while (njob != NULL &&
-						((ignore_fin && njob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
+						((ignore_fin && check_job_state(njob, JOB_STATE_LTR_FINISHED)) ||
 						(filter2 != NULL && filter2[0] != '\0' && strcmp(filter2, njob->ji_qs.ji_queue)) ||
-						(filter_user != NULL && filter_user[0] != '\0' && njob->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET && njob->ji_wattr[JOB_ATR_euser].at_val.at_str != NULL && strcmp(filter_user, njob->ji_wattr[JOB_ATR_euser].at_val.at_str)))) {
+						(filter_user != NULL && filter_user[0] != '\0' && is_jattr_set(njob, JOB_ATR_euser) && get_jattr_str(njob, JOB_ATR_euser) != NULL && strcmp(filter_user, get_jattr_str(njob, JOB_ATR_euser))))) {
 						njob = (job *)GET_NEXT(njob->ji_alljobs);
 					}
 
@@ -9134,9 +9134,9 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 					/* skip jobs according to filters requested for the iterator */
 					job *njob = (job *) iter_entry->data;
 					while (njob != NULL &&
-						((ignore_fin && njob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
+						((ignore_fin && check_job_state(njob, JOB_STATE_LTR_FINISHED)) ||
 						(filter2 != NULL && filter2[0] != '\0' && strcmp(filter2, njob->ji_qs.ji_queue)) ||
-						(filter_user != NULL && filter_user[0] != '\0' && njob->ji_wattr[JOB_ATR_euser].at_val.at_str != NULL && strcmp(filter_user, njob->ji_wattr[JOB_ATR_euser].at_val.at_str)))) {
+						(filter_user != NULL && filter_user[0] != '\0' && get_jattr_str(njob, JOB_ATR_euser) != NULL && strcmp(filter_user, get_jattr_str(njob, JOB_ATR_euser))))) {
 						njob = (job *)GET_NEXT(njob->ji_alljobs);
 					}
 
@@ -11818,6 +11818,26 @@ pbsv1mod_meth_get_server_data_fp(void)
 		Py_RETURN_NONE;
 
 	return (fp_obj);
+}
+
+const char pbsv1mod_meth_get_server_data_file_doc[] =
+"server_data_fp()\n\
+\n\
+   Returns the Python string representing the pathname to the hook data file.\n\
+\n\
+";
+
+/**
+ * @brief
+ *	Returns the Python string representing the pathname to the hook data file.
+ */
+PyObject *
+pbsv1mod_meth_get_server_data_file(void)
+{
+	if ((hook_debug.data_file == NULL) || (hook_debug.data_file[0] == '\0')) {
+		Py_RETURN_NONE;
+	}
+	return (PyUnicode_FromString(hook_debug.data_file));
 }
 
 const char pbsv1mod_meth_use_static_data_doc[] =

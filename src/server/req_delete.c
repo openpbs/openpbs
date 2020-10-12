@@ -246,7 +246,7 @@ check_deletehistoryjob(struct batch_request * preq)
 			log_buffer);
 
 		/* Issue history job delete request to remote server if job is moved. */
-		if (histpjob->ji_qs.ji_state == JOB_STATE_MOVED)
+		if (check_job_state(histpjob, JOB_STATE_LTR_MOVED))
 			issue_delete(histpjob);
 
 		if (histpjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
@@ -300,7 +300,7 @@ issue_delete(job *pjob)
 	if (pjob == NULL)
 		return;
 
-	if ((at = strchr(pjob->ji_wattr[JOB_ATR_in_queue].at_val.at_str, (int)'@')) == NULL)
+	if ((at = strchr(get_jattr_str(pjob, JOB_ATR_in_queue), (int)'@')) == NULL)
 		return;
 
 	snprintf(rmt_server, sizeof(rmt_server), "%s", at + 1);
@@ -358,7 +358,7 @@ req_deletejob(struct batch_request *preq)
 	job *pjob;
 	job *parent;
 	char *range;
-	int sjst; /* subjob state */
+	char sjst; /* subjob state */
 	int rc = 0;
 	int delhist = 0;
 	int err = PBSE_NONE;
@@ -403,6 +403,7 @@ req_deletejob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
+		char subjobstate;
 
 		/* single subjob, if running do full delete, */
 		/* if not then just set it expired		 */
@@ -412,20 +413,20 @@ req_deletejob(struct batch_request *preq)
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}
-		i = get_subjob_state(parent, offset);
-		if (i == -1) {
+		subjobstate = get_subjob_state(parent, offset);
+		if (subjobstate == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		}
 
-		if ((i == JOB_STATE_EXITING) && (forcedel == 0)) {
+		if ((subjobstate == JOB_STATE_LTR_EXITING) && (forcedel == 0)) {
 			if (parent->ji_pmt_preq != NULL) {
 				pjob = find_job(jid);
 				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
 			}
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
-		} else if (i == JOB_STATE_EXPIRED) {
+		} else if (subjobstate == JOB_STATE_LTR_EXPIRED) {
 			req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
 			return;
 		} else if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
@@ -437,9 +438,8 @@ req_deletejob(struct batch_request *preq)
 			req_deletejob2(preq, pjob);
 		} else {
 			acct_del_write(jid, parent, preq, 0);
-			parent->ji_ajtrk->tkm_tbl[offset].trk_substate =
-				JOB_SUBSTATE_TERMINATED;
-			set_subjob_tblstate(parent, offset, JOB_STATE_EXPIRED);
+			parent->ji_ajtrk->tkm_tbl[offset].trk_substate = JOB_SUBSTATE_TERMINATED;
+			set_subjob_tblstate(parent, offset, JOB_STATE_LTR_EXPIRED);
 			parent->ji_ajtrk->tkm_dsubjsct++;
 
 			decr_single_subjob_usage(parent);
@@ -467,12 +467,12 @@ req_deletejob(struct batch_request *preq)
 		parent->ji_ajtrk->tkm_flags |= TKMFLG_NO_DELETE;
 		for (i = 0; i < parent->ji_ajtrk->tkm_ct; i++) {
 			sjst = get_subjob_state(parent, i);
-			if ((sjst == JOB_STATE_EXITING) && !forcedel)
+			if ((sjst == JOB_STATE_LTR_EXITING) && !forcedel)
 				continue;
 			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
 				if (delhist)
 					pjob->ji_deletehistory = 1;
-				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
+				if (check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						msg_job_history_delete, preq->rq_user,
 						preq->rq_host);
@@ -484,10 +484,9 @@ req_deletejob(struct batch_request *preq)
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
 			} else {
 				/* Queued, Waiting, Held, just set to expired */
-				if (sjst != JOB_STATE_EXPIRED) {
-					parent->ji_ajtrk->tkm_tbl[i].trk_substate =
-						JOB_SUBSTATE_TERMINATED;
-					set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
+				if (sjst != JOB_STATE_LTR_EXPIRED) {
+					parent->ji_ajtrk->tkm_tbl[i].trk_substate = JOB_SUBSTATE_TERMINATED;
+					set_subjob_tblstate(parent, i, JOB_STATE_LTR_EXPIRED);
 					decr_single_subjob_usage(parent);
 				}
 			}
@@ -547,22 +546,22 @@ req_deletejob(struct batch_request *preq)
 				continue;
 
 			sjst = get_subjob_state(parent, idx);
-			if ((sjst == JOB_STATE_EXITING) && !forcedel)
+			if ((sjst == JOB_STATE_LTR_EXITING) && !forcedel)
 				continue;
 
 			if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
 				if (delhist)
 					pjob->ji_deletehistory = 1;
-				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
+				if (check_job_state(pjob, JOB_STATE_LTR_EXPIRED)) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_job_history_delete, preq->rq_user, preq->rq_host);
 					job_purge(pjob);
 				} else
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
 			} else {
 				/* Queued, Waiting, Held, just set to expired */
-				if (sjst != JOB_STATE_EXPIRED) {
+				if (sjst != JOB_STATE_LTR_EXPIRED) {
 					parent->ji_ajtrk->tkm_tbl[idx].trk_substate = JOB_SUBSTATE_TERMINATED;
-					set_subjob_tblstate(parent, idx, JOB_STATE_EXPIRED);
+					set_subjob_tblstate(parent, idx, JOB_STATE_LTR_EXPIRED);
 					decr_single_subjob_usage(parent);
 				}
 			}
@@ -629,7 +628,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 	jt = is_job_array(pjob->ji_qs.ji_jobid);
 
-	if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT) {
+	if (check_job_state(pjob, JOB_STATE_LTR_TRANSIT)) {
 
 		/*
 		 * Find pid of router from existing work task entry,
@@ -656,7 +655,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 					pwtnew->wt_aux = pwtold->wt_aux;
 
 					kill((pid_t) pwtold->wt_event, SIGTERM);
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_ABORT;
+					set_job_substate(pjob, JOB_SUBSTATE_ABORT);
 					return; /* all done for now */
 
 				} else {
@@ -676,7 +675,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		req_reject(PBSE_INTERNAL, 0, preq);
 		return;
 
-	} else if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN) && (forcedel == 0)) {
+	} else if ((check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) && (forcedel == 0)) {
 
 		/* being sent to MOM, wait till she gets it going */
 		/* retry in one second				  */
@@ -691,8 +690,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 		return;
 	} else if (((jt != IS_ARRAY_Range) && (jt != IS_ARRAY_Single)) &&
-		   ((pjob->ji_qs.ji_state == JOB_STATE_QUEUED) ||
-		    (pjob->ji_qs.ji_state == JOB_STATE_HELD))) {
+		   (check_job_state(pjob, JOB_STATE_LTR_QUEUED) ||
+		    check_job_state(pjob, JOB_STATE_LTR_HELD))) {
 		struct depend *dp;
 		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
 		if (dp != NULL)
@@ -706,13 +705,13 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		pjob->ji_qs.ji_un.ji_exect.ji_exitstat = SIGKILL + 0x100;
 	}
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_TERM)) {
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN) {
+	if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) ||
+		(check_job_substate(pjob, JOB_SUBSTATE_TERM))) {
+		if (check_job_substate(pjob, JOB_SUBSTATE_RERUN)) {
 			/* rerun just started, clear that substate and */
 			/* normal delete will happen when mom replies  */
 
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+			set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				  pjob->ji_qs.ji_jobid, "deleting instead of rerunning");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
@@ -720,22 +719,20 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			return;
 		}
 
-		if (((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) ||
-			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)) &&
-			(pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)) {
+		if (((check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)) ||
+			(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))) &&
+			(is_jattr_set(pjob,  JOB_ATR_resc_released))) {
 			set_resc_assigned(pjob, 0, INCR);
-			job_attr_def[(int) JOB_ATR_resc_released].at_free(
-					&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
-			pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
-			if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
-				job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
-						&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
-				pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+			free_jattr(pjob, JOB_ATR_resc_released);
+			mark_jattr_not_set(pjob, JOB_ATR_resc_released);
+			if (is_jattr_set(pjob,  JOB_ATR_resc_released_list)) {
+				free_jattr(pjob, JOB_ATR_resc_released_list);
+				mark_jattr_not_set(pjob, JOB_ATR_resc_released_list);
 			}
 		}
 
 
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION) {
+		if (check_job_substate(pjob, JOB_SUBSTATE_PROVISION)) {
 			if (forcedel) {
 				/*
 				 * discard_job not called since job not sent
@@ -786,8 +783,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		 * deleted from mom as well.
 		 */
 		if ((rc || is_mgr) && forcedel) {
-			svr_setjobstate(pjob, JOB_STATE_EXITING,
-				JOB_SUBSTATE_EXITED);
+			svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITED);
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 				issue_track(pjob);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -809,12 +805,12 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				/*
 				 * Set exit status for the job to SIGKILL as we will not be working with any obit.
 				 */
-				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_val.at_long = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
-				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
+				set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_exect.ji_exitstat, SET);
+			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
 			}
 
 			/* see if it has any dependencies */
-			if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
+			if (is_jattr_set(pjob, JOB_ATR_depend))
 				depend_on_term(pjob);
 
 			/*
@@ -842,8 +838,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 		/* job has restart file at mom, do end job processing */
 
-		svr_setjobstate(pjob, JOB_STATE_EXITING,
-			JOB_SUBSTATE_EXITING);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_EXITING);
 		pjob->ji_momhandle = -1; /* force new connection */
 		pjob->ji_mom_prot = PROT_INVALID;
 		set_task(WORK_Immed, 0, on_job_exit, (void *) pjob);
@@ -872,7 +867,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) && !forcedel)
 		chk_array_doneness(pjob);
 	else if (abortjob) {
-		if (pjob->ji_qs.ji_state == JOB_STATE_EXITING)
+		if (check_job_state(pjob, JOB_STATE_LTR_EXITING))
 			discard_job(pjob, "Forced Delete", 1);
 		rel_resc(pjob);
 		if (pjob->ji_pmt_preq != NULL)
@@ -1121,16 +1116,16 @@ req_deleteReservation(struct batch_request *preq)
 			 * issued delete request
 			 */
 			for (; pnxj != NULL && (pnxj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-			     pnxj->ji_qs.ji_state == JOB_STATE_EXPIRED; pnxj = (job *) GET_NEXT(pnxj->ji_jobque))
+			     check_job_state(pnxj, JOB_STATE_LTR_EXPIRED); pnxj = (job *) GET_NEXT(pnxj->ji_jobque))
 				;
 			/*
-			 * If a history job (job state is JOB_STATE_MOVED
-			 * or JOB_STATE_FINISHED, then no need to delete
+			 * If a history job (job state is JOB_STATE_LTR_MOVED
+			 * or JOB_STATE_LTR_FINISHED, then no need to delete
 			 * it again as it is already deleted.
 			 */
-			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
+			if (check_job_state(pjob, JOB_STATE_LTR_MOVED) ||
 				(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) ||
-				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+				check_job_state(pjob, JOB_STATE_LTR_FINISHED)) {
 				pjob = pnxj;
 				continue;
 			}
@@ -1195,9 +1190,9 @@ req_deleteReservation(struct batch_request *preq)
 			if (presv && presv->ri_qp)
 				pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
 			while (pjob != NULL) {
-				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
+				if ((!check_job_state(pjob, JOB_STATE_LTR_MOVED)) &&
+					(!check_job_state(pjob, JOB_STATE_LTR_FINISHED)) &&
+					(!check_job_state(pjob, JOB_STATE_LTR_EXPIRED)))
 					break;
 				pjob = (job *) GET_NEXT(pjob->ji_jobque);
 			}
@@ -1308,7 +1303,7 @@ resend:
 			 * about this job. Going ahead and deleting could result in a
 			 * server crash, when post_sendmom completes.
 			 */
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) {
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 				req_reject(rc, 0, preq_clt);
@@ -1337,7 +1332,7 @@ resend:
 		/* Mom running a site supplied Terminate Job script   */
 		/* Put job into special Exiting state and we are done */
 
-		svr_setjobstate(pjob, JOB_STATE_EXITING, JOB_SUBSTATE_TERM);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_TERM);
 		return;
 	}
 }
@@ -1388,9 +1383,9 @@ struct work_task *pwt;
 		if (presv->ri_qp)
 			pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
 		while (pjob != NULL) {
-			if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-				(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
-				(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
+			if ((!check_job_state(pjob, JOB_STATE_LTR_MOVED)) &&
+				(!check_job_state(pjob, JOB_STATE_LTR_FINISHED)) &&
+				(!check_job_state(pjob, JOB_STATE_LTR_EXPIRED)))
 				break;
 			pjob = (job *) GET_NEXT(pjob->ji_jobque);
 		}

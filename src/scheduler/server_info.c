@@ -145,7 +145,6 @@
 #include "simulate.h"
 #include "fairshare.h"
 #include "check.h"
-#include "pbs_sched.h"
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"
@@ -154,6 +153,7 @@
 #include "site_code.h"
 #endif
 
+extern char **environ;
 
 /**
  *	@brief
@@ -189,6 +189,7 @@ query_server(status *pol, int pbs_sd)
 	char *errmsg;
 	resource_resv **jobs_alive;
 	status *policy;
+	int job_arrays_associated = FALSE;
 
 	if (pol == NULL)
 		return NULL;
@@ -361,7 +362,7 @@ query_server(status *pol, int pbs_sd)
 		allcts = find_alloc_counts(sinfo->alljobcounts, PBS_ALL_ENTITY);
 		if (sinfo->alljobcounts == NULL)
 			sinfo->alljobcounts = allcts;
-
+		job_arrays_associated = TRUE;
 		/* set the user, group , project counts */
 		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			cts = find_alloc_counts(sinfo->user_counts,
@@ -388,8 +389,27 @@ query_server(status *pol, int pbs_sd)
 			update_counts_on_run(cts, sinfo->running_jobs[i]->resreq);
 
 			update_counts_on_run(allcts, sinfo->running_jobs[i]->resreq);
+			/* Since we are already looping on running jobs, associcate running
+			 * subjobs to their parent.
+			 */
+			if ((sinfo->running_jobs[i]->job->is_subjob) &&
+			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
+				sinfo->fairshare = NULL;
+				free_server(sinfo);
+				return NULL;
+			}
 		}
 		create_total_counts(sinfo, NULL, NULL, SERVER);
+	}
+	if (job_arrays_associated == FALSE) {
+		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
+			if ((sinfo->running_jobs[i]->job->is_subjob) &&
+			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
+				sinfo->fairshare = NULL;
+				free_server(sinfo);
+				return NULL;
+			}
+		}
 	}
 
 	policy->equiv_class_resdef = create_resresv_sets_resdef(policy, sinfo);
@@ -525,12 +545,6 @@ query_server_info(status *pol, struct batch_status *server)
 			if(strstr(limname, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
-		} else if (!strcmp(attrp->name, ATTR_FLicenses)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp != '\0')
-				count = -1;
-
-			sinfo->flt_lic = count;
 		} else if (!strcmp(attrp->name, ATTR_NodeGroupEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->node_group_enable = 1;
@@ -652,27 +666,33 @@ query_server_dyn_res(server_info *sinfo)
 	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
 		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
 		if (res != NULL) {
-			int err, ret;
+			int ret;
 			fd_set set;
-			char *filename = conf.dynamic_res[i].script_name;
 			sigset_t allsigs;
 			pid_t pid;			/* pid of child */
 			int pdes[2];
 			k = 0;
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				int err;
+				char *filename;
+			#endif
 
 			if (sinfo->res == NULL)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
 			/* Make sure file does not have open permissions */
-			err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
-			if (err != 0) {
-				log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
-					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
-					filename, res->name, err);
-				set_resource(res, res_zero, RF_AVAIL);
-				continue;
-			}
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				filename = conf.dynamic_res[i].script_name;
+				err = tmp_file_sec_user(filename, 0, 1, S_IWGRP|S_IWOTH, 1, getuid());
+				if (err != 0) {
+					log_eventf(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res",
+						"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
+						filename, res->name, err);
+					set_resource(res, res_zero, RF_AVAIL);
+					continue;
+				}
+			#endif
 
 			if (pipe(pdes) < 0) {
 				pipe_err = errno;
@@ -1141,7 +1161,6 @@ new_server_info(int limallocflag)
 	sinfo->num_nodes = 0;
 	sinfo->num_resvs = 0;
 	sinfo->num_hostsets = 0;
-	sinfo->flt_lic = 0;
 	sinfo->server_time = 0;
 	sinfo->job_sort_formula = NULL;
 
@@ -2154,7 +2173,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->name = string_dup(osinfo->name);
 	nsinfo->liminfo = lim_dup_liminfo(osinfo->liminfo);
 	nsinfo->server_time = osinfo->server_time;
-	nsinfo->flt_lic = osinfo->flt_lic;
 	nsinfo->res = dup_resource_list(osinfo->res);
 	nsinfo->alljobcounts = dup_counts_list(osinfo->alljobcounts);
 	nsinfo->group_counts = dup_counts_list(osinfo->group_counts);
@@ -2307,6 +2325,14 @@ dup_server_info(server_info *osinfo)
 	 * jobs to each other if they have runone dependency
 	 */
 	associate_dependent_jobs(nsinfo);
+
+	for (i = 0; nsinfo->running_jobs[i] != NULL; i++) {
+		if ((nsinfo->running_jobs[i]->job->is_subjob) &&
+		    (associate_array_parent(nsinfo->running_jobs[i], nsinfo) == 1)) {
+			free_server_info(nsinfo);
+			return NULL;
+		}
+	}
 
 	if (osinfo->job_sort_formula != NULL) {
 		nsinfo->job_sort_formula = string_dup(osinfo->job_sort_formula);
@@ -3143,7 +3169,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
  * 		resolve_indirect_resources - resolve indirect resources for node
  *		array
  *
- * @param[in/out]	nodes	-	the nodes to resolve
+ * @param[in,out]	nodes	-	the nodes to resolve
  *
  * @return	int
  * @retval	1	: if successful
@@ -3949,41 +3975,4 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	new_unordered_nodes[ct1] = NULL;
 
 	return new_unordered_nodes;
-}
-
-/**
- * @brief add pointer to NULL terminated pointer array
- * @param[in] ptr_arr - pointer array to add to
- * @param[in] ptr - pointer to add
- *
- * @return void *
- * @retval pointer array with new element added
- * @retval NULL on error
- */
-void *
-add_ptr_to_array(void *ptr_arr, void *ptr)
-{
-	void **arr;
-	int cnt;
-
-	cnt = count_array(ptr_arr);
-
-	if (cnt == 0) {
-		arr = malloc(sizeof(void *) * 2);
-		if (arr == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
-		}
-		arr[0] = ptr;
-		arr[1] = NULL;
-	} else {
-		arr = realloc(ptr_arr, (cnt + 1) * sizeof(void *));
-		if (arr == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return NULL;
-		}
-		arr[cnt - 1] = ptr;
-		arr[cnt] = NULL;
-	}
-	return arr;
 }

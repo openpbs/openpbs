@@ -816,6 +816,44 @@ remove_ptr_from_array(void *arr, void *ptr)
 }
 
 /**
+ * @brief add pointer to NULL terminated pointer array
+ * @param[in] ptr_arr - pointer array to add to
+ * @param[in] ptr - pointer to add
+ *
+ * @return void *
+ * @retval pointer array with new element added
+ * @retval NULL on error
+ */
+void *
+add_ptr_to_array(void *ptr_arr, void *ptr)
+{
+	void **arr;
+	int cnt;
+
+	cnt = count_array(ptr_arr);
+
+	if (cnt == 0) {
+		arr = malloc(sizeof(void *) * 2);
+		if (arr == NULL) {
+			log_err(errno, __func__, MEM_ERR_MSG);
+			return NULL;
+		}
+		arr[0] = ptr;
+		arr[1] = NULL;
+	} else {
+		arr = realloc(ptr_arr, (cnt + 1) * sizeof(void *));
+		if (arr == NULL) {
+			log_err(errno, __func__, MEM_ERR_MSG);
+			return NULL;
+		}
+		arr[cnt - 1] = ptr;
+		arr[cnt] = NULL;
+	}
+	return arr;
+}
+
+
+/**
  * @brief
  *		remove_str_from_array - remove a string from a ptr list and move
  *				the rest of the pointers up to fill the hole
@@ -1556,4 +1594,44 @@ free_ptr_array(void *inp)
 	for (i = 0; arr[i] != NULL; i++)
 		free(arr[i]);
 	free(arr);
+}
+
+/**
+ * @brief create new sched cmd structure and return
+ *
+ * @return sched_cmd *
+ * @retval NULL  - failure
+ * @return !NULL - success
+ *
+ * @warning caller has to free returned value using free_sched_cmd() when not needed
+ */
+sched_cmd *
+new_sched_cmd(void)
+{
+	sched_cmd *cmd = malloc(sizeof(sched_cmd));
+	if (cmd == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+	cmd->cmd = -1;
+	cmd->from_sock = -1;
+	cmd->jid = NULL;
+	return cmd;
+}
+
+/**
+ * @brief free given sched cmd structure
+ *
+ * @param[in] cmd - pointer to sched cmd structure
+ *
+ * @return void
+ */
+void
+free_sched_cmd(sched_cmd *cmd)
+{
+	if (cmd != NULL) {
+		if (cmd->jid != NULL)
+			free(cmd->jid);
+		free(cmd);
+	}
 }

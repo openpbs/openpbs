@@ -2544,14 +2544,9 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 	}
 	exec_time_ctime[strlen(exec_time_ctime)-1] = '\0';
 
-	job_attr_def[(int)JOB_ATR_exectime].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_exectime]);
+	free_jattr(pjob, JOB_ATR_exectime);
 
-	rc = job_attr_def[(int)JOB_ATR_exectime].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_exectime],
-		NULL,
-		NULL,
-		new_exec_time_str);
+	rc = set_jattr_str_slim(pjob, JOB_ATR_exectime, new_exec_time_str, NULL);
 
 	if (rc == 0) {
 		if (job_attr_def[(int)JOB_ATR_exectime].at_action) {
@@ -2574,15 +2569,15 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 			hook_name,
 			ATTR_a,
 			exec_time_ctime);
-		job_attr_def[(int)JOB_ATR_exectime].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_exectime]);
+		free_jattr(pjob, JOB_ATR_exectime);
 	} else {
-		int newstate, newsub;
+		int  newsub;
+		char newstate;
 		FILE	*fp_debug_out = NULL;
 
 		snprintf(msg, msg_len, "'%s' hook set job's %s = %s", hook_name, ATTR_a, exec_time_ctime);
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		(void)svr_setjobstate(pjob, newstate, newsub);
+		svr_setjobstate(pjob, newstate, newsub);
 
 		fp_debug_out = pbs_python_get_hook_debug_output_fp();
 		if (fp_debug_out != NULL) {
@@ -2622,7 +2617,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 	long	  old_hold;
 	int	  do_release;
 	int	  rc;
-	int	  newstate;
+	char	  newstate;
 	int	  newsub;
 
 	if ((msg == NULL) || (msg_len <= 0)) {
@@ -2642,13 +2637,9 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 	else
 		do_release = 0;
 
-	old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
 
-	rc = job_attr_def[(int)JOB_ATR_hold].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_hold],
-		ATTR_h,
-		NULL,
-		new_hold_types_str);
+	rc = set_jattr_str_slim(pjob, JOB_ATR_hold, new_hold_types_str, NULL);
 
 	if (rc != 0) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -2659,8 +2650,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 			(do_release?"unset":"set"),
 			ATTR_h,
 			(do_release?delval:new_hold_types_str));
-		job_attr_def[(int)JOB_ATR_hold].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_hold]);
+		free_jattr(pjob, JOB_ATR_hold);
 		return (rc);
 	}
 
@@ -2672,7 +2662,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 		(do_release?delval:new_hold_types_str));
 
 	if (!do_release &&
-		(pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long != 0)) {
+		(get_jattr_long(pjob, JOB_ATR_hold) != 0)) {
 		time_t	now;
 		char	date[32];
 		char	buf[HOOK_BUF_SIZE];
@@ -2681,16 +2671,14 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 		snprintf(date, sizeof(date), "%s", (const char *)ctime(&now));
 		(void)sprintf(buf, "Job held by '%s' hook on %s",
 			hook_name, date);
-		job_attr_def[(int)JOB_ATR_Comment].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			NULL, NULL, buf);
+		set_jattr_str_slim(pjob, JOB_ATR_Comment, buf, NULL);
 	}
 
-	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
+	if (old_hold != get_jattr_long(pjob, JOB_ATR_hold)) {
 		FILE	*fp_debug_out = NULL;
 		/* indicate attributes changed */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		(void)svr_setjobstate(pjob, newstate, newsub);
+		svr_setjobstate(pjob, newstate, newsub);
 
 		fp_debug_out = pbs_python_get_hook_debug_output_fp();
 		if (fp_debug_out != NULL) {
@@ -2789,16 +2777,9 @@ set_attribute(job *pjob, int attr_index,
 		new_attrval_str = pdepend;
 	}
 
-	if (job_attr_def[attr_index].at_free) {
-		job_attr_def[attr_index].at_free(
-			&pjob->ji_wattr[attr_index]);
-	}
+	free_jattr(pjob, attr_index);
 
-	rc = job_attr_def[attr_index].at_decode(
-		&pjob->ji_wattr[attr_index],
-		NULL,
-		NULL,
-		new_attrval_str);
+	rc = set_jattr_str_slim(pjob, attr_index, new_attrval_str, NULL);
 	if (rc == 0) {
 		if (job_attr_def[attr_index].at_action) {
 			rc = job_attr_def[attr_index].at_action(
@@ -2827,8 +2808,7 @@ set_attribute(job *pjob, int attr_index,
 			attr_name,
 			new_str);
 		if (job_attr_def[attr_index].at_free) {
-			job_attr_def[attr_index].at_free(
-				&pjob->ji_wattr[attr_index]);
+			free_jattr(pjob, attr_index);
 		}
 	} else {
 		FILE	*fp_debug_out = NULL;
@@ -2882,7 +2862,7 @@ set_job_varlist(job *pjob, char *hook_name, char *msg, int msg_len)
 		return (1);
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_variables].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_variables)) {
 
 		/* transform raw Variable_List data into a string */
 		/* of the form "<var1>=<val1>,<var2>=<val2>,..." with */
@@ -3171,15 +3151,15 @@ attribute_jobmap_init(job *pjob, struct attribute_jobmap *a_map)
 	}
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
-		if (a_map[index].attr_val.at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(&a_map[index].attr_val)) {
 			if (job_attr_def[a_index].at_free) {
 				job_attr_def[a_index].at_free(&a_map[index].attr_val);
 			}
 		}
 
 		clear_attr(&a_map[index].attr_val, &job_attr_def[a_index]);
-		if (pjob->ji_wattr[a_index].at_flags & ATR_VFLAG_SET) {
-			(void)job_attr_def[a_index].at_set(
+		if (is_jattr_set(pjob, a_index)) {
+			job_attr_def[a_index].at_set(
 				&a_map[index].attr_val,
 				&pjob->ji_wattr[a_index], SET);
 		}
@@ -3209,7 +3189,7 @@ attribute_jobmap_clear(struct attribute_jobmap *a_map)
 	}
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
-		if (a_map[index].attr_val.at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(&a_map[index].attr_val)) {
 			if (job_attr_def[a_index].at_free) {
 				job_attr_def[a_index].at_free(&a_map[index].attr_val);
 			}
@@ -3237,7 +3217,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 	char		*attr_name = NULL;
 	attribute	*pattr, *pattr_o;
 	attribute_def	*pdef;
-	int		newstate;
+	char		newstate;
 	int		newsub;
 
 	if ((pjob == NULL) || (a_map == NULL)) {
@@ -3255,7 +3235,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 		pdef = &job_attr_def[a_index];
 
 		/* if there's a saved value, then use it */
-		if (pattr_o->at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(pattr_o)) {
 
 			if (pdef->at_comp != NULL) {
 				if (pdef->at_type == ATR_TYPE_RESC) {
@@ -3281,7 +3261,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 					LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 			}
-		} else if (pattr->at_flags & ATR_VFLAG_SET) {
+		} else if (is_attr_set(pattr)) {
 			/* original/saved value is unset, and yet current */
 			/* value is set, need to revert to unset state */
 			if (pdef->at_free) {
@@ -3296,7 +3276,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 	}
 
 	svr_evaljobstate(pjob, &newstate, &newsub, 0);
-	(void)svr_setjobstate(pjob, newstate, newsub);
+	svr_setjobstate(pjob, newstate, newsub);
 }
 
 /*
@@ -4523,11 +4503,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 
 				pbs_asprintf(&jcomment, "Not Running: PBS Error: %s", hook_msg);
 				/* For async run, sched won't update job's comment, so let's do that */
-				job_attr_def[(int)JOB_ATR_Comment].at_decode(
-					&pjob->ji_wattr[(int)JOB_ATR_Comment],
-					NULL,
-					NULL,
-					jcomment);
+				set_jattr_str_slim(pjob, JOB_ATR_Comment, jcomment, NULL);
 				free(jcomment);
 			}
 		}
@@ -6400,7 +6376,7 @@ get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, ch
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
 	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
 		strncpy(hook_euser,
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
+			get_jattr_str(pjob, JOB_ATR_euser),
 			PBS_MAXUSER);
 	}
 

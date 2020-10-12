@@ -103,7 +103,6 @@ class TestqstatStateCount(TestFunctional):
         self.assertEqual(counts['expected_queued_count'], counts['Queued'],
                          'Queued count incorrect')
 
-    @skipOnCpuSet
     def test_queued_no_restart(self):
         """
         The test case verifies that the reported queued_count in qstat -Bf
@@ -128,7 +127,6 @@ class TestqstatStateCount(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid[1])
         self.verify_count()
 
-    @skipOnCpuSet
     def test_queued_restart(self):
         """
         The test case verifies that the reported queued_count in qstat -Bf
@@ -154,7 +152,6 @@ class TestqstatStateCount(TestFunctional):
         self.server.restart()
         self.verify_count()
 
-    @skipOnCpuSet
     def test_queued_no_restart_multiple_queue(self):
         """
         The test case verifies that the queued_count reported in the output
@@ -190,7 +187,6 @@ class TestqstatStateCount(TestFunctional):
 
         self.verify_count()
 
-    @skipOnCpuSet
     def test_queued_restart_multiple_queue(self):
         """
         The test case verifies that the queued_count reported in the output
@@ -226,7 +222,6 @@ class TestqstatStateCount(TestFunctional):
         self.server.restart()
         self.verify_count()
 
-    @skipOnCpuSet
     def test_queued_sched_false(self):
         """
         This test case verifies that the value of queued_count in the output
@@ -241,7 +236,6 @@ class TestqstatStateCount(TestFunctional):
         self.server.restart()
         self.verify_count()
 
-    @skipOnCpuSet
     def test_wait_to_queued(self):
         """
         This test case verifies that when a job state changes from W to Q after
@@ -268,7 +262,6 @@ class TestqstatStateCount(TestFunctional):
         self.server.restart()
         self.verify_count()
 
-    @skipOnCpuSet
     def test_job_state_count(self):
         """
         Testing if jobs in the 'W' state will cause

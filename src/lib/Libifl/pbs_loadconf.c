@@ -49,6 +49,7 @@
 #include <netdb.h>
 #include <pbs_ifl.h>
 #include <pwd.h>
+#include <pthread.h>
 #include "pbs_internal.h"
 #include <limits.h>
 #include <pbs_error.h>
@@ -65,6 +66,9 @@ char *pbs_conf_env = "PBS_CONF_FILE";
 
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
+
+pthread_key_t psi_key;
+static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 /*
  * Initialize the pbs_conf structure.
@@ -90,13 +94,14 @@ struct pbs_config pbs_conf = {
 	PBS_BATCH_SERVICE_PORT_DIS,		/* batch_service_port_dis */
 	PBS_MOM_SERVICE_PORT,			/* mom_service_port */
 	PBS_MANAGER_SERVICE_PORT,		/* manager_service_port */
-	PBS_SCHEDULER_SERVICE_PORT,		/* scheduler_service_port */
 	PBS_DATA_SERVICE_PORT,			/* pbs data service port */
 	NULL,					/* pbs_conf_file */
 	NULL,					/* pbs_home_path */
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
 	NULL,					/* PBS server id */
+	0,					/* single pbs server instance by default */
+	NULL,					/* pbs_server_instances */
 	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
@@ -164,8 +169,6 @@ identify_service_entry(char *name)
 		p = &pbs_conf.mom_service_port;
 	} else if (strcmp(name, PBS_MANAGER_SERVICE_NAME) == 0) {
 		p = &pbs_conf.manager_service_port;
-	} else if (strcmp(name, PBS_SCHEDULER_SERVICE_NAME) == 0) {
-		p = &pbs_conf.scheduler_service_port;
 	} else if (strcmp(name, PBS_DATA_SERVICE_NAME) == 0) {
 		p = &pbs_conf.pbs_data_service_port;
 	}
@@ -255,6 +258,81 @@ parse_config_line(FILE *fp, char **key, char **val)
 	return ret;
 }
 
+
+/**
+ * @brief
+ * parse_psi - parses the PBS_SERVER_INSTANCES
+ *    
+ * @param[in] conf_value  configuration value set in pbs.conf
+ * 
+ * @return int
+ * @retval -1, For error
+ * @retval 0, For success
+ */
+
+int
+parse_psi(char *conf_value)
+{
+	char **list;
+	int i;
+	char *svrname = NULL;
+	
+	free(pbs_conf.psi);
+
+	if (conf_value == NULL)
+		return -1;
+
+	list = break_comma_list(conf_value);
+	if (list == NULL)
+		return -1;
+
+	for (i = 0; list[i] != NULL; i++)
+		;
+
+	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
+		fprintf(stderr, "Out of memory while parsing configuration %s", conf_value);
+		free_string_array(list);
+		return -1;
+	}
+
+	for (i = 0; list[i] != NULL; i++) {
+		svrname = parse_servername(list[i], &(pbs_conf.psi[i].port));
+		if (svrname == NULL) {
+			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
+			free_string_array(list);
+			return -1;
+		}	
+		strcpy(pbs_conf.psi[i].name, svrname);
+
+		if (pbs_conf.psi[i].name[0] == '\0')
+			strcpy(pbs_conf.psi[i].name, pbs_conf.pbs_server_name);
+		if (pbs_conf.psi[i].port == 0) {
+			if (is_same_host(pbs_conf.psi[i].name, pbs_conf.pbs_server_name))
+				pbs_conf.psi[i].port = pbs_conf.batch_service_port;
+			else
+				pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
+		}
+	}
+	free_string_array(list);
+	pbs_conf.pbs_num_servers = i;
+
+	return 0;
+}
+
+/**
+ * @brief	create the PSI key & set it for the main thread
+ *
+ * @param	void
+ *
+ * @return	void
+ */
+static void
+create_psi_key(void)
+{
+	pthread_key_create(&psi_key, free);
+}
+
+
 /**
  * @brief
  *	pbs_loadconf - Populate the pbs_conf structure
@@ -298,10 +376,13 @@ __pbs_loadconf(int reload)
 	char **servalias;		/* service alias list */
 	unsigned int *pui;		/* for use with identify_service_entry */
 #endif
+	char *psi_value = NULL;
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return 0;
+
+	pthread_once(&key_once, create_psi_key);
 
 	/* this section of the code modified the procecss-wide
 	 * tcp array. Since multiple threads can get into this
@@ -339,9 +420,6 @@ __pbs_loadconf(int reload)
 	pbs_conf.manager_service_port = get_svrport(
 		PBS_MANAGER_SERVICE_NAME, "tcp",
 		pbs_conf.manager_service_port);
-	pbs_conf.scheduler_service_port = get_svrport(
-		PBS_SCHEDULER_SERVICE_NAME, "tcp",
-		pbs_conf.scheduler_service_port);
 	pbs_conf.pbs_data_service_port = get_svrport(
 		PBS_DATA_SERVICE_NAME, "tcp",
 		pbs_conf.pbs_data_service_port);
@@ -433,11 +511,6 @@ __pbs_loadconf(int reload)
 					pbs_conf.manager_service_port =
 						((uvalue <= 65535) ? uvalue : pbs_conf.manager_service_port);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_SCHEDULER_SERVICE_PORT)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.scheduler_service_port =
-						((uvalue <= 65535) ? uvalue : pbs_conf.scheduler_service_port);
-			}
 			else if (!strcmp(conf_name, PBS_CONF_DATA_SERVICE_PORT)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_data_service_port =
@@ -503,6 +576,10 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_SERVER_NAME)) {
 				free(pbs_conf.pbs_server_name);
 				pbs_conf.pbs_server_name = strdup(conf_value);
+			}
+			else if (!strcmp(conf_name, PBS_CONF_SERVER_INSTANCES)) {
+				if ((psi_value = strdup(conf_value)) == NULL)
+					goto err;
 			}
 			else if (!strcmp(conf_name, PBS_CONF_RCP)) {
 				free(pbs_conf.rcp_path);
@@ -677,11 +754,6 @@ __pbs_loadconf(int reload)
 			pbs_conf.manager_service_port =
 				((uvalue <= 65535) ? uvalue : pbs_conf.manager_service_port);
 	}
-	if ((gvalue = getenv(PBS_CONF_SCHEDULER_SERVICE_PORT)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.scheduler_service_port =
-				((uvalue <= 65535) ? uvalue : pbs_conf.scheduler_service_port);
-	}
 	if ((gvalue = getenv(PBS_CONF_HOME)) != NULL) {
 		free(pbs_conf.pbs_home_path);
 		pbs_conf.pbs_home_path = shorten_and_cleanup_path(gvalue);
@@ -702,6 +774,11 @@ __pbs_loadconf(int reload)
 		if ((pbs_conf.pbs_server_name = strdup(gvalue)) == NULL) {
 			goto err;
 		}
+	}
+	if ((gvalue = getenv(PBS_CONF_SERVER_INSTANCES)) != NULL) {
+		free(psi_value);
+		if ((psi_value = strdup(gvalue)) == NULL)
+			goto err;
 	}
 	if ((gvalue = getenv(PBS_CONF_RCP)) != NULL) {
 		free(pbs_conf.rcp_path);
@@ -869,6 +946,7 @@ __pbs_loadconf(int reload)
 		fprintf(stderr, "pbsconf error: pbs conf variables not found: %s\n", buf);
 		goto err;
 	}
+
 
 	/*
 	 * Perform sanity checks on PBS_*_HOST_NAME values and PBS_CONF_SMTP_SERVER_NAME.
@@ -1050,6 +1128,12 @@ __pbs_loadconf(int reload)
 
 	pbs_conf.loaded = 1;
 
+	if (parse_psi(psi_value ? psi_value : pbs_default()) == -1) {
+		fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
+		free(psi_value);
+		goto err;
+	}
+
 	if (pbs_client_thread_unlock_conf() != 0)
 		return 0;
 
@@ -1116,6 +1200,9 @@ err:
 		free_string_array(pbs_conf.supported_auth_methods);
 		pbs_conf.supported_auth_methods = NULL;
 	}
+	
+	if (psi_value != NULL)
+		free(psi_value);
 
 	pbs_conf.load_failed = 1;
 	(void)pbs_client_thread_unlock_conf();
@@ -1214,3 +1301,18 @@ pbs_get_tmpdir(void)
 #endif
 	return tmpdir;
 }
+
+/**
+ * @brief	Get number of servers configured in PBS complex
+ *
+ * @param	void
+ *
+ * @return	int
+ * @retval	number of configured servers
+ */
+int
+get_num_servers(void)
+{
+	return pbs_conf.pbs_num_servers;
+}
+
