@@ -61,6 +61,12 @@ server|execution)
         echo "have systemd"
         systemctl disable pbs
         rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+        systemctl stop pbs_jobs.service
+        [ -d /sys/fs/cgroup/cpuset/pbs_jobs.service/jobid ] && rmdir /sys/fs/cgroup/cpuset/pbs_jobs.service/jobid
+        [ -d /sys/fs/cgroup/cpuset/pbs_jobs.service ] && rmdir /sys/fs/cgroup/cpuset/pbs_jobs.service
+        [ -d /sys/fs/cgroup/cpuset/pbspro.service/jobid ] && rmdir /sys/fs/cgroup/cpuset/pbspro.service/jobid
+        [ -d /sys/fs/cgroup/cpuset/pbspro.service ] && rmdir /sys/fs/cgroup/cpuset/pbspro.service
+        exit 0
     fi
     ;;
 esac
