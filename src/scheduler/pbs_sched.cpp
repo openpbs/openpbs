@@ -127,7 +127,7 @@ static void close_servers();
 static void reconnect_servers();
 static void sched_svr_init(void);
 static void connect_svrpool();
-static int compare_modify_sched_cmd(sched_cmd *cmd_cache, sched_cmd *new_cmd);
+static int compare_modify_sched_cmd(sched_cmd *cmd_in_que, sched_cmd *new_cmd);
 ds_queue * filter_sched_cmds(ds_queue *sched_cmds);
 
 /**
@@ -1177,14 +1177,18 @@ main(int argc, char *argv[])
 /**
  *
  * @brief
- *		Compares two sched commands(command in cache vs new command coming from socket) and finds out
- *	        whether they are identical or not. Also replaces command in cache with the new command if new command
- *	        is superset.
- *	        Since this is a separate function more filtering criteria for Sched commands can be easily added. For example
- *              if a new sched command is introduced or priority of an existing command has changed this function has to be
- *              revisited.
+ *		Compares two sched commands i.e the command already present in queue vs a new command coming from 
+ *		one of the servers and finds out whether they are identical or not. 
  *
- * @param[in]	cmd_cache	-	command in Sched's cache
+ *		Also if the command that is received already covers the functionality of a command that is already present in
+ *		the queue then the command present in queue is replaced with the new command.
+ *		Example #1: Suppose if SCH_SCHEDULE_AJOB is present in the queue but we also received SCH_SCHEDULE_NEW
+ *		from another server then SCH_SCHEDULE_AJOB is replaced with SCH_SCHEDULE_NEW.
+ *		Example #2: Suppose if SCH_SCHEDULE_AJOB is present in the queue but we also received SCH_SCHEDULE_AJOB
+ *		received from another server we still treat these two commands as differnt because jobids are different.
+ *
+ *
+ * @param[in]	cmd_in_que	-	command in Sched's cache
  * @param[in]	new_cmd		-	command from socket buffer
  *
  *
@@ -1194,29 +1198,29 @@ main(int argc, char *argv[])
  *
  */
 static int
-compare_modify_sched_cmd(sched_cmd *cmd_cache, sched_cmd *new_cmd)
+compare_modify_sched_cmd(sched_cmd *cmd_in_que, sched_cmd *new_cmd)
 {
 	if (new_cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE )
 		return 1;
 	
 	if (new_cmd->cmd == SCH_SCHEDULE_AJOB &&
-		(cmd_cache->cmd != SCH_SCHEDULE_AJOB && cmd_cache->cmd != SCH_CONFIGURE &&
-		 cmd_cache->cmd != SCH_RULESET && cmd_cache->cmd != SCH_ERROR)) {
+		(cmd_in_que->cmd != SCH_SCHEDULE_AJOB && cmd_in_que->cmd != SCH_CONFIGURE &&
+		 cmd_in_que->cmd != SCH_RULESET && cmd_in_que->cmd != SCH_ERROR)) {
 		return 1;
-	} else if (cmd_cache->cmd == SCH_SCHEDULE_AJOB &&
+	} else if (cmd_in_que->cmd == SCH_SCHEDULE_AJOB &&
 		(new_cmd->cmd != SCH_SCHEDULE_AJOB && new_cmd->cmd != SCH_CONFIGURE &&
 		 new_cmd->cmd != SCH_RULESET && new_cmd->cmd != SCH_ERROR)) {
-		cmd_cache->cmd = new_cmd->cmd;
-		cmd_cache->jid = NULL;	
+		cmd_in_que->cmd = new_cmd->cmd;
+		cmd_in_que->jid = NULL;	
 		return 1;	
 	}
 
-	if (cmd_cache && new_cmd) {
-		if (cmd_cache->jid == NULL && new_cmd->jid == NULL) {
-			if (cmd_cache->cmd == new_cmd->cmd)
+	if (cmd_in_que && new_cmd) {
+		if (cmd_in_que->jid == NULL && new_cmd->jid == NULL) {
+			if (cmd_in_que->cmd == new_cmd->cmd)
 				return 1;
 		} else {
-			if (cmd_cache->cmd == new_cmd->cmd && !strcmp(cmd_cache->jid, new_cmd->jid))
+			if (cmd_in_que->cmd == new_cmd->cmd && !strcmp(cmd_in_que->jid, new_cmd->jid))
 				return 1;
 		}
 	}
@@ -1237,6 +1241,9 @@ compare_modify_sched_cmd(sched_cmd *cmd_cache, sched_cmd *new_cmd)
 ds_queue *
 filter_sched_cmds(ds_queue *sched_cmds)
 {
+	/* sched_cmds_filtered is a  resultant queue which consists of sched commands after discarding
+	 * the duplicate commands which is finally returned from this function.
+	 */
 	ds_queue *sched_cmds_filtered = new_ds_queue();
 	sched_cmd *tmp_cmd;
 	int cmds_front;
@@ -1245,6 +1252,13 @@ filter_sched_cmds(ds_queue *sched_cmds)
 
 	if (sched_cmds_filtered == NULL) 
 		goto error;
+
+	/* 1. Traverse sched_cmds queue
+	 * 2. While we traverse we keep pushing the unique elements into the sched_cmds_filtered queue
+	 * 3. To find out if a command is duplicate or not here we are making use of the function compare_modify_sched_cmd
+	 *    whose function header consists of more details along with the examples.
+	 * 4. Finally return the sched_cmds_filtered_queue which now only consists of unique sched commands.
+	 */
 
 	cmds_front = sched_cmds->front;
 	cmds_rear = sched_cmds->rear;
@@ -1260,10 +1274,9 @@ filter_sched_cmds(ds_queue *sched_cmds)
 	cmd_enq->cmd = tmp_cmd->cmd;
 	cmd_enq->from_sock = tmp_cmd->from_sock;
 	if (tmp_cmd->jid != NULL) {
-		cmd_enq->jid = malloc(strlen(tmp_cmd->jid) + 1);
+		cmd_enq->jid = string_dup(tmp_cmd->jid);
 		if (cmd_enq->jid == NULL)
 			goto error;
-		strcpy(cmd_enq->jid, tmp_cmd->jid);
 	}
 
 	if (!ds_enqueue(sched_cmds_filtered, cmd_enq)) 
@@ -1292,10 +1305,9 @@ filter_sched_cmds(ds_queue *sched_cmds)
 			cmd_enq->cmd = tmp_cmd->cmd;
 			cmd_enq->from_sock = tmp_cmd->from_sock;
 			if (tmp_cmd->jid != NULL) {
-				cmd_enq->jid = malloc(strlen(tmp_cmd->jid) + 1);
+				cmd_enq->jid = string_dup(tmp_cmd->jid);
 				if (cmd_enq->jid == NULL)
 					goto error;
-				strcpy(cmd_enq->jid, tmp_cmd->jid);
 			}
 
 			if (!ds_enqueue(sched_cmds_filtered, cmd_enq)) 

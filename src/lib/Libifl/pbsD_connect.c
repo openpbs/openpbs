@@ -1009,7 +1009,7 @@ err:
  * @return 1  - success
  */
 static int
-send_register_sched(int sock, char *client_id)
+send_register_sched(int sock, const char *client_id)
 {
 	int rc;
 	struct batch_reply *reply = NULL;
@@ -1055,7 +1055,7 @@ rerr:
  * @return 1  - success
  */
 int
-pbs_register_sched(char *client_id)
+pbs_register_sched(const char *client_id)
 {
 	int i;
 	svr_conns_list_t *conn_list;
@@ -1071,10 +1071,13 @@ pbs_register_sched(char *client_id)
 	for (iter_conns = conn_list; iter_conns != NULL; iter_conns = iter_conns->next) {
 		/* conn_list has secondary set first followed by primary set of connections */
 		if (svr_conns_secondary == NULL)
-			svr_conns_secondary = get_conn_servers(iter_conns->conn_arr[0].sd);
+			svr_conns_secondary = iter_conns->conn_arr;
 		else if (svr_conns_primary == NULL)
-			svr_conns_primary = get_conn_servers(iter_conns->conn_arr[0].sd);
+			svr_conns_primary = iter_conns->conn_arr;
 	}
+
+	if (svr_conns_primary == NULL || svr_conns_secondary == NULL)
+		return 0;
 
 	for (i = 0; i < get_num_servers(); i++) {
 		if (!svr_conns_primary[i].registered) {
