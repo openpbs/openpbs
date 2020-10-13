@@ -1458,3 +1458,42 @@ class PBSService(PBSObject):
         for dyn_files in self.dyn_created_files:
             self.du.rm(path=dyn_files, sudo=True, force=True)
         self.dyn_created_files = []
+
+    def isUp(self, inst, max_attempts=None):
+        """
+        Check for daemons up
+        """
+        if max_attempts is None:
+            max_attempts = self.ptl_conf['max_attempts']
+        for _ in range(max_attempts):
+            rv = self._isUp(inst)
+            if rv:
+                break
+            time.sleep(1)
+        return rv
+
+    def signal(self, inst, sig):
+        """
+        Send signal to daemons
+        """
+        if inst.__class__.__name__ == "Scheduler":
+            self.logger.info('scheduler sent signal ' + sig)
+        elif inst.__class__.__name__ == "Server":
+            self.logger.info('server sent signal ' + sig)
+        elif inst.__class__.__name__ == "MoM":
+            self.logger.info('mom sent signal ' + sig)
+        elif inst.__class__.__name__ == "Comm":
+            self.logger.info('comm sent signal ' + sig)
+        return self._signal(sig, inst)
+
+    def get_pid(self, inst):
+        """
+        Get the daemons pid
+        """
+        return self._get_pid(inst)
+
+    def all_instance_pids(self, inst):
+        """
+        Get all pids of given instance
+        """
+        return self._all_instance_pids(inst)

@@ -6086,7 +6086,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # resume momC, but this is a stale request (nothing happens)
         # since server is down.
-        self.momC.signal(self.momC, -CONT")
+        self.momC.signal(self.momC, "-CONT")
 
         # start the server again
         self.server.start()
