@@ -526,7 +526,6 @@ struct batch_status {
 	char		    *name;
 	struct attrl	    *attribs;
 	char		    *text;
-	struct batch_status *last;
 };
 
 /* structure to hold an attribute that failed verification at ECL

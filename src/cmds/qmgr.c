@@ -1204,16 +1204,8 @@ make_connection(char *name)
 	else
 		PSTDERR1("qmgr: cannot connect to server %s\n", name)
 
-	if (msvr_mode()) {
-		int i;
-		svr_conn_t *svr_connections = get_conn_servers(connection);
-		for (i = 0; i < get_num_servers(); i++) {
-			if (svr_connections[i].state != SVR_CONN_STATE_UP) {
-				pbs_errno = PBSE_NOSERVER;
-				PSTDERR1("qmgr: cannot connect to server %s\n", pbs_conf.psi[i].name)
-			}	
-		}
-	}
+	if (!zopt)
+		show_svr_inst_fail(connection, "qmgr");
 
 	return svr;
 }

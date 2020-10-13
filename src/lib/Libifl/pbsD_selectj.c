@@ -108,8 +108,19 @@ PBSD_select_get(int c, struct reply_list **rlist)
 	}
 }
 
+/**
+ * @brief
+ *	-convert the reply list to array of jobids
+ *
+ * @param[in] rlist - reply list
+ *
+ * @return	string list
+ * @retval	list of strings		success
+ * @retval	NULL			error
+ *
+ */
 char **
-reply_to_jobarray(struct reply_list *rlist) {
+reply_to_joblist(struct reply_list *rlist) {
 	int i;
 	int   njobs;
 	char *sp;
@@ -181,7 +192,7 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 	int i;
 	struct reply_list *rlist = NULL;
 	struct reply_list *cur;
-	svr_conn_t *svr_connections = get_conn_servers(c);
+	svr_conn_t *svr_connections = get_conn_svr_instances(c);
 	int num_cfg_svrs = get_num_servers();
 	int *failed_conn;
 	int rc = 0;
@@ -237,7 +248,7 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 	free(failed_conn);
 
 done:
-	ret = reply_to_jobarray(rlist);
+	ret = reply_to_joblist(rlist);
 	while (rlist) {
 		PBSD_FreeReply(rlist->reply);
 		cur = rlist;

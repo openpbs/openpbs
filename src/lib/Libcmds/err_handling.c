@@ -37,49 +37,30 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
-
-/*
- * cmds.h
- *
- *	Header file for the PBS utilities.
+/**
+ * @file	err_handling.c
+ * @brief
+ *	This file is meant for common error handling functions 
+ *      within commands
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <string.h>
-#include <time.h>
-
-#include "pbs_error.h"
+#include "libutil.h"
 #include "libpbs.h"
-#include "libsec.h"
 
-#ifndef TRUE
-#define TRUE	1
-#define FALSE	0
-#endif
-
-#define notNULL(x)	(((x)!=NULL) && (strlen(x)>(size_t)0))
-#define NULLstr(x)	(((x)==NULL) || (strlen(x)==0))
-
-#define MAX_LINE_LEN 4095
-#define MAXSERVERNAME PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2
-#define PBS_DEPEND_LEN 2040
-
-/* for calling pbs_parse_quote:  to accept whitespace as data or separators */
-#define QMGR_ALLOW_WHITE_IN_VALUE 1
-#define QMGR_NO_WHITE_IN_VALUE    0
-
-extern int optind, opterr;
-extern char *optarg;
-
-extern int	parse_at_item(char *, char *, char *);
-extern int	parse_jobid(char *, char **, char **, char **);
-extern int	parse_stage_name(char *, char *, char *, char *);
-extern void	prt_error(char *, char *, int);
-extern int	check_max_job_sequence_id(struct batch_status *);
-extern void	set_attr_error_exit(struct attrl **, char *, char *);
-extern void	set_attr_resc_error_exit(struct attrl **, char *, char *, char *);
-extern void     show_svr_inst_fail(int, char *);
+/**
+ * @brief used to display server instance failures in case of  MULTI_SERVER
+ * 
+ * @return void
+ */
+void
+show_svr_inst_fail(int fd, char *client)
+{
+	if (msvr_mode()) {
+		int i;
+		svr_conn_t *svr_connections = get_conn_svr_instances(fd);
+		for (i = 0; i < get_num_servers(); i++) {
+			if (svr_connections[i].state != SVR_CONN_STATE_UP)
+				fprintf(stderr, "%s: cannot connect to server %s\n", client, pbs_conf.psi[i].name);
+		}
+	}
+}

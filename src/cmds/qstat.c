@@ -80,7 +80,6 @@ static void states();
 static char *	cvtResvstate(char *);
 static int cmp_est_time(struct batch_status *a, struct batch_status *b);
 char *cnvt_est_start_time(char *start_time, int shortform);
-static void show_svr_inst_fail(int);
 
 
 #if !defined(PBS_NO_POSIX_VIOLATION)
@@ -806,7 +805,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		pstat = bs_isort(pstat, cmp_est_time);
 
 	if (prtheader) {
-		svr_conn_t *svr_connections = get_conn_servers(conn);
+		svr_conn_t *svr_connections = get_conn_svr_instances(conn);
 		int num_cfg_svrs = get_num_servers();
 		int num_active_svrs = 0;
 		int i = 0;
@@ -2920,7 +2919,7 @@ job_no_args:
 					conn = cnt2server(server_out);
 
 				if (conn <= 0) {
-					fprintf(stderr, "qstat: cannot conn to server %s (errno=%d)\n",
+					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
@@ -2930,7 +2929,7 @@ job_no_args:
 					any_failed = conn;
 					break;
 				}
-				show_svr_inst_fail(conn);
+				show_svr_inst_fail(conn, "qstat");
 				
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
@@ -3106,7 +3105,7 @@ job_no_args:
 que_no_args:
 				conn = cnt2server(server_out);
 				if (conn <= 0) {
-					fprintf(stderr, "qstat: cannot conn to server %s (errno=%d)\n", pbs_server, pbs_errno);
+					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n", pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
@@ -3153,7 +3152,7 @@ que_no_args:
 svr_no_args:
 				conn = cnt2server(server_out);
 				if (conn <= 0) {
-					fprintf(stderr, "qstat: cannot conn to server %s (errno=%d)\n",
+					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
@@ -3434,22 +3433,4 @@ cnvt_est_start_time(char *est_time, int wide)
 	}
 
 	return timebuf;
-}
-
-/**
- * @brief used to display server instance failures in case of  MULTI_SERVER
- * 
- * @return void
- */
-static void
-show_svr_inst_fail(int fd)
-{
-	if (msvr_mode()) {
-		int i;
-		svr_conn_t *svr_connections = get_conn_servers(fd);
-		for (i = 0; i < get_num_servers(); i++) {
-			if (svr_connections[i].state != SVR_CONN_STATE_UP)
-				fprintf(stderr, "qstat: cannot conn to server %s\n", pbs_conf.psi[i].name);
-		}
-	}
 }

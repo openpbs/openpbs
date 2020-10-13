@@ -181,7 +181,6 @@ again:
 				if (pstcmd == 0)
 					return DIS_NOMALLOC;
 				pstcmd->next = NULL;
-				pstcmd->last = NULL;
 				pstcmd->text = NULL;
 				pstcmd->attribs = NULL;
 
@@ -202,7 +201,7 @@ again:
 			}
 
 			if (reply->brp_un.brp_statc)
-				reply->brp_un.brp_statc->last = pstcmd;
+				reply->last = pstcmd;
 			if (reply->brp_is_part)
 				goto again;
 			break;

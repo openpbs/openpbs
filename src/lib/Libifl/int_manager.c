@@ -80,7 +80,7 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 	struct batch_reply *reply;
 	int rc = 0;
 	int agg_rc = 0;
-	svr_conn_t *svr_connections = get_conn_servers(c);
+	svr_conn_t *svr_connections = get_conn_svr_instances(c);
 	int num_cfg_svrs = get_num_servers();
 	char server_out[MAXSERVERNAME + 1];
 	char server_name[PBS_MAXSERVERNAME + 1];

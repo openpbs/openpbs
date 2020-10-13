@@ -360,7 +360,7 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
  * @par MT-safe: Yes
  */
 void *
-get_conn_servers(int parentfd)
+get_conn_svr_instances(int parentfd)
 {
 	svr_conns_list_t *conn_list = NULL;
 	svr_conn_t *msvr_conns = NULL;
@@ -498,7 +498,7 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	int fd = -1;
 	int ret_fd = -1;
 	int num_conf_servers = get_num_servers();
-	svr_conn_t *svr_connections = get_conn_servers(-1);
+	svr_conn_t *svr_connections = get_conn_svr_instances(-1);
 
 	if (svr_connections == NULL)
 		return -1;
@@ -726,7 +726,7 @@ __pbs_disconnect(int connect)
 		return -1;
 
 	/* See if we should disconnect from all servers */
-	svr_conns = get_conn_servers(connect);
+	svr_conns = get_conn_svr_instances(connect);
 	if (svr_conns != NULL && connect == svr_conns[0].sd) {
 		int i;
 

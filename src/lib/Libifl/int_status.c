@@ -57,9 +57,6 @@
 extern char * PBS_get_server(char *, char *, uint *);
 
 
-struct batch_status *PBSD_status_get(int c);
-
-
 /**
  * @brief
  * 	get_available_conn:
@@ -224,7 +221,7 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	}
 
 	/* get the status reply */
-	return (PBSD_status_get(c));
+	return (PBSD_status_get(c, NULL));
 }
 
 /**
@@ -464,7 +461,6 @@ append_bs(struct batch_status *a, struct batch_status *b, struct batch_status *p
 		a->next = b;
 		if (prev_b) {
 			prev_b->next = b->next;
-			prev_b->last = b->last;
 		} else {
 			*head_b = b->next;
 		}
@@ -542,7 +538,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	struct batch_status *ret = NULL;
 	struct batch_status *next = NULL;
 	struct batch_status *cur = NULL;
-	svr_conn_t *svr_connections = get_conn_servers(c);
+	svr_conn_t *svr_connections = get_conn_svr_instances(c);
 	int num_cfg_svrs = get_num_servers();
 	int *failed_conn;
 	char server_out[PBS_MAXSERVERNAME + 1];
@@ -552,6 +548,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	uint server_port;
 	int start = 0;
 	int ct;
+	struct batch_status *last = NULL;
 
 	if (!svr_connections)
 		return NULL;
@@ -606,10 +603,10 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		if (svr_connections[i].state != SVR_CONN_STATE_UP || failed_conn[i])
 			continue;
 
-		if ((next = PBSD_status_get(svr_connections[i].sd))) {
+		if ((next = PBSD_status_get(svr_connections[i].sd, &last))) {
 			if (!ret) {
 				ret = next;
-				cur = next->last;
+				cur = last;
 			} else {
 				switch (parent_object) {
 				case MGR_OBJ_SERVER:
@@ -624,7 +621,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 					break;
 				default:
 					cur->next = next;
-					cur = next->last;
+					cur = last;
 				}
 			}
 		}
@@ -664,7 +661,7 @@ struct batch_status *
 PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend, int parent_object)
 {
 	struct batch_status *ret = NULL;
-	svr_conn_t *svr_connections = get_conn_servers(c);
+	svr_conn_t *svr_connections = get_conn_svr_instances(c);
 
 	if (!svr_connections)
 		return NULL;
@@ -703,7 +700,7 @@ PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend,
  * @retval NULL on failure
  */
 struct batch_status *
-PBSD_status_get(int c)
+PBSD_status_get(int c, struct batch_status **last)
 {
 	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
@@ -721,6 +718,8 @@ PBSD_status_get(int c)
 		rbsp = reply->brp_un.brp_statc;
 		reply->brp_un.brp_statc = NULL;
 	}
+	if (last)
+		*last = reply->last;
 	PBSD_FreeReply(reply);
 	return rbsp;
 }
