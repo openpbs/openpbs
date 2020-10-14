@@ -259,7 +259,10 @@ class PTLJsonData(object):
                     for i in range(len(measurements_data)):
                         m_data = {}
                         if "test_measure" in measurements_data[i].keys():
-                            m_data = copy.deepcopy(measurements_data[i])
+                            measure = measurements_data[i]['test_measure']
+                            m_data['test_measure'] = measure
+                            m_data['unit'] = measurements_data[i]['unit']
+                            m_data['test_data'] = {}
                             div = count
                             m_data['test_data']['mean'] = t_sum[i][0] / div
                             m_data['test_data']['std_dev'] = t_sum[i][1] / div
