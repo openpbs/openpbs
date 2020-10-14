@@ -916,6 +916,9 @@ free_resv_info(resv_info *rinfo)
 	if (rinfo->select_orig != NULL)
 		free_selspec(rinfo->select_orig);
 
+	if (rinfo->select_standing != NULL)
+		free_selspec(rinfo->select_standing);
+
 	if (rinfo->orig_nspec_arr != NULL)
 		free_nspecs(rinfo->orig_nspec_arr);
 
