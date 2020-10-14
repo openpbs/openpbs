@@ -235,7 +235,7 @@ qstop_SOURCES = qstop.c ${common_sources}
 
 qsub_CPPFLAGS = ${common_cflags}
 qsub_LDADD = ${common_libs}
-qsub_SOURCES = qsub.c ${common_sources}
+qsub_SOURCES = qsub.c qsub_sup.c ${common_sources}
 
 qterm_CPPFLAGS = ${common_cflags}
 qterm_LDADD = ${common_libs}

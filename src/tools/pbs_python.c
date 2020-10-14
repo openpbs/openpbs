@@ -98,6 +98,7 @@
 #include "cmds.h"
 #include "svrfunc.h"
 #include "pbs_sched.h"
+#include "portability.h"
 
 #define PBS_V1_COMMON_MODULE_DEFINE_STUB_FUNCS 1
 #include "pbs_v1_module_common.i"
@@ -1935,10 +1936,9 @@ main(int argc, char *argv[], char *envp[])
 
 		if (req_host[0] == '\0')
 			gethostname(req_host, PBS_MAXHOSTNAME);
+		
+		fix_path(logname, 3);
 
-#ifdef WIN32
-		forward2back_slash(logname);
-#endif
 		if ((logname[0] != '\0') && (!is_full_path(logname))) {
 			char	curdir[MAXPATHLEN + 1];
 			char	full_logname[MAXPATHLEN + 1];

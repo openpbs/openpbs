@@ -97,6 +97,7 @@
 #include "port_forwarding.h"
 #include "credential.h"
 #include "ticket.h"
+#include "portability.h"
 
 #ifdef LOG_BUF_SIZE
 /* Also defined in port_forwarding.h */
@@ -107,9 +108,6 @@
 #define ENV_PBS_JOBID "PBS_JOBID"
 #define CMDLINE 3
 
-#ifdef WIN32
-#define INET_ADDR_STRLEN 15
-#endif
 
 #ifndef NAS /* localmod 004 */
 #undef DEBUG
@@ -148,9 +146,6 @@
 
 
 #define MAX_QSUB_PREFIX_LEN 32
-#define QSUB_DMN_TIMEOUT_LONG 60 /* timeout for qsub background process */
-#define QSUB_DMN_TIMEOUT_SHORT 5
-
 #define DMN_REFUSE_EXIT 7 /* return code when daemon can't serve a job and exits */
 
 extern char *msg_force_qsub_update;
@@ -159,9 +154,7 @@ extern char *msg_force_qsub_update;
 #define PBS_O_ENV "PBS_O_" /* prefix for environment variables created by qsub */
 
 /* Warning/Error messages */
-#ifdef WIN32
 #define INTER_GUI_WARN "qsub: only interactive jobs can have GUI\n"
-#endif
 #define INTER_BLOCK_WARN "qsub (Warning) : setting \"block\" attribute as \"true\"" \
 	" for an interactive job will not return job's exit status\n"
 #define INTER_ARRAY "qsub: interactive and array job submission cannot be used together\n"
@@ -173,69 +166,48 @@ extern char *msg_force_qsub_update;
 /* Security library variables */
 static int cs_init = 0; /*1 == security library initialized, 0 == not initialized*/
 static int cred_type = -1;
-static size_t cred_len = 0;
-static char *cred_buf = NULL;
-static char cred_name[32]; /* space to hold small credential name */
-
-static char *tmpdir = NULL; /* Path of temp directory in which to put the job script */
+size_t	cred_len = 0;
+char	*cred_buf = NULL;
+char	cred_name[32]; /* space to hold small credential name */
+char	*tmpdir = NULL; /* Path of temp directory in which to put the job script */
 
 /* variables for Interactive mode */
-static int comm_sock; /* Socket for interactive and block job */
-static int X11_comm_sock; /* Socket for x11 communication */
+int comm_sock; /* Socket for interactive and block job */
 
-#define XAUTH_LEN 512 /* Max size of buffer to store Xauth cookie length */
-#define X11_PORT_LEN 8 /* Max size of buffer to store port information as string */
-#define XAUTH_ERR_REDIRECTION "2>&1" /* redirection string used for xauth command */
 #define X11_MSG_OFFSET sizeof(XAUTH_ERR_REDIRECTION) /* offset of the redirection clause */
 
-#ifdef WIN32 /* Windows */
-static CRITICAL_SECTION continuethread_cs;
-#else /* Unix */
-static struct termios oldtio; /* Terminal info */
-static struct winsize wsz; /* Window size */
-#endif
-
-
-static char retmsg[MAXPATHLEN]; /* holds the message that background qsub process will send */
-static char qsub_cwd[MAXPATHLEN + 1]; /* buffer to pass cwd to background qsub */
-
-
-static struct attrl *attrib = NULL; /* Attribute list */
+extern char fl[];
+char retmsg[MAXPATHLEN]; /* holds the message that background qsub process will send */
+char qsub_cwd[MAXPATHLEN + 1]; /* buffer to pass cwd to background qsub */
+char *new_jobname = NULL; /* return from submit request */
+char destination[PBS_MAXDEST]; /* Destination of the batch job, specified by q opt */
+char server_out[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2]; /* Destination server, parsed from destination[] */
+char script_tmp[MAXPATHLEN + 1] = { '\0' }; /* name of script file copy */
+int  sd_svr; /* return from pbs_connect */
+char *display; /* environment variable DISPLAY */
+struct attrl *attrib = NULL; /* Attribute list */
 static struct attrl *attrib_o = NULL; /* Original attribute list, before applying default_qsub_arguments */
-static char *new_jobname = NULL; /* return from submit request */
 static char dir_prefix[MAX_QSUB_PREFIX_LEN + 1]; /* Directive Prefix, specified by C opt */
-static char destination[PBS_MAXDEST]; /* Destination of the batch job, specified by q opt */
-static char server_out[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2]; /* Destination server, parsed from destination[] */
 static struct batch_status *ss = NULL;
 static char *dfltqsubargs = NULL; /* Default qsub arguments */
-static int sd_svr; /* return from pbs_connect */
-static char script_tmp[MAXPATHLEN + 1] = {'\0'}; /* name of script file copy */
-#ifdef WIN32
-static char fl[(2 * MAXPATHLEN) + 1] = {'\0'}; /* the filename used as the pipe name */
-#else
-#define MAXPIPENAME sizeof(((struct sockaddr_un *)0)->sun_path)
-static char fl[MAXPIPENAME] = {'\0'}; /* the filename used as the pipe name */
-#endif
-#define BUFSIZE 1024 /* windows default pipe buffer size */
-#define PIPE_TIMEOUT 0 /* default windows pipe timeout */
 static char *pbs_hostvar = NULL; /* buffer containing ",PBS_O_HOST=" and host name */
 static int pbs_o_hostsize = sizeof(",PBS_O_HOST=") + 1; /* size of prefix for hostvar */
-static char *display; /* environment variable DISPLAY */
+
+
+int pid = -1;
 
 /*
  * Flag to check if current process is the background process.
  * This variable is set only once and is read-only afterwards.
  */
-static int is_background = 0;
+int  is_background = 0;
+char *basic_envlist = NULL; /* basic comma-separated environment variables list string */
+char *qsub_envlist = NULL; /* comma-separated variables list string */
+char *v_value = NULL; /* expanded variable list from v opt */
 static int no_background = 0; /* flag to disable backgrounding */
 static char roptarg = 'y'; /* whether the job is rerunnable */
-static char *v_value = NULL; /* expanded variable list from v opt */
 static char *v_value_o = NULL; /* copy of v_value before set_job_env() */
-static char *basic_envlist = NULL; /* basic comma-separated environment variables list string */
-static char *qsub_envlist = NULL; /* comma-separated variables list string */
-#ifndef WIN32
 static int x11_disp = FALSE; /* whether DISPLAY environment variable is available */
-#endif
 
 /* state booleans for protecting already-set options */
 static int a_opt = FALSE;
@@ -263,15 +235,10 @@ static int R_opt = FALSE;
 static int S_opt = FALSE;
 static int V_opt = FALSE;
 static int Depend_opt = FALSE;
-static int Interact_opt = FALSE;
 static int Stagein_opt = FALSE;
 static int Stageout_opt = FALSE;
 static int Sandbox_opt = FALSE;
 static int Grouplist_opt = FALSE;
-static int Forwardx11_opt = FALSE;
-#ifdef WIN32
-static int gui_opt = FALSE;
-#endif
 static int Resvstart_opt = FALSE;
 static int Resvend_opt = FALSE;
 static int pwd_opt = FALSE;
@@ -280,6 +247,10 @@ static int block_opt = FALSE;
 static int relnodes_on_stageout_opt = FALSE;
 static int tolerate_node_failures_opt = FALSE;
 static int roptarg_inter = FALSE;
+int Interact_opt = FALSE;
+int Forwardx11_opt = FALSE;
+int gui_opt = FALSE;
+
 
 /* for saving option booleans */
 static int a_opt_o = FALSE;
@@ -311,9 +282,7 @@ static int Stagein_opt_o = FALSE;
 static int Stageout_opt_o = FALSE;
 static int Sandbox_opt_o = FALSE;
 static int Grouplist_opt_o = FALSE;
-#ifdef WIN32
 static int gui_opt_o = FALSE;
-#endif
 static int Resvstart_opt_o = FALSE;
 static int Resvend_opt_o = FALSE;
 static int pwd_opt_o = FALSE;
@@ -325,43 +294,20 @@ static int max_run_opt = FALSE;
 
 extern char **environ;
 
+extern void blockint(int sig);
+extern void do_daemon_stuff();
+extern void enable_gui(void);
+extern void set_sig_handlers(void);
+extern void interactive(void);
+extern int  dorecv(void *, char *, int);
+extern int  dosend(void *, char *, int);
+extern int  daemon_submit(int *, int *);
+extern int  get_script(FILE *, char *, char *);
+extern int  check_for_background(int, char **);
+
+void exit_qsub(int exitstatus);
+
 /* The following are "Utility" functions. */
-
-/**
- * @brief
- *  Function used to log port forwarding messages.
- *
- * @param[in] msg - error message to be logged
- *
- * @return Void
- *
- */
-static void
-log_cmds_portfw_msg(char *msg)
-{
-	fprintf(stderr, "%s\n", msg);
-	(void)fflush(stderr);
-	(void)fflush(stdout);
-}
-
-
-#ifndef WIN32
-/**
- * @brief
- * 	Log a simple message to syslog
- * 	To be used from the qsub background daemon
- *
- * @param[in]	msg - string to be logged
- *
- */
-static void
-log_syslog(char *msg)
-{
-	openlog("qsub", LOG_PID | LOG_CONS | LOG_NOWAIT, LOG_USER);
-	syslog(LOG_ERR, "%s", msg);
-	closelog();
-}
-#endif
 
 /**
  * @brief
@@ -667,136 +613,6 @@ refresh_dfltqsubargs(void)
 	pbs_statfree(ss_save);
 }
 
-#ifndef WIN32
-/**
- * @Brief
- *      This function returns a string that consists of the protocol getting
- *      used, the hex data and the screen number . This string will form the
- *      basis of X authentication . It will be passed as a job attribute to
- *      MOM.
- * @return char*
- * @retval authstring Success
- * @retval NULL Failure
- *
- */
-static char *
-x11_get_authstring(void)
-{
-	char line[XAUTH_LEN] = {'\0'};
-	char command[XAUTH_LEN] = {'\0'};
-	char protocol[XAUTH_LEN];
-	char hexdata[XAUTH_LEN];
-	char screen[XAUTH_LEN];
-	char format[XAUTH_LEN];
-	char *authstring = NULL;
-	FILE *f;
-	int got_data = 0, ret = 0;
-	char *p;
-
-	protocol[0] = '\0';
-	hexdata[0] = '\0';
-	screen[0] = '\0';
-
-	sprintf(format, " %%*s %%%ds %%%ds ", XAUTH_LEN - 1, XAUTH_LEN - 1);
-
-	p = strchr(display, ':');
-	if (p == NULL) {
-		fprintf(stderr, "qsub: Failed to get xauth data "
-			"(check $DISPLAY variable)\n");
-		return NULL;
-	}
-
-	/* Try to get Xauthority information for the display. */
-	if (strncmp(display, "localhost", sizeof("localhost") - 1) == 0) {
-		/*
-		 * Handle FamilyLocal case where $DISPLAY does
-		 * not match an authorization entry. For this we
-		 * just try "xauth list unix:displaynum.screennum".
-		 * "localhost" match to determine FamilyLocal
-		 * is not perfect.
-		 */
-		ret = snprintf(line, sizeof(line), "%s list unix:%s %s",
-			XAUTH_BINARY,
-			p + 1,
-			XAUTH_ERR_REDIRECTION);
-		if (ret >= sizeof(line)) {
-			fprintf(stderr, " qsub: line overflow\n");
-			return NULL;
-		}
-	} else {
-		ret = snprintf(line, sizeof(line), "%s list %.255s %s",
-			XAUTH_BINARY,
-			display,
-			XAUTH_ERR_REDIRECTION);
-		if (ret >= sizeof(line)) {
-			fprintf(stderr, " qsub: line overflow\n");
-			return NULL;
-		}
-	}
-	snprintf(command, sizeof(command), "%s", line);
-
-	if (p != NULL)
-		p = strchr(p, '.');
-
-	if (p != NULL)
-		snprintf(screen, sizeof(screen), "%s", p + 1);
-	else
-		strcpy(screen, "0"); /* Should be safe because sizeof(screen) = XAUTH_LEN which is >= 2 */
-
-#ifdef DEBUG
-	fprintf(stderr, "x11_get_authstring: %s\n", line);
-#endif
-	f = popen(line, "r");
-	if (f == NULL) {
-		fprintf(stderr, "execution of '%s' failed, errno=%d \n", command, errno);
-	} else if (fgets(line, sizeof(line), f) == 0) {
-		fprintf(stderr, "cannot read data from '%s', errno=%d \n", command, errno);
-	} else if (sscanf(line, format,
-		protocol,
-		hexdata) != 2) {
-		fprintf(stderr, "cannot parse output from '%s'\n", command);
-	} else {
-		/* SUCCESS */
-		got_data = 1;
-	}
-
-	if (f != NULL) {
-		/*
-		 * Check the return value of pclose to see if the command failed?
-		 * In that case, the "line" read from stdout is probably an
-		 * error message (since stderr is redirected to stdout) from the shell or xauth,
-		 * so display that to the user.
-		 */
-		if (pclose(f) != 0) {
-			fprintf(stderr, "execution of xauth failed: %s", line);
-			return NULL;
-		}
-	}
-
-	if (!got_data)
-		/* FAILURE */
-		return NULL;
-
-	/**
-	 * Allocate 4 additional bytes for the terminating NULL character for
-	 * each of the strings inside malloc
-	 */
-	authstring = malloc(strlen(protocol) + strlen(hexdata) +
-		strlen(screen) + 4);
-	if (authstring == NULL) {
-		/* FAILURE */
-		fprintf(stderr, " qsub: Malloc Failed\n");
-		return NULL;
-	}
-	sprintf(authstring, "%s:%s:%s",
-		protocol,
-		hexdata,
-		screen);
-
-	return (authstring);
-}
-#endif
-
 /**
  * @brief
  *	exit_qsub - issues the exit system call with the "exit" argument after
@@ -807,13 +623,12 @@ x11_get_authstring(void)
  * @return None
  *
  */
-static void
+void
 exit_qsub(int exitstatus)
 {
-#ifdef WIN32
-	/* A thread that makes qsub exit, should try and acquire the Critical Section. */
-	EnterCriticalSection(&continuethread_cs);
-#endif
+/* A thread that makes qsub exit, should try and acquire the Critical Section. */
+	critical_section();
+
 	if (cs_init == 1)
 		/* Cleanup security library initializations before exiting */
 		CS_close_app();
@@ -853,7 +668,7 @@ exit_qsub(int exitstatus)
  * @retval string Succes
  * @retval NULL   Failure
  */
-static char *
+char *
 strdup_esc_commas(char *str_to_dup)
 {
 	char *roaming = str_to_dup;
@@ -888,24 +703,7 @@ static void
 print_usage(void)
 {
 	static char usage2[]="       qsub --version\n";
-#ifdef WIN32
-	static char usage[]=
-		"usage: qsub [-a date_time] [-A account_string] [-c interval]\n"
-	"\t[-C directive_prefix] [-e path] [-f ] [-G] [-h ] [-j oe|eo] [-J X-Y[:Z]]\n"
-	"\t[-k keep] [-l resource_list] [-m mail_options] [-M user_list]\n"
-	"\t[-N jobname] [-o path] [-p priority] [-P project] [-q queue] [-r y|n]\n"
-	"\t[-R o|e|oe] [-S path] [-u user_list] [-W otherattributes=value...]\n"
-	"\t[-v variable_list] [-V ] [-z] [script | -- command [arg1 ...]]\n";
-#else
-	static char usage[]=
-		"usage: qsub [-a date_time] [-A account_string] [-c interval]\n"
-	"\t[-C directive_prefix] [-e path] [-f ] [-h ] [-I [-X]] [-j oe|eo] [-J X-Y[:Z]]\n"
-	"\t[-k keep] [-l resource_list] [-m mail_options] [-M user_list]\n"
-	"\t[-N jobname] [-o path] [-p priority] [-P project] [-q queue] [-r y|n]\n"
-	"\t[-R o|e|oe] [-S path] [-u user_list] [-W otherattributes=value...]\n"
-	"\t[-S path] [-u user_list] [-W otherattributes=value...]\n"
-	"\t[-v variable_list] [-V ] [-z] [script | -- command [arg1 ...]]\n";
-#endif
+	extern char usage[];
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usage2);
 }
@@ -968,432 +766,6 @@ interactive_port(void)
 	return (portstring);
 }
 
-#ifndef WIN32
-/**
- * @brief
- *	This function creates a socket to listen for "X11" data
- *	and returns a port number where its listening for X data.
- *
- * @return	char*
- * @retval	portstring	success
- *
- * @par Side Effects
- *		If this function fails, it will exit the qsub process.
- *
- */
-static char*
-port_X11(void)
-{
-	pbs_socklen_t namelen;
-	struct sockaddr_in myaddr;
-	static char X11_port_str[X11_PORT_LEN];
-	unsigned short X11_port;
-
-	X11_comm_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (X11_comm_sock < 0) {
-		perror("qsub: unable to create socket");
-		exit_qsub(1);
-	}
-	myaddr.sin_family = AF_INET;
-	myaddr.sin_addr.s_addr = INADDR_ANY;
-	myaddr.sin_port = 0;
-
-	if (bind(X11_comm_sock, (struct sockaddr *) &myaddr,
-		sizeof(myaddr)) < 0) {
-		perror("qsub: unable to bind to socket");
-		exit_qsub(1);
-	}
-	/* get port number assigned */
-	namelen = sizeof(myaddr);
-	if (getsockname(X11_comm_sock, (struct sockaddr *) &myaddr,
-		&namelen) < 0) {
-		perror("qsub: unable to get port number");
-		exit_qsub(1);
-	}
-	X11_port = ntohs(myaddr.sin_port);
-	(void) sprintf(X11_port_str, "%u", (unsigned int) X11_port);
-	if (listen(X11_comm_sock, 1) < 0) {
-		perror("qsub: listening on X11 socket failed");
-		exit_qsub(1);
-	}
-	return (X11_port_str);
-}
-
-/**
- * @brief
- * 	settermraw - set terminal into "raw" mode
- *
- * @param[in] ptio - pointer to termios structure
- *
- * @return None
- * @retval Void
- *
- */
-static void
-settermraw(struct termios *ptio)
-{
-	struct termios tio;
-
-	tio = *ptio;
-
-	tio.c_lflag &= ~(ICANON|ISIG|ECHO|ECHOE|ECHOK);
-	tio.c_iflag &= ~(IGNBRK|INLCR|ICRNL|IXON|IXOFF);
-	tio.c_oflag = 0;
-	tio.c_oflag |= (OPOST); /* TAB3 */
-	tio.c_cc[VMIN] = 1;
-	tio.c_cc[VTIME] = 0;
-
-#if defined(TABDLY) && defined(TAB3)
-	if ((tio.c_oflag & TABDLY) == TAB3)
-		tio.c_oflag &= ~TABDLY;
-#endif
-	tio.c_cc[VKILL] = -1;
-	tio.c_cc[VERASE] = -1;
-
-	if (tcsetattr(0, TCSANOW, &tio) < 0)
-		perror("qsub: set terminal mode");
-}
-
-/**
- * @brief
- * 	stopme - suspend process on ~^Z or ~^Y
- *	on suspend, reset terminal to normal "cooked" mode;
- *	when resumed, again set terminal to raw.
- *
- * @param[in] p - process id
- *
- * @return None
- * @retval Void
- *
- */
-static void
-stopme(pid_t p)
-{
-	(void)tcsetattr(0, TCSANOW, &oldtio); /* reset terminal */
-	kill(p, SIGTSTP);
-	settermraw(&oldtio); /* back to raw when we resume */
-}
-
-/**
- * @brief
- *	Interactive Reader process: reads from the remote socket,
- *	and writes that out to the stdout
- *
- * @param[in] s - socket (file descriptor)
- *
- * @return   Error code
- * @retval  -1  Failure
- * @retval   0   Success
- *
- */
-static int
-reader(int s)
-{
-	char buf[4096];
-	int c;
-	char *p;
-	int wc;
-
-	/* read from the socket, and write to stdout */
-	while (1) {
-		c = CS_read(s, buf, sizeof(buf));
-		if (c > 0) {
-			p = buf;
-			while (c) {
-				if ((wc = write(1, p, c)) < 0) {
-					if (errno == EINTR) {
-						continue;
-					} else {
-						perror("qsub: write error");
-						return (-1);
-					}
-				}
-				c -= wc;
-				p += wc;
-			}
-		} else if (c == 0) {
-			return (0); /* EOF - all done */
-		} else {
-			if (errno == EINTR)
-				continue;
-			else {
-				perror("qsub: read error");
-				return (-1);
-			}
-		}
-	}
-}
-
-/**
- * @brief       This is a reader function which reads from the remote socket
- *              when X forwarding is enabled and writes it back to stdout.
- *
- * @param[in] s - socket descriptor from where data is to be read.
- *
- * @return	int
- * @retval	 0	Success
- * @retval	-1	Failure
- * @retval      -2      Peer Closed connection
- *
- */
-static int
-reader_Xjob(int s)
-{
-	static char buf[PF_BUF_SIZE];
-	int c = 0;
-	char *p;
-	int wc;
-	int d = fileno(stdout);
-
-	/* read from the socket and write to stdout */
-	c = CS_read(s, buf, sizeof(buf));
-	if (c > 0) {
-		p = buf;
-		while (c) {
-			/*write data back to stdout*/
-			if ((wc = write(d, p, c)) < 0) {
-				if (errno == EINTR) {
-					continue;
-				} else {
-					perror("qsub: write error");
-					return (-1);
-				}
-			}
-			c -= wc;
-			p += wc;
-		}
-	} else if (c == 0) {
-		/*
-		 * If control reaches here, then it means peer has closed the
-		 * connection.
-		 */
-		return (-2);
-	} else if (errno == EINTR) {
-		return (0);
-	} else {
-		perror("qsub: read error");
-		return (-1);
-	}
-
-	return (0);
-}
-
-
-/**
- * @brief
- * 	Writer process: reads from stdin, and writes
- * 	data out to the rem socket
- *
- * @param[in] s - file descriptor
- *
- * @return Void
- *
- */
-static void
-writer(int s)
-{
-	char c;
-	int i;
-	int newline = 1;
-	char tilde = '~';
-	int wi;
-
-	/* read from stdin, and write to the socket */
-
-	while (1) {
-		i = read(0, &c, 1);
-		if (i > 0) { /* read data */
-			if (newline) {
-				if (c == tilde) { /* maybe escape character */
-
-					/* read next character to check */
-
-					while ((i = read(0, &c, 1)) != 1) {
-						if ((i == -1) && (errno == EINTR))
-							continue;
-						else
-							break;
-					}
-					if (i != 1)
-						break;
-					if (c == '.') /* termination character */
-						break;
-					else if (c == oldtio.c_cc[VSUSP]) {
-						stopme(0); /* ^Z suspend all */
-						continue;
-#ifdef VDSUSP
-					} else if (c == oldtio.c_cc[VDSUSP]) {
-						stopme(getpid());
-						continue;
-#endif /* VDSUSP */
-					} else { /* not escape, write out tilde */
-						while ((wi = CS_write(s, &tilde, 1)) != 1) {
-							if ((wi == -1) && (errno == EINTR))
-								continue;
-							else
-								break;
-						}
-						if (wi != 1)
-							break;
-					}
-				}
-				newline = 0; /* no longer at start of line */
-			} else {
-				/* reset to newline if \n \r kill or interrupt */
-				newline = (c == '\n') ||
-					(c == oldtio.c_cc[VKILL]) ||
-				(c == oldtio.c_cc[VINTR]) ||
-				(c == '\r') ;
-			}
-			while ((wi = CS_write(s, &c, 1)) != 1) { /* write out character */
-				if ((wi == -1) && (errno == EINTR))
-					continue;
-				else
-					break;
-			}
-			if (wi != 1)
-				break;
-
-		} else if (i == 0) { /* EOF */
-			break;
-		} else if (i < 0) { /* error */
-			if (errno == EINTR)
-				continue;
-			else {
-				perror("qsub: read error");
-				return;
-			}
-		}
-	}
-	return;
-}
-
-/**
- * @brief
- *	getwinsize - get the current window size
- *
- * @param[in] pwsz - pointer to winsize structure
- *
- * @return   Error code
- * @retval  -1    Failure
- * @retval   0    Success
- *
- */
-static int
-getwinsize(struct winsize *pwsz)
-{
-	if (ioctl(0, TIOCGWINSZ, &wsz) < 0) {
-		perror("qsub: unable to get window size");
-		return (-1);
-	}
-	return (0);
-}
-
-/**
- * @brief
- *	send_winsize = send the current tty's window size
- *
- * @param[in] sock - file descriptor
- *
- * @return Void
- *
- */
-static void
-send_winsize(int sock)
-{
-	char buf[PBS_TERM_BUF_SZ];
-
-	(void)sprintf(buf, "WINSIZE %hu,%hu,%hu,%hu", wsz.ws_row, wsz.ws_col, wsz.ws_xpixel, wsz.ws_ypixel);
-	(void)CS_write(sock, buf, PBS_TERM_BUF_SZ);
-	return;
-}
-
-/**
- * @brief
- * 	send_term - send the current TERM type and certain control characters
- *
- * @param[in] sock - file descriptor
- *
- * @return Void
- *
- */
-static void
-send_term(int sock)
-{
-	char buf[PBS_TERM_BUF_SZ];
-	char *term;
-	char cc_array[PBS_TERM_CCA];
-
-	term = getenv("TERM");
-	term = strdup_esc_commas(term);
-	if (term == NULL)
-		snprintf(buf, sizeof(buf), "TERM=unknown");
-	else {
-		snprintf(buf, sizeof(buf), "TERM=%s", term);
-		free(term);
-	}
-	(void)CS_write(sock, buf, PBS_TERM_BUF_SZ);
-
-	cc_array[0] = oldtio.c_cc[VINTR];
-	cc_array[1] = oldtio.c_cc[VQUIT];
-	cc_array[2] = oldtio.c_cc[VERASE];
-	cc_array[3] = oldtio.c_cc[VKILL];
-	cc_array[4] = oldtio.c_cc[VEOF];
-	cc_array[5] = oldtio.c_cc[VSUSP];
-	CS_write(sock, cc_array, PBS_TERM_CCA);
-}
-
-
-/**
- * @brief
- *	catchchild = signal handler for Death of Child
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-catchchild(int sig)
-{
-	int status;
-	int pid;
-
-	while (1) {
-		pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
-		if (pid == 0)
-			return;
-		if ((pid > 0) && (WIFSTOPPED(status) == 0))
-			break;
-		if ((pid == -1) && (errno != EINTR)) {
-			perror("qsub: bad status in catchchild: ");
-			return;
-		}
-	}
-
-	/* reset terminal to cooked mode */
-
-	(void)tcsetattr(0, TCSANOW, &oldtio);
-	exit_qsub(0);
-}
-
-/**
- * @brief
- *	prints can't suspend qsub process on arrival of signal causing suspension
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-no_suspend(int sig)
-{
-	printf("Sorry, you cannot suspend qsub until the job is started\n");
-	fflush(stdout);
-}
-#endif /* ! WIN32 */
-
 /**
  * @brief
  *	Shut and Close a socket
@@ -1419,7 +791,7 @@ shut_close_sock(int sock)
  * @return      void
  *
  */
-static void
+void
 bailout(int ret)
 {
 	int c;
@@ -1437,550 +809,6 @@ bailout(int ret)
 	pbs_disconnect(c);
 	exit_qsub(ret);
 }
-
-/**
- * @brief
- *  Enable X11 Forwarding (on Unix) or GUI (on Windows) if specified.
- */
-static void
-enable_gui(void)
-{
-#ifndef WIN32 /* Unix */
-	char *x11authstr = NULL;
-	if (Forwardx11_opt) {
-		if (!Interact_opt) {
-			fprintf(stderr, "qsub: X11 Forwarding possible only for interactive jobs\n");
-			exit_qsub(1);
-		}
-		/* get the DISPLAY's auth protocol, hexdata, and screen number */
-		if ((x11authstr = x11_get_authstring()) != NULL) {
-			set_attr_error_exit(&attrib, ATTR_X11_cookie, x11authstr);
-			set_attr_error_exit(&attrib, ATTR_X11_port, port_X11());
-#ifdef DEBUG
-			fprintf(stderr, "x11auth string: %s\n", x11authstr);
-#endif
-		} else {
-			exit_qsub(1);
-		}
-	}
-#else /* Windows */
-	if (gui_opt) {
-		if (!Interact_opt) {
-			fprintf(stderr, "qsub: only interactive jobs can have GUI display\n");
-			exit_qsub(1);
-		}
-		set_attr_error_exit(&attrib, ATTR_GUI, "TRUE");
-	}
-#endif
-}
-
-#ifndef WIN32
-/**
- * @brief
- *	signal handler for timeout scenario
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-toolong(int sig)
-{
-	printf("Timeout -- deleting job\n");
-	bailout(0);
-}
-
-/**
- * @brief
- *	signal handler function for interrupt signal
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-catchint(int sig)
-{
-	int c;
-
-	printf("Do you wish to terminate the job and exit (y|[n])? ");
-	fflush(stdout);
-	while (1) {
-		alarm(60); /* give a minute to think about it */
-		c = getchar();
-
-		if ((c == 'n') || (c == 'N') || (c == '\n'))
-			break;
-		else if ((c == 'y') || (c == 'Y') || (c == EOF)) {
-			bailout(0);
-		} else {
-			printf("yes or no please\n");
-			while ((c != '\n') && (c != EOF))
-				c = getchar();
-		}
-	}
-	alarm(0); /* reset alarm */
-	while ((c != '\n') && (c != EOF))
-		c = getchar();
-	return;
-}
-
-/**
- * @brief
- *	This function initializes pfwdsock structure and eventually
- *	calls port_forwarder.
- *
- * @param[in]	X_data_socket - socket descriptor used to read X data from mom
- *				port forwarders.
- * @param[in]	interactive_reader_socket - socket descriptor used to read
- *				interactive job data coming from mom writer.
- * @return	void
- *
- * @par Side Effects
- * 	On failure, the function will cause the qsub process to exit.
- *
- */
-static void
-x11handler(int X_data_socket, int interactive_reader_socket)
-{
-	int n;
-	struct pfwdsock *socks;
-	socks = calloc(sizeof(struct pfwdsock), NUM_SOCKS);
-	if (!socks) {
-		fprintf(stderr, "Calloc failed : out of memory\n");
-		exit_qsub(1);
-	}
-	for (n = 0; n < NUM_SOCKS; n++) {
-		(socks + n)->active = 0;
-	}
-	socks->sock = X_data_socket;
-	socks->active = 1;
-	socks->listening = 1;
-
-	/* Try to open a socket for the local X server. */
-
-	port_forwarder(socks, x11_connect_display, display, 0,
-		interactive_reader_socket, reader_Xjob, log_cmds_portfw_msg);
-}
-
-/**
- * @brief
- *	interactive - set up for interactive communication with job
- *
- * @return      void
- *
- * @par Side Effects
- *	On failure, the function will cause the qsub process to exit.
- *
- */
-static void
-interactive(void)
-{
-	int amt;
-	char cur_server[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
-	pbs_socklen_t fromlen;
-	char momjobid[PBS_MAXSVRJOBID + 1];
-	int news;
-	int nsel;
-	char *pc;
-	fd_set selset;
-
-	struct sigaction act;
-	struct sockaddr_in from;
-	struct timeval timeout;
-	struct winsize wsz;
-	int child;
-	int ret;
-
-	/* disallow ^Z which hangs up MOM starting an interactive job */
-	sigemptyset(&act.sa_mask);
-	act.sa_handler = no_suspend;
-	act.sa_flags = 0;
-	if (sigaction(SIGTSTP, &act, NULL) < 0) {
-		perror("sigaction(SIGTSTP)");
-		exit_qsub(1);
-	}
-
-	/* Catch SIGINT and SIGTERM, and setup to catch Death of child */
-	act.sa_handler = catchint;
-	if ((sigaction(SIGINT, &act, NULL) < 0) ||
-		(sigaction(SIGTERM, &act, NULL) < 0)) {
-		perror("unable to catch signals");
-		exit_qsub(1);
-	}
-	act.sa_handler = toolong;
-	if ((sigaction(SIGALRM, &act, NULL) < 0)) {
-		perror("cannot catch alarm");
-		exit_qsub(2);
-	}
-
-	/* save the old terminal setting */
-	if (tcgetattr(0, &oldtio) < 0) {
-		perror("qsub: unable to get terminal settings");
-		exit_qsub(1);
-	}
-
-	/* Get the current window size, to be sent to MOM later */
-	if (getwinsize(&wsz)) {
-		/* unable to get actual values, set defaults */
-		wsz.ws_row = 20;
-		wsz.ws_col = 80;
-		wsz.ws_xpixel = 0;
-		wsz.ws_ypixel = 0;
-	}
-
-	printf("qsub: waiting for job %s to start\n", new_jobname);
-
-	/* Accept connection on socket set up earlier */
-	nsel = 0;
-	while (nsel == 0) {
-		FD_ZERO(&selset);
-		FD_SET(comm_sock, &selset);
-		timeout.tv_usec = 0;
-		timeout.tv_sec = 30;
-		nsel = select(FD_SETSIZE, &selset, NULL, NULL, &timeout);
-		if (nsel == -1) {
-			if (errno == EINTR)
-				nsel = 0;
-			else {
-				perror("qsub: select failed");
-				exit_qsub(1);
-			}
-		}
-		if (nsel == 0) {
-			/* connect to server, status job to see if still there */
-			if (!locate_job(new_jobname, server_out, cur_server)) {
-				fprintf(stderr, "qsub: job %s apparently deleted\n", new_jobname);
-				exit_qsub(1);
-			}
-		}
-
-	}
-
-	/* apparently someone is attempting to connect to us */
-
-retry:
-	fromlen = sizeof(from);
-	if ((news = accept(comm_sock, (struct sockaddr *)&from, &fromlen)) < 0) {
-		perror("qsub: accept error from Interactive socket ");
-		exit_qsub(1);
-	}
-
-	/*
-	 * When Mom connects we expect:
-	 * first, to engage in an authentication activity
-	 * second, mom sends the job id for us to verify
-	 */
-
-	ret = CS_client_auth(news);
-
-	if ((ret != CS_SUCCESS) && (ret != CS_AUTH_USE_IFF)) {
-		fprintf(stderr, "qsub: failed authentication with execution host\n");
-		shutdown(news, 2);
-		exit_qsub(1);
-	}
-
-	/* now verify the value of job id */
-
-	amt = PBS_MAXSVRJOBID + 1;
-	pc = momjobid;
-	while (amt > 0) {
-		int len = CS_read(news, pc, amt);
-		if (len <= 0)
-			break;
-		pc += len;
-		if (*(pc - 1) == '\0')
-			break;
-		amt -= len;
-	}
-	if (pc == momjobid) { /* no data read */
-		shutdown(news, 2);
-		close(news);
-		goto retry;
-	}
-
-	if (strncmp(momjobid, new_jobname, PBS_MAXSVRJOBID) != 0) {
-		fprintf(stderr, "qsub: invalid job name from execution server\n");
-		shutdown(news, 2);
-		exit_qsub(1);
-	}
-
-	/*
-	 * got the right job, send:
-	 *		terminal type as "TERM=xxxx"
-	 *		window size as   "WINSIZE=r,c,x,y"
-	 */
-	send_term(news);
-	send_winsize(news);
-
-	printf("qsub: job %s ready\n\n", new_jobname);
-
-	/* set SIGINT, SIGTERM processing to default */
-
-	act.sa_handler = SIG_DFL;
-	if ((sigaction(SIGINT, &act, NULL) < 0) ||
-		(sigaction(SIGTERM, &act, NULL) < 0) ||
-		(sigaction(SIGALRM, &act, NULL) < 0) ||
-		(sigaction(SIGTSTP, &act, NULL) < 0)) {
-		perror("unable to reset signals");
-		exit_qsub(1);
-	}
-
-	child = fork();
-	if (child == 0) {
-		/* child process - start the reader function set terminal into raw mode */
-		settermraw(&oldtio);
-
-		if (Forwardx11_opt) {
-			/*
-			 * if forwardx11_opt is set call x11handler which
-			 * will act as a reader as well as a port forwarder
-			 */
-			x11handler(X11_comm_sock, news);
-		} else {
-			/* call interactive job's reader */
-			(void) reader(news);
-		}
-		/* reset terminal */
-		tcsetattr(0, TCSANOW, &oldtio);
-		printf("\nqsub: job %s completed\n", new_jobname);
-		exit_qsub(0);
-
-	} else if (child > 0) {
-		/* parent - start the writer function */
-		act.sa_handler = catchchild;
-		if (sigaction(SIGCHLD, &act, NULL) < 0)
-			exit_qsub(1);
-
-		writer(news);
-
-		/* all done - make sure the child is gone and reset the terminal */
-		kill(child, SIGTERM);
-		shutdown(comm_sock, SHUT_RDWR);
-		close(comm_sock);
-
-		tcsetattr(0, TCSANOW, &oldtio);
-		printf("\nqsub: job %s completed\n", new_jobname);
-		exit_qsub(0);
-	} else {
-		perror("qsub: unable to fork");
-		exit_qsub(1);
-	}
-}
-
-#else /* end of Unix code */
-/**
- * @brief
- *	interactive - set up for interactive communication with job
- *
- * @return      void
- *
- * @par Side Effects
- *	On failure, the function will cause the qsub process to exit.
- *
- */
-static void
-interactive(void)
-{
-	int amt = 0;
-	char cur_server[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2] = {0};
-	pbs_socklen_t fromlen = 0;
-	int news = 0;
-	int nsel = 0;
-	char *pc = NULL;
-	fd_set selset;
-	struct sockaddr_in from;
-	struct timeval timeout;
-	int ret = 0;
-	char remote_ip[INET_ADDR_STRLEN + 1] = {'\0'};
-	char momjobid[PBS_MAXSVRJOBID + 1] = {'\0'};
-	int is_mom_local = 0;
-	STARTUPINFO si_rdp = { 0 };
-	PROCESS_INFORMATION pi_rdp = { 0 };
-	HANDLE hjob_remotesession = INVALID_HANDLE_VALUE;
-
-	printf("qsub: waiting for job %s to start\n", new_jobname);
-
-	/* Accept connection on socket set up earlier */
-	nsel = 0;
-	while (nsel == 0) {
-		FD_ZERO(&selset);
-		FD_SET(comm_sock, &selset);
-		timeout.tv_usec = 0;
-		timeout.tv_sec = 30;
-		nsel = select(FD_SETSIZE, &selset, NULL, NULL, &timeout);
-		if (nsel == -1) {
-			int err_no = WSAGetLastError();
-			if (err_no == WSAEINTR)
-				nsel = 0;
-			else {
-				perror("qsub: select failed");
-				closesocket(comm_sock);
-				exit_qsub(1);
-			}
-		}
-		if (nsel == 0) {
-			/*
-			 * Check if no signal handler thread is invoked.
-			 * Acquire the critical section before locate_job().
-			 */
-			EnterCriticalSection(&continuethread_cs);
-			/* connect to server, status job to see if still there */
-			if (!locate_job(new_jobname, server_out, cur_server)) {
-				fprintf(stderr, "qsub: job %s apparently deleted\n",
-					new_jobname);
-				closesocket(comm_sock);
-				exit_qsub(1);
-			}
-			LeaveCriticalSection(&continuethread_cs);
-		}
-
-	}
-
-	/* apparently someone is attempting to connect to us */
-
-	fromlen = sizeof(from);
-	/*
-	 * Guarded this with critical section in order to ensure
-	 * that accept() is not called after SIGNIT occurs.
-	 */
-	EnterCriticalSection(&continuethread_cs);
-	if ((news = accept(comm_sock, (struct sockaddr *)&from, &fromlen)) < 0) {
-		perror("qsub: accept error from Interactive socket ");
-		closesocket(comm_sock);
-		exit_qsub(1);
-	}
-	LeaveCriticalSection(&continuethread_cs);
-	snprintf(remote_ip, sizeof(remote_ip), "%s", inet_ntoa(from.sin_addr));
-	if (remote_ip == NULL) {
-		perror("qsub: Failed to get IP address of execution host ");
-		closesocket(comm_sock);
-		exit_qsub(1);
-	}
-
-	/* When Mom connects we expect:
-	 *
-	 * first, to engage in an authentication activity
-	 * second, mom sends the job id for us to verify
-	 */
-
-	ret = CS_client_auth(news);
-
-	if ((ret != CS_SUCCESS) && (ret != CS_AUTH_USE_IFF)) {
-		fprintf(stderr, "qsub: failed authentication with execution host\n");
-		shutdown(news, 2);
-		exit_qsub(1);
-	}
-
-	/* now verify the value of job id */
-
-	amt = PBS_MAXSVRJOBID + 1;
-	pc = momjobid;
-	while (amt > 0) {
-		fromlen = recv(news, pc, amt, 0);
-		if (fromlen <= 0)
-			break;
-		pc += fromlen;
-		if (*(pc - 1) == '\0')
-			break;
-		amt -= fromlen;
-	}
-	if (strncmp(momjobid, new_jobname, PBS_MAXSVRJOBID) != 0) {
-		fprintf(stderr, "qsub: invalid job name from execution server\n");
-		shutdown(news, 2);
-		exit_qsub(1);
-	}
-	/*
-	 * Guarded this with critical section in order to ensure
-	 * that job ready message and ignoring the signal, happens atomically
-	 */
-	EnterCriticalSection(&continuethread_cs);
-	printf("qsub: job %s ready\n\n", new_jobname);
-	/* Ignore SIGINT */
-	signal(SIGINT, SIG_IGN);
-	LeaveCriticalSection(&continuethread_cs);
-
-	/*
-	 * If it is a GUI job, a configured remote viewer client should be launched if submission host and execution host are not the same.
-	 * If no remote viewer is configured in pbs.conf, use Windows native remote desktop for remote viewing of GUI jobs.
-	 */
-	if(gui_opt != FALSE)
-	{
-		char rdp_command[PBS_CMDLINE_LENGTH] = {'\0'};
-		int flags = CREATE_NO_WINDOW | CREATE_SUSPENDED;
-		int rc = 0;
-		struct hostent *hp = NULL;
-		char hname[PBS_MAXHOSTNAME + 1] = {'\0'};
-		int i = 0;
-
-		/* Check whether the Mom host is same as submission host */
-		(void)gethostname(hname, PBS_MAXHOSTNAME);
-		hp = gethostbyname(hname);
-		for (i=0; hp->h_addr_list[i]; i++) {
-			/* Compare with Mom host IP address to know whether the Mom host is same as submission host */
-			if(memcmp(&(from.sin_addr), hp->h_addr_list[i], hp->h_length) == 0) {
-				is_mom_local = 1;
-				break;
-			}
-		}
-		/* Invoke remote viewer client only if the execution host is not same as submission host */
-		if(is_mom_local == 0) {
-			pbs_loadconf(0);
-			if(pbs_conf.pbs_conf_remote_viewer)
-				/* Invoke remote viewer client configured */
-				snprintf(rdp_command, PBS_CMDLINE_LENGTH -1, "%s %s", pbs_conf.pbs_conf_remote_viewer, remote_ip);
-			else
-				/* No remote viewer client configured, invoke native remote desktop client */
-				snprintf(rdp_command, PBS_CMDLINE_LENGTH -1, "mstsc /v %s", remote_ip);
-
-			hjob_remotesession = CreateJobObject(NULL, NULL);
-			si_rdp.lpDesktop = NULL;
-			si_rdp.dwFlags = STARTF_USESHOWWINDOW;
-			si_rdp.wShowWindow = SW_HIDE;
-			rc = CreateProcess(NULL, rdp_command,
-				NULL, NULL, TRUE, flags, NULL, NULL, &si_rdp, &pi_rdp);
-			if (!rc) {
-				fprintf(stderr, "qsub: failed to launch remote viewer client. CreateProcess %s failed: error=%d\n",
-					rdp_command, GetLastError());
-				printf("\nqsub: job %s completed\n", new_jobname);
-				close_valid_handle(&(pi_rdp.hThread));
-				close_valid_handle(&(pi_rdp.hProcess));
-				close_valid_handle(&hjob_remotesession);
-				exit_qsub(1);
-			}
-			/* Attach the remote viewer session to the job object */
-			rc = AssignProcessToJobObject(hjob_remotesession, pi_rdp.hProcess);
-			if (!rc) {
-				fprintf(stderr, "qsub: failed to attach remote viewer client. \
-						Please close manually after job completion.\nAssignProcessToJobObject() failed: error=%d\n",
-					GetLastError());
-			}
-			(void)ResumeThread(pi_rdp.hThread);
-		}
-	}
-	/* Run remote command shell. Also redirect stdin */
-	if (remote_shell_command(remote_ip, momjobid, 1) == -1)
-		printf("\nqsub: failed to run remote interactive shell\n");
-	printf("\nqsub: job %s completed\n", new_jobname);
-	/* If it is a GUI job and the submission host and execution host are different, terminate remote viewer session */
-	if(gui_opt != FALSE && (is_mom_local == 0)) {
-		int rc = 0;
-		rc = TerminateJobObject(hjob_remotesession, 0);
-		if (!rc) {
-			fprintf(stderr, "qsub: failed to close remote viewer client. \
-					Please close manually.\nTerminateJobObject() failed: error=%d\n",
-				GetLastError());
-		}
-	}
-	close_valid_handle(&(pi_rdp.hThread));
-	close_valid_handle(&(pi_rdp.hProcess));
-	close_valid_handle(&hjob_remotesession);
-	exit_qsub(0);
-}
-#endif
-/* End of "Interactive Job" functions. */
 
 /* The following functions support the "Block Job" capability of PBS. */
 
@@ -2036,102 +864,7 @@ block_port(void)
 	return (portstring);
 }
 
-static int sig_happened = 0;
-
-#ifdef WIN32
-/**
- * @brief
- *	signal handler to avoid race condition
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-win_blockint(int sig)
-{
-	/*
-	 * Try and acquire the critical Section. This is to avoid a race condition when
-	 * due to an interrupt, the signal handler is invoked, which gets called in a separate thread,
-	 * this thread runs in parallel with main thread. This can yield unwanted results:
-	 * e.g. while the signal handler thread is trying to delete a job, the main thread exits
-	 * OR a socket(comm_sock) closed by signal handler thread, gets used in select() and accept().
-	 * inside main thread.
-	 */
-	EnterCriticalSection(&continuethread_cs);
-	sig_happened = sig;
-
-
-	if (sig == SIGINT || sig == SIGBREAK) {
-
-		if (new_jobname == NULL)
-			exit(2);
-
-		fprintf(stderr, "qsub: wait for job %s "
-			"interrupted by signal %d\n",
-			new_jobname, sig_happened);
-		bailout(2);
-	}
-	LeaveCriticalSection(&continuethread_cs);
-
-}
-#else
-/**
- * @brief
- *	signal handler to avoid race condition
- *
- * @param[in] sig - signal number
- *
- * @return Void
- *
- */
-static void
-blockint(int sig)
-{
-	sig_happened = sig;
-}
-
-/**
- * @brief
- *	Signal handler for SIGPIPE
- * @param[in]	sig - signal number
- * @return	void
- *
- */
-static void
-exit_on_sigpipe(int sig)
-{
-	perror("qsub: SIGPIPE received, job submission interrupted.");
-	exit_qsub(1);
-}
-#endif
-
-/**
- * @brief
- *  Set the signal handlers.
- */
-static void
-set_sig_handlers(void)
-{
-#ifdef WIN32
-	signal(SIGINT, win_blockint);
-	signal(SIGBREAK, win_blockint);
-	signal(SIGTERM, win_blockint);
-
-	InitializeCriticalSection(&continuethread_cs);
-#else
-	/* Catch SIGPIPE on write() failures. */
-	struct sigaction act;
-	sigemptyset(&act.sa_mask);
-	act.sa_handler = exit_on_sigpipe;
-	act.sa_flags = 0;
-	if (sigaction(SIGPIPE, &act, NULL) < 0) {
-		perror("qsub: unable to catch SIGPIPE");
-		exit_qsub(1);
-	}
-#endif
-}
+int sig_happened = 0;
 
 #define BAIL(message) \
 	if (ret != DIS_SUCCESS) { \
@@ -2303,15 +1036,7 @@ process_opts(int argc, char **argv, int passet)
 	size_t N_len = 0;
 	int ddash_index = -1;
 
-#ifdef WIN32
-#define GETOPT_ARGS "a:A:c:C:e:fGhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
-#else
-#if !defined(PBS_NO_POSIX_VIOLATION)
-#define GETOPT_ARGS "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:XzP:"
-#else
-#define GETOPT_ARGS "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
-#endif /* PBS_NO_POSIX_VIOLATION */
-#endif /* WIN32 */
+extern char GETOPT_ARGS[];
 
 /*
  * The following macro, together the value of passet is used
@@ -2354,19 +1079,19 @@ process_opts(int argc, char **argv, int passet)
 						break;
 					}
 					sprintf(a_value, "%ld", (long)after);
-					set_attr_error_exit(&attrib, ATTR_a, a_value);
+					(void)set_attr_error_exit(&attrib, ATTR_a, a_value);
 				}
 				break;
 			case 'A':
 				if_cmd_line(A_opt) {
 					A_opt = passet;
-					set_attr_error_exit(&attrib, ATTR_A, optarg);
+					(void)set_attr_error_exit(&attrib, ATTR_A, optarg);
 				}
 				break;
 			case 'P':
 				if_cmd_line(P_opt) {
 					P_opt = passet;
-					set_attr_error_exit(&attrib, ATTR_project, optarg);
+					(void)set_attr_error_exit(&attrib, ATTR_project, optarg);
 				}
 				break;
 			case 'c':
@@ -2590,14 +1315,12 @@ process_opts(int argc, char **argv, int passet)
 				if_cmd_line(v_opt) {
 					v_opt = passet;
 					free(v_value);
-#ifdef WIN32
 					/*
 					 * Need to change '\' to '/' before expanding the
 					 * environment because '\' is used to protect commas
 					 * inside quoted values.
 					 */
-					back2forward_slash(optarg);
-#endif
+					fix_path(optarg, 1);
 					v_value = expand_varlist(optarg);
 					if (v_value == NULL)
 						exit(1);
@@ -2615,9 +1338,7 @@ process_opts(int argc, char **argv, int passet)
 					errflg++;
 					break;
 				}
-#ifdef WIN32
-				back2forward_slash2(optarg);
-#endif
+				fix_path(optarg, 2);
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 
 				/*
@@ -2771,14 +1492,12 @@ process_opts(int argc, char **argv, int passet)
 #endif
 				}
 				break;
-#ifdef WIN32
 			case 'G':
 				if_cmd_line(gui_opt) {
 					gui_opt = passet;
 					set_attr_error_exit(&attrib, ATTR_GUI, "TRUE");
 				}
 				break;
-#endif
 			case 'z':
 				if_cmd_line(z_opt) z_opt = passet;
 				break;
@@ -2795,13 +1514,11 @@ process_opts(int argc, char **argv, int passet)
 			"interactive jobs\n");
 		exit_qsub(1);
 	}
-#ifdef WIN32
 	if ((gui_opt == CMDLINE) && (Interact_opt == FALSE)) {
 		fprintf(stderr, INTER_GUI_WARN);
 		gui_opt = FALSE;
 		exit_qsub(1);
 	}
-#endif
 
 	if (errflg == 0 && J_opt == 0 && get_attr(attrib, ATTR_m, NULL) != NULL &&
 		strchr(get_attr(attrib, ATTR_m, NULL), 'j') != NULL) {
@@ -3008,7 +1725,7 @@ make_argv(int *argc, char *argv[], char *line)
  * @retval	 0 - Success
  *
  */
-static int
+int
 do_dir(char *opts, int opt_pass, char *retmsg, size_t ret_size)
 {
 	int argc;
@@ -3072,130 +1789,6 @@ set_opt_defaults(void)
 
 /* End of "Options Processing" functions. */
 
-/*
- * The following functions support the "Job Script"
- * functionality of qsub.
- */
-
-/**
- * @brief
- *      Create a temporary file that will house the job script
- *
- * @param[in]	file	- Input file pointer
- * @param[out]  script	- Temp file location
- * @param[in]   prefix	- Prefix for PBS directives
- *
- * @return      int
- * @retval	-1 - Error processing qsub parameters
- * @retval      3 - Error writing script file
- * @retval      4 - Temp file creation failure
- * @retval      5 - Error reading input file
- * @retval      6 - Unexpected EOF on read
- */
-static int
-get_script(FILE *file, char *script, char *prefix)
-{
-	char *sopt;
-	int err = 0;
-	int exec = FALSE;
-	char tmp_name[MAXPATHLEN + 1];
-	FILE *TMP_FILE;
-	char *in;
-	char *s_in = NULL;
-	int s_len = 0;
-#ifndef WIN32
-	int fds;
-#endif
-	static char tmp_template[] = "pbsscrptXXXXXX";
-
-	/*
-	 * Note: Need to populate script variable as soon as temp file is created so it
-	 * gets cleaned up in case of an error.
-	 */
-
-#ifdef WIN32
-
-	_snprintf(tmp_name, sizeof(tmp_name), "%s\\%s", tmpdir, tmp_template);
-	if ((in = _mktemp(tmp_name)) != NULL) {
-		snprintf(script, MAXPATHLEN + 1, "%s", tmp_name);
-		if ((TMP_FILE = fopen(in, "w+")) == NULL)
-			err = 1;
-	} else {
-		err = 1;
-	}
-
-#else /* not windows */
-
-	snprintf(tmp_name, sizeof(tmp_name), "%s/%s", tmpdir, tmp_template);
-	fds = mkstemp(tmp_name); /* returns file descriptor */
-	if (fds != -1) {
-		snprintf(script, MAXPATHLEN + 1, "%s", tmp_name);
-		if ((TMP_FILE = fdopen(fds, "w+")) == NULL)
-			err = 1;
-	} else {
-		err = 1;
-	}
-
-#endif /* end windows */
-
-	if (err != 0) {
-		perror("mkstemp");
-		fprintf(stderr, "qsub: could not create/open tmp file %s for script\n", tmp_name);
-		return (4);
-	}
-
-	while ((in = pbs_fgets_extend(&s_in, &s_len, file)) != NULL) {
-		if (!exec && ((sopt = pbs_ispbsdir(s_in, prefix)) != NULL)) {
-			if (fputs(in, TMP_FILE) < 0) {
-				perror("fputs");
-				fprintf(stderr,
-					"qsub: error writing copy of script, %s\n", tmp_name);
-				fclose(TMP_FILE);
-				free(s_in);
-				return (3);
-			}
-			/*
-			 * Setting options from the job script will not overwrite
-			 * options set on the command line. CMDLINE-1 means
-			 * "one less than CMDLINE priority"
-			 */
-			if (do_dir(sopt, CMDLINE - 1, retmsg, MAXPATHLEN) != 0) {
-				fprintf(stderr, "%s", retmsg);
-				free(s_in);
-				return (-1);
-			}
-		} else if (!exec && pbs_isexecutable(s_in)) {
-			exec = TRUE;
-		}
-		if (fputs(in, TMP_FILE) < 0) {
-			perror("fputs");
-			fprintf(stderr, "qsub: error writing copy of script, %s\n",
-				tmp_name);
-			fclose(TMP_FILE);
-			free(s_in);
-			return (3);
-		}
-	}
-
-#ifdef WIN32
-	if ((s_in[0] != '\0') && (s_in[strlen(s_in) - 1] != '\n')) {
-		fputs("\n", TMP_FILE);
-		printf("qsub: added missing newline in job script.\n");
-	}
-#endif
-
-	free(s_in);
-	if (fclose(TMP_FILE) != 0) {
-		perror(" qsub: copy of script to tmp failed on close");
-		return (5);
-	}
-	if (ferror(file)) {
-		fprintf(stderr, "qsub: error reading script file\n");
-		return (5);
-	}
-	return (0);
-}
-
 /**
  * @brief
  *	Returns the directory prefix string, which is chosen from the following possibilities:
@@ -3236,6 +1829,7 @@ set_dir_prefix(char *prefix, int diropt)
 static void
 read_job_script(char *script)
 {
+	extern char read_script_msg[];
 	int errflg; /* error code from get_script() */
 	struct stat statbuf;
 	char *bnp;
@@ -3246,11 +1840,7 @@ read_job_script(char *script)
 	if ((strcmp(script, "") == 0) || (strcmp(script, "-") == 0)) {
 		/* if this is a terminal, print a short info */
 		if (isatty(STDIN_FILENO) && Interact_opt == FALSE) {
-#ifdef WIN32
-			printf("Job script will be read from standard input. Submit with CTRL+Z.\n");
-#else
-			printf("Job script will be read from standard input. Submit with CTRL+D.\n");
-#endif
+			printf("%s", read_script_msg);
 		}
 
 		if (!N_opt)
@@ -3382,9 +1972,7 @@ job_env_basic(void)
 
 	/* Send the required variables with the job. */
 	c = strdup_esc_commas(getenv("HOME"));
-#ifdef WIN32
-	back2forward_slash(c);
-#endif
+	fix_path(c, 1);
 	strcat(job_env, "PBS_O_HOME=");
 	if (c != NULL) {
 		strcat(job_env, c);
@@ -3406,27 +1994,21 @@ job_env_basic(void)
 		free(c);
 	}
 	c = strdup_esc_commas(getenv("PATH"));
-#ifdef WIN32
-	back2forward_slash(c);
-#endif
+	fix_path(c, 1);
 	if (c != NULL) {
 		strcat(job_env, ",PBS_O_PATH=");
 		strcat(job_env, c);
 		free(c);
 	}
 	c = strdup_esc_commas(getenv("MAIL"));
-#ifdef WIN32
-	back2forward_slash(c);
-#endif
+	fix_path(c, 1);
 	if (c != NULL) {
 		strcat(job_env, ",PBS_O_MAIL=");
 		strcat(job_env, c);
 		free(c);
 	}
 	c = strdup_esc_commas(getenv("SHELL"));
-#ifdef WIN32
-	back2forward_slash(c);
-#endif
+	fix_path(c, 1);
 	if (c != NULL) {
 		strcat(job_env, ",PBS_O_SHELL=");
 		strcat(job_env, c);
@@ -3486,15 +2068,11 @@ job_env_basic(void)
 
 		/* save current working dir for daemon */
 		snprintf(qsub_cwd, sizeof(qsub_cwd), "%s", c);
-#ifdef WIN32
 		/* get UNC path (if available) if it is mapped drive */
 		get_uncpath(c);
-#endif
 		c_escaped = strdup_esc_commas(c);
 		if (c_escaped != NULL) {
-#ifdef WIN32
-			back2forward_slash(c_escaped);
-#endif
+			fix_path(c_escaped, 1);
 			pbs_strncpy(p, c_escaped, len - (p - job_env));
 			free(c_escaped);
 			c_escaped = NULL;
@@ -3589,9 +2167,7 @@ env_array_to_varlist(char **envp)
 			strcat(job_env, ",");
 			strcat(job_env, *evp);
 			strcat(job_env, "=");
-#ifdef WIN32
-			back2forward_slash(s + 1);
-#endif
+			fix_path(s + 1, 1);
 			(void)copy_env_value(job_env, s + 1, 1);
 		}
 		*s = '=';
@@ -3690,9 +2266,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 			strcat(job_env, ",");
 			strcat(job_env, s);
 			strcat(job_env, "=");
-#ifdef WIN32
-			back2forward_slash(env);
-#endif
+			fix_path(env, 1);
 			if (copy_env_value(job_env, env, 1) == NULL) {
 				free(job_env);
 				return FALSE;
@@ -3706,8 +2280,6 @@ set_job_env(char *basic_vlist, char *current_vlist)
 
 		/* From state4, goes back to state1, using 'c' as input */
 		*c++ = '\0';;
-
-#ifndef WIN32
 		if (v_opt && Forwardx11_opt) {
 			if (strcmp(s, "DISPLAY") == 0) {
 				x11_disp = TRUE;
@@ -3715,14 +2287,11 @@ set_job_env(char *basic_vlist, char *current_vlist)
 				return FALSE;
 			}
 		}
-#endif
 		pc = job_env + strlen(job_env);
 		(void)strcat(job_env, ",");
 		(void)strcat(job_env, s);
 		(void)strcat(job_env, "=");
-#ifdef WIN32
-		back2forward_slash(c);
-#endif
+		fix_path(c, 1);
 		if ((c = copy_env_value(job_env, c, 0)) == NULL) {
 			free(job_env);
 			return FALSE;
@@ -3793,157 +2362,6 @@ resize_daemon_buf(int bufused, int lenreq)
 	return 0;
 }
 
-#ifdef WIN32
-#ifdef DEBUG
-/**
- * @brief
- *	Prints the result of GetLastError()
- */
-static void
-print_last_error(void)
-{
-	LPVOID lp_msg_buf;
-	LPVOID lp_display_buf;
-	DWORD dw = GetLastError();
-
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		FORMAT_MESSAGE_FROM_SYSTEM |
-		FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL,
-		dw,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR) &lp_msg_buf,
-		0, NULL);
-
-	printf("%s\n", lp_msg_buf);
-}
-#endif
-#endif
-
-/**
- * @brief
- *	Receive data of bufsize length from the peer. Used for communications
- * 	between the foreground and background qsub processes.
- *
- * @param[in]	s - pointer to the windows PIPE or Unix domain socket
- * @param[in]	buf - The buf to receive data into
- * @param[in]	bufsize - The amount of data to read
- *
- * @return int
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-static int
-dorecv(void *s, char *buf, int bufsize)
-{
-	int bytes = 0;
-	char *p = buf;
-	int remaining = bufsize;
-#ifdef WIN32
-	BOOL f_success = 0;
-	HANDLE h_pipe = (HANDLE) s;
-
-	do {
-		f_success = ReadFile(
-			h_pipe, /* handle to pipe */
-			p, /* buffer to receive data */
-			remaining, /* size of buffer */
-			&bytes, /* number of bytes read */
-			NULL); /* not overlapped I/O */
-
-		if (!f_success && GetLastError() != ERROR_MORE_DATA)
-			return -1;
-		p += bytes;
-		remaining -= bytes;
-	} while (!f_success); /* repeat loop if ERROR_MORE_DATA */
-#else
-	int sock = *((int *) s);
-	int rc;
-
-	do {
-		errno = 0;
-		rc = read(sock, p, remaining);
-		if (rc == -1)
-			return -1;
-		if (rc == 0)
-			break;
-		bytes += rc;
-		p += rc;
-		remaining -= rc;
-	} while (bytes < bufsize);
-
-	if (bytes != bufsize)
-		return -1;
-#endif
-	return 0;
-}
-
-/**
- * @brief
- *	Send data of bufsize length to the peer. Used for communications
- * 	between the foreground and background qsub processes.
- *
- * @param[in]	s - pointer to the windows PIPE or Unix domain socket
- * @param[in]	buf - The buf to send data from
- * @param[in]	bufsize - The amount of data to send
- *
- * @return int
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-static int
-dosend(void *s, char *buf, int bufsize)
-{
-	int bytes = 0;
-#ifdef WIN32
-	BOOL f_success = 0;
-	HANDLE h_pipe = (HANDLE) s;
-
-	f_success = WriteFile(
-		h_pipe, /* handle to pipe */
-		buf, /* buffer to write from */
-		bufsize, /* number of bytes to write */
-		&bytes, /* number of bytes written */
-		NULL); /* not overlapped I/O */
-
-	if (!f_success || bufsize != bytes)
-		return -1;
-#else
-	int sock = (int) *((int *) s);
-	int rc;
-	char *p = buf;
-	int remaining = bufsize;
-	do {
-		/*
-		 * For systems with MSG_NOSIGNAL defined (e.g. Linux 2.2 and later),
-		 * we use send() rather than write() in order to block the SIGPIPE
-		 * that qsub would receive if the remote side closes the stream. For
-		 * other systems, the exit_on_sigpipe() handler gets called.
-		 */
-		errno = 0;
-#ifdef MSG_NOSIGNAL
-		rc = send(sock, p, remaining, MSG_NOSIGNAL);
-#else
-		rc = write(sock, p, remaining);
-#endif
-		if (rc == -1)
-			return -1;
-		if (rc == 0)
-			break;
-		bytes += rc;
-		p += rc;
-		remaining -= rc;
-	} while (bytes < bufsize);
-
-	if (bytes != bufsize)
-		return -1;
-#endif
-	return 0;
-}
-
 /**
  * @brief
  *	Send the attrl list to the background qsub process. This is the
@@ -3958,7 +2376,7 @@ dosend(void *s, char *buf, int bufsize)
  * @retval	 0 - Success
  *
  */
-static int
+int
 send_attrl(void *s, struct attrl *attrib)
 {
 	int bufused = 0;
@@ -4021,7 +2439,7 @@ send_attrl(void *s, struct attrl *attrib)
  * @retval	 0 - Success
  *
  */
-static int
+int
 send_string(void *s, char *str)
 {
 	int len = strlen(str) + 1;
@@ -4047,7 +2465,7 @@ send_string(void *s, char *str)
  * @retval	 0 - Success
  *
  */
-static int
+int
 recv_attrl(void *s, struct attrl **attrib)
 {
 	int recvlen = 0;
@@ -4117,7 +2535,7 @@ recv_attrl(void *s, struct attrl **attrib)
  * @retval	 0 - Success
  *
  */
-static int
+int
 recv_string(void *s, char *str)
 {
 	int len = 0;
@@ -4145,7 +2563,7 @@ recv_string(void *s, char *str)
  * @retval	 0 - Success
  *
  */
-static int
+int
 recv_dyn_string(void *s, char **strp)
 {
 	int recvlen = 0;
@@ -4176,7 +2594,7 @@ recv_dyn_string(void *s, char **strp)
  * @retval	 0 - Success
  *
  */
-static int
+int
 send_opts(void *s)
 {
 	/*
@@ -4218,7 +2636,7 @@ send_opts(void *s)
  * @retval	 0 - Success
  *
  */
-static int
+int
 recv_opts(void *s)
 {
 	/*
@@ -4361,7 +2779,7 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list, char *retmsg)
  * @retval 1/pbs_errno - Failure, retmsg paramter is set
  *
  */
-static int
+int
 do_connect(char *server_out, char *retmsg)
 {
 	int rc = 0;
@@ -4464,14 +2882,10 @@ do_submit(char *retmsg)
 
 	/* set_job_env must be done here to pick up -v, -V options passed by default_qsub_arguments */
 	if (!set_job_env(basic_envlist, qsub_envlist)) {
-#ifndef WIN32
 		if (x11_disp)
 			snprintf(retmsg, MAXPATHLEN, "qsub: invalid usage of incompatible option –X with –v DISPLAY\n");
 		else
-			snprintf(retmsg, MAXPATHLEN, "qsub: cannot send environment with the job\n");
-#else
-		snprintf(retmsg, MAXPATHLEN, "qsub: cannot send environment with the job\n");
-#endif
+			snprintf(retmsg, MAXPATHLEN, "qsub: cannot send environment with the job\n");	
 		return 1;
 	}
 
@@ -4548,9 +2962,7 @@ save_opts(void)
 	Stageout_opt_o = Stageout_opt;
 	Sandbox_opt_o = Sandbox_opt;
 	Grouplist_opt_o = Grouplist_opt;
-#ifdef WIN32
 	gui_opt_o = gui_opt;
-#endif
 	Resvstart_opt_o = Resvstart_opt;
 	Resvend_opt_o = Resvend_opt;
 	pwd_opt_o = pwd_opt;
@@ -4617,8 +3029,8 @@ restore_opts(void)
  * @param[in]	attrib - The list of attributes to free
  *
  */
-static void
-free_attrl(struct attrl *attrib)
+void
+qsub_free_attrl(struct attrl *attrib)
 {
 	struct attrl *attr;
 
@@ -4665,52 +3077,6 @@ dup_attrl(struct attrl *attrib)
 }
 
 /**
- * @brief
- *	Helper function to get the pbs conf file path, and
- *	convert it to a string, later added to the filename
- *	(pipe or unix domain socket filename) that is used
- *	for communications between the front-end and
- *	background qsub processes.
- *	The path to the pbs conf file is converted to a string
- *	by replacing the slashes with underscore char.
- *	If PBS_CONF_FILE is not set, then an empty string is returned.
- *
- * @return - The string representing path to the pbs conf file
- *
- */
-static char *
-get_conf_path(void)
-{
-	char *cnf = getenv("PBS_CONF_FILE");
-	/* static pointer so we can free heap memory from previous invocation of this function */
-	static char *dup_cnf_path = NULL;
-	char *p;
-
-	if (cnf) {
-		p = strdup(cnf);
-		if (p) {
-			free(dup_cnf_path);
-			dup_cnf_path = p;
-			while (*p) {
-#ifdef WIN32
-				if (*p == '\\' || *p == ':' || *p == ' ' || *p == '.')
-					*p = '_';
-#else
-				if (*p == '/' || *p == ' ' || *p == '.')
-					*p = '_';
-#endif
-				p++;
-			}
-		}
-		return dup_cnf_path;
-	} else if (dup_cnf_path) {
-		return dup_cnf_path;
-	} else {
-		return "";
-	}
-}
-
-/**
  *
  * @brief
  *	The wrapper program to "do_submit()".
@@ -4726,7 +3092,7 @@ get_conf_path(void)
  * 		return PBSE_PROTOCOL
  *
  */
-static int
+int
 do_submit2(char *rmsg)
 {
 	int retry; /* do a retry count to prevent infinite loop */
@@ -4739,7 +3105,7 @@ do_submit2(char *rmsg)
 	 */
 	if (attrib != NULL) {
 		if (attrib_o != NULL)
-			free_attrl(attrib_o);
+			qsub_free_attrl(attrib_o);
 		attrib_o = dup_attrl(attrib); /* save attributes list */
 		if (attrib_o == NULL) {
 			snprintf(rmsg, MAXPATHLEN, "Failed to duplicate attributes list.\n");
@@ -4776,7 +3142,7 @@ do_submit2(char *rmsg)
 		/* Use the original attrib value before the previous "default_qsub_arguments" was applied. */
 		if (attrib_o != NULL) {
 			if (attrib != NULL)
-				free_attrl(attrib);
+				qsub_free_attrl(attrib);
 			attrib = dup_attrl(attrib_o);
 			if (attrib == NULL) {
 				snprintf(rmsg, MAXPATHLEN, "Failed to duplicate attributes list\n");
@@ -4804,804 +3170,6 @@ do_submit2(char *rmsg)
 	return (rc);
 }
 
-#ifdef WIN32
-/**
- * @brief
- *	Get the filename to be used for communications. This is created by
- *	appending the target server name and the user login name to a filename.
- *
- * @param[out]	fname - The filename used for the communication pipe/socket for
- *			the communication between background and forground
- *			qsub processes.
- *
- * @return void
- *
- */
-static void
-get_comm_filename(char *fname)
-{
-	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
-	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
-
-	sprintf(fname, "\\\\.\\pipe\\pipe_%s_%s_%s_%s_%s_%s",
-		((server_out == NULL || server_out[0] == 0)?
-		"default" : server_out),
-		getlogin(),
-		cred_name,
-		get_conf_path(),
-		(env_svr == NULL)?"":env_svr,
-		(env_port == NULL)?"":env_port
-		);
-}
-
-/**
- * @brief
- *	The windows implementation of the qsub daemon.
- *	This function creates a named pipe (CreateNamedPipe) and wait for a
- *	client to connect to it (ConnectNamedPipe). It uses OVERLAPPED IO to
- *	ensure that it does not block on ConnectNamedPipe. It continues and
- *	signals the event that was passed to parameter 2 of this function. This
- *	wakes up the waiting foreground process, which eventually calls
- *	CreateFile to connect to the named pipe. The function does a
- *	WaitForMultipleObjects to wait on two events: Either a connection close
- *	with the pbs_server or a client pipe connect request incoming. If
- *	neither happens within 60 seconds of waiting, this function times out
- *	and results in the background qsub process to quit silently.
- *
- *
- * @param[in] fname - The filename used for the communication pipe/socket for
- *			the communication between background and forground
- *			qsub processes.
- * @param[in] handle - Handle to synchronization event between foreground and
- *			background qsub processes.
- * @param[in] server - Target server name of NULL in case of default
- *
- */
-static void
-do_daemon_stuff(char *fname, char *handle, char *server)
-{
-	HANDLE h_pipe;
-	int rc, pipe_rc;
-	HANDLE h_event, h_event_parent;
-	HANDLE h_sock_event;
-	OVERLAPPED o_overlap;
-	HANDLE handles[2];
-	time_t connect_time = 0;
-	time_t cred_connect_time = time(0); /* Record current time to compare against the credential timeout value of 30 mins */
-
-	sd_svr = -1; /* not connected */
-	h_event_parent = atoi(handle);
-	if (h_event_parent == -1)
-		goto error;
-
-	h_event = CreateEvent(
-		NULL, /* default security attribute */
-		TRUE, /* manual-reset event */
-		FALSE, /* initial state = signaled */
-		NULL); /* unnamed event object */
-	if (h_event == NULL)
-		goto error;
-
-	h_sock_event = WSACreateEvent();
-	if (h_sock_event == NULL)
-		goto error;
-
-	o_overlap.hEvent = h_event;
-	h_pipe = CreateNamedPipe(fname,
-		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-		PIPE_UNLIMITED_INSTANCES,
-		BUFSIZE, /* output buffer size */
-		BUFSIZE, /* input buffer size */
-		PIPE_TIMEOUT, /* client time-out */
-		NULL); /* no security attribute */
-	if (h_pipe == INVALID_HANDLE_VALUE)
-		goto error;
-
-	/* set single threaded mode */
-	pbs_client_thread_set_single_threaded_mode();
-
-	while (1) {
-		if (!ConnectNamedPipe(h_pipe, &o_overlap)) {
-			pipe_rc = GetLastError();
-			if (pipe_rc == ERROR_IO_PENDING) {
-				if (sd_svr == -1) { /* first time */
-					if (SetEvent(h_event_parent) == 0)
-						goto error;
-					/* do wait for single object */
-					rc = WaitForSingleObject(h_event,
-						QSUB_DMN_TIMEOUT_LONG * 1000);
-					if (rc != WAIT_OBJECT_0)
-						goto out; /* timeout */
-				} else {
-					/*
-					 * wait for both server connection
-					 * and client pipe
-					 */
-					if (!WSAResetEvent(h_sock_event))
-						goto error;
-					if (!ResetEvent(h_event))
-						goto error;
-
-					if (WSAEventSelect(sd_svr, h_sock_event,
-						FD_CLOSE | FD_READ) != 0)
-						goto error;
-
-					/*
-					 * check if we are past the credential timeout
-					 * Error out even if it is close to CREDENTIAL_LIFETIME, as
-					 * request could take a while to reach server and get processed
-					 * Qsub then does a regular submit (new connection)
-					 */
-					if ((time(0) - cred_connect_time) > (CREDENTIAL_LIFETIME - QSUB_DMN_TIMEOUT_LONG))
-						goto error;
-
-					handles[0] = h_event;
-					handles[1] = h_sock_event;
-					rc = WaitForMultipleObjects(2, handles,
-						FALSE, QSUB_DMN_TIMEOUT_LONG * 1000);
-					if (rc == WAIT_FAILED)
-						goto error;
-					if (rc == WAIT_TIMEOUT)
-						goto out;
-					if (rc == WAIT_OBJECT_0 + 1) {
-						if (recv(sd_svr, &rc, 1, MSG_OOB) < 1) {
-							goto out;
-						}
-					}
-				}
-			} else if (pipe_rc != ERROR_PIPE_CONNECTED)
-				goto error;
-		}
-
-		if ((recv_attrl(h_pipe, &attrib) != 0) ||
-			(recv_string(h_pipe, destination) != 0) ||
-			(recv_string(h_pipe, script_tmp) != 0) ||
-			(recv_string(h_pipe, cred_name) != 0) ||
-			(recv_dyn_string(h_pipe, &v_value) != 0) ||
-			(recv_dyn_string(h_pipe, &basic_envlist) != 0) ||
-			(recv_dyn_string(h_pipe, &qsub_envlist) != 0) ||
-			(recv_string(h_pipe, qsub_cwd) !=0) ||
-			(recv_opts(h_pipe) != 0))
-			goto error;
-
-		/* set the current work directory by doing a chdir */
-		if (_chdir(qsub_cwd) != 0)
-			goto error;
-
-		if (setenv("PWD", qsub_cwd, 1) != 0)
-			goto error;
-
-		if (sd_svr == -1) {
-			rc = do_connect(server, retmsg);
-			connect_time = time(0);
-		}
-
-		if (sd_svr != -1) {
-			rc = do_submit2(retmsg);
-		}
-
-		if (send_string(h_pipe, retmsg) != 0)
-			goto error;
-
-		if (dosend(h_pipe, &rc, sizeof(int)) != 0)
-			goto error;
-
-		FlushFileBuffers(h_pipe);
-		DisconnectNamedPipe(h_pipe);
-
-		if (sd_svr == -1)
-			goto out;
-
-		free_attrl(attrib);
-		attrib = NULL;
-
-		free(v_value);
-		v_value = NULL;
-		free(basic_envlist);
-		basic_envlist = NULL;
-		free(qsub_envlist);
-		qsub_envlist = NULL;
-
-		if (cred_buf != NULL) {
-			memset(cred_buf, 0, cred_len);
-			free(cred_buf);
-			cred_buf = NULL;
-		}
-	}
-out:
-	DisconnectNamedPipe(h_pipe);
-	CloseHandle(h_pipe);
-	exit(0);
-
-error:
-#ifdef DEBUG
-	print_last_error();
-#endif
-	ResetEvent(h_event); /* reset event to wake up waiting client anyway */
-	DisconnectNamedPipe(h_pipe);
-	CloseHandle(h_pipe);
-	exit(1);
-}
-
-/*
- * @brief
- *  Try to submit job through daemon. On Windows, the daemon would be created
- *  by calling CreateProcess with the --daemon parameter during a prior
- *  invocation of the qsub command. The foreground qsub process tries to send
- *  the job to the daemon using a named pipe.
- *
- * @param[in]  qsub_exe          - Name of the qsub command to pass to CreateProcess
- * @param[out] do_regular_submit - Indicate whether to do regular submit
- * @return     rc                - Error code
- */
-static int
-daemon_submit(char *qsub_exe, int *do_regular_submit)
-{
-	int rc = 0;
-	HANDLE h_file;
-	SECURITY_ATTRIBUTES sa;
-	STARTUPINFO si = {sizeof(si)};
-	PROCESS_INFORMATION pi;
-	char cmd_line[2 * MAXPATHLEN + 1];
-	int created = 0;
-	HANDLE h_event;
-	int flags = CREATE_DEFAULT_ERROR_MODE | CREATE_NEW_PROCESS_GROUP;
-
-	/* determine pipe name */
-	get_comm_filename(fl);
-
-	/*
-	 * We have determined the name of the Named pipe that should be
-	 * used to communicate between the qsub background and foreground
-	 * process. Now try to connect to the background qsub process using this
-	 * named pipe.
-	 *
-	 * If the connection succeeds, it means a background qsub process
-	 * already exists. Send data to the background process and wait for
-	 * result.
-	 *
-	 * If connection fails, create a background qsub process by doing
-	 * a createprocess of the same qsub executable, but with --daemon
-	 * parameter. Now, there could be a race between the background and the
-	 * foreground qsub processes. If the background process is slower to
-	 * startup and listen on the named pipe, the foreground process could
-	 * fail again on trying to connect to it, thus entering a vicious loop.
-	 * To avoid that, create a manual reset event and pass its handle to
-	 * the new child process. The foreground process waits on the event
-	 * object, till the background process is up, sets up the named pipe,
-	 * and signals this event to tell the foreground process to continue
-	 * and try to connect to it via this new named pipe.
-	 */
-
-again:
-	h_file = CreateFile(fl, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-			OPEN_EXISTING, 0, NULL);
-	if (h_file == INVALID_HANDLE_VALUE) {
-		if (created == 0) {
-			sa.nLength = sizeof(sa);
-			sa.lpSecurityDescriptor = NULL;
-			sa.bInheritHandle = TRUE;
-
-			/* now create a named event to wait on later */
-			h_event = CreateEvent(
-					&sa, /* default security attribute */
-					TRUE, /* manual-reset event */
-					FALSE, /* initial state = signaled */
-					NULL); /* unnamed event object */
-			if (h_event == NULL)
-				return rc;
-
-			/* launch new qsub process, connect 2 server */
-			sa.bInheritHandle = FALSE;
-			si.lpDesktop = NULL;
-			sprintf(cmd_line, "%s --daemon %s %d %s",
-					qsub_exe, fl,
-					h_event, server_out);
-			if (!CreateProcess(NULL, cmd_line, &sa, &sa,
-						TRUE, flags,
-						NULL, NULL, &si, &pi)) {
-				CloseHandle(h_event);
-				return rc;
-			}
-
-			/* now wait for single object */
-			/* foreground process wait a max 10 seconds */
-			rc = WaitForSingleObject(h_event, 10 * 1000);
-			CloseHandle(h_event);
-
-			if (rc != WAIT_OBJECT_0) /* timeout */
-				return rc;
-
-			created = 1;
-			goto again;
-		}
-	} else {
-		if ((send_attrl(h_file, attrib) == 0) &&
-				(send_string(h_file, destination) == 0) &&
-				(send_string(h_file, script_tmp) == 0) &&
-				(send_string(h_file, cred_name) == 0) &&
-				(send_string(h_file, v_value?v_value:"") == 0) &&
-				(send_string(h_file, basic_envlist) == 0) &&
-				(send_string(h_file, qsub_envlist?qsub_envlist:"") == 0) &&
-				(send_string(h_file, qsub_cwd) == 0) &&
-				(send_opts(h_file) == 0)) {
-			/*
-			 * we were able to send data to the background qsub.
-			 * Now, even if we fail to read back response from
-			 * background, we do not want to submit again.
-			 */
-			*do_regular_submit = 0;
-
-			/* read back response from background qsub */
-			if ((recv_string(h_file, retmsg) != 0) ||
-					(dorecv(h_file, &rc, sizeof(int)) != 0) ||
-					rc == DMN_REFUSE_EXIT) {
-
-				/* Something bad happened, either background submitted
-				 * and failed to send us response, or it failed before
-				 * submitting. If background qsub detects -V option, then
-				 * submit the job through foreground.
-				 */
-				if (rc != DMN_REFUSE_EXIT) {
-					rc = -1;
-					sprintf(retmsg, "Failed to recv data from background qsub\n");
-					/* fall through to print the error message */
-				} else
-					*do_regular_submit = 1;
-			}
-		}
-		FlushFileBuffers(h_file);
-		CloseHandle(h_file);
-	}
-	return rc;
-}
-
-#else /* unix */
-/**
- * @brief
- *	Sets the filename to be used for the unix domain socket based comm.
- *	This is formed by appending the UID and the target server name to the
- *	filename. The length of the string is restricted to the length of the
- *	global variable fl. This is fairly small (108 characters) for Linux.
- *
- * @param[out] fname - The filename in tmpdir that is used as the unix domain socket
- *			file.
- *
- */
-static void
-get_comm_filename(char *fname)
-{
-	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
-	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
-	int count = 0;
-
-
-	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
-		tmpdir,
-		((server_out == NULL || server_out[0] == 0) ?
-		"default" : server_out),
-		(unsigned long int)getuid(),
-		cred_name,
-		get_conf_path(),
-		(env_svr == NULL)?"":env_svr,
-		(env_port == NULL)?"":env_port
-		);
-
-	if (count >= MAXPIPENAME) {
-		snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
-		TMP_DIR,
-		((server_out == NULL || server_out[0] == 0) ?
-		"default" : server_out),
-		(unsigned long int)getuid(),
-		cred_name,
-		get_conf_path(),
-		(env_svr == NULL)?"":env_svr,
-		(env_port == NULL)?"":env_port
-		);
-	}
-}
-
-/**
- * @brief
- *	Check whether a unix domain socket file is available.
- *	That is an indication that a background qsub might already be running.
- *
- * @param[out]	fname - The filename used for the communication pipe/socket for
- *			the communication between background and forground
- *			qsub processes.
- *
- * @return int
- * @retval	0 - Not available
- * @retval	1 - available
- *
- */
-static int
-check_qsub_daemon(char *fname)
-{
-	get_comm_filename(fname);
-	if (access(fname, F_OK) == 0) {
-		/* check if file is usable */
-		return 1;
-	}
-	return 0;
-}
-
-/**
- * @brief
- *	The do_daemon_stuff Unix counterpart.
- *	It creates a unix domain socket server and starts listening on it.
- *	The umask is set to 077 so that the domain socket file is owned and
- *	accessible by the user executing qsub only. Once a client (foreground
- *	qsub) connects, it receives all the data from the foreground qsub and
- *	executes do_submit, on the pre-established connection to pbs_server.
- *	The connection to server was estiblished by the caller of this function
- *	by calling do_connect().
- *	This function also does a "select" wait on input of data from foreground
- *	qsub processes, and a close notification on the socket with pbs_server.
- *	The select breaks if foreground qsubs connect, the pbs_server dies, or
- *	the timeout of 1 minutes expires. For the latter two cases, this function
- *	does a silent exit of the background qsub daemon.
- *
- */
-static void
-do_daemon_stuff(void)
-{
-	int sock, bindfd;
-	struct sockaddr_un s_un;
-	struct sockaddr from;
-	socklen_t fromlen;
-	int rc;
-	fd_set readset;
-	fd_set workset;
-	struct timeval timeout;
-	int n, maxfd;
-	mode_t cmask = 0077;
-	time_t connect_time = time(0);
-	sigset_t newsigmask, oldsigmask;
-	char *err_op = "";
-	char log_buf[LOG_BUF_SIZE];
-	int cred_timeout = 0;
-
-	/* set umask so socket file created is only accessible by same user */
-	umask(cmask);
-	sigemptyset(&newsigmask);
-	sigaddset(&newsigmask, SIGPIPE);
-	sigprocmask(SIG_BLOCK, &newsigmask, NULL);
-
-	/* start up a unix domain socket to listen */
-	if ((bindfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		err_op = "socket";
-		goto error;
-	}
-
-	s_un.sun_family = AF_UNIX;
-	snprintf(s_un.sun_path, sizeof(s_un.sun_path), "%s", fl);
-
-	if (bind(bindfd, (const struct sockaddr *) &s_un, sizeof(s_un)) == -1)
-		exit(1); /* dont go to error */
-
-	FD_ZERO(&readset);
-	if (listen(bindfd, 1) != 0) {
-		err_op = "listen";
-		goto error;
-	}
-
-	FD_SET(bindfd, &readset);
-	FD_SET(sd_svr, &readset);
-	maxfd = (bindfd > sd_svr) ? bindfd : sd_svr;
-	while (1) {
-
-		err_op = "";
-
-		memcpy(&workset, &readset, sizeof(readset));
-
-		timeout.tv_usec = 0;
-		/* since timeout gets reset on Linux */
-		if (cred_timeout == 1)
-			timeout.tv_sec = QSUB_DMN_TIMEOUT_SHORT; /* Short timeout to allow any foreground process to finsih before exiting */
-		else
-			timeout.tv_sec = QSUB_DMN_TIMEOUT_LONG;
-		n = select(maxfd + 1, &workset, NULL, NULL, &timeout);
-		if (n == 0)
-			goto out; /* daemon timed out waiting for connect from foreground */
-		else if (n == -1) {
-			err_op = "select failed";
-			goto error;
-		}
-
-		/*
-		 * check if we are past the credential timeout
-		 * Error out even if it is close to CREDENTIAL_LIFETIME, as
-		 * request could take a while to reach server and get processed
-		 * Qsub then does a regular submit (new connection)
-		 */
-		if (cred_timeout == 0 && ((time(0) - connect_time) > (CREDENTIAL_LIFETIME - QSUB_DMN_TIMEOUT_LONG))) {
-			unlink(fl);
-			cred_timeout = 1;
-		}
-
-		if (FD_ISSET(sd_svr, &workset)) {
-			if (recv(sd_svr, &rc, 1, MSG_OOB) < 1)
-				goto out;
-		}
-
-		/* accept the connection */
-		fromlen = sizeof(from);
-		if ((sock = accept(bindfd, &from, &fromlen)) == -1) {
-			err_op = "accept";
-			goto error;
-		}
-
-		if ((recv_attrl(&sock, &attrib) != 0) ||
-			(recv_string(&sock, destination) != 0) ||
-			(recv_string(&sock, script_tmp) != 0) ||
-			(recv_string(&sock, cred_name) != 0) ||
-			(recv_dyn_string(&sock, &v_value) != 0) ||
-			(recv_dyn_string(&sock, &basic_envlist) != 0) ||
-			(recv_dyn_string(&sock, &qsub_envlist) != 0) ||
-			(recv_string(&sock, qsub_cwd) !=0) ||
-			(recv_opts(&sock) != 0)) {
-			err_op = "recv data from foreground";
-			goto error;
-		}
-
-		/*
-		 * At this point the background qsub daemon has received all the data from the
-		 * foreground. Lets tell the foreground that we have received the data, so that
-		 * if the we crashed at any point after this the foreground should not end up
-		 * submitting a duplicate job. However, if the foreground did not get this intimation,
-		 * then it could go ahead and do a regular job submit.
-		 */
-		rc = 0;
-		if (dosend(&sock, (char *) &rc, sizeof(int)) != 0) {
-			err_op = "send data to foreground";
-			goto error;
-		}
-
-		/* set the current work directory by doing a chdir */
-		if (chdir(qsub_cwd) != 0) {
-			err_op = "chdir";
-			goto error;
-		}
-
-		if (setenv("PWD", qsub_cwd, 1) != 0) {
-			err_op = "setenv";
-			goto error;
-		}
-
-		sigemptyset(&newsigmask);
-		sigaddset(&newsigmask, SIGXCPU);
-		sigaddset(&newsigmask, SIGXFSZ);
-		sigaddset(&newsigmask, SIGTSTP);
-		sigaddset(&newsigmask, SIGINT);
-		sigaddset(&newsigmask, SIGSTOP);
-		sigaddset(&newsigmask, SIGTERM);
-		sigaddset(&newsigmask, SIGTSTP);
-		sigaddset(&newsigmask, SIGALRM);
-		sigaddset(&newsigmask, SIGQUIT);
-		sigaddset(&newsigmask, SIGUSR1);
-		sigaddset(&newsigmask, SIGUSR2);
-		sigprocmask(SIG_BLOCK, &newsigmask, &oldsigmask);
-
-		rc = do_submit2(retmsg);
-
-		if (send_string(&sock, retmsg) != 0) {
-			err_op = "send data to foreground";
-			goto error;
-		}
-		if (dosend(&sock, (char *) &rc, sizeof(int)) != 0) {
-			err_op = "send data to foreground";
-			goto error;
-		}
-
-		close(sock);
-		sigprocmask(SIG_SETMASK, &oldsigmask, NULL);
-
-		free_attrl(attrib);
-		attrib = NULL;
-		free(v_value);
-		v_value = NULL;
-		free(basic_envlist);
-		basic_envlist = NULL;
-		free(qsub_envlist);
-		qsub_envlist = NULL;
-
-		if (cred_buf != NULL) {
-			memset(cred_buf, 0, cred_len);
-			free(cred_buf);
-			cred_buf = NULL;
-		}
-
-		/* Exit the daemon if it can't submit the job */
-		if (rc == DMN_REFUSE_EXIT)
-			goto out;
-	}
-
-out:
-	close(bindfd);
-	if (cred_timeout != 1)
-		unlink(fl);
-	exit(0);
-
-error:
-	sprintf(log_buf, "Background qsub: Failed at %s, errno=%d", err_op, errno);
-	log_syslog(log_buf);
-	unlink(fl);
-	close(bindfd);
-	exit(1);
-}
-
-/**
- * @brief
- *	Fork the current process. Call the do_daemon_stuff function in the
- *	child process which starts listening on the unix domain socket etc.
- *	The parent process continues out of this function and eventually
- *	returns back control to the calling shell.
- *
- * @return error code
- * @retval 0 Success
- * exits program on failure
- *
- */
-static int
-fork_and_stay(void)
-{
-	int pid;
-
-	pid = fork();
-	if (pid == 0) {
-
-		/*
-		 * Try to become the session leader.
-		 * If that fails, exit with a syslog message
-		 */
-		if (setsid() == -1) {
-			log_syslog("setsid failed");
-			exit(1);
-		}
-
-		/*
-		 * Just close standard files. We don't want to
-		 * be session leader or close all other files.
-		 */
-		(void) fclose(stdin);
-		(void) fclose(stdout);
-		(void) fclose(stderr);
-
-		/* clear off all the attributes */
-		free_attrl(attrib);
-		attrib = NULL;
-		free(v_value);
-		v_value = NULL;
-		free(basic_envlist);
-		basic_envlist = NULL;
-		free(qsub_envlist);
-		qsub_envlist = NULL;
-
-		/* set single threaded mode */
-		pbs_client_thread_set_single_threaded_mode();
-
-		/* set when background qsub is running */
-		is_background = 1;
-		do_daemon_stuff();
-		/*
-		 * Control should never reach here.
-		 * Still adding an exit, so it does not traverse parent code.
-		 */
-		exit(1);
-	}
-	/* parent code */
-	return 0;
-}
-
-/*
- * @brief
- *  Try to submit job through daemon. On Unix, the daemon would be created by
- *  forking during a prior invocation of the qsub command. The foregound qsub
- *  process tries to send the job to the daemon using Unix domain sockets.
- *
- * @param[out] daemon_up         - Indicate whether daemon is running
- * @param[out] do_regular_submit - Indicate whether to do regular submit
- * @return     rc                - Error code
- */
-static int
-daemon_submit(int *daemon_up, int *do_regular_submit)
-{
-	int sock; /* UNIX domain socket for talking to daemon */
-	struct sockaddr_un s_un;
-	sigset_t newsigmask;
-	int rc = 0;
-again:
-	/*
-	 * In case of Unix, use fork. Foreground checks if connection is
-	 * possible with background daemon. The communication used is unix
-	 * domain sockets. Only the specified user can connect to this socket
-	 * since the domain socket is created with a 0600 permission.
-	 *
-	 * If connection fails, proceed with qsub in the normal flow, and at
-	 * the end fork and stay in the background, while the foreground
-	 * process returns control to the shell. Subsequent qsubs will be able
-	 * to connect to this forked background qsub.
-	 *
-	 */
-	*daemon_up = check_qsub_daemon(fl);
-	if (*daemon_up == 1) {
-		/* pass information to daemon */
-		/* wait for job-id or error string */
-		if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-			return rc;
-
-		s_un.sun_family = AF_UNIX;
-		snprintf(s_un.sun_path, sizeof(s_un.sun_path), "%s", fl);
-
-		if (connect(sock, (const struct sockaddr *) &s_un, sizeof(s_un)) == -1) {
-			int refused = (errno == ECONNREFUSED);
-
-			close(sock);
-			if (refused) {
-				/* daemon unavailable, del temp file, restart */
-				if (unlink(fl) != 0)
-					return rc;
-
-				goto again;
-			}
-			return rc;
-		}
-
-		/* block SIGPIPE on write() failures. */
-		sigemptyset(&newsigmask);
-		sigaddset(&newsigmask, SIGPIPE);
-		sigprocmask(SIG_BLOCK, &newsigmask, NULL);
-
-		if ((send_attrl(&sock, attrib) == 0) &&
-			(send_string(&sock, destination) == 0) &&
-			(send_string(&sock, script_tmp) == 0) &&
-			(send_string(&sock, cred_name) == 0) &&
-			(send_string(&sock, v_value?v_value:"") == 0) &&
-			(send_string(&sock, basic_envlist) == 0) &&
-			(send_string(&sock, qsub_envlist?qsub_envlist:"") == 0) &&
-			(send_string(&sock, qsub_cwd) == 0) &&
-			(send_opts(&sock) == 0)) {
-
-			/*
-			 * Read back the first error code from the background,
-			 * which confirms whether the background received our data.
-			 */
-			if (dorecv(&sock, (char *) &rc, sizeof(int)) == 0) {
-				/*
-				 * We were able to send data to the background daemon.
-				 * Now, even if we fail to read back response from
-				 * background, we do not want to submit again.
-				 */
-				*do_regular_submit = 0;
-			}
-
-			/* read back response from background daemon */
-			if ((recv_string(&sock, retmsg) != 0) ||
-				(dorecv(&sock, (char *) &rc, sizeof(int)) != 0) ||
-				rc == DMN_REFUSE_EXIT) {
-				/*
-				 * Something bad happened, either background submitted
-				 * and failed to send us response, or it failed before
-				 * submitting. If background qsub detects -V option, then
-				 * submit the job through foreground.
-				 */
-				if (rc != DMN_REFUSE_EXIT) {
-					rc = -1;
-					sprintf(retmsg, "Failed to recv data from background qsub\n");
-					/* Error message will be printed in caller */
-				} else
-					*do_regular_submit = 1;
-			}
-		}
-		/* going down, no need to free stuff */
-		close(sock);
-	}
-	return rc;
-}
-#endif
-
 /*
  * @brief
  *  Perform a regular submit, without the daemon.
@@ -5621,10 +3189,7 @@ regular_submit(int daemon_up)
 		else
 			rc = -1;
 	}
-#ifndef WIN32
-	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0) && !V_opt)
-		fork_and_stay();
-#endif
+	do_daemon_stuff();
 	return rc;
 }
 
@@ -5642,18 +3207,12 @@ main(int argc, char **argv, char **envp) /* qsub */
 	int command_flag = 0;
 	int rc = 0; /* error code for submit */
 	int do_regular_submit = 1; /* used if daemon based submit fails */
-#ifdef WIN32 /* Windows */
-	char qsub_exe[MAXPATHLEN + 1];
-#endif
 	int daemon_up = 0;
 	char **argv_cpy; /* copy argv for getopt */
 	int i;
 
-	if (initsocketlib())
-		return 1;
-
 	/* Set signal handlers */
-	set_sig_handlers();
+	(void)set_sig_handlers();
 
 	/*
 	 * Print version info and exit, if specified with --version option.
@@ -5670,41 +3229,6 @@ main(int argc, char **argv, char **envp) /* qsub */
 		fprintf(stderr, "qsub: Failed to load configuration parameters!\n");
 		exit_qsub(2);
 	}
-
-#ifdef WIN32
-	/*
-	 * In windows, the foreground qsub process does a createprocess of the
-	 * same executable (since there is no equivalent of fork). It calls the
-	 * child qsub with parameters "--daemon" as the first parameter. This
-	 * check here ensures that this invocation of qsub was to make it a
-	 * background process and not a user invocation. The --daemon parameter
-	 * is not documented to the user (or part of the syntax printed).
-	 * The parameters that are passed on to the child qsub process:
-	 * 1) --daemon --> Signifying that it is to become a daemon process
-	 * 2) Named Pipe Name --> Name of the named pipe on which to communicate
-	 * 3) Handle to synchronization event
-	 * 4) Name of the target server, if any, else NULL/empty
-	 *
-	 */
-	if ((argc == 4 || argc == 5) && (strcasecmp(argv[1], "--daemon") == 0)) {
-		/* set when background qsub is running */
-		is_background = 1;
-		(void)fclose(stdin);
-		(void)fclose(stdout);
-		(void)fclose(stderr);
-		if (argc == 4)
-			do_daemon_stuff(argv[2], argv[3], NULL);
-		else
-			do_daemon_stuff(argv[2], argv[3], argv[4]);
-		exit(0);
-	}
-
-	pbs_strncpy(qsub_exe, argv[0], sizeof(qsub_exe)); /* note the name of the qsub executable */
-	if (strlen(qsub_exe) != strlen(argv[0])) { /* exit with error instead of silent truncation */
-		fprintf(stderr, "qsub: Name of executable is too long\n");
-		exit_qsub(2);
-	}
-#endif
 
 
 	/*
@@ -5744,15 +3268,13 @@ main(int argc, char **argv, char **envp) /* qsub */
 	free(argv_cpy);
 	/* Process special arguments */
 	command_flag = process_special_args(argc, argv, script);
-#ifdef WIN32
-	back2forward_slash(script);
-#endif
+	fix_path(script, 1);
 
 	if (command_flag == 0)
 		/* Read the job script from a file or stdin */
 		read_job_script(script);
 
-	/* Enable X11 Forwarding (on Unix) or GUI (on Windows) if specified */
+	/* Enable X11 Forwarding or GUI if specified */
 	enable_gui();
 
 	/* Set option default values */
@@ -5794,11 +3316,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 	 */
 	if ((Interact_opt || block_opt || no_background) == 0) {
 		/* Try to submit jobs using a daemon */
-#ifdef WIN32
-		rc = daemon_submit(qsub_exe, &do_regular_submit);
-#else
 		rc = daemon_submit(&daemon_up, &do_regular_submit);
-#endif
 	}
 
 	if (do_regular_submit == 1)

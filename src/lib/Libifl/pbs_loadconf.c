@@ -55,6 +55,8 @@
 #include <pbs_error.h>
 #include "pbs_client_thread.h"
 #include "net_connect.h"
+#include "portability.h"
+
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -988,9 +990,7 @@ __pbs_loadconf(int reload)
 			malloc(strlen(pbs_conf.pbs_home_path) + 17)) != NULL) {
 			sprintf(pbs_conf.pbs_environment, "%s/pbs_environment",
 				pbs_conf.pbs_home_path);
-#ifdef WIN32
-			back2forward_slash(pbs_conf.pbs_environment);
-#endif
+			fix_path(pbs_conf.pbs_environment, 1);
 		} else {
 			goto err;
 		}
@@ -1001,9 +1001,7 @@ __pbs_loadconf(int reload)
 	if ((pbs_conf.iff_path =
 		malloc(strlen(pbs_conf.pbs_exec_path) + 14)) != NULL) {
 		sprintf(pbs_conf.iff_path, "%s/sbin/pbs_iff", pbs_conf.pbs_exec_path);
-#ifdef WIN32
-		back2forward_slash(pbs_conf.iff_path);
-#endif
+		fix_path(pbs_conf.iff_path, 1);
 	} else {
 		goto err;
 	}
@@ -1012,9 +1010,7 @@ __pbs_loadconf(int reload)
 		if ((pbs_conf.rcp_path =
 			malloc(strlen(pbs_conf.pbs_exec_path) + 14)) != NULL) {
 			sprintf(pbs_conf.rcp_path, "%s/sbin/pbs_rcp", pbs_conf.pbs_exec_path);
-#ifdef WIN32
-			back2forward_slash(pbs_conf.rcp_path);
-#endif
+			fix_path(pbs_conf.rcp_path, 1);
 		} else {
 			goto err;
 		}
@@ -1037,9 +1033,7 @@ __pbs_loadconf(int reload)
 		malloc(strlen(pbs_conf.pbs_exec_path) + 16)) != NULL) {
 		sprintf(pbs_conf.pbs_demux_path, "%s/sbin/pbs_demux",
 			pbs_conf.pbs_exec_path);
-#ifdef WIN32
-		back2forward_slash(pbs_conf.pbs_demux_path);
-#endif
+		fix_path(pbs_conf.pbs_demux_path, 1);
 	} else {
 		goto err;
 	}
