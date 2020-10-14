@@ -414,6 +414,7 @@ get_conn_svr_instances(int parentfd)
 
 /**
  * @brief	Deallocate the connection set associated with the fd given
+ * destroys the last unused one if called with fd as -1
  *
  * @param[int]	parentfd - parent fd of the connection set
  *
@@ -428,7 +429,8 @@ dealloc_conn_list_single(int parentfd)
 
 	conn_list = pthread_getspecific(psi_key);
 	for (iter_conns = conn_list; iter_conns != NULL; prev = iter_conns, iter_conns = iter_conns->next) {
-		if (iter_conns->conn_arr[0].sd == parentfd) {
+		if ((iter_conns->conn_arr[0].sd == parentfd) ||
+		    (parentfd == -1 && !iter_conns->next)) {
 			if (prev != NULL)
 				prev->next = iter_conns->next;
 			else
@@ -439,7 +441,6 @@ dealloc_conn_list_single(int parentfd)
 		}
 	}
 }
-
 
 /**
  * @brief	Helper function for connect_to_servers to connect to a particular server
@@ -503,47 +504,15 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 	if (svr_connections == NULL)
 		return -1;
 
-	if (svrhost != NULL) {
-		struct sockaddr_in tmp_sockaddr;
-		char *dflt_server = NULL;
-
-		/* Check that this host is reachable */
-		if (get_hostsockaddr(svrhost, &tmp_sockaddr) != 0) {
-			pbs_errno = PBSE_BADHOST;
-			return -1;
-		}
-
-		/* Is this different than our default cluster? */
-		dflt_server = pbs_default();
-		if (dflt_server != NULL) {
-			struct sockaddr_in dflt_sockaddr;
-			int connect_directly = 0;
-
-			if (get_hostsockaddr(dflt_server, &dflt_sockaddr) == 0) {
-				char ipstr1[INET_ADDRSTRLEN];
-				char ipstr2[INET_ADDRSTRLEN];
-				void *ipaddr1;
-				void *ipaddr2;
-
-
-				ipaddr1 = &(dflt_sockaddr.sin_addr);
-				ipaddr2 = &(tmp_sockaddr.sin_addr);
-				inet_ntop(AF_INET, ipaddr1, ipstr1, sizeof(ipstr1));
-				inet_ntop(AF_INET, ipaddr2, ipstr2, sizeof(ipstr2));
-				if (strcmp(ipstr1, ipstr2) != 0)
-					connect_directly = 1;
-			} else
-				connect_directly = 1;	/* host info in pbs.conf is unreliable, go with what user provided */
-
-			if (connect_directly) {
-				/* The client is trying to reach a different cluster than what's known
-				 * So, just reach out to the one host provided and reply back instead
-				 * of connecting to the PBS_SERVER_INSTANCES of the default cluster
-				 */
-				pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
-				svr_connections[0].port = port;
-				return connect_to_server(0, svr_connections, extend_data);
-			}
+	if (svrhost) {
+		if (!is_same_host(svrhost, pbs_default())) {
+			/* The client is trying to reach a different cluster than what's known
+			* So, just reach out to the one host provided and reply back instead
+			* of connecting to the PBS_SERVER_INSTANCES of the default cluster
+			*/
+			pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
+			svr_connections[0].port = port;
+			return connect_to_server(0, svr_connections, extend_data);
 		}
 	}
 
@@ -803,6 +772,7 @@ pbs_connect_noblk(char *server, int tout)
 	struct sockaddr_in *inp;
 	short int connect_err = 0;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
+	svr_conn_t *svr_connections;
 
 #ifdef WIN32
 	int     non_block = 1;
@@ -883,13 +853,22 @@ pbs_connect_noblk(char *server, int tout)
 		return -1;
 	} else
 		inp->sin_port = htons(server_port);
+
+	if ((svr_connections = get_conn_svr_instances(-1)) == NULL) {
+		closesocket(sock);
+		pbs_errno = PBSE_SYSTEM;
+		freeaddrinfo(pai);
+		return -1;
+	}
+	pbs_strncpy(svr_connections[0].name, server, sizeof(svr_connections[0].name));
+	svr_connections[0].port = server_port;
+
 	if (connect(sock,
 		aip->ai_addr,
 		aip->ai_addrlen) < 0) {
 		connect_err = 1;
 	}
-	if (connect_err == 1)
-	{
+	if (connect_err == 1) {
 		/* connect attempt failed */
 		pbs_errno = SOCK_ERRNO;
 		switch (pbs_errno) {
@@ -932,6 +911,7 @@ pbs_connect_noblk(char *server, int tout)
 			default:
 err:
 				closesocket(sock);
+				dealloc_conn_list_single(-1);
 				freeaddrinfo(pai);
 				return -1;	/* cannot connect */
 
@@ -955,6 +935,7 @@ err:
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(sock) != 0) {
 		closesocket(sock);
+		dealloc_conn_list_single(-1);
 		/* pbs_errno set by the pbs_connect_init_context routine */
 		return -1;
 	}
@@ -967,6 +948,7 @@ err:
 
 	if (load_auths(AUTH_CLIENT)) {
 		closesocket(sock);
+		dealloc_conn_list_single(-1);
 		return -1;
 	}
 
@@ -1002,6 +984,7 @@ err:
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
 		closesocket(sock);
+		dealloc_conn_list_single(-1);
 		pbs_errno = PBSE_PERM;
 		return -1;
 	}
@@ -1009,6 +992,8 @@ err:
 	/* setup DIS support routines for following pbs_* calls */
 	DIS_tcp_funcs();
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;	/* set for 3 hours */
+	svr_connections[0].state = SVR_CONN_STATE_UP;
+	svr_connections[0].sd = sock;
 
 	return sock;
 }

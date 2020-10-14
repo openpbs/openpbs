@@ -667,9 +667,11 @@ parse_config(const char *fname)
 
 								tok = strtok(NULL, DELIM);
 								if (tok != NULL) {
-									tmp3 = string_dup(tok);
-									if (tmp3 == NULL)
-										error = 1;
+									if (!is_same_host(tok, pbs_default())) {
+										tmp3 = string_dup(tok);
+										if (tmp3 == NULL)
+											error = 1;
+									}
 								}
 								/* check for malloc failures */
 								if ((tmp1 != NULL) && (tmp2 != NULL) && (!error)) {
