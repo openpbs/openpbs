@@ -88,17 +88,17 @@ void free_node_info(node_info *ninfo);
 /*
  *      set_node_info_state - set a node state
  */
-int set_node_info_state(node_info *ninfo, char *state);
+int set_node_info_state(node_info *ninfo, const char *state);
 
 /*
  *      remove_node_state
  */
-int remove_node_state(node_info *ninfo, char *state);
+int remove_node_state(node_info *ninfo, const char *state);
 
 /*
  *      add_node_state
  */
-int add_node_state(node_info *ninfo, char *state);
+int add_node_state(node_info *ninfo, const char *state);
 
 /*
  *      node_filter - filter a node array and return a new filterd array
@@ -170,7 +170,7 @@ resource_req *ssinode_reqlist(resource_req *reqlist, node_info *ninfo);
  *      update_node_on_run - update internal scheduler node data when a job
  *                           is run.
  */
-void update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state);
+void update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state);
 
 /*
  *      node_queue_cmp - used with node_filter to filter nodes attached to a
@@ -187,7 +187,7 @@ int node_partition_cmp(node_info *ninfo, void *arg);
 /*
  *      update_node_on_end - update a node when a job ends
  */
-void update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state);
+void update_node_on_end(node_info *ninfo, resource_resv *resresv, const char *job_state);
 
 /*
  *      copy_node_ptr_array - copy an array of jobs using a different set of
@@ -270,7 +270,7 @@ node_info *dup_node_info(node_info *onode, server_info *nsinfo, unsigned int fla
 /*
  *      find_nspec_by_name - find an nspec in an array by nodename
  */
-nspec *find_nspec_by_rank(nspec **nspec_arr, unsigned int rank);
+nspec *find_nspec_by_rank(nspec **nspec_arr, int rank);
 
 /* find node by unique rank and return index into ninfo_arr */
 int find_node_ind(node_info **ninfo_arr, int rank);

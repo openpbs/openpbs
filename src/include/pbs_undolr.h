@@ -39,7 +39,13 @@
 
 
 #ifdef PBS_UNDOLR_ENABLED
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern int sigusr1_flag;
 extern void catch_sigusr1(int);
 extern void undolr();
+#ifdef __cplusplus
+}
+#endif
 #endif

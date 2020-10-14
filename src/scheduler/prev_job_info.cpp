@@ -78,7 +78,7 @@
 prev_job_info *
 create_prev_job_info(resource_resv **jobs, int size)
 {
-	prev_job_info *new;		/* new prev_job_info array */
+	prev_job_info *npji;		/* new prev_job_info array */
 	int local_size;		/* the size of the array */
 	int i;
 
@@ -97,16 +97,16 @@ create_prev_job_info(resource_resv **jobs, int size)
 	if (local_size == 0)
 		return NULL;
 
-	if ((new = (prev_job_info *) calloc(local_size, sizeof(prev_job_info))) == NULL) {
+	if ((npji = static_cast<prev_job_info *>(calloc(local_size, sizeof(prev_job_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	for (i = 0; jobs[i] != NULL; i++) {
 		if(jobs[i]->job != NULL) {
-			new[i].name = jobs[i]->name;
-			new[i].resused = jobs[i]->job->resused;
-			new[i].entity_name = string_dup(jobs[i]->job->ginfo->name);
+			npji[i].name = jobs[i]->name;
+			npji[i].resused = jobs[i]->job->resused;
+			npji[i].entity_name = string_dup(jobs[i]->job->ginfo->name);
 
 			/* so the memory is not freed at the end of the scheduling cycle */
 			jobs[i]->name = NULL;
@@ -114,7 +114,7 @@ create_prev_job_info(resource_resv **jobs, int size)
 		}
 	}
 
-	return new;
+	return npji;
 }
 
 /**

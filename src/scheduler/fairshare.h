@@ -53,7 +53,7 @@ void add_child(group_info *ginfo, group_info *parent);
  *      find_group_info - recursive function to find a ginfo in the
  resgroup tree
  */
-group_info *find_group_info(char *name, group_info *root);
+group_info *find_group_info(const char *name, group_info *root);
 
 /*
  *      find_alloc_ginfo - trys to find a ginfo in the fair share tree.  If it
@@ -90,7 +90,7 @@ group_info * new_group_info();
  *	  shares  - the amount of shares the user/group has in its resgroup
  *
  */
-int parse_group(char *fname, group_info *root);
+int parse_group(const char *fname, group_info *root);
 
 /*
  *
@@ -137,7 +137,7 @@ void decay_fairshare_tree(group_info *root);
  *      write_usage - write the usage information to the usage file
  *                    This fuction uses a recursive helper function
  */
-int write_usage(char *filename, fairshare_head *fhead);
+int write_usage(const char *filename, fairshare_head *fhead);
 
 /*
  *      rec_write_usage - recursive helper function which will write out all
@@ -149,7 +149,7 @@ void rec_write_usage(group_info *root, FILE *fp);
  *      read_usage - read the usage information and load it into the
  *                   resgroup tree.
  */
-void read_usage(char *filename, int flags, fairshare_head *fhead);
+void read_usage(const char *filename, int flags, fairshare_head *fhead);
 
 /*
  *      read_usage_v1 - read version 1 usage file

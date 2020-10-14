@@ -145,6 +145,7 @@
 #include "simulate.h"
 #include "fairshare.h"
 #include "check.h"
+// #include "pbs_sched.h"
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"
@@ -186,7 +187,7 @@ query_server(status *pol, int pbs_sd)
 	counts *cts;			/* used to count running per user/grp */
 	int num_express_queues = 0;	/* number of express queues */
 	int i;
-	char *errmsg;
+	const char *errmsg;
 	resource_resv **jobs_alive;
 	status *policy;
 	int job_arrays_associated = FALSE;
@@ -427,7 +428,7 @@ query_server(status *pol, int pbs_sd)
 
 	collect_resvs_on_nodes(sinfo->nodes, sinfo->resvs, sinfo->num_resvs);
 
-	sinfo->unordered_nodes = malloc((sinfo->num_nodes+1) * sizeof(node_info*));
+	sinfo->unordered_nodes = static_cast<node_info **>(malloc((sinfo->num_nodes+1) * sizeof(node_info*)));
 	if(sinfo->unordered_nodes == NULL) {
 		sinfo->fairshare = NULL;
 		free_server(sinfo);
@@ -537,7 +538,7 @@ query_server_info(status *pol, struct batch_status *server)
 			if(strstr(attrp->value, "o:") != NULL)
 				sinfo->has_all_limit = 1;
 		} else if (is_oldlimattr(attrp)) {
-			char *limname = convert_oldlim_to_new(attrp);
+			const char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, sinfo->liminfo);
 
 			if(strstr(limname, "u:") != NULL)
@@ -719,8 +720,8 @@ query_server_dyn_res(server_info *sinfo)
 					}
 
 					char *argv[4];
-					argv[0] = "/bin/sh";
-					argv[1] = "-c";
+					argv[0] = const_cast<char *>("/bin/sh");
+					argv[1] = const_cast<char *>("-c");
 					argv[2] = conf.dynamic_res[i].command_line;
 					argv[3] = NULL;
 
@@ -1099,7 +1100,7 @@ new_server_info(int limallocflag)
 {
 	server_info *sinfo;			/* the new server */
 
-	if ((sinfo = (server_info *) malloc(sizeof(server_info))) == NULL) {
+	if ((sinfo = static_cast<server_info *>(malloc(sizeof(server_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1191,7 +1192,7 @@ new_resource()
 {
 	schd_resource *resp;		/* the new resource */
 
-	if ((resp = calloc(1,  sizeof(schd_resource))) == NULL) {
+	if ((resp = static_cast<schd_resource *>(calloc(1,  sizeof(schd_resource)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1227,7 +1228,7 @@ new_resource()
  * @retval NULL	: on error
  */
 schd_resource *
-create_resource(char *name, char *value, enum resource_fields field)
+create_resource(const char *name, const char *value, enum resource_fields field)
 {
 	schd_resource *nres = NULL;
 	resdef *rdef;
@@ -1721,7 +1722,7 @@ update_server_on_run(status *policy, server_info *sinfo,
  */
 void
 update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv, char *job_state)
+	resource_resv *resresv, const char *job_state)
 {
 	resource_req *req;		/* resource request from job */
 	schd_resource *res;		/* resource on server */
@@ -1836,14 +1837,13 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 	if (nsinfo == NULL || osinfo == NULL)
 		return 0;
 
-	if ((job_arr = (resource_resv **)
-		calloc((osinfo->sc.total + 1), sizeof(resource_resv *))) == NULL) {
+	if ((job_arr = static_cast<resource_resv **>(calloc((osinfo->sc.total + 1), sizeof(resource_resv *)))) == NULL) {
 		log_err(errno, __func__, "Error allocating memory");
 		return 0;
 	}
 
-	if ((all_arr = (resource_resv **) calloc((osinfo->sc.total + osinfo->num_resvs + 1),
-						 sizeof(resource_resv *))) == NULL) {
+	if ((all_arr = static_cast<resource_resv **>(calloc((osinfo->sc.total + osinfo->num_resvs + 1),
+						 sizeof(resource_resv *)))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, "Error allocating memory");
 		return 0;
@@ -1892,14 +1892,13 @@ create_server_arrays(server_info *sinfo)
 	resource_resv **resresv_arr;	/* used as source array to copy */
 	int i = 0, j;
 
-	if ((job_arr = (resource_resv **)
-		malloc(sizeof(resource_resv *) * (sinfo->sc.total + 1))) ==NULL) {
+	if ((job_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (sinfo->sc.total + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
-	if ((all_arr = (resource_resv **) malloc(sizeof(resource_resv *) *
-		(sinfo->sc.total + sinfo->num_resvs + 1))) == NULL) {
+	if ((all_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) *
+		(sinfo->sc.total + sinfo->num_resvs + 1)))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
@@ -2563,7 +2562,7 @@ new_counts(void)
 
 	counts *cts;
 
-	if ((cts = malloc(sizeof(struct counts)))  == NULL) {
+	if ((cts = static_cast<struct counts *>(malloc(sizeof(struct counts)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2710,7 +2709,7 @@ dup_counts_list(counts *ctslist)
  * @par MT-Safe:	no
  */
 counts *
-find_counts(counts *ctslist, char *name)
+find_counts(counts *ctslist, const char *name)
 {
 	counts *cur;
 
@@ -2739,10 +2738,10 @@ find_counts(counts *ctslist, char *name)
  * @par MT-Safe:	no
  */
 counts *
-find_alloc_counts(counts *ctslist, char *name)
+find_alloc_counts(counts *ctslist, const char *name)
 {
 	counts *cur, *prev;
-	counts *new;
+	counts *ncounts;
 
 	if (name == NULL)
 		return NULL;
@@ -2755,15 +2754,15 @@ find_alloc_counts(counts *ctslist, char *name)
 	}
 
 	if (cur == NULL) {
-		new = new_counts();
+		ncounts = new_counts();
 
-		if (new != NULL)
-			new->name = string_dup(name);
+		if (ncounts != NULL)
+			ncounts->name = string_dup(name);
 
 		if (prev != NULL)
-			prev->next = new;
+			prev->next = ncounts;
 
-		return new;
+		return ncounts;
 	} else
 		return cur;
 }
@@ -2859,7 +2858,7 @@ update_counts_on_end(counts *cts, resource_req *resreq)
  * @retval	NULL : error
  */
 counts *
-counts_max(counts *cmax, counts *new)
+counts_max(counts *cmax, counts *ncounts)
 {
 	counts *cur;
 	counts *cur_fmax;
@@ -2867,15 +2866,15 @@ counts_max(counts *cmax, counts *new)
 	resource_count *cur_res;
 	resource_count *cur_res_max;
 
-	if (new == NULL)
+	if (ncounts == NULL)
 		return cmax;
 
 	if (cmax == NULL)
-		return dup_counts_list(new);
+		return dup_counts_list(ncounts);
 
 	cmax_head = cmax;
 
-	for (cur = new; cur != NULL; cur = cur->next) {
+	for (cur = ncounts; cur != NULL; cur = cur->next) {
 		cur_fmax = find_counts(cmax, cur->name);
 		if (cur_fmax == NULL) {
 			cur_fmax = dup_counts(cur);
@@ -2927,7 +2926,7 @@ counts_max(counts *cmax, counts *new)
  * @par MT-Safe:	no
  */
 void
-update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, unsigned int flags)
+update_universe_on_end(status *policy, resource_resv *resresv, const char *job_state, unsigned int flags)
 {
 	int i;
 	server_info *sinfo = NULL;
@@ -3024,7 +3023,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, 
  * @par MT-Safe:	no
  */
 int
-set_resource(schd_resource *res, char *val, enum resource_fields field)
+set_resource(schd_resource *res, const char *val, enum resource_fields field)
 {
 	resdef *rdef;
 
@@ -3073,7 +3072,7 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 				if (!res->def->type.is_string)
 					return 0;
 			}
-			res->str_avail = break_comma_list(val);
+			res->str_avail = break_comma_list(const_cast<char *>(val));
 			if (res->str_avail == NULL)
 				return 0;
 		}
@@ -3274,7 +3273,7 @@ read_formula(void)
 	char *tmp;
 	char buf[RF_BUFSIZE];
 	size_t bufsize = RF_BUFSIZE;
-	int len;
+	size_t len;
 	FILE *fp;
 
 	if ((fp = fopen(FORMULA_FILENAME, "r")) == NULL) {
@@ -3283,7 +3282,7 @@ read_formula(void)
 		return NULL;
 	}
 
-	if ((form = malloc(bufsize + 1)) == NULL) {
+	if ((form = static_cast<char *>(malloc(bufsize + 1))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		fclose(fp);
 		return NULL;
@@ -3297,7 +3296,7 @@ read_formula(void)
 	while (fgets(buf, RF_BUFSIZE, fp) != NULL) {
 		len = strlen(form) + strlen(buf);
 		if (len > bufsize) {
-			tmp = realloc(form, len*2 + 1);
+			tmp = static_cast<char *>(realloc(form, len*2 + 1));
 			if (tmp == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free(form);
@@ -3329,7 +3328,7 @@ new_status(void)
 {
 	status *st;
 
-	st = malloc(sizeof(status));
+	st = static_cast<status *>(malloc(sizeof(status)));
 
 	if (st == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -3691,7 +3690,7 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
 		}
-		*qlhead = list_head = temp;
+		*qlhead = list_head = static_cast<queue_info ***>(temp);
 		list_head[queue_list_size] = NULL;
 		list_head[queue_list_size + 1] = NULL;
 		if (append_to_queue_list(&list_head[queue_list_size], qinfo) == NULL)
@@ -3963,7 +3962,7 @@ dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
 	if(ct1 != ct2)
 		return NULL;
 
-	new_unordered_nodes = calloc((ct1 + 1), sizeof(node_info *));
+	new_unordered_nodes = static_cast<node_info **>(calloc((ct1 + 1), sizeof(node_info *)));
 	if (new_unordered_nodes == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;

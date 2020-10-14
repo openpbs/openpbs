@@ -233,7 +233,7 @@ update_cycle_status(struct status *policy, time_t current_time)
 	enum prime_time prime;		/* current prime time status */
 	struct tm *ptm;
 	struct tm *tmptr;
-	char *primetime;
+	const char *primetime;
 
 	if (policy == NULL)
 		return;
@@ -1011,8 +1011,8 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 				 */
 				clear_schd_error(chk_lim_err);
 				if (sinfo->qrun_job == NULL) {
-					chk_lim_err->error_code = (enum sched_error)check_limits(sinfo,
-						qinfo, njob, chk_lim_err, CHECK_CUMULATIVE_LIMIT);
+					chk_lim_err->error_code = static_cast<enum sched_error_code>(check_limits(sinfo,
+						qinfo, njob, chk_lim_err, CHECK_CUMULATIVE_LIMIT));
 					if (chk_lim_err->error_code != 0) {
 						update_accrue_err = chk_lim_err;
 					}
@@ -1342,7 +1342,7 @@ int
 run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err)
 {
 	char buf[100];	/* used to assemble queue@localserver */
-	char *errbuf;		/* comes from pbs_geterrmsg() */
+	const char *errbuf;		/* comes from pbs_geterrmsg() */
 	int rc = 0;
 
 	if (rjob == NULL || rjob->job == NULL || err == NULL)
@@ -1495,7 +1495,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	unsigned int eval_flags = NO_FLAGS;	/* flags to pass to eval_selspec() */
 	timed_event *te;			/* used to create timed events */
 	resource_resv *rr;
-	char *err_txt = NULL;
+	const char *err_txt = NULL;
 	char old_state = 0;
 
 	if (resresv == NULL || sinfo == NULL)
@@ -1519,7 +1519,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
 		if (pbs_sd != SIMULATE_SD) {
-			pbsrc = pbs_sigjob(pbs_sd, resresv->name, "resume", NULL);
+			pbsrc = pbs_sigjob(pbs_sd, resresv->name, const_cast<char *>("resume"), NULL);
 			if (!pbsrc)
 				ret = 1;
 			else {
@@ -1802,7 +1802,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 		/* received 'batch protocol error' */
 		if (pbs_errno == PBSE_PROTOCOL) {
-			set_schd_error_codes(err, NOT_RUN, PBSE_PROTOCOL);
+			set_schd_error_codes(err, NOT_RUN, static_cast<enum sched_error_code>(PBSE_PROTOCOL));
 			return -1;
 		}
 	}
@@ -1904,7 +1904,7 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 			bf_depth = qinfo->backfill_depth;
 			num_tj = qinfo->num_topjobs;
 		} /* else check for a server bf depth */
-		else if (policy->backfill_depth != UNSPECIFIED) {
+		else if (policy->backfill_depth != static_cast<unsigned int>(UNSPECIFIED)) {
 			bf_depth = policy->backfill_depth;
 			num_tj = num_topjobs;
 		} else { /* lastly use the server's default of 1*/
@@ -2747,24 +2747,24 @@ parse_sched_obj(int connector, struct batch_status *status)
 			log_close(1);
 			if (log_open(logfile, tmp_log_dir) == -1) {
 				/* update the sched comment attribute with the reason for failure */
-				attribs = calloc(2, sizeof(struct attropl));
+				attribs = static_cast<attropl *>(calloc(2, sizeof(struct attropl)));
 				if (attribs == NULL) {
 					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 					goto cleanup;
 				}
 				strcpy(comment, "Unable to change the sched_log directory");
 				patt = attribs;
-				patt->name = ATTR_comment;
+				patt->name = const_cast<char *>(ATTR_comment);
 				patt->value = comment;
 				patt->next = patt + 1;
 				patt++;
-				patt->name = ATTR_scheduling;
-				patt->value = "0";
+				patt->name = const_cast<char *>(ATTR_scheduling);
+				patt->value = const_cast<char *>("0");
 				patt->next = NULL;
 
 				err = pbs_manager(connector,
 					MGR_CMD_SET, MGR_OBJ_SCHED,
-					sc_name, attribs, NULL);
+					const_cast<char *>(sc_name), attribs, NULL);
 				free(attribs);
 				if (err) {
 					log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
@@ -2832,23 +2832,23 @@ parse_sched_obj(int connector, struct batch_status *status)
 
 		if (priv_dir_update_fail) {
 			/* update the sched comment attribute with the reason for failure */
-			attribs = calloc(2, sizeof(struct attropl));
+			attribs = static_cast<attropl *>(calloc(2, sizeof(struct attropl)));
 			if (attribs == NULL) {
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 				strcpy(comment, "Unable to change the sched_priv directory");
 				goto cleanup;
 			}
 			patt = attribs;
-			patt->name = ATTR_comment;
+			patt->name = const_cast<char *>(ATTR_comment);
 			patt->value = comment;
 			patt->next = patt + 1;
 			patt++;
-			patt->name = ATTR_scheduling;
-			patt->value = "0";
+			patt->name = const_cast<char *>(ATTR_scheduling);
+			patt->value = const_cast<char *>("0");
 			patt->next = NULL;
 			err = pbs_manager(connector,
 				MGR_CMD_SET, MGR_OBJ_SCHED,
-				sc_name, attribs, NULL);
+				const_cast<char *>(sc_name), attribs, NULL);
 			free(attribs);
 			if (err) {
 				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
@@ -2861,15 +2861,15 @@ parse_sched_obj(int connector, struct batch_status *status)
 		int err;
 		struct attropl *patt;
 
-		attribs = calloc(1, sizeof(struct attropl));
+		attribs = static_cast<attropl *>(calloc(1, sizeof(struct attropl)));
 		if (attribs == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 			goto cleanup;
 		}
 
 		patt = attribs;
-		patt->name = ATTR_comment;
-		patt->value = malloc(1);
+		patt->name = const_cast<char *>(ATTR_comment);
+		patt->value = static_cast<char *>(malloc(1));
 		if (patt->value == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				"can't update scheduler attribs, malloc failed");
@@ -2880,9 +2880,8 @@ parse_sched_obj(int connector, struct batch_status *status)
 		patt->next = NULL;
 		err = pbs_manager(connector,
 				MGR_CMD_UNSET, MGR_OBJ_SCHED,
-			sc_name, attribs, NULL);
+			const_cast<char *>(sc_name), attribs, NULL);
 		free(attribs->value);
-		free(attribs);
 		if (err) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				"Failed to update scheduler comment at the server");

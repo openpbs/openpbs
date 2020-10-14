@@ -64,7 +64,7 @@ new_bucket_bitpool()
 {
 	bucket_bitpool *bp;
 
-	bp = calloc(1, sizeof(bucket_bitpool));
+	bp = static_cast<bucket_bitpool *>(calloc(1, sizeof(bucket_bitpool)));
 	if (bp == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -126,7 +126,7 @@ node_bucket *
 new_node_bucket(int new_pools) {
 	node_bucket *nb;
 
-	nb = calloc(1, sizeof(node_bucket));
+	nb = static_cast<node_bucket *>(calloc(1, sizeof(node_bucket)));
 	if (nb == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -217,28 +217,28 @@ dup_node_bucket(node_bucket *onb, server_info *nsinfo) {
 /* node_bucket array copy constructor */
 node_bucket **
 dup_node_bucket_array(node_bucket **old, server_info *nsinfo) {
-	node_bucket **new;
+	node_bucket **nnb;
 	int i;
 	if (old == NULL)
 		return NULL;
 
-	new = malloc((count_array(old) + 1) * sizeof(node_bucket *));
-	if (new == NULL) {
+	nnb = static_cast<node_bucket **>(malloc((count_array(old) + 1) * sizeof(node_bucket *)));
+	if (nnb == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	for (i = 0; old[i] != NULL; i++) {
-		new[i] = dup_node_bucket(old[i], nsinfo);
-		if (new[i] == NULL) {
-			free_node_bucket_array(new);
+		nnb[i] = dup_node_bucket(old[i], nsinfo);
+		if (nnb[i] == NULL) {
+			free_node_bucket_array(nnb);
 			return NULL;
 		}
 	}
 
-	new[i] = NULL;
+	nnb[i] = NULL;
 
-	return new;
+	return nnb;
 }
 
 /* node_bucket destructor */
@@ -278,7 +278,7 @@ node_bucket_count *
 new_node_bucket_count() {
 	node_bucket_count *nbc;
 
-	nbc = malloc(sizeof(node_bucket_count));
+	nbc = static_cast<node_bucket_count *>(malloc(sizeof(node_bucket_count)));
 	if(nbc == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -405,7 +405,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 
 	node_ct = count_array(nodes);
 
-	buckets = calloc((node_ct + 1), sizeof(node_bucket *));
+	buckets = static_cast<node_bucket **>(calloc((node_ct + 1), sizeof(node_bucket *)));
 	if (buckets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -501,7 +501,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 		return NULL;
 	}
 
-	tmp = realloc(buckets, (j + 1) * sizeof(node_bucket *));
+	tmp = static_cast<node_bucket **>(realloc(buckets, (j + 1) * sizeof(node_bucket *)));
 	if (tmp != NULL)
 		buckets = tmp;
 	else {
@@ -517,7 +517,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 chunk_map *
 new_chunk_map() {
 	chunk_map *cmap;
-	cmap = malloc(sizeof(chunk_map));
+	cmap = static_cast<chunk_map *>(malloc(sizeof(chunk_map)));
 	if (cmap == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -825,7 +825,7 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 		return NULL;
 
 	sinfo = resresv->server;
-	ns_arr = calloc(resresv->select->total_chunks + 1, sizeof(nspec*));
+	ns_arr = static_cast<nspec **>(calloc(resresv->select->total_chunks + 1, sizeof(nspec*)));
 	if (ns_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -965,7 +965,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 	bucket_ct = count_array(buckets);
 	chunk_ct = count_array(resresv->select->chunks);
 
-	cb_map = calloc((chunk_ct + 1), sizeof(chunk_map *));
+	cb_map = static_cast<chunk_map **>(calloc((chunk_ct + 1), sizeof(chunk_map *)));
 	if (cb_map == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -980,7 +980,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 			return NULL;
 		}
 		cb_map[i]->chunk = resresv->select->chunks[i];
-		cb_map[i]->bkt_cnts = calloc(bucket_ct + 1, sizeof(node_bucket_count *));
+		cb_map[i]->bkt_cnts = static_cast<node_bucket_count **>(calloc(bucket_ct + 1, sizeof(node_bucket_count *)));
 		if (cb_map[i]->bkt_cnts == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			free_chunk_map_array(cb_map);

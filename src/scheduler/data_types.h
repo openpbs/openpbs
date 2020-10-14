@@ -254,7 +254,7 @@ struct th_data_free_resresv
 
 struct schd_error
 {
-	enum sched_error error_code;	/* scheduler error code (see constant.h) */
+	enum sched_error_code error_code;	/* scheduler error code (see constant.h) */
 	enum schd_err_status status_code; /* error status */
 	resdef *rdef;			/* resource def if error contains a resource*/
 	char *arg1;			/* buffer for error code specific string */
@@ -377,7 +377,7 @@ struct schedattrs
 	int opt_backfill_fuzzy;
 	char *partition;
 	long preempt_queue_prio;
-	int preempt_prio[NUM_PPRIO][2];
+	unsigned int preempt_prio[NUM_PPRIO][2];
 	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
 	enum preempt_sort_vals preempt_sort;
 	enum runjob_mode runjob_mode; /* set to a numeric version of job_run_wait attribute value */
@@ -585,7 +585,7 @@ struct job_info
 	time_t time_preempted;		/* time when the job was preempted */
 	char *est_execvnode;		/* scheduler estimated execvnode of job */
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
-	int preempt;			/* preempt priority */
+	unsigned int preempt;			/* preempt priority */
 	int peer_sd;			/* connection descriptor to peer server */
 	long long job_id;		/* numeric portion of the job id */
 	resource_req *resused;		/* a list of resources used */
@@ -845,7 +845,7 @@ struct resource_type
 
 struct schd_resource
 {
-	char *name;			/* name of the resource - reference to the definition name */
+	const char *name;			/* name of the resource - reference to the definition name */
 	struct resource_type type;	/* resource type */
 
 	char *orig_str_avail;		/* original resources_available string */
@@ -1033,10 +1033,10 @@ struct usage_info
 
 struct t
 {
-	unsigned hour	: 5;
-	unsigned min	: 6;
-	unsigned none : 1;
-	unsigned all  : 1;
+	unsigned int hour;
+	unsigned int min;
+	unsigned int none;
+	unsigned int all;
 };
 
 struct sort_info
@@ -1049,8 +1049,8 @@ struct sort_info
 
 struct sort_conv
 {
-	char *config_name;
-	char *res_name;
+	const char *config_name;
+	const char *res_name;
 	enum sort_order order;
 };
 
@@ -1152,7 +1152,7 @@ struct config
 	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
-	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
+	struct t prime[HIGH_DAY][2];	/* prime time start and prime time end*/
 	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
 	int num_holidays;			/* number of actual holidays */
@@ -1210,7 +1210,7 @@ struct event_list
 struct timed_event
 {
 	unsigned int disabled:1;	/* event is disabled - skip it in simulation */
-	char *name;			/* [reference] name of event */
+	const char *name;			/* [reference] name of event */
 	enum timed_event_types event_type;
 	time_t event_time;
 	event_ptr_t *event_ptr;

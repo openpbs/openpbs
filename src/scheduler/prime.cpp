@@ -241,19 +241,19 @@ is_holiday(long date)
 static void
 handle_missing_prime_info(void)
 {
-	enum days d;
+	int d;
 
 	for (d = SUNDAY; d < HIGH_DAY; d++) {
 		if (conf.prime[d][PRIME].all + conf.prime[d][PRIME].none
 				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min == 0) {
 			conf.prime[d][PRIME].all = TRUE;
 			conf.prime[d][PRIME].none = FALSE;
-			conf.prime[d][PRIME].hour = UNSPECIFIED;
-			conf.prime[d][PRIME].min = UNSPECIFIED;
+			conf.prime[d][PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][PRIME].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][NON_PRIME].none = TRUE;
 			conf.prime[d][NON_PRIME].all = FALSE;
-			conf.prime[d][NON_PRIME].hour = UNSPECIFIED;
-			conf.prime[d][NON_PRIME].min = UNSPECIFIED;
+			conf.prime[d][NON_PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][NON_PRIME].min = static_cast<unsigned int>(UNSPECIFIED);
 		}
 	}
 }
@@ -269,7 +269,7 @@ handle_missing_prime_info(void)
  *
  */
 int
-parse_holidays(char *fname)
+parse_holidays(const char *fname)
 {
 	FILE *fp;		/* file pointer to holidays file */
 	char buf[256];	/* buffer to read lines of the file into */
@@ -493,7 +493,7 @@ parse_holidays(char *fname)
  *
  */
 int
-load_day(enum days d, enum prime_time pr, char *tok)
+load_day(enum days d, enum prime_time pr, const char *tok)
 {
 	int num;		/* used to convert string -> integer */
 	int hours;		/* used to convert 4 digit HHMM into hours */
@@ -508,8 +508,8 @@ load_day(enum days d, enum prime_time pr, char *tok)
 				return 0;
 			}
 			conf.prime[d][pr].all = TRUE;
-			conf.prime[d][pr].hour = UNSPECIFIED;
-			conf.prime[d][pr].min = UNSPECIFIED;
+			conf.prime[d][pr].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][pr].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][pr].none = FALSE;
 		} else if (!strcmp(tok, "none") || !strcmp(tok, "NONE")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].none == TRUE) {
@@ -518,8 +518,8 @@ load_day(enum days d, enum prime_time pr, char *tok)
 				return load_day(d, PRIME, "all");
 			}
 			conf.prime[d][pr].all = FALSE;
-			conf.prime[d][pr].hour = UNSPECIFIED;
-			conf.prime[d][pr].min = UNSPECIFIED;
+			conf.prime[d][pr].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][pr].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][pr].none = TRUE;
 		} else {
 			num = strtol(tok, &endp, 10);
@@ -600,11 +600,11 @@ end_prime_status_rec(time_t start, time_t date,
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* If there is no non-primetime left today, recurse into tomorrow. */
-		if (conf.prime[day][NON_PRIME].hour < tmptr->tm_hour)
+		if (conf.prime[day][NON_PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
-		if (conf.prime[day][NON_PRIME].hour == tmptr->tm_hour &&
-			conf.prime[day][NON_PRIME].min < tmptr->tm_min)
+		if (conf.prime[day][NON_PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
+			conf.prime[day][NON_PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* Non-primetime started at the beginning of the day, return it. */
@@ -622,11 +622,11 @@ end_prime_status_rec(time_t start, time_t date,
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* If there is no primetime left today, recurse into tomorrow. */
-		if (conf.prime[day][PRIME].hour < tmptr->tm_hour)
+		if (conf.prime[day][PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
-		if (conf.prime[day][PRIME].hour == tmptr->tm_hour &&
-			conf.prime[day][PRIME].min < tmptr->tm_min)
+		if (conf.prime[day][PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
+			conf.prime[day][PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* Primetime started at the beginning of the day, return it. */

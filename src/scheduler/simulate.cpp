@@ -122,7 +122,7 @@
 struct policy_change_func_name
 {
 	event_func_t func;
-	char *str;
+	const char *str;
 };
 
 static const struct policy_change_func_name policy_change_func_name[] =
@@ -499,7 +499,7 @@ set_timed_event_disabled(timed_event *te, int disabled)
  *
  */
 timed_event *
-find_timed_event(timed_event *te_list, int ignore_disabled, char *name,
+find_timed_event(timed_event *te_list, int ignore_disabled, const char *name,
 	enum timed_event_types event_type, time_t event_time)
 {
 	timed_event *te;
@@ -871,7 +871,7 @@ create_events(server_info *sinfo)
 	 * Once the first non-timed event is reached, we're done
 	 */
 	all_resresv_len = count_array(sinfo->all_resresv);
-	all_resresv_copy = malloc((all_resresv_len + 1) * sizeof(resource_resv *));
+	all_resresv_copy = static_cast<resource_resv **>(malloc((all_resresv_len + 1) * sizeof(resource_resv *)));
 	if (all_resresv_copy == NULL)
 		return 0;
 	for (i = 0; sinfo->all_resresv[i] != NULL; i++)
@@ -944,7 +944,7 @@ new_event_list()
 {
 	event_list *elist;
 
-	if ((elist = malloc(sizeof(event_list))) == NULL) {
+	if ((elist = static_cast<event_list *>(malloc(sizeof(event_list)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1051,7 +1051,7 @@ new_timed_event()
 {
 	timed_event *te;
 
-	if ((te = malloc(sizeof(timed_event))) == NULL) {
+	if ((te = static_cast<timed_event *>(malloc(sizeof(timed_event)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1110,7 +1110,7 @@ dup_timed_event(timed_event *ote, server_info *nsinfo)
 te_list *
 new_te_list() {
 	te_list *tel;
-	tel = malloc(sizeof(te_list));
+	tel = static_cast<te_list *>(malloc(sizeof(te_list)));
 
 	if(tel == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1620,7 +1620,7 @@ create_event(enum timed_event_types event_type,
 int
 determine_event_name(timed_event *te)
 {
-	char *name;
+	const char *name;
 
 	if (te == NULL)
 		return 0;
@@ -1848,7 +1848,7 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
  * @return	printable string name of policy change event
  * @retval	NULL	: if not found or error
  */
-char *
+const char *
 policy_change_to_str(timed_event *te)
 {
 	int i;

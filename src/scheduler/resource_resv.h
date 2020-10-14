@@ -175,7 +175,7 @@ void free_resource_count(resource_count *req);
 /*
  *	set_resource_req - set the value and type of a resource req
  */
-int set_resource_req(resource_req *req, char *val);
+int set_resource_req(resource_req *req, const char *val);
 
 /*
  *
@@ -211,7 +211,7 @@ void update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr);
  *      update_resresv_on_end - update a resource_resv structure when
  *                                    it ends
  */
-void update_resresv_on_end(resource_resv *resresv, char *job_state);
+void update_resresv_on_end(resource_resv *resresv, const char *job_state);
 
 
 /*
@@ -373,7 +373,7 @@ int cmp_job_arrays(resource_resv *resresv, void *arg);
  *
  *	return new resource_req or NULL
  */
-resource_req *create_resource_req(char *name, char *value);
+resource_req *create_resource_req(const char *name, const char *value);
 
 /*
  * create a select from an nspec array to place chunks back on the

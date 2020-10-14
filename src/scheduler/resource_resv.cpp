@@ -133,7 +133,7 @@ new_resource_resv()
 {
 	resource_resv *resresv = NULL;
 
-	if ((resresv = malloc(sizeof(resource_resv))) == NULL) {
+	if ((resresv = static_cast<resource_resv *>(malloc(sizeof(resource_resv)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -239,7 +239,7 @@ alloc_tdata_free_rr_arr(resource_resv **resresv_arr, int sidx, int eidx)
 {
 	th_data_free_resresv *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_free_resresv));
+	tdata = static_cast<th_data_free_resresv *>(malloc(sizeof(th_data_free_resresv)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -299,7 +299,7 @@ free_resource_resv_array(resource_resv **resresv_arr)
 		if (tdata == NULL)
 			break;
 
-		task = malloc(sizeof(th_task_info));
+		task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 		task->task_type = TS_FREE_RESRESV;
 		task->thread_data = (void *) tdata;
 
@@ -312,8 +312,8 @@ free_resource_resv_array(resource_resv **resresv_arr)
 		while (ds_queue_is_empty(result_queue))
 			pthread_cond_wait(&result_cond, &result_lock);
 		while (!ds_queue_is_empty(result_queue)) {
-			task = (th_task_info *) ds_dequeue(result_queue);
-			tdata = task->thread_data;
+			task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+			tdata = static_cast<th_data_free_resresv *>(task->thread_data);
 			free(tdata);
 			free(task);
 			i++;
@@ -464,7 +464,7 @@ alloc_tdata_dup_nodes(resource_resv **oresresv_arr, resource_resv **nresresv_arr
 {
 	th_data_dup_resresv *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_dup_resresv));
+	tdata = static_cast<th_data_dup_resresv *>(malloc(sizeof(th_data_dup_resresv)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -512,7 +512,7 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 
 	num_resresv = thread_job_ct_left = count_array(oresresv_arr);
 
-	if ((nresresv_arr = malloc((num_resresv + 1) * sizeof(resource_resv *))) == NULL) {
+	if ((nresresv_arr = static_cast<resource_resv **>(malloc((num_resresv + 1) * sizeof(resource_resv *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -540,7 +540,7 @@ dup_resource_resv_array(resource_resv **oresresv_arr,
 				th_err = 1;
 				break;
 			}
-			task = malloc(sizeof(th_task_info));
+			task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 			task->task_type = TS_DUP_RESRESV;
 			task->thread_data = (void *) tdata;
 
@@ -1129,7 +1129,7 @@ new_resource_req()
 {
 	resource_req *resreq;
 
-	if ((resreq = (resource_req *) calloc(1, sizeof(resource_req))) == NULL) {
+	if ((resreq = static_cast<resource_req *>(calloc(1, sizeof(resource_req)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1156,7 +1156,7 @@ resource_count *new_resource_count()
 {
 	resource_count *rcount;
 
-	if ((rcount = malloc(sizeof(resource_count))) == NULL) {
+	if ((rcount = static_cast<resource_count *>(malloc(sizeof(resource_count)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1181,7 +1181,7 @@ resource_count *new_resource_count()
  * @retval	NULL	: Fail
  */
 resource_req *
-create_resource_req(char *name, char *value)
+create_resource_req(const char *name, const char *value)
 {
 	resource_req *resreq = NULL;
 	resdef *rdef;
@@ -1411,7 +1411,7 @@ find_resource_count(resource_count *rcountlist, resdef *def)
  * @retval	0 for Error
  */
 int
-set_resource_req(resource_req *req, char *val)
+set_resource_req(resource_req *req, const char *val)
 {
 	resdef *rdef;
 
@@ -1696,7 +1696,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
  *
  */
 void
-update_resresv_on_end(resource_resv *resresv, char *job_state)
+update_resresv_on_end(resource_resv *resresv, const char *job_state)
 {
 	queue_info *resv_queue;
 	resource_resv *next_occr = NULL;
@@ -1839,7 +1839,7 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
 	 * the one element being the NULL terminator
 	 */
 
-	if ((new_resresvs = malloc((size + 1) * sizeof(resource_resv *))) == NULL) {
+	if ((new_resresvs = static_cast<resource_resv **>(malloc((size + 1) * sizeof(resource_resv *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1852,8 +1852,8 @@ resource_resv_filter(resource_resv **resresv_arr, int size,
 	}
 	/* FILTER_FULL - leave the filtered array full size */
 	if (!(flags & FILTER_FULL)) {
-		if ((tmp = realloc(new_resresvs, (j+1) *
-			sizeof(resource_resv *))) == NULL) {
+		if ((tmp = static_cast<resource_resv **>(realloc(new_resresvs, (j+1) *
+			sizeof(resource_resv *)))) == NULL) {
 			free(new_resresvs);
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
@@ -1924,7 +1924,7 @@ add_resresv_to_array(resource_resv **resresv_arr,
 		return NULL;
 
 	if (resresv_arr == NULL && resresv != NULL) {
-		new_arr = malloc(2 * sizeof(resource_resv *));
+		new_arr = static_cast<resource_resv **>(malloc(2 * sizeof(resource_resv *)));
 		if (new_arr == NULL)
 			return NULL;
 		new_arr[0] = resresv;
@@ -1937,7 +1937,7 @@ add_resresv_to_array(resource_resv **resresv_arr,
 	size = count_array(resresv_arr);
 
 	/* realloc for 1 more ptr (2 == 1 for new and 1 for NULL) */
-	new_arr = realloc(resresv_arr, ((size+2) * sizeof(resource_resv *)));
+	new_arr = static_cast<resource_resv **>(realloc(resresv_arr, ((size+2) * sizeof(resource_resv *))));
 
 	if (new_arr != NULL) {
 		new_arr[size] = resresv;
@@ -1984,7 +1984,7 @@ copy_resresv_array(resource_resv **resresv_arr,
 		;
 
 	new_resresv_arr =
-		(resource_resv **) malloc((size + 1) * sizeof(resource_resv *));
+		static_cast<resource_resv **>(malloc((size + 1) * sizeof(resource_resv *)));
 	if (new_resresv_arr == NULL) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__,  "not enough memory.");
 		return NULL;
@@ -2054,7 +2054,7 @@ new_place()
 {
 	place *pl;
 
-	if ((pl = malloc(sizeof(place))) == NULL) {
+	if ((pl = static_cast<place *>(malloc(sizeof(place)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2140,7 +2140,7 @@ new_chunk()
 {
 	chunk *ch;
 
-	if ((ch = malloc(sizeof(chunk))) == NULL) {
+	if ((ch = static_cast<chunk *>(malloc(sizeof(chunk)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2174,7 +2174,7 @@ dup_chunk_array(chunk **old_chunk_arr)
 
 	ct = count_array(old_chunk_arr);
 
-	if ((new_chunk_arr = calloc(ct + 1, sizeof(chunk *))) == NULL) {
+	if ((new_chunk_arr = static_cast<chunk **>(calloc(ct + 1, sizeof(chunk *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2304,7 +2304,7 @@ new_selspec()
 {
 	selspec *spec;
 
-	if ((spec = malloc(sizeof(selspec))) == NULL) {
+	if ((spec = static_cast<selspec *>(malloc(sizeof(selspec)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

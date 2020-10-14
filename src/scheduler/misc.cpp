@@ -76,7 +76,7 @@
  */
 
 char *
-string_dup(char *str)
+string_dup(const char *str)
 {
 	char *newstr;
 	size_t len;
@@ -84,7 +84,7 @@ string_dup(char *str)
 	if (str == NULL)
 		return NULL;
 	len = strlen(str) + 1;
-	if ((newstr = (char *) malloc(len)) == NULL) {
+	if ((newstr = static_cast<char *>(malloc(len))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -143,7 +143,7 @@ add_str_to_array(char ***str_arr, char *str)
 	else
 		cnt = count_array(*str_arr);
 
-	tmp_arr = realloc(*str_arr, (cnt+2)*sizeof(char*));
+	tmp_arr = static_cast<char **>(realloc(*str_arr, (cnt+2)*sizeof(char*)));
 	if (tmp_arr == NULL)
 		return -1;
 
@@ -170,7 +170,7 @@ add_str_to_array(char ***str_arr, char *str)
  *
  */
 sch_resource_t
-res_to_num(char *res_str, struct resource_type *type)
+res_to_num(const char *res_str, struct resource_type *type)
 {
 	sch_resource_t count = SCHD_INFINITY_RES;	/* convert string resource to numeric */
 	sch_resource_t count2 = SCHD_INFINITY_RES;	/* convert string resource to numeric */
@@ -305,7 +305,7 @@ skip_line(char *line)
  *		error will be printed after the message
  *
  *	@param[in] event - the event type
- *	@param[in] class - the event class
+ *	@param[in] event_class - the event class
  *	@param[in] sev   - the severity of the log message
  *	@param[in] name  - the name of the object
  *	@param[in] text  - the text of the message
@@ -315,7 +315,7 @@ skip_line(char *line)
  *	@return nothing
  */
 void
-schdlogerr(int event, int class, int sev, char *name, char *text,
+schdlogerr(int event, int event_class, int sev, const char *name, const char *text,
 	schd_error *err)
 {
 	char logbuf[MAX_LOG_SIZE];
@@ -326,9 +326,9 @@ schdlogerr(int event, int class, int sev, char *name, char *text,
 	if (will_log_event(event)) {
 		translate_fail_code(err, NULL, logbuf);
 		if (text == NULL)
-			log_event(event, class, sev, name, logbuf);
+			log_event(event, event_class, sev, name, logbuf);
 		else
-			log_eventf(event, class, sev, name, "%s %s", text, logbuf);
+			log_eventf(event, event_class, sev, name, "%s %s", text, logbuf);
 	}
 }
 
@@ -369,7 +369,7 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 
 	size = count_array(ptrarr);
 
-	if ((new_arr = (void **) malloc((size + 1) * sizeof(void *))) == NULL) {
+	if ((new_arr = static_cast<void **>(malloc((size + 1) * sizeof(void *)))) == NULL) {
 		log_err(errno, __func__, "Error allocating memory");
 		return NULL;
 	}
@@ -383,7 +383,7 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 	new_arr[j] = NULL;
 
 	if (!(flags & FILTER_FULL)) {
-		if ((tmp = realloc(new_arr, (j+1) * sizeof(void *))) == NULL) {
+		if ((tmp = static_cast<void **>(realloc(new_arr, (j+1) * sizeof(void *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			free(new_arr);
 			return NULL;
@@ -404,14 +404,14 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
  * @return	value from match_string_array()
  *
  */
-enum match_string_array_ret match_string_to_array(char *str, char **strarr)
+enum match_string_array_ret match_string_to_array(const char *str, const char * const *strarr)
 {
-	char *mockarr[2];
+	const char *mockarr[2];
 
 	mockarr[0] = str;
 	mockarr[1] = NULL;
 
-	return match_string_array(strarr, (char **) mockarr);
+	return match_string_array(strarr, mockarr);
 }
 
 /**
@@ -429,7 +429,7 @@ enum match_string_array_ret match_string_to_array(char *str, char **strarr)
  * @retval	SA_NO_MATCH	: no match
  *
  */
-enum match_string_array_ret match_string_array(char **strarr1, char **strarr2)
+enum match_string_array_ret match_string_array(const char * const *strarr1, const char * const *strarr2)
 {
 	int match = 0;
 	int i;
@@ -441,7 +441,7 @@ enum match_string_array_ret match_string_array(char **strarr1, char **strarr2)
 	strarr2_len = count_array(strarr2);
 
 	for (i = 0; strarr1[i] != NULL; i++) {
-		if (is_string_in_arr(strarr2, strarr1[i]))
+		if (is_string_in_arr(const_cast<char **>(strarr2), const_cast<char *>(strarr1[i])))
 			match++;
 	}
 
@@ -486,7 +486,7 @@ string_array_to_str(char **strarr)
 		len += strlen(strarr[i]);
 	len += i; /* added space for the commas */
 
-	arrbuf = malloc(len + 1);
+	arrbuf = static_cast<char *>(malloc(len + 1));
 	if (arrbuf == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -670,7 +670,7 @@ cstrcmp(char *s1, char *s2)
  *
  */
 int
-is_num(char *str)
+is_num(const char *str)
 {
 	int i;
 	char c;
@@ -733,7 +733,7 @@ is_num(char *str)
  *
  */
 int
-count_array(void *arr)
+count_array(const void *arr)
 {
 	int i;
 	void **ptr_arr;
@@ -770,7 +770,7 @@ dup_array(void *ptr)
 		return NULL;
 
 	len = count_array(arr);
-	ret = malloc((len +1) * sizeof(void *));
+	ret = static_cast<void **>(malloc((len +1) * sizeof(void *)));
 	if (ret == NULL)
 		return NULL;
 	memcpy(ret, arr, len * sizeof(void *));
@@ -833,7 +833,7 @@ add_ptr_to_array(void *ptr_arr, void *ptr)
 	cnt = count_array(ptr_arr);
 
 	if (cnt == 0) {
-		arr = malloc(sizeof(void *) * 2);
+		arr = static_cast<void **>(malloc(sizeof(void *) * 2));
 		if (arr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
@@ -841,7 +841,7 @@ add_ptr_to_array(void *ptr_arr, void *ptr)
 		arr[0] = ptr;
 		arr[1] = NULL;
 	} else {
-		arr = realloc(ptr_arr, (cnt + 1) * sizeof(void *));
+		arr = static_cast<void **>(realloc(ptr_arr, (cnt + 1) * sizeof(void *)));
 		if (arr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
@@ -962,7 +962,7 @@ clear_schd_error(schd_error *err)
 schd_error *
 new_schd_error() {
 	schd_error *err;
-	if ((err = calloc(1, sizeof(schd_error))) == NULL) {
+	if ((err = static_cast<schd_error *>(calloc(1, sizeof(schd_error)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1063,7 +1063,7 @@ copy_schd_error(schd_error *err, schd_error *oerr)
  *
  * @return	nothing
  */
-void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
+void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const char *arg) {
 
 	if(err == NULL)
 		return;
@@ -1116,7 +1116,7 @@ void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
  *
  * @return	nothing
  */
-void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error error_code)
+void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code)
 {
 	if(err == NULL)
 		return;
@@ -1179,14 +1179,14 @@ free_schd_error_list(schd_error *err_list) {
  *
  * @return	new schd_error
  */
-schd_error *create_schd_error(int error_code, int status_code)
+schd_error *create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code)
 {
-	schd_error *new;
-	new = new_schd_error();
-	if(new == NULL)
+	schd_error *nse;
+	nse = new_schd_error();
+	if(nse == NULL)
 		return NULL;
-	set_schd_error_codes(new, status_code, error_code);
-	return new;
+	set_schd_error_codes(nse, status_code, error_code);
+	return nse;
 }
 
 /**
@@ -1204,27 +1204,27 @@ schd_error *create_schd_error(int error_code, int status_code)
  *
  * @return	new schd_error
  */
-schd_error *create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
+schd_error *create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
 {
-	schd_error *new;
+	schd_error *nse;
 
-	new = create_schd_error(error_code, status_code);
-	if(new == NULL)
+	nse = create_schd_error(error_code, status_code);
+	if(nse == NULL)
 		return NULL;
 
 	if(arg1 != NULL)
-		set_schd_error_arg(new, ARG1, arg1);
+		set_schd_error_arg(nse, ARG1, arg1);
 
 	if(arg2 != NULL)
-		set_schd_error_arg(new, ARG2, arg2);
+		set_schd_error_arg(nse, ARG2, arg2);
 
 	if(arg3 != NULL)
-		set_schd_error_arg(new, ARG3, arg3);
+		set_schd_error_arg(nse, ARG3, arg3);
 
 	if(specmsg != NULL)
-		set_schd_error_arg(new, SPECMSG, specmsg);
+		set_schd_error_arg(nse, SPECMSG, specmsg);
 
-	return new;
+	return nse;
 }
 /**
  * @brief
@@ -1299,8 +1299,8 @@ res_to_str(void *p, enum resource_fields fld)
 	static int resbuf_size = 1024;
 
 	if (resbuf == NULL) {
-		if ((resbuf = malloc(resbuf_size)) == NULL)
-		return "";
+		if ((resbuf = static_cast<char *>(malloc(resbuf_size))) == NULL)
+			return const_cast<char *>("");
 	}
 
 	return res_to_str_re(p, fld, &resbuf, &resbuf_size, NO_FLAGS);
@@ -1329,15 +1329,15 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 {
 	schd_resource res = {0};
 	resource_req req = {0};
-	char *unknown[] = {"unknown", NULL};
+	const char *unknown[] = {"unknown", NULL};
 
         if (buf == NULL)
-          return "";
+          return const_cast<char *>("");
 
         buf[0] = '\0';
 
 	if (def == NULL)
-		return "";
+		return const_cast<char *>("");
 
 	switch (fld) {
 		case RF_REQUEST:
@@ -1345,7 +1345,7 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 			req.def = def;
 			req.name = def->name;
 			req.type = def->type;
-			req.res_str = "unknown";
+			req.res_str = const_cast<char *>("unknown");
 			return res_to_str_re(((void*) &req), fld, &buf, &bufsize, NOEXPAND);
 			break;
 		case RF_AVAIL:
@@ -1355,12 +1355,12 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 			res.def = def;
 			res.name = def->name;
 			res.type = def->type;
-			res.orig_str_avail = "unknown";
-			res.str_avail = unknown;
-			res.str_assigned = "unknown";
+			res.orig_str_avail = const_cast<char *>("unknown");
+			res.str_avail = const_cast<char **>(unknown);
+			res.str_assigned = const_cast<char *>("unknown");
 			return res_to_str_re(((void*) &res), fld, &buf, &bufsize, NOEXPAND);
 	}
-	return "";
+	return const_cast<char *>("");
 }
 /**
  * @brief
@@ -1416,21 +1416,21 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	struct resource_type rtype = {0};
 
 	if (buf == NULL || bufsize == NULL)
-		return "";
+		return const_cast<char *>("");
 
 	if (*bufsize > 0)
 		**buf = '\0';
 
 	if (p == NULL)
-		return "";
+		return const_cast<char *>("");
 
 	ret = *buf;
 
 	if (*bufsize <= 0) {
 		if (!(flags & NOEXPAND)) {
-			if ((*buf = malloc(1024)) == NULL) {
+			if ((*buf = static_cast<char *>(malloc(1024))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
-				return "";
+				return const_cast<char *>("");
 			}
 			else
 				*bufsize = 1024;
@@ -1456,7 +1456,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 				else {
 					ret = pbs_strcat(buf, bufsize, "@");
 					if (ret == NULL)
-						return "";
+						return const_cast<char *>("");
 				}
 
 				str = res->indirect_vnode_name;
@@ -1474,7 +1474,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			rt = &(res->type);
 			str = string_array_to_str(res->str_avail);
 			if (str == NULL)
-				str = "";
+				str = const_cast<char *>("");
 			else
 				free_str = 1;
 			amount = res->avail;
@@ -1488,7 +1488,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			break;
 
 		default:
-			return "";
+			return const_cast<char *>("");
 	}
 
 	/* error checking */
@@ -1570,7 +1570,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		free(str);
 
 	if (ret == NULL)
-		return "";
+		return const_cast<char *>("");
 	return *buf;
 }
 
@@ -1608,7 +1608,7 @@ free_ptr_array(void *inp)
 sched_cmd *
 new_sched_cmd(void)
 {
-	sched_cmd *cmd = malloc(sizeof(sched_cmd));
+	sched_cmd *cmd = static_cast<sched_cmd *>(malloc(sizeof(sched_cmd)));
 	if (cmd == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;

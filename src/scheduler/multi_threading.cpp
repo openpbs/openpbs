@@ -52,7 +52,6 @@
 
 #include "constant.h"
 #include "misc.h"
-#include "node_info.h"
 #include "data_types.h"
 #include "globals.h"
 #include "node_info.h"
@@ -107,7 +106,7 @@ create_id_key(void)
 {
 	int *mainid;
 
-	mainid = malloc(sizeof(int));
+	mainid = static_cast<int *>(malloc(sizeof(int)));
 	if (mainid == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return;
@@ -211,7 +210,7 @@ init_multi_threading(int nthreads)
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 			"", "Launching %d worker threads", num_threads);
 
-	threads = malloc(num_threads * sizeof(pthread_t));
+	threads = static_cast<pthread_t *>(malloc(num_threads * sizeof(pthread_t)));
 	if (threads == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
@@ -235,7 +234,7 @@ init_multi_threading(int nthreads)
 	for (i = 0; i < num_threads; i++) {
 		int *thid;
 
-		thid = malloc(sizeof(int));
+		thid = static_cast<int *>(malloc(sizeof(int)));
 		if (thid == NULL) {
 			free(threads);
 			free_ds_queue(work_queue);
@@ -286,7 +285,7 @@ worker(void *tid)
 		while (ds_queue_is_empty(work_queue) && !threads_die) {
 			pthread_cond_wait(&work_cond, &work_lock);
 		}
-		work = ds_dequeue(work_queue);
+		work = static_cast<th_task_info *>(ds_dequeue(work_queue));
 		pthread_mutex_unlock(&work_lock);
 
 		/* find out what task we need to do */

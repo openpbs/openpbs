@@ -41,6 +41,10 @@
 #ifndef _RESOURCE_H
 #define _RESOURCE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  *	query_resources - query a pbs server for the resources it knows about
  *
@@ -72,7 +76,7 @@ void free_resdef(resdef *def);		/* destructor */
 void free_resdef_array(resdef **deflist);
 
 /* find and return a resdef entry by name */
-resdef *find_resdef(resdef **deflist, char *name);
+resdef *find_resdef(resdef **deflist, const char *name);
 
 /*
  * does resdef exist in a resdef array?
@@ -135,5 +139,7 @@ resdef **copy_resdef_array(resdef **deflist);
 /* update the def member in sort_info structures in conf */
 void update_sorting_defs(int op);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* _RESOURCE_H */

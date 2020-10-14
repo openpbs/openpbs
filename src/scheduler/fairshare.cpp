@@ -159,7 +159,7 @@ add_unknown(group_info *ginfo, group_info *root)
  *
  */
 group_info *
-find_group_info(char *name, group_info *root)
+find_group_info(const char *name, group_info *root)
 {
 	group_info *ginfo;		/* the found group */
 	if (root == NULL || name == NULL || !strcmp(name, root->name))
@@ -215,28 +215,28 @@ find_alloc_ginfo(char *name, group_info *root)
 group_info *
 new_group_info()
 {
-	group_info *new;		/* the new group */
+	group_info *ngi;		/* the new group */
 
-	if ((new = malloc(sizeof(group_info))) == NULL) {
+	if ((ngi = static_cast<group_info *>(malloc(sizeof(group_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	new->name = NULL;
-	new->resgroup = UNSPECIFIED;
-	new->cresgroup = UNSPECIFIED;
-	new->shares = UNSPECIFIED;
-	new->tree_percentage = 0.0;
-	new->group_percentage = 0.0;
-	new->usage = FAIRSHARE_MIN_USAGE;
-	new->temp_usage = FAIRSHARE_MIN_USAGE;
-	new->usage_factor = 0.0;
-	new->gpath = NULL;
-	new->parent = NULL;
-	new->sibling = NULL;
-	new->child = NULL;
+	ngi->name = NULL;
+	ngi->resgroup = UNSPECIFIED;
+	ngi->cresgroup = UNSPECIFIED;
+	ngi->shares = UNSPECIFIED;
+	ngi->tree_percentage = 0.0;
+	ngi->group_percentage = 0.0;
+	ngi->usage = FAIRSHARE_MIN_USAGE;
+	ngi->temp_usage = FAIRSHARE_MIN_USAGE;
+	ngi->usage_factor = 0.0;
+	ngi->gpath = NULL;
+	ngi->parent = NULL;
+	ngi->sibling = NULL;
+	ngi->child = NULL;
 
-	return new;
+	return ngi;
 }
 
 /**
@@ -257,7 +257,7 @@ new_group_info()
  *
  */
 int
-parse_group(char *fname, group_info *root)
+parse_group(const char *fname, group_info *root)
 {
 	group_info *ginfo;		/* ptr to parent group */
 	group_info *new_ginfo;	/* used to add each new group */
@@ -602,7 +602,7 @@ compare_path(struct group_path *gp1, struct group_path *gp2)
  *
  */
 int
-write_usage(char *filename, fairshare_head *fhead)
+write_usage(const char *filename, fairshare_head *fhead)
 {
 	FILE *fp;		/* file pointer to usage file */
 	struct group_node_header head;
@@ -688,7 +688,7 @@ rec_write_usage(group_info *root, FILE *fp)
  *
  */
 void
-read_usage(char *filename, int flags, fairshare_head *fhead)
+read_usage(const char *filename, int flags, fairshare_head *fhead)
 {
 	FILE *fp;				/* file pointer to usage file */
 	struct group_node_header head;		/* usage file header */
@@ -848,17 +848,17 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
  */
 struct group_path *new_group_path()
 {
-	struct group_path *new;
+	struct group_path *ngp;
 
-	if ((new = malloc(sizeof(struct group_path))) == NULL) {
+	if ((ngp = static_cast<group_path *>(malloc(sizeof(struct group_path)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	new->ginfo = NULL;
-	new->next = NULL;
+	ngp->ginfo = NULL;
+	ngp->next = NULL;
 
-	return new;
+	return ngp;
 }
 
 /**
@@ -1032,7 +1032,7 @@ new_fairshare_head()
 {
 	fairshare_head *fhead;
 
-	if ((fhead = malloc(sizeof(fairshare_head))) == NULL) {
+	if ((fhead = static_cast<fairshare_head *>(malloc(sizeof(fairshare_head)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

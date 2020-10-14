@@ -52,7 +52,7 @@ extern "C" {
  *	FILE FORMAT:
  *	config_name [white space ] : [ white space ] config_value
  */
-int parse_config(char *fname);
+int parse_config(const char *fname);
 
 /*
  *      init_config - initalize the config struture

@@ -136,15 +136,15 @@ extern char *pbse_to_txt(int err);
 
 /**
  *	This table contains job comment and information messages that correspond
- *	to the sched_error enums in "constant.h".  The order of the strings in
- *	the table must match the numeric order of the sched_error enum values.
+ *	to the sched_error_code enums in "constant.h".  The order of the strings in
+ *	the table must match the numeric order of the sched_error_code enum values.
  *	The length of the resultant strings (including any arguments inserted
  *	via % formatting directives by translate_fail_code(), q.v.) must not
  *	exceed the dimensions of the schd_error elements.  See data_types.h.
  */
 struct fc_translation_table {
-	char	*fc_comment;	/**< job comment string */
-	char	*fc_info;	/**< job error string */
+	const char	*fc_comment;	/**< job comment string */
+	const char	*fc_info;	/**< job error string */
 };
 static struct fc_translation_table fctt[] = {
 	{
@@ -542,7 +542,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		return;
 	}
 
-	resresv_arr = (resource_resv **) malloc(sizeof(resource_resv *) * (num_jobs_chunk + 1));
+	resresv_arr = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (num_jobs_chunk + 1)));
 	if (resresv_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		data->error = 1;
@@ -865,7 +865,7 @@ alloc_tdata_jquery(status *policy, int pbs_sd, struct batch_status *jobs, queue_
 {
 	th_data_query_jinfo *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_query_jinfo));
+	tdata = static_cast<th_data_query_jinfo *>(malloc(sizeof(th_data_query_jinfo)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -908,9 +908,9 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	 * what information about what jobs to return.  We want all jobs which are
 	 * in a specified queue
 	 */
-	struct attropl opl = { NULL, ATTR_q, NULL, NULL, EQ };
-	static struct attropl opl2[2] = { { &opl2[1], ATTR_state, NULL, "Q", EQ},
-		{ NULL, ATTR_array, NULL, "True", NE} };
+	struct attropl opl = { NULL, const_cast<char *>(ATTR_q), NULL, NULL, EQ };
+	static struct attropl opl2[2] = { { &opl2[1], const_cast<char *>(ATTR_state), NULL, const_cast<char *>("Q"), EQ},
+		{ NULL, const_cast<char *>(ATTR_array), NULL, const_cast<char *>("True"), NE} };
 	static struct attrl *attrib = NULL;
 	int i;
 
@@ -930,7 +930,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	int num_new_jobs;
 
 	/* used for pbs_geterrmsg() */
-	char *errmsg;
+	const char *errmsg;
 
 	/* for multi-threading */
 	int chunk_size;
@@ -943,7 +943,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	resource_resv ***jinfo_arrs_tasks;
 	int tid;
 
-	char *jobattrs[] = {
+	const char *jobattrs[] = {
 			ATTR_p,
 			ATTR_qtime,
 			ATTR_qrank,
@@ -997,13 +997,13 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			temp_attrl = new_attrl();
 			temp_attrl->name = strdup(jobattrs[i]);
 			temp_attrl->next = attrib;
-			temp_attrl->value = "";
+			temp_attrl->value = const_cast<char *>("");
 			attrib = temp_attrl;
 		}
 	}
 
 	/* get jobs from PBS server */
-	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, "S")) == NULL) {
+	if ((jobs = pbs_selstat(pbs_sd, &opl, attrib, const_cast<char *>("S"))) == NULL) {
 		if (pbs_errno > 0) {
 			errmsg = pbs_geterrmsg(pbs_sd);
 			if (errmsg == NULL)
@@ -1028,7 +1028,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 
 	/* allocate enough space for all the jobs and the NULL sentinal */
-	resresv_arr = (resource_resv **) realloc(pjobs, sizeof(resource_resv*) * (num_jobs + 1));
+	resresv_arr = static_cast<resource_resv **>(realloc(pjobs, sizeof(resource_resv*) * (num_jobs + 1)));
 
 	if (resresv_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -1069,7 +1069,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 				th_err = 1;
 				break;
 			}
-			task = malloc(sizeof(th_task_info));
+			task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 			if (task == NULL) {
 				free(tdata);
 				log_err(errno, __func__, MEM_ERR_MSG);
@@ -1085,7 +1085,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			pthread_cond_signal(&work_cond);
 			pthread_mutex_unlock(&work_lock);
 		}
-		jinfo_arrs_tasks = malloc(num_tasks * sizeof(resource_resv**));
+		jinfo_arrs_tasks = static_cast<resource_resv ***>(malloc(num_tasks * sizeof(resource_resv**)));
 		if (jinfo_arrs_tasks == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			th_err = 1;
@@ -1425,7 +1425,7 @@ new_job_info()
 {
 	job_info *jinfo;
 
-	if ((jinfo = (job_info *) malloc(sizeof(job_info))) == NULL) {
+	if ((jinfo = static_cast<job_info *>(malloc(sizeof(job_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1587,7 +1587,7 @@ free_job_info(job_info *jinfo)
  * @return	0	-	if state is not set
  */
 int
-set_job_state(char *state, job_info *jinfo)
+set_job_state(const char *state, job_info *jinfo)
 {
 	if (jinfo == NULL)
 		return 0;
@@ -1655,9 +1655,9 @@ set_job_state(char *state, job_info *jinfo)
  * @retval	1 for Yes
  */
 static int
-can_send_update(char *attrname)
+can_send_update(const char *attrname)
 {
-	char *attrs_to_throttle[] = {ATTR_comment, ATTR_estimated, NULL};
+	const char *attrs_to_throttle[] = {ATTR_comment, ATTR_estimated, NULL};
 	int i;
 
 	if (send_job_attr_updates)
@@ -1693,8 +1693,8 @@ can_send_update(char *attrname)
  *
  */
 int
-update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
-	char *attr_resc, char *attr_value, struct attrl *extra, unsigned int flags)
+update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
+	const char *attr_resc, const char *attr_value, struct attrl *extra, unsigned int flags)
 {
 	struct attrl *pattr = NULL;
 	struct attrl *pattr2 = NULL;
@@ -1840,7 +1840,7 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 int
 send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr)
 {
-	char *errbuf;
+	const char *errbuf;
 	int one_attr = 0;
 
 	if (job_name == NULL || pattr == NULL)
@@ -1901,7 +1901,7 @@ send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr)
  *
  */
 int
-unset_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name, unsigned int flags)
+unset_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name, unsigned int flags)
 {
 	return (update_job_attr(pbs_sd, resresv, attr_name, NULL, "", NULL, flags));
 
@@ -2008,12 +2008,12 @@ int
 translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 {
 	int rc = 1;
-	char *pbse;
+	const char *pbse;
 	char commentbuf[MAX_LOG_SIZE];
-	char *arg1;
-	char *arg2;
-	char *arg3;
-	char *spec;
+	const char *arg1;
+	const char *arg2;
+	const char *arg3;
+	const char *spec;
 
 	if (err == NULL)
 		return 0;
@@ -2270,7 +2270,7 @@ new_resresv_set(void)
 {
 	resresv_set *rset;
 
-	rset = malloc(sizeof(resresv_set));
+	rset = static_cast<resresv_set *>(malloc(sizeof(resresv_set)));
 	if (rset == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2393,7 +2393,7 @@ dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
 
 	len = count_array(osets);
 
-	rsets = malloc((len + 1) * sizeof(resresv_set *));
+	rsets = static_cast<resresv_set **>(malloc((len + 1) * sizeof(resresv_set *)));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2552,7 +2552,7 @@ create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 
 	def_ct = count_array(policy->resdef_to_check);
 	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
-	defs = malloc((def_ct + limres_ct + 6) * sizeof(resdef *));
+	defs = static_cast<resdef **>(malloc((def_ct + limres_ct + 6) * sizeof(resdef *)));
 
 	for (i = 0; i < def_ct; i++)
 		defs[i] = policy->resdef_to_check[i];
@@ -2746,7 +2746,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	resresvs = sinfo->jobs;
 
 	len = count_array(resresvs);
-	rsets = malloc((len + 1) * sizeof(resresv_set *));
+	rsets = static_cast<resresv_set **>(malloc((len + 1) * sizeof(resresv_set *)));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2773,7 +2773,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 		resresvs[i]->ec_index = cur_ind;
 	}
 
-	tmp_rset_arr = realloc(rsets,(j + 1) * sizeof(resresv_set *));
+	tmp_rset_arr = static_cast<resresv_set **>(realloc(rsets,(j + 1) * sizeof(resresv_set *)));
 	if (tmp_rset_arr != NULL)
 		rsets = tmp_rset_arr;
 	rset_len = count_array(rsets);
@@ -3059,12 +3059,12 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		return 0;
 
 	/* using calloc - saves the trouble to put NULL at end of list */
-	if ((preempted_list = calloc((sinfo->sc.running + 1), sizeof(int))) == NULL) {
+	if ((preempted_list = static_cast<int *>(calloc((sinfo->sc.running + 1), sizeof(int)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return -1;
 	}
 
-	if ((fail_list = calloc((sinfo->sc.running + 1), sizeof(int))) == NULL) {
+	if ((fail_list = static_cast<int *>(calloc((sinfo->sc.running + 1), sizeof(int)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free(preempted_list);
 		return -1;
@@ -3079,7 +3079,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		num_tries < MAX_PREEMPT_RETRIES) {
 		done = 1;
 
-		if ((preempt_jobs_list = calloc(no_of_jobs + 1, sizeof(char *))) == NULL) {
+		if ((preempt_jobs_list = static_cast<char **>(calloc(no_of_jobs + 1, sizeof(char *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			free(preempted_list);
 			free(fail_list);
@@ -3243,7 +3243,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	int i;
 	int j = 0;
 	int has_lower_jobs = 0;	/* there are jobs of a lower preempt priority */
-	int prev_prio;		/* jinfo's preempt field before simulation */
+	unsigned int prev_prio;		/* jinfo's preempt field before simulation */
 	server_info *nsinfo;
 	status *npolicy;
 	resource_resv **rjobs = NULL;	/* the running jobs to choose from */
@@ -3258,7 +3258,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	nspec **ns_arr = NULL;
 	schd_error *err = NULL;
 
-	enum sched_error old_errorcode = SUCCESS;
+	enum sched_error_code old_errorcode = SUCCESS;
 	resdef *old_rdef = NULL;
 	long indexfound;
 	long skipto;
@@ -3363,7 +3363,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		}
 	}
 
-	if ((pjobs = (resource_resv **) malloc(sizeof(resource_resv *) * (sinfo->sc.running + 1))) == NULL) {
+	if ((pjobs = static_cast<resource_resv **>(malloc(sizeof(resource_resv *) * (sinfo->sc.running + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_schd_error_list(full_err);
 		return NULL;
@@ -3617,7 +3617,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	 */
 
 	if (rc > 0) {
-		if ((pjobs_list = calloc((j + 1), sizeof(int))) == NULL) {
+		if ((pjobs_list = static_cast<int *>(calloc((j + 1), sizeof(int)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			goto cleanup;
 		}
@@ -3814,7 +3814,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 							max_resdefs = count_array(policy->resdef_to_check);
 
 						if (max_resdefs > 0)    {
-							rdtc_non_consumable = (resdef **) calloc(sizeof(resdef *),(size_t) max_resdefs + 1);
+							rdtc_non_consumable = static_cast<resdef **>(calloc(sizeof(resdef *),(size_t) max_resdefs + 1));
 							if (rdtc_non_consumable != NULL) {
 								long resdef_index = 0;
 								long rdtc_nc_index = 0;
@@ -3876,7 +3876,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
  *
  */
 int
-preempt_level(int prio)
+preempt_level(unsigned int prio)
 {
 	int level = NUM_PPRIO;
 	int i;
@@ -4329,13 +4329,13 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 
 	formula_buf_len = sizeof(buf) + strlen(formula) + 1;
 
-	formula_buf = malloc(formula_buf_len);
+	formula_buf = static_cast<char *>(malloc(formula_buf_len));
 	if (formula_buf == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 
-	if ((globals = malloc(globals_size * sizeof(char))) == NULL  ) {
+	if ((globals = static_cast<char *>(malloc(globals_size * sizeof(char)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free(formula_buf);
 		return 0;
@@ -4485,7 +4485,7 @@ make_ineligible(int pbs_sd, resource_resv *resresv)
  * @param[in]	pbs_sd	-	connection to pbs_server
  * @param[in]	sinfo	-	pointer to server
  * @param[in]	mode	-	mode of operation
- * @param[in]	err_code	-	sched_error value
+ * @param[in]	err_code	-	sched_error_code value
  * @param[in,out]	resresv	-	pointer to job
  *
  * @return void
@@ -4493,7 +4493,7 @@ make_ineligible(int pbs_sd, resource_resv *resresv)
  */
 void
 update_accruetype(int pbs_sd, server_info *sinfo,
-	enum update_accruetype_mode mode, enum sched_error err_code,
+	enum update_accruetype_mode mode, enum sched_error_code err_code,
 	resource_resv *resresv)
 {
 	if (sinfo == NULL || resresv == NULL || resresv->job == NULL)
@@ -4842,8 +4842,8 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 	 * to update_job_attr().  This will cause both attributes to be updated
 	 * in one call to pbs_asyalterjob()
 	 */
-	attr.name = ATTR_estimated;
-	attr.resource = "exec_vnode";
+	attr.name = const_cast<char *>(ATTR_estimated);
+	attr.resource = const_cast<char *>("exec_vnode");
 	if (exec_vnode == NULL)
 		attr.value = create_execvnode(job->nspec_arr);
 	else
@@ -5450,7 +5450,7 @@ resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job,
 			return temp;
 		default:
 			/* For all other errors return the copy of list back again */
-			temp = malloc((arr_length + 1) * sizeof(resource_resv *));
+			temp = static_cast<resource_resv **>(malloc((arr_length + 1) * sizeof(resource_resv *)));
 			if (temp == NULL) {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, __func__, MEM_ERR_MSG);
 				return NULL;
@@ -5500,7 +5500,7 @@ static char **parse_runone_job_list(char *depend_val) {
 			len++;
 	}
 
-	ret = calloc(len + 1, sizeof(char *));
+	ret = static_cast<char **>(calloc(len + 1, sizeof(char *)));
 	if (ret == NULL) {
 		free(depend_str);
 		return NULL;
@@ -5541,7 +5541,7 @@ void associate_dependent_jobs(server_info *sinfo) {
 			if (job_arr != NULL) {
 				int j;
 				int len = count_array(job_arr);
-				sinfo->jobs[i]->job->dependent_jobs = calloc((len + 1), sizeof(resource_resv *));
+				sinfo->jobs[i]->job->dependent_jobs = static_cast<resource_resv **>(calloc((len + 1), sizeof(resource_resv *)));
 				sinfo->jobs[i]->job->dependent_jobs[len] = NULL;
 				for (j = 0; job_arr[j] != NULL; j++) {
 					resource_resv *jptr = NULL;

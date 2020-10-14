@@ -39,10 +39,10 @@
 
 
 /**
- * @file    pbsfs.c
+ * @file    pbsfs.cpp
  *
  * @brief
- * 		pbsfs.c - contains functions which are related to PBS file share.
+ * 		pbsfs.cpp - contains functions which are related to PBS file share.
  *
  * Functions included are:
  * 	main()
@@ -103,7 +103,7 @@ main(int argc, char *argv[])
 
 	/* the real deal or output version and exit? */
 	PRINT_VERSION_AND_EXIT(argc, argv);
-	set_msgdaemonname("pbsfs");
+	set_msgdaemonname(const_cast<char *>("pbsfs"));
 
 	if (pbs_loadconf(0) <= 0)
 		exit(1);

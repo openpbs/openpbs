@@ -184,7 +184,7 @@ total_states(state_count *sc1, state_count *sc2)
  *
  */
 void
-state_count_add(state_count *sc, char *job_state, int amount)
+state_count_add(state_count *sc, const char *job_state, int amount)
 {
 	if (sc == NULL || job_state == NULL)
 		return;
