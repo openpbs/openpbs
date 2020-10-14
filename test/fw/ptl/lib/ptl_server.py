@@ -86,7 +86,8 @@ from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsQstopError, PbsResourceError,
                                PbsResvAlterError, PtlExpectError,
                                PbsConnectError, PbsServiceError,
-                               PbsInitServicesError, PbsMessageError)
+                               PbsInitServicesError, PbsMessageError,
+                               PtlLogMatchError)
 from ptl.lib.ptl_types import PbsAttribute
 from ptl.lib.ptl_constants import *
 from ptl.lib.ptl_entities import (Hook, Queue, Entity, Limit,

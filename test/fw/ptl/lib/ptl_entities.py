@@ -54,7 +54,9 @@ from ptl.lib.ptl_object import PBSObject
 from ptl.lib.ptl_constants import (ATTR_resv_start, ATTR_job,
                                    ATTR_resv_end, ATTR_resv_duration,
                                    ATTR_count, ATTR_rescassn, ATTR_qtype,
-                                   ATTR_enable, ATTR_start, ATTR_total)
+                                   ATTR_enable, ATTR_start, ATTR_total,
+                                   MGR_CMD_SET, MGR_CMD_UNSET, MGR_OBJ_QUEUE,
+                                   QUEUE)
 
 
 class Resource(PBSObject):

@@ -71,7 +71,7 @@ from ptl.lib.ptl_error import (PtlExpectError, PbsServiceError,
 from ptl.lib.ptl_constants import (MGR_CMD_DELETE, MGR_OBJ_NODE,
                                    MGR_CMD_CREATE, MGR_CMD_IMPORT,
                                    MGR_CMD_SET, ATTR_rescavail,
-                                   NODE, VNODE, HOOK, HOST)
+                                   NODE, VNODE, HOOK, HOST, MATCH_RE)
 from ptl.lib.ptl_service import PBSService, PBSInitServices
 
 

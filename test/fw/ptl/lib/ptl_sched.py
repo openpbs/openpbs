@@ -66,7 +66,7 @@ from ptl.lib.ptl_error import (PbsManagerError, PbsStatusError,
                                PtlLogMatchError, PbsSchedConfigError,
                                PbsFairshareError)
 from ptl.lib.ptl_constants import (SCHED, MGR_CMD_SET, MGR_CMD_UNSET,
-                                   MGR_CMD_LIST, MGR_OBJ_SCHED)
+                                   MGR_CMD_LIST, MGR_OBJ_SCHED, NE)
 
 
 class Scheduler(PBSService):

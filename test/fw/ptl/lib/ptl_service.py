@@ -1476,14 +1476,7 @@ class PBSService(PBSObject):
         """
         Send signal to daemons
         """
-        if inst.__class__.__name__ == "Scheduler":
-            self.logger.info('scheduler sent signal ' + sig)
-        elif inst.__class__.__name__ == "Server":
-            self.logger.info('server sent signal ' + sig)
-        elif inst.__class__.__name__ == "MoM":
-            self.logger.info('mom sent signal ' + sig)
-        elif inst.__class__.__name__ == "Comm":
-            self.logger.info('comm sent signal ' + sig)
+        self.logger.info(inst.__class__.__name__ + " sent signal " + sig)
         return self._signal(sig, inst)
 
     def get_pid(self, inst):
