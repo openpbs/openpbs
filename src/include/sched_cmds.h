@@ -84,7 +84,7 @@ struct sched_cmd {
 #define SCH_SCHEDULE_RESV_RECONFIRM 16		/* Reconfirm a reservation */
 #define SCH_SCHEDULE_RESTART_CYCLE 17		/* Restart a scheduling cycle */
 
-int schedule(int sd, sched_cmd *cmd);
+int schedule(int sd, const sched_cmd *cmd);
 
 #ifdef __cplusplus
 }

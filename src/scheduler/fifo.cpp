@@ -486,7 +486,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
  * @retval	1	: exit scheduler
  */
 int
-schedule(int sd, sched_cmd *cmd)
+schedule(int sd, const sched_cmd *cmd)
 {
 	switch (cmd->cmd) {
 		case SCH_ERROR:
@@ -554,7 +554,7 @@ schedule(int sd, sched_cmd *cmd)
  *
  */
 int
-intermediate_schedule(int sd, sched_cmd *cmd)
+intermediate_schedule(int sd, const sched_cmd *cmd)
 {
 	int ret; /* to re schedule or not */
 	int cycle_cnt = 0; /* count of cycles run */
@@ -602,7 +602,7 @@ intermediate_schedule(int sd, sched_cmd *cmd)
  */
 
 int
-scheduling_cycle(int sd, sched_cmd *cmd)
+scheduling_cycle(int sd, const sched_cmd *cmd)
 {
 	server_info *sinfo;		/* ptr to the server/queue/job/node info */
 	int rc = SUCCESS;		/* return code from main_sched_loop() */
@@ -763,26 +763,25 @@ get_high_prio_cmd(int *is_conn_lost)
 {
 	int i;
 	svr_conn_t *svr_conns = get_conn_servers(clust_secondary_sock);
+	static sched_cmd *cmd = NULL;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		sched_cmd *cmd;
 		int rc;
 
 		if (svr_conns[i].sd < 0)
 			continue;
-		cmd = new_sched_cmd();
-		if (cmd == NULL)
-			continue;
-		rc = get_sched_cmd_noblk(svr_conns[i].sd, cmd);
+
+		rc = get_sched_cmd_noblk(svr_conns[i].sd, &cmd);
 		if (rc == -2) {
 			*is_conn_lost = 1;
-			free_sched_cmd(cmd);
 			return NULL;
 		}
-		if (rc != 1) {
-			free_sched_cmd(cmd);
+		if (rc != 1)
 			continue;
-		}
+
+		if (cmd == NULL)
+			return NULL;
+
 		if (cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
 			return cmd;
 		} else {

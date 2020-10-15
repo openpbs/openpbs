@@ -58,7 +58,7 @@ extern "C" {
  * @retval	+1	: for success
  * @retval	-1	: for error
  */
-int get_sched_cmd(int sock, sched_cmd *cmd);
+int get_sched_cmd(int sock, sched_cmd **cmd);
 
 /**
  * @brief This is non-blocking version of get_sched_cmd()
@@ -74,7 +74,7 @@ int get_sched_cmd(int sock, sched_cmd *cmd);
  *
  * @note this function uses different return code (-2) for EOF than get_sched_cmd() (-1)
  */
-int get_sched_cmd_noblk(int sock, sched_cmd *cmd);
+int get_sched_cmd_noblk(int sock, sched_cmd **cmd);
 
 /*
  *      schedinit - initialize conf struct and parse conf files
@@ -86,13 +86,13 @@ int schedinit(int nthreads);
  *				cycle
  */
 
-int intermediate_schedule(int sd, sched_cmd *cmd);
+int intermediate_schedule(int sd, const sched_cmd *cmd);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(int sd, sched_cmd *cmd);
+int scheduling_cycle(int sd, const sched_cmd *cmd);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every

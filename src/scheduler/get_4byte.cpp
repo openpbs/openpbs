@@ -68,7 +68,7 @@
  * @retval	-1	: for error
  */
 int
-get_sched_cmd(int sock, sched_cmd *cmd)
+get_sched_cmd(int sock, sched_cmd **cmd)
 {
 	int i;
 	int rc = 0;
@@ -83,10 +83,16 @@ get_sched_cmd(int sock, sched_cmd *cmd)
 			goto err;
 	}
 
-	cmd->cmd = i;
-	cmd->jid = jobid;
-	cmd->from_sock = sock;
-	return 1;
+	if (*cmd == NULL) {
+		*cmd = new_sched_cmd();
+		if (*cmd == NULL)
+			goto err;
+
+		(*cmd)->cmd = i;
+		(*cmd)->jid = jobid;
+		(*cmd)->from_sock = sock;
+		return 1;
+	}
 
 err:
 	if (rc == DIS_EOF)
@@ -110,7 +116,7 @@ err:
  * @note this function uses different return code (-2) for EOF than get_sched_cmd() (which uses -1)
  */
 int
-get_sched_cmd_noblk(int sock, sched_cmd *cmd)
+get_sched_cmd_noblk(int sock, sched_cmd **cmd)
 {
 	struct timeval timeout;
 	fd_set fdset;

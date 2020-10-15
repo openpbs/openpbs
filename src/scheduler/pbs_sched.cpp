@@ -127,8 +127,8 @@ static void close_servers();
 static void reconnect_servers();
 static void sched_svr_init(void);
 static void connect_svrpool();
-static int compare_modify_sched_cmd(sched_cmd *cmd_in_que, sched_cmd *new_cmd);
-ds_queue * filter_sched_cmds(ds_queue *sched_cmds);
+static int compare_sched_cmd(const sched_cmd *cmd1, const sched_cmd *cmd2);
+ds_queue *filter_sched_cmds(ds_queue *sched_cmds);
 
 /**
  * @brief
@@ -339,7 +339,7 @@ read_config(char *file)
 void
 restart(int sig)
 {
-	sched_cmd cmd = {SCH_CONFIGURE, NULL, clust_secondary_sock};
+	const sched_cmd cmd = {SCH_CONFIGURE, NULL, clust_secondary_sock};
 
 	if (sig) {
 		log_close(1);
@@ -528,29 +528,6 @@ close_servers(void)
 }
 
 /**
- * @brief connect to all the servers configured and returns a sock to the whole server pool
- *
- * @return int
- * @retval -1  - failure
- * @return !-1 - success, and opened connection sock to the sever pool
- */
-static int
-connect_svrpool_helper()
-{
-	int sock = -1;
-
-	sock = pbs_connect(NULL);
-	if (sock < 0)
-		goto rerr;
-
-	return sock;
-
-rerr:
-	pbs_disconnect(sock);
-	return -1;
-}
-
-/**
  * @brief connect to all the servers configured. Also add secondary connections
  *              of individual servers secondary sd's to the poll list
  *
@@ -567,14 +544,14 @@ connect_svrpool()
 
 	while (clust_primary_sock < 0 || clust_secondary_sock < 0 || registered == 0) {
 		if (clust_primary_sock < 0) {
-			clust_primary_sock = connect_svrpool_helper();
+			clust_primary_sock = pbs_connect(NULL);
 			if (clust_primary_sock < 0) {
 				/* wait for 2s for not to burn too much CPU, and then retry connection */
 				sleep(2);
 				continue;
 			}
 		}
-		clust_secondary_sock = connect_svrpool_helper();
+		clust_secondary_sock = pbs_connect(NULL);
 		if (clust_secondary_sock < 0) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);
@@ -645,6 +622,7 @@ reconnect_servers()
  *        and add it into sched_cmds array
  *
  * @param[in]  sock   - secondary connection to server
+ * @param[in/out]  hascomd - puts 1 if there is a command
  *
  * @return int
  * @retval -2 - failure due to memory operation failed
@@ -653,21 +631,18 @@ reconnect_servers()
  * @return  1 - success, read atleast one command
  */
 static int
-read_sched_cmd(int sock)
+read_sched_cmd(int sock, int *hascmd)
 {
 	int rc = -1;
-	sched_cmd *cmd;
+	sched_cmd *cmd = NULL;
+	*hascmd = 0;
 
-	cmd = new_sched_cmd();
-	if (cmd == NULL)
-		return -2;
-
-	rc = get_sched_cmd(sock, cmd);
+	rc = get_sched_cmd(sock, &cmd);
 	if (rc != 1) {
 		free_sched_cmd(cmd);
 		return rc;
 	} else {
-		sched_cmd *cmd_prio;
+		sched_cmd *cmd_prio = NULL;
 		/*
 		 * There is possibility that server has sent
 		 * priority command after first non-priority command,
@@ -680,9 +655,8 @@ read_sched_cmd(int sock)
 		 * and if we get priority command then just ignore it
 		 * since we are not yet in middle of schedule cycle
 		 */
-		cmd_prio = new_sched_cmd();
 		if (cmd_prio != NULL) {
-			int rc_prio = get_sched_cmd_noblk(sock, cmd_prio);
+			int rc_prio = get_sched_cmd_noblk(sock, &cmd_prio);
 			free_sched_cmd(cmd_prio);
 			if (rc_prio == -2) {
 				free_sched_cmd(cmd);
@@ -690,10 +664,15 @@ read_sched_cmd(int sock)
 			}
 		}
 	}
-	if (!ds_enqueue(sched_cmds, cmd)) {
-		free_sched_cmd(cmd);
-		return -1;
+
+	if (cmd->cmd != SCH_SCHEDULE_RESTART_CYCLE)  {
+		if (!ds_enqueue(sched_cmds, cmd)) {
+			free_sched_cmd(cmd);
+			return -1;
+		} else
+			*hascmd = 1;
 	}
+
 	return rc;
 }
 
@@ -726,15 +705,13 @@ wait_for_cmds()
 		} else {
 			for (i = 0; i < nsocks; i++) {
 				int sock = EM_GET_FD(events, i);
-				err = read_sched_cmd(sock);
+				err = read_sched_cmd(sock, &hascmd);
 				if (err != 1) {
 					/* if memory error ignore, else reconnect server */
 					if (err != -2) {
 						reconnect_servers();
 					}
-				} else {
-					hascmd = 1;
-				}
+				} 
 			}
 		}
 	}
@@ -1177,50 +1154,26 @@ main(int argc, char *argv[])
 /**
  *
  * @brief
- *		Compares two sched commands i.e the command already present in queue vs a new command coming from 
- *		one of the servers and finds out whether they are identical or not. 
+ *		Compares two sched commands and tells whether they are duplicate or not.
  *
- *		Also if the command that is received already covers the functionality of a command that is already present in
- *		the queue then the command present in queue is replaced with the new command.
- *		Example #1: Suppose if SCH_SCHEDULE_AJOB is present in the queue but we also received SCH_SCHEDULE_NEW
- *		from another server then SCH_SCHEDULE_AJOB is replaced with SCH_SCHEDULE_NEW.
- *		Example #2: Suppose if SCH_SCHEDULE_AJOB is present in the queue but we also received SCH_SCHEDULE_AJOB
- *		received from another server we still treat these two commands as differnt because jobids are different.
- *
- *
- * @param[in]	cmd_in_que	-	command in Sched's cache
- * @param[in]	new_cmd		-	command from socket buffer
+ * @param[in]	cmd1	-	command1
+ * @param[in]	cmd2	-      command2
  *
  *
  * @return	int
- * @retval	1	-	if both command are duplicate
- * @reval	0	-	if not duplicate
+ * @retval	1	-	if both commands are duplicate
+ * @retval	0	-	if not duplicate
  *
  */
 static int
-compare_modify_sched_cmd(sched_cmd *cmd_in_que, sched_cmd *new_cmd)
+compare_sched_cmd(const sched_cmd *cmd1, const sched_cmd *cmd2)
 {
-	if (new_cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE )
-		return 1;
-	
-	if (new_cmd->cmd == SCH_SCHEDULE_AJOB &&
-		(cmd_in_que->cmd != SCH_SCHEDULE_AJOB && cmd_in_que->cmd != SCH_CONFIGURE &&
-		 cmd_in_que->cmd != SCH_RULESET && cmd_in_que->cmd != SCH_ERROR)) {
-		return 1;
-	} else if (cmd_in_que->cmd == SCH_SCHEDULE_AJOB &&
-		(new_cmd->cmd != SCH_SCHEDULE_AJOB && new_cmd->cmd != SCH_CONFIGURE &&
-		 new_cmd->cmd != SCH_RULESET && new_cmd->cmd != SCH_ERROR)) {
-		cmd_in_que->cmd = new_cmd->cmd;
-		cmd_in_que->jid = NULL;	
-		return 1;	
-	}
-
-	if (cmd_in_que && new_cmd) {
-		if (cmd_in_que->jid == NULL && new_cmd->jid == NULL) {
-			if (cmd_in_que->cmd == new_cmd->cmd)
+	if (cmd1 && cmd2) {
+		if (cmd1->jid == NULL && cmd2->jid == NULL) {
+			if (cmd1->cmd == cmd2->cmd)
 				return 1;
 		} else {
-			if (cmd_in_que->cmd == new_cmd->cmd && !strcmp(cmd_in_que->jid, new_cmd->jid))
+			if (cmd1->cmd == cmd2->cmd && !strcmp(cmd1->jid, cmd2->jid))
 				return 1;
 		}
 	}
@@ -1228,10 +1181,16 @@ compare_modify_sched_cmd(sched_cmd *cmd_in_que, sched_cmd *new_cmd)
 }
 
 /**
- * @brief Filters scheduler commands queue according to the criteria given in the function
- *              compare_modify_sched_cmd
+ * @brief sched_cmds_filtered is a resultant queue which consists of sched commands after discarding
+ *             the duplicate commands which is finally returned from this function.
  *
-* @param[in] sched_cmds	- scheduler command queue
+ * @param[in] sched_cmds	- scheduler command queue
+ * @note
+ * 1. Traverse sched_cmds queue
+ * 2. While we traverse we keep pushing the unique elements into the sched_cmds_filtered queue
+ * 3. To find out if a command is duplicate or not here we are making use of the function compare_sched_cmd()
+ * 4. Finally return the sched_cmds_filtered_queue which now only consists of unique sched commands.
+ *
  *
  * @return	ds_queue *
  * @retval	success	- returns the filtered queue
@@ -1241,9 +1200,6 @@ compare_modify_sched_cmd(sched_cmd *cmd_in_que, sched_cmd *new_cmd)
 ds_queue *
 filter_sched_cmds(ds_queue *sched_cmds)
 {
-	/* sched_cmds_filtered is a  resultant queue which consists of sched commands after discarding
-	 * the duplicate commands which is finally returned from this function.
-	 */
 	ds_queue *sched_cmds_filtered = new_ds_queue();
 	sched_cmd *tmp_cmd;
 	int cmds_front;
@@ -1255,16 +1211,16 @@ filter_sched_cmds(ds_queue *sched_cmds)
 
 	/* 1. Traverse sched_cmds queue
 	 * 2. While we traverse we keep pushing the unique elements into the sched_cmds_filtered queue
-	 * 3. To find out if a command is duplicate or not here we are making use of the function compare_modify_sched_cmd
-	 *    whose function header consists of more details along with the examples.
+	 * 3. To find out if a command is duplicate or not here we are making use of the function compare_sched_cmd()
 	 * 4. Finally return the sched_cmds_filtered_queue which now only consists of unique sched commands.
 	 */
 
 	cmds_front = sched_cmds->front;
 	cmds_rear = sched_cmds->rear;
 
+
 	tmp_cmd = sched_cmds->content_arr[cmds_front];
-	if (tmp_cmd == NULL) 
+	if (tmp_cmd == NULL)
 		goto error;
 
 	cmd_enq = new_sched_cmd();
@@ -1288,7 +1244,7 @@ filter_sched_cmds(ds_queue *sched_cmds)
 		int cmds_fltrd_front = sched_cmds_filtered->front;
 		int cmds_fltrd_rear = sched_cmds_filtered->rear;
 		for (; cmds_fltrd_front < cmds_fltrd_rear; cmds_fltrd_front++) {
-			if (compare_modify_sched_cmd(sched_cmds_filtered->content_arr[cmds_fltrd_front],
+			if (compare_sched_cmd(sched_cmds_filtered->content_arr[cmds_fltrd_front],
 				sched_cmds->content_arr[cmds_front]) == 1) {
 					no_enq = 1;
 					break;

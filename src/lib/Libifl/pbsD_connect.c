@@ -1068,7 +1068,8 @@ pbs_register_sched(const char *client_id)
 
 	conn_list = pthread_getspecific(psi_key);
 
-	for (iter_conns = conn_list; iter_conns != NULL; iter_conns = iter_conns->next) {
+	for (iter_conns = conn_list; (iter_conns != NULL) && (svr_conns_primary == NULL || svr_conns_secondary == NULL);
+		iter_conns = iter_conns->next) {
 		/* conn_list has secondary set first followed by primary set of connections */
 		if (svr_conns_secondary == NULL)
 			svr_conns_secondary = iter_conns->conn_arr;
