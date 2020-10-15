@@ -214,8 +214,6 @@ if __name__ == '__main__':
     force = False
     swigbin = 'swig'
     logconf = None
-    complete_options = {}
-    duplicate_options = []
 
     if 'PBS_CONF_FILE' in os.environ:
         config = os.environ['PBS_CONF_FILE']
@@ -254,16 +252,6 @@ if __name__ == '__main__':
             sys.stderr.write("Unrecognized option\n")
             usage()
             sys.exit(1)
-        if o in complete_options:
-            duplicate_options.append("option %s -> %s already used.\n" 
-                                     % (o, val))
-        complete_options[o] = val
-
-    if len(duplicate_options) > 0:
-        sys.stderr.write("Please use an option only once, exiting.\n")
-        for option in duplicate_options:
-            sys.stderr.write("    %s" % option)
-        sys.exit(1)
 
     cu = CliUtils()
 

@@ -368,9 +368,7 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(filename=outfile, filemode='w+', level=l,
                             format=fmt)
-    if not l and level:
-        logging.error('Invalid log level:%s', level)
-        sys.exit(1)
+
     if outfile is not None:
         stream_hdlr = logging.StreamHandler()
         stream_hdlr.setLevel(l)
@@ -512,14 +510,6 @@ if __name__ == '__main__':
     os.environ['NOSE_TESTMATCH'] = test_regex
     if nosedebug:
         os.environ['NOSE_VERBOSE'] = '7'
-        nose_logger = logging.getLogger('nose')
-        nose_logger.setLevel(l)
-        nose_logger.propagate = False
-        formatter = logging.Formatter('%(asctime)-16s %(levelname)-8s %(message)s')
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(l)
-        handler.setFormatter(formatter)
-        nose_logger.addHandler(handler)
         if outfile:
             os.environ['NOSE_DEBUG_LOG'] = outfile
     else:
