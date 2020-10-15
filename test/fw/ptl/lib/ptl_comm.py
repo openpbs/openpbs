@@ -110,9 +110,9 @@ class Comm(PBSService):
         :type launcher: str or list
         """
         if args is not None or launcher is not None:
-            return super(Comm, self)._start(inst=self, args=args,
-                                            cmd_map=self.conf_to_cmd_map,
-                                            launcher=launcher)
+            return super()._start(inst=self, args=args,
+                                  cmd_map=self.conf_to_cmd_map,
+                                  launcher=launcher)
         else:
             try:
                 rv = self.pi.start_comm()

@@ -207,8 +207,8 @@ class Scheduler(PBSService):
         if hostname is None:
             hostname = self.server.hostname
 
-        PBSService.__init__(self, hostname, pbsconf_file=pbsconf_file,
-                            snap=snap, snapmap=snapmap)
+        super().__init__(hostname, pbsconf_file=pbsconf_file,
+                         snap=snap, snapmap=snapmap)
         _m = ['scheduler ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -287,7 +287,7 @@ class Scheduler(PBSService):
         """
         initialise the scheduler object
         """
-        PBSService.initialise_service(self)
+        super().initialise_service()
         try:
             attrs = self.server.status(SCHED, level=logging.DEBUG,
                                        db_access=self.db_access,
@@ -322,8 +322,8 @@ class Scheduler(PBSService):
             return ret
 
         if args is not None or launcher is not None:
-            return super(Scheduler, self)._start(inst=self, args=args,
-                                                 launcher=launcher)
+            return super()._start(inst=self, args=args,
+                                  launcher=launcher)
         else:
             try:
                 rv = self.pi.start_sched()
@@ -345,12 +345,12 @@ class Scheduler(PBSService):
         if sig is not None:
             self.logger.info(self.logprefix + 'stopping Scheduler on host ' +
                              self.hostname)
-            return super(Scheduler, self)._stop(sig, inst=self)
+            return super()._stop(sig, inst=self)
         elif self.attributes['id'] != 'default':
             self.logger.info(self.logprefix + 'stopping MultiSched ' +
                              self.attributes['id'] + ' on host ' +
                              self.hostname)
-            return super(Scheduler, self)._stop(inst=self)
+            return super()._stop(inst=self)
         else:
             try:
                 self.pi.stop_sched()

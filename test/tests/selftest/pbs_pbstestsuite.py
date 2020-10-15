@@ -195,7 +195,7 @@ class TestPBSTestSuite(TestSelf):
 
         # Send another SIGSEGV to pbs_mom
         self.assertTrue(self.mom.isUp(self.mom))
-        self.mom.signal("-SEGV")
+        self.mom.signal(self.mom, "-SEGV")
         for _ in range(20):
             ret = self.mom.isUp(self.mom, max_attempts=1)
             if not ret:

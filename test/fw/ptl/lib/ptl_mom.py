@@ -116,8 +116,8 @@ class MoM(PBSService):
         if (len(snapmap) == 0) and (len(self.server.snapmap) != 0):
             snapmap = self.server.snapmap
 
-        PBSService.__init__(self, name, attrs, self.dflt_attributes,
-                            pbsconf_file, snap=snap, snapmap=snapmap)
+        super().__init__(name, attrs, self.dflt_attributes,
+                         pbsconf_file, snap=snap, snapmap=snapmap)
         _m = ['mom ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]

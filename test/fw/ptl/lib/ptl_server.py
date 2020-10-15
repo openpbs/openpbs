@@ -192,8 +192,8 @@ class Server(PBSService):
         self.pexpect_timeout = 15
         self.pexpect_sleep_time = .1
 
-        PBSService.__init__(self, name, attrs, defaults, pbsconf_file, snapmap,
-                            snap)
+        super().__init__(name, attrs, defaults, pbsconf_file, snapmap,
+                         snap)
         _m = ['server ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]

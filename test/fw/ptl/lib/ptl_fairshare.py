@@ -47,6 +47,7 @@ import sys
 import time
 
 from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_testusers import ROOT_USER
 
 
 class FairshareTree(object):
@@ -199,7 +200,7 @@ class FairshareTree(object):
         return self.__str__()
 
     def _dfs(self, node, dat):
-        if node.name != 'root':
+        if node.name != ROOT_USER:
             s = []
             if node.name is not None:
                 s += [node.name]

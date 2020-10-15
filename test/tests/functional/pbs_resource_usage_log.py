@@ -299,7 +299,7 @@ class TestResourceUsageLog(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         # kill -9 mom
-        self.mom.signal('-KILL')
+        self.mom.signal(self.mom, '-KILL')
 
         # Verify that nodes are reported to be down.
         self.server.expect(NODE, {ATTR_NODE_state: (MATCH_RE, 'down')},
