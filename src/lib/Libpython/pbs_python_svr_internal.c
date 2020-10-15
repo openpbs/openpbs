@@ -5094,7 +5094,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_joblist = NULL;
 	PyObject *py_resvlist = NULL;
 	PyObject *py_exec_vnode = NULL;
-	PyObject *py_vnode_class = NULL;
 	PyObject *py_vnode = NULL;
 	PyObject *py_vnode_o   = NULL;
 	PyObject *py_aoe	   = NULL;

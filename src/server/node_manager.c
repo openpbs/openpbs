@@ -1152,7 +1152,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	struct pbsnode *vnode_dup = NULL;
 
 	if (vnode == NULL) {
-		return;		
+		return NULL;
 	}
 
 	/* 
@@ -1233,7 +1233,6 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	struct batch_request *preq = NULL;
 	struct pbsnode *vnode_o = NULL;
 	char hook_msg[HOOK_MSG_SIZE] = {0};
-	size_t msg_len = sizeof(hook_msg);
 	char local_log_buffer[LOG_BUF_SIZE];
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 
@@ -1258,6 +1257,10 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	 * Create a duplicate of the vnode
 	 */
 	vnode_o = shallow_vnode_dup(pnode);
+	if (vnode_o) {
+		log_err(PBSE_INTERNAL, __func__, "shallow_vnode_dup failed");
+		goto fn_free_and_return;
+	}
 
 	/*
 	 * Apply specified state operation (to the vnode only)
@@ -1375,10 +1378,7 @@ fn_fire_event:
 
 fn_free_and_return:
 	shallow_vnode_free(vnode_o);
-	if (preq) {
-		free_br(preq);
-		preq = NULL;
-	}
+	free_br(preq);
 }
 
 /**

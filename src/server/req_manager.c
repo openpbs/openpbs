@@ -3131,7 +3131,6 @@ struct batch_request *preq;
 	int		n;
 	int		problem_cnt = 0;
 	char		*problem_names;
-	char hook_msg[HOOK_MSG_SIZE];
 	struct pbsnode  **problem_nodes = NULL;
 	svrattrl	*plist;
 	mom_svrinfo_t	*psvrmom;
