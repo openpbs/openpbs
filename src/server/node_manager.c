@@ -1129,7 +1129,6 @@ shallow_vnode_free(struct pbsnode *vnode)
 {
 	if (vnode) {
 		free(vnode);
-		vnode = NULL;
 	}
 }
 
@@ -1197,12 +1196,6 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->newobj = vnode->newobj;
 	for (i=0; i<(int)ND_ATR_LAST; i++) {
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
-		/* FIXME:
-		** if (i == ND_ATR_last_state_change_time) we might call (only for the last change time attr):
-		**    set_attr_svr(&(vnode_dup->nd_attr[i]), &node_attr_def[i], vnode->nd_attr[i].at_val.at_str)
-		** however the call was blowing up during my tests. Revisit/decide after merging w/master because
-		** in master set_attr_svr() has been replaced with set_attr_generic()
-		*/
 	}
 	return vnode_dup;
 }
@@ -1257,7 +1250,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	 * Create a duplicate of the vnode
 	 */
 	vnode_o = shallow_vnode_dup(pnode);
-	if (vnode_o) {
+	if (vnode_o == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "shallow_vnode_dup failed");
 		goto fn_free_and_return;
 	}
@@ -1286,7 +1279,6 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	preq->rq_ind.rq_modifyvnode.rq_vnode_o = vnode_o;
 	preq->rq_ind.rq_modifyvnode.rq_vnode = pnode;
 
-	/* FIXME: are we saving the complete set of needed data? */
 	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
 		vnode_o->nd_state, pnode->nd_state))
 
@@ -1305,17 +1297,13 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL, SET);
 	}
 
-	/* Write state change event to pbs log */
-	/* FIXME: verify we're using correct log settings */
-	/* Write the vnode state change event to pbs log */
-	/*
-	char *last_time_str = pnode->nd_attr[ND_ATR_last_state_change_time].at_val.at_str;
-	char *last_time_print = last_time_str ? last_time_str : "(unset)";*/
+	/* Write the vnode state change event to server log */
+	int last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
 		"set_vnode_state;vnode.state=0x%lx state_bits=0x%lx vnode_o.state=0x%lx "
 		"type=%d type_r=%s vnode.last_state_change_time=%d "
-		"vnode_o.last_state_change_time=testing", pnode->nd_state, state_bits, 
-		vnode_o->nd_state, type, get_vnode_state_op(type), time_int_val);
+		"vnode_o.last_state_change_time=%d", pnode->nd_state, state_bits, 
+		vnode_o->nd_state, type, get_vnode_state_op(type), time_int_val, last_time_int);
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pnode->nd_name, local_log_buffer);
 
