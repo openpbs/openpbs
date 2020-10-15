@@ -179,7 +179,7 @@ query_node_info_chunk(th_data_query_ninfo *data)
 	end = data->eidx;
 	num_nodes_chunk = end - start + 1;
 
-	if ((ninfo_arr = (node_info **) malloc((num_nodes_chunk + 1) * sizeof(node_info *))) == NULL) {
+	if ((ninfo_arr = static_cast<node_info **>(malloc((num_nodes_chunk + 1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		data->error = 1;
 		return;
@@ -225,7 +225,7 @@ alloc_tdata_nd_query(struct batch_status *nodes, server_info *sinfo, int sidx, i
 {
 	th_data_query_ninfo *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_query_ninfo));
+	tdata = static_cast<th_data_query_ninfo *>(malloc(sizeof(th_data_query_ninfo)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -269,7 +269,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	int th_err = 0;
 	node_info ***ninfo_arrs_tasks = NULL;
 	int tid;
-	char *nodeattrs[] = {
+	const char *nodeattrs[] = {
 			ATTR_NODE_state,
 			ATTR_NODE_Mom,
 			ATTR_NODE_Port,
@@ -306,7 +306,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			temp_attrl = new_attrl();
 			temp_attrl->name = strdup(nodeattrs[i]);
 			temp_attrl->next = attrib;
-			temp_attrl->value = "";
+			temp_attrl->value = const_cast<char *>("");
 			attrib = temp_attrl;
 		}
 	}
@@ -341,7 +341,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 		ninfo_arr[nidx] = NULL;
 	} else {
-		if ((ninfo_arr = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
+		if ((ninfo_arr = static_cast<node_info **>(malloc((num_nodes + 1) * sizeof(node_info *)))) == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			pbs_statfree(nodes);
 			return NULL;
@@ -356,7 +356,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 				th_err = 1;
 				break;
 			}
-			task = malloc(sizeof(th_task_info));
+			task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 			if (task == NULL) {
 				free(tdata);
 				log_err(errno, __func__, MEM_ERR_MSG);
@@ -369,7 +369,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 			queue_work_for_threads(task);
 		}
-		ninfo_arrs_tasks = malloc(num_tasks * sizeof(node_info **));
+		ninfo_arrs_tasks = static_cast<node_info ***>(malloc(num_tasks * sizeof(node_info **)));
 		if (ninfo_arrs_tasks == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			th_err = 1;
@@ -639,92 +639,92 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 node_info *
 new_node_info()
 {
-	node_info *new;
+	node_info *nnode;
 
-	if ((new = (node_info *) malloc(sizeof(node_info))) == NULL) {
+	if ((nnode = static_cast<node_info *>(malloc(sizeof(node_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
-	new->is_down = 0;
-	new->is_free = 0;
-	new->is_offline = 0;
-	new->is_unknown = 0;
-	new->is_exclusive = 0;
-	new->is_job_exclusive = 0;
-	new->is_resv_exclusive = 0;
-	new->is_sharing = 0;
-	new->is_pbsnode = 0;
-	new->is_busy = 0;
-	new->is_job_busy = 0;
-	new->is_stale = 0;
-	new->is_maintenance = 0;
-	new->is_provisioning = 0;
-	new->is_sleeping = 0;
-	new->is_multivnoded = 0;
-	new->has_ghost_job = 0;
+	nnode->is_down = 0;
+	nnode->is_free = 0;
+	nnode->is_offline = 0;
+	nnode->is_unknown = 0;
+	nnode->is_exclusive = 0;
+	nnode->is_job_exclusive = 0;
+	nnode->is_resv_exclusive = 0;
+	nnode->is_sharing = 0;
+	nnode->is_pbsnode = 0;
+	nnode->is_busy = 0;
+	nnode->is_job_busy = 0;
+	nnode->is_stale = 0;
+	nnode->is_maintenance = 0;
+	nnode->is_provisioning = 0;
+	nnode->is_sleeping = 0;
+	nnode->is_multivnoded = 0;
+	nnode->has_ghost_job = 0;
 
-	new->lic_lock = 0;
+	nnode->lic_lock = 0;
 
-	new->has_hard_limit = 0;
-	new->no_multinode_jobs = 0;
-	new->resv_enable = 0;
-	new->provision_enable = 0;
-	new->power_provisioning = 0;
+	nnode->has_hard_limit = 0;
+	nnode->no_multinode_jobs = 0;
+	nnode->resv_enable = 0;
+	nnode->provision_enable = 0;
+	nnode->power_provisioning = 0;
 
-	new->sharing = VNS_DFLT_SHARED;
+	nnode->sharing = VNS_DFLT_SHARED;
 
-	new->num_jobs = 0;
-	new->num_run_resv = 0;
-	new->num_susp_jobs = 0;
+	nnode->num_jobs = 0;
+	nnode->num_run_resv = 0;
+	nnode->num_susp_jobs = 0;
 
-	new->priority = 0;
+	nnode->priority = 0;
 
-	new->pcpus = 0;
+	nnode->pcpus = 0;
 
-	new->rank = 0;
+	nnode->rank = 0;
 
-	new->nodesig_ind = -1;
+	nnode->nodesig_ind = -1;
 
-	new->name = NULL;
-	new->mom = NULL;
-	new->jobs = NULL;
-	new->resvs = NULL;
-	new->job_arr = NULL;
-	new->run_resvs_arr = NULL;
-	new->res = NULL;
-	new->server = NULL;
-	new->queue_name = NULL;
-	new->group_counts = NULL;
-	new->user_counts = NULL;
+	nnode->name = NULL;
+	nnode->mom = NULL;
+	nnode->jobs = NULL;
+	nnode->resvs = NULL;
+	nnode->job_arr = NULL;
+	nnode->run_resvs_arr = NULL;
+	nnode->res = NULL;
+	nnode->server = NULL;
+	nnode->queue_name = NULL;
+	nnode->group_counts = NULL;
+	nnode->user_counts = NULL;
 
-	new->max_running = SCHD_INFINITY;
-	new->max_user_run = SCHD_INFINITY;
-	new->max_group_run = SCHD_INFINITY;
+	nnode->max_running = SCHD_INFINITY;
+	nnode->max_user_run = SCHD_INFINITY;
+	nnode->max_group_run = SCHD_INFINITY;
 
-	new->current_aoe = NULL;
-	new->current_eoe = NULL;
-	new->nodesig = NULL;
-	new->last_state_change_time = 0;
-	new->last_used_time = 0;
+	nnode->current_aoe = NULL;
+	nnode->current_eoe = NULL;
+	nnode->nodesig = NULL;
+	nnode->last_state_change_time = 0;
+	nnode->last_used_time = 0;
 
-	new->svr_node = NULL;
-	new->hostset = NULL;
+	nnode->svr_node = NULL;
+	nnode->hostset = NULL;
 
-	new->node_events = NULL;
-	new->bucket_ind = -1;
-	new->node_ind = -1;
+	nnode->node_events = NULL;
+	nnode->bucket_ind = -1;
+	nnode->node_ind = -1;
 
-	new->nscr = NSCR_NONE;
+	nnode->nscr = NSCR_NONE;
 
 #ifdef NAS
 	/* localmod 034 */
-	new->sh_type = 0;
-	new->sh_cls = 0;
+	nnode->sh_type = 0;
+	nnode->sh_cls = 0;
 #endif
-	new->partition = NULL;
-	new->np_arr = NULL;
-	return new;
+	nnode->partition = NULL;
+	nnode->np_arr = NULL;
+	return nnode;
 }
 
 /**
@@ -767,7 +767,7 @@ alloc_tdata_free_nodes(node_info **ninfo_arr, int sidx, int eidx)
 {
 	th_data_free_ninfo *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_free_ninfo));
+	tdata = static_cast<th_data_free_ninfo *>(malloc(sizeof(th_data_free_ninfo)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -825,7 +825,7 @@ free_nodes(node_info **ninfo_arr)
 		if (tdata == NULL)
 			break;
 
-		task = malloc(sizeof(th_task_info));
+		task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 		if (task == NULL) {
 			free(tdata);
 			log_err(errno, __func__, MEM_ERR_MSG);
@@ -843,8 +843,8 @@ free_nodes(node_info **ninfo_arr)
 		while (ds_queue_is_empty(result_queue))
 			pthread_cond_wait(&result_cond, &result_lock);
 		while (!ds_queue_is_empty(result_queue)) {
-			task = (th_task_info *) ds_dequeue(result_queue);
-			tdata = task->thread_data;
+			task = static_cast<th_task_info *>(ds_dequeue(result_queue));
+			tdata = static_cast<th_data_free_ninfo *>(task->thread_data);
 			free(tdata);
 			free(task);
 			i++;
@@ -957,7 +957,7 @@ set_node_type(node_info *ninfo, char *ntype)
  * @retval	1	: on failure
  */
 int
-set_node_info_state(node_info *ninfo, char *state)
+set_node_info_state(node_info *ninfo, const char *state)
 {
 	char statebuf[256];			/* used to strtok() node states */
 	char *tok;				/* used with strtok() */
@@ -1007,7 +1007,7 @@ set_node_info_state(node_info *ninfo, char *state)
  * @retval	1	: on failure
  */
 int
-remove_node_state(node_info *ninfo, char *state)
+remove_node_state(node_info *ninfo, const char *state)
 {
 	if (ninfo == NULL)
 		return 1;
@@ -1076,7 +1076,7 @@ remove_node_state(node_info *ninfo, char *state)
  * @retval	1	: on failure
  */
 int
-add_node_state(node_info *ninfo, char *state)
+add_node_state(node_info *ninfo, const char *state)
 {
 	int set_free = 0;
 
@@ -1160,7 +1160,7 @@ node_filter(node_info **nodes, int size,
 	if (size < 0)
 		size = count_array(nodes);
 
-	if ((new_nodes = (node_info **) malloc((size + 1) * sizeof(node_info *))) == NULL) {
+	if ((new_nodes = static_cast<node_info **>(malloc((size + 1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1174,7 +1174,7 @@ node_filter(node_info **nodes, int size,
 	new_nodes[j] = NULL;
 
 	if (!(flags & FILTER_FULL)) {
-		if ((new_nodes_tmp = (node_info **) realloc(new_nodes, (j+1) * sizeof(node_info *))) == NULL)
+		if ((new_nodes_tmp = static_cast<node_info **>(realloc(new_nodes, (j+1) * sizeof(node_info *)))) == NULL)
 			log_err(errno, __func__, MEM_ERR_MSG);
 		else
 			new_nodes = new_nodes_tmp;
@@ -1295,7 +1295,7 @@ alloc_tdata_dup_nodes(unsigned int flags, server_info *nsinfo, node_info **onode
 {
 	th_data_dup_nd_info *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_dup_nd_info));
+	tdata = static_cast<th_data_dup_nd_info *>(malloc(sizeof(th_data_dup_nd_info)));
 	if (tdata == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -1347,7 +1347,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 
 	num_nodes = thread_node_ct_left = count_array(onodes);
 
-	if ((nnodes = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
+	if ((nnodes = static_cast<node_info **>(malloc((num_nodes + 1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1376,7 +1376,7 @@ dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags)
 				th_err = 1;
 				break;
 			}
-			task = malloc(sizeof(th_task_info));
+			task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 			if (task == NULL) {
 				free(tdata);
 				th_err = 1;
@@ -1615,7 +1615,7 @@ copy_node_ptr_array(node_info  **oarr, node_info  **narr)
 	for (i = 0; oarr[i] != NULL; i++)
 		;
 
-	if ((ninfo_arr = malloc(sizeof(node_info *) * (i + 1))) == NULL)
+	if ((ninfo_arr = static_cast<node_info **>(malloc(sizeof(node_info *) * (i + 1)))) == NULL)
 		return NULL;
 
 	for (i = 0; oarr[i] != NULL; i++) {
@@ -1692,8 +1692,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 		return 0;
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		if ((ninfo_arr[i]->job_arr =
-			malloc((size + 1) * sizeof(resource_resv *))) == NULL)
+		if ((ninfo_arr[i]->job_arr = static_cast<resource_resv **>(malloc((size + 1) * sizeof(resource_resv *)))) == NULL)
 		{
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
@@ -1768,9 +1767,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	}
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		temp_ninfo_arr = realloc(
-			ninfo_arr[i]->job_arr,
-			(ninfo_arr[i]->num_jobs + 1) * sizeof(resource_resv *));
+		temp_ninfo_arr = static_cast<resource_resv **>(realloc(ninfo_arr[i]->job_arr, (ninfo_arr[i]->num_jobs + 1) * sizeof(resource_resv *)));
 		if (temp_ninfo_arr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return 0;
@@ -1820,7 +1817,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
  *
  */
 void
-update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
+update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state)
 {
 	resource_req *resreq;
 	schd_resource *ncpusres = NULL;
@@ -1978,7 +1975,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
  *
  */
 void
-update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
+update_node_on_end(node_info *ninfo, resource_resv *resresv, const char *job_state)
 {
 	resource_req *resreq = NULL;
 	schd_resource *res = NULL;
@@ -2094,7 +2091,7 @@ new_nspec()
 {
 	nspec *ns;
 
-	if ((ns = (nspec *) malloc(sizeof(nspec))) == NULL) {
+	if ((ns = static_cast<nspec *>(malloc(sizeof(nspec)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -2191,7 +2188,7 @@ dup_nspecs(nspec **onspecs, node_info **ninfo_arr, selspec *sel)
 	for (num_ns = 0; onspecs[num_ns] != NULL; num_ns++)
 		;
 
-	if ((nnspecs = (nspec **) malloc(sizeof(nspec *) * (num_ns + 1))) == NULL)
+	if ((nnspecs = static_cast<nspec **>(malloc(sizeof(nspec *) * (num_ns + 1)))) == NULL)
 		return NULL;
 
 	for (i = 0; onspecs[i] != NULL; i++)
@@ -2283,7 +2280,7 @@ find_nspec(nspec **nspec_arr, node_info *ninfo)
  *
  */
 nspec *
-find_nspec_by_rank(nspec **nspec_arr, unsigned int rank)
+find_nspec_by_rank(nspec **nspec_arr, int rank)
 {
 	int i;
 
@@ -2375,7 +2372,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	else
 		num_nspecs = spec->total_chunks;
 
-	if ((*nspec_arr = (nspec **) calloc(num_nspecs + 1, sizeof(nspec*))) == NULL) {
+	if ((*nspec_arr = static_cast<nspec **>(calloc(num_nspecs + 1, sizeof(nspec*)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
@@ -2401,7 +2398,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			free_nspecs(*nspec_arr);
 			*nspec_arr = NULL;
 		} else if (resresv->server->has_multi_vnode) {
-			tmp = realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *));
+			tmp = static_cast<nspec **>(realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *)));
 			if (tmp != NULL)
 				*nspec_arr = tmp;
 		}
@@ -2488,7 +2485,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		free_nspecs(*nspec_arr);
 		*nspec_arr = NULL;
 	} else if (resresv->server->has_multi_vnode) {
-		tmp = realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *));
+		tmp = static_cast<nspec **>(realloc(*nspec_arr, (count_array(*nspec_arr) + 1) * sizeof(nspec *)));
 		if (tmp != NULL)
 			*nspec_arr = tmp;
 	}
@@ -2526,7 +2523,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 {
 	np_cache		*npc = NULL;
 	node_partition		**hostsets = NULL;
-	char			*host_arr[2] = {"host", NULL};
+	const char		*host_arr[2] = {"host", NULL};
 	int			i = 0;
 	int			k = 0;
 	int			tot = 0;
@@ -4128,7 +4125,7 @@ parse_selspec(char *select_spec)
 	}
 
 	/* num_plus + 2: 1 for the initial chunk 1 for the NULL ptr */
-	if ((spec->chunks = calloc(num_plus + 2, sizeof(chunk *))) == NULL) {
+	if ((spec->chunks = static_cast<chunk **>(calloc(num_plus + 2, sizeof(chunk *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_selspec(spec);
 	}
@@ -4301,7 +4298,7 @@ create_execvnode(nspec **ns)
 		return NULL;
 
 	if (execvnode == NULL) {
-		execvnode = malloc(INIT_ARR_SIZE + 1);
+		execvnode = static_cast<char *>(malloc(INIT_ARR_SIZE + 1));
 
 		if (execvnode == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
@@ -4310,7 +4307,7 @@ create_execvnode(nspec **ns)
 		execvnode_size = INIT_ARR_SIZE;
 	}
 	if (buf == NULL) {
-		buf = malloc(INIT_ARR_SIZE + 1);
+		buf = static_cast<char *>(malloc(INIT_ARR_SIZE + 1));
 		if (buf == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
@@ -4430,7 +4427,7 @@ parse_execvnode(char *execvnode, server_info *sinfo, selspec *sel)
 	if (sel != NULL && num_paren != sel->total_chunks)
 		sel = NULL;
 
-	if ((nspec_arr = (nspec **) calloc(num_chunk + 1, sizeof(nspec *))) == NULL) {
+	if ((nspec_arr = static_cast<nspec **>(calloc(num_chunk + 1, sizeof(nspec *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -4614,7 +4611,7 @@ combine_nspec_array(nspec **nspec_arr)
 		return NULL;
 
 	cnt = count_array(nspec_arr);
-	new_nspec_arr = calloc(cnt + 1, sizeof(nspec *));
+	new_nspec_arr = static_cast<nspec **>(calloc(cnt + 1, sizeof(nspec *)));
 	if (new_nspec_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -4692,7 +4689,7 @@ create_node_array_from_nspec(nspec **nspec_arr)
 
 	count = count_array(nspec_arr);
 
-	if ((ninfo_arr = calloc(count + 1, sizeof(node_info *))) == NULL) {
+	if ((ninfo_arr = static_cast<node_info **>(calloc(count + 1, sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -4760,7 +4757,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	nsize = count_array(nodes);
 
 	if ((node_array_size < nsize + 1) || node_array == NULL) {
-		tmparr = realloc(node_array, sizeof(node_info *) * (nsize + 1));
+		tmparr = static_cast<node_info **>(realloc(node_array, sizeof(node_info *) * (nsize + 1)));
 		if (tmparr == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
@@ -4802,7 +4799,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 
 		case SMP_ROUND_ROBIN:
 
-			if ((tmparr = calloc(node_array_size, sizeof(node_info *))) == NULL) {
+			if ((tmparr = static_cast<node_info **>(calloc(node_array_size, sizeof(node_info *)))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				return NULL;
 			}
@@ -5348,7 +5345,7 @@ int
 node_down_event(node_info *node, void *arg)
 {
 	int i;
-	char *job_state;
+	const char *job_state;
 	server_info *sinfo;
 
 	if (node == NULL)
@@ -5424,7 +5421,7 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 
 	cnt = count_array(strnodes);
 
-	if ((ninfo_arr = malloc((cnt+1) * sizeof(node_info *))) == NULL) {
+	if ((ninfo_arr = static_cast<node_info **>(malloc((cnt+1) * sizeof(node_info *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -5758,7 +5755,7 @@ alloc_tdata_nd_eligible(place *pl, resource_resv *resresv, node_info **ninfo_arr
 {
 	th_data_nd_eligible *tdata = NULL;
 
-	tdata = malloc(sizeof(th_data_nd_eligible));
+	tdata = static_cast<th_data_nd_eligible *>(malloc(sizeof(th_data_nd_eligible)));
 	if (tdata == NULL)  {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -5824,7 +5821,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 			if (tdata == NULL)
 				break;
 
-			task = malloc(sizeof(th_task_info));
+			task = static_cast<th_task_info *>(malloc(sizeof(th_task_info)));
 			if (task == NULL) {
 				free(tdata);
 				log_err(errno, __func__, MEM_ERR_MSG);

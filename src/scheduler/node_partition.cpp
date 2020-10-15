@@ -105,7 +105,7 @@ new_node_partition()
 {
 	node_partition *np;
 
-	if ((np = malloc(sizeof(node_partition))) == NULL) {
+	if ((np = static_cast<node_partition *>(malloc(sizeof(node_partition)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -204,7 +204,7 @@ dup_node_partition_array(node_partition **onp_arr, server_info *nsinfo)
 	for (i = 0; onp_arr[i] != NULL; i++)
 		;
 
-	if ((nnp_arr = malloc((i+1) * sizeof(node_partition *))) == NULL) {
+	if ((nnp_arr = static_cast<node_partition **>(malloc((i+1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -290,7 +290,7 @@ copy_node_partition_ptr_array(node_partition **onp_arr, node_partition **new_nps
 		return NULL;
 
 	cnt = count_array(onp_arr);
-	if ((nnp_arr = malloc((cnt + 1) * sizeof(node_partition *))) == NULL) {
+	if ((nnp_arr = static_cast<node_partition **>(malloc((cnt + 1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -378,7 +378,7 @@ find_node_partition_by_rank(node_partition **np_arr, int rank)
  *
  */
 node_partition **
-create_node_partitions(status *policy, node_info **nodes, char **resnames, unsigned int flags, int *num_parts)
+create_node_partitions(status *policy, node_info **nodes, const char * const *resnames, unsigned int flags, int *num_parts)
 {
 	node_partition **np_arr;
 	node_partition *np;
@@ -402,7 +402,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 	int np_i;		/* index into node partition array we are creating */
 
 	schd_resource unset_res;
-	char *unsetarr[] = {"\"\"", NULL};
+	const char *unsetarr[] = {"\"\"", NULL};
 
 	resdef *def;
 
@@ -416,8 +416,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 
 	num_nodes = count_array(nodes);
 
-	if ((np_arr = (node_partition **)
-		malloc((num_nodes + 1) * sizeof(node_partition *))) == NULL) {
+	if ((np_arr = static_cast<node_partition **>(malloc((num_nodes + 1) * sizeof(node_partition *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -467,14 +466,13 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 					np = find_node_partition(np_arr, str);
 					if (np == NULL) {
 						if (np_i >= np_arr_size) {
-							tmp_arr = realloc(np_arr,
-								(np_arr_size * 2 + 1) * sizeof(node_partition *));
+							tmp_arr = static_cast<node_partition **>(realloc(np_arr,
+								(np_arr_size * 2 + 1) * sizeof(node_partition *)));
 							if (tmp_arr == NULL) {
 								log_err(errno, __func__, MEM_ERR_MSG);
 								free_node_partition_array(np_arr);
 								if (free_str == 1)
 									free(str);
-
 								return NULL;
 							}
 							np_arr = tmp_arr;
@@ -540,7 +538,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 		hostres = NULL;
 
 		np_arr[np_i]->ninfo_arr =
-			malloc((np_arr[np_i]->tot_nodes + 1) * sizeof(node_info *));
+			static_cast<node_info **>(malloc((np_arr[np_i]->tot_nodes + 1) * sizeof(node_info *)));
 
 		if (np_arr[np_i]->ninfo_arr == NULL) {
 			free_node_partition_array(np_arr);
@@ -576,7 +574,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 						}
 					}
 					if (!(NP_NO_ADD_NP_ARR & flags)) {
-						tmp_arr = add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]);
+						tmp_arr = static_cast<node_partition **>(add_ptr_to_array(nodes[node_i]->np_arr, np_arr[np_i]));
 						if (tmp_arr == NULL) {
 							free_node_partition_array(np_arr);
 							return NULL;
@@ -782,7 +780,7 @@ new_np_cache(void)
 {
 	np_cache *npc;
 
-	if ((npc = malloc(sizeof(np_cache))) == NULL) {
+	if ((npc = static_cast<np_cache *>(malloc(sizeof(np_cache)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -859,7 +857,7 @@ free_np_cache(np_cache *npc)
  */
 np_cache *
 find_np_cache(np_cache **npc_arr,
-	char **resnames, node_info **ninfo_arr)
+	const char * const *resnames, node_info **ninfo_arr)
 {
 	int i;
 
@@ -898,7 +896,7 @@ find_np_cache(np_cache **npc_arr,
  */
 np_cache *
 find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
-	char **resnames, node_info **ninfo_arr,
+	const char * const *resnames, node_info **ninfo_arr,
 	int (*sort_func)(const void *, const void *))
 {
 	node_partition **nodepart = NULL;
@@ -926,7 +924,7 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
 			npc = new_np_cache();
 			if (npc != NULL) {
 				npc->ninfo_arr = ninfo_arr;
-				npc->resnames = dup_string_arr(resnames);
+				npc->resnames = dup_string_arr(const_cast<char **>(resnames));
 				npc->num_parts = num_parts;
 				npc->nodepart = nodepart;
 				if (npc->resnames == NULL || add_np_cache(pnpc_arr, npc) ==0) {
@@ -976,7 +974,7 @@ add_np_cache(np_cache ***npc_arr, np_cache *npc)
 	ct = count_array(cur_cache);
 
 	/* ct+2: 1 for new element 1 for NULL ptr */
-	new_cache = realloc(cur_cache, (ct+2) * sizeof(np_cache *));
+	new_cache = static_cast<np_cache **>(realloc(cur_cache, (ct+2) * sizeof(np_cache *)));
 
 	if (new_cache == NULL)
 		return 0;
@@ -1057,7 +1055,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	 * we know we need at least as many nodes as requested chunks */
 	if (resresv->place_spec->scatter || resresv->place_spec->vscatter) {
 		int nodect;
-		enum sched_error error_code;
+		enum sched_error_code error_code;
 		enum schd_err_status status_code;
 		if ( (flags & COMPARE_TOTAL) ) {
 			nodect = np->tot_nodes;
@@ -1156,7 +1154,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
  * @NULL	: on error
  */
 node_partition *
-create_specific_nodepart(status *policy, char *name, node_info **nodes, int flags)
+create_specific_nodepart(status *policy, const char *name, node_info **nodes, int flags)
 {
 	node_partition *np;
 	int i, j;
@@ -1177,7 +1175,7 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes, int flag
 	np->res_val = string_dup("none");
 	np->rank = get_sched_rank();
 
-	np->ninfo_arr = malloc((cnt + 1) * sizeof(node_info*));
+	np->ninfo_arr = static_cast<node_info **>(malloc((cnt + 1) * sizeof(node_info*)));
 	if (np->ninfo_arr == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		free_node_partition(np);
@@ -1188,7 +1186,7 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes, int flag
 	for (i = 0; i < cnt; i++) {
 		if (!nodes[i]->is_stale) {
 			if (!(flags & NP_NO_ADD_NP_ARR)) {
-				tmp_arr = add_ptr_to_array(nodes[i]->np_arr, np);
+				tmp_arr = static_cast<node_partition **>(add_ptr_to_array(nodes[i]->np_arr, np));
 				if (tmp_arr == NULL) {
 					free_node_partition(np);
 					return NULL;
@@ -1232,13 +1230,13 @@ create_placement_sets(status *policy, server_info *sinfo)
 {
 	int i;
 	int is_success = 1;
-	char *resstr[] = {"host", NULL};
+	const char *resstr[] = {"host", NULL};
 	int num;
 
 	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes, NO_FLAGS);
 	if (sinfo->has_multi_vnode) {
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
-			resstr, sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
+			resstr, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST, &num);
 		if (sinfo->hostsets != NULL) {
 			sinfo->num_hostsets = num;
 			for (i = 0; sinfo->nodes[i] != NULL; i++) {
@@ -1268,7 +1266,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
 		sinfo->nodepart = create_node_partitions(policy, sinfo->unassoc_nodes,
 			sinfo->node_group_key,
-			sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
+			sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
 			&sinfo->num_parts);
 
 		if (sinfo->nodepart != NULL) {
@@ -1302,7 +1300,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 				ngkey = sinfo->node_group_key;
 
 			qinfo->nodepart = create_node_partitions(policy, ngroup_nodes,
-				ngkey, sc_attrs.only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
+				ngkey, sc_attrs.only_explicit_psets ? NP_NONE : NP_CREATE_REST,
 				&(qinfo->num_parts));
 			if (qinfo->nodepart != NULL) {
 				qsort(qinfo->nodepart, qinfo->num_parts,

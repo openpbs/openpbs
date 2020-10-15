@@ -41,6 +41,10 @@
 #ifndef _RANGE_H
 #define _RANGE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Control whether to consider stepping or not
  */
@@ -138,5 +142,8 @@ extern int parse_subjob_index(char *, char **, int *, int *, int *, int *);
  */
 char *range_to_str(range *r);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RANGE_H */

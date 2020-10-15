@@ -56,7 +56,7 @@ enum limtype {
  *
  *	@par MT-safe:	No
  */
-extern void	*lim_alloc_liminfo(void);
+extern void *lim_alloc_liminfo(void);
 
 /**	@fn void *lim_dup_liminfo(void *p)
  *	@brief	duplicate limit information allocated by lim_alloc_liminfo()
@@ -67,7 +67,7 @@ extern void	*lim_alloc_liminfo(void);
  *
  *	@par MT-safe:	No
  */
-extern void	*lim_dup_liminfo(void *);
+extern void *lim_dup_liminfo(void *);
 
 /**	@fn void lim_free_liminfo(void *p)
  *	@brief	free limit information allocated by lim_alloc_liminfo()
@@ -76,7 +76,7 @@ extern void	*lim_dup_liminfo(void *);
  *
  *	@par MT-safe:	No
  */
-extern void	lim_free_liminfo(void *);
+extern void lim_free_liminfo(void *);
 
 /**	@fn int has_hardlimits(void *p)
  *	@brief	are any hard limits set?
@@ -88,7 +88,7 @@ extern void	lim_free_liminfo(void *);
  *
  *	@par MT-safe:	No
  */
-extern int	has_hardlimits(void *);
+extern int has_hardlimits(void *);
 
 /**	@fn int has_softlimits(void *p)
  *	@brief	are any soft limits set?
@@ -100,7 +100,7 @@ extern int	has_hardlimits(void *);
  *
  *	@par MT-safe:	No
  */
-extern int	has_softlimits(void *);
+extern int has_softlimits(void *);
 
 /**	@fn int is_reslimattr(const struct attrl *a)
  *	@brief	is the given attribute a new-style resource limit attribute?
@@ -112,7 +112,7 @@ extern int	has_softlimits(void *);
  *
  *	@par MT-safe:	Yes
  */
-extern int	is_reslimattr(const struct attrl *);
+extern int is_reslimattr(const struct attrl *);
 
 /**	@fn int is_runlimattr(const struct attrl *a)
  *	@brief	is the given attribute a new-style run limit attribute?
@@ -124,7 +124,7 @@ extern int	is_reslimattr(const struct attrl *);
  *
  *	@par MT-safe:	Yes
  */
-extern int	is_runlimattr(const struct attrl *);
+extern int is_runlimattr(const struct attrl *);
 
 /**	@fn int is_oldlimattr(const struct attrl *a)
  *	@brief	is the given attribute an old-style limit attribute?
@@ -136,7 +136,7 @@ extern int	is_runlimattr(const struct attrl *);
  *
  *	@par MT-safe:	Yes
  */
-extern int	is_oldlimattr(const struct attrl *);
+extern int is_oldlimattr(const struct attrl *);
 
 /**
  * @brief
@@ -149,7 +149,7 @@ extern int	is_oldlimattr(const struct attrl *);
  * @retval NULL		: attribute value is not an old limit attribute
  *
  */
-extern char *	convert_oldlim_to_new(const struct attrl *a);
+extern const char * convert_oldlim_to_new(const struct attrl *a);
 
 /**	@fn int lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
  *	@brief set resource or run-time limits
@@ -167,7 +167,7 @@ extern char *	convert_oldlim_to_new(const struct attrl *a);
  *
  *	@par MT-safe:	No
  */
-extern int	lim_setlimits(const struct attrl *, enum limtype, void *);
+extern int lim_setlimits(const struct attrl *, enum limtype, void *);
 
 /**	@fn int check_limits(server_info *si, queue_info *qi, resource_resv *rr,
  *                          schd_error *err, int mode)
@@ -188,7 +188,7 @@ extern int	lim_setlimits(const struct attrl *, enum limtype, void *);
  *
  *	@par MT-safe:	No
  */
-extern int	check_limits(server_info *, queue_info *, resource_resv *,
+extern int check_limits(server_info *, queue_info *, resource_resv *,
 	schd_error *, unsigned int);
 
 /**	@fn int check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
@@ -208,7 +208,7 @@ extern int	check_limits(server_info *, queue_info *, resource_resv *,
  *
  *	@see		#preempt in constant.h
  */
-extern int	check_soft_limits(server_info *, queue_info *, resource_resv *);
+extern int check_soft_limits(server_info *, queue_info *, resource_resv *);
 
 /**
  *      @fn void clear_limres()
@@ -216,7 +216,7 @@ extern int	check_soft_limits(server_info *, queue_info *, resource_resv *);
  *             resource definitions are updated.
  *      @return void
  */
-extern void 	clear_limres(void);
+extern void clear_limres(void);
 
 /**
  * 	@fn schd_resource query_limres()
@@ -240,7 +240,7 @@ void update_soft_limits(server_info *, queue_info *, resource_resv *);
  *		the counts structure
  * @return	int
  */
-int find_preempt_bits(counts *, char *, resource_resv *);
+int find_preempt_bits(counts *, const char *, resource_resv *);
 #ifdef	__cplusplus
 }
 #endif

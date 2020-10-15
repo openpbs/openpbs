@@ -65,7 +65,7 @@ void total_states(state_count *sc1, state_count *sc2);
  *                        based on a job state letter
  *                        it increment, pass in 1, to decrement pass in -1
  */
-void state_count_add(state_count *sc, char *job_state, int amount);
+void state_count_add(state_count *sc, const char *job_state, int amount);
 #ifdef	__cplusplus
 }
 #endif

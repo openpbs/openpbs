@@ -409,7 +409,9 @@ enum accrue_types {
 #if HAVE__BOOL
 #include "stdbool.h"
 #else
+#ifndef __cplusplus
 typedef enum { false, true } bool;
+#endif
 #endif
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs

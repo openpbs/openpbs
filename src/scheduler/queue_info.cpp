@@ -117,7 +117,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	queue_info *qinfo;
 
 	/* return code */
-	int ret;
+	sched_error_code ret;
 
 	/* buffer to store comment message */
 	char comment[MAX_LOG_SIZE];
@@ -137,7 +137,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	int err = 0;			/* an error has occurred */
 
 	/* used for pbs_geterrmsg() */
-	char *errmsg;
+	const char *errmsg;
 
 	schd_error *sch_err;
 
@@ -167,7 +167,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		cur_queue = cur_queue->next;
 	}
 
-	if ((qinfo_arr = (queue_info **) malloc(sizeof(queue_info *) * (num_queues + 1))) == NULL) {
+	if ((qinfo_arr = static_cast<queue_info **>(malloc(sizeof(queue_info *) * (num_queues + 1)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		pbs_statfree(queues);
 		free_schd_error(sch_err);
@@ -420,7 +420,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				qinfo->has_all_limit = 1;
 		}
 		else if (is_oldlimattr(attrp)) {
-			char *limname = convert_oldlim_to_new(attrp);
+			const char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, qinfo->liminfo);
 
 			if(strstr(limname, "u:") != NULL)
@@ -531,7 +531,7 @@ new_queue_info(int limallocflag)
 {
 	queue_info *qinfo;
 
-	if ((qinfo = malloc(sizeof(queue_info))) == NULL) {
+	if ((qinfo = static_cast<queue_info *>(malloc(sizeof(queue_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -734,7 +734,7 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
  */
 void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
-	char *job_state)
+	const char *job_state)
 {
 	schd_resource *res = NULL;			/* resource from queue */
 	resource_req *req = NULL;			/* resource request from job */
@@ -875,8 +875,8 @@ dup_queues(queue_info **oqueues, server_info *nsinfo)
 	if (oqueues == NULL)
 		return NULL;
 
-	if ((new_queues = (queue_info **) malloc(
-		(nsinfo->num_queues + 1) * sizeof(queue_info*))) == NULL) {
+	if ((new_queues = static_cast<queue_info **>(malloc(
+		(nsinfo->num_queues + 1) * sizeof(queue_info*)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

@@ -79,12 +79,12 @@ void free_job_info(job_info *jinfo);
  *      set_job_state - set the state flag in a job_info structure
  *                      i.e. the is_* bit
  */
-int set_job_state(char *state, job_info *jinfo);
+int set_job_state(const char *state, job_info *jinfo);
 
 /* update_job_attr - update job attributes on the server */
 int
-update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
-	char *attr_resc, char *attr_value, struct attrl *extra, unsigned int flags );
+update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
+	const char *attr_resc, const char *attr_value, struct attrl *extra, unsigned int flags );
 
 /* send delayed job attribute updates for job using send_attr_updates() */
 int send_job_updates(int pbs_sd, resource_resv *job);
@@ -111,7 +111,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr);
  *
  */
 int
-unset_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name, unsigned int flags);
+unset_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name, unsigned int flags);
 
 /*
  *      update_jobs_cant_run - update an array of jobs which can not run
@@ -172,7 +172,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
  *      preempt_level - take a preemption priority and return a preemption
  *                      level
  */
-int preempt_level(int prio);
+int preempt_level(unsigned int prio);
 
 /*
  *      set_preempt_prio - set a job's preempt field to the correct value
@@ -264,7 +264,7 @@ sch_resource_t formula_evaluate(char *formula, resource_resv *resresv, resource_
  *
  */
 
-void update_accruetype(int pbs_sd, server_info *sinfo, enum update_accruetype_mode mode, enum sched_error err_code, resource_resv *resresv);
+void update_accruetype(int pbs_sd, server_info *sinfo, enum update_accruetype_mode mode, enum sched_error_code err_code, resource_resv *resresv);
 
 /**
  * @brief

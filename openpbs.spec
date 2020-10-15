@@ -98,6 +98,7 @@ Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 
 BuildRoot: %{buildroot}
 BuildRequires: gcc
+BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: rpm-build
 BuildRequires: autoconf

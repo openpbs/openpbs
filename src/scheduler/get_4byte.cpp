@@ -46,6 +46,7 @@
 #include "dis.h"
 #include "sched_cmds.h"
 #include "data_types.h"
+#include "fifo.h"
 
 #include <sys/types.h>
 #include <sys/time.h>

@@ -116,7 +116,7 @@ schd_resource *new_resource(void);
 /*
  * Create new resource with given data
  */
-schd_resource *create_resource(char *name, char *value, enum resource_fields field);
+schd_resource *create_resource(const char *name, const char *value, enum resource_fields field);
 
 /*
  *	free_server - free a list of server_info structs
@@ -240,7 +240,7 @@ void free_resource(schd_resource *resp);
  */
 void
 update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv, char *job_state);
+	resource_resv *resresv, const char *job_state);
 
 /*
  *      check_unassoc_node - finds nodes which are not associated with queues
@@ -276,13 +276,13 @@ counts *dup_counts_list(counts *ctslist);
 /*
  *      find_counts - find a counts structure by name
  */
-counts *find_counts(counts *ctslist, char *name);
+counts *find_counts(counts *ctslist, const char *name);
 
 /*
  *      find_alloc_counts - find a counts structure by name or allocate a new
  *                          counts, name it, and add it to the end of the list
  */
-counts *find_alloc_counts(counts *ctslist, char *name);
+counts *find_alloc_counts(counts *ctslist, const char *name);
 
 /*
  *      update_counts_on_run - update a counts struct on the running of a job
@@ -306,7 +306,7 @@ void update_counts_on_end(counts *cts, resource_req *resreq);
  *
  *	  returns the new max or NULL on error
  */
-counts *counts_max(counts *cmax, counts *new);
+counts *counts_max(counts *cmax, counts *ncounts);
 
 /*
  *      check_run_job - function used by resource_resv_filter to filter out
@@ -317,7 +317,7 @@ int check_run_job(resource_resv *job, void *arg);
 /*
  *      update_universe_on_end - update a pbs universe when a job/resv ends
  */
-void update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, unsigned int flags);
+void update_universe_on_end(status *policy, resource_resv *resresv, const char *job_state, unsigned int flags);
 
 /*
  *
@@ -338,7 +338,7 @@ void update_universe_on_end(status *policy, resource_resv *resresv, char *job_st
  *	returns 1 on success 0 on failure/error
  *
  */
-int set_resource(schd_resource *res, char *val, enum resource_fields field);
+int set_resource(schd_resource *res, const char *val, enum resource_fields field);
 
 /*
  *	update_preemption_priority - update preemption status when a

@@ -81,7 +81,7 @@
  *		MM/DD/YY HH:MM MM/DD/YYYY HH:MM
  */
 int
-parse_ded_file(char *filename)
+parse_ded_file(const char *filename)
 {
 	FILE *fp;			/* file pointer for the dedtime file */
 	char line[256];		/* a buffer for a line from the file */

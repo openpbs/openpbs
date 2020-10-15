@@ -41,10 +41,16 @@
 
 #include <stdio.h>
 #include <pthread.h>
+#include <limits.h>
+
 #include "globals.h"
 #include "constant.h"
 #include "sort.h"
-#include "limits.h"
+#include "config.h"
+#include "data_types.h"
+#include "queue.h"
+
+
 
 
 
@@ -162,10 +168,10 @@ resdef **boolres = NULL;
 /* AOE name used to compare nodes, free when exit cycle */
 char *cmp_aoename = NULL;
 
-char *sc_name = NULL;
+const char *sc_name = NULL;
 char *logfile = NULL;
 
-int preempt_normal;			/* preempt priority of normal_jobs */
+unsigned int preempt_normal;			/* preempt priority of normal_jobs */
 
 char path_log[_POSIX_PATH_MAX];
 int dflt_sched = 0;

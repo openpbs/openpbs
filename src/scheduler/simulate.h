@@ -135,7 +135,7 @@ void set_timed_event_disabled(timed_event *te, int disabled);
  *
  */
 timed_event *
-find_timed_event(timed_event *te_list, int ignore_disabled, char *name,
+find_timed_event(timed_event *te_list, int ignore_disabled, const char *name,
 	enum timed_event_types event_type, time_t event_time);
 
 
@@ -417,7 +417,7 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
  *
  *	return printable string name of policy change event
  */
-char *policy_change_to_str(timed_event *te);
+const char *policy_change_to_str(timed_event *te);
 
 
 /*

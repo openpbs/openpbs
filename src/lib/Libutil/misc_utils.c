@@ -267,7 +267,7 @@ enum vnode_sharing str_to_vnode_sharing(char *vn_str)
  *	@retval NULL on failure
  */
 char *
-pbs_strcat(char **strbuf, int *ssize, char *str)
+pbs_strcat(char **strbuf, int *ssize, const char *str)
 {
 	int len;
 	int rbuf_len;

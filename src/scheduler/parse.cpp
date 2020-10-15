@@ -98,7 +98,7 @@
  *	EX: sort_by: shortest_job_first prime
  */
 int
-parse_config(char *fname)
+parse_config(const char *fname)
 {
 	FILE *fp;			/* file pointer to config file */
 	char *buf = NULL;
@@ -109,7 +109,7 @@ parse_config(char *fname)
 	char *config_value;		/* parsed second word - right after colen (:) */
 	char *prime_value;		/* optional third word */
 	char *tok;			/* used with strtok() */
-	char *obsolete[2];		/* used to log messages for obsolete params */
+	const char *obsolete[2];		/* used to log messages for obsolete params */
 	int num = -1;			/* used to convert string -> integer */
 	char *endp;			/* used for strtol() */
 	char error = 0;		/* boolean: is there an error? */
@@ -161,7 +161,7 @@ parse_config(char *fname)
 		linenum++;
 		error = 0;
 		obsolete[0] = obsolete[1] = NULL;
-		prime = ALL;
+		prime = PT_ALL;
 		num = -1;
 
 		/* skip blank lines and comments */
@@ -188,55 +188,55 @@ parse_config(char *fname)
 						!strcmp(prime_value, "NON_PRIME"))
 						prime = NON_PRIME;
 					else if (!strcmp(prime_value, "all") || !strcmp(prime_value, "ALL"))
-						prime = ALL;
+						prime = PT_ALL;
 					else if (!strcmp(prime_value, "none") || !strcmp(prime_value, "NONE"))
-						prime = NONE;
+						prime = PT_NONE;
 					else
 						error = 1;
 				}
 
 				if (!strcmp(config_name, PARSE_ROUND_ROBIN)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_rr = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_rr = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_BY_QUEUE)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_bq = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_bq = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_STRICT_FIFO)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_sf = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_sf = num ? 1 : 0;
 					obsolete[0] = config_name;
 					obsolete[1] = "strict_ordering";
 				}
 				else if (!strcmp(config_name, PARSE_STRICT_ORDERING)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_so = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_so = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_FAIR_SHARE)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_fs = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_fs = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_HELP_STARVING_JOBS)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_hsv = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_hsv = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_BACKFILL)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_bf = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_bf = num ? 1 : 0;
 
 					obsolete[0] = config_name;
@@ -249,15 +249,15 @@ parse_config(char *fname)
 					conf.update_comments = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_BACKFILL_PRIME)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_bp = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_bp = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_PREEMPIVE_SCHED)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_pre = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_pre = num ? 1 : 0;
 				}
 				else if (!strcmp(config_name, PARSE_PRIME_EXEMPT_ANYTIME_QUEUES))
@@ -275,9 +275,9 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_ALLOW_AOE_CALENDAR))
 					conf.allow_aoe_calendar = 1;
 				else if (!strcmp(config_name, PARSE_PRIME_SPILL)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_spill = res_to_num(config_value, &type);
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.nonprime_spill = res_to_num(config_value, &type);
 
 					if (!type.is_time)
@@ -405,9 +405,9 @@ parse_config(char *fname)
 				else if (!strcmp(config_name, PARSE_SMP_CLUSTER_DIST)) {
 					for (i = 0; i < HIGH_SMP_DIST; i++)
 						if (!strcmp(smp_cluster_info[i].str, config_value)) {
-							if (prime == PRIME || prime == ALL)
+							if (prime == PRIME || prime == PT_ALL)
 								conf.prime_smp_dist = (enum smp_cluster_dist) smp_cluster_info[i].value;
-							if (prime == NON_PRIME || prime == ALL)
+							if (prime == NON_PRIME || prime == PT_ALL)
 								conf.non_prime_smp_dist = (enum smp_cluster_dist) smp_cluster_info[i].value;
 						}
 				}
@@ -424,8 +424,8 @@ parse_config(char *fname)
 					obsolete[1] = "nothing - set via qmgr";
 				}
 				else if (!strcmp(config_name, PARSE_JOB_SORT_KEY)) {
-					if (((prime == PRIME || prime == ALL) && pkey_num > MAX_SORTS) ||
-						((prime == NON_PRIME || prime == ALL) && npkey_num > MAX_SORTS)) {
+					if (((prime == PRIME || prime == PT_ALL) && pkey_num > MAX_SORTS) ||
+						((prime == NON_PRIME || prime == PT_ALL) && npkey_num > MAX_SORTS)) {
 						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 							"Too many %s sorts.  %s sort ignored.  %d max sorts",
 							prime_value, config_value, MAX_SORTS);
@@ -465,7 +465,7 @@ parse_config(char *fname)
 								free(sort_res_name);
 								sort_res_name = string_dup(SORT_JOB_PRIORITY);
 							}
-							if (prime == PRIME || prime == ALL) {
+							if (prime == PRIME || prime == PT_ALL) {
 								conf.prime_sort[pkey_num].res_name = sort_res_name;
 								/* set the flag to indicate that we should dup the memory for sort_res_name
 								 * if we are going to use it again.
@@ -475,7 +475,7 @@ parse_config(char *fname)
 								pkey_num++;
 							}
 
-							if (prime == NON_PRIME || prime == ALL) {
+							if (prime == NON_PRIME || prime == PT_ALL) {
 								if (dup_res_name)
 									conf.non_prime_sort[npkey_num].res_name = string_dup(sort_res_name);
 								else
@@ -488,8 +488,8 @@ parse_config(char *fname)
 					}
 				}
 				else if (!strcmp(config_name, PARSE_NODE_SORT_KEY)) {
-					if (((prime == PRIME || prime == ALL) && node_pkey_num > MAX_SORTS) ||
-						((prime == NON_PRIME || prime == ALL) && node_npkey_num > MAX_SORTS)) {
+					if (((prime == PRIME || prime == PT_ALL) && node_pkey_num > MAX_SORTS) ||
+						((prime == NON_PRIME || prime == PT_ALL) && node_npkey_num > MAX_SORTS)) {
 						log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname,
 							"Too many %s node sorts.  %s sort ignored.  %d max sorts",
 							prime_value, config_value, MAX_SORTS);
@@ -542,7 +542,7 @@ parse_config(char *fname)
 
 						if (!error) {
 							int dup_res_name = 0;
-							if (prime == PRIME || prime == ALL) {
+							if (prime == PRIME || prime == PT_ALL) {
 								conf.prime_node_sort[node_pkey_num].res_name = sort_res_name;
 								/* set the flag to indicate that we should dup the memory for sort_res_name
 								 * if we are going to use it again.
@@ -555,7 +555,7 @@ parse_config(char *fname)
 								node_pkey_num++;
 							}
 
-							if (prime == NON_PRIME || prime == ALL) {
+							if (prime == NON_PRIME || prime == PT_ALL) {
 								if (dup_res_name)
 									conf.non_prime_node_sort[node_npkey_num].res_name = string_dup(sort_res_name);
 								else
@@ -642,12 +642,12 @@ parse_config(char *fname)
 					obsolete[0] = config_name;
 					obsolete[1] = PARSE_NODE_SORT_KEY;
 
-					if (prime == PRIME || prime == ALL) {
+					if (prime == PRIME || prime == PT_ALL) {
 						conf.prime_node_sort[node_pkey_num].res_name = string_dup(SORT_PRIORITY);
 						conf.prime_node_sort[node_pkey_num].order = DESC;
 						node_pkey_num++;
 					}
-					if (prime == NON_PRIME || prime == ALL) {
+					if (prime == NON_PRIME || prime == PT_ALL) {
 						conf.non_prime_node_sort[node_npkey_num].res_name = string_dup(SORT_PRIORITY);
 						conf.non_prime_node_sort[node_npkey_num].order = DESC;
 						node_npkey_num++;
@@ -730,9 +730,9 @@ parse_config(char *fname)
 					if (!type.is_time)
 						error = 1;
 				} else if (!strcmp(config_name, PARSE_SHARES_TRACK_ONLY)) {
-					if (prime == PRIME || prime == ALL)
+					if (prime == PRIME || prime == PT_ALL)
 						conf.prime_sto = num ? 1 : 0;
-					if (prime == NON_PRIME || prime == ALL)
+					if (prime == NON_PRIME || prime == PT_ALL)
 						conf.non_prime_sto = num ? 1 : 0;
 				} else if (!strcmp(config_name, PARSE_PER_SHARE_DEPTH) ||
 					   !strcmp(config_name, PARSE_PER_SHARE_TOPJOBS)) {
@@ -849,7 +849,7 @@ int is_speccase_sort(char *sort_res, int sort_type) {
 int
 init_config()
 {
-	static char *ignore[] = { "mpiprocs", "ompthreads", NULL };
+	static const char *ignore[] = { "mpiprocs", "ompthreads", NULL };
 
 	free_fairshare_head(conf.fairshare);
 	free_sort_info(PRIME_SORT);
@@ -881,26 +881,26 @@ init_config()
 	memset(&conf, 0, sizeof(struct config));
 	memset(&cstat, 0, sizeof(struct status));
 
-	if ((conf.prime_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.prime_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.prime_sort, 0, (MAX_SORTS + 1) * sizeof(struct sort_info));
 
-	if ((conf.non_prime_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.non_prime_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.non_prime_sort, 0, (MAX_SORTS + 1) *
 		sizeof(struct sort_info));
 
-	if ((conf.prime_node_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.prime_node_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	memset(conf.prime_node_sort, 0, (MAX_SORTS + 1) * sizeof(struct sort_info));
 
-	if ((conf.non_prime_node_sort = malloc((MAX_SORTS + 1) * sizeof(struct sort_info))) == NULL) {
+	if ((conf.non_prime_node_sort = static_cast<sort_info *>(malloc((MAX_SORTS + 1) * sizeof(struct sort_info)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return 0;
 	}
@@ -925,7 +925,7 @@ init_config()
 	conf.max_jobs_to_check = SCHD_INFINITY;
 
 	/* default value for ignore_res is the pseudo resources */
-	conf.ignore_res = ignore;
+	conf.ignore_res = const_cast<char **>(ignore);
 
 	/* deprecated parameters which are needed to be set to true */
 	conf.assign_ssinodes = 1;

@@ -43,9 +43,9 @@
 extern "C" {
 #endif
 #include <pthread.h>
+#include <limits.h>
 
 #include "data_types.h"
-#include "limits.h"
 #include "queue.h"
 #include "sched_cmds.h"
 
@@ -78,7 +78,7 @@ extern const int num_resget;
 extern int got_sigpipe;
 
 /* static indexes into allres */
-const struct enum_conv resind[RES_HIGH+1];
+extern const struct enum_conv resind[];
 
 /* Stuff needed for multi-threading */
 extern pthread_mutex_t general_lock;
@@ -98,10 +98,10 @@ extern resdef **allres;
 extern resdef **consres;
 extern resdef **boolres;
 
-extern char *sc_name;
+extern const char *sc_name;
 extern char *logfile;
 
-extern int preempt_normal;			/* preempt priority of normal_jobs */
+extern unsigned int preempt_normal;			/* preempt priority of normal_jobs */
 
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;

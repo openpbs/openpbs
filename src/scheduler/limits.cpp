@@ -275,7 +275,7 @@ check_queue_max_run_soft(server_info *, queue_info *,
  *				new error case to update_accruetype() so that the job is
  *				marked as ineligible
  *
- * @see	sched_error in constant.h
+ * @see	sched_error_code in constant.h
  * @see	fc_translation_table in job_info.c
  */
 typedef	int	(*limfunc_t)(server_info *, queue_info *, resource_resv *,
@@ -339,8 +339,8 @@ static softlimfunc_t	softlimfuncs[] = {
  * @param[in]	lim_isreslim	-	1 if this attribute is a resource limit, else 0
  */
 struct lim_old2new {
-	char	*lim_attr;
-	char	*lim_param;
+	const char	*lim_attr;
+	const char	*lim_param;
 	int	lim_isreslim;
 };
 static struct lim_old2new old2new[] = {
@@ -438,7 +438,7 @@ lim_alloc_liminfo(void)
 {
 	struct limit_info	*lip;
 
-	if ((lip = calloc(1, sizeof(struct limit_info))) == NULL)
+	if ((lip = static_cast<limit_info *>(calloc(1, sizeof(struct limit_info)))) == NULL)
 		return NULL;
 	else {
 		void	*ctx;
@@ -473,7 +473,7 @@ lim_alloc_liminfo(void)
 void *
 lim_dup_liminfo(void *p)
 {
-	struct limit_info	*oldlip = p;
+	struct limit_info	*oldlip = static_cast<limit_info *>(p);
 	struct limit_info	*newlip;
 
 	if ((oldlip == NULL) ||
@@ -481,7 +481,7 @@ lim_dup_liminfo(void *p)
 		(LI2RESCTXSOFT(oldlip) == NULL))
 		return NULL;
 
-	if ((newlip = calloc(1, sizeof(struct limit_info))) == NULL)
+	if ((newlip = static_cast<limit_info *>(calloc(1, sizeof(struct limit_info)))) == NULL)
 		return NULL;
 	else {
 		void	*ctx;
@@ -521,7 +521,7 @@ lim_dup_liminfo(void *p)
 void
 lim_free_liminfo(void *p)
 {
-	struct limit_info	*lip = p;
+	struct limit_info	*lip = static_cast<limit_info *>(p);
 
 	if (lip == NULL)
 		return;
@@ -595,10 +595,10 @@ is_runlimattr(const struct attrl *a)
  * @retval NULL		: attribute value is not an old limit attribute
  *
  */
-char *
+const char *
 convert_oldlim_to_new(const struct attrl *a)
 {
-	int	i;
+	size_t	i;
 
 	for (i = 0; i < sizeof(old2new)/sizeof(old2new[0]); i++)
 		if (!strcmp(a->name, old2new[i].lim_attr))
@@ -640,7 +640,7 @@ is_oldlimattr(const struct attrl *a)
 int
 lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
 {
-	struct limit_info	*lip = p;
+	struct limit_info	*lip = static_cast<limit_info *>(p);
 
 	switch (lt) {
 		case LIM_RES:
@@ -675,7 +675,7 @@ lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
 int
 has_hardlimits(void *p)
 {
-	struct limit_info	*lip = p;
+	struct limit_info	*lip = static_cast<limit_info *>(p);
 	char *k = NULL;
 
 	if (entlim_get_next(LI2RESCTX(lip), (void **)&k) != NULL) /* at least one hard resource limit present */
@@ -704,7 +704,7 @@ has_hardlimits(void *p)
 int
 has_softlimits(void *p)
 {
-	struct limit_info	*lip = p;
+	struct limit_info	*lip = static_cast<limit_info *>(p);
 	char *k = NULL;
 
 	if (entlim_get_next(LI2RESCTXSOFT(lip), (void **)&k) != NULL) /* at least one soft resource limit present */
@@ -731,7 +731,7 @@ new_limcounts(void)
 {
 	limcounts *lc;
 
-	lc = malloc(sizeof(limcounts));
+	lc = static_cast<limcounts *>(malloc(sizeof(limcounts)));
 	if (lc == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -817,7 +817,7 @@ make_limcounts(counts *user, counts *group, counts *project, counts *all)
  * @param[in]	si	-	server_info structure to use for limit evaluation
  * @param[in]	qi	-	queue_info structure to use for limit evaluation
  * @param[in]	rr	-	resource_resv structure to use for limit evaluation
- * @param[out]	err	-	sched_error structure to return error information
+ * @param[out]	err	-	sched_error_code structure to return error information
  * @param[in]	flags	-	CHECK_LIMITS - check real limits
  *                      CHECK_CUMULATIVE_LIMIT - check limits against total counts
  *                      RETURN_ALL_ERR - check all limits and return an err for all failed limits *
@@ -830,9 +830,9 @@ make_limcounts(counts *user, counts *group, counts *project, counts *all)
 int
 check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err, unsigned int flags)
 {
-	int	rc;
+	enum sched_error_code rc;
 	int	any_fail_rc = 0;
-	int	i;
+	size_t	i;
 	limcounts *svr_counts = NULL;
 	limcounts *que_counts = NULL;
 	limcounts *svr_counts_max = NULL;
@@ -849,7 +849,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	schd_error *prev_err = NULL;
 
 	if (si == NULL || qi == NULL || rr == NULL)
-		return 0;
+		return SE_NONE;
 
 	/*
 	 * Check for  CHECK_CUMULATIVE_LIMIT is needed because we  must have
@@ -871,7 +871,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 					si->project_counts,
 					si->alljobcounts);
 				if (svr_counts_max == NULL)
-					return 0;
+					return SE_NONE;
 
 				svr_counts = make_limcounts(si->user_counts,
 					si->group_counts,
@@ -879,7 +879,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 					si->alljobcounts);
 				if (svr_counts == NULL) {
 					free_limcounts(svr_counts_max);
-					return 0;
+					return SE_NONE;
 				}
 			}
 
@@ -891,7 +891,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				if (que_counts_max == NULL) {
 					free_limcounts(svr_counts_max);
 					free_limcounts(svr_counts);
-					return 0;
+					return SE_NONE;
 				}
 
 				que_counts = make_limcounts(qi->user_counts,
@@ -903,7 +903,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 					free_limcounts(svr_counts_max);
 					free_limcounts(que_counts_max);
 					free_limcounts(svr_counts);
-					return 0;
+					return SE_NONE;
 				}
 			}
 
@@ -1050,7 +1050,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 			if (error) {
 				free_limcounts(svr_counts_max);
 				free_limcounts(que_counts_max);
-				return 0;
+				return SE_NONE;
 			}
 		}
 
@@ -1065,7 +1065,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				si->project_counts,
 				si->alljobcounts);
 			if (server_lim == NULL)
-				return 0;
+				return SE_NONE;
 		}
 		if (que_counts_max != NULL) {
 			queue_lim = que_counts_max;
@@ -1077,31 +1077,31 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 				qi->alljobcounts);
 			if (queue_lim == NULL) {
 				free_limcounts(server_lim);
-				return 0;
+				return SE_NONE;
 			}
 		}
 	}
 	else if ((flags & CHECK_CUMULATIVE_LIMIT)) {
 		if (!si->has_hard_limit && !qi->has_hard_limit)
-			return 0;
+			return SE_NONE;
 		server_lim = make_limcounts(si->total_user_counts,
 			si->total_group_counts,
 			si->total_project_counts,
 			si->total_alljobcounts);
 		if (server_lim == NULL)
-			return 0;
+			return SE_NONE;
 		queue_lim = make_limcounts(qi->total_user_counts,
 			qi->total_group_counts,
 			qi->total_project_counts,
 			qi->total_alljobcounts);
 		if (queue_lim == NULL) {
 			free_limcounts(server_lim);
-			return 0;
+			return SE_NONE;
 		}
 	}
 	for (i = 0; i < sizeof(limfuncs) / sizeof(limfuncs[0]); i++) {
-		if ((rc = (limfuncs[i])(si, qi, rr, server_lim,
-		queue_lim, err)) != 0) {
+		rc = static_cast<enum sched_error_code>((limfuncs[i])(si, qi, rr, server_lim, queue_lim, err));
+		if (rc != SE_NONE) {
 			if ((flags & RETURN_ALL_ERR)) {
 				if (any_fail_rc == 0)
 					any_fail_rc = rc;
@@ -1149,7 +1149,7 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
  */
 void update_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
 {
-	int i;
+	size_t i;
 	for (i = 0; i < sizeof(softlimfuncs)/sizeof(softlimfuncs[0]); i++)
 		softlimfuncs[i](si, qi, rr);
 	return;
@@ -1165,7 +1165,7 @@ void update_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
  * @return	int
  * @retval	Accumulated preempt_bits matching the entity
  */
-int find_preempt_bits(counts *entity_counts, char *entity_name, resource_resv *rr)
+int find_preempt_bits(counts *entity_counts, const char *entity_name, resource_resv *rr)
 {
 	counts *cnt = NULL;
 	resource_count *res_c;
@@ -1248,10 +1248,10 @@ check_soft_limits(server_info *si, queue_info *qi, resource_resv *rr)
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1318,10 +1318,10 @@ check_server_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1389,10 +1389,10 @@ check_server_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1445,10 +1445,10 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see		#sched_error in constant.h
+ * @see		#sched_error_code in constant.h
  */
 static int
 check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1501,9 +1501,9 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	-	if limit is not exceeded
- * @retval	sched_error enum	-	if limit is exceeded
+ * @retval	sched_error_code enum	-	if limit is exceeded
  * @retval	SCHD_ERROR	-	on error
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1571,7 +1571,7 @@ check_queue_max_user_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  * @see	#sched_error	: in constant.h
  */
@@ -1640,7 +1640,7 @@ check_queue_max_group_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer	: indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
  * @see	#sched_error	: in constant.h
@@ -1697,10 +1697,10 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1754,10 +1754,10 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1828,10 +1828,10 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1901,10 +1901,10 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -1955,10 +1955,10 @@ check_server_max_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -3086,11 +3086,11 @@ lim_setrunlimits(const struct attrl *a, void *ctx)
 static int
 lim_setoldlimits(const struct attrl *a, void *ctx)
 {
-	int i;
+	size_t i;
 	struct lim_old2new *avalue = NULL;
 	enum lim_keytypes kt;
-	char *p;
-	char *e;
+	const char *p;
+	const char *e;
 
 	/* first try soft limits ... */
 	for (i = 0; i < sizeof(old2new_soft) / sizeof(old2new_soft[0]); i++) {
@@ -3118,13 +3118,13 @@ lim_setoldlimits(const struct attrl *a, void *ctx)
 					limres = r;
 
 				return(lim_callback(LI2RESCTXSOFT(ctx),
-						kt, avalue->lim_param,
-						e,
+						kt, const_cast<char *>(avalue->lim_param),
+						const_cast<char *>(e),
 						a->resource, a->value));
 			} else
 				return(lim_callback(LI2RUNCTXSOFT(ctx),
-						kt, avalue->lim_param,
-						e,
+						kt, const_cast<char *>(avalue->lim_param),
+						const_cast<char *>(e),
 						NULL, a->value));
 		}
 	}
@@ -3155,14 +3155,14 @@ lim_setoldlimits(const struct attrl *a, void *ctx)
 					limres = r;
 
 				return(lim_callback(LI2RESCTX(ctx),
-						kt, avalue->lim_param,
-						e,
+						kt, const_cast<char *>(avalue->lim_param),
+						const_cast<char *>(e),
 						a->resource,
 						a->value));
 			} else
 				return(lim_callback(LI2RUNCTX(ctx),
-						kt, avalue->lim_param,
-						e,
+						kt, const_cast<char *>(avalue->lim_param),
+						const_cast<char *>(e),
 						a->resource,
 						a->value));
 		}
@@ -3193,7 +3193,7 @@ lim_dup_ctx(void *ctx)
 		return(NULL);
 	}
 
-	while ((value = entlim_get_next(ctx, (void **)&key)) != NULL) {
+	while ((value = static_cast<char *>(entlim_get_next(ctx, (void **)&key))) != NULL) {
 		if ((newval = strdup(value)) == NULL) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, "strdup value failed");
 			(void) entlim_free_ctx(newctx, free);
@@ -3360,7 +3360,7 @@ lim_get(const char *param, void *ctx)
 {
 	char		*retptr;
 
-	retptr = entlim_get(param, ctx);
+	retptr = static_cast<char *>(entlim_get(param, ctx));
 	if (retptr != NULL) {
 		sch_resource_t	v;
 
@@ -3620,10 +3620,10 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx, 
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -3789,10 +3789,10 @@ check_server_max_project_res_soft(server_info *si, queue_info *qi,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
@@ -3958,10 +3958,10 @@ check_queue_max_project_res_soft(server_info *si, queue_info *qi,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
@@ -4035,10 +4035,10 @@ check_server_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
  *
  * @return	integer indicating failing limit test if limit is exceeded
  * @retval	0	: if limit is not exceeded
- * @retval	sched_error enum	: if limit is exceeded
+ * @retval	sched_error_code enum	: if limit is exceeded
  * @retval	SCHD_ERROR	: on error
  *
- * @see	#sched_error in constant.h
+ * @see	#sched_error_code in constant.h
  */
 static int
 check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,

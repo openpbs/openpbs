@@ -39,7 +39,8 @@
 
 #ifndef	_MISC_H
 #define	_MISC_H
-#ifdef	__cplusplus
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -52,14 +53,14 @@ extern "C" {
 /*
  *	string_dup - duplicate a string
  */
-char *string_dup(char *str);
+char *string_dup(const char *str);
 
 /*
  *      res_to_num - convert a resource string to an integer in the lowest
  *                      form of resource on the machine (btye/word)
  *                      example: 1kb -> 1024 or 1kw -> 1024
  */
-sch_resource_t res_to_num(char * res_str, struct resource_type *type);
+sch_resource_t res_to_num(const char * res_str, struct resource_type *type);
 
 /*
  *      skip_line - find if the line of the config file needs to be skipped
@@ -74,7 +75,7 @@ int skip_line(char *line);
  *                   error will be printed after the message
  */
 void
-schdlogerr(int event, int class, int sev, char *name, char *text,
+schdlogerr(int event, int event_class, int sev, const char *name, const char *text,
 	schd_error *err);
 
 /*
@@ -117,7 +118,7 @@ unsigned string_array_verify(char **sa1, char **sa2);
  *		 SA_NO_MATCH		: no match
  *
  */
-enum match_string_array_ret match_string_array(char **strarr1, char **strarr2);
+enum match_string_array_ret match_string_array(const char * const *strarr1, const char * const *strarr2);
 
 /*
  *
@@ -126,7 +127,7 @@ enum match_string_array_ret match_string_array(char **strarr1, char **strarr2);
  *	returns value from match_string_array()
  *
  */
-enum match_string_array_ret match_string_to_array(char *str, char **strarr);
+enum match_string_array_ret match_string_to_array(const char *str, const char * const *strarr);
 
 /*
  * convert a string array into a printable string
@@ -148,13 +149,13 @@ int cstrcmp(char *s1, char *s2);
  *      is_num - checks to see if the string is a number, size, float
  *               or time in string form
  */
-int is_num(char *str);
+int is_num(const char *str);
 
 /*
  *	count_array - count the number of elements in a NULL terminated array
  *		      of pointers
  */
-int count_array(void *arr);
+int count_array(const void *arr);
 
 /*
  *	dup_array - make a shallow copy of elements in a NULL terminated array of pointers.
@@ -257,10 +258,10 @@ void move_schd_error(schd_error *err, schd_error *oerr);
 void copy_schd_error(schd_error *err, schd_error *oerr);
 
 /* safely set the schd_config arg buffers without worrying about leaking */
-void set_schd_error_arg(schd_error *err, int arg_field, char *arg);
+void set_schd_error_arg(schd_error *err, enum schd_error_args arg_field, const char *arg);
 
 /* set the status code and error code of a schd_error structure to ensure both are set together  */
-void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error error_code);
+void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error_code error_code);
 
 /* schd_error destuctor */
 void
@@ -270,9 +271,9 @@ free_schd_error_list(schd_error *err_list);
 
 /* helper functions to create schd_errors*/
 schd_error *
-create_schd_error(int error_code, int status_code) ;
+create_schd_error(enum sched_error_code error_code, enum schd_err_status status_code);
 schd_error *
-create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *errbuf);
+create_schd_error_complex(enum sched_error_code error_code, enum schd_err_status status_code, char *arg1, char *arg2, char *arg3, char *errbuf);
 
 /* add schd_errors to linked list */
 void
@@ -316,7 +317,9 @@ sched_cmd *new_sched_cmd(void);
  */
 void free_sched_cmd(sched_cmd *cmd);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
+
+
 #endif	/* _MISC_H */

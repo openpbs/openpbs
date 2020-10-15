@@ -55,7 +55,7 @@
  * @retval NULL on error
  */
 pbs_bitmap *
-pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
+pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits)
 {
 	pbs_bitmap *bm;
 	unsigned long *tmp_bits;
@@ -65,7 +65,7 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
 		return NULL;
 
 	if(pbm == NULL) {
-		bm = calloc(1, sizeof(pbs_bitmap));
+		bm = static_cast<pbs_bitmap *>(calloc(1, sizeof(pbs_bitmap)));
 		if(bm == NULL)
 			return NULL;
 	}
@@ -74,9 +74,9 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
 
 	/* shrinking bitmap, clear previously used bits */
 	if (num_bits < bm->num_bits) {
-		int i;
+		long i;
 		i = num_bits / BYTES_TO_BITS(sizeof(unsigned long)) + 1;
-		for ( ; i < bm->num_longs; i++)
+		for ( ; static_cast<unsigned long>(i) < bm->num_longs; i++)
 			bm->bits[i] = 0;
 		for (i = pbs_bitmap_next_on_bit(bm, num_bits); i != -1; i = pbs_bitmap_next_on_bit(bm, i))
 			pbs_bitmap_bit_off(bm, i);
@@ -95,7 +95,7 @@ pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits)
 	bm->num_longs = num_bits / BYTES_TO_BITS(sizeof(unsigned long));
 	if (num_bits % BYTES_TO_BITS(sizeof(unsigned long)) > 0)
 		bm->num_longs++;
-	tmp_bits = calloc(bm->num_longs, sizeof(unsigned long));
+	tmp_bits = static_cast<unsigned long *>(calloc(bm->num_longs, sizeof(unsigned long)));
 	if (tmp_bits == NULL) {
 		if(pbm == NULL) /* we allocated the memory */
 			pbs_bitmap_free(bm);
@@ -131,7 +131,7 @@ pbs_bitmap_free(pbs_bitmap *bm)
  * @return nothing
  */
 int
-pbs_bitmap_bit_on(pbs_bitmap *pbm, long bit)
+pbs_bitmap_bit_on(pbs_bitmap *pbm, unsigned long bit)
 {
 	long long_ind;
 	unsigned long b;
@@ -158,7 +158,7 @@ pbs_bitmap_bit_on(pbs_bitmap *pbm, long bit)
  * @return nothing
  */
 int
-pbs_bitmap_bit_off(pbs_bitmap *pbm, long bit)
+pbs_bitmap_bit_off(pbs_bitmap *pbm, unsigned long bit)
 {
 	long long_ind;
 	unsigned long b;
@@ -213,11 +213,11 @@ pbs_bitmap_get_bit(pbs_bitmap *pbm, unsigned long bit)
  * @retval -1 if there isn't a next on bit
  */
 int
-pbs_bitmap_next_on_bit(pbs_bitmap *pbm, long start_bit)
+pbs_bitmap_next_on_bit(pbs_bitmap *pbm, unsigned long start_bit)
 {
-	long long_ind;
+	unsigned long long_ind;
 	long bit;
-	int i;
+	size_t i;
 
 	if (pbm == NULL)
 		return -1;
@@ -284,7 +284,7 @@ pbs_bitmap_first_on_bit(pbs_bitmap *bm)
 int
 pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R)
 {
-	int i;
+	unsigned long i;
 
 	if (L == NULL || R == NULL)
 		return 0;
@@ -320,7 +320,7 @@ pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R)
 int
 pbs_bitmap_is_equal(pbs_bitmap *L, pbs_bitmap *R)
 {
-	int i;
+	unsigned long i;
 
 	if(L == NULL || R == NULL)
 		return 0;

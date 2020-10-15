@@ -140,11 +140,12 @@ void *sched_attr_idx = NULL;
  *	job_attr_def.o, node_attr_def.o, queue_attr_def.o, resv_attr_def.o
  *
  */
-
+#ifndef PBS_PYTHON
 PyObject *
 PyInit__pbs_ifl(void) {
 	return NULL;
 }
+#endif
 
 int
 set_resources_min_max(attribute *old, attribute *new, enum batch_op op) {
@@ -244,10 +245,6 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode) {
 
 int
 action_sched_log(attribute *pattr, void *pobj, int actmode) {
-	return 0;
-}
-int
-action_sched_log_events(attribute *pattr, void *pobj, int actmode) {
 	return 0;
 }
 

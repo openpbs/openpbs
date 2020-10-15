@@ -47,23 +47,23 @@ extern "C" {
 
 struct pbs_bitmap {
 	unsigned long *bits;	/* bit storage */
-	long num_longs;		/* number of longs in the bits array */
-	long num_bits;		/* number of bits that are in use (both 1's and 0's */
+	unsigned long num_longs;		/* number of longs in the bits array */
+	unsigned long num_bits;		/* number of bits that are in use (both 1's and 0's */
 };
 
 typedef struct pbs_bitmap pbs_bitmap;
 
 /* Allocate bits to a bitmap (and possibly the bitmap itself) */
-pbs_bitmap *pbs_bitmap_alloc(pbs_bitmap *pbm, long num_bits);
+pbs_bitmap *pbs_bitmap_alloc(pbs_bitmap *pbm, unsigned long num_bits);
 
 /* Destructor */
 void pbs_bitmap_free(pbs_bitmap *bm);
 
 /* Turn a bit on */
-int pbs_bitmap_bit_on(pbs_bitmap *pbm, long bit);
+int pbs_bitmap_bit_on(pbs_bitmap *pbm, unsigned long bit);
 
 /* Turn a bit off */
-int pbs_bitmap_bit_off(pbs_bitmap *pbm, long bit);
+int pbs_bitmap_bit_off(pbs_bitmap *pbm, unsigned long bit);
 
 /* Get a bit */
 int pbs_bitmap_get_bit(pbs_bitmap *pbm, unsigned long bit);
@@ -72,7 +72,7 @@ int pbs_bitmap_get_bit(pbs_bitmap *pbm, unsigned long bit);
 int pbs_bitmap_first_on_bit(pbs_bitmap *bm);
 
 /* Starting at start_bit get the next on bit */
-int pbs_bitmap_next_on_bit(pbs_bitmap *pbm, long start_bit);
+int pbs_bitmap_next_on_bit(pbs_bitmap *pbm, unsigned long start_bit);
 
 /* pbs_bitmap's version of L = R */
 int pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R);
