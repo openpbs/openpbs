@@ -2376,7 +2376,6 @@ class TestReservations(TestFunctional):
         jid2 = self.submit_job(job_running=True)
         self.server.delete([rid, jid2[0]])
 
-    @skipOnCpuSet
     def test_qmove_job_into_standing_reservation(self):
         """
         Test qmove job into standing reservation
@@ -2389,7 +2388,6 @@ class TestReservations(TestFunctional):
         self.qmove_job_to_reserv("RESV_RUNNING", 5, time.time() + 10,
                                  time.time() + 60)
 
-    @skipOnCpuSet
     def test_shared_exclusive_job_not_in_same_rsv_vnode(self):
         """
         Test to verify user cannot submit an exclusive placement job
@@ -2400,8 +2398,7 @@ class TestReservations(TestFunctional):
         """
         vn_attrs = {ATTR_rescavail + '.ncpus': 4,
                     'sharing': 'default_excl'}
-        self.server.create_vnodes("vnode1", vn_attrs, 6,
-                                  self.mom, fname="vnodedef1")
+        self.mom.create_vnodes(vn_attrs, 6)
 
         # Submit a advance reservation (R1)
         rid = self.submit_reservation(select='3:ncpus=4', user=TEST_USER,
@@ -2414,7 +2411,8 @@ class TestReservations(TestFunctional):
              'Resource_List.place': 'shared',
              'queue': rid_q}
         jid = self.submit_job(set_attrib=a, job_running=True)
-        self.assertEqual(jid[1], '(vnode1[0]:ncpus=2)')
+        vn = self.mom.shortname
+        self.assertEqual(jid[1], '(' + vn + '[0]:ncpus=2)')
         a = {'Resource_List.select': '1:ncpus=8',
              'Resource_List.place': 'excl',
              'queue': rid_q}
@@ -2444,12 +2442,13 @@ class TestReservations(TestFunctional):
              'queue': rid_q}
         jid = self.submit_job(set_attrib=a, job_running=True)
         job1_node = jid[1]
-        self.assertEqual(jid[1], '(vnode1[0]:ncpus=2)')
+        self.assertEqual(jid[1], '(' + vn + '[0]:ncpus=2)')
         a = {'Resource_List.select': '1:ncpus=8',
              'Resource_List.place': 'excl',
              'queue': rid_q}
         jid2 = self.submit_job(set_attrib=a, job_running=True)
         job2_node = jid2[1]
         errmsg = 'job1_node contain job_node2 value'
-        self.assertEqual(jid2[1], '(vnode1[1]:ncpus=4+vnode1[2]:ncpus=4)')
+        self.assertEqual(
+            jid2[1], '(' + vn + '[1]:ncpus=4+' + vn + '[2]:ncpus=4)')
         self.assertNotIn(job1_node, job2_node, errmsg)
