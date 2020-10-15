@@ -87,6 +87,10 @@ def get_hook_body_modifyvnode_param_rpt():
         lsct = v.last_state_change_time
         lsct_o = v_o.last_state_change_time
         
+        # print test record for consumption by the BI team
+        bi_data="v.state=%s v_o.state=%s v.lsct=%s v_o.lsct=%s" % (hex(v.state),hex(v_o.state),str(lsct),str(lsct_o))
+        pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, bi_data))
+        
         # print values
         pbs.logmsg(pbs.LOG_DEBUG, "name: v=%s, v_o=%s" % (v.name, v_o.name))
         pbs.logmsg(pbs.LOG_DEBUG, "state: v=%s, v_o=%s" % (hex(v.state), hex(v_o.state)))
@@ -115,7 +119,7 @@ def get_hook_body_modifyvnode_param_rpt():
         else:
             pbs.logmsg(pbs.LOG_DEBUG, "last_state_change_time: good times")
         if (v.name != v_o.name) or (not v.name):
-            e.reject("name: vnode and vnode_o name mismatch")
+            e.reject("name: vnode and vnode_o name values are null or mismatched")
         else:
             pbs.logmsg(pbs.LOG_DEBUG, "name: good names")
         if (isinstance(v.state, int)) and (isinstance(v_o.state, int)):
@@ -135,8 +139,8 @@ def get_hook_body_modifyvnode_param_rpt():
 class TestPbsModifyvnodeStateChanges(TestFunctional):
 
     """
-    This tests the modifyvnode hook by inducing various vnode state changes; 
-    the pbs log is inspected for expected values
+    Test the modifyvnode hook by inducing various vnode state changes and
+    inspecting the pbs log for expected values.
     """
 
     def setUp(self):
@@ -152,6 +156,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
         
     def checkLog(self, start_time, mom, check_up, check_down):
+        self.server.log_match("show_vnode_state;name=", starttime=start_time)
         self.server.log_match("name: v=", starttime=start_time)
         self.server.log_match("state: v=", starttime=start_time)
         self.server.log_match("last_state_change_time: v=", starttime=start_time)
@@ -162,6 +167,18 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("Node;%s;node up" % mom, starttime=start_time)
         if check_down:
             self.server.log_match("Node;%s;node down" % mom, starttime=start_time)
+            
+    def test_check_node_state_lookup_00(self):
+        """
+        Test: check for the existence and values of the
+        pbs.REVERSE_STATE_CHANGES dictionary
+        """
+        
+        self.logger.info("---- test_check_node_state_lookup_00 TEST STARTED ----")
+        
+        self.logger.info("FIXME: Eric adds starter code; Lisa will finish")
+        
+        self.logger.info("---- test_check_node_state_lookup_00 TEST ENDED ----")
         
     @requirements(num_moms=2)
     def test_hook_state_changes_00(self):
@@ -219,6 +236,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             start_time = int(time.time())
             pbsnodesoffline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                 'bin', 'pbsnodes -o %s' % value.fqdn)
+            self.logger.info("pbsnodesoffline=%s" % pbsnodesoffline)
             retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesoffline, sudo=True)
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
@@ -228,6 +246,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             start_time = int(time.time())
             pbsnodesonline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                 'bin', 'pbsnodes -r %s' % value.fqdn)
+            self.logger.info("pbsnodesonline=%s" % pbsnodesonline)
             retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesonline, sudo=True)
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
@@ -236,6 +255,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             # State change test: kill the mom process
             start_time = int(time.time())
             pkill_cmd = ['/usr/bin/pkill', '-9', 'pbs_mom']
+            self.logger.info("pkill_cmd=%s" % pkill_cmd)
             fpath = self.du.create_temp_file()
             with open(fpath) as fileobj:
                 retpk = self.server.du.run_cmd(
