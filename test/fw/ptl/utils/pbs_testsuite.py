@@ -834,13 +834,7 @@ class PBSTestSuite(unittest.TestCase):
                 cls.schedulers[sched.server.name] = sched.server.schedulers
         # creating a short hand for current host server.schedulers
         cls.scheds = cls.server.schedulers
-        try:
-            cls.scheduler = cls.scheds['default']
-        except KeyError:
-            cls.logger.error("Could not get default scheduler:%s, "
-                             "check the server(core), server.isUp:%s" %
-                             (str(cls.scheds), cls.server.isUp()))
-            raise
+        cls.scheduler = cls.scheds['default']
 
     @classmethod
     def init_moms(cls, init_mom_func=None, skip='nomom'):

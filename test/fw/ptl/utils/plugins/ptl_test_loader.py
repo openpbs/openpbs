@@ -46,6 +46,8 @@ from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.pbs_dshutils import DshUtils
 
+log = logging.getLogger('nose.plugins.PTLTestLoader')
+
 
 class PTLTestLoader(Plugin):
 
@@ -159,9 +161,9 @@ class PTLTestLoader(Plugin):
         for name in extl[self._only_ts]:
             if name in extl.keys():
                 del extl[name]
-        self.logger.debug('included_tests:%s' % (str(self._tests_list)))
-        self.logger.debug('included_tests(copy):%s' % (str(self.__tests_list_copy)))
-        self.logger.debug('excluded_tests:%s' % (str(self._excludes_list)))
+        log.debug('included_tests:%s' % (str(self._tests_list)))
+        log.debug('included_tests(copy):%s' % (str(self.__tests_list_copy)))
+        log.debug('excluded_tests:%s' % (str(self._excludes_list)))
         self.enabled = len(self.suites_list) > 0
         del self.suites_list
         del self.excludes
@@ -170,7 +172,7 @@ class PTLTestLoader(Plugin):
         """
         Check for unknown test suite and test case
         """
-        self.logger.debug('check_unknown called')
+        log.debug('check_unknown called')
         tests_list_copy = copy.deepcopy(self.__tests_list_copy)
         only_ts = tests_list_copy.pop(self._only_ts)
         only_tc = tests_list_copy.pop(self._only_tc)
@@ -187,7 +189,7 @@ class PTLTestLoader(Plugin):
             msg += ['unknown testsuite(s): %s' % (','.join(only_ts))]
         if len(msg) > 0:
             for l in msg:
-                self.logger.error(l)
+                logging.error(l)
             sys.exit(1)
 
     def prepareTestLoader(self, loader):
@@ -287,7 +289,7 @@ class PTLTestLoader(Plugin):
             return False
         rv = self.check_follow(cls)
         if rv and not self.is_already_allowed(cls):
-            self.logger.debug('wantClass:%s' % (str(cls)))
+            log.debug('wantClass:%s' % (str(cls)))
         else:
             return False
 
@@ -309,6 +311,6 @@ class PTLTestLoader(Plugin):
             return False
         rv = self.check_follow(cls, method)
         if rv and not self.is_already_allowed(cls, method):
-            self.logger.debug('wantMethod:%s' % (str(method)))
+            log.debug('wantMethod:%s' % (str(method)))
         else:
             return False
