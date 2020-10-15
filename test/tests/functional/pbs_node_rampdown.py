@@ -608,6 +608,169 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
                        runas=TEST_USER)
         TestFunctional.tearDown(self)
 
+    def release_nodes_rerun(self, option="rerun"):
+        """
+        Test:
+            Test the behavior of a job with released nodes when it
+            gets rerun. Specifying an option "kill_mom_and_restart" will
+            kill primary mom and restart, which would cause the job
+            to requeue/rerun. Otherwise, a job qrerun will be issued
+            directly.
+
+            Given a job submitted with a select spec of
+            2 super-chunks of ncpus=3 and mem=2gb each,
+            and 1 chunk of ncpus=2 and mem=2gb, along with
+            place spec of "scatter", resulting in an:
+
+             exec_vnode=
+                  (<n1>+<n2><n3>)+(<n4>+<n5>+<n6>)+(<n7>)
+
+            First call:
+              pbs_release_nodes -j <job-id> <n5> <n6> <n7>
+
+            Then call:
+              if option is "kill_and_restart_mom":
+                  kill -KILL pbs_mom
+                  start pbs_mom
+              otherwise,
+                  qrerun <job-id>
+            Causes the job to rerun with the original requested
+            resources.
+        """
+        jid = self.create_and_submit_job('job1_5')
+
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
+
+        # Check various vnode status.
+        jobs_assn1 = "%s/0" % (jid,)
+        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n3, self.n6],
+                                'job-busy', jobs_assn1, 1, '0kb')
+
+        jobs_assn2 = "%s/0, %s/1" % (jid, jid)
+        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
+                                2, '2097152kb')
+
+        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        # Run pbs_release_nodes
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5,
+               self.n6, self.n7]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     sudo=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # only mom hostC released the job since the sole vnode
+        # <n7> has been released
+        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
+            jid, self.hostB), n=10, regexp=True,
+            existence=False, max_attempts=5, interval=1)
+
+        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
+            jid, self.hostC), n=10, regexp=True)
+
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            existence=False, max_attempts=5, interval=1)
+
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
+
+        # Verify remaining job resources.
+
+        sel_esc = self.job1_select.replace("+", "\+")
+        exec_host_esc = self.job1_exec_host.replace(
+            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
+            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=1"
+        newsel_esc = newsel.replace("+", "\+")
+        new_exec_host = self.job1_exec_host.replace(
+            "+%s/0*2" % (self.n7,), "")
+        new_exec_host_esc = new_exec_host.replace(
+            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
+        new_exec_vnode = new_exec_vnode.replace(
+            "+%s:ncpus=1" % (self.n6,), "")
+        new_exec_vnode = new_exec_vnode.replace(
+            "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
+        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
+            "]", "\]").replace(
+            "(", "\(").replace(")", "\)").replace("+", "\+")
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '3gb',
+                                 'Resource_List.ncpus': 4,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 2,
+                                 'schedselect': newsel,
+                                 'exec_host': new_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=jid)
+
+        # Check account update ('u') record
+        self.match_accounting_log('u', jid, exec_host_esc,
+                                  exec_vnode_esc, "6gb", 8, 3,
+                                  self.job1_place,
+                                  sel_esc)
+
+        # Check to make sure 'c' (next) record got generated
+        self.match_accounting_log('c', jid, new_exec_host_esc,
+                                  new_exec_vnode_esc, "3145728kb",
+                                  4, 2, self.job1_place, newsel_esc)
+
+        # Check various vnode status.
+        jobs_assn1 = "%s/0" % (jid,)
+        self.match_vnode_status([self.n1, self.n2, self.n4],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n5], 'job-busy', jobs_assn1,
+                                1, '1048576kb')
+
+        self.match_vnode_status([self.n3, self.n6],
+                                'job-busy', jobs_assn1, 1, '0kb')
+
+        self.match_vnode_status([self.n0, self.n7, self.n8, self.n9, self.n10],
+                                'free')
+
+        # Now rerun the job
+
+        if option == "kill_mom_and_restart":
+            self.momA.signal("-KILL")
+            self.momA.start()
+        else:
+            self.server.rerunjob(jid)
+
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
+
+        # Check various vnode status.
+        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n3, self.n6],
+                                'job-busy', jobs_assn1, 1, '0kb')
+
+        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
+                                2, '2097152kb')
+
+        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
     def test_release_nodes_on_stageout_true(self):
         """
         Test:
@@ -4851,156 +5014,23 @@ pbs.event().job.release_nodes_on_stageout=False
     def test_release_nodes_rerun(self):
         """
         Test:
-            Test the behavior of a job with released nodes when they
-            get rerun. The job is killed, requeued, and assigned
+            Test the behavior of a job with released nodes when it
+            gets rerun. The job is killed, requeued, and assigned
             the original set of resources before pbs_release_nodes
             was called.
-
-            Given a job submitted with a select spec of
-            2 super-chunks of ncpus=3 and mem=2gb each,
-            and 1 chunk of ncpus=2 and mem=2gb, along with
-            place spec of "scatter", resulting in an:
-
-             exec_vnode=
-                  (<n1>+<n2><n3>)+(<n4>+<n5>+<n6>)+(<n7>)
-
-            First call:
-              pbs_release_nodes -j <job-id> <n5> <n6> <n7>
-
-            Then call:
-              qrerun <job-id>
-            Causes the job to rerun with the original requested
-            resources.
         """
-        jid = self.create_and_submit_job('job1_5')
+        self.release_nodes_rerun()
 
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '6gb',
-                                 'Resource_List.ncpus': 8,
-                                 'Resource_List.nodect': 3,
-                                 'Resource_List.select': self.job1_select,
-                                 'Resource_List.place': self.job1_place,
-                                 'schedselect': self.job1_schedselect,
-                                 'exec_host': self.job1_exec_host,
-                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
-
-        # Check various vnode status.
-        jobs_assn1 = "%s/0" % (jid,)
-        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        self.match_vnode_status([self.n3, self.n6],
-                                'job-busy', jobs_assn1, 1, '0kb')
-
-        jobs_assn2 = "%s/0, %s/1" % (jid, jid)
-        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
-                                2, '2097152kb')
-
-        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
-
-        # Run pbs_release_nodes
-        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5,
-               self.n6, self.n7]
-        ret = self.server.du.run_cmd(self.server.hostname, cmd,
-                                     sudo=True)
-        self.assertEqual(ret['rc'], 0)
-
-        # only mom hostC released the job since the sole vnode
-        # <n7> has been released
-        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostB), n=10, regexp=True,
-            existence=False, max_attempts=5, interval=1)
-
-        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostC), n=10, regexp=True)
-
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False, max_attempts=5, interval=1)
-
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
-
-        # Verify remaining job resources.
-
-        sel_esc = self.job1_select.replace("+", "\+")
-        exec_host_esc = self.job1_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
-        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=1"
-        newsel_esc = newsel.replace("+", "\+")
-        new_exec_host = self.job1_exec_host.replace(
-            "+%s/0*2" % (self.n7,), "")
-        new_exec_host_esc = new_exec_host.replace(
-            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
-        new_exec_vnode = self.job1_exec_vnode.replace(
-            "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
-        new_exec_vnode = new_exec_vnode.replace(
-            "+%s:ncpus=1" % (self.n6,), "")
-        new_exec_vnode = new_exec_vnode.replace(
-            "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
-        new_exec_vnode_esc = new_exec_vnode.replace("[", "\[").replace(
-            "]", "\]").replace(
-            "(", "\(").replace(")", "\)").replace("+", "\+")
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '3gb',
-                                 'Resource_List.ncpus': 4,
-                                 'Resource_List.select': newsel,
-                                 'Resource_List.place': self.job1_place,
-                                 'Resource_List.nodect': 2,
-                                 'schedselect': newsel,
-                                 'exec_host': new_exec_host,
-                                 'exec_vnode': new_exec_vnode}, id=jid)
-
-        # Check account update ('u') record
-        self.match_accounting_log('u', jid, exec_host_esc,
-                                  exec_vnode_esc, "6gb", 8, 3,
-                                  self.job1_place,
-                                  sel_esc)
-
-        # Check to make sure 'c' (next) record got generated
-        self.match_accounting_log('c', jid, new_exec_host_esc,
-                                  new_exec_vnode_esc, "3145728kb",
-                                  4, 2, self.job1_place, newsel_esc)
-
-        # Check various vnode status.
-        jobs_assn1 = "%s/0" % (jid,)
-        self.match_vnode_status([self.n1, self.n2, self.n4],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        self.match_vnode_status([self.n5], 'job-busy', jobs_assn1,
-                                1, '1048576kb')
-
-        self.match_vnode_status([self.n3, self.n6],
-                                'job-busy', jobs_assn1, 1, '0kb')
-
-        self.match_vnode_status([self.n0, self.n7, self.n8, self.n9, self.n10],
-                                'free')
-
-        # Now rerun the job
-
-        self.server.rerunjob(jid)
-
-        self.server.expect(JOB, {'job_state': 'R',
-                                 'Resource_List.mem': '6gb',
-                                 'Resource_List.ncpus': 8,
-                                 'Resource_List.nodect': 3,
-                                 'Resource_List.select': self.job1_select,
-                                 'Resource_List.place': self.job1_place,
-                                 'schedselect': self.job1_schedselect,
-                                 'exec_host': self.job1_exec_host,
-                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
-
-        # Check various vnode status.
-        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
-                                'job-busy', jobs_assn1, 1, '1048576kb')
-
-        self.match_vnode_status([self.n3, self.n6],
-                                'job-busy', jobs_assn1, 1, '0kb')
-
-        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
-                                2, '2097152kb')
-
-        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+    def test_release_nodes_rerun_downed_mom(self):
+        """
+        Test:
+            Test the behavior of a job with released nodes when it
+            gets rerun, due to primary mom getting killed and restarted.
+            The job is killed, requeued, and assigned
+            the original set of resources before pbs_release_nodes
+            was called.
+        """
+        self.release_nodes_rerun("kill_mom_and_restart")
 
     def test_release_nodes_epilogue(self):
         """
