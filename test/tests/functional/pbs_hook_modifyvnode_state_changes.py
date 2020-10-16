@@ -34,7 +34,7 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-
+import os
 import time
 import socket
 import logging
@@ -136,6 +136,20 @@ def get_hook_body_modifyvnode_param_rpt():
     return hook_body
 
 
+def get_hook_body_reverse_node_state():
+    hook_body = """
+    import pbs
+    e = pbs.event()
+    pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
+    # this is backwards as it's a reverse lookup.
+    for value, key in pbs.REVERSE_NODE_STATE.items():
+        pbs.logmsg(pbs.LOG_DEBUG, "key:%s value:%s" % (key, value))
+    e.accept()
+    """
+    hook_body = textwrap.dedent(hook_body)
+    return hook_body
+
+
 class TestPbsModifyvnodeStateChanges(TestFunctional):
 
     """
@@ -172,13 +186,39 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         """
         Test: check for the existence and values of the
         pbs.REVERSE_STATE_CHANGES dictionary
+
+        run a hook that converts a state change hex into a string, then search
+        for it in the server log.
         """
-        
-        self.logger.info("---- test_check_node_state_lookup_00 TEST STARTED ----")
-        
-        self.logger.info("FIXME: Eric adds starter code; Lisa will finish")
-        
-        self.logger.info("---- test_check_node_state_lookup_00 TEST ENDED ----")
+
+        self.add_pbs_python_path_to_sys_path()
+        import pbs
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
+        attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
+        hook_name_00 = 'x1234'
+        hook_body_00 = get_hook_body_reverse_node_state()
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        for name, value in self.server.moms.items():
+            start_time = int(time.time())
+            self.logger.error("    ***%s:%s, type:%s", name, value,
+                              type(value))
+            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
+            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
+            self.logger.error("    ***stopping mom:%s", value)
+            value.stop()
+            self.logger.error("    ***start    mom:%s", value)
+            value.start()
+            self.server.log_match("Node;%s;node up" % value.fqdn,
+                                  starttime=start_time)
+            self.server.log_match("Node;%s;node down" % value.fqdn,
+                                  starttime=start_time)
+            for value, key in pbs.REVERSE_NODE_STATE.items():
+                line, lineno = self.server.log_match(
+                    "key:%s value:%s" % (key, value), starttime=start_time)
+        self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
         
     @requirements(num_moms=2)
     def test_hook_state_changes_00(self):
@@ -187,8 +227,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
               - mom stop, mom start, mom restart, offline mom, online mom, pkill mom
         and inspect the pbs log for expected entries
         """
-        
-        self.logger.info("---- test_hook_state_changes_00 TEST STARTED ----")
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
@@ -263,8 +302,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                     logerr=True, level=logging.DEBUG)
             self.assertEqual(retpk['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=True)
-            
-        self.logger.info("---- test_hook_state_changes_00 TEST ENDED ----")
+        self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
 
     @requirements(num_moms=2)
     def test_create_hook_and_delete_00(self):
@@ -274,7 +312,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         2.  The testing of the hook
         3.  The stopping and starting of a mom and the proper hook firing.
         """
-        self.logger.info("---- TEST STARTED ----")
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
 
@@ -305,7 +343,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
             self.server.log_match(hook_msg_00, starttime=start_time)
-        self.logger.info("---- TEST ENDED ----")
+            self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
+
 
     @requirements(num_moms=2)
     def test_create_hook_and_delete_01(self):
@@ -315,7 +354,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         2.  The testing of the hook
         3.  The stopping and starting of a mom and the proper hook firing.
         """
-        self.logger.info("---- TEST STARTED ----")
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
+
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'b1234'
@@ -355,7 +395,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match(hook_msg_00, starttime=start_time)
             self.server.log_match("vnode_name:%s" % hostbasename,
                                   starttime=start_time)
-        self.logger.info("---- TEST ENDED ----")
+        self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
 
 
     @requirements(num_moms=2)
@@ -367,7 +407,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         3.  It will bring up pbs_mom, look for the proper log messages.
         4.  It will check the log for the proper hook messages
         """
-        self.logger.info("---- TEST STARTED ----")
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'c1234'
@@ -412,4 +452,5 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match(hook_msg_00, starttime=start_time)
             self.server.log_match("vnode_name:%s" % hostbasename,
                                   starttime=start_time)
-        self.logger.info("---- TEST ENDED ----")
+        self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
+
