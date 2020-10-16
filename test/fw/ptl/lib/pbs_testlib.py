@@ -64,7 +64,7 @@ from operator import itemgetter
 
 from ptl.lib.pbs_api_to_cli import api_to_cli
 from ptl.utils.pbs_cliutils import CliUtils
-from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError
+from ptl.utils.pbs_dshutils import DshUtils, PtlUtilError, get_method_name
 from ptl.utils.pbs_procutils import ProcUtils
 from ptl.utils.pbs_testusers import (DAEMON_SERVICE_USER, ROOT_USER, TEST_USER,
                                      PbsUser)
@@ -4066,6 +4066,12 @@ class PBSService(PBSObject):
             infomsg += ' - with existence'
         else:
             infomsg += ' - with non-existence'
+        if starttime:
+            starttimestr = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime(starttime))
+            infomsg += " - from %s" % starttimestr
+        if endtime:
+            endtimestr = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime(endtime))
+            infomsg += " - to %s" % endtimestr
         attemptmsg = ' - No match'
         while attempt <= max_attempts:
             if attempt > 1:
@@ -5317,8 +5323,8 @@ class Server(PBSService):
         """
         try:
             self.manager(MGR_CMD_DELETE, VNODE, id="@default")
-        except PbsManagerError as e:
-            if "Unknown node" not in e.msg[0]:
+        except PbsManagerError as err:
+            if "Unknown node" not in err.msg[0]:
                 raise
 
     def save_configuration(self, outfile=None, mode='w'):
@@ -8209,7 +8215,7 @@ class Server(PBSService):
                         if not self._is_local:
                             self.du.rm(self.hostname, fn)
                     raise eval(str(ret['err'][0]))
-            self.logger.debug('err: ' + str(ret['err']))
+            self.logger.debug("<" + get_method_name(self) + '>err: ' + str(ret['err']))
 
         if fn is not None:
             os.remove(fn)
