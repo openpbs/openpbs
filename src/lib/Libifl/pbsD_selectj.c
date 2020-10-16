@@ -89,6 +89,7 @@ PBSD_select_get(int c, struct reply_list **rlist)
 	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL &&
 		   reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		   reply->brp_choice != BATCH_REPLY_CHOICE_Select) {
+		PBSD_FreeReply(reply);
 		pbs_errno = PBSE_PROTOCOL;
 	} else if (get_conn_errno(c) == 0) {
 		if (reply->brp_un.brp_select == NULL) {
@@ -97,6 +98,11 @@ PBSD_select_get(int c, struct reply_list **rlist)
 		}
 
 		struct reply_list *new = malloc(sizeof(struct reply_list));
+		if (!new) {
+			PBSD_FreeReply(reply);
+			pbs_errno = PBSE_SYSTEM;
+			return;
+		}
 		new->reply = reply;
 		new->next = NULL;
 		new->last = new;
@@ -113,6 +119,9 @@ PBSD_select_get(int c, struct reply_list **rlist)
  *	-convert the reply list to array of jobids
  *
  * @param[in] rlist - reply list
+ * Returned array is a contigous malloced space
+ * The first n char * contains pointers to the jobid location
+ * Then job id string is stored followed by a NULL.
  *
  * @return	string list
  * @retval	list of strings		success

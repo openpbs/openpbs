@@ -52,6 +52,7 @@
 #include "libutil.h"
 #include "attribute.h"
 #include "cmds.h"
+#include "pbs_internal.h"
 
 
 extern char * PBS_get_server(char *, char *, uint *);
@@ -128,38 +129,21 @@ static char *statename[] = { "Transit", "Queued", "Held", "Waiting",
 static void
 decode_states(char *string, long *count)
 {
-	char *c, *s;
-	long *d;
+	char *c;
 	int i;
+	char format[10 * MAX_STATE];
+	int len = 0;
 
 	c = string;
 	while (isspace(*c) && *c != '\0')
 		c++;
-	while (c && *c != '\0') {
-		s = c;
-		if ((c = strchr(s, ':')) == NULL)
-			break;
-		*c = '\0';
-		d = NULL;
 
-		for (i = 0; i < MAX_STATE; i++) {
-			if (strcmp(s, statename[i]) == 0) {
-				d = &count[i];
-				break;
-			}
-		}
-		*c = ':';
-		c++;
-		if (d) {
-			s = c;
-			*d = strtol(s, &c, 10);
-			if (*c != '\0')
-				c++;
-		} else {
-			while (*c != ' ' && *c != '\0')
-				c++;
-		}
-	}
+	for (i = 0; i < MAX_STATE; i++)
+		len += sprintf(format + len, "%s:%%ld ", statename[i]);
+
+	sscanf(c, format, &count[TRANSIT_STATE], &count[QUEUE_STATE],
+	       &count[HELD_STATE], &count[WAIT_STATE], &count[RUN_STATE],
+	       &count[EXITING_STATE], &count[BEGUN_STATE]);
 }
 
 /**
@@ -281,11 +265,6 @@ aggr_job_ct(struct batch_status *cur, struct batch_status *nxt)
 		sprintf(tot_jobs_attr, "%ld", tot_jobs);
 }
 
-#define DOUBLE 0
-#define LONG 1
-#define STRING 2
-#define SIZE 3
-
 /**
  * @brief
  * assess_type:
@@ -305,18 +284,18 @@ assess_type(char *val, int *type, double *val_double, long *val_long)
 
 	if (strchr(val, '.')) {
 		if ((*val_double = strtod(val, &pc)))
-			*type = DOUBLE;
+			*type = ATR_TYPE_FLOAT;
 		else if (pc && *pc != '\0')
-			*type = STRING;
+			*type = ATR_TYPE_STR;
 	} else {
 		*val_long = strtol(val, &pc, 10);
 		if (!pc || *pc == '\0')
-			*type = LONG;
+			*type = ATR_TYPE_LONG;
 		else if (pc && (!strcasecmp(pc, "kb") || !strcasecmp(pc, "mb") || !strcasecmp(pc, "gb") ||
 			    !strcasecmp(pc, "tb") || !strcasecmp(pc, "pb")))
-				*type = SIZE;
+				*type = ATR_TYPE_SIZE;
 		else
-			*type = STRING;
+			*type = ATR_TYPE_STR;
 	}
 }
 
@@ -354,22 +333,22 @@ accumulate_values(struct attrl_holder *a, struct attrl *b, struct attrl *orig)
 
 	assess_type(b->value, &type, &val_double, &val_long);
 
-	if (type == STRING)
+	if (type == ATR_TYPE_STR)
 		return;
 
 	for (itr = a; itr && itr->atr_list; itr = itr->next) {
 		cur = itr->atr_list;
 		if (cur->resource && !strcmp(cur->resource, b->resource)) {
 			switch (type) {
-			case DOUBLE:
+			case ATR_TYPE_FLOAT:
 				val_double += strtod(cur->value, &pc);
 				sprintf(buf, "%f", val_double);
 				break;
-			case LONG:
+			case ATR_TYPE_LONG:
 				val_long += strtol(cur->value, &pc, 10);
 				sprintf(buf, "%ld", val_long);
 				break;
-			case SIZE:
+			case ATR_TYPE_SIZE:
 				decode_size(&attr, NULL, NULL, b->value);
 				decode_size(&new, NULL, NULL, cur->value);
 				set_size(&attr, &new, INCR);
@@ -418,7 +397,10 @@ aggr_resc_ct(struct batch_status *st1, struct batch_status *st2)
 		so we do not have to loop through all attributes */
 	for (a = st1->attribs; a; a = a->next) {
 		if (a->name && strcmp(a->name, ATTR_rescassn) == 0) {
-			nxt = malloc(sizeof(struct attrl_holder));
+			if ((nxt = malloc(sizeof(struct attrl_holder))) == NULL) {
+				pbs_errno = PBSE_SYSTEM;
+				goto end;
+			}
 			nxt->atr_list = a;
 			nxt->next = NULL;
 			if (cur) {
@@ -434,6 +416,7 @@ aggr_resc_ct(struct batch_status *st1, struct batch_status *st2)
 			accumulate_values(resc_assn, b, st1->attribs);
 	}
 
+end:
 	for (cur = resc_assn; cur; cur = nxt) {
 		nxt = cur->next;
 		free(cur);
