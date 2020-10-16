@@ -751,19 +751,19 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
  *
  * @param[out] is_conn_lost - did we lost connection to server?
  *                            1 - yes, 0 - no
+ * @param[in/out] high_prior_cmd - contains the high priority command received
  *
  * @return sched_cmd *
- * @retval NULL  - no super high priority command
- * @retval !NULL - super high priority command
+ * @retval 0 - no super high priority command is received
+ * @retval 1 - super high priority command is received
  *
- * @warning caller has to free returned value using free_sched_cmd() once not needed
  */
-static sched_cmd *
-get_high_prio_cmd(int *is_conn_lost)
+static int
+get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
 	int i;
 	svr_conn_t *svr_conns = get_conn_servers(clust_secondary_sock);
-	static sched_cmd *cmd = NULL;
+	sched_cmd cmd;
 
 	for (i = 0; i < get_num_servers(); i++) {
 		int rc;
@@ -774,25 +774,27 @@ get_high_prio_cmd(int *is_conn_lost)
 		rc = get_sched_cmd_noblk(svr_conns[i].sd, &cmd);
 		if (rc == -2) {
 			*is_conn_lost = 1;
-			return NULL;
+			return 0;
 		}
 		if (rc != 1)
 			continue;
 
-		if (cmd == NULL)
-			return NULL;
-
-		if (cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
-			return cmd;
+		if (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+			*high_prior_cmd = cmd;
+			return 1;
 		} else {
-			if (!ds_enqueue(sched_cmds, cmd)) {
-				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-						__func__, "Failed to enqueue sched cmd in cmds queue: cmd=%d jid=%s", cmd->cmd, cmd->jid ? cmd->jid : "(none)");
-				free_sched_cmd(cmd);
+			if (cmd.cmd == SCH_SCHEDULE_AJOB)
+				qrun_list[qrun_list_size++] = cmd;
+			else {
+				/* Index of the array is the command recevied. Put the value as 1 which indicates that
+				 * the command is received. If we receive same commands from multiple servers they
+				 * are overwritten which is what we want i.e. it allows us to eliminate duplicate commands.
+				 */
+				sched_cmds[cmd.cmd] = 1;
 			}
 		}
 	}
-	return NULL;
+	return 0;
 }
 
 /**
@@ -1088,18 +1090,19 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 				"Bailed out of main job loop after checking to see if %d jobs could run.", (i + 1));
 		}
 		if (!end_cycle) {
+			sched_cmd cmd;
 			int is_conn_lost = 0;
-			sched_cmd *cmd = get_high_prio_cmd(&is_conn_lost);
+			int rc = get_high_prio_cmd(&is_conn_lost, &cmd);
+
 			if (is_conn_lost) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
-					  njob->name, "We lost connection with the server, leaving scheduling cycle");
+					njob->name, "We lost connection with the server, leaving scheduling cycle");
 				end_cycle = 1;
-			} else if (cmd && cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+			} else if ((rc == 1) && (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE)) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
-					  njob->name, "Leaving scheduling cycle as requested by server.");
+					njob->name, "Leaving scheduling cycle as requested by server.");
 				end_cycle = 1;
 			}
-			free_sched_cmd(cmd);
 		}
 
 #ifdef NAS /* localmod 030 */

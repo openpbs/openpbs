@@ -138,7 +138,14 @@ struct status cstat;
 
 /* to make references happy */
 int got_sigpipe;
-ds_queue *sched_cmds = NULL;
+
+/* Each index of the array is a sched command. Store 1 as a value to indicate that we received a command */
+extern int sched_cmds[TOTAL_SCHED_CMDS];
+
+/* This list stores SCH_SCHEDULE_AJOB commands */
+sched_cmd *qrun_list;
+int qrun_list_size;
+
 void *poll_context = NULL;
 
 /* Stuff needed for multi-threading */

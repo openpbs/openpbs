@@ -297,26 +297,6 @@ add_str_to_unique_array(char ***str_arr, char *str);
  */
 void free_ptr_array (void *inp);
 
-/**
- * @brief create new sched cmd structure and return
- *
- * @return sched_cmd *
- * @retval NULL  - failure
- * @return !NULL - success
- *
- * @warning caller has to free returned value using free_sched_cmd() when not needed
- */
-sched_cmd *new_sched_cmd(void);
-
-/**
- * @brief free given sched cmd structure
- *
- * @param[in] cmd - pointer to sched cmd structure
- *
- * @return void
- */
-void free_sched_cmd(sched_cmd *cmd);
-
 #ifdef __cplusplus
 }
 #endif

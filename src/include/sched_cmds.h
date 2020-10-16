@@ -52,16 +52,6 @@ struct sched_cmd {
 
 	/* jobid assisiated with cmd if any else NULL */
 	char *jid;
-
-	/*
-	 * connection to server from which we got this sched command.
-	 * This will be one of the server's secondary connection.
-	 *
-	 * This will be used in while finding server conn structure before calling
-	 * schedule() which needs primary connection to the server
-	 *
-	 */
-	int from_sock;
 };
 
 /* server to scheduler commands: */

@@ -127,8 +127,7 @@ static void close_servers();
 static void reconnect_servers();
 static void sched_svr_init(void);
 static void connect_svrpool();
-static int compare_sched_cmd(const sched_cmd *cmd1, const sched_cmd *cmd2);
-ds_queue *filter_sched_cmds(ds_queue *sched_cmds);
+static int schedule_wrapper(sched_cmd *cmd, int opt_no_restart);
 
 /**
  * @brief
@@ -339,7 +338,7 @@ read_config(char *file)
 void
 restart(int sig)
 {
-	const sched_cmd cmd = {SCH_CONFIGURE, NULL, clust_secondary_sock};
+	const sched_cmd cmd = {SCH_CONFIGURE, NULL};
 
 	if (sig) {
 		log_close(1);
@@ -507,6 +506,8 @@ are_we_primary()
 static void
 close_servers(void)
 {
+	int i;
+
 	pbs_disconnect(clust_primary_sock);
 	pbs_disconnect(clust_secondary_sock);
 
@@ -514,12 +515,11 @@ close_servers(void)
 		tpp_em_destroy(poll_context);
 		poll_context = NULL;
 	}
-	while (!ds_queue_is_empty(sched_cmds)) {
-		sched_cmd *cmd = static_cast<sched_cmd *>(ds_dequeue(sched_cmds));
-		free_sched_cmd(cmd);
-	}
-	free_ds_queue(sched_cmds);
-	sched_cmds = NULL;
+
+	/* free qrun_list */
+	for (i = 0; i < get_num_servers(); i++)
+		free(qrun_list[i].jid);
+	free(qrun_list);
 
 	sched_svr_init();
 
@@ -594,12 +594,12 @@ sched_svr_init(void)
 			log_err(errno, __func__, "Failed to init cmd connections context");
 			die(-1);
 		}
+	}
 
-		sched_cmds = new_ds_queue();
-		if (sched_cmds == NULL) {
-			log_errf(errno, __func__, MEM_ERR_MSG);
-			die(-1);
-		}
+	qrun_list = malloc((get_num_servers() + 1) * sizeof(sched_cmd));
+	if (qrun_list == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		die(0);
 	}
 
 }
@@ -634,15 +634,14 @@ static int
 read_sched_cmd(int sock, int *hascmd)
 {
 	int rc = -1;
-	sched_cmd *cmd = NULL;
+	sched_cmd cmd;
 	*hascmd = 0;
 
 	rc = get_sched_cmd(sock, &cmd);
-	if (rc != 1) {
-		free_sched_cmd(cmd);
+	if (rc != 1)
 		return rc;
-	} else {
-		sched_cmd *cmd_prio = NULL;
+	else {
+		sched_cmd cmd_prio;
 		/*
 		 * There is possibility that server has sent
 		 * priority command after first non-priority command,
@@ -655,22 +654,18 @@ read_sched_cmd(int sock, int *hascmd)
 		 * and if we get priority command then just ignore it
 		 * since we are not yet in middle of schedule cycle
 		 */
-		if (cmd_prio != NULL) {
-			int rc_prio = get_sched_cmd_noblk(sock, &cmd_prio);
-			free_sched_cmd(cmd_prio);
-			if (rc_prio == -2) {
-				free_sched_cmd(cmd);
-				return 0;
-			}
-		}
+		int rc_prio = get_sched_cmd_noblk(sock, &cmd_prio);
+		if (rc_prio == -2)
+			return 0;
 	}
 
-	if (cmd->cmd != SCH_SCHEDULE_RESTART_CYCLE)  {
-		if (!ds_enqueue(sched_cmds, cmd)) {
-			free_sched_cmd(cmd);
-			return -1;
-		} else
-			*hascmd = 1;
+	if (cmd.cmd != SCH_SCHEDULE_RESTART_CYCLE)  {
+		if (cmd.cmd == SCH_SCHEDULE_AJOB)
+			qrun_list[qrun_list_size++] = cmd;
+		else
+			sched_cmds[cmd.cmd] = 1;
+
+		*hascmd = 1;
 	}
 
 	return rc;
@@ -691,6 +686,8 @@ wait_for_cmds()
 	int hascmd = 0;
 	sigset_t emptyset;
 
+	qrun_list_size = 0;
+
 
 	while (!hascmd) {
 		sigemptyset(&emptyset);
@@ -703,6 +700,9 @@ wait_for_cmds()
 				sleep(1); /* wait for 1s for not to burn too much CPU */
 			}
 		} else {
+			for (i = 0; i < TOTAL_SCHED_CMDS;i++) {
+				sched_cmds[i] = 0;
+			}
 			for (i = 0; i < nsocks; i++) {
 				int sock = EM_GET_FD(events, i);
 				err = read_sched_cmd(sock, &hascmd);
@@ -720,25 +720,30 @@ wait_for_cmds()
 
 /**
  *
- * @brief sends end of cycle indication to the Server
+ * @brief sends end of cycle indication to all the servers configured
  *
  * @param[in] sd - socket descriptor to send end of cycle notification
  *
  * @return void
  */
 static void
-send_cycle_end(int sd)
+send_cycle_end()
 {
+	svr_conn_t *svr_conns;
+	int i;
 	static int cycle_end_marker = 0;
+	svr_conns =  get_conn_servers(clust_secondary_sock);
 
-	if (diswsi(sd, cycle_end_marker) != DIS_SUCCESS) {
-		log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-			   "Not able to send end of cycle, errno = %d", errno);
-		goto err;
+	for (i = 0; i < get_num_servers(); i++) {
+		if (diswsi(svr_conns[i].sd, cycle_end_marker) != DIS_SUCCESS) {
+			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+				"Not able to send end of cycle, errno = %d", errno);
+			goto err;
+		}
+
+		if (dis_flush(svr_conns[i].sd) != 0)
+			goto err;
 	}
-
-	if (dis_flush(sd) != 0)
-		goto err;
 
 	return;
 err:
@@ -758,9 +763,7 @@ main(int argc, char *argv[])
 	const char *dbfile = "sched_out";
 #endif
 	struct sigaction act;
-	sigset_t oldsigs;
 	int opt_no_restart = 0;
-	time_t now;
 	int stalone = 0;
 #ifdef _POSIX_MEMLOCK
 	int do_mlockall = 0;
@@ -1088,56 +1091,36 @@ main(int argc, char *argv[])
 	connect_svrpool();
 
 	for (go=1; go;) {
-		ds_queue *fltrd_queue;
+		int i;
 
 		wait_for_cmds();
-		fltrd_queue = filter_sched_cmds(sched_cmds);
 
-		/* clean up the original commands queue as we now have a filtered commands queue */
-		while (!ds_queue_is_empty(sched_cmds)) {
-			sched_cmd *cmd = ds_dequeue(sched_cmds);
-			free_sched_cmd(cmd);
+		/* First walk through the qrun_list as this has high priority followed by the other commands */
+		for (i = 0; i < qrun_list_size; i++) { 
+			if (schedule_wrapper(&qrun_list[i], opt_no_restart) == 1) {
+				go = 0;
+				break;
+			}	
 		}
-		free_ds_queue(sched_cmds);
-		
-		sched_cmds = fltrd_queue;
 
-		while (go && !ds_queue_is_empty(sched_cmds)) {
-			sched_cmd *cmd = static_cast<sched_cmd *>(ds_dequeue(sched_cmds));
+		for (i = 0; go && (i < TOTAL_SCHED_CMDS); i++) {
+			sched_cmd cmd;
 
-			if (!cmd)
+			if (sched_cmds[i] == 0)
 				continue;
 
-#ifdef PBS_UNDOLR_ENABLED
-			if (sigusr1_flag)
-				undolr();
-#endif
-			if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
-				log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
+			/* index itself is the command */
+			cmd.cmd = i;
 
-			/* Keep track of time to use in SIGSEGV handler */
-			now = time(NULL);
-			if (!opt_no_restart)
-				segv_last_time = now;
+			/* jid is always NULL since this list does not contain SCHEDULE_AJOB commands */
+			cmd.jid = NULL;
 
-#ifdef DEBUG
-			{
-				strftime(log_buffer, sizeof(log_buffer), "%Y-%m-%d %H:%M:%S", localtime(&now));
-				DBPRT(("%s Scheduler received command %d\n", log_buffer, cmd->cmd));
-			}
-#endif
-
-
-			if (schedule(clust_primary_sock, cmd)) /* magic happens here */
+			if (schedule_wrapper(&cmd, opt_no_restart) == 1) {
 				go = 0;
-			else
-				send_cycle_end(cmd->from_sock);
-
-			free_sched_cmd(cmd);
-
-			if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
-				log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
+				break;
+			}
 		}
+
 	}
 
 	close_servers();
@@ -1152,129 +1135,49 @@ main(int argc, char *argv[])
 }
 
 /**
- *
  * @brief
- *		Compares two sched commands and tells whether they are duplicate or not.
+ *	schedule_wrapper - Wrapper function for calling schedule
  *
- * @param[in]	cmd1	-	command1
- * @param[in]	cmd2	-      command2
- *
+ * @param[in] cmd - pointer to schedulig command
+ * @param[in] opt_no_restart - value of opt_no_restart 
  *
  * @return	int
- * @retval	1	-	if both commands are duplicate
- * @retval	0	-	if not duplicate
- *
+ * @retval	0	: continue calling scheduling cycles
+ * @retval	1	: exit scheduler
  */
 static int
-compare_sched_cmd(const sched_cmd *cmd1, const sched_cmd *cmd2)
+schedule_wrapper(sched_cmd *cmd, int opt_no_restart)
 {
-	if (cmd1 && cmd2) {
-		if (cmd1->jid == NULL && cmd2->jid == NULL) {
-			if (cmd1->cmd == cmd2->cmd)
-				return 1;
-		} else {
-			if (cmd1->cmd == cmd2->cmd && !strcmp(cmd1->jid, cmd2->jid))
-				return 1;
-		}
+	sigset_t oldsigs;
+	time_t now;
+
+#ifdef PBS_UNDOLR_ENABLED
+	if (sigusr1_flag)
+		undolr();
+#endif
+	if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_BLOCK)");
+
+	/* Keep track of time to use in SIGSEGV handler */
+	now = time(NULL);
+	if (!opt_no_restart)
+		segv_last_time = now;
+
+#ifdef DEBUG
+	{
+		strftime(log_buffer, sizeof(log_buffer), "%Y-%m-%d %H:%M:%S", localtime(&now));
+		DBPRT(("%s Scheduler received command %d\n", log_buffer, cmd->cmd));
 	}
+#endif
+
+
+	if (schedule(clust_primary_sock, cmd)) /* magic happens here */
+		return 1;
+	else
+		send_cycle_end();
+
+	if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
+		log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
+
 	return 0;
-}
-
-/**
- * @brief sched_cmds_filtered is a resultant queue which consists of sched commands after discarding
- *             the duplicate commands which is finally returned from this function.
- *
- * @param[in] sched_cmds	- scheduler command queue
- * @note
- * 1. Traverse sched_cmds queue
- * 2. While we traverse we keep pushing the unique elements into the sched_cmds_filtered queue
- * 3. To find out if a command is duplicate or not here we are making use of the function compare_sched_cmd()
- * 4. Finally return the sched_cmds_filtered_queue which now only consists of unique sched commands.
- *
- *
- * @return	ds_queue *
- * @retval	success	- returns the filtered queue
- * @reval	 fail -	NULL
- *
- */
-ds_queue *
-filter_sched_cmds(ds_queue *sched_cmds)
-{
-	ds_queue *sched_cmds_filtered = new_ds_queue();
-	sched_cmd *tmp_cmd;
-	int cmds_front;
-	int cmds_rear;
-	sched_cmd *cmd_enq;
-
-	if (sched_cmds_filtered == NULL) 
-		goto error;
-
-	/* 1. Traverse sched_cmds queue
-	 * 2. While we traverse we keep pushing the unique elements into the sched_cmds_filtered queue
-	 * 3. To find out if a command is duplicate or not here we are making use of the function compare_sched_cmd()
-	 * 4. Finally return the sched_cmds_filtered_queue which now only consists of unique sched commands.
-	 */
-
-	cmds_front = sched_cmds->front;
-	cmds_rear = sched_cmds->rear;
-
-
-	tmp_cmd = sched_cmds->content_arr[cmds_front];
-	if (tmp_cmd == NULL)
-		goto error;
-
-	cmd_enq = new_sched_cmd();
-	if (cmd_enq == NULL)
-		goto error;
-
-	cmd_enq->cmd = tmp_cmd->cmd;
-	cmd_enq->from_sock = tmp_cmd->from_sock;
-	if (tmp_cmd->jid != NULL) {
-		cmd_enq->jid = string_dup(tmp_cmd->jid);
-		if (cmd_enq->jid == NULL)
-			goto error;
-	}
-
-	if (!ds_enqueue(sched_cmds_filtered, cmd_enq)) 
-		goto error;
-	cmds_front++;
-
-	for (; cmds_front < cmds_rear; cmds_front++) {
-		int no_enq = 0;
-		int cmds_fltrd_front = sched_cmds_filtered->front;
-		int cmds_fltrd_rear = sched_cmds_filtered->rear;
-		for (; cmds_fltrd_front < cmds_fltrd_rear; cmds_fltrd_front++) {
-			if (compare_sched_cmd(sched_cmds_filtered->content_arr[cmds_fltrd_front],
-				sched_cmds->content_arr[cmds_front]) == 1) {
-					no_enq = 1;
-					break;
-			} 
-		}
-		if (no_enq == 0) {
-			sched_cmd *cmd_enq;
-			sched_cmd *tmp_cmd;
-			cmd_enq = new_sched_cmd();
-			if (cmd_enq == NULL)
-				goto error;
-			tmp_cmd = sched_cmds->content_arr[cmds_front];
-
-			cmd_enq->cmd = tmp_cmd->cmd;
-			cmd_enq->from_sock = tmp_cmd->from_sock;
-			if (tmp_cmd->jid != NULL) {
-				cmd_enq->jid = string_dup(tmp_cmd->jid);
-				if (cmd_enq->jid == NULL)
-					goto error;
-			}
-
-			if (!ds_enqueue(sched_cmds_filtered, cmd_enq)) 
-				goto error;		
-		}
-	}
-
-	return sched_cmds_filtered;
-
-error:
-	log_errf(errno, __func__, MEM_ERR_MSG);
-	die(-1);	
-	return NULL;
 }
