@@ -200,7 +200,7 @@ class FairshareTree(object):
         return self.__str__()
 
     def _dfs(self, node, dat):
-        if node.name != ROOT_USER:
+        if node.name != 'root':
             s = []
             if node.name is not None:
                 s += [node.name]
