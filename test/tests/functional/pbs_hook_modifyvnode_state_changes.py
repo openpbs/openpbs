@@ -203,13 +203,12 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         ret = self.server.import_hook(hook_name_00, hook_body_00)
         for name, value in self.server.moms.items():
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value,
-                              type(value))
-            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
-            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    ***stopping mom:%s", value)
+            self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
+            self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
+            self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
+            self.logger.info("    ***stop mom:%s" % value)
             value.stop()
-            self.logger.error("    ***start    mom:%s", value)
+            self.logger.info("    ***start mom:%s" % value)
             value.start()
             self.server.log_match("Node;%s;node up" % value.fqdn,
                                   starttime=start_time)
@@ -224,14 +223,14 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
     def test_hook_state_changes_00(self):
         """
         Test: induce a variety of vnode state changes with debug turned on:
-              - mom stop, mom start, mom restart, offline mom, online mom, pkill mom
+              - mom stop, mom start, mom restart, offline mom, online mom
         and inspect the pbs log for expected entries
         """
         self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
 
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
-        hook_name_00 = 'mvn00'
+        hook_name_00 = 'm1234'
         hook_body_00 = get_hook_body_modifyvnode_param_rpt()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
@@ -255,24 +254,25 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             
             # State change test: mom stop
             start_time = int(time.time())
-            self.logger.info("    ***stopping mom:%s" % value)
+            self.logger.info("    ***stop mom:%s" % value)
             value.stop()
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=True)
             
             # State change test: mom start
             start_time = int(time.time())
-            self.logger.info("    ***start    mom:%s" % value)
+            self.logger.info("    ***start mom:%s" % value)
             value.start()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=False)
             
             # State change test: mom restart
             start_time = int(time.time())
-            self.logger.info("    ***restart  mom:%s" % value)
+            self.logger.info("    ***restart mom:%s" % value)
             value.restart()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=True)
             
             # State change test: take the mom offline
             start_time = int(time.time())
+            self.logger.info("    ***offline mom:%s" % value)
             pbsnodesoffline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                 'bin', 'pbsnodes -o %s' % value.fqdn)
             self.logger.info("pbsnodesoffline=%s" % pbsnodesoffline)
@@ -283,6 +283,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             
             # State change test: put the mom back online
             start_time = int(time.time())
+            self.logger.info("    ***online mom:%s" % value)
             pbsnodesonline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                 'bin', 'pbsnodes -r %s' % value.fqdn)
             self.logger.info("pbsnodesonline=%s" % pbsnodesonline)
@@ -291,17 +292,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state - offline", starttime=start_time)
             
-            # State change test: kill the mom process
-            start_time = int(time.time())
-            pkill_cmd = ['/usr/bin/pkill', '-9', 'pbs_mom']
-            self.logger.info("pkill_cmd=%s" % pkill_cmd)
-            fpath = self.du.create_temp_file()
-            with open(fpath) as fileobj:
-                retpk = self.server.du.run_cmd(
-                    value.fqdn, pkill_cmd, stdin=fileobj, sudo=True,
-                    logerr=True, level=logging.DEBUG)
-            self.assertEqual(retpk['rc'], 0)
-            self.checkLog(start_time, value.fqdn, check_up=False, check_down=True)
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
 
     @requirements(num_moms=2)
@@ -323,20 +313,19 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-        self.logger.error("socket.gethostname():%s", socket.gethostname())
-        self.logger.error("***self.server.name:%s", str(self.server.name))
-        self.logger.error("self.server.moms:%s", str(self.server.moms))
+        self.logger.info("socket.gethostname():%s" % socket.gethostname())
+        self.logger.info("***self.server.name:%s" % str(self.server.name))
+        self.logger.info("self.server.moms:%s" % str(self.server.moms))
         for name, value in self.server.moms.items():
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value,
-                              type(value))
-            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
-            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    ***stopping mom:%s", value)
+            self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
+            self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
+            self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
+            self.logger.info("    ***stop mom:%s" % value)
             value.stop()
-            self.logger.error("    ***start    mom:%s", value)
+            self.logger.info("    ***start mom:%s" % value)
             value.start()
-            self.logger.error("    ***restart  mom:%s", value)
+            self.logger.info("    ***restart mom:%s" % value)
             value.restart()
             self.server.log_match("Node;%s;node up" % value.fqdn,
                                   starttime=start_time)
@@ -367,11 +356,10 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for name, value in self.server.moms.items():
             hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.', 1)[0]
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value,
-                              type(value))
-            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
-            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    ***stopping mom:%s", value)
+            self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
+            self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
+            self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
+            self.logger.info("    ***stop mom:%s" % value)
             start_time = int(time.time())
             value.stop()
             self.server.log_match("Node;%s;node down" % value.fqdn,
@@ -379,12 +367,12 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("new_state:0x2", starttime=start_time)
             self.server.log_match("old_state:0x0", starttime=start_time)
             start_time = int(time.time())
-            self.logger.error("    ***start    mom:%s", value)
+            self.logger.info("    ***start mom:%s" % value)
             value.start()
             self.server.log_match("new_state:0x422", starttime=start_time)
             self.server.log_match("old_state:0x400", starttime=start_time)
             start_time = int(time.time())
-            self.logger.error("    ***restart  mom:%s", value)
+            self.logger.info("    ***restart mom:%s" % value)
             value.restart()
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
@@ -419,10 +407,10 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for name, value in self.server.moms.items():
             hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.', 1)[0]
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
-            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
-            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    ***pkilling mom:%s", value)
+            self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
+            self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
+            self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
+            self.logger.info("    ***pkilling mom:%s" % value)
             start_time = int(time.time())
             pkill_cmd = ['/usr/bin/pkill', '-9', 'pbs_mom']
             fpath = self.du.create_temp_file()
@@ -430,18 +418,18 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 ret = self.server.du.run_cmd(
                     value.fqdn, pkill_cmd, stdin=fileobj, sudo=True,
                     logerr=True, level=logging.DEBUG)
-                self.logger.error("pkill(ret):%s", str(pformat(ret)))
+                self.logger.info("pkill(ret):%s" % str(pformat(ret)))
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
             self.server.log_match("new_state:0x2", starttime=start_time)
             self.server.log_match("old_state:0x0", starttime=start_time)
             start_time = int(time.time())
-            self.logger.error("    ***start    mom:%s", value)
+            self.logger.info("    ***start mom:%s" % value)
             value.start()
             self.server.log_match("new_state:0x422", starttime=start_time)
             self.server.log_match("old_state:0x400", starttime=start_time)
             start_time = int(time.time())
-            self.logger.error("    ***restart  mom:%s", value)
+            self.logger.info("    ***restart mom:%s" % value)
             value.restart()
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
