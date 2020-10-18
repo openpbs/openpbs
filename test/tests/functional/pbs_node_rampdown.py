@@ -744,7 +744,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Now rerun the job
 
         if option == "kill_mom_and_restart":
-            self.momA.signal("-KILL")
+            self.momA.signal(self.momA, "-KILL")
             self.momA.start()
         else:
             self.server.rerunjob(jid)
