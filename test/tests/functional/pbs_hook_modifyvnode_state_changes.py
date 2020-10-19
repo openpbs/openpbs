@@ -44,6 +44,33 @@ from tests.functional import *
 from ptl.utils.pbs_dshutils import get_method_name
 
 
+node_states = {
+    'ND_FREE': 0,
+    'ND_OFFLINE': 1,
+    'ND_DOWN': 2,
+    'ND_DELETED': 4,
+    'ND_UNRESOLVABLE': 8,
+    'ND_STALE': 32,
+    'ND_JOBBUSY': 16,
+    'ND_JOB_EXCLUSIVE': 64,
+    'ND_RESVEXCL': 8192,
+    'ND_BUSY': 128,
+    'ND_STATE_UNKNOWN': 256,
+    'ND_NEEDS_HELLOSVR': 512,
+    'ND_INIT': 1024,
+    'ND_PROV': 2048,
+    'ND_WAIT_PROV': 4096,
+    'ND_SLEEP': 262144,
+    'ND_OFFLINE_BY_MOM': 16384,
+    'ND_MARKEDDOWN': 32768,
+    'ND_NEED_ADDRS': 65536,
+    'ND_MAINTENANCE': 131072,
+    'ND_NEED_CREDENTIALS': 524288,
+    'ND_VNODE_AVAILABLE': 8400,
+    'ND_VNODE_UNAVAILABLE': 409903
+}
+
+
 def get_hook_body(hook_msg):
     hook_body = """
     import pbs
@@ -86,11 +113,11 @@ def get_hook_body_modifyvnode_param_rpt():
         v_o = e.vnode_o
         lsct = v.last_state_change_time
         lsct_o = v_o.last_state_change_time
-        
+
         # print test record for consumption by the BI team
         bi_data="v.state=%s v_o.state=%s v.lsct=%s v_o.lsct=%s" % (hex(v.state),hex(v_o.state),str(lsct),str(lsct_o))
         pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, bi_data))
-        
+
         # print values
         pbs.logmsg(pbs.LOG_DEBUG, "name: v=%s, v_o=%s" % (v.name, v_o.name))
         pbs.logmsg(pbs.LOG_DEBUG, "state: v=%s, v_o=%s" % (hex(v.state), hex(v_o.state)))
@@ -112,7 +139,7 @@ def get_hook_body_modifyvnode_param_rpt():
         pbs.logmsg(pbs.LOG_DEBUG, "resv: v=%s, v_o=%s" % (v.resv, v_o.resv))
         pbs.logmsg(pbs.LOG_DEBUG, "resv_enable: v=%s, v_o=%s" % (v.resv_enable, v_o.resv_enable))
         pbs.logmsg(pbs.LOG_DEBUG, "sharing: v=%s, v_o=%s" % (v.sharing, v_o.sharing))
-        
+
         # sanity test some values
         if (lsct < lsct_o) or (lsct_o <= 0):
             e.reject("last_state_change_time: bad timestamp value")
@@ -168,7 +195,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         # Delete managers and operators if added
         attrib = ['operators', 'managers']
         self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
-        
+
     def checkLog(self, start_time, mom, check_up, check_down):
         self.server.log_match("show_vnode_state;name=", starttime=start_time)
         self.server.log_match("name: v=", starttime=start_time)
@@ -181,7 +208,39 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("Node;%s;node up" % mom, starttime=start_time)
         if check_down:
             self.server.log_match("Node;%s;node down" % mom, starttime=start_time)
-            
+
+    @tags('smoke')
+    def test_check_node_state_constants(self):
+        """
+        Test: verify expected node state constants and associated reverse map
+        are defined in the pbs module and contain the expected values.
+        """
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
+        self.add_pbs_python_path_to_sys_path()
+        import pbs
+        self.assertEqual(
+            len(pbs.REVERSE_NODE_STATE), len(node_states),
+            "node state count mismatch: actual=%s, expected:%s" %
+            (len(pbs.REVERSE_NODE_STATE), len(node_states)))
+        for attr, value in node_states.items():
+            self.logger.info("checking attribute '%s' in pbs module" % (attr,))
+            self.assertEqual(
+                hasattr(pbs, attr), True, "pbs.%s does not exist." %
+                (attr,))
+            self.assertEqual(
+                getattr(pbs, attr), value,
+                "pbs.%s is incorrect: actual=%s, expected=%s." %
+                (attr, getattr(pbs, attr), value))
+            self.assertEqual(
+                value in pbs.REVERSE_NODE_STATE, True,
+                "pbs.REVERSE_NODE_STATE[%s] does not exist." %
+                (value,))
+            self.assertEqual(
+                pbs.REVERSE_NODE_STATE[value], attr,
+                ("pbs.REVERSE_NODE_STATE[%s] is incorrect: actual=%s, " +
+                "expected=%s.") % (value, pbs.REVERSE_NODE_STATE[value], attr))
+        self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
+
     def test_check_node_state_lookup_00(self):
         """
         Test: check for the existence and values of the
@@ -218,7 +277,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 line, lineno = self.server.log_match(
                     "key:%s value:%s" % (key, value), starttime=start_time)
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
-        
+
     @requirements(num_moms=2)
     def test_hook_state_changes_00(self):
         """
@@ -235,7 +294,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-        
+
         self.logger.info("socket.gethostname():%s" % socket.gethostname())
         self.logger.info("***self.server.name:%s" % str(self.server.name))
         self.logger.info("self.server.moms:%s" % str(self.server.moms))
@@ -246,30 +305,30 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         retpbsn = self.du.run_cmd(self.server.hostname, pbsnodescmd, sudo=True)
         self.assertEqual(retpbsn['rc'], 0)
         self.logger.info("retpbsn=%s" % retpbsn)
-        
+
         for name, value in self.server.moms.items():
             self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
             self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
-            
+
             # State change test: mom stop
             start_time = int(time.time())
             self.logger.info("    ***stop mom:%s" % value)
             value.stop()
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=True)
-            
+
             # State change test: mom start
             start_time = int(time.time())
             self.logger.info("    ***start mom:%s" % value)
             value.start()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=False)
-            
+
             # State change test: mom restart
             start_time = int(time.time())
             self.logger.info("    ***restart mom:%s" % value)
             value.restart()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=True)
-            
+
             # State change test: take the mom offline
             start_time = int(time.time())
             self.logger.info("    ***offline mom:%s" % value)
@@ -280,7 +339,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state + offline", starttime=start_time)
-            
+
             # State change test: put the mom back online
             start_time = int(time.time())
             self.logger.info("    ***online mom:%s" % value)
@@ -291,7 +350,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state - offline", starttime=start_time)
-            
+
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
 
     @requirements(num_moms=2)
@@ -441,4 +500,3 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("vnode_name:%s" % hostbasename,
                                   starttime=start_time)
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
-
