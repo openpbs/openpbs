@@ -39,18 +39,18 @@
 
 #
 
-AC_DEFUN([PBS_AC_DISABLE_SECURITY_CHECK],
+AC_DEFUN([PBS_AC_SECURITY],
 [
   AC_MSG_CHECKING([whether to disable security check])
-  AC_ARG_ENABLE([security-check],
-    AS_HELP_STRING([--disable-security-check],
-      [Do not perform security checks]
+  AC_ARG_ENABLE([security],
+    AS_HELP_STRING([--disable/--enable-security],
+      [whether to perform security checks, enabled by default]
     )
   )
-  AS_IF([test "x$disable_security_check" != "xyes"],
-    AC_MSG_RESULT([yes])
-    AC_DEFINE([NO_SECURITY_CHECK], [1], [Define as 1 to disable security check, 0 to enable]),
+  AS_IF([test "x$enable_security" != "xno"],
     AC_MSG_RESULT([no])
-    AC_DEFINE([NO_SECURITY_CHECK], [0], [Define as 1 to disable security check, 0 to enable])
+    AS_ECHO("Security checks will be performed"),
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([NO_SECURITY_CHECK], [1], [Define as 1 to disable security check, 1 to enable])
   )
 ])
