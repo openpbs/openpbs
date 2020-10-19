@@ -61,7 +61,7 @@ extern char * PBS_get_server(char *, char *, uint *);
 /**
  * @brief
  * 	get_available_conn:
- *	get one of the available connection from multisvr sd
+ *	get one of the available connection from multisvr server list
  *
  * @param[in] svr_connections - pointer to array of server connections
  * 
@@ -131,19 +131,26 @@ decode_states(char *string, long *count)
 {
 	char *c;
 	int i;
-	char format[10 * MAX_STATE];
-	int len = 0;
+	int rc;
+	static char *format_str = NULL;
 
 	c = string;
 	while (isspace(*c) && *c != '\0')
 		c++;
 
-	for (i = 0; i < MAX_STATE; i++)
-		len += sprintf(format + len, "%s:%%ld ", statename[i]);
+	if (!format_str) {
+		format_str = malloc(12 * MAX_STATE); /* 12 = max char in state name + 4 on type specifier */
+		int len = 0;
+		for (i = 0; i < MAX_STATE; i++)
+			len += sprintf(format_str + len, "%s:%%ld ", statename[i]);
+	}
 
-	sscanf(c, format, &count[TRANSIT_STATE], &count[QUEUE_STATE],
+	rc = sscanf(c, format_str, &count[TRANSIT_STATE], &count[QUEUE_STATE],
 	       &count[HELD_STATE], &count[WAIT_STATE], &count[RUN_STATE],
 	       &count[EXITING_STATE], &count[BEGUN_STATE]);
+
+	if (rc != MAX_STATE)
+		pbs_errno = PBSE_BADATVAL;
 }
 
 /**
@@ -170,7 +177,8 @@ encode_states(char **val, long *cur, long *nxt)
 			       cur[index] + nxt[index]);
 	}
 	free(*val);
-	*val = strdup(buf);
+	if ((*val = strdup(buf)) == NULL)
+		pbs_errno = PBSE_SYSTEM;
 }
 
 /**
@@ -356,14 +364,21 @@ accumulate_values(struct attrl_holder *a, struct attrl *b, struct attrl *orig)
 			default:
 				break;
 			}
+
 			free(cur->value);
-			cur->value = strdup(buf);
+			if ((cur->value = strdup(buf)) == NULL)
+				pbs_errno = PBSE_SYSTEM;
 			break;
 		}
 	}
+
 	/* value exists in next but not in cur. Create it */
 	if (!itr) {
-		struct attrl *at = dup_attrl(b);
+		struct attrl *at;
+		if ((at = dup_attrl(b)) == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			return;
+		}
 		for (cur = orig; cur->next; cur = cur->next)
 			;
 		cur->next = at;
