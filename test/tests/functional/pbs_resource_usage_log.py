@@ -139,11 +139,11 @@ class TestResourceUsageLog(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, subjid1)
         self.server.expect(JOB, {'job_state': 'R'}, subjid2)
 
-        self.assertTrue(self.server.isUp(self.server))
-        self.assertTrue(self.mom.isUp(self.mom))
+        self.assertTrue(self.server.isUp())
+        self.assertTrue(self.mom.isUp())
 
         # kill -9 mom
-        self.mom.signal(self.mom, '-KILL')
+        self.mom.signal('-KILL')
 
         # Verify that node is reported to be down.
         self.server.expect(NODE, {ATTR_NODE_state: 'down'},
@@ -165,7 +165,7 @@ class TestResourceUsageLog(TestFunctional):
 
         # now start mom
         self.mom.start()
-        self.assertTrue(self.mom.isUp(self.mom))
+        self.assertTrue(self.mom.isUp())
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -299,7 +299,7 @@ class TestResourceUsageLog(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         # kill -9 mom
-        self.mom.signal(self.mom, '-KILL')
+        self.mom.signal('-KILL')
 
         # Verify that nodes are reported to be down.
         self.server.expect(NODE, {ATTR_NODE_state: (MATCH_RE, 'down')},
@@ -328,7 +328,7 @@ class TestResourceUsageLog(TestFunctional):
         # Restart PBS services
         PBSInitServices().restart()
 
-        self.assertTrue(self.server.isUp(self.server))
+        self.assertTrue(self.server.isUp())
 
         # Sleep so accounting logs get updated
         time.sleep(40)

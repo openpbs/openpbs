@@ -121,7 +121,7 @@ class TestMomHookSync(TestFunctional):
             max_attempts=10, regexp=True)
 
     def tearDown(self):
-        self.momB.signal(self.momB, "-CONT")
+        self.momB.signal("-CONT")
         TestFunctional.tearDown(self)
 
     def test_momhook_to_serverhook_with_resume(self):
@@ -134,7 +134,7 @@ class TestMomHookSync(TestFunctional):
         action so we end up with a mom hook in place.
         """
 
-        self.momB.signal(self.momB, '-STOP')
+        self.momB.signal('-STOP')
 
         # Turn current mom hook into a server hook
         self.server.manager(MGR_CMD_SET, HOOK,
@@ -152,7 +152,7 @@ class TestMomHookSync(TestFunctional):
         time.sleep(3)
 
         now = time.time()
-        self.momB.signal(self.momB, '-CONT')
+        self.momB.signal('-CONT')
 
         # Put another sleep delay so log_match() can see all the matches
         self.logger.info("Waiting 3 secs for new hook updates to complete")
@@ -194,7 +194,7 @@ class TestMomHookSync(TestFunctional):
         action so we end up with no mom hook in place.
         """
 
-        self.momB.signal(self.momB, '-STOP')
+        self.momB.signal('-STOP')
 
         # Turn current mom hook back to a mom hook
         self.server.manager(MGR_CMD_SET, HOOK,
@@ -212,7 +212,7 @@ class TestMomHookSync(TestFunctional):
         time.sleep(3)
 
         now = time.time()
-        self.momB.signal(self.momB, '-CONT')
+        self.momB.signal('-CONT')
 
         # Put another sleep delay so log_match() can see all the matches
         self.logger.info("Waiting 3 secs for new hook updates to complete")
@@ -248,7 +248,7 @@ class TestMomHookSync(TestFunctional):
         we kill -9 it and restart.
         """
 
-        self.momB.signal(self.momB, '-STOP')
+        self.momB.signal('-STOP')
 
         # Turn current mom hook into a server hook
         self.server.manager(MGR_CMD_SET, HOOK,
@@ -266,7 +266,7 @@ class TestMomHookSync(TestFunctional):
         time.sleep(3)
 
         now = time.time()
-        self.momB.signal(self.momB, '-KILL')
+        self.momB.signal('-KILL')
         self.momB.restart()
 
         # Killing and restarting mom would cause server to sync
@@ -313,7 +313,7 @@ class TestMomHookSync(TestFunctional):
         we kill -9 it and restart.
         """
 
-        self.momB.signal(self.momB, '-STOP')
+        self.momB.signal('-STOP')
 
         # Turn current mom hook back to a mom hook
         self.server.manager(MGR_CMD_SET, HOOK,
@@ -336,7 +336,7 @@ class TestMomHookSync(TestFunctional):
         # server hook. Since it's now a server hook, no further
         # mom hook sends are done.
         now = time.time()
-        self.momB.signal(self.momB, '-KILL')
+        self.momB.signal('-KILL')
         self.momB.restart()
 
         # Put another sleep delay so log_match() can see all the matches

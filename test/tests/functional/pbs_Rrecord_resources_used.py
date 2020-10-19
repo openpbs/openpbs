@@ -133,8 +133,8 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             msg='.*Resource_List.*', id=jid3s1, regexp=True)
 
         # Bring both moms down using kill -9 <mom pid>
-        self.momA.signal(self.momA, '-KILL')
-        self.momB.signal(self.momB, '-KILL')
+        self.momA.signal('-KILL')
+        self.momB.signal('-KILL')
 
         # Verify that both nodes are reported to be down.
         self.server.expect(NODE, {ATTR_NODE_state: (

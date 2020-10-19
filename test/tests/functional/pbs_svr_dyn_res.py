@@ -60,8 +60,8 @@ class TestServerDynRes(TestFunctional):
         time.sleep(1)
         match_from = time.time()
         self.scheduler.apply_config(validate=False)
-        self.scheduler.get_pid(self.scheduler)
-        self.scheduler.signal(self.scheduler, '-HUP')
+        self.scheduler.get_pid()
+        self.scheduler.signal('-HUP')
         self.scheduler.log_match(fp + ' file has a non-secure file access',
                                  starttime=match_from, existence=exist)
 

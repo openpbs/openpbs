@@ -47,5 +47,5 @@ class TestSchedSignal(TestFunctional):
         """
         Test that pbs_sched receives a SIGPIPE correctly and it is not ignored
         """
-        self.scheduler.signal(self.scheduler, '-PIPE')
+        self.scheduler.signal('-PIPE')
         self.scheduler.log_match("We've received a sigpipe:")

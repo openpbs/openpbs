@@ -73,13 +73,13 @@ class TestPBSTestSuite(TestSelf):
         self.server.pi.start()
 
         # Verify that the scheduler didn't come up
-        self.assertFalse(self.scheduler.isUp(self.scheduler))
+        self.assertFalse(self.scheduler.isUp())
 
         # Now call revert_pbsconf()
         self.revert_pbsconf()
 
         # Verify that the scheduler came up and start bit is 1
-        self.assertTrue(self.scheduler.isUp(self.scheduler))
+        self.assertTrue(self.scheduler.isUp())
         pbs_conf_val = self.du.parse_pbs_config(self.server.hostname)
         self.assertEqual(pbs_conf_val["PBS_START_SCHED"], "1")
 
@@ -122,13 +122,13 @@ class TestPBSTestSuite(TestSelf):
         remotemom.pi.start(remotemom.hostname)
 
         # Confirm that the mom is down
-        self.assertFalse(remotemom.isUp(remotemom))
+        self.assertFalse(remotemom.isUp())
 
         # Now call revert_pbsconf()
         self.revert_pbsconf()
 
         # Confirm that the mom came up and start bit is 1
-        self.assertTrue(remotemom.isUp(remotemom))
+        self.assertTrue(remotemom.isUp())
         pbs_conf_val = self.du.parse_pbs_config(remotemom.hostname)
         self.assertEqual(pbs_conf_val["PBS_START_MOM"], "1")
 
@@ -166,10 +166,10 @@ class TestPBSTestSuite(TestSelf):
                            force=True)
 
         # Send SIGSEGV to pbs_mom
-        self.assertTrue(self.mom.isUp(self.mom))
-        self.mom.signal(self.mom, "-SEGV")
+        self.assertTrue(self.mom.isUp())
+        self.mom.signal("-SEGV")
         for _ in range(20):
-            ret = self.mom.isUp(self.mom, max_attempts=1)
+            ret = self.mom.isUp(max_attempts=1)
             if not ret:
                 break
             time.sleep(1)
@@ -194,10 +194,10 @@ class TestPBSTestSuite(TestSelf):
         self.assertEqual(pbs_conf_val["PBS_CORE_LIMIT"], "unlimited")
 
         # Send another SIGSEGV to pbs_mom
-        self.assertTrue(self.mom.isUp(self.mom))
-        self.mom.signal(self.mom, "-SEGV")
+        self.assertTrue(self.mom.isUp())
+        self.mom.signal("-SEGV")
         for _ in range(20):
-            ret = self.mom.isUp(self.mom, max_attempts=1)
+            ret = self.mom.isUp(max_attempts=1)
             if not ret:
                 break
             time.sleep(1)

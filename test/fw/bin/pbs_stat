@@ -570,7 +570,7 @@ if __name__ == '__main__':
         scheduler.set_dedicated_time_file(dedtimefile)
 
     # server is assumed up in snap mode
-    if not server.isUp(server) and objtype != RSC and\
+    if not server.isUp() and objtype != RSC and\
             not db_access:
         logging.error('PBS Server is down, exiting')
         sys.exit(1)

@@ -129,7 +129,7 @@ e.accept()
         except PbsServiceError as e:
             # The server failed to start
             raise self.failureException("Server failed to start:" + e.msg)
-        self.server.isUp(self.server)
+        self.server.isUp()
         rv = self.is_server_licensed(self.server)
         _msg = 'No license found on server %s' % (self.server.shortname)
         self.assertTrue(rv, _msg)

@@ -389,7 +389,7 @@ class Server(PBSService):
         super(Server, self).set_attributes(a)
         self.__dict__.update(a)
 
-    def isUp(self, inst, max_attempts=None):
+    def isUp(self, max_attempts=None):
         """
         returns ``True`` if server is up and ``False`` otherwise
         """
@@ -414,7 +414,7 @@ class Server(PBSService):
                 # if the status/connect operation fails then there might be
                 # chances that server process is running but not responsive
                 # so we wait until the server is reported operational.
-                rv = self._isUp(inst)
+                rv = self._isUp()
                 # We really mean to check != False rather than just "rv"
                 if str(rv) != 'False':
                     self.logger.warning('Server process started' +
@@ -448,7 +448,7 @@ class Server(PBSService):
                                           msg="Could not find PID")
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
-        if self.isUp(self):
+        if self.isUp():
             return rv
         else:
             raise PbsServiceError(rv=False, rc=1, msg=rv['err'])
@@ -479,7 +479,7 @@ class Server(PBSService):
         """
         Terminate and start a PBS server.
         """
-        if self.isUp(self):
+        if self.isUp():
             if not self.stop():
                 return False
         return self.start()
@@ -639,7 +639,7 @@ class Server(PBSService):
                                      dest=self.atom_cf, mode=0o644, sudo=True)
                     dohup = True
                 if dohup:
-                    self.signal(self, '-HUP')
+                    self.signal('-HUP')
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
             a = {ATTR_enable: 'false'}
@@ -5027,7 +5027,7 @@ class Server(PBSService):
                   The step number must be greater or equal to 2.
         """
 
-        if not self.isUp(self):
+        if not self.isUp():
             logging.error("An up and running PBS server on " + self.hostname +
                           " is required")
             return False
@@ -5074,7 +5074,7 @@ class Server(PBSService):
                                        confs=_np_conf)
                 pi.initd(hostname, conf_file=_n_pbsconf, op='start')
                 m = MoM(self, hostname, pbsconf_file=_n_pbsconf)
-                if m.isUp(m):
+                if m.isUp():
                     m.stop()
                 if hostname != self.hostname:
                     m.add_config({'$clienthost': self.hostname})

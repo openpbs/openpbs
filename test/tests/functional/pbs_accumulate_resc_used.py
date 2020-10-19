@@ -121,9 +121,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
             overwrite=True)
         self.assertTrue(rv)
 
-        self.momA.signal(self.momA, "-HUP")
-        self.momB.signal(self.momB, "-HUP")
-        self.momC.signal(self.momC, "-HUP")
+        self.momA.signal("-HUP")
+        self.momB.signal("-HUP")
+        self.momC.signal("-HUP")
 
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)

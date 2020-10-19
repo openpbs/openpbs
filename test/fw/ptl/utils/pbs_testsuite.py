@@ -793,12 +793,12 @@ class PBSTestSuite(unittest.TestCase):
         if cls.servers:
             cls.server = cls.servers.values()[0]
             for _server in cls.servers.values():
-                rv = _server.isUp(_server)
+                rv = _server.isUp()
                 if not rv:
                     cls.logger.error('server ' + _server.hostname + ' is down')
                     _server.pi.restart(_server.hostname)
                     msg = 'Failed to restart server ' + _server.hostname
-                    cls.assertTrue(_server.isUp(_server), msg)
+                    cls.assertTrue(_server.isUp(), msg)
 
     @classmethod
     def init_comms(cls, init_comm_func=None, skip=None):
@@ -1101,7 +1101,7 @@ class PBSTestSuite(unittest.TestCase):
                 self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
                 comm.pbs_conf = new_pbsconf
                 comm.pi.initd(comm.hostname, "restart", daemon="comm")
-                if not comm.isUp(comm):
+                if not comm.isUp():
                     self.fail("comm is not up")
 
     def _revert_pbsconf_mom(self, primary_server, vals_to_set):
@@ -1184,7 +1184,7 @@ class PBSTestSuite(unittest.TestCase):
                                        append=False)
                 mom.pbs_conf = new_pbsconf
                 mom.pi.initd(mom.hostname, "restart", daemon="mom")
-                if not mom.isUp(mom):
+                if not mom.isUp():
                     self.fail("Mom is not up")
 
     def _revert_pbsconf_server(self, vals_to_set):
@@ -1340,19 +1340,16 @@ class PBSTestSuite(unittest.TestCase):
         daemon_name : server/sched/mom/comm
         """
         if daemon_name == "server":
-            if not server_obj.isUp(server_obj):
+            if not server_obj.isUp():
                 self.fail("Server is not up")
         elif daemon_name == "sched":
-            if not server_obj.schedulers['default'].isUp(
-                    server_obj.schedulers['default']):
+            if not server_obj.schedulers['default'].isUp():
                 self.fail("Scheduler is not up")
         elif daemon_name == "mom":
-            if not server_obj.moms.values()[0].isUp(
-                    server_obj.moms.values()[0]):
+            if not server_obj.moms.values()[0].isUp():
                 self.fail("Mom is not up")
         elif daemon_name == "comm":
-            if not server_obj.comms.values()[0].isUp(
-                    server_obj.comms.values()[0]):
+            if not server_obj.comms.values()[0].isUp():
                 self.fail("Comm is not up")
         else:
             self.fail("Incorrect daemon specified")
@@ -1458,12 +1455,12 @@ class PBSTestSuite(unittest.TestCase):
         """
         Revert the values set for server
         """
-        rv = server.isUp(server)
+        rv = server.isUp()
         if not rv:
             self.logger.error('server ' + server.hostname + ' is down')
             server.start()
             msg = 'Failed to restart server ' + server.hostname
-            self.assertTrue(server.isUp(server), msg)
+            self.assertTrue(server.isUp(), msg)
         server_stat = server.status(SERVER)[0]
         self.add_mgrs_opers()
         if ((self.revert_to_defaults and self.server_revert_to_defaults) or
@@ -1485,23 +1482,23 @@ class PBSTestSuite(unittest.TestCase):
         """
         Revert the values set for comm
         """
-        rv = comm.isUp(comm)
+        rv = comm.isUp()
         if not rv:
             self.logger.error('comm ' + comm.hostname + ' is down')
             comm.start()
             msg = 'Failed to restart comm ' + comm.hostname
-            self.assertTrue(comm.isUp(comm), msg)
+            self.assertTrue(comm.isUp(), msg)
 
     def revert_scheduler(self, scheduler, force=False):
         """
         Revert the values set for scheduler
         """
-        rv = scheduler.isUp(scheduler)
+        rv = scheduler.isUp()
         if not rv:
             self.logger.error('scheduler ' + scheduler.hostname + ' is down')
             scheduler.start()
             msg = 'Failed to restart scheduler ' + scheduler.hostname
-            self.assertTrue(scheduler.isUp(scheduler), msg)
+            self.assertTrue(scheduler.isUp(), msg)
         if ((self.revert_to_defaults and self.sched_revert_to_defaults) or
                 force):
             rv = scheduler.revert_to_defaults()
@@ -1517,12 +1514,12 @@ class PBSTestSuite(unittest.TestCase):
         :param force: Option to reverse forcibly
         :type force: bool
         """
-        rv = mom.isUp(mom)
+        rv = mom.isUp()
         if not rv:
             self.logger.error('mom ' + mom.hostname + ' is down')
             mom.start()
             msg = 'Failed to restart mom ' + mom.hostname
-            self.assertTrue(mom.isUp(mom), msg)
+            self.assertTrue(mom.isUp(), msg)
         mom.pbs_version()
         restart = False
         enabled_cpuset = False
@@ -1544,8 +1541,8 @@ class PBSTestSuite(unittest.TestCase):
         if restart:
             mom.restart()
         else:
-            mom.signal(mom, '-HUP')
-        if not mom.isUp(mom):
+            mom.signal('-HUP')
+        if not mom.isUp():
             self.logger.error('mom ' + mom.shortname + ' is down after revert')
         a = {'state': 'free'}
         self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
@@ -1566,7 +1563,7 @@ class PBSTestSuite(unittest.TestCase):
             # when the natural node was created above.
             # HUP may not be enough if exechost_startup is delayed
             time.sleep(2)
-            mom.signal(mom, '-HUP')
+            mom.signal('-HUP')
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)

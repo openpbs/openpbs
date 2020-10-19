@@ -133,7 +133,7 @@ class TestCgroupsStress(TestPerformance):
         conf = {'enabled': 'True', 'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         # Restart mom so exechost_startup hook is run
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
 
     def get_paths(self):
         """
@@ -226,7 +226,7 @@ class TestCgroupsStress(TestPerformance):
             count -= 1
         # A HUP of mom ensures update to hook config file is
         # seen by the exechost_startup hook.
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
 
     @timeout(1200)
     def test_cgroups_race_condition(self):

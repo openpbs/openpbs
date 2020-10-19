@@ -61,7 +61,7 @@ class TestRunjobWaitPerf(TestPerformance):
                                "pbs_mom")
         cmd = [mompath, "-m"]
         self.du.run_cmd(cmd=cmd, sudo=True)
-        self.assertTrue(self.mom.isUp(self.mom))
+        self.assertTrue(self.mom.isUp())
         self.server.expect(NODE, {'resources_available.ncpus=100': (GE, 100)})
 
         self.server.manager(MGR_CMD_SET, SCHED, {'job_run_wait': rw_val},

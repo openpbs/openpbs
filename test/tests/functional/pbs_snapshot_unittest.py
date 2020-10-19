@@ -285,10 +285,10 @@ class TestPBSSnapshot(TestFunctional):
         num_acct_logs = 5
 
         # Check that all PBS daemons are up and running
-        all_daemons_up = self.server.isUp(self.server)
-        all_daemons_up = all_daemons_up and self.mom.isUp(self.mom)
-        all_daemons_up = all_daemons_up and self.comm.isUp(self.comm)
-        all_daemons_up = all_daemons_up and self.scheduler.isUp(self.scheduler)
+        all_daemons_up = self.server.isUp()
+        all_daemons_up = all_daemons_up and self.mom.isUp()
+        all_daemons_up = all_daemons_up and self.comm.isUp()
+        all_daemons_up = all_daemons_up and self.scheduler.isUp()
 
         if not all_daemons_up:
             # Skip the test
@@ -354,10 +354,10 @@ class TestPBSSnapshot(TestFunctional):
         # Check which PBS daemons are up on this machine.
         # We'll only check for logs from the daemons which were up
         # when the snapshot was taken.
-        server_up = self.server.isUp(self.server)
-        mom_up = self.mom.isUp(self.mom)
-        comm_up = self.comm.isUp(self.comm)
-        sched_up = self.scheduler.isUp(self.scheduler)
+        server_up = self.server.isUp()
+        mom_up = self.mom.isUp()
+        comm_up = self.comm.isUp()
+        sched_up = self.scheduler.isUp()
 
         if not (server_up or mom_up or comm_up or sched_up):
             # Skip the test
@@ -958,8 +958,8 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
         # Kill all daemons and start only pbs_mom
         self.server.pi.initd(op="stop", daemon="all")
         self.mom.pi.start_mom()
-        self.assertTrue(self.mom.isUp(self.mom))
-        self.assertFalse(self.server.isUp(self.server))
+        self.assertTrue(self.mom.isUp())
+        self.assertFalse(self.server.isUp())
 
         # Take & verify a snapshot with obfuscate
         self.take_snapshot(obfuscate=True, with_sudo=True, acct_logs=10)

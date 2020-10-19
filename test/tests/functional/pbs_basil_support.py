@@ -265,7 +265,7 @@ class TestBasilQuery(TestFunctional):
         Test if BASIL version is set to required BASIL version
         on cray/simulator platform.
         """
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
 
         engine_query_log = "<BasilRequest protocol=\"%s\" method=\"QUERY\" \
 type=\"ENGINE\"/>" % (self.basil_version[1])
@@ -584,7 +584,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         self.assertEqual(ret['rc'], 0)
 
         # Do Mom HUP
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
 
         # Check that the nodes are now stale.
         self.server.expect(VNODE, {'state': 'Stale'}, id=k1,
@@ -598,7 +598,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         self.assertEqual(ret['rc'], 0)
 
         # Do Mom HUP
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
 
         # Check that the nodes are now free.
         self.server.expect(VNODE, {'state': 'free'}, id=k1,
@@ -638,7 +638,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         self.assertEqual(ret['rc'], 0)
 
         # Do Mom HUP
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
 
         # Check that the nodes are Free.
         self.server.expect(VNODE, {'state': 'free'}, id=k1, max_attempts=10,
@@ -731,4 +731,4 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
                             {'enabled': 'true', 'freq': 300},
                             id='PBS_alps_inventory_check')
         # Do Mom HUP
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')

@@ -648,7 +648,7 @@ class TestQstatFormats(TestFunctional):
         and ensures they're truncated correctly in a wide format
         """
         self.server.stop()
-        self.assertFalse(self.server.isUp(self.server), 'Failed to stop PBS')
+        self.assertFalse(self.server.isUp(), 'Failed to stop PBS')
 
         conf = self.du.parse_pbs_config(self.server.hostname)
         self.du.set_pbs_config(
@@ -657,7 +657,7 @@ class TestQstatFormats(TestFunctional):
                    'PBS_SERVER': 'supersuperduperlongservername31'})
 
         self.server.start()
-        self.assertTrue(self.server.isUp(self.server), 'Failed to start PBS')
+        self.assertTrue(self.server.isUp(), 'Failed to start PBS')
         a = {'queue_type': 'Execution', 'enabled': 'True',
              'started': 'True'}
         qname = 'queuename15char'
@@ -704,7 +704,7 @@ class TestQstatFormats(TestFunctional):
         Test if qstat -ans correctly prints with truncation.
         """
         self.server.stop()
-        self.assertFalse(self.server.isUp(self.server), 'Failed to stop PBS')
+        self.assertFalse(self.server.isUp(), 'Failed to stop PBS')
 
         server_hostname = self.server.pbs_conf['PBS_SERVER']
         self.du.set_pbs_config(
@@ -713,7 +713,7 @@ class TestQstatFormats(TestFunctional):
                    'PBS_SERVER': 'supersuperduperlongservername31'})
 
         self.server.start()
-        self.assertTrue(self.server.isUp(self.server), 'Failed to start PBS')
+        self.assertTrue(self.server.isUp(), 'Failed to start PBS')
         a = {'queue_type': 'Execution', 'enabled': 'True',
              'started': 'True'}
         qname = 'queuename15char'

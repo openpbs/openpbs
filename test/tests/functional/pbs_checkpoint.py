@@ -97,7 +97,7 @@ exit 0
         pbs_server_hot = [os.path.join(
             pbs_exec, 'sbin', 'pbs_server'), '-t', 'hot']
         self.du.run_cmd(svrname, cmd=pbs_server_hot, sudo=True)
-        self.assertTrue(self.server.isUp(self.server))
+        self.assertTrue(self.server.isUp())
 
     def checkpoint_abort_with_qterm_restart_hot(self, qterm_type):
         """
@@ -116,7 +116,7 @@ exit 0
         self.verify_checkpoint_abort(jid1, start_time)
 
         self.start_server_hot()
-        self.assertTrue(self.server.isUp(self.server))
+        self.assertTrue(self.server.isUp())
 
         msg = "%s;Requeueing job, substate: 10 Requeued in queue: workq" % jid1
         self.server.log_match(msg, starttime=start_time)

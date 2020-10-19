@@ -118,7 +118,7 @@ e.vnode_list[localnode].resources_available['foo_str2'] = "seven"
             overwrite=True)
         self.assertTrue(rv)
 
-        self.momA.signal(self.momA, "-HUP")
+        self.momA.signal("-HUP")
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
         m = self.momA.log_match("resourcedef;copy hook-related file",

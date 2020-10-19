@@ -890,7 +890,7 @@ class TestTPP(TestFunctional):
         for wait_thread in threads:
             a = {'PBS_COMM_THREADS': wait_thread}
             self.set_pbs_conf(host_name=self.server.shortname, conf_param=a)
-            comm_pid = self.comm.get_pid(self.comm)
+            comm_pid = self.comm.get_pid()
             num_wait_thread = self.calculate_no_of_wait_threads(comm_pid)
             if wait_thread == 1 or wait_thread == 101:
                 num_threads = -1

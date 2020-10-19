@@ -144,8 +144,7 @@ class TestVerifyLogOutput(TestFunctional):
         self.logger.info('Restarting PBS Services')
         PBSInitServices().restart()
 
-        if (self.server.isUp(self.server) and
-                self.scheduler.isUp(self.scheduler)):
+        if self.server.isUp() and self.scheduler.isUp():
             try:
                 self.scheduler.log_match("Req;;Starting Scheduling Cycle",
                                          max_attempts=10,
@@ -167,8 +166,7 @@ class TestVerifyLogOutput(TestFunctional):
         self.server.restart()
         self.comm.restart()
         resvport_msg = 'Supported authentication method: ' + 'resvport'
-        if (self.server.isUp(self.server) and
-                self.comm.isUp(self.comm)):
+        if self.server.isUp() and self.comm.isUp():
             self.server.log_match(resvport_msg, starttime=started_time)
             self.comm.log_match(resvport_msg, starttime=started_time)
 
@@ -180,7 +178,7 @@ class TestVerifyLogOutput(TestFunctional):
         self.server.restart()
         self.comm.restart()
         munge_msg = 'Supported authentication method: ' + 'munge'
-        if self.server.isUp(self.server) and self.comm.isUp(self.comm):
+        if self.server.isUp() and self.comm.isUp():
             self.server.log_match(munge_msg, starttime=started_time)
             self.comm.log_match(munge_msg, starttime=started_time)
             self.server.log_match(resvport_msg, starttime=started_time)

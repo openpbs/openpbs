@@ -111,7 +111,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, jid1)
         # Kill the MoM process on the MS.
 
-        self.momA.signal(self.momA, '-KILL')
+        self.momA.signal('-KILL')
         # Wait for the job to be requeued.
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 

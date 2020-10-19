@@ -146,7 +146,7 @@ class Comm(PBSService):
         """
         Restart the comm.
         """
-        if self.isUp(self):
+        if self.isUp():
             if not self.stop():
                 return False
         return self.start()

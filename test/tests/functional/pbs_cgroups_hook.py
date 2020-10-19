@@ -1229,7 +1229,7 @@ sleep 300
 
         # HUP mom so exechost_startup hook is run for each mom...
         for mom in self.moms_list:
-            mom.signal(mom, '-HUP')
+            mom.signal('-HUP')
         # ...then wait for exechost_startup updates to propagate to server
         time.sleep(4)
 
@@ -1491,7 +1491,7 @@ if %s e.job.in_ms_mom():
             # A HUP of each mom ensures update to hook config file is
             # seen by the exechost_startup hook.
             for mom in self.moms_list:
-                mom.signal(mom, '-HUP')
+                mom.signal('-HUP')
 
     def load_default_config(self, mom_checks=True):
         """
@@ -3421,7 +3421,7 @@ event.accept()
         mom
         """
         self.logger.info("Stopping mom on host %s" % self.hosts_list[1])
-        self.moms_list[1].signal(self.moms_list[1], '-19')
+        self.moms_list[1].signal('-19')
 
         a = {'Resource_List.select':
              '1:ncpus=1:host=%s+1:ncpus=1:host=%s+1:ncpus=1:host=%s' %
@@ -3434,7 +3434,7 @@ event.accept()
 
         self.logger.info("Killing mom on host %s" % self.hosts_list[1])
         now = time.time()
-        self.moms_list[1].signal(self.moms_list[1], '-9')
+        self.moms_list[1].signal('-9')
 
         self.server.expect(NODE, {'state': "down"}, id=self.hosts_list[1])
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)

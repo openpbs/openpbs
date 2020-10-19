@@ -84,7 +84,7 @@ class TestResvStaleVnode(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
         self.mom.delete_vnode_defs(vdefname='fname1')
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
         self.server.expect(NODE, {'state': (MATCH_RE, 'Stale')}, id='vn[0]')
 
         now = int(time.time())
@@ -116,7 +116,7 @@ class TestResvStaleVnode(TestFunctional):
         self.server.expect(RESV, a, id=rid)
 
         self.mom.delete_vnode_defs(vdefname='fname1')
-        self.mom.signal(self.mom, '-HUP')
+        self.mom.signal('-HUP')
         self.server.expect(NODE, {'state': (MATCH_RE, 'Stale')}, id='vn[0]')
 
         a = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}

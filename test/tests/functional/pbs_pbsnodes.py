@@ -183,8 +183,7 @@ class TestPbsnodes(TestFunctional):
         prev = self.server.status(NODE, 'last_used_time')[0]['last_used_time']
         self.logger.info("Restarting server")
         self.server.restart()
-        self.assertTrue(self.server.isUp(self.server),
-                        'Failed to restart Server Daemon')
+        self.assertTrue(self.server.isUp(), 'Failed to restart Server Daemon')
         now = self.server.status(NODE, 'last_used_time')[0]['last_used_time']
         self.logger.info("Before: " + prev + ". After: " + now + ".")
         self.assertEqual(prev.strip(), now.strip(),

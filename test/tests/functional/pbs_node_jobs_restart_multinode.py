@@ -140,8 +140,8 @@ class TestMultiNodeJobsRestart(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        momA.signal(momA, "-KILL")
-        momB.signal(momB, "-KILL")
+        momA.signal("-KILL")
+        momB.signal("-KILL")
         sleep(5)
         momA.start(args=['-p'])
         momB.start(args=['-p'])

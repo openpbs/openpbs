@@ -78,7 +78,7 @@ class TestQrun(TestFunctional):
             msg = "Able to run job successfully"
             self.assertTrue(False, msg)
         msg = "Server is not up"
-        self.assertTrue(self.server.isUp(self.server), msg)
+        self.assertTrue(self.server.isUp(), msg)
         self.logger.info("As expected server is up and running")
         j2 = Job(TEST_USER)
         # submit a sleep job
@@ -94,7 +94,7 @@ class TestQrun(TestFunctional):
             msg = "Able to run job successfully"
             self.assertTrue(False, msg)
         msg = "Server is not up"
-        self.assertTrue(self.server.isUp(self.server), msg)
+        self.assertTrue(self.server.isUp(), msg)
         self.logger.info("As expected server is up and running")
 
     def test_qrun_hangs(self):

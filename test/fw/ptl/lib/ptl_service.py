@@ -692,17 +692,17 @@ class PBSService(PBSObject):
     def set_launcher(self, execargs=None):
         self.launcher = execargs
 
-    def _isUp(self, inst):
+    def _isUp(self):
         """
         returns True if service is up and False otherwise
         """
-        live_pids = self._all_instance_pids(inst)
-        pid = self._get_pid(inst)
+        live_pids = self._all_instance_pids()
+        pid = self._get_pid()
         if live_pids is not None and pid in live_pids:
             return True
         return False
 
-    def _signal(self, sig, inst=None, procname=None):
+    def _signal(self, sig, procname=None):
         """
         Send signal ``sig`` to service. sig is the signal name
         as it would be sent to the program kill, e.g. -HUP.
@@ -710,15 +710,10 @@ class PBSService(PBSObject):
         Return the ``out/err/rc`` from the command run to send
         the signal. See DshUtils.run_cmd
 
-        :param inst: Instance
-        :type inst: str
         :param procname: Process name
         :type procname: str or None
         """
-        pid = None
-
-        if inst is not None:
-            pid = self._get_pid(inst)
+        pid = self._get_pid()
 
         if procname is not None:
             pi = self.pu.get_proc_info(self.hostname, procname)
@@ -728,17 +723,14 @@ class PBSService(PBSObject):
                                           sudo=True)
                 return ret
 
-        if pid is None:
-            return {'rc': 0, 'err': '', 'out': 'no pid to signal'}
-
         return self.du.run_cmd(self.hostname, ['kill', sig, pid], sudo=True)
 
-    def _all_instance_pids(self, inst):
+    def _all_instance_pids(self):
         """
         Return a list of all ``PIDS`` that match the
         instance name or None.
         """
-        cmd = self._instance_to_cmd(inst)
+        cmd = self._instance_to_cmd(self)
         self.pu.get_proc_info(self.hostname, ".*" + cmd + ".*",
                               regexp=True)
         _procs = self.pu.processes.values()
@@ -749,7 +741,7 @@ class PBSService(PBSObject):
             return _pids
         return None
 
-    def _get_pid(self, inst):
+    def _get_pid(self):
         """
         Get the ``PID`` associated to this instance.
         Implementation note, the pid is read from the
@@ -759,11 +751,11 @@ class PBSService(PBSObject):
         the PID of the last running instance can be retrieved
         with ``_get_pid`` but not with ``_all_instance_pids``
         """
-        priv = self._instance_to_privpath(inst)
-        lock = self._instance_to_lock(inst)
-        if ((inst.__class__.__name__ == "Scheduler") and
-                'sched_priv' in inst.attributes):
-            path = os.path.join(inst.attributes['sched_priv'], lock)
+        priv = self._instance_to_privpath(self)
+        lock = self._instance_to_lock(self)
+        if ((self.__class__.__name__ == "Scheduler") and
+                'sched_priv' in self.attributes):
+            path = os.path.join(self.attributes['sched_priv'], lock)
         else:
             path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)
         rv = self.du.cat(self.hostname, path, sudo=True, logerr=False)
@@ -780,8 +772,8 @@ class PBSService(PBSObject):
         :type inst: object
         """
         for i in range(30):
-            live_pids = self._all_instance_pids(inst)
-            pid = self._get_pid(inst)
+            live_pids = self._all_instance_pids()
+            pid = self._get_pid()
             if live_pids is not None and pid in live_pids:
                 return pid
             time.sleep(1)
@@ -875,9 +867,9 @@ class PBSService(PBSObject):
     def _stop(self, sig='-TERM', inst=None):
         if inst is None:
             return True
-        self._signal(sig, inst)
-        pid = self._get_pid(inst)
-        chk_pid = self._all_instance_pids(inst)
+        self._signal(sig)
+        pid = self._get_pid()
+        chk_pid = self._all_instance_pids()
         if pid is None or chk_pid is None:
             return True
         num_seconds = 0
@@ -888,7 +880,7 @@ class PBSService(PBSObject):
                 raise PbsServiceError(rv=False, rc=-1, msg=m)
             time.sleep(1)
             num_seconds += 1
-            chk_pid = self._all_instance_pids(inst)
+            chk_pid = self._all_instance_pids()
         return True
 
     def initialise_service(self):
@@ -1459,34 +1451,34 @@ class PBSService(PBSObject):
             self.du.rm(path=dyn_files, sudo=True, force=True)
         self.dyn_created_files = []
 
-    def isUp(self, inst, max_attempts=None):
+    def isUp(self, max_attempts=None):
         """
         Check for daemons up
         """
         if max_attempts is None:
             max_attempts = self.ptl_conf['max_attempts']
         for _ in range(max_attempts):
-            rv = self._isUp(inst)
+            rv = self._isUp()
             if rv:
                 break
             time.sleep(1)
         return rv
 
-    def signal(self, inst, sig):
+    def signal(self, sig):
         """
         Send signal to daemons
         """
-        self.logger.info(inst.__class__.__name__ + " sent signal " + sig)
-        return self._signal(sig, inst)
+        self.logger.info(self.__class__.__name__ + " sent signal " + sig)
+        return self._signal(sig)
 
-    def get_pid(self, inst):
+    def get_pid(self):
         """
         Get the daemons pid
         """
-        return self._get_pid(inst)
+        return self._get_pid()
 
-    def all_instance_pids(self, inst):
+    def all_instance_pids(self):
         """
         Get all pids of given instance
         """
-        return self._all_instance_pids(inst)
+        return self._all_instance_pids()

@@ -55,7 +55,7 @@ class TestPbsInitServices(TestSelf):
         self.server.pi.start_comm()
         self.server.pi.start_sched()
 
-        self.assertTrue(self.server.signal(self.server, '-HUP'))
-        self.assertTrue(self.mom.signal(self.mom, '-HUP'))
-        self.assertTrue(self.scheduler.signal(self.scheduler, '-HUP'))
-        self.assertTrue(self.comm.signal(self.comm, '-HUP'))
+        self.assertTrue(self.server.signal('-HUP'))
+        self.assertTrue(self.mom.signal('-HUP'))
+        self.assertTrue(self.scheduler.signal('-HUP'))
+        self.assertTrue(self.comm.signal('-HUP'))

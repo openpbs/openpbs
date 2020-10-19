@@ -155,7 +155,7 @@ class MoM(PBSService):
         # required by a test
         self.revert_to_default = True
 
-    def isUp(self, inst, max_attempts=None):
+    def isUp(self, max_attempts=None):
         """
         Check for PBS mom up
         """
@@ -163,7 +163,7 @@ class MoM(PBSService):
         if max_attempts is None:
             max_attempts = self.ptl_conf['max_attempts']
         for _ in range(max_attempts):
-            rv = super(MoM, self)._isUp(inst)
+            rv = super(MoM, self)._isUp()
             if rv:
                 break
             time.sleep(1)
@@ -228,7 +228,7 @@ class MoM(PBSService):
         """
         Restart the PBS mom
         """
-        if self.isUp(self):
+        if self.isUp():
             if not self.stop():
                 return False
         return self.start(args=args)
@@ -379,8 +379,8 @@ class MoM(PBSService):
             if restart:
                 self.restart()
             else:
-                self.signal(self, '-HUP')
-            return self.isUp(self)
+                self.signal('-HUP')
+            return self.isUp()
         return True
 
     def save_configuration(self, outfile=None, mode='w'):
@@ -428,7 +428,7 @@ class MoM(PBSService):
         load mom configuration from saved file infile
         """
         rv = self._load_configuration(infile, MGR_OBJ_NODE)
-        self.signal(self, '-HUP')
+        self.signal('-HUP')
         return rv
 
     def is_cray(self):
@@ -900,7 +900,7 @@ class MoM(PBSService):
         if restart:
             return self.restart()
         elif hup:
-            return self.signal(self, '-HUP')
+            return self.signal('-HUP')
 
         return True
 

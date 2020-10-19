@@ -69,7 +69,7 @@ class TestHookExechostPeriodic(TestFunctional):
         self.server.create_import_hook("exechost_periodic2",
                                        self.attr, self.hook_body2)
         self.mom.restart()
-        self.assertTrue(self.mom.isUp(self.mom))
+        self.assertTrue(self.mom.isUp())
         self.mom.log_match("exechost_periodic hook1",
                            max_attempts=5, interval=5)
         self.mom.log_match("exechost_periodic hook2",

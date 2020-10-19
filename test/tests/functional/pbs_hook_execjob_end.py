@@ -369,12 +369,12 @@ class TestPbsExecjobEnd(TestFunctional):
         # Start pbs on MomA
         self.server.pi.restart(hostname=self.server.hostname)
         # Verify mother superior is not down
-        self.assertTrue(self.momA.isUp(self.momA))
+        self.assertTrue(self.momA.isUp())
 
         # Start pbs on MomB
         self.momB.start()
         # Verify sister mom is not down
-        self.assertTrue(self.momB.isUp(self.momB))
+        self.assertTrue(self.momB.isUp())
 
     def test_rerun_on_epilogue_hook(self):
         """
@@ -403,7 +403,7 @@ class TestPbsExecjobEnd(TestFunctional):
         """
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
-        host.signal(host, '-KILL')
+        host.signal('-KILL')
         self.logger.info(
             "Successfully killed mom process on %s" %
             host.shortname)
