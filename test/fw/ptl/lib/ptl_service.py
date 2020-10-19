@@ -723,6 +723,9 @@ class PBSService(PBSObject):
                                           sudo=True)
                 return ret
 
+        if pid is None:
+            return {'rc': 0, 'err': '', 'out': 'no pid to signal'}
+
         return self.du.run_cmd(self.hostname, ['kill', sig, pid], sudo=True)
 
     def _all_instance_pids(self):
