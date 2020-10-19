@@ -2374,7 +2374,7 @@ class TestReservations(TestFunctional):
             self.server.expect(JOB, {'job_state': 'R'}, id=jid1[0])
             self.logger.info('Job %s is in R as expected' % jid1[0])
         jid2 = self.submit_job(job_running=True)
-        self.server.delete([rid, jid2[0]])
+        self.server.delete([rid, jid2[0]], wait=True)
 
     def test_qmove_job_into_standing_reservation(self):
         """
