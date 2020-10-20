@@ -899,6 +899,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_execjob_preresume_hooks);
 	CLEAR_HEAD(svr_allscheds);
 	CLEAR_HEAD(svr_creds_cache);
+	CLEAR_HEAD(unlicensed_nodes_list);
 
 	/* initialize paths that we will need */
 	path_priv       = build_path(pbs_conf.pbs_home_path, PBS_SVR_PRIVATE,

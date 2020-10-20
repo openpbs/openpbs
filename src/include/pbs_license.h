@@ -86,6 +86,13 @@ enum node_topology_type {
 };
 typedef enum node_topology_type ntt_t;
 
+typedef struct {
+	struct pbsnode *pnode;
+	pbs_list_link link;
+} unlicensed_node;
+
+pbs_list_head unlicensed_nodes_list;
+
 #define PBS_MIN_LICENSING_LICENSES	0
 #define PBS_MAX_LICENSING_LICENSES	INT_MAX
 #define PBS_LIC_LINGER_TIME		31536000 /* keep extra licenses 1 year by default */
@@ -99,6 +106,7 @@ extern int release_node_lic(void *);
 extern void license_nodes();
 extern void init_licensing(struct work_task *ptask);
 extern void reset_license_counters(pbs_license_counts *);
+extern void remove_from_unlicensed_node_list(struct pbsnode *pnode);
 
 /* Licensing-related variables */
 extern char *pbs_licensing_location;

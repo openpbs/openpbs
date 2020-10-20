@@ -4950,7 +4950,6 @@ found:
 			}
 			if (made_new_vnodes || cr_node) {
 				save_nodes_db(1, pmom); /* update the node database */
-				propagate_licenses_to_vnodes(pmom);
 			}
 			break;
 
