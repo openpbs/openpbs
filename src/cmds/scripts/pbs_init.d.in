@@ -294,7 +294,7 @@ start_pbs() {
 		homever=`cat ${PBS_HOME}/pbs_version`
 		[ "${qstatver}" != "${homever}" ] && needmakehome=3
 	fi
-	[ ${needmakehome} -eq 0 -a ! -d "${PBS_HOME}/datastore" ] && needmakehome=4
+	[ ${needmakehome} -eq 0 -a "${PBS_START_SERVER}" != "0" -o "$1" == "pbs_server" -a ! -d "${PBS_HOME}/datastore" ] && needmakehome=4
 
 	if [ ${needmakehome} -ne 0 -a ! -x ${PBS_EXEC}/libexec/pbs_habitat ]; then
 		echo "***" >&2
@@ -540,28 +540,28 @@ stop_pbs() {
 
 status_pbs() {
 	update_pids
-	if [ "$1" == "pbs_server" -o "${PBS_START_SERVER}" -gt 0 ]; then
+	if [ "${PBS_START_SERVER}" -gt 0 ]; then
 		if check_prog "server" ; then
 			echo "pbs_server is pid ${pid}"
 		else
 			echo "pbs_server is not running"
 		fi
 	fi
-	if [ "$1" == "pbs_mom" -o "${PBS_START_MOM}" -gt 0 ]; then
+	if [ "${PBS_START_MOM}" -gt 0 ]; then
 		if check_prog "mom" ; then
 			echo "pbs_mom is pid ${pbs_mom_pid}"
 		else
 			echo "pbs_mom is not running"
 		fi
 	fi
-	if [ "$1" == "pbs_sched" -o "${PBS_START_SCHED}" -gt 0 ]; then
+	if [ "${PBS_START_SCHED}" -gt 0 ]; then
 		if check_prog "sched" ; then
 			echo "pbs_sched is pid ${pbs_sched_pid}"
 		else
 			echo "pbs_sched is not running"
 		fi
 	fi
-	if [ "$1" == "pbs_comm" -o "${PBS_START_COMM}" -gt 0 ]; then
+	if [ "${PBS_START_COMM}" -gt 0 ]; then
 		if check_prog "pbs_comm" ; then
 			echo "pbs_comm is ${pbs_comm_pid}"
 		else
@@ -718,7 +718,7 @@ case "`basename $0`" in
 				echo "Stopping PBS"
 				;;
 			status)
-				status_pbs "$2"
+				status_pbs
 				;;
 			start)
 				pre_start_pbs "$2"

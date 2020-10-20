@@ -61,7 +61,6 @@ Type=forking
 Restart=no
 TimeoutStartSec=0
 TimeoutStopSec=5min
-Delegate=yes
 IgnoreSIGPIPE=no
 GuessMainPID=no
 ExecStart=@prefix@/libexec/pbs_init.d start pbs_comm

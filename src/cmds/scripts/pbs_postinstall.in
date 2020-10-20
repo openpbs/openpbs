@@ -211,11 +211,6 @@ create_conf() {
 		esac
 	fi
 
-	[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
-	[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
-	[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
-	[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
-
 	[ -z "$PBS_EXEC" ] && echo "PBS_EXEC=$newpbs_exec" >>"$newconf"
 	[ -z "$PBS_HOME" -a -n "$newpbs_home" ] && echo "PBS_HOME=$newpbs_home" >>"$newconf"
 	[ -z "${PBS_CORE_LIMIT}" ] && echo "PBS_CORE_LIMIT=@PBS_CORE_LIMIT@" >>"$newconf"
@@ -232,40 +227,22 @@ create_conf() {
 
 perform_checks() {
 	fail=0
-	if command -v systemctl >/dev/null 2>&1; then
-		if [ ! -x ${PBS_EXEC}/sbin/pbs_server ] ;then
-			echo "*** Server does not exist!"
-			fail=1
-		fi
-		if [ ! -x ${PBS_EXEC}/sbin/pbs_sched ] ;then
-			echo "*** Scheduler does not exist!"
-			fail=1
-		fi
-		if [ ! -x ${PBS_EXEC}/sbin/pbs_comm ] ;then
-			echo "*** Communication agent does not exist!"
-			fail=1
-		fi
-		if [ ! -x ${PBS_EXEC}/sbin/pbs_mom ] ;then
-			echo "*** MOM does not exist!"
-			fail=1
-		fi
-	else
-		if [ ${PBS_START_SERVER} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_server ] ;then
-			echo "*** Server does not exist!"
-			fail=1
-		fi
-		if [ ${PBS_START_SCHED} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_sched ] ;then
-			echo "*** Scheduler does not exist!"
-			fail=1
-		fi
-		if [ ${PBS_START_COMM} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_comm ] ;then
-			echo "*** Communication agent does not exist!"
-			fail=1
-		fi
-		if [ ${PBS_START_MOM} != 0 -a ! -x ${PBS_EXEC}/sbin/pbs_mom ] ;then
-			echo "*** MOM does not exist!"
-			fail=1
-		fi
+
+	if [ ! -x ${PBS_EXEC}/sbin/pbs_server ] ;then
+		echo "*** Server does not exist!"
+		fail=1
+	fi
+	if [ ! -x ${PBS_EXEC}/sbin/pbs_sched ] ;then
+		echo "*** Scheduler does not exist!"
+		fail=1
+	fi
+	if [ ! -x ${PBS_EXEC}/sbin/pbs_comm ] ;then
+		echo "*** Communication agent does not exist!"
+		fail=1
+	fi
+	if [ ! -x ${PBS_EXEC}/sbin/pbs_mom ] ;then
+		echo "*** MOM does not exist!"
+		fail=1
 	fi
 
 	if [ $fail -ne 0 ] ;then
@@ -383,7 +360,7 @@ install_pbsinitd() {
 						echo "enable pbs_server.service" > "${presetdir}/95-pbs.preset"
 					fi
 				else
-					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+					echo "*** Systemctl binary is not available; Failed to register pbs_server as a service"
 				fi
 			fi
 			pbs_unitfile="@_unitdir@/pbs_mom.service"
@@ -399,7 +376,7 @@ install_pbsinitd() {
 						echo "enable pbs_mom.service" > "${presetdir}/95-pbs.preset"
 					fi
 				else
-					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+					echo "*** Systemctl binary is not available; Failed to register pbs_mom as a service"
 				fi
 			fi
 			pbs_unitfile="@_unitdir@/pbs_sched.service"
@@ -415,7 +392,7 @@ install_pbsinitd() {
 						echo "enable pbs_sched.service" > "${presetdir}/95-pbs.preset"
 					fi
 				else
-					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+					echo "*** Systemctl binary is not available; Failed to register pbs_sched as a service"
 				fi
 			fi
 			pbs_unitfile="@_unitdir@/pbs_comm.service"
@@ -431,7 +408,7 @@ install_pbsinitd() {
 						echo "enable pbs_comm.service" > "${presetdir}/95-pbs.preset"
 					fi
 				else
-					echo "*** Systemctl binary is not available; Failed to register PBS as a service"
+					echo "*** Systemctl binary is not available; Failed to register pbs_comm as a service"
 				fi
 			fi
 			;;
