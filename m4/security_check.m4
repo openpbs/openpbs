@@ -51,6 +51,6 @@ AC_DEFUN([PBS_AC_SECURITY],
     AC_MSG_RESULT([no])
     AS_ECHO("Security checks will be performed"),
     AC_MSG_RESULT([yes])
-    AC_DEFINE([NO_SECURITY_CHECK], [1], [Define as 1 to disable security check, 1 to enable])
+    AC_DEFINE([NO_SECURITY_CHECK], [], [Define to enable security])
   )
 ])
