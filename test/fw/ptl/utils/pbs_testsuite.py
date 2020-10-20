@@ -1476,6 +1476,7 @@ class PBSTestSuite(unittest.TestCase):
         _msg = 'No license found on server %s' % (server.shortname)
         self.assertTrue(rv, _msg)
         self.logger.info('server: %s licensed', server.hostname)
+        server.update_special_attr(SERVER, id=server.hostname)
 
     def revert_comm(self, comm, force=False):
         """
@@ -1503,6 +1504,7 @@ class PBSTestSuite(unittest.TestCase):
             rv = scheduler.revert_to_defaults()
             _msg = 'Failed to revert sched %s' % (scheduler.hostname)
             self.assertTrue(rv, _msg)
+        self.server.update_special_attr(SCHED)
 
     def revert_mom(self, mom, force=False):
         """
@@ -1565,6 +1567,8 @@ class PBSTestSuite(unittest.TestCase):
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
+            self.server.update_special_attr(NODE, id=mom.shortname)
+
         return mom
 
     def analyze_logs(self):
