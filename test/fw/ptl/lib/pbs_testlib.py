@@ -14617,12 +14617,12 @@ while True:
         script_path = self.du.create_temp_file(hostname=hostname,
                                                body=script_body,
                                                suffix='.py')
-        if not self.du.is_localhost(hostname):
-            d = pwd.getpwnam(self.username).pw_dir
-            ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
-            if ret is None or ret['rc'] != 0:
-                raise AssertionError("Failed to copy file %s to %s"
-                                     % (script_path, hostname))
+        # if not self.du.is_localhost(hostname):
+        #     d = pwd.getpwnam(self.username).pw_dir
+        #     ret = self.du.run_copy(hosts=hostname, src=script_path, dest=d)
+        #     if ret is None or ret['rc'] != 0:
+        #         raise AssertionError("Failed to copy file %s to %s in %s"
+        #                              % (script_path, hostname, d))
         pbs_conf = self.du.parse_pbs_config(hostname)
         shell_path = os.path.join(pbs_conf['PBS_EXEC'],
                                   'bin', 'pbs_python')
