@@ -751,7 +751,7 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
  *
  * @param[out] is_conn_lost - did we lost connection to server?
  *                            1 - yes, 0 - no
- * @param[in/out] high_prior_cmd - contains the high priority command received
+ * @param[in,out] high_prior_cmd - contains the high priority command received
  *
  * @return sched_cmd *
  * @retval 0 - no super high priority command is received

@@ -517,8 +517,10 @@ close_servers(void)
 	}
 
 	/* free qrun_list */
-	for (i = 0; i < get_num_servers(); i++)
-		free(qrun_list[i].jid);
+	for (i = 0; i < qrun_list_size; i++) {
+		if (qrun_list[i].jid != NULL)
+			free(qrun_list[i].jid);
+	}
 	free(qrun_list);
 
 	sched_svr_init();
@@ -622,7 +624,6 @@ reconnect_servers()
  *        and add it into sched_cmds array
  *
  * @param[in]  sock   - secondary connection to server
- * @param[in/out]  hascomd - puts 1 if there is a command
  *
  * @return int
  * @retval -2 - failure due to memory operation failed
@@ -631,11 +632,10 @@ reconnect_servers()
  * @return  1 - success, read atleast one command
  */
 static int
-read_sched_cmd(int sock, int *hascmd)
+read_sched_cmd(int sock)
 {
 	int rc = -1;
 	sched_cmd cmd;
-	*hascmd = 0;
 
 	rc = get_sched_cmd(sock, &cmd);
 	if (rc != 1)
@@ -665,7 +665,6 @@ read_sched_cmd(int sock, int *hascmd)
 		else
 			sched_cmds[cmd.cmd] = 1;
 
-		*hascmd = 1;
 	}
 
 	return rc;
@@ -700,18 +699,16 @@ wait_for_cmds()
 				sleep(1); /* wait for 1s for not to burn too much CPU */
 			}
 		} else {
-			for (i = 0; i < TOTAL_SCHED_CMDS;i++) {
-				sched_cmds[i] = 0;
-			}
 			for (i = 0; i < nsocks; i++) {
 				int sock = EM_GET_FD(events, i);
-				err = read_sched_cmd(sock, &hascmd);
+				err = read_sched_cmd(sock);
 				if (err != 1) {
 					/* if memory error ignore, else reconnect server */
 					if (err != -2) {
 						reconnect_servers();
 					}
-				} 
+				}  else 
+					hascmd = 1;
 			}
 		}
 	}
@@ -1100,10 +1097,12 @@ main(int argc, char *argv[])
 			if (schedule_wrapper(&qrun_list[i], opt_no_restart) == 1) {
 				go = 0;
 				break;
-			}	
+			}
+			free(qrun_list[i].jid);
+			qrun_list[i].jid = NULL;
 		}
 
-		for (i = 0; go && (i < TOTAL_SCHED_CMDS); i++) {
+		for (i = 0; go && (i < SCH_CMD_HIGH); i++) {
 			sched_cmd cmd;
 
 			if (sched_cmds[i] == 0)
@@ -1114,6 +1113,9 @@ main(int argc, char *argv[])
 
 			/* jid is always NULL since this list does not contain SCHEDULE_AJOB commands */
 			cmd.jid = NULL;
+
+			/* clear the entry of sched_cmds[i] as we are going to process this command now */
+			sched_cmds[i] = 0;
 
 			if (schedule_wrapper(&cmd, opt_no_restart) == 1) {
 				go = 0;

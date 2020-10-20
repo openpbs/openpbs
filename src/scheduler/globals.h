@@ -50,15 +50,13 @@ extern "C" {
 #include "sched_cmds.h"
 
 extern void *poll_context;
-/* total number of sched commands as of today */
-#define TOTAL_SCHED_CMDS 18
 
 /* Each index of the array is a sched command. Store 1 as a value to indicate that we received a command */
-int sched_cmds[TOTAL_SCHED_CMDS];
+extern int sched_cmds[SCH_CMD_HIGH];
 
 /* This list stores SCH_SCHEDULE_AJOB commands */
-sched_cmd *qrun_list;
-int qrun_list_size;
+extern sched_cmd *qrun_list;
+extern int qrun_list_size;
 
 /* resources to check */
 extern const struct rescheck res_to_check[];
