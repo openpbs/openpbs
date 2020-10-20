@@ -570,7 +570,7 @@ connect_svrpool()
 		
 	}
 
-	svr_conns =  get_conn_servers(clust_secondary_sock);
+	svr_conns =  static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
 
 	for (i = 0; i < get_num_servers(); i++) {
 		if (tpp_em_add_fd(poll_context, svr_conns[i].sd, EM_IN | EM_HUP | EM_ERR) < 0) {
@@ -598,7 +598,7 @@ sched_svr_init(void)
 		}
 	}
 
-	qrun_list = malloc((get_num_servers() + 1) * sizeof(sched_cmd));
+	qrun_list = static_cast<sched_cmd *>(malloc((get_num_servers() + 1) * sizeof(sched_cmd)));
 	if (qrun_list == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		die(0);
@@ -729,7 +729,7 @@ send_cycle_end()
 	svr_conn_t *svr_conns;
 	int i;
 	static int cycle_end_marker = 0;
-	svr_conns =  get_conn_servers(clust_secondary_sock);
+	svr_conns =  static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
 
 	for (i = 0; i < get_num_servers(); i++) {
 		if (diswsi(svr_conns[i].sd, cycle_end_marker) != DIS_SUCCESS) {

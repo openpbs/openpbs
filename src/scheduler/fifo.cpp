@@ -762,7 +762,7 @@ static int
 get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
 	int i;
-	svr_conn_t *svr_conns = get_conn_servers(clust_secondary_sock);
+	svr_conn_t *svr_conns = static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
 	sched_cmd cmd;
 
 	for (i = 0; i < get_num_servers(); i++) {
