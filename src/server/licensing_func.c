@@ -286,8 +286,13 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 	if (node_index_start)
 		distribute_licenseinfo(pmom, lic_count);
 
-	if (pfrom_Lic == NULL)
+	if (pfrom_Lic == NULL) {
+		for (i = node_index_start;i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
+			pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
+			add_to_unlicensed_node_list(n);
+		}
 		return;
+	}
 
 	/*
  	 * Now make another pass, this time updating the other vnodes'
@@ -624,6 +629,9 @@ license_nodes()
 				for (i = 0; i < np->nd_nummoms; i++)
 					propagate_licenses_to_vnodes(np->nd_moms[i]);
 			}
+		} else {
+			delete_link(&punodes->link);
+			free(punodes);
 		}
 		punodes = pnext;
 	}
