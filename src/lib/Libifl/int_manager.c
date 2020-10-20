@@ -103,7 +103,7 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 			return pbs_errno;
 
 	/* now verify the attributes, if verification is enabled */
-	if ((pbs_verify_attributes_wrapper(c, function, objtype, command, aoplp)))
+	if (pbs_verify_attributes(random_srv_conn(svr_connections), function, objtype, command, aoplp))
 		return pbs_errno;
 
 	if ((objtype == MGR_OBJ_JOB) && (get_server(objname, job_id_out, server_out) == 0)) {

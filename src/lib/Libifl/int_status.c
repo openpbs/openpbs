@@ -717,7 +717,7 @@ PBSD_status_get(int c, struct batch_status **last)
 		reply->brp_un.brp_statc = NULL;
 	}
 	if (last)
-		*last = reply->last;
+		*last = reply ? reply->last : NULL;
 	PBSD_FreeReply(reply);
 	return rbsp;
 }
