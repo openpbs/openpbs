@@ -1195,13 +1195,15 @@ make_connection(char *name)
 	int connection;
 	struct server *svr = NULL;
 
-	if ((connection = cnt2server(name)) > 0) {
+	if ((connection = cnt2server(name)) > 0 && pbs_errno == PBSE_NONE) {
 		svr = new_server();
 		Mstring(svr->s_name, strlen(name) + 1);
 		strcpy(svr->s_name, name);
 		svr->s_connect = connection;
-	}
-	else
+	} else if (is_same_host(name, pbs_default())) {
+		if (!zopt)
+			show_svr_inst_fail(connection, "qmgr");
+	} else
 		PSTDERR1("qmgr: cannot connect to server %s\n", name)
 
 	return svr;
@@ -1238,9 +1240,9 @@ connect_servers(struct objname *server_names, int numservers)
 		cur_obj = server_names;
 
 		/* if numservers == -1 (all servers) the var i will never equal zero */
-		for (i = numservers; i != 0 && cur_obj != NULL; i--, cur_obj=cur_obj->next) {
+		for (i = numservers; i && cur_obj; i--, cur_obj = cur_obj->next) {
 			nservers++;
-			if ((cur_svr = make_connection(cur_obj->svr_name)) ==NULL) {
+			if ((cur_svr = make_connection(cur_obj->svr_name)) == NULL) {
 				nservers--;
 				error = TRUE;
 			}
@@ -2015,6 +2017,7 @@ set_active(int obj_type, struct objname *obj_names)
 					free_objname_list(obj_names);
 
 				break;
+
 			case MGR_OBJ_QUEUE:
 				cur_obj = obj_names;
 
@@ -2038,6 +2041,7 @@ set_active(int obj_type, struct objname *obj_names)
 					active_queues = obj_names;
 				}
 				break;
+
 			case MGR_OBJ_NODE:
 				cur_obj = obj_names;
 				while (cur_obj != NULL && !error) {

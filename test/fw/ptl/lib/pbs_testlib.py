@@ -4705,6 +4705,36 @@ class Server(PBSService):
 
     actions = ExpectActions()
 
+    # these server attributes revert back to default value when unset
+    __special_attr_keys = {SERVER: [ATTR_scheduling, ATTR_logevents,
+                                    ATTR_mailfrom, ATTR_queryother,
+                                    ATTR_rescdflt + '.ncpus', ATTR_schedit,
+                                    ATTR_ResvEnable, ATTR_maxarraysize,
+                                    ATTR_license_min, ATTR_license_max,
+                                    ATTR_license_linger,
+                                    ATTR_EligibleTimeEnable,
+                                    ATTR_max_concurrent_prov],
+                           SCHED: [ATTR_sched_cycle_len, ATTR_scheduling,
+                                   ATTR_schedit, ATTR_logevents,
+                                   ATTR_sched_server_dyn_res_alarm,
+                                   'preempt_prio', 'preempt_queue_prio',
+                                   'throughput_mode', 'job_run_wait',
+                                   'partition', 'sched_priv', 'sched_log'],
+                           NODE: [ATTR_rescavail + '.ncpus'],
+                           HOOK: [ATTR_HOOK_type,
+                                  ATTR_HOOK_enable,
+                                  ATTR_HOOK_event,
+                                  ATTR_HOOK_alarm,
+                                  ATTR_HOOK_order,
+                                  ATTR_HOOK_debug,
+                                  ATTR_HOOK_fail_action,
+                                  ATTR_HOOK_user]}
+
+    __special_attr = {SERVER: None,
+                      SCHED: None,
+                      NODE: None,
+                      HOOK: None}
+
     def __init__(self, name=None, attrs={}, defaults={}, pbsconf_file=None,
                  snapmap={}, snap=None, client=None, client_pbsconf_file=None,
                  db_access=None, stat=True):
@@ -5268,6 +5298,59 @@ class Server(PBSService):
                 unsetlist.append(k)
         if len(unsetlist) != 0:
             self.manager(MGR_CMD_UNSET, MGR_OBJ_SERVER, unsetlist)
+
+    def update_special_attr(self, obj_type, id=None):
+        """
+        Update special attributes(__special_attr) dictionary
+        :param obj_type: The type of object to update attribute values
+                         in special attribute dictionary.
+        :type obj_type: str
+        :param id: The id of the object to act upon
+        :type id: str
+        """
+        if not id:
+            if obj_type in (SERVER, NODE):
+                id = self.hostname
+            elif obj_type == SCHED:
+                id = 'default'
+        id_attr_dict = {}
+        obj_stat = self.status(obj_type, id=id)[0]
+        for key in obj_stat.keys():
+            if key in self.__special_attr_keys[obj_type]:
+                id_attr_dict[key] = obj_stat[key]
+
+        id_attr = {id: id_attr_dict}
+        self.__special_attr[obj_type] = id_attr
+
+    def get_special_attr_val(self, obj_type, attr, id=None):
+        """
+        Get value for given attribute from
+        special attributes(__special_attr) dictionary
+        :param obj_type: The type of object to update attribute values
+                         in special attribute dictionary.
+        :type obj_type: str
+        :param attr: The attribute for which value requested.
+        :type id: str
+        :param id: The id of the object to act upon
+        :type id: str
+        """
+
+        if not id:
+            if obj_type in (SERVER, NODE):
+                id = self.hostname
+            elif obj_type == SCHED:
+                id = 'default'
+        res_val = ATTR_rescavail + '.ncpus'
+        if obj_type in (NODE, VNODE) and attr == res_val:
+            obj_stat = self.status(obj_type, id=id)[0]
+            if 'pcpus' not in obj_stat.keys():
+                return 1
+            else:
+                return self.__special_attr[obj_type][id][attr]
+        elif obj_type == HOOK and (id == 'pbs_cgroups' and attr == 'freq'):
+            return 120
+        else:
+            return self.__special_attr[obj_type][id][attr]
 
     def delete_site_hooks(self):
         """
@@ -8491,6 +8574,17 @@ class Server(PBSService):
                 return self.expect(obj_type, attrib, id, op, attrop,
                                    attempt + 1, max_attempts, interval, count,
                                    extend, level=level, msg=msg)
+        else:
+            if op == UNSET and obj_type in (SERVER, SCHED, NODE, HOOK, QUEUE):
+                for key in attrib.keys():
+                    if key in self.__special_attr_keys[obj_type]:
+                        val = self.get_special_attr_val(obj_type, key, id)
+                        attrib = {key: val}
+                        op = EQ
+                        return self.expect(obj_type, attrib, id, op, attrop,
+                                           attempt, max_attempts, interval,
+                                           count, extend, runas=runas,
+                                           level=level, msg=msg)
 
         if attrib is None:
             time.sleep(interval)
@@ -9686,7 +9780,7 @@ class Server(PBSService):
         else:
             self.logger.error('hook named ' + name + ' exists')
             return False
-
+        self.update_special_attr(HOOK, id=name)
         self.manager(MGR_CMD_SET, HOOK, attrs, id=name)
         return True
 
@@ -11635,6 +11729,7 @@ class Scheduler(PBSService):
                                       self.attributes['sched_priv'])
         sched_logs_dir = os.path.join(sched_home,
                                       self.attributes['sched_log'])
+        self.server.update_special_attr(SCHED, id=self.attributes['id'])
         if not os.path.exists(sched_priv_dir):
             self.du.mkdir(path=sched_priv_dir, sudo=True)
             if self.user.name != 'root':
