@@ -1323,7 +1323,6 @@ void
 vnode_unavailable(struct pbsnode *np, int account_vnode)
 {
 	char *nd_name;
-	char *str_time;
 	char *resv_nodes;
 	struct resc_resv *presv;
 	struct resvinfo *rinfp;
@@ -1370,19 +1369,9 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 		degraded_time = presv->ri_degraded_time;
 		in_soonest_occr = find_vnode_in_execvnode(resv_nodes, np->nd_name);
 
-		if (retry_time == 0) {
+		if (retry_time == 0)
 			set_resv_retry(presv, determine_resv_retry(presv));
 
-			str_time = ctime(&presv->ri_resv_retry);
-			if (str_time != NULL) {
-				str_time[strlen(str_time) - 1] = '\0';
-				(void) snprintf(log_buffer, sizeof(log_buffer),
-					"An attempt to reconfirm reservation will be made on %s",
-					str_time);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE,
-					presv->ri_qs.ri_resvID, log_buffer);
-			}
-		}
 
 		/* If the downed node is part of the soonest reservation then the
 		 * reservation is marked degraded. This is recognized by having the
@@ -1744,14 +1733,28 @@ set_resv_retry(resc_resv *presv, long retry_time)
 {
 	struct work_task *pwt;
 	extern void resv_retry_handler(struct work_task *ptask);
+	char *msg;
+	char *str_time;
 
 	if (presv == NULL)
 		return;
+		
+	if (presv->ri_resv_retry)
+		msg = "Next attempt to reconfirm reservation will be made on %s";
+	else	
+		msg = "An attempt to reconfirm reservation will be made on %s";
 
 	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
 	presv->ri_wattr[RESV_ATR_retry].at_val.at_long = retry_time;
 
 	presv->ri_resv_retry = retry_time;
+
+	str_time = ctime(&(presv->ri_wattr[RESV_ATR_retry].at_val.at_long));
+	if (str_time != NULL) {
+		str_time[strlen(str_time) - 1] = '\0';
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, msg, str_time);
+	}
+
 
 	/* Set a work task to initiate a scheduling cycle when the time to check
 	 * for alternate nodes to assign the reservation comes
@@ -7915,7 +7918,6 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 static void
 set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 {
-	char *str_time;
 	long degraded_time;
 
 	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0)
@@ -7928,17 +7930,6 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 	if (degraded_time > (time_now + resv_retry_time))
 			set_resv_retry(presv, (time_now + resv_retry_time));
 
-	if (presv->ri_resv_retry) {
-		str_time = ctime(&presv->ri_resv_retry);
-		if (str_time != NULL) {
-			str_time[strlen(str_time) - 1] = '\0';
-			(void) snprintf(log_buffer, sizeof(log_buffer),
-				"An attempt to reconfirm reservation will be made on %s",
-				str_time);
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE,
-				presv->ri_qs.ri_resvID, log_buffer);
-		}
-	}
 	(void) resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
 
 	/* the number of vnodes down could exceed the number of vnodes in
@@ -7981,7 +7972,8 @@ long determine_resv_retry(resc_resv *presv)
 	long resv_start = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 
 	if (time_now < resv_start && time_now + resv_retry_time > resv_start)
-		retry = resv_start;
+		/* The server gets confused if a reservation starts and is confirmed at the same time.  Retry shortly before it starts */
+		retry = resv_start - 10;
 	else
 		retry = time_now + resv_retry_time;
 
