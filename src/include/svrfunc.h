@@ -73,7 +73,6 @@ extern int send_sched_cmd(pbs_sched *, int, char *);
 extern void count_node_cpus(void);
 extern int ctcpus(char *, int *);
 extern void cvrt_fqn_to_name(char *, char *);
-extern int failover_send_shutdown(int);
 extern char *get_hostPart(char *);
 extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
@@ -133,7 +132,6 @@ extern void unset_jobscript_max_size(void);
 extern char *svr_load_jobscript(job *);
 extern int direct_write_requested(job *);
 extern void spool_filename(job *, char *, char *);
-extern enum failover_state are_we_primary(void);
 extern void license_more_nodes(void);
 extern void reset_svr_sequence_window(void);
 extern void reply_preempt_jobs_request(int, int, struct job *);
@@ -236,8 +234,6 @@ extern int recreate_exec_vnode(job *, char *, char *, char *, int);
 extern int send_job_exec_update_to_mom(job *, char *, int, struct batch_request *);
 extern int free_sister_vnodes(job *, char *, char *, char *, int, struct batch_request *);
 extern void indirect_target_check(struct work_task *);
-extern void primary_handshake(struct work_task *);
-extern void secondary_handshake(struct work_task *);
 #endif /* _WORK_TASK_H */
 #endif /* _BATCH_REQUEST_H */
 #ifdef _TICKET_H
@@ -276,8 +272,6 @@ extern void req_stagein(struct batch_request *);
 extern void req_resvSub(struct batch_request *);
 extern void req_deleteReservation(struct batch_request *);
 extern void req_reservationOccurrenceEnd(struct batch_request *);
-extern void req_failover(struct batch_request *);
-extern int put_failover(int, struct batch_request *);
 extern void set_last_used_time_node(void *, int);
 
 #endif /* _BATCH_REQUEST_H */

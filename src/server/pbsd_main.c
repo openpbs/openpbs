@@ -67,10 +67,6 @@
 #include <time.h>
 
 #include "ticket.h"
-#ifdef linux
-#include <sys/prctl.h>
-#endif
-
 #include "list_link.h"
 #include "work_task.h"
 #include "log.h"
@@ -124,8 +120,7 @@ extern int chk_and_update_db_svrhost();
 
 /* External data items */
 extern  pbs_list_head svr_requests;
-extern char     *msg_err_malloc;
-extern int       pbs_failover_active;
+extern char *msg_err_malloc;
 
 /* Local Private Functions */
 
@@ -153,7 +148,6 @@ char		*path_users;
 char		*path_hooks_rescdef;
 char		*path_spool;
 char		*path_track;
-char		*path_svrlive;
 extern char	*path_prov_track;
 char		*path_secondaryact;
 char		*pbs_o_host = "PBS_O_HOST";
@@ -593,19 +587,15 @@ int
 main(int argc, char **argv)
 {
 	char *nodename = NULL;
-	int are_primary;
 	int c, rc;
 	int i;
 	int tppfd; /* fd to receive is HELLO's */
 	struct tpp_config tpp_conf;
 	char lockfile[MAXPATHLEN + 1];
-	char **origevp;
 	char *pc;
 	pbs_queue *pque;
 	char *servicename;
-	time_t svrlivetime;
 	int sock;
-	struct stat sb_sa;
 	struct batch_request *periodic_req;
 	char hook_msg[HOOK_MSG_SIZE];
 	pbs_sched *psched;
@@ -843,14 +833,7 @@ main(int argc, char **argv)
 
 	/* make sure no other server is running with this home directory */
 
-	(void)sprintf(lockfile, "%s/%s/server.lock", pbs_conf.pbs_home_path,
-		PBS_SVR_PRIVATE);
-	if ((are_primary = are_we_primary()) == FAILOVER_SECONDARY) {
-		strcat(lockfile, ".secondary");
-	} else if (are_primary == FAILOVER_CONFIG_ERROR) {
-		log_err(-1, msg_daemonname, "neither primary or secondary server");
-		return (3);
-	}
+	(void)sprintf(lockfile, "%s/%s/server.lock", pbs_conf.pbs_home_path, PBS_SVR_PRIVATE);
 
 #ifdef NAS /* localmod 104 */
 	if ((lockfds = open(lockfile, O_CREAT | O_WRONLY, 0644)) < 0)
@@ -920,11 +903,6 @@ main(int argc, char **argv)
 	path_hooks_tracking = build_path(path_priv, PBS_HOOK_TRACKING,
 		HOOK_TRACKING_SUFFIX);
 	path_hooks_rescdef = build_path(path_hooks, PBS_RESCDEF, NULL);
-	path_svrlive = build_path(path_priv, PBS_SVRLIVE, NULL);
-
-
-	/* save original environment in case we re-exec */
-	origevp = environ;
 
 	/*
 	 * Open the log file so we can start recording events
@@ -964,86 +942,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	/* At this point we must decide if we are the primary or secondary */
-
-	if (are_primary == FAILOVER_NONE) {
-		lock_out(lockfds, F_WRLCK);	/* no failover configured */
-	} else if (are_primary == FAILOVER_PRIMARY) {
-		char *takeovermsg = "Notifying Secondary Server that we are taking over";
-		/* we believe we are the primary server */
-
-		lock_out(lockfds, F_WRLCK);
-		svrlivetime = 0;
-		i = 0;
-
-		/*
-		 * try to connect to the Secondary Server to tell it to go away
-		 * Keep trying untill we connect or see the svrlive time is
-		 * not changing
-		 */
-
-		printf("%s\n", takeovermsg);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
-			LOG_NOTICE, PBS_EVENTCLASS_SERVER, msg_daemonname,
-			takeovermsg);
-		while (1) {
-			if (takeover_from_secondary() == 1) {
-				/* contacted Secondary, its gone */
-				break;
-			}
-			/* could not connact Secondary */
-			if (stat(path_secondaryact, &sb_sa) == -1)
-				break;	/* no file saying its active */
-			if (stat(path_svrlive, &sb_sa) == -1)
-				break; /* no svrlive file */
-			if (sb_sa.st_mtime > svrlivetime) {
-				/* time stamp is changing, at   */
-				/* least once, loop for a retry */
-				svrlivetime = sb_sa.st_mtime;
-			} else if ((time_now=time(0)) > (svrlivetime+secondary_delay)) {
-				/* has not changed during the delay time */
-				break;
-			}
-			sleep(4);
-			if ((++i % 15) == 3) {
-				/* display and log this about once a minute */
-				/* after a couple of tries */
-				sprintf(log_buffer, "Unable to contact Secondary Server but it appears to be running; it may need to be shutdown manually.");
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN |
-					PBSEVENT_FORCE, LOG_NOTICE,
-					PBS_EVENTCLASS_SERVER, msg_daemonname,
-					log_buffer);
-				printf("%s", log_buffer);
-				printf("  Will continue to attempt to takeover\n");
-			}
-		}
-
-		/* in case secondary didn't remove the file */
-		/* also tells the secondary to go idle	    */
-		(void)unlink(path_secondaryact);
-
-	} else {
-		/* we believe we are a secondary server */
-#ifndef DEBUG
-		/* go into the background and become own sess/process group */
-		if (stalone == 0) {
-			if ((sid = go_to_background()) == -1)
-				return (2);
-		}
-#endif /* DEBUG */
-
-		/* will not attempt to lock again if go_to_background was already called */
-		if (already_forked == 0)
-			lock_out(lockfds, F_WRLCK);
-
-		/* Protect from being killed by kernel */
-		daemon_protect(0, PBS_DAEMON_PROTECT_ON);
-
-		do  {
-			c =  be_secondary(secondary_delay);
-		} while (c == 1);	/* recycle and stay inactive */
-
-	}
+	lock_out(lockfds, F_WRLCK);
 
 	/*
 	 * At this point, we are the active Server ...
@@ -1051,16 +950,6 @@ main(int argc, char **argv)
 	 * Initialize the server objects and perform specified recovery
 	 * will be left in the server's private directory
 	 */
-
-#ifdef linux
-	/*
-	 * Set floating-point emulation control bits to silently emulate
-	 * fp operations accesses. This works on Linux IA64 only, so we do not
-	 * check the return status. On non-IA64 linux machine, it silently fails.
-	 *
-	 */
-	prctl(PR_SET_FPEMU, PR_FPEMU_NOPRINT, 0, 0, 0);
-#endif
 
 	/* Setup db connection here */
 	if (server_init_type != RECOV_CREATE && !stalone && !already_forked)
@@ -1170,12 +1059,7 @@ main(int argc, char **argv)
 			*p = '\0';
 	} else {
 		char *host = NULL;
-		if (pbs_conf.pbs_primary)
-			if (!pbs_failover_active)
-				host = pbs_conf.pbs_primary;
-			else
-				host = pbs_conf.pbs_secondary;
-		else if (pbs_conf.pbs_server_host_name)
+		if (pbs_conf.pbs_server_host_name)
 			host = pbs_conf.pbs_server_host_name;
 		else if (pbs_conf.pbs_server_name)
 			host = pbs_conf.pbs_server_name;
@@ -1212,49 +1096,6 @@ main(int argc, char **argv)
 	}
 
 	(void)add_conn(tppfd, TppComm, (pbs_net_t)0, 0, NULL, tpp_request);
-
-	/* record the fact that the Secondary is up and active (running) */
-
-	if (pbs_failover_active) {
-		sprintf(log_buffer, "Failover Secondary Server at %s has gone active", server_host);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-			LOG_CRIT, msg_daemonname, log_buffer);
-
-		/* now go set up work task to do timestamp svrlive file */
-
-		(void)set_task(WORK_Timed, time_now, secondary_handshake, NULL);
-
-		svr_mailowner(0, 0, 1, log_buffer);
-		if (server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long) {
-			/* Bring up scheduler here */
-			if (dflt_scheduler->sc_primary_conn == -1) {
-				char **workenv;
-				char schedcmd[MAXPATHLEN + 1];
-				/* save the current, "safe", environment.
-				 * reset the enviroment to that when first started
-				 * this is to get PBS_CONF_FILE if specified.*/
-				workenv = environ;
-				environ = origevp;
-
-				snprintf(schedcmd, sizeof(schedcmd), "%s/sbin/pbs_sched &", pbs_conf.pbs_exec_path);
-				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
-				(void)system(schedcmd);
-
-				log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-					PBS_EVENTCLASS_SERVER, LOG_CRIT,
-					msg_daemonname, log_buffer);
-
-				brought_up_alt_sched = 1;
-				/* restore environment to "safe" one */
-				environ = workenv;
-			}
-		}
-	} else if (are_primary == FAILOVER_PRIMARY) {
-		/* now go set up work task to do handshake with secondary */
-
-		(void)set_task(WORK_Timed, time_now, primary_handshake, NULL);
-
-	}
 
 	log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO,
 		   msg_daemonname, msg_startup2,
@@ -1315,37 +1156,15 @@ main(int argc, char **argv)
 
 	/*
 	 * main loop of server
-	 * stays in this loop until server's state is either
-	 * 	_DOWN - time to complete shutdown and exit, or
-	 *	_SECIDLE - time for Secondary Server in failover to go
-	 *		back to an inactive state.
-	 * If state includes SV_STATE_PRIMDLY, stay in loop; this will be
-	 * cleared when Secondary Server responds to a request.
+	 * stays in this loop until server's state is 
+	 * 	_DOWN - time to complete shutdown and exit
 	 */
-	while ((*state != SV_STATE_DOWN) && (*state != SV_STATE_SECIDLE)) {
-
-		/*
-		 * double check that if we are an active Secondary Server, that
-		 * that the Primary has not come back alive; if it did it will
-		 * remove the "secondary active" file.
-		 */
-		if (are_primary == FAILOVER_SECONDARY) {
-			if (stat(path_secondaryact, &sb_sa) == -1) {
-				if (errno == ENOENT) {
-					/* file gone, restart to go idle */
-					server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_SECIDLE;
-					break;
-				}
-			}
-		}
-
+	while (*state != SV_STATE_DOWN) {
 		/* first process any task whose time delay has expired */
 		waittime = next_task();
 
 		if (*state == SV_STATE_RUN) {	/* In normal Run State */
-
 			if (first_run) {
-
 				/*
 				 * clear exec_vnode for jobs that doesn't need
 				 * it, otherwise job is locked into those nodes
@@ -1435,7 +1254,6 @@ main(int argc, char **argv)
 		 */
 
 		if ((*state > SV_STATE_RUN) &&
-			(*state < SV_STATE_SECIDLE) &&
 			(server.sv_jobstates[JOB_STATE_RUNNING] == 0) &&
 			(server.sv_jobstates[JOB_STATE_EXITING] == 0) &&
 			((void *)GET_NEXT(task_list_event) == NULL))
@@ -1455,28 +1273,11 @@ main(int argc, char **argv)
 
 	/* if Moms are to to down as well, tell them */
 
-	if ((*state != SV_STATE_SECIDLE) && (shutdown_who & SHUT_WHO_MOM))
+	if (shutdown_who & SHUT_WHO_MOM)
 		shutdown_nodes();
 
 	/* if brought up the DB, take it down */
 	stop_db();
-
-	if (are_primary == FAILOVER_SECONDARY) {
-		/* we are the secondary server */
-		(void)unlink(path_secondaryact); /* remove file */
-
-		if ((*state == SV_STATE_SECIDLE) && (saved_takeover_req != NULL)) {
-			/*
-			 * If we are the secondary server that is
-			 * going inactive AND there is a batch request struct,
-			 * send acknowledgement back to primary so primary
-			 * server knows that the data have been written.
-			 */
-			DBPRT(("Failover: acknowledging FO(%d) request\n", saved_takeover_req->rq_ind.rq_failover))
-			reply_send(saved_takeover_req);
-			saved_takeover_req = NULL;
-		}
-	}
 
 #if defined(DEBUG)
 	/* for valgrind, clear some stuff up */
@@ -1530,24 +1331,6 @@ main(int argc, char **argv)
 	(void)unlink(lockfile);
 	unload_auths();
 
-	if (*state == SV_STATE_SECIDLE) {
-		/*
-		 * Secondary Server going inactive, or the Primary needs to
-		 * recycle itself (found Secondary active);
-		 * re-execv the Server, keeps things clean
-		 */
-		DBPRT(("Failover: reexecing %s as %s ", server_host, argv[0]))
-		sprintf(log_buffer, "%s restarting as %s", server_host,
-			are_primary == FAILOVER_PRIMARY ? "primary":"secondary");
-		if (*argv[0] == '/') {
-			execve(argv[0], argv, origevp);
-		} else {
-			sprintf(log_buffer, "%s/sbin/pbs_server",
-				pbs_conf.pbs_exec_path);
-			execve(log_buffer, argv, origevp);
-		}
-		DBPRT(("Failover: execv failed\n"))
-	}
 	return (0);
 }
 
@@ -1684,10 +1467,7 @@ lock_out(int fds, int op)
 	struct flock flock;
 	char	     buf[100];
 
-	if (pbs_conf.pbs_secondary == NULL)
-		j = 1;		/* not fail over, try lock one time */
-	else
-		j = 30;		/* fail over, try for a minute */
+	j = 1;		/* try lock one time */
 
 	(void)lseek(fds, (off_t)0, SEEK_SET);
 	flock.l_type   = op;

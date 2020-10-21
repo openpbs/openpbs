@@ -91,58 +91,6 @@ static int stalone = 0;	/* is program running not as a service ? */
 static int get_out = 0;
 static int hupped = 0;
 
-/*
- * Server failover role
- */
-enum failover_state {
-	FAILOVER_NONE,		/* Only Server, no failover */
-	FAILOVER_PRIMARY,       /* Primary in failover configuration */
-	FAILOVER_SECONDARY,	/* Secondary in failover */
-	FAILOVER_CONFIG_ERROR,	/* error in configuration */
-	FAILOVER_NEITHER,  /* failover configured, but I am neither primary/secondary */
-};
-
-/**
- * @brief
- *		are_we_primary - determines the failover role, are we the Primary
- *		Server, the Secondary Server or the only Server (no failover)
- *
- * @return	int: failover server role
- * @retval  FAILOVER_NONE	- failover not configured
- * @retval  FAILOVER_PRIMARY	- Primary Server
- * @retval  FAILOVER_SECONDARY	- Secondary Server
- * @retval  FAILOVER_CONFIG_ERROR	- error in pbs.conf configuration
- * @retval  FAILOVER_NEITHER	- failover configured, but I am neither primary/secondary
- */
-enum failover_state are_we_primary(void)
-{
-	char hn1[PBS_MAXHOSTNAME+1];
-
-	/* both secondary and primary should be set or neither set */
-	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
-		return FAILOVER_NONE;
-
-	if ((pbs_conf.pbs_secondary == NULL) || (pbs_conf.pbs_primary == NULL))
-		return FAILOVER_CONFIG_ERROR;
-
-	if (get_fullhostname(pbs_conf.pbs_primary, primary_host, (sizeof(primary_host) - 1))==-1) {
-		log_err(-1, "comm_main", "Unable to get full host name of primary");
-		return FAILOVER_CONFIG_ERROR;
-	}
-
-	if (strcmp(primary_host, server_host) == 0)
-		return FAILOVER_PRIMARY;   /* we are the listed primary */
-
-	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, "comm_main", "Unable to get full host name of secondary");
-		return FAILOVER_CONFIG_ERROR;
-	}
-	if (strcmp(hn1, server_host) == 0)
-		return FAILOVER_SECONDARY;  /* we are the secondary */
-
-	return FAILOVER_NEITHER; /* failover configured, but I am neither primary nor secondary */
-}
-
 /**
  * @brief
  *		usage - prints the usage in terminal if the user mistype in terminal
@@ -333,7 +281,6 @@ main(int argc, char **argv)
 	char *routers = NULL;
 	int c, i, rc;
 	extern char *optarg;
-	int	are_primary;
 	int	num_var_env;
 	struct sigaction act;
 	struct sigaction oact;
@@ -469,13 +416,6 @@ main(int argc, char **argv)
 	}
 
 	(void) sprintf(lockfile, "%s/%s/comm.lock", pbs_conf.pbs_home_path, PBS_SVR_PRIVATE);
-	if ((are_primary = are_we_primary()) == FAILOVER_SECONDARY) {
-		strcat(lockfile, ".secondary");
-	} else if (are_primary == FAILOVER_CONFIG_ERROR) {
-		sprintf(log_buffer, "Failover configuration error");
-		log_err(-1, __func__, log_buffer);
-		return (3);
-	}
 
 	if ((lockfds = open(lockfile, O_CREAT | O_WRONLY, 0600)) < 0) {
 		(void) sprintf(log_buffer, "pbs_comm: unable to open lock file");

@@ -216,8 +216,6 @@ lock_out(int fds, int op)
  * 		This is the Unix counterpart of acquire_lock
  * @par
  *  	This function creates/opens the lock file, and locks the file.
- *  	In case of a failover environment, the whole operation is retried
- *  	several times in a loop.
  *
  * @param[in]  lockfile         - Path of db_lock file.
  * @param[out] reason           - Reason for failure, if not able to accquire lock
@@ -237,7 +235,6 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 	int fd;
 	struct stat st;
 	int i, j;
-	time_t	lasttime = 0;
 	int rc;
 	char who[PBS_MAXHOSTNAME + 10];
 	char *p;
@@ -245,16 +242,12 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 	if (reasonlen > 0)
 		reason[0] = '\0';
 
-	if (pbs_conf.pbs_secondary == NULL)
-		j = 1;		/* not fail over, try lock one time */
-	else
-		j = MAX_LOCK_ATTEMPTS;	/* fail over, try X times */
+	j = 1;		/* try lock one time */
 
 #ifndef O_RSYNC
 #define O_RSYNC 0
 #endif
 
-again:
 	if ((fd = open(lockfile, O_RDWR | O_CREAT | O_RSYNC, 0600)) == -1) {
 		snprintf(reason, reasonlen, "Could not access lockfile, errno=%d", errno);
 		return -1;
@@ -267,54 +260,12 @@ again:
 		return -1;
 	}
 
-	/* record the last modified timestamp */
-	lasttime = st.st_mtime;
-
 	for (i=0; i < j; i++) { /* try X times where X is MAX_LOCK_ATTEMPTS */
 		if (i > 0)
 			sleep(1);
 		/* attempt to lock the datastore directory */
 		if (lock_out(fd, F_WRLCK) == 0)
 			return fd;
-	}
-
-	/* do this only if failover is configured */
-	if (pbs_conf.pbs_secondary != NULL) {
-		/*
-		 * Came here, means we could not lock even after j attempts.
-		 *
-		 * 2 levels of check will be performed (based on the last modified timestamp):
-		 *
-		 * 1) Check the lock file's modified timestamp and compare with "lasttime" to see if the file was modified
-		 *    in between. If the file was modified, then the other side up and so we give up.
-		 *
-		 * 2) We know that the modified timestamp is not updating however we need to make
-		 *    sure that the other side is really gone. Therefore we check the difference of last
-		 *    updated timestamp from now (current system time). If the difference > (4*j) seconds,
-		 *    then the other side has vanished at the OS level itself, and NFS cannot unlock it.
-		 *    So delete the lockfile and start afresh. For this to work, make sure that the
-		 *    time on primary, secondary and the pbs_home server (NFS server) are synced.
-		 */
-
-		/* Re-check time stamp of lock file */
-		if (fstat(fd, &st) == -1) {
-			snprintf(reason, reasonlen, "Failed to stat lockfile, errno=%d", errno);
-			close(fd);
-			return -1;
-		}
-
-		/* Check if time stamp of lock file has updated at all */
-		if (st.st_mtime == lasttime) {
-			/* Modified times stamp did not update in the given window. Re-check how long it has been stale */
-			if (time(0) - lasttime >= (MAX_LOCK_ATTEMPTS * 4)) {
-				/* other side is long dead, clear up stuff */
-				close(fd);
-				unlink(lockfile);
-				fd = -1;
-				lasttime = 0;
-				goto again;
-			}
-		}
 	}
 
 	/* all attempts to lock failed, try to see who has it locked */

@@ -12011,7 +12011,7 @@ const char pbsv1mod_meth_get_pbs_conf_doc[] =
 PyObject *
 pbsv1mod_meth_get_pbs_conf(void)
 {
-	return (Py_BuildValue( "{s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s}",
+	return (Py_BuildValue( "{s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s}",
 		"PBS_HOME", pbs_conf.pbs_home_path?pbs_conf.pbs_home_path:"",
 		"PBS_EXEC", pbs_conf.pbs_exec_path?pbs_conf.pbs_exec_path:"",
 		"PBS_ENVIRONMENT", pbs_conf.pbs_environment?pbs_conf.pbs_environment:"",
@@ -12021,9 +12021,7 @@ pbsv1mod_meth_get_pbs_conf(void)
 		"PBS_MOM_HOME", pbs_conf.pbs_mom_home?pbs_conf.pbs_mom_home:"",
 		"PBS_TMPDIR", pbs_conf.pbs_tmpdir?pbs_conf.pbs_tmpdir:"",
 		"PBS_SERVER", pbs_conf.pbs_server_name?pbs_conf.pbs_server_name:"",
-		"PBS_SERVER_HOST_NAME", pbs_conf.pbs_server_host_name?pbs_conf.pbs_server_host_name:"",
-		"PBS_PRIMARY", pbs_conf.pbs_primary?pbs_conf.pbs_primary:"",
-		"PBS_SECONDARY", pbs_conf.pbs_secondary?pbs_conf.pbs_secondary:""));
+		"PBS_SERVER_HOST_NAME", pbs_conf.pbs_server_host_name?pbs_conf.pbs_server_host_name:""));
 }
 
 const char pbsv1mod_meth_load_resource_value_doc[] =

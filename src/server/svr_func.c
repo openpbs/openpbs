@@ -130,7 +130,6 @@ extern void set_srv_prov_attributes();
 static void del_prov_vnode_entry(job *);
 extern int resize_prov_table(int);
 static void prov_startjob(struct work_task *ptask);
-extern enum failover_state are_we_primary(void);
 
 /*
  * Added for History jobs.
@@ -6857,45 +6856,6 @@ force_qsub_daemons_update_action(attribute *pattr, void *pobj, int actmode)
 	force_qsub_daemons_update();
 
 	return (PBSE_NONE);
-}
-
-/**
- * @brief
- *		are_we_primary - determines the failover role, are we the Primary
- *		Server, the Secondary Server or the only Server (no failover)
- *
- * @return  int			- failover server role
- * @retval  FAILOVER_NONE		- failover not configured
- * @retval  FAILOVER_PRIMARY		- Primary Server
- * @retval  FAILOVER_SECONDARY		- Secondary Server
- * @retval  FAILOVER_CONFIG_ERROR	- error in pbs.conf configuration
- */
-enum failover_state are_we_primary(void)
-{
-	char hn1[PBS_MAXHOSTNAME+1];
-
-	/* both secondary and primary should be set or neither set */
-	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
-		return FAILOVER_NONE;
-	if ((pbs_conf.pbs_secondary == NULL) || (pbs_conf.pbs_primary == NULL))
-		return FAILOVER_CONFIG_ERROR;
-
-	if (get_fullhostname(pbs_conf.pbs_primary, primary_host, (sizeof(primary_host) - 1))==-1) {
-		log_err(-1, "pbsd_main", "Unable to get full host name of primary");
-		return FAILOVER_CONFIG_ERROR;
-	}
-
-	if (strcmp(primary_host, server_host) == 0)
-		return FAILOVER_PRIMARY;   /* we are the listed primary */
-
-	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, "pbsd_main", "Unable to get full host name of secondary");
-		return FAILOVER_CONFIG_ERROR;
-	}
-	if (strcmp(hn1, server_host) == 0)
-		return FAILOVER_SECONDARY;  /* we are the secondary */
-
-	return FAILOVER_CONFIG_ERROR;	    /* cannot be neither */
 }
 
 /**

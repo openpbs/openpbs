@@ -112,15 +112,6 @@ extern attribute_def svr_attr_def[];
  * @brief
  *		Perform start of the shutdown procedure for the server
  *
- * @par failover
- *		In failover environment, may need to tell Secondary to either stay
- *		inactive, to shutdown (only the Secondary) or to shutdown as well.
- *		In the cases the Primary is also going down, we want to wait
- *		for an acknowledgement from Secondary.  That is down by or-ing in
- *		SV_STATE_PRIMDLY to the server internal state.   see failover.c and
- *		the main processing loop in pbsd_main.c;  that loop won't exit if
- *		SV_STATE_PRIMDLY is in the state.
- *
  * @param[in]	type	-	SHUT_* - type of for shutdown, see pbs_internal.h
  */
 
@@ -131,11 +122,10 @@ svr_shutdown(int type)
 	job		  *pjob;
 	job		  *pnxt;
 	long		 *state;
-	int		  wait_for_secondary = 0;
 
 	/* Lets start by logging shutdown and saving everything */
 
-      /* Saving server jobid number to the database as server is going to shutdown.
+	/* Saving server jobid number to the database as server is going to shutdown.
 	 * Once server will come up then it will start jobid/resvid from this number onwards.
 	 */
 	state = &server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
@@ -153,18 +143,6 @@ svr_shutdown(int type)
 				msg_daemonname, log_buffer);
 			return;
 		}
-	}
-
-	/* in failover environments, need to communicate with Secondary */
-	/* and for these two where the Primary is going down, mark to   */
-	/* wait for the acknowledgement from the Secondary              */
-
-	if (type & SHUT_WHO_SECDRY) {
-		if (failover_send_shutdown(FAILOVER_SecdShutdown) == 0)
-			wait_for_secondary = 1;
-	} else if (type & SHUT_WHO_IDLESECDRY) {
-		if (failover_send_shutdown(FAILOVER_SecdGoInactive) == 0)
-			wait_for_secondary = 1;
 	}
 
 	/* what is the manner of our demise? */
@@ -189,9 +167,6 @@ svr_shutdown(int type)
 	}
 	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN|PBSEVENT_DEBUG,
 		PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, log_buffer);
-
-	if (wait_for_secondary)
-		*state |= SV_STATE_PRIMDLY; /* wait for reply from Secondary */
 
 	if (type == SHUT_QUICK) /* quick, leave jobs as are */
 		return;
@@ -268,16 +243,8 @@ req_shutdown(struct batch_request *preq)
 	type = preq->rq_ind.rq_shutdown;
 	shutdown_who = type & SHUT_WHO_MASK;
 
-	if (shutdown_who & SHUT_WHO_SECDONLY)
-		(void)failover_send_shutdown(FAILOVER_SecdShutdown);
-
 	if (shutdown_who & SHUT_WHO_SCHED)
 		send_sched_cmd(dflt_scheduler, SCH_QUIT, NULL);	/* tell scheduler to quit */
-
-	if (shutdown_who & SHUT_WHO_SECDONLY) {
-		reply_ack(preq);
-		return;			/* do NOT shutdown this Server */
-	}
 
 	/* Moms are told to shutdown in pbsd_main.c after main loop */
 

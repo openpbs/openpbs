@@ -831,30 +831,6 @@ end_loop:
 
 /**
  * @brief
- * 		choosing one server in random if a failover server is already set up.
- *
- * @param[out] port - Passed through to parse_servername(), not modified here.
- *
- * @return char *
- * @return NULL - failure
- * @retval !NULL - pointer to server name
- */
-static char *
-get_servername_random(unsigned int *port)
-{
-
-	if (!pbs_conf.pbs_secondary)
-		return get_servername(port);
-	else {
-		if (rand() % 2 == 0)
-			return get_servername(port);
-		else
-			return parse_servername(pbs_conf.pbs_secondary, port);
-	}
-}
-
-/**
- * @brief
  * 	send IS_HELLOSVR message to Server.
  *
  * @param[in]	stream	- connection stream
@@ -876,8 +852,8 @@ send_hellosvr(int stream)
 	unsigned int	port = default_server_port;
 
 	if (stream < 0) {
-		if ((svr = get_servername_random(&port)) == NULL) {
-			log_err(errno, msg_daemonname, "get_servername_random() failed");
+		if ((svr = get_servername(&port)) == NULL) {
+			log_err(errno, msg_daemonname, "get_servername() failed");
 			return;
 		}
 

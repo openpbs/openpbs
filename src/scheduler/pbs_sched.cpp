@@ -443,62 +443,6 @@ lock_out(int fds, int op)
 }
 
 /**
- * @brief
- * 		are_we_primary - are we on the primary Server host
- *		If either the only configured Server or the Primary in a failover
- *		configuration - return true
- *
- * @return	int
- * @retval	0	: we are the secondary
- * @retval	-1	: cannot be neither
- * @retval	1	: we are the listed primary
- */
-static int
-are_we_primary()
-{
-	char server_host[PBS_MAXHOSTNAME+1];
-	char hn1[PBS_MAXHOSTNAME+1];
-
-	if (pbs_conf.pbs_leaf_name) {
-		char *endp;
-		snprintf(server_host, sizeof(server_host), "%s", pbs_conf.pbs_leaf_name);
-		endp = strchr(server_host, ','); /* find the first name */
-		if (endp)
-			*endp = '\0';
-		endp = strchr(server_host, ':'); /* cut out the port */
-		if (endp)
-			*endp = '\0';
-	} else if ((gethostname(server_host, (sizeof(server_host) - 1)) == -1) ||
-		(get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-		log_err(-1, __func__, "Unable to get my host name");
-		return -1;
-	}
-
-	/* both secondary and primary should be set or neither set */
-	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
-		return 1;
-	if ((pbs_conf.pbs_secondary == NULL) || (pbs_conf.pbs_primary == NULL))
-		return -1;
-
-	if (get_fullhostname(pbs_conf.pbs_primary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, __func__, "Unable to get full host name of primary");
-		return -1;
-	}
-
-	if (strcmp(hn1, server_host) == 0)
-		return 1;	/* we are the listed primary */
-
-	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, __func__, "Unable to get full host name of secondary");
-		return -1;
-	}
-	if (strcmp(hn1, server_host) == 0)
-		return 0;	/* we are the secondary */
-
-	return -1;		/* cannot be neither */
-}
-
-/**
  * @brief close connections to all servers
  *
  * @return void
@@ -970,12 +914,8 @@ main(int argc, char *argv[])
 	addclient(host);
 	if (pbs_conf.pbs_server_name)
 		addclient(pbs_conf.pbs_server_name);
-	if (pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {
-		/* Failover is configured when both primary and secondary are set. */
-		addclient(pbs_conf.pbs_primary);
-		addclient(pbs_conf.pbs_secondary);
-	} else if (pbs_conf.pbs_server_host_name) {
-		/* Failover is not configured, but PBS_SERVER_HOST_NAME is. */
+	else if (pbs_conf.pbs_server_host_name) {
+		/* PBS_SERVER_HOST_NAME is configured. */
 		addclient(pbs_conf.pbs_server_host_name);
 	}
 	if (pbs_conf.pbs_leaf_name)
@@ -986,14 +926,7 @@ main(int argc, char *argv[])
 			die(0);
 	}
 
-	if ((c = are_we_primary()) == 1) {
-		lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
-	} else if (c == 0) {
-		lockfds = open("sched.lock.secondary", O_CREAT|O_WRONLY, 0644);
-	} else {
-		log_err(-1, "pbs_sched", "neither primary or secondary server");
-		exit(1);
-	}
+	lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 	if (lockfds < 0) {
 		log_err(errno, __func__, "open lock file");
 		exit(1);

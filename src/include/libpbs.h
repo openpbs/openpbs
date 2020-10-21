@@ -254,7 +254,7 @@ struct batch_reply
 #define PBS_BATCH_Rescq			24
 #define PBS_BATCH_ReserveResc		25
 #define PBS_BATCH_ReleaseResc		26
-#define PBS_BATCH_FailOver		27
+/* Unused -- #define PBS_BATCH_FailOver 27 */
 #define PBS_BATCH_StageIn		48
 /* Unused -- #define PBS_BATCH_AuthenResvPort 49 */
 #define PBS_BATCH_OrderJob		50
@@ -311,13 +311,6 @@ struct batch_reply
 #define PBS_DIS_TCP_TIMEOUT_RERUN	45 /* timeout used in pbs_rerunjob() */
 #define PBS_DIS_TCP_TIMEOUT_LONG	600
 #define PBS_DIS_TCP_TIMEOUT_VLONG	10800
-
-#define FAILOVER_Register	0 /* secondary server register with primary */
-#define FAILOVER_HandShake	1 /* handshake from secondary to primary */
-#define FAILOVER_PrimIsBack	2 /* Primary is taking control again */
-#define FAILOVER_SecdShutdown	3 /* Primary going down, secondary go down */
-#define FAILOVER_SecdGoInactive	4 /* Primary down, secondary go inactive */
-#define FAILOVER_SecdTakeOver	5 /* Primary down, secondary take over */
 
 #define EXTEND_OPT_IMPLICIT_COMMIT ":C:" /* option added to pbs_submit() extend parameter to request implicit commit */
 

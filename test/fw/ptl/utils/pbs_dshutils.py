@@ -489,15 +489,13 @@ class DshUtils(object):
         """
         Return the name of the server which may be different than
         ``PBS_SERVER``,in order, this method looks at
-        ``PBS_PRIMARY``, ``PBS_SERVER_HOST_NAME``, and
+        ``PBS_SERVER_HOST_NAME``, and
         ``PBS_LEAF_NAME``, and ``PBS_SERVER``
         """
         if pbs_conf is None:
             pbs_conf = self.parse_pbs_config()
 
-        if 'PBS_PRIMARY' in pbs_conf:
-            return pbs_conf['PBS_PRIMARY']
-        elif 'PBS_SERVER_HOST_NAME' in pbs_conf:
+        if 'PBS_SERVER_HOST_NAME' in pbs_conf:
             return pbs_conf['PBS_SERVER_HOST_NAME']
         elif 'PBS_LEAF_NAME' in pbs_conf:
             return pbs_conf['PBS_LEAF_NAME']

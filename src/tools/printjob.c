@@ -363,20 +363,16 @@ print_db_job(char *id, int no_attributes)
 
 		/* connect to database */
 #ifdef NAS /* localmod 111 */
-		if (pbs_conf.pbs_data_service_host) {
+		if (pbs_conf.pbs_data_service_host)
 			failcode = pbs_db_connect(&conn, pbs_conf.pbs_data_service_host, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
-		}
 		else
 #endif /* localmod 111 */
-		failcode = pbs_db_connect(&conn, pbs_conf.pbs_server_name, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
-		if (!conn && pbs_conf.pbs_secondary != NULL) {
-			failcode = pbs_db_connect(&conn, pbs_conf.pbs_secondary, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
-			if (!conn) {
-				pbs_db_get_errmsg(failcode, &db_errmsg);
-				fprintf(stderr, "%s\n", db_errmsg);
-				free(db_errmsg);
-				return -1;
-			}
+			failcode = pbs_db_connect(&conn, pbs_conf.pbs_server_name, pbs_conf.pbs_data_service_port, PBS_DB_CNT_TIMEOUT_NORMAL);
+		if (!conn) {
+			pbs_db_get_errmsg(failcode, &db_errmsg);
+			fprintf(stderr, "%s\n", db_errmsg);
+			free(db_errmsg);
+			return -1;
 		}
 	}
 

@@ -545,7 +545,6 @@ dis_request_read(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_Shutdown:
-		case PBS_BATCH_FailOver:
 			rc = decode_DIS_ShutDown(sfds, request);
 			break;
 

@@ -59,21 +59,15 @@ time_t time_now = 0;
  * qualified domain name (FQDN) of the host on which the PBS Server is
  * running.
  *	I.1.2.3.1	This name is used by clients to contact the Server.
- *	I.1.2.3.2	If PBS Failover is configured (PBS_PRIMARY and
- *			PBS_SECONDARY in the PBS Configuration), this symbol
- *			and its value will be ignored and the values of
- *			PBS_PRIMARY and PBS_SECONDARY will be use as per
- *			sectionI.1.1.1.
- *	I.1.2.3.3	When  PBS failover is not configured and
- *			PBS_SERVER_HOST_NAME is specified, if the server_name
+ *	I.1.2.3.2	PBS_SERVER_HOST_NAME is specified, if the server_name
  *			is not specified by the client or is specified and
  *			matches the value of PBS_SERVER, then the value of
  *			PBS_SERVER_HOST_NAME is used as the name of the Server
  *			to contact.
- *	I.1.2.3.4	Note: When PBS_SERVER_HOST_NAME is not specified,
+ *	I.1.2.3.3	Note: When PBS_SERVER_HOST_NAME is not specified,
  *			the current behavior for determining the name of the
  *			Server to contact will still apply.
- *	I.1.2.3.5	The value of the configuration variable should be a
+ *	I.1.2.3.4	The value of the configuration variable should be a
  *			fully qualified host name to avoid the possibility of
  *			host name collisions (e.g. master.foo.domain.name and
  *			master.bar.domain.name).

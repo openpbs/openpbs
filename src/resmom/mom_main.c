@@ -8012,10 +8012,6 @@ main(int argc, char *argv[])
 	if (gethostname(ret_string, ret_size) == 0)
 		(void)addclient_byname(ret_string);
 	(void)addclient_byname(servername);
-	if (pbs_conf.pbs_secondary) {
-		servername = parse_servername(pbs_conf.pbs_secondary, &serverport);
-		(void)addclient_byname(servername);
-	}
 
 	/* locate cput resource definition, needed for checking chkpt time */
 	rdcput = &svr_resc_def[RESC_CPUT];

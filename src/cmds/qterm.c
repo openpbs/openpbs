@@ -173,12 +173,6 @@ main(int argc, char **argv)
 		manner |= SHUT_WHO_SCHED;
 	if (downmom)
 		manner |= SHUT_WHO_MOM;
-	if (downsecd == 1)
-		manner |= SHUT_WHO_SECDRY;
-	if (downsecd == 2)
-		manner |= SHUT_WHO_SECDONLY;
-	else if (idlesecd)
-		manner |= SHUT_WHO_IDLESECDRY;
 
 	/*perform needed security library initializations (including none)*/
 

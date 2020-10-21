@@ -116,7 +116,7 @@ create_conf() {
 	rpm)
 		[ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
 		# If an existing configuration file is present, adapt it.
-		declare -a env_array=("PBS_HOME" "PBS_SERVER" "PBS_MOM_HOME" "PBS_PRIMARY" "PBS_SECONDARY" "PBS_LEAF_ROUTERS" "PBS_DAEMON_SERVICE_USER")
+		declare -a env_array=("PBS_HOME" "PBS_SERVER" "PBS_MOM_HOME" "PBS_LEAF_ROUTERS" "PBS_DAEMON_SERVICE_USER")
 		if [ -f "$conf" ]; then
 			eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\" >$newconf"
 			update_pbs_conf() {

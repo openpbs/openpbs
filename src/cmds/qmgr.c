@@ -790,15 +790,11 @@ main(int argc, char **argv)
 
 	/*
 	 * Get the Server Name which is used in hook related error messages:
-	 * 1. from PBS_PRIMARY if defined, if not
-	 * 2. from PBS_SERVER_HOST_NAME if defined, if not
-	 * 3. from PBS_SERVER, and as last resort
-	 * 4. use my host name
+	 * 1. from PBS_SERVER_HOST_NAME if defined, if not
+	 * 2. from PBS_SERVER, and as last resort
+	 * 3. use my host name
 	 */
-	if (pbs_conf.pbs_primary != NULL) {
-		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_primary,
-			sizeof(conf_full_server_name));
-	} else if (pbs_conf.pbs_server_host_name != NULL) {
+	if (pbs_conf.pbs_server_host_name != NULL) {
 		pbs_strncpy(conf_full_server_name, pbs_conf.pbs_server_host_name,
 			sizeof(conf_full_server_name));
 	} else if (pbs_conf.pbs_server_name != NULL) {

@@ -311,7 +311,6 @@ struct batch_request {
 		struct rq_track rq_track;
 		struct rq_cpyfile rq_cpyfile;
 		struct rq_cpyfile_cred rq_cpyfile_cred;
-		int rq_failover;
 		struct rq_usercred rq_usercred;
 		struct rq_defschrpy rq_defrpy;
 		struct rq_hookfile rq_hookfile;
@@ -403,7 +402,6 @@ extern int decode_DIS_TrackJob(int, struct batch_request *);
 extern int decode_DIS_replySvr(int, struct batch_reply *);
 extern int decode_DIS_svrattrl(int, pbs_list_head *);
 extern int decode_DIS_Cred(int, struct batch_request *);
-extern int encode_DIS_failover(int, struct batch_request *);
 extern int encode_DIS_CopyFiles(int, struct batch_request *);
 extern int encode_DIS_CopyFiles_Cred(int, struct batch_request *);
 extern int encode_DIS_JobObit(int, struct batch_request *);

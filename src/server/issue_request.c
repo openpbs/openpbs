@@ -234,27 +234,12 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 	char	 *svrname;
 	unsigned int  port = pbs_server_port_dis;
 	struct work_task *pwt;
-	extern int pbs_failover_active;
-	extern char primary_host[];
-	extern char server_host[];
 
 	(void)strcpy(preq->rq_host, servern);
 	preq->rq_fromsvr = 1;
 	preq->rq_perm = ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_SvWR;
 	svrname = parse_servername(servern, &port);
 
-	if ((pbs_failover_active != 0) && (svrname != NULL)) {
-		/* we are the active secondary server in a failover config    */
-		/* if the message is going to the primary,then redirect to me */
-		size_t len;
-
-		len = strlen(svrname);
-		if (strncasecmp(svrname, primary_host, len) == 0) {
-			if ((primary_host[(int)len] == '\0') ||
-				(primary_host[(int)len] == '.'))
-				svrname = server_host;
-		}
-	}
 	svraddr = get_hostaddr(svrname);
 	if (svraddr == (pbs_net_t)0) {
 		if (pbs_errno == PBS_NET_RC_RETRY)
@@ -676,11 +661,6 @@ issue_Drequest(int conn, struct batch_request *request, void (*func)(), struct w
 			if (rc != 0)
 				break;
 			rc = dis_flush(sock);
-			break;
-
-		case PBS_BATCH_FailOver:
-			/* we should never do this on tpp based connection */
-			rc = put_failover(sock, request);
 			break;
 
 		case PBS_BATCH_Cred:

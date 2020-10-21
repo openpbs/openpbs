@@ -100,15 +100,12 @@ __pbs_default()
 
 	if (p->th_pbs_defserver[0] == '\0') {
 		/* The check for PBS_DEFAULT is done in pbs_loadconf() */
-		if (pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {
-			strncpy(dflt_server, pbs_conf.pbs_primary, PBS_MAXSERVERNAME);
-		} else if (pbs_conf.pbs_server_host_name) {
+		if (pbs_conf.pbs_server_host_name)
 			strncpy(dflt_server, pbs_conf.pbs_server_host_name, PBS_MAXSERVERNAME);
-		} else if (pbs_conf.pbs_server_name) {
+		else if (pbs_conf.pbs_server_name)
 			strncpy(dflt_server, pbs_conf.pbs_server_name, PBS_MAXSERVERNAME);
-		} else {
+		else
 			dflt_server[0] = '\0';
-		}
 		strcpy(p->th_pbs_defserver, dflt_server);
 	}
 	return (p->th_pbs_defserver);

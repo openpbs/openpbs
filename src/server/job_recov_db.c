@@ -563,7 +563,6 @@ recov_job_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 {
 	job *pj = NULL;
 	pbs_db_job_info_t *dbjob = dbobj->pbs_db_un.pbs_db_job;
-	static int numjobs = 0;
 
 	*refreshed = 0;
 	if ((pj = job_recov_db_spl(dbjob, NULL)) == NULL) {
@@ -577,12 +576,6 @@ recov_job_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 
 	pbsd_init_job(pj, server_init_type);
 	*refreshed = 1;
-
-	if ((++numjobs % 20) == 0) {
-		/* periodically touch the file so the  */
-		/* world knows we are alive and active */
-		update_svrlive();
-	}
 
 err:
 	free_db_attr_list(&dbjob->db_attr_list);

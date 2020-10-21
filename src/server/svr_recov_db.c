@@ -83,36 +83,12 @@ extern char	*path_priv;
 extern time_t	time_now;
 extern char	*msg_svdbopen;
 extern char	*msg_svdbnosv;
-extern char	*path_svrlive;
 
 extern char *pbs_server_name;
 extern void *svr_db_conn;
 extern void sched_free(pbs_sched *psched);
 
 extern pbs_sched *sched_alloc(char *sched_name);
-
-/**
- * @brief
- *		Update the $PBS_HOME/server_priv/svrlive file timestamp
- *
- * @return	Error code
- * @retval	0	: Success
- * @retval	-1	: Failed to update timestamp
- *
- */
-int
-update_svrlive()
-{
-	static int fdlive = -1;
-	if (fdlive == -1) {
-		/* first time open the file */
-		fdlive = open(path_svrlive, O_WRONLY | O_CREAT, 0600);
-		if (fdlive < 0)
-			return -1;
-	}
-	(void)utimes(path_svrlive, NULL);
-	return 0;
-}
 
 /**
  * @brief
@@ -265,12 +241,6 @@ svr_save_db(struct server *ps)
 	int savetype;
 	int rc = -1;
 	char *conn_db_err = NULL;
-
-	/* as part of the server save, update svrlive file now,
-	 * used in failover
-	 */
-	if (update_svrlive() != 0)
-		goto done;
 
 	if ((savetype = svr_to_db(ps, &dbsvr)) == -1)
 		goto done;

@@ -1309,9 +1309,8 @@ find_job(char *jobid)
 			 *
 			 * Do not call is_same_host() to avoid DNS lookup
 			 * because server_name may not resolve to a real
-			 * host when PBS_SERVER_HOST_NAME is set or when
-			 * failover is enabled. The lookup could hang the
-			 * server for some amount of time.
+			 * host when PBS_SERVER_HOST_NAME is set. The lookup
+			 * could hang the server for some amount of time.
 			 */
 			host_dot = strchr(host, '.');
 			serv_dot = strchr(server_name, '.');

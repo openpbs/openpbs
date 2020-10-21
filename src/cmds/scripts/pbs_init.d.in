@@ -85,12 +85,9 @@ getpid() {
 # mount, it is called selectively after sanity checks are performed
 update_pids() {
 	pbs_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock`
-	pbs_secondary_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock.secondary`
 	pbs_mom_pid=`getpid ${PBS_MOM_HOME}/mom_priv/mom.lock`
 	pbs_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock`
-	pbs_secondary_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock.secondary`
 	pbs_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock`
-	pbs_secondary_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock.secondary`
 }
 
 # lc_host_name - convert host name into lower case short host name
@@ -148,26 +145,13 @@ check_prog() {
 			pid=${pbs_mom_pid} ;;
 		server)
 			daemon_name="pbs_server.bin"
-			if [ ${is_secondary} -eq 0 ] ; then
-				pid=${pbs_server_pid}
-			else
-				pid=${pbs_secondary_server_pid}
-			fi ;;
+			pid=${pbs_server_pid} ;;
 		sched)
 			daemon_name="pbs_sched"
-			if [ ${is_secondary} -eq 0 ] ; then
-				pid=${pbs_sched_pid} ;
-			else
-				pid=${pbs_secondary_sched_pid} ;
-			fi ;;
+			pid=${pbs_sched_pid} ;;
 		pbs_comm)
 			daemon_name="pbs_comm"
-			if [ ${is_secondary} -eq 0 ] ; then
-				pid=${pbs_comm_pid} ;
-			else
-				pid=${pbs_secondary_comm_pid} ;
-			fi ;;
-
+			pid=${pbs_comm_pid} ;;
 		*)	echo Invalid PBS daemon name: $1 >&2;
 			return 1;;
 	esac
@@ -235,15 +219,10 @@ check_core() {
 
 # Return the name of the PBS server host
 get_server_hostname() {
-	shn=""
-	if [ -z "${PBS_PRIMARY}" -o -z "${PBS_SECONDARY}" ] ; then
-		if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
-			shn="${PBS_SERVER}"
-		else
-			shn="${PBS_SERVER_HOST_NAME}"
-		fi
+	if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
+		shn="${PBS_SERVER}"
 	else
-		shn="${PBS_PRIMARY}"
+		shn="${PBS_SERVER_HOST_NAME}"
 	fi
 	echo `lc_host_name "${shn}"`
 }
@@ -436,32 +415,10 @@ stop_pbs() {
 	echo "Stopping PBS"
 	update_pids
 	if [ "${PBS_START_SERVER}" -gt 0 ] ; then
-		active_server=`lc_host_name \`${PBS_EXEC}/bin/qstat -Bf 2>/dev/null | \
-		grep "server_host = " | \
-		sed -e "s/.*server_host = //"\``
 		if check_prog "server" ; then
-			if [ "${my_hostname}" = "${active_server}" ]; then
-				if [ -z "${PBS_SECONDARY}" -o ${is_secondary} -eq 1 ]; then
-					echo "Shutting server down with qterm."
-				else
-					echo "This is active server, shutting down with qterm, secondary will take over."
-				fi
-				if [ -r "${PBS_HOME}/server_priv/qmgr_shutdown" ]; then
-					echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_shutdown"
-					${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_shutdown"
-				fi
-				${PBS_EXEC}/bin/qterm -t quick
-				echo "PBS server - was pid: ${pbs_server_pid}"
-			elif [ ${is_secondary} -eq 1 ]; then
-				echo "This is secondary server, killing process."
-				kill ${pbs_secondary_server_pid}
-				echo "PBS server - was pid: ${pbs_secondary_server_pid}"
-				rm -f ${PBS_HOME}/server_priv/server.lock.secondary
-			else
-				echo "Killing Server."
-				kill ${pbs_server_pid}
-				echo "PBS server - was pid: ${pbs_server_pid}"
-			fi
+			echo "Killing Server."
+			kill ${pbs_server_pid}
+			echo "PBS server - was pid: ${pbs_server_pid}"
 		fi
 		${PBS_EXEC}/sbin/pbs_dataservice status > /dev/null 2>&1
 		if [ $? -eq 0 ]; then
@@ -476,26 +433,14 @@ stop_pbs() {
 	fi
 	if [ "${PBS_START_SCHED}" -gt 0 ] ; then
 		if check_prog "sched" ; then
-			if [ ${is_secondary} -eq 0 ] ; then
-				kill ${pbs_sched_pid}
-				echo "PBS sched - was pid: ${pbs_sched_pid}"
-			else
-				kill ${pbs_secondary_sched_pid}
-				echo "PBS schedx - was pid: ${pbs_secondary_sched_pid}"
-				rm -f ${PBS_HOME}/sched_priv/sched.lock.secondary
-			fi
+			kill ${pbs_sched_pid}
+			echo "PBS sched - was pid: ${pbs_sched_pid}"
 		fi
 	fi
 	if [ "${PBS_START_COMM}" -gt 0 ] ; then
 		if check_prog "pbs_comm" ; then
-			if [ ${is_secondary} -eq 0 ] ; then
-				kill -TERM ${pbs_comm_pid}
-				echo "PBS comm - was pid: ${pbs_comm_pid}"
-			else
-				kill -TERM ${pbs_secondary_comm_pid}
-				echo "PBS comm - was pid: ${pbs_secondary_comm_pid}"
-				rm -f ${PBS_HOME}/server_priv/comm.lock.secondary
-			fi
+			kill -TERM ${pbs_comm_pid}
+			echo "PBS comm - was pid: ${pbs_comm_pid}"
 		fi
 	fi
 	if [ -f ${redhat_subsys_filepath} ] ; then
@@ -691,14 +636,6 @@ if [ $? -ne 0 ]; then
 	echo "*** This value must resolve to a valid IP address." >&2
 	echo "***" >&2
 	exit 1
-fi
-
-is_secondary=0
-if [ -n "${PBS_SECONDARY}" ]; then
-	sec_host=`lc_host_name ${PBS_SECONDARY}`
-	if [ ${sec_host} = ${my_hostname} ]; then
-		is_secondary=1
-	fi
 fi
 
 # lets see how we were called

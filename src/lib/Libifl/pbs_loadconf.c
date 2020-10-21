@@ -110,8 +110,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_demux_path */
 	NULL,					/* pbs_environment */
 	NULL,					/* iff_path */
-	NULL,					/* primary name   */
-	NULL,					/* secondary name */
 	NULL,					/* aux Mom home   */
 	NULL,					/* pbs_core_limit */
 	NULL,					/* default database host  */
@@ -601,14 +599,6 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_environment);
 				pbs_conf.pbs_environment = shorten_and_cleanup_path(conf_value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_PRIMARY)) {
-				free(pbs_conf.pbs_primary);
-				pbs_conf.pbs_primary = strdup(conf_value);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_SECONDARY)) {
-				free(pbs_conf.pbs_secondary);
-				pbs_conf.pbs_secondary = strdup(conf_value);
-			}
 			else if (!strcmp(conf_name, PBS_CONF_MOM_HOME)) {
 				free(pbs_conf.pbs_mom_home);
 				pbs_conf.pbs_mom_home = strdup(conf_value);
@@ -793,18 +783,6 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_CP)) != NULL) {
 		free(pbs_conf.cp_path);
 		pbs_conf.cp_path = shorten_and_cleanup_path(gvalue);
-	}
-	if ((gvalue = getenv(PBS_CONF_PRIMARY)) != NULL) {
-		free(pbs_conf.pbs_primary);
-		if ((pbs_conf.pbs_primary = strdup(gvalue)) == NULL) {
-			goto err;
-		}
-	}
-	if ((gvalue = getenv(PBS_CONF_SECONDARY)) != NULL) {
-		free(pbs_conf.pbs_secondary);
-		if ((pbs_conf.pbs_secondary = strdup(gvalue)) == NULL) {
-			goto err;
-		}
 	}
 	if ((gvalue = getenv(PBS_CONF_MOM_HOME)) != NULL) {
 		free(pbs_conf.pbs_mom_home);
@@ -1086,26 +1064,17 @@ __pbs_loadconf(int reload)
 
 	/* if routers has null value populate with server name as the default */
 	if (pbs_conf.pbs_leaf_routers == NULL) {
-		if (pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {
-			pbs_conf.pbs_leaf_routers = malloc(strlen(pbs_conf.pbs_primary) + strlen(pbs_conf.pbs_secondary) + 2);
-			if (pbs_conf.pbs_leaf_routers == NULL) {
-				fprintf(stderr, "Out of memory\n");
-				goto err;
-			}
-			sprintf(pbs_conf.pbs_leaf_routers, "%s,%s", pbs_conf.pbs_primary, pbs_conf.pbs_secondary);
+		if (pbs_conf.pbs_server_host_name) {
+			pbs_conf.pbs_leaf_routers = strdup(pbs_conf.pbs_server_host_name);
+		} else if (pbs_conf.pbs_server_name) {
+			pbs_conf.pbs_leaf_routers = strdup(pbs_conf.pbs_server_name);
 		} else {
-			if (pbs_conf.pbs_server_host_name) {
-				pbs_conf.pbs_leaf_routers = strdup(pbs_conf.pbs_server_host_name);
-			} else if (pbs_conf.pbs_server_name) {
-				pbs_conf.pbs_leaf_routers = strdup(pbs_conf.pbs_server_name);
-			} else {
-				fprintf(stderr, "PBS server undefined\n");
-				goto err;
-			}
-			if (pbs_conf.pbs_leaf_routers == NULL) {
-				fprintf(stderr, "Out of memory\n");
-				goto err;
-			}
+			fprintf(stderr, "PBS server undefined\n");
+			goto err;
+		}
+		if (pbs_conf.pbs_leaf_routers == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			goto err;
 		}
 	}
 
@@ -1169,14 +1138,6 @@ err:
 	if (pbs_conf.pbs_environment) {
 		free(pbs_conf.pbs_environment);
 		pbs_conf.pbs_environment = NULL;
-	}
-	if (pbs_conf.pbs_primary) {
-		free(pbs_conf.pbs_primary);
-		pbs_conf.pbs_primary = NULL;
-	}
-	if (pbs_conf.pbs_secondary) {
-		free(pbs_conf.pbs_secondary);
-		pbs_conf.pbs_secondary = NULL;
 	}
 	if (pbs_conf.pbs_mom_home) {
 		free(pbs_conf.pbs_mom_home);

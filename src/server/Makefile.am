@@ -78,7 +78,6 @@ pbs_server_bin_SOURCES = \
 	attr_recov.c \
 	attr_recov_db.c \
 	dis_read.c \
-	failover.c \
 	geteusernam.c \
 	hook_func.c \
 	issue_request.c \

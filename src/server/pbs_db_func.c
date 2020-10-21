@@ -112,7 +112,6 @@
 static int db_oper_failed_times = 0;
 static int last_rc = -1; /* we need to reset db_oper_failed_times for each state change of the db */
 static int conn_db_state = 0;
-extern int pbs_failover_active;
 extern int server_init_type;
 extern int stalone;	/* is program running not as a service ? */
 char conn_db_host[PBS_MAXSERVERNAME+1];	/* db host where connection is made */
@@ -122,7 +121,6 @@ extern int pbs_decrypt_pwd(char *, int, size_t, char **, const unsigned char *, 
 extern pid_t go_to_background();
 void *setup_db_connection(char *, int , int );
 static void *get_db_connect_information();
-static int touch_db_stop_file(void);
 static int start_db();
 void stop_db();
 
@@ -289,12 +287,9 @@ get_db_connect_information()
 	 * setup_db_connection. The behavior is as follows:
 	 *
 	 * a) If external database is configured (pbs_data_service_host), then always connect to that
-	 *	and do not try to start/stop the database (both in standalone / failover cases). In case of a
+	 *	and do not try to start/stop the database. In case of a
 	 *	connection failure (in between pbs processing) in standalone setup, try reconnecting to the
 	 *	external database for ever.
-	 *	In case of connection failure (not at startup) in a failover setup, try connecting to the external
-	 *	database only once more and then quit, letting failover kick in.
-	 *
 	 *
 	 * b) With embedded database:
 	 *	Status the database:
@@ -302,22 +297,13 @@ get_db_connect_information()
 	 *
 	 *	- If database already running locally, its all good.
 	 *
-	 *	- If database is running on another host, then,
-	 *		a) If standalone, continue to attempt to start database locally.
-	 *		b) If primary, attempt to connect to secondary db, if it
-	 *		   connects, then throw error and start over (since primary
-	 *		   should never use the secondary's database. If connect fails
-	 *		   database is then try to start database locally.
-	 *		c) If secondary, attempt connection to primary db; if it
-	 *		   connects, continue to use it happily. If it fails, attempt to start
-	 *		   database locally.
+	 *	- If database is running on another host, if standalone, continue to attempt to start database locally.
 	 *
 	 */
 	if (pbs_conf.pbs_data_service_host) {
 		/*
 		 * External database configured,  infinite timeout, database instance not in our control
 		 */
-		conn_timeout = PBS_DB_CNT_TIMEOUT_INFINITE;
 		strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
 	} else {
 		/*
@@ -335,13 +321,7 @@ get_db_connect_information()
 		 * to connect to the host database to confirm that.
 		 *
 		 */
-		if (pbs_conf.pbs_primary) {
-			if (!pbs_failover_active)
-				strncpy(conn_db_host, pbs_conf.pbs_primary, PBS_MAXSERVERNAME);
-			else
-				strncpy(conn_db_host, pbs_conf.pbs_secondary, PBS_MAXSERVERNAME);
-		} else
-			strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); /* connect to pbs.server */
+		strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); /* connect to pbs.server */
 
 		rc = pbs_status_db(conn_db_host, pbs_conf.pbs_data_service_port);
 		if (rc == -1) {
@@ -369,69 +349,15 @@ get_db_connect_information()
 			db_oper_failed_times = 0;
 		}
 		last_rc = rc;
-
-		if (pbs_conf.pbs_primary) {
-			if (rc == 0 || rc == 1) /* db running locally or db not running */
-				conn_timeout = PBS_DB_CNT_TIMEOUT_INFINITE;
-			if (rc == 2) /* db could be running on secondary, don't start, try connecting to secondary's */
-				conn_timeout = PBS_DB_CNT_TIMEOUT_NORMAL;
-
-			if (!pbs_failover_active) {
-				/* Failover is configured, and this is the primary */
-				if (rc == 0 || rc == 1) /* db running locally or db not running */
-					strncpy(conn_db_host, pbs_conf.pbs_primary, PBS_MAXSERVERNAME);
-
-				if (rc == 2) /* db could be running on secondary, don't start, try connecting to secondary's */
-					strncpy(conn_db_host, pbs_conf.pbs_secondary, PBS_MAXSERVERNAME);
-
-			} else {
-				/* Failover is configured and this is active secondary */
-				if (rc == 0 || rc == 1) /* db running locally or db not running */
-					strncpy(conn_db_host, pbs_conf.pbs_secondary, PBS_MAXSERVERNAME);
-
-				/* db could be running on primary, don't start, try connecting to primary's */
-				if (rc == 2) {
-					strncpy(conn_db_host, pbs_conf.pbs_primary, PBS_MAXSERVERNAME);
-					conn_db_state = PBS_DB_STARTED;
-				}
-			}
-		} else {
-			/*
-			 * No failover configured. Try connecting forever to our own instance, have control.
-			 */
-			conn_timeout = PBS_DB_CNT_TIMEOUT_INFINITE;
-		}
 	}
 	if (rc == 1)
 		conn_db_state = start_db();
 
-	if(conn_db_state == PBS_DB_STARTING || conn_db_state == PBS_DB_STARTED)
+	if(conn_db_state == PBS_DB_STARTING || conn_db_state == PBS_DB_STARTED) {
+		conn_timeout = PBS_DB_CNT_TIMEOUT_INFINITE;
 		lconn = setup_db_connection(conn_db_host, pbs_conf.pbs_data_service_port, conn_timeout);
+	}
 	return lconn;
-}
-
-/**
- * @brief
- * 		touch_db_stop_file	- create a touch file when db is stopped.
- *
- * @return	int
- * @retval	0	- created touch file
- * @retval	-1	- unable to create touch file
- */
-static int
-touch_db_stop_file(void)
-{
-	int fd;
-	char closefile[MAXPATHLEN + 1];
-	snprintf(closefile, MAXPATHLEN, "%s/datastore/pbs_dbclose", pbs_conf.pbs_home_path);
-
-#ifndef O_RSYNC
-#define O_RSYNC 0
-#endif
-	if ((fd = open(closefile, O_WRONLY| O_CREAT | O_RSYNC, 0600)) != -1)
-		return -1;
-	close(fd);
-	return 0;
 }
 
 /**
@@ -446,12 +372,10 @@ touch_db_stop_file(void)
 int
 connect_to_db(int background) {
 	int try_db = 0;
-	int db_stop_counts = 0;
-	int db_stop_email_sent = 0;
 	int conn_state;
 	pid_t sid = -1;
 	int db_delay = 0;
-try_db_again:
+
 	fprintf(stdout, "Connecting to PBS dataservice.");
 
 	conn_state = PBS_DB_CONNECT_STATE_NOT_CONNECTED;
@@ -499,7 +423,6 @@ try_db_again:
 		if (db_delay > MAX_DB_LOOP_DELAY)
 			db_delay = MAX_DB_LOOP_DELAY; /* limit to MAX_DB_LOOP_DELAY secs */
 		sleep(db_delay);     /* dont burn the CPU looping too fast */
-		update_svrlive();    /* indicate we are alive */
 #ifndef DEBUG
 		if (background && try_db >= 4) {
 			fprintf(stdout, "continuing in background.\n");
@@ -508,63 +431,6 @@ try_db_again:
 		}
 #endif	/* DEBUG is defined */
 		try_db ++;
-	}
-
-	if (!pbs_conf.pbs_data_service_host) {
-		/*
-		 * Check the connected host and see if it is connected to right host.
-		 * In case of a failover, PBS server should be connected to database
-		 * on the same host as it is executing on. Thus, if PBS server ends
-		 * up connected to a database on another host (say primary server
-		 * connected to database on secondary or vice versa), then it is
-		 * deemed unacceptable. In such a case throw error on log notifying
-		 * that PBS is attempting to stop the database on the other side
-		 * and restart the loop all over.
-		 */
-		if (pbs_conf.pbs_primary) {
-			if (!pbs_failover_active) {
-				/* primary instance */
-				if (strcmp(conn_db_host, pbs_conf.pbs_primary) != 0) {
-					/* primary instance connected to secondary database, not acceptable */
-					log_errf(-1, msg_daemonname, "PBS data service is up on the secondary instance, attempting to stop it");
-					pbs_db_disconnect(conn);
-					conn = NULL;
-
-					touch_db_stop_file();
-
-					if (db_stop_email_sent == 0) {
-						if (++db_stop_counts > MAX_DB_RETRIES) {
-							log_errf(-1, msg_daemonname, "Not able to stop PBS data service at the secondary site, please stop manually");
-							svr_mailowner(0, 0, 1, log_buffer);
-							db_stop_email_sent = 1;
-						}
-					}
-					sleep(10);
-					goto try_db_again;
-				}
-			} else {
-				/* secondary instance */
-				if (strcmp(conn_db_host, pbs_conf.pbs_primary) == 0) {
-					/* secondary instance connected to primary database, not acceptable */
-					log_errf(-1, msg_daemonname, "PBS data service is up on the primary instance, attempting to stop it");
-
-					pbs_db_disconnect(conn);
-					conn = NULL;
-
-					touch_db_stop_file();
-
-					if (db_stop_email_sent == 0) {
-						if (++db_stop_counts > MAX_DB_RETRIES) {
-							log_errf(-1, msg_daemonname, "Not able to stop PBS data service at the primary site, please stop manually");
-							svr_mailowner(0, 0, 1, log_buffer);
-							db_stop_email_sent = 1;
-						}
-					}
-					sleep(10);
-					goto try_db_again;
-				}
-			}
-		}
 	}
 
 	svr_db_conn = conn; /* use this connection */

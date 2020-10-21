@@ -128,8 +128,6 @@ extern	long	resv_retry_time;
 #define SV_STATE_SHUTDEL 4
 #define SV_STATE_SHUTIMM 5
 #define SV_STATE_SHUTSIG 6
-#define SV_STATE_SECIDLE 7
-#define SV_STATE_PRIMDLY 0x10
 
 /*
  * Other misc defines
@@ -151,15 +149,6 @@ extern	long	resv_retry_time;
 #define SOFT_WALLTIME "soft_walltime"
 #define MCAST_WAIT_TM	2
 
-/*
- * Server failover role
- */
-enum failover_state {
-	FAILOVER_NONE,		/* Only Server, no failover */
-	FAILOVER_PRIMARY,       /* Primary in failover configuration */
-	FAILOVER_SECONDARY,	/* Secondary in failover */
-	FAILOVER_CONFIG_ERROR,	/* error in configuration */
-};
 
 /*
  * Server job history defines & globals
@@ -176,9 +165,8 @@ enum failover_state {
 
 extern int			svr_recov_db();
 extern int			svr_save_db(struct server *);
-extern pbs_sched *	sched_recov_db(char *, pbs_sched *ps);
+extern pbs_sched *		sched_recov_db(char *, pbs_sched *ps);
 extern int			sched_save_db(pbs_sched *);
-extern enum failover_state	are_we_primary(void);
 extern int			have_licensed_nodes(void);
 extern void			unlicense_nodes(void);
 extern void			set_sched_default(pbs_sched *, int from_scheduler);

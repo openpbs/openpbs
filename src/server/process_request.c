@@ -1056,10 +1056,6 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_stagein(request);
 			break;
 
-		case PBS_BATCH_FailOver:
-			req_failover(request);
-			break;
-
 		case PBS_BATCH_StatusRsc:
 			req_stat_resc(request);
 			break;
@@ -1628,9 +1624,7 @@ get_servername(unsigned int *port)
 {
 	char *name = NULL;
 
-	if (pbs_conf.pbs_primary)
-		name = parse_servername(pbs_conf.pbs_primary, port);
-	else if (pbs_conf.pbs_server_host_name)
+	if (pbs_conf.pbs_server_host_name)
 		name = parse_servername(pbs_conf.pbs_server_host_name, port);
 	else
 		name = parse_servername(pbs_conf.pbs_server_name, port);

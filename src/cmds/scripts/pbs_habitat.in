@@ -121,15 +121,10 @@ createpath() {
 
 # Return the name of the PBS server host
 get_server_hostname() {
-	shn=""
-	if [ -z "${PBS_PRIMARY}" -o -z "${PBS_SECONDARY}" ] ; then
-		if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
-			shn="${PBS_SERVER}"
-		else
-			shn="${PBS_SERVER_HOST_NAME}"
-		fi
+	if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
+		shn="${PBS_SERVER}"
 	else
-		shn="${PBS_PRIMARY}"
+		shn="${PBS_SERVER_HOST_NAME}"
 	fi
 	echo ${shn} | awk '{print tolower($0)}'
 }

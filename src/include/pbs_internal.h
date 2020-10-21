@@ -137,9 +137,6 @@ extern "C" {
 #define SHUT_SIG	8
 #define SHUT_WHO_SCHED  0x10	/* also shutdown Scheduler	  */
 #define SHUT_WHO_MOM    0x20	/* also shutdown Moms		  */
-#define SHUT_WHO_SECDRY 0x40	/* also shutdown Secondary Server */
-#define SHUT_WHO_IDLESECDRY 0x80  /* idle the Secondary Server    */
-#define SHUT_WHO_SECDONLY   0x100 /* shut down the Secondary only */
 
 
 #define SIG_RESUME	"resume"
@@ -232,8 +229,6 @@ struct pbs_config
 	char *pbs_demux_path;			/* path to pbs demux */
 	char *pbs_environment;		/* path to pbs_environment file */
 	char *iff_path;			/* path to pbs_iff */
-	char *pbs_primary;			/* FQDN of host with primary server */
-	char *pbs_secondary;			/* FQDN of host with secondary server */
 	char *pbs_mom_home;			/* path to alternate home for Mom */
 	char *pbs_core_limit;			/* RLIMIT_CORE setting */
 	char *pbs_data_service_host;		/* dataservice host */
@@ -305,8 +300,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_CP		"PBS_CP"
 #define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
-#define PBS_CONF_PRIMARY	"PBS_PRIMARY"  /* Primary Server in failover */
-#define PBS_CONF_SECONDARY	"PBS_SECONDARY"	/* Secondary Server failover */
 #define PBS_CONF_MOM_HOME	"PBS_MOM_HOME"  /* alt Mom home for failover */
 #define PBS_CONF_CORE_LIMIT	"PBS_CORE_LIMIT"      /* RLIMIT_CORE setting */
 #define PBS_CONF_SERVER_HOST_NAME "PBS_SERVER_HOST_NAME"
