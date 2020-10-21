@@ -133,7 +133,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* mom short name override */
 	NULL,					/* pbs_lr_save_path */
 	0,					/* high resolution timestamp logging */
-	1,					/* number of scheduler threads */
+	0,					/* number of scheduler threads */
 	NULL,					/* default scheduler user */
 	{'\0'}					/* current running user */
 #ifdef WIN32
