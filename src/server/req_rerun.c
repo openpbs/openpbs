@@ -120,7 +120,7 @@ post_rerun(struct work_task *pwt)
 		}
 		else {
 			/* mom acknowledged to rerun the job, release depend hold on run-one dependency */
-			pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+			pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 			if (pdep != NULL)
 				depend_runone_release_all(pjob);
 		}
@@ -472,7 +472,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		 * force_reque will be called in post_discard_job,
 		 * after receiving IS_DISCARD_DONE from the MOM.
 		 */
-		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 		if (pdep != NULL)
 			depend_runone_release_all(pjob);
 		reply_ack(preq);

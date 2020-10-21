@@ -99,7 +99,7 @@
  */
 
 int
-decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
+decode_unkn(attribute *patr, char *name, char *rescn, char *value)
 {
 	svrattrl *entry;
 	size_t	     valln;
@@ -244,7 +244,7 @@ encode_unkn(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
 
 /*ARGSUSED*/
 int
-set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
+set_unkn(attribute *old, attribute *new, enum batch_op op)
 {
 	svrattrl *plist;
 	svrattrl *pnext;
@@ -279,7 +279,7 @@ set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_unkn(struct attribute *attr, struct attribute *with)
+comp_unkn(attribute *attr, attribute *with)
 {
 	return (1);
 }

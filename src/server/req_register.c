@@ -175,15 +175,17 @@ static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int typ
 	job *d_job;
 	struct depend *dp;
 	struct depend_job *dpj;
+	attribute *pattr;
 
 	d_job = find_job(d_jobid);
 	if (d_job == NULL)
 		return;
 
-	dp = find_depend(type, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+	pattr = get_jattr(pjob, JOB_ATR_depend);
+	dp = find_depend(type, pattr);
 	if (op == DEPEND_ADD) {
 		if (dp == NULL) {
-			dp = make_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+			dp = make_depend(JOB_DEPEND_TYPE_RUNONE, pattr);
 			if (dp == NULL)
 				return;
 		}
@@ -192,7 +194,7 @@ static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int typ
 			return; /* Job dependency already established */
 		if (strcmp(pjob->ji_qs.ji_jobid, d_jobid)) {
 			dpj = make_dependjob(dp, d_jobid, d_svr);
-			pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_SET_MOD_MCACHE;
+			pattr->at_flags |= ATR_SET_MOD_MCACHE;
 			job_save(pjob);
 			/* runone dependencies are circular */
 			if (type == JOB_DEPEND_TYPE_RUNONE)
@@ -210,7 +212,7 @@ static void update_depend(job *pjob, char *d_jobid, char *d_svr, int op, int typ
 			/* no more dependencies of this type */
 			del_depend(dp);
 
-		pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_MOD_MCACHE;
+		pattr->at_flags |= ATR_MOD_MCACHE;
 		/* runone dependencies are circular */
 		if (type == JOB_DEPEND_TYPE_RUNONE)
 			update_depend(d_job, pjob->ji_qs.ji_jobid, d_svr, op, type);
@@ -279,7 +281,7 @@ req_register(struct batch_request *preq)
 	if (check_job_state(pjob, JOB_STATE_LTR_FINISHED))
 		is_finished = TRUE;
 
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
+	pattr = get_jattr(pjob, JOB_ATR_depend);
 	type = preq->rq_ind.rq_register.rq_dependtype;
 
 	/* more of the server:port fix kludge */
@@ -614,7 +616,7 @@ post_doq(struct work_task *pwt)
 				if (ppjob) {
 					update_depend(pjob, ppjob->ji_qs.ji_jobid, preq->rq_host, DEPEND_REMOVE, preq->rq_ind.rq_register.rq_dependtype);
 					/* check and remove system hold if needed */
-					set_depend_hold(pjob, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+					set_depend_hold(pjob, get_jattr(pjob, JOB_ATR_depend));
 				}
 
 			} else {
@@ -703,7 +705,7 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 	if (mode == ATR_ACTION_ALTER) {
 		/* if there are dependencies being removed, unregister them */
 
-		alter_unreg(pjob, &pjob->ji_wattr[(int)JOB_ATR_depend], pattr);
+		alter_unreg(pjob, get_jattr(pjob, JOB_ATR_depend), pattr);
 	}
 
 	/* First set a System hold if required */
@@ -777,7 +779,7 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 				return (0);
 			pparent = (struct depend_job *)GET_NEXT(f_pparent->dc_link);
 			for (; pparent != NULL; pparent = (struct depend_job *)GET_NEXT(pparent->dc_link)) {
-				if (find_dependjob(find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]), pparent->dc_child) == NULL) {
+				if (find_dependjob(find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend)), pparent->dc_child) == NULL) {
 					rc = send_depend_req(pjob, pparent, pdep->dp_type,
 							    JOB_DEPEND_OP_REGISTER, SYNC_SCHED_HINT_NULL, post_doq);
 					if (rc)
@@ -808,7 +810,7 @@ post_doe(struct work_task *pwt)
 
 	pjob = find_job(jobid);
 	if (pjob) {
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
+		pattr = get_jattr(pjob, JOB_ATR_depend);
 		pdep = find_depend(JOB_DEPEND_TYPE_BEFORESTART, pattr);
 		if (pdep != NULL) {
 			pdj  = find_dependjob(pdep, preq->rq_ind.rq_register.rq_parent);
@@ -842,7 +844,7 @@ post_runone(struct work_task *pwt)
 
 	pjob = find_job(jobid);
 	if (pjob) {
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
+		pattr = get_jattr(pjob, JOB_ATR_depend);
 		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, pattr);
 		if (pdep != NULL) {
 			pdj  = find_dependjob(pdep, preq->rq_ind.rq_register.rq_parent);
@@ -883,8 +885,7 @@ depend_on_exec(job *pjob)
 
 	/* If any jobs come after my start, release them */
 
-	pdep = find_depend(JOB_DEPEND_TYPE_BEFORESTART,
-		&pjob->ji_wattr[(int)JOB_ATR_depend]);
+	pdep = find_depend(JOB_DEPEND_TYPE_BEFORESTART, get_jattr(pjob, JOB_ATR_depend));
 	if (pdep) {
 		pdj = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 		while (pdj) {
@@ -916,18 +917,19 @@ int depend_runone_remove_dependency(job *pjob)
 	if (pjob == NULL)
 		return (0);
 
-	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 	if (pdep) {
 		for (pdj = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 		     pdj != NULL; pdj = (struct depend_job *)GET_NEXT(pdj->dc_link)) {
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				struct depend_job *temp_pdj = NULL;
-				temp_pdj = find_dependjob(find_depend(JOB_DEPEND_TYPE_RUNONE, &d_pjob->ji_wattr[(int)JOB_ATR_depend]),
-					                  pjob->ji_qs.ji_jobid);
+				attribute *pattr = get_jattr(d_pjob, JOB_ATR_depend);
+
+				temp_pdj = find_dependjob(find_depend(JOB_DEPEND_TYPE_RUNONE, pattr), pjob->ji_qs.ji_jobid);
 				if (temp_pdj) {
 					del_depend_job(temp_pdj);
-					d_pjob->ji_wattr[(int)JOB_ATR_depend].at_flags |= ATR_MOD_MCACHE;
+					pattr->at_flags |= ATR_MOD_MCACHE;
 				}
 			}
 		}
@@ -956,14 +958,13 @@ int depend_runone_hold_all(job *pjob)
 	if (pjob == NULL)
 		return (0);
 
-	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 	if (pdep) {
 		for (pdj = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 		     pdj != NULL; pdj = (struct depend_job *)GET_NEXT(pdj->dc_link)) {
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				set_jattr_b_slim(d_pjob, JOB_ATR_hold, HOLD_s, INCR);
-			d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
 				svr_setjobstate(d_pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
 			}
 		}
@@ -994,7 +995,7 @@ int depend_runone_release_all(job *pjob)
 	if (pjob == NULL)
 		return (0);
 
-	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+	pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 	if (pdep) {
 		pdj = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 		for (pdj = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
@@ -1002,7 +1003,6 @@ int depend_runone_release_all(job *pjob)
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
 				set_jattr_b_slim(d_pjob, JOB_ATR_hold, HOLD_s, DECR);
-		        d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_MOD_MCACHE;
 				svr_evaljobstate(d_pjob, &newstate, &newsub, 0);
 				svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
 			}
@@ -1032,15 +1032,12 @@ depend_on_term(job *pjob)
 {
 	int	       exitstat = pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
 	int	       op;
-	attribute     *pattr;
 	struct depend *pdep;
 	struct depend_job *pparent;
 	int	       rc;
 	int	       type;
 
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
-
-	pdep = (struct depend *)GET_NEXT(pattr->at_val.at_list);
+	pdep = (struct depend *)GET_NEXT(get_jattr_list(pjob, JOB_ATR_depend));
 	while (pdep) {
 		op = -1;
 		switch (type = pdep->dp_type) {
@@ -1157,7 +1154,6 @@ set_depend_hold(job *pjob, attribute *pattr)
 		if ((check_job_substate(pjob, JOB_SUBSTATE_SYNCHOLD)) ||
 			(check_job_substate(pjob, JOB_SUBSTATE_DEPNHOLD))) {
 			set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, DECR);
-			pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_MOD_MCACHE;
 			svr_evaljobstate(pjob, &newstate, &newsubst, 0);
 			svr_setjobstate(pjob, newstate, newsubst);
 		}
@@ -1485,7 +1481,7 @@ struct dependnames {
  */
 
 int
-decode_depend(struct attribute *patr, char *name, char *rescn, char *val)
+decode_depend(attribute *patr, char *name, char *rescn, char *val)
 {
 	int		 rc;
 	char		*valwd;
@@ -1696,8 +1692,8 @@ encode_depend(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 
 int
 set_depend(attr, new, op)
-struct attribute *attr;
-struct attribute *new;
+attribute *attr;
+attribute *new;
 enum batch_op op;
 {
 	struct depend *pdnew;
@@ -1745,8 +1741,8 @@ enum batch_op op;
 
 int
 comp_depend(attr, with)
-struct attribute *attr;
-struct attribute *with;
+attribute *attr;
+attribute *with;
 {
 
 	return (-1);
@@ -1760,7 +1756,7 @@ struct attribute *with;
  * @param[in,out]	attr	-	attribute structure which contains the resource list to be freed
  */
 void
-free_depend(struct attribute *attr)
+free_depend(attribute *attr)
 {
 	struct depend	  *pdp;
 	struct depend_job *pdjb;
@@ -1812,7 +1808,7 @@ build_depend(attribute *pattr, char *value)
 	int			type;
 
 	/*
-	 * Map first subword into dependency type. 
+	 * Map first subword into dependency type.
 	 */
 
 	if ((nxwrd = strchr(value, (int)':')) != NULL)

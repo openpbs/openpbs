@@ -39,7 +39,7 @@
 
 
 /**
- * 
+ *
  * @brief
  *		various functions dealing with nodes, properties and
  *		 the following global variables:
@@ -1014,7 +1014,7 @@ setup_nodes()
 
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
-	
+
 	rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_node_cb);
 	if (rc == -1) {
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
@@ -1702,7 +1702,7 @@ is_vnode_up(char *nodename)
  */
 
 int
-decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
+decode_Mom_list(attribute *patr, char *name, char *rescn, char *val)
 {
 	int			  rc;
 	int			  ns;

@@ -261,7 +261,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			/* has mail user list, send to them rather than owner */
 
-			pas = pjob->ji_wattr[(int)JOB_ATR_mailuser].at_val.at_arst;
+			pas = get_jattr_arst(pjob, JOB_ATR_mailuser);
 			if (pas != NULL) {
 				for (i = 0; i < pas->as_usedptr; i++) {
 					addmailhost = 0;

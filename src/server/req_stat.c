@@ -1087,7 +1087,7 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
 static int
 status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head *pstathd, int private)
 {
-	struct attribute   attr;
+	attribute   attr;
 	struct brp_status *pstat;
 
 	if (((prd->rs_flags & ATR_DFLAG_USRD) == 0) &&

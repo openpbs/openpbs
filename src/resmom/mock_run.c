@@ -69,13 +69,11 @@ void
 mock_run_finish_exec(job *pjob)
 {
 	resource_def *rd;
-	attribute *wallt;
 	resource *wall_req;
 	int walltime = 0;
 
 	rd = &svr_resc_def[RESC_WALLTIME];
-	wallt = &pjob->ji_wattr[(int)JOB_ATR_resource];
-	wall_req = find_resc_entry(wallt, rd);
+	wall_req = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), rd);
 	if (wall_req != NULL) {
 		walltime = wall_req->rs_value.at_val.at_long;
 		start_walltime(pjob);
@@ -158,7 +156,6 @@ mock_run_mom_set_use(job *pjob)
 	resource *pres;
 	resource *pres_req;
 	attribute *at;
-	attribute *at_req;
 	resource_def *rdefp;
 	long val_req = 0;
 	static resource_def	**rd = NULL;
@@ -168,7 +165,7 @@ mock_run_mom_set_use(job *pjob)
 	unsigned int mem_atsv_units = ATR_SV_BYTESZ;
 
 	assert(pjob != NULL);
-	at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+	at = get_jattr(pjob, JOB_ATR_resc_used);
 	at->at_flags |= (ATR_VFLAG_MODIFY|ATR_VFLAG_SET);
 
 	if (rd == NULL) {
@@ -199,9 +196,7 @@ mock_run_mom_set_use(job *pjob)
 			 * get pointer to list of resources *requested* for the job
 			 * so the res used can be set to res requested
 			 */
-			at_req = &pjob->ji_wattr[(int)JOB_ATR_resource];
-
-			pres_req = find_resc_entry(at_req, rdefp);
+			pres_req = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), rdefp);
 			if (pres_req != NULL &&
 				(val_req = pres_req->rs_value.at_val.at_long) != 0)
 				pres->rs_value.at_val.at_long = val_req;

@@ -291,7 +291,7 @@ str_to_vnode_state(char *vnstate)
  *
  * @return   int
  * @retval    <0  an error encountered; value is negative of an error code
- * @retval    ==1 ok, encode succeeded and returning one item 
+ * @retval    ==1 ok, encode succeeded and returning one item
  */
 
 int
@@ -414,7 +414,7 @@ vnode_ntype_to_str(int vntype)
  * @brief
  *	Encodes a node type attribute into a svrattrl structure
  *
- * @param[in]	pattr - struct attribute being encoded
+ * @param[in]	pattr - attribute being encoded
  * @param[in]	ph - head of a list of 'svrattrl' structs which are to be
  *		     return.
  * @param[out]  aname - attribute's name
@@ -484,7 +484,7 @@ encode_ntype(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
  * 	function will walk the list of jobs and generate the comma separated
  * 	list to send back via an svrattrl structure.
  *
- * @param[in]   pattr - struct attribute being encoded
+ * @param[in]   pattr - attribute being encoded
  * @param[in]   ph - head of a  list of "svrattrl"
  * @param[out]  aname - attribute's name
  * @param[out]  rname - resource's name (null if none)
@@ -591,7 +591,7 @@ encode_jobs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname,
  * 	function will walk the list of reservations and generate the comma
  * 	separated list to send back via an svrattrl structure.
  *
- * @param[in]    pattr - struct attribute being encoded
+ * @param[in]    pattr - attribute being encoded
  * @param[in]    ph - head of a  list of "svrattrl"
  * @param[out]   aname - attribute's name
  * @param[out]   rname - resource's name (null if none)
@@ -672,7 +672,7 @@ encode_resvs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
  * 	Encode the sharing attribute value into one of its possible values,
  *	see "share_words" above
  *
- * @param[in]    pattr - struct attribute being encoded
+ * @param[in]    pattr - attribute being encoded
  * @param[in]    ph - head of a  list of "svrattrl"
  * @param[out]   aname - attribute's name
  * @param[out]   rname - resource's name (null if none)
@@ -681,8 +681,8 @@ encode_resvs(const attribute *pattr, pbs_list_head *ph, char *aname, char *rname
  *
  * @return      int
  * @retval      <0      an error encountered; value is negative of an error code
- * @retval     ==1      ok, encode succeeded and returning one item 
- * 
+ * @retval     ==1      ok, encode succeeded and returning one item
+ *
  */
 
 int

@@ -338,8 +338,7 @@ req_modifyjob(struct batch_request *preq)
 
 	/* check if project attribute was requested to be modified to */
 	/* be the default project value */
-	if (mod_project && (pjob->ji_wattr[(int)JOB_ATR_project].at_flags & \
-							ATR_VFLAG_SET)) {
+	if (mod_project && is_jattr_set(pjob, JOB_ATR_project)) {
 
 		if (strcmp(get_jattr_str(pjob, JOB_ATR_project),
 			PBS_DEFAULT_PROJECT) == 0) {
@@ -489,7 +488,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 
 	/* If resource limits are being changed ... */
 
-	changed_resc = newattr[(int)JOB_ATR_resource].at_flags & ATR_VFLAG_SET;
+	changed_resc = is_attr_set(get_attr_generic(newattr, JOB_ATR_resource));
 	if ((rc == 0) && (changed_resc != 0)) {
 
 		/* first, remove ATR_VFLAG_DEFLT from any value which was set */
@@ -603,7 +602,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 			 */
 			if (i == JOB_ATR_accrue_type)
 				continue;
-			job_attr_def[i].at_free(&pattr[i]);
+			free_attr_generic(job_attr_def, get_attr_generic(pattr, i), i);
 			if ((pre_copy[i].at_type == ATR_TYPE_LIST) ||
 				(pre_copy[i].at_type == ATR_TYPE_RESC)) {
 				list_move(&pre_copy[i].at_val.at_list,
@@ -646,7 +645,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	/* The action functions may have modified the attributes, need to set them to newattr2 */
 	for (i = 0; i < JOB_ATR_LAST; i++) {
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
-			job_attr_def[i].at_free(&pattr[i]);
+			free_attr_generic(job_attr_def, get_attr_generic(pattr, i), i);
 			switch (i) {
 				case JOB_ATR_state:
 					newstate = get_attr_c(&newattr[i]);

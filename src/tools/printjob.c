@@ -77,6 +77,11 @@
 void *conn = NULL;
 #endif
 
+#ifdef PRINTJOBSVR
+/* just to make jattr_get_set.c happy */
+attribute_def job_attr_def[1] = {{0}};
+#endif
+
 #define BUF_SIZE 512
 int display_script = 0;	 /* to track if job-script is required or not */
 /**
@@ -323,9 +328,9 @@ db_2_job(job *pjob,  pbs_db_job_info_t *pdjob)
 	strcpy(pjob->ji_qs.ji_jobid, pdjob->ji_jobid);
 	statec = state_int2char(pdjob->ji_state);
 	if (statec != '0')
-		pjob->ji_wattr[JOB_ATR_state].at_val.at_char = statec;
+		set_job_state(pjob, statec);
 
-	pjob->ji_wattr[JOB_ATR_substate].at_val.at_long = pdjob->ji_substate;
+	set_job_substate(pjob, pdjob->ji_substate);
 	pjob->ji_qs.ji_svrflags = pdjob->ji_svrflags;
 	pjob->ji_qs.ji_stime = pdjob->ji_stime;
 	pjob->ji_qs.ji_fileprefix[0] = 0;
@@ -433,8 +438,8 @@ print_db_job(char *id, int no_attributes)
 			return (1);
 		}
 		db_2_job(&xjob, &dbjob);
-		snprintf(state, sizeof(state), "%c", xjob.ji_wattr[JOB_ATR_state].at_val.at_char);
-		snprintf(substate, sizeof(substate), "%ld", xjob.ji_wattr[JOB_ATR_substate].at_val.at_long);
+		snprintf(state, sizeof(state), "%c", get_job_state(&xjob));
+		snprintf(substate, sizeof(substate), "%ld", get_job_substate(&xjob));
 		prt_job_struct(&xjob, state, substate);
 
 		if (no_attributes == 0) {

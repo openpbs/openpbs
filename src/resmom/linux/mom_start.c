@@ -199,7 +199,6 @@ getplacesharing(job *pjob)
 {
 	static	resource_def	*prsdef = NULL;
 	enum rlplace_value	rpv = rlplace_unset;
-	attribute		*patresc;/* ptr to job/resv resource_list */
 	resource		*pplace;
 
 	/*
@@ -209,8 +208,7 @@ getplacesharing(job *pjob)
 	if (prsdef != NULL) {
 		char	*placeval = NULL;
 
-		patresc = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		pplace = find_resc_entry(patresc, prsdef);
+		pplace = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), prsdef);
 		if (pplace)
 			placeval = pplace->rs_value.at_val.at_str;
 		if (placeval != NULL) {
@@ -578,8 +576,7 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 	else if (sjr->sj_jid) {
 
 		sprintf(buf, "%#0lx", (unsigned long)sjr->sj_jid);
-		(void)decode_str(&pjob->ji_wattr[JOB_ATR_acct_id], ATTR_acct_id, NULL, buf);
-
+		set_jattr_str_slim(pjob, JOB_ATR_acct_id, buf, NULL);
 		(void)memcpy(&pjob->ji_extended.ji_ext.ji_jid, &sjr->sj_jid, sizeof(pjob->ji_extended.ji_ext.ji_jid));
 
 		if (job_facility_present == 0) {
@@ -622,7 +619,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 
 	shell = pwdp->pw_shell;
 	if ((is_jattr_set(pjob, JOB_ATR_shell)) &&
-		(vstrs = pjob->ji_wattr[(int)JOB_ATR_shell].at_val.at_arst)) {
+		(vstrs = get_jattr_arst(pjob, JOB_ATR_shell))) {
 		for (i = 0; i < vstrs->as_usedptr; ++i) {
 			cp = strchr(vstrs->as_string[i], '@');
 			if (cp) {

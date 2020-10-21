@@ -2137,7 +2137,7 @@ stat_update(int stream)
 					free_jattr(pjob, JOB_ATR_resource_acct);
 					mark_jattr_not_set(pjob, JOB_ATR_resource_acct);
 				}
-				set_attr_with_attr(&job_attr_def[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource], INCR);
+				set_attr_with_attr(&job_attr_def[JOB_ATR_resource_acct], get_jattr(pjob, JOB_ATR_resource_acct), get_jattr(pjob, JOB_ATR_resource), INCR);
 
 
 				set_jattr_str_slim(pjob, JOB_ATR_exec_host_acct, get_jattr_str(pjob, JOB_ATR_exec_host), NULL);
@@ -2158,14 +2158,14 @@ stat_update(int stream)
 					set_jattr_str_slim(pjob, JOB_ATR_SchedSelect, schedselect_entry->al_value, NULL);
 
 					/* re-generate nodect */
-					set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect], &pjob->ji_wattr[(int)JOB_ATR_resource]);
+					set_chunk_sum(get_jattr(pjob, JOB_ATR_SchedSelect), get_jattr(pjob, JOB_ATR_resource));
 					set_resc_assigned((void *)pjob, 0, INCR);
 
 					prdefsl = &svr_resc_def[RESC_SELECT];
 					/* re-generate "select" resource */
-					presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+					presc = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), prdefsl);
 					if (presc == NULL)
-						presc = add_resource_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+						presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resource), prdefsl);
 					if (presc != NULL)
 						(void)prdefsl->rs_decode(&presc->rs_value, NULL, "select", schedselect_entry->al_value);
 					account_jobstr(pjob, PBS_ACCT_PRUNE);
@@ -2238,15 +2238,8 @@ stat_update(int stream)
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
 					LOG_DEBUG, pjob->ji_qs.ji_jobid,
 					"update from Mom without session id");
-			} else {
-				/* session id was set to same old value   */
-				/* so only need to save things to disk    */
-				/* if something other than the session id */
-				/* or resources_used was modified         */
-
-				pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags &= ~ATR_VFLAG_MODIFY;
-				job_save_db(pjob); /* job_save will save only if modified */
-			}
+			} else
+				job_save_db(pjob);
 		}
 		(void)free(rused.ru_comment);
 		rused.ru_comment = NULL;
@@ -2900,7 +2893,6 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 	char	*freed_vnode_list = NULL;
 	int	freed_sz = 0;
 	char	*new_exec_vnode = NULL;
-	attribute deallocated_attr;
 	char	*jobid;
 	pbs_sched *psched;
 
@@ -2947,12 +2939,11 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 						pmom->mi_host, log_buffer);
 	}
 
-	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
-	if ((freed_vnode_list != NULL) && (is_attr_set(&deallocated_attr))) {
+	if ((freed_vnode_list != NULL) && (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated))) {
 		char   err_msg[LOG_BUF_SIZE];
 
 		new_exec_vnode = delete_from_exec_vnode(
-				deallocated_attr.at_val.at_str,
+				get_jattr_str(pjob, JOB_ATR_exec_vnode_deallocated),
 				freed_vnode_list, err_msg, LOG_BUF_SIZE);
 
 		if (new_exec_vnode == NULL) {
@@ -6133,7 +6124,7 @@ build_execvnode(job *pjob, char *nds)
 	if (!pjob || !nds)
 		return NULL;
 
-	pschedselect = &pjob->ji_wattr[(int)JOB_ATR_SchedSelect];
+	pschedselect = get_jattr(pjob, JOB_ATR_SchedSelect);
 	if (!is_attr_set(pschedselect))
 		return (nds);
 
@@ -6433,7 +6424,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 		resource_def *prsdef;
 
 		pjob = (job *)pobj;
-		patresc = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		patresc = get_jattr(pjob, JOB_ATR_resource);
 
 		if (execvnod_in == NULL) {
 			execvnod_in = *hoststr;
@@ -7307,7 +7298,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 		return;
 
 	if ((pjob != NULL) &&
-		(pexech == &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated])) {
+		(pexech == get_jattr(pjob, JOB_ATR_exec_vnode_deallocated))) {
 		char *pc;
 		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
@@ -7947,7 +7938,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 				if (prdef == NULL)
 					return 1;
 				if (prdef->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN)) {
-					presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+					presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef);
 					if (presc == NULL)
 						return 1;
 					if ((rc = prdef->rs_decode(&tmpattr, ATTR_rel_list, prdef->rs_name, pkvp[j].kv_val)) != 0)
@@ -7966,18 +7957,18 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 	 * restrict_res_to_release_on_suspend is set
 	 */
 	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
-		presc_sq = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+		presc_sq = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 		for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
 			prdef = presc_sq->rs_defin;
 			/* make sure it is a server/queue level consumable resource and not
 			* set in resource_released_list already
 			*/
 			if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
-				(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
+				(find_resc_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef) == NULL)) {
 				for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
 					if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
 						prdef->rs_name) == 0) {
-						presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+						presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef);
 						if (presc == NULL)
 							return 1;
 						prdef->rs_set(&presc->rs_value, &presc_sq->rs_value, op);

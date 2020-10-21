@@ -226,7 +226,7 @@ save_flush(void)
  * @retval	-1  - Failure
  */
 int
-save_attr_fs(struct attribute_def *padef, struct attribute *pattr, int numattr)
+save_attr_fs(attribute_def *padef, attribute *pattr, int numattr)
 {
 	svrattrl	 dummy;
 	int		 errct = 0;
@@ -307,7 +307,7 @@ save_attr_fs(struct attribute_def *padef, struct attribute *pattr, int numattr)
  */
 
 int
-recov_attr_fs(int fd, void *parent, void *padef_idx, struct attribute_def *padef, struct attribute *pattr, int limit, int unknown)
+recov_attr_fs(int fd, void *parent, void *padef_idx, attribute_def *padef, attribute *pattr, int limit, int unknown)
 {
 	int	  amt;
 	int	  len;

@@ -149,7 +149,7 @@ long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for nod
 /*
  * Added for jobscript_max_size
  */
-struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
+attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
 
 extern int do_sync_mom_hookfiles;
 extern int sync_mom_hookfiles_replies_pending;
@@ -289,32 +289,32 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			return;			/* invalid op */
 		}
 
-		rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+		rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 		if ((check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)) ||
 			(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))) {
 			/* If resources_released attribute is not set for this suspended job then use release all
 			 * resources assigned to the job */
 			if ((is_jattr_set(pjob,  JOB_ATR_resc_released)) == 0)
-				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+				rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 			else {
 				/* Use resource_released_list for updating queue/server resources,
 				 * If resource_released_list is not present then create it by
 				 * using resources_released attribute.
 				 */
 				if (is_jattr_set(pjob,  JOB_ATR_resc_released_list))
-					rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+					rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 				else {
-					if (update_resources_rel(pjob, &pjob->ji_wattr[(int) JOB_ATR_resc_released], INCR) != 0)
-						rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+					if (update_resources_rel(pjob, get_jattr(pjob, JOB_ATR_resc_released), INCR) != 0)
+						rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 					else
-						rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+						rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 				}
 			}
 		} else {
 			/* If job is not suspended then just release all resources assigned to the job */
-			rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+			rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 			if (is_jattr_set(pjob,  JOB_ATR_resc_released_list))
-				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+				rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 		}
 		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
@@ -420,12 +420,12 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 	else if ((objtype == 0) && (pjob->ji_myResv == NULL)) {
 		if (is_jattr_set(pjob,  JOB_ATR_resc_released))
 			/* This is just the normal case when job was not suspended but trying to run| end */
-			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_resc_released], op);
+			update_node_rassn(get_jattr(pjob, JOB_ATR_resc_released), op);
 		else
 			/* updating all resources from exec vnode attribute */
-			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_exec_vnode], op);
+			update_node_rassn(get_jattr(pjob, JOB_ATR_exec_vnode), op);
 		if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
-			update_job_node_rassn(pjob, &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated], op);
+			update_job_node_rassn(pjob, get_jattr(pjob, JOB_ATR_exec_vnode_deallocated), op);
 		}
 	}
 }
@@ -2558,9 +2558,9 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -2811,9 +2811,9 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -3569,9 +3569,9 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -3806,9 +3806,9 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -6553,7 +6553,7 @@ action_backfill_depth(attribute *pattr, void *pobj, int actmode) {
 int
 action_jobscript_max_size(attribute *pattr, void *pobj, int actmode)
 {
-	struct attribute attrib;
+	attribute attrib;
 	if (pattr == NULL)
 		return PBSE_NONE;
 	set_size(&attr_jobscript_max_size,pattr,SET);
@@ -6612,7 +6612,7 @@ action_check_res_to_release(attribute *pattr, void *pobj, int actmode)
 void
 unset_jobscript_max_size(void)
 {
-	struct attribute attrib;
+	attribute attrib;
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
 	set_size(&attr_jobscript_max_size,&attrib,SET);
 

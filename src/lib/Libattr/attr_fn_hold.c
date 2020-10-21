@@ -82,7 +82,7 @@
  */
 
 int
-decode_hold(struct attribute *patr, char *name, char *rescn, char *val)
+decode_hold(attribute *patr, char *name, char *rescn, char *val)
 {
 	char  *pc;
 
@@ -190,7 +190,7 @@ encode_hold(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
  */
 
 int
-comp_hold(struct attribute *attr, struct attribute *with)
+comp_hold(attribute *attr, attribute *with)
 {
 	if (!attr || !with)
 		return -1;

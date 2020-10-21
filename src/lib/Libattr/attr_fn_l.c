@@ -96,7 +96,7 @@
  */
 
 int
-decode_l(struct attribute *patr, char *name, char *rescn, char *val)
+decode_l(attribute *patr, char *name, char *rescn, char *val)
 {
 	char *pc;
 	char *endp;
@@ -189,7 +189,7 @@ encode_l(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname
  */
 
 int
-set_l(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_l(attribute *attr, attribute *new, enum batch_op op)
 {
 	assert(attr && new && (new->at_flags & ATR_VFLAG_SET));
 
@@ -223,7 +223,7 @@ set_l(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_l(struct attribute *attr, struct attribute *with)
+comp_l(attribute *attr, attribute *with)
 {
 	if (!attr || !with)
 		return (-1);
@@ -293,4 +293,3 @@ get_attr_l(const attribute *pattr)
 {
 	return  pattr->at_val.at_long;
 }
-

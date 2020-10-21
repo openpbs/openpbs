@@ -328,23 +328,21 @@ json_dumps_fail:
 static void
 encode_used(job *pjob, pbs_list_head *phead)
 {
-	attribute *at;
 	attribute_def *ad;
 	attribute_def *ad3;
 	resource *rs;
 	resource_def *rd;
 	int include_resc_used_update = 0;
 
-	at = &pjob->ji_wattr[JOB_ATR_resc_used];
 	ad = &job_attr_def[JOB_ATR_resc_used];
-	if ((at->at_flags & ATR_VFLAG_SET) == 0)
+	if (!is_jattr_set(pjob, JOB_ATR_resc_used))
 		return;
 
 	ad3 = &job_attr_def[JOB_ATR_resc_used_update];
-	if (pjob->ji_updated || ((pjob->ji_wattr[JOB_ATR_relnodes_on_stageout].at_flags & ATR_VFLAG_SET) != 0 && (pjob->ji_wattr[JOB_ATR_relnodes_on_stageout].at_val.at_long != 0)))
+	if (pjob->ji_updated || (is_jattr_set(pjob, JOB_ATR_relnodes_on_stageout) && (get_jattr_long(pjob, JOB_ATR_relnodes_on_stageout) != 0)))
 		include_resc_used_update = 1;
 
-	rs = (resource *) GET_NEXT(at->at_val.at_list);
+	rs = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_used));
 	for (; rs != NULL; rs = (resource *) GET_NEXT(rs->rs_link)) {
 
 		int i;
@@ -354,8 +352,8 @@ encode_used(job *pjob, pbs_list_head *phead)
 		char *sval;
 		char *dumps;
 		char emsg[HOOK_BUF_SIZE];
-		struct attribute tmpatr = {0};
-		struct attribute tmpatr3 = {0};
+		attribute tmpatr = {0};
+		attribute tmpatr3 = {0};
 
 		rd = rs->rs_defin;
 		if ((rd->rs_flags & resc_access_perm) == 0)
@@ -723,29 +721,28 @@ get_job_update(job *pjob)
 
 	resc_access_perm = ATR_DFLAG_MGRD;
 
-	if (pjob->ji_wattr[JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
-		prused->ru_hop = pjob->ji_wattr[JOB_ATR_run_version].at_val.at_long;
+	if (is_jattr_set(pjob, JOB_ATR_run_version))
+		prused->ru_hop = get_jattr_long(pjob, JOB_ATR_run_version);
 	else
-		prused->ru_hop = pjob->ji_wattr[JOB_ATR_runcount].at_val.at_long;
+		prused->ru_hop = get_jattr_long(pjob, JOB_ATR_runcount);
 #ifdef WIN32
-	if (pjob->ji_wattr[JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
-		prused->ru_comment = strdup(pjob->ji_wattr[JOB_ATR_Comment].at_val.at_str);
+	if (is_jattr_set(pjob, JOB_ATR_Comment)) {
+		prused->ru_comment = strdup(get_jattr_str(pjob, JOB_ATR_Comment));
 		if (prused->ru_comment == NULL)
 			log_joberr(errno, __func__, "Out of memory while encoding comment in stat update", pjob->ji_qs.ji_jobid);
 	}
 #endif
-	if (pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_MODIFY) {
-		job_attr_def[JOB_ATR_session_id].at_encode(&pjob->ji_wattr[JOB_ATR_session_id],
-								&prused->ru_attr,
-								job_attr_def[JOB_ATR_session_id].at_name,
-								NULL, ATR_ENCODE_CLIENT, NULL);
+	if ((at = get_jattr(pjob, JOB_ATR_session_id))->at_flags & ATR_VFLAG_MODIFY) {
+		job_attr_def[JOB_ATR_session_id].at_encode(at, &prused->ru_attr,
+							   job_attr_def[JOB_ATR_session_id].at_name,
+							   NULL, ATR_ENCODE_CLIENT, NULL);
 	}
 
 	if (mock_run) {
 		/* Also add substate & state to the attrs sent to servers since we don't have a session id */
-		job_attr_def[JOB_ATR_state].at_encode(&pjob->ji_wattr[JOB_ATR_state], &prused->ru_attr,
+		job_attr_def[JOB_ATR_state].at_encode(get_jattr(pjob, JOB_ATR_state), &prused->ru_attr,
 				job_attr_def[JOB_ATR_state].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
-		job_attr_def[JOB_ATR_substate].at_encode(&pjob->ji_wattr[JOB_ATR_substate], &prused->ru_attr,
+		job_attr_def[JOB_ATR_substate].at_encode(get_jattr(pjob, JOB_ATR_substate), &prused->ru_attr,
 				job_attr_def[JOB_ATR_substate].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 	}
 
@@ -754,7 +751,7 @@ get_job_update(job *pjob)
 	/* Now add certain others as required for updating at the Server */
 	for (i = 0; mom_rtn_list[i] != JOB_ATR_LAST; ++i) {
 		nth = mom_rtn_list[i];
-		at = &pjob->ji_wattr[nth];
+		at = get_jattr(pjob, nth);
 		ad = &job_attr_def[nth];
 
 		if ((at->at_flags & ATR_VFLAG_MODIFY) ||

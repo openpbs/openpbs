@@ -712,18 +712,16 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 	/* set attribute "array" True  and clear "array_state_count" */
 
 	set_jattr_b_slim(pjob, JOB_ATR_array, 1, SET);
-	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_SET_MOD_MCACHE;
 	free_jattr(pjob, JOB_ATR_array_state_count);
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
 		int pbs_error = PBSE_BADATVAL;
 		if (pjob->ji_ajtrk)
 			free(pjob->ji_ajtrk);
-		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(get_jattr_str(pjob, JOB_ATR_array_indices_submitted),
-			                                      JOB_STATE_LTR_QUEUED, &pbs_error, mode)) == NULL)
+		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(pattr->at_val.at_str, JOB_STATE_LTR_QUEUED, &pbs_error, mode)) == NULL)
 			return pbs_error;
 
-		if ((pjob->ji_ajtrk->trk_rlist = range_parse(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str)) == NULL)
+		if ((pjob->ji_ajtrk->trk_rlist = range_parse(pattr->at_val.at_str)) == NULL)
 			return pbs_error;
 
 	}
@@ -887,8 +885,8 @@ create_subjob(job *parent, char *newjid, int *rc)
 	CLEAR_HEAD(attrl);
 	for (i = 0; attrs_to_copy[i] != JOB_ATR_LAST; i++) {
 		j    = (int)attrs_to_copy[i];
-		ppar = &parent->ji_wattr[j];
-		psub = &subj->ji_wattr[j];
+		ppar = get_jattr(parent, j);
+		psub = get_jattr(subj, j);
 		pdef = &job_attr_def[j];
 
 		if (pdef->at_encode(ppar, &attrl, pdef->at_name, NULL,

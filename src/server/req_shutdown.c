@@ -127,7 +127,6 @@ extern attribute_def svr_attr_def[];
 void
 svr_shutdown(int type)
 {
-	attribute	  *pattr;
 	job		  *pjob;
 	job		  *pnxt;
 	long		 *state;
@@ -202,12 +201,11 @@ svr_shutdown(int type)
 		pnxt = (job *)GET_NEXT(pjob->ji_alljobs);
 
 		if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
+			char *val = get_jattr_str(pjob, JOB_ATR_chkpnt);
 
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HOTSTART;
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
-			pattr = &pjob->ji_wattr[(int)JOB_ATR_chkpnt];
-			if ((pattr->at_val.at_str) &&
-				(*pattr->at_val.at_str != 'n')) {
+			if (val && (*val != 'n')) {
 				/* do checkpoint of job */
 
 				if (shutdown_preempt_chkpt(pjob) == 0)

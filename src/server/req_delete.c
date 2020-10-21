@@ -798,7 +798,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		   (check_job_state(pjob, JOB_STATE_LTR_QUEUED) ||
 		    check_job_state(pjob, JOB_STATE_LTR_HELD))) {
 		struct depend *dp;
-		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 		if (dp != NULL)
 			depend_runone_remove_dependency(pjob);
 	}
@@ -925,7 +925,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				 * Set exit status for the job to SIGKILL as we will not be working with any obit.
 				 */
 				set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_exect.ji_exitstat, SET);
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
 			}
 
 			/* see if it has any dependencies */

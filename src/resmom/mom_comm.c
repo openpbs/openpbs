@@ -1040,8 +1040,7 @@ send_sisters_job_update(job *pjob)
 	if (pjob->ji_numnodes <= 1) {
 		return (0);
 	}
-	if ( !(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & \
-				ATR_VFLAG_SET) ) {
+	if (!is_jattr_set(pjob, JOB_ATR_Cookie)) {
 		log_err(-1, __func__, "job cookie not set");
 		return (-1);
 	}
@@ -1051,7 +1050,7 @@ send_sisters_job_update(job *pjob)
 	CLEAR_HEAD(phead);
 
 	(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_encode(
-		&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
+		get_jattr(pjob, JOB_ATR_exec_vnode),
 		&phead,
 		ATTR_execvnode,
 		NULL,
@@ -1059,7 +1058,7 @@ send_sisters_job_update(job *pjob)
 		NULL);
 
 	(void)job_attr_def[(int)JOB_ATR_exec_host2].at_encode(
-		&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
+		get_jattr(pjob, JOB_ATR_exec_host2),
 		&phead,
 		ATTR_exechost2,
 		NULL,
@@ -1067,7 +1066,7 @@ send_sisters_job_update(job *pjob)
 		NULL);
 
 	(void)job_attr_def[(int)JOB_ATR_SchedSelect].at_encode(
-		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
+		get_jattr(pjob, JOB_ATR_SchedSelect),
 		&phead,
 		ATTR_SchedSelect,
 		NULL,
@@ -1260,7 +1259,7 @@ receive_job_update(int stream, job *pjob)
 
 		/* decode attribute */
 		pdef = &job_attr_def[index];
-		errcode = pdef->at_decode(&pjob->ji_wattr[index], psatl->al_name,
+		errcode = pdef->at_decode(get_jattr(pjob, index), psatl->al_name,
                                          psatl->al_resc, psatl->al_value);
 		/* Unknown resources still get decoded */
 		/* under "unknown" resource def */
@@ -1273,9 +1272,8 @@ receive_job_update(int stream, job *pjob)
 			return (-1);
 		}
 
-		if (psatl->al_op == DFLT) {
-			pjob->ji_wattr[index].at_flags |= ATR_VFLAG_DEFLT;
-		}
+		if (psatl->al_op == DFLT)
+			(get_jattr(pjob, index))->at_flags |= ATR_VFLAG_DEFLT;
 	}
 	free_attrlist(&lhead);
 	for (i=0; i<pjob->ji_numvnod; i++) {
@@ -2065,7 +2063,6 @@ node_bailout(job *pjob, hnodent *np)
 	int		i;
 	int		 keep_event = 0;
 	char		*name;
-	attribute	*pattr;
 	pbs_list_head	 phead;
 
 	ep = (eventent *)GET_NEXT(np->hn_events);
@@ -2097,10 +2094,9 @@ node_bailout(job *pjob, hnodent *np)
 					np->hn_sister = SISTER_OKAY;
 					/* encode job attributes to send to sister */
 					CLEAR_HEAD(phead);
-					pattr = pjob->ji_wattr;
 					for (i=0; i< (int)JOB_ATR_LAST; i++) {
 						(void)(job_attr_def+i)->at_encode(
-							pattr+i,
+							get_jattr(pjob, i),
 							&phead,
 							(job_attr_def+i)->at_name,
 							NULL,
@@ -2513,20 +2509,18 @@ check_ms(int stream, job *pjob)
 u_long
 resc_used(job *pjob, char *name, u_long	(*func)(resource *))
 {
-	attribute	*at;
 	resource_def	*rd;
 	resource	*pres;
 	u_long		val = 0L;
 
-	at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
-	if (at == NULL)
+	if (!is_jattr_set(pjob, JOB_ATR_resc_used))
 		return 0;
 
 	rd = find_resc_def(svr_resc_def, name);
 	if (rd == NULL)
 		return 0;
 
-	pres = find_resc_entry(at, rd);
+	pres = find_resc_entry(get_jattr(pjob, JOB_ATR_resc_used), rd);
 	if (pres == NULL)
 		return 0;
 
@@ -2624,7 +2618,7 @@ resc_string(job *pjob)
 	used += len;
 	res_str[used++] = ':';
 
-	at = &pjob->ji_wattr[(int)JOB_ATR_resource];
+	at = get_jattr(pjob, JOB_ATR_resource);
 	if (at->at_type != ATR_TYPE_RESC) {
 		res_str[used] = '\0';
 		return res_str;
@@ -2738,7 +2732,7 @@ send_resc_used_to_ms(int stream, job *pjob)
 	if (pjob == NULL || stream == -1)
 		return (-1);
 
-	at = &pjob->ji_wattr[(int) JOB_ATR_resc_used];
+	at = get_jattr(pjob, JOB_ATR_resc_used);
 	if (at->at_type != ATR_TYPE_RESC)
 		return (-1);
 	ad = &job_attr_def[(int) JOB_ATR_resc_used];
@@ -3133,7 +3127,7 @@ im_request(int stream, int version)
 				pdef = &job_attr_def[index];
 
 				/* decode attribute */
-				errcode = pdef->at_decode(&pjob->ji_wattr[index],
+				errcode = pdef->at_decode(get_jattr(pjob, index),
 					psatl->al_name, psatl->al_resc,
 					psatl->al_value);
 				/* Unknown resources still get decoded */
@@ -3141,10 +3135,8 @@ im_request(int stream, int version)
 				if ((errcode != 0) && (errcode != PBSE_UNKRESC))
 					break;
 
-				if (psatl->al_op == DFLT) {
-					pjob->ji_wattr[index].at_flags |=
-						ATR_VFLAG_DEFLT;
-				}
+				if (psatl->al_op == DFLT)
+					(get_jattr(pjob, index))->at_flags |= ATR_VFLAG_DEFLT;
 			}
 			free_attrlist(&lhead);
 			if (errcode != 0) {
@@ -5640,7 +5632,6 @@ tm_request(int fd, int version)
 	tm_node_id			tvnodeid;
 	tm_node_id			myvnodeid;
 	tm_task_id			taskid, fromtask;
-	attribute			*at;
 	extern u_long			localaddr;
 	char				hook_msg[HOOK_MSG_SIZE+1];
 	int				argc = 0;
@@ -6008,12 +5999,11 @@ aterr:
 	}
 
 	/* see if the cookie matches */
-	at = &pjob->ji_wattr[(int)JOB_ATR_Cookie];
-	if (!(is_attr_set(at))) {
+	if (!(is_jattr_set(pjob, JOB_ATR_Cookie))) {
 		sprintf(log_buffer, "job has no cookie");
 		goto err;
 	}
-	oreo = at->at_val.at_str;
+	oreo = get_jattr_str(pjob, JOB_ATR_Cookie);
 	if (strcmp(oreo, cookie) != 0) {
 		DBPRT(("job cookie %s message %s", oreo, cookie))
 		sprintf(log_buffer, "bad cookie");

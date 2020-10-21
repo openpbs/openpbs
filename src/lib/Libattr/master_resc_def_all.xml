@@ -85,7 +85,7 @@
       #include "grunt.h"
 
       extern int set_node_ct(resource *, attribute *, void *, int, int actmode);
-      extern int decode_place(struct attribute *, char *, char *, char *);
+      extern int decode_place(attribute *, char *, char *, char *);
       extern int preempt_targets_action(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
       extern int action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
       extern int action_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
@@ -98,7 +98,7 @@
       #endif /* PBS_MOM */
       /* ordered by guess to put ones most often used at front */
 
-      static resource_def svr_resc_defm[] = { 
+      static resource_def svr_resc_defm[] = {
       </SVR>
       <ECL>
       #include &lt;pbs_config.h&gt;

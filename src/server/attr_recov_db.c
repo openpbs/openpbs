@@ -104,18 +104,18 @@ compare_obj_hash(void *qs, int len, void *oldhash)
  * @retval    0 - Success
  *
  */
-int 
-encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *db_attr_list)
+int
+encode_single_attr_db(attribute_def *padef, attribute *pattr, pbs_db_attr_list_t *db_attr_list)
 {
 	pbs_list_head *lhead;
 	int rc = 0;
-	
+
 	lhead = &db_attr_list->attrs;
 
 	rc = padef->at_encode(pattr, lhead, padef->at_name, NULL, ATR_ENCODE_DB, NULL);
 	if (rc < 0)
 		return -1;
-	
+
 	db_attr_list->attr_count += rc;
 
 	return 0;
@@ -136,7 +136,7 @@ encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_
  *
  */
 int
-encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr, pbs_db_attr_list_t *db_attr_list, int all)
+encode_attr_db(attribute_def *padef, attribute *pattr, int numattr, pbs_db_attr_list_t *db_attr_list, int all)
 {
 	int i;
 
@@ -151,7 +151,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
 		if ((((padef + i)->at_flags & ATR_DFLAG_NOSAVM) == 0) || all) {
 			if (encode_single_attr_db((padef + i), (pattr + i), db_attr_list) != 0)
 				return -1;
-			
+
 			(pattr+i)->at_flags &= ~ATR_VFLAG_MODIFY;
 		}
 	}
@@ -177,7 +177,7 @@ encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr
  *
  */
 int
-decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, void *padef_idx, struct attribute_def *padef, struct attribute *pattr, int limit, int unknown)
+decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, void *padef_idx, attribute_def *padef, attribute *pattr, int limit, int unknown)
 {
 	int index;
 	svrattrl *pal = (svrattrl *)0;

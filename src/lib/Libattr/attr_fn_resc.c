@@ -113,7 +113,7 @@ void *resc_attrdef_idx = NULL;
  */
 
 int
-decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
+decode_resc(attribute *patr, char *name, char *rescn, char *val)
 {
 	resource	*prsc;
 	resource_def	*prdef;
@@ -293,7 +293,7 @@ encode_resc(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
  */
 
 int
-set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
+set_resc(attribute *old, attribute *new, enum batch_op op)
 {
 	enum batch_op local_op;
 	resource *newresc;
@@ -381,7 +381,7 @@ set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_resc(struct attribute *attr, struct attribute *with)
+comp_resc(attribute *attr, attribute *with)
 {
 	resource *atresc;
 	resource *wiresc;
@@ -506,7 +506,7 @@ find_resc_def(resource_def *resc_def, char *name)
 
 	if (pbs_idx_find(resc_attrdef_idx, (void **) &name, (void **)&found_def, NULL) == PBS_IDX_RET_OK)
 		def = &resc_def[found_def - resc_def];
-		
+
 	return def;
 }
 

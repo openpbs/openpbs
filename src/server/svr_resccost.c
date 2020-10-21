@@ -136,7 +136,7 @@ static struct resource_cost *add_cost_entry(attribute *patr, resource_def *prdef
  */
 
 int
-decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
+decode_rcost(attribute *patr, char *name, char *rescn, char *val)
 {
 	resource_def *prdef;
 	struct resource_cost *pcost;
@@ -239,7 +239,7 @@ encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname, char *rs
  */
 
 int
-set_rcost(struct attribute *old, struct attribute *new, enum batch_op op)
+set_rcost(attribute *old, attribute *new, enum batch_op op)
 {
 	struct resource_cost *pcnew;
 	struct resource_cost *pcold;

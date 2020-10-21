@@ -90,7 +90,7 @@
  */
 
 int
-decode_nodes(struct attribute *patr, char *name, char *rescn, char *val)
+decode_nodes(attribute *patr, char *name, char *rescn, char *val)
 {
 	char *pc;
 
@@ -143,7 +143,7 @@ decode_nodes(struct attribute *patr, char *name, char *rescn, char *val)
  */
 
 int
-decode_select(struct attribute *patr, char *name, char *rescn, char *val)
+decode_select(attribute *patr, char *name, char *rescn, char *val)
 {
 	int   new_chunk = 1;
 	char *pc;

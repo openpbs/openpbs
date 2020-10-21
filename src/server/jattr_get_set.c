@@ -50,6 +50,13 @@
 #include "pbs_error.h"
 
 
+attribute *
+get_jattr(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return get_attr_generic((attribute *)pjob->ji_wattr, attr_idx);
+	return NULL;
+}
 
 /**
  * @brief	Check if the job is in the state specified
@@ -108,10 +115,10 @@ char
 get_job_state(const job *pjob)
 {
 	if (pjob != NULL) {
-		return get_attr_c(&pjob->ji_wattr[JOB_ATR_state]);
+		return get_attr_c(get_jattr(pjob, JOB_ATR_state));
 	}
 
-	return -1;
+	return '0';
 }
 
 /**
@@ -132,7 +139,7 @@ get_job_state_num(const job *pjob)
 	if (pjob == NULL)
 		return -1;
 
-	statec = get_attr_c(&pjob->ji_wattr[JOB_ATR_state]);
+	statec = get_attr_c(get_jattr(pjob, JOB_ATR_state));
 	if (statec == -1)
 		return -1;
 
@@ -154,7 +161,7 @@ long
 get_job_substate(const job *pjob)
 {
 	if (pjob != NULL) {
-		return get_attr_l(&pjob->ji_wattr[JOB_ATR_substate]);
+		return get_attr_l(get_jattr(pjob, JOB_ATR_substate));
 	}
 
 	return -1;
@@ -174,9 +181,43 @@ char *
 get_jattr_str(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return pjob->ji_wattr[attr_idx].at_val.at_str;
+		return get_attr_str(get_jattr(pjob, attr_idx));
 
 	return NULL;
+}
+
+/**
+ * @brief	Getter function for job attribute of type string of array
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	struct array_strings *
+ * @retval	value of the attribute
+ * @retval	NULL if pjob is NULL
+ */
+struct array_strings *
+get_jattr_arst(const job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		return get_attr_arst(get_jattr(pjob, attr_idx));
+
+	return NULL;
+}
+
+/**
+ * @brief	Getter for job attribute's list value
+ *
+ * @param[in]	pjob - pointer to the job
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	pbs_list_head
+ * @retval	value of attribute
+ */
+pbs_list_head
+get_jattr_list(const job *pjob, int attr_idx)
+{
+	return get_attr_list(get_jattr(pjob, attr_idx));
 }
 
 /**
@@ -193,7 +234,7 @@ long
 get_jattr_long(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return pjob->ji_wattr[attr_idx].at_val.at_long;
+		return get_attr_l(get_jattr(pjob, attr_idx));
 
 	return -1;
 }
@@ -212,7 +253,7 @@ svrattrl *
 get_jattr_usr_encoded(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return pjob->ji_wattr[attr_idx].at_user_encoded;
+		return (get_jattr(pjob, attr_idx))->at_user_encoded;
 
 	return NULL;
 }
@@ -231,7 +272,7 @@ svrattrl *
 get_jattr_priv_encoded(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return pjob->ji_wattr[attr_idx].at_priv_encoded;
+		return (get_jattr(pjob, attr_idx))->at_priv_encoded;
 
 	return NULL;
 }
@@ -247,9 +288,8 @@ get_jattr_priv_encoded(const job *pjob, int attr_idx)
 void
 set_job_state(job *pjob, char val)
 {
-	if (pjob != NULL) {
-		set_attr_c(&pjob->ji_wattr[JOB_ATR_state], val, SET);
-	}
+	if (pjob != NULL)
+		set_attr_c(get_jattr(pjob, JOB_ATR_state), val, SET);
 }
 
 /**
@@ -286,7 +326,7 @@ set_jattr_generic(job *pjob, int attr_idx, char *val, char *rscn, enum batch_op 
 	if (pjob == NULL || val == NULL)
 		return 1;
 
-	return set_attr_generic(&pjob->ji_wattr[attr_idx], &job_attr_def[attr_idx], val, rscn, op);
+	return set_attr_generic(get_jattr(pjob, attr_idx), &job_attr_def[attr_idx], val, rscn, op);
 }
 
 /**
@@ -307,7 +347,7 @@ set_jattr_str_slim(job *pjob, int attr_idx, char *val, char *rscn)
 	if (pjob == NULL || val == NULL)
 		return 1;
 
-	return set_attr_generic(&pjob->ji_wattr[attr_idx], &job_attr_def[attr_idx], val, rscn, INTERNAL);
+	return set_attr_generic(get_jattr(pjob, attr_idx), &job_attr_def[attr_idx], val, rscn, INTERNAL);
 }
 
 /**
@@ -328,7 +368,7 @@ set_jattr_l_slim(job *pjob, int attr_idx, long val, enum batch_op op)
 	if (pjob == NULL)
 		return 1;
 
-	set_attr_l(&pjob->ji_wattr[attr_idx], val, op);
+	set_attr_l(get_jattr(pjob, attr_idx), val, op);
 
 	return 0;
 }
@@ -351,7 +391,7 @@ set_jattr_b_slim(job *pjob, int attr_idx, long val, enum batch_op op)
 	if (pjob == NULL)
 		return 1;
 
-	set_attr_b(&pjob->ji_wattr[attr_idx], val, op);
+	set_attr_b(get_jattr(pjob, attr_idx), val, op);
 
 	return 0;
 }
@@ -374,7 +414,7 @@ set_jattr_c_slim(job *pjob, int attr_idx, char val, enum batch_op op)
 	if (pjob == NULL)
 		return 1;
 
-	set_attr_c(&pjob->ji_wattr[attr_idx], val, op);
+	set_attr_c(get_jattr(pjob, attr_idx), val, op);
 
 	return 0;
 }
@@ -394,24 +434,9 @@ int
 is_jattr_set(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return pjob->ji_wattr[attr_idx].at_flags & ATR_VFLAG_SET;
+		return is_attr_set(get_jattr(pjob, attr_idx));
 
 	return 0;
-}
-
-/**
- * @brief	Mark a job attribute as "set"
- *
- * @param[in]	pjob - pointer to job
- * @param[in]	attr_idx - attribute index to set
- *
- * @return	void
- */
-void
-mark_jattr_not_set(job *pjob, int attr_idx)
-{
-	if (pjob != NULL)
-		pjob->ji_wattr[attr_idx].at_flags &= ~ATR_VFLAG_SET;
 }
 
 /**
@@ -423,10 +448,25 @@ mark_jattr_not_set(job *pjob, int attr_idx)
  * @return	void
  */
 void
+mark_jattr_not_set(job *pjob, int attr_idx)
+{
+	if (pjob != NULL)
+		(get_jattr(pjob, attr_idx))->at_flags &= ~ATR_VFLAG_SET;
+}
+
+/**
+ * @brief	Mark a job attribute as "set"
+ *
+ * @param[in]	pjob - pointer to job
+ * @param[in]	attr_idx - attribute index to set
+ *
+ * @return	void
+ */
+void
 mark_jattr_set(job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		pjob->ji_wattr[attr_idx].at_flags |= ATR_VFLAG_SET;
+		(get_jattr(pjob, attr_idx))->at_flags |= ATR_VFLAG_SET;
 }
 
 /**
@@ -441,5 +481,5 @@ void
 free_jattr(job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		job_attr_def[attr_idx].at_free(&pjob->ji_wattr[attr_idx]);
+		free_attr_generic(job_attr_def, get_jattr(pjob, attr_idx), attr_idx);
 }

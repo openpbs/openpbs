@@ -148,7 +148,7 @@ extern pbs_list_head svr_allresvs;
 extern time_t	 time_now;
 
 extern struct server server;
-extern struct attribute attr_jobscript_max_size;
+extern attribute attr_jobscript_max_size;
 extern char   *path_hooks;
 extern char   *path_hooks_workdir;
 extern pbs_list_head       prov_allvnodes;
@@ -618,7 +618,7 @@ pbsd_init(int type)
 	(void)svr_attr_def[(int)SVR_ATR_version].at_decode(
 		&server.sv_attr[(int)SVR_ATR_version], 0, 0,
 		PBS_VERSION);
-	
+
 	if ((pbs_licensing_location == NULL) && (license_counts.licenses_local == 0)) {
 		printf("%s\n", badlicense);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
@@ -631,7 +631,7 @@ pbsd_init(int type)
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
-	} 
+	}
 	if (license_counts.licenses_local > 0) {
 		sprintf(log_buffer,
 			"Licenses valid for %ld Floating hosts",
@@ -1176,7 +1176,6 @@ reassign_resc(job *pjob)
 	char *hoststr2 = get_jattr_str(pjob, JOB_ATR_exec_host2);
 	char *vnodein;
 	char *vnodeout;
-	attribute deallocated_attr;
 
 	/* safety check: if no hoststr, no node (hosts) assigned, just return */
 	if (hoststr == NULL)
@@ -1216,15 +1215,14 @@ reassign_resc(job *pjob)
 		set_jattr_str_slim(pjob, JOB_ATR_exec_vnode, vnodeout, NULL);
 		set_jattr_str_slim(pjob, JOB_ATR_exec_host, hoststr, NULL);
 	}
-	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
 
-	if ((rc == 0) && (is_attr_set(&deallocated_attr))) {
+	if ((rc == 0) && (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated))) {
 		char	*hstr = NULL;
 		char	*hstr2 = NULL;
 		char	*vnalloc = NULL;
 		char	*new_exec_vnode_deallocated;
 
-	 	new_exec_vnode_deallocated = deallocated_attr.at_val.at_str;
+	 	new_exec_vnode_deallocated = get_jattr_str(pjob, JOB_ATR_exec_vnode_deallocated);
 
 		rc = set_nodes((void *)pjob, JOB_OBJECT, new_exec_vnode_deallocated,
 			 &vnalloc, &hstr, &hstr2, 1, TRUE);
@@ -1642,9 +1640,6 @@ pbsd_init_reque(job *pjob, int change_state)
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
 			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, newstate);
 	}
-
-	/* make sure substate attributes match actual value */
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
 
 	if ((rc = svr_enquejob(pjob)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);
