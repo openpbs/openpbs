@@ -730,8 +730,8 @@ create_subjob(job *parent, char *newjid, int *rc)
 	CLEAR_HEAD(attrl);
 	for (i = 0; attrs_to_copy[i] != JOB_ATR_LAST; i++) {
 		j    = (int)attrs_to_copy[i];
-		ppar = &parent->ji_wattr[j];
-		psub = &subj->ji_wattr[j];
+		ppar = get_jattr(parent, j);
+		psub = get_jattr(subj, j);
 		pdef = &job_attr_def[j];
 
 		if (pdef->at_encode(ppar, &attrl, pdef->at_name, NULL,

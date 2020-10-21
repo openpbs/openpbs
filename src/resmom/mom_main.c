@@ -2220,8 +2220,9 @@ do_mom_action_script(int ae,	      /* index into action table */
 			else if (strcmp(*pargs + 1, "globid") == 0)
 				strcpy(buf, "NULL");
 			else if (strcmp(*pargs + 1, "auxid") == 0) {
-				if (get_jattr_str(pjob, JOB_ATR_altid))
-					pbs_strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str, sizeof(buf));
+				char *value;
+				if ((value = get_jattr_str(pjob, JOB_ATR_altid)) != NULL)
+					pbs_strncpy(buf, value, sizeof(buf));
 				else
 					strcpy(buf, "NULL");
 			} else if (strcmp(*pargs + 1, "path") == 0) {
@@ -5616,7 +5617,7 @@ getlong(resource *pres, u_long *ret)
 void
 calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 {
-	attribute   *at_req, *at_used;
+	attribute   *at_used;
 	u_long		*lp;
 	long		 ncpus_req;
 	double		 new_sample_weight;
@@ -5633,13 +5634,12 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 
 	ncpus_req = 0;
 	rd = &svr_resc_def[RESC_NCPUS];
-	at_req = &pjob->ji_wattr[(int)JOB_ATR_resource];
-	pres_req = find_resc_entry(at_req, rd);
+	pres_req = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), rd);
 	if (pres_req != NULL)
 		ncpus_req = MAX(0, pres_req->rs_value.at_val.at_long);
 
 	rd = &svr_resc_def[RESC_CPUPERCENT];
-	at_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+	at_used = get_jattr(pjob, JOB_ATR_resc_used);
 	pres = find_resc_entry(at_used, rd);
 	if (pres == NULL)
 		return;
@@ -5885,13 +5885,12 @@ mom_over_limit(job *pjob)
 	u_long		value, num;
 	resource	*pres;
 	resource	*used;
-	attribute	*uattr = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+	attribute	*uattr = get_jattr(pjob, JOB_ATR_resc_used);
 	resource_def	*rd;
 
 	assert(pjob != NULL);
-	assert(pjob->ji_wattr[(int)JOB_ATR_resource].at_type == ATR_TYPE_RESC);
-	pres = (resource *)
-		GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
+	assert((get_jattr(pjob, JOB_ATR_resource))->at_type == ATR_TYPE_RESC);
+	pres = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 
 	DBPRT(("%s: entered\n", __func__))
 
@@ -5906,7 +5905,7 @@ mom_over_limit(job *pjob)
 		u_long		cput_sum;
 		u_long		walltime_sum;
 
-		at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+		at = get_jattr(pjob, JOB_ATR_resc_used);
 		assert(at->at_type == ATR_TYPE_RESC);
 
 		rd = &svr_resc_def[RESC_CPUPERCENT];
@@ -5997,8 +5996,7 @@ mom_over_limit(job *pjob)
 		}
 	}
 
-	pres = (resource *)
-		GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
+	pres = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 
 	for (; pres != NULL; pres = (resource *)GET_NEXT(pres->rs_link)) {
 		assert(pres->rs_defin != NULL);
@@ -6095,7 +6093,6 @@ mom_over_limit(job *pjob)
 int
 job_over_limit(job *pjob, int recover)
 {
-	attribute		*attr;
 	attribute		*used;
 	resource		*limresc;
 	resource		*useresc;
@@ -6167,9 +6164,8 @@ job_over_limit(job *pjob, int recover)
 		total_mem += nr->nr_mem;
 	}
 
-	attr = &pjob->ji_wattr[JOB_ATR_resource];
-	used = &pjob->ji_wattr[JOB_ATR_resc_used];
-	for (limresc = (resource *)GET_NEXT(attr->at_val.at_list);
+	used = get_jattr(pjob, JOB_ATR_resc_used);
+	for (limresc = (resource *)GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 		limresc != NULL;
 		limresc = (resource *)GET_NEXT(limresc->rs_link)) {
 
@@ -6315,7 +6311,6 @@ dorestrict_user(void)
 	job			*pjob                  = NULL, *hjob = NULL;
 	pbs_task		*ptask                 = NULL;
 	static	resource_def	*prsdef                = NULL;
-	attribute		*patresc               = NULL;/* ptr to job/resv resource_list */
 	resource		*pplace                = NULL;
 	int			j                      = 0;
 	int			found_exempt           = 0;
@@ -6496,8 +6491,7 @@ dorestrict_user(void)
 		 ** the alien.
 		 */
 		if (alien_kill) {
-			patresc = &hjob->ji_wattr[(int)JOB_ATR_resource];
-			pplace = find_resc_entry(patresc, prsdef);
+			pplace = find_resc_entry(get_jattr(hjob, JOB_ATR_resource), prsdef);
 			if (pplace && pplace->rs_value.at_val.at_str) {
 				if (strstr(pplace->rs_value.at_val.at_str,
 					"excl"))
@@ -6578,8 +6572,7 @@ dorestrict_user(void)
 		 ** the alien.
 		 */
 		if (alien_kill) {
-			patresc = &hjob->ji_wattr[(int)JOB_ATR_resource];
-			pplace = find_resc_entry(patresc, prsdef);
+			pplace = find_resc_entry(get_jattr(hjob, JOB_ATR_resource), prsdef);
 			if (pplace && pplace->rs_value.at_val.at_str) {
 				if (strstr(pplace->rs_value.at_val.at_str,
 					"excl"))
@@ -7644,7 +7637,7 @@ main(int argc, char *argv[])
 		fprintf(stderr, "%s\n", "pbs_mom: another mom running");
 		exit(1);
 	}
-	
+
 	if (read_config(NULL)) {
 		fprintf(stderr, "%s: config file(s) parsing failed\n", argv[0]);
 #ifdef	WIN32
@@ -8653,7 +8646,7 @@ main(int argc, char *argv[])
 			if (pjob->ji_chkpttype == PBS_CHECKPOINT_CPUT) {
 				/* checkpoint on cputime used */
 				prscput = find_resc_entry(
-					&pjob->ji_wattr[(int)JOB_ATR_resc_used],
+					get_jattr(pjob, JOB_ATR_resc_used),
 					rdcput);
 				if (pjob->ji_chkptnext > prscput->rs_value.at_val.at_long)
 					continue;
@@ -8664,7 +8657,7 @@ main(int argc, char *argv[])
 			} else if (pjob->ji_chkpttype == PBS_CHECKPOINT_WALLT) {
 				/*  checkpoint on walltime */
 				prswall = find_resc_entry(
-					&pjob->ji_wattr[(int)JOB_ATR_resc_used],
+					get_jattr(pjob, JOB_ATR_resc_used),
 					rdwall);
 				if (pjob->ji_chkptnext > prswall->rs_value.at_val.at_long)
 					continue;

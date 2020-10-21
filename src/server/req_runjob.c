@@ -584,37 +584,52 @@ req_runjob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
-		attribute sub_runcount = {0};
-		attribute sub_run_version = {0};
+		attribute sub_runcount;
+		attribute sub_run_version;
 		attribute sub_prev_res;
+
+		clear_attr(&sub_runcount, &job_attr_def[JOB_ATR_runcount]);
+		clear_attr(&sub_run_version, &job_attr_def[JOB_ATR_run_version]);
 		clear_attr(&sub_prev_res, &job_attr_def[JOB_ATR_resource]);
 
 		pjobsub = get_subjob_and_state(parent, get_index_from_jid(jid), NULL, NULL);
 		if (pjobsub != NULL) {
-			sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
-			sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
+			if (is_jattr_set(pjobsub, JOB_ATR_runcount))
+				set_attr_with_attr(&job_attr_def[JOB_ATR_runcount], &sub_runcount, get_jattr(pjobsub, JOB_ATR_runcount), SET);
+			if (is_jattr_set(pjobsub, JOB_ATR_run_version))
+				set_attr_with_attr(&job_attr_def[JOB_ATR_run_version], &sub_run_version, get_jattr(pjobsub, JOB_ATR_run_version), SET);
 			if (is_jattr_set(pjobsub, JOB_ATR_resource))
-				set_attr_with_attr(&job_attr_def[JOB_ATR_resource], &sub_prev_res, &pjobsub->ji_wattr[JOB_ATR_resource], SET);
+				set_attr_with_attr(&job_attr_def[JOB_ATR_resource], &sub_prev_res, get_jattr(pjobsub, JOB_ATR_resource), SET);
 			job_purge(pjobsub);
 		}
 
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
+			if (is_attr_set(&sub_runcount))
+				free_attr_generic(job_attr_def, &sub_runcount, JOB_ATR_runcount);
+			if (is_attr_set(&sub_run_version))
+				free_attr_generic(job_attr_def, &sub_run_version, JOB_ATR_run_version);
 			if (is_attr_set(&sub_prev_res))
-				job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
+				free_attr_generic(job_attr_def, &sub_prev_res, JOB_ATR_resource);
 			req_reject(j, 0, preq);
 			return;
 		}
 
-		if (is_attr_set(&sub_run_version))
-			set_jattr_l_slim(pjobsub, JOB_ATR_run_version, get_attr_l(&sub_run_version), SET);
+		if (is_attr_set(&sub_runcount)) {
+			free_jattr(pjobsub, JOB_ATR_runcount);
+			set_attr_with_attr(&job_attr_def[JOB_ATR_runcount], get_jattr(pjobsub, JOB_ATR_runcount), &sub_runcount, SET);
+			free_attr_generic(job_attr_def, &sub_runcount, JOB_ATR_runcount);
+		}
 
-		if (is_attr_set(&sub_runcount))
-			set_jattr_l_slim(pjobsub, JOB_ATR_runcount, get_attr_l(&sub_runcount), SET);
+		if (is_attr_set(&sub_run_version)) {
+			free_jattr(pjobsub, JOB_ATR_run_version);
+			set_attr_with_attr(&job_attr_def[JOB_ATR_run_version], get_jattr(pjobsub, JOB_ATR_run_version), &sub_run_version, SET);
+			free_attr_generic(job_attr_def, &sub_run_version, JOB_ATR_run_version);
+		}
 
 		if (is_attr_set(&sub_prev_res)) {
 			free_jattr(pjobsub, JOB_ATR_resource);
-			set_attr_with_attr(&job_attr_def[JOB_ATR_resource], &pjobsub->ji_wattr[JOB_ATR_resource], &sub_prev_res, SET);
-			job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
+			set_attr_with_attr(&job_attr_def[JOB_ATR_resource], get_jattr(pjobsub, JOB_ATR_resource), &sub_prev_res, SET);
+			free_attr_generic(job_attr_def, &sub_prev_res, JOB_ATR_resource);
 		}
 
 		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt) == 0) {
@@ -883,7 +898,7 @@ post_stagein(struct work_task *pwt)
 				/* for regular job, "wait" that job */
 				paltjob = pjob;
 			}
-			pwait = &paltjob->ji_wattr[(int)JOB_ATR_exectime];
+			pwait = get_jattr(paltjob, JOB_ATR_exectime);
 			if (!is_jattr_set(paltjob, JOB_ATR_exectime)) {
 				set_jattr_l_slim(paltjob, JOB_ATR_exectime, time_now + PBS_STAGEFAIL_WAIT, SET);
 				job_set_wait(pwait, paltjob, 0);
@@ -1027,9 +1042,7 @@ svr_startjob(job *pjob, struct batch_request *preq)
 		if (set_jattr_str_slim(pjob, JOB_ATR_hashname, pjob->ji_qs.ji_jobid, NULL))
 
 	/* clear Exit_status which may have been set in a hook and requeued */
-
-	clear_attr(&pjob->ji_wattr[(int)JOB_ATR_exit_status],
-		&job_attr_def[(int)JOB_ATR_exit_status]);
+	clear_attr(get_jattr(pjob, JOB_ATR_exit_status), &job_attr_def[(int)JOB_ATR_exit_status]);
 
 	/* if exec_vnode already set and either (hotstart or checkpoint) */
 	/* then reuseuse the host(s) listed in the current exec_vnode	 */
@@ -1178,7 +1191,7 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 			if (base_job != NULL &&
 			    is_jattr_set(base_job, JOB_ATR_depend)) {
 				struct depend *pdep;
-				pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &base_job->ji_wattr[(int)JOB_ATR_depend]);
+				pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(base_job, JOB_ATR_depend));
 				if (pdep != NULL)
 					depend_runone_hold_all(base_job);
 			}

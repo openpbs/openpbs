@@ -361,7 +361,7 @@ struct tree {
 };
 
 extern void *node_attr_idx;
-extern struct attribute_def node_attr_def[]; /* node attributes defs */
+extern attribute_def node_attr_def[]; /* node attributes defs */
 extern struct pbsnode **pbsndlist;           /* array of ptr to nodes  */
 extern int svr_totnodes;                     /* number of nodes (hosts) */
 extern struct tree *ipaddrs;

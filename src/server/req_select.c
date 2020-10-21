@@ -511,16 +511,16 @@ select_job(job *pjob, struct select_list *psel, int dosubjobs, int dohistjobs)
 				return (0);
 
 		} else if (!dosubjobs || (psel->sl_atindx != JOB_ATR_state)) {
-			if (!sel_attr(&pjob->ji_wattr[psel->sl_atindx], psel)) {
+			if (!sel_attr(get_jattr(pjob, psel->sl_atindx), psel)) {
 				/* Make sure we haven't incorrectly dismissed a suspended job */
-				if (psel->sl_atindx == JOB_ATR_state && psel->sl_attr.at_val.at_str[0] == 'S') {
+				if (psel->sl_atindx == JOB_ATR_state && get_attr_str(&psel->sl_attr)[0] == 'S') {
 					if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
 							(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP) ||
 									check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)))
 						continue;
 				}
 				return 0;
-			} else if (psel->sl_atindx == JOB_ATR_state && psel->sl_attr.at_val.at_str[0] == 'R') {
+			} else if (psel->sl_atindx == JOB_ATR_state && get_attr_str(&psel->sl_attr)[0] == 'R') {
 				/* Make sure we don't incorrectly select suspended jobs */
 				if (check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP) || check_job_substate(pjob, JOB_SUBSTATE_SUSPEND))
 					return 0;
@@ -618,7 +618,7 @@ free_sellist(struct select_list *pslist)
 		if (pslist->sl_atindx == JOB_ATR_state)
 			state_sel.at_free(&pslist->sl_attr);
 		else
-			job_attr_def[pslist->sl_atindx].at_free(&pslist->sl_attr); /* free the attr */
+			free_attr_generic(job_attr_def, &pslist->sl_attr, pslist->sl_atindx);
 		(void)free(pslist);			  /* free the entry */
 		pslist = next;
 	}

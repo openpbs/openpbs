@@ -79,7 +79,7 @@
 int
 verify_datatype_bool(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_b(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -101,7 +101,7 @@ verify_datatype_short(struct attropl * pattr, char **err_msg)
 {
 	short s;
 	int ret;
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	if ((ret = decode_l(&atr, pattr->name, pattr->resource, pattr->value)))
 		return ret;
@@ -127,7 +127,7 @@ verify_datatype_short(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_long(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_l(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -147,7 +147,7 @@ verify_datatype_long(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_long_long(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_ll(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -167,7 +167,7 @@ verify_datatype_long_long(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_float(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_f(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -188,7 +188,7 @@ verify_datatype_float(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_size(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_size(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -208,7 +208,7 @@ verify_datatype_size(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_time(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_time(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -228,7 +228,7 @@ verify_datatype_time(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_nodes(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	atr.at_flags = 0;
 	return (decode_nodes(&atr, pattr->name, pattr->resource, pattr->value));
 }
@@ -248,7 +248,7 @@ verify_datatype_nodes(struct attropl * pattr, char **err_msg)
 int
 verify_datatype_select(struct attropl * pattr, char **err_msg)
 {
-	struct attribute atr;
+	attribute atr;
 	int ret = PBSE_BADATVAL;
 	memset(&atr, 0, sizeof(struct attribute));
 	ret = decode_select(&atr, pattr->name,

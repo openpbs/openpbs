@@ -788,9 +788,8 @@ mom_set_limits(job *pjob, int set_mode)
 
 	DBPRT(("%s: entered\n", __func__))
 	assert(pjob != NULL);
-	assert(pjob->ji_wattr[(int)JOB_ATR_resource].at_type == ATR_TYPE_RESC);
-	pres = (resource *)
-		GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
+	assert((get_jattr(pjob, JOB_ATR_resource))->at_type == ATR_TYPE_RESC);
+	pres = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 
 	/*
 	 * Cycle through all the resource specifications,
@@ -898,9 +897,8 @@ mom_do_poll(job *pjob)
 
 	DBPRT(("%s: entered\n", __func__))
 	assert(pjob != NULL);
-	assert(pjob->ji_wattr[(int)JOB_ATR_resource].at_type == ATR_TYPE_RESC);
-	pres = (resource *)
-		GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
+	assert((get_jattr(pjob, JOB_ATR_resource))->at_type == ATR_TYPE_RESC);
+	pres = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 
 	while (pres != NULL) {
 		assert(pres->rs_defin != NULL);
@@ -1130,7 +1128,7 @@ mom_set_use(job *pjob)
 	long		ncpus_req;
 
 	assert(pjob != NULL);
-	at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+	at = get_jattr(pjob, JOB_ATR_resc_used);
 	assert(at->at_type == ATR_TYPE_RESC);
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0)
@@ -1151,7 +1149,7 @@ mom_set_use(job *pjob)
 		 * get pointer to list of resources *requested* for the job
 		 * so the ncpus used can be set to ncpus requested
 		 */
-		at_req = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		at_req = get_jattr(pjob, JOB_ATR_resource);
 		assert(at->at_type == ATR_TYPE_RESC);
 
 		pres_req = find_resc_entry(at_req, rd);

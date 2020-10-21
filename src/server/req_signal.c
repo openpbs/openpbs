@@ -526,7 +526,7 @@ create_resreleased(job *pjob)
 	char *dflt_ncpus_rel = ":ncpus=0";
 	int no_res_rel = 1;
 
-	attribute *pexech = &pjob->ji_wattr[(int) JOB_ATR_exec_vnode];
+	attribute *pexech = get_jattr(pjob, JOB_ATR_exec_vnode);
 	/* Multiplying by 2 to take care of superchunks of the format
 	 * (node:resc=n+node:resc=m) which will get converted to
 	 * (node:resc=n)+(node:resc=m). This will add room for this

@@ -253,7 +253,7 @@ svr_addleaf(void *ctx, enum lim_keytypes kt, char *fulent, char *entity,
  */
 
 static int
-internal_decode_entlim(struct attribute *patr,  char *name, char *rn,
+internal_decode_entlim(attribute *patr,  char *name, char *rn,
 	struct resource_def *prdef, char *val)
 {
 	void		*petree;
@@ -310,7 +310,7 @@ internal_decode_entlim(struct attribute *patr,  char *name, char *rn,
  */
 
 int
-decode_entlim(struct attribute *patr, char *name, char *rescn, char *val)
+decode_entlim(attribute *patr, char *name, char *rescn, char *val)
 {
 
 	if (patr == NULL)
@@ -343,7 +343,7 @@ decode_entlim(struct attribute *patr, char *name, char *rescn, char *val)
  */
 
 int
-decode_entlim_res(struct attribute *patr, char *name, char *rescn, char *val)
+decode_entlim_res(attribute *patr, char *name, char *rescn, char *val)
 {
 	resource_def	*prdef;
 

@@ -531,7 +531,6 @@ int
 send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct batch_request *request)
 {
 	pbs_list_head attrl;
-	attribute *pattr;
 	mominfo_t *pmom = NULL;
 	int stream = -1;
 	int encode_type;
@@ -591,14 +590,12 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 		encode_type = ATR_ENCODE_MOM;
 	}
 
-	pattr = jobp->ji_wattr;
 	for (i = 0; i < (int) JOB_ATR_LAST; i++) {
 		if (i == JOB_ATR_server_inst_id)
 			continue;
 		if ((job_attr_def + i)->at_flags & resc_access_perm) {
-			(void)(job_attr_def + i)->at_encode(pattr + i, &attrl,
-				(job_attr_def + i)->at_name, NULL, encode_type,
-				NULL);
+			(void)(job_attr_def + i)->at_encode(get_jattr(jobp, i), &attrl,
+				(job_attr_def + i)->at_name, NULL, encode_type, NULL);
 		}
 	}
 	attrl_fixlink(&attrl);
@@ -762,7 +759,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	int encode_type;
 	int i;
 	char job_id[PBS_MAXSVRJOBID + 1];
-	attribute *pattr;
 	pid_t pid;
 	struct attropl *pqjatr; /* list (single) of attropl for quejob */
 	char script_name[MAXPATHLEN + 1];
@@ -882,15 +878,12 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		(move_type != MOVE_TYPE_Exec)) {
 		tempval = ((long)time_now - get_jattr_long(jobp, JOB_ATR_sample_starttime));
 		set_jattr_l_slim(jobp, JOB_ATR_eligible_time, tempval, INCR);
-		jobp->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 	}
 
-	pattr = jobp->ji_wattr;
 	for (i=0; i < (int)JOB_ATR_LAST; i++) {
 		if ((job_attr_def+i)->at_flags & resc_access_perm) {
-			(void)(job_attr_def+i)->at_encode(pattr+i, &attrl,
-				(job_attr_def+i)->at_name, NULL,
-				encode_type, NULL);
+			(void)(job_attr_def+i)->at_encode(get_jattr(jobp, i), &attrl,
+				(job_attr_def+i)->at_name, NULL, encode_type, NULL);
 		}
 	}
 	attrl_fixlink(&attrl);

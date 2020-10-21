@@ -3551,25 +3551,23 @@ check_resource_set_on_jobs_or_resvs(struct batch_request *preq, resource_def *pr
 	resc_resv *pr;
 	char *rmatch;
 	int rlen;
-	attribute *pattr;
 	resource *presc;
 
 	/* Reject if resource is on a job and the type or flag are being modified */
 
 	for (pj = (job *)GET_NEXT(svr_alljobs); pj != NULL; pj = (job *)GET_NEXT(pj->ji_alljobs)) {
-		pattr = &pj->ji_wattr[JOB_ATR_resource];
-		presc = get_resource(pattr, prdef);
+		presc = get_resource(get_jattr(pj, JOB_ATR_resource), prdef);
 		if ((presc != NULL) && (mod == 1)) {
 			reply_text(preq, PBSE_RESCBUSY, "Resource busy on job");
 			return 1;
 		}
-		pattr = &pj->ji_wattr[JOB_ATR_SchedSelect];
-		if (is_attr_set(pattr)) {
-			rmatch = strstr(pattr->at_val.at_str, prdef->rs_name);
+		if (is_jattr_set(pj, JOB_ATR_SchedSelect)) {
+			char *val = get_jattr_str(pj, JOB_ATR_SchedSelect);
+			rmatch = strstr(val, prdef->rs_name);
 			if (rmatch != NULL) {
 				rlen = strlen(prdef->rs_name);
 				if (((mod == 1) && (*(rmatch+rlen) == '=')) &&
-				    ((rmatch == pattr->at_val.at_str) || *(rmatch-1) == ':')) {
+				    ((rmatch == val) || *(rmatch-1) == ':')) {
 					reply_text(preq, PBSE_RESCBUSY, "Resource busy on job");
 					return 1;
 				}
@@ -3580,7 +3578,7 @@ check_resource_set_on_jobs_or_resvs(struct batch_request *preq, resource_def *pr
 	/* Reject if resource is on a job and the type or flag are being modified */
 	pr = (resc_resv *)GET_NEXT(svr_allresvs);
 	while (pr != NULL) {
-		pattr = &pr->ri_wattr[RESV_ATR_resource];
+		attribute *pattr = &pr->ri_wattr[RESV_ATR_resource];
 		presc = get_resource(pattr, prdef);
 		if ((presc != NULL) && (mod == 1)) {
 			reply_text(preq, PBSE_RESCBUSY, "Resource busy on reservation");

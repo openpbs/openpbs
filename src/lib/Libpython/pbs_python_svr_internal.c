@@ -2364,7 +2364,7 @@ duration_to_secs(char *time_str)
 {
 
 	char 	     *value_tmp = NULL;
-	struct attribute attr;
+	attribute attr;
 	int  	     rc;
 
 	/*  The *decode* functions below "munges" the value argument, so will use */
@@ -8476,7 +8476,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 	char *value    = NULL;
 	char *value_tmp = NULL;
 	int  attr_idx  = -1;
-	struct attribute attr;
+	attribute attr;
 	int rc;
 	int is_v;
 
@@ -8531,9 +8531,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 
 				clear_attr(&attr, job_attr_def);
 				rc = set_attr_generic(&attr, &job_attr_def[attr_idx], value_tmp, NULL, INTERNAL);
-				if (job_attr_def[attr_idx].at_free) {
-					job_attr_def[attr_idx].at_free(&attr);
-				}
+				free_attr_generic(job_attr_def, &attr, attr_idx);
 
 				if (rc != 0) {
 					snprintf(log_buffer, LOG_BUF_SIZE-1,

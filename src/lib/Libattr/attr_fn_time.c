@@ -95,7 +95,7 @@
 
 #define PBS_MAX_TIME (LONG_MAX - 1)
 int
-decode_time(struct attribute *patr, char *name, char *rescn, char *val)
+decode_time(attribute *patr, char *name, char *rescn, char *val)
 {
 	int   i;
 	char  msec[4] = {'\0'};

@@ -75,7 +75,7 @@
  */
 
 void
-clear_attr(attribute *pattr, struct attribute_def *pdef)
+clear_attr(attribute *pattr, attribute_def *pdef)
 {
 #ifndef NDEBUG
 	if (pdef == 0) {
@@ -103,7 +103,7 @@ clear_attr(attribute *pattr, struct attribute_def *pdef)
  *
  */
 void *
-cr_attrdef_idx(struct attribute_def *adef, int limit)
+cr_attrdef_idx(attribute_def *adef, int limit)
 {
 	int i;
 	void *attrdef_idx = NULL;
@@ -143,10 +143,10 @@ cr_attrdef_idx(struct attribute_def *adef, int limit)
  *
  */
 int
-find_attr(void *attrdef_idx, struct attribute_def *attr_def, char *name)
+find_attr(void *attrdef_idx, attribute_def *attr_def, char *name)
 {
 	int index = -1;
-	struct attribute_def *found_def = NULL;
+	attribute_def *found_def = NULL;
 
 	if (pbs_idx_find(attrdef_idx, (void **) &name, (void **)&found_def, NULL) == PBS_IDX_RET_OK)
 		index = (found_def - attr_def);
@@ -165,7 +165,7 @@ find_attr(void *attrdef_idx, struct attribute_def *attr_def, char *name)
  */
 
 void
-free_svrcache(struct attribute *attr)
+free_svrcache(attribute *attr)
 {
 	struct svrattrl *working;
 	struct svrattrl *sister;
@@ -205,7 +205,7 @@ free_svrcache(struct attribute *attr)
  */
 /*ARGSUSED*/
 void
-free_null(struct attribute *attr)
+free_null(attribute *attr)
 {
 	memset(&attr->at_val, 0, sizeof(attr->at_val));
 	if (attr->at_type == ATR_TYPE_SIZE)
@@ -265,7 +265,7 @@ set_null(attribute *pattr, attribute *new, enum batch_op op)
  */
 
 int
-comp_null(struct attribute *attr, struct attribute *with)
+comp_null(attribute *attr, attribute *with)
 {
 	return 0;
 }
@@ -572,7 +572,7 @@ attrl_fixlink(pbs_list_head *phead)
  */
 
 void
-free_none(struct attribute *attr)
+free_none(attribute *attr)
 {
 	/* do nothing */
 	/* to be used for accrue_type attribute of job */
@@ -1752,7 +1752,7 @@ is_attr_set(const attribute *pattr)
  */
 
 int
-decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
+decode_sandbox(attribute *patr, char *name, char *rescn, char *val)
 {
 	char *pc;
 
@@ -1788,7 +1788,7 @@ decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
  */
 
 int
-decode_project(struct attribute *patr, char *name, char *rescn, char *val)
+decode_project(attribute *patr, char *name, char *rescn, char *val)
 {
 	char *pc;
 
@@ -1801,4 +1801,27 @@ decode_project(struct attribute *patr, char *name, char *rescn, char *val)
 
 	return (decode_str(patr, name, rescn,
 		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
+}
+
+attribute *
+get_attr_generic(attribute *list, int attr_idx)
+{
+	return &(list[attr_idx]);
+}
+
+void
+free_attr_generic(attribute_def *attr_def, attribute *pattr, int attr_idx)
+{
+	if (attr_def != NULL && pattr != NULL && attr_def[attr_idx].at_free != NULL)
+		attr_def[attr_idx].at_free(pattr);
+}
+
+pbs_list_head
+get_attr_list(const attribute *pattr)
+{
+	const pbs_list_head dummy = {(pbs_list_link *)&dummy, (pbs_list_link *)&dummy, NULL};
+	if (pattr)
+		return pattr->at_val.at_list;
+	else
+		return dummy;
 }

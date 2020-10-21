@@ -100,20 +100,16 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 	struct array_strings *parst;
 	char	*pn;
 	char	*ptr;
-	int	idx_owner;
-	attribute *objattrs;
+	attribute *objattr;
 	static char username[PBS_MAXUSER+1];
 
 	memset(username,'\0', sizeof(username));
 
 	/* set index and pointers based on object type */
-	if (objtype == JOB_OBJECT) {
-		idx_owner = (int)JOB_ATR_job_owner;
-		objattrs = &((job *)pobj)->ji_wattr[0];
-	} else {
-		idx_owner = (int)RESV_ATR_resv_owner;
-		objattrs = &((resc_resv *)pobj)->ri_wattr[0];
-	}
+	if (objtype == JOB_OBJECT)
+		objattr = get_jattr((job *)pobj, JOB_ATR_job_owner);
+	else
+		objattr = &((resc_resv *)pobj)->ri_wattr[RESV_ATR_resv_owner];
 
 	/* search the User_List attribute */
 
@@ -134,7 +130,7 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 		}
 	}
 	if (!is_attr_set(pattr)) {	/* if no user is specified, default to the object owner ( 3.) */
-		hit = get_attr_str(&objattrs[idx_owner]);
+		hit = get_attr_str(objattr);
 		*isowner = 1;
 	}
 
@@ -212,10 +208,8 @@ determine_egroup(void *pobj, int objtype, attribute *pattr)
  * @brief
  * 		set_objexid - validate and set the object's effective/execution username
  *		and its effective/execution group name attributes.  For jobs, these
- *		are the attributes at positions JOB_ATR_euser and JOB_ATR_egroup in
- *		the attribute array ji_wattr[] of the job structure.
- *		For reservations, they	are the attributes at positions
- *		RESV_ATR_euser and RESV_ATR_egroup in array ri_wattr of the
+ *		are JOB_ATR_euser and JOB_ATR_egroup attributes of the job structure.
+ *		For reservations, they are RESV_ATR_euser and RESV_ATR_egroup of the
  *		resc_resv structure.
  *
  * @par	Functionality:
@@ -276,6 +270,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		idx_egroup = (int)JOB_ATR_egroup;
 		idx_acct = (int)JOB_ATR_account;
 		obj_attr_def = job_attr_def;
+		// FIXME: below
 		objattrs = ((job *)pobj)->ji_wattr;
 		owner = get_jattr_str(pobj, idx_owner);
 		paclRoot = &server.sv_attr[(int)SVR_ATR_AclRoot];

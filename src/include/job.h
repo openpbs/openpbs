@@ -159,7 +159,6 @@ struct grpcache {
  * Most of the attributes are maintained in a decoded or parsed form.
  * This allows quick access to the attribute and resource values
  * when making decisions about the job (scheduling, routing, ...),
- * see ji_wattr[].
  *
  * Any attribute or resource which is not recognized on this server
  * are kept in an "attrlist", a linked list of the "external"
@@ -172,7 +171,7 @@ struct grpcache {
 
 /*
  * The following job_atr enum provide an index into the array of
- * decoded job attributes, ji_wattr[], for quick access.
+ * decoded job attributes, for quick access.
  * Most of the attributes here are "public", but some are Read Only,
  * Private, or even Internal data items; maintained here because of
  * their variable size.
@@ -1030,6 +1029,8 @@ char get_job_state(const job *pjob);
 int get_job_state_num(const job *pjob);
 long get_job_substate(const job *pjob);
 char *get_jattr_str(const job *pjob, int attr_idx);
+struct array_strings *get_jattr_arst(const job *pjob, int attr_idx);
+pbs_list_head get_jattr_list(const job *pjob, int attr_idx);
 long get_jattr_long(const job *pjob, int attr_idx);
 svrattrl *get_jattr_usr_encoded(const job *pjob, int attr_idx);
 svrattrl *get_jattr_priv_encoded(const job *pjob, int attr_idx);
@@ -1044,6 +1045,7 @@ int is_jattr_set(const job *pjob, int attr_idx);
 void free_jattr(job *pjob, int attr_idx);
 void mark_jattr_not_set(job *pjob, int attr_idx);
 void mark_jattr_set(job *pjob, int attr_idx);
+attribute *get_jattr(const job *pjob, int attr_idx);
 
 /*
  *	The filesystem related recovery/save routines are renamed

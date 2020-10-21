@@ -93,7 +93,7 @@
  */
 
 int
-decode_c(struct attribute *patr, char *name, char *rescn, char *val)
+decode_c(attribute *patr, char *name, char *rescn, char *val)
 {
 	if ((val == NULL) || (strlen(val) == 0)) {
 		ATR_UNSET(patr);
@@ -167,7 +167,7 @@ encode_c(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname
  */
 
 int
-set_c(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_c(attribute *attr, attribute *new, enum batch_op op)
 {
 	assert(attr && new && (new->at_flags & ATR_VFLAG_SET));
 
@@ -205,7 +205,7 @@ set_c(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_c(struct attribute *attr, struct attribute *with)
+comp_c(attribute *attr, attribute *with)
 {
 	if (!attr || !with)
 		return (-1);

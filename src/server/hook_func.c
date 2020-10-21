@@ -2550,7 +2550,7 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 	if (rc == 0) {
 		if (job_attr_def[(int)JOB_ATR_exectime].at_action) {
 			rc = job_attr_def[(int)JOB_ATR_exectime].at_action(
-				&pjob->ji_wattr[(int)JOB_ATR_exectime],
+				get_jattr(pjob, JOB_ATR_exectime),
 				pjob, ATR_ACTION_ALTER);
 			if (rc != 0) {
 				log_err(PBSE_INTERNAL, __func__,
@@ -2782,7 +2782,7 @@ set_attribute(job *pjob, int attr_index,
 	if (rc == 0) {
 		if (job_attr_def[attr_index].at_action) {
 			rc = job_attr_def[attr_index].at_action(
-				&pjob->ji_wattr[attr_index],
+				get_jattr(pjob, attr_index),
 				pjob, ATR_ACTION_ALTER);
 			if (rc != 0) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -2806,9 +2806,7 @@ set_attribute(job *pjob, int attr_index,
 			hook_name,
 			attr_name,
 			new_str);
-		if (job_attr_def[attr_index].at_free) {
-			free_jattr(pjob, attr_index);
-		}
+		free_jattr(pjob, attr_index);
 	} else {
 		FILE	*fp_debug_out = NULL;
 
@@ -2866,7 +2864,7 @@ set_job_varlist(job *pjob, char *hook_name, char *msg, int msg_len)
 		/* transform raw Variable_List data into a string */
 		/* of the form "<var1>=<val1>,<var2>=<val2>,..." with */
 		/* special characters escaped with a backslash. */
-		astr = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
+		astr = get_jattr_arst(pjob, JOB_ATR_variables);
 		elen = 0;
 		for (i=0; i<astr->as_usedptr; ++i) {
 			pfrom = astr->as_string[i];
@@ -3010,7 +3008,7 @@ set_job_reslist(job *pjob, char *hook_name, char *msg, int msg_len,
 
 	fp_debug_out = pbs_python_get_hook_debug_output_fp();
 
-	jb = &pjob->ji_wattr[(int)JOB_ATR_resource];
+	jb = get_jattr(pjob, JOB_ATR_resource);
 	np = strtok(val_str_dup, ",");
 	while (np != NULL) {
 		resc = np;
@@ -3128,7 +3126,7 @@ struct attribute_jobmap {
 /**
  * @brief
  *		Initializes each entry of the attribute_jobmap table (a_map) to
- *		the value corresponding to the attribute entry in pjob->ji_wattr[]
+ *		the value corresponding to the attribute entry in job attributes
  *		table.
  *
  * @see
@@ -3150,17 +3148,14 @@ attribute_jobmap_init(job *pjob, struct attribute_jobmap *a_map)
 	}
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
-		if (is_attr_set(&a_map[index].attr_val)) {
-			if (job_attr_def[a_index].at_free) {
-				job_attr_def[a_index].at_free(&a_map[index].attr_val);
-			}
-		}
+		if (is_attr_set(&a_map[index].attr_val))
+			free_attr_generic(job_attr_def, &a_map[index].attr_val, a_index);
 
 		clear_attr(&a_map[index].attr_val, &job_attr_def[a_index]);
 		if (is_jattr_set(pjob, a_index)) {
 			job_attr_def[a_index].at_set(
 				&a_map[index].attr_val,
-				&pjob->ji_wattr[a_index], SET);
+				get_jattr(pjob, a_index), SET);
 		}
 	}
 }
@@ -3188,11 +3183,8 @@ attribute_jobmap_clear(struct attribute_jobmap *a_map)
 	}
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
-		if (is_attr_set(&a_map[index].attr_val)) {
-			if (job_attr_def[a_index].at_free) {
-				job_attr_def[a_index].at_free(&a_map[index].attr_val);
-			}
-		}
+		if (is_attr_set(&a_map[index].attr_val))
+			free_attr_generic(job_attr_def, &a_map[index].attr_val, a_index);
 		clear_attr(&a_map[index].attr_val, &job_attr_def[a_index]);
 	}
 }
@@ -3229,7 +3221,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 		if (attr_name == NULL)
 			continue;
 
-		pattr = &pjob->ji_wattr[a_index];	/* current value */
+		pattr = get_jattr(pjob, a_index);	/* current value */
 		pattr_o = &a_map[index].attr_val;	/* original value */
 		pdef = &job_attr_def[a_index];
 
@@ -5060,7 +5052,7 @@ add_pending_mom_hook_action(void *minfo, char *hookname, unsigned int action)
 		if (minfo_array[i] == NULL)
 			continue;
 
-		if ( !minfo_array[i]->mi_data || 
+		if ( !minfo_array[i]->mi_data ||
 				(((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
 			continue;
 		}
@@ -5315,7 +5307,7 @@ mk_deferred_hook_info(int index, int event, long long int tid)
 /**
  * @brief
  *		check if there is any new pending action
- *	
+ *
  * @param[in] minfo - pointer to mom info
  * @param[in] pact - pointer to current hook action
  * @param[in] j - index of pact in minfo->mi_action[]
@@ -6067,7 +6059,7 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
  * 		handle_hook_sync_timeout
  *
  * @param[in]	tid	- transaction id of timedout hook sync sequence
- * 
+ *
  * @return void
  */
 void

@@ -339,7 +339,7 @@ get_resc_used(job *pjob, char **resc_used, int *resc_used_size)
 	else if (get_jattr_priv_encoded(pjob, JOB_ATR_resc_used) != NULL)
 		patlist = get_jattr_priv_encoded(pjob, JOB_ATR_resc_used);
 	else
-		encode_resc(&pjob->ji_wattr[ JOB_ATR_resc_used],
+		encode_resc(get_jattr(pjob, JOB_ATR_resc_used),
 		&temp_head, job_attr_def[ JOB_ATR_resc_used].at_name,
 		NULL, ATR_ENCODE_CLIENT, &patlist);
 	/*
@@ -385,7 +385,7 @@ get_walltime(const job *jp, int res)
 	resource	*pres;
 
 	rscdef = &svr_resc_def[RESC_WALLTIME];
-	pres = find_resc_entry(&jp->ji_wattr[res], rscdef);
+	pres = find_resc_entry(get_jattr(jp, res), rscdef);
 	if (pres == NULL)
 		return (-1);
 	else if (!is_attr_set(&pres->rs_value))
@@ -591,7 +591,7 @@ acct_job(const job *pjob, int type, char *buf, int len)
 		pbs_list_head phead;
 		svrattrl *svrattrl_list;
 		CLEAR_HEAD(phead);
-		job_attr_def[JOB_ATR_depend].at_encode(&pjob->ji_wattr[JOB_ATR_depend],
+		job_attr_def[JOB_ATR_depend].at_encode(get_jattr(pjob, JOB_ATR_depend),
 			&phead, job_attr_def[JOB_ATR_depend].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 		if (svrattrl_list != NULL) {
 			nd = sizeof(DEPEND_FMT) + strlen(svrattrl_list->al_value);
@@ -672,7 +672,7 @@ acct_job(const job *pjob, int type, char *buf, int len)
 	old_perm = resc_access_perm;
 	resc_access_perm = READ_ONLY;
 	(void)job_attr_def[att_index].at_encode(
-		&pjob->ji_wattr[att_index],
+		get_jattr(pjob, att_index),
 		&attrlist,
 		job_attr_def[att_index].at_name,
 		NULL,
@@ -1727,7 +1727,7 @@ build_common_data_for_job_update(const job *pjob, int type, char *buf, int len)
 		else
 			att_index = JOB_ATR_resource;
 		job_attr_def[att_index].at_encode(
-			&pjob->ji_wattr[att_index],
+			get_jattr(pjob, att_index),
 			&attrlist,
 			job_attr_def[att_index].at_name,
 			NULL,
@@ -1826,7 +1826,7 @@ build_common_data_for_job_update(const job *pjob, int type, char *buf, int len)
 		else
 			att_index = JOB_ATR_resource;
 		(void)job_attr_def[att_index].at_encode(
-			&pjob->ji_wattr[att_index],
+			get_jattr(pjob, att_index),
 			&attrlist,
 			job_attr_def[att_index].at_name,
 			NULL,
@@ -1988,7 +1988,7 @@ account_job_update(job *pjob, int type)
 		len_upd = 0;
 		attr_index = JOB_ATR_resc_used;
 	}
-	job_attr_def[attr_index].at_encode(&pjob->ji_wattr[attr_index],
+	job_attr_def[attr_index].at_encode(get_jattr(pjob, attr_index),
 					   &attrlist,
 					   job_attr_def[attr_index].at_name,
 					   NULL,
@@ -2091,7 +2091,7 @@ account_job_update(job *pjob, int type)
 		pb += i;
 		len -= i;
 
-		set_attr_with_attr(&job_attr_def[JOB_ATR_resc_used_acct], &pjob->ji_wattr[JOB_ATR_resc_used_acct], &pjob->ji_wattr[JOB_ATR_resc_used], INCR);
+		set_attr_with_attr(&job_attr_def[JOB_ATR_resc_used_acct], get_jattr(pjob, JOB_ATR_resc_used_acct), get_jattr(pjob, JOB_ATR_resc_used), INCR);
 	}
 
 writeit:
@@ -2133,9 +2133,10 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 
 	CLEAR_HEAD(phead);
 	for (i = 0; i < JOB_ATR_LAST; i++) {
-		if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
+		attribute *pattr = get_jattr(pjob, i);
+		if (pattr->at_flags & ATR_VFLAG_MODIFY) {
 			svrattrl *svrattrl_list = NULL;
-			job_attr_def[i].at_encode(&pjob->ji_wattr[i], &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
+			job_attr_def[i].at_encode(pattr, &phead, job_attr_def[i].at_name, NULL, ATR_ENCODE_CLIENT, &svrattrl_list);
 			for (cur_plist = plist; cur_plist != NULL; cur_plist = (svrattrl *)GET_NEXT(cur_plist->al_link)) {
 				int j;
 				int ignore = 0;
@@ -2148,7 +2149,7 @@ void log_alter_records_for_attrs(job *pjob, svrattrl *plist) {
 					continue;
 				else {
 					for (cur_svr = svrattrl_list; cur_svr != NULL; cur_svr = (svrattrl *)GET_NEXT(cur_svr->al_link)) {
-						if (pjob->ji_wattr[i].at_type == ATR_TYPE_RESC) {
+						if (pattr->at_type == ATR_TYPE_RESC) {
 							if (cur_plist->al_resc != NULL) {
 								if (strcmp(cur_plist->al_resc, cur_svr->al_resc) == 0) {
 									char *fmt;
