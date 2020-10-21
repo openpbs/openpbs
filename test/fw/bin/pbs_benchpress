@@ -75,8 +75,8 @@ class PTLNoseConfig(nose.config.Config):
         nose_logger = logging.getLogger('nose')
         if self.log_format:
             formatter = logging.Formatter(self.log_format)
-        for handler in nose_logger.handlers:
-            handler.setFormatter(formatter)
+            for handler in nose_logger.handlers:
+                handler.setFormatter(formatter)
         if self.outfile_handler:
             nose_logger.addHandler(self.outfile_handler)
 
@@ -539,4 +539,5 @@ if __name__ == '__main__':
         verbosity = 7 if nosedebug else 2,
         stopOnError=stoponfail)
     nose.main(defaultTest=tests, argv=[sys.argv[0]], config=nose_config)
-    outfile_hdlr.close()
+    if outfile_hdlr:
+        outfile_hdlr.close()
