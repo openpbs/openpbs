@@ -1632,7 +1632,7 @@ class JSONDb(DBType):
             self.__write_test_data(data['testdata'])
 
     def close(self, result=None):
-        if result is not None:
+        if result is not None and self.jdata:
             dur = str(result.stop - result.start)
             self.jdata['test_summary']['test_duration'] = dur
             with open(self.dbpath, 'w') as fd:
