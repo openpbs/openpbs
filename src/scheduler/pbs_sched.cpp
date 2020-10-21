@@ -540,13 +540,16 @@ static void
 connect_svrpool()
 {
 	int i;
-	svr_conn_t *svr_conns;
+	svr_conn_t *svr_conns_primary = NULL;
+	svr_conn_t *svr_conns_secondary = NULL;
 	int registered = 0;
+	int num_conf_svrs = get_num_servers();
 
 
 	while (clust_primary_sock < 0 || clust_secondary_sock < 0 || registered == 0) {
 		if (clust_primary_sock < 0) {
 			clust_primary_sock = pbs_connect(NULL);
+			/* clust_primary_sock later is used to fetch primary connections for all the servers */
 			if (clust_primary_sock < 0) {
 				/* wait for 2s for not to burn too much CPU, and then retry connection */
 				sleep(2);
@@ -554,8 +557,33 @@ connect_svrpool()
 			}
 		}
 		clust_secondary_sock = pbs_connect(NULL);
+		/* clust_secondary_sock later is used to fetch secondary connections for all the servers */
 		if (clust_secondary_sock < 0) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
+			sleep(2);
+			continue;
+		}
+
+		svr_conns_primary =  static_cast<svr_conn_t *>(get_conn_servers(clust_primary_sock));
+		svr_conns_secondary =  static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
+
+		for (i = 0; i < num_conf_svrs; i++) {
+			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
+				clust_primary_sock = -1;
+				break;
+			}
+			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
+				clust_secondary_sock = -1;
+				break;
+			}
+			
+		}
+
+		if (i != num_conf_svrs) {
+			/* If we reached here means one of the servers is down or not connected
+			 * we should go to the top of the loop again and call pbs_connect
+			 * Also wait for 2s for not to burn too much CPU
+			 */
 			sleep(2);
 			continue;
 		}
@@ -570,13 +598,10 @@ connect_svrpool()
 		
 	}
 
-	svr_conns =  static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (tpp_em_add_fd(poll_context, svr_conns[i].sd, EM_IN | EM_HUP | EM_ERR) < 0) {
-			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns[i].name);
-			pbs_disconnect(clust_primary_sock);
-			pbs_disconnect(clust_secondary_sock);
+		if (tpp_em_add_fd(poll_context, svr_conns_secondary[i].sd, EM_IN | EM_HUP | EM_ERR) < 0) {
+			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns_secondary[i].name);
 			die(-1);
 		}
 	}

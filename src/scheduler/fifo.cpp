@@ -489,7 +489,6 @@ int
 schedule(int sd, const sched_cmd *cmd)
 {
 	switch (cmd->cmd) {
-		case SCH_ERROR:
 		case SCH_SCHEDULE_NULL:
 		case SCH_RULESET:
 			/* ignore and end cycle */
@@ -762,8 +761,9 @@ static int
 get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
 	int i;
-	svr_conn_t *svr_conns = static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
 	sched_cmd cmd;
+	int num_conf_servers = get_num_servers();
+	svr_conn_t *svr_conns = static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
 
 	for (i = 0; i < get_num_servers(); i++) {
 		int rc;
@@ -781,7 +781,12 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 
 		if (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
 			*high_prior_cmd = cmd;
-			return 1;
+			if (i == num_conf_servers - 1)  {
+				/* We need to return only after checking all servers. This way even if multiple
+				 * servers send SCH_SCHEDULE_RESTART_CYCLE we only have to consider one such request
+				 */
+				return 1;
+			}
 		} else {
 			if (cmd.cmd == SCH_SCHEDULE_AJOB)
 				qrun_list[qrun_list_size++] = cmd;

@@ -57,7 +57,6 @@ struct sched_cmd {
 /* server to scheduler commands: */
 enum svr_sched_cmd
 {
-	SCH_ERROR = -1,
 	SCH_SCHEDULE_NULL,
 	SCH_SCHEDULE_NEW,	/* New job queued or eligible	*/
 	SCH_SCHEDULE_TERM,	/* Running job terminated	*/
