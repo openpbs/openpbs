@@ -564,8 +564,8 @@ connect_svrpool()
 			continue;
 		}
 
-		svr_conns_primary =  static_cast<svr_conn_t *>(get_conn_servers(clust_primary_sock));
-		svr_conns_secondary =  static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
+		svr_conns_primary =  static_cast<svr_conn_t *>(get_conn_svr_instances(clust_primary_sock));
+		svr_conns_secondary =  static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
 
 		for (i = 0; i < num_conf_svrs; i++) {
 			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
@@ -754,7 +754,7 @@ send_cycle_end()
 	svr_conn_t *svr_conns;
 	int i;
 	static int cycle_end_marker = 0;
-	svr_conns =  static_cast<svr_conn_t *>(get_conn_servers(clust_secondary_sock));
+	svr_conns =  static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
 
 	for (i = 0; i < get_num_servers(); i++) {
 		if (diswsi(svr_conns[i].sd, cycle_end_marker) != DIS_SUCCESS) {
