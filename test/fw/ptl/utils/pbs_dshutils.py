@@ -1555,15 +1555,28 @@ class DshUtils(object):
         """
         if (path is None) or (mode is None):
             return False
-        cmd = [self.which(hostname, 'chmod', level=level)]
-        if recursive:
-            cmd += ['-R']
-        mode = '{:o}'.format(mode)
-        cmd += [mode, path]
-        ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
-                           runas=runas, level=level)
-        if ret['rc'] == 0:
+        islocal = self.is_localhost(hostname)
+        if islocal and not runas and not sudo and not recursive:
+            self.logger.debug('os.chmod %s %s' % (path, oct(mode)))
+            try:
+                os.chmod(path, mode)
+            except OSError as err:
+                if logerr:
+                    self.logger.error("os.chmod failed with err:%s" % str(err))
+                else:
+                    self.logger.debug("os.chmod failed with err:%s" % str(err))
+                return False
             return True
+        else:
+            cmd = [self.which(hostname, 'chmod', level=level)]
+            if recursive:
+                cmd += ['-R']
+            mode = '{:o}'.format(mode)
+            cmd += [mode, path]
+            ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
+                            runas=runas, level=level)
+            if ret['rc'] == 0:
+                return True
         return False
 
     def chown(self, hostname=None, path=None, uid=None, gid=None, sudo=False,
