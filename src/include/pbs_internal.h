@@ -563,6 +563,7 @@ extern char *convert_time(char *);
 extern struct batch_status *bs_isort(struct batch_status *bs,
 	int (*cmp_func)(struct batch_status*, struct batch_status *));
 extern struct batch_status *bs_find(struct batch_status *, const char *);
+extern void init_bstat(struct batch_status *);
 
 
 #endif /* _USRDLL */

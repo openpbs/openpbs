@@ -69,7 +69,6 @@
 
 extern struct server server;
 extern char   server_name[];
-extern char   *pbs_server_name;
 
 /* External functions */
 extern int svr_chk_histjob(job *);

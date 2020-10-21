@@ -125,6 +125,7 @@
 #include "server_info.h"
 #include "attribute.h"
 #include "multi_threading.h"
+#include "libpbs.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -1785,7 +1786,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 
 	if (pattr != NULL && (flags & UPDATE_NOW)) {
 		int rc;
-		rc = send_attr_updates(pbs_sd, resresv->name, pattr);
+		rc = send_attr_updates(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, pattr);
 		free_attrl_list(pattr);
 		return rc;
 	}
@@ -1829,7 +1830,7 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 			return 0;
 	}
 
-	rc = send_attr_updates(pbs_sd, job->name, job->job->attr_updates);
+	rc = send_attr_updates(get_svr_inst_fd(pbs_sd, job->job->svr_inst_id), job->name, job->job->attr_updates);
 
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;

@@ -58,52 +58,6 @@
 extern char * PBS_get_server(char *, char *, uint *);
 
 
-/**
- * @brief
- * 	get_available_conn:
- *	get one of the available connection from multisvr server list
- *
- * @param[in] svr_connections - pointer to array of server connections
- * 
- * @return int
- * @retval -1: error
- * @retval != -1 fd corresponding to the connection
- */
-int
-get_available_conn(svr_conn_t *svr_connections)
-{
-	int i;
-
-	for (i = 0; i < get_num_servers(); i++)
-		if (svr_connections[i].state == SVR_CONN_STATE_UP)
-			return svr_connections[i].sd;
-
-	return -1;
-}
-
-/**
- * @brief
- * random_srv_conn:
- *	get random server sd - It will choose a random sd from available no of servers.
- * @param[in] svr_connections - pointer to array of server connections
- * 
- * @return int
- * @retval -1: error
- * @retval != -1: fd corresponding to the connection
- */
-int
-random_srv_conn(svr_conn_t *svr_connections)
-{
-	int ind = 0;
-
-	ind =  rand_num() % get_num_servers();
-
-	if (svr_connections[ind].state == SVR_CONN_STATE_UP)
-		return svr_connections[ind].sd;
-		
-	return get_available_conn(svr_connections);
-}
-
 enum state { TRANSIT_STATE,
 	     QUEUE_STATE,
 	     HELD_STATE,
@@ -440,7 +394,7 @@ end:
 
 /**
  * @brief
- * append_bs:
+ * move_append_bs:
  *	append b to end of a. also remove references of b from its batch status
  * @param[in,out] a - attr list where b needs to be appended
  * @param[in] b - batch status which needs to be appended to a
@@ -451,7 +405,7 @@ end:
  * @return void
  */
 static void
-append_bs(struct batch_status *a, struct batch_status *b, struct batch_status *prev_b, struct batch_status *head_a, struct batch_status **head_b)
+move_append_bs(struct batch_status *a, struct batch_status *b, struct batch_status *prev_b, struct batch_status *head_a, struct batch_status **head_b)
 {
 	if (!a) {
 		for (a = head_a; a->next; a = a->next)
@@ -492,7 +446,7 @@ aggregate_queue(struct batch_status *sv1, struct batch_status **sv2)
 		}
 
 		if (!a)
-			append_bs(a, b, prev_b, sv1, sv2);
+			move_append_bs(a, b, prev_b, sv1, sv2);
 	}
 }
 
@@ -536,57 +490,49 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	struct batch_status *ret = NULL;
 	struct batch_status *next = NULL;
 	struct batch_status *cur = NULL;
-	svr_conn_t *svr_connections = get_conn_svr_instances(c);
-	int num_cfg_svrs = get_num_servers();
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvrs = get_num_servers();
 	int *failed_conn;
-	char server_out[PBS_MAXSERVERNAME + 1];
-	char server_name[PBS_MAXSERVERNAME + 1];
 	int single_itr = 0;
-	char job_id_out[PBS_MAXCLTJOBID];
-	uint server_port;
 	int start = 0;
 	int ct;
 	struct batch_status *last = NULL;
 
-	if (!svr_connections)
+	if (!svr_conns)
 		return NULL;
 
-	failed_conn = calloc(num_cfg_svrs, sizeof(int));
+	failed_conn = calloc(nsvrs, sizeof(int));
 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
 
-	if (pbs_verify_attributes(random_srv_conn(svr_connections), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
+	if (pbs_verify_attributes(random_srv_conn(svr_conns), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
 		return NULL;
 
-	if ((parent_object == MGR_OBJ_JOB) && (get_server(id, job_id_out, server_out) == 0)) {
-		if (PBS_get_server(server_out, server_name, &server_port)) {
+	if (parent_object == MGR_OBJ_JOB) {
+		if ((start = starting_index(id)) == -1)
+			start = 0;
+		else
 			single_itr = 1;
-			for (i = 0; i < num_cfg_svrs; i++) {
-				if (!strcmp(server_name, pbs_conf.psi[i].name) && (server_port == pbs_conf.psi[i].port)) {
-					start = i;
-					break;
-				}
-			}
-		}
 	}
 
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return NULL;
 
-	for (i = start, ct = 0; ct < num_cfg_svrs; i = (i + 1) % num_cfg_svrs, ct++) {
-		if (svr_connections[i].state != SVR_CONN_STATE_UP) {
+	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+
+		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP) {
 			rc = PBSE_NOSERVER;
 			continue;
 		}
 
 		if (cmd == PBS_BATCH_SelStat) {
-			rc = PBSD_select_put(svr_connections[i].sd, PBS_BATCH_SelStat, (struct attropl *) attrib, rattrib, extend);
+			rc = PBSD_select_put(svr_conns[i]->sd, PBS_BATCH_SelStat, (struct attropl *) attrib, rattrib, extend);
 		} else {
 			if (id == NULL)
 				id = "";
 
-			rc = PBSD_status_put(svr_connections[i].sd, cmd, id, (struct attrl *) attrib, extend, PROT_TCP, NULL);
+			rc = PBSD_status_put(svr_conns[i]->sd, cmd, id, (struct attrl *) attrib, extend, PROT_TCP, NULL);
 		}
 
 		if (rc) {
@@ -596,12 +542,14 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 			break;
 	}
 
-	for (i = start, ct = 0; ct < num_cfg_svrs; i = (i + 1) % num_cfg_svrs, ct++) {
+	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
-		if (svr_connections[i].state != SVR_CONN_STATE_UP || failed_conn[i])
+		if (!svr_conns[i] ||
+		    svr_conns[i]->state != SVR_CONN_STATE_UP ||
+		    failed_conn[i])
 			continue;
 
-		if ((next = PBSD_status_get(svr_connections[i].sd, &last))) {
+		if ((next = PBSD_status_get(svr_conns[i]->sd, &last))) {
 			if (!ret) {
 				ret = next;
 				cur = last;
@@ -659,12 +607,12 @@ struct batch_status *
 PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend, int parent_object)
 {
 	struct batch_status *ret = NULL;
-	svr_conn_t *svr_connections = get_conn_svr_instances(c);
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
 
-	if (!svr_connections)
+	if (!svr_conns)
 		return NULL;
 
-	if ((c = random_srv_conn(svr_connections)) < 0)
+	if ((c = random_srv_conn(svr_conns)) < 0)
 		return NULL;
 
 	/* initialize the thread context data, if not already initialized */

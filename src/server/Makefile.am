@@ -88,6 +88,7 @@ pbs_server_bin_SOURCES = \
 	job_route.c \
 	licensing_func.c \
 	mom_info.c \
+	multi_svr.c \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \

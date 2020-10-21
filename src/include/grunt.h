@@ -65,6 +65,7 @@ extern int parse_node_resc_r(char *str, char **nodep, int *pnelem, int *nlkv, st
 extern char *parse_plus_spec(char *selstr, int *rc);
 extern char *parse_plus_spec_r(char *selstr, char **last, int *hp);
 extern int parse_resc_equal_string(char *start, char **name, char **value, char **last);
+char *get_first_vnode(char *execvnode);
 #ifdef	__cplusplus
 }
 #endif

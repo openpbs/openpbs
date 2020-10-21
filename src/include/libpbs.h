@@ -110,7 +110,6 @@ extern int *__pbs_tcperrno_location(void);
 #endif
 
 extern char pbs_current_group[];
-extern pthread_key_t psi_key;
 
 #define NCONNECTS 50 /* max connections per client */
 #define PBS_MAX_CONNECTIONS 5000 /* Max connections in the connections array */
@@ -150,7 +149,8 @@ typedef struct svr_conn {
 } svr_conn_t;
 
 typedef struct svr_conns_list {
-	svr_conn_t *conn_arr;
+	int cfd;
+	svr_conn_t **conn_arr;
 	struct svr_conns_list *next; /* Pointer to next set of server connections,
 								in case client calls pbs_connect multiple times */
 } svr_conns_list_t;
@@ -294,18 +294,19 @@ struct batch_reply
 #define PBS_BATCH_DelHookFile		86
 /* Unused -- #define PBS_BATCH_MomRestart 87 */
 /* Unused -- #define PBS_BATCH_AuthExternal 88 */
-#define PBS_BATCH_HookPeriodic		89
-#define PBS_BATCH_RelnodesJob		90
-#define PBS_BATCH_ModifyResv		91
-#define PBS_BATCH_ResvOccurEnd		92
-#define PBS_BATCH_PreemptJobs		93
-#define PBS_BATCH_Cred			94
-#define PBS_BATCH_Authenticate		95
+#define PBS_BATCH_HookPeriodic    89
+#define PBS_BATCH_RelnodesJob     90
+#define PBS_BATCH_ModifyResv      91
+#define PBS_BATCH_ResvOccurEnd    92
+#define PBS_BATCH_PreemptJobs     93
+#define PBS_BATCH_Cred            94
+#define PBS_BATCH_Authenticate    95
 #define PBS_BATCH_ModifyJob_Async	96
-#define PBS_BATCH_AsyrunJob_ack	97
-#define PBS_BATCH_RegisterSched	98
-#define PBS_BATCH_ModifyVnode       99
-#define PBS_BATCH_DeleteJobList	100
+#define PBS_BATCH_AsyrunJob_ack  	97
+#define PBS_BATCH_RegisterSched  	98
+#define PBS_BATCH_ModifyVnode    	99
+#define PBS_BATCH_DeleteJobList  	100
+#define PBS_BATCH_ServerReady    	101
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -329,13 +330,14 @@ struct batch_reply
 #define FAILOVER_SecdTakeOver	5 /* Primary down, secondary take over */
 
 #define EXTEND_OPT_IMPLICIT_COMMIT ":C:" /* option added to pbs_submit() extend parameter to request implicit commit */
+#define EXTEND_OPT_NEXT_MSG_TYPE "next_msg_type"
+#define EXTEND_OPT_NEXT_MSG_PARAM "next_msg_param"
 
 int is_compose(int, int);
 int is_compose_cmd(int, int, char **);
 void PBS_free_aopl(struct attropl *);
 void advise(char *, ...);
-int PBSD_rdytocmt(int, char *, int, char **);
-int PBSD_commit(int, char *, int, char **);
+int PBSD_commit(int, char *, int, char **, char *);
 int PBSD_jcred(int, int, char *, int, int, char **);
 int PBSD_jscript(int, char *, int, char **);
 int PBSD_jscript_direct(int, char *, int, char **);
@@ -359,7 +361,6 @@ void PBSD_FreeReply(struct batch_reply *);
 struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 struct batch_status *PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object);
 struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *);
-extern int random_srv_conn(svr_conn_t *);
 preempt_job_info *PBSD_preempt_jobs(int, char **);
 struct batch_status *PBSD_status_get(int, struct batch_status **last);
 char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
@@ -397,11 +398,14 @@ int DIS_reply_read(int, struct batch_reply *, int);
 int tcp_pre_process(conn_t *);
 char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
+int PBSD_server_ready(int);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 void *get_conn_svr_instances(int);
-void dealloc_conn_list_single(int parentfd);
 int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 int get_svr_inst_fd(int vfd, char *svr_inst_id);
+int random_srv_conn(svr_conn_t **);
+int starting_index(char *);
+char *PBS_get_server(char *, char *, uint *);
 
 #ifdef __cplusplus
 }

@@ -730,6 +730,8 @@ update_isrunhook(attribute *pattr)
 	}
 }
 
+extern int num_pending_peersvr_rply;
+
 /**
  * @brief
  * 		req_stat_svr - service the Status Server Request
@@ -797,6 +799,56 @@ req_stat_svr(struct batch_request *preq)
 		reply_badattr(PBSE_NOATTR, bad, pal, preq);
 	else
 		reply_send(preq);
+}
+
+/**
+ * @brief
+ * 		service the Server Ready request
+ *
+ * @param[in]	ptask	-	work task which contains the request
+ * 
+ * @return void
+ */
+void
+req_stat_svr_ready(struct work_task *ptask)
+{
+	struct batch_request *preq;
+	struct batch_reply *preply;
+	conn_t *conn;
+
+	/* allocate a reply structure and a status sub-structure */
+
+	if (!ptask || !ptask->wt_parm1)
+		return;
+
+	preq = ptask->wt_parm1;
+
+	if ((conn = get_conn(preq->rq_conn)) == NULL) {
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+
+	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
+
+		if (num_pending_peersvr_rply > 0) {
+
+			if (set_task(WORK_Deferred_Reply, preq->rq_conn, req_stat_svr_ready, (void *) preq) == NULL) {
+				log_err(errno, __func__, "could not set_task");
+				return;
+			}
+
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				  "Server is not ready to serve scheduler stat request, Deferring reply.");
+			return;
+		}
+	}
+
+	preply = &preq->rq_reply;
+	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
+	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
+
+	reply_send(preq);
 }
 
 /**

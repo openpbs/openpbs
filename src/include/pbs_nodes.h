@@ -90,6 +90,7 @@ struct mominfo {
 	int		mi_num_action; /* # of hook actions in mi_action */
 };
 typedef struct mominfo mominfo_t;
+typedef struct mominfo svrinfo_t;
 
 /*
  * The following structure is used by the Server for each Mom.
@@ -414,7 +415,7 @@ extern  void	momptr_down(mominfo_t *, char *);
 extern  void	momptr_offline_by_mom(mominfo_t *, char *);
 extern  void	momptr_clear_offline_by_mom(mominfo_t *, char *);
 extern  void	   delete_mom_entry(mominfo_t *);
-extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *);
+extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *, int);
 extern  void       delete_svrmom_entry(mominfo_t *);
 extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);
@@ -461,7 +462,7 @@ extern int		create_vmap(void **);
 extern void		destroy_vmap(void *);
 extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
-extern  int		open_momstream(mominfo_t *);
+extern  int		open_tppstream(mominfo_t *);
 
 #ifdef	__cplusplus
 }

@@ -468,6 +468,7 @@ enum mgr_obj {
 #define PBS_MAXQUEUENAME	15		/* max queue name length */
 #define PBS_MAXJOBNAME  	230		/* max job name length */
 #define PBS_MAXSERVERNAME	PBS_MAXHOSTNAME	/* max server name length */
+#define MAX_SVR_ID		(PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 1)	/* svr_id is of the form sever_name:port */
 #define PBS_MAXSEQNUM		12		/* max sequence number length */
 #define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
 #define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
@@ -501,6 +502,10 @@ enum batch_op {	SET, UNSET, INCR, DECR,
 #define NOMAIL  			"nomail"
 #define SUPPRESS_EMAIL  		"suppress_email"
 #define DELETEHISTORY			"deletehist"
+
+/* attributes that may be passsed by pbs_runjob() api to the server via its extend parameter*/
+
+#define SERVER_IDENTIFIER		"run_on"
 /*
  ** This structure is identical to attropl so they can be used
  ** interchangably.  The op field is not used.
@@ -522,10 +527,10 @@ struct attropl {
 };
 
 struct batch_status {
-	struct batch_status *next;
-	char		    *name;
-	struct attrl	    *attribs;
-	char		    *text;
+	struct batch_status	*next;
+	char			*name;
+	struct attrl		*attribs;
+	char			*text;
 };
 
 struct batch_deljob_status {

@@ -76,7 +76,7 @@ enum wtask_delete_option {
 };
 
 struct work_task  {
-	pbs_list_link	 wt_linkall;	/* link to event type work list */
+	pbs_list_link	 wt_linkevent;	/* link to event type work list */
 	pbs_list_link	 wt_linkobj;	/* link to others of same object */
 	pbs_list_link	 wt_linkobj2;   /* link to another set of similarity */
 	long		 wt_event;	/* event id: time, pid, socket, ... */
@@ -91,12 +91,14 @@ struct work_task  {
 };
 
 extern struct work_task *set_task(enum work_type, long event, void (*func)(), void *param);
+extern int convert_work_task(struct work_task *ptask, enum work_type);
 extern void clear_task(struct work_task *ptask);
 extern void dispatch_task(struct work_task *);
 extern void delete_task(struct work_task *);
 extern void delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wtask_delete_option option);
 extern int  has_task_by_parm1(void *parm1);
 extern time_t default_next_task(void);
+extern struct work_task *find_work_task(enum work_type, void *, void *);
 
 #ifdef	__cplusplus
 }

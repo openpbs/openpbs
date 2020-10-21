@@ -296,11 +296,22 @@ reply_send(struct batch_request *request)
 #ifndef PBS_MOM
 	struct work_task   *ptask;
 #endif	/* PBS_MOM */
-	int		    rc = 0;
-	int		    sfds = request->rq_conn;		/* socket */
+	int	rc = 0;
+	int	sfds;		/* socket */
+	int	rq_type;
 
-	if (request && (request->rq_type == PBS_BATCH_ModifyJob_Async ||
-			request->rq_type == PBS_BATCH_AsyrunJob)) {
+	if (request == NULL)
+		return 0;
+
+	sfds = request->rq_conn;
+	rq_type = request->rq_type;
+
+#ifndef PBS_MOM
+	if (request->rq_type == PBS_BATCH_MoveJob)
+		rq_type = request->rq_ind.rq_move.orig_rq_type;
+#endif
+
+	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(request);
 		return 0;
 	}
@@ -342,17 +353,8 @@ reply_send(struct batch_request *request)
 		 * for freeing the batch_request structure.
 		 */
 
-		ptask = (struct work_task *)GET_NEXT(task_list_event);
-		while (ptask) {
-			if ((ptask->wt_type == WORK_Deferred_Local) &&
-				(ptask->wt_parm1 == (void *)request)) {
-				delete_link(&ptask->wt_linkall);
-				append_link(&task_list_immed,
-					&ptask->wt_linkall, ptask);
-				return (0);
-			}
-			ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-		}
+		ptask = find_work_task(WORK_Deferred_Local, request, NULL);
+		return convert_work_task(ptask, WORK_Immed);
 
 		/* Uh Oh, should have found a task and didn't */
 
@@ -387,10 +389,18 @@ reply_send(struct batch_request *request)
 void
 reply_ack(struct batch_request *preq)
 {
+	int rq_type;
+
 	if (preq == NULL)
 		return;
 
-	if (preq->rq_type == PBS_BATCH_ModifyJob_Async || preq->rq_type == PBS_BATCH_AsyrunJob) {
+	rq_type = preq->rq_type;
+#ifndef PBS_MOM
+	if (preq->rq_type == PBS_BATCH_MoveJob)
+		rq_type = preq->rq_ind.rq_move.orig_rq_type;
+#endif
+
+	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;
 	}
@@ -488,11 +498,18 @@ req_reject(int code, int aux, struct batch_request *preq)
 {
 	int   evt_type;
 	char  msgbuf[ERR_MSG_SIZE];
+	int rq_type;
 
 	if (preq == NULL)
 		return;
 
-	if (preq->rq_type == PBS_BATCH_ModifyJob_Async || preq->rq_type == PBS_BATCH_AsyrunJob) {
+	rq_type = preq->rq_type;
+#ifndef PBS_MOM
+	if (preq->rq_type == PBS_BATCH_MoveJob)
+		rq_type = preq->rq_ind.rq_move.orig_rq_type;
+#endif
+
+	if (rq_type == PBS_BATCH_ModifyJob_Async || rq_type == PBS_BATCH_AsyrunJob) {
 		free_br(preq);
 		return;
 	}

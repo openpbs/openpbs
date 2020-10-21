@@ -1376,7 +1376,7 @@ job_obit(ruu *pruu, int stream)
 				while (ptask) {
 					if (ptask->wt_type == WORK_Deferred_Reply && ptask->wt_event == pjob->ji_momhandle)
 						break;
-					ptask = (struct work_task *) GET_NEXT(ptask->wt_linkall);
+					ptask = (struct work_task *) GET_NEXT(ptask->wt_linkevent);
 				}
 				if (ptask) {
 					if ((prequest = ptask->wt_parm1) != NULL)

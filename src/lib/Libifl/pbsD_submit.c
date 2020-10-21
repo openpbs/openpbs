@@ -91,8 +91,8 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 	char					*ret;
 	struct pbs_client_thread_context	*ptr;
 	struct cred_info			*cred_info;
-	svr_conn_t *svr_connections = get_conn_svr_instances(c);
-	c = random_srv_conn(svr_connections);
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	c = random_srv_conn(svr_conns);
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -166,8 +166,8 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	struct cred_info *cred_info = NULL;
 	int commit_done = 0;
 	char *lextend = NULL;
-	svr_conn_t *svr_connections = get_conn_svr_instances(c);
-	c = random_srv_conn(svr_connections);
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	c = random_srv_conn(svr_conns);
 
 	/* initialize the thread context data, if not already initialized */
 	if ((pbs_errno = pbs_client_thread_init_thread_context()) != 0)
@@ -251,7 +251,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 		}
 	}
 
-	if (PBSD_commit(c, return_jobid, 0, NULL) != 0)
+	if (PBSD_commit(c, return_jobid, 0, NULL, NULL) != 0)
 		goto error;
 
 error:

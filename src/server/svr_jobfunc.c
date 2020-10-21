@@ -124,7 +124,6 @@ extern char  *msg_badwait;		/* error message */
 extern char  *msg_daemonname;
 extern char  *msg_also_deleted_job_history;
 extern char   server_name[];
-extern char  *pbs_server_name;
 extern char   server_host[];
 extern pbs_list_head svr_queues;
 extern int    comp_resc_lt;
@@ -196,6 +195,7 @@ tickle_for_reply(void)
  * 		svr_enquejob	-	Enqueue the job into specified queue.
  *
  * @param[in]	pjob	-	The job to be enqueued.
+ * @param[in]	selectspec -	select spec of the job.
  *
  * @return	int
  * @retval	0	: on success
@@ -208,7 +208,7 @@ tickle_for_reply(void)
  *		Updated default attributes and resources specific to job type.
  */
 int
-svr_enquejob(job *pjob)
+svr_enquejob(job *pjob, char *selectspec)
 {
 	job *pjcur;
 	pbs_queue *pque;
@@ -409,7 +409,14 @@ svr_enquejob(job *pjob)
 			set_jattr_l_slim(pjob, JOB_ATR_etime, time_now, SET);
 
 			/* better notify the Scheduler we have a new job */
-
+			if (!selectspec) {
+				if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
+					set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
+				else {
+					sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+					log_err(-1, __func__, log_buffer);
+				}
+			}
 			if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 				set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 			else {
@@ -417,7 +424,7 @@ svr_enquejob(job *pjob)
 				log_err(-1, __func__, log_buffer);
 			}
 		} else if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long &&
-			server.sv_attr[SVR_ATR_scheduling].at_val.at_long) {
+			server.sv_attr[SVR_ATR_scheduling].at_val.at_long && !selectspec) {
 
 			/* notify the Scheduler we have moved a job here */
 

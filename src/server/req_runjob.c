@@ -280,6 +280,103 @@ call_to_process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len
 
 /**
  * @brief
+ * 	get_dest - Get destination from extend field
+ *
+ * @param[in] extend - extend field of runjob
+ *
+ * @return string
+ * @retval destination server identifier. This has to be freed by the caller.
+ * @retval NULL failure
+ */
+char *
+get_dest(char *extend)
+{
+	int i;
+	char **arr;
+	char *eq;
+	char *dest = NULL;
+
+	if ((arr = break_comma_list(extend)) == NULL)
+		return NULL;
+
+	for (i = 0; arr[i]; i++) {
+		if (strstr(arr[i], SERVER_IDENTIFIER)) {
+			if ((eq = strchr(arr[i], '=')))
+				dest = strdup(eq + 1);
+			break;
+		}
+	}
+
+	free_str_array(arr);
+	return dest;
+}
+
+/**
+ * @brief
+ * 	need_to_run_elsewhere - Check whether this request needs to run in another server.
+ *
+ * @param[in] preq - pointer to batch request structure
+ *
+ * @return string
+ * @retval char * - request needs to run in another server.
+ * 		The value indicates destination
+ * 		which need to be freed by the caller.
+ * @retval NULL - request can be executed by self
+ */
+char *
+need_to_run_elsewhere(struct batch_request *preq)
+{
+	char *destination;
+	char *pc;
+
+	if (!preq->rq_extend)
+		return NULL;
+
+	destination = get_dest(preq->rq_extend);
+	if ((pc = strchr(destination, ':')) != NULL)
+		*pc = '\0';
+	if (!is_same_host(destination, pbs_server_name) ||
+	    (pc && (atoi(pc + 1) != pbs_server_port_dis))) {
+		if (pc)
+			*pc = ':';
+		return destination;
+	}
+
+	return NULL;
+}
+
+/**
+ * @brief
+ * 	move_and_runjob - Move and run job in the server specified in request
+ *
+ * @param[in,out] preq - pointer to batch request structure
+ * @param[in] pjob - job to be moved and run
+ * @param[in] dest_svr - destination server
+ *
+ * @return void
+ */
+void
+move_and_runjob(struct batch_request *preq, job *pjob, char *dest_svr)
+{
+	char *dest;
+
+	dest = preq->rq_ind.rq_run.rq_destin;
+	preq->rq_ind.rq_run.rq_destin = NULL;
+	preq->rq_ind.rq_move.orig_rq_type = preq->rq_type;
+	preq->rq_type = PBS_BATCH_MoveJob;
+	strcpy(preq->rq_ind.rq_move.rq_jid, pjob->ji_qs.ji_jobid);
+	sprintf(preq->rq_ind.rq_move.rq_destin, "%s@%s", pjob->ji_qs.ji_queue, dest_svr);
+	preq->rq_ind.rq_move.run_exec_vnode = dest;
+
+	/*
+	* runjob will happen as part of movejob request. Information to run the job will be encoded
+	* within send_job_exec so that dest server can figure out it is a move+run.
+	*/
+	req_movejob(preq);
+}
+
+/**
+ * @brief
  * 	req_runjob - service the Run Job and Asyc Run Job Requests
  *
  * @par
@@ -311,6 +408,7 @@ req_runjob(struct batch_request *preq)
 	struct deferred_request *pdefr;
 	char hook_msg[HOOK_MSG_SIZE];
 	pbs_sched *psched;
+	char *dest = NULL;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -321,6 +419,12 @@ req_runjob(struct batch_request *preq)
 	parent = chk_job_request(jid, preq, &jt, NULL);
 	if (parent == NULL)
 		return; /* note, req_reject already called */
+
+	if ((dest = need_to_run_elsewhere(preq))) {
+		move_and_runjob(preq, parent, dest);
+		free(dest);
+		return;
+	}
 
 	/* the job must be in an execution queue */
 	if (parent->ji_qhdr->qu_qs.qu_type != QTYPE_Execution) {
