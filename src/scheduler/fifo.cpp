@@ -765,7 +765,7 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 	int num_conf_servers = get_num_servers();
 	svr_conn_t *svr_conns = static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
 
-	for (i = 0; i < get_num_servers(); i++) {
+	for (i = 0; i < num_conf_servers; i++) {
 		int rc;
 
 		if (svr_conns[i].sd < 0)
@@ -795,7 +795,8 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 				 * the command is received. If we receive same commands from multiple servers they
 				 * are overwritten which is what we want i.e. it allows us to eliminate duplicate commands.
 				 */
-				sched_cmds[cmd.cmd] = 1;
+				if (cmd.cmd >= SCH_SCHEDULE_NULL && cmd.cmd < SCH_CMD_HIGH)
+					sched_cmds[cmd.cmd] = 1;
 			}
 		}
 	}

@@ -547,9 +547,9 @@ connect_svrpool()
 
 
 	while (clust_primary_sock < 0 || clust_secondary_sock < 0 || registered == 0) {
+		/* pbs_connect() will return a connection handle for all servers */
 		if (clust_primary_sock < 0) {
 			clust_primary_sock = pbs_connect(NULL);
-			/* clust_primary_sock later is used to fetch primary connections for all the servers */
 			if (clust_primary_sock < 0) {
 				/* wait for 2s for not to burn too much CPU, and then retry connection */
 				sleep(2);
@@ -557,7 +557,6 @@ connect_svrpool()
 			}
 		}
 		clust_secondary_sock = pbs_connect(NULL);
-		/* clust_secondary_sock later is used to fetch secondary connections for all the servers */
 		if (clust_secondary_sock < 0) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);
@@ -568,15 +567,13 @@ connect_svrpool()
 		svr_conns_secondary =  static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
 
 		for (i = 0; i < num_conf_svrs; i++) {
-			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
-				clust_primary_sock = -1;
+			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN || svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {	
+				if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN)
+					clust_primary_sock = -1;
+				if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN)
+					clust_secondary_sock = -1;
 				break;
 			}
-			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
-				clust_secondary_sock = -1;
-				break;
-			}
-			
 		}
 
 		if (i != num_conf_svrs) {
@@ -589,7 +586,7 @@ connect_svrpool()
 		}
 
 		if (pbs_register_sched(sc_name) == 0) {
-			log_errf(pbs_errno, __func__, "Couldn't register the Scheuduler %s with the configured servers", sc_name);
+			log_errf(pbs_errno, __func__, "Couldn't register the scheduler %s with the configured servers", sc_name);
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);			
 			continue;
@@ -687,8 +684,10 @@ read_sched_cmd(int sock)
 	if (cmd.cmd != SCH_SCHEDULE_RESTART_CYCLE)  {
 		if (cmd.cmd == SCH_SCHEDULE_AJOB)
 			qrun_list[qrun_list_size++] = cmd;
-		else
-			sched_cmds[cmd.cmd] = 1;
+		else {
+			if (cmd.cmd >= SCH_SCHEDULE_NULL && cmd.cmd < SCH_CMD_HIGH)
+				sched_cmds[cmd.cmd] = 1;
+		}
 
 	}
 
