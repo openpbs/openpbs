@@ -5424,7 +5424,10 @@ class Server(PBSService):
             hook_t = "pbshook"
         cmd = ["export", hook_t, hook_name]
         cmd += ["application/x-config", "default"]
-        cmd = " ".join(cmd)
+        if not self._is_local:
+            cmd = '\'' + " ".join(cmd) + '\''
+        else:
+            cmd = " ".join(cmd)
         pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'bin', 'qmgr'),
                 '-c', cmd]
         ret = self.du.run_cmd(self.hostname, pcmd, sudo=True)
