@@ -207,7 +207,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 			} else if (mailpoint != MAIL_ABORT)	/* not set, default to abort */
 				return;
 
-		} else if ((server.sv_attr[(int)SVR_ATR_mailfrom].at_flags & ATR_VFLAG_SET) == 0) {
+		} else if (!is_sattr_set(SVR_ATR_mailfrom)) {
 
 			/* not job related, must be system related;  not sent unless */
 			/* forced or if "mailfrom" attribute set         		 */
@@ -238,15 +238,15 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailer]))
-		mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailer))
+		mailer = get_sattr_str(SVR_ATR_mailer);
 	else
 		mailer = SENDMAIL_CMD;
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailfrom]))
-		mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailfrom))
+		mailfrom = get_sattr_str(SVR_ATR_mailfrom);
 	else
 		mailfrom = PBS_DEFAULT_MAIL;
 
@@ -462,15 +462,15 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailer]))
-		mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailer))
+		mailer = get_sattr_str(SVR_ATR_mailer);
 	else
 		mailer = SENDMAIL_CMD;
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailfrom]))
-		mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailfrom))
+		mailfrom = get_sattr_str(SVR_ATR_mailfrom);
 	else
 		mailfrom = PBS_DEFAULT_MAIL;
 

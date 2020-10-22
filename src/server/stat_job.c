@@ -111,7 +111,7 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 		return;
 
 	if ((pdef->at_flags & ATR_DFLAG_HIDDEN) &&
-		(server.sv_attr[(int)SVR_ATR_show_hidden_attribs].at_val.at_long == 0)) {
+		(get_sattr_long(SVR_ATR_show_hidden_attribs) == 0)) {
 		return;
 	}
 	if (pat->at_flags & ATR_VFLAG_MODCACHE) {
@@ -258,12 +258,12 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 
 	/* see if the client is authorized to status this job */
 
-	if (! server.sv_attr[(int)SVR_ATR_query_others].at_val.at_long)
+	if (! get_sattr_long(SVR_ATR_query_others))
 		if (svr_authorize_jobreq(preq, pjob))
 			return (PBSE_PERM);
 
 	/* calc eligible time on the fly and return, don't save. */
-	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == TRUE) {
 		if (get_jattr_long(pjob, JOB_ATR_accrue_type) == JOB_ELIGIBLE) {
 			oldtime = get_jattr_long(pjob, JOB_ATR_eligible_time);
 			set_jattr_l_slim(pjob, JOB_ATR_eligible_time,
@@ -316,7 +316,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 
 	/* reset eligible time, it was calctd on the fly, real calctn only when accrue_type changes */
 
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long != 0) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) != 0) {
 		if (get_jattr_long(pjob, JOB_ATR_accrue_type) == JOB_ELIGIBLE)
 			set_jattr_l_slim(pjob, JOB_ATR_eligible_time, oldtime, SET);
 	} else {
@@ -370,7 +370,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 
 	/* see if the client is authorized to status this job */
 
-	if (! server.sv_attr[(int)SVR_ATR_query_others].at_val.at_long)
+	if (! get_sattr_long(SVR_ATR_query_others))
 		if (svr_authorize_jobreq(preq, pjob))
 			return (PBSE_PERM);
 
@@ -454,7 +454,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 
 	/* when eligible_time_enable is off,				      */
 	/* clear the set flag so that eligible_time and accrue_type dont show */
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 0) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 0) {
 		attribute *attr = get_jattr(pjob, JOB_ATR_eligible_time);
 
 		oldeligflags = attr->at_flags;
@@ -481,7 +481,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	}
 
 	/* reset the flags */
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 0) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 0) {
 		attribute *attr = get_jattr(pjob, JOB_ATR_eligible_time);
 		attr->at_flags = oldeligflags;
 

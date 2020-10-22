@@ -266,7 +266,7 @@ req_register(struct batch_request *preq)
 		 * yet recovered, that is not an error.
 		 */
 
-		if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long != SV_STATE_INIT) {
+		if (get_sattr_long(SVR_ATR_State) != SV_STATE_INIT) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				preq->rq_ind.rq_register.rq_parent,
 				msg_unkjobid);

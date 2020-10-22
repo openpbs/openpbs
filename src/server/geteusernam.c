@@ -273,7 +273,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		// FIXME: below
 		objattrs = ((job *)pobj)->ji_wattr;
 		owner = get_jattr_str(pobj, idx_owner);
-		paclRoot = &server.sv_attr[(int)SVR_ATR_AclRoot];
+		paclRoot = get_sattr(SVR_ATR_AclRoot);
 		bad_euser = PBSE_BADUSER;
 		bad_egrp = PBSE_BADGRP;
 	} else {
@@ -286,7 +286,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		obj_attr_def = resv_attr_def;
 		objattrs = ((resc_resv *)pobj)->ri_wattr;
 		owner = ((resc_resv *)pobj)->ri_wattr[idx_owner].at_val.at_str;
-		paclRoot = &server.sv_attr[(int)SVR_ATR_AclRoot];
+		paclRoot = get_sattr(SVR_ATR_AclRoot);
 		bad_euser = PBSE_R_UID;
 		bad_egrp = PBSE_R_GID;
 	}
@@ -307,7 +307,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 
 	pwent = getpwnam(puser);
 	if (pwent == NULL) {
-		if (!server.sv_attr[(int)SVR_ATR_FlatUID].at_val.at_long)
+		if (!get_sattr_long(SVR_ATR_FlatUID))
 			return (bad_euser);
 	} else if (pwent->pw_uid == 0) {
 		if (!is_attr_set(paclRoot))
@@ -316,7 +316,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 			return (bad_euser); /* root not allowed */
 	}
 
-	if (!isowner || !server.sv_attr[(int)SVR_ATR_FlatUID].at_val.at_long) {
+	if (!isowner || !get_sattr_long(SVR_ATR_FlatUID)) {
 		if (site_check_user_map(pobj, objtype, puser) == -1)
 			return (bad_euser);
 	}

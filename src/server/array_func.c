@@ -531,8 +531,8 @@ setup_ajinfo(job *pjob, int mode)
 		return PBSE_BADATVAL;
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
-		if (server.sv_attr[(int) SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-			limit = server.sv_attr[(int) SVR_ATR_maxarraysize].at_val.at_long;
+		if (is_sattr_set(SVR_ATR_maxarraysize))
+			limit = get_sattr_long(SVR_ATR_maxarraysize);
 		else
 			limit = PBS_MAX_ARRAY_JOB_DFL; /* default limit 10000 */
 
@@ -760,7 +760,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	/* subjob needs to borrow eligible time from parent job array.
 	 * expecting only to accrue eligible_time and nothing else.
 	 */
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) {
 
 		eligibletime = get_jattr_long(parent, JOB_ATR_eligible_time);
 

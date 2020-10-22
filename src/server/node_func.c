@@ -885,9 +885,8 @@ save_nodes_db(int changemodtime, void *p)
 	 * that possess a node_group_key resource
 	 */
 
-	if (server.sv_attr[SVR_ATR_NodeGroupKey].at_flags & ATR_VFLAG_SET  &&
-		server.sv_attr[SVR_ATR_NodeGroupKey].at_val.at_str)
-		rname = server.sv_attr[SVR_ATR_NodeGroupKey].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_NodeGroupKey))
+		rname = get_sattr_str(SVR_ATR_NodeGroupKey);
 	else
 		rname = NULL;
 
@@ -1298,7 +1297,7 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 
 	prdef = presc->rs_defin;
 
-	recover_ok = (server.sv_attr[(int)SVR_ATR_State].at_val.at_long == SV_STATE_INIT);	/* if true, then recoverying and targets may not yet be there */
+	recover_ok = (get_sattr_long(SVR_ATR_State) == SV_STATE_INIT);	/* if true, then recoverying and targets may not yet be there */
 	consumable = prdef->rs_flags & (ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN);
 	presc_avail = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAvail], prdef);
 	presc_assn = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAssn], prdef);

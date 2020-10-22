@@ -126,6 +126,7 @@ pbs_python_LDADD = \
 pbs_python_SOURCES = \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/jattr_get_set.c \
+	$(top_srcdir)/src/server/sattr_get_set.c \
 	$(top_srcdir)/src/server/setup_resc.c \
 	$(top_srcdir)/src/server/vnparse.c \
 	$(top_srcdir)/src/lib/Libcmds/cmds_common.c \

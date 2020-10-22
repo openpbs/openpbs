@@ -453,7 +453,7 @@ post_signal_req(struct work_task *pwt)
 					ss = JOB_SUBSTATE_SCHSUSP;
 				else
 					ss = JOB_SUBSTATE_SUSPEND;
-				if ((server.sv_attr[(int) SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET)) {
+				if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
 					if (create_resreleased(pjob) == 1) {
 						sprintf(log_buffer, "Unable to create resource released list");
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -547,14 +547,14 @@ create_resreleased(job *pjob)
 		strcat(resreleased, "(");
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			strcat(resreleased, noden);
-			if (server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
-				for (j = 0; j < nelem; ++j) {
+			if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
+				struct array_strings *pval = get_sattr_arst(SVR_ATR_restrict_res_to_release_on_suspend);
+				for (j = 0; pval != NULL && j < nelem; ++j) {
 					int k;
-					int np;
-					np = server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr;
+					int np = pval->as_usedptr;
 					for (k = 0; np != 0 && k < np; k++) {
 						char *res;
-						res = server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[k];
+						res = pval->as_string[k];
 						if ((res != NULL) && (strcmp(pkvp[j].kv_keyw,res) == 0)) {
 							sprintf(buf, ":%s=%s", res, pkvp[j].kv_val);
 							strcat(resreleased, buf);

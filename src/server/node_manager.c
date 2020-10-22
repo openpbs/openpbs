@@ -876,8 +876,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		account_job_update(pjob, PBS_ACCT_LAST);
 		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_END);
 
-		if (server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long &
-			PBSEVENT_JOB_USAGE) {
+		if (get_sattr_long(SVR_ATR_log_events) & PBSEVENT_JOB_USAGE) {
 			/* log events set to record usage */
 			log_event(PBSEVENT_JOB_USAGE, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, pjob->ji_acctrec);
@@ -1838,10 +1837,10 @@ set_resv_retry(resc_resv *presv, long retry_time)
 
 	if (presv == NULL)
 		return;
-		
+
 	if (presv->ri_resv_retry)
 		msg = "Next attempt to reconfirm reservation will be made on %s";
-	else	
+	else
 		msg = "An attempt to reconfirm reservation will be made on %s";
 
 	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
@@ -3155,7 +3154,6 @@ setup_pnames(char *namestr)
 	attribute	*ppnames;
 	struct array_strings *pparst;
 	char		*workcopy;
-	attribute	 working;
 	int		resc_added = 0;
 
 	if ((namestr == NULL) || (*namestr == '\0'))
@@ -3169,7 +3167,7 @@ setup_pnames(char *namestr)
 	}
 	*newbuffer = '\0';
 
-	ppnames = &server.sv_attr[(int)SVR_ATR_PNames];
+	ppnames = get_sattr(SVR_ATR_PNames);
 	pparst  = ppnames->at_val.at_arst;
 	ps = workcopy;
 
@@ -3224,15 +3222,10 @@ setup_pnames(char *namestr)
 	if (newentries) {
 		int flag = 0;
 
-		if (((is_attr_set(ppnames)) == 0) ||
-			((ppnames->at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) ==
-			(ATR_VFLAG_SET|ATR_VFLAG_DEFLT)))
+		if (is_attr_set(ppnames) == 0 || (ppnames->at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET|ATR_VFLAG_DEFLT))
 			flag = ATR_VFLAG_DEFLT;
 
-		clear_attr(&working, &svr_attr_def[(int)SVR_ATR_PNames]);
-		svr_attr_def[(int)SVR_ATR_PNames].at_decode(&working, NULL, NULL, newbuffer);
-		svr_attr_def[(int)SVR_ATR_PNames].at_set(ppnames, &working, INCR);
-		svr_attr_def[(int)SVR_ATR_PNames].at_free(&working);
+		set_sattr_generic(SVR_ATR_PNames, newbuffer, NULL, INCR);
 		ppnames->at_flags |= flag;
 	}
 	free(workcopy);
@@ -7248,7 +7241,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	if ((pjob != NULL) &&
 		(pexech == get_jattr(pjob, JOB_ATR_exec_vnode_deallocated))) {
 		char *pc;
-		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
+		sysru = get_sattr(SVR_ATR_resource_assn);
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
 
 		pc = pexech->at_val.at_str;
@@ -7904,7 +7897,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 	 * queue/server level and add them to resource_release_list. Only do this if
 	 * restrict_res_to_release_on_suspend is set
 	 */
-	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
+	if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
 		presc_sq = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 		for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
 			prdef = presc_sq->rs_defin;
@@ -7913,9 +7906,9 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 			*/
 			if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
 				(find_resc_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef) == NULL)) {
-				for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
-					if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
-						prdef->rs_name) == 0) {
+				struct array_strings *pval = get_sattr_arst(SVR_ATR_restrict_res_to_release_on_suspend);
+				for (j = 0; pval != NULL && j < pval->as_usedptr; j++) {
+					if (strcmp(pval->as_string[j], prdef->rs_name) == 0) {
 						presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef);
 						if (presc == NULL)
 							return 1;

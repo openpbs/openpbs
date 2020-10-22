@@ -3517,8 +3517,7 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
 	}
 
 	/* update the eligible time to JOB_INITIAL */
-	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET)
-		&& server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1)
+	if (is_sattr_set(SVR_ATR_EligibleTimeEnable) && get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1)
 		update_eligible_time(JOB_INITIAL, pjob);
 
 	/*
@@ -4277,10 +4276,8 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		if (rq_type == PBS_BATCH_QueueJob) {
 			char *qname = ((struct rq_queuejob *)req_ptr->rq_job)->rq_destin;
 			/* use default queue if user did not specify a queue for the job */
-			if ((!qname || *qname == '\0' || *qname == '@') &&
-				server.sv_attr[SVR_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
-				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT,
-						server.sv_attr[SVR_ATR_dflt_que].at_val.at_str);
+			if ((!qname || *qname == '\0' || *qname == '@') && is_sattr_set(SVR_ATR_dflt_que))
+				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT, get_sattr_str(SVR_ATR_dflt_que));
 			else
 				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT, qname);
 		}
@@ -6145,8 +6142,8 @@ handle_hook_sync_timeout(void)
 	time_t	timeout_time;
 	time_t	current_time;
 	timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
-	if (server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
-		timeout_sec = server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_sync_mom_hookfiles_timeout))
+		timeout_sec = get_sattr_long(SVR_ATR_sync_mom_hookfiles_timeout);
 	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
 	if (sync_mom_hookfiles_replies_pending) {

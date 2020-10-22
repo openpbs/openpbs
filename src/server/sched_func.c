@@ -164,8 +164,7 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		}
 	} else {
 		/* Check if server's JSF is set to a different value */
-		if ((server.sv_attr[SVR_ATR_job_sort_formula].at_flags & ATR_VFLAG_SET) &&
-				strcmp(server.sv_attr[SVR_ATR_job_sort_formula].at_val.at_str, formula) != 0)
+		if (is_sattr_set(SVR_ATR_job_sort_formula) && strcmp(get_sattr_str(SVR_ATR_job_sort_formula), formula) != 0)
 			return PBSE_SVR_SCHED_JSF_INCOMPAT;
 	}
 
@@ -671,9 +670,8 @@ int
 action_sched_iteration(attribute *pattr, void *pobj, int actmode)
 {
 	if (pobj == dflt_scheduler) {
-			server.sv_attr[SVR_ATR_scheduler_iteration].at_val.at_long = pattr->at_val.at_long;
-			server.sv_attr[SVR_ATR_scheduler_iteration].at_flags |= ATR_SET_MOD_MCACHE;
-			svr_save_db(&server);
+		set_sattr_l_slim(SVR_ATR_scheduler_iteration, pattr->at_val.at_long, SET);
+		svr_save_db(&server);
 	}
 	return PBSE_NONE;
 }
@@ -840,7 +838,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 				sched_save_db(dflt_scheduler);
 			}
 		} else {
-			svr_attr_def[(int) SVR_ATR_scheduling].at_set(&server.sv_attr[SVR_ATR_scheduling], pattr, SET);
+			set_sattr_l_slim(SVR_ATR_scheduling, pattr->at_val.at_long, SET);
 			svr_save_db(&server);
 		}
 		if (actmode == ATR_ACTION_ALTER) {

@@ -314,8 +314,7 @@ end_job(job *pjob, int isexpress)
 	if (pjob->ji_acctrec)
 		rec = pjob->ji_acctrec;
 
-	if (server.sv_attr[SVR_ATR_log_events].at_val.at_long &
-		PBSEVENT_JOB_USAGE) {
+	if (get_sattr_long(SVR_ATR_log_events) & PBSEVENT_JOB_USAGE) {
 		/* log events set to record usage */
 		log_event(PBSEVENT_JOB_USAGE | PBSEVENT_JOB_USAGE,
 			PBS_EVENTCLASS_JOB, LOG_INFO,

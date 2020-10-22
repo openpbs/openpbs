@@ -344,7 +344,7 @@ svr_enquejob(job *pjob, char *selectspec)
 	/* update any entity count and entity resources usage for the queue */
 
 	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) ||
-			(server.sv_attr[SVR_ATR_State].at_val.at_long == SV_STATE_INIT))
+			(get_sattr_long(SVR_ATR_State) == SV_STATE_INIT))
 		account_entity_limit_usages(pjob, pque, NULL, INCR, ETLIM_ACC_ALL);
 
 
@@ -373,7 +373,7 @@ svr_enquejob(job *pjob, char *selectspec)
 		 * was registered when the job was first enqueued.
 		 */
 
-		if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long != SV_STATE_INIT) {
+		if (get_sattr_long(SVR_ATR_State) != SV_STATE_INIT) {
 			if (is_jattr_set(pjob, JOB_ATR_depend)) {
 				rc = depend_on_que(get_jattr(pjob, JOB_ATR_depend), pjob, ATR_ACTION_NOOP);
 				if (rc)
@@ -401,8 +401,7 @@ svr_enquejob(job *pjob, char *selectspec)
 				sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
 				log_err(-1, __func__, log_buffer);
 			}
-		} else if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long &&
-			server.sv_attr[SVR_ATR_scheduling].at_val.at_long && !selectspec) {
+		} else if (get_sattr_long(SVR_ATR_EligibleTimeEnable) && get_sattr_long(SVR_ATR_scheduling) && !selectspec) {
 
 			/* notify the Scheduler we have moved a job here */
 
@@ -585,7 +584,7 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 	set_job_substate(pjob, newsubstate);
 
 	/* eligible_time_enable */
-	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) {
 		long newaccruetype;
 
 		newaccruetype = determine_accruetype(pjob);
@@ -929,7 +928,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 	if (pque && get_wt_limit(&(pque->qu_attr[QA_ATR_ResourceMax]), &wt_max_queue_limit) == 0)
 		have_max_queue_limit = 1;
 	/* Check server maximum limit only if queue maximum limit is not present */
-	if (!have_max_queue_limit && pque && get_wt_limit(&(server.sv_attr[SVR_ATR_ResourceMax]), &wt_max_server_limit) == 0)
+	if (!have_max_queue_limit && pque && get_wt_limit(get_sattr(SVR_ATR_ResourceMax), &wt_max_server_limit) == 0)
 		have_max_server_limit = 1;
 
 #ifndef NAS /* localmod 026 */
@@ -1018,7 +1017,7 @@ chk_resc_limits(attribute *pattr, pbs_queue *pque)
 	/* now check individual resources against queue or server maximum */
 	chk_svr_resc_limit(pattr,
 		&pque->qu_attr[QA_ATR_ResourceMax],
-		&server.sv_attr[SVR_ATR_ResourceMax],
+		get_sattr(SVR_ATR_ResourceMax),
 		pque->qu_qs.qu_type);
 
 	if (comp_resc_lt > 0)
@@ -2177,8 +2176,7 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	}
 
 	/* set defaults based on the Server' resources_default */
-	set_deflt_resc(pdest,
-		&server.sv_attr[(int)SVR_ATR_resource_deflt], 1);
+	set_deflt_resc(pdest, get_sattr(SVR_ATR_resource_deflt), 1);
 
 	/* set defaults based on the Queue's resources_max */
 	if (pque) {
@@ -2187,8 +2185,7 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	}
 
 	/* set defaults based on the Server's resources_max */
-	set_deflt_resc(pdest,
-		&server.sv_attr[(int)SVR_ATR_ResourceMax], 0);
+	set_deflt_resc(pdest, get_sattr(SVR_ATR_ResourceMax), 0);
 
 
 	/* if needed, set "select" and "place" from the other resources */
@@ -3528,9 +3525,8 @@ gen_task_EndResvWindow(resc_resv *presv)
 		return (PBSE_INTERNAL);
 
 	fromNow = presv->ri_qs.ri_etime - (long)time_now;
-	if ((server.sv_attr[(int)SVR_ATR_resv_post_processing].at_flags &
-		ATR_VFLAG_SET) != 0)
-		fromNow -= server.sv_attr[(int)SVR_ATR_resv_post_processing].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_resv_post_processing))
+		fromNow -= get_sattr_long(SVR_ATR_resv_post_processing);
 	rc = gen_future_deleteResv(presv, fromNow);
 	return  (rc);
 }
@@ -4221,9 +4217,9 @@ start_end_dur_wall(resc_resv *presv)
 			rc = -1;
 	}
 
-	if (server.sv_attr[(int)SVR_ATR_resv_post_processing].at_flags & ATR_VFLAG_SET) {
-		pduration->at_val.at_long += server.sv_attr[(int)SVR_ATR_resv_post_processing].at_val.at_long;
-		petime->at_val.at_long += server.sv_attr[(int)SVR_ATR_resv_post_processing].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_resv_post_processing)) {
+		pduration->at_val.at_long += get_sattr_long(SVR_ATR_resv_post_processing);
+		petime->at_val.at_long += get_sattr_long(SVR_ATR_resv_post_processing);
 	}
 
 	presv->ri_qs.ri_stime = pstime->at_val.at_long;
@@ -4512,7 +4508,7 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 	if (actmode == ATR_ACTION_ALTER) {
 
 		/* eligible_time_enable is OFF, then error */
-		if (!server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long) {
+		if (!get_sattr_long(SVR_ATR_EligibleTimeEnable)) {
 			return PBSE_ETEERROR;
 		} else {
 			long accrued_time;

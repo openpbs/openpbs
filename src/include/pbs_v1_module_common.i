@@ -210,7 +210,7 @@ update_state_ct(attribute *pattr, int *ct_array, char *buf) {
 }
 
 void
-update_license_ct(attribute *pattr, char *buf) {
+update_license_ct() {
 	return;
 }
 

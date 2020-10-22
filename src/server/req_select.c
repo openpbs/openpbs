@@ -393,7 +393,7 @@ req_selectjobs(struct batch_request *preq)
 	else
 		pjob = (job *) GET_NEXT(svr_alljobs);
 	while (pjob) {
-		if (server.sv_attr[SVR_ATR_query_others].at_val.at_long || svr_authorize_jobreq(preq, pjob) == 0) {
+		if (get_sattr_long(SVR_ATR_query_others) || svr_authorize_jobreq(preq, pjob) == 0) {
 
 			/*
 			 * either job owner or has special permission to see job

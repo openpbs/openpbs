@@ -243,9 +243,8 @@ warnings_update(int wcode, pbsnode **wnodes, int *widx, pbsnode *np)
 		case WARN_ngrp_init:
 		case WARN_ngrp:
 		case WARN_ngrp_ck:
-			if (server.sv_attr[SVR_ATR_NodeGroupKey].at_flags & ATR_VFLAG_SET) {
+			if (is_sattr_set(SVR_ATR_NodeGroupKey))
 				warning_ok = 1;
-			}
 			break;
 
 		default:
@@ -257,7 +256,7 @@ warnings_update(int wcode, pbsnode **wnodes, int *widx, pbsnode *np)
 		 * initialize some static data
 		 */
 
-		rname = server.sv_attr[SVR_ATR_NodeGroupKey].at_val.at_str;
+		rname = get_sattr_str(SVR_ATR_NodeGroupKey);
 		if ((rname != NULL) && (*rname != '\0'))
 			rscdef = find_resc_def(svr_resc_def, rname);
 		return;
@@ -1359,12 +1358,15 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 	svrattrl *ulist;
 	pbs_list_head unsetlist;
 	int	  rc;
+	int has_log_events = 0;
 
 	CLEAR_HEAD(unsetlist);
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	/*Only root at server host can set server attribute "acl_roots".*/
 	while (plist) {
+		if (strcmp(plist->al_name, ATTR_logevents) == 0)
+			has_log_events = 1;
 		if (strcasecmp(plist->al_name, ATTR_aclroot) == 0) {
 			if (!is_local_root(preq->rq_user, preq->rq_host)) {
 				reply_badattr(PBSE_ATTRRO, bad_attr, plist, preq);
@@ -1411,6 +1413,8 @@ mgr_server_set(struct batch_request *preq, conn_t *conn)
 	else {
 		svr_save_db(&server);
 done:
+		if (has_log_events)
+			*log_event_mask = get_sattr_long(SVR_ATR_log_events);
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, msg_manager, msg_man_set, preq->rq_user, preq->rq_host);
 		mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SERVER, msg_daemonname, NULL);
 		reply_ack(preq);
@@ -1522,51 +1526,41 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
-		if (server.sv_attr[SVR_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY) {
-			(void)deflt_chunk_action(&server.sv_attr[SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_ALTER);
+		attribute *pattr = get_sattr(SVR_ATR_DefaultChunk);
+		if (pattr->at_flags & ATR_VFLAG_MODIFY) {
+			(void)deflt_chunk_action(pattr, (void *)&server, ATR_ACTION_ALTER);
 		}
 		/* Now set the default values on some of the unset attributes */
 		plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 		for (plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 			plist != NULL; plist = (struct svrattrl *)GET_NEXT(plist->al_link)) {
 			if (strcasecmp(plist->al_name, ATTR_logevents) == 0) {
-				char dflt_log_event[22];
-				snprintf(dflt_log_event, sizeof(dflt_log_event), "%d", SVR_LOG_DFLT);
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events],
-					     dflt_log_event, NULL, SET);
-			}
-			else if (strcasecmp(plist->al_name, ATTR_mailer) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailer]),
-					    &svr_attr_def[(int)SVR_ATR_mailer], SENDMAIL_CMD, NULL, SET);
+				set_sattr_l_slim(SVR_ATR_log_events, SVR_LOG_DFLT, SET);
+				*log_event_mask = get_sattr_long(SVR_ATR_log_events);
+			} else if (strcasecmp(plist->al_name, ATTR_mailer) == 0)
+				set_sattr_str_slim(SVR_ATR_mailer, SENDMAIL_CMD, NULL);
 			else if (strcasecmp(plist->al_name, ATTR_mailfrom) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailfrom]),
-					    &svr_attr_def[(int)SVR_ATR_mailfrom], PBS_DEFAULT_MAIL, NULL, SET);
+				set_sattr_str_slim(SVR_ATR_mailfrom, PBS_DEFAULT_MAIL, NULL);
 			else if (strcasecmp(plist->al_name, ATTR_queryother) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_query_others]),
-					    &svr_attr_def[(int)SVR_ATR_query_others], "TRUE", NULL, SET);
+				set_sattr_l_slim(SVR_ATR_query_others, 1, SET);
 			else if (strcasecmp(plist->al_name, ATTR_schediteration) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_scheduler_iteration]),
-					    &svr_attr_def[(int)SVR_ATR_scheduler_iteration], TOSTR(PBS_SCHEDULE_CYCLE), NULL, SET);
+				set_sattr_str_slim(SVR_ATR_scheduler_iteration, TOSTR(PBS_SCHEDULE_CYCLE), NULL);
 			else if(strcasecmp(plist->al_name, ATTR_ResvEnable) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_ResvEnable]),
-					    &svr_attr_def[(int)SVR_ATR_ResvEnable], "TRUE", NULL, SET);
+				set_sattr_l_slim(SVR_ATR_ResvEnable, 1, SET);
 			else if(strcasecmp(plist->al_name, ATTR_maxarraysize) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_maxarraysize]),
-					    &svr_attr_def[(int)SVR_ATR_maxarraysize], TOSTR(PBS_MAX_ARRAY_JOB_DFL), NULL, SET);
+				set_sattr_str_slim(SVR_ATR_maxarraysize, TOSTR(PBS_MAX_ARRAY_JOB_DFL), NULL);
 			else if(strcasecmp(plist->al_name, ATTR_max_concurrent_prov) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_max_concurrent_prov]),
-					    &svr_attr_def[(int)SVR_ATR_max_concurrent_prov], TOSTR(PBS_MAX_CONCURRENT_PROV), NULL, SET);
+				set_sattr_str_slim(SVR_ATR_max_concurrent_prov, TOSTR(PBS_MAX_CONCURRENT_PROV), NULL);
 			else if(strcasecmp(plist->al_name, ATTR_EligibleTimeEnable) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_EligibleTimeEnable]),
-					    &svr_attr_def[(int)SVR_ATR_EligibleTimeEnable], "FALSE", NULL, SET);
+				set_sattr_l_slim(SVR_ATR_EligibleTimeEnable, 0, SET);
 			else if(strcasecmp(plist->al_name, ATTR_license_linger) == 0) {
-				set_attr_l(&(server.sv_attr[SVR_ATR_license_linger]), PBS_LIC_LINGER_TIME, SET);
+				set_sattr_l_slim(SVR_ATR_license_linger, PBS_LIC_LINGER_TIME, SET);
 				licensing_control.licenses_linger_time = PBS_LIC_LINGER_TIME;
 			} else if(strcasecmp(plist->al_name, ATTR_license_max) == 0) {
-				set_attr_l(&(server.sv_attr[SVR_ATR_license_max]), PBS_MAX_LICENSING_LICENSES, SET);
+				set_sattr_l_slim(SVR_ATR_license_max, PBS_MAX_LICENSING_LICENSES, SET);
 				licensing_control.licenses_max = PBS_MAX_LICENSING_LICENSES;
 			} else if(strcasecmp(plist->al_name, ATTR_license_min) == 0) {
-				set_attr_l(&(server.sv_attr[SVR_ATR_license_min]), PBS_MIN_LICENSING_LICENSES, SET);
+				set_sattr_l_slim(SVR_ATR_license_min, PBS_MIN_LICENSING_LICENSES, SET);
 				licensing_control.licenses_min = PBS_MIN_LICENSING_LICENSES;
 			} else if (strcasecmp(plist->al_name, ATTR_rescdflt) == 0) {
 				if (plist->al_resc != NULL && strcasecmp(plist->al_resc, "ncpus") == 0) {
@@ -1588,8 +1582,7 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 					free_svrattrl(tm_list);
 				}
 			} else if (strcasecmp(plist->al_name, ATTR_scheduling) == 0)
-				set_attr_generic(&(server.sv_attr[(int)SVR_ATR_scheduling]),
-					    &svr_attr_def[(int) SVR_ATR_scheduling], "TRUE", NULL, SET);
+				set_sattr_l_slim(SVR_ATR_scheduling, 1, SET);
 		}
 		svr_save_db(&server);
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,
@@ -2950,7 +2943,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name, log_buffer);
 
 			/* special case for unresolved nodes in case of server startup */
-			if ((rc == PBSE_UNKNODE) && (server.sv_attr[(int)SVR_ATR_State].at_val.at_long == SV_STATE_INIT)) {
+			if (rc == PBSE_UNKNODE && get_sattr_long(SVR_ATR_State) == SV_STATE_INIT) {
 				/*
 				 * mark node as INUSE_UNRESOLVABLE, pbsnodes will show unresolvable state
 				 */
@@ -3768,10 +3761,10 @@ mgr_resource_delete(struct batch_request *preq)
 		return;
 
 	/* check if resource is set in restrict_res_to_release_on_suspend */
-	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
-		for (i = 0; i < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; i++ ) {
-			if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[i],
-				    prdef->rs_name) == 0) {
+	if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
+		struct array_strings *pval = get_sattr_arst(SVR_ATR_restrict_res_to_release_on_suspend);
+		for (i = 0; pval != NULL && i < pval->as_usedptr; i++ ) {
+			if (strcmp(pval->as_string[i], prdef->rs_name) == 0) {
 				reply_text(preq, PBSE_RESCBUSY, "Resource busy on server");
 				return;
 			}
@@ -3823,7 +3816,7 @@ mgr_resource_delete(struct batch_request *preq)
 	updatedb = 0;
 	/* Is the resource set on the server? If so unset */
 	for (i=0; i < SVR_ATR_LAST; i++) {
-		pattr = &server.sv_attr[i];
+		pattr = get_sattr(i);
 		if (is_attr_set(pattr) && (pattr->at_type == ATR_TYPE_RESC || pattr->at_type == ATR_TYPE_ENTITY)) {
 			plist = attrlist_create(svr_attr_def[i].at_name, prdef->rs_name, 0);
 			plist->al_link.ll_next->ll_struct = NULL;
@@ -3839,8 +3832,9 @@ mgr_resource_delete(struct batch_request *preq)
 				 * the server keeps track of defaults to add to
 				 * schedselect @see sv_seldft
 				 */
-				if ((i == SVR_ATR_DefaultChunk) && (server.sv_attr[SVR_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY)) {
-					(void)deflt_chunk_action(&server.sv_attr[SVR_ATR_DefaultChunk], (void *)&server, ATR_ACTION_ALTER);
+				attribute *dfltchk_attr;
+				if ((i == SVR_ATR_DefaultChunk) && ((dfltchk_attr = get_sattr(SVR_ATR_DefaultChunk))->at_flags & ATR_VFLAG_MODIFY)) {
+					(void)deflt_chunk_action(dfltchk_attr, (void *)&server, ATR_ACTION_ALTER);
 				}
 			}
 			free_svrattrl(plist);
@@ -4050,7 +4044,7 @@ mgr_resource_set(struct batch_request *preq)
 
 	/* Reject if resource is on the server and the type is being modified */
 	for (i=0, busy=0; (i < SVR_ATR_LAST) && (busy == 0); i++) {
-		pattr = &server.sv_attr[i];
+		pattr = get_sattr(i);
 		if (pattr->at_type == ATR_TYPE_RESC) {
 			presc = get_resource(pattr, prdef);
 			if ((presc != NULL) && (mod_type == 1)) {
@@ -4290,7 +4284,7 @@ mgr_resource_unset(struct batch_request *preq)
 
 	/* Reject if resource is on the server */
 	for (i=0, busy=0; (i < SVR_ATR_LAST) && (busy == 0); i++) {
-		pattr = &server.sv_attr[i];
+		pattr = get_sattr(i);
 		if (pattr->at_type == ATR_TYPE_RESC) {
 			presc = get_resource(pattr, prdef);
 			if ((presc != NULL) && (mod == 1)) {
@@ -4298,21 +4292,20 @@ mgr_resource_unset(struct batch_request *preq)
 				 * just delete the resource entry from resources_assigned attribute.
 				 */
 				if (i == SVR_ATR_resource_assn) {
-					if (server.sv_attr[i].at_flags & ATR_VFLAG_SET) {
+					if (pattr->at_flags & ATR_VFLAG_SET) {
 						presc->rs_defin->rs_free(&presc->rs_value);
 						delete_link(&presc->rs_link);
 						free(presc);
-						presc = (resource *)GET_NEXT(server.sv_attr[i].at_val.at_list);
+						presc = (resource *)GET_NEXT(get_attr_list(pattr));
 						if (presc == NULL)
-							server.sv_attr[i].at_flags &= ~ATR_VFLAG_SET;
-						server.sv_attr[i].at_flags |= ATR_MOD_MCACHE;
+							pattr->at_flags &= ~ATR_VFLAG_SET;
+						pattr->at_flags |= ATR_MOD_MCACHE;
 					}
 				}
 				else
 					busy = 1;
 			}
-		}
-		else if (is_attr_set(pattr) && (pattr->at_type == ATR_TYPE_ENTITY)) {
+		} else if (is_attr_set(pattr) && (pattr->at_type == ATR_TYPE_ENTITY)) {
 			if ((mod == 1) && is_entity_resource_set(pattr, prdef->rs_name)) {
 				busy = 1;
 			}
@@ -4888,9 +4881,7 @@ resize_prov_table(int newsize)
 
 	server.sv_provtrackmodifed = 1;
 	prov_track_save();
-
-	server.sv_attr[(int)SVR_ATR_max_concurrent_prov].at_val.at_long = newsize;
-	server.sv_attr[(int)SVR_ATR_max_concurrent_prov].at_flags = ATR_SET_MOD_MCACHE;
+	set_sattr_l_slim(SVR_ATR_max_concurrent_prov, newsize, SET);
 	svr_save_db(&server);
 	return PBSE_NONE;
 }
