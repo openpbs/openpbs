@@ -129,7 +129,7 @@ svr_shutdown(int type)
 {
 	job		  *pjob;
 	job		  *pnxt;
-	long		 *state;
+	long		 state;
 	int		  wait_for_secondary = 0;
 
 	/* Lets start by logging shutdown and saving everything */
@@ -137,15 +137,16 @@ svr_shutdown(int type)
       /* Saving server jobid number to the database as server is going to shutdown.
 	 * Once server will come up then it will start jobid/resvid from this number onwards.
 	 */
-	state = &server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
+	state = get_sattr_long(SVR_ATR_State);
 	(void)strcpy(log_buffer, msg_shutdown_start);
 
-	if (*state == SV_STATE_SHUTIMM) {
+	if (state == SV_STATE_SHUTIMM) {
 
 		/* if already shuting down, another Immed/sig will force it */
 
 		if ((type == SHUT_IMMEDIATE) || (type == SHUT_SIG)) {
-			*state = SV_STATE_DOWN;
+			state = SV_STATE_DOWN;
+			set_sattr_l_slim(SVR_ATR_State, state, SET);
 			(void)strcat(log_buffer, "Forced");
 			log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN|PBSEVENT_DEBUG,
 				PBS_EVENTCLASS_SERVER, LOG_NOTICE,
@@ -170,27 +171,33 @@ svr_shutdown(int type)
 
 	type = type & SHUT_MASK;
 	if (type == SHUT_IMMEDIATE) {
-		*state = SV_STATE_SHUTIMM;
+		state = SV_STATE_SHUTIMM;
+		set_sattr_l_slim(SVR_ATR_State, state, SET);
 		(void)strcat(log_buffer, "Immediate");
 
 	} else if (type == SHUT_DELAY) {
-		*state = SV_STATE_SHUTDEL;
+		state = SV_STATE_SHUTDEL;
+		set_sattr_l_slim(SVR_ATR_State, state, SET);
 		(void)strcat(log_buffer, "Delayed");
 
 	} else if (type == SHUT_QUICK) {
-		*state = SV_STATE_DOWN; /* set to down to brk pbsd_main loop */
+		state = SV_STATE_DOWN; /* set to down to brk pbsd_main loop */
+		set_sattr_l_slim(SVR_ATR_State, state, SET);
 		(void)strcat(log_buffer, "Quick");
 
 	} else {
-		*state = SV_STATE_DOWN;
+		state = SV_STATE_DOWN;
+		set_sattr_l_slim(SVR_ATR_State, state, SET);
 		(void)strcat(log_buffer, "By Signal");
 		type = SHUT_QUICK;
 	}
 	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN|PBSEVENT_DEBUG,
 		PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname, log_buffer);
 
-	if (wait_for_secondary)
-		*state |= SV_STATE_PRIMDLY; /* wait for reply from Secondary */
+	if (wait_for_secondary) {
+		state |= SV_STATE_PRIMDLY; /* wait for reply from Secondary */
+		set_sattr_l_slim(SVR_ATR_State, state, SET);
+	}
 
 	if (type == SHUT_QUICK) /* quick, leave jobs as are */
 		return;
@@ -400,7 +407,7 @@ post_chkpt(struct work_task *ptask)
 static void
 rerun_or_kill(job *pjob, char *text)
 {
-	long server_state = server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
+	long server_state = get_sattr_long(SVR_ATR_State);
 
 	if (get_jattr_long(pjob, JOB_ATR_rerunable)) {
 

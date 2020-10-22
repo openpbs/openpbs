@@ -3493,15 +3493,12 @@ _pps_helper_get_server(char *perf_label)
 	/* As done is stat_svr update the state count */
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
-
-	server.sv_attr[(int)SVR_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
-	server.sv_attr[(int)SVR_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
-	update_state_ct(&server.sv_attr[(int)SVR_ATR_JobsByState],
+	set_sattr_l_slim(SVR_ATR_TotalJobs, server.sv_qs.sv_numjobs, SET);
+	update_state_ct(get_sattr(SVR_ATR_JobsByState),
 		server.sv_jobstates,
 		server.sv_jobstbuf);
 
-	update_license_ct(&server.sv_attr[(int)SVR_ATR_license_count],
-		server.sv_license_ct_buf);
+	update_license_ct();
 
 	/* stuff all the attributes */
 	strncpy((char *)hook_debug.objname, SERVER_OBJECT, HOOK_BUF_SIZE-1);
@@ -5208,8 +5205,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	}
 
 	lval = max_hooks;
-	if (server.sv_attr[(int)SVR_ATR_PythonRestartMaxHooks].at_flags & ATR_VFLAG_SET)
-		max_hooks = server.sv_attr[(int)SVR_ATR_PythonRestartMaxHooks].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_PythonRestartMaxHooks))
+		max_hooks = get_sattr_long(SVR_ATR_PythonRestartMaxHooks);
 	else
 		max_hooks = PBS_PYTHON_RESTART_MAX_HOOKS;
 	if (lval != max_hooks) {
@@ -5219,8 +5216,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	}
 
 	lval = max_objects;
-	if (server.sv_attr[(int)SVR_ATR_PythonRestartMaxObjects].at_flags & ATR_VFLAG_SET)
-		max_objects = server.sv_attr[(int)SVR_ATR_PythonRestartMaxObjects].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_PythonRestartMaxObjects))
+		max_objects = get_sattr_long(SVR_ATR_PythonRestartMaxObjects);
 	else
 		max_objects = PBS_PYTHON_RESTART_MAX_OBJECTS;
 	if (lval != max_objects) {
@@ -5230,8 +5227,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	}
 
 	lval = min_restart_interval;
-	if (server.sv_attr[(int)SVR_ATR_PythonRestartMinInterval].at_flags & ATR_VFLAG_SET)
-		min_restart_interval = server.sv_attr[(int)SVR_ATR_PythonRestartMinInterval].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_PythonRestartMinInterval))
+		min_restart_interval = get_sattr_long(SVR_ATR_PythonRestartMinInterval);
 	else
 		min_restart_interval = PBS_PYTHON_RESTART_MIN_INTERVAL;
 	if (lval != min_restart_interval) {

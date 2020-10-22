@@ -128,7 +128,7 @@ get_cached_cred(job  *pjob)
 
 	/* valid credentials not cached, get new one */
 
-	if ((server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_sattr_set(SVR_ATR_cred_renew_tool)) {
 		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, "%s is not set", ATTR_cred_renew_tool);
 		return NULL;
@@ -137,11 +137,11 @@ get_cached_cred(job  *pjob)
 	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
 		LOG_DEBUG, msg_daemonname, "using %s '%s' to acquire credentials for user: %s",
 		ATTR_cred_renew_tool,
-		server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_val.at_str,
+		get_sattr_str(SVR_ATR_cred_renew_tool),
 		get_jattr_str(pjob, JOB_ATR_cred_id));
 
 	snprintf(cmd, MAXPATHLEN + PBS_MAXUSER + 2, "%s %s", /* +1 for space and +1 for EOL */
-		server.sv_attr[(int)SVR_ATR_cred_renew_tool].at_val.at_str,
+		get_sattr_str(SVR_ATR_cred_renew_tool),
 		get_jattr_str(pjob, JOB_ATR_cred_id));
 
 	if ((fp = popen(cmd, "r")) == NULL) {

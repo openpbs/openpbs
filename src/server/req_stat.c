@@ -748,15 +748,12 @@ req_stat_svr(struct batch_request *preq)
 	conn_t *conn;
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
-
-	server.sv_attr[(int)SVR_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
-	server.sv_attr[(int)SVR_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
-	update_state_ct(&server.sv_attr[(int)SVR_ATR_JobsByState],
+	set_sattr_l_slim(SVR_ATR_TotalJobs, server.sv_qs.sv_numjobs, SET);
+	update_state_ct(get_sattr(SVR_ATR_JobsByState),
 		server.sv_jobstates,
 		server.sv_jobstbuf);
 
-	update_license_ct(&server.sv_attr[(int)SVR_ATR_license_count],
-		server.sv_license_ct_buf);
+	update_license_ct();
 
 	conn = get_conn(preq->rq_conn);
 	if (!conn) {
@@ -765,7 +762,7 @@ req_stat_svr(struct batch_request *preq)
 	}
 	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 		/* Request is from sched so update "has_runjob_hook" */
-		update_isrunhook(&server.sv_attr[SVR_ATR_has_runjob_hook]);
+		update_isrunhook(get_sattr(SVR_ATR_has_runjob_hook));
 	}
 
 	/* allocate a reply structure and a status sub-structure */
@@ -928,24 +925,20 @@ update_state_ct(attribute *pattr, int *ct_array, char *buf)
 
 /**
  * @brief
- * 		update_license_ct - update the # of licenses (counters) in 'license_count'
- *			server attribute.
- *
- * @param[out]	pattr	-	server attribute.
- * @param[out]	buf	-	job string buffer
+ * 	update_license_ct - update the # of licenses (counters) in 'license_count' server attribute.
  */
-
 void
-update_license_ct(attribute *pattr, char *buf)
+update_license_ct(void)
 {
+	char buf[BUF_SIZE];
+
 	buf[0] = '\0';
-	sprintf(buf, "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
-			license_counts.licenses_global,
-			license_counts.licenses_local,
-			license_counts.licenses_used,
-			license_counts.licenses_high_use.lu_max_forever);
-	pattr->at_val.at_str = buf;
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	snprintf(buf, sizeof(buf), "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
+		 license_counts.licenses_global,
+		 license_counts.licenses_local,
+		 license_counts.licenses_used,
+		 license_counts.licenses_high_use.lu_max_forever);
+	set_sattr_str_slim(SVR_ATR_license_count, buf, NULL);
 }
 
 /**
