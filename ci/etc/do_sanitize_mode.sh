@@ -57,10 +57,10 @@ CFLAGS="-g -O2 -Wall -Werror -fsanitize=address -fno-omit-frame-pointer" CXXFLAG
 yum -y install /root/rpmbuild/RPMS/x86_64/*-server-??.*.x86_64.rpm
 yum -y install /root/rpmbuild/RPMS/x86_64/*-debuginfo-??.*.x86_64.rpm
 yum -y install /root/rpmbuild/RPMS/x86_64/*-ptl-??.*.x86_64.rpm
-sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf
-sed -i "s@PBS_START_SERVER=0@PBS_START_SERVER=1@" /etc/pbs.conf
-sed -i "s@PBS_START_COMM=0@PBS_START_COMM=1@" /etc/pbs.conf
-sed -i "s@PBS_START_SCHED=0@PBS_START_SCHED=1@" /etc/pbs.conf
+echo "PBS_START_MOM=1" >> /etc/pbs.conf
+echo "PBS_START_SERVER=1" >> /etc/pbs.conf
+echo "PBS_START_COMM=1" >> /etc/pbs.conf
+echo "PBS_START_SCHED=1" >> /etc/pbs.conf
 /etc/init.d/pbs start
 set +e
 . /etc/profile.d/ptl.sh
