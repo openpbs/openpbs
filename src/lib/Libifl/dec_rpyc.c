@@ -92,7 +92,6 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 	struct batch_status *pstcmd;
 	struct batch_status **pstcx = NULL;
 	struct batch_deljob_status *pdel;
-	struct batch_deljob_status **pdelx = NULL;
 	int rc = 0;
 	size_t txtlen;
 	preempt_job_info *ppj = NULL;
@@ -208,11 +207,10 @@ again:
 		case BATCH_REPLY_CHOICE_Delete:
 
 			/* have to get count of number of status objects first */
-			if (pdelx == NULL) {
-				reply->brp_un.brp_delstatc = NULL;
-				pdelx = &reply->brp_un.brp_delstatc;
-				reply->brp_count = 0;
-			}
+
+			reply->brp_un.brp_delstatc = NULL;
+			reply->brp_count = 0;
+			
 			ct = disrui(sock, &rc);
 			if (rc)
 				return rc;
@@ -222,12 +220,10 @@ again:
 				pdel = (struct batch_deljob_status *) malloc(sizeof(struct batch_deljob_status));
 				if (pdel == 0)
 					return DIS_NOMALLOC;
-				pdel->next = NULL;
+				pdel->next = reply->brp_un.brp_delstatc;
 				pdel->code = 0;
 
-				i = disrui(sock, &rc); /* read and discard brp_objtype */
-				if (rc == 0)
-					pdel->name = disrst(sock, &rc);
+				pdel->name = disrst(sock, &rc);
 				if (rc) {
 					pbs_delstatfree(pdel);
 					return rc;
@@ -240,8 +236,7 @@ again:
 					pbs_delstatfree(pdel);
 					return rc;
 				}
-				*pdelx = pdel;
-				pdelx = &pdel->next;
+				reply->brp_un.brp_delstatc = pdel;
 			}
 
 			break;

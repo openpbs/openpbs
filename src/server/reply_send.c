@@ -427,6 +427,8 @@ reply_free(struct batch_reply *prep)
 	struct brp_status  *pstatx;
 	struct brp_select  *psel;
 	struct brp_select  *pselx;
+	struct batch_deljob_status *pdelstat;
+	struct batch_deljob_status *pdelstatx;
 
 	if (prep->brp_choice == BATCH_REPLY_CHOICE_Text) {
 		if (prep->brp_un.brp_txt.brp_str) {
@@ -453,11 +455,11 @@ reply_free(struct batch_reply *prep)
 		}
 		
 	} else if (prep->brp_choice == BATCH_REPLY_CHOICE_Delete) {
-		pstat = (struct brp_status *)GET_NEXT(prep->brp_un.brp_delstat);
-		while (pstat) {
-			pstatx = (struct brp_status *)GET_NEXT(pstat->brp_stlink);
-			(void)free(pstat);
-			pstat = pstatx;
+		pdelstat = prep->brp_un.brp_delstatc;
+		while (pdelstat) {
+			pdelstatx = pdelstat->next;
+			(void)free(pdelstat);
+			pdelstat = pdelstatx;
 	}
 		
 	} else if (prep->brp_choice == BATCH_REPLY_CHOICE_RescQuery) {

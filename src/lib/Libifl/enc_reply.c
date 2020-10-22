@@ -82,7 +82,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 	int i;
 	struct brp_select *psel;
 	struct brp_status *pstat;
-	struct brp_deletejobstat *pdelstat;
+	struct batch_deljob_status *pdelstat;
 	svrattrl *psvrl;
 	preempt_job_info *ppj;
 
@@ -156,12 +156,12 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 
 			if ((rc = diswui(sock, reply->brp_count)) != 0)
 				return rc;
-			pdelstat = (struct brp_deletejobstat *) GET_NEXT(reply->brp_un.brp_delstat);
+			pdelstat = reply->brp_un.brp_delstatc;
 			while (pdelstat) {
-				if ((rc = diswui(sock, pdelstat->brp_objtype)) || (rc = diswst(sock, pdelstat->brp_objname)) || (rc = diswui(sock, pdelstat->brp_errcode)))
+				if ((rc = diswst(sock, pdelstat->name )) || (rc = diswui(sock, pdelstat->code)))
 					return rc;
 
-				pdelstat = (struct brp_deletejobstat *) GET_NEXT(pdelstat->brp_stlink);
+				pdelstat = pdelstat->next;
 			}
 			break;
 

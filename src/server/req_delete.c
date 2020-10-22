@@ -344,22 +344,24 @@ decr_single_subjob_usage(job *parent)
 
 int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode, pbs_list_head *pdelstathd)
 {
-	struct brp_deletejobstat *pdelstat;
+	struct batch_deljob_status *pdelstat;
+	struct batch_reply *preply = &preq->rq_reply;
 	
 	preq->rq_ind.rq_delete.tot_rpys++;
 	
 	if (preq->rq_type != PBS_BATCH_DeleteJobList)
 		return 0;
 		
-	/* allocate reply structure and fill in header portion */
-	pdelstat = (struct brp_deletejobstat *)malloc(sizeof(struct brp_deletejobstat));
+	/* allocate reply structure and fill in jobid and status portion */
+	pdelstat = (struct batch_deljob_status *)malloc(sizeof(struct batch_deljob_status));
 	if (pdelstat == NULL)
 		return (PBSE_SYSTEM);
-	CLEAR_LINK(pdelstat->brp_stlink);
-	pdelstat->brp_objtype = MGR_OBJ_JOB;
-	(void)strcpy(pdelstat->brp_objname, jid);
-	pdelstat->brp_errcode = errcode;
-	append_link(pdelstathd, &pdelstat->brp_stlink, pdelstat);
+		
+	pdelstat->name = strdup(jid);
+	pdelstat->code = errcode;
+	pdelstat->next = preply->brp_un.brp_delstatc;
+	preply->brp_un.brp_delstatc = pdelstat;
+	
 	preq->rq_reply.brp_count++;
 
 	return 0;
@@ -395,6 +397,7 @@ req_deletejob(struct batch_request *preq)
 	int j;
 	struct batch_reply *preply = &preq->rq_reply;
 	CLEAR_HEAD(preply->brp_un.brp_delstat);
+	preply->brp_un.brp_delstatc = NULL;
 	preply->brp_count = 0;
 	
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
@@ -521,6 +524,7 @@ req_deletejob(struct batch_request *preq)
 			continue;
 
 		} else if (jt == IS_ARRAY_ArrayJob) {
+			int del_parent = 1;
 			/*
 			 * For array jobs the history is stored at the parent array level and also at the subjob level .
 			 * If the request is to delete the history of an array job then set  ji_deletehistory to 1 for
@@ -552,8 +556,10 @@ req_deletejob(struct batch_request *preq)
 							pjob->ji_qs.ji_jobid,
 							log_buffer);
 						job_purge(pjob);
-					}else
+					}else {
 						dup_br_for_subjob(preq, pjob, req_deletejob2);
+						del_parent = 0;
+					}
 				} else {
 					/* Queued, Waiting, Held, just set to expired */
 					if (sjst != JOB_STATE_LTR_EXPIRED) {
@@ -581,6 +587,12 @@ req_deletejob(struct batch_request *preq)
 				}
 			} else
 				acct_del_write(jid, parent, preq, 0);
+				
+				
+			if (del_parent == 1) {
+				if ((parent = find_job(jid)) != NULL)
+					req_deletejob2(preq, parent);
+			}
 
 			continue;
 		}
