@@ -1749,7 +1749,7 @@ set_resv_retry(resc_resv *presv, long retry_time)
 
 	presv->ri_resv_retry = retry_time;
 
-	str_time = ctime(&(presv->ri_wattr[RESV_ATR_retry].at_val.at_long));
+	str_time = ctime(&retry_time);
 	if (str_time != NULL) {
 		str_time[strlen(str_time) - 1] = '\0';
 		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, msg, str_time);
@@ -7973,7 +7973,7 @@ long determine_resv_retry(resc_resv *presv)
 
 	if (time_now < resv_start && time_now + resv_retry_time > resv_start)
 		/* The server gets confused if a reservation starts and is confirmed at the same time.  Retry shortly before it starts */
-		retry = resv_start - 10;
+		retry = resv_start;
 	else
 		retry = time_now + resv_retry_time;
 
