@@ -65,6 +65,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 # Helper script to allow a py_spawned script to run detached from the
@@ -167,7 +169,8 @@ if __name__ == '__main__':
         d = s.status(JOB, 'exec_host', id=jobid)
         if d and 'exec_host' in d[0]:
             hosts = ResourceResv.get_hosts(d[0]['exec_host'])
-            pconf = MoM(hosts[0]).pbs_conf['PBS_EXEC']
+            svr_obj = Server(hosts[0])
+            pconf = MoM(svr_obj, hosts[0]).pbs_conf['PBS_EXEC']
             # Use path to pbs_attach on natural vnode of the job
             pbs_attach = os.path.join(pconf, 'bin', 'pbs_attach')
             if wrapper is None:

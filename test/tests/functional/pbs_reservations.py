@@ -2268,7 +2268,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 2}
         self.mom.create_vnodes(a, num=3)
-        vn_list = ['vn[0]', 'vn[1]', 'vn[2]']
+        vn_list = ["%s[%d]" % (self.mom.shortname, i) for i in range(3)]
 
         now = int(time.time())
         sel = '1:ncpus=2+1:ncpus=1'
