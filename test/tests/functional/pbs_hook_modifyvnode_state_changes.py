@@ -85,6 +85,13 @@ def get_hook_body(hook_msg):
         old_state = e.vnode_o.state
         new_lsc_time = e.vnode.last_state_change_time
         old_lsc_time = e.vnode_o.last_state_change_time
+        
+        # print show_vnode_state record
+        svs_str1 = new_vnode_name + ' v.state=' + hex(new_state) + ' v_o.state=' + hex(old_state)
+        svs_str2 = svs_str1 + ' v.lsct=' + str(new_lsc_time) + ' v_o.lsct=' + str(old_lsc_time)
+        pbs.logmsg(pbs.LOG_DEBUG, 'show_vnode_state;name=' + svs_str2)
+        
+        # print additional info
         pbs.logmsg(pbs.LOG_DEBUG, 'new_vnode_name:' + new_vnode_name)
         pbs.logmsg(pbs.LOG_DEBUG, 'new_last_state_change_time: ' + str(new_lsc_time))
         pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
@@ -114,11 +121,11 @@ def get_hook_body_modifyvnode_param_rpt():
         lsct = v.last_state_change_time
         lsct_o = v_o.last_state_change_time
 
-        # print test record for consumption by the BI team
-        bi_data="v.state=%s v_o.state=%s v.lsct=%s v_o.lsct=%s" % (hex(v.state),hex(v_o.state),str(lsct),str(lsct_o))
-        pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, bi_data))
+        # print show_vnode_state record
+        svs_data="v.state=%s v_o.state=%s v.lsct=%s v_o.lsct=%s" % (hex(v.state),hex(v_o.state),str(lsct),str(lsct_o))
+        pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, svs_data))
 
-        # print values
+        # print additional hook parameter values
         pbs.logmsg(pbs.LOG_DEBUG, "name: v=%s, v_o=%s" % (v.name, v_o.name))
         pbs.logmsg(pbs.LOG_DEBUG, "state: v=%s, v_o=%s" % (hex(v.state), hex(v_o.state)))
         pbs.logmsg(pbs.LOG_DEBUG, "last_state_change_time: v=%s, v_o=%s" % (str(lsct), str(lsct_o)))
@@ -197,6 +204,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
 
     def checkLog(self, start_time, mom, check_up, check_down):
+        self.server.log_match("set_vnode_state;vnode.state=", starttime=start_time)
         self.server.log_match("show_vnode_state;name=", starttime=start_time)
         self.server.log_match("name: v=", starttime=start_time)
         self.server.log_match("state: v=", starttime=start_time)
