@@ -391,7 +391,6 @@ get_conn_svr_instances(int parentfd)
 			msvr_conns[i].port = pbs_conf.psi[i].port;
 			msvr_conns[i].sd = -1;
 			msvr_conns[i].state = SVR_CONN_STATE_DOWN;
-			msvr_conns[i].registered = 0;
 		}
 		new_conns->conn_arr = msvr_conns;
 		new_conns->next = conn_list;
@@ -706,7 +705,6 @@ __pbs_disconnect(int connect)
 
 			svr_conns[i].sd = -1;
 			svr_conns[i].state = SVR_CONN_STATE_DOWN;
-			svr_conns[i].registered = 0;
 		}
 	} else {
 		/* fd doesn't belong to a multi-server setup, just disconnect and exit */
@@ -1003,24 +1001,24 @@ err:
 /**
  * @brief Registers the given socket with the Server by sending PBS_BATCH_RegisterSched
  *
- * param[in]	client_id - client identifier which is known to server
+ * param[in]	sched_id - sched identifier which is known to server
  * @return int
  * @retval 0  - failure
  * @return 1  - success
  */
 static int
-send_register_sched(int sock, const char *client_id)
+send_register_sched(int sock, const char *sched_id)
 {
 	int rc;
 	struct batch_reply *reply = NULL;
 
-	if (client_id == NULL)
+	if (sched_id == NULL)
 		return 0;
 
 	rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RegisterSched, pbs_current_user);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
-	rc = diswst(sock, client_id);
+	rc = diswst(sock, sched_id);
 	if (rc != DIS_SUCCESS)
 		goto rerr;
 	rc = encode_DIS_ReqExtend(sock, NULL);
@@ -1049,48 +1047,37 @@ rerr:
 /**
  * @brief Registers the Scheduler with all the Servers configured
  *
- * param[in]	client_id -  client identifier which is known to server
+ * param[in]	sched_id - sched identifier which is known to server
+ * param[in]	primary_conn_id - primary connection handle which represents all servers returned by pbs_connect
+ * param[in]	secondary_conn_id - secondary connection handle which represents all servers returned by pbs_connect
+ *
  * @return int
  * @retval 0  - failure
  * @return 1  - success
  */
 int
-pbs_register_sched(const char *client_id)
+pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id)
 {
 	int i;
-	svr_conns_list_t *conn_list;
 	svr_conn_t *svr_conns_primary = NULL;
 	svr_conn_t *svr_conns_secondary = NULL;
-	svr_conns_list_t *iter_conns = NULL;
 
-	if (client_id == NULL)
+	if (sched_id == NULL)
 		return 0;
 
-	conn_list = pthread_getspecific(psi_key);
+	svr_conns_primary =  get_conn_svr_instances(primary_conn_id);
+	if (svr_conns_primary == NULL)
+		return 0;
 
-	for (iter_conns = conn_list; (iter_conns != NULL) && (svr_conns_primary == NULL || svr_conns_secondary == NULL);
-		iter_conns = iter_conns->next) {
-		/* conn_list has secondary set first followed by primary set of connections */
-		if (svr_conns_secondary == NULL)
-			svr_conns_secondary = iter_conns->conn_arr;
-		else if (svr_conns_primary == NULL)
-			svr_conns_primary = iter_conns->conn_arr;
-	}
-
-	if (svr_conns_primary == NULL || svr_conns_secondary == NULL)
+	svr_conns_secondary =  get_conn_svr_instances(secondary_conn_id);
+	if (svr_conns_secondary == NULL)
 		return 0;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (!svr_conns_primary[i].registered) {
-			if (send_register_sched(svr_conns_primary[i].sd, client_id) == 0)
-				return 0;	
-			svr_conns_primary[i].registered = 1;
-		}
-		if (!svr_conns_secondary[i].registered) {
-			if (send_register_sched(svr_conns_secondary[i].sd, client_id) == 0)
-				return 0;
-			svr_conns_secondary[i].registered = 1;
-		}
+		if (send_register_sched(svr_conns_primary[i].sd, sched_id) == 0)
+			return 0;	
+		if (send_register_sched(svr_conns_secondary[i].sd, sched_id) == 0)
+			return 0;
 	}
 
 	return 1;

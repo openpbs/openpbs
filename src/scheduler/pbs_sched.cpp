@@ -547,12 +547,15 @@ connect_svrpool()
 
 
 	while (clust_primary_sock < 0 || clust_secondary_sock < 0 || registered == 0) {
-		/* pbs_connect() will return a connection handle for all servers */
+		/* pbs_connect() will return a connection handle for all servers
+		 * we have to close all servers before pbs_conenct is reattempted
+		 */
 		if (clust_primary_sock < 0) {
 			clust_primary_sock = pbs_connect(NULL);
 			if (clust_primary_sock < 0) {
 				/* wait for 2s for not to burn too much CPU, and then retry connection */
 				sleep(2);
+				close_servers();
 				continue;
 			}
 		}
@@ -560,6 +563,7 @@ connect_svrpool()
 		if (clust_secondary_sock < 0) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);
+			close_servers();
 			continue;
 		}
 
@@ -582,13 +586,15 @@ connect_svrpool()
 			 * Also wait for 2s for not to burn too much CPU
 			 */
 			sleep(2);
+			close_servers();
 			continue;
 		}
 
-		if (pbs_register_sched(sc_name) == 0) {
+		if (pbs_register_sched(sc_name, clust_primary_sock, clust_secondary_sock) == 0) {
 			log_errf(pbs_errno, __func__, "Couldn't register the scheduler %s with the configured servers", sc_name);
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
-			sleep(2);			
+			sleep(2);
+			close_servers();			
 			continue;
 		} else
 			registered = 1;
@@ -596,6 +602,7 @@ connect_svrpool()
 	}
 
 
+	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to all the configured servers");
 	for (i = 0; i < get_num_servers(); i++) {
 		if (tpp_em_add_fd(poll_context, svr_conns_secondary[i].sd, EM_IN | EM_HUP | EM_ERR) < 0) {
 			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns_secondary[i].name);

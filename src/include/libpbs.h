@@ -147,7 +147,6 @@ typedef struct svr_conn {
 	char name[PBS_MAXSERVERNAME + 1];  /* server name */
 	int port;                    /* server port */
 	int from_sched;              /* flag to indicate whether this conn is from sched or not */
-	int registered;
 } svr_conn_t;
 
 typedef struct svr_conns_list {
@@ -390,7 +389,7 @@ int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 void *get_conn_svr_instances(int);
 void dealloc_conn_list_single(int parentfd);
-int pbs_register_sched(const char *client_id);
+int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 
 #ifdef __cplusplus
 }
