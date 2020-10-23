@@ -193,6 +193,12 @@ extern "C" {
 /* Default value of preempt_sort */
 #define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
 
+/* Structure to store each server instance details */
+typedef struct pbs_server_instance {
+	char name[PBS_MAXSERVERNAME + 1];
+	unsigned int port;
+} psi_t;
+
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */
@@ -212,13 +218,14 @@ struct pbs_config
 	unsigned int batch_service_port_dis;	/* PBS batch_service_port_dis */
 	unsigned int mom_service_port;	/* PBS mom_service_port */
 	unsigned int manager_service_port;	/* PBS manager_service_port */
-	unsigned int scheduler_service_port;	/* PBS scheduler_service_port */
 	unsigned int pbs_data_service_port;    /* PBS data_service port */
 	char *pbs_conf_file;			/* full path of the pbs.conf file */
 	char *pbs_home_path;			/* path to the pbs home dir */
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
 	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
+	unsigned int pbs_num_servers;	/* currently configured number of instances */
+	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
 	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
@@ -277,7 +284,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_BATCH_SERVICE_PORT_DIS	     "PBS_BATCH_SERVICE_PORT_DIS"
 #define PBS_CONF_MOM_SERVICE_PORT	     "PBS_MOM_SERVICE_PORT"
 #define PBS_CONF_MANAGER_SERVICE_PORT	     "PBS_MANAGER_SERVICE_PORT"
-#define PBS_CONF_SCHEDULER_SERVICE_PORT	     "PBS_SCHEDULER_SERVICE_PORT"
 #define PBS_CONF_DATA_SERVICE_PORT           "PBS_DATA_SERVICE_PORT"
 #define PBS_CONF_DATA_SERVICE_HOST           "PBS_DATA_SERVICE_HOST"
 #define PBS_CONF_USE_COMPRESSION     	     "PBS_USE_COMPRESSION"
@@ -293,6 +299,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_EXEC		"PBS_EXEC"		 /* path to pbs exec */
 #define PBS_CONF_DEFAULT_NAME	"PBS_DEFAULT"	  /* old name for PBS_SERVER */
 #define PBS_CONF_SERVER_NAME	"PBS_SERVER"	   /* name of the pbs server */
+#define PBS_CONF_SERVER_INSTANCES	"PBS_SERVER_INSTANCES" /* comma separated list (host:port) of server instances */
 #define PBS_CONF_INSTALL_MODE    "PBS_INSTALL_MODE" /* PBS installation mode */
 #define PBS_CONF_RCP		"PBS_RCP"
 #define PBS_CONF_CP		"PBS_CP"
@@ -402,7 +409,9 @@ enum accrue_types {
 #if HAVE__BOOL
 #include "stdbool.h"
 #else
+#ifndef __cplusplus
 typedef enum { false, true } bool;
+#endif
 #endif
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs

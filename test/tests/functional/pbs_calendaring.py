@@ -49,7 +49,6 @@ class TestCalendaring(TestFunctional):
     This test suite tests if PBS scheduler calendars events correctly
     """
 
-    @skipOnCpuSet
     def test_topjob_start_time(self):
         """
         In this test we test that the top job which gets added to the
@@ -107,7 +106,6 @@ class TestCalendaring(TestFunctional):
         # Third subjob should set estimated.start_time in future.
         self.assertGreater(est_epoch1, time_now)
 
-    @skipOnCpuSet
     def test_topjob_start_time_of_subjob(self):
         """
         In this test we test that the subjob which gets added to the
@@ -144,7 +142,6 @@ class TestCalendaring(TestFunctional):
         errmsg = jid + ";Error in calculation of start time of top job"
         self.scheduler.log_match(errmsg, existence=False, max_attempts=10)
 
-    @skipOnCpuSet
     def test_topjob_fail(self):
         """
         Test that when we fail to add a job to the calendar it doesn't
@@ -160,8 +157,8 @@ class TestCalendaring(TestFunctional):
         # it won't try and add it to the calendar.  To do this, we ask for
         # 1 node with 2 cpus.  There are 2 nodes with 1 cpu each.
         attrs = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', attrib=attrs, num=2,
-                                  mom=self.mom, sharednode=False)
+        self.mom.create_vnodes(attrib=attrs, num=2,
+                               sharednode=False)
 
         self.scheduler.set_sched_config({'strict_ordering': 'True ALL'})
 

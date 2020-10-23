@@ -60,15 +60,14 @@ class PBSTestCycle(TestSelf):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq')
 
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vnode', a, 1, self.mom)
-
+        self.mom.create_vnodes(a, 1)
+        vn = self.mom.shortname
         p1 = {'partition': 'P1'}
         self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq')
-        self.server.manager(MGR_CMD_SET, NODE, p1, id='vnode[0]')
+        self.server.manager(MGR_CMD_SET, NODE, p1, id=vn + '[0]')
 
         a = {'partition': 'P1',
-             'sched_host': self.server.hostname,
-             'sched_port': '15050'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc")
         self.scheds['sc'].create_scheduler()

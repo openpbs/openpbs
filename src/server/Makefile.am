@@ -43,14 +43,12 @@ sbin_PROGRAMS = pbs_server.bin pbs_comm
 
 pbs_server_bin_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@database_inc@ \
+	-I$(top_srcdir)/src/lib/Liblicensing \
 	@expat_inc@ \
 	@libical_inc@ \
 	@libz_inc@ \
 	@PYTHON_INCLUDES@ \
 	@KRB5_CFLAGS@
-
-pbs_server_bin_LDFLAGS = "-Wl,-rpath,$(DESTDIR)$(libdir)"
 
 pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
@@ -61,9 +59,9 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
-	$(top_builddir)/src/lib/Libdb/libdb.so \
+	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	@database_ldflags@ \
+	$(top_builddir)/src/lib/Liblicensing/.libs/liblicensing.so \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \
@@ -79,16 +77,16 @@ pbs_server_bin_SOURCES = \
 	array_func.c \
 	attr_recov.c \
 	attr_recov_db.c \
-	checkkey.c \
 	dis_read.c \
 	failover.c \
 	geteusernam.c \
 	hook_func.c \
 	issue_request.c \
+	jattr_get_set.c \
 	job_func.c \
 	job_recov_db.c \
 	job_route.c \
-	license_client.c \
+	licensing_func.c \
 	mom_info.c \
 	node_func.c \
 	node_manager.c \
@@ -126,7 +124,6 @@ pbs_server_bin_SOURCES = \
 	sched_func.c \
 	setup_resc.c \
 	stat_job.c \
-	svr_attr.c \
 	svr_chk_owner.c \
 	svr_connect.c \
 	svr_func.c \

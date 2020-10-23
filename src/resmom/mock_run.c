@@ -54,6 +54,7 @@
 #include "mom_func.h"
 #include "pbs_error.h"
 #include "resource.h"
+#include "mom_server.h"
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 #include "renew_creds.h"
@@ -97,20 +98,15 @@ mock_run_finish_exec(job *pjob)
 void
 mock_run_record_finish_exec(job *pjob)
 {
-	pjob->ji_qs.ji_state = JOB_STATE_RUNNING;
-	pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
-	job_save(pjob);
+	set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+	set_job_substate(pjob, JOB_SUBSTATE_RUNNING);
 
-	pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_long = JOB_STATE_RUNNING;
-	pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char = 'R';
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = JOB_SUBSTATE_RUNNING;
-	pjob->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODIFY;
+	job_save(pjob);
 
 	time_resc_updated = time_now;
 	mock_run_mom_set_use(pjob);
 
-	update_ajob_status(pjob);
+	enqueue_update_for_send(pjob, IS_RESCUSED);
 	next_sample_time = min_check_poll;
 
 	return;
@@ -136,8 +132,9 @@ mock_run_end_job_task(struct work_task *ptask)
 
 	pjob = ptask->wt_parm1;
 
-	pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
-	pjob->ji_qs.ji_state = JOB_STATE_EXITING;
+	set_job_state(pjob, JOB_STATE_LTR_EXITING);
+	set_job_substate(pjob, JOB_SUBSTATE_EXITING);
+
 	pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_OK;
 
 	scan_for_exiting();
@@ -189,13 +186,13 @@ mock_run_mom_set_use(job *pjob)
 	}
 
 	vmemd = &svr_resc_def[RESC_VMEM];
-	
+
 	for (i = 0; rd[i] != NULL; i++) {
 		rdefp = rd[i];
 		pres = find_resc_entry(at, rdefp);
 		if (pres == NULL) {
 			pres = add_resource_entry(at, rdefp);
-			pres->rs_value.at_flags |= ATR_VFLAG_SET;
+			mark_attr_set(&pres->rs_value);
 			pres->rs_value.at_type = rd[i]->rs_type;
 
 			/*
@@ -230,7 +227,7 @@ mock_run_mom_set_use(job *pjob)
 	pres = find_resc_entry(at, vmemd);
 	if (pres == NULL) {
 		pres = add_resource_entry(at, vmemd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
+		mark_attr_set(&pres->rs_value);
 		pres->rs_value.at_type = ATR_TYPE_LONG;
 		pres->rs_value.at_val.at_long = memval;
 		pres->rs_value.at_val.at_size.atsv_shift = mem_atsv_shift;
@@ -269,7 +266,7 @@ mock_run_job_purge(job *pjob)
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
-	del_job_dirs(pjob);
+	del_job_dirs(pjob, NULL);
 
 	/* delete job file */
 	del_job_related_file(pjob, JOB_FILE_SUFFIX);

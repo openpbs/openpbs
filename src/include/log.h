@@ -39,6 +39,11 @@
 
 #ifndef	_LOG_H
 #define	_LOG_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #if SYSLOG
 #include <syslog.h>
@@ -175,4 +180,10 @@ extern void log_supported_auth_methods(char **supported_auth_methods);
 /* Logging Masks */
 
 #define PBSEVENT_MASK	0x01ff
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif /* _LOG_H */

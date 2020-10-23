@@ -117,7 +117,7 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 
 	/* search the User_List attribute */
 
-	if ((pattr->at_flags & ATR_VFLAG_SET) &&
+	if (is_attr_set(pattr) &&
 		(parst = pattr->at_val.at_arst)  ) {
 		*isowner = 0;
 		for (i=0; i<parst->as_usedptr; i++) {
@@ -133,8 +133,8 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 			}
 		}
 	}
-	if (!(pattr->at_flags & ATR_VFLAG_SET)) {	/* if no user is specified, default to the object owner ( 3.) */
-		hit = objattrs[idx_owner].at_val.at_str;
+	if (!is_attr_set(pattr)) {	/* if no user is specified, default to the object owner ( 3.) */
+		hit = get_attr_str(&objattrs[idx_owner]);
 		*isowner = 1;
 	}
 
@@ -185,7 +185,7 @@ determine_egroup(void *pobj, int objtype, attribute *pattr)
 
 	/* search the group-list attribute */
 
-	if ((pattr->at_flags & ATR_VFLAG_SET) &&
+	if ((is_attr_set(pattr)) &&
 		(parst = pattr->at_val.at_arst)) {
 		for (i=0; i<parst->as_usedptr; i++) {
 			pn = parst->as_string[i];
@@ -277,7 +277,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		idx_acct = (int)JOB_ATR_account;
 		obj_attr_def = job_attr_def;
 		objattrs = ((job *)pobj)->ji_wattr;
-		owner = ((job *)pobj)->ji_wattr[idx_owner].at_val.at_str;
+		owner = get_jattr_str(pobj, idx_owner);
 		paclRoot = &server.sv_attr[(int)SVR_ATR_AclRoot];
 		bad_euser = PBSE_BADUSER;
 		bad_egrp = PBSE_BADGRP;
@@ -315,7 +315,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		if (!server.sv_attr[(int)SVR_ATR_FlatUID].at_val.at_long)
 			return (bad_euser);
 	} else if (pwent->pw_uid == 0) {
-		if ((paclRoot->at_flags & ATR_VFLAG_SET) == 0)
+		if (!is_attr_set(paclRoot))
 			return (bad_euser); /* root not allowed */
 		if (acl_check(paclRoot, owner, ACL_User) == 0)
 			return (bad_euser); /* root not allowed */
@@ -334,10 +334,8 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		/* if account (qsub -A) is not specified, set to empty string */
 
 		pattr = &objattrs[idx_acct];
-		if ((pattr->at_flags & ATR_VFLAG_SET) == 0) {
-			(void)obj_attr_def[idx_acct].at_decode(pattr,
-				NULL, NULL, "\0");
-		}
+		if (!is_attr_set(pattr))
+			obj_attr_def[idx_acct].at_decode(pattr, NULL, NULL, "\0");
 
 		/*
 		 * now figure out (for this host) the effective/execute "group name"

@@ -154,8 +154,8 @@ post_run_depend(struct work_task *pwt)
 	job *pjob;
 
 	pjob = (job *)pwt->wt_parm1;
-	if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET)
-		(void)depend_on_exec(pjob);
+	if (is_jattr_set(pjob, JOB_ATR_depend))
+		depend_on_exec(pjob);
 	return;
 }
 
@@ -276,7 +276,7 @@ req_register(struct batch_request *preq)
 		return;
 	}
 
-	if (pjob->ji_qs.ji_state == JOB_STATE_FINISHED)
+	if (check_job_state(pjob, JOB_STATE_LTR_FINISHED))
 		is_finished = TRUE;
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_depend];
@@ -292,7 +292,7 @@ req_register(struct batch_request *preq)
 		(void)strcpy(preq->rq_ind.rq_register.rq_svr, preq->rq_host);
 	}
 
-	if (pjob->ji_qs.ji_state == JOB_STATE_MOVED) {
+	if (check_job_state(pjob, JOB_STATE_LTR_MOVED)) {
 		snprintf(log_buffer, sizeof(log_buffer), "Parent %s%s", msg_movejob, pjob->ji_qs.ji_destin);
 		log_event(PBSEVENT_DEBUG|PBSEVENT_SYSTEM|PBSEVENT_ERROR,
 			PBS_EVENTCLASS_REQUEST, LOG_INFO,
@@ -314,7 +314,7 @@ req_register(struct batch_request *preq)
 						rc = PBSE_HISTJOBID;
 						break;
 					}
-					if (pjob->ji_qs.ji_substate >= JOB_SUBSTATE_RUNNING) {
+					if (get_job_substate(pjob) >= JOB_SUBSTATE_RUNNING) {
 						/* Job already running, setup task to send
 						 * release back to child and continue with
 						 * registration process.
@@ -580,7 +580,7 @@ post_doq(struct work_task *pwt)
 				snprintf(log_msg, sizeof(log_msg), "%s, %s", msg_job_moved,
 					"sending dependency request to remote server");
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_msg);
-				if(ppjob && (ppjob->ji_qs.ji_state == JOB_STATE_MOVED) && (ppjob->ji_qs.ji_substate == JOB_SUBSTATE_MOVED)) {
+				if(ppjob && (check_job_state(ppjob, JOB_STATE_LTR_MOVED)) && (check_job_substate(ppjob, JOB_SUBSTATE_MOVED))) {
 					char *destin;
 					/* job destination should be <remote queue>@<remote server> */
 					destin = strchr(ppjob->ji_qs.ji_destin, (int)'@');
@@ -736,22 +736,21 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 					 * either running or already held because of dependency.
 					 * pay special attention to array parent jobs because those jobs
 					 * may not be in BEGUN state while a subjob might already be running
-					 * this is because JOB_STATE_BEGUN is set only when a mom reports
+					 * this is because JOB_STATE_LTR_BEGUN is set only when a mom reports
 					 * session id, but there could be a case that a mom is in the process
 					 * of reporting a session id and user submits a dependent job.
 					 * To avoid such cases, verify that count of queued subjobs is equal
 					 * to the number of subjobs
 					 */
-					else if (djob->ji_qs.ji_state == JOB_STATE_RUNNING ||
-						 djob->ji_qs.ji_state == JOB_STATE_BEGUN ||
+					else if (check_job_state(djob, JOB_STATE_LTR_RUNNING) ||
+						 check_job_state(djob, JOB_STATE_LTR_BEGUN) ||
 						 (djob->ji_ajtrk != NULL &&
 						  djob->ji_ajtrk->tkm_ct != djob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED]) ||
-						 (djob->ji_qs.ji_state == JOB_STATE_HELD &&
-						 djob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)) {
+						 (check_job_state(djob, JOB_STATE_LTR_HELD) &&
+						 check_job_substate(djob, JOB_SUBSTATE_DEPNHOLD))) {
 						/* If the dependent job is running or has system hold, then put this job on hold too*/
-						pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-						pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
-						(void)svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_DEPNHOLD);
+						set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
+						svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_DEPNHOLD);
 					}
 				}
 				rc = send_depend_req(pjob, pparent, type,
@@ -963,9 +962,9 @@ int depend_runone_hold_all(job *pjob)
 		     pdj != NULL; pdj = (struct depend_job *)GET_NEXT(pdj->dc_link)) {
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
-				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
-				(void)svr_setjobstate(d_pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
+				set_jattr_b_slim(d_pjob, JOB_ATR_hold, HOLD_s, INCR);
+			d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
+				svr_setjobstate(d_pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_HELD);
 			}
 		}
 	}
@@ -989,7 +988,7 @@ int depend_runone_release_all(job *pjob)
 	struct depend     *pdep;
 	struct depend_job *pdj;
 	struct job	  *d_pjob;
-	int	newstate;
+	char	newstate;
 	int	newsub;
 
 	if (pjob == NULL)
@@ -1002,10 +1001,10 @@ int depend_runone_release_all(job *pjob)
 		     pdj != NULL; pdj = (struct depend_job *)GET_NEXT(pdj->dc_link)) {
 			d_pjob = find_job(pdj->dc_child);
 			if (d_pjob) {
-				d_pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long &= ~HOLD_s;
+				set_jattr_b_slim(d_pjob, JOB_ATR_hold, HOLD_s, DECR);
 		        d_pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_MOD_MCACHE;
 				svr_evaljobstate(d_pjob, &newstate, &newsub, 0);
-				(void)svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
+				svr_setjobstate(d_pjob, newstate, newsub); /* saves job */
 			}
 		}
 	}
@@ -1091,7 +1090,7 @@ depend_on_term(job *pjob)
 			/* This function is also called from job_abt when the job is in held state and abort substate.
 			 * In case of a held job, release the dependency chain.
 			 */
-			if (pjob->ji_qs.ji_state == JOB_STATE_HELD && pjob->ji_qs.ji_substate == JOB_SUBSTATE_ABORT) {
+			if (check_job_state(pjob, JOB_STATE_LTR_HELD) && check_job_substate(pjob, JOB_SUBSTATE_ABORT)) {
 				op = JOB_DEPEND_OP_DELETE;
 				/* In case the job being deleted is a job with runone dependency type
 				 * then there is no need to delete other dependent jobs.
@@ -1127,12 +1126,12 @@ static void
 set_depend_hold(job *pjob, attribute *pattr)
 {
 	int		loop = 1;
-	int		newstate;
+	char		newstate;
 	int		newsubst;
 	struct depend  *pdp = NULL;
 	int		substate = -1;
 
-	if (pattr->at_flags & ATR_VFLAG_SET)
+	if (is_attr_set(pattr))
 		pdp = (struct depend *)GET_NEXT(pattr->at_val.at_list);
 	while (pdp && loop) {
 		switch (pdp->dp_type) {
@@ -1155,20 +1154,19 @@ set_depend_hold(job *pjob, attribute *pattr)
 
 		/* No (more) dependencies, clear system hold and set state */
 
-		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SYNCHOLD) ||
-			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_DEPNHOLD)) {
-			pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long &= ~HOLD_s;
+		if ((check_job_substate(pjob, JOB_SUBSTATE_SYNCHOLD)) ||
+			(check_job_substate(pjob, JOB_SUBSTATE_DEPNHOLD))) {
+			set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, DECR);
 			pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_MOD_MCACHE;
 			svr_evaljobstate(pjob, &newstate, &newsubst, 0);
-			(void)svr_setjobstate(pjob, newstate, newsubst);
+			svr_setjobstate(pjob, newstate, newsubst);
 		}
 	} else {
 
 		/* there are dependencies, set system hold accordingly */
 
-		pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
-		pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
-		(void)svr_setjobstate(pjob, JOB_STATE_HELD, substate);
+		set_jattr_b_slim(pjob, JOB_ATR_hold, HOLD_s, INCR);
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, substate);
 	}
 	return;
 }
@@ -1191,7 +1189,7 @@ struct depend *find_depend(int type, attribute *pattr)
 #ifdef NAS /* localmod 109 */
 	sprintf(log_buffer, "find_depend: t=%d, p.f=%#x, p.t=%#x", type, (int)pattr->at_flags, (int)pattr->at_type);
 #endif /* localmod 109 */
-	if (pattr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(pattr)) {
 		pdep = (struct depend *)GET_NEXT(pattr->at_val.at_list);
 		while (pdep) {
 #ifdef NAS /* localmod 109 */
@@ -1396,11 +1394,11 @@ send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int sch
 		return (PBSE_SYSTEM);
 	}
 
-	if (pjob->ji_wattr[JOB_ATR_job_owner].at_val.at_str == NULL)
+	if (get_jattr_str(pjob, JOB_ATR_job_owner) == NULL)
 		return PBSE_INTERNAL;
 
 	for (i=0; i<PBS_MAXUSER; ++i) {
-		preq->rq_ind.rq_register.rq_owner[i] = pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str[i];
+		preq->rq_ind.rq_register.rq_owner[i] = get_jattr_str(pjob, JOB_ATR_job_owner)[i];
 		if (preq->rq_ind.rq_register.rq_owner[i] == '@')
 			break;
 	}
@@ -1611,7 +1609,7 @@ encode_depend(const attribute *attr, pbs_list_head *phead, char *atname, char *r
 
 	if (!attr)
 		return (-1);
-	if (!(attr->at_flags & ATR_VFLAG_SET))
+	if (!(is_attr_set(attr)))
 		return (0);	/* no values */
 
 	pdp = (struct depend *)GET_NEXT(attr->at_val.at_list);
@@ -1781,7 +1779,7 @@ free_depend(struct attribute *attr)
 	if (attr->at_user_encoded != NULL || attr->at_priv_encoded != NULL) {
 		free_svrcache(attr);
 	}
-	attr->at_flags &= ~ATR_VFLAG_SET;
+	mark_attr_not_set(attr);
 }
 
 

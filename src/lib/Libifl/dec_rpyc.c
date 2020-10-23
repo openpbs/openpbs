@@ -89,7 +89,7 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 	int i;
 	struct brp_select *psel;
 	struct brp_select **pselx;
-	struct batch_status *pstcmd;
+	struct batch_status *pstcmd = NULL;
 	struct batch_status **pstcx = NULL;
 	int rc = 0;
 	size_t txtlen;
@@ -199,6 +199,9 @@ again:
 				*pstcx = pstcmd;
 				pstcx = &pstcmd->next;
 			}
+
+			if (reply->brp_un.brp_statc)
+				reply->last = pstcmd;
 			if (reply->brp_is_part)
 				goto again;
 			break;

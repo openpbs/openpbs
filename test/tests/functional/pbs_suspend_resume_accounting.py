@@ -72,7 +72,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
-    @skipOnCpuSet
     def test_suspend_resume_job_array_signal(self):
         """
         Test case to verify accounting suspend
@@ -134,7 +133,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
-    @skipOnCpuSet
     def test_suspend_resume_job_scheduler(self):
         """
         Test case to verify accounting suspend
@@ -233,7 +231,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         record = 'r;%s;' % jid
         self.server.accounting_match(msg=record, id=jid)
 
-    @skipOnCpuSet
     def test_resc_released_susp_resume_multi_vnode(self):
         """
         Test case to verify accounting of suspend/resume
@@ -250,13 +247,13 @@ class TestSuspendResumeAccounting(TestFunctional):
 
         vn_attrs = {ATTR_rescavail + '.ncpus': 8,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode1", vn_attrs, 1,
-                                  self.mom, fname="vnodedef1")
+        self.mom.create_vnodes(vn_attrs, 1,
+                               fname="vnodedef1", vname="vnode1")
         # Append a vnode
         vn_attrs = {ATTR_rescavail + '.ncpus': 6,
                     ATTR_rescavail + '.mem': '1024mb'}
-        self.server.create_vnodes("vnode2", vn_attrs, 1,
-                                  self.mom, additive=True, fname="vnodedef2")
+        self.mom.create_vnodes(vn_attrs, 1, additive=True,
+                               fname="vnodedef2", vname="vnode2")
 
         # Submit a low priority job
         j1 = Job()
@@ -282,7 +279,6 @@ class TestSuspendResumeAccounting(TestFunctional):
         line = self.server.accounting_match(msg=record, id=jid1)[1]
         self.assertIn(resc_released, line)
 
-    @skipOnCpuSet
     def test_higher_priority_job_hook_reject(self):
         """
         Test case to verify accounting of suspend/resume

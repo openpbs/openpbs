@@ -42,6 +42,10 @@
 #ifndef _PBS_PYTHON_DEF
 #define _PBS_PYTHON_DEF
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -398,6 +402,7 @@ extern int get_py_progname(char **);
 #define PY_GET_VNODE_STATIC_METHOD	"get_vnode_static"
 #define PY_GET_QUEUE_STATIC_METHOD	"get_queue_static"
 #define PY_GET_SERVER_DATA_FP_METHOD	"get_server_data_fp"
+#define PY_GET_SERVER_DATA_FILE_METHOD	"get_server_data_file"
 #define PY_USE_STATIC_DATA_METHOD	"use_static_data"
 
 /* Event parameter names */
@@ -610,5 +615,9 @@ extern void
 hook_output_param_init(hook_output_param_t *hook_output);
 
 /* -- END PBS Server/Python implementations -- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _PBS_PYTHON_DEF */

@@ -1,0 +1,10 @@
+[Unit]
+Description=pbs-mailer
+
+[Service]
+Type=forking
+ExecStart=/opt/pbs/bin/pbs_mail_sender start
+ExecStop=/opt/pbs/bin/pbs_mail_sender stop
+
+[Install]
+WantedBy=multi-user.target

@@ -63,6 +63,7 @@ extern "C" {
 #include "config.h"
 #include "pbs_bitmap.h"
 #include "pbs_share.h"
+#include "range.h"
 #ifdef NAS
 #include "site_queue.h"
 #endif
@@ -117,7 +118,6 @@ typedef struct resv_info resv_info;
 typedef struct counts counts;
 typedef struct nspec nspec;
 typedef struct node_partition node_partition;
-typedef struct range range;
 typedef struct resource_resv resource_resv;
 typedef struct place place;
 typedef struct schd_error schd_error;
@@ -254,7 +254,7 @@ struct th_data_free_resresv
 
 struct schd_error
 {
-	enum sched_error error_code;	/* scheduler error code (see constant.h) */
+	enum sched_error_code error_code;	/* scheduler error code (see constant.h) */
 	enum schd_err_status status_code; /* error status */
 	resdef *rdef;			/* resource def if error contains a resource*/
 	char *arg1;			/* buffer for error code specific string */
@@ -377,13 +377,12 @@ struct schedattrs
 	int opt_backfill_fuzzy;
 	char *partition;
 	long preempt_queue_prio;
-	int preempt_prio[NUM_PPRIO][2];
+	unsigned int preempt_prio[NUM_PPRIO][2];
 	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
 	enum preempt_sort_vals preempt_sort;
 	enum runjob_mode runjob_mode; /* set to a numeric version of job_run_wait attribute value */
 	long sched_cycle_length;
 	char *sched_log;
-	char *sched_port;
 	char *sched_priv;
 	long server_dyn_res_alarm;
 };
@@ -413,7 +412,6 @@ struct server_info
 	char *name;			/* name of server */
 	struct schd_resource *res;	/* list of resources */
 	void *liminfo;			/* limit storage information */
-	int flt_lic;			/* number of free floating licences */
 	int num_queues;			/* number of queues that reside on the server */
 	int num_nodes;			/* number of nodes associated with the server */
 	int num_resvs;			/* number of reservations on the server */
@@ -587,7 +585,7 @@ struct job_info
 	time_t time_preempted;		/* time when the job was preempted */
 	char *est_execvnode;		/* scheduler estimated execvnode of job */
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
-	int preempt;			/* preempt priority */
+	unsigned int preempt;			/* preempt priority */
 	int peer_sd;			/* connection descriptor to peer server */
 	long long job_id;		/* numeric portion of the job id */
 	resource_req *resused;		/* a list of resources used */
@@ -596,9 +594,12 @@ struct job_info
 	/* subjob information */
 	char *array_id;			/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
+	resource_resv *parent_job;	/* pointer to the parent array job */
 
 	/* job array information */
 	range *queued_subjobs;		/* a list of ranges of queued subjob indices */
+	long max_run_subjobs;		/* Max number of running subjobs at any time */
+	long running_subjobs;		/* number of currently running subjobs */
 
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */
@@ -683,7 +684,6 @@ struct node_info
 
 	char *name;			/* name of the node */
 	char *mom;			/* host name on which mom resides */
-	int   port;			/* port on which Mom is listening */
 
 	char **jobs;			/* the name of the jobs currently on the node */
 	char **resvs;			/* the name of the reservations currently on the node */
@@ -765,6 +765,8 @@ struct resv_info
 	node_info **resv_nodes;		/* node universe for reservation */
 	char *partition;		/* name of the partition in which the reservation was confirmed */
 	selspec *select_orig;		/* original schedselect pre-alter */
+	selspec *select_standing;	/* original schedselect for standing reservations */
+	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
@@ -809,7 +811,6 @@ struct resource_resv
 	server_info *server;		/* pointer to server which owns res resv */
 	node_info **ninfo_arr; 		/* nodes belonging to res resv */
 	nspec **nspec_arr;		/* exec vnode of object in internal sched form (one nspec per node) */
-	nspec **orig_nspec_arr;		/* original non-shrunk exec_vnode with exec_vnode chunk mapped to select chunk */
 
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */
@@ -844,7 +845,7 @@ struct resource_type
 
 struct schd_resource
 {
-	char *name;			/* name of the resource - reference to the definition name */
+	const char *name;			/* name of the resource - reference to the definition name */
 	struct resource_type type;	/* resource type */
 
 	char *orig_str_avail;		/* original resources_available string */
@@ -885,13 +886,6 @@ struct prev_job_info
 	char *name;			/* name of job */
 	char *entity_name;		/* fair share entity of job */
 	resource_req *resused;	/* resources used by the job */
-};
-
-struct mom_res
-{
-	char name[MAX_RES_NAME_SIZE];		/* name of resources for addreq() */
-	char ans[MAX_RES_RET_SIZE];		/* what is returned from getreq() */
-	unsigned eol:1;			/* set for sentinal value */
 };
 
 struct counts
@@ -1039,10 +1033,10 @@ struct usage_info
 
 struct t
 {
-	unsigned hour	: 5;
-	unsigned min	: 6;
-	unsigned none : 1;
-	unsigned all  : 1;
+	unsigned int hour;
+	unsigned int min;
+	unsigned int none;
+	unsigned int all;
 };
 
 struct sort_info
@@ -1055,8 +1049,8 @@ struct sort_info
 
 struct sort_conv
 {
-	char *config_name;
-	char *res_name;
+	const char *config_name;
+	const char *res_name;
 	enum sort_order order;
 };
 
@@ -1104,15 +1098,6 @@ struct nameval
 	unsigned int is_set:1;
 	char *str;
 	int value;
-};
-
-struct range
-{
-	int start;
-	int end;
-	int step;
-	int count;
-	range *next;
 };
 
 struct config
@@ -1167,7 +1152,7 @@ struct config
 	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
-	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
+	struct t prime[HIGH_DAY][2];	/* prime time start and prime time end*/
 	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
 	int num_holidays;			/* number of actual holidays */
@@ -1181,7 +1166,6 @@ struct config
 	char *fairshare_res;			/* resource to calc fairshare usage */
 	float fairshare_decay_factor;		/* decay factor used when decaying fairshare tree */
 	char *fairshare_ent;			/* job attribute to use as fs entity */
-	char **dyn_res_to_get;			/* dynamic resources to get from moms */
 	char **res_to_check;			/* the resources schedule on */
 	resdef **resdef_to_check;		/* the res to schedule on in def form */
 	char **ignore_res;			/* resources - unset implies infinite */
@@ -1226,7 +1210,7 @@ struct event_list
 struct timed_event
 {
 	unsigned int disabled:1;	/* event is disabled - skip it in simulation */
-	char *name;			/* [reference] name of event */
+	const char *name;			/* [reference] name of event */
 	enum timed_event_types event_type;
 	time_t event_time;
 	event_ptr_t *event_ptr;

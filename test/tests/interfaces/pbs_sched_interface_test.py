@@ -50,8 +50,7 @@ class TestSchedulerInterface(TestInterfaces):
     def setUp(self):
         TestInterfaces.setUp(self)
         a = {'partition': 'P1',
-             'sched_host': self.server.hostname,
-             'sched_port': '15051'}
+             'sched_host': self.server.hostname}
         self.server.manager(MGR_CMD_CREATE,
                             SCHED, a,
                             id="TestCommonSched")
@@ -65,28 +64,12 @@ class TestSchedulerInterface(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_CREATE,
                                 SCHED,
-                                {'sched_port': '15052'},
+                                {'sched_host': self.server.hostname},
                                 id="TestCommonSched")
         except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15211) returned from server' in e.msg[1])
-
-    def test_invalid_sched_port(self):
-        """
-        Test setting invalid port.
-        """
-        try:
-            self.server.manager(MGR_CMD_SET, SCHED,
-                                {'sched_port': 'asdf'},
-                                id="TestCommonSched",
-                                runas=ROOT_USER)
-        except PbsManagerError as e:
-            err_msg = "Illegal attribute or resource value"
-            self.assertTrue(err_msg in e.msg[0],
-                            "Error message is not expected")
-        a = {'sched_port': 15051}
-        self.server.expect(SCHED, a, id='TestCommonSched', max_attempts=10)
 
     def test_permission_on_scheduler(self):
         """
@@ -96,7 +79,7 @@ class TestSchedulerInterface(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_CREATE,
                                 SCHED,
-                                {'sched_port': '15052'},
+                                {'sched_host': self.server.hostname},
                                 id="testCreateSched",
                                 runas=OPER_USER)
         except PbsManagerError as e:
@@ -106,14 +89,14 @@ class TestSchedulerInterface(TestInterfaces):
 
         self.server.manager(MGR_CMD_CREATE,
                             SCHED,
-                            {'sched_port': '15052'},
+                            {'sched_host': self.server.hostname},
                             id="testCreateSched",
                             runas=ROOT_USER)
 
         # Check for delete permission
         self.server.manager(MGR_CMD_CREATE,
                             SCHED,
-                            {'sched_port': '15052'},
+                            {'sched_host': self.server.hostname},
                             id="testDeleteSched")
         try:
             self.server.manager(MGR_CMD_DELETE,
@@ -183,8 +166,7 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.pbs_conf['PBS_HOME'], 'sched_priv')
         sched_logs = os.path.join(
             self.server.pbs_conf['PBS_HOME'], 'sched_logs')
-        a = {'sched_port': 15004,
-             'sched_host': self.server.hostname,
+        a = {'sched_host': self.server.hostname,
              'sched_priv': sched_priv,
              'sched_log': sched_logs,
              'scheduling': 'True',
@@ -314,8 +296,7 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.pbs_conf['PBS_HOME'], 'sched_priv_TestCommonSched')
         sched_logs = os.path.join(
             self.server.pbs_conf['PBS_HOME'], 'sched_logs_TestCommonSched')
-        a = {'sched_port': 15051,
-             'sched_host': self.server.hostname,
+        a = {'sched_host': self.server.hostname,
              'sched_priv': sched_priv,
              'sched_log': sched_logs,
              'scheduling': 'False',

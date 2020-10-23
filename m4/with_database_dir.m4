@@ -47,36 +47,39 @@ AC_DEFUN([PBS_AC_WITH_DATABASE_DIR],
       [Specify the directory where the PBS database is installed.]
     )
   )
-  AS_IF([test "x$with_database_dir" != "x"],
-    [database_dir="$with_database_dir"],
-    [database_dir="/usr"]
+  [database_dir="$with_database_dir"]
+  AS_IF(
+    [test "$database_dir" = ""],
+    AC_CHECK_HEADER([libpq-fe.h], [], [database_dir="/usr"])
   )
-  AS_IF([test -r "$database_dir/include/libpq-fe.h"],
-    AS_IF([test "$database_dir" != "/usr"],
-      [database_inc="-I$database_dir/include"]),
-    AS_IF([test -r "$database_dir/include/pgsql/libpq-fe.h"],
+  AS_IF(
+    [test "$database_dir" != ""],
+    AS_IF(
+      [test -r "$database_dir/include/libpq-fe.h"],
+      [database_inc="-I$database_dir/include"],
+      [test -r "$database_dir/include/pgsql/libpq-fe.h"],
       [database_inc="-I$database_dir/include/pgsql"],
-      AS_IF([test -r "$database_dir/include/postgresql/libpq-fe.h"],
-        [database_inc="-I$database_dir/include/postgresql"],
-        AC_MSG_ERROR([Database headers not found.]))))
-  AS_IF([test "$database_dir" = "/usr"],
+      [test -r "$database_dir/include/postgresql/libpq-fe.h"],
+      [database_inc="-I$database_dir/include/postgresql"],
+      AC_MSG_ERROR([Database headers not found.])
+    )
+  )
+  AS_IF(
     # Using system installed PostgreSQL
-    AS_IF([test -r "/usr/lib64/libpq.so" -o -r "/usr/lib/libpq.so" -o -r "/usr/lib/x86_64-linux-gnu/libpq.so"],
+    [test "$with_database_dir" = ""],
+    AC_CHECK_LIB([pq], [PQconnectdb],
       [database_lib="-lpq"],
       AC_MSG_ERROR([PBS database shared object library not found.])),
     # Using developer installed PostgreSQL
-      AS_IF([test -r "$database_dir/lib64/libpq.a"],
-        [database_lib="$database_dir/lib64/libpq.a"],
-        AS_IF([test -r "$database_dir/lib/libpq.a"],
-          [database_lib="$database_dir/lib/libpq.a"],
-          AC_MSG_ERROR([PBS database library not found.])
-        )
-      )
+    [test -r "$database_dir/lib64/libpq.a"],
+    [database_lib="$database_dir/lib64/libpq.a"],
+    [test -r "$database_dir/lib/libpq.a"],
+    [database_lib="$database_dir/lib/libpq.a"],
+    AC_MSG_ERROR([PBS database library not found.])
   )
   AC_MSG_RESULT([$database_dir])
   AC_SUBST([database_dir])
   AC_SUBST([database_inc])
   AC_SUBST([database_lib])
-  AC_SUBST([database_ldflags])
   AC_DEFINE([DATABASE], [], [Defined when PBS database is available])
 ])

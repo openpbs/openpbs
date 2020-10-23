@@ -131,7 +131,7 @@ char *msg_hookfile_write = "Unable to write hook-related file";
 char *msg_shutdown_op	= "Shutdown request from %s@%s ";
 char *msg_shutdown_start = "Starting to shutdown the server, type is ";
 char *msg_startup1	= "Version %s, started, initialization type = %d";
-char *msg_startup2	= "Server pid = %d ready;  using ports Server:%d Scheduler:%d MOM:%d RM:%d";
+char *msg_startup2	= "Server pid = %d ready;  using ports Server:%d MOM:%d RM:%d";
 char *msg_startup3	= "%s %s: %s mode and %s, \ndo you wish to continue y/(n)?";
 char *msg_svdbopen	= "Unable to open server data base";
 char *msg_svdbnosv	= "Unable to save server data base ";
@@ -153,7 +153,6 @@ char *msg_resv_start = "Reservation period starting";
 char *msg_resv_end = "Reservation period ended";
 char *msg_resv_confirm = "Reservation transitioned from state UNCONFIRMED to CONFIRMED";
 char *msg_signal_job   = "job signaled with %s by %s@%s";
-char *msg_ngbluegene  = "cannot have node grouping true with Blue Gene nodes in complex"; /* BLUE GENE only */
 char *msg_license_min_badval = "pbs_license_min is < 0, or > pbs_license_max";
 char *msg_license_max_badval = "pbs_license_max is < 0, or < pbs_license_min";
 char *msg_license_linger_badval = "pbs_license_linger_time is <= 0";
@@ -420,6 +419,8 @@ char *msg_node_busy = "Node is busy";
 char *msg_default_partition = "Default partition name is not allowed";
 char *msg_depend_runone = "Job deleted, a dependent job ran";
 char *msg_histdepend = "Finished job did not satisfy dependency";
+char *msg_sched_already_connected = "Scheduler already connected";
+char *msg_notarray_attr = "Attribute has to be set on an array job";
 
 /*
  * The following table connects error numbers with text
@@ -504,12 +505,10 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_BADTSPEC, &msg_BadTspec},
 	{PBSE_NOTRESV, &msg_NotResv},
 	{PBSE_BADNODESPEC, &msg_BadNodespec},
-	{PBSE_LICENSECPU, &msg_licensecpu},
 	{PBSE_LICENSEINV, &msg_licenseinv},
 	{PBSE_RESVAUTH_H, &msg_resvauth_H},
 	{PBSE_RESVAUTH_G, &msg_resvauth_G},
 	{PBSE_RESVAUTH_U, &msg_resvauth_U},
-	{PBSE_LICENSEUNAV, &msg_licenseunav},
 	{PBSE_RESCNOTSTR, &msg_rescnotstr},
 	{PBSE_MaxArraySize, &msg_maxarraysize},
 	{PBSE_NOSCHEDULER, &msg_sched_nocall},
@@ -519,15 +518,12 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_PLACENOSELECT, &msg_placenoselect},
 	{PBSE_INDIRECTHOP, &msg_indirecthop},
 	{PBSE_INDIRECTBT, &msg_indirectbadtgt},
-	{PBSE_NGBLUEGENE, &msg_ngbluegene},
 	{PBSE_NODESTALE, &msg_nodestale},
 	{PBSE_DUPRESC, &msg_dupresc},
 	{PBSE_CONNFULL, &msg_connfull},
 	{PBSE_LICENSE_MIN_BADVAL, &msg_license_min_badval},
 	{PBSE_LICENSE_MAX_BADVAL, &msg_license_max_badval},
 	{PBSE_LICENSE_LINGER_BADVAL, &msg_license_linger_badval},
-	{PBSE_LICENSE_SERVER_DOWN, &msg_license_server_down},
-	{PBSE_LICENSE_BAD_ACTION, &msg_license_bad_action},
 	{PBSE_BAD_FORMULA, &msg_bad_formula},
 	{PBSE_BAD_FORMULA_KW, &msg_bad_formula_kw},
 	{PBSE_BAD_FORMULA_TYPE, &msg_bad_formula_type},
@@ -599,6 +595,8 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_NODE_BUSY, &msg_node_busy},
 	{PBSE_DEFAULT_PARTITION, &msg_default_partition},
 	{PBSE_HISTDEPEND, &msg_histdepend},
+	{PBSE_SCHEDCONNECTED, &msg_sched_already_connected},
+	{PBSE_NOTARRAY_ATTR, &msg_notarray_attr},
 	{0, NULL} /* MUST be the last entry */
 };
 

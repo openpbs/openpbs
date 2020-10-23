@@ -93,6 +93,65 @@ extern char *msg_resv_confirm;
 extern char *msg_job_stageinfail;
 
 #define MAIL_ADDR_BUF_LEN 1024
+
+/**
+ * @brief
+ * 		Exec mailer (sendmail like) and return a descriptor with a pipe
+ *		where the mailer is waiting for data on stdin. The descriptor
+ *		must be closed after conveying data.
+ *
+ * @param[in]	mailer - path to sendmail/mailer
+ * @param[in]	mailfrom - the sender of the email
+ * @param[in]	mailto - the recipient of the email
+ *
+ * @return	FILE *
+ * @retval	file descriptor : if fdopen succeed
+ * @retval	NULL : failed
+ */
+static FILE *
+svr_exec_mailer(char *mailer, char *mailfrom, char *mailto)
+{
+	char *margs[5];
+	int mfds[2];
+	pid_t mcpid;
+
+	/* setup sendmail/mailer command line with -f from_whom */
+
+	margs[0] = mailer;
+	margs[1] = "-f";
+	margs[2] = mailfrom;
+	margs[3] = mailto;
+	margs[4] = NULL;
+
+	if (pipe(mfds) == -1)
+		exit(1);
+
+	mcpid = fork();
+	if (mcpid == 0) {
+		/* this child will be sendmail with its stdin set to the pipe */
+		close(mfds[1]);
+		if (mfds[0] != 0) {
+			(void)close(0);
+			if (dup(mfds[0]) == -1)
+				exit(1);
+		}
+		(void)close(1);
+		(void)close(2);
+		if (execv(mailer, margs) == -1)
+			exit(1);
+	}
+	if (mcpid == -1) {/* Error on fork */
+		log_err(errno, __func__, "fork failed\n");
+		(void)close(mfds[0]);
+		exit(1);
+	}
+
+	/* parent (not the real server though) will write body of message on pipe */
+	(void)close(mfds[0]);
+
+	return(fdopen(mfds[1], "w"));
+}
+
 /**
  * @brief
  * 		Send mail to owner of a job when an event happens that
@@ -114,6 +173,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 {
 	int	 addmailhost;
 	int	 i;
+	char    *mailer;
 	char	*mailfrom;
 	char	 mailto[MAIL_ADDR_BUF_LEN];
 	int	 mailaddrlen = 0;
@@ -123,8 +183,6 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	extern  char server_host[];
 
 	FILE   *outmail;
-	char   *margs[5];
-	int     mfds[2];
 	pid_t   mcpid;
 
 
@@ -134,20 +192,17 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		if (pjob != 0) {
 
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
-					if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
-						MAIL_SUBJOB) == NULL)
+				if (is_jattr_set(pjob, JOB_ATR_mailpnts)) {
+					if (strchr(get_jattr_str(pjob, JOB_ATR_mailpnts), MAIL_SUBJOB) == NULL)
 						return;
-				} else {
+				} else
 					return;
-				}
 			}
 
 			/* see if user specified mail of this type */
 
-			if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
-				if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
-					mailpoint) == NULL)
+			if (is_jattr_set(pjob, JOB_ATR_mailpnts)) {
+				if (strchr(get_jattr_str(pjob, JOB_ATR_mailpnts), mailpoint) == NULL)
 					return;
 			} else if (mailpoint != MAIL_ABORT)	/* not set, default to abort */
 				return;
@@ -183,9 +238,16 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
+	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailer]))
+		mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str;
+	else
+		mailer = SENDMAIL_CMD;
+
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
-	if ((mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str)==0)
+	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailfrom]))
+		mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str;
+	else
 		mailfrom = PBS_DEFAULT_MAIL;
 
 	/* Who does the mail go to?  If mail-list, them; else owner */
@@ -195,7 +257,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		if (jid == NULL)
 			jid = pjob->ji_qs.ji_jobid;
 
-		if (pjob->ji_wattr[(int)JOB_ATR_mailuser].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pjob, JOB_ATR_mailuser)) {
 
 			/* has mail user list, send to them rather than owner */
 
@@ -231,7 +293,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			/* no mail user list, just send to owner */
 
-			(void)strncpy(mailto, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, sizeof(mailto));
+			strncpy(mailto, get_jattr_str(pjob, JOB_ATR_job_owner), sizeof(mailto));
 			mailto[(sizeof(mailto) - 1)] = '\0';
 			/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 			/* host name with the name specified in pbs_mail_host_name    */
@@ -256,40 +318,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		strcpy(mailto, mailfrom);
 	}
 
-	/* setup sendmail command line with -f from_whom */
-
-	margs[0] = SENDMAIL_CMD;
-	margs[1] = "-f";
-	margs[2] = mailfrom;
-	margs[3] = mailto;
-	margs[4] = NULL;
-
-	if (pipe(mfds) == -1)
-		exit(1);
-
-	mcpid = fork();
-	if(mcpid == 0) {
-		/* this child will be sendmail with its stdin set to the pipe */
-		if (mfds[0] != 0) {
-			(void)close(0);
-			if (dup(mfds[0]) == -1)
-				exit(1);
-		}
-		(void)close(1);
-		(void)close(2);
-		if (execv(SENDMAIL_CMD, margs) == -1)
-			exit(1);
-	}
-	if (mcpid == -1) {/* Error on fork */
-		log_err(errno, __func__, "fork failed\n");
-		(void)close(mfds[0]);
-		exit(1);
-	}
-
-	/* parent (not the real server though) will write body of message on pipe */
-	(void)close(mfds[0]);
-	outmail = fdopen(mfds[1], "w");
-	if (outmail == NULL)
+	if ((outmail = svr_exec_mailer(mailer, mailfrom, mailto)) == NULL)
 		exit(1);
 
 	/* Pipe in mail headers: To: and Subject: */
@@ -326,7 +355,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	if (pjob) {
 		fprintf(outmail, "PBS Job Id: %s\n", jid);
 		fprintf(outmail, "Job Name:   %s\n",
-			pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+			get_jattr_str(pjob, JOB_ATR_jobname));
 	}
 	if (stdmessage)
 		fprintf(outmail, "%s\n", stdmessage);
@@ -375,6 +404,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 {
 	int	 i;
 	int	 addmailhost;
+	char    *mailer;
 	char	*mailfrom;
 	char	 mailto[MAIL_ADDR_BUF_LEN];
 	int	 mailaddrlen = 0;
@@ -383,8 +413,6 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	char	*stdmessage = NULL;
 
 	FILE	*outmail;
-	char	*margs[5];
-	int	 mfds[2];
 	pid_t	 mcpid;
 
 	if (force != MAIL_FORCE) {
@@ -435,9 +463,16 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
+	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailer]))
+		mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str;
+	else
+		mailer = SENDMAIL_CMD;
+
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
-	if ((mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str)==0)
+	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailfrom]))
+		mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str;
+	else
 		mailfrom = PBS_DEFAULT_MAIL;
 
 	/* Who does the mail go to?  If mail-list, them; else owner */
@@ -499,40 +534,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		}
 	}
 
-	/* setup sendmail command line with -f from_whom */
-
-	margs[0] = SENDMAIL_CMD;
-	margs[1] = "-f";
-	margs[2] = mailfrom;
-	margs[3] = mailto;
-	margs[4] = NULL;
-
-	if (pipe(mfds) == -1)
-		exit(1);
-
-	mcpid = fork();
-	if(mcpid == 0) {
-		/* this child will be sendmail with its stdin set to the pipe */
-		if (mfds[0] != 0) {
-			(void)close(0);
-			if (dup(mfds[0]) == -1)
-				exit(1);
-		}
-		(void)close(1);
-		(void)close(2);
-		if (execv(SENDMAIL_CMD, margs) == -1)
-			exit(1);
-	}
-	if (mcpid == -1) {/* Error on fork */
-		log_err(errno, __func__, "fork failed\n");
-		(void)close(mfds[0]);
-		exit(1);
-	}
-
-	/* parent (not the real server though) will write body of message on pipe */
-	(void)close(mfds[0]);
-	outmail = fdopen(mfds[1], "w");
-	if (outmail == NULL)
+	if ((outmail = svr_exec_mailer(mailer, mailfrom, mailto)) == NULL)
 		exit(1);
 
 	/* Pipe in mail headers: To: and Subject: */

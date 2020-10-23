@@ -89,7 +89,7 @@
 #include "pbs_license.h"
 #include "resource.h"
 #include "pbs_sched.h"
-
+#include "liblicense.h"
 
 /* Global Data Items: */
 
@@ -105,6 +105,8 @@ extern char	    *msg_init_norerun;
 extern int resc_access_perm;
 extern long svr_history_enable;
 extern pbs_list_head svr_runjob_hooks;
+
+extern pbs_license_counts license_counts;
 
 /* Extern Functions */
 
@@ -152,8 +154,10 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 	struct batch_reply *preply = &preq->rq_reply;
 
 	/* if history job and not asking for them, just return */
-	if (!dohistjobs && (pjob->ji_qs.ji_state == JOB_STATE_FINISHED || pjob->ji_qs.ji_state == JOB_STATE_MOVED)) {
-		return PBSE_NONE; /* just return nothing */
+	if (!dohistjobs
+			&& (check_job_state(pjob, JOB_STATE_LTR_FINISHED)
+					|| check_job_state(pjob, JOB_STATE_LTR_MOVED))) {
+		return (PBSE_NONE); /* just return nothing */
 	}
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) {
@@ -755,7 +759,11 @@ req_stat_svr(struct batch_request *preq)
 		server.sv_license_ct_buf);
 
 	conn = get_conn(preq->rq_conn);
-	if (conn->cn_authen & PBS_NET_CONN_TO_SCHED) {
+	if (!conn) {
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 		/* Request is from sched so update "has_runjob_hook" */
 		update_isrunhook(&server.sv_attr[SVR_ATR_has_runjob_hook]);
 	}
@@ -931,9 +939,11 @@ void
 update_license_ct(attribute *pattr, char *buf)
 {
 	buf[0] = '\0';
-	sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
-			licenses.lb_glob_floating, licenses.lb_aval_floating,
-			licenses.lb_used_floating, licenses.lb_high_used_floating);
+	sprintf(buf, "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
+			license_counts.licenses_global,
+			license_counts.licenses_local,
+			license_counts.licenses_used,
+			license_counts.licenses_high_use.lu_max_forever);
 	pattr->at_val.at_str = buf;
 	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 }

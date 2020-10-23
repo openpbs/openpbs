@@ -127,13 +127,12 @@ chk_hold_priv(long val, int perm)
  *
  * @param[in,out]	preq	- Job Request
  */
-
 void
 req_holdjob(struct batch_request *preq)
 {
-	long *hold_val;
+	long hold_val;
 	int jt;		/* job type */
-	int newstate;
+	char newstate;
 	int newsub;
 	long old_hold;
 	job *pjob;
@@ -164,8 +163,8 @@ req_holdjob(struct batch_request *preq)
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
-	if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
-		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
+	if ((check_job_state(pjob, JOB_STATE_LTR_RUNNING)) &&
+		(check_job_substate(pjob, JOB_SUBSTATE_PROVISION))) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_CHECKPOINT, pjob);
 
@@ -184,7 +183,7 @@ req_holdjob(struct batch_request *preq)
 
 	/* if other than HOLD_u is being set, must have privil */
 
-	if ((rc = chk_hold_priv(temphold.at_val.at_long, preq->rq_perm)) != 0) {
+	if ((rc = chk_hold_priv(get_attr_l(&temphold), preq->rq_perm)) != 0) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
 
@@ -193,7 +192,7 @@ req_holdjob(struct batch_request *preq)
 	}
 
 	/* HOLD_bad_password can only be done by root or admin */
-	if ( (temphold.at_val.at_long & HOLD_bad_password) && \
+	if ( (get_attr_l(&temphold)& HOLD_bad_password) && \
 		  strcasecmp(preq->rq_user, PBS_DEFAULT_ADMIN) != 0 ) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_PERM, PREEMPT_METHOD_CHECKPOINT, pjob);
@@ -202,30 +201,29 @@ req_holdjob(struct batch_request *preq)
 		return;
 	}
 
-	hold_val = &pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
-	old_hold = *hold_val;
-	*hold_val |= temphold.at_val.at_long;
-	pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_SET_MOD_MCACHE;
+	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
+	set_jattr_b_slim(pjob, JOB_ATR_hold, get_attr_l(&temphold), INCR);
+	hold_val = get_jattr_long(pjob, JOB_ATR_hold);
 
 	/* Note the hold time in the job comment. */
 	now = time(NULL);
 	(void)strncpy(date, (const char *)ctime(&now), 24);
 	date[24] = '\0';
 	(void)sprintf(log_buffer, "Job held by %s on %s", preq->rq_user, date);
-	job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, log_buffer);
+	set_jattr_str_slim(pjob, JOB_ATR_Comment, log_buffer, NULL);
 
 	(void)sprintf(log_buffer, msg_jobholdset, pset, preq->rq_user,
 		preq->rq_host);
 
-	if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
-		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) &&
-		(pjob->ji_wattr[(int)JOB_ATR_chkpnt].at_val.at_str) &&
-		(*pjob->ji_wattr[(int)JOB_ATR_chkpnt].at_val.at_str != 'n')) {
+	if ((check_job_state(pjob, JOB_STATE_LTR_RUNNING)) &&
+		(!check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) &&
+		(get_jattr_str(pjob, JOB_ATR_chkpnt)) &&
+		(*get_jattr_str(pjob, JOB_ATR_chkpnt) != 'n')) {
 
 		/* have MOM attempt checkpointing */
 
 		if ((rc = relay_to_mom(pjob, preq, post_hold)) != 0) {
-			*hold_val = old_hold;	/* reset to the old value */
+			hold_val = old_hold;	/* reset to the old value */
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(rc, PREEMPT_METHOD_CHECKPOINT, pjob);
 			req_reject(rc, 0, preq);
@@ -242,10 +240,10 @@ req_holdjob(struct batch_request *preq)
 
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-		if (old_hold != *hold_val) {
+		if (old_hold != hold_val) {
 			/* indicate attributes changed     */
 			svr_evaljobstate(pjob, &newstate, &newsub, 0);
-			(void)svr_setjobstate(pjob, newstate, newsub);
+			svr_setjobstate(pjob, newstate, newsub);
 		}
 		/* Reject preemption because job requested -c n */
 		if (pjob->ji_pmt_preq != NULL)
@@ -269,7 +267,7 @@ void
 req_releasejob(struct batch_request *preq)
 {
 	int              jt;            /* job type */
-	int		 newstate;
+	char		 newstate;
 	int		 newsub;
 	long		 old_hold;
 	job		*pjob;
@@ -295,14 +293,14 @@ req_releasejob(struct batch_request *preq)
 
 	/* if other than HOLD_u is being released, must have privil */
 
-	if ((rc = chk_hold_priv(temphold.at_val.at_long, preq->rq_perm)) != 0) {
+	if ((rc = chk_hold_priv(get_attr_l(&temphold), preq->rq_perm)) != 0) {
 		req_reject(rc, 0, preq);
 		return;
 	}
 
 	/* all ok so far, unset the hold */
 
-	old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
 	rc = job_attr_def[(int)JOB_ATR_hold].
 		at_set(&pjob->ji_wattr[(int)JOB_ATR_hold],
 		&temphold, DECR);
@@ -314,7 +312,7 @@ req_releasejob(struct batch_request *preq)
 	/* every thing went well, if holds changed, update the job state */
 
 #ifndef NAS /* localmod 105 Always reset etime on release */
-	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
+	if (old_hold != get_jattr_long(pjob, JOB_ATR_hold)) {
 #endif /* localmod 105 */
 #ifdef NAS /* localmod 105 */
 		{
@@ -323,7 +321,7 @@ req_releasejob(struct batch_request *preq)
 			etime->at_flags |= ATR_SET_MOD_MCACHE;
 #endif /* localmod 105 */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		(void)svr_setjobstate(pjob, newstate, newsub); /* saves job */
+		svr_setjobstate(pjob, newstate, newsub); /* saves job */
 
 	}
 
@@ -331,16 +329,16 @@ req_releasejob(struct batch_request *preq)
 		int i;
 		for(i = 0 ; i < pjob->ji_ajtrk->tkm_ct ; i++) {
 			job *psubjob = pjob->ji_ajtrk->tkm_tbl[i].trk_psubjob;
-			if (psubjob && (psubjob->ji_qs.ji_state == JOB_STATE_HELD)) {
+			if (psubjob && (check_job_state(psubjob, JOB_STATE_LTR_HELD))) {
 #ifndef NAS
-				old_hold = psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+				old_hold = get_jattr_long(psubjob, JOB_ATR_hold);
 				rc =
 #endif
 					job_attr_def[(int)JOB_ATR_hold].
 					at_set(&psubjob->ji_wattr[(int)JOB_ATR_hold],
 					&temphold, DECR);
 #ifndef NAS /* localmod 105 Always reset etime on release */
-				if (!rc && (old_hold != psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long)) {
+				if (!rc && (old_hold != get_jattr_long(psubjob, JOB_ATR_hold))) {
 #endif /* localmod 105 */
 #ifdef NAS /* localmod 105 */
 				{
@@ -349,10 +347,10 @@ req_releasejob(struct batch_request *preq)
 					etime->at_flags |= ATR_SET_MOD_MCACHE;
 #endif /* localmod 105 */
 					svr_evaljobstate(psubjob, &newstate, &newsub, 0);
-					(void)svr_setjobstate(psubjob, newstate, newsub); /* saves job */
+					svr_setjobstate(psubjob, newstate, newsub); /* saves job */
 				}
-				if (psubjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == HOLD_n)
-					job_attr_def[(int)JOB_ATR_Comment].at_free(&psubjob->ji_wattr[(int)JOB_ATR_Comment]);
+				if (get_jattr_long(psubjob, JOB_ATR_hold) == HOLD_n)
+					free_jattr(psubjob, JOB_ATR_Comment);
 				(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user,
 					preq->rq_host);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -360,16 +358,16 @@ req_releasejob(struct batch_request *preq)
 			}
 		}
 	}
-	if (pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long == HOLD_n) {
+	if (get_jattr_long(pjob, JOB_ATR_hold) == HOLD_n) {
 		if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_qs.ji_stime != 0) ) {
 			char timebuf[128];
 
 			strftime(timebuf, 128, "%a %b %d at %H:%M", localtime(&pjob->ji_qs.ji_stime));
 			sprintf(log_buffer, "Job Array Began at %s", timebuf);
 
-			job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, log_buffer);
+			set_jattr_str_slim(pjob, JOB_ATR_Comment, log_buffer, NULL);
 		} else
-			job_attr_def[(int)JOB_ATR_Comment].at_free(&pjob->ji_wattr[(int)JOB_ATR_Comment]);
+			free_jattr(pjob, JOB_ATR_Comment);
 	}
 	(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user,
 		preq->rq_host);
@@ -417,11 +415,9 @@ get_hold(pbs_list_head *phead, char **pset)
 	/* decode into temporary attribute structure */
 
 	clear_attr(&temphold, &job_attr_def[(int)JOB_ATR_hold]);
-	return (job_attr_def[(int)JOB_ATR_hold].at_decode(
-		&temphold,
-		holdattr->al_name,
-		NULL,
-		holdattr->al_value));
+	return (set_attr_generic(&temphold, &job_attr_def[JOB_ATR_hold],
+		holdattr->al_value,
+		NULL, INTERNAL));
 }
 
 
@@ -499,7 +495,7 @@ post_hold(struct work_task *pwt)
 	} else if (code == 0) {
 
 		/* record that MOM has a checkpoint file */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN;
+		set_job_substate(pjob, JOB_SUBSTATE_RERUN);
 		if (preq->rq_reply.brp_auxcode)	/* chkpt can be moved */
 			pjob->ji_qs.ji_svrflags =
 				(pjob->ji_qs.ji_svrflags & ~JOB_SVFLG_CHKPT) |

@@ -53,13 +53,6 @@ extern "C" {
 #include "batch_request.h"
 #include "pbs_internal.h"
 
-/* struct var_table = used to hold environment variables for the job */
-
-struct var_table {
-	char **v_envp;
-	int    v_ensize;
-	int    v_used;
-};
 
 /* struct sig_tbl = used to hold map of local signal names to values */
 
@@ -90,6 +83,7 @@ extern char	pbs_tmpdir[];
 
 /* used by mom_main.c and start_exec.c for PBS_JOBDIR */
 extern char	pbs_jobdir_root[];
+extern int	pbs_jobdir_root_shared;
 
 /* test bits */
 #define PBSQA_DELJOB_SLEEP	1
@@ -207,7 +201,6 @@ extern int   do_mom_action_script(int, job *, pbs_task *, char *,
 extern enum  Action_Verb chk_mom_action(enum Action_Event);
 extern void  mom_freenodes(job *);
 extern void  unset_job(job *, int);
-extern int   set_mach_vars(job *, struct var_table *);
 struct passwd	*check_pwd(job *);
 extern char *set_shell(job *, struct passwd *);
 extern void  start_exec(job *);
@@ -223,8 +216,6 @@ extern int   mom_deljob_wait(job *);
 extern int   run_pelog(int which, char *file, job *pjob, int pe_io_type);
 extern int   is_joined(job *);
 extern void  update_jobs_status(void);
-extern void  update_ajob_status(job *);
-extern void  update_ajob_status_using_cmd(job *, int, int);
 extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);
@@ -252,25 +243,23 @@ typedef enum {
 #ifdef	_LIBPBS_H
 extern int	open_std_file(job *, enum job_file, int, gid_t);
 extern char	*std_file_name(job *, enum job_file, int *keeping);
-extern void	end_proc(void);
 extern int	task_recov(job *pjob);
 extern int	send_sisters(job *pjob, int com, pbs_jobndstm_t);
 extern int	send_sisters_inner(job *pjob, int com, pbs_jobndstm_t, char *);
 extern int	send_sisters_job_update(job *pjob);
-extern int	im_compose(int stream, char *jobid, char *cookie,
-	int command, tm_event_t	event, tm_task_id taskid, int version);
+extern int	im_compose(int stream, char *jobid, char *cookie, int command, tm_event_t event, tm_task_id taskid, int version);
 extern int	message_job(job *pjob, enum job_file jft, char *text);
 extern void	term_job(job *pjob);
 extern int	start_process(pbs_task *pt, char **argv, char **envp, bool nodemux);
 extern pre_finish_results_t pre_finish_exec(job *pjob, int do_job_setup_send);
 extern void	finish_exec(job *pjob);
 extern void	exec_bail(job *pjob, int code, char *txt);
-extern int	generate_pbs_nodefile(job *pjob, char *nodefile,
-			int nodefile_sz, char *err_msg, int err_msg_sz);
+extern int	generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz, char *err_msg, int err_msg_sz);
 extern int	job_nodes_inner(struct job *pjob, hnodent **mynp);
 extern int	job_nodes(job *pjob);
 extern int	tm_reply(int stream, int version, int com, tm_event_t event);
 #ifdef WIN32
+extern void	end_proc(void);
 extern int      dep_procinfo(pid_t pid, pid_t *psid, uid_t *puid, char *puname, size_t uname_len, char *comm, size_t comm_len);
 #else
 extern int	dep_procinfo(pid_t, pid_t *, uid_t *, char *, size_t);
@@ -285,11 +274,7 @@ extern int	dep_attach(pbs_task *ptask);
 extern u_long	gettime(resource *pres);
 extern u_long	getsize(resource *pres);
 extern int   local_gettime(resource *, unsigned long *ret);
-#if (defined(_SYS_RESOURCE_H) || defined(_H_RESOURCE) ) && (defined(__sgi) )
-extern int   local_getsize(resource *, rlim64_t *ret);
-#else
 extern int   local_getsize(resource *, unsigned long *ret);
-#endif	/* __sgi */
 #endif /* _RESOURCE_H */
 
 #ifdef	_BATCH_REQUEST_H
@@ -347,12 +332,9 @@ extern int local_or_remote(char **);
 extern void add_bad_list(char **, char *, int);
 extern int is_child_path(char *, char *);
 extern int pbs_glob(char *, char *);
-extern void  rmjobdir(char *, char *, uid_t, gid_t);
-extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *);
+extern void  rmjobdir(char *, char *, uid_t, gid_t, int);
+extern int stage_file(int, int, char *, struct rqfpair *, int, cpy_files *, char *, char *);
 #ifdef WIN32
-extern void  bld_wenv_variables(char *, char *);
-extern void  init_envp(void);
-extern char  *make_envp(void);
 extern int   mktmpdir(char *, char *);
 extern int   mkjobdir(char *, char *, char *, HANDLE login_handle);
 extern int isdriveletter(int);
@@ -363,7 +345,6 @@ extern int recv_rq_cpyfile_cred(struct rq_cpyfile *);
 extern int remdir(char *);
 extern void check_err(const char *func_name, char *buf, int len);
 #else
-extern void  bld_env_variables(struct var_table *, char *, char *);
 extern int   mktmpdir(char *, uid_t, gid_t, struct var_table *);
 extern int   mkjobdir(char *, char *, uid_t, gid_t);
 extern int   impersonate_user(uid_t, gid_t);
@@ -371,12 +352,15 @@ extern void  revert_from_user(void);
 extern int   open_file_as_user(char *path, int oflag, mode_t mode,
 	uid_t exuid, gid_t exgid);
 #endif
+extern int  find_env_slot(struct var_table *, char *);
+extern void  bld_env_variables(struct var_table *, char *, char *);
+extern void  add_envp(char **, struct var_table *);
 extern pid_t fork_me(int sock);
 
 extern ssize_t readpipe(int pfd, void *vptr, size_t nbytes);
 extern ssize_t writepipe(int pfd, void *vptr, size_t nbytes);
 extern int   get_la(double *);
-extern void  init_abort_jobs(int);
+extern void  init_abort_jobs(int, pbs_list_head *);
 extern void  checkret(char **spot, int len);
 extern void  mom_nice(void);
 extern void  mom_unnice(void);
@@ -399,7 +383,6 @@ extern int   conn_qsub(char *host, long port);
 extern int  state_to_server(int, int);
 extern int   send_hook_vnl(void *vnl);
 extern int hook_requests_to_server(pbs_list_head *);
-extern void  set_job_toexited(char *);
 extern int init_x11_display(struct pfwdsock *, int, char *, char *, char *);
 extern int setcurrentworkdir(char *);
 extern int becomeuser(job *);

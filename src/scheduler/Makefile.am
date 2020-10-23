@@ -63,64 +63,63 @@ common_libs = \
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 
+
 libpbs_sched_a_SOURCES = \
 	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
-	buckets.c \
+	buckets.cpp \
 	buckets.h \
-	check.c \
+	check.cpp \
 	check.h \
 	config.h \
 	constant.h \
 	data_types.h \
-	dedtime.c \
+	dedtime.cpp \
 	dedtime.h \
-	fairshare.c \
+	fairshare.cpp \
 	fairshare.h \
-	fifo.c \
+	fifo.cpp \
 	fifo.h \
-	get_4byte.c \
-	globals.c \
+	get_4byte.cpp \
+	globals.cpp \
 	globals.h \
-	job_info.c \
+	job_info.cpp \
 	job_info.h \
-	limits.c \
-	misc.c \
+	limits.cpp \
+	misc.cpp \
 	misc.h \
-	multi_threading.c \
+	multi_threading.cpp \
 	multi_threading.h \
-	node_info.c \
+	node_info.cpp \
 	node_info.h \
-	node_partition.c \
+	node_partition.cpp \
 	node_partition.h \
-	parse.c \
+	parse.cpp \
 	parse.h \
-	pbs_bitmap.c \
+	pbs_bitmap.cpp \
 	pbs_bitmap.h \
-	prev_job_info.c \
+	prev_job_info.cpp \
 	prev_job_info.h \
-	prime.c \
+	prime.cpp \
 	prime.h \
-	queue.c \
+	queue.cpp \
 	queue.h \
-	queue_info.c \
+	queue_info.cpp \
 	queue_info.h \
-	range.c \
-	range.h \
+	resource.cpp \
 	resource.h \
-	resource_resv.c \
+	resource_resv.cpp \
 	resource_resv.h \
-	resv_info.c \
+	resv_info.cpp \
 	resv_info.h \
-	resource.c \
-	server_info.c \
+	server_info.cpp \
 	server_info.h \
-	simulate.c \
+	simulate.cpp \
 	simulate.h \
-	sort.c \
+	sort.cpp \
 	sort.h \
-	state_count.c \
+	state_count.cpp \
 	state_count.h \
-	site_code.c \
+	site_code.cpp \
 	site_code.h \
 	site_data.h
 
@@ -128,11 +127,11 @@ sbin_PROGRAMS = pbs_sched pbsfs
 
 pbs_sched_CPPFLAGS = ${common_cflags}
 pbs_sched_LDADD = ${common_libs} @libundolr_lib@
-pbs_sched_SOURCES = pbs_sched.c
+pbs_sched_SOURCES = pbs_sched.cpp
 
 pbsfs_CPPFLAGS = ${common_cflags}
 pbsfs_LDADD = ${common_libs}
-pbsfs_SOURCES = pbsfs.c
+pbsfs_SOURCES = pbsfs.cpp
 
 dist_sysconf_DATA = \
 	pbs_dedicated \

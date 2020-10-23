@@ -87,12 +87,12 @@
  * check_add_hook_mcast_info
  * del_deferred_hook_cmds
  * sync_mom_hookfilesTPP
- * bg_sync_mom_hookfiles
+ * mc_sync_mom_hookfiles
  * add_pending_mom_allhooks_action
  * next_sync_mom_hookfiles
  * mark_mom_hooks_seen
  * mom_hooks_seen_count
- * bg_delete_mom_hooks
+ * uc_delete_mom_hooks
  * get_hook_rescdef_checksum
  */
 
@@ -154,7 +154,7 @@ extern	char server_host[PBS_MAXHOSTNAME+1];
 
 /* Global Data items */
 int	do_sync_mom_hookfiles = 1;
-int	sync_mom_hookfiles_proc_running = 0;
+int	sync_mom_hookfiles_replies_pending = 0;
 pbs_list_head vnode_attr_list;
 pbs_list_head resv_attr_list;
 
@@ -262,7 +262,7 @@ extern int get_msgid(char **id);
  *		hook_action_tid_set	- Sets the value of the global 'hook_action_tid' variable to the given
  *		'newval'.
  * @see
- *		main, hook_track_recov and bg_sync_mom_hookfiles.
+ *		main, hook_track_recov and mc_sync_mom_hookfiles.
  *
  * @param[in]	newval - the new value.
  *
@@ -282,7 +282,7 @@ hook_action_tid_set(long long int newval)
  *		Returns the value of the global 'hook_action_tid' variable.
  *
  * @see
- *		sync_mom_hookfilesTPP and bg_sync_mom_hookfiles.
+ *		sync_mom_hookfilesTPP and mc_sync_mom_hookfiles.
  *
  * @return long long int	- the 'hook_action_tid' value.
  */
@@ -398,7 +398,7 @@ hook_track_save(void *minfo, int k)
 		return;
 	}
 
-	if (lock_file(fp, F_WRLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
+	if (lock_file(fileno(fp), F_WRLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0) {
 		log_err(errno, __func__, msg);
 		fclose(fp);
@@ -424,7 +424,7 @@ hook_track_save(void *minfo, int k)
 	}
 	(void)fflush(fp);
 
-	if (lock_file(fp, F_UNLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
+	if (lock_file(fileno(fp), F_UNLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0)
 		log_err(errno, __func__, msg);
 
@@ -565,7 +565,7 @@ hook_track_recov(void)
 		return;
 	}
 
-	if (lock_file(fp, F_RDLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
+	if (lock_file(fileno(fp), F_RDLCK, path_hooks_tracking, LOCK_RETRY_DEFAULT,
 		msg, sizeof(msg)) != 0) {
 		log_err(errno, __func__, msg);
 		fclose(fp);
@@ -725,7 +725,7 @@ hook_track_recov(void)
 	hook_action_tid_set(max_tid_recov);
 
 	if (fp != NULL) {
-		if (lock_file(fp, F_UNLCK, path_hooks_tracking,
+		if (lock_file(fileno(fp), F_UNLCK, path_hooks_tracking,
 			LOCK_RETRY_DEFAULT, msg, sizeof(msg)) != 0) {
 			log_err(errno, __func__, msg);
 		}
@@ -2544,14 +2544,9 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 	}
 	exec_time_ctime[strlen(exec_time_ctime)-1] = '\0';
 
-	job_attr_def[(int)JOB_ATR_exectime].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_exectime]);
+	free_jattr(pjob, JOB_ATR_exectime);
 
-	rc = job_attr_def[(int)JOB_ATR_exectime].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_exectime],
-		NULL,
-		NULL,
-		new_exec_time_str);
+	rc = set_jattr_str_slim(pjob, JOB_ATR_exectime, new_exec_time_str, NULL);
 
 	if (rc == 0) {
 		if (job_attr_def[(int)JOB_ATR_exectime].at_action) {
@@ -2574,15 +2569,15 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 			hook_name,
 			ATTR_a,
 			exec_time_ctime);
-		job_attr_def[(int)JOB_ATR_exectime].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_exectime]);
+		free_jattr(pjob, JOB_ATR_exectime);
 	} else {
-		int newstate, newsub;
+		int  newsub;
+		char newstate;
 		FILE	*fp_debug_out = NULL;
 
 		snprintf(msg, msg_len, "'%s' hook set job's %s = %s", hook_name, ATTR_a, exec_time_ctime);
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		(void)svr_setjobstate(pjob, newstate, newsub);
+		svr_setjobstate(pjob, newstate, newsub);
 
 		fp_debug_out = pbs_python_get_hook_debug_output_fp();
 		if (fp_debug_out != NULL) {
@@ -2622,7 +2617,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 	long	  old_hold;
 	int	  do_release;
 	int	  rc;
-	int	  newstate;
+	char	  newstate;
 	int	  newsub;
 
 	if ((msg == NULL) || (msg_len <= 0)) {
@@ -2642,13 +2637,9 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 	else
 		do_release = 0;
 
-	old_hold = pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long;
+	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
 
-	rc = job_attr_def[(int)JOB_ATR_hold].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_hold],
-		ATTR_h,
-		NULL,
-		new_hold_types_str);
+	rc = set_jattr_str_slim(pjob, JOB_ATR_hold, new_hold_types_str, NULL);
 
 	if (rc != 0) {
 		log_err(PBSE_INTERNAL, __func__,
@@ -2659,8 +2650,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 			(do_release?"unset":"set"),
 			ATTR_h,
 			(do_release?delval:new_hold_types_str));
-		job_attr_def[(int)JOB_ATR_hold].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_hold]);
+		free_jattr(pjob, JOB_ATR_hold);
 		return (rc);
 	}
 
@@ -2672,7 +2662,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 		(do_release?delval:new_hold_types_str));
 
 	if (!do_release &&
-		(pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long != 0)) {
+		(get_jattr_long(pjob, JOB_ATR_hold) != 0)) {
 		time_t	now;
 		char	date[32];
 		char	buf[HOOK_BUF_SIZE];
@@ -2681,16 +2671,14 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 		snprintf(date, sizeof(date), "%s", (const char *)ctime(&now));
 		(void)sprintf(buf, "Job held by '%s' hook on %s",
 			hook_name, date);
-		job_attr_def[(int)JOB_ATR_Comment].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			NULL, NULL, buf);
+		set_jattr_str_slim(pjob, JOB_ATR_Comment, buf, NULL);
 	}
 
-	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
+	if (old_hold != get_jattr_long(pjob, JOB_ATR_hold)) {
 		FILE	*fp_debug_out = NULL;
 		/* indicate attributes changed */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
-		(void)svr_setjobstate(pjob, newstate, newsub);
+		svr_setjobstate(pjob, newstate, newsub);
 
 		fp_debug_out = pbs_python_get_hook_debug_output_fp();
 		if (fp_debug_out != NULL) {
@@ -2789,16 +2777,9 @@ set_attribute(job *pjob, int attr_index,
 		new_attrval_str = pdepend;
 	}
 
-	if (job_attr_def[attr_index].at_free) {
-		job_attr_def[attr_index].at_free(
-			&pjob->ji_wattr[attr_index]);
-	}
+	free_jattr(pjob, attr_index);
 
-	rc = job_attr_def[attr_index].at_decode(
-		&pjob->ji_wattr[attr_index],
-		NULL,
-		NULL,
-		new_attrval_str);
+	rc = set_jattr_str_slim(pjob, attr_index, new_attrval_str, NULL);
 	if (rc == 0) {
 		if (job_attr_def[attr_index].at_action) {
 			rc = job_attr_def[attr_index].at_action(
@@ -2827,8 +2808,7 @@ set_attribute(job *pjob, int attr_index,
 			attr_name,
 			new_str);
 		if (job_attr_def[attr_index].at_free) {
-			job_attr_def[attr_index].at_free(
-				&pjob->ji_wattr[attr_index]);
+			free_jattr(pjob, attr_index);
 		}
 	} else {
 		FILE	*fp_debug_out = NULL;
@@ -2882,7 +2862,7 @@ set_job_varlist(job *pjob, char *hook_name, char *msg, int msg_len)
 		return (1);
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_variables].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_variables)) {
 
 		/* transform raw Variable_List data into a string */
 		/* of the form "<var1>=<val1>,<var2>=<val2>,..." with */
@@ -3171,15 +3151,15 @@ attribute_jobmap_init(job *pjob, struct attribute_jobmap *a_map)
 	}
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
-		if (a_map[index].attr_val.at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(&a_map[index].attr_val)) {
 			if (job_attr_def[a_index].at_free) {
 				job_attr_def[a_index].at_free(&a_map[index].attr_val);
 			}
 		}
 
 		clear_attr(&a_map[index].attr_val, &job_attr_def[a_index]);
-		if (pjob->ji_wattr[a_index].at_flags & ATR_VFLAG_SET) {
-			(void)job_attr_def[a_index].at_set(
+		if (is_jattr_set(pjob, a_index)) {
+			job_attr_def[a_index].at_set(
 				&a_map[index].attr_val,
 				&pjob->ji_wattr[a_index], SET);
 		}
@@ -3209,7 +3189,7 @@ attribute_jobmap_clear(struct attribute_jobmap *a_map)
 	}
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
-		if (a_map[index].attr_val.at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(&a_map[index].attr_val)) {
 			if (job_attr_def[a_index].at_free) {
 				job_attr_def[a_index].at_free(&a_map[index].attr_val);
 			}
@@ -3237,7 +3217,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 	char		*attr_name = NULL;
 	attribute	*pattr, *pattr_o;
 	attribute_def	*pdef;
-	int		newstate;
+	char		newstate;
 	int		newsub;
 
 	if ((pjob == NULL) || (a_map == NULL)) {
@@ -3255,7 +3235,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 		pdef = &job_attr_def[a_index];
 
 		/* if there's a saved value, then use it */
-		if (pattr_o->at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(pattr_o)) {
 
 			if (pdef->at_comp != NULL) {
 				if (pdef->at_type == ATR_TYPE_RESC) {
@@ -3281,7 +3261,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 					LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 			}
-		} else if (pattr->at_flags & ATR_VFLAG_SET) {
+		} else if (is_attr_set(pattr)) {
 			/* original/saved value is unset, and yet current */
 			/* value is set, need to revert to unset state */
 			if (pdef->at_free) {
@@ -3296,7 +3276,7 @@ attribute_jobmap_restore(job *pjob, struct attribute_jobmap *a_map)
 	}
 
 	svr_evaljobstate(pjob, &newstate, &newsub, 0);
-	(void)svr_setjobstate(pjob, newstate, newsub);
+	svr_setjobstate(pjob, newstate, newsub);
 }
 
 /*
@@ -4522,11 +4502,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 
 				pbs_asprintf(&jcomment, "Not Running: PBS Error: %s", hook_msg);
 				/* For async run, sched won't update job's comment, so let's do that */
-				job_attr_def[(int)JOB_ATR_Comment].at_decode(
-					&pjob->ji_wattr[(int)JOB_ATR_Comment],
-					NULL,
-					NULL,
-					jcomment);
+				set_jattr_str_slim(pjob, JOB_ATR_Comment, jcomment, NULL);
 				free(jcomment);
 			}
 		}
@@ -4865,6 +4841,8 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 				}
 				if (set_action) {
 					pact->action = action;
+				} else if ((pact->action & action & pact->reply_expected)) {
+					continue;  /* dont reuse the action object if replies are still expected for same action */
 				} else {
 					if (action & MOM_HOOK_ACTION_DELETE) {
 						if (pact->action & MOM_HOOK_SEND_ACTIONS) {
@@ -4917,6 +4895,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 	if (pact != NULL) {
 		snprintf(pact->hookname, sizeof(pact->hookname), "%s", hookname);
 		pact->action = action;
+		pact->reply_expected = action;
 		pact->do_delete_action_first = 0;
 		pact->tid = input_tid;
 		do_sync_mom_hookfiles = 1;
@@ -5079,7 +5058,12 @@ add_pending_mom_hook_action(void *minfo, char *hookname, unsigned int action)
 	for (i=0; i < minfo_array_size; i++) {
 
 		if (minfo_array[i] == NULL)
-			break;
+			continue;
+
+		if ( !minfo_array[i]->mi_data || 
+				(((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
+			continue;
+		}
 
 		j=add_mom_hook_action(&minfo_array[i]->mi_action,
 			&minfo_array[i]->mi_num_action, hookname,
@@ -5168,7 +5152,7 @@ has_pending_mom_action_delete(char *hookname)
 	for (i=0; i < mominfo_array_size; i++) {
 
 		if (mominfo_array[i] == NULL)
-			break;
+			continue;
 
 		pact = find_mom_hook_action(mominfo_array[i]->mi_action,
 			mominfo_array[i]->mi_num_action,
@@ -5330,6 +5314,37 @@ mk_deferred_hook_info(int index, int event, long long int tid)
 
 /**
  * @brief
+ *		check if there is any new pending action
+ *	
+ * @param[in] minfo - pointer to mom info
+ * @param[in] pact - pointer to current hook action
+ * @param[in] j - index of pact in minfo->mi_action[]
+ * @param[in] event - action event to consider
+ *
+ * @return int
+ * @retval 0  - not found
+ * @retval 1  - found
+ */
+int
+check_for_latest_action(mominfo_t *minfo, mom_hook_action_t *pact, int j, int event)
+{
+	/* if the same action is marked in the next actions for the same hook then remove
+	 * the pending flag
+	 */
+	int i;
+	mom_hook_action_t *pact2;
+	for (i = 0; i < minfo->mi_num_action; i++) {
+		pact2 = minfo->mi_action[i];
+		if (pact2 && (i != j) && (pact2->tid > pact->tid) && (pact2->action & event) &&
+				pact2->hookname && (strcmp(pact2->hookname, pact->hookname) == 0)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief
  *		Call back for the hook deferred requests over TPP stream
  *		parm1 points to the mominfo_t
  *		parm2 points to more information about the hook cmd
@@ -5343,7 +5358,7 @@ mk_deferred_hook_info(int index, int event, long long int tid)
  *		The globals g_hook_replies_recvd is incremented for
  *		each reply received. When this matches the global
  *		variable g_hook_replies_expected, the global variable
- *		sync_mom_hookfiles_proc_running is reset to 0, such
+ *		sync_mom_hookfiles_replies_pending is reset to 0, such
  *		that the next "hook transaction" can now start.
  *
  * @param[in] pwt - The work task pointer
@@ -5362,6 +5377,7 @@ post_sendhookTPP(struct work_task *pwt)
 	int event;
 	long long int tid;
 	char *msgbuf;
+	bool failed_flag = FALSE;
 
 	if (!info)
 		return;
@@ -5392,6 +5408,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			pbs_asprintf(&msgbuf,
 				"successfully deleted rescdef file %s from %s:%d",
@@ -5416,6 +5433,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (rc != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5444,6 +5462,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			pbs_asprintf(&msgbuf,
 				"successfully deleted hook file %s from %s:%d",
@@ -5465,6 +5484,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5494,6 +5514,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5523,6 +5544,7 @@ post_sendhookTPP(struct work_task *pwt)
 				pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, msgbuf);
 			free(msgbuf);
+			failed_flag = TRUE;
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				pbs_asprintf(&msgbuf,
@@ -5542,6 +5564,12 @@ post_sendhookTPP(struct work_task *pwt)
 		}
 	}
 
+	pact->reply_expected &= ~(event);
+	if (failed_flag && check_for_latest_action(minfo, pact, j, event)) {
+		pact->action &= ~(event);
+		hook_track_save(minfo, j);
+	}
+
 	g_hook_replies_recvd++;
 
 	DBPRT(("expected=%d, replies=%d\n", g_hook_replies_expected, g_hook_replies_recvd));
@@ -5551,7 +5579,7 @@ post_sendhookTPP(struct work_task *pwt)
 		 * We are done with this batch of hook replies
 		 * allow next set of hook requests to go out now
 		 */
-		sync_mom_hookfiles_proc_running = 0;
+		sync_mom_hookfiles_replies_pending = 0;
 		g_hook_replies_recvd = 0;
 		g_hook_replies_expected = 0;
 
@@ -5613,9 +5641,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 			free(dup_msgid);
 			return NULL;
 		}
-		g_hook_replies_expected++;
-
-		return &g_hook_mcast_array[i];
+		goto SUCCESS_RET;
 	}
 
 	/* we did not find a match, allocate a new index */
@@ -5655,13 +5681,17 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 		return NULL;
 	}
 
-	g_hook_replies_expected++;
-
 	/* Increment size of the array here only when everything is successful
 	 * This way, we do not have to reset anything back if we failed earlier
 	 * The expanded array is okay to not be resized back
 	 */
 	g_hook_mcast_array_len++;
+
+SUCCESS_RET:
+
+	minfo->mi_action[act_index]->reply_expected |= action;
+
+	g_hook_replies_expected++;
 
 	return &g_hook_mcast_array[i];
 }
@@ -5729,6 +5759,7 @@ del_deferred_hook_cmds(int index)
 				pact = minfo->mi_action[j];
 
 				pact->action &= ~(event);
+				pact->reply_expected &= ~(event);
 				hook_track_save((mominfo_t *) minfo, j);
 
 				/* now dispatch the reply to the routine in the work task */
@@ -5747,7 +5778,7 @@ del_deferred_hook_cmds(int index)
  *		system (this function performs this using deferred requests on TPP stream)
  *
  * @see
- * 		bg_sync_mom_hookfiles and bg_delete_mom_hooks
+ * 		mc_sync_mom_hookfiles and uc_delete_mom_hooks
  *
  * @param[in]	minfo	- particular mom information to send hook request, or
  *			 	if NULL, then hook action request sent to all the
@@ -5780,7 +5811,7 @@ sync_mom_hookfilesTPP(void *minfo)
 		minfo_array_size = 1;
 	}
 
-	sync_mom_hookfiles_proc_running = 1;
+	sync_mom_hookfiles_replies_pending = 1;
 	g_sync_hook_tid = hook_action_tid_get();
 	snprintf(log_buffer, sizeof(log_buffer),
 		"g_sync_hook_tid=%lld", g_sync_hook_tid);
@@ -5904,7 +5935,7 @@ sync_mom_hookfilesTPP(void *minfo)
 		}
 
 		if (cmd == 1) {
-			if (PBSD_delhookfile(mconn, hookfile, 1, &msgid) != 0) {
+			if (PBSD_delhookfile(mconn, hookfile, PROT_TPP, &msgid) != 0) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					"errno %d: failed to multicast deletion of %s file %s",
 					pbs_errno, ((filetype == 1) ? "rscdef":"hook"), hookfile);
@@ -5917,7 +5948,7 @@ sync_mom_hookfilesTPP(void *minfo)
 			}
 		} else if (cmd == 2) {
 
-			rc = PBSD_copyhookfile(mconn, hookfile, 1, &msgid);
+			rc = PBSD_copyhookfile(mconn, hookfile, PROT_TPP, &msgid);
 			if (rc == -2) {
 				snprintf(log_buffer, sizeof(log_buffer), "PBSD_copyhookfile(mconn=%d, hookfile=%s): no hook file to copy (rc == -2)", mconn, hookfile);
 				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
@@ -5960,7 +5991,7 @@ sync_mom_hookfilesTPP(void *minfo)
 		 * variable to 0, so that the next set of
 		 * hook pending operations can get triggered
 		 */
-		sync_mom_hookfiles_proc_running = 0;
+		sync_mom_hookfiles_replies_pending = 0;
 	}
 
 	/* set success to partial so that we come back and try again later */
@@ -5968,22 +5999,21 @@ sync_mom_hookfilesTPP(void *minfo)
 		ret = SYNC_HOOKFILES_SUCCESS_PARTIAL;
 
 	/* if we returned SYNC_HOOKFILES_NONE, then all hook actions were sent, no retry
-	 * needs to be done. This is in sync with bg_sync_mom_hookfiles() return values.
+	 * needs to be done. This is in sync with mc_sync_mom_hookfiles() return values.
 	 */
 	return (ret);
 }
 
 /**
  * @brief
- *	The task wrapper to sync_mom_hookfilesTPP(), which executes in a child
- *	process.
+ *	Multi cast to moms all the pending mom hook sync operations
  *
  * @return int
  * @retval 0	for successfully executing the task process to sync_mom_hookfilesTPP()
  * @retval != 0 if an error occurred.
  */
 int
-bg_sync_mom_hookfiles(void)
+mc_sync_mom_hookfiles(void)
 {
 	int rc;
 
@@ -6019,128 +6049,119 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
 {
 	hook			*phook;
 
-
-	phook = (hook *)GET_NEXT(svr_execjob_begin_hooks);
+	phook = (hook *)GET_NEXT(svr_allhooks);
 	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_begin_hooks);
+		if (phook->hook_name &&	(phook->event & MOM_EVENTS)) {
+			add_pending_mom_hook_action((mominfo_t *)minfo, phook->hook_name, action);
+		}
+		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_prologue_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_prologue_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_epilogue_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_epilogue_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_end_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_end_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_preterm_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_preterm_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_exechost_periodic_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_exechost_periodic_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_exechost_startup_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_exechost_startup_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_launch_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_launch_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_attach_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_attach_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_resize_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_abort_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_postsuspend_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_postsuspend_hooks);
-	}
-
-	phook = (hook *)GET_NEXT(svr_execjob_preresume_hooks);
-	while (phook) {
-		add_pending_mom_hook_action((mominfo_t *)minfo,
-			phook->hook_name, action);
-		phook = (hook *)GET_NEXT(phook->hi_execjob_preresume_hooks);
-	}
-
 }
 
 /**
  * @brief
- *		Checks to see if it's time to run bg_sync_mom_hookfiles() and if so,
- *		then run bg_sync_mom_hookfiles().
+ *		clears out reply_expected flags of timed out actions
+ *		and delete their wait tasks
  *
  * @see
- * 		next_task
+ * 		handle_hook_sync_timeout
  *
- * @return	void
+ * @param[in]	tid	- transaction id of timedout hook sync sequence
+ * 
+ * @return void
  */
 void
-next_sync_mom_hookfiles(void)
+clear_timed_out_reply_expected(long long int tid)
+{
+	int	 i, j;
+	mom_hook_action_t *pact;
+	struct work_task *ptask, *tmp_task;
+	mominfo_t *pmom;
+	struct def_hk_cmd_info *info;
+
+	for (i = 0; i < mominfo_array_size; i++) {
+
+		if ((pmom = mominfo_array[i]) == NULL)
+			continue;
+
+		if (pmom->mi_num_action && pmom->mi_action) {
+
+			for (j = 0; j < pmom->mi_num_action; j++) {
+				pact = pmom->mi_action[j];
+				if (pact && pact->reply_expected && (pact->tid == tid)) {
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+						LOG_INFO, __func__, "timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
+						pact->reply_expected, tid, pact->hookname, pmom->mi_host);
+					/* get the task list */
+					ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
+								(pmom->mi_data))->msr_deferred_cmds));
+
+					while (ptask) {
+						/* no need to compare wt_event with handle, since the
+						* task list is for this mom and so it will always match
+						*/
+						tmp_task = ptask;
+						ptask = (struct work_task *) GET_NEXT(ptask->wt_linkobj2);
+						if ((tmp_task->wt_type == WORK_Deferred_cmd) &&
+								(pmom == tmp_task->wt_parm1)) {
+
+							info = (struct def_hk_cmd_info *) tmp_task->wt_parm2;
+
+							if (!info || (j != info->index) || !(pact->reply_expected & info->event)) {
+								log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+									LOG_INFO, __func__, "timedout, skipped deleting pending WORK_Deferred_cmd for %s:%s",
+									pact->hookname, pmom->mi_host);
+								continue;
+							}
+
+							if (tmp_task->wt_event2)
+								free(tmp_task->wt_event2);
+
+							if (check_for_latest_action(pmom, pact, j, info->event))
+								pact->action &= ~(info->event);
+
+							free(info);
+
+							delete_task(tmp_task);
+						}
+					}
+					pact->reply_expected = 0U;
+					pact->tid = hook_action_tid_get();
+					hook_track_save(pmom, j);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @brief
+ *		checks for hook sync operation's timeout
+ *		and handles timeout activities if so
+ *
+ * @see
+ * 		next_sync_mom_hookfiles
+ *
+ * @return int
+ * @retval 0	if no timeout has occured
+ * @retval != 0 if a timeout occurred.
+ */
+int
+handle_hook_sync_timeout(void)
 {
 	unsigned long timeout_sec;
 	time_t	timeout_time;
 	time_t	current_time;
-	short timed_out = 0;
-
 	timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
 	if (server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
 		timeout_sec = server.sv_attr[(int)SVR_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
 	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
-
-	if (sync_mom_hookfiles_proc_running) {
-		if (current_time <= timeout_time)
+	if (sync_mom_hookfiles_replies_pending) {
+		if (current_time <= timeout_time){
 			/* previous updates still in progress and not timed out */
-			return;
+			return 0;
+		}
 
 		/* we're timing out previous sync mom hook files process/action */
 		snprintf(log_buffer, sizeof(log_buffer),
@@ -6152,15 +6173,34 @@ next_sync_mom_hookfiles(void)
 		snprintf(log_buffer, sizeof(log_buffer), "timeout_sec=%lu", timeout_sec);
 		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 
+		clear_timed_out_reply_expected(g_sync_hook_tid);
 		g_hook_replies_recvd = 0;
 		g_hook_replies_expected = 0;
 		/* attempt collapsing  the hook tracking file */
 		collapse_hook_tr();
-		sync_mom_hookfiles_proc_running = 0;
-		timed_out = 1;
+		sync_mom_hookfiles_replies_pending = 0;
+		return 1;
 	}
 
-	if ((do_sync_mom_hookfiles || timed_out) && bg_sync_mom_hookfiles() == 0)
+	return 0;
+}
+
+/**
+ * @brief
+ *		Checks to see if it's time to run mc_sync_mom_hookfiles() and if so,
+ *		then run mc_sync_mom_hookfiles().
+ *
+ * @see
+ * 		next_task
+ *
+ * @return	void
+ */
+void
+next_sync_mom_hookfiles(void)
+{
+	int timed_out = handle_hook_sync_timeout();
+
+	if ((do_sync_mom_hookfiles || timed_out) && !sync_mom_hookfiles_replies_pending && mc_sync_mom_hookfiles() == 0)
 		do_sync_mom_hookfiles = 0;
 }
 
@@ -6205,32 +6245,43 @@ mom_hooks_seen_count(void)
 
 /**
  * @brief
- *		Run a child process that will send the delete hook
- *		requests to the 'mom' represented by 'minfo' data.
- *		The child process will not get tracked by the
- *		calling process.
+ *		unicast delete mom hook requests and delete rescdef request
+ *		to the 'mom' represented by 'minfo' data.
+ *		do not care on request failures
  *
  * @see
  * 		delete_svrmom_entry
  *
  * @param[in]	minfo	- data reprsenting the 'mom'.
  *
- * @return int
- * @retval 0	for success
- * @retval != 0 if an error occurred.
+ * @return void
  */
-int
-bg_delete_mom_hooks(void *minfo)
+void
+uc_delete_mom_hooks(void *minfo)
 {
 	/*
-	 * add_pending* and sync_mom_hookfilesTPP() use the
-	 * path_hooks_tracking file for recording the hook
-	 * actions to perform and their outcome.
+	 * unicast delete hook batch request
 	 */
-	add_pending_mom_allhooks_action(minfo, MOM_HOOK_ACTION_DELETE);
-	add_pending_mom_hook_action(minfo, PBS_RESCDEF, MOM_HOOK_ACTION_DELETE_RESCDEF);
-	(void)sync_mom_hookfilesTPP(minfo);
-	return 0;
+	hook  *phook;
+	char  hookfile[MAXPATHLEN+1];
+	mominfo_t *mom_info = (mominfo_t *)minfo;
+	char *msgid = NULL;
+
+	phook = (hook *)GET_NEXT(svr_allhooks);
+	while (phook) {
+		if (phook->hook_name &&
+				(phook->event & MOM_EVENTS)) {
+			msgid = NULL;
+			snprintf(hookfile, sizeof(hookfile), "%s%s", phook->hook_name, HOOK_FILE_SUFFIX);
+			PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, hookfile, PROT_TPP, &msgid);
+			free(msgid);
+			msgid = NULL;
+		}
+		phook = (hook *)GET_NEXT(phook->hi_allhooks);
+	}
+	PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, PBS_RESCDEF, PROT_TPP, &msgid);
+	free(msgid);
+	return;
 }
 
 /**
@@ -6324,7 +6375,7 @@ get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, ch
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
 	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
 		strncpy(hook_euser,
-			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
+			get_jattr_str(pjob, JOB_ATR_euser),
 			PBS_MAXUSER);
 	}
 

@@ -72,6 +72,7 @@
 #include "pbs_internal.h"
 #include "log.h"
 #include "auth.h"
+#include "ifl_internal.h"
 
 /**
  * @brief
@@ -125,9 +126,8 @@ __pbs_default()
  * @retval	servr name	success
  *
  */
-static char *
-PBS_get_server(char *server, char *server_name,
-	unsigned int *port)
+char *
+PBS_get_server(char *server, char *server_name, unsigned int *port)
 {
 	int   i;
 	char *pc;
@@ -161,44 +161,6 @@ PBS_get_server(char *server, char *server_name,
 	}
 
 	return server_name;
-}
-
-/**
- * @brief
- *	-hostnmcmp - compare two hostnames, allowing a short name to match a longer
- *	version of the same
- *
- * @param[in] s1 - hostname1
- * @param[in] s2 - hostname2
- *
- * @return	int
- * @retval	1	success
- * @retval	0	failure
- *
- */
-static int
-hostnmcmp(char *s1, char *s2)
-{
-	/* Return failure if any/both the names are NULL. */
-	if (s1 == NULL || s2 == NULL)
-		return 1;
-#ifdef WIN32
-	/* Return success if both names are names of localhost. */
-	if (is_local_host(s1) && is_local_host(s2))
-		return 0;
-#endif
-	while (*s1 && *s2) {
-		if (tolower((int)*s1++) != tolower((int)*s2++))
-			return 1;
-	}
-	if (*s1 == *s2)
-		return 0;
-	else if ((*s1 == '\0') && ((*s2 == '.') || (*s2 == ':')))
-		return 0;
-	else if ((*s2 == '\0') && ((*s1 == '.') || (*s1 == ':')))
-		return 0;
-
-	return 1;
 }
 
 /**
@@ -254,101 +216,28 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 }
 
 /**
- * @brief
- *	Makes a PBS_BATCH_Connect request to 'server'.
+ * @brief	This function establishes a network connection to the given server.
  *
- * @param[in]   server - the hostname of the pbs server to connect to.
- * @param[in]   extend_data - a string to send as "extend" data.
+ * @param[in]   server - The hostname of the pbs server to connect to.
+ * @param[in]   port - Port number of the pbs server to connect to.
+ * @param[in]   extend_data - a string to send as "extend" data
+ *
  *
  * @return int
- * @retval >= 0	index to the internal connection table representing the
- *		connection made.
+ * @retval >= 0	The physical server socket.
  * @retval -1	error encountered setting up the connection.
  */
-int
-__pbs_connect_extend(char *server, char *extend_data)
+
+static int
+tcp_connect(char *hostname, int server_port, char *extend_data)
 {
-	struct sockaddr_in server_addr;
-	struct sockaddr_in my_sockaddr;
-	int sock;
 	int i;
-	int f;
-	char  *altservers[2];
-	int    have_alt = 0;
+	int sd;
+	struct sockaddr_in server_addr;
 	struct batch_reply	*reply;
-	char server_name[PBS_MAXSERVERNAME+1];
-	unsigned int server_port;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
 
-#ifndef WIN32
-	char   pbsrc[_POSIX_PATH_MAX];
-	struct stat sb;
-	int    using_secondary = 0;
-#endif  /* not WIN32 */
-
-	/* initialize the thread context data, if not already initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return -1;
-
-	if (pbs_loadconf(0) == 0)
-		return -1;
-
-	/* get server host and port	*/
-
-	server = PBS_get_server(server, server_name, &server_port);
-	if (server == NULL) {
-		pbs_errno = PBSE_NOSERVER;
-		return -1;
-	}
-
-	if (pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {
-		/* failover configuered ...   */
-		if (hostnmcmp(server, pbs_conf.pbs_primary) == 0) {
-			have_alt = 1;
-			/* We want to try the one last seen as "up" first to not   */
-			/* have connection delays.   If the primary was up, there  */
-			/* is no .pbsrc.NAME file.  If the last command connected  */
-			/* to the Secondary, then it created the .pbsrc.USER file. */
-
-			/* see if already seen Primary down */
-#ifdef WIN32
-			/* due to windows quirks, all try both in same order */
-			altservers[0] = pbs_conf.pbs_primary;
-			altservers[1] = pbs_conf.pbs_secondary;
-#else
-			(void)snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
-			if (stat(pbsrc, &sb) == -1) {
-				/* try primary first */
-				altservers[0] = pbs_conf.pbs_primary;
-				altservers[1] = pbs_conf.pbs_secondary;
-				using_secondary = 0;
-			} else {
-				/* try secondary first */
-				altservers[0] = pbs_conf.pbs_secondary;
-				altservers[1] = pbs_conf.pbs_primary;
-				using_secondary = 1;
-			}
-#endif
-		}
-	}
-
-	/* if specific host name declared for the host on which */
-	/* this client is running,  get its address */
-	if (pbs_conf.pbs_public_host_name) {
-		if (get_hostsockaddr(pbs_conf.pbs_public_host_name, &my_sockaddr) != 0)
-			return -1; /* pbs_errno was set */
-	}
-
-	/*
-	 * connect to server ...
-	 * If attempt to connect fails and if Failover configured and
-	 *   if attempting to connect to Primary,  try the Secondary
-	 *   if attempting to connect to Secondary, try the Primary
-	 */
-	for (i=0; i<(have_alt+1); ++i) {
-
 		/* get socket	*/
-
 #ifdef WIN32
 		/* the following lousy hack is needed since the socket call needs */
 		/* SYSTEMROOT env variable properly set! */
@@ -357,59 +246,29 @@ __pbs_connect_extend(char *server, char *extend_data)
 			setenv("SystemRoot", "C:\\WINDOWS", 1);
 		}
 #endif
-		sock = socket(AF_INET, SOCK_STREAM, 0);
-
-		/* and connect... */
-
-		if (have_alt) {
-			server = altservers[i];
-		}
-		strcpy(pbs_server, server); /* set for error messages from commands */
-
-		/* If a specific host name is defined which the client should use */
-
-		if (pbs_conf.pbs_public_host_name) {
-			/* my address will be in my_sockaddr,  bind the socket to it */
-			my_sockaddr.sin_port = 0;
-			if (bind(sock, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
-				return -1;
-			}
-		}
-
-		if (get_hostsockaddr(server, &server_addr) != 0)
-			return -1;
-
-		server_addr.sin_port = htons(server_port);
-		if (connect(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == 0) {
-			break;
-		} else {
-			/* connect attempt failed */
-			closesocket(sock);
-			pbs_errno = errno;
-		}
-	}
-	if (i >= (have_alt+1)) {
-		return -1; 		/* cannot connect */
+	sd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sd == -1) {
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
 	}
 
-#ifndef WIN32
-	if (have_alt && (i == 1)) {
-		/* had to use the second listed server ... */
-		if (using_secondary == 1) {
-			/* remove file that causes trying the Secondary first */
-			unlink(pbsrc);
-		} else {
-			/* create file that causes trying the Primary first   */
-			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
-			if (f != -1)
-				(void)close(f);
-		}
+	pbs_strncpy(pbs_server, hostname, sizeof(pbs_server)); /* set for error messages from commands */
+	/* and connect... */
+
+	if (get_hostsockaddr(hostname, &server_addr) != 0)
+		return -1;
+
+	server_addr.sin_port = htons(server_port);
+	if (connect(sd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) != 0) {
+		/* connect attempt failed */
+		closesocket(sd);
+		pbs_errno = errno;
+		return -1;
 	}
-#endif
 
 	/* setup connection level thread context */
-	if (pbs_client_thread_init_connect_context(sock) != 0) {
-		closesocket(sock);
+	if (pbs_client_thread_init_connect_context(sd) != 0) {
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -422,7 +281,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 */
 
 	if (load_auths(AUTH_CLIENT)) {
-		closesocket(sock);
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
@@ -440,27 +299,33 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * no leading authentication message needing to be sent on the client
 	 * socket, so will send a "dummy" message and discard the replyback.
 	 */
-	if ((i = encode_DIS_ReqHdr(sock, PBS_BATCH_Connect, pbs_current_user)) ||
-		(i = encode_DIS_ReqExtend(sock, extend_data))) {
-		closesocket(sock);
+	if ((i = encode_DIS_ReqHdr(sd, PBS_BATCH_Connect, pbs_current_user)) ||
+		(i = encode_DIS_ReqExtend(sd, extend_data))) {
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
-	if (dis_flush(sock)) {
-		closesocket(sock);
+	if (dis_flush(sd)) {
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
-	reply = PBSD_rdrpy(sock);
-	PBSD_FreeReply(reply);
 
-	if (engage_client_auth(sock, server, server_port, errbuf, sizeof(errbuf)) != 0) {
-		if (pbs_errno == 0)
+	pbs_errno = PBSE_NONE;
+	reply = PBSD_rdrpy(sd);
+	PBSD_FreeReply(reply);
+	if (pbs_errno != PBSE_NONE) {
+		closesocket(sd);
+		return -1;
+	}
+
+	if (engage_client_auth(sd, hostname, server_port, errbuf, sizeof(errbuf)) != 0) {
+		if (pbs_errno == PBSE_NONE)
 			pbs_errno = PBSE_PERM;
 		fprintf(stderr, "auth: error returned: %d\n", pbs_errno);
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
-		closesocket(sock);
+		closesocket(sd);
 		return -1;
 	}
 
@@ -470,13 +335,229 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 * Disable Nagle's algorithm on the TCP connection to server.
 	 * Nagle's algorithm is hurting cmd-server communication.
 	 */
-	if (pbs_connection_set_nodelay(sock) == -1) {
-		closesocket(sock);
+	if (pbs_connection_set_nodelay(sd) == -1) {
+		closesocket(sd);
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}
 
-	return sock;
+	return sd;
+}
+
+/**
+ * @brief	Get the array of connections to all servers
+ *
+ * @param[in]	parentfd - fd that identifies a particular set of server connections
+ * 						(pass -1 if connections not established yet)
+ *
+ * @return	void
+ * @retval	!NULL - success
+ * @retval	NULL - error
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ */
+void *
+get_conn_svr_instances(int parentfd)
+{
+	svr_conns_list_t *conn_list = NULL;
+	svr_conn_t *msvr_conns = NULL;
+
+	conn_list = pthread_getspecific(psi_key);
+	if (conn_list == NULL || parentfd == -1) {	/* Create a new connection set */
+		int num_svrs;
+		int i;
+		svr_conns_list_t *new_conns = NULL;
+
+		new_conns = malloc(sizeof(svr_conns_list_t));
+		if (new_conns == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			return NULL;
+		}
+		new_conns->next = NULL;
+
+		num_svrs = get_num_servers();
+		msvr_conns = calloc(num_svrs, sizeof(svr_conn_t));
+		if (msvr_conns == NULL) {
+			free(new_conns);
+			pbs_errno = PBSE_SYSTEM;
+			return NULL;
+		}
+
+		for (i = 0; i < num_svrs; i++) {
+			strcpy(msvr_conns[i].name, pbs_conf.psi[i].name);
+			msvr_conns[i].port = pbs_conf.psi[i].port;
+			msvr_conns[i].sd = -1;
+			msvr_conns[i].state = SVR_CONN_STATE_DOWN;
+		}
+		new_conns->conn_arr = msvr_conns;
+		new_conns->next = conn_list;
+		conn_list = new_conns;
+
+		pthread_setspecific(psi_key, conn_list);
+	} else if (parentfd != -1) {
+		svr_conns_list_t *iter_conns = NULL;
+
+		/* Find the set of connections associated with the parent fd */
+		for (iter_conns = conn_list; iter_conns != NULL; iter_conns = iter_conns->next) {
+			if (iter_conns->conn_arr[0].sd == parentfd) {
+				msvr_conns = iter_conns->conn_arr;
+				break;
+			}
+		}
+	}
+
+	return msvr_conns;
+}
+
+/**
+ * @brief	Deallocate the connection set associated with the fd given
+ * destroys the last unused one if called with fd as -1
+ *
+ * @param[int]	parentfd - parent fd of the connection set
+ *
+ * @return	void
+ */
+void
+dealloc_conn_list_single(int parentfd)
+{
+	svr_conns_list_t *iter_conns;
+	svr_conns_list_t *conn_list;
+	svr_conns_list_t *prev = NULL;
+
+	conn_list = pthread_getspecific(psi_key);
+	for (iter_conns = conn_list; iter_conns != NULL; prev = iter_conns, iter_conns = iter_conns->next) {
+		if ((iter_conns->conn_arr[0].sd == parentfd) ||
+		    (parentfd == -1 && !iter_conns->next)) {
+			if (prev != NULL)
+				prev->next = iter_conns->next;
+			else
+				conn_list = NULL;
+			free(iter_conns);
+			pthread_setspecific(psi_key, conn_list);
+			break;
+		}
+	}
+}
+
+/**
+ * @brief	Helper function for connect_to_servers to connect to a particular server
+ *
+ * @param[in]		idx - array index for the server to connect to
+ * @param[in,out]	conn_arr - array of svr_conn_t
+ * @param[in]		extend_data - any additional data relevant for connection
+ *
+ * @return	int
+ * @retval	-1 for error
+ * @retval	fd of connection
+ */
+static int
+connect_to_server(int idx, svr_conn_t *conn_arr, char *extend_data)
+{
+	int sd = conn_arr[idx].sd;
+	struct sockaddr_in my_sockaddr;
+
+	/* bind to pbs_public_host_name if given  */
+	if (pbs_conf.pbs_public_host_name) {
+		if (get_hostsockaddr(pbs_conf.pbs_public_host_name, &my_sockaddr) != 0)
+			return -1; /* pbs_errno was set */
+		/* my address will be in my_sockaddr,  bind the socket to it */
+		my_sockaddr.sin_port = 0;
+		if (bind(sd, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
+			return -1;
+		}
+	}
+
+	if (conn_arr[idx].state != SVR_CONN_STATE_UP) {
+		if ((sd = tcp_connect(conn_arr[idx].name, conn_arr[idx].port, extend_data)) != -1) {
+			conn_arr[idx].state = SVR_CONN_STATE_UP;
+			conn_arr[idx].sd = sd;
+		} else
+			conn_arr[idx].state = SVR_CONN_STATE_DOWN;
+	}
+
+	return sd;
+}
+
+/**
+ * @brief	To connect to all the servers
+ *
+ * @param[in]	svrhost - valid host name of one of the servers
+ * @param[in]	port - port of the server to connect to (considered if server_name is not NULL)
+ * @param[in]	extend_data
+ *
+ * @return int
+ * @retval >0 - success
+ * @retval -1 - error
+ */
+static int
+connect_to_servers(char *svrhost, uint port, char *extend_data)
+{
+	int i;
+	int fd = -1;
+	int ret_fd = -1;
+	int num_conf_servers = get_num_servers();
+	svr_conn_t *svr_connections = get_conn_svr_instances(-1);
+
+	if (svr_connections == NULL)
+		return -1;
+
+	if (svrhost) {
+		if (!is_same_host(svrhost, pbs_default())) {
+			/* The client is trying to reach a different cluster than what's known
+			* So, just reach out to the one host provided and reply back instead
+			* of connecting to the PBS_SERVER_INSTANCES of the default cluster
+			*/
+			pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
+			svr_connections[0].port = port;
+			return connect_to_server(0, svr_connections, extend_data);
+		}
+	}
+
+	/* Try to connect to all servers in the cluster */
+	for (i = 0; i < num_conf_servers; i++) {
+		fd = connect_to_server(i, svr_connections, extend_data);
+
+		if (ret_fd == -1 && fd != -1)
+			ret_fd = fd;
+	}
+
+	return ret_fd;
+}
+
+/**
+ * @brief	Makes a PBS_BATCH_Connect request to 'server'.
+ *
+ * @param[in]   server - the hostname of the pbs server to connect to.
+ * @param[in]   extend_data - a string to send as "extend" data.
+ *
+ * @return int
+ * @retval >= 0	index to the internal connection table representing the
+ *		connection made.
+ * @retval -1	error encountered setting up the connection.
+ */
+int
+__pbs_connect_extend(char *server, char *extend_data)
+{
+	char server_name[PBS_MAXSERVERNAME + 1];
+	unsigned int server_port;
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return -1;
+
+	if (pbs_loadconf(0) == 0)
+		return -1;
+
+	server = PBS_get_server(server, server_name, &server_port);
+	if (server == NULL) {
+		pbs_errno = PBSE_NOSERVER;
+		return -1;
+	}
+
+	return connect_to_servers(server_name, server_port, extend_data);
 }
 
 /**
@@ -510,9 +591,8 @@ pbs_connection_set_nodelay(int connect)
 }
 
 /**
- * @brief
- *	A wrapper progarm to pbs_connect_extend() but this one not
- *	passing any 'extend' data to the connection.
+ * @brief	A wrapper progarm to pbs_connect_extend() but this one not
+ *			passing any 'extend' data to the connection.
  *
  * @param[in] server - server - the hostname of the pbs server to connect to.
  *
@@ -525,18 +605,16 @@ __pbs_connect(char *server)
 }
 
 /**
- * @brief
- *	-send close connection batch request
+ * @brief	Helper function for __pbs_disconnect
  *
- * @param[in] connect - socket descriptor
+ * @param[in]	connect - connection to disconnect
  *
  * @return	int
  * @retval	0	success
  * @retval	-1	error
- *
  */
-int
-__pbs_disconnect(int connect)
+static int
+disconnect_from_server(int connect)
 {
 	char x;
 
@@ -592,7 +670,50 @@ __pbs_disconnect(int connect)
 	if (pbs_client_thread_destroy_connect_context(connect) != 0)
 		return -1;
 
-	(void)destroy_connection(connect);
+	destroy_connection(connect);
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	-send close connection batch request
+ *
+ * @param[in] connect - socket descriptor
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	-1	error
+ *
+ */
+int
+__pbs_disconnect(int connect)
+{
+	svr_conn_t *svr_conns = NULL;
+
+	if (connect <= 0)
+		return -1;
+
+	/* See if we should disconnect from all servers */
+	svr_conns = get_conn_svr_instances(connect);
+	if (svr_conns != NULL && connect == svr_conns[0].sd) {
+		int i;
+
+		for (i = 0; i < get_num_servers(); i++) {
+			if (disconnect_from_server(svr_conns[i].sd) != 0)
+				return -1;
+
+			svr_conns[i].sd = -1;
+			svr_conns[i].state = SVR_CONN_STATE_DOWN;
+		}
+	} else {
+		/* fd doesn't belong to a multi-server setup, just disconnect and exit */
+		disconnect_from_server(connect);
+		return 0;
+	}
+
+	/* Destroy the connection cache associated with this set of connections */
+	dealloc_conn_list_single(connect);
 
 	return 0;
 }
@@ -645,11 +766,13 @@ pbs_connect_noblk(char *server, int tout)
 	struct batch_reply *reply;
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
-	struct addrinfo *aip, *pai;
+	struct addrinfo *aip;
+	struct addrinfo *pai = NULL;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
 	short int connect_err = 0;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
+	svr_conn_t *svr_connections;
 
 #ifdef WIN32
 	int     non_block = 1;
@@ -730,13 +853,22 @@ pbs_connect_noblk(char *server, int tout)
 		return -1;
 	} else
 		inp->sin_port = htons(server_port);
+
+	if ((svr_connections = get_conn_svr_instances(-1)) == NULL) {
+		closesocket(sock);
+		pbs_errno = PBSE_SYSTEM;
+		freeaddrinfo(pai);
+		return -1;
+	}
+	pbs_strncpy(svr_connections[0].name, server, sizeof(svr_connections[0].name));
+	svr_connections[0].port = server_port;
+
 	if (connect(sock,
 		aip->ai_addr,
 		aip->ai_addrlen) < 0) {
 		connect_err = 1;
 	}
-	if (connect_err == 1)
-	{
+	if (connect_err == 1) {
 		/* connect attempt failed */
 		pbs_errno = SOCK_ERRNO;
 		switch (pbs_errno) {
@@ -779,6 +911,7 @@ pbs_connect_noblk(char *server, int tout)
 			default:
 err:
 				closesocket(sock);
+				dealloc_conn_list_single(-1);
 				freeaddrinfo(pai);
 				return -1;	/* cannot connect */
 
@@ -802,6 +935,7 @@ err:
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(sock) != 0) {
 		closesocket(sock);
+		dealloc_conn_list_single(-1);
 		/* pbs_errno set by the pbs_connect_init_context routine */
 		return -1;
 	}
@@ -814,6 +948,7 @@ err:
 
 	if (load_auths(AUTH_CLIENT)) {
 		closesocket(sock);
+		dealloc_conn_list_single(-1);
 		return -1;
 	}
 
@@ -849,6 +984,7 @@ err:
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
 		closesocket(sock);
+		dealloc_conn_list_single(-1);
 		pbs_errno = PBSE_PERM;
 		return -1;
 	}
@@ -856,6 +992,8 @@ err:
 	/* setup DIS support routines for following pbs_* calls */
 	DIS_tcp_funcs();
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;	/* set for 3 hours */
+	svr_connections[0].state = SVR_CONN_STATE_UP;
+	svr_connections[0].sd = sock;
 
 	return sock;
 }

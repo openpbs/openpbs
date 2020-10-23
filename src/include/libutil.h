@@ -194,13 +194,13 @@ enum vnode_sharing str_to_vnode_sharing(char *vn_str);
  * concatenate two strings by expanding target string as needed.
  * 	  Operation: strbuf += str
  */
-char *pbs_strcat(char **strbuf, int *ssize, char *str);
+char *pbs_strcat(char **strbuf, int *ssize, const char *str);
 
 /*
  * like strcpy, but returns pointer to end of copied data
  * useful for chain copies instead of sprintf which is very
  * slow
- * 
+ *
  */
 char *pbs_strcpy(char *dest, const char *src);
 
@@ -244,7 +244,7 @@ int ends_with_triple_quotes(char *str, int strip_quotes);
 
 #define LOCK_RETRY_DEFAULT	2
 int
-lock_file(FILE *fp, int op, char *filename, int lock_retry,
+lock_file(int fd, int op, char *filename, int lock_retry,
 	char *err_msg, size_t err_msg_len);
 
 /* RSHD/RCP related */
@@ -341,8 +341,9 @@ char *perf_stat_stop(char *instance);
 extern char *netaddr(struct sockaddr_in *);
 extern unsigned long crc_file(char *fname);
 extern int get_fullhostname(char *, char *, int);
-
-extern int get_msvr_mode(void);
+extern char *parse_servername(char *, unsigned int *);
+extern int rand_num(void);
+extern int msvr_mode(void);
 
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
@@ -355,9 +356,10 @@ DECLDIR void encode_SHA(char*, size_t, char **);
 void encode_SHA(char*, size_t, char **);
 #endif
 
+void set_proc_limits(char *, int);
+
 
 #ifdef  __cplusplus
 }
 #endif
 #endif
-

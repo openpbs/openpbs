@@ -153,7 +153,7 @@ extern "C" {
 #define PBSE_RESVMSG     15087		/* so reply_text can send back a msg */
 #define PBSE_NOTRESV     15088		/* not a reservation */
 #define PBSE_BADNODESPEC 15089		/* node(s) specification error */
-#define PBSE_LICENSECPU	 15090		/* Licensed CPUs exceeded */
+#define PBSE_UNUSED1	 15090		/* Licensed CPUs exceeded */
 #define PBSE_LICENSEINV	 15091		/* License is invalid     */
 #define PBSE_RESVAUTH_H	 15092		/* Host machine not authorized to */
 /* submit reservations            */
@@ -164,7 +164,7 @@ extern "C" {
 #define PBSE_R_UID	15095		/* Bad effective UID for reservation */
 #define PBSE_R_GID	15096		/* Bad effective GID for reservation */
 #define PBSE_IBMSPSWITCH 15097		/* IBM SP Switch error */
-#define PBSE_LICENSEUNAV 15098		/* Floating License unavailable  */
+#define PBSE_UNUSED2	15098		/* Floating License unavailable  */
 #define PBSE_NOSCHEDULER 15099		/* Unable to contact Scheduler */
 #define PBSE_RESCNOTSTR  15100		/* resource is not of type string */
 
@@ -175,15 +175,15 @@ extern "C" {
 #define PBSE_PLACENOSELECT	     15111 /* cannot have place w/o select */
 #define PBSE_INDIRECTHOP	     15112 /* too many indirect resc levels */
 #define PBSE_INDIRECTBT		     15113 /* target resc undefined */
-#define PBSE_NGBLUEGENE		     15114 /* No node_group_enable and bgl */
+/* Error number 15114 not used */
 #define PBSE_NODESTALE		     15115 /* Cannot change state of stale nd */
 #define PBSE_DUPRESC		     15116 /* cannot dup resc within a chunk */
 #define PBSE_CONNFULL		     15117 /* server connection table full */
 #define	PBSE_LICENSE_MIN_BADVAL      15118 /* bad value for pbs_license_min */
 #define	PBSE_LICENSE_MAX_BADVAL      15119 /* bad value for pbs_license_max */
 #define	PBSE_LICENSE_LINGER_BADVAL   15120 /* bad value for pbs_license_linger_time*/
-#define PBSE_LICENSE_SERVER_DOWN     15121 /* License server is down */
-#define PBSE_LICENSE_BAD_ACTION	     15122 /* Not allowed action with FLEX licensing */
+#define PBSE_UNUSED3		     15121 /* License server is down */
+#define PBSE_UNUSED4		     15122 /* Not allowed action with FLEX licensing */
 #define PBSE_BAD_FORMULA	     15123 /* invalid sort formula */
 #define PBSE_BAD_FORMULA_KW	     15124 /* invalid keyword in formula */
 #define PBSE_BAD_FORMULA_TYPE	     15125 /* invalid resource type in formula */
@@ -286,6 +286,9 @@ extern "C" {
 #define PBSE_NODE_BUSY	15227		 /* Node is busy */
 #define PBSE_DEFAULT_PARTITION 15228	/* Default partition name is not allowed */
 #define PBSE_HISTDEPEND  15229		/* Finished job did not satisfy dependency */
+#define PBSE_SCHEDCONNECTED	15230
+#define PBSE_NOTARRAY_ATTR  15231		/* Not an array job */
+
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

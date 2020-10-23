@@ -54,6 +54,11 @@ const char *dis_emsg[] = {"No error",
 	"Protocol failure in commit",
 	"End of File"};
 
+pbs_tcp_chan_t * (*pfn_transport_get_chan)(int);
+int (*pfn_transport_set_chan)(int, pbs_tcp_chan_t *);
+int (*pfn_transport_recv)(int, void *, int);
+int (*pfn_transport_send)(int, void *, int);
+
 /* this is for our client threading functionlity to get the DIS_BUFSZ */
 long dis_buffsize = DIS_BUFSIZ;
 

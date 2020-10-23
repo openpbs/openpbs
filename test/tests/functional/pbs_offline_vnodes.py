@@ -100,33 +100,34 @@ class TestOfflineVnode(TestFunctional):
         vn_attrs = {ATTR_rescavail + '.ncpus': 1,
                     ATTR_rescavail + '.mem': '1024mb'}
         for i in range(num_moms):
-            self.server.create_vnodes('vnode', vn_attrs, num_vnode,
-                                      self.moms.values()[i],
-                                      usenatvnode=True, delall=False,
-                                      expect=False)
+            self.moms.values()[i].create_vnodes(vn_attrs, num_vnode,
+                                                usenatvnode=True, delall=False,
+                                                expect=False)
             # Calling an explicit expect on newly created nodes.
             self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                                id=self.moms.values()[i].shortname)
 
-    def verify_vnodes_state(self, expected_state):
+    def verify_vnodes_state(self, expected_state, nodes):
         """
         Verify that the vnodes are set to the expected state
         """
         vlist = []
-        if self.is_cray is True:
-            vnl = self.server.filter(
-                VNODE, {'resources_available.vntype': 'cray_compute'})
-            vlist = vnl["resources_available.vntype=cray_compute"]
-        elif self.moms.values()[0].is_cpuset_mom() is True:
-            vnl = self.server.status(NODE)
-            vlist = [x['id'] for x in vnl if x['id'] !=
-                     self.moms.values()[0].shortname]
-        else:
-            vlist = ["vnode[0]", "vnode[1]"]
-        for v1 in vlist:
-            # Check the vnode state
-            self.server.expect(
-                VNODE, {'state': expected_state}, id=v1, interval=2)
+        for nd in nodes:
+            vn = nd.shortname
+            if self.is_cray is True:
+                vnl = self.server.filter(
+                    VNODE, {'resources_available.vntype': 'cray_compute'})
+                vlist = vnl["resources_available.vntype=cray_compute"]
+            elif nd.is_cpuset_mom() is True:
+                vnl = self.server.status(NODE)
+                vlist = [x['id'] for x in vnl if x['id'] !=
+                         vn.shortname]
+            else:
+                vlist = [vn + "[0]", vn + "[1]"]
+            for v1 in vlist:
+                # Check the vnode state
+                self.server.expect(
+                    VNODE, {'state': expected_state}, id=v1, interval=2)
         return vlist[0]
 
     def tearDown(self):
@@ -177,7 +178,7 @@ class TestOfflineVnode(TestFunctional):
             NODE, {ATTR_NODE_state: 'offline'},
             id=single_mom.shortname, interval=2)
 
-        vname = self.verify_vnodes_state('offline')
+        vname = self.verify_vnodes_state('offline', [single_mom])
 
         mom_host = single_mom.shortname
         pbs_exec = self.server.pbs_conf['PBS_EXEC']
@@ -267,7 +268,8 @@ class TestOfflineVnode(TestFunctional):
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.moms.values()[1].shortname, interval=2)
 
-        self.verify_vnodes_state('free')
+        self.verify_vnodes_state('free', [self.moms.values()[1]])
+        self.verify_vnodes_state('offline', [self.moms.values()[0]])
 
     @requirements(num_moms=2)
     def test_multi_mom_hook_failure_affects_vnode2(self):
@@ -388,7 +390,7 @@ class TestOfflineVnode(TestFunctional):
             NODE, {ATTR_NODE_state: 'offline'},
             id=single_mom.shortname, interval=2)
 
-        self.verify_vnodes_state('offline')
+        self.verify_vnodes_state('offline', [single_mom])
 
     @requirements(num_moms=2)
     def test_pbsnodes_o_multi_mom_only_one_offline(self):
@@ -432,8 +434,8 @@ class TestOfflineVnode(TestFunctional):
         # momB and the rest of the vnodes should be free
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=momB.shortname, interval=2)
-
-        self.verify_vnodes_state('free')
+        self.verify_vnodes_state('free', [momB])
+        self.verify_vnodes_state('offline', [momA])
 
     @requirements(num_moms=2)
     def test_pbsnodes_multi_mom_offline_online(self):
@@ -479,7 +481,7 @@ class TestOfflineVnode(TestFunctional):
             NODE, {ATTR_NODE_state: 'offline'},
             id=momB.shortname, interval=2)
 
-        self.verify_vnodes_state('offline')
+        self.verify_vnodes_state('offline', [momA, momB])
 
         # Now call pbsnodes -r to clear the offline from MomA
         pbsnodes_clear_offline = [pbsnodes_cmd, '-r', momA.shortname]
@@ -493,5 +495,5 @@ class TestOfflineVnode(TestFunctional):
         # momA and the vnodes she reports should be free
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=momA.shortname, interval=2)
-
-        self.verify_vnodes_state('free')
+        self.verify_vnodes_state('free', [momA])
+        self.verify_vnodes_state('offline', [momB])

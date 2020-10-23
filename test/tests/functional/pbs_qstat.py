@@ -45,7 +45,7 @@ class TestQstat(TestFunctional):
     """
     This test suite validates output of qstat with various options
     """
-    @skipOnCpuSet
+
     def test_qstat_pt(self):
         """
         Test that checks correct output for qstat -pt
@@ -152,6 +152,6 @@ class TestQstat(TestFunctional):
                          'Qstat returned with non-zero exit status')
         qstat_out = '\n'.join(ret['out'])
         self.assertNotEqual(re.search(r"%s/([0-9]+)"
-                            % re.escape(self.mom.shortname),
-                            qstat_out), None, "The exec host does not"
-                            " contain the task slot number")
+                                      % re.escape(self.mom.shortname),
+                                      qstat_out), None, "The exec host does"
+                            " not contain the task slot number")

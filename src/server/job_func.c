@@ -49,9 +49,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#ifndef SIGKILL
 #include <signal.h>
-#endif
 #include <memory.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -77,12 +75,19 @@
 #include "pbs_error.h"
 #include "batch_request.h"
 #include "pbs_entlim.h"
+#include "libutil.h"
 
 #ifndef PBS_MOM
 #include "pbs_idx.h"
+#include "ticket.h"
+#else
+#include "mom_server.h"
+#include "mom_func.h"
+#include "mom_hook_func.h"
 #endif
 
 #include "svrfunc.h"
+#include <libutil.h>
 #include "acct.h"
 #include "credential.h"
 #include "net_connect.h"
@@ -95,7 +100,6 @@
 extern int time_now;
 
 /* External functions */
-
 #ifdef WIN32
 extern int read_cred(job *pjob, char **cred, size_t *len);
 #endif
@@ -124,9 +128,6 @@ extern pbs_list_head svr_alljobs;
 extern char *msg_err_purgejob;
 
 #ifdef PBS_MOM
-#include "mom_func.h"
-#include "mom_hook_func.h"
-
 extern void rmtmpdir(char *);
 void nodes_free(job *);
 extern char *std_file_name(job *pjob, enum job_file which, int *keeping);
@@ -185,8 +186,8 @@ char *get_job_credid(char *jobid)
 	if ((pjob = find_job(jobid)) == NULL)
 		return NULL;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_cred_id].at_flags & ATR_VFLAG_SET) {
-		return pjob->ji_wattr[(int)JOB_ATR_cred_id].at_val.at_str;
+	if (is_jattr_set(pjob, JOB_ATR_cred_id)) {
+		return get_jattr_str(pjob, JOB_ATR_cred_id);
 	}
 #endif
 
@@ -216,12 +217,12 @@ job_abt(job *pjob, char *text)
 		return 0; /* nothing to do */
 	/* save old state and update state to Exiting */
 
-	old_state = pjob->ji_qs.ji_state;
+	old_state = get_job_state(pjob);
 
-	if (old_state == JOB_STATE_FINISHED)
+	if (old_state == JOB_STATE_LTR_FINISHED)
 		return 0;	/* nothing to do for this job */
 
-	old_substate = pjob->ji_qs.ji_substate;
+	old_substate = get_job_substate(pjob);
 
 	/* notify user of abort if notification was requested */
 
@@ -230,9 +231,8 @@ job_abt(job *pjob, char *text)
 		svr_mailowner(pjob, MAIL_ABORT, MAIL_NORMAL, text);
 	}
 
-	if ((old_state == JOB_STATE_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
-		(void)svr_setjobstate(pjob,
-			JOB_STATE_RUNNING, JOB_SUBSTATE_ABORT);
+	if ((old_state == JOB_STATE_LTR_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT);
 		rc = issue_signal(pjob, "SIGKILL", release_req, 0);
 		if (rc != 0) {
 			(void)sprintf(log_buffer, msg_abt_err,
@@ -240,8 +240,7 @@ job_abt(job *pjob, char *text)
 			log_err(-1, __func__, log_buffer);
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 				/* notify creator that job is exited */
-				pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char
-				= 'E';
+				set_job_state(pjob, JOB_STATE_LTR_EXITING);
 				issue_track(pjob);
 			}
 			/*
@@ -249,31 +248,28 @@ job_abt(job *pjob, char *text)
 			 */
 			svr_saveorpurge_finjobhist(pjob);
 		}
-	} else if ((old_state == JOB_STATE_TRANSIT) &&
+	} else if ((old_state == JOB_STATE_LTR_TRANSIT) &&
 		(old_substate == JOB_SUBSTATE_TRNOUT)) {
 		/* I don't know of a case where this could happen */
 		(void)sprintf(log_buffer, msg_abt_err,
 			pjob->ji_qs.ji_jobid, old_substate);
 		log_err(-1, __func__, log_buffer);
 	} else if (old_substate == JOB_SUBSTATE_PROVISION) {
-		(void)svr_setjobstate(pjob, JOB_STATE_RUNNING,
-			JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_ABORT);
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
-	} else if (old_state == JOB_STATE_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
-		  (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)) {
-		(void)svr_setjobstate(pjob, JOB_STATE_HELD,
-			JOB_SUBSTATE_ABORT);
+	} else if (old_state == JOB_STATE_LTR_HELD && old_substate == JOB_SUBSTATE_DEPNHOLD &&
+		  (is_jattr_set(pjob, JOB_ATR_depend))) {
+		svr_setjobstate(pjob, JOB_STATE_LTR_HELD, JOB_SUBSTATE_ABORT);
 		depend_on_term(pjob);
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		svr_saveorpurge_finjobhist(pjob);
 	} else {
-		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
-			JOB_SUBSTATE_ABORT);
+		svr_setjobstate(pjob, JOB_STATE_LTR_EXITING, JOB_SUBSTATE_ABORT);
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 			/* notify creator that job is exited */
 			issue_track(pjob);
@@ -343,6 +339,8 @@ job_alloc(void)
 	pj->ji_updated = 0;
 	pj->ji_hook_running_bg_on = BG_NONE;
 	pj->ji_bg_hook_task = NULL;
+	pj->ji_report_task = NULL;
+	pj->ji_env.v_envp = NULL;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -352,6 +350,10 @@ job_alloc(void)
 	pj->ji_stderr = 0;
 	pj->ji_setup = NULL;
 	pj->ji_momsubt = 0;
+	pj->ji_msconnected = 0;
+	CLEAR_HEAD(pj->ji_multinodejobs);
+	pj->ji_extended.ji_ext.ji_stdout = 0;
+	pj->ji_extended.ji_ext.ji_stderr = 0;
 #else	/* SERVER */
 	pj->ji_discarding = 0;
 	pj->ji_prunreq = NULL;
@@ -372,13 +374,13 @@ job_alloc(void)
 
 	job_init_wattr(pj);
 
-
 #ifndef PBS_MOM
+	set_job_state(pj, JOB_STATE_LTR_TRANSIT);
+	set_job_substate(pj, JOB_SUBSTATE_TRANSIN);
+
 	/* start accruing time from the time job was created */
-	pj->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long = (long) time_now;
-	pj->ji_wattr[JOB_ATR_sample_starttime].at_flags |= ATR_VFLAG_SET;
-	pj->ji_wattr[JOB_ATR_eligible_time].at_val.at_long = 0;
-	pj->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_SET;
+	set_jattr_l_slim(pj, JOB_ATR_sample_starttime, time_now, SET);
+	set_jattr_l_slim(pj, JOB_ATR_eligible_time, 0, SET);
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
@@ -422,7 +424,7 @@ free_job_work_tasks(job *pj)
 				 * If so, then reject the request.
 				 */
 				if ((tbr->rq_orgconn != -1) &&
-					(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
+					(find_sched_from_sock(tbr->rq_orgconn, CONN_SCHED_PRIMARY) != NULL)) {
 					tbr->rq_conn = tbr->rq_orgconn;
 					req_reject(PBSE_HISTJOBID, 0, tbr);
 				}
@@ -460,16 +462,16 @@ job_free(job *pj)
 #ifdef PBS_MOM
 
 #ifdef WIN32
-	if (pj->ji_wattr[(int) JOB_ATR_altid].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pj,  JOB_ATR_altid)) {
 		char *p;
 
-		p = strstr(pj->ji_wattr[(int)JOB_ATR_altid].at_val.at_str,
+		p = strstr(get_jattr_str(pj, JOB_ATR_altid),
 			"HomeDirectory=");
 		if (p) {
 			struct passwd *pwdp = NULL;
 
-			if ((pj->ji_wattr[JOB_ATR_euser].at_val.at_str) &&
-				(pwdp = getpwnam(pj->ji_wattr[JOB_ATR_euser].at_val.at_str))) {
+			if ((get_jattr_str(pj, JOB_ATR_euser)) &&
+				(pwdp = getpwnam(get_jattr_str(pj, JOB_ATR_euser)))) {
 				if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) {
 					if (impersonate_user(pwdp->pw_userlogin) == 0) {
 						sprintf(log_buffer, "Failed to ImpersonateLoggedOnUser user: %s", pwdp->pw_name);
@@ -491,7 +493,7 @@ job_free(job *pj)
 	/* remove any malloc working attribute space */
 
 	for (i = 0; i < (int)JOB_ATR_LAST; i++)
-		job_attr_def[i].at_free(&pj->ji_wattr[i]);
+		free_jattr(pj, i);
 
 #ifndef PBS_MOM
 	{
@@ -519,6 +521,7 @@ job_free(job *pj)
 			if (psubj)
 				psubj->ji_parentaj = NULL;
 		}
+		free_range_list(pj->ji_ajtrk->trk_rlist);
 		free(pj->ji_ajtrk);
 		pj->ji_ajtrk = NULL;
 	}
@@ -546,7 +549,7 @@ job_free(job *pj)
 		for (i = 0; i < pj->ji_numrescs; i++) {
 			free(pj->ji_resources[i].nodehost);
 			pj->ji_resources[i].nodehost = NULL;
-			if  ((pj->ji_resources[i].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
+			if  (is_attr_set(&pj->ji_resources[i].nr_used) != 0) {
 				job_attr_def[(int)JOB_ATR_resc_used].at_free(&pj->ji_resources[i].nr_used);
 			}
 		}
@@ -572,11 +575,16 @@ job_free(job *pj)
 		delete_task(pj->ji_bg_hook_task);
 	}
 
+	if (pj->ji_report_task)
+		delete_task(pj->ji_report_task);
+
 	/*
 	 ** This gets rid of any dependent job structure(s) from ji_setup.
 	 */
 	if (job_free_extra != NULL)
 		job_free_extra(pj);
+
+	CLEAR_HEAD(pj->ji_multinodejobs);
 
 #ifdef WIN32
 	if (pj->ji_hJob) {
@@ -672,8 +680,8 @@ remove_stdouterr_files(job *pjob, char *suffix)
 int direct_write_requested(job *pjob)
 {
 	char *pj_attrk = NULL;
-	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
-		pj_attrk = pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str;
+	if ((is_jattr_set(pjob, JOB_ATR_keep))) {
+		pj_attrk = get_jattr_str(pjob, JOB_ATR_keep);
 		if (strchr(pj_attrk, 'd') && (strchr(pj_attrk, 'o') || (strchr(pj_attrk, 'e'))))
 			return 1;
 	}
@@ -708,45 +716,94 @@ del_job_related_file(job *pjob, char *fsuffix)
 }
 
 #ifdef PBS_MOM
+/**
+ * @brief	Rename the job's <taskdir>.TK to <taskdir>.TK.RM
+ *
+ * @param[in]	pjob - the job being purged
+ *
+ * @return	char *
+ * @retval	!NULL  - new taskdir path name, malloced which must be freed.
+ * @retval	NULL - rename failed, error encountered
+ */
+static char *
+rename_taskdir(job *pjob)
+{
+	char *namebuf = NULL;
+	char *renamebuf = NULL;
+	char *fprefix;
+
+	if ((pjob == NULL) || (path_jobs == NULL))
+		return (NULL);
+
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		fprefix = pjob->ji_qs.ji_fileprefix;
+	else
+		fprefix = pjob->ji_qs.ji_jobid;
+
+	if (fprefix == NULL)
+		return (NULL);
+
+	if (pbs_asprintf(&namebuf, "%s%s%s", path_jobs, fprefix, JOB_TASKDIR_SUFFIX) == -1)
+		return (NULL);
+	if (pbs_asprintf(&renamebuf, "%s%s", namebuf, JOB_DEL_SUFFIX) == -1)
+		return (namebuf);
+	if (rename(namebuf, renamebuf) == 0) {
+		free(namebuf);
+		return (renamebuf);
+	}
+	free(renamebuf);
+	return (namebuf);
+}
 
 /**
  * @brief	Convenience function to delete directories associated with a job being purged
  *
  * @param[in]	pjob - the job being purged
+ * @param[in]	taskdir - if not NULL, the path name to the task directory to cleanup
  *
  * @return	void
  */
 void
-del_job_dirs(job *pjob)
+del_job_dirs(job *pjob, char *taskdir)
 {
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 
-	strcpy(namebuf, path_jobs);      /* job directory path */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		strcat(namebuf, pjob->ji_qs.ji_jobid);
-	strcat(namebuf, JOB_TASKDIR_SUFFIX);
-	remtree(namebuf);
-
+	if (taskdir == NULL) {
+		strcpy(namebuf, path_jobs);      /* job directory path */
+		if (*pjob->ji_qs.ji_fileprefix != '\0')
+			strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+		else
+			strcat(namebuf, pjob->ji_qs.ji_jobid);
+		strcat(namebuf, JOB_TASKDIR_SUFFIX);
+		remtree(namebuf);
+	} else {
+		remtree(taskdir);
+	}
 	rmtmpdir(pjob->ji_qs.ji_jobid);		/* remove tmpdir */
 
 	/* remove the staging and execution directory when sandbox=PRIVATE
 	 ** and there are no stage-out errors
 	 */
-	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+	if (is_jattr_set(pjob, JOB_ATR_sandbox) &&
+		(strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
+		int	check_shared = 0;
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
+			/* sister mom */
+			check_shared = 1;
+
 		if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_StgoFal)) {
 			if (pjob->ji_grpcache != NULL)
 				rmjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
 					pjob->ji_grpcache->gc_uid,
-					pjob->ji_grpcache->gc_gid);
+					pjob->ji_grpcache->gc_gid,
+					check_shared);
 			else
 				rmjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, NULL),
 					0,
-					0);
+					0,
+					check_shared);
 		}
 	}
 }
@@ -764,7 +821,7 @@ del_chkpt_files(job *pjob)
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 
 	if (path_checkpoint != NULL) {	/* delete checkpoint files */
-		(void)strcpy(namebuf, path_checkpoint);
+		pbs_strncpy(namebuf, path_checkpoint, sizeof(namebuf));
 		if (*pjob->ji_qs.ji_fileprefix != '\0')
 			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
 		else
@@ -775,6 +832,158 @@ del_chkpt_files(job *pjob)
 		(void)remtree(namebuf);
 	}
 }
+
+
+/**
+ * @brief
+ * 	find_env_slot - find if the environment variable is already in the table,
+ *	If so, replace the existing one with the new one.
+ *
+ * @param[in] ptbl - pointer to var_table which holds environment variable for job
+ * @param[in] pstr - new environment variable
+ *
+ * @return	int
+ * @retval	!(-1)	success
+ * @retval	-1	Failure
+ *
+ */
+
+int
+find_env_slot(struct var_table *ptbl, char *pstr)
+{
+	int	 i;
+	int	 len = 1;	/* one extra for '=' */
+
+	if (pstr == NULL)
+		return (-1);
+	for (i=0; (*(pstr+i) != '=') && (*(pstr+i) != '\0'); ++i)
+		++len;
+
+	for (i=0; i<ptbl->v_used; ++i) {
+		if (strncmp(ptbl->v_envp[i], pstr, len) == 0)
+			return (i);
+	}
+	return (-1);
+}
+
+/**
+ * @brief
+ *	bld_env_variables - Add an entry to the table that defines the environment variables for a job.
+ * @par
+ * 	Note that this function returns void. It gives the caller no indication
+ * 	whether the operation failed, which it could. In the case where the
+ * 	operation does fail, the variable will not be added to the table and
+ * 	will not be present in the job's environment. The caller would have
+ * 	to check the table upon return of this function to confirm the
+ * 	variable was added/updated correctly.
+ *
+ * @param[in] vtable - variable table
+ * @param[in] name - variable name alone or a "name=value" string
+ * @param[in] value - variable value or NULL if name contains "name=value"
+ *
+ * @return - None
+ *
+ */
+void
+bld_env_variables(struct var_table *vtable, char *name, char *value)
+{
+	int     amt;
+	int     i;
+	char	*block;
+
+	if ((vtable == NULL) || (name == NULL))
+		return;
+
+	if (value == NULL) {
+		/* name must contain '=' */
+		if (strchr(name, (int) '=') == NULL)
+			return;
+	} else {
+		/* name may not contain '=' */
+		if (strchr(name, (int) '=') != NULL)
+			return;
+	}
+
+	amt = strlen(name) + 1;			/* plus 1 for terminator */
+	if (value)
+		amt += strlen(value) + 1;	/* plus 1 for "=" */
+
+	block = malloc(amt);
+	if (block == NULL)			/* no room for string */
+		return;
+
+	(void)strcpy(block, name);
+	if (value) {
+		(void)strcat(block, "=");
+		(void)strcat(block, value);
+	}
+
+	if ((i = find_env_slot(vtable, block)) < 0) {
+		/*
+		 ** See if last available slot is used.
+		 ** This needs to be one less than v_ensize
+		 ** to make sure there is a NULL termination.
+		 */
+		if (vtable->v_used+1 == vtable->v_ensize) {
+			int	newsize = vtable->v_ensize * 2;
+			char	**tt = realloc(vtable->v_envp,
+				newsize*sizeof(char *));
+
+			if (tt == NULL)
+				return;		/* no room for pointer */
+			vtable->v_ensize = newsize;
+			vtable->v_envp = tt;
+		}
+
+		*(vtable->v_envp + vtable->v_used++) = block;
+		*(vtable->v_envp + vtable->v_used) = NULL;
+	} else {
+		/* free old value */
+		free(*(vtable->v_envp + i));
+		*(vtable->v_envp + i) = block;
+	}
+}
+
+/**
+ * @brief
+ *	Add to 'array_dest' the entries in 'array1'.
+ *
+ * @param[in]	array_src  - environment array to duplicate
+ * @param[in]	array_dest - environment array in which to duplicate
+ *
+ * @return	char**
+ *	!NULL	the environment array
+ *	NULL	if an error occurred.
+ * @par MT-safe: no
+ */
+void
+add_envp(char **array_src, struct var_table *array_dest)
+{
+	char	*e_var, *e_val, *p;
+	int	i;
+
+	if (array_src == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
+			__func__, "Unexpected input");
+		return;
+	}
+	i = 0;
+	while((e_var = array_src[i]) != NULL) {
+		if ((p = strchr(e_var, '=')) != NULL) {
+			*p = '\0';
+			p++;
+			e_val = p;
+		} else {
+			e_val = NULL; /* can be NULL */
+		}
+		bld_env_variables(array_dest, e_var, e_val);
+		if (e_val != NULL)
+			*(p-1) = '=';	/* restore */
+		i++;
+	}
+}
+
+
 #endif
 
 /**
@@ -799,11 +1008,10 @@ job_purge(job *pjob)
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
 	attribute *jrpattr = NULL;
+	char *taskdir_path = NULL;
 
-#ifndef WIN32
 	pid_t pid = -1;
 	int child_process = 0;
-#endif
 
 #else
 	extern char *msg_err_purgejob_db;
@@ -826,6 +1034,11 @@ job_purge(job *pjob)
 	}
 #endif
 #ifdef	PBS_MOM
+	if (pjob->ji_pending_ruu != NULL) {
+		ruu *x = (ruu *)(pjob->ji_pending_ruu);
+		send_resc_used(x->ru_cmd, 1, x);
+		FREE_RUU(x);
+	}
 	delete_link(&pjob->ji_jobque);
 	delete_link(&pjob->ji_alljobs);
 	delete_link(&pjob->ji_unlicjobs);
@@ -838,6 +1051,9 @@ job_purge(job *pjob)
 		reply_text(pjob->ji_preq, PBSE_INTERNAL, "job deleted");
 		pjob->ji_preq = NULL;
 	}
+
+	free_string_array(pjob->ji_env.v_envp);
+
 #ifndef WIN32
 
 	if (pjob->ji_momsubt != 0) {	/* child running */
@@ -848,8 +1064,8 @@ job_purge(job *pjob)
 	if (pjob->ji_jsmpipe != -1) {
 		conn_t *connection = NULL;
 
-		if ((pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_SET) == 0 &&
-				!(pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long) &&
+		if ((is_jattr_set(pjob, JOB_ATR_session_id)) == 0 &&
+				!(get_jattr_long(pjob, JOB_ATR_session_id)) &&
 				(connection = get_conn(pjob->ji_jsmpipe)) != NULL) {
 			/*
 			 * If session id for the job is not set, retain pjob->ji_jsmpipe.
@@ -884,15 +1100,15 @@ job_purge(job *pjob)
 		(void)close(pjob->ji_parent2child_moms_status_pipe);
 #endif
 #else	/* not PBS_MOM */
-	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) &&
-		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM)) {
-		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
-			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED))
-				update_subjob_state(pjob, JOB_STATE_QUEUED);
+	if ((!check_job_substate(pjob, JOB_SUBSTATE_TRANSIN)) &&
+		(!check_job_substate(pjob, JOB_SUBSTATE_TRANSICM))) {
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (!check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
+			if ((check_job_substate(pjob, JOB_SUBSTATE_RERUN3)) || (check_job_substate(pjob, JOB_SUBSTATE_QUEUED)))
+				update_subjob_state(pjob, JOB_STATE_LTR_QUEUED);
 			else {
 				if (pjob->ji_terminated && pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
 					pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
-				update_subjob_state(pjob, JOB_STATE_EXPIRED);
+				update_subjob_state(pjob, JOB_STATE_LTR_EXPIRED);
 			}
 		}
 
@@ -905,12 +1121,14 @@ job_purge(job *pjob)
 
 #ifdef PBS_MOM
 
-#ifndef WIN32
 	/* on the mom end, perform file-system related cleanup in a forked process
 	 * only if job is executed successfully with exit status 0(JOB_EXEC_OK)
 	 */
 	if (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK) {
-		child_process = 1;
+		/* rename the taskdir path to avoid race condition when job
+		 * reruns. It will be removed later in the child process.
+		 */
+		taskdir_path = rename_taskdir(pjob);
 		pid = fork();
 		if (pid > 0) {
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -918,11 +1136,13 @@ job_purge(job *pjob)
 #endif
 			/* parent mom */
 			job_free(pjob);
+			free(taskdir_path);
 			return;
 		}
+		if (!pid)
+			child_process = 1;
 	}
 	/* Parent Mom process will continue the job cleanup itself, if call to fork is failed */
-#endif
 	/* delete script file */
 	del_job_related_file(pjob, JOB_SCRIPT_SUFFIX);
 
@@ -931,13 +1151,14 @@ job_purge(job *pjob)
 		pjob->ji_preq = NULL;
 	}
 
-	del_job_dirs(pjob);
+	del_job_dirs(pjob, taskdir_path);
+	free(taskdir_path);
 
 	del_chkpt_files(pjob);
 
 	jrpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
 	/* remove stdout/err files if remove_files is set. */
-	if ((jrpattr->at_flags & ATR_VFLAG_SET)
+	if (is_attr_set(jrpattr)
 			&& (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK)) {
 		if (strchr(jrpattr->at_val.at_str, 'o')) {
 			(void) strcpy(namebuf, std_file_name(pjob, StdOut, &keeping));
@@ -1008,14 +1229,12 @@ job_purge(job *pjob)
 	job_free(pjob);
 
 #ifdef PBS_MOM
-#ifndef WIN32
-	if (child_process && pid == 0) {
+	if (child_process) {
 		/* I am child of the forked process. Deleted all the
 		 * particular job related files, thus exiting.
 		 */
 		exit(0);
 	}
-#endif
 #endif
 
 	return;
@@ -1256,75 +1475,6 @@ done:
 
 /**
  * @brief
- *		decode_sandbox - decode sandbox into string attribute
- *
- * @param[in,out]	patr - the string attribute that holds the decoded value
- * @param[in]		name - project attribute name
- * @param[in]		resc - resource name (unused here)
- * @param[in]		val - project attribute value
- *
- * @return int
- * @retval	0	- success
- * @retval	>0	- error number if error.
- *
- * @note
- *		argument rescn is unused here.
- */
-
-int
-decode_sandbox(struct attribute *patr, char *name, char *rescn, char *val)
-{
-	char *pc;
-
-	pc = val;
-	while (isspace((int)*pc))
-		++pc;
-	if (*pc == '\0' || !isalpha((int)*pc))
-		return PBSE_BADATVAL;
-
-	/* compare to valid values of sandbox */
-	if ((strcasecmp(pc, "HOME") != 0) &&
-		(strcasecmp(pc, "O_WORKDIR") != 0) &&
-		(strcasecmp(pc, "PRIVATE") != 0)) {
-		return PBSE_BADATVAL;
-	}
-
-	return (decode_str(patr, name, rescn, val));
-}
-
-/**
- * @brief
- *	Decode project into string attribute.
- *
- * @param[in,out]	patr - the string attribute that holds the decoded value
- * @param[in]		name - project attribute name
- * @param[in]		resc - resource name (unused here)
- * @param[in]		val - project attribute value
- *
- * @return	int
- * @retval      0 if success
- * @retval      > 0 error number if error
- * @retval      *patr members set
- */
-
-int
-decode_project(struct attribute *patr, char *name, char *rescn, char *val)
-{
-	char *pc;
-
-	pc = val;
-	while (isspace((int)*pc))
-		++pc;
-
-	if (strpbrk(pc, ETLIM_INVALIDCHAR) != NULL)
-		return PBSE_BADATVAL;
-
-	return (decode_str(patr, name, rescn,
-		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
-}
-
-/**
- * @brief
  * 	Returns 1 if job 'job' should remain running in spite of node failures.
  * @param[in]	pjob	- job being queried
  *
@@ -1344,10 +1494,10 @@ do_tolerate_node_failures(job *pjob)
 	return (0);
 #endif
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_flags & ATR_VFLAG_SET) &&
-	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, TOLERATE_NODE_FAILURES_ALL) == 0) ||
-	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, TOLERATE_NODE_FAILURES_JOB_START) == 0) &&
-	    pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING))) {
+	if ((is_jattr_set(pjob, JOB_ATR_tolerate_node_failures)) &&
+	   ((strcmp(get_jattr_str(pjob, JOB_ATR_tolerate_node_failures), TOLERATE_NODE_FAILURES_ALL) == 0) ||
+	   ((strcmp(get_jattr_str(pjob, JOB_ATR_tolerate_node_failures), TOLERATE_NODE_FAILURES_JOB_START) == 0) &&
+	    !check_job_substate(pjob, JOB_SUBSTATE_RUNNING)))) {
 		return (1);
 	}
 	return (0);
@@ -1402,11 +1552,11 @@ update_resources_list(job *pjob, char *res_list_name,
 
 	/* Save current resource values in backup resource list */
 	/* if backup resources list is not already set */
-	if (pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, res_list_index)) {
 
-		if ((pjob->ji_wattr[backup_res_list_index].at_flags & ATR_VFLAG_SET) == 0) {
-			job_attr_def[backup_res_list_index].at_free(&pjob->ji_wattr[backup_res_list_index]);
-			job_attr_def[backup_res_list_index].at_set(&pjob->ji_wattr[backup_res_list_index], &pjob->ji_wattr[res_list_index], INCR);
+		if ((is_jattr_set(pjob, backup_res_list_index)) == 0) {
+			free_jattr(pjob, backup_res_list_index);
+			set_attr_with_attr(&job_attr_def[backup_res_list_index], &pjob->ji_wattr[backup_res_list_index], &pjob->ji_wattr[res_list_index], INCR);
 
 		}
 
@@ -1480,7 +1630,7 @@ update_resources_list(job *pjob, char *res_list_name,
 	}
 
 	if (always_set &&
-	   ((pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) == 0)) {
+	   ((is_jattr_set(pjob, res_list_index)) == 0)) {
 		/* this means no resources got freed during suspend */
 		/* let's put a dummy entry for ncpus=0 */
 		prdef = &svr_resc_def[RESC_NCPUS];
@@ -1503,10 +1653,9 @@ update_resources_list(job *pjob, char *res_list_name,
 	return (0);
 
 update_resources_list_error:
-	job_attr_def[backup_res_list_index].at_free(
-			&pjob->ji_wattr[backup_res_list_index]);
-	pjob->ji_wattr[backup_res_list_index].at_flags &= ~ATR_VFLAG_SET;
-	job_attr_def[res_list_index].at_set(
+	free_jattr(pjob, backup_res_list_index);
+	mark_jattr_not_set(pjob, backup_res_list_index);
+	set_attr_with_attr(&job_attr_def[res_list_index],
 			&pjob->ji_wattr[res_list_index],
 			&pjob->ji_wattr[backup_res_list_index], INCR);
 	return (1);
@@ -1643,7 +1792,7 @@ resv_free(resc_resv *presv)
  *
  * 		This function - ASSUMES - that if the reservation is supported by a
  * 		pbs_queue that queue is empty OR having history jobs only (i.e. job
- * 		in state JOB_STATE_MOVED/JOB_STATE_FINISHED). So, whatever mechanism
+ * 		in state JOB_STATE_LTR_MOVED/JOB_STATE_LTR_FINISHED). So, whatever mechanism
  * 		is being used to remove the jobs from such a supporting queue should,
  * 		at the outset, store the value "False" into the queue's "enabled"
  * 		attribute (blocks new jobs from being placed in the queue while the
@@ -1957,3 +2106,416 @@ find_aoe_from_request(resc_resv *presv)
 	return aoe_req;
 }
 #endif	/*ifndef PBS_MOM*/
+
+/**
+ * @brief
+ * 		get_jobowner - copy the basic job owner's name, without the @host suffix.
+ *		The "to" buffer must be large enough (PBS_MAXUSER+1).
+ *
+ * @param[in]	from	-	 basic job owner's name
+ * @param[out]	to	-	"to" buffer where name is copied.
+ */
+void
+get_jobowner(char *from, char *to)
+{
+	int i;
+
+	for (i = 0; i < PBS_MAXUSER; ++i) {
+		if ((*(from + i) == '@') || (*(from + i) == '\0'))
+			break;
+		*(to + i) = *(from + i);
+	}
+	*(to + i) = '\0';
+}
+
+/**
+ * @brief
+ * 		setup_from - setup the "from" name for a standard job file:
+ *		output, error, or chkpt
+ *
+ * @param[in]	pjob	- job structure
+ * @param[in]	suffix	- suffix for the "from" name
+ *
+ * @return	"from" name
+ */
+
+static char *
+setup_from(job  *pjob, char *suffix)
+{
+	char *from;
+
+	from = malloc(strlen(pjob->ji_qs.ji_jobid) + strlen(suffix) + 1);
+	if (from) {
+		(void)strcpy(from, pjob->ji_qs.ji_jobid);
+		(void)strcat(from, suffix);
+	}
+	return (from);
+}
+
+/**
+ * @brief
+ * 		setup_cpyfiles - if need be, allocate and initialize a Copy Files
+ *		batch request, then append the file pairs
+ *
+ * @param[in]	preq	- batch request
+ * @param[in]	pjob	- job structure
+ * @param[in]	from	- local (to mom) name
+ * @param[in]	to		- remote (destination) name
+ * @param[in]	direction	- copy direction
+ * @param[in]	tflag	- 1 if stdout or stderr , 2 if stage out or in
+ *
+ * @return	modified batch request.
+ * @retval	NULL	- failure
+ */
+
+static struct batch_request *
+setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int  direction, int  tflag)
+{
+	struct rq_cpyfile *pcf;
+	struct rq_cpyfile_cred *pcfc;
+	struct rqfpair *pair;
+	size_t cred_len = 0;
+	char *cred = NULL;
+	char *prq_jobid;
+	char *prq_owner;
+	char *prq_user;
+	char *prq_group;
+	int *prq_dir;
+	pbs_list_head *prq_pair;
+
+#ifndef PBS_MOM
+	/* if this is a sub job of an array job, then check to see if the */
+	/* index needs to be substituted in the paths			  */
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+		to   = subst_array_index(pjob, to);
+		from = subst_array_index(pjob, from);
+	}
+#endif
+
+	if (preq == NULL) {
+		/* check that certain required attributues are valid */
+
+		if (get_jattr_str(pjob, JOB_ATR_job_owner) == NULL || get_jattr_str(pjob, JOB_ATR_euser) == NULL) {
+			/* this case shouldn't happen, log it and don't do copy     */
+			/* use null jobid, if attr missing, jobid is likely bad too */
+
+			log_event(PBSEVENT_ERROR|PBSEVENT_JOB, PBS_EVENTCLASS_FILE,
+				LOG_INFO,  "",
+				"cannot copy files for job, owner/euser missing");
+			if (from)
+				free(from);
+			if (to)
+				free(to);
+			if (cred)
+				free(cred);
+			return NULL;
+		}
+		/* allocate and initialize the batch request struct */
+#ifndef PBS_MOM
+		if (get_credential(parse_servername(get_jattr_str(pjob, JOB_ATR_exec_vnode), NULL),
+				pjob, PBS_GC_CPYFILE, &cred, &cred_len) == 0) {
+			preq = alloc_br(PBS_BATCH_CopyFiles_Cred);
+		} else
+#endif
+			preq = alloc_br(PBS_BATCH_CopyFiles);
+
+		if (preq == NULL) {
+			if (from)
+				free(from);
+			if (to)
+				free(to);
+			if (cred)
+				free(cred);
+			return (preq);
+		}
+
+		if (preq->rq_type == PBS_BATCH_CopyFiles_Cred) {
+			preq->rq_ind.rq_cpyfile_cred.rq_credtype = pjob->ji_extended.ji_ext.ji_credtype;
+			preq->rq_ind.rq_cpyfile_cred.rq_pcred = cred;
+			preq->rq_ind.rq_cpyfile_cred.rq_credlen = cred_len;
+			pcfc = &preq->rq_ind.rq_cpyfile_cred;
+			prq_jobid = pcfc->rq_copyfile.rq_jobid;
+			prq_owner = pcfc->rq_copyfile.rq_owner;
+			prq_user = pcfc->rq_copyfile.rq_user;
+			prq_group = pcfc->rq_copyfile.rq_group;
+			prq_dir = &pcfc->rq_copyfile.rq_dir;
+			prq_pair = &pcfc->rq_copyfile.rq_pair;
+		} else {
+			pcf = &preq->rq_ind.rq_cpyfile;
+			prq_jobid = pcf->rq_jobid;
+			prq_owner = pcf->rq_owner;
+			prq_user = pcf->rq_user;
+			prq_group = pcf->rq_group;
+			prq_dir = &pcf->rq_dir;
+			prq_pair = &pcf->rq_pair;
+		}
+		CLEAR_HEAD((*prq_pair));
+
+		/* copy jobid, owner, exec-user, group names, upto the @host part */
+
+		strcpy(prq_jobid, pjob->ji_qs.ji_jobid);
+		get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), prq_owner);
+		get_jobowner(get_jattr_str(pjob, JOB_ATR_euser), prq_user);
+		if ((pjob->ji_wattr[JOB_ATR_egroup].at_flags & ATR_VFLAG_DEFLT) == 0 &&
+			get_jattr_str(pjob, JOB_ATR_egroup) != 0)
+			strcpy(prq_group, get_jattr_str(pjob, JOB_ATR_egroup));
+		else
+			prq_group[0] = '\0';	/* default: use login group */
+
+		*prq_dir = direction;
+
+		/* set "sandbox=PRIVATE" mode */
+		if (is_jattr_set(pjob, JOB_ATR_sandbox)) {
+			/* set STAGE_JOBDIR mode based on job settings */
+			if (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)
+				*prq_dir |= STAGE_JOBDIR;
+		} /* O_WORKDIR check would go here */
+
+	} else {
+
+		/* use the existing request structure */
+
+		if (preq->rq_type == PBS_BATCH_CopyFiles_Cred) {
+			pcfc = &preq->rq_ind.rq_cpyfile_cred;
+			prq_pair = &pcfc->rq_copyfile.rq_pair;
+		} else {
+			pcf = &preq->rq_ind.rq_cpyfile;
+			prq_pair = &pcf->rq_pair;
+		}
+	}
+
+	pair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
+	if (pair == NULL) {
+		free(from);
+		free(to);
+		free_br(preq);
+		return NULL;
+	}
+
+	CLEAR_LINK(pair->fp_link);
+	pair->fp_local  = from;
+	pair->fp_rmt    = to;
+	pair->fp_flag   = tflag;
+	append_link(prq_pair, &pair->fp_link, pair);
+	return (preq);
+}
+/**
+ * @brief
+ * 		is_join - Is the file joined to another.
+ *
+ * @param[in]	pjob	- job structure
+ * @param[in]	ati	- job attribute, output/error path.
+ *
+ * @return	joined or not
+ * @retval	0	- either the first or not in list.
+ * @retval	1	- being joined.
+ */
+static int
+is_join(job *pjob, enum job_atr ati)
+{
+	char       key;
+	attribute *pattr;
+	char	  *pd;
+
+	if (ati == JOB_ATR_outpath)
+		key = 'o';
+	else if (ati == JOB_ATR_errpath)
+		key = 'e';
+	else
+		return (0);
+	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
+	if (is_attr_set(pattr)) {
+		pd = get_attr_str(pattr);
+		if (pd && *pd && (*pd != 'n')) {
+			/* if not the first letter, and in list - is joined */
+			if ((*pd != key) && (strchr(pd+1, (int)key)))
+				return (1);	/* being joined */
+		}
+	}
+	return (0);	/* either the first or not in list */
+}
+
+/**
+ * @brief
+ * 		cpy_stdfile - determine if one of the job's standard files (output or error)
+ *		is to be copied, if so set up the Copy Files request.
+ *
+ * @param[in]	preq	- batch request
+ * @param[in]	pjob	- job structure
+ * @param[in]	ati	- JOB_ATR_, output/error path.
+ *
+ * @return	modified batch request.
+ * @retval	NULL	failure
+ */
+
+struct batch_request *
+cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
+{
+	char *from;
+	char  key;
+	attribute *jkpattr;
+	attribute *pathattr = &pjob->ji_wattr[(int)ati];
+	char *suffix;
+	char *to = NULL;
+
+	/* if the job is interactive, don't bother to return output file */
+
+	if (pjob->ji_wattr[JOB_ATR_interactive].at_flags && get_jattr_long(pjob, JOB_ATR_interactive))
+		return NULL;
+
+	/* set up depending on which file */
+
+	if (ati == JOB_ATR_errpath) {
+		key    = 'e';
+		suffix = JOB_STDERR_SUFFIX;
+	} else {
+		key    = 'o';
+		suffix = JOB_STDOUT_SUFFIX;
+	}
+
+	if ((pathattr->at_flags & ATR_VFLAG_SET) == 0) { /* This shouldn't be */
+
+		(void)sprintf(log_buffer, "%c file missing", key);
+		log_event(PBSEVENT_ERROR|PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
+			LOG_INFO,  pjob->ji_qs.ji_jobid, log_buffer);
+		return NULL;
+	}
+
+	/* Is the file joined to another, if so don't copy it */
+
+	if (is_join(pjob, ati))
+		return (preq);
+
+	/*
+	 * If the job has a keep file attribute, and the specified file is in
+	 * the keep list, MOM has already placed the file in the user's HOME
+	 * directory.  It don't need to be copied.
+	 */
+
+	jkpattr = &pjob->ji_wattr[(int)JOB_ATR_keep];
+	if ((jkpattr->at_flags & ATR_VFLAG_SET) &&
+		strchr(jkpattr->at_val.at_str, key) && !strchr(jkpattr->at_val.at_str, 'd'))
+		return (preq);
+
+	/*
+	 * If the job has a remove file attribute and the job has succeeded,
+	 * std_files doesn't has to be copied.
+	 */
+	if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
+		if (get_jattr_long(pjob, JOB_ATR_exit_status) == JOB_EXEC_OK) {
+			jkpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
+			if (is_attr_set(jkpattr) && (strchr(jkpattr->at_val.at_str, key)))
+				return (preq);
+		}
+	}
+
+	/* else go with the supplied name */
+
+	to = malloc(strlen(pathattr->at_val.at_str) + 1);
+	if (to) {
+		(void)strcpy(to, pathattr->at_val.at_str);
+
+	} else
+		return (preq);	/* cannot continue with this one */
+
+	/* build up the name used by MOM as the from name */
+
+	from = setup_from(pjob, suffix);
+	if (from == NULL) {
+		(void)free(to);
+		return (preq);
+	}
+
+	/* now set names into the batch request */
+
+	return (setup_cpyfiles(preq, pjob, from, to, STAGE_DIR_OUT, STDJOBFILE));
+}
+
+/**
+ * @brief
+ * 		cpy_stage - set up a Copy Files request to include files specified by the
+ *		user to be staged out (also used for stage-in).
+ *		"stage_out" is a resource that may or may not *	exist on a host.
+ *		If such exists, the files are listed one per string as
+ *		"local_name@remote_host:remote_name".
+ *
+ * @param[in]	preq	- batch request
+ * @param[in]	pjob	- job structure
+ * @param[in]	ati	- JOB_ATR_stageout
+ * @param[in]	direction	-  1 = , 2 =
+ *
+ * @return	batch_request *
+ */
+
+struct batch_request *
+cpy_stage(struct batch_request *preq, job *pjob, enum job_atr ati, int direction)
+{
+	int		      i;
+	char		     *from;
+	attribute 	     *pattr;
+	struct array_strings *parst;
+	char 		     *plocal;
+	char		     *prmt;
+	char		     *to;
+
+	pattr = &pjob->ji_wattr[(int)ati];
+	if (is_attr_set(pattr)) {
+
+		/* at last, we know we have files to stage out/in */
+
+		parst = pattr->at_val.at_arst;
+		for (i = 0; i<parst->as_usedptr; ++i) {
+			plocal = parst->as_string[i];
+			prmt   = strchr(plocal, (int)'@');
+			if (prmt) {
+				*prmt = '\0';
+				from = malloc(strlen(plocal)+1);
+				if (from) {
+					(void)strcpy(from, plocal);
+					*prmt = '@';	/* restore the @ */
+				} else {
+					return (preq);
+				}
+				to   = malloc(strlen(prmt+1) + 1);
+				if (to) {
+					(void)strcpy(to, prmt+1);
+				} else {
+					(void)free(from);
+					return (preq);
+				}
+				preq = setup_cpyfiles(preq, pjob, from, to,
+					direction, STAGEFILE);
+			}
+		}
+	}
+
+	return (preq);
+}
+
+int
+has_stage(job *pjob)
+{
+	struct batch_request *preq = NULL;
+
+	preq = cpy_stdfile(NULL, pjob, JOB_ATR_outpath);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	preq = cpy_stdfile(NULL, pjob, JOB_ATR_errpath);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	preq = cpy_stage(NULL, pjob, JOB_ATR_stageout, STAGE_DIR_OUT);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	preq = cpy_stage(NULL, pjob, JOB_ATR_stagein, STAGE_DIR_IN);
+	if (preq) {
+		free_br(preq);
+		return 1;
+	}
+	return 0;
+}

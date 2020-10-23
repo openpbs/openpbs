@@ -57,7 +57,6 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-    @skipOnCpuSet
     def test_submit_job_array(self):
         """
         Test to submit a job array
@@ -71,7 +70,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state=R': 3}, count=True,
                            id=jid, extend='t')
 
-    @skipOnCpuSet
     def test_advance_reservation(self):
         """
         Test to submit an advanced reservation and submit jobs to that
@@ -82,8 +80,9 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
         r = Reservation(TEST_USER)
         now = int(time.time())
+        r_start_time = now + 30
         a = {'Resource_List.select': '1:ncpus=4',
-             'reserve_start': now + 10,
+             'reserve_start': r_start_time,
              'reserve_end': now + 110}
         r.set_attributes(a)
         rid = self.server.submit(r)
@@ -102,8 +101,10 @@ class SmokeTest(PBSTestSuite):
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
 
+        offset = r_start_time - int(time.time())
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, interval=1)
+        self.server.expect(RESV, a, id=rid, interval=1,
+                           offset=offset)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
         self.server.expect(JOB, {'job_state': 'B'}, jid2)
 
@@ -137,7 +138,6 @@ class SmokeTest(PBSTestSuite):
         if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
 
-    @skipOnCpuSet
     def test_degraded_advance_reservation(self):
         """
         Make reservations more fault tolerant
@@ -148,7 +148,7 @@ class SmokeTest(PBSTestSuite):
         a = {'reserve_retry_init': 5}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.mom.create_vnodes(a, num=2)
         a = {'Resource_List.select': '1:ncpus=4',
              'reserve_start': now + 3600,
              'reserve_end': now + 7200}
@@ -204,7 +204,6 @@ class SmokeTest(PBSTestSuite):
         self.server.sigjob(jid, 'resume')
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-    @skipOnCpuSet
     def test_backfilling(self):
         """
         Test for backfilling
@@ -242,7 +241,6 @@ class SmokeTest(PBSTestSuite):
         self.server.rlsjob(jid, USER_HOLD)
         self.server.expect(JOB, {'Hold_Types': 'n'}, jid)
 
-    @skipOnCpuSet
     def test_create_vnode(self):
         """
         Test to create vnodes
@@ -282,13 +280,12 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
         self.server.manager(MGR_CMD_DELETE, QUEUE, id=qname)
 
-    @skipOnCpuSet
     def test_fgc_limits(self):
         """
         Test for limits
         """
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('lt', a, 2, self.mom)
+        self.mom.create_vnodes(a, 2)
         a = {'max_run': '[u:' + str(TEST_USER) + '=2]'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(SERVER, a)
@@ -303,13 +300,12 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, 'comment', op=SET, id=j3id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j3id)
 
-    @skipOnCpuSet
     def test_limits(self):
         """
         Test for limits
         """
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '2gb'}
-        self.server.create_vnodes('lt', a, 2, self.mom)
+        self.mom.create_vnodes(a, 2)
         a = {'max_run_res.ncpus': '[u:' + str(TEST_USER) + '=2]'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         for _ in range(3):
@@ -334,7 +330,6 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-    @skipOnCpuSet
     def test_finished_jobs(self):
         """
         Test for finished jobs and resource used for jobs.
@@ -352,13 +347,14 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)
         jobs = self.server.status(JOB, id=jid, extend='x')
-        exp_eq_val = {ATTR_used+'.ncpus': '2',
+        exp_eq_val = {ATTR_used + '.ncpus': '2',
                       ATTR_exit_status: '0'}
         for key in exp_eq_val:
             self.assertEqual(exp_eq_val[key], jobs[0][key])
-        exp_noteq_val = {ATTR_used+'.walltime': '00:00:00',
-                         ATTR_used+'.cput': '00:00:00',
-                         ATTR_used+'.mem': '0kb', ATTR_used+'.cpupercent': '0'}
+        exp_noteq_val = {ATTR_used + '.walltime': '00:00:00',
+                         ATTR_used + '.cput': '00:00:00',
+                         ATTR_used + '.mem': '0kb',
+                         ATTR_used + '.cpupercent': '0'}
         for key in exp_noteq_val:
             self.assertNotEqual(exp_noteq_val[key], jobs[0][key])
 
@@ -375,7 +371,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
         self.server.expect(JOB, {'job_state=R': 1})
 
-    @skipOnCpuSet
     def test_job_scheduling_order(self):
         """
         Test for job scheduling order
@@ -400,7 +395,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'estimated.start_time': 5},
                            count=True, op=SET)
 
-    @skipOnCpuSet
     def test_preemption(self):
         """
         Test for preemption
@@ -425,7 +419,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
 
-    @skipOnCpuSet
     def test_preemption_qrun(self):
         """
         Test that a job is preempted when a high priority job is run via qrun
@@ -451,7 +444,6 @@ class SmokeTest(PBSTestSuite):
 
         self.scheduler.log_match(jid1 + ";Job preempted by suspension")
 
-    @skipOnCpuSet
     def test_fairshare(self):
         """
         Test for fairshare
@@ -461,7 +453,7 @@ class SmokeTest(PBSTestSuite):
              'unknown_shares': 10}
         self.scheduler.set_sched_config(a)
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
         a = {'Resource_List.select': '1:ncpus=4'}
         for _ in range(10):
             j = Job(TEST_USER1, a)
@@ -530,7 +522,6 @@ class SmokeTest(PBSTestSuite):
         self.mom.log_match("my custom message", starttime=self.server.ctime,
                            interval=1)
 
-    @skipOnCpuSet
     def test_shrink_to_fit(self):
         """
         Smoke test shrink to fit by setting a dedicated time to start in an
@@ -569,7 +560,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.logger.info('Job submitted successfully: ' + jid)
 
-    @skipOnCpuSet
     def test_formula_match(self):
         """
         Test for job sort formula
@@ -647,7 +637,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {ATTR_queue: 'solverq', 'job_state': 'R'},
                            attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_by_queue(self):
         """
         Test by_queue scheduling policy
@@ -706,7 +695,6 @@ class SmokeTest(PBSTestSuite):
             self.logger.info('Expected order: ' + ','.join(job_order))
             self.assertTrue(cycle.political_order == job_order)
 
-    @skipOnCpuSet
     def test_round_robin(self):
         """
         Test round_robin scheduling policy
@@ -790,7 +778,8 @@ class SmokeTest(PBSTestSuite):
         """
         Examples to demonstrate how to start/stop/signal the pbs_comm service
         """
-        comm = Comm()
+        svr_obj = Server()
+        comm = Comm(svr_obj)
         comm.isUp()
         comm.signal('-HUP')
         comm.stop()
@@ -816,7 +805,6 @@ class SmokeTest(PBSTestSuite):
              'comment': msg}
         self.server.expect(JOB, a, id=j1id)
 
-    @skipOnCpuSet
     def test_schedlog_preempted_info(self):
         """
         Demonstrate how to retrieve a list of jobs that had to be preempted in
@@ -833,7 +821,6 @@ class SmokeTest(PBSTestSuite):
                 self.logger.info('Preemption info: ' +
                                  str(cycle.preempted_jobs))
 
-    @skipOnCpuSet
     def test_basic(self):
         """
         basic express queue preemption test
@@ -848,7 +835,7 @@ class SmokeTest(PBSTestSuite):
              'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '2gb'}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
         j1 = Job(TEST_USER)
         j1.set_attributes(
             {'Resource_List.select': '4:ncpus=4',
@@ -867,7 +854,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(SERVER, {'total_jobs': 0})
         self.server.manager(MGR_CMD_DELETE, QUEUE, id="expressq")
 
-    @skipOnCpuSet
     def test_basic_ja(self):
         """
         basic express queue preemption test with job array
@@ -882,7 +868,7 @@ class SmokeTest(PBSTestSuite):
              'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '2gb'}
-        self.server.create_vnodes('vnode', a, 4, self.mom)
+        self.mom.create_vnodes(a, 4)
         j1 = Job(TEST_USER)
         j1.set_attributes({'Resource_List.select': '4:ncpus=4',
                            'Resource_List.walltime': 3600})
@@ -916,7 +902,6 @@ class SmokeTest(PBSTestSuite):
             d = e.rv
         return d
 
-    @skipOnCpuSet
     def test_shrink_to_fit_resv_barrier(self):
         """
         Test shrink to fit by creating one reservation having ncpus=1,
@@ -948,7 +933,6 @@ class SmokeTest(PBSTestSuite):
         attr = {'Resource_List.walltime': (GE, '00:10:00')}
         self.server.expect(JOB, attr, id=jid2)
 
-    @skipOnCpuSet
     def test_job_sort_formula_threshold(self):
         """
         Test job_sort_formula_threshold basic behavior
@@ -1078,8 +1062,7 @@ class SmokeTest(PBSTestSuite):
             a = {'resources_available.ncpus': 3}
         else:
             a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', a, 1,
-                                  mom=self.mom)
+        self.mom.create_vnodes(a, 1)
         if isWithPreempt:
             self.do_preempt_config()
         j1 = Job(TEST_USER, attrs={'Resource_List.walltime': 100})
@@ -1120,14 +1103,12 @@ class SmokeTest(PBSTestSuite):
         else:
             return j1id
 
-    @skipOnCpuSet
     def test_suspend_job_with_preempt(self):
         """
         Test Suspend of Job using Scheduler Preemption
         """
         self.common_stuff(isWithPreempt=True)
 
-    @skipOnCpuSet
     def test_resume_job_with_preempt(self):
         """
         Test Resume of Job using Scheduler Preemption
@@ -1143,14 +1124,12 @@ class SmokeTest(PBSTestSuite):
                                    {'session_id': (NOT, self.isSuspended)},
                                    id=job['id'])
 
-    @skipOnCpuSet
     def test_suspend_job_array_with_preempt(self):
         """
         Test Suspend of Job array using Scheduler Preemption
         """
         self.common_stuff(isJobArray=True, isWithPreempt=True)
 
-    @skipOnCpuSet
     def test_resume_job_array_with_preempt(self):
         """
         Test Resume of Job array using Scheduler Preemption
@@ -1193,8 +1172,7 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.add_resource("foo, foo1, foo2, foo3", apply=True)
 
         attr = {'Resources_available.foo': True}
-        self.server.manager(MGR_CMD_SET, SERVER, attr,
-                            id=self.server.shortname)
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
 
         vnode_val = self.mom.shortname
         if self.mom.is_cpuset_mom():
@@ -1269,7 +1247,6 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.set_sched_config(a)
         self.server.manager(MGR_CMD_SET, SCHED, {'log_events': 4095})
 
-    @skipOnCpuSet
     def test_fairshare_enhanced(self):
         """
         Test the basic fairshare behavior with custom resources for math module
@@ -1415,17 +1392,17 @@ class SmokeTest(PBSTestSuite):
             msg += " %s command" % pbs_cmd
             self.logger.info(msg)
 
-    @skipOnCpuSet
     def test_exclhost(self):
         """
         Test that a job requesting exclhost is not placed on another host
         with a running job on it.
         """
         a = {'resources_available.ncpus': 2}
-        self.server.create_vnodes('vn', a, 8, sharednode=False,
-                                  vnodes_per_host=4, mom=self.mom)
-
-        J1 = Job(TEST_USER, {'Resource_List.select': '1:ncpus=1:vnode=vn[3]'})
+        self.mom.create_vnodes(a, 8, sharednode=False,
+                               vnodes_per_host=4)
+        vn = self.mom.shortname
+        req_nodes = '1:ncpus=1:vnode=' + vn + '[3]'
+        J1 = Job(TEST_USER, {'Resource_List.select': req_nodes})
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
@@ -1437,7 +1414,7 @@ class SmokeTest(PBSTestSuite):
 
         st = self.server.status(JOB, 'exec_vnode', id=jid2)
         vnodes = J2.get_vnodes(st[0]['exec_vnode'])
-        expected_vnodes = ['vn[4]', 'vn[5]', 'vn[6]', 'vn[7]']
+        expected_vnodes = [vn + '[4]', vn + '[5]', vn + '[6]', vn + '[7]']
 
         for v in vnodes:
             self.assertIn(v, expected_vnodes)
@@ -1462,3 +1439,26 @@ class SmokeTest(PBSTestSuite):
                           e.msg[0])
         self.server.log_match("Req;req_reject;Reject reply code=15175",
                               max_attempts=5)
+
+    def test_import_pbs_module(self):
+        """
+        Test that the pbs module located in the PBS installation directory is
+        able to be loaded and symbols within it accessed.
+        """
+        self.add_pbs_python_path_to_sys_path()
+        import pbs
+        msg = "pbs.JOB_STATE_RUNNING=%s" % (pbs.JOB_STATE_RUNNING,)
+        self.logger.info(msg)
+
+    def test_import_pbs_ifl_module(self):
+        """
+        Test that the pbs_ifl module located in the PBS installation directory
+        is able to be loaded and a connection to the server can be established.
+        """
+        self.add_pbs_python_path_to_sys_path()
+        import pbs_ifl
+        server_conn = pbs_ifl.pbs_connect(None)
+        server_stat = pbs_ifl.pbs_statserver(server_conn, None, None)
+        pbs_ifl.pbs_disconnect(server_conn)
+        msg = "server name is %s" % (server_stat.name,)
+        self.logger.info(msg)

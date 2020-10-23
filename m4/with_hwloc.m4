@@ -46,33 +46,31 @@ AC_DEFUN([PBS_AC_WITH_HWLOC],
       [Specify the directory where hwloc is installed.]
     )
   )
-  AS_IF([test "x$with_hwloc" != "x"],
-    hwloc_dir=["$with_hwloc"],
-    hwloc_dir=["/usr"]
-  )
+  hwloc_dir=["$with_hwloc"]
   AC_MSG_CHECKING([for hwloc])
   [hwloc_flags=""]
   [hwloc_inc=""]
   [hwloc_lib=""]
-  AS_IF([test -r "$hwloc_dir/include/hwloc.h"],
-    AS_IF([test "$hwloc_dir" != "/usr"],
-      [hwloc_inc="-I$hwloc_dir/include"]),
-      AC_MSG_ERROR([hwloc headers not found.])
+  AS_IF(
+    [test "$hwloc_dir" = ""],
+    AC_CHECK_HEADER([hwloc.h], [], AC_MSG_ERROR([hwloc headers not found.])),
+    [test -r "$hwloc_dir/include/hwloc.h"],
+    [hwloc_inc="-I$hwloc_dir/include"],
+    AC_MSG_ERROR([hwloc headers not found.])
   )
-  AS_IF([test "$hwloc_dir" = "/usr"],
+  AS_IF(
     # Using system installed hwloc
-    AS_IF([test -r "/usr/lib64/libhwloc.so" -o -r "/usr/lib/libhwloc.so" -o -r "/usr/lib/x86_64-linux-gnu/libhwloc.so"],
+    [test "$hwloc_dir" = ""],
+    AC_CHECK_LIB([hwloc], [hwloc_topology_init],
       [hwloc_lib="-lhwloc"],
       AC_MSG_ERROR([hwloc shared object library not found.])
     ),
     # Using developer installed hwloc
-    AS_IF([test -r "${hwloc_dir}/lib64/libhwloc_embedded.a"],
-      [hwloc_lib="${hwloc_dir}/lib64/libhwloc_embedded.a"],
-      AS_IF([test -r "${hwloc_dir}/lib/libhwloc_embedded.a"],
-        [hwloc_lib="${hwloc_dir}/lib/libhwloc_embedded.a"],
-        AC_MSG_ERROR([hwloc library not found.])
-      )
-    )
+    [test -r "${hwloc_dir}/lib64/libhwloc_embedded.a"],
+    [hwloc_lib="${hwloc_dir}/lib64/libhwloc_embedded.a"],
+    [test -r "${hwloc_dir}/lib/libhwloc_embedded.a"],
+    [hwloc_lib="${hwloc_dir}/lib/libhwloc_embedded.a"],
+    AC_MSG_ERROR([hwloc library not found.])
   )
   AC_MSG_RESULT([$hwloc_dir])
   AS_CASE([x$target_os],

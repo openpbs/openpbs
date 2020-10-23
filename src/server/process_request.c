@@ -107,6 +107,7 @@
 #include "dis.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include <libutil.h>
 #include "pbs_sched.h"
 #include "auth.h"
 
@@ -155,36 +156,25 @@ static void close_quejob(int sfds);
 int
 get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
-	int	ret;
-
-	switch (jobp->ji_extended.ji_ext.ji_credtype) {
-
-		default:
+	int ret;
 
 #ifndef PBS_MOM
+	/*
+	 * ensure job's euser exists as this can be called
+	 * from pbs_send_job who is moving a job from a routing
+	 * queue which doesn't have euser set
+	 */
+	if (is_jattr_set(jobp, JOB_ATR_euser) && get_jattr_str(jobp, JOB_ATR_euser)) {
+		ret = user_read_password(get_jattr_str(jobp, JOB_ATR_euser), data, dsize);
 
-			/*   ensure job's euser exists as this can be called */
-			/*   from pbs_send_job who is moving a job from a routing */
-			/*   queue which doesn't have euser set */
-			if ( (jobp->ji_wattr[JOB_ATR_euser].at_flags & ATR_VFLAG_SET) \
-		         && jobp->ji_wattr[JOB_ATR_euser].at_val.at_str) {
-				ret = user_read_password(
-					jobp->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-					data, dsize);
-
-				/* we have credential but type is NONE, force DES */
-				if( ret == 0 && \
-		  	    (jobp->ji_extended.ji_ext.ji_credtype == \
-							PBS_CREDTYPE_NONE) )
-				jobp->ji_extended.ji_ext.ji_credtype = \
-							PBS_CREDTYPE_AES;
-			} else
-				ret = read_cred(jobp, data, dsize);
+		/* we have credential but type is NONE, force DES */
+		if (ret == 0 && (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_NONE))
+			jobp->ji_extended.ji_ext.ji_credtype = PBS_CREDTYPE_AES;
+	} else
+		ret = read_cred(jobp, data, dsize);
 #else
-			ret = read_cred(jobp, data, dsize);
+	ret = read_cred(jobp, data, dsize);
 #endif
-			break;
-	}
 	return ret;
 }
 
@@ -272,6 +262,104 @@ req_authenticate(conn_t *conn, struct batch_request *request)
 	reply_ack(request);
 }
 
+#ifndef PBS_MOM
+/**
+ * @brief handle incoming register sched request
+ *
+ * @param[in] conn - pointer to connection structure on which request came
+ * @param[in] preq - pointer to incoming request structure
+ *
+ * @return void
+ */
+static void
+req_register_sched(conn_t *conn, struct batch_request *preq)
+{
+	pbs_sched *sched;
+	conn_t *pconn;
+	int rc;
+	int preq_conn;
+	char *user = pbs_conf.pbs_daemon_service_user ? pbs_conf.pbs_daemon_service_user : pbs_current_user;
+
+	if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(conn->cn_username, user) != 0) {
+		rc = PBSE_PERM;
+		goto rerr;
+	}
+	if (preq->rq_ind.rq_register_sched.rq_name == NULL) {
+		rc = PBSE_IVALREQ;
+		goto rerr;
+	}
+	sched = find_sched(preq->rq_ind.rq_register_sched.rq_name);
+	if (sched == NULL) {
+		rc = PBSE_UNKSCHED;
+		goto rerr;
+	}
+	if (sched->sc_conn_addr != conn->cn_addr) {
+		rc = PBSE_BADHOST;
+		goto rerr;
+	}
+	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
+		rc = PBSE_SCHEDCONNECTED;
+		goto rerr;
+	}
+	if (sched->sc_primary_conn == -1) {
+		sched->sc_primary_conn = conn->cn_sock;
+		net_add_close_func(conn->cn_sock, scheduler_close);
+		reply_ack(preq);
+		return;
+	} else if (sched->sc_primary_conn != -1) {
+		pconn = get_conn(sched->sc_primary_conn);
+		if (!pconn) {
+			rc = PBSE_INTERNAL;
+			goto rerr;
+		}
+	} else {
+		rc = PBSE_IVALREQ;
+		goto rerr;
+	}
+	if (pconn->cn_sock == conn->cn_sock) {
+		rc = PBSE_IVALREQ;
+		goto rerr;
+	}
+	if ((pconn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0 || strcmp(pconn->cn_physhost, conn->cn_physhost) || pconn->cn_addr != conn->cn_addr) {
+		rc = PBSE_PERM;
+		goto rerr;
+	}
+	sched->sc_primary_conn = pconn->cn_sock;
+	sched->sc_secondary_conn = conn->cn_sock;
+	conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_NOTIMEOUT;
+	pconn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_NOTIMEOUT;
+	pconn->cn_origin = CONN_SCHED_PRIMARY;
+	conn->cn_origin = CONN_SCHED_SECONDARY;
+	net_add_close_func(conn->cn_sock, scheduler_close);
+	net_add_close_func(pconn->cn_sock, scheduler_close);
+	if (!set_conn_as_priority(pconn)) {
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "Failed to set primary connection as priority connection");
+		rc = PBSE_INTERNAL;
+		goto rerr;
+	}
+	if (!set_conn_as_priority(conn)) {
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "Failed to set secondary connection as priority connection");
+		rc = PBSE_INTERNAL;
+		goto rerr;
+	}
+
+	reply_ack(preq);
+	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SCHED, LOG_ERR, sched->sc_name, "scheduler connected");
+	/*
+	 * scheduler (re-)connected, ask it to configure itself
+	 *
+	 * this must come after above reply_ack
+	 */
+	send_sched_cmd(sched, SCH_CONFIGURE, NULL);
+	return;
+
+rerr:
+	preq_conn = preq->rq_conn;
+	req_reject(rc, 0, preq);
+	close_client(preq_conn);
+}
+#endif
+
 /*
 * @brief
  * 		process_request - process an request from the network:
@@ -303,6 +391,14 @@ process_request(int sfds)
 		closesocket(sfds);
 		return;
 	}
+
+#ifndef PBS_MOM
+	if (conn->cn_origin == CONN_SCHED_SECONDARY) {
+		if (recv_sched_cycle_end(sfds) != 0)
+			close_conn(sfds);
+		return;
+	}
+#endif
 
 	if ((request = alloc_br(0)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR, __func__, "Unable to allocate request structure");
@@ -359,10 +455,10 @@ process_request(int sfds)
 		strcpy(conn->cn_username, request->rq_user);
 	if (conn->cn_hostname[0] == '\0')
 		strcpy(conn->cn_hostname, request->rq_host);
-	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) != 0) {
+	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 		/*
-		 * If the request is coming on the socket we opened to the
-		 * scheduler, change the "user" from "root" to "Scheduler"
+		 * If the request is coming from scheduler,
+		 * change the "user" from daemon user to "Scheduler"
 		 */
 		strncpy(request->rq_user, PBS_SCHED_DAEMON_NAME, PBS_MAXUSER);
 		request->rq_user[PBS_MAXUSER] = '\0';
@@ -376,7 +472,12 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
-	if ((conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 && request->rq_type != PBS_BATCH_Connect) {
+	if (request->rq_type == PBS_BATCH_RegisterSched) {
+		req_register_sched(conn, request);
+		return;
+	}
+
+	if (request->rq_type != PBS_BATCH_Connect) {
 		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
 			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
 			req_reject(PBSE_BADCRED, 0, request);
@@ -437,7 +538,6 @@ process_request(int sfds)
 	/* FIXME: Do we need realm check for all auth ? */
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	if (conn->cn_credid != NULL &&
-		(conn->cn_authen & PBS_NET_CONN_TO_SCHED) == 0 &&
 		conn->cn_auth_config != NULL &&
 		conn->cn_auth_config->auth_method != NULL &&
 		strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
@@ -923,8 +1023,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_StatusHook:
 			/* Scheduler is allowed to make the request */
-			if ((find_sched_from_sock(request->rq_conn) == NULL) &&
-					!is_local_root(request->rq_user, request->rq_host)) {
+			if (conn->cn_origin != CONN_SCHED_PRIMARY && !is_local_root(request->rq_user, request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
 					"access hooks data from server %s",
 					request->rq_user, request->rq_host, server_host);
@@ -1104,7 +1203,7 @@ close_quejob(int sfds)
 	pjob = (job *)GET_NEXT(svr_newjobs);
 	while (pjob  != NULL) {
 		if (pjob->ji_qs.ji_un.ji_newt.ji_fromsock == sfds) {
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSICM) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_TRANSICM)) {
 
 #ifndef PBS_MOM
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
@@ -1116,8 +1215,8 @@ close_quejob(int sfds)
 					 * server again to commit.
 					 */
 					delete_link(&pjob->ji_alljobs);
-					pjob->ji_qs.ji_state = JOB_STATE_QUEUED;
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_QUEUED;
+					set_job_state(pjob, JOB_STATE_LTR_QUEUED);
+					set_job_substate(pjob, JOB_SUBSTATE_QUEUED);
 					if (svr_enquejob(pjob))
 						(void)job_abt(pjob, msg_err_noqueue);
 
@@ -1421,7 +1520,9 @@ free_br(struct batch_request *preq)
 			break;
 
 #ifndef PBS_MOM		/* Server Only */
-
+		case PBS_BATCH_RegisterSched:
+			free(preq->rq_ind.rq_register_sched.rq_name);
+			break;
 		case PBS_BATCH_SubmitResv:
 			free_attrlist(&preq->rq_ind.rq_queuejob.rq_attr);
 			break;
@@ -1510,55 +1611,7 @@ freebr_cpyfile_cred(struct rq_cpyfile_cred *pcfc)
 		free(pcfc->rq_pcred);
 }
 
-/**
- * @brief
- * 		parse_servername - parse a server/vnode name in the form:
- *		[(]name[:service_port][:resc=value[:...]][+name...]
- *		from exec_vnode or from exec_hostname
- *		name[:service_port]/NUMBER[*NUMBER][+...]
- *		or basic servername:port string
- *
- *		Returns ptr to the node name as the function value and the service_port
- *		number (int) into service if :port is found, otherwise port is unchanged
- *		host name is also terminated by a ':', '+' or '/' in string
- *
- * @param[in]	name	- server/node/exec_vnode string
- * @param[out]	service	-  RETURN: service_port if :port
- *
- * @return	 ptr to the node name
- *
- * @par MT-safe: No
- */
 
-char *
-parse_servername(char *name, unsigned int *service)
-{
-	static char  buf[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
-	int   i = 0;
-	char *pc;
-
-	if ((name == NULL) || (*name == '\0'))
-		return NULL;
-	if (*name ==  '(')   /* skip leading open paren found in exec_vnode */
-		name++;
-
-	/* look for a ':', '+' or '/' in the string */
-
-	pc = name;
-	while (*pc && (i < PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2)) {
-		if ((*pc == '+') || (*pc == '/')) {
-			break;
-		} else if (*pc == ':') {
-			if (isdigit((int)*(pc+1)) && (service != NULL))
-				*service = (unsigned int)atoi(pc + 1);
-			break;
-		} else {
-			buf[i++] = *pc++;
-		}
-	}
-	buf[i] = '\0';
-	return (buf);
-}
 
 /**
  * @brief

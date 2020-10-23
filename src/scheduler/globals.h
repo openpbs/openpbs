@@ -43,10 +43,16 @@
 extern "C" {
 #endif
 #include <pthread.h>
+#include <limits.h>
 
 #include "data_types.h"
-#include "limits.h"
 #include "queue.h"
+#include "sched_cmds.h"
+
+extern sched_svrconn **servers;
+extern void *poll_context;
+extern ds_queue *sched_cmds;
+
 /* resources to check */
 extern const struct rescheck res_to_check[];
 
@@ -69,11 +75,10 @@ extern struct status cstat;
 extern const int num_resget;
 
 /* Variables from pbs_sched code */
-extern int pbs_rm_port;
 extern int got_sigpipe;
 
 /* static indexes into allres */
-const struct enum_conv resind[RES_HIGH+1];
+extern const struct enum_conv resind[];
 
 /* Stuff needed for multi-threading */
 extern pthread_mutex_t general_lock;
@@ -93,11 +98,10 @@ extern resdef **allres;
 extern resdef **consres;
 extern resdef **boolres;
 
-extern char *sc_name;
-extern int sched_port;
+extern const char *sc_name;
 extern char *logfile;
 
-extern int preempt_normal;			/* preempt priority of normal_jobs */
+extern unsigned int preempt_normal;			/* preempt priority of normal_jobs */
 
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;

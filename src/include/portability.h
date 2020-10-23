@@ -44,10 +44,28 @@
 #define initsocketlib() 0
 #define SOCK_ERRNO        errno
 
+#define NULL_DEVICE "/dev/null"
+
 #undef DLLEXPORT
 #define DLLEXPORT
 
 #define dlerror_reset() dlerror()
 #define SHAREDLIB_EXT "so"
+#define fix_path(char, int)
+#define get_uncpath(char)  
+#define critical_section() 
+
+#ifdef PBS_MOM
+#define TRAILING_CHAR '/'
+#define verify_dir(dir_val, isdir, sticky, disallow, fullpath) tmp_file_sec(dir_val, isdir, sticky, disallow, fullpath)
+#define FULLPATH 1
+#define process_string(str, tok, len) wtokcpy(str, tok, len)
+
+/* Check and skip if there are any special trailing character */
+#define skip_trailing_spcl_char(line, char_to_skip) {}
+
+/* Check whether character is special allowed character */
+#define check_spl_ch(check_char) 1
+#endif
 
 #endif

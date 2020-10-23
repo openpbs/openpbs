@@ -39,12 +39,56 @@
 
 
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestJobArray(TestFunctional):
     """
     Test suite for job array feature
     """
+    lu = PBSLogUtils()
+    qjh = """
+import pbs
+
+e = pbs.event()
+j = e.job
+if j.max_run_subjobs is None:
+    j.max_run_subjobs = %d
+pbs.logmsg(pbs.LOG_DEBUG, "max_run_subjobs set to %%d" %% j.max_run_subjobs)
+e.accept()
+"""
+    mjh = """
+import pbs
+
+e = pbs.event()
+j = e.job
+if j.max_run_subjobs != 0:
+    if j.max_run_subjobs > 10:
+        j.max_run_subjobs = %d
+pbs.logmsg(pbs.LOG_DEBUG, "max_run_subjobs set to %%d" %% j.max_run_subjobs)
+e.accept()
+"""
+    mjh2 = """
+import pbs
+
+e = pbs.event()
+j = e.job
+j.max_run_subjobs = %d
+pbs.logmsg(pbs.LOG_DEBUG, "max_run_subjobs set to %%d" %% j.max_run_subjobs)
+e.accept()
+"""
+
+    def create_max_run_subjobs_hook(self, max_run, event, name, script):
+        """
+        function to create a hook
+        - max_run Number of subjobs that can concurrently run
+        - event queuejob or modifyjob
+        - name hook name
+        - script hook script
+        """
+        hook = script % int(max_run)
+        attrs = {'event': event}
+        self.server.create_import_hook(name, attrs, hook, overwrite=True)
 
     def test_arrayjob_Erecord_startval(self):
         """
@@ -90,7 +134,6 @@ class TestJobArray(TestFunctional):
         _msg = 'No license found on server %s' % (self.server.shortname)
         self.assertTrue(rv, _msg)
 
-    @skipOnCpuSet
     def test_running_subjob_survive_restart(self):
         """
         Test to check if a running subjob of an array job survive a
@@ -138,7 +181,6 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_running_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_suspended_subjob_survive_restart(self):
         """
         Test to check if a suspended subjob of an array job survive a
@@ -190,7 +232,6 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_suspended_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_deleted_q_subjob_survive_restart(self):
         """
         Test to check if a deleted queued subjob of an array job survive a
@@ -224,7 +265,6 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_deleted_q_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_deleted_r_subjob_survive_restart(self):
         """
         Test to check if a deleted running subjob of an array job survive a
@@ -259,7 +299,6 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_deleted_q_subjob_survive_restart()
 
-    @skipOnCpuSet
     def test_qdel_expired_subjob(self):
         """
         Test to check if qdel of a subjob is disallowed
@@ -300,7 +339,6 @@ class TestJobArray(TestFunctional):
         else:
             raise self.failureException("subjob in X state can be deleted")
 
-    @skipOnCpuSet
     def test_subjob_comments(self):
         """
         Test subjob comments for finished and terminated subjobs
@@ -321,7 +359,6 @@ class TestJobArray(TestFunctional):
         self.server.expect(
             JOB, {'comment': 'Subjob finished'}, subjid_1, max_attempts=1)
 
-    @skipOnCpuSet
     def test_subjob_comments_with_history(self):
         """
         Test subjob comments for finished, failed and terminated subjobs
@@ -367,7 +404,6 @@ class TestJobArray(TestFunctional):
             JOB, {'comment': (MATCH_RE, 'Job run at.*and failed')}, subjid_2,
             extend='x')
 
-    @skipOnCpuSet
     def test_multiple_server_restarts(self):
         """
         Test subjobs wont rerun after multiple server restarts
@@ -387,7 +423,6 @@ class TestJobArray(TestFunctional):
             self.server.expect(
                 JOB, a, subjid_1, attrop=PTL_AND)
 
-    @skipOnCpuSet
     def test_job_array_history_duration(self):
         """
         Test that job array and subjobs are purged after history duration
@@ -418,7 +453,6 @@ class TestJobArray(TestFunctional):
         self.server.expect(JOB, 'job_state', op=UNSET,
                            id=subjid_2, extend='x')
 
-    @skipOnCpuSet
     def test_queue_deletion_after_terminated_subjob(self):
         """
         Test that queue can be deleted after the job array is
@@ -437,7 +471,6 @@ class TestJobArray(TestFunctional):
         self.server.delete(j_id, wait=True)
         self.server.manager(MGR_CMD_DELETE, QUEUE, id='workq')
 
-    @skipOnCpuSet
     def test_held_job_array_survive_server_restart(self):
         """
         Test held job array can be released after server restart
@@ -471,7 +504,6 @@ class TestJobArray(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.test_held_job_array_survive_server_restart()
 
-    @skipOnCpuSet
     def test_subjobs_qrun(self):
         """
         Test that job array's subjobs can be qrun
@@ -489,7 +521,6 @@ class TestJobArray(TestFunctional):
         self.server.expect(JOB, {'job_state': 'B'}, j_id)
         self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
 
-    @skipOnCpuSet
     def test_dependent_job_array_server_restart(self):
         """
         Check Job array dependency is not released after server restart
@@ -518,7 +549,6 @@ class TestJobArray(TestFunctional):
                            j_id, extend='x', interval=5)
         self.server.expect(JOB, {'job_state': 'B'}, j_id2, interval=5)
 
-    @skipOnCpuSet
     def test_rerun_subjobs_server_restart(self):
         """
         Test that subjobs which are requeued remain queued after server restart
@@ -544,7 +574,6 @@ class TestJobArray(TestFunctional):
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, subjid_1)
 
-    @skipOnCpuSet
     def test_rerun_node_fail_requeue(self):
         """
         Test sub jobs gets requeued after node_fail_requeue time
@@ -562,7 +591,6 @@ class TestJobArray(TestFunctional):
         self.mom.stop()
         self.server.expect(JOB, {'job_state': 'Q'}, subjid_1, offset=5)
 
-    @skipOnCpuSet
     def test_qmove_job_array(self):
         """
         Test job array's can be qmoved to a high priority queue
@@ -591,7 +619,6 @@ class TestJobArray(TestFunctional):
         self.server.expect(JOB, {'job_state': 'S'}, subjid_1)
         self.server.expect(JOB, {'job_state': 'R'}, subjid_3)
 
-    @skipOnCpuSet
     def test_delete_history_subjob_server_restart(self):
         """
         Test that subjobs can be deleted from history
@@ -612,7 +639,6 @@ class TestJobArray(TestFunctional):
         self.kill_and_restart_svr()
         self.server.expect(JOB, 'job_state', op=UNSET, extend='x', id=j_id)
 
-    @skipOnCpuSet
     def test_job_id_duplicate_server_restart(self):
         """
         Test that after server restart there is no duplication
@@ -683,7 +709,6 @@ class TestJobArray(TestFunctional):
                     raise self.failureException("std file " + f_name +
                                                 " not found")
 
-    @skipOnCpuSet
     @skipOnCray
     def test_subjob_wrong_state(self):
         """
@@ -708,7 +733,6 @@ class TestJobArray(TestFunctional):
         # ensure all the subjobs are running
         self.server.expect(JOB, {'job_state=R': 200}, extend='t')
 
-    @skipOnCpuSet
     def test_recover_big_array_job(self):
         """
         Test that during server restart, server is able to recover valid
@@ -744,3 +768,237 @@ class TestJobArray(TestFunctional):
             self.fail('TC failed as server recovery failed')
         else:
             self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_basic(self):
+        """
+        Test that if a job is submitted with 'max_run_subjobs' attribute
+        number of subjobs that run do not exceed the attribute value.
+        """
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(attrs={ATTR_J: '1-20%2'})
+        j_id = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=j_id)
+        self.server.expect(JOB, {'job_state=R': 2}, extend='t')
+
+        self.server.alterjob(j_id, {ATTR_W: 'max_run_subjobs=5'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state=R': 5}, extend='t')
+        msg = "Number of concurrent running subjobs limit reached"
+        self.scheduler.log_match(j_id + ';' + msg)
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_calendar(self):
+        """
+        Test that if a job is submitted with 'max_run_subjobs' attribute
+        gets into calendar when it cannot run.
+        """
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'backfill_depth': '2'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.scheduler.set_sched_config({'strict_ordering': 'True'})
+        j1 = Job(attrs={'Resource_List.walltime': 200})
+        j1.set_sleep_time(200)
+        j1_id = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1_id)
+        j2 = Job(attrs={ATTR_J: '1-20%2', 'Resource_List.walltime': 300})
+        j2.set_sleep_time(300)
+        j2_id = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=j2_id)
+        self.server.expect(JOB, {'job_state=R': 3}, extend='t')
+        j2_sub1 = j2.create_subjob_id(j2_id, 1)
+        job_arr = self.server.status(JOB, id=j2_sub1)
+        stime = self.lu.convert_date_time(job_arr[0]['stime'],
+                                          fmt="%a %b %d %H:%M:%S %Y")
+        job_arr = self.server.status(JOB, id=j2_id)
+
+        # check estimated start time is set on job array
+        self.assertIn('estimated.start_time', job_arr[0])
+        errmsg = j2_id + ";Error in calculation of start time of top job"
+        self.scheduler.log_match(errmsg, existence=False, max_attempts=10)
+        est = self.lu.convert_date_time(job_arr[0]['estimated.start_time'],
+                                        fmt="%a %b %d %H:%M:%S %Y")
+        self.assertAlmostEqual(stime + 300, est, 1)
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_queuejob_hook(self):
+        """
+        Test that a queuejob hook is able to set max_run_subjobs attribute.
+        """
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        self.create_max_run_subjobs_hook(3, "queuejob", "h1", self.qjh)
+        j1 = Job(attrs={ATTR_J: '1-20'})
+        jid1 = self.server.submit(j1)
+        self.server.log_match("max_run_subjobs set to 3")
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid1)
+        self.server.expect(JOB, {'job_state=R': 3}, extend='t')
+
+        # Submit a normal job and see if queuejob hook cannot set the
+        # attribute.
+        with self.assertRaises(PbsSubmitError) as e:
+            self.server.submit(Job())
+        self.assertIn("Attribute has to be set on an array job",
+                      e.exception.msg[0])
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_modifyjob_hook(self):
+        """
+        Submit array job with large max_run_subjobs limit see if modifyjob
+        modifies it.
+        """
+        a = {'resources_available.ncpus': 20}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        self.create_max_run_subjobs_hook(3, "modifyjob", "h1", self.mjh)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        j = Job(attrs={ATTR_J: '1-50'})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+        self.server.alterjob(jid, {ATTR_W: 'max_run_subjobs=20'})
+        self.server.log_match("max_run_subjobs set to 3")
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state=R': 3}, extend='t')
+
+        # Modify a normal job and see if queuejob hook cannot set the
+        # attribute.
+        self.create_max_run_subjobs_hook(3, "modifyjob", "h1", self.mjh2)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        nj = self.server.submit(Job())
+        with self.assertRaises(PbsAlterError) as e:
+            self.server.alterjob(nj, {'Resource_List.soft_walltime': 50})
+        self.assertIn("Attribute has to be set on an array job",
+                      e.exception.msg[0])
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_preemption(self):
+        """
+        Submit array job with max_run_subjobs limit and see if such a job
+        hits the limit, no preemption is attempted.
+        """
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "wq2")
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        a = {'Resource_List.select': 'ncpus=2'}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+        a = {ATTR_J: '1-20%3', 'Resource_List.select': 'ncpus=2',
+             ATTR_q: 'wq2'}
+        j_arr = Job(attrs=a)
+        jid_arr = self.server.submit(j_arr)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid_arr)
+        self.server.expect(JOB, {'job_state=R': 4}, extend='t')
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_qrun(self):
+        """
+        Submit array job with max_run_subjobs limit and see if such a job
+        is run using qrun, max_run_subjobs limit is ignored.
+        """
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        a = {'Resource_List.select': 'ncpus=2'}
+        j = Job(attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+        a = {ATTR_J: '1-20%3', 'Resource_List.select': 'ncpus=2'}
+        j_arr = Job(attrs=a)
+        jid_arr = self.server.submit(j_arr)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid_arr)
+        self.server.expect(JOB, {'job_state=R': 4}, extend='t')
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+        subjid_4 = j_arr.create_subjob_id(jid_arr, 4)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=subjid_4)
+        self.server.runjob(subjid_4)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid_arr)
+        self.server.expect(JOB, {'job_state=R': 4}, extend='t')
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=subjid_4)
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_suspend(self):
+        """
+        Submit array job with max_run_subjobs limit and see if such a job
+        is has suspended subjobs, those subjobs are not counted against the
+        limit.
+        """
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        a = {ATTR_J: '1-20%3', 'Resource_List.select': 'ncpus=2'}
+        j_arr = Job(attrs=a)
+        jid_arr = self.server.submit(j_arr)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid_arr)
+        self.server.expect(JOB, {'job_state=R': 3}, extend='t')
+        subjid_2 = j_arr.create_subjob_id(jid_arr, 2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=subjid_2)
+        self.server.sigjob(jobid=subjid_2, signal="suspend")
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=subjid_2)
+        self.server.expect(JOB, {'job_state=R': 3}, extend='t')
+        subjid_4 = j_arr.create_subjob_id(jid_arr, 4)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=subjid_4)
+
+    @skipOnCpuSet
+    def test_max_run_subjobs_eligible_time(self):
+        """
+        Test that array jobs hitting max_run_subjobs limit still
+        accrues eligible time.
+        """
+
+        a = {'resources_available.ncpus': 8}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        a = {'eligible_time_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        accrue = {'ineligible': 1, 'eligible': 2, 'run': 3, 'exit': 4}
+
+        a = {ATTR_J: '1-20%3', 'Resource_List.select': 'ncpus=2'}
+        j_arr = Job(attrs=a)
+        jid_arr = self.server.submit(j_arr)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid_arr)
+        self.server.expect(JOB, {'job_state=R': 3}, extend='t')
+        self.server.expect(JOB, {'accrue_type': accrue['eligible']},
+                           id=jid_arr)
+
+    def test_max_run_subjobs_on_non_array(self):
+        """
+        Test that setting max_run_subjobs on non-array jobs is rejected.
+        """
+        a = {ATTR_W: 'max_run_subjobs=4'}
+        with self.assertRaises(PbsSubmitError) as e:
+            self.server.submit(Job(attrs=a))
+        self.assertIn("Attribute has to be set on an array job",
+                      e.exception.msg[0])
+
+    def test_multiple_max_run_subjobs_values(self):
+        """
+        Test that setting max_run_subjobs more than once on an array
+        job is rejected.
+        """
+
+        qsub_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                'bin', 'qsub')
+
+        cmd = [qsub_cmd, '-J1-4%2', '-Wmax_run_subjobs=4', '--',
+               '/bin/sleep 100']
+        rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
+        self.assertNotEqual(rv['rc'], 0, 'qsub must fail')
+        msg = "qsub: multiple max_run_subjobs values found"
+        self.assertEqual(rv['err'][0], msg)

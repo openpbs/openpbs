@@ -107,6 +107,8 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 
 #define DISPLAY_TRUNC_CHAR '*'
 
+#define NUML    5
+
 static struct attrl basic_attribs[] = {
 	{	&basic_attribs[1],
 		ATTR_N,
@@ -163,6 +165,7 @@ static char *dsv_delim = "|";
 static char *delimiter = "\n";
 static char *prev_resc_name = NULL;
 static int  first_stat = 1;
+static int conn;
 
 static struct attrl *display_attribs = &basic_attribs[0];
 
@@ -311,7 +314,7 @@ states(char *string, char *q, char *r, char *h, char *w, char *t, char *e, int l
 					*(f - 1) = DISPLAY_TRUNC_CHAR;
 				*f = '\0';
 			}
-			strcpy(d, s);
+			pbs_strncpy(d, s, NUML + 1);
 			if (l != '\0') c++;
 		} else {
 			while (*c != ' ' && *c != '\0') c++;
@@ -802,7 +805,33 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		pstat = bs_isort(pstat, cmp_est_time);
 
 	if (prtheader) {
-		printf("\n%s: ", prtheader->name);
+		svr_conn_t *svr_connections = get_conn_svr_instances(conn);
+
+		if (svr_connections) {
+			int num_cfg_svrs = get_num_servers();
+			int num_active_svrs = 0;
+			int i = 0;
+			int j = 0;
+
+			for (i = 0; i < num_cfg_svrs; i++) {
+				if (svr_connections[i].state == SVR_CONN_STATE_UP)
+					num_active_svrs++;
+			}
+
+			if (num_active_svrs)
+				printf("\n");
+			for (i = 0; i < num_cfg_svrs; i++) {
+				if (svr_connections[i].state == SVR_CONN_STATE_UP) {
+					printf("%s", pbs_conf.psi[i].name);
+					if (j == num_active_svrs - 1)
+						printf(": ");
+					else
+						printf(", ");
+					j++;
+				}
+			}
+		}
+
 		pc = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (pc)
 			printf("%s", show_nonprint_chars(pc));
@@ -893,13 +922,13 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		queuen = blank;
 		est_time  = NULL;
 		/*		*pfs      = *blank;  */
-		(void)strcpy(pfs, blank);
+		strcpy(pfs, blank);
 		/*		*rqmem    = *blank;  */
-		(void)strcpy(rqmem, blank);
+		strcpy(rqmem, blank);
 		/*		*srfsbig  = *blank;  */
-		(void)strcpy(srfsbig, blank);
+		strcpy(srfsbig, blank);
 		/*		*srfsfast = *blank;  */
-		(void)strcpy(srfsfast, blank);
+		strcpy(srfsfast, blank);
 		usecput = 0;
 
 		pat = pstat->attribs;
@@ -936,22 +965,22 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 						trunc_value(tasks, SIZETSK, SIZETSK_W, wide);
 					}
 				} else if (strcmp(pat->resource, "mem") == 0) {
-					(void)strncpy(rqmem,
-						cnv_size(pat->value, alt_opt), sizeof(rqmem) - 1);
+					pbs_strncpy(rqmem,
+						cnv_size(pat->value, alt_opt), sizeof(rqmem));
 				} else if (strcmp(pat->resource, "walltime") == 0) {
 					rqtimewal = pat->value;
 				} else if (strcmp(pat->resource, "cput") == 0) {
 					rqtimecpu = pat->value;
 					usecput = 1;
 				} else if (strcmp(pat->resource, "srfs_big") == 0) {
-					(void)strncpy(srfsbig,
-						cnv_size(pat->value, alt_opt), sizeof(srfsbig) - 1);
+					pbs_strncpy(srfsbig,
+						cnv_size(pat->value, alt_opt), sizeof(srfsbig));
 				} else if (strcmp(pat->resource, "srfs_fast") == 0) {
-					(void)strncpy(srfsfast,
-						cnv_size(pat->value, alt_opt), sizeof(srfsfast) - 1);
+					pbs_strncpy(srfsfast,
+						cnv_size(pat->value, alt_opt), sizeof(srfsfast));
 				} else if (strcmp(pat->resource, "piofs") == 0) {
-					(void)strncpy(pfs,
-						cnv_size(pat->value, alt_opt), sizeof(pfs) - 1);
+					pbs_strncpy(pfs,
+						cnv_size(pat->value, alt_opt), sizeof(pfs));
 				}
 
 			} else if (strcmp(pat->name, ATTR_exechost) == 0) {
@@ -973,16 +1002,14 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 				if (strlen(pat->value) > COMMENTLENSCOPE_SHORT) {
 					if (wide) {
 						if (strlen(pat->value) > COMMENTLENSCOPE_WIDE) {
-							strncpy(buf, pat->value, COMMENTLEN_WIDE);
-							buf[COMMENTLEN_WIDE] = '\0';
+							pbs_strncpy(buf, pat->value, COMMENTLEN_WIDE);
 							strcat(buf, "...");
 							comment = buf;
 						} else {
 							comment = pat->value;
 						}
 					} else {
-						strncpy(buf, pat->value, COMMENTLEN_SHORT);
-						buf[COMMENTLEN_SHORT] = '\0';
+						pbs_strncpy(buf, pat->value, COMMENTLEN_SHORT);
 						strcat(buf, "...");
 						comment = buf;
 					}
@@ -1116,7 +1143,7 @@ altdsp_statque(char *serv, struct batch_status *pstat, int opt)
 
 	while (pstat) {
 		/* *rmem = '\0'; */
-		(void)strncpy(rmem, "--  ", sizeof(rmem) - 1);
+		strcpy(rmem, "--  ");
 		cput  = blank;
 		wallt = blank;
 		nodect= "-- ";
@@ -1144,8 +1171,8 @@ altdsp_statque(char *serv, struct batch_status *pstat, int opt)
 				tot_jrun += jrun;
 			} else if (strcmp(pat->name, ATTR_rescmax) == 0) {
 				if (strcmp(pat->resource, "mem") == 0) {
-					(void)strncpy(rmem,
-						cnv_size(pat->value, opt), sizeof(rmem) - 1);
+					pbs_strncpy(rmem,
+						cnv_size(pat->value, opt), sizeof(rmem));
 				} else if (strcmp(pat->resource, "cput") == 0) {
 					cput = pat->value;
 				} else if (strcmp(pat->resource, "walltime")==0) {
@@ -1399,11 +1426,10 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 							 */
 							char noval[] = "UNKNOWN";
 							prt_attr(a->name, a->resource, noval, alt_opt & ALT_DISPLAY_w);
-						} else
-						{
+						} else {
 							char time_buffer[32];
-							strcpy(time_buffer,ctime(&epoch));
-							time_buffer[strlen(time_buffer)-1]='\0';
+							pbs_strncpy(time_buffer, ctime(&epoch), sizeof(time_buffer));
+							time_buffer[strlen(time_buffer)-1] = '\0';
 							prt_attr(a->name, a->resource, time_buffer, alt_opt & ALT_DISPLAY_w);
 						}
 					} else if (strcmp(a->name, ATTR_resv_state) == 0) {
@@ -1598,7 +1624,6 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 
 
 
-#define NUML    5
 #define TYPEL   4
 
 /**
@@ -2031,7 +2056,7 @@ tcl_init()
 
 	snprintf(script, sizeof(script), "%s/.qstatrc", home);
 	if (stat(script, &sb) == -1) {
-		strcpy(script, QSTATRC_PATH);
+		pbs_strncpy(script, QSTATRC_PATH, sizeof(script));
 		if (stat(script, &sb) == -1)
 			return;
 	}
@@ -2076,9 +2101,9 @@ tcl_init()
 	if (pw == NULL)
 		return;
 
-	sprintf(script, "%s/.qstatrc", pw->pw_dir);
+	snprintf(script, sizeof(script), "%s/.qstatrc", pw->pw_dir);
 	if (stat(script, &sb) == -1) {
-		strcpy(script, QSTATRC_PATH);
+		pbs_strncpy(script, QSTATRC_PATH, sizeof(script));
 		if (stat(script, &sb) == -1)
 			return;
 	}
@@ -2759,7 +2784,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 
 			case JOBS:
 				server_out[0] = '@';
-				strcpy(&server_out[1], def_server);
+				pbs_strncpy(&server_out[1], def_server, sizeof(server_out) - 1);
 				tcl_addarg(ops, server_out);
 
 				job_id_out[0] = '\0';
@@ -2767,7 +2792,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 				goto job_no_args;
 			case QUEUES:
 				server_out[0] = '@';
-				strcpy(&server_out[1], def_server);
+				pbs_strncpy(&server_out[1], def_server, sizeof(server_out) - 1);
 				tcl_addarg(ops, server_out);
 
 				queue_name_out = NULL;
@@ -2790,18 +2815,18 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 		qsort(&argv[optind], (argc - optind), sizeof(char *), cmp_jobs);
 	}
 	for (; optind < argc; optind++) {
-		int connect;
 
 		located = FALSE;
 
-		strcpy(operand, argv[optind]);
+		pbs_strncpy(operand, argv[optind], sizeof(operand));
 		tcl_addarg(ops, operand);
+
 		switch (mode) {
 
 			case JOBS:      /* get status of batch jobs */
 				if (pbs_isjobid(operand)) {  /* must be a job-id */
 					stat_single_job = 1;
-					strcpy(job_id, operand);
+					pbs_strncpy(job_id, operand, sizeof(job_id));
 					if (get_server(job_id, job_id_out, server_out)) {
 						fprintf(stderr, "qstat: illegally formed job identifier: %s\n", job_id);
 #ifdef NAS /* localmod 071 */
@@ -2817,7 +2842,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 						if (server_out[0] == '\0' || (strcmp(server_out, def_server) == 0)) {
 							/* This is probably the first job id requested from primary server */
 							if (prev_server[0] == '\0')
-								strcpy(prev_server, def_server);
+								pbs_strncpy(prev_server, def_server, sizeof(prev_server));
 							strncat(job_list, job_id_out, job_list_size - strlen(job_list));
 							strncat(job_list, ",", job_list_size - strlen(job_list));
 							if (optind != argc -1)
@@ -2833,7 +2858,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 							if ((prev_server[0] == '\0' ) || (strcmp(server_out, prev_server) == 0)) {
 								/* This is probably the first job id requested and not from primary server */
 								if (prev_server[0] == '\0')
-									strcpy(prev_server, server_out);
+									pbs_strncpy(prev_server, server_out, sizeof(prev_server));
 								strncat(job_list, job_id_out, job_list_size - strlen(job_list));
 								strncat(job_list, ",", job_list_size - strlen(job_list));
 								if (optind != argc-1)
@@ -2860,7 +2885,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 						return 1;
 					}
 					stat_single_job = 0;
-					strcpy(destination, operand);
+					pbs_strncpy(destination, operand, sizeof(destination));
 					if (parse_destination_id(destination,
 						&queue_name_out,
 						&server_name_out)) {
@@ -2874,11 +2899,11 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 						break;
 					} else {
 						if (notNULL(server_name_out)) {
-							strcpy(server_out, server_name_out);
+							pbs_strncpy(server_out, server_name_out, sizeof(server_out));
 						} else {
 							server_out[0] = '\0';
 						}
-						(void)strcpy(job_id_out, queue_name_out);
+						pbs_strncpy(job_id_out, queue_name_out, sizeof(job_id_out));
 						if (*queue_name_out != '\0') {
 							/* add "destination" to front of list */
 							add_atropl(&new_atropl, ATTR_q, NULL, queue_name_out, EQ);
@@ -2891,11 +2916,11 @@ job_no_args:
 				pbs_statfree(p_server);
 				p_server = NULL;
 				if (E_opt == 1)
-					connect = cnt2server(prev_server);
+					conn = cnt2server(prev_server);
 				else
-					connect = cnt2server(server_out);
+					conn = cnt2server(server_out);
 
-				if (connect <= 0) {
+				if (conn <= 0) {
 					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
@@ -2903,23 +2928,25 @@ job_no_args:
 #else
 					(void)tcl_stat(error, NULL, f_opt);
 #endif /* localmod 071 */
-					any_failed = connect;
+					any_failed = conn;
 					break;
 				}
+				show_svr_inst_fail(conn, "qstat");
+				
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
-					p_server = pbs_statserver(connect, NULL, NULL);
+					p_server = pbs_statserver(conn, NULL, NULL);
 #ifdef NAS /* localmod 071 */
-					p_rsvstat = pbs_statresv(connect, NULL, NULL, NULL);
+					p_rsvstat = pbs_statresv(conn, NULL, NULL, NULL);
 #endif /* localmod 071 */
-					(void)strcpy(server_old, pbs_server);
+					pbs_strncpy(server_old, pbs_server, sizeof(server_old));
 				} else {
 					p_server = NULL;
 				}
 
 				if (p_server == NULL && pbs_errno != PBSE_NONE) {
 					any_failed = pbs_errno;
-					if ((errmsg = pbs_geterrmsg(connect)) != NULL)
+					if ((errmsg = pbs_geterrmsg(conn)) != NULL)
 						fprintf(stderr, "qstat: %s\n", errmsg);
 					else
 						fprintf(stderr, "qstat: Error %d\n", pbs_errno);
@@ -2937,11 +2964,11 @@ job_no_args:
 
 				if ((stat_single_job == 1) || (new_atropl == 0)) {
 					if (E_opt == 1)
-						p_status = pbs_statjob(connect, query_job_list, display_attribs, extend);
+						p_status = pbs_statjob(conn, query_job_list, display_attribs, extend);
 					else
-						p_status = pbs_statjob(connect, job_id_out, display_attribs, extend);
+						p_status = pbs_statjob(conn, job_id_out, display_attribs, extend);
 				} else {
-					p_status = pbs_selstat(connect, new_atropl, NULL, extend);
+					p_status = pbs_selstat(conn, new_atropl, NULL, extend);
 				}
 
 				if (added_queue) {
@@ -2955,7 +2982,7 @@ job_no_args:
 					if ((pbs_errno == PBSE_UNKJOBID) && !located) {
 						located = TRUE;
 						if (locate_job(job_id_out, server_out, rmt_server)) {
-							pbs_disconnect(connect);
+							pbs_disconnect(conn);
 							strcpy(server_out, rmt_server);
 							goto job_no_args;
 						}
@@ -2965,7 +2992,7 @@ job_no_args:
 						(void)tcl_stat("job", NULL, f_opt);
 #endif /* localmod 071 */
 						if (pbs_errno != PBSE_HISTJOBID) {
-							prt_job_err("qstat", connect, job_id_out);
+							prt_job_err("qstat", conn, job_id_out);
 							any_failed = pbs_errno;
 						}
 					} else {
@@ -2978,11 +3005,11 @@ job_no_args:
 #else
 						(void)tcl_stat("job", NULL, f_opt);
 #endif /* localmod 071 */
-						if (pbs_errno != PBSE_NONE && pbs_errno != PBSE_HISTJOBID) {
+						if (pbs_errno != PBSE_NONE && pbs_errno != PBSE_HISTJOBID && pbs_errno != PBSE_NOSERVER) {
 							if (pbs_errno == PBSE_ATTRRO && alt_opt & ALT_DISPLAY_T)
 								fprintf(stderr, "qstat: -T option is unavailable.\n");
 							else
-								prt_job_err("qstat", connect, job_id_out);
+								prt_job_err("qstat", conn, job_id_out);
 							any_failed = pbs_errno;
 						}
 					}
@@ -2993,7 +3020,7 @@ job_no_args:
 					 * are adding some extra message.
 					 */
 					if (pbs_errno == PBSE_HISTJOBID) {
-						errmsg = pbs_geterrmsg(connect);
+						errmsg = pbs_geterrmsg(conn);
 						if (errmsg) {
 							fprintf(stderr,
 								"qstat: %s %s, use -x or -H to obtain historical job information\n",
@@ -3028,7 +3055,7 @@ job_no_args:
 				}
 				pbs_statfree(p_server);
 				p_server = NULL;
-				pbs_disconnect(connect);
+				pbs_disconnect(conn);
 				if (E_opt == 1) {
 					free(query_job_list);
 					query_job_list = NULL;
@@ -3058,7 +3085,7 @@ job_no_args:
 				break;
 
 			case QUEUES:        /* get status of batch queues */
-				strcpy(destination, operand);
+				pbs_strncpy(destination, operand, sizeof(destination));
 				if (parse_destination_id(destination,
 					&queue_name_out,
 					&server_name_out)) {
@@ -3078,21 +3105,21 @@ job_no_args:
 						server_out[0] = '\0';
 				}
 que_no_args:
-				connect = cnt2server(server_out);
-				if (connect <= 0) {
+				conn = cnt2server(server_out);
+				if (conn <= 0) {
 					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n", pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
 					(void)tcl_stat(error, NULL, tcl_opt);
 #else
 					(void)tcl_stat(error, NULL, f_opt);
 #endif /* localmod 071 */
-					any_failed = connect;
+					any_failed = conn;
 					break;
 				}
-				p_status = pbs_statque(connect, queue_name_out, NULL, NULL);
+				p_status = pbs_statque(conn, queue_name_out, NULL, NULL);
 				if (p_status == NULL) {
-					if (pbs_errno) {
-						errmsg = pbs_geterrmsg(connect);
+					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+						errmsg = pbs_geterrmsg(conn);
 						if (errmsg != NULL) {
 							fprintf(stderr, "qstat: %s ", errmsg);
 						} else
@@ -3119,14 +3146,14 @@ que_no_args:
 					p_header = FALSE;
 					pbs_statfree(p_status);
 				}
-				pbs_disconnect(connect);
+				pbs_disconnect(conn);
 				break;
 
 			case SERVERS:           /* get status of batch servers */
-				strcpy(server_out, operand);
+				pbs_strncpy(server_out, operand, sizeof(server_out));
 svr_no_args:
-				connect = cnt2server(server_out);
-				if (connect <= 0) {
+				conn = cnt2server(server_out);
+				if (conn <= 0) {
 					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
 #ifdef NAS /* localmod 071 */
@@ -3134,13 +3161,13 @@ svr_no_args:
 #else
 					(void)tcl_stat(error, NULL, f_opt);
 #endif /* localmod 071 */
-					any_failed = connect;
+					any_failed = conn;
 					break;
 				}
-				p_status = pbs_statserver(connect, NULL, NULL);
+				p_status = pbs_statserver(conn, NULL, NULL);
 				if (p_status == NULL) {
-					if (pbs_errno) {
-						errmsg = pbs_geterrmsg(connect);
+					if (pbs_errno && (pbs_errno != PBSE_NOSERVER)) {
+						errmsg = pbs_geterrmsg(conn);
 						if (errmsg != NULL) {
 							fprintf(stderr, "qstat: %s ", errmsg);
 						} else
@@ -3164,7 +3191,7 @@ svr_no_args:
 					p_header = FALSE;
 					pbs_statfree(p_status);
 				}
-				pbs_disconnect(connect);
+				pbs_disconnect(conn);
 				break;
 
 		} /* switch */
@@ -3248,7 +3275,7 @@ cvtResvstate(char *pcode)
 		case RESV_DELETED:
 		case RESV_DELETING_JOBS:
 		case RESV_BEING_ALTERED:
-			strcpy(acopy, resvStrings[i]);
+			pbs_strncpy(acopy, resvStrings[i], sizeof(acopy));
 			return  acopy;
 
 		default:

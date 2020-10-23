@@ -99,19 +99,16 @@ print_usage()
  *
  * @param[in]	pjob	-	pointer to the job struct.
  */
-void
-prt_job_struct(job *pjob)
+static void
+prt_job_struct(job *pjob, char *state, char *substate)
 {
 	printf("---------------------------------------------------\n");
 	printf("jobid:\t%s\n", pjob->ji_qs.ji_jobid);
 	printf("---------------------------------------------------\n");
-	printf("state:\t\t0x%x\n", pjob->ji_qs.ji_state);
-	printf("substate:\t0x%x (%d)\n", pjob->ji_qs.ji_substate,
-		pjob->ji_qs.ji_substate);
+	printf("state:\t\t%s\n", state);
+	printf("substate:\t0x%s (%s)\n", substate, substate);
 	printf("svrflgs:\t0x%x (%d)\n", pjob->ji_qs.ji_svrflags,
 		pjob->ji_qs.ji_svrflags);
-	printf("ordering:\t%d\n", pjob->ji_qs.ji_ordering);
-	printf("inter prior:\t%d\n", pjob->ji_qs.ji_priority);
 	printf("stime:\t\t%ld\n", (long)pjob->ji_qs.ji_stime);
 	printf("file base:\t%s\n", pjob->ji_qs.ji_fileprefix);
 	printf("queue:\t\t%s\n", pjob->ji_qs.ji_queue);
@@ -124,8 +121,6 @@ prt_job_struct(job *pjob)
 			break;
 		case JOB_UNION_TYPE_EXEC:
 			printf("union type exec:\n");
-			printf("\tmomaddr\t%lu\n",
-				pjob->ji_qs.ji_un.ji_exect.ji_momaddr);
 			printf("\texits\t%d\n",
 				pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
 			break;
@@ -192,6 +187,26 @@ prt_task_struct(pbs_task *ptask)
 }
 
 #define ENDATTRIBUTES -711
+
+/**
+ * @brief	Print an attribute
+ *
+ * @param[in]	pal  - pointer to attribute
+ *
+ * @return	void
+ */
+static void
+print_attr(svrattrl *pal)
+{
+	printf("%s", pal->al_name);
+	if (pal->al_resc)
+		printf(".%s", pal->al_resc);
+	printf(" = ");
+	if (pal->al_value)
+		printf("%s", show_nonprint_chars(pal->al_value));
+	printf("\n");
+}
+
 /**
  * @brief
  * 		read attributes from file descriptor.
@@ -202,21 +217,21 @@ prt_task_struct(pbs_task *ptask)
  * @return	1	: success
  * @return	0	: failure
  */
-int
+static svrattrl *
 read_attr(int fd)
 {
-	int	  amt;
-	int       i;
+	int amt;
+	int i;
 	svrattrl *pal;
-	svrattrl  tempal;
+	svrattrl tempal;
 
 	i = read(fd, (char *)&tempal, sizeof(tempal));
 	if (i != sizeof(tempal)) {
 		fprintf(stderr, "bad read of attribute\n");
-		return 0;
+		return NULL;
 	}
 	if (tempal.al_tsize == ENDATTRIBUTES)
-		return 0;
+		return NULL;
 
 	pal = (svrattrl *)malloc(tempal.al_tsize);
 	if (pal == NULL) {
@@ -243,17 +258,48 @@ read_attr(int fd)
 	else
 		pal->al_value = NULL;
 
-	printf("%s", pal->al_name);
-	if (pal->al_resc)
-		printf(".%s", pal->al_resc);
-	printf(" = ");
-	if (pal->al_value)
-		printf("%s", show_nonprint_chars(pal->al_value));
-	printf("\n");
-
-	free(pal);
-	return 1;
+	return pal;
 }
+
+/**
+ * @brief	Read all job attribute values
+ *
+ * @param[in]	fd - fd of job file
+ * @param[out]	state - return pointer to state value
+ * @param[out]	substate - return pointer for substate value
+ *
+ * @return	void
+ */
+static svrattrl *
+read_all_attrs(int fd, char **state, char **substate)
+{
+	svrattrl *pal = NULL;
+	svrattrl *pali = NULL;
+
+	while ((pali = read_attr(fd)) != NULL) {
+		if (pal == NULL) {
+			pal = pali;
+			(&pal->al_link)->ll_struct = (void *)(&pal->al_link);
+			(&pal->al_link)->ll_next = NULL;
+			(&pal->al_link)->ll_prior = NULL;
+		} else {
+			pbs_list_link *head = &pal->al_link;
+			pbs_list_link *newp = &pali->al_link;
+			newp->ll_prior = NULL;
+			newp->ll_next  = head;
+			newp->ll_struct = pali;
+			pal = pali;
+		}
+		/* Check if the attribute read is state/substate and store it separately */
+		if (strcmp(pali->al_name, ATTR_state) == 0)
+			*state = pali->al_value;
+		else if (strcmp(pali->al_name, ATTR_substate) == 0)
+			*substate = pali->al_value;
+	}
+
+	return pal;
+}
+
 /**
  * @brief
  * 		save the db info into job structure
@@ -265,15 +311,16 @@ read_attr(int fd)
 static void
 db_2_job(job *pjob,  pbs_db_job_info_t *pdjob)
 {
+	char statec;
+
 	strcpy(pjob->ji_qs.ji_jobid, pdjob->ji_jobid);
-	pjob->ji_qs.ji_state = pdjob->ji_state;
-	pjob->ji_qs.ji_substate = pdjob->ji_substate;
+	statec = state_int2char(pdjob->ji_state);
+	if (statec != '0')
+		pjob->ji_wattr[JOB_ATR_state].at_val.at_char = statec;
+
+	pjob->ji_wattr[JOB_ATR_substate].at_val.at_long = pdjob->ji_substate;
 	pjob->ji_qs.ji_svrflags = pdjob->ji_svrflags;
-	pjob->ji_qs.ji_numattr = pdjob->ji_numattr ;
-	pjob->ji_qs.ji_ordering = pdjob->ji_ordering;
-	pjob->ji_qs.ji_priority = pdjob->ji_priority;
 	pjob->ji_qs.ji_stime = pdjob->ji_stime;
-	pjob->ji_qs.ji_endtBdry = pdjob->ji_endtBdry;
 	pjob->ji_qs.ji_fileprefix[0] = 0;
 	strcpy(pjob->ji_qs.ji_queue, pdjob->ji_queue);
 	strcpy(pjob->ji_qs.ji_destin, pdjob->ji_destin);
@@ -281,18 +328,15 @@ db_2_job(job *pjob,  pbs_db_job_info_t *pdjob)
 	if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_NEW) {
 		pjob->ji_qs.ji_un.ji_newt.ji_fromsock = pdjob->ji_fromsock;
 		pjob->ji_qs.ji_un.ji_newt.ji_fromaddr = pdjob->ji_fromaddr;
-	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) {
-		pjob->ji_qs.ji_un.ji_exect.ji_momaddr = pdjob->ji_momaddr;
-		pjob->ji_qs.ji_un.ji_exect.ji_momport = pdjob->ji_momport;
+	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC)
 		pjob->ji_qs.ji_un.ji_exect.ji_exitstat = pdjob->ji_exitstat;
-	} else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_ROUTE) {
+	else if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_ROUTE) {
 		pjob->ji_qs.ji_un.ji_routet.ji_quetime = pdjob->ji_quetime;
 		pjob->ji_qs.ji_un.ji_routet.ji_rteretry = pdjob->ji_rteretry;
 	}
 
 	/* extended portion */
-	strcpy(pjob->ji_extended.ji_ext.ji_4jid, pdjob->ji_4jid);
-	strcpy(pjob->ji_extended.ji_ext.ji_4ash, pdjob->ji_4ash);
+	strcpy(pjob->ji_extended.ji_ext.ji_jid, pdjob->ji_jid);
 	pjob->ji_extended.ji_ext.ji_credtype = pdjob->ji_credtype;
 }
 
@@ -367,6 +411,8 @@ print_db_job(char *id, int no_attributes)
 	 * retrieve the job info from database.
 	 */
 	else {
+		char state[2];
+		char substate[4];
 		obj.pbs_db_obj_type = PBS_DB_JOB;
 		obj.pbs_db_un.pbs_db_job = &dbjob;
 		strcpy(dbjob.ji_jobid, id);
@@ -380,7 +426,9 @@ print_db_job(char *id, int no_attributes)
 			return (1);
 		}
 		db_2_job(&xjob, &dbjob);
-		prt_job_struct(&xjob);
+		snprintf(state, sizeof(state), "%c", xjob.ji_wattr[JOB_ATR_state].at_val.at_char);
+		snprintf(substate, sizeof(substate), "%ld", xjob.ji_wattr[JOB_ATR_substate].at_val.at_long);
+		prt_job_struct(&xjob, state, substate);
 
 		if (no_attributes == 0) {
 			svrattrl *pal;
@@ -559,13 +607,15 @@ char *argv[];
 
 		/* If not asked for displaying of script, execute below code */
 		if (!display_script) {
+			svrattrl *pal, *pali;
+			char *state = "";
+			char *substate = "";
+
 			amt = read(fp, &xjob.ji_qs, sizeof(xjob.ji_qs));
 			if (amt != sizeof(xjob.ji_qs)) {
 				fprintf(stderr, "Short read of %d bytes, file %s\n",
 					amt, jobfile);
 			}
-			/* print out job structure */
-			prt_job_struct(&xjob);
 
 			/* if present, skip over extended area */
 			if (xjob.ji_qs.ji_jsversion > 500) {
@@ -591,10 +641,23 @@ char *argv[];
 				}
 			}
 
+			pal = read_all_attrs(fp, &state, &substate);
+
+			/* Print the summary first */
+			prt_job_struct(&xjob, state, substate);
+
 			/* now do attributes, one at a time */
 			if (no_attributes == 0) {
+				/* Now print all attributes */
 				printf("--attributes--\n");
-				while (read_attr(fp)) ;
+
+				pali = GET_NEXT(pal->al_link);
+				while (pali != NULL) {
+					print_attr(pali);
+					if (pali->al_link.ll_next == NULL)
+						break;
+					pali = GET_NEXT(pali->al_link);
+				}
 			}
 
 			(void)close(fp);

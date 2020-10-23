@@ -107,8 +107,12 @@ extern int write_single_node_mom_attr(struct pbsnode *np);
 
 extern struct python_interpreter_data  svr_interp_data;
 extern int node_delete_db(struct pbsnode *pnode);
-static void	remove_node_topology(char *);
 extern pbsnode *recov_node_cb(pbs_db_obj_info_t *, int *);
+extern int check_sign(pbsnode *, attribute *);
+extern void license_one_node(pbsnode *);
+extern int process_topology_info(void **, char *);
+extern void release_lic_for_cray(struct pbsnode *pnode);
+static void remove_node_topology(char *);
 
 /**
  * @brief
@@ -305,9 +309,9 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_resvp   = NULL;
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
-	pnode->device.nnodes = 0;
-	pnode->device.nsockets = 0;
 	pnode->newobj = 1;
+	pnode->nd_lic_info = NULL;
+	pnode->nd_added_to_unlicensed_list = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
@@ -315,7 +319,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	/* first, clear the attributes */
 
-	for (i=0; i<(int)ND_ATR_LAST; i++)
+	for (i = 0; i < ND_ATR_LAST; i++)
 		clear_attr(&pnode->nd_attr[i], &node_attr_def[i]);
 
 	/* then, setup certain attributes */
@@ -538,11 +542,12 @@ effective_node_delete(struct pbsnode *pnode)
 		psubn = pnxt;
 	}
 
+	remove_from_unlicensed_node_list(pnode);
 	lic_released = release_node_lic(pnode);
 
         /* free attributes */
 
-	for (i=0; i<ND_ATR_LAST; i++) {
+	for (i = 0; i < ND_ATR_LAST; i++) {
 		node_attr_def[i].at_free(&pnode->nd_attr[i]);
 	}
 
@@ -597,8 +602,9 @@ effective_node_delete(struct pbsnode *pnode)
 	}
 	svr_totnodes--;
 	free_pnode(pnode);
+
 	if (lic_released)
-		license_more_nodes();
+		license_nodes();
 }
 
 /**
@@ -1216,7 +1222,7 @@ indirect_target_check(struct work_task *ptask)
 			pnode->nd_state & INUSE_STALE)
 			continue;
 		pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-		if (pattr->at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(pattr)) {
 			for (presc = (resource *)GET_NEXT(pattr->at_val.at_list);
 				presc;
 				presc = (resource *)GET_NEXT(presc->rs_link)) {
@@ -1530,7 +1536,7 @@ node_pcpu_action(attribute *new, void *pobj, int actmode)
 	if (prc == 0) {
 		return (0); /* if this error happens - ignore it */
 	}
-	if (((prc->rs_value.at_flags & ATR_VFLAG_SET) == 0) ||
+	if (((is_attr_set(&prc->rs_value)) == 0) ||
 		((prc->rs_value.at_flags & ATR_VFLAG_DEFLT) != 0)) {
 		if (prc->rs_value.at_val.at_long != new_np) {
 			prc->rs_value.at_val.at_long = new_np;
@@ -1607,7 +1613,7 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 
 	pnode = (struct pbsnode *)pobj;
 
-	if (pattr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(pattr)) {
 
 		pq = find_queuebyname(pattr->at_val.at_str);
 		if (pq == 0) {
@@ -1717,7 +1723,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 		return (0);
 	}
 
-	if (patr->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(patr)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
 		clear_attr(patr, &node_attr_def[(int)ND_ATR_Mom]);
 	}
@@ -1964,7 +1970,10 @@ set_node_topology(attribute *new, void *pobj, int op)
 			}
 
 			record_node_topology(pnode->nd_name, valstr);
-			process_topology_info(pnode, valstr, ntt);
+			process_topology_info(&(pnode->nd_lic_info), valstr);
+			if (ntt == tt_Cray)
+				release_lic_for_cray(pnode);
+			license_one_node(pnode);
 
 			break;
 

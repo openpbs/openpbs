@@ -186,8 +186,9 @@ enum thread_task_type
  * codes less then RET_BASE are standard PBSE pbs error codes
  * NOTE: RET_BASE MUST be greater than the highest PBSE error code
  */
-enum sched_error
+enum sched_error_code
 {
+	SE_NONE = 0,
 	RET_BASE = 16300,
 	SUCCESS = RET_BASE + 1,
 	SCHD_ERROR = RET_BASE + 2,
@@ -268,12 +269,13 @@ enum sched_error
 	NO_TOTAL_NODES = RET_BASE + 77,
 	INVALID_RESRESV = RET_BASE + 78,
 	JOB_UNDER_THRESHOLD = RET_BASE + 79,
+	MAX_RUN_SUBJOBS = RET_BASE + 80,
 #ifdef NAS
 	/* localmod 034 */
-	GROUP_CPU_SHARE = RET_BASE + 80,
-	GROUP_CPU_INSUFFICIENT = RET_BASE + 81,
+	GROUP_CPU_SHARE = RET_BASE + 81,
+	GROUP_CPU_INSUFFICIENT = RET_BASE + 82,
 	/* localmod 998 */
-	RESOURCES_INSUFFICIENT = RET_BASE + 82,
+	RESOURCES_INSUFFICIENT = RET_BASE + 83,
 #endif
 	ERR_SPECIAL = RET_BASE + 1000
 };
@@ -438,9 +440,8 @@ enum prime_time
 {
 	NON_PRIME = 0,
 	PRIME = 1,
-	ALL,
-	NONE,
-	HIGH_PRIME
+	PT_ALL,
+	PT_NONE
 };
 
 enum days
@@ -453,7 +454,7 @@ enum days
 	FRIDAY,
 	SATURDAY,
 	WEEKDAY,
-	HIGH_DAY
+	HIGH_DAY,
 };
 
 enum smp_cluster_dist
@@ -521,7 +522,7 @@ enum node_eval
 
 enum nodepart
 {
-	NP_LOW = 0,
+	NP_NONE = 0,
 	NP_IGNORE_EXCL = 1,
 	NP_CREATE_REST = 2,
 	NP_NO_ADD_NP_ARR = 4

@@ -46,7 +46,6 @@ class TestJobArrayComment(TestFunctional):
     Testing job array comment is accurate
     """
 
-    @skipOnCpuSet
     def test_job_array_comment(self):
         """
         Testing job array comment is correct when one or more sub jobs

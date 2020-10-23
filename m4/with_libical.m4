@@ -46,29 +46,36 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
       [Specify the directory where the ical library is installed.]
     )
   )
-  AS_IF([test "x$with_libical" != "x"],
-    libical_dir=["$with_libical"],
-    libical_dir=["/usr"]
-  )
+  [libical_dir="$with_libical"]
   AC_MSG_CHECKING([for libical])
-  AS_IF([test -r "$libical_dir/include/libical/ical.h"],
+  AS_IF(
+    [test "$libical_dir" = ""],
+    AC_CHECK_HEADER([libical/ical.h], [], AC_MSG_ERROR([libical headers not found.])),
+    [test -r "$libical_dir/include/libical/ical.h"],
     [libical_include="$libical_dir/include"],
     AC_MSG_ERROR([libical headers not found.])
   )
-  libical_version=`$SED -n 's/^#define ICAL_VERSION "\([[0-9]]*\)..*/\1/p' "$libical_include/libical/ical.h"`
-  AS_IF([test "x$libical_version" = "x"],
-    AC_MSG_ERROR([Could not determine libical version.])
+  AS_IF(
+    [test "$libical_include" = ""],
+    [AC_PREPROC_IFELSE(
+      [AC_LANG_SOURCE([[#include <libical/ical.h>
+        ICAL_VERSION]])],
+      [libical_version=`tail -n1 conftest.i | $SED -n 's/"\([[0-9]]*\)..*/\1/p'`]
+    )],
+    [libical_version=`$SED -n 's/^#define ICAL_VERSION "\([[0-9]]*\)..*/\1/p' "$libical_include/libical/ical.h"`]
   )
-  AS_IF([test $libical_version -gt 1],
+  AS_IF(
+    [test "x$libical_version" = "x"],
+    AC_MSG_ERROR([Could not determine libical version.]),
+    [test "$libical_version" -gt 1],
     AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2])
   )
-  AS_IF([test "$libical_dir" = "/usr"],
+  AS_IF([test "$libical_dir" = ""],
     dnl Using system installed libical
     libical_inc=""
-    AS_IF([test -r "/usr/lib64/libical.so" -o -r "/usr/lib/libical.so" -o -r "/usr/lib/x86_64-linux-gnu/libical.so"],
+    AC_CHECK_LIB([ical], [icalrecurrencetype_from_string],
       [libical_lib="-lical"],
-      AC_MSG_ERROR([libical shared object library not found.])
-    ),
+      AC_MSG_ERROR([libical shared object library not found.])),
     dnl Using developer installed libical
     libical_inc="-I$libical_include"
     AS_IF([test -r "${libical_dir}/lib64/libical.a"],

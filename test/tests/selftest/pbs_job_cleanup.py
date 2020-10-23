@@ -86,8 +86,8 @@ class TestJobCleanup(TestSelf):
         num_jobs = 1000
         a = {'resources_available.ncpus': 1,
              'resources_available.mem': '2gb'}
-        self.server.create_vnodes('vnode', a, num_jobs, self.mom,
-                                  sharednode=False, expect=False)
+        self.mom.create_vnodes(a, num_jobs,
+                               sharednode=False, expect=False)
         self.server.expect(NODE, {'state=free': (GE, num_jobs)})
 
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
@@ -111,8 +111,8 @@ class TestJobCleanup(TestSelf):
         num_jobs = 1000
         a = {'resources_available.ncpus': 1,
              'resources_available.mem': '2gb'}
-        self.server.create_vnodes('vnode', a, num_jobs, self.mom,
-                                  sharednode=False, expect=False)
+        self.mom.create_vnodes(a, num_jobs,
+                               sharednode=False, expect=False)
         self.server.expect(NODE, {'state=free': (GE, num_jobs)})
 
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,

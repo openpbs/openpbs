@@ -41,6 +41,9 @@
 #ifndef SRC_SCHEDULER_MULTI_THREADING_H_
 #define SRC_SCHEDULER_MULTI_THREADING_H_
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
 #include "data_types.h"
 
 #define MT_CHUNK_SIZE_MIN 1024
@@ -52,4 +55,7 @@ void *worker(void *);
 void queue_work_for_threads(th_task_info *task);
 int init_mutex_attr_recursive(pthread_mutexattr_t *attr);
 
+#ifdef	__cplusplus
+}
+#endif
 #endif /* SRC_SCHEDULER_MULTI_THREADING_H_ */

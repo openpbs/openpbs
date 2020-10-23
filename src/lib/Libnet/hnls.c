@@ -72,7 +72,6 @@
 #include <sys/socketvar.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <stropts.h>
 #include <netdb.h>
 
 #endif

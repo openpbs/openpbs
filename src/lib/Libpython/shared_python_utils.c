@@ -65,8 +65,8 @@ get_py_homepath(char **homepath) {
 #ifdef PYTHON
 	static char python_homepath[MAXPATHLEN + 1] = {'\0'};
 	if (python_homepath[0] == '\0') {
-		snprintf(python_homepath, MAXPATHLEN, "%spython", pbs_conf.pbs_exec_path);
-		forward2back_slash(python_homepath);
+		snprintf(python_homepath, MAXPATHLEN, "%s/python", pbs_conf.pbs_exec_path);
+		fix_path(python_homepath, 3);
 		if (!file_exists(python_homepath)) {
 				log_err(-1, __func__, "Python home not found!");
 				return 1;
@@ -103,8 +103,8 @@ get_py_progname(char **binpath)
 #ifndef WIN32
 		snprintf(python_binpath, MAXPATHLEN, "%s/python/bin/python3", pbs_conf.pbs_exec_path);
 #else
-		snprintf(python_binpath, MAXPATHLEN, "%spython/python.exe", pbs_conf.pbs_exec_path);
-		forward2back_slash(python_binpath);
+		snprintf(python_binpath, MAXPATHLEN, "%s/python/python.exe", pbs_conf.pbs_exec_path);
+		fix_path(python_binpath, 3);
 #endif
 		if (!file_exists(python_binpath)) {
 #ifdef PYTHON_BIN_PATH

@@ -109,6 +109,7 @@ extern "C" {
 #define ATTR_X11_cookie			"forward_x11_cookie"
 #define ATTR_X11_port			"forward_x11_port"
 #define ATTR_GUI			"gui"
+#define ATTR_max_run_subjobs		"max_run_subjobs"
 
 /* Begin Standing Reservation Attributes */
 #define ATTR_resv_standing      "reserve_standing"
@@ -268,6 +269,7 @@ extern "C" {
 #define ATTR_locsvrs	"location_servers"
 #define ATTR_logevents	"log_events"
 #define ATTR_logfile	"log_file"
+#define ATTR_mailer	"mailer"
 #define ATTR_mailfrom	"mail_from"
 #define ATTR_nodepack	"node_pack"
 #define ATTR_nodefailrq "node_fail_requeue"
@@ -286,7 +288,6 @@ extern "C" {
 #define ATTR_status	"server_state"
 #define ATTR_syscost	"system_cost"
 #define ATTR_FlatUID	"flatuid"
-#define ATTR_FLicenses	"FLicenses"
 #define ATTR_ResvEnable	"resv_enable"
 #define ATTR_aclResvgren        "acl_resv_group_enable"
 #define ATTR_aclResvgroup       "acl_resv_groups"
@@ -351,7 +352,6 @@ extern "C" {
 #define ATTR_job_sort_formula_threshold "job_sort_formula_threshold"
 #define ATTR_throughput_mode "throughput_mode"
 #define ATTR_opt_backfill_fuzzy "opt_backfill_fuzzy"
-#define ATTR_sched_port "sched_port"
 #define ATTR_partition "partition"
 #define ATTR_sched_priv "sched_priv"
 #define ATTR_sched_log "sched_log"
@@ -453,8 +453,6 @@ enum mgr_obj {
 #define MSG_OUT		1
 #define MSG_ERR		2
 
-
-#define BLUEGENE		"bluegene"
 /* SUSv2 guarantees that host names are limited to 255 bytes */
 #define PBS_MAXHOSTNAME		255	/* max host name length */
 #ifndef MAXPATHLEN
@@ -489,7 +487,7 @@ enum mgr_obj {
 
 /* the pair to this list is in module_pbs_v1.c and must be updated to reflect any changes */
 enum batch_op {	SET, UNSET, INCR, DECR,
-	EQ, NE, GE, GT, LE, LT, DFLT
+	EQ, NE, GE, GT, LE, LT, DFLT, INTERNAL
 };
 
 /* shutdown manners externally visible */
