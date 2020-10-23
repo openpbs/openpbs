@@ -7972,7 +7972,6 @@ long determine_resv_retry(resc_resv *presv)
 	long resv_start = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 
 	if (time_now < resv_start && time_now + resv_retry_time > resv_start)
-		/* The server gets confused if a reservation starts and is confirmed at the same time.  Retry shortly before it starts */
 		retry = resv_start;
 	else
 		retry = time_now + resv_retry_time;
