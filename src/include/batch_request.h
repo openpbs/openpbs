@@ -364,7 +364,6 @@ extern void req_register(struct batch_request *);
 extern void req_releasejob(struct batch_request *);
 extern void req_rescq(struct batch_request *);
 extern void req_runjob(struct batch_request *);
-extern void req_endjob(struct batch_request *);
 extern void req_selectjobs(struct batch_request *);
 extern void req_stat_que(struct batch_request *);
 extern void req_stat_svr(struct batch_request *);
