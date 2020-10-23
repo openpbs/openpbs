@@ -5759,6 +5759,93 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				goto event_set_exit;
 			}
 		}
+	} else if (hook_event == HOOK_EVENT_ENDJOB) { /*FIXME*/
+		struct rq_endjob	*rqj = req_params->rq_end;
+
+		/* initialize event param to None */
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOB,
+			Py_None);
+		if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
+			if (py_pbs_statobj != NULL) {
+				Py_XDECREF(py_jargs);  /* discard previously used value */
+				py_jargs = Py_BuildValue("(sss)", "job", rqj->rq_jid,
+					pbs_conf.pbs_server_name); /* NEW ref */
+				py_job = PyObject_Call(py_pbs_statobj, py_jargs,
+					NULL);/*NEW*/
+				hook_set_mode = C_MODE; /* ensure still in C mode */
+			}
+		} else {
+			py_job = _pps_helper_get_job(NULL, rqj->rq_jid, NULL, perf_label);
+		}
+		/* NEW - we own ref */
+
+		if (!py_job || (py_job == Py_None)) {
+			LOG_ERROR_ARG2("%s:failed to get job %s's python "
+				"job object", PY_TYPE_EVENT, rqj->rq_jid);
+			goto event_set_exit;
+		}
+
+		/* py_job given to py_event_parm...so ref. count auto incremented */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOB, py_job);
+
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
+			goto event_set_exit;
+		}
+
+
+		/* py_job is not read-only but only ATTR_h, ATTR_a are modifiable and */
+		/* checked under is_attrib_val_settable(). Resource-type attributes   */
+		/* such as ATTR_l, which is part of py_job,  go through a different   */
+		/* processing mechanism.        				      */
+		/* It is fatal if py_job's readonly flag could not be set to False    */
+		/* as it could prevent all job attributes including ATTR_l to be      */
+		/* not settable.                                                      */
+		rc = pbs_python_object_set_attr_integral_value(py_job,
+			PY_READONLY_FLAG, FALSE);
+		if (rc == -1) {
+
+			log_err(PBSE_INTERNAL, __func__,
+				"Failed set object's readonly flag");
+			goto event_set_exit;
+		}
+
+		py_resclist = PyObject_GetAttrString(py_job, ATTR_l); /* NEW */
+		if ((py_resclist != NULL) && (py_resclist != Py_None)) {
+			/* Don't mark pbs.event().job.Resource_List[] as readonly */
+			rc = pbs_python_object_set_attr_integral_value(py_resclist,
+				PY_READONLY_FLAG, FALSE);
+			if (rc == -1) {
+
+				log_err(PBSE_INTERNAL, __func__,
+					"Failed set object's readonly flag");
+				LOG_ERROR_ARG2("%s: warning - failed to set object's '%s' readonly flag", __func__, "Resource_List[]");
+			}
+		}
+
+		if (!PyObject_HasAttrString(py_job, ATTR_execvnode)) {
+			LOG_ERROR_ARG2("%s: does not have attribute <%s>",
+				PY_TYPE_JOB,
+				ATTR_execvnode);
+			rc = -1;
+			goto event_set_exit;
+		}
+
+		/* set value of job's exec_vnode attribute if not already set */
+		py_exec_vnode = PyObject_GetAttrString(py_job, ATTR_execvnode);/* NEW */
+
+		if ((rqj->rq_destin != NULL) && (*rqj->rq_destin != '\0') &&
+			((py_exec_vnode == NULL) || (py_exec_vnode == Py_None))) {
+			/* set "exec_vnodes" attribute if not set */
+			rc = pbs_python_object_set_attr_string_value(py_job,
+				ATTR_execvnode, rqj->rq_destin);
+			if (rc == -1) {
+				LOG_ERROR_ARG2("%s:failed to set attribute <%s>",
+					PY_TYPE_JOB, ATTR_execvnode);
+				goto event_set_exit;
+			}
+		}
 	} else if (hook_event == HOOK_EVENT_MANAGEMENT) {
 		PyObject *py_attr = (PyObject *) NULL;
 		struct rq_management *rqj = req_params->rq_manage;
