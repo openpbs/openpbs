@@ -330,6 +330,7 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+    @runOnlyOnLinux
     def test_finished_jobs(self):
         """
         Test for finished jobs and resource used for jobs.
@@ -548,13 +549,15 @@ class SmokeTest(PBSTestSuite):
         Test to submit job with job script
         """
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
-        j.create_script('sleep 120\n', hostname=self.server.client)
+        j.create_script('pbs_sleep 120\n', hostname=self.server.client)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.delete(id=jid, extend='force', wait=True)
         self.logger.info("Testing script with extension")
         j = Job(TEST_USER)
-        fn = self.du.create_temp_file(suffix=".scr", body="/bin/sleep 10",
+        fn = self.du.create_temp_file(hostname=self.server.client,
+                                      suffix=".scr",
+                                      body="pbs_sleep 10",
                                       asuser=str(TEST_USER))
         jid = self.server.submit(j, script=fn)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -586,19 +589,25 @@ class SmokeTest(PBSTestSuite):
         """
         Test for file staging
         """
-        fn = self.du.create_temp_file(asuser=str(TEST_USER))
-        a = {ATTR_stagein: fn + '2@' + self.server.hostname + ':' + fn}
+        execution_info = {}
+        storage_info = {}
+        stagein_path = self.mom.format_stagein_path(storage_info,
+                                                    asuser=str(TEST_USER))
+        a = {ATTR_stagein: stagein_path}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
         jid = self.server.submit(j)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
-        a = {ATTR_stageout: fn + '@' + self.server.hostname + ':' + fn + '2'}
+        execution_info['hostname'] = self.mom.hostname
+        storage_info['hostname'] = self.server.hostname
+        stageout_path = self.mom.format_stageout_path(execution_info,
+                                                      storage_info,
+                                                      asuser=str(TEST_USER))
+        a = {ATTR_stageout: stageout_path}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
         jid = self.server.submit(j)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
-        self.du.rm(self.server.hostname, fn, force=True, sudo=True)
-        self.du.rm(self.server.hostname, fn + '2', force=True, sudo=True)
 
     def test_route_queue(self):
         """
@@ -766,12 +775,7 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         a = {'job_state': 'R', 'substate': 42}
         self.server.expect(JOB, a, id=jid)
-        printjob = os.path.join(self.mom.pbs_conf['PBS_EXEC'], 'bin',
-                                'printjob')
-        jbfile = os.path.join(self.mom.pbs_conf['PBS_HOME'], 'mom_priv',
-                              'jobs', jid + '.JB')
-        ret = self.du.run_cmd(self.mom.hostname, cmd=[printjob, jbfile],
-                              sudo=True)
+        ret = self.mom.printjob(jid)
         self.assertEqual(ret['rc'], 0)
 
     def test_comm_service(self):
@@ -1024,17 +1028,8 @@ class SmokeTest(PBSTestSuite):
         Check wether <ppid> is in Suspended state, return True if
         <ppid> in Suspended state else return False
         """
-        state = 'T'
-        rv = self.mom.pu.get_proc_state(self.mom.shortname, ppid)
-        if rv != state:
-            return False
-        childlist = self.mom.pu.get_proc_children(self.mom.shortname,
-                                                  ppid)
-        for child in childlist:
-            rv = self.mom.pu.get_proc_state(self.mom.shortname, child)
-            if rv != state:
-                return False
-        return True
+        ret = self.mom.is_proc_suspended(ppid)
+        return ret
 
     def do_preempt_config(self):
         """
@@ -1356,6 +1351,7 @@ class SmokeTest(PBSTestSuite):
 
     @checkModule("pexpect")
     @skipOnShasta
+    @runOnlyOnLinux
     def test_interactive_job(self):
         """
         Submit an interactive job

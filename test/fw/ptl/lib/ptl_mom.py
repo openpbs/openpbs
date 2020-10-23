@@ -75,6 +75,13 @@ from ptl.lib.ptl_constants import (MGR_CMD_DELETE, MGR_OBJ_NODE,
 from ptl.lib.ptl_service import PBSService, PBSInitServices
 
 
+def get_mom_obj(server, name=None, attrs={}, pbsconf_file=None,
+                snapmap={}, snap=None, db_access=None,
+                pbs_conf=None, platform=None):
+    return MoM(server, name, attrs, pbsconf_file, snapmap,
+               snap, db_access, pbs_conf, platform)
+
+
 class MoM(PBSService):
 
     """
@@ -102,6 +109,10 @@ class MoM(PBSService):
                        access or dictionary containing
                        {'dbname':...,'user':...,'port':...}
     :type db_access: str or dictionary
+    :param pbs_conf: Parsed pbs.conf in dictionary format
+    :type pbs_conf: Dictionary or None
+    :param platform: Mom's platform
+    :type platform: str or None
     """
     dflt_attributes = {}
     conf_to_cmd_map = {'PBS_MOM_SERVICE_PORT': '-M',
@@ -109,7 +120,8 @@ class MoM(PBSService):
                        'PBS_HOME': '-d'}
 
     def __init__(self, server, name=None, attrs={}, pbsconf_file=None,
-                 snapmap={}, snap=None, db_access=None):
+                 snapmap={}, snap=None, db_access=None, pbs_conf=None,
+                 platform=None):
         self.server = server
         if snap is None and self.server.snap is not None:
             snap = self.server.snap
@@ -117,7 +129,8 @@ class MoM(PBSService):
             snapmap = self.server.snapmap
 
         super().__init__(name, attrs, self.dflt_attributes,
-                         pbsconf_file, snap=snap, snapmap=snapmap)
+                         pbsconf_file, snap=snap, snapmap=snapmap,
+                         pbs_conf=pbs_conf, platform=platform)
         _m = ['mom ', self.shortname]
         if pbsconf_file is not None:
             _m += ['@', pbsconf_file]
@@ -154,6 +167,122 @@ class MoM(PBSService):
         # This is true by default, but can be set to False if
         # required by a test
         self.revert_to_default = True
+        self.sleep_cmd = '/bin/sleep'
+
+    def format_stagein_path(self, storage_info={}, asuser=None):
+        """
+        Return the formatted stagein path
+        :param storage_info: The name of the process to query.
+        :type storage_info: Dictionary
+        :param asuser: Optional username of temp file owner
+        :type asuser: str or None
+        :returns: Formatted stageout path
+        """
+        if 'hostname' in storage_info:
+            storage_host = storage_info['hostname']
+        else:
+            storage_host = self.server.hostname
+
+        if 'suffix' in storage_info:
+            storage_file_suffix = storage_info['suffix']
+        else:
+            storage_file_suffix = None
+
+        if 'prefix' in storage_info:
+            storage_file_prefix = storage_info['prefix']
+        else:
+            storage_file_prefix = 'PtlPbs'
+        storage_path = self.du.create_temp_file(storage_host,
+                                                storage_file_suffix,
+                                                storage_file_prefix,
+                                                asuser=asuser)
+
+        execution_path = storage_path + '2'
+
+        path = '%s@%s:%s' % (execution_path, storage_host, storage_path)
+        return path
+
+    def format_stageout_path(self, execution_info={}, storage_info={},
+                             asuser=None):
+        """
+        Return the formatted stageout path
+        :param execution_info: Contains execution host information
+        :type execution_info: Dictionary
+        :param storage_info: The name of the process to query.
+        :type storage_info: Dictionary
+        :param asuser: Optional username of temp file owner
+        :type asuser: str or None
+        :returns: Formatted stageout path
+        """
+        if 'hostname' in storage_info:
+            storage_host = storage_info['hostname']
+        else:
+            storage_host = self.server.hostname
+
+        if 'hostname' in execution_info:
+            execution_host = execution_info['hostname']
+        else:
+            execution_host = self.hostname
+
+        if 'suffix' in execution_info:
+            execution_file_suffix = execution_info['suffix']
+        else:
+            execution_file_suffix = None
+
+        if 'prefix' in execution_info:
+            execution_file_prefix = execution_info['prefix']
+        else:
+            execution_file_prefix = 'PtlPbs'
+
+        # create temp file on execution host which will be staged out
+        execution_path = self.du.create_temp_file(execution_host,
+                                                  execution_file_suffix,
+                                                  execution_file_prefix,
+                                                  asuser=asuser)
+
+        # Path where file will be staged out after job completion
+        storage_path = tempfile.gettempdir()
+        path = '%s@%s:%s' % (execution_path, storage_host, storage_path)
+        return path
+
+    def printjob(self, job_id=None):
+        """
+        Run the printjob command for the given job id
+        :param job_id: job's id for which to run printjob cmd
+        :type job_id: string
+        """
+
+        if job_id is None:
+            return None
+
+        printjob = os.path.join(self.pbs_conf['PBS_EXEC'], 'bin',
+                                'printjob')
+        jbfile = os.path.join(self.pbs_conf['PBS_HOME'], 'mom_priv',
+                              'jobs', job_id + '.JB')
+        ret = self.du.run_cmd(self.hostname, cmd=[printjob, jbfile],
+                              sudo=True)
+        return ret
+
+    def is_proc_suspended(self, pid=None):
+        """
+        Check if given process is in suspended state or not
+        :param pid: process ID
+        :type pid: string
+        """
+
+        if pid is None:
+            self.logger.error("Could not get pid to check the state")
+            return False
+        state = 'T'
+        rv = self.pu.get_proc_state(self.hostname, pid)
+        if rv != state:
+            return False
+        childlist = self.pu.get_proc_children(self.hostname, pid)
+        for child in childlist:
+            rv = self.pu.get_proc_state(self.hostname, child)
+            if rv != state:
+                return False
+        return True
 
     def isUp(self, max_attempts=None):
         """
@@ -383,6 +512,133 @@ class MoM(PBSService):
             return self.isUp()
         return True
 
+    def _get_dflt_pbsconfval(self, conf, svr_hostname, hosttype, hostobj):
+        """
+        Helper function to revert_pbsconf, tries to determine and return
+        default value for the pbs.conf variable given
+        :param conf: the pbs.conf variable
+        :type conf: str
+        :param svr_hostname: hostname of the server host
+        :type svr_hostname: str
+        :param hosttype: type of host being reverted
+        :type hosttype: str
+        :param hostobj: PTL object associated with the host
+        :type hostobj: PBSService
+        :return default value of the pbs.conf variable if it can be determined
+        as a string, otherwise None
+        """
+        if conf == "PBS_SERVER":
+            return svr_hostname
+        elif conf == "PBS_START_SCHED":
+            return "0"
+        elif conf == "PBS_START_COMM":
+            return "0"
+        elif conf == "PBS_START_SERVER":
+            return "0"
+        elif conf == "PBS_START_MOM":
+            return "1"
+        elif conf == "PBS_CORE_LIMIT":
+            return "unlimited"
+        elif conf == "PBS_SCP":
+            scppath = self.du.which(hostobj.hostname, "scp")
+            if scppath != "scp":
+                return scppath
+        elif conf == "PBS_LOG_HIGHRES_TIMESTAMP":
+            return "1"
+        elif conf == "PBS_PUBLIC_HOST_NAME":
+            return None
+        elif conf == "PBS_DAEMON_SERVICE_USER":
+            # Only set if scheduler user is not default
+            if DAEMON_SERVICE_USER.name == 'root':
+                return None
+            else:
+                return DAEMON_SERVICE_USER.name
+
+        return None
+
+    def revert_mom_pbs_conf(self, primary_server, vals_to_set):
+        """
+        Helper function to revert_pbsconf to revert all mom daemons' pbs.conf
+        :param primary_server: object of the primary PBS server
+        :type primary_server: PBSService
+        :param vals_to_set: dict of pbs.conf values to set
+        :type vals_to_set: dict
+        """
+        '''svr_hostnames = [svr.hostname for svr in self.servers.values()]
+
+        #for mom in moms.values():
+        if self.hostname in svr_hostnames:
+            return'''
+
+        new_pbsconf = dict(vals_to_set)
+        restart_mom = False
+        pbs_conf_val = self.du.parse_pbs_config(self.hostname)
+        if not pbs_conf_val:
+            raise ValueError("Could not parse pbs.conf on host %s" %
+                             (self.hostname))
+
+        # to start with, set all keys in new_pbsconf with values from the
+        # existing pbs.conf
+        keys_to_delete = []
+        for conf in new_pbsconf:
+            if conf in pbs_conf_val:
+                new_pbsconf[conf] = pbs_conf_val[conf]
+            else:
+                # existing pbs.conf doesn't have a default variable set
+                # Try to determine the default
+                val = self._get_dflt_pbsconfval(conf,
+                                                primary_server.hostname,
+                                                "mom", self)
+                if val is None:
+                    self.logger.error("Couldn't revert %s in pbs.conf"
+                                      " to its default value" %
+                                      (conf))
+                    keys_to_delete.append(conf)
+                else:
+                    new_pbsconf[conf] = val
+
+        for key in keys_to_delete:
+            del(new_pbsconf[key])
+
+        # Set the mom start bit to 1
+        if (new_pbsconf["PBS_START_MOM"] != "1"):
+            new_pbsconf["PBS_START_MOM"] = "1"
+            restart_mom = True
+
+        # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+        if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
+            new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
+            restart_mom = True
+        if new_pbsconf["PBS_SERVER"] != primary_server.hostname:
+            new_pbsconf["PBS_SERVER"] = primary_server.hostname
+            restart_mom = True
+        if "PBS_SCP" not in new_pbsconf:
+            scppath = self.du.which(self.hostname, "scp")
+            if scppath != "scp":
+                new_pbsconf["PBS_SCP"] = scppath
+                restart_mom = True
+        if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
+            new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
+            restart_mom = True
+
+        # Check if existing pbs.conf has more/less entries than the
+        # default list
+        if len(pbs_conf_val) != len(new_pbsconf):
+            restart_mom = True
+        # Check if existing pbs.conf has correct ownership
+        dest = self.du.get_pbs_conf_file(self.hostname)
+        (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
+        if cf_uid != 0 or cf_gid > 10:
+            restart_mom = True
+
+        if restart_mom:
+            self.du.set_pbs_config(self.hostname, confs=new_pbsconf,
+                                   append=False)
+            self.pbs_conf = new_pbsconf
+            self.pi.initd(self.hostname, "restart", daemon="mom")
+            if not self.isUp():
+                self.fail("Mom is not up")
+
     def save_configuration(self, outfile=None, mode='w'):
         """
         Save a MoM ``mom_priv/config``
@@ -450,6 +706,12 @@ class MoM(PBSService):
             return True
         else:
             return False
+
+    def is_only_linux(self):
+        """
+        Returns True if testing cluster is only Linux
+        """
+        return True
 
     def is_cpuset_mom(self):
         """
