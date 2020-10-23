@@ -533,7 +533,6 @@ req_confirmresv(struct batch_request *preq)
 	char *next_execvnode = NULL;
 	char **short_xc = NULL;
 	char **tofree = NULL;
-	char *str_time = NULL;
 	extern char server_host[];
 	int is_being_altered = 0;
 	char *tmp_buf = NULL;
@@ -576,12 +575,6 @@ req_confirmresv(struct batch_request *preq)
 
 			set_resv_retry(presv, retry_time);
 
-			str_time = ctime(&(presv->ri_wattr[RESV_ATR_retry].at_val.at_long));
-			if (str_time != NULL) {
-				str_time[strlen(str_time) - 1] = '\0';
-				(void) snprintf(log_buffer, sizeof(log_buffer), "Next attempt to reconfirm reservation will be made on %s", str_time);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
-			}
 		} else {
 			if (presv->rep_sched_count >= presv->req_sched_count) {
 				/* Clients waiting on an interactive request must be
