@@ -117,7 +117,7 @@ main(int argc, char *argv[], char *envp[])
 	char *username;
 	struct xy cur_xy, prev_xy;
 	struct stat st;
-	char errbuf[256];
+	char errbuf[1037];
 	int fd;
 	int c;
 
