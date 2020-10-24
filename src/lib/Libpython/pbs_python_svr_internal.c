@@ -3284,6 +3284,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 	int tmp_rc = -1;
 	int i;
 	char perf_action[MAXBUFLEN];
+	long total_jobs;
 
 	if (pque != NULL) {
 		que = pque;
@@ -3345,16 +3346,13 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 	 */
 	/* As done is statque update the state count */
 	if (!svr_chk_history_conf()) {
-		que->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = que->qu_numjobs;
+		total_jobs = que->qu_numjobs;
 	} else {
-		que->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = que->qu_numjobs -
-			(que->qu_njstate[JOB_STATE_MOVED] + que->qu_njstate[JOB_STATE_FINISHED] + que->qu_njstate[JOB_STATE_EXPIRED]);
+		total_jobs = que->qu_numjobs - (que->qu_njstate[JOB_STATE_MOVED] + que->qu_njstate[JOB_STATE_FINISHED] + que->qu_njstate[JOB_STATE_EXPIRED]);
 	}
-	que->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
+	set_qattr_l_slim(que, QA_ATR_TotalJobs, total_jobs, SET);
 
-	update_state_ct(&que->qu_attr[(int)QA_ATR_JobsByState],
-		que->qu_njstate,
-		que->qu_jobstbuf);
+	update_state_ct(get_qattr(que, QA_ATR_JobsByState), que->qu_njstate, &que_attr_def[QA_ATR_JobsByState]);
 	/* stuff all the attributes */
 	snprintf((char *)hook_debug.objname, HOOK_BUF_SIZE-1, "%s(%s)", SERVER_QUEUE_OBJECT, que->qu_qs.qu_name);
 	snprintf(perf_action, sizeof(perf_action), "%s:%s", HOOK_PERF_POPULATE, hook_debug.objname);
@@ -3494,9 +3492,7 @@ _pps_helper_get_server(char *perf_label)
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 	set_sattr_l_slim(SVR_ATR_TotalJobs, server.sv_qs.sv_numjobs, SET);
-	update_state_ct(get_sattr(SVR_ATR_JobsByState),
-		server.sv_jobstates,
-		server.sv_jobstbuf);
+	update_state_ct(get_sattr(SVR_ATR_JobsByState), server.sv_jobstates, &svr_attr_def[SVR_ATR_JobsByState]);
 
 	update_license_ct();
 

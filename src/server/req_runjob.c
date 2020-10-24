@@ -1002,8 +1002,8 @@ svr_startjob(job *pjob, struct batch_request *preq)
 		convert_job_to_resv(pjob);
 
 	/* Move job_kill_delay attribute from Server to MOM */
-	if (pque->qu_attr[(int)QE_ATR_KillDelay].at_flags & ATR_VFLAG_SET)
-		delay = pque->qu_attr[(int)QE_ATR_KillDelay].at_val.at_long;
+	if (is_qattr_set(pque, QE_ATR_KillDelay))
+		delay = get_qattr_long(pque, QE_ATR_KillDelay);
 	set_jattr_l_slim(pjob, JOB_ATR_job_kill_delay, delay, SET);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)

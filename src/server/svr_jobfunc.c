@@ -213,6 +213,7 @@ svr_enquejob(job *pjob)
 	int rc;
 	pbs_sched *psched;
 	int state_num;
+	char *qtype;
 
 	state_num = get_job_state_num(pjob);
 
@@ -333,14 +334,13 @@ svr_enquejob(job *pjob)
 	/* update the current location and type attribute */
 	set_jattr_generic(pjob, JOB_ATR_in_queue, pque->qu_qs.qu_name, NULL, SET);
 
-	if (pque->qu_attr[(int)QA_ATR_QType].at_val.at_str == NULL) {
-		sprintf(log_buffer, "queue type must be set for queue `%s`",
+	if ((qtype = get_qattr_str(pque, QA_ATR_QType)) == NULL) {
+		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_QUEUE, LOG_ERR,
+			pjob->ji_qs.ji_jobid, "queue type must be set for queue `%s`",
 			pque->qu_qs.qu_name);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_QUEUE, LOG_ERR,
-			pjob->ji_qs.ji_jobid, log_buffer);
 		return PBSE_NEEDQUET;
 	}
-	set_jattr_c_slim(pjob, JOB_ATR_queuetype, *pque->qu_attr[QA_ATR_QType].at_val.at_str, SET);
+	set_jattr_c_slim(pjob, JOB_ATR_queuetype, *qtype, SET);
 
 	if (!is_jattr_set(pjob, JOB_ATR_qtime))
 		set_jattr_l_slim(pjob, JOB_ATR_qtime, time_now, SET);
@@ -385,7 +385,7 @@ svr_enquejob(job *pjob)
 
 		/* check the job checkpoint against the queue's  min */
 
-		eval_chkpnt(pjob, &pque->qu_attr[QE_ATR_ChkptMin]);
+		eval_chkpnt(pjob, get_qattr(pque, QE_ATR_ChkptMin));
 
 		/*
 		 * do anything needed doing regarding job dependencies,
@@ -938,7 +938,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 	 max_walltime <= resources_max.walltime
 	 */
 	/* Check against queue maximum */
-	if (pque && get_wt_limit(&(pque->qu_attr[QA_ATR_ResourceMax]), &wt_max_queue_limit) == 0)
+	if (pque && get_wt_limit(get_qattr(pque, QA_ATR_ResourceMax), &wt_max_queue_limit) == 0)
 		have_max_queue_limit = 1;
 	/* Check server maximum limit only if queue maximum limit is not present */
 	if (!have_max_queue_limit && pque && get_wt_limit(get_sattr(SVR_ATR_ResourceMax), &wt_max_server_limit) == 0)
@@ -977,7 +977,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 			return (PBSE_EXCQRESC);
 	}
 	/* Check against queue minimum */
-	if (pque && (get_wt_limit(&(pque->qu_attr[QA_ATR_ResourceMin]), &wt_min_queue_limit) == 0)) {
+	if (pque && (get_wt_limit(get_qattr(pque, QA_ATR_ResourceMin), &wt_min_queue_limit) == 0)) {
 		if (PBSE_EXCQRESC == comp_wt_limits_STF(resc_minwt,
 			wt_min_queue_limit, MIN_WALLTIME_LIMIT)
 			|| PBSE_EXCQRESC == comp_wt_limits_STF(resc_maxwt,
@@ -1023,13 +1023,13 @@ chk_resc_limits(attribute *pattr, pbs_queue *pque)
 	/* Check min and max walltime of a STF job against "walltime" resource limit on queue and server */
 	if (resc_minwt != NULL && PBSE_EXCQRESC == chk_wt_limits_STF(resc_minwt, resc_maxwt, pque, pattr))
 		return (PBSE_EXCQRESC);
-	if ((comp_resc(&pque->qu_attr[QA_ATR_ResourceMin], pattr) == -1) ||
+	if ((comp_resc(get_qattr(pque, QA_ATR_ResourceMin), pattr) == -1) ||
 		comp_resc_gt)
 		return (PBSE_EXCQRESC);
 
 	/* now check individual resources against queue or server maximum */
 	chk_svr_resc_limit(pattr,
-		&pque->qu_attr[QA_ATR_ResourceMax],
+		get_qattr(pque, QA_ATR_ResourceMax),
 		get_sattr(SVR_ATR_ResourceMax),
 		pque->qu_qs.qu_type);
 
@@ -1099,10 +1099,10 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 		/* 2. the queue must be enabled and the job limit not exceeded */
 
-		if (pque->qu_attr[QA_ATR_Enabled].at_val.at_long == 0)
+		if (get_qattr_long(pque, QA_ATR_Enabled) == 0)
 			return (PBSE_QUNOENB);
 
-		if (pque->qu_attr[QA_ATR_MaxJobs].at_flags & ATR_VFLAG_SET) {
+		if (is_qattr_set(pque, QA_ATR_MaxJobs)) {
 			int histjobs = 0;
 			if (svr_chk_history_conf()) {
 				/* calculate number of finished and moved jobs */
@@ -1114,17 +1114,16 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 			 * check number of jobs in queue excluding
 			 * finished and moved jobs
 			 */
-			if ((pque->qu_numjobs - histjobs) >=
-				(pque->qu_attr[QA_ATR_MaxJobs].at_val.at_long))
+			if ((pque->qu_numjobs - histjobs) >= get_qattr_long(pque, QA_ATR_MaxJobs))
 				return (PBSE_MAXQUED);
 		}
 
 		/* 2a. if job array, check for queue max_array_size */
 
-		if (pque->qu_attr[QA_ATR_maxarraysize].at_flags & ATR_VFLAG_SET) {
+		if (is_qattr_set(pque, QA_ATR_maxarraysize)) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) &&
 				(pjob->ji_ajtrk != NULL)) {
-				if (pjob->ji_ajtrk->tkm_ct > pque->qu_attr[QA_ATR_maxarraysize].at_val.at_long)
+				if (pjob->ji_ajtrk->tkm_ct > get_qattr_long(pque, QA_ATR_maxarraysize))
 					return (PBSE_MaxArraySize);
 			}
 
@@ -1132,32 +1131,31 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 		/* 3. If "from_route_only" is true, only local route allowed */
 
-		if (is_attr_set(&pque->qu_attr[QA_ATR_FromRouteOnly]) &&
-			(pque->qu_attr[QA_ATR_FromRouteOnly].at_val.at_long == 1))
+		if (is_qattr_set(pque, QA_ATR_FromRouteOnly) && get_qattr_long(pque, QA_ATR_FromRouteOnly) == 1)
 			if (mtype == MOVE_TYPE_Move)  /* ok if not plain user or scheduler */
 				return (PBSE_QACESS);
 	}
 
 	/* 4. If enabled, check the queue's host ACL */
 
-	if (pque->qu_attr[QA_ATR_AclHostEnabled].at_val.at_long)
-		if (acl_check(&pque->qu_attr[QA_ATR_AclHost],
+	if (get_qattr_long(pque, QA_ATR_AclHostEnabled))
+		if (acl_check(get_qattr(pque, QA_ATR_AclHost),
 			hostname, ACL_Host) == 0)
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
 				return (PBSE_BADHOST);
 
 	/* 5a. If enabled, check the queue's user ACL */
 
-	if (pque->qu_attr[QA_ATR_AclUserEnabled].at_val.at_long)
-		if (acl_check(&pque->qu_attr[QA_ATR_AclUsers],
+	if (get_qattr_long(pque, QA_ATR_AclUserEnabled))
+		if (acl_check(get_qattr(pque, QA_ATR_AclUsers),
 			get_jattr_str(pjob, JOB_ATR_job_owner), ACL_User) == 0)
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
 				return (PBSE_PERM);
 
 	/* 5b. If enabled, check the queue's group ACL */
 
-	if (pque->qu_attr[QE_ATR_AclGroupEnabled].at_val.at_long)
-		if (acl_check(&pque->qu_attr[QE_ATR_AclGroup],
+	if (get_qattr_long(pque, QE_ATR_AclGroupEnabled))
+		if (acl_check(get_qattr(pque, QE_ATR_AclGroup),
 			get_jattr_str(pjob, JOB_ATR_euser),
 			ACL_Group) == 0)
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
@@ -1165,10 +1163,10 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 	/* 6. If enabled, check the queue's required cred type */
 
-	if ((pque->qu_attr[QA_ATR_ReqCredEnable].at_flags & ATR_VFLAG_SET) &&
-		pque->qu_attr[QA_ATR_ReqCredEnable].at_val.at_long &&
-		(pque->qu_attr[QA_ATR_ReqCred].at_flags & ATR_VFLAG_SET)) {
-		char	*reqc = pque->qu_attr[QA_ATR_ReqCred].at_val.at_str;
+	if (is_qattr_set(pque, QA_ATR_ReqCredEnable) &&
+		get_qattr_long(pque, QA_ATR_ReqCredEnable) &&
+		is_qattr_set(pque, QA_ATR_ReqCred)) {
+		char	*reqc = get_qattr_str(pque, QA_ATR_ReqCred);
 		char	*jobc = get_jattr_str(pjob, JOB_ATR_cred);
 		/*
 		 **	The queue requires a cred, if job has none, or
@@ -2185,7 +2183,7 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	/* set defaults based on the Queue's resources_default */
 	if (pque) {
 		set_deflt_resc(pdest,
-			&pque->qu_attr[(int)QA_ATR_ResourceDefault], 1);
+			get_qattr(pque, QA_ATR_ResourceDefault), 1);
 	}
 
 	/* set defaults based on the Server' resources_default */
@@ -2194,7 +2192,7 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	/* set defaults based on the Queue's resources_max */
 	if (pque) {
 		set_deflt_resc(pdest,
-			&pque->qu_attr[(int)QA_ATR_ResourceMax], 0);
+			get_qattr(pque, QA_ATR_ResourceMax), 0);
 	}
 
 	/* set defaults based on the Server's resources_max */
@@ -4426,7 +4424,7 @@ determine_accruetype(job* pjob)
 	/* check for stopped queue: routing and execute ; accrue eligible time */
 	pque = find_queuebyname(pjob->ji_qs.ji_queue);
 	if (pque != NULL)
-		if (pque->qu_attr[(int)QA_ATR_Started].at_val.at_long == 0)
+		if (get_qattr_long(pque, QA_ATR_Started) == 0)
 			return JOB_ELIGIBLE;
 
 	/* The job doesn't have any reason to not accrue eligible time (e.g. on hold), so it should accrue it */

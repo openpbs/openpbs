@@ -892,8 +892,7 @@ req_confirmresv(struct batch_request *preq)
 			free (qname);
 			return;
 		} else {
-			que_attr_def[(int)QA_ATR_partition].at_decode(&rque->qu_attr[QA_ATR_partition],
-									NULL, NULL, partition_name);
+			set_qattr_str_slim(rque, QA_ATR_partition, partition_name, NULL);
 			que_save_db(rque);
 		}
 		free(qname);

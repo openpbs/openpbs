@@ -318,7 +318,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 				rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 		}
 		sysru = get_sattr(SVR_ATR_resource_assn);
-		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
+		queru = get_qattr(pjob->ji_qhdr, QE_ATR_ResourceAssn);
 
 		if (pjob->ji_myResv &&
 			(pjob->ji_myResv->ri_qs.ri_state == RESV_RUNNING ||
@@ -351,8 +351,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			 *Remark: The -server's- "resources_assigned" updates when the
 			 *parent starts running or is terminated
 			 */
-			sysru = &presv->
-				ri_parent->ri_qp->qu_attr[(int)QE_ATR_ResourceAssn];
+			sysru = get_qattr(presv->ri_parent->ri_qp, QE_ATR_ResourceAssn);
 		} else if (presv->ri_parent == NULL &&
 			(presv->ri_qs.ri_state == RESV_RUNNING ||
 			presv->ri_qs.ri_state == RESV_DELETED ||
@@ -447,7 +446,6 @@ int
 ck_chkpnt(attribute *pattr, void *pobject, int mode)
 {
 	char *val;
-	pbs_queue *pque;
 
 	val = pattr->at_val.at_str;
 	if (val == NULL)
@@ -478,11 +476,8 @@ ck_chkpnt(attribute *pattr, void *pobject, int mode)
 
 	/* If the checkpoint attribute is being altered, then check    */
 	/* against the queue's Checkpoint_min attribute as when queued */
-	if (mode == ATR_ACTION_ALTER) {
-		pque = ((job *)pobject)->ji_qhdr;
-
-		eval_chkpnt((job *)pobject, &pque->qu_attr[(int)QE_ATR_ChkptMin]);
-	}
+	if (mode == ATR_ACTION_ALTER)
+		eval_chkpnt((job *)pobject, get_qattr(((job *)pobject)->ji_qhdr, QE_ATR_ChkptMin));
 	return (0);
 }
 
@@ -1725,12 +1720,12 @@ entlim_resum(struct work_task *pwt)
 		/* a queue is the parent */
 		pque = (pbs_queue *)pobject;
 		if (is_resc) {
-			pattr = &pque->qu_attr[(int)QA_ATR_max_queued_res];
-			pattr2 = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold_res];
+			pattr = get_qattr(pque, QA_ATR_max_queued_res);
+			pattr2 = get_qattr(pque, QA_ATR_queued_jobs_threshold_res);
 		}
 		else {
-			pattr = &pque->qu_attr[(int)QA_ATR_max_queued];
-			pattr2 = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold];
+			pattr = get_qattr(pque, QA_ATR_max_queued);
+			pattr2 = get_qattr(pque, QA_ATR_queued_jobs_threshold);
 		}
 		pj = (job *)GET_NEXT(pque->qu_jobs);
 	}
@@ -2160,7 +2155,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pqueued_jobs_threshold = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold];
+		pqueued_jobs_threshold = get_qattr(pque, QA_ATR_queued_jobs_threshold);
 	else
 		pqueued_jobs_threshold = get_sattr(SVR_ATR_queued_jobs_threshold);
 
@@ -2344,7 +2339,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pmax_queued = &pque->qu_attr[(int)QA_ATR_max_queued];
+		pmax_queued = get_qattr(pque, QA_ATR_max_queued);
 	else
 		pmax_queued = get_sattr(SVR_ATR_max_queued);
 
@@ -2545,7 +2540,7 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_queued_jobs_threshold_res);
 	else
 		pmaxqresc = get_sattr(SVR_ATR_queued_jobs_threshold_res);
 
@@ -2798,7 +2793,7 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_max_queued_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_max_queued_res);
 	else
 		pmaxqresc = get_sattr(SVR_ATR_max_queued_res);
 
@@ -3259,7 +3254,7 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 		rev_op = INCR;
 
 	if (pque)
-		pqueued_jobs_threshold = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold];
+		pqueued_jobs_threshold = get_qattr(pque, QA_ATR_queued_jobs_threshold);
 	else
 		pqueued_jobs_threshold = get_sattr(SVR_ATR_queued_jobs_threshold);
 
@@ -3371,7 +3366,7 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 		rev_op = INCR;
 
 	if (pque)
-		pmax_queued = &pque->qu_attr[(int)QA_ATR_max_queued];
+		pmax_queued = get_qattr(pque, QA_ATR_max_queued);
 	else
 		pmax_queued = get_sattr(SVR_ATR_max_queued);
 
@@ -3556,7 +3551,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		rev_op = INCR;
 
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_queued_jobs_threshold_res);
 	else
 		pmaxqresc = get_sattr(SVR_ATR_queued_jobs_threshold_res);
 
@@ -3793,7 +3788,7 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		rev_op = INCR;
 
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_max_queued_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_max_queued_res);
 	else
 		pmaxqresc = get_sattr(SVR_ATR_max_queued_res);
 

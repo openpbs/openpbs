@@ -43,6 +43,9 @@
 extern "C" {
 #endif
 
+#include "attribute.h"
+#include "server_limits.h"
+
 #define QTYPE_Unset	0
 #define QTYPE_Execution 1
 #define QTYPE_RoutePush 2
@@ -82,7 +85,6 @@ struct pbs_queue {
 
 	int qu_numjobs;			 /* current numb jobs in queue */
 	int qu_njstate[PBS_NUMJOBSTATE]; /* # of jobs per state */
-	char qu_jobstbuf[150];
 
 	/* the queue attributes */
 
@@ -105,6 +107,19 @@ extern int que_save_db(pbs_queue *);
 
 #define QUE_SAVE_FULL 0
 #define QUE_SAVE_NEW  1
+
+attribute *get_qattr(const pbs_queue *pq, int attr_idx);
+char *get_qattr_str(const pbs_queue *pq, int attr_idx);
+struct array_strings *get_qattr_arst(const pbs_queue *pq, int attr_idx);
+pbs_list_head get_qattr_list(const pbs_queue *pq, int attr_idx);
+long get_qattr_long(const pbs_queue *pq, int attr_idx);
+int set_qattr_generic(pbs_queue *pq, int attr_idx, char *val, char *rscn, enum batch_op op);
+int set_qattr_str_slim(pbs_queue *pq, int attr_idx, char *val, char *rscn);
+int set_qattr_l_slim(pbs_queue *pq, int attr_idx, long val, enum batch_op op);
+int set_qattr_b_slim(pbs_queue *pq, int attr_idx, long val, enum batch_op op);
+int set_qattr_c_slim(pbs_queue *pq, int attr_idx, char val, enum batch_op op);
+int is_qattr_set(const pbs_queue *pq, int attr_idx);
+void free_qattr(pbs_queue *pq, int attr_idx);
 
 #ifdef __cplusplus
 }
