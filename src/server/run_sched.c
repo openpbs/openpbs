@@ -162,16 +162,18 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 	if (pq == NULL)
 		return 0;
 
-	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
+	if (is_qattr_set(pq, QA_ATR_partition)) {
 		attribute *part_attr;
-		if (strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, DEFAULT_PARTITION) == 0) {
+		char *partition = get_qattr_str(pq, QA_ATR_partition);
+
+		if (strcmp(partition, DEFAULT_PARTITION) == 0) {
 			*target_sched = dflt_scheduler;
 			return 1;
 		}
 		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
 			if (is_attr_set(part_attr)) {
-				if(!strcmp(part_attr->at_val.at_str, pq->qu_attr[QA_ATR_partition].at_val.at_str)) {
+				if(!strcmp(part_attr->at_val.at_str, partition)) {
 					*target_sched = psched;
 					return 1;
 				}

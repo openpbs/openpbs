@@ -96,6 +96,7 @@ pbs_server_bin_SOURCES = \
 	pbsd_init.c \
 	pbsd_main.c \
 	process_request.c \
+	qattr_get_set.c \
 	queue_func.c \
 	queue_recov_db.c \
 	reply_send.c \

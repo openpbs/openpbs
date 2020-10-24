@@ -1597,9 +1597,9 @@ mark_which_queues_have_nodes()
 
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
 	while (pque != NULL) {
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 0;
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags &= ~ATR_VFLAG_SET;
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags |= ATR_MOD_MCACHE;
+		// FIXME: can we make use UNSET here?
+		set_qattr_l_slim(pque, QE_ATR_HasNodes, 0, SET);
+		ATR_UNSET(get_qattr(pque, QE_ATR_HasNodes));
 		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 
@@ -1607,8 +1607,7 @@ mark_which_queues_have_nodes()
 
 	for (i=0; i<svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_pque) {
-			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 1;
-			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_flags = ATR_SET_MOD_MCACHE;
+			set_qattr_l_slim(pbsndlist[i]->nd_pque, QE_ATR_HasNodes, 1, SET);
 			svr_quehasnodes = 1;
 		}
 	}
@@ -1643,9 +1642,9 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 			return (PBSE_UNKQUE);
 		} else if (pq->qu_qs.qu_type != QTYPE_Execution) {
 			return (PBSE_ATTRTYPE);
-		} else if ((pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) &&
+		} else if (is_qattr_set(pq, QA_ATR_partition) &&
 			(pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) &&
-			strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, pnode->nd_attr[ND_ATR_partition].at_val.at_str)) {
+			strcmp(get_qattr_str(pq, QA_ATR_partition), pnode->nd_attr[ND_ATR_partition].at_val.at_str)) {
 			return PBSE_PARTITION_NOT_IN_QUE;
 		}
 		else {
@@ -2092,9 +2091,8 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 		pq = find_queuebyname(pnode->nd_attr[(int)ND_ATR_Queue].at_val.at_str);
 		if (pq == 0)
 			return PBSE_UNKQUE;
-		if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET &&
-				pattr->at_flags & ATR_VFLAG_SET) {
-			if (strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, pattr->at_val.at_str) != 0)
+		if (is_qattr_set(pq, QA_ATR_partition) && pattr->at_flags & ATR_VFLAG_SET) {
+			if (strcmp(get_qattr_str(pq, QA_ATR_partition), pattr->at_val.at_str) != 0)
 				return PBSE_QUE_NOT_IN_PARTITION;
 		}
 	}

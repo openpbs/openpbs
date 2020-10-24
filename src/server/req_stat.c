@@ -499,6 +499,7 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 {
 	struct brp_status *pstat;
 	svrattrl	  *pal;
+	long total_jobs;
 
 	if ((preq->rq_perm & ATR_DFLAG_RDACC) == 0)
 		return (PBSE_PERM);
@@ -506,16 +507,13 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	/* ok going to do status, update count and state counts from qu_qs */
 
 	if (!svr_chk_history_conf()) {
-		pque->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = pque->qu_numjobs;
+		total_jobs = pque->qu_numjobs;
 	} else {
-		pque->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = pque->qu_numjobs -
-			(pque->qu_njstate[JOB_STATE_MOVED] + pque->qu_njstate[JOB_STATE_FINISHED] + pque->qu_njstate[JOB_STATE_EXPIRED]);
+		total_jobs = pque->qu_numjobs - (pque->qu_njstate[JOB_STATE_MOVED] + pque->qu_njstate[JOB_STATE_FINISHED] + pque->qu_njstate[JOB_STATE_EXPIRED]);
 	}
-	pque->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
+	set_qattr_l_slim(pque, QA_ATR_TotalJobs, total_jobs, SET);
 
-	update_state_ct(&pque->qu_attr[(int)QA_ATR_JobsByState],
-		pque->qu_njstate,
-		pque->qu_jobstbuf);
+	update_state_ct(get_qattr(pque, QA_ATR_JobsByState), pque->qu_njstate, &que_attr_def[QA_ATR_JobsByState]);
 
 	/* allocate status sub-structure and fill in header portion */
 
@@ -756,9 +754,7 @@ req_stat_svr(struct batch_request *preq)
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
 	set_sattr_l_slim(SVR_ATR_TotalJobs, server.sv_qs.sv_numjobs, SET);
-	update_state_ct(get_sattr(SVR_ATR_JobsByState),
-		server.sv_jobstates,
-		server.sv_jobstbuf);
+	update_state_ct(get_sattr(SVR_ATR_JobsByState), server.sv_jobstates, &svr_attr_def[SVR_ATR_JobsByState]);
 
 	update_license_ct();
 
@@ -954,18 +950,19 @@ req_stat_sched(struct batch_request *preq)
  *
  * @param[out]	pattr	-	queue or server attribute
  * @param[in]	ct_array	-	number of jobs per state
- * @param[out]	buf	-	job string buffer
+ * @param[in] attr_def - attribute def of pattr
  *
  * @par MT-safe: No
  */
 
 void
-update_state_ct(attribute *pattr, int *ct_array, char *buf)
+update_state_ct(attribute *pattr, int *ct_array, attribute_def *attr_def)
 {
 	static char *statename[] = { "Transit", "Queued", "Held", "Waiting",
 		"Running", "Exiting", "Expired", "Begun",
 		"Moved", "Finished" };
 	int  index;
+	char buf[BUF_SIZE];
 
 	buf[0] = '\0';
 	for (index=0; index < (PBS_NUMJOBSTATE); index++) {
@@ -976,8 +973,7 @@ update_state_ct(attribute *pattr, int *ct_array, char *buf)
 		sprintf(buf+strlen(buf), "%s:%d ", statename[index],
 			*(ct_array + index));
 	}
-	pattr->at_val.at_str = buf;
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	set_attr_generic(pattr, attr_def, buf, NULL, INTERNAL);
 }
 
 /**

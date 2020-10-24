@@ -98,7 +98,6 @@ struct server {
 	time_t sv_hotcycle;		       /* if RECOV_HOT,time of last restart */
 	time_t sv_next_schedule;	   /* when to next run scheduler cycle */
 	int sv_jobstates[PBS_NUMJOBSTATE]; /* # of jobs per state */
-	char sv_jobstbuf[150]; // FIXME: remove this
 	int sv_nseldft;		         /* num of elems in sv_seldft */
 	key_value_pair *sv_seldft;   /* defelts for job's -l select	*/
 

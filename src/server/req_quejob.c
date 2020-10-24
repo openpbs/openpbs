@@ -1873,7 +1873,7 @@ req_commit_now(struct batch_request *preq,  job *pj)
 
 	if ((preq->rq_fromsvr == 0) &&
 		(pque->qu_qs.qu_type == QTYPE_RoutePush) &&
-		(pque->qu_attr[(int)QA_ATR_Started].at_val.at_long != 0)) {
+		(get_qattr_long(pque, QA_ATR_Started) != 0)) {
 		if ((rc = job_route(pj)) != 0) {
 			job_purge(pj);
 			req_reject(rc, 0, preq);
@@ -2349,8 +2349,8 @@ req_resvSub(struct batch_request *preq)
 				resv_free(presv);
 				return;
 			}
-			if (pjob->ji_qhdr->qu_attr[(int)QA_ATR_partition].at_flags & ATR_VFLAG_SET)
-				partition_name = pjob->ji_qhdr->qu_attr[(int)QA_ATR_partition].at_val.at_str;
+			if (is_qattr_set(pjob->ji_qhdr, QA_ATR_partition))
+				partition_name = get_qattr_str(pjob->ji_qhdr, QA_ATR_partition);
 			else
 				partition_name = DEFAULT_PARTITION;
 			is_resv_from_job = 1;

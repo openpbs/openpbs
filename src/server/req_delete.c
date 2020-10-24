@@ -1201,7 +1201,7 @@ req_deleteReservation(struct batch_request *preq)
 		int deleteProblem = 0;
 		job *pnxj;
 
-		if (presv->ri_qp->qu_attr[QA_ATR_Enabled].at_val.at_long) {
+		if (get_qattr_long(presv->ri_qp, QA_ATR_Enabled)) {
 
 			svrattrl *psatl;
 			newreq = alloc_br(PBS_BATCH_Manager);

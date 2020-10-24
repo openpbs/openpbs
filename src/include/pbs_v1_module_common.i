@@ -205,7 +205,7 @@ save_nodes_db(int flag, void *pmom) {
 }
 
 void
-update_state_ct(attribute *pattr, int *ct_array, char *buf) {
+update_state_ct(attribute *pattr, int *ct_array, attribute_def *attr_def) {
 	return;
 }
 

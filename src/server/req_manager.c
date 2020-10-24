@@ -374,7 +374,7 @@ check_que_attr(pbs_queue *pque)
 
 	type = pque->qu_qs.qu_type;		/* current type of queue */
 	for (i=0; i<(int)QA_ATR_LAST; ++i) {
-		if (pque->qu_attr[i].at_flags & ATR_VFLAG_SET) {
+		if (is_qattr_set(pque, i)) {
 			if (que_attr_def[i].at_parent == PARENT_TYPE_QUE_ALL) {
 				continue;
 			} else if (que_attr_def[i].at_parent == PARENT_TYPE_QUE_EXC) {
@@ -444,8 +444,6 @@ set_resources_min_max(attribute *old, attribute *new, enum batch_op op)
 int
 check_que_enable(attribute *pattr, void *pque, int mode)
 {
-	attribute *datr;
-
 	if (pattr->at_val.at_long != 0) {
 
 		/*
@@ -456,9 +454,7 @@ check_que_enable(attribute *pattr, void *pque, int mode)
 		if (((pbs_queue *)pque)->qu_qs.qu_type == QTYPE_Unset)
 			return (PBSE_QUENOEN);
 		else if (((pbs_queue *)pque)->qu_qs.qu_type==QTYPE_RoutePush) {
-			datr = &((pbs_queue *)pque)->qu_attr[(int)QR_ATR_RouteDestin];
-			if (!(is_attr_set(datr)) ||
-				(datr->at_val.at_arst->as_usedptr == 0))
+			if (!is_qattr_set((pbs_queue *)pque, QR_ATR_RouteDestin) || (get_qattr_arst((pbs_queue *)pque ,QR_ATR_RouteDestin))->as_usedptr == 0)
 				return (PBSE_QUENOEN);
 		}
 	}
@@ -520,11 +516,11 @@ set_queue_type(attribute *pattr, void *pque, int mode)
 			/* If not an Execution queue, cannot */
 			/* have nodes allocated to it        */
 			if ((spectype != QTYPE_Execution) &&
-				(((pbs_queue *)pque)->qu_attr[(int)QE_ATR_HasNodes].at_flags & ATR_VFLAG_SET) &&
-				(((pbs_queue *)pque)->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long != 0)) {
+				is_qattr_set((pbs_queue *)pque, QE_ATR_HasNodes) &&
+				get_qattr_long((pbs_queue *)pque, QE_ATR_HasNodes) != 0) {
 				return (PBSE_ATTRTYPE);
 			} else {
-				if (((pbs_queue *)pque)->qu_attr[(int)QA_ATR_partition].at_flags & ATR_VFLAG_SET &&
+				if (is_qattr_set((pbs_queue *)pque, QA_ATR_partition) &&
 						(spectype == QTYPE_RoutePush)) {
 					return PBSE_CANNOT_SET_ROUTE_QUE;
 				}
@@ -1895,13 +1891,12 @@ mgr_queue_unset(struct batch_request *preq)
 			reply_badattr(rc, bad_attr, plist, preq);
 			return;
 		} else {
-			if (pque->qu_attr[QE_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY) {
-				(void)deflt_chunk_action(&pque->qu_attr[QE_ATR_DefaultChunk], (void *)pque, ATR_ACTION_ALTER);
-			}
+			attribute *attr;
+			if ((attr = get_qattr(pque, QE_ATR_DefaultChunk))->at_flags & ATR_VFLAG_MODIFY)
+				(void)deflt_chunk_action(attr, (void *)pque, ATR_ACTION_ALTER);
 			que_save_db(pque);
 			mgr_log_attr(msg_man_uns, plist, PBS_EVENTCLASS_QUEUE, pque->qu_qs.qu_name, NULL);
-			if ((pque->qu_attr[(int)QA_ATR_QType].at_flags &
-				ATR_VFLAG_SET) == 0)
+			if (is_qattr_set(pque, QA_ATR_QType) == 0)
 				pque->qu_qs.qu_type = QTYPE_Unset;
 		}
 		if (allques)
@@ -3156,9 +3151,8 @@ struct batch_request *preq;
 
 	/* If node being deleted is linked to any queue, clear "has node" flag for that queue */
 	if (pnode->nd_pque != NULL) {
-		pnode->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 0;
-		pnode->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_flags &= ~ATR_VFLAG_SET;
-		pnode->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_flags |= ATR_MOD_MCACHE;
+		set_qattr_l_slim(pnode->nd_pque, QE_ATR_HasNodes, 0, SET);
+		ATR_UNSET(get_qattr(pnode->nd_pque, QE_ATR_HasNodes));
 	}
 
 	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_INFO,
@@ -3783,7 +3777,7 @@ mgr_resource_delete(struct batch_request *preq)
 	while (pq != NULL) {
 		updatedb = 0;
 		for (i=0; i < QA_ATR_LAST; i++) {
-			pattr = &pq->qu_attr[i];
+			pattr = get_qattr(pq, i);
 			if (is_attr_set(pattr) && (pattr->at_type == ATR_TYPE_RESC || pattr->at_type == ATR_TYPE_ENTITY)) {
 				plist = attrlist_create(que_attr_def[i].at_name, prdef->rs_name, 0);
 				plist->al_link.ll_next->ll_struct = NULL;
@@ -3799,9 +3793,8 @@ mgr_resource_delete(struct batch_request *preq)
 					 * the server keeps track of defaults to add to
 					 * schedselect @see qu_seldft
 					 */
-					if ((i == QE_ATR_DefaultChunk) && (pq->qu_attr[QE_ATR_DefaultChunk].at_flags & ATR_VFLAG_MODIFY)) {
-						(void)deflt_chunk_action(&pq->qu_attr[QE_ATR_DefaultChunk], (void *)pq, ATR_ACTION_ALTER);
-					}
+					if (i == QE_ATR_DefaultChunk && (get_qattr(pq, QE_ATR_DefaultChunk))->at_flags & ATR_VFLAG_MODIFY)
+						(void)deflt_chunk_action(get_qattr(pq, QE_ATR_DefaultChunk), (void *)pq, ATR_ACTION_ALTER);
 				}
 				updatedb = 1;
 				free_svrattrl(plist);
@@ -4022,7 +4015,7 @@ mgr_resource_set(struct batch_request *preq)
 	while (pq != NULL) {
 		busy = 0;
 		for (i=0; (i < QA_ATR_LAST) && (busy == 0); i++) {
-			pattr = &pq->qu_attr[i];
+			pattr = get_qattr(pq, i);
 			if (pattr->at_type == ATR_TYPE_RESC) {
 				presc = get_resource(pattr, prdef);
 				if ((mod_type == 1) && (presc != NULL)) {
@@ -4230,7 +4223,7 @@ mgr_resource_unset(struct batch_request *preq)
 	pq = (pbs_queue *)GET_NEXT(svr_queues);
 	while (pq != NULL) {
 		for (i=0, busy=0; (i < QA_ATR_LAST) && (busy == 0); i++) {
-			pattr = &pq->qu_attr[i];
+			pattr = get_qattr(pq, i);
 			if (pattr->at_type == ATR_TYPE_RESC) {
 				presc = get_resource(pattr, prdef);
 				if ((presc != NULL) && (mod == 1)) {

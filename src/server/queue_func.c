@@ -133,7 +133,7 @@ que_alloc(char *name)
 
 	/* set the working attributes to "unspecified" */
 	for (i = 0; i < (int) QA_ATR_LAST; i++)
-		clear_attr(&pq->qu_attr[i], &que_attr_def[i]);
+		clear_attr(get_qattr(pq, i), &que_attr_def[i]);
 
 	return (pq);
 }
@@ -151,17 +151,11 @@ void
 que_free(pbs_queue *pq)
 {
 	int i;
-	attribute *pattr;
-	attribute_def *pdef;
 	key_value_pair *pkvp = NULL;
 
 	/* remove any malloc working attribute space */
-	for (i = 0; i < (int) QA_ATR_LAST; i++) {
-		pdef = &que_attr_def[i];
-		pattr = &pq->qu_attr[i];
-
-		pdef->at_free(pattr);
-	}
+	for (i = 0; i < (int) QA_ATR_LAST; i++)
+		free_qattr(pq, i);
 
 	/* free default chunks set on queue */
 	pkvp = pq->qu_seldft;
@@ -459,7 +453,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 				if (find_assoc_sched_pque(pque, &psched))
 					set_scheduler_flag(SCH_SCHEDULE_STARTQ, psched);
 				else {
-					sprintf(log_buffer, "No scheduler associated with the partition %s", pque->qu_attr[QA_ATR_partition].at_val.at_str);
+					sprintf(log_buffer, "No scheduler associated with the partition %s", get_qattr_str(pque, QA_ATR_partition));
 					log_err(-1, __func__, log_buffer);
 				}
 			}
