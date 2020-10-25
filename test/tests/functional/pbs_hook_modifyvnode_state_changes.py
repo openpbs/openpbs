@@ -358,6 +358,22 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state - offline", starttime=start_time)
+            
+            # State change test: maintenance reservation
+            start_time = int(time.time())
+            res_start_time = start_time + 5
+            res_end_time = res_start_time + 1
+            attrs = {
+                'reserve_start': res_start_time,
+                'reserve_end': res_end_time,
+                '--hosts': value.shortname
+            }
+            self.logger.info("    ***reserve mom:%s" % value)
+            rid = self.server.submit(Reservation(ROOT_USER, attrs))
+            self.logger.info("rid=%s" % rid)
+            self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
+            self.server.log_match("state: v=0x2000, v_o=0x0", starttime=start_time)
+            self.server.log_match("state: v=0x0, v_o=0x2000", starttime=start_time)
 
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
 

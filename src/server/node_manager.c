@@ -540,7 +540,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	/* FIXME: make sure log event settings are for info and debug level */
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state;"
 		"txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_INFO,
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pmom->mi_host, local_log_buffer);
 		
 	/* Set the inuse_flag based off the value of setwhen */
