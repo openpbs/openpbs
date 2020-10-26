@@ -300,7 +300,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_CP		"PBS_CP"
 #define PBS_CONF_SCP		"PBS_SCP"		      /* path to ssh */
 #define PBS_CONF_ENVIRONMENT    "PBS_ENVIRONMENT" /* path to pbs_environment */
-#define PBS_CONF_MOM_HOME	"PBS_MOM_HOME"  /* alt Mom home for failover */
+#define PBS_CONF_MOM_HOME	"PBS_MOM_HOME"	/* alternate Mom home */
 #define PBS_CONF_CORE_LIMIT	"PBS_CORE_LIMIT"      /* RLIMIT_CORE setting */
 #define PBS_CONF_SERVER_HOST_NAME "PBS_SERVER_HOST_NAME"
 #define PBS_CONF_PUBLIC_HOST_NAME "PBS_PUBLIC_HOST_NAME"

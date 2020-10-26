@@ -149,7 +149,6 @@ char		*path_hooks_rescdef;
 char		*path_spool;
 char		*path_track;
 extern char	*path_prov_track;
-char		*path_secondaryact;
 char		*pbs_o_host = "PBS_O_HOST";
 pbs_net_t	pbs_mom_addr;
 unsigned int	pbs_mom_port;
@@ -157,7 +156,6 @@ unsigned int	pbs_rm_port;
 pbs_net_t	pbs_server_addr;
 unsigned int	pbs_server_port_dis;
 int		reap_child_flag = 0;
-time_t		secondary_delay = 30;
 pbs_sched	*dflt_scheduler = NULL; /* the default scheduler */
 int		shutdown_who;		/* see req_shutdown() */
 char		*mom_host = server_host;
@@ -724,7 +722,7 @@ main(int argc, char **argv)
 
 	/* parse the parameters from the command line */
 
-	while ((c = getopt(argc, argv, "A:a:Cd:e:F:p:t:lL:M:NR:g:G:s:P:-:")) != -1) {
+	while ((c = getopt(argc, argv, "A:a:Cd:e:p:t:lL:M:NR:g:G:s:P:-:")) != -1) {
 		switch (c) {
 			case 'a':
 				if (decode_b(&server.sv_attr[(int)SVR_ATR_scheduling], NULL,
@@ -774,15 +772,6 @@ main(int argc, char **argv)
 				break;
 			case 'C':
 				stalone = 2;
-				break;
-			case 'F':
-				i = atoi(optarg);
-				if (i < -1) {
-					(void)fprintf(stderr, "%s -F invalid delay time\n",
-						argv[0]);
-					return (1);
-				}
-				secondary_delay = (time_t)i;
 				break;
 			case 'l':
 #ifdef _POSIX_MEMLOCK
@@ -896,7 +885,6 @@ main(int argc, char **argv)
 	path_track	= build_path(path_priv, PBS_TRACKING, NULL);
 	path_prov_track	= build_path(path_priv, PBS_PROV_TRACKING, NULL);
 	path_usedlicenses = build_path(path_priv, "usedlic", NULL);
-	path_secondaryact = build_path(path_priv, "secondary_active", NULL);
 	path_hooks       = build_path(path_priv, PBS_HOOKDIR, suffix_slash);
 	path_hooks_workdir = build_path(path_priv, PBS_HOOK_WORKDIR,
 		suffix_slash);
@@ -1462,29 +1450,22 @@ start_hot_jobs()
 static void
 lock_out(int fds, int op)
 {
-	int	     i;
-	int	     j;
 	struct flock flock;
 	char	     buf[100];
-
-	j = 1;		/* try lock one time */
 
 	(void)lseek(fds, (off_t)0, SEEK_SET);
 	flock.l_type   = op;
 	flock.l_whence = SEEK_SET;
 	flock.l_start  = 0;
 	flock.l_len    = 0;
-	for (i = 0; i < j; i++) {
-		if (fcntl(fds, F_SETLK, &flock) != -1) {
-			if (op == F_WRLCK) {
-				/* if write-lock, record pid in file */
-				(void)ftruncate(fds, (off_t)0);
-				(void)sprintf(buf, "%d\n", getpid());
-				(void)write(fds, buf, strlen(buf));
-			}
-			return;
+	if (fcntl(fds, F_SETLK, &flock) != -1) {
+		if (op == F_WRLCK) {
+			/* if write-lock, record pid in file */
+			(void)ftruncate(fds, (off_t)0);
+			(void)sprintf(buf, "%d\n", getpid());
+			(void)write(fds, buf, strlen(buf));
 		}
-		sleep(2);
+		return;
 	}
 
 	(void)strcpy(log_buffer, "another server running");

@@ -234,15 +234,12 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 {
 	int fd;
 	struct stat st;
-	int i, j;
 	int rc;
 	char who[PBS_MAXHOSTNAME + 10];
 	char *p;
 
 	if (reasonlen > 0)
 		reason[0] = '\0';
-
-	j = 1;		/* try lock one time */
 
 #ifndef O_RSYNC
 #define O_RSYNC 0
@@ -260,13 +257,9 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 		return -1;
 	}
 
-	for (i=0; i < j; i++) { /* try X times where X is MAX_LOCK_ATTEMPTS */
-		if (i > 0)
-			sleep(1);
-		/* attempt to lock the datastore directory */
-		if (lock_out(fd, F_WRLCK) == 0)
-			return fd;
-	}
+	/* attempt to lock the datastore directory */
+	if (lock_out(fd, F_WRLCK) == 0)
+		return fd;
 
 	/* all attempts to lock failed, try to see who has it locked */
 	(void) lseek(fd, (off_t) 0, SEEK_SET);
@@ -278,9 +271,8 @@ acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_th
 			snprintf(reason, reasonlen,
 					"Lock seems to be held by pid: %s running on host: %s",
 					(p + 1), who);
-		} else {
+		} else
 			snprintf(reason, reasonlen, "Lock seems to be held by %s", who);
-		}
 		if (is_lock_hld_by_thishost != NULL) {
 			if (strcmp(thishost, who) == 0)
 				*is_lock_hld_by_thishost = 1;

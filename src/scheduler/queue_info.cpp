@@ -236,9 +236,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 							peer_sd = pbs_sd;
 						}
 						else if ((peer_sd = pbs_connect_noblk(conf.peer_queues[j].remote_server, 2)) < 0) {
-							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
-							 * failover reasons (see bz3002)
-							 */
+							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 */
 							log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO, qinfo->name,
 								"Can not connect to peer %s", conf.peer_queues[j].remote_server);
 							conf.peer_queues[j].peer_sd = -1;

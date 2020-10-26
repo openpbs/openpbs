@@ -97,14 +97,13 @@ main(int argc, char **argv)
 	 * checkpointed if available.
 	 */
 
-	static char opts[] = "t:smfFi";     /* See man getopt */
+	static char opts[] = "t:sm";     /* See man getopt */
 	int s;                  /* The execute line option */
-	static char usage[] = "Usage: qterm [-t immediate|delay|[quick]] [-m] [-s] [-f|-i] [server ...]\n";
+	static char usage[] = "Usage: qterm [-t immediate|delay|[quick]] [-m] [-s] [server ...]\n";
 	static char usag2[] = "       qterm --version\n";
 	char *type = NULL;      /* Pointer to the type of termination */
 	int   downsched = 0;
 	int   downmom   = 0;
-	int   downsecd  = 0;
 	int   idlesecd  = 0;
 	int manner;             /* The type of termination */
 	int errflg = 0;         /* Error flag */
@@ -129,21 +128,6 @@ main(int argc, char **argv)
 				if (idlesecd == 2)
 					errflg++;
 				downmom = 1;
-				break;
-			case 'f':
-				if ((idlesecd != 0) | (downsecd == 2))
-					errflg++;
-				downsecd = 1;
-				break;
-			case 'F':
-				if ((idlesecd != 0) | (downsecd == 1) | (downmom != 0))
-					errflg++;
-				downsecd = 2;
-				break;
-			case 'i':
-				if (downsecd)
-					errflg++;
-				idlesecd = 1;
 				break;
 			case '?':
 			default:

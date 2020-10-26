@@ -85,8 +85,7 @@
  *
  *	The tool attempts to connect to the data-service running on the localhost
  *	only. Thus this tool can be used only from the same host that is running the
- *	pbs_dataservice. (For example, in failover scenario, this tool needs to be
- *	invoked from the same host which is currently running the data-service)
+ *	pbs_dataservice.
  *
  */
 

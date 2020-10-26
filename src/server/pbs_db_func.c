@@ -304,7 +304,7 @@ get_db_connect_information()
 		/*
 		 * External database configured,  infinite timeout, database instance not in our control
 		 */
-		strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
+		pbs_strncpy(conn_db_host, pbs_conf.pbs_data_service_host, PBS_MAXSERVERNAME);
 	} else {
 		/*
 		 * Database is in our control, we need to figure out the status of the database first
@@ -321,7 +321,7 @@ get_db_connect_information()
 		 * to connect to the host database to confirm that.
 		 *
 		 */
-		strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); /* connect to pbs.server */
+		pbs_strncpy(conn_db_host, pbs_default(), PBS_MAXSERVERNAME); /* connect to pbs.server */
 
 		rc = pbs_status_db(conn_db_host, pbs_conf.pbs_data_service_port);
 		if (rc == -1) {
