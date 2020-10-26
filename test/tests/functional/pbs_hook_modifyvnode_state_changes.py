@@ -289,12 +289,12 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
     @requirements(num_moms=2)
     def test_hook_state_changes_00(self):
         """
-        Test: induce a variety of vnode state changes with debug turned on:
-              - mom stop, mom start, mom restart, offline mom, online mom
+        Test: induce a variety of vnode state changes with debug turned on
         and inspect the pbs log for expected entries
         """
         self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
 
+        # import test hook
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'm1234'
@@ -303,6 +303,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
 
+        # print info about the test deployment
         self.logger.info("socket.gethostname():%s" % socket.gethostname())
         self.logger.info("***self.server.name:%s" % str(self.server.name))
         self.logger.info("self.server.moms:%s" % str(self.server.moms))
@@ -314,6 +315,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.assertEqual(retpbsn['rc'], 0)
         self.logger.info("retpbsn=%s" % retpbsn)
 
+        # test effects of various state changes on each mom
         for name, value in self.server.moms.items():
             self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
             self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
@@ -337,7 +339,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             value.restart()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=True)
 
-            # State change test: take the mom offline
+            # State change test: take mom offline (remove mom)
             start_time = int(time.time())
             self.logger.info("    ***offline mom:%s" % value)
             pbsnodesoffline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
@@ -348,7 +350,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state + offline", starttime=start_time)
 
-            # State change test: put the mom back online
+            # State change test: bring mom online (add mom)
             start_time = int(time.time())
             self.logger.info("    ***online mom:%s" % value)
             pbsnodesonline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
@@ -359,7 +361,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state - offline", starttime=start_time)
             
-            # State change test: maintenance reservation
+            # State change test: create and release maintenance reservation
             start_time = int(time.time())
             res_start_time = start_time + 5
             res_end_time = res_start_time + 1
@@ -368,12 +370,12 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 'reserve_end': res_end_time,
                 '--hosts': value.shortname
             }
-            self.logger.info("    ***reserve mom:%s" % value)
+            self.logger.info("    ***reserve & release mom:%s" % value)
             rid = self.server.submit(Reservation(ROOT_USER, attrs))
             self.logger.info("rid=%s" % rid)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
-            self.server.log_match("state: v=0x2000, v_o=0x0", starttime=start_time)
-            self.server.log_match("state: v=0x0, v_o=0x2000", starttime=start_time)
+            self.server.log_match("v.state=0x2000 v_o.state=0x0", starttime=start_time)
+            self.server.log_match("v.state=0x0 v_o.state=0x2000", starttime=start_time)
 
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
 
