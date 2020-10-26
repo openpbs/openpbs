@@ -76,6 +76,14 @@ class TestHookJob(TestFunctional):
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
         ret = self.server.import_hook(hook_name, hook_body)
         self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
+
+        j = Job(TEST_USER)
+        j.set_sleep_time(1)
+        
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.expect(JOB, {'job_state': "E"}, id=jid, max_attempts=300)
+
         ret = self.server.delete_hook(hook_name)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
 
