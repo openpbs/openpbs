@@ -333,7 +333,7 @@ class TestPbsNodeRampDown(TestFunctional):
 
         a = {'state': 'free', 'resources_available.ncpus': (GE, 1)}
         self.server.expect(VNODE, {'state=free': 11}, op=EQ, count=True,
-                           max_attempts=10, interval=2)
+                           interval=2)
 
         # Various node names
         self.n0 = self.hostA
@@ -849,17 +849,17 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.n4), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.n7), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -1120,17 +1120,17 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint(fib(400))\\\")"'
         # Verify mom_logs
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -1259,7 +1259,7 @@ pbs.event().job.release_nodes_on_stageout=True
         jid = self.create_and_submit_job('job1_2')
 
         self.server.log_match("queuejob hook executed", n=20,
-                              max_attempts=25, interval=2)
+                              interval=2)
 
         self.server.expect(JOB, {'job_state': 'R',
                                  'release_nodes_on_stageout': 'True',
@@ -1325,17 +1325,17 @@ pbs.event().job.release_nodes_on_stageout=True
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.n4,), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -1372,7 +1372,7 @@ pbs.event().job.release_nodes_on_stageout=False
         jid = self.create_and_submit_job('job1_2')
 
         self.server.log_match("queuejob hook executed", n=20,
-                              max_attempts=25, interval=2)
+                              interval=2)
 
         self.server.expect(JOB, {'job_state': 'R',
                                  'release_nodes_on_stageout': 'False',
@@ -1502,7 +1502,7 @@ pbs.event().job.release_nodes_on_stageout=True
         self.server.alterjob(jid, {ATTR_N: "test"})
 
         self.server.log_match("modifyjob hook executed", n=100,
-                              max_attempts=25, interval=2)
+                              interval=2)
 
         self.server.expect(JOB, {'release_nodes_on_stageout': 'True'}, id=jid)
 
@@ -1544,17 +1544,17 @@ pbs.event().job.release_nodes_on_stageout=True
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -1618,7 +1618,7 @@ pbs.event().job.release_nodes_on_stageout=False
         self.server.alterjob(jid, {ATTR_N: "test"})
 
         self.server.log_match("modifyjob hook executed", n=100,
-                              max_attempts=25, interval=2)
+                              interval=2)
 
         self.server.expect(JOB, {'release_nodes_on_stageout': 'False'}, id=jid)
 
@@ -2096,17 +2096,17 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Verify remaining job resources.
         self.server.expect(JOB, {'job_state': 'R',
@@ -2193,17 +2193,17 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Verify remaining job resources.
         self.server.expect(JOB, {'job_state': 'R',
@@ -2290,17 +2290,17 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Verify remaining job resources.
         self.server.expect(JOB, {'job_state': 'R',
@@ -4206,17 +4206,17 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Ensure the 'fib' process is gone when DELETE_JOB2 received on momB
         self.server.pu.get_proc_info(
@@ -4350,17 +4350,17 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify mom_logs
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Ensure the 'fib' process is gone when DELETE_JOB2 received on momB
         self.server.pu.get_proc_info(
@@ -4648,10 +4648,10 @@ pbs.event().job.release_nodes_on_stageout=False
         # Verify mom_logs
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Check various vnode status.
 
@@ -4675,7 +4675,7 @@ pbs.event().job.release_nodes_on_stageout=False
                                   3, 1, self.job1_place, newsel_esc)
 
         # wait for job to finish
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET, max_attempts=100,
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET,
                            interval=4, offset=15)
 
         # Check 'e' record to release_nodes_on_stageout=true
@@ -4847,17 +4847,17 @@ pbs.event().job.release_nodes_on_stageout=False
         # resulting in job summary information reported
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
-            max_attempts=8, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
-            max_attempts=8, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=8, interval=2)
+                            interval=2)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=8, interval=2)
+                            interval=2)
 
         # Check account update ('u') record got generated
         # second pbs_release_nodes call
@@ -5091,11 +5091,11 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
-            max_attempts=2, interval=5, regexp=True)
+            interval=5, regexp=True)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
-            max_attempts=2, interval=5, regexp=True)
+            interval=5, regexp=True)
 
         # Ensure the 'fib' process is gone when DELETE_JOB
         self.server.pu.get_proc_info(
@@ -5103,10 +5103,10 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.assertEqual(len(self.server.pu.processes), 0)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=5)
+                            interval=5)
 
         self.momC.log_match("Job;%s;epilogue hook executed" % (jid,), n=20,
-                            max_attempts=2, interval=5)
+                            interval=5)
         # Ensure the 'fib' process is gone when DELETE_JOB
         self.server.pu.get_proc_info(
             self.momC.hostname, ".*fib.*", None, regexp=True)
@@ -5351,7 +5351,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                                  'schedselect': self.job12_schedselect,
                                  'exec_host': self.job12_exec_host,
                                  'exec_vnode': self.job12_exec_vnode},
-                           id=jid3, max_attempts=3)
+                           id=jid3)
 
         # Check various vnode status.
         jobs_assn1 = "%s/0" % (jid,)
@@ -6668,7 +6668,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.assertEqual(ret['rc'], 0)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid1,),
-                            max_attempts=18, interval=2)
+                            interval=2)
 
         # Verify that only 2 process left on hostB now
         process = 0
@@ -6684,7 +6684,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         # Mom logs only have message for job1 for node3
         self.momA.log_match(
             "Job;%s;%s.+cput=.+mem.+" % (jid1, self.hostB),
-            max_attempts=18, interval=2, regexp=True)
+            interval=2, regexp=True)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+mem.+" % (jid2, self.hostB),
@@ -6754,7 +6754,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                                  'schedselect': newsel,
                                  'exec_host': self.job1_exec_host,
                                  'exec_vnode': new_exec_vnode},
-                           id=jid, interval=1, max_attempts=30)
+                           id=jid, interval=1)
 
         # Check account update ('u') record
         self.match_accounting_log('u', jid, self.job1_exec_host_esc,
@@ -6851,8 +6851,8 @@ else:
         ret = self.server.du.run_cmd(self.server.hostname, cmd)
         self.assertEqual(ret['rc'], 0)
 
-        self.momC.log_match("executed epilogue hook", max_attempts=10)
-        self.momC.log_match("DELETE_JOB2 received", max_attempts=10)
+        self.momC.log_match("executed epilogue hook")
+        self.momC.log_match("DELETE_JOB2 received")
 
         self.server.delete(jid, wait=True)
 
@@ -6894,7 +6894,7 @@ else:
 
         # Wait for the job to start
         self.server.expect(JOB, {'job_state': 'R'},
-                           offset=30, id=jid, max_attempts=30)
+                           offset=30, id=jid)
 
         # Release vnodes from the job
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5]
@@ -6942,7 +6942,7 @@ pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
 
         # Wait for the job to start
         self.server.expect(JOB, {'job_state': 'R'},
-                           offset=30, id=jid, max_attempts=30)
+                           offset=30, id=jid)
 
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, '-a']
         ret = self.server.du.run_cmd(self.server.hostname,
@@ -6954,4 +6954,4 @@ pbs.logjobmsg(pbs.event().job.id, "execjob_end hook executed")
 
         # Verify the rest of the job is still running
         self.server.expect(JOB, {'job_state': 'R'},
-                           id=jid, max_attempts=30)
+                           id=jid)
