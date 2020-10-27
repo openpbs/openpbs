@@ -542,11 +542,10 @@ connect_svrpool()
 	int i;
 	svr_conn_t *svr_conns_primary = NULL;
 	svr_conn_t *svr_conns_secondary = NULL;
-	int registered = 0;
 	int num_conf_svrs = get_num_servers();
 
 
-	while (clust_primary_sock < 0 || clust_secondary_sock < 0 || registered == 0) {
+	while (1) {
 		/* pbs_connect() will return a connection handle for all servers
 		 * we have to close all servers before pbs_conenct is reattempted
 		 */
@@ -596,8 +595,10 @@ connect_svrpool()
 			sleep(2);
 			close_servers();			
 			continue;
-		} else
-			registered = 1;
+		}
+
+		/* Reached here means everything is success, so we will break out of the loop */
+		break;
 		
 	}
 
