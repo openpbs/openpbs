@@ -62,8 +62,8 @@ server|execution)
         echo "have systemd"
         systemctl disable pbs
         rm -f /usr/lib/systemd/system-preset/95-pbs.preset
-        if command -v python &> /dev/null && [ -f ${pbs_home}/server_priv/hooks/pbs_cgroups.CF ]; then
-            service_name=`cat ${pbs_home}/server_priv/hooks/pbs_cgroups.CF | python -c "import sys, json; print(json.load(sys.stdin)['cgroup_prefix'])"`
+        if command -v python &> /dev/null && [ -f ${pbs_home}/mom_priv/hooks/pbs_cgroups.CF ]; then
+            service_name=`cat ${pbs_home}/mom_priv/hooks/pbs_cgroups.CF | python -c "import sys, json; print(json.load(sys.stdin)['cgroup_prefix'])"`
             systemctl stop ${service_name}.service
             [ -d /sys/fs/cgroup/cpuset/${service_name}.service/jobid ] && rmdir /sys/fs/cgroup/cpuset/${service_name}.service/jobid
             [ -d /sys/fs/cgroup/cpuset/${service_name}.service ] && rmdir /sys/fs/cgroup/cpuset/${service_name}.service
