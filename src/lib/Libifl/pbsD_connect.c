@@ -997,3 +997,88 @@ err:
 
 	return sock;
 }
+
+/**
+ * @brief Registers the given socket with the Server by sending PBS_BATCH_RegisterSched
+ *
+ * param[in]	sched_id - sched identifier which is known to server
+ * @return int
+ * @retval 0  - failure
+ * @return 1  - success
+ */
+static int
+send_register_sched(int sock, const char *sched_id)
+{
+	int rc;
+	struct batch_reply *reply = NULL;
+
+	if (sched_id == NULL)
+		return 0;
+
+	rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RegisterSched, pbs_current_user);
+	if (rc != DIS_SUCCESS)
+		goto rerr;
+	rc = diswst(sock, sched_id);
+	if (rc != DIS_SUCCESS)
+		goto rerr;
+	rc = encode_DIS_ReqExtend(sock, NULL);
+	if (rc != DIS_SUCCESS)
+		goto rerr;
+	if (dis_flush(sock) != 0)
+		goto rerr;
+
+	pbs_errno = 0;
+	reply = PBSD_rdrpy(sock);
+	if (reply == NULL)
+		goto rerr;
+
+	if (pbs_errno != 0)
+		goto rerr;
+
+	PBSD_FreeReply(reply);
+	return 1;
+
+rerr:
+	pbs_disconnect(sock);
+	PBSD_FreeReply(reply);
+	return 0;	
+}
+
+/**
+ * @brief Registers the Scheduler with all the Servers configured
+ *
+ * param[in]	sched_id - sched identifier which is known to server
+ * param[in]	primary_conn_id - primary connection handle which represents all servers returned by pbs_connect
+ * param[in]	secondary_conn_id - secondary connection handle which represents all servers returned by pbs_connect
+ *
+ * @return int
+ * @retval 0  - failure
+ * @return 1  - success
+ */
+int
+pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id)
+{
+	int i;
+	svr_conn_t *svr_conns_primary = NULL;
+	svr_conn_t *svr_conns_secondary = NULL;
+
+	if (sched_id == NULL)
+		return 0;
+
+	svr_conns_primary =  get_conn_svr_instances(primary_conn_id);
+	if (svr_conns_primary == NULL)
+		return 0;
+
+	svr_conns_secondary =  get_conn_svr_instances(secondary_conn_id);
+	if (svr_conns_secondary == NULL)
+		return 0;
+
+	for (i = 0; i < get_num_servers(); i++) {
+		if (send_register_sched(svr_conns_primary[i].sd, sched_id) == 0)
+			return 0;	
+		if (send_register_sched(svr_conns_secondary[i].sd, sched_id) == 0)
+			return 0;
+	}
+
+	return 1;
+}
