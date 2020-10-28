@@ -1082,10 +1082,10 @@ class DshUtils(object):
                 ret['err'] = []
             if ret['err'] and logerr:
                 self.logger.error("<" + get_method_name(self) + '>cmd:' +
-                    ' '.join(cmd) + ' err: ' + str(ret['err']))
+                                  ' '.join(cmd) + ' err: ' + str(ret['err']))
             else:
                 self.logger.debug("<" + get_method_name(self) + '>cmd:' +
-                    ' '.join(cmd) + ' err: ' + str(ret['err']))
+                                  ' '.join(cmd) + ' err: ' + str(ret['err']))
             self.logger.debug('rc: ' + str(ret['rc']))
 
         return ret
@@ -1574,7 +1574,7 @@ class DshUtils(object):
             mode = '{:o}'.format(mode)
             cmd += [mode, path]
             ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, logerr=logerr,
-                            runas=runas, level=level)
+                               runas=runas, level=level)
             if ret['rc'] == 0:
                 return True
         return False

@@ -3731,7 +3731,7 @@ class Server(PBSService):
                             self.du.rm(self.hostname, fn)
                     raise eval(str(ret['err'][0]))
             self.logger.debug("<" + get_method_name(self) + '>err: ' +
-                str(ret['err']))
+                              str(ret['err']))
 
         if fn is not None:
             os.remove(fn)
