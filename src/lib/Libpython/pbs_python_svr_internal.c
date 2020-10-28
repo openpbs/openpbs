@@ -5831,10 +5831,25 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
+		/* Set the vnode_o object to readonly to prevent hook writers from modifying values */
+		int tmpv_rc = -1;
+		tmpv_rc = pbs_python_mark_object_readonly(py_vnode_o);
+		if (tmpv_rc == -1) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to mark python vnode_o object readonly");
+			goto event_set_exit;
+		}
+
 		/* Retrieve the vnode data */
 		py_vnode = _pps_helper_get_vnode(vnode, NULL, HOOK_PERF_POPULATE_VNODE);
 		if (py_vnode == NULL) {
 			log_err(PBSE_INTERNAL, __func__, "failed to create a python vnode object");
+			goto event_set_exit;
+		}
+
+		/* Set the vnode object to readonly to prevent hook writers from modifying values */
+		tmpv_rc = pbs_python_mark_object_readonly(py_vnode);
+		if (tmpv_rc == -1) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to mark python vnode object readonly");
 			goto event_set_exit;
 		}
 

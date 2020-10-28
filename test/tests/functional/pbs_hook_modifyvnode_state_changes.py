@@ -87,9 +87,16 @@ def get_hook_body(hook_msg):
         old_lsc_time = e.vnode_o.last_state_change_time
         
         # print show_vnode_state record
-        svs_str1 = new_vnode_name + ' v.state=' + hex(new_state) + ' v_o.state=' + hex(old_state)
-        svs_str2 = svs_str1 + ' v.lsct=' + str(new_lsc_time) + ' v_o.lsct=' + str(old_lsc_time)
-        pbs.logmsg(pbs.LOG_DEBUG, 'show_vnode_state;name=' + svs_str2)
+        v = e.vnode
+        v_o = e.vnode_o
+        lsct = v.last_state_change_time
+        lsct_o = v_o.last_state_change_time
+        svs_str1 = new_vnode_name + ' v.state_hex=' + hex(new_state) + ' v_o.state_hex=' + hex(old_state)
+        svs_str2 = ' v.state_strs=' +  str(v.extract_state_strs()) + ' v_o.state_strs=' 
+        svs_str3 = str(v_o.extract_state_strs()) + ' v.state_ints=' + str(v.extract_state_ints())
+        svs_str4 = ' v_o.state_ints=' + str(v_o.extract_state_ints()) + ' v.lsct=' + str(lsct)
+        svs_str5 = svs_str1 + svs_str2 + svs_str3 + svs_str4 + ' v_o.lsct=' + str(lsct_o)
+        pbs.logmsg(pbs.LOG_DEBUG, 'show_vnode_state;name=' + svs_str5)
         
         # print additional info
         pbs.logmsg(pbs.LOG_DEBUG, 'new_vnode_name:' + new_vnode_name)
@@ -122,7 +129,11 @@ def get_hook_body_modifyvnode_param_rpt():
         lsct_o = v_o.last_state_change_time
 
         # print show_vnode_state record
-        svs_data="v.state=%s v_o.state=%s v.lsct=%s v_o.lsct=%s" % (hex(v.state),hex(v_o.state),str(lsct),str(lsct_o))
+        svs_v_data="v.state_hex=%s v_o.state_hex=%s v.state_strs=%s v_o.state_strs=%s" % \
+            (hex(v.state), hex(v_o.state), str(v.extract_state_strs()), str(v_o.extract_state_strs()))
+        svs_v_o_data="v.state_ints=%s v_o.state_ints=%s v.lsct=%s v_o.lsct=%s" % \
+            (str(v.extract_state_ints()), str(v_o.extract_state_ints()), str(lsct), str(lsct_o))
+        svs_data = "%s %s" % (svs_v_data, svs_v_o_data)
         pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, svs_data))
 
         # print additional hook parameter values
@@ -257,22 +268,22 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.logger.info("    ***stop mom:%s" % value)
             value.stop()
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=True)
-            self.server.log_match("v.state=0x2 v_o.state=0x0", starttime=start_time)
+            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0", starttime=start_time)
 
             # State change test: mom start
             start_time = int(time.time())
             self.logger.info("    ***start mom:%s" % value)
             value.start()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=False)
-            self.server.log_match("v.state=0x0 v_o.state=0x400", starttime=start_time)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400", starttime=start_time)
 
             # State change test: mom restart
             start_time = int(time.time())
             self.logger.info("    ***restart mom:%s" % value)
             value.restart()
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=True)
-            self.server.log_match("v.state=0x2 v_o.state=0x0", starttime=start_time)
-            self.server.log_match("v.state=0x0 v_o.state=0x400", starttime=start_time)
+            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0", starttime=start_time)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400", starttime=start_time)
 
             # State change test: take mom offline (remove mom)
             start_time = int(time.time())
@@ -284,6 +295,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state + offline", starttime=start_time)
+            self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0", starttime=start_time)
 
             # State change test: bring mom online (add mom)
             start_time = int(time.time())
@@ -295,6 +307,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.assertEqual(retpbsn['rc'], 0)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
             self.server.log_match("state - offline", starttime=start_time)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x1", starttime=start_time)
             
             # State change test: create and release maintenance reservation
             start_time = int(time.time())
@@ -309,8 +322,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             rid = self.server.submit(Reservation(ROOT_USER, attrs))
             self.logger.info("rid=%s" % rid)
             self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
-            self.server.log_match("v.state=0x2000 v_o.state=0x0", starttime=start_time)
-            self.server.log_match("v.state=0x0 v_o.state=0x2000", starttime=start_time)
+            self.server.log_match("v.state_hex=0x2000 v_o.state_hex=0x0", starttime=start_time)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x2000", starttime=start_time)
             
             # State change test: create and delete vnode
             # TODO: add impl 

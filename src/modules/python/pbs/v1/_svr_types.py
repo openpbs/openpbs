@@ -463,6 +463,30 @@ class _vnode():
             _pbs_v1.mark_vnode_set(self.name, name, str(value))
 
     #: m(__seattr__)
+    
+    def extract_state_strs(self):
+        """returns the string values from the state bits."""
+        lst = []
+        for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
+            if self.state & mask:
+                lst.append(value)
+            elif self.state == _pbs_v1.ND_FREE:
+                lst.append('ND_FREE')
+                break
+        return lst
+    #: m(extract_state_strs)
+
+    def extract_state_ints(self):
+        """returns the integer values from the state bits."""
+        lst = []
+        for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
+            if self.state & mask:
+                lst.append(mask)
+            elif self.state == _pbs_v1.ND_FREE:
+                lst.append(_pbs_v1.ND_FREE)
+                break
+        return lst
+    #: m(extract_state_ints)
 
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
