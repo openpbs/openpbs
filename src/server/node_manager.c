@@ -537,7 +537,6 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 
 	char local_log_buffer[LOG_BUF_SIZE];
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-	/* FIXME: make sure log event settings are for info and debug level */
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state;"
 		"txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
@@ -1300,10 +1299,10 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	/* Write the vnode state change event to server log */
 	int last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
-		"set_vnode_state;vnode.state=0x%lx state_bits=0x%lx vnode_o.state=0x%lx "
-		"type=%d type_r=%s vnode.last_state_change_time=%d "
-		"vnode_o.last_state_change_time=%d", pnode->nd_state, state_bits, 
-		vnode_o->nd_state, type, get_vnode_state_op(type), time_int_val, last_time_int);
+		"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
+		"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
+		"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d", pnode->nd_state, 
+		vnode_o->nd_state, time_int_val, last_time_int, state_bits, get_vnode_state_op(type), type);
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pnode->nd_name, local_log_buffer);
 

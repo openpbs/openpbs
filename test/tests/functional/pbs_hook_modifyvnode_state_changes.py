@@ -70,7 +70,6 @@ node_states = {
     'ND_VNODE_UNAVAILABLE': 409903
 }
 
-
 def get_hook_body(hook_msg):
     hook_body = """
     import pbs
@@ -127,13 +126,17 @@ def get_hook_body_modifyvnode_param_rpt():
         v_o = e.vnode_o
         lsct = v.last_state_change_time
         lsct_o = v_o.last_state_change_time
+        state_str_buf_v = ",".join(v.extract_state_strs())
+        state_str_buf_v_o = ",".join(v_o.extract_state_strs())
+        state_int_buf_v = ','.join([str(_) for _ in v.extract_state_ints()])
+        state_int_buf_v_o = ','.join([str(_) for _ in v_o.extract_state_ints()])
 
-        # print show_vnode_state record
-        svs_v_data="v.state_hex=%s v_o.state_hex=%s v.state_strs=%s v_o.state_strs=%s" % \
-            (hex(v.state), hex(v_o.state), str(v.extract_state_strs()), str(v_o.extract_state_strs()))
-        svs_v_o_data="v.state_ints=%s v_o.state_ints=%s v.lsct=%s v_o.lsct=%s" % \
-            (str(v.extract_state_ints()), str(v_o.extract_state_ints()), str(lsct), str(lsct_o))
-        svs_data = "%s %s" % (svs_v_data, svs_v_o_data)
+        # print show_vnode_state record (bi consumable)
+        svs1_data="v.state_hex=%s v_o.state_hex=%s v.state_strs=%s v_o.state_strs=%s" % \
+            (hex(v.state), hex(v_o.state), state_str_buf_v, state_str_buf_v_o)
+        svs2_data="v.state_ints=%s v_o.state_ints=%s v.lsct=%s v_o.lsct=%s" % \
+            (state_int_buf_v,  state_int_buf_v_o, str(lsct), str(lsct_o))
+        svs_data = "%s %s" % (svs1_data, svs2_data)
         pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, svs_data))
 
         # print additional hook parameter values
@@ -410,22 +413,24 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         3.  It will bring up pbs_mom, look for the proper log messages.
         4.  It will check the log for the proper hook messages
         """
+        
         self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
+        
+        #import test hook
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
-        hook_name_00 = 'c1234'
-        hook_msg_00 = 'running %s' % get_method_name(self)
-        hook_body_00 = get_hook_body(hook_msg_00)
+        hook_name_00 = 'p1234'
+        hook_body_00 = get_hook_body_modifyvnode_param_rpt()
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
+        
         for name, value in self.server.moms.items():
-            hostbasename = socket.gethostbyaddr(value.fqdn)[0].split('.', 1)[0]
-            start_time = int(time.time())
             self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
             self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
             self.logger.info("    ***pkilling mom:%s" % value)
+            
             start_time = int(time.time())
             pkill_cmd = ['/usr/bin/pkill', '-9', 'pbs_mom']
             fpath = self.du.create_temp_file()
@@ -434,25 +439,55 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                     value.fqdn, pkill_cmd, stdin=fileobj, sudo=True,
                     logerr=True, level=logging.DEBUG)
                 self.logger.info("pkill(ret):%s" % str(pformat(ret)))
-            self.server.log_match("Node;%s;node down" % value.fqdn,
-                                  starttime=start_time)
-            self.server.log_match("new_state:0x2", starttime=start_time)
-            self.server.log_match("old_state:0x0", starttime=start_time)
+            self.checkLog(start_time, value.fqdn, check_up=False, check_down=True)
+            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0", starttime=start_time)
+            
             start_time = int(time.time())
             self.logger.info("    ***start mom:%s" % value)
             value.start()
-            self.server.log_match("new_state:0x422", starttime=start_time)
-            self.server.log_match("old_state:0x400", starttime=start_time)
+            self.checkLog(start_time, value.fqdn, check_up=True, check_down=False)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400", starttime=start_time)
+
             start_time = int(time.time())
             self.logger.info("    ***restart mom:%s" % value)
             value.restart()
-            self.server.log_match("Node;%s;node down" % value.fqdn,
-                                  starttime=start_time)
-            self.server.log_match("Node;%s;node up" % value.fqdn,
-                                  starttime=start_time)
-            self.server.log_match("new_state:0x0", starttime=start_time)
-            self.server.log_match("old_state:0x400", starttime=start_time)
-            self.server.log_match(hook_msg_00, starttime=start_time)
-            self.server.log_match("vnode_name:%s" % hostbasename,
-                                  starttime=start_time)
+            self.checkLog(start_time, value.fqdn, check_up=True, check_down=True)
+            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0", starttime=start_time)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400", starttime=start_time)
+
+        self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
+    
+    def test_hook_state_changes_02(self):
+        """
+        Test:  stop and start the pbs server; look for proper log messages
+        """
+        
+        self.logger.info("---- %s TEST STARTED ----" % get_method_name(self))
+        
+        # import test hook
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
+        attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
+        hook_name_00 = 's1234'
+        hook_body_00 = get_hook_body_modifyvnode_param_rpt()
+        ret = self.server.create_hook(hook_name_00, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name_00)
+        ret = self.server.import_hook(hook_name_00, hook_body_00)
+        
+        # stop the server and then start it
+        start_time = int(time.time())
+        self.logger.info("    ***stopping server")
+        self.server.stop()
+        self.logger.info("    ***starting server")
+        self.server.start()
+        
+        # look for messages indicating all the vnodes came up
+        for name, value in self.server.moms.items():
+            self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
+            self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
+            self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
+            self.logger.info("    ***pkilling mom:%s" % value)
+
+            self.checkLog(start_time, value.fqdn, check_up=True, check_down=False)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400", starttime=start_time)
+
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
