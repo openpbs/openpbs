@@ -1527,7 +1527,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
 		if (pbs_sd != SIMULATE_SD) {
-			pbsrc = pbs_sigjob(pbs_sd, resresv->name, const_cast<char *>("resume"), NULL);
+			pbsrc = pbs_sigjob(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, const_cast<char *>("resume"), NULL);
 			if (!pbsrc)
 				ret = 1;
 			else {
@@ -1646,7 +1646,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 					fflush(stdout);
 #endif /* localmod 031 */
 
-					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err);
+					pbsrc = run_job(get_svr_inst_fd(pbs_sd, rr->job->svr_inst_id), rr, execvnode, sinfo->has_runjob_hook, err);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);

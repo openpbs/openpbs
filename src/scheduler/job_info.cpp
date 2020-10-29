@@ -979,6 +979,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_depend,
 			ATTR_A,
 			ATTR_max_run_subjobs,
+			ATTR_server_inst_id,
 			NULL
 	};
 
@@ -1234,6 +1235,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			else
 				resresv->qrank = -1;
 		}
+		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
+			resresv->job->svr_inst_id = string_dup(attrp->value);
+			if (resresv->job->svr_inst_id == NULL) {
+				free_resource_resv(resresv);
+				return NULL;
+			}
+		}
 		else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -1430,6 +1438,7 @@ new_job_info()
 		return NULL;
 	}
 
+	jinfo->svr_inst_id = NULL;
 	jinfo->is_queued = 0;
 	jinfo->is_running = 0;
 	jinfo->is_held = 0;
@@ -1550,6 +1559,9 @@ free_job_info(job_info *jinfo)
 
 	if (jinfo->dependent_jobs != NULL)
 		free(jinfo->dependent_jobs);
+
+	if (jinfo->svr_inst_id != NULL)
+		free(jinfo->svr_inst_id);
 
 	free_resource_req_list(jinfo->resused);
 
@@ -2807,6 +2819,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 
 	njinfo->queue = nqinfo;
 
+	njinfo->svr_inst_id = string_dup(ojinfo->svr_inst_id);
 	njinfo->is_queued = ojinfo->is_queued;
 	njinfo->is_running = ojinfo->is_running;
 	njinfo->is_held = ojinfo->is_held;

@@ -567,11 +567,18 @@ connect_svrpool()
 		svr_conns_primary = static_cast<svr_conn_t *>(get_conn_svr_instances(clust_primary_sock));
 		svr_conns_secondary = static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
 
+		if (svr_conns_primary == NULL || svr_conns_secondary == NULL) {
+			/* wait for 2s for not to burn too much CPU, and then retry connection */
+			sleep(2);
+			close_servers();
+			continue;
+		}
+
 		for (i = 0; i < num_conf_svrs; i++) {
 			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN || svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
 				if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN)
 					clust_primary_sock = -1;
-				if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN)
+				if (svr_conns_secondary[i].state == SVR_CONN_STATE_DOWN)
 					clust_secondary_sock = -1;
 				break;
 			}
