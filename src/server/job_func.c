@@ -2040,7 +2040,7 @@ resv_exclusive_handler(resc_resv *presv)
 			share_resv = VNS_FORCE_EXCL;
 	}
 	for (pnl = presv->ri_pbsnode_list; pnl != NULL; pnl= pnl->next) {
-		share_node = pnl->vnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long;
+		share_node = get_nattr_long(pnl->vnode, ND_ATR_Sharing);
 
 		/*
 		 * set node state to resv-exclusive if either node forces exclusive

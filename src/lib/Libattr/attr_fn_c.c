@@ -259,6 +259,31 @@ set_attr_c(attribute *pattr, char value, enum batch_op op)
 	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 }
 
+void
+set_attr_short(attribute *pattr, short value, enum batch_op op)
+{
+	if (pattr == NULL) {
+		log_err(-1, __func__, "Invalid pointer to attribute");
+		return;
+	}
+
+	switch (op) {
+		case SET:
+			pattr->at_val.at_short = value;
+			break;
+		case INCR:
+			pattr->at_val.at_short += value;
+			break;
+		case DECR:
+			pattr->at_val.at_short -= value;
+			break;
+		default:
+			return;
+	}
+
+	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+}
+
 /**
  * @brief	Attribute getter function for char type values
  *

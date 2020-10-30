@@ -494,10 +494,8 @@ action_queue_partition(attribute *pattr, void *pobj, int actmode)
 	for (i=0; i < svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_pque) {
 			if (strcmp(pbsndlist[i]->nd_pque->qu_qs.qu_name, ((pbs_queue *) pobj)->qu_qs.qu_name) == 0) {
-				if ((pbsndlist[i]->nd_attr[ND_ATR_partition].at_flags) & ATR_VFLAG_SET &&
-						(pattr->at_flags) & ATR_VFLAG_SET)
-				if (strcmp(pbsndlist[i]->nd_attr[ND_ATR_partition].at_val.at_str,
-						pattr->at_val.at_str))
+				if (is_nattr_set(pbsndlist[i], ND_ATR_partition) && (pattr->at_flags) & ATR_VFLAG_SET)
+				if (strcmp(get_nattr_str(pbsndlist[i], ND_ATR_partition), pattr->at_val.at_str))
 					return PBSE_INVALID_PARTITION_QUE;
 			}
 		}

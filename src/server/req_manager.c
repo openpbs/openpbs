@@ -231,7 +231,6 @@ void
 warnings_update(int wcode, pbsnode **wnodes, int *widx, pbsnode *np)
 {
 	resource		*resc;
-	attribute		*pattr;
 	struct pbssubn		*psub;
 
 	static int		ngrp_had = 0;
@@ -264,8 +263,7 @@ warnings_update(int wcode, pbsnode **wnodes, int *widx, pbsnode *np)
 	} else if (warning_ok == 1 && wcode == WARN_ngrp  && wnodes != NULL) {
 
 		if (rscdef != NULL) {
-			pattr = &np->nd_attr[ND_ATR_ResourceAvail];
-			resc = find_resc_entry(pattr, rscdef);
+			resc = find_resc_entry(get_nattr(np, ND_ATR_ResourceAvail), rscdef);
 			if (resc != NULL) {
 				if (resc->rs_value.at_flags & ATR_VFLAG_MODIFY) {
 					if (np->nd_resvp) {
@@ -295,8 +293,7 @@ warnings_update(int wcode, pbsnode **wnodes, int *widx, pbsnode *np)
 		}
 	} else if (warning_ok == 1 && wcode == WARN_ngrp_ck) {
 		if (rscdef != NULL) {
-			pattr = &np->nd_attr[ND_ATR_ResourceAvail];
-			resc = find_resc_entry(pattr, rscdef);
+			resc = find_resc_entry(get_nattr(np, ND_ATR_ResourceAvail), rscdef);
 			if (resc != NULL)
 				ngrp_had = 1;
 			else
@@ -600,7 +597,6 @@ static void
 unset_indirect(resource *presc, void *pidx, attribute_def *pdef, char *name, void *pobj, int objtype)
 {
 	int i;
-	attribute *pattr;
 	struct pbsnode *pnode;
 	resource_def *prdef;
 
@@ -621,9 +617,8 @@ unset_indirect(resource *presc, void *pidx, attribute_def *pdef, char *name, voi
 	if (i < 0)
 		return;
 
-	pattr = &pnode->nd_attr[i];
 	prdef = presc->rs_defin;
-	presc = find_resc_entry(pattr, prdef);
+	presc = find_resc_entry(get_nattr(pnode, i), prdef);
 	if (presc) {
 		if (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
 			(void)fix_indirect_resc_targets(pnode, presc, ND_ATR_ResourceAssn, 0);
@@ -2085,13 +2080,13 @@ mgr_node_set(struct batch_request *preq)
 								break;
 							case PBSE_QUE_NOT_IN_PARTITION:
 								(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_queue_not_in_partition,
-									pnode->nd_attr[ND_ATR_Queue].at_val.at_str);
+									get_nattr_str(pnode, ND_ATR_Queue));
 								log_err(-1, __func__, log_buffer);
 								reply_text(preq, PBSE_QUE_NOT_IN_PARTITION, log_buffer);
 								break;
 							case PBSE_PARTITION_NOT_IN_QUE:
 								(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_partition_not_in_queue,
-									pnode->nd_attr[ND_ATR_partition].at_val.at_str);
+									get_nattr_str(pnode, ND_ATR_partition));
 								log_err(-1, __func__, log_buffer);
 								reply_text(preq, PBSE_PARTITION_NOT_IN_QUE, log_buffer);
 								break;
@@ -2416,7 +2411,7 @@ mgr_node_unset(struct batch_request *preq)
 				}
 
 				/* if resources_avail.ncpus unset, reset to default */
-				patr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
+				patr = get_nattr(pnode, ND_ATR_ResourceAvail);
 				prd  = &svr_resc_def[RESC_NCPUS];
 				prc  = find_resc_entry(patr, prd);
 				if (prc == NULL) {
@@ -2428,7 +2423,7 @@ mgr_node_unset(struct batch_request *preq)
 				}
 
 				/* If the Mom attribute is unset, reset to default */
-				if ((pnode->nd_attr[(int)ND_ATR_Mom].at_flags & ATR_VFLAG_SET) == 0) {
+				if (is_nattr_set(pnode, ND_ATR_Mom) == 0) {
 					attribute tmp;
 					if (get_fullhostname(pnode->nd_name, hostname,
 							(sizeof(hostname) - 1)) != 0) {
@@ -2437,8 +2432,8 @@ mgr_node_unset(struct batch_request *preq)
 					clear_attr(&tmp, &node_attr_def[(int)ND_ATR_Mom]);
 					rc = decode_arst(&tmp, ATTR_NODE_Mom, NULL, hostname);
 					if (rc == 0) {
-						set_arst(&pnode->nd_attr[(int)ND_ATR_Mom], &tmp, INCR);
-						pnode->nd_attr[(int)ND_ATR_Mom].at_flags |= ATR_VFLAG_DEFLT;
+						set_arst(get_nattr(pnode, ND_ATR_Mom), &tmp, INCR);
+						(get_nattr(pnode, ND_ATR_Mom))->at_flags |= ATR_VFLAG_DEFLT;
 						free_arst(&tmp);
 					}
 				}
@@ -2815,10 +2810,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 	if (plx) {
 		plx->al_op = INCR;
-	} else if ((pnode->nd_attr[(int) ND_ATR_Mom].at_flags & ATR_VFLAG_SET) == 0) {
-		rc = node_attr_def[(int) ND_ATR_Mom].at_decode(
-			&pnode->nd_attr[(int) ND_ATR_Mom],
-			ATTR_NODE_Mom, NULL, pname);
+	} else if (is_nattr_set(pnode, ND_ATR_Mom) == 0) {
+		rc = set_nattr_str_slim(pnode, ND_ATR_Mom, pname, NULL);
 		if (rc != PBSE_NONE) {
 			effective_node_delete(pnode);
 			return (rc);
@@ -2834,10 +2827,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		}
 		plx = (svrattrl *)GET_NEXT(plx->al_link);
 	}
-	if ((plx == NULL) && ((pnode->nd_attr[(int)ND_ATR_Port].at_flags & ATR_VFLAG_SET) == 0)) {
-		pnode->nd_attr[(int)ND_ATR_Port].at_val.at_long = pbs_mom_port;
-		pnode->nd_attr[(int)ND_ATR_Port].at_flags = ATR_SET_MOD_MCACHE;
-	}
+	if ((plx == NULL) && (is_nattr_set(pnode, ND_ATR_Port) == 0))
+		set_nattr_l_slim(pnode, ND_ATR_Port, pbs_mom_port, SET);
 
 	/* OK, set the attributes specified */
 
@@ -2866,7 +2857,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 	 * first character.
 	 */
 
-	pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
+	pattr = get_nattr(pnode, ND_ATR_ResourceAvail);
 
 	prdef = &svr_resc_def[RESC_HOST];
 	presc = find_resc_entry(pattr, prdef);
@@ -2877,7 +2868,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			struct sockaddr_in sa4;
 			struct sockaddr_in6 sa6;
 
-			strncpy(realfirsthost, pnode->nd_attr[(int)ND_ATR_Mom].at_val.at_arst->as_string[0], (sizeof(realfirsthost) - 1));
+			strncpy(realfirsthost, (get_nattr_arst(pnode, ND_ATR_Mom))->as_string[0], (sizeof(realfirsthost) - 1));
 			realfirsthost[PBS_MAXHOSTNAME] = '\0';
 
 			if ((inet_pton(AF_INET, realfirsthost, &(sa4.sin_addr)) != 1) &&
@@ -2928,7 +2919,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 	 * The Mom structure may already exist
 	 */
 
-	pattr = &pnode->nd_attr[(int)ND_ATR_Mom];
+	pattr = get_nattr(pnode, ND_ATR_Mom);
 	for (iht = 0; iht < pattr->at_val.at_arst->as_usedptr; ++iht) {
 		unsigned int nport;
 
@@ -2963,7 +2954,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		 * responsibility for "pul" including freeing it if need be.
 		 */
 
-		nport = pnode->nd_attr[(int)ND_ATR_Port].at_val.at_long;
+		nport = get_nattr_long(pnode, ND_ATR_Port);
 
 		if ((pmom = create_svrmom_entry(phost, nport, pul, 0)) == NULL) {
 			free(pul);
@@ -2994,10 +2985,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		/* If this is the "natural vnode" (i.e. 0th entry) */
 		if (pnode->nd_nummoms == 1) {
-			if ((pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
-			    (pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
-				smp->msr_vnode_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
-			}
+			if (is_nattr_set(pnode, ND_ATR_vnode_pool) && get_nattr_long(pnode, ND_ATR_vnode_pool) > 0)
+				smp->msr_vnode_pool = get_nattr_long(pnode, ND_ATR_vnode_pool);
 		}
 	}
 
@@ -3417,9 +3406,7 @@ struct batch_request *preq;
 	}
 
 	mymom   = pnode->nd_moms[0];
-	vn_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
-	if ((pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
-	   (vn_pool > 0)) {
+	if (is_nattr_set(pnode, ND_ATR_vnode_pool) && ((vn_pool = get_nattr_long(pnode, ND_ATR_vnode_pool)) > 0)) {
 		if (add_mom_to_pool(mymom) == PBSE_NONE) {
 			/* cross link any vnodes of an existing Mom in pool */
 			int i;
@@ -3842,7 +3829,7 @@ mgr_resource_delete(struct batch_request *preq)
 	for (i=0; i < svr_totnodes; i++) {
 		updatedb = 0;
 		for (j=0; j < ND_ATR_LAST; j++) {
-			pattr = &pbsndlist[i]->nd_attr[j];
+			pattr = get_nattr(pbsndlist[i], j);
 			if (is_attr_set(pattr) && (pattr->at_type == ATR_TYPE_RESC || pattr->at_type == ATR_TYPE_ENTITY)) {
 				plist = attrlist_create(node_attr_def[j].at_name, prdef->rs_name, 0);
 				plist->al_link.ll_next->ll_struct = NULL;
@@ -4060,9 +4047,10 @@ mgr_resource_set(struct batch_request *preq)
 		if (pbsndlist[i]->nd_state & INUSE_DELETED)
 			continue;
 
-		pattr = &pbsndlist[i]->nd_attr[ND_ATR_ResourceAvail];
+		// FIXME: is below correct?
+		pattr = get_nattr(pbsndlist[i], ND_ATR_ResourceAvail);
 		for (j=0; j < ND_ATR_LAST; j++) {
-			pattr = &pbsndlist[i]->nd_attr[j];
+			pattr = get_nattr(pbsndlist[i], j);
 			presc = get_resource(pattr, prdef);
 			if ((presc != NULL) && (mod_type == 1)) {
 				reply_text(preq, PBSE_RESCBUSY, "Resource busy on node");
@@ -4264,7 +4252,7 @@ mgr_resource_unset(struct batch_request *preq)
 			continue;
 
 		for (j=0; j < ND_ATR_LAST; j++) {
-			pattr = &pbsndlist[i]->nd_attr[j];
+			pattr = get_nattr(pbsndlist[i], j);
 			presc = get_resource(pattr, prdef);
 			if ((presc != NULL) && (mod == 1)) {
 				reply_text(preq, PBSE_RESCBUSY, "Resource busy on node");
@@ -4749,13 +4737,11 @@ node_comment(attribute *pattr, void *pobj, int act)
 int
 node_prov_enable_action(attribute *new, void *pobj, int act)
 {
-	struct pbsnode *pnode = (struct pbsnode*) pobj;
+	struct pbsnode *pnode = (struct pbsnode *) pobj;
 
 	if (is_attr_set(new) && new->at_val.at_long == 1) {
-		attribute *nd_attr = pnode->nd_attr;
 		/* Check user tries to set on Head node */
-		if ((nd_attr[(int)ND_ATR_Mom].at_flags & ATR_VFLAG_SET) &&
-			compare_short_hostname(nd_attr[(int) ND_ATR_Mom].at_val.at_str, server_host) == 0)
+		if (is_nattr_set(pnode, ND_ATR_Mom) && compare_short_hostname(get_nattr_str(pnode, ND_ATR_Mom), server_host) == 0)
 			return PBSE_PROV_HEADERROR;
 	}
 
@@ -4914,10 +4900,7 @@ node_current_aoe_action(attribute *new, void *pobj, int act)
 		return PBSE_NONE;
 
 	/* Check user tries to set on Head node */
-	if ((pnode->nd_attr[(int) ND_ATR_Mom].at_flags & ATR_VFLAG_SET)
-		&& compare_short_hostname(
-		pnode->nd_attr[(int) ND_ATR_Mom].at_val.at_str,
-		server_host) == 0)
+	if (is_nattr_set(pnode, ND_ATR_Mom) && compare_short_hostname(get_nattr_str(pnode, ND_ATR_Mom), server_host) == 0)
 		return PBSE_PROV_HEADERROR;
 
 	/* Don't set/unset while provisioning */

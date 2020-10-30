@@ -149,6 +149,11 @@ PyInit__pbs_ifl(void) {
 #endif
 
 int
+node_state(attribute *new, void *pnode, int actmode) {
+	return 0;
+}
+
+int
 set_resources_min_max(attribute *old, attribute *new, enum batch_op op) {
 	return (0);
 }

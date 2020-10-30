@@ -614,6 +614,7 @@ int set_attr_with_attr(attribute_def *pdef, attribute *oattr, attribute *nattr, 
 void set_attr_l(attribute *pattr, long value, enum batch_op op);
 void set_attr_c(attribute *pattr, char value, enum batch_op op);
 void set_attr_b(attribute *pattr, long val, enum batch_op op);
+void set_attr_short(attribute *pattr, short value, enum batch_op op);
 void mark_attr_not_set(attribute *attr);
 void mark_attr_set(attribute *attr);
 
