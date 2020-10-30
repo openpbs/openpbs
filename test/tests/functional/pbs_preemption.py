@@ -711,10 +711,10 @@ exit 3
 
         a = {'resources_available.ncpus': 1, 'resources_available.app': 'appA'}
         self.mom.create_vnodes(a, num=1,
-                               usenatvnode=False)
+                               usenatvnode=False, vname='vna')
         b = {'resources_available.ncpus': 1, 'resources_available.app': 'appB'}
         self.mom.create_vnodes(b, num=1,
-                               usenatvnode=False, additive=True)
+                               usenatvnode=False, additive=True, vname='vnb')
 
         # set the preempt_order to kill/requeue only -- try old and new syntax
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'})
@@ -734,8 +734,7 @@ exit 3
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "lopri")
 
         # submit job 1
-        a = {'Resource_List.select': '1:ncpus=1:vnode=' +
-             self.mom.shortname + '[0]', ATTR_q: 'lopri'}
+        a = {'Resource_List.select': '1:ncpus=1:vnode=vna[0]', ATTR_q: 'lopri'}
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
 
