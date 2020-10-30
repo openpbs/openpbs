@@ -2464,9 +2464,11 @@ class TestReservations(TestFunctional):
         next_day_start = PBSLogUtils.convert_date_time(
             next_day_start.strftime("%m/%d/%Y %H:%M:%S"))
         next_day_end = next_day_start + 86400
-        self.scheduler.set_sched_config({'resv_confirm_ignore': 'dedicated_time'})
+        self.scheduler.set_sched_config({'resv_confirm_ignore':
+                                         'dedicated_time'})
 
-        self.scheduler.add_dedicated_time(start=next_day_start, end=next_day_end)
+        self.scheduler.add_dedicated_time(start=next_day_start,
+                                          end=next_day_end)
         now = time.time()
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                       start=now + 5, end=now + 3600)
