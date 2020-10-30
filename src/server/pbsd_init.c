@@ -1076,9 +1076,7 @@ pbsd_init(int type)
 	buf_len = 0;
 	for (i=0; i<svr_totnodes; i++) {
 		struct array_strings *arst;
-		arst = pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_val.at_arst;
-		if (pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_flags & ATR_VFLAG_SET &&
-		    arst->as_usedptr > 0) {
+		if (is_nattr_set(pbsndlist[i], ND_ATR_MaintJobs) && (arst = get_nattr_arst(pbsndlist[i], ND_ATR_MaintJobs))->as_usedptr > 0) {
 			int j;
 			int len = 0;
 			int cur_len = 0;
@@ -1113,7 +1111,7 @@ pbsd_init(int type)
 				buf[cur_len - 1] = '\0'; /* remove trailing comma */
 				clear_attr(&new, &node_attr_def[(int) ND_ATR_MaintJobs]);
 				decode_arst(&new, ATTR_NODE_MaintJobs, NULL, buf);
-				set_arst(&pbsndlist[i]->nd_attr[(int) ND_ATR_MaintJobs], &new, DECR);
+				set_arst(get_nattr(pbsndlist[i], ND_ATR_MaintJobs), &new, DECR);
 			}
 
 			if(arst->as_usedptr > 0)
@@ -1567,8 +1565,7 @@ pbsd_init_node(pbs_db_node_info_t *dbnode, int type)
 		if (mom_modtime)
 			np->nd_moms[0]->mi_modtime = mom_modtime;
 
-		if ((np->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
-			(np->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
+		if (is_nattr_set(np, ND_ATR_vnode_pool) && get_nattr_long(np, ND_ATR_vnode_pool) > 0) {
 			mominfo_t *pmom = np->nd_moms[0];
 			if (pmom && (np == ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[0])) {
 				/* natural vnode being recovered, add to pool */

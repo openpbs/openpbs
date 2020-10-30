@@ -231,7 +231,7 @@ sum_resc_alloc(const job *pjob, pbs_list_head *list)
 
 					pnode->nd_accted = 1;  /* mark that it has been recorded */
 					for (i=0; svr_resc_sum[i].rs_def; ++i) {
-						presc = find_resc_entry(&pnode->nd_attr[ND_ATR_ResourceAvail], svr_resc_sum[i].rs_def);
+						presc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), svr_resc_sum[i].rs_def);
 						if (presc && (is_attr_set(&presc->rs_value))) {
 							(void)svr_resc_sum[i].rs_def->rs_set(&svr_resc_sum[i].rs_attr, &presc->rs_value, INCR);
 							svr_resc_sum[i].rs_set = 1;

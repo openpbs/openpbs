@@ -181,7 +181,7 @@ node_recov_db(char *nd_name, struct pbsnode *pnode)
 		log_errf(PBSE_INTERNAL, __func__, "Failed to load node %s %s", nd_name, conn_db_err ? conn_db_err : "");
 		free(conn_db_err);
 	}
-	
+
 	free_db_attr_list(&dbnode.db_attr_list);
 
 	if (rc != 0) {
@@ -212,10 +212,10 @@ node_to_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	strcpy(pdbnd->nd_name, pnode->nd_name);
 
 	savetype |= OBJ_SAVE_QS;
-	/* nodes do not have a qs area, so we cannot check whether qs changed or not 
+	/* nodes do not have a qs area, so we cannot check whether qs changed or not
 	 * hence for now, we always write the qs area, for now!
 	 */
-		
+
 	/* node_index is used to sort vnodes upon recovery.
 	* For Cray multi-MoM'd vnodes, we ensure that natural vnodes come
 	* before the vnodes that it manages by introducing offsetting all
@@ -225,10 +225,10 @@ node_to_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 
 	if (pnode->nd_hostname)
 		strcpy(pdbnd->nd_hostname, pnode->nd_hostname);
-	
+
 	if (pnode->nd_moms && pnode->nd_moms[0])
 		pdbnd->mom_modtime = pnode->nd_moms[0]->mi_modtime;
-	
+
 	pdbnd->nd_ntype = pnode->nd_ntype;
 	pdbnd->nd_state = pnode->nd_state;
 	if (pnode->nd_pque)
@@ -299,7 +299,7 @@ node_to_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 		char *vn_str;
 		svrattrl *pal;
 
-		vn_str = vnode_sharing_to_str((enum vnode_sharing) pnode->nd_attr[ND_ATR_Sharing].at_val.at_long);
+		vn_str = vnode_sharing_to_str((enum vnode_sharing) get_nattr_long(pnode, ND_ATR_Sharing));
 		pal = make_attr(ATTR_NODE_Sharing, "", vn_str, 0);
 		append_link(&pdbnd->db_attr_list.attrs, &pal->al_link, pal);
 
@@ -349,7 +349,7 @@ node_save_db(struct pbsnode *pnode)
 
 done:
 	free_db_attr_list(&dbnode.db_attr_list);
-	
+
 	if (rc != 0) {
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
 		log_errf(PBSE_INTERNAL, __func__, "Failed to save node %s %s", pnode->nd_name, conn_db_err? conn_db_err : "");
@@ -413,7 +413,7 @@ recov_node_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 	*refreshed = 0;
 	if ((pnode = pbsd_init_node(dbnode, load_type)) != NULL)
 		*refreshed = 1;
- 
+
 	free_db_attr_list(&dbnode->db_attr_list);
 	if (pnode == NULL)
 		log_errf(-1, __func__, "Failed to load node %s", dbnode->nd_name);

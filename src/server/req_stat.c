@@ -647,20 +647,17 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	/* sync state attribute with nd_state */
 
-	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_long) {
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
-		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_MOD_MCACHE;
-	}
+	if (pnode->nd_state != get_nattr_long(pnode, ND_ATR_state))
+		set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 
 	/*node is provisioning - mask out the DOWN/UNKNOWN flags while prov is on*/
-	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_long &
-		(INUSE_PROV | INUSE_WAIT_PROV)) {
-		old_nd_state = pnode->nd_attr[(int)ND_ATR_state].at_val.at_long;
+	if (get_nattr_long(pnode, ND_ATR_state) & (INUSE_PROV | INUSE_WAIT_PROV)) {
+		old_nd_state = get_nattr_long(pnode, ND_ATR_state);
 
 		/* don't want to show job-busy, job/resv-excl while provisioning */
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long &=
-			~(INUSE_DOWN | INUSE_UNKNOWN | INUSE_JOB |
-			INUSE_JOBEXCL | INUSE_RESVEXCL);
+		set_nattr_l_slim(pnode, ND_ATR_state,
+				 old_nd_state & ~(INUSE_DOWN | INUSE_UNKNOWN | INUSE_JOB | INUSE_JOBEXCL | INUSE_RESVEXCL),
+				 SET);
 	}
 
 	/*allocate status sub-structure and fill in header portion*/
@@ -690,8 +687,8 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	/*reverting back the state*/
 
-	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_long & INUSE_PROV)
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = old_nd_state ;
+	if (get_nattr_long(pnode, ND_ATR_state) & INUSE_PROV)
+		set_nattr_l_slim(pnode, ND_ATR_state, old_nd_state, SET);
 
 
 	return (rc);

@@ -1038,62 +1038,6 @@ set_nodeflag(char *str, unsigned long *pflag)
 	return rc;
 }
 
-
-/**
- * @brief
- * 	Set node 'pnode's state to either use the non-down or non-inuse node state value,
- * 	or the value derived from the 'new' attribute state.
- *
- * @param[in] 		new - input attribute to derive state from
- * @param[in/out]	pnode - node who state is being set.
- * @param[in]		actmode - action mode: "NEW" or "ALTER"
- *
- * @return int
- * @retval 0			if set normally
- * @retval PBSE_NODESTALE	if pnode's state is INUSE_STALE
- * @retval PBSE_NODEPROV	if pnode's state is INUSE_PROV
- * 	   PBSE_INTERNAL	if 'actmode' is unrecognized
- */
-
-int
-node_state(attribute *new, void *pnode, int actmode)
-{
-	int rc = 0;
-	struct pbsnode* np;
-	static unsigned long keep = ~(INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_SLEEP);
-
-
-	np = (struct pbsnode*)pnode;	/*because of def of at_action  args*/
-
-	/* cannot change state of stale node */
-	if (np->nd_state & INUSE_STALE)
-		return PBSE_NODESTALE;
-
-	/* cannot change state of provisioning node */
-	if (np->nd_state & INUSE_PROV)
-		return PBSE_NODEPROV;
-
-	switch (actmode) {
-
-		case ATR_ACTION_NEW:  /*derive attribute*/
-			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
-			break;
-
-		case ATR_ACTION_ALTER:
-			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
-			break;
-
-		default: rc = PBSE_INTERNAL;
-	}
-	/* Now that we are setting the node state, same state should also reflect on the mom */
-	if (np->nd_nummoms == 1) {
-		mom_svrinfo_t *pmom_svr = (mom_svrinfo_t *)np->nd_moms[0]->mi_data;
-		pmom_svr->msr_state = (pmom_svr->msr_state & keep) | new->at_val.at_long;
-	}
-	return rc;
-}
-
-
 /**
  * @brief
  * 	node_ntype - Either derive an "ntype" attribute from the node

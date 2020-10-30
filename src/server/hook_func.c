@@ -3657,7 +3657,7 @@ get_vnode_list(void){
 				strcat(name_str_buf, ".");
 				strncat(name_str_buf, (padef+index)->at_name, (STRBUF - strlen(name_str_buf)));
 				if ((padef+index)->at_encode(
-						&pnode->nd_attr[index],
+						get_nattr(pnode, index),
 						&vnode_attr_list, name_str_buf,
 						NULL, ATR_ENCODE_HOOK, NULL) < 0) {
 					char *msgbuf;

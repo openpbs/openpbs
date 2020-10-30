@@ -4337,7 +4337,6 @@ free_pvnfo(struct prov_vnode_info *pvnfo)
 int
 check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 {
-	attribute		*pala;
 	resource_def		*prd;
 	resource		*prc;
 	struct array_strings 	*pas;
@@ -4346,13 +4345,10 @@ check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 	if (!pnode || !aoe_req)
 		return -1;
 
-	/* get the resources_available.aoe arst */
-	pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-
 	prd = &svr_resc_def[RESC_AOE];
 	if (prd == NULL)
 		return -1;
-	prc = find_resc_entry(pala, prd);
+	prc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prd);
 	if (prc) {
 		pas = prc->rs_value.at_val.at_arst;
 
@@ -4503,7 +4499,6 @@ parse_prov_vnode(char *prov_vnode, exec_vnode_listtype *prov_vnodes)
 static int
 node_need_prov(struct pbsnode *pnode, char *aoe_name)
 {
-	attribute       *pattr;
 	resource        *presc;
 	resource_def    *prdef;
 	char		*aoe;	/* hold current_aoe of pnode */
@@ -4514,8 +4509,7 @@ node_need_prov(struct pbsnode *pnode, char *aoe_name)
 		return -1;
 
 	prdef = &svr_resc_def[RESC_AOE];
-	pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-	presc = find_resc_entry(pattr, prdef);
+	presc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prdef);
 
 	/* if resources_available.aoe not set */
 	if (presc == NULL)
@@ -4528,7 +4522,7 @@ node_need_prov(struct pbsnode *pnode, char *aoe_name)
 		for (i = 0; i < pas->as_usedptr; i++) {
 			if (strcmp(pas->as_string[i], aoe_name) == 0) {  /* aoe is available */
 				/* if aoe is already instantiated */
-				aoe = pnode->nd_attr[(int)ND_ATR_current_aoe].at_val.at_str;
+				aoe = get_nattr_str(pnode, ND_ATR_current_aoe);
 				if (aoe != NULL) {
 					if (strcmp(aoe_name, aoe) == 0)
 						return 0;
@@ -4893,11 +4887,8 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 		} else {
 			/* check if node has the correct aoe or not */
 			current_aoe = NULL;
-			if (np->nd_attr[(int)ND_ATR_current_aoe].at_flags
-				& ATR_VFLAG_SET)
-				current_aoe =
-					np->nd_attr[(int)ND_ATR_current_aoe].
-				at_val.at_str;
+			if (is_nattr_set(np, ND_ATR_current_aoe))
+				current_aoe = get_nattr_str(np, ND_ATR_current_aoe);
 
 			if ((current_aoe == NULL) ||
 				strcmp(current_aoe,  aoe_req) != 0) {
@@ -5072,8 +5063,7 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 	}
 
 	/* unset the current aoe settings, as this may not be right now */
-	(void)node_attr_def[(int)ND_ATR_current_aoe].at_free(
-		&pnode->nd_attr[(int)ND_ATR_current_aoe]);
+	free_nattr(pnode, ND_ATR_current_aoe);
 
 	DBPRT(("%s: node=%s set to offline, resetting current_aoe\n",
 		__func__, pnode->nd_name))
@@ -5087,14 +5077,8 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 
 	if (comment != NULL) {
 		/* log msg about marking node as offline */
-		snprintf(log_buffer, sizeof(log_buffer), "Vnode %s: %s",
-			pnode->nd_name, comment);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-			LOG_NOTICE, msg_daemonname, log_buffer);
-
-		node_attr_def[(int)ND_ATR_Comment].at_decode(
-			&pnode->nd_attr[(int)ND_ATR_Comment],
-			ATTR_comment, NULL, comment);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_NOTICE, msg_daemonname, "Vnode %s: %s", pnode->nd_name, comment);
+		set_nattr_str_slim(pnode, ND_ATR_Comment, comment, NULL);
 	}
 
 }
@@ -5634,11 +5618,7 @@ prov_request_deferred(struct work_task *wtask)
 		}
 
 		/* Update Current aoe */
-		(void)node_attr_def[(int)ND_ATR_current_aoe].at_decode(
-			&pnode->nd_attr[(int)ND_ATR_current_aoe],
-			ATTR_NODE_current_aoe,
-			NULL,
-			prov_vnode_info->pvnfo_aoe_req);
+		set_nattr_str_slim(pnode, ND_ATR_current_aoe, prov_vnode_info->pvnfo_aoe_req, NULL);
 
 		DBPRT(("%s: node:%s current_aoe set: %s\n",
 			__func__, pnode->nd_name, prov_vnode_info->pvnfo_aoe_req))
@@ -6108,8 +6088,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	 * This is now done earlier
 	 */
 	/* unset the current_aoe for the node here provisioning */
-	(void)node_attr_def[(int)ND_ATR_current_aoe].at_free(
-		&(pnode->nd_attr[(int)ND_ATR_current_aoe]));
+	free_nattr(pnode, ND_ATR_current_aoe);
 
 
 	/* write the node current_aoe */
