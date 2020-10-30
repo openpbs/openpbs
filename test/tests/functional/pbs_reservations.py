@@ -2452,3 +2452,72 @@ class TestReservations(TestFunctional):
         self.assertEqual(
             jid2[1], '(' + vn + '[1]:ncpus=4+' + vn + '[2]:ncpus=4)')
         self.assertNotIn(job1_node, job2_node, errmsg)
+
+    def test_resv_confirm_ignore_set_dedicated_time(self):
+        """
+        Test reservation timing with resv_confirm_ignore set to dedicated_time
+        in sched_config
+        """
+        next_day = datetime.date.today() + datetime.timedelta(days=1)
+        next_day_start = datetime.datetime.combine(
+            next_day, datetime.time(0, 0, 0, 0))
+        next_day_start = PBSLogUtils.convert_date_time(
+            next_day_start.strftime("%m/%d/%Y %H:%M:%S"))
+        next_day_end = next_day_start + 86400
+        self.scheduler.set_sched_config({'resv_confirm_ignore': 'dedicated_time'})
+
+        self.scheduler.add_dedicated_time(start=next_day_start, end=next_day_end)
+        now = time.time()
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      start=now + 5, end=now + 3600)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=5)
+        resv_queue = rid.split('.')[0]
+        a = {'Resource_List.walltime': '00:02:00', ATTR_queue: resv_queue}
+        J1 = Job(attrs=a)
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.delete(jid1, wait=True)
+        a = {'Resource_List.walltime': '23:00:00', ATTR_queue: resv_queue}
+        J2 = Job(attrs=a)
+        J2.set_sleep_time(3600)
+        jid2 = self.server.submit(J2)
+        msg = "Job would cross dedicated time boundary"
+        attrs = {ATTR_comment: "Not Running: " + msg, ATTR_state: 'Q'}
+        self.server.delete(jid2, wait=True)
+        self.server.delete(rid, wait=True)
+
+        now = time.time()
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      start=now + 5, end=now + 86400)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=5)
+        resv_queue = rid.split('.')[0]
+        a = {'Resource_List.walltime': '00:02:00', ATTR_queue: resv_queue}
+        J1 = Job(attrs=a)
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.delete(jid1, wait=True)
+        a = {'Resource_List.walltime': '23:00:00', ATTR_queue: resv_queue}
+        J2 = Job(attrs=a)
+        J2.set_sleep_time(3600)
+        jid2 = self.server.submit(J2)
+        msg = "Job would cross dedicated time boundary"
+        attrs = {ATTR_comment: "Not Running: " + msg, ATTR_state: 'Q'}
+        self.server.expect(JOB, attrs, id=jid2)
+        self.server.delete(jid2, wait=True)
+        self.server.delete(rid, wait=True)
+
+        now = time.time()
+        self.scheduler.add_dedicated_time(start=now+10, end=now+300)
+        rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
+                                      start=now + 5, end=now + 60)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=5)
+        resv_queue = rid.split('.')[0]
+        a = {'Resource_List.walltime': '00:02:00', ATTR_queue: resv_queue}
+        J1 = Job(attrs=a)
+        jid1 = self.server.submit(J1)
+        msg = "Dedicated time conflict"
+        attrs = {ATTR_comment: "Not Running: " + msg, ATTR_state: 'Q'}
+        self.server.expect(JOB, attrs, id=jid1)
