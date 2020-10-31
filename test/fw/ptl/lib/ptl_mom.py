@@ -169,7 +169,7 @@ class MoM(PBSService):
         self.revert_to_default = True
         self.sleep_cmd = '/bin/sleep'
 
-    def format_stagein_path(self, storage_info={}, asuser=None):
+    def create_and_format_stagein_path(self, storage_info={}, asuser=None):
         """
         Return the formatted stagein path
         :param storage_info: The name of the process to query.
@@ -197,13 +197,16 @@ class MoM(PBSService):
                                                 storage_file_prefix,
                                                 asuser=asuser)
 
+        # Adding '2' to execution host's filename to have different
+        # name than storage host's filename
         execution_path = storage_path + '2'
 
         path = '%s@%s:%s' % (execution_path, storage_host, storage_path)
         return path
 
-    def format_stageout_path(self, execution_info={}, storage_info={},
-                             asuser=None):
+    def create_and_format_stageout_path(self, execution_info={},
+                                        storage_info={},
+                                        asuser=None):
         """
         Return the formatted stageout path
         :param execution_info: Contains execution host information
@@ -564,11 +567,6 @@ class MoM(PBSService):
         :param vals_to_set: dict of pbs.conf values to set
         :type vals_to_set: dict
         """
-        '''svr_hostnames = [svr.hostname for svr in self.servers.values()]
-
-        #for mom in moms.values():
-        if self.hostname in svr_hostnames:
-            return'''
 
         new_pbsconf = dict(vals_to_set)
         restart_mom = False
@@ -709,7 +707,7 @@ class MoM(PBSService):
 
     def is_only_linux(self):
         """
-        Returns True if testing cluster is only Linux
+        Returns True if MoM is only Linux
         """
         return True
 

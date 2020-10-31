@@ -690,6 +690,7 @@ class BatchUtils(object):
                 m = self.pbsobjattrval_re.match(l)
                 if m:
                     attr = m.group('attribute')
+                    # Revisit this after having separate VNODE class
                     if (attribs is None or attr.lower() in attribs or
                             attr in attribs or (obj_type == MGR_OBJ_NODE and
                                                 attr == 'Mom')):

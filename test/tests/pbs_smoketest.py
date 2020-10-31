@@ -591,8 +591,8 @@ class SmokeTest(PBSTestSuite):
         """
         execution_info = {}
         storage_info = {}
-        stagein_path = self.mom.format_stagein_path(storage_info,
-                                                    asuser=str(TEST_USER))
+        stagein_path = self.mom.create_and_format_stagein_path(
+                        storage_info, asuser=str(TEST_USER))
         a = {ATTR_stagein: stagein_path}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
@@ -600,9 +600,8 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
         execution_info['hostname'] = self.mom.hostname
         storage_info['hostname'] = self.server.hostname
-        stageout_path = self.mom.format_stageout_path(execution_info,
-                                                      storage_info,
-                                                      asuser=str(TEST_USER))
+        stageout_path = self.mom.create_and_format_stageout_path(
+                         execution_info, storage_info, asuser=str(TEST_USER))
         a = {ATTR_stageout: stageout_path}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
@@ -1028,8 +1027,7 @@ class SmokeTest(PBSTestSuite):
         Check wether <ppid> is in Suspended state, return True if
         <ppid> in Suspended state else return False
         """
-        ret = self.mom.is_proc_suspended(ppid)
-        return ret
+        return self.mom.is_proc_suspended(ppid)
 
     def do_preempt_config(self):
         """

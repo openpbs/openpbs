@@ -1608,6 +1608,8 @@ class Server(PBSService):
                 os.chdir(submit_dir)
         c = None
 
+        # Revisit this after fixing submitting of executables without
+        # the whole path
         # Get sleep command depending on which Mom the job will run
         if ((ATTR_executable in obj.attributes) and
            ('sleep' in obj.attributes[ATTR_executable])):
