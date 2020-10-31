@@ -70,51 +70,6 @@ node_states = {
     'ND_VNODE_UNAVAILABLE': 409903
 }
 
-def get_hook_body(hook_msg):
-    hook_body = """
-    import pbs
-    import sys, os
-    from pprint import pformat
-    pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
-    try:
-        e = pbs.event()
-        new_vnode_name = e.vnode.name
-        old_vnode_name = e.vnode_o.name
-        new_state = e.vnode.state
-        old_state = e.vnode_o.state
-        new_lsc_time = e.vnode.last_state_change_time
-        old_lsc_time = e.vnode_o.last_state_change_time
-        
-        # print show_vnode_state record
-        v = e.vnode
-        v_o = e.vnode_o
-        lsct = v.last_state_change_time
-        lsct_o = v_o.last_state_change_time
-        svs_str1 = new_vnode_name + ' v.state_hex=' + hex(new_state) + ' v_o.state_hex=' + hex(old_state)
-        svs_str2 = ' v.state_strs=' +  str(v.extract_state_strs()) + ' v_o.state_strs=' 
-        svs_str3 = str(v_o.extract_state_strs()) + ' v.state_ints=' + str(v.extract_state_ints())
-        svs_str4 = ' v_o.state_ints=' + str(v_o.extract_state_ints()) + ' v.lsct=' + str(lsct)
-        svs_str5 = svs_str1 + svs_str2 + svs_str3 + svs_str4 + ' v_o.lsct=' + str(lsct_o)
-        pbs.logmsg(pbs.LOG_DEBUG, 'show_vnode_state;name=' + svs_str5)
-        
-        # print additional info
-        pbs.logmsg(pbs.LOG_DEBUG, 'new_vnode_name:' + new_vnode_name)
-        pbs.logmsg(pbs.LOG_DEBUG, 'new_last_state_change_time: ' + str(new_lsc_time))
-        pbs.logmsg(pbs.LOG_DEBUG, 'new_state:' + hex(new_state))
-        pbs.logmsg(pbs.LOG_DEBUG, 'old_vnode_name:' + old_vnode_name)
-        pbs.logmsg(pbs.LOG_DEBUG, 'old_last_state_change_time: ' + str(old_lsc_time))
-        pbs.logmsg(pbs.LOG_DEBUG, 'old_state:' + hex(old_state))
-        pbs.logmsg(pbs.LOG_DEBUG, '%s')
-    except Exception as err:
-        ty, _, tb = sys.exc_info()
-        pbs.logmsg(pbs.LOG_DEBUG, str(ty) + str(tb.tb_frame.f_code.co_filename)
-                   + str(tb.tb_lineno))
-        e.reject()
-    else:
-        e.accept()
-    """ % hook_msg
-    hook_body = textwrap.dedent(hook_body)
-    return hook_body
 
 def get_hook_body_modifyvnode_param_rpt():
     hook_body = """
