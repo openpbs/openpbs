@@ -1,4 +1,6 @@
-# Copyright (C) 1994-2021 Altair Engineering, Inc.
+#!/bin/sh
+#
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -35,39 +37,9 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
-
-
-# It's not recommended to modify this file in-place, because it will be
-# overwritten during package upgrades.  If you want to customize, the
-# best way is to create a file "/etc/systemd/system/pbs.service",
-# containing
-#       .include /lib/systemd/system/pbs.service
-#       ...make your changes here...
-# For more info about custom unit files, see -
-# http://fedoraproject.org/wiki/Systemd#How_do_I_customize_a_unit_file.2F_add_a_custom_unit_file.3F
-
-
-[Unit]
-Documentation=man:pbs(8)
-SourcePath=@prefix@/libexec/pbs_init.d
-Description=Portable Batch System
-After=network-online.target remote-fs.target nss-lookup.target
-Wants=network-online.target
-DefaultDependencies=true
-
-[Service]
-Type=forking
-Restart=no
-TimeoutStartSec=0
-TimeoutStopSec=5min
-Delegate=yes
-IgnoreSIGPIPE=no
-GuessMainPID=no
-ExecStart=@prefix@/libexec/pbs_init.d start
-ExecStop=@prefix@/libexec/pbs_init.d stop
-ExecReload=@prefix@/libexec/pbs_wrap @prefix@/libexec/pbs_init.d start
-TasksMax=infinity
-
-[Install]
-WantedBy=multi-user.target
+check_cgroup=$$
+cgpath=/sys/fs/cgroup/systemd/system.slice/pbs.service
+if [ -e $cgpath/cgroup.procs ]; then
+    echo $check_cgroup > $cgpath/cgroup.procs
+fi
+exec "$@"
