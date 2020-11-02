@@ -160,7 +160,6 @@ typedef struct _pbs_python_types_entry {
 #define  PP_MANAGEMENT_IDX	27
 #define  PP_SERVER_ATTRIBUTE_IDX 28
 
-
 pbs_python_types_entry pbs_python_types_table [] = {
 	{PY_TYPE_ATTR_DESCRIPTOR, 		NULL},	/* 0 Always first */
 	{PY_TYPE_GENERIC, 			NULL},

@@ -1444,7 +1444,7 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
 				&svr_management_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_MODIFYVNODE) == 0) {
-			if (phook->event & HOOK_EVENT_MODIFYVNODE)
+			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
 			delete_link(&phook->hi_modifyvnode_hooks);
 			phook->event 	|= HOOK_EVENT_MODIFYVNODE;

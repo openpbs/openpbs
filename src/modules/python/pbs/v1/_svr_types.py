@@ -467,24 +467,25 @@ class _vnode():
     def extract_state_strs(self):
         """returns the string values from the state bits."""
         lst = []
-        for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
-            if self.state & mask:
-                lst.append(value)
-            elif self.state == _pbs_v1.ND_FREE:
-                lst.append('ND_FREE')
-                break
+        if self.state == _pbs_v1.ND_FREE:
+            lst.append('ND_FREE')
+            lst.append('ND_VNODE_AVAILABLE')
+        else:
+            for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
+                if self.state & mask:
+                    lst.append(value)
         return lst
     #: m(extract_state_strs)
 
     def extract_state_ints(self):
         """returns the integer values from the state bits."""
         lst = []
-        for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
-            if self.state & mask:
-                lst.append(mask)
-            elif self.state == _pbs_v1.ND_FREE:
-                lst.append(_pbs_v1.ND_FREE)
-                break
+        if self.state == _pbs_v1.ND_FREE:
+            lst.append(_pbs_v1.ND_FREE)
+        else:
+            for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
+                if self.state & mask:
+                    lst.append(mask)
         return lst
     #: m(extract_state_ints)
 
@@ -1544,15 +1545,6 @@ _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
 _pbs_v1.REVERSE_NODE_STATE = {}
-
-_nd_exclusion_list = [
-	"ND_PBS", 
-	"ND_DEFAULT_SHARED", 
-	"ND_DEFAULT_EXCL", 
-	"ND_FORCE_EXCL", 
-	"ND_IGNORE_EXCL", 
-	"ND_FORCE_EXCLHOST", 
-	"ND_DEFAULT_EXCLHOST"]
     
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
@@ -1565,5 +1557,5 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_BATCH_OPS[value] = key
     elif key.startswith("ATR_VFLAG_"):
         _pbs_v1.REVERSE_ATR_VFLAGS[value] = key
-    elif key.startswith("ND_") and key not in _nd_exclusion_list:
+    elif key.startswith("ND_STATE_"):
         _pbs_v1.REVERSE_NODE_STATE[value] = key
