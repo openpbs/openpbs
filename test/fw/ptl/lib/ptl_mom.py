@@ -52,7 +52,6 @@ import string
 import sys
 import tempfile
 import time
-from distutils.version import LooseVersion
 
 
 from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
@@ -160,7 +159,6 @@ class MoM(PBSService):
                                 '$usecp': '*:%s %s' % (usecp, usecp)}
         else:
             self.dflt_config = {'$clienthost': self.server.hostname}
-        self.version = None
         self._is_cpuset_mom = None
 
         # If this is true, the mom will revert to default.
@@ -424,35 +422,6 @@ class MoM(PBSService):
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                max_attempts, interval, starttime, endtime,
                                level, existence)
-
-    def pbs_version(self):
-        """
-        Get the PBS version
-        """
-        if self.version:
-            return self.version
-
-        exe = os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbs_mom')
-        version = self.du.run_cmd(self.hostname,
-                                  [exe, '--version'], sudo=True)['out']
-        if version:
-            self.logger.debug(version)
-            # in some cases pbs_mom --version may return multiple lines, we
-            # only care about the one that carries pbs_version information
-            for ver in version:
-                if 'pbs_version' in ver:
-                    version = ver.split('=')[1].strip()
-                    break
-        else:
-            version = self.log_match('pbs_version', tail=False)
-            if version:
-                version = version[1].strip().split('=')[1].strip()
-            else:
-                version = "unknown"
-
-        self.version = LooseVersion(version)
-
-        return self.version
 
     def delete_vnodes(self):
         rah = ATTR_rescavail + '.host'

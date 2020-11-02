@@ -1495,7 +1495,6 @@ class PBSTestSuite(unittest.TestCase):
             mom.start()
             msg = 'Failed to restart mom ' + mom.hostname
             self.assertTrue(mom.isUp(), msg)
-        mom.pbs_version()
         restart = False
         enabled_cpuset = False
         if ((self.revert_to_defaults and self.mom_revert_to_defaults and
