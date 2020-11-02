@@ -467,9 +467,9 @@ class _vnode():
     def extract_state_strs(self):
         """returns the string values from the state bits."""
         lst = []
-        if self.state == _pbs_v1.ND_FREE:
-            lst.append('ND_FREE')
-            lst.append('ND_VNODE_AVAILABLE')
+        if self.state == _pbs_v1.ND_STATE_FREE:
+            lst.append('ND_STATE_FREE')
+            lst.append('ND_STATE_VNODE_AVAILABLE')
         else:
             for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
                 if self.state & mask:
@@ -480,8 +480,8 @@ class _vnode():
     def extract_state_ints(self):
         """returns the integer values from the state bits."""
         lst = []
-        if self.state == _pbs_v1.ND_FREE:
-            lst.append(_pbs_v1.ND_FREE)
+        if self.state == _pbs_v1.ND_STATE_FREE:
+            lst.append(_pbs_v1.ND_STATE_FREE)
         else:
             for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
                 if self.state & mask:
