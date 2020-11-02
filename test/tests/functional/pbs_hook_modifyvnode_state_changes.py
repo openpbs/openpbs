@@ -45,29 +45,29 @@ from ptl.utils.pbs_dshutils import get_method_name
 
 
 node_states = {
-    'ND_FREE': 0,
-    'ND_OFFLINE': 1,
-    'ND_DOWN': 2,
-    'ND_DELETED': 4,
-    'ND_UNRESOLVABLE': 8,
-    'ND_STALE': 32,
-    'ND_JOBBUSY': 16,
-    'ND_JOB_EXCLUSIVE': 64,
-    'ND_RESVEXCL': 8192,
-    'ND_BUSY': 128,
+    'ND_STATE_FREE': 0,
+    'ND_STATE_OFFLINE': 1,
+    'ND_STATE_DOWN': 2,
+    'ND_STATE_DELETED': 4,
+    'ND_STATE_UNRESOLVABLE': 8,
+    'ND_STATE_STALE': 32,
+    'ND_STATE_JOBBUSY': 16,
+    'ND_STATE_JOB_EXCLUSIVE': 64,
+    'ND_STATE_RESVEXCL': 8192,
+    'ND_STATE_BUSY': 128,
     'ND_STATE_UNKNOWN': 256,
-    'ND_NEEDS_HELLOSVR': 512,
-    'ND_INIT': 1024,
-    'ND_PROV': 2048,
-    'ND_WAIT_PROV': 4096,
-    'ND_SLEEP': 262144,
-    'ND_OFFLINE_BY_MOM': 16384,
-    'ND_MARKEDDOWN': 32768,
-    'ND_NEED_ADDRS': 65536,
-    'ND_MAINTENANCE': 131072,
-    'ND_NEED_CREDENTIALS': 524288,
-    'ND_VNODE_AVAILABLE': 8400,
-    'ND_VNODE_UNAVAILABLE': 409903
+    'ND_STATE_NEEDS_HELLOSVR': 512,
+    'ND_STATE_INIT': 1024,
+    'ND_STATE_PROV': 2048,
+    'ND_STATE_WAIT_PROV': 4096,
+    'ND_STATE_SLEEP': 262144,
+    'ND_STATE_OFFLINE_BY_MOM': 16384,
+    'ND_STATE_MARKEDDOWN': 32768,
+    'ND_STATE_NEED_ADDRS': 65536,
+    'ND_STATE_MAINTENANCE': 131072,
+    'ND_STATE_NEED_CREDENTIALS': 524288,
+    'ND_STATE_VNODE_AVAILABLE': 8400,
+    'ND_STATE_VNODE_UNAVAILABLE': 409903
 }
 
 
@@ -286,7 +286,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             # State change test: create and delete vnode
             # TODO: add impl 
             
-            # State change test: induce ND_MAINTENANCE state
+            # State change test: induce ND_STATE_MAINTENANCE state
             # TODO: add impl
 
         self.logger.info("---- %s TEST ENDED ----" % get_method_name(self))
