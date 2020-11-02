@@ -319,7 +319,8 @@ class DshUtils(object):
             if 'PBS_CONF_FILE' in os.environ:
                 dflt_conf = os.environ['PBS_CONF_FILE']
         else:
-            pc = ('"import os; print(os.environ.get(\"PBS_CONF_FILE\", False))"')
+            pc = ('"import os;'
+                  'print(os.environ.get(\"PBS_CONF_FILE\", False))"')
             cmd = ['ls', '-1', dflt_python]
             ret = self.run_cmd(hostname, cmd, logerr=False)
             if ret['rc'] == 0:

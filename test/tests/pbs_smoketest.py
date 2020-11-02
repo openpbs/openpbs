@@ -592,7 +592,7 @@ class SmokeTest(PBSTestSuite):
         execution_info = {}
         storage_info = {}
         stagein_path = self.mom.create_and_format_stagein_path(
-                        storage_info, asuser=str(TEST_USER))
+            storage_info, asuser=str(TEST_USER))
         a = {ATTR_stagein: stagein_path}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
@@ -601,7 +601,7 @@ class SmokeTest(PBSTestSuite):
         execution_info['hostname'] = self.mom.hostname
         storage_info['hostname'] = self.server.hostname
         stageout_path = self.mom.create_and_format_stageout_path(
-                         execution_info, storage_info, asuser=str(TEST_USER))
+            execution_info, storage_info, asuser=str(TEST_USER))
         a = {ATTR_stageout: stageout_path}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)

@@ -197,9 +197,7 @@ class MoM(PBSService):
                                                 storage_file_prefix,
                                                 asuser=asuser)
 
-        # Adding '2' to execution host's filename to have different
-        # name than storage host's filename
-        execution_path = storage_path + '2'
+        execution_path = self.du.create_temp_file(self.hostname, asuser=asuser)
 
         path = '%s@%s:%s' % (execution_path, storage_host, storage_path)
         return path
