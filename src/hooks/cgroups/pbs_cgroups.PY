@@ -652,6 +652,7 @@ def printjob_info(jobid, include_attributes=False):
             info[key] = int(val)
         else:
             info[key] = val
+    pbs.logmsg(pbs.EVENT_DEBUG4, 'JB file info returned: %s' % repr(info))
     return info
 
 
@@ -670,7 +671,9 @@ def job_is_running(jobid):
     Returns True if job shows a running state and substate
     """
     jobinfo = printjob_info(jobid)
-    if 'state' in jobinfo and jobinfo['state'] != 'R':
+    if ('state' in jobinfo
+            and jobinfo['state'] != 'R'
+            and jobinfo['state'] != 4):
         return False
     if 'substate' in jobinfo:
         return jobinfo['substate'] == 42
