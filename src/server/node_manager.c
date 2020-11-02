@@ -529,13 +529,14 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	attribute	*pat;
 	int		nchild;
 	unsigned long	inuse_flag = 0;
+	char local_log_buffer[LOG_BUF_SIZE];
+
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
 	} else {
 		psvrmom->msr_state &= ~bits;
 	}
 
-	char local_log_buffer[LOG_BUF_SIZE];
 	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state;"
 		"txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
@@ -1157,7 +1158,8 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
 	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
-		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
+		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name),
+			NTYPE_PBS) != PBSE_NONE) {
 			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
 			shallow_vnode_free(vnode_dup);
 			return NULL;
@@ -1170,9 +1172,9 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	/*
 	 * Copy vnode elements (same order as "struct pbsnode" element definition)
 	 */
-	/* clear_attr the mom attribute does the free? */
 	if (vnode_dup->nd_moms) {
-		free(vnode_dup->nd_moms); /* free the initialize_pbsnode() allocation before assigning */
+		/* free the initialize_pbsnode() allocation before assigning */
+		free(vnode_dup->nd_moms);
 		vnode_dup->nd_moms = NULL;
 	}
 	vnode_dup->nd_moms = vnode->nd_moms;
@@ -1191,7 +1193,6 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_ntype = vnode->nd_ntype;
 	vnode_dup->nd_accted = vnode->nd_accted;
 	vnode_dup->nd_pque = vnode->nd_pque;
-	/* vnode_dup->device = vnode->device; */
 	vnode_dup->newobj = vnode->newobj;
 	for (i=0; i<(int)ND_ATR_LAST; i++) {
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
@@ -1226,9 +1227,10 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	struct pbsnode *vnode_o = NULL;
 	char hook_msg[HOOK_MSG_SIZE] = {0};
 	char local_log_buffer[LOG_BUF_SIZE];
-	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-
 	int time_int_val;
+	int last_time_int;
+
+	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 	time_now = time(NULL);
 	time_int_val = time_now;
 
@@ -1278,8 +1280,8 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	preq->rq_ind.rq_modifyvnode.rq_vnode_o = vnode_o;
 	preq->rq_ind.rq_modifyvnode.rq_vnode = pnode;
 
-	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		vnode_o->nd_state, pnode->nd_state))
+	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__,
+		pnode->nd_name, vnode_o->nd_state, pnode->nd_state))
 
 	/* sync state attribute with nd_state */
 
@@ -1293,16 +1295,19 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		char str_val[STR_TIME_SZ];
 		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
 		set_attr_generic(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
-			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL, SET);
+			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL,
+			SET);
 	}
 
 	/* Write the vnode state change event to server log */
-	int last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
+	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time]
+		.at_val.at_long;
 	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
 		"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
 		"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
-		"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d", pnode->nd_state, 
-		vnode_o->nd_state, time_int_val, last_time_int, state_bits, get_vnode_state_op(type), type);
+		"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
+		pnode->nd_state, vnode_o->nd_state, time_int_val, last_time_int,
+		state_bits, get_vnode_state_op(type), type);
 	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
 		pnode->nd_name, local_log_buffer);
 
@@ -7873,7 +7878,7 @@ set_last_used_time_node(void *pobj, int type)
 	struct pbsnode	*pnode;
 	int 		rc;
 	char		str_val[STR_TIME_SZ];
-	int			time_int_val;
+	int 		time_int_val;
 
 	time_int_val = time_now;
 
