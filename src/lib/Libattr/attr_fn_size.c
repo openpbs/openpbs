@@ -143,7 +143,6 @@ encode_size(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
 	size_t	     ct;
 	char	     cvnbuf[CVNBUFSZ];
 	svrattrl *pal;
-	void from_size(const struct size_value *, char *);
 
 	if (!attr)
 		return (-1);

@@ -901,8 +901,8 @@ class PBSTestSuite(unittest.TestCase):
         try:
             server = cls.servers[server]
         except BaseException:
-            server = None
-        return Comm(hostname, pbsconf_file=pbsconf_file, server=server)
+            server = Server(hostname, pbsconf_file=pbsconf_file)
+        return Comm(server, hostname, pbsconf_file=pbsconf_file)
 
     @classmethod
     def init_scheduler(cls, hostname, pbsconf_file=None, server=None):
@@ -921,8 +921,8 @@ class PBSTestSuite(unittest.TestCase):
         try:
             server = cls.servers[server]
         except BaseException:
-            server = None
-        return Scheduler(hostname=hostname, server=server,
+            server = Server(hostname, pbsconf_file=pbsconf_file)
+        return Scheduler(server, hostname=hostname,
                          pbsconf_file=pbsconf_file)
 
     @classmethod
@@ -941,8 +941,8 @@ class PBSTestSuite(unittest.TestCase):
         try:
             server = cls.servers[server]
         except BaseException:
-            server = None
-        return MoM(hostname, pbsconf_file=pbsconf_file, server=server)
+            server = Server(hostname, pbsconf_file=pbsconf_file)
+        return MoM(server, hostname, pbsconf_file=pbsconf_file)
 
     def init_proc_mon(self):
         """
@@ -1476,6 +1476,7 @@ class PBSTestSuite(unittest.TestCase):
         _msg = 'No license found on server %s' % (server.shortname)
         self.assertTrue(rv, _msg)
         self.logger.info('server: %s licensed', server.hostname)
+        server.update_special_attr(SERVER, id=server.hostname)
 
     def revert_comm(self, comm, force=False):
         """
@@ -1503,6 +1504,7 @@ class PBSTestSuite(unittest.TestCase):
             rv = scheduler.revert_to_defaults()
             _msg = 'Failed to revert sched %s' % (scheduler.hostname)
             self.assertTrue(rv, _msg)
+        self.server.update_special_attr(SCHED)
 
     def revert_mom(self, mom, force=False):
         """
@@ -1565,6 +1567,8 @@ class PBSTestSuite(unittest.TestCase):
             self.server.expect(NODE, a, id=mom.shortname + '[0]', interval=1)
         else:
             self.server.expect(NODE, a, id=mom.shortname, interval=1)
+            self.server.update_special_attr(NODE, id=mom.shortname)
+
         return mom
 
     def analyze_logs(self):

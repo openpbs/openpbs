@@ -2268,7 +2268,7 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 2}
         self.mom.create_vnodes(a, num=3)
-        vn_list = ['vn[0]', 'vn[1]', 'vn[2]']
+        vn_list = ["%s[%d]" % (self.mom.shortname, i) for i in range(3)]
 
         now = int(time.time())
         sel = '1:ncpus=2+1:ncpus=1'
@@ -2374,7 +2374,7 @@ class TestReservations(TestFunctional):
             self.server.expect(JOB, {'job_state': 'R'}, id=jid1[0])
             self.logger.info('Job %s is in R as expected' % jid1[0])
         jid2 = self.submit_job(job_running=True)
-        self.server.delete([rid, jid2[0]])
+        self.server.delete([rid, jid2[0]], wait=True)
 
     def test_qmove_job_into_standing_reservation(self):
         """

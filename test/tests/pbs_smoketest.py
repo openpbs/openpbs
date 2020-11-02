@@ -778,7 +778,8 @@ class SmokeTest(PBSTestSuite):
         """
         Examples to demonstrate how to start/stop/signal the pbs_comm service
         """
-        comm = Comm()
+        svr_obj = Server()
+        comm = Comm(svr_obj)
         comm.isUp()
         comm.signal('-HUP')
         comm.stop()

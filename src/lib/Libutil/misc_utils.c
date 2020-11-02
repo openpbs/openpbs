@@ -2218,18 +2218,6 @@ crc_file(char *filepath)
 
 /**
  * @brief
- * 	Return multiserver mode
- *
- * @return int
- */
-int
-get_msvr_mode(void)
-{
-	return 0;
-}
-
-/**
- * @brief
  * 		state_char2int - return the state from character form to int form.
  *
  * @param[in]	stc	-	state in character form
@@ -2496,3 +2484,14 @@ rand_num(void)
 	return rand();
 }
 
+/**
+ * @brief
+ * 	Return multiserver mode
+ *
+ * @return int
+ */
+int
+msvr_mode(void)
+{
+	return (get_num_servers() > 1);
+}
