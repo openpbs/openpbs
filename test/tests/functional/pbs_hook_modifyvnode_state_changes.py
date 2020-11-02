@@ -440,7 +440,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.logger.info("    ***%s:%s, type:%s" % (name, value, type(value)))
             self.logger.info("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.info("    ***%s:hostname:%s" % (name, value.hostname))
-            self.logger.info("    ***pkilling mom:%s" % value)
+            self.logger.info("    ***restarting server:%s" % value)
 
             self.checkLog(start_time, value.fqdn, check_up=True, check_down=False)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400", starttime=start_time)
