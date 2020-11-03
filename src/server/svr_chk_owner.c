@@ -548,8 +548,8 @@ svr_chk_ownerResv(struct batch_request *preq, resc_resv *presv)
 		return (-1);
 	(void)strncpy(rmtuser, pu, PBS_MAXUSER);
 
-	get_jobowner(presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, owner);
-	host = get_hostPart(presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str);
+	get_jobowner(get_rattr_str(presv, RESV_ATR_resv_owner), owner);
+	host = get_hostPart(get_rattr_str(presv, RESV_ATR_resv_owner));
 	pu = site_map_user(owner, host);
 
 	return (strcmp(rmtuser, pu));

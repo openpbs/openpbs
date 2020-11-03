@@ -338,8 +338,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 		presv = (resc_resv *)pobj;
 		queru = NULL;
 		sysru = NULL;
-		rescp = (resource *)GET_NEXT(presv->ri_wattr[(int)RESV_ATR_resource]
-			.at_val.at_list);
+		rescp = (resource *)GET_NEXT(get_rattr_list(presv, RESV_ATR_resource));
 		if (presv->ri_parent != NULL &&
 			(presv->ri_parent->ri_qs.ri_state == RESV_RUNNING ||
 			presv->ri_parent->ri_qs.ri_state == RESV_DELETED ||
@@ -416,7 +415,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 
 	/* if a job, update resource_assigned at the node level */
 	if (objtype == 1)
-		update_node_rassn(&presv->ri_wattr[(int)RESV_ATR_resv_nodes], op);
+		update_node_rassn(get_rattr(presv, RESV_ATR_resv_nodes), op);
 	else if ((objtype == 0) && (pjob->ji_myResv == NULL)) {
 		if (is_jattr_set(pjob,  JOB_ATR_resc_released))
 			/* This is just the normal case when job was not suspended but trying to run| end */

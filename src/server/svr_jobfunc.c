@@ -767,7 +767,7 @@ lookup_variable(void *pobj, int objtype, char *variable)
 	if (objtype == JOB_OBJECT)
 		objattr = get_jattr((job *)pobj, JOB_ATR_variables);
 	else
-		objattr = &(((resc_resv *)pobj)->ri_wattr[RESV_ATR_variables]);
+		objattr = get_rattr((resc_resv *)pobj, RESV_ATR_variables);
 
 	pc = arst_string(variable, objattr);
 	if (pc) {
@@ -2171,8 +2171,8 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 			presv = (resc_resv *)pobj;
 			assert(presv != NULL);
 			pque = NULL;
-			pdest = &presv->ri_wattr[(int)RESV_ATR_resource];
-			psched = &presv->ri_wattr[(int)RESV_ATR_SchedSelect];
+			pdest = get_rattr(presv, RESV_ATR_resource);
+			psched = get_rattr(presv, RESV_ATR_SchedSelect);
 			break;
 
 		default:
@@ -2600,7 +2600,7 @@ Time4resv(struct work_task *ptask)
 		}
 	}
 
-	if (presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags & ATR_VFLAG_SET) {
+	if (is_rattr_set(presv, RESV_ATR_del_idle_time)) {
 		/* Catch the idle case where the reservation never has any jobs in it */
 		set_idle_delete_task(presv);
 	}
@@ -2631,9 +2631,7 @@ Time4resv1(struct work_task *ptask)
 
 
 
-	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long !=
-		RESV_TIME_TO_RUN)
-
+	if (get_rattr_long(presv, RESV_ATR_state) != RESV_TIME_TO_RUN)
 		return;    /*no more reminders needed*/
 
 	/*put on another reminder timed for 60 seconds in the future*/
@@ -2687,9 +2685,9 @@ Time4resvFinish(struct work_task *ptask)
 	 *    3.b) Add the next occurrence start and end event on the work task
 	 */
 	presv->resv_end_task = NULL;
-	if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1) {
-		int ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
-		int rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
+	if (get_rattr_long(presv, RESV_ATR_resv_count) > 1) {
+		int ridx = get_rattr_long(presv, RESV_ATR_resv_idx);
+		int rcount = get_rattr_long(presv, RESV_ATR_resv_count);
 
 		DBPRT(("reached end of occurrence %d/%d\n", ridx, rcount))
 
@@ -2810,10 +2808,10 @@ Time4occurrenceFinish(resc_resv *presv)
 	attribute atemp = {0};
 	int j = 2;
 	int occurrence_ended_early = 0;
-	int ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
-	int rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
-	char *rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
-	char *tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
+	int ridx = get_rattr_long(presv, RESV_ATR_resv_idx);
+	int rcount = get_rattr_long(presv, RESV_ATR_resv_count);
+	char *rrule = get_rattr_str(presv, RESV_ATR_resv_rrule);
+	char *tz = get_rattr_str(presv, RESV_ATR_resv_timezone);
 
 	/* the next occurrence returned by get_occurrence is counted from the current
 	 * one which is at index 1. */
@@ -2821,27 +2819,29 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* If the reservation was altered,
 	 * use the stored values in RESV_ATR_standing_revert.
 	 */
-	if (presv->ri_wattr[RESV_ATR_standing_revert].at_flags & ATR_VFLAG_SET) {
+	if (is_rattr_set(presv, RESV_ATR_standing_revert)) {
 		resource *resc, *resc2;
-		resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_standing_revert], &svr_resc_def[RESC_START_TIME]);
+		attribute *stnd_revert = get_rattr(presv, RESV_ATR_standing_revert);
+		attribute *resc_attr = get_rattr(presv, RESV_ATR_resource);
+
+		resc = find_resc_entry(stnd_revert, &svr_resc_def[RESC_START_TIME]);
 		dtstart = resc->rs_value.at_val.at_long;
 
-		resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_standing_revert], &svr_resc_def[RESC_WALLTIME]);
-		presv->ri_wattr[RESV_ATR_duration].at_val.at_long = resc->rs_value.at_val.at_long;
-		presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
+		resc = find_resc_entry(stnd_revert, &svr_resc_def[RESC_WALLTIME]);
+		set_rattr_l_slim(presv, RESV_ATR_duration, resc->rs_value.at_val.at_long, SET);
 		presv->ri_qs.ri_duration = resc->rs_value.at_val.at_long;
 
-		resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], &svr_resc_def[RESC_SELECT]);
-		resc2 = find_resc_entry(&presv->ri_wattr[RESV_ATR_standing_revert], &svr_resc_def[RESC_SELECT]);
+		resc = find_resc_entry(resc_attr, &svr_resc_def[RESC_SELECT]);
+		resc2 = find_resc_entry(stnd_revert, &svr_resc_def[RESC_SELECT]);
 		free(resc->rs_value.at_val.at_str);
 		resc->rs_value.at_val.at_str = strdup(resc2->rs_value.at_val.at_str);
-		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-		make_schedselect(&presv->ri_wattr[RESV_ATR_resource], resc, NULL, &presv->ri_wattr[RESV_ATR_SchedSelect]);
-		set_chunk_sum(&resc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
+		resc_attr->at_flags |= ATR_SET_MOD_MCACHE;
+		make_schedselect(resc_attr, resc, NULL, get_rattr(presv, RESV_ATR_SchedSelect));
+		set_chunk_sum(&resc->rs_value, resc_attr);
 	} else
-		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+		dtstart = get_rattr_long(presv, RESV_ATR_start);
 
-	dtend = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+	dtend = get_rattr_long(presv, RESV_ATR_end);
 	next = dtstart;
 	now = time(NULL);
 
@@ -2901,7 +2901,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		 * message
 		 */
 		if (ridx > rcount) {
-			presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long = rcount;
+			set_rattr_l_slim(presv, RESV_ATR_resv_idx, rcount, SET);
 
 			if ((ptask = set_task(WORK_Immed, 0, Time4resvFinish, presv)) != 0)
 				append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
@@ -2912,8 +2912,8 @@ Time4occurrenceFinish(resc_resv *presv)
 		DBPRT(("stdg_resv: next occurrence start = %s", ctime(&next)))
 		DBPRT(("stdg_resv: next occurrence end   = %s", ctime(&dtend)))
 	}
-	DBPRT(("stdg_resv: execvnodes sequence   = %s\n", presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str))
-	execvnodes = strdup(presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str);
+	DBPRT(("stdg_resv: execvnodes sequence   = %s\n", get_rattr_str(presv, RESV_ATR_resv_execvnodes)))
+	execvnodes = strdup(get_rattr_str(presv, RESV_ATR_resv_execvnodes));
 	short_xc = (char **) unroll_execvnode_seq(execvnodes, &tofree);
 
 	/* when a reservation is reconfirmed, the 'count' of occurrences may differ
@@ -2955,27 +2955,22 @@ Time4occurrenceFinish(resc_resv *presv)
 	newstart = next;
 	newend = (time_t)(newstart + presv->ri_qs.ri_duration);
 
-	presv->ri_wattr[RESV_ATR_start].at_val.at_long = newstart;
-	presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_SET_MOD_MCACHE;
+	set_rattr_l_slim(presv, RESV_ATR_start, newstart, SET);
 	presv->ri_qs.ri_stime = newstart;
 
-	presv->ri_wattr[RESV_ATR_end].at_val.at_long = newend;
-	presv->ri_wattr[RESV_ATR_end].at_flags |= ATR_SET_MOD_MCACHE;
+	set_rattr_l_slim(presv, RESV_ATR_end, newend, SET);
 	presv->ri_qs.ri_etime = newend;
 
-	presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long = ridx;
-	presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_SET_MOD_MCACHE;
-
-	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
-	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_SET_MOD_MCACHE;
+	set_rattr_l_slim(presv, RESV_ATR_resv_idx, ridx, SET);
+	set_rattr_l_slim(presv, RESV_ATR_duration, presv->ri_qs.ri_duration, SET);
 
 	rscdef = &svr_resc_def[RESC_WALLTIME];
-	prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], rscdef);
+	prsc = find_resc_entry(get_rattr(presv, RESV_ATR_resource), rscdef);
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
 	atemp.at_val.at_long = presv->ri_qs.ri_duration;
 	rscdef->rs_set(&prsc->rs_value, &atemp, SET);
-	presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
+	(get_rattr(presv, RESV_ATR_resource))->at_flags |= ATR_SET_MOD_MCACHE;
 
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
@@ -3029,10 +3024,9 @@ Time4occurrenceFinish(resc_resv *presv)
 	 * marked degraded.  If all degraded occurrences are in the past, the
 	 * scheduler will fix this on the next retry attempt.
 	 */
-	if (presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) {
+	if (is_rattr_set(presv, RESV_ATR_retry)) {
 		sub = RESV_DEGRADED;
-		if (presv->ri_wattr[RESV_ATR_retry].at_val.at_long > 0 &&
-		    presv->ri_wattr[RESV_ATR_retry].at_val.at_long <= time_now)
+		if (get_rattr_long(presv, RESV_ATR_retry) > 0 && get_rattr_long(presv, RESV_ATR_retry) <= time_now)
 			set_resv_retry(presv, time_now + 120);
 	}
 
@@ -3316,8 +3310,7 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal, int *psta
 				else
 					*psub = RESV_RUNNING;
 				*pstate = RESV_RUNNING;
-				if (presv->ri_qs.ri_tactive <
-					presv->ri_wattr[RESV_ATR_start].at_val.at_long)
+				if (presv->ri_qs.ri_tactive < get_rattr_long(presv, RESV_ATR_start))
 					/* Assigning time_now to indicate when reservation become active
  					 *to help in fend off accounting on server restart
 					 */
@@ -3361,7 +3354,7 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal, int *psta
 		} else if (is_running) {
 			*pstate = RESV_RUNNING;
 			*psub = RESV_RUNNING;
-		} else if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+		} else if (is_rattr_set(presv, RESV_ATR_resv_nodes)) {
 			*pstate = RESV_CONFIRMED;
 			*psub = RESV_CONFIRMED;
 		} else {
@@ -3395,11 +3388,8 @@ resv_setResvState(resc_resv *presv, int state, int sub)
 	presv->ri_qs.ri_state = state;
 	presv->ri_qs.ri_substate = sub;
 
-	presv->ri_wattr[(int)RESV_ATR_state].at_val.at_long = state;
-	presv->ri_wattr[(int)RESV_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
-
-	presv->ri_wattr[(int)RESV_ATR_substate].at_val.at_long = sub;
-	presv->ri_wattr[(int)RESV_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
+	set_rattr_l_slim(presv, RESV_ATR_state, state, SET);
+	set_rattr_l_slim(presv, RESV_ATR_substate, sub, SET);
 
 	resv_save_db(presv);
 	return;
@@ -3444,23 +3434,19 @@ resv_retry_handler(struct work_task *ptask)
 int
 chk_resvReq_viable(resc_resv *presv)
 {
-	attribute		*ap;
-	int			rc;
+	long state = get_rattr_long(presv, RESV_ATR_state);
+	int rc;
 
-	ap = &presv->ri_wattr[RESV_ATR_state];
-	if (ap->at_val.at_long == RESV_NONE)
-		return    PBSE_INTERNAL;
+	if (state == RESV_NONE)
+		return PBSE_INTERNAL;
 
-	rc = 0;		/*assume no problems occur*/
+	rc = 0; /*assume no problems occur*/
 
-	if (ap->at_val.at_long == RESV_FINISHED ||
-		ap->at_val.at_long == RESV_DELETED  ||
-		ap->at_val.at_long == RESV_BEING_DELETED)
+	if (state == RESV_FINISHED || state == RESV_DELETED || state == RESV_BEING_DELETED)
 		rc = PBSE_INTERNAL;
 
-	return  (rc);
+	return rc;
 }
-
 
 /**
  * @brief
@@ -3481,18 +3467,16 @@ int
 gen_task_Time4resv(resc_resv *presv)
 {
 	struct work_task	*ptask;
-	attribute		*ap;
 	int			rc;
 	long			startTime;
 
-	ap = &presv->ri_wattr[RESV_ATR_state];
-	if (ap->at_val.at_long == RESV_NONE)
+	if (get_rattr_long(presv, RESV_ATR_state) == RESV_NONE)
 		return    PBSE_INTERNAL;
 
 	if (presv->resv_start_task)
 		delete_task(presv->resv_start_task);
 	presv->resv_start_task = NULL;
-	startTime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	startTime = get_rattr_long(presv, RESV_ATR_start);
 	if ((ptask = set_task(WORK_Timed, startTime,
 		Time4resv, presv)) != 0) {
 		/* set things so that the reservation going away causes
@@ -3741,8 +3725,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 	char			*at_name;
 	int			index;
 
-	if (which == Q_CHNG_START && strcmp(value, ATR_TRUE) == 0 &&
-		! presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET)
+	if (which == Q_CHNG_START && strcmp(value, ATR_TRUE) == 0 && !is_rattr_set(presv, RESV_ATR_resv_nodes))
 		return (0);
 
 	newreq = alloc_br(PBS_BATCH_Manager);
@@ -3759,8 +3742,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 	(void)strcpy(newreq->rq_user, "pbs_server");
 	(void)strcpy(newreq->rq_host, pbs_server_name);
 
-	strcpy(newreq->rq_ind.rq_manager.rq_objname,
-		presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
+	strcpy(newreq->rq_ind.rq_manager.rq_objname, get_rattr_str(presv, RESV_ATR_queue));
 
 	CLEAR_HEAD(newreq->rq_ind.rq_manager.rq_attr);
 	plhed = &newreq->rq_ind.rq_manager.rq_attr;
@@ -4033,13 +4015,10 @@ start_end_dur_wall(resc_resv *presv)
 {
 	resource_def	*rscdef = NULL;
 	resource	*prsc = NULL;
-	attribute	*pstime = NULL;
-	attribute	*petime = NULL;
-	attribute	*pduration = NULL;
 	attribute	*pattr = NULL;
 	attribute	atemp = {0};
-	attribute_def	*pddef = NULL;
 	int		pstate = 0;
+	long stime, etime, duration;
 
 	int	swcode = 0;	/* "switch code" */
 	int	rc = 0;		/* return code, assume success */
@@ -4049,25 +4028,21 @@ start_end_dur_wall(resc_resv *presv)
 		return (-1);
 
 	rscdef = &svr_resc_def[RESC_WALLTIME];
+	pstate = get_rattr_long(presv, RESV_ATR_state);
+	stime = get_rattr_long(presv, RESV_ATR_start);
+	etime = get_rattr_long(presv, RESV_ATR_end);
+	duration = get_rattr_long(presv, RESV_ATR_duration);
 
-	pstime = &presv->ri_wattr[RESV_ATR_start];
-	pstate = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
-
-	petime = &presv->ri_wattr[RESV_ATR_end];
-
-	pddef = &resv_attr_def[RESV_ATR_duration];
-	pduration = &presv->ri_wattr[RESV_ATR_duration];
-
-	pattr = &presv->ri_wattr[RESV_ATR_resource];
-	prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], rscdef);
-	check_start = !(presv->ri_wattr[RESV_ATR_job].at_flags & ATR_VFLAG_SET);
+	pattr = get_rattr(presv, RESV_ATR_resource);
+	prsc = find_resc_entry(pattr, rscdef);
+	check_start = !is_rattr_set(presv, RESV_ATR_job);
 
 	if (pstate != RESV_BEING_ALTERED) {
-		if (is_attr_set(pstime))
+		if (is_rattr_set(presv, RESV_ATR_start))
 			swcode += 1;			/* have start */
-		if (is_attr_set(petime))
+		if (is_rattr_set(presv, RESV_ATR_end))
 			swcode += 2;			/* have end */
-		if (is_attr_set(pduration))
+		if (is_rattr_set(presv, RESV_ATR_duration))
 			swcode += 4;			/* have duration */
 		if (prsc)
 			swcode += 8;			/* have walltime */
@@ -4089,52 +4064,51 @@ start_end_dur_wall(resc_resv *presv)
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
 		case  3:	/* start, end */
-			if (((check_start && (pstime->at_val.at_long < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
-				(petime->at_val.at_long <= pstime->at_val.at_long))
+			if (((check_start && (stime < time_now)) && (pstate != RESV_BEING_ALTERED)) ||
+				(etime <= stime))
 				rc = -1;
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
 				}
-				atemp.at_val.at_long = (petime->at_val.at_long -
-					pstime->at_val.at_long);
-				pddef->at_set(pduration, &atemp, SET);
+				atemp.at_val.at_long = etime - stime;
+				set_rattr_l_slim(presv, RESV_ATR_duration, atemp.at_val.at_long, SET);
 				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
 		case  4:
 		case  5:	/* start, duration */
-			if (((check_start && pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
-				(pduration->at_val.at_long <= 0))
+			if (((check_start && stime < time_now) && (pstate != RESV_BEING_ALTERED)) ||
+				(duration <= 0))
 				rc = -1;
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
 				}
-				set_attr_l(petime, pstime->at_val.at_long + pduration->at_val.at_long, SET);
-				set_attr_l(&atemp, pduration->at_val.at_long, SET);
+				set_rattr_l_slim(presv, RESV_ATR_end, stime + duration, SET);
+				set_attr_l(&atemp, duration, SET);
 				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
 		case  7:	/* start, end, duration */
-			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
-				(petime->at_val.at_long < pstime->at_val.at_long) ||
-				(pduration->at_val.at_long <= 0) ||
-				((petime->at_val.at_long - pstime->at_val.at_long) !=
-					pduration->at_val.at_long))
+			if (((check_start) && (stime < time_now)) ||
+				(etime < stime) ||
+				(duration <= 0) ||
+				((etime - stime) !=
+					duration))
 				rc = -1;
 			else {
-				atemp.at_val.at_long = pduration->at_val.at_long;
+				atemp.at_val.at_long = duration;
 				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
 		case  6:
 		case  8:	/* end, duration */
-			if ((pduration->at_val.at_long <= 0) ||
-				(petime->at_val.at_long - pduration->at_val.at_long <
+			if ((duration <= 0) ||
+				(etime - duration <
 					time_now)) {
 				rc = -1;
 			}
@@ -4142,33 +4116,28 @@ start_end_dur_wall(resc_resv *presv)
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
 				}
-				pstime->at_flags |= ATR_SET_MOD_MCACHE;
-				pstime->at_val.at_long = petime->at_val.at_long -
-					pduration->at_val.at_long;
-				atemp.at_val.at_long = pduration->at_val.at_long;
+				set_rattr_l_slim(presv, RESV_ATR_start, etime - duration, SET);
+				atemp.at_val.at_long = duration;
 				rscdef->rs_set(&prsc->rs_value, &atemp, SET);
 			}
 			break;
 
 		case  9:	/* start, wall */
-			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
+			if (((check_start) && (stime < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0))
 				rc = -1;
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED | RESV_DURATION_MODIFIED;
 				}
-				petime->at_flags |= ATR_SET_MOD_MCACHE;
-				petime->at_val.at_long = pstime->at_val.at_long +
-					prsc->rs_value.at_val.at_long;
-				pduration->at_flags |= ATR_SET_MOD_MCACHE;
-				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
+				set_rattr_l_slim(presv, RESV_ATR_end, stime + prsc->rs_value.at_val.at_long, SET);
+				set_rattr_l_slim(presv, RESV_ATR_duration, prsc->rs_value.at_val.at_long, SET);
 			}
 			break;
 
 		case 10:	/* end, wall */
 			if ((prsc->rs_value.at_val.at_long <= 0) ||
-				(petime->at_val.at_long - prsc->rs_value.at_val.at_long <
+				(etime - prsc->rs_value.at_val.at_long <
 					time_now)) {
 				rc = -1;
 			}
@@ -4176,51 +4145,45 @@ start_end_dur_wall(resc_resv *presv)
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_START_TIME_MODIFIED;
 				}
-				pstime->at_flags |= ATR_SET_MOD_MCACHE;
-				pstime->at_val.at_long = petime->at_val.at_long -
-					prsc->rs_value.at_val.at_long;
-				pduration->at_flags |= ATR_SET_MOD_MCACHE;
-				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
+				set_rattr_l_slim(presv, RESV_ATR_start, etime - prsc->rs_value.at_val.at_long, SET);
+				set_rattr_l_slim(presv, RESV_ATR_duration, prsc->rs_value.at_val.at_long, SET);
 			}
 			break;
 
 		case 11:	/* start, end, wall */
-			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
+			if (((check_start) && (stime < time_now)) ||
 				(prsc->rs_value.at_val.at_long <= 0) ||
-				(petime->at_val.at_long - pstime->at_val.at_long !=
+				(etime - stime !=
 					prsc->rs_value.at_val.at_long))
 				rc = -1;
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_DURATION_MODIFIED;
 				}
-				pduration->at_flags |= ATR_SET_MOD_MCACHE;
-				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
+				set_rattr_l_slim(presv, RESV_ATR_duration, prsc->rs_value.at_val.at_long, SET);
 			}
 			break;
 
 		case 13:	/* start, duration & wall */
-			if (((check_start) && (pstime->at_val.at_long < time_now)) ||
-				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
-				(pduration->at_val.at_long <= 0))
+			if (((check_start) && (stime < time_now)) ||
+				(prsc->rs_value.at_val.at_long != duration) ||
+				(duration <= 0))
 				rc = -1;
 			else {
 				if (pstate == RESV_BEING_ALTERED) {
 					presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
 				}
-				petime->at_flags |= ATR_SET_MOD_MCACHE;
-				petime->at_val.at_long = pstime->at_val.at_long +
-					presv->ri_qs.ri_duration;
+				set_rattr_l_slim(presv, RESV_ATR_end, stime + presv->ri_qs.ri_duration, SET);
 			}
 			break;
 
 		case 15:	/* start, end, duration & wall */
-			if (((check_start) || (pstime->at_val.at_long < time_now)) ||
-				(petime->at_val.at_long < pstime->at_val.at_long) ||
-				(pduration->at_val.at_long <= 0) ||
-				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
-				((petime->at_val.at_long - pstime->at_val.at_long) !=
-					pduration->at_val.at_long))
+			if (((check_start) || (stime < time_now)) ||
+				(etime < stime) ||
+				(duration <= 0) ||
+				(prsc->rs_value.at_val.at_long != duration) ||
+				((etime - stime) !=
+					duration))
 				rc = -1;
 			break;
 
@@ -4229,13 +4192,13 @@ start_end_dur_wall(resc_resv *presv)
 	}
 
 	if (is_sattr_set(SVR_ATR_resv_post_processing)) {
-		pduration->at_val.at_long += get_sattr_long(SVR_ATR_resv_post_processing);
-		petime->at_val.at_long += get_sattr_long(SVR_ATR_resv_post_processing);
+		duration += get_sattr_long(SVR_ATR_resv_post_processing);
+		etime += get_sattr_long(SVR_ATR_resv_post_processing);
 	}
 
-	presv->ri_qs.ri_stime = pstime->at_val.at_long;
-	presv->ri_qs.ri_etime = petime->at_val.at_long;
-	presv->ri_qs.ri_duration = pduration->at_val.at_long;
+	presv->ri_qs.ri_stime = get_rattr_long(presv, RESV_ATR_start);
+	presv->ri_qs.ri_etime = get_rattr_long(presv, RESV_ATR_end);
+	presv->ri_qs.ri_duration = get_rattr_long(presv, RESV_ATR_duration);
 
 	return (rc);
 }

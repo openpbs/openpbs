@@ -1860,7 +1860,7 @@ Rmv_if_resv_not_possible(job *pjob)
 				* advance one in that only running jobs are deleted at the end of
 				*  an occurrence (be it missed or not).
 				*/
-			if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1)
+			if (get_rattr_long(presv, RESV_ATR_resv_count) > 1)
 				return 0;
 
 			if (presv->ri_qs.ri_etime < time_now)

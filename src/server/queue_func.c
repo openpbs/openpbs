@@ -322,7 +322,7 @@ find_resvqueuebyname(char *quename)
 	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
 		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (pque->qu_resvp != NULL
-			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
+			&& (strcmp(qname, get_rattr_str(pque->qu_resvp, RESV_ATR_resv_name)) == 0))
 			break;
 	}
 	if (pc)
