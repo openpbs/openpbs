@@ -1412,7 +1412,8 @@ class PBSTestSuite(unittest.TestCase):
             mgrs_opers = {"managers": [str(MGR_USER) + '@*'],
                           "operators": [str(OPER_USER) + '@*']}
         else:
-            mgrs_opers = {"managers": [current_user + '@*', str(MGR_USER) + '@*'],
+            current_user += '@*'
+            mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
                           "operators": [str(OPER_USER) + '@*']}
         server_stat = cls.server.status(SERVER, ["managers", "operators"])
         if len(server_stat) > 0:
