@@ -671,10 +671,6 @@ def job_is_running(jobid):
     Returns True if job shows a running state and substate
     """
     jobinfo = printjob_info(jobid)
-    if ('state' in jobinfo
-            and jobinfo['state'] != 'R'
-            and jobinfo['state'] != 4):
-        return False
     if 'substate' in jobinfo:
         return jobinfo['substate'] == 42
     return False
