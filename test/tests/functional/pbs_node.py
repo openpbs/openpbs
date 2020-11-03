@@ -85,32 +85,4 @@ class TestPbsNode(TestFunctional):
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-        self.logger.info("---- TEST ENDED ----")
-
-    @requirements(num_moms=2)
-    def test_create_and_delete_01(self):
-        """
-        Test:  this will test two things:
-        1.  The stopping and starting of a mom and the proper log messages.
-        2.  The stopping and starting of a mom and the proper hook firing.
-        """
-        self.logger.info("---- TEST STARTED ----")
-        self.logger.error("socket.gethostname():%s", socket.gethostname())
-        self.logger.error("***self.server.name:%s", str(self.server.name))
-        self.logger.error("self.server.moms:%s", str(self.server.moms))
-        for name, value in self.server.moms.items():
-            start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
-            self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
-            self.logger.error("    ***%s:hostname:%s", name, value.hostname)
-            self.logger.error("    ***stopping mom:%s", value)
-            value.stop()
-            self.logger.error("    ***start    mom:%s", value)
-            value.start()
-            self.logger.error("    ***restart  mom:%s", value)
-            value.restart()
-            self.server.log_match("Node;%s;node up" % value.fqdn,
-                                  starttime=start_time)
-            self.server.log_match("Node;%s;node down" % value.fqdn,
-                                  starttime=start_time)
-        self.logger.info("---- TEST ENDED ----")        
+        self.logger.info("---- TEST ENDED ----")       

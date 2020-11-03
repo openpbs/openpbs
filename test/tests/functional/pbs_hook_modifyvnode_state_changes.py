@@ -129,6 +129,14 @@ def get_hook_body_modifyvnode_param_rpt():
             pbs.logmsg(pbs.LOG_DEBUG, "state: good states")
         else:
             e.reject("state: bad state value")
+        if len(v.extract_state_strs()) == len(v.extract_state_ints()):
+            pbs.logmsg(pbs.LOG_DEBUG, "state sets: good v sets")
+        else:
+            e.reject("state sets: bad v sets")
+        if len(v_o.extract_state_strs()) == len(v_o.extract_state_ints()):
+            pbs.logmsg(pbs.LOG_DEBUG, "state sets: good v_o sets")
+        else:
+            e.reject("state sets: bad v_o sets")
         e.accept()
     except SystemExit:
         pass
@@ -181,6 +189,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.server.log_match("good times", starttime=start_time)
         self.server.log_match("good names", starttime=start_time)
         self.server.log_match("good states", starttime=start_time)
+        self.server.log_match("good v sets", starttime=start_time)
+        self.server.log_match("good v_o sets", starttime=start_time)
         if check_up:
             self.server.log_match("Node;%s;node up" % mom, starttime=start_time)
         if check_down:
