@@ -277,7 +277,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             start_time = int(time.time())
             self.logger.info("    ***restart mom:%s" % value)
             value.restart()
-            self.checkLog(start_time, value.fqdn, check_up=True, check_down=True)
+            self.checkLog(start_time, value.fqdn, check_up=True,
+                          check_down=True)
             self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
                                   starttime=start_time)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
@@ -290,11 +291,14 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                            'bin', 'pbsnodes -o %s' %
                                            value.fqdn)
             self.logger.info("pbsnodesoffline=%s" % pbsnodesoffline)
-            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesoffline, sudo=True)
+            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesoffline,
+                                      sudo=True)
             self.assertEqual(retpbsn['rc'], 0)
-            self.checkLog(start_time, value.fqdn, check_up=False, check_down=False)
+            self.checkLog(start_time, value.fqdn, check_up=False,
+                          check_down=False)
             self.server.log_match("state + offline", starttime=start_time)
-            self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0", starttime=start_time)
+            self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0",
+                                  starttime=start_time)
 
             # State change test: bring mom online (add mom)
             start_time = int(time.time())
