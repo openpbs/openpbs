@@ -1648,7 +1648,7 @@ main(int argc, char *argv[], char *envp[])
 		int	print_env = 0;
 		char	*tmp_str = NULL;
 		char	perf_label[MAXBUF];
-		char	perf_action[MAXBUFLEN + 13];
+		char	perf_action[MAXBUFLEN + 13]; /* Additional 13 byte for description string*/
 		char	*sp;
 
 		the_input[0] = '\0';

@@ -750,7 +750,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	pid_t myseq; /* just some unique sequence number */
 	char logmask[BUFSIZ];
 	char path_hooks_rescdef[MAXPATHLEN + 1];
-	char cmdline[3 * BUFSIZ + 1];
+	char cmdline[2 * BUFSIZ + 16]; /* Additional bytes for command options */
 	struct passwd *pwdp = NULL;
 #ifdef WIN32
 	FILE *fp2 = NULL;
