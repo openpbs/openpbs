@@ -1839,65 +1839,6 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 	return rc;
 }
 
-
-/**
- * @brief
- * 		send delayed attributes to the server for a job
- *
- * @param[in]	pbs_sd	-	server connection descriptor
- * @param[in]	job_name	-	name of job for pbs_asyalterjob()
- * @param[in]	pattr	-	attrl list to update on the server
- *
- * @return	int
- * @retval	1	success
- * @retval	0	failure to update
- */
-int
-send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr)
-{
-	const char *errbuf;
-	int one_attr = 0;
-
-	if (job_name == NULL || pattr == NULL)
-		return 0;
-
-	if (pbs_sd == SIMULATE_SD)
-		return 1; /* simulation always successful */
-
-	if (pattr->next == NULL)
-		one_attr = 1;
-
-	if (pbs_asyalterjob(pbs_sd, job_name, pattr, NULL) == 0) {
-		last_attr_updates = time(NULL);
-		return 1;
-	}
-
-	if (is_finished_job(pbs_errno) == 1) {
-		if (one_attr)
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name,
-				   "Failed to update attr \'%s\' = %s, Job already finished",
-				   pattr->name, pattr->value);
-		else
-			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name,
-				"Failed to update job attributes, Job already finished");
-		return 0;
-	}
-
-	errbuf = pbs_geterrmsg(pbs_sd);
-	if (errbuf == NULL)
-		errbuf = "";
-	if (one_attr)
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
-			   "Failed to update attr \'%s\' = %s: %s (%d)",
-			   pattr->name, pattr->value, errbuf, pbs_errno);
-	else
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
-			"Failed to update job attributes: %s (%d)",
-			errbuf, pbs_errno);
-
-	return 0;
-}
-
 /**
  *	@brief
  *		unset job attributes on the server
@@ -3116,7 +3057,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 			}
 		}
 
-		if ((preempt_jobs_reply = pbs_preempt_jobs(pbs_sd, preempt_jobs_list)) == NULL) {
+		if ((preempt_jobs_reply = send_preempt_jobs(pbs_sd, preempt_jobs_list)) == NULL) {
 			free_string_array(preempt_jobs_list);
 			free(preempted_list);
 			free(fail_list);

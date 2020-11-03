@@ -401,7 +401,7 @@ char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int PBSD_server_ready(int);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
-void *get_conn_svr_instances(int);
+svr_conn_t **get_conn_svr_instances(int);
 int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 int get_svr_inst_fd(int vfd, char *svr_inst_id);
 int random_srv_conn(svr_conn_t **);

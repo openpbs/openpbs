@@ -763,7 +763,7 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 	int i;
 	sched_cmd cmd;
 	int nsvrs = get_num_servers();
-	svr_conn_t **svr_conns = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_secondary_sock));
+	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
 
 	for (i = 0; svr_conns[i]; i++) {
 		int rc;
@@ -1309,35 +1309,6 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 }
 
 /**
- * @brief	Send the relevant runjob request to server
- *
- * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
- * @param[in]	has_runjob_hook	- does server have a runjob hook?
- * @param[in]	jobid	-	id of the job to run
- * @param[in]	execvnode	-	the execvnode to run the job on
- * @param[in]	node_owner	-	node owning server of first node in execvnode
- *
- * @return	int
- * @retval	return value of the runjob call
- */
-int
-send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode, char *node_owner)
-{
-	char *dest = NULL;
-
-	if (node_owner)
-		pbs_asprintf(&dest, "%s=%s", SERVER_IDENTIFIER, node_owner);
-	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)
-		return pbs_runjob(pbs_sd, jobid, execvnode, dest);
-	else if ((sc_attrs.runjob_mode == RJ_RUNJOB_HOOK) && has_runjob_hook)
-		return pbs_asyrunjob_ack(pbs_sd, jobid, execvnode, dest);
-	else
-		return pbs_asyrunjob(pbs_sd, jobid, execvnode, dest);
-
-	free(dest);
-}
-
-/**
  * @brief
  * 		run_job - handle the running of a pbs job.  If it's a peer job
  *	       first move it to the local server and then run it.
@@ -1347,8 +1318,8 @@ send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode, char
  * @param[in]	rjob	-	the job to run
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
  * @param[in]	has_runjob_hook	-	does server have a runjob hook?
- * @param[in]	node_owner	-	node owning server of first node in execvnode
  * @param[out]	err	-	error struct to return errors
+ * @param[in]	svr_id_node	- id of the server which owns the first vnode of exec_vnode
  *
  *
  * @retval	0	: success
@@ -1356,7 +1327,8 @@ send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode, char
  * @retval -1	: error
  */
 int
-run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, char *node_owner, schd_error *err)
+run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err,
+ 	char *svr_id_node)
 {
 	char buf[100];	/* used to assemble queue@localserver */
 	const char *errbuf;		/* comes from pbs_geterrmsg() */
@@ -1409,16 +1381,18 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, c
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
-				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, node_owner);
+				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
+ 						  rjob->job->svr_inst_id);
 			}
 		} else
-			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, node_owner);
+			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
+ 					  rjob->job->svr_inst_id);
 	}
 
 	if (rc) {
 		char buf[MAX_LOG_SIZE];
 		set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
-		errbuf = pbs_geterrmsg(pbs_sd);
+		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->job->svr_inst_id));
 		if (errbuf == NULL)
 			errbuf = "";
 		set_schd_error_arg(err, ARG1, errbuf);
@@ -1499,7 +1473,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	int pbsrc;				/* return codes from pbs IFL calls */
 	char buf[COMMENT_BUF_SIZE] = {'\0'};		/* generic buffer - comments & logging*/
 	int num_nspec;
-	char *node_owner = NULL;
 
 	/* used for jobs with nodes resource */
 	nspec **ns = NULL;
@@ -1633,6 +1606,10 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						 * nodes into 1 entry for updating our local data structures
 						 */
 						ns = combine_nspec_array(orig_ns);
+						if (ns == NULL) {
+ 							free_nspecs(ns_arr);
+ 							return -1;
+ 						}
 					}
 
 					if (rr->nodepart_name != NULL) {
@@ -1655,13 +1632,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						execvnode != NULL ? execvnode : "(NULL)");
 					fflush(stdout);
 #endif /* localmod 031 */
-					/* pass node_owner if that is different from job owner server */
-					if (ns != NULL && ns[0] != NULL) {
-						if (strcmp(rr->job->svr_inst_id, ns[0]->ninfo->svr_inst_id))
-							node_owner = ns[0]->ninfo->svr_inst_id;
-					}
-					pbsrc = run_job(get_svr_inst_fd(pbs_sd, rr->job->svr_inst_id),
-							rr, execvnode, sinfo->has_runjob_hook, node_owner, err);
+					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err,
+							ns[0]->ninfo->svr_inst_id);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);

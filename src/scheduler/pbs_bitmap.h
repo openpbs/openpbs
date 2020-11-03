@@ -40,9 +40,6 @@
 
 #ifndef _PBS_BITMASK_H
 #define _PBS_BITMASK_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 
 struct pbs_bitmap {
@@ -80,7 +77,4 @@ int pbs_bitmap_assign(pbs_bitmap *L, pbs_bitmap *R);
 /* pbs_bitmap's version of L == R */
 int pbs_bitmap_is_equal(pbs_bitmap *L, pbs_bitmap *R);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _PBS_BITMASK_H */

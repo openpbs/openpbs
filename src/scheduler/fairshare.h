@@ -39,9 +39,6 @@
 
 #ifndef	_FAIRSHARE_H
 #define	_FAIRSHARE_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 /*
@@ -267,7 +264,4 @@ void calc_usage_factor(fairshare_head *tree);
 
 
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _FAIRSHARE_H */

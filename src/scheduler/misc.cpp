@@ -56,6 +56,7 @@
 #include <log.h>
 #include <pbs_share.h>
 #include <libutil.h>
+#include <libpbs.h>
 #include "config.h"
 #include "constant.h"
 #include "misc.h"
@@ -1595,3 +1596,4 @@ free_ptr_array(void *inp)
 		free(arr[i]);
 	free(arr);
 }
+

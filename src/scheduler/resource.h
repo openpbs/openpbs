@@ -41,9 +41,6 @@
 #ifndef _RESOURCE_H
 #define _RESOURCE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*
  *	query_resources - query a pbs server for the resources it knows about
@@ -139,7 +136,4 @@ resdef **copy_resdef_array(resdef **deflist);
 /* update the def member in sort_info structures in conf */
 void update_sorting_defs(int op);
 
-#ifdef __cplusplus
-}
-#endif
 #endif /* _RESOURCE_H */

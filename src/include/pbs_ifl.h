@@ -529,10 +529,10 @@ struct attropl {
 };
 
 struct batch_status {
-	struct batch_status	*next;
-	char			*name;
-	struct attrl		*attribs;
-	char			*text;
+	struct batch_status *next;
+	char *name;
+	struct attrl *attribs;
+	char *text;
 };
 
 struct batch_deljob_status {

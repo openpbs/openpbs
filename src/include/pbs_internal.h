@@ -467,7 +467,7 @@ DECLDIR int      parse_depend_list(char *, char **, int);
 DECLDIR int      parse_stage_list(char *);
 DECLDIR int      prepare_path(char *, char*);
 DECLDIR void     prt_job_err(char *, int, char *);
-DECLDIR int		 set_attr(struct attrl **, char *, char *);
+DECLDIR int		 set_attr(struct attrl **, const char *, const char *);
 DECLDIR int      set_attr_resc(struct attrl **, char *, char *, char *);
 DECLDIR int      set_resources(struct attrl **, char *, int, char **);
 DECLDIR int      cnt2server(char *);
@@ -548,11 +548,11 @@ extern int      parse_destination_id(char *, char **, char **);
 extern int      parse_stage_list(char *);
 extern int      prepare_path(char *, char*);
 extern void     prt_job_err(char *, int, char *);
-extern int     set_attr(struct attrl **, char *, char *);
+extern int     set_attr(struct attrl **, const char *, const char *);
 #ifndef pbs_get_dataservice_usr
 extern char*    pbs_get_dataservice_usr(char *, int);
 #endif
-extern char*	get_attr(struct attrl *, char *, char *);
+extern char*	get_attr(struct attrl *, const char *, const char *);
 extern int      set_resources(struct attrl **, char *, int, char **);
 extern int      cnt2server(char *server);
 extern int      cnt2server_extend(char *server, char *);

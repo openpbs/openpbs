@@ -52,9 +52,6 @@
 #ifndef	_DATA_TYPES_H
 #define	_DATA_TYPES_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include <time.h>
 #include <pbs_ifl.h>
@@ -67,6 +64,9 @@ extern "C" {
 #ifdef NAS
 #include "site_queue.h"
 #endif
+
+#include <vector>
+#include <string>
 
 struct server_info;
 struct state_count;
@@ -145,6 +145,7 @@ typedef struct th_data_free_ninfo th_data_free_ninfo;
 typedef struct th_data_dup_resresv th_data_dup_resresv;
 typedef struct th_data_query_jinfo th_data_query_jinfo;
 typedef struct th_data_free_resresv th_data_free_resresv;
+typedef struct server_psets server_psets;
 
 
 #ifdef NAS
@@ -476,6 +477,7 @@ struct server_info
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
+	std::vector<server_psets> svr_to_psets;
 #ifdef NAS
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
@@ -637,6 +639,11 @@ struct node_scratch
 	unsigned int to_be_sorted:1;	/* used for sorting of the nodes while
 					 * altering a reservation.
 					 */
+};
+
+struct server_psets {
+	std::string svr_inst_id;	/* server_instance_id (<hostname>:<port>) */
+	node_partition *np;	/* placement set of all nodes owned by this server */
 };
 
 struct node_info
@@ -1252,7 +1259,7 @@ struct node_bucket_count {
 };
 
 struct chunk_map {
-	chunk *chunk;
+	chunk *chk;
 	node_bucket_count **bkt_cnts;	/* buckets job can run in and chunk counts */
 	pbs_bitmap *node_bits;		/* assignment of nodes from buckets */
 };
@@ -1261,7 +1268,4 @@ struct resresv_filter {
 	resource_resv *job;
 	schd_error *err;		/* reason why set can not run*/
 };
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _DATA_TYPES_H */

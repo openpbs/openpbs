@@ -116,6 +116,7 @@ libpbs_sched_a_SOURCES = \
 	resource_resv.h \
 	resv_info.cpp \
 	resv_info.h \
+	sched_ifl_wrappers.cpp \
 	server_info.cpp \
 	server_info.h \
 	simulate.cpp \

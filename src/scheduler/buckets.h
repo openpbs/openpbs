@@ -38,9 +38,6 @@
  */
 
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
 #ifndef _BUCKETS_H
 #define _BUCKETS_H
 
@@ -103,7 +100,4 @@ nspec **map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, 
 /* map job to buckets that can satisfy */
 chunk_map **find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resresv, schd_error *err);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _BUCKETS_H */

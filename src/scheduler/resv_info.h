@@ -39,9 +39,6 @@
 
 #ifndef	_RESV_INFO_H
 #define	_RESV_INFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include <pbs_config.h>
 #include "data_types.h"
@@ -121,7 +118,4 @@ int ralter_reduce_chunks(resource_resv *resv);
 /* Will we try and confirm this reservation in this cycle */
 int will_confirm(resource_resv *resv, time_t server_time);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif /* _RESV_INFO_H */
