@@ -93,7 +93,7 @@ def get_hook_body_modifyvnode_param_rpt():
                      state_str_buf_v_o)
         svs2_data = "v.state_ints=%s v_o.state_ints=%s v.lsct=%s " \
                     "v_o.lsct=%s" % \
-                    (state_int_buf_v, state_int_buf_v_o, str(lsct), 
+                    (state_int_buf_v, state_int_buf_v_o, str(lsct),
                      str(lsct_o))
         svs_data = "%s %s" % (svs1_data, svs2_data)
         pbs.logmsg(pbs.LOG_DEBUG,
@@ -199,20 +199,25 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
 
     def checkLog(self, start_time, mom, check_up, check_down):
-        self.server.log_match("set_vnode_state;vnode.state=", starttime=start_time)
-        self.server.log_match("show_vnode_state;name=", starttime=start_time)
+        self.server.log_match("set_vnode_state;vnode.state=",
+                              starttime=start_time)
+        self.server.log_match("show_vnode_state;name=",
+                              starttime=start_time)
         self.server.log_match("name: v=", starttime=start_time)
         self.server.log_match("state: v=", starttime=start_time)
-        self.server.log_match("last_state_change_time: v=", starttime=start_time)
+        self.server.log_match("last_state_change_time: v=",
+                              starttime=start_time)
         self.server.log_match("good times", starttime=start_time)
         self.server.log_match("good names", starttime=start_time)
         self.server.log_match("good states", starttime=start_time)
         self.server.log_match("good v sets", starttime=start_time)
         self.server.log_match("good v_o sets", starttime=start_time)
         if check_up:
-            self.server.log_match("Node;%s;node up" % mom, starttime=start_time)
+            self.server.log_match("Node;%s;node up" % mom,
+                                  starttime=start_time)
         if check_down:
-            self.server.log_match("Node;%s;node down" % mom, starttime=start_time)
+            self.server.log_match("Node;%s;node down" % mom,
+                                  starttime=start_time)
 
     @tags('smoke')
     def test_hook_state_changes_00(self):
