@@ -1082,10 +1082,10 @@ class DshUtils(object):
                 ret['err'] = []
             if ret['err'] and logerr:
                 self.logger.error("<" + get_method_name(self) + '>err: ' +
-                    str(ret['err']))
+                                  str(ret['err']))
             else:
                 self.logger.debug("<" + get_method_name(self) + '>err: ' +
-                    str(ret['err']))
+                                  str(ret['err']))
             self.logger.debug('rc: ' + str(ret['rc']))
 
         return ret

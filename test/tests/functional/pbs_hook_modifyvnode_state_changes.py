@@ -74,7 +74,7 @@ node_states = {
 def get_hook_body_modifyvnode_param_rpt():
     hook_body = """
     import pbs
-    import os, sys
+    import sys
     try:
         e = pbs.event()
         v = e.vnode
@@ -84,45 +84,62 @@ def get_hook_body_modifyvnode_param_rpt():
         state_str_buf_v = ",".join(v.extract_state_strs())
         state_str_buf_v_o = ",".join(v_o.extract_state_strs())
         state_int_buf_v = ','.join([str(_) for _ in v.extract_state_ints()])
-        state_int_buf_v_o = ','.join([str(_) for _ in v_o.extract_state_ints()])
-
+        state_int_buf_v_o = ','.join(
+            [str(_) for _ in v_o.extract_state_ints()])
         # print show_vnode_state record (bi consumable)
-        svs1_data="v.state_hex=%s v_o.state_hex=%s v.state_strs=%s v_o.state_strs=%s" % \
-            (hex(v.state), hex(v_o.state), state_str_buf_v, state_str_buf_v_o)
-        svs2_data="v.state_ints=%s v_o.state_ints=%s v.lsct=%s v_o.lsct=%s" % \
-            (state_int_buf_v,  state_int_buf_v_o, str(lsct), str(lsct_o))
+        svs1_data = "v.state_hex=%s v_o.state_hex=%s v.state_strs=%s " \
+                    "v_o.state_strs=%s" % \
+                    (hex(v.state), hex(v_o.state), state_str_buf_v,
+                     state_str_buf_v_o)
+        svs2_data = "v.state_ints=%s v_o.state_ints=%s v.lsct=%s " \
+                    "v_o.lsct=%s" % \
+                    (state_int_buf_v, state_int_buf_v_o, str(lsct), 
+                     str(lsct_o))
         svs_data = "%s %s" % (svs1_data, svs2_data)
-        pbs.logmsg(pbs.LOG_DEBUG, "show_vnode_state;name=%s %s" % (v.name, svs_data))
-
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "show_vnode_state;name=%s %s" % (v.name, svs_data))
         # print additional hook parameter values
         pbs.logmsg(pbs.LOG_DEBUG, "name: v=%s, v_o=%s" % (v.name, v_o.name))
-        pbs.logmsg(pbs.LOG_DEBUG, "state: v=%s, v_o=%s" % (hex(v.state), hex(v_o.state)))
-        pbs.logmsg(pbs.LOG_DEBUG, "last_state_change_time: v=%s, v_o=%s" % (str(lsct), str(lsct_o)))
-        pbs.logmsg(pbs.LOG_DEBUG, "comment: v=%s, v_o=%s" % (v.comment, v_o.comment))
-        pbs.logmsg(pbs.LOG_DEBUG, "aoe: v=%s, v_o=%s" % (v.current_aoe, v_o.current_aoe))
-        pbs.logmsg(pbs.LOG_DEBUG, "in_mvn_host: v=%s, v_o=%s" % (v.in_multivnode_host, v_o.in_multivnode_host))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "state: v=%s, v_o=%s" % (hex(v.state), hex(v_o.state)))
+        pbs.logmsg(pbs.LOG_DEBUG, "last_state_change_time: v=%s, v_o=%s" % (
+                   str(lsct), str(lsct_o)))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "comment: v=%s, v_o=%s" % (v.comment, v_o.comment))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "aoe: v=%s, v_o=%s" % (v.current_aoe, v_o.current_aoe))
+        pbs.logmsg(pbs.LOG_DEBUG, "in_mvn_host: v=%s, v_o=%s" % (
+                   v.in_multivnode_host, v_o.in_multivnode_host))
         pbs.logmsg(pbs.LOG_DEBUG, "jobs: v=%s, v_o=%s" % (v.jobs, v_o.jobs))
         pbs.logmsg(pbs.LOG_DEBUG, "Mom: v=%s, v_o=%s" % (v.Mom, v_o.Mom))
-        pbs.logmsg(pbs.LOG_DEBUG, "ntype: v=%s, v_o=%s" % (hex(v.ntype), hex(v_o.ntype)))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "ntype: v=%s, v_o=%s" % (hex(v.ntype), hex(v_o.ntype)))
         pbs.logmsg(pbs.LOG_DEBUG, "pcpus: v=%s, v_o=%s" % (v.pcpus, v_o.pcpus))
-        pbs.logmsg(pbs.LOG_DEBUG, "pnames: v=%s, v_o=%s" % (v.pnames, v_o.pnames))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "pnames: v=%s, v_o=%s" % (v.pnames, v_o.pnames))
         pbs.logmsg(pbs.LOG_DEBUG, "Port: v=%s, v_o=%s" % (v.Port, v_o.Port))
-        pbs.logmsg(pbs.LOG_DEBUG, "Priority: v=%s, v_o=%s" % (v.Priority, v_o.Priority))
-        pbs.logmsg(pbs.LOG_DEBUG, "provision_enable: v=%s, v_o=%s" % (v.provision_enable, v_o.provision_enable))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "Priority: v=%s, v_o=%s" % (v.Priority, v_o.Priority))
+        pbs.logmsg(pbs.LOG_DEBUG, "provision_enable: v=%s, v_o=%s" % (
+                   v.provision_enable, v_o.provision_enable))
         pbs.logmsg(pbs.LOG_DEBUG, "queue: v=%s, v_o=%s" % (v.queue, v_o.queue))
-        pbs.logmsg(pbs.LOG_DEBUG, "res_assigned: v=%s, v_o=%s" % (v.resources_assigned, v_o.resources_assigned))
-        pbs.logmsg(pbs.LOG_DEBUG, "res_avail: v=%s, v_o=%s" % (v.resources_available, v_o.resources_available))
+        pbs.logmsg(pbs.LOG_DEBUG, "res_assigned: v=%s, v_o=%s" % (
+                   v.resources_assigned, v_o.resources_assigned))
+        pbs.logmsg(pbs.LOG_DEBUG, "res_avail: v=%s, v_o=%s" % (
+                   v.resources_available, v_o.resources_available))
         pbs.logmsg(pbs.LOG_DEBUG, "resv: v=%s, v_o=%s" % (v.resv, v_o.resv))
-        pbs.logmsg(pbs.LOG_DEBUG, "resv_enable: v=%s, v_o=%s" % (v.resv_enable, v_o.resv_enable))
-        pbs.logmsg(pbs.LOG_DEBUG, "sharing: v=%s, v_o=%s" % (v.sharing, v_o.sharing))
-
+        pbs.logmsg(pbs.LOG_DEBUG, "resv_enable: v=%s, v_o=%s" % (
+                   v.resv_enable, v_o.resv_enable))
+        pbs.logmsg(pbs.LOG_DEBUG,
+                   "sharing: v=%s, v_o=%s" % (v.sharing, v_o.sharing))
         # sanity test some values
         if (lsct < lsct_o) or (lsct_o <= 0):
             e.reject("last_state_change_time: bad timestamp value")
         else:
             pbs.logmsg(pbs.LOG_DEBUG, "last_state_change_time: good times")
         if (v.name != v_o.name) or (not v.name):
-            e.reject("name: vnode and vnode_o name values are null or mismatched")
+            e.reject(
+                "name: vnode and vnode_o name values are null or mismatched")
         else:
             pbs.logmsg(pbs.LOG_DEBUG, "name: good names")
         if (isinstance(v.state, int)) and (isinstance(v_o.state, int)):
@@ -141,7 +158,8 @@ def get_hook_body_modifyvnode_param_rpt():
     except SystemExit:
         pass
     except:
-        pbs.event().reject("%s hook failed with %s" % (pbs.event().hook_name, sys.exc_info()[:2]))
+        pbs.event().reject("%s hook failed with %s" % (
+                           pbs.event().hook_name, sys.exc_info()[:2]))
     """
     hook_body = textwrap.dedent(hook_body)
     return hook_body

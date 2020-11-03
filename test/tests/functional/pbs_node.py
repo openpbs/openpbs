@@ -72,7 +72,7 @@ class TestPbsNode(TestFunctional):
         self.logger.error("self.server.moms:%s", str(self.server.moms))
         for name, value in self.server.moms.items():
             start_time = int(time.time())
-            self.logger.error("    ***%s:%s, type:%s", name, value, type(value))
+            self.logger.error("    ***%s:%s, type:%s", name,value,type(value))
             self.logger.error("    ***%s:fqdn:    %s", name, value.fqdn)
             self.logger.error("    ***%s:hostname:%s", name, value.hostname)
             self.logger.error("    ***stopping mom:%s", value)
@@ -85,4 +85,4 @@ class TestPbsNode(TestFunctional):
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % value.fqdn,
                                   starttime=start_time)
-        self.logger.info("---- TEST ENDED ----")       
+        self.logger.info("---- TEST ENDED ----")
