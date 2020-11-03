@@ -94,7 +94,7 @@ from ptl.lib.ptl_entities import (Hook, Queue, Entity, Limit,
                                   EquivClass, Resource)
 from ptl.lib.ptl_resourceresv import Job, Reservation, InteractiveJob
 from ptl.lib.ptl_sched import Scheduler
-from ptl.lib.ptl_mom import MoM, get_mom_obj
+from ptl.lib.ptl_mom import MoM
 from ptl.lib.ptl_service import PBSService, PBSInitServices
 from ptl.lib.ptl_expect_action import ExpectActions
 
@@ -834,6 +834,31 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
+    def create_node(self, name, level="INFO", logerr=False):
+        """
+        Add a node to PBS
+        """
+        try:
+            ret = self.manager(MGR_CMD_CREATE, VNODE, name,
+                               level=level, logerr=logerr)
+        except PbsManagerError as err:
+            raise
+        return ret
+
+    def delete_node(self, name, level="INFO", logerr=False):
+        """
+        Remove a node from PBS
+        """
+        try:
+            ret = self.manager(MGR_CMD_DELETE, VNODE, name,
+                               level=level, logerr=logerr)
+        except PbsManagerError as err:
+            if "Unknown node" not in err.msg[0]:
+                raise
+            else:
+                ret = 15062
+        return ret
+
     def delete_nodes(self):
         """
         Remove all the nodes from PBS
@@ -1356,8 +1381,7 @@ class Server(PBSService):
             if ret['rc'] != 0:
                 raise PbsStatusError(rc=ret['rc'], rv=[], msg=self.geterrmsg())
 
-            bsl = self.utils.convert_to_dictlist(
-                o, attrib, mergelines=True, obj_type=obj_type)
+            bsl = self.utils.convert_to_dictlist(o, attrib, mergelines=True)
 
         # 7- Stat with impersonation over PBS IFL swig-wrapped API
         elif runas is not None:
@@ -1607,15 +1631,6 @@ class Server(PBSService):
             if submit_dir:
                 os.chdir(submit_dir)
         c = None
-
-        # Revisit this after fixing submitting of executables without
-        # the whole path
-        # Get sleep command depending on which Mom the job will run
-        if ((ATTR_executable in obj.attributes) and
-           ('sleep' in obj.attributes[ATTR_executable])):
-            obj.attributes[ATTR_executable] = (
-                list(self.moms.values())[0]).sleep_cmd
-
         # 1- Submission using the command line tools
         runcmd = []
         if env:
@@ -2382,8 +2397,7 @@ class Server(PBSService):
             if rc == 0:
                 if cmd == MGR_CMD_LIST:
                     bsl = self.utils.convert_to_dictlist(ret['out'],
-                                                         mergelines=True,
-                                                         obj_type=obj_type)
+                                                         mergelines=True)
                     # Since we stat everything, overwrite the cache
                     self.update_attributes(obj_type, bsl, overwrite=True)
                     # Filter out the attributes requested
@@ -4056,8 +4070,6 @@ class Server(PBSService):
                         ks.lower(): [ks, vs] for ks, vs in stat.items()}
                     k_lower = k.lower()
                     if k_lower not in attrs_lower:
-                        if (statlist.index(stat) + 1) < len(statlist):
-                            continue
                         time.sleep(interval)
                         _tsc = trigger_sched_cycle
                         return self.expect(obj_type, attrib, id, op, attrop,
@@ -4289,12 +4301,8 @@ class Server(PBSService):
                     else:
                         self.nodes[id].attributes.update(binfo)
                 else:
-                    if 'Mom' in binfo:
-                        self.nodes[id] = get_mom_obj(self, binfo['Mom'], binfo,
-                                                     snapmap={NODE: None})
-                    else:
-                        self.nodes[id] = get_mom_obj(self, id, binfo,
-                                                     snapmap={NODE: None})
+                    self.nodes[id] = MoM(self, id, binfo,
+                                         snapmap={NODE: None})
                 obj = self.nodes[id]
             elif obj_type == SERVER:
                 if overwrite:
