@@ -187,7 +187,7 @@ class TestQsub_remove_files(TestFunctional):
         option is used.
         """
         j = Job(TEST_USER, attrs={ATTR_R: 'oe'})
-        j.set_execargs('sleep', 1)
+        j.set_execargs('hostname')
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         jid = self.server.submit(j, submit_dir=sub_dir)
         self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
