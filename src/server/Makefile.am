@@ -100,6 +100,7 @@ pbs_server_bin_SOURCES = \
 	qattr_get_set.c \
 	queue_func.c \
 	queue_recov_db.c \
+	rattr_get_set.c \
 	reply_send.c \
 	req_delete.c \
 	req_getcred.c \

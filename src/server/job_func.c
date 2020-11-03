@@ -1696,7 +1696,7 @@ resv_alloc(char *resvid)
 	 */
 	resvp->ri_qs.ri_rsversion = RSVERSION;
 	for (i = 0; i < RESV_ATR_LAST; i++)
-		clear_attr(&resvp->ri_wattr[i], &resv_attr_def[i]);
+		clear_rattr(resvp, i);
 
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';
@@ -1741,9 +1741,8 @@ resv_free(resc_resv *presv)
 
 	/* remove any malloc working attribute space */
 
-	for (i=0; i < (int)RESV_ATR_LAST; i++) {
-		resv_attr_def[i].at_free(&presv->ri_wattr[i]);
-	}
+	for (i=0; i < (int)RESV_ATR_LAST; i++)
+		free_rattr(presv, i);
 
 	/* delete any work task entries associated with the resv */
 
@@ -1852,8 +1851,7 @@ resv_purge(resc_resv *presv)
 		 * presv->ri_qp->qu_qs.qu_name value. The post_resv_purge()
 		 * function could modify it at any time. See SPID 352225.
 		 */
-		strcpy(preq->rq_ind.rq_manager.rq_objname,
-			presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
+		strcpy(preq->rq_ind.rq_manager.rq_objname, get_rattr_str(presv, RESV_ATR_queue));
 
 		/* It is assumed that the prior check on permission was OK */
 		preq->rq_perm |= ATR_DFLAG_MGWR;
@@ -2010,7 +2008,6 @@ resv_abt(resc_resv *presv, char *text)
 void
 resv_exclusive_handler(resc_resv *presv)
 {
-	attribute	*patresc;
 	resource_def	*prsdef;
 	resource	*pplace;
 	pbsnode_list_t 	*pnl;
@@ -2018,9 +2015,8 @@ resv_exclusive_handler(resc_resv *presv)
 	int	share_resv = VNS_DFLT_SHARED;
 	char		*scdsel;
 
-	patresc = &presv->ri_wattr[(int) RESV_ATR_resource];
 	prsdef = &svr_resc_def[RESC_PLACE];
-	pplace = find_resc_entry(patresc, prsdef);
+	pplace = find_resc_entry(get_rattr(presv, RESV_ATR_resource), prsdef);
 	if (pplace && pplace->rs_value.at_val.at_str) {
 		if ((place_sharing_type(pplace->rs_value.at_val.at_str,
 			VNS_FORCE_EXCLHOST) != VNS_UNSET) ||
@@ -2035,7 +2031,7 @@ resv_exclusive_handler(resc_resv *presv)
 	}
 
 	if (share_resv != VNS_FORCE_EXCL) {
-		scdsel = presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_val.at_str;
+		scdsel = get_rattr_str(presv, RESV_ATR_SchedSelect);
 		if (scdsel && strstr(scdsel, "aoe="))
 			share_resv = VNS_FORCE_EXCL;
 	}
@@ -2088,9 +2084,8 @@ find_aoe_from_request(resc_resv *presv)
 	if (presv == NULL)
 		return NULL;
 
-	if (presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_val.at_str) {
+	if ((q = get_rattr_str(presv, RESV_ATR_SchedSelect)) != NULL) {
 		/* just get first appearance of aoe */
-		q = presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_val.at_str;
 		if ((p = strstr(q, "aoe=")) != NULL) {
 			p += 4; /* strlen("aoe=") = 4 */
 			/* get length of aoe name in i. */

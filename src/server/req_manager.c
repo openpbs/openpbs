@@ -3552,15 +3552,13 @@ check_resource_set_on_jobs_or_resvs(struct batch_request *preq, resource_def *pr
 	/* Reject if resource is on a job and the type or flag are being modified */
 	pr = (resc_resv *)GET_NEXT(svr_allresvs);
 	while (pr != NULL) {
-		attribute *pattr = &pr->ri_wattr[RESV_ATR_resource];
-		presc = get_resource(pattr, prdef);
+		presc = get_resource(get_rattr(pr, RESV_ATR_resource), prdef);
 		if ((presc != NULL) && (mod == 1)) {
 			reply_text(preq, PBSE_RESCBUSY, "Resource busy on reservation");
 			return 1;
 		}
-		pattr = &pr->ri_wattr[RESV_ATR_SchedSelect];
-		if (is_attr_set(pattr)) {
-			rmatch = strstr(pattr->at_val.at_str, prdef->rs_name);
+		if (is_rattr_set(pr, RESV_ATR_SchedSelect)) {
+			rmatch = strstr(get_rattr_str(pr, RESV_ATR_SchedSelect), prdef->rs_name);
 			if (rmatch != NULL) {
 				rlen = strlen(prdef->rs_name);
 				if (((*(rmatch+rlen) == '=') && (*(rmatch-1) == ':')) && (mod == 1)) {
@@ -4301,7 +4299,7 @@ mgr_resource_unset(struct batch_request *preq)
 	if (pq_list != NULL) {
 		for (q_count = 0; q_count < pq_list_size; q_count++)
 		{
-			q_attr = &pq_list[q_count]->qu_attr[QE_ATR_ResourceAssn];
+			q_attr = get_qattr(pq_list[q_count], QE_ATR_ResourceAssn);
 			presc = get_resource(q_attr, prdef);
 			presc->rs_defin->rs_free(&presc->rs_value);
 			delete_link(&presc->rs_link);

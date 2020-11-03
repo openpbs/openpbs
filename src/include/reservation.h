@@ -71,7 +71,7 @@ extern "C" {
 
 /*
  * The following resv_atr enum provide an index into the array of
- * decoded reservation attributes, ri_wattr[], for quick access.
+ * decoded reservation attributes, for quick access.
  * Most of the attributes here are "public", but some are Read Only,
  * Private, or even Internal data items; maintained here because of
  * their variable size.
@@ -214,7 +214,7 @@ struct resc_resv {
 #endif
 	struct resvfix {
 		int		ri_rsversion;		/* reservation struct verison#, see RSVERSION */
-		int		ri_state;		/* internal copy of state */
+		int		ri_state;		/* internal copy of state */ // FIXME: can we remove this like we did for job?
 		int		ri_substate;		/* substate of resv state */
 		time_t		ri_stime;		/* left window boundry  */
 		time_t		ri_etime;		/* right window boundry */
@@ -310,6 +310,21 @@ extern  long determine_resv_retry(resc_resv *presv);
 extern resc_resv *resv_recov_db(char *resvid, resc_resv *presv);
 extern int resv_save_db(resc_resv *presv);
 extern void pbsd_init_resv(resc_resv *presv, int type);
+
+
+attribute *get_rattr(const resc_resv *presv, int attr_idx);
+char *get_rattr_str(const resc_resv *presv, int attr_idx);
+struct array_strings *get_rattr_arst(const resc_resv *presv, int attr_idx);
+pbs_list_head get_rattr_list(const resc_resv *presv, int attr_idx);
+long get_rattr_long(const resc_resv *presv, int attr_idx);
+int set_rattr_generic(resc_resv *presv, int attr_idx, char *val, char *rscn, enum batch_op op);
+int set_rattr_str_slim(resc_resv *presv, int attr_idx, char *val, char *rscn);
+int set_rattr_l_slim(resc_resv *presv, int attr_idx, long val, enum batch_op op);
+int set_rattr_b_slim(resc_resv *presv, int attr_idx, long val, enum batch_op op);
+int set_rattr_c_slim(resc_resv *presv, int attr_idx, char val, enum batch_op op);
+int is_rattr_set(const resc_resv *presv, int attr_idx);
+void free_rattr(resc_resv *presv, int attr_idx);
+void clear_rattr(resc_resv *presv, int attr_idx);
 
 #ifdef	__cplusplus
 }

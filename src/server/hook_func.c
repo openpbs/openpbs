@@ -3702,7 +3702,7 @@ get_resv_list(void) {
 				strcat(name_str_buf, ".");
 				strncat(name_str_buf, (padef+index)->at_name, (STRBUF - strlen(name_str_buf)));
 				if ((padef+index)->at_encode(
-						&presv->ri_wattr[index],
+						get_rattr(presv, index),
 						&resv_attr_list, name_str_buf,
 						NULL, ATR_ENCODE_HOOK, NULL) < 0) {
 					char *msgbuf;

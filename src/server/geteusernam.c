@@ -109,7 +109,7 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 	if (objtype == JOB_OBJECT)
 		objattr = get_jattr((job *)pobj, JOB_ATR_job_owner);
 	else
-		objattr = &((resc_resv *)pobj)->ri_wattr[RESV_ATR_resv_owner];
+		objattr = get_rattr((resc_resv *)pobj, RESV_ATR_resv_owner);
 
 	/* search the User_List attribute */
 
@@ -285,7 +285,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		idx_acct = (int)RESV_ATR_account;
 		obj_attr_def = resv_attr_def;
 		objattrs = ((resc_resv *)pobj)->ri_wattr;
-		owner = ((resc_resv *)pobj)->ri_wattr[idx_owner].at_val.at_str;
+		owner = get_rattr_str(pobj, idx_owner);
 		paclRoot = get_sattr(SVR_ATR_AclRoot);
 		bad_euser = PBSE_R_UID;
 		bad_egrp = PBSE_R_GID;
