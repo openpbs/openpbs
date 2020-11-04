@@ -5813,7 +5813,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-	} else if (hook_event == HOOK_EVENT_RESV_END) {
+	} else if ( (hook_event == HOOK_EVENT_RESV_END) || \
+		(hook_event == HOOK_EVENT_RESV_BEGIN) ) {
 		struct rq_manage *rqj = req_params->rq_manage;
 
 		/* initialize event param to None */

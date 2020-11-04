@@ -98,6 +98,7 @@ extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_management_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_periodic_hooks;
+extern pbs_list_head svr_resv_begin_hooks;
 extern pbs_list_head svr_resv_end_hooks;
 extern pbs_list_head svr_execjob_begin_hooks;
 extern pbs_list_head svr_execjob_prologue_hooks;
@@ -131,6 +132,7 @@ clear_hook_links(hook *phook)
 	delete_link(&phook->hi_runjob_hooks);
 	delete_link(&phook->hi_provision_hooks);
 	delete_link(&phook->hi_periodic_hooks);
+	delete_link(&phook->hi_resv_begin_hooks);
 	delete_link(&phook->hi_resv_end_hooks);
 	delete_link(&phook->hi_allhooks);
 	delete_link(&phook->hi_management_hooks);
@@ -224,6 +226,13 @@ hook_event_as_string(unsigned int event)
 		if (ev_ct > 0)
 			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
 		strncat(eventstr, HOOKSTR_PROVISION, sizeof(eventstr) - strlen(eventstr) - 1);
+		ev_ct++;
+	}
+
+	if (event & HOOK_EVENT_RESV_BEGIN) {
+		if (ev_ct > 0)
+	        	strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_RESV_BEGIN, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
@@ -356,6 +365,8 @@ hookstr_event_toint(char *eventstr)
 		return HOOK_EVENT_MANAGEMENT;
 	if (strcmp(eventstr, HOOKSTR_PROVISION) == 0)
 		return HOOK_EVENT_PROVISION;
+	if (strcmp(eventstr, HOOKSTR_RESV_BEGIN) == 0)
+		return HOOK_EVENT_RESV_BEGIN;
 	if (strcmp(eventstr, HOOKSTR_RESV_END) == 0)
 		return HOOK_EVENT_RESV_END;
 	if (strcmp(eventstr, HOOKSTR_EXECJOB_BEGIN) == 0)
@@ -893,6 +904,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		plink_elem = &phook->hi_provision_hooks;
 	} else if (event == HOOK_EVENT_PERIODIC) {
 		plink_elem = &phook->hi_periodic_hooks;
+	} else if (event == HOOK_EVENT_RESV_BEGIN) {
+		plink_elem = &phook->hi_resv_begin_hooks;
 	} else if (event == HOOK_EVENT_RESV_END) {
 		plink_elem = &phook->hi_resv_end_hooks;
 	} else if (event == HOOK_EVENT_EXECJOB_BEGIN) {
@@ -1318,6 +1331,7 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		delete_link(&phook->hi_runjob_hooks);
 		delete_link(&phook->hi_provision_hooks);
 		delete_link(&phook->hi_periodic_hooks);
+		delete_link(&phook->hi_resv_begin_hooks);
 		delete_link(&phook->hi_resv_end_hooks);
 		delete_link(&phook->hi_execjob_begin_hooks);
 		delete_link(&phook->hi_execjob_prologue_hooks);
@@ -1449,6 +1463,13 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			phook->event 	|= HOOK_EVENT_PERIODIC;
 			insert_hook_sort_order(HOOK_EVENT_PERIODIC,
 				&svr_periodic_hooks, phook);
+		} else if (strcmp(val, HOOKSTR_RESV_BEGIN) == 0) {
+			if (phook->event & HOOK_EVENT_PROVISION)
+				goto err;
+			delete_link(&phook->hi_resv_begin_hooks);
+			phook->event    |= HOOK_EVENT_RESV_BEGIN;
+			insert_hook_sort_order(HOOK_EVENT_RESV_BEGIN,
+				&svr_resv_begin_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_RESV_END) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
@@ -1551,12 +1572,12 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
 				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,"
-				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
+				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
-				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_END,
-				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
+				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_BEGIN,
+				HOOKSTR_RESV_END, HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_PRETERM,
 				HOOKSTR_EXECJOB_END, HOOKSTR_EXECHOST_PERIODIC, HOOKSTR_EXECJOB_LAUNCH,
 				HOOKSTR_EXECHOST_STARTUP, HOOKSTR_EXECJOB_ATTACH, HOOKSTR_EXECJOB_RESIZE, HOOKSTR_EXECJOB_ABORT, HOOKSTR_EXECJOB_POSTSUSPEND, HOOKSTR_EXECJOB_PRERESUME, HOOKSTR_NONE);
@@ -1649,6 +1670,9 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			delete_link(&phook->hi_periodic_hooks);
 			phook->event 	&= ~HOOK_EVENT_PERIODIC;
 			delete_task_by_parm1_func(phook, NULL, DELETE_ALL);
+		} else if (strcmp(val, HOOKSTR_RESV_BEGIN) == 0) {
+			delete_link(&phook->hi_resv_begin_hooks);
+			phook->event    &= ~HOOK_EVENT_RESV_BEGIN;
 		} else if (strcmp(val, HOOKSTR_RESV_END) == 0) {
 			delete_link(&phook->hi_resv_end_hooks);
 			phook->event    &= ~HOOK_EVENT_RESV_END;
@@ -1695,12 +1719,12 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
 				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,"
-				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
+				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event.",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
-				HOOKSTR_RUNJOB, HOOKSTR_PERIODIC, HOOKSTR_PROVISION, HOOKSTR_RESV_END,
-				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
+				HOOKSTR_RUNJOB, HOOKSTR_PERIODIC, HOOKSTR_PROVISION, HOOKSTR_RESV_BEGIN,
+				HOOKSTR_RESV_END, HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_END,
 				HOOKSTR_EXECJOB_PRETERM, HOOKSTR_EXECHOST_PERIODIC,
 				HOOKSTR_EXECJOB_LAUNCH, HOOKSTR_EXECHOST_STARTUP,
@@ -1817,6 +1841,12 @@ set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 		delete_link(&phook->hi_management_hooks);
 		insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
 			&svr_management_hooks, phook);
+	}
+
+	if (phook->event & HOOK_EVENT_RESV_BEGIN) {
+	    	delete_link(&phook->hi_resv_begin_hooks);
+	    	insert_hook_sort_order(HOOK_EVENT_RESV_BEGIN,
+	        	&svr_resv_begin_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESV_END) {
@@ -2212,6 +2242,9 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 	if (phook->event & HOOK_EVENT_PERIODIC)
 		delete_link(&phook->hi_periodic_hooks);
 
+	if (phook->event & HOOK_EVENT_RESV_BEGIN)
+		delete_link(&phook->hi_resv_begin_hooks);
+		
 	if (phook->event & HOOK_EVENT_RESV_END)
 		delete_link(&phook->hi_resv_end_hooks);
 
@@ -2336,6 +2369,12 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 		insert_hook_sort_order(HOOK_EVENT_MANAGEMENT,
 			&svr_management_hooks, phook);
 	}
+
+	if (phook->event & HOOK_EVENT_RESV_BEGIN) {
+		delete_link(&phook->hi_resv_begin_hooks);
+		insert_hook_sort_order(HOOK_EVENT_RESV_BEGIN,
+			&svr_resv_begin_hooks, phook);
+        }
 
 	if (phook->event & HOOK_EVENT_RESV_END) {
 		delete_link(&phook->hi_resv_end_hooks);
@@ -3474,6 +3513,9 @@ print_hooks(unsigned int event)
 	} else if (event == HOOK_EVENT_PROVISION) {
 		l_elem = svr_provision_hooks;
 		strcpy(ev_str, HOOKSTR_PROVISION);
+	} else if (event == HOOK_EVENT_RESV_BEGIN) {
+		l_elem = svr_resv_begin_hooks;
+		strcpy(ev_str, HOOKSTR_RESV_BEGIN);
 	} else if (event == HOOK_EVENT_RESV_END) {
 		l_elem = svr_resv_end_hooks;
 		strcpy(ev_str, HOOKSTR_RESV_END);
@@ -3543,6 +3585,8 @@ print_hooks(unsigned int event)
 			phook = (hook *)GET_NEXT(phook->hi_provision_hooks);
 		else if (event == HOOK_EVENT_PERIODIC)
 			phook = (hook *)GET_NEXT(phook->hi_periodic_hooks);
+		else if (event == HOOK_EVENT_RESV_BEGIN)
+			phook = (hook *)GET_NEXT(phook->hi_resv_begin_hooks);
 		else if (event == HOOK_EVENT_RESV_END)
 			phook = (hook *)GET_NEXT(phook->hi_resv_end_hooks);
 		else if (event == HOOK_EVENT_EXECJOB_BEGIN)

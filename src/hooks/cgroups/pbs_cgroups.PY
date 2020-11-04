@@ -906,6 +906,10 @@ class HookUtils(object):
                 'name': 'provision',
                 'handler': None
             }
+            self.hook_events[pbs.RESV_BEGIN] = {
+                'name': 'resv_begin',
+                'handler': None
+            }
             self.hook_events[pbs.EXECJOB_BEGIN] = {
                 'name': 'execjob_begin',
                 'handler': self._execjob_begin_handler
