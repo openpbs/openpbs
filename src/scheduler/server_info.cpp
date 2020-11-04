@@ -682,6 +682,8 @@ query_server_dyn_res(server_info *sinfo)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
+			pid = 0;
+
 			/* Make sure file does not have open permissions */
 			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 				filename = conf.dynamic_res[i].script_name;
@@ -748,11 +750,13 @@ query_server_dyn_res(server_info *sinfo)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", conf.dynamic_res[i].command_line);
 					kill(-pid, SIGTERM);
-					if (waitpid(pid, NULL, WNOHANG) == 0) {
-						usleep(250000);
-						if (waitpid(pid, NULL, WNOHANG) == 0) {
-							kill(-pid, SIGKILL);
-							waitpid(pid, NULL, 0);
+					if (pid != 0) {
+					    if (waitpid(pid, NULL, WNOHANG) == 0) {
+							usleep(250000);
+							if (waitpid(pid, NULL, WNOHANG) == 0) {
+								kill(-pid, SIGKILL);
+								waitpid(pid, NULL, 0);
+							}
 						}
 					}
 				}
@@ -797,7 +801,15 @@ query_server_dyn_res(server_info *sinfo)
 			else
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"%s = %s (\"%s\")", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
-
+			if (pid != 0) {
+				if (waitpid(pid, NULL, WNOHANG) == 0) {
+					usleep(250000);
+					if (waitpid(pid, NULL, WNOHANG) == 0) {
+						kill(-pid, SIGKILL);
+						waitpid(pid, NULL, 0);
+					}
+				}
+			}
 		}
 	}
 
