@@ -1897,7 +1897,7 @@ int notify_scheds_about_resv(int cmd, resc_resv *resv)
 	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 		if (partition_name != NULL) {
 			if (strcmp(partition_name, DEFAULT_PARTITION) == 0) {
-				if (dflt_scheduler->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
+				if (get_sched_attr_long(dflt_scheduler, SCHED_ATR_scheduling) == 1) {
 					set_scheduler_flag(cmd, dflt_scheduler);
 					num_scheds++;
 				}
@@ -1905,14 +1905,14 @@ int notify_scheds_about_resv(int cmd, resc_resv *resv)
 			} else {
 				pbs_sched *tmp;
 				tmp = find_sched_from_partition(partition_name);
-				if (tmp != NULL && (tmp->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1)) {
+				if (tmp != NULL && (get_sched_attr_long(tmp, SCHED_ATR_scheduling) == 1)) {
 					set_scheduler_flag(cmd, tmp);
 					num_scheds++;
 					break;
 				}
 			}
 		} else {
-			if (psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
+			if (get_sched_attr_long(psched, SCHED_ATR_scheduling) == 1) {
 				set_scheduler_flag(cmd, psched);
 				if (resv != NULL)
 					resv->req_sched_count++;

@@ -109,6 +109,21 @@ extern pbs_sched *find_sched_from_partition(char *partition);
 extern int recv_sched_cycle_end(int sock);
 extern void handle_deferred_cycle_close();
 
+
+attribute *get_sched_attr(const pbs_sched *psched, int attr_idx);
+char *get_sched_attr_str(const pbs_sched *psched, int attr_idx);
+struct array_strings *get_sched_attr_arst(const pbs_sched *psched, int attr_idx);
+pbs_list_head get_sched_attr_list(const pbs_sched *psched, int attr_idx);
+long get_sched_attr_long(const pbs_sched *psched, int attr_idx);
+int set_sched_attr_generic(pbs_sched *psched, int attr_idx, char *val, char *rscn, enum batch_op op);
+int set_sched_attr_str_slim(pbs_sched *psched, int attr_idx, char *val, char *rscn);
+int set_sched_attr_l_slim(pbs_sched *psched, int attr_idx, long val, enum batch_op op);
+int set_sched_attr_b_slim(pbs_sched *psched, int attr_idx, long val, enum batch_op op);
+int set_sched_attr_c_slim(pbs_sched *psched, int attr_idx, char val, enum batch_op op);
+int is_sched_attr_set(const pbs_sched *psched, int attr_idx);
+void free_sched_attr(pbs_sched *psched, int attr_idx);
+void clear_sched_attr(pbs_sched *psched, int attr_idx);
+
 #ifdef	__cplusplus
 }
 #endif

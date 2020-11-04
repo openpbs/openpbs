@@ -163,7 +163,6 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 		return 0;
 
 	if (is_qattr_set(pq, QA_ATR_partition)) {
-		attribute *part_attr;
 		char *partition = get_qattr_str(pq, QA_ATR_partition);
 
 		if (strcmp(partition, DEFAULT_PARTITION) == 0) {
@@ -171,9 +170,8 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 			return 1;
 		}
 		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-			if (is_attr_set(part_attr)) {
-				if(!strcmp(part_attr->at_val.at_str, partition)) {
+			if (is_sched_attr_set(psched, SCHED_ATR_partition)) {
+				if(!strcmp(get_sched_attr_str(psched, SCHED_ATR_partition), partition)) {
 					*target_sched = psched;
 					return 1;
 				}
@@ -226,11 +224,12 @@ find_sched_from_sock(int sock, conn_origin_t which)
  *
  */
 static void
-set_sched_state(pbs_sched *psched, char *state) {
+set_sched_state(pbs_sched *psched, char *state)
+{
 	if (psched == NULL)
 		return;
 
-	set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], state, NULL, INTERNAL);
+	set_sched_attr_str_slim(psched, SCHED_ATR_sched_state, state, NULL);
 	if (psched == dflt_scheduler)
 		(get_sattr(SVR_ATR_State))->at_flags |= ATR_MOD_MCACHE;
 }
