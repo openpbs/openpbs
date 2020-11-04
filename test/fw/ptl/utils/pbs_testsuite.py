@@ -1407,9 +1407,14 @@ class PBSTestSuite(unittest.TestCase):
             except PbsManagerError as e:
                 cls.logger.error(e.msg)
         attr = {}
-        current_user = pwd.getpwuid(os.getuid())[0] + '@*'
-        mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
-                      "operators": [str(OPER_USER) + '@*']}
+        current_user = pwd.getpwuid(os.getuid())[0]
+        if str(current_user) in str(MGR_USER):
+            mgrs_opers = {"managers": [str(MGR_USER) + '@*'],
+                          "operators": [str(OPER_USER) + '@*']}
+        else:
+            current_user += '@*'
+            mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
+                          "operators": [str(OPER_USER) + '@*']}
         server_stat = cls.server.status(SERVER, ["managers", "operators"])
         if len(server_stat) > 0:
             server_stat = server_stat[0]
@@ -1531,7 +1536,7 @@ class PBSTestSuite(unittest.TestCase):
             # hook-related files, due to temporary network interruptions
             mom.log_match('pbs_cgroups.CF;copy hook-related '
                           'file request received', max_attempts=120,
-                          starttime=just_before_enable_cgroup_cset-1,
+                          starttime=just_before_enable_cgroup_cset - 1,
                           interval=1)
             # Make sure that the MoM will generate per-NUMA node vnodes
             # when the natural node was created above.
