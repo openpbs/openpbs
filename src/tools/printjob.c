@@ -731,9 +731,11 @@ char *argv[];
 				print_usage();
 				exit(1);
 			}
-			printf("----------------------------------------------------------------\n");
-			printf("jobscript for %s\n", job_id);
-			printf("----------------------------------------------------------------\n");
+			if (job_id) {
+				printf("--------------------------------------------------\n");
+				printf("jobscript for %s\n", job_id);
+				printf("--------------------------------------------------\n");
+			}
 			while ((fgets(job_script, BUF_SIZE-1, fp_script)) != NULL) {
 				if (fputs(job_script, stdout) < 0) {
 					fprintf(stderr, "Error reading job-script file\n");
