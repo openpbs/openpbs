@@ -1482,8 +1482,7 @@ mgr_server_unset(struct batch_request *preq, conn_t *conn)
 		} else if (strcasecmp(plist->al_name,
 				ATTR_scheduling) == 0) {
 			if (dflt_scheduler) {
-				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_val.at_long = 0;
-				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_flags |= ATR_SET_MOD_MCACHE;
+				set_sched_attr_l_slim(dflt_scheduler, SCHED_ATR_scheduling, 0, SET);
 				sched_save_db(dflt_scheduler);
 			}
 		}  else if (strcasecmp(plist->al_name, ATTR_schediteration) == 0) {

@@ -1368,7 +1368,7 @@ main(int argc, char **argv)
 							   "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
 					} else
 						psched->svr_do_schedule = SCH_SCHEDULE_NULL;
-				} else if (svr_unsent_qrun_req || (psched->svr_do_schedule != SCH_SCHEDULE_NULL && psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long)) {
+				} else if (svr_unsent_qrun_req || (psched->svr_do_schedule != SCH_SCHEDULE_NULL && get_sched_attr_long(psched, SCHED_ATR_scheduling))) {
 					/*
 					 * If svr_unsent_qrun_req is set to one there are pending qrun
 					 * request, then do schedule_jobs irrespective of the server scheduling
@@ -1377,7 +1377,7 @@ main(int argc, char **argv)
 					 * scheduling only if server scheduling is turned on.
 					 */
 
-					psched->sch_next_schedule = time_now + psched->sch_attr[SCHED_ATR_schediteration].at_val.at_long;
+					psched->sch_next_schedule = time_now + get_sched_attr_long(psched, SCHED_ATR_schediteration);
 					if (schedule_jobs(psched) == 0 && svr_unsent_qrun_req)
 						svr_unsent_qrun_req = 0;
 				}
