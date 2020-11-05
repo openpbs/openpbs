@@ -843,6 +843,11 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_DeleteJobList:
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+				request->rq_ind.rq_delete.rq_jobslist[0],
+				"delete job request received");
+			req_deletejob(request);
+			break;
 		case PBS_BATCH_DeleteJob:
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				request->rq_ind.rq_delete.rq_objname,
