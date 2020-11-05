@@ -2081,18 +2081,19 @@ tpp_get_addresses(char *names, int *count)
 tpp_addr_t *
 tpp_get_local_host(int sock)
 {
-	struct sockaddr addr;
+	struct sockaddr_storage addrs;
+	struct sockaddr *addr = (struct sockaddr *)&addrs;
 	struct sockaddr_in *inp = NULL;
 	struct sockaddr_in6 *inp6 = NULL;
 	tpp_addr_t *taddr = NULL;
-	socklen_t len = sizeof(addr);
+	socklen_t len = sizeof(struct sockaddr);
 
-	if (getsockname(sock, &addr, &len) == -1) {
+	if (getsockname(sock, addr, &len) == -1) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Could not get name of peer for sock %d, errno=%d", sock, errno);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		return NULL;
 	}
-	if (addr.sa_family != AF_INET && addr.sa_family != AF_INET6) {
+	if (addr->sa_family != AF_INET && addr->sa_family != AF_INET6) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Bad address family for sock %d", sock);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		return NULL;
@@ -2104,13 +2105,13 @@ tpp_get_local_host(int sock)
 		return NULL;
 	}
 
-	if (addr.sa_family == AF_INET) {
-		inp = (struct sockaddr_in *) &addr;
+	if (addr->sa_family == AF_INET) {
+		inp = (struct sockaddr_in *) addr;
 		memcpy(&taddr->ip, &inp->sin_addr, sizeof(inp->sin_addr));
 		taddr->port = inp->sin_port; /* keep in network order */
 		taddr->family = TPP_ADDR_FAMILY_IPV4;
-	} else if (addr.sa_family == AF_INET6){
-		inp6 = (struct sockaddr_in6 *) &addr;
+	} else if (addr->sa_family == AF_INET6){
+		inp6 = (struct sockaddr_in6 *) addr;
 		memcpy(&taddr->ip, &inp6->sin6_addr, sizeof(inp6->sin6_addr));
 		taddr->port = inp6->sin6_port; /* keep in network order */
 		taddr->family = TPP_ADDR_FAMILY_IPV6;
@@ -2133,13 +2134,14 @@ tpp_get_local_host(int sock)
 tpp_addr_t *
 tpp_get_connected_host(int sock)
 {
-	struct sockaddr addr;
+	struct sockaddr_storage addrs;
+	struct sockaddr *addr = (struct sockaddr *)&addrs;
 	struct sockaddr_in *inp = NULL;
 	struct sockaddr_in6 *inp6 = NULL;
 	tpp_addr_t *taddr = NULL;
-	socklen_t len = sizeof(addr);
+	socklen_t len = sizeof(struct sockaddr);
 
-	if (getpeername(sock, &addr, &len) == -1) {
+	if (getpeername(sock, addr, &len) == -1) {
 		if (errno == ENOTCONN)
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Peer disconnected sock %d", sock);
 		else
@@ -2148,7 +2150,7 @@ tpp_get_connected_host(int sock)
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		return NULL;
 	}
-	if (addr.sa_family != AF_INET && addr.sa_family != AF_INET6) {
+	if (addr->sa_family != AF_INET && addr->sa_family != AF_INET6) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Bad address family for sock %d", sock);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		return NULL;
@@ -2160,13 +2162,13 @@ tpp_get_connected_host(int sock)
 		return NULL;
 	}
 
-	if (addr.sa_family == AF_INET) {
-		inp = (struct sockaddr_in *) &addr;
+	if (addr->sa_family == AF_INET) {
+		inp = (struct sockaddr_in *) addr;
 		memcpy(&taddr->ip, &inp->sin_addr, sizeof(inp->sin_addr));
 		taddr->port = inp->sin_port; /* keep in network order */
 		taddr->family = TPP_ADDR_FAMILY_IPV4;
-	} else if (addr.sa_family == AF_INET6){
-		inp6 = (struct sockaddr_in6 *) &addr;
+	} else if (addr->sa_family == AF_INET6){
+		inp6 = (struct sockaddr_in6 *) addr;
 		memcpy(&taddr->ip, &inp6->sin6_addr, sizeof(inp6->sin6_addr));
 		taddr->port = inp6->sin6_port; /* keep in network order */
 		taddr->family = TPP_ADDR_FAMILY_IPV6;
