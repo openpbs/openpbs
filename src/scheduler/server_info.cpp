@@ -749,6 +749,8 @@ query_server_dyn_res(server_info *sinfo)
 				} else if (ret == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", conf.dynamic_res[i].command_line);
+				}
+				if (ret == -1 || ret == 0) {
 					/* we know pid is initialized here, otherwise pipe_err would have been set */
 					kill(-pid, SIGTERM);
 					if (waitpid(pid, NULL, WNOHANG) == 0) {
