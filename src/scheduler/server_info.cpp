@@ -760,19 +760,20 @@ query_server_dyn_res(server_info *sinfo)
 							waitpid(pid, NULL, 0);
 						}
 					}
+					pid = 0; /* don't kill it again later */
 				}
-
-				/* Parent; assume fdopen can't fail. */
-				fp = fdopen(pdes[0], "r");
-				close(pdes[1]);
-
-				if (fgets(buf, sizeof(buf), fp) == NULL) {
-					pipe_err = errno;
-					k = 0;
-				} else
-					k = strlen(buf);
-				if (fp != NULL)
-					fclose(fp);
+				/* Parent; assume fdopen can't fail, but only open if child was not killed. */
+				k = 0;
+				if (pid > 0) {
+					fp = fdopen(pdes[0], "r");
+					close(pdes[1]);
+					if (fgets(buf, sizeof(buf), fp) == NULL) {
+						pipe_err = errno;
+					} else
+						k = strlen(buf);
+					if (fp != NULL)
+						fclose(fp);
+				}
 			}
 			if (k > 0) {
 				buf[k] = '\0';
@@ -803,7 +804,7 @@ query_server_dyn_res(server_info *sinfo)
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"%s = %s (\"%s\")", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
 
-			if (pid != 0) {
+			if (pid > 0) {
 				kill(-pid, SIGTERM);
 				if (waitpid(pid, NULL, WNOHANG) == 0) {
 					usleep(250000);
