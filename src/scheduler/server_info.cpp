@@ -732,6 +732,7 @@ query_server_dyn_res(server_info *sinfo)
 				}
 			}
 
+			k = 0;
 			if (!pipe_err) {
 				FD_ZERO(&set);
 				FD_SET(pdes[0], &set);
@@ -750,21 +751,10 @@ query_server_dyn_res(server_info *sinfo)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", conf.dynamic_res[i].command_line);
 				}
-				if (ret == -1 || ret == 0) {
-					/* we know pid is initialized here, otherwise pipe_err would have been set */
-					kill(-pid, SIGTERM);
-					if (waitpid(pid, NULL, WNOHANG) == 0) {
-						usleep(250000);
-						if (waitpid(pid, NULL, WNOHANG) == 0) {
-							kill(-pid, SIGKILL);
-							waitpid(pid, NULL, 0);
-						}
-					}
-					pid = 0; /* don't kill it again later */
-				}
-				/* Parent; assume fdopen can't fail, but only open if child was not killed. */
-				k = 0;
-				if (pid > 0) {
+				if ( pid > 0 && ret > 0 ) {
+					/* Parent; only open if child created and select showed sth to read,
+					 * but assume fdopen can't fail
+					 */
 					fp = fdopen(pdes[0], "r");
 					close(pdes[1]);
 					if (fgets(buf, sizeof(buf), fp) == NULL) {
@@ -775,6 +765,7 @@ query_server_dyn_res(server_info *sinfo)
 						fclose(fp);
 				}
 			}
+
 			if (k > 0) {
 				buf[k] = '\0';
 				/* chop \r or \n from buf so that is_num() doesn't think it's a str */
@@ -783,7 +774,6 @@ query_server_dyn_res(server_info *sinfo)
 						break;
 					buf[k] = '\0';
 				}
-
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 						"Script %s returned bad output", conf.dynamic_res[i].command_line);
