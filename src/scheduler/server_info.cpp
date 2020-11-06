@@ -751,7 +751,7 @@ query_server_dyn_res(server_info *sinfo)
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", conf.dynamic_res[i].command_line);
 				}
-				if ( pid > 0 && ret > 0 ) {
+				if (pid > 0 && ret > 0) {
 					/* Parent; only open if child created and select showed sth to read,
 					 * but assume fdopen can't fail
 					 */
