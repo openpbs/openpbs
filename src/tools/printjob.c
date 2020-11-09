@@ -102,11 +102,18 @@ print_usage()
 static void
 prt_job_struct(job *pjob, char *state, char *substate)
 {
+	unsigned int ss_num;
+	unsigned int s_num;
+	char *endp = NULL;
+
+	ss_num = strtol(substate, &endp, 10);
+	s_num = state_char2int(state[0]);
+
 	printf("---------------------------------------------------\n");
 	printf("jobid:\t%s\n", pjob->ji_qs.ji_jobid);
 	printf("---------------------------------------------------\n");
-	printf("state:\t\t%s\n", state);
-	printf("substate:\t0x%s (%s)\n", substate, substate);
+	printf("state:\t\t0x%x\n", s_num);
+	printf("substate:\t0x%x (%d)\n", ss_num, ss_num);
 	printf("svrflgs:\t0x%x (%d)\n", pjob->ji_qs.ji_svrflags,
 		pjob->ji_qs.ji_svrflags);
 	printf("stime:\t\t%ld\n", (long)pjob->ji_qs.ji_stime);

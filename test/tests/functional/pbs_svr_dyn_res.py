@@ -40,6 +40,7 @@
 
 from tests.functional import *
 from ptl.lib.pbs_ifl_mock import *
+from ptl.utils.pbs_procutils import ProcUtils
 
 
 class TestServerDynRes(TestFunctional):
@@ -674,6 +675,31 @@ class TestServerDynRes(TestFunctional):
         # give write permission to user only
         self.du.chmod(path=fp, mode=0o744, sudo=True)
         self.check_access_log(fp, exist=False)
+
+    def test_res_cleanup(self):
+        """
+        Test that the scheduler cleans up its children
+        """
+        pu = ProcUtils()
+        resname = ["normal", "invalid", "timeout"]
+        restype = ["long", "long", "long"]
+
+        # Prep for server_dyn_resource scripts.
+        script_body = ["echo 8", "echo hello", "sleep 40; echo 20"]
+
+        filenames = self.setup_dyn_res(resname, restype, script_body)
+
+        a = {'Resource_List.normal': '2',
+             'Resource_List.invalid': '8',
+             'Resource_List.timeout': 10}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.logger.info('Sleeping 30 seconds to wait for script to timeout')
+        time.sleep(30)
+        self.scheduler.log_match("%s timed out" % filenames[2])
+        children = pu.get_proc_children(hostname=self.scheduler.hostname,
+                                        ppid=self.scheduler.get_pid())
+        self.assertFalse(children)
 
     def tearDown(self):
         # removing all files creating in test
