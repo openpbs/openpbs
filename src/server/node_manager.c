@@ -529,7 +529,6 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	attribute	*pat;
 	int		nchild;
 	unsigned long	inuse_flag = 0;
-	char local_log_buffer[LOG_BUF_SIZE];
 
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
@@ -537,11 +536,8 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		psvrmom->msr_state &= ~bits;
 	}
 
-	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
-	snprintf(local_log_buffer, LOG_BUF_SIZE-1, "set_all_state;"
-		"txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
-		pmom->mi_host, local_log_buffer);
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host,
+		"set_all_state;txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
 		
 	/* Set the inuse_flag based off the value of setwhen */
 	if (setwhen == Set_ALL_State_All_Down) {
@@ -1226,11 +1222,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	struct batch_request *preq = NULL;
 	struct pbsnode *vnode_o = NULL;
 	char hook_msg[HOOK_MSG_SIZE] = {0};
-	char local_log_buffer[LOG_BUF_SIZE];
 	int time_int_val;
 	int last_time_int;
 
-	local_log_buffer[LOG_BUF_SIZE-1] = '\0';
 	time_now = time(NULL);
 	time_int_val = time_now;
 
@@ -1302,14 +1296,12 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	/* Write the vnode state change event to server log */
 	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time]
 		.at_val.at_long;
-	snprintf(local_log_buffer, LOG_BUF_SIZE-1,
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
 		"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
 		"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
 		"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
 		pnode->nd_state, vnode_o->nd_state, time_int_val, last_time_int,
 		state_bits, get_vnode_state_op(type), type);
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO,
-		pnode->nd_name, local_log_buffer);
 
 	if (pnode->nd_state & INUSE_PROV) {
 		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
