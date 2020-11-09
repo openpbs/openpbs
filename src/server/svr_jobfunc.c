@@ -2598,6 +2598,16 @@ Time4resv(struct work_task *ptask)
 		if (presv->ri_qs.ri_tactive == time_now){
 			svr_mailownerResv(presv, MAIL_BEGIN, MAIL_NORMAL, "");
 			account_resvstart(presv);
+			char hook_msg[HOOK_MSG_SIZE] = {0};
+			switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
+			case 0: /* explicit reject */
+			case 1: /* no recreate request as there are only read permissions */
+			case 2: /* no hook script executed - go ahead and accept event*/
+				break;
+			default:
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, 
+				"resv_begin event: accept req by default");
+			}
 		}
 
 		presv->resv_start_task = NULL;
