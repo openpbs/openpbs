@@ -2236,7 +2236,7 @@ class Server(PBSService):
                     momobj.check_mem_request(attrib)
                     if len(attrib) == 0:
                         return True
-                    vnodes = self.status(HOST, id=cmom)
+                    vnodes = self.status(HOST, id=momobj.shortname)
                     del vnodes[0]  # don't set anything on a naturalnode
                     for vn in vnodes:
                         momobj.check_ncpus_request(attrib, vn)
