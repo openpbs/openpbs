@@ -530,15 +530,12 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_Rerun:
 			rc = decode_DIS_JobId(sfds, request->rq_ind.rq_commit);
 			break;
-
-		case PBS_BATCH_DeleteJob:
-			rc = decode_DIS_DelJob(sfds, request);
-			break;
 			
 		case PBS_BATCH_DeleteJobList:
 			rc = decode_DIS_DelJobList(sfds, request);
 			break;
-			
+
+		case PBS_BATCH_DeleteJob:
 		case PBS_BATCH_DeleteResv:
 		case PBS_BATCH_ResvOccurEnd:
 		case PBS_BATCH_HoldJob:

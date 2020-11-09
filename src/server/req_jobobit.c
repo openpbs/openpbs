@@ -623,7 +623,8 @@ on_job_exit(struct work_task *ptask)
 
 				preq = alloc_br(PBS_BATCH_DeleteJob);
 				if (preq) {
-					preq->rq_ind.rq_delete.rq_objname = strdup(pjob->ji_qs.ji_jobid);
+					(void)strcpy(preq->rq_ind.rq_delete.rq_objname,
+						pjob->ji_qs.ji_jobid);
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
@@ -1009,7 +1010,8 @@ on_job_rerun(struct work_task *ptask)
 				/* need to have MOM delete her copy of the job */
 				preq = alloc_br(PBS_BATCH_DeleteJob);
 				if (preq) {
-					preq->rq_ind.rq_delete.rq_objname = strdup(pjob->ji_qs.ji_jobid);
+					(void)strcpy(preq->rq_ind.rq_delete.rq_objname,
+						pjob->ji_qs.ji_jobid);
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {

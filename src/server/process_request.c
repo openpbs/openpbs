@@ -844,7 +844,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_DeleteJobList:
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-				request->rq_ind.rq_delete.rq_jobslist[0],
+				request->rq_ind.rq_deletejoblist.rq_jobslist[0],
 				"delete job request received");
 			req_deletejob(request);
 			break;
@@ -1427,11 +1427,12 @@ free_br(struct batch_request *preq)
 		 * decrement the reference count in the parent and when it
 		 * goes to zero,  reply_send() it
 		 */
+		struct batch_reply *preply = &preq->rq_parentbr->rq_reply;
 		if (preq->rq_parentbr->rq_refct > 0) {
 			if (--preq->rq_parentbr->rq_refct == 0) {
 				if (preq->rq_parentbr->rq_type == PBS_BATCH_DeleteJobList) {
-					preq->rq_parentbr->rq_ind.rq_delete.tot_rpys += preq->rq_parentbr->rq_ind.rq_delete.tot_arr_jobs ;
-					if (preq->rq_parentbr->rq_ind.rq_delete.tot_rpys == preq->rq_parentbr->rq_ind.rq_delete.tot_jobs) {
+					preply->brp_un.brp_deletejoblist.tot_rpys += preply->brp_un.brp_deletejoblist.tot_arr_jobs ;
+					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 						log_err(-1, "reply_send", "reply_send called!\n");
 						reply_send(preq->rq_parentbr);
 					}
@@ -1517,9 +1518,8 @@ free_br(struct batch_request *preq)
 			free_attrlist(&preq->rq_ind.rq_status.rq_attr);
 			break;
 		case PBS_BATCH_DeleteJobList:
-		case PBS_BATCH_DeleteJob:
-			if (preq->rq_ind.rq_delete.rq_objname)
-				free(preq->rq_ind.rq_delete.rq_objname);
+			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
+				free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:

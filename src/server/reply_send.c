@@ -455,7 +455,7 @@ reply_free(struct batch_reply *prep)
 		}
 		
 	} else if (prep->brp_choice == BATCH_REPLY_CHOICE_Delete) {
-		pdelstat = prep->brp_un.brp_delstatc;
+		pdelstat = prep->brp_un.brp_deletejoblist.brp_delstatc;
 		while (pdelstat) {
 			pdelstatx = pdelstat->next;
 			(void)free(pdelstat);

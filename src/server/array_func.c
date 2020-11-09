@@ -992,7 +992,8 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, void (*func)(struct ba
 		case PBS_BATCH_DeleteJobList:
 		case PBS_BATCH_DeleteJob:
 			npreq->rq_ind.rq_delete = opreq->rq_ind.rq_delete;
-			npreq->rq_ind.rq_delete.rq_objname = strdup(pjob->ji_qs.ji_jobid);
+			strcpy(npreq->rq_ind.rq_delete.rq_objname,
+				pjob->ji_qs.ji_jobid);
 			break;
 		case PBS_BATCH_SignalJob:
 			npreq->rq_ind.rq_signal = opreq->rq_ind.rq_signal;

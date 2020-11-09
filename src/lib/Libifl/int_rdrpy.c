@@ -186,8 +186,8 @@ PBSD_FreeReply(struct batch_reply *reply)
 			pbs_statfree(reply->brp_un.brp_statc);
 	
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_Delete) {
-		if (reply->brp_un.brp_delstatc)
-			pbs_delstatfree(reply->brp_un.brp_delstatc);
+		if (reply->brp_un.brp_deletejoblist.brp_delstatc)
+			pbs_delstatfree(reply->brp_un.brp_deletejoblist.brp_delstatc);
 	
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_RescQuery) {
 		free(reply->brp_un.brp_rescq.brq_avail);

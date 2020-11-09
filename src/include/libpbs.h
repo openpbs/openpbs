@@ -223,7 +223,12 @@ struct batch_reply
 		pbs_list_head brp_status; /* status (svr) replies */
 		struct batch_status *brp_statc; /* status (cmd) replies) */
 		pbs_list_head brp_delstat; /* status (deleted jobs) replies) */
-		struct batch_deljob_status *brp_delstatc;
+		struct {
+			int tot_jobs;
+			int tot_rpys; 
+			int tot_arr_jobs;
+			struct batch_deljob_status *brp_delstatc;	
+		} brp_deletejoblist;
 		struct {
 			int brp_txtlen;
 			char *brp_str;

@@ -159,7 +159,6 @@ libpbs_la_SOURCES = \
 	../Libifl/dec_JobFile.c \
 	../Libifl/dec_JobId.c \
 	../Libifl/dec_Manage.c \
-	../Libifl/dec_DelJob.c \
 	../Libifl/dec_DelJobList.c \
 	../Libifl/dec_MsgJob.c \
 	../Libifl/dec_MoveJob.c \

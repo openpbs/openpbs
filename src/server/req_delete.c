@@ -224,7 +224,7 @@ check_deletehistoryjob(struct batch_request * preq, char * jid)
 		pjob = find_arrayparent(jid);
 		if ((histerr = svr_chk_histjob(pjob))) {
 			update_deletejob_stat(jid, preq, PBSE_NOHISTARRAYSUBJOB, &preply->brp_un.brp_delstat);
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) 
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) 
 				req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
 			return TRUE;
 		} else {
@@ -275,7 +275,7 @@ check_deletehistoryjob(struct batch_request * preq, char * jid)
 		job_purge(histpjob);
 
 		update_deletejob_stat(jid, preq, PBSE_HISTJOBDELETED, &preply->brp_un.brp_delstat);
-		if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)	{
+		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)	{
 			/*preq->rq_reply.brp_code = PBSE_HISTJOBDELETED; */
 			reply_send(preq);
 		}
@@ -314,7 +314,8 @@ issue_delete(job *pjob)
 	if (preq == NULL)
 		return;
 
-	preq->rq_ind.rq_delete.rq_objname = strdup(pjob->ji_qs.ji_jobid);
+	strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname) - 1);
+	preq->rq_ind.rq_delete.rq_objname[sizeof(preq->rq_ind.rq_delete.rq_objname) - 1] = '\0';
 	preq->rq_extend = malloc(strlen(DELETEHISTORY) + 1);
 	if (preq->rq_extend == NULL) {
 		log_err(errno, "issue_delete", msg_err_malloc);
@@ -347,7 +348,7 @@ int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode, pb
 	struct batch_deljob_status *pdelstat;
 	struct batch_reply *preply = &preq->rq_reply;
 	
-	preq->rq_ind.rq_delete.tot_rpys++;
+	preply->brp_un.brp_deletejoblist.tot_rpys++;
 	
 	if (preq->rq_type != PBS_BATCH_DeleteJobList)
 		return 0;
@@ -359,8 +360,8 @@ int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode, pb
 		
 	pdelstat->name = strdup(jid);
 	pdelstat->code = errcode;
-	pdelstat->next = preply->brp_un.brp_delstatc;
-	preply->brp_un.brp_delstatc = pdelstat;
+	pdelstat->next = preply->brp_un.brp_deletejoblist.brp_delstatc;
+	preply->brp_un.brp_deletejoblist.brp_delstatc = pdelstat;
 	
 	preq->rq_reply.brp_count++;
 
@@ -397,21 +398,24 @@ req_deletejob(struct batch_request *preq)
 	int j;
 	struct batch_reply *preply = &preq->rq_reply;
 	CLEAR_HEAD(preply->brp_un.brp_delstat);
-	preply->brp_un.brp_delstatc = NULL;
+	preply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
 	preply->brp_count = 0;
+
 	
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
-		list = preq->rq_ind.rq_delete.rq_jobslist;
-		count = preq->rq_ind.rq_delete.rq_count;
+		list = preq->rq_ind.rq_deletejoblist.rq_jobslist;
+		count = preq->rq_ind.rq_deletejoblist.rq_count;
 	} else {
 		list = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
 		count = 1;
 	}
 	
-	preq->rq_ind.rq_delete.tot_jobs = count;
+	preply->brp_un.brp_deletejoblist.tot_jobs = count;
+	preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
+	preply->brp_un.brp_deletejoblist.tot_rpys = 0;
 	
-	for (j = 0; list[j] != NULL; j++) {
+	for (j = 0; j < count; j++) {
 		
 		snprintf(jid, sizeof(jid), "%s", list[j]);
 		
@@ -433,7 +437,7 @@ req_deletejob(struct batch_request *preq)
 			if (pjob != NULL && pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(err, PREEMPT_METHOD_DELETE, pjob);
 			update_deletejob_stat(jid, preq, err, &preply->brp_un.brp_delstat);
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 				if (preq->rq_type == PBS_BATCH_DeleteJobList)
 					req_reject(err, 0, preq);  /* note, req_reject is not called for delete job request 2 */
 				return;
@@ -467,7 +471,7 @@ req_deletejob(struct batch_request *preq)
 			offset = subjob_index_to_offset(parent, get_index_from_jid(jid));
 			if (offset == -1) {
 				update_deletejob_stat(jid, preq, PBSE_UNKJOBID, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 					req_reject(PBSE_UNKJOBID, 0, preq);  
 					return;
 				} else
@@ -477,7 +481,7 @@ req_deletejob(struct batch_request *preq)
 			subjobstate = get_subjob_state(parent, offset);
 			if (subjobstate == -1) {
 				update_deletejob_stat(jid, preq, PBSE_IVALREQ, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 					req_reject(PBSE_IVALREQ, 0, preq);  
 					return;
 				} else
@@ -490,14 +494,14 @@ req_deletejob(struct batch_request *preq)
 					reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
 				}
 				update_deletejob_stat(jid, preq, PBSE_BADSTATE, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 					req_reject(PBSE_BADSTATE, 0, preq);  
 					return;
 				} else
 					continue;
 			} else if (subjobstate == JOB_STATE_LTR_EXPIRED) {
 				update_deletejob_stat(jid, preq, PBSE_NOHISTARRAYSUBJOB, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 					req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);  
 					return;
 				} else
@@ -516,8 +520,8 @@ req_deletejob(struct batch_request *preq)
 				parent->ji_ajtrk->tkm_dsubjsct++;
 
 				decr_single_subjob_usage(parent);
-				preq->rq_ind.rq_delete.tot_rpys++;
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+				preply->brp_un.brp_deletejoblist.tot_rpys++;
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					reply_ack(preq);
 			}
 			chk_array_doneness(parent);
@@ -537,7 +541,7 @@ req_deletejob(struct batch_request *preq)
 			/* for each subjob that is running, delete it via req_deletejob2 */
 
 			++preq->rq_refct;
-			preq->rq_ind.rq_delete.tot_arr_jobs++;
+			preply->brp_un.brp_deletejoblist.tot_arr_jobs++;
 
 			/* keep the array from being removed while we are looking at it */
 			parent->ji_ajtrk->tkm_flags |= TKMFLG_NO_DELETE;
@@ -581,8 +585,8 @@ req_deletejob(struct batch_request *preq)
 				if ((parent = find_job(jid)) != NULL)
 					req_deletejob2(preq, parent);
 				else {
-					preq->rq_ind.rq_delete.tot_rpys++;
-					if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+					preply->brp_un.brp_deletejoblist.tot_rpys++;
+					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 						reply_send(preq);
 				}
 			} else
@@ -602,7 +606,7 @@ req_deletejob(struct batch_request *preq)
 		range = get_index_from_jid(jid);
 		if (range == NULL) {
 			update_deletejob_stat(jid, preq, PBSE_IVALREQ, &preply->brp_un.brp_delstat);
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 				req_reject(PBSE_IVALREQ, 0, preq);
 				return;
 			} else
@@ -618,7 +622,7 @@ req_deletejob(struct batch_request *preq)
 
 			if ((i = parse_subjob_index(range, &pc, &start, &end, &step, &count)) == -1) {
 				update_deletejob_stat(jid, preq, PBSE_IVALREQ, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) 
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) 
 					req_reject(PBSE_IVALREQ, 0, preq);
 				break;
 			} else if (i == 1)
@@ -630,7 +634,7 @@ req_deletejob(struct batch_request *preq)
 			 */
 			if (start > SJ_TBLIDX_2_IDX(parent, parent->ji_ajtrk->tkm_ct - 1)) {
 				update_deletejob_stat(jid, preq, PBSE_UNKJOBID, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					req_reject(PBSE_UNKJOBID, 0, preq);
 				break;
 			}
@@ -676,8 +680,8 @@ req_deletejob(struct batch_request *preq)
 		/* and reply will be sent to client when last delete is done */
 
 		if (--preq->rq_refct == 0) {
-			preq->rq_ind.rq_delete.tot_rpys++;
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+			preply->brp_un.brp_deletejoblist.tot_rpys++;
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				reply_send(preq);
 			chk_array_doneness(parent);
 		}
@@ -762,7 +766,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 						reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_DELETE, pjob);
 							
 					update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_SYSTEM, &preply->brp_un.brp_delstat);
-					if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 						req_reject(PBSE_SYSTEM, 0, preq);  
 						return;
 					}
@@ -776,7 +780,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			reply_preempt_jobs_request(PBSE_INTERNAL, PREEMPT_METHOD_DELETE, pjob);
 
 		update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_INTERNAL, &preply->brp_un.brp_delstat);
-		if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs) {
+		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
 			req_reject(PBSE_INTERNAL, 0, preq);
 			return;
 		}
@@ -792,7 +796,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_DELETE, pjob);
 			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_SYSTEM, &preply->brp_un.brp_delstat);
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				req_reject(PBSE_SYSTEM, 0, preq);
 		}
 
@@ -823,8 +827,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				  pjob->ji_qs.ji_jobid, "deleting instead of rerunning");
 			acct_del_write(pjob->ji_qs.ji_jobid, pjob, preq, 0);
-			preq->rq_ind.rq_delete.tot_rpys++;
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+			preply->brp_un.brp_deletejoblist.tot_rpys++;
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				reply_ack(preq);
 			return;
 		}
@@ -853,8 +857,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 					pjob->ji_qs.ji_jobid, "deleting job");
 				acct_del_write(pjob->ji_qs.ji_jobid, pjob,
 					preq, 0);
-				preq->rq_ind.rq_delete.tot_rpys++;
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+				preply->brp_un.brp_deletejoblist.tot_rpys++;
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					reply_ack(preq);
 				rel_resc(pjob);
 				job_abt(pjob, NULL);
@@ -862,7 +866,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_DELETE, pjob);
 				update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, PBSE_BADSTATE, &preply->brp_un.brp_delstat);
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					req_reject(PBSE_BADSTATE, 0, preq);
 			}
 			return;
@@ -916,8 +920,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			if (preq->rq_parentbr) 
 				reply_ack(preq);
 			else {
-				preq->rq_ind.rq_delete.tot_rpys++;
-				if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+				preply->brp_un.brp_deletejoblist.tot_rpys++;
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					reply_ack(preq);
 			}
 			discard_job(pjob, "Forced Delete", 1);
@@ -945,7 +949,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq, rc, &preply->brp_un.brp_delstat);
-			if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				req_reject(rc, 0, preq); /* cant send to MOM */
 			sprintf(log_buffer, "Delete failed %d", rc);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
@@ -1002,8 +1006,8 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	if (preq->rq_parentbr) 
 		reply_send(preq);
 	else {
-		preq->rq_ind.rq_delete.tot_rpys++;
-		if (preq->rq_ind.rq_delete.tot_rpys == preq->rq_ind.rq_delete.tot_jobs)
+		preply->brp_un.brp_deletejoblist.tot_rpys++;
+		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 			reply_send(preq);
 	}
 }
@@ -1275,7 +1279,8 @@ req_deleteReservation(struct batch_request *preq)
 
 				strcpy(newreq->rq_user, user);
 				strcpy(newreq->rq_host, host);
-				newreq->rq_ind.rq_delete.rq_objname = strdup(pjob->ji_qs.ji_jobid);
+				strcpy(newreq->rq_ind.rq_delete.rq_objname,
+					pjob->ji_qs.ji_jobid);
 
 				if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq,
 					release_req, &pwt, 0) == -1) {
@@ -1409,7 +1414,7 @@ post_delete_mom1(struct work_task *pwt)
 	if (pjob == NULL) {
 		/* job has gone away */
 		update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, PBSE_UNKJOBID, &preply->brp_un.brp_delstat);
-		if (preq_clt->rq_ind.rq_delete.tot_rpys == preq_clt->rq_ind.rq_delete.tot_jobs)
+		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 			req_reject(PBSE_UNKJOBID, 0, preq_clt);
 		return;
 	}
@@ -1424,7 +1429,7 @@ resend:
 		if (rc == PBSE_UNKSIG) {
 			if (tries++) {
 				update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, rc, &preply->brp_un.brp_delstat);
-				if (preq_clt->rq_ind.rq_delete.tot_rpys == preq_clt->rq_ind.rq_delete.tot_jobs)
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					req_reject(rc, 0, preq_clt);
 				return;
 			}
@@ -1442,7 +1447,7 @@ resend:
 				if (pjob->ji_pmt_preq != NULL)
 					reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 				update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, rc, &preply->brp_un.brp_delstat);
-				if (preq_clt->rq_ind.rq_delete.tot_rpys == preq_clt->rq_ind.rq_delete.tot_jobs)
+				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 					req_reject(rc, 0, preq_clt);
 				return;
 			}
@@ -1452,15 +1457,15 @@ resend:
 			/* removed the resources assigned to job */
 			free_nodes(pjob);
 			set_resc_assigned(pjob, 0, DECR);
-			preq_clt->rq_ind.rq_delete.tot_rpys++;
-			if (preq_clt->rq_ind.rq_delete.tot_rpys == preq_clt->rq_ind.rq_delete.tot_jobs)
+			preply->brp_un.brp_deletejoblist.tot_rpys++;
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				reply_ack(preq_clt);
 			svr_saveorpurge_finjobhist(pjob);
 		} else {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(rc, PREEMPT_METHOD_DELETE, pjob);
 			update_deletejob_stat(pjob->ji_qs.ji_jobid, preq_clt, rc, &preply->brp_un.brp_delstat);
-			if (preq_clt->rq_ind.rq_delete.tot_rpys == preq_clt->rq_ind.rq_delete.tot_jobs)
+			if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 				req_reject(rc, 0, preq_clt);
 		}
 		return;
@@ -1471,8 +1476,8 @@ resend:
 	if (preq_clt->rq_parentbr) {
 		reply_ack(preq_clt);
 	} else {
-		preq_clt->rq_ind.rq_delete.tot_rpys++;
-		if (preq_clt->rq_ind.rq_delete.tot_rpys == preq_clt->rq_ind.rq_delete.tot_jobs)
+		preply->brp_un.brp_deletejoblist.tot_rpys++;
+		if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 			reply_ack(preq_clt); /* dont need it, reply now */
 	}
 

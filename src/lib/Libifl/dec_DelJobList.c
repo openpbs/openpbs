@@ -73,7 +73,7 @@
  *	-decode a Delete Job Batch Request
  *
  * @par	Functionality:
- *	This request is used for delete operations  deleted.
+ *	This function is used to decode the request for deletion of list of jobids.
  *
  *
  *      The batch_request structure must already exist (be allocated by the
@@ -104,14 +104,14 @@ decode_DIS_DelJobList(int sock, struct batch_request *preq)
 	int i = 0;
 
 	CLEAR_HEAD(preq->rq_ind.rq_delete.rq_attr);
-	preq->rq_ind.rq_delete.rq_cmd = disrui(sock, &rc);
+	preq->rq_ind.rq_deletejoblist.rq_cmd = disrui(sock, &rc);
 	if (rc) return rc;
-	preq->rq_ind.rq_delete.rq_objtype = disrui(sock, &rc);
+	preq->rq_ind.rq_deletejoblist.rq_objtype = disrui(sock, &rc);
 	if (rc) return rc;
-	preq->rq_ind.rq_delete.rq_count = disrui(sock, &rc);
+	preq->rq_ind.rq_deletejoblist.rq_count = disrui(sock, &rc);
 	if (rc) return rc;
 	
-	count = preq->rq_ind.rq_delete.rq_count;
+	count = preq->rq_ind.rq_deletejoblist.rq_count;
 	
 	tmp_jobslist = (char **)calloc(count + 1, sizeof(char *));
 	if (tmp_jobslist == NULL) return DIS_NOMALLOC;
@@ -123,11 +123,7 @@ decode_DIS_DelJobList(int sock, struct batch_request *preq)
 			return rc;
 		}
 	}
-	
-	preq->rq_ind.rq_delete.rq_jobslist = tmp_jobslist;
-	if (rc) return rc;
-	preq->rq_ind.rq_delete.tot_jobs = 0;
-	preq->rq_ind.rq_delete.tot_rpys = 0;
-	preq->rq_ind.rq_delete.tot_arr_jobs = 0;
+	tmp_jobslist[i] = NULL;
+	preq->rq_ind.rq_deletejoblist.rq_jobslist = tmp_jobslist;
 	return (decode_DIS_svrattrl(sock, &preq->rq_ind.rq_delete.rq_attr));
 }

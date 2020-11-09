@@ -109,9 +109,9 @@ PBSD_delete(int c, int function, int command, int objtype, char **objnames, stru
 		pbs_errno = PBSE_PROTOCOL;
 	} 
 	
-	if ((reply != NULL) && (reply->brp_un.brp_delstatc != NULL)) {
-		rbsp = reply->brp_un.brp_delstatc;
-		reply->brp_un.brp_delstatc = NULL;
+	if ((reply != NULL) && (reply->brp_un.brp_deletejoblist.brp_delstatc != NULL)) {
+		rbsp = reply->brp_un.brp_deletejoblist.brp_delstatc;
+		reply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
 	}
 	
 	PBSD_FreeReply(reply);

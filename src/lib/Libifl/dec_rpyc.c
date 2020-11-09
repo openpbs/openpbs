@@ -208,7 +208,7 @@ again:
 
 			/* have to get count of number of status objects first */
 
-			reply->brp_un.brp_delstatc = NULL;
+			reply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
 			reply->brp_count = 0;
 			
 			ct = disrui(sock, &rc);
@@ -220,7 +220,7 @@ again:
 				pdel = (struct batch_deljob_status *) malloc(sizeof(struct batch_deljob_status));
 				if (pdel == 0)
 					return DIS_NOMALLOC;
-				pdel->next = reply->brp_un.brp_delstatc;
+				pdel->next = reply->brp_un.brp_deletejoblist.brp_delstatc;
 				pdel->code = 0;
 
 				pdel->name = disrst(sock, &rc);
@@ -236,7 +236,7 @@ again:
 					pbs_delstatfree(pdel);
 					return rc;
 				}
-				reply->brp_un.brp_delstatc = pdel;
+				reply->brp_un.brp_deletejoblist.brp_delstatc = pdel;
 			}
 
 			break;
