@@ -90,9 +90,11 @@ class Test_systemd(TestFunctional):
         if ('1' == self.server.pbs_conf['PBS_START_SCHED'] and
                 self.scheduler.isUp(max_attempts=10)):
             return False
-        if '1' == self.server.pbs_conf['PBS_START_COMM'] and self.comm.isUp(max_attempts=10):
+        if ('1' == self.server.pbs_conf['PBS_START_COMM'] and
+                self.comm.isUp(max_attempts=10)):
             return False
-        if '1' == self.server.pbs_conf['PBS_START_MOM'] and self.mom.isUp(max_attempts=10):
+        if ('1' == self.server.pbs_conf['PBS_START_MOM'] and
+                self.mom.isUp(max_attempts=10)):
             return False
         return True
 
