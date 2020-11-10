@@ -192,6 +192,7 @@ def testparams(**kwargs):
             function.__doc__ += str(key) + ' : ' + str(value) + '\n\t'
 
         def wrapper(self, *args):
+            self.testconf = {}
             for key, value in kwargs.items():
                 keyname = type(self).__name__ + "." + key
                 if keyname not in self.conf.keys():
