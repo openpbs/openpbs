@@ -222,16 +222,12 @@ again:
 					return DIS_NOMALLOC;
 				pdel->next = reply->brp_un.brp_deletejoblist.brp_delstatc;
 				pdel->code = 0;
-
 				pdel->name = disrst(sock, &rc);
 				if (rc) {
 					pbs_delstatfree(pdel);
 					return rc;
 				}
-				if (rc == 0) {
-					pdel->code = disrui(sock, &rc);
-				}
-				
+				pdel->code = disrui(sock, &rc);
 				if (rc) {
 					pbs_delstatfree(pdel);
 					return rc;

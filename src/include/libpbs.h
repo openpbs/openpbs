@@ -175,7 +175,7 @@ struct brp_status {
 struct brp_deletejobstat {
 	pbs_list_link brp_stlink;
 	int brp_objtype;
-	char brp_objname[(PBS_MAXSVRJOBID > PBS_MAXDEST ? PBS_MAXSVRJOBID : PBS_MAXDEST) + 1];
+	char brp_objname[PBS_MAXSVRJOBID + 1];
 	int brp_errcode;
 };
 
@@ -222,7 +222,6 @@ struct batch_reply
 		struct brp_select *brp_select; /* select replies */
 		pbs_list_head brp_status; /* status (svr) replies */
 		struct batch_status *brp_statc; /* status (cmd) replies) */
-		pbs_list_head brp_delstat; /* status (deleted jobs) replies) */
 		struct {
 			int tot_jobs;
 			int tot_rpys; 
@@ -312,7 +311,7 @@ struct batch_reply
 #define PBS_BATCH_ModifyJob_Async	96
 #define PBS_BATCH_AsyrunJob_ack	97
 #define PBS_BATCH_RegisterSched	98
-#define PBS_BATCH_DeleteJobList 99
+#define PBS_BATCH_DeleteJobList	99
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -349,9 +348,9 @@ int PBSD_jscript_direct(int, char *, int, char **);
 int PBSD_copyhookfile(int, char *, int, char **);
 int PBSD_delhookfile(int, char *, int, char **);
 int PBSD_mgr_put(int, int, int, int, char *, struct attropl *, char *, int, char **);
-int PBSD_delete_put(int, int, int, int, char **, struct attropl *, char *, int, char **);
+int PBSD_deljoblist_put(int, int, int, int, char **, struct attropl *, char *, int, char **);
 int PBSD_manager(int, int, int, int, char *, struct attropl *, char *);
-struct batch_deljob_status *PBSD_delete(int, int, int, int, char **, struct attropl *, char *);
+struct batch_deljob_status *PBSD_deljoblist(int, int, int, int, char **, struct attropl *, char *);
 int PBSD_msg_put(int, char *, int, char *, char *, int, char **);
 int PBSD_relnodes_put(int, char *, char *, char *, int, char **);
 int PBSD_py_spawn_put(int, char *, char **, char **, int, char **);

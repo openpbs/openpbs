@@ -48,12 +48,16 @@
 
 #include <stdio.h>
 #include "libpbs.h"
+#include "pbs_ecl.h"
+#include "dis.h"
+#include "net_connect.h"
+#include "tpp.h"
 
 
 /**
  * @brief
- *	Send the Delete Job request to the server
- * 	really just an instance of the manager request
+ *	Send the Delete Job List request to the server
+ *
  *
  * @param[in] c - connection handler
  * @param[in] jobid - job identifier
@@ -73,10 +77,138 @@ __pbs_deljoblist(int c, char **jobid, char *extend)
 	if ((jobid == NULL) || (**jobid == '\0'))
 		return NULL;
 
-	return PBSD_delete(c, PBS_BATCH_DeleteJobList,
+	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList,
 		MGR_CMD_DELETE,
 		MGR_OBJ_JOB,
 		jobid,
 		aoplp,
 		extend);
 }
+
+/**
+ * @brief
+ *	-send Delete request and read reply.
+ *
+ * @param[in] c - communication handle
+ * @param[in] function - req type
+ * @param[in] command - command
+ * @param[in] objtype - object type
+ * @param[in] objname - object name
+ * @param[in] aoplp - attribute list
+ * @param[in] extend - extend string for req
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+struct batch_deljob_status *
+PBSD_deljoblist(int c, int function, int command, int objtype, char **objnames, struct attropl *aoplp, char *extend)
+{
+	int i;
+	struct batch_reply *reply;
+	struct batch_deljob_status *rbsp = NULL;
+
+	/* initialize the thread context data, if not initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+
+	/* now verify the attributes, if verification is enabled */
+	if ((pbs_verify_attributes(c, function, objtype,
+		command, aoplp)) != 0)
+		return NULL;
+
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	/* send the manage request */
+	i = PBSD_deljoblist_put(c, function, command, objtype, objnames, aoplp, extend, PROT_TCP, NULL);
+	if (i) {
+		(void)pbs_client_thread_unlock_connection(c);
+		return NULL;
+	}
+
+	/* read reply from stream into presentation element */
+	reply = PBSD_rdrpy(c);
+
+	if (reply == NULL) {
+		pbs_errno = PBSE_PROTOCOL;
+	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL  &&
+		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
+		reply->brp_choice != BATCH_REPLY_CHOICE_Delete) {
+		pbs_errno = PBSE_PROTOCOL;
+	} 
+	
+	if ((reply != NULL) && (reply->brp_un.brp_deletejoblist.brp_delstatc != NULL)) {
+		rbsp = reply->brp_un.brp_deletejoblist.brp_delstatc;
+		reply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
+	}
+	
+	PBSD_FreeReply(reply);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return rbsp;
+}
+
+/**
+ * @brief
+ *      -encode a Delete Batch Request
+ *
+ * @par Functionality:
+ *              This request is used for delete operation.
+ *              
+ *
+ * @param[in] c - socket descriptor
+ * @param[in] command - command type
+ * @param[in] objtype - object type
+ * @param[in] objname - object name
+ * @param[in] aoplp - pointer to attropl structure(list)
+ * @param[in] prot - PROT_TCP or PROT_TPP
+ * @param[in] msgid - message id
+ *
+ * @return      int
+ * @retval      DIS_SUCCESS(0)  success
+ * @retval      error code      error
+ *
+ */
+int
+PBSD_deljoblist_put(int c, int function, int command, int objtype, char **objnames, struct attropl *aoplp, char *extend, int prot, char **msgid)
+{
+	int rc;
+
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
+	} else {
+		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
+			return rc;
+	}
+
+	if ((rc = encode_DIS_ReqHdr(c, function, pbs_current_user)) ||
+		(rc = encode_DIS_Delete(c, command, objtype, objnames, aoplp)) ||
+		(rc = encode_DIS_ReqExtend(c, extend))) {
+		if (prot == PROT_TCP) {
+			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)
+				return (pbs_errno = PBSE_SYSTEM);
+		}
+		return (pbs_errno = PBSE_PROTOCOL);
+	}
+
+	if (prot == PROT_TPP) {
+		pbs_errno = PBSE_NONE;
+		if (dis_flush(c))
+			pbs_errno = PBSE_PROTOCOL;
+		return pbs_errno;
+	}
+
+	if (dis_flush(c)) {
+		return (pbs_errno = PBSE_PROTOCOL);
+	}
+	return 0;
+}
+

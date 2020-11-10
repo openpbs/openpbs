@@ -65,9 +65,10 @@ __pbs_delstatfree(struct batch_deljob_status *bsp)
 	struct batch_deljob_status *bsnxt;
 
 	while (bsp != NULL) {
-		if (bsp->name != NULL)(void)free(bsp->name);
+		if (bsp->name != NULL)
+			free(bsp->name);
 		bsnxt = bsp->next;
-		(void)free(bsp);
+		free(bsp);
 		bsp = bsnxt;
 	}
 }

@@ -90,22 +90,23 @@ append_jobid(svr_jobid_list_t *svr, char *jobid)
 	
 	if (svr->max_sz == 0) {
 		svr->jobids = malloc((NO_OF_JOBIDS + 1) * sizeof(char *));
-		if (svr->jobids == NULL) {
-			fprintf(stderr, "qdel: unable to allocate memory.\n");
-			exit(2);
-		}
+		if (svr->jobids == NULL) 
+			goto error;
 		svr->max_sz = NO_OF_JOBIDS;
 	} else if (svr->job_ct == svr->max_sz) {
 		svr->max_sz *= 2;
 		svr->jobids = realloc(svr->jobids, (svr->max_sz + 1) * sizeof(char *));
-		if (svr->jobids == NULL) {
-			fprintf(stderr, "qdel: unable to allocate memory.\n");
-			exit(2);
-		}
+		if (svr->jobids == NULL) 
+			goto error;
 	}
 	
 	svr->jobids[svr->job_ct++] = jobid;
 	svr->jobids[svr->job_ct] = NULL;
+	return;
+
+error:
+	fprintf(stderr, "qdel: unable to allocate memory.\n");
+	exit(2);	
 }
 
 /**
@@ -356,19 +357,18 @@ char **envp;
 		p_delstatus = pbs_deljoblist(connect, svr_itr->jobids, warg);
 		
 		while (p_delstatus != NULL) {
+			if (p_delstatus->code == PBSE_UNKJOBID) {
+				if (locate_job(p_delstatus->name, server_out, rmt_server))
+					add_jid_to_list(rmt_server, rmt_server, &svr_jobib_list_hd);
+				continue;
+			}
 			if ((pbse_to_txt(p_delstatus->code) != NULL) && (p_delstatus->code != PBSE_HISTJOBDELETED)) {
 				fprintf(stderr, "%s: %s %s\n", "qdel", pbse_to_txt(p_delstatus->code), p_delstatus->name);
 				any_failed = p_delstatus->code;
 			}
-
 			if (p_delstatus->code != PBSE_HISTJOBDELETED)
 				num_deleted++;
-			
-			if (p_delstatus->code == PBSE_UNKJOBID) {
-				if (locate_job(p_delstatus->name, server_out, rmt_server))
-					add_jid_to_list(rmt_server, rmt_server, &svr_jobib_list_hd);
-			}
-			
+
 			p_delstatus = p_delstatus->next;
 		}
 

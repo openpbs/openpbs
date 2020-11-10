@@ -158,7 +158,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 				return rc;
 			pdelstat = reply->brp_un.brp_deletejoblist.brp_delstatc;
 			while (pdelstat) {
-				if ((rc = diswst(sock, pdelstat->name )) || (rc = diswui(sock, pdelstat->code)))
+				if ((rc = diswst(sock, pdelstat->name)) || (rc = diswui(sock, pdelstat->code)))
 					return rc;
 
 				pdelstat = pdelstat->next;

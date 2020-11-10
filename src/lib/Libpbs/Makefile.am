@@ -212,9 +212,7 @@ libpbs_la_SOURCES = \
 	../Libifl/int_hook.c \
 	../Libifl/int_jcred.c \
 	../Libifl/int_manager.c \
-	../Libifl/int_delete2.c \
 	../Libifl/int_manage2.c \
-	../Libifl/int_deleteput.c \
 	../Libifl/int_msg2.c \
 	../Libifl/int_rdrpy.c \
 	../Libifl/int_sig2.c \

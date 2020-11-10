@@ -530,7 +530,7 @@ struct batch_status {
 
 struct batch_deljob_status {
 	struct batch_deljob_status *next;
-	char *name;
+	char	*name;
 	int	code;
 };
 

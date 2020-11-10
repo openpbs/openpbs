@@ -1432,10 +1432,8 @@ free_br(struct batch_request *preq)
 			if (--preq->rq_parentbr->rq_refct == 0) {
 				if (preq->rq_parentbr->rq_type == PBS_BATCH_DeleteJobList) {
 					preply->brp_un.brp_deletejoblist.tot_rpys += preply->brp_un.brp_deletejoblist.tot_arr_jobs ;
-					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
-						log_err(-1, "reply_send", "reply_send called!\n");
+					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 						reply_send(preq->rq_parentbr);
-					}
 				} else 
 					reply_send(preq->rq_parentbr);
 			}
