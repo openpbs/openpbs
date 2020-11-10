@@ -121,6 +121,8 @@ extern int clust_primary_sock;
 
 extern int clust_secondary_sock;
 
+extern int mock_run;
+
 /**
  * @brief
  * It is used as a placeholder to store aoe name. This aoe name will be

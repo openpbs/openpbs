@@ -37,15 +37,15 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_FIFO_H
-#define	_FIFO_H
-#ifdef	__cplusplus
+#ifndef _FIFO_H
+#define _FIFO_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-#include  <limits.h>
 #include "data_types.h"
 #include "sched_cmds.h"
+#include <limits.h>
 
 /**
  * @brief Gets the Scheduler Command sent by the Server
@@ -171,8 +171,7 @@ int sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_ar
  */
 int
 run_update_resresv(status *policy, int pbs_sd, server_info *sinfo, queue_info *qinfo,
-	resource_resv *rresv, nspec **ns_arr, unsigned int flags, schd_error *err);
-
+		   resource_resv *rresv, nspec **ns_arr, unsigned int flags, schd_error *err);
 
 /*
  *	update_job_can_not_run - do post job 'can't run' processing
@@ -205,6 +204,7 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  */
 int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook, schd_error *err);
 
+int send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode);
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
  *	returns 1: we should backfill 0: we should not
@@ -224,7 +224,6 @@ int should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *
  *
  */
 void update_cycle_status(struct status *policy, time_t current_time);
-
 
 /*
  *
@@ -258,7 +257,7 @@ int validate_running_user(char *exename);
 
 void clear_last_running();
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _FIFO_H */
+#endif /* _FIFO_H */

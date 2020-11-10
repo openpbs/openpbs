@@ -87,6 +87,8 @@ libpbs_sched_a_SOURCES = \
 	limits.cpp \
 	misc.cpp \
 	misc.h \
+	mock_run.cpp \
+	mock_run.h \
 	multi_threading.cpp \
 	multi_threading.h \
 	node_info.cpp \

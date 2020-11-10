@@ -193,3 +193,6 @@ int clust_primary_sock = -1;
 
 /* secondary socket descriptor to the server pool */
 int clust_secondary_sock = -1;
+
+/* Scheduler runs in "mock" run mode? */
+int mock_run = 0;

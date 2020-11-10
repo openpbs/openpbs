@@ -839,7 +839,7 @@ main(int argc, char *argv[])
 	segv_start_time = segv_last_time = time(NULL);
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "lL:NI:d:p:c:nt:")) != EOF) {
+	while ((c = getopt(argc, argv, "lL:NmI:d:p:c:nt:")) != EOF) {
 		switch (c) {
 			case 'l':
 #ifdef _POSIX_MEMLOCK
@@ -853,6 +853,9 @@ main(int argc, char *argv[])
 				break;
 			case 'N':
 				stalone = 1;
+				break;
+			case 'm':
+				mock_run = 1;
 				break;
 			case 'I':
 				sc_name = optarg;
@@ -1118,6 +1121,11 @@ main(int argc, char *argv[])
 
 	sched_svr_init();
 	connect_svrpool();
+
+	if (mock_run) {
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "",
+			  "Scheduler running in mock run mode");
+	}
 
 	for (go=1; go;) {
 		int i;

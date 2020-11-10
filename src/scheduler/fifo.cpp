@@ -49,52 +49,52 @@
 #include <wchar.h>
 #endif
 
+#include "buckets.h"
+#include "check.h"
+#include "config.h"
+#include "constant.h"
+#include "dedtime.h"
+#include "fairshare.h"
+#include "fifo.h"
+#include "globals.h"
+#include "job_info.h"
+#include "libpbs.h"
+#include "limits_if.h"
+#include "misc.h"
+#include "mock_run.h"
+#include "multi_threading.h"
+#include "node_info.h"
+#include "node_partition.h"
+#include "parse.h"
+#include "pbs_internal.h"
+#include "pbs_python.h"
+#include "pbs_share.h"
+#include "pbs_version.h"
+#include "prev_job_info.h"
+#include "prime.h"
+#include "queue_info.h"
+#include "range.h"
+#include "resource.h"
+#include "resource_resv.h"
+#include "resv_info.h"
+#include "server_info.h"
+#include "simulate.h"
+#include "sort.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <libutil.h>
+#include <log.h>
+#include <pbs_error.h>
+#include <pbs_ifl.h>
+#include <pwd.h>
+#include <sched_cmds.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <libutil.h>
-#include <pbs_error.h>
-#include <pbs_ifl.h>
-#include <sched_cmds.h>
-#include <time.h>
-#include <log.h>
-#include <pwd.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include "fifo.h"
-#include "queue_info.h"
-#include "server_info.h"
-#include "node_info.h"
-#include "check.h"
-#include "constant.h"
-#include "job_info.h"
-#include "misc.h"
-#include "config.h"
-#include "sort.h"
-#include "parse.h"
-#include "globals.h"
-#include "prev_job_info.h"
-#include "fairshare.h"
-#include "prime.h"
-#include "dedtime.h"
-#include "resv_info.h"
-#include "range.h"
-#include "resource_resv.h"
-#include "simulate.h"
-#include "node_partition.h"
-#include "resource.h"
-#include "resource_resv.h"
-#include "pbs_share.h"
-#include "pbs_internal.h"
-#include "limits_if.h"
-#include "pbs_version.h"
-#include "buckets.h"
-#include "multi_threading.h"
-#include "pbs_python.h"
-#include "libpbs.h"
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
 #ifdef NAS
 #include "site_code.h"
@@ -687,9 +687,13 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
 		}
 	}
 
-	/* run loop run */
-	if (error == 0)
-		rc = main_sched_loop(policy, sd, sinfo, &err);
+	if (mock_run) {
+		rc = mock_sched_loop(policy, sd, sinfo, &err);
+	} else {
+		/* run loop run */
+		if (error == 0)
+			rc = main_sched_loop(policy, sd, sinfo, &err);
+	}
 
 	if (cmd->jid != NULL) {
 		int def_rc = -1;
@@ -1319,7 +1323,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @return	int
  * @retval	return value of the runjob call
  */
-static int
+int
 send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
 {
 	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)

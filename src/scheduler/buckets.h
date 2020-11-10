@@ -44,6 +44,8 @@ extern "C" {
 #ifndef _BUCKETS_H
 #define _BUCKETS_H
 
+#include "data_types.h"
+
 /* bucket_bitpool constructor, copy constructor, destructor */
 bucket_bitpool *new_bucket_bitpool();
 void free_bucket_bitpool(bucket_bitpool *bp);
