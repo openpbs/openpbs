@@ -768,7 +768,8 @@ class PTLTestRunner(Plugin):
         if mlist:
             for mc in mlist:
                 platform = mc.platform
-                if platform not in ['linux', 'shasta', 'cray'] and mc.hostname in _moms:
+                if platform not in ['linux', 'shasta',
+                                    'cray'] and mc.hostname in _moms:
                     _moms.remove(mc.hostname)
         for hostname in _moms:
             si = SystemInfo()
@@ -881,7 +882,7 @@ class PTLTestRunner(Plugin):
                 for mc in mlist:
                     platform = mc.platform
                     if ((platform not in ['linux', 'shasta', 'cray']) and
-                       (mc.hostname in systems)):
+                            (mc.hostname in systems)):
                         systems.remove(mc.hostname)
 
         self.hardware_report_timer = Timer(

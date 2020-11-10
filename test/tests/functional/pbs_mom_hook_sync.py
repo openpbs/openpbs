@@ -379,7 +379,7 @@ class TestMomHookSync(TestFunctional):
             file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
                                 'hooks', 'resourcedef')
             momret = self.momB.cat(self.momB.hostname, file, logerr=False,
-                                      sudo=True)
+                                   sudo=True)
             if momret['rc'] != 0 or len(momret['out']) == 0:
                 continue
 

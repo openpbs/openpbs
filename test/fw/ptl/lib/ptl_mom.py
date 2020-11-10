@@ -532,7 +532,7 @@ class MoM(PBSService):
         Wrapper for cat function
         """
         return self.du.cat(hostname, filename, sudo, runas,
-            logerr, level, option)
+                           logerr, level, option)
 
     def revert_mom_pbs_conf(self, primary_server, vals_to_set):
         """
@@ -647,7 +647,7 @@ class MoM(PBSService):
             try:
                 with open(outfile, mode) as f:
                     json.dump(self.server.saved_config, f)
-            except:
+            except BaseException:
                 self.logger.error('error saving configuration to ' + outfile)
                 return False
         return True
@@ -859,7 +859,7 @@ class MoM(PBSService):
         if createnode:
             try:
                 statm = self.server.status(NODE, id=natvnode)
-            except:
+            except BaseException:
                 statm = []
             if len(statm) >= 1:
                 _m = 'Mom %s already exists, not creating' % (natvnode)
@@ -1040,7 +1040,7 @@ class MoM(PBSService):
                         self.config[k] = [self.config[k], v]
                 else:
                     self.config[k] = v
-        except:
+        except BaseException:
             self.logger.error('error in parse_config')
             return None
 
@@ -1129,7 +1129,7 @@ class MoM(PBSService):
             self.du.run_copy(self.hostname, src=fn, dest=dest,
                              preserve_permission=False, sudo=True)
             os.remove(fn)
-        except:
+        except BaseException:
             raise PbsMomConfigError(rc=1, rv=False,
                                     msg='error processing add_config')
         if restart:
@@ -1175,7 +1175,7 @@ class MoM(PBSService):
 
         try:
             fn = self.du.create_temp_file(self.hostname, body=vdef)
-        except:
+        except BaseException:
             raise PbsMomConfigError(rc=1, rv=False,
                                     msg="Failed to insert vnode definition")
         if fname is None:
