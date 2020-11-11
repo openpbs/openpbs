@@ -765,12 +765,12 @@ class PTLTestRunner(Plugin):
         if (hasattr(_test, name) and
                 (getattr(_test, name, None) is not None)):
             mlist = getattr(_test, name).values()
-        if mlist:
-            for mc in mlist:
-                platform = mc.platform
-                if platform not in ['linux', 'shasta',
-                                    'cray'] and mc.hostname in _moms:
-                    _moms.remove(mc.hostname)
+            if mlist:
+                for mc in mlist:
+                    platform = mc.platform
+                    if platform not in ['linux', 'shasta',
+                                        'cray'] and mc.hostname in _moms:
+                        _moms.remove(mc.hostname)
         for hostname in _moms:
             si = SystemInfo()
             si.get_system_info(hostname)
