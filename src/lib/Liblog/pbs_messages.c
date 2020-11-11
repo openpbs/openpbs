@@ -165,6 +165,18 @@ char *msg_new_inventory_mom = "Setting inventory_mom for vnode_pool %d to %s";
 char *msg_auth_request = "Type %d request is authenticated. The credential id is %s@%s, host %s, sock=%d";
 
 /*
+ * This set of messages is used in e-mail to inform the user that the job exceeded resources.
+ */
+char *msg_momkillncpusburst = "Job exceeded resource ncpus (burst)\nSee job standard error file";
+char *msg_momkillncpussum = "Job exceeded resource ncpus (sum)\nSee job standard error file";
+char *msg_momkillvmem = "Job exceeded resource vmem\nSee job standard error file";
+char *msg_momkillmem = "Job exceeded resource mem\nSee job standard error file";
+char *msg_momkillcput = "Job exceeded resource cput\nSee job standard error file";
+char *msg_momkillwalltime = "Job exceeded resource walltime\nSee job standard error file";
+char *msg_momkillmppe = "Job exceeded resource mppe\nSee job standard error file";
+char *msg_momkillmppssp = "Job exceeded resource mppssp\nSee job standard error file";
+
+/*
  * This next set of messages are returned to the client on an error.
  * They may also be logged.
  */

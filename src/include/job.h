@@ -981,6 +981,14 @@ task_find	(job		*pjob,
 					* This is neither a success nor a failure exit code,
 					* so we are using a positive value
 					*/
+#define JOB_EXEC_KILL_NCPUS_BURST -24 /* job exec failed due to exceeding ncpus (burst) */
+#define JOB_EXEC_KILL_NCPUS_SUM -25 /* job exec failed due to exceeding ncpus (sum) */
+#define JOB_EXEC_KILL_VMEM -26 /* job exec failed due to exceeding vmem */
+#define JOB_EXEC_KILL_MEM -27 /* job exec failed due to exceeding mem */
+#define JOB_EXEC_KILL_CPUT -28 /* job exec failed due to exceeding cput */
+#define JOB_EXEC_KILL_WALLTIME -29 /* job exec failed due to exceeding walltime */
+#define JOB_EXEC_KILL_MPPE -30 /* job exec failed due to exceeding mppe */
+#define JOB_EXEC_KILL_MPPSSP -40 /* job exec failed due to exceeding mppssp */
 
 /*
  * Fake "random" number added onto the end of the staging

@@ -4873,8 +4873,49 @@ update_job_finish_comment(job *pjob, int newsubstate, char *user)
 		snprintf(buffer, LOG_BUF_SIZE, "%s and finished",
 			get_jattr_str(pjob, JOB_ATR_Comment));
 	} else if (newsubstate == JOB_SUBSTATE_FAILED) {
-		snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
-			get_jattr_str(pjob, JOB_ATR_Comment));
+		if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
+			switch (get_jattr_long(pjob, JOB_ATR_exit_status)) {
+				case JOB_EXEC_KILL_NCPUS_BURST:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource ncpus (burst)",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_NCPUS_SUM:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource ncpus (sum)",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_VMEM:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource vmem",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_MEM:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource mem",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_CPUT:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource cput",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_WALLTIME:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource walltime",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_MPPE:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource mppe",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_MPPSSP:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource mppssp",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				default:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+			}
+		} else {
+			snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
+				get_jattr_str(pjob, JOB_ATR_Comment));
+		}
 	} else if (newsubstate == JOB_SUBSTATE_TERMINATED) {
 		/* Don't overwrite the comment; if already set by req_deletejob2 */
 		if (strstr(get_jattr_str(pjob, JOB_ATR_Comment), "terminated") == NULL) {
