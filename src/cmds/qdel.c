@@ -73,14 +73,12 @@ struct svr_jobid_list{
  * @brief
  *	Append a given jobid to the given svr_jobid_list struct.
  *
- * @param[in] job_id - Job id 
- * @param[in] server - server name
- * @param[in] svr_jobib_list_hd - head of the svr_jobib_list list
+ * @param[in] svr - Server name
+ * @param[in] jobid - Job id 
  * 
  * @return void
  *
  */
-
 void
 append_jobid(svr_jobid_list_t *svr, char *jobid)
 {
@@ -116,24 +114,23 @@ error:
  *
  * @param[in] job_id - Job id 
  * @param[in] server - server name
- * @param[in] svr_jobib_list_hd - head of the svr_jobib_list list
+ * @param[in] svr_jobid_list_hd - head of the svr_jobib_list list
  * 
  * @return int
  * @retval	0	- success
  * @retval	1	- failure
  *
  */
-
 int
-add_jid_to_list(char *job_id, char *server, svr_jobid_list_t** svr_jobib_list_hd)
+add_jid_to_list(char *job_id, char *server, svr_jobid_list_t** svr_jobid_list_hd)
 {
 	svr_jobid_list_t *iter_list = NULL;
 	svr_jobid_list_t *prev = NULL;
 
-	if ((job_id == NULL) || (server == NULL) || (svr_jobib_list_hd == NULL))
+	if ((job_id == NULL) || (server == NULL) || (svr_jobid_list_hd == NULL))
 		return 1;
 
-	for (iter_list = *svr_jobib_list_hd; iter_list != NULL; prev = iter_list, iter_list = iter_list->next) {
+	for (iter_list = *svr_jobid_list_hd; iter_list != NULL; prev = iter_list, iter_list = iter_list->next) {
 		if (strcmp(server, iter_list->server_name) == 0) {
 			append_jobid(iter_list, job_id);
 			break;
@@ -148,7 +145,7 @@ add_jid_to_list(char *job_id, char *server, svr_jobid_list_t** svr_jobib_list_hd
 		if (prev != NULL)
 			prev->next = new_node;
 		else
-			*svr_jobib_list_hd = new_node;
+			*svr_jobid_list_hd = new_node;
 	}
 
 	return 0;
@@ -170,9 +167,6 @@ char **envp;
 	int deletehist = FALSE;
 	int mails_suppressed = FALSE;
 
-
-	char job_id[PBS_MAXCLTJOBID];	/* from the command line */
-
 	char job_id_out[PBS_MAXCLTJOBID];
 	char server_out[MAXSERVERNAME];
 	char rmt_server[MAXSERVERNAME];
@@ -185,11 +179,12 @@ char **envp;
 	struct attrl *attr;
 	struct batch_status *ss = NULL;
 	char *errmsg;
-	svr_jobid_list_t *svr_jobib_list_hd = NULL;
+	svr_jobid_list_t *svr_jobid_list_hd = NULL;
 	svr_jobid_list_t *svr_itr = NULL;
 	svr_jobid_list_t *prev = NULL;
 	int connect;
 	struct batch_deljob_status *p_delstatus;
+	char *errtxt = NULL;
 
 #define MAX_TIME_DELAY_LEN 32
 	/* -W no longer supports a time delay */
@@ -268,27 +263,19 @@ char **envp;
 		fprintf(stderr, "qdel: unable to initialize security library.\n");
 		exit(1);
 	}
-	
-	 /* allocate enough memory to store array of server instances 
-	svr_jobib_list_hd = calloc(1, sizeof(svr_jobid_list_t));
-	if (svr_jobib_list_hd == NULL) {
-		fprintf(stderr, "qdel: unable to allocate memory.\n");
-		exit(2);
-	} */
-		
+			
 	for (; optind < argc; optind++) {
-		pbs_strncpy(job_id, argv[optind], sizeof(job_id));
-		if (get_server(job_id, job_id_out, server_out)) {
-			fprintf(stderr, "qdel: illegally formed job identifier: %s\n", job_id);
+		if (get_server(argv[optind], job_id_out, server_out)) {
+			fprintf(stderr, "qdel: illegally formed job identifier: %s\n", argv[optind]);
 			any_failed = 1;
 			continue;
 		}
 		if (server_out[0] == '\0')
 			strcpy(server_out, pbs_default());
-		add_jid_to_list(argv[optind], server_out, &svr_jobib_list_hd);
+		add_jid_to_list(argv[optind], server_out, &svr_jobid_list_hd);
 	}
 
-	for (svr_itr = svr_jobib_list_hd; svr_itr != NULL; prev = svr_itr, svr_itr = svr_itr->next) {
+	for (svr_itr = svr_jobid_list_hd; svr_itr != NULL; prev = svr_itr, svr_itr = svr_itr->next) {
 		
 		if (prev != NULL)
 			free(prev);
@@ -359,11 +346,12 @@ char **envp;
 		while (p_delstatus != NULL) {
 			if (p_delstatus->code == PBSE_UNKJOBID) {
 				if (locate_job(p_delstatus->name, server_out, rmt_server))
-					add_jid_to_list(rmt_server, rmt_server, &svr_jobib_list_hd);
+					add_jid_to_list(rmt_server, rmt_server, &svr_itr);
 				continue;
 			}
-			if ((pbse_to_txt(p_delstatus->code) != NULL) && (p_delstatus->code != PBSE_HISTJOBDELETED)) {
-				fprintf(stderr, "%s: %s %s\n", "qdel", pbse_to_txt(p_delstatus->code), p_delstatus->name);
+			errtxt = pbse_to_txt(p_delstatus->code);
+			if ((errtxt != NULL) && (p_delstatus->code != PBSE_HISTJOBDELETED)) {
+				fprintf(stderr, "%s: %s %s\n", "qdel", errtxt, p_delstatus->name);
 				any_failed = p_delstatus->code;
 			}
 			if (p_delstatus->code != PBSE_HISTJOBDELETED)

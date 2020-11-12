@@ -70,18 +70,14 @@
  */
 
 struct batch_deljob_status *
-__pbs_deljoblist(int c, char **jobid, char *extend)
+__pbs_deljoblist(int c, char **jobids, char *extend)
 {
-	struct attropl *aoplp = NULL;
 
-	if ((jobid == NULL) || (**jobid == '\0'))
+	if ((jobids == NULL) || (**jobids == '\0'))
 		return NULL;
 
 	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList,
-		MGR_CMD_DELETE,
-		MGR_OBJ_JOB,
-		jobid,
-		aoplp,
+		jobids,
 		extend);
 }
 
@@ -103,7 +99,7 @@ __pbs_deljoblist(int c, char **jobid, char *extend)
  *
  */
 struct batch_deljob_status *
-PBSD_deljoblist(int c, int function, int command, int objtype, char **objnames, struct attropl *aoplp, char *extend)
+PBSD_deljoblist(int c, int function, char **jobids, char *extend)
 {
 	int i;
 	struct batch_reply *reply;
@@ -113,28 +109,22 @@ PBSD_deljoblist(int c, int function, int command, int objtype, char **objnames, 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
 
-
-	/* now verify the attributes, if verification is enabled */
-	if ((pbs_verify_attributes(c, function, objtype,
-		command, aoplp)) != 0)
-		return NULL;
-
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return NULL;
 
-	/* send the manage request */
-	i = PBSD_deljoblist_put(c, function, command, objtype, objnames, aoplp, extend, PROT_TCP, NULL);
+	/* send the deletejoblist request */
+	i = PBSD_deljoblist_put(c, function, jobids, extend, PROT_TCP, NULL);
 	if (i) {
-		(void)pbs_client_thread_unlock_connection(c);
+		pbs_client_thread_unlock_connection(c);
 		return NULL;
 	}
 
 	/* read reply from stream into presentation element */
 	reply = PBSD_rdrpy(c);
 
-	if (reply == NULL) {
+	if (reply == NULL && pbs_errno == PBSE_NONE) {
 		pbs_errno = PBSE_PROTOCOL;
 	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL  &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
@@ -158,7 +148,7 @@ PBSD_deljoblist(int c, int function, int command, int objtype, char **objnames, 
 
 /**
  * @brief
- *      -encode a Delete Batch Request
+ *      -encode a Delete Job List Batch Request
  *
  * @par Functionality:
  *              This request is used for delete operation.
@@ -178,7 +168,7 @@ PBSD_deljoblist(int c, int function, int command, int objtype, char **objnames, 
  *
  */
 int
-PBSD_deljoblist_put(int c, int function, int command, int objtype, char **objnames, struct attropl *aoplp, char *extend, int prot, char **msgid)
+PBSD_deljoblist_put(int c, int function, char **jobids, char *extend, int prot, char **msgid)
 {
 	int rc;
 
@@ -190,7 +180,7 @@ PBSD_deljoblist_put(int c, int function, int command, int objtype, char **objnam
 	}
 
 	if ((rc = encode_DIS_ReqHdr(c, function, pbs_current_user)) ||
-		(rc = encode_DIS_Delete(c, command, objtype, objnames, aoplp)) ||
+		(rc = encode_DIS_JobsList(c, jobids)) ||
 		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)

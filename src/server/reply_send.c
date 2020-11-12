@@ -458,7 +458,7 @@ reply_free(struct batch_reply *prep)
 		pdelstat = prep->brp_un.brp_deletejoblist.brp_delstatc;
 		while (pdelstat) {
 			pdelstatx = pdelstat->next;
-			(void)free(pdelstat);
+			free(pdelstat);
 			pdelstat = pdelstatx;
 	}
 		

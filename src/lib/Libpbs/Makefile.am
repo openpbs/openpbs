@@ -187,7 +187,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_JobId.c \
 	../Libifl/enc_UserCred.c \
 	../Libifl/enc_Manage.c \
-	../Libifl/enc_Delete.c \
 	../Libifl/enc_MsgJob.c \
 	../Libifl/enc_MoveJob.c \
 	../Libifl/enc_QueueJob.c \
@@ -238,7 +237,7 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_alterjo.c \
 	../Libifl/pbsD_connect.c \
 	../Libifl/pbsD_deljob.c \
-	../Libifl/pbsD_deljob2.c \
+	../Libifl/pbsD_deljoblist.c \
 	../Libifl/pbsD_holdjob.c \
 	../Libifl/pbsD_locjob.c \
 	../Libifl/pbsD_manager.c \

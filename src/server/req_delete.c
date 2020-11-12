@@ -312,7 +312,7 @@ issue_delete(job *pjob)
 	if (preq == NULL)
 		return;
 
-	strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname) - 1);
+	pbs_strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname) - 1);
 	preq->rq_ind.rq_delete.rq_objname[sizeof(preq->rq_ind.rq_delete.rq_objname) - 1] = '\0';
 	preq->rq_extend = malloc(strlen(DELETEHISTORY) + 1);
 	if (preq->rq_extend == NULL) {
@@ -391,7 +391,7 @@ req_deletejob(struct batch_request *preq)
 	int rc = 0;
 	int delhist = 0;
 	int err = PBSE_NONE;
-	char **list;
+	char **jobids;
 	int count;
 	int j;
 	struct batch_reply *preply = &preq->rq_reply;
@@ -400,10 +400,10 @@ req_deletejob(struct batch_request *preq)
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
-		list = preq->rq_ind.rq_deletejoblist.rq_jobslist;
+		jobids = preq->rq_ind.rq_deletejoblist.rq_jobslist;
 		count = preq->rq_ind.rq_deletejoblist.rq_count;
 	} else {
-		list = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
+		jobids = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
 		count = 1;
 	}
 	
@@ -411,22 +411,20 @@ req_deletejob(struct batch_request *preq)
 	preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
 	preply->brp_un.brp_deletejoblist.tot_rpys = 0;
 	
-	for (j = 0; j < count; j++) {
-		
-		snprintf(jid, sizeof(jid), "%s", list[j]);
-		
-		if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
-			delhist = 1;
-		if (preq->rq_extend && strstr(preq->rq_extend, FORCE))
-			forcedel = 1;
-		/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
-		 *  no mail is sent
-		 */
-		if (preq->rq_extend && strstr(preq->rq_extend, NOMAIL))
-			qdel_mail = 0;
-		else
-			qdel_mail = 1;
+	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
+		delhist = 1;
+	if (preq->rq_extend && strstr(preq->rq_extend, FORCE))
+		forcedel = 1;
+	/* with nomail , nomail_force , nomail_deletehist or nomailforce_deletehist options are set
+	 *  no mail is sent
+	 */
+	if (preq->rq_extend && strstr(preq->rq_extend, NOMAIL))
+		qdel_mail = 0;
+	else
+		qdel_mail = 1;
 
+	for (j = 0; j < count; j++) {	
+		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
 		if (parent == NULL) {
 			pjob = find_job(jid);
