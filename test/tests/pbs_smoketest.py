@@ -339,11 +339,10 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        a = {'Resource_List.ncpus': 2}
+        a = {'Resource_List.ncpus': 2, ATTR_k: 'oe'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(15)
-        mom = self.moms.values()[0].shortname
-        j.create_eatcpu_job(15, mom)
+        j.create_eatcpu_job(15, self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)
