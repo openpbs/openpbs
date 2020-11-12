@@ -171,14 +171,6 @@ struct brp_status {
 	pbs_list_head brp_attr; /* head of svrattrlist */
 };
 
-/* reply to Status delete Job Request */
-struct brp_deletejobstat {
-	pbs_list_link brp_stlink;
-	int brp_objtype;
-	char brp_objname[PBS_MAXSVRJOBID + 1];
-	int brp_errcode;
-};
-
 /* reply to Resource Query Request */
 struct brp_rescq {
 	int brq_number; /* number of items in following arrays */

@@ -103,6 +103,7 @@ struct rq_manage {
 	pbs_list_head rq_attr; /* svrattrlist */
 };
 
+/* DeleteJobList */
 struct rq_deletejoblist {
 	int rq_cmd;
 	int rq_objtype;
