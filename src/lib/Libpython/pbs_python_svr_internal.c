@@ -5816,6 +5816,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		struct rq_modifyvnode *rqmvn = req_params->rq_modifyvnode;
 		struct pbsnode *vnode_o = rqmvn->rq_vnode_o;
 		struct pbsnode *vnode = rqmvn->rq_vnode;
+		int tmpv_rc;
 
 		/* initialize event params to None */
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE,
@@ -5831,7 +5832,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 
 		/* Set the vnode_o object to readonly to prevent hook writers from modifying values */
-		int tmpv_rc = -1;
 		tmpv_rc = pbs_python_mark_object_readonly(py_vnode_o);
 		if (tmpv_rc == -1) {
 			log_err(PBSE_INTERNAL, __func__, "Failed to mark python vnode_o object readonly");
