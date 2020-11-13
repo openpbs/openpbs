@@ -38,25 +38,19 @@
 # subject to Altair's trademark licensing policies.
 
 
-import math
-from math import sqrt
+import subprocess
+import time
+import statistics
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import wait
 from ptl.utils.pbs_testsuite import *
+from ptl.utils.pbs_testusers import PBS_USERS
 
 
 class TestPerformance(PBSTestSuite):
     """
     Base test suite for Performance tests
     """
-
-    def mean(self, lst):
-        """calculates mean"""
-        return sum(lst) / len(lst)
-
-    def stddev(self, lst):
-        """returns the standard deviation of lst"""
-        mn = self.mean(lst)
-        variance = sum([(e - mn) ** 2 for e in lst]) / len(lst)
-        return sqrt(variance)
 
     def check_value(self, res):
         if isinstance(res, list):
@@ -75,9 +69,9 @@ class TestPerformance(PBSTestSuite):
         """
         self.check_value(result)
         if isinstance(result, list) and len(result) > 1:
-            mean_res = self.mean(result)
+            mean_res = statistics.mean(result)
             mean_res = round(mean_res, 2)
-            stddev_res = self.stddev(result)
+            stddev_res = statistics.stdev(result)
             stddev_res = round(stddev_res, 2)
             max_res = round(max(result), 2)
             min_res = round(min(result), 2)
@@ -108,5 +102,36 @@ class TestPerformance(PBSTestSuite):
                                      "minimum": result,
                                      "maximum": result}}
             return self.set_test_measurements(testdic)
+
+    def run_parallel(self, users, cmd, cmd_repeat):
+        """
+        Run commands parallely with n number of users
+        """
+        _o = self._outcome
+        self._outcome = None
+        cmd += ' > /dev/null'
+        reslt = []
+        with ProcessPoolExecutor(max_workers=users) as executor:
+            procs = {executor.submit(
+                self.submit_cmd, users, cmd, cmd_repeat) for u in range(users)}
+            results, procs = wait(procs)
+            for res in results:
+                reslt.append(res.result())
+        self._outcome = _o
+        return reslt
+
+    def submit_cmd(self, u, cmd, cmd_repeat):
+        """
+        Run commands as user and return time taken
+        """
+        os.chdir('/tmp')
+        users = PBS_USERS * 10
+        cmd = 'sudo -u ' + str(users[u]) + ' ' + cmd
+        start = time.time()
+        for _ in range(cmd_repeat):
+            subprocess.call(cmd, shell=True)
+        stop = time.time()
+        res = stop - start
+        return res
 
     pass
