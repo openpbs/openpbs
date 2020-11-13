@@ -634,7 +634,7 @@ end_prime_status_rec(time_t start, time_t date,
 			return date;
 		/* Primetime will start later today, return the scheduled time. */
 		return date + (conf.prime[day][PRIME].hour - tmptr->tm_hour) * 3600
-		+ (conf.prime[day][PRIME].min - tmptr->tm_min) * 60
+		+ (static_cast<int>(conf.prime[day][PRIME].min) - tmptr->tm_min) * 60
 		- tmptr->tm_sec;
 	}
 }
