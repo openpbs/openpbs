@@ -251,7 +251,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         # test effects of various state changes on each mom
         for name, value in self.server.moms.items():
             self.logger.debug("    ***%s:%s, type:%s" % (name, value,
-                                                        type(value)))
+                              type(value)))
             self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
 
@@ -353,7 +353,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             "node state count mismatch: actual=%s, expected:%s" %
             (len(pbs.REVERSE_NODE_STATE), len(node_states)))
         for attr, value in node_states.items():
-            self.logger.debug("checking attribute '%s' in pbs module" % (attr,))
+            self.logger.debug("checking attribute '%s' in pbs module" %
+                              (attr,))
             self.assertTrue(
                 hasattr(pbs, attr), "pbs.%s does not exist." % (attr,))
             self.assertEqual(
@@ -392,7 +393,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for name, value in self.server.moms.items():
             start_time = int(time.time())
             self.logger.debug("    ***%s:%s, type:%s" % (name,
-                                                        value, type(value)))
+                              value, type(value)))
             self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
             value.stop()
@@ -428,7 +429,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
         for name, value in self.server.moms.items():
             self.logger.debug("    ***%s:%s, type:%s" % (name, value,
-                                                        type(value)))
+                              type(value)))
             self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
             self.logger.debug("    ***pkilling mom:%s" % value)
@@ -482,7 +483,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         # look for messages indicating all the vnodes came up
         for name, value in self.server.moms.items():
             self.logger.debug("    ***%s:%s, type:%s" % (name,
-                                                        value, type(value)))
+                              value, type(value)))
             self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
             self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
 
