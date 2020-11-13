@@ -339,7 +339,7 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
-        a = {'Resource_List.ncpus': 2, ATTR_k: 'oe'}
+        a = {'Resource_List.ncpus': 2}
         j = Job(TEST_USER, a)
         j.set_sleep_time(15)
         j.create_eatcpu_job(15, self.mom.shortname)
