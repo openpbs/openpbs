@@ -248,12 +248,12 @@ handle_missing_prime_info(void)
 				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min == 0) {
 			conf.prime[d][PRIME].all = TRUE;
 			conf.prime[d][PRIME].none = FALSE;
-			conf.prime[d][PRIME].hour = UNSPECIFIED;
-			conf.prime[d][PRIME].min = UNSPECIFIED;
+			conf.prime[d][PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][PRIME].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][NON_PRIME].none = TRUE;
 			conf.prime[d][NON_PRIME].all = FALSE;
-			conf.prime[d][NON_PRIME].hour = UNSPECIFIED;
-			conf.prime[d][NON_PRIME].min = UNSPECIFIED;
+			conf.prime[d][NON_PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][NON_PRIME].min = static_cast<unsigned int>(UNSPECIFIED);
 		}
 	}
 }
@@ -508,8 +508,8 @@ load_day(enum days d, enum prime_time pr, const char *tok)
 				return 0;
 			}
 			conf.prime[d][pr].all = TRUE;
-			conf.prime[d][pr].hour = UNSPECIFIED;
-			conf.prime[d][pr].min = UNSPECIFIED;
+			conf.prime[d][pr].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][pr].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][pr].none = FALSE;
 		} else if (!strcmp(tok, "none") || !strcmp(tok, "NONE")) {
 			if (pr == NON_PRIME && conf.prime[d][PRIME].none == TRUE) {
@@ -518,8 +518,8 @@ load_day(enum days d, enum prime_time pr, const char *tok)
 				return load_day(d, PRIME, "all");
 			}
 			conf.prime[d][pr].all = FALSE;
-			conf.prime[d][pr].hour = UNSPECIFIED;
-			conf.prime[d][pr].min = UNSPECIFIED;
+			conf.prime[d][pr].hour = static_cast<unsigned int>(UNSPECIFIED);
+			conf.prime[d][pr].min = static_cast<unsigned int>(UNSPECIFIED);
 			conf.prime[d][pr].none = TRUE;
 		} else {
 			num = strtol(tok, &endp, 10);
@@ -600,11 +600,11 @@ end_prime_status_rec(time_t start, time_t date,
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* If there is no non-primetime left today, recurse into tomorrow. */
-		if (conf.prime[day][NON_PRIME].hour < tmptr->tm_hour)
+		if (conf.prime[day][NON_PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
-		if (conf.prime[day][NON_PRIME].hour == tmptr->tm_hour &&
-			conf.prime[day][NON_PRIME].min < tmptr->tm_min)
+		if (conf.prime[day][NON_PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
+			conf.prime[day][NON_PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* Non-primetime started at the beginning of the day, return it. */
@@ -612,8 +612,8 @@ end_prime_status_rec(time_t start, time_t date,
 			return date;
 		/* Non-primetime will start later today, return the scheduled time. */
 		return date + (conf.prime[day][NON_PRIME].hour - tmptr->tm_hour) * 3600
-			+ (conf.prime[day][NON_PRIME].min - tmptr->tm_min) * 60
-			- tmptr->tm_sec;
+		+ (conf.prime[day][NON_PRIME].min - tmptr->tm_min) * 60
+		- tmptr->tm_sec;
 	}
 	else {
 		/* We are currently in non-primetime. */
@@ -622,11 +622,11 @@ end_prime_status_rec(time_t start, time_t date,
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* If there is no primetime left today, recurse into tomorrow. */
-		if (conf.prime[day][PRIME].hour < tmptr->tm_hour)
+		if (conf.prime[day][PRIME].hour < static_cast<unsigned int>(tmptr->tm_hour))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
-		if (conf.prime[day][PRIME].hour == tmptr->tm_hour &&
-			conf.prime[day][PRIME].min < tmptr->tm_min)
+		if (conf.prime[day][PRIME].hour == static_cast<unsigned int>(tmptr->tm_hour) &&
+			conf.prime[day][PRIME].min < static_cast<unsigned int>(tmptr->tm_min))
 			return end_prime_status_rec(start, date + time_left_today(tmptr),
 				prime_status);
 		/* Primetime started at the beginning of the day, return it. */
@@ -634,8 +634,8 @@ end_prime_status_rec(time_t start, time_t date,
 			return date;
 		/* Primetime will start later today, return the scheduled time. */
 		return date + (conf.prime[day][PRIME].hour - tmptr->tm_hour) * 3600
-			+ (conf.prime[day][PRIME].min - tmptr->tm_min) * 60
-			- tmptr->tm_sec;
+		+ (static_cast<int>(conf.prime[day][PRIME].min) - tmptr->tm_min) * 60
+		- tmptr->tm_sec;
 	}
 }
 

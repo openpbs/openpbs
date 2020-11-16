@@ -1033,10 +1033,10 @@ struct usage_info
 
 struct t
 {
-	int hour;
-	int min;
-	int none;
-	int all;
+	unsigned int hour;
+	unsigned int min;
+	unsigned int none;
+	unsigned int all;
 };
 
 struct sort_info
