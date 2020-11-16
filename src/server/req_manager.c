@@ -3373,7 +3373,7 @@ struct batch_request *preq;
 	mominfo_t	*mymom;
 	struct		sockaddr_in check_ip;
 	int		is_node_ip;
-	char * nodename;
+	char *nodename;
 
 	nodename = preq->rq_ind.rq_manager.rq_objname;
 

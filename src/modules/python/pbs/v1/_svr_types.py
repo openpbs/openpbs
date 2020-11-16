@@ -471,9 +471,7 @@ class _vnode():
             lst.append('ND_STATE_FREE')
             lst.append('ND_STATE_VNODE_AVAILABLE')
         else:
-            for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
-                if self.state & mask:
-                    lst.append(value)
+            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
         return lst
     #: m(extract_state_strs)
 
@@ -484,9 +482,7 @@ class _vnode():
             lst.append(_pbs_v1.ND_STATE_FREE)
             lst.append(_pbs_v1.ND_STATE_VNODE_AVAILABLE)
         else:
-            for mask, value in _pbs_v1.REVERSE_NODE_STATE.items():
-                if self.state & mask:
-                    lst.append(mask)
+            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
         return lst
     #: m(extract_state_ints)
 

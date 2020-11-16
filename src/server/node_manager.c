@@ -1096,7 +1096,7 @@ momptr_down(mominfo_t *pmom, char *why)
  *
  * @param[in]	op - The operation for the state change
  *
- * @return	char*
+ * @return	char *
  */
 char*
 get_vnode_state_op(enum vnode_state_op op)
@@ -1135,7 +1135,7 @@ shallow_vnode_free(struct pbsnode *vnode)
  * @param[in]	vnode - the vnode to duplicate
  * 
  * @note
- *  Creates a shallow duplicate of struct* and char* members.
+ *  Creates a shallow duplicate of struct * and char * members.
  *  
  * 
  * @return  duplicated vnode
@@ -1154,8 +1154,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
 	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
-		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name),
-			NTYPE_PBS) != PBSE_NONE) {
+		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
 			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
 			shallow_vnode_free(vnode_dup);
 			return NULL;
@@ -1190,7 +1189,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_accted = vnode->nd_accted;
 	vnode_dup->nd_pque = vnode->nd_pque;
 	vnode_dup->newobj = vnode->newobj;
-	for (i=0; i<(int)ND_ATR_LAST; i++) {
+	for (i = 0; i < (int)ND_ATR_LAST; i++) {
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
 	}
 	return vnode_dup;
@@ -1294,8 +1293,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	/* Write the vnode state change event to server log */
-	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time]
-		.at_val.at_long;
+	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
 		"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
 		"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "

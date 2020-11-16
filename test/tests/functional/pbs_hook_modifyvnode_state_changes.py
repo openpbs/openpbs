@@ -34,8 +34,6 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-import os
-import time
 import socket
 import logging
 import textwrap
@@ -219,7 +217,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("Node;%s;node down" % mom,
                                   starttime=start_time)
 
-    @tags('smoke')
     def test_hook_state_changes_00(self):
         """
         Test: induce a variety of vnode state changes with debug turned on
@@ -227,7 +224,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         """
         self.logger.debug("---- %s TEST STARTED ----" % get_method_name(self))
 
-        # import test hook
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'm1234'
@@ -240,91 +236,100 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.logger.debug("socket.gethostname():%s" % socket.gethostname())
         self.logger.debug("***self.server.name:%s" % str(self.server.name))
         self.logger.debug("self.server.moms:%s" % str(self.server.moms))
-        pbsnodescmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                   'bin', 'pbsnodes -a')
         self.logger.debug("self.server.hostname=%s" % self.server.hostname)
-        self.logger.debug("pbsnodescmd=%s" % pbsnodescmd)
-        retpbsn = self.du.run_cmd(self.server.hostname, pbsnodescmd, sudo=True)
-        self.assertEqual(retpbsn['rc'], 0)
-        self.logger.debug("retpbsn=%s" % retpbsn)
+        nodeinfo = self.server.status(NODE)
+        self.logger.debug("nodeinfo=%s" % nodeinfo)
 
         # test effects of various state changes on each mom
-        for name, value in self.server.moms.items():
-            self.logger.debug("    ***%s:%s, type:%s" % (name, value,
-                              type(value)))
-            self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
-            self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
-
+        for mom in self.server.moms.values():
             # State change test: mom stop
             start_time = int(time.time())
-            value.stop()
-            self.checkLog(start_time, value.fqdn, check_up=False,
+            mom.stop()
+            self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
             self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
                                   starttime=start_time)
 
             # State change test: mom start
             start_time = int(time.time())
-            value.start()
-            self.checkLog(start_time, value.fqdn, check_up=True,
+            mom.start()
+            self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
                                   starttime=start_time)
 
             # State change test: mom restart
             start_time = int(time.time())
-            value.restart()
-            self.checkLog(start_time, value.fqdn, check_up=True,
+            mom.restart()
+            self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=True)
             self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
                                   starttime=start_time)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
                                   starttime=start_time)
 
-            # State change test: take mom offline (remove mom)
+            # State change test: take mom offline and online using pbsnodes
+            
+            # take offline
             start_time = int(time.time())
-            self.logger.debug("    ***offline mom:%s" % value)
+            self.logger.debug("    ***offline mom:%s" % mom)
             pbsnodesoffline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                            'bin', 'pbsnodes -o %s' %
-                                           value.fqdn)
+                                           mom.shortname)
             self.logger.debug("pbsnodesoffline=%s" % pbsnodesoffline)
-            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesoffline,
-                                      sudo=True)
+            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesoffline)
             self.assertEqual(retpbsn['rc'], 0)
-            self.checkLog(start_time, value.fqdn, check_up=False,
+            self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("state + offline", starttime=start_time)
             self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0",
                                   starttime=start_time)
 
-            # State change test: bring mom online (add mom)
+            # back online
             start_time = int(time.time())
-            self.logger.debug("    ***online mom:%s" % value)
+            self.logger.debug("    ***online mom:%s" % mom)
             pbsnodesonline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                          'bin', 'pbsnodes -r %s' % value.fqdn)
+                                          'bin', 'pbsnodes -r %s' % mom.shortname)
             self.logger.debug("pbsnodesonline=%s" % pbsnodesonline)
-            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesonline,
-                                      sudo=True)
+            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesonline)
             self.assertEqual(retpbsn['rc'], 0)
-            self.checkLog(start_time, value.fqdn, check_up=False,
+            self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("state - offline", starttime=start_time)
+            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x1",
+                                  starttime=start_time)
+
+            # State change test: bring mom offline and online using qmgr
+            
+            # take offline
+            start_time = int(time.time())
+            self.logger.debug("    ***online mom:%s" % mom)
+            self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR, 'offline')},
+                                id=mom.shortname)
+            self.checkLog(start_time, mom.fqdn, check_up=False,
+                          check_down=False)
+            self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0",
+                                  starttime=start_time)
+            # back online
+            start_time = int(time.time())
+            self.logger.debug("    ***online mom:%s" % mom)
+            self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR, 'offline')},
+                                id=mom.shortname)
+            self.checkLog(start_time, mom.fqdn, check_up=False,
+                          check_down=False)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x1",
                                   starttime=start_time)
 
             # State change test: create and release maintenance reservation
             start_time = int(time.time())
-            res_start_time = start_time + 5
+            res_start_time = start_time + 15
             res_end_time = res_start_time + 1
             attrs = {
                 'reserve_start': res_start_time,
-                'reserve_end': res_end_time,
-                '--hosts': value.shortname
+                'reserve_end': res_end_time
             }
-            self.logger.debug("    ***reserve & release mom:%s" % value)
-            rid = self.server.submit(Reservation(ROOT_USER, attrs))
+            self.logger.debug("    ***reserve & release mom:%s" % mom)
+            rid = self.server.submit(Reservation(ROOT_USER, attrs, hosts=[mom.shortname]))
             self.logger.debug("rid=%s" % rid)
-            self.checkLog(start_time, value.fqdn, check_up=False,
+            self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
             self.server.log_match("v.state_hex=0x2000 v_o.state_hex=0x0",
                                   starttime=start_time)
@@ -353,17 +358,14 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             "node state count mismatch: actual=%s, expected:%s" %
             (len(pbs.REVERSE_NODE_STATE), len(node_states)))
         for attr, value in node_states.items():
-            self.logger.debug("checking attribute '%s' in pbs module" %
-                              (attr,))
+            self.logger.debug("checking attribute '%s' in pbs module", attr)
             self.assertTrue(
-                hasattr(pbs, attr), "pbs.%s does not exist." % (attr,))
+                hasattr(pbs, attr), "pbs.%s does not exist." % attr)
             self.assertEqual(
                 getattr(pbs, attr), value,
                 "pbs.%s is incorrect: actual=%s, expected=%s." %
                 (attr, getattr(pbs, attr), value))
-            self.assertTrue(
-                value in pbs.REVERSE_NODE_STATE,
-                "pbs.REVERSE_NODE_STATE[%s] does not exist." % (value,))
+            self.assertIn(value, pbs.REVERSE_NODE_STATE)
             self.assertEqual(
                 pbs.REVERSE_NODE_STATE[value], attr,
                 ("pbs.REVERSE_NODE_STATE[%s] is incorrect: actual=%s, " +
@@ -390,23 +392,20 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         ret = self.server.create_hook(hook_name_00, attrs)
         self.assertTrue(ret, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
-        for name, value in self.server.moms.items():
+        for mom in self.server.moms.values():
             start_time = int(time.time())
-            self.logger.debug("    ***%s:%s, type:%s" % (name,
-                              value, type(value)))
-            self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
-            self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
-            value.stop()
-            value.start()
-            self.server.log_match("Node;%s;node up" % value.fqdn,
+            mom.stop()
+            mom.start()
+            self.server.log_match("Node;%s;node up" % mom.fqdn,
                                   starttime=start_time)
-            self.server.log_match("Node;%s;node down" % value.fqdn,
+            self.server.log_match("Node;%s;node down" % mom.fqdn,
                                   starttime=start_time)
             for value, key in pbs.REVERSE_NODE_STATE.items():
                 self.server.log_match("key:%s value:%s" % (key, value),
                                       starttime=start_time)
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
 
+    @tags('smoke')
     def test_hook_state_changes_01(self):
         """
         Test:  this will test four things:
@@ -418,7 +417,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
         self.logger.debug("---- %s TEST STARTED ----" % get_method_name(self))
 
-        #import test hook
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 'p1234'
@@ -427,33 +425,20 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.assertTrue(ret, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
 
-        for name, value in self.server.moms.items():
-            self.logger.debug("    ***%s:%s, type:%s" % (name, value,
-                              type(value)))
-            self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
-            self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
-            self.logger.debug("    ***pkilling mom:%s" % value)
+        for mom in self.server.moms.values():
+            self.logger.debug("    ***sigkilling mom:%s", mom.fqdn)
 
             start_time = int(time.time())
-            value.signal('-KILL')
-            self.checkLog(start_time, value.fqdn, check_up=False,
+            mom.signal('-KILL')
+            self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
             self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
                                   starttime=start_time)
 
             start_time = int(time.time())
-            value.start()
-            self.checkLog(start_time, value.fqdn, check_up=True,
+            mom.start()
+            self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
-                                  starttime=start_time)
-
-            start_time = int(time.time())
-            value.restart()
-            self.checkLog(start_time, value.fqdn, check_up=True,
-                          check_down=True)
-            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
-                                  starttime=start_time)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
                                   starttime=start_time)
 
@@ -466,7 +451,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
         self.logger.debug("---- %s TEST STARTED ----" % get_method_name(self))
 
-        # import test hook
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095})
         attrs = {'event': 'modifyvnode', 'enabled': 'True', 'debug': 'True'}
         hook_name_00 = 's1234'
@@ -481,13 +465,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.server.start()
 
         # look for messages indicating all the vnodes came up
-        for name, value in self.server.moms.items():
-            self.logger.debug("    ***%s:%s, type:%s" % (name,
-                              value, type(value)))
-            self.logger.debug("    ***%s:fqdn:    %s" % (name, value.fqdn))
-            self.logger.debug("    ***%s:hostname:%s" % (name, value.hostname))
-
-            self.checkLog(start_time, value.fqdn, check_up=True,
+        for mom in self.server.moms.values():
+            self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
                                   starttime=start_time)

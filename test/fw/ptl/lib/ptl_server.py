@@ -838,11 +838,8 @@ class Server(PBSService):
         """
         Add a node to PBS
         """
-        try:
-            ret = self.manager(MGR_CMD_CREATE, VNODE, name,
-                               level=level, logerr=logerr)
-        except PbsManagerError as err:
-            raise
+        ret = self.manager(MGR_CMD_CREATE, VNODE, name,
+                           level=level, logerr=logerr)
         return ret
 
     def delete_node(self, name, level="INFO", logerr=False):
