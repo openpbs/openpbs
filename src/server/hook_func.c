@@ -208,6 +208,7 @@ extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_management_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
+extern pbs_list_head svr_resv_begin_hooks;
 extern pbs_list_head svr_resv_end_hooks;
 extern pbs_list_head svr_execjob_begin_hooks;
 extern pbs_list_head svr_execjob_prologue_hooks;
@@ -3834,6 +3835,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
+	/* TODO: Find requests that correspond to beginning of reservation period */
 	} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
 		hook_event = HOOK_EVENT_RESV_END;
 		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_delete;
@@ -3865,6 +3867,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
+
+		/* TODO: PMR: set this for reservation period begin */
 		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
 			phook_next = (hook *)GET_NEXT(phook->hi_resv_end_hooks);
 		} else {

@@ -2598,6 +2598,9 @@ Time4resv(struct work_task *ptask)
 		if (presv->ri_qs.ri_tactive == time_now){
 			svr_mailownerResv(presv, MAIL_BEGIN, MAIL_NORMAL, "");
 			account_resvstart(presv);
+
+			/* make an artifical request so we can fire process hooks */
+			struct batch_request *preq = alloc_br(PBS_BATCH_BeginResv);
 			char hook_msg[HOOK_MSG_SIZE] = {0};
 			switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
 			case 0: /* explicit reject */

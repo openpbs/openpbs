@@ -847,6 +847,7 @@ pbsd_init(int type)
 	print_hooks(HOOK_EVENT_MANAGEMENT);
 	print_hooks(HOOK_EVENT_PROVISION);
 	print_hooks(HOOK_EVENT_PERIODIC);
+	print_hooks(HOOK_EVENT_RESV_BEGIN);
 	print_hooks(HOOK_EVENT_RESV_END);
 
 	/*

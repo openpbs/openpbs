@@ -290,6 +290,7 @@ struct batch_request {
 		char rq_rdytocommit[PBS_MAXSVRJOBID + 1];
 		char rq_commit[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_delete;
+		struct rq_manage rq_resresvbegin;
 		struct rq_hold rq_hold;
 		char rq_locate[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_manager;
