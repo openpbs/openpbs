@@ -269,7 +269,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                   starttime=start_time)
 
             # State change test: take mom offline and online using pbsnodes
-            
+
             # take offline
             start_time = int(time.time())
             self.logger.debug("    ***offline mom:%s" % mom)
@@ -288,7 +288,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             start_time = int(time.time())
             self.logger.debug("    ***online mom:%s" % mom)
             pbsnodesonline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                          'bin', 'pbsnodes -r %s' % mom.shortname)
+                                          'bin', 'pbsnodes -r %s' %
+                                          mom.shortname)
             self.logger.debug("pbsnodesonline=%s" % pbsnodesonline)
             retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesonline)
             self.assertEqual(retpbsn['rc'], 0)
@@ -298,11 +299,12 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                   starttime=start_time)
 
             # State change test: bring mom offline and online using qmgr
-            
+
             # take offline
             start_time = int(time.time())
             self.logger.debug("    ***online mom:%s" % mom)
-            self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR, 'offline')},
+            self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR,
+                                'offline')},
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
@@ -311,7 +313,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             # back online
             start_time = int(time.time())
             self.logger.debug("    ***online mom:%s" % mom)
-            self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR, 'offline')},
+            self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR,
+                                'offline')},
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
@@ -327,7 +330,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 'reserve_end': res_end_time
             }
             self.logger.debug("    ***reserve & release mom:%s" % mom)
-            rid = self.server.submit(Reservation(ROOT_USER, attrs, hosts=[mom.shortname]))
+            rid = self.server.submit(Reservation(ROOT_USER, attrs,
+                                     hosts=[mom.shortname]))
             self.logger.debug("rid=%s" % rid)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
