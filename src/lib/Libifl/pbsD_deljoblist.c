@@ -70,7 +70,7 @@
  */
 
 struct batch_deljob_status *
-__pbs_deljoblist(int c, char **jobids, char *extend)
+__pbs_deljoblist(int c, char **jobids, int numofjobs, char *extend)
 {
 
 	if ((jobids == NULL) || (**jobids == '\0'))
@@ -78,6 +78,7 @@ __pbs_deljoblist(int c, char **jobids, char *extend)
 
 	return PBSD_deljoblist(c, PBS_BATCH_DeleteJobList,
 		jobids,
+		numofjobs,
 		extend);
 }
 
@@ -99,7 +100,7 @@ __pbs_deljoblist(int c, char **jobids, char *extend)
  *
  */
 struct batch_deljob_status *
-PBSD_deljoblist(int c, int function, char **jobids, char *extend)
+PBSD_deljoblist(int c, int function, char **jobids, int numofjobs, char *extend)
 {
 	int i;
 	struct batch_reply *reply;
@@ -115,7 +116,7 @@ PBSD_deljoblist(int c, int function, char **jobids, char *extend)
 		return NULL;
 
 	/* send the deletejoblist request */
-	i = PBSD_deljoblist_put(c, function, jobids, extend, PROT_TCP, NULL);
+	i = PBSD_deljoblist_put(c, function, jobids, numofjobs, extend, PROT_TCP, NULL);
 	if (i) {
 		pbs_client_thread_unlock_connection(c);
 		return NULL;
@@ -168,7 +169,7 @@ PBSD_deljoblist(int c, int function, char **jobids, char *extend)
  *
  */
 int
-PBSD_deljoblist_put(int c, int function, char **jobids, char *extend, int prot, char **msgid)
+PBSD_deljoblist_put(int c, int function, char **jobids, int numofjobs, char *extend, int prot, char **msgid)
 {
 	int rc;
 
@@ -180,7 +181,7 @@ PBSD_deljoblist_put(int c, int function, char **jobids, char *extend, int prot, 
 	}
 
 	if ((rc = encode_DIS_ReqHdr(c, function, pbs_current_user)) ||
-		(rc = encode_DIS_JobsList(c, jobids)) ||
+		(rc = encode_DIS_JobsList(c, jobids, numofjobs)) ||
 		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0)

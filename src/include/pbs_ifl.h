@@ -713,7 +713,7 @@ extern char *pbs_default(void);
 
 extern int pbs_deljob(int, char *, char *);
 
-extern struct batch_deljob_status *pbs_deljoblist(int, char **, char *);
+extern struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
 
 extern char *pbs_geterrmsg(int);
 
@@ -792,7 +792,7 @@ extern int (*pfn_pbs_connect)(char *);
 extern int (*pfn_pbs_connect_extend)(char *, char *);
 extern char *(*pfn_pbs_default)(void);
 extern int (*pfn_pbs_deljob)(int, char *, char *);
-extern struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, char *);
+extern struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, int, char *);
 extern int (*pfn_pbs_disconnect)(int);
 extern char *(*pfn_pbs_geterrmsg)(int);
 extern int (*pfn_pbs_holdjob)(int, char *, char *, char *);

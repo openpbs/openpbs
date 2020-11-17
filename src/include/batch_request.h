@@ -105,11 +105,8 @@ struct rq_manage {
 
 /* DeleteJobList */
 struct rq_deletejoblist {
-	int rq_cmd;
-	int rq_objtype;
 	int rq_count;
 	char **rq_jobslist;
-	pbs_list_head rq_attr; /* svrattrlist */
 };
 
 /* Management - used by PBS_BATCH_Manager requests */

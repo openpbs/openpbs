@@ -54,13 +54,16 @@
  * @return - error code while writing data to the socket.
  */
 int
-encode_DIS_JobsList(int sock, char **jobs_list)
+encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
 {
 	int	i = 0;
 	int	rc = 0;
 	int	count = 0;
 
-	for (; jobs_list[count]; count++);
+	if (numofjobs == -1) 
+		for (; jobs_list[count]; count++);
+	else 
+		count = numofjobs;
 
 	if (((rc = diswui(sock, count)) != 0))
 		return rc;

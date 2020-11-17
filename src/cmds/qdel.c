@@ -77,7 +77,6 @@ struct svr_jobid_list{
  * @param[in] jobid - Job id 
  * 
  * @return void
- *
  */
 void
 append_jobid(svr_jobid_list_t *svr, char *jobid)
@@ -114,7 +113,7 @@ error:
  *
  * @param[in] job_id - Job id 
  * @param[in] server - server name
- * @param[in] svr_jobid_list_hd - head of the svr_jobib_list list
+ * @param[in,out] svr_jobid_list_hd - head of the svr_jobib_list list
  * 
  * @return int
  * @retval	0	- success
@@ -126,6 +125,7 @@ add_jid_to_list(char *job_id, char *server, svr_jobid_list_t** svr_jobid_list_hd
 {
 	svr_jobid_list_t *iter_list = NULL;
 	svr_jobid_list_t *prev = NULL;
+	svr_jobid_list_t *new_node = NULL;
 
 	if ((job_id == NULL) || (server == NULL) || (svr_jobid_list_hd == NULL))
 		return 1;
@@ -138,9 +138,12 @@ add_jid_to_list(char *job_id, char *server, svr_jobid_list_t** svr_jobid_list_hd
 	}
 
 	if (iter_list == NULL) {
-		svr_jobid_list_t *new_node = NULL;
 		new_node = calloc(1, sizeof(svr_jobid_list_t));
+		if (new_node == NULL)
+			goto error;
 		new_node->server_name = strdup(server);
+		if (new_node->server_name == NULL)
+			goto error;
 		append_jobid(new_node, job_id);
 		if (prev != NULL)
 			prev->next = new_node;
@@ -149,6 +152,10 @@ add_jid_to_list(char *job_id, char *server, svr_jobid_list_t** svr_jobid_list_hd
 	}
 
 	return 0;
+	
+error:
+	fprintf(stderr, "qdel: unable to allocate memory.\n");
+	exit(2);
 }
 
 
@@ -176,6 +183,7 @@ char **envp;
 	int dfltmailflg = FALSE;
 	int mails;				/* number of emails we can send */
 	int num_deleted = 0;
+	int num_failed = 0;
 	struct attrl *attr;
 	struct batch_status *ss = NULL;
 	char *errmsg;
@@ -185,6 +193,8 @@ char **envp;
 	int connect;
 	struct batch_deljob_status *p_delstatus;
 	char *errtxt = NULL;
+	int i;
+	int numofjobs;
 
 #define MAX_TIME_DELAY_LEN 32
 	/* -W no longer supports a time delay */
@@ -193,6 +203,7 @@ char **envp;
 	char warg1[MAX_TIME_DELAY_LEN+7];
 
 #define GETOPT_ARGS "W:x"
+#define NUM_JOBS_IN_A_BATCH 10000
 
 	/*test for real deal or just version and exit*/
 
@@ -276,9 +287,10 @@ char **envp;
 	}
 
 	for (svr_itr = svr_jobid_list_hd; svr_itr != NULL; prev = svr_itr, svr_itr = svr_itr->next) {
-		
-		if (prev != NULL)
+		if (prev != NULL) {
+			free(prev->jobids);
 			free(prev);
+		}
 		
 		connect = cnt2server(svr_itr->server_name);
 		if (connect <= 0) {
@@ -334,30 +346,38 @@ char **envp;
 		 *   "nomailforcedeletehist" -- force delete history of a job without sending mail.
 		 */
 		mails = dfltmail ? dfltmail : 1000;
-		if (num_deleted >= mails && !mails_suppressed) {
-			mails_suppressed = TRUE;
-			/* current warg1 "nomail" should be at start */
-			strcat(warg1, warg);
-			pbs_strncpy(warg, warg1, sizeof(warg));
-		}
-
-		p_delstatus = pbs_deljoblist(connect, svr_itr->jobids, warg);
+		numofjobs = (mails <= svr_itr->job_ct) ? mails : svr_itr->job_ct;
 		
-		while (p_delstatus != NULL) {
-			if (p_delstatus->code == PBSE_UNKJOBID) {
-				if (locate_job(p_delstatus->name, server_out, rmt_server))
-					add_jid_to_list(rmt_server, rmt_server, &svr_itr);
-				continue;
+		for (i = 0; i < svr_itr->job_ct; i = i + numofjobs) {
+			if (mails_suppressed)
+				numofjobs = ((i + NUM_JOBS_IN_A_BATCH) <= svr_itr->job_ct) ? NUM_JOBS_IN_A_BATCH : (svr_itr->job_ct - i);
+			else 
+				numofjobs = ((i + numofjobs) <= svr_itr->job_ct) ? numofjobs : (svr_itr->job_ct - i);
+				
+			p_delstatus = pbs_deljoblist(connect, &(svr_itr->jobids[i]), numofjobs, warg);
+			num_failed = 0;
+			for (; p_delstatus != NULL; p_delstatus = p_delstatus->next) {
+				if (p_delstatus->code != PBSE_HISTJOBDELETED)
+					num_failed++;
+				if (p_delstatus->code == PBSE_UNKJOBID) {
+					if (locate_job(p_delstatus->name, server_out, rmt_server))
+						add_jid_to_list(rmt_server, rmt_server, &svr_itr);
+					continue;
+				}
+				errtxt = pbse_to_txt(p_delstatus->code);
+				if ((errtxt != NULL) && (p_delstatus->code != PBSE_HISTJOBDELETED)) {
+					fprintf(stderr, "%s: %s %s\n", "qdel", errtxt, p_delstatus->name);
+					any_failed = p_delstatus->code;
+				}
 			}
-			errtxt = pbse_to_txt(p_delstatus->code);
-			if ((errtxt != NULL) && (p_delstatus->code != PBSE_HISTJOBDELETED)) {
-				fprintf(stderr, "%s: %s %s\n", "qdel", errtxt, p_delstatus->name);
-				any_failed = p_delstatus->code;
+			num_deleted += numofjobs - num_failed;
+			
+			if (num_deleted >= mails && !mails_suppressed) {
+				mails_suppressed = TRUE;
+				/* current warg1 "nomail" should be at start */
+				strcat(warg1, warg);
+				pbs_strncpy(warg, warg1, sizeof(warg));
 			}
-			if (p_delstatus->code != PBSE_HISTJOBDELETED)
-				num_deleted++;
-
-			p_delstatus = p_delstatus->next;
 		}
 
 		pbs_disconnect(connect);

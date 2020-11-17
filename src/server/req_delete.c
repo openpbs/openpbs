@@ -313,7 +313,6 @@ issue_delete(job *pjob)
 		return;
 
 	pbs_strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname) - 1);
-	preq->rq_ind.rq_delete.rq_objname[sizeof(preq->rq_ind.rq_delete.rq_objname) - 1] = '\0';
 	preq->rq_extend = malloc(strlen(DELETEHISTORY) + 1);
 	if (preq->rq_extend == NULL) {
 		log_err(errno, "issue_delete", msg_err_malloc);
