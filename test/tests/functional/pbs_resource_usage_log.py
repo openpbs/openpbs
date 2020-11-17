@@ -62,11 +62,11 @@ class TestResourceUsageLog(TestFunctional):
         """
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(40)
+        j1.create_eatcpu_job(40, self.mom.shortname)
         jid1 = self.server.submit(j1)
 
         j2 = Job(TEST_USER, a)
-        j2.create_eatcpu_job(30)
+        j2.create_eatcpu_job(30, self.mom.shortname)
         jid2 = self.server.submit(j2)
 
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
@@ -77,7 +77,7 @@ class TestResourceUsageLog(TestFunctional):
                            offset=40, extend='x', id=jid1)
 
         j3 = Job(TEST_USER, a)
-        j3.create_eatcpu_job()
+        j3.create_eatcpu_job(hostname=self.mom.shortname)
         jid3 = self.server.submit(j3)
         self.server.expect(JOB, {'job_state': 'R'}, jid3)
         self.server.delete(jid3, wait=True)
@@ -289,7 +289,7 @@ class TestResourceUsageLog(TestFunctional):
         """
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job()
+        j1.create_eatcpu_job(hostname=self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
@@ -346,13 +346,13 @@ class TestResourceUsageLog(TestFunctional):
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(30)
+        j1.create_eatcpu_job(30, self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb', 'queue': 'highp'}
         j2 = Job(TEST_USER, a)
-        j2.create_eatcpu_job(60)
+        j2.create_eatcpu_job(60, self.mom.shortname)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid2)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
