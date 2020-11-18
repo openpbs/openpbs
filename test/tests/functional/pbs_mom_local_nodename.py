@@ -53,7 +53,8 @@ class TestMomLocalNodeName(TestFunctional):
         This test case tests that mom does not truncate the value of
         PBS_MOM_NODE_NAME when it contains dots
         """
-        self.du.set_pbs_config(confs={'PBS_MOM_NODE_NAME': 'a.b.c.d'})
+        self.du.set_pbs_config(hostname=self.mom.shortname,
+                               confs={'PBS_MOM_NODE_NAME': 'a.b.c.d'})
         # Restart PBS for changes
         self.server.restart()
         self.mom.restart()
@@ -77,7 +78,8 @@ pbs.logmsg(pbs.LOG_DEBUG,
         PBS_MOM_NODE_NAME when it is an ipaddress
         """
         ipaddr = socket.gethostbyname(self.mom.hostname)
-        self.du.set_pbs_config(confs={'PBS_MOM_NODE_NAME': ipaddr})
+        self.du.set_pbs_config(hostname=self.mom.shortname,
+                               confs={'PBS_MOM_NODE_NAME': ipaddr})
         # Restart PBS for changes
         self.server.restart()
         self.mom.restart()
@@ -96,7 +98,8 @@ pbs.logmsg(pbs.LOG_DEBUG,
         self.mom.log_match("my local nodename is %s" % ipaddr)
 
     def tearDown(self):
-        self.du.unset_pbs_config(confs=['PBS_MOM_NODE_NAME'])
+        self.du.unset_pbs_config(hostname=self.mom.shortname,
+                                 confs=['PBS_MOM_NODE_NAME'])
         self.server.restart()
         self.mom.restart()
         TestFunctional.tearDown(self)
