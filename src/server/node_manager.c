@@ -1098,7 +1098,7 @@ momptr_down(mominfo_t *pmom, char *why)
  *
  * @return	char *
  */
-char*
+char *
 get_vnode_state_op(enum vnode_state_op op)
 {
 	switch(op) {

@@ -188,14 +188,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         TestFunctional.setUp(self)
         Job.dflt_attributes[ATTR_k] = 'oe'
 
-        self.server.cleanup_jobs()
-
-    def tearDown(self):
-        TestFunctional.tearDown(self)
-        # Delete managers and operators if added
-        attrib = ['operators', 'managers']
-        self.server.manager(MGR_CMD_UNSET, SERVER, attrib)
-
     def checkLog(self, start_time, mom, check_up, check_down):
         self.server.log_match("set_vnode_state;vnode.state=",
                               starttime=start_time)
@@ -238,7 +230,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.logger.debug("self.server.moms:%s" % str(self.server.moms))
         self.logger.debug("self.server.hostname=%s" % self.server.hostname)
         nodeinfo = self.server.status(NODE)
-        self.logger.debug("nodeinfo=%s" % nodeinfo)
 
         # test effects of various state changes on each mom
         for mom in self.server.moms.values():
@@ -302,7 +293,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # take offline
             start_time = int(time.time())
-            self.logger.debug("    ***online mom:%s" % mom)
+            self.logger.debug("    ***offline mom:%s" % mom)
             self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR,
                                 'offline')},
                                 id=mom.shortname)
@@ -398,8 +389,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         ret = self.server.import_hook(hook_name_00, hook_body_00)
         for mom in self.server.moms.values():
             start_time = int(time.time())
-            mom.stop()
-            mom.start()
+            mom.restart()
             self.server.log_match("Node;%s;node up" % mom.fqdn,
                                   starttime=start_time)
             self.server.log_match("Node;%s;node down" % mom.fqdn,
@@ -413,7 +403,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
     def test_hook_state_changes_01(self):
         """
         Test:  this will test four things:
-        1.  It will pkill pbs_mom, look for the proper log messages.
+        1.  It will sigkill pbs_mom, look for the proper log messages.
         2.  It will check the log for the proper hook messages
         3.  It will bring up pbs_mom, look for the proper log messages.
         4.  It will check the log for the proper hook messages

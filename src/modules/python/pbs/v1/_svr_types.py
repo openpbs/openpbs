@@ -473,7 +473,6 @@ class _vnode():
         else:
             lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
         return lst
-    #: m(extract_state_strs)
 
     def extract_state_ints(self):
         """returns the integer values from the state bits."""
@@ -484,8 +483,6 @@ class _vnode():
         else:
             lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
         return lst
-    #: m(extract_state_ints)
-
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
 _vnode._connect_server = PbsAttributeDescriptor(
