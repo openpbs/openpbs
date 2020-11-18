@@ -259,38 +259,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
                                   starttime=start_time)
 
-            # State change test: take mom offline and online using pbsnodes
-
-            # take offline
-            start_time = int(time.time())
-            self.logger.debug("    ***offline mom:%s" % mom)
-            pbsnodesoffline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                           'bin', 'pbsnodes -o %s' %
-                                           mom.shortname)
-            self.logger.debug("pbsnodesoffline=%s" % pbsnodesoffline)
-            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesoffline)
-            self.assertEqual(retpbsn['rc'], 0)
-            self.checkLog(start_time, mom.fqdn, check_up=False,
-                          check_down=False)
-            self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0",
-                                  starttime=start_time)
-
-            # back online
-            start_time = int(time.time())
-            self.logger.debug("    ***online mom:%s" % mom)
-            pbsnodesonline = os.path.join(self.server.pbs_conf['PBS_EXEC'],
-                                          'bin', 'pbsnodes -r %s' %
-                                          mom.shortname)
-            self.logger.debug("pbsnodesonline=%s" % pbsnodesonline)
-            retpbsn = self.du.run_cmd(self.server.hostname, pbsnodesonline)
-            self.assertEqual(retpbsn['rc'], 0)
-            self.checkLog(start_time, mom.fqdn, check_up=False,
-                          check_down=False)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x1",
-                                  starttime=start_time)
-
-            # State change test: bring mom offline and online using qmgr
-
+            # State change test: take mom offline then online
             # take offline
             start_time = int(time.time())
             self.logger.debug("    ***offline mom:%s" % mom)
