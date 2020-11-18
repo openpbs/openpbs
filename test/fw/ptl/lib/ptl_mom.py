@@ -1391,7 +1391,7 @@ class MoM(PBSService):
                  'content-encoding': 'default',
                  'input-file': path}
             # check that mom is ready before importing hook
-            self.server.expect(NODE, {'state': 'free'}, id=self.hostname)
+            self.server.expect(NODE, {'state': 'free'}, id=self.shortname)
             self.server.manager(MGR_CMD_IMPORT, HOOK, a,
                                 'pbs_cgroups')
             os.remove(path)
