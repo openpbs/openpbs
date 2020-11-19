@@ -526,12 +526,12 @@ class MoM(PBSService):
 
         return None
 
-    def cat(self, hostname=None, filename=None, sudo=False, runas=None,
+    def cat(self, filename=None, sudo=False, runas=None,
             logerr=True, level=logging.INFOCLI2, option=None):
         """
         Wrapper for cat function
         """
-        return self.du.cat(hostname, filename, sudo, runas,
+        return self.du.cat(self.hostname, filename, sudo, runas,
                            logerr, level, option)
 
     def revert_mom_pbs_conf(self, primary_server, vals_to_set):
