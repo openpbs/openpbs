@@ -17,7 +17,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft \
-      autoconf automake
+      autoconf automake gcc-c++
 
   For CentOS-7 systems you should run the following command as root:
 
@@ -25,7 +25,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft \
-      autoconf automake
+      autoconf automake gcc-c++
 
   For openSUSE systems you should run the following command as root:
 
@@ -33,7 +33,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
-      libXft-devel fontconfig autoconf automake
+      libXft-devel fontconfig autoconf automake gcc-c++
 
   For Debian systems you should run the following command as root:
 
@@ -41,7 +41,7 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake
+      automake gcc-c++
 
   For Ubuntu-18.04 systems you should run the following command as root:
 
@@ -49,7 +49,7 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake
+      automake gcc-c++
 
   For macOS systems using MacPorts you should run the following command as root:
 

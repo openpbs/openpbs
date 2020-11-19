@@ -49,6 +49,7 @@ import shutil
 import socket
 import tarfile
 import time
+import platform
 from subprocess import STDOUT
 
 from ptl.lib.pbs_ifl_mock import *
@@ -1806,7 +1807,7 @@ quit()
         self.logger.info("capturing OS information")
         snap_ospath = os.path.join(self.snapdir, OS_PATH)
         with open(snap_ospath, "w") as osfd:
-            osinfo = self.du.get_os_info()
+            osinfo = platform.platform()
             osfd.write(osinfo + "\n")
             # If /etc/os-release is available then save that as well
             fpath = os.path.join(os.sep, "etc", "os-release")

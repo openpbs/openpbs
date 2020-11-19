@@ -2719,7 +2719,7 @@ Time4resvFinish(struct work_task *ptask)
 				newreq->rq_perm |= ATR_DFLAG_MGWR;
 				strcpy(newreq->rq_user, pbs_current_user);
 				strcpy(newreq->rq_host, server_host);
-				strcpy(newreq->rq_ind.rq_delete.rq_objname, presv->ri_qs.ri_resvID);
+				strcpy(newreq->rq_ind.rq_manager.rq_objname, presv->ri_qs.ri_resvID);
 				if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, resvFinishReply, NULL, 0) == -1) {
 					free_br(newreq);
 				}
@@ -2768,7 +2768,7 @@ Time4resvFinish(struct work_task *ptask)
 
 		strcpy(preq->rq_user, pbs_current_user);
 		strcpy(preq->rq_host, server_host);
-		strcpy(preq->rq_ind.rq_delete.rq_objname,
+		strcpy(preq->rq_ind.rq_manager.rq_objname,
 			presv->ri_qs.ri_resvID);
 
 		/*notify relevant parties that the reservation's
@@ -3158,7 +3158,7 @@ Time4_term(struct work_task *ptask)
 
 		strcpy(preq->rq_user, pbs_current_user);
 		strcpy(preq->rq_host, server_host);
-		strcpy(preq->rq_ind.rq_delete.rq_objname,
+		strcpy(preq->rq_ind.rq_manager.rq_objname,
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
@@ -3217,7 +3217,7 @@ Time4_I_term(struct work_task *ptask)
 
 		strcpy(preq->rq_user, pbs_current_user);
 		strcpy(preq->rq_host, server_host);
-		strcpy(preq->rq_ind.rq_delete.rq_objname,
+		strcpy(preq->rq_ind.rq_manager.rq_objname,
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,

@@ -56,7 +56,7 @@ class TestJobTask(TestFunctional):
         """
         This function validates job's output file
         """
-        ret = self.du.cat(hostname=self.mom.shortname,
+        ret = self.du.cat(hostname=self.server.shortname,
                           filename=out_file,
                           runas=TEST_USER)
         _msg = "cat command failed with error:%s" % ret['err']

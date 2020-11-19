@@ -236,6 +236,8 @@ class TestPbsnodes(TestFunctional):
             attr = attr_list[i].split('=')[0].strip()
             val = attr_list[i].split('=')[1].strip()
             attr_dict[attr] = val
+        if self.mom.is_cpuset_mom():
+            del expected_attrs['resources_available.vnode']
 
         # comparing the pbsnodes -a output with expected result
         for attr in expected_attrs:

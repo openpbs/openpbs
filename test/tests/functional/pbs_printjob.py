@@ -1,5 +1,5 @@
-#!/bin/bash
-#
+# coding: utf-8
+
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -37,40 +37,35 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
-pbs_version="$2"
-pbs_exec="$3"
-pbs_home="${4:-/var/spool/pbs}"
-have_systemd="${5:-0}"
 
-if [ `basename $pbs_exec` = $pbs_version ]; then
-    top_level=`dirname $pbs_exec`
-    if [ -h $top_level/default ]; then
-        link_target=`readlink $top_level/default`
-        [ `basename "$link_target"` = $pbs_version ] && rm -f $top_level/default
-    fi
-fi
-rm -f /opt/modulefiles/pbs/$pbs_version
+from tests.functional import *
 
-case "$1" in
-server|execution)
-    [ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
-    [ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
-    rm -f /etc/rc.d/rc?.d/[KS]??pbs
-    rm -f /var/tmp/pbs_boot_check
-    if [ $have_systemd = 1 ]; then
-        echo "have systemd"
-        systemctl disable pbs
-        rm -f /usr/lib/systemd/system-preset/95-pbs.preset
-        if command -v python &> /dev/null && [ -f ${pbs_home}/mom_priv/hooks/pbs_cgroups.CF ]; then
-            service_name=`cat ${pbs_home}/mom_priv/hooks/pbs_cgroups.CF | python -c "import sys, json; print(json.load(sys.stdin)['cgroup_prefix'])"`
-            systemctl stop ${service_name}.service
-            [ -d /sys/fs/cgroup/cpuset/${service_name}.service/jobid ] && rmdir /sys/fs/cgroup/cpuset/${service_name}.service/jobid
-            [ -d /sys/fs/cgroup/cpuset/${service_name}.service ] && rmdir /sys/fs/cgroup/cpuset/${service_name}.service
-        fi
-        [ -d /sys/fs/cgroup/cpuset/pbspro.service/jobid ] && rmdir /sys/fs/cgroup/cpuset/pbspro.service/jobid
-        [ -d /sys/fs/cgroup/cpuset/pbspro.service ] && rmdir /sys/fs/cgroup/cpuset/pbspro.service
-        exit 0
-    fi
-    ;;
-esac
+
+class TestPrintjob(TestFunctional):
+    def test_state_substate(self):
+        """
+        Verify that printjob prints the state and substate in expected format
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R', 'substate': 42}
+        self.server.expect(JOB, a, id=jid)
+        ret = self.mom.printjob(jid)
+        self.assertEqual(ret['rc'], 0)
+        sfound = False
+        ssfound = False
+        for line in ret['out']:
+            if line.startswith("state:"):
+                val = line.split("state:", 1)[1]
+                val = val.strip()
+                numval = int(val, 16)
+                self.assertEqual(numval, 4)  # R state = numeric 4
+                sfound = True
+            elif line.startswith("substate:"):
+                val = line.split("substate:", 1)[1]
+                val = val.split()[0]
+                val = val.strip()
+                numval = int(val, 16)
+                self.assertEqual(numval, 42)
+                ssfound = True
+        self.assertTrue(sfound and ssfound)

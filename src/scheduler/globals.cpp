@@ -138,8 +138,14 @@ struct status cstat;
 
 /* to make references happy */
 int got_sigpipe;
-sched_svrconn **servers = NULL;
-ds_queue *sched_cmds = NULL;
+
+/* Each index of the array is a sched command. Store 1 as a value to indicate that we received a command */
+int sched_cmds[SCH_CMD_HIGH];
+
+/* This list stores SCH_SCHEDULE_AJOB commands */
+sched_cmd *qrun_list;
+int qrun_list_size;
+
 void *poll_context = NULL;
 
 /* Stuff needed for multi-threading */
@@ -181,3 +187,9 @@ struct schedattrs sc_attrs;
 time_t last_attr_updates = 0;
 
 int send_job_attr_updates = 1;
+
+/* primary socket descriptor to the server pool */
+int clust_primary_sock = -1;
+
+/* secondary socket descriptor to the server pool */
+int clust_secondary_sock = -1;
