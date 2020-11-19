@@ -198,6 +198,7 @@ char *msg_expired	= "Expired credential";
 char *msg_qunoenb	= "Queue is not enabled";
 char *msg_qacess	= "Access to queue is denied";
 char *msg_nodestale	= "Cannot change state of stale node";
+char *msg_nodeexist	= "Node name already exists";
 
 #ifdef WIN32
 char *msg_baduser	= "Bad UID for job execution - could be an administrator-type account currently not allowed to run jobs (can be configured)";
@@ -519,6 +520,7 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_INDIRECTHOP, &msg_indirecthop},
 	{PBSE_INDIRECTBT, &msg_indirectbadtgt},
 	{PBSE_NODESTALE, &msg_nodestale},
+	{PBSE_NODEEXIST, &msg_nodeexist},
 	{PBSE_DUPRESC, &msg_dupresc},
 	{PBSE_CONNFULL, &msg_connfull},
 	{PBSE_LICENSE_MIN_BADVAL, &msg_license_min_badval},

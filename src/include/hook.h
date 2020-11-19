@@ -91,6 +91,7 @@ typedef enum hook_user hook_user;
 #define HOOK_EVENT_PERIODIC	0x8000
 #define HOOK_EVENT_RESV_END	0x10000
 #define HOOK_EVENT_MANAGEMENT	0x200000
+#define HOOK_EVENT_MODIFYVNODE	0x400000
 
 
 /* mom hooks */
@@ -139,6 +140,7 @@ struct hook {
 	pbs_list_link	hi_movejob_hooks;
 	pbs_list_link	hi_runjob_hooks;
 	pbs_list_link	hi_management_hooks;
+	pbs_list_link	hi_modifyvnode_hooks;
 	pbs_list_link 	hi_provision_hooks;
 	pbs_list_link 	hi_periodic_hooks;
 	pbs_list_link	hi_resv_end_hooks;
@@ -240,6 +242,7 @@ typedef struct hook hook;
 #define HOOKSTR_PERIODIC	"periodic"
 #define HOOKSTR_RESV_END	"resv_end"
 #define HOOKSTR_MANAGEMENT      "management"
+#define HOOKSTR_MODIFYVNODE      "modifyvnode"
 #define HOOKSTR_EXECJOB_BEGIN   "execjob_begin"
 #define HOOKSTR_EXECJOB_PROLOGUE "execjob_prologue"
 #define HOOKSTR_EXECJOB_EPILOGUE "execjob_epilogue"
@@ -404,6 +407,8 @@ extern void hook_perf_stat_stop(char *label, char *action, int);
 #define HOOK_PERF_START_PYTHON "start_interpreter"
 #define HOOK_PERF_LOAD_INPUT "load_hook_input_file"
 #define HOOK_PERF_HOOK_OUTPUT "hook_output"
+#define HOOK_PERF_POPULATE_VNODE "populate:pbs.event().vnode"
+#define HOOK_PERF_POPULATE_VNODE_O "populate:pbs.event().vnode_o"
 #define HOOK_PERF_POPULATE_VNODELIST "populate:pbs.event().vnode_list"
 #define HOOK_PERF_POPULATE_VNODELIST_FAIL "populate:pbs.event().vnode_list_fail"
 #define HOOK_PERF_POPULATE_RESVLIST "populate:pbs.event().resv_list"

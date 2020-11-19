@@ -5081,7 +5081,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_margs = NULL;
 	PyObject *py_management = NULL;
 	PyObject *py_event_param = NULL;
-
 	PyObject *py_event_class = NULL;
 	PyObject *py_job_class = NULL;
 	PyObject *py_management_class = NULL;
@@ -5094,7 +5093,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_joblist = NULL;
 	PyObject *py_resvlist = NULL;
 	PyObject *py_exec_vnode = NULL;
-	PyObject *py_vnode	   = NULL;
+	PyObject *py_vnode = NULL;
+	PyObject *py_vnode_o   = NULL;
 	PyObject *py_aoe	   = NULL;
 	PyObject *py_resclist = NULL;
 	PyObject *py_progname = NULL;
@@ -5812,7 +5812,61 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_MANAGEMENT);
 			goto event_set_exit;
 		}
+	} else if (hook_event == HOOK_EVENT_MODIFYVNODE) {
+		struct rq_modifyvnode *rqmvn = req_params->rq_modifyvnode;
+		struct pbsnode *vnode_o = rqmvn->rq_vnode_o;
+		struct pbsnode *vnode = rqmvn->rq_vnode;
+		int tmpv_rc;
 
+		/* initialize event params to None */
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE,
+			Py_None);
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE_O,
+			Py_None);
+
+		/* Retrieve the vnode_o data */
+		py_vnode_o = _pps_helper_get_vnode(vnode_o, NULL, HOOK_PERF_POPULATE_VNODE_O);
+		if (py_vnode_o == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "failed to create a python vnode_o object");
+			goto event_set_exit;
+		}
+
+		/* Set the vnode_o object to readonly to prevent hook writers from modifying values */
+		tmpv_rc = pbs_python_mark_object_readonly(py_vnode_o);
+		if (tmpv_rc == -1) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to mark python vnode_o object readonly");
+			goto event_set_exit;
+		}
+
+		/* Retrieve the vnode data */
+		py_vnode = _pps_helper_get_vnode(vnode, NULL, HOOK_PERF_POPULATE_VNODE);
+		if (py_vnode == NULL) {
+			log_err(PBSE_INTERNAL, __func__, "failed to create a python vnode object");
+			goto event_set_exit;
+		}
+
+		/* Set the vnode object to readonly to prevent hook writers from modifying values */
+		tmpv_rc = pbs_python_mark_object_readonly(py_vnode);
+		if (tmpv_rc == -1) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to mark python vnode object readonly");
+			goto event_set_exit;
+		}
+
+		/* Set the vnode_o event param */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE_O, py_vnode_o);
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODE_O);
+			goto event_set_exit;
+		}
+
+		/* Set the vnode event param */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODE, py_vnode);
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODE);
+			goto event_set_exit;
+		}
 	} else if (hook_event == HOOK_EVENT_RESV_END) {
 		struct rq_manage *rqj = req_params->rq_manage;
 
@@ -6275,7 +6329,6 @@ event_set_exit:
 	Py_CLEAR(py_event);
 	Py_CLEAR(py_jargs);
 	Py_CLEAR(py_job);
-	Py_CLEAR(py_vnode);
 	Py_CLEAR(py_job_o);
 	Py_CLEAR(py_que);
 	Py_CLEAR(py_rargs);
@@ -6290,6 +6343,7 @@ event_set_exit:
 	Py_CLEAR(py_resclist);
 	Py_CLEAR(py_exec_vnode);
 	Py_CLEAR(py_vnode);
+	Py_CLEAR(py_vnode_o);
 	Py_CLEAR(py_aoe);
 	Py_CLEAR(py_progname);
 	Py_CLEAR(py_arglist);

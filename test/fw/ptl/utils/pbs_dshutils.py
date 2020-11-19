@@ -50,6 +50,7 @@ import stat
 import sys
 import tempfile
 import traceback
+import inspect
 from subprocess import PIPE, Popen
 
 from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser
@@ -62,6 +63,15 @@ DFLT_SUDO_CMD = ['sudo', '-H']
 logging.DEBUG2 = logging.DEBUG - 1
 logging.INFOCLI = logging.INFO - 1
 logging.INFOCLI2 = logging.INFOCLI - 1
+
+
+def get_method_name(slf):
+    try:
+        curr_method = inspect.currentframe().f_back.f_code.co_name
+        method_name = "%s.%s" % (slf.__class__.__name__, curr_method)
+    except AttributeError:
+        method_name = "***UNKNOWN***"
+    return method_name
 
 
 class TimeOut(Exception):
@@ -1002,9 +1012,11 @@ class DshUtils(object):
             else:
                 ret['err'] = []
             if ret['err'] and logerr:
-                self.logger.error('err: ' + str(ret['err']))
+                self.logger.error("<" + get_method_name(self) + '>err: ' +
+                                  str(ret['err']))
             else:
-                self.logger.debug('err: ' + str(ret['err']))
+                self.logger.debug("<" + get_method_name(self) + '>err: ' +
+                                  str(ret['err']))
             self.logger.debug('rc: ' + str(ret['rc']))
 
         return ret
