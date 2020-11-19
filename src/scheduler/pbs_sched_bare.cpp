@@ -104,7 +104,7 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 			ncpures->assigned += 1;
 			if (dynamic_avail(ncpures) == 0) {
 				node->is_busy = 1;
-				node->is_job_busy;
+				node->is_job_busy = 1;
 				node->is_free = 0;
 			}
 
