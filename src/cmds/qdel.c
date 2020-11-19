@@ -63,7 +63,7 @@
 typedef struct svr_jobid_list svr_jobid_list_t;
 struct svr_jobid_list{
 	int max_sz;
-	int job_ct;
+	int total_jobs;
 	char *server_name;
 	char **jobids;
 	svr_jobid_list_t *next;
@@ -90,15 +90,15 @@ append_jobid(svr_jobid_list_t *svr, char *jobid)
 		if (svr->jobids == NULL) 
 			goto error;
 		svr->max_sz = NO_OF_JOBIDS;
-	} else if (svr->job_ct == svr->max_sz) {
+	} else if (svr->total_jobs == svr->max_sz) {
 		svr->max_sz *= 2;
 		svr->jobids = realloc(svr->jobids, (svr->max_sz + 1) * sizeof(char *));
 		if (svr->jobids == NULL) 
 			goto error;
 	}
 	
-	svr->jobids[svr->job_ct++] = jobid;
-	svr->jobids[svr->job_ct] = NULL;
+	svr->jobids[svr->total_jobs++] = jobid;
+	svr->jobids[svr->total_jobs] = NULL;
 	return;
 
 error:
@@ -346,14 +346,13 @@ char **envp;
 		 *   "nomailforcedeletehist" -- force delete history of a job without sending mail.
 		 */
 		mails = dfltmail ? dfltmail : 1000;
-		numofjobs = (mails <= svr_itr->job_ct) ? mails : svr_itr->job_ct;
+		numofjobs = (mails <= svr_itr->total_jobs) ? mails : svr_itr->total_jobs;
 		
-		for (i = 0; i < svr_itr->job_ct; i = i + numofjobs) {
+		for (i = 0; i < svr_itr->total_jobs; i = i + numofjobs) {
 			if (mails_suppressed)
-				numofjobs = ((i + NUM_JOBS_IN_A_BATCH) <= svr_itr->job_ct) ? NUM_JOBS_IN_A_BATCH : (svr_itr->job_ct - i);
-			else 
-				numofjobs = ((i + numofjobs) <= svr_itr->job_ct) ? numofjobs : (svr_itr->job_ct - i);
+				numofjobs = NUM_JOBS_IN_A_BATCH;
 				
+			numofjobs = ((i + numofjobs) <= svr_itr->total_jobs) ? numofjobs : (svr_itr->total_jobs - i);	
 			p_delstatus = pbs_deljoblist(connect, &(svr_itr->jobids[i]), numofjobs, warg);
 			num_failed = 0;
 			for (; p_delstatus != NULL; p_delstatus = p_delstatus->next) {

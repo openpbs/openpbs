@@ -785,6 +785,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 
 		pwtnew = set_task(WORK_Timed, time_now + 1, post_delete_route,
 			preq);
+		log_errf(-1, __func__, "set work task ==== \"%s\" ", preq->rq_ind.rq_deletejoblist.rq_jobslist);
 		if (pwtnew == 0) {
 			if (pjob->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(PBSE_SYSTEM, PREEMPT_METHOD_DELETE, pjob);
