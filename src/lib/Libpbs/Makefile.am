@@ -203,7 +203,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_reply.c \
 	../Libifl/enc_SubmitResv.c \
 	../Libifl/enc_ModifyResv.c \
-	../Libifl/enc_PreemptJobs.c \
 	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
 	../Libifl/get_svrport.c \
@@ -224,7 +223,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_Cred.c \
 	../Libifl/dec_Cred.c \
 	../Libifl/int_modify_resv.c \
-	../Libifl/int_preempt_jobs.c \
 	../Libifl/list_link.c \
 	../Libifl/ifl_util.c \
 	../Libifl/PBS_attr.c \
