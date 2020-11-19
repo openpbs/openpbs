@@ -3840,6 +3840,10 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		hook_event = HOOK_EVENT_RESV_END;
 		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_delete;
 		head_ptr = &svr_resv_end_hooks;
+	} else if (preq->rq_type == PBS_BATCH_BeginResv) {
+		hook_event = HOOK_EVENT_RESV_BEGIN;
+		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_resresvbegin;
+		head_ptr = &svr_resv_begin_hooks;
 	} else {
 		return (-1); /* unexpected event encountered */
 	}
@@ -3867,8 +3871,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
-
-		/* TODO: PMR: set this for reservation period begin */
+		} else if (preq->rq_type == PBS_BATCH_BeginResv) {
+			phook_next = (hook *)GET_NEXT(phook->hi_resv_begin_hooks);
 		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
 			phook_next = (hook *)GET_NEXT(phook->hi_resv_end_hooks);
 		} else {
