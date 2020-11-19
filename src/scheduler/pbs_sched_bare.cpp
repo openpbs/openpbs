@@ -142,7 +142,6 @@ scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 {
 	server_info *sinfo;	    /* ptr to the server/queue/job/node info */
 	int rc = SUCCESS;	    /* return code from main_sched_loop() */
-	char log_msg[MAX_LOG_SIZE]; /* used to log the message why a job can't run*/
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		  "", "Starting Scheduling Cycle");
