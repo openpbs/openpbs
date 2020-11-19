@@ -611,6 +611,8 @@ DECLDIR char *pbs_default(void);
 
 DECLDIR int pbs_deljob(int, char *, char *);
 
+DECLDIR struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
+
 DECLDIR int pbs_disconnect(int);
 
 DECLDIR char *pbs_geterrmsg(int);

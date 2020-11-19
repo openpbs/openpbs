@@ -360,7 +360,7 @@ char **envp;
 					num_failed++;
 				if (p_delstatus->code == PBSE_UNKJOBID) {
 					if (locate_job(p_delstatus->name, server_out, rmt_server))
-						add_jid_to_list(rmt_server, rmt_server, &svr_itr);
+						add_jid_to_list(p_delstatus->name, rmt_server, &svr_itr);
 					continue;
 				}
 				errtxt = pbse_to_txt(p_delstatus->code);
