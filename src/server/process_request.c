@@ -472,11 +472,6 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
-	if (request->rq_type == PBS_BATCH_RegisterSched) {
-		req_register_sched(conn, request);
-		return;
-	}
-
 	if (request->rq_type != PBS_BATCH_Connect) {
 		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
 			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
@@ -531,6 +526,11 @@ process_request(int sfds)
 		}
 
 		conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+	}
+
+	if (request->rq_type == PBS_BATCH_RegisterSched) {
+		req_register_sched(conn, request);
+		return;
 	}
 
 	access_by_krb = 0;

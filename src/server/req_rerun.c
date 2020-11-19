@@ -182,6 +182,7 @@ force_reque(job *pjob)
 	free_jattr(pjob, JOB_ATR_pset);
 	/* job dir has no meaning for re-queued jobs, so unset it */
 	free_jattr(pjob, JOB_ATR_jobdir);
+	unset_extra_attributes(pjob);
 	svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
 	svr_setjobstate(pjob, newstate, newsubstate);
 }

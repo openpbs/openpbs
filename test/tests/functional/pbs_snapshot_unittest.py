@@ -130,7 +130,7 @@ class TestPBSSnapshot(TestFunctional):
                "started": "True",
                "enabled": "True"}
         a_n = {"resources_available.ncpus": 2}
-        self.mom.create_vnodes(a_n, (num_partitions + 1))
+        self.mom.create_vnodes(a_n, (num_partitions + 1), vname='vnode')
         for i in range(num_partitions):
             partition_id = "P" + str(i + 1)
 

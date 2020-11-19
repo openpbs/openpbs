@@ -56,6 +56,7 @@
 #include "pbs_ecl.h"
 #include "pbs_error.h"
 #include "pbs_nodes.h"
+#include "libpbs.h"
 
 /**
  * @brief

@@ -1833,7 +1833,7 @@ read_job_script(char *script)
 	int errflg; /* error code from get_script() */
 	struct stat statbuf;
 	char *bnp;
-	char basename[PBS_MAXJOBNAME + 1]; /* base name of script for job name*/
+	char basename[MAXPATHLEN + 1]; /* base name of script for job name*/
 	FILE *f; /* FILE pointer to the script */
 
 	/* if script is empty, get standard input */
@@ -2808,8 +2808,12 @@ do_connect(char *server_out, char *retmsg)
 	}
 
 	refresh_dfltqsubargs();
-	if (pbs_errno != PBSE_NONE)
-		return (pbs_errno);
+
+	if (pbs_errno != PBSE_NONE) {
+		if (pbs_errno == PBSE_NOSERVER)
+			show_svr_inst_fail(sd_svr, "qsub");
+		return pbs_errno;
+	}
 
 	pbs_hostvar = malloc(pbs_o_hostsize + PBS_MAXHOSTNAME + 1);
 	if (!pbs_hostvar) {

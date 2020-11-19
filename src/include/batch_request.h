@@ -113,9 +113,14 @@ struct rq_deletejoblist {
 struct rq_management {
 	struct rq_manage rq_manager;
 	struct batch_reply *rq_reply;
-	long rq_time;
+	time_t rq_time;
 };
 
+/* ModifyVnode - used for node state changes */
+struct rq_modifyvnode {
+	struct pbsnode *rq_vnode_o; /* old/previous vnode state */
+	struct pbsnode *rq_vnode; /* new/current vnode state */
+};
 
 /* HoldJob -  plus preference flag */
 struct rq_hold {
@@ -301,6 +306,7 @@ struct batch_request {
 		char rq_locate[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_manager;
 		struct rq_management rq_management;
+		struct rq_modifyvnode rq_modifyvnode;
 		struct rq_message rq_message;
 		struct rq_relnodes rq_relnodes;
 		struct rq_py_spawn rq_py_spawn;

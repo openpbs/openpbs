@@ -71,7 +71,6 @@
 #include "pbs_ifl.h"
 #include "pbs_ecl.h"
 #include "pbs_error.h"
-#include "libpbs.h"
 #include "cmds.h"
 #include "ticket.h"
 #include "pbs_license.h"

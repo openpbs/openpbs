@@ -90,6 +90,7 @@ libpbs_la_SOURCES = \
 	../Libcmds/get_attr.c \
 	../Libcmds/get_dataservice_usr.c \
 	../Libcmds/get_server.c \
+	../Libcmds/err_handling.c \
 	../Libcmds/isjobid.c \
 	../Libcmds/locate_job.c \
 	../Libcmds/parse_at.c \

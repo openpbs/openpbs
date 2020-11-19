@@ -85,7 +85,6 @@ get_sched_cmd(int sock, sched_cmd *cmd)
 
 	cmd->cmd = i;
 	cmd->jid = jobid;
-	cmd->from_sock = sock;
 	return 1;
 
 err:

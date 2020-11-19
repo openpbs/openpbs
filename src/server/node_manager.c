@@ -382,7 +382,7 @@ reply_hellosvr(int stream, int need_inv)
 	if ((ret = send_rpp_values(stream, 1)) != DIS_SUCCESS)
 		return ret;
 
-	if (get_msvr_mode()) {
+	if (msvr_mode()) {
 		/* In multi-server mode, server will not send clusteraddr */
 		return dis_flush(stream);
 	}
@@ -536,6 +536,9 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		psvrmom->msr_state &= ~bits;
 	}
 
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host,
+		"set_all_state;txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
+		
 	/* Set the inuse_flag based off the value of setwhen */
 	if (setwhen == Set_ALL_State_All_Down) {
 		inuse_flag = INUSE_DOWN;
@@ -1088,6 +1091,112 @@ momptr_down(mominfo_t *pmom, char *why)
 
 /**
  * @brief
+ * 		Given a vnode_state_op, return the string value.
+ * 		The enum is found in pbs_nodes.h
+ *
+ * @param[in]	op - The operation for the state change
+ *
+ * @return	char *
+ */
+char *
+get_vnode_state_op(enum vnode_state_op op)
+{
+	switch(op) {
+		case Nd_State_Set: 
+			return "Nd_State_Set";
+		case Nd_State_Or: 
+			return "Nd_State_Or";
+		case Nd_State_And: 
+			return "Nd_State_And";
+	}
+	return "ND_state_unknown";
+}
+
+/**
+ * @brief
+ * 		Free a duplicated vnode
+ *
+ * @param[in]	vnode - the vnode to free
+ *  
+ * @return void
+ */
+static void
+shallow_vnode_free(struct pbsnode *vnode)
+{
+	if (vnode) {
+		free(vnode);
+	}
+}
+
+/**
+ * @brief
+ * 		Create a duplicate of the specified vnode
+ *
+ * @param[in]	vnode - the vnode to duplicate
+ * 
+ * @note
+ *  Creates a shallow duplicate of struct * and char * members.
+ *  
+ * 
+ * @return  duplicated vnode
+ */
+static struct pbsnode *
+shallow_vnode_dup(struct pbsnode *vnode)
+{
+	int i;
+	struct pbsnode *vnode_dup = NULL;
+
+	if (vnode == NULL) {
+		return NULL;
+	}
+
+	/* 
+	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
+	 */
+	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
+		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
+			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
+			shallow_vnode_free(vnode_dup);
+			return NULL;
+		}
+	} else {
+		log_err(PBSE_INTERNAL, __func__, "vnode_dup alloc failed");
+		return NULL;
+	}
+
+	/*
+	 * Copy vnode elements (same order as "struct pbsnode" element definition)
+	 */
+	if (vnode_dup->nd_moms) {
+		/* free the initialize_pbsnode() allocation before assigning */
+		free(vnode_dup->nd_moms);
+		vnode_dup->nd_moms = NULL;
+	}
+	vnode_dup->nd_moms = vnode->nd_moms;
+	vnode_dup->nd_nummoms = vnode->nd_nummoms;
+	vnode_dup->nd_nummslots = vnode->nd_nummslots;
+	vnode_dup->nd_index = vnode->nd_index;
+	vnode_dup->nd_arr_index = vnode->nd_arr_index;
+	vnode_dup->nd_hostname = vnode->nd_hostname;
+	vnode_dup->nd_psn = vnode->nd_psn;
+	vnode_dup->nd_resvp = vnode->nd_resvp;
+	vnode_dup->nd_nsn = vnode->nd_nsn;
+	vnode_dup->nd_nsnfree = vnode->nd_nsnfree;
+	vnode_dup->nd_ncpus = vnode->nd_ncpus;
+	vnode_dup->nd_written = vnode->nd_written;
+	vnode_dup->nd_state = vnode->nd_state;
+	vnode_dup->nd_ntype = vnode->nd_ntype;
+	vnode_dup->nd_accted = vnode->nd_accted;
+	vnode_dup->nd_pque = vnode->nd_pque;
+	vnode_dup->newobj = vnode->newobj;
+	for (i = 0; i < (int)ND_ATR_LAST; i++) {
+		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
+	}
+	return vnode_dup;
+}
+
+/**
+ * @brief
  * 		Change the state of a vnode. See pbs_nodes.h for definition of node's
  * 		availability and unavailability.
  *
@@ -1106,15 +1215,43 @@ momptr_down(mominfo_t *pmom, char *why)
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
-	unsigned long nd_prev_state;
+	/*
+	 * Vars used to construct hook event data
+	 */
+	struct batch_request *preq = NULL;
+	struct pbsnode *vnode_o = NULL;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
 	int time_int_val;
+	int last_time_int;
 
+	time_now = time(NULL);
 	time_int_val = time_now;
 
-	if (pnode == NULL)
+	if (pnode == NULL) {
 		return;
+	}
 
-	nd_prev_state = pnode->nd_state;
+	/*
+	 * Allocate space for the modifyvnode hook event params
+	 */
+	preq = alloc_br(PBS_BATCH_ModifyVnode);
+	if (preq == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "rq_modifyvnode alloc failed");
+		return;
+	}
+
+	/* 
+	 * Create a duplicate of the vnode
+	 */
+	vnode_o = shallow_vnode_dup(pnode);
+	if (vnode_o == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "shallow_vnode_dup failed");
+		goto fn_free_and_return;
+	}
+
+	/*
+	 * Apply specified state operation (to the vnode only)
+	 */
 	switch (type) {
 		case Nd_State_Set:
 			pnode->nd_state = state_bits;
@@ -1125,7 +1262,6 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		case Nd_State_And:
 			pnode->nd_state &= state_bits;
 			break;
-
 		default:
 			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
 				__func__, type))
@@ -1133,8 +1269,12 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 			pnode->nd_state = state_bits;
 	}
 
-	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		nd_prev_state, pnode->nd_state))
+	/* Populate hook param rq_modifyvnode with old and new vnode states */
+	preq->rq_ind.rq_modifyvnode.rq_vnode_o = vnode_o;
+	preq->rq_ind.rq_modifyvnode.rq_vnode = pnode;
+
+	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__,
+		pnode->nd_name, vnode_o->nd_state, pnode->nd_state))
 
 	/* sync state attribute with nd_state */
 
@@ -1143,13 +1283,23 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
-	if (nd_prev_state != pnode->nd_state) {
+	/* If the state has changed update the last change time */
+	if (vnode_o->nd_state != pnode->nd_state) {
 		char str_val[STR_TIME_SZ];
-
 		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
 		set_attr_generic(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
-			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL, SET);
+			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL,
+			SET);
 	}
+
+	/* Write the vnode state change event to server log */
+	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
+		"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
+		"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
+		"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
+		pnode->nd_state, vnode_o->nd_state, time_int_val, last_time_int,
+		state_bits, get_vnode_state_op(type), type);
 
 	if (pnode->nd_state & INUSE_PROV) {
 		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
@@ -1182,27 +1332,35 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		/* while node is provisioning, we don't want the reservation
 		 * to degrade, hence returning.
 		 */
-		return;
+		goto fn_fire_event;
 	}
 
 	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		nd_prev_state, pnode->nd_state))
+		vnode_o->nd_state, pnode->nd_state))
 
 	/* node is marked INUSE_DOWN | INUSE_PROV when provisioning.
 	 * need to check transition from INUSE_PROV to UNAVAILABLE
 	 */
-	if ((!(nd_prev_state & VNODE_UNAVAILABLE) ||
-		(nd_prev_state & INUSE_PROV)) &&
-		(pnode->nd_state & VNODE_UNAVAILABLE))
+	if ((!(vnode_o->nd_state & VNODE_UNAVAILABLE) ||
+			(vnode_o->nd_state & INUSE_PROV)) &&
+			(pnode->nd_state & VNODE_UNAVAILABLE)) {
 		/* degrade all associated reservations. The '1' instructs the function to
 		 * account for the unavailable vnodes in the reservation's counter
 		 */
 		(void) vnode_unavailable(pnode, 1);
-
-	else if (((nd_prev_state & VNODE_UNAVAILABLE)) &&
-		((!(pnode->nd_state & VNODE_UNAVAILABLE)) ||
-		(pnode->nd_state == INUSE_FREE)))
+	} else if (((vnode_o->nd_state & VNODE_UNAVAILABLE)) &&
+			((!(pnode->nd_state & VNODE_UNAVAILABLE)) ||
+			(pnode->nd_state == INUSE_FREE))) {
 		(void) vnode_available(pnode);
+	}
+
+fn_fire_event: 
+	/* Fire off the vnode state change event */
+	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+
+fn_free_and_return:
+	shallow_vnode_free(vnode_o);
+	free_br(preq);
 }
 
 /**
@@ -1323,7 +1481,6 @@ void
 vnode_unavailable(struct pbsnode *np, int account_vnode)
 {
 	char *nd_name;
-	char *str_time;
 	char *resv_nodes;
 	struct resc_resv *presv;
 	struct resvinfo *rinfp;
@@ -1370,19 +1527,9 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 		degraded_time = presv->ri_degraded_time;
 		in_soonest_occr = find_vnode_in_execvnode(resv_nodes, np->nd_name);
 
-		if (retry_time == 0) {
+		if (retry_time == 0)
 			set_resv_retry(presv, determine_resv_retry(presv));
 
-			str_time = ctime(&presv->ri_resv_retry);
-			if (str_time != NULL) {
-				str_time[strlen(str_time) - 1] = '\0';
-				(void) snprintf(log_buffer, sizeof(log_buffer),
-					"An attempt to reconfirm reservation will be made on %s",
-					str_time);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE,
-					presv->ri_qs.ri_resvID, log_buffer);
-			}
-		}
 
 		/* If the downed node is part of the soonest reservation then the
 		 * reservation is marked degraded. This is recognized by having the
@@ -1744,14 +1891,28 @@ set_resv_retry(resc_resv *presv, long retry_time)
 {
 	struct work_task *pwt;
 	extern void resv_retry_handler(struct work_task *ptask);
+	char *msg;
+	char *str_time;
 
 	if (presv == NULL)
 		return;
+		
+	if (presv->ri_resv_retry)
+		msg = "Next attempt to reconfirm reservation will be made on %s";
+	else	
+		msg = "An attempt to reconfirm reservation will be made on %s";
 
 	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
 	presv->ri_wattr[RESV_ATR_retry].at_val.at_long = retry_time;
 
 	presv->ri_resv_retry = retry_time;
+
+	str_time = ctime(&retry_time);
+	if (str_time != NULL) {
+		str_time[strlen(str_time) - 1] = '\0';
+		log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, msg, str_time);
+	}
+
 
 	/* Set a work task to initiate a scheduling cycle when the time to check
 	 * for alternate nodes to assign the reservation comes
@@ -4522,7 +4683,10 @@ found:
 							}
 						}
 					}
-					propagate_licenses_to_vnodes(pmom);
+					if (made_new_vnodes || cr_node) {
+						save_nodes_db(1, pmom); /* update the node database */
+						propagate_licenses_to_vnodes(pmom);
+					}
 				}
 				vnl_free(vnlp);
 				vnlp = NULL;
@@ -4947,6 +5111,7 @@ found:
 			}
 			if (made_new_vnodes || cr_node) {
 				save_nodes_db(1, pmom); /* update the node database */
+				propagate_licenses_to_vnodes(pmom);
 			}
 			break;
 
@@ -7915,7 +8080,6 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 static void
 set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 {
-	char *str_time;
 	long degraded_time;
 
 	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0)
@@ -7928,17 +8092,6 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 	if (degraded_time > (time_now + resv_retry_time))
 			set_resv_retry(presv, (time_now + resv_retry_time));
 
-	if (presv->ri_resv_retry) {
-		str_time = ctime(&presv->ri_resv_retry);
-		if (str_time != NULL) {
-			str_time[strlen(str_time) - 1] = '\0';
-			(void) snprintf(log_buffer, sizeof(log_buffer),
-				"An attempt to reconfirm reservation will be made on %s",
-				str_time);
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE,
-				presv->ri_qs.ri_resvID, log_buffer);
-		}
-	}
 	(void) resv_setResvState(presv, presv->ri_qs.ri_state, RESV_DEGRADED);
 
 	/* the number of vnodes down could exceed the number of vnodes in

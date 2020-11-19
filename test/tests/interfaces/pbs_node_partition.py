@@ -46,10 +46,12 @@ class TestNodePartition(TestInterfaces):
     """
     Test suite to test partition attr for node
     """
-    # Node id is MoM's short name
-    host_name = socket.gethostname().split('.')[0]
 
-    def set_node_partition_attr(self, mgr_cmd="MGR_CMD_SET", n_name=host_name,
+    def setUp(self):
+        TestInterfaces.setUp(self)
+        self.mom_hostname = self.mom.shortname
+
+    def set_node_partition_attr(self, mgr_cmd="MGR_CMD_SET", n_name=None,
                                 partition="P1", user=ROOT_USER):
         """
         Common function to set partition attribute to node object
@@ -79,19 +81,20 @@ class TestNodePartition(TestInterfaces):
         """
         Test to set/unset the partition attribute of node object
         """
-        self.set_node_partition_attr()
-        self.set_node_partition_attr(partition="P2")
+        self.set_node_partition_attr(n_name=self.mom_hostname)
+        self.set_node_partition_attr(partition="P2", n_name=self.mom_hostname)
 
         # resetting the same partition value
-        self.set_node_partition_attr(partition="P2")
-        self.set_node_partition_attr(mgr_cmd="MGR_CMD_UNSET")
+        self.set_node_partition_attr(partition="P2", n_name=self.mom_hostname)
+        self.set_node_partition_attr(mgr_cmd="MGR_CMD_UNSET",
+                                     n_name=self.mom_hostname)
 
     def test_set_partition_node_attr_user_permissions(self):
         """
         Test to check the user permissions for set/unset the partition
         attribute of node
         """
-        self.set_node_partition_attr()
+        self.set_node_partition_attr(n_name=self.mom_hostname)
         msg1 = "Unauthorized Request"
         msg2 = "didn't receive expected error message"
         try:
@@ -115,15 +118,16 @@ class TestNodePartition(TestInterfaces):
         attr = {'queue_type': "execution", 'enabled': "True",
                 'started': "True", 'partition': "P1"}
         self.server.manager(MGR_CMD_CREATE, QUEUE, attr, id="Q1")
-        self.set_node_partition_attr()
+        self.set_node_partition_attr(n_name=self.mom_hostname)
         attr = {'queue_type': "execution", 'enabled': "True",
                 'started': "True", 'partition': "P2"}
         self.server.manager(MGR_CMD_CREATE, QUEUE, attr, id="Q2")
 
-        self.set_node_partition_attr(mgr_cmd="MGR_CMD_UNSET")
+        self.set_node_partition_attr(mgr_cmd="MGR_CMD_UNSET",
+                                     n_name=self.mom_hostname)
         self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': "Q2"}, id=self.host_name)
-        self.set_node_partition_attr(partition="P2")
+                            'queue': "Q2"}, id=self.mom_hostname)
+        self.set_node_partition_attr(partition="P2", n_name=self.mom_hostname)
 
     def test_mismatch_of_partition_on_node_and_queue(self):
         """
@@ -146,7 +150,7 @@ class TestNodePartition(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_SET,
                                 NODE, {'queue': "Q1"},
-                                id=self.host_name)
+                                id=self.mom_hostname)
         except PbsManagerError as e:
             # self.assertEqual(e.rc, 15220)
             # The above code has to be uncommented when the PTL framework
@@ -154,7 +158,7 @@ class TestNodePartition(TestInterfaces):
             self.assertTrue(msg1 in e.msg[0], msg2)
         msg1 = "Queue Q2 is not part of partition for node"
         try:
-            self.set_node_partition_attr()
+            self.set_node_partition_attr(n_name=self.mom_hostname)
         except PbsManagerError as e:
             # self.assertEqual(e.rc, 15219)
             # The above code has to be uncommented when the PTL framework

@@ -209,6 +209,7 @@ struct batch_reply
 	int brp_choice; /* the union discriminator */
 	int brp_is_part;
 	int brp_count;
+	struct batch_status *last;
 	union {
 		char brp_jid[PBS_MAXSVRJOBID + 1];
 		struct brp_select *brp_select; /* select replies */
@@ -303,7 +304,8 @@ struct batch_reply
 #define PBS_BATCH_ModifyJob_Async	96
 #define PBS_BATCH_AsyrunJob_ack	97
 #define PBS_BATCH_RegisterSched	98
-#define PBS_BATCH_DeleteJobList	99
+#define PBS_BATCH_ModifyVnode       99
+#define PBS_BATCH_DeleteJobList	100
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -350,14 +352,16 @@ int PBSD_sig_put(int, char *, char *, char *, int, char **);
 int PBSD_term_put(int, int, char *);
 int PBSD_jobfile(int, int, char *, char *, enum job_file, int, char **);
 int PBSD_status_put(int, int, char *, struct attrl *, char *, int, char **);
+int PBSD_select_put(int, int, struct attropl *, struct attrl *, char *);
 struct batch_reply *PBSD_rdrpy(int);
 struct batch_reply *PBSD_rdrpy_sock(int, int *);
 void PBSD_FreeReply(struct batch_reply *);
 struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 struct batch_status *PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object);
-struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, struct attrl *attrib, char *extend, int parent_object);
+struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *);
+extern int random_srv_conn(svr_conn_t *);
 preempt_job_info *PBSD_preempt_jobs(int, char **);
-struct batch_status *PBSD_status_get(int);
+struct batch_status *PBSD_status_get(int, struct batch_status **last);
 char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
 int decode_DIS_svrattrl(int, pbs_list_head *);
 int decode_DIS_attrl(int, struct attrl **);
@@ -394,8 +398,9 @@ int tcp_pre_process(conn_t *);
 char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
-void *get_conn_servers(int);
+void *get_conn_svr_instances(int);
 void dealloc_conn_list_single(int parentfd);
+int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 
 #ifdef __cplusplus
 }

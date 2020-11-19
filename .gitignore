@@ -241,6 +241,8 @@ src/include/stamp-h1
 src/lib/Libpython/pbs_ifl.i
 src/lib/Libpython/pbs_ifl.py
 src/lib/Libpython/pbs_ifl_wrap.c
+src/lib/Libifl/pbs_ifl.py
+src/lib/Libifl/pbs_ifl_wrap.c
 src/include/job_attr_enum.h
 src/include/node_attr_enum.h
 src/include/queue_attr_enum.h
@@ -288,3 +290,6 @@ src/lib/Libpbs/pbs.pc
 *.cpio
 *.rpm
 *.deb
+
+# Generated directories by autotools
+*.libs

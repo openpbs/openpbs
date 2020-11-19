@@ -49,9 +49,14 @@ extern "C" {
 #include "queue.h"
 #include "sched_cmds.h"
 
-extern sched_svrconn **servers;
 extern void *poll_context;
-extern ds_queue *sched_cmds;
+
+/* Each index of the array is a sched command. Store 1 as a value to indicate that we received a command */
+extern int sched_cmds[SCH_CMD_HIGH];
+
+/* This list stores SCH_SCHEDULE_AJOB commands */
+extern sched_cmd *qrun_list;
+extern int qrun_list_size;
 
 /* resources to check */
 extern const struct rescheck res_to_check[];
@@ -111,6 +116,10 @@ extern struct schedattrs sc_attrs;
 extern time_t last_attr_updates;    /* timestamp of the last time attr updates were sent */
 
 extern int send_job_attr_updates;
+
+extern int clust_primary_sock;
+
+extern int clust_secondary_sock;
 
 /**
  * @brief
