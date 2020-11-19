@@ -381,7 +381,10 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.set_sched_config({'strict_ordering': 'True'})
         a = {'resources_available.ncpus': '1'}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        a = {'state=free': 1}
+        if self.mom.is_cpuset_mom():
+            a = {'state=free': (GE, 1)}
+        else:
+            a = {'state=free': 1}
         self.server.expect(VNODE, a, attrop=PTL_AND)
         a = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, a)

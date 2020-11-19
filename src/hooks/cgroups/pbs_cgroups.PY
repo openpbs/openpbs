@@ -901,6 +901,14 @@ class HookUtils(object):
                 'name': 'runjob',
                 'handler': None
             }
+            self.hook_events[pbs.MANAGEMENT] = {
+                'name': 'management',
+                'handler': None
+            }
+            self.hook_events[pbs.MODIFYVNODE] = {
+                'name': 'modifyvnode',
+                'handler': None
+            }
             self.hook_events[pbs.PROVISION] = {
                 'name': 'provision',
                 'handler': None

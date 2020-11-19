@@ -834,6 +834,28 @@ class Server(PBSService):
                            recursive=True, force=True)
                 self.manager(MGR_CMD_DELETE, SCHED, id=name)
 
+    def create_node(self, name, level="INFO", logerr=False):
+        """
+        Add a node to PBS
+        """
+        ret = self.manager(MGR_CMD_CREATE, VNODE, name,
+                           level=level, logerr=logerr)
+        return ret
+
+    def delete_node(self, name, level="INFO", logerr=False):
+        """
+        Remove a node from PBS
+        """
+        try:
+            ret = self.manager(MGR_CMD_DELETE, VNODE, name,
+                               level=level, logerr=logerr)
+        except PbsManagerError as err:
+            if "Unknown node" not in err.msg[0]:
+                raise
+            else:
+                ret = 15062
+        return ret
+
     def delete_nodes(self):
         """
         Remove all the nodes from PBS
@@ -2236,7 +2258,7 @@ class Server(PBSService):
                     momobj.check_mem_request(attrib)
                     if len(attrib) == 0:
                         return True
-                    vnodes = self.status(HOST, id=cmom)
+                    vnodes = self.status(HOST, id=momobj.shortname)
                     del vnodes[0]  # don't set anything on a naturalnode
                     for vn in vnodes:
                         momobj.check_ncpus_request(attrib, vn)

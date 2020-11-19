@@ -82,6 +82,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 	int i;
 	struct brp_select *psel;
 	struct brp_status *pstat;
+	struct batch_deljob_status *pdelstat;
 	svrattrl *psvrl;
 	preempt_job_info *ppj;
 
@@ -142,6 +143,25 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 				if ((rc = encode_DIS_svrattrl(sock, psvrl)) != 0)
 					return rc;
 				pstat = (struct brp_status *) GET_NEXT(pstat->brp_stlink);
+			}
+			break;
+			
+		case BATCH_REPLY_CHOICE_Delete:
+
+			/* encode "server version" of status structure.
+			 *
+			 * Server always uses svrattrl form.
+			 * Commands decode into their form.
+			 */
+
+			if ((rc = diswui(sock, reply->brp_count)) != 0)
+				return rc;
+			pdelstat = reply->brp_un.brp_deletejoblist.brp_delstatc;
+			while (pdelstat) {
+				if ((rc = diswst(sock, pdelstat->name)) || (rc = diswui(sock, pdelstat->code)))
+					return rc;
+
+				pdelstat = pdelstat->next;
 			}
 			break;
 

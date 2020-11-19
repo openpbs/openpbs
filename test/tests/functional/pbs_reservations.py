@@ -144,7 +144,8 @@ class TestReservations(TestFunctional):
 
         rid = self.submit_reservation(user=TEST_USER,
                                       select='2:ncpus=1:color=red',
-                                      rrule=rrule, start=start, end=end)
+                                      rrule=rrule, start=now + start,
+                                      end=now + end)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
@@ -207,7 +208,8 @@ class TestReservations(TestFunctional):
         now = time.time()
 
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
-                                      rrule=rrule, start=start, end=end)
+                                      rrule=rrule, start=now + start,
+                                      end=now + end)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
@@ -280,8 +282,7 @@ class TestReservations(TestFunctional):
         Verify that degraded standing reservations are reconfirmed
         on other nodes
         """
-        t = int(time.time())
-        self.degraded_resv_reconfirm(start=t + 25, end=t + 625,
+        self.degraded_resv_reconfirm(start=25, end=625,
                                      rrule='freq=HOURLY;count=5')
 
     def test_degraded_advance_reservations(self):
@@ -289,16 +290,14 @@ class TestReservations(TestFunctional):
         Verify that degraded advance reservations are reconfirmed
         on other nodes
         """
-        t = int(time.time())
-        self.degraded_resv_reconfirm(start=t + 25, end=t + 625)
+        self.degraded_resv_reconfirm(start=25, end=625)
 
     def test_degraded_standing_running_reservations(self):
         """
         Verify that degraded standing reservations are reconfirmed
         on other nodes
         """
-        t = int(time.time())
-        self.degraded_resv_reconfirm(start=t + 25, end=t + 625,
+        self.degraded_resv_reconfirm(start=25, end=625,
                                      rrule='freq=HOURLY;count=5', run=True)
 
     def test_degraded_advance_running_reservations(self):
@@ -306,17 +305,15 @@ class TestReservations(TestFunctional):
         Verify that degraded advance reservations are not reconfirmed
         on other nodes if no space is available
         """
-        t = int(time.time())
         self.degraded_resv_reconfirm(
-            start=t + 25, end=t + 625, run=True)
+            start=25, end=625, run=True)
 
     def test_degraded_standing_reservations_fail(self):
         """
         Verify that degraded standing reservations are not
         reconfirmed on other nodes if there is no space available
         """
-        t = int(time.time())
-        self.degraded_resv_failed_reconfirm(start=t + 120, end=t + 720,
+        self.degraded_resv_failed_reconfirm(start=120, end=720,
                                             rrule='freq=HOURLY;count=5')
 
     def test_degraded_advance_reservations_fail(self):
@@ -324,16 +321,14 @@ class TestReservations(TestFunctional):
         Verify that advance reservations are not reconfirmed if there
         is no space available
         """
-        t = int(time.time())
-        self.degraded_resv_failed_reconfirm(start=t + 120, end=t + 720)
+        self.degraded_resv_failed_reconfirm(start=120, end=720)
 
     def test_degraded_standing_running_reservations_fail(self):
         """
         Verify that degraded running standing reservations are not
         reconfirmed on other nodes if there is no space available
         """
-        t = int(time.time())
-        self.degraded_resv_failed_reconfirm(start=t + 25, end=t + 55,
+        self.degraded_resv_failed_reconfirm(start=25, end=55,
                                             rrule='freq=HOURLY;count=5',
                                             run=True)
 
@@ -342,9 +337,8 @@ class TestReservations(TestFunctional):
         Verify that advance running reservations are not reconfirmed if there
         is no space available
         """
-        t = int(time.time())
         self.degraded_resv_failed_reconfirm(
-            start=t + 25, end=t + 625, run=True)
+            start=25, end=625, run=True)
 
     def test_degraded_advanced_reservation_superchunk(self):
         """
