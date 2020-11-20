@@ -2601,6 +2601,10 @@ Time4resv(struct work_task *ptask)
 
 			/* make an artifical request so we can fire process hooks */
 			struct batch_request *preq = alloc_br(PBS_BATCH_BeginResv);
+			preq->rq_perm |= ATR_DFLAG_MGWR;
+			strncpy(preq->rq_user, pbs_current_user, PBS_MAXUSER);
+			strncpy(preq->rq_host, server_host, PBS_MAXHOSTNAME);
+			strncpy(preq->rq_ind.rq_manager.rq_objname, presv->ri_qs.ri_resvID, PBS_MAXSVRJOBID);
 			char hook_msg[HOOK_MSG_SIZE] = {0};
 			switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
 			case 0: /* explicit reject */
