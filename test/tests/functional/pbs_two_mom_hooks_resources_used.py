@@ -117,7 +117,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
         # Check for resources_used value in the 'R' record.
         msg = '.*R;' + str(jid1) + '.*resources_used.ncpus=2.*'
-        self.server.accounting_match(msg, tail=True, regexp=True)
+        self.server.accounting_match(msg, regexp=True, n='ALL')
 
     def test_Erecord(self):
         """

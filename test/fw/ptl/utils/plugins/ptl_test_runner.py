@@ -752,7 +752,23 @@ class PTLTestRunner(Plugin):
                 _msg += " (" + str(eff_tc_req[pk]) + ")"
                 logger.error(_msg)
                 return _msg
-        for hostname in param_dic['moms']:
+
+        if hasattr(test, 'test'):
+            _test = test.test
+        elif hasattr(test, 'context'):
+            _test = test.context
+        else:
+            return None
+
+        name = 'moms'
+        if (hasattr(_test, name) and
+                (getattr(_test, name, None) is not None)):
+            for mc in getattr(_test, name).values():
+                platform = mc.platform
+                if platform not in ['linux', 'shasta',
+                                    'cray'] and mc.hostname in _moms:
+                    _moms.remove(mc.hostname)
+        for hostname in _moms:
             si = SystemInfo()
             si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
@@ -863,7 +879,7 @@ class PTLTestRunner(Plugin):
                 for mc in mlist:
                     platform = mc.platform
                     if ((platform not in ['linux', 'shasta', 'cray']) and
-                       (mc.hostname in systems)):
+                            (mc.hostname in systems)):
                         systems.remove(mc.hostname)
 
         self.hardware_report_timer = Timer(
