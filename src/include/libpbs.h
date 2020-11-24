@@ -348,9 +348,7 @@ int PBSD_jscript_direct(int, char *, int, char **);
 int PBSD_copyhookfile(int, char *, int, char **);
 int PBSD_delhookfile(int, char *, int, char **);
 int PBSD_mgr_put(int, int, int, int, char *, struct attropl *, char *, int, char **);
-int PBSD_deljoblist_put(int, int, char **, int, char *, int, char **);
 int PBSD_manager(int, int, int, int, char *, struct attropl *, char *);
-struct batch_deljob_status *PBSD_deljoblist(int, int, char **, int, char *);
 int PBSD_msg_put(int, char *, int, char *, char *, int, char **);
 int PBSD_relnodes_put(int, char *, char *, char *, int, char **);
 int PBSD_py_spawn_put(int, char *, char **, char **, int, char **);
@@ -410,6 +408,8 @@ int random_srv_conn(svr_conn_t **);
 int starting_index(char *);
 char *PBS_get_server(char *, char *, uint *);
 int encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs);
+int get_server_fd_from_jid(int c, char *jobid);
+int multi_svr_op(int fd);
 
 #ifdef __cplusplus
 }
