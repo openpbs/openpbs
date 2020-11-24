@@ -121,7 +121,7 @@ class TestResourceUsageLog(TestFunctional):
         # Submit a job
         a = {'Resource_List.select': '1:ncpus=1:mem=20gb'}
         j = Job(TEST_USER, a)
-        j.create_eatcpu_job()
+        j.create_eatcpu_job(hostname=self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -130,7 +130,7 @@ class TestResourceUsageLog(TestFunctional):
             ATTR_J: '1-2',
             'Resource_List.select': 'ncpus=1:mem=20gb'}
         )
-        ja.create_eatcpu_job()
+        ja.create_eatcpu_job(hostname=self.mom.shortname)
         jid_a = self.server.submit(ja)
 
         subjid1 = j.create_subjob_id(jid_a, 1)
@@ -206,7 +206,7 @@ class TestResourceUsageLog(TestFunctional):
         # Submit job
         a = {'Resource_List.select': '1:ncpus=1:mem=20gb'}
         j = Job(TEST_USER, a)
-        j.create_eatcpu_job()
+        j.create_eatcpu_job(hostname=self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -215,7 +215,7 @@ class TestResourceUsageLog(TestFunctional):
             ATTR_J: '1-2',
             'Resource_List.select': 'ncpus=1:mem=20gb'}
         )
-        ja.create_eatcpu_job()
+        ja.create_eatcpu_job(hostname=self.mom.shortname)
         jid_a = self.server.submit(ja)
         subjid1 = j.create_subjob_id(jid_a, 1)
         subjid2 = j.create_subjob_id(jid_a, 2)
@@ -316,7 +316,7 @@ class TestResourceUsageLog(TestFunctional):
         """
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(60)
+        j1.create_eatcpu_job(60, self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
