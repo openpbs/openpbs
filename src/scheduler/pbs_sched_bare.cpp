@@ -79,13 +79,13 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 	resource_resv **jobs = sinfo->jobs;
 	int ij;
 	int in = 0;
+	char execvnode[PBS_MAXHOSTNAME + strlen("(:ncpus=1)") + 1];
 
 	/* Algorithm:
      * - Loop over all jobs, assume that they need just 1 ncpu to run, and
      *  choose the next free node for it
      */
 	for (ij = 0; jobs[ij] != NULL; ij++) {
-		char execvnode[PBS_MAXHOSTNAME + 1];
 		execvnode[0] = '\0';
 
 		/* Find the first free node and fill it */
@@ -93,7 +93,7 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 			node_info *node = nodes[in];
 			schd_resource *ncpures = NULL;
 
-			if (node->is_busy || node->is_job_busy)
+			if (node->is_job_busy)
 				continue;
 
 			ncpures = find_resource(node->res, getallres(RES_NCPUS));
@@ -103,7 +103,6 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 			/* Assign a cpu on this node */
 			ncpures->assigned += 1;
 			if (dynamic_avail(ncpures) == 0) {
-				node->is_busy = 1;
 				node->is_job_busy = 1;
 				node->is_free = 0;
 			}
@@ -171,51 +170,6 @@ scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 
 /**
  * @brief
- *		intermediate_schedule - responsible for starting/restarting scheduling
- *		cycle.
- *
- * @param[in]	sd	-	primary socket descriptor to the server pool
- *
- * returns 0
- *
- */
-static int
-intermediate_schedule_bare(int sd, const sched_cmd *cmd)
-{
-	int ret;	   /* to re schedule or not */
-	int cycle_cnt = 0; /* count of cycles run */
-
-	do {
-		ret = scheduling_cycle_bare(sd, cmd);
-
-		/* don't restart cycle if :- */
-
-		/* 1) qrun request, we don't want to keep trying same job */
-		if (cmd->jid != NULL)
-			break;
-
-		/* Note that a qrun request receiving batch protocol error or any other
-		 error will not restart scheduling cycle.
-		 */
-
-		/* 2) broken pipe, server connection lost */
-		if (got_sigpipe)
-			break;
-
-		/* 3) max allowed number of cycles have already been run,
-		 *    there can be total of 1 + MAX_RESTART_CYCLECNT cycles
-		 */
-		if (cycle_cnt > (MAX_RESTART_CYCLECNT - 1))
-			break;
-
-		cycle_cnt++;
-	} while (ret == -1);
-
-	return 0;
-}
-
-/**
- * @brief
  *		schedule - this function gets called to start each scheduling cycle
  *		   It will handle the difference cases that caused a
  *		   scheduling cycle
@@ -255,9 +209,9 @@ schedule_bare(int sd, const sched_cmd *cmd)
 	case SCH_SCHEDULE_MVLOCAL:
 	case SCH_SCHEDULE_ETE_ON:
 	case SCH_SCHEDULE_RESV_RECONFIRM:
-		return intermediate_schedule_bare(sd, cmd);
+		return scheduling_cycle_bare(sd, cmd);
 	case SCH_SCHEDULE_AJOB:
-		return intermediate_schedule_bare(sd, cmd);
+		return scheduling_cycle_bare(sd, cmd);
 	case SCH_CONFIGURE:
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 			  "reconfigure", "Scheduler is reconfiguring");
