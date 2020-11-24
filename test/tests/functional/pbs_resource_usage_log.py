@@ -172,28 +172,25 @@ class TestResourceUsageLog(TestFunctional):
         self.server.delete(jid, wait=True)
         self.server.delete(jid_a, wait=True)
 
-        # job1 has 2 R records and a E record
-        matches = self.server.accounting_match(
+        # job1 has R and E record
+        self.server.accounting_match(
             msg='R;' + jid + '.*Exit_status=0.*resources_used.*run_count=1',
             id=jid, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, " 2 R records expected")
         self.server.accounting_match(
             msg='E;' + jid +
             '.*Exit_status=271.*resources_used.*run_count=2',
             id=jid, regexp=True)
 
-        # job array's subjobs have 2 R records and
+        # job array's subjobs have a R record and
         # the jobarray has E record with run_count=0
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid1) +
             '.*Exit_status=0.*resources_used.*run_count=1',
             id=subjid1, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, " 2 R records expected")
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid2) +
             '.*Exit_status=0.*resources_used.*run_count=1',
             id=subjid2, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, " 2 R records expected")
         self.server.accounting_match(
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0', id=jid_a, regexp=True)
@@ -273,16 +270,14 @@ class TestResourceUsageLog(TestFunctional):
             '.*Exit_status=271.*resources_used.*run_count=3', id=jid,
             regexp=True)
 
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid1) +
             '.*Exit_status=-11.*resources_used.*run_count=1',
             id=subjid1, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, "Expected 2 R records")
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid1) +
             '.*Exit_status=-11.*resources_used.*run_count=1',
             id=subjid2, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, "Expected 2 R records")
         self.server.accounting_match(
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0',
