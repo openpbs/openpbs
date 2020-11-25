@@ -1957,7 +1957,7 @@ class TestReservations(TestFunctional):
         idle_timer = 15
         extra = {'delete_idle_time': idle_timer}
         rid = self.submit_reservation(
-            user=TEST_USER, select='1:ncpus=1', rrule='freq=HOURLY;COUNT=3',
+            user=TEST_USER, select='1:ncpus=1', rrule='freq=DAILY;COUNT=3',
             start=start, end=start + 1800, extra_attrs=extra)
 
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
@@ -1977,10 +1977,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         strf_str = '%a %b %d %T %Y'
-        delay = 3600
-        if self.dst_changes(start, start + delay) is True:
-            delay = 7200
-        start_str = time.strftime(strf_str, time.localtime(start + delay))
+        start_str = time.strftime(strf_str, time.localtime(start + 86400))
 
         self.logger.info('Sleeping until resv idle timer fires')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
