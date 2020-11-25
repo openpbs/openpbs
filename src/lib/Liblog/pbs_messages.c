@@ -173,8 +173,6 @@ char *msg_momkillvmem = "Job exceeded resource vmem\nSee job standard error file
 char *msg_momkillmem = "Job exceeded resource mem\nSee job standard error file";
 char *msg_momkillcput = "Job exceeded resource cput\nSee job standard error file";
 char *msg_momkillwalltime = "Job exceeded resource walltime\nSee job standard error file";
-char *msg_momkillmppe = "Job exceeded resource mppe\nSee job standard error file";
-char *msg_momkillmppssp = "Job exceeded resource mppssp\nSee job standard error file";
 
 /*
  * This next set of messages are returned to the client on an error.

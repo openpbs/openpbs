@@ -6036,7 +6036,6 @@ mom_over_limit(job *pjob)
 				sprintf(log_buffer,
 					"mppe %lu exceeded limit %lu",
 					num, value);
-				pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_MPPE;
 				return (TRUE);
 			}
 		} else if (strcmp(pname, "mppssp") == 0) {
@@ -6050,7 +6049,6 @@ mom_over_limit(job *pjob)
 				sprintf(log_buffer,
 					"mppssp %lu exceeded limit %lu",
 					num, value);
-				pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_MPPSSP;
 				return (TRUE);
 			}
 		}

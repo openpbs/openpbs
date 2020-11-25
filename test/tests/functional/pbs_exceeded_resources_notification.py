@@ -49,9 +49,11 @@ class TestExceededResourcesNotification(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
 
+        if os.getuid() != 0:
+            self.skipTest("The test needs to run as root")
+
         a = {'job_history_enable': 'True'}
-        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_SET, SERVER, a)
 
     def check_mail(self, jid, msg):
         """
@@ -60,22 +62,20 @@ class TestExceededResourcesNotification(TestFunctional):
 
         mailfile = os.path.join('/var/mail', str(TEST_USER))
 
+        self.logger.info('Wait 3s for saving the e-mail')
+        time.sleep(3)
+
         if not os.path.isfile(mailfile):
             self.skip_test("Mail file '%s' does not exist or "
                            "mail is not setup. "
                            "Hence this step would be skipped. "
                            "Please check manually." % mailfile)
 
-        ret = self.du.cat(filename=mailfile, sudo=True)
-        maillog = [x.strip() for x in ret['out'][-50:]]
+        ret = self.du.tail(filename=mailfile, sudo=True, option='-n 10')
+        maillog = [x.strip() for x in ret['out']]
 
-        emailpass = False
-        for i in range(0, len(maillog)-3):
-            if 'PBS Job Id: ' + jid == maillog[i] and msg == maillog[i+3]:
-                emailpass = True
-                break
-
-        return emailpass
+        self.assertIn('PBS Job Id: ' + jid, maillog)
+        self.assertIn(msg, maillog)
 
     def test_exceeding_walltime(self):
         """
@@ -94,21 +94,15 @@ class TestExceededResourcesNotification(TestFunctional):
                                  ATTR_exit_status: -29},
                            id=jid, extend='x')
 
-        self.logger.info('Wait 3s for saving the e-mail')
-        time.sleep(3)
-
         msg = 'Job exceeded resource walltime'
-        emailpass = self.check_mail(jid, msg)
-        self.assertTrue(emailpass, "Message '" + msg +
-                        "' not found in mailfile for job: " + jid)
+        self.check_mail(jid, msg)
 
     def test_exceeding_mem(self):
         """
         This test suite tests exceeding memory.
         """
 
-        self.mom.add_config(
-            {'$enforce mem': ''})
+        self.mom.add_config({'$enforce mem': ''})
 
         self.mom.stop()
         self.mom.start()
@@ -129,13 +123,8 @@ class TestExceededResourcesNotification(TestFunctional):
                                  ATTR_exit_status: -27},
                            id=jid, extend='x')
 
-        self.logger.info('Wait 3s for saving the e-mail')
-        time.sleep(3)
-
         msg = 'Job exceeded resource mem'
-        emailpass = self.check_mail(jid, msg)
-        self.assertTrue(emailpass, "Message '" + msg +
-                        "' not found in mailfile for job: " + jid)
+        self.check_mail(jid, msg)
 
     def test_exceeding_ncpus_sum(self):
         """
@@ -166,13 +155,8 @@ class TestExceededResourcesNotification(TestFunctional):
                                  ATTR_exit_status: -25},
                            id=jid, extend='x')
 
-        self.logger.info('Wait 3s for saving the e-mail')
-        time.sleep(3)
-
         msg = 'Job exceeded resource ncpus (sum)'
-        emailpass = self.check_mail(jid, msg)
-        self.assertTrue(emailpass, "Message '" + msg +
-                        "' not found in mailfile for job: " + jid)
+        self.check_mail(jid, msg)
 
     def test_exceeding_ncpus_burst(self):
         """
@@ -202,13 +186,8 @@ class TestExceededResourcesNotification(TestFunctional):
                                  ATTR_exit_status: -24},
                            id=jid, extend='x')
 
-        self.logger.info('Wait 3s for saving the e-mail')
-        time.sleep(3)
-
         msg = 'Job exceeded resource ncpus (burst)'
-        emailpass = self.check_mail(jid, msg)
-        self.assertTrue(emailpass, "Message '" + msg +
-                        "' not found in mailfile for job: " + jid)
+        self.check_mail(jid, msg)
 
     def test_exceeding_cput(self):
         """
@@ -233,10 +212,5 @@ dd if=/dev/zero of=/dev/null']
                                  ATTR_exit_status: -28},
                            id=jid, extend='x')
 
-        self.logger.info('Wait 3s for saving the e-mail')
-        time.sleep(3)
-
         msg = 'Job exceeded resource cput'
-        emailpass = self.check_mail(jid, msg)
-        self.assertTrue(emailpass, "Message '" + msg +
-                        "' not found in mailfile for job: " + jid)
+        self.check_mail(jid, msg)

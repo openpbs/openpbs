@@ -102,8 +102,6 @@ extern char *msg_momkillvmem;
 extern char *msg_momkillmem;
 extern char *msg_momkillcput;
 extern char *msg_momkillwalltime;
-extern char *msg_momkillmppe;
-extern char *msg_momkillmppssp;
 extern time_t time_now;
 
 /* External Functions called */
@@ -1744,18 +1742,6 @@ RetryJob:
 				/* MOM killed job due to exceeding walltime, abort job */
 				DBPRT(("%s: MOM killed job %s due to exceeding walltime.\n", __func__, pruu->ru_pjobid))
 				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillwalltime);
-				alreadymailed = 1;
-				break;
-			case JOB_EXEC_KILL_MPPE:
-				/* MOM killed job due to exceeding mppe, abort job */
-				DBPRT(("%s: MOM killed job %s due to exceeding mppe.\n", __func__, pruu->ru_pjobid))
-				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillmppe);
-				alreadymailed = 1;
-				break;
-			case JOB_EXEC_KILL_MPPSSP:
-				/* MOM killed job due to exceeding mppssp, abort job */
-				DBPRT(("%s: MOM killed job %s due to exceeding mppssp.\n", __func__, pruu->ru_pjobid))
-				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillmppssp);
 				alreadymailed = 1;
 				break;
 			}

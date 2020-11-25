@@ -4899,14 +4899,6 @@ update_job_finish_comment(job *pjob, int newsubstate, char *user)
 					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource walltime",
 						get_jattr_str(pjob, JOB_ATR_Comment));
 					break;
-				case JOB_EXEC_KILL_MPPE:
-					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource mppe",
-						get_jattr_str(pjob, JOB_ATR_Comment));
-					break;
-				case JOB_EXEC_KILL_MPPSSP:
-					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource mppssp",
-						get_jattr_str(pjob, JOB_ATR_Comment));
-					break;
 				default:
 					snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
 						get_jattr_str(pjob, JOB_ATR_Comment));

@@ -1816,6 +1816,34 @@ class DshUtils(object):
         return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
                             runas=runas, logerr=logerr, level=level)
 
+    def tail(self, hostname=None, filename=None, sudo=False, runas=None,
+            logerr=True, level=logging.INFOCLI2, option=None):
+        """
+        Generic function of tail with remote host support
+
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param filename: the path to the filename to cat
+        :type filename: str or None
+        :param sudo: whether to create directories as root or not.
+                     Defaults to False
+        :type sudo: boolean
+        :param runas: create directories as given user. Defaults
+                      to calling user
+        :type runas: str or None
+        :param logerr: whether to log error messages or not. Defaults
+                       to True.
+        :type logerr: boolean
+        :returns: output of run_cmd
+        """
+        cmd = [self.which(hostname, 'tail', level=level)]
+        if option:
+            cmd += [option, filename]
+        else:
+            cmd.append(filename)
+        return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
+                            runas=runas, logerr=logerr, level=level)
+
     def cmp(self, hostname=None, fileA=None, fileB=None, sudo=False,
             runas=None, logerr=True):
         """
