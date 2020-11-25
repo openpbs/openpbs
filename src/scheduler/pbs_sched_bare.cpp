@@ -131,11 +131,9 @@ main_sched_loop_bare(int sd, server_info *sinfo)
  * @param[in]	sd	-	primary socket descriptor to the server pool
  *
  * @return	int
- * @retval	0	: success/normal return
- * @retval	-1	: failure
- *
+ * @retval	0 for normal operation
+ * @retval	1 for sched exit
  */
-
 static int
 scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 {
@@ -158,14 +156,14 @@ scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			  "", "Problem with creating server data structure");
 		end_cycle_tasks(sinfo);
-		return 0;
+		return 1;
 	}
 
-	rc = main_sched_loop_bare(sd, sinfo);
+	main_sched_loop_bare(sd, sinfo);
 
 	end_cycle_tasks(sinfo);
 
-	return rc;
+	return 0;
 }
 
 /**
