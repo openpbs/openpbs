@@ -294,8 +294,7 @@ get_if_info(char *msg)
 		if (!head)
 			head = curr;
 		get_sa_family(listp->ifa_addr, curr->iffamily);
-		strncpy(curr->ifname, listp->ifa_name, IFNAME_MAX);
-		curr->ifname[IFNAME_MAX - 1] = '\0';
+		strcpy(curr->ifname, listp->ifa_name);
 		/* Count the hostname entries and allocate space */
 		for (c = 0; hostnames[c]; c++)
 			;

@@ -245,8 +245,7 @@ local_move(job *jobp, struct batch_request *req)
 
 	svr_dequejob(jobp);
 	jobp->ji_myResv = NULL;
-	strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME);
-	jobp->ji_qs.ji_queue[PBS_MAXQUEUENAME] = '\0';
+	strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME + 1);
 
 	gettimeofday(&tval, NULL);
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);

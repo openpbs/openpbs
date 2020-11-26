@@ -545,8 +545,7 @@ req_runjob(struct batch_request *preq)
 		if (pc)
 			strcat(fixjid, pc);
 
-		strncpy(pdefr->dr_id, fixjid, PBS_MAXSVRJOBID);
-		pdefr->dr_id[PBS_MAXSVRJOBID] = '\0';
+		strncpy(pdefr->dr_id, fixjid, PBS_MAXSVRJOBID + 1);
 		pdefr->dr_preq = preq;
 		pdefr->dr_sent = 0;
 		append_link(&svr_deferred_req, &pdefr->dr_link, pdefr);
