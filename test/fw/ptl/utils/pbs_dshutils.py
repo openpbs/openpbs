@@ -1823,7 +1823,7 @@ class DshUtils(object):
 
         :param hostname: hostname (default current host)
         :type hostname: str or None
-        :param filename: the path to the filename to cat
+        :param filename: the path to the filename to tail
         :type filename: str or None
         :param sudo: whether to create directories as root or not.
                      Defaults to False

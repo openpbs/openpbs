@@ -49,9 +49,6 @@ class TestExceededResourcesNotification(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
 
-        if os.getuid() != 0:
-            self.skipTest("The test needs to run as root")
-
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
