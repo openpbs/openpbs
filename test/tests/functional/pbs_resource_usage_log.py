@@ -322,8 +322,10 @@ class TestResourceUsageLog(TestFunctional):
 
         # Restart PBS services
         PBSInitServices().restart()
+        self.mom.restart()
 
         self.assertTrue(self.server.isUp())
+        self.assertTrue(self.mom.isUp())
 
         # Sleep so accounting logs get updated
         time.sleep(40)
