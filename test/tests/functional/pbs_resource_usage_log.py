@@ -323,7 +323,7 @@ class TestResourceUsageLog(TestFunctional):
         # Restart PBS services
         PBSInitServices().restart()
         if self.server.shortname != self.mom.shortname:
-           self.mom.restart()
+            self.mom.restart()
 
         self.assertTrue(self.server.isUp())
         self.assertTrue(self.mom.isUp())
