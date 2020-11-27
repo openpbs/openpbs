@@ -91,29 +91,29 @@ void			(*free_job_CPUs)(job *) = NULL;
 
 /* External Globals */
 
-extern  char            mom_host[];
-extern char		*path_epilog;
-extern char		*path_jobs;
-extern unsigned int	default_server_port;
-extern pbs_list_head	svr_alljobs;
-extern int		exiting_tasks;
-extern char		*msg_daemonname;
-extern char		*mom_home;
-#ifndef	WIN32
-extern int		termin_child;
+extern char mom_host[];
+extern char *path_epilog;
+extern char *path_jobs;
+extern unsigned int default_server_port;
+extern pbs_list_head svr_alljobs;
+extern int exiting_tasks;
+extern char *msg_daemonname;
+extern char *mom_home;
+#ifndef WIN32
+extern int termin_child;
 #endif
-extern int		server_stream;
-extern time_t		time_now;
-extern pbs_list_head	mom_polljobs;
-extern unsigned int	pbs_mom_port;
+extern int server_stream;
+extern time_t time_now;
+extern pbs_list_head mom_polljobs;
+extern unsigned int pbs_mom_port;
+extern int gen_nodefile_on_sister_mom;
 #if MOM_ALPS
-extern useconds_t	alps_release_wait_time;
-extern int		alps_release_timeout;
-extern useconds_t	alps_release_jitter;
+extern useconds_t alps_release_wait_time;
+extern int alps_release_timeout;
+extern useconds_t alps_release_jitter;
 #endif
 
-extern char		*path_hooks_workdir;
-
+extern char *path_hooks_workdir;
 
 #ifndef WIN32
 /**
@@ -1365,9 +1365,10 @@ del_job_resc(job *pjob)
 			exit(99);	/* simulate crash */
 	}
 
-	/* remove PBS_NODEFILE - Mother Superior only has one */
+	/* remove PBS_NODEFILE - Mother Superior shall have one and the sister
+	moms too if the mom config gen_nodefile_on_sister_mom is set to 1 */
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE || gen_nodefile_on_sister_mom) {
 		char	file[MAXPATHLEN+1];
 #ifdef WIN32
 		(void)sprintf(file, "%s/auxiliary/%s",

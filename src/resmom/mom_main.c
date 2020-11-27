@@ -183,54 +183,53 @@ HANDLE	hStop = NULL;
 #endif	/* WIN32 */
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
 
-int		alien_attach = 0;		/* attach alien procs */
-int		alien_kill = 0;			/* kill alien procs */
-int		lockfds;
-float		max_load_val   = -1.0;
-int		max_poll_downtime_val = PBS_MAX_POLL_DOWNTIME;
-char	       *mom_domain;
-char           *mom_home;
-char		mom_host[PBS_MAXHOSTNAME+1];
-pid_t		mom_pid;
-int		mom_run_state = 1;
-char		mom_short_name[PBS_MAXHOSTNAME+1];
-int		next_sample_time = MAX_CHECK_POLL_TIME;
-int		max_check_poll = MAX_CHECK_POLL_TIME;
-int		min_check_poll = MIN_CHECK_POLL_TIME;
-int		inc_check_poll = 20;
-int		num_acpus = 1;
-int		num_pcpus = 1;
-int		num_oscpus = 1;
-u_Long		av_phy_mem = 0;	/* physical memory in KB */
-int		num_var_env;
-char	       *path_epilog;
-char	       *path_jobs;
-char	       *path_prolog;
-char	       *path_spool;
-char	       *path_undeliv;
-char	       *path_addconfigs;
-char		path_addconfigs_reserved_prefix[] = "PBS";
+int alien_attach = 0; /* attach alien procs */
+int alien_kill = 0;	  /* kill alien procs */
+int lockfds;
+float max_load_val = -1.0;
+int max_poll_downtime_val = PBS_MAX_POLL_DOWNTIME;
+char *mom_domain;
+char *mom_home;
+char mom_host[PBS_MAXHOSTNAME + 1];
+pid_t mom_pid;
+int mom_run_state = 1;
+char mom_short_name[PBS_MAXHOSTNAME + 1];
+int next_sample_time = MAX_CHECK_POLL_TIME;
+int max_check_poll = MAX_CHECK_POLL_TIME;
+int min_check_poll = MIN_CHECK_POLL_TIME;
+int inc_check_poll = 20;
+int num_acpus = 1;
+int num_pcpus = 1;
+int num_oscpus = 1;
+u_Long av_phy_mem = 0; /* physical memory in KB */
+int num_var_env;
+char *path_epilog;
+char *path_jobs;
+char *path_prolog;
+char *path_spool;
+char *path_undeliv;
+char *path_addconfigs;
+char path_addconfigs_reserved_prefix[] = "PBS";
 
-char	       *path_hooks;
-char	       *path_hooks_workdir;
-char		*path_rescdef;
-hook		*phook;
-char		*hook_suffix = HOOK_FILE_SUFFIX;
-int		hook_suf_len;
-char		hook_msg[HOOK_MSG_SIZE+1];
-int		baselen;
-char		*psuffix;
-struct	dirent	*pdirent;
-DIR		*dir;
-/*char		pbs_current_user[PBS_MAXUSER] = "pbs_mom";*/  /* for libpbs.a */
+char *path_hooks;
+char *path_hooks_workdir;
+char *path_rescdef;
+hook *phook;
+char *hook_suffix = HOOK_FILE_SUFFIX;
+int hook_suf_len;
+char hook_msg[HOOK_MSG_SIZE + 1];
+int baselen;
+char *psuffix;
+struct dirent *pdirent;
+DIR *dir;
+/*char		pbs_current_user[PBS_MAXUSER] = "pbs_mom";*/ /* for libpbs.a */
 /* above is TLS data now, strcpy the value "pbs_mom" into it in main */
 
-char            pbs_tmpdir[_POSIX_PATH_MAX] = TMP_DIR;
-char            pbs_jobdir_root[_POSIX_PATH_MAX]= "";
-int		pbs_jobdir_root_shared = FALSE;
-vnl_t		*vnlp = NULL;			/* vnode list */
-unsigned long	hooks_rescdef_checksum = 0;
-
+char pbs_tmpdir[_POSIX_PATH_MAX] = TMP_DIR;
+char pbs_jobdir_root[_POSIX_PATH_MAX] = "";
+int pbs_jobdir_root_shared = FALSE;
+vnl_t *vnlp = NULL; /* vnode list */
+unsigned long hooks_rescdef_checksum = 0;
 
 /* vnlp_from_hook: vnode list changes made by an exechost_startup hook, that */
 /* sent to the server initially as part of the IS_HELLO/IS_CLUSTER_ADDR/ */
@@ -238,67 +237,68 @@ unsigned long	hooks_rescdef_checksum = 0;
 /* entries matching HOOK_VNL_PERSISTENT_ATTRIBS will be merged with the */
 /* main vnlp structure,  which gets  resent when server loses contact */
 /* with mom, and server sends an IS_HELLO request */
-vnl_t		*vnlp_from_hook = NULL;
+vnl_t *vnlp_from_hook = NULL;
 
-extern char	*msg_startup1;
-extern char	*msg_init_chdir;
-extern char     *msg_corelimit;
-int		pbs_errno;
-gid_t		pbsgroup;
-unsigned int	pbs_mom_port;
-unsigned int	pbs_rm_port;
-pbs_list_head	mom_polljobs;	/* jobs that must have resource limits polled */
-pbs_list_head	mom_deadjobs;	/* jobs that need to purged, see chk_del_job */
-int		server_stream = -1;
-pbs_list_head	svr_newjobs;	/* jobs being sent to MOM */
-pbs_list_head	svr_alljobs;	/* all jobs under MOM's control */
-time_t		time_last_sample = 0;
-extern time_t		time_now;
-time_t		time_resc_updated = 0;
+extern char *msg_startup1;
+extern char *msg_init_chdir;
+extern char *msg_corelimit;
+int pbs_errno;
+gid_t pbsgroup;
+unsigned int pbs_mom_port;
+unsigned int pbs_rm_port;
+pbs_list_head mom_polljobs; /* jobs that must have resource limits polled */
+pbs_list_head mom_deadjobs; /* jobs that need to purged, see chk_del_job */
+int server_stream = -1;
+pbs_list_head svr_newjobs; /* jobs being sent to MOM */
+pbs_list_head svr_alljobs; /* all jobs under MOM's control */
+time_t time_last_sample = 0;
+extern time_t time_now;
+time_t time_resc_updated = 0;
 extern pbs_list_head svr_requests;
-struct var_table vtable;	/* see start_exec.c */
+struct var_table vtable; /* see start_exec.c */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 extern pbs_list_head svr_allcreds;
 #endif
 
-#if	MOM_ALPS
-#define	ALPS_REL_WAIT_TIME_DFLT		400000;	/* 0.4 sec */
-#define	ALPS_REL_JITTER_DFLT		120000;	/* 0.12 sec */
-#define	ALPS_REL_TIMEOUT		600;	/* 10 min */
-#define	ALPS_CONF_EMPTY_TIMEOUT		10;	/* 10 sec */
-#define	ALPS_CONF_SWITCH_TIMEOUT	35;	/* 35 sec */
-char	       *alps_client = NULL;
-useconds_t	alps_release_wait_time = ALPS_REL_WAIT_TIME_DFLT;
-useconds_t	alps_release_jitter = ALPS_REL_JITTER_DFLT;
-int		vnode_per_numa_node;
-int		alps_release_timeout;
-int		alps_confirm_empty_timeout;
-int		alps_confirm_switch_timeout;
+#if MOM_ALPS
+#define ALPS_REL_WAIT_TIME_DFLT 400000; /* 0.4 sec */
+#define ALPS_REL_JITTER_DFLT 120000;	/* 0.12 sec */
+#define ALPS_REL_TIMEOUT 600;			/* 10 min */
+#define ALPS_CONF_EMPTY_TIMEOUT 10;		/* 10 sec */
+#define ALPS_CONF_SWITCH_TIMEOUT 35;	/* 35 sec */
+char *alps_client = NULL;
+useconds_t alps_release_wait_time = ALPS_REL_WAIT_TIME_DFLT;
+useconds_t alps_release_jitter = ALPS_REL_JITTER_DFLT;
+int vnode_per_numa_node;
+int alps_release_timeout;
+int alps_confirm_empty_timeout;
+int alps_confirm_switch_timeout;
 #endif /* MOM_ALPS */
-char	       *path_checkpoint = NULL;
-static		resource_def *rdcput;
-static		resource_def *rdwall;
-int		restart_background = FALSE;
-int		reject_root_scripts = FALSE;
-int		report_hook_checksums = TRUE;
-int		restart_transmogrify = FALSE;
-int		attach_allow = TRUE;
-extern double		wallfactor;
-int		suspend_signal;
-int		resume_signal;
-int		cycle_harvester = 0;   /* MOM configured for cycle harvesting */
-int		restrict_user = 0;		/* kill non PBS user procs */
-int		restrict_user_maxsys = 999;	/* largest system user id */
-int		vnode_additive = 1;
-momvmap_t     **mommap_array = NULL;
-int		mommap_array_size = 0;
-unsigned long	QA_testing = 0;
+char *path_checkpoint = NULL;
+static resource_def *rdcput;
+static resource_def *rdwall;
+int restart_background = FALSE;
+int reject_root_scripts = FALSE;
+int report_hook_checksums = TRUE;
+int restart_transmogrify = FALSE;
+int attach_allow = TRUE;
+extern double wallfactor;
+int suspend_signal;
+int resume_signal;
+int cycle_harvester = 0;		/* MOM configured for cycle harvesting */
+int restrict_user = 0;			/* kill non PBS user procs */
+int restrict_user_maxsys = 999; /* largest system user id */
+int gen_nodefile_on_sister_mom = TRUE;
+int vnode_additive = 1;
+momvmap_t **mommap_array = NULL;
+int mommap_array_size = 0;
+unsigned long QA_testing = 0;
 
-long		joinjob_alarm_time = -1;
-long		job_launch_delay  = -1;	/* # of seconds to delay job launch due to pipe reads (pipe read timeout)  */
-int		update_joinjob_alarm_time = 0;
-int		update_job_launch_delay = 0;
+long joinjob_alarm_time = -1;
+long job_launch_delay = -1; /* # of seconds to delay job launch due to pipe reads (pipe read timeout)  */
+int update_joinjob_alarm_time = 0;
+int update_job_launch_delay = 0;
 
 #ifdef NAS /* localmod 015 */
 unsigned long	spoolsize = 0; /* default spoolsize = unlimited */
@@ -434,58 +434,59 @@ struct config_list {
 	struct	config		c;
 	struct	config_list	*c_link;
 };
-static handler_ret_t	config_versionhandler(char *, const char *, FILE *);
+static handler_ret_t config_versionhandler(char *, const char *, FILE *);
 
-static handler_ret_t	addclient(char *);
-static handler_ret_t	add_mom_action(char *);
-static handler_ret_t	config_verscheck(char *);
-static handler_ret_t	cputmult(char *);
-static handler_ret_t	parse_config(char *);
-static handler_ret_t	prologalarm(char *);
-static handler_ret_t	set_joinjob_alarm(char *);
-static handler_ret_t	set_job_launch_delay(char *);
-static handler_ret_t	restricted(char *);
-static handler_ret_t	set_alien_attach(char *);
-static handler_ret_t	set_alien_kill(char *);
-#if	MOM_ALPS
-static handler_ret_t	set_alps_client(char *);
-static handler_ret_t	set_alps_release_wait_time(char *);
-static handler_ret_t	set_alps_release_jitter(char *);
-static handler_ret_t	set_alps_release_timeout(char *);
-static handler_ret_t	set_alps_confirm_empty_timeout(char *);
-static handler_ret_t	set_vnode_per_numa_node(char *);
-static handler_ret_t	set_alps_confirm_switch_timeout(char *);
-#endif	/* MOM_ALPS */
-static handler_ret_t	set_attach_allow(char *);
-static handler_ret_t	set_checkpoint_path(char *);
-static handler_ret_t	set_enforcement(char *);
-static handler_ret_t	set_jobdir_root(char *);
-static handler_ret_t	set_kbd_idle(char *);
-static handler_ret_t	set_max_check_poll(char *);
-static handler_ret_t	set_min_check_poll(char *);
-static handler_ret_t	set_momname(char *);
-static handler_ret_t	set_momport(char *);
-#ifdef	WIN32
-static handler_ret_t	set_nrun_factor(char *);
+static handler_ret_t addclient(char *);
+static handler_ret_t add_mom_action(char *);
+static handler_ret_t config_verscheck(char *);
+static handler_ret_t cputmult(char *);
+static handler_ret_t parse_config(char *);
+static handler_ret_t prologalarm(char *);
+static handler_ret_t set_joinjob_alarm(char *);
+static handler_ret_t set_job_launch_delay(char *);
+static handler_ret_t restricted(char *);
+static handler_ret_t set_alien_attach(char *);
+static handler_ret_t set_alien_kill(char *);
+#if MOM_ALPS
+static handler_ret_t set_alps_client(char *);
+static handler_ret_t set_alps_release_wait_time(char *);
+static handler_ret_t set_alps_release_jitter(char *);
+static handler_ret_t set_alps_release_timeout(char *);
+static handler_ret_t set_alps_confirm_empty_timeout(char *);
+static handler_ret_t set_vnode_per_numa_node(char *);
+static handler_ret_t set_alps_confirm_switch_timeout(char *);
+#endif /* MOM_ALPS */
+static handler_ret_t set_attach_allow(char *);
+static handler_ret_t set_checkpoint_path(char *);
+static handler_ret_t set_enforcement(char *);
+static handler_ret_t set_jobdir_root(char *);
+static handler_ret_t set_kbd_idle(char *);
+static handler_ret_t set_max_check_poll(char *);
+static handler_ret_t set_min_check_poll(char *);
+static handler_ret_t set_momname(char *);
+static handler_ret_t set_momport(char *);
+#ifdef WIN32
+static handler_ret_t set_nrun_factor(char *);
 #endif
-static handler_ret_t	set_restart_background(char *);
-static handler_ret_t	set_restart_transmogrify(char *);
-static handler_ret_t	set_restrict_user(char *);
-static handler_ret_t	set_restrict_user_maxsys(char *);
-static handler_ret_t	set_restrict_user_exceptions(char *);
-static handler_ret_t	set_suspend_signal(char *);
-static handler_ret_t	set_tmpdir(char *);
-static handler_ret_t	set_vnode_additive(char *);
-static handler_ret_t	setidealload(char *);
-static handler_ret_t	setlogevent(char *);
-static handler_ret_t	set_reject_root_scripts(char *);
-static handler_ret_t	set_report_hook_checksums(char *);
-static handler_ret_t	setmaxload(char *);
-static handler_ret_t	set_max_poll_downtime(char *);
-static handler_ret_t	usecp(char *);
-static handler_ret_t	wallmult(char *);
+static handler_ret_t set_restart_background(char *);
+static handler_ret_t set_restart_transmogrify(char *);
+static handler_ret_t set_restrict_user(char *);
+static handler_ret_t set_restrict_user_maxsys(char *);
+static handler_ret_t set_restrict_user_exceptions(char *);
+static handler_ret_t set_gen_nodefile_on_sister_mom(char *);
+static handler_ret_t set_suspend_signal(char *);
+static handler_ret_t set_tmpdir(char *);
+static handler_ret_t set_vnode_additive(char *);
+static handler_ret_t setidealload(char *);
+static handler_ret_t setlogevent(char *);
+static handler_ret_t set_reject_root_scripts(char *);
+static handler_ret_t set_report_hook_checksums(char *);
+static handler_ret_t setmaxload(char *);
+static handler_ret_t set_max_poll_downtime(char *);
+static handler_ret_t usecp(char *);
+static handler_ret_t wallmult(char *);
 #ifdef NAS /* localmod 015 */
-static handler_ret_t	set_spoolsize(char *);
+static handler_ret_t set_spoolsize(char *);
 #endif /* localmod 015 */
 
 static struct	specials {
@@ -540,6 +541,7 @@ static struct	specials {
 	{ "restrict_user_exceptions",	set_restrict_user_exceptions },
 	{ "restrict_user_maxsysid",	set_restrict_user_maxsys },
 	{ "restricted",			restricted },
+	{ "gen_nodefile_on_sister_mom",  set_gen_nodefile_on_sister_mom},
 #ifdef NAS /* localmod 015 */
 	/*
 	 * spool size limit
@@ -3505,6 +3507,24 @@ set_restrict_user_exceptions(char *user_list)
 
 /**
  * @brief
+ *      sets value for gen_nodefile_on_sister_mom
+ *
+ * @param[in] value - value for gen_nodefile_on_sister_mom
+ *
+ * @return      handler_ret_t
+ * @retval      HANDLER_SUCCESS         success
+ * @retval      HANDLER_FAIL            Failure
+ *
+ */
+
+static handler_ret_t
+set_gen_nodefile_on_sister_mom(char *value)
+{
+	return (set_boolean(__func__, value, &gen_nodefile_on_sister_mom));
+}
+
+/**
+ * @brief
  *	Set the configuration flag that defines whether to get rid of
  *	all vnode defs when reading the config files.
  *
@@ -4003,6 +4023,7 @@ read_config(char *file)
 	strcpy(pbs_jobdir_root, "");
 	restrict_user = 0;
 	restrict_user_maxsys = 999;
+	gen_nodefile_on_sister_mom = TRUE;
 	for (j=0; j < NUM_RESTRICT_USER_EXEMPT_UIDS; j++)
 		if (restrict_user_exempt_uids[j] != 0)
 			restrict_user_exempt_uids[j] = 0;
