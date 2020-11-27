@@ -1634,7 +1634,9 @@ class JSONDb(DBType):
     def close(self, result=None):
         if result is not None:
             dur = str(result.stop - result.start)
-            self.jdata['test_summary']['test_duration'] = dur
+            self.jdata['result']['start'] = str(result.start)
+            self.jdata['result']["end"] = str(result.stop)
+            self.jdata['result']['duration'] = dur
             with open(self.dbpath, 'w') as fd:
                 json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")
