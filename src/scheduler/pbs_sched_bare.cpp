@@ -137,8 +137,7 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 static int
 scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 {
-	server_info *sinfo;	    /* ptr to the server/queue/job/node info */
-	int rc = SUCCESS;	    /* return code from main_sched_loop() */
+	server_info *sinfo; /* ptr to the server/queue/job/node info */
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		  "", "Starting Scheduling Cycle");
