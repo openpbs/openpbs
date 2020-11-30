@@ -979,6 +979,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 			plink_cur = &phook_cur->hi_provision_hooks;
 		} else if (event == HOOK_EVENT_PERIODIC) {
 			plink_cur = &phook_cur->hi_periodic_hooks;
+		} else if (event == HOOK_EVENT_RESV_BEGIN) {
+			plink_cur = &phook_cur->hi_resv_begin_hooks;
 		} else if (event == HOOK_EVENT_RESV_END) {
 			plink_cur = &phook_cur->hi_resv_end_hooks;
 	        } else if (event == HOOK_EVENT_EXECJOB_BEGIN) {
