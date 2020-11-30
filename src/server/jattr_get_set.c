@@ -39,6 +39,16 @@
 
 #include "job.h"
 
+/**
+ * @brief	Get attribute of job based on given attr index
+ *
+ * @param[in] pjob     - pointer to job struct
+ * @param[in] attr_idx - attribute index
+ *
+ * @return attribute *
+ * @retval NULL  - failure
+ * @retval !NULL - pointer to attribute struct
+ */
 attribute *
 get_jattr(const job *pjob, int attr_idx)
 {

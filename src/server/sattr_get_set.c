@@ -39,6 +39,15 @@
 
 #include "server.h"
 
+/**
+ * @brief	Get attribute of server based on given attr index
+ *
+ * @param[in] attr_idx - attribute index
+ *
+ * @return attribute *
+ * @retval NULL  - failure
+ * @retval !NULL - pointer to attribute struct
+ */
 attribute *
 get_sattr(int attr_idx)
 {
@@ -46,9 +55,8 @@ get_sattr(int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string
+ * @brief	Getter function for server attribute of type string
  *
- * @param[in]	pjob - pointer to the job
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	char *
@@ -62,9 +70,8 @@ get_sattr_str(int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string of array
+ * @brief	Getter function for server attribute of type string of array
  *
- * @param[in]	pjob - pointer to the job
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	struct array_strings *
@@ -78,9 +85,8 @@ get_sattr_arst(int attr_idx)
 }
 
 /**
- * @brief	Getter for job attribute's list value
+ * @brief	Getter for server attribute's list value
  *
- * @param[in]	pjob - pointer to the job
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	pbs_list_head
@@ -93,9 +99,8 @@ get_sattr_list(int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type long
+ * @brief	Getter function for server attribute of type long
  *
- * @param[in]	pjob - pointer to the job
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	long
@@ -109,9 +114,8 @@ get_sattr_long(int attr_idx)
 }
 
 /**
- * @brief	Generic Job attribute setter (call if you want at_set() action functions to be called)
+ * @brief	Generic server attribute setter (call if you want at_set() action functions to be called)
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -128,9 +132,8 @@ set_sattr_generic(int attr_idx, char *val, char *rscn, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for string values
+ * @brief	"fast" server attribute setter for string values
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -146,9 +149,8 @@ set_sattr_str_slim(int attr_idx, char *val, char *rscn)
 }
 
 /**
- * @brief	"fast" job attribute setter for long values
+ * @brief	"fast" server attribute setter for long values
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -165,9 +167,8 @@ set_sattr_l_slim(int attr_idx, long val, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for boolean values
+ * @brief	"fast" server attribute setter for boolean values
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -184,9 +185,8 @@ set_sattr_b_slim(int attr_idx, long val, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for char values
+ * @brief	"fast" server attribute setter for char values
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -204,9 +204,8 @@ set_sattr_c_slim(int attr_idx, char val, enum batch_op op)
 
 
 /**
- * @brief	Check if a job attribute is set
+ * @brief	Check if a server attribute is set
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to check
  *
  * @return	int
@@ -220,9 +219,8 @@ is_sattr_set(int attr_idx)
 }
 
 /**
- * @brief	Free a job attribute
+ * @brief	Free a server attribute
  *
- * @param[in]	pjob - pointer to job
  * @param[in]	attr_idx - attribute index to free
  *
  * @return	void

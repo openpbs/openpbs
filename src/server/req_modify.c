@@ -1362,7 +1362,6 @@ modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad)
 
 	for (i = 0; i < RESV_ATR_LAST; i++) {
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
-			// FIXME: below
 			resv_attr_def[i].at_free(pattr+i);
 			if ((newattr[i].at_type == ATR_TYPE_LIST) || (newattr[i].at_type == ATR_TYPE_RESC)) {
 				list_move(&newattr[i].at_val.at_list, &(pattr+i)->at_val.at_list);

@@ -245,7 +245,6 @@ init_server_attrs()
 	set_sattr_l_slim(SVR_ATR_max_concurrent_prov, PBS_MAX_CONCURRENT_PROV, SET);
 	(get_sattr(SVR_ATR_max_concurrent_prov))->at_flags |= ATR_VFLAG_DEFLT;
 
-	// FIXME: should define long long getter/setter ?
 	set_sattr_str_slim(SVR_ATR_max_job_sequence_id, TOSTR(SVR_MAX_JOB_SEQ_NUM_DEFAULT), NULL);
 	(get_sattr(SVR_ATR_max_job_sequence_id))->at_flags |= ATR_VFLAG_DEFLT;
 

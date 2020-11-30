@@ -39,6 +39,16 @@
 
 #include "pbs_nodes.h"
 
+/**
+ * @brief	Get attribute of node based on given attr index
+ *
+ * @param[in] pnode    - pointer to node struct
+ * @param[in] attr_idx - attribute index
+ *
+ * @return attribute *
+ * @retval NULL  - failure
+ * @retval !NULL - pointer to attribute struct
+ */
 attribute *
 get_nattr(const struct pbsnode *pnode, int attr_idx)
 {
@@ -48,9 +58,9 @@ get_nattr(const struct pbsnode *pnode, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string
+ * @brief	Getter function for node attribute of type string
  *
- * @param[in]	pnode - pointer to the job
+ * @param[in]	pnode - pointer to the node
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	char *
@@ -67,9 +77,9 @@ get_nattr_str(const struct pbsnode *pnode, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string of array
+ * @brief	Getter function for node attribute of type string of array
  *
- * @param[in]	pnode - pointer to the job
+ * @param[in]	pnode - pointer to the node
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	struct array_strings *
@@ -86,9 +96,9 @@ get_nattr_arst(const struct pbsnode *pnode, int attr_idx)
 }
 
 /**
- * @brief	Getter for job attribute's list value
+ * @brief	Getter for node attribute's list value
  *
- * @param[in]	pnode - pointer to the job
+ * @param[in]	pnode - pointer to the node
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	pbs_list_head
@@ -101,9 +111,9 @@ get_nattr_list(const struct pbsnode *pnode, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type long
+ * @brief	Getter function for node attribute of type long
  *
- * @param[in]	pnode - pointer to the job
+ * @param[in]	pnode - pointer to the node
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	long
@@ -119,6 +129,16 @@ get_nattr_long(const struct pbsnode *pnode, int attr_idx)
 	return -1;
 }
 
+/**
+ * @brief	Getter function for node attribute of type char
+ *
+ * @param[in]	pnode - pointer to the node
+ * @param[in]	attr_idx - index of the attribute to return
+ *
+ * @return	char
+ * @retval	char value of the attribute
+ * @retval	-1 if pnode is NULL
+ */
 char
 get_nattr_c(const struct pbsnode *pnode, int attr_idx)
 {
@@ -129,9 +149,9 @@ get_nattr_c(const struct pbsnode *pnode, int attr_idx)
 }
 
 /**
- * @brief	Generic Job attribute setter (call if you want at_set() action functions to be called)
+ * @brief	Generic node attribute setter (call if you want at_set() action functions to be called)
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -151,9 +171,9 @@ set_nattr_generic(struct pbsnode *pnode, int attr_idx, char *val, char *rscn, en
 }
 
 /**
- * @brief	"fast" job attribute setter for string values
+ * @brief	"fast" node attribute setter for string values
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -172,9 +192,9 @@ set_nattr_str_slim(struct pbsnode *pnode, int attr_idx, char *val, char *rscn)
 }
 
 /**
- * @brief	"fast" job attribute setter for long values
+ * @brief	"fast" node attribute setter for long values
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -195,9 +215,9 @@ set_nattr_l_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op
 }
 
 /**
- * @brief	"fast" job attribute setter for boolean values
+ * @brief	"fast" node attribute setter for boolean values
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -218,9 +238,9 @@ set_nattr_b_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op
 }
 
 /**
- * @brief	"fast" job attribute setter for char values
+ * @brief	"fast" node attribute setter for char values
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -240,6 +260,18 @@ set_nattr_c_slim(struct pbsnode *pnode, int attr_idx, char val, enum batch_op op
 	return 0;
 }
 
+/**
+ * @brief	"fast" node attribute setter for short values
+ *
+ * @param[in]	pnode - pointer to node
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - new val to set
+ * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
+ *
+ * @return	int
+ * @retval	0 for success
+ * @retval	1 for failure
+ */
 int
 set_nattr_short_slim(struct pbsnode *pnode, int attr_idx, short val, enum batch_op op)
 {
@@ -253,9 +285,9 @@ set_nattr_short_slim(struct pbsnode *pnode, int attr_idx, short val, enum batch_
 
 
 /**
- * @brief	Check if a job attribute is set
+ * @brief	Check if a node attribute is set
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to check
  *
  * @return	int
@@ -272,9 +304,9 @@ is_nattr_set(const struct pbsnode *pnode, int attr_idx)
 }
 
 /**
- * @brief	Free a job attribute
+ * @brief	Free a node attribute
  *
- * @param[in]	pnode - pointer to job
+ * @param[in]	pnode - pointer to node
  * @param[in]	attr_idx - attribute index to free
  *
  * @return	void
@@ -286,12 +318,29 @@ free_nattr(struct pbsnode *pnode, int attr_idx)
 		free_attr_generic(node_attr_def, get_nattr(pnode, attr_idx), attr_idx);
 }
 
+/**
+ * @brief	clear a node attribute
+ *
+ * @param[in]	pnode - pointer to node
+ * @param[in]	attr_idx - attribute index to clear
+ *
+ * @return	void
+ */
 void
 clear_nattr(struct pbsnode *pnode, int attr_idx)
 {
 	clear_attr(get_nattr(pnode, attr_idx), &node_attr_def[attr_idx]);
 }
 
+/**
+ * @brief	Special setter func to set node's job info value
+ *
+ * @param[in]	pnode - pointer to node
+ * @param[in]	attr_idx - attribute index to set
+ * @param[in]	val - pointer to node as value to set
+ *
+ * @return	void
+ */
 void
 set_nattr_jinfo(struct pbsnode *pnode, int attr_idx, struct pbsnode *val)
 {

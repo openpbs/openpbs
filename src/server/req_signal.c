@@ -640,7 +640,6 @@ void set_admin_suspend(job *pjob, int set_remove_nstate) {
 			pnode = find_nodebyname(vname);
 			if(pnode) {
 				if(set_remove_nstate) {
-					// FIXME: Should we define setter for arst?
 					set_arst(get_nattr(pnode, ND_ATR_MaintJobs), &new, INCR);
 					set_vnode_state(pnode, INUSE_MAINTENANCE, Nd_State_Or);
 				} else {

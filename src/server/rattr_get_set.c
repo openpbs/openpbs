@@ -42,6 +42,16 @@
 #include "reservation.h"
 #include "resv_node.h"
 
+/**
+ * @brief	Get attribute of reservation based on given attr index
+ *
+ * @param[in] presv    - pointer to node struct
+ * @param[in] attr_idx - attribute index
+ *
+ * @return attribute *
+ * @retval NULL  - failure
+ * @retval !NULL - pointer to attribute struct
+ */
 attribute *
 get_rattr(const resc_resv *presv, int attr_idx)
 {
@@ -51,9 +61,9 @@ get_rattr(const resc_resv *presv, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string
+ * @brief	Getter function for reservation attribute of type string
  *
- * @param[in]	presv - pointer to the job
+ * @param[in]	presv - pointer to the reservation
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	char *
@@ -70,9 +80,9 @@ get_rattr_str(const resc_resv *presv, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string of array
+ * @brief	Getter function for reservation attribute of type string of array
  *
- * @param[in]	presv - pointer to the job
+ * @param[in]	presv - pointer to the reservation
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	struct array_strings *
@@ -89,9 +99,9 @@ get_rattr_arst(const resc_resv *presv, int attr_idx)
 }
 
 /**
- * @brief	Getter for job attribute's list value
+ * @brief	Getter for reservation attribute's list value
  *
- * @param[in]	presv - pointer to the job
+ * @param[in]	presv - pointer to the reservation
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	pbs_list_head
@@ -104,9 +114,9 @@ get_rattr_list(const resc_resv *presv, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type long
+ * @brief	Getter function for reservation attribute of type long
  *
- * @param[in]	presv - pointer to the job
+ * @param[in]	presv - pointer to the reservation
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	long
@@ -123,9 +133,9 @@ get_rattr_long(const resc_resv *presv, int attr_idx)
 }
 
 /**
- * @brief	Generic Job attribute setter (call if you want at_set() action functions to be called)
+ * @brief	Generic reservation attribute setter (call if you want at_set() action functions to be called)
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -145,9 +155,9 @@ set_rattr_generic(resc_resv *presv, int attr_idx, char *val, char *rscn, enum ba
 }
 
 /**
- * @brief	"fast" job attribute setter for string values
+ * @brief	"fast" reservation attribute setter for string values
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -166,9 +176,9 @@ set_rattr_str_slim(resc_resv *presv, int attr_idx, char *val, char *rscn)
 }
 
 /**
- * @brief	"fast" job attribute setter for long values
+ * @brief	"fast" reservation attribute setter for long values
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -189,9 +199,9 @@ set_rattr_l_slim(resc_resv *presv, int attr_idx, long val, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for boolean values
+ * @brief	"fast" reservation attribute setter for boolean values
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -212,9 +222,9 @@ set_rattr_b_slim(resc_resv *presv, int attr_idx, long val, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for char values
+ * @brief	"fast" reservation attribute setter for char values
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -236,9 +246,9 @@ set_rattr_c_slim(resc_resv *presv, int attr_idx, char val, enum batch_op op)
 
 
 /**
- * @brief	Check if a job attribute is set
+ * @brief	Check if a reservation attribute is set
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to check
  *
  * @return	int
@@ -255,9 +265,9 @@ is_rattr_set(const resc_resv *presv, int attr_idx)
 }
 
 /**
- * @brief	Free a job attribute
+ * @brief	Free a reservation attribute
  *
- * @param[in]	presv - pointer to job
+ * @param[in]	presv - pointer to reservation
  * @param[in]	attr_idx - attribute index to free
  *
  * @return	void
@@ -269,6 +279,14 @@ free_rattr(resc_resv *presv, int attr_idx)
 		free_attr_generic(resv_attr_def, get_rattr(presv, attr_idx), attr_idx);
 }
 
+/**
+ * @brief	clear a reservation attribute
+ *
+ * @param[in]	presv - pointer to reservation
+ * @param[in]	attr_idx - attribute index to clear
+ *
+ * @return	void
+ */
 void
 clear_rattr(resc_resv *presv, int attr_idx)
 {

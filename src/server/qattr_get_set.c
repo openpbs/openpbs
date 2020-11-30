@@ -41,6 +41,16 @@
 #include "reservation.h"
 #include "queue.h"
 
+/**
+ * @brief	Get attribute of queue based on given attr index
+ *
+ * @param[in] pq    - pointer to queue struct
+ * @param[in] attr_idx - attribute index
+ *
+ * @return attribute *
+ * @retval NULL  - failure
+ * @retval !NULL - pointer to attribute struct
+ */
 attribute *
 get_qattr(const pbs_queue *pq, int attr_idx)
 {
@@ -50,9 +60,9 @@ get_qattr(const pbs_queue *pq, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string
+ * @brief	Getter function for queue attribute of type string
  *
- * @param[in]	pq - pointer to the job
+ * @param[in]	pq - pointer to the queue
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	char *
@@ -69,9 +79,9 @@ get_qattr_str(const pbs_queue *pq, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string of array
+ * @brief	Getter function for queue attribute of type string of array
  *
- * @param[in]	pq - pointer to the job
+ * @param[in]	pq - pointer to the queue
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	struct array_strings *
@@ -88,9 +98,9 @@ get_qattr_arst(const pbs_queue *pq, int attr_idx)
 }
 
 /**
- * @brief	Getter for job attribute's list value
+ * @brief	Getter for queue attribute's list value
  *
- * @param[in]	pq - pointer to the job
+ * @param[in]	pq - pointer to the queue
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	pbs_list_head
@@ -103,9 +113,9 @@ get_qattr_list(const pbs_queue *pq, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type long
+ * @brief	Getter function for queue attribute of type long
  *
- * @param[in]	pq - pointer to the job
+ * @param[in]	pq - pointer to the queue
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	long
@@ -122,9 +132,9 @@ get_qattr_long(const pbs_queue *pq, int attr_idx)
 }
 
 /**
- * @brief	Generic Job attribute setter (call if you want at_set() action functions to be called)
+ * @brief	Generic queue attribute setter (call if you want at_set() action functions to be called)
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -144,9 +154,9 @@ set_qattr_generic(pbs_queue *pq, int attr_idx, char *val, char *rscn, enum batch
 }
 
 /**
- * @brief	"fast" job attribute setter for string values
+ * @brief	"fast" queue attribute setter for string values
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -165,9 +175,9 @@ set_qattr_str_slim(pbs_queue *pq, int attr_idx, char *val, char *rscn)
 }
 
 /**
- * @brief	"fast" job attribute setter for long values
+ * @brief	"fast" queue attribute setter for long values
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -188,9 +198,9 @@ set_qattr_l_slim(pbs_queue *pq, int attr_idx, long val, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for boolean values
+ * @brief	"fast" queue attribute setter for boolean values
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -211,9 +221,9 @@ set_qattr_b_slim(pbs_queue *pq, int attr_idx, long val, enum batch_op op)
 }
 
 /**
- * @brief	"fast" job attribute setter for char values
+ * @brief	"fast" queue attribute setter for char values
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -235,9 +245,9 @@ set_qattr_c_slim(pbs_queue *pq, int attr_idx, char val, enum batch_op op)
 
 
 /**
- * @brief	Check if a job attribute is set
+ * @brief	Check if a queue attribute is set
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to check
  *
  * @return	int
@@ -254,9 +264,9 @@ is_qattr_set(const pbs_queue *pq, int attr_idx)
 }
 
 /**
- * @brief	Free a job attribute
+ * @brief	Free a queue attribute
  *
- * @param[in]	pq - pointer to job
+ * @param[in]	pq - pointer to queue
  * @param[in]	attr_idx - attribute index to free
  *
  * @return	void

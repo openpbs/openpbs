@@ -4044,7 +4044,6 @@ mgr_resource_set(struct batch_request *preq)
 		if (pbsndlist[i]->nd_state & INUSE_DELETED)
 			continue;
 
-		// FIXME: is below correct?
 		pattr = get_nattr(pbsndlist[i], ND_ATR_ResourceAvail);
 		for (j=0; j < ND_ATR_LAST; j++) {
 			pattr = get_nattr(pbsndlist[i], j);
