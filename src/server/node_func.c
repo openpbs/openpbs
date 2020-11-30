@@ -476,7 +476,6 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 				pnode->nd_moms[imom] = NULL;
 				--pnode->nd_nummoms;
 				/* remove (decr) Mom host from Mom attrbute */
-				// FIXME: can we optimize this by using str setter with DECR?
 				(void)node_attr_def[(int)ND_ATR_Mom].at_set(
 					get_nattr(pnode, ND_ATR_Mom),
 					&tmomattr, DECR);
@@ -1560,7 +1559,6 @@ mark_which_queues_have_nodes()
 
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
 	while (pque != NULL) {
-		// FIXME: can we make use UNSET here?
 		set_qattr_l_slim(pque, QE_ATR_HasNodes, 0, SET);
 		ATR_UNSET(get_qattr(pque, QE_ATR_HasNodes));
 		pque = (pbs_queue *)GET_NEXT(pque->qu_link);

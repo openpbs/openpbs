@@ -149,7 +149,6 @@ long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for nod
 /*
  * Added for jobscript_max_size
  */
-// FIXME: why we are not storing this attrib in sv_attr?
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
 
 extern int do_sync_mom_hookfiles;

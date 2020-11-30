@@ -246,7 +246,7 @@ struct pbsnode {
 	long nd_nsnfree;	   /* number of VPs free */
 	long nd_ncpus;		   /* number of phy cpus on node */
 	short nd_written;	   /* written to nodes file */
-	unsigned long nd_state;	   /* state of node */ //FIXME: Can we remove this and use ND_ATR_state?
+	unsigned long nd_state;	   /* state of node */
 	unsigned short nd_ntype;   /* node type */
 	unsigned short nd_accted;  /* resc recorded in job acct */
 	struct pbs_queue *nd_pque; /* queue to which it belongs */

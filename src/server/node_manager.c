@@ -588,7 +588,6 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			}
 		}
 
-		// FIXME: Do we need this?
 		(get_nattr(pvnd, ND_ATR_state))->at_flags |= ATR_SET_MOD_MCACHE;
 		pat = get_nattr(pvnd, ND_ATR_Comment);
 

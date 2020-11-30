@@ -270,7 +270,6 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		idx_egroup = (int)JOB_ATR_egroup;
 		idx_acct = (int)JOB_ATR_account;
 		obj_attr_def = job_attr_def;
-		// FIXME: below
 		objattrs = ((job *)pobj)->ji_wattr;
 		owner = get_jattr_str(pobj, idx_owner);
 		paclRoot = get_sattr(SVR_ATR_AclRoot);

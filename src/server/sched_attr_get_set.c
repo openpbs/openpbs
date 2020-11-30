@@ -39,6 +39,16 @@
 
 #include "pbs_sched.h"
 
+/**
+ * @brief	Get attribute of sched based on given attr index
+ *
+ * @param[in] psched    - pointer to sched struct
+ * @param[in] attr_idx - attribute index
+ *
+ * @return attribute *
+ * @retval NULL  - failure
+ * @retval !NULL - pointer to attribute struct
+ */
 attribute *
 get_sched_attr(const pbs_sched *psched, int attr_idx)
 {
@@ -48,9 +58,9 @@ get_sched_attr(const pbs_sched *psched, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string
+ * @brief	Getter function for sched attribute of type string
  *
- * @param[in]	psched - pointer to the job
+ * @param[in]	psched - pointer to the sched
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	char *
@@ -67,9 +77,9 @@ get_sched_attr_str(const pbs_sched *psched, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type string of array
+ * @brief	Getter function for sched attribute of type string of array
  *
- * @param[in]	psched - pointer to the job
+ * @param[in]	psched - pointer to the sched
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	struct array_strings *
@@ -86,9 +96,9 @@ get_sched_attr_arst(const pbs_sched *psched, int attr_idx)
 }
 
 /**
- * @brief	Getter for job attribute's list value
+ * @brief	Getter for sched attribute's list value
  *
- * @param[in]	psched - pointer to the job
+ * @param[in]	psched - pointer to the sched
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	pbs_list_head
@@ -101,9 +111,9 @@ get_sched_attr_list(const pbs_sched *psched, int attr_idx)
 }
 
 /**
- * @brief	Getter function for job attribute of type long
+ * @brief	Getter function for sched attribute of type long
  *
- * @param[in]	psched - pointer to the job
+ * @param[in]	psched - pointer to the sched
  * @param[in]	attr_idx - index of the attribute to return
  *
  * @return	long
@@ -120,9 +130,9 @@ get_sched_attr_long(const pbs_sched *psched, int attr_idx)
 }
 
 /**
- * @brief	Generic Job attribute setter (call if you want at_set() action functions to be called)
+ * @brief	Generic sched attribute setter (call if you want at_set() action functions to be called)
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -142,9 +152,9 @@ set_sched_attr_generic(pbs_sched *psched, int attr_idx, char *val, char *rscn, e
 }
 
 /**
- * @brief	"fast" job attribute setter for string values
+ * @brief	"fast" sched attribute setter for string values
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	rscn - new resource val to set, if applicable
@@ -163,9 +173,9 @@ set_sched_attr_str_slim(pbs_sched *psched, int attr_idx, char *val, char *rscn)
 }
 
 /**
- * @brief	"fast" job attribute setter for long values
+ * @brief	"fast" sched attribute setter for long values
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -186,9 +196,9 @@ set_sched_attr_l_slim(pbs_sched *psched, int attr_idx, long val, enum batch_op o
 }
 
 /**
- * @brief	"fast" job attribute setter for boolean values
+ * @brief	"fast" sched attribute setter for boolean values
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -209,9 +219,9 @@ set_sched_attr_b_slim(pbs_sched *psched, int attr_idx, long val, enum batch_op o
 }
 
 /**
- * @brief	"fast" job attribute setter for char values
+ * @brief	"fast" sched attribute setter for char values
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to set
  * @param[in]	val - new val to set
  * @param[in]	op - batch_op operation, SET, INCR, DECR etc.
@@ -231,11 +241,10 @@ set_sched_attr_c_slim(pbs_sched *psched, int attr_idx, char val, enum batch_op o
 	return 0;
 }
 
-
 /**
- * @brief	Check if a job attribute is set
+ * @brief	Check if a sched attribute is set
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to check
  *
  * @return	int
@@ -252,9 +261,9 @@ is_sched_attr_set(const pbs_sched *psched, int attr_idx)
 }
 
 /**
- * @brief	Free a job attribute
+ * @brief	Free a sched attribute
  *
- * @param[in]	psched - pointer to job
+ * @param[in]	psched - pointer to sched
  * @param[in]	attr_idx - attribute index to free
  *
  * @return	void
@@ -266,6 +275,14 @@ free_sched_attr(pbs_sched *psched, int attr_idx)
 		free_attr_generic(sched_attr_def, get_sched_attr(psched, attr_idx), attr_idx);
 }
 
+/**
+ * @brief	clear a sched attribute
+ *
+ * @param[in]	psched - pointer to sched
+ * @param[in]	attr_idx - attribute index to clear
+ *
+ * @return	void
+ */
 void
 clear_sched_attr(pbs_sched *psched, int attr_idx)
 {
