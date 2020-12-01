@@ -168,7 +168,6 @@ class TestProvisioningJob(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
 
         job = Job(TEST_USER1, attrs={ATTR_l: 'aoe=App1'})
-        job.set_sleep_time(3)
         jid = self.server.submit(job)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.log_match(
