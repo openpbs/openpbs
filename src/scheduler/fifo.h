@@ -258,6 +258,8 @@ int validate_running_user(char *exename);
 
 void clear_last_running();
 
+int send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode);
+
 #ifdef	__cplusplus
 }
 #endif

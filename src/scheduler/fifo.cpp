@@ -1319,7 +1319,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @return	int
  * @retval	return value of the runjob call
  */
-static int
+int
 send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
 {
 	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)

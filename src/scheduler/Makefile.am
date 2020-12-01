@@ -40,6 +40,7 @@
 #
 
 lib_LIBRARIES = libpbs_sched.a
+noinst_LIBRARIES = libschedharness.a
 
 common_cflags = \
 	-I$(top_srcdir)/src/include \
@@ -50,6 +51,7 @@ common_cflags = \
 
 common_libs = \
 	$(builddir)/libpbs_sched.a \
+	$(builddir)/libschedharness.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
@@ -63,6 +65,9 @@ common_libs = \
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 
+libschedharness_a_CPPFLAGS = ${common_cflags}
+libschedharness_a_SOURCES = \
+	pbs_sched_utils.cpp
 
 libpbs_sched_a_SOURCES = \
 	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
@@ -124,10 +129,15 @@ libpbs_sched_a_SOURCES = \
 	site_data.h
 
 sbin_PROGRAMS = pbs_sched pbsfs
+noinst_PROGRAMS = pbs_sched_bare
 
 pbs_sched_CPPFLAGS = ${common_cflags}
 pbs_sched_LDADD = ${common_libs} @libundolr_lib@
 pbs_sched_SOURCES = pbs_sched.cpp
+
+pbs_sched_bare_CPPFLAGS = ${common_cflags}
+pbs_sched_bare_LDADD = ${common_libs} @libundolr_lib@
+pbs_sched_bare_SOURCES = pbs_sched_bare.cpp
 
 pbsfs_CPPFLAGS = ${common_cflags}
 pbsfs_LDADD = ${common_libs}
