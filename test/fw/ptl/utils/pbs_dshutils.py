@@ -1817,7 +1817,7 @@ class DshUtils(object):
                             runas=runas, logerr=logerr, level=level)
 
     def tail(self, hostname=None, filename=None, sudo=False, runas=None,
-            logerr=True, level=logging.INFOCLI2, option=None):
+             logerr=True, level=logging.INFOCLI2, option=None):
         """
         Generic function of tail with remote host support
 
