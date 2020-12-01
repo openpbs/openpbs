@@ -523,6 +523,7 @@ class PTLTestRunner(Plugin):
     name = 'PTLTestRunner'
     score = sys.maxsize - 4
     logger = logging.getLogger(__name__)
+    timeout = None
 
     def __init__(self):
         Plugin.__init__(self)
@@ -989,10 +990,11 @@ class PTLTestRunner(Plugin):
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
-        timeout = self.__get_timeout(test)
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        setattr(test, 'old_sigalrm_handler', old_handler)
-        signal.alarm(timeout)
+        if PTLTestRunner.timeout is None:
+            timeout = self.__get_timeout(test)
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            setattr(test, 'old_sigalrm_handler', old_handler)
+            signal.alarm(timeout)
 
     def stopTest(self, test):
         """
