@@ -43,8 +43,8 @@
 extern "C" {
 #endif
 
+#include "pbs_ifl.h"
 typedef struct sched_cmd sched_cmd;
-typedef struct sched_svrconn sched_svrconn;
 
 struct sched_cmd {
 	/* sched command */
@@ -52,44 +52,32 @@ struct sched_cmd {
 
 	/* jobid assisiated with cmd if any else NULL */
 	char *jid;
-
-	/*
-	 * connection to server from which we got this sched command.
-	 * This will be one of the server's secondary connection.
-	 *
-	 * This will be used in while finding server conn structure before calling
-	 * schedule() which needs primary connection to the server
-	 *
-	 */
-	int from_sock;
-};
-struct sched_svrconn {
-	char *svrhost;	    /* address of host in host[:port] format */
-	int primary_sock;   /* primary connection to server - used for IFL calls */
-	int secondary_sock; /* secondary connection to server - used to receive sched cmds from server */
 };
 
 /* server to scheduler commands: */
-#define SCH_ERROR         -1
-#define SCH_SCHEDULE_NULL  0
-#define SCH_SCHEDULE_NEW   1		/* New job queued or eligible	*/
-#define SCH_SCHEDULE_TERM  2		/* Running job terminated	*/
-#define SCH_SCHEDULE_TIME  3		/* Scheduler interval reached	*/
-#define SCH_SCHEDULE_RECYC 4		/* Not currently used		*/
-#define SCH_SCHEDULE_CMD   5		/* Schedule on command 		*/
-#define SCH_CONFIGURE      7
-#define SCH_QUIT           8
-#define SCH_RULESET        9
-#define SCH_SCHEDULE_FIRST 10		/* First schedule after server starts */
-#define SCH_SCHEDULE_JOBRESV 11		/* Arrival of an existing reservation time */
-#define SCH_SCHEDULE_AJOB  12		/* run one, named job */
-#define SCH_SCHEDULE_STARTQ 13		/* Stopped queue started */
-#define SCH_SCHEDULE_MVLOCAL 14		/* Job moved to local queue */
-#define SCH_SCHEDULE_ETE_ON 15		/* eligible_time_enable is turned ON */
-#define SCH_SCHEDULE_RESV_RECONFIRM 16		/* Reconfirm a reservation */
-#define SCH_SCHEDULE_RESTART_CYCLE 17		/* Restart a scheduling cycle */
+enum svr_sched_cmd
+{
+	SCH_SCHEDULE_NULL,
+	SCH_SCHEDULE_NEW,	/* New job queued or eligible	*/
+	SCH_SCHEDULE_TERM,	/* Running job terminated	*/
+	SCH_SCHEDULE_TIME,	/* Scheduler interval reached	*/
+	SCH_SCHEDULE_RECYC,	/* Not currently used		*/
+	SCH_SCHEDULE_CMD,	/* Schedule on command 		*/
+	SCH_CONFIGURE,
+	SCH_QUIT,
+	SCH_RULESET,
+	SCH_SCHEDULE_FIRST,	/* First schedule after server starts */
+	SCH_SCHEDULE_JOBRESV,	/* Arrival of an existing reservation time */
+	SCH_SCHEDULE_AJOB,	/* run one, named job */
+	SCH_SCHEDULE_STARTQ,	/* Stopped queue started */
+	SCH_SCHEDULE_MVLOCAL,	/* Job moved to local queue */
+	SCH_SCHEDULE_ETE_ON,	/* eligible_time_enable is turned ON */
+	SCH_SCHEDULE_RESV_RECONFIRM,	/* Reconfirm a reservation */
+	SCH_SCHEDULE_RESTART_CYCLE, 	/* Restart a scheduling cycle */
+	SCH_CMD_HIGH	/* This has to be the last command always. Any new command can be inserted above if required */
+};
 
-int schedule(sched_svrconn *sconn, sched_cmd *cmd);
+int schedule(int sd, const sched_cmd *cmd);
 
 #ifdef __cplusplus
 }

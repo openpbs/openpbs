@@ -2719,7 +2719,7 @@ Time4resvFinish(struct work_task *ptask)
 				newreq->rq_perm |= ATR_DFLAG_MGWR;
 				strcpy(newreq->rq_user, pbs_current_user);
 				strcpy(newreq->rq_host, server_host);
-				strcpy(newreq->rq_ind.rq_delete.rq_objname, presv->ri_qs.ri_resvID);
+				strcpy(newreq->rq_ind.rq_manager.rq_objname, presv->ri_qs.ri_resvID);
 				if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, resvFinishReply, NULL, 0) == -1) {
 					free_br(newreq);
 				}
@@ -2768,7 +2768,7 @@ Time4resvFinish(struct work_task *ptask)
 
 		strcpy(preq->rq_user, pbs_current_user);
 		strcpy(preq->rq_host, server_host);
-		strcpy(preq->rq_ind.rq_delete.rq_objname,
+		strcpy(preq->rq_ind.rq_manager.rq_objname,
 			presv->ri_qs.ri_resvID);
 
 		/*notify relevant parties that the reservation's
@@ -3158,7 +3158,7 @@ Time4_term(struct work_task *ptask)
 
 		strcpy(preq->rq_user, pbs_current_user);
 		strcpy(preq->rq_host, server_host);
-		strcpy(preq->rq_ind.rq_delete.rq_objname,
+		strcpy(preq->rq_ind.rq_manager.rq_objname,
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
@@ -3217,7 +3217,7 @@ Time4_I_term(struct work_task *ptask)
 
 		strcpy(preq->rq_user, pbs_current_user);
 		strcpy(preq->rq_host, server_host);
-		strcpy(preq->rq_ind.rq_delete.rq_objname,
+		strcpy(preq->rq_ind.rq_manager.rq_objname,
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
@@ -4873,8 +4873,41 @@ update_job_finish_comment(job *pjob, int newsubstate, char *user)
 		snprintf(buffer, LOG_BUF_SIZE, "%s and finished",
 			get_jattr_str(pjob, JOB_ATR_Comment));
 	} else if (newsubstate == JOB_SUBSTATE_FAILED) {
-		snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
-			get_jattr_str(pjob, JOB_ATR_Comment));
+		if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
+			switch (get_jattr_long(pjob, JOB_ATR_exit_status)) {
+				case JOB_EXEC_KILL_NCPUS_BURST:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource ncpus (burst)",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_NCPUS_SUM:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource ncpus (sum)",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_VMEM:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource vmem",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_MEM:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource mem",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_CPUT:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource cput",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				case JOB_EXEC_KILL_WALLTIME:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and exceeded resource walltime",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+				default:
+					snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
+						get_jattr_str(pjob, JOB_ATR_Comment));
+					break;
+			}
+		} else {
+			snprintf(buffer, LOG_BUF_SIZE, "%s and failed",
+				get_jattr_str(pjob, JOB_ATR_Comment));
+		}
 	} else if (newsubstate == JOB_SUBSTATE_TERMINATED) {
 		/* Don't overwrite the comment; if already set by req_deletejob2 */
 		if (strstr(get_jattr_str(pjob, JOB_ATR_Comment), "terminated") == NULL) {

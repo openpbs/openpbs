@@ -1,3 +1,5 @@
+# coding: utf-8
+
 # Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -35,29 +37,35 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-language: c
-sudo: required
-dist: trusty
-addons:
-  apt:
-    packages:
-      - docker-ce
-      - pep8
-services:
-  - docker
-env:
-  - OS_TYPE=centos:8
-  - OS_TYPE=opensuse/leap:15
-  - OS_TYPE=ubuntu:20.04
-before_install:
-  - .github/runchecks
-  - docker pull ${OS_TYPE}
-  - '[ "${OS_TYPE}" == "ubuntu:20.04" -o "${OS_TYPE}" == "debian:9" ] && export DOCKER_EXTRA_ARG="-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8" || true'
-  - '[ "${OS_TYPE}" == "centos:7" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8" || true'
-  - '[ "${OS_TYPE}" == "opensuse/leap:15" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=C.utf8" || true'
-  - docker run -it -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ${DOCKER_EXTRA_ARG} ${OS_TYPE} /bin/bash
-  - docker ps -a
-  - export DOCKER_EXEC="docker exec -it ${DOCKER_EXTRA_ARG} -e BUILD_MODE="${BUILD_MODE}" --privileged pbsdev"
-install:
-  - '${DOCKER_EXEC} .travis/do.sh'
-script: true
+
+from tests.functional import *
+
+
+class TestPrintjob(TestFunctional):
+    def test_state_substate(self):
+        """
+        Verify that printjob prints the state and substate in expected format
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R', 'substate': 42}
+        self.server.expect(JOB, a, id=jid)
+        ret = self.mom.printjob(jid)
+        self.assertEqual(ret['rc'], 0)
+        sfound = False
+        ssfound = False
+        for line in ret['out']:
+            if line.startswith("state:"):
+                val = line.split("state:", 1)[1]
+                val = val.strip()
+                numval = int(val, 16)
+                self.assertEqual(numval, 4)  # R state = numeric 4
+                sfound = True
+            elif line.startswith("substate:"):
+                val = line.split("substate:", 1)[1]
+                val = val.split()[0]
+                val = val.strip()
+                numval = int(val, 16)
+                self.assertEqual(numval, 42)
+                ssfound = True
+        self.assertTrue(sfound and ssfound)

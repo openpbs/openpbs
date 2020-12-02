@@ -472,11 +472,6 @@ process_request(int sfds)
 	}
 
 #ifndef PBS_MOM
-	if (request->rq_type == PBS_BATCH_RegisterSched) {
-		req_register_sched(conn, request);
-		return;
-	}
-
 	if (request->rq_type != PBS_BATCH_Connect) {
 		if (transport_chan_get_ctx_status(sfds, FOR_AUTH) != AUTH_STATUS_CTX_READY &&
 			(conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) == 0) {
@@ -531,6 +526,11 @@ process_request(int sfds)
 		}
 
 		conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+	}
+
+	if (request->rq_type == PBS_BATCH_RegisterSched) {
+		req_register_sched(conn, request);
+		return;
 	}
 
 	access_by_krb = 0;
@@ -842,6 +842,12 @@ dispatch_request(int sfds, struct batch_request *request)
 				net_add_close_func(sfds, (void (*)(int))0);
 			break;
 
+		case PBS_BATCH_DeleteJobList:
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+				request->rq_ind.rq_deletejoblist.rq_jobslist[0],
+				"delete job request received");
+			req_deletejob(request);
+			break;
 		case PBS_BATCH_DeleteJob:
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 				request->rq_ind.rq_delete.rq_objname,
@@ -1421,9 +1427,16 @@ free_br(struct batch_request *preq)
 		 * decrement the reference count in the parent and when it
 		 * goes to zero,  reply_send() it
 		 */
+		struct batch_reply *preply = &preq->rq_parentbr->rq_reply;
 		if (preq->rq_parentbr->rq_refct > 0) {
-			if (--preq->rq_parentbr->rq_refct == 0)
-				reply_send(preq->rq_parentbr);
+			if (--preq->rq_parentbr->rq_refct == 0) {
+				if (preq->rq_parentbr->rq_type == PBS_BATCH_DeleteJobList) {
+					preply->brp_un.brp_deletejoblist.tot_rpys += preply->brp_un.brp_deletejoblist.tot_arr_jobs ;
+					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
+						reply_send(preq->rq_parentbr);
+				} else 
+					reply_send(preq->rq_parentbr);
+			}
 		}
 
 		if (preq->tppcmd_msgid)
@@ -1501,6 +1514,10 @@ free_br(struct batch_request *preq)
 			if (preq->rq_ind.rq_status.rq_id)
 				free(preq->rq_ind.rq_status.rq_id);
 			free_attrlist(&preq->rq_ind.rq_status.rq_attr);
+			break;
+		case PBS_BATCH_DeleteJobList:
+			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
+				free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:

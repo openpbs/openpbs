@@ -197,6 +197,7 @@ typedef struct rq_preempt brp_preempt_jobs;
 #define BATCH_REPLY_CHOICE_Locate	8	/* locate, see brp_locate */
 #define BATCH_REPLY_CHOICE_RescQuery	9	/* Resource Query */
 #define BATCH_REPLY_CHOICE_PreemptJobs	10	/* Preempt Job */
+#define BATCH_REPLY_CHOICE_Delete		11  /* Delete Job status */
 
 /*
  * the following is the basic Batch Reply structure
@@ -214,6 +215,12 @@ struct batch_reply
 		struct brp_select *brp_select; /* select replies */
 		pbs_list_head brp_status; /* status (svr) replies */
 		struct batch_status *brp_statc; /* status (cmd) replies) */
+		struct {
+			int tot_jobs;
+			int tot_rpys; 
+			int tot_arr_jobs;
+			struct batch_deljob_status *brp_delstatc;	
+		} brp_deletejoblist;
 		struct {
 			int brp_txtlen;
 			char *brp_str;
@@ -298,6 +305,8 @@ struct batch_reply
 #define PBS_BATCH_ModifyJob_Async	96
 #define PBS_BATCH_AsyrunJob_ack	97
 #define PBS_BATCH_RegisterSched	98
+#define PBS_BATCH_ModifyVnode       99
+#define PBS_BATCH_DeleteJobList	100
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -334,7 +343,9 @@ int PBSD_jscript_direct(int, char *, int, char **);
 int PBSD_copyhookfile(int, char *, int, char **);
 int PBSD_delhookfile(int, char *, int, char **);
 int PBSD_mgr_put(int, int, int, int, char *, struct attropl *, char *, int, char **);
+int PBSD_deljoblist_put(int, int, char **, int, char *, int, char **);
 int PBSD_manager(int, int, int, int, char *, struct attropl *, char *);
+struct batch_deljob_status *PBSD_deljoblist(int, int, char **, int, char *);
 int PBSD_msg_put(int, char *, int, char *, char *, int, char **);
 int PBSD_relnodes_put(int, char *, char *, char *, int, char **);
 int PBSD_py_spawn_put(int, char *, char **, char **, int, char **);
@@ -381,7 +392,7 @@ int encode_DIS_attrl(int, struct attrl *);
 int encode_DIS_attropl(int, struct attropl *);
 int encode_DIS_CopyHookFile(int, int, char *, int, char *);
 int encode_DIS_DelHookFile(int, char *);
-int encode_DIS_PreemptJobs(int, char **);
+int encode_DIS_JobsList(int, char **, int);
 char *PBSD_submit_resv(int, char *, struct attropl *, char *);
 int DIS_reply_read(int, struct batch_reply *, int);
 int tcp_pre_process(conn_t *);
@@ -390,6 +401,7 @@ int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 void *get_conn_svr_instances(int);
 void dealloc_conn_list_single(int parentfd);
+int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 
 #ifdef __cplusplus
 }

@@ -384,20 +384,24 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 			jobid, msg_unkjobid);
 		if (err != NULL)
 			*err = PBSE_UNKJOBID;
-		req_reject(PBSE_UNKJOBID, 0, preq);
+
+		if (preq->rq_type != PBS_BATCH_DeleteJobList)
+			req_reject(PBSE_UNKJOBID, 0, preq);
 		return NULL;
 	} else {
 		histerr = svr_chk_histjob(pjob);
 		if (histerr && deletehist == 0) {
 			if (err != NULL)
 				*err = histerr;
-			req_reject(histerr, 0, preq);
+			if (preq->rq_type != PBS_BATCH_DeleteJobList)
+				req_reject(histerr, 0, preq);
 			return NULL;
 		}
 		if (deletehist == 1&& check_job_state(pjob, JOB_STATE_LTR_MOVED) &&
 			!check_job_substate(pjob, JOB_SUBSTATE_FINISHED)) {
 			job_purge(pjob);
-			req_reject(PBSE_UNKJOBID, 0, preq);
+			if (preq->rq_type != PBS_BATCH_DeleteJobList)
+				req_reject(PBSE_UNKJOBID, 0, preq);
 			return NULL;
 		}
 	}
@@ -427,7 +431,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		if (err != NULL)
 			*err = PBSE_PERM;
-		req_reject(PBSE_PERM, 0, preq);
+		if (preq->rq_type != PBS_BATCH_DeleteJobList)
+			req_reject(PBSE_PERM, 0, preq);
 		return NULL;
 	}
 
@@ -444,7 +449,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 		if (err != NULL)
 			*err = PBSE_BADSTATE;
-		req_reject(PBSE_BADSTATE, 0, preq);
+		if (preq->rq_type != PBS_BATCH_DeleteJobList)
+			req_reject(PBSE_BADSTATE, 0, preq);
 		return NULL;
 	}
 

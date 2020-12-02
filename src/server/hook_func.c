@@ -207,6 +207,7 @@ extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_endjob_hooks;
 extern pbs_list_head svr_management_hooks;
+extern pbs_list_head svr_modifyvnode_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_resv_end_hooks;
@@ -3836,6 +3837,10 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		req_manager() bumps the reference count on preq */
 		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_management;
 		head_ptr = &svr_management_hooks;
+	} else if (preq->rq_type == PBS_BATCH_ModifyVnode) {
+		hook_event = HOOK_EVENT_MODIFYVNODE;
+		req_ptr.rq_modifyvnode = (struct rq_modifyvnode *)&preq->rq_ind.rq_modifyvnode;
+		head_ptr = &svr_modifyvnode_hooks;
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
@@ -3870,6 +3875,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_endjob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_Manager) {
 			phook_next = (hook *)GET_NEXT(phook->hi_management_hooks);
+		} else if (preq->rq_type == PBS_BATCH_ModifyVnode) {
+			phook_next = (hook *)GET_NEXT(phook->hi_modifyvnode_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
 		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
@@ -3918,6 +3925,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
  * @param[in] 	rq_user	    - batch request user
  * @param[in] 	rq_host	    - request host
  * @param[in]	phook	    - structure of the hook that needs to execute
+ * @param[in]	hook_event  - hook event type
  * @param[in]	pjob	    - structure of job corresponding to which hook needs to run
  *			      It is null when used with periodic hook.
  * @param[in]	req_ptr	    - Input parameters to be passed to the hook.

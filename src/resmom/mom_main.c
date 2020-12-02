@@ -340,6 +340,7 @@ pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
 pbs_list_head	svr_endjob_hooks;
 pbs_list_head	svr_management_hooks;
+pbs_list_head	svr_modifyvnode_hooks;
 pbs_list_head	svr_periodic_hooks;
 pbs_list_head	svr_provision_hooks;
 pbs_list_head	svr_resv_end_hooks;
@@ -5898,6 +5899,7 @@ mom_over_limit(job *pjob)
 					"ncpus %.1f exceeded limit %lu (burst)",
 					(float)num/100.0, value);
 				if (cpuburst) {	/* abort job */
+					pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_NCPUS_BURST;
 					return (TRUE);
 				} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_cpuperc) == 0) {
 					/* just log it */
@@ -5927,6 +5929,7 @@ mom_over_limit(job *pjob)
 								(double)cput_sum/(double)walltime_sum,
 								value);
 							if (cpuaverage) { /* abort job */
+								pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_NCPUS_SUM;
 								return (TRUE);
 							} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_cpuperc) == 0) {
 								/* just log it */
@@ -5952,6 +5955,7 @@ mom_over_limit(job *pjob)
 		if (retval == PBSE_NONE) {
 			if (llnum > llvalue) {
 				sprintf(log_buffer, "vmem %lukb exceeded limit %lukb", llnum/1024, llvalue/1024);
+				pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_VMEM;
 				return (TRUE);
 			}
 		}
@@ -5966,6 +5970,7 @@ mom_over_limit(job *pjob)
 		if (retval == PBSE_NONE) {
 			if ((llnum > llvalue) && enforce_mem) {
 				sprintf(log_buffer, "mem %lukb exceeded limit %lukb", llnum/1024, llvalue/1024);
+				pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_MEM;
 				return (TRUE);
 			}
 		}
@@ -5998,6 +6003,7 @@ mom_over_limit(job *pjob)
 					sprintf(log_buffer,
 						"cput %lu exceeded limit %lu",
 						num, value);
+					pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_CPUT;
 					return (TRUE);
 				}
 			} else if (strcmp(pname, "walltime") == 0) {
@@ -6014,6 +6020,7 @@ mom_over_limit(job *pjob)
 					sprintf(log_buffer,
 						"walltime %lu exceeded limit %lu",
 						num, value);
+					pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_KILL_WALLTIME;
 					return (TRUE);
 				}
 			}
@@ -7862,6 +7869,7 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(svr_runjob_hooks);
 	CLEAR_HEAD(svr_endjob_hooks);
 	CLEAR_HEAD(svr_management_hooks);
+	CLEAR_HEAD(svr_modifyvnode_hooks);
 	CLEAR_HEAD(svr_periodic_hooks);
 	CLEAR_HEAD(svr_provision_hooks);
 	CLEAR_HEAD(svr_resv_end_hooks);

@@ -528,6 +528,12 @@ struct batch_status {
 	char		    *text;
 };
 
+struct batch_deljob_status {
+	struct batch_deljob_status *next;
+	char	*name;
+	int	code;
+};
+
 /* structure to hold an attribute that failed verification at ECL
  * and the associated errcode and errmsg
  */
@@ -604,6 +610,8 @@ DECLDIR int pbs_connect_extend(char *, char *);
 DECLDIR char *pbs_default(void);
 
 DECLDIR int pbs_deljob(int, char *, char *);
+
+DECLDIR struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
 
 DECLDIR int pbs_disconnect(int);
 
@@ -707,6 +715,8 @@ extern char *pbs_default(void);
 
 extern int pbs_deljob(int, char *, char *);
 
+extern struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
+
 extern char *pbs_geterrmsg(int);
 
 extern int pbs_holdjob(int, char *, char *, char *);
@@ -734,6 +744,8 @@ extern char **pbs_selectjob(int, struct attropl *, char *);
 extern int pbs_sigjob(int, char *, char *, char *);
 
 extern void pbs_statfree(struct batch_status *);
+
+extern void pbs_delstatfree(struct batch_deljob_status *);
 
 extern struct batch_status *pbs_statrsc(int, char *, struct attrl *, char *);
 
@@ -782,6 +794,7 @@ extern int (*pfn_pbs_connect)(char *);
 extern int (*pfn_pbs_connect_extend)(char *, char *);
 extern char *(*pfn_pbs_default)(void);
 extern int (*pfn_pbs_deljob)(int, char *, char *);
+extern struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, int, char *);
 extern int (*pfn_pbs_disconnect)(int);
 extern char *(*pfn_pbs_geterrmsg)(int);
 extern int (*pfn_pbs_holdjob)(int, char *, char *, char *);
@@ -797,6 +810,7 @@ extern int (*pfn_pbs_runjob)(int, char *, char *, char *);
 extern char **(*pfn_pbs_selectjob)(int, struct attropl *, char *);
 extern int (*pfn_pbs_sigjob)(int, char *, char *, char *);
 extern void (*pfn_pbs_statfree)(struct batch_status *);
+extern void (*pfn_pbs_delstatfree)(struct batch_deljob_status *);
 extern struct batch_status *(*pfn_pbs_statrsc)(int, char *, struct attrl *, char *);
 extern struct batch_status *(*pfn_pbs_statjob)(int, char *, struct attrl *, char *);
 extern struct batch_status *(*pfn_pbs_selstat)(int, struct attropl *, struct attrl *, char *);

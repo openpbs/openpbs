@@ -86,13 +86,13 @@ int schedinit(int nthreads);
  *				cycle
  */
 
-int intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd);
+int intermediate_schedule(int sd, const sched_cmd *cmd);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd);
+int scheduling_cycle(int sd, const sched_cmd *cmd);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every
@@ -239,7 +239,7 @@ void update_cycle_status(struct status *policy, time_t current_time);
  *			     deal with normal job can't run stuff
 
  */
-int main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_error **rerr);
+int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr);
 
 /*
  *
@@ -257,6 +257,8 @@ int set_validate_sched_attrs(int);
 int validate_running_user(char *exename);
 
 void clear_last_running();
+
+int send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode);
 
 #ifdef	__cplusplus
 }

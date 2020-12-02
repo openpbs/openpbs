@@ -161,6 +161,13 @@ def skipOnCpuSet(function):
     return function
 
 
+def runOnlyOnLinux(function):
+    """
+    """
+    function.__run_only_on_linux__ = True
+    return function
+
+
 def requirements(*args, **kwargs):
     """
     Decorator to provide the cluster information required for a particular
@@ -185,6 +192,7 @@ def testparams(**kwargs):
             function.__doc__ += str(key) + ' : ' + str(value) + '\n\t'
 
         def wrapper(self, *args):
+            self.testconf = {}
             for key, value in kwargs.items():
                 keyname = type(self).__name__ + "." + key
                 if keyname not in self.conf.keys():
@@ -458,6 +466,7 @@ class PBSTestSuite(unittest.TestCase):
         cls.skip_cray_tests()
         cls.skip_shasta_tests()
         cls.skip_cpuset_tests()
+        cls.run_only_on_linux()
 
     def setUp(self):
         if 'skip-setup' in self.conf:
@@ -567,6 +576,23 @@ class PBSTestSuite(unittest.TestCase):
             # skip individual test cases
             for test_item in cls.test_dict.values():
                 if test_item.__dict__.get('__skip_on_cpuset__', False):
+                    test_item.__unittest_skip__ = True
+                    test_item.__unittest_skip_why__ = msg
+
+    @classmethod
+    def run_only_on_linux(cls):
+        if cls.mom.is_only_linux():
+            return
+        msg = 'capability supported only on Linux'
+        if cls.__dict__.get('__run_only_on_linux__', False):
+            # skip all test cases in this test suite
+            for test_item in cls.test_dict.values():
+                test_item.__unittest_skip__ = True
+                test_item.__unittest_skip_why__ = msg
+        else:
+            # skip individual test cases
+            for test_item in cls.test_dict.values():
+                if test_item.__dict__.get('__run_only_on_linux__', False):
                     test_item.__unittest_skip__ = True
                     test_item.__unittest_skip_why__ = msg
 
@@ -942,7 +968,7 @@ class PBSTestSuite(unittest.TestCase):
             server = cls.servers[server]
         except BaseException:
             server = Server(hostname, pbsconf_file=pbsconf_file)
-        return MoM(server, hostname, pbsconf_file=pbsconf_file)
+        return get_mom_obj(server, hostname, pbsconf_file=pbsconf_file)
 
     def init_proc_mon(self):
         """
@@ -1047,7 +1073,16 @@ class PBSTestSuite(unittest.TestCase):
             # existing pbs.conf
             keys_to_delete = []
             for conf in new_pbsconf:
-                if conf in pbs_conf_val:
+                if new_pbsconf[conf]:
+                    if (conf in pbs_conf_val) and (new_pbsconf[conf] !=
+                                                   pbs_conf_val[conf]):
+                        restart_pbs = True
+                    elif conf not in pbs_conf_val:
+                        restart_pbs = True
+                    continue
+                elif conf in pbs_conf_val:
+                    new_pbsconf[conf] = pbs_conf_val[conf]
+                elif conf in pbs_conf_val:
                     new_pbsconf[conf] = pbs_conf_val[conf]
                 else:
                     # existing pbs.conf doesn't have a default variable set
@@ -1117,75 +1152,7 @@ class PBSTestSuite(unittest.TestCase):
         for mom in self.moms.values():
             if mom.hostname in svr_hostnames:
                 continue
-
-            new_pbsconf = dict(vals_to_set)
-            restart_mom = False
-            pbs_conf_val = self.du.parse_pbs_config(mom.hostname)
-            if not pbs_conf_val:
-                raise ValueError("Could not parse pbs.conf on host %s" %
-                                 (mom.hostname))
-
-            # to start with, set all keys in new_pbsconf with values from the
-            # existing pbs.conf
-            keys_to_delete = []
-            for conf in new_pbsconf:
-                if conf in pbs_conf_val:
-                    new_pbsconf[conf] = pbs_conf_val[conf]
-                else:
-                    # existing pbs.conf doesn't have a default variable set
-                    # Try to determine the default
-                    val = self._get_dflt_pbsconfval(conf,
-                                                    primary_server.hostname,
-                                                    "mom", mom)
-                    if val is None:
-                        self.logger.error("Couldn't revert %s in pbs.conf"
-                                          " to its default value" %
-                                          (conf))
-                        keys_to_delete.append(conf)
-                    else:
-                        new_pbsconf[conf] = val
-
-            for key in keys_to_delete:
-                del(new_pbsconf[key])
-
-            # Set the mom start bit to 1
-            if (new_pbsconf["PBS_START_MOM"] != "1"):
-                new_pbsconf["PBS_START_MOM"] = "1"
-                restart_mom = True
-
-            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
-            if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
-                new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
-                restart_mom = True
-            if new_pbsconf["PBS_SERVER"] != primary_server.hostname:
-                new_pbsconf["PBS_SERVER"] = primary_server.hostname
-                restart_mom = True
-            if "PBS_SCP" not in new_pbsconf:
-                scppath = self.du.which(mom.hostname, "scp")
-                if scppath != "scp":
-                    new_pbsconf["PBS_SCP"] = scppath
-                    restart_mom = True
-            if new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] != "1":
-                new_pbsconf["PBS_LOG_HIGHRES_TIMESTAMP"] = "1"
-                restart_mom = True
-
-            # Check if existing pbs.conf has more/less entries than the
-            # default list
-            if len(pbs_conf_val) != len(new_pbsconf):
-                restart_mom = True
-            # Check if existing pbs.conf has correct ownership
-            dest = self.du.get_pbs_conf_file(mom.hostname)
-            (cf_uid, cf_gid) = (os.stat(dest).st_uid, os.stat(dest).st_gid)
-            if cf_uid != 0 or cf_gid > 10:
-                restart_mom = True
-
-            if restart_mom:
-                self.du.set_pbs_config(mom.hostname, confs=new_pbsconf,
-                                       append=False)
-                mom.pbs_conf = new_pbsconf
-                mom.pi.initd(mom.hostname, "restart", daemon="mom")
-                if not mom.isUp():
-                    self.fail("Mom is not up")
+            mom.revert_mom_pbs_conf(primary_server, vals_to_set)
 
     def _revert_pbsconf_server(self, vals_to_set):
         """
@@ -1208,7 +1175,16 @@ class PBSTestSuite(unittest.TestCase):
             # existing pbs.conf
             keys_to_delete = []
             for conf in new_pbsconf:
-                if conf in pbs_conf_val:
+                if new_pbsconf[conf]:
+                    if (conf in pbs_conf_val) and (new_pbsconf[conf] !=
+                                                   pbs_conf_val[conf]):
+                        restart_pbs = True
+                    elif conf not in pbs_conf_val:
+                        restart_pbs = True
+                    continue
+                elif conf in pbs_conf_val:
+                    new_pbsconf[conf] = pbs_conf_val[conf]
+                elif conf in pbs_conf_val:
                     new_pbsconf[conf] = pbs_conf_val[conf]
                 else:
                     # existing pbs.conf doesn't have a default variable set
@@ -1374,6 +1350,8 @@ class PBSTestSuite(unittest.TestCase):
             "PBS_LOG_HIGHRES_TIMESTAMP": None
         }
 
+        self._revert_pbsconf_mom(primary_server, vals_to_set)
+
         server_vals_to_set = copy.deepcopy(vals_to_set)
 
         server_vals_to_set["PBS_DAEMON_SERVICE_USER"] = None
@@ -1381,8 +1359,6 @@ class PBSTestSuite(unittest.TestCase):
             server_vals_to_set["PBS_PUBLIC_HOST_NAME"] = None
 
         self._revert_pbsconf_server(server_vals_to_set)
-
-        self._revert_pbsconf_mom(primary_server, vals_to_set)
 
         self._revert_pbsconf_comm(primary_server, vals_to_set)
 
@@ -1432,9 +1408,14 @@ class PBSTestSuite(unittest.TestCase):
             except PbsManagerError as e:
                 cls.logger.error(e.msg)
         attr = {}
-        current_user = pwd.getpwuid(os.getuid())[0] + '@*'
-        mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
-                      "operators": [str(OPER_USER) + '@*']}
+        current_user = pwd.getpwuid(os.getuid())[0]
+        if str(current_user) in str(MGR_USER):
+            mgrs_opers = {"managers": [str(MGR_USER) + '@*'],
+                          "operators": [str(OPER_USER) + '@*']}
+        else:
+            current_user += '@*'
+            mgrs_opers = {"managers": [current_user, str(MGR_USER) + '@*'],
+                          "operators": [str(OPER_USER) + '@*']}
         server_stat = cls.server.status(SERVER, ["managers", "operators"])
         if len(server_stat) > 0:
             server_stat = server_stat[0]
@@ -1520,7 +1501,6 @@ class PBSTestSuite(unittest.TestCase):
             mom.start()
             msg = 'Failed to restart mom ' + mom.hostname
             self.assertTrue(mom.isUp(), msg)
-        mom.pbs_version()
         restart = False
         enabled_cpuset = False
         if ((self.revert_to_defaults and self.mom_revert_to_defaults and
@@ -1557,7 +1537,7 @@ class PBSTestSuite(unittest.TestCase):
             # hook-related files, due to temporary network interruptions
             mom.log_match('pbs_cgroups.CF;copy hook-related '
                           'file request received', max_attempts=120,
-                          starttime=just_before_enable_cgroup_cset-1,
+                          starttime=just_before_enable_cgroup_cset - 1,
                           interval=1)
             # Make sure that the MoM will generate per-NUMA node vnodes
             # when the natural node was created above.

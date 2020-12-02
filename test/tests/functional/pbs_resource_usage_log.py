@@ -62,11 +62,11 @@ class TestResourceUsageLog(TestFunctional):
         """
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(40)
+        j1.create_eatcpu_job(40, self.mom.shortname)
         jid1 = self.server.submit(j1)
 
         j2 = Job(TEST_USER, a)
-        j2.create_eatcpu_job(30)
+        j2.create_eatcpu_job(30, self.mom.shortname)
         jid2 = self.server.submit(j2)
 
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
@@ -77,7 +77,7 @@ class TestResourceUsageLog(TestFunctional):
                            offset=40, extend='x', id=jid1)
 
         j3 = Job(TEST_USER, a)
-        j3.create_eatcpu_job()
+        j3.create_eatcpu_job(hostname=self.mom.shortname)
         jid3 = self.server.submit(j3)
         self.server.expect(JOB, {'job_state': 'R'}, jid3)
         self.server.delete(jid3, wait=True)
@@ -121,7 +121,7 @@ class TestResourceUsageLog(TestFunctional):
         # Submit a job
         a = {'Resource_List.select': '1:ncpus=1:mem=20gb'}
         j = Job(TEST_USER, a)
-        j.create_eatcpu_job()
+        j.create_eatcpu_job(hostname=self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -130,7 +130,7 @@ class TestResourceUsageLog(TestFunctional):
             ATTR_J: '1-2',
             'Resource_List.select': 'ncpus=1:mem=20gb'}
         )
-        ja.create_eatcpu_job()
+        ja.create_eatcpu_job(hostname=self.mom.shortname)
         jid_a = self.server.submit(ja)
 
         subjid1 = j.create_subjob_id(jid_a, 1)
@@ -172,28 +172,25 @@ class TestResourceUsageLog(TestFunctional):
         self.server.delete(jid, wait=True)
         self.server.delete(jid_a, wait=True)
 
-        # job1 has 2 R records and a E record
-        matches = self.server.accounting_match(
+        # job1 has R and E record
+        self.server.accounting_match(
             msg='R;' + jid + '.*Exit_status=0.*resources_used.*run_count=1',
             id=jid, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, " 2 R records expected")
         self.server.accounting_match(
             msg='E;' + jid +
             '.*Exit_status=271.*resources_used.*run_count=2',
             id=jid, regexp=True)
 
-        # job array's subjobs have 2 R records and
+        # job array's subjobs have a R record and
         # the jobarray has E record with run_count=0
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid1) +
             '.*Exit_status=0.*resources_used.*run_count=1',
             id=subjid1, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, " 2 R records expected")
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid2) +
             '.*Exit_status=0.*resources_used.*run_count=1',
             id=subjid2, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, " 2 R records expected")
         self.server.accounting_match(
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0', id=jid_a, regexp=True)
@@ -209,7 +206,7 @@ class TestResourceUsageLog(TestFunctional):
         # Submit job
         a = {'Resource_List.select': '1:ncpus=1:mem=20gb'}
         j = Job(TEST_USER, a)
-        j.create_eatcpu_job()
+        j.create_eatcpu_job(hostname=self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -218,7 +215,7 @@ class TestResourceUsageLog(TestFunctional):
             ATTR_J: '1-2',
             'Resource_List.select': 'ncpus=1:mem=20gb'}
         )
-        ja.create_eatcpu_job()
+        ja.create_eatcpu_job(hostname=self.mom.shortname)
         jid_a = self.server.submit(ja)
         subjid1 = j.create_subjob_id(jid_a, 1)
         subjid2 = j.create_subjob_id(jid_a, 2)
@@ -273,16 +270,14 @@ class TestResourceUsageLog(TestFunctional):
             '.*Exit_status=271.*resources_used.*run_count=3', id=jid,
             regexp=True)
 
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid1) +
             '.*Exit_status=-11.*resources_used.*run_count=1',
             id=subjid1, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, "Expected 2 R records")
-        matches = self.server.accounting_match(
+        self.server.accounting_match(
             msg='R;' + re.escape(subjid1) +
             '.*Exit_status=-11.*resources_used.*run_count=1',
             id=subjid2, regexp=True, allmatch=True)
-        self.assertEqual(len(matches), 2, "Expected 2 R records")
         self.server.accounting_match(
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0',
@@ -294,7 +289,7 @@ class TestResourceUsageLog(TestFunctional):
         """
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job()
+        j1.create_eatcpu_job(hostname=self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
@@ -321,14 +316,17 @@ class TestResourceUsageLog(TestFunctional):
         """
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(60)
+        j1.create_eatcpu_job(60, self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         # Restart PBS services
         PBSInitServices().restart()
+        if self.server.shortname != self.mom.shortname:
+            self.mom.restart()
 
         self.assertTrue(self.server.isUp())
+        self.assertTrue(self.mom.isUp())
 
         # Sleep so accounting logs get updated
         time.sleep(40)
@@ -351,13 +349,13 @@ class TestResourceUsageLog(TestFunctional):
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(30)
+        j1.create_eatcpu_job(30, self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb', 'queue': 'highp'}
         j2 = Job(TEST_USER, a)
-        j2.create_eatcpu_job(60)
+        j2.create_eatcpu_job(60, self.mom.shortname)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid2)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
