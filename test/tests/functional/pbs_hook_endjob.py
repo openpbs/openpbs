@@ -50,13 +50,29 @@ from tests.functional import JOB, MGR_CMD_SET, SERVER, TEST_USER, ATTR_h, Job
 def get_hook_body(hook_msg):
     hook_body = """
     import pbs
-    e = pbs.event()
-    j = e.job
-    pbs.logmsg(pbs.LOG_DEBUG, '%s')
+    import sys, os
+    import time
+
+    pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
+    
+    try:
+        e = pbs.event()
+
+        # print additional info
+        pbs.logmsg(pbs.LOG_DEBUG, '%s')
+        pbs.logjobmsg(e.job.id, 'executed endjob hook')
+        time.sleep(10)
+        pbs.logjobmsg(e.job.id, 'endjob hook ended')
+    except Exception as err:
+        ty, _, tb = sys.exc_info()
+        pbs.logmsg(pbs.LOG_DEBUG, str(ty) + str(tb.tb_frame.f_code.co_filename)
+                   + str(tb.tb_lineno))
+        e.reject()
+    else:
+        e.accept()
     """ % hook_msg
     hook_body = textwrap.dedent(hook_body)
     return hook_body
-
 
 @tags('hooks', 'smoke')
 class TestHookJob(TestFunctional):
@@ -71,21 +87,29 @@ class TestHookJob(TestFunctional):
         hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'endjob', 'enabled': 'True'}
         start_time = time.time()
-        
+
         ret = self.server.create_hook(hook_name, attrs)
         self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
         ret = self.server.import_hook(hook_name, hook_body)
         self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
 
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
         j = Job(TEST_USER)
-        j.set_sleep_time(1)
-        
+        j.set_sleep_time(4)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(JOB, {'job_state': "E"}, id=jid, max_attempts=300)
-
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x',
+                                offset=4, id=jid)
+        #self.server.delete(id=jid, extend='force', wait=True)
+        #self.server.log_match("dequeuing from workq, state E",
+        #                      starttime=start_time)
         ret = self.server.delete_hook(hook_name)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
-
         self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
+
+    # TODO: add test for job array 
+    # TODO: add test for a job run under a reservation
+    

@@ -3827,8 +3827,9 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		}
 	} else if (preq->rq_type == PBS_BATCH_EndJob) {
 		hook_event = HOOK_EVENT_ENDJOB;
-		req_ptr.rq_end = (struct rq_end *)&preq->rq_ind.rq_end; 
-		head_ptr = &svr_endjob_hooks;				
+		req_ptr.rq_end = (struct rq_endjob *)&preq->rq_ind.rq_end; 
+		head_ptr = &svr_endjob_hooks;	
+		
 	} else if (preq->rq_type == PBS_BATCH_Manager) {
 		hook_event = HOOK_EVENT_MANAGEMENT;
 		preq->rq_ind.rq_management.rq_reply = &preq->rq_reply;

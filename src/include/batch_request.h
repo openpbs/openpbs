@@ -170,9 +170,7 @@ struct rq_runjob {
 
 /* EndJob */
 struct rq_endjob {
-	char rq_jid[PBS_MAXSVRJOBID + 1];
-	char *rq_destin;
-	unsigned long rq_resch;
+	struct job *rq_pjob;
 };
 
 /* SignalJob */
