@@ -295,7 +295,10 @@ job_abt(job *pjob, char *text)
 job *
 job_alloc(void)
 {
-	job	*pj;
+	job *pj;
+#ifndef PBS_MOM
+	char *svr_inst_id;
+#endif
 
 	pj = (job *)malloc(sizeof(job));
 	if (pj == NULL) {
@@ -381,6 +384,15 @@ job_alloc(void)
 	/* start accruing time from the time job was created */
 	set_jattr_l_slim(pj, JOB_ATR_sample_starttime, time_now, SET);
 	set_jattr_l_slim(pj, JOB_ATR_eligible_time, 0, SET);
+
+	if ((svr_inst_id = get_svr_inst_id()) == NULL) {
+		log_err(errno, __func__, "unable to get server_instance_id");
+		return NULL;
+	}
+
+	set_jattr_str_slim(pj, JOB_ATR_server_inst_id, svr_inst_id, NULL);
+	free(svr_inst_id);
+
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&

@@ -1082,3 +1082,42 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 
 	return 1;
 }
+
+/**
+ * @brief Gets socket fd associated with the given server instance id
+ *
+ * param[in]	vfd - virtual socket fd
+ * param[in]	svr_inst_id - server instance id which is of the form "server_instance_name:server_instance_port"
+ *
+ * @return int
+ * @retval -1 - failure
+ * @return >0 - socket fd of the server instance if success
+ */
+int
+get_svr_inst_fd(int vfd, char *svr_inst_id)
+{
+	int i;
+	char *svr_inst_name;
+	unsigned int svr_inst_port;
+	svr_conn_t *svr_connections = get_conn_svr_instances(vfd);
+
+	if (svr_connections == NULL)
+		return -1;
+
+		
+	/* In case of single server mode, svr_connections consists of only one entry */
+	if (!msvr_mode())
+		return svr_connections[0].sd;
+
+	svr_inst_name = parse_servername(svr_inst_id, &svr_inst_port);
+
+	if (svr_inst_name == NULL)
+		return -1;
+		
+	for (i = 0; i < get_num_servers(); i++) {
+		if (is_same_host(svr_connections[i].name, svr_inst_name) && (svr_inst_port == svr_connections[i].port))
+			return svr_connections[i].sd;
+	}
+
+	return -1;
+}

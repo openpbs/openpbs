@@ -401,6 +401,7 @@ int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
 void *get_conn_svr_instances(int);
 void dealloc_conn_list_single(int parentfd);
 int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
+int get_svr_inst_fd(int vfd, char *svr_inst_id);
 
 #ifdef __cplusplus
 }
