@@ -1805,13 +1805,15 @@ class NodeUtils(object):
                         numa = devices['gpu'][gpuid]['numa_node']
                         major = devices['gpu'][gpuid]['major']
                         minor = devices['gpu'][gpuid]['minor']
+                        # extra_devs are the device numbers of the physical
+                        # gpu, as well as the nvidia controller
                         new_gpu = {'major': nvidia_cap_major,
                                    'minor': gi['minor'],
-                                   'mig': True,
+                                   'is_gi': True,
                                    'type': 'c',
                                    'numa_node': numa,
-                                   'extra_devs': ['%d:%d'
-                                                  % (major, minor)],
+                                   'extra_devs': ['%d:%d' % (major, minor),
+                                                  '%d:255' % (major)],
                                    'uuids': []
                                    }
                         for ciid in gi['cis']:
@@ -3912,7 +3914,7 @@ class CgroupUtils(object):
                                              device_info['major'])
                 if dev_entry not in device_allowed:
                     device_allowed.append(dev_entry)
-            elif device_kind == 'gpu' and not device_info.get('mig', False):
+            elif device_kind == 'gpu' and not device_info.get('is_gi', False):
                 # Requires the ctrl (255) to be added
                 # unless GPU is a MIG gpu
                 dev_entry = '%s %d:255 rwm' % (device_info['type'],
