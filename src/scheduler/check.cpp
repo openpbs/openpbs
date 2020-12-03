@@ -1200,7 +1200,11 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 							requested,
 							res_to_str_r(res, RF_AVAIL, resbuf2, sizeof(resbuf2)));
 						set_schd_error_arg(err, ARG1, buf);
-						set_schd_error_arg(err, ARG2, requested);
+						/* Set arg2 for vnode/host resource. In case of preemption, arg2 is used to cull
+						 * the list of running jobs
+						 */
+						if ((res->def == getallres(RES_HOST)) || (res->def == getallres(RES_VNODE)))
+							set_schd_error_arg(err, ARG2, requested);
 					}
 				}
 			}
