@@ -1517,7 +1517,7 @@ free_br(struct batch_request *preq)
 			break;
 		case PBS_BATCH_DeleteJobList:
 			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
-				free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
+				free_string_array(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:
