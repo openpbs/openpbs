@@ -3482,7 +3482,7 @@ class CgroupUtils(object):
                            ' PID %s to jobid %s'
                            % (caller_name(), pidarg, jobid))
             if (sid > 1):
-                pids = self._get_pids_in_sid(os.getsid(pidarg))
+                pids = self._get_pids_in_sid(sid)
         elif isinstance(pidarg, list):
             for pid in pidarg:
                 if not isinstance(pid, int):
