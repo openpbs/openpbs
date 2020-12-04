@@ -206,8 +206,8 @@ class PTLJsonData(object):
             m_avg['testsuites'][tsname] = {
                 'testcases': {}
             }
-            test_status = "PASS"
             for tcname in data_json['testsuites'][tsname]['testcases']:
+                test_status = "PASS"
                 m_avg['testsuites'][tsname]['testcases'][tcname] = []
                 t_sum = []
                 count = 0
