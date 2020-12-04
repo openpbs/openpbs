@@ -458,7 +458,7 @@ delete_svrmom_entry(mominfo_t *pmom)
 		/* we'll just send this delete request only once */
 		/* if a hook fails to delete, then that mom host when it */
 		/* come back will still have the hook. */
-		if (!(psvrmom->msr_state & INUSE_DOWN) && (mom_hooks_seen_count() > 0)) {
+		if (!(psvrmom->msr_state & INUSE_UNKNOWN) && (mom_hooks_seen_count() > 0)) {
 			uc_delete_mom_hooks(pmom);
 		}
 #endif
