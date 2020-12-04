@@ -3193,7 +3193,8 @@ regular_submit(int daemon_up)
 		else
 			rc = -1;
 	}
-	do_daemon_stuff();
+	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0) && !V_opt)
+		do_daemon_stuff();
 	return rc;
 }
 
