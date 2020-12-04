@@ -880,6 +880,9 @@ class HookUtils(object):
             self.hook_events = hook_events
         else:
             # Defined in the order they appear in module_pbs_v1.c
+            # if adding new events that may not exist in all PBS versions,
+            # use hasattr() to prevent exceptions when the hook is used
+            # on older PBS versions - see e.g. EXECJOB_ABORT
             self.hook_events = {}
             self.hook_events[pbs.QUEUEJOB] = {
                 'name': 'queuejob',
