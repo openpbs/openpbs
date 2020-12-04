@@ -880,6 +880,9 @@ class HookUtils(object):
             self.hook_events = hook_events
         else:
             # Defined in the order they appear in module_pbs_v1.c
+            # if adding new events that may not exist in all PBS versions,
+            # use hasattr() to prevent exceptions when the hook is used
+            # on older PBS versions - see e.g. EXECJOB_ABORT
             self.hook_events = {}
             self.hook_events[pbs.QUEUEJOB] = {
                 'name': 'queuejob',
@@ -901,14 +904,16 @@ class HookUtils(object):
                 'name': 'runjob',
                 'handler': None
             }
-            self.hook_events[pbs.MANAGEMENT] = {
-                'name': 'management',
-                'handler': None
-            }
-            self.hook_events[pbs.MODIFYVNODE] = {
-                'name': 'modifyvnode',
-                'handler': None
-            }
+            if hasattr(pbs, "MANAGEMENT"):
+                self.hook_events[pbs.MANAGEMENT] = {
+                    'name': 'management',
+                    'handler': None
+                }
+            if hasattr(pbs, "MODIFYVNODE"):
+                self.hook_events[pbs.MODIFYVNODE] = {
+                    'name': 'modifyvnode',
+                    'handler': None
+                }
             self.hook_events[pbs.PROVISION] = {
                 'name': 'provision',
                 'handler': None
@@ -3458,7 +3463,7 @@ class CgroupUtils(object):
                             pids.append(int(entries[0]))
             except (OSError, IOError):
                 # PIDs may come and go as we read /proc so the glob data can
-                # become stale. Tollerate failures in this case.
+                # become stale. Tolerate failures in this case.
                 pass
         return pids
 
@@ -3468,8 +3473,19 @@ class CgroupUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         # make pids a list
+        pids = []
         if isinstance(pidarg, int):
-            pids = self._get_pids_in_sid(os.getsid(pidarg))
+            sid = 0
+            try:
+                sid = os.getsid(pidarg)
+            except OSError as exc:
+                sid = -1
+                pbs.logmsg(pbs.EVENT_DEBUG2,
+                           '%s: Request to attach session of non-existing'
+                           ' PID %s to jobid %s'
+                           % (caller_name(), pidarg, jobid))
+            if (sid > 1):
+                pids = self._get_pids_in_sid(sid)
         elif isinstance(pidarg, list):
             for pid in pidarg:
                 if not isinstance(pid, int):
