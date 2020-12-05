@@ -143,7 +143,7 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 
 	if (svr_conns) {
 		if (objtype == MGR_OBJ_JOB &&
-		    (start = starting_index(objname)) == -1)
+		    (start = get_job_location_hint(objname)) == -1)
 			start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {

@@ -510,7 +510,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		return NULL;
 
 	if (parent_object == MGR_OBJ_JOB) {
-		if ((start = starting_index(id)) == -1)
+		if ((start = get_job_location_hint(id)) == -1)
 			start = 0;
 		else
 			single_itr = 1;

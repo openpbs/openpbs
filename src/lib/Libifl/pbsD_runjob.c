@@ -186,14 +186,14 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 		return (pbs_errno = PBSE_IVALREQ);
 
 	if (svr_conns) {
-		if ((start = starting_index(jobid)) == -1)
+		if ((start = get_job_location_hint(jobid)) == -1)
 			start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
-			
+
 			/* if the vfd comes without node owning server, ifl need to figure out */
 			if (!extend && location && msvr_mode()) {
 				dest = get_dest_server(c, location);

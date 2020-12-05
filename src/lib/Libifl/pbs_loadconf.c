@@ -275,7 +275,7 @@ parse_psi(char *conf_value)
 	char **list;
 	int i;
 	char *svrname = NULL;
-	
+
 	free(pbs_conf.psi);
 
 	if (conf_value == NULL)
@@ -308,12 +308,8 @@ parse_psi(char *conf_value)
         			get_fullhostname(pbs_conf.psi[i].name, pbs_conf.psi[i].name, PBS_MAXHOSTNAME);
 		}
 
-		if (pbs_conf.psi[i].port == 0) {
-			if (is_same_host(pbs_conf.psi[i].name, pbs_conf.pbs_server_name))
-				pbs_conf.psi[i].port = pbs_conf.batch_service_port;
-			else
-				pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
-		}
+		if (pbs_conf.psi[i].port == 0)
+			pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
@@ -1368,4 +1364,3 @@ get_num_servers(void)
 {
 	return pbs_conf.pbs_num_servers;
 }
-
