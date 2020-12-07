@@ -1192,7 +1192,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 				if (!compare_non_consumable(res, resreq)) {
 					fail = 1;
 					if (err != NULL) {
-						char *requested;
+						const char *requested;
 						set_schd_error_codes(err, NOT_RUN, fail_code);
 						err->rdef = res->def;
 						requested = res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
