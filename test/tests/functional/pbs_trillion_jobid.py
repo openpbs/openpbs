@@ -359,7 +359,7 @@ exit 0
         self.submit_job(lower=1, upper=2, job_id='1[]', verify=True)
         self.submit_resv(resv_id='R2')
 
-    @timeout(1000)
+    @timeout(3000)
     def test_verify_sequence_window(self):
         """
         Tests the sequence window scenario in which jobid

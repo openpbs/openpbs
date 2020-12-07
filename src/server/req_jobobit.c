@@ -96,6 +96,12 @@ extern char *msg_obitnodel;
 extern char *msg_bad_password;
 extern char *msg_hook_reject_deletejob;
 extern char *msg_hook_reject_rerunjob;
+extern char *msg_momkillncpusburst;
+extern char *msg_momkillncpussum;
+extern char *msg_momkillvmem;
+extern char *msg_momkillmem;
+extern char *msg_momkillcput;
+extern char *msg_momkillwalltime;
 extern time_t time_now;
 
 /* External Functions called */
@@ -1702,6 +1708,42 @@ RetryJob:
 				free(mailbuf);
 				free(acctbuf);
 				return 0;
+			case JOB_EXEC_KILL_NCPUS_BURST:
+				/* MOM killed job due to exceeding ncpus (burst), abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding ncpus (burst).\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillncpusburst);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_NCPUS_SUM:
+				/* MOM killed job due to exceeding ncpus (sum), abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding ncpus (sum).\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillncpussum);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_VMEM:
+				/* MOM killed job due to exceeding vmem, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding vmem.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillvmem);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_MEM:
+				/* MOM killed job due to exceeding mem, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding mem.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillmem);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_CPUT:
+				/* MOM killed job due to exceeding cput, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding cput.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillcput);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_WALLTIME:
+				/* MOM killed job due to exceeding walltime, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding walltime.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillwalltime);
+				alreadymailed = 1;
+				break;
 			}
 	}
 

@@ -48,7 +48,6 @@ class TestQstatPerformance(TestPerformance):
     """
     Testing Qstat Performance
     """
-    qstat_query_list = []
     time_command = 'time'
 
     def setUp(self):
@@ -57,6 +56,7 @@ class TestQstatPerformance(TestPerformance):
             builds absolute path of commands to execute
         """
         TestPerformance.setUp(self)
+        self.qstat_query_list = []
         self.time_command = self.du.which(exe="time")
         if self.time_command == "time":
             self.skipTest("Time command not found")

@@ -573,6 +573,7 @@ struct job_info
 	unsigned topjob_ineligible:1;	/* Job is ineligible to be a top job */
 
 	char *job_name;			/* job name attribute (qsub -N) */
+	char *svr_inst_id;
 	char *comment;			/* comment field of job */
 	char *resv_id;			/* identifier of reservation job is in */
 	char *alt_id;			/* vendor assigned job identifier */
@@ -738,6 +739,7 @@ struct node_info
 	int bucket_ind;			/* index in server's bucket array */
 	int node_ind;			/* node's index into sinfo->unordered_nodes */
 	node_partition **np_arr;	/* array of node partitions node is in */
+	char *svr_inst_id;
 };
 
 struct resv_info

@@ -125,10 +125,10 @@ class TestJSONReport(TestSelf):
             if k not in jdata:
                 faulty_fields.append(k)
         for l in verify_data['test_summary_keys']:
-            if l not in jdata['test_summary']:
+            if l not in jdata['test_summary']['1']:
                 faulty_fields.append(l)
         for o in verify_data['test_results']:
-            if o not in jdata['test_summary']['result_summary']:
+            if o not in jdata['test_summary']['1']['result_summary']:
                 faulty_fields.append(o)
         for node in jdata['machine_info']:
             for m in verify_data['test_machine_info']:
@@ -148,14 +148,14 @@ class TestJSONReport(TestSelf):
             for t in jdata['testsuites'][s]['testcases']:
                 for v in verify_data['test_results_info']:
                     testcase = jdata['testsuites'][s]['testcases'][t]
-                    if v not in testcase['results']:
+                    if v not in testcase['results']['1']:
                         faulty_fields.append(v)
         for k, v in field_values.items():
             if k == 'machine_info_name':
                 if list(jdata['machine_info'].keys())[0] != v:
                     faulty_values.append(k)
             if k == 'testresult_status':
-                if vdata['results']['status'] != v:
+                if vdata['results']['1']['status'] != v:
                     faulty_values.append(k)
             if k == 'requirements':
                 if vdata['requirements'] != v:

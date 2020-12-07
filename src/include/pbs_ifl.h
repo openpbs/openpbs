@@ -121,7 +121,7 @@ extern "C" {
 /* End of standing reservation specific */
 
 /* additional job and general attribute names */
-
+#define ATTR_server_inst_id "server_instance_id"
 #define ATTR_ctime	"ctime"
 #define ATTR_estimated  "estimated"
 #define ATTR_exechost	"exec_host"

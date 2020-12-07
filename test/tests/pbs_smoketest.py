@@ -342,8 +342,7 @@ class SmokeTest(PBSTestSuite):
         a = {'Resource_List.ncpus': 2}
         j = Job(TEST_USER, a)
         j.set_sleep_time(15)
-        mom = self.moms.values()[0].shortname
-        j.create_eatcpu_job(15, mom)
+        j.create_eatcpu_job(15, self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x', offset=15,
                            interval=1, id=jid)

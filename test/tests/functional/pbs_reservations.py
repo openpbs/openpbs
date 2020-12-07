@@ -39,6 +39,7 @@
 
 
 import time
+from datetime import datetime as dt
 
 from tests.functional import *
 
@@ -60,6 +61,18 @@ class TestReservations(TestFunctional):
             tzone = 'America/Los_Angeles'
         return tzone
 
+    def dst_changes(self, start, end):
+        """
+        Returns true if it detects that DST changes between start and end
+        """
+        s = dt.fromtimestamp(start)
+        e = dt.fromtimestamp(end)
+        s_tz = s.astimezone().strftime("%Z")
+        e_tz = e.astimezone().strftime("%Z")
+        if s_tz != e_tz:
+            return True
+        return False
+
     def submit_reservation(self, select, start, end, user, rrule=None,
                            place='free', extra_attrs=None):
         """
@@ -68,8 +81,13 @@ class TestReservations(TestFunctional):
         a = {'Resource_List.select': select,
              'Resource_List.place': place,
              'reserve_start': start,
-             'reserve_end': end,
              }
+
+        if self.dst_changes(start, end) is True:
+            a['reserve_duration'] = int(end - start)
+        else:
+            a['reserve_end'] = end
+
         if rrule is not None:
             tzone = self.get_tz()
             a.update({ATTR_resv_rrule: rrule, ATTR_resv_timezone: tzone})
@@ -351,10 +369,10 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': retry})
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1+1:ncpus=3',
-             'reserve_start': now + 60, 'reserve_end': now + 240}
-        r = Reservation(attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1+1:ncpus=3',
+                                      start=now + 60,
+                                      end=now + 240)
 
         self.server.expect(RESV, {'reserve_state':
                                   (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
@@ -407,10 +425,10 @@ class TestReservations(TestFunctional):
 
         now = int(time.time())
         start = now + 20
-        a = {'reserve_start': start, 'reserve_end': start + 60,
-             'Resource_List.select': '2:ncpus=1'}
-        R = Reservation(attrs=a)
-        rid = self.server.submit(R)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='2:ncpus=1',
+                                      start=start,
+                                      end=start + 60)
         self.server.expect(RESV, {'reserve_state':
                                   (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
         resv_queue = rid.split('.')[0]
@@ -560,19 +578,17 @@ class TestReservations(TestFunctional):
         start2 = now + 600
         end2 = now + 7200
 
-        r1 = Reservation(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1', 'reserve_start': start1,
-             'reserve_end': end1}
-        r1.set_attributes(a)
-        r1id = self.server.submit(r1)
+        r1id = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       start=start1,
+                                       end=end1)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, r1id)
 
-        r2 = Reservation(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=4', 'reserve_start': start2,
-             'reserve_end': end2}
-        r2.set_attributes(a)
-        r2id = self.server.submit(r2)
+        r2id = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=4',
+                                       start=start2,
+                                       end=end2)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, r2id)
 
@@ -617,12 +633,10 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': "1:ncpus=2",
-             'reserve_start': now + 10,
-             'reserve_end': now + 30,
-             }
-        r = Reservation(TEST_USER, a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=2',
+                                      start=now + 10,
+                                      end=now + 30)
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, rid)
@@ -657,11 +671,8 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl', 'reserve_start': now + 30,
-             'reserve_end': now + 3600}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation('1:ncpus=1', now + 30, now + 3600,
+                                      user=TEST_USER, place='excl')
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -694,19 +705,20 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl', 'reserve_start': now + 30,
-             'reserve_end': now + 3600}
-        r1 = Reservation(TEST_USER, attrs=a)
-        rid1 = self.server.submit(r1)
+        rid1 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 30,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid1)
 
-        a['reserve_start'] = now + 7200
-        a['reserve_end'] = now + 10800
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 7200,
+                                       end=now + 10800)
 
         self.server.expect(RESV, exp_attr, id=rid2)
 
@@ -722,12 +734,11 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 30,
-             'reserve_end': now + 300}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      place='excl',
+                                      start=now + 30,
+                                      end=now + 300)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -746,11 +757,10 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit another reservation that will start after first
-        a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 360,
-             'reserve_end': now + 3600}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       start=now + 360,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
@@ -778,11 +788,10 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit a reservation that will start after the job starts running
-        a['reserve_start'] = now + 360
-        a['reserve_end'] = now + 3600
-
-        r1 = Reservation(TEST_USER, attrs=a)
-        rid1 = self.server.submit(r1)
+        rid1 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       start=now + 360,
+                                       end=now + 3600)
 
         self.server.log_match(rid1 + ";Reservation denied",
                               id=rid1, interval=5)
@@ -798,12 +807,11 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 30,
-             'reserve_end': now + 300}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      place='excl',
+                                      start=now + 30,
+                                      end=now + 300)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -822,11 +830,10 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit another reservation that will start after the job ends
-        a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 630,
-             'reserve_end': now + 3600}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       start=now + 630,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
@@ -843,12 +850,11 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 30,
-             'reserve_end': now + 300}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      place='excl',
+                                      start=now + 30,
+                                      end=now + 300)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -867,11 +873,10 @@ class TestReservations(TestFunctional):
 
         # Submit another reservation that will start after the first
         # reservation ends
-        a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 330,
-             'reserve_end': now + 3600}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       start=now + 330,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
@@ -888,11 +893,10 @@ class TestReservations(TestFunctional):
                             sudo=True)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 30,
-             'reserve_end': now + 300}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      start=now + 30,
+                                      end=now + 300)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -911,11 +915,10 @@ class TestReservations(TestFunctional):
 
         # Submit another non exclusive reservation that will start after
         # previous reservation ends but before job's walltime is over.
-        a = {'Resource_List.select': '1:ncpus=1',
-             'reserve_start': now + 330,
-             'reserve_end': now + 3600}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       start=now + 330,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
@@ -924,12 +927,11 @@ class TestReservations(TestFunctional):
 
         # Submit another exclusive reservation that will start after
         # previous reservation ends but before job's walltime is over.
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 330,
-             'reserve_end': now + 3600}
-        r3 = Reservation(TEST_USER, attrs=a)
-        rid3 = self.server.submit(r3)
+        rid3 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 330,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid3)
@@ -943,11 +945,11 @@ class TestReservations(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl', 'reserve_start': now + 30,
-             'reserve_end': now + 300}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      place='excl',
+                                      start=now + 30,
+                                      end=now + 300)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -965,11 +967,11 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         # Submit another reservation that will start after first
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl', 'reserve_start': now + 360,
-             'reserve_end': now + 3600}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 360,
+                                       end=now + 3600)
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid2)
@@ -982,16 +984,17 @@ class TestReservations(TestFunctional):
         """
         now = int(time.time())
         start = now + 30
-        a = {'reserve_start': start, 'reserve_end': start + 300,
-             'Resource_List.select': '1:ncpus=1:vnode=' +
-             self.mom.shortname,
-             'Resource_List.place': 'excl'}
+        a = {'Resource_List.select': '1:ncpus=1:vnode=' +
+             self.mom.shortname}
         if self.mom.is_cpuset_mom():
             vnode_val = '1:ncpus=1:vnode=' + self.server.status(NODE)[1]['id']
             a['Resource_List.select'] = vnode_val
 
-        r = Reservation(TEST_USER, a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select=a['Resource_List.select'],
+                                      place='excl',
+                                      start=start,
+                                      end=start + 3600)
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
 
@@ -1095,12 +1098,11 @@ class TestReservations(TestFunctional):
         # placement when rid1 is running
         # This reservation should be confirmed
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 3600,
-             'reserve_end': now + 3605}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 3600,
+                                       end=now + 3605)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid2)
 
@@ -1130,12 +1132,11 @@ class TestReservations(TestFunctional):
 
         # Submit a long term advance reservation with exclusive node
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 360,
-             'reserve_end': now + 365}
-        r1 = Reservation(TEST_USER, attrs=a)
-        rid1 = self.server.submit(r1)
+        rid1 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 360,
+                                       end=now + 365)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid1)
 
@@ -1183,12 +1184,11 @@ class TestReservations(TestFunctional):
         # placement when rid1 is running
         # This reservation should be confirmed
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=1',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 3600,
-             'reserve_end': now + 3605}
-        r3 = Reservation(TEST_USER, attrs=a)
-        rid3 = self.server.submit(r3)
+        rid3 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=1',
+                                       place='excl',
+                                       start=now + 3600,
+                                       end=now + 3605)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid3)
 
@@ -1214,24 +1214,22 @@ class TestReservations(TestFunctional):
 
         # Submit a long term advance reservation with exclusive node
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=10',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 3600,
-             'reserve_end': now + 3605}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=10',
+                                       place='excl',
+                                       start=now + 3600,
+                                       end=now + 3605)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid2)
 
         # Submit a short term reservation requesting all the nodes
         # exclusively
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=12',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 20,
-             'reserve_end': now + 100}
-        r3 = Reservation(TEST_USER, attrs=a)
-        rid3 = self.server.submit(r3)
+        rid3 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=12',
+                                       place='excl',
+                                       start=now + 20,
+                                       end=now + 100)
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid3)
 
@@ -1286,12 +1284,11 @@ class TestReservations(TestFunctional):
         # placement when rid1 is running (requesting all nodes)
         # This reservation should be confirmed
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=12',
-             'Resource_List.place': 'excl',
-             'reserve_start': now + 3600,
-             'reserve_end': now + 3605}
-        r2 = Reservation(TEST_USER, attrs=a)
-        rid2 = self.server.submit(r2)
+        rid2 = self.submit_reservation(user=TEST_USER,
+                                       select='1:ncpus=12',
+                                       place='excl',
+                                       start=now + 3600,
+                                       end=now + 3605)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid2)
 
@@ -1305,10 +1302,10 @@ class TestReservations(TestFunctional):
 
         # Submit a long term advance reservation that will be denied
         now = int(time.time())
-        a = {'Resource_List.select': '1:ncpus=10',
-             'reserve_start': now + 360,
-             'reserve_end': now + 365}
-        rid = self.server.submit(Reservation(TEST_USER, attrs=a))
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=10',
+                                      start=now + 360,
+                                      end=now + 365)
         self.server.log_match(rid + ";Reservation denied",
                               id=rid, interval=5)
         # The scheduler should log reason why it was denied
@@ -1346,10 +1343,10 @@ class TestReservations(TestFunctional):
         # once reservation confirmed
         start_time = time.time()
         now = int(start_time)
-        a = {'reserve_start': now + 20,
-             'reserve_end': now + 120}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      start=now + 20,
+                                      end=now + 120)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
@@ -1388,11 +1385,10 @@ class TestReservations(TestFunctional):
         # once reservation confirmed
         start_time = time.time()
         now = int(start_time)
-        a = {'Resource_List.select': '1:ncpus=4',
-             'reserve_start': now + 20,
-             'reserve_end': now + 180}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=4',
+                                      start=now + 20,
+                                      end=now + 180)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
@@ -1450,12 +1446,11 @@ class TestReservations(TestFunctional):
                             {'job_history_enable': 'True'})
         # Submit reservation with placement type scatter
         now = int(time.time())
-        a = {'Resource_List.select': '2:ncpus=2',
-             'Resource_List.place': 'scatter',
-             'reserve_start': now + 30,
-             'reserve_end': now + 300}
-        r = Reservation(PBSROOT_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='2:ncpus=2',
+                                      place='scatter',
+                                      start=now + 30,
+                                      end=now + 300)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
         resv_queue = rid.split(".")[0]
@@ -1532,10 +1527,10 @@ class TestReservations(TestFunctional):
         # once reservation confirmed
         start_time = time.time()
         now = int(start_time)
-        a = {'reserve_start': now + 10,
-             'reserve_end': now + 40}
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      start=now + 10,
+                                      end=now + 40)
         rid_q = rid.split('.')[0]
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
@@ -1760,13 +1755,6 @@ class TestReservations(TestFunctional):
         reservation
         """
         self.common_steps()
-        if 'PBS_TZID' in self.conf:
-            tzone = self.conf['PBS_TZID']
-        elif 'PBS_TZID' in os.environ:
-            tzone = os.environ['PBS_TZID']
-        else:
-            self.logger.info('Missing timezone, using America/Los_Angeles')
-            tzone = 'America/Los_Angeles'
 
         # Submit a standing reservation to occur every other minute for a
         # total count of 2
@@ -1774,14 +1762,11 @@ class TestReservations(TestFunctional):
         now = start + 30
         start = int(start)
         end = int(now)
-        a = {'Resource_List.select': '1:ncpus=4',
-             ATTR_resv_rrule: 'FREQ=MINUTELY;INTERVAL=2;COUNT=2',
-             ATTR_resv_timezone: tzone,
-             'reserve_start': start,
-             'reserve_end': end,
-             }
-        r = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=4',
+                                      rrule='FREQ=MINUTELY;INTERVAL=2;COUNT=2',
+                                      start=start,
+                                      end=end)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
         rid_q = rid.split(".")[0]
@@ -1873,10 +1858,12 @@ class TestReservations(TestFunctional):
         now = int(time.time())
         start = now + 30
         idle_timer = 15
-        a = {'reserve_start': start, 'reserve_end': now + 3600,
-             'delete_idle_time': idle_timer}
-        r = Reservation(attrs=a)
-        rid = self.server.submit(r)
+        extra = {'delete_idle_time': idle_timer}
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      start=start,
+                                      end=now + 3600,
+                                      extra_attrs=extra)
 
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -1896,10 +1883,12 @@ class TestReservations(TestFunctional):
         now = int(time.time())
         start = now + 30
         idle_timer = 15
-        a = {'reserve_start': start, 'reserve_end': now + 3600,
-             'delete_idle_time': idle_timer}
-        r = Reservation(attrs=a)
-        rid = self.server.submit(r)
+        extra = {'delete_idle_time': idle_timer}
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      start=start,
+                                      end=now + 3600,
+                                      extra_attrs=extra)
 
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -1931,10 +1920,12 @@ class TestReservations(TestFunctional):
         now = int(time.time())
         start = now + 30
         idle_timer = 15
-        a = {'reserve_start': start, 'reserve_end': now + 3600,
-             'delete_idle_time': 15}
-        r = Reservation(attrs=a)
-        rid = self.server.submit(r)
+        extra = {'delete_idle_time': idle_timer}
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=1',
+                                      start=start,
+                                      end=now + 3600,
+                                      extra_attrs=extra)
 
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
@@ -1966,7 +1957,7 @@ class TestReservations(TestFunctional):
         idle_timer = 15
         extra = {'delete_idle_time': idle_timer}
         rid = self.submit_reservation(
-            user=TEST_USER, select='1:ncpus=1', rrule='freq=HOURLY;COUNT=3',
+            user=TEST_USER, select='1:ncpus=1', rrule='freq=DAILY;COUNT=3',
             start=start, end=start + 1800, extra_attrs=extra)
 
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
@@ -1986,7 +1977,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         strf_str = '%a %b %d %T %Y'
-        start_str = time.strftime(strf_str, time.localtime(start + 3600))
+        start_str = time.strftime(strf_str, time.localtime(start + 86400))
 
         self.logger.info('Sleeping until resv idle timer fires')
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
@@ -2106,24 +2097,15 @@ class TestReservations(TestFunctional):
         are deleted once reservation ends
         """
         self.common_config()
-        if 'PBS_TZID' in self.conf:
-            tzone = self.conf['PBS_TZID']
-        elif 'PBS_TZID' in os.environ:
-            tzone = os.environ['PBS_TZID']
-        else:
-            self.logger.info('Missing timezone, using America/Los_Angeles')
-            tzone = 'America/Los_Angeles'
 
         start = int(time.time()) + 10
         end = int(time.time()) + 61
-        a = {'Resource_List.select': '2:ncpus=2',
-             ATTR_resv_rrule: 'FREQ=MINUTELY;COUNT=2',
-             ATTR_resv_timezone: tzone,
-             'reserve_start': start,
-             'reserve_end': end,
-             'Resource_List.place': 'vscatter'}
-        r = Reservation(PBSROOT_USER, attrs=a)
-        rid = self.server.submit(r)
+        rid = self.submit_reservation(user=PBSROOT_USER,
+                                      select='2:ncpus=2',
+                                      place='scatter',
+                                      rrule='FREQ=MINUTELY;COUNT=2',
+                                      start=start,
+                                      end=end)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid)
         resv_queue = rid.split(".")[0]
@@ -2239,10 +2221,10 @@ class TestReservations(TestFunctional):
 
         now = int(time.time())
 
-        a = {'Resource_List.ncpus': 4, 'reserve_start': now + 65,
-             'reserve_end': now + 240}
-        R = Reservation(TEST_USER, attrs=a)
-        rid = self.server.submit(R)
+        rid = self.submit_reservation(user=TEST_USER,
+                                      select='1:ncpus=4',
+                                      start=now + 65,
+                                      end=now + 240)
         self.server.expect(RESV,
                            {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
                            id=rid)

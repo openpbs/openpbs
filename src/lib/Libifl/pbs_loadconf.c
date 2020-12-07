@@ -306,8 +306,11 @@ parse_psi(char *conf_value)
 		}	
 		strcpy(pbs_conf.psi[i].name, svrname);
 
-		if (pbs_conf.psi[i].name[0] == '\0')
-			strcpy(pbs_conf.psi[i].name, pbs_conf.pbs_server_name);
+		if (pbs_conf.psi[i].name[0] == '\0') {
+			if (gethostname(pbs_conf.psi[i].name, PBS_MAXHOSTNAME) == 0)
+        			get_fullhostname(pbs_conf.psi[i].name, pbs_conf.psi[i].name, PBS_MAXHOSTNAME);
+		}
+
 		if (pbs_conf.psi[i].port == 0) {
 			if (is_same_host(pbs_conf.psi[i].name, pbs_conf.pbs_server_name))
 				pbs_conf.psi[i].port = pbs_conf.batch_service_port;
