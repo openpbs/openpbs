@@ -640,7 +640,7 @@ class TestMaintenanceReservations(TestFunctional):
         now = int(time.time())
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
 
         a1 = {'reserve_start': now + 30,
               'reserve_end': now + 1200}
