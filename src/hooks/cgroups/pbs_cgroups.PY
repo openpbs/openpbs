@@ -1896,7 +1896,7 @@ class NodeUtils(object):
         except Exception as exc:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Unexpected error: %s' % exc)
 
-        # if we found a mig gpu, let's add the gis
+        # at least one gpu had mig enabled, let's add the gis
         if mig_found:
             self._discover_migs(gpus)
 
@@ -3916,7 +3916,7 @@ class CgroupUtils(object):
                     device_allowed.append(dev_entry)
             elif device_kind == 'gpu' and not device_info.get('is_gi', False):
                 # Requires the ctrl (255) to be added
-                # unless GPU is a MIG gpu
+                # unless GPU is a GI from a MIG GPU
                 dev_entry = '%s %d:255 rwm' % (device_info['type'],
                                                device_info['major'])
                 if dev_entry not in device_allowed:
