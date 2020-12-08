@@ -5337,19 +5337,10 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			 * compare the resource name with the chunk name
 			 */
 			if (inp->err->rdef == getallres(RES_VNODE)) {
-				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
-				if (hreq == NULL)
-					return 0;
-				for (index = 0; job->execselect->chunks[index] != NULL; index++)
-				{
-					resource_req *lreq = find_resource_req(job->execselect->chunks[index]->req, inp->err->rdef);
-					if (lreq != NULL)
-						if (strcmp(hreq->res_str, lreq->res_str) == 0)
-							return 1;
-				}
+				if (inp->err->arg2 != NULL && find_node_info(job->ninfo_arr, inp->err->arg2) != NULL)
+					return 1;
 			} else if (inp->err->rdef == getallres(RES_HOST)) {
-				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
-				if (find_node_by_host(job->ninfo_arr, hreq->res_str) != NULL)
+				if (inp->err->arg2 != NULL && find_node_by_host(job->ninfo_arr, inp->err->arg2) != NULL)
 					return 1;
 			} else {
 				if (inp->err->rdef->type.is_non_consumable) {

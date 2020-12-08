@@ -1192,13 +1192,19 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 				if (!compare_non_consumable(res, resreq)) {
 					fail = 1;
 					if (err != NULL) {
+						const char *requested;
 						set_schd_error_codes(err, NOT_RUN, fail_code);
 						err->rdef = res->def;
-
+						requested = res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1));
 						snprintf(buf, sizeof(buf), "(%s != %s)",
-							res_to_str_r(resreq, RF_REQUEST, resbuf1, sizeof(resbuf1)),
+							requested,
 							res_to_str_r(res, RF_AVAIL, resbuf2, sizeof(resbuf2)));
 						set_schd_error_arg(err, ARG1, buf);
+						/* Set arg2 for vnode/host resource. In case of preemption, arg2 is used to cull
+						 * the list of running jobs
+						 */
+						if ((res->def == getallres(RES_HOST)) || (res->def == getallres(RES_VNODE)))
+							set_schd_error_arg(err, ARG2, requested);
 					}
 				}
 			}
