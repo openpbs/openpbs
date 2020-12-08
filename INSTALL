@@ -5,13 +5,13 @@ How to install PBS using the configure script.
 
 1. Install the prerequisite packages for building PBS.
 
-  For CentOS-8 systems you should configure and enable PowerTools
+  For CentOS-8 systems you should configure and enable powertools
   repo for hwloc-devel and libedit-devel packages.
 
   You should run the following commands as root:
 
     dnf install -y dnf-plugins-core
-    dnf config-manager --set-enabled PowerTools
+    dnf config-manager --set-enabled powertools
 
     dnf install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
