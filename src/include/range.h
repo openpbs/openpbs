@@ -93,6 +93,16 @@ range *dup_range_list(range *old_r);
  */
 range *dup_range(range *old_r);
 
+/**
+ * @brief
+ *	range_count - count number of elements in a given range structure
+ *
+ * @param[in]	r - range structure to duplicate
+ *
+ * @return int
+ * @retval # - number of elements in range
+ *
+ */
 int range_count(range *r);
 
 /*

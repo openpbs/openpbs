@@ -4587,7 +4587,7 @@ svr_saveorpurge_finjobhist(job *pjob)
 			pjob->ji_ajinfo->tkm_flags &= ~TKMFLG_CHK_ARRAY;
 		if (pjob->ji_terminated &&
 		    (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		    pjob->ji_parentaj &&
+		    pjob->ji_parentaj != NULL &&
 		    pjob->ji_parentaj->ji_ajinfo != NULL)
 			pjob->ji_parentaj->ji_ajinfo->tkm_dsubjsct++;
 	} else {
@@ -4808,7 +4808,7 @@ svr_histjob_update(job * pjob, char newstate, int newsubstate)
 			for (i = ptbl->tkm_start; i <= ptbl->tkm_end; i += ptbl->tkm_step) {
 				int sjsst;
 				char sjst;
-				job *psubj = get_subjob_state(pjob, i, &sjst, &sjsst);
+				job *psubj = get_subjob_and_state(pjob, i, &sjst, &sjsst);
 				if (psubj) {
 					if (sjsst != JOB_SUBSTATE_TERMINATED &&
 						sjsst != JOB_SUBSTATE_FINISHED &&
@@ -5024,7 +5024,7 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 				int i;
 				for (i = ptbl->tkm_start; i <= ptbl->tkm_end; i += ptbl->tkm_step) {
 					int sjsst;
-					get_subjob_state(pjob, i, NULL, &sjsst);
+					get_subjob_and_state(pjob, i, NULL, &sjsst);
 					if (sjsst == JOB_SUBSTATE_FAILED || sjsst == JOB_SUBSTATE_TERMINATED) {
 						newsubstate = sjsst;
 						break;

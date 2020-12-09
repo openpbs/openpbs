@@ -255,7 +255,7 @@ check_deletehistoryjob(struct batch_request * preq, char * jid)
 			if (histpjob->ji_ajinfo) {
 				int i;
 				for (i = histpjob->ji_ajinfo->tkm_start; i <= histpjob->ji_ajinfo->tkm_end; i += histpjob->ji_ajinfo->tkm_step) {
-					job  *psjob = get_subjob_state(histpjob, i, NULL, NULL);
+					job *psjob = get_subjob_and_state(histpjob, i, NULL, NULL);
 					if (psjob) {
 						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 							psjob->ji_qs.ji_jobid,
@@ -453,7 +453,7 @@ req_deletejob(struct batch_request *preq)
 			/* single subjob, if running do full delete, */
 			/* if not then just set it expired		 */
 
-			pjob = get_subjob_state(parent, get_index_from_jid(jid), &sjst, NULL);
+			pjob = get_subjob_and_state(parent, get_index_from_jid(jid), &sjst, NULL);
 			if (sjst == JOB_STATE_LTR_UNKNOWN) {
 				update_deletejob_stat(jid, preq, PBSE_IVALREQ);
 				if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs) {
@@ -519,7 +519,7 @@ req_deletejob(struct batch_request *preq)
 			/* keep the array from being removed while we are looking at it */
 			parent->ji_ajinfo->tkm_flags |= TKMFLG_NO_DELETE;
 			for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
-				pjob = get_subjob_state(parent, i, &sjst, NULL);
+				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 				if (sjst == JOB_STATE_LTR_UNKNOWN)
 					continue;
 				if ((sjst == JOB_STATE_LTR_EXITING) && !forcedel)
@@ -611,7 +611,7 @@ req_deletejob(struct batch_request *preq)
 				break;
 			}
 			for (i = start; i <= end; i += step) {
-				pjob = get_subjob_state(parent, i, &sjst, NULL);
+				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 				if (sjst == JOB_STATE_LTR_UNKNOWN)
 					continue;
 

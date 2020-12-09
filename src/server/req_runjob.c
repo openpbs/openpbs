@@ -462,7 +462,7 @@ req_runjob(struct batch_request *preq)
 		}
 	} else if (jt == IS_ARRAY_Single) {
 		/* single subjob, if running can signal */
-		pjob = get_subjob_state(parent, get_index_from_jid(jid), &sjst, NULL);
+		pjob = get_subjob_and_state(parent, get_index_from_jid(jid), &sjst, NULL);
 		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
@@ -495,7 +495,7 @@ req_runjob(struct batch_request *preq)
 			} else if (i == 1)
 				break; /* no more in the range */
 			for (i = start; i <= end; i += step) {
-				pjob = get_subjob_state(parent, i, &sjst, NULL);
+				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 				if (sjst == JOB_STATE_LTR_QUEUED) {
 					anygood = 1;
 					break;
@@ -590,7 +590,7 @@ req_runjob(struct batch_request *preq)
 		attribute sub_prev_res;
 		clear_attr(&sub_prev_res, &job_attr_def[JOB_ATR_resource]);
 
-		pjobsub = get_subjob_state(parent, get_index_from_jid(jid), NULL, NULL);
+		pjobsub = get_subjob_and_state(parent, get_index_from_jid(jid), NULL, NULL);
 		if (pjobsub != NULL) {
 			sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
 			sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
@@ -656,7 +656,7 @@ req_runjob(struct batch_request *preq)
 			attribute sub_prev_res;
 			clear_attr(&sub_prev_res, &job_attr_def[JOB_ATR_resource]);
 
-			pjobsub = get_subjob_state(parent, i, &sjst, NULL);
+			pjobsub = get_subjob_and_state(parent, i, &sjst, NULL);
 			if (sjst != JOB_STATE_LTR_QUEUED)
 				continue;
 

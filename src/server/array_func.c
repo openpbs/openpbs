@@ -285,11 +285,11 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 	ptbl->tkm_subjsct[ostatenum]--;
 	ptbl->tkm_subjsct[nstatenum]++;
 
-	if (oldstate == JOB_STATE_LTR_QUEUED)
-		range_remove_value(&ptbl->trm_quelist, idx);
-	if (newstate == JOB_STATE_LTR_QUEUED)
-		range_add_value(&ptbl->trm_quelist, idx, ptbl->tkm_step);
 	if (oldstate == JOB_STATE_LTR_QUEUED || newstate == JOB_STATE_LTR_QUEUED) {
+		if (oldstate == JOB_STATE_LTR_QUEUED)
+			range_remove_value(&ptbl->trm_quelist, idx);
+		if (newstate == JOB_STATE_LTR_QUEUED)
+			range_add_value(&ptbl->trm_quelist, idx, ptbl->tkm_step);
 		update_array_indices_remaining_attr(parent);
 		save_parent = 1;
 	}
@@ -383,15 +383,15 @@ chk_array_doneness(job *parent)
  *
  * @param[in]     parent    - pointer to the parent job
  * @param[in]     sjidx     - subjob index
- * @param[in/out] state     - put state of subjob if not null
- * @param[in/out] substate  - put substate of subjob if not null
+ * @param[out]    state     - put state of subjob if not null
+ * @param[out]    substate  - put substate of subjob if not null
  *
  * @return job *
  * @retval !NULL - if subjob found
  * @return NULL  - if subjob not found
  */
 job *
-get_subjob_state(job *parent, int sjidx, char *state, int *substate)
+get_subjob_and_state(job *parent, int sjidx, char *state, int *substate)
 {
 	job *sj;
 
@@ -553,7 +553,7 @@ setup_ajinfo(job *pjob, int mode)
 		return PBSE_SYSTEM;
 	for (i = 0; i < PBS_NUMJOBSTATE; i++)
 		trktbl->tkm_subjsct[i] = 0;
-	if (mode == ATR_ACTION_RECOV)
+	if (mode == ATR_ACTION_RECOV || mode == ATR_ACTION_ALTER)
 		trktbl->trm_quelist = NULL;
 	else {
 		trktbl->trm_quelist = new_range(start, end, step, count, NULL);
@@ -602,7 +602,6 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 	/* set attribute "array" True  and clear "array_state_count" */
 	pjob->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob;
 	set_jattr_b_slim(pjob, JOB_ATR_array, 1, SET);
-	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_SET_MOD_MCACHE;
 	free_jattr(pjob, JOB_ATR_array_state_count);
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
@@ -643,11 +642,11 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 	if (!pjob || !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) || !pjob->ji_ajinfo)
 		return PBSE_BADATVAL;
 
-	if (mode == ATR_ACTION_RECOV && pjob->ji_ajinfo->trm_quelist != NULL)
-		return PBSE_BADATVAL;
-
 	if (mode == ATR_ACTION_NEW && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE))
 		return PBSE_NONE;
+
+	if (pjob->ji_ajinfo->trm_quelist != NULL)
+		return PBSE_BADATVAL;
 
 	range = get_jattr_str(pjob, JOB_ATR_array_indices_remaining);
 	pjob->ji_ajinfo->trm_quelist = range_parse(range);
@@ -693,7 +692,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 	long	   eligibletime;
 	long	    time_msec;
 	struct timeval	    tval;
-	char tmp_path[MAXPATHLEN + 1];
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -784,11 +782,8 @@ create_subjob(job *parent, char *newjid, int *rc)
 		return NULL;
 	}
 
-	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
-	set_jattr_generic(subj, JOB_ATR_outpath, subst_array_index(subj, tmp_path), NULL, INTERNAL);
-
-	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
-	set_jattr_generic(subj, JOB_ATR_errpath, subst_array_index(subj, tmp_path), NULL, INTERNAL);
+	set_jattr_generic(subj, JOB_ATR_outpath, subst_array_index(subj, get_jattr_str(parent, JOB_ATR_outpath)), NULL, INTERNAL);
+	set_jattr_generic(subj, JOB_ATR_errpath, subst_array_index(subj, get_jattr_str(parent, JOB_ATR_errpath)), NULL, INTERNAL);
 
 	*rc = PBSE_NONE;
 	return subj;

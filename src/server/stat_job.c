@@ -234,10 +234,11 @@ status_attrib(svrattrl *pal, void *pidx, attribute_def *padef, attribute *pattr,
  *		but not a subjob of an Array Job.
  *
  * @param[in,out]	pjob	-	ptr to job to status
- * @param[in]	preq	-	request structure
- * @param[in]	pal	-	specific attributes to status
+ * @param[in]		preq	-	request structure
+ * @param[in]		pal	-	specific attributes to status
  * @param[in,out]	pstathd	-	RETURN: head of list to append status to
- * @param[out]	bad	-	RETURN: index of first bad attribute
+ * @param[out]		bad	-	RETURN: index of first bad attribute
+ * @param[in]		dosubjobs -	flag to expand a Array job to include all subjobs
  *
  * @return	int
  * @retval	0	: success
@@ -348,11 +349,12 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
  *		Works by statusing the parrent unless subjob is actually running.
  *
  * @param[in,out]	pjob	-	ptr to parent Array
- * @param[in]	preq	-	request structure
- * @param[in]	pal	-	specific attributes to status
- * @param[in]	subj	-	if not = -1 then include subjob [n]
+ * @param[in]		preq	-	request structure
+ * @param[in]		pal	-	specific attributes to status
+ * @param[in]		subj	-	if not = -1 then include subjob [n]
  * @param[in,out]	pstathd	-	RETURN: head of list to append status to
- * @param[out]	bad	-	RETURN: index of first bad attribute
+ * @param[out]		bad	-	RETURN: index of first bad attribute
+ * @param[in]		dosubjobs -	flag to expand a Array job to include all subjobs
  *
  * @return	int
  * @retval	0	: success
@@ -385,7 +387,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 
 	/* if subjob job obj exists, use real job structure */
 
-	psubjob = get_subjob_state(pjob, subj, &sjst, &sjsst);
+	psubjob = get_subjob_and_state(pjob, subj, &sjst, &sjsst);
 	if (psubjob)
 		return status_job(psubjob, preq, pal, pstathd, bad, dosubjobs);
 

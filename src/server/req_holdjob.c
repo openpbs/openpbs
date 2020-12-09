@@ -328,7 +328,7 @@ req_releasejob(struct batch_request *preq)
 	if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_ajinfo)) {
 		int i;
 		for(i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
-			job *psubjob = get_subjob_state(pjob, i, NULL, NULL);
+			job *psubjob = get_subjob_and_state(pjob, i, NULL, NULL);
 			if (psubjob && (check_job_state(psubjob, JOB_STATE_LTR_HELD))) {
 #ifndef NAS
 				old_hold = get_jattr_long(psubjob, JOB_ATR_hold);

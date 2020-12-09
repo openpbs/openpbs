@@ -154,7 +154,7 @@ req_signaljob(struct batch_request *preq)
 
 	} else if (jt == IS_ARRAY_Single) {
 		/* single subjob, if running can signal */
-		pjob = get_subjob_state(parent, get_index_from_jid(jid), &sjst, NULL);
+		pjob = get_subjob_and_state(parent, get_index_from_jid(jid), &sjst, NULL);
 		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
@@ -177,8 +177,8 @@ req_signaljob(struct batch_request *preq)
 
 		++preq->rq_refct;	/* protect the request/reply struct */
 
-		for (i=parent->ji_ajinfo->tkm_start; i<=parent->ji_ajinfo->tkm_end; i+=parent->ji_ajinfo->tkm_step) {
-			pjob = get_subjob_state(parent, i, &sjst, NULL);
+		for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+			pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 			if (!pjob || sjst != JOB_STATE_LTR_RUNNING)
 				continue;
 			/* if suspending,  skip those already suspended,  */
@@ -216,7 +216,7 @@ req_signaljob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			pjob = get_subjob_state(parent, i, &sjst, NULL);
+			pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 			if (!pjob || sjst != JOB_STATE_LTR_RUNNING)
 				continue;
 			/* if suspending,  skip those already suspended,  */

@@ -445,8 +445,8 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 			return pjob;
 		}
 
-		sprintf(log_buffer, "%s, state=%c", msg_badstate, get_job_state(pjob));
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "%s, state=%c", msg_badstate, get_job_state(pjob));
 		if (err != NULL)
 			*err = PBSE_BADSTATE;
 		if (preq->rq_type != PBS_BATCH_DeleteJobList)

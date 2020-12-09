@@ -137,7 +137,7 @@ expand_remaining_subjob(struct batch_status *array, int *count)
 	*count = 0;
 	parent_jid = array->name;
 	remain = get_attr(array->attribs, ATTR_array_indices_remaining, NULL);
-	if (remain == NULL || (remain != NULL && *remain == '-'))
+	if (remain == NULL || *remain == '-')
 		return 0;
 	r = range_parse(remain);
 	if (r == NULL)
@@ -152,25 +152,30 @@ expand_remaining_subjob(struct batch_status *array, int *count)
 			if (strcmp(next->name, ATTR_state) == 0) {
 				free(next->value);
 				next->value = malloc(2);
-				if (next->value == NULL)
+				if (next->value == NULL) {
+					free_attrl_list(sj_attrs);
 					return 1;
+				}
 				next->value[0] = JOB_STATE_LTR_QUEUED;
 				next->value[1] = '\0';
 				should_break++;
 			} else if (strcmp(next->name, ATTR_substate) == 0) {
 				free(next->value);
 				next->value = strdup(TOSTR(JOB_SUBSTATE_QUEUED));
-				if (next->value == NULL)
+				if (next->value == NULL) {
+					free_attrl_list(sj_attrs);
 					return 1;
+				}
 				should_break++;
 			} else if (strcmp(next->name, ATTR_array) == 0) {
-				if (prev && prev->next == next) {
+				if (prev) {
 					prev->next = NULL;
 					free_attrl_list(next);
+					next = NULL;
 					should_break++;
 				}
 			}
-			if (should_break == 3)
+			if (should_break == 3 || next == NULL)
 				break;
 			prev = next;
 		}
@@ -366,14 +371,16 @@ again:
 			reply->brp_count += ct;
 
 			while (ct--) {
+				int mgr_obj;
+
 				rc = DIS_PROTO;
-				pstcmd = read_batch_status(sock, &i, &rc);
+				pstcmd = read_batch_status(sock, &mgr_obj, &rc);
 				if (rc != DIS_SUCCESS || pstcmd == NULL) {
 					if (pstcmd)
 						pbs_statfree(pstcmd);
 					return rc;
 				}
-				if (i == MGR_OBJ_JOBARRAY_PARENT) {
+				if (mgr_obj == MGR_OBJ_JOBARRAY_PARENT) {
 					if (pstcmd_ja != NULL) {
 						pstcmd_ja->next = bs_isort(pstcmd_ja->next, cmp_sj_name);
 						for (pstcmd_last = pstcmd_ja; pstcmd_last->next; pstcmd_last = pstcmd_last->next)
@@ -388,11 +395,11 @@ again:
 					}
 					pstcmd_ja = pstcmd;
 					continue;
-				} else if (i == MGR_OBJ_SUBJOB) {
+				} else if (mgr_obj == MGR_OBJ_SUBJOB) {
 					pstcmd->next = pstcmd_ja->next;
 					pstcmd_ja->next = pstcmd;
 					continue;
-				} else if (i != MGR_OBJ_SUBJOB) {
+				} else {
 					if (pstcmd_ja != NULL) {
 						pstcmd_ja->next = bs_isort(pstcmd_ja->next, cmp_sj_name);
 						for (pstcmd_last = pstcmd_ja; pstcmd_last->next; pstcmd_last = pstcmd_last->next)

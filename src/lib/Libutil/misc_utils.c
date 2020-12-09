@@ -2510,9 +2510,16 @@ int
 get_index_from_jid(char *jid)
 {
 	char *range = get_range_from_jid(jid);
-	if (range)
-		return strtoul(range, NULL, 10);
-	else
+
+	if (range != NULL) {
+		char *endptr = NULL;
+		int idx = strtoul(range, &endptr, 10);
+
+		if (endptr == NULL || *endptr != '\0' || idx < 0)
+			return -1;
+		else
+			return idx;
+	} else
 		return -1;
 }
 /**
@@ -2531,35 +2538,23 @@ get_index_from_jid(char *jid)
 char *
 get_range_from_jid(char *jid)
 {
-	int           i;
-	char         *pcb;
-	char         *pce;
-	char	     *pnew;
-	size_t	      t;
-	static char  *index;
-	static size_t indexlen = 0;;
+	int i;
+	char *pcb;
+	char *pce;
+	static char *index;
 
-	if ((pcb = strchr(jid, (int)'[')) == NULL)
+	if ((pcb = strchr(jid, (int) '[')) == NULL)
 		return NULL;
-	if ((pce = strchr(jid, (int)']')) == NULL)
+	if ((pce = strchr(jid, (int) ']')) == NULL)
 		return NULL;
 	if (pce <= pcb)
 		return NULL;
 
-	if (indexlen == 0) {
-		indexlen = pce - pcb;
-		index = (char *)malloc(indexlen);
-	} else if (indexlen < (pce - pcb)) {
-		t = pce - pcb;
-		pnew = realloc(index, t);
-		if (pnew == NULL)
+	if (index == NULL) {
+		index = (char *) malloc(BUF_SIZE);
+		if (index == NULL)
 			return NULL;
-		index = pnew;
-		indexlen = t;
 	}
-	if (index == NULL)
-		return NULL;
-
 
 	i = 0;
 	while (++pcb < pce)
@@ -2568,20 +2563,34 @@ get_range_from_jid(char *jid)
 	return index;
 }
 
+/**
+ * @brief
+ * 	create and return (in a static array) a jobid for a subjob based on
+ * 	the parent jobid and the subjob index
+ *
+ * @param[in] parent_jid - parent jobid
+ * @param[in] sjidx -  subjob index.
+ *
+ * @return char *
+ * @return jobid of subjob
+ *
+ * @par
+ * 	MT-safe: No - uses a static buffer, "jid".
+ */
 char *
 create_subjob_id(char *parent_jid, int sjidx)
 {
-	static char jid[PBS_MAXSVRJOBID+1];
-	char        index[20];
-	char       *pb;
+	static char jid[PBS_MAXSVRJOBID + 1];
+	char index[20];
+	char *pb;
 
 	sprintf(index, "%d", sjidx);
-	strcpy(jid, parent_jid);
+	pbs_strncpy(jid, parent_jid, sizeof(jid));
 
-	pb = strchr(jid, (int)'[');	/* "seqnum[" section */
-	*(pb+1) = '\0';
-	strcat(jid, index);
-	pb = strchr(parent_jid, (int)']');
-	strcat(jid, pb); /* "].hostname" section */
+	pb = strchr(jid, (int) '['); /* "seqnum[" section */
+	*(pb + 1) = '\0';
+	strncat(jid, index, sizeof(jid) - 1);
+	pb = strchr(parent_jid, (int) ']');
+	strncat(jid, pb, sizeof(jid) - 1); /* "].hostname" section */
 	return jid;
 }

@@ -281,7 +281,7 @@ add_select_array_entries(job *pjob, int dosub, char *statelist,
 			 * just add the subjobs to the return list.
 			 */
 			char sjst;
-			job *sj = get_subjob_state(pjob, i, &sjst, NULL);
+			job *sj = get_subjob_and_state(pjob, i, &sjst, NULL);
 			if (sjst == JOB_STATE_LTR_UNKNOWN)
 				continue;
 			if ((statelist == NULL) ||
@@ -419,7 +419,7 @@ req_selectjobs(struct batch_request *preq)
 						for (i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
 							char sjst = JOB_STATE_LTR_QUEUED;
 
-							get_subjob_state(pjob, i, &sjst, NULL);
+							get_subjob_and_state(pjob, i, &sjst, NULL);
 							if (sjst == JOB_STATE_LTR_UNKNOWN)
 								continue;
 							if (pstate == 0 || chk_job_statenum(sjst, pstate)) {

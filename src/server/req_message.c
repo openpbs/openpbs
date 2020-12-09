@@ -217,7 +217,7 @@ req_py_spawn(struct batch_request *preq)
 		char sjst;
 		int sjsst;
 
-		get_subjob_state(pjob, get_index_from_jid(jid), &sjst, &sjsst);
+		get_subjob_and_state(pjob, get_index_from_jid(jid), &sjst, &sjsst);
 		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
@@ -293,7 +293,7 @@ req_relnodesjob(struct batch_request *preq)
 		char sjst;
 		int sjsst;
 
-		pjob = get_subjob_state(pjob, get_index_from_jid(jid), &sjst, &sjsst);
+		pjob = get_subjob_and_state(pjob, get_index_from_jid(jid), &sjst, &sjsst);
 		if (pjob == NULL || sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;

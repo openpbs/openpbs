@@ -166,7 +166,7 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad, dosubjobs);
 		if (dosubjobs
-		    && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) != 0
+		    && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)
 		    && (rc == PBSE_NONE || rc != PBSE_PERM)
 		    && pjob->ji_ajinfo != NULL
 		    && pjob->ji_ajinfo->tkm_ct != pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED]) {

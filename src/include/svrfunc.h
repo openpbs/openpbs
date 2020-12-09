@@ -178,7 +178,7 @@ extern char *lastname(char *);
 extern void chk_array_doneness(job *);
 extern job *create_subjob(job *, char *, int *);
 extern job *find_arrayparent(char *);
-extern job *get_subjob_state(job *, int, char *, int *);
+extern job *get_subjob_and_state(job *, int, char *, int *);
 extern void update_sj_parent(job *, job *, char *, char, char);
 extern void update_subjob_state_ct(job *);
 extern char *subst_array_index(job *, char *);
