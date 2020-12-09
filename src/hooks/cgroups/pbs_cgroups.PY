@@ -2017,7 +2017,7 @@ class NodeUtils(object):
             capname = 'gpu%d/gi%d/ci%d/access' % (gpu, gi, ci)
         with open(path, 'r') as minors:
             for line in minors:
-                cap, minor = line.split()
+                cap, minor = line.split(' ', 1)
                 if cap == capname:
                     return int(minor)
         pbs.logmsg(pbs.EVENT_DEBUG, 'Cannot find minor number for %s'
