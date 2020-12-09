@@ -1885,9 +1885,9 @@ class NodeUtils(object):
                     if mig_mode is not None:
                         current_mig = mig_mode.find('current_mig')
                         if current_mig is not None:
-                            mig_enabled = current_mig.text == 'Enabled'
-                            if mig_enabled:
+                            if current_mig.text == 'Enabled':
                                 mig_found = True
+                                mig_enabled = True
                     gpus[name] = {
                         'pci_bus_id': (domain + ':' + instance).lower(),
                         'uuid': child.find('uuid').text,
@@ -1975,12 +1975,18 @@ class NodeUtils(object):
                        '%s: nvidia-smi call took %f seconds' %
                        (caller_name(), elapsed_time))
 
-        # format is
+        # format is either
         # | Compute instances:                                    |
         # | GPU     GPU       Name             Profile   Instance |
         # |       Instance                       ID        ID     |
         # |         ID                                            |
         # |   0      7       MIG 1g.5gb           0         0     |
+        # or
+        # | Compute instances:                                             |
+        # | GPU     GPU       Name         Profile   Instance   Placement  |
+        # |       Instance                   ID        ID       Start:Size |
+        # |         ID                                                     |
+        # |   0      7       MIG 1g.5gb       0         0          0:1     |
         r = re.compile(
             r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+(\S+\s+)?\|$')
         for l in out:
@@ -2000,7 +2006,6 @@ class NodeUtils(object):
             if 'cis' not in gpus[gpuid]['gis'][giid]:
                 gpus[gpuid]['gis'][giid]['cis'] = {}
             gpus[gpuid]['gis'][giid]['cis'][ciid] = ci
-        return
 
     def _discover_mig_minor(self, gpu, gi, ci=None):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
@@ -3811,8 +3816,7 @@ class CgroupUtils(object):
                 for instance in devices[devclass]:
                     dev = devices[devclass][instance]
                     if 'extra_devs' in dev:
-                        for extra in dev['extra_devs']:
-                            accelerators.append('%s' % extra)
+                        accelerators.extend(dev['extra_devs'])
                     accelerators.append('%d:%d' % (dev['major'], dev['minor']))
         # For CentOS 7 we need to remove a *:* rwm from devices.list
         # before we can add anything to devices.allow. Otherwise our
