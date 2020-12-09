@@ -578,12 +578,6 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
-        vnodelist = self.server.status(NODE)
-        vnodelist = [v for v in vnodelist if v['Mom'] == self.momB.hostname]
-        if len(vnodelist) > 1:
-            vnode = vnodelist[1]['id']
-        else:
-            vnode = vnodelist[0]['id']
 
         select = 'host=%s+host=%s' % (self.momA.shortname,
                                       self.momB.shortname)
@@ -603,10 +597,14 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.server.submit(r2)
 
-        exp_attr = {'resv_nodes': '(%s:ncpus=1)' % vnode,
-                    'reserve_state': (MATCH_RE, 'RESV_DEGRADED|12'),
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|12'),
                     'reserve_substate': 12}
         self.server.expect(RESV, exp_attr, id=rid1)
+        resv1 = self.server.status(RESV, id=rid1)
+        vnodes = resv1.get_vnodes()
+        self.assertEqual(len(vnodes), 1)
+        vnode = self.server.status(NODE, id=vnodes[0])
+        self.assertEqual(vnode['Mom'], self.momB.hostname)
 
         self.logger.info("Wait for reservation to start (2 minutes)")
         time.sleep(120)
