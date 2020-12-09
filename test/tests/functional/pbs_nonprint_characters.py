@@ -223,7 +223,7 @@ sleep 5
             if ch in self.npch_asis:
                 chk_var = r'var1=A\,B\,%s\,C\,D' % ch
             script = ['#PBS -v "var1=\'A,B,%s,C,D\'"' % ch]
-            script += ['sleep 5']
+            script += ['sleep 10']
             script += ['env | grep var1']
             jid = self.create_and_submit_job(content=script)
             # Check if qstat -f output contains the escaped character
@@ -254,7 +254,7 @@ sleep 5
             chk_var = 'NONPRINT_VAR=X%sY' % self.npcat[ch]
             if ch in self.npch_asis:
                 chk_var = 'NONPRINT_VAR=X%sY' % ch
-            script = ['sleep 5']
+            script = ['sleep 10']
             script += ['env | grep NONPRINT_VAR']
             a = {self.ATTR_V: None, ATTR_S: '/bin/bash'}
             j = Job(TEST_USER, attrs=a)
@@ -706,7 +706,7 @@ sleep 5
                 chk_var = 'NONPRINT_VAR=X%sY' % ch
             exp = "X%sY" % ch
             set_env = {"NONPRINT_VAR": exp}
-            script = ['sleep 5']
+            script = ['sleep 10']
             script += ['env | grep NONPRINT_VAR']
             a = {self.ATTR_V: None, ATTR_J: '1-2', ATTR_S: '/bin/bash'}
             j = Job(TEST_USER, attrs=a)
