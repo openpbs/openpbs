@@ -122,7 +122,6 @@ static void update_depend(job *, char *, char *, int, int);
 
 extern struct server server;
 extern char  server_name[];
-extern char *pbs_server_name;
 extern char *msg_unkjobid;
 extern char *msg_movejob;
 extern char *msg_err_malloc;

@@ -146,6 +146,7 @@ extern long long get_next_svr_sequence_id(void);
 extern int compare_obj_hash(void *, int , void *);
 extern void panic_stop_db();
 extern void free_db_attr_list(pbs_db_attr_list_t *);
+extern void req_stat_svr_ready(struct work_task *);
 
 #ifdef _PROVISION_H
 extern int find_prov_vnode_list(job *, exec_vnode_listtype *, char **);

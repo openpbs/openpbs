@@ -61,7 +61,8 @@ libutil_a_SOURCES = \
 	pbs_secrets.c \
 	pbs_aes_encrypt.c \
 	pbs_idx.c \
-	range.c 
+	range.c  \
+	thread_utils.c
 
 if UNDOLR_ENABLED
 libutil_a_SOURCES += undolr.c

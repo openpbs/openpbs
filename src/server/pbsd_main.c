@@ -508,7 +508,7 @@ reap_child(void)
 				ptask->wt_aux = (int)statloc;	/* exit status */
 				svr_delay_entry++;	/* see next_task() */
 			}
-			ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
+			ptask = (struct work_task *)GET_NEXT(ptask->wt_linkevent);
 		}
 	}
 }
@@ -1078,6 +1078,9 @@ main(int argc, char **argv)
 	/* attributes  and resources (including custom resources) into       */
 	/* Python world, which are made  complete after call to pbsd_init()! */
 	pbs_python_ext_quick_start_interpreter();
+
+	tfree2(&ipaddrs);
+	init_msi();
 
 	if (pbsd_init(server_init_type) != 0) {
 		log_err(-1, msg_daemonname, "pbsd_init failed");

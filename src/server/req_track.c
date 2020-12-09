@@ -88,7 +88,6 @@ extern char         *path_track;
 extern struct server server;
 extern time_t        time_now;
 extern char 	     server_name[];
-extern char 	    *pbs_server_name;
 
 /**
  * @brief

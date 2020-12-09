@@ -69,9 +69,6 @@ char *pbs_conf_env = "PBS_CONF_FILE";
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
 
-pthread_key_t psi_key;
-static pthread_once_t key_once = PTHREAD_ONCE_INIT;
-
 /*
  * Initialize the pbs_conf structure.
  *
@@ -303,7 +300,7 @@ parse_psi(char *conf_value)
 			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
 			free_string_array(list);
 			return -1;
-		}	
+		}
 		strcpy(pbs_conf.psi[i].name, svrname);
 
 		if (pbs_conf.psi[i].name[0] == '\0') {
@@ -322,19 +319,6 @@ parse_psi(char *conf_value)
 	pbs_conf.pbs_num_servers = i;
 
 	return 0;
-}
-
-/**
- * @brief	create the PSI key & set it for the main thread
- *
- * @param	void
- *
- * @return	void
- */
-static void
-create_psi_key(void)
-{
-	pthread_key_create(&psi_key, free);
 }
 
 
@@ -386,8 +370,6 @@ __pbs_loadconf(int reload)
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return 0;
-
-	pthread_once(&key_once, create_psi_key);
 
 	/* this section of the code modified the procecss-wide
 	 * tcp array. Since multiple threads can get into this

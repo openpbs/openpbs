@@ -116,6 +116,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_HOOK_CHECKSUMS               20 /* mom reports about hooks seen */
 #define IS_UPDATE_FROM_HOOK2            21 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
 #define IS_HELLOSVR                     22 /* hello send to server from mom to initiate a hello sequence */
+#define IS_PEERSVR_CONNECT              23 /* hello from peer server  */
 
 /* return codes for client_to_svr() */
 
@@ -199,12 +200,14 @@ int  wait_request(float waittime, void *priority_context);
 extern void *priority_context;
 void net_add_close_func(int, void(*)(int));
 extern  pbs_net_t  get_addr_of_nodebyname(char *name, unsigned int *port);
+extern int make_host_addresses_list(char *phost, u_long **pul);
 
 conn_t *get_conn(int sock); /* gets the connection, for a given socket id */
 void connection_idlecheck(void);
 void connection_init(void);
 char *build_addr_string(pbs_net_t);
 int set_nodelay(int fd);
+extern void process_IS_CMD(int);
 
 struct connection {
 	int		cn_sock;	/* socket descriptor */

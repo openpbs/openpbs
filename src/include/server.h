@@ -74,6 +74,8 @@ enum srv_atr {
 	SVR_ATR_LAST
 };
 
+extern char *pbs_server_name;
+extern uint pbs_server_port_dis;
 extern void *svr_attr_idx;
 extern attribute_def svr_attr_def[];
 /* for trillion job id */
@@ -183,6 +185,13 @@ extern int			have_licensed_nodes(void);
 extern void			unlicense_nodes(void);
 extern void			set_sched_default(pbs_sched *, int from_scheduler);
 extern void			memory_debug_log(struct work_task *ptask);
+
+/* multi-server functions */
+extern void *get_peersvr(struct sockaddr_in *);
+extern void *create_svr_entry(char *, unsigned int);
+extern int init_msi();
+extern void *create_svr_struct(struct sockaddr_in *);
+extern void *connect_to_peersvr(pbs_net_t, uint);
 
 #ifdef	__cplusplus
 }

@@ -150,6 +150,7 @@
 #include "buckets.h"
 #include "parse.h"
 #include "hook.h"
+#include "libpbs.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -200,6 +201,8 @@ query_server(status *pol, int pbs_sd)
 			"Failed to update global resource definition arrays");
 		return NULL;
 	}
+
+	PBSD_server_ready(pbs_sd);
 
 	/* get server information from pbs server */
 	if ((server = pbs_statserver(pbs_sd, NULL, NULL)) == NULL) {

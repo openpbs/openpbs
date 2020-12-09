@@ -152,6 +152,8 @@ struct rq_py_spawn {
 struct rq_move {
 	char rq_jid[PBS_MAXSVRJOBID + 1];
 	char rq_destin[(PBS_MAXSVRRESVID > PBS_MAXDEST ? PBS_MAXSVRRESVID : PBS_MAXDEST) + 1];
+	char *run_exec_vnode;
+	int orig_rq_type;
 };
 
 /* Resource Query/Reserve/Free */
@@ -333,7 +335,8 @@ struct batch_request {
 	} rq_ind;
 };
 
-extern struct batch_request * alloc_br(int);
+extern struct batch_request *alloc_br(int);
+extern struct batch_request *copy_br(struct batch_request *);
 extern void reply_ack(struct batch_request *);
 extern void req_reject(int, int, struct batch_request *);
 extern void req_reject_msg(int, int, struct batch_request *, int);

@@ -143,7 +143,6 @@ extern int reject_root_scripts;
 extern time_t time_now;
 
 #ifndef PBS_MOM
-extern char *pbs_server_name;
 extern void	*svr_db_conn;
 extern char *msg_max_no_minwt;
 extern char *msg_min_gt_maxwt;
@@ -274,7 +273,7 @@ req_quejob(struct batch_request *preq)
 	resource_def *prdefsel;
 	resource_def *prdefplc;
 	resource *presc;
-	conn_t *conn;
+	conn_t *conn = NULL;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
@@ -292,17 +291,19 @@ req_quejob(struct batch_request *preq)
 
 #ifndef PBS_MOM		/* server server server server */
 
-	conn = get_conn(sock);
+	if (preq->prot != PROT_TPP) {
+		conn = get_conn(sock);
 
-	if (!conn) {
-		req_reject(PBSE_SYSTEM, 0, preq);
-		return;
-	}
+		if (!conn) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
 
-	if (conn->cn_authen & PBS_NET_CONN_FORCE_QSUB_UPDATE) {
-		req_reject(PBSE_FORCE_QSUB_UPDATE, 0, preq);
-		conn->cn_authen &= ~PBS_NET_CONN_FORCE_QSUB_UPDATE;
-		return;
+		if (conn->cn_authen & PBS_NET_CONN_FORCE_QSUB_UPDATE) {
+			req_reject(PBSE_FORCE_QSUB_UPDATE, 0, preq);
+			conn->cn_authen &= ~PBS_NET_CONN_FORCE_QSUB_UPDATE;
+			return;
+		}
 	}
 
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_queuejob.rq_attr);
@@ -716,7 +717,7 @@ req_quejob(struct batch_request *preq)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	/* save gssapi/krb5 creds for this job */
-	if (conn->cn_credid != NULL &&
+	if (conn && conn->cn_credid != NULL &&
 		conn->cn_auth_config != NULL &&
 		conn->cn_auth_config->auth_method != NULL
 		&& strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
@@ -824,8 +825,10 @@ req_quejob(struct batch_request *preq)
 		strcat(buf, preq->rq_host);
 		set_jattr_str_slim(pj, JOB_ATR_job_owner, buf, NULL);
 
-		strcpy(buf, conn->cn_physhost);
-		set_jattr_str_slim(pj, JOB_ATR_submit_host, buf, NULL);
+		if (conn) {
+			strcpy(buf, conn->cn_physhost);
+			set_jattr_str_slim(pj, JOB_ATR_submit_host, buf, NULL);
+		}
 
 		/* set create time */
 		set_jattr_l_slim(pj, JOB_ATR_ctime, time_now, SET);
@@ -837,7 +840,7 @@ req_quejob(struct batch_request *preq)
 		/* need to set certain environmental variables per POSIX */
 		strcpy(buf, pbs_o_que);
 		strcat(buf, pque->qu_qs.qu_name);
-		if (get_variable(pj, pbs_o_host) == NULL) {
+		if (conn && get_variable(pj, pbs_o_host) == NULL) {
 			strcat(buf, ",");
 			strcat(buf, pbs_o_host);
 			strcat(buf, "=");
@@ -1605,7 +1608,52 @@ req_mvjobfile(struct batch_request *preq)
 }
 #endif /* PBS_MOM */
 
+/**
+ * @brief
+ * 	Parse the next message type and parameter from extend field
+ *
+ * @param[in] extend - extend field
+ * @param[out] msg_type - batch request type
+ * @param[out] msg_params - this array will be filled with parameter in the order they received
+ * 				parameters has to be freed by the caller.
+ * @param[in] param_arr_sz - size of the parameter array.
+ *
+ * @return int
+ * @return 0 success
+ * @retval -1 failure, memory allocation / input array is not of sufficient size
+ */
+int
+parse_next_msg(char *extend, int *msg_type, char **msg_params, int param_arr_sz)
+{
+	int i, j;
+	char **arr;
+	char *pc;
 
+	if ((arr = break_comma_list(extend)) == NULL)
+		return -1;
+
+	for (i = 0; arr[i]; i++) {
+		if ((pc = strstr(arr[i], EXTEND_OPT_NEXT_MSG_TYPE))) {
+			*msg_type = strtol(pc + strlen(EXTEND_OPT_NEXT_MSG_TYPE) + 1, NULL, 10);
+			break;
+		}
+	}
+	for (j = 0; arr[i]; i++) {
+		if ((pc = strstr(arr[i], EXTEND_OPT_NEXT_MSG_PARAM))) {
+			if (j >= param_arr_sz) {
+				free_str_array(arr);
+				return -1;
+			} else {
+				msg_params[j++] = strdup(pc + strlen(EXTEND_OPT_NEXT_MSG_PARAM) + 1);
+			}
+		}
+	}
+
+	if (j < param_arr_sz)
+		msg_params[j] = NULL;
+	free_str_array(arr);
+	return 0;
+}
 
 /**
  * @brief
@@ -1631,6 +1679,8 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	long time_msec;
 	struct timeval tval;
 	void *conn = (void *) svr_db_conn;
+	char *runjob_extend = NULL;
+	struct batch_request *preq_runjob = NULL;
 #endif
 
 	if (!check_job_substate(pj, JOB_SUBSTATE_TRANSIN)) {
@@ -1714,7 +1764,10 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	/* set the queue rank attribute */
 	set_jattr_l_slim(pj, JOB_ATR_qrank, time_msec, SET);
 
-	if ((rc = svr_enquejob(pj)) != 0) {
+	if (preq->rq_type == PBS_BATCH_Commit)
+		runjob_extend = preq->rq_extend;
+
+	if ((rc = svr_enquejob(pj, runjob_extend)) != 0) {
 		job_purge(pj);
 		req_reject(rc, 0, preq);
 		return;
@@ -1764,13 +1817,34 @@ req_commit_now(struct batch_request *preq,  job *pj)
 		}
 	}
 
-	/* need to format message first, before request goes away */
+	/* need to print message first, before request goes away */
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid,
+		   msg_jobnew, preq->rq_user, preq->rq_host,
+		   get_jattr_str(pj, JOB_ATR_job_owner),
+		   get_jattr_str(pj, JOB_ATR_jobname),
+		   pj->ji_qhdr->qu_qs.qu_name);
 
-	snprintf(log_buffer, sizeof(log_buffer), msg_jobnew,
-		preq->rq_user, preq->rq_host,
-		get_jattr_str(pj, JOB_ATR_job_owner),
-		get_jattr_str(pj, JOB_ATR_jobname),
-		pj->ji_qhdr->qu_qs.qu_name);
+	/* Allocate a new batch request to use for runjob as we will be freeing preq in reply_jobid()  */
+	if (runjob_extend) {
+		char *param_arr[1];
+
+		if ((preq_runjob = copy_br(preq)) == NULL) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
+		if (parse_next_msg(runjob_extend, &preq_runjob->rq_type, param_arr, 1) ==  -1) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
+		strcpy(preq_runjob->rq_ind.rq_run.rq_jid, pj->ji_qs.ji_jobid);
+		preq_runjob->rq_ind.rq_run.rq_destin = param_arr[0];
+		preq_runjob->tpp_ack = 1;
+		preq_runjob->tppcmd_msgid = strdup(preq->tppcmd_msgid);
+	}
 
 	/* acknowledge the request with the job id */
 	if ((rc = reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit))) {
@@ -1779,10 +1853,13 @@ req_commit_now(struct batch_request *preq,  job *pj)
 		return;
 	}
 
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
-
 	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 		issue_track(pj);	/* notify creator where job is */
+
+	if (!preq_runjob)
+		return;
+
+	req_runjob(preq_runjob);
 #endif		/* PBS_SERVER */
 }
 

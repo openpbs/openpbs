@@ -539,8 +539,8 @@ static void
 connect_svrpool()
 {
 	int i;
-	svr_conn_t *svr_conns_primary = NULL;
-	svr_conn_t *svr_conns_secondary = NULL;
+	svr_conn_t **svr_conns_primary = NULL;
+	svr_conn_t **svr_conns_secondary = NULL;
 	int num_conf_svrs = get_num_servers();
 
 	while (1) {
@@ -564,8 +564,8 @@ connect_svrpool()
 			continue;
 		}
 
-		svr_conns_primary = static_cast<svr_conn_t *>(get_conn_svr_instances(clust_primary_sock));
-		svr_conns_secondary = static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
+		svr_conns_primary = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_primary_sock));
+		svr_conns_secondary = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_secondary_sock));
 
 		if (svr_conns_primary == NULL || svr_conns_secondary == NULL) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
@@ -574,14 +574,11 @@ connect_svrpool()
 			continue;
 		}
 
-		for (i = 0; i < num_conf_svrs; i++) {
-			if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN || svr_conns_primary[i].state == SVR_CONN_STATE_DOWN) {
-				if (svr_conns_primary[i].state == SVR_CONN_STATE_DOWN)
-					clust_primary_sock = -1;
-				if (svr_conns_secondary[i].state == SVR_CONN_STATE_DOWN)
-					clust_secondary_sock = -1;
-				break;
-			}
+		for (i = 0; svr_conns_primary[i] != NULL && svr_conns_secondary[i] != NULL; i++) {
+			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN)
+				clust_primary_sock = -1;
+			if (svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN)
+				clust_secondary_sock = -1;
 		}
 
 		if (i != num_conf_svrs) {
@@ -607,9 +604,9 @@ connect_svrpool()
 	}
 
 	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to all the configured servers");
-	for (i = 0; i < get_num_servers(); i++) {
-		if (tpp_em_add_fd(poll_context, svr_conns_secondary[i].sd, EM_IN | EM_HUP | EM_ERR) < 0) {
-			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns_secondary[i].name);
+	for (i = 0; svr_conns_secondary[i] != NULL; i++) {
+		if (tpp_em_add_fd(poll_context, svr_conns_secondary[i]->sd, EM_IN | EM_HUP | EM_ERR) < 0) {
+			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns_secondary[i]->name);
 			die(-1);
 		}
 	}
@@ -757,19 +754,22 @@ wait_for_cmds()
 static void
 send_cycle_end()
 {
-	svr_conn_t *svr_conns;
+	svr_conn_t **svr_conns;
 	int i;
 	static int cycle_end_marker = 0;
-	svr_conns = static_cast<svr_conn_t *>(get_conn_svr_instances(clust_secondary_sock));
+	svr_conns = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_secondary_sock));
 
-	for (i = 0; i < get_num_servers(); i++) {
-		if (diswsi(svr_conns[i].sd, cycle_end_marker) != DIS_SUCCESS) {
+	for (i = 0; svr_conns[i] != NULL; i++) {
+		if (svr_conns[i]->state == SVR_CONN_STATE_DOWN)
+			continue;
+
+		if (diswsi(svr_conns[i]->sd, cycle_end_marker) != DIS_SUCCESS) {
 			log_eventf(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				   "Not able to send end of cycle, errno = %d", errno);
 			goto err;
 		}
 
-		if (dis_flush(svr_conns[i].sd) != 0)
+		if (dis_flush(svr_conns[i]->sd) != 0)
 			goto err;
 	}
 
@@ -1107,7 +1107,7 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 	sprintf(log_buffer, "Out of memory");
 
 	/* Initialize cleanup lock */
-	if (init_mutex_attr_recursive(&attr) == 0)
+	if (init_mutex_attr_recursive(&attr) != 0)
 		die(0);
 
 	pthread_mutex_init(&cleanup_lock, &attr);

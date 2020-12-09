@@ -345,6 +345,9 @@ extern char *parse_servername(char *, unsigned int *);
 extern int rand_num(void);
 extern int msvr_mode(void);
 
+/* thread utils */
+extern int init_mutex_attr_recursive(void *attr);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)

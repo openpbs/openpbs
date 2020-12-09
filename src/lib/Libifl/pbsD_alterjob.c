@@ -132,14 +132,14 @@ int
 __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 {
 	struct attropl *attrib_opl = NULL;
-	int i;
+	int rc = 0;
 
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	attrib_opl = attrl_to_attropl(attrib);
 
-	i = PBSD_manager(c,
+	rc = PBSD_manager(c,
 		PBS_BATCH_ModifyJob,
 		MGR_CMD_SET,
 		MGR_OBJ_JOB,
@@ -150,7 +150,7 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 	/* free up the attropl we just created */
 	__free_attropl(attrib_opl);
 
-	return i;
+	return rc;
 }
 
 

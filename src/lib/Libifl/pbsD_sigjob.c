@@ -49,14 +49,13 @@
 #include "libpbs.h"
 #include "pbs_ecl.h"
 
-
 /**
  * @brief
  *	sends and reads signal job batch request.
  *
  * @param[in] c - communication handle
  * @param[in] jobid - job identifier
- * @param[in] signal - signal
+ * @param[in] sig - signal
  * @param[in] extend - extend string for request
  *
  * @return	int
@@ -64,14 +63,11 @@
  * @retval	!0	error
  *
  */
-int
-__pbs_sigjob(int c, char *jobid, char *signal, char *extend)
+static int
+__pbs_sigjob_inner(int c, char *jobid, char *sig, char *extend)
 {
 	int rc = 0;
 	struct batch_reply *reply;
-
-	if ((jobid == NULL) || (*jobid == '\0') || (signal == NULL))
-		return (pbs_errno = PBSE_IVALREQ);
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -83,7 +79,7 @@ __pbs_sigjob(int c, char *jobid, char *signal, char *extend)
 		return pbs_errno;
 
 	/* send request */
-	if ((rc = PBSD_sig_put(c, jobid, signal, extend, PROT_TCP, NULL)) != 0) {
+	if ((rc = PBSD_sig_put(c, jobid, sig, extend, PROT_TCP, NULL)) != 0) {
 		(void)pbs_client_thread_unlock_connection(c);
 		return (rc);
 	}
@@ -99,4 +95,60 @@ __pbs_sigjob(int c, char *jobid, char *signal, char *extend)
 		return pbs_errno;
 
 	return (rc);
+}
+
+/**
+ * @brief
+ *	sends and reads signal job batch request.
+ *
+ * @param[in] c - communication handle
+ * @param[in] jobid - job identifier
+ * @param[in] sig - signal
+ * @param[in] extend - extend string for request
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+int
+__pbs_sigjob(int c, char *jobid, char *sig, char *extend)
+{
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int i;
+	int start = 0;
+	int ct;
+	int nsvrs = get_num_servers();
+
+	if ((jobid == NULL) || (*jobid == '\0') || (sig == NULL))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	if (svr_conns) {
+		if ((start = starting_index(jobid)) == -1)
+			start = 0;
+
+		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			/*
+			* For a single server cluster, instance fd and cluster fd are the same. 
+			* Hence breaking the loop.
+			*/
+			if (svr_conns[i]->sd == c)
+				return __pbs_sigjob_inner(svr_conns[i]->sd,
+							  jobid, sig, extend);
+
+			rc = __pbs_sigjob_inner(svr_conns[i]->sd, jobid, sig, extend);
+			if (rc == 0 || pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		return pbs_errno;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	return __pbs_sigjob_inner(c, jobid, sig, extend);
 }

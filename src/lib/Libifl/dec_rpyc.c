@@ -181,9 +181,7 @@ again:
 				pstcmd = (struct batch_status *) malloc(sizeof(struct batch_status));
 				if (pstcmd == 0)
 					return DIS_NOMALLOC;
-				pstcmd->next = NULL;
-				pstcmd->text = NULL;
-				pstcmd->attribs = NULL;
+				init_bstat(pstcmd);
 
 				i = disrui(sock, &rc); /* read and discard brp_objtype */
 				if (rc == 0)
@@ -197,6 +195,7 @@ again:
 					pbs_statfree(pstcmd);
 					return rc;
 				}
+				
 				*pstcx = pstcmd;
 				pstcx = &pstcmd->next;
 			}
