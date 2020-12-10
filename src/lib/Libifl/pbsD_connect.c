@@ -787,9 +787,8 @@ __pbs_disconnect(int connect)
 			svr_conns[i]->state = SVR_CONN_STATE_DOWN;
 		}
 	} else {
-		/* fd doesn't belong to a multi-server setup, just disconnect and exit */
+		/* fd doesn't belong to a multi-server setup */
 		disconnect_from_server(connect);
-		return 0;
 	}
 
 	/* Destroy the connection cache associated with this set of connections */
