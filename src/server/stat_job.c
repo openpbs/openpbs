@@ -375,6 +375,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	char 		   *old_subjob_comment = NULL;
 	char sjst;
 	int sjsst;
+	char *objname;
 
 	/* see if the client is authorized to status this job */
 
@@ -397,6 +398,9 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	/* otherwise we fake it with info from the parent      */
 	/* allocate reply structure and fill in header portion */
 
+	objname = create_subjob_id(pjob->ji_qs.ji_jobid, subj);
+	if (objname == NULL)
+		return PBSE_SYSTEM;
 
 	/* for the general case, we don't want to include the parent's */
 	/* array related attrbutes as they belong only to the Array    */
@@ -410,7 +414,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 		pstat->brp_objtype = MGR_OBJ_SUBJOB;
 	else
 		pstat->brp_objtype = MGR_OBJ_JOB;
-	(void)strcpy(pstat->brp_objname, create_subjob_id(pjob->ji_qs.ji_jobid, subj));
+	(void)strcpy(pstat->brp_objname, objname);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
 	preq->rq_reply.brp_count++;

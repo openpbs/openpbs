@@ -185,6 +185,7 @@ expand_remaining_subjob(struct batch_status *array, int *count)
 	}
 	while ((sjidx = range_next_value(r, sjidx)) >= 0) {
 		struct batch_status *pstcmd = (struct batch_status *) malloc(sizeof(struct batch_status));
+		char *name;
 
 		if (pstcmd == NULL) {
 			free_range_list(r);
@@ -201,7 +202,14 @@ expand_remaining_subjob(struct batch_status *array, int *count)
 			free_attrl_list(sj_attrs);
 			return 1;
 		}
-		pstcmd->name = strdup(create_subjob_id(parent_jid, sjidx));
+		name = create_subjob_id(parent_jid, sjidx);
+		if (name == NULL) {
+			pbs_statfree(pstcmd);
+			free_range_list(r);
+			free_attrl_list(sj_attrs);
+			return 1;
+		}
+		pstcmd->name = strdup(name);
 		if (pstcmd->name == NULL) {
 			pbs_statfree(pstcmd);
 			free_range_list(r);

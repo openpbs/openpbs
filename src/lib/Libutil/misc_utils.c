@@ -2541,7 +2541,7 @@ get_range_from_jid(char *jid)
 	int i;
 	char *pcb;
 	char *pce;
-	static char *index;
+	static char index[BUF_SIZE];
 
 	if ((pcb = strchr(jid, (int) '[')) == NULL)
 		return NULL;
@@ -2549,12 +2549,6 @@ get_range_from_jid(char *jid)
 		return NULL;
 	if (pce <= pcb)
 		return NULL;
-
-	if (index == NULL) {
-		index = (char *) malloc(BUF_SIZE);
-		if (index == NULL)
-			return NULL;
-	}
 
 	i = 0;
 	while (++pcb < pce)
@@ -2572,7 +2566,8 @@ get_range_from_jid(char *jid)
  * @param[in] sjidx -  subjob index.
  *
  * @return char *
- * @return jobid of subjob
+ * @return !NULL - jobid of subjob
+ * @return NULL - failure
  *
  * @par
  * 	MT-safe: No - uses a static buffer, "jid".
@@ -2581,16 +2576,18 @@ char *
 create_subjob_id(char *parent_jid, int sjidx)
 {
 	static char jid[PBS_MAXSVRJOBID + 1];
-	char index[20];
-	char *pb;
+	char *pcb;
+	char *pce;
 
-	sprintf(index, "%d", sjidx);
-	pbs_strncpy(jid, parent_jid, sizeof(jid));
+	if ((pcb = strchr(parent_jid, (int) '[')) == NULL)
+		return NULL;
+	if ((pce = strchr(parent_jid, (int) ']')) == NULL)
+		return NULL;
+	if (pce <= pcb)
+		return NULL;
 
-	pb = strchr(jid, (int) '['); /* "seqnum[" section */
-	*(pb + 1) = '\0';
-	strncat(jid, index, sizeof(jid) - 1);
-	pb = strchr(parent_jid, (int) ']');
-	strncat(jid, pb, sizeof(jid) - 1); /* "].hostname" section */
+	*pcb = '\0';
+	snprintf(jid, sizeof(jid), "%s[%d]%s", parent_jid, sjidx, pce + 1);
+	*pcb = '[';
 	return jid;
 }

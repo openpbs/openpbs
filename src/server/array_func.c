@@ -692,6 +692,12 @@ create_subjob(job *parent, char *newjid, int *rc)
 	long	   eligibletime;
 	long	    time_msec;
 	struct timeval	    tval;
+	char path[MAXPATHLEN + 1];
+
+	if (newjid == NULL) {
+		*rc = PBSE_IVALREQ;
+		return NULL;
+	}
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -782,8 +788,12 @@ create_subjob(job *parent, char *newjid, int *rc)
 		return NULL;
 	}
 
-	set_jattr_generic(subj, JOB_ATR_outpath, subst_array_index(subj, get_jattr_str(parent, JOB_ATR_outpath)), NULL, INTERNAL);
-	set_jattr_generic(subj, JOB_ATR_errpath, subst_array_index(subj, get_jattr_str(parent, JOB_ATR_errpath)), NULL, INTERNAL);
+	pbs_strncpy(path, get_jattr_str(subj, JOB_ATR_outpath), sizeof(path));
+	subst_array_index(subj, path);
+	set_jattr_str_slim(subj, JOB_ATR_outpath, path, NULL);
+	pbs_strncpy(path, get_jattr_str(subj, JOB_ATR_errpath), sizeof(path));
+	subst_array_index(subj, path);
+	set_jattr_str_slim(subj, JOB_ATR_errpath, path, NULL);
 
 	*rc = PBSE_NONE;
 	return subj;

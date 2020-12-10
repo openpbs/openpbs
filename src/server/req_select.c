@@ -232,6 +232,9 @@ add_select_entry(char *jid, struct brp_select ***pselx)
 {
 	struct brp_select *pselect;
 
+	if (jid == NULL)
+		return 0;
+
 	pselect = (struct brp_select *)malloc(sizeof(struct brp_select));
 	if (pselect == NULL)
 		return 0;
