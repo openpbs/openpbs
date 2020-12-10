@@ -421,6 +421,9 @@ chk_array_doneness(job *parent)
 	int e;
 	int i;
 	struct ajtrkhd	*ptbl = parent->ji_ajtrk;
+	struct batch_request *preq;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+	int rc;
 
 	if (ptbl == NULL)
 		return;
@@ -444,10 +447,34 @@ chk_array_doneness(job *parent)
 		parent->ji_qs.ji_un_type = JOB_UNION_TYPE_EXEC;
 		parent->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
 		parent->ji_qs.ji_un.ji_exect.ji_momport = 0;
-		parent->ji_qs.ji_un.ji_exect.ji_exitstat = e;
+		parent->ji_qs.ji_un.ji_exect.ji_exitstat = e;	
 
 		check_block(parent, "");
 		if (check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
+
+			/* FIXME: SD start */
+			/* Allocate space for the endjob hook event params */
+			preq = alloc_br(PBS_BATCH_EndJob);
+			(preq->rq_ind.rq_end).rq_pjob = parent;
+			
+			if (preq == NULL) {
+				log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");		
+			} else {
+				/*
+				* Call process_hooks
+				*/
+				rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+				if (rc == -1) {
+					sprintf(log_buffer, "rq_endjob process_hooks call failed");	
+					log_err(-1, __func__, log_buffer);
+				} else {
+					sprintf(log_buffer, "rq_endjob process_hooks call succeeded");
+					log_err(-1, __func__, log_buffer);
+				}
+				free_br(preq);
+			}
+			/* FIXME: SD end */	
+
 			/* if BEGUN, issue 'E' account record */
 			sprintf(acctbuf, msg_job_end_stat, e);
 			account_job_update(parent, PBS_ACCT_LAST);
