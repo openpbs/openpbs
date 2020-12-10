@@ -465,11 +465,13 @@ post_movejob(struct work_task *pwt)
 		* for history purpose without purging. No need to check
 		* for sub-jobs as sub jobs can't be moved.
 		*/
-		if (jobp && ((move_type == MOVE_TYPE_Move_Run) || !svr_chk_history_conf())) {
-			job_purge(jobp);
-			jobp = NULL;
-		} else if (svr_chk_history_conf()) {
-			svr_setjob_histinfo(jobp, T_MOV_JOB);
+		if (jobp) {
+			if ((move_type == MOVE_TYPE_Move_Run) || !svr_chk_history_conf()) {
+				job_purge(jobp);
+				jobp = NULL;
+			} else if (svr_chk_history_conf()) {
+				svr_setjob_histinfo(jobp, T_MOV_JOB);
+			}
 		}
 
 		if (move_type != MOVE_TYPE_Move_Run || force_ack)

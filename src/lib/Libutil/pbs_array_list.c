@@ -99,7 +99,7 @@ create_pbs_iplist(void)
 	pntPBS_IP_LIST list= (pntPBS_IP_LIST)calloc(1, sizeof(PBS_IP_LIST));
 	if (list) {
 		list->li_range = create_pbs_range();
-		if (! list->li_range) {
+		if (!list->li_range) {
 			free(list);
 			return NULL;
 		}
