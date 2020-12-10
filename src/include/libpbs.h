@@ -61,7 +61,8 @@ extern "C" {
 #define PROT_TPP 1 /* For TPP based connection */
 
 #define PBS_BATCH_PROT_TYPE 2
-#define PBS_BATCH_PROT_VER  1
+#define PBS_BATCH_PROT_VER_OLD  1
+#define PBS_BATCH_PROT_VER  2
 #define SCRIPT_CHUNK_Z (65536)
 #ifndef TRUE
 #define TRUE  1
@@ -217,9 +218,9 @@ struct batch_reply
 		struct batch_status *brp_statc; /* status (cmd) replies) */
 		struct {
 			int tot_jobs;
-			int tot_rpys; 
+			int tot_rpys;
 			int tot_arr_jobs;
-			struct batch_deljob_status *brp_delstatc;	
+			struct batch_deljob_status *brp_delstatc;
 		} brp_deletejoblist;
 		struct {
 			int brp_txtlen;
