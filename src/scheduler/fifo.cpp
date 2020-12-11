@@ -1816,8 +1816,10 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		if (ns_arr != NULL)
 			free_nspecs(ns_arr);
-		else if (ns != rr->nspec_arr)
+		if (ns != NULL && ns != rr->nspec_arr)
 			free_nspecs(ns);
+		if (orig_ns != NULL && ns_arr != orig_ns)
+			free_nspecs(orig_ns);
 
 		rr->can_not_run = 1;
 		if (array != NULL)

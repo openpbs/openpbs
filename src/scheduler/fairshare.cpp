@@ -627,6 +627,8 @@ write_usage(const char *filename, fairshare_head *fhead)
 	 * ...
 	 */
 
+	memset(&head, 0, sizeof(struct group_node_header));
+
 	pbs_strncpy(head.tag, USAGE_MAGIC, sizeof(head.tag));
 	head.version = USAGE_VERSION;
 	fwrite(&head, sizeof(struct group_node_header), 1, fp);
@@ -665,6 +667,7 @@ rec_write_usage(group_info *root, FILE *fp)
 #else
 	if (root->usage != 1 && root->child == NULL && strcmp(root->name, UNKNOWN_GROUP_NAME) != 0) {
 #endif /* localmod 043 */
+		memset(&grp, 0, sizeof(struct group_node_usage_v2));
 		snprintf(grp.name, sizeof(grp.name), "%s", root->name);
 		grp.usage = root->usage;
 
@@ -707,7 +710,7 @@ read_usage(const char *filename, int flags, fairshare_head *fhead)
 		fprintf(stderr, "Creating usage database for fairshare.\n");
 		return;
 	}
-
+	memset(&head, 0, sizeof(struct group_node_header));
 	/* read header */
 	if (fread(&head, sizeof(struct group_node_header), 1, fp) != 0) {
 		if (!strcmp(head.tag, USAGE_MAGIC)) { /* this is a header */
@@ -760,7 +763,7 @@ read_usage_v1(FILE *fp, group_info *root)
 
 	if (fp == NULL)
 		return 0;
-
+	memset(&grp, 0, sizeof(struct group_node_usage_v1));
 	while (fread(&grp, sizeof(struct group_node_usage_v1), 1, fp)) {
 		if (grp.usage >= 0 && is_valid_pbs_name(grp.name, USAGE_NAME_MAX)) {
 			ginfo = find_alloc_ginfo(grp.name, root);
@@ -808,6 +811,7 @@ read_usage_v2(FILE *fp, int flags, group_info *root)
 	if (fp == NULL)
 		return 0;
 
+	memset(&grp, 0, sizeof(struct group_node_usage_v2));
 	while (fread(&grp, sizeof(struct group_node_usage_v2), 1, fp)) {
 		if (grp.usage >= 0 && is_valid_pbs_name(grp.name, USAGE_NAME_MAX)) {
 			/* if we're trimming the tree, don't add any new nodes which are not
