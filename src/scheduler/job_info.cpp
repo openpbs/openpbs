@@ -1051,8 +1051,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 		if (tdata->error || tdata->oarr == NULL) {
 			pbs_statfree(jobs);
-			if (tdata->oarr != NULL)
-				free(tdata->oarr);
+			free(tdata->oarr);
 			free(tdata);
 			return NULL;
 		}
