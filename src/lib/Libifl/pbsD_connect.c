@@ -171,6 +171,45 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 	return -1;
 }
 
+/**	
+ * @brief	
+ *	-hostnmcmp - compare two hostnames, allowing a short name to match a longer	
+ *	version of the same	
+ *	
+ * @param[in] s1 - hostname1	
+ * @param[in] s2 - hostname2	
+ *	
+ * @return	int	
+ * @retval	1	success	
+ * @retval	0	failure	
+ *	
+ */	
+static int	
+hostnmcmp(char *s1, char *s2)	
+{	
+	/* Return failure if any/both the names are NULL. */	
+	if (s1 == NULL || s2 == NULL)	
+		return 1;	
+#ifdef WIN32	
+	/* Return success if both names are names of localhost. */	
+	if (is_local_host(s1) && is_local_host(s2))	
+		return 0;	
+#endif	
+	while (*s1 && *s2) {	
+		if (tolower((int)*s1++) != tolower((int)*s2++))	
+			return 1;	
+	}	
+	if (*s1 == *s2)	
+		return 0;	
+	else if ((*s1 == '\0') && ((*s2 == '.') || (*s2 == ':')))	
+		return 0;	
+	else if ((*s2 == '\0') && ((*s1 == '.') || (*s1 == ':')))	
+		return 0;	
+
+	return 1;	
+}	
+
+
 /**
  * @brief	This function establishes a network connection to the given server.
  *
@@ -624,7 +663,19 @@ __pbs_connect_extend(char *server, char *extend_data)
 {
 	char server_name[PBS_MAXSERVERNAME + 1];
 	unsigned int server_port;
-
+	char	*altservers[2];
+	int	have_alt = 0;
+	int	nsvrs;
+	int	sock = -1;
+	int	i;
+	int	f;
+	
+#ifndef WIN32	
+	char   pbsrc[_POSIX_PATH_MAX];	
+	struct stat sb;	
+	int    using_secondary = 0;	
+#endif  /* not WIN32 */
+	
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return -1;
@@ -638,7 +689,75 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	return connect_to_servers(server_name, server_port, extend_data);
+	nsvrs = get_num_servers();
+
+	if (nsvrs == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
+		/* failover configuered ...   */	
+		if (hostnmcmp(server, pbs_conf.pbs_primary) == 0) {	
+			have_alt = 1;	
+			/* We want to try the one last seen as "up" first to not   */	
+			/* have connection delays.   If the primary was up, there  */	
+			/* is no .pbsrc.NAME file.  If the last command connected  */	
+			/* to the Secondary, then it created the .pbsrc.USER file. */	
+
+			/* see if already seen Primary down */	
+#ifdef WIN32	
+			/* due to windows quirks, all try both in same order */	
+			altservers[0] = pbs_conf.pbs_primary;	
+			altservers[1] = pbs_conf.pbs_secondary;	
+#else	
+			(void)snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);	
+			if (stat(pbsrc, &sb) == -1) {	
+				/* try primary first */	
+				altservers[0] = pbs_conf.pbs_primary;	
+				altservers[1] = pbs_conf.pbs_secondary;	
+				using_secondary = 0;	
+			} else {	
+				/* try secondary first */	
+				altservers[0] = pbs_conf.pbs_secondary;	
+				altservers[1] = pbs_conf.pbs_primary;	
+				using_secondary = 1;	
+			}	
+#endif	
+		}	
+	}
+
+	/*
+	 * connect to server ...	
+	 * If attempt to connect fails and if Failover configured and	
+	 *   if attempting to connect to Primary,  try the Secondary	
+	 *   if attempting to connect to Secondary, try the Primary	
+	 */	
+	for (i=0; i<(have_alt+1); ++i) {
+		if (have_alt) 
+			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
+		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
+			break; 
+	}
+	
+	if (nsvrs > 1)
+		return sock;
+	
+	if (i >= (have_alt+1) && sock == -1) {
+		return -1; 		/* cannot connect */
+	}
+	
+#ifndef WIN32
+	if (have_alt && (i == 1)) {
+		/* had to use the second listed server ... */
+		if (using_secondary == 1) {
+			/* remove file that causes trying the Secondary first */
+			unlink(pbsrc);
+		} else {
+			/* create file that causes trying the Primary first   */
+			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
+			if (f != -1)
+				(void)close(f);
+		}
+	}
+#endif
+	
+	return sock;
 }
 
 /**

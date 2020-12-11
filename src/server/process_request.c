@@ -293,10 +293,23 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 		rc = PBSE_UNKSCHED;
 		goto rerr;
 	}
+
 	if (sched->sc_conn_addr != conn->cn_addr) {
-		rc = PBSE_BADHOST;
-		goto rerr;
+		if (pbs_conf.pbs_primary != NULL && pbs_conf.pbs_secondary != NULL) {
+			pbs_net_t addr = get_hostaddr(pbs_conf.pbs_primary);
+			if (addr != conn->cn_addr) {
+				addr = get_hostaddr(pbs_conf.pbs_secondary);
+				if (addr != conn->cn_addr) {
+					rc = PBSE_BADHOST;
+					goto rerr;
+				}
+			}
+		} else {
+			rc = PBSE_BADHOST;
+			goto rerr;
+		}
 	}
+	
 	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
