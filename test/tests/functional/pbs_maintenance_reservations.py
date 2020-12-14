@@ -597,10 +597,14 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.server.submit(r2)
 
-        exp_attr = {'resv_nodes': '(%s:ncpus=1)' % self.momB.shortname,
-                    'reserve_state': (MATCH_RE, 'RESV_DEGRADED|12'),
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|12'),
                     'reserve_substate': 12}
         self.server.expect(RESV, exp_attr, id=rid1)
+        self.server.status(RESV, id=rid1)
+        vnodes = r1.get_vnodes()
+        self.assertEqual(len(vnodes), 1)
+        vnode = self.server.status(NODE, id=vnodes[0])[0]
+        self.assertEqual(vnode['Mom'], self.momB.hostname)
 
         self.logger.info("Wait for reservation to start (2 minutes)")
         time.sleep(120)
