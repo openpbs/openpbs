@@ -171,9 +171,6 @@ enum failover_state {
 #define SVR_JOBHIST_DEFAULT		1209600	/* default time period to keep job history: 2 weeks */
 #define SVR_MAX_JOB_SEQ_NUM_DEFAULT	9999999	/* default max job id is 9999999 */
 
-#define VALUE(str) #str
-#define TOSTR(str) VALUE(str)
-
 /* function prototypes */
 
 extern int			svr_recov_db();

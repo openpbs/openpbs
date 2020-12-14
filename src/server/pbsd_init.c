@@ -1327,10 +1327,7 @@ pbsd_init_job(job *pjob, int type)
 				return -1;
 			}
 
-			pjob->ji_subjindx = subjob_index_to_offset(pjob->ji_parentaj, get_index_from_jid(pjob->ji_qs.ji_jobid));
-			pjob->ji_parentaj->ji_ajtrk->tkm_tbl[pjob->ji_subjindx].trk_psubjob = pjob;
-			/* update the tracking table */
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, get_job_state(pjob));
+			update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, JOB_STATE_LTR_EXPIRED, get_job_state(pjob));
 		}
 
 		switch (get_job_substate(pjob)) {
@@ -1637,10 +1634,10 @@ pbsd_init_reque(job *pjob, int change_state)
 		/* update the state, typically to some form of QUEUED */
 		unset_extra_attributes(pjob);
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
+			update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, get_job_state(pjob), newstate);
 		set_job_state(pjob, newstate);
 		set_job_substate(pjob, newsubstate);
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, newstate);
 	}
 
 	/* make sure substate attributes match actual value */

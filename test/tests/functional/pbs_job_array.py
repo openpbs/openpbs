@@ -354,7 +354,7 @@ e.accept()
         self.server.expect(JOB, {'comment': 'Subjob finished'}, subjid_1,
                            offset=8)
         self.server.delete(subjid_2, extend='force')
-        self.server.expect(JOB, {'comment': 'Subjob terminated'}, subjid_2)
+        self.server.expect(JOB, {'comment': 'Subjob finished'}, subjid_2)
         self.kill_and_restart_svr()
         self.server.expect(
             JOB, {'comment': 'Subjob finished'}, subjid_1, max_attempts=1)
@@ -376,7 +376,7 @@ e.accept()
         subjid_2 = j.create_subjob_id(j_id, 2)
         self.server.delete(subjid_2, extend='force')
         self.server.expect(
-            JOB, {'comment': (MATCH_RE, 'terminated')}, subjid_2, extend='x')
+            JOB, {'comment': (MATCH_RE, 'finished')}, subjid_2, extend='x')
         self.server.expect(JOB, {'comment': (
             MATCH_RE, 'Job run at.*and finished')}, subjid_1, extend='x')
         self.kill_and_restart_svr()

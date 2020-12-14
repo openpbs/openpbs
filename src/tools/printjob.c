@@ -636,10 +636,10 @@ char *argv[];
 			/* if array job, skip over sub job table */
 			if (xjob.ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 				size_t xs;
-				struct ajtrkhd *ajtrk;
+				ajinfo_t *ajtrk;
 
 				if (read(fp, (char *)&xs, sizeof(xs)) != sizeof(xs)) {
-					if ((ajtrk = (struct ajtrkhd *)malloc(xs)) == NULL) {
+					if ((ajtrk = (ajinfo_t *)malloc(xs)) == NULL) {
 						(void)close(fp);
 						return 1;
 					}

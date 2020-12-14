@@ -90,6 +90,7 @@
 #include "resource.h"
 #include "pbs_sched.h"
 #include "liblicense.h"
+#include "ifl_internal.h"
 
 /* Global Data Items: */
 
@@ -148,7 +149,7 @@ static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
 static int
 do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosubjobs)
 {
-	int indx;
+	int i;
 	svrattrl *pal;
 	int rc;
 	struct batch_reply *preply = &preq->rq_reply;
@@ -163,15 +164,16 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) {
 		/* this is not a subjob, go ahead and build the status reply for this job */
 		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad);
-		if (dosubjobs && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) && (rc == PBSE_NONE || rc != PBSE_PERM) && pjob->ji_ajtrk != NULL) {
-			for (indx = 0; indx < pjob->ji_ajtrk->tkm_ct; ++indx) {
-				if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
-					rc = reply_send_status_part(preq);
-					if (rc != PBSE_NONE)
-						return rc;
-				}
-				rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
+		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad, dosubjobs);
+		if (dosubjobs
+		    && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)
+		    && (rc == PBSE_NONE || rc != PBSE_PERM)
+		    && pjob->ji_ajinfo != NULL
+		    && pjob->ji_ajinfo->tkm_ct != pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED]) {
+			for (i = pjob->ji_ajinfo->tkm_start; i <= pjob->ji_ajinfo->tkm_end; i += pjob->ji_ajinfo->tkm_step) {
+				if (range_contains(pjob->ji_ajinfo->trm_quelist, i))
+					continue;
+				rc = status_subjob(pjob, preq, pal, i, &preply->brp_un.brp_status, &bad, 1);
 				if (rc && rc != PBSE_PERM)
 					break;
 			}
@@ -210,7 +212,8 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 	struct batch_reply *preply = &preq->rq_reply;
 	svrattrl *pal;
 
-	if ((i = is_job_array(name)) == IS_ARRAY_Single) {
+	i = is_job_array(name);
+	if (i == IS_ARRAY_Single) {
 		int idx;
 
 		pjob = find_arrayparent(name);
@@ -218,10 +221,10 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 			return PBSE_UNKJOBID;
 		else if (!dohistjobs && (rc = svr_chk_histjob(pjob)))
 			return rc;
-		idx = subjob_index_to_offset(pjob, get_index_from_jid(name));
+		idx = get_index_from_jid(name);
 		if (idx != -1) {
 			pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-			rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
+			rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad, 0);
 		} else
 			rc = PBSE_UNKJOBID;
 		return rc; /* no job still needs to be stat-ed */
@@ -235,7 +238,7 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		return do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs);
 	} else {
 		/* range of sub jobs */
-		range = get_index_from_jid(name);
+		range = get_range_from_jid(name);
 		if (range == NULL)
 			return PBSE_IVALREQ;
 		pjob = find_arrayparent(name);
@@ -255,15 +258,12 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 			else if (i == 1)
 				break;
 			for (i = start; i <= end; i += step) {
-				int idx = numindex_to_offset(pjob, i);
-				if (idx == -1)
-					continue;
 				if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
 					rc = reply_send_status_part(preq);
 					if (rc != PBSE_NONE)
 						return rc;
 				}
-				rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
+				rc = status_subjob(pjob, preq, pal, i, &preply->brp_un.brp_status, &bad, 0);
 				if (rc && rc != PBSE_PERM)
 					return rc;
 			}
@@ -363,6 +363,11 @@ req_stat_job(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 	preply->brp_count = 0;
+
+	if (dosubjobs && GET_NEXT(preq->rq_ind.rq_status.rq_attr) != NULL) {
+		if (find_svrattrl_list_entry(&preq->rq_ind.rq_status.rq_attr, ATTR_array_indices_remaining, NULL) == NULL)
+			add_to_svrattrl_list(&preq->rq_ind.rq_status.rq_attr, ATTR_array_indices_remaining, NULL, "", SET, NULL);
+	}
 
 	rc = PBSE_NONE;
 	if (type == 1) {

@@ -743,8 +743,8 @@ depend_on_que(attribute *pattr, void *pobj, int mode)
 					 */
 					else if (check_job_state(djob, JOB_STATE_LTR_RUNNING) ||
 						 check_job_state(djob, JOB_STATE_LTR_BEGUN) ||
-						 (djob->ji_ajtrk != NULL &&
-						  djob->ji_ajtrk->tkm_ct != djob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED]) ||
+						 (djob->ji_ajinfo != NULL &&
+						  djob->ji_ajinfo->tkm_ct != djob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED]) ||
 						 (check_job_state(djob, JOB_STATE_LTR_HELD) &&
 						 check_job_substate(djob, JOB_SUBSTATE_DEPNHOLD))) {
 						/* If the dependent job is running or has system hold, then put this job on hold too*/
@@ -1811,7 +1811,7 @@ build_depend(attribute *pattr, char *value)
 	int			type;
 
 	/*
-	 * Map first subword into dependency type. 
+	 * Map first subword into dependency type.
 	 */
 
 	if ((nxwrd = strchr(value, (int)':')) != NULL)
