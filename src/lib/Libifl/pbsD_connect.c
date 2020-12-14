@@ -706,7 +706,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			altservers[0] = pbs_conf.pbs_primary;	
 			altservers[1] = pbs_conf.pbs_secondary;	
 #else	
-			(void)snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);	
+			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
 			if (stat(pbsrc, &sb) == -1) {	
 				/* try primary first */	
 				altservers[0] = pbs_conf.pbs_primary;	
@@ -728,7 +728,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 *   if attempting to connect to Primary,  try the Secondary	
 	 *   if attempting to connect to Secondary, try the Primary	
 	 */	
-	for (i=0; i<(have_alt+1); ++i) {
+	for (i = 0; i<(have_alt+1); ++i) {
 		if (have_alt) 
 			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
 		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
