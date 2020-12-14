@@ -265,7 +265,6 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 	int idx;
 	int ostatenum;
 	int nstatenum;
-	int save_parent = 0;
 
 	if (oldstate == newstate)
 		return;
@@ -285,14 +284,11 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 	ptbl->tkm_subjsct[ostatenum]--;
 	ptbl->tkm_subjsct[nstatenum]++;
 
-	if (oldstate == JOB_STATE_LTR_QUEUED || newstate == JOB_STATE_LTR_QUEUED) {
-		if (oldstate == JOB_STATE_LTR_QUEUED)
-			range_remove_value(&ptbl->trm_quelist, idx);
-		if (newstate == JOB_STATE_LTR_QUEUED)
-			range_add_value(&ptbl->trm_quelist, idx, ptbl->tkm_step);
-		update_array_indices_remaining_attr(parent);
-		save_parent = 1;
-	}
+	if (oldstate == JOB_STATE_LTR_QUEUED)
+		range_remove_value(&ptbl->trm_quelist, idx);
+	if (newstate == JOB_STATE_LTR_QUEUED)
+		range_add_value(&ptbl->trm_quelist, idx, ptbl->tkm_step);
+	update_array_indices_remaining_attr(parent);
 
 	if (sj && newstate != JOB_STATE_LTR_QUEUED) {
 		if (is_jattr_set(sj, JOB_ATR_exit_status)) {
@@ -309,21 +305,17 @@ update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
 					pe = 0;
 			}
 			set_jattr_l_slim(parent, JOB_ATR_exit_status, pe, SET);
-			save_parent = 1;
 		}
 		if (is_jattr_set(sj, JOB_ATR_stageout_status)) {
 			int pe = -1;
 			int e = get_jattr_long(sj, JOB_ATR_stageout_status);
 			if (is_jattr_set(parent, JOB_ATR_stageout_status))
 				pe = get_jattr_long(parent, JOB_ATR_stageout_status);
-			if (e > 0 && pe != 0) {
+			if (e > 0 && pe != 0)
 				set_jattr_l_slim(parent, JOB_ATR_stageout_status, e, SET);
-				save_parent = 1;
-			}
 		}
 	}
-	if (save_parent)
-		job_save_db(parent);
+	job_save_db(parent);
 }
 
 /**
