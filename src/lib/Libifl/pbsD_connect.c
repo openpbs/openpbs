@@ -420,6 +420,9 @@ get_conn_svr_instances(int parentfd)
 {
 	svr_conns_list_t *iter_conns = NULL;
 
+	if (parentfd < 0)
+		return NULL;
+
 	/* Find the set of connections associated with the parent fd */
 	for (iter_conns = conn_list; iter_conns; iter_conns = iter_conns->next) {
 		if (iter_conns->cfd == parentfd)
@@ -1146,7 +1149,7 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
 
-	if (sched_id == NULL)
+	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
 		return 0;
 
 	svr_conns_primary =  get_conn_svr_instances(primary_conn_id);
