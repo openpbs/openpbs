@@ -420,6 +420,9 @@ get_conn_svr_instances(int parentfd)
 {
 	svr_conns_list_t *iter_conns = NULL;
 
+	if (parentfd < 0)
+		return NULL;
+
 	/* Find the set of connections associated with the parent fd */
 	for (iter_conns = conn_list; iter_conns; iter_conns = iter_conns->next) {
 		if (iter_conns->cfd == parentfd)
