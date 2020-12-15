@@ -98,7 +98,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_home_path */
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
-	NULL,					/* PBS server id */
 	0,					/* single pbs server instance by default */
 	NULL,					/* pbs_server_instances */
 	NULL,					/* cp_path */
