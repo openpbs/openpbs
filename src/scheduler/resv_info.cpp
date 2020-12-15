@@ -1747,6 +1747,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				occr_start_arr[cur_count] = next;
 			}
 		}
+		free(short_xc);
 	}
 	/* If the (re)confirmation was a success then we update the sequence of
 	 * occurrence start times, the number of occurrences, and the sequence of
