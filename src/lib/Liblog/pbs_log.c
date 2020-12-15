@@ -972,7 +972,7 @@ log_console_error(char *msg)
 	int rc = errno;
 	errf = fopen("/dev/console", "w");
 	if (errf != NULL) {
-		fprintf(errf, "%s - errno = %d", msg, rc);
+		fprintf(errf, "%s - errno = %d\n", msg, rc);
 		fclose(errf);
 	}
 }
@@ -1003,6 +1003,28 @@ void
 log_record(int eventtype, int objclass, int sev, const char *objname, const char *text)
 {
 	ms_time mst;
+	char slogbuf[LOG_BUF_SIZE];
+#ifndef WIN32
+	sigset_t block_mask;
+	sigset_t old_mask;
+
+	/* Block all signals to the process to make the function async-safe */
+	sigfillset(&block_mask);
+	sigprocmask(SIG_BLOCK, &block_mask, &old_mask);
+#endif
+
+#if SYSLOG
+	if (syslogopen != 0) {
+		snprintf(slogbuf, LOG_BUF_SIZE, "%s;%s;%s\n", class_names[objclass], objname, text);
+		syslog(sev, "%s", slogbuf);
+	}
+#endif  /* SYSLOG */
+
+	if (log_opened <= 0)
+		goto sigunblock;
+
+	if ((text == NULL) || (objname == NULL))
+		goto sigunblock;
 
 	/* lock the file mutex */
 	if (log_mutex_lock() == 0) {
@@ -1012,12 +1034,22 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 		if (log_auto_switch && (mst.ptm.tm_yday != log_open_day)) {
 			log_close(1);
 			log_open(NULL, log_directory);
+			if (log_opened < 1) {
+				log_mutex_unlock();
+				log_console_error("PBS cannot open its log");
+				goto sigunblock;
+			}
 		}
 
 		/* call the inner routine which does not lock */
 		log_record_inner(eventtype, objclass, sev, objname, text, &mst);
 		log_mutex_unlock();
 	}
+
+sigunblock:
+#ifndef WIN32
+	sigprocmask(SIG_SETMASK, &old_mask, NULL);
+#endif
 }
 
 
@@ -1042,31 +1074,6 @@ static void
 log_record_inner(int eventtype, int objclass, int sev, const char *objname, const char *text, ms_time *mst)
 {
 	int rc = 0;
-	char slogbuf[LOG_BUF_SIZE];
-#ifndef WIN32
-	sigset_t block_mask;
-	sigset_t old_mask;
-
-	/* Block all signals to the process to make the function async-safe */
-	sigfillset(&block_mask);
-	sigprocmask(SIG_BLOCK, &block_mask, &old_mask);
-#endif
-
-#if SYSLOG
-	if (syslogopen != 0) {
-		snprintf(slogbuf, LOG_BUF_SIZE, "%s;%s;%s\n", class_names[objclass], objname, text);
-		syslog(sev, "%s", slogbuf);
-	}
-#endif  /* SYSLOG */
-
-	if ((text == NULL) || (objname == NULL))
-		goto end;
-
-	if (log_opened < 1) {
-		log_console_error("PBS cannot open its log");
-		goto end;
-	}
-
 	if (locallog != 0 || syslogfac == 0) {
 		rc = fprintf(logfile,
 				"%02d/%02d/%04d %02d:%02d:%02d%s;%04x;%s;%s;%s;%s\n",
@@ -1079,12 +1086,6 @@ log_record_inner(int eventtype, int objclass, int sev, const char *objname, cons
 		if (rc < 0)
 			log_console_error("PBS cannot write to its log");
 	}
-	
-end:
-#ifndef WIN32
-	sigprocmask(SIG_SETMASK, &old_mask, NULL);
-#endif
-	return;
 }
 
 /**
