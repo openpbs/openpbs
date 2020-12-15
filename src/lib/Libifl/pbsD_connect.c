@@ -1146,7 +1146,7 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 	svr_conn_t **svr_conns_primary = NULL;
 	svr_conn_t **svr_conns_secondary = NULL;
 
-	if (sched_id == NULL)
+	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
 		return 0;
 
 	svr_conns_primary =  get_conn_svr_instances(primary_conn_id);
