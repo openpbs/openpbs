@@ -72,7 +72,7 @@ useradd -K UMASK=0022 -m -s /bin/bash -u 11001 -g tstgrp00 -G tstgrp00 tstusr01
 if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
   dnf -y clean all
   dnf -y install 'dnf-command(config-manager)'
-  dnf -y config-manager --set-enabled PowerTools
+  dnf -y config-manager --set-enabled powertools
   dnf -y install epel-release
   dnf -y update
   dnf -y install git gcc make m4 autoconf automake libtool rpm-build rpmdevtools \
