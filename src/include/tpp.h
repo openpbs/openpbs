@@ -141,7 +141,7 @@ extern void tpp_router_shutdown(void);
 extern int tpp_mcast_open(void);
 extern int tpp_mcast_add_strm(int, int);
 extern int *tpp_mcast_members(int, int *);
-extern int tpp_mcast_send(int, void *, unsigned int, unsigned int, unsigned int);
+extern int tpp_mcast_send(int, void *, unsigned int, unsigned int);
 extern int tpp_mcast_close(int);
 
 /**********************************************************************/

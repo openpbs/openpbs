@@ -126,7 +126,7 @@ typedef struct {
 
 static pthread_once_t avl_init_once = PTHREAD_ONCE_INIT;
 static pthread_key_t avl_tls_key;
-pthread_mutex_t tind_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t tind_lock;
 
 #define MAX_AVLKEY_LEN 100
 
@@ -152,10 +152,15 @@ avl_set_maxthreads(int n)
  *
  */
 void
-avl_init_tls(void)
+avl_init_func(void)
 {
 	if (pthread_key_create(&avl_tls_key, NULL) != 0) {
 		fprintf(stderr, "avl tls key creation failed\n");
+	}
+
+	if (pthread_mutex_init(&tind_lock, NULL) != 0) {
+		fprintf(stderr, "avl mutex init failed\n");
+		return;
 	}
 }
 
@@ -189,7 +194,7 @@ get_avl_tls(void)
 {
 	avl_tls_t *p_avl_tls = NULL;
 
-	pthread_once(&avl_init_once, avl_init_tls);
+	pthread_once(&avl_init_once, avl_init_func);
 
 	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key)) == NULL) {
 		p_avl_tls = (avl_tls_t *) calloc(1, sizeof(avl_tls_t));

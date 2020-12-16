@@ -176,8 +176,8 @@ typedef struct {
 typedef struct {
 	int ntotlen;
 	unsigned char type;         /* type packet, JOIN, LEAVE etc */
-	unsigned char node_type;    /* node type - leaf or router */
 	unsigned char hop;          /* hop count */
+	unsigned char node_type;    /* node type - leaf or router */
 	unsigned char index;        /* in case of leaves, primary connection or backup */
 	unsigned char num_addrs;    /* number of addresses of source joining, max 128 */
 } tpp_join_pkt_hdr_t;
@@ -220,7 +220,7 @@ typedef struct {
 	unsigned int src_sd;       /* source stream descriptor */
 	unsigned int dest_sd;      /* destination stream descriptor */
 
-	unsigned int totlen;       /* total pkt len (in case of fragmented pkts)*/
+	unsigned int totlen;       /* total pkt len */
 
 	tpp_addr_t src_addr;  /* src host address */
 	tpp_addr_t dest_addr; /* dest host address */
@@ -237,7 +237,6 @@ typedef struct {
 	unsigned int info_len;    /* total length of info */
 	unsigned int info_cmprsd_len; /* compressed length of info */
 	unsigned int totlen;          /* total pkt len (in case of fragmented pkts) */
-	unsigned int data_cmprsd_len; /* compressed len */
 	tpp_addr_t src_addr;     /* source host address */
 } tpp_mcast_pkt_hdr_t;
 

@@ -181,7 +181,7 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
 
 	func[0] = '\0';
 	if (routine)
-		snprintf(func, sizeof(func), ",%s,", routine);
+		snprintf(func, sizeof(func), ";%s", routine);
 
 	thrd_index = tpp_get_thrd_index();
 	if (thrd_index == -1)
@@ -665,10 +665,13 @@ tpp_bld_pkt(tpp_packet_t *pkt, void *data, int len, int dup, void **dup_data)
 	tpp_chunk_t *chunk;
 	void *d = data;
 
+	/* first create the requested chunk for the packet */
 	if ((chunk = malloc(sizeof(tpp_chunk_t))) == NULL) {
-		tpp_log(LOG_CRIT, __func__, "Failed to build packet");
+		tpp_log(LOG_CRIT, __func__, "Failed to build chunk");
+		tpp_free_pkt(pkt);
 		return NULL;
 	}
+	/* dup flag was provided, so allocate space */
 	if (dup) {
 		d = malloc(len);
 		if (!d) {
@@ -687,6 +690,8 @@ tpp_bld_pkt(tpp_packet_t *pkt, void *data, int len, int dup, void **dup_data)
 	chunk->len = len;
 	CLEAR_LINK(chunk->chunk_link);
 
+	/* add chunk to packet */
+	/* if packet NULL, create packet now and add chunk */
 	if (pkt == NULL) {
 		if ((pkt = malloc(sizeof(tpp_packet_t))) == NULL) {
 			if (d != data) 

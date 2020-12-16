@@ -1003,8 +1003,8 @@ void
 log_record(int eventtype, int objclass, int sev, const char *objname, const char *text)
 {
 	ms_time mst;
-	char slogbuf[LOG_BUF_SIZE];
 #ifndef WIN32
+	char slogbuf[LOG_BUF_SIZE];
 	sigset_t block_mask;
 	sigset_t old_mask;
 

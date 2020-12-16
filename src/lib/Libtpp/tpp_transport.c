@@ -1034,7 +1034,7 @@ tpp_transport_vsend(int tfd, tpp_packet_t *pkt)
 {
 	/* compute the length in network byte order for the whole packet */
 	tpp_chunk_t *first_chunk = GET_NEXT(pkt->chunks);
-	void *p = (void *) (first_chunk->data);
+	void *p_ntotlen = (void *) (first_chunk->data);
 	int wire_len = htonl(pkt->totlen);
 	int rc;
 
@@ -1043,7 +1043,13 @@ tpp_transport_vsend(int tfd, tpp_packet_t *pkt)
 
 	TPP_DBPRT("sending total length = %d", pkt->totlen);
 
-	memcpy(p, &wire_len, sizeof(int));
+	/* write the total packet length as the first byte of the packet header 
+	 * every packet header type has a ntotlen as the exact first element 
+	 * The total length of all the chunks of the packet is only know at this
+	 * function, when all chunks are complete, so we compute the total length
+	 * and set to the ntotlen element of the packet header 
+	 */
+	memcpy(p_ntotlen, &wire_len, sizeof(int));
 
 	/* write to worker threads send pipe */
 	rc = tpp_post_cmd(tfd, TPP_CMD_SEND, (void *) pkt);
@@ -1860,8 +1866,8 @@ handle_incoming_data(phy_conn_t *conn)
 
 /**
  * @brief
- *	Add a packet to the receivers buffer or if buffer if full
- *  add a defered action, so that it can be checked later
+ *	Add a packet to the receivers buffer or if buffer is full
+ *  add a deffered action, so that it can be checked later
  *
  * @param[in] conn - The physical connection
  *

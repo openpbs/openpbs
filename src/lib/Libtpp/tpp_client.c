@@ -238,7 +238,6 @@ static void act_strm(time_t now, int force);
 static int send_app_strm_close(stream_t *strm, int cmd, int error);
 static int send_pkt_to_app(stream_t *strm, unsigned char type, void *data, int sz, int totlen);
 static stream_t *find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int dest_magic);
-static int tpp_send_inner(int sd, void *data, int len, int full_len, int cmprsd_len);
 static int send_spl_packet(stream_t *strm, int type);
 static int leaf_send_ctl_join(int tfd, void *c);
 static int send_to_router(tpp_packet_t *pkt);
@@ -382,7 +381,7 @@ leaf_send_ctl_join(int tfd, void *c)
 		r->state = TPP_ROUTER_STATE_CONNECTING;
 
 		/* send a TPP_CTL_JOIN message */
-		pkt = tpp_bld_pkt(pkt, NULL, sizeof(tpp_join_pkt_hdr_t), 1, (void **) &hdr);
+		pkt = tpp_bld_pkt(NULL, NULL, sizeof(tpp_join_pkt_hdr_t), 1, (void **) &hdr);
 		if (!pkt) {
 			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 			return -1;
@@ -520,7 +519,6 @@ leaf_post_connect_handler(int tfd, void *data, void *c, void *extra)
  *
  * @see
  *	tpp_transport_connect
- *	send_to_router
  *
  * @param[in] r - struct router - info of the router to connect to
  *
@@ -595,7 +593,7 @@ tpp_init(struct tpp_config *cnf)
 		return -1;
 	}
 
-	tpp_log(LOG_CRIT, __func__, "App Thread id is %d", pthread_self());
+	tpp_log(LOG_CRIT, NULL, "App Thread id is %d", pthread_self());
 
 	/* before doing anything else, initialize the key to the tls */
 	if (tpp_init_tls_key() != 0) {
@@ -908,86 +906,12 @@ get_active_router()
 int
 tpp_send(int sd, void *data, int len)
 {
-	int rc = -1;
-	int to_send;
-	void *data_dup;
-	unsigned int cmprsd_len = 0;
-
-	if (!get_strm(sd)) {
-		TPP_DBPRT("Bad sd %d", sd);
-		return -1;
-	}
-
-	TPP_DBPRT("Sending: sd=%d, len=%d", sd, len);
-
-	if ((tpp_conf->compress == 1) && (len > TPP_COMPR_SIZE)) {
-		data_dup = tpp_deflate(data, len, &cmprsd_len); /* creates a copy */
-		if (data_dup == NULL) {
-			tpp_log(LOG_CRIT, __func__, "tpp deflate failed");
-			return -1;
-		}
-		to_send = cmprsd_len;
-	} else {
-		data_dup = malloc(len);
-		if (!data_dup) {
-			tpp_log(errno, __func__, "Failed to duplicate data");
-			return -1;
-		}
-		memcpy(data_dup, data, len);;
-		cmprsd_len = len;
-		to_send = len;
-	}
-
-	if (to_send > 0) {
-		do {
-			rc = tpp_send_inner(sd, data_dup, to_send, len, cmprsd_len);
-			TPP_DBPRT("tpp_send_inner returned %d", rc);
-			if (rc == to_send) {
-				TPP_DBPRT("returning %d", len);
-				return len;
-			}
-			if (rc == -2)
-				usleep(200); /* sleep for 200 ms due to buffer full */
-		} while (rc == -2);
-	}
-	
-	return rc; /* -1 */
-}
-
-/**
- * @brief
- *	Helper function to send data to a stream, used by tpp_send to send
- *	each chunk of the larger data block.
- *
- * @par Functionality:
- *	Creates the internal data packet header and sends the data along with
- *	the header. tpp_send breaks the whole data into multiple manageable
- *	chunks and calls tpp_send_inner for each chunk
- *
- * @param[in] sd - The stream descriptor to which to send data
- * @param[in] data - Pointer to the chunk of data
- * @param[in] to_send - Length of the chunk of data
- * @param[in] full_len - Length of the whole data block to be sent
- * @param[in] cmprsd_len - length of compressed data
- *
- * @return  Error code
- * @retval  -1 - Failure
- * @retval  -2 - transport buffers full
- * @retval   >=0 - Success - amount of data sent
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-static int
-tpp_send_inner(int sd, void *data, int to_send, int full_len, int cmprsd_len)
-{
 	stream_t *strm;
+	int rc = -1;
+	unsigned int to_send;
+	void *data_dup;
 	tpp_data_pkt_hdr_t *dhdr = NULL;
 	tpp_packet_t *pkt;
-	int rc = -1;
 
 	strm = get_strm(sd);
 	if (!strm) {
@@ -995,27 +919,47 @@ tpp_send_inner(int sd, void *data, int to_send, int full_len, int cmprsd_len)
 		return -1;
 	}
 
-	tpp_log(LOG_DEBUG, __func__, "**** sd=%d, to_send=%d, compr_len=%d, totlen=%d, dest_sd=%u", sd, to_send, cmprsd_len, full_len, strm->dest_sd);
+	if ((tpp_conf->compress == 1) && (len > TPP_COMPR_SIZE)) {
+		data_dup = tpp_deflate(data, len, &to_send); /* creates a copy */
+		if (data_dup == NULL) {
+			tpp_log(LOG_CRIT, __func__, "tpp deflate failed");
+			return -1;
+		}
+	} else {
+		data_dup = malloc(len);
+		if (!data_dup) {
+			tpp_log(errno, __func__, "Failed to duplicate data");
+			return -1;
+		}
+		memcpy(data_dup, data, len);
+		to_send = len;
+	}
+	/* we have created a copy of the data either way, compressed, or not */
+
+	tpp_log(LOG_DEBUG, __func__, "**** sd=%d, compr_len=%d, len=%d, dest_sd=%u", sd, to_send, len, strm->dest_sd);
 
 	if (strm->strm_type == TPP_STRM_MCAST) {
 		/* do other stuff */
-		return tpp_mcast_send(sd, data, to_send, full_len, cmprsd_len);
+		return tpp_mcast_send(sd, data_dup, to_send, len);
 	}
 	
+	/* create a new pkt and add the dhdr chunk first */
 	pkt = tpp_bld_pkt(NULL, NULL, sizeof(tpp_data_pkt_hdr_t), 1, (void **) &dhdr);
 	if (!pkt) {
 		tpp_log(LOG_CRIT, __func__, "Failed to build packet");
+		free(data_dup);
 		return -1;
 	}
 	dhdr->type = TPP_DATA;
 	dhdr->src_sd = htonl(sd);
 	dhdr->src_magic = htonl(strm->src_magic);
 	dhdr->dest_sd = htonl(strm->dest_sd);
-	dhdr->totlen = htonl(full_len);
+	dhdr->totlen = htonl(len);
 	memcpy(&dhdr->src_addr, &strm->src_addr, sizeof(tpp_addr_t));
 	memcpy(&dhdr->dest_addr, &strm->dest_addr, sizeof(tpp_addr_t));
 	
-	if (!tpp_bld_pkt(pkt, data, cmprsd_len, 0, NULL)) { /* data is already a duplicate buffer */
+	/* add the data chunk to the already created pkt */
+	if (!tpp_bld_pkt(pkt, data_dup, to_send, 0, NULL)) { /* data is already a duplicate buffer */
 		tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 		return -1;
 	}
@@ -1023,11 +967,13 @@ tpp_send_inner(int sd, void *data, int to_send, int full_len, int cmprsd_len)
 	rc = send_to_router(pkt);
 	if (rc == 0)
 		return to_send;
-
-	if (rc == -1) {
-		tpp_log(LOG_ERR, __func__, "send_to_router failed in tpp_send");
-		send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
-	}
+	
+	if (rc == -2)
+		tpp_log(LOG_CRIT, __func__, "mbox full, returning error to App!");
+	else if (rc == -1)
+		tpp_log(LOG_ERR, __func__, "Failed to send to router");
+		
+	send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
 	return rc;
 }
 
@@ -1859,8 +1805,7 @@ tpp_mcast_notify_members(int mtfd, int cmd)
  * @param[in] data - The pointer to the block of data to send
  * @param[in] to_send  - Length of the data to send
  * @param[in] full_len - In case of large packets data is sent in chunks,
- *			 full_len is the total length of the data
- * @param[in] comprsd_len - Length of compressed data (if compressed)
+ *                       full_len is the total length of the data
  *
  * @return  Error code
  * @retval  -1 - Failure
@@ -1874,7 +1819,7 @@ tpp_mcast_notify_members(int mtfd, int cmd)
  *
  */
 int
-tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len, unsigned int cmprsd_len)
+tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len)
 {
 	stream_t *mstrm = NULL;
 	stream_t *strm = NULL;
@@ -1910,7 +1855,6 @@ tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len
 	}
 	mhdr->type = TPP_MCAST_DATA;
 	mhdr->hop = 0;
-	mhdr->data_cmprsd_len = htonl(cmprsd_len);
 	mhdr->totlen = htonl(full_len);
 	memcpy(&mhdr->src_addr, &mstrm->src_addr, sizeof(tpp_addr_t));
 	mhdr->num_streams = htonl(num_fds);
@@ -1986,7 +1930,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len
 	if (rc == 0)
 		return to_send;
 
-	tpp_log(LOG_ERR, __func__, "send_to_router failed in tpp_mcast_send"); /* fall through */
+	tpp_log(LOG_ERR, __func__, "Failed to send to router"); /* fall through */
 
 err:
 	tpp_mcast_notify_members(mtfd, TPP_CMD_NET_CLOSE);
@@ -2461,7 +2405,7 @@ send_spl_packet(stream_t *strm, int type)
 	memcpy(&dhdr->dest_addr, &strm->dest_addr, sizeof(tpp_addr_t));
 
 	if (send_to_router(pkt) != 0) {
-		tpp_log(LOG_ERR, __func__, "send_to_router failed");
+		tpp_log(LOG_ERR, __func__, "Failed to send to router");
 		return -1;
 	}
 	return 0;
@@ -2620,7 +2564,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 		r->delay = 0; /* reset connection retry time to 0 */
 		r->conn_time = time(0); /* record connect time */
 
-		tpp_log(LOG_CRIT, __func__, "Connected to pbs_comm %s", r->router_name);
+		tpp_log(LOG_CRIT, NULL, "Connected to pbs_comm %s", r->router_name);
 
 		TPP_DBPRT("Sending cmd to call App net restore handler");
 		if (tpp_mbox_post(&app_mbox, UNINITIALIZED_INT, TPP_CMD_NET_RESTORE, NULL, 0) != 0) {
