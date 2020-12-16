@@ -31,4 +31,6 @@ jobs:
     pool:
       vmImage: 'ubuntu-18.04'
     steps:
-      - bash: .travis/do.sh
+    - bash: docker pull ubuntu:18.04
+    - bash: docker run -it -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8 -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:18.04 /bin/bash
+    - bash: docker exec  -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8 --privileged pbsdev .travis/do.sh
