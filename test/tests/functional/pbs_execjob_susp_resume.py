@@ -283,7 +283,6 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -291,12 +290,12 @@ sleep 60
         reject_msg = "%s hook rejected request: %s" % (hook_event, hook_msg)
         for vn in [self.momA, self.momB]:
             if vn == self.momA:
-                vn.log_match("signal job with suspend", starttime=stime)
+                vn.log_match(jid + ";signal job with suspend")
             else:
-                vn.log_match("SUSPEND received", starttime=stime)
+                vn.log_match(jid + ";SUSPEND received")
 
-            vn.log_match("Job;%s;%s" % (jid, hook_msg), starttime=stime)
-            vn.log_match("Job;%s;%s" % (jid, reject_msg), starttime=stime)
+            vn.log_match("Job;%s;%s" % (jid, hook_msg))
+            vn.log_match("Job;%s;%s" % (jid, reject_msg))
 
         # after hook executes, job continues to be suspended
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
@@ -355,7 +354,6 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -365,11 +363,11 @@ sleep 60
 
         for vn in [self.momA, self.momB]:
             if vn == self.momA:
-                vn.log_match("signal job with suspend", starttime=stime)
+                vn.log_match(jid + ";signal job with suspend")
             else:
-                vn.log_match("SUSPEND received", starttime=stime)
+                vn.log_match(jid + ";SUSPEND received")
 
-            vn.log_match("Job;%s;%s" % (jid, error_msg), starttime=stime)
+            vn.log_match("Job;%s;%s" % (jid, error_msg))
 
         # after hook executes, job continues to be suspended
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
@@ -391,7 +389,6 @@ sleep 60
         jid = self.server.submit(self.j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
 
-        stime = time.time()
         # Suspend job
         self.server.sigjob(jobid=jid, signal="suspend")
 
@@ -401,12 +398,12 @@ sleep 60
 
         for vn in [self.momA, self.momB]:
             if vn == self.momA:
-                vn.log_match("signal job with suspend", starttime=stime)
+                vn.log_match(jid + ";signal job with suspend")
                 vn.log_match("Job;%s;%s" % (jid, error_msg),
-                             starttime=stime, existence=False, max_attempts=30)
+                             existence=False, max_attempts=30)
             else:
-                vn.log_match("SUSPEND received", starttime=stime)
-                vn.log_match("Job;%s;%s" % (jid, error_msg), starttime=stime)
+                vn.log_match(jid + ";SUSPEND received")
+                vn.log_match("Job;%s;%s" % (jid, error_msg))
 
         # after hook executes, job continues to be suspended
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid)
