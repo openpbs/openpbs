@@ -82,7 +82,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     export LANG="C.utf8"
     dnf -y clean all
     dnf -y install 'dnf-command(config-manager)'
-    dnf -y config-manager --set-enabled PowerTools
+    dnf -y config-manager --set-enabled powertools
     dnf -y install epel-release
     dnf -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
