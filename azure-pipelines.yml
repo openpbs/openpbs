@@ -31,3 +31,4 @@ jobs:
     pool:
       vmImage: 'ubuntu-18.04'
     steps:
+      - bash: .travis/do.sh
