@@ -171,6 +171,7 @@ void
 tpp_log(int level, const char *routine, const char *fmt, ...)
 {
 	char id[2 * PBS_MAXHOSTNAME];
+	char func[PBS_MAXHOSTNAME];
 	int thrd_index;
 	int etype = log_level_2_etype(level);
 	int len;
@@ -178,13 +179,17 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
 	char *buf;
 	va_list args;
 
-	va_start(args, fmt);
+	func[0] = '\0';
+	if (routine)
+		snprintf(func, sizeof(func), ",%s,", routine);
 
 	thrd_index = tpp_get_thrd_index();
 	if (thrd_index == -1)
-		snprintf(id, sizeof(id), "%s(Main Thread)", msg_daemonname ? msg_daemonname : "");
+		snprintf(id, sizeof(id), "%s(Main Thread)%s", msg_daemonname ? msg_daemonname : "", func);
 	else
-		snprintf(id, sizeof(id), "%s(Thread %d)", msg_daemonname ? msg_daemonname : "", thrd_index);
+		snprintf(id, sizeof(id), "%s(Thread %d)%s", msg_daemonname ? msg_daemonname : "", thrd_index, func);
+
+	va_start(args, fmt);
 
 	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
 
@@ -201,6 +206,7 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
 
 	if (len >= sizeof(logbuf))
 		free(buf);
+
 	va_end(args);
 
 	DBPRT(("%s %s\n", id, buf));
@@ -211,15 +217,13 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
  *	Helper function called by PBS daemons to set the tpp configuration to
  *	be later used during tpp_init() call.
  *
- * @param[in] pbs_conf - Pointer to the Pbs_config structure
+ * @param[in] pbs_conf - Pointer to the pbs_config structure
  * @param[out] tpp_conf - The tpp configuration structure duly filled based on
  *			  the input parameters
  * @param[in] nodenames - The comma separated list of name of this side of the communication.
  * @param[in] port     - The port at which this side is identified.
  * @param[in] routers  - Array of router addresses ended by a null entry
  *			 router addresses are of the form "host:port"
- * @param[in] compress - Whether compression of data must be done
- *
  *
  * @retval Error code
  * @return -1 - Failure
@@ -1595,32 +1599,6 @@ tpp_get_tls()
 	return (tpp_tls_t *) ptr; /* thread data already initialized */
 }
 
-/**
- * @brief
- *	Get the log buffer address from the thread TLS
- *
- * @return	Address of the log buffer from TLS or NULL if error occurred
- *
- * @par Side Effects:
- *	Exits if not fails
- *
- * @par MT-safe: Yes
- *
- */
-char *
-tpp_get_staticbuf()
-{
-	tpp_tls_t *ptr;
-
-	ptr = tpp_get_tls();
-	if (!ptr) {
-		fprintf(stderr, "Out of memory\n");
-		return NULL;
-	}
-
-	return ptr->tppstaticbuf;
-}
-
 #ifdef PBS_COMPRESSION_ENABLED
 
 #define COMPR_LEVEL Z_DEFAULT_COMPRESSION
@@ -2390,7 +2368,7 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 	chunk = NULL;
 	chunk = malloc(sizeof(tpp_chunk_t));
 	if (chunk)
-		chunk->data = malloc(sizeof(int));
+		chunk->data = malloc(sizeof(tpp_encrypt_hdr_t));
 	if (!chunk || !chunk->data) {
 		free(chunk);
 		tpp_log(LOG_CRIT, __func__, "Out of memory adding length chunk");

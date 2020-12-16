@@ -1009,30 +1009,6 @@ tpp_transport_wakeup_thrd(int tfd)
 
 /**
  * @brief
- *	Check the amount of data queued on a outgoing connection. If the buffered
- *	(and unsent) data is greater than some limit specified per connection,
- *	then that connection is closed.
- *
- * @param[in] conn   - The connection that has to be checked
- *
- * @return  Error code
- * @retval  -1 - buffered data exceeds specified limits
- * @retval   0 - buffered data within limits
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: No
- *
- */
-int
-check_buffer_limits(phy_conn_t *conn)
-{
-	return 0;
-}
-
-/**
- * @brief
  *	Queue data to be sent out by the IO thread. This function can take a
  *	set of data buffers and sends them out after concatenating
  *
@@ -1525,7 +1501,7 @@ work(void *v)
 		while (1) {
 			now = time(0);
 
-			/* trigger all delayed connects, and return the wait time till the next one to trigger */
+			/* trigger all delayed events, and return the wait time till the next one to trigger */
 			timeout = trigger_deferred_events(td, now);
 			if (the_timer_handler) {
 				timeout2 = the_timer_handler(now);
@@ -1993,7 +1969,7 @@ send_data(phy_conn_t *conn)
 		}
 		p = pkt->curr_chunk;
 
-		/* data available, first byte, and presend handler presend, call handler */
+		/* data available, first byte, presend handler present, call handler */
 		if ((p == GET_NEXT(pkt->chunks)) && (p->pos == p->data) && the_pkt_presend_handler) {
 			if ((rc = the_pkt_presend_handler(conn->sock_fd, pkt, conn->ctx, conn->extra)) == 0) {
 				p = pkt->curr_chunk; /* presend handler could change pkt contents */
@@ -2081,17 +2057,6 @@ free_phy_conn(phy_conn_t *conn)
 	free(conn->ctx);
 	free(conn->scratch.data);
 	free(conn);
-}
-
-/*
- * Dummy log function used when terminate is called
- * We cannot log anything after fork even if tpp_dummy_logfunc
- * is called accidentally, so set tpp_log to this
- * dummy function
- */
-void
-tpp_dummy_logfunc(int level, const char *id, char *mess)
-{
 }
 
 /**

@@ -142,9 +142,7 @@ tpp_pipe_err:
 		closesocket(fds[1]);
 
 	errno = tr_2_errno(WSAGetLastError());
-	snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-		"%s failed, winsock errno= %d", op, WSAGetLastError());
-	tpp_log(LOG_CRIT, __func__, tpp_get_logbuf());
+	tpp_log(LOG_CRIT, __func__, "%s failed, winsock errno= %d", op, WSAGetLastError());
 	return -1;
 }
 
@@ -490,8 +488,7 @@ tpp_sock_layer_init()
 {
 	WSADATA	data;
 	if (WSAStartup(MAKEWORD(2, 2), &data)) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "winsock_init failed! error=%d\n", WSAGetLastError());
-		tpp_log(LOG_CRIT, NULL, tpp_get_logbuf());
+		tpp_log(LOG_CRIT, NULL, "winsock_init failed! error=%d\n", WSAGetLastError());
 		return -1;
 	}
 	return 0;

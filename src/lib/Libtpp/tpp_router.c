@@ -105,6 +105,7 @@ static int router_send_ctl_join(int tfd, void *data, void *c);
 /* forward declarations */
 static int router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra);
 static int router_pkt_handler(int phy_fd, void *data, int len, void *c, void *extra);
+static int router_pkt_handler_inner(int tfd, void *buf, void **data_out, int len, void *c, void *extra);
 static int router_close_handler(int phy_con, int error, void *c, void *extra);
 static int send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target);
 static tpp_router_t *get_preferred_router(tpp_leaf_t *l, tpp_router_t *this_router, int *fd);
@@ -1058,12 +1059,14 @@ router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 
 /**
  * @brief
- *	Handler function for the router to handle incoming data. When a data
- *	packet arrives, it determines what is the intended destination and
- *	forwards the data packet to that destination.
+ *	Wrapper function for the router to handle incoming data. This 
+ *  wrapper exists only to detect if the inner function
+ *  allocated memory in data_out and free that memory in a 
+ *  clean way, so that we do not have to add a goto or free
+ *  in every return path of the inner function.
  *
  * @param[in] tfd - The physical connection over which data arrived
- * @param[in] data - The pointer to the received data packet
+ * @param[in] buf - The pointer to the received data packet
  * @param[in] len - The length of the received data packet
  * @param[in] c   - The context associated with this physical connection
  * @param[in] extra - The extra data associated with IO connection
@@ -1081,6 +1084,38 @@ router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 static int
 router_pkt_handler(int tfd, void *buf, int len, void *c, void *extra)
 {
+	void *data_out = NULL;
+	int rc = router_pkt_handler_inner(tfd, buf, &data_out, len, c, extra);
+	free(data_out);
+	return rc;
+}
+
+/**
+ * @brief
+ *	Inner handler function for the router to handle incoming data. When data
+ *	packet arrives, it determines what is the intended destination and
+ *	forwards the data packet to that destination.
+ *
+ * @param[in] tfd - The physical connection over which data arrived
+ * @param[in] buf - The pointer to the received data packet
+ * @param[out] data_out - The pointer to the newly allocated data buffer, if any
+ * @param[in] len - The length of the received data packet
+ * @param[in] c   - The context associated with this physical connection
+ * @param[in] extra - The extra data associated with IO connection
+ *
+ * @return Error code
+ * @retval -1 - Failure
+ * @retval  0 - Success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+static int
+router_pkt_handler_inner(int tfd, void *buf, void **data_out, int len, void *c, void *extra)
+{
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	tpp_data_pkt_hdr_t *dhdr = buf;
 	enum TPP_MSG_TYPES type;
@@ -1091,7 +1126,7 @@ router_pkt_handler(int tfd, void *buf, int len, void *c, void *extra)
 	conn_auth_t *authdata = (conn_auth_t *)extra;
 	tpp_addr_t *addr = tpp_get_connected_host(tfd);
 	char msg[TPP_GEN_BUF_SZ];
-	short rc;
+	short rc = -1;
 
 	if (!addr)
 		return -1;
@@ -1120,14 +1155,16 @@ again:
 				return -1;
 			}
 
-			if (authdata->encryptdef->decrypt_data(authdata->encryptctx, (void *)((char *)buf + sz), (size_t)len - sz, (void *) &dhdr, (size_t *) &len_out) != 0) {
+			if (authdata->encryptdef->decrypt_data(authdata->encryptctx, (void *)((char *)buf + sz), (size_t)len - sz, (void **) data_out, (size_t *) &len_out) != 0) {
 				return -1;
 			}
 
-			if (MAX_INT_LENGTH == 0) {
+			if ((len - 1) > 0 && len_out <= 0) {
 				tpp_log(LOG_CRIT, __func__, "invalid decrypted data len: %d, pktlen: %d", len_out, len - 1);
 				return -1;
 			}
+			dhdr = *data_out;
+			len = len_out - sizeof(int);
 			goto again;
 		}
 		break;

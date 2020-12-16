@@ -947,8 +947,7 @@ tpp_mbox_init(tpp_mbox_t *mbox, char *name, int size)
 	 * Use the self-pipe trick!
 	 */
 	if (tpp_pipe_cr(mbox->mbox_pipe) != 0) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "pipe() error, errno=%d", errno);
-		tpp_log(LOG_CRIT, __func__, tpp_get_logbuf());
+		tpp_log(LOG_CRIT, __func__, "pipe() error, errno=%d", errno);
 		return -1;
 	}
 	/* set the cmd pipe to nonblocking now

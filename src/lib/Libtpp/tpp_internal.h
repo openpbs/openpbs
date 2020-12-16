@@ -427,7 +427,7 @@ typedef struct {
 	int conn_type;
 } conn_auth_t;
 
-int tpp_child_terminated; /* whether a forked child called tpp_terminate or not? initialized to 0 */
+int tpp_terminated_in_child; /* whether a forked child called tpp_terminate or not? initialized to 0 */
 
 conn_auth_t *tpp_make_authdata(struct tpp_config *, int, char *, char *);
 int tpp_handle_auth_handshake(int, int, conn_auth_t *, int, void *, size_t);
@@ -446,7 +446,6 @@ char* convert_to_ip_port(char *, int);
 
 int tpp_init_tls_key(void);
 tpp_tls_t *tpp_get_tls(void);
-char *tpp_get_logbuf(void);
 char *mk_hostname(char *, int);
 struct sockaddr_in* tpp_localaddr(int);
 tpp_packet_t *tpp_bld_pkt(tpp_packet_t *, void *, int, int, void **);

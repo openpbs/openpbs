@@ -236,7 +236,6 @@ static void queue_strm_close(stream_t *); /* call only by APP thread, however in
 static void queue_strm_free(unsigned int sd); /* invoked by IO thread only, via acting on the strm_action_queue */
 static void act_strm(time_t now, int force);
 static int send_app_strm_close(stream_t *strm, int cmd, int error);
-static void *add_strm_packet(stream_t *strm, void *data, int sz, int totlen);
 static int send_pkt_to_app(stream_t *strm, unsigned char type, void *data, int sz, int totlen);
 static stream_t *find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int dest_magic);
 static int tpp_send_inner(int sd, void *data, int len, int full_len, int cmprsd_len);
@@ -275,7 +274,7 @@ get_strm_atomic(unsigned int sd)
 {
 	stream_t *strm = NULL;
 
-	if (tpp_child_terminated == 1)
+	if (tpp_terminated_in_child == 1)
 		return NULL;
 
 	tpp_read_lock(&strmarray_lock); /* walking the array, so read lock */
@@ -337,7 +336,7 @@ get_strm(unsigned int sd)
  *	restored or vice-versa, IO thread sends notification to APP thread. The
  *	APP thread, then, calls the handler prior registered by this setter
  *	function. This function is called by the APP to set such a handler.
- *	For example, in the case of pbs_server, such a handler is "ping_nodes".
+ *	For example, in the case of pbs_server, such a handler is "net_down_handler".
  *
  * @see
  *	leaf_close_handler
@@ -639,7 +638,7 @@ tpp_init(struct tpp_config *cnf)
 	 * from the IO thread from the transport layer
 	 */
 	tpp_transport_set_handlers(
-		leaf_pkt_presend_handler, /* called before sending chunk */
+		leaf_pkt_presend_handler, /* called before sending packet */
 		leaf_pkt_handler, /* called when a packet arrives */
 		leaf_close_handler, /* called when a connection closes */
 		leaf_post_connect_handler, /* called when connection restores */
@@ -693,7 +692,7 @@ tpp_init(struct tpp_config *cnf)
 	 * only calling thread that called fork() and TPP layer never calls fork. So, this
 	 * means that the TPP thread is always dead/unavailable in a child process.
 	 * 
-	 * We register only a post_fork child handler to set "tpp_child_terminated" flag
+	 * We register only a post_fork child handler to set "tpp_terminated_in_child" flag
 	 * which renders TPP functions to return right away without doing anything, 
 	 * rendering TPP functionality "bypassed" in the child process.
 	 * 
@@ -898,7 +897,6 @@ get_active_router()
  *
  * @return  Error code
  * @retval  -1 - Failure
- * @retval  -2 - transport buffers full
  * @retval   >=0 - Success - amount of data sent
  *
  * @par Side Effects:
@@ -948,7 +946,7 @@ tpp_send(int sd, void *data, int len)
 				TPP_DBPRT("returning %d", len);
 				return len;
 			}
-			if (rc == -1)
+			if (rc == -2)
 				usleep(200); /* sleep for 200 ms due to buffer full */
 		} while (rc == -2);
 	}
@@ -1406,13 +1404,13 @@ tpp_terminate()
 	 * main process.
 	 *
 	 */
-	if (tpp_child_terminated == 1)
+	if (tpp_terminated_in_child == 1)
 		return;
 
 	/* set flag so this function is never entered within
 	 * this process again, so no fear of double frees
 	 */
-	tpp_child_terminated = 1;
+	tpp_terminated_in_child = 1;
 
 	tpp_transport_terminate();
 
@@ -2352,57 +2350,6 @@ leaf_next_event_expiry(time_t now)
 
 /**
  * @brief
- *	Adds part of a received packet to the received buffer
- *
- * @par Functionality
- *	If the incoming packet was compressed then this also inflates the data
- *	before storing. Adds the inflated data to stream->part_recv_pkt
- *
- * @param[in] sd - The descriptor of the stream
- * @param[in] data - The data that has to be stored
- * @param[in] sz - The size of the data
- * @param[in] totlen - Total data size
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: No
- *
- */
-static void *
-add_strm_packet(stream_t *strm, void *data, int sz, int totlen)
-{
-	tpp_packet_t *obj;
-	void *tmp;
-
-	TPP_DBPRT("*** buf=%p, sd=%u, sz=%d, totlen=%d", data, strm->sd, sz, totlen);
-
-	/* in case of uncompressed packets, totlen == compressed_len
-	 * so amount of data on wire is compressed len, so allways check against
-	 * compressed_len
-	 */
-	if (sz != totlen) {
-		if (!(tmp = tpp_inflate(data, sz, totlen))) {
-			tpp_log(LOG_CRIT, __func__, "Decompression failed");
-			return NULL;
-		}
-		data = tmp;
-	} else {
-		/* this is still the pointer to the data part of original buffer, must make copy */
-		tmp = malloc(totlen);
-		memcpy(tmp, data, totlen);
-		data = tmp;
-	}
-
-	obj = tpp_bld_pkt(NULL, data, totlen, 0, NULL);
-	if (!obj)
-		tpp_log(LOG_CRIT, __func__, "Failed to build packet");
-	
-	return obj; /* packet complete */
-}
-
-/**
- * @brief
  *	Send a data packet to the APP layer
  *
  * @par Functionality
@@ -2431,12 +2378,31 @@ send_pkt_to_app(stream_t *strm, unsigned char type, void *data, int sz, int totl
 {
 	int rc;
 	int cmd;
+	void *tmp;
 	tpp_packet_t *obj;
 
 	if (type == TPP_DATA) {
-		obj = add_strm_packet(strm, data, sz, totlen);
-		if (obj == NULL)
-			return 0; /* more data required */
+		/* in case of uncompressed packets, totlen == compressed_len
+		 * so amount of data on wire is compressed len, so allways check against
+		 * compressed_len
+		 */
+		if (sz != totlen) {
+			if (!(tmp = tpp_inflate(data, sz, totlen))) {
+				tpp_log(LOG_CRIT, __func__, "Decompression failed");
+				return -1;
+			}
+			data = tmp;
+		} else {
+			/* this is still the pointer to the data part of original buffer, must make copy */
+			tmp = malloc(totlen);
+			memcpy(tmp, data, totlen);
+			data = tmp;
+		}
+		obj = tpp_bld_pkt(NULL, data, totlen, 0, NULL);
+		if (!obj) {
+			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
+			return -1;
+		}
 		cmd = TPP_CMD_NET_DATA;
 	} else {
 		cmd = TPP_CMD_PEER_CLOSE;
@@ -2647,7 +2613,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 	data = (tpp_data_pkt_hdr_t *) first_chunk->data;
 	type = data->type;
 
-	/* Set router's state to connected, if a join packet was successfully sent */
+	/* Connection accepcted by comm, set router's state to connected */
 	if (type == TPP_CTL_JOIN) {
 		r = (tpp_router_t *) ctx->ptr;
 		r->state = TPP_ROUTER_STATE_CONNECTED;
@@ -3064,28 +3030,19 @@ leaf_close_handler(int tfd, int error, void *c, void *extra)
 		unsigned int i;
 		/* log disconnection message */
 		tpp_log(LOG_CRIT, NULL, "Connection to pbs_comm %s down", r->router_name);
+		
+		/* send individual net close messages to app */
+		tpp_read_lock(&strmarray_lock); /* walking stream idx, so read lock */
+		for (i = 0; i < max_strms; i++) {
+			if (strmarray[i].slot_state == TPP_SLOT_BUSY) {
+				strmarray[i].strm->t_state = TPP_TRNS_STATE_NET_CLOSED;
+				TPP_DBPRT("net down, sending TPP_CMD_NET_CLOSE sd=%u", strmarray[i].strm->sd);
+				send_app_strm_close(strmarray[i].strm, TPP_CMD_NET_CLOSE, 0);
+			}
+		}
+		tpp_unlock_rwlock(&strmarray_lock);
 
-		if (!the_app_net_down_handler) {
-			/* send individual net close messages to app */
-			tpp_read_lock(&strmarray_lock); /* walking stream idx, so read lock */
-			for (i = 0; i < max_strms; i++) {
-				if (strmarray[i].slot_state == TPP_SLOT_BUSY) {
-					strmarray[i].strm->t_state = TPP_TRNS_STATE_NET_CLOSED;
-					TPP_DBPRT("net down, sending TPP_CMD_NET_CLOSE sd=%u", strmarray[i].strm->sd);
-					send_app_strm_close(strmarray[i].strm, TPP_CMD_NET_CLOSE, 0);
-				}
-			}
-			tpp_unlock_rwlock(&strmarray_lock);
-		} else {
-			tpp_read_lock(&strmarray_lock); /* walking stream idx, so read lock */
-			for (i = 0; i < max_strms; i++) {
-				if (strmarray[i].slot_state == TPP_SLOT_BUSY) {
-					strmarray[i].strm->t_state = TPP_TRNS_STATE_NET_CLOSED;
-					TPP_DBPRT("net down, sending TPP_CMD_NET_CLOSE sd=%u", strmarray[i].strm->sd);
-					send_app_strm_close(strmarray[i].strm, TPP_CMD_NET_CLOSE, 0);
-				}
-			}
-			tpp_unlock_rwlock(&strmarray_lock);
+		if (the_app_net_down_handler) {
 			if (tpp_mbox_post(&app_mbox, UNINITIALIZED_INT, TPP_CMD_NET_DOWN, NULL, 0) != 0) {
 				tpp_log(LOG_CRIT, __func__, "Error writing to app mbox");
 				return -1;
