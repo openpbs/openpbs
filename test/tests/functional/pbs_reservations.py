@@ -1702,7 +1702,7 @@ class TestReservations(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F', 'substate': '92'},
                            extend='xt', id=jid)
 
-        start = int(time.time()) + 10
+        start = int(time.time()) + 25
         end = int(time.time()) + 3660
         rid = self.submit_reservation(user=TEST_USER, select='1:ncpus=1',
                                       rrule='FREQ=DAILY;COUNT=2',
