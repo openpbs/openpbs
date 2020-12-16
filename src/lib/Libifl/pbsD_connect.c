@@ -74,6 +74,7 @@
 #include "auth.h"
 #include "ifl_internal.h"
 #include "libutil.h"
+#include "portability.h"
 
 static pthread_once_t conn_once_ctl = PTHREAD_ONCE_INIT;
 static pthread_mutex_t conn_lock;
@@ -170,44 +171,6 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 	freeaddrinfo(pai);
 	return -1;
 }
-
-/**	
- * @brief	
- *	-hostnmcmp - compare two hostnames, allowing a short name to match a longer	
- *	version of the same	
- *	
- * @param[in] s1 - hostname1	
- * @param[in] s2 - hostname2	
- *	
- * @return	int	
- * @retval	1	success	
- * @retval	0	failure	
- *	
- */	
-static int	
-hostnmcmp(char *s1, char *s2)	
-{	
-	/* Return failure if any/both the names are NULL. */	
-	if (s1 == NULL || s2 == NULL)	
-		return 1;	
-#ifdef WIN32	
-	/* Return success if both names are names of localhost. */	
-	if (is_local_host(s1) && is_local_host(s2))	
-		return 0;	
-#endif	
-	while (*s1 && *s2) {	
-		if (tolower((int)*s1++) != tolower((int)*s2++))	
-			return 1;	
-	}	
-	if (*s1 == *s2)	
-		return 0;	
-	else if ((*s1 == '\0') && ((*s2 == '.') || (*s2 == ':')))	
-		return 0;	
-	else if ((*s2 == '\0') && ((*s1 == '.') || (*s1 == ':')))	
-		return 0;	
-
-	return 1;	
-}	
 
 
 /**
@@ -670,11 +633,11 @@ __pbs_connect_extend(char *server, char *extend_data)
 	int	i;
 	int	f;
 	
-#ifndef WIN32	
+#ifdef CHECK_FILE	
 	char   pbsrc[_POSIX_PATH_MAX];	
 	struct stat sb;	
 	int    using_secondary = 0;	
-#endif  /* not WIN32 */
+#endif
 	
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -693,7 +656,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 
 	if (nsvrs == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
 		/* failover configuered ...   */	
-		if (hostnmcmp(server, pbs_conf.pbs_primary) == 0) {	
+		if (is_same_host(server, pbs_conf.pbs_primary)) {	
 			have_alt = 1;	
 			/* We want to try the one last seen as "up" first to not   */	
 			/* have connection delays.   If the primary was up, there  */	
@@ -701,8 +664,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			/* to the Secondary, then it created the .pbsrc.USER file. */	
 
 			/* see if already seen Primary down */	
-#ifdef WIN32	
-			/* due to windows quirks, all try both in same order */	
+#ifndef CHECK_FILE	
 			altservers[0] = pbs_conf.pbs_primary;	
 			altservers[1] = pbs_conf.pbs_secondary;	
 #else	
@@ -742,7 +704,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1; 		/* cannot connect */
 	}
 	
-#ifndef WIN32
+#ifdef CHECK_FILE
 	if (have_alt && (i == 1)) {
 		/* had to use the second listed server ... */
 		if (using_secondary == 1) {
