@@ -831,7 +831,8 @@ end_loop:
 
 /**
  * @brief
- * 		choosing one server in random if a failover server is already set up.
+ * 		choosing the server to connect to if a failover server is already set up.
+ * 		Selects primary and secondary alternatively.
  *
  * @param[out] port - Passed through to parse_servername(), not modified here.
  *
@@ -840,13 +841,16 @@ end_loop:
  * @retval !NULL - pointer to server name
  */
 static char *
-get_servername_random(unsigned int *port)
+get_servername_failover(unsigned int *port)
 {
+	static int whom_to_connect = 0;
 
 	if (!pbs_conf.pbs_secondary)
 		return get_servername(port);
 	else {
-		if (rand() % 2 == 0)
+		whom_to_connect = (whom_to_connect + 1) % 2;
+
+		if (whom_to_connect)
 			return get_servername(port);
 		else
 			return parse_servername(pbs_conf.pbs_secondary, port);
@@ -876,8 +880,8 @@ send_hellosvr(int stream)
 	unsigned int	port = default_server_port;
 
 	if (stream < 0) {
-		if ((svr = get_servername_random(&port)) == NULL) {
-			log_err(errno, msg_daemonname, "get_servername_random() failed");
+		if ((svr = get_servername_failover(&port)) == NULL) {
+			log_err(errno, msg_daemonname, "get_servername_failover() failed");
 			return;
 		}
 
