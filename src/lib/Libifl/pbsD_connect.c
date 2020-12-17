@@ -658,16 +658,17 @@ __pbs_connect_extend(char *server, char *extend_data)
 		/* failover configuered ...   */	
 		if (is_same_host(server, pbs_conf.pbs_primary)) {	
 			have_alt = 1;	
+			
+			altservers[0] = pbs_conf.pbs_primary;	
+			altservers[1] = pbs_conf.pbs_secondary;	
+			
+#ifdef CHECK_FILE	
 			/* We want to try the one last seen as "up" first to not   */	
 			/* have connection delays.   If the primary was up, there  */	
 			/* is no .pbsrc.NAME file.  If the last command connected  */	
 			/* to the Secondary, then it created the .pbsrc.USER file. */	
 
-			/* see if already seen Primary down */	
-#ifndef CHECK_FILE	
-			altservers[0] = pbs_conf.pbs_primary;	
-			altservers[1] = pbs_conf.pbs_secondary;	
-#else	
+			/* see if already seen Primary down */		
 			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
 			if (stat(pbsrc, &sb) == -1) {	
 				/* try primary first */	
