@@ -83,7 +83,6 @@
 #include "auth.h"
 
 #define RLIST_INC 100
-#define TPP_MAX_ROUTERS 5000
 
 struct tpp_config *tpp_conf; /* copy of the global tpp_config */
 
@@ -216,89 +215,69 @@ static int
 send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 {
 	tpp_leaf_t *l;
-	tpp_que_t ctl_hdr_queue;
+	tpp_que_t leaf_packets;
+	tpp_packet_t *pkt = NULL;
 	int index;
-	struct leaf_data {
-		tpp_join_pkt_hdr_t hdr;
-		void *addrs;
-	} *lf_data = NULL;
+	tpp_join_pkt_hdr_t *hdr = NULL;
 	void *idx_ctx = NULL;
 
-	TPP_QUE_CLEAR(&ctl_hdr_queue);
+	TPP_QUE_CLEAR(&leaf_packets);
 
 	TPP_DBPRT("Sending leaves to router=%s", target->router_name);
 
 	/* traverse my leaves tree, there is only one record per leaf */
 	while (pbs_idx_find(parent->my_leaves_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
-		if ((lf_data = malloc(sizeof(struct leaf_data))) == NULL) {
-			tpp_log(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
-			goto err;
-		}
-
-		lf_data->addrs = malloc(sizeof(tpp_addr_t) * l->num_addrs);
-		if (!lf_data->addrs) {
-			tpp_log(LOG_CRIT, __func__, "Out of memory allocating ctl hdr");
-			goto err;
-		}
-
 		index = leaf_get_router_index(l, this_router);
 		if (index == -1) {
 			tpp_log(LOG_CRIT, __func__, "Could not find index of my router in leaf's pbs_comm list");
 			goto err;
 		}
 
+		/* create a new pkt and add the dhdr chunk first */
+		pkt = tpp_bld_pkt(NULL, NULL, sizeof(tpp_data_pkt_hdr_t), 1, (void **) &hdr);
+		if (!pkt) {
+			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
+			goto err;
+		}
 		/* save hdr and addrs to be sent outside of locks */
-		lf_data->hdr.type = TPP_CTL_JOIN;
-		lf_data->hdr.node_type = l->leaf_type;
-		lf_data->hdr.hop = 2;
-		lf_data->hdr.index = index;
-		lf_data->hdr.num_addrs = l->num_addrs;
-		memcpy(lf_data->addrs, l->leaf_addrs, sizeof(tpp_addr_t) * l->num_addrs);
-
-		if (tpp_enque(&ctl_hdr_queue, lf_data) == NULL) {
-			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to ctl_hdr_queue");
+		hdr->type = TPP_CTL_JOIN;
+		hdr->node_type = l->leaf_type;
+		hdr->hop = 2;
+		hdr->index = index;
+		hdr->num_addrs = l->num_addrs;
+		
+		/* add the addresses */
+		if (!tpp_bld_pkt(pkt, l->leaf_addrs, sizeof(tpp_addr_t) * l->num_addrs, 1, NULL)) {
+			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
+			goto err;
+		}
+		
+		if (tpp_enque(&leaf_packets, pkt) == NULL) {
+			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to leaf_packets");
 			goto err;
 		}
 	}
 	tpp_unlock_rwlock(&router_lock);
 
-	while ((lf_data = (struct leaf_data *) tpp_deque(&ctl_hdr_queue))) {
-		tpp_packet_t *pkt = NULL;
-		pkt = tpp_bld_pkt(NULL, &lf_data->hdr, sizeof(tpp_join_pkt_hdr_t), 0, NULL);
-		if (!pkt) {
-			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
-			goto err;
-		}
-
-		if (!tpp_bld_pkt(pkt, lf_data->addrs, lf_data->hdr.num_addrs * sizeof(tpp_addr_t), 0, NULL)) {
-			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
-			goto err;
-		}
-
+	while ((pkt = (tpp_packet_t *) tpp_deque(&leaf_packets))) {
 		if (tpp_transport_vsend(target->conn_fd, pkt) != 0) {
 			tpp_log(LOG_ERR, __func__, "Send leaves to pbs_comm %s failed", target->router_name);
 			goto err;
 		}
-		free(lf_data->addrs);
-		free(lf_data);
 	}
 	pbs_idx_free_ctx(idx_ctx);
 	return 0;
 
 err:
+	tpp_log(LOG_CRIT, __func__, "Error sending leaves to router %s", target->router_name);
 	tpp_unlock_rwlock(&router_lock);
+
 	if (idx_ctx)
 		pbs_idx_free_ctx(idx_ctx);
 
-	if (lf_data) {
-		if (lf_data->addrs)
-			free(lf_data->addrs);
-		free(lf_data);
-	}
-	while ((lf_data = (struct leaf_data *) tpp_deque(&ctl_hdr_queue))) {
-		free(lf_data->addrs);
-		free(lf_data);
-	}
+	while ((pkt = (tpp_packet_t *) tpp_deque(&leaf_packets))) /* drain the list and free packets */
+		tpp_free_pkt(pkt);
+
 	return -1;
 }
 
@@ -326,23 +305,25 @@ static int
 broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 {
 	tpp_router_t *r;
-	int list[TPP_MAX_ROUTERS];
-	int max_cons = 0;
-	int i;
+	tpp_que_t router_list;
 	void *idx_ctx = NULL;
+
+	TPP_QUE_CLEAR(&router_list);
 
 	while (pbs_idx_find(routers_idx, NULL, (void **)&r, &idx_ctx) == PBS_IDX_RET_OK) {
 		if (r->conn_fd == -1 || r == this_router || r->conn_fd == origin_tfd || r->state != TPP_ROUTER_STATE_CONNECTED) {
 			continue; /* don't send to self, or to originating router */
 		}
-		TPP_DBPRT("Broadcasting leaf to router %s", r->router_name);
-		list[max_cons++] = r->conn_fd;
+		if (tpp_enque(&router_list, r) == NULL) {
+			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to router_list");
+			goto err;
+		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
 
 	tpp_unlock_rwlock(&router_lock);
 
-	for (i = 0; i < max_cons; i++) {
+	while ((r = (tpp_router_t *) tpp_deque(&router_list))) {
 		int j;
 		tpp_packet_t *pkt = NULL;
 
@@ -350,16 +331,30 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 			pkt = tpp_bld_pkt(pkt, chunks[j].data, chunks[j].len, 1, NULL);
 			if (!pkt) {
 				tpp_log(LOG_CRIT, __func__, "Failed to build packet");
-				return -1;
+				goto err;
 			}
 		}
 
-		if (tpp_transport_vsend(list[i], pkt) != 0) {
-			if (errno != ENOTCONN)
+		if (tpp_transport_vsend(r->conn_fd, pkt) != 0) {
+			TPP_DBPRT("Broadcasting leaf to router %s", r->router_name);
+			if (errno != ENOTCONN) {
 				tpp_log(LOG_ERR, __func__, "send failed");
+				goto err;
+			}
 		}
 	}
 	return 0;
+
+err:
+	tpp_log(LOG_CRIT, __func__, "Error broadcasting to my routers");
+	tpp_unlock_rwlock(&router_lock);
+
+	if (idx_ctx)
+		pbs_idx_free_ctx(idx_ctx);
+
+	while (tpp_deque(&router_list)); /* drain the list */
+
+	return -1;
 }
 
 /**
@@ -391,22 +386,16 @@ static int
 broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 {
 	tpp_leaf_t *l;
-	int *list = NULL; /* number of leaves for a router could be unlimited, use dynamic buffer */
-	int list_size = TPP_MAX_ROUTERS; /* initial size */
-	void *p;
-	int max_cons = 0;
-	int i;
 	void *traverse_idx = NULL;
 	void *idx_ctx = NULL;
+	tpp_que_t leaf_list;
+
+	TPP_QUE_CLEAR(&leaf_list);
 
 	if (type == 1)
 		traverse_idx = my_leaves_notify_idx;
 	else
 		traverse_idx = this_router->my_leaves_idx;
-
-	list = malloc(sizeof(int) * list_size);
-	if (!list)
-		return -1;
 
 	tpp_read_lock(&router_lock);
 	while (pbs_idx_find(traverse_idx, NULL, (void **)&l, &idx_ctx) == PBS_IDX_RET_OK) {
@@ -420,25 +409,16 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 			if (type == 1 && l->leaf_type != TPP_LEAF_NODE_LISTEN)
 				continue;
 
-			if (max_cons == list_size) { /* we ran out of list buffer, resize */
-				list_size += RLIST_INC;
-				p = realloc(list, sizeof(int) * list_size);
-				if (!p) {
-					tpp_unlock_rwlock(&router_lock);
-					pbs_idx_free_ctx(idx_ctx);
-					free(list);
-					return -1;
-				}
-				list = p;
+			if (tpp_enque(&leaf_list, l) == NULL) {
+				tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to leaf_list");
+				goto err;
 			}
-
-			list[max_cons++] = l->conn_fd;
 		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
 	tpp_unlock_rwlock(&router_lock);
 
-	for (i = 0; i < max_cons; i++) {
+	while ((l = (tpp_leaf_t *) tpp_deque(&leaf_list))) {
 		int j;
 		tpp_packet_t *pkt = NULL;
 
@@ -446,18 +426,29 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 			pkt = tpp_bld_pkt(pkt, chunks[j].data, chunks[j].len, 1, NULL);
 			if (!pkt) {
 				tpp_log(LOG_CRIT, __func__, "Failed to build packet");
-				return -1;
+				goto err;
 			}
 		}
 
-		if (tpp_transport_vsend(list[i], pkt) != 0) {
-			if (errno != ENOTCONN)
+		if (tpp_transport_vsend(l->conn_fd, pkt) != 0) {
+			if (errno != ENOTCONN) {
 				tpp_log(LOG_ERR, __func__, "send failed");
+				goto err;
+			}
 		}
 	}
-
-	free(list);
 	return 0;
+
+err:
+	tpp_log(LOG_CRIT, __func__, "Error broadcasting to my leaves");
+	tpp_unlock_rwlock(&router_lock);
+
+	if (idx_ctx)
+		pbs_idx_free_ctx(idx_ctx);
+
+	while (tpp_deque(&leaf_list)); /* drain the list */
+
+	return -1;
 }
 
 static int

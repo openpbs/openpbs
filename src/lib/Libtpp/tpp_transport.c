@@ -1888,6 +1888,12 @@ add_pkt(phy_conn_t *conn)
 	avl_len = conn->scratch.pos - conn->scratch.data;
 	if (avl_len >= sizeof(int)) {
 		pkt_len = ntohl(*((int *) conn->scratch.data));
+		if (pkt_len < avl_len) {
+			/* some data corruption has happened, or sombody trying DOS */
+			tpp_log(LOG_CRIT, __func__, "tfd=%d, Critical error in protocol header, pkt_len=%d, avl_len=%d, dropping connection",conn->sock_fd, pkt_len, avl_len);
+			handle_disconnect(conn);
+			return -1; /* treat as bad data rejected by upper layer */
+		}
 		if (avl_len == pkt_len) {
 			/* we got a full packet */
 			if (the_pkt_handler) {
@@ -1896,9 +1902,10 @@ add_pkt(phy_conn_t *conn)
 					if (rc == -1) {
 						/* upper layer rejected data, disconnect */
 						handle_disconnect(conn);
+						return rc;
 					} else if (rc == -2) {
 						conn->ev_mask &= ~EM_IN; /* reciever buffer full, must wait, remove EM_IN */
-						TPP_DBPRT("Buffer full, removed EM_IN from ev_mask, now=%x", conn->ev_mask);
+						tpp_log(LOG_INFO, __func__, "tfd=%d, Receive buffer full, will wait", conn->sock_fd);
 						enque_deferred_event(conn->td, -1, TPP_CMD_READ, 0);
 						mod_rc = tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask);
 					}
@@ -1906,7 +1913,7 @@ add_pkt(phy_conn_t *conn)
 					if ((conn->ev_mask & EM_IN) == 0) {
 						/* packet added successfully, add EM_IN back */
 						conn->ev_mask |= EM_IN;
-						TPP_DBPRT("Buffer ok again, added EM_IN to ev_mask, now=%x", conn->ev_mask);
+						tpp_log(LOG_INFO, __func__, "tfd=%d, Receive buffer ok, continuing", conn->sock_fd);
 						mod_rc = tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask);
 					}
 				}

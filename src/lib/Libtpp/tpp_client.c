@@ -395,7 +395,7 @@ leaf_send_ctl_join(int tfd, void *c)
 
 		/* log my own leaf name to help in troubleshooting later */
 		for(i = 0; i < leaf_addr_count; i++) {
-			tpp_log(LOG_CRIT, NULL, "Registering address %s to pbs_comm", tpp_netaddr(&leaf_addrs[i]));
+			tpp_log(LOG_CRIT, NULL, "Registering address %s to pbs_comm %s", tpp_netaddr(&leaf_addrs[i]), r->router_name);
 		}
 
 		len = leaf_addr_count * sizeof(tpp_addr_t);
