@@ -63,7 +63,7 @@ if [ ! -r ${SPEC_FILE} -o ! -r ${REQ_FILE} ]; then
   echo "Couldn't find pbs spec file or ptl requirements file"
   exit 1
 fi
-
+export LANG="C.utf8"
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
     yum clean all
