@@ -848,7 +848,7 @@ get_servername_failover(unsigned int *port)
 	if (!pbs_conf.pbs_secondary)
 		return get_servername(port);
 	else {
-		whom_to_connect = (whom_to_connect + 1) % 2;
+		whom_to_connect = !whom_to_connect;
 
 		if (whom_to_connect)
 			return get_servername(port);
