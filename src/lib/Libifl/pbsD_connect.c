@@ -690,7 +690,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	 *   if attempting to connect to Primary,  try the Secondary	
 	 *   if attempting to connect to Secondary, try the Primary	
 	 */	
-	for (i = 0; i<(have_alt+1); ++i) {
+	for (i = 0; i < (have_alt + 1); ++i) {
 		if (have_alt) 
 			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
 		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
@@ -714,7 +714,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			/* create file that causes trying the Primary first   */
 			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
 			if (f != -1)
-				(void)close(f);
+				close(f);
 		}
 	}
 #endif
