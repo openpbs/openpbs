@@ -1798,7 +1798,8 @@ check_down_running(resource_resv *resv, int chunk_ind)
 	int i, j, k;
 	int ret = 0;
 
-	if (resv == NULL || chunk_ind < 0 || !resv->is_resv)
+	if (resv == NULL || chunk_ind < 0 || !resv->is_resv ||
+	    resv->resv == NULL || resv->resv->resv_queue == NULL)
 		return -3;
 
 	for (i = chunk_ind; resv->resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {
