@@ -287,5 +287,6 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
+  export  MAN_DISABLE_SECCOMP=1
   pbs_benchpress --tags=smoke -l DEBUG2
 fi
