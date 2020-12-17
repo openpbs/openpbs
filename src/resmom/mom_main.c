@@ -8197,7 +8197,7 @@ main(int argc, char *argv[])
 #ifndef	WIN32
 	initialize();		/* init RM code */
 #endif
-	/* set tpp config */
+
 	rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers);
 	free(nodename);
 

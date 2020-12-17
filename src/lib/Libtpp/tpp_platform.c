@@ -750,7 +750,7 @@ tpp_sock_resolve_host(char *host, int *count)
 			ips[i].family = (aip->ai_family == AF_INET6)? TPP_ADDR_FAMILY_IPV6 : TPP_ADDR_FAMILY_IPV4;
 			ips[i].port = 0;
 
-			for(j=0; j < i; j++) {
+			for (j=0; j < i; j++) {
 				/* check for duplicate ip addresses dont add if duplicate */
 				if (memcmp(&ips[j].ip, &ips[i].ip, sizeof(ips[j].ip)) == 0) {
 					break;
@@ -814,7 +814,7 @@ tpp_sock_attempt_connection(int fd, char *host, int port)
 		return -1;
 	}
 
-	for(i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		if (addr[i].family == TPP_ADDR_FAMILY_IPV4)
 			break;
 	}

@@ -394,7 +394,7 @@ leaf_send_ctl_join(int tfd, void *c)
 		hdr->num_addrs = leaf_addr_count;
 
 		/* log my own leaf name to help in troubleshooting later */
-		for(i = 0; i < leaf_addr_count; i++) {
+		for (i = 0; i < leaf_addr_count; i++) {
 			tpp_log(LOG_CRIT, NULL, "Registering address %s to pbs_comm %s", tpp_netaddr(&leaf_addrs[i]), r->router_name);
 		}
 
@@ -663,7 +663,7 @@ tpp_init(struct tpp_config *cnf)
 	routers[max_routers - 1] = NULL;
 
 	/* initialize the router structures and initiate connections to them */
-	for(i = 0; tpp_conf->routers[i]; i++) {
+	for (i = 0; tpp_conf->routers[i]; i++) {
 		if ((routers[i] = malloc(sizeof(tpp_router_t))) == NULL)  {
 			tpp_log(LOG_CRIT, __func__, "Out of memory allocating pbs_comm structure");
 			return -1;
@@ -2800,7 +2800,7 @@ again:
 
 			/* go past the header and point to the list of addresses following it */
 			addrs = (tpp_addr_t *) (((char *) buf) + sizeof(tpp_leave_pkt_hdr_t));
-			for(i = 0; i < hdr->num_addrs; i++) {
+			for (i = 0; i < hdr->num_addrs; i++) {
 				void *idx_ctx = NULL;
 				void *paddr = &addrs[i];
 

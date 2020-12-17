@@ -295,12 +295,7 @@ static int
 log_mutex_lock()
 {
 	if (pthread_mutex_lock(&log_write_mutex) != 0) {
-		FILE *err;
-		err = fopen("/dev/console", "w");
-		if (err != NULL) {
-			fprintf(err, "PBS cannot lock its log, errno = %d", errno);
-			fclose(err);
-		}
+		log_console_error("PBS cannot lock its log");
 		return -1;
 	}
 	return 0;
@@ -324,12 +319,7 @@ static int
 log_mutex_unlock()
 {
 	if (pthread_mutex_unlock(&log_write_mutex) != 0) {
-		FILE *err;
-		err = fopen("/dev/console", "w");
-		if (err != NULL) {
-			fprintf(err, "PBS cannot unlock its log, errno = %d", errno);
-			fclose(err);
-		}
+		log_console_error("PBS cannot unlock its log");
 		return -1;
 	}
 	return 0;

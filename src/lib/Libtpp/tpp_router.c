@@ -327,7 +327,7 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 		int j;
 		tpp_packet_t *pkt = NULL;
 
-		for(j = 0; j < count; j++) {
+		for (j = 0; j < count; j++) {
 			pkt = tpp_bld_pkt(pkt, chunks[j].data, chunks[j].len, 1, NULL);
 			if (!pkt) {
 				tpp_log(LOG_CRIT, __func__, "Failed to build packet");
@@ -422,7 +422,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 		int j;
 		tpp_packet_t *pkt = NULL;
 
-		for(j = 0; j < count; j++) {
+		for (j = 0; j < count; j++) {
 			pkt = tpp_bld_pkt(pkt, chunks[j].data, chunks[j].len, 1, NULL);
 			if (!pkt) {
 				tpp_log(LOG_CRIT, __func__, "Failed to build packet");
@@ -1782,7 +1782,7 @@ again:
 				tpp_log(LOG_INFO, __func__, "Total target comms=%d", csize);
 
 				/* finish up the MCAST packets for each target comm and send */
-				for(k = 0; k < csize; k++) {
+				for (k = 0; k < csize; k++) {
 					void *t_minfo_buf = NULL;
 					unsigned int t_minfo_len = 0;
 					tpp_mcast_pkt_hdr_t *t_mhdr = NULL;

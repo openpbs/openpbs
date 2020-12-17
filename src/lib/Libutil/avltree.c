@@ -169,7 +169,7 @@ avl_init_func(void)
  *	return an unique thread index for each new thread
  *
  */
-short
+static short
 get_thread_index(void)
 {
 	static short tind = -1;
