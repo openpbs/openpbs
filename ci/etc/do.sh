@@ -41,7 +41,8 @@ if [ $(id -u) -ne 0 ]; then
   echo "This script must be run by root user"
   exit 1
 fi
-
+export LC_ALL=en_US.utf-8 
+export LANG=en_US.utf-8
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
@@ -63,7 +64,7 @@ if [ ! -r ${SPEC_FILE} -o ! -r ${REQ_FILE} ]; then
   echo "Couldn't find pbs spec file or ptl requirements file"
   exit 1
 fi
-export LANG="C.utf8"
+
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
     yum clean all
@@ -79,7 +80,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
-    export LANG="C.utf8"
+    
     dnf -y clean all
     dnf -y install 'dnf-command(config-manager)'
     dnf -y config-manager --set-enabled powertools
@@ -134,7 +135,6 @@ if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
 fi
 
 if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
-  export LANG="C.utf8"
   swig_opt="--with-swig=/usr/local"
   if [ ! -f /tmp/swig/swig/configure ]; then
     # source install swig
@@ -263,12 +263,6 @@ set -e
 pbs_config --make-ug
 
 if [ "x${RUN_TESTS}" == "x1" ]; then
-  if [ "x${ID}" == "xcentos" ]; then
-    export LC_ALL=en_US.utf-8
-    export LANG=en_US.utf-8
-  elif [ "x${ID}" == "xopensuse" ]; then
-    export LC_ALL=C.utf8
-  fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
   benchpress_opt="$(cat ${config_dir}/${BENCHPRESS_OPT_FILE})"
@@ -287,6 +281,7 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
-  export  MAN_DISABLE_SECCOMP=1
-  pbs_benchpress -t SmokeTest.test_man_pages -l DEBUG2
+  env
+  locale
+  pbs_benchpress -t SmokeTest.test_man_pages 
 fi
