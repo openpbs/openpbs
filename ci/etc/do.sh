@@ -159,8 +159,11 @@ if [ "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_TEST}"
   rm -rf ${_targetdirname}
 fi
 mkdir -p ${_targetdirname}
+[[ -f Makefile ]] && make distclean || true
+if [ ! -f ./${SPEC_FILE} ]; then
+  git checkout ${SPEC_FILE}
+fi
 if [ ! -f ./configure ]; then
-  [[ -f Makefile ]] && make distclean || true
   ./autogen.sh
 fi
 if [ "x${ONLY_REBUILD}" != "x1" -a "x${ONLY_INSTALL}" != "x1" -a "x${ONLY_TEST}" != "x1" ]; then
@@ -272,10 +275,13 @@ if [ "x${RUN_TESTS}" == "x1" ]; then
   eval_tag="$(echo ${benchpress_opt} | awk -F'"' '{print $2}')"
   benchpress_opt="$(echo ${benchpress_opt} | sed -e 's/--eval-tags=\".*\"//g')"
   params="--param-file=${config_dir}/${PARAM_FILE}"
+  time_stamp=$(date -u "+%Y-%m-%d-%H%M%S")
+  ptl_log_file=${logdir}/logfile-${time_stamp}
+  chown pbsroot ${logdir}
   if [ -z "${eval_tag}" ]; then
-    pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
+    sudo -Hiu pbsroot pbs_benchpress ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${ptl_log_file} ${params}
   else
-    pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${logdir}/logfile ${params}
+    sudo -Hiu pbsroot pbs_benchpress --eval-tags="'${eval_tag}'" ${benchpress_opt} --db-type=html --db-name=${logdir}/result.html -o ${ptl_log_file} ${params}
   fi
 fi
 

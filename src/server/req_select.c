@@ -88,7 +88,7 @@ build_selist(svrattrl *, int perm, struct  select_list **,
 static void free_sellist(struct select_list *pslist);
 static int  sel_attr(attribute *, struct select_list *);
 static int  select_job(job *, struct select_list *, int, int);
-static int  select_subjob(int, struct select_list *);
+static int  select_subjob(char, struct select_list *);
 
 
 /**
@@ -106,7 +106,7 @@ static int  select_subjob(int, struct select_list *);
 static int
 order_chkpnt(attribute *attr)
 {
-	if (((attr->at_flags & ATR_VFLAG_SET) == 0) ||
+	if (((is_attr_set(attr)) == 0) ||
 		(attr->at_val.at_str == 0))
 		return 0;
 
@@ -198,7 +198,7 @@ static attribute_def state_sel = {
  * 		chk_job_statenum - check the state of a job (actual numeric state) with
  * 		a list of state letters
  *
- * @param[in]	istat	-	state of a job (actual numeric state)
+ * @param[in]	state_ltr	-	state of a job as a letter
  * @param[in]	statelist	-	list of state letters
  *
  * @return	int
@@ -206,15 +206,13 @@ static attribute_def state_sel = {
  * @retval	1	: match found
  */
 static int
-chk_job_statenum(int istat, char *statelist)
+chk_job_statenum(char state_ltr, char *statelist)
 {
-
-
 	if (statelist == NULL)
 		return 1;
-	if (istat >= 0 && istat <= 9)
-		if (strchr(statelist, (int)(statechars[istat])))
-			return 1;
+
+	if (strchr(statelist, (int) state_ltr))
+		return 1;
 	return 0;
 }
 
@@ -233,6 +231,9 @@ static int
 add_select_entry(char *jid, struct brp_select ***pselx)
 {
 	struct brp_select *pselect;
+
+	if (jid == NULL)
+		return 0;
 
 	pselect = (struct brp_select *)malloc(sizeof(struct brp_select));
 	if (pselect == NULL)
@@ -277,14 +278,18 @@ add_select_array_entries(job *pjob, int dosub, char *statelist,
 		ct = add_select_entry(pjob->ji_qs.ji_jobid, pselx);
 	} else {
 		/* Array Job */
-		for (i=0; i < pjob->ji_ajtrk->tkm_ct; ++i) {
+		for (i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
 			/*
 			 * If statelist is NULL, then no need to check anything,
 			 * just add the subjobs to the return list.
 			 */
+			char sjst;
+			job *sj = get_subjob_and_state(pjob, i, &sjst, NULL);
+			if (sjst == JOB_STATE_LTR_UNKNOWN)
+				continue;
 			if ((statelist == NULL) ||
-				(select_subjob(pjob->ji_ajtrk->tkm_tbl[i].trk_status, psel))) {
-				ct += add_select_entry(mk_subjob_id(pjob, i), pselx);
+				(select_subjob(sjst, psel))) {
+				ct += add_select_entry(sj ? sj->ji_qs.ji_jobid : create_subjob_id(pjob->ji_qs.ji_jobid, i), pselx);
 			}
 		}
 	}
@@ -358,7 +363,7 @@ req_selectjobs(struct batch_request *preq)
 	 * approach to query for jobs, e.g., by issuing a single pbs_statjob()
 	 * instead of a per-queue selstat()
 	 */
-	psched = find_sched_from_sock(preq->rq_conn);
+	psched = find_sched_from_sock(preq->rq_conn, CONN_SCHED_PRIMARY);
 	if (psched != NULL && psched == dflt_scheduler && !scheduler_jobs_stat)
 		scheduler_jobs_stat = 1;
 
@@ -413,23 +418,28 @@ req_selectjobs(struct batch_request *preq)
 					/* Select-Status Reply */
 
 					plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
-					if (dosubjobs == 1 && pjob->ji_ajtrk) {
-						for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++) {
-							if (pstate == 0 || chk_job_statenum(pjob->ji_ajtrk->tkm_tbl[i].trk_status, pstate)) {
+					if (dosubjobs == 1 && pjob->ji_ajinfo) {
+						for (i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
+							char sjst = JOB_STATE_LTR_QUEUED;
+
+							get_subjob_and_state(pjob, i, &sjst, NULL);
+							if (sjst == JOB_STATE_LTR_UNKNOWN)
+								continue;
+							if (pstate == 0 || chk_job_statenum(sjst, pstate)) {
 								if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
 									rc = reply_send_status_part(preq);
 									if (rc != PBSE_NONE)
 										return;
 									preply->brp_count = 0;
 								}
-								rc = status_subjob(pjob, preq, plist, i, &preply->brp_un.brp_status, &bad);
+								rc = status_subjob(pjob, preq, plist, i, &preply->brp_un.brp_status, &bad, 0);
 								if (rc && rc != PBSE_PERM)
 									goto out;
 								plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
 							}
 						}
 					} else {
-						rc = status_job(pjob, preq, plist, &preply->brp_un.brp_status, &bad);
+						rc = status_job(pjob, preq, plist, &preply->brp_un.brp_status, &bad, 0);
 						if (rc && rc != PBSE_PERM)
 							goto out;
 					}
@@ -478,14 +488,14 @@ select_job(job *pjob, struct select_list *psel, int dosubjobs, int dohistjobs)
 	 * them otherwise include them. i.e. if the batch request has the special
 	 * extended flag 'x'.
 	 */
-	if ((!dohistjobs) && ((pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_MOVED))) {
+	if ((!dohistjobs) && ((check_job_state(pjob, JOB_STATE_LTR_FINISHED)) ||
+		(check_job_state(pjob, JOB_STATE_LTR_MOVED)))) {
 		return 0;
 	}
 
 	if ((dosubjobs == 2) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_EXITING) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_RUNNING)) /* select only exiting or running subjobs */
+		(!check_job_state(pjob, JOB_STATE_LTR_EXITING)) &&
+		(!check_job_state(pjob, JOB_STATE_LTR_RUNNING))) /* select only exiting or running subjobs */
 		return 0;
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0)
@@ -494,21 +504,31 @@ select_job(job *pjob, struct select_list *psel, int dosubjobs, int dohistjobs)
 		(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob))
 		return 0;	/* don't bother to look at sub job */
 
-	while (psel) {
+	for (; psel; psel = psel->sl_next) {
 
 		if (psel->sl_atindx == (int)JOB_ATR_userlst) {
-			if (!acl_check(&psel->sl_attr, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, ACL_User))
+			if (!acl_check(&psel->sl_attr, get_jattr_str(pjob, JOB_ATR_job_owner), ACL_User))
 				return (0);
 
 		} else if (!dosubjobs || (psel->sl_atindx != JOB_ATR_state)) {
-
-			if (!sel_attr(&pjob->ji_wattr[psel->sl_atindx], psel))
-				return (0);
+			if (!sel_attr(&pjob->ji_wattr[psel->sl_atindx], psel)) {
+				/* Make sure we haven't incorrectly dismissed a suspended job */
+				if (psel->sl_atindx == JOB_ATR_state && psel->sl_attr.at_val.at_str[0] == 'S') {
+					if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) &&
+							(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP) ||
+									check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)))
+						continue;
+				}
+				return 0;
+			} else if (psel->sl_atindx == JOB_ATR_state && psel->sl_attr.at_val.at_str[0] == 'R') {
+				/* Make sure we don't incorrectly select suspended jobs */
+				if (check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP) || check_job_substate(pjob, JOB_SUBSTATE_SUSPEND))
+					return 0;
+			}
 		}
-		psel = psel->sl_next;
 	}
 
-	return (1);
+	return 1;
 }
 
 /**
@@ -539,7 +559,7 @@ sel_attr(attribute *jobat, struct select_list *pselst)
 		rescsl = (resource *)GET_NEXT(pselst->sl_attr.at_val.at_list);
 		rescjb = find_resc_entry(jobat, rescsl->rs_defin);
 
-		if (rescjb && (rescjb->rs_value.at_flags & ATR_VFLAG_SET))
+		if (rescjb && (is_attr_set(&rescjb->rs_value)))
 			/* found match, compare them */
 			rc = pselst->sl_def->at_comp(&rescjb->rs_value, &rescsl->rs_value);
 		else		/* not one in job,  force to .lt. */
@@ -675,7 +695,7 @@ build_selentry(svrattrl *plist, attribute_def *pdef, int perm, struct select_lis
 		(void)free(entry);
 		return (rc);
 	}
-	if ((entry->sl_attr.at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_attr_set(&entry->sl_attr)) {
 		(void)free(entry);
 		return (PBSE_BADATVAL);
 	}
@@ -820,7 +840,7 @@ build_selist(svrattrl *plist, int perm, struct select_list **pselist, pbs_queue 
  */
 
 static int
-select_subjob(int state, struct select_list *psel)
+select_subjob(char state, struct select_list *psel)
 {
 	attribute *selstate;
 

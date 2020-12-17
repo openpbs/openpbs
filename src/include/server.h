@@ -74,6 +74,8 @@ enum srv_atr {
 	SVR_ATR_LAST
 };
 
+extern char *pbs_server_name;
+extern uint pbs_server_port_dis;
 extern void *svr_attr_idx;
 extern attribute_def svr_attr_def[];
 /* for trillion job id */
@@ -169,9 +171,6 @@ enum failover_state {
 #define SVR_JOBHIST_DEFAULT		1209600	/* default time period to keep job history: 2 weeks */
 #define SVR_MAX_JOB_SEQ_NUM_DEFAULT	9999999	/* default max job id is 9999999 */
 
-#define VALUE(str) #str
-#define TOSTR(str) VALUE(str)
-
 /* function prototypes */
 
 extern int			svr_recov_db();
@@ -179,12 +178,17 @@ extern int			svr_save_db(struct server *);
 extern pbs_sched *	sched_recov_db(char *, pbs_sched *ps);
 extern int			sched_save_db(pbs_sched *);
 extern enum failover_state	are_we_primary(void);
-extern int			have_socket_licensed_nodes(void);
-extern void			unlicense_socket_licensed_nodes(void);
+extern int			have_licensed_nodes(void);
+extern void			unlicense_nodes(void);
 extern void			set_sched_default(pbs_sched *, int from_scheduler);
-extern void			set_attr_svr(attribute *pattr, attribute_def *pdef, char *value);
-extern int			license_sanity_check(void);
 extern void			memory_debug_log(struct work_task *ptask);
+
+/* multi-server functions */
+extern void *get_peersvr(struct sockaddr_in *);
+extern void *create_svr_entry(char *, unsigned int);
+extern int init_msi();
+extern void *create_svr_struct(struct sockaddr_in *);
+extern void *connect_to_peersvr(pbs_net_t, uint);
 
 #ifdef	__cplusplus
 }

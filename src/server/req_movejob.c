@@ -93,29 +93,35 @@ req_movejob(struct batch_request *req)
 	int      jt;            /* job type */
 	job	*jobp;
 	char	hook_msg[HOOK_MSG_SIZE];
+	int	move_type = 0;
 
-	switch (process_hooks(req, hook_msg, sizeof(hook_msg),
-			pbs_python_set_interrupt)) {
-		case 0:	/* explicit reject */
-			reply_text(req, PBSE_HOOKERROR, hook_msg);
-			return;
-		case 1:   /* explicit accept */
-			if (recreate_request(req) == -1) { /* error */
-				/* we have to reject the request, as 'req' */
-				/* may have been partly modified           */
-				strcpy(hook_msg,
-					"movejob event: rejected request");
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, "", hook_msg);
+	if (req && req->rq_type == PBS_BATCH_MoveJob && req->rq_ind.rq_move.run_exec_vnode)
+		move_type = MOVE_TYPE_Move_Run;
+
+	if (move_type != MOVE_TYPE_Move_Run) {
+		switch (process_hooks(req, hook_msg, sizeof(hook_msg),
+				pbs_python_set_interrupt)) {
+			case 0:	/* explicit reject */
 				reply_text(req, PBSE_HOOKERROR, hook_msg);
 				return;
-			}
-			break;
-		case 2:	/* no hook script executed - go ahead and accept event*/
-			break;
-		default:
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_INFO, "", "movejob event: accept req by default");
+			case 1:   /* explicit accept */
+				if (recreate_request(req) == -1) { /* error */
+					/* we have to reject the request, as 'req' */
+					/* may have been partly modified           */
+					strcpy(hook_msg,
+						"movejob event: rejected request");
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+						LOG_ERR, "", hook_msg);
+					reply_text(req, PBSE_HOOKERROR, hook_msg);
+					return;
+				}
+				break;
+			case 2:	/* no hook script executed - go ahead and accept event*/
+				break;
+			default:
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_INFO, "", "movejob event: accept req by default");
+		}
 	}
 
 	jobp = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt, NULL);
@@ -128,14 +134,13 @@ req_movejob(struct batch_request *req)
 		return;
 	}
 
-	if (jobp->ji_qs.ji_state != JOB_STATE_QUEUED &&
-			jobp->ji_qs.ji_state != JOB_STATE_HELD &&
-			jobp->ji_qs.ji_state != JOB_STATE_WAITING) {
+	if (!check_job_state(jobp, JOB_STATE_LTR_QUEUED) &&
+			!check_job_state(jobp, JOB_STATE_LTR_HELD) &&
+			!check_job_state(jobp, JOB_STATE_LTR_WAITING)) {
 #ifndef NDEBUG
-		(void)sprintf(log_buffer, "(%s) %s, state=%d",
-			__func__, msg_badstate, jobp->ji_qs.ji_state);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			jobp->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			   jobp->ji_qs.ji_jobid, "(%s) %s, state=%c",
+			   __func__, msg_badstate, get_job_state(jobp));
 #endif /* NDEBUG */
 		req_reject(PBSE_BADSTATE, 0, req);
 		return;
@@ -145,7 +150,7 @@ req_movejob(struct batch_request *req)
 		/* cannot move Subjob and can only move array job if */
 		/* no subjobs are running			     */
 		if ((jt != IS_ARRAY_ArrayJob) ||
-			(jobp->ji_ajtrk->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
+			(jobp->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
 			req_reject(PBSE_IVALREQ, 0, req);
 			return;
 		}
@@ -167,8 +172,16 @@ req_movejob(struct batch_request *req)
 			reply_ack(req);
 			break;
 		case -1:
+		case -2:
 		case 1:			/* fail */
-			if (jobp->ji_clterrmsg)
+			if (jobp) {
+				char newstate;
+				int newsub;
+				/* force re-eval of job state out of Transit */
+				svr_evaljobstate(jobp, &newstate, &newsub, 1);
+				svr_setjobstate(jobp, newstate, newsub);
+			}
+			if (jobp && jobp->ji_clterrmsg)
 				reply_text(req, pbs_errno, jobp->ji_clterrmsg);
 			else
 				req_reject(pbs_errno, 0, req);
@@ -208,15 +221,14 @@ req_orderjob(struct batch_request *req)
 		return;
 	}
 
-	if (((pjob = pjob1)->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-		((pjob = pjob2)->ji_qs.ji_state == JOB_STATE_RUNNING) ||
-		((pjob = pjob1)->ji_qs.ji_state == JOB_STATE_BEGUN)   ||
-		((pjob = pjob2)->ji_qs.ji_state == JOB_STATE_BEGUN)) {
+	if (check_job_state(pjob = pjob1, JOB_STATE_LTR_RUNNING) ||
+		check_job_state(pjob = pjob2,  JOB_STATE_LTR_RUNNING) ||
+		check_job_state(pjob = pjob1, JOB_STATE_LTR_BEGUN)  ||
+		check_job_state(pjob = pjob2, JOB_STATE_LTR_BEGUN)) {
 #ifndef NDEBUG
-		(void)sprintf(log_buffer, "(%s) %s, state=%d",
-			__func__, msg_badstate, pjob->ji_qs.ji_state);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			   pjob->ji_qs.ji_jobid, "(%s) %s, state=%c",
+			   __func__, msg_badstate, get_job_state(pjob));
 #endif	/* NDEBUG */
 		req_reject(PBSE_BADSTATE, 0, req);
 		return;
@@ -224,10 +236,10 @@ req_orderjob(struct batch_request *req)
 
 		/* Jobs are in different queues */
 
-		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr, pjob1->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str,
+		if ((rc = svr_chkque(pjob1, pjob2->ji_qhdr, get_jattr_str(pjob1, JOB_ATR_submit_host),
 			MOVE_TYPE_Order)) ||
 			(rc = svr_chkque(pjob2, pjob1->ji_qhdr,
-			pjob2->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str,
+			get_jattr_str(pjob2, JOB_ATR_submit_host),
 			MOVE_TYPE_Order))) {
 			req_reject(rc, 0, req);
 			return;
@@ -236,12 +248,9 @@ req_orderjob(struct batch_request *req)
 
 	/* now swap the order of the two jobs in the queue lists */
 
-	rank = pjob1->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
-	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long =
-		pjob2->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
-	pjob1->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
-	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = rank;
-	pjob2->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
+	rank = get_jattr_long(pjob1, JOB_ATR_qrank);
+	set_jattr_l_slim(pjob1, JOB_ATR_qrank, get_jattr_long(pjob2, JOB_ATR_qrank), SET);
+	set_jattr_l_slim(pjob2, JOB_ATR_qrank, rank, SET);
 
 	if (pjob1->ji_qhdr != pjob2->ji_qhdr) {
 		(void)strcpy(tmpqn, pjob1->ji_qs.ji_queue);
@@ -249,8 +258,8 @@ req_orderjob(struct batch_request *req)
 		(void)strcpy(pjob2->ji_qs.ji_queue, tmpqn);
 		svr_dequejob(pjob1);
 		svr_dequejob(pjob2);
-		(void)svr_enquejob(pjob1);
-		(void)svr_enquejob(pjob2);
+		(void)svr_enquejob(pjob1, NULL);
+		(void)svr_enquejob(pjob2, NULL);
 
 	} else {
 		swap_link(&pjob1->ji_jobque,  &pjob2->ji_jobque);

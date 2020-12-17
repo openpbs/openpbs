@@ -122,8 +122,7 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 		const char *luser);
 
 	/* Are the owner and requestor the same? */
-	snprintf(rmtuser, sizeof(rmtuser), "%s",
-			pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
+	snprintf(rmtuser, sizeof(rmtuser), "%s", get_jattr_str(pjob, JOB_ATR_job_owner));
 	pu = rmtuser;
 	ph = strchr(rmtuser, '@');
 	if (!ph)
@@ -149,8 +148,8 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 	 * Get job owner name without "@host" and then map to "local" name.
 	 */
 
-	get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, owner);
-	pu = site_map_user(owner, get_hostPart(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str));
+	get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), owner);
+	pu = site_map_user(owner, get_hostPart(get_jattr_str(pjob, JOB_ATR_job_owner)));
 
 	if (server.sv_attr[(int)SVR_ATR_FlatUID].at_val.at_long) {
 		/* with flatuid, all that must match is user names */
@@ -268,7 +267,7 @@ svr_get_privilege(char *user, char *host)
 	} else if (acl_check(&server.sv_attr[SVR_ATR_managers], uh, ACL_User))
 		priv |= (ATR_DFLAG_MGRD | ATR_DFLAG_MGWR);
 
-	if (!(server.sv_attr[(int)SVR_ATR_operators].at_flags&ATR_VFLAG_SET)) {
+	if (!is_attr_set(&server.sv_attr[SVR_ATR_operators])) {
 		if (is_root)
 			priv |= (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR);
 
@@ -385,20 +384,24 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 			jobid, msg_unkjobid);
 		if (err != NULL)
 			*err = PBSE_UNKJOBID;
-		req_reject(PBSE_UNKJOBID, 0, preq);
+
+		if (preq->rq_type != PBS_BATCH_DeleteJobList)
+			req_reject(PBSE_UNKJOBID, 0, preq);
 		return NULL;
 	} else {
 		histerr = svr_chk_histjob(pjob);
 		if (histerr && deletehist == 0) {
 			if (err != NULL)
 				*err = histerr;
-			req_reject(histerr, 0, preq);
+			if (preq->rq_type != PBS_BATCH_DeleteJobList)
+				req_reject(histerr, 0, preq);
 			return NULL;
 		}
-		if (deletehist == 1&& pjob->ji_qs.ji_state == JOB_STATE_MOVED &&
-			pjob->ji_qs.ji_substate != JOB_SUBSTATE_FINISHED) {
+		if (deletehist == 1&& check_job_state(pjob, JOB_STATE_LTR_MOVED) &&
+			!check_job_substate(pjob, JOB_SUBSTATE_FINISHED)) {
 			job_purge(pjob);
-			req_reject(PBSE_UNKJOBID, 0, preq);
+			if (preq->rq_type != PBS_BATCH_DeleteJobList)
+				req_reject(PBSE_UNKJOBID, 0, preq);
 			return NULL;
 		}
 	}
@@ -428,30 +431,30 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		if (err != NULL)
 			*err = PBSE_PERM;
-		req_reject(PBSE_PERM, 0, preq);
+		if (preq->rq_type != PBS_BATCH_DeleteJobList)
+			req_reject(PBSE_PERM, 0, preq);
 		return NULL;
 	}
 
-	if ((t == IS_ARRAY_NO) && (pjob->ji_qs.ji_state == JOB_STATE_EXITING)) {
+	if ((t == IS_ARRAY_NO) && (check_job_state(pjob, JOB_STATE_LTR_EXITING))) {
 
 		/* special case Deletejob with "force" */
 		if ((preq->rq_type == PBS_BATCH_DeleteJob) &&
 			(preq->rq_extend != NULL) &&
 			(strcmp(preq->rq_extend, "force") == 0)) {
-			return (pjob);
+			return pjob;
 		}
 
-		(void)sprintf(log_buffer, "%s, state=%d", msg_badstate,
-			pjob->ji_qs.ji_state);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+			   "%s, state=%c", msg_badstate, get_job_state(pjob));
 		if (err != NULL)
 			*err = PBSE_BADSTATE;
-		req_reject(PBSE_BADSTATE, 0, preq);
+		if (preq->rq_type != PBS_BATCH_DeleteJobList)
+			req_reject(PBSE_BADSTATE, 0, preq);
 		return NULL;
 	}
 
-	return (pjob);
+	return pjob;
 }
 
 /**
@@ -575,6 +578,10 @@ svr_authorize_resvReq(struct batch_request *preq, resc_resv *presv)
 	if ((preq->rq_perm & (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
 		ATR_DFLAG_MGRD | ATR_DFLAG_MGWR)) != 0)
 		return (0);
+	/* Only Manager has privilage to force modify reservation */
+	if (preq->rq_type == PBS_BATCH_ModifyResv && (preq->rq_extend != NULL) &&
+	    (strcmp(preq->rq_extend, FORCE) == 0) && ((preq->rq_perm & ATR_DFLAG_MGWR) == 0))
+		return (-1);
 
 	/* if not, see if requestor is the reservation owner */
 

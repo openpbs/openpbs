@@ -62,3 +62,61 @@ class TestExpect(TestSelf):
         a = {'enabled': 'True', 'started': 'True', 'priority': 150}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'expressq')
         self.server.expect(QUEUE, a, id='expressq')
+
+    def test_revert_attributes(self):
+        """
+        test that when we unset any attribute in expect(),
+        attribute will be unset and should get value on attribute basis.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': False})
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'scheduling')
+        self.server.expect(SERVER, 'scheduling', op=UNSET)
+
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'max_job_sequence_id')
+        self.server.expect(SERVER, 'max_job_sequence_id', op=UNSET)
+
+        self.server.manager(MGR_CMD_UNSET, SCHED, 'sched_host')
+        self.server.expect(SCHED, 'sched_host', op=UNSET)
+
+        self.server.manager(MGR_CMD_UNSET, SCHED, ATTR_sched_cycle_len)
+        self.server.expect(SCHED, ATTR_sched_cycle_len, op=UNSET)
+
+        self.server.manager(MGR_CMD_UNSET, NODE, ATTR_NODE_resv_enable,
+                            id=self.mom.shortname)
+        self.server.expect(NODE, ATTR_NODE_resv_enable,
+                           op=UNSET, id=self.mom.shortname)
+
+        hook_name = "testhook"
+        hook_body = "import pbs\npbs.event().reject('my custom message')\n"
+        a = {'event': 'queuejob', 'enabled': 'True', 'alarm': 10}
+        self.server.create_import_hook(hook_name, a, hook_body)
+        self.server.manager(MGR_CMD_UNSET, HOOK, 'alarm', id=hook_name)
+        self.server.expect(HOOK, 'alarm', op=UNSET, id=hook_name)
+
+        a = {'partition': 'P1',
+             'sched_host': self.server.hostname,
+             'sched_port': '15050'}
+        self.server.manager(MGR_CMD_CREATE, SCHED,
+                            a, id="sc1")
+        new_sched_home = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                      'sc_1_mot')
+        self.scheds['sc1'].create_scheduler(sched_home=new_sched_home)
+        self.scheds['sc1'].start()
+        self.server.manager(MGR_CMD_UNSET, SCHED, 'sched_priv', id='sc1')
+        self.server.expect(SCHED, 'sched_priv', op=UNSET, id='sc1')
+
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+        self.server.manager(MGR_CMD_UNSET, VNODE,
+                            'resources_available.ncpus', id='vn[1]')
+        self.server.expect(VNODE, 'resources_available.ncpus',
+                           id='vn[1]', op=UNSET)
+        self.server.manager(MGR_CMD_UNSET, VNODE,
+                            ATTR_NODE_resv_enable, id='vn[1]')
+        self.server.expect(VNODE, ATTR_NODE_resv_enable,
+                           op=UNSET, id='vn[1]')
+
+        self.server.manager(MGR_CMD_UNSET, NODE, 'resources_available.ncpus',
+                            id=self.mom.shortname)
+        self.server.expect(NODE, 'resources_available.ncpus',
+                           op=UNSET, id=self.mom.shortname)

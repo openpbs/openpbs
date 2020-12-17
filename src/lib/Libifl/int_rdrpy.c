@@ -78,11 +78,10 @@ PBSD_rdrpy_sock(int sock, int *rc)
 
 	*rc = DIS_SUCCESS;
 	/* clear any prior error message */
-	if ((reply = (struct batch_reply *)malloc(sizeof(struct batch_reply))) == 0) {
+	if ((reply = (struct batch_reply *) calloc(1, sizeof(struct batch_reply))) == 0) {
 		pbs_errno = PBSE_SYSTEM;
 		return NULL;
 	}
-	(void)memset(reply, 0, sizeof(struct batch_reply));
 
 	DIS_tcp_funcs();
 	old_timeout = pbs_tcp_timeout;
@@ -184,6 +183,11 @@ PBSD_FreeReply(struct batch_reply *reply)
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_Status) {
 		if (reply->brp_un.brp_statc)
 			pbs_statfree(reply->brp_un.brp_statc);
+	
+	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_Delete) {
+		if (reply->brp_un.brp_deletejoblist.brp_delstatc)
+			pbs_delstatfree(reply->brp_un.brp_deletejoblist.brp_delstatc);
+	
 	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_RescQuery) {
 		free(reply->brp_un.brp_rescq.brq_avail);
 		free(reply->brp_un.brp_rescq.brq_alloc);

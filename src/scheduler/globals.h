@@ -43,10 +43,21 @@
 extern "C" {
 #endif
 #include <pthread.h>
+#include <limits.h>
 
 #include "data_types.h"
-#include "limits.h"
 #include "queue.h"
+#include "sched_cmds.h"
+
+extern void *poll_context;
+
+/* Each index of the array is a sched command. Store 1 as a value to indicate that we received a command */
+extern int sched_cmds[SCH_CMD_HIGH];
+
+/* This list stores SCH_SCHEDULE_AJOB commands */
+extern sched_cmd *qrun_list;
+extern int qrun_list_size;
+
 /* resources to check */
 extern const struct rescheck res_to_check[];
 
@@ -69,11 +80,10 @@ extern struct status cstat;
 extern const int num_resget;
 
 /* Variables from pbs_sched code */
-extern int pbs_rm_port;
 extern int got_sigpipe;
 
 /* static indexes into allres */
-const struct enum_conv resind[RES_HIGH+1];
+extern const struct enum_conv resind[];
 
 /* Stuff needed for multi-threading */
 extern pthread_mutex_t general_lock;
@@ -93,11 +103,10 @@ extern resdef **allres;
 extern resdef **consres;
 extern resdef **boolres;
 
-extern char *sc_name;
-extern int sched_port;
+extern const char *sc_name;
 extern char *logfile;
 
-extern int preempt_normal;			/* preempt priority of normal_jobs */
+extern unsigned int preempt_normal;			/* preempt priority of normal_jobs */
 
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;
@@ -107,6 +116,10 @@ extern struct schedattrs sc_attrs;
 extern time_t last_attr_updates;    /* timestamp of the last time attr updates were sent */
 
 extern int send_job_attr_updates;
+
+extern int clust_primary_sock;
+
+extern int clust_secondary_sock;
 
 /**
  * @brief

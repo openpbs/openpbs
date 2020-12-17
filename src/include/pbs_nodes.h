@@ -90,6 +90,7 @@ struct mominfo {
 	int		mi_num_action; /* # of hook actions in mi_action */
 };
 typedef struct mominfo mominfo_t;
+typedef struct mominfo svrinfo_t;
 
 /*
  * The following structure is used by the Server for each Mom.
@@ -228,11 +229,6 @@ union ndu_ninfo {
 	unsigned int	__nd_int;
 };
 
-/* Device structure */
-struct	devices {
-	long nsockets;
-	long nnodes;
-};
 
 /*
  * Vnode structure
@@ -255,9 +251,11 @@ struct pbsnode {
 	unsigned short nd_ntype;   /* node type */
 	unsigned short nd_accted;  /* resc recorded in job acct */
 	struct pbs_queue *nd_pque; /* queue to which it belongs */
-	struct devices device;
 	attribute nd_attr[ND_ATR_LAST];
 	short newobj; /* new node ? */
+	void *nd_lic_info;			/* information set and used for licensing */
+	int nd_added_to_unlicensed_list;/* To record if the node is added to the list of unlicensed node */
+	pbs_list_link un_lic_link;		/*Link to unlicense list */
 };
 
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };
@@ -417,7 +415,7 @@ extern  void	momptr_down(mominfo_t *, char *);
 extern  void	momptr_offline_by_mom(mominfo_t *, char *);
 extern  void	momptr_clear_offline_by_mom(mominfo_t *, char *);
 extern  void	   delete_mom_entry(mominfo_t *);
-extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *);
+extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *, int);
 extern  void       delete_svrmom_entry(mominfo_t *);
 extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);
@@ -430,7 +428,7 @@ extern void	propagate_socket_licensing(mominfo_t *);
 
 extern char *msg_daemonname;
 
-#define	NODE_TOPOLOGY_TYPE_HWLOC	"hwloc:"
+#define	NODE_TOPOLOGY_TYPE_HWLOC	"hwloc"
 #define	NODE_TOPOLOGY_TYPE_CRAY		"Cray-v1:"
 #define	NODE_TOPOLOGY_TYPE_WIN		"Windows:"
 
@@ -464,7 +462,7 @@ extern int		create_vmap(void **);
 extern void		destroy_vmap(void *);
 extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
-extern  int		open_momstream(mominfo_t *);
+extern  int		open_tppstream(mominfo_t *);
 
 #ifdef	__cplusplus
 }

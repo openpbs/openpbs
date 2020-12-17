@@ -51,9 +51,8 @@ class TestAdminSuspend(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 1, self.mom)
+        self.mom.create_vnodes(a, 1)
 
-    @skipOnCpuSet
     def test_basic(self):
         """
         Test basic admin-suspend functionality
@@ -65,31 +64,30 @@ class TestAdminSuspend(TestFunctional):
         j2 = Job(TEST_USER)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
-
+        vnode = self.mom.shortname + '[0]'
         # admin-suspend job 1.
         self.server.sigjob(jid1, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid1})
 
         # admin-suspend job 2
         self.server.sigjob(jid2, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid1 + "," + jid2})
 
         # admin-resume job 1.  Make sure the node is still in state maintenance
         self.server.sigjob(jid1, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid2})
 
         # admin-resume job 2.  Make sure the node retuns to state free
         self.server.sigjob(jid2, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_basic_ja(self):
         """
         Test basic admin-suspend functionality for job arrays
@@ -106,31 +104,31 @@ class TestAdminSuspend(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
+        vnode = self.mom.shortname + '[0]'
 
         # admin-suspend job 1.
         self.server.sigjob(jid1, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid1})
 
         # admin-suspend job 2
         self.server.sigjob(jid2, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid1 + "," + jid2})
 
         # admin-resume job 1.  Make sure the node is still in state maintenance
         self.server.sigjob(jid1, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid2})
 
         # admin-resume job 2.  Make sure the node retuns to state free
         self.server.sigjob(jid2, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_basic_restart(self):
         """
         Test basic admin-suspend functionality with server restart
@@ -140,16 +138,16 @@ class TestAdminSuspend(TestFunctional):
         jid = self.server.submit(j1)
         self.server.expect(
             JOB, {'job_state': 'R', 'substate': 42}, attrop=PTL_AND, id=jid)
-
+        vnode = self.mom.shortname + '[0]'
         # admin-suspend job
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid})
 
         self.server.restart()
 
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(NODE, {'maintenance_jobs': jid})
 
         # Checking licenses to avoid failure at resume since PBS licenses
@@ -161,36 +159,35 @@ class TestAdminSuspend(TestFunctional):
         # admin-resume job
         self.server.sigjob(jid, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_cmd_perm(self):
         """
         Test permissions on admin-suspend, admin-resume, maintenance_jobs
         and the maintenace node state.
         """
-
+        vnode = self.mom.shortname + '[0]'
         # Test to make sure we can't set the maintenance node state
         try:
             self.server.manager(
                 MGR_CMD_SET, NODE,
-                {'state': 'maintenance'}, id='vn[0]', runas=ROOT_USER)
+                {'state': 'maintenance'}, id=vnode, runas=ROOT_USER)
         except PbsManagerError as e:
             self.assertTrue('Illegal value for node state' in e.msg[0])
 
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
         # Test to make sure we can't set the 'maintenance_jobs' attribute
         try:
             self.server.manager(
                 MGR_CMD_SET, NODE,
-                {'maintenance_jobs': 'foo'}, id='vn[0]', runas=ROOT_USER)
+                {'maintenance_jobs': 'foo'}, id=vnode, runas=ROOT_USER)
         except PbsManagerError as e:
             self.assertTrue(
                 'Cannot set attribute, read only or insufficient permission'
                 in e.msg[0])
 
-        self.server.expect(NODE, 'maintenance_jobs', op=UNSET, id='vn[0]')
+        self.server.expect(NODE, 'maintenance_jobs', op=UNSET, id=vnode)
 
         # Test to make sure regular users can't admin-suspend jobs
         j = Job(TEST_USER)
@@ -216,7 +213,6 @@ class TestAdminSuspend(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
 
-    @skipOnCpuSet
     def test_wrong_state1(self):
         """
         Test using wrong resume signal is correctly rejected
@@ -238,7 +234,6 @@ class TestAdminSuspend(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
 
-    @skipOnCpuSet
     def test_wrong_state2(self):
         """
         Test using wrong resume signal is correctly rejected
@@ -262,7 +257,6 @@ class TestAdminSuspend(TestFunctional):
         # If resume had worked, the job would be in substate 45
         self.server.expect(JOB, {'substate': 43}, id=jid1)
 
-    @skipOnCpuSet
     def test_deljob(self):
         """
         Test whether a node leaves the maintenance state when
@@ -272,14 +266,14 @@ class TestAdminSuspend(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)
+        vnode = self.mom.shortname + '[0]'
 
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         self.server.deljob(jid, wait=True)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_deljob_force(self):
         """
         Test whether a node leaves the maintenance state when
@@ -289,14 +283,14 @@ class TestAdminSuspend(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)
+        vnode = self.mom.shortname + '[0]'
 
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         self.server.deljob(jid, extend='force', wait=True)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_rerunjob(self):
         """
         Test whether a node leaves the maintenance state when
@@ -306,23 +300,23 @@ class TestAdminSuspend(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)
+        vnode = self.mom.shortname + '[0]'
 
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         self.server.rerunjob(jid, extend='force')
         # Job eventually goes to R state after being requeued for short time
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_multivnode(self):
         """
         Submit a job to multiple vnodes.  Send an admin-suspend signal
         and see all nodes go into maintenance
         """
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 3, usenatvnode=True)
 
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '3:ncpus=1',
@@ -337,7 +331,6 @@ class TestAdminSuspend(TestFunctional):
         self.server.sigjob(jid, 'admin-resume', runas=ROOT_USER)
         self.server.expect(NODE, {'state=free': 3})
 
-    @skipOnCpuSet
     def test_multivnode2(self):
         """
         Submit a job to multiple vnodes.  Send an admin-suspend signal
@@ -346,7 +339,7 @@ class TestAdminSuspend(TestFunctional):
         Job and see the single node job's node stil in maintenance
         """
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 3, usenatvnode=True)
 
         # Submit multinode job 1
         j1 = Job(TEST_USER)
@@ -355,9 +348,10 @@ class TestAdminSuspend(TestFunctional):
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
 
+        vnode = self.mom.shortname + '[0]'
         # Submit Job 2 to specific node
         j2 = Job(TEST_USER)
-        j2.set_attributes({'Resource_List.select': '1:ncpus=1:vnode=vn[0]'})
+        j2.set_attributes({'Resource_List.select': '1:ncpus=1:vnode=' + vnode})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
 
@@ -373,16 +367,15 @@ class TestAdminSuspend(TestFunctional):
         # admin-resume job1 and see one node stay in maintenance
         self.server.sigjob(jid1, 'admin-resume', runas=ROOT_USER)
         self.server.expect(NODE, {'state=free': 2})
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
-    @skipOnCpuSet
     def test_multivnode_excl(self):
         """
         Submit an excl job to multiple vnodes.  Send an admin-suspend
         signal and see all nodes go into maintenance
         """
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 3, usenatvnode=True)
 
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '3:ncpus=1',
@@ -398,7 +391,6 @@ class TestAdminSuspend(TestFunctional):
         self.server.sigjob(jid, 'admin-resume', runas=ROOT_USER)
         self.server.expect(NODE, {'state=job-exclusive': 3})
 
-    @skipOnCpuSet
     def test_degraded_resv(self):
         """
         Test if a reservation goes into the degraded state after its node is
@@ -422,16 +414,15 @@ class TestAdminSuspend(TestFunctional):
                           'Resource_List.walltime': 120})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)
-
+        vnode = self.mom.shortname + '[0]'
         # Admin-suspend job
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # See reservation in degreaded state
         a = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
         d = self.server.expect(RESV, a, rid)
 
-    @skipOnCpuSet
     def test_resv_jobend(self):
         """
         Test if a node goes back to free state when reservation ends and
@@ -464,10 +455,10 @@ class TestAdminSuspend(TestFunctional):
         self.server.expect(
             JOB, {'job_state': 'R', 'substate': 42},
             id=jid, max_attempts=30)
-
+        vnode = self.mom.shortname + '[0]'
         # Admin-suspend job
         self.server.sigjob(jid, 'admin-suspend', runas=ROOT_USER)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # Submit another job outside of reservation
         j = Job(TEST_USER)
@@ -477,12 +468,11 @@ class TestAdminSuspend(TestFunctional):
         # Wait for the reservation to get over
         # Job also gets deleted and node state goes back to free
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=120)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
         # job2 starts running
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2, max_attempts=60)
 
-    @skipOnCpuSet
     def test_que(self):
         """
         Test to check that job gets suspended on non-default queue
@@ -511,35 +501,35 @@ class TestAdminSuspend(TestFunctional):
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
 
         # Above will not cause node state to go to maintenance
+        vnode = self.mom.shortname + '[0]'
         self.server.expect(
-            NODE, {'state': (MATCH_RE, 'free|job-exclusive')}, id='vn[0]')
+            NODE, {'state': (MATCH_RE, 'free|job-exclusive')}, id=vnode)
 
         # admin suspend job2
         self.server.sigjob(jid2, 'admin-suspend', runas=ROOT_USER)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         self.server.expect(JOB, {'job_state=S': 2})
 
         # Releasing job1 will fail and not change node state
         rv = self.server.sigjob(jid1, 'resume', runas=ROOT_USER, logerr='True')
         self.assertFalse(rv)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # deleting job1 will not change node state either
         self.server.deljob(jid1, wait=True)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # Admin-resume job2
         self.server.sigjob(jid2, 'admin-resume', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
-        self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
         # suspend the job
         self.server.sigjob(jid2, 'suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
         self.server.expect(
-            NODE, {'state': (MATCH_RE, 'free|job-exclusive')}, id='vn[0]')
+            NODE, {'state': (MATCH_RE, 'free|job-exclusive')}, id=vnode)
 
-    @skipOnCpuSet
     def test_resume(self):
         """
         Test node state remains in maintenance until
@@ -547,7 +537,7 @@ class TestAdminSuspend(TestFunctional):
         """
 
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 3, usenatvnode=True)
 
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '3:ncpus=1',
@@ -587,7 +577,6 @@ class TestAdminSuspend(TestFunctional):
         self.server.expect(NODE, {'state=free': 3})
         self.server.expect(JOB, {'job_state=R': 4})
 
-    @skipOnCpuSet
     def test_admin_resume_loop(self):
         """
         Test that running admin-resume in a loop will have no impact on PBS
@@ -598,12 +587,12 @@ class TestAdminSuspend(TestFunctional):
         j.set_sleep_time(300)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
-
+        vnode = self.mom.shortname + '[0]'
         # admin suspend and resume job in a loop
         for x in range(15):
             self.server.sigjob(jid1, 'admin-suspend', runas=ROOT_USER)
             self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-            self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+            self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
             # sleep for sometime
             time.sleep(3)
@@ -611,9 +600,8 @@ class TestAdminSuspend(TestFunctional):
             # resume the job
             self.server.sigjob(jid1, 'admin-resume', runas=ROOT_USER)
             self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-            self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
+            self.server.expect(NODE, {'state': 'free'}, id=vnode)
 
-    @skipOnCpuSet
     def test_custom_res(self):
         """
         Test that job will not run on a node in
@@ -623,16 +611,16 @@ class TestAdminSuspend(TestFunctional):
 
         # create multiple vnodes
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
-        self.server.create_vnodes('vn', a, 3, self.mom, usenatvnode=True)
+        self.mom.create_vnodes(a, 3, usenatvnode=True)
 
         # create a node level resource
         self.server.manager(
             MGR_CMD_CREATE, RSC, {'type': 'float', 'flag': 'nh'}, id="foo",
             runas=ROOT_USER)
-
+        vnode = self.mom.shortname + '[1]'
         # set foo on vn[1]
         self.server.manager(
-            MGR_CMD_SET, NODE, {'resources_available.foo': 5}, id='vn[1]',
+            MGR_CMD_SET, NODE, {'resources_available.foo': 5}, id=vnode,
             runas=ROOT_USER)
 
         # set foo in sched_config
@@ -640,14 +628,14 @@ class TestAdminSuspend(TestFunctional):
 
         # submit a few jobs
         j = Job(TEST_USER)
-        j.set_attributes({'Resource_List.select': 'vnode=vn[1]'})
+        j.set_attributes({'Resource_List.select': 'vnode=' + vnode})
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
 
         # admin suspend the job to put the node to maintenance
         self.server.sigjob(jid1, 'admin-suspend', runas=ROOT_USER)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[1]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # submit other jobs asking for specific resources on vn[1]
         j = Job(TEST_USER)
@@ -664,17 +652,17 @@ class TestAdminSuspend(TestFunctional):
 
         # verify that vn[1] is still in maintenance and
         # job3 and job4 not running on vn[1]
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[1]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
         try:
-            self.server.expect(JOB, {'exec_vnode': (MATCH_RE, 'vn[1]')},
+            self.server.expect(JOB, {'exec_vnode': (MATCH_RE, vnode)},
                                id=jid3, max_attempts=20)
-            self.server.expect(JOB, {'exec_vnode': (MATCH_RE, 'vn[1]')},
+            self.server.expect(JOB, {'exec_vnode': (MATCH_RE, vnode)},
                                id=jid4, max_attempts=20)
         except Exception as e:
             self.assertFalse(e.rv)
-            self.logger.info("jid3 and jid4 not running on vn[1] as expected")
+            msg = "jid3 and jid4 not running on " + vnode + " as expected"
+            self.logger.info(msg)
 
-    @skipOnCpuSet
     def test_list_jobs_1(self):
         """
         Test to list and set maintenance_jobs as various users
@@ -696,9 +684,9 @@ class TestAdminSuspend(TestFunctional):
         # admin-suspend 2 of them
         self.server.sigjob(jid2, 'admin-suspend', runas=ROOT_USER)
         self.server.sigjob(jid3, 'admin-suspend', runas=ROOT_USER)
-
+        vnode = self.mom.shortname + '[0]'
         # node state is in maintenance
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # list maintenance_jobs as root
         self.server.expect(NODE, {'maintenance_jobs': jid2 + "," + jid3},
@@ -718,7 +706,7 @@ class TestAdminSuspend(TestFunctional):
         # set maintenance_jobs as root
         try:
             self.server.manager(MGR_CMD_SET, NODE,
-                                {'maintenance_jobs': jid1}, id='vn[0]',
+                                {'maintenance_jobs': jid1}, id=vnode,
                                 runas=ROOT_USER)
         except PbsManagerError as e:
             self.assertFalse(e.rv)
@@ -729,7 +717,7 @@ class TestAdminSuspend(TestFunctional):
         # Set maintenance_jobs as operator
         try:
             self.server.manager(MGR_CMD_SET, NODE,
-                                {'maintenance_jobs': jid1}, id='vn[0]',
+                                {'maintenance_jobs': jid1}, id=vnode,
                                 runas='pbsoper')
         except PbsManagerError as e:
             self.assertFalse(e.rv)
@@ -740,13 +728,12 @@ class TestAdminSuspend(TestFunctional):
         # Set maintenance_jobs as user
         try:
             self.server.manager(MGR_CMD_SET, NODE,
-                                {'maintenance_jobs': jid1}, id='vn[0]',
+                                {'maintenance_jobs': jid1}, id=vnode,
                                 runas=TEST_USER)
         except PbsManagerError as e:
             self.assertFalse(e.rv)
             self.assertTrue("Unauthorized Request" in e.msg[0])
 
-    @skipOnCpuSet
     def test_list_jobs_2(self):
         """
         Test to list maintenance_jobs when no job is admin-suspended
@@ -760,17 +747,16 @@ class TestAdminSuspend(TestFunctional):
 
         # verify that all are running
         self.server.expect(JOB, {'job_state=R': 3, 'substate=42': 3})
-
+        vnode = self.mom.shortname + '[0]'
         # list maintenance_jobs. It should be empty
-        self.server.expect(NODE, 'maintenance_jobs', op=UNSET, id='vn[0]')
+        self.server.expect(NODE, 'maintenance_jobs', op=UNSET, id=vnode)
 
         # Regular suspend a job
         self.server.sigjob(jid2, 'suspend', runas=ROOT_USER)
 
         # List maintenance_jobs again
-        self.server.expect(NODE, 'maintenance_jobs', op=UNSET, id='vn[0]')
+        self.server.expect(NODE, 'maintenance_jobs', op=UNSET, id=vnode)
 
-    @skipOnCpuSet
     def test_preempt_order(self):
         """
         Test that scheduler preempt_order has no impact
@@ -785,17 +771,17 @@ class TestAdminSuspend(TestFunctional):
         # set preempt_order to R
         self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'},
                             runas=ROOT_USER)
-
+        vnode = self.mom.shortname + '[0]'
         # submit a job
         j = Job(TEST_USER)
-        j.set_attributes({'Resource_List.select': 'vnode=vn[0]'})
+        j.set_attributes({'Resource_List.select': 'vnode=' + vnode})
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid1)
 
         # submit a high priority job
         j = Job(TEST_USER)
         j.set_attributes({'queue': 'highp', 'Resource_List.select':
-                          '1:ncpus=4:vnode=vn[0]'})
+                          '1:ncpus=4:vnode=' + vnode})
         jid2 = self.server.submit(j)
 
         # job2 is running and job1 is requeued
@@ -811,15 +797,14 @@ class TestAdminSuspend(TestFunctional):
         # admin suspend job2
         self.server.sigjob(jid2, 'admin-suspend')
         self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # admin-resume job2. node state will become job-busy.
         self.server.sigjob(jid2, 'admin-resume')
-        self.server.expect(NODE, {'state': 'job-busy'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'job-busy'}, id=vnode)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
-    @skipOnCpuSet
     def test_hook(self):
         """
         List maintenance_jobs via hook
@@ -834,7 +819,8 @@ vn = pbs.server().vnode('vn[0]')
 pbs.logmsg(pbs.LOG_DEBUG,\
 "list of maintenance_jobs are %s" % vn.maintenance_jobs)
 """
-
+        a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
+        self.mom.create_vnodes(a, 1, vname='vn')
         a = {'event': 'exechost_periodic', 'enabled': 'True', 'freq': 5}
         self.server.create_import_hook(hook_name, a, hook_body)
 
@@ -867,7 +853,6 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         self.mom.log_match(
             "list of maintenance_jobs are %s" % (jid2,))
 
-    @skipOnCpuSet
     def test_offline(self):
         """
         Test that if a node is put to offline
@@ -885,8 +870,9 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         self.server.sigjob(jid1, 'admin-suspend')
         self.server.sigjob(jid2, 'admin-suspend')
 
+        vnode = self.mom.shortname + '[0]'
         # node state is in maintenance
-        self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'maintenance'}, id=vnode)
 
         # submit another job. It will be queued
         j3 = Job(TEST_USER)
@@ -895,7 +881,7 @@ pbs.logmsg(pbs.LOG_DEBUG,\
 
         # mark the node as offline too
         self.server.manager(MGR_CMD_SET, NODE, {'state': 'offline'},
-                            id='vn[0]')
+                            id=vnode)
 
         # delete job1 as user and resume job2
         self.server.deljob(jid1, wait=True, runas=TEST_USER)
@@ -903,6 +889,6 @@ pbs.logmsg(pbs.LOG_DEBUG,\
 
         # verify that node state is offline and
         # job3 is still queued
-        self.server.expect(NODE, {'state': 'offline'}, id='vn[0]')
+        self.server.expect(NODE, {'state': 'offline'}, id=vnode)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)

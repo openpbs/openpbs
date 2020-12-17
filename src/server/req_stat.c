@@ -89,7 +89,8 @@
 #include "pbs_license.h"
 #include "resource.h"
 #include "pbs_sched.h"
-
+#include "liblicense.h"
+#include "ifl_internal.h"
 
 /* Global Data Items: */
 
@@ -105,6 +106,8 @@ extern char	    *msg_init_norerun;
 extern int resc_access_perm;
 extern long svr_history_enable;
 extern pbs_list_head svr_runjob_hooks;
+
+extern pbs_license_counts license_counts;
 
 /* Extern Functions */
 
@@ -146,28 +149,31 @@ static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
 static int
 do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosubjobs)
 {
-	int indx;
+	int i;
 	svrattrl *pal;
 	int rc;
 	struct batch_reply *preply = &preq->rq_reply;
 
 	/* if history job and not asking for them, just return */
-	if (!dohistjobs && (pjob->ji_qs.ji_state == JOB_STATE_FINISHED || pjob->ji_qs.ji_state == JOB_STATE_MOVED)) {
-		return PBSE_NONE; /* just return nothing */
+	if (!dohistjobs
+			&& (check_job_state(pjob, JOB_STATE_LTR_FINISHED)
+					|| check_job_state(pjob, JOB_STATE_LTR_MOVED))) {
+		return (PBSE_NONE); /* just return nothing */
 	}
 
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) {
 		/* this is not a subjob, go ahead and build the status reply for this job */
 		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad);
-		if (dosubjobs && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) && (rc == PBSE_NONE || rc != PBSE_PERM) && pjob->ji_ajtrk != NULL) {
-			for (indx = 0; indx < pjob->ji_ajtrk->tkm_ct; ++indx) {
-				if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
-					rc = reply_send_status_part(preq);
-					if (rc != PBSE_NONE)
-						return rc;
-				}
-				rc = status_subjob(pjob, preq, pal, indx, &preply->brp_un.brp_status, &bad);
+		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad, dosubjobs);
+		if (dosubjobs
+		    && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob)
+		    && (rc == PBSE_NONE || rc != PBSE_PERM)
+		    && pjob->ji_ajinfo != NULL
+		    && pjob->ji_ajinfo->tkm_ct != pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED]) {
+			for (i = pjob->ji_ajinfo->tkm_start; i <= pjob->ji_ajinfo->tkm_end; i += pjob->ji_ajinfo->tkm_step) {
+				if (range_contains(pjob->ji_ajinfo->trm_quelist, i))
+					continue;
+				rc = status_subjob(pjob, preq, pal, i, &preply->brp_un.brp_status, &bad, 1);
 				if (rc && rc != PBSE_PERM)
 					break;
 			}
@@ -206,7 +212,8 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 	struct batch_reply *preply = &preq->rq_reply;
 	svrattrl *pal;
 
-	if ((i = is_job_array(name)) == IS_ARRAY_Single) {
+	i = is_job_array(name);
+	if (i == IS_ARRAY_Single) {
 		int idx;
 
 		pjob = find_arrayparent(name);
@@ -214,10 +221,10 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 			return PBSE_UNKJOBID;
 		else if (!dohistjobs && (rc = svr_chk_histjob(pjob)))
 			return rc;
-		idx = subjob_index_to_offset(pjob, get_index_from_jid(name));
+		idx = get_index_from_jid(name);
 		if (idx != -1) {
 			pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-			rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
+			rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad, 0);
 		} else
 			rc = PBSE_UNKJOBID;
 		return rc; /* no job still needs to be stat-ed */
@@ -231,7 +238,7 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 		return do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs);
 	} else {
 		/* range of sub jobs */
-		range = get_index_from_jid(name);
+		range = get_range_from_jid(name);
 		if (range == NULL)
 			return PBSE_IVALREQ;
 		pjob = find_arrayparent(name);
@@ -251,15 +258,12 @@ stat_a_jobidname(struct batch_request *preq, char *name, int dohistjobs, int dos
 			else if (i == 1)
 				break;
 			for (i = start; i <= end; i += step) {
-				int idx = numindex_to_offset(pjob, i);
-				if (idx == -1)
-					continue;
 				if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
 					rc = reply_send_status_part(preq);
 					if (rc != PBSE_NONE)
 						return rc;
 				}
-				rc = status_subjob(pjob, preq, pal, idx, &preply->brp_un.brp_status, &bad);
+				rc = status_subjob(pjob, preq, pal, i, &preply->brp_un.brp_status, &bad, 0);
 				if (rc && rc != PBSE_PERM)
 					return rc;
 			}
@@ -359,6 +363,11 @@ req_stat_job(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 	preply->brp_count = 0;
+
+	if (dosubjobs && GET_NEXT(preq->rq_ind.rq_status.rq_attr) != NULL) {
+		if (find_svrattrl_list_entry(&preq->rq_ind.rq_status.rq_attr, ATTR_array_indices_remaining, NULL) == NULL)
+			add_to_svrattrl_list(&preq->rq_ind.rq_status.rq_attr, ATTR_array_indices_remaining, NULL, "", SET, NULL);
+	}
 
 	rc = PBSE_NONE;
 	if (type == 1) {
@@ -726,6 +735,8 @@ update_isrunhook(attribute *pattr)
 	}
 }
 
+extern int num_pending_peersvr_rply;
+
 /**
  * @brief
  * 		req_stat_svr - service the Status Server Request
@@ -755,7 +766,11 @@ req_stat_svr(struct batch_request *preq)
 		server.sv_license_ct_buf);
 
 	conn = get_conn(preq->rq_conn);
-	if (conn->cn_authen & PBS_NET_CONN_TO_SCHED) {
+	if (!conn) {
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 		/* Request is from sched so update "has_runjob_hook" */
 		update_isrunhook(&server.sv_attr[SVR_ATR_has_runjob_hook]);
 	}
@@ -789,6 +804,56 @@ req_stat_svr(struct batch_request *preq)
 		reply_badattr(PBSE_NOATTR, bad, pal, preq);
 	else
 		reply_send(preq);
+}
+
+/**
+ * @brief
+ * 		service the Server Ready request
+ *
+ * @param[in]	ptask	-	work task which contains the request
+ * 
+ * @return void
+ */
+void
+req_stat_svr_ready(struct work_task *ptask)
+{
+	struct batch_request *preq;
+	struct batch_reply *preply;
+	conn_t *conn;
+
+	/* allocate a reply structure and a status sub-structure */
+
+	if (!ptask || !ptask->wt_parm1)
+		return;
+
+	preq = ptask->wt_parm1;
+
+	if ((conn = get_conn(preq->rq_conn)) == NULL) {
+		req_reject(PBSE_SYSTEM, 0, preq);
+		return;
+	}
+
+	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
+
+		if (num_pending_peersvr_rply > 0) {
+
+			if (set_task(WORK_Deferred_Reply, preq->rq_conn, req_stat_svr_ready, (void *) preq) == NULL) {
+				log_err(errno, __func__, "could not set_task");
+				return;
+			}
+
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				  "Server is not ready to serve scheduler stat request, Deferring reply.");
+			return;
+		}
+	}
+
+	preply = &preq->rq_reply;
+	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
+	CLEAR_HEAD(preply->brp_un.brp_status);
+	preply->brp_count = 0;
+
+	reply_send(preq);
 }
 
 /**
@@ -931,9 +996,11 @@ void
 update_license_ct(attribute *pattr, char *buf)
 {
 	buf[0] = '\0';
-	sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
-			licenses.lb_glob_floating, licenses.lb_aval_floating,
-			licenses.lb_used_floating, licenses.lb_high_used_floating);
+	sprintf(buf, "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
+			license_counts.licenses_global,
+			license_counts.licenses_local,
+			license_counts.licenses_used,
+			license_counts.licenses_high_use.lu_max_forever);
 	pattr->at_val.at_str = buf;
 	pattr->at_flags |= ATR_SET_MOD_MCACHE;
 }

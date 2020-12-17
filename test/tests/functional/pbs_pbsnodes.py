@@ -189,7 +189,6 @@ class TestPbsnodes(TestFunctional):
         self.assertEqual(prev.strip(), now.strip(),
                          'Last used time mismatch after server restart')
 
-    @skipOnCpuSet
     @skipOnCray
     def test_pbsnodes_as_user(self):
         """
@@ -219,7 +218,6 @@ class TestPbsnodes(TestFunctional):
                                      attr_dict['resources_available.mem'])
 
     @tags('smoke')
-    @skipOnCpuSet
     @skipOnCray
     def test_pbsnodes_as_root(self):
         """
@@ -238,6 +236,8 @@ class TestPbsnodes(TestFunctional):
             attr = attr_list[i].split('=')[0].strip()
             val = attr_list[i].split('=')[1].strip()
             attr_dict[attr] = val
+        if self.mom.is_cpuset_mom():
+            del expected_attrs['resources_available.vnode']
 
         # comparing the pbsnodes -a output with expected result
         for attr in expected_attrs:

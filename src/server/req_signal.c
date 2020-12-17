@@ -106,19 +106,18 @@ req_signaljob(struct batch_request *preq)
 	int i;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
-	int offset;
 	char *pc;
 	job *pjob;
 	job *parent;
 	char *range;
 	int suspend = 0;
 	int resume = 0;
-	char *vrange;
 	int start;
 	int end;
 	int step;
 	int count;
 	int err = PBSE_NONE;
+	char sjst;
 
 	snprintf(jid, sizeof(jid), "%s", preq->rq_ind.rq_signal.rq_jid);
 
@@ -154,36 +153,22 @@ req_signaljob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
-
 		/* single subjob, if running can signal */
-
-		offset = subjob_index_to_offset(parent, get_index_from_jid(jid));
-		if (offset == -1) {
+		pjob = get_subjob_and_state(parent, get_index_from_jid(jid), &sjst, NULL);
+		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
-		}
-		i = get_subjob_state(parent, offset);
-		if (i == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if (i == JOB_STATE_RUNNING) {
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
-				req_signaljob2(preq, pjob);
-			} else {
-				req_reject(PBSE_BADSTATE, 0, preq);
-				return;
-			}
+		} else if (pjob && sjst == JOB_STATE_LTR_RUNNING) {
+			req_signaljob2(preq, pjob);
 		} else {
 			req_reject(PBSE_BADSTATE, 0, preq);
-			return;
 		}
 		return;
-
 	} else if (jt == IS_ARRAY_ArrayJob) {
 
 		/* The Array Job itself ... */
 
-		if (parent->ji_qs.ji_state != JOB_STATE_BEGUN) {
+		if (!check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -192,19 +177,17 @@ req_signaljob(struct batch_request *preq)
 
 		++preq->rq_refct;	/* protect the request/reply struct */
 
-		for (i=0; i<parent->ji_ajtrk->tkm_ct; i++) {
-			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
-					/* if suspending,  skip those already suspended,  */
-					if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
-						continue;
-					/* if resuming, skip those not suspended         */
-					if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
-						continue;
-
-					dup_br_for_subjob(preq, pjob, req_signaljob2);
-				}
-			}
+		for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+			pjob = get_subjob_and_state(parent, i, &sjst, NULL);
+			if (!pjob || sjst != JOB_STATE_LTR_RUNNING)
+				continue;
+			/* if suspending,  skip those already suspended,  */
+			if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			/* if resuming, skip those not suspended         */
+			if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			dup_br_for_subjob(preq, pjob, req_signaljob2);
 		}
 		/* if not waiting on any running subjobs, can reply; else */
 		/* it is taken care of when last running subjob responds  */
@@ -216,29 +199,9 @@ req_signaljob(struct batch_request *preq)
 	/* what's left to handle is a range of subjobs, foreach subjob 	*/
 	/* if running, signal it					*/
 
-	range = get_index_from_jid(jid);
+	range = get_range_from_jid(jid);
 	if (range == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
-		return;
-	}
-
-	/* first check that any in the subrange are in fact running */
-
-	vrange = range;
-	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if (i == 1)
-			break;
-		for (i = start; i <= end; i += step) {
-			if (get_subjob_state(parent, numindex_to_offset(parent, i)) == JOB_STATE_RUNNING)
-				anygood++;
-		}
-		vrange = pc;
-	}
-	if (anygood == 0) { /* no running subjobs in the range */
-		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
@@ -253,14 +216,24 @@ req_signaljob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			int idx = numindex_to_offset(parent, i);
-			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
-					dup_br_for_subjob(preq, pjob, req_signaljob2);
-				}
-			}
+			pjob = get_subjob_and_state(parent, i, &sjst, NULL);
+			if (!pjob || sjst != JOB_STATE_LTR_RUNNING)
+				continue;
+			/* if suspending,  skip those already suspended,  */
+			if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			/* if resuming, skip those not suspended         */
+			if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+				continue;
+			anygood = 1;
+			dup_br_for_subjob(preq, pjob, req_signaljob2);
 		}
 		range = pc;
+	}
+
+	if (anygood == 0) { /* no running subjobs in the range */
+		req_reject(PBSE_BADSTATE, 0, preq);
+		return;
 	}
 
 	/* if not waiting on any running subjobs, can reply; else */
@@ -280,14 +253,14 @@ req_signaljob(struct batch_request *preq)
 static void
 req_signaljob2(struct batch_request *preq, job *pjob)
 {
-	int			rc;
-	char			*pnodespec;
-	int			suspend = 0;
-	int			resume = 0;
-	pbs_sched		*psched;
+	int rc;
+	char *pnodespec;
+	int suspend = 0;
+	int resume = 0;
+	pbs_sched *psched;
 
-	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING)	||
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))) {
+	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING) ||
+		(check_job_state(pjob, JOB_STATE_LTR_RUNNING) && check_job_substate(pjob, JOB_SUBSTATE_PROVISION))) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
@@ -321,7 +294,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 				if (preq->rq_fromsvr == 1 ||
 				    strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0) {
 					/* from Scheduler, resume job */
-					pnodespec = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+					pnodespec = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 					if (pnodespec) {
 						rc = assign_hosts(pjob, pnodespec, 0);
 						if (rc == 0) {
@@ -332,14 +305,14 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 							return;
 						}
 					}
-					if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated].at_flags & ATR_VFLAG_SET) {
+					if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
 
 						char	*hoststr = NULL;
 						char	*hoststr2 = NULL;
 						char	*vnodestoalloc = NULL;
 						char	*new_exec_vnode_deallocated;
 	 					new_exec_vnode_deallocated =
-		  					pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated].at_val.at_str;
+		  					get_jattr_str(pjob, JOB_ATR_exec_vnode_deallocated);
 
 						rc = set_nodes((void *)pjob, JOB_OBJECT, new_exec_vnode_deallocated, &vnodestoalloc, &hoststr, &hoststr2, 1, FALSE);
 						if (rc != 0) {
@@ -351,7 +324,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 				} else {
 					/* not from scheduler, change substate so the  */
 					/* scheduler will resume the job when possible */
-					svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_SCHSUSP);
+					svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_SCHSUSP);
 					if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 						set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 					else {
@@ -429,12 +402,12 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
 void
 post_signal_req(struct work_task *pwt)
 {
-	job			*pjob;
-	struct batch_request	*preq;
-	int			rc;
-	int			ss;
-	int			suspend = 0;
-	int			resume = 0;
+	job *pjob;
+	struct batch_request *preq;
+	int rc;
+	int ss;
+	int suspend = 0;
+	int resume = 0;
 
 	if (pwt->wt_aux2 != PROT_TPP)
 		svr_disconnect(pwt->wt_event);	/* disconnect from MOM */
@@ -474,7 +447,7 @@ post_signal_req(struct work_task *pwt)
 
 		/* everything went ok for signal request at Mom */
 
-		if (suspend && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
+		if (suspend && pjob && (check_job_state(pjob, JOB_STATE_LTR_RUNNING))) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
 				if (preq->rq_fromsvr == 1 || pjob->ji_pmt_preq != NULL)
 					ss = JOB_SUBSTATE_SCHSUSP;
@@ -489,8 +462,9 @@ post_signal_req(struct work_task *pwt)
 				}
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
 				/* update all released resources */
-				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
+				svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, ss);
 				rel_resc(pjob); /* release resc and nodes */
+				job_save(pjob); /* save released resc and nodes */
 				log_suspend_resume_record(pjob, PBS_ACCT_SUSPEND);
 				/* Since our purpose is to put the node in maintenance state if "admin-suspend"
 				 * signal is used, be sure that rel_resc() is called before set_admin_suspend().
@@ -500,23 +474,23 @@ post_signal_req(struct work_task *pwt)
 					set_admin_suspend(pjob, 1);
 
 			}
-		} else if (resume && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
+		} else if (resume && pjob && (check_job_state(pjob, JOB_STATE_LTR_RUNNING))) {
 			/* note - the resources have already been reallocated */
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Suspend;
 			if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
 				set_admin_suspend(pjob, 0);
 
-			job_attr_def[(int) JOB_ATR_resc_released].at_free(&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
-			pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+			free_jattr(pjob, JOB_ATR_resc_released);
+			mark_jattr_not_set(pjob, JOB_ATR_resc_released);
 
-			job_attr_def[(int) JOB_ATR_resc_released_list].at_free(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
-			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+			free_jattr(pjob, JOB_ATR_resc_released_list);
+			mark_jattr_not_set(pjob, JOB_ATR_resc_released_list);
 
-			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
+			svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RUNNING);
 			log_suspend_resume_record(pjob, PBS_ACCT_RESUME);
 
-			set_attr_svr(&(pjob->ji_wattr[(int) JOB_ATR_Comment]), &job_attr_def[(int) JOB_ATR_Comment],
-				form_attr_comment("Job run at %s", pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
+			set_jattr_generic(pjob, JOB_ATR_Comment,
+					form_attr_comment("Job run at %s", get_jattr_str(pjob,  JOB_ATR_exec_vnode)), NULL, SET);
 		}
 
 		if (pjob == NULL)
@@ -548,7 +522,6 @@ create_resreleased(job *pjob)
 	int rc;
 	struct key_value_pair *pkvp;
 	char *resreleased;
-	attribute reqrel;
 	char buf[1024] = {0};
 	char *dflt_ncpus_rel = ":ncpus=0";
 	int no_res_rel = 1;
@@ -614,12 +587,9 @@ create_resreleased(job *pjob)
 		if (chunk)
 			strcat(resreleased, "+");
 	}
-	if (resreleased[0] != '\0') {
-		clear_attr(&reqrel, &job_attr_def[(int) JOB_ATR_resc_released]);
-		job_attr_def[(int) JOB_ATR_resc_released].at_decode(&reqrel, NULL, NULL, resreleased);
-		job_attr_def[(int) JOB_ATR_resc_released].at_set(&pjob->ji_wattr[(int) JOB_ATR_resc_released], &reqrel, SET);
-		job_attr_def[(int) JOB_ATR_resc_released].at_free(&reqrel);
-	}
+	if (resreleased[0] != '\0')
+		set_jattr_generic(pjob, JOB_ATR_resc_released, resreleased, NULL, SET);
+
 	free(resreleased);
 	return 0;
 }
@@ -649,7 +619,7 @@ void set_admin_suspend(job *pjob, int set_remove_nstate) {
 	if(pjob == NULL)
 		return;
 
-	execvncopy = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+	execvncopy = strdup(get_jattr_str(pjob, JOB_ATR_exec_vnode));
 
 	if(execvncopy == NULL)
 		return;

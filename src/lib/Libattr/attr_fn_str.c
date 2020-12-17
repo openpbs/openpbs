@@ -313,3 +313,27 @@ decode_jobname(attribute *patr, char *name, char *rescn, char *val)
 	}
 	return (decode_str(patr, name, rescn, val));
 }
+
+/**
+ * set_attr_str: use set_attr_generic() instead
+ */
+
+/**
+ * @brief	Attribute getter function for string type values
+ *
+ * @param[in]	pattr	-	pointer to the attribute
+ *
+ * @return	char *
+ * @retval	string value of the attribute
+ * @retval	NULL if attribute is NULL
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ */
+char *
+get_attr_str(const attribute *pattr)
+{
+	if (pattr != NULL)
+		return pattr->at_val.at_str;
+	return NULL;
+}

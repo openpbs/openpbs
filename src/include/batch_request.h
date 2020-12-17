@@ -103,13 +103,24 @@ struct rq_manage {
 	pbs_list_head rq_attr; /* svrattrlist */
 };
 
+/* DeleteJobList */
+struct rq_deletejoblist {
+	int rq_count;
+	char **rq_jobslist;
+};
+
 /* Management - used by PBS_BATCH_Manager requests */
 struct rq_management {
 	struct rq_manage rq_manager;
 	struct batch_reply *rq_reply;
-	long rq_time;
+	time_t rq_time;
 };
 
+/* ModifyVnode - used for node state changes */
+struct rq_modifyvnode {
+	struct pbsnode *rq_vnode_o; /* old/previous vnode state */
+	struct pbsnode *rq_vnode; /* new/current vnode state */
+};
 
 /* HoldJob -  plus preference flag */
 struct rq_hold {
@@ -141,6 +152,8 @@ struct rq_py_spawn {
 struct rq_move {
 	char rq_jid[PBS_MAXSVRJOBID + 1];
 	char rq_destin[(PBS_MAXSVRRESVID > PBS_MAXDEST ? PBS_MAXSVRRESVID : PBS_MAXDEST) + 1];
+	char *run_exec_vnode;
+	int orig_rq_type;
 };
 
 /* Resource Query/Reserve/Free */
@@ -253,6 +266,10 @@ struct rqfpair {
 	char *fp_rmt;   /* used in Copy only     */
 };
 
+struct rq_register_sched {
+	char *rq_name;
+};
+
 /*
  * ok we now have all the individual request structures defined,
  * so here is the union ...
@@ -277,6 +294,7 @@ struct batch_request {
 	char *tppcmd_msgid;			/* msg id for tpp commands */
 	struct batch_reply rq_reply;		/* the reply area for this request */
 	union indep_request {
+		struct rq_register_sched rq_register_sched;
 		struct rq_auth rq_auth;
 		int rq_connect;
 		struct rq_queuejob rq_queuejob;
@@ -285,10 +303,12 @@ struct batch_request {
 		char rq_rdytocommit[PBS_MAXSVRJOBID + 1];
 		char rq_commit[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_delete;
+		struct rq_deletejoblist rq_deletejoblist;
 		struct rq_hold rq_hold;
 		char rq_locate[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_manager;
 		struct rq_management rq_management;
+		struct rq_modifyvnode rq_modifyvnode;
 		struct rq_message rq_message;
 		struct rq_relnodes rq_relnodes;
 		struct rq_py_spawn rq_py_spawn;
@@ -315,7 +335,8 @@ struct batch_request {
 	} rq_ind;
 };
 
-extern struct batch_request * alloc_br(int);
+extern struct batch_request *alloc_br(int);
+extern struct batch_request *copy_br(struct batch_request *);
 extern void reply_ack(struct batch_request *);
 extern void req_reject(int, int, struct batch_request *);
 extern void req_reject_msg(int, int, struct batch_request *, int);
@@ -379,6 +400,7 @@ extern int decode_DIS_CopyHookFile(int, struct batch_request *);
 extern int decode_DIS_DelHookFile(int, struct batch_request *);
 extern int decode_DIS_JobObit(int, struct batch_request *);
 extern int decode_DIS_Manage(int, struct batch_request *);
+extern int decode_DIS_DelJobList(int, struct batch_request *);
 extern int decode_DIS_MoveJob(int, struct batch_request *);
 extern int decode_DIS_MessageJob(int, struct batch_request *);
 extern int decode_DIS_ModifyResv(int, struct batch_request *);

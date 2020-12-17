@@ -54,7 +54,6 @@ class TestJobRouting(TestFunctional):
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
 
-    @skipOnCpuSet
     def test_t1(self):
         """
         This test case validates Job array state when one
@@ -113,7 +112,6 @@ class TestJobRouting(TestFunctional):
         self.server.expect(JOB, {ATTR_queue + '=' + dflt_q: 3}, count=True,
                            id=jid, extend='t')
 
-    @skipOnCpuSet
     def test_t2(self):
         """
         This test case validates Job array state when running subjobs

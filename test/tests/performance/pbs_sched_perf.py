@@ -38,6 +38,7 @@
 # subject to Altair's trademark licensing policies.
 
 
+from ptl.utils.pbs_logutils import PBSLogUtils
 from tests.performance import *
 
 
@@ -45,6 +46,7 @@ class TestSchedPerf(TestPerformance):
     """
     Test the performance of scheduler features
     """
+
     def common_setup1(self):
         TestPerformance.setUp(self)
         self.server.manager(MGR_CMD_CREATE, RSC,
@@ -54,9 +56,9 @@ class TestSchedPerf(TestPerformance):
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
         # 10010 nodes since it divides into 7 evenly.
         # Each node bucket will have 1430 nodes in it
-        self.server.create_vnodes('vnode', a, 10010, self.mom,
-                                  sharednode=False,
-                                  attrfunc=self.cust_attr_func, expect=False)
+        self.mom.create_vnodes(a, 10010,
+                               sharednode=False,
+                               attrfunc=self.cust_attr_func, expect=False)
         self.server.expect(NODE, {'state=free': (GE, 10010)})
         self.scheduler.add_resource('color')
 
@@ -324,7 +326,7 @@ class TestSchedPerf(TestPerformance):
         """
         # Create 1 node with 1 cpu
         a = {"resources_available.ncpus": 1}
-        self.server.create_vnodes('vnode', a, 1, self.mom, sharednode=False)
+        self.mom.create_vnodes(a, 1, sharednode=False)
 
         a = {"attr_update_period": 10000, "scheduling": "False"}
         self.server.manager(MGR_CMD_SET, SCHED, a, id="default")
@@ -359,3 +361,107 @@ class TestSchedPerf(TestPerformance):
         self.logger.info("##################################################")
         m = "sched cycle time"
         self.perf_test_result([cycle1_time, cycle2_time], m, "sec")
+
+    def setup_scheds(self):
+        for i in range(1, 6):
+            partition = 'P' + str(i)
+            sched_name = 'sc' + str(i)
+            a = {'partition': partition,
+                 'sched_host': self.server.hostname}
+            self.server.manager(MGR_CMD_CREATE, SCHED,
+                                a, id=sched_name)
+            self.scheds[sched_name].create_scheduler()
+            self.scheds[sched_name].start()
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'True'}, id=sched_name)
+
+    def setup_queues_nodes(self):
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        for i in range(1, 6):
+            self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq' + str(i))
+            p = {'partition': 'P' + str(i)}
+            self.server.manager(MGR_CMD_SET, QUEUE, p, id='wq' + str(i))
+            node = str(self.mom.shortname)
+            num = i - 1
+            self.server.manager(MGR_CMD_SET, NODE, p,
+                                id=node + '[' + str(num) + ']')
+
+    def submit_njobs(self, num_jobs=1, attrs=None, user=TEST_USER):
+        """
+        Submit num_jobs number of jobs with attrs attributes for user.
+        Return a list of job ids
+        """
+        if attrs is None:
+            attrs = {ATTR_q: 'workq'}
+        ret_jids = []
+        for _ in range(num_jobs):
+            J = Job(user, attrs)
+            jid = self.server.submit(J)
+            ret_jids += [jid]
+
+        return ret_jids
+
+    @timeout(3600)
+    def test_multi_sched_perf(self):
+        """
+        Test time taken to schedule and run 5k jobs with
+        single scheduler and workload divided among 5 schedulers.
+        """
+        a = {'resources_available.ncpus': 1000}
+        self.mom.create_vnodes(a, 5)
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.submit_njobs(5000)
+        start = time.time()
+        self.scheduler.run_scheduling_cycle()
+        c = self.scheduler.cycles(lastN=1)[0]
+        cyc_dur = c.end - c.start
+        self.perf_test_result(cyc_dur, "default_cycle_duration", "secs")
+        msg = 'Time taken by default scheduler to run 5k jobs is '
+        self.logger.info(msg + str(cyc_dur))
+        self.server.cleanup_jobs()
+        self.setup_scheds()
+        self.setup_queues_nodes()
+        for sc in self.scheds:
+            a = {'scheduling': 'False'}
+            self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
+        a = {ATTR_q: 'wq1'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq2'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq3'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq4'}
+        self.submit_njobs(1000, a)
+        a = {ATTR_q: 'wq5'}
+        self.submit_njobs(1000, a)
+        start = time.time()
+        for sc in self.scheds:
+            a = {'scheduling': 'True'}
+            self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
+        for sc in self.scheds:
+            a = {'scheduling': 'False'}
+            self.server.manager(MGR_CMD_SET, SCHED, a, id=sc)
+        sc_dur = []
+        for sc in self.scheds:
+            if sc != 'default':
+                self.logger.info("searching log for scheduler " + str(sc))
+                log_msg = self.scheds[sc].log_match("Leaving Scheduling Cycle",
+                                                    starttime=int(start),
+                                                    max_attempts=30)
+                endtime = PBSLogUtils.convert_date_time(
+                    log_msg[1].split(';')[0])
+                dur = endtime - start
+                sc_dur.append(dur)
+        max_dur = max(sc_dur)
+        self.perf_test_result(max_dur, "max_multisched_cycle_duration", "secs")
+        msg = 'Max time taken by one of the multi sched to run 1k jobs is '
+        self.logger.info(msg + str(max_dur))
+        self.perf_test_result(
+            cyc_dur - max_dur, "multisched_defaultsched_cycle_diff", "secs")
+        self.assertLess(max_dur, cyc_dur)
+        msg1 = 'Multi scheduler is faster than single scheduler by '
+        msg2 = 'secs in scheduling 5000 jobs with 5 schedulers'
+        self.logger.info(msg1 + str(cyc_dur - max_dur) + msg2)

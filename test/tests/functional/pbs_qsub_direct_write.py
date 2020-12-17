@@ -54,6 +54,14 @@ class TestQsub_direct_write(TestFunctional):
         self.msg = "Job is sleeping for 10 secs as job should  be running"
         self.msg += " at the time we check for directly written files"
 
+    def checks_available_ncpus(self, ncpus=1):
+        nodes = self.server.counter(NODE, 'resources_available.ncpus',
+                                    grandtotal=True, level=logging.DEBUG)
+        if nodes and 'resources_available.ncpus' in nodes:
+            total_ncpus = nodes['resources_available.ncpus']
+            if total_ncpus < ncpus:
+                self.skip_test(reason="need %d available ncpus" % ncpus)
+
     def test_direct_write_when_job_succeeds(self):
         """
         submit a sleep job and make sure that the std_files
@@ -330,6 +338,7 @@ class TestQsub_direct_write(TestFunctional):
         accessible from mom and direct_files option is used
         but submission directory is not mapped in mom config file.
         """
+        self.checks_available_ncpus(4)
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER, attrs={ATTR_k: 'doe', ATTR_J: '1-4'})
@@ -357,6 +366,7 @@ class TestQsub_direct_write(TestFunctional):
         are getting directly written to the custom dir
         provided in -e and -o option even when -doe is set.
         """
+        self.checks_available_ncpus(4)
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         tmp_dir = self.du.create_temp_dir(asuser=TEST_USER)

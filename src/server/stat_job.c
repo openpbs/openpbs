@@ -71,6 +71,7 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "pbs_ifl.h"
+#include "ifl_internal.h"
 
 
 /* Global Data Items: */
@@ -125,7 +126,7 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 	}
 
 	if ((encoded == NULL) || (pat->at_flags & ATR_VFLAG_MODCACHE)) {
-		if (pat->at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(pat)) {
 			/* encode and cache new svrattrl structure */
 			(void)pdef->at_encode(pat, phead, pdef->at_name,
 				NULL, ATR_ENCODE_CLIENT, &working);
@@ -233,10 +234,11 @@ status_attrib(svrattrl *pal, void *pidx, attribute_def *padef, attribute *pattr,
  *		but not a subjob of an Array Job.
  *
  * @param[in,out]	pjob	-	ptr to job to status
- * @param[in]	preq	-	request structure
- * @param[in]	pal	-	specific attributes to status
+ * @param[in]		preq	-	request structure
+ * @param[in]		pal	-	specific attributes to status
  * @param[in,out]	pstathd	-	RETURN: head of list to append status to
- * @param[out]	bad	-	RETURN: index of first bad attribute
+ * @param[out]		bad	-	RETURN: index of first bad attribute
+ * @param[in]		dosubjobs -	flag to expand a Array job to include all subjobs
  *
  * @return	int
  * @retval	0	: success
@@ -246,12 +248,13 @@ status_attrib(svrattrl *pal, void *pidx, attribute_def *padef, attribute *pattr,
  */
 
 int
-status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *pstathd, int *bad)
+status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *pstathd, int *bad, int dosubjobs)
 {
 	struct brp_status *pstat;
 	long oldtime = 0;
 	int old_elig_flags = 0;
 	int old_atyp_flags = 0;
+	int revert_state_r = 0;
 
 	/* see if the client is authorized to status this job */
 
@@ -259,18 +262,12 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 		if (svr_authorize_jobreq(preq, pjob))
 			return (PBSE_PERM);
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-		/* for Array Job, if array_indices_remaining is modified */
-		/* then need to recalculate the string value	     */
-		update_array_indices_remaining_attr(pjob);
-	}
-
 	/* calc eligible time on the fly and return, don't save. */
 	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
-		if (pjob->ji_wattr[JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) {
-			oldtime = pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long;
-			pjob->ji_wattr[JOB_ATR_eligible_time].at_val.at_long += (time_now - pjob->ji_wattr[JOB_ATR_sample_starttime].at_val.at_long);
-			pjob->ji_wattr[JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
+		if (get_jattr_long(pjob, JOB_ATR_accrue_type) == JOB_ELIGIBLE) {
+			oldtime = get_jattr_long(pjob, JOB_ATR_eligible_time);
+			set_jattr_l_slim(pjob, JOB_ATR_eligible_time,
+					time_now - get_jattr_long(pjob, JOB_ATR_sample_starttime), INCR);
 
 			/* Note: ATR_VFLAG_MODCACHE must be set because of svr_cached() does */
 			/* 	 not correctly check ATR_VFLAG_SET */
@@ -279,11 +276,11 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 		/* eligible_time_enable is off so,				       */
 		/* clear set flag so that eligible_time and accrue type dont show */
 		old_elig_flags = pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags;
-		pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags &= ~ATR_VFLAG_SET;
+		mark_jattr_not_set(pjob, JOB_ATR_eligible_time);
 		pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 
 		old_atyp_flags = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags;
-		pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags &= ~ATR_VFLAG_SET;
+		mark_jattr_not_set(pjob, JOB_ATR_accrue_type);
 		pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |= ATR_MOD_MCACHE;
 
 		/* Note: ATR_VFLAG_MODCACHE must be set because of svr_cached() does */
@@ -296,11 +293,27 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	CLEAR_LINK(pstat->brp_stlink);
-	pstat->brp_objtype = MGR_OBJ_JOB;
+	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) != 0 && dosubjobs)
+		pstat->brp_objtype = MGR_OBJ_JOBARRAY_PARENT;
+	else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) != 0 && dosubjobs)
+		pstat->brp_objtype = MGR_OBJ_SUBJOB;
+	else
+		pstat->brp_objtype = MGR_OBJ_JOB;
 	(void)strcpy(pstat->brp_objname, pjob->ji_qs.ji_jobid);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
 	preq->rq_reply.brp_count++;
+
+	/* Temporarily set suspend/user suspend states for the stat */
+	if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) {
+			set_job_state(pjob, JOB_STATE_LTR_SUSPENDED);
+			revert_state_r = 1;
+		} else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd) {
+			set_job_state(pjob, JOB_STATE_LTR_USUSPENDED);
+			revert_state_r = 1;
+		}
+	}
 
 	/* add attributes to the status reply */
 
@@ -311,8 +324,8 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	/* reset eligible time, it was calctd on the fly, real calctn only when accrue_type changes */
 
 	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long != 0) {
-		if (pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long == JOB_ELIGIBLE) {
-			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_val.at_long = oldtime;
+		if (get_jattr_long(pjob, JOB_ATR_accrue_type) == JOB_ELIGIBLE) {
+			set_jattr_l_slim(pjob, JOB_ATR_eligible_time, oldtime, SET);
 			pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 
 			/* Note: ATR_VFLAG_MODCACHE must be set because of svr_cached() does */
@@ -324,6 +337,9 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 		pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags = old_atyp_flags;
 	}
 
+	if (revert_state_r)
+		set_job_state(pjob, JOB_STATE_LTR_RUNNING);
+
 	return (0);
 }
 
@@ -333,11 +349,12 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
  *		Works by statusing the parrent unless subjob is actually running.
  *
  * @param[in,out]	pjob	-	ptr to parent Array
- * @param[in]	preq	-	request structure
- * @param[in]	pal	-	specific attributes to status
- * @param[in]	subj	-	if not = -1 then include subjob [n]
+ * @param[in]		preq	-	request structure
+ * @param[in]		pal	-	specific attributes to status
+ * @param[in]		subj	-	if not = -1 then include subjob [n]
  * @param[in,out]	pstathd	-	RETURN: head of list to append status to
- * @param[out]	bad	-	RETURN: index of first bad attribute
+ * @param[out]		bad	-	RETURN: index of first bad attribute
+ * @param[in]		dosubjobs -	flag to expand a Array job to include all subjobs
  *
  * @return	int
  * @retval	0	: success
@@ -346,7 +363,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
  * @retval	PBSE_IVALREQ	: something wrong with the flags
  */
 int
-status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pbs_list_head *pstathd, int *bad)
+status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pbs_list_head *pstathd, int *bad, int dosubjobs)
 {
 	int		   limit = (int)JOB_ATR_LAST;
 	struct brp_status *pstat;
@@ -355,8 +372,10 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	int		   rc = 0;
 	int		   oldeligflags = 0;
 	int		   oldatypflags = 0;
-	int 		   subjob_state = -1;
 	char 		   *old_subjob_comment = NULL;
+	char sjst;
+	int sjsst;
+	char *objname;
 
 	/* see if the client is authorized to status this job */
 
@@ -369,15 +388,19 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 
 	/* if subjob job obj exists, use real job structure */
 
-	if ((get_subjob_state(pjob, subj) != JOB_STATE_QUEUED) && (psubjob = pjob->ji_ajtrk->tkm_tbl[subj].trk_psubjob)) {
+	psubjob = get_subjob_and_state(pjob, subj, &sjst, &sjsst);
+	if (psubjob)
+		return status_job(psubjob, preq, pal, pstathd, bad, dosubjobs);
 
-		status_job(psubjob, preq, pal, pstathd, bad);
-		return 0;
-	}
+	if (sjst == JOB_STATE_LTR_UNKNOWN)
+		return PBSE_UNKJOBID;
 
 	/* otherwise we fake it with info from the parent      */
 	/* allocate reply structure and fill in header portion */
 
+	objname = create_subjob_id(pjob->ji_qs.ji_jobid, subj);
+	if (objname == NULL)
+		return PBSE_SYSTEM;
 
 	/* for the general case, we don't want to include the parent's */
 	/* array related attrbutes as they belong only to the Array    */
@@ -387,8 +410,11 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	CLEAR_LINK(pstat->brp_stlink);
-	pstat->brp_objtype = MGR_OBJ_JOB;
-	(void)strcpy(pstat->brp_objname, mk_subjob_id(pjob, subj));
+	if (dosubjobs)
+		pstat->brp_objtype = MGR_OBJ_SUBJOB;
+	else
+		pstat->brp_objtype = MGR_OBJ_JOB;
+	(void)strcpy(pstat->brp_objname, objname);
 	CLEAR_HEAD(pstat->brp_attr);
 	append_link(pstathd, &pstat->brp_stlink, pstat);
 	preq->rq_reply.brp_count++;
@@ -401,43 +427,35 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	 * fake the job state and comment by setting the parent job's state
 	 * and comment to that of the subjob
 	 */
-	subjob_state = get_subjob_state(pjob, subj);
-	realstate = pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char;
-	pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char = statechars[subjob_state];
-	pjob->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_MOD_MCACHE;
+	realstate = get_job_state(pjob);
+	set_job_state(pjob, sjst);
 
-	if (subjob_state == JOB_STATE_EXPIRED || subjob_state == JOB_STATE_FINISHED) {
-		if (pjob->ji_ajtrk->tkm_tbl[subj].trk_substate == JOB_SUBSTATE_FINISHED) {
-			if (pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
-				old_subjob_comment = strdup(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
+	if (sjst == JOB_STATE_LTR_EXPIRED || sjst == JOB_STATE_LTR_FINISHED) {
+		if (sjsst == JOB_SUBSTATE_FINISHED) {
+			if (is_jattr_set(pjob, JOB_ATR_Comment)) {
+				old_subjob_comment = strdup(get_jattr_str(pjob, JOB_ATR_Comment));
 				if (old_subjob_comment == NULL)
 					return (PBSE_SYSTEM);
 			}
-			if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-				NULL, NULL, "Subjob finished") == PBSE_SYSTEM) {
-				free(old_subjob_comment);
+			if (set_jattr_str_slim(pjob, JOB_ATR_Comment, "Subjob finished", NULL)) {
 				return (PBSE_SYSTEM);
 			}
-		} else if (pjob->ji_ajtrk->tkm_tbl[subj].trk_substate == JOB_SUBSTATE_FAILED) {
-			if (pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
-				old_subjob_comment = strdup(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
+		} else if (sjsst == JOB_SUBSTATE_FAILED) {
+			if (is_jattr_set(pjob, JOB_ATR_Comment)) {
+				old_subjob_comment = strdup(get_jattr_str(pjob, JOB_ATR_Comment));
 				if (old_subjob_comment == NULL)
 					return (PBSE_SYSTEM);
 			}
-			if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-				NULL, NULL, "Subjob failed") == PBSE_SYSTEM) {
-				free(old_subjob_comment);
+			if (set_jattr_str_slim(pjob, JOB_ATR_Comment, "Subjob failed", NULL)) {
 				return (PBSE_SYSTEM);
 			}
-		} else if (pjob->ji_ajtrk->tkm_tbl[subj].trk_substate == JOB_SUBSTATE_TERMINATED) {
-			if (pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
-				old_subjob_comment = strdup(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
+		} else if (sjsst == JOB_SUBSTATE_TERMINATED) {
+			if (is_jattr_set(pjob, JOB_ATR_Comment)) {
+				old_subjob_comment = strdup(get_jattr_str(pjob, JOB_ATR_Comment));
 				if (old_subjob_comment == NULL)
 					return (PBSE_SYSTEM);
 			}
-			if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-				NULL, NULL, "Subjob terminated") == PBSE_SYSTEM) {
-				free(old_subjob_comment);
+			if (set_jattr_str_slim(pjob, JOB_ATR_Comment, "Subjob terminated", NULL)) {
 				return (PBSE_SYSTEM);
 			}
 		}
@@ -447,11 +465,11 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	/* clear the set flag so that eligible_time and accrue_type dont show */
 	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 0) {
 		oldeligflags = pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags;
-		pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags &= ~ATR_VFLAG_SET;
+		mark_jattr_not_set(pjob, JOB_ATR_eligible_time);
 		pjob->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_MOD_MCACHE;
 
 		oldatypflags = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags;
-		pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags &= ~ATR_VFLAG_SET;
+		mark_jattr_not_set(pjob, JOB_ATR_accrue_type);
 		pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_flags |= ATR_MOD_MCACHE;
 
 		/* Note: ATR_VFLAG_MODCACHE must be set because of svr_cached() does */
@@ -462,15 +480,11 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 		rc =  PBSE_NOATTR;
 
 	/* Set the parent state back to what it really is */
-
-	pjob->ji_wattr[(int)JOB_ATR_state].at_val.at_char = realstate;
-	pjob->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_MOD_MCACHE;
+	set_job_state(pjob, realstate);
 
 	/* Set the parent comment back to what it really is */
 	if (old_subjob_comment != NULL) {
-		if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			NULL, NULL, old_subjob_comment) == PBSE_SYSTEM) {
-			free(old_subjob_comment);
+		if (set_jattr_str_slim(pjob, JOB_ATR_Comment, old_subjob_comment, NULL)) {
 			return (PBSE_SYSTEM);
 		}
 

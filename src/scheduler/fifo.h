@@ -45,7 +45,36 @@ extern "C" {
 
 #include  <limits.h>
 #include "data_types.h"
-int connector;
+#include "sched_cmds.h"
+
+/**
+ * @brief Gets the Scheduler Command sent by the Server
+ *
+ * @param[in]     sock - secondary connection to the server
+ * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
+ *
+ * @return	int
+ * @retval	0	: for EOF
+ * @retval	+1	: for success
+ * @retval	-1	: for error
+ */
+int get_sched_cmd(int sock, sched_cmd *cmd);
+
+/**
+ * @brief This is non-blocking version of get_sched_cmd()
+ *
+ * @param[in]     sock - secondary connection to the server
+ * @param[in,out] cmd  - pointer to sched cmd to be filled with received cmd
+ *
+ * @return	int
+ * @retval	0	no super high priority command
+ * @retval	+1	for success
+ * @retval	-1	for error
+ * @retval	-2	for EOF
+ *
+ * @note this function uses different return code (-2) for EOF than get_sched_cmd() (-1)
+ */
+int get_sched_cmd_noblk(int sock, sched_cmd *cmd);
 
 /*
  *      schedinit - initialize conf struct and parse conf files
@@ -53,24 +82,17 @@ int connector;
 int schedinit(int nthreads);
 
 /*
- *      schedule - this function gets called to start each scheduling cycle
- *                 It will handle the difference cases that caused a
- *                 scheduling cycle
- */
-int schedule(int cmd, int sd, char *runjobid);
-
-/*
  *	intermediate_schedule - responsible for starting/restarting scheduling
  *				cycle
  */
 
-int intermediate_schedule(int sd, char *jobid);
+int intermediate_schedule(int sd, const sched_cmd *cmd);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(int sd, char *jobid);
+int scheduling_cycle(int sd, const sched_cmd *cmd);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every
@@ -181,7 +203,7 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  *	       first move it to the local server and then run it.
  *	       if it's a local job, just run it.
  */
-int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook, schd_error *err);
+int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook, char *node_owner, schd_error *err);
 
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
@@ -230,10 +252,13 @@ int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rer
  */
 int scheduler_simulation_task(int pbs_sd, int debug);
 
-int update_svr_schedobj(int connector, int cmd, int alarm_time);
+int set_validate_sched_attrs(int);
 
-int set_validate_sched_attrs(int connector);
+int validate_running_user(char *exename);
 
+void clear_last_running();
+
+int send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode, char *node_owner);
 
 #ifdef	__cplusplus
 }

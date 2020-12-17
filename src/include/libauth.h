@@ -43,13 +43,7 @@ extern "C" {
 #endif
 
 #include "log.h"
-
-#undef DLLEXPORT
-#ifdef WIN32
-#define DLLEXPORT __declspec(dllexport)
-#else
-#define DLLEXPORT
-#endif
+#include "portability.h"
 
 /* Max length of auth method name */
 #define MAXAUTHNAME 100

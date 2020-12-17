@@ -53,13 +53,11 @@ class TestSchedJobRunWait(TestFunctional):
         for i in range(n):
             scname = "sc" + str(i)
             pname = "P" + str(i)
-            portnum = str(15050 + i)
             qname = "wq" + str(i)
             sc_quenames.append([scname, qname])
 
             a = {'partition': pname,
-                 'sched_host': self.server.hostname,
-                 'sched_port': portnum}
+                 'sched_host': self.server.hostname}
             self.server.manager(MGR_CMD_CREATE, SCHED,
                                 a, id=scname)
             self.scheds[scname].create_scheduler()
@@ -75,8 +73,8 @@ class TestSchedJobRunWait(TestFunctional):
             a = {'resources_available.ncpus': 1, 'partition': pname}
             prefix = 'vnode' + str(i)
             nname = prefix + "[0]"
-            self.server.create_vnodes(prefix, a, 1, self.mom,
-                                      delall=False, additive=True)
+            self.mom.create_vnodes(prefix, a, 1, delall=False,
+                                   additive=True, vname=nname)
         return sc_quenames
 
     def test_throughput_mode_deprecated(self):

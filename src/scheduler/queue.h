@@ -40,6 +40,12 @@
 #ifndef SRC_SCHEDULER_QUEUE_H_
 #define SRC_SCHEDULER_QUEUE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+
 #define QUEUE_DS_MIN_SIZE 512	/* Minimum size of the queue data structure */
 
 typedef struct ds_queue ds_queue;
@@ -57,5 +63,9 @@ void free_ds_queue(ds_queue *queue);
 int ds_enqueue(ds_queue *queue, void *obj);
 void *ds_dequeue(ds_queue *queue);
 int ds_queue_is_empty(ds_queue *queue);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SRC_SCHEDULER_QUEUE_H_ */

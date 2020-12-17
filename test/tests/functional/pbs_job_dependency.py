@@ -61,8 +61,8 @@ e.accept()
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='NewRes')
         self.scheduler.add_resource('NewRes', apply=True)
         attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 6, mom=self.mom,
-                                  attrfunc=self.cust_attr, usenatvnode=False)
+        self.mom.create_vnodes(attr, 6, attrfunc=self.cust_attr,
+                               usenatvnode=False)
 
     def cust_attr(self, name, totnodes, numnode, attrib):
         res_str = "ver" + str(numnode)
@@ -84,7 +84,6 @@ e.accept()
             for job_list in check_dl:
                 self.assertIn(job, job_list)
 
-    @skipOnCpuSet
     def test_runone_depend_basic(self):
         """
         Test basic runone dependency tests
@@ -143,7 +142,6 @@ e.accept()
         self.server.expect(JOB, {ATTR_state: 'H', ATTR_h: 's'}, id=j3)
         self.assert_dependency(j1, j2, j3)
 
-    @skipOnCpuSet
     def test_runone_depend_basic_on_job_array(self):
         """
         Test basic runone dependency tests on job arrays

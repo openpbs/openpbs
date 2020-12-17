@@ -98,8 +98,7 @@ class TestPBSSnapshot(TestFunctional):
         :type sched_log: str
         """
         a = {'partition': partition,
-             'sched_host': self.server.hostname,
-             'sched_port': port}
+             'sched_host': self.server.hostname}
         if sched_priv is not None:
             a['sched_priv'] = sched_priv
         if sched_log is not None:
@@ -131,8 +130,7 @@ class TestPBSSnapshot(TestFunctional):
                "started": "True",
                "enabled": "True"}
         a_n = {"resources_available.ncpus": 2}
-        self.server.create_vnodes("vnode", a_n, (num_partitions + 1),
-                                  self.mom)
+        self.mom.create_vnodes(a_n, (num_partitions + 1), vname='vnode')
         for i in range(num_partitions):
             partition_id = "P" + str(i + 1)
 

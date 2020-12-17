@@ -42,6 +42,10 @@
 #ifndef _PBS_PYTHON_DEF
 #define _PBS_PYTHON_DEF
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -112,6 +116,7 @@ struct python_script {
  *
  * @param[in]	rq_job - maps to a struct rq_quejob batch request.
  * @param[in]	rq_manage - maps to a struct rq_manage batch request.
+ * @param[in]	rq_modifyvnode - maps to a struct rq_modifyvnode.
  * @param[in]	rq_move - maps to a struct rq_move batch request.
  * @param[in]	rq_prov - maps to a struct prov_vnode_info.
  * @param[in]	rq_run - maps to a struct rq_runjob batch request.
@@ -136,6 +141,7 @@ struct python_script {
 typedef struct	hook_input_param {
 	void		*rq_job;
 	void		*rq_manage;
+	void		*rq_modifyvnode;
 	void		*rq_move;
 	void		*rq_prov;
 	void		*rq_run;
@@ -277,6 +283,7 @@ extern int get_py_progname(char **);
 #define PY_EVENT_PARAM_RESV	"resv"
 #define PY_EVENT_PARAM_SRC_QUEUE "src_queue"
 #define PY_EVENT_PARAM_VNODE     "vnode"
+#define PY_EVENT_PARAM_VNODE_O    "vnode_o"
 #define PY_EVENT_PARAM_VNODELIST "vnode_list"
 #define PY_EVENT_PARAM_VNODELIST_FAIL "vnode_list_fail"
 #define PY_EVENT_PARAM_JOBLIST "job_list"
@@ -398,6 +405,7 @@ extern int get_py_progname(char **);
 #define PY_GET_VNODE_STATIC_METHOD	"get_vnode_static"
 #define PY_GET_QUEUE_STATIC_METHOD	"get_queue_static"
 #define PY_GET_SERVER_DATA_FP_METHOD	"get_server_data_fp"
+#define PY_GET_SERVER_DATA_FILE_METHOD	"get_server_data_file"
 #define PY_USE_STATIC_DATA_METHOD	"use_static_data"
 
 /* Event parameter names */
@@ -411,6 +419,7 @@ extern int get_py_progname(char **);
 #define	EVENT_RESV_OBJECT	EVENT_OBJECT ".resv"
 #define	EVENT_SRC_QUEUE_OBJECT	EVENT_OBJECT ".src_queue"
 #define	EVENT_VNODE_OBJECT	EVENT_OBJECT ".vnode"
+#define	EVENT_VNODE_O_OBJECT	EVENT_OBJECT ".vnode_o"
 #define	EVENT_VNODELIST_OBJECT	EVENT_OBJECT ".vnode_list"
 #define	EVENT_VNODELIST_FAIL_OBJECT	EVENT_OBJECT ".vnode_list_fail"
 #define	EVENT_JOBLIST_OBJECT	EVENT_OBJECT ".job_list"
@@ -610,5 +619,9 @@ extern void
 hook_output_param_init(hook_output_param_t *hook_output);
 
 /* -- END PBS Server/Python implementations -- */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _PBS_PYTHON_DEF */

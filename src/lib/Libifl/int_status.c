@@ -46,7 +46,94 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "libpbs.h"
+#include "pbs_ecl.h"
+#include "libutil.h"
+#include "attribute.h"
+#include "cmds.h"
+#include "pbs_internal.h"
+
+
+extern char * PBS_get_server(char *, char *, uint *);
+
+
+enum state { TRANSIT_STATE,
+	     QUEUE_STATE,
+	     HELD_STATE,
+	     WAIT_STATE,
+	     RUN_STATE,
+	     EXITING_STATE,
+	     BEGUN_STATE,
+	     MAX_STATE };
+
+static char *statename[] = { "Transit", "Queued", "Held", "Waiting",
+		"Running", "Exiting", "Begun"};
+
+/**
+ * @brief
+ *	decode_states - decoded state attribute to count array
+ *
+ * @param[in] string - string holding state of job
+ * @param[out] count    - count array having job per state
+ * 
+ * @return void
+ *
+ */
+static void
+decode_states(char *string, long *count)
+{
+	char *c;
+	int i;
+	int rc;
+	static char *format_str = NULL;
+
+	c = string;
+	while (isspace(*c) && *c != '\0')
+		c++;
+
+	if (!format_str) {
+		format_str = malloc(12 * MAX_STATE); /* 12 = max char in state name + 4 on type specifier */
+		int len = 0;
+		for (i = 0; i < MAX_STATE; i++)
+			len += sprintf(format_str + len, "%s:%%ld ", statename[i]);
+	}
+
+	rc = sscanf(c, format_str, &count[TRANSIT_STATE], &count[QUEUE_STATE],
+	       &count[HELD_STATE], &count[WAIT_STATE], &count[RUN_STATE],
+	       &count[EXITING_STATE], &count[BEGUN_STATE]);
+
+	if (rc != MAX_STATE)
+		pbs_errno = PBSE_BADATVAL;
+}
+
+/**
+ * @brief
+ *	encode_states - Encode state from two state count arrays
+ *
+ * @param[in,out] val - reference to pointer which will get freed and new value gets allocated
+ * @param[in] cur    - count array having job per state
+ * @param[in] next    - count array having job per state
+ * 
+ * @return void
+ *
+ */
+static void
+encode_states(char **val, long *cur, long *nxt)
+{
+	int index;
+	int len = 0;
+	char buf[256];
+
+	buf[0] = '\0';
+	for (index = 0; index < MAX_STATE; index++) {
+		len += sprintf(buf + len, "%s:%ld ", statename[index],
+			       cur[index] + nxt[index]);
+	}
+	free(*val);
+	if ((*val = strdup(buf)) == NULL)
+		pbs_errno = PBSE_SYSTEM;
+}
 
 /**
  * @brief
@@ -68,7 +155,6 @@ struct batch_status *
 PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend)
 {
 	int rc;
-	struct batch_status *PBSD_status_get(int c);
 
 	/* send the status request */
 
@@ -81,7 +167,472 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	}
 
 	/* get the status reply */
-	return (PBSD_status_get(c));
+	return (PBSD_status_get(c, NULL));
+}
+
+/**
+ * @brief
+ * aggr_job_ct:
+ *	aggregate the job counts attribute of servers
+ *	total_jobs and state_counts are the attributes aggregated here.
+ * @param[in] cur - batch status to first server
+ * @param[in] next - batch status to second server
+ * 
+ * @return void
+ */
+static void
+aggr_job_ct(struct batch_status *cur, struct batch_status *nxt)
+{
+	long cur_st_ct[MAX_STATE] = {0};
+	long nxt_st_ct[MAX_STATE] = {0};
+	struct attrl *a = NULL;
+	struct attrl *b = NULL;
+	char *tot_jobs_attr = NULL;
+	long tot_jobs = 0;
+	char *endp;
+	int found;
+	char **orig_st_ct = NULL;
+
+	if (!cur || !nxt)
+		return;
+
+	for (a = cur->attribs, found = 0; a; a = a->next) {
+		if (a->name && strcmp(a->name, ATTR_count) == 0) {
+			decode_states(a->value, cur_st_ct);
+			orig_st_ct = &a->value;
+			found++;
+		} else if (a->name && strcmp(a->name, ATTR_total) == 0) {
+			tot_jobs_attr = a->value;
+			tot_jobs += strtol(a->value, &endp, 10);
+			found++;
+		}
+		if (found == 2)
+			break;
+	}
+	for (b = nxt->attribs, found = 0; b; b = b->next) {
+		if (b->name && strcmp(b->name, ATTR_count) == 0) {
+			decode_states(b->value, nxt_st_ct);
+			found++;
+		} else if (b->name && strcmp(b->name, ATTR_total) == 0) {
+			tot_jobs += strtol(b->value, &endp, 10);
+			found++;
+		}
+		if (found == 2)
+			break;
+	}
+
+	if (orig_st_ct)
+		encode_states(orig_st_ct, cur_st_ct, nxt_st_ct);
+	if (tot_jobs_attr)
+		sprintf(tot_jobs_attr, "%ld", tot_jobs);
+}
+
+/**
+ * @brief
+ * assess_type:
+ *	Assess the type of the value and return the value along with
+ *	the references passed to it.
+ * @param[in] val - value for which type needs to be assessed
+ * @param[out] type - The type of val: can be long, double, size or string.
+ * @param[out] val_double - double value in case if the type is double or floating number.
+ * @param[out] val_long - long in case if the type is long or size
+ * 
+ * @return void
+ */
+static void
+assess_type(char *val, int *type, double *val_double, long *val_long)
+{
+	char *pc;
+
+	if (strchr(val, '.')) {
+		if ((*val_double = strtod(val, &pc)))
+			*type = ATR_TYPE_FLOAT;
+		else if (pc && *pc != '\0')
+			*type = ATR_TYPE_STR;
+	} else {
+		*val_long = strtol(val, &pc, 10);
+		if (!pc || *pc == '\0')
+			*type = ATR_TYPE_LONG;
+		else if (pc && (!strcasecmp(pc, "kb") || !strcasecmp(pc, "mb") || !strcasecmp(pc, "gb") ||
+			    !strcasecmp(pc, "tb") || !strcasecmp(pc, "pb")))
+				*type = ATR_TYPE_SIZE;
+		else
+			*type = ATR_TYPE_STR;
+	}
+}
+
+struct attrl_holder {
+	struct attrl *atr_list;
+	struct attrl_holder *next;
+};
+
+/**
+ * @brief
+ * accumulate_values:
+ *	Accumulate values in resources assigned attribute in b
+ * @param[in] a - input list of type attrl_holder. 
+ * 		It will contain only resources assigned those needs to be added with the corresponding in b.
+ * @param[in] b - attribute list which needs to be added with a. This function does not iterate through the list.
+ * @param[in,out] orig - original list which is the superset of a. b will be appended to orig if could not find in a.
+ * 
+ * @return void
+ */
+static void
+accumulate_values(struct attrl_holder *a, struct attrl *b, struct attrl *orig)
+{
+	double val_double = 0;
+	long val_long = 0;
+	char *pc;
+	int type = -1;
+	struct attrl_holder *itr;
+	struct attribute attr;
+	struct attribute new;
+	struct attrl *cur;
+	char buf[32];
+
+	if (!b || !b->resource || *b->resource == '\0' || !b->value || *b->value == '\0')
+		return;
+
+	assess_type(b->value, &type, &val_double, &val_long);
+
+	if (type == ATR_TYPE_STR)
+		return;
+
+	for (itr = a; itr && itr->atr_list; itr = itr->next) {
+		cur = itr->atr_list;
+		if (cur->resource && !strcmp(cur->resource, b->resource)) {
+			switch (type) {
+			case ATR_TYPE_FLOAT:
+				val_double += strtod(cur->value, &pc);
+				sprintf(buf, "%f", val_double);
+				break;
+			case ATR_TYPE_LONG:
+				val_long += strtol(cur->value, &pc, 10);
+				sprintf(buf, "%ld", val_long);
+				break;
+			case ATR_TYPE_SIZE:
+				decode_size(&attr, NULL, NULL, b->value);
+				decode_size(&new, NULL, NULL, cur->value);
+				set_size(&attr, &new, INCR);
+				from_size(&attr.at_val.at_size, buf);
+			default:
+				break;
+			}
+
+			free(cur->value);
+			if ((cur->value = strdup(buf)) == NULL)
+				pbs_errno = PBSE_SYSTEM;
+			break;
+		}
+	}
+
+	/* value exists in next but not in cur. Create it */
+	if (!itr) {
+		struct attrl *at;
+		if ((at = dup_attrl(b)) == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			return;
+		}
+		for (cur = orig; cur->next; cur = cur->next)
+			;
+		cur->next = at;
+	}
+}
+
+/**
+ * @brief
+ * aggr_resc_ct:
+ *	Aggregate all resources assigned attributes from two batch status.
+ * @param[in] st1 - input list of type attrl_holder. 
+ * 		It will contain only resources assigned those needs to be added with the corresponding in b.
+ * @param[in] b - attribute list which needs to be added with a. This function does not iterate through the list.
+ * @param[in,out] orig - original list which is the superset of a. b will be appended to orig if could not find in a.
+ * 
+ * @return void
+ */
+static void
+aggr_resc_ct(struct batch_status *st1, struct batch_status *st2)
+{
+	struct attrl *a = NULL;
+	struct attrl *b = NULL;
+	struct attrl_holder *resc_assn = NULL;
+	struct attrl_holder *cur = NULL;
+	struct attrl_holder *nxt = NULL;
+
+	if (!st1 || !st2)
+		return;
+
+	/* In the first pass gather all resources assigned attr from st1
+		so we do not have to loop through all attributes */
+	for (a = st1->attribs; a; a = a->next) {
+		if (a->name && strcmp(a->name, ATTR_rescassn) == 0) {
+			if ((nxt = malloc(sizeof(struct attrl_holder))) == NULL) {
+				pbs_errno = PBSE_SYSTEM;
+				goto end;
+			}
+			nxt->atr_list = a;
+			nxt->next = NULL;
+			if (cur) {
+				cur->next = nxt;
+				cur = cur->next;
+			} else
+				resc_assn = cur = nxt;
+		}
+	}
+
+	for (b = st2->attribs; b; b = b->next) {
+		if (b->name && strcmp(b->name, ATTR_rescassn) == 0)
+			accumulate_values(resc_assn, b, st1->attribs);
+	}
+
+end:
+	for (cur = resc_assn; cur; cur = nxt) {
+		nxt = cur->next;
+		free(cur);
+	}
+}
+
+/**
+ * @brief
+ * move_append_bs:
+ *	append b to end of a. also remove references of b from its batch status
+ * @param[in,out] a - attr list where b needs to be appended
+ * @param[in] b - batch status which needs to be appended to a
+ * @param[in,out] prev_b - previous list element of b for which references needs to be updated
+ * @param[in] head_a - head element of list contains a
+ * @param[in,out] head_b - reference to head element of list contains b. Reference is updated if prev_b is null
+ * 
+ * @return void
+ */
+static void
+move_append_bs(struct batch_status *a, struct batch_status *b, struct batch_status *prev_b, struct batch_status *head_a, struct batch_status **head_b)
+{
+	if (!a) {
+		for (a = head_a; a->next; a = a->next)
+			;
+		a->next = b;
+		if (prev_b) {
+			prev_b->next = b->next;
+		} else {
+			*head_b = b->next;
+		}
+		b->next = NULL;
+	}
+}
+
+/**
+ * @brief
+ * aggregate_queue:
+ *	aggregate two queues reported by two server instances
+ * @param[in,out] sv1 - server1 list. This will be also the final aggregated list.
+ * @param[in,out] sv2 - Server2 list. Passing reference as the first element can be moved to sv1
+ * 
+ * @return void
+ */
+static void
+aggregate_queue(struct batch_status *sv1, struct batch_status **sv2)
+{
+	struct batch_status *a = NULL;
+	struct batch_status *b = NULL;
+	struct batch_status *prev_b = NULL;
+
+	for (b = *sv2; b; prev_b = b, b = b->next) {
+		for (a = sv1; a; a = a->next) {
+			if (a->name && b->name && !strcmp(a->name, b->name)) {
+				aggr_job_ct(a, b);
+				aggr_resc_ct(a, b);
+				break;
+			}
+		}
+
+		if (!a)
+			move_append_bs(a, b, prev_b, sv1, sv2);
+	}
+}
+
+/**
+ * @brief
+ * aggregate_svr:
+ *	aggregate two servers reported by two server instances
+ * @param[in,out] sv1 - server1 list. This will be also the final aggregated list.
+ * @param[in] sv2 - Server2 list.
+ * 
+ * @return void
+ */
+static void
+aggregate_svr(struct batch_status *sv1, struct batch_status *sv2)
+{
+	aggr_job_ct(sv1, sv2);
+	aggr_resc_ct(sv1, sv2);
+}
+
+/**
+ * @brief
+ *	wrapper function for PBSD_status
+ *	gets aggregated value for all servers.
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - job id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for req
+ * @param[in] cmd - command
+ *
+ * @return	structure handle
+ * @retval	pointer to batch_status struct		success
+ * @retval	NULL					error
+ *
+ */
+struct batch_status *
+PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *rattrib)
+{
+	int i;
+	int rc = 0;
+	struct batch_status *ret = NULL;
+	struct batch_status *next = NULL;
+	struct batch_status *cur = NULL;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvrs = get_num_servers();
+	int *failed_conn;
+	int single_itr = 0;
+	int start = 0;
+	int ct;
+	struct batch_status *last = NULL;
+
+	if (!svr_conns)
+		return NULL;
+
+	failed_conn = calloc(nsvrs, sizeof(int));
+
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	if (pbs_verify_attributes(random_srv_conn(svr_conns), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
+		return NULL;
+
+	if (parent_object == MGR_OBJ_JOB) {
+		if ((start = starting_index(id)) == -1)
+			start = 0;
+		else
+			single_itr = 1;
+	}
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+
+		if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP) {
+			rc = PBSE_NOSERVER;
+			continue;
+		}
+
+		if (cmd == PBS_BATCH_SelStat) {
+			rc = PBSD_select_put(svr_conns[i]->sd, PBS_BATCH_SelStat, (struct attropl *) attrib, rattrib, extend);
+		} else {
+			if (id == NULL)
+				id = "";
+
+			rc = PBSD_status_put(svr_conns[i]->sd, cmd, id, (struct attrl *) attrib, extend, PROT_TCP, NULL);
+		}
+
+		if (rc) {
+			failed_conn[i] = 1;
+			continue;
+		} else if (single_itr)
+			break;
+	}
+
+	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+
+		if (!svr_conns[i] ||
+		    svr_conns[i]->state != SVR_CONN_STATE_UP ||
+		    failed_conn[i])
+			continue;
+
+		if ((next = PBSD_status_get(svr_conns[i]->sd, &last))) {
+			if (!ret) {
+				ret = next;
+				cur = last;
+			} else {
+				switch (parent_object) {
+				case MGR_OBJ_SERVER:
+					aggregate_svr(ret, next);
+					pbs_statfree(next);
+					next = NULL;
+					break;
+				case MGR_OBJ_QUEUE:
+					aggregate_queue(ret, &next);
+					pbs_statfree(next);
+					next = NULL;
+					break;
+				default:
+					cur->next = next;
+					cur = last;
+				}
+			}
+		}
+
+		if (single_itr)
+			break;
+	}
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	if (rc)
+		pbs_errno = rc;
+
+	free(failed_conn);
+	return ret;
+}
+
+/**
+ * @brief
+ *	wrapper function for PBSD_status
+ *	gets status randomly from one of the configured server.
+ *
+ * @param[in] c - communication handle
+ * @param[in] id - job id
+ * @param[in] attrib - pointer to attribute list
+ * @param[in] extend - extend string for req
+ * @param[in] cmd - command
+ *
+ * @return	structure handle
+ * @retval	pointer to batch_status struct		success
+ * @retval	NULL					error
+ *
+ */
+struct batch_status *
+PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend, int parent_object)
+{
+	struct batch_status *ret = NULL;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+
+	if (!svr_conns)
+		return NULL;
+
+	if ((c = random_srv_conn(svr_conns)) < 0)
+		return NULL;
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/* first verify the attributes, if verification is enabled */
+	if ((pbs_verify_attributes(c, cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib)))
+		return NULL;
+
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return NULL;
+
+	ret = PBSD_status(c, cmd, id, attrib, extend);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return NULL;
+
+	return ret;
 }
 
 /**
@@ -95,7 +646,7 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
  * @retval NULL on failure
  */
 struct batch_status *
-PBSD_status_get(int c)
+PBSD_status_get(int c, struct batch_status **last)
 {
 	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
@@ -113,6 +664,8 @@ PBSD_status_get(int c)
 		rbsp = reply->brp_un.brp_statc;
 		reply->brp_un.brp_statc = NULL;
 	}
+	if (last)
+		*last = reply ? reply->last : NULL;
 	PBSD_FreeReply(reply);
 	return rbsp;
 }

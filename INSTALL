@@ -5,19 +5,19 @@ How to install PBS using the configure script.
 
 1. Install the prerequisite packages for building PBS.
 
-  For CentOS-8 systems you should configure and enable PowerTools
+  For CentOS-8 systems you should configure and enable powertools
   repo for hwloc-devel and libedit-devel packages.
 
   You should run the following commands as root:
 
     dnf install -y dnf-plugins-core
-    dnf config-manager --set-enabled PowerTools
+    dnf config-manager --set-enabled powertools
 
     dnf install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft \
-      autoconf automake
+      autoconf automake gcc-c++
 
   For CentOS-7 systems you should run the following command as root:
 
@@ -25,7 +25,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft \
-      autoconf automake
+      autoconf automake gcc-c++
 
   For openSUSE systems you should run the following command as root:
 
@@ -33,7 +33,7 @@ How to install PBS using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel postgresql-contrib python3-devel tcl-devel \
       tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
-      libXft-devel fontconfig autoconf automake
+      libXft-devel fontconfig autoconf automake gcc-c++
 
   For Debian systems you should run the following command as root:
 
@@ -41,7 +41,7 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake
+      automake gcc-c++
 
   For Ubuntu-18.04 systems you should run the following command as root:
 
@@ -49,7 +49,13 @@ How to install PBS using the configure script.
       libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all postgresql-contrib python3-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
-      automake
+      automake gcc-c++
+
+  For macOS systems using MacPorts you should run the following command as root:
+
+    port install autoconf automake libtool pkgconfig \
+      expat hwloc libedit libical openssl postgresql12 python38 \
+      swig-python tcl tk xorg-libX11 xorg-libXt
 
 2. Install the prerequisite packages for running PBS. In addition
   to the commands below, you should also install a text editor of
@@ -85,6 +91,11 @@ How to install PBS using the configure script.
     apt install expat libedit2 postgresql python3 postgresql-contrib sendmail-bin \
       sudo tcl tk libical3 postgresql-server-dev-all
 
+  For macOS systems using MacPorts you should run the following command as root:
+
+    port install expat libedit libical openssl postgresql12-server python38 \
+      tcl tk
+
 3. Open a terminal as a normal (non-root) user, unpack the PBS
   tarball, and cd to the package directory.
 
@@ -111,6 +122,12 @@ How to install PBS using the configure script.
   following command:
 
     ./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
+
+  For macOS systems using MacPorts you should run the following commands:
+
+    export CPATH=/opt/local/include/postgresql12:/opt/local/include
+    export LIBRARY_PATH=/opt/local/lib/postgresql12:/opt/local/lib
+    ./configure --with-swig=/opt/local --with-tcl=/opt/local
 
   If PTL needs to be installed along with PBS use the option
   "--enable-ptl" (see note 5 below)

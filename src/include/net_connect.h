@@ -68,8 +68,6 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define PBS_NET_CONN_NOTIMEOUT	   0x04
 #define PBS_NET_CONN_FROM_QSUB_DAEMON	0x08
 #define PBS_NET_CONN_FORCE_QSUB_UPDATE	0x10
-/* Unused - #define PBS_NET_CONN_GSSAPIAUTH 0x20 */
-#define PBS_NET_CONN_TO_SCHED	0x40
 
 #define	QSUB_DAEMON	"qsub-daemon"
 
@@ -96,30 +94,29 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
  **	Types of Inter Server messages (between Server and Mom).
  */
 #define IS_NULL                         0
-#define IS_CLUSTER_ADDRS                1
-#define IS_UPDATE                       2
-#define IS_RESCUSED                     3
-#define IS_JOBOBIT                      4
-#define IS_BADOBIT                      5
-#define IS_REPLYHELLO                   6
-#define IS_SHUTDOWN                     7
-#define IS_IDLE                         8
-#define IS_ACKOBIT                      9
-#define IS_REGISTERMOM                  10
-#define IS_UPDATE2                      11
-#define IS_DISCARD_JOB                  12
-#define IS_DISCARD_DONE                 13
-#define IS_UPDATE_FROM_HOOK             14 /* request to update vnodes from a hook running on parent mom host */
-#define IS_RESCUSED_FROM_HOOK           15 /* request from child mom for a hook */
-#define IS_HOOK_JOB_ACTION              16 /* request from hook to delete/requeue job */
-#define IS_HOOK_ACTION_ACK              17 /* acknowledge a request of the above 2    */
-#define IS_HOOK_SCHEDULER_RESTART_CYCLE 18 /* hook wish scheduler to recycle */
-#define IS_HOOK_CHECKSUMS               19 /* mom reports about hooks seen */
-#define IS_UPDATE_FROM_HOOK2            20 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
-#define IS_HELLOSVR                     21 /* hello send to server from mom to initiate a hello sequence */
-
-#define IS_CMD          40
-#define IS_CMD_REPLY    41
+#define IS_CMD                          1
+#define IS_CMD_REPLY                    2
+#define IS_CLUSTER_ADDRS                3
+#define IS_UPDATE                       4
+#define IS_RESCUSED                     5
+#define IS_JOBOBIT                      6
+#define IS_OBITREPLY                    7
+#define IS_REPLYHELLO                   8
+#define IS_SHUTDOWN                     9
+#define IS_IDLE                         10
+#define IS_REGISTERMOM                  11
+#define IS_UPDATE2                      12
+#define IS_DISCARD_JOB                  13
+#define IS_DISCARD_DONE                 14
+#define IS_UPDATE_FROM_HOOK             15 /* request to update vnodes from a hook running on parent mom host */
+#define IS_RESCUSED_FROM_HOOK           16 /* request from child mom for a hook */
+#define IS_HOOK_JOB_ACTION              17 /* request from hook to delete/requeue job */
+#define IS_HOOK_ACTION_ACK              18 /* acknowledge a request of the above 2    */
+#define IS_HOOK_SCHEDULER_RESTART_CYCLE 19 /* hook wish scheduler to recycle */
+#define IS_HOOK_CHECKSUMS               20 /* mom reports about hooks seen */
+#define IS_UPDATE_FROM_HOOK2            21 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
+#define IS_HELLOSVR                     22 /* hello send to server from mom to initiate a hello sequence */
+#define IS_PEERSVR_CONNECT              23 /* hello from peer server  */
 
 /* return codes for client_to_svr() */
 
@@ -170,10 +167,21 @@ enum conn_type {
 	Idle
 };
 
+/*
+ * This is used to know where the connection is originated from.
+ * This can be extended to have MOM and other clients of Server in future.
+ */
+typedef enum conn_origin {
+	CONN_UNKNOWN = 0,
+	CONN_SCHED_PRIMARY,
+	CONN_SCHED_SECONDARY,
+	CONN_SCHED_ANY
+} conn_origin_t;
+
 /* functions available in libnet.a */
 
 conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int));
-conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, int (*ready_func)(conn_t *), void (*func)(int), int priority_flag);
+int set_conn_as_priority(conn_t *);
 int add_conn_data(int sock, void *data); /* Adds the data to the connection */
 void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
 int  client_to_svr(pbs_net_t, unsigned int port, int);
@@ -188,16 +196,18 @@ unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
 int  init_network(unsigned int port);
 int  init_network_add(int sock, int (*readyreadfunc)(conn_t *), void (*readfunc)(int));
 void net_close(int);
-int  wait_request(time_t waittime, void *priority_context);
+int  wait_request(float waittime, void *priority_context);
 extern void *priority_context;
 void net_add_close_func(int, void(*)(int));
 extern  pbs_net_t  get_addr_of_nodebyname(char *name, unsigned int *port);
+extern int make_host_addresses_list(char *phost, u_long **pul);
 
 conn_t *get_conn(int sock); /* gets the connection, for a given socket id */
 void connection_idlecheck(void);
 void connection_init(void);
 char *build_addr_string(pbs_net_t);
 int set_nodelay(int fd);
+extern void process_IS_CMD(int);
 
 struct connection {
 	int		cn_sock;	/* socket descriptor */
@@ -221,5 +231,6 @@ struct connection {
 	char            *cn_credid;
 	char            cn_physhost[PBS_MAXHOSTNAME + 1];
 	pbs_auth_config_t   *cn_auth_config;
+	conn_origin_t	cn_origin; /* used to know the origin of the connection i.e. Scheduler, MOM etc. */
 };
 #endif	/* _NET_CONNECT_H */

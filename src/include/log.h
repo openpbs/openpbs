@@ -39,6 +39,11 @@
 
 #ifndef	_LOG_H
 #define	_LOG_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #if SYSLOG
 #include <syslog.h>
@@ -122,10 +127,11 @@ extern char log_buffer[LOG_BUF_SIZE];
 extern int log_level_2_etype(int level);
 
 extern int  chk_path_sec(char *path, int dir, int sticky, int bad, int);
-extern int  chk_file_sec(char *path, int isdir, int sticky,
-	int disallow, int fullpath);
-extern int  tmp_file_sec(char *path, int isdir, int sticky,
-	int disallow, int fullpath);
+extern int  chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
+extern int  chk_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
+extern int  tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath);
+extern int  tmp_file_sec_user(char *path, int isdir, int sticky, int disallow, int fullpath, int uid);
+
 #ifdef WIN32
 extern int  chk_file_sec2(char *path, int isdir, int sticky,
 	int disallow, int fullpath, char *owner);
@@ -174,4 +180,10 @@ extern void log_supported_auth_methods(char **supported_auth_methods);
 /* Logging Masks */
 
 #define PBSEVENT_MASK	0x01ff
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif /* _LOG_H */

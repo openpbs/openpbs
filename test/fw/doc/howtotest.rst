@@ -84,6 +84,7 @@ PBSTestSuite offers the following:
     - mgr-users: colon-separated list of manager users.
     - root-users: colon-separated list of root users.
     - build-users: colon-separated list of build users.
+    - daemon-users: colon-seperating list of daemon users.
 
   - Check required users are available or not
   - Creates servers, moms, schedulers and comms object

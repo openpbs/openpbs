@@ -42,7 +42,7 @@ from tests.functional import *
 
 
 class TestMomMockRun(TestFunctional):
-    @skipOnCpuSet
+
     def test_rsc_used(self):
         """
         Test that resources_used are set correctly by mom under mock run
@@ -54,7 +54,7 @@ class TestMomMockRun(TestFunctional):
         mompath = os.path.join(self.server.pbs_conf["PBS_EXEC"], "sbin",
                                "pbs_mom")
         cmd = [mompath, "-m"]
-        self.du.run_cmd(cmd=cmd, sudo=True)
+        self.du.run_cmd(hosts=self.mom.shortname, cmd=cmd, sudo=True)
 
         # Submit a job requesting ncpus, mem and walltime
         attr = {ATTR_l + ".select": "1:ncpus=1:mem=5mb",
@@ -68,11 +68,12 @@ class TestMomMockRun(TestFunctional):
 
         # Check accounting record for this job
         used_ncpus = "resources_used.ncpus=1"
-        self.server.accounting_match(msg=used_ncpus, id=jid)
+        self.server.accounting_match(msg=used_ncpus, id=jid, n='ALL')
         used_mem = "resources_used.mem=5mb"
-        self.server.accounting_match(msg=used_mem, id=jid)
+        self.server.accounting_match(msg=used_mem, id=jid, n='ALL')
         used_walltime = "resources_used.walltime=00:00:00"
         self.server.accounting_match(
-            msg="resources_used.walltime", id=jid)
+            msg="resources_used.walltime", id=jid, n='ALL')
         self.server.accounting_match(
-            msg=used_walltime, existence=False, id=jid, max_attempts=1)
+            msg=used_walltime, existence=False, id=jid,
+            max_attempts=1, n='ALL')

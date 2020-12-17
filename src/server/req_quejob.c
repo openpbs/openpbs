@@ -143,7 +143,6 @@ extern int reject_root_scripts;
 extern time_t time_now;
 
 #ifndef PBS_MOM
-extern char *pbs_server_name;
 extern void	*svr_db_conn;
 extern char *msg_max_no_minwt;
 extern char *msg_min_gt_maxwt;
@@ -266,7 +265,6 @@ req_quejob(struct batch_request *preq)
 #ifndef PBS_MOM
 	int set_project = 0;
 	int i;
-	attribute tempattr;
 	char jidbuf[PBS_MAXSVRJOBID+1];
 	pbs_queue *pque;
 	char *qname;
@@ -275,7 +273,7 @@ req_quejob(struct batch_request *preq)
 	resource_def *prdefsel;
 	resource_def *prdefplc;
 	resource *presc;
-	conn_t *conn;
+	conn_t *conn = NULL;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
@@ -293,17 +291,19 @@ req_quejob(struct batch_request *preq)
 
 #ifndef PBS_MOM		/* server server server server */
 
-	conn = get_conn(sock);
+	if (preq->prot != PROT_TPP) {
+		conn = get_conn(sock);
 
-	if (!conn) {
-		req_reject(PBSE_SYSTEM, 0, preq);
-		return;
-	}
+		if (!conn) {
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
 
-	if (conn->cn_authen & PBS_NET_CONN_FORCE_QSUB_UPDATE) {
-		req_reject(PBSE_FORCE_QSUB_UPDATE, 0, preq);
-		conn->cn_authen &= ~PBS_NET_CONN_FORCE_QSUB_UPDATE;
-		return;
+		if (conn->cn_authen & PBS_NET_CONN_FORCE_QSUB_UPDATE) {
+			req_reject(PBSE_FORCE_QSUB_UPDATE, 0, preq);
+			conn->cn_authen &= ~PBS_NET_CONN_FORCE_QSUB_UPDATE;
+			return;
+		}
 	}
 
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_queuejob.rq_attr);
@@ -442,7 +442,7 @@ req_quejob(struct batch_request *preq)
 	 */
 	if (pj != NULL) {
 		if ((svr_chk_history_conf()) &&
-			(pj->ji_qs.ji_state == JOB_STATE_MOVED)) {
+			(check_job_state(pj, JOB_STATE_LTR_MOVED))) {
 			job_purge(pj);
 		} else {
 			/* server rejects the queue request */
@@ -494,17 +494,14 @@ req_quejob(struct batch_request *preq)
 			/* look for run count attribute */
 			index = find_attr(job_attr_idx, job_attr_def, psatl->al_name);
 			if (index == (int)JOB_ATR_run_version) {
-				(void)job_attr_def[index].at_decode(
-					&pj->ji_wattr[index],
-					psatl->al_name, psatl->al_resc,
-					psatl->al_value);
+				set_jattr_str_slim(pj, index, psatl->al_value, psatl->al_resc);
 				break;
 			}
 			psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 		}
 
 		/* if actually running, tell Server we already have it */
-		if (pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) {
+		if (check_job_substate(pj, JOB_SUBSTATE_RUNNING)) {
 			req_reject(PBSE_JOBEXIST, 0, preq);
 			return;
 		}
@@ -512,7 +509,7 @@ req_quejob(struct batch_request *preq)
 		/* if checkpointed, then keep old and skip rest of process */
 
 		if (pj->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
-			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
+			set_job_substate(pj, JOB_SUBSTATE_TRANSIN);
 			int prot = preq->prot;
 			if (reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Queue) == 0) {
 				delete_link(&pj->ji_alljobs);
@@ -707,7 +704,7 @@ req_quejob(struct batch_request *preq)
 
 	for (i = 0; i < JOB_ATR_LAST; ++i) {
 		pdef = &job_attr_def[i];
-		if ((pj->ji_wattr[i].at_flags & ATR_VFLAG_SET) &&
+		if ((is_jattr_set(pj, i)) &&
 			(pdef->at_action)) {
 			rc = pdef->at_action(&pj->ji_wattr[i], pj, ATR_ACTION_NEW);
 			if (rc) {
@@ -720,14 +717,14 @@ req_quejob(struct batch_request *preq)
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	/* save gssapi/krb5 creds for this job */
-	if (conn->cn_credid != NULL &&
+	if (conn && conn->cn_credid != NULL &&
 		conn->cn_auth_config != NULL &&
 		conn->cn_auth_config->auth_method != NULL
 		&& strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) == 0) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 			"saving creds.  conn is %d, cred id %s", preq->rq_conn, conn->cn_credid);
 
-		(void)job_attr_def[(int)JOB_ATR_cred_id].at_decode(&pj->ji_wattr[(int)JOB_ATR_cred_id], NULL, NULL, conn->cn_credid);
+		set_jattr_str_slim(pj, JOB_ATR_cred_id, conn->cn_credid, NULL);
 
 		if (server.sv_attr[(int)SVR_ATR_acl_krb_submit_realms].at_flags & ATR_VFLAG_SET) {
 			if (!acl_check(&server.sv_attr[(int)SVR_ATR_acl_krb_submit_realms], conn->cn_credid, ACL_Host)) {
@@ -752,16 +749,12 @@ req_quejob(struct batch_request *preq)
 
 		/* check that job has a jobname */
 
-		if ((pj->ji_wattr[(int)JOB_ATR_jobname].at_flags &
-			ATR_VFLAG_SET) == 0) {
-			job_attr_def[(int)JOB_ATR_jobname].at_decode(
-				&pj->ji_wattr[(int)JOB_ATR_jobname],
-				NULL, NULL, "none");
-		}
+		if ((is_jattr_set(pj, JOB_ATR_jobname)) == 0)
+			set_jattr_str_slim(pj, JOB_ATR_jobname, "none", NULL);
 
 		/* check resources in the Resource_List are valid job wide */
 
-		if (pj->ji_wattr[(int)JOB_ATR_resource].at_flags & ATR_VFLAG_SET) {
+		if (is_jattr_set(pj, JOB_ATR_resource)) {
 			int have_selectplace = 0;
 			resource_def *prdefbad;
 
@@ -783,7 +776,7 @@ req_quejob(struct batch_request *preq)
 					prdefbad = presc->rs_defin;
 				} else if (
 					(presc->rs_defin->rs_flags & ATR_DFLAG_CVTSLT) &&
-					(presc->rs_value.at_flags & ATR_VFLAG_SET)) {
+					(is_attr_set(&presc->rs_value))) {
 					/*
 					 * if this resource is not "select", "place",
 					 * or "nodes", but is meant to appear inside
@@ -817,12 +810,9 @@ req_quejob(struct batch_request *preq)
 
 		/* check value of priority */
 
-		if (pj->ji_wattr[(int)JOB_ATR_priority].at_flags &
-			ATR_VFLAG_SET) {
-			if ((pj->ji_wattr[(int)JOB_ATR_priority].
-				at_val.at_long < -1024) ||
-				(pj->ji_wattr[(int)JOB_ATR_priority].
-				at_val.at_long > 1024)) {
+		if (is_jattr_set(pj, JOB_ATR_priority)) {
+			if ((get_jattr_long(pj, JOB_ATR_priority) < -1024) ||
+				(get_jattr_long(pj, JOB_ATR_priority) > 1024)) {
 				job_purge(pj);
 				req_reject(PBSE_BADATVAL, 0, preq);
 				return;
@@ -830,95 +820,72 @@ req_quejob(struct batch_request *preq)
 		}
 
 		/* set job owner attribute to user@host */
+		strcpy(buf, preq->rq_user);
+		strcat(buf, "@");
+		strcat(buf, preq->rq_host);
+		set_jattr_str_slim(pj, JOB_ATR_job_owner, buf, NULL);
 
-		job_attr_def[(int)JOB_ATR_job_owner].at_free(
-			&pj->ji_wattr[(int)JOB_ATR_job_owner]);
-		(void)strcpy(buf, preq->rq_user);
-		(void)strcat(buf, "@");
-		(void)strcat(buf, preq->rq_host);
-		job_attr_def[(int)JOB_ATR_job_owner].at_decode(
-			&pj->ji_wattr[(int)JOB_ATR_job_owner],
-			NULL, NULL, buf);
-
-		job_attr_def[(int)JOB_ATR_submit_host].at_free(
-			&pj->ji_wattr[(int)JOB_ATR_submit_host]);
-		(void)strcpy(buf, conn->cn_physhost);
-		job_attr_def[(int)JOB_ATR_submit_host].at_decode(
-			&pj->ji_wattr[(int)JOB_ATR_submit_host],
-			NULL, NULL, buf);
+		if (conn) {
+			strcpy(buf, conn->cn_physhost);
+			set_jattr_str_slim(pj, JOB_ATR_submit_host, buf, NULL);
+		}
 
 		/* set create time */
-
-		pj->ji_wattr[(int)JOB_ATR_ctime].at_val.at_long =(long)time_now;
-		pj->ji_wattr[(int)JOB_ATR_ctime].at_flags |= ATR_SET_MOD_MCACHE;
+		set_jattr_l_slim(pj, JOB_ATR_ctime, time_now, SET);
 
 		/* set hop count = 1 */
 
-		pj->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long = 1;
-		pj->ji_wattr[(int)JOB_ATR_hopcount].at_flags |= ATR_SET_MOD_MCACHE;
+		set_jattr_l_slim(pj, JOB_ATR_hopcount, 1, SET);
 
 		/* need to set certain environmental variables per POSIX */
-
-		clear_attr(&tempattr, &job_attr_def[(int)JOB_ATR_variables]);
-		(void)strcpy(buf, pbs_o_que);
-		(void)strcat(buf, pque->qu_qs.qu_name);
-		if (get_variable(pj, pbs_o_host) == NULL) {
-			(void)strcat(buf, ",");
-			(void)strcat(buf, pbs_o_host);
-			(void)strcat(buf, "=");
-			(void)strcat(buf, conn->cn_physhost);
+		strcpy(buf, pbs_o_que);
+		strcat(buf, pque->qu_qs.qu_name);
+		if (conn && get_variable(pj, pbs_o_host) == NULL) {
+			strcat(buf, ",");
+			strcat(buf, pbs_o_host);
+			strcat(buf, "=");
+			strcat(buf, conn->cn_physhost);
 		}
-		job_attr_def[(int)JOB_ATR_variables].at_decode(&tempattr,
-			NULL, NULL, buf);
-		job_attr_def[(int)JOB_ATR_variables].at_set(
-			&pj->ji_wattr[(int)JOB_ATR_variables],
-			&tempattr, INCR);
-		job_attr_def[(int)JOB_ATR_variables].at_free(&tempattr);
+		set_jattr_generic(pj, JOB_ATR_variables, buf, NULL, INCR);
 
 		/* if JOB_ATR_outpath/JOB_ATR_errpath not set, set default */
 
-		if (!(pj->ji_wattr[(int)JOB_ATR_outpath].at_flags & ATR_VFLAG_SET)) {
-			pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str = prefix_std_file(pj, (int)'o');
-			pj->ji_wattr[(int)JOB_ATR_outpath].at_flags |= ATR_SET_MOD_MCACHE;
+		if (!(is_jattr_set(pj, JOB_ATR_outpath))) {
+			set_jattr_str_slim(pj, JOB_ATR_outpath, prefix_std_file(pj, (int)'o'), NULL);
 		} else {
-			l = strlen(pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str);
+			l = strlen(get_jattr_str(pj, JOB_ATR_outpath));
 			if (l > 0) {
-				if (pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str[l -1] == ':') {
+				if (get_jattr_str(pj, JOB_ATR_outpath)[l -1] == ':') {
 
-					cat_default_std(pj, (int)'o', pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str, &result);
-					if (result) {
-						free(pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str);
-						pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str = result;
-					}
+					cat_default_std(pj, (int)'o', get_jattr_str(pj, JOB_ATR_outpath), &result);
+					if (result)
+						set_jattr_str_slim(pj, JOB_ATR_outpath, result, NULL);
 				}
 			}
 		}
 
-		if (!(pj->ji_wattr[(int)JOB_ATR_errpath].at_flags & ATR_VFLAG_SET)) {
-			pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str = prefix_std_file(pj, (int)'e');
-			pj->ji_wattr[(int)JOB_ATR_errpath].at_flags |= ATR_SET_MOD_MCACHE;
+		if (!(is_jattr_set(pj, JOB_ATR_errpath))) {
+			set_jattr_str_slim(pj, JOB_ATR_errpath, prefix_std_file(pj, (int)'e'), NULL);
 		} else {
-			l = strlen(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str);
+			l = strlen(get_jattr_str(pj, JOB_ATR_errpath));
 			if (l > 0) {
-				if (pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str[l -1] == ':') {
+				if (get_jattr_str(pj, JOB_ATR_errpath)[l -1] == ':') {
 
-					cat_default_std(pj, (int)'e', pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str, &result);
-					if (result) {
-						free(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str);
-						pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str = result;
-					}
+					cat_default_std(pj, (int)'e', get_jattr_str(pj, JOB_ATR_errpath), &result);
+					if (result)
+						set_jattr_str_slim(pj, JOB_ATR_errpath, result, NULL);
 				}
 			}
 		}
 
-		if ((pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str==0) ||
-			(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str==0)) {
+		if ((get_jattr_str(pj, JOB_ATR_outpath)==0) ||
+			(get_jattr_str(pj, JOB_ATR_errpath)==0)) {
 			job_purge(pj);
 			req_reject(PBSE_NOATTR, 0, preq);
 			return;
 		}
 
-		if ((pj->ji_wattr[(int)JOB_ATR_interactive].at_flags & ATR_VFLAG_SET) && (pj->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_flags & ATR_VFLAG_SET)) {
+		if ((is_jattr_set(pj, JOB_ATR_interactive)) && (is_jattr_set(pj, JOB_ATR_array_indices_submitted))) {
 			job_purge(pj);
 			req_reject(PBSE_NOSUP, 0, preq);
 			return;
@@ -926,25 +893,17 @@ req_quejob(struct batch_request *preq)
 		}
 		/* Interactive jobs are not rerunable */
 
-		if ((pj->ji_wattr[JOB_ATR_interactive].at_flags & ATR_VFLAG_SET) &&
-			pj->ji_wattr[JOB_ATR_interactive].at_val.at_long) {
-			pj->ji_wattr[JOB_ATR_rerunable].at_val.at_long = 0;
-			pj->ji_wattr[JOB_ATR_rerunable].at_flags |= ATR_VFLAG_SET;
-		}
+		if ((is_jattr_set(pj, JOB_ATR_interactive)) && get_jattr_long(pj, JOB_ATR_interactive))
+			set_jattr_l_slim(pj, JOB_ATR_rerunable, 0, SET);
 
-		if ( (pj->ji_wattr[(int)JOB_ATR_project].at_flags & \
-							ATR_VFLAG_SET) == 0 ) {
-			job_attr_def[(int)JOB_ATR_project].at_decode(
-				&pj->ji_wattr[(int)JOB_ATR_project],
-				NULL, NULL, PBS_DEFAULT_PROJECT);
-		}
+		if (!is_jattr_set(pj, JOB_ATR_project))
+			set_jattr_str_slim(pj, JOB_ATR_project, PBS_DEFAULT_PROJECT, NULL);
 
 	} else {		/* job was created elsewhere and moved here */
 
 		/* make sure job_owner is set, error if not */
 
-		if (!(pj->ji_wattr[(int)JOB_ATR_job_owner].at_flags &
-			ATR_VFLAG_SET)) {
+		if (!is_jattr_set(pj, JOB_ATR_job_owner)) {
 			job_purge(pj);
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
@@ -952,8 +911,8 @@ req_quejob(struct batch_request *preq)
 
 		/* increment hop count */
 
-		pj->ji_wattr[(int)JOB_ATR_hopcount].at_flags |= ATR_SET_MOD_MCACHE;
-		if (++pj->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long > PBS_MAX_HOPCOUNT) {
+		set_jattr_l_slim(pj, JOB_ATR_hopcount, 1, INCR);
+		if (get_jattr_long(pj, JOB_ATR_hopcount) > PBS_MAX_HOPCOUNT) {
 			job_purge(pj);
 			req_reject(PBSE_HOPCOUNT, 0, preq);
 			return;
@@ -964,16 +923,13 @@ req_quejob(struct batch_request *preq)
 		 * into an advance reservation queue, the reservation's ID
 		 * gets attached later in the code
 		 */
-		job_attr_def[(int)JOB_ATR_reserve_ID]
-		.at_decode(&pj->ji_wattr[(int)JOB_ATR_reserve_ID],
+		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(&pj->ji_wattr[(int)JOB_ATR_reserve_ID],
 			NULL, NULL, NULL);
 	}
 
 	/* set up at_server attribute for status */
 
-	job_attr_def[(int)JOB_ATR_at_server].at_decode(
-		&pj->ji_wattr[(int)JOB_ATR_at_server],
-		NULL, NULL, pbs_server_name);
+	set_jattr_str_slim(pj, JOB_ATR_at_server, pbs_server_name, NULL);
 
 	/* If enabled, check the server's required cred type */
 
@@ -981,14 +937,12 @@ req_quejob(struct batch_request *preq)
 		server.sv_attr[SVR_ATR_ReqCredEnable].at_val.at_long &&
 		(server.sv_attr[SVR_ATR_ReqCred].at_flags & ATR_VFLAG_SET)) {
 		char	*reqc = server.sv_attr[SVR_ATR_ReqCred].at_val.at_str;
-		char	*jobc = pj->ji_wattr[(int)JOB_ATR_cred].at_val.at_str;
+		char	*jobc = get_jattr_str(pj, JOB_ATR_cred);
 		/*
 		 **	The server requires a cred, if job has none, or
 		 **	it is the wrong one, reject.
 		 */
-		if ((pj->ji_wattr[(int)JOB_ATR_cred].at_flags &
-			ATR_VFLAG_SET) == 0 ||
-			strcmp(reqc, jobc) != 0) {
+		if (!is_jattr_set(pj, JOB_ATR_cred) || strcmp(reqc, jobc) != 0) {
 			job_purge(pj);
 			req_reject(PBSE_BADCRED, 0, preq);
 			return;
@@ -1003,7 +957,7 @@ req_quejob(struct batch_request *preq)
 	 * job structure and attributes already set up.
 	 */
 
-	rc = svr_chkque(pj, pque, preq->rq_host, MOVE_TYPE_Move);
+	rc = svr_chkque(pj, pque, pj->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str, MOVE_TYPE_Move);
 	if (rc) {
 		if (pj->ji_clterrmsg)
 			reply_text(preq, rc, pj->ji_clterrmsg);
@@ -1022,12 +976,8 @@ req_quejob(struct batch_request *preq)
 	 * Also check for conflict for job and reservation place spec
 	 */
 	if (pque->qu_resvp) {
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_free(
-			&pj->ji_wattr[(int)JOB_ATR_reserve_ID]);
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(
-			&pj->ji_wattr[(int)JOB_ATR_reserve_ID],
-			NULL, NULL,
-			pque->qu_resvp->ri_qs.ri_resvID);
+		free_jattr(pj, JOB_ATR_reserve_ID);
+		set_jattr_str_slim(pj, JOB_ATR_reserve_ID, pque->qu_resvp->ri_qs.ri_resvID, NULL);
 		pj->ji_myResv = pque->qu_resvp;
 
 		if (!validate_place_req_of_job_in_reservation(pj)) {
@@ -1050,8 +1000,7 @@ req_quejob(struct batch_request *preq)
 		}
 	}
 
-	pj->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = JOB_SUBSTATE_TRANSIN;
-	pj->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
+	set_jattr_l_slim(pj, JOB_ATR_substate, JOB_SUBSTATE_TRANSIN, SET);
 
 	/* action routine for select does not have reservation data hence
 	 * returns without doing checks. Checks are called now.
@@ -1070,30 +1019,27 @@ req_quejob(struct batch_request *preq)
 
 	/* set remaining job structure elements			*/
 
-	pj->ji_qs.ji_state =    JOB_STATE_TRANSIT;
-	pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
-	pj->ji_wattr[(int)JOB_ATR_state].at_val.at_char = 'T';
-
-	pj->ji_wattr[(int)JOB_ATR_mtime].at_val.at_long = (long)time_now;
-	pj->ji_wattr[(int)JOB_ATR_mtime].at_flags |= ATR_SET_MOD_MCACHE;
+	set_job_state(pj, JOB_STATE_LTR_TRANSIT);
+	set_job_substate(pj, JOB_SUBSTATE_TRANSIN);
+	set_jattr_l_slim(pj, JOB_ATR_mtime, time_now, SET);
 
 	pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 	pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
 	pj->ji_qs.ji_un.ji_newt.ji_scriptsz = 0;
 
 #ifdef PBS_MOM
-	if ((pj->ji_wattr[(int)JOB_ATR_executable].at_flags & ATR_VFLAG_SET) &&
+	if ((is_jattr_set(pj, JOB_ATR_executable)) &&
 	    (reject_root_scripts == TRUE) &&
-	    (pj->ji_wattr[(int)JOB_ATR_euser].at_flags & ATR_VFLAG_SET) &&
-	    (pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str != NULL)) {
+	    (is_jattr_set(pj, JOB_ATR_euser)) &&
+	    (get_jattr_str(pj, JOB_ATR_euser) != NULL)) {
 #ifdef WIN32
 
 		/* equivalent of root */
-		if (isAdminPrivilege(pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str))
+		if (isAdminPrivilege(get_jattr_str(pj, JOB_ATR_euser)))
 #else
 		struct passwd		*pwdp;
 
-		pwdp = getpwnam(pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
+		pwdp = getpwnam(get_jattr_str(pj, JOB_ATR_euser));
 		if ((pwdp != NULL) && (pwdp->pw_uid == 0))
 #endif
 		{
@@ -1146,7 +1092,7 @@ req_quejob(struct batch_request *preq)
 #endif
 
 	/* check implicit commit only not blocking job */
-	if ((pj->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
+	if ((is_jattr_set(pj, JOB_ATR_block)) == 0)
 		implicit_commit = ((preq->rq_extend) && (strstr(preq->rq_extend, EXTEND_OPT_IMPLICIT_COMMIT)));
 
 	/* acknowledge the request with the job id */
@@ -1171,8 +1117,8 @@ req_quejob(struct batch_request *preq)
 	}
 
 #ifndef PBS_MOM
-	if (set_project && (pj->ji_wattr[(int)JOB_ATR_project].at_flags & ATR_VFLAG_SET)  &&
-			(strcmp(pj->ji_wattr[(int)JOB_ATR_project].at_val.at_str, PBS_DEFAULT_PROJECT) == 0))
+	if (set_project && (is_jattr_set(pj, JOB_ATR_project))  &&
+			(strcmp(get_jattr_str(pj, JOB_ATR_project), PBS_DEFAULT_PROJECT) == 0))
 		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, msg_defproject, ATTR_project, PBS_DEFAULT_PROJECT);
 #endif
 
@@ -1195,13 +1141,13 @@ req_quejob(struct batch_request *preq)
 		 **	If the JOB_ATR_block attribute is set, look through the
 		 **	other jobs to make sure the host/port combo is unique.
 		 */
-		if ((pj->ji_wattr[(int)JOB_ATR_block].at_flags & ATR_VFLAG_SET) == 0)
+		if ((is_jattr_set(pj, JOB_ATR_block)) == 0)
 			return;
 
-		myhost = pj->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
+		myhost = get_jattr_str(pj, JOB_ATR_submit_host);
 		if (myhost == NULL)
 			return;
-		myport = (int)pj->ji_wattr[(int)JOB_ATR_block].at_val.at_long;
+		myport = (int)get_jattr_long(pj, JOB_ATR_block);
 		if (myport == 0)
 			return;
 
@@ -1210,14 +1156,13 @@ req_quejob(struct batch_request *preq)
 			pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
 			if (pjob == pj)
 				continue;
-			if ((pjob->ji_wattr[(int)JOB_ATR_block].at_flags &
-				ATR_VFLAG_SET) == 0)
+			if (!is_jattr_set(pjob, JOB_ATR_block))
 				continue;
 
-			port = (int)pjob->ji_wattr[(int)JOB_ATR_block].at_val.at_long;
+			port = (int)get_jattr_long(pjob, JOB_ATR_block);
 			if (port != myport)
 				continue;
-			host = pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str;
+			host = get_jattr_str(pjob, JOB_ATR_submit_host);
 			if (host == NULL)
 				continue;
 			if (strcmp(host, myhost) != 0)
@@ -1231,8 +1176,8 @@ req_quejob(struct batch_request *preq)
 				pj->ji_qs.ji_jobid, log_buffer);
 
 			/* unset the old job's JOB_ATR_block */
-			pjob->ji_wattr[(int)JOB_ATR_block].at_val.at_long = 0;
-			pjob->ji_wattr[(int)JOB_ATR_block].at_flags &= ~ATR_VFLAG_SET;
+			set_jattr_l_slim(pjob, JOB_ATR_block, 0, SET);
+		mark_jattr_not_set(pjob, JOB_ATR_block);
 			pjob->ji_wattr[(int)JOB_ATR_block].at_flags |= ATR_MOD_MCACHE;
 		}
 	}
@@ -1259,7 +1204,7 @@ req_jobcredential(struct batch_request *preq)
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
-	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
+	if (!check_job_substate(pj, JOB_SUBSTATE_TRANSIN)) {
 		delete_link(&pj->ji_alljobs);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
@@ -1321,7 +1266,7 @@ req_jobscript(struct batch_request *preq)
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
-	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
+	if (!check_job_substate(pj, JOB_SUBSTATE_TRANSIN)) {
 		delete_link(&pj->ji_alljobs);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
@@ -1346,17 +1291,15 @@ req_jobscript(struct batch_request *preq)
 	if (reject_root_scripts == TRUE) {
 		if ((pj->ji_wattr[(int)JOB_ATR_euser].at_flags & \
 							ATR_VFLAG_SET) &&
-			(pj->ji_wattr[(int)JOB_ATR_euser].at_val.at_str != NULL)) {
+			(get_jattr_str(pj, JOB_ATR_euser) != NULL)) {
 #ifdef WIN32
 
 			/* equivalent of root */
-			if (!isAdminPrivilege(pj->ji_wattr[(int)JOB_ATR_euser].\
-                                                              at_val.at_str))
+			if (!isAdminPrivilege(get_jattr_str(pj, JOB_ATR_euser)))
 #else
 			struct passwd		*pwdp;
 
-			pwdp = getpwnam(pj->ji_wattr[(int)JOB_ATR_euser].\
-								at_val.at_str);
+			pwdp = getpwnam(get_jattr_str(pj, JOB_ATR_euser));
 			if ((pwdp != NULL) && (pwdp->pw_uid == 0))
 #endif
 			{
@@ -1610,8 +1553,8 @@ req_mvjobfile(struct batch_request *preq)
 		req_reject(PBSE_MOMREJECT, 0, preq);
 		return;
 	}
-	if ((pj->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-		(strcasecmp(pj->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE")== 0)) {
+	if ((is_jattr_set(pj, JOB_ATR_sandbox)) &&
+		(strcasecmp(get_jattr_str(pj, JOB_ATR_sandbox), "PRIVATE")== 0)) {
 		/* have a private sandbox which must be recreated */
 		/* prior to copying standard out and err back     */
 
@@ -1665,13 +1608,58 @@ req_mvjobfile(struct batch_request *preq)
 }
 #endif /* PBS_MOM */
 
+/**
+ * @brief
+ * 	Parse the next message type and parameter from extend field
+ *
+ * @param[in] extend - extend field
+ * @param[out] msg_type - batch request type
+ * @param[out] msg_params - this array will be filled with parameter in the order they received
+ * 				parameters has to be freed by the caller.
+ * @param[in] param_arr_sz - size of the parameter array.
+ *
+ * @return int
+ * @return 0 success
+ * @retval -1 failure, memory allocation / input array is not of sufficient size
+ */
+int
+parse_next_msg(char *extend, int *msg_type, char **msg_params, int param_arr_sz)
+{
+	int i, j;
+	char **arr;
+	char *pc;
 
+	if ((arr = break_comma_list(extend)) == NULL)
+		return -1;
+
+	for (i = 0; arr[i]; i++) {
+		if ((pc = strstr(arr[i], EXTEND_OPT_NEXT_MSG_TYPE))) {
+			*msg_type = strtol(pc + strlen(EXTEND_OPT_NEXT_MSG_TYPE) + 1, NULL, 10);
+			break;
+		}
+	}
+	for (j = 0; arr[i]; i++) {
+		if ((pc = strstr(arr[i], EXTEND_OPT_NEXT_MSG_PARAM))) {
+			if (j >= param_arr_sz) {
+				free_str_array(arr);
+				return -1;
+			} else {
+				msg_params[j++] = strdup(pc + strlen(EXTEND_OPT_NEXT_MSG_PARAM) + 1);
+			}
+		}
+	}
+
+	if (j < param_arr_sz)
+		msg_params[j] = NULL;
+	free_str_array(arr);
+	return 0;
+}
 
 /**
  * @brief
  *		Commit ownership of job
  * @par Functionality:
- *		Set state of job to JOB_STATE_QUEUED (or Held or Waiting) and
+ *		Set state of job to JOB_STATE_LTR_QUEUED (or Held or Waiting) and
  *		enqueue the job into its destination queue.
  *
  * @param[in]	preq	-	The batch request structure
@@ -1682,7 +1670,7 @@ void
 req_commit_now(struct batch_request *preq,  job *pj)
 {
 #ifndef PBS_MOM
-	int newstate;
+	char newstate;
 	int newsub;
 	pbs_queue *pque;
 	int rc;
@@ -1691,18 +1679,17 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	long time_msec;
 	struct timeval tval;
 	void *conn = (void *) svr_db_conn;
+	char *runjob_extend = NULL;
+	struct batch_request *preq_runjob = NULL;
 #endif
 
-	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
+	if (!check_job_substate(pj, JOB_SUBSTATE_TRANSIN)) {
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
 
-	pj->ji_qs.ji_state = JOB_STATE_TRANSIT;
-	pj->ji_wattr[(int) JOB_ATR_state].at_val.at_char = 'T';
-	pj->ji_wattr[(int) JOB_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
-	pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSICM;
-	pj->ji_wattr[(int) JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
+	set_job_state(pj, JOB_STATE_LTR_TRANSIT);
+	set_job_substate(pj, JOB_SUBSTATE_TRANSICM);
 
 #ifdef PBS_MOM	/* MOM only */
 
@@ -1720,10 +1707,8 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	 ** Set JOB_SVFLG_HERE to indicate that this is Mother Superior.
 	 */
 	pj->ji_qs.ji_svrflags |= JOB_SVFLG_HERE;
-	pj->ji_qs.ji_state = JOB_STATE_RUNNING;
-	pj->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_VFLAG_MODIFY;
-	pj->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
-	pj->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODIFY;
+	set_job_state(pj, JOB_STATE_LTR_RUNNING);
+	set_job_substate(pj, JOB_SUBSTATE_PRERUN);
 	pj->ji_qs.ji_un_type = JOB_UNION_TYPE_MOM;
 	if (preq->prot) {
 		struct sockaddr_in* addr = tpp_getaddr(preq->rq_conn);
@@ -1772,15 +1757,17 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	delete_link(&pj->ji_alljobs);
 
 	svr_evaljobstate(pj, &newstate, &newsub, 1);
-	(void)svr_setjobstate(pj, newstate, newsub);
+	svr_setjobstate(pj, newstate, newsub);
 
 	gettimeofday(&tval, NULL);
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 	/* set the queue rank attribute */
-	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
-	pj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_SET_MOD_MCACHE;
+	set_jattr_l_slim(pj, JOB_ATR_qrank, time_msec, SET);
 
-	if ((rc = svr_enquejob(pj)) != 0) {
+	if (preq->rq_type == PBS_BATCH_Commit)
+		runjob_extend = preq->rq_extend;
+
+	if ((rc = svr_enquejob(pj, runjob_extend)) != 0) {
 		job_purge(pj);
 		req_reject(rc, 0, preq);
 		return;
@@ -1830,13 +1817,34 @@ req_commit_now(struct batch_request *preq,  job *pj)
 		}
 	}
 
-	/* need to format message first, before request goes away */
+	/* need to print message first, before request goes away */
+	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid,
+		   msg_jobnew, preq->rq_user, preq->rq_host,
+		   get_jattr_str(pj, JOB_ATR_job_owner),
+		   get_jattr_str(pj, JOB_ATR_jobname),
+		   pj->ji_qhdr->qu_qs.qu_name);
 
-	(void)snprintf(log_buffer, sizeof(log_buffer), msg_jobnew,
-		preq->rq_user, preq->rq_host,
-		pj->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
-		pj->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str,
-		pj->ji_qhdr->qu_qs.qu_name);
+	/* Allocate a new batch request to use for runjob as we will be freeing preq in reply_jobid()  */
+	if (runjob_extend) {
+		char *param_arr[1];
+
+		if ((preq_runjob = copy_br(preq)) == NULL) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
+		if (parse_next_msg(runjob_extend, &preq_runjob->rq_type, param_arr, 1) ==  -1) {
+			job_purge(pj);
+			req_reject(PBSE_SYSTEM, 0, preq);
+			return;
+		}
+
+		strcpy(preq_runjob->rq_ind.rq_run.rq_jid, pj->ji_qs.ji_jobid);
+		preq_runjob->rq_ind.rq_run.rq_destin = param_arr[0];
+		preq_runjob->tpp_ack = 1;
+		preq_runjob->tppcmd_msgid = strdup(preq->tppcmd_msgid);
+	}
 
 	/* acknowledge the request with the job id */
 	if ((rc = reply_jobid(preq, pj->ji_qs.ji_jobid, BATCH_REPLY_CHOICE_Commit))) {
@@ -1845,10 +1853,13 @@ req_commit_now(struct batch_request *preq,  job *pj)
 		return;
 	}
 
-	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
-
 	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
 		issue_track(pj);	/* notify creator where job is */
+
+	if (!preq_runjob)
+		return;
+
+	req_runjob(preq_runjob);
 #endif		/* PBS_SERVER */
 }
 
@@ -1941,13 +1952,14 @@ locate_new_job(struct batch_request *preq, char *jobid)
  * @param[in] cmd - The command that is to be notified to the scheduler
  * @param[in] resv - The reservation related to the command
  *
- * @return void
+ * @return Number of schedulers notified.
  *
  */
-void notify_scheds_about_resv(int cmd, resc_resv *resv)
+int notify_scheds_about_resv(int cmd, resc_resv *resv)
 {
 	pbs_sched *psched;
 	char *partition_name = NULL;
+	int num_scheds = 0;
 
 	if (resv != NULL) {
 		if (resv->ri_wattr[(int)RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
@@ -1967,6 +1979,7 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 			if (strcmp(partition_name, DEFAULT_PARTITION) == 0) {
 				if (dflt_scheduler->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1) {
 					set_scheduler_flag(cmd, dflt_scheduler);
+					num_scheds++;
 				}
 				break;
 			} else {
@@ -1974,6 +1987,7 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 				tmp = find_sched_from_partition(partition_name);
 				if (tmp != NULL && (tmp->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long == 1)) {
 					set_scheduler_flag(cmd, tmp);
+					num_scheds++;
 					break;
 				}
 			}
@@ -1982,10 +1996,11 @@ void notify_scheds_about_resv(int cmd, resc_resv *resv)
 				set_scheduler_flag(cmd, psched);
 				if (resv != NULL)
 					resv->req_sched_count++;
+				num_scheds++;
 			}
 		}
 	}
-	return;
+	return num_scheds;
 }
 
 /**
@@ -2258,7 +2273,7 @@ req_resvSub(struct batch_request *preq)
 				return;
 			}
 
-			get_jobowner(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, owner);
+			get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), owner);
 			if (strcmp(preq->rq_user, owner)) {
 				req_reject(PBSE_PERM, 0, preq);
 				resv_free(presv);
@@ -2434,8 +2449,7 @@ req_resvSub(struct batch_request *preq)
 
 		/* set hop count = 1 */
 		presv->ri_wattr[(int)RESV_ATR_hopcount].at_val.at_long = 1;
-		presv->ri_wattr[(int)RESV_ATR_hopcount]
-		.at_flags |= ATR_VFLAG_SET;
+		presv->ri_wattr[(int)RESV_ATR_hopcount].at_flags |= ATR_VFLAG_SET;
 
 	} else {
 		/* reservation created elsewhere and being moved here */
@@ -2570,10 +2584,6 @@ req_resvSub(struct batch_request *preq)
 		presv->ri_wattr[(int) RESV_ATR_del_idle_time].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
-
-	presv->ri_qs.ri_un_type = RESV_UNION_TYPE_NEW;
-	presv->ri_qs.ri_un.ri_newt.ri_fromsock = sock;
-	presv->ri_qs.ri_un.ri_newt.ri_fromaddr = get_connectaddr(sock);
 
 	/* save resv and server structure */
 	if (resv_save_db(presv)) {
@@ -2992,7 +3002,7 @@ act_resv_add_owner(attribute *pattr, void *pobj, int amode)
 	len = strlen(ps);
 
 	ap = &presv->ri_wattr[RESV_ATR_auth_u];
-	if (ap->at_flags & ATR_VFLAG_SET) {
+	if (is_attr_set(ap)) {
 		int i;
 
 		for (i = 0; i < ap->at_val.at_arst->as_usedptr; ++i)
@@ -3231,24 +3241,24 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	if (pjob == NULL)
 		return PBSE_UNKJOBID;
 
-	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) &&
-		(pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str == NULL))
+	if ((!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) &&
+		(get_jattr_str(pjob, JOB_ATR_exec_vnode) == NULL))
 		return PBSE_BADSTATE;
 
 	bufsize = PBS_MAXUSER + PBS_MAXHOSTNAME + 64 - 1;
 
-	if (strchr(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, '@')) {
-		strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, bufsize);
+	if (strchr(get_jattr_str(pjob, JOB_ATR_job_owner), '@')) {
+		strncpy(buf, get_jattr_str(pjob, JOB_ATR_job_owner), bufsize);
 	} else
-		snprintf(buf, bufsize, "%s@%s", pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
-			pjob->ji_wattr[(int)JOB_ATR_submit_host].at_val.at_str);
+		snprintf(buf, bufsize, "%s@%s", get_jattr_str(pjob, JOB_ATR_job_owner),
+			get_jattr_str(pjob, JOB_ATR_submit_host));
 
-	set_attr_svr(&presv->ri_wattr[(int)RESV_ATR_resv_owner], &resv_attr_def[(int)RESV_ATR_resv_owner], buf);
-	set_attr_svr(&presv->ri_wattr[(int)RESV_ATR_resv_nodes],
-		&resv_attr_def[(int)RESV_ATR_resv_nodes], pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+	set_attr_generic(&presv->ri_wattr[(int)RESV_ATR_resv_owner], &resv_attr_def[(int)RESV_ATR_resv_owner], buf, NULL, SET);
+	set_attr_generic(&presv->ri_wattr[(int)RESV_ATR_resv_nodes],
+		&resv_attr_def[(int)RESV_ATR_resv_nodes], get_jattr_str(pjob, JOB_ATR_exec_vnode), NULL, SET);
 
-	if (pjob->ji_wattr[(int)JOB_ATR_stime].at_flags & ATR_VFLAG_SET)
-		presv->ri_wattr[(int)RESV_ATR_start].at_val.at_long = pjob->ji_wattr[(int)JOB_ATR_stime].at_val.at_long;
+	if (is_jattr_set(pjob, JOB_ATR_stime))
+		presv->ri_wattr[(int)RESV_ATR_start].at_val.at_long = get_jattr_long(pjob, JOB_ATR_stime);
 	else
 		presv->ri_wattr[(int)RESV_ATR_start].at_val.at_long = time_now;
 
@@ -3265,7 +3275,7 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 			if (!(resv_resc_entry = add_resource_entry(&presv->ri_wattr[RESV_ATR_resource], resc_def)))
 				return PBSE_SYSTEM;
 		}
-		if (job_resc_entry->rs_value.at_flags & ATR_VFLAG_SET) {
+		if (is_attr_set(&job_resc_entry->rs_value)) {
 			(void)resc_def->rs_set(&resv_resc_entry->rs_value, &job_resc_entry->rs_value, SET);
 		}
 		if (!strcmp(resc_def->rs_name, WALLTIME))

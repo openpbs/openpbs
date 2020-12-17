@@ -48,21 +48,14 @@ class TestNodesQueues(TestFunctional):
         self.server.add_resource('foo', 'string', 'h')
 
         a = {'resources_available.ncpus': 4}
-        self.server.create_vnodes(
-            'vnode', a, 8, self.mom, attrfunc=self.cust_attr)
-
+        self.mom.create_vnodes(
+            a, 8, attrfunc=self.cust_attr)
+        self.vn = ['%s[%d]' % (self.mom.shortname, i) for i in range(4)]
         a = {'queue_type': 'execution', 'started': 't', 'enabled': 't'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
 
         self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id='vnode[0]')
-        self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id='vnode[1]')
-        self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id='vnode[2]')
-        self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': 'workq2'}, id='vnode[3]')
-
+                            'queue': 'workq2'}, id=self.vn)
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'foo'})
         self.server.manager(MGR_CMD_SET, SERVER, {'node_group_enable': 't'})
 
@@ -87,5 +80,7 @@ class TestNodesQueues(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
         nodes = j.get_vnodes(j.exec_vnode)
-        self.assertTrue((nodes[0] == 'vnode[0]' and nodes[1] == 'vnode[2]') or
-                        (nodes[0] == 'vnode[1]' and nodes[1] == 'vnode[3]'))
+        self.assertTrue((nodes[0] == self.vn[0] and
+                         nodes[1] == self.vn[2]) or
+                        (nodes[0] == self.vn[1] and
+                         nodes[1] == self.vn[3]))

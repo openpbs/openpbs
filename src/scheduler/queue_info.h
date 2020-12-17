@@ -108,7 +108,7 @@ queue_info *find_queue_info(queue_info **qinfo_arr, char *name);
  */
 void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
-	char *job_state);
+	const char *job_state);
 
 int queue_in_partition(queue_info *qinfo, char *partition);
 

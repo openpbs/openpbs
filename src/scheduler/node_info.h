@@ -88,22 +88,17 @@ void free_node_info(node_info *ninfo);
 /*
  *      set_node_info_state - set a node state
  */
-int set_node_info_state(node_info *ninfo, char *state);
+int set_node_info_state(node_info *ninfo, const char *state);
 
 /*
  *      remove_node_state
  */
-int remove_node_state(node_info *ninfo, char *state);
+int remove_node_state(node_info *ninfo, const char *state);
 
 /*
  *      add_node_state
  */
-int add_node_state(node_info *ninfo, char *state);
-
-/*
- *      talk_with_mom - talk to mom and get resources
- */
-int talk_with_mom(node_info *ninfo);
+int add_node_state(node_info *ninfo, const char *state);
 
 /*
  *      node_filter - filter a node array and return a new filterd array
@@ -175,7 +170,7 @@ resource_req *ssinode_reqlist(resource_req *reqlist, node_info *ninfo);
  *      update_node_on_run - update internal scheduler node data when a job
  *                           is run.
  */
-void update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state);
+void update_node_on_run(nspec *ns, resource_resv *resresv, const char *job_state);
 
 /*
  *      node_queue_cmp - used with node_filter to filter nodes attached to a
@@ -192,12 +187,7 @@ int node_partition_cmp(node_info *ninfo, void *arg);
 /*
  *      update_node_on_end - update a node when a job ends
  */
-void update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state);
-
-/*
- *      should_talk_with_mom - check if we should talk to this mom
- */
-int should_talk_with_mom(node_info *ninfo);
+void update_node_on_end(node_info *ninfo, resource_resv *resresv, const char *job_state);
 
 /*
  *      copy_node_ptr_array - copy an array of jobs using a different set of
@@ -280,7 +270,7 @@ node_info *dup_node_info(node_info *onode, server_info *nsinfo, unsigned int fla
 /*
  *      find_nspec_by_name - find an nspec in an array by nodename
  */
-nspec *find_nspec_by_rank(nspec **nspec_arr, unsigned int rank);
+nspec *find_nspec_by_rank(nspec **nspec_arr, int rank);
 
 /* find node by unique rank and return index into ninfo_arr */
 int find_node_ind(node_info **ninfo_arr, int rank);
@@ -406,7 +396,6 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
  *	  IN: resresv - the job the spec if from (needed for reservations)
  *        IN: flags - flags to change functions behavior
  *            EVAL_OKBREAK - ok to break chunck up across vnodes
- *	  IN: flt_lic - the number of floating licenses available
  *	  OUT: nspec_arr - array of struct nspec's describing the chosen nodes
  *
  * 	returns 1 if the select spec is satifiable
@@ -415,7 +404,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 int
 eval_simple_selspec(status *policy, chunk *chk, node_info **ninfo_arr,
 	place *pl, resource_resv *resresv, unsigned int flags,
-	int flt_lic, nspec ***nspec_arr, schd_error *err);
+	nspec ***nspec_arr, schd_error *err);
 
 /* evaluate one node to see if it is eligible at the job/resv level */
 int
@@ -436,7 +425,6 @@ int is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
  *        IN: node - the node to evaluate
  *        IN: pl - place spec for request
  *        IN: resresv - resource resv which is requesting
- IN: cur_flt_lic - current number of PBS floating licenses available
  *        IN: flags - flags to change behavior of function
  *              EVAL_OKBREAK - OK to break chunk across vnodes
  *        OUT: err - error status if node is ineligible
@@ -446,8 +434,8 @@ int is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
  */
 int
 resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
-	place *pl, resource_resv *resresv, int cur_flt_lic,
-	unsigned int flags, nspec *ns, schd_error *err);
+	place *pl, resource_resv *resresv, unsigned int flags,
+	nspec *ns, schd_error *err);
 
 /*
  *	check_resources_for_node - check to see how many chunks can fit on a
@@ -537,20 +525,6 @@ int
 set_res_on_host(char *res_name, char *res_value,
 	char *host, node_info *exclude, node_info **ninfo_arr);
 
-/*
- *	update_mom_resources - update resources set via mom_reources so all
- *			       vnodes on a host indirectly point to the
- *			       natural vnode
- *
- *	ASSUMPTION: only the 'natural' vnodes talk with mom
- *		    'natural' vnodes are vnodes whose host resource is the
- *		    same as its vnode name
- *
- *	  ninfo_arr - node array to update
- *
- *	returns 1 on success 0 on error
- */
-int update_mom_resources(node_info **ninfo_arr);
 
 /*
  *	can_fit_on_vnode - see if a chunk fit on one vnode in node list

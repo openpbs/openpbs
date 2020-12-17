@@ -386,7 +386,7 @@ class TestPbsExecjobEnd(TestFunctional):
         attr = {'event': 'execjob_epilogue,execjob_end', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
         j = Job(TEST_USER)
-        j.set_sleep_time(1)
+        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.job_list.append(jid)
         self.mom.log_match("starting hook event EXECJOB_EPILOGUE")
@@ -494,7 +494,7 @@ class TestPbsExecjobEnd(TestFunctional):
         attr = {'event': 'execjob_end', 'enabled': 'True', 'alarm': '40'}
         self.server.create_import_hook(hook_name, attr, hook_body)
         j = Job(TEST_USER)
-        j.set_sleep_time(5)
+        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.job_list.append(jid)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)

@@ -55,13 +55,17 @@ extern "C" {
 #include "net_connect.h"
 #include "dis.h"
 
+#define VALUE(str) #str
+#define TOSTR(str) VALUE(str)
+
 /* Protocol types when connecting to another server (eg mom) */
 #define PROT_INVALID -1
 #define PROT_TCP 0 /* For TCP based connection */
 #define PROT_TPP 1 /* For TPP based connection */
 
 #define PBS_BATCH_PROT_TYPE 2
-#define PBS_BATCH_PROT_VER  1
+#define PBS_BATCH_PROT_VER_OLD  1
+#define PBS_BATCH_PROT_VER  2
 #define SCRIPT_CHUNK_Z (65536)
 #ifndef TRUE
 #define TRUE  1
@@ -131,8 +135,29 @@ pbs_tcp_chan_t * get_conn_chan(int);
 int set_conn_chan(int, pbs_tcp_chan_t *);
 pthread_mutex_t * get_conn_mutex(int);
 
+#define SVR_CONN_STATE_DOWN 0
+#define SVR_CONN_STATE_UP 1
+
+int get_num_servers(void);
+
 /* max number of preempt orderings */
 #define PREEMPT_ORDER_MAX 20
+
+typedef struct svr_conn {
+	int sd;                      /* File descriptor for the open socket */
+	int state;                   /* Connection state */
+	time_t last_used_time;       /* Last used time for the connection */
+	char name[PBS_MAXSERVERNAME + 1];  /* server name */
+	int port;                    /* server port */
+	int from_sched;              /* flag to indicate whether this conn is from sched or not */
+} svr_conn_t;
+
+typedef struct svr_conns_list {
+	int cfd;
+	svr_conn_t **conn_arr;
+	struct svr_conns_list *next; /* Pointer to next set of server connections,
+								in case client calls pbs_connect multiple times */
+} svr_conns_list_t;
 
 /* PBS Batch Reply Structure */
 
@@ -176,6 +201,7 @@ typedef struct rq_preempt brp_preempt_jobs;
 #define BATCH_REPLY_CHOICE_Locate	8	/* locate, see brp_locate */
 #define BATCH_REPLY_CHOICE_RescQuery	9	/* Resource Query */
 #define BATCH_REPLY_CHOICE_PreemptJobs	10	/* Preempt Job */
+#define BATCH_REPLY_CHOICE_Delete		11  /* Delete Job status */
 
 /*
  * the following is the basic Batch Reply structure
@@ -187,11 +213,18 @@ struct batch_reply
 	int brp_choice; /* the union discriminator */
 	int brp_is_part;
 	int brp_count;
+	struct batch_status *last;
 	union {
 		char brp_jid[PBS_MAXSVRJOBID + 1];
 		struct brp_select *brp_select; /* select replies */
 		pbs_list_head brp_status; /* status (svr) replies */
 		struct batch_status *brp_statc; /* status (cmd) replies) */
+		struct {
+			int tot_jobs;
+			int tot_rpys;
+			int tot_arr_jobs;
+			struct batch_deljob_status *brp_delstatc;
+		} brp_deletejoblist;
 		struct {
 			int brp_txtlen;
 			char *brp_str;
@@ -265,15 +298,19 @@ struct batch_reply
 #define PBS_BATCH_DelHookFile		86
 /* Unused -- #define PBS_BATCH_MomRestart 87 */
 /* Unused -- #define PBS_BATCH_AuthExternal 88 */
-#define PBS_BATCH_HookPeriodic		89
-#define PBS_BATCH_RelnodesJob		90
-#define PBS_BATCH_ModifyResv		91
-#define PBS_BATCH_ResvOccurEnd		92
-#define PBS_BATCH_PreemptJobs		93
-#define PBS_BATCH_Cred			94
-#define PBS_BATCH_Authenticate		95
+#define PBS_BATCH_HookPeriodic    89
+#define PBS_BATCH_RelnodesJob     90
+#define PBS_BATCH_ModifyResv      91
+#define PBS_BATCH_ResvOccurEnd    92
+#define PBS_BATCH_PreemptJobs     93
+#define PBS_BATCH_Cred            94
+#define PBS_BATCH_Authenticate    95
 #define PBS_BATCH_ModifyJob_Async	96
-#define PBS_BATCH_AsyrunJob_ack	97
+#define PBS_BATCH_AsyrunJob_ack  	97
+#define PBS_BATCH_RegisterSched  	98
+#define PBS_BATCH_ModifyVnode    	99
+#define PBS_BATCH_DeleteJobList  	100
+#define PBS_BATCH_ServerReady    	101
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -297,70 +334,82 @@ struct batch_reply
 #define FAILOVER_SecdTakeOver	5 /* Primary down, secondary take over */
 
 #define EXTEND_OPT_IMPLICIT_COMMIT ":C:" /* option added to pbs_submit() extend parameter to request implicit commit */
+#define EXTEND_OPT_NEXT_MSG_TYPE "next_msg_type"
+#define EXTEND_OPT_NEXT_MSG_PARAM "next_msg_param"
 
-extern int is_compose(int, int);
-extern int is_compose_cmd(int, int, char **);
-extern void PBS_free_aopl(struct attropl *);
-extern void advise(char *, ...);
-extern int PBSD_rdytocmt(int, char *, int, char **);
-extern int PBSD_commit(int, char *, int, char **);
-extern int PBSD_jcred(int, int, char *, int, int, char **);
-extern int PBSD_jscript(int, char *, int, char **);
-extern int PBSD_jscript_direct(int, char *, int, char **);
-extern int PBSD_copyhookfile(int, char *, int, char **);
-extern int PBSD_delhookfile(int, char *, int, char **);
-extern int PBSD_mgr_put(int, int, int, int, char *, struct attropl *, char *, int, char **);
-extern int PBSD_manager(int, int, int, int, char *, struct attropl *, char *);
-extern int PBSD_msg_put(int, char *, int, char *, char *, int, char **);
-extern int PBSD_relnodes_put(int, char *, char *, char *, int, char **);
-extern int PBSD_py_spawn_put(int, char *, char **, char **, int, char **);
-extern int PBSD_sig_put(int, char *, char *, char *, int, char **);
-extern int PBSD_term_put(int, int, char *);
-extern int PBSD_jobfile(int, int, char *, char *, enum job_file, int, char **);
-extern int PBSD_status_put(int, int, char *, struct attrl *, char *, int, char **);
-extern struct batch_reply *PBSD_rdrpy(int);
-extern struct batch_reply *PBSD_rdrpy_sock(int, int *);
-extern void PBSD_FreeReply(struct batch_reply *);
-extern struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
-extern preempt_job_info *PBSD_preempt_jobs(int, char **);
-extern struct batch_status *PBSD_status_get(int);
-extern char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
-extern int decode_DIS_svrattrl(int, pbs_list_head *);
-extern int decode_DIS_attrl(int, struct attrl **);
-extern int decode_DIS_JobId(int, char *);
-extern int decode_DIS_replyCmd(int, struct batch_reply *);
-extern int encode_DIS_JobCred(int, int, char *, int);
-extern int encode_DIS_UserCred(int, char *, int, char *, int);
-extern int encode_DIS_JobFile(int, int, char *, int, char *, int);
-extern int encode_DIS_JobId(int, char *);
-extern int encode_DIS_Manage(int, int, int, char *, struct attropl *);
-extern int encode_DIS_MessageJob(int, char *, int, char *);
-extern int encode_DIS_MoveJob(int, char *, char *);
-extern int encode_DIS_ModifyResv(int, char *, struct attropl *);
-extern int encode_DIS_RelnodesJob(int, char *, char *);
-extern int encode_DIS_PySpawn(int, char *, char **, char **);
-extern int encode_DIS_QueueJob(int, char *, char *, struct attropl *);
-extern int encode_DIS_SubmitResv(int, char *, struct attropl *);
-extern int encode_DIS_JobCredential(int, int, char *, int);
-extern int encode_DIS_ReqExtend(int, char *);
-extern int encode_DIS_ReqHdr(int, int, char *);
-extern int encode_DIS_Rescq(int, char **, int);
-extern int encode_DIS_Run(int, char *, char *, unsigned long);
-extern int encode_DIS_ShutDown(int, int);
-extern int encode_DIS_SignalJob(int, char *, char *);
-extern int encode_DIS_Status(int, char *, struct attrl *);
-extern int encode_DIS_attrl(int, struct attrl *);
-extern int encode_DIS_attropl(int, struct attropl *);
-extern int encode_DIS_CopyHookFile(int, int, char *, int, char *);
-extern int encode_DIS_DelHookFile(int, char *);
-extern int encode_DIS_PreemptJobs(int, char **);
-extern char *PBSD_submit_resv(int, char *, struct attropl *, char *);
-extern int DIS_reply_read(int, struct batch_reply *, int);
-extern int tcp_pre_process(conn_t *);
-extern char *PBSD_modify_resv(int, char *, struct attropl *, char *);
-extern int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
-
-extern int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
+int is_compose(int, int);
+int is_compose_cmd(int, int, char **);
+void PBS_free_aopl(struct attropl *);
+void advise(char *, ...);
+int PBSD_commit(int, char *, int, char **, char *);
+int PBSD_jcred(int, int, char *, int, int, char **);
+int PBSD_jscript(int, char *, int, char **);
+int PBSD_jscript_direct(int, char *, int, char **);
+int PBSD_copyhookfile(int, char *, int, char **);
+int PBSD_delhookfile(int, char *, int, char **);
+int PBSD_mgr_put(int, int, int, int, char *, struct attropl *, char *, int, char **);
+int PBSD_deljoblist_put(int, int, char **, int, char *, int, char **);
+int PBSD_manager(int, int, int, int, char *, struct attropl *, char *);
+struct batch_deljob_status *PBSD_deljoblist(int, int, char **, int, char *);
+int PBSD_msg_put(int, char *, int, char *, char *, int, char **);
+int PBSD_relnodes_put(int, char *, char *, char *, int, char **);
+int PBSD_py_spawn_put(int, char *, char **, char **, int, char **);
+int PBSD_sig_put(int, char *, char *, char *, int, char **);
+int PBSD_term_put(int, int, char *);
+int PBSD_jobfile(int, int, char *, char *, enum job_file, int, char **);
+int PBSD_status_put(int, int, char *, struct attrl *, char *, int, char **);
+int PBSD_select_put(int, int, struct attropl *, struct attrl *, char *);
+struct batch_reply *PBSD_rdrpy(int);
+struct batch_reply *PBSD_rdrpy_sock(int, int *);
+void PBSD_FreeReply(struct batch_reply *);
+struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
+struct batch_status *PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object);
+struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *);
+preempt_job_info *PBSD_preempt_jobs(int, char **);
+struct batch_status *PBSD_status_get(int, struct batch_status **last);
+char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
+int decode_DIS_svrattrl(int, pbs_list_head *);
+int decode_DIS_attrl(int, struct attrl **);
+int decode_DIS_JobId(int, char *);
+int decode_DIS_replyCmd(int, struct batch_reply *);
+int encode_DIS_JobCred(int, int, char *, int);
+int encode_DIS_UserCred(int, char *, int, char *, int);
+int encode_DIS_JobFile(int, int, char *, int, char *, int);
+int encode_DIS_JobId(int, char *);
+int encode_DIS_Manage(int, int, int, char *, struct attropl *);
+int encode_DIS_MessageJob(int, char *, int, char *);
+int encode_DIS_MoveJob(int, char *, char *);
+int encode_DIS_ModifyResv(int, char *, struct attropl *);
+int encode_DIS_RelnodesJob(int, char *, char *);
+int encode_DIS_PySpawn(int, char *, char **, char **);
+int encode_DIS_QueueJob(int, char *, char *, struct attropl *);
+int encode_DIS_SubmitResv(int, char *, struct attropl *);
+int encode_DIS_JobCredential(int, int, char *, int);
+int encode_DIS_ReqExtend(int, char *);
+int encode_DIS_ReqHdr(int, int, char *);
+int encode_DIS_Rescq(int, char **, int);
+int encode_DIS_Run(int, char *, char *, unsigned long);
+int encode_DIS_ShutDown(int, int);
+int encode_DIS_SignalJob(int, char *, char *);
+int encode_DIS_Status(int, char *, struct attrl *);
+int encode_DIS_attrl(int, struct attrl *);
+int encode_DIS_attropl(int, struct attropl *);
+int encode_DIS_CopyHookFile(int, int, char *, int, char *);
+int encode_DIS_DelHookFile(int, char *);
+int encode_DIS_JobsList(int, char **, int);
+char *PBSD_submit_resv(int, char *, struct attropl *, char *);
+int DIS_reply_read(int, struct batch_reply *, int);
+int tcp_pre_process(conn_t *);
+char *PBSD_modify_resv(int, char *, struct attropl *, char *);
+int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
+int PBSD_server_ready(int);
+int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
+void *get_conn_svr_instances(int);
+int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
+int get_svr_inst_fd(int vfd, char *svr_inst_id);
+int random_srv_conn(svr_conn_t **);
+int starting_index(char *);
+char *PBS_get_server(char *, char *, uint *);
 
 #ifdef __cplusplus
 }

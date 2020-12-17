@@ -99,6 +99,7 @@
 #include "hook_func.h"
 #include "pbs_share.h"
 #include "pbs_undolr.h"
+#include "liblicense.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -148,8 +149,6 @@ extern time_t	 time_now;
 
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
-struct license_block licenses;
-struct license_used  usedlicenses;
 extern char   *path_hooks;
 extern char   *path_hooks_workdir;
 extern pbs_list_head       prov_allvnodes;
@@ -171,6 +170,8 @@ extern job *recov_job_cb(pbs_db_obj_info_t *, int *);
 extern resc_resv *recov_resv_cb(pbs_db_obj_info_t *, int *);
 extern pbs_queue *recov_queue_cb(pbs_db_obj_info_t *, int *);
 extern pbs_sched *recov_sched_cb(pbs_db_obj_info_t *, int *);
+extern void revert_alter_reservation(resc_resv *presv);
+extern void log_licenses(pbs_licenses_high_use *pu);
 /* Private functions in this file */
 
 static void  catch_child(int);
@@ -189,7 +190,7 @@ static void  call_log_license(struct work_task *);
 #define CHANGE_STATE 1
 #define KEEP_STATE   0
 static char badlicense[] = "One or more PBS license keys are invalid, jobs may not run";
-
+char *pbs_licensing_location  = NULL;
 /**
  * @brief
  *		Initializes the server attribute array with default values which are
@@ -210,8 +211,8 @@ init_server_attrs()
 	for (i = 0; i < SVR_ATR_LAST; i++)
 		clear_attr(&server.sv_attr[i], &svr_attr_def[i]);
 
-	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_scheduler_iteration]), &svr_attr_def[(int) SVR_ATR_scheduler_iteration],
-		TOSTR(PBS_SCHEDULE_CYCLE));
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_scheduler_iteration]), &svr_attr_def[(int) SVR_ATR_scheduler_iteration],
+		TOSTR(PBS_SCHEDULE_CYCLE), NULL, SET);
 
 	server.newobj = 1;
 
@@ -232,15 +233,15 @@ init_server_attrs()
 
 	server.sv_attr[(int)SVR_ATR_license_min].at_val.at_long = PBS_MIN_LICENSING_LICENSES;
 	server.sv_attr[(int)SVR_ATR_license_min].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	licensing_control.licenses_min = PBS_MIN_LICENSING_LICENSES;
 
 	server.sv_attr[(int)SVR_ATR_license_max].at_val.at_long = PBS_MAX_LICENSING_LICENSES;
 	server.sv_attr[(int)SVR_ATR_license_max].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	licensing_control.licenses_max = PBS_MAX_LICENSING_LICENSES;
 
 	server.sv_attr[(int)SVR_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
 	server.sv_attr[(int)SVR_ATR_license_linger].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
-
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+	licensing_control.licenses_linger_time = PBS_LIC_LINGER_TIME;
 
 	server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long = 0;
 	server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_flags = ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
@@ -258,18 +259,17 @@ init_server_attrs()
 
 	snprintf(dflt_log_event, sizeof(dflt_log_event), "%d", SVR_LOG_DFLT);
 
-	set_attr_svr(&(server.sv_attr[SVR_ATR_has_runjob_hook]), &svr_attr_def[SVR_ATR_has_runjob_hook], ATR_FALSE);
+	set_attr_generic(&(server.sv_attr[SVR_ATR_has_runjob_hook]), &svr_attr_def[SVR_ATR_has_runjob_hook], ATR_FALSE, NULL, SET);
 
-	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events], dflt_log_event);
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_log_events]), &svr_attr_def[(int) SVR_ATR_log_events], dflt_log_event, NULL, SET);
 
-	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_mailfrom]), &svr_attr_def[(int) SVR_ATR_mailfrom], PBS_DEFAULT_MAIL);
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailer]), &svr_attr_def[(int) SVR_ATR_mailer], SENDMAIL_CMD, NULL, SET);
 
-	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_query_others]), &svr_attr_def[(int) SVR_ATR_query_others], ATR_TRUE);
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_mailfrom]), &svr_attr_def[(int) SVR_ATR_mailfrom], PBS_DEFAULT_MAIL, NULL, SET);
 
-	set_attr_svr(&(server.sv_attr[(int)SVR_ATR_scheduling]), &svr_attr_def[(int) SVR_ATR_scheduling], ATR_TRUE);
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_query_others]), &svr_attr_def[(int) SVR_ATR_query_others], ATR_TRUE, NULL, SET);
 
-	/* an update_to FLicenses()  and pbs_float_lic must already exist */
-	pbs_float_lic = &server.sv_attr[(int)SVR_ATR_FLicenses];
+	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_scheduling]), &svr_attr_def[(int) SVR_ATR_scheduling], ATR_TRUE, NULL, SET);
 
 	prdef = &svr_resc_def[RESC_NCPUS];
 	if (prdef) {
@@ -400,35 +400,35 @@ pbsd_init(int type)
 
 
 	{
-		struct rlimit64 rlimit;
+		struct rlimit rlimit;
 
-		rlimit.rlim_cur = RLIM64_INFINITY;
-		rlimit.rlim_max = RLIM64_INFINITY;
+		rlimit.rlim_cur = RLIM_INFINITY;
+		rlimit.rlim_max = RLIM_INFINITY;
 
-		(void)setrlimit64(RLIMIT_CPU,   &rlimit);
-		(void)setrlimit64(RLIMIT_FSIZE, &rlimit);
-		(void)setrlimit64(RLIMIT_DATA,  &rlimit);
-		(void)setrlimit64(RLIMIT_STACK, &rlimit);
+		(void)setrlimit(RLIMIT_CPU,   &rlimit);
+		(void)setrlimit(RLIMIT_FSIZE, &rlimit);
+		(void)setrlimit(RLIMIT_DATA,  &rlimit);
+		(void)setrlimit(RLIMIT_STACK, &rlimit);
 #ifdef	RLIMIT_RSS
-		(void)setrlimit64(RLIMIT_RSS  , &rlimit);
+		(void)setrlimit(RLIMIT_RSS  , &rlimit);
 #endif	/* RLIMIT_RSS */
 #ifdef	RLIMIT_VMEM
-		(void)setrlimit64(RLIMIT_VMEM  , &rlimit);
+		(void)setrlimit(RLIMIT_VMEM  , &rlimit);
 #endif	/* RLIMIT_VMEM */
 #ifdef	RLIMIT_CORE
 		if (pbs_conf.pbs_core_limit) {
-			struct rlimit64 corelimit;
-			corelimit.rlim_max = RLIM64_INFINITY;
+			struct rlimit corelimit;
+			corelimit.rlim_max = RLIM_INFINITY;
 			if (strcmp("unlimited", pbs_conf.pbs_core_limit) == 0)
-				corelimit.rlim_cur = RLIM64_INFINITY;
+				corelimit.rlim_cur = RLIM_INFINITY;
 			else if (char_in_cname == 1) {
 				log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_WARNING,
 					__func__, msg_corelimit);
-				corelimit.rlim_cur = RLIM64_INFINITY;
+				corelimit.rlim_cur = RLIM_INFINITY;
 			} else
 				corelimit.rlim_cur =
-					(rlim64_t)atol(pbs_conf.pbs_core_limit);
-			(void)setrlimit64(RLIMIT_CORE, &corelimit);
+					(rlim_t)atol(pbs_conf.pbs_core_limit);
+			(void)setrlimit(RLIMIT_CORE, &corelimit);
 		}
 #endif	/* RLIMIT_CORE */
 	}
@@ -597,20 +597,20 @@ pbsd_init(int type)
 
 	/* 4. Check License information */
 
-	init_fl_license_attrs(&licenses);
+	reset_license_counters(&license_counts);
 
 	fd = open(path_usedlicenses, O_RDONLY, 0400);
 
 	if ((fd == -1) ||
-		(read(fd, &usedlicenses, sizeof(usedlicenses)) !=
-		sizeof(usedlicenses))) {
-		usedlicenses.lu_max_hr      = 0;
-		usedlicenses.lu_max_day     = 0;
-		usedlicenses.lu_max_month   = 0;
-		usedlicenses.lu_max_forever = 0;
+		(read(fd, &(license_counts.licenses_high_use), sizeof(pbs_licenses_high_use)) !=
+		sizeof(pbs_licenses_high_use))) {
+		license_counts.licenses_high_use.lu_max_hr      = 0;
+		license_counts.licenses_high_use.lu_max_day     = 0;
+		license_counts.licenses_high_use.lu_max_month   = 0;
+		license_counts.licenses_high_use.lu_max_forever = 0;
 		ptm = localtime(&time_now);
-		usedlicenses.lu_day   = ptm->tm_mday;
-		usedlicenses.lu_month = ptm->tm_mon;
+		license_counts.licenses_high_use.lu_day   = ptm->tm_mday;
+		license_counts.licenses_high_use.lu_month = ptm->tm_mon;
 	}
 	if (fd != -1)
 		close(fd);
@@ -618,36 +618,33 @@ pbsd_init(int type)
 	(void)svr_attr_def[(int)SVR_ATR_version].at_decode(
 		&server.sv_attr[(int)SVR_ATR_version], 0, 0,
 		PBS_VERSION);
-
-	if ((pbs_licensing_license_location == NULL) && (licenses.lb_aval_floating == 0)) {
+	
+	if ((pbs_licensing_location == NULL) && (license_counts.licenses_local == 0)) {
 		printf("%s\n", badlicense);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, badlicense);
 	}
 
-	if (ext_license_server) {
+	if (pbs_licensing_location) {
 		sprintf(log_buffer, "Using license server at %s",
 			PBS_LICENSE_LOCATION);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
-	}
-	if (licenses.lb_aval_floating > 0) {
+	} 
+	if (license_counts.licenses_local > 0) {
 		sprintf(log_buffer,
-			"Licenses valid for %d Floating hosts",
-			licenses.lb_aval_floating);
+			"Licenses valid for %ld Floating hosts",
+			license_counts.licenses_local);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
 	}
 
 	/* start a timed-event every hour to long the number of floating used */
-	if ((licenses.lb_aval_floating > 0) || ext_license_server)
-		(void)set_task(WORK_Timed, (long)(((time_now+3600)/3600)*3600),
+	if ((license_counts.licenses_local > 0))
+		(void)set_task(WORK_Timed, (long)(((time_now + 3600) / 3600) * 3600),
 			call_log_license, 0);
-
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = licenses.lb_aval_floating + licenses.lb_glob_floating;
-	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags = ATR_SET_MOD_MCACHE;
 
 	/* 6. open accounting file */
 
@@ -697,7 +694,6 @@ pbsd_init(int type)
 		return (-1);
 	}
 	mark_which_queues_have_nodes();
-	(void) license_sanity_check();
 
 	/* at this point, we know all the resource types have been defined,        */
 	/* build the resource summation table for validating the Select directives */
@@ -849,6 +845,7 @@ pbsd_init(int type)
 	print_hooks(HOOK_EVENT_MOVEJOB);
 	print_hooks(HOOK_EVENT_RUNJOB);
 	print_hooks(HOOK_EVENT_MANAGEMENT);
+	print_hooks(HOOK_EVENT_MODIFYVNODE);
 	print_hooks(HOOK_EVENT_PROVISION);
 	print_hooks(HOOK_EVENT_PERIODIC);
 	print_hooks(HOOK_EVENT_RESV_END);
@@ -1175,8 +1172,8 @@ reassign_resc(job *pjob)
 	int   set_exec_vnode;
 	int   rc;
 	int unset_resc_released = 0;
-	char *hoststr  = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
-	char *hoststr2 = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+	char *hoststr  = get_jattr_str(pjob, JOB_ATR_exec_host);
+	char *hoststr2 = get_jattr_str(pjob, JOB_ATR_exec_host2);
 	char *vnodein;
 	char *vnodeout;
 	attribute deallocated_attr;
@@ -1185,7 +1182,7 @@ reassign_resc(job *pjob)
 	if (hoststr == NULL)
 		return;
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
+	if ((is_jattr_set(pjob, JOB_ATR_exec_vnode)) == 0) {
 		/*
 		 * if exec_vnode is not set, we must be dealing with a
 		 * pre-8.0 job.   Then we need to set exec_vnode anew based
@@ -1197,7 +1194,7 @@ reassign_resc(job *pjob)
 		vnodein = hoststr;
 	} else {
 		set_exec_vnode = 0;
-		vnodein = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+		vnodein = get_jattr_str(pjob, JOB_ATR_exec_vnode);
 	}
 
 	rc = set_nodes((void *)pjob, JOB_OBJECT,
@@ -1214,24 +1211,14 @@ reassign_resc(job *pjob)
 			pjob->ji_qs.ji_jobid, log_buffer);
 	} else if (set_exec_vnode == 1) {
 		/* need to recreate the exec_host/exec_vnode values */
-		job_attr_def[(int)JOB_ATR_exec_host].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host]);
-		job_attr_def[(int)JOB_ATR_exec_vnode].at_free(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode]);
-		(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
-			NULL,
-			NULL,
-			vnodeout);
-		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-			NULL,
-			NULL,
-			hoststr);
+		free_jattr(pjob, JOB_ATR_exec_host);
+		free_jattr(pjob, JOB_ATR_exec_vnode);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_vnode, vnodeout, NULL);
+		set_jattr_str_slim(pjob, JOB_ATR_exec_host, hoststr, NULL);
 	}
 	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
 
-	if ((rc == 0) && (deallocated_attr.at_flags & ATR_VFLAG_SET)) {
+	if ((rc == 0) && (is_attr_set(&deallocated_attr))) {
 		char	*hstr = NULL;
 		char	*hstr2 = NULL;
 		char	*vnalloc = NULL;
@@ -1247,8 +1234,8 @@ reassign_resc(job *pjob)
 		}
 	}
 
-	if ( (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP || pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) &&
-		(pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) ) {
+	if ( (check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP) || check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)) &&
+		(is_jattr_set(pjob,  JOB_ATR_resc_released)) ) {
 		/*
 		 * Allocating resources back to a suspended job is tricky.
 		 * Suspended jobs only hold part of their resources
@@ -1261,14 +1248,14 @@ reassign_resc(job *pjob)
 		 * requested resources to the job.  We add the flag back to the job
 		 * and then decrement the resources released when the job was originally suspended.
 		 */
-		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+		mark_jattr_not_set(pjob, JOB_ATR_resc_released);
 		unset_resc_released = 1;
 	}
 
 	set_resc_assigned((void *)pjob, 0, INCR);
 
 	if (unset_resc_released == 1) {
-		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags |= ATR_VFLAG_SET;
+		mark_jattr_set(pjob, JOB_ATR_resc_released);
 		set_resc_assigned((void *) pjob, 0, DECR);
 	}
 }
@@ -1289,7 +1276,7 @@ reassign_resc(job *pjob)
 int
 pbsd_init_job(job *pjob, int type)
 {
-	int	 newstate;
+	char	 newstate;
 	int	 newsubstate;
 
 	/* chk if job belongs to a reservation or is a reservation job.  If this is true
@@ -1307,11 +1294,8 @@ pbsd_init_job(job *pjob, int type)
 
 	/* update at_server attribute in case name changed */
 
-	job_attr_def[(int)JOB_ATR_at_server].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_at_server]);
-	job_attr_def[(int)JOB_ATR_at_server].at_decode(
-		&pjob->ji_wattr[(int)JOB_ATR_at_server],
-		NULL, NULL, server_name);
+	free_jattr(pjob, JOB_ATR_at_server);
+	set_jattr_generic(pjob, JOB_ATR_at_server, server_name, NULL, SET);
 
 	/* now based on the initialization type */
 
@@ -1332,9 +1316,8 @@ pbsd_init_job(job *pjob, int type)
 
 		/* Update run_version if it is not set but run_count is,   */
 		/* Likely means recovering a job from a older version      */
-		if (((pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0) && ((pjob->ji_wattr[(int)JOB_ATR_runcount].at_flags & ATR_VFLAG_SET) != 0)) {
-			pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_SET_MOD_MCACHE;
+		if ((is_jattr_set(pjob, JOB_ATR_run_version) == 0) && is_jattr_set(pjob, JOB_ATR_runcount) != 0) {
+			set_jattr_l_slim(pjob, JOB_ATR_run_version, get_jattr_long(pjob, JOB_ATR_runcount), SET);
 		}
 
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
@@ -1344,13 +1327,10 @@ pbsd_init_job(job *pjob, int type)
 				return -1;
 			}
 
-			pjob->ji_subjindx = subjob_index_to_offset(pjob->ji_parentaj, get_index_from_jid(pjob->ji_qs.ji_jobid));
-			pjob->ji_parentaj->ji_ajtrk->tkm_tbl[pjob->ji_subjindx].trk_psubjob = pjob;
-			/* update the tracking table */
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, pjob->ji_qs.ji_state);
+			update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, JOB_STATE_LTR_EXPIRED, get_job_state(pjob));
 		}
 
-		switch (pjob->ji_qs.ji_substate) {
+		switch (get_job_substate(pjob)) {
 
 			case JOB_SUBSTATE_TRANSICM:
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
@@ -1361,8 +1341,9 @@ pbsd_init_job(job *pjob, int type)
 					 * arround to recommit, so auto-commit now
 					 */
 
-					pjob->ji_qs.ji_state = JOB_STATE_QUEUED;
-					pjob->ji_qs.ji_substate = JOB_SUBSTATE_QUEUED;
+					set_job_state(pjob, JOB_STATE_LTR_QUEUED);
+					set_job_substate(pjob, JOB_SUBSTATE_QUEUED);
+
 					if (pbsd_init_reque(pjob, CHANGE_STATE) == -1)
 						return -1;
 				} else {
@@ -1372,15 +1353,14 @@ pbsd_init_job(job *pjob, int type)
 					 * receiving sock number though
 					 */
 					pjob->ji_qs.ji_un.ji_newt.ji_fromsock = -1;
-					append_link(&svr_newjobs,
-						&pjob->ji_alljobs, pjob);
+					append_link(&svr_newjobs, &pjob->ji_alljobs, pjob);
 
 				}
 				break;
 
 			case JOB_SUBSTATE_TRNOUT:
-				pjob->ji_qs.ji_state = JOB_STATE_QUEUED;
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_QUEUED;
+				set_job_state(pjob, JOB_STATE_LTR_QUEUED);
+				set_job_substate(pjob, JOB_SUBSTATE_QUEUED);
 				/* requeue as queued */
 				if (pbsd_init_reque(pjob, CHANGE_STATE) == -1)
 					return -1;
@@ -1388,11 +1368,11 @@ pbsd_init_job(job *pjob, int type)
 
 			case JOB_SUBSTATE_TRNOUTCM:
 
-				if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
+				if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 					/* was sending to Mom, requeue for now */
 
 					svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
-					(void)svr_setjobstate(pjob, newstate, newsubstate);
+					svr_setjobstate(pjob, newstate, newsubstate);
 				} else {
 					/* requeue as is - rdy to cmt */
 
@@ -1419,12 +1399,8 @@ pbsd_init_job(job *pjob, int type)
 				break;
 
 			case JOB_SUBSTATE_PROVISION:
-				if (pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_flags &
-					ATR_VFLAG_SET) {
-					/* If JOB_ATR_prov_vnode is set, free it */
-					job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-						&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
-				}
+				if (is_jattr_set(pjob, JOB_ATR_prov_vnode))	/* If JOB_ATR_prov_vnode is set, free it */
+					free_jattr(pjob, JOB_ATR_prov_vnode);
 				if (pbsd_init_reque(pjob, CHANGE_STATE) == -1)
 					return -1;
 				break;
@@ -1435,10 +1411,10 @@ pbsd_init_job(job *pjob, int type)
 			case JOB_SUBSTATE_BEGUN:
 				if (pbsd_init_reque(pjob, KEEP_STATE) == -1)
 					return -1;
-				if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING ||
-					((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)
-					 && (pjob->ji_qs.ji_substate ==  JOB_SUBSTATE_SCHSUSP ||
-					pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND))) {
+				if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING) ||
+					((is_jattr_set(pjob,  JOB_ATR_resc_released)) &&
+							(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP) ||
+							 check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)))) {
 
 					reassign_resc(pjob);
 					if (type == RECOV_HOT)
@@ -1486,7 +1462,7 @@ pbsd_init_job(job *pjob, int type)
 				break;
 
 			case JOB_SUBSTATE_RERUN:
-				if (pjob->ji_qs.ji_state == JOB_STATE_EXITING)
+				if (check_job_state(pjob, JOB_STATE_LTR_EXITING))
 					set_task(WORK_Immed, 0, on_job_rerun, (void *)pjob);
 				if (pbsd_init_reque(pjob, KEEP_STATE) == -1)
 					return -1;
@@ -1502,7 +1478,7 @@ pbsd_init_job(job *pjob, int type)
 
 			default:
 				(void)sprintf(log_buffer,
-					msg_init_unkstate, pjob->ji_qs.ji_substate);
+					msg_init_unkstate, get_job_substate(pjob));
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
 					LOG_NOTICE,
 					pjob->ji_qs.ji_jobid, log_buffer);
@@ -1513,20 +1489,19 @@ pbsd_init_job(job *pjob, int type)
 		/* update entity limit sums for this job */
 		(void)account_entity_limit_usages(pjob, NULL, NULL, INCR, ETLIM_ACC_ALL);
 
-		/* if job has IP address of Mom, it may have changed */
-		/* reset based on hostname                           */
+		/* if job has exec host of Mom, set addr and port based on hostname */
 
-		if ((pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) &&
-			(pjob->ji_qs.ji_un.ji_exect.ji_momaddr != 0)) {
+		if (pjob->ji_qs.ji_un_type == JOB_UNION_TYPE_EXEC) {
+			pjob->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
+			pjob->ji_qs.ji_un.ji_exect.ji_momport = 0;
 
-			if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+			if (is_jattr_set(pjob, JOB_ATR_exec_host)) {
 				pbs_net_t new_momaddr;
 				unsigned int new_momport;
 
 				new_momaddr =
 					get_addr_of_nodebyname(
-					pjob->ji_wattr[(int)JOB_ATR_exec_host].
-					at_val.at_str, &new_momport);
+					get_jattr_str(pjob, JOB_ATR_exec_host), &new_momport);
 
 				if (new_momaddr != 0) {
 					pjob->ji_qs.ji_un.ji_exect.ji_momaddr = new_momaddr;
@@ -1536,9 +1511,6 @@ pbsd_init_job(job *pjob, int type)
 						LOG_INFO, pjob->ji_qs.ji_jobid,
 						"Failed to update mom address. Mom address not changed.");
 				}
-			} else {
-				pjob->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
-				pjob->ji_qs.ji_un.ji_exect.ji_momport = 0;
 			}
 		}
 	}
@@ -1559,6 +1531,7 @@ pbsd_init_job(job *pjob, int type)
 void
 pbsd_init_resv(resc_resv *presv, int type)
 {
+	revert_alter_reservation(presv);
 	is_resv_window_in_future(presv);
 	set_old_subUniverse(presv);
 
@@ -1648,12 +1621,12 @@ static int
 pbsd_init_reque(job *pjob, int change_state)
 {
 	char logbuf[384];
-	int newstate;
+	char newstate;
 	int newsubstate;
 	int rc;
 
 	(void)sprintf(logbuf, msg_init_substate,
-		pjob->ji_qs.ji_substate);
+		get_job_substate(pjob));
 
 	/* re-enqueue the job into the queue it was in */
 
@@ -1661,17 +1634,16 @@ pbsd_init_reque(job *pjob, int change_state)
 		/* update the state, typically to some form of QUEUED */
 		unset_extra_attributes(pjob);
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
-		pjob->ji_qs.ji_state =  newstate;
-		pjob->ji_qs.ji_substate =  newsubstate;
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, newstate);
+			update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, get_job_state(pjob), newstate);
+		set_job_state(pjob, newstate);
+		set_job_substate(pjob, newsubstate);
 	}
-	set_statechar(pjob);
+
 	/* make sure substate attributes match actual value */
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = pjob->ji_qs.ji_substate;
 	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
 
-	if ((rc = svr_enquejob(pjob)) == 0) {
+	if ((rc = svr_enquejob(pjob, NULL)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);
 		(void)strcat(logbuf, pjob->ji_qs.ji_queue);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG,
@@ -1967,30 +1939,30 @@ call_log_license(struct work_task *ptask)
 
 	/* log the floating license info */
 
-	log_licenses(&usedlicenses);
+	log_licenses(&license_counts.licenses_high_use);
 
 	/* reset values for time periods that have passed */
 
-	usedlicenses.lu_max_hr = 0;
+	license_counts.licenses_high_use.lu_max_hr = 0;
 	ntime = ptask->wt_event;
 	tms = localtime((time_t *)&ntime);
-	if (tms->tm_mday != usedlicenses.lu_day) {
-		usedlicenses.lu_max_day = 0;
-		usedlicenses.lu_day = tms->tm_mday;
+	if (tms->tm_mday != license_counts.licenses_high_use.lu_day) {
+		license_counts.licenses_high_use.lu_max_day = 0;
+		license_counts.licenses_high_use.lu_day = tms->tm_mday;
 	}
-	if (tms->tm_mon != usedlicenses.lu_month) {
-		usedlicenses.lu_max_month = 0;
-		usedlicenses.lu_month = tms->tm_mon;
+	if (tms->tm_mon != license_counts.licenses_high_use.lu_month) {
+		license_counts.licenses_high_use.lu_max_month = 0;
+		license_counts.licenses_high_use.lu_month = tms->tm_mon;
 	}
 
 	/* write current info to file */
 	fd = open(path_usedlicenses, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (fd != -1) {
-		(void)write(fd, &usedlicenses, sizeof(usedlicenses));
+		(void)write(fd, &license_counts.licenses_high_use, sizeof(license_counts.licenses_high_use));
 		close(fd);
 	}
 
 	/* call myself again at the top of the next hour */
-	ntime = ((ntime+3601)/3600)*3600;
+	ntime = ((ntime + 3601) / 3600) * 3600;
 	(void)set_task(WORK_Timed, ntime, call_log_license, 0);
 }

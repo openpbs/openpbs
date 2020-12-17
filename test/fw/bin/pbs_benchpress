@@ -54,6 +54,7 @@ from nose.plugins.base import Plugin
 from ptl.lib.pbs_testlib import PtlConfig
 from distutils.version import LooseVersion
 from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.pbs_dshutils import TimeOut
 from ptl.utils.plugins.ptl_test_loader import PTLTestLoader
 from ptl.utils.plugins.ptl_test_runner import PTLTestRunner
 from ptl.utils.plugins.ptl_test_db import PTLTestDb
@@ -77,6 +78,10 @@ sys.excepthook = trap_exceptions
 def sighandler(signum, frames):
     signal.alarm(0)
     raise KeyboardInterrupt('Signal %d received' % (signum))
+
+
+def timeout_handler(signum, frames):
+    raise TimeOut('pbs_benchpress timed out by signal %d' % (signum))
 
 
 # join process group of caller makes it possible to programmatically interrupt
@@ -432,7 +437,8 @@ if __name__ == '__main__':
         os.mkdir(os.path.dirname(outfile))
 
     if timeout is not None:
-        signal.signal(signal.SIGALRM, sighandler)
+        PTLTestRunner.timeout = timeout
+        signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(timeout)
 
     if list_test:

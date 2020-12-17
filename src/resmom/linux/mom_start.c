@@ -92,7 +92,6 @@ static struct release_info {
 	char *srch;
 	char *sep;
 } release_info[] = {
-	{"/etc/sgi-release",	"PP",	"ProPack",	" "},
 	{"/etc/redhat-release",	"RHEL",	"release",	" "},
 	{"/etc/SuSE-release",	"SLES",	"VERSION",	"="},
 	{"/etc/os-release",	"SLES",	"VERSION",	"="}
@@ -100,48 +99,22 @@ static struct release_info {
 
 /**
  * @struct
- *	struct libcsa_support is used to hold verified and tested list of
- *	<PP ver>, <OS ver>, <Architecture>, <libcsa Ver>, <libjob ver>.
- *	<PP ver> set to "---" for non-SGI systems.
- *
- *	NOTE: We don't support CSA for RHEL5, since RH declined the backport
- *	of the upstream kernel changes that would be needed.
+ *	struct libjob_support is used to hold verified and tested list of
+ *	<OS ver>, <Architecture>, <libjob ver>.
  */
 
-static struct libcsa_support {
-	char *propackver;
+static struct libjob_support {
 	char *osver;
 	char *arch;
-	char *libcsaver;
 	char *libjobver;
-} libcsa_support[] = {
-	{ "PP4", "SLES9", "ia64", "libcsa.so.1", "libjob.so"},
-	{ "PP5", "SLES10", "ia64", "libcsa.so.1", "libjob.so"},
-	{ "PP5", "SLES10", "x86_64", "libcsa.so.2", "libjob.so.2"},
-#ifdef NAS /* localmod 092 */
-	{ "PP6", "SLES10", "ia64", "libcsa.so.4", "libjob.so.2"},
-#else
-	{ "PP6", "SLES10", "ia64", "libcsa.so.3", "libjob.so.2"},
-#endif /* localmod 092 */
-	{ "PP6", "SLES10", "x86_64", "libcsa.so.3", "libjob.so.2"},
-	{ "PP6", "SLES11", "ia64", "libcsa.so.4", "libjob.so.2"},
-	{ "PP6", "SLES11", "x86_64", "libcsa.so.4", "libjob.so.2"},
-	{ "PP7", "SLES11", "ia64", "libcsa.so.4", "libjob.so.2"},
-	{ "---", "SLES10", "x86_64", "libcsa.so.1", "libjob.so"},
-	{ "---", "SLES11", "x86_64", "libcsa.so.1", "libjob.so"},
-	{ "---", "SLES12", "x86_64", "libcsa.so.1", "libjob.so.0"},
-	{ "---", "SLES12", "aarch64", "libcsa.so.1", "libjob.so.0"},
-	{ "---", "SLES15", "aarch64", "libcsa.so.1", "libjob.so.0"},
-	{ "---", "SLES15", "x86_64", "libcsa.so.1", "libjob.so.0"}
+} libjob_support[] = {
+	{"SLES10", "x86_64", "libjob.so"},
+	{"SLES11", "x86_64", "libjob.so"},
+	{"SLES12", "x86_64", "libjob.so.0"},
+	{"SLES12", "aarch64", "libjob.so.0"},
+	{"SLES15", "aarch64", "libjob.so.0"},
+	{"SLES15", "x86_64", "libjob.so.0"}
 };
-
-/**
- * @enum
- *	Types of shared objects for dlopen.
- *
- */
-
-enum sotype {sotype_job, sotype_csa};
 
 /* Global Variables */
 
@@ -157,7 +130,7 @@ extern	pbs_list_head	task_list_event;
 
 #if	MOM_ALPS
 extern	char		*path_jobs;
-char *get_versioned_libname(int sotype);
+char *get_versioned_libname();
 int find_in_lib(void *handle, char * plnam, char *psnam, void ** psp);
 
 /**
@@ -257,53 +230,21 @@ getplacesharing(job *pjob)
 	}
 	return rpv;
 }
-#endif	/* MOM_ALPS */
-
-#if	MOM_CSA || MOM_ALPS /* MOM_ALPS requires libjob support */
 
 /* These globals are initialized in ck_acct_facility_present.
  *
  * At a later time it may be better to relocate them to the machine
  * independent portion of the mom code if they find use by more
- * than a single machine/OS type (i.e. CSA on irix too)
+ * than a single machine/OS type
  */
 
 int job_facility_present;
 int job_facility_enabled;
 int acct_facility_present;
 int acct_facility_active;
-int acct_facility_wkmgt_recs;
-int acct_facility_wkmgt_active;
-int acct_facility_csa_active;
-int acct_dmd_wkmg;
 jid_t	(*jc_create)();
 jid_t	(*jc_getjid)();
-#endif
 
-#if MOM_CSA
-int	(*p_csa_check)(struct csa_check_req *);
-int	(*p_csa_wracct)(struct csa_wra_req *);
-
-/**
- * @brief
- * 	Tests if the accounting facility is present
- * 	on this host.
- * 	Global variable "acct_facility_present" will
- * 	record this fact.
- *
- * 	This function to be be called during pbs_mom's startup
- * 	initialization sequence and whenever pbs_mom receives a
- * 	SIGHUP signal.
- *
- * @par Side Effects:
- * 	May exit if a bad flag combination is found.
- *
- * @return Void
- *
- */
-#endif /* MOM_CSA */
-
-#if MOM_CSA || MOM_ALPS /* MOM_ALPS requires libjob support */
 void
 ck_acct_facility_present(void)
 {
@@ -311,21 +252,10 @@ ck_acct_facility_present(void)
 	int	ret2;
 	char	*libjob;
 
-	static void *handle1 = NULL, *handle2 = NULL;
+	static void *handle1 = NULL;
 
 	struct	config		*cptr;
 	extern	struct	config	*config_array;
-#if MOM_CSA
-	int	req_status;
-	char	*libcsa;
-	struct csa_check_req   check_req;
-	char	*status_csa;
-	char	*status_wkmg;
-	/* "write workload management records" defaults to "on" */
-	acct_facility_wkmgt_recs = 1;
-#else
-	acct_facility_wkmgt_recs = 0;
-#endif
 
 	/* use of job_create defaults to True */
 	job_facility_enabled = 1;
@@ -333,21 +263,10 @@ ck_acct_facility_present(void)
 	for (cptr = config_array; cptr != NULL; cptr++) {
 		if (cptr->c_name == NULL || *cptr->c_name == 0)
 			break;
-
-		if (strcasecmp(cptr->c_name, "pbs_accounting_workload_mgmt") == 0) {
-			(void)set_boolean(__func__, cptr->c_u.c_value,
-				&acct_facility_wkmgt_recs);
-		}
 		else if (strcasecmp(cptr->c_name, "pbs_jobcreate_workload_mgmt") == 0) {
 			(void)set_boolean(__func__, cptr->c_u.c_value,
 				&job_facility_enabled);
 		}
-	}
-
-	if (acct_facility_wkmgt_recs && !job_facility_enabled) {
-		log_event(PBSEVENT_ERROR, 0, LOG_CRIT, __func__,
-			"the combination of libjob disabled/libcsa enabled cannot be set because libcsa depends on libjob");
-		exit(1);
 	}
 
 	/* multiple calls to dlopen with the same arguments do not cause multiple
@@ -361,8 +280,6 @@ ck_acct_facility_present(void)
 	job_facility_present = 0;
 	acct_facility_present = 0;
 	acct_facility_active = 0;
-	acct_facility_csa_active = 0;
-	acct_facility_wkmgt_active = 0;
 
 	/*
 	 * If job facility is turned off, don't call dlopen for job_create.
@@ -370,7 +287,7 @@ ck_acct_facility_present(void)
 	if (job_facility_enabled == 0)
 		goto done;
 
-	libjob = get_versioned_libname(sotype_job);
+	libjob = get_versioned_libname();
 	if (libjob == NULL) {
 		sprintf(log_buffer, "Could not find a supported job shared object");
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__,
@@ -406,107 +323,12 @@ ck_acct_facility_present(void)
 	if ((ret1 == 1) && (ret2 == 1))
 		job_facility_present = 1;
 
-	/*
-	 * If job facility is not available or accounting is turned off,
-	 * don't call dlopen for CSA.
-	 */
-	if (job_facility_present == 0 || acct_facility_wkmgt_recs == 0)
+	if (job_facility_present == 0)
 		goto done;
-
-#if MOM_CSA
-	status_wkmg = "off";
-	status_csa = "off";
-	libcsa = get_versioned_libname(sotype_csa);
-	if (libcsa == NULL) {
-		sprintf(log_buffer, "Could not find a supported CSA shared object");
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__,
-				log_buffer);
-		goto err;
-	}
-
-	sprintf(log_buffer, "using %s for CSA shared object", libcsa);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__, log_buffer);
-
-	handle2 = dlopen(libcsa, RTLD_LAZY);
-	if (handle2 == NULL) {
-		/* facility is not available */
-
-		sprintf(log_buffer, "%s. failed to dlopen %s", dlerror(), libcsa);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-			__func__, log_buffer);
-		goto err;
-	}
-
-	sprintf(log_buffer, "dlopen of %s successful", libcsa);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-			__func__, log_buffer);
-
-	ret1 = find_in_lib(handle2, libcsa, "csa_wracct",
-			(void **)&p_csa_wracct);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__,
-			log_buffer);
-
-	ret2 = find_in_lib(handle2, libcsa, "csa_check",
-			(void **)&p_csa_check);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__,
-			log_buffer);
-
-	if ((ret1 == 1) && (ret2 == 1) &&
-			(p_csa_wracct != NULL) && (p_csa_check != NULL))
-		acct_facility_present = 1;
-
-	/* Check status of workload management and csa portions of CSA facility */
-
-	if (acct_facility_present) {
-
-		/* next function call copes with unexpected ABI change */
-		acct_dmd_wkmg =  ACCT_DMD_WKMG;
-
-		check_req.ck_stat.am_id = acct_dmd_wkmg;
-		req_status = (*p_csa_check)(&check_req);
-		if (req_status == 0) {
-
-			/* Is CSA's "wkmg" component "on/off" */
-			if (check_req.ck_stat.am_status == ACS_ON) {
-				acct_facility_wkmgt_active = 1;
-				status_wkmg = "on";
-			}
-
-			/* got workload mgmt status, now try and get status on "csa" part */
-			check_req.ck_stat.am_id = ACCT_KERN_CSA;
-			req_status = (*p_csa_check)(&check_req);
-		}
-
-		if (req_status == -1) {
-			/* couldn't get status on either "wkmg" or "csa" parts - turn off */
-			acct_facility_present = 0;
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__,
-				"Unable to get CSA Kernel and Daemon accounting status");
-		} else {
-			/* Is CSA's "csa" component "on/off" */
-			if (check_req.ck_stat.am_status == ACS_ON) {
-				acct_facility_csa_active = 1;
-				status_csa = "on";
-			}
-		}
-
-		/* prepare for first use  in set_job */
-
-		acct_facility_active = 1;
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-			__func__, "CSA facility present");
-
-		sprintf(log_buffer, "Status for CSA shows csa=%s and wkmg=%s",
-			status_csa, status_wkmg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-			__func__, log_buffer);
-		goto done;
-	}
-#endif
 
 err:
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-			__func__, "CSA/job facility not present or improperly setup");
+			__func__, "job facility not present or improperly setup");
 
 done:
 	/*
@@ -517,17 +339,6 @@ done:
 		if (handle1) {
 			dlclose(handle1);
 			handle1 = NULL;
-		}
-	}
-	if (acct_facility_present == 0) {
-		/*
-		 * CSA accounting not possible if either of the libraries can't be
-		 * opened, one or more symbols can't be resolved, or query of either
-		 * of the CSA components "csa" or "wkmg" returns with error.
-		 */
-		if (handle2) {
-			dlclose(handle2);
-			handle2 = NULL;
 		}
 	}
 }
@@ -590,306 +401,8 @@ find_in_lib(void *handle, char * plnam, char *psnam, void ** psp)
 	return (retcode);
 }
 
-#endif /* MOM_CSA or MOM_ALPS */
+#endif /* MOM_ALPS */
 
-#if MOM_CSA /* this section only when CSA is enabled */
-
-/**
- * @brief
- *	write_wkmg_record - Call this function at appropriate places in the code to request
- *	a workload management accounting record of some ilk get written
- *	by the "system" to an accounting file.  Such record will be of
- *	a certain type/subtype, which somehow maps to the over all job
- * 	state - or possibly the status of the workload management
- * 	accounting facility itself.
- *
- * Sgi's CSA has the following type/subtype combinations:
- * WM_INFO: WM_RECV: WM_INIT: WM_SPOOL: WM_TERM:
- *   WM_INFO:
- *      - WM_INFO_ACCTON  1       Accounting started
- *      - WM_INFO_ACCTOFF 2       Accounting stopped
- *
- *   WM_RECV:
- *      - WM_RECV_NEW      1       New request
- *
- * WM_INIT_START || WM_INIT_RESTART || WM_INIT_RERUN
- *   WM_INIT:
- *      - WM_INIT_START    1       Request started for first time
- *      - WM_INIT_RESTART  2       Request restarted
- *      - WM_INIT_RERUN    3       Request rerun
- *
- *   WM_SPOOL:
- *      - WM_SPOOL_INIT    4       Output return started
- *      - WM_SPOOL_TERM    6       Output return stopped
- *
- *   case WM_TERM_EXIT: case WM_TERM_REQUEUE: case WM_TERM_HOLD: case WM_TERM_RERUN: case WM_TERM_MIGRATE
- *   WM_TERM:
- *      - WM_TERM_EXIT     1       Request exited
- *      - WM_TERM_REQUEUE  2       Request requeued
- *      - WM_TERM_HOLD     3       Request checkpointed and held
- *      - WM_TERM_RERUN    4       Request will be rerun
- *      - WM_TERM_MIGRATE  5       Request will be migrated
- * where "request" can be interpreted a PBS job
- *
- *
- * @return Void
- *
- * Log: write an appropriate log message to mom's logfile if the
- *      record write request returns failure.
- *
- */
-void
-write_wkmg_record(int rec_type, int sub_type, job *pjob)
-{
-	extern	time_t	time_now;
-	char	*id_name;
-	int	bad_args = 0;
-	int	unsupported = 0;
-
-	struct wkmgmtbs			wkmgmtbs;	/* wkmgt record */
-	static struct csa_wra_req	csa_wra_req;	/* header info */
-	struct csa_check_req   check_req, *pchk = &check_req;
-
-	char		text[PBS_MAXSVRJOBID+1];
-	int		req_status;
-
-	static int	l_mnam = sizeof(wkmgmtbs.machname);
-	static int	l_qnam = sizeof(wkmgmtbs.quename);
-	static int	l_rnam = sizeof(wkmgmtbs.reqname);
-	static int	l_snam = sizeof(wkmgmtbs.serv_provider);
-
-
-	/* mom config switch set to off || facility not active */
-
-	if (acct_facility_present == 0 || acct_facility_wkmgt_recs == 0 ||
-		acct_facility_active == 0 || p_csa_check == NULL)
-		return;
-
-	/* check current status for CSA workload management */
-
-	pchk->ck_stat.am_id = acct_dmd_wkmg;
-	if ((req_status = (*p_csa_check)(pchk)) == -1) {
-		if (acct_facility_wkmgt_active == 1) {
-			if (pjob)
-				log_joberr(-1, __func__,
-					"Unable to get CSA Kernel and Daemon accounting status",
-					pjob->ji_qs.ji_jobid);
-			else
-				log_joberr(errno, __func__,
-					"Unable to get CSA Kernel and Daemon accounting status",
-					"");
-		}
-		acct_facility_wkmgt_active = 0;
-		return;
-	}
-
-	if (pchk->ck_stat.am_status != ACS_ON) {
-		if (acct_facility_wkmgt_active == 1) {
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-				__func__, "Status for CSA shows wkmg \"off\"");
-			acct_facility_wkmgt_active = 0;
-		}
-		return;
-
-	} else {
-		if (acct_facility_wkmgt_active == 0) {
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-				__func__, "Status for CSA shows wkmg \"on\"");
-			acct_facility_wkmgt_active = 1;
-		}
-	}
-
-	if (pjob == NULL) {
-		if (rec_type != WM_INFO)
-			++bad_args;
-		else
-			++unsupported;
-	} else {
-
-		/* check for valid record type and subtype */
-		switch (rec_type) {
-
-			case WM_INFO:
-				switch (sub_type) {
-					case WM_INFO_ACCTON:
-					case WM_INFO_ACCTOFF:
-						break;
-					default:
-						++bad_args;
-				}
-				break;
-
-			case WM_RECV:
-				if (sub_type != WM_RECV_NEW)
-					++bad_args;
-				break;
-
-			case WM_INIT:
-				if (pjob->ji_wattr [JOB_ATR_runcount].at_val.at_long > 1) {
-					sub_type = WM_INIT_RERUN;
-					break;
-				}
-				switch (sub_type) {
-					case WM_INIT_START:
-					case WM_INIT_RERUN:
-					case WM_INIT_RESTART:
-						break;
-					default:
-						++bad_args;
-				}
-				break;
-
-			case WM_SPOOL:
-				switch (sub_type) {
-					case WM_SPOOL_INIT:
-					case WM_SPOOL_TERM:
-						break;
-					default:
-						++bad_args;
-				}
-				break;
-
-			case WM_TERM:
-				switch (sub_type) {
-					case WM_TERM_EXIT:
-					case WM_TERM_REQUEUE:
-					case WM_TERM_RERUN:
-						break;
-
-					case WM_TERM_HOLD:
-					case WM_TERM_MIGRATE:
-						++unsupported;
-						break;
-					default:
-						++bad_args;
-				}
-				break;
-
-			default:
-				++bad_args;
-		}
-	}
-
-	/* anything bad or unsupported, log message only */
-	if (bad_args || unsupported) {
-		if (bad_args) {
-			sprintf(log_buffer,
-				"badargs rec_type=%d sub_type=%d no csa workload record write",
-				rec_type, sub_type);
-
-		} else {
-			sprintf(log_buffer,
-				"unsupported CSA record rec_type=%d sub_type=%d",
-				rec_type, sub_type);
-		}
-
-		if (pjob)
-			id_name = pjob->ji_qs.ji_jobid;
-		else
-			id_name = __func__
-
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_ACCT, LOG_WARNING,
-			id_name, log_buffer);
-		return;
-	}
-
-	/* OK to issue workload management record request to kernel */
-
-	memset((char *)&wkmgmtbs, 0, sizeof(wkmgmtbs));
-	memset((char *)&csa_wra_req, 0, sizeof(csa_wra_req));
-
-	wkmgmtbs.hdr.ah_magic = ACCT_MAGIC;
-	wkmgmtbs.hdr.ah_revision = REV_WKMG;
-	wkmgmtbs.hdr.ah_type = ACCT_DAEMON_WKMG;
-	wkmgmtbs.hdr.ah_flag = 0;
-	wkmgmtbs.hdr.ah_size = sizeof(wkmgmtbs);
-
-	wkmgmtbs.type = rec_type;
-	wkmgmtbs.subtype = sub_type;
-	wkmgmtbs.time = time_now;
-
-	/*remark: memset 0 initialization guarantees '\0' termination */
-
-	strncpy(wkmgmtbs.serv_provider, "PBS_Pro", l_snam -1);
-
-	wkmgmtbs.uid = pjob->ji_qs.ji_un.ji_momt.ji_exuid;
-
-	/* from email exchanges with David Wright at SGI */
-	if (rec_type == WM_INIT &&
-		pjob->ji_wattr[(int)JOB_ATR_etime].at_flags & ATR_VFLAG_SET) {
-
-		wkmgmtbs.enter_time = (time_t)pjob->ji_wattr[(int)JOB_ATR_etime].at_val.at_long;
-	}
-	else {
-
-		wkmgmtbs.enter_time = (time_t)0;
-	}
-
-	wkmgmtbs.jid = *(jid_t *)&pjob->ji_extended.ji_ext.ji_4jid[0];
-	wkmgmtbs.arrayid = pjob->ji_nodeid;
-
-	/* linux: qwtime computed (csabuild) quantity - David Wright email */
-	wkmgmtbs.qwtime = 0;
-
-	/* linux: Batch extensions to CSA (csaacct.h) */
-	wkmgmtbs.qtype = 0;
-	wkmgmtbs.code = 0;
-	wkmgmtbs.utime = 0;
-	wkmgmtbs.stime = 0;
-	wkmgmtbs.ctime = 0;
-	wkmgmtbs.mem_reserved = 0;
-	wkmgmtbs.ncpus = 0;
-
-	/* linux: sub_type not relevant (except RECV) - David Wright email */
-	wkmgmtbs.term_subtype = 0;
-
-
-	/* create "reqid" from job identifier's sequence number */
-
-	strcpy(text, pjob->ji_qs.ji_jobid);
-	wkmgmtbs.reqid = strtoll(&text[0], NULL, 0);
-
-	/*remark: memset 0 initialization guarantees '\0' termination */
-
-	strncpy(wkmgmtbs.quename,
-		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str, l_qnam -1);
-	strncpy(wkmgmtbs.machname, &mom_host[0], l_mnam -1);
-	strncpy(wkmgmtbs.reqname,
-		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str, l_rnam -1);
-
-	/* fillout header information needed by CSA kernel */
-
-	csa_wra_req.wra_did   = acct_dmd_wkmg;
-	csa_wra_req.wra_len   = sizeof(wkmgmtbs);
-	csa_wra_req.wra_buf   = (char *)&wkmgmtbs;
-
-	if (rec_type == WM_TERM)
-		/* job's JID no longer valid so use (jid_t)0 */
-		/* (*jc_getjid) ( getpid () ); not sure would be more appropriate */
-
-		csa_wra_req.wra_jid = (jid_t)0;
-	else
-		csa_wra_req.wra_jid   = wkmgmtbs.jid;
-
-
-	/* issue workload management write request to CSA kernel */
-
-	if ((req_status = (p_csa_wracct == NULL) ? -1 :
-		(*p_csa_wracct)(&csa_wra_req)) == -1 &&
-		rec_type != WM_TERM) {
-		sprintf(log_buffer, "failed to write CSA workload record (%d/%d)",
-			rec_type, sub_type);
-		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
-
-	} else {
-
-		sprintf(log_buffer, "CSA workload management record %d/%d written",
-			rec_type, sub_type);
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			pjob->ji_qs.ji_jobid, log_buffer);
-	}
-}
-#endif	/* MOM_CSA */
 
 /* Private variables */
 
@@ -911,14 +424,14 @@ write_wkmg_record(int rec_type, int sub_type, job *pjob)
 int
 set_job(job *pjob, struct startjob_rtn *sjr)
 {
-#if	MOM_CSA || MOM_ALPS
+#if	MOM_ALPS
 	if (job_facility_present && pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
 
 		/* host system has necessary JOB container facility present
 		 * and this host is Mother Superior for this job
 		 */
 
-		jid_t *pjid = (jid_t *) &pjob->ji_extended.ji_ext.ji_4jid[0];
+		jid_t *pjid = (jid_t *) &pjob->ji_extended.ji_ext.ji_jid[0];
 
 		if (*pjid != (jid_t)0 && *pjid != (jid_t)-1) {
 			sjr->sj_jid = *pjid;
@@ -952,7 +465,7 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 
 		*pjid = sjr->sj_jid;
 	}
-#endif	/* MOM_CSA or MOM_ALPS */
+#endif	/* MOM_ALPS */
 
 	sjr->sj_session = setsid();
 
@@ -1006,16 +519,11 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 			 * acquired. Otherwise, we are interacting with
 			 * CPA and use the cookie that was acquired when
 			 * the reservation was created.
-			 *
-			 * When CSA support comes along in UNICOS/lc 2.1 we
-			 * will use the job ID rather than the session ID.
 			 */
 			if (sjr->sj_pagg == 0) {
-#if MOM_CSA || MOM_ALPS /* MOM_ALPS requires libjob support */
 				if ((job_facility_present == 1))
 					sjr->sj_pagg = sjr->sj_jid;
 				else
-#endif /* MOM_CSA or MOM_ALPS */
 					sjr->sj_pagg = sjr->sj_session;
 			}
 			pjob->ji_extended.ji_ext.ji_reservation =
@@ -1061,87 +569,33 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 void
 set_globid(job *pjob, struct startjob_rtn *sjr)
 {
-#if	MOM_CSA || MOM_ALPS
-	char		buf[19];  /* 0x,16 hex digits,'\0' */
+#if	MOM_ALPS
+	char buf[19];  /* 0x,16 hex digits,'\0' */
+	char altid_buf[23];
 
-	if (sjr->sj_jid == (jid_t)-1) {
+	if (sjr->sj_jid == (jid_t)-1)
 		job_facility_present = 0;
-	}
 	else if (sjr->sj_jid) {
 
 		sprintf(buf, "%#0lx", (unsigned long)sjr->sj_jid);
-		(void)decode_str(&pjob->ji_wattr[JOB_ATR_acct_id],
-			ATTR_acct_id, NULL, buf);
+		(void)decode_str(&pjob->ji_wattr[JOB_ATR_acct_id], ATTR_acct_id, NULL, buf);
 
-		(void)memcpy(&pjob->ji_extended.ji_ext.ji_4jid,
-				&sjr->sj_jid,
-				sizeof(pjob->ji_extended.ji_ext.ji_4jid));
+		(void)memcpy(&pjob->ji_extended.ji_ext.ji_jid, &sjr->sj_jid, sizeof(pjob->ji_extended.ji_ext.ji_jid));
 
-#if MOM_CSA
-		if (acct_facility_active == 0) {
-
-			/* first success on job_create() after failure */
-			acct_facility_active = 1;
-			sprintf(log_buffer, "Job container facility available");
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-				__func__, log_buffer);
-		}
-#endif /*MOM_CSA */
 		if (job_facility_present == 0) {
 			/* first success on job_create() after failure */
 			job_facility_present = 1;
 			sprintf(log_buffer, "Job container facility available");
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-				__func__, log_buffer);
-
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG, __func__, log_buffer);
 		}
 	}
-#endif	/* MOM_CSA or MOM_ALPS */
 
-#if	MOM_ALPS
-	{
-		char altid_buf[23];
-		pjob->ji_extended.ji_ext.ji_pagg = sjr->sj_pagg;
-		pjob->ji_extended.ji_ext.ji_reservation = sjr->sj_reservation;
-		sprintf(altid_buf, "%ld", sjr->sj_reservation);
-		job_attr_def[(int)JOB_ATR_altid].at_decode(
-			&pjob->ji_wattr[(int)JOB_ATR_altid],
-			job_attr_def[(int)JOB_ATR_altid].at_name,
-			NULL, altid_buf);
-	}
+	pjob->ji_extended.ji_ext.ji_pagg = sjr->sj_pagg;
+	pjob->ji_extended.ji_ext.ji_reservation = sjr->sj_reservation;
+	sprintf(altid_buf, "%ld", sjr->sj_reservation);
+	set_jattr_str_slim(pjob, JOB_ATR_altid, altid_buf, NULL);
+
 #endif	/* MOM_ALPS */
-}
-
-/**
- * @brief
- * 	set_mach_vars - setup machine dependent environment variables
- *
- * @param[in] pjob - pointer to job structure
- * @param[in] vtab - pointer to var_table structure
- *
- * @return 	int
- * @retval 	0	Success
- *
- */
-
-int
-set_mach_vars(job *pjob, struct var_table *vtab)
-{
-#if	MOM_BGL
-	char *job_partition = NULL;
-
-	job_partition = job_bgl_partition(pjob);
-	if (job_partition) {
-		char	num_cnodes_s[40];
-		bld_env_variables(vtab, "MPIRUN_PARTITION", job_partition);
-
-		sprintf(num_cnodes_s, "%d", bgl_partition_get_num_cnodes(bglpartitions,
-			job_partition));
-		bld_env_variables(vtab, "MPIRUN_PARTITION_SIZE", num_cnodes_s);
-	}
-#endif	/* MOM_BGL */
-
-	return 0;
 }
 
 /**
@@ -1167,7 +621,7 @@ set_shell(job *pjob, struct passwd *pwdp)
 	 */
 
 	shell = pwdp->pw_shell;
-	if ((pjob->ji_wattr[(int)JOB_ATR_shell].at_flags & ATR_VFLAG_SET) &&
+	if ((is_jattr_set(pjob, JOB_ATR_shell)) &&
 		(vstrs = pjob->ji_wattr[(int)JOB_ATR_shell].at_val.at_arst)) {
 		for (i = 0; i < vstrs->as_usedptr; ++i) {
 			cp = strchr(vstrs->as_string[i], '@');
@@ -1237,7 +691,7 @@ scan_for_terminated(void)
 				wtask->wt_aux = (int)exiteval; /* exit status */
 				svr_delay_entry++;	/* see next_task() */
 			}
-			wtask = (struct work_task *)GET_NEXT(wtask->wt_linkall);
+			wtask = (struct work_task *)GET_NEXT(wtask->wt_linkevent);
 		}
 
 		pjob = (job *)GET_NEXT(svr_alljobs);
@@ -1360,7 +814,7 @@ open_master(char **rtn_name)
 		return (-1);
 	}
 
-	(void)strncpy(slavename, newslavename, sizeof(slavename) - 1);
+	pbs_strncpy(slavename, newslavename, sizeof(slavename));
 	assert(rtn_name != NULL);
 	*rtn_name = slavename;
 	return (masterfd);
@@ -1392,7 +846,7 @@ open_master(char **rtn_name)
 	static char	ptcchar2[] = "0123456789abcdef";
 	static char	pty_name[PTY_SIZE+1];	/* "/dev/[pt]tyXY" */
 
-	(void)strncpy(pty_name, "/dev/ptyXY", PTY_SIZE);
+	pbs_strncpy(pty_name, "/dev/ptyXY", sizeof(pty_name));
 	for (pc1 = ptcchar1; *pc1 != '\0'; ++pc1) {
 		pty_name[8] = *pc1;
 		for (pc2 = ptcchar2; *pc2 != '\0'; ++pc2) {
@@ -1441,7 +895,9 @@ struct sig_tbl sig_tbl[] = {
 	{ "TTIN", SIGTTIN },
 	{ "TTOU", SIGTTOU },
 	{ "IO", SIGIO },
+#ifdef __linux__
 	{ "POLL", SIGPOLL },
+#endif
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
 	{ "VTALRM", SIGVTALRM },
@@ -1542,18 +998,15 @@ parse_sysfile_info(const char *file,
  * @par Functionality:
  *	This function checks verified and tested list of
  *	<PP ver>, <OS ver>, <Architecture>  and
- *	if the above entries matches with  libcsa_support table,
+ *	if the above entries matches with  libjob_support table,
  *	then returns shared object to the caller for dlopen.
  *	Otherwise it returns NULL.
  *
  * @see
  *	ck_acct_facility_present
  *
- * @param[in]	sotype		-	variable of type integer
- *
  * @return	char *
- * @retval	libcsa_support[idx].libjobver:	for sotype_job
- * @retval	libcsa_support[idx].libcsaver:	for sotype_csa
+ * @retval	libjob_support[idx].libjobver
  * @retval	NULL:				Failed to get the supported library
  *
  * @par Side Effects: None
@@ -1563,22 +1016,14 @@ parse_sysfile_info(const char *file,
  */
 
 char *
-get_versioned_libname(int sotype)
+get_versioned_libname()
 {
-	int idx, table_size;
+	int    idx;
+	int    table_size;
 	struct utsname buf;
-	struct libcsa_support csaobj;
+	struct libjob_support jobobj;
 
-	memset(&csaobj, 0, sizeof(csaobj));
-
-	/* load ProPack information - use the 0th index */
-	assert(strcmp(release_info[0].pfx, "PP") == 0);
-	/* if parse_sysfile_info fails, csaobj.propackver remains NULL,
-	 * and is handled later */
-	csaobj.propackver = parse_sysfile_info(release_info[0].file,
-		release_info[0].pfx,
-		release_info[0].srch,
-		release_info[0].sep);
+	memset(&jobobj, 0, sizeof(jobobj));
 
 	/* find OS information - loop to find out which file available */
 	table_size = sizeof(release_info)/sizeof(release_info[0]);
@@ -1589,10 +1034,10 @@ get_versioned_libname(int sotype)
 
 	/* if we found a readable os release file, parse it.
 	 * if we dont find a file or if parse_sysfile_info fails,
-	 * csaobj.osver remains NULL, and is handled later
+	 * jobobj.osver remains NULL, and is handled later
 	 */
 	if (idx < table_size)
-		csaobj.osver = parse_sysfile_info(release_info[idx].file,
+		jobobj.osver = parse_sysfile_info(release_info[idx].file,
 			release_info[idx].pfx,
 			release_info[idx].srch,
 			release_info[idx].sep);
@@ -1603,44 +1048,31 @@ get_versioned_libname(int sotype)
 		goto SYSFAIL;
 	}
 
-	csaobj.arch = strdup(buf.machine);
+	jobobj.arch = strdup(buf.machine);
 
-	/* check that all the required members of csaobj are NON-NULL */
-	if ((csaobj.arch == NULL) || (csaobj.osver == NULL)) {
+	/* check that all the required members of jobobj are NON-NULL */
+	if ((jobobj.arch == NULL) || (jobobj.osver == NULL)) {
 		sprintf(log_buffer, "Failed to get system information");
 		log_err(errno, __func__, log_buffer);
 		goto SYSFAIL;
-	} else if (csaobj.propackver == NULL) {
-		csaobj.propackver = strdup("---");
 	}
 
 	/* Compare system information with verified list of platforms */
 
-	table_size = sizeof(libcsa_support)/sizeof(libcsa_support[0]);
+	table_size = sizeof(libjob_support)/sizeof(libjob_support[0]);
 	for (idx = 0; idx < table_size; idx++) {
-		if ((strcmp(csaobj.osver, libcsa_support[idx].osver) == 0) &&
-			(strcmp(csaobj.propackver, libcsa_support[idx].propackver) == 0) &&
-			(strcmp(csaobj.arch, libcsa_support[idx].arch) == 0)) {
-			free(csaobj.arch);
-			free(csaobj.osver);
-			free(csaobj.propackver);
-			switch (sotype) {
-				case sotype_job:
-					return libcsa_support[idx].libjobver;
-				case sotype_csa:
-					return libcsa_support[idx].libcsaver;
-				default:
-					return NULL;
-			}
+		if ((strcmp(jobobj.osver, libjob_support[idx].osver) == 0) &&
+			(strcmp(jobobj.arch, libjob_support[idx].arch) == 0)) {
+			free(jobobj.arch);
+			free(jobobj.osver);
+			return libjob_support[idx].libjobver;
 		}
 	}
 
 SYSFAIL:
-	if (csaobj.arch)
-		free(csaobj.arch);
-	if (csaobj.osver)
-		free(csaobj.osver);
-	if (csaobj.propackver)
-		free(csaobj.propackver);
+	if (jobobj.arch)
+		free(jobobj.arch);
+	if (jobobj.osver)
+		free(jobobj.osver);
 	return NULL;
 }

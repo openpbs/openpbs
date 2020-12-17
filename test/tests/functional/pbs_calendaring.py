@@ -40,6 +40,7 @@
 
 import time
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestCalendaring(TestFunctional):
@@ -48,7 +49,6 @@ class TestCalendaring(TestFunctional):
     This test suite tests if PBS scheduler calendars events correctly
     """
 
-    @skipOnCpuSet
     def test_topjob_start_time(self):
         """
         In this test we test that the top job which gets added to the
@@ -106,7 +106,6 @@ class TestCalendaring(TestFunctional):
         # Third subjob should set estimated.start_time in future.
         self.assertGreater(est_epoch1, time_now)
 
-    @skipOnCpuSet
     def test_topjob_start_time_of_subjob(self):
         """
         In this test we test that the subjob which gets added to the
@@ -143,7 +142,6 @@ class TestCalendaring(TestFunctional):
         errmsg = jid + ";Error in calculation of start time of top job"
         self.scheduler.log_match(errmsg, existence=False, max_attempts=10)
 
-    @skipOnCpuSet
     def test_topjob_fail(self):
         """
         Test that when we fail to add a job to the calendar it doesn't
@@ -159,8 +157,8 @@ class TestCalendaring(TestFunctional):
         # it won't try and add it to the calendar.  To do this, we ask for
         # 1 node with 2 cpus.  There are 2 nodes with 1 cpu each.
         attrs = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vn', attrib=attrs, num=2,
-                                  mom=self.mom, sharednode=False)
+        self.mom.create_vnodes(attrib=attrs, num=2,
+                               sharednode=False)
 
         self.scheduler.set_sched_config({'strict_ordering': 'True ALL'})
 
@@ -191,3 +189,43 @@ class TestCalendaring(TestFunctional):
 
         msg = jid3 + ';Job is a top job and will run at'
         self.scheduler.log_match(msg)
+
+    @skipOnCpuSet
+    def test_topjob_bucket(self):
+        """
+        In this test we test that a bucket job will be calendared to start
+        at the end of the last job on a node
+        """
+
+        self.scheduler.set_sched_config({'strict_ordering': 'true all'})
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.walltime': 30}
+        j1 = Job(TEST_USER, attrs=res_req)
+        j1.set_sleep_time(30)
+        jid1 = self.server.submit(j1)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.walltime': 45}
+        j2 = Job(TEST_USER, attrs=res_req)
+        j2.set_sleep_time(45)
+        jid2 = self.server.submit(j2)
+
+        res_req = {'Resource_List.select': '1:ncpus=1',
+                   'Resource_List.place': 'excl'}
+        j3 = Job(TEST_USER, attrs=res_req)
+        jid3 = self.server.submit(j3)
+
+        self.server.expect(JOB, {'job_state': 'R'}, jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, jid3)
+        job1 = self.server.status(JOB, id=jid1)
+        job2 = self.server.status(JOB, id=jid2)
+        job3 = self.server.status(JOB, id=jid3)
+
+        end_time = time.mktime(time.strptime(job2[0]['stime'], '%c')) + 45
+        est_time = job3[0]['estimated.start_time']
+        est_time = time.mktime(time.strptime(est_time, '%c'))
+        self.assertAlmostEqual(end_time, est_time, delta=1)

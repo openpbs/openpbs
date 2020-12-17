@@ -70,7 +70,7 @@ chk_dataservice_user() {
 
 	id=`echo ${id} | cut -c5- | cut -d "(" -f1`
 	if [ "$id" = "0" ]; then
-		echo "User ${chk_usr} should not have root priviledges"
+		echo "User ${chk_usr} should not have root privileges"
 		return 1;
 	fi
 

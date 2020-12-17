@@ -274,17 +274,6 @@ provision_policy: "aggressive_provision"
 resources: "ncpus, mem, arch, host, vnode, aoe, eoe"
 
 #
-# load_balancing
-#	NOTE: The load_balancing option is deprecated and will likely go away in a future release.
-#             Use exechost_periodic hook to set the resource and use node_sort_key.
-#	Load balance between timesharing nodes
-#
-#	PRIME OPTION
-#
-#
-# load_balancing: false	ALL
-
-#
 # smp_cluster_dist
 #
 #	This option allows you to decide how to distribute jobs to all the
@@ -293,7 +282,6 @@ resources: "ncpus, mem, arch, host, vnode, aoe, eoe"
 #	pack 	    - pack as many jobs onto a node that will fit before
 #		      running on another node
 #	round_robin - run one job on each node in a cycle
-#	lowest_load - run the job on the lowest loaded node
 #
 #	PRIME OPTION
 

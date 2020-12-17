@@ -98,6 +98,7 @@ Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 
 BuildRoot: %{buildroot}
 BuildRequires: gcc
+BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: rpm-build
 BuildRequires: autoconf
@@ -404,21 +405,21 @@ ldconfig %{_libdir}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall server \
-		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{defined have_systemd}
 fi
 
 %preun %{pbs_execution}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall execution \
-		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{defined have_systemd}
 fi
 
 %preun %{pbs_client}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall client \
-		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{defined have_systemd}
 fi
 
 %postun %{pbs_server}
@@ -476,7 +477,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %else
 %exclude %{_unitdir}/pbs.service
 %endif
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -519,7 +519,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{pbs_prefix}/lib*/*.a
@@ -569,7 +568,6 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbs_upgrade_job
 %exclude %{pbs_prefix}/sbin/pbsfs
-%exclude %{pbs_prefix}/unsupported/fw
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service

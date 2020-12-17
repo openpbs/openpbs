@@ -84,8 +84,6 @@ extern time_t	time_now;
 extern char	*msg_svdbopen;
 extern char	*msg_svdbnosv;
 extern char	*path_svrlive;
-
-extern char *pbs_server_name;
 extern void *svr_db_conn;
 extern void sched_free(pbs_sched *psched);
 
@@ -134,7 +132,7 @@ svr_to_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 
 	if ((encode_attr_db(svr_attr_def, ps->sv_attr, (int)SVR_ATR_LAST, &pdbsvr->db_attr_list, 1)) != 0) /* encode all attributes */
 		return -1;
-	
+
 	if (ps->newobj) /* object was never saved or loaded before */
 		savetype |= (OBJ_SAVE_NEW | OBJ_SAVE_QS);
 
@@ -143,7 +141,7 @@ svr_to_db(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 
 /**
  * @brief
- *	convert from DB to server structure 
+ *	convert from DB to server structure
  *
  * @param[out]	ps	-	Address of the server in pbs server
  * @param[in]	pdbsvr	-	Address of the database server object
@@ -180,7 +178,7 @@ sched_to_db(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 
 	strcpy(pdbsched->sched_name, ps->sc_name);
 
-	if ((encode_attr_db(sched_attr_def, ps->sch_attr, (int)SCHED_ATR_LAST, &pdbsched->db_attr_list, 0)) != 0) 
+	if ((encode_attr_db(sched_attr_def, ps->sch_attr, (int)SCHED_ATR_LAST, &pdbsched->db_attr_list, 0)) != 0)
 		return -1;
 
 	if (ps->newobj) /* was never loaded or saved before */
@@ -191,7 +189,7 @@ sched_to_db(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 
 /**
  * @brief
- *	convert from DB to sched structure 
+ *	convert from DB to sched structure
  *
  * @param[out] ps - Address of the scheduler in pbs server
  * @param[in]  pdbsched  - Address of the database scheduler object
@@ -332,7 +330,7 @@ sched_recov_db(char *sname, pbs_sched *ps)
 		return ps; /* no change in sched */
 
 	if (rc == 0)
-		rc = db_to_sched(ps, &dbsched);	
+		rc = db_to_sched(ps, &dbsched);
 	else {
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
 		log_errf(PBSE_INTERNAL, __func__, "Failed to load sched %s %s", sname, conn_db_err? conn_db_err : "");
@@ -417,8 +415,7 @@ recov_sched_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 	if ((psched = sched_recov_db(dbsched->sched_name, NULL)) != NULL) {
 		if(!strncmp(dbsched->sched_name, PBS_DFLT_SCHED_NAME, strlen(PBS_DFLT_SCHED_NAME)))
 			dflt_scheduler = psched;
-		psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
-		psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
+		psched->sc_conn_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
 		set_scheduler_flag(SCH_CONFIGURE, psched);
 		*refreshed = 1;
 	}

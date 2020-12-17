@@ -66,50 +66,17 @@ static char *
 _get_load_lib_error(int reset)
 {
 	if (reset) {
-#ifndef WIN32
-		(void)dlerror();
-#else
-		(void)SetLastError(0);
-#endif
+		(void)dlerror_reset();
 		return NULL;
 	}
-#ifndef WIN32
 	return dlerror();
-#else
-	static char buf[LOG_BUF_SIZE + 1] = {'\0'};
-	LPVOID lpMsgBuf;
-	int err = GetLastError();
-	int len = 0;
-
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		FORMAT_MESSAGE_FROM_SYSTEM |
-		FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, err,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf, 0, NULL);
-	strncpy(buf, lpMsgBuf, sizeof(buf));
-	LocalFree(lpMsgBuf);
-	buf[sizeof(buf) - 1] = '\0';
-	len = strlen(buf);
-	if (buf[len - 1] == '\n')
-		len--;
-	if (buf[len - 1] == '.')
-		len--;
-	buf[len - 1] = '\0';
-	return buf;
-#endif
 }
 
 static void *
 _load_lib(char *loc)
 {
 	(void)_get_load_lib_error(1);
-#ifndef WIN32
 	return dlopen(loc, RTLD_LAZY);
-#else
-	return LoadLibrary(loc);
-#endif
 }
 
 static void *
@@ -118,11 +85,8 @@ _load_symbol(char *libloc, void *libhandle, char *name, int required)
 	void *handle = NULL;
 
 	(void)_get_load_lib_error(1);
-#ifndef WIN32
 	handle = dlsym(libhandle, name);
-#else
-	handle = GetProcAddress(libhandle, name);
-#endif
+
 	if (required && handle == NULL) {
 		char *errmsg = _get_load_lib_error(0);
 		if (errmsg) {
@@ -153,11 +117,8 @@ _load_auth(char *name)
 	strcpy(auth->name, name);
 	auth->name[MAXAUTHNAME] = '\0';
 
-#ifndef WIN32
-	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.so", pbs_conf.pbs_exec_path, name);
-#else
-	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.dll", pbs_conf.pbs_exec_path, name);
-#endif
+	snprintf(libloc, MAXPATHLEN, "%s/lib/libauth_%s.%s", pbs_conf.pbs_exec_path, name, SHAREDLIB_EXT);
+
 	libloc[MAXPATHLEN] = '\0';
 
 	auth->lib_handle = _load_lib(libloc);
@@ -213,11 +174,7 @@ _unload_auth(auth_def_t *auth)
 	if (auth == NULL)
 		return;
 	if (auth->lib_handle != NULL) {
-#ifndef WIN32
 		(void)dlclose(auth->lib_handle);
-#else
-		(void)FreeLibrary(auth->lib_handle);
-#endif
 	}
 	memset(auth, 0, sizeof(auth_def_t));
 	free(auth);

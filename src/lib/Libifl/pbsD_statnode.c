@@ -87,27 +87,5 @@ __pbs_statnode(int c, char *id, struct attrl *attrib, char *extend)
 struct batch_status *
 __pbs_statvnode(int c, char *id, struct attrl *attrib, char *extend)
 {
-	int                   rc;
-	struct batch_status  *ret = NULL;
-
-	/* initialize the thread context data, if not already initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return NULL;
-
-	/* first verify the attributes, if verification is enabled */
-	rc = pbs_verify_attributes(c, PBS_BATCH_StatusNode,
-		MGR_OBJ_NODE, MGR_CMD_NONE, (struct attropl *) attrib);
-	if (rc)
-		return NULL;
-
-	if (pbs_client_thread_lock_connection(c) != 0)
-		return NULL;
-
-	ret = PBSD_status(c, PBS_BATCH_StatusNode, id, attrib, extend);
-
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
-
-	return ret;
+	return PBSD_status_aggregate(c, PBS_BATCH_StatusNode, id, attrib, extend, MGR_OBJ_NODE, NULL);
 }

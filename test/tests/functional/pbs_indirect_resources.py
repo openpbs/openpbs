@@ -43,7 +43,6 @@ from tests.functional import *
 
 class TestHostResources(TestFunctional):
 
-    @skipOnCpuSet
     def test_set_direct_on_indirect_resc(self):
         """
         Set a direct resource on indirect resource and make sure
@@ -53,18 +52,18 @@ class TestHostResources(TestFunctional):
         self.server.add_resource('fooi', 'long', 'nh')
         # Create 2 vnodes with individual hosts
         attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 2, sharednode=False,
-                                  mom=self.mom)
+        self.mom.create_vnodes(attr, 2, sharednode=False)
+        vnode0 = self.mom.shortname + '[0]'
+        vnode1 = self.mom.shortname + '[1]'
         self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.fooi': 100}, 'vnode[0]')
+                            {'resources_available.fooi': 100}, vnode0)
         self.server.manager(MGR_CMD_SET, NODE, {'resources_available.fooi':
-                                                '@vnode[0]'}, 'vnode[1]')
+                                                '@' + vnode0}, vnode1)
         self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.fooi': 100}, 'vnode[1]')
+                            {'resources_available.fooi': 100}, vnode1)
         self.server.expect(NODE, {'resources_assigned.fooi': ''},
-                           id='vnode[1]', op=UNSET, max_attempts=1)
+                           id=vnode1, op=UNSET, max_attempts=1)
 
-    @skipOnCpuSet
     def test_set_direct_on_indirect_resc_busy(self):
         """
         Set a direct resource on indirect resource
@@ -72,33 +71,33 @@ class TestHostResources(TestFunctional):
         """
         # Create 2 vnodes with individual hosts
         attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 2, sharednode=False,
-                                  mom=self.mom)
+        self.mom.create_vnodes(attr, 2, sharednode=False)
+        vnode0 = self.mom.shortname + '[0]'
+        vnode1 = self.mom.shortname + '[1]'
         # Create a consumable custom resources 'fooi'
         self.server.add_resource('fooi', 'long', 'nh')
         self.scheduler.add_resource("fooi")
         self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.fooi': 100}, 'vnode[0]')
+                            {'resources_available.fooi': 100}, vnode0)
         self.server.manager(MGR_CMD_SET, NODE, {'resources_available.fooi':
-                                                '@vnode[0]'}, 'vnode[1]')
+                                                '@' + vnode0}, vnode1)
         # Submit jobs.
         a = {'Resource_List.fooi': 50}
         J = Job(attrs=a)
         self.server.submit(J)
         j2 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=j2)
-        self.server.expect(NODE, {'state': 'job-busy'}, id='vnode[1]')
+        self.server.expect(NODE, {'state': 'job-busy'}, id=vnode1)
         try:
             self.server.manager(MGR_CMD_SET, NODE,
                                 {'resources_available.fooi': 100},
-                                'vnode[1]')
+                                vnode1)
         except PbsManagerError:
             pass
         else:
             self.server.expect(NODE, {'resources_available.fooi': 100},
-                               id='vnode[1]', op=UNSET, max_attempts=1)
+                               id=vnode1, op=UNSET, max_attempts=1)
 
-    @skipOnCpuSet
     def test_set_direct_on_target_node(self):
         """
         Set a direct resource on target node which should
@@ -109,27 +108,28 @@ class TestHostResources(TestFunctional):
         """
         # Create 3 vnodes with individual hosts
         attr = {'resources_available.ncpus': 1}
-        self.server.create_vnodes('vnode', attr, 3, sharednode=False,
-                                  mom=self.mom)
+        self.mom.create_vnodes(attr, 3, sharednode=False)
         # Create a consumable custom resources 'fooi'
         self.server.add_resource('fooi', 'long', 'nh')
+        vnode0 = self.mom.shortname + '[0]'
+        vnode1 = self.mom.shortname + '[1]'
+        vnode2 = self.mom.shortname + '[2]'
         self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.fooi': 100}, 'vnode[0]')
+                            {'resources_available.fooi': 100}, vnode0)
         self.server.manager(MGR_CMD_SET, NODE,
-                            {'resources_available.fooi': 100}, 'vnode[1]')
+                            {'resources_available.fooi': 100}, vnode1)
         self.server.manager(MGR_CMD_SET, NODE, {'resources_available.fooi':
-                                                '@vnode[1]'}, 'vnode[2]')
+                                                '@' + vnode1}, vnode2)
         try:
             self.server.manager(MGR_CMD_SET, NODE,
-                                {'resources_available.fooi': '@vnode[0]'},
-                                'vnode[1]')
+                                {'resources_available.fooi': '@' + vnode0},
+                                vnode1)
         except PbsManagerError:
             pass
         else:
             _msg = "Setting indirect resources on a target object should fail"
             self.assertTrue(False, _msg)
 
-    @skipOnCpuSet
     def test_create_node_without_resc_set(self):
         """
         Create a consumable resource then create a new node.

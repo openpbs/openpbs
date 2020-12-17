@@ -267,7 +267,7 @@ class TestMomHookSync(TestFunctional):
 
         now = time.time()
         self.momB.signal('-KILL')
-        self.momB.restart()
+        self.momB.start()
 
         # Killing and restarting mom would cause server to sync
         # up its version of the mom hook file resulting in an
@@ -337,7 +337,7 @@ class TestMomHookSync(TestFunctional):
         # mom hook sends are done.
         now = time.time()
         self.momB.signal('-KILL')
-        self.momB.restart()
+        self.momB.start()
 
         # Put another sleep delay so log_match() can see all the matches
         self.logger.info("Waiting 3 secs for new hook updates to complete")
@@ -361,3 +361,62 @@ class TestMomHookSync(TestFunctional):
             'successfully sent hook file .*cpufreq.PY ' +
             'to %s.*' % self.momB.hostname, existence=False,
             starttime=now, max_attempts=10, regexp=True)
+
+    def compare_rescourcedef(self):
+        srvret = None
+
+        for _ in range(5):
+            time.sleep(1)
+            if srvret is None:
+                file = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                    'server_priv', 'hooks', 'resourcedef')
+                srvret = self.du.cat(self.server.hostname, file, logerr=False,
+                                     sudo=True)
+                if srvret['rc'] != 0 or len(srvret['out']) == 0:
+                    srvret = None
+                    continue
+
+            file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
+                                'hooks', 'resourcedef')
+            momret = self.momB.cat(file, logerr=False,
+                                   sudo=True)
+            if momret['rc'] != 0 or len(momret['out']) == 0:
+                continue
+
+            if momret['out'] == srvret['out']:
+                return
+            else:
+                srvret = None
+        raise self.failureException("resourcedef file is not in sync")
+
+    def test_rescdef_mom_recreate(self):
+        """
+        test if rescdef file is recreated when a mom is deleted and added back
+        """
+
+        # create a custom resource
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'string', 'flag': 'h'}, id='foo')
+
+        # compare rescdef files between mom and server
+        self.compare_rescourcedef()
+
+        # delete node
+        self.server.manager(MGR_CMD_DELETE, NODE, id=self.momB.shortname)
+        self.server.expect(NODE, 'state', id=self.momB.shortname, op=UNSET)
+
+        # check if rescdef is deleted
+        file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
+                            'resourcedef')
+        self.assertFalse(
+            self.momB.du.isfile(self.momB.hostname, file, sudo=True),
+            "resourcedef not deleted at mom")
+
+        # recreate node
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.momB.shortname)
+
+        # check for status of the node
+        self.server.expect(NODE, {'state': 'free'}, id=self.momB.shortname)
+
+        # compare rescdef files between mom and server
+        self.compare_rescourcedef()

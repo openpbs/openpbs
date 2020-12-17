@@ -38,6 +38,7 @@
 # subject to Altair's trademark licensing policies.
 
 
+import collections
 import logging
 import os
 import pprint
@@ -48,10 +49,12 @@ import shutil
 import socket
 import tarfile
 import time
+import platform
 from subprocess import STDOUT
 
 from ptl.lib.pbs_ifl_mock import *
-from ptl.lib.pbs_testlib import SCHED, BatchUtils, Scheduler, Server
+from ptl.lib.pbs_testlib import (SCHED, BatchUtils, Scheduler, Server,
+                                 PbsAttribute)
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
 
@@ -293,7 +296,7 @@ class ObfuscateSnapshot(object):
                             if _val in self.skip_vals:
                                 obf = _val
                             elif _val not in self.val_obf_map:
-                                obf = self.bu.random_str(
+                                obf = PbsAttribute.random_str(
                                     length=random.randint(8, 30))
                                 self.val_obf_map[_val] = obf
                             else:
@@ -387,7 +390,7 @@ class ObfuscateSnapshot(object):
                             if _val == "_pbs_project_default":
                                 obf.append(_val)
                             elif _val not in self.val_obf_map:
-                                obf_v = self.bu.random_str(
+                                obf_v = PbsAttribute.random_str(
                                     length=random.randint(8, 30))
                                 self.val_obf_map[_val] = obf_v
                                 obf.append(obf_v)
@@ -494,7 +497,7 @@ class ObfuscateSnapshot(object):
                     custom_rscs.append(rscs_name.strip())
         for rscs in custom_rscs:
             if rscs not in self.val_obf_map:
-                obf = self.bu.random_str(length=random.randint(8, 30))
+                obf = PbsAttribute.random_str(length=random.randint(8, 30))
                 self.val_obf_map[rscs] = obf
 
         # Obfuscate accounting logs
@@ -1804,7 +1807,7 @@ quit()
         self.logger.info("capturing OS information")
         snap_ospath = os.path.join(self.snapdir, OS_PATH)
         with open(snap_ospath, "w") as osfd:
-            osinfo = self.du.get_os_info()
+            osinfo = platform.platform()
             osfd.write(osinfo + "\n")
             # If /etc/os-release is available then save that as well
             fpath = os.path.join(os.sep, "etc", "os-release")

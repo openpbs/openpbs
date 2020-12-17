@@ -139,13 +139,13 @@ post_rerun(struct work_task *pwt)
 void
 force_reque(job *pjob)
 {
-	int  newstate;
+	char  newstate;
 	int  newsubstate;
 
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
 
-	if ((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)) {
+	if ((is_jattr_set(pjob,  JOB_ATR_resc_released))) {
 		/* If JOB_ATR_resc_released attribute is set and we are trying to rerun a job
 		 * then we need to reassign resources first because
 		 * when we suspend a job we don't decrement all the resources.
@@ -153,13 +153,11 @@ force_reque(job *pjob)
 		 * back again to release all other resources
 		 */
 		set_resc_assigned(pjob, 0, INCR);
-		job_attr_def[(int) JOB_ATR_resc_released].at_free(
-			&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
-		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
-		if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
-			job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
-				&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
-			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+		free_jattr(pjob, JOB_ATR_resc_released);
+		mark_jattr_not_set(pjob, JOB_ATR_resc_released);
+		if (is_jattr_set(pjob,  JOB_ATR_resc_released_list)) {
+			free_jattr(pjob, JOB_ATR_resc_released_list);
+			mark_jattr_not_set(pjob, JOB_ATR_resc_released_list);
 		}
 
 	}
@@ -178,17 +176,13 @@ force_reque(job *pjob)
 	 * MOM failure after the workstation becomes active(busy).
 	 */
 	pjob->ji_qs.ji_svrflags &= ~(JOB_SVFLG_Actsuspd | JOB_SVFLG_StagedIn | JOB_SVFLG_CHKPT);
-	job_attr_def[(int)JOB_ATR_exec_host].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_exec_host]);
-	job_attr_def[(int)JOB_ATR_exec_host2].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_exec_host2]);
-	job_attr_def[(int)JOB_ATR_exec_vnode].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_exec_vnode]);
-	job_attr_def[(int)JOB_ATR_pset].at_free(
-		&pjob->ji_wattr[(int)JOB_ATR_pset]);
+	free_jattr(pjob, JOB_ATR_exec_host);
+	free_jattr(pjob, JOB_ATR_exec_host2);
+	free_jattr(pjob, JOB_ATR_exec_vnode);
+	free_jattr(pjob, JOB_ATR_pset);
 	/* job dir has no meaning for re-queued jobs, so unset it */
-	job_attr_def[(int)JOB_ATR_jobdir].at_free(&pjob->
-		ji_wattr[(int)JOB_ATR_jobdir]);
+	free_jattr(pjob, JOB_ATR_jobdir);
+	unset_extra_attributes(pjob);
 	svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
 	svr_setjobstate(pjob, newstate, newsubstate);
 }
@@ -211,12 +205,11 @@ req_rerunjob(struct batch_request *preq)
 	int i;
 	char jid[PBS_MAXSVRJOBID + 1];
 	int jt; /* job type */
-	int offset;
+	char sjst;
 	char *pc;
 	job *pjob;
 	job *parent;
 	char *range;
-	char *vrange;
 	int start;
 	int end;
 	int step;
@@ -247,25 +240,13 @@ req_rerunjob(struct batch_request *preq)
 		return;
 
 	} else if (jt == IS_ARRAY_Single) {
-
 		/* single subjob, if running can signal */
-
-		offset = subjob_index_to_offset(parent, get_index_from_jid(jid));
-		if (offset == -1) {
-			req_reject(PBSE_UNKJOBID, 0, preq);
-			return;
-		}
-		i = get_subjob_state(parent, offset);
-		if (i == -1) {
+		pjob = get_subjob_and_state(parent, get_index_from_jid(jid), &sjst, NULL);
+		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
-		} else if (i == JOB_STATE_RUNNING) {
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
-				req_rerunjob2(preq, pjob);
-			} else {
-				req_reject(PBSE_BADSTATE, 0, preq);
-				return;
-			}
+		} else if (pjob && sjst == JOB_STATE_LTR_RUNNING) {
+			req_rerunjob2(preq, pjob);
 		} else {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
@@ -276,7 +257,7 @@ req_rerunjob(struct batch_request *preq)
 
 		/* The Array Job itself ... */
 
-		if (parent->ji_qs.ji_state != JOB_STATE_BEGUN) {
+		if (!check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
 			if (parent->ji_pmt_preq != NULL)
 				reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, parent);
 			req_reject(PBSE_BADSTATE, 0, preq);
@@ -290,16 +271,19 @@ req_rerunjob(struct batch_request *preq)
 		/* Setting deleted subjobs count to 0,
 		 * since all the deleted subjobs will be moved to Q state
 		 */
-		parent->ji_ajtrk->tkm_dsubjsct = 0;
+		parent->ji_ajinfo->tkm_dsubjsct = 0;
 
-		for (i=0; i<parent->ji_ajtrk->tkm_ct; i++) {
-			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
-				if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)
+		for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+			pjob = get_subjob_and_state(parent, i, &sjst, NULL);
+			if (sjst == JOB_STATE_LTR_UNKNOWN)
+				continue;
+			if (pjob) {
+				if (sjst == JOB_STATE_LTR_RUNNING)
 					dup_br_for_subjob(preq, pjob, req_rerunjob2);
 				else
 					force_reque(pjob);
 			} else {
-				set_subjob_tblstate(parent, i, JOB_STATE_QUEUED);
+				update_sj_parent(parent, NULL, create_subjob_id(parent->ji_qs.ji_jobid, i), sjst, JOB_STATE_LTR_QUEUED);
 			}
 		}
 		/* if not waiting on any running subjobs, can reply; else */
@@ -313,29 +297,9 @@ req_rerunjob(struct batch_request *preq)
 	 * if running, all req_rerunjob2
 	 */
 
-	range = get_index_from_jid(jid);
+	range = get_range_from_jid(jid);
 	if (range == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
-		return;
-	}
-
-	/* first check that all in the subrange are in fact running */
-
-	vrange = range;
-	while (1) {
-		if ((i = parse_subjob_index(vrange, &pc, &start, &end, &step, &count)) == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if (i == 1)
-			break;
-		for (i = start; i <= end; i += step) {
-			if (get_subjob_state(parent, numindex_to_offset(parent, i)) == JOB_STATE_RUNNING)
-				anygood++;
-		}
-		vrange = pc;
-	}
-	if (anygood == 0) {
-		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
 
@@ -350,14 +314,19 @@ req_rerunjob(struct batch_request *preq)
 		} else if (i == 1)
 			break;
 		for (i = start; i <= end; i += step) {
-			int idx = numindex_to_offset(parent, i);
-			if (get_subjob_state(parent, idx) == JOB_STATE_RUNNING) {
-				if ((pjob = parent->ji_ajtrk->tkm_tbl[idx].trk_psubjob)) {
-					dup_br_for_subjob(preq, pjob, req_rerunjob2);
-				}
+			pjob = get_subjob_and_state(parent, i, &sjst, NULL);
+			if (pjob && sjst == JOB_STATE_LTR_RUNNING) {
+				anygood++;
+				dup_br_for_subjob(preq, pjob, req_rerunjob2);
 			}
 		}
 		range = pc;
+	}
+
+	if (anygood == 0) {
+		preq->rq_refct--;
+		req_reject(PBSE_BADSTATE, 0, preq);
+		return;
 	}
 
 	/* if not waiting on any running subjobs, can reply; else */
@@ -417,7 +386,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	/* the job must be rerunnable or force must be on */
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_rerunable].at_val.at_long == 0) &&
+	if ((get_jattr_long(pjob, JOB_ATR_rerunable) == 0) &&
 		(force == 0)) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_NORERUN, PREEMPT_METHOD_REQUEUE, pjob);
@@ -427,7 +396,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	/* the job must be running */
 
-	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
+	if (!check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 
@@ -437,8 +406,8 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	/* a node failure tolerant job could be waiting for healthy nodes
 	 * and it would have a JOB_SUBSTATE_PRERUN substate.
 	 */
-	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) &&
-	    (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) && (force == 0)) {
+	if ((!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) &&
+	    (!check_job_substate(pjob, JOB_SUBSTATE_PRERUN)) && (force == 0)) {
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(PBSE_BADSTATE, PREEMPT_METHOD_REQUEUE, pjob);
 		req_reject(PBSE_BADSTATE, 0, preq);
@@ -464,7 +433,9 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_pmt_preq != NULL)
 			reply_preempt_jobs_request(rc, PREEMPT_METHOD_REQUEUE, pjob);
 
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
+		pjob->ji_qs.ji_un.ji_exect.ji_exitstat = JOB_EXEC_RERUN;
+		set_job_substate(pjob, JOB_SUBSTATE_RERUN3);
+
 		discard_job(pjob, "Force rerun", 0);
 		pjob->ji_discarding = 1;
 		/**
@@ -491,7 +462,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	pjob->ji_qs.ji_svrflags = (pjob->ji_qs.ji_svrflags &
 		~(JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) |
 	JOB_SVFLG_HASRUN;
-	svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RERUN);
+	svr_setjobstate(pjob, JOB_STATE_LTR_RUNNING, JOB_SUBSTATE_RERUN);
 
 	sprintf(log_buffer, msg_manager, msg_jobrerun,
 		preq->rq_user, preq->rq_host);

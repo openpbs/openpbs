@@ -99,7 +99,7 @@ class TestPartition(TestInterfaces):
                 self.assertTrue(False, msg)
         elif obj_name is "NODE":
             if name is "Q1":
-                name = self.server.shortname
+                name = self.mom.shortname
             attr = {'partition': partition}
             if mgr_cmd == MGR_CMD_SET:
                 self.server.manager(MGR_CMD_SET, NODE, attr,
@@ -251,7 +251,7 @@ class TestPartition(TestInterfaces):
             partition="P2")
         self.partition_attr(mgr_cmd=MGR_CMD_UNSET, obj_name="NODE")
         self.server.manager(MGR_CMD_SET, NODE, {
-                            'queue': "Q2"}, id=self.server.shortname)
+                            'queue': "Q2"}, id=self.mom.shortname)
         self.partition_attr(obj_name="NODE", partition="P2")
 
     def test_mismatch_of_partition_on_node_and_queue(self):
@@ -273,7 +273,7 @@ class TestPartition(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_SET,
                                 NODE, {'queue': "Q1"},
-                                id=self.server.shortname)
+                                id=self.mom.shortname)
         except PbsManagerError as e:
             # self.assertEqual(e.rc, 15220)
             # The above code has to be uncommented when the PTL framework

@@ -250,7 +250,21 @@ upgrade_pbs_schema_from_v1_3_0() {
 
 upgrade_pbs_schema_from_v1_4_0() {
 	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
+		ALTER TABLE pbs.job DROP COLUMN ji_numattr;
+		ALTER TABLE pbs.job DROP COLUMN ji_ordering;
+		ALTER TABLE pbs.job DROP COLUMN ji_priority;
+		ALTER TABLE pbs.job DROP COLUMN ji_endtbdry;
+		ALTER TABLE pbs.job DROP COLUMN ji_momaddr;
+		ALTER TABLE pbs.job DROP COLUMN ji_momport;
+		ALTER TABLE pbs.job RENAME COLUMN ji_4jid to ji_jid;
+		ALTER TABLE pbs.job ALTER COLUMN ji_qrank TYPE BIGINT;
+		ALTER TABLE pbs.job DROP COLUMN ji_4ash;
 		ALTER TABLE pbs.resv DROP COLUMN ri_type;
+		ALTER TABLE pbs.resv DROP COLUMN ri_numattr;
+		ALTER TABLE pbs.resv DROP COLUMN ri_resvTag;
+		ALTER TABLE pbs.resv DROP COLUMN ri_un_type;
+		ALTER TABLE pbs.resv DROP COLUMN ri_fromsock;
+		ALTER TABLE pbs.resv DROP COLUMN ri_fromaddr;
 		UPDATE pbs.info SET pbs_schema_version = '1.5.0';
 	EOF
 	ret=$?

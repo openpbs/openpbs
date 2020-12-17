@@ -47,6 +47,7 @@ class TestResourceMultiChunk(TestFunctional):
     Test suite to test value of custom resource
     in a multi chunk job request
     """
+
     def setUp(self):
         TestFunctional.setUp(self)
         attr = {}
@@ -59,7 +60,6 @@ class TestResourceMultiChunk(TestFunctional):
              'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
-    @skipOnCpuSet
     def test_resource_float_type(self):
         """
         Test to check the value of custom resource

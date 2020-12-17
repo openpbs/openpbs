@@ -492,7 +492,6 @@ else:
         self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
 
-    @skipOnCpuSet
     def test_periodic(self):
         """
         Test accumulatinon of resources from an exechost_periodic hook.
@@ -753,6 +752,9 @@ else:
     def test_reservation(self):
         """
         Test that job inside reservations works same
+        NOTE: Due to the reservation duration and the job duration
+        both being equal, this test found 2 race conditions.
+        KEEP the durations equal to each other.
         """
         # Create non-host level resources from qmgr
         attr = {}
@@ -827,10 +829,14 @@ j.resources_used["stra2"] = '"glad"'
         self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            offset=30, interval=1, id=jid)
 
-        # Restart server and verifies that the values are still the same
-        self.server.restart()
+        # Below is commented out due to a problem with history jobs
+        # disapearing after a server restart when the reservation is
+        # in state BD during restart.
+        # Once that bug is fixed, this test code should be uncommented
+        # and run.
 
-        # Below is commented due to a known PBS issue
+        # Restart server and verifies that the values are still the same
+        # self.server.restart()
         # self.server.expect(JOB, a, extend='x', id=jid)
 
     def test_server_restart(self):

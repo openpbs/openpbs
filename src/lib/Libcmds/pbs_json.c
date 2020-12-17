@@ -108,6 +108,20 @@ link_node(JsonNode *node) {
  * @retval JSON conforming string   success
  * @retval NULL                     error
  *
+ * @note
+ * - If a string value contains one of the following:
+ * 	\'
+ *	\,
+ * and the \ is not escaped with another backslash, then drop that \.
+ * Otherwise, both forms produce JSON error.
+ * For instance:
+ *	\'     -> '
+ *	\\'    -> \\'
+ *	\\\'   -> \\'
+ *	\\\\'  -> \\\\'
+ *	\\\\\' -> \\\\'
+ * - If a string value contains " (embedded double quote) and it's not escaped
+ *   (not preceded by a backslash), then escape it, resulting in \".
  */
 char*
 strdup_escape(JsonEscapeType esc_type, const char *str)
@@ -116,7 +130,10 @@ strdup_escape(JsonEscapeType esc_type, const char *str)
 	int       len = 0;
 	char      *temp = NULL;
 	char      *buf = NULL;
+	const char *bufstr = NULL;
+	const char *orig_str = NULL;
 	if (str != NULL) {
+		orig_str = str;
 		i = 0;
 		len = MAXBUFLEN;
 		buf = (char *) malloc(len);
@@ -151,6 +168,11 @@ strdup_escape(JsonEscapeType esc_type, const char *str)
 				break;
 			case '"':
 				if (esc_type == JSON_ESCAPE) {
+					bufstr = str;
+					bufstr--;
+					if ((bufstr >= orig_str) && (*bufstr != '\\')) {
+						buf[i++] = '\\';
+					}
 					buf[i++] = *str++;
 					break;
 				} /* else JSON_FULLESCAPE */
@@ -160,7 +182,15 @@ strdup_escape(JsonEscapeType esc_type, const char *str)
 				break;
 			case '\\':
 				if (esc_type == JSON_ESCAPE) {
-					buf[i++] = *str++;
+					bufstr = str + 1;
+					if (*bufstr && ((*bufstr == '\'') || (*bufstr == ','))) {
+						str++;
+						buf[i++] = *str++;
+					} else {
+						buf[i++] = *str++;
+						if (*bufstr)
+							buf[i++] = *str++;
+					}
 					break;
 				} /* else JSON_FULLESCAPE */
 				buf[i++] = '\\';
@@ -226,6 +256,30 @@ free_json_node_list()
 
 /**
  * @brief
+ *	Determines if 'str' contains only white-space characters.
+ *
+ * @param[in] str - string to check
+ *
+ * @return	int
+ * @retval	1	if 'str' contains only white-space characters.
+ * @retval	0	error or otherwise.
+ *
+ */
+static int
+whitespace_only(const char *str) {
+
+	if (str == NULL)
+		return (0);
+
+	while ((*str != '\0') && isspace(*str))
+		str++;
+	if (*str == '\0')
+		return (1);
+	return (0);
+}
+
+/**
+ * @brief
  *	add node to json list
  *
  * @param[in] ntype - node type
@@ -244,6 +298,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 	char	  *ptr = NULL;
 	char 	  *pc  = NULL;
 	JsonNode  *node = NULL;
+	int	  value_is_whitespace = 0;
 
 	node = create_json_node();
 	if (node == NULL) {
@@ -260,15 +315,22 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 		}
 		node->key = ptr;
 	}
-	if (vtype == JSON_NULL && value != NULL) {
-		(void)strtod(value, &pc);
+	value_is_whitespace = whitespace_only(value);
+	if (vtype == JSON_NULL && value != NULL && !value_is_whitespace) {
+		double val;
+		val = strtod(value, &pc);
 		while (pc) {
 			if (isspace(*pc))
 				pc++;
 			else
 				break;
 		}
-		if (strcmp(pc, "") == 0) {
+		/* In Python3, value with leading zeroes is
+		 * represented as a string, unless all zeroes (00000...)
+		 * or is part of a decimal number < 1 (0.0001 ... 0.99999).
+		 */
+		if ((strcmp(pc, "") == 0) &&
+			((*(char *)value != '0') || (val < 1))) {
 			node->value_type = JSON_NUMERIC;
 			ptr = strdup(value);
 			if (ptr == NULL) {
@@ -276,8 +338,11 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, 
 				return NULL;
 			}
 			node->value.string = ptr;
-		} else
+		} else {
 			node->value_type = JSON_STRING;
+		}
+	} else if (value_is_whitespace) {
+		node->value_type = JSON_STRING;
 	} else {
 		node->value_type = vtype;
 		if (node->value_type == JSON_INT)

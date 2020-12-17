@@ -46,32 +46,27 @@ AC_DEFUN([PBS_AC_WITH_LIBZ],
       [Specify the directory where libz is installed.]
     )
   )
-  AS_IF([test "x$with_libz" != "x"],
-    libz_dir=["$with_libz"],
-    libz_dir=["/lib64"]
-  )
+  [libz_dir="$with_libz"]
   AC_MSG_CHECKING([for libz])
-  AS_IF([test "$libz_dir" = "/lib64"],
+  AS_IF(
+    [test "$libz_dir" = ""],
+    AC_CHECK_HEADER([zlib.h], [], AC_MSG_ERROR([libz headers not found.])),
+    [test -r "$libz_dir/include/zlib.h"],
+    [libz_inc="-I$libz_dir/include"],
+    AC_MSG_ERROR([libz headers not found.])
+  )
+  AS_IF(
     # Using system installed libz
-	libz_inc=""
-	AS_IF([test -r "/lib64/libz.so" -o -r "/usr/lib64/libz.so" -o -r "/usr/lib/x86_64-linux-gnu/libz.so" -o -r "/usr/lib/aarch64-linux-gnu/libz.so"],
-    	[libz_lib="-lz"],
-      AC_MSG_ERROR([libz shared object library not found.])
-	),
-
-	# Using developer installed libz
-    AS_IF([test -r "$libz_dir/include/zlib.h"],
-      [libz_include="$libz_dir/include"],
-      AC_MSG_ERROR([libz headers not found.])
-    )
-	libz_inc="-I$libz_include"
-    AS_IF([test -r "${libz_dir}/lib64/libz.a"],
-      [libz_lib="${libz_dir}/lib64/libz.a"],
-      AS_IF([test -r "${libz_dir}/lib/libz.a"],
-        [libz_lib="${libz_dir}/lib/libz.a"],
-        AC_MSG_ERROR([libz not found.])
-      )
-    )
+    [test "$libz_dir" = ""],
+    AC_CHECK_LIB([z], [deflateInit_],
+      [libz_lib="-lz"],
+      AC_MSG_ERROR([libz shared object library not found.])),
+	  # Using developer installed libz
+    [test -r "${libz_dir}/lib64/libz.a"],
+    [libz_lib="${libz_dir}/lib64/libz.a"],
+    [test -r "${libz_dir}/lib/libz.a"],
+    [libz_lib="${libz_dir}/lib/libz.a"],
+    AC_MSG_ERROR([libz not found.])
   )
   AC_MSG_RESULT([$libz_dir])
   AC_SUBST(libz_inc)

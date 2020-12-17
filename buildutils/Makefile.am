@@ -40,5 +40,4 @@
 #
 
 EXTRA_DIST = \
-	attr_parser.py \
-	pbs_mach_type
+	attr_parser.py

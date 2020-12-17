@@ -895,28 +895,28 @@ marknode(int con, char *name,
 int
 main(int argc, char *argv[])
 {
-	time_t		     timenow;
-	struct attrl	    *pattr = NULL;
-	int		     con;
-	char		    *def_server;
-	int		     errflg = 0;
-	char		    *errmsg;
-	int		     i;
-	int		     rc = 0;
-	extern	char	    *optarg;
-	extern	int	     optind;
-	char		   **pa;
-	char		    *comment = NULL;
+	time_t timenow;
+	struct attrl *pattr = NULL;
+	int con;
+	char *def_server = NULL;
+	int errflg = 0;
+	char *errmsg;
+	int i;
+	int rc = 0;
+	extern char *optarg;
+	extern int optind;
+	char **pa;
+	char *comment = NULL;
 	struct batch_status *bstat = NULL;
 	struct batch_status *bstat_head = NULL;
 	struct batch_status *next_bstat = NULL;
-	int		     do_vnodes = 0;
-	mgr_operation_t      oper = LISTSP;
-	int		     ret = 0;
-	int		     job_summary  = 0;
-	int		     long_summary = 0;
-	int		     format = 0;
-	int		     prt_summary = 0;
+	int do_vnodes = 0;
+	mgr_operation_t oper = LISTSP;
+	int ret = 0;
+	int job_summary = 0;
+	int long_summary = 0;
+	int format = 0;
+	int prt_summary = 0;
 
 	/*test for real deal or just version and exit*/
 
@@ -924,12 +924,6 @@ main(int argc, char *argv[])
 
 	if (initsocketlib())
 		return 1;
-
-	/* get default server, may be changed by -s option */
-
-	def_server = pbs_default();
-	if (def_server == NULL)
-		def_server = "";
 
 	if (argc == 1)
 		errflg = 1;
@@ -1075,6 +1069,12 @@ main(int argc, char *argv[])
 				"\t%s --version\n\n",
 				argv[0], argv[0], argv[0], argv[0], argv[0], argv[0]);
 		exit(1);
+	}
+
+	if (def_server == NULL) {
+		def_server = pbs_default();
+		if (def_server == NULL)
+			def_server = "";
 	}
 
 	if (CS_client_init() != CS_SUCCESS) {

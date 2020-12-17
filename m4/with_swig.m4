@@ -56,9 +56,9 @@ AC_DEFUN([PBS_AC_WITH_SWIG],
     AC_DEFINE([SWIG], [], [Defined when swig is available]),
     AC_MSG_RESULT([not found])
     AC_MSG_WARN([swig command not found.]))
-  AS_IF([test "x`ls -d ${swig_dir}/share/swig/* 2>/dev/null`" == "x" ],
-          [swig_py_inc="-I`ls -d ${swig_dir}/share/swig*` -I`ls -d ${swig_dir}/share/swig*/python`"],
-          [swig_py_inc="-I`ls -d ${swig_dir}/share/swig/*` -I`ls -d ${swig_dir}/share/swig/*/python`"])
+  AS_IF([test "x`ls -d ${swig_dir}/share/swig/* 2>/dev/null`" = "x" ],
+          [swig_py_inc="-I`ls -d ${swig_dir}/share/swig* | tail -n 1` -I`ls -d ${swig_dir}/share/swig*/python | tail -n 1`"],
+          [swig_py_inc="-I`ls -d ${swig_dir}/share/swig/* | tail -n 1` -I`ls -d ${swig_dir}/share/swig/*/python | tail -n 1`"])
   AC_SUBST([swig_dir])
   AC_SUBST([swig_py_inc])
 ])

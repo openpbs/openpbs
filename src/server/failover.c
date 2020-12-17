@@ -110,13 +110,13 @@ extern unsigned long hostidnum;
 extern char *path_priv;
 extern char *path_svrlive;
 extern char *path_secondaryact;
-extern unsigned int pbs_server_port_dis;
 extern time_t secondary_delay;
 extern time_t time_now;
 extern char server_host[];
 
 extern struct connection *svr_conn;
 extern struct batch_request *saved_takeover_req;
+extern pbs_net_t pbs_server_addr;
 
 int	     pbs_failover_active = 0; /* indicates if Seconary is active */
 /* Private data items */
@@ -361,6 +361,22 @@ put_failover(int sock, struct batch_request *request)
 	return rc;
 }
 
+/**
+ * @brief
+ *	returning host id.
+ *
+ * @return Host ID
+ */
+unsigned long
+pbs_get_hostid(void)
+{
+	unsigned long hid;
+
+	hid = (unsigned long)gethostid();
+	if (hid == 0)
+		hid = (unsigned long)pbs_server_addr;
+	return hid;
+}
 
 /**
  * @brief
@@ -381,9 +397,10 @@ put_failover(int sock, struct batch_request *request)
 void
 req_failover(struct batch_request *preq)
 {
-	int		 err = 0;
-	char		 hostbuf[PBS_MAXHOSTNAME+1];
-	conn_t		 *conn;
+	int err = 0;
+	char hostbuf[PBS_MAXHOSTNAME + 1];
+	conn_t *conn;
+	unsigned long hostidnum;
 
 	preq->rq_reply.brp_auxcode = 0;
 
@@ -431,6 +448,7 @@ req_failover(struct batch_request *preq)
 			/* return the host id as a text string */
 			/* (make do with existing capability to return data in reply */
 
+			hostidnum = pbs_get_hostid();
 			sprintf(hostbuf, "%ld", hostidnum);
 			(void)reply_text(preq, PBSE_NONE, hostbuf);
 			return;
@@ -621,7 +639,6 @@ read_reg_reply(int sock)
 	unsigned long	   hid;
 	char		  *txtm;
 	char		  *txts;
-	extern unsigned long pbs_get_hostid(void);
 
 	fo_reply.brp_code = 0;
 	fo_reply.brp_choice = BATCH_REPLY_CHOICE_NULL;

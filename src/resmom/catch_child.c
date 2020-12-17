@@ -81,6 +81,7 @@
 #include "hook.h"
 #include "renew_creds.h"
 #include "mock_run.h"
+#include <libutil.h>
 
 /**
  * @file	catch_child.c
@@ -90,39 +91,29 @@ void			(*free_job_CPUs)(job *) = NULL;
 
 /* External Globals */
 
-extern  char            mom_host[];
-extern char		*path_epilog;
-extern char		*path_jobs;
-extern unsigned int	default_server_port;
-extern pbs_list_head	svr_alljobs;
-extern int		exiting_tasks;
-extern char		*msg_daemonname;
-extern int		svr_hook_resend_job_attrs;
-#ifdef	WIN32
-extern char		*mom_home;
+extern char mom_host[];
+extern char *path_epilog;
+extern char *path_jobs;
+extern unsigned int default_server_port;
+extern pbs_list_head svr_alljobs;
+extern int exiting_tasks;
+extern char *msg_daemonname;
+extern char *mom_home;
+#ifndef WIN32
+extern int termin_child;
 #endif
-#ifndef	WIN32
-extern int		termin_child;
-#endif
-extern int		resc_access_perm;
-extern int		server_stream;
-extern time_t		time_now;
-extern pbs_list_head	mom_polljobs;
-extern unsigned int	pbs_mom_port;
+extern int server_stream;
+extern time_t time_now;
+extern pbs_list_head mom_polljobs;
+extern unsigned int pbs_mom_port;
+extern int gen_nodefile_on_sister_mom;
 #if MOM_ALPS
-extern useconds_t	alps_release_wait_time;
-extern int		alps_release_timeout;
-extern useconds_t	alps_release_jitter;
+extern useconds_t alps_release_wait_time;
+extern int alps_release_timeout;
+extern useconds_t alps_release_jitter;
 #endif
 
-extern char		*path_hooks_workdir;
-
-static PyObject *py_json_name = NULL;
-static PyObject *py_json_module = NULL;
-static PyObject *py_json_dict = NULL;
-static PyObject *py_json_func_loads = NULL;
-static PyObject *py_json_func_dumps = NULL;
-
+extern char *path_hooks_workdir;
 
 #ifndef WIN32
 /**
@@ -192,7 +183,7 @@ chkpt_partial(job *pjob)
 
 	assert(pjob != NULL);
 
-	strcpy(namebuf, path_checkpoint);
+	pbs_strncpy(namebuf, path_checkpoint, sizeof(namebuf));
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		strcat(namebuf, pjob->ji_qs.ji_fileprefix);
 	else
@@ -250,7 +241,7 @@ chkpt_partial(job *pjob)
 	}
 
 	if (texit == 0) {
-		char	oldname[MAXPATHLEN];
+		char	oldname[MAXPATHLEN + 1];
 		struct	stat	statbuf;
 
 		/*
@@ -287,865 +278,24 @@ fail:
 	return;
 }
 
-/*
- * the following is a list of attributes to be returned to the server
- * for a newly executing job.   They are returned only if they have
- * been modified by Mom.  Note that JOB_ATR_session_id and JOB_ATR_resc_used
- * are always returned; see encode_used(), update_ajob_status_using_cmd(),
- * and update_jobs_status().
- */
-
-static enum job_atr mom_rtn_list[] = {
-	JOB_ATR_errpath,
-	JOB_ATR_outpath,
-	JOB_ATR_altid,
-	JOB_ATR_acct_id,
-	JOB_ATR_jobdir,
-	JOB_ATR_exectime,
-	JOB_ATR_hold,
-	JOB_ATR_variables,
-	JOB_ATR_runcount,
-	JOB_ATR_LAST
-};
-
-static enum job_atr mom_rtn_list_ext[] = {
-	JOB_ATR_exec_vnode,
-	JOB_ATR_SchedSelect,
-	JOB_ATR_LAST
-};
-
-#ifdef PYTHON
 /**
  * @brief
- * 	Returns the Python dictionary representation of a string
- *	specyfing a JSON object.
+ * 	update jobs rescused to the server
  *
- * @param[in]		value	-	string of JSON-object format
- * @param[out]		msg 	-	error message buffer
- * @param[in]		msg_len -	size of 'msg' buffer
- *
- * @return	PyObject *
- * @retval	<python  object> -	dictionary representation of 'value'
- * @retval	NULL		 -	if not successful, filling out 'msg'
- *					with the actual error message.
- */
-static PyObject *
-json_loads(char *value, char *msg, size_t msg_len)
-{
-	PyObject *py_value = NULL;
-	PyObject *py_result = NULL;
-
-	if (value == NULL)
-		return NULL;
-
-	if (msg != NULL) {
-		if (msg_len <= 0)
-			return NULL;
-		msg[0] = '\0';
-	}
-
-	if (py_json_name == NULL) {
-		py_json_name = PyUnicode_FromString("json");
-		if (py_json_name == NULL) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "failed to construct json name");
-			return NULL;
-		}
-	}
-
-	if (py_json_module == NULL) {
-		py_json_module = PyImport_Import(py_json_name);
-		if (py_json_module == NULL) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "failed to import json");
-			return NULL;
-		}
-	}
-
-	if (py_json_dict == NULL) {
-		py_json_dict = PyModule_GetDict(py_json_module);
-		if (py_json_dict == NULL) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "failed to get json module dictionary");
-			return NULL;
-		}
-	}
-
-	if (py_json_func_loads == NULL) {
-		py_json_func_loads = PyDict_GetItemString(py_json_dict, (char*)"loads");
-		if ((py_json_func_loads == NULL) || !PyCallable_Check(py_json_func_loads)) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "did not find json.loads() function");
-			return NULL;
-		}
-	}
-
-	py_value = Py_BuildValue("(z)", (char*)value);
-	if (py_value == NULL) {
-		if (msg != NULL)
-			snprintf(msg, msg_len, "failed to build python arg %s", value);
-		return NULL;
-	}
-
-	PyErr_Clear(); /* clear any exception */
-	py_result = PyObject_CallObject(py_json_func_loads, py_value);
-
-	if (PyErr_Occurred()) {
-		if (msg != NULL) {
-			PyObject *exc_string = NULL;
-			PyObject *exc_type = NULL;
-			PyObject *exc_value = NULL;
-			PyObject *exc_traceback = NULL;
-
-			PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
-
-			/* get the exception */
-			if (exc_type != NULL && (exc_string = PyObject_Str(exc_type)) != NULL && PyUnicode_Check(exc_string))
-				snprintf(msg, msg_len, "%s", PyUnicode_AsUTF8(exc_string));
-			Py_XDECREF(exc_string);
-			Py_XDECREF(exc_type);
-			Py_XDECREF(exc_value);
-#if !defined(WIN32)
-			Py_XDECREF(exc_traceback);
-#elif !defined(_DEBUG)
-			/* for some reason this crashes on Windows Debug */
-			Py_XDECREF(exc_traceback);
-#endif
-		}
-		goto json_loads_fail;
-	} else if (!PyDict_Check(py_result)) {
-		if (msg != NULL)
-			snprintf(msg, msg_len, "value is not a dictionary");
-		goto json_loads_fail;
-
-	}
-
-	Py_XDECREF(py_value);
-	return (py_result);
-
-json_loads_fail:
-	Py_XDECREF(py_value);
-	Py_XDECREF(py_result);
-	return NULL;
-
-}
-
-/**
- * @brief
- * 	Returns a JSON-formatted string representing the Python object 'py_val'.
- *
- * @param[in]		py_val	-	Python object
- * @param[out]		msg 	-	error message buffer
- * @param[in]		msg_len -	size of 'msg' buffer
- *
- * @return	char *
- * @retval	<string> 	-	the returned JSON-formatted string
- * @retval	NULL		-	if not successful, filling out 'msg'
- *					with the actual error message.
- * @note
- *		The returned string is malloced space that must be freed
- *		later when no longer needed.
- */
-static char *
-json_dumps(PyObject *py_val, char *msg, size_t msg_len)
-{
-	PyObject	*py_value = NULL;
-	PyObject	*py_result = NULL;
-	const char	*tmp_str = NULL;
-	char		*ret_string = NULL;
-	int		slen;
-
-	if (py_val == NULL)
-		return NULL;
-
-	if (msg != NULL) {
-		if (msg_len <= 0)
-			return NULL;
-		msg[0] = '\0';
-	}
-
-	if (py_json_name == NULL) {
-		py_json_name = PyUnicode_FromString("json");
-		if (py_json_name == NULL) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "failed to construct json name");
-			return NULL;
-		}
-	}
-
-	if (py_json_module == NULL) {
-		py_json_module = PyImport_Import(py_json_name);
-		if (py_json_module == NULL) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "failed to import json");
-			return NULL;
-		}
-	}
-
-	if (py_json_dict == NULL) {
-		py_json_dict = PyModule_GetDict(py_json_module);
-		if (py_json_dict == NULL) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "failed to get json module dictionary");
-			return NULL;
-		}
-	}
-
-	if (py_json_func_dumps == NULL) {
-		py_json_func_dumps = PyDict_GetItemString(py_json_dict, (char*)"dumps");
-		if ((py_json_func_dumps == NULL) || !PyCallable_Check(py_json_func_dumps)) {
-			if (msg != NULL)
-				snprintf(msg, msg_len, "did not find json.dumps() function");
-			return NULL;
-		}
-	}
-
-	py_value = Py_BuildValue("(O)", py_val);
-	if (py_value == NULL) {
-		if (msg != NULL)
-			snprintf(msg, msg_len, "failed to build python arg %p", (void *)py_val);
-		return NULL;
-	}
-	PyErr_Clear(); /* clear any exception */
-	py_result = PyObject_CallObject(py_json_func_dumps, py_value);
-
-	if (PyErr_Occurred()) {
-		if (msg != NULL) {
-			PyObject *exc_string = NULL;
-			PyObject *exc_type = NULL;
-			PyObject *exc_value = NULL;
-			PyObject *exc_traceback = NULL;
-
-			PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
-
-			/* get the exception */
-			if (exc_type != NULL && (exc_string = PyObject_Str(exc_type)) != NULL && PyUnicode_Check(exc_string))
-				snprintf(msg, msg_len, "%s", PyUnicode_AsUTF8(exc_string));
-			Py_XDECREF(exc_string);
-			Py_XDECREF(exc_type);
-			Py_XDECREF(exc_value);
-#if !defined(WIN32)
-			Py_XDECREF(exc_traceback);
-#elif !defined(_DEBUG)
-			/* for some reason this crashes on Windows Debug */
-			Py_XDECREF(exc_traceback);
-#endif
-		}
-		goto json_dumps_fail;
-	} else if (!PyUnicode_Check(py_result)) {
-		if (msg != NULL)
-			snprintf(msg, msg_len, "value is not a string");
-		goto json_dumps_fail;
-
-	}
-
-	tmp_str = PyUnicode_AsUTF8(py_result);
-	/* returned tmp_str points to an internal buffer of 'py_result' */
-	if (tmp_str == NULL) {
-		if (msg != NULL)
-			snprintf(msg, msg_len, "PyUnicode_AsUTF8 failed");
-		goto json_dumps_fail;
-	}
-	slen = strlen(tmp_str) + 3; /* for null character + 2 single quotes */
-	ret_string = (char *)malloc(slen);
-	if (ret_string == NULL) {
-		if (msg != NULL)
-			snprintf(msg, msg_len, "malloc of ret_string failed");
-		goto json_dumps_fail;
-	}
-	snprintf(ret_string, slen, "'%s'", tmp_str);
-	Py_XDECREF(py_value);
-	Py_XDECREF(py_result);
-	return (ret_string);
-
-json_dumps_fail:
-	Py_XDECREF(py_value);
-	Py_XDECREF(py_result);
-	return NULL;
-
-}
-#endif
-
-/**
- * @brief
- * 	 encode_used - encode resources used by a job to be returned to the server
- *
- * @param[in] pjob - pointer to job structure
- * @param[in] phead - pointer to pbs_list_head structure
- *
- * @return Void
- *
- */
-static void
-encode_used(job *pjob, pbs_list_head *phead)
-{
-	attribute *at;
-	attribute_def *ad;
-	attribute_def *ad3;
-	resource *rs;
-	resource_def *rd;
-	int include_resc_used_update = 0;
-
-	at = &pjob->ji_wattr[JOB_ATR_resc_used];
-	ad = &job_attr_def[JOB_ATR_resc_used];
-	if ((at->at_flags & ATR_VFLAG_SET) == 0)
-		return;
-
-	ad3 = &job_attr_def[JOB_ATR_resc_used_update];
-	if (pjob->ji_updated || ((pjob->ji_wattr[JOB_ATR_relnodes_on_stageout].at_flags & ATR_VFLAG_SET) != 0 && (pjob->ji_wattr[JOB_ATR_relnodes_on_stageout].at_val.at_long != 0)))
-		include_resc_used_update = 1;
-
-	rs = (resource *) GET_NEXT(at->at_val.at_list);
-	for (; rs != NULL; rs = (resource *) GET_NEXT(rs->rs_link)) {
-
-		int i;
-		attribute val;	/* holds the final accumulated resources_used values from Moms including those released from the job */
-		attribute val3; /* holds the final accumulated resources_used values from Moms, which does not include the released moms from job */
-		PyObject *py_jvalue;
-		char *sval;
-		char *dumps;
-		char emsg[HOOK_BUF_SIZE];
-		struct attribute tmpatr = {0};
-		struct attribute tmpatr3 = {0};
-
-		rd = rs->rs_defin;
-		if ((rd->rs_flags & resc_access_perm) == 0)
-			continue;
-
-		val = val3 = rs->rs_value; /* copy resource attribute */
-
-		/* NOTE: presence of pjob->ji_resources means a multinode job (i.e. pjob->ji_numnodes > 1) */
-		if (pjob->ji_resources != NULL) {
-			/* count up sisterhood too */
-			unsigned long lnum = 0;
-			unsigned long lnum3 = 0;
-			noderes *nr;
-
-			if (strcmp(rd->rs_name, "cput") == 0) {
-				for (i = 0; i < pjob->ji_numrescs; i++) {
-					nr = &pjob->ji_resources[i];
-					lnum += nr->nr_cput;
-					if (nr->nr_status != PBS_NODERES_DELETE)
-						lnum3 += nr->nr_cput;
-				}
-				val.at_val.at_long += lnum;
-				val3.at_val.at_long += lnum3;
-			} else if (strcmp(rd->rs_name, "mem") == 0) {
-				for (i = 0; i < pjob->ji_numrescs; i++) {
-					nr = &pjob->ji_resources[i];
-					lnum += nr->nr_mem;
-					if (nr->nr_status != PBS_NODERES_DELETE)
-						lnum3 += nr->nr_mem;
-				}
-				val.at_val.at_long += lnum;
-				val3.at_val.at_long += lnum3;
-			} else if (strcmp(rd->rs_name, "cpupercent") == 0) {
-				for (i = 0; i < pjob->ji_numrescs; i++) {
-					nr = &pjob->ji_resources[i];
-					lnum += nr->nr_cpupercent;
-					if (nr->nr_status != PBS_NODERES_DELETE)
-						lnum3 += nr->nr_cpupercent;
-				}
-				val.at_val.at_long += lnum;
-				val3.at_val.at_long += lnum3;
-			}
-#ifdef PYTHON
-			else if (strcmp(rd->rs_name, RESOURCE_UNKNOWN) != 0 &&
-				   (val.at_type == ATR_TYPE_LONG ||
-				    val.at_type == ATR_TYPE_FLOAT ||
-				    val.at_type == ATR_TYPE_SIZE ||
-				    val.at_type == ATR_TYPE_STR)) {
-
-
-				PyObject *py_accum = NULL;  /* holds accum resources_used values from all moms (including the released sister moms from job) */
-				PyObject *py_accum3 = NULL; /* holds accum resources_used values from all moms (NOT including the released sister moms from job) */
-
-
-				/* The following 2 temp variables will be set to 1
-				 * if there's an error accuumlating resources_used
-				 * values from all sister moms including those that
-				 * have been released from the job (fail) or from
-				 * all sister moms NOT including the released nodes
-				 * from job (fail2).
-				 */
-				int fail = 0;
-				int fail2 = 0;
-
-				py_jvalue = NULL;
-				tmpatr.at_type = tmpatr3.at_type = val.at_type;
-
-				if (val.at_type != ATR_TYPE_STR) {
-					rd->rs_set(&tmpatr, &val, SET);
-					rd->rs_set(&tmpatr3, &val, SET);
-				} else {
-					py_accum = PyDict_New();
-					if (py_accum == NULL) {
-						log_err(-1, __func__, "error creating accumulation dictionary");
-						continue;
-					}
-					py_accum3 = PyDict_New();
-					if (py_accum3 == NULL) {
-						log_err(-1, __func__, "error creating accumulation dictionary 3");
-						Py_CLEAR(py_accum);
-						continue;
-					}
-				}
-
-				/* accumulating resources_used values from sister
-				 * moms into tmpatr (from all sisters including released
-				 * moms) and tmpatr3 (from sisters that have not been
-				 * released from the job).
-				 */
-				for (i = 0; i < pjob->ji_numrescs; i++) {
-					char mom_hname[PBS_MAXHOSTNAME + 1];
-					char *p = NULL;
-					attribute *at2;
-					resource *rs2;
-
-					if (pjob->ji_resources[i].nodehost == NULL)
-						continue;
-
-					at2 = &pjob->ji_resources[i].nr_used;
-					if ((at2->at_flags & ATR_VFLAG_SET) == 0)
-						continue;
-
-					strncpy(mom_hname, pjob->ji_resources[i].nodehost, PBS_MAXHOSTNAME);
-					mom_hname[PBS_MAXHOSTNAME] = '\0';
-					p = strchr(mom_hname, '.');
-					if (p != NULL)
-						*p = '\0';
-
-					fail = fail2 = 0;
-					rs2 = (resource *) GET_NEXT(at2->at_val.at_list);
-					for (; rs2 != NULL; rs2 = (resource *) GET_NEXT(rs2->rs_link)) {
-
-						attribute val2; /* temp variable for accumulating resources_used from sis Moms */
-						resource_def *rd2;
-
-						rd2 = rs2->rs_defin;
-						val2 = rs2->rs_value; /* copy resource attribute */
-						if ((val2.at_flags & ATR_VFLAG_SET) == 0 || strcmp(rd2->rs_name, rd->rs_name) != 0)
-							continue;
-
-						if (val2.at_type == ATR_TYPE_STR) {
-							sval = val2.at_val.at_str;
-							py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1);
-							if (py_jvalue == NULL) {
-								log_errf(-1, __func__,
-									 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
-									 pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname, emsg);
-								fail = 1;
-							} else if (PyDict_Merge(py_accum, py_jvalue, 1) != 0) {
-								log_errf(-1, __func__,
-									 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
-									 pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
-								Py_CLEAR(py_jvalue);
-								fail = 1;
-							} else {
-								if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE) {
-									if (PyDict_Merge(py_accum3, py_jvalue, 1) != 0) {
-										log_errf(-1, __func__,
-											 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
-											 pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
-										fail2 = 1;
-									}
-									Py_CLEAR(py_jvalue);
-								} else {
-									Py_CLEAR(py_jvalue);
-								}
-							}
-
-						} else {
-							rd->rs_set(&tmpatr, &val2, INCR);
-							if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE)
-								rd->rs_set(&tmpatr3, &val2, INCR);
-						}
-						break;
-					}
-				}
-
-				/* accumulating the resources_used values from MS mom */
-
-				if (val.at_type == ATR_TYPE_STR) {
-
-					if (fail) {
-						Py_CLEAR(py_accum);
-						Py_CLEAR(py_accum3);
-						/* unset resc */
-						(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
-						/* go to next resource to encode_used */
-						continue;
-					}
-
-					if (fail2) {
-						Py_CLEAR(py_accum);
-						Py_CLEAR(py_accum3);
-						/* unset resc */
-						(void) add_to_svrattrl_list(phead, ad3->at_name, rd->rs_name, "", SET, NULL);
-						/* go to next resource to encode_used */
-						continue;
-					}
-
-					sval = val.at_val.at_str;
-					if (PyDict_Size(py_accum) == 0) {
-						/* no other values seen
-						 * except from MS...use as is
-						 * don't JSONify
-						 */
-						rd->rs_decode(&tmpatr, ATTR_used, rd->rs_name, sval);
-						Py_CLEAR(py_accum);
-						Py_CLEAR(py_accum3);
-					} else if ((py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) == NULL) {
-						log_errf(-1, __func__,
-							 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
-							 pjob->ji_qs.ji_jobid, rd->rs_name, sval, mom_short_name, emsg);
-						Py_CLEAR(py_accum);
-						Py_CLEAR(py_accum3);
-						/* unset resc */
-						(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
-						/* go to next resource to encode */
-						continue;
-					} else if (PyDict_Merge(py_accum, py_jvalue, 1) != 0) {
-						log_errf(-1, __func__,
-							 "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values",
-							 pjob->ji_qs.ji_jobid, rd->rs_name, sval, mom_short_name);
-						Py_CLEAR(py_jvalue);
-						Py_CLEAR(py_accum);
-						Py_CLEAR(py_accum3);
-						/* unset resc */
-						(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
-						/* go to next resource to encode */
-						continue;
-					} else {
-						dumps = json_dumps(py_accum, emsg, HOOK_BUF_SIZE - 1);
-						if (dumps == NULL) {
-							log_errf(-1, __func__,
-								 "Job %s resources_used.%s cannot be accumulated: %s",
-								 pjob->ji_qs.ji_jobid, rd->rs_name, emsg);
-							Py_CLEAR(py_jvalue);
-							Py_CLEAR(py_accum);
-							Py_CLEAR(py_accum3);
-							/* unset resc */
-							(void) add_to_svrattrl_list(phead, ad->at_name, rd->rs_name, "", SET, NULL);
-							continue;
-						}
-
-						rd->rs_decode(&tmpatr, ATTR_used, rd->rs_name, dumps);
-						Py_CLEAR(py_accum);
-						free(dumps);
-
-						if (PyDict_Merge(py_accum3, py_jvalue, 1) != 0) {
-							log_errf(-1, __func__,
-								 "Job %s resources_used_update.%s cannot be accumulated: value '%s' from mom %s: error merging values",
-								 pjob->ji_qs.ji_jobid, rd->rs_name, sval, mom_short_name);
-							Py_CLEAR(py_jvalue);
-							Py_CLEAR(py_accum3);
-							/* unset resc */
-							(void) add_to_svrattrl_list(phead, ad3->at_name, rd->rs_name, "", SET, NULL);
-							/* go to next resource to encode */
-							continue;
-						} else if ((dumps = json_dumps(py_accum3, emsg, HOOK_BUF_SIZE - 1)) == NULL) {
-							log_errf(-1, __func__,
-								 "Job %s resources_used_update.%s cannot be accumulated: %s",
-								 pjob->ji_qs.ji_jobid, rd->rs_name, emsg);
-							Py_CLEAR(py_jvalue);
-							Py_CLEAR(py_accum3);
-							/* unset resc */
-							(void) add_to_svrattrl_list(phead, ad3->at_name, rd->rs_name, "", SET, NULL);
-							continue;
-						} else {
-							rd->rs_decode(&tmpatr3, ATTR_used_update, rd->rs_name, dumps);
-							Py_CLEAR(py_jvalue);
-							Py_CLEAR(py_accum3);
-							free(dumps);
-						}
-					}
-				}
-				val = tmpatr;
-				val3 = tmpatr3;
-			}
-#endif
-			/* no resource to accumulate and yet a multinode job */
-		}
-
-		if (val.at_type != ATR_TYPE_STR || pjob->ji_numnodes == 1 || pjob->ji_resources != NULL) {
-			/* for string values, set value if single node job
-			 * (i.e. pjob->ji_numnodes == 1), or
-			 * if the value is accumulated from the various
-			 * values obtained from sister nodes
-			 * (i.e. pjob->ji_resources != NULL).
-			 */
-			if (val.at_type == ATR_TYPE_STR && pjob->ji_numnodes == 1) {
-				/* check if string value is a valid json string,
-				 * if it is then set the resource string within
-				 * single quotes.
-				 */
-
-				sval = val.at_val.at_str;
-				if ((py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) != NULL) {
-					dumps = json_dumps(py_jvalue, emsg, HOOK_BUF_SIZE - 1);
-					if (dumps == NULL)
-						Py_CLEAR(py_jvalue);
-					else {
-						rd->rs_decode(&tmpatr, ATTR_used, rd->rs_name, dumps);
-						val = tmpatr;
-						Py_CLEAR(py_jvalue);
-						free(dumps);
-						dumps = NULL;
-					}
-				}
-			}
-
-			if (rd->rs_encode(&val, phead, ad->at_name, rd->rs_name, ATR_ENCODE_CLIENT, NULL) < 0)
-				goto encode_used_exit;
-
-			if (include_resc_used_update) {
-				if (rd->rs_encode(&val3, phead, ad3->at_name, rd->rs_name, ATR_ENCODE_CLIENT, NULL) < 0)
-					goto encode_used_exit;
-			}
-		}
-
-encode_used_exit:
-		if ((tmpatr.at_flags & ATR_VFLAG_SET) != 0 && tmpatr.at_type == ATR_TYPE_STR)
-			rd->rs_free(&tmpatr);
-		if ((tmpatr3.at_flags & ATR_VFLAG_SET) != 0 && tmpatr3.at_type == ATR_TYPE_STR)
-			rd->rs_free(&tmpatr3);
-	}
-}
-
-/**
- * @brief	Add additional, necessary attributes to the status reply to server
- *
- * @param[in]	pjob - pointer to the job whose status is being returned.
- * @param[in]	cmd - command message to use to communicate status.
- * @param[in]	use_rtn_list_ext - set to 1 to use mom_rtn_list_ext[];
- *				   otherwise, use mom_rtn_list[]
  * @return void
- */
-static void
-stat_add_additional_attrs(job *pjob, struct resc_used_update *rused, int use_rtn_list_ext)
-{
-	enum job_atr *rtn_list;
-	int i;
-	int nth = 0;
-	attribute *at;
-	attribute_def *ad;
-
-	if (use_rtn_list_ext)
-		rtn_list = mom_rtn_list_ext;
-	else
-		rtn_list = mom_rtn_list;
-
-	/* First, add the session id */
-	if (pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_MODIFY)
-		job_attr_def[(int)JOB_ATR_session_id].at_encode(&pjob->ji_wattr[(int)JOB_ATR_session_id], &rused->ru_attr, job_attr_def[(int)JOB_ATR_session_id].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
-
-
-	if (mock_run) {
-		/* Also add substate & state to the attrs sent to servers since we don't have a session id */
-		job_attr_def[(int)JOB_ATR_state].at_encode(&pjob->ji_wattr[(int)JOB_ATR_state], &rused->ru_attr,
-				job_attr_def[(int)JOB_ATR_state].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
-		job_attr_def[(int)JOB_ATR_substate].at_encode(&pjob->ji_wattr[(int)JOB_ATR_substate], &rused->ru_attr,
-				job_attr_def[(int)JOB_ATR_substate].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
-	}
-
-	/* Now add certain others as required for updating at the Server */
-	for (i = 0; (int)rtn_list[i] != JOB_ATR_LAST; ++i) {
-		nth = (int)rtn_list[i];
-		at = &pjob->ji_wattr[nth];
-		ad = &job_attr_def[nth];
-
-		if (at->at_flags & ATR_VFLAG_MODIFY) {
-			(void)ad->at_encode(at, &rused->ru_attr,
-				ad->at_name, NULL,
-				ATR_ENCODE_CLIENT, NULL);
-
-			/* turn off modify so only sent if changed */
-			at->at_flags &= ~ATR_VFLAG_MODIFY;
-		}
-	}
-}
-
-/**
- * @brief
- * 	Communicates the status (updated attributes, resources) of a single job
- *	to the server via the given mom-to-server 'cmd'.
- *
- * @param[in]	pjob - pointer to the job whose status is being returned.
- * @param[in]	cmd - command message to use to communicate status.
- * @param[in]	use_rtn_list_ext - set to 1 to use mom_rtn_list_ext[];
- *				   otherwise, use mom_rtn_list[]
- *
- *
- * @return Void
  *
  */
-
-void
-update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
-{
-	struct resc_used_update rused;
-
-	/* pass user-client privilege to encode_resc() */
-
-	resc_access_perm = ATR_DFLAG_MGRD;
-
-	rused.ru_pjobid = pjob->ji_qs.ji_jobid;
-	rused.ru_comment = NULL;
-	rused.ru_status = 0;
-
-	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
-		rused.ru_hop = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-	else
-		rused.ru_hop = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-
-	CLEAR_HEAD(rused.ru_attr);
-	rused.ru_next = NULL;
-
-	/* Add attributes to the status reply */
-	stat_add_additional_attrs(pjob, &rused, use_rtn_list_ext);
-
-
-	/* if cmd is IS_RESCUSED_FROM_HOOK, send resources_used info
-	 * to the server if coming from mother superior of job.
-	 */
-	if ((cmd != IS_RESCUSED_FROM_HOOK) ||
-		((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) != 0)) {
-		/* now append resources used */
-
-		encode_used(pjob, &rused.ru_attr);
-	}
-
-	/* now send info to server via tpp */
-	send_resc_used(cmd, 1, &rused);
-
-	/* free svrattrl list */
-
-	free_attrlist(&rused.ru_attr);
-}
-
-/**
- * @brief
- *	Wrapper to: update_ajob_status_using_cmd(pjob, IS_RESCUSED, 0).
- *
- * @param[in]	pjob - job whose status is being returned.
- *
- * @note
- *	This is used when a job is first started.   It returns the special
- *	listed attributes as well as resources used.
- * @return Void
- *
- */
-void
-update_ajob_status(job *pjob)
-{
-	update_ajob_status_using_cmd(pjob, IS_RESCUSED, 0);
-}
-
-/**
- * @brief
- * 	update_jobs_status - return the status of jobs to the server
- *
- *	Returns the updated resources_used for all running jobs.
- *	The special listed attrbutes are not returned because they are only
- *	modified when a job is first started and that case is covered by
- *	update_ajob_status() above.
- *
- * @return Void
- *
- */
-
 void
 update_jobs_status(void)
 {
-	int			count = 0;
-	job			*pjob;
-	struct resc_used_update	*prused;
-	struct resc_used_update	*prusedtop = NULL;
-	struct resc_used_update	**prusednext;	/* keep jobs in order */
-
-	/* pass user-client privilege to encode_resc() */
-
-	resc_access_perm = ATR_DFLAG_MGRD;
-	prusednext = &prusedtop;
-
-	for (pjob = (job *)GET_NEXT(svr_alljobs);
-		pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-
+	job *pjob = (job *)GET_NEXT(svr_alljobs);
+	for (; pjob; pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
-			continue;	/* not Mother Superior */
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
 			continue;
-
-		++count;
-		/* allocate reply structure and fill in header portion */
-		prused = (struct resc_used_update *)
-			malloc(sizeof(struct resc_used_update));
-		assert(prused != NULL);
-		prused->ru_pjobid = pjob->ji_qs.ji_jobid;
-		prused->ru_comment= NULL;
-		prused->ru_status = 0;
-		if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-			prused->ru_hop    = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-		} else {
-			prused->ru_hop    = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-		}
-		CLEAR_HEAD(prused->ru_attr);
-		*prusednext	  = prused;	/* make last on list */
-		prused->ru_next   = NULL;	/* terminate list */
-		prusednext	  = &prused->ru_next;	/* track last link */
-
-		/* now append the session id and resources used */
-		(void)job_attr_def[(int)JOB_ATR_session_id].at_encode(
-			&pjob->ji_wattr[(int)JOB_ATR_session_id],
-			&prused->ru_attr,
-			job_attr_def[(int)JOB_ATR_session_id].at_name,
-			NULL, ATR_ENCODE_CLIENT, NULL);
-		encode_used(pjob, &prused->ru_attr);
-
-		if (svr_hook_resend_job_attrs != 0) {
-			int		 index;
-			int		 nth;
-			attribute	*at;
-			attribute_def	*ad;
-
-			/* resend any of the attributes modified by a hook */
-			/* just incase the update didn't reach the server  */
-
-			for (index=0; (int)mom_rtn_list[index] != JOB_ATR_LAST; ++index) {
-				nth = (int)mom_rtn_list[index];
-				at = &pjob->ji_wattr[nth];
-				ad = &job_attr_def[nth];
-
-				if (at->at_flags & ATR_VFLAG_HOOK) {
-					(void)ad->at_encode(at,
-						&prused->ru_attr,
-						ad->at_name, NULL,
-						ATR_ENCODE_CLIENT, NULL);
-
-				}
-			}
-
-		}
+		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
+			continue;
+		enqueue_update_for_send(pjob, IS_RESCUSED);
 	}
-
-	/* now send info to server via tpp */
-	send_resc_used(IS_RESCUSED, count, prusedtop);
-
-	/* free each resc_used_update struct and associated svrattrl list  */
-	/* DO NOT use the free macro, ru_pjobid points into the job struct */
-	/* and MUST be kept.						   */
-
-	while (prusedtop) {
-		prused = prusedtop;
-		if (prused->ru_comment)
-			(void)free(prused->ru_comment);
-		free_attrlist(&prused->ru_attr);
-		prusedtop = prused->ru_next;
-		(void)free(prused);
-	}
-
-	svr_hook_resend_job_attrs = 0;	/* clear the send hooked flag */
 }
 
 /**
@@ -1159,39 +309,31 @@ update_jobs_status(void)
  * @return Void
  *
  */
-
 void
 send_obit(job *pjob, int exval)
 {
-	struct resc_used_update rud;
-	pbs_list_head vnl_changes;
-
 #ifndef WIN32
 	/* update pjob with values set from an epilogue hook */
 	/* since these are hooks that are executing in a child process */
 	/* and changes inside the child will not be reflected in main */
 	/* mom */
 	if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0) {
-		char 	hook_outfile[MAXPATHLEN+1];
-		struct	stat stbuf;
-		snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_JOB_OUTFILE,
-			path_hooks_workdir, pjob->ji_qs.ji_jobid);
+		char hook_outfile[MAXPATHLEN + 1];
+		struct stat stbuf;
 
+		snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_JOB_OUTFILE, path_hooks_workdir, pjob->ji_qs.ji_jobid);
 		if (stat(hook_outfile, &stbuf) == 0) {
-			int	      	reject_deletejob = 0;
-			int	      	reject_rerunjob = 0;
-			int	      	accept_flag = 1;
+			pbs_list_head vnl_changes;
+			int reject_deletejob = 0;
+			int reject_rerunjob = 0;
+			int accept_flag = 1;
 
 			CLEAR_HEAD(vnl_changes);
-
-			if (get_hook_results(hook_outfile, &accept_flag,
-				NULL, NULL, 0,
-				&reject_rerunjob, &reject_deletejob, NULL,
-				NULL, 0, &vnl_changes, pjob, NULL, 0,
-								NULL) != 0) {
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, "",
-					"Failed to get epilogue hook results");
+			if (get_hook_results(hook_outfile, &accept_flag, NULL, NULL, 0,
+					     &reject_rerunjob, &reject_deletejob, NULL,
+					     NULL, 0, &vnl_changes, pjob,
+					     NULL, 0, NULL) != 0) {
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, "Failed to get epilogue hook results");
 				vna_list_free(vnl_changes);
 			} else {
 				/* Delete job or reject job actions */
@@ -1200,37 +342,21 @@ send_obit(job *pjob, int exval)
 				/* script executed by PBSADMIN or PBSUSER.      */
 				if (reject_deletejob) {
 					/* deletejob takes precedence */
-#ifdef NAS /* localmod 005 */
-					new_job_action_req(pjob, HOOK_PBSADMIN, 1);
-#else
-					new_job_action_req(pjob, 0, 1);
-#endif /* localmod 005 */
+					new_job_action_req(pjob, HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 				} else if (reject_rerunjob) {
-#ifdef NAS /* localmod 005 */
-					new_job_action_req(pjob, HOOK_PBSADMIN, 0);
-#else
-					new_job_action_req(pjob, 0, 0);
-#endif /* localmod 005 */
+					new_job_action_req(pjob, HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 				} else if (!accept_flag) {
 					/* Per EDD on a pbs.event().reject() from an */
 					/* epilogue hook, must delete the job. */
-#ifdef NAS /* localmod 005 */
-					new_job_action_req(pjob, HOOK_PBSADMIN, 1);
-#else
-					new_job_action_req(pjob, 0, 1);
-#endif /* localmod 005 */
+					new_job_action_req(pjob, HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
 				}
 
 				/* Whether or not we accept or reject, we'll make */
 				/* job changes, vnode changes, job actions */
+				enqueue_update_for_send(pjob, IS_RESCUSED_FROM_HOOK);
 
-
-				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 0);
-
-				/* Push vnl  hook changes to server */
+				/* Push vnl hook changes to server */
 				hook_requests_to_server(&vnl_changes);
-
 			}
 			/* need to clear out hook_outfile, */
 			/* as epilogue hook processing  */
@@ -1242,66 +368,28 @@ send_obit(job *pjob, int exval)
 	}
 #endif
 
-	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-		DBPRT(("send_obit: job %s run_version %ld exval %d\n", pjob->ji_qs.ji_jobid, pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long, exval))
+	if (is_jattr_set(pjob, JOB_ATR_run_version)) {
+		DBPRT(("send_obit: job %s run_version %ld exval %d\n",
+				pjob->ji_qs.ji_jobid, get_jattr_long(pjob, JOB_ATR_run_version), exval))
 	} else {
-		DBPRT(("send_obit: job %s runcount %ld exval %d\n", pjob->ji_qs.ji_jobid, pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long, exval))
+		DBPRT(("send_obit: job %s runcount %ld exval %d\n",
+				pjob->ji_qs.ji_jobid, get_jattr_long(pjob, JOB_ATR_runcount), exval))
 	}
 
 	pjob->ji_mompost = NULL;
-	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_OBIT) {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
+	if (!check_job_substate(pjob, JOB_SUBSTATE_OBIT)) {
+		set_job_substate(pjob, JOB_SUBSTATE_OBIT);
 		job_save(pjob);
 	}
-	if (server_stream >= 0) {
-		pjob->ji_sampletim = time_now;		/* when obit sent
-								 to server */
-		rud.ru_next   = NULL;
-		rud.ru_pjobid = pjob->ji_qs.ji_jobid;	/* DO NOT free
-							 this later */
-		rud.ru_comment= NULL;
-		/* epilogue script exit of 2 means requeue for	*/
-		/* chkpt/restart if job was checkpointed	*/
-		if ((exval == 2) &&
-			(pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT))
-			pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_QUERST;
-		rud.ru_status = pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
-		if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-			rud.ru_hop = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-		} else {
-			rud.ru_hop = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-		}
-		CLEAR_HEAD(rud.ru_attr);
-		encode_used(pjob, &rud.ru_attr);
-#ifdef	WIN32
-		if( pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & \
-							ATR_VFLAG_SET) {
-			rud.ru_comment = \
-			    pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str;
-		}
-#endif
-		/* now send info to server via tpp */
-		send_resc_used(IS_JOBOBIT, 1, &rud);
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			pjob->ji_qs.ji_jobid, "Obit sent");
 
-		/* free svrattrl list only */
-		free_attrlist(&rud.ru_attr);
-	} else {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_WARNING,
-			pjob->ji_qs.ji_jobid, "Cannot Send Obit");
-
-	}
-
-	/*
-	 **	Here, we reply to any checkpoint request that had
-	 **	an abort set.  We need to send the obit before the
-	 **	reply goes back.
-	 */
-	if (pjob->ji_preq) {
-		reply_ack(pjob->ji_preq);
-		pjob->ji_preq = NULL;
-	}
+	pjob->ji_sampletim = time_now; /* when obit sent to server */
+	/* epilogue script exit of 2 means requeue for	*/
+	/* chkpt/restart if job was checkpointed	*/
+	if (exval == 2 && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT))
+		pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_QUERST;
+	if (enqueue_update_for_send(pjob, IS_JOBOBIT) != 0)
+		log_joberr(PBSE_SYSTEM, __func__, "Failed to enque job obit", pjob->ji_qs.ji_jobid);
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "Obit sent");
 }
 
 /**
@@ -1318,9 +406,7 @@ void
 scan_for_exiting(void)
 {
 
-#ifndef WIN32
 	pid_t			cpid;
-#endif
 	int			i;
 	int			extval;
 	int			found_one = 0;
@@ -1354,6 +440,9 @@ scan_for_exiting(void)
 	for (pjob = (job *)GET_NEXT(svr_alljobs); pjob; pjob = nxjob) {
 		nxjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
+		if (pjob->ji_numnodes > 1 && !pjob->ji_msconnected && pjob->ji_nodeid) /* assume that MS has a connection to itself at all times */
+			continue;
+
 		/*
 		 ** If a restart is active, skip this job since
 		 ** not all of the tasks may have started yet.
@@ -1379,11 +468,8 @@ scan_for_exiting(void)
 			continue;
 		}
 
-		if (pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags &
-			ATR_VFLAG_SET) {
-			cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].
-				at_val.at_str;
-		}
+		if (is_jattr_set(pjob, JOB_ATR_Cookie))
+			cookie = get_jattr_str(pjob, JOB_ATR_Cookie);
 		else
 			cookie = NULL;
 
@@ -1402,32 +488,16 @@ scan_for_exiting(void)
 				int	*exitstat =
 					&pjob->ji_qs.ji_un.ji_momt.ji_exitstat;
 
-				pjob->ji_qs.ji_state    = JOB_STATE_EXITING;
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_KILLSIS;
+				set_job_state(pjob, JOB_STATE_LTR_EXITING);
+				set_job_substate(pjob, JOB_SUBSTATE_KILLSIS);
 				if (*exitstat >= 0)
 					*exitstat = ptask->ti_qs.ti_exitstat;
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 					LOG_INFO,
 					pjob->ji_qs.ji_jobid, "Terminated");
-#if	MOM_BGL
-				(void)job_bgl_delete(pjob);
-#endif	/* MOM_BGL */
 
-				/*
-				 ** Other places where
-				 ** job_bgl_delete is called, the
-				 ** function job_clean_extra would
-				 ** also be called.  That is not done
-				 ** here because the cleanup would
-				 ** be done twice -- once here and
-				 ** again when the job is deleted in
-				 ** del_job_resc.
-				 */
-
-				if (send_sisters(pjob, IM_KILL_JOB, NULL)
-					== 0) {
-					pjob->ji_qs.ji_substate =
-						JOB_SUBSTATE_EXITING;
+				if (send_sisters(pjob, IM_KILL_JOB, NULL) == 0) {
+					set_job_substate(pjob, JOB_SUBSTATE_EXITING);
 					/*
 					 ** if the job was checkpointed ok,
 					 ** reset ji_nodekill to prevent mom_comm
@@ -1524,7 +594,7 @@ end_loop:
 		 ** Look to see if the job has terminated.  If it is
 		 ** in any state other than EXITING continue on.
 		 */
-		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_EXITING)
+		if (!check_job_substate(pjob, JOB_SUBSTATE_EXITING))
 			continue;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -1686,28 +756,18 @@ end_loop:
 				LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		}
 
-#ifndef WIN32
 		/*
 		 ** Do dependent end of job processing if it needs to be
 		 ** done.
 		 */
 		if (job_end_final != NULL)
 			job_end_final(pjob);
-#if MOM_CSA
-		/*
-		 ** if capability present, cause a workload management
-		 ** record to be created for this phase of the job
-		 */
 
-		write_wkmg_record(WM_TERM, WM_TERM_EXIT, pjob);
-#endif	/* MOM_CSA */
-#endif
 		if (mock_run || !has_epilog) {
 			send_obit(pjob, 0);
 			continue;
 		}
 
-#ifndef WIN32
 		/*
 		 * Parent:
 		 *  +  fork child process to run epilogue,
@@ -1722,19 +782,18 @@ end_loop:
 			pjob->ji_momsubt = cpid;
 			pjob->ji_actalarm = 0;
 			pjob->ji_mompost = send_obit;
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNEPILOG;
+			set_job_substate(pjob, JOB_SUBSTATE_RUNEPILOG);
 
 			if (found_one++ < 20) {
 				continue; /* look for more exiting jobs */
 			} else {
 				break; /* 20 exiting jobs at a time is our limit */
 			}
-		} else if (cpid < 0)
+		} else if (cpid < 0 && errno != ENOSYS)
 			continue; /* curses, failed again */
-#endif
 
 		if (pjob->ji_grpcache) {
-			if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) && (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
+			if ((is_jattr_set(pjob, JOB_ATR_sandbox)) && (strcasecmp(get_jattr_str(pjob, JOB_ATR_sandbox), "PRIVATE") == 0)) {
 				/* in "sandbox=PRIVATE" mode so run epilogue in PBS_JOBDIR */
 				(void)chdir(jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 			} else {
@@ -1749,7 +808,7 @@ end_loop:
 			hook_input.pjob = pjob;
 			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE, PBS_MOM_SERVICE_NAME, mom_host, &hook_input, NULL, NULL, 0, update_svr);
 		} else {
-			if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags & ATR_VFLAG_SET) && pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long) {
+			if ((is_jattr_set(pjob, JOB_ATR_interactive)) && get_jattr_long(pjob, JOB_ATR_interactive)) {
 				extval = run_pelog(PE_EPILOGUE, path_epilog, pjob, PE_IO_TYPE_NULL);
 			} else {
 				extval = run_pelog(PE_EPILOGUE, path_epilog, pjob, PE_IO_TYPE_STD);
@@ -1758,14 +817,13 @@ end_loop:
 		if (extval != 2)
 			extval = 0;
 
-#ifndef WIN32
-		/* In *nix we are child so exit and parent will do send_obit() */
-		exit(extval);
-#else
+		if (!cpid)
+		/* if we are child exit and parent will do send_obit() */
+			exit(extval);
+
 		send_obit(pjob, i);
-		/* restore MOM's home since in Windows, we're in main mom */
+		/* restore MOM's home if we are foreground */
 		(void)chdir(mom_home);
-#endif
 	}
 	if (pjob == NULL)
 		exiting_tasks = 0;	/* went through all jobs */
@@ -1781,7 +839,7 @@ end_loop:
  * @return NULL - failure
  * @retval !NULL - pointer to server name
  */
-char *
+static char *
 get_servername_random(unsigned int *port)
 {
 
@@ -1876,11 +934,12 @@ err:
  *	   terminated and requeued.
  *
  * @param [in]	recover - Specify recovering mode for MoM.
+ * @param [in]	multinode_jobs - Pointer to list of pointers to recovered multinode jobs
  *
  */
 
 void
-init_abort_jobs(int recover)
+init_abort_jobs(int recover, pbs_list_head *multinode_jobs)
 {
 	DIR		*dir;
 	int		i, sisters;
@@ -1895,6 +954,8 @@ init_abort_jobs(int recover)
 	struct	stat	statbuf;
 	extern	char	*path_checkpoint;
 	extern	char	*path_spool;
+
+	CLEAR_HEAD((*multinode_jobs));
 
 	dir = opendir(path_jobs);
 	if (dir == NULL) {
@@ -1937,7 +998,7 @@ init_abort_jobs(int recover)
 		 ** If so, remove the regular checkpoint dir
 		 ** and rename the old to the regular name.
 		 */
-		strcpy(path, path_checkpoint);
+		pbs_strncpy(path, path_checkpoint, sizeof(path));
 		if (*pj->ji_qs.ji_fileprefix != '\0')
 			strcat(path, pj->ji_qs.ji_fileprefix);
 		else
@@ -1959,8 +1020,10 @@ init_abort_jobs(int recover)
 		 */
 		if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 			/* I am sister, junk the job files */
-			mom_deljob(pj);
-			continue;
+			if( recover != 2 ) {
+				mom_deljob(pj);
+				continue;
+			}
 		}
 
 		sisters = pj->ji_numnodes - 1;
@@ -1980,7 +1043,7 @@ init_abort_jobs(int recover)
 		 **	back to OBIT so the server can verify that
 		 **	it still has the job or not.
 		 */
-		if (pj->ji_qs.ji_substate == JOB_SUBSTATE_EXITED) {
+		if (check_job_substate(pj, JOB_SUBSTATE_EXITED)) {
 			/*
 			 ** We don't want to change the state if the
 			 ** job is checkpointed.
@@ -1988,10 +1051,10 @@ init_abort_jobs(int recover)
 			if ((pj->ji_qs.ji_svrflags &
 				(JOB_SVFLG_CHKPT|
 				JOB_SVFLG_ChkptMig)) == 0) {
-				pj->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
+				set_job_substate(pj, JOB_SUBSTATE_OBIT);
 				job_save(pj);
 			}
-		} else if (pj->ji_qs.ji_substate == JOB_SUBSTATE_TERM) {
+		} else if (check_job_substate(pj, JOB_SUBSTATE_TERM)) {
 			/*
 			 * Mom went down while terminate action script was
 			 * running, don't know if it finished or not;  force
@@ -1999,14 +1062,14 @@ init_abort_jobs(int recover)
 			 */
 			if (recover)
 				(void)kill_job(pj, SIGKILL);
-			pj->ji_qs.ji_substate = JOB_SUBSTATE_OBIT;
+			set_job_substate(pj, JOB_SUBSTATE_OBIT);
 			job_save(pj);
 		} else if ((recover != 2) &&
-			((pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) ||
-			(pj->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) ||
-			(pj->ji_qs.ji_substate == JOB_SUBSTATE_KILLSIS)   ||
-			(pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNEPILOG) ||
-			(pj->ji_qs.ji_substate == JOB_SUBSTATE_EXITING))) {
+			((check_job_substate(pj, JOB_SUBSTATE_RUNNING)) ||
+			(check_job_substate(pj, JOB_SUBSTATE_SUSPEND)) ||
+			(check_job_substate(pj, JOB_SUBSTATE_KILLSIS))   ||
+			(check_job_substate(pj, JOB_SUBSTATE_RUNEPILOG)) ||
+			(check_job_substate(pj, JOB_SUBSTATE_EXITING)))) {
 
 			if (recover)
 				(void)kill_job(pj, SIGKILL);
@@ -2039,8 +1102,7 @@ init_abort_jobs(int recover)
 			if (sisters > 0) {
 				(void)send_sisters(pj, IM_DELETE_JOB, NULL);
 			}
-
-			pj->ji_qs.ji_substate = JOB_SUBSTATE_EXITING;
+			set_job_substate(pj, JOB_SUBSTATE_EXITING);
 			job_save(pj);
 			exiting_tasks = 1;
 		} else if (recover == 2) {
@@ -2053,13 +1115,22 @@ init_abort_jobs(int recover)
 				ptask->ti_flags |= TI_FLAGS_ORPHAN;
 			}
 
-			if (pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) {
+			if (check_job_substate(pj, JOB_SUBSTATE_RUNNING)) {
 				recover_walltime(pj);
 				start_walltime(pj);
 			}
 
 			if (mom_do_poll(pj))
 				append_link(&mom_polljobs, &pj->ji_jobque, pj);
+
+			if (sisters > 0)
+				append_link(multinode_jobs, &pj->ji_multinodejobs, pj);
+
+			if (pj->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+				/* I am MS */
+				pj->ji_stdout = pj->ji_ports[0] = pj->ji_extended.ji_ext.ji_stdout;
+				pj->ji_stderr = pj->ji_ports[1] = pj->ji_extended.ji_ext.ji_stdout;
+			}
 		}
 	}
 	if (errno != 0 && errno != ENOENT) {
@@ -2166,13 +1237,6 @@ del_job_hw(job *pjob)
 	pid_t	pid;
 	int	sconn = -1;
 	struct work_task *wtask = NULL;
-#endif
-
-#if	MOM_BGL
-	(void)job_bgl_delete(pjob);
-#endif	/* MOM_BGL */
-
-#if MOM_ALPS
 
 	/*
 	 * Try to cancel the reservation once as 'main MOM'.
@@ -2301,9 +1365,10 @@ del_job_resc(job *pjob)
 			exit(99);	/* simulate crash */
 	}
 
-	/* remove PBS_NODEFILE - Mother Superior only has one */
+	/* remove PBS_NODEFILE - Mother Superior shall have one and the sister
+	moms too if the mom config gen_nodefile_on_sister_mom is set to 1 */
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE || gen_nodefile_on_sister_mom) {
 		char	file[MAXPATHLEN+1];
 #ifdef WIN32
 		(void)sprintf(file, "%s/auxiliary/%s",
@@ -2376,7 +1441,7 @@ mom_deljob_wait(job *pjob)
 	del_job_resc(pjob);	/* rm tmpdir, etc. */
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {	/* MS */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_DELJOB;
+		set_job_substate(pjob, JOB_SUBSTATE_DELJOB);
 		pjob->ji_sampletim      = time_now;
 		/*
 		 * The SISTER_KILLDONE flag needs to be reset so
@@ -2491,7 +1556,7 @@ send_sisters_deljob_wait(job *pjob)
 	int	i;
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {	/* MS */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_DELJOB;
+		set_job_substate(pjob, JOB_SUBSTATE_DELJOB);
 		pjob->ji_sampletim = time_now;
 		/*
 		 * The SISTER_KILLDONE flag needs to be reset so
@@ -2514,35 +1579,6 @@ send_sisters_deljob_wait(job *pjob)
 
 /**
  * @brief
- * 	set_job_toexited - set job substate to exited
- *
- *	Called when a checkpointed job's obit is acknowledged by the server,
- *	prevents a second obit from being sent.
- *
- * @param[in] jobid - char pointer holding jobid
- *
- * @return Void
- *
- */
-void
-set_job_toexited(char *jobid)
-{
-	job *pjob;
-
-	pjob = find_job(jobid);
-	if (pjob) {
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_EXITED;
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) {
-			/* if checkpointed, save state to disk, otherwise  */
-			/* leave unchanges on disk so recovery will resend */
-			/* obit to server                                  */
-			(void)job_save(pjob);
-		}
-	}
-}
-
-/**
- * @brief
  * 		Convenience function to call mom_set_use() when all jobs need to be updated
  *
  * @param	void
@@ -2557,6 +1593,13 @@ mom_set_use_all(void)
 		if (mom_get_sample() == PBSE_NONE) {
 			pjob = (job *) GET_NEXT(svr_alljobs);
 			while (pjob) {
+				if ((check_job_state(pjob, JOB_STATE_LTR_EXITING) &&
+						(get_job_substate(pjob) >= JOB_SUBSTATE_OBIT ||
+								get_job_substate(pjob) == JOB_SUBSTATE_EXITED)) ||
+					(check_job_state(pjob, JOB_STATE_LTR_RUNNING) && get_job_substate(pjob) <= JOB_SUBSTATE_PRERUN)) {
+					pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+					continue;
+				}
 				mom_set_use(pjob);
 				pjob = (job *)GET_NEXT(pjob->ji_alljobs);
 			}

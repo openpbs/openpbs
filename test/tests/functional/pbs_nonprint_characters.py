@@ -687,6 +687,7 @@ sleep 5
         if qstat_out.find(match) != -1:
             self.logger.info('Found %s in qstat -f -F dsv output' % match)
 
+    @timeout(1200)
     def test_nonprint_character_job_array(self):
         """
         Using each of the non-printable ASCII characters, except NULL

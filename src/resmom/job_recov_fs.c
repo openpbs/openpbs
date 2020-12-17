@@ -195,8 +195,7 @@ job_save_fs(job *pjob)
 
 	} else {
 		/* an attribute changed,  update mtime */
-		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
-		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_MOD_MCACHE;
+		set_jattr_l_slim(pjob, JOB_ATR_mtime, time_now, SET);
 
 		/*
 		 * write the whole structure to the file.
@@ -326,7 +325,7 @@ job_recov_fs(char *filename)
 
 	/* change file name in case recovery fails so we don't try same file */
 
-	(void)strcpy(basen, pbs_recov_filename);
+	pbs_strncpy(basen, pbs_recov_filename, sizeof(basen));
 	psuffix = basen + strlen(basen) - strlen(JOB_BAD_SUFFIX);
 	(void)strcpy(psuffix, JOB_BAD_SUFFIX);
 #ifdef WIN32

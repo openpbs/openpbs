@@ -163,7 +163,7 @@ if e.type == pbs.RESV_END:
                                 TestResvEndHook.advance_resv_hook_script)
 
         offset = 10
-        duration = 30
+        duration = 300
         rid = self.submit_resv(offset, duration)
 
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}

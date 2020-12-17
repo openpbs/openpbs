@@ -50,14 +50,14 @@
 #include <stdio.h>
 #include "libpbs.h"
 #include "pbs_ecl.h"
-
+#include "cmds.h"
 
 /**
  * @brief
  *	-send manager request and read reply.
  *
  * @param[in] c - communication handle
- * @param[in] function - req type
+ * @param[in] rq_type - req type
  * @param[in] command - command
  * @param[in] objtype - object type
  * @param[in] objname - object name
@@ -69,37 +69,27 @@
  * @retval	!0	error
  *
  */
-int
-PBSD_manager(int c, int function, int command, int objtype, char *objname, struct attropl *aoplp, char *extend)
+static int
+PBSD_manager_inner(int c, int rq_type, int command, int objtype, char *objname, struct attropl *aoplp, char *extend)
 {
-	int i;
+	int rc = 0;
 	struct batch_reply *reply;
-	int rc;
 
 	/* initialize the thread context data, if not initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return pbs_errno;
-
-	/* verify the object name if creating a new one */
-	if (command == MGR_CMD_CREATE)
-		if (pbs_verify_object_name(objtype, objname) != 0)
-			return pbs_errno;
-
-	/* now verify the attributes, if verification is enabled */
-	if ((pbs_verify_attributes(c, function, objtype,
-		command, aoplp)) != 0)
-		return pbs_errno;
-
-	/* lock pthread mutex here for this connection */
-	/* blocking call, waits for mutex release */
+	/*
+	* lock pthread mutex here for this connection
+	* blocking call, waits for mutex release
+	*/
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return pbs_errno;
 
 	/* send the manage request */
-	i = PBSD_mgr_put(c, function, command, objtype, objname, aoplp, extend, PROT_TCP, NULL);
-	if (i) {
+	rc = PBSD_mgr_put(c, rq_type, command, objtype, objname, aoplp, extend, PROT_TCP, NULL);
+	if (rc) {
 		(void)pbs_client_thread_unlock_connection(c);
-		return i;
+		return rc;
 	}
 
 	/* read reply from stream into presentation element */
@@ -113,4 +103,87 @@ PBSD_manager(int c, int function, int command, int objtype, char *objname, struc
 		return pbs_errno;
 
 	return rc;
+}
+
+/**
+ * @brief
+ *	-send manager request and read reply to a possibly multi-svr connection
+ *
+ * @param[in] c - communication handle
+ * @param[in] rq_type - req type
+ * @param[in] command - command
+ * @param[in] objtype - object type
+ * @param[in] objname - object name
+ * @param[in] aoplp - attribute list
+ * @param[in] extend - extend string for req
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	!0	error
+ *
+ */
+int
+PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct attropl *aoplp, char *extend)
+{
+	int i;
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int start = 0;
+	int ct;
+	int nsvrs = get_num_servers();
+
+	/* verify the object name if creating a new one */
+	if (command == MGR_CMD_CREATE)
+		if (pbs_verify_object_name(objtype, objname) != 0)
+			return pbs_errno;
+
+	/* now verify the attributes, if verification is enabled */
+	if ((pbs_verify_attributes(random_srv_conn(svr_conns), rq_type, objtype, command, aoplp)) != 0)
+		return pbs_errno;
+
+	if (svr_conns) {
+		if (objtype == MGR_OBJ_JOB &&
+		    (start = starting_index(objname)) == -1)
+			start = 0;
+
+		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			/*
+			* For a single server cluster, instance fd and cluster fd are the same. 
+			* Hence breaking the loop.
+			*/
+			if (svr_conns[i]->sd == c) {
+				return PBSD_manager_inner(svr_conns[i]->sd,
+							  rq_type,
+							  command,
+							  objtype,
+							  objname,
+							  aoplp,
+							  extend);
+			}
+
+			rc = PBSD_manager_inner(svr_conns[i]->sd,
+						rq_type,
+						command,
+						objtype,
+						objname,
+						aoplp,
+						extend);
+			if (rc && objtype == MGR_OBJ_JOB && pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		return rc;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	return PBSD_manager_inner(c, rq_type,
+				  command,
+				  objtype,
+				  objname,
+				  aoplp,
+				  extend);
 }

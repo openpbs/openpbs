@@ -78,6 +78,21 @@ except:
 # Set global pbs_conf parameter.
 pbs_conf = _pbs_v1.get_pbs_conf()
 
+
+#
+# get_server_data_fp: returns the file object representing the
+#                     hook debug data file.
+def get_server_data_fp():
+    data_file = _pbs_v1.get_server_data_file()
+    if data_file is None:
+        return None
+    try:
+        return open(data_file, "a+");
+    except:
+        _pbs_v1.logmsg(_pbs_v1.LOG_WARNING,
+                       "warning: error opening debug data file %s" % data_file)
+        return None
+
 #
 # get_local_nodename: returns the name of the current host as it would appear
 #                      as a vnode name. This is usually the short form of the
@@ -118,8 +133,6 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
 
     _pbs_v1.set_c_mode()
 
-    server_data_fp = _pbs_v1.get_server_data_fp()
-
     if(connect_server == None):
         con = pbs_connect("localhost")
     else:
@@ -154,6 +167,8 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
         _pbs_v1.set_python_mode()
         return None
 
+    server_data_fp = get_server_data_fp()
+
     b = bs
     obj = None
     while(b):
@@ -171,6 +186,8 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
             _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
                            "pbs_statobj: Bad object type %s" % (objtype))
             pbs_disconnect(con)
+            if server_data_fp:
+                server_data_fp.close()
             _pbs_v1.set_python_mode()
             return None
 
@@ -193,6 +210,8 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
                 if((filter_queue != None) and (n == ATTR_queue) and
                         (filter_queue != v)):
                     pbs_disconnect(con)
+                    if server_data_fp:
+                        server_data_fp.close()
                     _pbs_v1.set_python_mode()
                     return None
                 if n == ATTR_inter or n == ATTR_block or n == ATTR_X11_port:
@@ -247,6 +266,8 @@ def pbs_statobj(objtype, name=None, connect_server=None, filter_queue=None):
         b = b.next
 
     pbs_disconnect(con)
+    if server_data_fp:
+        server_data_fp.close()
     _pbs_v1.set_python_mode()
     return obj
 
@@ -442,7 +463,26 @@ class _vnode():
             _pbs_v1.mark_vnode_set(self.name, name, str(value))
 
     #: m(__seattr__)
+    
+    def extract_state_strs(self):
+        """returns the string values from the state bits."""
+        lst = []
+        if self.state == _pbs_v1.ND_STATE_FREE:
+            lst.append('ND_STATE_FREE')
+            lst.append('ND_STATE_VNODE_AVAILABLE')
+        else:
+            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+        return lst
 
+    def extract_state_ints(self):
+        """returns the integer values from the state bits."""
+        lst = []
+        if self.state == _pbs_v1.ND_STATE_FREE:
+            lst.append(_pbs_v1.ND_STATE_FREE)
+            lst.append(_pbs_v1.ND_STATE_VNODE_AVAILABLE)
+        else:
+            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+        return lst
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
 _vnode._connect_server = PbsAttributeDescriptor(
@@ -1123,14 +1163,15 @@ class pbs_iter():
                 job = None
 
                 _pbs_v1.set_c_mode()
-
-                server_data_fp = _pbs_v1.get_server_data_fp()
+                server_data_fp = get_server_data_fp()
                 if(b):
                     if(self.type == "jobs"):
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
                                        "pbs_iter/next: pbs_python mode not"
                                        " supported by NAS local mod")
                         pbs_disconnect(self.con)
+                        if server_data_fp:
+                            server_data_fp.close()
                         self.con = -1
                         _pbs_v1.set_python_mode()
                         raise StopIteration
@@ -1149,6 +1190,8 @@ class pbs_iter():
                                        "type %s"
                                        % (self.type))
                         pbs_disconnect(self.con)
+                        if server_data_fp:
+                            server_data_fp.close()
                         self.con = -1
                         _pbs_v1.set_python_mode()
                         raise StopIteration
@@ -1223,6 +1266,8 @@ class pbs_iter():
 
                 self.bs = b.next
 
+                if server_data_fp:
+                    server_data_fp.close()
                 _pbs_v1.set_python_mode()
                 return obj
             else:
@@ -1267,7 +1312,7 @@ class pbs_iter():
 
                 _pbs_v1.set_c_mode()
 
-                server_data_fp = _pbs_v1.get_server_data_fp()
+                server_data_fp = get_server_data_fp()
                 if(b):
                     if(self.type == "jobs"):
                         obj = _job(b.name, self._connect_server)
@@ -1287,6 +1332,8 @@ class pbs_iter():
                                        " iterator type %s"
                                        % (self.type))
                         pbs_disconnect(self.con)
+                        if server_data_fp:
+                            server_data_fp.close()
                         self.con = -1
                         _pbs_v1.set_python_mode()
                         raise StopIteration
@@ -1362,6 +1409,8 @@ class pbs_iter():
                 self.bs = b.next
 
                 _pbs_v1.set_python_mode()
+                if server_data_fp:
+                    server_data_fp.close()
                 return obj
             else:
                 # argument 0 below tells C function we're inside next
@@ -1481,7 +1530,6 @@ _management._connect_server = PbsAttributeDescriptor(
 management = _management
 
 
-
 #:------------------------------------------------------------------------
 #                  Reverse Lookup for _pv1mod_insert_int_constants
 #:-------------------------------------------------------------------------
@@ -1490,6 +1538,8 @@ _pbs_v1.REVERSE_MGR_OBJS = {}
 _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
+_pbs_v1.REVERSE_NODE_STATE = {}
+    
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
         _pbs_v1.REVERSE_MGR_CMDS[value] = key
@@ -1501,3 +1551,5 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_BATCH_OPS[value] = key
     elif key.startswith("ATR_VFLAG_"):
         _pbs_v1.REVERSE_ATR_VFLAGS[value] = key
+    elif key.startswith("ND_STATE_"):
+        _pbs_v1.REVERSE_NODE_STATE[value] = key
