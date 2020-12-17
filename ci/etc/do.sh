@@ -67,7 +67,7 @@ fi
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
     yum clean all
-    yum -y install yum-utils epel-release rpmdevtools
+    yum -y install yum-utils epel-release rpmdevtools glibc-all-langpacks
     yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical libasan llvm git
@@ -83,7 +83,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     dnf -y clean all
     dnf -y install 'dnf-command(config-manager)'
     dnf -y config-manager --set-enabled powertools
-    dnf -y install epel-release
+    dnf -y install epel-release glibc-all-langpacks
     dnf -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical libasan llvm git
@@ -95,7 +95,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     zypper -n ref
-    zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git
+    zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git glibc-all-langpacks
     rpmdev-setuptree
     zypper -n install --force-resolution $(rpmspec --buildrequires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     zypper -n install --force-resolution $(rpmspec --requires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
@@ -109,7 +109,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
       libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
       swig expat postgresql postgresql-contrib python3-pip sudo \
-      man-db git elfutils
+      man-db git elfutils  langpack-locales
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
