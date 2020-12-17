@@ -670,17 +670,12 @@ __pbs_connect_extend(char *server, char *extend_data)
 
 			/* see if already seen Primary down */		
 			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
-			if (stat(pbsrc, &sb) == -1) {	
-				/* try primary first */	
-				altservers[0] = pbs_conf.pbs_primary;	
-				altservers[1] = pbs_conf.pbs_secondary;	
-				using_secondary = 0;	
-			} else {	
+			if (stat(pbsrc, &sb) != -1) {	
 				/* try secondary first */	
-				altservers[0] = pbs_conf.pbs_secondary;	
-				altservers[1] = pbs_conf.pbs_primary;	
+				altservers[0] = pbs_conf.pbs_secondary;		
+				altservers[1] = pbs_conf.pbs_primary;
 				using_secondary = 1;	
-			}	
+			} 	
 #endif	
 		}	
 	}
