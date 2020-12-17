@@ -95,7 +95,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     zypper -n ref
-    zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git glibc-all-langpacks
+    zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git glibc-locale
     rpmdev-setuptree
     zypper -n install --force-resolution $(rpmspec --buildrequires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     zypper -n install --force-resolution $(rpmspec --requires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
