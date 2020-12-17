@@ -66,6 +66,8 @@
 
 char *pbs_conf_env = "PBS_CONF_FILE";
 
+#define LARGE_BUF_LEN 4096
+
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
 
@@ -1186,6 +1188,107 @@ err:
 	pbs_conf.load_failed = 1;
 	(void)pbs_client_thread_unlock_conf();
 	return 0;
+}
+
+/**
+ * @brief
+ *	convert psi to comma separated string.
+ *
+ * @param[in] psi - psi structure
+ * @param[in] nsvrs - num of servers
+ * 
+ * @note
+ * return string has to be freed by the caller
+ *
+ * @return char *
+ * @retval !NULL pointer psi string
+ * @retval NULL failure
+ */
+char *
+psi_to_str(psi_t *psi, int nsvrs)
+{
+	char buf[LARGE_BUF_LEN];
+	int len = 0;
+	int i;
+
+	if (!psi)
+		return strdup("");
+
+	for (i = 0; i < nsvrs; i++) {
+		if (len == 0)
+			len += snprintf(buf, LARGE_BUF_LEN, "%s:%d", psi[i].name, psi[i].port);
+		else
+			len += snprintf(buf + len, LARGE_BUF_LEN, ",%s:%d", psi[i].name, psi[i].port);
+	}
+
+	return strdup(buf);
+}
+
+/**
+ * @brief
+ *	Get conf paramter without calling pbs_loadconf
+ *	Used when only clients do not call pbs_loadconf
+ *	due to performance reasons.
+ *
+ * @param[in] conf_var_name - conf variable
+ *
+ * @note
+ * Although the function has a generic structure,
+ * make sure that the variable is compared within function.
+ * - return string has to be freed by the caller
+ *
+ * @return char *
+ * @retval !NULL pointer to the tmpdir string
+ * @retval NULL failure
+ */
+char *
+pbs_get_conf_var(char *conf_var_name)
+{
+	char *conf_val_out = NULL;
+	FILE *fp = NULL;
+	char *conf_file = NULL;
+	char *conf_name = NULL;
+	char *conf_value = NULL;
+	char *p = NULL;
+
+	/* If pbs_conf already been populated use that value. */
+	if (pbs_conf.loaded != 0) {
+		if (!strcmp(conf_var_name, PBS_CONF_SERVER_INSTANCES))
+			conf_val_out = psi_to_str(pbs_conf.psi, pbs_conf.pbs_num_servers);
+	}
+
+	if (conf_val_out)
+		return conf_val_out;
+
+	/* Next, try the environment. */
+	if ((p = getenv(conf_var_name)) != NULL) {
+		conf_val_out = strdup(p);
+	}
+
+	if (conf_val_out)
+		return conf_val_out;
+
+	/* Now try pbs.conf */
+	conf_file = pbs_get_conf_file();
+	if ((fp = fopen(conf_file, "r")) != NULL) {
+		while (parse_config_line(fp, &conf_name, &conf_value) != NULL) {
+			if ((conf_name == NULL) || (*conf_name == '\0'))
+				continue;
+			if ((conf_value == NULL) || (*conf_value == '\0'))
+				continue;
+			if (!strcmp(conf_name, conf_var_name)) {
+				conf_val_out = strdup(conf_value);
+			}
+		}
+		fclose(fp);
+	}
+	free(conf_file);
+	
+	if (conf_val_out)
+		return conf_val_out;
+
+	/* Finally, resort to the default. */
+	return strdup("");
 }
 
 /**

@@ -62,6 +62,7 @@
 #include <assert.h>
 #include <sys/un.h>
 #include <syslog.h>
+#include <openssl/sha.h>
 #include "pbs_ifl.h"
 #include "cmds.h"
 #include "libpbs.h"
@@ -180,7 +181,7 @@ log_syslog(char *msg)
  * @return - The string representing path to the pbs conf file
  *
  */
-char *
+static char *
 get_conf_path(void)
 {
 	char *cnf = getenv("PBS_CONF_FILE");
@@ -1410,32 +1411,51 @@ get_comm_filename(char *fname)
 {
 	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
 	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
+	char *psi_var = pbs_get_conf_var(PBS_CONF_SERVER_INSTANCES);
 	int count = 0;
+	char buf[LARGE_BUF_LEN];
+	int len;
+	char hash[SHA_DIGEST_LENGTH];
+	int i;
 
-
-	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
+	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s_%s",
 		tmpdir,
 		((server_out == NULL || server_out[0] == 0) ?
 		"default" : server_out),
 		(unsigned long int)getuid(),
 		cred_name,
 		get_conf_path(),
-		(env_svr == NULL)?"":env_svr,
-		(env_port == NULL)?"":env_port
+		env_svr ? env_svr : "",
+		env_port ? env_port : "",
+		psi_var ? psi_var : ""
 		);
 
 	if (count >= MAXPIPENAME) {
-		snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
-		TMP_DIR,
-		((server_out == NULL || server_out[0] == 0) ?
-		"default" : server_out),
-		(unsigned long int)getuid(),
-		cred_name,
-		get_conf_path(),
-		(env_svr == NULL)?"":env_svr,
-		(env_port == NULL)?"":env_port
-		);
+		count = snprintf(fname, MAXPIPENAME, "%s/pbs_", TMP_DIR);
+		len = snprintf(buf, MAXPIPENAME, "%.16s_%lu_%.8s_%.32s_%.16s_%.5s_%s",
+			 ((server_out == NULL || server_out[0] == 0) ? "default" : server_out),
+			 (unsigned long int) getuid(),
+			 cred_name,
+			 get_conf_path(),
+			 (env_svr == NULL) ? "" : env_svr,
+			 (env_port == NULL) ? "" : env_port,
+			 psi_var ? psi_var : "");
+		if (len + count < MAXPIPENAME) {
+			memcpy(fname + count, buf, MAXPIPENAME - count);
+			fname[MAXPIPENAME - 1] = '\0';
+		} else {
+			if (SHA1((const unsigned char *) buf, SHA_DIGEST_LENGTH, (unsigned char *) &hash)) {
+				for (i = 0; i < SHA_DIGEST_LENGTH; i++)
+					sprintf(buf + (i * 2), "%02x", hash[i]);
+					
+				buf[SHA_DIGEST_LENGTH*2] = 0;
+			}
+			memcpy(fname + count, buf, MAXPIPENAME - count);
+			fname[MAXPIPENAME - 1] = '\0';
+		}
 	}
+
+	free(psi_var);
 }
 
 /**

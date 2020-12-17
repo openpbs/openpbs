@@ -498,6 +498,10 @@ extern int pbs_query_max_connections(void);
 
 extern char *pbs_get_tmpdir(void);
 
+extern char *pbs_get_conf_var(char *);
+
+extern char *psi_to_str(psi_t *, int);
+
 extern FILE *pbs_popen(const char *, const char *);
 
 extern int pbs_pkill(FILE *, int);

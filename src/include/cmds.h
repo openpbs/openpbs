@@ -65,6 +65,7 @@
 #define NULLstr(x)	(((x)==NULL) || (strlen(x)==0))
 
 #define MAX_LINE_LEN 4095
+#define LARGE_BUF_LEN 4096
 #define MAXSERVERNAME PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2
 #define PBS_DEPEND_LEN 2040
 
