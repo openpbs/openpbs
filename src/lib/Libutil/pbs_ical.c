@@ -321,8 +321,8 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 			return 0;
 		}
 	}
-
-        /* Check if frequency was correctly set */
+	
+	/* Check if frequency was correctly set */
 	if (rt.freq == ICAL_NO_RECURRENCE) {
 		*err_code = PBSE_BAD_RRULE_SYNTAX;
 		return 0;
