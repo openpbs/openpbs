@@ -109,7 +109,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
       libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
       swig expat postgresql postgresql-contrib python3-pip sudo \
-      man-db git elfutils  langpack-locales
+      man-db git elfutils  locales locales-all
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
@@ -288,5 +288,5 @@ fi
 if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
   export  MAN_DISABLE_SECCOMP=1
-  pbs_benchpress --tags=smoke -l DEBUG2
+  pbs_benchpress -t SmokeTest.test_man_pages -l DEBUG2
 fi
