@@ -234,7 +234,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 		}
 
 		/* create a new pkt and add the dhdr chunk first */
-		pkt = tpp_bld_pkt(NULL, NULL, sizeof(tpp_data_pkt_hdr_t), 1, (void **) &hdr);
+		pkt = tpp_bld_pkt(NULL, NULL, sizeof(tpp_join_pkt_hdr_t), 1, (void **) &hdr);
 		if (!pkt) {
 			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 			goto err;
@@ -257,23 +257,25 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 			goto err;
 		}
 	}
+	pbs_idx_free_ctx(idx_ctx);
 	tpp_unlock_rwlock(&router_lock);
 
 	while ((pkt = (tpp_packet_t *) tpp_deque(&leaf_packets))) {
 		if (tpp_transport_vsend(target->conn_fd, pkt) != 0) {
 			tpp_log(LOG_ERR, __func__, "Send leaves to pbs_comm %s failed", target->router_name);
-			goto err;
+			/* let the dequeue continue to happen and attempt to send happen */
+			/* vsend will free packets even in case of failure */
 		}
 	}
-	pbs_idx_free_ctx(idx_ctx);
+	
 	return 0;
 
 err:
+	/* we jump to the error block only before starting to send, so safe to clear the queue */
 	tpp_log(LOG_CRIT, __func__, "Error sending leaves to router %s", target->router_name);
 	tpp_unlock_rwlock(&router_lock);
 
-	if (idx_ctx)
-		pbs_idx_free_ctx(idx_ctx);
+	pbs_idx_free_ctx(idx_ctx);
 
 	while ((pkt = (tpp_packet_t *) tpp_deque(&leaf_packets))) /* drain the list and free packets */
 		tpp_free_pkt(pkt);
@@ -316,11 +318,11 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 		}
 		if (tpp_enque(&router_list, r) == NULL) {
 			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to router_list");
+			tpp_unlock_rwlock(&router_lock);
 			goto err;
 		}
 	}
 	pbs_idx_free_ctx(idx_ctx);
-
 	tpp_unlock_rwlock(&router_lock);
 
 	while ((r = (tpp_router_t *) tpp_deque(&router_list))) {
@@ -341,18 +343,17 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 				tpp_log(LOG_ERR, __func__, "send failed");
 				goto err;
 			}
+			/* vsend will free packets even in case of failure */
 		}
 	}
 	return 0;
 
 err:
 	tpp_log(LOG_CRIT, __func__, "Error broadcasting to my routers");
-	tpp_unlock_rwlock(&router_lock);
-
 	if (idx_ctx)
 		pbs_idx_free_ctx(idx_ctx);
 
-	while (tpp_deque(&router_list)); /* drain the list */
+	while (tpp_deque(&router_list)); /* drain the list, dont free packets, transport will free */
 
 	return -1;
 }
@@ -411,6 +412,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 
 			if (tpp_enque(&leaf_list, l) == NULL) {
 				tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to leaf_list");
+				tpp_unlock_rwlock(&router_lock);
 				goto err;
 			}
 		}
@@ -435,18 +437,17 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 				tpp_log(LOG_ERR, __func__, "send failed");
 				goto err;
 			}
+			/* vsend will free packets even in case of failure */
 		}
 	}
 	return 0;
 
 err:
 	tpp_log(LOG_CRIT, __func__, "Error broadcasting to my leaves");
-	tpp_unlock_rwlock(&router_lock);
-
 	if (idx_ctx)
 		pbs_idx_free_ctx(idx_ctx);
 
-	while (tpp_deque(&leaf_list)); /* drain the list */
+	while (tpp_deque(&leaf_list)); /* drain the list, dont free pacets, transport will free */
 
 	return -1;
 }
@@ -1288,7 +1289,7 @@ again:
 				tpp_router_t *r = NULL;
 				void *pconn_host = &connected_host;
 
-				TPP_DBPRT("Recvd TPP_CTL_JOIN from pbs_comm node %s", tpp_netaddr(&connected_host));
+				TPP_DBPRT("Recvd TPP_CTL_JOIN from pbs_comm node %s, len=%d", tpp_netaddr(&connected_host), len);
 
 				tpp_write_lock(&router_lock);
 
@@ -1346,6 +1347,8 @@ again:
 				int index = (int) hdr->index;
 				tpp_addr_t *addrs;
 				void *paddr;
+
+				TPP_DBPRT("Recvd TPP_CTL_JOIN FOR LEAF from pbs_comm node %s, len=%d, hop=%d", tpp_netaddr(&connected_host), len, hop);
 
 				if (hdr->num_addrs == 0) {
 					/* error, must have atleast one address associated */
@@ -1436,7 +1439,7 @@ again:
 					tpp_transport_set_conn_ctx(tfd, ctx);
 				}
 
-				TPP_DBPRT("tfd=%d, Router name = %s, address leaf = %p, " "leaf name=%s, index=%d", tfd, r->router_name, (void *) l, tpp_netaddr(&l->leaf_addrs[0]), (int) index);
+				TPP_DBPRT("tfd=%d, Router name = %s, address leaf = %p, leaf name=%s, index=%d, hop=%d", tfd, r->router_name, (void *) l, tpp_netaddr(&l->leaf_addrs[0]), (int) index, hop);
 
 				/*
 				 * router is not part of leaf's list
@@ -1831,11 +1834,7 @@ mcast_err:
 			if (cmprsd_len > 0)
 				free(minfo_base);
 
-			if (rlist) {
-				for (k = 0; k < csize; k++)
-					free(rlist[k].minfo_buf);
-				free(rlist);
-			}
+			free(rlist); /* minfo_buf which was allocated will be freed when sent */
 
 			tpp_log(LOG_INFO, NULL, "mcast done");
 
