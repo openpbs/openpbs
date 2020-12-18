@@ -285,8 +285,6 @@ if [ "x${IS_CI_BUILD}" != "x1" ]; then
   locale
 ls -l /usr/lib/man-db/zsoelim
 ls -l /usr/lib/man-db/manconv
-which zsoelim
-which manconv
 which preconv
 which tbl
 which nroff
