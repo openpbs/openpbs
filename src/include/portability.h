@@ -55,8 +55,6 @@
 #define get_uncpath(char)  
 #define critical_section() 
 
-/* check for the file in failover mode for optimizaton*/
-#define CHECK_FILE 1
 
 #ifdef PBS_MOM
 #define TRAILING_CHAR '/'

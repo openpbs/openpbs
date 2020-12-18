@@ -632,12 +632,10 @@ __pbs_connect_extend(char *server, char *extend_data)
 	int	sock = -1;
 	int	i;
 	int	f;
-	
-#ifdef CHECK_FILE	
+		
 	char   pbsrc[_POSIX_PATH_MAX];	
 	struct stat sb;	
 	int    using_secondary = 0;	
-#endif
 	
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -661,8 +659,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 			
 			altservers[0] = pbs_conf.pbs_primary;	
 			altservers[1] = pbs_conf.pbs_secondary;	
-			
-#ifdef CHECK_FILE	
+				
 			/* We want to try the one last seen as "up" first to not   */	
 			/* have connection delays.   If the primary was up, there  */	
 			/* is no .pbsrc.NAME file.  If the last command connected  */	
@@ -675,8 +672,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 				altservers[0] = pbs_conf.pbs_secondary;		
 				altservers[1] = pbs_conf.pbs_primary;
 				using_secondary = 1;	
-			} 	
-#endif	
+			} 		
 		}	
 	}
 
@@ -700,7 +696,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1; 		/* cannot connect */
 	}
 	
-#ifdef CHECK_FILE
 	if (have_alt && (i == 1)) {
 		/* had to use the second listed server ... */
 		if (using_secondary == 1) {
@@ -713,7 +708,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 				close(f);
 		}
 	}
-#endif
 	
 	return sock;
 }
