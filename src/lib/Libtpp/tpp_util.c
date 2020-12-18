@@ -2221,13 +2221,13 @@ tpp_netaddr(tpp_addr_t *ap)
 		memcpy(&in.sin_addr, ap->ip, sizeof(in.sin_addr));
 		in.sin_family = AF_INET;
 		in.sin_port = 0;
-		len = TPP_LOGBUF_SZ;
+		len = LOG_BUF_SIZE;
 		WSAAddressToString((LPSOCKADDR) &in, sizeof(in), NULL, (LPSTR) &ptr->tppstaticbuf, &len);
 	} else if (ap->family == TPP_ADDR_FAMILY_IPV6) {
 		memcpy(&in6.sin6_addr, ap->ip, sizeof(in6.sin6_addr));
 		in6.sin6_family = AF_INET6;
 		in6.sin6_port = 0;
-		len = TPP_LOGBUF_SZ;
+		len = LOG_BUF_SIZE;
 		WSAAddressToString((LPSOCKADDR) &in6, sizeof(in6), NULL, (LPSTR) &ptr->tppstaticbuf, &len);
 	}
 #else

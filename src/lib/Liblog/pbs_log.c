@@ -1039,6 +1039,8 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 sigunblock:
 #ifndef WIN32
 	sigprocmask(SIG_SETMASK, &old_mask, NULL);
+#else
+	return;
 #endif
 }
 
