@@ -293,7 +293,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			/* no mail user list, just send to owner */
 
-			strcpy(mailto, get_jattr_str(pjob, JOB_ATR_job_owner));
+			pbs_strncpy(mailto, get_jattr_str(pjob, JOB_ATR_job_owner), sizeof(mailto));
 			/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 			/* host name with the name specified in pbs_mail_host_name    */
 			if (pbs_conf.pbs_mail_host_name) {
@@ -513,7 +513,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 		/* no mail user list, just send to owner */
 
-		(void)strcpy(mailto, presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str);
+		(void)pbs_strncpy(mailto, presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, sizeof(mailto));
 		/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 		/* host name with the name specified in pbs_mail_host_name    */
 		if (pbs_conf.pbs_mail_host_name) {

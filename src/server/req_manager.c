@@ -1271,7 +1271,7 @@ mgr_queue_delete(struct batch_request *preq)
 		if (rc == 0) {
 			char queue_name[PBS_MAXQUEUENAME + 1];
 			/* Save the queue name before we purge it so it will appear in the log.  */
-			strncpy(queue_name, pque->qu_qs.qu_name, sizeof(queue_name));
+			pbs_strncpy(queue_name, pque->qu_qs.qu_name, sizeof(queue_name));
 			if ((rc = que_purge(pque)) != 0) {
 				rc = PBSE_OBJBUSY;
 			} else
