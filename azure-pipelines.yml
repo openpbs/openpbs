@@ -7,12 +7,13 @@ pr:
 
 pool:
   vmImage: 'ubuntu-18.04'
-  
-steps:
-  - bash: apt-get install -y python-pep8
-  - bash: .github/runchecks
-  
+   
 jobs:
+  - job: runcheck
+    steps:
+      - bash: apt-get install -y python-pep8
+      - bash: .github/runchecks
+
   - job: c7_build_test
     steps:
     - bash: docker pull centos:7
