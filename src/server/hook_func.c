@@ -3149,7 +3149,7 @@ attribute_jobmap_init(job *pjob, struct attribute_jobmap *a_map)
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
 		if (is_attr_set(&a_map[index].attr_val))
-			free_attr_generic(job_attr_def, &a_map[index].attr_val, a_index);
+			free_attr(job_attr_def, &a_map[index].attr_val, a_index);
 
 		clear_attr(&a_map[index].attr_val, &job_attr_def[a_index]);
 		if (is_jattr_set(pjob, a_index)) {
@@ -3184,7 +3184,7 @@ attribute_jobmap_clear(struct attribute_jobmap *a_map)
 
 	for (index = 0; (a_index=(int)a_map[index].attr_i) >= 0; ++index) {
 		if (is_attr_set(&a_map[index].attr_val))
-			free_attr_generic(job_attr_def, &a_map[index].attr_val, a_index);
+			free_attr(job_attr_def, &a_map[index].attr_val, a_index);
 		clear_attr(&a_map[index].attr_val, &job_attr_def[a_index]);
 	}
 }

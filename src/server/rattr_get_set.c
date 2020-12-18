@@ -56,7 +56,7 @@ attribute *
 get_rattr(const resc_resv *presv, int attr_idx)
 {
 	if (presv != NULL)
-		return get_attr_generic((attribute *)presv->ri_wattr, attr_idx);
+		return _get_attr_generic((attribute *)presv->ri_wattr, attr_idx);
 	return NULL;
 }
 
@@ -143,7 +143,7 @@ get_rattr_long(const resc_resv *presv, int attr_idx)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_rattr_generic(resc_resv *presv, int attr_idx, char *val, char *rscn, enum batch_op op)
@@ -164,7 +164,7 @@ set_rattr_generic(resc_resv *presv, int attr_idx, char *val, char *rscn, enum ba
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_rattr_str_slim(resc_resv *presv, int attr_idx, char *val, char *rscn)
@@ -276,7 +276,7 @@ void
 free_rattr(resc_resv *presv, int attr_idx)
 {
 	if (presv != NULL)
-		free_attr_generic(resv_attr_def, get_rattr(presv, attr_idx), attr_idx);
+		free_attr(resv_attr_def, get_rattr(presv, attr_idx), attr_idx);
 }
 
 /**

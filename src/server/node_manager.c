@@ -554,7 +554,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			}
 		}
 
-		(get_nattr(pvnd, ND_ATR_state))->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(get_nattr(pvnd, ND_ATR_state));
 		pat = get_nattr(pvnd, ND_ATR_Comment);
 
 		/*
@@ -571,11 +571,10 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			((pat->at_flags & ATR_VFLAG_DEFLT) != 0)) {
 
 			/* default comment */
-			node_attr_def[(int)ND_ATR_Comment].at_free(pat);
-			if (txt) {
-				node_attr_def[(int)ND_ATR_Comment].at_decode(pat, NULL,
-					NULL, txt);
-			}
+			free_attr(&node_attr_def[(int)ND_ATR_Comment], pat, ND_ATR_Comment);
+			if (txt)
+				set_attr_generic(pat, &node_attr_def[(int)ND_ATR_Comment], txt, NULL, INTERNAL);
+
 			if (do_set && (bits & INUSE_OFFLINE_BY_MOM)) {
 				/* this means not directly set by the server */
 				/* This means server did not set comment */
@@ -3618,13 +3617,11 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 							/* changes survive */
 							/* server restart */
 							prs->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
-							prs->rs_value.at_flags |= ATR_SET_MOD_MCACHE;
-							if (psrp->vna_val[0] != '\0') {
+							post_attr_set(&prs->rs_value);
+							if (psrp->vna_val[0] != '\0')
 								prs->rs_value.at_flags |= (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
-							}
-						} else {
+						} else
 							prs->rs_value.at_flags |= ATR_VFLAG_DEFLT;
-						}
 						if (strcasecmp("ncpus", resc) == 0) {
 							/* if ncpus, adjust virtual/subnodes */
 							j = prs->rs_value.at_val.at_long;
@@ -3756,8 +3753,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				/* if from_hook, we override values */
 				/* set externally. */
 
-				bad = node_attr_def[j].at_decode(pattr,
-					psrp->vna_name, NULL, psrp->vna_val);
+				bad = set_attr_generic(pattr, &node_attr_def[j], psrp->vna_val, NULL, INTERNAL);
 				if (bad != 0) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						"Error %d decoding attribute %s "
@@ -3776,11 +3772,9 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					/* restart */
 
 					pattr->at_flags &= ~ATR_VFLAG_DEFLT;
-					pattr->at_flags |= ATR_SET_MOD_MCACHE;
-					if (psrp->vna_val[0] != '\0') {
-						pattr->at_flags |= \
-					       (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
-					}
+					post_attr_set(pattr);
+					if (psrp->vna_val[0] != '\0')
+						pattr->at_flags |= (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
 					snprintf(log_buffer,
 						sizeof(log_buffer),
 						"Updated vnode %s's "
@@ -3793,9 +3787,9 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 						PBS_EVENTCLASS_NODE, LOG_INFO,
 						pmom->mi_host, log_buffer);
 
-				} else {
+				} else
 					pattr->at_flags |= ATR_VFLAG_DEFLT;
-				}
+
 				if (strcasecmp(psrp->vna_name, ATTR_NODE_VnodePool) == 0) {
 					if ((bad = node_attr_def[j].at_action(pattr,
 					     pnode, ATR_ACTION_ALTER)) == 0) {
@@ -7238,7 +7232,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					if (op == DECR) {
 						check_for_negative_resource(prdef, pr, NULL);
 					}
-					sysru->at_flags |= ATR_SET_MOD_MCACHE;
+					post_attr_set(sysru);
 				}
 
 				/* update queue attribute of resources assigned */
@@ -7254,7 +7248,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					if (op == DECR) {
 						check_for_negative_resource(prdef, pr, NULL);
 					}
-					queru->at_flags |= ATR_SET_MOD_MCACHE;
+					post_attr_set(queru);
 				}
 
 			}

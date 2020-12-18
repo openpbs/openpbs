@@ -327,18 +327,15 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	/* then, setup certain attributes */
 	set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 
-	set_nattr_short_slim(pnode, ND_ATR_ntype, pnode->nd_ntype, SET);
-
 	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
 		log_err(errno, __func__, "unable to get server_instance_id");
 		return (PBSE_SYSTEM);
 	}
-	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_val.at_str = svr_inst_id;
-	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_flags = ATR_VFLAG_SET;
+	set_nattr_str_slim(pnode, ND_ATR_server_inst_id, svr_inst_id, NULL);
+	(get_nattr(pnode, ND_ATR_server_inst_id))->at_flags |= ATR_VFLAG_DEFLT;
 
-	pnode->nd_attr[(int)ND_ATR_ntype].at_val.at_short = pnode->nd_ntype;
-	pnode->nd_attr[(int)ND_ATR_ntype].at_flags = ATR_VFLAG_SET;
-	
+	set_nattr_short_slim(pnode, ND_ATR_ntype, pnode->nd_ntype, SET);
+
 	set_nattr_jinfo(pnode, ND_ATR_jobs, pnode);
 	set_nattr_jinfo(pnode, ND_ATR_resvs, pnode);
 
@@ -483,10 +480,7 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 
 	/* setup temp "Mom" attribute with the host name to remove */
 	clear_attr(&tmomattr, &node_attr_def[(int)ND_ATR_Mom]);
-	(void)node_attr_def[(int)ND_ATR_Mom].at_decode(&tmomattr,
-		ATTR_NODE_Mom,
-		NULL,
-		pmom->mi_host);
+	set_attr_generic(&tmomattr, &node_attr_def[(int)ND_ATR_Mom], pmom->mi_host, NULL, INTERNAL);
 
 	/* start index "invd" at 1 to skip natural vnode for this Mom */
 	for (ivnd=1; ivnd<psvrmom->msr_numvnds; ++ivnd) {
@@ -648,7 +642,7 @@ setup_notification()
 			continue;
 
 		set_vnode_state(pbsndlist[i], INUSE_DOWN, Nd_State_Or);
-		(get_nattr(pbsndlist[i], ND_ATR_state))->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(get_nattr(pbsndlist[i], ND_ATR_state));
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
 			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
 		}
@@ -1994,9 +1988,8 @@ set_node_topology(attribute *new, void *pobj, int op)
 			rc = PBSE_INTERNAL;
 	}
 
-	if (rc == PBSE_NONE) {
-		new->at_flags |= ATR_SET_MOD_MCACHE;
-	}
+	if (rc == PBSE_NONE)
+		post_attr_set(new);
 	return rc;
 #endif /* localmod 035 */
 }

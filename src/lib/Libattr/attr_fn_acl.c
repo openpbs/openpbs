@@ -512,7 +512,7 @@ set_allacl(attribute *attr, attribute *new, enum batch_op op, int (*order_func)(
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 

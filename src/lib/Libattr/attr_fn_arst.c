@@ -185,7 +185,7 @@ decode_arst_direct(attribute *patr, char *val)
 
 	stp->as_usedptr = j;
 	stp->as_next = pc;
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 	patr->at_val.at_arst = stp;
 
 	if (sbufp != strbuf)	/* buffer on heap, not stack */
@@ -512,7 +512,7 @@ set_arst(attribute *attr, attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -849,7 +849,7 @@ decode_arst_direct_bs(attribute *patr, char *val)
 
 	stp->as_usedptr = j;
 	stp->as_next = pc;
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 	patr->at_val.at_arst = stp;
 
 	if (sbufp != strbuf)	/* buffer on heap, not stack */
@@ -1153,7 +1153,7 @@ set_arst_uniq(attribute *attr, attribute *new, enum batch_op op)
 		}
 	}
 
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 

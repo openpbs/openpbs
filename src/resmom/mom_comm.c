@@ -1222,7 +1222,6 @@ receive_job_update(int stream, job *pjob)
 	int		rc;
 	int		i;
 	svrattrl		*psatl;
-	attribute_def		*pdef;
 
 	CLEAR_HEAD(lhead);
 	if (decode_DIS_svrattrl(stream, &lhead) != DIS_SUCCESS) {
@@ -1253,21 +1252,18 @@ receive_job_update(int stream, job *pjob)
 			snprintf(log_buffer, sizeof(log_buffer),
 				"warning: ignoring attribute name %s", psatl->al_name);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-                                 pjob->ji_qs.ji_jobid, log_buffer);
+				pjob->ji_qs.ji_jobid, log_buffer);
 			continue;
 		}
 
-		/* decode attribute */
-		pdef = &job_attr_def[index];
-		errcode = pdef->at_decode(get_jattr(pjob, index), psatl->al_name,
-                                         psatl->al_resc, psatl->al_value);
+		errcode = set_jattr_generic(pjob, index, psatl->al_value, psatl->al_resc, INTERNAL);;
 		/* Unknown resources still get decoded */
 		/* under "unknown" resource def */
 		if ((errcode != 0) && (errcode != PBSE_UNKRESC)) {
 			snprintf(log_buffer, sizeof(log_buffer),
 				"failed to decode attribute name %s", psatl->al_name);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-                                 pjob->ji_qs.ji_jobid, log_buffer);
+				pjob->ji_qs.ji_jobid, log_buffer);
 			free_attrlist(&lhead);
 			return (-1);
 		}
@@ -1278,7 +1274,7 @@ receive_job_update(int stream, job *pjob)
 	free_attrlist(&lhead);
 	for (i=0; i<pjob->ji_numvnod; i++) {
 		snprintf(log_buffer, sizeof(log_buffer),
-		        "before: ji_vnods[%d].vn_node=%d phy node %d host=%s",
+			"before: ji_vnods[%d].vn_node=%d phy node %d host=%s",
 			i, pjob->ji_vnods[i].vn_node,
 			pjob->ji_vnods[i].vn_host->hn_node,
 			pjob->ji_vnods[i].vn_host->hn_host?pjob->ji_vnods[i].vn_host->hn_host:"");
@@ -2835,10 +2831,7 @@ recv_resc_used_from_sister(int stream, job *pjob, int nodeidx)
 			return (-1);
 		}
 
-		/* decode attribute */
-		errcode = pdef->at_decode(&pjob->ji_resources[nodeidx].nr_used,
-					  psatl->al_name, psatl->al_resc,
-					  psatl->al_value);
+		errcode = set_attr_generic(&pjob->ji_resources[nodeidx].nr_used, pdef, psatl->al_value, psatl->al_resc, INTERNAL);
 		/* Unknown resources still get decoded */
 		/* under "unknown" resource def */
 		if ((errcode != 0) && (errcode != PBSE_UNKRESC)) {
@@ -2960,7 +2953,6 @@ im_request(int stream, int version)
 	int			efd = -1;
 	pbs_list_head		lhead;
 	svrattrl		*psatl;
-	attribute_def		*pdef;
 	extern  unsigned long	 QA_testing;
 	extern	int		resc_access_perm;
 	int			local_supres(job *pjob, int which,
@@ -3124,12 +3116,8 @@ im_request(int stream, int version)
 					errcode = PBSE_NOATTR;
 					break;
 				}
-				pdef = &job_attr_def[index];
 
-				/* decode attribute */
-				errcode = pdef->at_decode(get_jattr(pjob, index),
-					psatl->al_name, psatl->al_resc,
-					psatl->al_value);
+				errcode = set_jattr_generic(pjob, index, psatl->al_value, psatl->al_resc, INTERNAL);
 				/* Unknown resources still get decoded */
 				/* under "unknown" resource def */
 				if ((errcode != 0) && (errcode != PBSE_UNKRESC))

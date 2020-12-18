@@ -127,7 +127,7 @@ decode_unkn(attribute *patr, char *name, char *rescn, char *value)
 		memcpy(entry->al_value, value, valln);
 
 	append_link(&patr->at_val.at_list, &entry->al_link, entry);
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 	return (0);
 }
 
@@ -258,7 +258,7 @@ set_unkn(attribute *old, attribute *new, enum batch_op op)
 		append_link(&old->at_val.at_list, &plist->al_link, plist);
 		plist = pnext;
 	}
-	old->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(old);
 	return (0);
 }
 

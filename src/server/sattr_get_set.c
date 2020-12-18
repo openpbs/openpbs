@@ -51,7 +51,7 @@
 attribute *
 get_sattr(int attr_idx)
 {
-	return get_attr_generic(server.sv_attr, attr_idx);
+	return &(server.sv_attr[attr_idx]);
 }
 
 /**
@@ -123,7 +123,7 @@ get_sattr_long(int attr_idx)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_sattr_generic(int attr_idx, char *val, char *rscn, enum batch_op op)
@@ -140,7 +140,7 @@ set_sattr_generic(int attr_idx, char *val, char *rscn, enum batch_op op)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_sattr_str_slim(int attr_idx, char *val, char *rscn)
@@ -228,5 +228,5 @@ is_sattr_set(int attr_idx)
 void
 free_sattr(int attr_idx)
 {
-	free_attr_generic(svr_attr_def, get_sattr(attr_idx), attr_idx);
+	free_attr(svr_attr_def, get_sattr(attr_idx), attr_idx);
 }

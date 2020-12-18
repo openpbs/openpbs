@@ -488,7 +488,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 
 	/* If resource limits are being changed ... */
 
-	changed_resc = is_attr_set(get_attr_generic(newattr, JOB_ATR_resource));
+	changed_resc = is_attr_set(&newattr[JOB_ATR_resource]);
 	if ((rc == 0) && (changed_resc != 0)) {
 
 		/* first, remove ATR_VFLAG_DEFLT from any value which was set */
@@ -601,7 +601,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 			 */
 			if (i == JOB_ATR_accrue_type)
 				continue;
-			free_attr_generic(job_attr_def, get_attr_generic(pattr, i), i);
+			free_attr(job_attr_def, &pattr[i], i);
 			if ((pre_copy[i].at_type == ATR_TYPE_LIST) ||
 				(pre_copy[i].at_type == ATR_TYPE_RESC)) {
 				list_move(&pre_copy[i].at_val.at_list,
@@ -644,7 +644,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	/* The action functions may have modified the attributes, need to set them to newattr2 */
 	for (i = 0; i < JOB_ATR_LAST; i++) {
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
-			free_attr_generic(job_attr_def, get_attr_generic(pattr, i), i);
+			free_attr(job_attr_def, &pattr[i], i);
 			switch (i) {
 				case JOB_ATR_state:
 					newstate = get_attr_c(&newattr[i]);
@@ -881,7 +881,7 @@ void revert_alter_reservation(resc_resv *presv) {
 	presdef->rs_set(&resc2->rs_value, &atemp, SET);
 	presdef->rs_free(&resc->rs_value);
 	set_chunk_sum(&resc2->rs_value, resc_attr);
-	resc_attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(resc_attr);
 	set_rattr_str_slim(presv, RESV_ATR_SchedSelect, get_rattr_str(presv, RESV_ATR_SchedSelect_orig), NULL);
 	free_rattr(presv, RESV_ATR_SchedSelect_orig);
 
@@ -908,7 +908,7 @@ void save_standing_reservation(resc_resv *presv) {
 	if (is_attr_set(standing))
 		return;
 
-	standing->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(standing);
 
 	presdef = &svr_resc_def[RESC_START_TIME];
 	resc = add_resource_entry(standing, presdef);
@@ -1193,7 +1193,7 @@ req_modifyReservation(struct batch_request *preq)
 				return;
 			}
 			/* walltime can change */
-			(get_rattr(presv, RESV_ATR_resource))->at_flags |= ATR_SET_MOD_MCACHE;
+			post_attr_set(get_rattr(presv, RESV_ATR_resource));
 		}
 	}
 

@@ -53,7 +53,7 @@ attribute *
 get_jattr(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return get_attr_generic((attribute *)pjob->ji_wattr, attr_idx);
+		return _get_attr_generic((attribute *)pjob->ji_wattr, attr_idx);
 	return NULL;
 }
 
@@ -117,7 +117,7 @@ get_job_state(const job *pjob)
 		return get_attr_c(get_jattr(pjob, JOB_ATR_state));
 	}
 
-	return '0';
+	return JOB_STATE_LTR_UNKNOWN;
 }
 
 /**
@@ -317,7 +317,7 @@ set_job_substate(job *pjob, long val)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_jattr_generic(job *pjob, int attr_idx, char *val, char *rscn, enum batch_op op)
@@ -338,7 +338,7 @@ set_jattr_generic(job *pjob, int attr_idx, char *val, char *rscn, enum batch_op 
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_jattr_str_slim(job *pjob, int attr_idx, char *val, char *rscn)
@@ -449,8 +449,10 @@ is_jattr_set(const job *pjob, int attr_idx)
 void
 mark_jattr_not_set(job *pjob, int attr_idx)
 {
-	if (pjob != NULL)
-		(get_jattr(pjob, attr_idx))->at_flags &= ~ATR_VFLAG_SET;
+	if (pjob != NULL) {
+		attribute *attr = get_jattr(pjob, attr_idx);
+		attr->at_flags = (attr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
+	}
 }
 
 /**
@@ -480,5 +482,5 @@ void
 free_jattr(job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		free_attr_generic(job_attr_def, get_jattr(pjob, attr_idx), attr_idx);
+		free_attr(job_attr_def, get_jattr(pjob, attr_idx), attr_idx);
 }

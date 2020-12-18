@@ -53,7 +53,7 @@ attribute *
 get_nattr(const struct pbsnode *pnode, int attr_idx)
 {
 	if (pnode != NULL)
-		return get_attr_generic((attribute *)pnode->nd_attr, attr_idx);
+		return _get_attr_generic((attribute *)pnode->nd_attr, attr_idx);
 	return NULL;
 }
 
@@ -159,7 +159,7 @@ get_nattr_c(const struct pbsnode *pnode, int attr_idx)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_nattr_generic(struct pbsnode *pnode, int attr_idx, char *val, char *rscn, enum batch_op op)
@@ -180,7 +180,7 @@ set_nattr_generic(struct pbsnode *pnode, int attr_idx, char *val, char *rscn, en
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_nattr_str_slim(struct pbsnode *pnode, int attr_idx, char *val, char *rscn)
@@ -315,7 +315,7 @@ void
 free_nattr(struct pbsnode *pnode, int attr_idx)
 {
 	if (pnode != NULL)
-		free_attr_generic(node_attr_def, get_nattr(pnode, attr_idx), attr_idx);
+		free_attr(node_attr_def, get_nattr(pnode, attr_idx), attr_idx);
 }
 
 /**

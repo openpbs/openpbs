@@ -552,7 +552,7 @@ job_free(job *pj)
 			free(pj->ji_resources[i].nodehost);
 			pj->ji_resources[i].nodehost = NULL;
 			if  (is_attr_set(&pj->ji_resources[i].nr_used) != 0)
-				free_attr_generic(job_attr_def, &pj->ji_resources[i].nr_used, JOB_ATR_resc_used);
+				free_attr(job_attr_def, &pj->ji_resources[i].nr_used, JOB_ATR_resc_used);
 		}
 		pj->ji_numrescs = 0;
 		free(pj->ji_resources);

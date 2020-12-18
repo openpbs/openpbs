@@ -428,25 +428,15 @@ recov_attr_fs(int fd, void *parent, void *padef_idx, attribute_def *padef, attri
 		 * call set_entity to do the INCR.
 		 */
 
-		if (((padef+index)->at_type != ATR_TYPE_ENTITY) ||
-			(pal->al_atopl.op != INCR)) {
-			if ((padef+index)->at_decode) {
-				(void)(padef+index)->at_decode(pattr+index,
-					pal->al_name, pal->al_resc, pal->al_value);
+		if (((padef+index)->at_type != ATR_TYPE_ENTITY) || (pal->al_atopl.op != INCR)) {
+			int rc = set_attr_generic(pattr+index, padef+index, pal->al_value, pal->al_resc, INTERNAL);
+			if (! rc) {
 				if ((padef+index)->at_action)
-					(void)(padef+index)->at_action(pattr+index,
-						parent, ATR_ACTION_RECOV);
+					(void)(padef+index)->at_action(pattr+index, parent, ATR_ACTION_RECOV);
 			}
 		} else {
-			attribute tmpa;
-			memset(&tmpa, 0, sizeof(attribute));
 			/* for INCR case of entity limit, decode locally */
-			if ((padef+index)->at_decode) {
-				(void)(padef+index)->at_decode(&tmpa,
-					pal->al_name, pal->al_resc, pal->al_value);
-				(void)(padef+index)->at_set(pattr+index, &tmpa, INCR);
-				(void)(padef+index)->at_free(&tmpa);
-			}
+			set_attr_generic(pattr+index, padef+index, pal->al_value, pal->al_resc, INCR);
 		}
 		(pattr+index)->at_flags = pal->al_flags & ~ATR_VFLAG_MODIFY;
 	}

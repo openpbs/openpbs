@@ -237,11 +237,9 @@ job_save_db(job *pjob)
 	int rc = -1;
 	int old_mtime, old_flags;
 	char *conn_db_err = NULL;
-	attribute *mtime;
 
-	mtime = get_jattr(pjob, JOB_ATR_mtime);
-	old_mtime = get_attr_l(mtime);
-	old_flags = mtime->at_flags;
+	old_mtime = get_jattr_long(pjob, JOB_ATR_mtime);
+	old_flags = (get_jattr(pjob, JOB_ATR_mtime))->at_flags;
 
 	if ((savetype = job_to_db(pjob, &dbjob)) == -1)
 		goto done;
@@ -259,8 +257,8 @@ done:
 
 	if (rc != 0) {
 		/* revert mtime, flags update */
-		set_attr_l(mtime, old_mtime, SET);
-		mtime->at_flags = old_flags;
+		set_jattr_l_slim(pjob, JOB_ATR_mtime, old_mtime, SET);
+		(get_jattr(pjob, JOB_ATR_mtime))->at_flags = old_flags;
 
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
 		log_errf(PBSE_INTERNAL, __func__, "Failed to save job %s %s", pjob->ji_qs.ji_jobid, conn_db_err? conn_db_err : "");

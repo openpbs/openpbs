@@ -1026,7 +1026,7 @@ req_modifyjob(struct batch_request *preq)
 	if (rc) {
 		/* leave old values, free the new ones */
 		for (i=0; i<JOB_ATR_LAST; i++)
-			free_attr_generic(job_attr_def, get_attr_generic(newattr, i), i);
+			free_attr(job_attr_def, &newattr[i], i);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -1039,7 +1039,7 @@ req_modifyjob(struct batch_request *preq)
 			if (job_attr_def[i].at_action)
 				(void)job_attr_def[i].at_action(&newattr[i],
 					pjob, ATR_ACTION_ALTER);
-			free_attr_generic(job_attr_def, get_attr_generic(pattr, i), i);
+			free_attr(job_attr_def, &pattr[i], i);
 			if ((newattr[i].at_type == ATR_TYPE_LIST) ||
 				(newattr[i].at_type == ATR_TYPE_RESC)) {
 				list_move(&newattr[i].at_val.at_list,
@@ -3913,9 +3913,7 @@ post_chkpt(job *pjob, int  ev)
 
 
 int
-local_checkpoint(job *pjob,
-	int abort,
-	struct batch_request *preq) /* may be null */
+local_checkpoint(job *pjob, int abort, struct batch_request *preq) /* may be null */
 {
 	svrattrl	*pal;
 	int		rc;
@@ -3981,13 +3979,9 @@ local_checkpoint(job *pjob,
 
 	clear_attr(&tmph, &job_attr_def[(int)JOB_ATR_hold]);
 	if (preq) {
-		pal = (svrattrl *)
-			GET_NEXT(preq->rq_ind.rq_hold.rq_orig.rq_attr);
-		if (pal) {
-			hok = job_attr_def[(int)JOB_ATR_hold].
-				at_decode(&tmph, pal->al_name,
-				NULL, pal->al_value);
-		}
+		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_hold.rq_orig.rq_attr);
+		if (pal)
+			hok = set_attr_generic(&tmph, &job_attr_def[(int)JOB_ATR_hold], pal->al_value, NULL, INTERNAL);
 	}
 	rc = mom_checkpoint_job(pjob, abort);
 	if ((rc == 0) && (hok == 0))

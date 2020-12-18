@@ -738,8 +738,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 			ATR_ENCODE_MOM, &psatl) > 0) {
 			for (psatl = (svrattrl *)GET_NEXT(attrl); psatl;
 				psatl = ((svrattrl *)GET_NEXT(psatl->al_link))) {
-				pdef->at_decode(psub, psatl->al_name, psatl->al_resc,
-					psatl->al_value);
+				set_attr_generic(psub, pdef, psatl->al_value, psatl->al_resc, INTERNAL);
 			}
 			/* carry forward the default bit if set */
 			psub->at_flags |= (ppar->at_flags & ATR_VFLAG_DEFLT);

@@ -243,23 +243,23 @@ determine_egroup(void *pobj, int objtype, attribute *pattr)
 int
 set_objexid(void *pobj, int objtype, attribute *attrry)
 {
-	int		 addflags = 0;
-	int		 isowner;
-	attribute	*pattr;
-	char		*puser;
-	char		*pgrpn;
-	char		*owner;
-	int		idx_ul,	idx_gl;
-	int		idx_owner, idx_euser, idx_egroup;
-	int		idx_acct;
-	int		bad_euser, bad_egrp;
-	attribute	*objattrs;
-	attribute_def	*obj_attr_def;
-	attribute	*paclRoot;	/*future: aclRoot resv != aclRoot job*/
-	char	       **pmem;
-	struct group	*gpent;
-	struct passwd	*pwent;
-	char		 gname[PBS_MAXGRPN+1];
+	int addflags = 0;
+	int isowner;
+	attribute *pattr;
+	char *puser;
+	char *pgrpn;
+	char *owner;
+	int idx_ul, idx_gl;
+	int idx_owner, idx_euser, idx_egroup;
+	int idx_acct;
+	int bad_euser, bad_egrp;
+	attribute *objattrs;
+	attribute_def *obj_attr_def;
+	attribute *paclRoot; /*future: aclRoot resv != aclRoot job*/
+	char **pmem;
+	struct group *gpent;
+	struct passwd *pwent;
+	char gname[PBS_MAXGRPN + 1];
 
 	/* determine index values and pointers based on object type */
 	if (objtype == JOB_OBJECT) {
@@ -321,15 +321,15 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	}
 
 	pattr = &objattrs[idx_euser];
-	obj_attr_def[idx_euser].at_free(pattr);
-	obj_attr_def[idx_euser].at_decode(pattr, NULL, NULL, puser);
+	free_attr(&obj_attr_def[idx_euser], pattr, idx_euser);
+	set_attr_generic(pattr, &obj_attr_def[idx_euser], puser, NULL, INTERNAL);
 
 	if (pwent != NULL) {
 		/* if account (qsub -A) is not specified, set to empty string */
 
 		pattr = &objattrs[idx_acct];
 		if (!is_attr_set(pattr))
-			obj_attr_def[idx_acct].at_decode(pattr, NULL, NULL, "\0");
+			set_attr_generic(pattr, &obj_attr_def[idx_acct], "\0", NULL, INTERNAL);
 
 		/*
 		 * now figure out (for this host) the effective/execute "group name"
@@ -342,7 +342,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		 * be same as what was passed
 		 */
 
-		if ((attrry + idx_gl)->at_flags & ATR_VFLAG_SET)
+		if (is_attr_set(attrry + idx_gl))
 			pattr = attrry + idx_gl;
 		else
 			pattr = &objattrs[idx_gl];
@@ -400,10 +400,10 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	}
 
 	pattr = attrry + idx_egroup;
-	obj_attr_def[idx_egroup].at_free(pattr);
+	free_attr(&obj_attr_def[idx_egroup], pattr, idx_egroup);
 
 	if (addflags != 0) {
-		obj_attr_def[idx_egroup].at_decode(pattr, NULL, NULL, pgrpn);
+		set_attr_generic(pattr, &obj_attr_def[idx_egroup], pgrpn, NULL, INTERNAL);
 		pattr->at_flags |= addflags;
 	}
 

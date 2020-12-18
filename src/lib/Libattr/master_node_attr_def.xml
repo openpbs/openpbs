@@ -629,10 +629,10 @@
       <member_at_comp>comp_l</member_at_comp>
       <member_at_free>free_null</member_at_free>
       <member_at_action>
-#ifdef PBS_MOM
-      NULL_FUNC
-#else
+#ifndef PBS_MOM
       chk_vnode_pool
+#else
+      NULL_FUNC
 #endif
       </member_at_action>
       <member_at_flags>MGR_ONLY_SET</member_at_flags>

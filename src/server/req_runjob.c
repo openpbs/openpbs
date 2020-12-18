@@ -605,11 +605,11 @@ req_runjob(struct batch_request *preq)
 
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
 			if (is_attr_set(&sub_runcount))
-				free_attr_generic(job_attr_def, &sub_runcount, JOB_ATR_runcount);
+				free_attr(job_attr_def, &sub_runcount, JOB_ATR_runcount);
 			if (is_attr_set(&sub_run_version))
-				free_attr_generic(job_attr_def, &sub_run_version, JOB_ATR_run_version);
+				free_attr(job_attr_def, &sub_run_version, JOB_ATR_run_version);
 			if (is_attr_set(&sub_prev_res))
-				free_attr_generic(job_attr_def, &sub_prev_res, JOB_ATR_resource);
+				free_attr(job_attr_def, &sub_prev_res, JOB_ATR_resource);
 			req_reject(j, 0, preq);
 			return;
 		}
@@ -617,19 +617,19 @@ req_runjob(struct batch_request *preq)
 		if (is_attr_set(&sub_runcount)) {
 			free_jattr(pjobsub, JOB_ATR_runcount);
 			set_attr_with_attr(&job_attr_def[JOB_ATR_runcount], get_jattr(pjobsub, JOB_ATR_runcount), &sub_runcount, SET);
-			free_attr_generic(job_attr_def, &sub_runcount, JOB_ATR_runcount);
+			free_attr(job_attr_def, &sub_runcount, JOB_ATR_runcount);
 		}
 
 		if (is_attr_set(&sub_run_version)) {
 			free_jattr(pjobsub, JOB_ATR_run_version);
 			set_attr_with_attr(&job_attr_def[JOB_ATR_run_version], get_jattr(pjobsub, JOB_ATR_run_version), &sub_run_version, SET);
-			free_attr_generic(job_attr_def, &sub_run_version, JOB_ATR_run_version);
+			free_attr(job_attr_def, &sub_run_version, JOB_ATR_run_version);
 		}
 
 		if (is_attr_set(&sub_prev_res)) {
 			free_jattr(pjobsub, JOB_ATR_resource);
 			set_attr_with_attr(&job_attr_def[JOB_ATR_resource], get_jattr(pjobsub, JOB_ATR_resource), &sub_prev_res, SET);
-			free_attr_generic(job_attr_def, &sub_prev_res, JOB_ATR_resource);
+			free_attr(job_attr_def, &sub_prev_res, JOB_ATR_resource);
 		}
 
 		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt) == 0) {
@@ -667,7 +667,10 @@ req_runjob(struct batch_request *preq)
 		for (i = start; i <= end; i += step) {
 			attribute sub_runcount = {0};
 			attribute sub_run_version = {0};
-			attribute sub_prev_res;
+			attribute sub_prev_res = {0};
+
+			clear_attr(&sub_runcount, &job_attr_def[JOB_ATR_runcount]);
+			clear_attr(&sub_run_version, &job_attr_def[JOB_ATR_run_version]);
 			clear_attr(&sub_prev_res, &job_attr_def[JOB_ATR_resource]);
 
 			pjobsub = get_subjob_and_state(parent, i, &sjst, NULL);
@@ -675,16 +678,18 @@ req_runjob(struct batch_request *preq)
 				continue;
 
 			if (pjobsub != NULL) {
-				sub_runcount = pjobsub->ji_wattr[JOB_ATR_runcount];
-				sub_run_version = pjobsub->ji_wattr[JOB_ATR_run_version];
+				if (is_jattr_set(pjobsub, JOB_ATR_runcount))
+					set_attr_with_attr(&job_attr_def[JOB_ATR_runcount], &sub_runcount, get_jattr(pjobsub, JOB_ATR_runcount), SET);
+				if (is_jattr_set(pjobsub, JOB_ATR_run_version))
+					set_attr_with_attr(&job_attr_def[JOB_ATR_run_version], &sub_run_version, get_jattr(pjobsub, JOB_ATR_run_version), SET);
 				if (is_jattr_set(pjobsub, JOB_ATR_resource))
-					set_attr_with_attr(&job_attr_def[JOB_ATR_resource], &sub_prev_res, &pjobsub->ji_wattr[JOB_ATR_resource], SET);
+					set_attr_with_attr(&job_attr_def[JOB_ATR_resource], &sub_prev_res, get_jattr(pjobsub, JOB_ATR_resource), SET);
 				job_purge(pjobsub);
 			}
 
 			if ((pjobsub = create_subjob(parent, create_subjob_id(parent->ji_qs.ji_jobid, i), &j)) == NULL) {
 				if (is_attr_set(&sub_prev_res))
-					job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
+					free_attr(job_attr_def, &sub_prev_res, JOB_ATR_resource);
 				req_reject(j, 0, preq);
 				continue;
 			}
@@ -697,8 +702,8 @@ req_runjob(struct batch_request *preq)
 
 			if (is_attr_set(&sub_prev_res)) {
 				free_jattr(pjobsub, JOB_ATR_resource);
-				set_attr_with_attr(&job_attr_def[JOB_ATR_resource], &pjobsub->ji_wattr[JOB_ATR_resource], &sub_prev_res, SET);
-				job_attr_def[JOB_ATR_resource].at_free(&sub_prev_res);
+				set_attr_with_attr(&job_attr_def[JOB_ATR_resource], get_jattr(pjobsub, JOB_ATR_resource), &sub_prev_res, SET);
+				free_attr(job_attr_def, &sub_prev_res, JOB_ATR_resource);
 			}
 
 			if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt) == 0) {
@@ -706,9 +711,10 @@ req_runjob(struct batch_request *preq)
 				reply_text(preq, PBSE_HOOKERROR, hook_msg);
 				return;
 			}
-			if ((pjob = where_to_runjob(preq, pjobsub)) == NULL) {
+
+			if ((pjob = where_to_runjob(preq, pjobsub)) == NULL)
 				continue;
-			}
+
 			dup_br_for_subjob(preq, pjob, req_runjob2);
 		}
 		range = pc;

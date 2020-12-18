@@ -108,7 +108,7 @@ decode_size(attribute *patr, char *name, char *rescn, char *val)
 			return (PBSE_BADATVAL);
 		if (errno != 0)
 			return (PBSE_BADATVAL);
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 	} else
 		ATR_UNSET(patr);
 
@@ -227,7 +227,7 @@ set_size(attribute *attr, attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 
 	return (0);
 }

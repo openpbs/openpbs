@@ -618,7 +618,7 @@ free_sellist(struct select_list *pslist)
 		if (pslist->sl_atindx == JOB_ATR_state)
 			state_sel.at_free(&pslist->sl_attr);
 		else
-			free_attr_generic(job_attr_def, &pslist->sl_attr, pslist->sl_atindx);
+			free_attr(job_attr_def, &pslist->sl_attr, pslist->sl_atindx);
 		(void)free(pslist);			  /* free the entry */
 		pslist = next;
 	}
@@ -684,7 +684,8 @@ build_selentry(svrattrl *plist, attribute_def *pdef, int perm, struct select_lis
 
 	/* decode the attribute into the entry */
 
-	rc = pdef->at_decode(&entry->sl_attr, plist->al_name, plist->al_resc, plist->al_value);
+	rc = set_attr_generic(&entry->sl_attr, pdef, plist->al_value, plist->al_resc, INTERNAL);
+
 
 	resc_access_perm = old_perms;
 	if (rc) {

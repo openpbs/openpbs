@@ -116,7 +116,7 @@ decode_f(attribute *patr, char *name, char *rescn, char *val)
 		/* if any part of val is not converted or errno set, error */
 		if (&val[len] != end || errno != 0)
 			return (PBSE_BADATVAL);	 /* invalid string */
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 		patr->at_val.at_float = fval;
 	} else {
 		ATR_UNSET(patr);
@@ -210,7 +210,7 @@ set_f(attribute *attr, attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 

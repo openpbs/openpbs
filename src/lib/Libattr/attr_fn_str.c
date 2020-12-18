@@ -107,7 +107,7 @@ decode_str(attribute *patr, char *name, char *rescn, char *val)
 		if (patr->at_val.at_str == NULL)
 			return (PBSE_SYSTEM);
 		(void)strcpy(patr->at_val.at_str, val);
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 	} else {
 		ATR_UNSET(patr);
 		patr->at_val.at_str = NULL;
@@ -239,7 +239,7 @@ set_str(attribute *attr, attribute *new, enum batch_op op)
 		default:	return (PBSE_INTERNAL);
 	}
 	if ((attr->at_val.at_str != NULL) && (*attr->at_val.at_str !='\0'))
-		attr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(attr);
 	else
 		attr->at_flags &= ~ATR_VFLAG_SET;
 

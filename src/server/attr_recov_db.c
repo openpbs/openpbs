@@ -255,19 +255,13 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, void *padef_idx, 
 		 */
 		pal = palarray[index];
 		while (pal) {
-			if ((padef[index].at_type == ATR_TYPE_ENTITY) && (pattr[index].at_flags & ATR_VFLAG_SET)) {
-				attribute tmpa;
-				memset(&tmpa, 0, sizeof(attribute));
+			if ((padef[index].at_type == ATR_TYPE_ENTITY) && is_attr_set(&pattr[index])) {
 				/* for INCR case of entity limit, decode locally */
-				if (padef[index].at_decode) {
-					padef[index].at_decode(&tmpa, pal->al_name, pal->al_resc, pal->al_value);
-					padef[index].at_set(&pattr[index], &tmpa, INCR);
-					padef[index].at_free(&tmpa);
-				}
+				set_attr_generic(&pattr[index], &padef[index], pal->al_value, pal->al_resc, INCR);
 			} else {
-				if (padef[index].at_decode) {
+				int rc = set_attr_generic(&pattr[index], &padef[index], pal->al_value, pal->al_resc, INTERNAL);
+				if (! rc) {
 					int act_rc = 0;
-					padef[index].at_decode(&pattr[index], pal->al_name, pal->al_resc, pal->al_value);
 					if (padef[index].at_action)
 						if ((act_rc = (padef[index].at_action(&pattr[index], parent, ATR_ACTION_RECOV)))) {
 							log_errf(act_rc, __func__, "Action function failed for %s attr, errn %d", (padef+index)->at_name, act_rc);

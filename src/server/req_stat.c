@@ -498,8 +498,10 @@ static int
 status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 {
 	struct brp_status *pstat;
-	svrattrl	  *pal;
+	svrattrl *pal;
 	long total_jobs;
+	int rc = 0;
+	attribute *qattr;
 
 	if ((preq->rq_perm & ATR_DFLAG_RDACC) == 0)
 		return (PBSE_PERM);
@@ -513,7 +515,8 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	}
 	set_qattr_l_slim(pque, QA_ATR_TotalJobs, total_jobs, SET);
 
-	update_state_ct(get_qattr(pque, QA_ATR_JobsByState), pque->qu_njstate, &que_attr_def[QA_ATR_JobsByState]);
+	qattr = get_qattr(pque, QA_ATR_JobsByState);
+	update_state_ct(qattr, pque->qu_njstate, &que_attr_def[QA_ATR_JobsByState]);
 
 	/* allocate status sub-structure and fill in header portion */
 
@@ -533,9 +536,11 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 	if (status_attrib(pal, que_attr_idx, que_attr_def, pque->qu_attr, QA_ATR_LAST,
 		preq->rq_perm, &pstat->brp_attr, &bad))
-		return (PBSE_NOATTR);
+		rc = PBSE_NOATTR;
 
-	return (0);
+	if (is_attr_set(qattr))
+		free_attr(que_attr_def, qattr, QA_ATR_JobsByState);
+	return rc;
 }
 
 
@@ -726,7 +731,7 @@ update_isrunhook(attribute *pattr)
 
 	if (new_val != old_val) {
 		pattr->at_val.at_long = new_val;
-		pattr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(pattr);
 	}
 }
 

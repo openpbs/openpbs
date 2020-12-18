@@ -53,7 +53,7 @@ attribute *
 get_sched_attr(const pbs_sched *psched, int attr_idx)
 {
 	if (psched != NULL)
-		return get_attr_generic((attribute *)psched->sch_attr, attr_idx);
+		return _get_attr_generic((attribute *)psched->sch_attr, attr_idx);
 	return NULL;
 }
 
@@ -140,7 +140,7 @@ get_sched_attr_long(const pbs_sched *psched, int attr_idx)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_sched_attr_generic(pbs_sched *psched, int attr_idx, char *val, char *rscn, enum batch_op op)
@@ -161,7 +161,7 @@ set_sched_attr_generic(pbs_sched *psched, int attr_idx, char *val, char *rscn, e
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_sched_attr_str_slim(pbs_sched *psched, int attr_idx, char *val, char *rscn)
@@ -272,7 +272,7 @@ void
 free_sched_attr(pbs_sched *psched, int attr_idx)
 {
 	if (psched != NULL)
-		free_attr_generic(sched_attr_def, get_sched_attr(psched, attr_idx), attr_idx);
+		free_attr(sched_attr_def, get_sched_attr(psched, attr_idx), attr_idx);
 }
 
 /**

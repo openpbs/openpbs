@@ -109,7 +109,7 @@ decode_hold(attribute *patr, char *name, char *rescn, char *val)
 					return (PBSE_BADATVAL);
 			}
 		}
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 	} else
 		ATR_UNSET(patr);
 

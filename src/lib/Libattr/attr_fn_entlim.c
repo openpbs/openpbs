@@ -284,7 +284,7 @@ internal_decode_entlim(attribute *patr,  char *name, char *rn,
 		return (PBSE_BADATVAL);
 	}
 	patr->at_val.at_enty.ae_tree = petree;
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 
 	return (0);
 }
@@ -888,7 +888,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 			return (PBSE_INTERNAL);
 	}
 
-	old->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(old);
 	return (0);
 }
 

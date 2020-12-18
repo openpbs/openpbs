@@ -1610,7 +1610,7 @@ void free_attrl_list(struct attrl *at_list)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  *
  * @par MT-Safe: No
  * @par Side Effects: None
@@ -1627,11 +1627,14 @@ set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn
 		return 1;
 	}
 
+	if (! pdef->at_decode)
+		return 1;
+
 	/* Just call decode and set the value of attribute directly */
 	if (op == INTERNAL) {
 		if ((rc = pdef->at_decode(pattr, pdef->at_name, rescn, value)) != 0) {
 			log_errf(rc, __func__, "decode of %s failed", pdef->at_name);
-			return 1;
+			return rc;
 		}
 		return 0;
 	}
@@ -1639,7 +1642,7 @@ set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn
 	clear_attr(&tempat, pdef);
 	if ((rc = pdef->at_decode(&tempat, pdef->at_name, rescn, value)) != 0) {
 		log_errf(rc, __func__, "decode of %s failed", pdef->at_name);
-		return 1;
+		return rc;
 	}
 
 	rc = set_attr_with_attr(pdef, pattr, &tempat, op);
@@ -1735,6 +1738,23 @@ is_attr_set(const attribute *pattr)
 }
 
 /**
+ * @brief	Update common attribute values independent of their type.
+ * 		For example attribute flags.
+ *
+ * @param[in]	attr	-	pointer to the attribute
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ */
+void
+post_attr_set(attribute *attr)
+{
+	attr->at_flags |= ATR_SET_MOD_MCACHE;
+}
+
+/**
  * @brief
  *		decode_sandbox - decode sandbox into string attribute
  *
@@ -1803,19 +1823,47 @@ decode_project(attribute *patr, char *name, char *rescn, char *val)
 		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
 }
 
+/**
+ * @brief
+ *	Generic function to return the ponter to the attribute.
+ *	Use of this function only within object getter functions.
+ *
+ * @param[in]	list		- Pointer to object's attribute list
+ * @param[in]	attr_idx	- Index of the attribute to be freed.
+ *
+ */
 attribute *
-get_attr_generic(attribute *list, int attr_idx)
+_get_attr_generic(attribute *list, int attr_idx)
 {
 	return &(list[attr_idx]);
 }
 
+/**
+ * @brief
+ *	Generic function to free the attribute with corresponding free routine.
+ *
+ * @param[in]	attr_def	- Pointer to object's attribute defition
+ * @param[in]	pattr 		- Pointer to attribute list
+ * @param[in]	attr_idx	- Index of the attribute to be freed.
+ *
+ */
 void
-free_attr_generic(attribute_def *attr_def, attribute *pattr, int attr_idx)
+free_attr(attribute_def *attr_def, attribute *pattr, int attr_idx)
 {
 	if (attr_def != NULL && pattr != NULL && attr_def[attr_idx].at_free != NULL)
 		attr_def[attr_idx].at_free(pattr);
 }
 
+/**
+ * @brief	Generic getter for attribute's list value
+ * 
+ *
+ * @param[in]	pattr - pointer to the object
+ *
+ * @return	pbs_list_head
+ * @retval	value of attribute
+ * @retval	dummy pbs_list_head if pattr is NULL. This is to avoid GET_NEXT failing.
+ */
 pbs_list_head
 get_attr_list(const attribute *pattr)
 {

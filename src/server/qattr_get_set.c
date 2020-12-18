@@ -55,7 +55,7 @@ attribute *
 get_qattr(const pbs_queue *pq, int attr_idx)
 {
 	if (pq != NULL)
-		return get_attr_generic((attribute *)pq->qu_attr, attr_idx);
+		return _get_attr_generic((attribute *)pq->qu_attr, attr_idx);
 	return NULL;
 }
 
@@ -142,7 +142,7 @@ get_qattr_long(const pbs_queue *pq, int attr_idx)
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_qattr_generic(pbs_queue *pq, int attr_idx, char *val, char *rscn, enum batch_op op)
@@ -163,7 +163,7 @@ set_qattr_generic(pbs_queue *pq, int attr_idx, char *val, char *rscn, enum batch
  *
  * @return	int
  * @retval	0 for success
- * @retval	1 for failure
+ * @retval	!0 for failure
  */
 int
 set_qattr_str_slim(pbs_queue *pq, int attr_idx, char *val, char *rscn)
@@ -275,5 +275,5 @@ void
 free_qattr(pbs_queue *pq, int attr_idx)
 {
 	if (pq != NULL)
-		free_attr_generic(que_attr_def, get_qattr(pq, attr_idx), attr_idx);
+		free_attr(que_attr_def, get_qattr(pq, attr_idx), attr_idx);
 }

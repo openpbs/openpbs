@@ -602,11 +602,14 @@ is_joined(job *pjob)
 {
 	char *join;
 
-	if (is_jattr_set(pjob, JOB_ATR_join) && ((join = get_jattr_str(pjob, JOB_ATR_join))[0] != 'n')) {
-		if (join[0] == 'o' && strchr(join, (int)'e') != 0)
-			return 1;
-		else if (join[0] == 'e' && strchr(join, (int)'e') != 0)
-			return -1;
+	if (is_jattr_set(pjob, JOB_ATR_join)) {
+		join = get_jattr_str(pjob, JOB_ATR_join);
+		if (join[0] != 'n') {
+			if (join[0] == 'o' && strchr(join, (int) 'e') != 0)
+				return 1;
+			else if (join[0] == 'e' && strchr(join, (int) 'e') != 0)
+				return -1;
+		}
 	}
 	return 0;
 }
@@ -1458,6 +1461,7 @@ job_setup(job *pjob, struct passwd **pwdparm)
 		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
 			LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
 		pjob->ji_qs.ji_stime = time_now; /* for walltime */
+		set_jattr_l_slim(pjob, JOB_ATR_stime, time_now, SET);
 		return JOB_EXEC_FAILUID;
 	}
 	pjob->ji_qs.ji_un.ji_momt.ji_exuid = pjob->ji_grpcache->gc_uid;
@@ -1488,13 +1492,12 @@ job_setup(job *pjob, struct passwd **pwdparm)
 
 	pjob->ji_chkpttype = PBS_CHECKPOINT_NONE;
 	if (is_jattr_set(pjob, JOB_ATR_chkpnt)) {
-		if ((*(chkpnt = get_jattr_str(pjob, JOB_ATR_chkpnt)) == 'c') &&
-			(*(chkpnt+1) == '=')) {
+		chkpnt = get_jattr_str(pjob, JOB_ATR_chkpnt);	
+		if ((*chkpnt == 'c') && (*(chkpnt+1) == '=')) {
 			/* has cpu checkpoint time in minutes, convert to seconds */
 			pjob->ji_chkpttype = PBS_CHECKPOINT_CPUT;
 			pjob->ji_chkpttime = atoi(chkpnt+2) * 60;
-		} else if ((*chkpnt == 'w') &&
-			(*(chkpnt+1) == '=')) {
+		} else if ((*chkpnt == 'w') && (*(chkpnt+1) == '=')) {
 			/* has checkpoint walltime in minutes, convert to seconds */
 			pjob->ji_chkpttype = PBS_CHECKPOINT_WALLT;
 			pjob->ji_chkpttime = atoi(chkpnt+2) * 60;
@@ -3130,6 +3133,7 @@ finish_exec(job *pjob)
 	}
 
 	pjob->ji_qs.ji_stime = time_now;
+	set_jattr_l_slim(pjob, JOB_ATR_stime, time_now, SET);
 	pjob->ji_sampletim  = time_now;
 
 	/*

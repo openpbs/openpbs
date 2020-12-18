@@ -2822,7 +2822,7 @@ Time4occurrenceFinish(resc_resv *presv)
 		resc2 = find_resc_entry(stnd_revert, &svr_resc_def[RESC_SELECT]);
 		free(resc->rs_value.at_val.at_str);
 		resc->rs_value.at_val.at_str = strdup(resc2->rs_value.at_val.at_str);
-		resc_attr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(resc_attr);
 		make_schedselect(resc_attr, resc, NULL, get_rattr(presv, RESV_ATR_SchedSelect));
 		set_chunk_sum(&resc->rs_value, resc_attr);
 	} else
@@ -2957,7 +2957,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	atemp.at_type = ATR_TYPE_LONG;
 	atemp.at_val.at_long = presv->ri_qs.ri_duration;
 	rscdef->rs_set(&prsc->rs_value, &atemp, SET);
-	(get_rattr(presv, RESV_ATR_resource))->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(get_rattr(presv, RESV_ATR_resource));
 
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes

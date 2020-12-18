@@ -111,7 +111,7 @@ decode_l(attribute *patr, char *name, char *rescn, char *val)
 				return (PBSE_BADATVAL);	 /* invalid string */
 			pc++;
 		}
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 		patr->at_val.at_long = strtol(val, &endp, 10);
 	} else {
 		ATR_UNSET(patr);
@@ -205,7 +205,7 @@ set_l(attribute *attr, attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -274,7 +274,7 @@ set_attr_l(attribute *pattr, long value, enum batch_op op)
 			return;
 	}
 
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(pattr);
 }
 
 /**

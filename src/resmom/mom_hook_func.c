@@ -1763,7 +1763,6 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	int   vn_fail_obj_len = strlen(EVENT_VNODELIST_FAIL_OBJECT);
 	int   job_obj_len = strlen(EVENT_JOBLIST_OBJECT);
 	int   index;
-	attribute_def	*pdef;
 	int	errcode;
 	vnl_t	*hvnlp = NULL;
 	vnl_t	*hvnlp_fail = NULL;
@@ -2269,11 +2268,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					}
 				}
 
-				pdef = &job_attr_def[index];
-
 				/* decode attribute */
-				errcode = pdef->at_decode(get_jattr(pjob2, index),
-					name_str, resc_str, data_value);
+				errcode = set_jattr_generic(pjob2, index, data_value, resc_str, INTERNAL);
 				/* unknown resources still get decoded */
 				/* using "unknown" placeholder resc def */
 				if ((errcode != 0) &&

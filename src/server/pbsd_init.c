@@ -538,11 +538,13 @@ pbsd_init(int type)
 
 		if (is_sattr_set(SVR_ATR_resource_assn))
 			free_sattr(SVR_ATR_resource_assn);
+
 		if (new_log_event_mask) {
 			/* set to what was given on command line -e option */
 			set_sattr_l_slim(SVR_ATR_log_events, new_log_event_mask, SET);
-			*log_event_mask = get_sattr_long(SVR_ATR_log_events);
 		}
+		*log_event_mask = get_sattr_long(SVR_ATR_log_events);
+
 		/* if server comment is a default, clear it */
 		/* it will be reset as needed               */
 		if (((get_sattr(SVR_ATR_Comment))->at_flags & (ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET | ATR_VFLAG_DEFLT))
@@ -1602,8 +1604,7 @@ pbsd_init_reque(job *pjob, int change_state)
 	int newsubstate;
 	int rc;
 
-	(void)sprintf(logbuf, msg_init_substate,
-		get_job_substate(pjob));
+	sprintf(logbuf, msg_init_substate, get_job_substate(pjob));
 
 	/* re-enqueue the job into the queue it was in */
 
@@ -1618,7 +1619,7 @@ pbsd_init_reque(job *pjob, int change_state)
 	}
 
 	/* make sure substate attributes match actual value */
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(get_jattr(pjob, JOB_ATR_substate));
 
 	if ((rc = svr_enquejob(pjob, NULL)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);

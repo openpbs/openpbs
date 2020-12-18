@@ -709,12 +709,10 @@ req_quejob(struct batch_request *preq)
 			}
 		}
 #endif
-		if ((index == JOB_ATR_resource) && (psatl->al_resc != NULL) &&
-			(strcmp(psatl->al_resc, "neednodes") == 0))
+		if ((index == JOB_ATR_resource) && (psatl->al_resc != NULL) && (strcmp(psatl->al_resc, "neednodes") == 0))
 			rc = 0;
 		else
-			rc = pdef->at_decode(get_jattr(pj, index),
-				psatl->al_name, psatl->al_resc, psatl->al_value);
+			rc = set_jattr_generic(pj, index, psatl->al_value, psatl->al_resc, INTERNAL);
 #ifndef PBS_MOM
 		if (rc != 0) {
 			if (rc == PBSE_UNKRESC) {
@@ -991,8 +989,7 @@ req_quejob(struct batch_request *preq)
 		 * into an advance reservation queue, the reservation's ID
 		 * gets attached later in the code
 		 */
-		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(get_jattr(pj, JOB_ATR_reserve_ID),
-			NULL, NULL, NULL);
+		set_attr_generic(get_jattr(pj, JOB_ATR_reserve_ID), &job_attr_def[(int)JOB_ATR_reserve_ID], NULL, NULL, INTERNAL);
 	}
 
 	/* set up at_server attribute for status */
@@ -1245,7 +1242,7 @@ req_quejob(struct batch_request *preq)
 
 			/* unset the old job's JOB_ATR_block */
 			set_jattr_l_slim(pjob, JOB_ATR_block, 0, SET);
-			ATR_UNSET(get_jattr(pj, JOB_ATR_block));
+			mark_jattr_not_set(pjob, JOB_ATR_block);
 		}
 	}
 #endif	/* not PBS_MOM */
@@ -2308,8 +2305,7 @@ req_resvSub(struct batch_request *preq)
 
 		/* decode attribute */
 
-		rc = pdef->at_decode(get_rattr(presv, index),
-			psatl->al_name, psatl->al_resc, psatl->al_value);
+		rc = set_rattr_generic(presv, index, psatl->al_value, psatl->al_resc, INTERNAL);
 
 		if (rc != 0) {
 			resv_free(presv);
@@ -3270,7 +3266,7 @@ copy_params_from_job(char *jobid, resc_resv *presv)
 	else
 		set_rattr_l_slim(presv, RESV_ATR_start, time_now, SET);
 
-	(get_rattr(presv, RESV_ATR_SchedSelect))->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(get_rattr(presv, RESV_ATR_SchedSelect));
 
 	job_resc_entry = (resource *)GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 	for (; job_resc_entry; job_resc_entry = (resource *)GET_NEXT(job_resc_entry->rs_link)) {
