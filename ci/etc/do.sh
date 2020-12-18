@@ -110,7 +110,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     fi
     export LANGUAGE=C.UTF-8
     export LANG=C.UTF-8
-    export LC_ALL=C.UTF-8"
+    export LC_ALL=C.UTF-8
     apt-get -y update
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
@@ -122,6 +122,9 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
       export DEBIAN_FRONTEND=noninteractive
     fi
+    export LANGUAGE=C.UTF-8
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
     apt-get -y update
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
