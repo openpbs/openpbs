@@ -282,14 +282,14 @@ init_msi()
 
 /**
  * @brief
- * 	Used to get serverer_instance_id which is of the form server_instance_name:server_instance_port
+ * 	Used to Create serverer_instance_id which is of the form server_instance_name:server_instance_port
  * 
  * @return char *
  * @return NULL - failure
  * @retval !NULL - pointer to server_instance_id
  */
 char *
-get_svr_inst_id(void)
+gen_svr_inst_id(void)
 {
 	char svr_inst_name[PBS_MAXHOSTNAME + 1];
 	unsigned int svr_inst_port;
