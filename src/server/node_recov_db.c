@@ -215,13 +215,16 @@ node_to_db(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	/* nodes do not have a qs area, so we cannot check whether qs changed or not 
 	 * hence for now, we always write the qs area, for now!
 	 */
-		
+
 	/* node_index is used to sort vnodes upon recovery.
 	* For Cray multi-MoM'd vnodes, we ensure that natural vnodes come
 	* before the vnodes that it manages by introducing offsetting all
 	* non-natural vnodes indices to come after natural vnodes.
 	*/
-	pdbnd->nd_index = (pnode->nd_nummoms * svr_totnodes) + pnode->nd_index;
+	if (pnode->nd_nummoms > 1)
+		pdbnd->nd_index = 1; /* multiple parent moms, Cray case */
+	else
+		pdbnd->nd_index = 0; /* default, single parent mom */
 
 	if (pnode->nd_hostname)
 		strcpy(pdbnd->nd_hostname, pnode->nd_hostname);

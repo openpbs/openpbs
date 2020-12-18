@@ -5225,6 +5225,198 @@ nodes_free(job *pj)
 
 /**
  * @brief
+ *	Add a mom to a job, if the mom is not already present
+ *
+ * @param[in] pjob - job pointer
+ * @param[in] mname - mom name to add
+ * @param[in] port - mom port
+ * @param[in/out] mi - The last used index in the ji_hosts array 
+ * @param[out] mynp - Return pointer to a match with this host
+ *
+ * @return hnodent
+ * @retval - The hnodent structure matching the mname, port
+ * @retval - NULL - failure to add (get_fullhostname failed)
+ *
+ */
+hnodent *
+add_mom_to_job(job *pjob, char *mname, int port, int *mi, hnodent **mynp)
+{
+	int j;
+	int momindex = *mi;
+	hnodent *hp = NULL;
+
+	/*
+	* for the natural vnode in a set that satisfies a chunk,
+	* see if we have a hnodent entry for the parent Mom,
+	* if not add an entry
+	*/
+
+	/* see if we already have this mom */
+	for (j = 0; j < momindex; ++j) {
+		if ((strcmp(mname, pjob->ji_hosts[j].hn_host) == 0)
+			&& (port == pjob->ji_hosts[j].hn_port))
+			break;
+	}
+	hp = &pjob->ji_hosts[j];
+	if ((hp != NULL) && (j == momindex)) {
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "Adding mom %s:%d to job", mname, port);
+		/* need to add entry */
+		hp->hn_node = momindex++;
+		hp->hn_host = strdup(mname);
+		if (hp->hn_host == NULL)
+			return (NULL);
+		hp->hn_port = port;
+		hp->hn_stream = -1;
+		hp->hn_eof_ts = 0; /* reset eof timestamp */
+		hp->hn_sister = SISTER_OKAY;
+		hp->hn_nprocs = 0;
+		hp->hn_vlnum = 0;
+		hp->hn_vlist = (host_vlist_t *)0;
+		hp->hn_vlist = NULL;
+		memset(&hp->hn_nrlimit, 0, sizeof(resc_limit_t));
+		CLEAR_HEAD(hp->hn_events);
+		/* mark next slot as the (current) end */
+		pjob->ji_hosts[momindex].hn_node = TM_ERROR_NODE;
+
+		if (hp->hn_port == pbs_rm_port) {
+			int hostmatch = 0;
+			static char node_name[PBS_MAXHOSTNAME + 1] = { '\0' };
+			static char canonical_name[PBS_MAXHOSTNAME + 1] = { '\0' };
+
+			/*
+			* The following block prevents us from having to employ
+			* yet another global variable to represent the hostname
+			* of the local node.
+			*/
+			if (pbs_conf.pbs_leaf_name) {
+				if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
+					/* PBS_LEAF_NAME has changed or node_name is uninitialized */
+					strncpy(node_name, pbs_conf.pbs_leaf_name, PBS_MAXHOSTNAME);
+					node_name[PBS_MAXHOSTNAME] = '\0';
+					/* Need to canonicalize PBS_LEAF_NAME */
+					if (get_fullhostname(node_name, canonical_name, (sizeof(canonical_name) - 1)) != 0) {
+						log_errf(errno, __func__, "Failed to get fullhostname from %s for job %s", node_name, pjob->ji_qs.ji_jobid);
+						node_name[0] = '\0';
+						canonical_name[0] = '\0';
+						return (NULL);
+					}
+				}
+			} else {
+				if (strcmp(mom_host, node_name) != 0) {
+					/* mom_host has changed or node_name is uninitialized */
+					strncpy(node_name, mom_host, PBS_MAXHOSTNAME);
+					node_name[PBS_MAXHOSTNAME] = '\0';
+					/* mom_host contains the canonical name */
+					strncpy(canonical_name, mom_host, PBS_MAXHOSTNAME);
+					canonical_name[PBS_MAXHOSTNAME] = '\0';
+				}
+			}
+
+			if (strcmp(hp->hn_host, node_name) == 0)
+				hostmatch = 1;
+			else {
+				char namebuf[PBS_MAXHOSTNAME + 1];
+				if (get_fullhostname(hp->hn_host, namebuf, (sizeof(namebuf) - 1)) != 0) {
+					log_errf(errno, __func__, "Failed to get fullhostname from %s for job %s", hp->hn_host, pjob->ji_qs.ji_jobid);
+					return (NULL);
+				}
+				if (strcmp(namebuf, canonical_name) == 0)
+					hostmatch = 1;
+			}
+
+			if (hostmatch) {
+				pjob->ji_nodeid = hp->hn_node;
+				if (mynp)
+					*mynp = hp;
+			}
+		}
+	}
+	*mi = momindex;
+	return hp;
+}
+
+/**
+ * @brief
+ *	Get the next "chunk" from the exechost(2) string
+ *
+ * @param[in] enable_exechost2 - is exec_host2 available?
+ * @param[in/out] ppeh - pointer to the current location in exechost(2) string
+ * @param[out] pport - pointer to the integer port variable to be returned
+ *
+ * @return char *
+ * @retval - the mom name 
+ * @retval - NULL - failure
+ *
+ */
+static char *
+get_next_exechost2(int enable_exechost2, char **ppeh, int *pport)
+{
+	static char *mname;
+	int port;
+	char *peh = *ppeh;
+	int n = 0;
+	static char natvnodename[PBS_MAXNODENAME + 1];
+	static char momname[PBS_MAXNODENAME + 1];
+	static char momport[10] = {0};
+	momvmap_t *pnat = NULL;
+
+	if (enable_exechost2 == 0) {
+		while ((*peh != '/') && (*peh != '\0') &&
+			(n < PBS_MAXNODENAME)) {
+			natvnodename[n++] = *peh++;
+		}
+		natvnodename[n] = '\0';
+	} else {
+		momport[0] = '\0';
+		while ((*peh != ':') && (*peh != '/') && (*peh != '\0') &&
+			(n < PBS_MAXNODENAME)) {
+			momname[n++] = *peh++;
+		}
+		momname[n] = '\0';
+		/* check if peh is colon, if so parse out port */
+		n = 0;
+		if (*peh == ':') {
+			peh++; /* skip first ':' character to get port number */
+			while ((*peh != '/') && (*peh != '\0') && (n < sizeof(momport)))
+				momport[n++] = *peh++;
+		}
+		momport[n] = '\0';
+	}
+
+	/* advance past the "+" to the next host */
+	while (*peh != '\0') {
+		if (*peh++ == '+')
+			break;
+	}
+
+	if (enable_exechost2 == 0) {
+		pnat = find_vmap_entry(natvnodename);
+		if (pnat != NULL) {
+			/* found a map entry */
+			mname = pnat->mvm_mom->mi_host;
+			port = pnat->mvm_mom->mi_port + 1; /* RM port */
+		} else {
+			/* no map entry, assume same vnode name is */
+			/* the host name and the port is standard  */
+			mname = natvnodename;
+			port = pbs_mom_port + 1; /* RM port */
+		}
+	} else {
+		mname = momname;
+		if (strlen(momport) > 0) {
+			port = atol(momport) + 1;
+		} else {
+			port = pbs_mom_port + 1;  /* RM port */
+		}
+	}
+
+	*pport = port;
+	*ppeh = peh;
+	return mname;
+}
+
+/**
+ * @brief
  *	job_nodes - process schedselect and exec_vnode to build mapping between
  *	chunks and allocated nodes/resources.
  *
@@ -5261,61 +5453,58 @@ nodes_free(job *pj)
 int
 job_nodes_inner(struct job *pjob, hnodent **mynp)
 {
-	char	*execvnode;
-	char	*schedselect;
-	int	 i, j, k, n;
+	char *execvnode;
+	char *schedselect;
+	int i, j, k;
 	hnodent *hp = NULL;
-	int	 hpn;
-	int	 momindex;
-	char	*mname;
-	char	 natvnodename[PBS_MAXNODENAME+1];
-	char	 momname[PBS_MAXNODENAME+1];
-	char     momport[10] = {0};
-	int	 nmoms;
+	int hpn;
+	int momindex;
+	char *mname;
+	int nmoms;
 	vmpiprocs *vmp;
 	momvmap_t *pmm = NULL;
 	mominfo_t *pmom;
-	momvmap_t *pnat = NULL;
-	char	*peh;
-	int	 port;
-	int	 nprocs;
-	int	 n_chunks;
-	int	 procindex;
-	int	 rc;
+
+	char *peh;
+	int port;
+	int nprocs;
+	int n_chunks;
+	int procindex;
+	int rc;
 	long long sz;
-	char	*tpc;
+	char *tpc;
 	resc_limit_t have;
 	resc_limit_t need;
-	int	 naccels = 0;	  /* naccelerators count */
-	int	 need_accel = 0;  /* accelerator needed in subchunk? */
+	int naccels = 0;		  /* naccelerators count */
+	int need_accel = 0;		  /* accelerator needed in subchunk? */
 	long long accel_mem = 0;  /* accel mem per exec_vnode key-value pair */
-	char 	*accel_model = NULL; /* accelerator model if set */
+	char *accel_model = NULL; /* accelerator model if set */
 
 	/* variables used in parsing the "exec_vnode" string */
-	int	 stop_on_paren;
-	char	*pndspec;
-	char	*elast;
-	int	 enelma;
-	char	*nodep;
-	static int	       ebuf_len = 0;
-	static char	      *ebuf = NULL;
-	static int	       enelmt = 0;
+	int stop_on_paren;
+	char *pndspec;
+	char *elast;
+	int enelma;
+	char *nodep;
+	static int ebuf_len = 0;
+	static char *ebuf = NULL;
+	static int enelmt = 0;
 	static key_value_pair *enkv = NULL;
 
 	/* variables used in parsing the "schedselect" string */
-	char	*psubspec;
-	char	*slast;
-	int	 snc;
-	int	 snelma;
-	static int	       sbuf_len = 0;
-	static char	      *sbuf = NULL;
-	static int	       snelmt = 0;
+	char *psubspec;
+	char *slast;
+	int snc;
+	int snelma;
+	static int sbuf_len = 0;
+	static char *sbuf = NULL;
+	static int snelmt = 0;
 	static key_value_pair *skv = NULL;
-	char	*save_ptr;	/* posn for strtok_r() */
-	int	n_assn_vnodes;
-	int	assn_index;
-	char	*tmp_str;
-	char	*evnode;
+	char *save_ptr; /* posn for strtok_r() */
+	int n_assn_vnodes;
+	int assn_index;
+	char *tmp_str;
+	char *evnode;
 
 	if (pjob == NULL)
 		return (PBSE_INTERNAL);
@@ -5345,6 +5534,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	if (peh == NULL)
 		return (PBSE_INTERNAL);
 
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "execvnode=%s", execvnode);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "schedselect=%s", schedselect);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "%s=%s", enable_exechost2 ? "exechost2" : "exechost", peh);
 
 	/* make sure parsing buffers are long enought */
 	if ((i = strlen(execvnode)) >= ebuf_len) {
@@ -5468,7 +5660,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	strcpy(ebuf, execvnode);
 	strcpy(sbuf, schedselect);
 
-
 	momindex  = 0;
 	procindex = 0;
 	assn_index = 0;
@@ -5564,179 +5755,42 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				need.rl_ncpus, (unsigned long) need.rl_mem))
 
 			/*
-			 * The "natural" vnode for the Mom who is managing
-			 * this chunk of resources can be determined by the
-			 * corresponding entry in exec_host.  We have to know which
-			 * Mom in case of multiple-Moms for the allocated vnodes
-			 */
-			n = 0;
-
-			if (enable_exechost2 == 0) {
-				while ((*peh != '/') && (*peh != '\0') &&
-					(n < PBS_MAXNODENAME)) {
-					natvnodename[n++] = *peh++;
-				}
-				natvnodename[n] = '\0';
-			} else {
-				momport[0] = '\0';
-				while ((*peh != ':') && (*peh != '/') && (*peh != '\0') &&
-					(n < PBS_MAXNODENAME)) {
-					momname[n++] = *peh++;
-				}
-				momname[n] = '\0';
-				/* check if peh is colon, if so parse out port */
-				n = 0;
-				if (*peh == ':') {
-					peh++; /* skip first ':' character to get port number */
-					while ((*peh != '/') && (*peh != '\0') && (n < sizeof(momport)))
-						momport[n++] = *peh++;
-				}
-				momport[n] = '\0';
-			}
-
-			/* advance past the "+" to the next host */
-			while (*peh != '\0') {
-				if (*peh++ == '+')
-					break;
-			}
-
-			if (enable_exechost2 == 0) {
-				pnat = find_vmap_entry(natvnodename);
-				if (pnat != NULL) {
-					/* found a map entry */
-					mname = pnat->mvm_mom->mi_host;
-					port = pnat->mvm_mom->mi_port + 1; /* RM port */
-				} else {
-					/* no map entry, assume same vnode name is */
-					/* the host name and the port is standard  */
-					mname = natvnodename;
-					port  = pbs_mom_port + 1; /* RM port */
-				}
-			} else {
-				mname = momname;
-				if (strlen(momport) > 0) {
-					port = atol(momport) + 1;
-				} else {
-					port = pbs_mom_port + 1;  /* RM port */
-				}
-			}
-			/*
-			 * for the natural vnode in a set that satisfies a chunk,
-			 * find see if we have a hnodent entry for the parent Mom,
-			 * if not add an entry
-			 */
-
-			/* see if we already have this mom */
-
-			for (j=0; j < momindex; ++j) {
-				if ((strcmp(mname, pjob->ji_hosts[j].hn_host)==0)
-					&& (port == pjob->ji_hosts[j].hn_port))
-					break;
-			}
-			hp = &pjob->ji_hosts[j];
-			if ((hp != NULL) && (j == momindex)) {
-				/* need to add entry */
-				hp->hn_node = momindex++;
-				hp->hn_host   = strdup(mname);
-				if (hp->hn_host == NULL)
-					return (PBSE_SYSTEM);
-				hp->hn_port   = port;
-				hp->hn_stream = -1;
-				hp->hn_eof_ts = 0; /* reset eof timestamp */
-				hp->hn_sister = SISTER_OKAY;
-				hp->hn_nprocs = 0;
-				hp->hn_vlnum  = 0;
-				hp->hn_vlist  = (host_vlist_t *)0;
-				hp->hn_vlist  = NULL;
-				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit_t));
-				CLEAR_HEAD(hp->hn_events);
-				/* mark next slot as the (current) end */
-				pjob->ji_hosts[momindex].hn_node = TM_ERROR_NODE;
-
-				if (hp->hn_port == pbs_rm_port) {
-					int hostmatch = 0;
-					static char node_name[PBS_MAXHOSTNAME + 1] = { '\0' };
-					static char canonical_name[PBS_MAXHOSTNAME + 1] = { '\0' };
-
-					/*
-					 * The following block prevents us from having to employ
-					 * yet another global variable to represent the hostname
-					 * of the local node.
-					 */
-					if (pbs_conf.pbs_leaf_name) {
-						if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
-							/* PBS_LEAF_NAME has changed or node_name is uninitialized */
-							pbs_strncpy(node_name, pbs_conf.pbs_leaf_name, sizeof(node_name));
-							/* Need to canonicalize PBS_LEAF_NAME */
-							if (get_fullhostname(node_name, canonical_name,
-									(sizeof(canonical_name) - 1)) != 0) {
-								sprintf(log_buffer,
-									"Failed to get fullhostname from %s for job %s",
-									node_name, pjob->ji_qs.ji_jobid);
-								log_err(errno, __func__, log_buffer);
-								node_name[0] = '\0';
-								canonical_name[0] = '\0';
-								return (PBSE_SYSTEM);
-							}
-						}
-					} else {
-						if (strcmp(mom_host, node_name) != 0) {
-							/* mom_host has changed or node_name is uninitialized */
-							pbs_strncpy(node_name, mom_host, sizeof(node_name));
-							/* mom_host contains the canonical name */
-							pbs_strncpy(canonical_name, mom_host, sizeof(canonical_name));
-						}
-					}
-
-					if (strcmp(hp->hn_host, node_name) == 0) {
-						hostmatch = 1;
-					} else {
-						char namebuf[PBS_MAXHOSTNAME + 1];
-
-						if (get_fullhostname(hp->hn_host, namebuf,
-								(sizeof(namebuf) - 1)) != 0) {
-
-							sprintf(log_buffer,
-								"Failed to get fullhostname from %s for job %s",
-								hp->hn_host, pjob->ji_qs.ji_jobid);
-							log_err(errno, __func__, log_buffer);
-							return (PBSE_SYSTEM);
-						}
-						if (strcmp(namebuf, canonical_name) == 0)
-							hostmatch = 1;
-					}
-
-					if (hostmatch) {
-						pjob->ji_nodeid = hp->hn_node;
-						if (mynp) {
-							*mynp = hp;
-						}
-					}
-				}
+			* The "natural" vnode for the Mom who is managing
+			* this chunk of resources can be determined by the
+			* corresponding entry in exec_host.  We have to know which
+			* Mom in case of multiple-Moms for the allocated vnodes
+			*/
+			mname = get_next_exechost2(enable_exechost2, &peh, &port);
+			hp = add_mom_to_job(pjob, mname, port, &momindex, mynp);
+			if (hp == NULL) {
+				log_err(errno, __func__, "Failed to add mom to job");
+				return (PBSE_SYSTEM);
 			}
 
 			/* now parse exec_vnode to match up alloc-ed with needed */
-
 			stop_on_paren = 0;
 
-			while ((pndspec = parse_plus_spec_r(elast, &elast, &hpn)) !=
-				NULL) {
-				int       vnncpus = 0;
-				long long ndmem   = 0;
+			while ((pndspec = parse_plus_spec_r(elast, &elast, &hpn)) != NULL) {
+				int vnncpus = 0;
+				long long ndmem = 0;
 
 				if (hpn > 0)		/* found open paren '(' */
 					stop_on_paren = 1;
 
-				rc = parse_node_resc_r(pndspec, &nodep, &enelma,
-					&enelmt, &enkv);
+				rc = parse_node_resc_r(pndspec, &nodep, &enelma, &enelmt, &enkv);
 
 				/* if no resources specified, skip it */
 				if (enelma == 0) {
 					stop_on_paren = 0;
-					DBPRT(("\t\tignoring vnode %s without resources\n", nodep))
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,  "Ignoring vnode %s without resources", nodep);
+					mname = get_next_exechost2(enable_exechost2, &peh, &port);
+					hp = add_mom_to_job(pjob, mname, port, &momindex, mynp);
+					if (hp == NULL) {
+						log_err(errno, __func__, "Failed to add mom to job");
+						return (PBSE_SYSTEM);
+					}
 					continue;       /* check next piece */
 				}
-
 
 				/* nodep = vnode name */
 				if (rc != 0) {
@@ -5768,6 +5822,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					if (enable_exechost2)
 #endif /* localmod 123 */
 					{
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,  "Creating entry for vnode=%s, mom=%s", nodep, mname);
 						pmm = create_mommap_entry(nodep, mname, pmom, 0);
 					} else {
 						pmm = create_mommap_entry(nodep, NULL, pmom, 0);
@@ -5777,9 +5832,10 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 						delete_mom_entry(pmom);
 						return PBSE_SYSTEM;
 					}
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-						LOG_DEBUG, nodep,
-						"implicitly added host to vmap");
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, nodep, "implicitly added host to vmap");
+				} else {
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, 
+							"Found! vnodemap entry for vnode=%s: mom-name=%s, hostname=%s", nodep, pmm->mvm_name, pmm->mvm_hostn);
 				}
 
 				/* for the allocated resc, add to hnodent resc_limit */
