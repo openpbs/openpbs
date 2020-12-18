@@ -198,7 +198,7 @@ if e.type == pbs.RESV_BEGIN:
 
         self.server.stop()
 
-        self.logger.info('wait for 30 seconds till the reservation begins')
+        self.logger.info('wait for 30 seconds till the reservation would end')
         time.sleep(30)
 
         self.server.start()
@@ -339,6 +339,44 @@ if e.type == pbs.RESV_BEGIN:
               'evaluating Python script, attribute '"'resources_used'"' is ' \
               'part of a readonly object' % self.server.shortname
         self.server.log_match(msg, tail=True, max_attempts=30, interval=2)
+
+    @timeout(300)
+    def test_delete_resv_after_first_occurrence(self):
+        """
+        Testcase to submit and confirm a standing reservation for two
+        occurrences, wait for the first occurrence to begin and verify
+        the begin hook for the same, delete before the second occurrence and
+        verify the resvbegin hook for the latter didn't run.
+        """
+        self.server.import_hook(self.hook_name,
+                                TestResvBeginHook.standing_resv_hook_script)
+
+        offset = 10
+        duration = 30
+        rid = self.submit_resv(offset, duration, rrule='FREQ=MINUTELY;COUNT=2')
+
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attrs, id=rid)
+
+        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, attrs, id=rid, offset=10)
+
+        self.logger.info('wait till 30 seconds until the reservation begins')
+        time.sleep(30)
+
+        msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
+              self.server.shortname
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+        self.logger.info('Reservation begin hook ran for first occurrence of '
+                         'a standing reservation')
+
+        self.logger.info('delete during first occurence')
+
+        self.server.delete(rid)
+        msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
+              self.server.shortname
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=30, 
+                              existence=False)
 
     @timeout(300)
     def test_delete_resv_occurrence(self):
