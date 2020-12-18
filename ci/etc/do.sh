@@ -67,6 +67,8 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
+    export LC_ALL=en_US.utf-8
+    export LANG=en_US.utf-8
     yum clean all
     yum -y install yum-utils epel-release rpmdevtools 
     yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
@@ -95,6 +97,7 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
+    export LC_ALL=C.utf8
     zypper -n ref
     zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git 
     rpmdev-setuptree 
@@ -105,6 +108,9 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
       export DEBIAN_FRONTEND=noninteractive
     fi
+    export LANGUAGE=C.UTF-8
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8"
     apt-get -y update
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
@@ -283,12 +289,5 @@ if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
   env
   locale
-ls -l /usr/lib/man-db/zsoelim
-ls -l /usr/lib/man-db/manconv
-which preconv
-which tbl
-which nroff
-man /opt/pbs/bin/pbsnodes
-
   pbs_benchpress -t SmokeTest.test_man_pages 
 fi
