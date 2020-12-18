@@ -923,19 +923,24 @@ class TestTPP(TestFunctional):
                 existence = False
             else:
                 existence = True
-            self.set_pbs_conf(host_name=self.mom.shortname, conf_param=attrib)
+            start_time = time.time()
+            self.set_pbs_conf(host_name=self.server.shortname,
+                              conf_param=attrib)
             attrs = {'event': 'execjob_begin', 'enabled': 'True'}
             self.server.create_hook(hook_name, attrs)
             exp_msg = ["MCAST packet from %s:15001" % server_ip,
                        "mcast done"]
             for msg in exp_msg:
-                self.comm.log_match(msg, existence=existence, n=30)
+                self.comm.log_match(msg, existence=existence,
+                                    starttime=start_time)
             self.server.import_hook(hook_name, body="import pbs")
             for msg in exp_msg:
-                self.comm.log_match(msg, existence=existence, n=30)
+                self.comm.log_match(msg, existence=existence,
+                                    starttime=start_time)
             self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
             for msg in exp_msg:
-                self.comm.log_match(msg, existence=existence, n=30)
+                self.comm.log_match(msg, existence=existence,
+                                    starttime=start_time)
 
     def common_steps_for_mom_pool_tests(self):
         """
