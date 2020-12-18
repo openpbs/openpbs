@@ -903,7 +903,7 @@ send_hellosvr(int stream)
 	server_stream = stream;
 
 	if (svr)
-		sprintf(log_buffer, "HELLO sent to server at %s:%d", svr, port);
+		sprintf(log_buffer, "HELLO sent to server at %s:%d, stream:%d", svr, port, stream);
 	else
 		sprintf(log_buffer, "HELLO sent to server at stream:%d", stream);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,

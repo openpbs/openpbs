@@ -488,7 +488,7 @@ tpp_sock_layer_init()
 {
 	WSADATA	data;
 	if (WSAStartup(MAKEWORD(2, 2), &data)) {
-		tpp_log(LOG_CRIT, NULL, "winsock_init failed! error=%d\n", WSAGetLastError());
+		tpp_log(LOG_CRIT, NULL, "winsock_init failed! error=%d", WSAGetLastError());
 		return -1;
 	}
 	return 0;
@@ -711,7 +711,7 @@ tpp_sock_resolve_host(char *host, int *count)
 	hints.ai_protocol = IPPROTO_TCP;
 
 	if ((rc = getaddrinfo(host, NULL, &hints, &pai)) != 0) {
-		tpp_log(LOG_CRIT, NULL, "Error %d resolving %s\n", rc, host);
+		tpp_log(LOG_CRIT, NULL, "Error %d resolving %s", rc, host);
 		return NULL;
 	}
 

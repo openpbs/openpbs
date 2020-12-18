@@ -593,8 +593,6 @@ tpp_init(struct tpp_config *cnf)
 		return -1;
 	}
 
-	tpp_log(LOG_CRIT, NULL, "App Thread id is %d", pthread_self());
-
 	/* before doing anything else, initialize the key to the tls */
 	if (tpp_init_tls_key() != 0) {
 		/* can only use prints since tpp key init failed */
@@ -966,7 +964,7 @@ tpp_send(int sd, void *data, int len)
 
 	rc = send_to_router(pkt);
 	if (rc == 0)
-		return to_send;
+		return len;  /* all given data sent, so return len */
 	
 	if (rc == -2)
 		tpp_log(LOG_CRIT, __func__, "mbox full, returning error to App!");
@@ -1804,8 +1802,8 @@ tpp_mcast_notify_members(int mtfd, int cmd)
  * @param[in] mtfd - The multicast channel to which to send data
  * @param[in] data - The pointer to the block of data to send
  * @param[in] to_send  - Length of the data to send
- * @param[in] full_len - In case of large packets data is sent in chunks,
- *                       full_len is the total length of the data
+ * @param[in] len - In case of large packets data is sent in chunks,
+ *                       len is the total length of the data
  *
  * @return  Error code
  * @retval  -1 - Failure
@@ -1819,7 +1817,7 @@ tpp_mcast_notify_members(int mtfd, int cmd)
  *
  */
 int
-tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len)
+tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int len)
 {
 	stream_t *mstrm = NULL;
 	stream_t *strm = NULL;
@@ -1855,7 +1853,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len
 	}
 	mhdr->type = TPP_MCAST_DATA;
 	mhdr->hop = 0;
-	mhdr->totlen = htonl(full_len);
+	mhdr->totlen = htonl(len);
 	memcpy(&mhdr->src_addr, &mstrm->src_addr, sizeof(tpp_addr_t));
 	mhdr->num_streams = htonl(num_fds);
 	mhdr->info_len = htonl(minfo_len);
@@ -1928,7 +1926,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int to_send, unsigned int full_len
 	
 	rc = send_to_router(pkt);
 	if (rc == 0)
-		return to_send;
+		return len; /* all given data sent, so return len */
 
 	tpp_log(LOG_ERR, __func__, "Failed to send to router"); /* fall through */
 

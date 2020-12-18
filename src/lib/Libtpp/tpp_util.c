@@ -173,11 +173,16 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
 	char id[2 * PBS_MAXHOSTNAME];
 	char func[PBS_MAXHOSTNAME];
 	int thrd_index;
-	int etype = log_level_2_etype(level);
+	int etype;
 	int len;
 	char logbuf[LOG_BUF_SIZE];
 	char *buf;
 	va_list args;
+
+#ifdef TPPDEBUG
+	level = LOG_CRIT; /* for TPPDEBUG mode force all logs message */
+#endif
+	etype = log_level_2_etype(level);
 
 	func[0] = '\0';
 	if (routine)
@@ -208,8 +213,6 @@ tpp_log(int level, const char *routine, const char *fmt, ...)
 		free(buf);
 
 	va_end(args);
-
-	DBPRT(("%s %s\n", id, buf));
 }
 
 /**
@@ -2398,7 +2401,13 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 	return 0;
 }
 
-#ifdef DEBUG
+/* 
+ * use TPPDEBUG instead of DEBUG, since DEBUG makes daemons not fork
+ * and that does not work well with init scripts. Sometimes we need to
+ * debug TPP in a PTL run where forked daemons are required
+ * Hence use a separate macro
+ */
+#ifdef TPPDEBUG
 /*
  * Convenience function to print the packet header
  *
@@ -2418,13 +2427,13 @@ print_packet_hdr(const char *fnc, void *data, int len)
 
 	if (type == TPP_CTL_JOIN) {
 		tpp_addr_t *addrs = (tpp_addr_t *) (((char *) data) + sizeof(tpp_join_pkt_hdr_t));
-		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s\n", str_types[type - 1], tpp_netaddr(addrs));
+		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(addrs));
 	} else if (type == TPP_CTL_LEAVE) {
 		tpp_addr_t *addrs = (tpp_addr_t *) (((char *) data) + sizeof(tpp_leave_pkt_hdr_t));
-		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s\n", str_types[type - 1], tpp_netaddr(addrs));
+		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(addrs));
 	} else if (type == TPP_MCAST_DATA) {
 		tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) data;
-		tpp_log(LOG_CRIT, __func__,  "%s message arrived from src_host = %s\n", str_types[type - 1], tpp_netaddr(&mhdr->src_addr));
+		tpp_log(LOG_CRIT, __func__,  "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(&mhdr->src_addr));
 	} else if ((type == TPP_DATA) || (type == TPP_CLOSE_STRM)) {
 		char buff[PATH_MAX+1];
 		tpp_data_pkt_hdr_t *dhdr = (tpp_data_pkt_hdr_t *) data;
@@ -2434,7 +2443,7 @@ print_packet_hdr(const char *fnc, void *data, int len)
 			ntohl(dhdr->src_sd), (ntohl(dhdr->dest_sd) == UNINITIALIZED_INT) ? -1 : ntohl(dhdr->dest_sd), ntohl(dhdr->src_magic));
 
 	} else {
-		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s\n", str_types[type - 1], tpp_netaddr(&hdr->src_addr));
+		tpp_log(LOG_CRIT, __func__, "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(&hdr->src_addr));
 	}
 }
 #endif

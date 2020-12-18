@@ -601,12 +601,15 @@ int tpp_mbox_getfd(tpp_mbox_t *);
 extern int tpp_going_down;
 /**********************************************************************/
 
-/*
- *	Different print macros for use in debugging.
+/* 
+ * use TPPDEBUG instead of DEBUG, since DEBUG makes daemons not fork
+ * and that does not work well with init scripts. Sometimes we need to
+ * debug TPP in a PTL run where forked daemons are required
+ * Hence use a separate macro
  */
-#ifdef  DEBUG
+#ifdef  TPPDEBUG
 
-#define TPP_DBPRT(...) tpp_log(LOG_DEBUG, __func__,  __VA_ARGS__)
+#define TPP_DBPRT(...) tpp_log(LOG_CRIT, __func__,  __VA_ARGS__)
 
 void print_packet_hdr(const char *, void *, int);
 #define PRTPKTHDR(id, data, len) print_packet_hdr(id, data, len);

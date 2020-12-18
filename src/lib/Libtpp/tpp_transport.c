@@ -1973,7 +1973,6 @@ send_data(phy_conn_t *conn)
 		if (!pkt) {
 			/* get the next packet from send_mbox */
 			if (tpp_mbox_read(&conn->send_mbox, NULL, NULL, (void **) &conn->curr_send_pkt) != 0) {
-				TPP_DBPRT("No data to send");
 				if (!(errno == EAGAIN || errno == EWOULDBLOCK))
 					tpp_log(LOG_ERR, __func__, "tpp_mbox_read failed");				
 				return;
