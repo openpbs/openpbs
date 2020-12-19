@@ -878,6 +878,10 @@ send_hellosvr(int stream)
 	int		rc = 0;
 	char		*svr = NULL;
 	unsigned int	port = default_server_port;
+	extern int     mom_net_up;
+
+	if (mom_net_up == 0)
+		return;
 
 	if (stream < 0) {
 		if ((svr = get_servername_failover(&port)) == NULL) {
@@ -903,7 +907,7 @@ send_hellosvr(int stream)
 	server_stream = stream;
 
 	if (svr)
-		sprintf(log_buffer, "HELLO sent to server at %s:%d", svr, port);
+		sprintf(log_buffer, "HELLO sent to server at %s:%d, stream:%d", svr, port, stream);
 	else
 		sprintf(log_buffer, "HELLO sent to server at stream:%d", stream);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,

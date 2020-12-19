@@ -449,7 +449,9 @@ connect_to_db(int background) {
 	int db_stop_counts = 0;
 	int db_stop_email_sent = 0;
 	int conn_state;
+#ifndef DEBUG
 	pid_t sid = -1;
+#endif
 	int db_delay = 0;
 try_db_again:
 	fprintf(stdout, "Connecting to PBS dataservice.");

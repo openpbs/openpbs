@@ -119,7 +119,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_smtp_server_name */
 	1, 					/* use compression by default with TCP */
 	1,					/* use mcast by default with TCP */
-	0,					/* force fault tolerant comm disabled by default */
 	NULL,					/* default leaf name */
 	NULL,					/* for leaf, default communication routers list */
 	NULL,					/* default router name */
@@ -514,10 +513,6 @@ __pbs_loadconf(int reload)
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_use_mcast = ((uvalue > 0) ? 1 : 0);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_FORCE_FT_COMM)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.pbs_use_ft = ((uvalue > 0) ? 1 : 0);
-			}
 			else if (!strcmp(conf_name, PBS_CONF_LEAF_NAME)) {
 				if (pbs_conf.pbs_leaf_name)
 					free(pbs_conf.pbs_leaf_name);
@@ -815,10 +810,6 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_USE_MCAST)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_use_mcast = ((uvalue > 0) ? 1 : 0);
-	}
-	if ((gvalue = getenv(PBS_CONF_FORCE_FT_COMM)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.pbs_use_ft = ((uvalue > 0) ? 1 : 0);
 	}
 	if ((gvalue = getenv(PBS_CONF_LEAF_NAME)) != NULL) {
 		if (pbs_conf.pbs_leaf_name)

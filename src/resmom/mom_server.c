@@ -579,54 +579,6 @@ err:
 
 /**
  * @brief
- *	This function will process the rpp values from the server stream.
- *
- * @param[in]	stream - the communication stream
- *
- * @return	int
- * @retval	0: success
- * @retval	!0: Error code
- */
-static int
-process_rpp_values(int stream) {
-	int new_retry, new_water;
-	int ret = 0;
-
-	DBPRT(("%s: IS_NULL\n", __func__))
-
-	new_retry = disrsi(stream, &ret);
-	if (ret != DIS_SUCCESS)
-		return ret;
-
-	new_water = disrsi(stream, &ret);
-	if (ret != DIS_SUCCESS)
-		return ret;
-	/*
-	** rpp_retry can be zero, i.e. no retries.
-	*/
-	DBPRT(("rpp_retry: %d: rpp_highwater:%d\n", new_retry, new_water))
-	if (new_retry >= 0 && rpp_retry != new_retry) {
-		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				msg_daemonname, "rpp_retry changed from %d to %d",
-				rpp_retry, new_retry);
-		rpp_retry = new_retry;
-	}
-	/*
-	** rpp_highwater must be greater than zero.
-	** It is the number of packets allowed to be "on the wire"
-	** at any given time.
-	*/
-	if (new_water > 0 && rpp_highwater != new_water) {
-		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				msg_daemonname, "rpp_highwater changed from %d to %d",
-				rpp_highwater, new_water);
-		rpp_highwater = new_water;
-	}
-	return 0;
-}
-
-/**
- * @brief
  *	This function will process the cluster addresses from the server stream.
  *
  * @param[in]	stream - the communication stream
@@ -740,19 +692,12 @@ is_request(int stream, int version)
 
 	switch (command) {
 
-		case IS_NULL:
-			if ((ret = process_rpp_values(stream)) != 0)
-				goto err;
-			break;
-
 		case IS_REPLYHELLO:	/* servers return greeting to IS_HELLOSVR */
 			DBPRT(("%s: IS_REPLYHELLO, state=0x%x stream=%d\n", __func__,
 				internal_state, stream))
 			time_delta_hellosvr(MOM_DELTA_RESET);
 			need_inv = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
-				goto err;
-			if ((ret = process_rpp_values(stream)) != DIS_SUCCESS)
 				goto err;
 			ret = process_cluster_addrs(stream);
 			if (ret != 0 && ret != DIS_EOD)

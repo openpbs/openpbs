@@ -244,7 +244,6 @@ struct pbs_config
 	char *pbs_output_host_name;	/* name of host to which to stage std out/err */
 	unsigned pbs_use_compression:1;	/* whether pbs should compress communication data */
 	unsigned pbs_use_mcast:1;		/* whether pbs should multicast communication */
-	unsigned pbs_use_ft:1;		/* whether pbs should force use fault tolerant communications */
 	char *pbs_leaf_name;			/* non-default name of this leaf in the communication network */
 	char *pbs_leaf_routers;		/* for this leaf, the optional list of routers to talk to */
 	char *pbs_comm_name;			/* non-default name of this router in the communication network */
@@ -287,7 +286,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_DATA_SERVICE_HOST           "PBS_DATA_SERVICE_HOST"
 #define PBS_CONF_USE_COMPRESSION     	     "PBS_USE_COMPRESSION"
 #define PBS_CONF_USE_MCAST		     "PBS_USE_MCAST"
-#define PBS_CONF_FORCE_FT_COMM		     "PBS_FORCE_FT_COMM"
 #define PBS_CONF_LEAF_NAME		     "PBS_LEAF_NAME"
 #define PBS_CONF_LEAF_ROUTERS		     "PBS_LEAF_ROUTERS"
 #define PBS_CONF_COMM_NAME		     "PBS_COMM_NAME"

@@ -911,6 +911,7 @@ tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout)
  *	Initialize an mbox
  *
  * @param[in] - mbox   - The mbox to read from
+ * @param[in] - size   - The total size allowed, or -1 for inifinite
  *
  * @return  Error code
  * @retval  -1 - Failure
@@ -923,15 +924,18 @@ tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout)
  *
  */
 int
-tpp_mbox_init(tpp_mbox_t *mbox)
+tpp_mbox_init(tpp_mbox_t *mbox, char *name, int size)
 {
 	tpp_init_lock(&mbox->mbox_mutex);
 	TPP_QUE_CLEAR(&mbox->mbox_queue);
 
+	snprintf(mbox->mbox_name, sizeof(mbox->mbox_name), "%s", name);
+	mbox->mbox_size = 0;
+	mbox->max_size = size;
+
 #ifdef HAVE_SYS_EVENTFD_H
 	if ((mbox->mbox_eventfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) == -1) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "eventfd() error, errno=%d", errno);
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+		tpp_log(LOG_CRIT, __func__, "eventfd() error, errno=%d", errno);
 		return -1;
 	}
 #else
@@ -943,8 +947,7 @@ tpp_mbox_init(tpp_mbox_t *mbox)
 	 * Use the self-pipe trick!
 	 */
 	if (tpp_pipe_cr(mbox->mbox_pipe) != 0) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "pipe() error, errno=%d", errno);
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+		tpp_log(LOG_CRIT, __func__, "pipe() error, errno=%d", errno);
 		return -1;
 	}
 	/* set the cmd pipe to nonblocking now
@@ -996,7 +999,7 @@ tpp_mbox_getfd(tpp_mbox_t *mbox)
  *
  */
 void
-tpp_mbox_destroy(tpp_mbox_t *mbox, int destroy_lock)
+tpp_mbox_destroy(tpp_mbox_t *mbox)
 {
 #ifdef HAVE_SYS_EVENTFD_H
 	close(mbox->mbox_eventfd);
@@ -1006,8 +1009,6 @@ tpp_mbox_destroy(tpp_mbox_t *mbox, int destroy_lock)
 	if (mbox->mbox_pipe[1] > -1)
 		tpp_pipe_close(mbox->mbox_pipe[1]);
 #endif
-	if (destroy_lock)
-		tpp_destroy_lock(&mbox->mbox_mutex);
 }
 
 /**
@@ -1032,21 +1033,11 @@ tpp_mbox_destroy(tpp_mbox_t *mbox, int destroy_lock)
 int
 tpp_mbox_monitor(void *em_ctx, tpp_mbox_t *mbox)
 {
-#ifdef HAVE_SYS_EVENTFD_H
 	/* add eventfd to the poll set */
-	if (tpp_em_add_fd(em_ctx, mbox->mbox_eventfd, EM_IN) == -1) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "em_add_fd() error, errno=%d", errno);
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+	if (tpp_em_add_fd(em_ctx, tpp_mbox_getfd(mbox), EM_IN) == -1) {
+		tpp_log(LOG_CRIT, __func__, "em_add_fd() error for mbox=%s, errno=%d", mbox->mbox_name, errno);
 		return -1;
 	}
-#else
-	/* add the pipe to the poll set */
-	if (tpp_em_add_fd(em_ctx, mbox->mbox_pipe[0], EM_IN) == -1) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "em_add_fd() error, errno=%d", errno);
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
-		return -1;
-	}
-#endif
 
 	return 0;
 }
@@ -1080,7 +1071,9 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 #endif
 	tpp_cmd_t *cmd = NULL;
 
-	*cmdval = -1;
+	if (cmdval)
+		*cmdval = -1;
+
 	errno = 0;
 
 	tpp_lock(&mbox->mbox_mutex);
@@ -1095,6 +1088,14 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 #else
 		while (tpp_pipe_read(mbox->mbox_pipe[0], &b, sizeof(char)) == sizeof(char));
 #endif
+	} else {
+		/* reduce from mbox size during read */
+		mbox->mbox_size -= cmd->sz;
+#ifdef DEBUG
+		if ((mbox->max_size != -1) && (cmd->sz > 0)) {
+			TPP_DBPRT("Mbox %s, after reading %d size = %d", mbox->mbox_name, cmd->sz, mbox->mbox_size);
+		}
+#endif
 	}
 
 	tpp_unlock(&mbox->mbox_mutex);
@@ -1104,8 +1105,12 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 		return -1;
 	}
 
-	*tfd = cmd->tfd;
-	*cmdval = cmd->cmdval;
+	if (tfd)
+		*tfd = cmd->tfd;
+
+	if (cmdval)
+		*cmdval = cmd->cmdval;
+
 	*data = cmd->data;
 
 	free(cmd);
@@ -1133,7 +1138,7 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
  *
  */
 int
-tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdval, void **data)
+tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, short *cmdval, void **data)
 {
 	tpp_cmd_t *cmd;
 	int ret = -1;
@@ -1145,13 +1150,15 @@ tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdv
 		cmd = TPP_QUE_DATA(*n);
 		if (cmd && cmd->tfd == tfd) {
 			*n = tpp_que_del_elem(&mbox->mbox_queue, *n);
-			*cmdval = cmd->cmdval;
+			if (cmdval)
+				*cmdval = cmd->cmdval;
 			*data = cmd->data;
 			free(cmd);
 			ret = 0;
 			break;
 		}
 	}
+	mbox->mbox_size = 0;
 
 	tpp_unlock(&mbox->mbox_mutex);
 
@@ -1166,6 +1173,7 @@ tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdv
  * @param[in] - cmdval - The command or operation
  * @param[in] - tfd    - The Virtual file descriptor
  * @param[in] - data   - Any data pointer associated, if any (or NULL)
+ * @param[in] - sz     - size of the data
  *
  * @return Error code
  * @retval -1 Failure
@@ -1178,7 +1186,7 @@ tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdv
  *
  */
 int
-tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data)
+tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, char cmdval, void *data, int sz)
 {
 	tpp_cmd_t *cmd;
 	ssize_t s;
@@ -1191,22 +1199,41 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data)
 	errno = 0;
 	cmd = malloc(sizeof(tpp_cmd_t));
 	if (!cmd) {
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory in em_mbox_post");
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+		tpp_log(LOG_CRIT, __func__, "Out of memory in em_mbox_post for mbox=%s", mbox->mbox_name);
 		return -1;
 	}
 	cmd->cmdval = cmdval;
 	cmd->tfd = tfd;
 	cmd->data = data;
+	cmd->sz = sz;
 
 	/* add the cmd to the threads queue */
 	tpp_lock(&mbox->mbox_mutex);
+
+	if ((mbox->max_size != -1) && (sz + mbox->mbox_size > mbox->max_size)) {
+		tpp_unlock(&mbox->mbox_mutex);
+		free(cmd);
+		tpp_log(LOG_CRIT, __func__, "mbox size limit reached for mbox=%s", mbox->mbox_name);
+		errno = EWOULDBLOCK;
+		return -2;
+	}
+
 	if (tpp_enque(&mbox->mbox_queue, cmd) == NULL) {
 		tpp_unlock(&mbox->mbox_mutex);
-		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory in em_mbox_post");
-		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+		free(cmd);
+		tpp_log(LOG_CRIT, __func__, "Out of memory in em_mbox_post for mbox=%s", mbox->mbox_name);
 		return -1;
 	}
+	
+	/* add to the size to global size during enque */
+	mbox->mbox_size += sz;
+
+#ifdef DEBUG
+	if ((mbox->max_size != -1) && (sz > 0)) {
+		TPP_DBPRT("Mbox %s, after adding %d  size = %d",  mbox->mbox_name, sz, mbox->mbox_size);
+	}
+#endif
+
 	tpp_unlock(&mbox->mbox_mutex);
 
 	while (1) {
@@ -1227,8 +1254,7 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data)
 				/* pipe is full, which is fine, anyway we behave like edge triggered */
 				break;
 			} else if (errno != EINTR) {
-				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "mbox post failed, errno=%d", errno);
-				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+				tpp_log(LOG_CRIT, __func__, "mbox post failed for mbox=%s, errno=%d", mbox->mbox_name, errno);
 				return -1;
 			}
 		}
