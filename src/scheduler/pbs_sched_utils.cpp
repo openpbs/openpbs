@@ -758,6 +758,9 @@ send_cycle_end()
 	int i;
 	static int cycle_end_marker = 0;
 	svr_conns = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_secondary_sock));
+	
+	if (svr_conns == NULL)
+		goto err;
 
 	for (i = 0; svr_conns[i] != NULL; i++) {
 		if (svr_conns[i]->state == SVR_CONN_STATE_DOWN)

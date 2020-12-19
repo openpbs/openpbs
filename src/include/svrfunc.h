@@ -67,7 +67,7 @@ extern char *get_hostPart(char *);
 extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
 extern char *get_servername(unsigned int *);
-extern char *get_svr_inst_id(void);
+extern char *gen_svr_inst_id(void);
 extern void process_Areply(int);
 extern void process_Dreply(int);
 extern void process_DreplyTPP(int);

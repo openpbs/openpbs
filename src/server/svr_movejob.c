@@ -393,6 +393,7 @@ post_movejob(struct work_task *pwt)
 	struct work_task *ptask;
 	int move_type = -1;
 	int force_ack = 0;
+	int replied = 0;
 
 	req = (struct batch_request *) pwt->wt_parm1;
 	pbs_errno = PBSE_NONE;
@@ -468,14 +469,15 @@ post_movejob(struct work_task *pwt)
 		if (jobp) {
 			if ((move_type == MOVE_TYPE_Move_Run) || !svr_chk_history_conf()) {
 				job_purge(jobp);
-				jobp = NULL;
 			} else if (svr_chk_history_conf()) {
 				svr_setjob_histinfo(jobp, T_MOV_JOB);
 			}
 		}
 
-		if (move_type != MOVE_TYPE_Move_Run || force_ack)
+		if (move_type != MOVE_TYPE_Move_Run || force_ack) {
 			reply_ack(req);
+			replied = 1;
+		}
 		break;
 
 	case PBSE_SYSTEM:
@@ -494,6 +496,16 @@ post_movejob(struct work_task *pwt)
 		if (move_type == MOVE_TYPE_Move_Run)
 			r = wstat;
 		req_reject(r, 0, req);
+		replied = 1;
+	}
+
+	/* If already replied, delete any pending tasks associated with this request */
+	ptask = req->rq_ind.rq_move.ptask_runjob;
+	if (replied && ptask && ptask != pwt) {
+		free(ptask->wt_event2);
+		delete_link(&ptask->wt_linkobj2);
+		delete_task(ptask);
+		req->rq_ind.rq_move.ptask_runjob = NULL;
 	}
 
 	return;
@@ -676,6 +688,7 @@ done:
 			pbs_errno = PBSE_SYSTEM;
 			goto send_err;
 		}
+		rq_move->ptask_runjob = ptask_runjob;
 	}
 	free(dup_msgid); /* free this as it is not part of any work task */
 	resc_access_perm = save_resc_access_perm; /* reset back to it's old value */

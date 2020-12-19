@@ -424,7 +424,6 @@ sched_alloc(char *sched_name)
 	psched->sc_secondary_conn = -1;
 	psched->newobj = 1;
 	append_link(&svr_allscheds, &psched->sc_link, psched);
-	psched->sc_conn_addr = get_hostaddr(psched->sc_name);
 
 	/* set the working attributes to "unspecified" */
 
