@@ -265,7 +265,6 @@ class TestTPP(TestFunctional):
         self.common_steps(job=True, interactive=True, resv=True,
                           resv_job=True)
 
-    @skip(reason="Run this through cmd-line by removing this decorator")
     @requirements(num_moms=2, num_clients=1)
     def test_client_with_mom(self):
         """
@@ -276,6 +275,10 @@ class TestTPP(TestFunctional):
         Node 2 : Mom
         Node 3 : Client
         """
+        if self.server.client == self.server.hostname:
+            msg = "Test requires client as input which is on non server"
+            msg += " host"
+            self.skipTest(msg)
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
@@ -286,8 +289,7 @@ class TestTPP(TestFunctional):
         self.common_steps(job=True, interactive=True)
         self.common_steps(resv=True, resv_job=True, client=self.hostB)
 
-    @skip(reason="Run this through cmd-line by removing this decorator")
-    @requirements(num_moms=2, num_clients=1, num_comms=1)
+    @requirements(num_moms=2, num_clients=1, no_comm_on_server=True)
     def test_comm_non_server_host(self):
         """
         This test verifies communication between server-mom,
@@ -299,8 +301,10 @@ class TestTPP(TestFunctional):
         Node 3 : Mom
         Node 4 : Comm
         """
-        msg = "Need atleast 2 moms and a comm installed on host"
-        msg += " other than server host"
+        if self.server.client == self.server.hostname:
+            msg = "Test requires client as input which is on non server"
+            msg += " host"
+            self.skipTest(msg)
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
         self.comm1 = self.comms.values()[0]
