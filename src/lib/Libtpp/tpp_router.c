@@ -318,6 +318,7 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 		}
 		if (tpp_enque(&router_list, r) == NULL) {
 			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to router_list");
+			pbs_idx_free_ctx(idx_ctx);
 			tpp_unlock_rwlock(&router_lock);
 			goto err;
 		}
@@ -350,11 +351,7 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 
 err:
 	tpp_log(LOG_CRIT, __func__, "Error broadcasting to my routers");
-	if (idx_ctx)
-		pbs_idx_free_ctx(idx_ctx);
-
 	while (tpp_deque(&router_list)); /* drain the list, dont free packets, transport will free */
-
 	return -1;
 }
 
@@ -412,6 +409,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 
 			if (tpp_enque(&leaf_list, l) == NULL) {
 				tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to leaf_list");
+				pbs_idx_free_ctx(idx_ctx);
 				tpp_unlock_rwlock(&router_lock);
 				goto err;
 			}
@@ -444,11 +442,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 
 err:
 	tpp_log(LOG_CRIT, __func__, "Error broadcasting to my leaves");
-	if (idx_ctx)
-		pbs_idx_free_ctx(idx_ctx);
-
 	while (tpp_deque(&leaf_list)); /* drain the list, dont free pacets, transport will free */
-
 	return -1;
 }
 
