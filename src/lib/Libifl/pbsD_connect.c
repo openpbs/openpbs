@@ -74,6 +74,7 @@
 #include "auth.h"
 #include "ifl_internal.h"
 #include "libutil.h"
+#include "portability.h"
 
 static pthread_once_t conn_once_ctl = PTHREAD_ONCE_INIT;
 static pthread_mutex_t conn_lock;
@@ -170,6 +171,7 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 	freeaddrinfo(pai);
 	return -1;
 }
+
 
 /**
  * @brief	This function establishes a network connection to the given server.
@@ -627,7 +629,17 @@ __pbs_connect_extend(char *server, char *extend_data)
 {
 	char server_name[PBS_MAXSERVERNAME + 1];
 	unsigned int server_port;
-
+	char	*altservers[2];
+	int	have_alt = 0;
+	int	nsvrs;
+	int	sock = -1;
+	int	i;
+	int	f;
+		
+	char   pbsrc[_POSIX_PATH_MAX];	
+	struct stat sb;	
+	int    using_secondary = 0;	
+	
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return -1;
@@ -641,7 +653,66 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	return connect_to_servers(server_name, server_port, extend_data);
+	nsvrs = get_num_servers();
+
+	if (nsvrs == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
+		/* failover configuered ...   */	
+		if (is_same_host(server, pbs_conf.pbs_primary)) {	
+			have_alt = 1;	
+			
+			altservers[0] = pbs_conf.pbs_primary;	
+			altservers[1] = pbs_conf.pbs_secondary;	
+				
+			/* We want to try the one last seen as "up" first to not   */	
+			/* have connection delays.   If the primary was up, there  */	
+			/* is no .pbsrc.NAME file.  If the last command connected  */	
+			/* to the Secondary, then it created the .pbsrc.USER file. */	
+
+			/* see if already seen Primary down */		
+			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
+			if (stat(pbsrc, &sb) != -1) {	
+				/* try secondary first */	
+				altservers[0] = pbs_conf.pbs_secondary;		
+				altservers[1] = pbs_conf.pbs_primary;
+				using_secondary = 1;	
+			} 		
+		}	
+	}
+
+	/*
+	 * connect to server ...	
+	 * If attempt to connect fails and if Failover configured and	
+	 *   if attempting to connect to Primary,  try the Secondary	
+	 *   if attempting to connect to Secondary, try the Primary	
+	 */	
+	for (i = 0; i < (have_alt + 1); ++i) {
+		if (have_alt) 
+			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
+		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
+			break; 
+	}
+	
+	if (nsvrs > 1)
+		return sock;
+	
+	if (i >= (have_alt+1) && sock == -1) {
+		return -1; 		/* cannot connect */
+	}
+	
+	if (have_alt && (i == 1)) {
+		/* had to use the second listed server ... */
+		if (using_secondary == 1) {
+			/* remove file that causes trying the Secondary first */
+			unlink(pbsrc);
+		} else {
+			/* create file that causes trying the Primary first   */
+			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
+			if (f != -1)
+				close(f);
+		}
+	}
+	
+	return sock;
 }
 
 /**

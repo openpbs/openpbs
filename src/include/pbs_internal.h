@@ -223,7 +223,6 @@ struct pbs_config
 	char *pbs_home_path;			/* path to the pbs home dir */
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
-	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
 	unsigned int pbs_num_servers;	/* currently configured number of instances */
 	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
 	char *cp_path;			/* path to local copy function */
