@@ -943,25 +943,6 @@ tpp_cr_thrd(void *(*start_routine)(void*), pthread_t *id, void *data)
 	return rc;
 }
 
-void
-print_bt()
-{
-	int i, frames;
-	void *bt_buf[BACKTRACE_SIZE];
-	char **bt_strings;
-
-	frames = backtrace(bt_buf, BACKTRACE_SIZE);
-	bt_strings = backtrace_symbols(bt_buf, frames);
-	if (bt_strings == NULL) {
-		tpp_log(LOG_CRIT, __func__, "No backtrace symbols present!");
-	} else {
-		for (i=0; i < frames; i++) {
-			tpp_log(LOG_CRIT, __func__, "%s", bt_strings[i]);
-		}
-		free(bt_strings);
-	}
-}
-
 /**
  * @brief
  *	Initialize a pthread mutex
@@ -1547,7 +1528,7 @@ mk_hostname(char *host, int port)
  *
  */
 static void
-tpp_init_tls_key_once()
+tpp_init_tls_key_once(void)
 {
 	if (pthread_key_create(&tpp_key_tls, NULL) != 0) {
 		fprintf(stderr, "Failed to initialize TLS key\n");
@@ -2272,6 +2253,9 @@ tpp_netaddr(tpp_addr_t *ap)
 char *
 tpp_netaddr_sa(struct sockaddr *sa)
 {
+#ifdef WIN32
+	int len;
+#endif
 	tpp_tls_t *ptr = tpp_get_tls();
 	if (!ptr) {
 		fprintf(stderr, "Out of memory\n");
@@ -2280,7 +2264,8 @@ tpp_netaddr_sa(struct sockaddr *sa)
 	ptr->tppstaticbuf[0] = '\0';
 
 #ifdef WIN32
-	WSAAddressToString((LPSOCKADDR)&sa, sizeof(struct sockaddr), NULL, (LPSTR)&ptr->tppstaticbuf, sizeof(ptr->tppstaticbuf));
+	len = sizeof(ptr->tppstaticbuf);
+	WSAAddressToString((LPSOCKADDR)&sa, sizeof(struct sockaddr), NULL, (LPSTR)&ptr->tppstaticbuf, &len);
 #else
 	if (sa->sa_family == AF_INET)
 		inet_ntop(sa->sa_family, &(((struct sockaddr_in *) sa)->sin_addr), ptr->tppstaticbuf, sizeof(ptr->tppstaticbuf));

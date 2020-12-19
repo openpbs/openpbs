@@ -2837,7 +2837,7 @@ again:
 			unsigned int dest_sd;
 			unsigned int src_magic;
 			unsigned int sz = len - sizeof(tpp_data_pkt_hdr_t);
-			void *data = buf + sizeof(tpp_data_pkt_hdr_t);
+			void *data = (char *) buf + sizeof(tpp_data_pkt_hdr_t);
 
 			src_sd = ntohl(dhdr->src_sd);
 			dest_sd = ntohl(dhdr->dest_sd);
