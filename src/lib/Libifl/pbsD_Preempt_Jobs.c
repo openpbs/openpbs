@@ -155,85 +155,69 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	svr_conn_t **svr_connections = get_conn_svr_instances(c);
 	int num_cfg_svrs = get_num_servers();
 	int i;
-	int *skip;
 	int count = 0;
-	int retidx = -1;
+	int retidx = 0;	/* first server's list will be used to collate results from all */
 	preempt_job_info *ret = NULL;
 	void *missing_jobs = NULL;
 
 	if (!svr_connections)
 		return NULL;
 
-	skip = calloc(num_cfg_svrs, sizeof(int));
-	if (skip == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return NULL;
-	}
-	p_replies = malloc(num_cfg_svrs * sizeof(preempt_job_info *));
+	p_replies = calloc(num_cfg_svrs, sizeof(preempt_job_info *));
 	if (p_replies == NULL) {
-		free(skip);
 		pbs_errno = PBSE_SYSTEM;
-		return NULL;
+		goto err;
 	}
 
 	missing_jobs = pbs_idx_create(0, 0);
 	if (missing_jobs == NULL) {
 		pbs_errno = PBSE_SYSTEM;
-		return NULL;
+		goto err;
 	}
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
-		return NULL;
+		goto err;
 
 	/* lock pthread mutex here for this connection
 	 * blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return NULL;
+		goto err;
 
 	/* With multi-server, jobs are sharded across multiple servers.
 	 * So, send the request to all the active servers and collate their replies
 	 */
 	for (i = 0; i < num_cfg_svrs; i++) {
 		if (preempt_jobs_send(svr_connections[i]->sd, preempt_jobs_list) != 0)
-			skip[i] = 1;
+			goto err;
 	}
 
 	/**
-	 * We will get N lists back, one for each server, each of the same length
+	 * Each server will return an array containing all jobs
 	 * We will do the following:
-	 * 	- go through the first list, find the index which has order == "D",
-	 * 	this implies that the job was not found on the server.
+	 * 	- go through the first array, find the index which has order == "D",
+	 * 	this implies that the job was either preempted by deletion or not found on the server.
 	 *  - Because the servers can return the jobs in a different order than we sent it to them,
 	 *  we can't just check the index of a missing job on other lists
-	 *  - So, add the missing jobs to an AVL tree along with the index in the list.
+	 *  - So, add the missing jobs to an AVL tree along with the index of the array.
 	 *  - Go through other servers' lists, find indices which have order != "D", check
-	 *  AVL tree to find the index of the first list for the job and copy over the state
+	 *  AVL tree to find the index of the first array for the job and copy over the state.
+	 *  This implies that the job was found and preempted on another server.
 	 * 	- Using the AVL tree avoids the cost of N strcmps otherwise needed to find the jobid
-	 *  in the first list
+	 *  in the first array
 	 */
 	for (i = 0; i < num_cfg_svrs; i++) {
-		if (!skip[i]) {
-			p_replies[i] = preempt_jobs_recv(svr_connections[i]->sd, &count);
-			if (retidx == -1)
-				retidx = i;
-		} else
-			p_replies[i] = NULL;
-	}
-	free(skip);
-
-	if (retidx == -1) { /* Didn't receive anything/all failed */
-		free(p_replies);
-		return NULL;
+		if ((p_replies[i] = preempt_jobs_recv(svr_connections[i]->sd, &count)) == NULL)
+			goto err;
 	}
 
-	/* Find jobs which couldn't be found on the server and store them in AVL tree for multi-server */
+	/* Find jobs which couldn't be found on the first server and store them in AVL tree */
 	for (i = 0; i < count; i++) {
 		if (p_replies[retidx][i].order[0] == 'D' && num_cfg_svrs > 1) {
 			int *data = malloc(sizeof(int));
 			if (data == NULL) {
 				pbs_errno = PBSE_SYSTEM;
-				return NULL;
+				goto err;
 			}
 			*data = i;
 			pbs_idx_insert(missing_jobs, p_replies[retidx][i].job_id, data);
@@ -242,13 +226,14 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	ret = p_replies[retidx];
 
 	if (missing_jobs != NULL && num_cfg_svrs > 1) {
-		for (i = retidx + 1; i < num_cfg_svrs; i++) {
+		for (i = 1; i < num_cfg_svrs; i++) {	/* Starting from 1 as retidx == 0 */
 			int j;
+
+			if (p_replies[i] == NULL)
+				continue;
 
 			/* Check if the missing jobs were found on any other server */
 			for (j = 0; j < count; j++) {
-				if (p_replies[i] == NULL)
-					continue;
 				if (p_replies[i][j].order[0] != 'D') {
 					/* Job was found on another server!
 					 * Let's find the index of this job in 'ret' list
@@ -257,26 +242,35 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 					char *jid = strdup(p_replies[i][j].job_id);
 					pbs_idx_find(missing_jobs, (void **) &jid, (void **) &index, NULL);
 					free(jid);
-					if (index != NULL && *index < count)
+					if (index != NULL && *index < count) {
 						strcpy(ret[*index].order, p_replies[i][j].order);
-					free(index);
+						pbs_idx_delete(missing_jobs, jid);
+						free(index);
+					}
 				}
 			}
 		}
 	}
 
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		goto err;
+
 	/* Free up all the other lists */
-	for (i = 0; i < num_cfg_svrs; i++) {
-		if (i == retidx)
-			continue;
+	for (i = 1; i < num_cfg_svrs; i++) {
 		free(p_replies[i]);
 	}
 	free(p_replies);
 	pbs_idx_destroy(missing_jobs);
 
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
-
 	return ret;
+
+err:
+	if (p_replies != NULL) {
+		for (i = 0; i < num_cfg_svrs; i++) {
+			free(p_replies[i]);
+		}
+		free(p_replies);
+	}
+	return NULL;
 }
