@@ -56,6 +56,7 @@
 #include "pbs_client_thread.h"
 #include "net_connect.h"
 #include "portability.h"
+#include "cmds.h"
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -65,8 +66,6 @@
 #endif
 
 char *pbs_conf_env = "PBS_CONF_FILE";
-
-#define LARGE_BUF_LEN 4096
 
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
@@ -1212,7 +1211,7 @@ psi_to_str(psi_t *psi, int nsvrs)
 	int i;
 
 	if (!psi)
-		return strdup("");
+		return NULL;
 
 	for (i = 0; i < nsvrs; i++) {
 		if (len == 0)
@@ -1288,7 +1287,7 @@ pbs_get_conf_var(char *conf_var_name)
 		return conf_val_out;
 
 	/* Finally, resort to the default. */
-	return strdup("");
+	return NULL;
 }
 
 /**

@@ -1440,9 +1440,9 @@ get_comm_filename(char *fname)
 			 (env_svr == NULL) ? "" : env_svr,
 			 (env_port == NULL) ? "" : env_port,
 			 psi_var ? psi_var : "");
+
 		if (len + count < MAXPIPENAME) {
-			memcpy(fname + count, buf, MAXPIPENAME - count);
-			fname[MAXPIPENAME - 1] = '\0';
+			pbs_strncpy(fname + count, buf, MAXPIPENAME - count);
 		} else {
 			if (SHA1((const unsigned char *) buf, SHA_DIGEST_LENGTH, (unsigned char *) &hash)) {
 				for (i = 0; i < SHA_DIGEST_LENGTH; i++)
@@ -1450,8 +1450,7 @@ get_comm_filename(char *fname)
 					
 				buf[SHA_DIGEST_LENGTH*2] = 0;
 			}
-			memcpy(fname + count, buf, MAXPIPENAME - count);
-			fname[MAXPIPENAME - 1] = '\0';
+			pbs_strncpy(fname + count, buf, MAXPIPENAME - count);
 		}
 	}
 
