@@ -268,6 +268,55 @@ struct attrl_holder {
 
 /**
  * @brief
+ *	Appending attribute to the attrl_holder
+ * @param[in,out] head - head of the list
+ * @param[in] pat - attribute needs to be appended to the list
+ * @param[in,out] tail - tail of the list
+ * 
+ * @return int
+ * @retval PBSE_* in case of error
+ * @retval 0 success
+ */
+static int
+append_to_attrl_holder(struct attrl_holder **head, struct attrl *pat, struct attrl_holder **tail)
+{
+	struct attrl_holder *nxt = NULL;
+
+	if ((nxt = calloc(1, sizeof(struct attrl_holder))) == NULL)
+		return (pbs_errno = PBSE_SYSTEM);
+
+	nxt->atr_list = pat;
+
+	if (*tail) {
+		(*tail)->next = nxt;
+		*tail = (*tail)->next;
+	} else
+		*head = *tail = nxt;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Frees attrl_holder
+ * @param[in] head - head of the list
+ * 
+ * @return void
+ */
+static void
+free_attrl_holder(struct attrl_holder *head)
+{
+	struct attrl_holder *cur;
+	struct attrl_holder *nxt;
+
+	for (cur = head; cur; cur = nxt) {
+		nxt = cur->next;
+		free(cur);
+	}
+}
+
+/**
+ * @brief
  * accumulate_values:
  *	Accumulate values in resources assigned attribute in b
  * @param[in] a - input list of type attrl_holder. 
@@ -356,40 +405,39 @@ aggr_resc_ct(struct batch_status *st1, struct batch_status *st2)
 	struct attrl *a = NULL;
 	struct attrl *b = NULL;
 	struct attrl_holder *resc_assn = NULL;
-	struct attrl_holder *cur = NULL;
-	struct attrl_holder *nxt = NULL;
+	struct attrl_holder *resc_avail = NULL;
+	struct attrl_holder *cur_ravail = NULL;
+	struct attrl_holder *cur_rassn = NULL;
 
 	if (!st1 || !st2)
 		return;
 
-	/* In the first pass gather all resources assigned attr from st1
+	/* In the first pass gather all resources assigned/available attr from st1
 		so we do not have to loop through all attributes */
 	for (a = st1->attribs; a; a = a->next) {
-		if (a->name && strcmp(a->name, ATTR_rescassn) == 0) {
-			if ((nxt = malloc(sizeof(struct attrl_holder))) == NULL) {
-				pbs_errno = PBSE_SYSTEM;
+		if (!a->name)
+			continue;
+		if (!strcmp(a->name, ATTR_rescavail))
+			if (append_to_attrl_holder(&resc_avail, a, &cur_ravail) != PBSE_NONE)
 				goto end;
-			}
-			nxt->atr_list = a;
-			nxt->next = NULL;
-			if (cur) {
-				cur->next = nxt;
-				cur = cur->next;
-			} else
-				resc_assn = cur = nxt;
-		}
+
+		if (!strcmp(a->name, ATTR_rescassn))
+			if (append_to_attrl_holder(&resc_assn, a, &cur_rassn) != PBSE_NONE)
+				goto end;
 	}
 
 	for (b = st2->attribs; b; b = b->next) {
-		if (b->name && strcmp(b->name, ATTR_rescassn) == 0)
+		if (!b->name)
+			continue;
+		if (!strcmp(b->name, ATTR_rescavail))
+			accumulate_values(resc_avail, b, st1->attribs);
+		if (!strcmp(b->name, ATTR_rescassn))
 			accumulate_values(resc_assn, b, st1->attribs);
 	}
 
 end:
-	for (cur = resc_assn; cur; cur = nxt) {
-		nxt = cur->next;
-		free(cur);
-	}
+	free_attrl_holder(resc_avail);
+	free_attrl_holder(resc_assn);
 }
 
 /**
