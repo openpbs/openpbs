@@ -211,7 +211,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         j4 = Job(TEST_USER)
         j4.set_attributes({ATTR_l + '.select': '1:ncpus=2',
                            ATTR_q: 'expressq',
-                           ATTR_l + '.walltime': 5})
+                           ATTR_l + '.walltime': 15})
         jid4 = self.server.submit(j4)
 
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
