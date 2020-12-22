@@ -1038,16 +1038,18 @@ tpp_transport_vsend(int tfd, tpp_packet_t *pkt)
 	int wire_len = htonl(pkt->totlen);
 	int rc;
 
-	if (tfd < 0) 
+	if (tfd < 0) {
+		tpp_free_pkt(pkt);
 		return -1;
+	}
 
 	TPP_DBPRT("sending total length = %d", pkt->totlen);
 
-	/* write the total packet length as the first byte of the packet header 
-	 * every packet header type has a ntotlen as the exact first element 
+	/* write the total packet length as the first byte of the packet header
+	 * every packet header type has a ntotlen as the exact first element
 	 * The total length of all the chunks of the packet is only know at this
 	 * function, when all chunks are complete, so we compute the total length
-	 * and set to the ntotlen element of the packet header 
+	 * and set to the ntotlen element of the packet header
 	 */
 	memcpy(p_ntotlen, &wire_len, sizeof(int));
 
@@ -1257,7 +1259,7 @@ add_transport_conn(phy_conn_t *conn)
 		/* since we connected, remove EM_OUT from the list and add EM_IN */
 		conn->ev_mask = EM_IN | EM_ERR | EM_HUP;
 		TPP_DBPRT("Connected, Removed EM_OUT and added EM_IN to ev_mask, now=%x", conn->ev_mask);
-		
+
 		/* add it to my own monitored list */
 		if (tpp_em_add_fd(conn->td->em_context, conn->sock_fd, conn->ev_mask) == -1) {
 			tpp_log(LOG_ERR, __func__, "Multiplexing failed");
@@ -1804,7 +1806,7 @@ handle_incoming_data(phy_conn_t *conn)
 			if (conn->scratch.len == 0)
 				conn->scratch.len = TPP_SCRATCHSIZE;
 			else {
-				conn->scratch.len += TPP_SCRATCHSIZE;						
+				conn->scratch.len += TPP_SCRATCHSIZE;
 				tpp_log(LOG_INFO, __func__, "Increased scratch size for tfd=%d to %d", conn->sock_fd, conn->scratch.len);
 			}
 			p = realloc(conn->scratch.data, conn->scratch.len);
@@ -1823,11 +1825,11 @@ handle_incoming_data(phy_conn_t *conn)
 			if (torecv > space_left)
 				torecv = space_left;
 		} else {
-			/* 
+			/*
 			 * we are starting to read a new packet now
 			 * so we try to read the length part only first
-			 * so we know how much more to read this is to 
-			 * avoid reading more than one packet, to eliminate memmoves 
+			 * so we know how much more to read this is to
+			 * avoid reading more than one packet, to eliminate memmoves
 			 */
 			torecv = sizeof(int) + sizeof(char) - offset; /* also read the type character */
 			pkt_len = 0;
@@ -1924,8 +1926,8 @@ add_pkt(phy_conn_t *conn)
 			}
 
 			if (rc == 0) {
-			   /* 
-				* no need to memmove or coalesce the data, since we would have read 
+			   /*
+				* no need to memmove or coalesce the data, since we would have read
 				* just enough for a packet, so, just reset pointers
 				*/
 				conn->scratch.pos = conn->scratch.data;
@@ -1974,7 +1976,7 @@ send_data(phy_conn_t *conn)
 			/* get the next packet from send_mbox */
 			if (tpp_mbox_read(&conn->send_mbox, NULL, NULL, (void **) &conn->curr_send_pkt) != 0) {
 				if (!(errno == EAGAIN || errno == EWOULDBLOCK))
-					tpp_log(LOG_ERR, __func__, "tpp_mbox_read failed");				
+					tpp_log(LOG_ERR, __func__, "tpp_mbox_read failed");
 				return;
 			}
 			pkt = conn->curr_send_pkt;

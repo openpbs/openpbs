@@ -356,7 +356,7 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	}
 
 	tpp_log(LOG_INFO, NULL, "TPP authentication method = %s", tpp_conf->auth_config->auth_method);
-	if (tpp_conf->auth_config->encrypt_method[0] != '\0') 
+	if (tpp_conf->auth_config->encrypt_method[0] != '\0')
 		tpp_log(LOG_INFO, NULL, "TPP encryption method = %s", tpp_conf->auth_config->encrypt_method);
 
 
@@ -413,7 +413,7 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 				}
 
 				/* emit a log depicting what we are going to use as keepalive */
-				tpp_log(LOG_CRIT, NULL, 
+				tpp_log(LOG_CRIT, NULL,
 						"Using tcp_keepalive_time=%d, tcp_keepalive_intvl=%d, tcp_keepalive_probes=%d, tcp_user_timeout=%d",
 						tpp_conf->tcp_keep_idle, tpp_conf->tcp_keep_intvl, tpp_conf->tcp_keep_probes, tpp_conf->tcp_user_timeout);
 			} else {
@@ -621,10 +621,8 @@ tpp_handle_auth_handshake(int tfd, int conn_fd, conn_auth_t *authdata, int for_e
 
 		if (tpp_transport_vsend(conn_fd, pkt) != 0) {
 			tpp_log(LOG_CRIT, __func__, "tpp_transport_vsend failed, err=%d", errno);
-			free(data_out);
 			return -1;
 		}
-		free(data_out);
 	}
 
 	/*
@@ -697,7 +695,7 @@ tpp_bld_pkt(tpp_packet_t *pkt, void *data, int len, int dup, void **dup_data)
 	/* if packet NULL, create packet now and add chunk */
 	if (pkt == NULL) {
 		if ((pkt = malloc(sizeof(tpp_packet_t))) == NULL) {
-			if (d != data) 
+			if (d != data)
 				free(d);
 			tpp_free_pkt(pkt);
 			tpp_log(LOG_CRIT, __func__, "Out of memory allocating packet");
@@ -1469,7 +1467,7 @@ tpp_send_ctl_msg(int fd, int code, tpp_addr_t *src, tpp_addr_t *dest, unsigned i
 		memcpy(&lhdr->src_addr, dest, sizeof(tpp_addr_t));
 	if (msg == NULL)
 		msg = "";
-	
+
 	if (!tpp_bld_pkt(pkt, msg, strlen(msg) + 1, 1, NULL)) {
 		tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 		return -1;
@@ -2332,61 +2330,65 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 {
 	void *data_out = NULL;
 	size_t len_out = 0;
-	tpp_encrypt_hdr_t ehdr;
-	int totlen;
-	tpp_chunk_t *chunk;
-	tpp_chunk_t *first_chunk;
+	tpp_encrypt_hdr_t *ehdr;
+	int totlen = pkt->totlen;
+	tpp_chunk_t *chunk, *next;
+	tpp_auth_pkt_hdr_t *data = (tpp_auth_pkt_hdr_t *)(((tpp_chunk_t *)(GET_NEXT(pkt->chunks)))->data);
+	unsigned char type = data->type;
+	void *buf = NULL;
+	char *p;
 
-	pkt->totlen = 0;
-	for (chunk = GET_NEXT(pkt->chunks); chunk; chunk = GET_NEXT(chunk->chunk_link)) {
-		if (authdata->encryptdef->encrypt_data(authdata->encryptctx, (void *) chunk->data, (size_t) chunk->len, &data_out, &len_out) != 0) {
-			return -1;
-		}
+	if (type == TPP_AUTH_CTX && data->for_encrypt == FOR_ENCRYPT)
+		return 0;
 
-		if (chunk->len > 0 && len_out <= 0) {
-			tpp_log(LOG_CRIT, __func__, "invalid encrypted data len: %d, pktlen: %d", (int) len_out, chunk->len);
-			return -1;
-		}
-
-		/* now replace the data with encrypted buffer */
-		free(chunk->data);
-		chunk->data = data_out;
-		chunk->len = len_out;
-		chunk->pos = chunk->data;
-
-		pkt->totlen += len_out;
-	}
-
-	/* now prepend with an unencrypted chunk about the encrypted data */
-	chunk = NULL;
-	chunk = malloc(sizeof(tpp_chunk_t));
-	if (chunk)
-		chunk->data = malloc(sizeof(tpp_encrypt_hdr_t));
-	if (!chunk || !chunk->data) {
-		free(chunk);
-		tpp_log(LOG_CRIT, __func__, "Out of memory adding length chunk");
+	buf = malloc(totlen);
+	if (buf == NULL) {
+		tpp_log(LOG_CRIT, __func__, "Failed to allocated buffer for encrypting pkt data");
 		return -1;
 	}
-	chunk->pos = chunk->data;
-	CLEAR_LINK(chunk->chunk_link);
-	pkt->totlen += sizeof(tpp_encrypt_hdr_t); 
-	
-	totlen = htonl(pkt->totlen);
-	ehdr.ntotlen = totlen;
-	ehdr.type = TPP_ENCRYPTED_DATA;
+	p = (char *)buf;
+	chunk = GET_NEXT(pkt->chunks);
+	while (chunk) {
+		memcpy(p, chunk->data, chunk->len);
+		p += chunk->len;
+		next = GET_NEXT(chunk->chunk_link);
+		tpp_free_chunk(chunk);
+		chunk = next;
+	}
+	pkt->totlen = 0;
+	CLEAR_HEAD(pkt->chunks);
+	pkt->curr_chunk = NULL;
 
-	memcpy(chunk->data, &ehdr, sizeof(tpp_encrypt_hdr_t));
+	if (authdata->encryptdef->encrypt_data(authdata->encryptctx, buf, totlen, &data_out, &len_out) != 0) {
+		tpp_log(LOG_CRIT, __func__, "Failed to encrypt pkt data");
+		free(buf);
+		return -1;
+	}
 
-	first_chunk = GET_NEXT(pkt->chunks);
-
-	/* now prepend this chunk before other chunks */
-	insert_link(&first_chunk->chunk_link, &chunk->chunk_link, chunk, LINK_INSET_BEFORE);
-	pkt->curr_chunk = chunk;
+	if (totlen > 0 && len_out <= 0) {
+		tpp_log(LOG_CRIT, __func__, "invalid encrypted data len: %d, pktlen: %d", (int) len_out, totlen);
+		free(buf);
+		return -1;
+	}
+	free(buf);
+	if (!tpp_bld_pkt(pkt, NULL, sizeof(tpp_encrypt_hdr_t), 1, (void **)&ehdr)) {
+		tpp_log(LOG_CRIT, __func__, "Failed to add encrypt pkt header into pkt");
+		free(data_out);
+		return -1;
+	}
+	if (!tpp_bld_pkt(pkt, data_out, len_out, 0, NULL)) {
+		tpp_log(LOG_CRIT, __func__, "Failed to add encrypted data into pkt");
+		free(data_out);
+		return -1;
+	}
+	ehdr->ntotlen = htonl(pkt->totlen);
+	ehdr->type = TPP_ENCRYPTED_DATA;
+	pkt->curr_chunk = GET_NEXT(pkt->chunks);
 
 	return 0;
 }
 
-/* 
+/*
  * use TPPDEBUG instead of DEBUG, since DEBUG makes daemons not fork
  * and that does not work well with init scripts. Sometimes we need to
  * debug TPP in a PTL run where forked daemons are required
@@ -2420,7 +2422,7 @@ print_packet_hdr(const char *fnc, void *data, int len)
 		tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) data;
 		tpp_log(LOG_CRIT, __func__,  "%s message arrived from src_host = %s", str_types[type - 1], tpp_netaddr(&mhdr->src_addr));
 	} else if ((type == TPP_DATA) || (type == TPP_CLOSE_STRM)) {
-		char buff[PATH_MAX+1];
+		char buff[TPP_GEN_BUF_SZ+1];
 		tpp_data_pkt_hdr_t *dhdr = (tpp_data_pkt_hdr_t *) data;
 
 		strncpy(buff, tpp_netaddr(&dhdr->src_addr), sizeof(buff));
