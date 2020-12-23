@@ -300,7 +300,7 @@ class TestReservations(TestFunctional):
         Verify that degraded standing reservations are reconfirmed
         on other nodes
         """
-        self.degraded_resv_reconfirm(start=25, end=625,
+        self.degraded_resv_reconfirm(start=125, end=625,
                                      rrule='freq=HOURLY;count=5')
 
     def test_degraded_advance_reservations(self):
@@ -308,7 +308,7 @@ class TestReservations(TestFunctional):
         Verify that degraded advance reservations are reconfirmed
         on other nodes
         """
-        self.degraded_resv_reconfirm(start=25, end=625)
+        self.degraded_resv_reconfirm(start=125, end=625)
 
     def test_degraded_standing_running_reservations(self):
         """
