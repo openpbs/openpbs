@@ -2434,7 +2434,7 @@ class TestReservations(TestFunctional):
         Test that when a standing reservation and advance reservation
         are submitted to start at the same time on the same set of
         resources, then the one that is submitted first wins and second
-        is deleted.
+        is rejected.
         """
 
         self.common_config()
@@ -2444,18 +2444,19 @@ class TestReservations(TestFunctional):
 
         start = int(time.time()) + 300
         end = int(time.time()) + 1200
-        srid = self.submit_reservation(user=PBSROOT_USER,
+        srid = self.submit_reservation(user=TEST_USER,
                                        select='2:ncpus=4',
                                        rrule='FREQ=DAILY;COUNT=2',
                                        start=start,
                                        end=end)
 
-        arid = self.submit_reservation(user=PBSROOT_USER,
+        arid = self.submit_reservation(user=TEST_USER,
                                        select='2:ncpus=4',
                                        start=start,
                                        end=end)
-        a = {'scheduling': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.scheduler.run_scheduling_cycle()
         self.server.expect(RESV, {'reserve_state':
-                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=srid)
-        self.server.log_match(arid + ";Reservation denied", id=arid)
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=srid, max_attempts=1)
+        self.server.log_match(arid + ";Reservation denied", id=arid,
+                              max_attempts=1)
