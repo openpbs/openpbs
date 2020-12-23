@@ -2428,3 +2428,34 @@ class TestReservations(TestFunctional):
         self.assertEqual(
             jid2[1], '(' + vn + '[1]:ncpus=4+' + vn + '[2]:ncpus=4)')
         self.assertNotIn(job1_node, job2_node, errmsg)
+
+    def test_clashing_reservations(self):
+        """
+        Test that when a standing reservation and advance reservation
+        are submitted to start at the same time on the same set of
+        resources, then the one that is submitted first wins and second
+        is deleted.
+        """
+
+        self.common_config()
+
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        start = int(time.time()) + 300
+        end = int(time.time()) + 1200
+        srid = self.submit_reservation(user=PBSROOT_USER,
+                                       select='2:ncpus=4',
+                                       rrule='FREQ=DAILY;COUNT=2',
+                                       start=start,
+                                       end=end)
+
+        arid = self.submit_reservation(user=PBSROOT_USER,
+                                       select='2:ncpus=4',
+                                       start=start,
+                                       end=end)
+        a = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=srid)
+        self.server.log_match(arid + ";Reservation denied", id=arid)
