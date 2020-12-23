@@ -156,6 +156,7 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	int num_cfg_svrs = get_num_servers();
 	int i;
 	int count = 0;
+	int last_count = -1;
 	int retidx = 0;	/* first server's list will be used to collate results from all */
 	preempt_job_info *ret = NULL;
 	void *missing_jobs = NULL;
@@ -206,9 +207,13 @@ __pbs_preempt_jobs(int c, char **preempt_jobs_list)
 	 * 	- Using the AVL tree avoids the cost of N strcmps otherwise needed to find the jobid
 	 *  in the first array
 	 */
-	for (i = 0; i < num_cfg_svrs; i++) {
+	for (i = 0; i < num_cfg_svrs; last_count = count, i++) {
 		if ((p_replies[i] = preempt_jobs_recv(svr_connections[i]->sd, &count)) == NULL)
 			goto err;
+		if (last_count != -1 && count != last_count) {
+			/* something went wrong, this server did not return the same count, abort */
+			goto err;
+		}
 	}
 
 	/* Find jobs which couldn't be found on the first server and store them in AVL tree */
@@ -272,5 +277,6 @@ err:
 		}
 		free(p_replies);
 	}
+	pbs_idx_destroy(missing_jobs);
 	return NULL;
 }
