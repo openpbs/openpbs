@@ -769,7 +769,7 @@ class TestMultipleSchedulers(TestFunctional):
         # submit jobs to multisched 'sc1'
         sc1_attr = {ATTR_queue: 'wq1',
                     'Resource_List.select': '1:ncpus=1',
-                    'Resource_List.walltime': 10}
+                    'Resource_List.walltime': 100}
         sc1_J1 = Job(TEST_USER1, attrs=sc1_attr)
         sc1_jid1 = self.server.submit(sc1_J1)
         sc1_J2 = Job(TEST_USER2, attrs=sc1_attr)
