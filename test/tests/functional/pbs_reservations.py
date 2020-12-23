@@ -681,8 +681,10 @@ class TestReservations(TestFunctional):
         exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
         self.server.expect(RESV, exp_attr, id=rid, offset=30)
 
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_vnode = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.mom.shortname)
+                           id=resv_vnode)
 
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl', 'queue': rid.split('.')[0]}
@@ -690,7 +692,7 @@ class TestReservations(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        n = self.server.status(NODE)
+        n = self.server.status(NODE, id=resv_vnode)
         states = n[0]['state'].split(',')
         self.assertIn('resv-exclusive', states)
         self.assertIn('job-exclusive', states)
