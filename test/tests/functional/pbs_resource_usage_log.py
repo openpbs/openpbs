@@ -60,8 +60,9 @@ class TestResourceUsageLog(TestFunctional):
             cmd = 'pgrep -f ' + script
             ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
             for pid in ret['out']:
-                cmd = 'sudo -u ' + str(TEST_USER) + ' kill -9 ' + pid
-                ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
+                cmd = 'kill -9 ' + pid
+                ret = self.du.run_cmd(
+                    cmd=cmd, level=logging.DEBUG, runas=TEST_USER)
 
     def test_acclog_for_job_states(self):
         """
