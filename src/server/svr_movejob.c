@@ -593,6 +593,8 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 
 	pattr = jobp->ji_wattr;
 	for (i = 0; i < (int) JOB_ATR_LAST; i++) {
+		if (i == JOB_ATR_server_inst_id)
+			continue;
 		if ((job_attr_def + i)->at_flags & resc_access_perm) {
 			(void)(job_attr_def + i)->at_encode(pattr + i, &attrl,
 				(job_attr_def + i)->at_name, NULL, encode_type,
