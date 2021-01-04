@@ -245,13 +245,13 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 		hdr->hop = 2;
 		hdr->index = index;
 		hdr->num_addrs = l->num_addrs;
-		
+
 		/* add the addresses */
 		if (!tpp_bld_pkt(pkt, l->leaf_addrs, sizeof(tpp_addr_t) * l->num_addrs, 1, NULL)) {
 			tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 			goto err;
 		}
-		
+
 		if (tpp_enque(&leaf_packets, pkt) == NULL) {
 			tpp_log(LOG_CRIT, __func__, "Out of memory enqueuing to leaf_packets");
 			goto err;
@@ -267,7 +267,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 			/* vsend will free packets even in case of failure */
 		}
 	}
-	
+
 	return 0;
 
 err:
@@ -1045,9 +1045,9 @@ router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 
 /**
  * @brief
- *	Wrapper function for the router to handle incoming data. This 
+ *	Wrapper function for the router to handle incoming data. This
  *  wrapper exists only to detect if the inner function
- *  allocated memory in data_out and free that memory in a 
+ *  allocated memory in data_out and free that memory in a
  *  clean way, so that we do not have to add a goto or free
  *  in every return path of the inner function.
  *
@@ -1141,16 +1141,16 @@ again:
 				return -1;
 			}
 
-			if (authdata->encryptdef->decrypt_data(authdata->encryptctx, (void *)((char *)buf + sz), (size_t)len - sz, (void **) data_out, (size_t *) &len_out) != 0) {
+			if (authdata->encryptdef->decrypt_data(authdata->encryptctx, (void *)((char *)buf + sz), (size_t)len - sz, data_out, (size_t *) &len_out) != 0) {
 				return -1;
 			}
 
-			if ((len - 1) > 0 && len_out <= 0) {
-				tpp_log(LOG_CRIT, __func__, "invalid decrypted data len: %d, pktlen: %d", len_out, len - 1);
+			if ((len - sz) > 0 && len_out <= 0) {
+				tpp_log(LOG_CRIT, __func__, "invalid decrypted data len: %d, pktlen: %d", len_out, len - sz);
 				return -1;
 			}
 			dhdr = *data_out;
-			len = len_out - sizeof(int);
+			len = len_out;
 			goto again;
 		}
 		break;
@@ -1161,7 +1161,7 @@ again:
 			void *data_in = NULL;
 			conn_auth_t *authdata = (conn_auth_t *)extra;
 
-			memcpy(&ahdr, buf, sizeof(tpp_auth_pkt_hdr_t));
+			memcpy(&ahdr, dhdr, sizeof(tpp_auth_pkt_hdr_t));
 
 			if (authdata == NULL) {
 				msg[0] = '\0';
@@ -1170,7 +1170,7 @@ again:
 
 				else if (strcmp(ahdr.auth_method, AUTH_RESVPORT_NAME) != 0 && get_auth(ahdr.auth_method) == NULL)
 					snprintf(msg, sizeof(msg), "tfd=%d, Authentication method not supported in connection %s", tfd, tpp_netaddr(&connected_host));
-				
+
 				else if (ahdr.encrypt_method[0] != '\0' && get_auth(ahdr.encrypt_method) == NULL)
 					snprintf(msg, sizeof(msg), "tfd=%d, Encryption method not supported in connection %s", tfd, tpp_netaddr(&connected_host));
 
@@ -1188,7 +1188,7 @@ again:
 				tpp_log(LOG_CRIT, __func__, "Out of memory allocating authdata credential");
 				return -1;
 			}
-			memcpy(data_in, (char *)buf + sizeof(tpp_auth_pkt_hdr_t), len_in);
+			memcpy(data_in, (char *)dhdr + sizeof(tpp_auth_pkt_hdr_t), len_in);
 
 			if (authdata == NULL) {
 				authdata = tpp_make_authdata(tpp_conf, AUTH_SERVER, ahdr.auth_method, ahdr.encrypt_method);
@@ -1242,7 +1242,7 @@ again:
 			tpp_transport_set_conn_ctx(tfd, ctx);
 
 			/* send TPP_CTL_JOIN msg to fellow router */
-			return router_send_ctl_join(tfd, buf, c);
+			return router_send_ctl_join(tfd, dhdr, c);
 
 		}
 		break;
@@ -1250,7 +1250,7 @@ again:
 		case TPP_CTL_JOIN: {
 			unsigned char hop;
 			unsigned char node_type;
-			tpp_join_pkt_hdr_t *hdr = (tpp_join_pkt_hdr_t *) buf;
+			tpp_join_pkt_hdr_t *hdr = (tpp_join_pkt_hdr_t *) dhdr;
 
 			hop = hdr->hop;
 			node_type = hdr->node_type;
@@ -1266,7 +1266,7 @@ again:
 				} else {
 					if (!is_string_in_arr(tpp_conf->supported_auth_methods, AUTH_RESVPORT_NAME))
 						snprintf(msg, sizeof(msg), "tfd=%d, Authentication method %s not allowed in connection %s", tfd, AUTH_RESVPORT_NAME, tpp_netaddr(&connected_host));
-					
+
 					else if (tpp_transport_isresvport(tfd) != 0) /* reserved port based authentication, and is not yet authenticated, so check resv port */
 						snprintf(msg, sizeof(msg), "Connection from non-reserved port, rejected");
 				}
@@ -1349,7 +1349,7 @@ again:
 					tpp_log(LOG_CRIT, NULL, "tfd=%d, No address associated with join msg from leaf", tfd);
 					return -1;
 				}
-				addrs = (tpp_addr_t *) (((char *) buf) + sizeof(tpp_join_pkt_hdr_t));
+				addrs = (tpp_addr_t *) (((char *) dhdr) + sizeof(tpp_join_pkt_hdr_t));
 
 				tpp_write_lock(&router_lock);
 
@@ -1405,7 +1405,7 @@ again:
 					if (l->conn_fd != -1) {
 						/* this leaf had not yet disconnected,
 						 * so close the existing connection.
-						 */		 
+						 */
 						tpp_log(LOG_CRIT, NULL, "tfd=%d, Leaf %s still connected while "
 							 "another leaf connect arrived, dropping existing connection %d",
 							 tfd, tpp_netaddr(&l->leaf_addrs[0]), l->conn_fd);
@@ -1517,7 +1517,7 @@ again:
 					hop++; /* increment hop */
 					hdr->hop = hop;
 
-					chunks[0].data = buf;
+					chunks[0].data = (char *)dhdr;
 					chunks[0].len = len;
 
 					/*
@@ -1536,7 +1536,7 @@ again:
 
 		case TPP_CTL_LEAVE: {
 			unsigned char hop;
-			tpp_leave_pkt_hdr_t *hdr = (tpp_leave_pkt_hdr_t *) buf;
+			tpp_leave_pkt_hdr_t *hdr = (tpp_leave_pkt_hdr_t *) dhdr;
 
 			hop = hdr->hop;
 
@@ -1547,7 +1547,7 @@ again:
 
 			TPP_DBPRT("Recvd TPP_CTL_LEAVE message tfd=%d from src=%s, hop=%d, type=%d", tfd, tpp_netaddr(&connected_host), hop, ctx->type);
 
-			if (ctx->type == TPP_LEAF_NODE || ctx->type == TPP_LEAF_NODE_LISTEN) {						
+			if (ctx->type == TPP_LEAF_NODE || ctx->type == TPP_LEAF_NODE_LISTEN) {
 				tpp_log(LOG_CRIT, __func__, "tfd=%d, Internal error! TPP_CTL_LEAVE arrived with a leaf context", tfd);
 				return -1;
 
@@ -1557,7 +1557,7 @@ again:
 				 * from a leaf, but fd is routers context
 				 */
 				tpp_leaf_t *l = NULL;
-				tpp_addr_t *src_addr = (tpp_addr_t *) (((char *) buf) + sizeof(tpp_leave_pkt_hdr_t));
+				tpp_addr_t *src_addr = (tpp_addr_t *) (((char *) dhdr) + sizeof(tpp_leave_pkt_hdr_t));
 
 				tpp_write_lock(&router_lock);
 
@@ -1604,11 +1604,11 @@ again:
 			void *tmp;
 
 			/* find the fd to forward to via the associated router */
-			tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) buf;
+			tpp_mcast_pkt_hdr_t *mhdr = (tpp_mcast_pkt_hdr_t *) dhdr;
 			unsigned char orig_hop;
 			tpp_mcast_pkt_info_t *minfo;
 			void *minfo_base = NULL;
-			void *info_start = (char *) buf + sizeof(tpp_mcast_pkt_hdr_t);
+			void *info_start = (char *) dhdr + sizeof(tpp_mcast_pkt_hdr_t);
 			unsigned int payload_len;
 			void *payload;
 			unsigned int cmprsd_len = ntohl(mhdr->info_cmprsd_len);
@@ -1652,7 +1652,7 @@ again:
 				tpp_addr_t *dest_host;
 				unsigned int src_sd;
 				tpp_leaf_t *l = NULL;
-				
+
 				minfo = (tpp_mcast_pkt_info_t *)(((char *) minfo_base) + k * sizeof(tpp_mcast_pkt_info_t));
 
 				dest_host = &minfo->dest_addr;
@@ -1698,7 +1698,7 @@ again:
 					shdr->totlen = mhdr->totlen;
 					memcpy(&shdr->src_addr, &mhdr->src_addr, sizeof(tpp_addr_t));
 					memcpy(&shdr->dest_addr, &minfo->dest_addr, sizeof(tpp_addr_t));
-					
+
 					if (!tpp_bld_pkt(pkt, payload, payload_len, 1, NULL)) {
 						tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 						goto mcast_err;
@@ -1808,7 +1808,7 @@ again:
 						t_minfo_buf = rlist[k].minfo_buf;
 						t_mhdr->info_cmprsd_len = 0;
 					}
-					
+
 					if (!tpp_bld_pkt(pkt, t_minfo_buf, t_minfo_len, 0, NULL)) {
 						tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 						goto mcast_err;
@@ -1842,7 +1842,6 @@ mcast_err:
 			tpp_addr_t *src_host, *dest_host;
 			tpp_packet_t *pkt = NULL;
 			unsigned int src_sd;
-			tpp_data_pkt_hdr_t *dhdr = (tpp_data_pkt_hdr_t *) buf;
 
 			src_host = &dhdr->src_addr;
 			dest_host = &dhdr->dest_addr;
@@ -1870,7 +1869,7 @@ mcast_err:
 				return 0;
 			}
 
-			pkt = tpp_bld_pkt(NULL, buf, len, 1, NULL);
+			pkt = tpp_bld_pkt(NULL, dhdr, len, 1, NULL);
 			if (!pkt) {
 				tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 				return 0;
@@ -1887,7 +1886,7 @@ mcast_err:
 		break; /* TPP_DATA, TPP_CLOSE_STRM */
 
 		case TPP_CTL_MSG: {
-			tpp_ctl_pkt_hdr_t *ehdr = (tpp_ctl_pkt_hdr_t *) buf;
+			tpp_ctl_pkt_hdr_t *ehdr = (tpp_ctl_pkt_hdr_t *) dhdr;
 			tpp_leaf_t *l = NULL;
 			int subtype = ehdr->code;
 
@@ -1897,7 +1896,7 @@ mcast_err:
 				tpp_addr_t *dest_host = &ehdr->dest_addr;
 				char *msg = ((char *) ehdr) + sizeof(tpp_ctl_pkt_hdr_t);
 
-				strcpy(lbuf, tpp_netaddr(&ehdr->dest_addr)); 
+				strcpy(lbuf, tpp_netaddr(&ehdr->dest_addr));
 				tpp_log(LOG_WARNING, __func__, "tfd=%d, Recvd TPP_CTL_NOROUTE for message, %s(sd=%d) -> %s: %s",
 							tfd, lbuf, ntohl(ehdr->src_sd), tpp_netaddr(&ehdr->src_addr), msg);
 
@@ -1918,7 +1917,7 @@ mcast_err:
 					return 0;
 				}
 
-				pkt = tpp_bld_pkt(NULL, buf, len, 1, NULL);
+				pkt = tpp_bld_pkt(NULL, dhdr, len, 1, NULL);
 				if (!pkt) {
 					tpp_log(LOG_CRIT, __func__, "Failed to build packet");
 					return 0;
