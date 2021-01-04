@@ -746,3 +746,77 @@ exit 3
         jid2 = self.server.submit(j2)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+    @requirements(num_moms=2)
+    def test_chunk_level_host_resource_contention(self):
+        """
+        Test to make sure that preemption happens when the resource in
+        contention is host requested inside a chunk.
+        """
+        # Skip test if number of mom provided is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires two MoMs as input, " +
+                          "use -p moms=<mom1>:<mom2>")
+        else:
+            self.server.manager(MGR_CMD_CREATE, NODE, id=self.mom2)
+
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom1)
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom2)
+
+        a = {'Resource_List.select': '1:ncpus=2'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Stat job to check which job is running on mom1
+        pjid = jid1
+        job_stat = self.server.status(JOB, id=jid1)
+        ehost = job_stat[0]['exec_host'].partition('/')[0]
+
+        # Submit a express queue job requesting the host
+        a = {ATTR_q: 'expressq',
+             'Resource_List.select': '1:ncpus=2:host=' + ehost}
+        hj = Job(TEST_USER, attrs=a)
+        hjid = self.server.submit(hj)
+        self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
+        self.server.expect(JOB, {'job_state': 'S'}, id=pjid)
+
+        # Submit another express queue job requesting the host,
+        # this job will stay queued
+        a = {ATTR_q: 'expressq', 'Resource_List.host': self.mom1,
+             'Resource_List.ncpus': 2}
+        hj2 = Job(TEST_USER, attrs=a)
+        hjid2 = self.server.submit(hj2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=hjid2)
+        comment = "Not Running: Insufficient amount of resource: host"
+        self.server.expect(JOB, {'comment': comment}, id=hjid2)
+
+    def test_chunk_level_vnode_resource_contention(self):
+        """
+        Test to make sure that preemption happens when the resource in
+        contention is vnode requested inside a chunk.
+        """
+
+        a = {'resources_available.ncpus': 2}
+        self.mom.create_vnodes(attrib=a, num=11, usenatvnode=False)
+
+        a = {'Resource_List.select': '1:ncpus=2+1:ncpus=2'}
+        for _ in range(5):
+            j = Job(TEST_USER, attrs=a)
+            jid = self.server.submit(j)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Select a vnode with running jobs on it. Request this
+        # vnode in the high priority job later.
+        vn4 = self.mom.shortname + '[4]'
+        self.server.expect(NODE, {'state': 'job-busy'}, id=vn4)
+
+        a = {ATTR_q: 'expressq',
+             'Resource_List.select': '1:ncpus=1:vnode=' + vn4}
+        hj = Job(TEST_USER, attrs=a)
+        hjid = self.server.submit(hj)
+        self.server.expect(JOB, {'job_state': 'R'}, id=hjid)
+        self.server.expect(JOB, {'job_state=R': 5})
+        self.server.expect(JOB, {'job_state=S': 1})

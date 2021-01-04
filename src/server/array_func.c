@@ -175,108 +175,6 @@ is_job_array(char *id)
 
 /**
  * @brief
- * 		numindex_to_offset - return the offset into the table for a numerical
- *
- * @param[in]	parent - Pointer to to parent job structure.
- * @param[in]	iindx  - first number of range
- *
- *	@return	Sub job index.
- *	@retval -1	- on error.
- */
-int
-numindex_to_offset(job *parent, int iindx)
-{
-	struct ajtrkhd *ptbl = parent->ji_ajtrk;
-	int i;
-
-	if (ptbl == NULL || ((iindx - ptbl->tkm_start) % ptbl->tkm_step) != 0 || ptbl->tkm_start > iindx || iindx > ptbl->tkm_end)
-		return -1;
-
-	i = (int)((iindx - ptbl->tkm_start) / ptbl->tkm_step);
-	/*
-	 * ensure we got correct offset by doing
-	 * reverse lookup of offset to subjob index
-	 */
-	if (SJ_TBLIDX_2_IDX(parent, i) != iindx)
-		return -1;
-	return i;
-}
-
-/**
- * @brief
- * 		subjob_index_to_offset - return the offset into the table for an array
- *
- * @param[in]	parent - Pointer to to parent job structure.
- * @param[in]	index  - first number of range
- *
- *	@return	external Sub job index string.
- *	@retval -1	- on error.
- */
-int
-subjob_index_to_offset(job *parent, char *index)
-{
-	long nidx;
-
-	if (parent == NULL || parent->ji_ajtrk == NULL || index == NULL || *index == '\0')
-		return -1;
-
-	nidx = atoi(index);
-	return numindex_to_offset(parent, nidx);
-}
-/**
- * @brief
- * 		get_index_from_jid - from a subjob job id string
- *
- * @param[in]	newjid - New job id.
- *
- *	@return	index substring
- *	@retval NULL - on error.
- *	@retval ptr - ptr to static char array containing index string if found
- *
- *	@par	MT-safe: No - uses static variables - index, indexlen.
- */
-char *
-get_index_from_jid(char *newjid)
-{
-	int           i;
-	char         *pcb;
-	char         *pce;
-	char	     *pnew;
-	size_t	      t;
-	static char  *index;
-	static size_t indexlen = 0;;
-
-	if ((pcb = strchr(newjid, (int)'[')) == NULL)
-		return NULL;
-	if ((pce = strchr(newjid, (int)']')) == NULL)
-		return NULL;
-	if (pce <= pcb)
-		return NULL;
-
-	if (indexlen == 0) {
-		indexlen = pce - pcb;
-		index = (char *)malloc(indexlen);
-	} else if (indexlen < (pce - pcb)) {
-		t = pce - pcb;
-		pnew = realloc(index, t);
-		if (pnew == NULL)
-			return NULL;
-		index = pnew;
-		indexlen = t;
-	}
-	if (index == NULL)
-		return NULL;
-
-
-	i = 0;
-	while (++pcb < pce)
-		index[i++] = *pcb;
-	index[i] = '\0';
-	return index;
-}
-
-/**
- * @brief
  * 		get_queued_subjobs_ct	-	get the number of queued subjobs if pjob is job array else return 1
  *
  * @param[in]	pjob	-	pointer to job structure
@@ -292,14 +190,15 @@ get_queued_subjobs_ct(job *pjob)
 		return -1;
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-		if (NULL == pjob->ji_ajtrk)
+		if (NULL == pjob->ji_ajinfo)
 			return -1;
 
-		return pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED];
+		return pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED];
 	}
 
 	return 1;
 }
+
 /**
  * @brief
  * 		find_arrayparent - find and return a pointer to the job that is or will be
@@ -328,57 +227,7 @@ find_arrayparent(char *subjobid)
 		strcat(idbuf, pc);
 	return (find_job(idbuf));
 }
-/**
- * @brief
- * 		set_subjob_tblstate - set the subjob tracking table state field for
- *		the "offset" entry
- *
- * @param[in]	parent - pointer to parent job.
- * @param[in]	offset - sub job index.
- * @param[in]	newstate - newstate of the sub job.
- *
- *	@return	void
- */
-void
-set_subjob_tblstate(job *parent, int offset, char newstate)
-{
-	char  		 oldstate;
-	struct ajtrkhd	*ptbl;
-	int ostatenum;
-	int nstatenum;
 
-	if (offset == -1)
-		return;
-
-	if (parent == NULL)
-		return;
-
-	ptbl = parent->ji_ajtrk;
-	if (ptbl == NULL)
-		return;
-
-	oldstate =  ptbl->tkm_tbl[offset].trk_status;
-	if (oldstate == newstate)
-		return;		/* nothing to do */
-
-	ptbl->tkm_tbl[offset].trk_status = newstate;
-
-	ostatenum = state_char2int(oldstate);
-	nstatenum = state_char2int(newstate);
-	if (ostatenum != -1)
-		ptbl->tkm_subjsct[ostatenum]--;
-	if (nstatenum != -1)
-		ptbl->tkm_subjsct[nstatenum]++;
-
-	if (oldstate == JOB_STATE_LTR_QUEUED)
-		range_remove_value(&ptbl->trk_rlist , SJ_TBLIDX_2_IDX(parent, offset));
-	else if (newstate == JOB_STATE_LTR_QUEUED)
-		range_add_value(&ptbl->trk_rlist, SJ_TBLIDX_2_IDX(parent, offset), ptbl->tkm_step);
-
-	/* set flags in attribute so stat_job will update the attr string */
-	ptbl->tkm_flags |= TKMFLG_REVAL_IND_REMAINING;
-
-}
 /**
  * @brief
  * 		update_array_indices_remaining_attr - updates array_indices_remaining attribute
@@ -387,24 +236,88 @@ set_subjob_tblstate(job *parent, int offset, char newstate)
  *
  * @return	void
  */
-void
+static void
 update_array_indices_remaining_attr(job *parent)
 {
-	struct ajtrkhd	*ptbl = parent->ji_ajtrk;
+	char *pnewstr = range_to_str(parent->ji_ajinfo->trm_quelist);
 
-	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
-		char *pnewstr = range_to_str(parent->ji_ajtrk->trk_rlist);
-
-		if ((pnewstr == NULL) || (*pnewstr == '\0'))
-			pnewstr = "-";
-
-		free_jattr(parent, JOB_ATR_array_indices_remaining);
-		set_jattr_generic(parent, JOB_ATR_array_indices_remaining, pnewstr, NULL, INTERNAL);
-		/* also update value of attribute "array_state_count" */
-		update_subjob_state_ct(parent);
-		ptbl->tkm_flags &= ~TKMFLG_REVAL_IND_REMAINING;
-	}
+	if (pnewstr == NULL || *pnewstr == '\0')
+		pnewstr = "-";
+	set_jattr_str_slim(parent, JOB_ATR_array_indices_remaining, pnewstr, NULL);
+	update_subjob_state_ct(parent);
 }
+
+/**
+ * @brief
+ * 	update state counts of subjob based on given information
+ *
+ * @param[in]	parent - pointer to parent job.
+ * @param[in]	sj     - pointer to subjob (can be NULL)
+ * @param[in]	offset - sub job index.
+ * @param[in]	newstate - newstate of the sub job.
+ *
+ * @return void
+ */
+void
+update_sj_parent(job *parent, job *sj, char *sjid, char oldstate, char newstate)
+{
+	ajinfo_t *ptbl;
+	int idx;
+	int ostatenum;
+	int nstatenum;
+
+	if (oldstate == newstate)
+		return;
+
+	if (parent == NULL || sjid == NULL || sjid[0] == '\0' || (idx = get_index_from_jid(sjid)) == -1)
+		return;
+
+	ptbl = parent->ji_ajinfo;
+	if (ptbl == NULL)
+		return;
+
+	ostatenum = state_char2int(oldstate);
+	nstatenum = state_char2int(newstate);
+	if (ostatenum == -1 || nstatenum == -1)
+		return;
+
+	ptbl->tkm_subjsct[ostatenum]--;
+	ptbl->tkm_subjsct[nstatenum]++;
+
+	if (oldstate == JOB_STATE_LTR_QUEUED)
+		range_remove_value(&ptbl->trm_quelist, idx);
+	if (newstate == JOB_STATE_LTR_QUEUED)
+		range_add_value(&ptbl->trm_quelist, idx, ptbl->tkm_step);
+	update_array_indices_remaining_attr(parent);
+
+	if (sj && newstate != JOB_STATE_LTR_QUEUED) {
+		if (is_jattr_set(sj, JOB_ATR_exit_status)) {
+			int e = get_jattr_long(sj, JOB_ATR_exit_status);
+			int pe = 0;
+			if (is_jattr_set(parent, JOB_ATR_exit_status))
+				pe = get_jattr_long(parent, JOB_ATR_exit_status);
+			if (pe != 2) {
+				if (e > 0)
+					pe = 1;
+				else if (e < 0)
+					pe = 2;
+				else
+					pe = 0;
+			}
+			set_jattr_l_slim(parent, JOB_ATR_exit_status, pe, SET);
+		}
+		if (is_jattr_set(sj, JOB_ATR_stageout_status)) {
+			int pe = -1;
+			int e = get_jattr_long(sj, JOB_ATR_stageout_status);
+			if (is_jattr_set(parent, JOB_ATR_stageout_status))
+				pe = get_jattr_long(parent, JOB_ATR_stageout_status);
+			if (e > 0 && pe != 0)
+				set_jattr_l_slim(parent, JOB_ATR_stageout_status, e, SET);
+		}
+	}
+	job_save_db(parent);
+}
+
 /**
  * @brief
  * 		chk_array_doneness - check if all subjobs are expired and if so,
@@ -417,14 +330,12 @@ update_array_indices_remaining_attr(job *parent)
 void
 chk_array_doneness(job *parent)
 {
-	char acctbuf[40];
-	int e;
-	int i;
-	struct ajtrkhd	*ptbl = parent->ji_ajtrk;
+	ajinfo_t *ptbl = NULL;
 
-	if (ptbl == NULL)
+	if (parent == NULL || parent->ji_ajinfo == NULL)
 		return;
 
+	ptbl = parent->ji_ajinfo;
 	if (ptbl->tkm_flags & (TKMFLG_NO_DELETE | TKMFLG_CHK_ARRAY))
 		return;	/* delete of subjobs in progress, or re-entering, so return here */
 
@@ -432,24 +343,16 @@ chk_array_doneness(job *parent)
 			+ ptbl->tkm_subjsct[JOB_STATE_HELD] + ptbl->tkm_subjsct[JOB_STATE_EXITING] == 0) {
 
 		/* Array Job all done, do simple eoj processing */
-
-		for (e=i=0; i<ptbl->tkm_ct; ++i) {
-			if (ptbl->tkm_tbl[i].trk_error > 0)
-				e = 1;
-			else if (ptbl->tkm_tbl[i].trk_error < 0) {
-				e = 2;
-				break;
-			}
-		}
 		parent->ji_qs.ji_un_type = JOB_UNION_TYPE_EXEC;
 		parent->ji_qs.ji_un.ji_exect.ji_momaddr = 0;
 		parent->ji_qs.ji_un.ji_exect.ji_momport = 0;
-		parent->ji_qs.ji_un.ji_exect.ji_exitstat = e;
+		parent->ji_qs.ji_un.ji_exect.ji_exitstat = get_jattr_long(parent, JOB_ATR_exit_status);
 
 		check_block(parent, "");
 		if (check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
+			char acctbuf[40];
 			/* if BEGUN, issue 'E' account record */
-			sprintf(acctbuf, msg_job_end_stat, e);
+			sprintf(acctbuf, msg_job_end_stat, parent->ji_qs.ji_un.ji_exect.ji_exitstat);
 			account_job_update(parent, PBS_ACCT_LAST);
 			account_jobend(parent, acctbuf, PBS_ACCT_END);
 
@@ -462,100 +365,69 @@ chk_array_doneness(job *parent)
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
 		ptbl->tkm_flags |= TKMFLG_CHK_ARRAY;
-
 		svr_saveorpurge_finjobhist(parent);
-	} else {
-		/* Before we do a full save of parent, recalculate "JOB_ATR_array_indices_remaining" here*/
-		update_array_indices_remaining_attr(parent);
-		job_save_db(parent);
 	}
 }
+
 /**
  * @brief
- * 		update_subjob_state - update the subjob state in the table entry for
- * 		the subjob and the total counts for each state.
- * 		If job going into EXPIRED state, the job exitstatus is saved in the tbl
+ * 	find subjob and its state and substate
  *
- * @param[in]	pjob - pointer to the actual subjob job entry
- * @param[in]	newstate - newstate of the sub job.
+ * @param[in]     parent    - pointer to the parent job
+ * @param[in]     sjidx     - subjob index
+ * @param[out]    state     - put state of subjob if not null
+ * @param[out]    substate  - put substate of subjob if not null
  *
- *	@return	void
+ * @return job *
+ * @retval !NULL - if subjob found
+ * @return NULL  - if subjob not found
  */
-void
-update_subjob_state(job *pjob, char newstate)
+job *
+get_subjob_and_state(job *parent, int sjidx, char *state, int *substate)
 {
-	int		 len;
-	job		*parent;
-	char		*pc;
-	struct ajtrkhd	*ptbl;
+	job *sj;
 
-	parent = pjob->ji_parentaj;
-	if (parent == NULL)
-		return;
-	ptbl   = parent->ji_ajtrk;
-	if (ptbl == NULL)
-		return;
+	if (state)
+		*state = JOB_STATE_LTR_UNKNOWN;
+	if (substate)
+		*substate = JOB_SUBSTATE_UNKNOWN;
 
-	/* verify that parent job is in fact the parent Array Job */
-	pc  = strchr(pjob->ji_qs.ji_jobid, (int)'[');
-	len = pc - pjob->ji_qs.ji_jobid - 1;
-	if ((strncmp(pjob->ji_qs.ji_jobid, parent->ji_qs.ji_jobid, len) != 0) ||
-		(ptbl == NULL))
-		return;	/* nope, not the parent */
+	if (parent == NULL || sjidx < 0)
+		return NULL;
 
-	set_subjob_tblstate(parent, pjob->ji_subjindx, newstate);
-	if (newstate == JOB_STATE_LTR_EXPIRED) {
-		ptbl->tkm_tbl[pjob->ji_subjindx].trk_error =
-			pjob->ji_qs.ji_un.ji_exect.ji_exitstat;
+	if (sjidx < parent->ji_ajinfo->tkm_start || sjidx > parent->ji_ajinfo->tkm_end)
+		return NULL;
 
-		if (svr_chk_history_conf()) {
-			if (is_jattr_set(pjob, JOB_ATR_stageout_status))
-				ptbl->tkm_tbl[pjob->ji_subjindx].trk_stgout = get_jattr_long(pjob, JOB_ATR_stageout_status);
+	if (((sjidx - parent->ji_ajinfo->tkm_start) % parent->ji_ajinfo->tkm_step) != 0)
+		return NULL;
 
-			if (is_jattr_set(pjob, JOB_ATR_exit_status))
-				ptbl->tkm_tbl[pjob->ji_subjindx].trk_exitstat = 1;
+	sj = find_job(create_subjob_id(parent->ji_qs.ji_jobid, sjidx));
+	if (sj == NULL) {
+		if (range_contains(parent->ji_ajinfo->trm_quelist, sjidx)) {
+			if (state)
+				*state = JOB_STATE_LTR_QUEUED;
+			if (substate)
+				*substate = JOB_SUBSTATE_QUEUED;
+		} else {
+			if (state) {
+				char pjs = get_job_state(parent);
+				if (pjs == JOB_STATE_LTR_FINISHED)
+					*state = JOB_STATE_LTR_FINISHED;
+				else
+					*state = JOB_STATE_LTR_EXPIRED;
+			}
+			if (substate)
+				*substate = JOB_SUBSTATE_FINISHED;
 		}
-		ptbl->tkm_tbl[pjob->ji_subjindx].trk_substate = get_job_substate(pjob);
+		return NULL;
 	}
-	chk_array_doneness(parent);
-}
-/**
- * @brief
- * 		get_subjob_discarding - return the discarding flag of a subjob given by the parent job
- * 		and integer index into the table for the subjob
- *
- * @param[in]	parent - pointer to the parent job
- * @param[in]	iindx - first number of range
- *
- * @return	status
- * @retval	-1	-  error
- */
-int
-get_subjob_discarding(job *parent, int iindx)
-{
-	if (iindx == -1)
-		return -1;
-	if (parent->ji_ajtrk->tkm_tbl[iindx].trk_psubjob)
-		return (parent->ji_ajtrk->tkm_tbl[iindx].trk_psubjob->ji_discarding);
-	return 0;
-}
-/**
- * @brief
- * 		get_subjob_state - return the state of a subjob given by the parent job
- * 		and integer index into the table for the subjob
- *
- * @param[in]	parent - pointer to the parent job
- * @param[in]	iindx - first number of range
- *
- * @return	status
- * @retval	-1	-  error
- */
-char
-get_subjob_state(job *parent, int iindx)
-{
-	if (iindx == -1)
-		return -1;
-	return (parent->ji_ajtrk->tkm_tbl[iindx].trk_status);
+
+	if (state)
+		*state = get_job_state(sj);
+	if (substate)
+		*substate = get_job_substate(sj);
+
+	return sj;
 }
 /**
  * @brief
@@ -570,20 +442,19 @@ void
 update_subjob_state_ct(job *pjob)
 {
 	char buf[BUF_SIZE];
-	const char *statename[] = {
-		"Transit", "Queued", "Held", "Waiting", "Running",
-		"Exiting", "Expired", "Beginning", "Moved", "Finished"};
+	const char *statename[] = {"Transit", "Queued", "Held", "Waiting", "Running",
+				   "Exiting", "Expired", "Beginning", "Moved", "Finished"};
 
 	buf[0] = '\0';
 	snprintf(buf, sizeof(buf), "%s:%d %s:%d %s:%d %s:%d",
-		statename[JOB_STATE_QUEUED],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED],
-		statename[JOB_STATE_RUNNING],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_RUNNING],
-		statename[JOB_STATE_EXITING],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_EXITING],
-		statename[JOB_STATE_EXPIRED],
-		pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_EXPIRED]);
+		 statename[JOB_STATE_QUEUED],
+		 pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED],
+		 statename[JOB_STATE_RUNNING],
+		 pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING],
+		 statename[JOB_STATE_EXITING],
+		 pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_EXITING],
+		 statename[JOB_STATE_EXPIRED],
+		 pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_EXPIRED]);
 
 	set_jattr_str_slim(pjob, JOB_ATR_array_state_count, buf, NULL);
 }
@@ -603,7 +474,7 @@ char *
 subst_array_index(job *pjob, char *path)
 {
 	char *pindorg;
-	const char *cvt;
+	char *cvt;
 	char trail[MAXPATHLEN + 1];
 	job *ppjob = pjob->ji_parentaj;
 
@@ -612,45 +483,52 @@ subst_array_index(job *pjob, char *path)
 	if ((pindorg = strstr(path, PBS_FILE_ARRAY_INDEX_TAG)) == NULL)
 		return path; /* unchanged */
 
-	cvt = uLTostr(SJ_TBLIDX_2_IDX(ppjob, pjob->ji_subjindx), 10);
+	cvt = get_range_from_jid(pjob->ji_qs.ji_jobid);
+	if (cvt == NULL)
+		return path;
 	*pindorg = '\0';
 	strcpy(trail, pindorg + strlen(PBS_FILE_ARRAY_INDEX_TAG));
 	strcat(path, cvt);
 	strcat(path, trail);
 	return path;
 }
+
 /**
  * @brief
  * 		mk_subjob_index_tbl - make the subjob index tracking table
- *		(struct ajtrkhd) based on the number of indexes in the "range"
+ *		(ajinfo_t) based on the number of indexes in the "range"
  *
  * @param[in]	range - subjob index range
- * @param[in]	initialstate - job state
  * @param[out]	pbserror - PBSError to return
  * @param[in]	mode - "actmode" parameter to action function of "array_indices_submitted"
  *
  * @return	ptr to table
  * @retval  NULL	- error
  */
-static struct ajtrkhd *
-mk_subjob_index_tbl(char *range, char initalstate, int *pbserror, int mode)
+static int
+setup_ajinfo(job *pjob, int mode)
 {
 	int i;
-	int j;
 	int limit;
 	int start;
 	int end;
 	int step;
 	int count;
 	char *eptr;
-	struct ajtrkhd *trktbl;
-	size_t sz;
+	char *range;
+	ajinfo_t *trktbl;
 
-	i = parse_subjob_index(range, &eptr, &start, &end, &step, &count);
-	if (i != 0) {
-		*pbserror = PBSE_BADATVAL;
-		return NULL; /* parse error */
+	if (pjob->ji_ajinfo) {
+		free_range_list(pjob->ji_ajinfo->trm_quelist);
+		free(pjob->ji_ajinfo);
 	}
+	pjob->ji_ajinfo = NULL;
+	range = get_jattr_str(pjob, JOB_ATR_array_indices_submitted);
+	if (range == NULL)
+		return PBSE_BADATVAL;
+	i = parse_subjob_index(range, &eptr, &start, &end, &step, &count);
+	if (i != 0)
+		return PBSE_BADATVAL;
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
 		if (server.sv_attr[(int) SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
@@ -658,40 +536,35 @@ mk_subjob_index_tbl(char *range, char initalstate, int *pbserror, int mode)
 		else
 			limit = PBS_MAX_ARRAY_JOB_DFL; /* default limit 10000 */
 
-		if (count > limit) {
-			*pbserror = PBSE_MaxArraySize;
-			return NULL; /* parse error */
+		if (count > limit)
+			return PBSE_MaxArraySize;
+	}
+
+	trktbl = (ajinfo_t *) malloc(sizeof(ajinfo_t));
+	if (trktbl == NULL)
+		return PBSE_SYSTEM;
+	for (i = 0; i < PBS_NUMJOBSTATE; i++)
+		trktbl->tkm_subjsct[i] = 0;
+	if (mode == ATR_ACTION_RECOV || mode == ATR_ACTION_ALTER)
+		trktbl->trm_quelist = NULL;
+	else {
+		trktbl->trm_quelist = new_range(start, end, step, count, NULL);
+		if (trktbl->trm_quelist == NULL) {
+			free(trktbl);
+			return PBSE_SYSTEM;
 		}
+		trktbl->tkm_subjsct[JOB_STATE_QUEUED] = count;
 	}
-
-	sz = sizeof(struct ajtrkhd) + ((count - 1) * sizeof(struct ajtrk));
-	trktbl = (struct ajtrkhd *) malloc(sz);
-
-	if (trktbl == NULL) {
-		*pbserror = PBSE_SYSTEM;
-		return NULL;
-	}
+	trktbl->tkm_dsubjsct = 0;
 	trktbl->tkm_ct = count;
 	trktbl->tkm_start = start;
 	trktbl->tkm_end = end;
 	trktbl->tkm_step = step;
-	trktbl->tkm_size = sz;
 	trktbl->tkm_flags = 0;
-	for (i = 0; i < PBS_NUMJOBSTATE; i++)
-		trktbl->tkm_subjsct[i] = 0;
-	trktbl->tkm_subjsct[JOB_STATE_QUEUED] = count;
-	trktbl->tkm_dsubjsct = 0;
-	j = 0;
-	for (i = start; i <= end; i += step, j++) {
-		trktbl->tkm_tbl[j].trk_status = initalstate;
-		trktbl->tkm_tbl[j].trk_error = 0;
-		trktbl->tkm_tbl[j].trk_substate = JOB_SUBSTATE_FINISHED;
-		trktbl->tkm_tbl[j].trk_stgout = -1;
-		trktbl->tkm_tbl[j].trk_exitstat = 0;
-		trktbl->tkm_tbl[j].trk_psubjob = NULL;
-	}
-	return trktbl;
+	pjob->ji_ajinfo = trktbl;
+	return PBSE_NONE;
 }
+
 /**
  * @brief
  * 		setup_arrayjob_attrs - set up the special attributes of an Array Job
@@ -709,59 +582,34 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 {
 	job *pjob = pobj;
 
-	/* set attribute "array" True  and clear "array_state_count" */
-
-	set_jattr_b_slim(pjob, JOB_ATR_array, 1, SET);
-	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_SET_MOD_MCACHE;
-	free_jattr(pjob, JOB_ATR_array_state_count);
-
-	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
-		int pbs_error = PBSE_BADATVAL;
-		if (pjob->ji_ajtrk)
-			free(pjob->ji_ajtrk);
-		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(get_jattr_str(pjob, JOB_ATR_array_indices_submitted),
-			                                      JOB_STATE_LTR_QUEUED, &pbs_error, mode)) == NULL)
-			return pbs_error;
-
-		if ((pjob->ji_ajtrk->trk_rlist = range_parse(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str)) == NULL)
-			return pbs_error;
-
-	}
-
-	if (mode == ATR_ACTION_RECOV) {
-		/* set flags in attribute so stat_job will update the attr string */
-		pjob->ji_ajtrk->tkm_flags |= TKMFLG_REVAL_IND_REMAINING;
-
-		return (PBSE_NONE);
-	}
-
-	if ((mode != ATR_ACTION_ALTER) && (mode != ATR_ACTION_NEW))
+	if (mode != ATR_ACTION_ALTER && mode != ATR_ACTION_NEW && mode != ATR_ACTION_RECOV)
 		return PBSE_BADATVAL;
 
 	if (is_job_array(pjob->ji_qs.ji_jobid) != IS_ARRAY_ArrayJob)
 		return PBSE_BADATVAL;	/* not an Array Job */
 
-	if (mode == ATR_ACTION_ALTER) {
-		if (!check_job_state(pjob, JOB_STATE_LTR_QUEUED))
-			return PBSE_MODATRRUN;	/* cannot modify once begun */
+	if (mode == ATR_ACTION_ALTER && !check_job_state(pjob, JOB_STATE_LTR_QUEUED))
+		return PBSE_MODATRRUN;	/* cannot modify once begun */
 
-		/* clear "array_indices_remaining" so can be reset */
+	/* set attribute "array" True  and clear "array_state_count" */
+	pjob->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob;
+	set_jattr_b_slim(pjob, JOB_ATR_array, 1, SET);
+	free_jattr(pjob, JOB_ATR_array_state_count);
 
-		free_jattr(pjob, JOB_ATR_array_indices_remaining);
+	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
+		int rc = PBSE_BADATVAL;
+		if ((rc = setup_ajinfo(pjob, mode)) != PBSE_NONE)
+			return rc;
 	}
 
-	/* set "array_indices_remaining" if not already set */
-	if (!is_jattr_set(pjob, JOB_ATR_array_indices_remaining))
-		set_jattr_str_slim(pjob, JOB_ATR_array_indices_remaining, pattr->at_val.at_str, NULL);
+	if (mode == ATR_ACTION_RECOV)
+		return PBSE_NONE;
 
+	update_array_indices_remaining_attr(pjob);
 
-	/* set other Array related fields in the job structure */
-
-	pjob->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob;
-
-
-	return (PBSE_NONE);
+	return PBSE_NONE;
 }
+
 /**
  * @brief
  * 		fixup_arrayindicies - set state of subjobs based on array_indicies_remaining
@@ -779,36 +627,38 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 int
 fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 {
-	int i;
-	int start;
-	int end;
-	int step;
-	int count;
-	char *ep;
-	char *str;
 	job *pjob = pobj;
+	char *range;
+	int qcount;
 
-	if (!pjob || !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) || !pjob->ji_ajtrk)
+	if (!pjob || !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) || !pjob->ji_ajinfo)
 		return PBSE_BADATVAL;
 
-	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) && mode == ATR_ACTION_NEW)
+	if (mode == ATR_ACTION_NEW && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE))
 		return PBSE_NONE;
 
-	/* set all sub jobs expired, then reset queued the ones in "remaining" */
-	for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++)
-		set_subjob_tblstate(pjob, i, JOB_STATE_LTR_EXPIRED);
+	if (pjob->ji_ajinfo->trm_quelist != NULL)
+		return PBSE_BADATVAL;
 
-	str = pattr->at_val.at_str;
-	while (1) {
-		if (parse_subjob_index(str, &ep, &start, &end, &step, &count) != 0)
-			break;
-		for (i = start; i <= end; i += step)
-			set_subjob_tblstate(pjob, numindex_to_offset(pjob, i), JOB_STATE_LTR_QUEUED);
-		str = ep;
+	range = get_jattr_str(pjob, JOB_ATR_array_indices_remaining);
+	pjob->ji_ajinfo->trm_quelist = range_parse(range);
+	if (pjob->ji_ajinfo->trm_quelist == NULL) {
+		if (range && range[0] == '-') {
+			pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED] = 0;
+			pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_EXPIRED] = pjob->ji_ajinfo->tkm_ct;
+			update_subjob_state_ct(pjob);
+			return PBSE_NONE;
+		}
+		return PBSE_BADATVAL;
 	}
 
-	return (PBSE_NONE);
+	qcount = range_count(pjob->ji_ajinfo->trm_quelist);
+	pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_QUEUED] = qcount;
+	pjob->ji_ajinfo->tkm_subjsct[JOB_STATE_EXPIRED] = pjob->ji_ajinfo->tkm_ct - qcount;
+	update_subjob_state_ct(pjob);
+	return PBSE_NONE;
 }
+
 /**
  * @brief
  * 		create_subjob - create a Subjob from the parent Array Job
@@ -825,7 +675,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 	pbs_list_head  attrl;
 	int	   i;
 	int	   j;
-	int	   indx;
 	char	  *index;
 	attribute_def *pdef;
 	attribute *ppar;
@@ -835,7 +684,12 @@ create_subjob(job *parent, char *newjid, int *rc)
 	long	   eligibletime;
 	long	    time_msec;
 	struct timeval	    tval;
-	char tmp_path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN + 1];
+
+	if (newjid == NULL) {
+		*rc = PBSE_IVALREQ;
+		return NULL;
+	}
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -843,17 +697,8 @@ create_subjob(job *parent, char *newjid, int *rc)
 	}
 
 	/* find and copy the index */
-
-	if ((index = get_index_from_jid(newjid)) == NULL) {
+	if ((index = get_range_from_jid(newjid)) == NULL) {
 		*rc = PBSE_IVALREQ;
-		return NULL;
-	}
-	if ((indx = subjob_index_to_offset(parent, index)) == -1) {
-		*rc = PBSE_UNKJOBID;
-		return NULL;
-	}
-	if (parent->ji_ajtrk->tkm_tbl[indx].trk_status != JOB_STATE_LTR_QUEUED) {
-		*rc = PBSE_BADSTATE;
 		return NULL;
 	}
 
@@ -869,13 +714,11 @@ create_subjob(job *parent, char *newjid, int *rc)
 		return NULL;
 	}
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
-	parent->ji_ajtrk->tkm_tbl[indx].trk_psubjob = subj;
 	subj->ji_qhdr     = parent->ji_qhdr;
 	subj->ji_myResv   = parent->ji_myResv;
 	subj->ji_parentaj = parent;
 	strcpy(subj->ji_qs.ji_jobid, newjid);	/* replace job id */
 	*subj->ji_qs.ji_fileprefix = '\0';
-	subj->ji_subjindx = indx;
 
 	/*
 	 * now that is all done, copy the required attributes by
@@ -931,17 +774,18 @@ create_subjob(job *parent, char *newjid, int *rc)
 	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
 	/* set the queue rank attribute */
 	set_jattr_l_slim(subj, JOB_ATR_qrank, time_msec, SET);
-	if (svr_enquejob(subj) != 0) {
+	if (svr_enquejob(subj, NULL) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;
 		return NULL;
 	}
 
-	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
-	set_jattr_generic(subj, JOB_ATR_outpath, subst_array_index(subj, tmp_path), NULL, INTERNAL);
-
-	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
-	set_jattr_generic(subj, JOB_ATR_errpath, subst_array_index(subj, tmp_path), NULL, INTERNAL);
+	pbs_strncpy(path, get_jattr_str(subj, JOB_ATR_outpath), sizeof(path));
+	subst_array_index(subj, path);
+	set_jattr_str_slim(subj, JOB_ATR_outpath, path, NULL);
+	pbs_strncpy(path, get_jattr_str(subj, JOB_ATR_errpath), sizeof(path));
+	subst_array_index(subj, path);
+	set_jattr_str_slim(subj, JOB_ATR_errpath, path, NULL);
 
 	*rc = PBSE_NONE;
 	return subj;
@@ -1023,114 +867,4 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, void (*func)(struct ba
 	opreq->rq_refct++;
 
 	func(npreq, pjob);
-}
-
-/**
- * @brief
- * 		mk_subjob_id - make (in a static array) a jobid for a subjob based on
- * 		the parent jobid and the offset into the tracking table for the subjob
- * @param[in]	parent - pointer to parent Job
- * @param[in]	offset -  sub job index.
- * @return	job id
- * @par	MT-safe: No - uses a global buffer, "jid".
- */
-char *
-mk_subjob_id(job *parent, int offset)
-{
-	static char jid[PBS_MAXSVRJOBID+1];
-	char        hold[PBS_MAXSVRJOBID+1];
-	char        index[20];
-	char       *pb;
-
-	sprintf(index, "%d", SJ_TBLIDX_2_IDX(parent, offset));
-	strcpy(jid, parent->ji_qs.ji_jobid);
-
-	pb = strchr(jid, (int)']');
-	strcpy(hold, pb);		/* "].hostname" section */
-
-	pb = strchr(jid, (int)'[');	/* "seqnum[" section */
-	*(pb+1) = '\0';
-	strcat(jid, index);
-	strcat(jid, hold);
-	return jid;
-}
-/**
- * @brief
- * 		cvt-range - convert entries in subjob index table which are in "state"
- * 		to a range of indices of subjobs.  range will be of form:
- * 		X,X-Y:Z,...
- * @param[in]	pjob - job pointer
- * @param[in]	state -  job state.
- * @return	Pointer to static buffer
- * @par	MT-safe: No - uses a global buffer, "buf" and "buflen".
- */
-char *
-cvt_range(job *pjob, char state)
-{
-	unsigned int first; /* first of a pair or range   */
-	unsigned int next;  /* next one we are looking at */
-	unsigned int last;
-	int pcomma = 0;
-	static char *buf = NULL;
-	static size_t buflen = 0;
-	struct ajtrkhd *trktbl = pjob->ji_ajtrk;
-
-	if (trktbl == NULL)
-		return NULL;
-
-	if (buf == NULL) {
-		buflen = 1000;
-		if ((buf = (char *) malloc(buflen)) == NULL)
-			return NULL;
-	}
-	*buf = '\0'; /* initialize buf to empty */
-	first = 0;
-	while (first < trktbl->tkm_ct) {
-
-		if ((buflen - strlen(buf)) < 20) {
-			char *tmpbuf;
-			/* expand buf */
-			buflen += 500;
-			tmpbuf = realloc(buf, buflen);
-			if (tmpbuf == NULL)
-				return NULL;
-			buf = tmpbuf;
-		}
-
-		/* find first incompleted entry */
-		if (trktbl->tkm_tbl[first].trk_status == state) {
-			last = first;
-			next = first + 1;
-			/* add "first" or ",first" */
-			if (pcomma)
-				sprintf(buf + strlen(buf), ",");
-			else
-				pcomma = 1;
-
-			sprintf(buf + strlen(buf), "%d", SJ_TBLIDX_2_IDX(pjob, first));
-
-			/* find next incomplete entry */
-
-			while (next < trktbl->tkm_ct) {
-				if (trktbl->tkm_tbl[next].trk_status == state) {
-					last = next++;
-				} else {
-					break;
-				}
-			}
-			if (last > (first + 1)) {
-				if (trktbl->tkm_step > 1)
-					sprintf(buf + strlen(buf), "-%d:%d", SJ_TBLIDX_2_IDX(pjob, last), trktbl->tkm_step);
-				else
-					sprintf(buf + strlen(buf), "-%d", SJ_TBLIDX_2_IDX(pjob, last));
-			} else if (last > first) {
-				sprintf(buf + strlen(buf), ",%d", SJ_TBLIDX_2_IDX(pjob, last));
-			}
-			first = last + 1;
-		} else {
-			first++;
-		}
-	}
-
-	return buf;
 }

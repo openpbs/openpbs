@@ -345,6 +345,9 @@ extern char *parse_servername(char *, unsigned int *);
 extern int rand_num(void);
 extern int msvr_mode(void);
 
+/* thread utils */
+extern int init_mutex_attr_recursive(void *attr);
+
 #ifdef _USRDLL
 #ifdef DLL_EXPORT
 #define DECLDIR __declspec(dllexport)
@@ -357,6 +360,9 @@ void encode_SHA(char*, size_t, char **);
 #endif
 
 void set_proc_limits(char *, int);
+int get_index_from_jid(char *jid);
+char *get_range_from_jid(char *jid);
+char *create_subjob_id(char *parent_jid, int sjidx);
 
 
 #ifdef  __cplusplus

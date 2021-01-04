@@ -76,6 +76,7 @@
 #include "net_connect.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include "server.h"
 #include <libutil.h>
 #include "tpp.h"
 
@@ -86,7 +87,6 @@ extern time_t	time_now;
 extern char	*msg_issuebad;
 extern char     *msg_norelytomom;
 extern char	*msg_err_malloc;
-extern unsigned int pbs_server_port_dis;
 
 extern int max_connection;
 
@@ -349,7 +349,7 @@ add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid,
 	/* remove this task from the event list, as we will be adding to deferred list anyway
 	 * and there is no child process whose exit needs to be reaped
 	 */
-	delete_link(&ptask->wt_linkall);
+	delete_link(&ptask->wt_linkevent);
 
 	/* append to the moms deferred command list */
 	append_link(&(((mom_svrinfo_t *) (minfo->mi_data))->msr_deferred_cmds), &ptask->wt_linkobj2, ptask);
@@ -720,7 +720,7 @@ issue_Drequest(int conn, struct batch_request *request, void (*func)(), struct w
 			 * remove it from the task_event list
 			 * caller will add to moms deferred cmd list
 			 */
-			delete_link(&ptask->wt_linkall);
+			delete_link(&ptask->wt_linkevent);
 		}
 		ptask->wt_aux2 = prot;
 		*ppwt = ptask;
@@ -750,7 +750,7 @@ process_Dreply(int sock)
 	while (ptask) {
 		if ((ptask->wt_type == WORK_Deferred_Reply) && (ptask->wt_event == sock))
 			break;
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
+		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkevent);
 	}
 	if (!ptask) {
 		close_conn(sock);
@@ -824,9 +824,7 @@ process_DreplyTPP(int handle)
 
 			ptask->wt_aux = PBSE_NORELYMOM;
 			pbs_errno = PBSE_NORELYMOM;
-
-			if (ptask->wt_event2)
-				free(ptask->wt_event2);
+			free(ptask->wt_event2);
 
 			dispatch_task(ptask);
 		}

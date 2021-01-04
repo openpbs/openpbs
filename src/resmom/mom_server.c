@@ -374,87 +374,6 @@ err:
 
 /**
  * @brief
- *	batch request for log
- *
- * @param[in] request - pointer to batch_request structure
- * @param[in] stream  - connection stream
- *
- * @return Void
- *
- */
-void
-log_request(struct batch_request *request, int stream)
-{
-	sprintf(log_buffer, msg_request, request->rq_type, request->rq_user,
-		request->rq_host, stream);
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "",
-		log_buffer);
-}
-
-/**
- * @brief
- *  process_IS_CMD: Create batch request on received IS_CMD message
- *                   and dispatch request.
- *
- *  @param[in] - stream -  connection stream.
- *
- *  @return void
- *
- */
-static void
-process_IS_CMD(int stream)
-{
-	int rc;
-	struct batch_request *request;
-	struct	sockaddr_in	*addr;
-	char *msgid = NULL;
-
-	addr = tpp_getaddr(stream);
-	if (addr == NULL) {
-		sprintf(log_buffer, "Sender unknown");
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "?", log_buffer);
-		return;
-	}
-
-	/* in case of IS_CMD there is a unique id passed with each command,
-	 * which we need to send back with the reply so server can
-	 * match the replies to the requests
-	 */
-	msgid = disrst(stream, &rc);
-	if (!msgid || rc) {
-		close(stream);
-		return;
-	}
-
-	request = alloc_br(0); /* freed when reply sent */
-	if (!request) {
-		close(stream);
-		if (msgid)
-			free(msgid);
-		return;
-	}
-
-	request->rq_conn = stream;
-	pbs_strncpy(request->rq_host, netaddr(addr), sizeof(request->rq_host));
-	request->rq_fromsvr = 1;
-	request->prot = PROT_TPP;
-	request->tppcmd_msgid = msgid;
-
-	rc = dis_request_read(stream, request);
-	if (rc != 0) {
-		close(stream);
-		free_br(request);
-		return;
-	}
-
-	log_request(request, stream);
-
-	dispatch_request(stream, request);
-}
-
-
-/**
- * @brief
  *	Send one or the entire set of unacknowledged hook_job_actions
  *	to the server.   If called with a non-null pointer to an action,
  *	that one is sent;  otherwise all in the list are sent.
@@ -660,54 +579,6 @@ err:
 
 /**
  * @brief
- *	This function will process the rpp values from the server stream.
- *
- * @param[in]	stream - the communication stream
- *
- * @return	int
- * @retval	0: success
- * @retval	!0: Error code
- */
-static int
-process_rpp_values(int stream) {
-	int new_retry, new_water;
-	int ret = 0;
-
-	DBPRT(("%s: IS_NULL\n", __func__))
-
-	new_retry = disrsi(stream, &ret);
-	if (ret != DIS_SUCCESS)
-		return ret;
-
-	new_water = disrsi(stream, &ret);
-	if (ret != DIS_SUCCESS)
-		return ret;
-	/*
-	** rpp_retry can be zero, i.e. no retries.
-	*/
-	DBPRT(("rpp_retry: %d: rpp_highwater:%d\n", new_retry, new_water))
-	if (new_retry >= 0 && rpp_retry != new_retry) {
-		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				msg_daemonname, "rpp_retry changed from %d to %d",
-				rpp_retry, new_retry);
-		rpp_retry = new_retry;
-	}
-	/*
-	** rpp_highwater must be greater than zero.
-	** It is the number of packets allowed to be "on the wire"
-	** at any given time.
-	*/
-	if (new_water > 0 && rpp_highwater != new_water) {
-		log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-				msg_daemonname, "rpp_highwater changed from %d to %d",
-				rpp_highwater, new_water);
-		rpp_highwater = new_water;
-	}
-	return 0;
-}
-
-/**
- * @brief
  *	This function will process the cluster addresses from the server stream.
  *
  * @param[in]	stream - the communication stream
@@ -821,19 +692,12 @@ is_request(int stream, int version)
 
 	switch (command) {
 
-		case IS_NULL:
-			if ((ret = process_rpp_values(stream)) != 0)
-				goto err;
-			break;
-
 		case IS_REPLYHELLO:	/* servers return greeting to IS_HELLOSVR */
 			DBPRT(("%s: IS_REPLYHELLO, state=0x%x stream=%d\n", __func__,
 				internal_state, stream))
 			time_delta_hellosvr(MOM_DELTA_RESET);
 			need_inv = disrsi(stream, &ret);
 			if (ret != DIS_SUCCESS)
-				goto err;
-			if ((ret = process_rpp_values(stream)) != DIS_SUCCESS)
 				goto err;
 			ret = process_cluster_addrs(stream);
 			if (ret != 0 && ret != DIS_EOD)

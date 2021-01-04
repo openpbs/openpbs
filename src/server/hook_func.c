@@ -187,7 +187,6 @@ extern char *path_hooks_tracking;
 extern char		path_log[];
 extern char		*log_file;
 extern pbs_net_t	pbs_server_addr;
-extern unsigned int	pbs_server_port_dis;
 
 extern char *msg_badexit;
 extern char *msg_err_malloc;

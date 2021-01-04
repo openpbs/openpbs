@@ -69,9 +69,6 @@ char *pbs_conf_env = "PBS_CONF_FILE";
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
 
-pthread_key_t psi_key;
-static pthread_once_t key_once = PTHREAD_ONCE_INIT;
-
 /*
  * Initialize the pbs_conf structure.
  *
@@ -101,7 +98,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_home_path */
 	NULL,					/* pbs_exec_path */
 	NULL,					/* pbs_server_name */
-	NULL,					/* PBS server id */
 	0,					/* single pbs server instance by default */
 	NULL,					/* pbs_server_instances */
 	NULL,					/* cp_path */
@@ -123,7 +119,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_smtp_server_name */
 	1, 					/* use compression by default with TCP */
 	1,					/* use mcast by default with TCP */
-	0,					/* force fault tolerant comm disabled by default */
 	NULL,					/* default leaf name */
 	NULL,					/* for leaf, default communication routers list */
 	NULL,					/* default router name */
@@ -303,7 +298,7 @@ parse_psi(char *conf_value)
 			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
 			free_string_array(list);
 			return -1;
-		}	
+		}
 		strcpy(pbs_conf.psi[i].name, svrname);
 
 		if (pbs_conf.psi[i].name[0] == '\0') {
@@ -322,19 +317,6 @@ parse_psi(char *conf_value)
 	pbs_conf.pbs_num_servers = i;
 
 	return 0;
-}
-
-/**
- * @brief	create the PSI key & set it for the main thread
- *
- * @param	void
- *
- * @return	void
- */
-static void
-create_psi_key(void)
-{
-	pthread_key_create(&psi_key, free);
 }
 
 
@@ -386,8 +368,6 @@ __pbs_loadconf(int reload)
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return 0;
-
-	pthread_once(&key_once, create_psi_key);
 
 	/* this section of the code modified the procecss-wide
 	 * tcp array. Since multiple threads can get into this
@@ -532,10 +512,6 @@ __pbs_loadconf(int reload)
 			else if (!strcmp(conf_name, PBS_CONF_USE_MCAST)) {
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.pbs_use_mcast = ((uvalue > 0) ? 1 : 0);
-			}
-			else if (!strcmp(conf_name, PBS_CONF_FORCE_FT_COMM)) {
-				if (sscanf(conf_value, "%u", &uvalue) == 1)
-					pbs_conf.pbs_use_ft = ((uvalue > 0) ? 1 : 0);
 			}
 			else if (!strcmp(conf_name, PBS_CONF_LEAF_NAME)) {
 				if (pbs_conf.pbs_leaf_name)
@@ -834,10 +810,6 @@ __pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_USE_MCAST)) != NULL) {
 		if (sscanf(gvalue, "%u", &uvalue) == 1)
 			pbs_conf.pbs_use_mcast = ((uvalue > 0) ? 1 : 0);
-	}
-	if ((gvalue = getenv(PBS_CONF_FORCE_FT_COMM)) != NULL) {
-		if (sscanf(gvalue, "%u", &uvalue) == 1)
-			pbs_conf.pbs_use_ft = ((uvalue > 0) ? 1 : 0);
 	}
 	if ((gvalue = getenv(PBS_CONF_LEAF_NAME)) != NULL) {
 		if (pbs_conf.pbs_leaf_name)

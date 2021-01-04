@@ -190,7 +190,6 @@ req_py_spawn(struct batch_request *preq)
 	job *pjob;
 	int rc;
 	char *jid = preq->rq_ind.rq_py_spawn.rq_jid;
-	int offset;
 
 	/*
 	 ** Returns job pointer for singleton job or "parent" of
@@ -216,29 +215,15 @@ req_py_spawn(struct batch_request *preq)
 	}
 	else if (jt == IS_ARRAY_Single) {	/* a single subjob is okay */
 		char sjst;
+		int sjsst;
 
-		offset = subjob_index_to_offset(pjob,
-			get_index_from_jid(jid));
-		if (offset == -1) {
+		get_subjob_and_state(pjob, get_index_from_jid(jid), &sjst, &sjsst);
+		if (sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}
 
-		sjst = get_subjob_state(pjob, offset);
-		if (sjst == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		}
-
-		if (sjst != JOB_STATE_LTR_RUNNING) {
-			req_reject(PBSE_BADSTATE, 0, preq);
-			return;
-		}
-		if ((pjob = pjob->ji_ajtrk->tkm_tbl[offset].trk_psubjob) == NULL) {
-			req_reject(PBSE_UNKJOBID, 0, preq);
-			return;
-		}
-		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+		if (sjst != JOB_STATE_LTR_RUNNING || sjsst != JOB_SUBSTATE_RUNNING) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
@@ -275,7 +260,6 @@ req_relnodesjob(struct batch_request *preq)
 	job *pjob;
 	int rc = PBSE_NONE;
 	char *jid;
-	int offset;
 	char *nodeslist = NULL;
 	char msg[LOG_BUF_SIZE];
 	char *keep_select = NULL;
@@ -307,29 +291,15 @@ req_relnodesjob(struct batch_request *preq)
 	}
 	else if (jt == IS_ARRAY_Single) {	/* a single subjob is okay */
 		char sjst;
+		int sjsst;
 
-		offset = subjob_index_to_offset(pjob,
-			get_index_from_jid(jid));
-		if (offset == -1) {
+		pjob = get_subjob_and_state(pjob, get_index_from_jid(jid), &sjst, &sjsst);
+		if (pjob == NULL || sjst == JOB_STATE_LTR_UNKNOWN) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}
 
-		sjst = get_subjob_state(pjob, offset);
-		if (sjst == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		}
-
-		if (sjst != JOB_STATE_LTR_RUNNING) {
-			req_reject(PBSE_BADSTATE, 0, preq);
-			return;
-		}
-		if ((pjob = pjob->ji_ajtrk->tkm_tbl[offset].trk_psubjob) == NULL) {
-			req_reject(PBSE_UNKJOBID, 0, preq);
-			return;
-		}
-		if (!check_job_substate(pjob, JOB_SUBSTATE_RUNNING)) {
+		if (sjst != JOB_STATE_LTR_RUNNING || sjsst != JOB_SUBSTATE_RUNNING) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}

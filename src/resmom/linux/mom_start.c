@@ -691,7 +691,7 @@ scan_for_terminated(void)
 				wtask->wt_aux = (int)exiteval; /* exit status */
 				svr_delay_entry++;	/* see next_task() */
 			}
-			wtask = (struct work_task *)GET_NEXT(wtask->wt_linkall);
+			wtask = (struct work_task *)GET_NEXT(wtask->wt_linkevent);
 		}
 
 		pjob = (job *)GET_NEXT(svr_alljobs);

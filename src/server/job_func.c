@@ -209,7 +209,7 @@ char *get_job_credid(char *jobid)
 int
 job_abt(job *pjob, char *text)
 {
-	int	old_state;
+	char	old_state;
 	int	old_substate;
 	int	rc = 0;
 
@@ -385,7 +385,7 @@ job_alloc(void)
 	set_jattr_l_slim(pj, JOB_ATR_sample_starttime, time_now, SET);
 	set_jattr_l_slim(pj, JOB_ATR_eligible_time, 0, SET);
 
-	if ((svr_inst_id = get_svr_inst_id()) == NULL) {
+	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
 		log_err(errno, __func__, "unable to get server_instance_id");
 		return NULL;
 	}
@@ -523,19 +523,10 @@ job_free(job *pj)
 			bp = (badplace *)GET_NEXT(pj->ji_rejectdest);
 		}
 	}
-	if (pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		if ((pj->ji_parentaj) && (pj->ji_parentaj->ji_ajtrk))
-			pj->ji_parentaj->ji_ajtrk->tkm_tbl[pj->ji_subjindx].trk_psubjob = NULL;
-	} else if (pj->ji_ajtrk) {
-		/* if Arrayjob, free the tracking table structure */
-		for (i = 0; i < pj->ji_ajtrk->tkm_ct; i++) {
-			job *psubj = pj->ji_ajtrk->tkm_tbl[i].trk_psubjob;
-			if (psubj)
-				psubj->ji_parentaj = NULL;
-		}
-		free_range_list(pj->ji_ajtrk->trk_rlist);
-		free(pj->ji_ajtrk);
-		pj->ji_ajtrk = NULL;
+	if (pj->ji_ajinfo) {
+		free_range_list(pj->ji_ajinfo->trm_quelist);
+		free(pj->ji_ajinfo);
+		pj->ji_ajinfo = NULL;
 	}
 	pj->ji_parentaj = NULL;
 	if (pj->ji_discard)
@@ -1116,11 +1107,12 @@ job_purge(job *pjob)
 		(!check_job_substate(pjob, JOB_SUBSTATE_TRANSICM))) {
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (!check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
 			if ((check_job_substate(pjob, JOB_SUBSTATE_RERUN3)) || (check_job_substate(pjob, JOB_SUBSTATE_QUEUED)))
-				update_subjob_state(pjob, JOB_STATE_LTR_QUEUED);
+				update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, get_job_state(pjob), JOB_STATE_LTR_QUEUED);
 			else {
-				if (pjob->ji_terminated && pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
-					pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
-				update_subjob_state(pjob, JOB_STATE_LTR_EXPIRED);
+				if (pjob->ji_terminated && pjob->ji_parentaj && pjob->ji_parentaj->ji_ajinfo)
+					pjob->ji_parentaj->ji_ajinfo->tkm_dsubjsct++;
+				update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, get_job_state(pjob), JOB_STATE_LTR_EXPIRED);
+				chk_array_doneness(pjob->ji_parentaj);
 			}
 		}
 

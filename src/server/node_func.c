@@ -328,7 +328,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 	pnode->nd_attr[(int)ND_ATR_state].at_flags = ATR_VFLAG_SET;
 
-	if ((svr_inst_id = get_svr_inst_id()) == NULL) {
+	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
 		log_err(errno, __func__, "unable to get server_instance_id");
 		return (PBSE_SYSTEM);
 	}

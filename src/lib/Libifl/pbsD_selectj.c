@@ -201,28 +201,28 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 	int i;
 	struct reply_list *rlist = NULL;
 	struct reply_list *cur;
-	svr_conn_t *svr_connections = get_conn_svr_instances(c);
-	int num_cfg_svrs = get_num_servers();
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int nsvrs = get_num_servers();
 	int *failed_conn;
 	int rc = 0;
 
-	if (!svr_connections)
+	if (!svr_conns)
 		return NULL;
 
-	failed_conn = calloc(num_cfg_svrs, sizeof(int));
+	failed_conn = calloc(nsvrs, sizeof(int));
 
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
 
-	if (pbs_verify_attributes(random_srv_conn(svr_connections), PBS_BATCH_SelectJobs, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+	if (pbs_verify_attributes(random_srv_conn(svr_conns), PBS_BATCH_SelectJobs, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
 		return NULL;
 
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return NULL;
 
-	for (i = 0; i <num_cfg_svrs; i++) {
+	for (i = 0; svr_conns[i]; i++) {
 
-		if (svr_connections[i].state != SVR_CONN_STATE_UP) {
+		if (svr_conns[i]->state != SVR_CONN_STATE_UP) {
 			pbs_errno = PBSE_NOSERVER;
 			continue;
 		}
@@ -230,21 +230,21 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 		if (pbs_client_thread_lock_connection(c) != 0)
 			goto done;
 
-		if ((rc = PBSD_select_put(svr_connections[i].sd, PBS_BATCH_SelectJobs, attrib, NULL, extend)) != 0) {
+		if ((rc = PBSD_select_put(svr_conns[i]->sd, PBS_BATCH_SelectJobs, attrib, NULL, extend)) != 0) {
 			failed_conn[i] = 1;
 			continue;
 		}
 	}
 
-	for (i = 0; i < num_cfg_svrs; i++) {
+	for (i = 0; svr_conns[i]; i++) {
 
-		if (svr_connections[i].state != SVR_CONN_STATE_UP)
+		if (svr_conns[i]->state != SVR_CONN_STATE_UP)
 			continue;
 
 		if (failed_conn[i])
 			continue;
 
-		PBSD_select_get(svr_connections[i].sd, &rlist);
+		PBSD_select_get(svr_conns[i]->sd, &rlist);
 
 	}
 

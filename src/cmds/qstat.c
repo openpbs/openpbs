@@ -805,23 +805,22 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		pstat = bs_isort(pstat, cmp_est_time);
 
 	if (prtheader) {
-		svr_conn_t *svr_connections = get_conn_svr_instances(conn);
+		svr_conn_t **svr_conns = get_conn_svr_instances(conn);
 
-		if (svr_connections) {
-			int num_cfg_svrs = get_num_servers();
+		if (svr_conns) {
 			int num_active_svrs = 0;
 			int i = 0;
 			int j = 0;
 
-			for (i = 0; i < num_cfg_svrs; i++) {
-				if (svr_connections[i].state == SVR_CONN_STATE_UP)
+			for (i = 0; svr_conns[i]; i++) {
+				if (svr_conns[i]->state == SVR_CONN_STATE_UP)
 					num_active_svrs++;
 			}
 
 			if (num_active_svrs)
 				printf("\n");
-			for (i = 0; i < num_cfg_svrs; i++) {
-				if (svr_connections[i].state == SVR_CONN_STATE_UP) {
+			for (i = 0; svr_conns[i]; i++) {
+				if (svr_conns[i]->state == SVR_CONN_STATE_UP) {
 					printf("%s", pbs_conf.psi[i].name);
 					if (j == num_active_svrs - 1)
 						printf(": ");

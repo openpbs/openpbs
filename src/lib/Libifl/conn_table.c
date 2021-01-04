@@ -218,7 +218,7 @@ destroy_connection(int fd)
 	if (INVALID_SOCK(fd))
 		return -1;
 
-	if (fd > curr_connection_sz || allocated_connection == 0)
+	if (fd >= curr_connection_sz || allocated_connection == 0)
 		return 0;
 
 	LOCK_TABLE(-1);

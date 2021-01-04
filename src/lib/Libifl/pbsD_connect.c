@@ -73,6 +73,12 @@
 #include "log.h"
 #include "auth.h"
 #include "ifl_internal.h"
+#include "libutil.h"
+#include "portability.h"
+
+static pthread_once_t conn_once_ctl = PTHREAD_ONCE_INIT;
+static pthread_mutex_t conn_lock;
+static svr_conns_list_t *conn_list = NULL;
 
 /**
  * @brief
@@ -112,55 +118,6 @@ __pbs_default()
 		strcpy(p->th_pbs_defserver, dflt_server);
 	}
 	return (p->th_pbs_defserver);
-}
-
-/**
- * @brief
- *	-returns the server name.
- *
- * @param[in] server - server name
- * @param[out] server_name - server name
- * @param[in] port - port number
- *
- * @return	string
- * @retval	servr name	success
- *
- */
-char *
-PBS_get_server(char *server, char *server_name, unsigned int *port)
-{
-	int   i;
-	char *pc;
-	unsigned int dflt_port = 0;
-	char *p;
-
-	for (i=0;i<PBS_MAXSERVERNAME+1;i++)
-		server_name[i] = '\0';
-
-	if (dflt_port == 0)
-		dflt_port = pbs_conf.batch_service_port;
-
-	/* first, get the "net.address[:port]" into 'server_name' */
-
-	if ((server == NULL) || (*server == '\0')) {
-		if ((p=pbs_default()) == NULL)
-			return NULL;
-		strcpy(server_name, p);
-	} else {
-		strncpy(server_name, server, PBS_MAXSERVERNAME);
-	}
-
-	/* now parse out the parts from 'server_name' */
-
-	if ((pc = strchr(server_name, (int)':')) != NULL) {
-		/* got a port number */
-		*pc++ = '\0';
-		*port = atoi(pc);
-	} else {
-		*port = dflt_port;
-	}
-
-	return server_name;
 }
 
 /**
@@ -214,6 +171,7 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 	freeaddrinfo(pai);
 	return -1;
 }
+
 
 /**
  * @brief	This function establishes a network connection to the given server.
@@ -345,12 +303,112 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 }
 
 /**
+ * @brief	Creating the server corresponds to the server instance
+ *
+ * @param[in]	hostname - hostname of server instance
+ * @param[in]	port - port of server instance
+ * 
+ * @return	svr_conn_t*
+ * @retval	!NULL - server connection structure
+ * @retval	NULL - failure
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ */
+svr_conn_t *
+add_instance(char *hostname, uint port)
+{
+	svr_conn_t *svr_conn;
+
+	svr_conn = malloc(sizeof(svr_conn_t));
+	if (!svr_conn)
+		return NULL;
+
+	strcpy(svr_conn->name, hostname);
+	svr_conn->port = port;
+	svr_conn->sd = -1;
+	svr_conn->state = SVR_CONN_STATE_DOWN;
+
+	return svr_conn;
+}
+
+/**
+ * @brief	Initialize synchronization variables for connection list
+ *
+ * @return	void
+ *
+ * @par Side Effects:
+ *	Initializes conn_lock
+ *
+ * @par MT-safe: Yes
+ */
+void
+static conn_init()
+{
+	pthread_mutexattr_t attr;
+
+	init_mutex_attr_recursive(&attr);
+	pthread_mutex_init(&conn_lock, &attr);
+}
+
+/**
+ * @brief	Create the connection list structure, initialize it and return.
+ *
+ * @return	server connection struct which contains connection array
+ * @retval	!NULL - success
+ * @retval	NULL - error
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ */
+svr_conns_list_t *
+create_conn_svr_instances()
+{
+	svr_conn_t **msvr_conns = NULL;
+	svr_conns_list_t *new_conns = NULL;
+
+	if (conn_list == NULL) {
+		pthread_once(&conn_once_ctl, conn_init); /* initialize mutex once */
+	}
+
+	new_conns = malloc(sizeof(svr_conns_list_t));
+	if (new_conns == NULL) {
+		pbs_errno = PBSE_SYSTEM;
+		return NULL;
+	}
+	new_conns->next = NULL;
+	new_conns->cfd = -1;
+
+	msvr_conns = calloc(get_num_servers() + 1, sizeof(svr_conn_t *));
+	if (msvr_conns == NULL)
+		goto err;
+
+	new_conns->conn_arr = msvr_conns;
+
+	if (pthread_mutex_lock(&conn_lock) != 0)
+		goto err;
+	new_conns->next = conn_list;
+	conn_list = new_conns;
+	if (pthread_mutex_unlock(&conn_lock) != 0)
+		goto err;
+
+	return new_conns;
+err:
+	free(new_conns);
+	pbs_errno = PBSE_SYSTEM;
+	return NULL;
+}
+
+/**
  * @brief	Get the array of connections to all servers
  *
  * @param[in]	parentfd - fd that identifies a particular set of server connections
- * 						(pass -1 if connections not established yet)
  *
- * @return	void
+ * @return	server connection array
  * @retval	!NULL - success
  * @retval	NULL - error
  *
@@ -362,91 +420,65 @@ tcp_connect(char *hostname, int server_port, char *extend_data)
 void *
 get_conn_svr_instances(int parentfd)
 {
-	svr_conns_list_t *conn_list = NULL;
-	svr_conn_t *msvr_conns = NULL;
+	svr_conns_list_t *iter_conns = NULL;
 
-	conn_list = pthread_getspecific(psi_key);
-	if (conn_list == NULL || parentfd == -1) {	/* Create a new connection set */
-		int num_svrs;
-		int i;
-		svr_conns_list_t *new_conns = NULL;
+	if (parentfd < 0)
+		return NULL;
 
-		new_conns = malloc(sizeof(svr_conns_list_t));
-		if (new_conns == NULL) {
-			pbs_errno = PBSE_SYSTEM;
-			return NULL;
-		}
-		new_conns->next = NULL;
-
-		num_svrs = get_num_servers();
-		msvr_conns = calloc(num_svrs, sizeof(svr_conn_t));
-		if (msvr_conns == NULL) {
-			free(new_conns);
-			pbs_errno = PBSE_SYSTEM;
-			return NULL;
-		}
-
-		for (i = 0; i < num_svrs; i++) {
-			strcpy(msvr_conns[i].name, pbs_conf.psi[i].name);
-			msvr_conns[i].port = pbs_conf.psi[i].port;
-			msvr_conns[i].sd = -1;
-			msvr_conns[i].state = SVR_CONN_STATE_DOWN;
-		}
-		new_conns->conn_arr = msvr_conns;
-		new_conns->next = conn_list;
-		conn_list = new_conns;
-
-		pthread_setspecific(psi_key, conn_list);
-	} else if (parentfd != -1) {
-		svr_conns_list_t *iter_conns = NULL;
-
-		/* Find the set of connections associated with the parent fd */
-		for (iter_conns = conn_list; iter_conns != NULL; iter_conns = iter_conns->next) {
-			if (iter_conns->conn_arr[0].sd == parentfd) {
-				msvr_conns = iter_conns->conn_arr;
-				break;
-			}
-		}
+	/* Find the set of connections associated with the parent fd */
+	for (iter_conns = conn_list; iter_conns; iter_conns = iter_conns->next) {
+		if (iter_conns->cfd == parentfd)
+			return iter_conns->conn_arr;
 	}
 
-	return msvr_conns;
+	return NULL;
 }
 
 /**
  * @brief	Deallocate the connection set associated with the fd given
- * destroys the last unused one if called with fd as -1
  *
  * @param[int]	parentfd - parent fd of the connection set
  *
- * @return	void
+ * @return	int
+ * @retval 0: success
+ * @retval -1: error
  */
-void
-dealloc_conn_list_single(int parentfd)
+static int
+dealloc_conn_entry(int parentfd)
 {
 	svr_conns_list_t *iter_conns;
-	svr_conns_list_t *conn_list;
 	svr_conns_list_t *prev = NULL;
+	int i;
 
-	conn_list = pthread_getspecific(psi_key);
-	for (iter_conns = conn_list; iter_conns != NULL; prev = iter_conns, iter_conns = iter_conns->next) {
-		if ((iter_conns->conn_arr[0].sd == parentfd) ||
-		    (parentfd == -1 && !iter_conns->next)) {
-			if (prev != NULL)
+	if (pthread_mutex_lock(&conn_lock) != 0)
+		return -1;
+	for (iter_conns = conn_list; iter_conns;
+	     prev = iter_conns, iter_conns = iter_conns->next) {
+
+		if (iter_conns->cfd == parentfd) {
+			if (prev)
 				prev->next = iter_conns->next;
 			else
 				conn_list = NULL;
+
+			for (i = 0; iter_conns->conn_arr[i]; i++)
+				free(iter_conns->conn_arr[i]);
+			free(iter_conns->conn_arr);
 			free(iter_conns);
-			pthread_setspecific(psi_key, conn_list);
 			break;
 		}
 	}
+
+	if (pthread_mutex_unlock(&conn_lock) != 0)
+		return -1;
+
+	return 0;
 }
 
 /**
  * @brief	Helper function for connect_to_servers to connect to a particular server
  *
- * @param[in]		idx - array index for the server to connect to
- * @param[in,out]	conn_arr - array of svr_conn_t
+ * @param[in,out]	conn - svr_conn_t to connect to
  * @param[in]		extend_data - any additional data relevant for connection
  *
  * @return	int
@@ -454,9 +486,9 @@ dealloc_conn_list_single(int parentfd)
  * @retval	fd of connection
  */
 static int
-connect_to_server(int idx, svr_conn_t *conn_arr, char *extend_data)
+connect_to_server(svr_conn_t *conn, char *extend_data)
 {
-	int sd = conn_arr[idx].sd;
+	int sd = conn->sd;
 	struct sockaddr_in my_sockaddr;
 
 	/* bind to pbs_public_host_name if given  */
@@ -470,15 +502,48 @@ connect_to_server(int idx, svr_conn_t *conn_arr, char *extend_data)
 		}
 	}
 
-	if (conn_arr[idx].state != SVR_CONN_STATE_UP) {
-		if ((sd = tcp_connect(conn_arr[idx].name, conn_arr[idx].port, extend_data)) != -1) {
-			conn_arr[idx].state = SVR_CONN_STATE_UP;
-			conn_arr[idx].sd = sd;
+	if (conn->state != SVR_CONN_STATE_UP) {
+		if ((sd = tcp_connect(conn->name, conn->port, extend_data)) != -1) {
+			conn->state = SVR_CONN_STATE_UP;
+			conn->sd = sd;
 		} else
-			conn_arr[idx].state = SVR_CONN_STATE_DOWN;
+			conn->state = SVR_CONN_STATE_DOWN;
 	}
 
 	return sd;
+}
+
+/**
+ * @brief
+ * 	function checks whether svrhost is part of multi svr cluster passed
+ *
+ * @param[in]	svrhost - server host
+ * @param[in]	port - server port
+ * @param[in]	svr_conns - multi svr conn struct
+ *
+ * @return	bool
+ * @retval	true: part of same cluster
+ * @retval	false: not part of same cluster
+ */
+static bool
+part_of_cluster(char *svrhost, uint port, svr_conn_t **svr_conns)
+{
+	int i;
+	int nsvrs = get_num_servers();
+
+	if (!svrhost)
+		return true;
+
+	if (is_same_host(svrhost, pbs_default()) && port == pbs_conf.batch_service_port)
+		return true;
+
+	for (i = 0; i < nsvrs; i++) {
+		if (is_same_host(svrhost, pbs_conf.psi[i].name) &&
+		    port == pbs_conf.psi[i].port)
+			return true;
+	}
+
+	return false;
 }
 
 /**
@@ -497,34 +562,55 @@ connect_to_servers(char *svrhost, uint port, char *extend_data)
 {
 	int i;
 	int fd = -1;
-	int ret_fd = -1;
-	int num_conf_servers = get_num_servers();
-	svr_conn_t *svr_connections = get_conn_svr_instances(-1);
+	svr_conns_list_t *new_conns = create_conn_svr_instances();
+	svr_conn_t **svr_conns;
+	int nsvrs = get_num_servers();
 
-	if (svr_connections == NULL)
+	if (new_conns == NULL)
 		return -1;
 
-	if (svrhost) {
-		if (!is_same_host(svrhost, pbs_default())) {
-			/* The client is trying to reach a different cluster than what's known
-			* So, just reach out to the one host provided and reply back instead
-			* of connecting to the PBS_SERVER_INSTANCES of the default cluster
-			*/
-			pbs_strncpy(svr_connections[0].name, svrhost, sizeof(svr_connections[0].name));
-			svr_connections[0].port = port;
-			return connect_to_server(0, svr_connections, extend_data);
-		}
+	svr_conns = new_conns->conn_arr;
+
+	if (!part_of_cluster(svrhost, port, svr_conns)) {
+		/* The client is trying to reach a different cluster than what's known
+		* So, just reach out to the one host provided and reply back instead
+		* of connecting to the PBS_SERVER_INSTANCES of the default cluster
+		*/
+		svr_conns[0] = add_instance(svrhost, port);
+		new_conns->cfd = connect_to_server(svr_conns[0], extend_data);
+		return new_conns->cfd;
 	}
 
 	/* Try to connect to all servers in the cluster */
-	for (i = 0; i < num_conf_servers; i++) {
-		fd = connect_to_server(i, svr_connections, extend_data);
+	for (i = 0; i < nsvrs; i++) {
+		svr_conns[i] = add_instance(pbs_conf.psi[i].name, pbs_conf.psi[i].port);
+		if (!svr_conns[i])
+			goto err;
 
-		if (ret_fd == -1 && fd != -1)
-			ret_fd = fd;
+		fd = connect_to_server(svr_conns[i], extend_data);
+		if (fd != -1) {
+			if (new_conns->cfd == -1)
+				new_conns->cfd = fd;
+			else {
+				/* cluster represents more than one fd, cfd has to be virtual */
+				int vfd;
+				vfd = socket(AF_INET, SOCK_STREAM, 0);
+				if (vfd == -1)
+					goto err;
+				new_conns->cfd = vfd;
+			}
+		}
 	}
 
-	return ret_fd;
+	return new_conns->cfd;
+
+err:
+	for (i = 0; svr_conns[i]; i++) {
+		free(svr_conns[i]);
+		svr_conns[i] = NULL;
+	}
+	pbs_errno = PBSE_SYSTEM;
+	return -1;
 }
 
 /**
@@ -543,7 +629,17 @@ __pbs_connect_extend(char *server, char *extend_data)
 {
 	char server_name[PBS_MAXSERVERNAME + 1];
 	unsigned int server_port;
-
+	char	*altservers[2];
+	int	have_alt = 0;
+	int	nsvrs;
+	int	sock = -1;
+	int	i;
+	int	f;
+		
+	char   pbsrc[_POSIX_PATH_MAX];	
+	struct stat sb;	
+	int    using_secondary = 0;	
+	
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return -1;
@@ -557,7 +653,66 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	return connect_to_servers(server_name, server_port, extend_data);
+	nsvrs = get_num_servers();
+
+	if (nsvrs == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
+		/* failover configuered ...   */	
+		if (is_same_host(server, pbs_conf.pbs_primary)) {	
+			have_alt = 1;	
+			
+			altservers[0] = pbs_conf.pbs_primary;	
+			altservers[1] = pbs_conf.pbs_secondary;	
+				
+			/* We want to try the one last seen as "up" first to not   */	
+			/* have connection delays.   If the primary was up, there  */	
+			/* is no .pbsrc.NAME file.  If the last command connected  */	
+			/* to the Secondary, then it created the .pbsrc.USER file. */	
+
+			/* see if already seen Primary down */		
+			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
+			if (stat(pbsrc, &sb) != -1) {	
+				/* try secondary first */	
+				altservers[0] = pbs_conf.pbs_secondary;		
+				altservers[1] = pbs_conf.pbs_primary;
+				using_secondary = 1;	
+			} 		
+		}	
+	}
+
+	/*
+	 * connect to server ...	
+	 * If attempt to connect fails and if Failover configured and	
+	 *   if attempting to connect to Primary,  try the Secondary	
+	 *   if attempting to connect to Secondary, try the Primary	
+	 */	
+	for (i = 0; i < (have_alt + 1); ++i) {
+		if (have_alt) 
+			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
+		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
+			break; 
+	}
+	
+	if (nsvrs > 1)
+		return sock;
+	
+	if (i >= (have_alt+1) && sock == -1) {
+		return -1; 		/* cannot connect */
+	}
+	
+	if (have_alt && (i == 1)) {
+		/* had to use the second listed server ... */
+		if (using_secondary == 1) {
+			/* remove file that causes trying the Secondary first */
+			unlink(pbsrc);
+		} else {
+			/* create file that causes trying the Primary first   */
+			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
+			if (f != -1)
+				close(f);
+		}
+	}
+	
+	return sock;
 }
 
 /**
@@ -689,31 +844,29 @@ disconnect_from_server(int connect)
 int
 __pbs_disconnect(int connect)
 {
-	svr_conn_t *svr_conns = NULL;
+	svr_conn_t **svr_conns = NULL;
+	int i;
 
 	if (connect <= 0)
 		return -1;
 
 	/* See if we should disconnect from all servers */
 	svr_conns = get_conn_svr_instances(connect);
-	if (svr_conns != NULL && connect == svr_conns[0].sd) {
-		int i;
-
-		for (i = 0; i < get_num_servers(); i++) {
-			if (disconnect_from_server(svr_conns[i].sd) != 0)
+	if (svr_conns) {
+		for (i = 0; svr_conns[i]; i++) {
+			if (disconnect_from_server(svr_conns[i]->sd) != 0)
 				return -1;
 
-			svr_conns[i].sd = -1;
-			svr_conns[i].state = SVR_CONN_STATE_DOWN;
+			svr_conns[i]->sd = -1;
+			svr_conns[i]->state = SVR_CONN_STATE_DOWN;
 		}
 	} else {
-		/* fd doesn't belong to a multi-server setup, just disconnect and exit */
+		/* fd doesn't belong to a multi-server setup */
 		disconnect_from_server(connect);
-		return 0;
 	}
 
 	/* Destroy the connection cache associated with this set of connections */
-	dealloc_conn_list_single(connect);
+	dealloc_conn_entry(connect);
 
 	return 0;
 }
@@ -772,7 +925,8 @@ pbs_connect_noblk(char *server, int tout)
 	struct sockaddr_in *inp;
 	short int connect_err = 0;
 	char errbuf[LOG_BUF_SIZE] = {'\0'};
-	svr_conn_t *svr_connections;
+	svr_conns_list_t *new_conns;
+	svr_conn_t **svr_conns;
 
 #ifdef WIN32
 	int     non_block = 1;
@@ -854,15 +1008,6 @@ pbs_connect_noblk(char *server, int tout)
 	} else
 		inp->sin_port = htons(server_port);
 
-	if ((svr_connections = get_conn_svr_instances(-1)) == NULL) {
-		closesocket(sock);
-		pbs_errno = PBSE_SYSTEM;
-		freeaddrinfo(pai);
-		return -1;
-	}
-	pbs_strncpy(svr_connections[0].name, server, sizeof(svr_connections[0].name));
-	svr_connections[0].port = server_port;
-
 	if (connect(sock,
 		aip->ai_addr,
 		aip->ai_addrlen) < 0) {
@@ -911,7 +1056,6 @@ pbs_connect_noblk(char *server, int tout)
 			default:
 err:
 				closesocket(sock);
-				dealloc_conn_list_single(-1);
 				freeaddrinfo(pai);
 				return -1;	/* cannot connect */
 
@@ -928,6 +1072,22 @@ err:
 #endif
 		goto err;
 
+	if ((new_conns = create_conn_svr_instances()) == NULL) {
+		closesocket(sock);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	svr_conns = new_conns->conn_arr;
+	svr_conns[0] = add_instance(server, server_port);
+	if (svr_conns[0] == NULL) {
+		closesocket(sock);
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+	svr_conns[0]->state = SVR_CONN_STATE_UP;
+	svr_conns[0]->sd = sock;
+	new_conns->cfd = sock;
+
 	/*
 	 * multiple threads cant get the same connection id above,
 	 * so no need to lock this piece of code
@@ -935,7 +1095,7 @@ err:
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(sock) != 0) {
 		closesocket(sock);
-		dealloc_conn_list_single(-1);
+		dealloc_conn_entry(sock);
 		/* pbs_errno set by the pbs_connect_init_context routine */
 		return -1;
 	}
@@ -948,7 +1108,7 @@ err:
 
 	if (load_auths(AUTH_CLIENT)) {
 		closesocket(sock);
-		dealloc_conn_list_single(-1);
+		dealloc_conn_entry(sock);
 		return -1;
 	}
 
@@ -984,7 +1144,7 @@ err:
 		if (errbuf[0] != '\0')
 			fprintf(stderr, "auth: %s\n", errbuf);
 		closesocket(sock);
-		dealloc_conn_list_single(-1);
+		dealloc_conn_entry(sock);
 		pbs_errno = PBSE_PERM;
 		return -1;
 	}
@@ -992,8 +1152,6 @@ err:
 	/* setup DIS support routines for following pbs_* calls */
 	DIS_tcp_funcs();
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;	/* set for 3 hours */
-	svr_connections[0].state = SVR_CONN_STATE_UP;
-	svr_connections[0].sd = sock;
 
 	return sock;
 }
@@ -1059,10 +1217,10 @@ int
 pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id)
 {
 	int i;
-	svr_conn_t *svr_conns_primary = NULL;
-	svr_conn_t *svr_conns_secondary = NULL;
+	svr_conn_t **svr_conns_primary = NULL;
+	svr_conn_t **svr_conns_secondary = NULL;
 
-	if (sched_id == NULL)
+	if (sched_id == NULL || primary_conn_id < 0 || secondary_conn_id < 0)
 		return 0;
 
 	svr_conns_primary =  get_conn_svr_instances(primary_conn_id);
@@ -1074,9 +1232,9 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 		return 0;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (send_register_sched(svr_conns_primary[i].sd, sched_id) == 0)
+		if (send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
 			return 0;	
-		if (send_register_sched(svr_conns_secondary[i].sd, sched_id) == 0)
+		if (send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
 			return 0;
 	}
 
@@ -1099,24 +1257,24 @@ get_svr_inst_fd(int vfd, char *svr_inst_id)
 	int i;
 	char *svr_inst_name;
 	unsigned int svr_inst_port;
-	svr_conn_t *svr_connections = get_conn_svr_instances(vfd);
+	svr_conn_t **svr_conns = get_conn_svr_instances(vfd);
 
-	if (svr_connections == NULL)
+	if (svr_conns == NULL)
 		return -1;
 
 		
-	/* In case of single server mode, svr_connections consists of only one entry */
+	/* In case of single server mode, svr_conns consists of only one entry */
 	if (!msvr_mode())
-		return svr_connections[0].sd;
+		return svr_conns[0]->sd;
 
 	svr_inst_name = parse_servername(svr_inst_id, &svr_inst_port);
 
 	if (svr_inst_name == NULL)
 		return -1;
 		
-	for (i = 0; i < get_num_servers(); i++) {
-		if (is_same_host(svr_connections[i].name, svr_inst_name) && (svr_inst_port == svr_connections[i].port))
-			return svr_connections[i].sd;
+	for (i = 0; svr_conns[i]; i++) {
+		if (is_same_host(svr_conns[i]->name, svr_inst_name) && (svr_inst_port == svr_conns[i]->port))
+			return svr_conns[i]->sd;
 	}
 
 	return -1;

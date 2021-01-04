@@ -86,12 +86,6 @@ extern "C" {
 
 #endif
 
-#define	RPP_RETRY	10
-/*
- **	Default allowed number of outstanding pkts.
- */
-#define	RPP_HIGHWATER	1024
-
 /*
  * Default number of RPP packets to check every server iteration
  */
@@ -108,8 +102,6 @@ extern "C" {
 #define TPP_AUTH_NODE           4  /* authenticated, but yet unknown node type till a join happens */
 
 extern	int	tpp_fd;
-extern	int	rpp_retry;
-extern	int	rpp_highwater;
 struct tpp_config {
 	int    node_type; /* leaf, proxy */
 	char   **routers; /* other proxy names (and backups) to connect to */
@@ -122,7 +114,6 @@ struct tpp_config {
 	int    tcp_keep_probes;
 	int    tcp_user_timeout;
 	int    buf_limit_per_conn; /* buffer limit per physical connection */
-	int    force_fault_tolerance; /* by default disabled */
 	pbs_auth_config_t *auth_config;
 	char **supported_auth_methods;
 };
@@ -131,7 +122,7 @@ struct tpp_config {
 extern int tpp_init(struct tpp_config *);
 extern void tpp_set_app_net_handler(void (*app_net_down_handler)(void *), void (*app_net_restore_handler)(void *));
 extern void tpp_set_logmask(long);
-extern int set_tpp_config(void (*log_fn)(int, const char *, char *), struct pbs_config *, struct tpp_config *, char *, int, char *);
+extern int set_tpp_config(struct pbs_config *, struct tpp_config *, char *, int, char *);
 extern void DIS_tpp_funcs();
 extern int tpp_open(char *, unsigned int);
 extern int tpp_close(int);
@@ -142,7 +133,6 @@ extern void tpp_terminate(void);
 extern void tpp_shutdown(void);
 extern struct sockaddr_in *tpp_getaddr(int);
 extern void tpp_add_close_func(int, void (*func)(int));
-extern void (*tpp_log_func)(int, const char *, char *);
 extern char *tpp_parse_hostname(char *, int *);
 extern int tpp_init_router(struct tpp_config *);
 extern void tpp_router_shutdown(void);
@@ -151,7 +141,7 @@ extern void tpp_router_shutdown(void);
 extern int tpp_mcast_open(void);
 extern int tpp_mcast_add_strm(int, int);
 extern int *tpp_mcast_members(int, int *);
-extern int tpp_mcast_send(int, void *, unsigned int, unsigned int, unsigned int);
+extern int tpp_mcast_send(int, void *, unsigned int, unsigned int);
 extern int tpp_mcast_close(int);
 
 /**********************************************************************/
