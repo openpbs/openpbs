@@ -50,7 +50,8 @@ class TestNonprintingCharacters(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         # Mapping of ASCII non-printable character to escaped representation
         self.npcat = {
             "\x00": "^@", "\x01": "^A", "\x02": "^B", "\x03": "^C",
@@ -157,7 +158,7 @@ sleep 5
         """
         Check if escaped variable is in qstat -f output
         """
-        cmd = [self.qstat_cmd, '-f', jid]
+        cmd = [self.qstat_cmd, '-xf', jid]
         ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
         k = chk_var.split('=')[0]
         for elem in ret['out']:
@@ -166,7 +167,7 @@ sleep 5
                 job_str = elem.strip('\t') + ret['out'][i + 1].strip('\t')
                 break
         self.assertIn(chk_var, job_str)
-        self.logger.info('qstat -f output has: %s' % chk_var)
+        self.logger.info('qstat -xf output has: %s' % chk_var)
 
     def test_nonprint_character_qsubv(self):
         """
@@ -223,7 +224,7 @@ sleep 5
             if ch in self.npch_asis:
                 chk_var = r'var1=A\,B\,%s\,C\,D' % ch
             script = ['#PBS -v "var1=\'A,B,%s,C,D\'"' % ch]
-            script += ['sleep 10']
+            script += ['sleep 1']
             script += ['env | grep var1']
             jid = self.create_and_submit_job(content=script)
             # Check if qstat -f output contains the escaped character
@@ -254,7 +255,7 @@ sleep 5
             chk_var = 'NONPRINT_VAR=X%sY' % self.npcat[ch]
             if ch in self.npch_asis:
                 chk_var = 'NONPRINT_VAR=X%sY' % ch
-            script = ['sleep 10']
+            script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
             a = {self.ATTR_V: None, ATTR_S: '/bin/bash'}
             j = Job(TEST_USER, attrs=a)
@@ -706,7 +707,7 @@ sleep 5
                 chk_var = 'NONPRINT_VAR=X%sY' % ch
             exp = "X%sY" % ch
             set_env = {"NONPRINT_VAR": exp}
-            script = ['sleep 10']
+            script = ['sleep 5']
             script += ['env | grep NONPRINT_VAR']
             a = {self.ATTR_V: None, ATTR_J: '1-2', ATTR_S: '/bin/bash'}
             j = Job(TEST_USER, attrs=a)
@@ -719,7 +720,7 @@ sleep 5
             for j in ja:
                 # Check if qstat -f output contains the escaped character
                 self.check_qstatout(chk_var, j)
-            qstat1 = self.server.status(JOB, ATTR_o, id=subj1)
+            qstat1 = self.server.status(JOB, ATTR_o, id=subj1, extend='x')
             job_outfile1 = qstat1[0][ATTR_o].split(':')[1]
             job_host = qstat1[0][ATTR_o].split(':')[0]
             if job_outfile1.split('.')[2] == '^array_index^':
