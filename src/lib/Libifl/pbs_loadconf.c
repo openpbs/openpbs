@@ -102,6 +102,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* PBS server id */
 	0,					/* single pbs server instance by default */
 	NULL,					/* pbs_server_instances */
+	NULL,					/* pbs_server_instances str */
 	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
@@ -318,6 +319,7 @@ parse_psi(char *conf_value)
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
+	pbs_conf.psi_str = strdup(conf_value);
 
 	return 0;
 }
@@ -1191,36 +1193,16 @@ err:
 
 /**
  * @brief
- *	convert psi to comma separated string.
- *
- * @param[in] psi - psi structure
- * @param[in] nsvrs - num of servers
- * 
- * @note
- * return string has to be freed by the caller
+ *	returns psi in string format
  *
  * @return char *
  * @retval !NULL pointer psi string
  * @retval NULL failure
  */
 char *
-psi_to_str(psi_t *psi, int nsvrs)
+get_psi_str()
 {
-	char buf[LARGE_BUF_LEN];
-	int len = 0;
-	int i;
-
-	if (!psi)
-		return NULL;
-
-	for (i = 0; i < nsvrs; i++) {
-		if (len == 0)
-			len += snprintf(buf, LARGE_BUF_LEN, "%s:%d", psi[i].name, psi[i].port);
-		else
-			len += snprintf(buf + len, LARGE_BUF_LEN, ",%s:%d", psi[i].name, psi[i].port);
-	}
-
-	return strdup(buf);
+	return pbs_conf.psi_str;
 }
 
 /**
@@ -1253,7 +1235,7 @@ pbs_get_conf_var(char *conf_var_name)
 	/* If pbs_conf already been populated use that value. */
 	if (pbs_conf.loaded != 0) {
 		if (!strcmp(conf_var_name, PBS_CONF_SERVER_INSTANCES))
-			conf_val_out = psi_to_str(pbs_conf.psi, pbs_conf.pbs_num_servers);
+			conf_val_out = get_psi_str();
 	}
 
 	if (conf_val_out)

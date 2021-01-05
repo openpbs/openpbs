@@ -1415,7 +1415,7 @@ get_comm_filename(char *fname)
 	int count = 0;
 	char buf[LARGE_BUF_LEN];
 	int len;
-	char hash[SHA_DIGEST_LENGTH];
+	unsigned char hash[SHA_DIGEST_LENGTH];
 	int i;
 
 	count = snprintf(fname, MAXPIPENAME, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s_%s",
@@ -1518,6 +1518,8 @@ daemon_stuff(void)
 	char *err_op = "";
 	char log_buf[LOG_BUF_SIZE];
 	int cred_timeout = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(sd_svr);
+	int i;
 
 	/* set umask so socket file created is only accessible by same user */
 	umask(cmask);
@@ -1544,7 +1546,8 @@ daemon_stuff(void)
 	}
 
 	FD_SET(bindfd, &readset);
-	FD_SET(sd_svr, &readset);
+	for (i = 0; svr_conns[i]; i++)
+		FD_SET(svr_conns[i]->sd, &readset);
 	maxfd = (bindfd > sd_svr) ? bindfd : sd_svr;
 	while (1) {
 
@@ -1577,9 +1580,11 @@ daemon_stuff(void)
 			cred_timeout = 1;
 		}
 
-		if (FD_ISSET(sd_svr, &workset)) {
-			if (recv(sd_svr, &rc, 1, MSG_OOB) < 1)
-				goto out;
+		for (i = 0; svr_conns[i]; i++) {
+			if (FD_ISSET(svr_conns[i]->sd, &workset)) {
+				if (recv(svr_conns[i]->sd, &rc, 1, MSG_OOB) < 1)
+					goto out;
+			}
 		}
 
 		/* accept the connection */
@@ -1793,5 +1798,6 @@ again:
 		/* going down, no need to free stuff */
 		close(sock);
 	}
+
 	return rc;
 }

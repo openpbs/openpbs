@@ -226,6 +226,7 @@ struct pbs_config
 	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
 	unsigned int pbs_num_servers;	/* currently configured number of instances */
 	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
+	char *psi_str;			/* psi in string format */
 	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
@@ -500,7 +501,7 @@ extern char *pbs_get_tmpdir(void);
 
 extern char *pbs_get_conf_var(char *);
 
-extern char *psi_to_str(psi_t *, int);
+extern char *get_psi_str();
 
 extern FILE *pbs_popen(const char *, const char *);
 
