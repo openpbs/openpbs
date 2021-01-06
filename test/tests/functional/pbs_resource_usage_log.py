@@ -69,14 +69,13 @@ class TestResourceUsageLog(TestFunctional):
         Check accounting logs when a job completes successfully and when
         a job is deleted in Q or R state
         """
-        scripts = []
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        scripts.append(j1.create_eatcpu_job(40, self.mom.shortname))
+        j1.create_eatcpu_job(40, self.mom.shortname)
         jid1 = self.server.submit(j1)
 
         j2 = Job(TEST_USER, a)
-        scripts.append(j2.create_eatcpu_job(30, self.mom.shortname))
+        j2.create_eatcpu_job(30, self.mom.shortname)
         jid2 = self.server.submit(j2)
 
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
@@ -87,7 +86,7 @@ class TestResourceUsageLog(TestFunctional):
                            offset=40, extend='x', id=jid1)
 
         j3 = Job(TEST_USER, a)
-        scripts.append(j3.create_eatcpu_job(hostname=self.mom.shortname))
+        j3.create_eatcpu_job(hostname=self.mom.shortname)
         jid3 = self.server.submit(j3)
         self.server.expect(JOB, {'job_state': 'R'}, jid3)
         self.server.delete(jid3, wait=True)
@@ -118,7 +117,6 @@ class TestResourceUsageLog(TestFunctional):
             msg='E;' + jid3 +
             '.*Exit_status=271.*resources_used.*run_count=1', id=jid3,
             regexp=True)
-        self.cleanup_eatcpu(scripts)
 
     def test_acclog_mom_down(self):
         """
@@ -215,10 +213,9 @@ class TestResourceUsageLog(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
 
         # Submit job
-        scripts = []
         a = {'Resource_List.select': '1:ncpus=1:mem=20gb'}
         j = Job(TEST_USER, a)
-        scripts.append(j.create_eatcpu_job(hostname=self.mom.shortname))
+        j.create_eatcpu_job(hostname=self.mom.shortname)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
 
@@ -227,7 +224,7 @@ class TestResourceUsageLog(TestFunctional):
             ATTR_J: '1-2',
             'Resource_List.select': 'ncpus=1:mem=20gb'}
         )
-        scripts.append(ja.create_eatcpu_job(hostname=self.mom.shortname))
+        ja.create_eatcpu_job(hostname=self.mom.shortname)
         jid_a = self.server.submit(ja)
         subjid1 = j.create_subjob_id(jid_a, 1)
         subjid2 = j.create_subjob_id(jid_a, 2)
@@ -294,7 +291,6 @@ class TestResourceUsageLog(TestFunctional):
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0',
             id=jid_a, regexp=True)
-        self.cleanup_eatcpu(scripts)
 
     def test_acclog_force_requeue(self):
         """
@@ -329,10 +325,9 @@ class TestResourceUsageLog(TestFunctional):
         Check for resource usage in accounting logs after
         PBS services are restarted
         """
-        scripts = []
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        scripts.append(j1.create_eatcpu_job(60, self.mom.shortname))
+        j1.create_eatcpu_job(60, self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
@@ -352,13 +347,11 @@ class TestResourceUsageLog(TestFunctional):
         self.server.accounting_match(
             msg='R;' + jid1 + '.*resources_used.*run_count=1', id=jid1,
             regexp=True)
-        self.cleanup_eatcpu(scripts)
 
     def test_acclog_preempt_order(self):
         """
         Check for R record when editing preempt order to "R" and requeuing job
         """
-        scripts = []
         # Create a high priority queue
         a = {'queue_type': 'e', 'started': 't',
              'enabled': 't', 'priority': '180'}
@@ -367,13 +360,13 @@ class TestResourceUsageLog(TestFunctional):
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        scripts.append(j1.create_eatcpu_job(30, self.mom.shortname))
+        j1.create_eatcpu_job(30, self.mom.shortname)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb', 'queue': 'highp'}
         j2 = Job(TEST_USER, a)
-        scripts.append(j2.create_eatcpu_job(60, self.mom.shortname))
+        j2.create_eatcpu_job(60, self.mom.shortname)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, jid2)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
@@ -382,4 +375,3 @@ class TestResourceUsageLog(TestFunctional):
             msg='.*R;' + jid1 +
             '.*Exit_status=-11.*resources_used.*run_count=1',
             id=jid1, regexp=True)
-        self.cleanup_eatcpu(scripts)
