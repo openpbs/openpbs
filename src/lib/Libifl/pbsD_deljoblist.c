@@ -563,7 +563,12 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 					}
 				}
 				if (ret != NULL) {
-					ret->next = retlist;
+					struct batch_deljob_status *last;
+
+					for (last = ret; last->next != NULL; last = last->next)
+						;
+
+					last->next = retlist;
 					retlist = ret;
 				}
 			}
