@@ -1,0 +1,5 @@
+build_test_task:
+  container:
+    matrix:
+      - image: centos:8
+  test_script: .travis/do.sh
