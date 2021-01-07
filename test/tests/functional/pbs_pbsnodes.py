@@ -83,6 +83,9 @@ class TestPbsnodes(TestFunctional):
             expect_dict[ATTR_version] = self.server.pbs_version
             expect_dict[ATTR_NODE_Port] = '15002'
 
+        if self.mom.is_cpuset_mom():
+            del expect_dict['resources_available.vnode']
+
         return expect_dict
 
     def verify_node_dynamic_val(self, last_state_change_time, available_ncpus,
@@ -236,8 +239,6 @@ class TestPbsnodes(TestFunctional):
             attr = attr_list[i].split('=')[0].strip()
             val = attr_list[i].split('=')[1].strip()
             attr_dict[attr] = val
-        if self.mom.is_cpuset_mom():
-            del expected_attrs['resources_available.vnode']
 
         # comparing the pbsnodes -a output with expected result
         for attr in expected_attrs:
