@@ -99,7 +99,7 @@ PBS_get_server(char *server_id_in, char *server_name_out, unsigned int *port)
  * @retval -1: error
  * @retval != -1 fd corresponding to the connection
  */
-static int
+int
 get_available_conn(svr_conn_t **svr_conns)
 {
 	int i;
