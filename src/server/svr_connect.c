@@ -85,13 +85,13 @@
 #include "attribute.h"
 #include "work_task.h"
 #include "log.h"
+#include "server.h"
 
 
 
 /* global data */
 extern int		 errno;
 extern int		 pbs_errno;
-extern unsigned int	 pbs_server_port_dis;
 extern unsigned int	 pbs_mom_port;
 extern char		*msg_daemonname;
 extern char		*msg_noloopbackif;
@@ -127,7 +127,7 @@ int
 svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_type cntype, int prot)
 {
 	int sock;
-	mominfo_t *pmom = 0;
+	mominfo_t *pmom = NULL;
 	conn_t *conn = NULL;
 
 	/* First, determine if the request is to another server or ourselves */
@@ -135,9 +135,17 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	if ((hostaddr == pbs_server_addr) && (port == pbs_server_port_dis))
 		return (PBS_LOCAL_CONNECTION);	/* special value for local */
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
-	if ((pmom != NULL) && (port == pmom->mi_port)) {
+
+	if (!pmom && (prot == PROT_TPP)) {
+		/* This could be a connection to peer server */
+		pmom = connect_to_peersvr(hostaddr, port);
+		if (pmom)
+			return ((mom_svrinfo_t *) (pmom->mi_data))->msr_stream;
+	}
+
+	if (pmom && (port == pmom->mi_port)) {
 		if ((((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)
-							&& (open_momstream(pmom) < 0)) {
+							&& (open_tppstream(pmom) < 0)) {
 			pbs_errno = PBSE_NORELYMOM;
 			return (PBS_NET_RC_FATAL);
 		}

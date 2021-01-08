@@ -234,7 +234,9 @@ qstop_LDADD = ${common_libs}
 qstop_SOURCES = qstop.c ${common_sources}
 
 qsub_CPPFLAGS = ${common_cflags}
-qsub_LDADD = ${common_libs}
+qsub_LDADD = ${common_libs} \
+		-lssl \
+		-lcrypto
 qsub_SOURCES = qsub.c qsub_sup.c ${common_sources}
 
 qterm_CPPFLAGS = ${common_cflags}

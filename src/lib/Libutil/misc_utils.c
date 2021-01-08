@@ -2274,10 +2274,10 @@ state_int2char(int sti)
 		case JOB_STATE_FINISHED:
 			return JOB_STATE_LTR_FINISHED;
 		default:
-			return '0';
+			return JOB_STATE_LTR_UNKNOWN;
 	}
 
-	return '0';
+	return JOB_STATE_LTR_UNKNOWN;
 }
 
 /**
@@ -2494,4 +2494,100 @@ int
 msvr_mode(void)
 {
 	return (get_num_servers() > 1);
+}
+
+/**
+ * @brief
+ * 	get subjob index from given jobid
+ *
+ * @param[in] jid - jobid
+ *
+ * @return int
+ * @retval -1  - fail to determine index of subjob
+ * @retval !-1 - index of subjob
+ */
+int
+get_index_from_jid(char *jid)
+{
+	char *range = get_range_from_jid(jid);
+
+	if (range != NULL) {
+		char *endptr = NULL;
+		int idx = strtoul(range, &endptr, 10);
+
+		if (endptr == NULL || *endptr != '\0' || idx < 0)
+			return -1;
+		else
+			return idx;
+	} else
+		return -1;
+}
+/**
+ * @brief
+ * 	get range string of arrayjob from given jobid
+ *
+ * @param[in] jid - job id
+ *
+ * @return char *
+ * @retval NULL - on error
+ * @retval ptr - ptr to static char array containing range string if found
+ *
+ * @par
+ * 	MT-safe: No - uses static variables - index, indexlen.
+ */
+char *
+get_range_from_jid(char *jid)
+{
+	int i;
+	char *pcb;
+	char *pce;
+	static char index[BUF_SIZE];
+
+	if ((pcb = strchr(jid, (int) '[')) == NULL)
+		return NULL;
+	if ((pce = strchr(jid, (int) ']')) == NULL)
+		return NULL;
+	if (pce <= pcb)
+		return NULL;
+
+	i = 0;
+	while (++pcb < pce)
+		index[i++] = *pcb;
+	index[i] = '\0';
+	return index;
+}
+
+/**
+ * @brief
+ * 	create and return (in a static array) a jobid for a subjob based on
+ * 	the parent jobid and the subjob index
+ *
+ * @param[in] parent_jid - parent jobid
+ * @param[in] sjidx -  subjob index.
+ *
+ * @return char *
+ * @return !NULL - jobid of subjob
+ * @return NULL - failure
+ *
+ * @par
+ * 	MT-safe: No - uses a static buffer, "jid".
+ */
+char *
+create_subjob_id(char *parent_jid, int sjidx)
+{
+	static char jid[PBS_MAXSVRJOBID + 1];
+	char *pcb;
+	char *pce;
+
+	if ((pcb = strchr(parent_jid, (int) '[')) == NULL)
+		return NULL;
+	if ((pce = strchr(parent_jid, (int) ']')) == NULL)
+		return NULL;
+	if (pce <= pcb)
+		return NULL;
+
+	*pcb = '\0';
+	snprintf(jid, sizeof(jid), "%s[%d]%s", parent_jid, sjidx, pce + 1);
+	*pcb = '[';
+	return jid;
 }

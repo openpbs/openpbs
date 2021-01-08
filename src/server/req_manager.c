@@ -1269,10 +1269,9 @@ mgr_queue_delete(struct batch_request *preq)
 		}
 
 		if (rc == 0) {
-			char queue_name[PBS_MAXQUEUENAME];
+			char queue_name[PBS_MAXQUEUENAME + 1];
 			/* Save the queue name before we purge it so it will appear in the log.  */
-			strncpy(queue_name, pque->qu_qs.qu_name, sizeof(queue_name));
-			queue_name[(sizeof(queue_name) - 1)] = '\0';
+			pbs_strncpy(queue_name, pque->qu_qs.qu_name, sizeof(queue_name));
 			if ((rc = que_purge(pque)) != 0) {
 				rc = PBSE_OBJBUSY;
 			} else
@@ -2538,7 +2537,7 @@ mgr_node_unset(struct batch_request *preq)
  * @retval	PBS error	- error
  */
 
-static int
+int
 make_host_addresses_list(char *phost, u_long **pul)
 {
 	int		i;
@@ -2619,12 +2618,14 @@ make_host_addresses_list(char *phost, u_long **pul)
 	tpul = malloc(sizeof(struct pul_store));
 	if (!tpul) {
 		strcat(log_buffer, "out of  memory");
+		free(*pul);
 		return (PBSE_SYSTEM);
 	}
 	tpul->len = len;
 	tpul->pul = (u_long *) malloc(tpul->len);
 	if (!tpul->pul) {
 		free(tpul);
+		free(*pul);
 		strcat(log_buffer, "out of  memory");
 		return (PBSE_SYSTEM);
 	}
@@ -2634,6 +2635,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 		if ((hostaddr_idx = pbs_idx_create(0, 0)) == NULL) {
 			free(tpul->pul);
 			free(tpul);
+			free(*pul);
 			strcat(log_buffer, "out of  memory");
 			return (PBSE_SYSTEM);
 		}
@@ -2641,6 +2643,7 @@ make_host_addresses_list(char *phost, u_long **pul)
 	if (pbs_idx_insert(hostaddr_idx, phost, tpul) != PBS_IDX_RET_OK) {
 		free(tpul->pul);
 		free(tpul);
+		free(*pul);
 		return (PBSE_SYSTEM);
 	}
 	return 0;
@@ -2966,7 +2969,6 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 				ret = PBSE_UNKNODE; /* set return of function to this, so that error is logged */
 			} else {
 				effective_node_delete(pnode);
-				free(pul);
 				return (rc); /* return the error code from make_host_addresses_list */
 			}
 		}
@@ -2978,7 +2980,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		nport = pnode->nd_attr[(int)ND_ATR_Port].at_val.at_long;
 
-		if ((pmom = create_svrmom_entry(phost, nport, pul)) == NULL) {
+		if ((pmom = create_svrmom_entry(phost, nport, pul, 0)) == NULL) {
+			free(pul);
 			effective_node_delete(pnode);
 			return (PBSE_SYSTEM);
 		}

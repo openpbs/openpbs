@@ -72,14 +72,6 @@ extern	int	quiet;
 extern	void	add_cmds(Tcl_Interp *interp);
 
 #define SHOW_NONE 0xff
-int log_mask;
-
-void
-log_tppmsg(int level, const char *objname, char *mess)
-{
-	if ((level | log_mask) <= LOG_ERR)
-		fprintf(stderr, "tpp error: %s\n", mess);
-}
 
 /**
  * @brief
@@ -166,13 +158,8 @@ main(int argc, char *argv[])
 		}
 	}
 
-	/* We don't want to show logs related to connecting pbs_comm on console
-		* this set this flag to ignore it
-		*/
-	log_mask = SHOW_NONE;
-
 	/* call tpp_init */
-	rc = set_tpp_config(log_tppmsg, &pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
+	rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers);
 	if (rc == -1) {
 		fprintf(stderr, "Error setting TPP config\n");
 		return -1;
@@ -194,8 +181,6 @@ main(int argc, char *argv[])
 
 	tpp_poll(); /* to clear off the read notification */
 
-	/* Once the connection is established we can unset log_mask */
-	log_mask &= ~SHOW_NONE;
 	Tcl_Main(argc, argv, pbsTcl_Init);
 	return 0;
 }

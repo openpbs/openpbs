@@ -91,29 +91,29 @@ void			(*free_job_CPUs)(job *) = NULL;
 
 /* External Globals */
 
-extern  char            mom_host[];
-extern char		*path_epilog;
-extern char		*path_jobs;
-extern unsigned int	default_server_port;
-extern pbs_list_head	svr_alljobs;
-extern int		exiting_tasks;
-extern char		*msg_daemonname;
-extern char		*mom_home;
-#ifndef	WIN32
-extern int		termin_child;
+extern char mom_host[];
+extern char *path_epilog;
+extern char *path_jobs;
+extern unsigned int default_server_port;
+extern pbs_list_head svr_alljobs;
+extern int exiting_tasks;
+extern char *msg_daemonname;
+extern char *mom_home;
+#ifndef WIN32
+extern int termin_child;
 #endif
-extern int		server_stream;
-extern time_t		time_now;
-extern pbs_list_head	mom_polljobs;
-extern unsigned int	pbs_mom_port;
+extern int server_stream;
+extern time_t time_now;
+extern pbs_list_head mom_polljobs;
+extern unsigned int pbs_mom_port;
+extern int gen_nodefile_on_sister_mom;
 #if MOM_ALPS
-extern useconds_t	alps_release_wait_time;
-extern int		alps_release_timeout;
-extern useconds_t	alps_release_jitter;
+extern useconds_t alps_release_wait_time;
+extern int alps_release_timeout;
+extern useconds_t alps_release_jitter;
 #endif
 
-extern char		*path_hooks_workdir;
-
+extern char *path_hooks_workdir;
 
 #ifndef WIN32
 /**
@@ -831,7 +831,8 @@ end_loop:
 
 /**
  * @brief
- * 		choosing one server in random if a failover server is already set up.
+ * 		choosing the server to connect to if a failover server is already set up.
+ * 		Selects primary and secondary alternatively.
  *
  * @param[out] port - Passed through to parse_servername(), not modified here.
  *
@@ -840,13 +841,16 @@ end_loop:
  * @retval !NULL - pointer to server name
  */
 static char *
-get_servername_random(unsigned int *port)
+get_servername_failover(unsigned int *port)
 {
+	static int whom_to_connect = 0;
 
 	if (!pbs_conf.pbs_secondary)
 		return get_servername(port);
 	else {
-		if (rand() % 2 == 0)
+		whom_to_connect = !whom_to_connect;
+
+		if (whom_to_connect)
 			return get_servername(port);
 		else
 			return parse_servername(pbs_conf.pbs_secondary, port);
@@ -874,10 +878,14 @@ send_hellosvr(int stream)
 	int		rc = 0;
 	char		*svr = NULL;
 	unsigned int	port = default_server_port;
+	extern int     mom_net_up;
+
+	if (mom_net_up == 0)
+		return;
 
 	if (stream < 0) {
-		if ((svr = get_servername_random(&port)) == NULL) {
-			log_err(errno, msg_daemonname, "get_servername_random() failed");
+		if ((svr = get_servername_failover(&port)) == NULL) {
+			log_err(errno, msg_daemonname, "get_servername_failover() failed");
 			return;
 		}
 
@@ -899,7 +907,7 @@ send_hellosvr(int stream)
 	server_stream = stream;
 
 	if (svr)
-		sprintf(log_buffer, "HELLO sent to server at %s:%d", svr, port);
+		sprintf(log_buffer, "HELLO sent to server at %s:%d, stream:%d", svr, port, stream);
 	else
 		sprintf(log_buffer, "HELLO sent to server at stream:%d", stream);
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
@@ -1365,9 +1373,10 @@ del_job_resc(job *pjob)
 			exit(99);	/* simulate crash */
 	}
 
-	/* remove PBS_NODEFILE - Mother Superior only has one */
+	/* remove PBS_NODEFILE - Mother Superior shall have one and the sister
+	moms too if the mom config gen_nodefile_on_sister_mom is set to 1 */
 
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE || gen_nodefile_on_sister_mom) {
 		char	file[MAXPATHLEN+1];
 #ifdef WIN32
 		(void)sprintf(file, "%s/auxiliary/%s",

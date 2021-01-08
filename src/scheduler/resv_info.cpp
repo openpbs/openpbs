@@ -1182,8 +1182,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						release_nodes(nresv_copy);
 
 						nresv_copy->resv->orig_nspec_arr = parse_execvnode(occr_execvnodes_arr[j], sinfo, nresv_copy->select);
-						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
 						nresv_copy->nspec_arr = combine_nspec_array(nresv_copy->resv->orig_nspec_arr);
+						nresv_copy->ninfo_arr = create_node_array_from_nspec(nresv_copy->nspec_arr);
 						nresv_copy->resv->resv_nodes = create_resv_nodes(nresv_copy->nspec_arr, sinfo);
 					}
 
@@ -1217,6 +1217,10 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						add_event(sinfo->calendar, te_end);
 
 						if (j > 0) {
+							tmp_resresv = add_resresv_to_array(sinfo->all_resresv, nresv_copy, SET_RESRESV_INDEX);
+							if (tmp_resresv == NULL)
+								break;
+							sinfo->all_resresv = tmp_resresv;
 							tmp_resresv = add_resresv_to_array(sinfo->resvs, nresv_copy, NO_FLAGS);
 							if (tmp_resresv == NULL)
 								break;
@@ -1747,6 +1751,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				occr_start_arr[cur_count] = next;
 			}
 		}
+		free(short_xc);
 	}
 	/* If the (re)confirmation was a success then we update the sequence of
 	 * occurrence start times, the number of occurrences, and the sequence of
@@ -1798,7 +1803,8 @@ check_down_running(resource_resv *resv, int chunk_ind)
 	int i, j, k;
 	int ret = 0;
 
-	if (resv == NULL || chunk_ind < 0 || !resv->is_resv)
+	if (resv == NULL || chunk_ind < 0 || !resv->is_resv ||
+	    resv->resv == NULL || resv->resv->resv_queue == NULL)
 		return -3;
 
 	for (i = chunk_ind; resv->resv->orig_nspec_arr[i] != NULL && ret != -2; i++) {

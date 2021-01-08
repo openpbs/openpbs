@@ -55,6 +55,7 @@
 #define get_uncpath(char)  
 #define critical_section() 
 
+
 #ifdef PBS_MOM
 #define TRAILING_CHAR '/'
 #define verify_dir(dir_val, isdir, sticky, disallow, fullpath) tmp_file_sec(dir_val, isdir, sticky, disallow, fullpath)

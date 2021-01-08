@@ -61,6 +61,9 @@ from ptl.lib.ptl_error import (PbsInitServicesError, PbsServiceError,
                                PtlLogMatchError)
 from ptl.lib.ptl_object import PBSObject
 
+from ptl.lib.ptl_constants import (SERVER, VNODE, QUEUE, JOB,
+                                   RESV, SCHED, HOOK)
+
 
 class PBSInitServices(object):
     """

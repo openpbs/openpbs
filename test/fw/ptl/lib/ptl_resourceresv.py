@@ -514,6 +514,7 @@ while True:
             raise AssertionError("Failed to set permissions for file %s"
                                  " to %s" % (script_path, oct(mode)))
         self.set_execargs(script_path, duration)
+        return script_path
 
 
 class InteractiveJob(threading.Thread):

@@ -60,40 +60,6 @@
 #include "resource_resv.h"
 #include "multi_threading.h"
 
-
-/**
- * @brief	initialize a mutex attr object
- *
- * @param[out]	attr - the attr object to initialize
- *
- * @return int
- * @retval 1 for Success
- * @retval 0 for Error
- */
-int
-init_mutex_attr_recursive(pthread_mutexattr_t *attr)
-{
-	if (pthread_mutexattr_init(attr) != 0) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-				"pthread_mutexattr_init failed");
-		return 0;
-	}
-
-	if (pthread_mutexattr_settype(attr,
-#if defined (linux)
-			PTHREAD_MUTEX_RECURSIVE_NP
-#else
-			PTHREAD_MUTEX_RECURSIVE
-#endif
-	)) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
-				"pthread_mutexattr_settype failed");
-		return 0;
-	}
-
-	return 1;
-}
-
 /**
  * @brief	create the thread id key & set it for the main thread
  *
@@ -187,9 +153,11 @@ init_multi_threading(int nthreads)
 		return 0;
 	}
 
-
-	if (init_mutex_attr_recursive(&attr) == 0)
+	if (init_mutex_attr_recursive(&attr) != 0) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+			  "init_mutex_attr_recursive failed");
 		return 0;
+	}
 
 	pthread_mutex_init(&work_lock, &attr);
 	pthread_mutex_init(&result_lock, &attr);

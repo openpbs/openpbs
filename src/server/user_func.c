@@ -95,7 +95,6 @@
 
 extern struct server server;
 extern char *path_users;
-extern int pbs_server_port_dis;
 
 /* External functions */
 extern  int     should_retry_route(int err);

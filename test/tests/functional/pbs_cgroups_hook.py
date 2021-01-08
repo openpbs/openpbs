@@ -500,6 +500,16 @@ elif [ -d "$devices_base/sbp.service/jobid/$PBS_JOBID" ]; then
     devices_job="$devices_base/sbp.service/jobid/$PBS_JOBID"
 else
     devices_job="$devices_base/sbp.slice/sbp-${jobnum}.*.slice"
+fi
+
+device_list=`cat $devices_job/devices.list`
+grep "195" $devices_job/devices.list
+
+ngpus=$(nvidia-smi -L | grep "MIG-GPU" | wc -l)
+if [ "$ngpus" -eq "0" ]; then
+    ngpus=$(nvidia-smi -L | grep "GPU" | wc -l)
+fi
+echo "There are $ngpus GPUs"
 sleep 10
 """
         self.cpu_controller_script = """
@@ -2909,8 +2919,9 @@ if %s e.job.in_ms_mom():
 
     def test_cgroup_find_gpus(self):
         """
-        Confirm that the hook finds the correct number
-        of GPUs.
+        Confirm that the hook finds the correct number of GPUs.
+        Note: This assumes all GPUs have the same MIG configuration,
+        either on or off.
         """
         if not self.paths['devices']:
             self.skipTest('Skipping test since no devices subsystem defined')
@@ -2923,7 +2934,17 @@ if %s e.job.in_ms_mom():
             rv = {'err': True}
         if rv['err'] or 'GPU' not in rv['out'][0]:
             self.skipTest('Skipping test since nvidia-smi not found')
-        gpus = int(len(rv['out']))
+        last_gpu_was_physical = False
+        gpus = 0
+        for l in rv['out']:
+            if l.startswith('GPU'):
+                last_gpu_was_physical = True
+                gpus += 1
+            elif l.lstrip().startswith('MIG'):
+                if last_gpu_was_physical:
+                    gpus -= 1
+                last_gpu_was_physical = False
+                gpus += 1
         if gpus < 1:
             self.skipTest('Skipping test since no gpus found')
         self.server.expect(NODE, {'state': 'free'}, id=self.nodes_list[0])

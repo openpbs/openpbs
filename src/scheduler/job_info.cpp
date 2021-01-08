@@ -125,6 +125,7 @@
 #include "server_info.h"
 #include "attribute.h"
 #include "multi_threading.h"
+#include "libpbs.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -979,6 +980,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_depend,
 			ATTR_A,
 			ATTR_max_run_subjobs,
+			ATTR_server_inst_id,
 			NULL
 	};
 
@@ -1049,6 +1051,8 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 		if (tdata->error || tdata->oarr == NULL) {
 			pbs_statfree(jobs);
+			free(tdata->oarr);
+			free(tdata);
 			return NULL;
 		}
 
@@ -1233,6 +1237,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->qrank = count;
 			else
 				resresv->qrank = -1;
+		}
+		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
+			resresv->job->svr_inst_id = string_dup(attrp->value);
+			if (resresv->job->svr_inst_id == NULL) {
+				free_resource_resv(resresv);
+				return NULL;
+			}
 		}
 		else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
 			count = strtol(attrp->value, &endp, 10);
@@ -1430,6 +1441,7 @@ new_job_info()
 		return NULL;
 	}
 
+	jinfo->svr_inst_id = NULL;
 	jinfo->is_queued = 0;
 	jinfo->is_running = 0;
 	jinfo->is_held = 0;
@@ -1550,6 +1562,9 @@ free_job_info(job_info *jinfo)
 
 	if (jinfo->dependent_jobs != NULL)
 		free(jinfo->dependent_jobs);
+
+	if (jinfo->svr_inst_id != NULL)
+		free(jinfo->svr_inst_id);
 
 	free_resource_req_list(jinfo->resused);
 
@@ -1773,7 +1788,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 
 	if (pattr != NULL && (flags & UPDATE_NOW)) {
 		int rc;
-		rc = send_attr_updates(pbs_sd, resresv->name, pattr);
+		rc = send_attr_updates(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, pattr);
 		free_attrl_list(pattr);
 		return rc;
 	}
@@ -1817,7 +1832,7 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 			return 0;
 	}
 
-	rc = send_attr_updates(pbs_sd, job->name, job->job->attr_updates);
+	rc = send_attr_updates(get_svr_inst_fd(pbs_sd, job->job->svr_inst_id), job->name, job->job->attr_updates);
 
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;
@@ -2807,6 +2822,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 
 	njinfo->queue = nqinfo;
 
+	njinfo->svr_inst_id = string_dup(ojinfo->svr_inst_id);
 	njinfo->is_queued = ojinfo->is_queued;
 	njinfo->is_running = ojinfo->is_running;
 	njinfo->is_held = ojinfo->is_held;
@@ -5324,19 +5340,10 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			 * compare the resource name with the chunk name
 			 */
 			if (inp->err->rdef == getallres(RES_VNODE)) {
-				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
-				if (hreq == NULL)
-					return 0;
-				for (index = 0; job->execselect->chunks[index] != NULL; index++)
-				{
-					resource_req *lreq = find_resource_req(job->execselect->chunks[index]->req, inp->err->rdef);
-					if (lreq != NULL)
-						if (strcmp(hreq->res_str, lreq->res_str) == 0)
-							return 1;
-				}
+				if (inp->err->arg2 != NULL && find_node_info(job->ninfo_arr, inp->err->arg2) != NULL)
+					return 1;
 			} else if (inp->err->rdef == getallres(RES_HOST)) {
-				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
-				if (find_node_by_host(job->ninfo_arr, hreq->res_str) != NULL)
+				if (inp->err->arg2 != NULL && find_node_by_host(job->ninfo_arr, inp->err->arg2) != NULL)
 					return 1;
 			} else {
 				if (inp->err->rdef->type.is_non_consumable) {

@@ -296,6 +296,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	attribute    *pat2;
 	resource_def *prd;
 	resource     *presc;
+	char         *svr_inst_id;
 
 	pnode->nd_name    = pname;
 	pnode->nd_ntype   = ntype;
@@ -326,6 +327,13 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 	pnode->nd_attr[(int)ND_ATR_state].at_flags = ATR_VFLAG_SET;
+
+	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
+		log_err(errno, __func__, "unable to get server_instance_id");
+		return (PBSE_SYSTEM);
+	}
+	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_val.at_str = svr_inst_id;
+	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_flags = ATR_VFLAG_SET;
 
 	pnode->nd_attr[(int)ND_ATR_ntype].at_val.at_short = pnode->nd_ntype;
 	pnode->nd_attr[(int)ND_ATR_ntype].at_flags = ATR_VFLAG_SET;

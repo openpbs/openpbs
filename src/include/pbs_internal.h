@@ -223,9 +223,9 @@ struct pbs_config
 	char *pbs_home_path;			/* path to the pbs home dir */
 	char *pbs_exec_path;			/* path to the pbs exec dir */
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
-	char *pbs_server_id;                  /* name of the database PBS server id associated with the server hostname, pbs_server_name */
 	unsigned int pbs_num_servers;	/* currently configured number of instances */
 	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
+	char *psi_str;			/* psi in string format */
 	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
@@ -245,7 +245,6 @@ struct pbs_config
 	char *pbs_output_host_name;	/* name of host to which to stage std out/err */
 	unsigned pbs_use_compression:1;	/* whether pbs should compress communication data */
 	unsigned pbs_use_mcast:1;		/* whether pbs should multicast communication */
-	unsigned pbs_use_ft:1;		/* whether pbs should force use fault tolerant communications */
 	char *pbs_leaf_name;			/* non-default name of this leaf in the communication network */
 	char *pbs_leaf_routers;		/* for this leaf, the optional list of routers to talk to */
 	char *pbs_comm_name;			/* non-default name of this router in the communication network */
@@ -288,7 +287,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_DATA_SERVICE_HOST           "PBS_DATA_SERVICE_HOST"
 #define PBS_CONF_USE_COMPRESSION     	     "PBS_USE_COMPRESSION"
 #define PBS_CONF_USE_MCAST		     "PBS_USE_MCAST"
-#define PBS_CONF_FORCE_FT_COMM		     "PBS_FORCE_FT_COMM"
 #define PBS_CONF_LEAF_NAME		     "PBS_LEAF_NAME"
 #define PBS_CONF_LEAF_ROUTERS		     "PBS_LEAF_ROUTERS"
 #define PBS_CONF_COMM_NAME		     "PBS_COMM_NAME"
@@ -498,6 +496,10 @@ extern int pbs_query_max_connections(void);
 
 extern char *pbs_get_tmpdir(void);
 
+extern char *pbs_get_conf_var(char *);
+
+extern char *get_psi_str();
+
 extern FILE *pbs_popen(const char *, const char *);
 
 extern int pbs_pkill(FILE *, int);
@@ -563,6 +565,7 @@ extern char *convert_time(char *);
 extern struct batch_status *bs_isort(struct batch_status *bs,
 	int (*cmp_func)(struct batch_status*, struct batch_status *));
 extern struct batch_status *bs_find(struct batch_status *, const char *);
+extern void init_bstat(struct batch_status *);
 
 
 #endif /* _USRDLL */

@@ -84,8 +84,6 @@ extern time_t	time_now;
 extern char	*msg_svdbopen;
 extern char	*msg_svdbnosv;
 extern char	*path_svrlive;
-
-extern char *pbs_server_name;
 extern void *svr_db_conn;
 extern void sched_free(pbs_sched *psched);
 

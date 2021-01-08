@@ -337,19 +337,8 @@ typedef struct	noderes {
  * specific structures for Job Array attributes
  */
 
-/* individual entries in array job index table */
-struct ajtrk {
-	char trk_status;		 /* status */
-	int trk_error;		 /* error code */
-	int trk_exitstat;	 /* if executed and exitstat set */
-	int trk_substate;	 /* sub state */
-	int trk_stgout;		 /* stageout status */
-	struct job *trk_psubjob; /* pointer to instantiated subjob */
-};
-
 /* subjob index table */
-struct ajtrkhd {
-	size_t tkm_size;		  /* size of whole table */
+typedef struct ajinfo {
 	int tkm_ct;			  /* count of original entries in table */
 	int tkm_start;			  /* start of range (x in x-y:z) */
 	int tkm_end;			  /* end of range (y in x-y:z) */
@@ -357,13 +346,8 @@ struct ajtrkhd {
 	int tkm_flags;			  /* special flags for array job */
 	int tkm_subjsct[PBS_NUMJOBSTATE]; /* count of subjobs in various states */
 	int tkm_dsubjsct;		  /* count of deleted subjobs */
-	range *trk_rlist;			/* pointer to range list */
-	struct ajtrk tkm_tbl[1];	  /* ptr to array of individual entries */
-	/*
-	 * when table is malloced, room for the additional required number
-	 * of tkm_tbl entries (tkm_ct - 1) will be included
-	 */
-};
+	range *trm_quelist;		  /* pointer to range list */
+} ajinfo_t;
 
 /*
  * Discard Job Structure,  see Server's discard_job function
@@ -381,9 +365,8 @@ struct jbdscrd {
 
 
 /* Special array job flags in tkm_flags */
-#define TKMFLG_NO_DELETE           0x01
-#define TKMFLG_REVAL_IND_REMAINING 0x02 /* Flag to re-evaluate "array_indices_remaining" */
-#define TKMFLG_CHK_ARRAY           0x04 /* chk_array_doneness() already in call stack*/
+#define TKMFLG_NO_DELETE 0x01 /* delete subjobs in progess */
+#define TKMFLG_CHK_ARRAY 0x02 /* chk_array_doneness() already in call stack */
 
 /* Structure for block job reply processing */
 struct block_job_reply {
@@ -521,8 +504,7 @@ struct job {
 	int ji_deletehistory;	     /* job history should not be saved */
 	pbs_list_head ji_rejectdest; /* list of rejected destinations */
 	struct job *ji_parentaj;     /* subjob: parent Array Job */
-	struct ajtrkhd *ji_ajtrk;    /* ArrayJob: index tracking table */
-	int ji_subjindx;	     /* subjob: its index into the table */
+	ajinfo_t *ji_ajinfo;         /* ArrayJob: information about subjobs and its state counts */
 	struct jbdscrd *ji_discard;  /* see discard_job() */
 	int ji_jdcd_waiting;	     /* set if waiting on a mom for a response to discard job request */
 	char *ji_acctrec;	     /* holder for accounting info */
@@ -853,7 +835,7 @@ task_find	(job		*pjob,
 #define JOB_STATE_MOVED		8
 #define JOB_STATE_FINISHED	9
 
-
+#define JOB_STATE_LTR_UNKNOWN '0'
 #define JOB_STATE_LTR_BEGUN 'B'
 #define JOB_STATE_LTR_EXITING 'E'
 #define JOB_STATE_LTR_FINISHED 'F'
@@ -870,6 +852,7 @@ task_find	(job		*pjob,
 /*
  * job sub-states are defined by PBS (more detailed) as:
  */
+#define JOB_SUBSTATE_UNKNOWN	-1
 #define JOB_SUBSTATE_TRANSIN 	00	/* Transit in, wait for commit, commit not yet called */
 #define JOB_SUBSTATE_TRANSICM	01	/* Transit in, job is being commited */
 #define JOB_SUBSTATE_TRNOUT	02	/* transiting job outbound */
@@ -1028,7 +1011,7 @@ extern int   site_check_user_map(job *, char *);
 extern int   site_check_user_map(void *, int, char *);
 extern int   site_allow_u(char *user, char *host);
 extern void  svr_dequejob(job *);
-extern int   svr_enquejob(job *);
+extern int   svr_enquejob(job *, char *);
 extern void  svr_evaljobstate(job *, char *, int *, int);
 extern int   svr_setjobstate(job *, char, int);
 extern int   state_char2int(char);

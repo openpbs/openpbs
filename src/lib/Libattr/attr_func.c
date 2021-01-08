@@ -119,7 +119,7 @@ cr_attrdef_idx(struct attribute_def *adef, int limit)
 	for (i = 0; i < limit; i++) {
 		if (pbs_idx_insert(attrdef_idx, adef->at_name, adef) != PBS_IDX_RET_OK)
 			return NULL;
-		
+
 		adef++;
 	}
 	return attrdef_idx;
@@ -150,7 +150,7 @@ find_attr(void *attrdef_idx, struct attribute_def *attr_def, char *name)
 
 	if (pbs_idx_find(attrdef_idx, (void **) &name, (void **)&found_def, NULL) == PBS_IDX_RET_OK)
 		index = (found_def - attr_def);
-		
+
 	return index;
 }
 
@@ -1802,5 +1802,3 @@ decode_project(struct attribute *patr, char *name, char *rescn, char *val)
 	return (decode_str(patr, name, rescn,
 		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
 }
-
-

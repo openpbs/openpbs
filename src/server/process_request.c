@@ -293,10 +293,23 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 		rc = PBSE_UNKSCHED;
 		goto rerr;
 	}
+
 	if (sched->sc_conn_addr != conn->cn_addr) {
-		rc = PBSE_BADHOST;
-		goto rerr;
+		if (pbs_conf.pbs_primary != NULL && pbs_conf.pbs_secondary != NULL) {
+			pbs_net_t addr = get_hostaddr(pbs_conf.pbs_primary);
+			if (addr != conn->cn_addr) {
+				addr = get_hostaddr(pbs_conf.pbs_secondary);
+				if (addr != conn->cn_addr) {
+					rc = PBSE_BADHOST;
+					goto rerr;
+				}
+			}
+		} else {
+			rc = PBSE_BADHOST;
+			goto rerr;
+		}
 	}
+	
 	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
@@ -772,6 +785,9 @@ dispatch_request(int sfds, struct batch_request *request)
 
 	conn_t *conn = NULL;
 	int prot = request->prot;
+#ifndef PBS_MOM
+	struct work_task ptask;
+#endif
 
 	if (prot == PROT_TCP) {
 		if (sfds != PBS_LOCAL_CONNECTION) {
@@ -1023,6 +1039,11 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_stat_svr(request);
 			break;
 
+		case PBS_BATCH_ServerReady:
+			ptask.wt_parm1 = request;
+			req_stat_svr_ready(&ptask);
+			break;
+
 		case PBS_BATCH_StatusSched:
 			req_stat_sched(request);
 			break;
@@ -1137,6 +1158,78 @@ dispatch_request(int sfds, struct batch_request *request)
 
 /**
  * @brief
+ *  process_IS_CMD: Create batch request on received IS_CMD message
+ *                   and dispatch request.
+ *
+ *  @param[in] - stream -  connection stream.
+ *
+ *  @return void
+ *
+ */
+void
+process_IS_CMD(int stream)
+{
+	int rc;
+	struct batch_request *request;
+	struct	sockaddr_in	*addr;
+	char *msgid = NULL;
+
+	if ((addr = tpp_getaddr(stream)) == NULL) {
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "?", "Sender unknown");
+		return;
+	}
+
+	/* in case of IS_CMD there is a unique id passed with each command,
+	 * which we need to send back with the reply so server can
+	 * match the replies to the requests
+	 */
+	msgid = disrst(stream, &rc);
+	if (!msgid || rc) {
+		close(stream);
+		return;
+	}
+
+	request = alloc_br(0); /* freed when reply sent */
+	if (!request) {
+		close(stream);
+		if (msgid)
+			free(msgid);
+		return;
+	}
+
+	request->rq_conn = stream;
+	pbs_strncpy(request->rq_host, netaddr(addr), sizeof(request->rq_host));
+	request->rq_fromsvr = 1;
+	request->prot = PROT_TPP;
+	request->tppcmd_msgid = msgid;
+
+	rc = dis_request_read(stream, request);
+	if (rc != 0) {
+		close(stream);
+		free_br(request);
+		return;
+	}
+
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_DEBUG, "",
+		   msg_request, request->rq_type, request->rq_user,
+		   request->rq_host, stream);
+
+#ifndef PBS_MOM
+	if (get_peersvr(addr)) {
+		/* request came from another server */
+		request->rq_perm = ATR_DFLAG_USRD | ATR_DFLAG_USWR |
+				   ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
+				   ATR_DFLAG_MGRD | ATR_DFLAG_MGWR |
+				   ATR_DFLAG_SvWR;
+
+	}
+#endif
+
+	dispatch_request(stream, request);
+}
+
+/**
+ * @brief
  * 		close_client - close a connection to a client, also "inactivate"
  *		  any outstanding batch requests on that connection.
  *
@@ -1195,6 +1288,50 @@ struct batch_request *alloc_br(int type)
 
 /**
  * @brief
+ * 	copy constructor for batch request - shallow copy
+ *
+ * @param[in]	src	- request to be copied
+ *
+ * @return	batch_request *
+ * @retval	NULL	- error
+ */
+
+struct batch_request *
+copy_br(struct batch_request *src)
+{
+	struct batch_request *req;
+
+	if (!src)
+		return NULL;
+
+	req = calloc(sizeof(struct batch_request), 1);
+	if (req == NULL) {
+		log_err(errno, __func__, msg_err_malloc);
+		return NULL;
+	}
+
+	req->rq_type = src->rq_type;
+	CLEAR_LINK(req->rq_link);
+	req->rq_conn = src->rq_conn;
+	req->rq_orgconn = src->rq_orgconn;
+	req->rq_time = src->rq_time;
+	req->tpp_ack = src->tpp_ack;
+	req->prot = src->prot;
+	req->rq_reply.brp_is_part = src->rq_reply.brp_is_part;
+	req->rq_reply.brp_choice = src->rq_reply.brp_choice;
+	req->rq_fromsvr = src->rq_fromsvr;
+	req->rq_perm = src->rq_perm;
+	if (src->rq_user)
+		memcpy(&req->rq_user, &src->rq_user, sizeof(req->rq_user));
+	if (src->rq_host)
+		memcpy(&req->rq_host, &src->rq_host, sizeof(req->rq_host));
+	append_link(&svr_requests, &req->rq_link, req);
+
+	return (req);
+}
+
+/**
+ * @brief
  * 		close_quejob - locate and deal with the new job that was being received
  *		  when the net connection closed.
  *
@@ -1223,7 +1360,7 @@ close_quejob(int sfds)
 					delete_link(&pjob->ji_alljobs);
 					set_job_state(pjob, JOB_STATE_LTR_QUEUED);
 					set_job_substate(pjob, JOB_SUBSTATE_QUEUED);
-					if (svr_enquejob(pjob))
+					if (svr_enquejob(pjob, NULL))
 						(void)job_abt(pjob, msg_err_noqueue);
 
 				}
@@ -1439,10 +1576,8 @@ free_br(struct batch_request *preq)
 			}
 		}
 
-		if (preq->tppcmd_msgid)
-			free(preq->tppcmd_msgid);
-
-		(void)free(preq);
+		free(preq->tppcmd_msgid);
+		free(preq);
 		return;
 	}
 
@@ -1500,8 +1635,10 @@ free_br(struct batch_request *preq)
 		case PBS_BATCH_AsyrunJob_ack:
 		case PBS_BATCH_StageIn:
 		case PBS_BATCH_ConfirmResv:
-			if (preq->rq_ind.rq_run.rq_destin)
-				(void)free(preq->rq_ind.rq_run.rq_destin);
+			if (preq->rq_ind.rq_run.rq_destin) {
+				free(preq->rq_ind.rq_run.rq_destin);
+				preq->rq_ind.rq_run.rq_destin = NULL;
+			}
 			break;
 		case PBS_BATCH_StatusJob:
 		case PBS_BATCH_StatusQue:
@@ -1517,7 +1654,7 @@ free_br(struct batch_request *preq)
 			break;
 		case PBS_BATCH_DeleteJobList:
 			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
-				free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
+				free_string_array(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:
@@ -1566,6 +1703,9 @@ free_br(struct batch_request *preq)
 		case PBS_BATCH_PreemptJobs:
 			free(preq->rq_ind.rq_preempt.ppj_list);
 			free(preq->rq_reply.brp_un.brp_preempt_jobs.ppj_list);
+			break;
+		case PBS_BATCH_MoveJob:
+			free(preq->rq_ind.rq_move.run_exec_vnode);
 			break;
 #endif /* PBS_MOM */
 	}

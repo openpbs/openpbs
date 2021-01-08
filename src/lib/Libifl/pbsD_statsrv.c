@@ -68,3 +68,27 @@ __pbs_statserver(int c, struct attrl *attrib, char *extend)
 {
 	return PBSD_status_aggregate(c, PBS_BATCH_StatusSvr, "", attrib, extend, MGR_OBJ_SERVER, NULL);
 }
+
+/**
+ * @brief
+ *	 Asks all server whether it is ready for sched cycle
+ *
+ * @param[in] c - socket descriptor
+ * @param[in] extend - extend field
+ * @param[in] prot - PROT_TCP or PROT_TPP
+ * @param[in] msgid - msg id
+ *
+ * @return	int
+ * @retval	0		success
+ * @retval	!0(pbse error)	error
+ *
+ */
+int
+PBSD_server_ready(int c)
+{
+	if (!msvr_mode())
+		return 0;
+		
+	PBSD_status_aggregate(c, PBS_BATCH_ServerReady, NULL, NULL, NULL, MGR_OBJ_SERVER, NULL);
+	return pbs_errno;
+}

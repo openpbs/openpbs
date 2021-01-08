@@ -55,6 +55,15 @@ class TestResourceUsageLog(TestFunctional):
         attr2 = {'resources_available.mem': '200gb'}
         self.server.manager(MGR_CMD_SET, NODE, attr2, id=self.mom.shortname)
 
+    def cleanup_eatcpu(self, scripts):
+        for script in scripts:
+            cmd = 'pgrep -f ' + script
+            ret = self.du.run_cmd(cmd=cmd, level=logging.DEBUG)
+            for pid in ret['out']:
+                cmd = 'kill -9 ' + pid
+                ret = self.du.run_cmd(
+                    cmd=cmd, level=logging.DEBUG, runas=TEST_USER)
+
     def test_acclog_for_job_states(self):
         """
         Check accounting logs when a job completes successfully and when
@@ -117,20 +126,19 @@ class TestResourceUsageLog(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-
+        scripts = []
         # Submit a job
         a = {'Resource_List.select': '1:ncpus=1:mem=20gb'}
         j = Job(TEST_USER, a)
-        j.create_eatcpu_job(hostname=self.mom.shortname)
+        scripts.append(j.create_eatcpu_job(hostname=self.mom.shortname))
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, jid)
-
         # Submit a job array
         ja = Job(TEST_USER, attrs={
             ATTR_J: '1-2',
             'Resource_List.select': 'ncpus=1:mem=20gb'}
         )
-        ja.create_eatcpu_job(hostname=self.mom.shortname)
+        scripts.append(ja.create_eatcpu_job(hostname=self.mom.shortname))
         jid_a = self.server.submit(ja)
 
         subjid1 = j.create_subjob_id(jid_a, 1)
@@ -194,6 +202,7 @@ class TestResourceUsageLog(TestFunctional):
         self.server.accounting_match(
             msg='E;' + re.escape(jid_a) +
             '.*Exit_status=1.*run_count=0', id=jid_a, regexp=True)
+        self.cleanup_eatcpu(scripts)
 
     def test_acclog_job_multiple_qrerun(self):
         """
@@ -287,9 +296,10 @@ class TestResourceUsageLog(TestFunctional):
         """
         Check for resource usage when job is force requeued
         """
+        scripts = []
         a = {'Resource_List.select': '1:ncpus=1:mem=200gb'}
         j1 = Job(TEST_USER, a)
-        j1.create_eatcpu_job(hostname=self.mom.shortname)
+        scripts.append(j1.create_eatcpu_job(hostname=self.mom.shortname))
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, jid1)
 
@@ -308,6 +318,7 @@ class TestResourceUsageLog(TestFunctional):
             '.*Exit_status=-11.*resources_used.*run_count=1',
             id=jid1,
             regexp=True)
+        self.cleanup_eatcpu(scripts)
 
     def test_acclog_services_restart(self):
         """

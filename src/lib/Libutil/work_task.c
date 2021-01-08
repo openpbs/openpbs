@@ -89,7 +89,7 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 	pnew = (struct work_task *)malloc(sizeof(struct work_task));
 	if (pnew == NULL)
 		return NULL;
-	CLEAR_LINK(pnew->wt_linkall);
+	CLEAR_LINK(pnew->wt_linkevent);
 	CLEAR_LINK(pnew->wt_linkobj);
 	CLEAR_LINK(pnew->wt_linkobj2);
 	pnew->wt_event = event_id;
@@ -103,22 +103,59 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 	pnew->wt_aux2  = 0;
 
 	if (type == WORK_Immed)
-		append_link(&task_list_immed, &pnew->wt_linkall, pnew);
+		append_link(&task_list_immed, &pnew->wt_linkevent, pnew);
 	else if (type == WORK_Timed) {
 		pold = (struct work_task *)GET_NEXT(task_list_timed);
 		while (pold) {
 			if (pold->wt_event > pnew->wt_event)
 				break;
-			pold = (struct work_task *)GET_NEXT(pold->wt_linkall);
+			pold = (struct work_task *)GET_NEXT(pold->wt_linkevent);
 		}
 		if (pold)
-			insert_link(&pold->wt_linkall, &pnew->wt_linkall, pnew,
+			insert_link(&pold->wt_linkevent, &pnew->wt_linkevent, pnew,
 				LINK_INSET_BEFORE);
 		else
-			append_link(&task_list_timed, &pnew->wt_linkall, pnew);
+			append_link(&task_list_timed, &pnew->wt_linkevent, pnew);
 	} else
-		append_link(&task_list_event, &pnew->wt_linkall, pnew);
+		append_link(&task_list_event, &pnew->wt_linkevent, pnew);
 	return (pnew);
+}
+
+/**
+ *
+ * @brief
+ * 	Convert a work task to the type specified.
+ *
+ * @param[in]	ptask	- task being converted
+ * @param[in]	wtype	- work task type to convert
+ *
+ * @return int
+ * @retval 0: success
+ * @retval -1: failure
+ */
+int
+convert_work_task(struct work_task *ptask, enum work_type wtype)
+{
+	pbs_list_head *list;
+
+	if (!ptask)
+		return -1;
+
+	switch (wtype) {
+	case WORK_Immed:
+		list = &task_list_immed;
+		break;
+	case WORK_Timed:
+		list = &task_list_timed;
+		break;
+	default:
+		list = &task_list_event;
+	}
+
+	delete_link(&ptask->wt_linkevent);
+	append_link(list, &ptask->wt_linkevent, ptask);
+
+	return 0;
 }
 
 /**
@@ -137,7 +174,7 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 void
 dispatch_task(struct work_task *ptask)
 {
-	delete_link(&ptask->wt_linkall);
+	delete_link(&ptask->wt_linkevent);
 	delete_link(&ptask->wt_linkobj);
 	delete_link(&ptask->wt_linkobj2);
 	if (ptask->wt_func)
@@ -158,8 +195,84 @@ delete_task(struct work_task *ptask)
 {
 	delete_link(&ptask->wt_linkobj);
 	delete_link(&ptask->wt_linkobj2);
-	delete_link(&ptask->wt_linkall);
+	delete_link(&ptask->wt_linkevent);
 	(void)free(ptask);
+}
+
+/**
+ * @brief
+ *	Check if some task in the specified task list
+ *	has a wt_parm1 matching 'parm1'
+ *	and wt_func matching 'func'
+ *
+ * @param[in]	task_list - header of task list to be searched
+ * @param[in]	parm1	- parameter being matched.
+ * @param[in]	func	- function being matched.
+ *
+ * @return work task
+ * @retval	!NULL if 'parm1' and 'func' was matched
+ * @retval	NULL otherwise
+ */
+static struct work_task *
+find_worktask_by_parm_func(pbs_list_head task_list, void *parm1, void *func)
+{
+	struct work_task *ptask;
+	struct work_task *ptask_next;
+
+	for (ptask = GET_NEXT(task_list); ptask; ptask = ptask_next) {
+		ptask_next = GET_NEXT(ptask->wt_linkevent);
+
+		if (parm1 && (ptask->wt_parm1 != parm1))
+			continue;
+		if (func && (ptask->wt_func != func))
+			continue;
+
+		return ptask;
+	}
+
+	return NULL;
+}
+
+/**
+ * @brief
+ *	Check if some task in in any of the task lists (task_list_event,
+ *	task_list_timed, task_list_immed)
+ *	has a wt_parm1 matching 'parm1'
+ *	and wt_func matching 'func'
+ *
+ * @param[in]	wtype - work task type enum, -1 to match all
+ * @param[in]	parm1	- parameter being matched. NULL to ignore this field.
+ * @param[in]	func	- function being matched. NULL to ignore this field.
+ *
+ * @return work task
+ * @retval	!NULL if 'parm1' and 'func' was matched
+ * @retval	NULL otherwise
+ */
+struct work_task *
+find_work_task(enum work_type wtype, void *parm1, void *func)
+{
+	struct work_task  *ptask;
+
+	if (wtype == -1 || wtype == WORK_Immed) {
+		ptask = find_worktask_by_parm_func(task_list_immed, parm1, func);
+		if (ptask)
+			return ptask;
+	}
+
+	if (wtype == -1 || wtype == WORK_Timed) {
+		ptask = find_worktask_by_parm_func(task_list_timed, parm1, func);
+		if (ptask)
+			return ptask;
+	}
+
+	if (wtype == -1 || (wtype != WORK_Timed && wtype != WORK_Immed)) {
+		ptask = find_worktask_by_parm_func(task_list_event, parm1, func);
+		if (ptask)
+			return ptask;
+	}
+
+	return NULL;
+
 }
 
 /**
@@ -190,7 +303,7 @@ delete_task_by_parm1_func(void *parm1, void (*func)(struct work_task *), enum wt
 
 	for (i = 0; i < 3; i++) {
 		for (ptask = (struct work_task *) GET_NEXT(task_lists[i]); ptask; ptask = ptask_next) {
-			ptask_next = (struct work_task *) GET_NEXT(ptask->wt_linkall);
+			ptask_next = (struct work_task *) GET_NEXT(ptask->wt_linkevent);
 
 			if ((parm1 != NULL) && (ptask->wt_parm1 != parm1))
 				continue;
@@ -222,29 +335,9 @@ has_task_by_parm1(void *parm1)
 	struct work_task  *ptask;
 
 	/* only 1 ptask can be possibly matched */
-	ptask = (struct work_task *)GET_NEXT(task_list_event);
-	while (ptask) {
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
-			return 1;
-		}
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-	}
-
-	ptask = (struct work_task *)GET_NEXT(task_list_timed);
-	while (ptask) {
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
-			return 1;
-		}
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-	}
-
-	ptask = (struct work_task *)GET_NEXT(task_list_immed);
-	while (ptask) {
-		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
-			return 1;
-		}
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
-	}
+	ptask = find_work_task(-1, parm1, NULL);
+	if (ptask)
+		return 1;
 
 	return 0;
 }
@@ -281,7 +374,7 @@ default_next_task(void)
 	if (svr_delay_entry) {
 		ptask = (struct work_task *)GET_NEXT(task_list_event);
 		while (ptask) {
-			nxt = (struct work_task *)GET_NEXT(ptask->wt_linkall);
+			nxt = (struct work_task *)GET_NEXT(ptask->wt_linkevent);
 			if (ptask->wt_type == WORK_Deferred_Cmp)
 				dispatch_task(ptask);
 			ptask = nxt;

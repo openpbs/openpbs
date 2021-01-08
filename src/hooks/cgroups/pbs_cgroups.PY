@@ -880,6 +880,9 @@ class HookUtils(object):
             self.hook_events = hook_events
         else:
             # Defined in the order they appear in module_pbs_v1.c
+            # if adding new events that may not exist in all PBS versions,
+            # use hasattr() to prevent exceptions when the hook is used
+            # on older PBS versions - see e.g. EXECJOB_ABORT
             self.hook_events = {}
             self.hook_events[pbs.QUEUEJOB] = {
                 'name': 'queuejob',
@@ -901,14 +904,16 @@ class HookUtils(object):
                 'name': 'runjob',
                 'handler': None
             }
-            self.hook_events[pbs.MANAGEMENT] = {
-                'name': 'management',
-                'handler': None
-            }
-            self.hook_events[pbs.MODIFYVNODE] = {
-                'name': 'modifyvnode',
-                'handler': None
-            }
+            if hasattr(pbs, "MANAGEMENT"):
+                self.hook_events[pbs.MANAGEMENT] = {
+                    'name': 'management',
+                    'handler': None
+                }
+            if hasattr(pbs, "MODIFYVNODE"):
+                self.hook_events[pbs.MODIFYVNODE] = {
+                    'name': 'modifyvnode',
+                    'handler': None
+                }
             self.hook_events[pbs.PROVISION] = {
                 'name': 'provision',
                 'handler': None
@@ -1074,7 +1079,10 @@ class HookUtils(object):
                     if key.startswith('mic'):
                         mics.append(key[3:])
                     elif key.startswith('nvidia'):
-                        gpus.append(node.devices['gpu'][key]['uuid'])
+                        if 'uuid' in node.devices['gpu'][key]:
+                            gpus.append(node.devices['gpu'][key]['uuid'])
+                        if 'uuids' in node.devices['gpu'][key]:
+                            gpus.extend(node.devices['gpu'][key]['uuids'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
                                     ",".join(mics))
@@ -1319,7 +1327,10 @@ class HookUtils(object):
                     if key.startswith('mic'):
                         mics.append(key[3:])
                     elif key.startswith('nvidia'):
-                        gpus.append(node.devices['gpu'][key]['uuid'])
+                        if 'uuid' in node.devices['gpu'][key]:
+                            gpus.append(node.devices['gpu'][key]['uuid'])
+                        if 'uuids' in node.devices['gpu'][key]:
+                            gpus.extend(node.devices['gpu'][key]['uuids'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
                                     ",".join(mics))
@@ -1763,6 +1774,59 @@ class NodeUtils(object):
                                 devices[dclass][inst]['device'] = path
                                 devices[dclass][inst]['uuid'] = \
                                     gpus[gpuid]['uuid']
+        # if any gpu has mig enabled, let's use them
+        if gpus and any(gpus[gpu]['mig'] for gpu in gpus):
+            nvidia_cap_major = None
+            with open(os.path.join(os.sep, 'proc', 'devices')) as f:
+                for line in f:
+                    device = line.split()
+                    if len(device) != 2:
+                        continue
+                    if device[1] == 'nvidia-caps':
+                        nvidia_cap_major = int(device[0])
+                        break
+            if nvidia_cap_major is None:
+                pbs.logmsg(pbs.EVENT_SYSTEM, '%s: A GPU has MIG enabled, but'
+                           'nvidia-caps is not found in /proc/devices. '
+                           'Skipping MIG configuration'
+                           % caller_name())
+            else:
+                gis = {}
+                # we need major, minor, type, uuids, numa_node
+                for gpuid in gpus:
+                    if 'gis' not in gpus[gpuid]:
+                        continue
+                    for giid in gpus[gpuid]['gis']:
+                        gi = gpus[gpuid]['gis'][giid]
+                        if 'cis' not in gi:
+                            # no cis found for this gi, just skip
+                            continue
+                        name = 'nvidia-cap%d' % gi['minor']
+                        numa = devices['gpu'][gpuid]['numa_node']
+                        major = devices['gpu'][gpuid]['major']
+                        minor = devices['gpu'][gpuid]['minor']
+                        # extra_devs are the device numbers of the physical
+                        # gpu, as well as the nvidia controller
+                        new_gpu = {'major': nvidia_cap_major,
+                                   'minor': gi['minor'],
+                                   'is_gi': True,
+                                   'type': 'c',
+                                   'numa_node': numa,
+                                   'extra_devs': ['%d:%d' % (major, minor),
+                                                  '%d:255' % (major)],
+                                   'uuids': []
+                                   }
+                        for ciid in gi['cis']:
+                            ci = gi['cis'][ciid]
+                            new_gpu['uuids'].append(ci['uuid'])
+                            major = nvidia_cap_major
+                            minor = ci['minor']
+                            new_gpu['extra_devs'].append(
+                                '%d:%d' % (major, minor))
+                        devices['gpu'][name] = new_gpu
+                    del devices['gpu'][gpuid]
+
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'Processed GPUs: %s' % devices['gpu'])
         if gpus and not devices['gpu']:
             pbs.logmsg(pbs.EVENT_SYSTEM, '%s: GPUs discovered but could not '
                        'be successfully mapped to devices.' % (caller_name()))
@@ -1778,6 +1842,7 @@ class NodeUtils(object):
         cmd = [self.cfg['nvidia-smi'], '-q', '-x']
         pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
         time_start = time.time()
+        mig_found = False
         try:
             # Try running the nvidia-smi command
             process = subprocess.Popen(cmd, shell=False,
@@ -1815,14 +1880,149 @@ class NodeUtils(object):
                     if len(domain) != 4:
                         raise ValueError('GPU ID not recognized: ' + bus_id)
                     name = 'nvidia%s' % child.find('minor_number').text
+                    mig_enabled = False
+                    mig_mode = child.find('mig_mode')
+                    if mig_mode is not None:
+                        current_mig = mig_mode.find('current_mig')
+                        if current_mig is not None:
+                            if current_mig.text == 'Enabled':
+                                mig_found = True
+                                mig_enabled = True
                     gpus[name] = {
                         'pci_bus_id': (domain + ':' + instance).lower(),
-                        'uuid': child.find('uuid').text
+                        'uuid': child.find('uuid').text,
+                        'mig': mig_enabled
                     }
         except Exception as exc:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Unexpected error: %s' % exc)
+
+        # at least one gpu had mig enabled, let's add the gis
+        if mig_found:
+            self._discover_migs(gpus)
+
         pbs.logmsg(pbs.EVENT_DEBUG4, 'GPUs: %s' % gpus)
         return gpus
+
+    def _discover_migs(self, gpus):
+        """
+        Mutate the gpus dictionary with mig info, GIs and CIs
+        """
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        # find GIs
+        cmd = [self.cfg['nvidia-smi'], 'mig', '-lgi']
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
+        time_start = time.time()
+        out = []
+        try:
+            # Try running the nvidia-smi command
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0].split('\n')
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                       " ".join(cmd))
+            pbs.logmsg(pbs.EVENT_DEBUG3, '%s: No MIGs found' % caller_name())
+            return
+        elapsed_time = time.time() - time_start
+        if elapsed_time > 2.0:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       '%s: nvidia-smi call took %f seconds' %
+                       (caller_name(), elapsed_time))
+
+        # format is
+        # | GPUID   NAME       ProfileID  GIID       PLACE     |
+        # |====================================================|
+        # |   0  MIG 1g.5gb       19        7          4:1     |
+        # +----------------------------------------------------+
+        # |   0  MIG 1g.5gb       19        8          5:1     |
+        r = re.compile(r'^\|\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+\S+\s+\|$')
+        for l in out:
+            match = r.match(l)
+            if not match:
+                continue
+            gpu_num = int(match.group(1))
+            gpuid = 'nvidia%d' % gpu_num
+            giid = int(match.group(2))
+            minor = self._discover_mig_minor(gpu_num, giid, ci=None)
+            gi = {'minor': minor, 'gi': giid}
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'GI found %s' % str(gi))
+            if 'gis' not in gpus[gpuid]:
+                gpus[gpuid]['gis'] = {}
+            gpus[gpuid]['gis'][giid] = gi
+
+        # now find all CIs
+        cmd = [self.cfg['nvidia-smi'], 'mig', '-lci']
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
+        time_start = time.time()
+        out = []
+        try:
+            # Try running the nvidia-smi command
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0].split('\n')
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                       " ".join(cmd))
+            pbs.logmsg(pbs.EVENT_DEBUG3, '%s: No MIGs found' % caller_name())
+            return
+        elapsed_time = time.time() - time_start
+        if elapsed_time > 2.0:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       '%s: nvidia-smi call took %f seconds' %
+                       (caller_name(), elapsed_time))
+
+        # format is either
+        # | Compute instances:                                    |
+        # | GPU     GPU       Name             Profile   Instance |
+        # |       Instance                       ID        ID     |
+        # |         ID                                            |
+        # |   0      7       MIG 1g.5gb           0         0     |
+        # or
+        # | Compute instances:                                             |
+        # | GPU     GPU       Name         Profile   Instance   Placement  |
+        # |       Instance                   ID        ID       Start:Size |
+        # |         ID                                                     |
+        # |   0      7       MIG 1g.5gb       0         0          0:1     |
+        r = re.compile(
+            r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+(\S+\s+)?\|$')
+        for l in out:
+            match = r.match(l)
+            if not match:
+                continue
+            gpu_num = int(match.group(1))
+            gpuid = 'nvidia%d' % gpu_num
+            giid = int(match.group(2))
+            ciid = int(match.group(3))
+            minor = self._discover_mig_minor(gpu_num, giid, ciid)
+            if minor == -1:
+                continue
+            uuid = 'MIG-%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
+            ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
+            if 'cis' not in gpus[gpuid]['gis'][giid]:
+                gpus[gpuid]['gis'][giid]['cis'] = {}
+            gpus[gpuid]['gis'][giid]['cis'][ciid] = ci
+
+    def _discover_mig_minor(self, gpu, gi, ci=None):
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        path = os.path.join(os.sep, 'proc', 'driver',
+                            'nvidia-caps', 'mig-minors')
+        if ci is None:
+            capname = 'gpu%d/gi%d/access' % (gpu, gi)
+        else:
+            capname = 'gpu%d/gi%d/ci%d/access' % (gpu, gi, ci)
+        with open(path, 'r') as minors:
+            for line in minors:
+                cap, minor = line.split(' ', 1)
+                if cap == capname:
+                    return int(minor)
+        pbs.logmsg(pbs.EVENT_DEBUG, 'Cannot find minor number for %s'
+                   % capname)
+        return -1
 
     def _discover_meminfo(self):
         """
@@ -3458,7 +3658,7 @@ class CgroupUtils(object):
                             pids.append(int(entries[0]))
             except (OSError, IOError):
                 # PIDs may come and go as we read /proc so the glob data can
-                # become stale. Tollerate failures in this case.
+                # become stale. Tolerate failures in this case.
                 pass
         return pids
 
@@ -3468,8 +3668,19 @@ class CgroupUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         # make pids a list
+        pids = []
         if isinstance(pidarg, int):
-            pids = self._get_pids_in_sid(os.getsid(pidarg))
+            sid = 0
+            try:
+                sid = os.getsid(pidarg)
+            except OSError as exc:
+                sid = -1
+                pbs.logmsg(pbs.EVENT_DEBUG2,
+                           '%s: Request to attach session of non-existing'
+                           ' PID %s to jobid %s'
+                           % (caller_name(), pidarg, jobid))
+            if (sid > 1):
+                pids = self._get_pids_in_sid(sid)
         elif isinstance(pidarg, list):
             for pid in pidarg:
                 if not isinstance(pid, int):
@@ -3561,7 +3772,10 @@ class CgroupUtils(object):
                 if name.startswith('mic'):
                     offload_devices.append(name[3:])
                 elif name.startswith('nvidia'):
-                    cuda_visible_devices.append(gpus[name]['uuid'])
+                    if 'uuid' in gpus[name]:
+                        cuda_visible_devices.append(gpus[name]['uuid'])
+                    if 'uuids' in gpus[name]:
+                        cuda_visible_devices.extend(gpus[name]['uuids'])
             if offload_devices:
                 value = "\\,".join(offload_devices)
                 pbs.event().env['OFFLOAD_DEVICES'] = '%s' % value
@@ -3601,6 +3815,8 @@ class CgroupUtils(object):
             if devclass == 'mic' or devclass == 'gpu':
                 for instance in devices[devclass]:
                     dev = devices[devclass][instance]
+                    if 'extra_devs' in dev:
+                        accelerators.extend(dev['extra_devs'])
                     accelerators.append('%d:%d' % (dev['major'], dev['minor']))
         # For CentOS 7 we need to remove a *:* rwm from devices.list
         # before we can add anything to devices.allow. Otherwise our
@@ -3702,8 +3918,9 @@ class CgroupUtils(object):
                                              device_info['major'])
                 if dev_entry not in device_allowed:
                     device_allowed.append(dev_entry)
-            elif device_kind == 'gpu':
+            elif device_kind == 'gpu' and not device_info.get('is_gi', False):
                 # Requires the ctrl (255) to be added
+                # unless GPU is a GI from a MIG GPU
                 dev_entry = '%s %d:255 rwm' % (device_info['type'],
                                                device_info['major'])
                 if dev_entry not in device_allowed:
@@ -3715,6 +3932,14 @@ class CgroupUtils(object):
                                           device_info['minor'])
             if dev_entry not in device_allowed:
                 device_allowed.append(dev_entry)
+            # if there are extra majors/minors, add them too
+            if 'extra_devs' in device_info:
+                for extra in device_info['extra_devs']:
+                    dev_entry = '%s %s rwm' % (device_info['type'],
+                                               extra)
+                    if dev_entry not in device_allowed:
+                        device_allowed.append(dev_entry)
+
         return device_names, device_allowed
 
     def get_device_name(self, node, available, socket, major, minor):

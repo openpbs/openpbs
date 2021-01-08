@@ -169,64 +169,6 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
 
 /**
  * @brief
- *	-PBSD_rdytocmt This function does the Ready To Commit sub-function of
- *	the Queue Job request.
- *
- * @param[in] c - socket fd
- * @param[in] jobid - job identifier
- * @param[in] prot - PROT_TCP or PROT_TPP
- * @param[in] msgid - message id
- *
- * @return	int
- * @retval	0		success
- * @retval	!0(pbs_errno)	failure
- *
- */
-int
-PBSD_rdytocmt(int c, char *jobid, int prot, char **msgid)
-{
-	int     rc;
-	struct batch_reply *reply;
-
-	if (prot == PROT_TCP) {
-		DIS_tcp_funcs();
-	} else {
-		if ((rc = is_compose_cmd(c, IS_CMD, msgid)) != DIS_SUCCESS)
-			return rc;
-	}
-
-	if ((rc=encode_DIS_ReqHdr(c, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
-		(rc = encode_DIS_JobId(c, jobid))  ||
-		(rc = encode_DIS_ReqExtend(c, NULL))) {
-		if (prot == PROT_TCP) {
-			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
-				return (pbs_errno = PBSE_SYSTEM);
-			}
-		}
-		return (pbs_errno = PBSE_PROTOCOL);
-	}
-
-	if (prot == PROT_TPP) {
-		pbs_errno = PBSE_NONE;
-		if (dis_flush(c))
-			pbs_errno = PBSE_PROTOCOL;
-		return pbs_errno;
-	}
-
-	if (dis_flush(c))
-		return (pbs_errno = PBSE_PROTOCOL);
-
-	/* read reply */
-
-	reply = PBSD_rdrpy(c);
-
-	PBSD_FreeReply(reply);
-
-	return get_conn_errno(c);
-}
-
-/**
- * @brief
  *	-PBS_commit.c This function does the Commit sub-function of
  *	the Queue Job request.
  *
@@ -234,6 +176,7 @@ PBSD_rdytocmt(int c, char *jobid, int prot, char **msgid)
  * @param[in] jobid - job identifier
  * @param[in] prot - PROT_TCP or PROT_TPP
  * @param[in] msgid - message id
+ * @param[in] extend - extend field, comma separated key value pair
  *
  * @return      int
  * @retval      0               success
@@ -241,7 +184,7 @@ PBSD_rdytocmt(int c, char *jobid, int prot, char **msgid)
  *
  */
 int
-PBSD_commit(int c, char *jobid, int prot, char **msgid)
+PBSD_commit(int c, char *jobid, int prot, char **msgid, char *extend)
 {
 	struct batch_reply *reply;
 	int rc;
@@ -255,7 +198,7 @@ PBSD_commit(int c, char *jobid, int prot, char **msgid)
 
 	if ((rc = encode_DIS_ReqHdr(c, PBS_BATCH_Commit, pbs_current_user)) ||
 		(rc = encode_DIS_JobId(c, jobid)) ||
-		(rc = encode_DIS_ReqExtend(c, NULL))) {
+		(rc = encode_DIS_ReqExtend(c, extend))) {
 		if (prot == PROT_TCP) {
 			if (set_conn_errtxt(c, dis_emsg[rc]) != 0) {
 				return (pbs_errno = PBSE_SYSTEM);

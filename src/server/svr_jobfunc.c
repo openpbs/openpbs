@@ -124,7 +124,6 @@ extern char  *msg_badwait;		/* error message */
 extern char  *msg_daemonname;
 extern char  *msg_also_deleted_job_history;
 extern char   server_name[];
-extern char  *pbs_server_name;
 extern char   server_host[];
 extern pbs_list_head svr_queues;
 extern int    comp_resc_lt;
@@ -196,6 +195,7 @@ tickle_for_reply(void)
  * 		svr_enquejob	-	Enqueue the job into specified queue.
  *
  * @param[in]	pjob	-	The job to be enqueued.
+ * @param[in]	selectspec -	select spec of the job.
  *
  * @return	int
  * @retval	0	: on success
@@ -208,7 +208,7 @@ tickle_for_reply(void)
  *		Updated default attributes and resources specific to job type.
  */
 int
-svr_enquejob(job *pjob)
+svr_enquejob(job *pjob, char *selectspec)
 {
 	job *pjcur;
 	pbs_queue *pque;
@@ -241,15 +241,6 @@ svr_enquejob(job *pjob)
 			server.sv_qs.sv_numjobs++;
 			if (state_num != -1)
 				server.sv_jobstates[state_num]++;
-			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-				struct ajtrkhd *ptbl = pjob->ji_ajtrk;
-				if (ptbl) {
-					int indx;
-
-					for (indx = 0; indx < ptbl->tkm_ct; ++indx)
-						set_subjob_tblstate(pjob, indx, get_job_state(pjob));
-				}
-			}
 			return (0);
 		} else {
 			return (PBSE_UNKQUE);
@@ -317,18 +308,7 @@ svr_enquejob(job *pjob)
 	if (state_num != -1)
 		pque->qu_njstate[state_num]++;
 
-	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) ||
-		(check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-			int indx;
-			struct ajtrkhd *ptbl = pjob->ji_ajtrk;
-			if (ptbl) {
-				for (indx = 0; indx < ptbl->tkm_ct; ++indx)
-					set_subjob_tblstate(pjob,
-						indx,
-						get_job_state(pjob));
-			}
-		}
+	if ((check_job_state(pjob, JOB_STATE_LTR_MOVED)) || (check_job_state(pjob, JOB_STATE_LTR_FINISHED))) {
 		return (0);
 	}
 
@@ -409,7 +389,14 @@ svr_enquejob(job *pjob)
 			set_jattr_l_slim(pjob, JOB_ATR_etime, time_now, SET);
 
 			/* better notify the Scheduler we have a new job */
-
+			if (!selectspec) {
+				if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
+					set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
+				else {
+					sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+					log_err(-1, __func__, log_buffer);
+				}
+			}
 			if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 				set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 			else {
@@ -417,7 +404,7 @@ svr_enquejob(job *pjob)
 				log_err(-1, __func__, log_buffer);
 			}
 		} else if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long &&
-			server.sv_attr[SVR_ATR_scheduling].at_val.at_long) {
+			server.sv_attr[SVR_ATR_scheduling].at_val.at_long && !selectspec) {
 
 			/* notify the Scheduler we have moved a job here */
 
@@ -589,7 +576,8 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 			}
 			/* if subjob, update parent Array Job */
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				update_subjob_state(pjob, newstate);
+				update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, oldstate, newstate);
+				chk_array_doneness(pjob->ji_parentaj);
 			}
 		}
 	}
@@ -697,10 +685,9 @@ svr_evaljobstate(job *pjob, char *newstate, int *newsub, int forceeval)
 
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 			/* This is an array job. */
-			struct ajtrkhd  *ptbl = pjob->ji_ajtrk;
+			ajinfo_t  *ptbl = pjob->ji_ajinfo;
 			if (ptbl) {
-				if  (ptbl->tkm_subjsct[JOB_STATE_QUEUED] +
-				       ptbl->tkm_dsubjsct < ptbl->tkm_ct) {
+				if (ptbl->tkm_subjsct[JOB_STATE_QUEUED] + ptbl->tkm_dsubjsct < ptbl->tkm_ct) {
 					*newstate = JOB_STATE_LTR_BEGUN;
 					*newsub   = JOB_SUBSTATE_BEGUN;
 				} else {
@@ -1131,8 +1118,8 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 		if (pque->qu_attr[QA_ATR_maxarraysize].at_flags & ATR_VFLAG_SET) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) &&
-				(pjob->ji_ajtrk != NULL)) {
-				if (pjob->ji_ajtrk->tkm_ct > pque->qu_attr[QA_ATR_maxarraysize].at_val.at_long)
+				(pjob->ji_ajinfo != NULL)) {
+				if (pjob->ji_ajinfo->tkm_ct > pque->qu_attr[QA_ATR_maxarraysize].at_val.at_long)
 					return (PBSE_MaxArraySize);
 			}
 
@@ -2331,7 +2318,7 @@ correct_ct(pbs_queue *pqj)
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
 		int state_num;
 
-		state_num = get_job_state(pjob);
+		state_num = get_job_state_num(pjob);
 		server.sv_qs.sv_numjobs++;
 		if (state_num != -1)
 			server.sv_jobstates[state_num]++;
@@ -4596,11 +4583,13 @@ svr_saveorpurge_finjobhist(job *pjob)
 	flag = svr_chk_history_conf();
 	if (flag && !pjob->ji_deletehistory) {
 		svr_setjob_histinfo(pjob, T_FIN_JOB);
-		if (pjob->ji_ajtrk)
-			pjob->ji_ajtrk->tkm_flags &= ~TKMFLG_CHK_ARRAY;
-		if (pjob->ji_terminated && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		    pjob->ji_parentaj && pjob->ji_parentaj->ji_ajtrk)
-			pjob->ji_parentaj->ji_ajtrk->tkm_dsubjsct++;
+		if (pjob->ji_ajinfo != NULL)
+			pjob->ji_ajinfo->tkm_flags &= ~TKMFLG_CHK_ARRAY;
+		if (pjob->ji_terminated &&
+		    (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+		    pjob->ji_parentaj != NULL &&
+		    pjob->ji_parentaj->ji_ajinfo != NULL)
+			pjob->ji_parentaj->ji_ajinfo->tkm_dsubjsct++;
 	} else {
 		if (pjob->ji_deletehistory && flag) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
@@ -4807,27 +4796,29 @@ svr_histjob_update(job * pjob, char newstate, int newsubstate)
 
 	/* For subjob update the state */
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		update_subjob_state(pjob, newstate);
+		update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, oldstate, newstate);
+		chk_array_doneness(pjob->ji_parentaj);
 	}
 
 	/* set the status of each subjob if it is an array job */
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-		int indx;
-		struct ajtrkhd *ptbl = pjob->ji_ajtrk;
+		int i;
+		ajinfo_t *ptbl = pjob->ji_ajinfo;
 		if (ptbl) {
-			/* update the subjob state table */
-			for (indx = 0; indx < ptbl->tkm_ct; ++indx) {
-				job *psubj = ptbl->tkm_tbl[indx].trk_psubjob;
+			for (i = ptbl->tkm_start; i <= ptbl->tkm_end; i += ptbl->tkm_step) {
+				int sjsst;
+				char sjst;
+				job *psubj = get_subjob_and_state(pjob, i, &sjst, &sjsst);
 				if (psubj) {
-					if (!check_job_substate(psubj, JOB_SUBSTATE_TERMINATED) &&
-						!check_job_substate(psubj, JOB_SUBSTATE_FINISHED) &&
-						!check_job_substate(psubj, JOB_SUBSTATE_FAILED) &&
-						!check_job_substate(psubj, JOB_SUBSTATE_MOVED))
+					if (sjsst != JOB_SUBSTATE_TERMINATED &&
+						sjsst != JOB_SUBSTATE_FINISHED &&
+						sjsst != JOB_SUBSTATE_FAILED &&
+						sjsst != JOB_SUBSTATE_MOVED)
 						svr_histjob_update(psubj, newstate, newsubstate);
 					else
-						svr_histjob_update(psubj, newstate, get_job_substate(psubj));
+						svr_histjob_update(psubj, newstate, sjsst);
 				} else
-					set_subjob_tblstate(pjob, indx, newstate);
+					update_sj_parent(pjob, NULL, create_subjob_id(pjob->ji_qs.ji_jobid, i), sjst, newstate);
 			}
 		}
 	}
@@ -4950,7 +4941,7 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 {
 	char newstate = 'T';
 	int newsubstate = 0;
-	struct ajtrkhd *ptbl = NULL;
+	ajinfo_t *ptbl = NULL;
 
 	if (type == T_MOV_JOB) { /* MOVED job */
 		char *destination = pjob->ji_qs.ji_destin;
@@ -5026,38 +5017,17 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 
 		/* If Array job, handle here */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) &&
-			(ptbl = pjob->ji_ajtrk)) {
-			int i = 0;
-			int stgout_status = -1;
-
-			for (i=0; i<ptbl->tkm_ct; i++) {
-				if (ptbl->tkm_tbl[i].trk_stgout >= 0) {
-					stgout_status = ptbl->tkm_tbl[i].trk_stgout;
-					if (stgout_status == 0)
-						break;
-				}
-			}
-			if (stgout_status != -1) {
-				set_jattr_l_slim(pjob, JOB_ATR_stageout_status, stgout_status, SET);
-			pjob->ji_wattr[(int)JOB_ATR_stageout_status].at_flags = ATR_SET_MOD_MCACHE;
-			}
-			for (i=0; i<ptbl->tkm_ct; i++) {
-				if (ptbl->tkm_tbl[i].trk_exitstat) {
-					set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_exect.ji_exitstat, SET);
-				pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
-					break;
-				}
-			}
+			(ptbl = pjob->ji_ajinfo)) {
 			if (pjob->ji_terminated)
 				newsubstate = JOB_SUBSTATE_TERMINATED;
 			else {
-				for (i=0; i<ptbl->tkm_ct; i++) {
-					if (ptbl->tkm_tbl[i].trk_substate != JOB_SUBSTATE_FINISHED) {
-						if ((ptbl->tkm_tbl[i].trk_substate == JOB_SUBSTATE_FAILED) ||
-							(ptbl->tkm_tbl[i].trk_substate == JOB_SUBSTATE_TERMINATED)) {
-							newsubstate = ptbl->tkm_tbl[i].trk_substate;
-							break;
-						}
+				int i;
+				for (i = ptbl->tkm_start; i <= ptbl->tkm_end; i += ptbl->tkm_step) {
+					int sjsst;
+					get_subjob_and_state(pjob, i, NULL, &sjsst);
+					if (sjsst == JOB_SUBSTATE_FAILED || sjsst == JOB_SUBSTATE_TERMINATED) {
+						newsubstate = sjsst;
+						break;
 					}
 				}
 			}
