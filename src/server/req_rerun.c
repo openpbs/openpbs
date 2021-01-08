@@ -141,7 +141,33 @@ force_reque(job *pjob)
 {
 	char  newstate;
 	int  newsubstate;
+	struct batch_request *preq;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+	int rc;       
 
+	/* FIXME: start */
+    /* Allocate space for the endjob hook event params */
+	preq = alloc_br(PBS_BATCH_EndJob);
+	(preq->rq_ind.rq_end).rq_pjob = pjob;
+    
+	if (preq == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");		
+	} else {
+		/*
+		 * Call process_hooks
+	 	 */
+		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+		if (rc == -1) {
+			sprintf(log_buffer, "rq_endjob process_hooks call failed");	
+			log_err(-1, __func__, log_buffer);
+		} else {
+			sprintf(log_buffer, "rq_endjob process_hooks call succeeded");
+			log_err(-1, __func__, log_buffer);
+		}
+		free_br(preq);
+	}
+	/* FIXME: end */
+	
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
 

@@ -451,8 +451,6 @@ chk_array_doneness(job *parent)
 
 		check_block(parent, "");
 		if (check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
-
-			/* FIXME: SD start */
 			/* Allocate space for the endjob hook event params */
 			preq = alloc_br(PBS_BATCH_EndJob);
 			(preq->rq_ind.rq_end).rq_pjob = parent;
@@ -473,7 +471,6 @@ chk_array_doneness(job *parent)
 				}
 				free_br(preq);
 			}
-			/* FIXME: SD end */	
 
 			/* if BEGUN, issue 'E' account record */
 			sprintf(acctbuf, msg_job_end_stat, e);

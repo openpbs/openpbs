@@ -158,6 +158,7 @@ extern "C" {
 #define ATTR_rel_list	"resource_released_list"
 #define ATTR_state	"job_state"
 #define ATTR_queue	"queue"
+#define ATTR_resv	"resv"
 #define ATTR_server	"server"
 #define ATTR_maxrun	"max_running"
 #define ATTR_max_run		"max_run"

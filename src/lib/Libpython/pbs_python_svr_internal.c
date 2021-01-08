@@ -114,6 +114,8 @@ extern u_Long		pps_size_to_kbytes(PyObject *l);
 extern PyObject * svrattrl_list_to_pyobject(pbs_list_head *);
 extern PyObject * svrattrl_to_server_attribute(svrattrl *);
 
+static PyObject *
+_pps_helper_get_resv(resc_resv *presv_o, const char *resvid, char *perf_label);
 
 /* A dictionary for quick access to the pbs.v1 EMBEDDED_EXTENSION_TYPES */
 static
@@ -3565,6 +3567,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname, char *per
 	PyObject *py_job = NULL;
 	PyObject *py_jargs = NULL;
 	PyObject *py_que = NULL;
+	PyObject *py_resv = NULL;
 	PyObject *py_server = NULL;
 	job *pjob;
 	int tmp_rc = -1;
@@ -3655,6 +3658,27 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname, char *per
 		}
 	}
 
+	/* set job.resv to actual reservation object */
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "job %s, resv %p", jobid, pjob->ji_myResv);
+	log_buffer[LOG_BUF_SIZE-1] = '\0';
+	log_err(PBSE_INTERNAL, __func__, log_buffer);
+
+	if (pjob->ji_myResv) {
+		py_resv = _pps_helper_get_resv(pjob->ji_myResv,
+			pjob->ji_myResv->ri_qs.ri_resvID, perf_label);/* NEW ref */
+
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "job %s, py_resv %p", jobid, py_resv);
+		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		log_err(PBSE_INTERNAL, __func__, log_buffer);			
+		if (py_resv) {
+		/*	if (PyObject_HasAttrString(py_job, ATTR_resv)) {*/
+				/* py_resv ref ct incremented as part of py_job */
+				(void)PyObject_SetAttrString(py_job, ATTR_resv, py_resv);
+		/*	}*/
+			Py_DECREF(py_resv);	/* we no longer need to reference */
+		}
+	}	
+	
 	/* set job.server to actual server object */
 	py_server = _pps_helper_get_server(perf_label); /* NEW Ref */
 
@@ -5762,7 +5786,9 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	} else if (hook_event == HOOK_EVENT_ENDJOB) {
 		struct rq_endjob	*rqj = req_params->rq_end;
 
-		py_job = _pps_helper_get_job(rqj->rq_pjob, NULL, NULL, perf_label);
+
+		py_job = _pps_helper_get_job(rqj->rq_pjob, rqj->rq_pjob->ji_qs.ji_jobid, 
+			NULL, perf_label);
 		
 		/* NEW - we own ref */
 		if (!py_job || (py_job == Py_None)) {
