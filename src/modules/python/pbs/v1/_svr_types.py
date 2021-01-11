@@ -1539,7 +1539,7 @@ _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
 _pbs_v1.REVERSE_NODE_STATE = {}
-_pbs_v1_REVERSE_JOB_STATE = {}
+_pbs_v1.REVERSE_JOB_STATE = {}
     
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
