@@ -307,7 +307,7 @@ issue_delete(job *pjob)
 	if (preq == NULL)
 		return;
 
-	pbs_strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname) - 1);
+	pbs_strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname));
 	preq->rq_extend = malloc(strlen(DELETEHISTORY) + 1);
 	if (preq->rq_extend == NULL) {
 		log_err(errno, "issue_delete", msg_err_malloc);
@@ -554,9 +554,10 @@ req_deletejob(struct batch_request *preq)
 			/* If not deleteing running subjobs, delete2 to del parent   */
 
 			if (--preq->rq_refct == 0) {
-				if ((parent = find_job(jid)) != NULL)
+				if ((parent = find_job(jid)) != NULL) {
 					req_deletejob2(preq, parent);
-				else {
+					del_parent = 0;
+				} else {
 					preply->brp_un.brp_deletejoblist.tot_rpys++;
 					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 						reply_send(preq);

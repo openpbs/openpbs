@@ -167,20 +167,25 @@ if __name__ == '__main__':
     TDR = '      <td rowspan=%d>%s</td>\n'
 
     data = []
-    for k, v in sorted(oldv['testsuites'].items()):
-        assert k in newv['testsuites'], k
-        _ntcs = newv['testsuites'][k]['testcases']
+    for k, v in sorted(oldv['avg_measurements']['testsuites'].items()):
+        assert k in newv['avg_measurements']['testsuites'], k
+        _ntcs = newv['avg_measurements']['testsuites'][k]['testcases']
         _otcs = v['testcases']
         for _k, _v in sorted(v['testcases'].items()):
             _tcn = k + '.' + _k
             assert _k in _ntcs, _tcn
-            _om = _v['results']['measurements']
+            _om = _v
             _om = [x for x in _om if 'test_measure' in x]
             _om = sorted(_om, key=lambda x: x['test_measure'])
-            _nm = _ntcs[_k]['results']['measurements']
+            _nm = _ntcs[_k]
             _nm = [x for x in _nm if 'test_measure' in x]
             _nm = sorted(_nm, key=lambda x: x['test_measure'])
             _nm_ms = [x['test_measure'] for x in _nm]
+            for key, val in sorted(oldv['testsuites'].items()):
+                assert key in newv['testsuites'], key
+                for tc, doc in sorted(val['testcases'].items()):
+                    if _k == tc:
+                        _docs = doc['docstring']
             for i, _m in enumerate(_om):
                 _mn = _m['test_measure']
                 _msg = 'test measure %s missing' % _mn
@@ -188,7 +193,7 @@ if __name__ == '__main__':
                 assert _mn in _nm_ms, _msg
                 _o = _m['test_data']['mean']
                 _n = _nm[i]['test_data']['mean']
-                _row = [_v['docstring'].split(' Test Params')[0], _tcn, _mn]
+                _row = [_docs, _tcn, _mn]
                 _row += [str(_o), str(_n), percent_change(_n, _o, _m['unit']),
                          _m['unit']]
                 data.append(_row)

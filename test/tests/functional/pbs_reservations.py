@@ -300,7 +300,7 @@ class TestReservations(TestFunctional):
         Verify that degraded standing reservations are reconfirmed
         on other nodes
         """
-        self.degraded_resv_reconfirm(start=25, end=625,
+        self.degraded_resv_reconfirm(start=125, end=625,
                                      rrule='freq=HOURLY;count=5')
 
     def test_degraded_advance_reservations(self):
@@ -308,7 +308,7 @@ class TestReservations(TestFunctional):
         Verify that degraded advance reservations are reconfirmed
         on other nodes
         """
-        self.degraded_resv_reconfirm(start=25, end=625)
+        self.degraded_resv_reconfirm(start=125, end=625)
 
     def test_degraded_standing_running_reservations(self):
         """
@@ -681,8 +681,10 @@ class TestReservations(TestFunctional):
         exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
         self.server.expect(RESV, exp_attr, id=rid, offset=30)
 
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_vnode = self.server.reservations[rid].get_vnodes()[0]
         self.server.expect(NODE, {'state': 'resv-exclusive'},
-                           id=self.mom.shortname)
+                           id=resv_vnode)
 
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.place': 'excl', 'queue': rid.split('.')[0]}
@@ -690,7 +692,7 @@ class TestReservations(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        n = self.server.status(NODE)
+        n = self.server.status(NODE, id=resv_vnode)
         states = n[0]['state'].split(',')
         self.assertIn('resv-exclusive', states)
         self.assertIn('job-exclusive', states)
@@ -2428,3 +2430,35 @@ class TestReservations(TestFunctional):
         self.assertEqual(
             jid2[1], '(' + vn + '[1]:ncpus=4+' + vn + '[2]:ncpus=4)')
         self.assertNotIn(job1_node, job2_node, errmsg)
+
+    def test_clashing_reservations(self):
+        """
+        Test that when a standing reservation and advance reservation
+        are submitted to start at the same time on the same set of
+        resources, then the one that is submitted first wins and second
+        is rejected.
+        """
+
+        self.common_config()
+
+        a = {'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        start = int(time.time()) + 300
+        end = int(time.time()) + 1200
+        srid = self.submit_reservation(user=TEST_USER,
+                                       select='2:ncpus=4',
+                                       rrule='FREQ=DAILY;COUNT=2',
+                                       start=start,
+                                       end=end)
+
+        arid = self.submit_reservation(user=TEST_USER,
+                                       select='2:ncpus=4',
+                                       start=start,
+                                       end=end)
+        self.scheduler.run_scheduling_cycle()
+        self.server.expect(RESV, {'reserve_state':
+                                  (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=srid, max_attempts=1)
+        self.server.log_match(arid + ";Reservation denied", id=arid,
+                              max_attempts=1)

@@ -74,6 +74,7 @@
 #include "auth.h"
 #include "ifl_internal.h"
 #include "libutil.h"
+#include "portability.h"
 
 static pthread_once_t conn_once_ctl = PTHREAD_ONCE_INIT;
 static pthread_mutex_t conn_lock;
@@ -170,6 +171,7 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
 	freeaddrinfo(pai);
 	return -1;
 }
+
 
 /**
  * @brief	This function establishes a network connection to the given server.
@@ -627,7 +629,17 @@ __pbs_connect_extend(char *server, char *extend_data)
 {
 	char server_name[PBS_MAXSERVERNAME + 1];
 	unsigned int server_port;
-
+	char	*altservers[2];
+	int	have_alt = 0;
+	int	nsvrs;
+	int	sock = -1;
+	int	i;
+	int	f;
+		
+	char   pbsrc[_POSIX_PATH_MAX];	
+	struct stat sb;	
+	int    using_secondary = 0;	
+	
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
 		return -1;
@@ -641,7 +653,66 @@ __pbs_connect_extend(char *server, char *extend_data)
 		return -1;
 	}
 
-	return connect_to_servers(server_name, server_port, extend_data);
+	nsvrs = get_num_servers();
+
+	if (nsvrs == 1 && pbs_conf.pbs_primary && pbs_conf.pbs_secondary) {	
+		/* failover configuered ...   */	
+		if (is_same_host(server, pbs_conf.pbs_primary)) {	
+			have_alt = 1;	
+			
+			altservers[0] = pbs_conf.pbs_primary;	
+			altservers[1] = pbs_conf.pbs_secondary;	
+				
+			/* We want to try the one last seen as "up" first to not   */	
+			/* have connection delays.   If the primary was up, there  */	
+			/* is no .pbsrc.NAME file.  If the last command connected  */	
+			/* to the Secondary, then it created the .pbsrc.USER file. */	
+
+			/* see if already seen Primary down */		
+			snprintf(pbsrc, _POSIX_PATH_MAX, "%s/.pbsrc.%s", pbs_conf.pbs_tmpdir, pbs_current_user);
+			if (stat(pbsrc, &sb) != -1) {	
+				/* try secondary first */	
+				altservers[0] = pbs_conf.pbs_secondary;		
+				altservers[1] = pbs_conf.pbs_primary;
+				using_secondary = 1;	
+			} 		
+		}	
+	}
+
+	/*
+	 * connect to server ...	
+	 * If attempt to connect fails and if Failover configured and	
+	 *   if attempting to connect to Primary,  try the Secondary	
+	 *   if attempting to connect to Secondary, try the Primary	
+	 */	
+	for (i = 0; i < (have_alt + 1); ++i) {
+		if (have_alt) 
+			pbs_strncpy(server_name, altservers[i], PBS_MAXSERVERNAME);
+		if ((sock = connect_to_servers(server_name, server_port, extend_data)) != -1)
+			break; 
+	}
+	
+	if (nsvrs > 1)
+		return sock;
+	
+	if (i >= (have_alt+1) && sock == -1) {
+		return -1; 		/* cannot connect */
+	}
+	
+	if (have_alt && (i == 1)) {
+		/* had to use the second listed server ... */
+		if (using_secondary == 1) {
+			/* remove file that causes trying the Secondary first */
+			unlink(pbsrc);
+		} else {
+			/* create file that causes trying the Primary first   */
+			f = open(pbsrc, O_WRONLY|O_CREAT, 0200);
+			if (f != -1)
+				close(f);
+		}
+	}
+	
+	return sock;
 }
 
 /**
@@ -1162,7 +1233,7 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 
 	for (i = 0; i < get_num_servers(); i++) {
 		if (send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
-			return 0;	
+			return 0;
 		if (send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
 			return 0;
 	}
@@ -1191,7 +1262,6 @@ get_svr_inst_fd(int vfd, char *svr_inst_id)
 	if (svr_conns == NULL)
 		return -1;
 
-		
 	/* In case of single server mode, svr_conns consists of only one entry */
 	if (!msvr_mode())
 		return svr_conns[0]->sd;
@@ -1200,11 +1270,94 @@ get_svr_inst_fd(int vfd, char *svr_inst_id)
 
 	if (svr_inst_name == NULL)
 		return -1;
-		
+
 	for (i = 0; svr_conns[i]; i++) {
 		if (is_same_host(svr_conns[i]->name, svr_inst_name) && (svr_inst_port == svr_conns[i]->port))
 			return svr_conns[i]->sd;
 	}
 
 	return -1;
+}
+
+/**
+ * @brief	Helper function to convert a server name to corresponding fd
+ *
+ * @param[in]	c - Cluster/virtual connection descriptor
+ * @param[in]	svrname - name of the server instance to get fd for
+ *
+ * @return	int
+ * @retval	fd of server
+ * @retval	-1 if not found
+ */
+static int
+server_name_to_fd(int c, char *svrname)
+{
+	svr_conn_t **conns = get_conn_svr_instances(c);
+	int i;
+
+	if (conns == NULL) {
+		pbs_errno = PBSE_NOCONNECTS;
+		return -1;
+	}
+	for (i = 0; i < get_num_servers(); i++) {
+		if (strcmp(conns[i]->name, svrname) == 0)
+			return conns[i]->sd;
+	}
+
+	return -1;
+}
+
+/**
+ * @brief	Get the server fd associated with a jobid
+ * @param[in]	c - virtual fd of the cluster
+ * @param[in]	jobid - id of the job
+ *
+ * @return	int
+ * @retval	fd of the server instance
+ * @retval	-1 for error
+ */
+int
+get_server_fd_from_jid(int c, char *jobid)
+{
+	char server_out[PBS_MAXSERVERNAME];
+	char job_id_out[PBS_MAXCLTJOBID];
+	int fd = -1;
+	static char *dflt_server = NULL;
+
+	server_out[0] = '\0';
+
+	if (dflt_server == NULL)
+		dflt_server = pbs_default();
+
+	/* Until we resolve jobid namespace for multi-server, each multi-server
+	 * will have a unique PBS_SERVER value, so server id can be derived from the jobid itself
+	 */
+	get_server(jobid, job_id_out, server_out);
+	if (server_out[0] == '\0' && dflt_server != NULL)
+		pbs_strncpy(server_out, dflt_server, sizeof(server_out));
+
+	if (server_out[0] != '\0')
+		fd = server_name_to_fd(c, server_out);
+
+	return fd;
+}
+
+/**
+ * @brief	To be used by IFL to check whether it should talk to multiple servers
+ *
+ * @param[in]	fd - the connection descriptor to check
+ *
+ * @return int
+ * @retval 1 for yes, 0 for no
+ */
+int
+multi_svr_op(int fd)
+{
+	svr_conn_t **conns = get_conn_svr_instances(fd);
+	int num_svrs = get_num_servers();
+
+	if (conns == NULL || num_svrs == 1 || fd == conns[0]->sd)
+		return FALSE;
+
+	return TRUE;
 }

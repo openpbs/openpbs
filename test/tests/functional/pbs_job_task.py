@@ -104,6 +104,7 @@ class TestJobTask(TestFunctional):
             job_output_file = job_status[0]['Output_Path'].split(':')[1]
         self.check_jobs_file(job_output_file)
 
+    @requirements(num_moms=3)
     def test_invoke_pbs_tmrsh_from_sister_mom(self):
         """
         This test cases verifies pbs_tmrsh invoked from sister mom

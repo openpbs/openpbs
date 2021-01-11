@@ -56,6 +56,17 @@
 #include "libpbs.h"
 #include "libsec.h"
 
+/* Needed for qdel and pbs_deljoblist */
+typedef struct svr_jobid_list svr_jobid_list_t;
+struct svr_jobid_list {
+	int max_sz;
+	int total_jobs;
+	int svr_fd;
+	char svrname[PBS_MAXSERVERNAME + 1];
+	char **jobids;
+	svr_jobid_list_t *next;
+};
+
 #ifndef TRUE
 #define TRUE	1
 #define FALSE	0
@@ -65,12 +76,15 @@
 #define NULLstr(x)	(((x)==NULL) || (strlen(x)==0))
 
 #define MAX_LINE_LEN 4095
+#define LARGE_BUF_LEN 4096
 #define MAXSERVERNAME PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2
 #define PBS_DEPEND_LEN 2040
 
 /* for calling pbs_parse_quote:  to accept whitespace as data or separators */
 #define QMGR_ALLOW_WHITE_IN_VALUE 1
 #define QMGR_NO_WHITE_IN_VALUE    0
+
+#define QDEL_MAIL_SUPPRESS 1000
 
 extern int optind, opterr;
 extern char *optarg;

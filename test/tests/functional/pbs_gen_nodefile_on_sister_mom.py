@@ -41,6 +41,7 @@
 from tests.functional import *
 
 
+@requirements(num_moms=2)
 class TestGenNodefileOnSisterMom(TestFunctional):
     """
     This test suite tests the PBS_NODEFILE creation on

@@ -67,7 +67,7 @@ extern char *get_hostPart(char *);
 extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
 extern char *get_servername(unsigned int *);
-extern char *get_svr_inst_id(void);
+extern char *gen_svr_inst_id(void);
 extern void process_Areply(int);
 extern void process_Dreply(int);
 extern void process_DreplyTPP(int);
@@ -94,7 +94,9 @@ extern void mark_node_down(char *, char *);
 extern void mark_node_offline_by_mom(char *, char *);
 extern void clear_node_offline_by_mom(char *, char *);
 extern void mark_which_queues_have_nodes(void);
+#ifndef DEBUG
 extern void pbs_close_stdfiles(void);
+#endif
 extern int is_job_array(char *);
 extern int get_queued_subjobs_ct(job *);
 extern int parse_subjob_index(char *, char **, int *, int *, int *, int *);
