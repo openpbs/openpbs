@@ -378,7 +378,7 @@ add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid,
  *
  *		Encode and send the request.
  *
- *		When the reply is ready,  process_reply() will decode it and
+ *		When the reply is ready,  process_Dreply() will decode it and
  *		dispatch the work task.
  *
  * @note

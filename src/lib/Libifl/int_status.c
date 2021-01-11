@@ -167,7 +167,7 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	}
 
 	/* get the status reply */
-	return (PBSD_status_get(c, NULL));
+	return (PBSD_status_get(c, NULL, NULL, PROT_TCP));
 }
 
 /**
@@ -551,7 +551,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		    failed_conn[i])
 			continue;
 
-		if ((next = PBSD_status_get(svr_conns[i]->sd, &last))) {
+		if ((next = PBSD_status_get(svr_conns[i]->sd, &last, NULL, PROT_TCP))) {
 			if (!ret) {
 				ret = next;
 				cur = last;
@@ -648,26 +648,37 @@ PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend,
  * @retval NULL on failure
  */
 struct batch_status *
-PBSD_status_get(int c, struct batch_status **last)
+PBSD_status_get(int c, struct batch_status **last, int *obj_type, int prot)
 {
 	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
+	int rc;
 
 	/* read reply from stream into presentation element */
 
-	reply = PBSD_rdrpy(c);
+	if (prot == PROT_TCP)
+		reply = PBSD_rdrpy(c);
+	else
+		reply = PBSD_rdrpy_sock(c, &rc, prot);
+	
 	if (reply == NULL) {
 		pbs_errno = PBSE_PROTOCOL;
+		goto end;
 	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL  &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Status) {
 		pbs_errno = PBSE_PROTOCOL;
+		goto end;
 	} else if (get_conn_errno(c) == 0) {
 		rbsp = reply->brp_un.brp_statc;
 		reply->brp_un.brp_statc = NULL;
 	}
 	if (last)
 		*last = reply ? reply->last : NULL;
+	if (obj_type)
+		*obj_type = reply->brp_type;
+
+end:
 	PBSD_FreeReply(reply);
 	return rbsp;
 }

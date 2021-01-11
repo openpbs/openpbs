@@ -303,7 +303,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_ntype   = ntype;
 	pnode->nd_nsn     = 0;
 	pnode->nd_nsnfree = 0;
-	pnode->nd_written = 0;
+	pnode->nd_svrflags = 0;
 	pnode->nd_ncpus	  = 1;
 	pnode->nd_psn     = NULL;
 	pnode->nd_hostname= NULL;
@@ -311,13 +311,13 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_resvp   = NULL;
 	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
-	pnode->newobj = 1;
+	pnode->nd_svrflags |= NODE_NEWOBJ;
 	pnode->nd_lic_info = NULL;
-	pnode->nd_added_to_unlicensed_list = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
 	pnode->nd_nummslots = 1;
+	CLEAR_LINK(pnode->nd_link);
 
 	/* first, clear the attributes */
 
@@ -652,7 +652,7 @@ setup_notification()
 	/* send IS_CLUSTERADDR2 to happen in next 2 seconds */
 	if (addr_send_tm <= time_now) {
 		addr_send_tm = time_now + MCAST_WAIT_TM;
-		struct work_task *ptask = set_task(WORK_Timed, addr_send_tm, mcast_moms, NULL);
+		struct work_task *ptask = set_task(WORK_Timed, addr_send_tm, mcast_msg, NULL);
 		ptask->wt_aux = IS_CLUSTER_ADDRS;
 	}
 }
@@ -1006,9 +1006,6 @@ setup_nodes()
 	char *conn_db_err = NULL;
 
 	DBPRT(("%s: entered\n", __func__))
-
-	tfree2(&streams);
-	tfree2(&ipaddrs);
 
 	svr_totnodes = 0;
 
@@ -1647,7 +1644,7 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 int
 set_node_host_name(attribute *pattr, void *pobj, int actmode)
 {
-	if (actmode == 1)
+	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_RECOV)
 		return 0;
 	else
 		return PBSE_ATTRRO;
@@ -1659,7 +1656,7 @@ set_node_host_name(attribute *pattr, void *pobj, int actmode)
 int
 set_node_mom_port(attribute *pattr, void *pobj, int actmode)
 {
-	if (actmode == 1)
+	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_RECOV)
 		return 0;
 	else
 		return PBSE_ATTRRO;

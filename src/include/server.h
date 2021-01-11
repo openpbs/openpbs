@@ -181,12 +181,33 @@ extern void			unlicense_nodes(void);
 extern void			set_sched_default(pbs_sched *, int from_scheduler);
 extern void			memory_debug_log(struct work_task *ptask);
 
-/* multi-server functions */
-extern void *get_peersvr(struct sockaddr_in *);
-extern void *create_svr_entry(char *, unsigned int);
-extern int init_msi();
-extern void *create_svr_struct(struct sockaddr_in *);
-extern void *connect_to_peersvr(pbs_net_t, uint);
+/* multi-server gloabls and functions */
+
+extern pbs_list_head peersvrl;
+
+void *get_peersvr(struct sockaddr_in *);
+void *create_svr_entry(char *, unsigned int);
+int init_msi();
+void *create_svr_struct(struct sockaddr_in *, char *);
+int connect_to_peersvr(void *psvr);
+bool is_peersvr(void *psvr);
+void mcast_resc_usage(psvr_ru_t *);
+int open_ps_mtfd(void);
+void send_nodestat(void);
+void req_peer_svr_ack(int);
+int num_pending_peersvr_rply(void);
+psvr_ru_t *init_ru(job *pjob, int op, char *exec_vnode);
+void free_ru(psvr_ru_t *ru_head);
+int send_job_resc_updates(int);
+void * get_peersvr_from_host_port(char *hostname, uint port);
+int send_command(int c, int msg);
+int send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct);
+void req_resc_update(int, pbs_list_head *, void *);
+void replyhello_psvr(void);
+void poke_peersvr(void);
+void mcast_resc_update_all(void *psvr);
+void clean_saved_rsc(void*);
+int update_node_cache(int stream, struct batch_status *bstat);
 
 attribute *get_sattr(int attr_idx);
 char *get_sattr_str(int attr_idx);

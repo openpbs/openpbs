@@ -136,16 +136,14 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 		return (PBS_LOCAL_CONNECTION);	/* special value for local */
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
 
-	if (!pmom && (prot == PROT_TPP)) {
-		/* This could be a connection to peer server */
-		pmom = connect_to_peersvr(hostaddr, port);
-		if (pmom)
-			return ((mom_svrinfo_t *) (pmom->mi_data))->msr_stream;
-	}
-
 	if (pmom && (port == pmom->mi_port)) {
-		if ((((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)
-							&& (open_tppstream(pmom) < 0)) {
+		if (is_peersvr(pmom)) {
+			if (connect_to_peersvr(pmom) < 0) {
+				pbs_errno = PBSE_NORELYMOM;
+				return (PBS_NET_RC_FATAL);
+			}
+		} else if ((((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)
+							&& (open_conn_stream(pmom) < 0)) {
 			pbs_errno = PBSE_NORELYMOM;
 			return (PBS_NET_RC_FATAL);
 		}

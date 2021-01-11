@@ -1015,7 +1015,7 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_StatusNode:
-			if (set_to_non_blocking(conn) == -1) {
+			if (prot != PROT_TPP && set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;

@@ -83,6 +83,7 @@ typedef pbs_list_link pbs_list_head;
 extern void insert_link(pbs_list_link *oldp, pbs_list_link *newp, void *pobj, int pos);
 extern void append_link(pbs_list_head *head, pbs_list_link *newp, void *pnewobj);
 extern void delete_link(pbs_list_link *oldp);
+extern void delete_clear_link(pbs_list_link *oldp);
 extern void swap_link   (pbs_list_link *, pbs_list_link *);
 extern int  is_linked(pbs_list_link *head, pbs_list_link *oldp);
 extern void list_move(pbs_list_head *oldp, pbs_list_head *newp);

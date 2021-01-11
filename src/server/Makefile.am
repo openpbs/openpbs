@@ -90,6 +90,7 @@ pbs_server_bin_SOURCES = \
 	mom_info.c \
 	multi_svr.c \
 	nattr_get_set.c \
+	svr_comm.c \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \

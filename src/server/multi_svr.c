@@ -40,7 +40,7 @@
 /**
  *
  * @brief
- *		all the functions to handle peer server in case of multi-server.
+ *		Functions associated with peersvr structure
  *
  */
 
@@ -53,13 +53,10 @@
 #include	"svrfunc.h"
 #include	"pbs_nodes.h"
 #include	"tpp.h"
+#include	"avltree.h"
 
-typedef struct peersvr_list {
-	struct peersvr_list *next;
-	svrinfo_t *psvr;
-} peersvr_list_t;
-
-static struct peersvr_list *peersvrl;
+pbs_list_head peersvrl;
+static void *alien_node_idx;
 
 /**
  * @brief
@@ -67,19 +64,42 @@ static struct peersvr_list *peersvrl;
  *
  * @param[in]	addr	- addr contains ip and port
  *
- * @return	svrinfo_t
+ * @return	server_t
  * @retval	NULL	- Could not find peer server corresponing to the addr
  * @retval	!NULL	- svrinfo structure
  */
 void *
 get_peersvr(struct sockaddr_in *addr)
 {
-	svrinfo_t *psvr;
+	server_t *psvr;
 
 	psvr = tfind2(ntohl(addr->sin_addr.s_addr),
 			ntohs(addr->sin_port), &ipaddrs);
 	if (psvr && psvr->mi_rmport == psvr->mi_port)
 		return psvr;
+
+	return NULL;
+}
+
+/**
+ * @brief Get the peersvr from host & port values
+ * 
+ * @param[in] hostname 
+ * @param[in] port 
+ * @return peer server object, NULL if not found
+ */
+void *
+get_peersvr_from_host_port(char *hostname, uint port)
+{
+	server_t *psvr;
+
+	for (psvr = GET_NEXT(peersvrl);
+	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
+		if (!strncmp(psvr->mi_host, hostname,
+			     sizeof(psvr->mi_host)) &&
+		    psvr->mi_port == port)
+			return psvr;
+	}
 
 	return NULL;
 }
@@ -92,43 +112,26 @@ get_peersvr(struct sockaddr_in *addr)
  * @param[in]	hostname	- hostname of peer server
  * @param[in]	port		- port of peer server service
  *
- * @return	svrinfo_t
+ * @return	server_t
  * @retval	NULL	- Failure
  * @retval	!NULL	- Success
  */
 void *
 create_svr_entry(char *hostname, unsigned int port)
 {
-	svrinfo_t *psvr = NULL;
+	server_t *psvr = NULL;
 
-	psvr = (svrinfo_t *) malloc(sizeof(svrinfo_t));
+	psvr = calloc(1, sizeof(server_t));
 	if (!psvr)
 		goto err;
 
 	pbs_strncpy(psvr->mi_host, hostname, sizeof(psvr->mi_host));
-	psvr->mi_host[PBS_MAXHOSTNAME] = '\0';
 	psvr->mi_port = port;
 	psvr->mi_rmport = port;
-	psvr->mi_modtime = (time_t) 0;
-	psvr->mi_data = NULL;
-	psvr->mi_action = NULL;
-	psvr->mi_num_action = 0;
-
-	if (peersvrl) {
-		peersvr_list_t *tmp = calloc(1, sizeof(peersvr_list_t));
-		if (!tmp)
-			goto err;
-		tmp->psvr = psvr;
-		peersvr_list_t *itr;
-		for (itr = peersvrl; itr->next; itr = itr->next)
-			;
-		itr->next = tmp;
-	} else {
-		peersvrl = calloc(1, sizeof(peersvr_list_t));
-		if (!peersvrl)
-			goto err;
-		peersvrl->psvr = psvr;
-	}
+	CLEAR_LINK(psvr->mi_link);
+	append_link(&peersvrl, &psvr->mi_link, psvr);
+	psvr->rsc_idx = NULL;
+	CLEAR_HEAD(psvr->node_list);
 
 	return psvr;
 
@@ -166,34 +169,223 @@ get_hostname_from_addr(struct in_addr addr)
 
 /**
  * @brief
- *	Create server struct from addr passed as input.
+ *	Create server struct from hostname and port.
  *	
+ * @param[in]	addr	- addr contains ip and port
+ * @param[in]	hostname - hostname if available
  *
- *  @param[in]	addr	- addr contains ip and port
- *
- * @return	svrinfo_t
+ * @return	server_t
  * @retval	NULL	- Failure
  * @retval	!NULL	- Success
  */
 void *
-create_svr_struct(struct sockaddr_in *addr)
+create_svr_struct(struct sockaddr_in *addr, char *hostname)
 {
-	char *hostname;
-	svrinfo_t *psvr = NULL;
+	server_t *psvr = NULL;
 	u_long	*pul = NULL;
 
-	if ((hostname = get_hostname_from_addr(addr->sin_addr))) {
-                if (make_host_addresses_list(hostname, &pul)) {
-                        return NULL;
-                }
-		if ((psvr = create_svrmom_entry(hostname, addr->sin_port, pul, 1)) == NULL) {
-			free(pul);
-			log_errf(-1, __func__, "Failed initialization for peer server %s", hostname);
-			return NULL;
-		}
+	if (!hostname && (hostname = get_hostname_from_addr(addr->sin_addr)) == NULL) {
+		log_errf(-1, __func__, "Failed initialization for peer server");
+		return NULL;
+	}
+
+	if (make_host_addresses_list(hostname, &pul))
+		return NULL;
+	if ((psvr = create_svrmom_entry(hostname, addr->sin_port, pul, 1)) == NULL) {
+		free(pul);
+		log_errf(-1, __func__, "Failed initialization for peer server %s", hostname);
+		return NULL;
 	}
 
 	return psvr;
+}
+
+/**
+ * @brief free the resource update structure
+ * 
+ * @param[in,out] ru_head - head of the resource update object list
+ */
+void
+free_ru(psvr_ru_t *ru_head)
+{
+        psvr_ru_t *ru_cur;
+	psvr_ru_t *ru_nxt;
+
+        for (ru_cur = ru_head; ru_cur; ru_cur = ru_nxt) {
+		ru_nxt = GET_NEXT(ru_cur->ru_link);
+		log_errf(-1, __func__, "itr...");
+                free(ru_cur->jobid);
+		free(ru_cur->execvnode);
+		free(ru_cur);
+        }
+}
+
+/**
+ * @brief initialize resource usage stucture based on parameters
+ * 
+ * @param[in] pjob - job pointer
+ * @param[in] op - operation performed - INCR/DECR
+ * @param exec_vnode - exec_vnode string
+ * @return psvr_ru_t* 
+ * @retval NULL - on failure
+ */
+psvr_ru_t *
+init_ru(job *pjob, int op, char *exec_vnode)
+{
+	psvr_ru_t *psvr_ru = calloc(1, sizeof(psvr_ru_t));
+
+	psvr_ru->jobid = strdup(pjob->ji_qs.ji_jobid);
+	psvr_ru->execvnode = strdup(exec_vnode);
+	psvr_ru->op = op;
+	psvr_ru->share_job = job_sharing_type(pjob);
+	CLEAR_LINK(psvr_ru->ru_link);
+
+	return psvr_ru;
+}
+
+/**
+ * @brief reverse any resource update in the resource usage list
+ * 
+ * @param[in] ru_head - head of the resource update object list
+ */
+static void
+reverse_resc_update(psvr_ru_t *ru_head)
+{
+	psvr_ru_t *ru_cur;
+	attribute pexech;
+
+	for (ru_cur = ru_head; ru_cur;
+	     ru_cur = GET_NEXT(ru_cur->ru_link)) {
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			   "Reversing resc update jobid=%s, op=%d, execvnode=%s",
+			   ru_cur->jobid, ru_cur->op, ru_cur->execvnode);
+		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, DECR, ru_cur->share_job);
+		job_attr_def[JOB_ATR_exec_vnode].at_decode(&pexech, job_attr_def[JOB_ATR_exec_vnode].at_name, NULL, ru_cur->execvnode);
+		update_node_rassn(&pexech, DECR);
+	}
+}
+
+/**
+ * @brief delete saved resources for the corresponding idx
+ * 
+ * @param[in] idx - id of the resource update which needs to be freed 
+ */
+void
+clean_saved_rsc(void *idx)
+{
+	psvr_ru_t *ru_cur;
+	void *idx_ctx = NULL;
+
+	while (pbs_idx_find(idx, NULL, (void **)&ru_cur, &idx_ctx) == PBS_IDX_RET_OK) {
+		reverse_resc_update(ru_cur);
+		free(ru_cur);
+	}
+	avl_destroy_index(idx);
+}
+
+/**
+ * @brief send resource update for all the jobs
+ * in the server which are running on alien nodes
+ * 
+ * @param[in] mtfd - multiplexed fd where resouce update needs to be sent
+ * @return int 
+ * @retval 0 - success
+ * @retval !0 - DIS_ error code
+ */
+int
+send_job_resc_updates(int mtfd)
+{
+	job *pjob;
+	psvr_ru_t *psvr_ru;
+	pbs_list_head ru_head;
+	int ct = 0;
+	int rc = 0;
+	int count;
+	int *strms;
+	server_t *psvr;
+	svrinfo_t *psvr_info;
+	int i;
+
+	CLEAR_HEAD(ru_head);
+	
+	strms = tpp_mcast_members(mtfd, &count);
+	for(i = 0; i < count; i++) {
+		if ((psvr = tfind2((u_long) strms[i], 0, &streams)) != NULL) {
+			psvr_info = psvr->mi_data;
+			psvr_info->num_pending_rply = 0;
+		}
+	}
+
+	for (pjob = GET_NEXT(svr_alljobs); pjob;
+	     pjob = GET_NEXT(pjob->ji_alljobs)) {
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Broadcast_Rqd) &&
+		    (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescAssn)) {
+			psvr_ru = init_ru(pjob, INCR, pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str);
+			append_link(&ru_head, &psvr_ru->ru_link, psvr_ru);
+			ct++;
+		}
+	}
+
+	if (ct == 0)
+		return 0;
+
+	if ((rc = ps_compose(mtfd, PS_RSC_UPDATE_FULL)) != DIS_SUCCESS) {
+		close_streams(mtfd, rc);
+		return rc;
+	}
+
+	rc = send_resc_usage(mtfd, GET_NEXT(ru_head), ct, ct);
+	if (rc != DIS_SUCCESS)
+		close_streams(mtfd, rc);
+	free_ru(GET_NEXT(ru_head));
+
+	return rc;
+}
+
+/**
+ * @brief process ack for resource update
+ * 
+ * @param[in] conn - connection stream
+ */
+void
+req_peer_svr_ack(int conn)
+{
+	server_t *psvr;
+	int *pending_rply;
+	struct work_task *ptask;
+	svrinfo_t *svr_info;
+
+	if ((psvr = tfind2(conn, 0, &streams)) != NULL) {
+		svr_info = psvr->mi_data;
+		pending_rply = &svr_info->num_pending_rply;
+		*pending_rply -= 1;
+	} else {
+		log_errf(-1, __func__, "Resource update from unknown stream %d", conn);
+		return;
+	}
+
+	if (*pending_rply == 0 && num_pending_peersvr_rply() == 0) {
+		ptask = find_work_task(WORK_Deferred_Reply, NULL, req_stat_svr_ready);
+		if (ptask) {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+					"All peer server acks received. Processing pbs_server_ready");
+			convert_work_task(ptask, WORK_Immed);
+		}
+	}
+}
+
+/**
+ * @brief identify whether the object is a peer server one
+ * 
+ * @param[in] pobj - object which needs to be verified
+ * @return bool
+ */
+bool
+is_peersvr(void *pobj)
+{
+	server_t *psvr = pobj;
+
+	return (psvr->mi_port == psvr->mi_rmport);
 }
 
 /**
@@ -206,62 +398,67 @@ create_svr_struct(struct sockaddr_in *addr)
  * @retval	0	- success
  * @retval	-1	- failure
  */
-int
-send_hello(svrinfo_t *psvr)
+static int
+send_hello(server_t *psvr)
 {
 	int rc;
-	int stream = ((mom_svrinfo_t *)(psvr->mi_data))->msr_stream;
+	svrinfo_t *svr_info = psvr->mi_data;
+	int stream = svr_info->msr_stream;
 
-	if ((rc = is_compose(stream, IS_PEERSVR_CONNECT)) != DIS_SUCCESS)
+	if (!(svr_info->msr_state & INUSE_NEEDS_HELLOSVR))
+		return 0;
+
+	rc = send_command(stream, PS_CONNECT);
+	if (rc != DIS_SUCCESS)
 		goto err;
 
-	if ((rc = dis_flush(stream)) != DIS_SUCCESS)
-		goto err;
-
+	svr_info->msr_state &= ~INUSE_NEEDS_HELLOSVR;
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		msg_daemonname, "HELLO sent to peer server %s at stream:%d", psvr->mi_host, stream);
+		msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, stream);
 	return 0;
 
 err:
-	log_errf(errno, msg_daemonname, "Failed to send HELLO to peer server %s at stream:%d", psvr->mi_host, stream);
+	log_errf(errno, msg_daemonname, "Failed to send CONNECT to peer server %s at stream:%d", psvr->mi_host, stream);
 	tpp_close(stream);
 	return -1;
 }
 
 /**
  * @brief
- *	Connect to peer server
+ *	Connect to peer server if not connected/hello'd
+ *	Send resc update upon success
  *	
+ *  @param[in]	hostname	- host name of peer server
  *  @param[in]	hostaddr	- host address of peer server
  *  @param[in]	port		- port of peer server service
+ * 
+ * @note
+ * either hostname or hostaddr is required, not both.
  *
- * @return	svrinfo_t
+ * @return	server_t
  * @retval	NULL	- Failure
  * @retval	!NULL	- Success
  */
-void *
-connect_to_peersvr(pbs_net_t hostaddr, uint port)
+int
+connect_to_peersvr(void *psvr)
 {
-	struct sockaddr_in addr;
-	svrinfo_t *psvr;
+	bool resc_upd_reqd = 0;
+	svrinfo_t *svr_info = ((server_t *) psvr)->mi_data;
 
-	addr.sin_addr.s_addr = hostaddr;
-	addr.sin_port = port;
+	if (svr_info->msr_stream < 0 ||
+	    (svr_info->msr_state & INUSE_NEEDS_HELLOSVR))
+		resc_upd_reqd = 1;
 
-	if ((psvr = create_svr_struct(&addr)) == NULL)
-		return NULL;
+	if (open_conn_stream(psvr) < 0)
+		return -1;
 
-	if (open_tppstream(psvr) < 0) {
-		delete_svrmom_entry(psvr);
-		return NULL;
-	}
+	if (send_hello(psvr) < 0)
+		return -1;
 
-	if (send_hello(psvr) < 0) {
-		delete_svrmom_entry(psvr);
-		return NULL;
-	}
+	if (resc_upd_reqd)
+		mcast_resc_update_all(psvr);
 
-	return psvr;
+	return 0;
 }
 
 /**
@@ -275,7 +472,30 @@ connect_to_peersvr(pbs_net_t hostaddr, uint port)
 int
 init_msi()
 {
-	peersvrl = NULL;
+	int i;
+	struct sockaddr_in addr;
+	server_t *psvr;
+
+	CLEAR_HEAD(peersvrl);
+	alien_node_idx = pbs_idx_create(0, 0);
+
+	for (i = 0; i < get_num_servers(); i++) {
+
+		if (!strcmp(pbs_conf.psi[i].name, pbs_conf.pbs_server_name) &&
+		    (pbs_conf.psi[i].port == pbs_server_port_dis))
+			continue;
+
+		addr.sin_addr.s_addr = 0;
+		addr.sin_port = pbs_conf.psi[i].port;
+
+		if ((psvr = create_svr_struct(&addr, pbs_conf.psi[i].name)) == NULL)
+			return -1;
+
+		if (connect_to_peersvr(psvr) != 0) {
+			log_errf(PBSE_INTERNAL, __func__, "Failed initialization for %s", pbs_conf.psi[i].name);
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -295,7 +515,6 @@ gen_svr_inst_id(void)
 	unsigned int svr_inst_port;
 	char *svr_inst_id = NULL;
 
-
 	if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
         	get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
 
@@ -305,4 +524,343 @@ gen_svr_inst_id(void)
 
 	return svr_inst_id;
 
+}
+
+/**
+ * @brief find the number of peer server replies
+ * which needs to be ack'd
+ * 
+ * @return int 
+ */
+int
+num_pending_peersvr_rply(void)
+{
+	server_t *psvr;
+	int ct = 0;
+	svrinfo_t *svr_info;
+
+	for (psvr = GET_NEXT(peersvrl);
+	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
+		svr_info = psvr->mi_data;
+		ct += svr_info->num_pending_rply;
+	}
+
+	return ct;
+}
+
+/**
+ * @brief Go through peer server list and
+ * poke if any of them is down
+ */
+void
+poke_peersvr(void)
+{
+	server_t *psvr;
+
+	for (psvr = GET_NEXT(peersvrl);
+	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
+		connect_to_peersvr(psvr);
+	}
+}
+
+/**
+ * @brief save the resource update to the cache
+ * DECR requests will free the corresponding INCR from cache
+ * 
+ * @param[in,out] pobj - pointer to peer server struct
+ * @param[in,out] ru_new  - resource update which needs to be saved
+ * @return int 
+ * @retval !0 - error code
+ */
+static int
+save_resc_update(void *pobj, psvr_ru_t *ru_new)
+{
+	psvr_ru_t *ru_old = NULL;
+	int rc = 0;
+	server_t *psvr = pobj;
+
+	if (!ru_new || !ru_new->jobid)
+		return -1;
+
+	pbs_idx_find(psvr->rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
+	if (!ru_old && ru_new->op == INCR) {
+		delete_clear_link(&ru_new->ru_link);
+		if (!psvr->rsc_idx)
+			psvr->rsc_idx = pbs_idx_create(0, 0);
+		rc = pbs_idx_insert(psvr->rsc_idx, ru_new->jobid, ru_new);
+		pbs_idx_find(psvr->rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
+	} else if (ru_old && ru_new->op == DECR) {
+		pbs_idx_delete(psvr->rsc_idx, ru_old->jobid);
+		delete_clear_link(&ru_old->ru_link);
+		free_ru(ru_old);
+	} else {
+		rc = PBSE_DUPRESC;
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_WARNING, __func__,
+			   "Duplicate resource update received for job %s , op=%d", ru_new->jobid, ru_new->op);
+		delete_clear_link(&ru_new->ru_link);
+		free_ru(ru_new);
+	}
+
+	return rc;
+}
+
+/**
+ * @brief handler for resource update from a peer server
+ * 
+ * @param[in] stream - connection stream
+ * @param[in] ru_head - head of resource update list
+ * @param[in,out] psvr - peer server object
+ */
+void
+req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
+{
+	attribute pexech;
+	psvr_ru_t *ru_cur;
+	psvr_ru_t *ru_nxt;
+	int op = 0;
+	int rc = 0;
+
+	for (ru_cur = GET_NEXT(*ru_head);
+	     ru_cur; ru_cur = ru_nxt) {
+		ru_nxt = GET_NEXT(ru_cur->ru_link);
+
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			   "received update jobid=%s, op=%d, execvnode=%s",
+			   ru_cur->jobid, ru_cur->op, ru_cur->execvnode);
+
+		if (ru_cur->op == INCR)
+			op = INCR;
+
+		rc = save_resc_update(psvr, ru_cur);
+		if (rc == PBSE_DUPRESC)
+			continue;
+
+		update_jobs_on_node(ru_cur->jobid, ru_cur->execvnode, ru_cur->op, ru_cur->share_job);
+		job_attr_def[JOB_ATR_exec_vnode].at_decode(&pexech, job_attr_def[JOB_ATR_exec_vnode].at_name,
+							   NULL, ru_cur->execvnode);
+		update_node_rassn(&pexech, ru_cur->op);
+
+		if (ru_cur->op == DECR) {
+			delete_clear_link(&ru_cur->ru_link);
+			free_ru(ru_cur);
+		}
+	}
+
+	if (op == INCR)
+		send_command(stream, PS_RSC_UPDATE_ACK);
+}
+
+/**
+ * @brief open a multicast fd for all peer servers which are up
+ * 
+ * @return int
+ * @retval -1 : for failure
+ */
+int
+open_ps_mtfd(void)
+{
+	int mtfd = -1;
+	server_t *psvr;
+	svrinfo_t *psvr_info;
+
+	for (psvr = GET_NEXT(peersvrl);
+		psvr; psvr = GET_NEXT(psvr->mi_link)) {
+		psvr_info = psvr->mi_data;
+		if (psvr_info->msr_stream < 0) {
+			if (connect_to_peersvr(psvr) < 0)
+				continue;
+		}
+
+		mcast_add(psvr, &mtfd);
+	}
+
+	return mtfd;
+}
+
+/**
+ * @brief multicast single job's resource usage
+ * to all peer servers
+ * 
+ * @param[in] psvr_ru - resource usage structure
+ */
+void
+mcast_resc_usage(psvr_ru_t *psvr_ru)
+{
+	int mtfd;
+	int ret;
+	int incr_ct = 0;
+
+	mtfd = open_ps_mtfd();
+
+	if (mtfd != -1) {
+		if (psvr_ru->op == INCR)
+			incr_ct++;
+
+		if ((ret = ps_compose(mtfd, PS_RSC_UPDATE)) != DIS_SUCCESS)
+			close_streams(mtfd, ret);
+
+		/* broadcast resc usage */
+		if ((ret = send_resc_usage(mtfd, psvr_ru, 1, incr_ct)) != DIS_SUCCESS)
+			close_streams(mtfd, ret);
+
+		tpp_mcast_close(mtfd);
+		mtfd = -1;
+	}
+}
+
+/**
+ * @brief adding an alien node to the cache
+ * 
+ * @param[in,out] psvr - peer server where the node belongs to
+ * @param[in] pnode - alien node structure
+ */
+static void
+add_node_to_cache(server_t *psvr, pbs_node *pnode)
+{
+	if (!pnode)
+		return;
+
+	CLEAR_LINK(pnode->nd_link);
+	append_link(&psvr->node_list, &pnode->nd_link, pnode);
+	pbs_idx_insert(alien_node_idx, pnode->nd_name, pnode);
+}
+
+/**
+ * @brief initialize the node from the batch status
+ * 
+ * @param[in] bstat - batch status 
+ * @param[in,out] psvr - peer server structure
+ * @return int
+ * @retval -1 : for error
+ */
+int
+init_node_from_bstat(struct batch_status *bstat, server_t *psvr)
+{
+	pbs_node *pnode;
+	pbs_list_head attrs;
+	struct batch_status *cur;
+
+	for (cur = bstat; cur; cur = bstat->next) {
+		pnode = calloc(1, sizeof(pbs_node));
+		pnode->nd_name = strdup(cur->name);
+		pnode->nd_svrflags |= NODE_ALIEN;
+		copy_attrl_to_svrattrl(cur->attribs, &attrs);
+		if ((decode_attr_db(pnode, &attrs, node_attr_idx, node_attr_def, pnode->nd_attr, ND_ATR_LAST, 0)) != 0) {
+			log_errf(PBSE_INTERNAL, __func__, "Decode of node %s received from peer server has failed!",
+				 pnode->nd_name);
+			free(pnode);
+			free_attrlist(&attrs);
+			pbs_statfree(bstat);
+			return -1;
+		}
+
+		add_node_to_cache(psvr, pnode);
+		free_attrlist(&attrs);
+	}
+
+	pbs_statfree(bstat);
+	return 0;
+}
+
+/**
+ * @brief clear node from the cache and delete the node
+ * 
+ * @param[in,out] psvr - peer server struct
+ */
+static void
+clear_node_cache(server_t *psvr)
+{
+	pbs_node *pnode;
+	pbs_node *nd_next;
+
+	for (pnode = GET_NEXT(psvr->node_list);
+	     pnode; pnode = nd_next) {
+		nd_next = GET_NEXT(pnode->nd_link);
+		CLEAR_LINK(pnode->nd_link);
+		pbs_idx_delete(alien_node_idx, pnode->nd_name);
+		free_pnode(pnode);
+	}
+}
+
+/**
+ * @brief clear the old node cache and update with new information
+ * 
+ * @param[in] stream - connection stream
+ * @param[in] bstat - batch status struct
+ * @return int 
+ * @retval -1 : for error
+ */
+int
+update_node_cache(int stream, struct batch_status *bstat)
+{
+	server_t *psvr;
+
+	psvr = tfind2((u_long) stream, 0, &streams);
+	if (!psvr)
+		return -1;
+
+	/* DIFF_STAT TODO - this logic needs to be optimized after diff-stat */
+	clear_node_cache(psvr);
+
+	init_node_from_bstat(bstat, psvr);
+
+	return 0;
+}
+
+/**
+ * @brief
+ * 		find_alien_node() - find an alien node by its name
+ * @param[in]	nodename	- node being searched
+ *
+ * @return	strcut pbsnode *
+ * @retval	!NULL - success
+ * @retval	NULL  - failure
+ */
+pbs_node *
+find_alien_node(char *nodename)
+{
+	char *pslash;
+	pbs_node *node = NULL;
+
+	if (nodename == NULL)
+		return NULL;
+	if (*nodename == '(')
+		nodename++;	/* skip over leading paren */
+	if ((pslash = strchr(nodename, (int)'/')) != NULL)
+		*pslash = '\0';
+	if (alien_node_idx == NULL)
+		return NULL;
+	if (pbs_idx_find(alien_node_idx, (void **)&nodename, (void **)&node, NULL) != PBS_IDX_RET_OK)
+		return NULL;
+	return node;
+}
+
+/**
+ * @brief process the status reply from peer server
+ * Reply can for any object such as node, resv, job etc
+ * 
+ * @param[in] c - connection stream
+ * @return int 
+ * @retval PBSE_* : for failure
+ */
+static int
+process_rply_status(int c)
+{
+	struct batch_status *bstat;
+	int obj_type = -1;
+
+	if ((bstat = PBSD_status_get(c, NULL, &obj_type, PROT_TPP)) == NULL)
+		return pbs_errno;
+
+	switch (obj_type) {
+
+	case MGR_OBJ_NODE:
+		update_node_cache(c, bstat);
+		break;
+
+	default:
+		break;
+	}
+
+	return 0;
 }

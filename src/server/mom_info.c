@@ -183,6 +183,9 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_data    = NULL;
 		pmom->mi_action = NULL;
 		pmom->mi_num_action = 0;
+		CLEAR_LINK(pmom->mi_link);
+		pmom->rsc_idx = pbs_idx_create(0, 0);
+		CLEAR_HEAD(pmom->node_list);
 #ifndef PBS_MOM
 		if (mom_hooks_seen_count() > 0) {
 			struct stat sbuf;
@@ -264,6 +267,7 @@ delete_mom_entry(mominfo_t *pmom)
 	if (pmom->mi_data)
 		free(pmom->mi_data);
 
+	delete_link(&pmom->mi_link);
 	memset(pmom, 0, sizeof(mominfo_t));
 	free(pmom);
 	--svr_num_moms;
@@ -346,7 +350,6 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 {
 	mominfo_t     *pmom;
 	mom_svrinfo_t *psvrmom;
-	extern struct tree  *ipaddrs;
 
 	if (is_peer_svr)
 		pmom = create_svr_entry(hostname, port);
@@ -386,6 +389,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 	psvrmom->msr_numvslots = 1;
 	psvrmom->msr_vnode_pool = 0;
 	psvrmom->msr_has_inventory = 0;
+	psvrmom->num_pending_rply = 0;
 	psvrmom->msr_children =
 		(struct pbsnode **)calloc((size_t)(psvrmom->msr_numvslots),
 		sizeof(struct pbsnode *));
@@ -406,7 +410,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 
 /**
  * @brief
- * 		open_tppstream - do an tpp_open if it is safe to do so.
+ * 		open_conn_stream - do an tpp_open if it is safe to do so.
  *
  * @param[in]	pmom	- pointer to mominfo structure
  *
@@ -415,20 +419,24 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
  * @retval	>=0: success
  */
 int
-open_tppstream(mominfo_t *pmom)
+open_conn_stream(mominfo_t *pmom)
 {
 	int stream = -1;
 	mom_svrinfo_t *psvrmom;
 
 	psvrmom = (mom_svrinfo_t *)pmom->mi_data;
-	if (psvrmom->msr_stream >= 0 || !(psvrmom->msr_state & INUSE_NEEDS_HELLOSVR))
-		return -1;
+	if (psvrmom->msr_stream >= 0)
+		return psvrmom->msr_stream;
 
-	if ((stream = tpp_open(pmom->mi_host, pmom->mi_rmport)) >= 0) {
-		psvrmom->msr_stream = stream;
-		psvrmom->msr_state &= ~(INUSE_UNKNOWN | INUSE_DOWN);
-		tinsert2((u_long)stream, 0, pmom, &streams);
+	if ((stream = tpp_open(pmom->mi_host, pmom->mi_rmport)) < 0) {
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+			   msg_daemonname, "Failed to open connection stream for %s", pmom->mi_host);
+		return -1;
 	}
+
+	psvrmom->msr_stream = stream;
+	psvrmom->msr_state &= ~(INUSE_UNKNOWN | INUSE_DOWN);
+	tinsert2((u_long)stream, 0, pmom, &streams);
 
 	return stream;
 }
@@ -453,7 +461,6 @@ delete_svrmom_entry(mominfo_t *pmom)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 	unsigned long *up;
-	extern struct tree  *ipaddrs;
 
 	if (psvrmom) {
 

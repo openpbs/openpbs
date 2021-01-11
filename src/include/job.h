@@ -795,6 +795,7 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
+#define JOB_SVFLG_Broadcast_Rqd 0x400000 /* Broadcast of rsc usage is required */
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'
@@ -969,6 +970,7 @@ task_find	(job		*pjob,
 #define JOB_EXEC_KILL_MEM -27 /* job exec failed due to exceeding mem */
 #define JOB_EXEC_KILL_CPUT -28 /* job exec failed due to exceeding cput */
 #define JOB_EXEC_KILL_WALLTIME -29 /* job exec failed due to exceeding walltime */
+#define JOB_EXEC_JOINJOB	-30 /* Job exec failed due to join job error */
 
 /*
  * Fake "random" number added onto the end of the staging

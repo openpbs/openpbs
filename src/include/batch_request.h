@@ -158,6 +158,7 @@ struct rq_move {
 	char *run_exec_vnode;
 	int orig_rq_type;
 	void *ptask_runjob;
+	int peersvr_stream;
 };
 
 /* Resource Query/Reserve/Free */
@@ -225,6 +226,16 @@ struct rq_defschrpy {
 	int rq_err;
 	char *rq_txt;
 };
+
+/* Resource update from peer server */
+struct rq_rescupdate {
+	char *jobid;
+	int op;
+	char *execvnode;
+	int share_job;
+	pbs_list_link ru_link;
+};
+typedef struct rq_rescupdate psvr_ru_t;
 
 /* Copy/Delete Files (Server -> MOM Only) */
 
@@ -336,6 +347,7 @@ struct batch_request {
 		struct rq_hookfile rq_hookfile;
 		struct rq_preempt rq_preempt;
 		struct rq_cred rq_cred;
+		struct rq_rescupdate rq_rescupdate;
 	} rq_ind;
 };
 

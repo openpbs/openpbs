@@ -71,7 +71,7 @@
  *
  */
 struct batch_reply *
-PBSD_rdrpy_sock(int sock, int *rc)
+PBSD_rdrpy_sock(int sock, int *rc, int prot)
 {
 	struct batch_reply *reply;
 	time_t old_timeout;
@@ -83,18 +83,22 @@ PBSD_rdrpy_sock(int sock, int *rc)
 		return NULL;
 	}
 
-	DIS_tcp_funcs();
-	old_timeout = pbs_tcp_timeout;
-	if (pbs_tcp_timeout < PBS_DIS_TCP_TIMEOUT_LONG)
-		pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_LONG;
+	if (prot == PROT_TCP) {
+		DIS_tcp_funcs();
+		old_timeout = pbs_tcp_timeout;
+		if (pbs_tcp_timeout < PBS_DIS_TCP_TIMEOUT_LONG)
+			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_LONG;
+	}
 
-	if ((*rc = decode_DIS_replyCmd(sock, reply)) != 0) {
+	if ((*rc = decode_DIS_replyCmd(sock, reply, prot)) != 0) {
 		(void)free(reply);
 		pbs_errno = PBSE_PROTOCOL;
 		return NULL;
 	}
-	dis_reset_buf(sock, DIS_READ_BUF);
-	pbs_tcp_timeout = old_timeout;
+	if (prot == PROT_TCP) {
+		dis_reset_buf(sock, DIS_READ_BUF);
+		pbs_tcp_timeout = old_timeout;
+	}
 
 	pbs_errno = reply->brp_code;
 	return reply;
@@ -121,7 +125,7 @@ PBSD_rdrpy(int c)
 		pbs_errno = PBSE_SYSTEM;
 		return NULL;
 	}
-	reply = PBSD_rdrpy_sock(c, &rc);
+	reply = PBSD_rdrpy_sock(c, &rc, PROT_TCP);
 	if (reply == NULL) {
 		if (set_conn_errno(c, PBSE_PROTOCOL) != 0) {
 			pbs_errno = PBSE_SYSTEM;

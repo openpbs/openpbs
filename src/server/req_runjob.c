@@ -1517,6 +1517,8 @@ post_sendmom(struct work_task *pwt)
 		case PBSE_HOOK_REJECT_DELETEJOB:
 			r = SEND_JOB_HOOK_REJECT_DELETEJOB;
 			break;
+		case PBSE_SISCOMM:
+			send_nodestat();
 		default:
 			r = SEND_JOB_FATAL;
 			break;

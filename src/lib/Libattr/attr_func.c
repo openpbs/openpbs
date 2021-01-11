@@ -766,6 +766,40 @@ copy_svrattrl_list(pbs_list_head *from_head, pbs_list_head *to_head)
 
 /**
  * @brief
+ * 	Copies contents of attr list headed by 'from_list' into 'to_head'
+ *
+ * @param[in]		from_list	- source list
+ * @param[in,out]	to_head		- destination list
+ *
+ * @return int
+ * @retval 0	- success
+ * @retval -1	- failure
+ *
+ */
+int
+copy_attrl_to_svrattrl(struct attrl *from_list, pbs_list_head *to_head)
+{
+	struct attrl *plist = NULL;
+
+	if ((from_list == NULL) || (to_head == NULL))
+		return -1;
+
+	CLEAR_HEAD((*to_head));
+
+	for (plist = from_list; plist; plist = plist->next) {
+
+		if (add_to_svrattrl_list(to_head, plist->name, plist->resource,
+			plist->value, plist->op, NULL) == -1) {
+			free_attrlist(to_head);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * @brief
  * 	returns the svrattrl list matching 'name' and 'resc' (if resc is non-NULL)
  *  @param[in]	phead	- list being searched
  *  *param[in]	name	- search name

@@ -126,10 +126,10 @@ db_to_node(struct pbsnode *pnode, pbs_db_node_info_t *pdbnd)
 	if (pnode->nd_pque)
 		strcpy(pnode->nd_pque->qu_qs.qu_name, pdbnd->nd_pque);
 
-	if ((decode_attr_db(pnode, &pdbnd->db_attr_list, node_attr_idx, node_attr_def, pnode->nd_attr, ND_ATR_LAST, 0)) != 0)
+	if ((decode_attr_db(pnode, &pdbnd->db_attr_list.attrs, node_attr_idx, node_attr_def, pnode->nd_attr, ND_ATR_LAST, 0)) != 0)
 		return -1;
 
-	pnode->newobj = 0;
+	pnode->nd_svrflags &= ~NODE_NEWOBJ;
 
 	return 0;
 }
@@ -348,7 +348,7 @@ node_save_db(struct pbsnode *pnode)
 	}
 
 	if (rc == 0)
-		pnode->newobj = 0;
+		pnode->nd_svrflags &= ~NODE_NEWOBJ;
 
 done:
 	free_db_attr_list(&dbnode.db_attr_list);
