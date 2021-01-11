@@ -1597,10 +1597,10 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
 				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
-				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
+				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB, HOOKSTR_MODIFYVNODE, HOOKSTR_MANAGEMENT,
-				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
+				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB, HOOKSTR_ENDJOB,
 				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC, HOOKSTR_RESV_END,
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_PRETERM,
