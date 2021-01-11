@@ -101,6 +101,7 @@ decode_DIS_MoveJob(int sock, struct batch_request *preq)
 	preq->rq_ind.rq_move.run_exec_vnode = NULL;
 	preq->rq_ind.rq_move.orig_rq_type = PBS_BATCH_MoveJob;
 	preq->rq_ind.rq_move.ptask_runjob = NULL;
+	preq->rq_ind.rq_move.peersvr_stream = -1;
 
 	return rc;
 }

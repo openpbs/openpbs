@@ -357,7 +357,7 @@ typedef struct ajinfo {
  */
 
 struct jbdscrd {
-	struct	mominfo *jdcd_mom;	/* ptr to Mom */
+	struct	machine_info *jdcd_mom;	/* ptr to Mom */
 	int		 jdcd_state;	/* 0 - waiting on her */
 };
 #define JDCD_WAITING 0	/* still waiting to hear from this Mom */
@@ -797,6 +797,7 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
+#define JOB_SVFLG_RescUpdt_Rqd 0x400000 /* Broadcast of rsc usage is required */
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'
@@ -971,6 +972,7 @@ task_find	(job		*pjob,
 #define JOB_EXEC_KILL_MEM -27 /* job exec failed due to exceeding mem */
 #define JOB_EXEC_KILL_CPUT -28 /* job exec failed due to exceeding cput */
 #define JOB_EXEC_KILL_WALLTIME -29 /* job exec failed due to exceeding walltime */
+#define JOB_EXEC_JOINJOB -30 /* Job exec failed due to join job error */
 
 /*
  * Fake "random" number added onto the end of the staging

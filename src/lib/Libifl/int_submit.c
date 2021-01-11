@@ -91,6 +91,42 @@ done:
 }
 
 /**
+ * @brief - Start a standard peer-server message.
+ *
+ * @param[in] stream  - The TPP stream on which to send message
+ * @param[in] command - The message type (cmd) to encode
+ *
+ * @return error code
+ * @retval  DIS_SUCCESS - Success
+ * @retval !DIS_SUCCESS - Failure
+ */
+int
+ps_compose(int stream, int command)
+{
+	int	ret;
+
+	if (stream < 0)
+		return DIS_EOF;
+
+	DIS_tpp_funcs();
+
+	ret = diswsi(stream, PS_PROTOCOL);
+	if (ret != DIS_SUCCESS)
+		goto done;
+	ret = diswsi(stream, PS_PROTOCOL_VER);
+	if (ret != DIS_SUCCESS)
+		goto done;
+	ret = diswsi(stream, command);
+	if (ret != DIS_SUCCESS)
+		goto done;
+
+	return DIS_SUCCESS;
+
+done:
+	return ret;
+}
+
+/**
  * @brief - Get a unique id each time this function is called
  *
  * @par NOTE:
@@ -153,16 +189,22 @@ int
 is_compose_cmd(int stream, int command, char **ret_msgid)
 {
 	int ret;
+	char *temp_id = NULL;
 
 	if ((ret = is_compose(stream, command)) != DIS_SUCCESS)
 		return ret;
 
-	if (ret_msgid == NULL || *ret_msgid == NULL || *ret_msgid[0] == '\0') /* NULL or empty id provided */
+	/* Create a temp msg id, when there is no buffer passed */
+	if (ret_msgid == NULL)
+		ret = get_msgid(&temp_id);
+	else if (*ret_msgid == NULL || *ret_msgid[0] == '\0') /* buffer passed but NULL or empty id provided */
 		if ((ret = get_msgid(ret_msgid)) != 0)
 			return ret;
 
-	if ((ret = diswst(stream, *ret_msgid)) != DIS_SUCCESS)
+	if ((ret = diswst(stream, ret_msgid ? *ret_msgid : temp_id)) != DIS_SUCCESS)
 		return ret;
+
+	free(temp_id);
 
 	return DIS_SUCCESS;
 }

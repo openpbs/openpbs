@@ -58,17 +58,14 @@
  * @param[in]	has_runjob_hook	- does server have a runjob hook?
  * @param[in]	jobid	-	id of the job to run
  * @param[in]	execvnode	-	the execvnode to run the job on
- * @param[in]	svr_id_node	-	server id of the first node in execvnode
  * @param[in]	svr_id_job -	server id of the job
  *
  * @return	int
  * @retval	return value of the runjob call
  */
 int
-send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode,
- 	     char *svr_id_node, char *svr_id_job)
+send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode, char *svr_id_job)
 {
-	char extend[PBS_MAXHOSTNAME + 6];
  	int job_owner_sd;
 
 	if (jobid.empty() || execvnode == NULL)
@@ -76,16 +73,12 @@ send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char
 
 	job_owner_sd = get_svr_inst_fd(virtual_sd, svr_id_job);
 
-	extend[0] = '\0';
- 	if (svr_id_node && svr_id_job && strcmp(svr_id_node, svr_id_job) != 0)
- 		snprintf(extend, sizeof(extend), "%s=%s", SERVER_IDENTIFIER, svr_id_node);
-
 	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)
-		return pbs_runjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, extend);
+		return pbs_runjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, NULL);
 	else if (((sc_attrs.runjob_mode == RJ_RUNJOB_HOOK) && has_runjob_hook))
-		return pbs_asyrunjob_ack(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, extend);
+		return pbs_asyrunjob_ack(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, NULL);
 	else
-		return pbs_asyrunjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, extend);
+		return pbs_asyrunjob(job_owner_sd, const_cast<char *>(jobid.c_str()), execvnode, NULL);
 }
 
 /**

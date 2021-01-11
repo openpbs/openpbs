@@ -167,7 +167,7 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 	}
 
 	/* get the status reply */
-	return (PBSD_status_get(c, NULL));
+	return (PBSD_status_get(c, NULL, NULL, PROT_TCP));
 }
 
 /**
@@ -525,7 +525,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		start = 0;
 
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return NULL;
+		goto end;
 
 	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
@@ -557,7 +557,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		    failed_conn[i])
 			continue;
 
-		if ((next = PBSD_status_get(svr_conns[i]->sd, &last))) {
+		if ((next = PBSD_status_get(svr_conns[i]->sd, &last, NULL, PROT_TCP))) {
 			if (!ret) {
 				ret = next;
 				cur = last;
@@ -596,11 +596,12 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
+		goto end;
 
 	if (rc)
 		pbs_errno = rc;
 
+end:
 	free(failed_conn);
 	return ret;
 }
@@ -657,33 +658,49 @@ PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend,
  * @brief
  *	Returns pointer to status record
  *
- * @param[in] c - index into connection table
+ * @param[in] c - connection socket
+ * @param[out] last - last batch status read
+ * @param[out] obj_type - object type
+ * @param[in] prot - protocol type
  *
  * @return returns a pointer to a batch_status structure
  * @retval pointer to batch status on SUCCESS
  * @retval NULL on failure
  */
 struct batch_status *
-PBSD_status_get(int c, struct batch_status **last)
+PBSD_status_get(int c, struct batch_status **last, int *obj_type, int prot)
 {
 	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
+	int rc;
 
 	/* read reply from stream into presentation element */
 
-	reply = PBSD_rdrpy(c);
+	if (prot == PROT_TCP)
+		reply = PBSD_rdrpy(c);
+	else
+		reply = PBSD_rdrpy_sock(c, &rc, prot);
+	
 	if (reply == NULL) {
-		pbs_errno = PBSE_PROTOCOL;
+		if (pbs_errno == PBSE_NONE)
+			pbs_errno = PBSE_PROTOCOL;
+		goto end;
 	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL  &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Status) {
-		pbs_errno = PBSE_PROTOCOL;
+		if (pbs_errno == PBSE_NONE)
+			pbs_errno = PBSE_PROTOCOL;
+		goto end;
 	} else if (get_conn_errno(c) == 0) {
 		rbsp = reply->brp_un.brp_statc;
 		reply->brp_un.brp_statc = NULL;
 	}
 	if (last)
 		*last = reply ? reply->last : NULL;
+	if (obj_type)
+		*obj_type = reply->brp_type;
+
+end:
 	PBSD_FreeReply(reply);
 	return rbsp;
 }

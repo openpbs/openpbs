@@ -257,6 +257,39 @@ parse_config_line(FILE *fp, char **key, char **val)
 	return ret;
 }
 
+/**
+ * @brief frame the psi_t struct from svr instance id passed
+ * 
+ * @param[in,out] psi - server instance id
+ * @param[in] svr_id - server instance id
+ * @return int 
+ * @retval 0 - success
+ * @retval !0 - failure
+ */
+int
+frame_psi(psi_t *psi, char *svr_id)
+{
+	char *svrname;
+
+	if (!psi || !svr_id)
+		return -1;
+
+	svrname = parse_servername(svr_id, &psi->port);
+	if (svrname == NULL)
+		return -1;
+
+	pbs_strncpy(psi->name, svrname, sizeof(psi->name));
+
+	if (*psi->name == '\0') {
+		if (gethostname(psi->name, PBS_MAXHOSTNAME) == 0)
+			get_fullhostname(psi->name, psi->name, PBS_MAXHOSTNAME);
+	}
+
+	if (psi->port == 0)
+		psi->port = PBS_BATCH_SERVICE_PORT;
+
+	return 0;
+}
 
 /**
  * @brief
@@ -274,13 +307,12 @@ parse_psi(char *conf_value)
 {
 	char **list = NULL;
 	int i;
-	char *svrname = NULL;
 	char *local_conf = NULL;
 
 	free(pbs_conf.psi);
 	free(pbs_conf.psi_str);
 
-	if (conf_value == NULL) {
+	if (conf_value == NULL || conf_value[0] == '\0') {
 		char *dfltsvr = pbs_default();
 		if (dfltsvr == NULL)
 			return -1;
@@ -303,25 +335,15 @@ parse_psi(char *conf_value)
 	}
 
 	for (i = 0; list[i] != NULL; i++) {
-		svrname = parse_servername(list[i], &(pbs_conf.psi[i].port));
-		if (svrname == NULL) {
+		if (frame_psi(&pbs_conf.psi[i], list[i]) != 0) {
 			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
 			goto err;
 		}
-		strcpy(pbs_conf.psi[i].name, svrname);
-
-		if (pbs_conf.psi[i].name[0] == '\0') {
-			if (gethostname(pbs_conf.psi[i].name, PBS_MAXHOSTNAME) == 0)
-        			get_fullhostname(pbs_conf.psi[i].name, pbs_conf.psi[i].name, PBS_MAXHOSTNAME);
-		}
-
-		if (pbs_conf.psi[i].port == 0)
-			pbs_conf.psi[i].port = PBS_BATCH_SERVICE_PORT;
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
-	if (conf_value)
-		pbs_conf.psi_str = strdup(local_conf);
+	if (conf_value && conf_value[0] != '\0')
+		pbs_conf.psi_str = strdup(conf_value);
 	else
 		pbs_conf.psi_str = local_conf;
 
@@ -329,7 +351,7 @@ parse_psi(char *conf_value)
 
 err:
 	free_string_array(list);
-	if (conf_value == NULL)
+	if (conf_value == NULL || conf_value[0] == '\0')
 		free(local_conf);
 	return -1;
 }

@@ -660,7 +660,7 @@ parse_plus_spec(char *selstr, int *rc)
  *
  * @param[in] execvnode - selectspec
  *
- * @return 	vnode
+ * @return 	vnode - has to be freed by the caller
  * @retval	NULL: vnode could not find in the str
  */
 char *
@@ -672,12 +672,20 @@ get_first_vnode(char *execvnode)
 	char	*vname;
 	int	nelem;
 	struct key_value_pair *pkvp;
+	char *execvnode_dup;
+	char *vname_out = NULL;
 
-	chunk = parse_plus_spec_r(execvnode, &last, &hasprn);
+	if (!execvnode)
+		return NULL;
+
+	execvnode_dup = strdup(execvnode);
+
+	chunk = parse_plus_spec_r(execvnode_dup, &last, &hasprn);
 	if (chunk) {
 		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0)
-			return vname;
+			vname_out = strdup(vname);
 	}
 
-	return NULL;
+	free(execvnode_dup);
+	return vname_out;
 }
