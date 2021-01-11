@@ -41,7 +41,8 @@ if [ $(id -u) -ne 0 ]; then
   echo "This script must be run by root user"
   exit 1
 fi
-
+export LC_ALL=en_US.utf-8 
+export LANG=en_US.utf-8
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
@@ -66,8 +67,10 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
   if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
+    export LC_ALL=en_US.utf-8
+    export LANG=en_US.utf-8
     yum clean all
-    yum -y install yum-utils epel-release rpmdevtools
+    yum -y install yum-utils epel-release rpmdevtools 
     yum -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical libasan llvm git
@@ -79,11 +82,11 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       yum -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
-    export LANG="C.utf8"
+    
     dnf -y clean all
     dnf -y install 'dnf-command(config-manager)'
     dnf -y config-manager --set-enabled powertools
-    dnf -y install epel-release
+    dnf -y install epel-release 
     dnf -y install python3-pip sudo which net-tools man-db time.x86_64 \
       expat libedit postgresql-server postgresql-contrib python3 \
       sendmail sudo tcl tk libical libasan llvm git
@@ -94,9 +97,10 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
       dnf -y install krb5-libs krb5-devel libcom_err libcom_err-devel
     fi
   elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
+    export LC_ALL=C.utf8
     zypper -n ref
-    zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git
-    rpmdev-setuptree
+    zypper -n install rpmdevtools python3-pip sudo which net-tools man time.x86_64 git 
+    rpmdev-setuptree 
     zypper -n install --force-resolution $(rpmspec --buildrequires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     zypper -n install --force-resolution $(rpmspec --requires -q ${SPEC_FILE} | sort -u | grep -vE '^(/bin/)?(ba)?sh$')
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
@@ -104,17 +108,23 @@ if [ "x${IS_CI_BUILD}" != "x1" ] || [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_C
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
       export DEBIAN_FRONTEND=noninteractive
     fi
+    export LANGUAGE=C.UTF-8
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
     apt-get -y update
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
       libical-dev libhwloc-dev pkg-config tcl-dev tk-dev python3-dev \
       swig expat postgresql postgresql-contrib python3-pip sudo \
-      man-db git elfutils
+      man-db git elfutils  
     pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${REQ_FILE}
   elif [ "x${ID}" == "xubuntu" ]; then
     if [ "x${DEBIAN_FRONTEND}" == "x" ]; then
       export DEBIAN_FRONTEND=noninteractive
     fi
+    export LANGUAGE=C.UTF-8
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
     apt-get -y update
     apt-get install -y build-essential dpkg-dev autoconf libtool rpm alien libssl-dev \
       libxt-dev libpq-dev libexpat1-dev libedit-dev libncurses5-dev \
@@ -134,7 +144,6 @@ if [ "x${FIRST_TIME_BUILD}" == "x1" -a "x${IS_CI_BUILD}" == "x1" ]; then
 fi
 
 if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
-  export LANG="C.utf8"
   swig_opt="--with-swig=/usr/local"
   if [ ! -f /tmp/swig/swig/configure ]; then
     # source install swig
@@ -263,12 +272,6 @@ set -e
 pbs_config --make-ug
 
 if [ "x${RUN_TESTS}" == "x1" ]; then
-  if [ "x${ID}" == "xcentos" ]; then
-    export LC_ALL=en_US.utf-8
-    export LANG=en_US.utf-8
-  elif [ "x${ID}" == "xopensuse" ]; then
-    export LC_ALL=C.utf8
-  fi
   ptl_tests_dir=/pbssrc/test/tests
   cd ${ptl_tests_dir}/
   benchpress_opt="$(cat ${config_dir}/${BENCHPRESS_OPT_FILE})"
@@ -287,5 +290,7 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
-  pbs_benchpress --tags=smoke
+  env
+  locale
+  pbs_benchpress -t SmokeTest.test_man_pages 
 fi

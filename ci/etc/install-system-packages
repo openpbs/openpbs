@@ -73,7 +73,7 @@ if [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x8" ]; then
   dnf -y clean all
   dnf -y install 'dnf-command(config-manager)'
   dnf -y config-manager --set-enabled powertools
-  dnf -y install epel-release
+  dnf -y install epel-release glibc-all-langpacks
   dnf -y update
   dnf -y install git gcc make m4 autoconf automake libtool rpm-build rpmdevtools \
     hwloc-devel libX11-devel libXt-devel libXext-devel libXft-devel \
@@ -100,7 +100,7 @@ elif [ "x${ID}" == "xcentos" -a "x${VERSION_ID}" == "x7" ]; then
       echo enabled=1
       echo gpgcheck=1
     } >/etc/yum.repos.d/perforce.repo
-  yum -y install epel-release
+  yum -y install epel-release glibc-all-langpacks
   yum -y update
   yum -y install git gcc make m4 autoconf automake libtool rpm-build rpmdevtools \
     hwloc-devel libX11-devel libXt-devel libXext-devel libXft-devel \
@@ -136,7 +136,7 @@ elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
     which net-tools net-tools-deprecated man time tcsh lsof file vim \
     expect perl-App-cpanminus perl-Parse-PMFile hostname bind-utils \
     systemd systemd-sysvinit libcap-progs iputils rsyslog openssh pam-devel \
-    valgrind-devel valgrind llvm gdb rsync wget ccache bc gzip python-pip
+    valgrind-devel valgrind llvm gdb rsync wget ccache bc gzip python-pip glibc-all-langpacks
   zypper -n clean -mMa
   zypper -n rr devel_tools
   rpmdev-setuptree
@@ -157,7 +157,7 @@ elif [ "x${ID}" == "xubuntu" ]; then
     expect cpanminus locales-all dnsutils tzdata vim bc file \
     systemd systemd-sysv sysvinit-utils libcap2-bin rsyslog libpam-dev \
     openssh-server openssh-client valgrind llvm gdb rsync wget ccache \
-    python python-pip
+    python python-pip langpack-locales
   if [ "x${ID}" == "xubuntu" -a "x${VERSION_ID}" == "x16.04" ]; then
     wget -qO - https://package.perforce.com/perforce.pubkey | apt-key add - &&
       echo 'deb http://package.perforce.com/apt/ubuntu/ xenial release' >/etc/apt/sources.list.d/perforce.list
