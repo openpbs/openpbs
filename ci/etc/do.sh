@@ -283,12 +283,5 @@ if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
   env
   locale
-ls -l /usr/lib/man-db/zsoelim
-ls -l /usr/lib/man-db/manconv
-which preconv
-which tbl
-which nroff
-man /opt/pbs/bin/pbsnodes
-
-  pbs_benchpress -t SmokeTest.test_man_pages 
+  pbs_benchpress --tags=smoke
 fi
