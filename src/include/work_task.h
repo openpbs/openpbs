@@ -57,6 +57,7 @@ extern "C" {
 
 enum work_type {
 	WORK_Immed,		/* immediate action: see state */
+	WORK_Interleave,	/* immediate action: but allow other work to interleave */
 	WORK_Timed,		/* action at certain time */
 	WORK_Deferred_Child,	/* On Death of a Child */
 	WORK_Deferred_Reply,	/* On reply to an outgoing service request */

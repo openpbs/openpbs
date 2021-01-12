@@ -58,6 +58,7 @@
 /* Global Data Items: */
 
 extern pbs_list_head task_list_immed; /* list of tasks that can execute now */
+extern pbs_list_head task_list_interleave;
 extern pbs_list_head task_list_timed; /* list of tasks that have set start times */
 extern pbs_list_head task_list_event; /* list of tasks responding to an event */
 extern int svr_delay_entry;
@@ -104,6 +105,8 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 
 	if (type == WORK_Immed)
 		append_link(&task_list_immed, &pnew->wt_linkevent, pnew);
+	else if (type == WORK_Interleave)
+		append_link(&task_list_interleave, &pnew->wt_linkevent, pnew);
 	else if (type == WORK_Timed) {
 		pold = (struct work_task *)GET_NEXT(task_list_timed);
 		while (pold) {
@@ -360,6 +363,7 @@ default_next_task(void)
 	time_t		   delay;
 	struct work_task  *nxt;
 	struct work_task  *ptask;
+	struct work_task  *last_interleave_task;
 	/*
 	 * tilwhen is the basic "idle" time if there is nothing pending sooner
 	 * for the Server (timed-events, call scheduler, IO)
@@ -384,6 +388,19 @@ default_next_task(void)
 
 	while ((ptask=(struct work_task *)GET_NEXT(task_list_immed)) != NULL)
 		dispatch_task(ptask);
+		
+	last_interleave_task = (struct work_task *) GET_PRIOR(task_list_interleave);
+	while ((ptask=(struct work_task *)GET_NEXT(task_list_interleave)) != NULL) {
+		dispatch_task(ptask);
+		if (ptask == last_interleave_task)
+			break;
+	}
+
+	if (GET_NEXT(task_list_interleave)) {
+		/* more tasks waiting, wait least */
+		tilwhen = 0;
+	}
+
 
 	while ((ptask=(struct work_task *)GET_NEXT(task_list_timed))!=NULL) {
 		if ((delay = ptask->wt_event - time_now) > 0) {

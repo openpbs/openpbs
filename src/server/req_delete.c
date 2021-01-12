@@ -109,6 +109,7 @@ static void post_delete_mom1(struct work_task *);
 static void post_deljobfromresv_req(struct work_task *);
 static void req_deletejob2(struct batch_request *preq, job *pjob);
 int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode);
+static void resume_deletion(struct work_task *ptask);
 
 /* Private Data Items */
 
@@ -117,6 +118,28 @@ static char *sigt  = "SIGTERM";
 static char *sigtj =  SIG_TermJob;
 static char *acct_fmt = "requestor=%s@%s";
 static int qdel_mail = 1; /* true: sending mail */
+
+
+/**
+ * @brief
+ * 	Service to resume the deletion - this is called from a work_interleave task 
+ *
+ * @param[in/out] preq - pointer to task structure
+ *
+ * @return void
+ */
+static void
+resume_deletion(struct work_task *ptask)
+{	
+	struct batch_request *preq = (struct batch_request *) ptask->wt_parm1;	
+
+	if (preq == NULL)
+		return;
+
+	preq->rq_ind.rq_deletejoblist.rq_resume = 1;
+	req_deletejob(preq);
+	return;
+}
 
 
 /**
@@ -334,7 +357,19 @@ decr_single_subjob_usage(job *parent)
 	parent->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob; /* setting arrayjob flag back */
 }
 
-
+/**
+ * @Brief
+ *		Updates the job's error code in reply structure by allocating 
+ *		batch_deljob_status struct. 
+ *
+ * @param[in]	jid	- job id.
+ * @param[in]	preq - pointer batch request structure
+ * @param[in]	errcode - Job's error code 
+ *
+ * @return	int
+ * @retval	0	- success in updating jobs status 
+ * @retval	!0	- failure to update status
+ */
 int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
 {
 	struct batch_deljob_status *pdelstat;
@@ -354,7 +389,6 @@ int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
 	pdelstat->code = errcode;
 	pdelstat->next = preply->brp_un.brp_deletejoblist.brp_delstatc;
 	preply->brp_un.brp_deletejoblist.brp_delstatc = pdelstat;
-
 	preq->rq_reply.brp_count++;
 
 	return 0;
@@ -390,6 +424,9 @@ req_deletejob(struct batch_request *preq)
 	struct batch_reply *preply = &preq->rq_reply;
 	preply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
 	preply->brp_count = 0;
+	int start_jobid = 0;
+	time_t end_time;
+	time_t begin_time = time(NULL);
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
@@ -399,10 +436,6 @@ req_deletejob(struct batch_request *preq)
 		jobids = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
 		count = 1;
 	}
-
-	preply->brp_un.brp_deletejoblist.tot_jobs = count;
-	preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
-	preply->brp_un.brp_deletejoblist.tot_rpys = 0;
 
 	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
 		delhist = 1;
@@ -416,7 +449,14 @@ req_deletejob(struct batch_request *preq)
 	else
 		qdel_mail = 1;
 
-	for (j = 0; j < count; j++) {
+	if (preq->rq_ind.rq_deletejoblist.rq_resume != 1) {
+		preply->brp_un.brp_deletejoblist.tot_jobs = count;
+		preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
+		preply->brp_un.brp_deletejoblist.tot_rpys = 0;	
+	} else 
+		start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
+
+	for (j = start_jobid; j < count; j++) {
 		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
 		if (parent == NULL) {
@@ -502,6 +542,8 @@ req_deletejob(struct batch_request *preq)
 
 		} else if (jt == IS_ARRAY_ArrayJob) {
 			int del_parent = 1;
+			int start = parent->ji_ajinfo->tkm_start;
+			
 			/*
 			 * For array jobs the history is stored at the parent array level and also at the subjob level .
 			 * If the request is to delete the history of an array job then set  ji_deletehistory to 1 for
@@ -515,10 +557,22 @@ req_deletejob(struct batch_request *preq)
 
 			++preq->rq_refct;
 			preply->brp_un.brp_deletejoblist.tot_arr_jobs++;
+			
+			if (preq->rq_ind.rq_deletejoblist.rq_resume)
+				start = preq->rq_ind.rq_deletejoblist.subjobid_to_resume;
 
 			/* keep the array from being removed while we are looking at it */
 			parent->ji_ajinfo->tkm_flags |= TKMFLG_NO_DELETE;
-			for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+			for (i = start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+				end_time = time(NULL);
+				if ((end_time - begin_time) > 5) {
+					preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+					set_task(WORK_Interleave, 0, resume_deletion, preq); 
+					--preq->rq_refct;
+					preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+					return;
+				}
 				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 				if (sjst == JOB_STATE_LTR_UNKNOWN)
 					continue;

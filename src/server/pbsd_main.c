@@ -865,6 +865,7 @@ main(int argc, char **argv)
 
 	CLEAR_HEAD(svr_requests);
 	CLEAR_HEAD(task_list_immed);
+	CLEAR_HEAD(task_list_interleave);
 	CLEAR_HEAD(task_list_timed);
 	CLEAR_HEAD(task_list_event);
 	CLEAR_HEAD(svr_queues);
