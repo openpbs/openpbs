@@ -1089,7 +1089,13 @@ get_vnode_state_op(enum vnode_state_op op)
 static void
 shallow_vnode_free(struct pbsnode *vnode)
 {
+	int i;
+
 	if (vnode) {
+		free(vnode->nd_moms);
+		for (i = 0; i < ND_ATR_LAST; i++) {
+			node_attr_def[i].at_free(&vnode->nd_attr[i]);
+		}
 		free(vnode);
 	}
 }
@@ -1156,6 +1162,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_pque = vnode->nd_pque;
 	vnode_dup->newobj = vnode->newobj;
 	for (i = 0; i < (int)ND_ATR_LAST; i++) {
+		node_attr_def[i].at_free(&vnode_dup->nd_attr[i]);
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
 	}
 	return vnode_dup;
@@ -1325,7 +1332,7 @@ fn_fire_event:
 	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
 fn_free_and_return:
-	shallow_vnode_free(vnode_o);
+	free(vnode_o);
 	free_br(preq);
 }
 

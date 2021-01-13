@@ -574,10 +574,14 @@ connect_svrpool()
 		}
 
 		for (i = 0; svr_conns_primary[i] != NULL && svr_conns_secondary[i] != NULL; i++) {
-			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN)
+			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN ||
+			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN) {
+				close_servers();
 				clust_primary_sock = -1;
-			if (svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN)
 				clust_secondary_sock = -1;
+				log_errf(pbs_errno, __func__, "Couldn't connect the scheduler %s with all the configured servers", sc_name);
+				break;
+			}
 		}
 
 		if (i != num_conf_svrs) {
@@ -586,7 +590,6 @@ connect_svrpool()
 			 * Also wait for 2s for not to burn too much CPU
 			 */
 			sleep(2);
-			close_servers();
 			continue;
 		}
 
