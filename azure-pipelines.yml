@@ -12,40 +12,40 @@ jobs:
   - job: runcheck
     steps:
       - bash: sudo apt-get install -y pep8
-      - bash: which python pep8
       - bash: .github/runchecks
-
-  - job: c7_build_test
-    steps:
-    - bash: docker pull centos:7
-    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:7 /bin/bash
-   # - bash: docker exec   --privileged pbsdev .github/runchecks
-    - bash: docker exec   --privileged pbsdev .travis/do.sh
 
   - job: c8_build_test
     steps:
     - bash: docker pull centos:8
     - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:8 /bin/bash
-   # - bash: docker exec   --privileged pbsdev .github/runchecks
     - bash: docker exec   --privileged pbsdev .travis/do.sh
 
   - job: suse15_build_test
     steps:
     - bash: docker pull opensuse/leap:15
     - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) opensuse/leap:15 /bin/bash
-   # - bash: docker exec   --privileged pbsdev .github/runchecks
     - bash: docker exec  --privileged pbsdev .travis/do.sh
 
-  - job: u1804_build_test
+  - job: u2004_build_test
     steps:
-    - bash: docker pull ubuntu:18.04
-    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:18.04 /bin/bash
-   # - bash: docker exec   --privileged pbsdev .github/runchecks
+    - bash: docker pull ubuntu:20.04
+    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:20.04 /bin/bash
     - bash: docker exec   --privileged pbsdev .travis/do.sh
 
-  - job: c7_sanitize_build_test
+  - job: c8_sanitize_build_test
     steps:
-    - bash: docker pull centos:7
-    - bash: docker run -it -e BUILD_MODE=sanitize -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:7 /bin/bash
-    #- bash: docker exec   --privileged pbsdev .github/runchecks
+    - bash: docker pull centos:8
+    - bash: docker run -it -e BUILD_MODE=sanitize -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:8 /bin/bash
+    - bash: docker exec   --privileged pbsdev .travis/do_sanitize_mode.sh
+    
+  - job: suse15_sanitize_build_test
+    steps:
+    - bash: docker pull opensuse/leap:15
+    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) opensuse/leap:15  /bin/bash
+    - bash: docker exec   --privileged pbsdev .travis/do_sanitize_mode.sh
+    
+  - job: u2004_sanitize_build_test
+    steps:
+    - bash: docker pull ubuntu:20.04
+    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:20.04 /bin/bash
     - bash: docker exec   --privileged pbsdev .travis/do_sanitize_mode.sh
