@@ -41,8 +41,8 @@ if [ $(id -u) -ne 0 ]; then
   echo "This script must be run by root user"
   exit 1
 fi
-export LC_ALL=en_US.utf-8 
-export LANG=en_US.utf-8
+#export LC_ALL=en_US.utf-8 
+#export LANG=en_US.utf-8
 if [ -f /src/ci ]; then
   IS_CI_BUILD=1
   FIRST_TIME_BUILD=$1
@@ -292,5 +292,5 @@ if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
   env
   locale
-  pbs_benchpress -t SmokeTest.test_man_pages 
+  pbs_benchpress --tags=smoke
 fi
