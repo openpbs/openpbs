@@ -41,11 +41,11 @@ jobs:
   - job: suse15_sanitize_build_test
     steps:
     - bash: docker pull opensuse/leap:15
-    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) opensuse/leap:15  /bin/bash
+    - bash: docker run -it -e BUILD_MODE=sanitize -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) opensuse/leap:15  /bin/bash
     - bash: docker exec   --privileged pbsdev .travis/do_sanitize_mode.sh
     
   - job: u2004_sanitize_build_test
     steps:
     - bash: docker pull ubuntu:20.04
-    - bash: docker run -it  -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:20.04 /bin/bash
+    - bash: docker run -it -e BUILD_MODE=sanitize -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:20.04 /bin/bash
     - bash: docker exec   --privileged pbsdev .travis/do_sanitize_mode.sh
