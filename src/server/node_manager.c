@@ -271,38 +271,6 @@ tinsert2(const u_long key1, const u_long key2, mominfo_t *momp, struct tree **ro
 }
 
 /**
- * @brief In case of TPP multicast mode, this function flushes IS_NULL data to be sent out
- * 	to all the moms
- *
- * @param[in] mtfd - The TPP multicast channel to flush
- * @param[in] combine_msg - message will be combined in the caller.
- *
- */
-static int
-send_rpp_values(int mtfd, int combine_msg)
-{
-	int	ret;
-
-	DBPRT(("%s: entered\n", __func__))
-
-	if (mtfd < 0)
-		return -1;
-
-	if (!combine_msg)
-		if ((ret = is_compose(mtfd, IS_NULL)) != DIS_SUCCESS)
-			return ret;
-
-	if ((ret = diswsi(mtfd, rpp_retry)) != DIS_SUCCESS)
-		return ret;
-	if ((ret = diswsi(mtfd, rpp_highwater)) != DIS_SUCCESS)
-		return ret;
-
-	if (!combine_msg)
-		return dis_flush(mtfd);
-	return 0;
-}
-
-/**
  * @brief Send the IS_CLUSTER_ADDRS message to Mom so she has the
  *      latest list of IP addresses of the all the Moms in the complex.
  *
@@ -378,8 +346,6 @@ reply_hellosvr(int stream, int need_inv)
 		return ret;
 
 	if ((ret = diswsi(stream, need_inv)) != DIS_SUCCESS)
-		return ret;
-	if ((ret = send_rpp_values(stream, 1)) != DIS_SUCCESS)
 		return ret;
 
 	if (msvr_mode()) {
@@ -3157,18 +3123,6 @@ mcast_moms(struct work_task *ptask)
 
 	switch (cmd)
 	{
-		case IS_NULL:
-			for (i = 0; i < mominfo_array_size; i++) {
-				if (mominfo_array[i])
-					add_mom_mcast(mominfo_array[i], &mtfd);
-			}
-
-			if ((ret = send_rpp_values(mtfd, 0)) != DIS_SUCCESS)
-				close_streams(mtfd, ret);
-
-			tpp_mcast_close(mtfd);
-			break;
-
 		case IS_CLUSTER_ADDRS:
 			for (i = 0; i < mominfo_array_size; i++) {
 

@@ -1348,7 +1348,10 @@ dup_timed_event_list(timed_event *ote_list, server_info *nsinfo)
 
 	for (ote = ote_list; ote != NULL; ote = ote->next) {
 		nte = dup_timed_event(ote, nsinfo);
-
+		if (nte == NULL) {
+			free_timed_event_list(nte_head);
+			return NULL;
+		}
 		if (nte_prev != NULL)
 			nte_prev->next = nte;
 		else

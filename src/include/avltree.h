@@ -79,6 +79,7 @@ typedef struct {
 #define AVL_DUP_KEYS_OK 0x01 /* repeated key & rec cause an error message */
 #define AVL_CASE_CMP    0x02 /* case insensitive search */
 
+extern void avl_set_maxthreads(int n);
 extern void *get_avl_tls(void);
 extern int avl_create_index(AVL_IX_DESC *pix, int flags, int keylength);
 extern void avl_destroy_index(AVL_IX_DESC *pix);

@@ -198,7 +198,7 @@ cnt:
 					prt_job_err("qrun", ct, job);
 				}
 			} else {
-				fprintf(stderr, "qrun : Server returned error %d for job ", pbs_errno);
+				fprintf(stderr, "qrun : Server returned error %d for job\n", pbs_errno);
 			}
 			exitstatus = 2;
 		} else if (err && (pbs_errno == PBSE_UNKJOBID) && !located) {

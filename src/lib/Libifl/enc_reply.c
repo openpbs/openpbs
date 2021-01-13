@@ -145,7 +145,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 				pstat = (struct brp_status *) GET_NEXT(pstat->brp_stlink);
 			}
 			break;
-			
+
 		case BATCH_REPLY_CHOICE_Delete:
 
 			/* encode "server version" of status structure.

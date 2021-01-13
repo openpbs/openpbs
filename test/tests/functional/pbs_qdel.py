@@ -41,24 +41,17 @@
 from tests.functional import *
 
 
-class TestDeleteJobUsingServerTaggedInJobId(PBSTestSuite):
+class TestQdel(TestFunctional):
     """
-    This test suite contains tests for qdel where it is connecting to server
-    specified in jobid instead of PBS_SERVER from pbs.conf.
+    This test suite contains tests for qdel
     """
-
-    def setUp(self):
-        """
-        Set PBS_SERVER to not-a-server in pbs.conf
-        """
-        PBSTestSuite.setUp(self)
-        self.du.set_pbs_config(confs={'PBS_SERVER': 'not-a-server'})
 
     def test_qdel_with_server_tagged_in_jobid(self):
         """
         Test to make sure that qdel uses server tagged in jobid instead of
         the PBS_SERVER conf setting
         """
+        self.du.set_pbs_config(confs={'PBS_SERVER': 'not-a-server'})
         j = Job(TEST_USER)
         j.set_attributes({ATTR_q: 'workq@' + self.server.hostname})
         jid = self.server.submit(j)
@@ -67,9 +60,19 @@ class TestDeleteJobUsingServerTaggedInJobId(PBSTestSuite):
         except PbsDeleteError as e:
             self.assertFalse(
                 'Unknown Host' in e.msg[0],
-                "Error message is not expected as server name is \
-tagged in the jobid")
-
-    def tearDown(self):
+                "Error message is not expected as server name is"
+                "tagged in the jobid")
         self.du.set_pbs_config(confs={'PBS_SERVER': self.server.hostname})
-        PBSTestSuite.tearDown(self)
+
+    def test_qdel_unknown(self):
+        """
+        Test that qdel for an unknown job throws error saying the same
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete(jid, wait=True)
+        try:
+            self.server.delete(jid)
+            self.fail("qdel didn't throw 'Unknown job id' error")
+        except PbsDeleteError as e:
+            self.assertEqual("qdel: Unknown Job Id " + jid, e.msg[0])

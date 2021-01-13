@@ -279,3 +279,30 @@ init_msi()
 
 	return 0;
 }
+
+/**
+ * @brief
+ * 	Used to Create serverer_instance_id which is of the form server_instance_name:server_instance_port
+ * 
+ * @return char *
+ * @return NULL - failure
+ * @retval !NULL - pointer to server_instance_id
+ */
+char *
+gen_svr_inst_id(void)
+{
+	char svr_inst_name[PBS_MAXHOSTNAME + 1];
+	unsigned int svr_inst_port;
+	char *svr_inst_id = NULL;
+
+
+	if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
+        	get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
+
+	svr_inst_port = pbs_conf.batch_service_port;
+
+	pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
+
+	return svr_inst_id;
+
+}

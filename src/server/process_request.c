@@ -293,10 +293,23 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 		rc = PBSE_UNKSCHED;
 		goto rerr;
 	}
+
 	if (sched->sc_conn_addr != conn->cn_addr) {
-		rc = PBSE_BADHOST;
-		goto rerr;
+		if (pbs_conf.pbs_primary != NULL && pbs_conf.pbs_secondary != NULL) {
+			pbs_net_t addr = get_hostaddr(pbs_conf.pbs_primary);
+			if (addr != conn->cn_addr) {
+				addr = get_hostaddr(pbs_conf.pbs_secondary);
+				if (addr != conn->cn_addr) {
+					rc = PBSE_BADHOST;
+					goto rerr;
+				}
+			}
+		} else {
+			rc = PBSE_BADHOST;
+			goto rerr;
+		}
 	}
+	
 	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
@@ -1641,7 +1654,7 @@ free_br(struct batch_request *preq)
 			break;
 		case PBS_BATCH_DeleteJobList:
 			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
-				free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
+				free_string_array(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:
@@ -1780,34 +1793,4 @@ get_servername(unsigned int *port)
 		name = parse_servername(pbs_conf.pbs_server_name, port);
 
 	return name;
-}
-
-/**
- * @brief
- * 	Used to get serverer_instance_id which is of the form server_instance_name:server_instance_port
- * 
- * @return char *
- * @return NULL - failure
- * @retval !NULL - pointer to server_instance_id
- */
-char *
-get_svr_inst_id(void)
-{
-	char svr_inst_name[PBS_MAXHOSTNAME + 1];
-	unsigned int svr_inst_port;
-	char *svr_inst_id = NULL;
-
-
-	if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
-        	get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
-
-	if (pbs_conf.batch_service_port)
-		svr_inst_port = pbs_conf.batch_service_port;
-	else
-		svr_inst_port = PBS_BATCH_SERVICE_PORT;
-
-	pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
-
-	return svr_inst_id;
-
 }

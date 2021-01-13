@@ -1,0 +1,9 @@
+build_test_task:
+  container:
+    matrix:
+      - image: centos:8
+      - kvm: true
+  test_script: 
+      - docker pull centos:8
+      - docker run -it -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8 -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:8 /bin/bash
+      - docker exec  -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8 --privileged pbsdev .travis/do.sh.travis/do.sh

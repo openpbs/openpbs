@@ -537,8 +537,8 @@ struct batch_status {
 
 struct batch_deljob_status {
 	struct batch_deljob_status *next;
-	char	*name;
-	int	code;
+	char *name;
+	int code;
 };
 
 /* structure to hold an attribute that failed verification at ECL
