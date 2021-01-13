@@ -11,7 +11,7 @@ pool:
 jobs:
   - job: runcheck
     steps:
-      - bash: sudo apt-get install -y python3-pep8
+      - bash: sudo apt-get install -y python3-pep8 &&   ls -l `which python` && which pep8
       - bash: which python pep8
       - bash: .github/runchecks
 
