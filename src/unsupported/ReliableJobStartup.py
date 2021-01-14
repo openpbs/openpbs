@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -84,7 +84,11 @@ if e.type == pbs.QUEUEJOB:
     pbs.logmsg(pbs.LOG_DEBUG, "job's select spec changed to %s" % new_select)
 
 elif e.type == pbs.EXECJOB_LAUNCH:
-    if 'PBS_NODEFILE' not in e.env:
+    # PBS_TASKNUM exists on primary Mom when executing launch hook, has value:
+    # 1  - for the first time when launching top-level shell, or
+    # >1 - for the spawned tasks servicing TM_SPAWN requests
+    if not e.job.in_ms_mom() or (
+            ('PBS_TASKNUM' in e.env) and (int(e.env['PBS_TASKNUM']) > 1)):
         e.accept()
     # add a log entry in primary mom logs
     pbs.logmsg(pbs.LOG_DEBUG, "Executing launch")
@@ -103,9 +107,8 @@ elif e.type == pbs.EXECJOB_LAUNCH:
 
     # prune the job's vnodes to satisfy the select spec in resource 'site'
     # and vnodes in vnode_list_fail[] are not used.
-    if e.job.in_ms_mom():
-        pj = e.job.release_nodes(keep_select=e.job.Resource_List["site"])
-        if pj is None:
-            e.job.Hold_Types = pbs.hold_types("s")
-            e.job.rerun()
-            e.reject("unsuccessful at LAUNCH")
+    pj = e.job.release_nodes(keep_select=e.job.Resource_List["site"])
+    if pj is None:
+        e.job.Hold_Types = pbs.hold_types("s")
+        e.job.rerun()
+        e.reject("unsuccessful at LAUNCH")
