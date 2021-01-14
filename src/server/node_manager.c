@@ -1078,27 +1078,6 @@ get_vnode_state_op(enum vnode_state_op op)
 	return "ND_state_unknown";
 }
 
-/**
- * @brief
- * 		Free a duplicated vnode
- *
- * @param[in]	vnode - the vnode to free
- *  
- * @return void
- */
-static void
-shallow_vnode_free(struct pbsnode *vnode)
-{
-	int i;
-
-	if (vnode) {
-		free(vnode->nd_moms);
-		for (i = 0; i < ND_ATR_LAST; i++) {
-			node_attr_def[i].at_free(&vnode->nd_attr[i]);
-		}
-		free(vnode);
-	}
-}
 
 /**
  * @brief
@@ -1128,7 +1107,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
 		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
 			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
-			shallow_vnode_free(vnode_dup);
+			free_pnode(vnode_dup);
 			return NULL;
 		}
 	} else {
@@ -1161,7 +1140,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_accted = vnode->nd_accted;
 	vnode_dup->nd_pque = vnode->nd_pque;
 	vnode_dup->newobj = vnode->newobj;
-	for (i = 0; i < (int)ND_ATR_LAST; i++) {
+	for (i = 0; i < ND_ATR_LAST; i++) {
 		node_attr_def[i].at_free(&vnode_dup->nd_attr[i]);
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
 	}
