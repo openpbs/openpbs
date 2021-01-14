@@ -1118,11 +1118,11 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	/*
 	 * Copy vnode elements (same order as "struct pbsnode" element definition)
 	 */
-	if (vnode_dup->nd_moms) {
-		/* free the initialize_pbsnode() allocation before assigning */
-		free(vnode_dup->nd_moms);
-		vnode_dup->nd_moms = NULL;
-	}
+	/* free the initialize_pbsnode() allocation before assigning */
+
+	free(vnode_dup->nd_name);
+	vnode_dup->nd_name = vnode->nd_name;
+	free(vnode_dup->nd_moms);
 	vnode_dup->nd_moms = vnode->nd_moms;
 	vnode_dup->nd_nummoms = vnode->nd_nummoms;
 	vnode_dup->nd_nummslots = vnode->nd_nummslots;
