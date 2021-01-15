@@ -1,7 +1,5 @@
 # coding: utf-8
-"""
 
-/*
 # Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -39,9 +37,6 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
- *
- */
-"""
 # Allow pbs.v1 (Python support routines) and _pbs_v1 (C support routines)
 # to be callable under "pbs." prefix.
 from _pbs_v1 import *
