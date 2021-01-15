@@ -576,10 +576,6 @@ connect_svrpool()
 		for (i = 0; svr_conns_primary[i] != NULL && svr_conns_secondary[i] != NULL; i++) {
 			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN ||
 			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN) {
-				close_servers();
-				clust_primary_sock = -1;
-				clust_secondary_sock = -1;
-				log_errf(pbs_errno, __func__, "Couldn't connect the scheduler %s with all the configured servers", sc_name);
 				break;
 			}
 		}
@@ -589,7 +585,9 @@ connect_svrpool()
 			 * we should go to the top of the loop again and call pbs_connect
 			 * Also wait for 2s for not to burn too much CPU
 			 */
+			log_errf(pbs_errno, __func__, "Scheduler %s could not connect with all the configured servers", sc_name);
 			sleep(2);
+			close_servers();
 			continue;
 		}
 
