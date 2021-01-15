@@ -59,6 +59,8 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 
@@ -114,7 +116,7 @@ if __name__ == '__main__':
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ciszd:mo:l:rh", lopts)
-    except:
+    except Exception :
         usage()
         sys.exit(1)
 

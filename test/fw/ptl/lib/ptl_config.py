@@ -102,7 +102,7 @@ class PtlConfig(object):
                 k = k.strip()
                 v = v.strip()
                 self.options[k] = v
-            except:
+            except Exception :
                 self.logger.error('Error parsing line ' + line)
         # below two if block are for backword compatibility
         if 'PTL_EXPECT_MAX_ATTEMPTS' in self.options:

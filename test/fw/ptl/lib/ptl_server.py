@@ -72,7 +72,7 @@ from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
 try:
     import psycopg2
     PSYCOPG = True
-except:
+except Exception :
     PSYCOPG = False
 from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsDeljobError, PbsDelresvError,
@@ -704,7 +704,7 @@ class Server(PBSService):
         try:
             rescs = self.status(RSC)
             rescs = [r['id'] for r in rescs]
-        except:
+        except Exception :
             rescs = []
         if len(rescs) > 0:
             self.manager(MGR_CMD_DELETE, RSC, id=rescs)
@@ -812,7 +812,7 @@ class Server(PBSService):
                     if 'queue' in node.keys():
                         self.manager(MGR_CMD_UNSET, NODE, 'queue',
                                      node['id'])
-            except:
+            except Exception :
                 pass
             self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
 
@@ -949,7 +949,7 @@ class Server(PBSService):
                 with open(outfile, mode) as f:
                     json.dump(self.saved_config, f)
                     self.saved_config[MGR_OBJ_SERVER].clear()
-            except:
+            except Exception :
                 self.logger.error('Error processing file ' + outfile)
                 return False
 
@@ -1478,7 +1478,7 @@ class Server(PBSService):
                             elif obj_type == PBS_HOOK:
                                 return [h.attributes for h in
                                         self.pbshooks.values()]
-                    except:
+                    except Exception :
                         pass
                 else:
                     bs = pbs_stathook(c, id, a, extend)
@@ -3630,13 +3630,13 @@ class Server(PBSService):
         lines = ret['out']
         try:
             for l in lines:
-                l = l.strip()
-                if l == '' or l.startswith('#'):
+                strip_line = l.strip()
+                if strip_line == '' or strip_line.startswith('#'):
                     continue
                 name = None
                 rtype = None
                 flag = None
-                res = l.split()
+                res = strip_line.split()
                 e0 = res[0]
                 if len(res) > 1:
                     e1 = res[1].split('=')
@@ -3657,7 +3657,7 @@ class Server(PBSService):
                 name = e0
                 r = Resource(name, rtype, flag)
                 resources[name] = r
-        except:
+        except Exception :
             raise PbsResourceError(rc=1, rv=False,
                                    msg="error in parse_resources")
         return resources
@@ -4265,7 +4265,7 @@ class Server(PBSService):
             if len(resvs) > 0:
                 try:
                     self.delresv(resvs, runas=ROOT_USER)
-                except:
+                except Exception :
                     pass
                 reservations = self.status(RESV, runas=ROOT_USER)
 
@@ -4784,7 +4784,7 @@ class Server(PBSService):
                         if a.endswith('mem'):
                             try:
                                 amt = PbsTypeSize().encode(amt)
-                            except:
+                            except Exception :
                                 # we guessed the type incorrectly
                                 pass
                     else:
@@ -4891,7 +4891,7 @@ class Server(PBSService):
                             avail_nodes_by_time[tm].append(nodes[n])
                             try:
                                 nodes_id.remove(n)
-                            except:
+                            except Exception :
                                 pass
                         else:
                             ncopy = copy.copy(nodes[n])
@@ -4928,7 +4928,7 @@ class Server(PBSService):
                                 avail_nodes_by_time[tm].append(nodes[n])
                                 try:
                                     nodes_id.remove(n)
-                                except:
+                                except Exception :
                                     pass
                             else:
                                 ncopy = copy.copy(nodes[n])
@@ -5290,7 +5290,7 @@ class Server(PBSService):
         srv_stat = self.status(SERVER, 'sync_mom_hookfiles_timeout')
         try:
             sync_val = srv_stat[0]['sync_mom_hookfiles_timeout']
-        except:
+        except Exception :
             self.logger.info("Setting sync_mom_hookfiles_timeout to 15s")
             self.manager(MGR_CMD_SET, SERVER,
                          {"sync_mom_hookfiles_timeout": 15})
@@ -5643,13 +5643,13 @@ class Server(PBSService):
                     v = v.split(',')
                     for rval in v:
                         rval = rval.strip("'")
-                        l = self.utils.parse_fgc_limit(k + '=' + rval)
-                        if l is None:
+                        limit_list = self.utils.parse_fgc_limit(k + '=' + rval)
+                        if limit_list is None:
                             self.logger.error("Couldn't parse limit: " +
                                               k + str(rval))
                             continue
 
-                        (lim_type, resource, etype, ename, value) = l
+                        (lim_type, resource, etype, ename, value) = limit_list
                         if (etype, ename) not in self.entities:
                             entity = Entity(etype, ename)
                             self.entities[(etype, ename)] = entity
@@ -6103,7 +6103,7 @@ class Server(PBSService):
                               snapmap=self.snapmap)
             try:
                 svr.manager(MGR_CMD_DELETE, NODE, None, id="")
-            except:
+            except Exception :
                 pass
             svr.revert_to_defaults(delqueues=True, delhooks=True)
             local = svr.pbs_conf['PBS_HOME']
@@ -6144,7 +6144,7 @@ class Server(PBSService):
             for a in ['pbs_license_info', 'mail_from', 'acl_hosts']:
                 try:
                     svr.manager(MGR_CMD_UNSET, SERVER, a, sudo=True)
-                except:
+                except Exception :
                     pass
 
             for (d, l) in _fcopy:
@@ -6178,7 +6178,7 @@ class Server(PBSService):
                 if vdef:
                     try:
                         svr.manager(MGR_CMD_DELETE, NODE, None, "")
-                    except:
+                    except Exception :
                         pass
                     MoM(self, h, pbsconf_file=conf_file).insert_vnode_def(
                         vdef)

@@ -50,10 +50,10 @@ import time
 try:
     from ptl.lib.pbs_ifl import *
     API_OK = True
-except:
+except Exception :
     try:
         from ptl.lib.pbs_ifl_mock import *
-    except:
+    except Exception :
         sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
                          "to make it\n")
         raise ImportError
