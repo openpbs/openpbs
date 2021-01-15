@@ -127,7 +127,7 @@ enum failover_state are_we_primary(void)
 		return FAILOVER_CONFIG_ERROR;
 
 	if (get_fullhostname(pbs_conf.pbs_primary, primary_host, (sizeof(primary_host) - 1))==-1) {
-		log_err(-1, "comm_main", "Unable to get full host name of primary");
+		log_err(-1, __func__, "Unable to get full host name of primary");
 		return FAILOVER_CONFIG_ERROR;
 	}
 
@@ -135,7 +135,7 @@ enum failover_state are_we_primary(void)
 		return FAILOVER_PRIMARY;   /* we are the listed primary */
 
 	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, "comm_main", "Unable to get full host name of secondary");
+		log_err(-1, __func__, "Unable to get full host name of secondary");
 		return FAILOVER_CONFIG_ERROR;
 	}
 	if (strcmp(hn1, server_host) == 0)
@@ -578,7 +578,7 @@ main(int argc, char **argv)
 	}
 
 	if (load_auths(AUTH_SERVER)) {
-		log_err(-1, "pbs_comm", "Failed to load auth lib");
+		log_err(-1, __func__, "Failed to load auth lib");
 		return 2;
 	}
 
@@ -604,14 +604,14 @@ main(int argc, char **argv)
 			memcpy(&pbs_conf_bak, &pbs_conf, sizeof(struct pbs_config));
 
 			if (pbs_loadconf(1) == 0) {
-				log_err(-1, NULL, "Configuration error, ignoring");
+				log_err(-1, __func__, "Configuration error, ignoring");
 				memcpy(&pbs_conf, &pbs_conf_bak, sizeof(struct pbs_config));
 			} else {
 				/* restore old pbs.conf */
 				new_logevent = pbs_conf.pbs_comm_log_events;
 				memcpy(&pbs_conf, &pbs_conf_bak, sizeof(struct pbs_config));
 				pbs_conf.pbs_comm_log_events = new_logevent;
-				log_err(-1, NULL, "Processed SIGHUP");
+				log_err(-1, __func__, "Processed SIGHUP");
 
 				log_event_mask = &pbs_conf.pbs_comm_log_events;
 				tpp_set_logmask(*log_event_mask);

@@ -1315,15 +1315,6 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 	if (cmd == TPP_CMD_CLOSE) {
 		handle_disconnect(conn);
 
-	} else if (cmd == TPP_CMD_FREECONN) {
-		/* now actually delete and close fd's that got the close
-		 * we do this at the end of the event loop so that we
-		 * do not advertently free things but a later event in the
-		 * array triggers another close, possibly closing another fd
-		 */
-		tpp_sock_close(conn->sock_fd);
-		free_phy_conn(conn);
-
 	} else if (cmd == TPP_CMD_EXIT) {
 		int i;
 
@@ -1341,15 +1332,13 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 			tpp_sock_close(td->listen_fd);
 
 		/* clean up the lazy conn queue */
-		while ((conn_ev = tpp_deque(&td->def_act_que))) {
-			if (conn_ev->cmdval == TPP_CMD_FREECONN) {
-				tpp_sock_close(conn_ev->tfd);
-				free_phy_conn(conn);
-			}
+		while ((conn_ev = tpp_deque(&td->def_act_que)))
 			free(conn_ev);
-		}
 
 		tpp_log(LOG_INFO, NULL, "Thrd exiting, had %d connections", num_cons);
+
+		/* destory the AVL tls */
+		free_avl_tls();
 
 		pthread_exit(NULL);
 		/* no execution after this */
@@ -1708,9 +1697,10 @@ handle_disconnect(phy_conn_t *conn)
 {
 	int error;
 	short cmd;
-	void *data;
+	int tfd;
+	tpp_packet_t *pkt;
 	pbs_socklen_t len = sizeof(error);
-	tpp_que_elem_t *n;
+	tpp_que_elem_t *n = NULL;
 
 	if (conn == NULL || conn->net_state == TPP_CONN_DISCONNECTED)
 		return 1;
@@ -1745,10 +1735,8 @@ handle_disconnect(phy_conn_t *conn)
 	 * but they failed in transit.
 	 */
 	n = NULL;
-	while (tpp_mbox_clear(&conn->td->mbox, &n, conn->sock_fd, &cmd, &data) == 0) {
+	while (tpp_mbox_clear(&conn->td->mbox, &n, conn->sock_fd, &cmd, (void **) &pkt) == 0) {
 		if (cmd == TPP_CMD_SEND) {
-			tpp_packet_t *pkt = data;
-
 			if (the_pkt_presend_handler)
 				the_pkt_presend_handler(conn->sock_fd, pkt, conn->ctx, conn->extra);
 
@@ -1761,11 +1749,10 @@ handle_disconnect(phy_conn_t *conn)
 
 	tpp_unlock_rwlock(&cons_array_lock);
 
-	/* now enque the connection structure to a queue to be
-	 * actually deleted at the end of the event loop for
-	 * this thread (fd will also be closed there)
-	 */
-	enque_deferred_event(conn->td, -1, TPP_CMD_FREECONN, 0);
+	/* free old connection */
+	tfd = conn->sock_fd;
+	free_phy_conn(conn);
+	tpp_sock_close(tfd);
 
 	return 0;
 }
@@ -2050,7 +2037,7 @@ send_data(phy_conn_t *conn)
 static void
 free_phy_conn(phy_conn_t *conn)
 {
-	tpp_que_elem_t *n;
+	tpp_que_elem_t *n = NULL;
 	tpp_packet_t *pkt;
 	short cmd;
 
@@ -2102,6 +2089,9 @@ tpp_transport_shutdown()
 	for (i = 0; i < num_threads; i++) {
 		if (tpp_is_valid_thrd(thrd_pool[i]->worker_thrd_id))
 			pthread_join(thrd_pool[i]->worker_thrd_id, &ret);
+		
+		tpp_em_destroy(thrd_pool[i]->em_context);
+		free(thrd_pool[i]->tpp_tls);
 		free(thrd_pool[i]);
 	}
 	free(thrd_pool);

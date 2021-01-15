@@ -489,6 +489,22 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 	return 0;
 }
 
+/* 
+ * free tpp conf member variables
+ * to be called before exit
+ * 
+ * @param[in] tpp_conf - pointer to the tpp conf structure
+ * 
+ */
+void
+free_tpp_config(struct tpp_config *tpp_conf)
+{
+	free(tpp_conf->routers);
+	free_string_array(tpp_conf->supported_auth_methods);
+	free(tpp_conf->node_name);
+	free_auth_config(tpp_conf->auth_config);
+}
+
 /**
  * @brief tpp_make_authdata - allocate conn_auth_t structure based given values
  *

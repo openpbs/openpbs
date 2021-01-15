@@ -1312,6 +1312,8 @@ tpp_shutdown()
 	if (strmarray)
 		free(strmarray);
 	tpp_destroy_rwlock(&strmarray_lock);
+
+	free_tpp_config(tpp_conf);
 }
 
 /**
@@ -2986,13 +2988,13 @@ leaf_close_handler(int tfd, int error, void *c, void *extra)
 		tpp_transport_set_conn_extra(tfd, NULL);
 	}
 
-	if (tpp_going_down == 1)
-		return -1; /* while we are doing shutdown don't try to reconnect etc */
-
 	r = (tpp_router_t *) ctx->ptr;
 
 	/* deallocate the connection structure associated with ctx */
 	tpp_transport_close(r->conn_fd);
+
+	if (tpp_going_down == 1)
+		return -1; /* while we are doing shutdown don't try to reconnect etc */
 
 	/*
 	 * Disassociate the older context, so we can attach

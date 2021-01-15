@@ -2257,6 +2257,8 @@ tpp_router_shutdown()
 
 	TPP_DBPRT("from pid = %d", getpid());
 	tpp_transport_shutdown();
+
+	free_tpp_config(tpp_conf);
 }
 
 /**
