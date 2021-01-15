@@ -521,8 +521,7 @@ close_servers(void)
 			free(qrun_list[i].jid);
 	}
 	free(qrun_list);
-
-	sched_svr_init();
+	qrun_list = NULL;
 
 	clust_primary_sock = -1;
 	clust_secondary_sock = -1;
@@ -602,11 +601,15 @@ connect_svrpool()
 		/* Reached here means everything is success, so we will break out of the loop */
 		break;
 	}
+	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED,
+		   LOG_INFO, msg_daemonname, "Connected to all the configured servers");
 
-	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to all the configured servers");
+	sched_svr_init();
+
 	for (i = 0; svr_conns_secondary[i] != NULL; i++) {
 		if (tpp_em_add_fd(poll_context, svr_conns_secondary[i]->sd, EM_IN | EM_HUP | EM_ERR) < 0) {
-			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns_secondary[i]->name);
+			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s",
+				 svr_conns_secondary[i]->name);
 			die(-1);
 		}
 	}
@@ -643,7 +646,6 @@ sched_svr_init(void)
 static void
 reconnect_servers()
 {
-
 	close_servers();
 	connect_svrpool();
 }
@@ -1115,7 +1117,6 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 
 	pthread_mutex_init(&cleanup_lock, &attr);
 
-	sched_svr_init();
 	connect_svrpool();
 
 	for (go = 1; go;) {
