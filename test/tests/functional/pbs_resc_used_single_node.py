@@ -51,7 +51,7 @@ class Test_singleNode_Job_ResourceUsed(TestFunctional):
         for r in self.rsc_list:
             try:
                 self.server.manager(MGR_CMD_DELETE, RSC, id=r, runas=ROOT_USER)
-            except:
+            except Exception:
                 pass
         self.server.restart()
         self.mom.restart()
@@ -61,7 +61,7 @@ class Test_singleNode_Job_ResourceUsed(TestFunctional):
         for r in self.rsc_list:
             try:
                 self.server.manager(MGR_CMD_DELETE, RSC, id=r, runas=ROOT_USER)
-            except:
+            except Exception:
                 pass
 
         self.server.restart()

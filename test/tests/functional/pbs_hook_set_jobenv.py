@@ -153,18 +153,18 @@ class TestPbsHookSetJobEnv(TestFunctional):
             penv = {}
             penv_exclude = {}
             for line in fd:
-                l = line.split("=", 1)
-                if (len(l) == 2):
-                    pkey = l[0]
+                fields = line.split("=", 1)
+                if (len(fields) == 2):
+                    pkey = fields[0]
                     if pkey not in self.exclude_env:
-                        penv[pkey] = l[1]
+                        penv[pkey] = fields[1]
                         tmpenv = penv
                     else:
-                        penv_exclude[pkey] = l[1]
+                        penv_exclude[pkey] = fields[1]
                         tmpenv = penv_exclude
                 elif pkey != "":
                     # append to previous dictionary entry
-                    tmpenv[pkey] += l[0]
+                    tmpenv[pkey] += fields[0]
         if (ishook == "hook"):
             self.env_hook = penv
             self.env_hook_exclude = penv_exclude

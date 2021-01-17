@@ -287,5 +287,5 @@ fi
 
 if [ "x${IS_CI_BUILD}" != "x1" ]; then
   cd /opt/ptl/tests/
-  pbs_benchpress --tags=smoke
+  pbs_benchpress --tags=smoke --exclude=SmokeTest.test_man_pages
 fi

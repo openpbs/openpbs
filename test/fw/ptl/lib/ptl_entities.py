@@ -361,9 +361,10 @@ class Limit(Policy):
         return self.__repr__()
 
     def __repr__(self):
-        l = [self.container_id, self.limit_type, self.resource, '[',
-             self.entity.type, ':', self.entity.name, '=', self.value, ']']
-        return " ".join(l)
+        limit_list = [self.container_id, self.limit_type, self.resource, '[',
+                      self.entity.type, ':', self.entity.name, '=',
+                      self.value, ']']
+        return " ".join(limit_list)
 
 
 class EquivClass(PBSObject):

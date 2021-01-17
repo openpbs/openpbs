@@ -67,7 +67,7 @@ class PbsGroup(object):
         try:
             _group = grp.getgrnam(self.name)
             self.gid = _group.gr_gid
-        except:
+        except Exception:
             pass
 
         if users is None:
@@ -155,7 +155,7 @@ class PbsUser(object):
             self.gid = _user.pw_gid
             self.shell = _user.pw_shell
             self.gecos = _user.pw_gecos
-        except:
+        except Exception:
             pass
 
         if groups is None:

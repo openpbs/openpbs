@@ -50,7 +50,7 @@ from ptl.utils.pbs_cliutils import CliUtils
 
 try:
     from BeautifulSoup import BeautifulSoup
-except:
+except Exception:
     pass
 
 

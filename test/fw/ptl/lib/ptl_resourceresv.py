@@ -326,7 +326,7 @@ class Job(ResourceResv):
         else:
             try:
                 homedir = pwd.getpwnam(user)[5]
-            except:
+            except Exception:
                 homedir = ""
 
         self.username = user
@@ -582,7 +582,7 @@ class InteractiveJob(threading.Thread):
         """
         try:
             import pexpect
-        except:
+        except Exception:
             self.logger.error('pexpect module is required for '
                               'interactive jobs')
             return None

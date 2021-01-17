@@ -806,10 +806,10 @@ sleep 5
                 pkey = ""
                 penv = {}
                 for line in fd:
-                    l = line.split('=', 1)
-                    if len(l) == 2:
-                        pkey = l[0]
-                        penv[pkey] = l[1]
+                    fields = line.split('=', 1)
+                    if len(fields) == 2:
+                        pkey = fields[0]
+                        penv[pkey] = fields[1]
             np_var = penv['NONPRINT_VAR']
             np_char = np_var.split(',')[1]
             self.assertEqual(ch, np_char)
@@ -848,10 +848,10 @@ sleep 5
             pkey = ""
             penv = {}
             for line in fd:
-                l = line.split('=', 1)
-                if len(l) == 2:
-                    pkey = l[0]
-                    penv[pkey] = l[1]
+                fields = line.split('=', 1)
+                if len(fields) == 2:
+                    pkey = fields[0]
+                    penv[pkey] = fields[1]
         np_var = penv['NONPRINT_VAR']
         self.logger.info("np_var: %s" % repr(np_var))
         np_char1 = np_var.split(',')[1]
@@ -927,10 +927,10 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         j_output = ret['out']
         penv = {}
         for line in j_output:
-            l = line.split('=', 1)
-            if len(l) == 2:
-                pkey = l[0]
-                penv[pkey] = l[1]
+            fields = line.split('=', 1)
+            if len(fields) == 2:
+                pkey = fields[0]
+                penv[pkey] = fields[1]
         np_var = penv['NONPRINT_VAR']
         self.logger.info("np_var: %s" % repr(np_var))
         np_char1 = np_var.split(',')[1]
