@@ -646,8 +646,12 @@ sched_svr_init(void)
 static void
 reconnect_servers()
 {
+	pthread_mutex_lock(&cleanup_lock);
+
 	close_servers();
 	connect_svrpool();
+	
+	pthread_mutex_unlock(&cleanup_lock);
 }
 
 /**
