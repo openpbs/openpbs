@@ -2874,7 +2874,7 @@ again:
 
 		case TPP_DATA:
 		case TPP_CLOSE_STRM: {
-			char msg[TPP_GEN_BUF_SZ];
+			char msg[TPP_GEN_BUF_SZ] = "";
 			unsigned int src_sd;
 			unsigned int dest_sd;
 			unsigned int src_magic;
