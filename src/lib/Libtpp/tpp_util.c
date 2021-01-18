@@ -2354,6 +2354,9 @@ tpp_encrypt_pkt(conn_auth_t *authdata, tpp_packet_t *pkt)
 	void *buf = NULL;
 	char *p;
 
+	if (!pkt)
+		return 0;
+
 	if (type == TPP_AUTH_CTX && data->for_encrypt == FOR_ENCRYPT)
 		return 0;
 

@@ -2551,6 +2551,9 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 	tpp_chunk_t *first_chunk;
 	unsigned char type;
 
+	if (!pkt)
+		return 0;
+		
 	first_chunk = GET_NEXT(pkt->chunks);
 	if (!first_chunk)
 		return 0;

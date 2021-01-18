@@ -2055,6 +2055,8 @@ free_phy_conn(phy_conn_t *conn)
 			tpp_free_pkt(pkt);
 	}
 
+	tpp_mbox_destroy(&conn->send_mbox);
+
 	free(conn->ctx);
 	free(conn->scratch.data);
 	free(conn);
