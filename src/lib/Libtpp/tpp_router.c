@@ -1037,7 +1037,7 @@ router_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 	 * then extra will be NULL and this is just a sending simulation
 	 * so no encryption needed
 	 */
-	if (authdata == NULL || authdata->encryptdef == NULL)
+	if (authdata == NULL || authdata->encryptdef == NULL || pkt == NULL)
 		return 0;
 
 	return (tpp_encrypt_pkt(authdata, pkt));
