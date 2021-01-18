@@ -366,10 +366,10 @@ class BatchUtils(object):
         if bs is None:
             return
 
-        l = self.batch_status_to_dictlist(bs, attr_names)
-        self.display_batch_status_as_dictlist(l, writer)
+        attr_list = self.batch_status_to_dictlist(bs, attr_names)
+        self.display_batch_status_as_dictlist(attr_list, writer)
 
-    def display_dictlist(self, l=[], writer=sys.stdout, fmt=None):
+    def display_dictlist(self, dict_list=[], writer=sys.stdout, fmt=None):
         """
         Display a list of dictionaries using writer, defaults to
         sys.stdout
@@ -381,9 +381,9 @@ class BatchUtils(object):
         :type fmt: str or None
         :returns: Displays list of dictionaries
         """
-        self.display_batch_status_as_dictlist(l, writer, fmt)
+        self.display_batch_status_as_dictlist(dict_list, writer, fmt)
 
-    def dictlist_to_file(self, l=[], filename=None, mode='w'):
+    def dictlist_to_file(self, dict_list=[], filename=None, mode='w'):
         """
         write a dictlist to file
 
@@ -404,20 +404,20 @@ class BatchUtils(object):
             os.makedirs(d)
         try:
             with open(filename, mode) as f:
-                self.display_dictlist(l, f)
-        except:
+                self.display_dictlist(dict_list, f)
+        except Exception:
             self.logger.error('error writing to file ' + filename)
             raise
 
-    def batch_status_as_dictlist_to_file(self, l=[], writer=sys.stdout):
+    def batch_status_as_dictlist_to_file(self, dictlist=[], writer=sys.stdout):
         """
         Write a dictlist to file
 
-        :param l: Dictlist
-        :type l: List
+        :param dictlist: Dictlist
+        :type dictlist: List
         :raises: Exception writing to file
         """
-        return self.dictlist_to_file(l, writer)
+        return self.dictlist_to_file(dictlist, writer)
 
     def file_to_dictlist(self, fpath=None, attribs=None, id=None):
         """
@@ -455,7 +455,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'r') as f:
                 lines = f.readlines()
-        except:
+        except Exception:
             self.logger.error('error converting nodes to vnode def')
             return None
 
@@ -463,7 +463,7 @@ class BatchUtils(object):
 
         return self.dictlist_to_vnodedef(dl)
 
-    def show(self, l=[], name=None, fmt=None):
+    def show(self, obj_list=[], name=None, fmt=None):
         """
         Alias to display_dictlist with sys.stdout as writer
 
@@ -480,9 +480,9 @@ class BatchUtils(object):
         """
         if name:
             i = 0
-            for obj in l:
+            for obj in obj_list:
                 if obj['id'] == name:
-                    l = [l[i]]
+                    obj_list = [obj_list[i]]
                     break
                 i += 1
         self.display_dictlist(l, fmt=fmt)
@@ -511,22 +511,22 @@ class BatchUtils(object):
             return RSC
         return None
 
-    def display_batch_status_as_dictlist(self, l=[], writer=sys.stdout,
+    def display_batch_status_as_dictlist(self, dict_list=[], writer=sys.stdout,
                                          fmt=None):
         """
         Display a batch status as a list of dictionaries
         using writer, defaults to sys.stdout
 
-        :param l: List
-        :type l: List
+        :param dict_list: List
+        :type dict_list: List
         :param fmt: - Optional format string
         :type fmt: str or None
         :returns: Displays batch status as a list of dictionaries
         """
-        if l is None:
+        if dict_list is None:
             return
 
-        for d in l:
+        for d in dict_list:
             self.display_batch_status_as_dict(d, writer, fmt)
 
     def batch_status_as_dict_to_str(self, d={}, fmt=None):
@@ -612,21 +612,21 @@ class BatchUtils(object):
         """
         writer.write(self.batch_status_as_dict_to_str(d, fmt))
 
-    def decode_dictlist(self, l=None, json=True):
+    def decode_dictlist(self, dict_list=None, json=True):
         """
         decode a list of dictionaries
 
-        :param l: List of dictionaries
-        :type l: List
+        :param dict_list: List of dictionaries
+        :type dict_list: List
         :param json: The target of the decode is meant for ``JSON``
                      formatting
         :returns: Decoded list of dictionaries
         """
-        if l is None:
+        if dict_list is None:
             return ''
 
         _js = []
-        for d in l:
+        for d in dict_list:
             _jdict = {}
             for k, v in d.items():
                 if ',' in v:
@@ -675,8 +675,8 @@ class BatchUtils(object):
         d = {}
 
         for l in lines:
-            l = l.strip()
-            m = self.pbsobjname_re.match(l)
+            strip_line = l.strip()
+            m = self.pbsobjname_re.match(strip_line)
             if m:
                 if len(d.keys()) > 1:
                     if id is None or (id is not None and d['id'] == id):
@@ -687,7 +687,7 @@ class BatchUtils(object):
                 if _t == 'Resv ID: ':
                     d[_t.replace(': ', '')] = d['id']
             else:
-                m = self.pbsobjattrval_re.match(l)
+                m = self.pbsobjattrval_re.match(strip_line)
                 if m:
                     attr = m.group('attribute')
                     # Revisit this after having separate VNODE class
@@ -735,8 +735,8 @@ class BatchUtils(object):
         prev_attr = None
 
         for l in lines:
-            l = l.strip()
-            m = self.pbsobjname_re.match(l)
+            strip_line = l.strip()
+            m = self.pbsobjname_re.match(strip_line)
             if m:
                 bs = batch_status()
                 bs.name = m.group('name')
@@ -749,7 +749,7 @@ class BatchUtils(object):
                 prev_bs = bs
                 prev_attr = None
             else:
-                m = self.pbsobjattrval_re.match(l)
+                m = self.pbsobjattrval_re.match(strip_line)
                 if m:
                     attr = attrl()
                     attr.name = m.group('attribute')
@@ -777,7 +777,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'r') as f:
                 lines = f.readlines()
-        except:
+        except Exception:
             self.logger.error('error converting file ' + fpath + ' to batch')
             return None
 
@@ -797,7 +797,7 @@ class BatchUtils(object):
         try:
             with open(fpath, 'w') as f:
                 self.display_batch_status(bs, writer=f)
-        except:
+        except Exception:
             self.logger.error('error converting batch status to file')
 
     def batch_to_vnodedef(self, bs):
@@ -1042,7 +1042,7 @@ class BatchUtils(object):
         """
         try:
             ret = time.mktime(time.strptime(st, '%a %b %d %H:%M:%S %Y'))
-        except:
+        except Exception:
             ret = st
         return ret
 
@@ -1066,7 +1066,7 @@ class BatchUtils(object):
                                                             fmt=_f)
                 dtime_to = self.convert_datetime_to_epoch(m.group('dt_to'),
                                                           fmt=_f)
-            except:
+            except Exception:
                 self.logger.error('error converting dedicated time')
         return (dtime_from, dtime_to)
 

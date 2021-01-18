@@ -513,7 +513,7 @@ class Scheduler(PBSService):
             conf_opts = self.du.cat(self.hostname, schd_cnfg,
                                     sudo=(not self.has_snap),
                                     level=logging.DEBUG2)['out']
-        except:
+        except Exception:
             self.logger.error('error parsing scheduler configuration')
             return False
 
@@ -664,7 +664,7 @@ class Scheduler(PBSService):
             os.remove(fn)
 
             self.logger.debug(self.logprefix + "updated configuration")
-        except:
+        except Exception:
             m = self.logprefix + 'error in apply_config '
             self.logger.error(m + str(traceback.print_exc()))
             raise PbsSchedConfigError(rc=1, rv=False, msg=m)
@@ -925,7 +925,7 @@ class Scheduler(PBSService):
                 with open(outfile, mode) as f:
                     json.dump(self.server.saved_config, f)
                     self.server.saved_config[MGR_OBJ_SCHED].clear()
-            except:
+            except Exception:
                 self.logger.error('error saving configuration ' + outfile)
                 return False
 
@@ -1627,7 +1627,7 @@ class Scheduler(PBSService):
                     (dtime_from, dtime_to) = self.utils.convert_dedtime(line)
                     self.dedicated_time.append({'from': dtime_from,
                                                 'to': dtime_to})
-        except:
+        except Exception:
             self.logger.error('error in parse_dedicated_time')
             return None
 
@@ -1707,7 +1707,7 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, src=fn, dest=ddfile, sudo=True,
                              preserve_permission=False)
             os.remove(fn)
-        except:
+        except Exception:
             raise PbsSchedConfigError(rc=1, rv=False,
                                       msg='error adding dedicated time')
 
@@ -1777,7 +1777,7 @@ class Scheduler(PBSService):
         """
         try:
             from ptl.utils.pbs_logutils import PBSSchedulerLog
-        except:
+        except Exception:
             self.logger.error('error loading ptl.utils.pbs_logutils')
             return None
 

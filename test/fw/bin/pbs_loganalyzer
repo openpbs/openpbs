@@ -156,7 +156,7 @@ if __name__ == '__main__':
                    "re-conditional=", "estimated-info-only", "silent",
                    "db-type=", "db-access="]
         opts, args = getopt.getopt(sys.argv[1:], shortopt, longopt)
-    except:
+    except Exception:
         usage()
         sys.exit(1)
 
@@ -166,14 +166,14 @@ if __name__ == '__main__':
         elif o == '-b':
             try:
                 begin = logutils.convert_date_time(val)
-            except:
+            except Exception:
                 print('Error converting time, expected format '
                       '%m/%d/%Y %H:%M:%S')
                 sys.exit(1)
         elif o == '-e':
             try:
                 end = logutils.convert_date_time(val)
-            except:
+            except Exception:
                 print('Error converting time, expected format '
                       '%m/%d/%Y %H:%M:%S')
                 print(traceback.print_exc())

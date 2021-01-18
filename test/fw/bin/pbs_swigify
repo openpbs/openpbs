@@ -258,8 +258,8 @@ if __name__ == '__main__':
     if logconf:
         logging.config.fileConfig(logconf)
     else:
-        l = cu.get_logging_level(level)
-        logging.basicConfig(level=l)
+        log_lvl = cu.get_logging_level(level)
+        logging.basicConfig(level=log_lvl)
 
     b = cu.check_bin(swigbin)
     if not b:

@@ -57,7 +57,7 @@ HAS_RTD = False
 try:
     import sphinx_rtd_theme
     HAS_RTD = True
-except:
+except Exception:
     HAS_RTD = False
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -338,6 +338,7 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('autodoc-skip-member', autodoc_skip_member)
+
 
 # Default autodoc members for API rst file
 autodoc_default_flags = ['members', 'no-undoc-members', 'no-private-members']

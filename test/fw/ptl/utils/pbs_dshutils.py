@@ -610,13 +610,15 @@ class DshUtils(object):
                 for k, v in conf.items():
                     if isinstance(v, list):
                         for eachprop in v:
-                            l = 'echo "%s %s" >> %s\n' % (str(k),
-                                                          str(eachprop),
-                                                          rhost)
-                            fd.write(l)
+                            fields = 'echo "%s %s" >> %s\n' % (
+                                str(k),
+                                str(eachprop),
+                                rhost)
+                            fd.write(fields)
                     else:
-                        l = 'echo "%s %s" >> %s\n' % (str(k), str(v), rhost)
-                        fd.write(l)
+                        fields = 'echo "%s %s" >> %s\n' % (str(k), str(v),
+                                                           rhost)
+                        fd.write(fields)
                 fd.write('%s 0600 %s\n' % (self.which(hostname, 'chmod',
                                                       level=logging.DEBUG2),
                                            rhost))

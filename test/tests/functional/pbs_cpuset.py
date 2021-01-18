@@ -64,7 +64,7 @@ class TestPbsCpuset(TestFunctional):
             if rc['rc'] == 0 and len(rc['out']) == 1:
                 try:
                     fsize = int(rc['out'][0])
-                except:
+                except Exception:
                     pass
             # 1073741824 == 1Gb
             if fsize > 1073741824:
