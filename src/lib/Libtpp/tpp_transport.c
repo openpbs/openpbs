@@ -1727,22 +1727,12 @@ handle_disconnect(phy_conn_t *conn)
 	/*
 	 * Since we are freeing the socket connection we must
 	 * empty any pending commands that were in this thread's
-	 * mbox (since this thread is the connection's manager.
+	 * mbox (since this thread is the connection's manager
 	 *
-	 * Simulate a successful data-send by allowing the packets to
-	 * flow through the_call back functions the_pkt_presend_handler
-	 * This is similar to us having just sent out the packets
-	 * but they failed in transit.
 	 */
 	n = NULL;
-	while (tpp_mbox_clear(&conn->td->mbox, &n, conn->sock_fd, &cmd, (void **) &pkt) == 0) {
-		if (cmd == TPP_CMD_SEND) {
-			if (the_pkt_presend_handler)
-				the_pkt_presend_handler(conn->sock_fd, pkt, conn->ctx, conn->extra);
-
-			tpp_free_pkt(pkt);
-		}
-	}
+	while (tpp_mbox_clear(&conn->td->mbox, &n, conn->sock_fd, &cmd, (void **) &pkt) == 0)
+		tpp_free_pkt(pkt);
 
 	conns_array[conn->sock_fd].slot_state = TPP_SLOT_FREE;
 	conns_array[conn->sock_fd].conn = NULL;
