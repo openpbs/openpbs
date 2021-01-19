@@ -209,6 +209,22 @@ get_avl_tls(void)
 	return p_avl_tls;
 }
 
+
+/**
+ * @brief
+ *	Free the thread local storage used for avltree for this thread
+ */
+void
+free_avl_tls(void)
+{
+	avl_tls_t *p_avl_tls = NULL;
+
+	pthread_once(&avl_init_once, avl_init_func);
+
+	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key))) 
+		free(p_avl_tls);
+}
+
 #define tind             (((avl_tls_t *) get_avl_tls())->__tind)
 #define ix_keylength  (((avl_tls_t *) get_avl_tls())->__ix_keylength)
 #define ix_flags   (((avl_tls_t *) get_avl_tls())->__ix_flags)

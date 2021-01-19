@@ -1312,6 +1312,8 @@ tpp_shutdown()
 	if (strmarray)
 		free(strmarray);
 	tpp_destroy_rwlock(&strmarray_lock);
+
+	free_tpp_config(tpp_conf);
 }
 
 /**
@@ -2549,6 +2551,9 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt, void *c, void *extra)
 	tpp_chunk_t *first_chunk;
 	unsigned char type;
 
+	if (!pkt)
+		return 0;
+		
 	first_chunk = GET_NEXT(pkt->chunks);
 	if (!first_chunk)
 		return 0;
@@ -2869,7 +2874,7 @@ again:
 
 		case TPP_DATA:
 		case TPP_CLOSE_STRM: {
-			char msg[TPP_GEN_BUF_SZ];
+			char msg[TPP_GEN_BUF_SZ] = "";
 			unsigned int src_sd;
 			unsigned int dest_sd;
 			unsigned int src_magic;
@@ -2986,13 +2991,13 @@ leaf_close_handler(int tfd, int error, void *c, void *extra)
 		tpp_transport_set_conn_extra(tfd, NULL);
 	}
 
-	if (tpp_going_down == 1)
-		return -1; /* while we are doing shutdown don't try to reconnect etc */
-
 	r = (tpp_router_t *) ctx->ptr;
 
 	/* deallocate the connection structure associated with ctx */
 	tpp_transport_close(r->conn_fd);
+
+	if (tpp_going_down == 1)
+		return -1; /* while we are doing shutdown don't try to reconnect etc */
 
 	/*
 	 * Disassociate the older context, so we can attach
