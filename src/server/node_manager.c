@@ -1104,13 +1104,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	/* 
 	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
-	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
-		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
-			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
-			free_pnode(vnode_dup);
-			return NULL;
-		}
-	} else {
+	if ((vnode_dup = calloc(1, sizeof(struct pbsnode))) == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "vnode_dup alloc failed");
 		return NULL;
 	}
@@ -1118,11 +1112,8 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	/*
 	 * Copy vnode elements (same order as "struct pbsnode" element definition)
 	 */
-	/* free the initialize_pbsnode() allocation before assigning */
 
-	free(vnode_dup->nd_name);
 	vnode_dup->nd_name = vnode->nd_name;
-	free(vnode_dup->nd_moms);
 	vnode_dup->nd_moms = vnode->nd_moms;
 	vnode_dup->nd_nummoms = vnode->nd_nummoms;
 	vnode_dup->nd_nummslots = vnode->nd_nummslots;
@@ -1141,7 +1132,6 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_pque = vnode->nd_pque;
 	vnode_dup->newobj = vnode->newobj;
 	for (i = 0; i < ND_ATR_LAST; i++) {
-		node_attr_def[i].at_free(&vnode_dup->nd_attr[i]);
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
 	}
 	return vnode_dup;
