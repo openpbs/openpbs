@@ -39,9 +39,6 @@
 
 #ifndef	_SERVER_INFO_H
 #define	_SERVER_INFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include <pbs_ifl.h>
 #include "state_count.h"
@@ -486,7 +483,4 @@ int compare_resource_avail(schd_resource *r1, schd_resource *r2);
 
 node_info **dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _SERVER_INFO_H */

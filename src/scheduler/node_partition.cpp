@@ -76,6 +76,8 @@
 #include <log.h>
 #include <pbs_ifl.h>
 #include <pbs_internal.h>
+#include <libpbs.h>
+
 #include "config.h"
 #include "constant.h"
 #include "data_types.h"
@@ -91,6 +93,7 @@
 #include "sort.h"
 #include "buckets.h"
 
+#include <vector>
 
 /**
  * @brief

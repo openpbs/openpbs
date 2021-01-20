@@ -40,9 +40,6 @@
 #ifndef SRC_SCHEDULER_QUEUE_H_
 #define SRC_SCHEDULER_QUEUE_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 
 
@@ -64,8 +61,5 @@ int ds_enqueue(ds_queue *queue, void *obj);
 void *ds_dequeue(ds_queue *queue);
 int ds_queue_is_empty(ds_queue *queue);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* SRC_SCHEDULER_QUEUE_H_ */

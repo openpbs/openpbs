@@ -93,6 +93,7 @@ extern int h_errno;
 
 /* Global Data */
 
+extern char *pbs_server_name;
 extern int	 svr_quehasnodes;
 extern int	 svr_totnodes;
 extern pbs_list_head svr_queues;
@@ -367,6 +368,20 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	prd  = &svr_resc_def[RESC_NCPUS];
 	(void)add_resource_entry(pat1, prd);
+
+	if (get_num_servers() > 1) {
+		resource *svr_nd_grp = NULL;
+
+		/* Set the value of msvr_node_group to "server_id" where
+		 * server_id is the id of the server for the node */
+		prd = &svr_resc_def[RESC_MSVR_ND_GROUP];
+		if ((svr_nd_grp = add_resource_entry(pat1, prd)) != NULL) {
+			char buf[PBS_MAXHOSTNAME];
+
+			snprintf(buf, sizeof(buf), "%s", pbs_server_name);
+			decode_arst(&svr_nd_grp->rs_value, NULL, NULL, buf);
+		}
+	}
 
 	/* add to resources_assigned any resource with ATR_DFLAG_FNASSN */
 	/* or  ATR_DFLAG_ANASSN set in the resource definition          */

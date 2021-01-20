@@ -39,9 +39,6 @@
 
 #ifndef	_JOB_INFO_H
 #define	_JOB_INFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include <pbs_ifl.h>
 #include "data_types.h"
@@ -90,7 +87,9 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 int send_job_updates(int pbs_sd, resource_resv *job);
 
 /* send delayed attributes to the server for a job */
-int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr);
+int send_attr_updates(int job_owner_sd, char *job_name, struct attrl *pattr);
+
+preempt_job_info *send_preempt_jobs(int virtual_sd, char **preempt_jobs_list);
 
 
 /*
@@ -415,7 +414,4 @@ void associate_dependent_jobs(server_info *sinfo);
 /* This function associated the job passed in to its parent job */
 int associate_array_parent(resource_resv *pjob, server_info *sinfo);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _JOB_INFO_H */

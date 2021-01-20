@@ -103,7 +103,7 @@ extern char *msg_daemonname;
 extern long *log_event_mask;
 
 extern void set_logfile(FILE *fp);
-extern int set_msgdaemonname(char *ch);
+extern int set_msgdaemonname(const char *ch);
 void set_log_conf(char *leafname, char *nodename,
 		  unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
 		  unsigned int log_highres);

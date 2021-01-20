@@ -138,7 +138,7 @@ int verify_value_state(int, int, int, struct attropl *, char **);
 int verify_value_tolerate_node_failures(int, int, int, struct attropl *, char **);
 
 /* verify object name function */
-int pbs_verify_object_name(int, char *);
+int pbs_verify_object_name(int, const char *);
 
 #ifdef	__cplusplus
 }

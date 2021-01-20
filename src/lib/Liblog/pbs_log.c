@@ -216,7 +216,7 @@ gettimeofday(struct timeval *tp, struct timezone *tzp)
  */
 
 int
-set_msgdaemonname(char *ch)
+set_msgdaemonname(const char *ch)
 {
 	if(!(msg_daemonname = strdup(ch))) {
 		return 1;

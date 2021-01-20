@@ -39,9 +39,6 @@
 
 #ifndef	_NODE_INFO_H
 #define	_NODE_INFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 #include <pbs_ifl.h>
@@ -640,7 +637,4 @@ int add_node_events(timed_event *te, void *arg1, void *arg2);
  * Find a node by its hostname
  */
 node_info *find_node_by_host(node_info **ninfo_arr, char *host);
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _NODE_INFO_H */

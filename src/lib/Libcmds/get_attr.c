@@ -62,7 +62,7 @@
  */
 
 char *
-get_attr(struct attrl *pattrl, char *name, char *resc)
+get_attr(struct attrl *pattrl, const char *name, const char *resc)
 {
 	while (pattrl) {
 		if (strcmp(name, pattrl->name) == 0) {

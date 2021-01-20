@@ -40,9 +40,6 @@
 
 #ifndef _QUEUE_INFO_H
 #define _QUEUE_INFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 #include <pbs_ifl.h>
 #include "data_types.h"
 
@@ -113,7 +110,4 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 int queue_in_partition(queue_info *qinfo, char *partition);
 
 
-#ifdef	__cplusplus
-}
-#endif
 #endif /* _QUEUE_INFO_H */

@@ -564,9 +564,8 @@ connect_svrpool()
 			continue;
 		}
 
-		svr_conns_primary = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_primary_sock));
-		svr_conns_secondary = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_secondary_sock));
-
+		svr_conns_primary = get_conn_svr_instances(clust_primary_sock);
+		svr_conns_secondary = get_conn_svr_instances(clust_secondary_sock);
 		if (svr_conns_primary == NULL || svr_conns_secondary == NULL) {
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);
@@ -757,8 +756,8 @@ send_cycle_end()
 	svr_conn_t **svr_conns;
 	int i;
 	static int cycle_end_marker = 0;
-	svr_conns = static_cast<svr_conn_t **>(get_conn_svr_instances(clust_secondary_sock));
-	
+
+	svr_conns = get_conn_svr_instances(clust_secondary_sock);
 	if (svr_conns == NULL)
 		goto err;
 

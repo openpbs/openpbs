@@ -39,9 +39,6 @@
 
 #ifndef	_GLOBALS_H
 #define	_GLOBALS_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 #include <pthread.h>
 #include <limits.h>
 
@@ -128,7 +125,4 @@ extern int clust_secondary_sock;
  */
 extern char *cmp_aoename;
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _GLOBALS_H */

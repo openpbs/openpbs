@@ -124,6 +124,7 @@
 #include "pbs_error.h"
 #include "log.h"
 #include "pbs_share.h"
+#include "libpbs.h"
 #include "server_info.h"
 #include "constant.h"
 #include "queue_info.h"
@@ -460,6 +461,28 @@ query_server(status *pol, int pbs_sd)
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
+	if (!sinfo->node_group_enable && sinfo->node_group_key != NULL &&
+			strcmp(sinfo->node_group_key[0], "msvr_node_group") == 0) {
+		node_partition **np = NULL;
+
+		np = create_node_partitions(policy, sinfo->unassoc_nodes,
+				sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
+
+		/* For each job, we'll need the placement set of nodes which belong to its server
+		 * So, we need to associate psets with their respective server ids
+		 */
+		if (np != NULL) {
+			int i;
+			server_psets spset;
+
+			for (i = 0; i < sinfo->num_parts; i++) {
+				spset.svr_inst_id = np[i]->ninfo_arr[0]->svr_inst_id;
+				spset.np = np[i];
+				sinfo->svr_to_psets.push_back(spset);
+			}
+		}
+		free(np);
+	}
 
 	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
@@ -644,6 +667,15 @@ query_server_info(status *pol, struct batch_status *server)
 	site_set_share_head(sinfo);
 #endif /* localmod 034 */
 
+	if (sinfo->node_group_key == NULL && get_num_servers() > 1) {
+		/* Set node_group_key to msvr_node_group for server local placement */
+		sinfo->node_group_key = break_comma_list(const_cast<char *>("msvr_node_group"));
+
+		/* This will ensure that create_placement_sets doesn't create placement sets,
+		 * we'll create directly by calling create_node_partitions
+		 */
+		sinfo->node_group_enable = 0;
+	}
 	return sinfo;
 }
 
@@ -998,6 +1030,8 @@ free_server_info(server_info *sinfo)
 		free_node_partition_array(sinfo->nodepart);
 	if (sinfo->allpart)
 		free_node_partition(sinfo->allpart);
+	if (!(sinfo->svr_to_psets.empty()))
+		sinfo->svr_to_psets.clear();
 	if (sinfo->hostsets != NULL)
 		free_node_partition_array(sinfo->hostsets);
 	if (sinfo->nodesigs)
@@ -1109,7 +1143,7 @@ new_server_info(int limallocflag)
 {
 	server_info *sinfo;			/* the new server */
 
-	if ((sinfo = static_cast<server_info *>(malloc(sizeof(server_info)))) == NULL) {
+	if ((sinfo = new server_info()) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1563,7 +1597,7 @@ free_server(server_info *sinfo)
 #ifdef NAS /* localmod 053 */
 	site_restore_users();
 #endif /* localmod 053 */
-	free(sinfo);
+	delete sinfo;
 }
 
 /**
@@ -2349,6 +2383,9 @@ dup_server_info(server_info *osinfo)
 			return NULL;
 		}
 	}
+
+	/* Copy the vector of server psets */
+	nsinfo->svr_to_psets = osinfo->svr_to_psets;
 
 	return nsinfo;
 }

@@ -40,9 +40,6 @@
 
 #ifndef	_CHECK_H
 #define	_CHECK_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "server_info.h"
 #include "queue_info.h"
@@ -240,7 +237,4 @@ schd_resource *unset_str_res(void);
  *	returns void
  */
 void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl);
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _CHECK_H */

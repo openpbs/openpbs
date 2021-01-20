@@ -40,9 +40,6 @@
 #ifndef	_MISC_H
 #define	_MISC_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 #include "server_info.h"
@@ -297,9 +294,6 @@ add_str_to_unique_array(char ***str_arr, char *str);
  */
 void free_ptr_array (void *inp);
 
-#ifdef __cplusplus
-}
-#endif
 
 
 #endif	/* _MISC_H */
