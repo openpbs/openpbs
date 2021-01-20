@@ -1559,3 +1559,32 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_JOB_STATE[value] = key
     elif key.startswith("JOB_SUBSTATE_"):
         _pbs_v1.REVERSE_JOB_SUBSTATE[value] = key
+
+_pbs_v1.REVERSE_HOOK_EVENT = {
+	"QUEUEJOB": _pbs_v1.__dict__['QUEUEJOB'],
+	"MODIFYJOB": _pbs_v1.__dict__['MODIFYJOB'],
+	"RESVSUB": _pbs_v1.__dict__['RESVSUB'],
+	"MOVEJOB": _pbs_v1.__dict__['MOVEJOB'],
+	"RUNJOB": _pbs_v1.__dict__['RUNJOB'],
+	"ENDJOB": _pbs_v1.__dict__['ENDJOB'],
+	"MANAGEMENT": _pbs_v1.__dict__['MANAGEMENT'],
+	"MODIFYVNODE": _pbs_v1.__dict__['MODIFYVNODE'],
+	"MODIFYVNODE": _pbs_v1.__dict__['MODIFYVNODE'],
+	"PROVISION": _pbs_v1.__dict__['PROVISION'],
+	"RESV_END": _pbs_v1.__dict__['RESV_END'],
+	"EXECJOB_BEGIN": _pbs_v1.__dict__['EXECJOB_BEGIN'],
+	"EXECJOB_PROLOGUE": _pbs_v1.__dict__['EXECJOB_PROLOGUE'],
+	"EXECJOB_EPILOGUE": _pbs_v1.__dict__['EXECJOB_EPILOGUE'],
+	"EXECJOB_PRETERM": _pbs_v1.__dict__['EXECJOB_PRETERM'],
+	"EXECJOB_END": _pbs_v1.__dict__['EXECJOB_END'],
+	"EXECJOB_LAUNCH": _pbs_v1.__dict__['EXECJOB_LAUNCH'],
+	"EXECHOST_PERIODIC": _pbs_v1.__dict__['EXECHOST_PERIODIC'],
+	"EXECHOST_STARTUP": _pbs_v1.__dict__['EXECHOST_STARTUP'],
+	"EXECJOB_ATTACH": _pbs_v1.__dict__['EXECJOB_ATTACH'],
+	"EXECJOB_RESIZE": _pbs_v1.__dict__['EXECJOB_RESIZE'],
+	"EXECJOB_ABORT": _pbs_v1.__dict__['EXECJOB_ABORT'],
+	"EXECJOB_POSTSUSPEND": _pbs_v1.__dict__['EXECJOB_POSTSUSPEND'],
+	"EXECJOB_PRERESUME": _pbs_v1.__dict__['EXECJOB_PRERESUME'],
+	"MOM_EVENTS": _pbs_v1.__dict__['MOM_EVENTS'],
+	"PERIODIC": _pbs_v1.__dict__['PERIODIC'],
+}
