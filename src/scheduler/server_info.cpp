@@ -982,6 +982,21 @@ find_resource(schd_resource *reslist, resdef *def)
 }
 
 /**
+ * @brief	free server_psets vector
+ *
+ * @param[out]	spsets - vector of server psets
+ *
+ * @return void
+ */
+static void
+free_server_psets(std::vector<server_psets>& spsets)
+{
+	for (auto& spset: spsets) {
+		free_node_partition(spset.np);
+	}
+}
+
+/**
  * @brief
  * 		free_server_info - free the space used by a server_info
  *		structure
@@ -1031,7 +1046,7 @@ free_server_info(server_info *sinfo)
 	if (sinfo->allpart)
 		free_node_partition(sinfo->allpart);
 	if (!(sinfo->svr_to_psets.empty()))
-		sinfo->svr_to_psets.clear();
+		free_server_psets(sinfo->svr_to_psets);
 	if (sinfo->hostsets != NULL)
 		free_node_partition_array(sinfo->hostsets);
 	if (sinfo->nodesigs)
