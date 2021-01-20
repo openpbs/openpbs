@@ -58,7 +58,7 @@
 /* Global Data Items: */
 
 extern pbs_list_head task_list_immed; /* list of tasks that can execute now */
-extern pbs_list_head task_list_interleave;
+extern pbs_list_head task_list_interleave; /* list of tasks that can execute after interleaving other tasks */
 extern pbs_list_head task_list_timed; /* list of tasks that have set start times */
 extern pbs_list_head task_list_event; /* list of tasks responding to an event */
 extern int svr_delay_entry;

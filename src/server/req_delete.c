@@ -80,7 +80,7 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 
-#define QDEL_DURATION 5
+#define QDEL_BREAKER_SECS 5
 
 /* Global Data Items: */
 
@@ -371,7 +371,8 @@ decr_single_subjob_usage(job *parent)
  * @retval	0	- success in updating jobs status 
  * @retval	!0	- failure to update status
  */
-int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
+int 
+update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
 {
 	struct batch_deljob_status *pdelstat;
 	struct batch_reply *preply = &preq->rq_reply;
@@ -566,7 +567,7 @@ req_deletejob(struct batch_request *preq)
 			parent->ji_ajinfo->tkm_flags |= TKMFLG_NO_DELETE;
 			for (i = start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
 				end_time = time(NULL);
-				if ((end_time - begin_time) > QDEL_DURATION) {
+				if ((end_time - begin_time) > QDEL_BREAKER_SECS) {
 					preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
 					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
 					set_task(WORK_Interleave, 0, resume_deletion, preq); 
