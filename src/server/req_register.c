@@ -474,11 +474,13 @@ req_register(struct batch_request *preq)
 						struct depend_job *dj_iter;
 						job *pr_job;
 						pr_job = find_job(preq->rq_ind.rq_register.rq_child);
-						for (dj_iter = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
-						     dj_iter != NULL; dj_iter = (struct depend_job *)GET_NEXT(dj_iter->dc_link)) {
-							update_depend(pr_job, dj_iter->dc_child, dj_iter->dc_svr, DEPEND_REMOVE, JOB_DEPEND_TYPE_RUNONE);
-							log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-								LOG_INFO, pr_job->ji_qs.ji_jobid, msg_registerrel, dj_iter->dc_child);
+						if (pr_job){
+							for (dj_iter = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
+							     dj_iter != NULL; dj_iter = (struct depend_job *)GET_NEXT(dj_iter->dc_link)) {
+								update_depend(pr_job, dj_iter->dc_child, dj_iter->dc_svr, DEPEND_REMOVE, JOB_DEPEND_TYPE_RUNONE);
+								log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
+									LOG_INFO, pr_job->ji_qs.ji_jobid, msg_registerrel, dj_iter->dc_child);
+							}
 						}
 					}
 					update_depend(pjob, preq->rq_ind.rq_register.rq_parent, preq->rq_ind.rq_register.rq_svr, DEPEND_REMOVE, JOB_DEPEND_TYPE_RUNONE);
@@ -930,6 +932,7 @@ int depend_runone_remove_dependency(job *pjob)
 				}
 			}
 		}
+		del_depend(pdep);
 	}
 	return (0);
 }
