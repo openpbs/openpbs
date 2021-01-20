@@ -989,13 +989,11 @@ find_resource(schd_resource *reslist, resdef *def)
  * @return void
  */
 static void
-free_server_psets(std::vector<server_psets> spsets)
+free_server_psets(std::vector<server_psets>& spsets)
 {
 	for (auto& spset: spsets) {
 		free_node_partition(spset.np);
 	}
-
-	spsets.clear();
 }
 
 /**
