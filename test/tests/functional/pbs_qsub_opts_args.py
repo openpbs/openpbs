@@ -179,7 +179,8 @@ bhtiusabsdlg' % (os.environ['HOME'])
         self.server.expect(JOB, {'job_state': 'W'}, id=jid_1)
         self.logger.info(
             'waiting for 90 seconds to run the job as it is a future job...')
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1, offset=90)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1, offset=90,
+                           interval=2)
 
         # submit a job with past time and should start right away
         past_tm = time.strftime(
