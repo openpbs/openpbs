@@ -376,11 +376,11 @@ if __name__ == '__main__':
 
     if outfile is not None:
         stream_hdlr = logging.StreamHandler()
-        stream_hdlr.setLevel(l)
+        stream_hdlr.setLevel(log_lvl)
         stream_hdlr.setFormatter(logging.Formatter(fmt))
         ptl_logger = logging.getLogger('ptl')
         ptl_logger.addHandler(stream_hdlr)
-        ptl_logger.setLevel(l)
+        ptl_logger.setLevel(log_lvl)
 
     pyver = platform.python_version()
     if minpyver is not None and LooseVersion(pyver) < LooseVersion(minpyver):
