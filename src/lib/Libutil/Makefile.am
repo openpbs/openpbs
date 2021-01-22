@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -61,7 +61,8 @@ libutil_a_SOURCES = \
 	pbs_secrets.c \
 	pbs_aes_encrypt.c \
 	pbs_idx.c \
-	range.c 
+	range.c  \
+	thread_utils.c
 
 if UNDOLR_ENABLED
 libutil_a_SOURCES += undolr.c

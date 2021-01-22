@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -322,6 +322,11 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 		}
 	}
 
+	/* Check if frequency was correctly set */
+	if (rt.freq == ICAL_NO_RECURRENCE) {
+		*err_code = PBSE_BAD_RRULE_SYNTAX;
+		return 0;
+	}
 	/* Check if the rest of the by_* rules are defined
 	 * and valid.
 	 * currently no support for

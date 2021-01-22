@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -48,7 +48,6 @@ class TestQstatPerformance(TestPerformance):
     """
     Testing Qstat Performance
     """
-    qstat_query_list = []
     time_command = 'time'
 
     def setUp(self):
@@ -57,6 +56,7 @@ class TestQstatPerformance(TestPerformance):
             builds absolute path of commands to execute
         """
         TestPerformance.setUp(self)
+        self.qstat_query_list = []
         self.time_command = self.du.which(exe="time")
         if self.time_command == "time":
             self.skipTest("Time command not found")

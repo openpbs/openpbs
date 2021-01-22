@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -72,7 +72,7 @@ from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
 try:
     import psycopg2
     PSYCOPG = True
-except:
+except Exception:
     PSYCOPG = False
 from ptl.lib.ptl_error import (PbsStatusError, PbsSubmitError,
                                PbsDeljobError, PbsDelresvError,
@@ -94,7 +94,7 @@ from ptl.lib.ptl_entities import (Hook, Queue, Entity, Limit,
                                   EquivClass, Resource)
 from ptl.lib.ptl_resourceresv import Job, Reservation, InteractiveJob
 from ptl.lib.ptl_sched import Scheduler
-from ptl.lib.ptl_mom import MoM
+from ptl.lib.ptl_mom import MoM, get_mom_obj
 from ptl.lib.ptl_service import PBSService, PBSInitServices
 from ptl.lib.ptl_expect_action import ExpectActions
 
@@ -704,7 +704,7 @@ class Server(PBSService):
         try:
             rescs = self.status(RSC)
             rescs = [r['id'] for r in rescs]
-        except:
+        except Exception:
             rescs = []
         if len(rescs) > 0:
             self.manager(MGR_CMD_DELETE, RSC, id=rescs)
@@ -812,7 +812,7 @@ class Server(PBSService):
                     if 'queue' in node.keys():
                         self.manager(MGR_CMD_UNSET, NODE, 'queue',
                                      node['id'])
-            except:
+            except Exception:
                 pass
             self.manager(MGR_CMD_DELETE, QUEUE, id=queues)
 
@@ -833,6 +833,28 @@ class Server(PBSService):
                 self.du.rm(path=sched_priv, sudo=True,
                            recursive=True, force=True)
                 self.manager(MGR_CMD_DELETE, SCHED, id=name)
+
+    def create_node(self, name, level="INFO", logerr=False):
+        """
+        Add a node to PBS
+        """
+        ret = self.manager(MGR_CMD_CREATE, VNODE, name,
+                           level=level, logerr=logerr)
+        return ret
+
+    def delete_node(self, name, level="INFO", logerr=False):
+        """
+        Remove a node from PBS
+        """
+        try:
+            ret = self.manager(MGR_CMD_DELETE, VNODE, name,
+                               level=level, logerr=logerr)
+        except PbsManagerError as err:
+            if "Unknown node" not in err.msg[0]:
+                raise
+            else:
+                ret = 15062
+        return ret
 
     def delete_nodes(self):
         """
@@ -927,7 +949,7 @@ class Server(PBSService):
                 with open(outfile, mode) as f:
                     json.dump(self.saved_config, f)
                     self.saved_config[MGR_OBJ_SERVER].clear()
-            except:
+            except Exception:
                 self.logger.error('Error processing file ' + outfile)
                 return False
 
@@ -1356,7 +1378,8 @@ class Server(PBSService):
             if ret['rc'] != 0:
                 raise PbsStatusError(rc=ret['rc'], rv=[], msg=self.geterrmsg())
 
-            bsl = self.utils.convert_to_dictlist(o, attrib, mergelines=True)
+            bsl = self.utils.convert_to_dictlist(
+                o, attrib, mergelines=True, obj_type=obj_type)
 
         # 7- Stat with impersonation over PBS IFL swig-wrapped API
         elif runas is not None:
@@ -1455,7 +1478,7 @@ class Server(PBSService):
                             elif obj_type == PBS_HOOK:
                                 return [h.attributes for h in
                                         self.pbshooks.values()]
-                    except:
+                    except Exception:
                         pass
                 else:
                     bs = pbs_stathook(c, id, a, extend)
@@ -1606,6 +1629,15 @@ class Server(PBSService):
             if submit_dir:
                 os.chdir(submit_dir)
         c = None
+
+        # Revisit this after fixing submitting of executables without
+        # the whole path
+        # Get sleep command depending on which Mom the job will run
+        if ((ATTR_executable in obj.attributes) and
+           ('sleep' in obj.attributes[ATTR_executable])):
+            obj.attributes[ATTR_executable] = (
+                list(self.moms.values())[0]).sleep_cmd
+
         # 1- Submission using the command line tools
         runcmd = []
         if env:
@@ -2226,7 +2258,7 @@ class Server(PBSService):
                     momobj.check_mem_request(attrib)
                     if len(attrib) == 0:
                         return True
-                    vnodes = self.status(HOST, id=cmom)
+                    vnodes = self.status(HOST, id=momobj.shortname)
                     del vnodes[0]  # don't set anything on a naturalnode
                     for vn in vnodes:
                         momobj.check_ncpus_request(attrib, vn)
@@ -2372,7 +2404,8 @@ class Server(PBSService):
             if rc == 0:
                 if cmd == MGR_CMD_LIST:
                     bsl = self.utils.convert_to_dictlist(ret['out'],
-                                                         mergelines=True)
+                                                         mergelines=True,
+                                                         obj_type=obj_type)
                     # Since we stat everything, overwrite the cache
                     self.update_attributes(obj_type, bsl, overwrite=True)
                     # Filter out the attributes requested
@@ -3597,13 +3630,13 @@ class Server(PBSService):
         lines = ret['out']
         try:
             for l in lines:
-                l = l.strip()
-                if l == '' or l.startswith('#'):
+                strip_line = l.strip()
+                if strip_line == '' or strip_line.startswith('#'):
                     continue
                 name = None
                 rtype = None
                 flag = None
-                res = l.split()
+                res = strip_line.split()
                 e0 = res[0]
                 if len(res) > 1:
                     e1 = res[1].split('=')
@@ -3624,7 +3657,7 @@ class Server(PBSService):
                 name = e0
                 r = Resource(name, rtype, flag)
                 resources[name] = r
-        except:
+        except Exception:
             raise PbsResourceError(rc=1, rv=False,
                                    msg="error in parse_resources")
         return resources
@@ -4046,6 +4079,8 @@ class Server(PBSService):
                         ks.lower(): [ks, vs] for ks, vs in stat.items()}
                     k_lower = k.lower()
                     if k_lower not in attrs_lower:
+                        if (statlist.index(stat) + 1) < len(statlist):
+                            continue
                         time.sleep(interval)
                         _tsc = trigger_sched_cycle
                         return self.expect(obj_type, attrib, id, op, attrop,
@@ -4231,7 +4266,7 @@ class Server(PBSService):
             if len(resvs) > 0:
                 try:
                     self.delresv(resvs, runas=ROOT_USER)
-                except:
+                except Exception:
                     pass
                 reservations = self.status(RESV, runas=ROOT_USER)
 
@@ -4277,8 +4312,12 @@ class Server(PBSService):
                     else:
                         self.nodes[id].attributes.update(binfo)
                 else:
-                    self.nodes[id] = MoM(self, id, binfo,
-                                         snapmap={NODE: None})
+                    if 'Mom' in binfo:
+                        self.nodes[id] = get_mom_obj(self, binfo['Mom'], binfo,
+                                                     snapmap={NODE: None})
+                    else:
+                        self.nodes[id] = get_mom_obj(self, id, binfo,
+                                                     snapmap={NODE: None})
                 obj = self.nodes[id]
             elif obj_type == SERVER:
                 if overwrite:
@@ -4746,7 +4785,7 @@ class Server(PBSService):
                         if a.endswith('mem'):
                             try:
                                 amt = PbsTypeSize().encode(amt)
-                            except:
+                            except Exception:
                                 # we guessed the type incorrectly
                                 pass
                     else:
@@ -4853,7 +4892,7 @@ class Server(PBSService):
                             avail_nodes_by_time[tm].append(nodes[n])
                             try:
                                 nodes_id.remove(n)
-                            except:
+                            except Exception:
                                 pass
                         else:
                             ncopy = copy.copy(nodes[n])
@@ -4890,7 +4929,7 @@ class Server(PBSService):
                                 avail_nodes_by_time[tm].append(nodes[n])
                                 try:
                                     nodes_id.remove(n)
-                                except:
+                                except Exception:
                                     pass
                             else:
                                 ncopy = copy.copy(nodes[n])
@@ -5252,7 +5291,7 @@ class Server(PBSService):
         srv_stat = self.status(SERVER, 'sync_mom_hookfiles_timeout')
         try:
             sync_val = srv_stat[0]['sync_mom_hookfiles_timeout']
-        except:
+        except Exception:
             self.logger.info("Setting sync_mom_hookfiles_timeout to 15s")
             self.manager(MGR_CMD_SET, SERVER,
                          {"sync_mom_hookfiles_timeout": 15})
@@ -5605,13 +5644,13 @@ class Server(PBSService):
                     v = v.split(',')
                     for rval in v:
                         rval = rval.strip("'")
-                        l = self.utils.parse_fgc_limit(k + '=' + rval)
-                        if l is None:
+                        limit_list = self.utils.parse_fgc_limit(k + '=' + rval)
+                        if limit_list is None:
                             self.logger.error("Couldn't parse limit: " +
                                               k + str(rval))
                             continue
 
-                        (lim_type, resource, etype, ename, value) = l
+                        (lim_type, resource, etype, ename, value) = limit_list
                         if (etype, ename) not in self.entities:
                             entity = Entity(etype, ename)
                             self.entities[(etype, ename)] = entity
@@ -6065,7 +6104,7 @@ class Server(PBSService):
                               snapmap=self.snapmap)
             try:
                 svr.manager(MGR_CMD_DELETE, NODE, None, id="")
-            except:
+            except Exception:
                 pass
             svr.revert_to_defaults(delqueues=True, delhooks=True)
             local = svr.pbs_conf['PBS_HOME']
@@ -6106,7 +6145,7 @@ class Server(PBSService):
             for a in ['pbs_license_info', 'mail_from', 'acl_hosts']:
                 try:
                     svr.manager(MGR_CMD_UNSET, SERVER, a, sudo=True)
-                except:
+                except Exception:
                     pass
 
             for (d, l) in _fcopy:
@@ -6140,7 +6179,7 @@ class Server(PBSService):
                 if vdef:
                     try:
                         svr.manager(MGR_CMD_DELETE, NODE, None, "")
-                    except:
+                    except Exception:
                         pass
                     MoM(self, h, pbsconf_file=conf_file).insert_vnode_def(
                         vdef)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -141,7 +141,7 @@ extern int alloc_svrleaf(char *resc_name, svr_entlim_leaf_t **pplf);
 extern int parse_resc_type(char *val, int *resc_type_p);
 extern int  parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p);
 extern int verify_resc_name(char *name);
-extern int verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, char *rescname, char *buf, int buflen, int autocorrect);
+extern int verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, const char *rescname, char *buf, int buflen, int autocorrect);
 extern void update_resc_sum(void);
 
 /* Defines for entity limit tracking */

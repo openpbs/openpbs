@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -479,17 +479,16 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
  *		   It will handle the difference cases that caused a
  *		   scheduling cycle
  *
- * @param[in]	sconn	-	connection and command info from server
+ * @param[in]	sd	-	primary socket descriptor to the server pool
  *
  * @return	int
  * @retval	0	: continue calling scheduling cycles
  * @retval	1	: exit scheduler
  */
 int
-schedule(sched_svrconn *sconn, sched_cmd *cmd)
+schedule(int sd, const sched_cmd *cmd)
 {
 	switch (cmd->cmd) {
-		case SCH_ERROR:
 		case SCH_SCHEDULE_NULL:
 		case SCH_RULESET:
 			/* ignore and end cycle */
@@ -504,7 +503,7 @@ schedule(sched_svrconn *sconn, sched_cmd *cmd)
 			reset_global_resource_ptrs();
 
 			/* Get config from the qmgr sched object */
-			if (!set_validate_sched_attrs(sconn->primary_sock))
+			if (!set_validate_sched_attrs(sd))
 				return 0;
 
 		case SCH_SCHEDULE_NEW:
@@ -516,9 +515,9 @@ schedule(sched_svrconn *sconn, sched_cmd *cmd)
 		case SCH_SCHEDULE_MVLOCAL:
 		case SCH_SCHEDULE_ETE_ON:
 		case SCH_SCHEDULE_RESV_RECONFIRM:
-			return intermediate_schedule(sconn, cmd);
+			return intermediate_schedule(sd, cmd);
 		case SCH_SCHEDULE_AJOB:
-			return intermediate_schedule(sconn, cmd);
+			return intermediate_schedule(sd, cmd);
 		case SCH_CONFIGURE:
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				  "reconfigure", "Scheduler is reconfiguring");
@@ -529,7 +528,7 @@ schedule(sched_svrconn *sconn, sched_cmd *cmd)
 				return 0;
 
 			/* Get config from the qmgr sched object */
-			if (!set_validate_sched_attrs(sconn->primary_sock))
+			if (!set_validate_sched_attrs(sd))
 				return 0;
 			break;
 		case SCH_QUIT:
@@ -548,19 +547,19 @@ schedule(sched_svrconn *sconn, sched_cmd *cmd)
  *		intermediate_schedule - responsible for starting/restarting scheduling
  *		cycle.
  *
- * @param[in]	sconn	-	connection and command info from server
+ * @param[in]	sd	-	primary socket descriptor to the server pool
  *
  * returns 0
  *
  */
 int
-intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd)
+intermediate_schedule(int sd, const sched_cmd *cmd)
 {
 	int ret; /* to re schedule or not */
 	int cycle_cnt = 0; /* count of cycles run */
 
 	do {
-		ret = scheduling_cycle(sconn, cmd);
+		ret = scheduling_cycle(sd, cmd);
 
 		/* don't restart cycle if :- */
 
@@ -593,7 +592,7 @@ intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd)
  * @brief
  *		scheduling_cycle - the controling function of the scheduling cycle
  *
- * @param[in]	sconn	-	connection and command info from server
+ * @param[in]	sd	-	primary socket descriptor to the server pool
  *
  * @return	int
  * @retval	0	: success/normal return
@@ -602,7 +601,7 @@ intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd)
  */
 
 int
-scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
+scheduling_cycle(int sd, const sched_cmd *cmd)
 {
 	server_info *sinfo;		/* ptr to the server/queue/job/node info */
 	int rc = SUCCESS;		/* return code from main_sched_loop() */
@@ -627,7 +626,7 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 	do_hard_cycle_interrupt = 0;
 #endif /* localmod 030 */
 	/* create the server / queue / job / node structures */
-	if ((sinfo = query_server(&cstat, sconn->primary_sock)) == NULL) {
+	if ((sinfo = query_server(&cstat, sd)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			  "", "Problem with creating server data structure");
 		end_cycle_tasks(sinfo);
@@ -639,7 +638,7 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 	/* don't confirm reservations if we're handling a qrun request */
 	if (cmd->jid == NULL) {
 		int rc;
-		rc = check_new_reservations(policy, sconn->primary_sock, sinfo->resvs, sinfo);
+		rc = check_new_reservations(policy, sd, sinfo->resvs, sinfo);
 		if (rc) {
 			/* Check if there are new reservations.  If there are, we can't go any
 			 * further in the scheduling cycle since we don't have the up to date
@@ -671,7 +670,7 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 	}
 
 
-	if (init_scheduling_cycle(policy, sconn->primary_sock, sinfo) == 0) {
+	if (init_scheduling_cycle(policy, sd, sinfo) == 0) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, sinfo->name, "init_scheduling_cycle failed.");
 		end_cycle_tasks(sinfo);
 		return 0;
@@ -690,7 +689,7 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 
 	/* run loop run */
 	if (error == 0)
-		rc = main_sched_loop(policy, sconn, sinfo, &err);
+		rc = main_sched_loop(policy, sd, sinfo, &err);
 
 	if (cmd->jid != NULL) {
 		int def_rc = -1;
@@ -699,7 +698,7 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 		for (i = 0; i < MAX_DEF_REPLY && def_rc != 0; i++) {
 			/* smooth sailing, the job ran */
 			if (rc == SUCCESS)
-				def_rc = pbs_defschreply(sconn->primary_sock, SCH_SCHEDULE_AJOB, cmd->jid, 0, NULL, NULL);
+				def_rc = pbs_defschreply(sd, SCH_SCHEDULE_AJOB, cmd->jid, 0, NULL, NULL);
 
 			/* we thought the job should run, but the server had other ideas */
 			else {
@@ -716,11 +715,11 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
 					}
 				} else
 					error = PBSE_RESCUNAV;
-				def_rc = pbs_defschreply(sconn->primary_sock, SCH_SCHEDULE_AJOB, cmd->jid, error, log_msg, NULL);
+				def_rc = pbs_defschreply(sd, SCH_SCHEDULE_AJOB, cmd->jid, error, log_msg, NULL);
 			}
 			if (def_rc != 0) {
 				char *pbs_errmsg;
-				pbs_errmsg = pbs_geterrmsg(sconn->primary_sock);
+				pbs_errmsg = pbs_geterrmsg(sd);
 
 				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, cmd->jid, "Error in deferred reply: %s", pbs_errmsg == NULL ? "" : pbs_errmsg);
 			}
@@ -751,49 +750,57 @@ scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd)
  *
  * @param[out] is_conn_lost - did we lost connection to server?
  *                            1 - yes, 0 - no
+ * @param[in,out] high_prior_cmd - contains the high priority command received
  *
  * @return sched_cmd *
- * @retval NULL  - no super high priority command
- * @retval !NULL - super high priority command
+ * @retval 0 - no super high priority command is received
+ * @retval 1 - super high priority command is received
  *
- * @warning caller has to free returned value using free_sched_cmd() once not needed
  */
-static sched_cmd *
-get_high_prio_cmd(int *is_conn_lost)
+static int
+get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 {
-	if (servers != NULL) {
-		int i = 0;
-		for (; servers[i] != NULL; i++) {
-			sched_cmd *cmd;
-			int rc;
+	int i;
+	sched_cmd cmd;
+	int nsvrs = get_num_servers();
+	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
 
-			if (servers[i]->secondary_sock < 0)
-				continue;
-			cmd = new_sched_cmd();
-			if (cmd == NULL)
-				continue;
-			rc = get_sched_cmd_noblk(servers[i]->secondary_sock, cmd);
-			if (rc == -2) {
-				*is_conn_lost = 1;
-				free_sched_cmd(cmd);
-				return NULL;
+	for (i = 0; svr_conns[i]; i++) {
+		int rc;
+
+		if (svr_conns[i]->sd < 0)
+			continue;
+
+		rc = get_sched_cmd_noblk(svr_conns[i]->sd, &cmd);
+		if (rc == -2) {
+			*is_conn_lost = 1;
+			return 0;
+		}
+		if (rc != 1)
+			continue;
+
+		if (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+			*high_prior_cmd = cmd;
+			if (i == nsvrs - 1)  {
+				/* We need to return only after checking all servers. This way even if multiple
+				 * servers send SCH_SCHEDULE_RESTART_CYCLE we only have to consider one such request
+				 */
+				return 1;
 			}
-			if (rc != 1) {
-				free_sched_cmd(cmd);
-				continue;
-			}
-			if (cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
-				return cmd;
-			} else {
-				if (!ds_enqueue(sched_cmds, cmd)) {
-					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-							__func__, "Failed to enqueue sched cmd in cmds queue: cmd=%d jid=%s", cmd->cmd, cmd->jid ? cmd->jid : "(none)");
-					free_sched_cmd(cmd);
-				}
+		} else {
+			if (cmd.cmd == SCH_SCHEDULE_AJOB)
+				qrun_list[qrun_list_size++] = cmd;
+			else {
+				/* Index of the array is the command recevied. Put the value as 1 which indicates that
+				 * the command is received. If we receive same commands from multiple servers they
+				 * are overwritten which is what we want i.e. it allows us to eliminate duplicate commands.
+				 */
+				if (cmd.cmd >= SCH_SCHEDULE_NULL && cmd.cmd < SCH_CMD_HIGH)
+					sched_cmds[cmd.cmd] = 1;
 			}
 		}
 	}
-	return NULL;
+	return 0;
 }
 
 /**
@@ -809,7 +816,7 @@ get_high_prio_cmd(int *is_conn_lost)
  *		deal with normal job can't run stuff
  *
  * @param[in]	policy	-	policy info
- * @param[in]	sconn	-	connection and command info from server
+ * @param[in]	sd	-	primary socket descriptor to the server pool
  * @param[in]	sinfo	-	pbs universe we're going to loop over
  * @param[out]	rerr	-	error bits from the last job considered
  *
@@ -817,7 +824,7 @@ get_high_prio_cmd(int *is_conn_lost)
  *	@retval -1	: on error
  */
 int
-main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_error **rerr)
+main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 {
 	queue_info *qinfo;		/* ptr to queue that job is in */
 	resource_resv *njob;		/* ptr to the next job to see if it can run */
@@ -908,7 +915,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 				tj = njob;
 
 			if (rc != SCHD_ERROR) {
-				if(run_update_resresv(policy, sconn->primary_sock, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
+				if(run_update_resresv(policy, sd, sinfo, qinfo, tj, ns_arr, RURR_ADD_END_EVENT, err) > 0 ) {
 					rc = SUCCESS;
 					if (sinfo->has_soft_limit || qinfo->has_soft_limit)
 						sort_again = MUST_RESORT_JOBS;
@@ -925,7 +932,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 				free_nspecs(ns_arr);
 		}
 		else if (policy->preempting && in_runnable_state(njob) && (!njob -> can_never_run)) {
-			if (find_and_preempt_jobs(policy, sconn->primary_sock, njob, sinfo, err) > 0) {
+			if (find_and_preempt_jobs(policy, sd, njob, sinfo, err) > 0) {
 				rc = SUCCESS;
 				sort_again = MUST_RESORT_JOBS;
 			}
@@ -957,7 +964,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 #else
 			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs) != 0) {
 #endif
-				cal_rc = add_job_to_calendar(sconn->primary_sock, policy, sinfo, njob, should_use_buckets);
+				cal_rc = add_job_to_calendar(sd, policy, sinfo, njob, should_use_buckets);
 
 				if (cal_rc > 0) { /* Success! */
 #ifdef NAS /* localmod 034 */
@@ -1022,7 +1029,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 					 */
 					update_total_counts(sinfo, qinfo, njob, ALL);
 				}
-				update_accruetype(sconn->primary_sock, sinfo, ACCRUE_CHECK_ERR, update_accrue_err->error_code, njob);
+				update_accruetype(sd, sinfo, ACCRUE_CHECK_ERR, update_accrue_err->error_code, njob);
 			}
 
 			njob->can_not_run = 1;
@@ -1032,7 +1039,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 			translate_fail_code(err, comment, log_msg);
 			if (comment[0] != '\0' &&
 				(!njob->job->is_array || !njob->job->is_begin))
-				update_job_comment(sconn->primary_sock, njob, comment);
+				update_job_comment(sd, njob, comment);
 			if (log_msg[0] != '\0')
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, njob->name, log_msg);
@@ -1057,21 +1064,21 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 			 */
 			if (policy->strict_fifo) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
-				update_jobs_cant_run(sconn->primary_sock, qinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sd, qinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 			else if (!policy->backfill && policy->strict_ordering) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
-				update_jobs_cant_run(sconn->primary_sock, sinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 			else if (!policy->backfill && policy->help_starving_jobs &&
 				njob->job->is_starving) {
 				set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
 				set_schd_error_arg(err, SPECMSG, "Job would conflict with starving job");
-				update_jobs_cant_run(sconn->primary_sock, sinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sd, sinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 			else if (policy->backfill && policy->strict_ordering && qinfo->backfill_depth == 0) {
 				set_schd_error_codes(err, NOT_RUN, STRICT_ORDERING);
-				update_jobs_cant_run(sconn->primary_sock, qinfo->jobs, NULL, err, START_WITH_JOB);
+				update_jobs_cant_run(sd, qinfo->jobs, NULL, err, START_WITH_JOB);
 			}
 		}
 
@@ -1089,18 +1096,19 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 				"Bailed out of main job loop after checking to see if %d jobs could run.", (i + 1));
 		}
 		if (!end_cycle) {
+			sched_cmd cmd;
 			int is_conn_lost = 0;
-			sched_cmd *cmd = get_high_prio_cmd(&is_conn_lost);
+			int rc = get_high_prio_cmd(&is_conn_lost, &cmd);
+
 			if (is_conn_lost) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
-					  njob->name, "We lost connection with the server, leaving scheduling cycle");
+					njob->name, "We lost connection with the server, leaving scheduling cycle");
 				end_cycle = 1;
-			} else if (cmd && cmd->cmd == SCH_SCHEDULE_RESTART_CYCLE) {
+			} else if ((rc == 1) && (cmd.cmd == SCH_SCHEDULE_RESTART_CYCLE)) {
 				log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_WARNING,
-					  njob->name, "Leaving scheduling cycle as requested by server.");
+					njob->name, "Leaving scheduling cycle as requested by server.");
 				end_cycle = 1;
 			}
-			free_sched_cmd(cmd);
 		}
 
 #ifdef NAS /* localmod 030 */
@@ -1113,7 +1121,7 @@ main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_e
 #endif /* localmod 030 */
 
 		/* send any attribute updates to server that we've collected */
-		send_job_updates(sconn->primary_sock, njob);
+		send_job_updates(sd, njob);
 	}
 
 	*rerr = err;
@@ -1301,28 +1309,6 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 }
 
 /**
- * @brief	Send the relevant runjob request to server
- *
- * @param[in]	pbs_sd	-	pbs connection descriptor to the LOCAL server
- * @param[in]	has_runjob_hook	- does server have a runjob hook?
- * @param[in]	jobid	-	id of the job to run
- * @param[in]	execvnode	-	the execvnode to run the job on
- *
- * @return	int
- * @retval	return value of the runjob call
- */
-static int
-send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
-{
-	if (sc_attrs.runjob_mode == RJ_EXECJOB_HOOK)
-		return pbs_runjob(pbs_sd, jobid, execvnode, NULL);
-	else if ((sc_attrs.runjob_mode == RJ_RUNJOB_HOOK) && has_runjob_hook)
-		return pbs_asyrunjob_ack(pbs_sd, jobid, execvnode, NULL);
-	else
-		return pbs_asyrunjob(pbs_sd, jobid, execvnode, NULL);
-}
-
-/**
  * @brief
  * 		run_job - handle the running of a pbs job.  If it's a peer job
  *	       first move it to the local server and then run it.
@@ -1333,13 +1319,16 @@ send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode)
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
  * @param[in]	has_runjob_hook	-	does server have a runjob hook?
  * @param[out]	err	-	error struct to return errors
+ * @param[in]	svr_id_node	- id of the server which owns the first vnode of exec_vnode
+ *
  *
  * @retval	0	: success
  * @retval	1	: failure
  * @retval -1	: error
  */
 int
-run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err)
+run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err,
+ 	char *svr_id_node)
 {
 	char buf[100];	/* used to assemble queue@localserver */
 	const char *errbuf;		/* comes from pbs_geterrmsg() */
@@ -1392,16 +1381,18 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
-				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode);
+				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
+ 						  rjob->job->svr_inst_id);
 			}
 		} else
-			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode);
+			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
+ 					  rjob->job->svr_inst_id);
 	}
 
 	if (rc) {
 		char buf[MAX_LOG_SIZE];
 		set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
-		errbuf = pbs_geterrmsg(pbs_sd);
+		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->job->svr_inst_id));
 		if (errbuf == NULL)
 			errbuf = "";
 		set_schd_error_arg(err, ARG1, errbuf);
@@ -1519,7 +1510,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
 		if (pbs_sd != SIMULATE_SD) {
-			pbsrc = pbs_sigjob(pbs_sd, resresv->name, const_cast<char *>("resume"), NULL);
+			pbsrc = pbs_sigjob(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, const_cast<char *>("resume"), NULL);
 			if (!pbsrc)
 				ret = 1;
 			else {
@@ -1615,6 +1606,10 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						 * nodes into 1 entry for updating our local data structures
 						 */
 						ns = combine_nspec_array(orig_ns);
+						if (ns == NULL) {
+ 							free_nspecs(ns_arr);
+ 							return -1;
+ 						}
 					}
 
 					if (rr->nodepart_name != NULL) {
@@ -1637,8 +1632,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						execvnode != NULL ? execvnode : "(NULL)");
 					fflush(stdout);
 #endif /* localmod 031 */
-
-					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err);
+					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err,
+							ns[0]->ninfo->svr_inst_id);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);
@@ -1793,8 +1788,10 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		 */
 		if (ns_arr != NULL)
 			free_nspecs(ns_arr);
-		else if (ns != rr->nspec_arr)
+		if (ns != NULL && ns != rr->nspec_arr)
 			free_nspecs(ns);
+		if (orig_ns != NULL && ns_arr != orig_ns)
+			free_nspecs(orig_ns);
 
 		rr->can_not_run = 1;
 		if (array != NULL)

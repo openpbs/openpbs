@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -386,7 +386,7 @@ class TestPbsExecjobEnd(TestFunctional):
         attr = {'event': 'execjob_epilogue,execjob_end', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
         j = Job(TEST_USER)
-        j.set_sleep_time(1)
+        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.job_list.append(jid)
         self.mom.log_match("starting hook event EXECJOB_EPILOGUE")

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -691,7 +691,7 @@ scan_for_terminated(void)
 				wtask->wt_aux = (int)exiteval; /* exit status */
 				svr_delay_entry++;	/* see next_task() */
 			}
-			wtask = (struct work_task *)GET_NEXT(wtask->wt_linkall);
+			wtask = (struct work_task *)GET_NEXT(wtask->wt_linkevent);
 		}
 
 		pjob = (job *)GET_NEXT(svr_alljobs);

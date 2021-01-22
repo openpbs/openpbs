@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -772,7 +772,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         offset = 10
         duration = 20
-        shift = 10
+        shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               standing=True)
 
@@ -787,7 +787,7 @@ class TestPbsResvAlter(TestFunctional):
         self.check_resv_running(rid, offset)
 
         # Submit a job to the reservation.
-        self.submit_job_to_resv(rid)
+        self.submit_job_to_resv(rid, sleep=15)
 
         # Changing start time should fail this time as it is not empty.
         self.alter_a_reservation(rid, new_start, new_end, shift,
@@ -823,7 +823,7 @@ class TestPbsResvAlter(TestFunctional):
         """
         duration = 30
         shift = 10
-        offset = 10
+        offset = 30
         rid, start, end = self.submit_and_confirm_reservation(offset, duration,
                                                               standing=True)
 

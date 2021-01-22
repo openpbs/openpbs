@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -110,7 +110,6 @@ extern unsigned long hostidnum;
 extern char *path_priv;
 extern char *path_svrlive;
 extern char *path_secondaryact;
-extern unsigned int pbs_server_port_dis;
 extern time_t secondary_delay;
 extern time_t time_now;
 extern char server_host[];

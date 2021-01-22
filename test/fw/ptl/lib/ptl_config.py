@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -102,7 +102,7 @@ class PtlConfig(object):
                 k = k.strip()
                 v = v.strip()
                 self.options[k] = v
-            except:
+            except Exception:
                 self.logger.error('Error parsing line ' + line)
         # below two if block are for backword compatibility
         if 'PTL_EXPECT_MAX_ATTEMPTS' in self.options:

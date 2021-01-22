@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -50,7 +50,42 @@
 #include "pbs_ecl.h"
 
 /**
- * @brief	Helper function for pbs_asynrunjob and pbs_asynrunjob_ack
+ * @brief
+ * 	get destination server corresponds to a select spec
+ *
+ * @param[in] conn - connection
+ * @param[in] location - select spec
+ *
+ * @return - dest server identifier
+ * @retval server_name:port - success
+ * @retval NULL - No corresponding server
+ *
+ */
+static char *
+get_dest_server(int conn, char *location)
+{
+	char *vnode;
+	struct batch_status *bstat = NULL;
+	char *dest = NULL;
+	struct attrl pat;
+
+	pat.name = ATTR_server_inst_id;
+	pat.value = "";
+
+	vnode = get_first_vnode(location);
+	if ((bstat = pbs_statvnode(conn, vnode, &pat, NULL)) != NULL) {
+		if (bstat->attribs && bstat->attribs->value)
+			pbs_asprintf(&dest, "%s=%s", SERVER_IDENTIFIER,
+				     bstat->attribs->value);
+	}
+
+	pbs_statfree(bstat);
+
+	return dest;
+}
+
+/**
+ * @brief	Inner function for pbs_asynrunjob and pbs_asynrunjob_ack
  *
  * @param[in] c - connection handle
  * @param[in] jobid- job identifier
@@ -63,13 +98,14 @@
  * @retval      !0      error
  */
 static int
-__runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
+__runjob_inner(int c, char *jobid, char *location, char *extend, int req_type)
 {
 	int rc = 0;
 	unsigned long resch = 0;
 
 	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
+
 	if (location == NULL)
 		location = "";
 
@@ -119,6 +155,69 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 	if (pbs_client_thread_unlock_connection(c) != 0)
 		return pbs_errno;
 
+	return rc;
+}
+
+/**
+ * @brief	Helper function for pbs_asynrunjob and pbs_asynrunjob_ack
+ *
+ * @param[in] c - connection handle
+ * @param[in] jobid- job identifier
+ * @param[in] location - string of vnodes/resources to be allocated to the job
+ * @param[in] extend - extend string for encoding req
+ * @param[in] req_type - one of PBS_BATCH_AsyrunJob or PBS_BATCH_AsyrunJob_ack
+ *
+ * @return      int
+ * @retval      0       success
+ * @retval      !0      error
+ */
+static int
+__runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
+{
+	int rc = 0;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int i;
+	int start = 0;
+	int ct;
+	int nsvrs = get_num_servers();
+	char *dest = NULL;
+
+	if ((jobid == NULL) || (*jobid == '\0'))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	if (svr_conns) {
+		if ((start = starting_index(jobid)) == -1)
+			start = 0;
+
+		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
+
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+			
+			/* if the vfd comes without node owning server, ifl need to figure out */
+			if (!extend && location && msvr_mode()) {
+				dest = get_dest_server(c, location);
+				extend = dest;
+				pbs_errno = 0;
+			}
+
+			if (svr_conns[i]->sd == c) {
+				rc = __runjob_inner(svr_conns[i]->sd, jobid, location, extend, req_type);
+				break;
+			}
+
+			rc = __runjob_inner(svr_conns[i]->sd, jobid, location, extend, req_type);
+			if (rc == 0 || pbs_errno != PBSE_UNKJOBID)
+				break;
+		}
+
+		free(dest);
+		return rc;
+	}
+
+	/* Not a cluster fd. Treat it as an instance fd */
+	rc = __runjob_inner(c, jobid, location, extend, req_type);
+	free(dest);
 	return rc;
 }
 

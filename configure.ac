@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -227,10 +227,8 @@ AC_FUNC_FORK
 AC_FUNC_GETGROUPS
 AC_FUNC_GETMNTENT
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
-AC_FUNC_MALLOC
 AC_FUNC_MKTIME
 AC_FUNC_MMAP
-AC_FUNC_REALLOC
 AC_FUNC_STRERROR_R
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([ \

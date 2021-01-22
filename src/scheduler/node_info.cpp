@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -296,6 +296,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			ATTR_NODE_last_state_change_time,
 			ATTR_NODE_last_used_time,
 			ATTR_NODE_resvs,
+			ATTR_server_inst_id,
 			NULL
 	};
 
@@ -467,6 +468,14 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		/* Node State... i.e. offline down free etc */
 		if (!strcmp(attrp->name, ATTR_NODE_state))
 			set_node_info_state(ninfo, attrp->value);
+
+		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
+			ninfo->svr_inst_id = string_dup(attrp->value);
+			if (ninfo->svr_inst_id == NULL) {
+				free_node_info(ninfo);
+				return NULL;
+			}
+		}
 
 		/* Host name */
 		else if (!strcmp(attrp->name, ATTR_NODE_Mom)) {
@@ -646,6 +655,7 @@ new_node_info()
 		return NULL;
 	}
 
+	nnode->svr_inst_id = NULL;
 	nnode->is_down = 0;
 	nnode->is_free = 0;
 	nnode->is_offline = 0;
@@ -914,6 +924,9 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->np_arr != NULL)
 			free(ninfo->np_arr);
+
+		if (ninfo->svr_inst_id != NULL)
+			free(ninfo->svr_inst_id);
 
 		free(ninfo);
 	}
@@ -1497,6 +1510,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->mom = string_dup(onode->mom);
 	nnode->queue_name = string_dup(onode->queue_name);
 
+	nnode->svr_inst_id = string_dup(onode->svr_inst_id);
 	nnode->is_down = onode->is_down;
 	nnode->is_free = onode->is_free;
 	nnode->is_offline = onode->is_offline;
@@ -2464,7 +2478,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	}
 
 	if (!can_fit) {
-		if (!sc_attrs.do_not_span_psets) {
+		if (flags & SPAN_PSETS) {
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Request won't fit into any placement sets, will use all nodes");
 			resresv->can_not_fit = 1;

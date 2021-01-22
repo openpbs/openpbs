@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_STATE_COUNT_H
 #define	_STATE_COUNT_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 
@@ -66,7 +63,4 @@ void total_states(state_count *sc1, state_count *sc2);
  *                        it increment, pass in 1, to decrement pass in -1
  */
 void state_count_add(state_count *sc, const char *job_state, int amount);
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _STATE_COUNT_H */

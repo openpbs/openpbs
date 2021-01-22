@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -96,6 +96,12 @@ extern char *msg_obitnodel;
 extern char *msg_bad_password;
 extern char *msg_hook_reject_deletejob;
 extern char *msg_hook_reject_rerunjob;
+extern char *msg_momkillncpusburst;
+extern char *msg_momkillncpussum;
+extern char *msg_momkillvmem;
+extern char *msg_momkillmem;
+extern char *msg_momkillcput;
+extern char *msg_momkillwalltime;
 extern time_t time_now;
 
 /* External Functions called */
@@ -623,7 +629,7 @@ on_job_exit(struct work_task *ptask)
 
 				preq = alloc_br(PBS_BATCH_DeleteJob);
 				if (preq) {
-					(void)strcpy(preq->rq_ind.rq_delete.rq_objname,
+					strcpy(preq->rq_ind.rq_delete.rq_objname,
 						pjob->ji_qs.ji_jobid);
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
@@ -1010,7 +1016,7 @@ on_job_rerun(struct work_task *ptask)
 				/* need to have MOM delete her copy of the job */
 				preq = alloc_br(PBS_BATCH_DeleteJob);
 				if (preq) {
-					(void)strcpy(preq->rq_ind.rq_delete.rq_objname,
+					strcpy(preq->rq_ind.rq_delete.rq_objname,
 						pjob->ji_qs.ji_jobid);
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
@@ -1370,7 +1376,7 @@ job_obit(ruu *pruu, int stream)
 				while (ptask) {
 					if (ptask->wt_type == WORK_Deferred_Reply && ptask->wt_event == pjob->ji_momhandle)
 						break;
-					ptask = (struct work_task *) GET_NEXT(ptask->wt_linkall);
+					ptask = (struct work_task *) GET_NEXT(ptask->wt_linkevent);
 				}
 				if (ptask) {
 					if ((prequest = ptask->wt_parm1) != NULL)
@@ -1702,6 +1708,42 @@ RetryJob:
 				free(mailbuf);
 				free(acctbuf);
 				return 0;
+			case JOB_EXEC_KILL_NCPUS_BURST:
+				/* MOM killed job due to exceeding ncpus (burst), abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding ncpus (burst).\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillncpusburst);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_NCPUS_SUM:
+				/* MOM killed job due to exceeding ncpus (sum), abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding ncpus (sum).\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillncpussum);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_VMEM:
+				/* MOM killed job due to exceeding vmem, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding vmem.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillvmem);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_MEM:
+				/* MOM killed job due to exceeding mem, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding mem.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillmem);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_CPUT:
+				/* MOM killed job due to exceeding cput, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding cput.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillcput);
+				alreadymailed = 1;
+				break;
+			case JOB_EXEC_KILL_WALLTIME:
+				/* MOM killed job due to exceeding walltime, abort job */
+				DBPRT(("%s: MOM killed job %s due to exceeding walltime.\n", __func__, pruu->ru_pjobid))
+				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momkillwalltime);
+				alreadymailed = 1;
+				break;
 			}
 	}
 

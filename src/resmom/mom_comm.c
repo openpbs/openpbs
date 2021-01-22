@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -98,28 +98,28 @@
 
 /* Global Data Items */
 
-extern	int		exiting_tasks;
-extern	char		mom_host[];
-extern	char		*path_jobs;
-extern	int		pbs_errno;
-extern	pbs_list_head	mom_deadjobs;	/* for deferred purging of job */
-extern	pbs_list_head	mom_polljobs;	/* must have resource limits polled */
-extern	pbs_list_head	svr_alljobs;	/* all jobs under MOM's control */
-extern	time_t		time_now;
-extern	int		server_stream;
-extern	char		mom_short_name[];
-extern unsigned int	pbs_mom_port;
-extern unsigned int	pbs_rm_port;
+extern int exiting_tasks;
+extern char mom_host[];
+extern char *path_jobs;
+extern int pbs_errno;
+extern pbs_list_head mom_deadjobs; /* for deferred purging of job */
+extern pbs_list_head mom_polljobs; /* must have resource limits polled */
+extern pbs_list_head svr_alljobs;  /* all jobs under MOM's control */
+extern time_t time_now;
+extern int server_stream;
+extern char mom_short_name[];
+extern unsigned int pbs_mom_port;
+extern unsigned int pbs_rm_port;
+extern int gen_nodefile_on_sister_mom;
 
-extern int     mom_net_up;
-extern time_t  mom_net_up_time;
-extern int		max_poll_downtime_val;
-extern  char   *msg_err_malloc;
+extern int mom_net_up;
+extern time_t mom_net_up_time;
+extern int max_poll_downtime_val;
+extern char *msg_err_malloc;
 extern int
 write_pipe_data(int upfds, void *data, int data_size);
-char	task_fmt[] = "/%8.8X";
+char task_fmt[] = "/%8.8X";
 extern void resume_multinode(job *pjob);
-
 
 /* Function pointers
  **
@@ -3163,6 +3163,18 @@ im_request(int stream, int version)
 				SEND_ERR(errcode)
 				goto done;
 			}
+
+			pjob->ji_hosts[0].hn_stream = stream;
+
+			if (gen_nodefile_on_sister_mom) {
+				char varlist[(2 * MAXPATHLEN) + 1] = "PBS_NODEFILE=";
+				char buf[MAXPATHLEN + 1];
+				if (generate_pbs_nodefile(pjob, buf, sizeof(buf) - 1, log_buffer, LOG_BUF_SIZE - 1) == 0) {
+					strcat(varlist, buf);
+					set_jattr_generic(pjob, JOB_ATR_variables, varlist, NULL, INCR);
+				}
+			}
+
 			/*
 			 ** Check to make sure we found ourself.
 			 */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -97,6 +97,10 @@ decode_DIS_MoveJob(int sock, struct batch_request *preq)
 	if (rc) return rc;
 
 	rc = disrfst(sock, PBS_MAXDEST+1, preq->rq_ind.rq_move.rq_destin);
+
+	preq->rq_ind.rq_move.run_exec_vnode = NULL;
+	preq->rq_ind.rq_move.orig_rq_type = PBS_BATCH_MoveJob;
+	preq->rq_ind.rq_move.ptask_runjob = NULL;
 
 	return rc;
 }

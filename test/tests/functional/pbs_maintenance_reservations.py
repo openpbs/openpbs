@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -597,10 +597,14 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.server.submit(r2)
 
-        exp_attr = {'resv_nodes': '(%s:ncpus=1)' % self.momB.shortname,
-                    'reserve_state': (MATCH_RE, 'RESV_DEGRADED|12'),
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|12'),
                     'reserve_substate': 12}
         self.server.expect(RESV, exp_attr, id=rid1)
+        self.server.status(RESV, id=rid1)
+        vnodes = r1.get_vnodes()
+        self.assertEqual(len(vnodes), 1)
+        vnode = self.server.status(NODE, id=vnodes[0])[0]
+        self.assertEqual(vnode['Mom'], self.momB.hostname)
 
         self.logger.info("Wait for reservation to start (2 minutes)")
         time.sleep(120)
@@ -640,7 +644,7 @@ class TestMaintenanceReservations(TestFunctional):
         now = int(time.time())
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'managers': '%s@*' % TEST_USER})
+                            {'managers': (INCR, '%s@*' % TEST_USER)})
 
         a1 = {'reserve_start': now + 30,
               'reserve_end': now + 1200}

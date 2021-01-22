@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -359,7 +359,7 @@ exit 0
         self.submit_job(lower=1, upper=2, job_id='1[]', verify=True)
         self.submit_resv(resv_id='R2')
 
-    @timeout(1000)
+    @timeout(3000)
     def test_verify_sequence_window(self):
         """
         Tests the sequence window scenario in which jobid

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -52,6 +52,7 @@ int (*pfn_pbs_connect)(char *) = __pbs_connect;
 int (*pfn_pbs_connect_extend)(char *, char *) = __pbs_connect_extend;
 char *(*pfn_pbs_default)(void) = __pbs_default;
 int (*pfn_pbs_deljob)(int, char *, char *) = __pbs_deljob;
+struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, int, char *) = __pbs_deljoblist;
 int (*pfn_pbs_disconnect)(int) = __pbs_disconnect;
 char *(*pfn_pbs_geterrmsg)(int) = __pbs_geterrmsg;
 int (*pfn_pbs_holdjob)(int, char *, char *, char *) = __pbs_holdjob;
@@ -67,6 +68,7 @@ int (*pfn_pbs_runjob)(int, char *, char *, char *) = __pbs_runjob;
 char **(*pfn_pbs_selectjob)(int, struct attropl *, char *) = __pbs_selectjob;
 int (*pfn_pbs_sigjob)(int, char *, char *, char *) = __pbs_sigjob;
 void (*pfn_pbs_statfree)(struct batch_status *) = __pbs_statfree;
+void (*pfn_pbs_delstatfree)(struct batch_deljob_status *) = __pbs_delstatfree;
 struct batch_status *(*pfn_pbs_statrsc)(int, char *, struct attrl *, char *) = __pbs_statrsc;
 struct batch_status *(*pfn_pbs_statjob)(int, char *, struct attrl *, char *) = __pbs_statjob;
 struct batch_status *(*pfn_pbs_selstat)(int, struct attropl *, struct attrl *, char *) = __pbs_selstat;

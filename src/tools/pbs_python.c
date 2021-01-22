@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -1648,7 +1648,7 @@ main(int argc, char *argv[], char *envp[])
 		int	print_env = 0;
 		char	*tmp_str = NULL;
 		char	perf_label[MAXBUF];
-		char	perf_action[MAXBUFLEN];
+		char	perf_action[MAXBUFLEN + 13]; /* Additional 13 byte for description string*/
 		char	*sp;
 
 		the_input[0] = '\0';

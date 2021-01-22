@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -102,11 +102,18 @@ print_usage()
 static void
 prt_job_struct(job *pjob, char *state, char *substate)
 {
+	unsigned int ss_num;
+	unsigned int s_num;
+	char *endp = NULL;
+
+	ss_num = strtol(substate, &endp, 10);
+	s_num = state_char2int(state[0]);
+
 	printf("---------------------------------------------------\n");
 	printf("jobid:\t%s\n", pjob->ji_qs.ji_jobid);
 	printf("---------------------------------------------------\n");
-	printf("state:\t\t%s\n", state);
-	printf("substate:\t0x%s (%s)\n", substate, substate);
+	printf("state:\t\t0x%x\n", s_num);
+	printf("substate:\t0x%x (%d)\n", ss_num, ss_num);
 	printf("svrflgs:\t0x%x (%d)\n", pjob->ji_qs.ji_svrflags,
 		pjob->ji_qs.ji_svrflags);
 	printf("stime:\t\t%ld\n", (long)pjob->ji_qs.ji_stime);
@@ -629,10 +636,10 @@ char *argv[];
 			/* if array job, skip over sub job table */
 			if (xjob.ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 				size_t xs;
-				struct ajtrkhd *ajtrk;
+				ajinfo_t *ajtrk;
 
 				if (read(fp, (char *)&xs, sizeof(xs)) != sizeof(xs)) {
-					if ((ajtrk = (struct ajtrkhd *)malloc(xs)) == NULL) {
+					if ((ajtrk = (ajinfo_t *)malloc(xs)) == NULL) {
 						(void)close(fp);
 						return 1;
 					}
@@ -731,9 +738,11 @@ char *argv[];
 				print_usage();
 				exit(1);
 			}
-			printf("----------------------------------------------------------------\n");
-			printf("jobscript for %s\n", job_id);
-			printf("----------------------------------------------------------------\n");
+			if (job_id) {
+				printf("--------------------------------------------------\n");
+				printf("jobscript for %s\n", job_id);
+				printf("--------------------------------------------------\n");
+			}
 			while ((fgets(job_script, BUF_SIZE-1, fp_script)) != NULL) {
 				if (fputs(job_script, stdout) < 0) {
 					fprintf(stderr, "Error reading job-script file\n");

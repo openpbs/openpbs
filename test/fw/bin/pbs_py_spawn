@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -51,7 +51,7 @@ try:
     from ptl.lib.pbs_ifl import pbs_py_spawn
     from ptl.lib.pbs_testlib import Server, MoM, JOB, ResourceResv
     from ptl.utils.pbs_cliutils import CliUtils
-except:
+except Exception:
     sys.stderr.write("API wrapping is required, see pbs_swigify utility")
     exit(1)
 
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     try:
         opts, args = getopt.getopt(sys.argv[1:], "e:j:l:t:hw",
                                    ['detach', 'wrapper='])
-    except:
+    except Exception:
         usage()
         sys.exit(1)
 

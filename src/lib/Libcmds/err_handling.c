@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -55,12 +55,53 @@
 void
 show_svr_inst_fail(int fd, char *client)
 {
+	int i;
+	svr_conn_t **svr_conns;
+
 	if (msvr_mode()) {
-		int i;
-		svr_conn_t *svr_connections = get_conn_svr_instances(fd);
-		for (i = 0; i < get_num_servers(); i++) {
-			if (svr_connections[i].state != SVR_CONN_STATE_UP)
+		svr_conns = get_conn_svr_instances(fd);
+		for (i = 0; svr_conns[i]; i++) {
+			if (svr_conns[i]->state != SVR_CONN_STATE_UP)
 				fprintf(stderr, "%s: cannot connect to server %s\n", client, pbs_conf.psi[i].name);
 		}
+	}
+}
+
+/**
+ * @brief
+ *	Print the error message returned by the server, if supplied. Otherwise,
+ * 	print a default error message.
+ *
+ * @param[in] cmd - error msg
+ * @param[in] connect - fd
+ * @param[in] id - error id
+ *
+ * @return	Void
+ *
+ */
+
+void
+prt_job_err(char *cmd, int connect, char *id)
+{
+	char *errmsg;
+	char *histerrmsg = NULL;
+
+	errmsg = pbs_geterrmsg(connect);
+	if (errmsg) {
+		if (pbs_geterrno() == PBSE_HISTJOBID) {
+			pbs_asprintf(&histerrmsg, errmsg, id);
+			if (histerrmsg) {
+				fprintf(stderr, "%s: %s\n", cmd, histerrmsg);
+				free(histerrmsg);
+			} else {
+				fprintf(stderr,
+					"%s: Server returned error %d for job %s\n",
+					cmd, pbs_errno, id);
+			}
+			return;
+		}
+		fprintf(stderr, "%s: %s %s\n", cmd, errmsg, id);
+	} else {
+		fprintf(stderr, "%s: Server returned error %d for job %s\n", cmd, pbs_errno, id);
 	}
 }

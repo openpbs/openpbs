@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -103,13 +103,24 @@ struct rq_manage {
 	pbs_list_head rq_attr; /* svrattrlist */
 };
 
+/* DeleteJobList */
+struct rq_deletejoblist {
+	int rq_count;
+	char **rq_jobslist;
+};
+
 /* Management - used by PBS_BATCH_Manager requests */
 struct rq_management {
 	struct rq_manage rq_manager;
 	struct batch_reply *rq_reply;
-	long rq_time;
+	time_t rq_time;
 };
 
+/* ModifyVnode - used for node state changes */
+struct rq_modifyvnode {
+	struct pbsnode *rq_vnode_o; /* old/previous vnode state */
+	struct pbsnode *rq_vnode; /* new/current vnode state */
+};
 
 /* HoldJob -  plus preference flag */
 struct rq_hold {
@@ -141,6 +152,9 @@ struct rq_py_spawn {
 struct rq_move {
 	char rq_jid[PBS_MAXSVRJOBID + 1];
 	char rq_destin[(PBS_MAXSVRRESVID > PBS_MAXDEST ? PBS_MAXSVRRESVID : PBS_MAXDEST) + 1];
+	char *run_exec_vnode;
+	int orig_rq_type;
+	void *ptask_runjob;
 };
 
 /* Resource Query/Reserve/Free */
@@ -290,10 +304,12 @@ struct batch_request {
 		char rq_rdytocommit[PBS_MAXSVRJOBID + 1];
 		char rq_commit[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_delete;
+		struct rq_deletejoblist rq_deletejoblist;
 		struct rq_hold rq_hold;
 		char rq_locate[PBS_MAXSVRJOBID + 1];
 		struct rq_manage rq_manager;
 		struct rq_management rq_management;
+		struct rq_modifyvnode rq_modifyvnode;
 		struct rq_message rq_message;
 		struct rq_relnodes rq_relnodes;
 		struct rq_py_spawn rq_py_spawn;
@@ -320,7 +336,8 @@ struct batch_request {
 	} rq_ind;
 };
 
-extern struct batch_request * alloc_br(int);
+extern struct batch_request *alloc_br(int);
+extern struct batch_request *copy_br(struct batch_request *);
 extern void reply_ack(struct batch_request *);
 extern void req_reject(int, int, struct batch_request *);
 extern void req_reject_msg(int, int, struct batch_request *, int);
@@ -384,6 +401,7 @@ extern int decode_DIS_CopyHookFile(int, struct batch_request *);
 extern int decode_DIS_DelHookFile(int, struct batch_request *);
 extern int decode_DIS_JobObit(int, struct batch_request *);
 extern int decode_DIS_Manage(int, struct batch_request *);
+extern int decode_DIS_DelJobList(int, struct batch_request *);
 extern int decode_DIS_MoveJob(int, struct batch_request *);
 extern int decode_DIS_MessageJob(int, struct batch_request *);
 extern int decode_DIS_ModifyResv(int, struct batch_request *);

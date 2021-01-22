@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -124,6 +124,7 @@
 #include "pbs_error.h"
 #include "log.h"
 #include "pbs_share.h"
+#include "libpbs.h"
 #include "server_info.h"
 #include "constant.h"
 #include "queue_info.h"
@@ -150,6 +151,7 @@
 #include "buckets.h"
 #include "parse.h"
 #include "hook.h"
+#include "libpbs.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -200,6 +202,8 @@ query_server(status *pol, int pbs_sd)
 			"Failed to update global resource definition arrays");
 		return NULL;
 	}
+
+	PBSD_server_ready(pbs_sd);
 
 	/* get server information from pbs server */
 	if ((server = pbs_statserver(pbs_sd, NULL, NULL)) == NULL) {
@@ -457,6 +461,28 @@ query_server(status *pol, int pbs_sd)
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
+	if (!sinfo->node_group_enable && sinfo->node_group_key != NULL &&
+			strcmp(sinfo->node_group_key[0], "msvr_node_group") == 0) {
+		node_partition **np = NULL;
+
+		np = create_node_partitions(policy, sinfo->unassoc_nodes,
+				sinfo->node_group_key, NP_NONE, &sinfo->num_parts);
+
+		/* For each job, we'll need the placement set of nodes which belong to its server
+		 * So, we need to associate psets with their respective server ids
+		 */
+		if (np != NULL) {
+			int i;
+			server_psets spset;
+
+			for (i = 0; i < sinfo->num_parts; i++) {
+				spset.svr_inst_id = np[i]->ninfo_arr[0]->svr_inst_id;
+				spset.np = np[i];
+				sinfo->svr_to_psets.push_back(spset);
+			}
+		}
+		free(np);
+	}
 
 	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
@@ -641,6 +667,15 @@ query_server_info(status *pol, struct batch_status *server)
 	site_set_share_head(sinfo);
 #endif /* localmod 034 */
 
+	if (sinfo->node_group_key == NULL && get_num_servers() > 1) {
+		/* Set node_group_key to msvr_node_group for server local placement */
+		sinfo->node_group_key = break_comma_list(const_cast<char *>("msvr_node_group"));
+
+		/* This will ensure that create_placement_sets doesn't create placement sets,
+		 * we'll create directly by calling create_node_partitions
+		 */
+		sinfo->node_group_enable = 0;
+	}
 	return sinfo;
 }
 
@@ -682,6 +717,8 @@ query_server_dyn_res(server_info *sinfo)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
+			pid = 0;
+
 			/* Make sure file does not have open permissions */
 			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 				filename = conf.dynamic_res[i].script_name;
@@ -730,6 +767,7 @@ query_server_dyn_res(server_info *sinfo)
 				}
 			}
 
+			k = 0;
 			if (!pipe_err) {
 				FD_ZERO(&set);
 				FD_SET(pdes[0], &set);
@@ -747,28 +785,22 @@ query_server_dyn_res(server_info *sinfo)
 				} else if (ret == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"Program %s timed out", conf.dynamic_res[i].command_line);
-					kill(-pid, SIGTERM);
-					if (waitpid(pid, NULL, WNOHANG) == 0) {
-						usleep(250000);
-						if (waitpid(pid, NULL, WNOHANG) == 0) {
-							kill(-pid, SIGKILL);
-							waitpid(pid, NULL, 0);
-						}
-					}
 				}
-
-				/* Parent; assume fdopen can't fail. */
-				fp = fdopen(pdes[0], "r");
-				close(pdes[1]);
-
-				if (fgets(buf, sizeof(buf), fp) == NULL) {
-					pipe_err = errno;
-					k = 0;
-				} else
-					k = strlen(buf);
-				if (fp != NULL)
-					fclose(fp);
+				if (pid > 0 && ret > 0) {
+					/* Parent; only open if child created and select showed sth to read,
+					 * but assume fdopen can't fail
+					 */
+					fp = fdopen(pdes[0], "r");
+					close(pdes[1]);
+					if (fgets(buf, sizeof(buf), fp) == NULL) {
+						pipe_err = errno;
+					} else
+						k = strlen(buf);
+					if (fp != NULL)
+						fclose(fp);
+				}
 			}
+
 			if (k > 0) {
 				buf[k] = '\0';
 				/* chop \r or \n from buf so that is_num() doesn't think it's a str */
@@ -777,7 +809,6 @@ query_server_dyn_res(server_info *sinfo)
 						break;
 					buf[k] = '\0';
 				}
-
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
 					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 						"Script %s returned bad output", conf.dynamic_res[i].command_line);
@@ -798,6 +829,16 @@ query_server_dyn_res(server_info *sinfo)
 				log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "server_dyn_res",
 					"%s = %s (\"%s\")", conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
 
+			if (pid > 0) {
+				kill(-pid, SIGTERM);
+				if (waitpid(pid, NULL, WNOHANG) == 0) {
+					usleep(250000);
+					if (waitpid(pid, NULL, WNOHANG) == 0) {
+						kill(-pid, SIGKILL);
+						waitpid(pid, NULL, 0);
+					}
+				}
+			}
 		}
 	}
 
@@ -941,6 +982,21 @@ find_resource(schd_resource *reslist, resdef *def)
 }
 
 /**
+ * @brief	free server_psets vector
+ *
+ * @param[out]	spsets - vector of server psets
+ *
+ * @return void
+ */
+static void
+free_server_psets(std::vector<server_psets>& spsets)
+{
+	for (auto& spset: spsets) {
+		free_node_partition(spset.np);
+	}
+}
+
+/**
  * @brief
  * 		free_server_info - free the space used by a server_info
  *		structure
@@ -989,6 +1045,8 @@ free_server_info(server_info *sinfo)
 		free_node_partition_array(sinfo->nodepart);
 	if (sinfo->allpart)
 		free_node_partition(sinfo->allpart);
+	if (!(sinfo->svr_to_psets.empty()))
+		free_server_psets(sinfo->svr_to_psets);
 	if (sinfo->hostsets != NULL)
 		free_node_partition_array(sinfo->hostsets);
 	if (sinfo->nodesigs)
@@ -1100,7 +1158,7 @@ new_server_info(int limallocflag)
 {
 	server_info *sinfo;			/* the new server */
 
-	if ((sinfo = static_cast<server_info *>(malloc(sizeof(server_info)))) == NULL) {
+	if ((sinfo = new server_info()) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1554,7 +1612,7 @@ free_server(server_info *sinfo)
 #ifdef NAS /* localmod 053 */
 	site_restore_users();
 #endif /* localmod 053 */
-	free(sinfo);
+	delete sinfo;
 }
 
 /**
@@ -2340,6 +2398,9 @@ dup_server_info(server_info *osinfo)
 			return NULL;
 		}
 	}
+
+	/* Copy the vector of server psets */
+	nsinfo->svr_to_psets = osinfo->svr_to_psets;
 
 	return nsinfo;
 }

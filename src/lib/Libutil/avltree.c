@@ -29,7 +29,7 @@
  **
  */
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -94,7 +94,7 @@ typedef char way3; /* -1, 0, 1 */
 
 typedef struct _node {
 	struct _node *ptr[2]; /* left, right */
-	way3 balance, trace;
+	way3 balance, *trace;
 	rectype data;
 } node;
 
@@ -112,6 +112,7 @@ typedef struct _node {
 #define avltree_init(x) (*(x) = NULL)
 
 typedef struct {
+	short __tind; /* index of this thread */
 	int __ix_keylength;
 	int __ix_flags;    /* set from AVL_IX_DESC */
 	int __rec_keylength; /* set from actual key */
@@ -125,8 +126,25 @@ typedef struct {
 
 static pthread_once_t avl_init_once = PTHREAD_ONCE_INIT;
 static pthread_key_t avl_tls_key;
+pthread_mutex_t tind_lock;
 
 #define MAX_AVLKEY_LEN 100
+
+/**
+ * Set max_threads to 2 by default since mom, server etc have basically 2 threads
+ * If caller has > 2 threads, e.g. pbs_comm, it must first call avl_set_maxthreads()
+ */
+static int max_threads = 2; 
+
+/**
+ * @brief set the max threads that the application uses, before any calls to avltree
+ * 
+ */
+void 
+avl_set_maxthreads(int n)
+{
+	max_threads = n;
+}
 
 /**
  * @brief
@@ -134,11 +152,33 @@ static pthread_key_t avl_tls_key;
  *
  */
 void
-avl_init_tls(void)
+avl_init_func(void)
 {
 	if (pthread_key_create(&avl_tls_key, NULL) != 0) {
 		fprintf(stderr, "avl tls key creation failed\n");
 	}
+
+	if (pthread_mutex_init(&tind_lock, NULL) != 0) {
+		fprintf(stderr, "avl mutex init failed\n");
+		return;
+	}
+}
+
+/**
+ * @brief
+ *	return an unique thread index for each new thread
+ *
+ */
+static short
+get_thread_index(void)
+{
+	static short tind = -1;
+	short retval;
+	
+	pthread_mutex_lock(&tind_lock);
+	retval = ++tind;
+	pthread_mutex_unlock(&tind_lock);
+	return retval;
 }
 
 /**
@@ -154,7 +194,7 @@ get_avl_tls(void)
 {
 	avl_tls_t *p_avl_tls = NULL;
 
-	pthread_once(&avl_init_once, avl_init_tls);
+	pthread_once(&avl_init_once, avl_init_func);
 
 	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key)) == NULL) {
 		p_avl_tls = (avl_tls_t *) calloc(1, sizeof(avl_tls_t));
@@ -162,12 +202,30 @@ get_avl_tls(void)
 			fprintf(stderr, "Out of memory creating avl_tls\n");
 			return NULL;
 		}
+		p_avl_tls->__tind = get_thread_index();
 		p_avl_tls->__node_overhead = sizeof(node) - AVL_DEFAULTKEYLEN;
 		pthread_setspecific(avl_tls_key, (void *) p_avl_tls);
 	}
 	return p_avl_tls;
 }
 
+
+/**
+ * @brief
+ *	Free the thread local storage used for avltree for this thread
+ */
+void
+free_avl_tls(void)
+{
+	avl_tls_t *p_avl_tls = NULL;
+
+	pthread_once(&avl_init_once, avl_init_func);
+
+	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key))) 
+		free(p_avl_tls);
+}
+
+#define tind             (((avl_tls_t *) get_avl_tls())->__tind)
 #define ix_keylength  (((avl_tls_t *) get_avl_tls())->__ix_keylength)
 #define ix_flags   (((avl_tls_t *) get_avl_tls())->__ix_flags)
 #define rec_keylength (((avl_tls_t *) get_avl_tls())->__rec_keylength)
@@ -201,6 +259,8 @@ way3opp2(way3 x, way3 y)
 static void
 freenode(node *n)
 {
+	if (n)
+		free(n->trace);
 	free(n);
 }
 
@@ -273,6 +333,12 @@ allocnode()
 	}
 	if (ix_flags & AVL_DUP_KEYS_OK)
 		n->data.count = 1;
+
+	n->trace = calloc(max_threads, sizeof(way3));
+	if (n->trace == NULL) {
+		fprintf(stderr, "avltrees: out of memory\n");
+		return NULL;
+	}
 	return n;
 }
 
@@ -369,24 +435,24 @@ avltree_search(node **tt, rectype *key, unsigned short searchflags)
 	wayopp = way3opp(waydir);
 	p = q = NULL;
 	while ((pp = *tt) != NULL) {
-		aa = searchflags & SRF_FROMMARK ? pp->trace : makeway3(compkey(key, &(pp->data)));
+		aa = searchflags & SRF_FROMMARK ? pp->trace[tind] : makeway3(compkey(key, &(pp->data)));
 		if (searchflags & SRF_SETMARK)
-			pp->trace = aa;
+			pp->trace[tind] = aa;
 		if (aa == way3stop) {
 			if (searchflags & SRF_FINDEQUAL)
 				return &(pp->data);
 			if ((q = stepway(pp, waydir)) == NULL)
 				break;
 			if (searchflags & SRF_SETMARK)
-				pp->trace = waydir;
+				pp->trace[tind] = waydir;
 			while (1) {
 				if ((pp = stepway(q, wayopp)) == NULL) {
 					if (searchflags & SRF_SETMARK)
-						q->trace = way3stop;
+						q->trace[tind] = way3stop;
 					return &(q->data);
 				}
 				if (searchflags & SRF_SETMARK)
-					q->trace = wayopp;
+					q->trace[tind] = wayopp;
 				q = pp;
 			}
 		}
@@ -398,7 +464,7 @@ avltree_search(node **tt, rectype *key, unsigned short searchflags)
 	if (p == NULL || !(searchflags & (SRF_FINDLESS | SRF_FINDGREAT)))
 		return NULL;
 	if (searchflags & SRF_SETMARK)
-		p->trace = way3stop;
+		p->trace[tind] = way3stop;
 	return &(p->data);
 }
 
@@ -415,7 +481,7 @@ avltree_first(node **tt)
 {
 	node *pp;
 	while ((pp = *tt) != NULL) {
-		pp->trace = way3left;
+		pp->trace[tind] = way3left;
 		tt = &stepway(pp, way3left);
 	}
 }
@@ -447,21 +513,21 @@ avltree_insert(node **tt, rectype *key)
 		}
 		if (pp->balance != way3stop)
 			avl_t = tt; /* t-> the last disbalanced node */
-		pp->trace = aa;
+		pp->trace[tind] = aa;
 		tt = &stepway(pp, aa);
 	}
 	*tt = q = allocnode();
-	q->balance = q->trace = way3stop;
+	q->balance = q->trace[tind] = way3stop;
 	stepway(q, way3left) = stepway(q, way3right) = NULL;
 	key->count = 1;
 	copydata(&(q->data), key);
 	/* balancing */
 	avl_s = *avl_t;
-	avl_wayhand = avl_s->trace;
+	avl_wayhand = avl_s->trace[tind];
 	if (avl_wayhand != way3stop) {
 		avl_r = stepway(avl_s, avl_wayhand);
 		for (p = avl_r; p != NULL; p = stepway(p, b))
-			b = p->balance = p->trace;
+			b = p->balance = p->trace[tind];
 		b = avl_s->balance;
 		if (b != avl_wayhand)
 			avl_s->balance = way3sum(avl_wayhand, b);
@@ -496,7 +562,7 @@ avltree_delete(node **tt, rectype *key, unsigned short searchflags)
 	aaa = way3stop;
 
 	while ((pp = *tt) != NULL) {
-		aa = aaa != way3stop ? aaa : searchflags & SRF_FROMMARK ? pp->trace : makeway3(compkey(key, &(pp->data)));
+		aa = aaa != way3stop ? aaa : searchflags & SRF_FROMMARK ? pp->trace[tind] : makeway3(compkey(key, &(pp->data)));
 		b = pp->balance;
 		if (aa == way3stop) {
 			qq1 = tt;
@@ -510,23 +576,23 @@ avltree_delete(node **tt, rectype *key, unsigned short searchflags)
 			t1 = tt;
 		tt1 = tt;
 		tt = &stepway(pp, aa);
-		pp->trace = aa;
+		pp->trace[tind] = aa;
 	}
 	if (aaa == way3stop)
 		return NULL;
 	copydata(key, &(q->data));
 	p = *tt1;
-	*tt1 = p1 = stepopp(p, p->trace);
+	*tt1 = p1 = stepopp(p, p->trace[tind]);
 	if (p != q) {
 		*qq1 = p;
 		memcpy(p->ptr, q->ptr, sizeof(p->ptr));
 		p->balance = q->balance;
-		avl_wayhand = p->trace = q->trace;
+		avl_wayhand = p->trace[tind] = q->trace[tind];
 		if (avl_t == &stepway(q, avl_wayhand))
 			avl_t = &stepway(p, avl_wayhand);
 	}
 	while ((avl_s = *avl_t) != p1) {
-		avl_wayhand = way3opp(avl_s->trace);
+		avl_wayhand = way3opp(avl_s->trace[tind]);
 		b = avl_s->balance;
 		if (b != avl_wayhand) {
 			avl_s->balance = way3sum(avl_wayhand, b);
@@ -543,7 +609,7 @@ avltree_delete(node **tt, rectype *key, unsigned short searchflags)
 	while ((p = *rr) != NULL) {
 		/* adjusting trace */
 		aa = makeway3(compkey(&(q->data), &(p->data)));
-		p->trace = aa;
+		p->trace[tind] = aa;
 		rr = &stepway(p, aa);
 	}
 	freenode(q);

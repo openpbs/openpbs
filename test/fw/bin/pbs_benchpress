@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -56,6 +56,7 @@ from nose.plugins.manager import PluginManager
 from ptl.lib.pbs_testlib import PtlConfig
 from distutils.version import LooseVersion
 from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.pbs_dshutils import TimeOut
 from ptl.utils.plugins.ptl_test_loader import PTLTestLoader
 from ptl.utils.plugins.ptl_test_runner import PTLTestRunner
 from ptl.utils.plugins.ptl_test_db import PTLTestDb
@@ -96,6 +97,10 @@ sys.excepthook = trap_exceptions
 def sighandler(signum, frames):
     signal.alarm(0)
     raise KeyboardInterrupt('Signal %d received' % (signum))
+
+
+def timeout_handler(signum, frames):
+    raise TimeOut('pbs_benchpress timed out by signal %d' % (signum))
 
 
 # join process group of caller makes it possible to programmatically interrupt
@@ -265,7 +270,7 @@ if __name__ == '__main__':
     try:
         opts, args = getopt.getopt(
             sys.argv[1:], 'f:il:t:o:p:g:hLF', largs)
-    except:
+    except Exception:
         sys.stderr.write('Unrecognized option. Exiting\n')
         usage()
         sys.exit(1)
@@ -381,22 +386,22 @@ if __name__ == '__main__':
     if nosedebug:
         level = 'DEBUG'
 
-    l = CliUtils.get_logging_level(level)
+    log_lvl = CliUtils.get_logging_level(level)
     if logconf:
         logging.config.fileConfig(logconf)
     else:
-        logging.basicConfig(level=l, format=fmt)
+        logging.basicConfig(level=log_lvl, format=fmt)
 
-    if not l and level:
+    if not log_lvl and level:
         logging.error('Invalid log level:%s', level)
         sys.exit(1)
     if outfile:
         outfile_hdlr = logging.FileHandler(outfile)
-        outfile_hdlr.setLevel(l)
+        outfile_hdlr.setLevel(log_lvl)
         outfile_hdlr.setFormatter(logging.Formatter(fmt))
         ptl_logger = logging.getLogger('ptl')
         ptl_logger.addHandler(outfile_hdlr)
-        ptl_logger.setLevel(l)
+        ptl_logger.setLevel(log_lvl)
     else:
         outfile_hdlr = None
 
@@ -419,7 +424,7 @@ if __name__ == '__main__':
         tc_failure_threshold = int(tc_failure_threshold)
         if tc_failure_threshold < 0:
             raise ValueError
-    except:
+    except ValueError:
         _msg = 'Invalid value provided for testcase failure threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -429,7 +434,7 @@ if __name__ == '__main__':
         cumulative_tc_failure_threshold = int(cumulative_tc_failure_threshold)
         if cumulative_tc_failure_threshold < 0:
             raise ValueError
-    except:
+    except ValueError:
         _msg = 'Invalid value provided for cumulative-tc-failure-threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -445,7 +450,7 @@ if __name__ == '__main__':
         max_postdata_threshold = int(max_postdata_threshold)
         if max_postdata_threshold < 0:
             raise ValueError
-    except:
+    except ValueError:
         _msg = 'Invalid value provided for max-postdata-threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -455,7 +460,8 @@ if __name__ == '__main__':
         os.mkdir(os.path.dirname(outfile))
 
     if timeout is not None:
-        signal.signal(signal.SIGALRM, sighandler)
+        PTLTestRunner.timeout = timeout
+        signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(timeout)
 
     if list_test:

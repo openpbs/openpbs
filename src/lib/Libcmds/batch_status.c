@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -125,4 +125,20 @@ bs_find(struct batch_status *bs, const char *name)
 		;	/* empty for loop */
 
 	return bs;
+}
+
+/**
+ * @brief
+ *	init_bstat - Initialize batch status
+ *
+ * @param[in] bstat - batch_status struct
+ *
+ * @return 	void
+ */
+void
+init_bstat(struct batch_status *bstat)
+{
+	bstat->next = NULL;
+	bstat->text = NULL;
+	bstat->attribs = NULL;
 }

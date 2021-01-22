@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -103,11 +103,10 @@ extern char *msg_daemonname;
 extern long *log_event_mask;
 
 extern void set_logfile(FILE *fp);
-extern int set_msgdaemonname(char *ch);
+extern int set_msgdaemonname(const char *ch);
 void set_log_conf(char *leafname, char *nodename,
 		  unsigned int islocallog, unsigned int sl_fac, unsigned int sl_svr,
 		  unsigned int log_highres);
-extern void *log_get_tls_data(void);
 
 extern struct log_net_info *get_if_info(char *msg);
 extern void free_if_info(struct log_net_info *ni);

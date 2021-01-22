@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -56,6 +56,7 @@
 #include <log.h>
 #include <pbs_share.h>
 #include <libutil.h>
+#include <libpbs.h>
 #include "config.h"
 #include "constant.h"
 #include "misc.h"
@@ -1596,42 +1597,3 @@ free_ptr_array(void *inp)
 	free(arr);
 }
 
-/**
- * @brief create new sched cmd structure and return
- *
- * @return sched_cmd *
- * @retval NULL  - failure
- * @return !NULL - success
- *
- * @warning caller has to free returned value using free_sched_cmd() when not needed
- */
-sched_cmd *
-new_sched_cmd(void)
-{
-	sched_cmd *cmd = static_cast<sched_cmd *>(malloc(sizeof(sched_cmd)));
-	if (cmd == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-	cmd->cmd = -1;
-	cmd->from_sock = -1;
-	cmd->jid = NULL;
-	return cmd;
-}
-
-/**
- * @brief free given sched cmd structure
- *
- * @param[in] cmd - pointer to sched cmd structure
- *
- * @return void
- */
-void
-free_sched_cmd(sched_cmd *cmd)
-{
-	if (cmd != NULL) {
-		if (cmd->jid != NULL)
-			free(cmd->jid);
-		free(cmd);
-	}
-}

@@ -2,7 +2,7 @@
 <data>
    <!--
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -40,11 +40,11 @@
  * subject to Altair's trademark licensing policies.
  */
 
-	NOTE (Server File)
+   NOTE (Server File)
 
-	job_attr_def is the array of attribute definitions for jobs.
-    Each legal job attribute is defined here.
-    The entries for each attribute are (see attribute.h):
+   job_attr_def is the array of attribute definitions for jobs.
+   Each legal job attribute is defined here.
+   The entries for each attribute are (see attribute.h):
        name,
        decode function,
        encode function,
@@ -56,19 +56,24 @@
        value type,
        parent object type
 
-	 NOTE (ECL File)
+   NOTE (ECL File)
 
-	 The entries for each attribute are (see attribute.h):\n
+   The entries for each attribute are (see attribute.h):\n
        name,
        type,
        flag,
        verify datatype function,
        verify value function
 
-       NOTE NOTE NOTE NOTE NOTE
-       For array jobs, if you want the job attribute to be
-       included in a subjob, you must also modify
-       "attrs_to_copy" in array_func.c
+   NOTE NOTE NOTE NOTE NOTE
+      For array jobs, if you want the job attribute to be
+      included in a subjob, you must also modify
+      "attrs_to_copy" in array_func.c
+
+      Also status of subjobs are dependent on order of
+      this list, please check status_subjob()->status_attrib()
+      (with limit argument) and expand_remaining_subjob()
+      before changing order
       -->
    <head>
       <SVR>
@@ -2075,6 +2080,23 @@
       <member_verify_function>
          <ECL>verify_datatype_long</ECL>
          <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>JOB_ATR_server_inst_id</member_index>
+      <member_name>ATTR_server_inst_id</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>PRIV_READ | ATR_DFLAG_SSET | ATR_DFLAG_NOSAVM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
       </member_verify_function>
    </attributes>
    <attributes flag="SVR">

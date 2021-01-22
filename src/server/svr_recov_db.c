@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -84,8 +84,6 @@ extern time_t	time_now;
 extern char	*msg_svdbopen;
 extern char	*msg_svdbnosv;
 extern char	*path_svrlive;
-
-extern char *pbs_server_name;
 extern void *svr_db_conn;
 extern void sched_free(pbs_sched *psched);
 

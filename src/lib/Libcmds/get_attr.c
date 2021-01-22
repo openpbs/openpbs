@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -62,7 +62,7 @@
  */
 
 char *
-get_attr(struct attrl *pattrl, char *name, char *resc)
+get_attr(struct attrl *pattrl, const char *name, const char *resc)
 {
 	while (pattrl) {
 		if (strcmp(name, pattrl->name) == 0) {

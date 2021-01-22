@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -876,6 +876,15 @@ init_config()
 			free(conf.dynamic_res[i].script_name);
 		}
 	}
+	/* clear peer queues */
+	if (conf.peer_queues[0].local_queue != NULL) {
+		int i;
+		for (i = 0; i < NUM_PEERS; i++) {
+			free(conf.peer_queues[i].local_queue);
+			free(conf.peer_queues[i].remote_queue);
+			free(conf.peer_queues[i].remote_server);
+		}
+	}
 
 	/* default everyone OFF */
 	memset(&conf, 0, sizeof(struct config));
@@ -939,6 +948,7 @@ init_config()
 	/* set parts of cstat which don't change per cycle */
 	cstat.sync_fairshare_files = 1;
 	cstat.backfill_depth = 1;
+
 
 	return 1;
 }

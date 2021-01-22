@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -90,6 +90,7 @@ struct mominfo {
 	int		mi_num_action; /* # of hook actions in mi_action */
 };
 typedef struct mominfo mominfo_t;
+typedef struct mominfo svrinfo_t;
 
 /*
  * The following structure is used by the Server for each Mom.
@@ -254,6 +255,7 @@ struct pbsnode {
 	short newobj; /* new node ? */
 	void *nd_lic_info;			/* information set and used for licensing */
 	int nd_added_to_unlicensed_list;/* To record if the node is added to the list of unlicensed node */
+	pbs_list_link un_lic_link;		/*Link to unlicense list */
 };
 
 enum	warn_codes { WARN_none, WARN_ngrp_init, WARN_ngrp_ck, WARN_ngrp };
@@ -413,7 +415,7 @@ extern  void	momptr_down(mominfo_t *, char *);
 extern  void	momptr_offline_by_mom(mominfo_t *, char *);
 extern  void	momptr_clear_offline_by_mom(mominfo_t *, char *);
 extern  void	   delete_mom_entry(mominfo_t *);
-extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *);
+extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *, int);
 extern  void       delete_svrmom_entry(mominfo_t *);
 extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);
@@ -460,7 +462,7 @@ extern int		create_vmap(void **);
 extern void		destroy_vmap(void *);
 extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
-extern  int		open_momstream(mominfo_t *);
+extern  int		open_tppstream(mominfo_t *);
 
 #ifdef	__cplusplus
 }

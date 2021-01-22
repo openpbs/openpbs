@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -466,6 +466,8 @@ class PtlTextTestRunner(TextTestRunner):
     output stream, results, and the test case itself.
     """
 
+    cur_repeat_count = 1
+
     def __init__(self, stream=sys.stdout, descriptions=True, verbosity=3,
                  config=None, repeat_count=1, repeat_delay=0):
         self.logger = logging.getLogger(__name__)
@@ -494,6 +496,7 @@ class PtlTextTestRunner(TextTestRunner):
         self.result.start = datetime.datetime.now()
         try:
             for i in range(self.repeat_count):
+                PtlTextTestRunner.cur_repeat_count = i + 1
                 if i != 0:
                     time.sleep(self.repeat_delay)
                 test(result)
@@ -520,6 +523,7 @@ class PTLTestRunner(Plugin):
     name = 'PTLTestRunner'
     score = sys.maxsize - 4
     logger = logging.getLogger(__name__)
+    timeout = None
 
     def __init__(self):
         Plugin.__init__(self)
@@ -752,7 +756,23 @@ class PTLTestRunner(Plugin):
                 _msg += " (" + str(eff_tc_req[pk]) + ")"
                 logger.error(_msg)
                 return _msg
-        for hostname in param_dic['moms']:
+
+        if hasattr(test, 'test'):
+            _test = test.test
+        elif hasattr(test, 'context'):
+            _test = test.context
+        else:
+            return None
+
+        name = 'moms'
+        if (hasattr(_test, name) and
+                (getattr(_test, name, None) is not None)):
+            for mc in getattr(_test, name).values():
+                platform = mc.platform
+                if platform not in ['linux', 'shasta',
+                                    'cray'] and mc.hostname in _moms:
+                    _moms.remove(mc.hostname)
+        for hostname in _moms:
             si = SystemInfo()
             si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
@@ -836,19 +856,40 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
 
-    def check_hardware_status_and_core_files(self):
+    def check_hardware_status_and_core_files(self, test):
         """
         function checks hardware status and core files
         every 5 minutes
         """
         du = DshUtils()
-        self.hardware_report_timer = Timer(
-            300, self.check_hardware_status_and_core_files)
-        self.hardware_report_timer.start()
         systems = list(self.param_dict['servers'])
         systems.extend(self.param_dict['moms'])
         systems.extend(self.param_dict['comms'])
         systems = list(set(systems))
+
+        if hasattr(test, 'test'):
+            _test = test.test
+        elif hasattr(test, 'context'):
+            _test = test.context
+        else:
+            return None
+
+        for name in ['servers', 'moms', 'comms', 'clients']:
+            mlist = None
+            if (hasattr(_test, name) and
+                    (getattr(_test, name, None) is not None)):
+                mlist = getattr(_test, name).values()
+            if mlist:
+                for mc in mlist:
+                    platform = mc.platform
+                    if ((platform not in ['linux', 'shasta', 'cray']) and
+                            (mc.hostname in systems)):
+                        systems.remove(mc.hostname)
+
+        self.hardware_report_timer = Timer(
+            300, self.check_hardware_status_and_core_files, args=(test,))
+        self.hardware_report_timer.start()
+
         for hostname in systems:
             hr = SystemInfo()
             hr.get_system_info(hostname)
@@ -945,14 +986,15 @@ class PTLTestRunner(Plugin):
             self.result.startTest(test)
             raise SkipTest(rv)
         # function report hardware status and core files
-        self.check_hardware_status_and_core_files()
+        self.check_hardware_status_and_core_files(test)
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)
-        timeout = self.__get_timeout(test)
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        setattr(test, 'old_sigalrm_handler', old_handler)
-        signal.alarm(timeout)
+        if PTLTestRunner.timeout is None:
+            timeout = self.__get_timeout(test)
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            setattr(test, 'old_sigalrm_handler', old_handler)
+            signal.alarm(timeout)
 
     def stopTest(self, test):
         """

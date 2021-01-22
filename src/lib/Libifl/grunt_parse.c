@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -652,4 +652,32 @@ parse_plus_spec(char *selstr, int *rc)
 	}
 
 	return (parse_plus_spec_r(ps, &pe, &hp));
+}
+
+/**
+ * @brief
+ *	get the first vnode corresponds to a selectspec
+ *
+ * @param[in] execvnode - selectspec
+ *
+ * @return 	vnode
+ * @retval	NULL: vnode could not find in the str
+ */
+char *
+get_first_vnode(char *execvnode)
+{
+	char	*chunk;
+	char	*last;
+	int	hasprn;
+	char	*vname;
+	int	nelem;
+	struct key_value_pair *pkvp;
+
+	chunk = parse_plus_spec_r(execvnode, &last, &hasprn);
+	if (chunk) {
+		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0)
+			return vname;
+	}
+
+	return NULL;
 }

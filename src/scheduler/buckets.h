@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -38,11 +38,10 @@
  */
 
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
 #ifndef _BUCKETS_H
 #define _BUCKETS_H
+
+#include "data_types.h"
 
 /* bucket_bitpool constructor, copy constructor, destructor */
 bucket_bitpool *new_bucket_bitpool();
@@ -101,7 +100,4 @@ nspec **map_buckets(status *policy, node_bucket **bkts, resource_resv *resresv, 
 /* map job to buckets that can satisfy */
 chunk_map **find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resresv, schd_error *err);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _BUCKETS_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -218,7 +218,7 @@ destroy_connection(int fd)
 	if (INVALID_SOCK(fd))
 		return -1;
 
-	if (fd > curr_connection_sz || allocated_connection == 0)
+	if (fd >= curr_connection_sz || allocated_connection == 0)
 		return 0;
 
 	LOCK_TABLE(-1);

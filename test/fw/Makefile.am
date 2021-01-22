@@ -1,5 +1,5 @@
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -91,7 +91,22 @@ dist_ptlmodulelib_PYTHON = \
 	ptl/lib/pbs_api_to_cli.py \
 	ptl/lib/pbs_ifl_mock.py \
 	ptl/lib/pbs_testlib.py \
-	ptl/lib/__init__.py
+	ptl/lib/__init__.py \
+	ptl/lib/ptl_config.py \
+	ptl/lib/ptl_error.py \
+	ptl/lib/ptl_types.py \
+	ptl/lib/ptl_batchutils.py \
+	ptl/lib/ptl_constants.py \
+	ptl/lib/ptl_expect_action.py \
+	ptl/lib/ptl_object.py \
+	ptl/lib/ptl_mom.py \          
+	ptl/lib/ptl_sched.py \
+	ptl/lib/ptl_server.py \
+	ptl/lib/ptl_comm.py \
+	ptl/lib/ptl_entities.py \
+	ptl/lib/ptl_fairshare.py \
+	ptl/lib/ptl_resourceresv.py \
+	ptl/lib/ptl_service.py
 
 ptlmoduleutilsdir = $(ptlmoduledir)/utils
 

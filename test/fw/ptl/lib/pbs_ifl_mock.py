@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -300,6 +300,7 @@ ATTR_NODE_Host = 'Host'
 ATTR_NODE_Mom = 'Mom'
 ATTR_NODE_Port = 'Port'
 ATTR_NODE_state = 'state'
+ATTR_NODE_svr_inst_id = "server_instance_id"
 ATTR_NODE_ntype = 'ntype'
 ATTR_NODE_jobs = 'jobs'
 ATTR_NODE_resvs = 'resv'

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -325,10 +325,10 @@ req_releasejob(struct batch_request *preq)
 
 	}
 
-	if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_ajtrk)) {
+	if ((jt == IS_ARRAY_ArrayJob) && (pjob->ji_ajinfo)) {
 		int i;
-		for(i = 0 ; i < pjob->ji_ajtrk->tkm_ct ; i++) {
-			job *psubjob = pjob->ji_ajtrk->tkm_tbl[i].trk_psubjob;
+		for(i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
+			job *psubjob = get_subjob_and_state(pjob, i, NULL, NULL);
 			if (psubjob && (check_job_state(psubjob, JOB_STATE_LTR_HELD))) {
 #ifndef NAS
 				old_hold = get_jattr_long(psubjob, JOB_ATR_hold);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -1833,7 +1833,7 @@ read_job_script(char *script)
 	int errflg; /* error code from get_script() */
 	struct stat statbuf;
 	char *bnp;
-	char basename[PBS_MAXJOBNAME + 1]; /* base name of script for job name*/
+	char basename[MAXPATHLEN + 1]; /* base name of script for job name*/
 	FILE *f; /* FILE pointer to the script */
 
 	/* if script is empty, get standard input */
@@ -3193,7 +3193,8 @@ regular_submit(int daemon_up)
 		else
 			rc = -1;
 	}
-	do_daemon_stuff();
+	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0) && !V_opt)
+		do_daemon_stuff();
 	return rc;
 }
 

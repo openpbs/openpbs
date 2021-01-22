@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -91,7 +91,7 @@ static char merr[] = "malloc failed";
 
 mominfo_t **mominfo_array = NULL;
 int         mominfo_array_size = 0;     /* num entries in the array */
-mominfo_time_t  mominfo_time = {0, 0};	/* time stamp of mominfo update */
+mominfo_time_t  mominfo_time = {0};	/* time stamp of mominfo update */
 int	    svr_num_moms = 0;
 vnpool_mom_t    *vnode_pool_mom_list = NULL;
 
@@ -314,6 +314,7 @@ find_mom_entry(char *hostname, unsigned int port)
  * @brief
  * 		create_svrmom_entry - create both a mominfo entry and the mom_svrinfo
  *		entry associated with it.
+ *		Also used as a peer server structure for multi-server.
  * @par Functionality:
  *		Finds an existing mominfo_t structure for the hostname/port tuple,
  *		create mominfo_t and associated mom_svrinfo_t structures; and array
@@ -328,6 +329,7 @@ find_mom_entry(char *hostname, unsigned int port)
  * @param[in]	port     - port number to which Mom will be listening
  * @param[in]	pul      - list of IP addresses of host; will be freed on error
  *			   				or saved in structure; caller must not free pul
+ * @param[in]	is_peer_svr	- Peer server or mom
  *
  * @return	mominfo_t *
  * @retval	pointer to the created mominfo entry	- success
@@ -340,20 +342,22 @@ find_mom_entry(char *hostname, unsigned int port)
  */
 
 mominfo_t *
-create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
+create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int is_peer_svr)
 {
 	mominfo_t     *pmom;
 	mom_svrinfo_t *psvrmom;
 	extern struct tree  *ipaddrs;
 
-	pmom = create_mom_entry(hostname, port);
+	if (is_peer_svr)
+		pmom = create_svr_entry(hostname, port);
+	else
+		pmom = create_mom_entry(hostname, port);
+
 	if (pmom == NULL) {
-		free(pul);
 		return pmom;
 	}
 
 	if (pmom->mi_data != NULL) {
-		free(pul);
 		return pmom;	/* already there */
 	}
 
@@ -402,7 +406,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 
 /**
  * @brief
- * 		open_momstream - do an tpp_open if it is safe to do so.
+ * 		open_tppstream - do an tpp_open if it is safe to do so.
  *
  * @param[in]	pmom	- pointer to mominfo structure
  *
@@ -411,7 +415,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
  * @retval	>=0: success
  */
 int
-open_momstream(mominfo_t *pmom)
+open_tppstream(mominfo_t *pmom)
 {
 	int stream = -1;
 	mom_svrinfo_t *psvrmom;
@@ -458,7 +462,7 @@ delete_svrmom_entry(mominfo_t *pmom)
 		/* we'll just send this delete request only once */
 		/* if a hook fails to delete, then that mom host when it */
 		/* come back will still have the hook. */
-		if (!(psvrmom->msr_state & INUSE_DOWN) && (mom_hooks_seen_count() > 0)) {
+		if (!(psvrmom->msr_state & INUSE_UNKNOWN) && (mom_hooks_seen_count() > 0)) {
 			uc_delete_mom_hooks(pmom);
 		}
 #endif

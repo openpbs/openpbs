@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -138,7 +138,7 @@ int verify_value_state(int, int, int, struct attropl *, char **);
 int verify_value_tolerate_node_failures(int, int, int, struct attropl *, char **);
 
 /* verify object name function */
-int pbs_verify_object_name(int, char *);
+int pbs_verify_object_name(int, const char *);
 
 #ifdef	__cplusplus
 }

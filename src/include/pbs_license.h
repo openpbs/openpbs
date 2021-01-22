@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -86,10 +86,6 @@ enum node_topology_type {
 };
 typedef enum node_topology_type ntt_t;
 
-typedef struct {
-	struct pbsnode *pnode;
-	pbs_list_link link;
-} unlicensed_node;
 
 pbs_list_head unlicensed_nodes_list;
 

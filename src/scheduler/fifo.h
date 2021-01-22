@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_FIFO_H
 #define	_FIFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include  <limits.h>
 #include "data_types.h"
@@ -86,13 +83,13 @@ int schedinit(int nthreads);
  *				cycle
  */
 
-int intermediate_schedule(sched_svrconn *sconn, sched_cmd *cmd);
+int intermediate_schedule(int sd, const sched_cmd *cmd);
 
 /*
  *      scheduling_cycle - the controling function of the scheduling cycle
  */
 
-int scheduling_cycle(sched_svrconn *sconn, sched_cmd *cmd);
+int scheduling_cycle(int sd, const sched_cmd *cmd);
 
 /*
  *	init_scheduling_cycle - run things that need to be set up every
@@ -203,7 +200,8 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  *	       first move it to the local server and then run it.
  *	       if it's a local job, just run it.
  */
-int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook, schd_error *err);
+int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook,
+	    schd_error *err, char *svr_id_node);
 
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
@@ -239,7 +237,7 @@ void update_cycle_status(struct status *policy, time_t current_time);
  *			     deal with normal job can't run stuff
 
  */
-int main_sched_loop(status *policy, sched_svrconn *sconn, server_info *sinfo, schd_error **rerr);
+int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr);
 
 /*
  *
@@ -258,7 +256,7 @@ int validate_running_user(char *exename);
 
 void clear_last_running();
 
-#ifdef	__cplusplus
-}
-#endif
+int send_run_job(int virtual_sd, int has_runjob_hook, char *jobid, char *execvnode,
+		 char *svr_id_node, char *svr_id_job);
+
 #endif	/* _FIFO_H */

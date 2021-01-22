@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -232,6 +232,9 @@ add_select_entry(char *jid, struct brp_select ***pselx)
 {
 	struct brp_select *pselect;
 
+	if (jid == NULL)
+		return 0;
+
 	pselect = (struct brp_select *)malloc(sizeof(struct brp_select));
 	if (pselect == NULL)
 		return 0;
@@ -275,14 +278,18 @@ add_select_array_entries(job *pjob, int dosub, char *statelist,
 		ct = add_select_entry(pjob->ji_qs.ji_jobid, pselx);
 	} else {
 		/* Array Job */
-		for (i=0; i < pjob->ji_ajtrk->tkm_ct; ++i) {
+		for (i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
 			/*
 			 * If statelist is NULL, then no need to check anything,
 			 * just add the subjobs to the return list.
 			 */
+			char sjst;
+			job *sj = get_subjob_and_state(pjob, i, &sjst, NULL);
+			if (sjst == JOB_STATE_LTR_UNKNOWN)
+				continue;
 			if ((statelist == NULL) ||
-				(select_subjob(pjob->ji_ajtrk->tkm_tbl[i].trk_status, psel))) {
-				ct += add_select_entry(mk_subjob_id(pjob, i), pselx);
+				(select_subjob(sjst, psel))) {
+				ct += add_select_entry(sj ? sj->ji_qs.ji_jobid : create_subjob_id(pjob->ji_qs.ji_jobid, i), pselx);
 			}
 		}
 	}
@@ -411,23 +418,28 @@ req_selectjobs(struct batch_request *preq)
 					/* Select-Status Reply */
 
 					plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
-					if (dosubjobs == 1 && pjob->ji_ajtrk) {
-						for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++) {
-							if (pstate == 0 || chk_job_statenum(pjob->ji_ajtrk->tkm_tbl[i].trk_status, pstate)) {
+					if (dosubjobs == 1 && pjob->ji_ajinfo) {
+						for (i = pjob->ji_ajinfo->tkm_start ; i <= pjob->ji_ajinfo->tkm_end ; i += pjob->ji_ajinfo->tkm_step) {
+							char sjst = JOB_STATE_LTR_QUEUED;
+
+							get_subjob_and_state(pjob, i, &sjst, NULL);
+							if (sjst == JOB_STATE_LTR_UNKNOWN)
+								continue;
+							if (pstate == 0 || chk_job_statenum(sjst, pstate)) {
 								if (preply->brp_count >= MAX_JOBS_PER_REPLY) {
 									rc = reply_send_status_part(preq);
 									if (rc != PBSE_NONE)
 										return;
 									preply->brp_count = 0;
 								}
-								rc = status_subjob(pjob, preq, plist, i, &preply->brp_un.brp_status, &bad);
+								rc = status_subjob(pjob, preq, plist, i, &preply->brp_un.brp_status, &bad, 0);
 								if (rc && rc != PBSE_PERM)
 									goto out;
 								plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_select.rq_rtnattr);
 							}
 						}
 					} else {
-						rc = status_job(pjob, preq, plist, &preply->brp_un.brp_status, &bad);
+						rc = status_job(pjob, preq, plist, &preply->brp_un.brp_status, &bad, 0);
 						if (rc && rc != PBSE_PERM)
 							goto out;
 					}

@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -61,7 +61,7 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Liblicensing/.libs/liblicensing.so \
+	$(top_builddir)/src/lib/Liblicensing/liblicensing.la \
 	@expat_lib@ \
 	@libz_lib@ \
 	@libical_lib@ \
@@ -88,6 +88,7 @@ pbs_server_bin_SOURCES = \
 	job_route.c \
 	licensing_func.c \
 	mom_info.c \
+	multi_svr.c \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \

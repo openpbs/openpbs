@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -101,7 +101,6 @@ libpbs_la_SOURCES = \
 	../Libcmds/parse_stage.c \
 	../Libcmds/pbs_json.c \
 	../Libcmds/prepare_path.c \
-	../Libcmds/prt_job_err.c \
 	../Libcmds/set_attr.c \
 	../Libcmds/set_resource.c \
 	../Libdis/dis_helpers.c \
@@ -160,6 +159,7 @@ libpbs_la_SOURCES = \
 	../Libifl/dec_JobFile.c \
 	../Libifl/dec_JobId.c \
 	../Libifl/dec_Manage.c \
+	../Libifl/dec_DelJobList.c \
 	../Libifl/dec_MsgJob.c \
 	../Libifl/dec_MoveJob.c \
 	../Libifl/dec_UserCred.c \
@@ -203,7 +203,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_reply.c \
 	../Libifl/enc_SubmitResv.c \
 	../Libifl/enc_ModifyResv.c \
-	../Libifl/enc_PreemptJobs.c \
 	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
 	../Libifl/get_svrport.c \
@@ -224,8 +223,8 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_Cred.c \
 	../Libifl/dec_Cred.c \
 	../Libifl/int_modify_resv.c \
-	../Libifl/int_preempt_jobs.c \
 	../Libifl/list_link.c \
+	../Libifl/ifl_util.c \
 	../Libifl/PBS_attr.c \
 	../Libifl/pbs_get_attribute_errors.c \
 	../Libifl/pbs_geterrmg.c \
@@ -233,9 +232,11 @@ libpbs_la_SOURCES = \
 	../Libifl/pbs_loadconf.c \
 	../Libifl/pbs_quote_parse.c \
 	../Libifl/pbs_statfree.c \
-	../Libifl/pbsD_alterjo.c \
+	../Libifl/pbs_delstatfree.c \
+	../Libifl/pbsD_alterjob.c \
 	../Libifl/pbsD_connect.c \
 	../Libifl/pbsD_deljob.c \
+	../Libifl/pbsD_deljoblist.c \
 	../Libifl/pbsD_holdjob.c \
 	../Libifl/pbsD_locjob.c \
 	../Libifl/pbsD_manager.c \
@@ -280,9 +281,11 @@ libpbs_la_SOURCES = \
 	../Libutil/avltree.c \
 	../Libutil/get_hostname.c \
 	../Libutil/misc_utils.c \
+	../Libutil/thread_utils.c \
 	../Libutil/pbs_secrets.c \
 	../Libutil/pbs_aes_encrypt.c \
 	../Libutil/pbs_idx.c \
+	../Libutil/range.c \
 	../Libnet/hnls.c \
 	../Libtpp/tpp_client.c \
 	../Libtpp/tpp_em.c \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -271,38 +271,6 @@ tinsert2(const u_long key1, const u_long key2, mominfo_t *momp, struct tree **ro
 }
 
 /**
- * @brief In case of TPP multicast mode, this function flushes IS_NULL data to be sent out
- * 	to all the moms
- *
- * @param[in] mtfd - The TPP multicast channel to flush
- * @param[in] combine_msg - message will be combined in the caller.
- *
- */
-static int
-send_rpp_values(int mtfd, int combine_msg)
-{
-	int	ret;
-
-	DBPRT(("%s: entered\n", __func__))
-
-	if (mtfd < 0)
-		return -1;
-
-	if (!combine_msg)
-		if ((ret = is_compose(mtfd, IS_NULL)) != DIS_SUCCESS)
-			return ret;
-
-	if ((ret = diswsi(mtfd, rpp_retry)) != DIS_SUCCESS)
-		return ret;
-	if ((ret = diswsi(mtfd, rpp_highwater)) != DIS_SUCCESS)
-		return ret;
-
-	if (!combine_msg)
-		return dis_flush(mtfd);
-	return 0;
-}
-
-/**
  * @brief Send the IS_CLUSTER_ADDRS message to Mom so she has the
  *      latest list of IP addresses of the all the Moms in the complex.
  *
@@ -378,8 +346,6 @@ reply_hellosvr(int stream, int need_inv)
 		return ret;
 
 	if ((ret = diswsi(stream, need_inv)) != DIS_SUCCESS)
-		return ret;
-	if ((ret = send_rpp_values(stream, 1)) != DIS_SUCCESS)
 		return ret;
 
 	if (msvr_mode()) {
@@ -536,6 +502,9 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		psvrmom->msr_state &= ~bits;
 	}
 
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host,
+		"set_all_state;txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
+		
 	/* Set the inuse_flag based off the value of setwhen */
 	if (setwhen == Set_ALL_State_All_Down) {
 		inuse_flag = INUSE_DOWN;
@@ -1088,6 +1057,112 @@ momptr_down(mominfo_t *pmom, char *why)
 
 /**
  * @brief
+ * 		Given a vnode_state_op, return the string value.
+ * 		The enum is found in pbs_nodes.h
+ *
+ * @param[in]	op - The operation for the state change
+ *
+ * @return	char *
+ */
+char *
+get_vnode_state_op(enum vnode_state_op op)
+{
+	switch(op) {
+		case Nd_State_Set: 
+			return "Nd_State_Set";
+		case Nd_State_Or: 
+			return "Nd_State_Or";
+		case Nd_State_And: 
+			return "Nd_State_And";
+	}
+	return "ND_state_unknown";
+}
+
+/**
+ * @brief
+ * 		Free a duplicated vnode
+ *
+ * @param[in]	vnode - the vnode to free
+ *  
+ * @return void
+ */
+static void
+shallow_vnode_free(struct pbsnode *vnode)
+{
+	if (vnode) {
+		free(vnode);
+	}
+}
+
+/**
+ * @brief
+ * 		Create a duplicate of the specified vnode
+ *
+ * @param[in]	vnode - the vnode to duplicate
+ * 
+ * @note
+ *  Creates a shallow duplicate of struct * and char * members.
+ *  
+ * 
+ * @return  duplicated vnode
+ */
+static struct pbsnode *
+shallow_vnode_dup(struct pbsnode *vnode)
+{
+	int i;
+	struct pbsnode *vnode_dup = NULL;
+
+	if (vnode == NULL) {
+		return NULL;
+	}
+
+	/* 
+	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
+	 */
+	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
+		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
+			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
+			shallow_vnode_free(vnode_dup);
+			return NULL;
+		}
+	} else {
+		log_err(PBSE_INTERNAL, __func__, "vnode_dup alloc failed");
+		return NULL;
+	}
+
+	/*
+	 * Copy vnode elements (same order as "struct pbsnode" element definition)
+	 */
+	if (vnode_dup->nd_moms) {
+		/* free the initialize_pbsnode() allocation before assigning */
+		free(vnode_dup->nd_moms);
+		vnode_dup->nd_moms = NULL;
+	}
+	vnode_dup->nd_moms = vnode->nd_moms;
+	vnode_dup->nd_nummoms = vnode->nd_nummoms;
+	vnode_dup->nd_nummslots = vnode->nd_nummslots;
+	vnode_dup->nd_index = vnode->nd_index;
+	vnode_dup->nd_arr_index = vnode->nd_arr_index;
+	vnode_dup->nd_hostname = vnode->nd_hostname;
+	vnode_dup->nd_psn = vnode->nd_psn;
+	vnode_dup->nd_resvp = vnode->nd_resvp;
+	vnode_dup->nd_nsn = vnode->nd_nsn;
+	vnode_dup->nd_nsnfree = vnode->nd_nsnfree;
+	vnode_dup->nd_ncpus = vnode->nd_ncpus;
+	vnode_dup->nd_written = vnode->nd_written;
+	vnode_dup->nd_state = vnode->nd_state;
+	vnode_dup->nd_ntype = vnode->nd_ntype;
+	vnode_dup->nd_accted = vnode->nd_accted;
+	vnode_dup->nd_pque = vnode->nd_pque;
+	vnode_dup->newobj = vnode->newobj;
+	for (i = 0; i < (int)ND_ATR_LAST; i++) {
+		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
+	}
+	return vnode_dup;
+}
+
+/**
+ * @brief
  * 		Change the state of a vnode. See pbs_nodes.h for definition of node's
  * 		availability and unavailability.
  *
@@ -1106,15 +1181,43 @@ momptr_down(mominfo_t *pmom, char *why)
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
-	unsigned long nd_prev_state;
+	/*
+	 * Vars used to construct hook event data
+	 */
+	struct batch_request *preq = NULL;
+	struct pbsnode *vnode_o = NULL;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
 	int time_int_val;
+	int last_time_int;
 
+	time_now = time(NULL);
 	time_int_val = time_now;
 
-	if (pnode == NULL)
+	if (pnode == NULL) {
 		return;
+	}
 
-	nd_prev_state = pnode->nd_state;
+	/*
+	 * Allocate space for the modifyvnode hook event params
+	 */
+	preq = alloc_br(PBS_BATCH_ModifyVnode);
+	if (preq == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "rq_modifyvnode alloc failed");
+		return;
+	}
+
+	/* 
+	 * Create a duplicate of the vnode
+	 */
+	vnode_o = shallow_vnode_dup(pnode);
+	if (vnode_o == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "shallow_vnode_dup failed");
+		goto fn_free_and_return;
+	}
+
+	/*
+	 * Apply specified state operation (to the vnode only)
+	 */
 	switch (type) {
 		case Nd_State_Set:
 			pnode->nd_state = state_bits;
@@ -1125,7 +1228,6 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		case Nd_State_And:
 			pnode->nd_state &= state_bits;
 			break;
-
 		default:
 			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
 				__func__, type))
@@ -1133,8 +1235,12 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 			pnode->nd_state = state_bits;
 	}
 
-	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		nd_prev_state, pnode->nd_state))
+	/* Populate hook param rq_modifyvnode with old and new vnode states */
+	preq->rq_ind.rq_modifyvnode.rq_vnode_o = vnode_o;
+	preq->rq_ind.rq_modifyvnode.rq_vnode = pnode;
+
+	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__,
+		pnode->nd_name, vnode_o->nd_state, pnode->nd_state))
 
 	/* sync state attribute with nd_state */
 
@@ -1143,13 +1249,23 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
 	}
 
-	if (nd_prev_state != pnode->nd_state) {
+	/* If the state has changed update the last change time */
+	if (vnode_o->nd_state != pnode->nd_state) {
 		char str_val[STR_TIME_SZ];
-
 		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
 		set_attr_generic(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
-			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL, SET);
+			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL,
+			SET);
 	}
+
+	/* Write the vnode state change event to server log */
+	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
+	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pnode->nd_name,
+		"set_vnode_state;vnode.state=0x%lx vnode_o.state=0x%lx "
+		"vnode.last_state_change_time=%d vnode_o.last_state_change_time=%d "
+		"state_bits=0x%lx state_bit_op_type_str=%s state_bit_op_type_enum=%d",
+		pnode->nd_state, vnode_o->nd_state, time_int_val, last_time_int,
+		state_bits, get_vnode_state_op(type), type);
 
 	if (pnode->nd_state & INUSE_PROV) {
 		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
@@ -1182,27 +1298,35 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		/* while node is provisioning, we don't want the reservation
 		 * to degrade, hence returning.
 		 */
-		return;
+		goto fn_fire_event;
 	}
 
 	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
-		nd_prev_state, pnode->nd_state))
+		vnode_o->nd_state, pnode->nd_state))
 
 	/* node is marked INUSE_DOWN | INUSE_PROV when provisioning.
 	 * need to check transition from INUSE_PROV to UNAVAILABLE
 	 */
-	if ((!(nd_prev_state & VNODE_UNAVAILABLE) ||
-		(nd_prev_state & INUSE_PROV)) &&
-		(pnode->nd_state & VNODE_UNAVAILABLE))
+	if ((!(vnode_o->nd_state & VNODE_UNAVAILABLE) ||
+			(vnode_o->nd_state & INUSE_PROV)) &&
+			(pnode->nd_state & VNODE_UNAVAILABLE)) {
 		/* degrade all associated reservations. The '1' instructs the function to
 		 * account for the unavailable vnodes in the reservation's counter
 		 */
 		(void) vnode_unavailable(pnode, 1);
-
-	else if (((nd_prev_state & VNODE_UNAVAILABLE)) &&
-		((!(pnode->nd_state & VNODE_UNAVAILABLE)) ||
-		(pnode->nd_state == INUSE_FREE)))
+	} else if (((vnode_o->nd_state & VNODE_UNAVAILABLE)) &&
+			((!(pnode->nd_state & VNODE_UNAVAILABLE)) ||
+			(pnode->nd_state == INUSE_FREE))) {
 		(void) vnode_available(pnode);
+	}
+
+fn_fire_event: 
+	/* Fire off the vnode state change event */
+	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+
+fn_free_and_return:
+	shallow_vnode_free(vnode_o);
+	free_br(preq);
 }
 
 /**
@@ -2999,18 +3123,6 @@ mcast_moms(struct work_task *ptask)
 
 	switch (cmd)
 	{
-		case IS_NULL:
-			for (i = 0; i < mominfo_array_size; i++) {
-				if (mominfo_array[i])
-					add_mom_mcast(mominfo_array[i], &mtfd);
-			}
-
-			if ((ret = send_rpp_values(mtfd, 0)) != DIS_SUCCESS)
-				close_streams(mtfd, ret);
-
-			tpp_mcast_close(mtfd);
-			break;
-
 		case IS_CLUSTER_ADDRS:
 			for (i = 0; i < mominfo_array_size; i++) {
 
@@ -4253,10 +4365,23 @@ is_request(int stream, int version)
 		}
 		return;
 
+	} else if (command == IS_PEERSVR_CONNECT) {
+		if ((pmom = get_peersvr(addr)) == NULL) {
+			log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, 
+					"Peer server connected from %s", netaddr(addr));
+			addr->sin_addr.s_addr = ntohl(addr->sin_addr.s_addr);
+			addr->sin_port = ntohs(addr->sin_port);
+			if ((pmom = create_svr_struct(addr))) {
+				tinsert2((u_long)stream, 0ul, pmom, &streams);
+			}
+		}
+		tpp_eom(stream);
+		return;
+		
 	} else {
-		/* check that machine is known */
-		DBPRT(("%s: connect from %s\n", __func__, netaddr(addr)))
 		if ((pmom = tfind2((u_long)stream, 0, &streams)) != NULL)
+			goto found;
+		if ((command == IS_CMD) && (pmom = get_peersvr(addr)) != NULL)
 			goto found;
 	}
 
@@ -4525,7 +4650,10 @@ found:
 							}
 						}
 					}
-					propagate_licenses_to_vnodes(pmom);
+					if (made_new_vnodes || cr_node) {
+						save_nodes_db(1, pmom); /* update the node database */
+						propagate_licenses_to_vnodes(pmom);
+					}
 				}
 				vnl_free(vnlp);
 				vnlp = NULL;
@@ -4950,6 +5078,7 @@ found:
 			}
 			if (made_new_vnodes || cr_node) {
 				save_nodes_db(1, pmom); /* update the node database */
+				propagate_licenses_to_vnodes(pmom);
 			}
 			break;
 
@@ -5126,6 +5255,11 @@ found:
 				is_vnode_prov_done(np->nd_name);
                 }
 
+			break;
+
+		case IS_CMD:
+			DBPRT(("%s: IS_CMD\n", __func__))
+			process_IS_CMD(stream);
 			break;
 
 

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -226,75 +226,6 @@ class DshUtils(object):
         self._h2p[hostname] = splatform
         return splatform
 
-    def get_uname(self, hostname=None, pyexec=None):
-        """
-        Get a local or remote platform info in uname format, essentially
-        the value of Python's platform.uname
-        :param hostname: The hostname to query for platform info
-        :type hostname: str or None
-        :param pyexec: A path to a Python interpreter to use to query
-                       a remote host for platform info
-        :type pyexec: str or None
-        For efficiency the value is cached and retrieved from the
-        cache upon subsequent request
-        """
-        uplatform = ' '.join(platform.uname())
-        if hostname is None:
-            hostname = socket.gethostname()
-        if hostname in self._h2pu:
-            return self._h2pu[hostname]
-        if not self.is_localhost(hostname):
-            if pyexec is None:
-                pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
-            _cmdstr = '"import platform;'
-            _cmdstr += 'print(\' \'.join(platform.uname()))"'
-            cmd = [pyexec, '-c', _cmdstr]
-            ret = self.run_cmd(hostname, cmd=cmd)
-            if ret['rc'] != 0 or len(ret['out']) == 0:
-                _msg = 'Unable to retrieve platform info,'
-                _msg += 'defaulting to local platform'
-                self.logger.warning(_msg)
-            else:
-                uplatform = ret['out'][0]
-        self._h2pu[hostname] = uplatform
-        return uplatform
-
-    def get_os_info(self, hostname=None, pyexec=None):
-        """
-        Get a local or remote OS info
-
-        :param hostname: The hostname to query for platform info
-        :type hostname: str or None
-        :param pyexec: A path to a Python interpreter to use to query
-                       a remote host for platform info
-        :type pyexec: str or None
-
-        :returns: a 'str' object containing os info
-        """
-
-        local_info = platform.platform()
-
-        if hostname is None or self.is_localhost(hostname):
-            return local_info
-        if hostname in self._h2osinfo:
-            return self._h2osinfo[hostname]
-
-        if pyexec is None:
-            pyexec = self.which(hostname, 'python3', level=logging.DEBUG2)
-
-        cmd = [pyexec, '-c',
-               '"import platform; print(platform.platform())"']
-        ret = self.run_cmd(hostname, cmd=cmd)
-        if ret['rc'] != 0 or len(ret['out']) == 0:
-            self.logger.warning("Unable to retrieve OS info, defaulting "
-                                "to local")
-            ret_info = local_info
-        else:
-            ret_info = ret['out'][0]
-
-        self._h2osinfo[hostname] = ret_info
-        return ret_info
-
     def _parse_file(self, hostname, file):
         """
          helper function to parse a file containing entries of the
@@ -398,8 +329,8 @@ class DshUtils(object):
             if 'PBS_CONF_FILE' in os.environ:
                 dflt_conf = os.environ['PBS_CONF_FILE']
         else:
-            pc = ('"import os;print([False, os.environ[\'PBS_CONF_FILE\']]'
-                  '[\'PBS_CONF_FILE\' in os.environ])"')
+            pc = ('"import os;'
+                  'print(os.environ.get(\"PBS_CONF_FILE\", False))"')
             cmd = ['ls', '-1', dflt_python]
             ret = self.run_cmd(hostname, cmd, logerr=False)
             if ret['rc'] == 0:
@@ -679,13 +610,15 @@ class DshUtils(object):
                 for k, v in conf.items():
                     if isinstance(v, list):
                         for eachprop in v:
-                            l = 'echo "%s %s" >> %s\n' % (str(k),
-                                                          str(eachprop),
-                                                          rhost)
-                            fd.write(l)
+                            fields = 'echo "%s %s" >> %s\n' % (
+                                str(k),
+                                str(eachprop),
+                                rhost)
+                            fd.write(fields)
                     else:
-                        l = 'echo "%s %s" >> %s\n' % (str(k), str(v), rhost)
-                        fd.write(l)
+                        fields = 'echo "%s %s" >> %s\n' % (str(k), str(v),
+                                                           rhost)
+                        fd.write(fields)
                 fd.write('%s 0600 %s\n' % (self.which(hostname, 'chmod',
                                                       level=logging.DEBUG2),
                                            rhost))
@@ -1897,6 +1830,34 @@ class DshUtils(object):
         :returns: output of run_cmd
         """
         cmd = [self.which(hostname, 'cat', level=level)]
+        if option:
+            cmd += [option, filename]
+        else:
+            cmd.append(filename)
+        return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
+                            runas=runas, logerr=logerr, level=level)
+
+    def tail(self, hostname=None, filename=None, sudo=False, runas=None,
+             logerr=True, level=logging.INFOCLI2, option=None):
+        """
+        Generic function of tail with remote host support
+
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param filename: the path to the filename to tail
+        :type filename: str or None
+        :param sudo: whether to create directories as root or not.
+                     Defaults to False
+        :type sudo: boolean
+        :param runas: create directories as given user. Defaults
+                      to calling user
+        :type runas: str or None
+        :param logerr: whether to log error messages or not. Defaults
+                       to True.
+        :type logerr: boolean
+        :returns: output of run_cmd
+        """
+        cmd = [self.which(hostname, 'tail', level=level)]
         if option:
             cmd += [option, filename]
         else:

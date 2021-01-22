@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -121,7 +121,7 @@ extern "C" {
 /* End of standing reservation specific */
 
 /* additional job and general attribute names */
-
+#define ATTR_server_inst_id "server_instance_id"
 #define ATTR_ctime	"ctime"
 #define ATTR_estimated  "estimated"
 #define ATTR_exechost	"exec_host"
@@ -442,6 +442,8 @@ enum mgr_obj {
 	MGR_OBJ_HOST,		/* Host  	*/
 	MGR_OBJ_HOOK,		/* Hook         */
 	MGR_OBJ_PBS_HOOK,	/* PBS Hook     */
+	MGR_OBJ_JOBARRAY_PARENT,	/* Job array parent */
+	MGR_OBJ_SUBJOB,		/* Sub Job */
 	MGR_OBJ_LAST		/* Last entry	*/
 };
 
@@ -468,6 +470,7 @@ enum mgr_obj {
 #define PBS_MAXQUEUENAME	15		/* max queue name length */
 #define PBS_MAXJOBNAME  	230		/* max job name length */
 #define PBS_MAXSERVERNAME	PBS_MAXHOSTNAME	/* max server name length */
+#define MAX_SVR_ID		(PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 1)	/* svr_id is of the form sever_name:port */
 #define PBS_MAXSEQNUM		12		/* max sequence number length */
 #define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
 #define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
@@ -501,6 +504,10 @@ enum batch_op {	SET, UNSET, INCR, DECR,
 #define NOMAIL  			"nomail"
 #define SUPPRESS_EMAIL  		"suppress_email"
 #define DELETEHISTORY			"deletehist"
+
+/* attributes that may be passsed by pbs_runjob() api to the server via its extend parameter*/
+
+#define SERVER_IDENTIFIER		"run_on"
 /*
  ** This structure is identical to attropl so they can be used
  ** interchangably.  The op field is not used.
@@ -523,9 +530,15 @@ struct attropl {
 
 struct batch_status {
 	struct batch_status *next;
-	char		    *name;
-	struct attrl	    *attribs;
-	char		    *text;
+	char *name;
+	struct attrl *attribs;
+	char *text;
+};
+
+struct batch_deljob_status {
+	struct batch_deljob_status *next;
+	char *name;
+	int code;
 };
 
 /* structure to hold an attribute that failed verification at ECL
@@ -604,6 +617,8 @@ DECLDIR int pbs_connect_extend(char *, char *);
 DECLDIR char *pbs_default(void);
 
 DECLDIR int pbs_deljob(int, char *, char *);
+
+DECLDIR struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
 
 DECLDIR int pbs_disconnect(int);
 
@@ -707,6 +722,8 @@ extern char *pbs_default(void);
 
 extern int pbs_deljob(int, char *, char *);
 
+extern struct batch_deljob_status *pbs_deljoblist(int, char **, int, char *);
+
 extern char *pbs_geterrmsg(int);
 
 extern int pbs_holdjob(int, char *, char *, char *);
@@ -734,6 +751,8 @@ extern char **pbs_selectjob(int, struct attropl *, char *);
 extern int pbs_sigjob(int, char *, char *, char *);
 
 extern void pbs_statfree(struct batch_status *);
+
+extern void pbs_delstatfree(struct batch_deljob_status *);
 
 extern struct batch_status *pbs_statrsc(int, char *, struct attrl *, char *);
 
@@ -782,6 +801,7 @@ extern int (*pfn_pbs_connect)(char *);
 extern int (*pfn_pbs_connect_extend)(char *, char *);
 extern char *(*pfn_pbs_default)(void);
 extern int (*pfn_pbs_deljob)(int, char *, char *);
+extern struct batch_deljob_status *(*pfn_pbs_deljoblist)(int, char **, int, char *);
 extern int (*pfn_pbs_disconnect)(int);
 extern char *(*pfn_pbs_geterrmsg)(int);
 extern int (*pfn_pbs_holdjob)(int, char *, char *, char *);
@@ -797,6 +817,7 @@ extern int (*pfn_pbs_runjob)(int, char *, char *, char *);
 extern char **(*pfn_pbs_selectjob)(int, struct attropl *, char *);
 extern int (*pfn_pbs_sigjob)(int, char *, char *, char *);
 extern void (*pfn_pbs_statfree)(struct batch_status *);
+extern void (*pfn_pbs_delstatfree)(struct batch_deljob_status *);
 extern struct batch_status *(*pfn_pbs_statrsc)(int, char *, struct attrl *, char *);
 extern struct batch_status *(*pfn_pbs_statjob)(int, char *, struct attrl *, char *);
 extern struct batch_status *(*pfn_pbs_selstat)(int, struct attropl *, struct attrl *, char *);

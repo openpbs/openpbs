@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -93,6 +93,18 @@ range *dup_range_list(range *old_r);
  */
 range *dup_range(range *old_r);
 
+/**
+ * @brief
+ *	range_count - count number of elements in a given range structure
+ *
+ * @param[in]	r - range structure to count
+ *
+ * @return int
+ * @retval # - number of elements in range
+ *
+ */
+int range_count(range *r);
+
 /*
  *	range_parse - parse string of ranges delimited by comma
  */
@@ -125,7 +137,7 @@ int range_contains_single(range *r, int val);
 int range_remove_value(range **r, int val);
 
 /*
- *	range_add_value - add a value to a range list 
+ *	range_add_value - add a value to a range list
  *
  */
 int range_add_value(range **r, int val, int range_step);

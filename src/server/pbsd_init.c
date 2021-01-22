@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -845,6 +845,7 @@ pbsd_init(int type)
 	print_hooks(HOOK_EVENT_MOVEJOB);
 	print_hooks(HOOK_EVENT_RUNJOB);
 	print_hooks(HOOK_EVENT_MANAGEMENT);
+	print_hooks(HOOK_EVENT_MODIFYVNODE);
 	print_hooks(HOOK_EVENT_PROVISION);
 	print_hooks(HOOK_EVENT_PERIODIC);
 	print_hooks(HOOK_EVENT_RESV_END);
@@ -1326,10 +1327,7 @@ pbsd_init_job(job *pjob, int type)
 				return -1;
 			}
 
-			pjob->ji_subjindx = subjob_index_to_offset(pjob->ji_parentaj, get_index_from_jid(pjob->ji_qs.ji_jobid));
-			pjob->ji_parentaj->ji_ajtrk->tkm_tbl[pjob->ji_subjindx].trk_psubjob = pjob;
-			/* update the tracking table */
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, get_job_state(pjob));
+			update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, JOB_STATE_LTR_EXPIRED, get_job_state(pjob));
 		}
 
 		switch (get_job_substate(pjob)) {
@@ -1636,16 +1634,16 @@ pbsd_init_reque(job *pjob, int change_state)
 		/* update the state, typically to some form of QUEUED */
 		unset_extra_attributes(pjob);
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
+			update_sj_parent(pjob->ji_parentaj, pjob, pjob->ji_qs.ji_jobid, get_job_state(pjob), newstate);
 		set_job_state(pjob, newstate);
 		set_job_substate(pjob, newsubstate);
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, newstate);
 	}
 
 	/* make sure substate attributes match actual value */
 	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_SET_MOD_MCACHE;
 
-	if ((rc = svr_enquejob(pjob)) == 0) {
+	if ((rc = svr_enquejob(pjob, NULL)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);
 		(void)strcat(logbuf, pjob->ji_qs.ji_queue);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_DEBUG,

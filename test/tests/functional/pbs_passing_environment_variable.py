@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -104,10 +104,10 @@ env | grep foo
 unset -f foo
 exit 0
 """
-        fn = self.du.create_temp_file(body=foo_scr)
-        self.du.chmod(path=fn, mode=0o755)
+        fn = self.du.create_temp_file(hostname=self.mom.hostname, body=foo_scr)
+        self.du.chmod(hostname=self.mom.hostname, path=fn, mode=0o755)
         foo_msg = 'Failed to run foo_scr'
-        ret = self.du.run_cmd(self.server.hostname, cmd=fn)
+        ret = self.du.run_cmd(self.mom.hostname, cmd=fn)
         self.assertEqual(ret['rc'], 0, foo_msg)
         msg = 'BASH_FUNC_'
         n = 'foo'

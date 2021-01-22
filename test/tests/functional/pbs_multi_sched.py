@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -769,7 +769,7 @@ class TestMultipleSchedulers(TestFunctional):
         # submit jobs to multisched 'sc1'
         sc1_attr = {ATTR_queue: 'wq1',
                     'Resource_List.select': '1:ncpus=1',
-                    'Resource_List.walltime': 10}
+                    'Resource_List.walltime': 100}
         sc1_J1 = Job(TEST_USER1, attrs=sc1_attr)
         sc1_jid1 = self.server.submit(sc1_J1)
         sc1_J2 = Job(TEST_USER2, attrs=sc1_attr)

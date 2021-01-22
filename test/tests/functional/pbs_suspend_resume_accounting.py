@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -168,7 +168,7 @@ class TestSuspendResumeAccounting(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
         resc_released = "resources_released=(%s:ncpus=4:mem=524288kb)" \
-                        % self.server.shortname
+                        % self.mom.shortname
         record = 'z;%s;resources_used.' % jid1
         line = self.server.accounting_match(msg=record, id=jid1)[1]
         self.assertIn(resc_released, line)

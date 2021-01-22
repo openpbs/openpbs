@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -125,6 +125,7 @@
 #include "server_info.h"
 #include "attribute.h"
 #include "multi_threading.h"
+#include "libpbs.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -979,6 +980,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			ATTR_depend,
 			ATTR_A,
 			ATTR_max_run_subjobs,
+			ATTR_server_inst_id,
 			NULL
 	};
 
@@ -1049,6 +1051,8 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 		if (tdata->error || tdata->oarr == NULL) {
 			pbs_statfree(jobs);
+			free(tdata->oarr);
+			free(tdata);
 			return NULL;
 		}
 
@@ -1233,6 +1237,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->qrank = count;
 			else
 				resresv->qrank = -1;
+		}
+		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
+			resresv->job->svr_inst_id = string_dup(attrp->value);
+			if (resresv->job->svr_inst_id == NULL) {
+				free_resource_resv(resresv);
+				return NULL;
+			}
 		}
 		else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
 			count = strtol(attrp->value, &endp, 10);
@@ -1430,6 +1441,7 @@ new_job_info()
 		return NULL;
 	}
 
+	jinfo->svr_inst_id = NULL;
 	jinfo->is_queued = 0;
 	jinfo->is_running = 0;
 	jinfo->is_held = 0;
@@ -1550,6 +1562,9 @@ free_job_info(job_info *jinfo)
 
 	if (jinfo->dependent_jobs != NULL)
 		free(jinfo->dependent_jobs);
+
+	if (jinfo->svr_inst_id != NULL)
+		free(jinfo->svr_inst_id);
 
 	free_resource_req_list(jinfo->resused);
 
@@ -1773,7 +1788,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 
 	if (pattr != NULL && (flags & UPDATE_NOW)) {
 		int rc;
-		rc = send_attr_updates(pbs_sd, resresv->name, pattr);
+		rc = send_attr_updates(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, pattr);
 		free_attrl_list(pattr);
 		return rc;
 	}
@@ -1817,70 +1832,11 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 			return 0;
 	}
 
-	rc = send_attr_updates(pbs_sd, job->name, job->job->attr_updates);
+	rc = send_attr_updates(get_svr_inst_fd(pbs_sd, job->job->svr_inst_id), job->name, job->job->attr_updates);
 
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;
 	return rc;
-}
-
-
-/**
- * @brief
- * 		send delayed attributes to the server for a job
- *
- * @param[in]	pbs_sd	-	server connection descriptor
- * @param[in]	job_name	-	name of job for pbs_asyalterjob()
- * @param[in]	pattr	-	attrl list to update on the server
- *
- * @return	int
- * @retval	1	success
- * @retval	0	failure to update
- */
-int
-send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr)
-{
-	const char *errbuf;
-	int one_attr = 0;
-
-	if (job_name == NULL || pattr == NULL)
-		return 0;
-
-	if (pbs_sd == SIMULATE_SD)
-		return 1; /* simulation always successful */
-
-	if (pattr->next == NULL)
-		one_attr = 1;
-
-	if (pbs_asyalterjob(pbs_sd, job_name, pattr, NULL) == 0) {
-		last_attr_updates = time(NULL);
-		return 1;
-	}
-
-	if (is_finished_job(pbs_errno) == 1) {
-		if (one_attr)
-			log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name,
-				   "Failed to update attr \'%s\' = %s, Job already finished",
-				   pattr->name, pattr->value);
-		else
-			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, job_name,
-				"Failed to update job attributes, Job already finished");
-		return 0;
-	}
-
-	errbuf = pbs_geterrmsg(pbs_sd);
-	if (errbuf == NULL)
-		errbuf = "";
-	if (one_attr)
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
-			   "Failed to update attr \'%s\' = %s: %s (%d)",
-			   pattr->name, pattr->value, errbuf, pbs_errno);
-	else
-		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, job_name,
-			"Failed to update job attributes: %s (%d)",
-			errbuf, pbs_errno);
-
-	return 0;
 }
 
 /**
@@ -2807,6 +2763,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 
 	njinfo->queue = nqinfo;
 
+	njinfo->svr_inst_id = string_dup(ojinfo->svr_inst_id);
 	njinfo->is_queued = ojinfo->is_queued;
 	njinfo->is_running = ojinfo->is_running;
 	njinfo->is_held = ojinfo->is_held;
@@ -3100,7 +3057,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 			}
 		}
 
-		if ((preempt_jobs_reply = pbs_preempt_jobs(pbs_sd, preempt_jobs_list)) == NULL) {
+		if ((preempt_jobs_reply = send_preempt_jobs(pbs_sd, preempt_jobs_list)) == NULL) {
 			free_string_array(preempt_jobs_list);
 			free(preempted_list);
 			free(fail_list);
@@ -5324,19 +5281,10 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			 * compare the resource name with the chunk name
 			 */
 			if (inp->err->rdef == getallres(RES_VNODE)) {
-				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
-				if (hreq == NULL)
-					return 0;
-				for (index = 0; job->execselect->chunks[index] != NULL; index++)
-				{
-					resource_req *lreq = find_resource_req(job->execselect->chunks[index]->req, inp->err->rdef);
-					if (lreq != NULL)
-						if (strcmp(hreq->res_str, lreq->res_str) == 0)
-							return 1;
-				}
+				if (inp->err->arg2 != NULL && find_node_info(job->ninfo_arr, inp->err->arg2) != NULL)
+					return 1;
 			} else if (inp->err->rdef == getallres(RES_HOST)) {
-				resource_req *hreq = find_resource_req(inp->job->resreq, inp->err->rdef);
-				if (find_node_by_host(job->ninfo_arr, hreq->res_str) != NULL)
+				if (inp->err->arg2 != NULL && find_node_by_host(job->ninfo_arr, inp->err->arg2) != NULL)
 					return 1;
 			} else {
 				if (inp->err->rdef->type.is_non_consumable) {

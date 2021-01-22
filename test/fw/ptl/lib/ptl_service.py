@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -51,6 +51,7 @@ import string
 import sys
 import time
 import traceback
+import platform
 
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_procutils import ProcUtils
@@ -59,6 +60,9 @@ from ptl.utils.pbs_testusers import (ROOT_USER, TEST_USER, PbsUser,
 from ptl.lib.ptl_error import (PbsInitServicesError, PbsServiceError,
                                PtlLogMatchError)
 from ptl.lib.ptl_object import PBSObject
+
+from ptl.lib.ptl_constants import (SERVER, VNODE, QUEUE, JOB,
+                                   RESV, SCHED, HOOK)
 
 
 class PBSInitServices(object):
@@ -468,12 +472,16 @@ class PBSService(PBSObject):
     :param snap: path to PBS snap directory
                  (This will override snapmap)
     :type snap: str or None
+    :param pbs_conf: Parsed pbs.conf in dictionary format
+    :type pbs_conf: Dictionary or None
+    :param platform: PBS service's platform
+    :type platform: str or None
     """
     du = DshUtils()
     pu = ProcUtils()
 
     def __init__(self, name=None, attrs=None, defaults=None, pbsconf_file=None,
-                 snapmap=None, snap=None):
+                 snapmap=None, snap=None, pbs_conf=None, platform=None):
         if attrs is None:
             attrs = {}
         if defaults is None:
@@ -503,13 +511,16 @@ class PBSService(PBSObject):
                     self.logger.info('FQDN name ' + self.fqdn + ' differs '
                                      'from name provided ' + self.hostname)
                     self.hostname = self.fqdn
-            except:
+            except Exception:
                 pass
         else:
             self.fqdn = self.hostname
 
         self.shortname = self.hostname.split('.')[0]
-        self.platform = self.du.get_platform()
+        if platform is None:
+            self.platform = self.du.get_platform()
+        else:
+            self.platform = platform
 
         self.logutils = None
         self.logfile = None
@@ -557,6 +568,9 @@ class PBSService(PBSObject):
             if m:
                 tm = time.strptime(m.group('datetime'), "%y%m%d_%H%M%S")
                 self.ctime = int(time.mktime(tm))
+        elif pbs_conf is not None:
+            self.pbs_conf = pbs_conf
+            self.pbs_server_name = self.du.get_pbs_server_name(self.pbs_conf)
         else:
             self.pbs_conf = self.du.parse_pbs_config(self.hostname,
                                                      self.pbs_conf_file)
@@ -1060,7 +1074,7 @@ class PBSService(PBSObject):
         """
         try:
             from ptl.utils.pbs_logutils import PBSLogUtils
-        except:
+        except Exception:
             _msg = 'error loading ptl.utils.pbs_logutils'
             raise ImportError(_msg)
 
@@ -1128,7 +1142,7 @@ class PBSService(PBSObject):
             # an open file descriptor, we close here but ignore errors in case
             # any were raised for all irrelevant cases
             lines.close()
-        except:
+        except Exception:
             pass
         if (rv is None and existence):
             _msg = infomsg + attemptmsg
@@ -1359,7 +1373,7 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore " +
                                               "configuration: %s" % k)
                             return False
-                    except:
+                    except Exception:
                         self.logger.error("Failed to restore " +
                                           "configuration: %s" % k)
                         return False
@@ -1392,7 +1406,7 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore " +
                                               "configuration: %s" % k)
                             return False
-                    except:
+                    except Exception:
                         self.logger.error("Failed to restore " +
                                           "configuration: %s" % k)
                         return False
@@ -1444,6 +1458,68 @@ class PBSService(PBSObject):
         platform independent call to get a temporary directory
         """
         return self.du.get_tempdir(self.hostname)
+
+    def get_uname(self, hostname=None, pyexec=None):
+        """
+        Get a local or remote platform info in uname format, essentially
+        the value of Python's platform.uname
+        :param hostname: The hostname to query for platform info
+        :type hostname: str or None
+        :param pyexec: A path to a Python interpreter to use to query
+                       a remote host for platform info
+        :type pyexec: str or None
+        For efficiency the value is cached and retrieved from the
+        cache upon subsequent request
+        """
+        uplatform = ' '.join(platform.uname())
+        if hostname is None:
+            hostname = socket.gethostname()
+        if not self.du.is_localhost(hostname):
+            if pyexec is None:
+                pyexec = self.du.which(
+                    hostname, 'python3', level=logging.DEBUG2)
+            _cmdstr = '"import platform;'
+            _cmdstr += 'print(\' \'.join(platform.uname()))"'
+            cmd = [pyexec, '-c', _cmdstr]
+            ret = self.du.run_cmd(hostname, cmd=cmd)
+            if ret['rc'] != 0 or len(ret['out']) == 0:
+                _msg = 'Unable to retrieve platform info,'
+                _msg += 'defaulting to local platform'
+                self.logger.warning(_msg)
+            else:
+                uplatform = ret['out'][0]
+        return uplatform
+
+    def get_os_info(self, hostname=None, pyexec=None):
+        """
+        Get a local or remote OS info
+        :param hostname: The hostname to query for platform info
+        :type hostname: str or None
+        :param pyexec: A path to a Python interpreter to use to query
+                       a remote host for platform info
+        :type pyexec: str or None
+        :returns: a 'str' object containing os info
+        """
+
+        local_info = platform.platform()
+
+        if hostname is None or self.du.is_localhost(hostname):
+            return local_info
+
+        if pyexec is None:
+            pyexec = self.du.which(hostname, 'python3', level=logging.DEBUG2)
+
+        cmd = [pyexec, '-c',
+               '"import platform; print(platform.platform())"']
+        ret = self.du.run_cmd(hostname, cmd=cmd)
+        if ret['rc'] != 0 or len(ret['out']) == 0:
+            self.logger.warning("Unable to retrieve OS info, defaulting "
+                                "to local")
+            ret_info = local_info
+        else:
+            ret_info = ret['out'][0]
+
+        return ret_info
 
     def __str__(self):
         return (self.__class__.__name__ + ' ' + self.hostname + ' config ' +

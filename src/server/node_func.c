@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -93,6 +93,7 @@ extern int h_errno;
 
 /* Global Data */
 
+extern char *pbs_server_name;
 extern int	 svr_quehasnodes;
 extern int	 svr_totnodes;
 extern pbs_list_head svr_queues;
@@ -296,6 +297,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	attribute    *pat2;
 	resource_def *prd;
 	resource     *presc;
+	char         *svr_inst_id;
 
 	pnode->nd_name    = pname;
 	pnode->nd_ntype   = ntype;
@@ -326,6 +328,13 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 	pnode->nd_attr[(int)ND_ATR_state].at_flags = ATR_VFLAG_SET;
+
+	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
+		log_err(errno, __func__, "unable to get server_instance_id");
+		return (PBSE_SYSTEM);
+	}
+	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_val.at_str = svr_inst_id;
+	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_flags = ATR_VFLAG_SET;
 
 	pnode->nd_attr[(int)ND_ATR_ntype].at_val.at_short = pnode->nd_ntype;
 	pnode->nd_attr[(int)ND_ATR_ntype].at_flags = ATR_VFLAG_SET;
@@ -359,6 +368,20 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	prd  = &svr_resc_def[RESC_NCPUS];
 	(void)add_resource_entry(pat1, prd);
+
+	if (get_num_servers() > 1) {
+		resource *svr_nd_grp = NULL;
+
+		/* Set the value of msvr_node_group to "server_id" where
+		 * server_id is the id of the server for the node */
+		prd = &svr_resc_def[RESC_MSVR_ND_GROUP];
+		if ((svr_nd_grp = add_resource_entry(pat1, prd)) != NULL) {
+			char buf[PBS_MAXHOSTNAME];
+
+			snprintf(buf, sizeof(buf), "%s", pbs_server_name);
+			decode_arst(&svr_nd_grp->rs_value, NULL, NULL, buf);
+		}
+	}
 
 	/* add to resources_assigned any resource with ATR_DFLAG_FNASSN */
 	/* or  ATR_DFLAG_ANASSN set in the resource definition          */

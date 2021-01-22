@@ -1,7 +1,7 @@
 # coding: utf-8
 """
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -60,7 +60,7 @@ Motivation:
 
 from . import _base_types as pbs_types
 from ._svr_types import (_queue, _job, _server, _resv, _vnode, _event, pbs_iter,
-    _management, _server_attribute)
+                         _management, _server_attribute)
 from ._exc_types import *
 
 

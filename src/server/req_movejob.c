@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -93,29 +93,35 @@ req_movejob(struct batch_request *req)
 	int      jt;            /* job type */
 	job	*jobp;
 	char	hook_msg[HOOK_MSG_SIZE];
+	int	move_type = 0;
 
-	switch (process_hooks(req, hook_msg, sizeof(hook_msg),
-			pbs_python_set_interrupt)) {
-		case 0:	/* explicit reject */
-			reply_text(req, PBSE_HOOKERROR, hook_msg);
-			return;
-		case 1:   /* explicit accept */
-			if (recreate_request(req) == -1) { /* error */
-				/* we have to reject the request, as 'req' */
-				/* may have been partly modified           */
-				strcpy(hook_msg,
-					"movejob event: rejected request");
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, "", hook_msg);
+	if (req && req->rq_type == PBS_BATCH_MoveJob && req->rq_ind.rq_move.run_exec_vnode)
+		move_type = MOVE_TYPE_Move_Run;
+
+	if (move_type != MOVE_TYPE_Move_Run) {
+		switch (process_hooks(req, hook_msg, sizeof(hook_msg),
+				pbs_python_set_interrupt)) {
+			case 0:	/* explicit reject */
 				reply_text(req, PBSE_HOOKERROR, hook_msg);
 				return;
-			}
-			break;
-		case 2:	/* no hook script executed - go ahead and accept event*/
-			break;
-		default:
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_INFO, "", "movejob event: accept req by default");
+			case 1:   /* explicit accept */
+				if (recreate_request(req) == -1) { /* error */
+					/* we have to reject the request, as 'req' */
+					/* may have been partly modified           */
+					strcpy(hook_msg,
+						"movejob event: rejected request");
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_HOOK,
+						LOG_ERR, "", hook_msg);
+					reply_text(req, PBSE_HOOKERROR, hook_msg);
+					return;
+				}
+				break;
+			case 2:	/* no hook script executed - go ahead and accept event*/
+				break;
+			default:
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_INFO, "", "movejob event: accept req by default");
+		}
 	}
 
 	jobp = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt, NULL);
@@ -132,10 +138,9 @@ req_movejob(struct batch_request *req)
 			!check_job_state(jobp, JOB_STATE_LTR_HELD) &&
 			!check_job_state(jobp, JOB_STATE_LTR_WAITING)) {
 #ifndef NDEBUG
-		(void)sprintf(log_buffer, "(%s) %s, state=%d",
-			__func__, msg_badstate, get_job_state(jobp));
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			jobp->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			   jobp->ji_qs.ji_jobid, "(%s) %s, state=%c",
+			   __func__, msg_badstate, get_job_state(jobp));
 #endif /* NDEBUG */
 		req_reject(PBSE_BADSTATE, 0, req);
 		return;
@@ -145,7 +150,7 @@ req_movejob(struct batch_request *req)
 		/* cannot move Subjob and can only move array job if */
 		/* no subjobs are running			     */
 		if ((jt != IS_ARRAY_ArrayJob) ||
-			(jobp->ji_ajtrk->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
+			(jobp->ji_ajinfo->tkm_subjsct[JOB_STATE_RUNNING] != 0)) {
 			req_reject(PBSE_IVALREQ, 0, req);
 			return;
 		}
@@ -167,8 +172,16 @@ req_movejob(struct batch_request *req)
 			reply_ack(req);
 			break;
 		case -1:
+		case -2:
 		case 1:			/* fail */
-			if (jobp->ji_clterrmsg)
+			if (jobp) {
+				char newstate;
+				int newsub;
+				/* force re-eval of job state out of Transit */
+				svr_evaljobstate(jobp, &newstate, &newsub, 1);
+				svr_setjobstate(jobp, newstate, newsub);
+			}
+			if (jobp && jobp->ji_clterrmsg)
 				reply_text(req, pbs_errno, jobp->ji_clterrmsg);
 			else
 				req_reject(pbs_errno, 0, req);
@@ -213,10 +226,9 @@ req_orderjob(struct batch_request *req)
 		check_job_state(pjob = pjob1, JOB_STATE_LTR_BEGUN)  ||
 		check_job_state(pjob = pjob2, JOB_STATE_LTR_BEGUN)) {
 #ifndef NDEBUG
-		(void)sprintf(log_buffer, "(%s) %s, state=%d",
-			__func__, msg_badstate, get_job_state(pjob));
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			pjob->ji_qs.ji_jobid, log_buffer);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			   pjob->ji_qs.ji_jobid, "(%s) %s, state=%c",
+			   __func__, msg_badstate, get_job_state(pjob));
 #endif	/* NDEBUG */
 		req_reject(PBSE_BADSTATE, 0, req);
 		return;
@@ -246,8 +258,8 @@ req_orderjob(struct batch_request *req)
 		(void)strcpy(pjob2->ji_qs.ji_queue, tmpqn);
 		svr_dequejob(pjob1);
 		svr_dequejob(pjob2);
-		(void)svr_enquejob(pjob1);
-		(void)svr_enquejob(pjob2);
+		(void)svr_enquejob(pjob1, NULL);
+		(void)svr_enquejob(pjob2, NULL);
 
 	} else {
 		swap_link(&pjob1->ji_jobque,  &pjob2->ji_jobque);

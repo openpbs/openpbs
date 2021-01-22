@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -50,7 +50,8 @@ class TestNonprintingCharacters(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         # Mapping of ASCII non-printable character to escaped representation
         self.npcat = {
             "\x00": "^@", "\x01": "^A", "\x02": "^B", "\x03": "^C",
@@ -157,7 +158,7 @@ sleep 5
         """
         Check if escaped variable is in qstat -f output
         """
-        cmd = [self.qstat_cmd, '-f', jid]
+        cmd = [self.qstat_cmd, '-xf', jid]
         ret = self.du.run_cmd(self.server.hostname, cmd=cmd)
         k = chk_var.split('=')[0]
         for elem in ret['out']:
@@ -166,7 +167,7 @@ sleep 5
                 job_str = elem.strip('\t') + ret['out'][i + 1].strip('\t')
                 break
         self.assertIn(chk_var, job_str)
-        self.logger.info('qstat -f output has: %s' % chk_var)
+        self.logger.info('qstat -xf output has: %s' % chk_var)
 
     def test_nonprint_character_qsubv(self):
         """
@@ -223,7 +224,7 @@ sleep 5
             if ch in self.npch_asis:
                 chk_var = r'var1=A\,B\,%s\,C\,D' % ch
             script = ['#PBS -v "var1=\'A,B,%s,C,D\'"' % ch]
-            script += ['sleep 5']
+            script += ['sleep 1']
             script += ['env | grep var1']
             jid = self.create_and_submit_job(content=script)
             # Check if qstat -f output contains the escaped character
@@ -719,7 +720,7 @@ sleep 5
             for j in ja:
                 # Check if qstat -f output contains the escaped character
                 self.check_qstatout(chk_var, j)
-            qstat1 = self.server.status(JOB, ATTR_o, id=subj1)
+            qstat1 = self.server.status(JOB, ATTR_o, id=subj1, extend='x')
             job_outfile1 = qstat1[0][ATTR_o].split(':')[1]
             job_host = qstat1[0][ATTR_o].split(':')[0]
             if job_outfile1.split('.')[2] == '^array_index^':
@@ -805,10 +806,10 @@ sleep 5
                 pkey = ""
                 penv = {}
                 for line in fd:
-                    l = line.split('=', 1)
-                    if len(l) == 2:
-                        pkey = l[0]
-                        penv[pkey] = l[1]
+                    fields = line.split('=', 1)
+                    if len(fields) == 2:
+                        pkey = fields[0]
+                        penv[pkey] = fields[1]
             np_var = penv['NONPRINT_VAR']
             np_char = np_var.split(',')[1]
             self.assertEqual(ch, np_char)
@@ -847,10 +848,10 @@ sleep 5
             pkey = ""
             penv = {}
             for line in fd:
-                l = line.split('=', 1)
-                if len(l) == 2:
-                    pkey = l[0]
-                    penv[pkey] = l[1]
+                fields = line.split('=', 1)
+                if len(fields) == 2:
+                    pkey = fields[0]
+                    penv[pkey] = fields[1]
         np_var = penv['NONPRINT_VAR']
         self.logger.info("np_var: %s" % repr(np_var))
         np_char1 = np_var.split(',')[1]
@@ -926,10 +927,10 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         j_output = ret['out']
         penv = {}
         for line in j_output:
-            l = line.split('=', 1)
-            if len(l) == 2:
-                pkey = l[0]
-                penv[pkey] = l[1]
+            fields = line.split('=', 1)
+            if len(fields) == 2:
+                pkey = fields[0]
+                penv[pkey] = fields[1]
         np_var = penv['NONPRINT_VAR']
         self.logger.info("np_var: %s" % repr(np_var))
         np_char1 = np_var.split(',')[1]

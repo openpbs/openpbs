@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -267,7 +267,7 @@ class TestMomHookSync(TestFunctional):
 
         now = time.time()
         self.momB.signal('-KILL')
-        self.momB.restart()
+        self.momB.start()
 
         # Killing and restarting mom would cause server to sync
         # up its version of the mom hook file resulting in an
@@ -337,7 +337,7 @@ class TestMomHookSync(TestFunctional):
         # mom hook sends are done.
         now = time.time()
         self.momB.signal('-KILL')
-        self.momB.restart()
+        self.momB.start()
 
         # Put another sleep delay so log_match() can see all the matches
         self.logger.info("Waiting 3 secs for new hook updates to complete")
@@ -378,8 +378,8 @@ class TestMomHookSync(TestFunctional):
 
             file = os.path.join(self.momB.pbs_conf['PBS_HOME'], 'mom_priv',
                                 'hooks', 'resourcedef')
-            momret = self.momB.du.cat(self.momB.hostname, file, logerr=False,
-                                      sudo=True)
+            momret = self.momB.cat(file, logerr=False,
+                                   sudo=True)
             if momret['rc'] != 0 or len(momret['out']) == 0:
                 continue
 

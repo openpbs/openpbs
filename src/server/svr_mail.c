@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -293,8 +293,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			/* no mail user list, just send to owner */
 
-			strncpy(mailto, get_jattr_str(pjob, JOB_ATR_job_owner), sizeof(mailto));
-			mailto[(sizeof(mailto) - 1)] = '\0';
+			pbs_strncpy(mailto, get_jattr_str(pjob, JOB_ATR_job_owner), sizeof(mailto));
 			/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 			/* host name with the name specified in pbs_mail_host_name    */
 			if (pbs_conf.pbs_mail_host_name) {
@@ -514,8 +513,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 		/* no mail user list, just send to owner */
 
-		(void)strncpy(mailto, presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, sizeof(mailto));
-		mailto[(sizeof(mailto) - 1)] = '\0';
+		(void)pbs_strncpy(mailto, presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, sizeof(mailto));
 		/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 		/* host name with the name specified in pbs_mail_host_name    */
 		if (pbs_conf.pbs_mail_host_name) {

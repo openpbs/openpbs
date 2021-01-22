@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -99,7 +99,7 @@ create_pbs_iplist(void)
 	pntPBS_IP_LIST list= (pntPBS_IP_LIST)calloc(1, sizeof(PBS_IP_LIST));
 	if (list) {
 		list->li_range = create_pbs_range();
-		if (! list->li_range) {
+		if (!list->li_range) {
 			free(list);
 			return NULL;
 		}

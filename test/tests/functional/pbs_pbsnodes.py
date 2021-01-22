@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -82,6 +82,9 @@ class TestPbsnodes(TestFunctional):
         if user == 'root':
             expect_dict[ATTR_version] = self.server.pbs_version
             expect_dict[ATTR_NODE_Port] = '15002'
+
+        if self.mom.is_cpuset_mom():
+            del expect_dict['resources_available.vnode']
 
         return expect_dict
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #include "pbs_ifl.h"
+#include "pbs_internal.h"
 
 /* IFL functions */
 int __pbs_asyrunjob(int, char *, char *, char *);
@@ -65,6 +66,8 @@ int __pbs_connect_extend(char *, char *);
 char *__pbs_default(void);
 
 int __pbs_deljob(int, char *, char *);
+
+struct batch_deljob_status *__pbs_deljoblist(int, char **, int, char *);
 
 int __pbs_disconnect(int);
 
@@ -95,6 +98,8 @@ char **__pbs_selectjob(int, struct attropl *, char *);
 int __pbs_sigjob(int, char *, char *, char *);
 
 void __pbs_statfree(struct batch_status *);
+
+void __pbs_delstatfree(struct batch_deljob_status *);
 
 struct batch_status *__pbs_statrsc(int, char *, struct attrl *, char *);
 

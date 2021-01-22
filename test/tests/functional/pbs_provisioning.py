@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -168,7 +168,6 @@ class TestProvisioningJob(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
 
         job = Job(TEST_USER1, attrs={ATTR_l: 'aoe=App1'})
-        job.set_sleep_time(1)
         jid = self.server.submit(job)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.log_match(

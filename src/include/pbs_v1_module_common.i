@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -99,6 +99,7 @@ pbs_list_head svr_resvsub_hooks;
 pbs_list_head svr_movejob_hooks;
 pbs_list_head svr_runjob_hooks;
 pbs_list_head svr_management_hooks;
+pbs_list_head svr_modifyvnode_hooks;
 pbs_list_head svr_provision_hooks;
 pbs_list_head svr_periodic_hooks;
 pbs_list_head svr_resv_end_hooks;

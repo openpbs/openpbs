@@ -1,7 +1,7 @@
 # coding: utf-8
 """
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -463,7 +463,26 @@ class _vnode():
             _pbs_v1.mark_vnode_set(self.name, name, str(value))
 
     #: m(__seattr__)
+    
+    def extract_state_strs(self):
+        """returns the string values from the state bits."""
+        lst = []
+        if self.state == _pbs_v1.ND_STATE_FREE:
+            lst.append('ND_STATE_FREE')
+            lst.append('ND_STATE_VNODE_AVAILABLE')
+        else:
+            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+        return lst
 
+    def extract_state_ints(self):
+        """returns the integer values from the state bits."""
+        lst = []
+        if self.state == _pbs_v1.ND_STATE_FREE:
+            lst.append(_pbs_v1.ND_STATE_FREE)
+            lst.append(_pbs_v1.ND_STATE_VNODE_AVAILABLE)
+        else:
+            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+        return lst
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
 _vnode._connect_server = PbsAttributeDescriptor(
@@ -1511,7 +1530,6 @@ _management._connect_server = PbsAttributeDescriptor(
 management = _management
 
 
-
 #:------------------------------------------------------------------------
 #                  Reverse Lookup for _pv1mod_insert_int_constants
 #:-------------------------------------------------------------------------
@@ -1520,6 +1538,8 @@ _pbs_v1.REVERSE_MGR_OBJS = {}
 _pbs_v1.REVERSE_BRP_CHOICES = {}
 _pbs_v1.REVERSE_BATCH_OPS = {}
 _pbs_v1.REVERSE_ATR_VFLAGS = {}
+_pbs_v1.REVERSE_NODE_STATE = {}
+    
 for key, value in _pbs_v1.__dict__.items():
     if key.startswith("MGR_CMD_"):
         _pbs_v1.REVERSE_MGR_CMDS[value] = key
@@ -1531,3 +1551,5 @@ for key, value in _pbs_v1.__dict__.items():
         _pbs_v1.REVERSE_BATCH_OPS[value] = key
     elif key.startswith("ATR_VFLAG_"):
         _pbs_v1.REVERSE_ATR_VFLAGS[value] = key
+    elif key.startswith("ND_STATE_"):
+        _pbs_v1.REVERSE_NODE_STATE[value] = key

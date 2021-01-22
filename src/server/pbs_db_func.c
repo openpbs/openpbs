@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -449,7 +449,9 @@ connect_to_db(int background) {
 	int db_stop_counts = 0;
 	int db_stop_email_sent = 0;
 	int conn_state;
+#ifndef DEBUG
 	pid_t sid = -1;
+#endif
 	int db_delay = 0;
 try_db_again:
 	fprintf(stdout, "Connecting to PBS dataservice.");

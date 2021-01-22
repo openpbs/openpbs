@@ -16,17 +16,17 @@ OpenPBS® software optimizes job scheduling and workload management in high-perf
 
 ### Community and Ways to Participate
 
-OpenPBS is a community effort and there are a variety of ways to engage, from helping answer questions to benchmarking to developing new capabilities and tests.  We value being aggressively open and inclusive, but also aggressively respectful and professional.  See our [Code of Conduct](https://pbspro.atlassian.net/wiki/display/PBSPro/Code+of+Conduct).
+OpenPBS is a community effort and there are a variety of ways to engage, from helping answer questions to benchmarking to developing new capabilities and tests.  We value being aggressively open and inclusive, but also aggressively respectful and professional.  See our [Code of Conduct](https://openpbs.atlassian.net/wiki/display/PBSPro/Code+of+Conduct).
 
 The best place to start is by joining the community forum.  You may sign up or view the archives via:
 
-* [Announcements](http://community.pbspro.org/c/announcements) -- important updates relevant to the entire PBS Pro community
-* [Users/Site Admins](http://community.pbspro.org/c/users-site-administrators) -- general questions and discussions among end users (system admins, engineers, scientists)
-* [Developers](http://community.pbspro.org/c/developers) -- technical discussions among developers
+* [Announcements](http://community.openpbs.org/c/announcements) -- important updates relevant to the entire PBS Pro community
+* [Users/Site Admins](http://community.openpbs.org/c/users-site-administrators) -- general questions and discussions among end users (system admins, engineers, scientists)
+* [Developers](http://community.openpbs.org/c/developers) -- technical discussions among developers
 
 To dive in deeper and learn more about the project and what the community is up to, visit:
 
-* [Contributor’s portal](https://pbspro.atlassian.net/wiki) -- includes roadmaps, processes, how to articles, coding standards, release notes, etc  (Uses Confluence)
+* [Contributor’s portal](https://openpbs.atlassian.net/wiki) -- includes roadmaps, processes, how to articles, coding standards, release notes, etc  (Uses Confluence)
 * [Source code](https://github.com/OpenPBS/openpbs) -- includes full source code and test framework (Uses Github)
 * [Issue tracking system](https://github.com/OpenPBS/openpbs/issues) -- includes bugs and feature requests and status (Uses Github).  Previously, we used [JIRA](https://pbspro.atlassian.net), which contains older issues.
 

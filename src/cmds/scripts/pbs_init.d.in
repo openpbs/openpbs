@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -450,7 +450,7 @@ stop_pbs() {
 					echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_shutdown"
 					${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_shutdown"
 				fi
-				${PBS_EXEC}/bin/qterm -t quick
+				env -u PBS_SERVER_INSTANCES ${PBS_EXEC}/bin/qterm -t quick
 				echo "PBS server - was pid: ${pbs_server_pid}"
 			elif [ ${is_secondary} -eq 1 ]; then
 				echo "This is secondary server, killing process."

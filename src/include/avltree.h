@@ -7,7 +7,7 @@
  *	Taken from NetBSD avltree-1.1.tar.gz.
  */
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -79,7 +79,9 @@ typedef struct {
 #define AVL_DUP_KEYS_OK 0x01 /* repeated key & rec cause an error message */
 #define AVL_CASE_CMP    0x02 /* case insensitive search */
 
+extern void avl_set_maxthreads(int n);
 extern void *get_avl_tls(void);
+extern void free_avl_tls(void);
 extern int avl_create_index(AVL_IX_DESC *pix, int flags, int keylength);
 extern void avl_destroy_index(AVL_IX_DESC *pix);
 extern int avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);

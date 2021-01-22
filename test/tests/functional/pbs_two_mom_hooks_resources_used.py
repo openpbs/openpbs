@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -117,7 +117,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
         # Check for resources_used value in the 'R' record.
         msg = '.*R;' + str(jid1) + '.*resources_used.ncpus=2.*'
-        self.server.accounting_match(msg, tail=True, regexp=True)
+        self.server.accounting_match(msg, regexp=True, n='ALL')
 
     def test_Erecord(self):
         """

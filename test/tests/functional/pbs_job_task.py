@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -56,7 +56,7 @@ class TestJobTask(TestFunctional):
         """
         This function validates job's output file
         """
-        ret = self.du.cat(hostname=self.mom.shortname,
+        ret = self.du.cat(hostname=self.server.shortname,
                           filename=out_file,
                           runas=TEST_USER)
         _msg = "cat command failed with error:%s" % ret['err']
@@ -103,3 +103,42 @@ class TestJobTask(TestFunctional):
         if job_status:
             job_output_file = job_status[0]['Output_Path'].split(':')[1]
         self.check_jobs_file(job_output_file)
+
+    @requirements(num_moms=3)
+    def test_invoke_pbs_tmrsh_from_sister_mom(self):
+        """
+        This test cases verifies pbs_tmrsh invoked from sister mom
+        executes successfully
+        """
+        # Skip test if number of mom provided is not equal to three
+        if not len(self.moms) == 3:
+            self.skipTest("test requires three MoMs as input, " +
+                          "use -p moms=<mom1:mom2:mom3>")
+        mom1 = self.moms.keys()[0]
+        mom2 = self.moms.keys()[1]
+        mom3 = self.moms.keys()[2]
+        pbstmrsh_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                    'bin', 'pbs_tmrsh')
+
+        script_mom2 = """#!/bin/bash\n%s %s hostname""" % \
+                      (pbstmrsh_cmd, mom3)
+        fn = self.du.create_temp_file(hostname=mom2, body=script_mom2)
+        self.du.chmod(hostname=mom2, path=fn, mode=0o755)
+        a = {ATTR_S: '/bin/bash'}
+        script = ['%s %s %s' % (pbstmrsh_cmd, mom2, fn)]
+        job = Job(TEST_USER, attrs=a)
+        job.set_attributes({'Resource_List.select': '3:ncpus=1',
+                            'Resource_List.place': 'scatter'})
+        job.create_script(body=script)
+        jid = self.server.submit(job)
+
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
+        job_status = self.server.status(JOB, id=jid, extend='x')
+        if job_status:
+            job_output_file = job_status[0]['Output_Path'].split(':')[1]
+
+        ret = self.du.cat(hostname=mom1, filename=job_output_file,
+                          runas=TEST_USER)
+        self.assertEqual(ret['out'][0], mom3, "pbs_tmrsh invoked from sister"
+                                              " mom did not execute "
+                                              "successfully")

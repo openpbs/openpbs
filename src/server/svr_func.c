@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -622,9 +622,10 @@ action_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
 	return PBSE_NONE;
 }
 
+
 /**
  * @brief
- * 		set_rpp_retry - action routine for the server's "rpp_retry" attribute.
+ * 		dummy action function for rpp_retry
  *
  * @param[in]	pattr	-	pointer to attribute structure
  * @param[in]	pobj	-	not used
@@ -637,38 +638,13 @@ action_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
 int
 set_rpp_retry(attribute *pattr, void *pobj, int actmode)
 {
-	int old_rpp_retry = rpp_retry;
-
-	if (actmode == ATR_ACTION_ALTER ||
-		actmode == ATR_ACTION_RECOV) {
-		/*
-		 ** rpp_retry can be zero, i.e. no retries.
-		 */
-		if (pattr->at_val.at_long < 0)
-			return PBSE_BADATVAL;
-
-		rpp_retry = (int)pattr->at_val.at_long;
-		if (rpp_retry < 10) {
-			sprintf(log_buffer,
-				"warning: low value for rpp_retry: %d",
-				rpp_retry);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_DEBUG, msg_daemonname, log_buffer);
-		}
-	}
-
-	if (actmode == ATR_ACTION_ALTER && old_rpp_retry != rpp_retry) {
-		struct work_task *ptask = set_task(WORK_Immed, 0, mcast_moms, NULL);
-		ptask->wt_aux = IS_NULL;
-	}
-
+	log_err(-1, __func__, "rpp_retry is deprecated. This functionality is now automatic without needing this attribute");
 	return PBSE_NONE;
 }
 
 /**
  * @brief
- * 		set_rpp_highwater - action routine for the server's "rpp_highwater"
- * 		attribute.
+ * 		dummy action function for rpp_highwater
  *
  * @param[in]	pattr	-	pointer to attribute structure
  * @param[in]	pobj	-	not used
@@ -681,29 +657,9 @@ set_rpp_retry(attribute *pattr, void *pobj, int actmode)
 int
 set_rpp_highwater(attribute *pattr, void *pobj, int actmode)
 {
-	int old_rpp_highwater = rpp_highwater;
-
-	if (actmode == ATR_ACTION_ALTER ||
-		actmode == ATR_ACTION_RECOV) {
-		/*
-		 ** rpp_highwater must be greater than zero.
-		 ** It is the number of packets allowed to be "on the wire"
-		 ** at any given time.
-		 */
-		if (pattr->at_val.at_long <= 0)
-			return PBSE_BADATVAL;
-
-		rpp_highwater = (int)pattr->at_val.at_long;
-	}
-
-	if (actmode == ATR_ACTION_ALTER && old_rpp_highwater != rpp_highwater) {
-		struct work_task *ptask = set_task(WORK_Immed, 0, mcast_moms, NULL);
-		ptask->wt_aux = IS_NULL;
-	}
-
+	log_err(-1, __func__, "rpp_highwater is deprecated. This functionality is now automatic without needing this attribute");
 	return PBSE_NONE;
 }
-
 
 /**
  * @brief

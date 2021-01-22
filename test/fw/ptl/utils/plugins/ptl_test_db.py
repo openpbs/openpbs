@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -1634,7 +1634,9 @@ class JSONDb(DBType):
     def close(self, result=None):
         if result is not None and self.jdata:
             dur = str(result.stop - result.start)
-            self.jdata['test_summary']['test_duration'] = dur
+            self.jdata['result']['start'] = str(result.start)
+            self.jdata['result']["end"] = str(result.stop)
+            self.jdata['result']['duration'] = dur
             with open(self.dbpath, 'w') as fd:
                 json.dump(self.jdata, fd, indent=2)
                 fd.write("\n")
@@ -1784,15 +1786,16 @@ class PTLTestDb(Plugin):
                 mlist = getattr(test, name).values()
             if mlist:
                 for mc in mlist:
-                    mpinfo[name].append(mc.hostname)
+                    mpinfo[name].append(mc)
         machines = {}
         for k, v in mpinfo.items():
-            for hst in v:
+            for _v in v:
+                hst = _v.hostname
                 if hst not in machines:
                     machines[hst] = {}
                     mshort = machines[hst]
-                    mshort['platform'] = self.__du.get_uname(hostname=hst)
-                    mshort['os_info'] = self.__du.get_os_info(hostname=hst)
+                    mshort['platform'] = _v.get_uname(hostname=hst)
+                    mshort['os_info'] = _v.get_os_info(hostname=hst)
                 machines[hst]['pbs_install_type'] = minstall_type[k]
                 if ((k == 'moms' or k == 'comms') and
                         hst in mpinfo['servers']):

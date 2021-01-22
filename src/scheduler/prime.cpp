@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -612,7 +612,7 @@ end_prime_status_rec(time_t start, time_t date,
 			return date;
 		/* Non-primetime will start later today, return the scheduled time. */
 		return date + (conf.prime[day][NON_PRIME].hour - tmptr->tm_hour) * 3600
-		+ (conf.prime[day][NON_PRIME].min - tmptr->tm_min) * 60
+		+ (static_cast<int>(conf.prime[day][NON_PRIME].min) - tmptr->tm_min) * 60
 		- tmptr->tm_sec;
 	}
 	else {
@@ -634,7 +634,7 @@ end_prime_status_rec(time_t start, time_t date,
 			return date;
 		/* Primetime will start later today, return the scheduled time. */
 		return date + (conf.prime[day][PRIME].hour - tmptr->tm_hour) * 3600
-		+ (conf.prime[day][PRIME].min - tmptr->tm_min) * 60
+		+ (static_cast<int>(conf.prime[day][PRIME].min) - tmptr->tm_min) * 60
 		- tmptr->tm_sec;
 	}
 }
