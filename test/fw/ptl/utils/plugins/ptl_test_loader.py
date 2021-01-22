@@ -160,7 +160,8 @@ class PTLTestLoader(Plugin):
             if name in extl.keys():
                 del extl[name]
         self.logger.debug('included_tests:%s' % (str(self._tests_list)))
-        self.logger.debug('included_tests(copy):%s' % (str(self.__tests_list_copy)))
+        self.logger.debug('included_tests(copy):%s' %
+                          (str(self.__tests_list_copy)))
         self.logger.debug('excluded_tests:%s' % (str(self._excludes_list)))
         self.enabled = len(self.suites_list) > 0
         del self.suites_list

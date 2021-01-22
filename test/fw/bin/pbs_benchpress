@@ -537,10 +537,10 @@ if __name__ == '__main__':
     test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
     os.environ['NOSE_TESTMATCH'] = test_regex
     nose_config = PTLNoseConfig(
-        log_format = fmt,
-        outfile_handler = outfile_hdlr,
-        plugins = PluginManager(plugins=plugins),
-        verbosity = 7 if nosedebug else 2,
+        log_format=fmt,
+        outfile_handler=outfile_hdlr,
+        plugins=PluginManager(plugins=plugins),
+        verbosity=7 if nosedebug else 2,
         stopOnError=stoponfail)
     nose.main(defaultTest=tests, argv=[sys.argv[0]], config=nose_config)
     if outfile_hdlr:
