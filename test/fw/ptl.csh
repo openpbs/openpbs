@@ -45,17 +45,17 @@ if ( -f /etc/debian_version ) then
         set ptl_prefix_lib=`dpkg -L ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
     endif
 else
-    set __ptlpkgname=`rpm -qa 2>/dev/null | grep -E '*-ptl-[[:digit:]]'`
+    set __ptlpkgname=`rpm -qa | grep -E '*-ptl-[[:digit:]]'`
     if ( "x${__ptlpkgname}" != "x" ) then
-        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} | grep -m 1 lib$ `
     endif
 endif
-if ( ! $?ptl_prefix_lib ) then
+if ( $?ptl_prefix_lib == 1 ) then
 	set python_dir=`/bin/ls -1 ${ptl_prefix_lib}`
 	set prefix=`dirname ${ptl_prefix_lib}`
 
-	setenv PATH=${prefix}/bin/:${PATH}
-	setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	setenv PATH ${prefix}/bin/:${PATH}
+	setenv PYTHONPATH ${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
 	unset python_dir
 	unset prefix
 	unset ptl_prefix_lib
@@ -73,10 +73,10 @@ else
 			set PTL_PREFIX=`dirname ${__PBS_EXEC}`/ptl
 			set python_dir=`/bin/ls -1 ${PTL_PREFIX}/lib`/site-packages
 			if ( $?PATH && -d ${PTL_PREFIX}/bin ) then
-				setenv export PATH="${PATH}:${PTL_PREFIX}/bin"
+				setenv PATH "${PATH}:${PTL_PREFIX}/bin"
 			endif
 			if ( $?PYTHONPATH && -d "${PTL_PREFIX}/lib/${python_dir}" ) then
-				setenv PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+				setenv PYTHONPATH "${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
 			endif
 		endif
 		unset __PBS_EXEC
