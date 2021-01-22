@@ -40,14 +40,14 @@
 
 # This file will set path variables in case of ptl installation
 if ( -f /etc/debian_version ) then
-    set __ptlpkgname=`dpkg -W -f='${binary:Package}\n' 2>/dev/null | grep -E '*-ptl$'`
+    set __ptlpkgname=`dpkg -W -f='${binary:Package}\n' | grep -E '*-ptl$'`
     if ( "x${__ptlpkgname}" != "x" ) then
-        set ptl_prefix_lib=`dpkg -L ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+        set ptl_prefix_lib=`dpkg -L ${__ptlpkgname} | grep -m 1 lib$`
     endif
 else
     set __ptlpkgname=`rpm -qa | grep -E '*-ptl-[[:digit:]]'`
     if ( "x${__ptlpkgname}" != "x" ) then
-        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} | grep -m 1 lib$ `
+        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} | grep -m 1 lib$`
     endif
 endif
 if ( $?ptl_prefix_lib == 1 ) then
