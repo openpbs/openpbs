@@ -485,7 +485,7 @@ class BatchUtils(object):
                     obj_list = [obj_list[i]]
                     break
                 i += 1
-        self.display_dictlist(l, fmt=fmt)
+        self.display_dictlist(obj_list, fmt=fmt)
 
     def get_objtype(self, d={}):
         """
