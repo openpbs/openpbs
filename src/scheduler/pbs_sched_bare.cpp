@@ -113,7 +113,7 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 
 			/* Send the run request */
 			send_run_job(sd, 0, jobs[ij]->name, execvnode, node->svr_inst_id,
-					     jobs[ij]->job->svr_inst_id);
+					     jobs[ij]->svr_inst_id);
 
 			break;
 		}

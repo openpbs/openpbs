@@ -1239,8 +1239,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->qrank = -1;
 		}
 		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
-			resresv->job->svr_inst_id = string_dup(attrp->value);
-			if (resresv->job->svr_inst_id == NULL) {
+			resresv->svr_inst_id = string_dup(attrp->value);
+			if (resresv->svr_inst_id == NULL) {
 				free_resource_resv(resresv);
 				return NULL;
 			}
@@ -1441,7 +1441,6 @@ new_job_info()
 		return NULL;
 	}
 
-	jinfo->svr_inst_id = NULL;
 	jinfo->is_queued = 0;
 	jinfo->is_running = 0;
 	jinfo->is_held = 0;
@@ -1562,9 +1561,6 @@ free_job_info(job_info *jinfo)
 
 	if (jinfo->dependent_jobs != NULL)
 		free(jinfo->dependent_jobs);
-
-	if (jinfo->svr_inst_id != NULL)
-		free(jinfo->svr_inst_id);
 
 	free_resource_req_list(jinfo->resused);
 
@@ -1788,7 +1784,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 
 	if (pattr != NULL && (flags & UPDATE_NOW)) {
 		int rc;
-		rc = send_attr_updates(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, pattr);
+		rc = send_attr_updates(get_svr_inst_fd(pbs_sd, resresv->svr_inst_id), resresv->name, pattr);
 		free_attrl_list(pattr);
 		return rc;
 	}
@@ -1832,7 +1828,7 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 			return 0;
 	}
 
-	rc = send_attr_updates(get_svr_inst_fd(pbs_sd, job->job->svr_inst_id), job->name, job->job->attr_updates);
+	rc = send_attr_updates(get_svr_inst_fd(pbs_sd, job->svr_inst_id), job->name, job->job->attr_updates);
 
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;
@@ -2762,8 +2758,6 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 		return NULL;
 
 	njinfo->queue = nqinfo;
-
-	njinfo->svr_inst_id = string_dup(ojinfo->svr_inst_id);
 	njinfo->is_queued = ojinfo->is_queued;
 	njinfo->is_running = ojinfo->is_running;
 	njinfo->is_held = ojinfo->is_held;

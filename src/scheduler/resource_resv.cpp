@@ -138,7 +138,7 @@ new_resource_resv()
 		return NULL;
 	}
 
-
+	resresv->svr_inst_id = NULL;
 	resresv->name = NULL;
 	resresv->user = NULL;
 	resresv->group = NULL;
@@ -397,6 +397,8 @@ free_resource_resv(resource_resv *resresv)
 	if (resresv->end_event != NULL)
 		delete_event(resresv->server, resresv->end_event);
 
+	free(resresv->svr_inst_id);
+
 	free(resresv);
 }
 
@@ -611,6 +613,7 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 
 	nresresv->server = nsinfo;
 
+	nresresv->svr_inst_id = string_dup(oresresv->svr_inst_id);
 	nresresv->name = string_dup(oresresv->name);
 	nresresv->user = string_dup(oresresv->user);
 	nresresv->group = string_dup(oresresv->group);

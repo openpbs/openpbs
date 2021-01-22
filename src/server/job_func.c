@@ -387,6 +387,7 @@ job_alloc(void)
 
 	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
 		log_err(errno, __func__, "unable to get server_instance_id");
+		free(pj);
 		return NULL;
 	}
 
@@ -1679,6 +1680,7 @@ resv_alloc(char *resvid)
 	int i;
 	resc_resv *resvp;
 	char *dot = NULL;
+	char *svr_inst_id = NULL;
 
 	resvp = (resc_resv *) calloc(1, sizeof(resc_resv));
 	if (resvp == NULL) {
@@ -1700,6 +1702,15 @@ resv_alloc(char *resvid)
 
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';
+
+	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
+		log_err(errno, __func__, "unable to get server_instance_id");
+		free(resvp);
+		return NULL;
+	}
+	set_attr_generic(&resvp->ri_wattr[RESV_ATR_server_inst_id],
+			 &resv_attr_def[RESV_ATR_server_inst_id], svr_inst_id, NULL, INTERNAL);
+	free(svr_inst_id);
 
 	/*
 	 * ignore first char in given id as it can change, see req_resvSub()
