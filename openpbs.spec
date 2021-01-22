@@ -120,7 +120,7 @@ BuildRequires: tk-devel
 BuildRequires: swig
 BuildRequires: zlib-devel
 %if %{with pmix}
-BuildRequires: pmix
+BuildRequires: pmix-devel
 %endif
 %if %{defined suse_version}
 BuildRequires: libexpat-devel
