@@ -50,7 +50,6 @@ import signal
 import importlib
 import ptl
 import nose
-import re
 from nose.plugins.base import Plugin
 from nose.plugins.manager import PluginManager
 from ptl.lib.pbs_testlib import PtlConfig
@@ -536,12 +535,11 @@ if __name__ == '__main__':
                 sys.exit(1)
             plugins += (_plugin(),)
     test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
+    os.environ['NOSE_TESTMATCH'] = test_regex
     nose_config = PTLNoseConfig(
         log_format = fmt,
         outfile_handler = outfile_hdlr,
         plugins = PluginManager(plugins=plugins),
-        testMatchPat = test_regex,
-        testMatch = re.compile(test_regex),
         verbosity = 7 if nosedebug else 2,
         stopOnError=stoponfail)
     nose.main(defaultTest=tests, argv=[sys.argv[0]], config=nose_config)
