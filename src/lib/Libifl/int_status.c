@@ -499,6 +499,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	int start = 0;
 	int ct;
 	struct batch_status *last = NULL;
+	int pbs_errno_clear_cnt = 0;
 
 	if (!svr_conns)
 		return NULL;
@@ -511,8 +512,8 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	if (pbs_verify_attributes(random_srv_conn(svr_conns), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
 		return NULL;
 
-	if (parent_object == MGR_OBJ_JOB) {
-		if ((start = get_job_location_hint(id)) == -1)
+	if (parent_object == MGR_OBJ_JOB || parent_object == MGR_OBJ_RESV) {
+		if ((start = get_job_resv_location_hint(id)) == -1)
 			start = 0;
 		else
 			single_itr = 1;
@@ -571,6 +572,15 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 					cur->next = next;
 					cur = last;
 				}
+			}
+		} else {
+			if (!single_itr && (pbs_errno == PBSE_UNKQUE || pbs_errno == PBSE_UNKRESVID)) {
+				if (pbs_errno_clear_cnt < (nsvrs - 1)) {
+					pbs_errno = 0;
+					pbs_errno_clear_cnt++;
+					continue;
+				} else
+					break;
 			}
 		}
 

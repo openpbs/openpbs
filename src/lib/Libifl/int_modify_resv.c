@@ -68,6 +68,18 @@ PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *exten
 	int			rc = -1;
 	char			*ret = NULL;
 
+	/* initialize the thread context data, if not initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return NULL;
+
+	/*
+	 * lock pthread mutex here for this connection
+	 * blocking call, waits for mutex release
+	 */
+	if (pbs_client_thread_lock_connection(connect) != 0)
+		return NULL;
+
+
 	DIS_tcp_funcs();
 
 	/* first, set up the body of the Modify Reservation request */
@@ -77,13 +89,17 @@ PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *exten
 		(rc = encode_DIS_ReqExtend(connect, extend))) {
 			if (set_conn_errtxt(connect, dis_emsg[rc]) != 0) {
 				pbs_errno = PBSE_SYSTEM;
+				(void)pbs_client_thread_unlock_connection(connect);
 				return NULL;
 			}
-			if (pbs_errno == PBSE_PROTOCOL)
+			if (pbs_errno == PBSE_PROTOCOL) {
+				(void)pbs_client_thread_unlock_connection(connect);
 				return NULL;
+			}
 	}
 	if (dis_flush(connect)) {
 		pbs_errno = PBSE_PROTOCOL;
+		(void)pbs_client_thread_unlock_connection(connect);
 		return NULL;
 	}
 
@@ -98,5 +114,10 @@ PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *exten
 		}
 		PBSD_FreeReply(reply);
 	}
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(connect) != 0)
+		return NULL;
+
 	return ret;
 }

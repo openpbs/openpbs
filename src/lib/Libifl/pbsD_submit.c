@@ -219,6 +219,22 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 			extend = EXTEND_OPT_IMPLICIT_COMMIT;
 	}	
 
+	if (destination != NULL && msvr_mode()) {
+		/* 
+		 * Reached here means job is submitted to non default queue
+		 * Also check if it is a reservation queue
+		 */
+		if (destination[0] == 'R' || destination[0] == 'S' || destination[0] == 'M') {
+			int start = 0;
+			if ((start = get_job_resv_location_hint(destination)) == -1) {
+				pbs_errno = PBSE_INTERNAL;
+				goto error;	
+			}
+			else
+				c = svr_conns[start]->sd;
+		}
+	}
+	
 	/* Queue job with null string for job id */
 	return_jobid = PBSD_queuejob(c, "", destination, attrib, extend, PROT_TCP, NULL, &commit_done);
 	if (return_jobid == NULL)

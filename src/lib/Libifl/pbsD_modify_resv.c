@@ -67,33 +67,50 @@ char *
 pbs_modify_resv(int c, char *resv_id, struct attropl *attrib, char *extend)
 {
 	struct attropl *pal = NULL;
-	int		rc = 0;
-	char		*ret = NULL;
+	int rc = 0;
+	char *ret = NULL;
+	int i;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int start = 0;
+	int ct;
+	int nsvrs = get_num_servers();
 
 	for (pal = attrib; pal; pal = pal->next)
 		pal->op = SET;
 
-	/* initialize the thread context data, if not already initialized */
-	if (pbs_client_thread_init_thread_context() != 0)
-		return NULL;
-
 	/* first verify the attributes, if verification is enabled */
-	rc = pbs_verify_attributes(c, PBS_BATCH_ModifyResv,
+	rc = pbs_verify_attributes(random_srv_conn(svr_conns), PBS_BATCH_ModifyResv,
 		MGR_OBJ_RESV, MGR_CMD_NONE, attrib);
 	if (rc)
 		return NULL;
 
-	/* lock pthread mutex here for this connection
-	 * blocking call, waits for mutex release */
-	if (pbs_client_thread_lock_connection(c) != 0)
-		return NULL;
+	if (svr_conns) {
+		if ((start = get_job_resv_location_hint(resv_id)) == -1)
+			start = 0;
 
-	/* initiate the modification of the reservation  */
-	ret = PBSD_modify_resv(c, resv_id, attrib, extend);
+		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
-	/* unlock the thread lock and update the thread context data */
-	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
+			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
+				continue;
+
+			/*
+			 * For a single server cluster, instance fd and cluster fd are the same. 
+			 * Hence breaking the loop.
+			 */
+			if (svr_conns[i]->sd == c)
+				/* initiate the modification of the reservation  */
+				return PBSD_modify_resv(svr_conns[i]->sd, resv_id, attrib, extend);
+			
+			/* initiate the modification of the reservation  */
+			ret = PBSD_modify_resv(svr_conns[i]->sd, resv_id, attrib, extend);
+			if (ret != NULL)
+				break;
+		
+			else if (pbs_errno != PBSE_UNKRESVID)
+				break;
+		}
+
+	}
 
 	return ret;
 }

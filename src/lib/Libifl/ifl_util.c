@@ -135,8 +135,9 @@ random_srv_conn(svr_conn_t **svr_conns)
 }
 
 /**
- * @brief	Get the server instance index from the jobid, which will act as a hint
- * 			as to which server the job might possibly be located
+ * @brief	Get the server instance index from the job/resv id, which will act as a hint
+ * 		as to which server the job/reservation might possibly be located
+ * 		This function also works even if object id does not contain pbs_server name
 
  * @param[in] id - object id
  *
@@ -145,30 +146,41 @@ random_srv_conn(svr_conn_t **svr_conns)
  * @retval < 0: could not find appropriate index
  */
 int
-get_job_location_hint(char *jobid)
+get_job_resv_location_hint(char *job_resv_id)
 {
 	int nsvrs = get_num_servers();
 	char *ptr = NULL;
 	int svridx = -1;
 	char *endptr = NULL;
+	int contains_svr_name = 1;
 
-	if (jobid == NULL || !msvr_mode())
+	if (job_resv_id == NULL || !msvr_mode())
 		return -1;
 
-	ptr = strchr(jobid, '.');
-	if (ptr == NULL)
+	/* Minimum length of sequence will be MSVR_JID_NCHARS_SVR + 1 */
+	if (strlen(job_resv_id) <= MSVR_JID_NCHARS_SVR)
 		return -1;
-	*ptr = '\0';
-	if (strlen(jobid) <= MSVR_JID_NCHARS_SVR) {	/* Minimum length of sequence will be MSVR_JID_NCHARS_SVR + 1 */
-		*ptr = '.';
-		return -1;
-	}
-	ptr -= MSVR_JID_NCHARS_SVR;
+
+	ptr = strchr(job_resv_id, '.');
+	if (ptr == NULL) {
+		contains_svr_name = 0;
+		ptr = &job_resv_id[(strlen(job_resv_id) - 1)];
+	} else
+		ptr--;
+	
+	if (contains_svr_name)
+		*(ptr + 1) = '\0';
+
+	ptr -= (MSVR_JID_NCHARS_SVR - 1);
 	svridx = strtol(ptr, &endptr, 10);
-	ptr += MSVR_JID_NCHARS_SVR;
-	*ptr = '.';
+
 	if (*endptr != '\0' || svridx >= nsvrs)
-		return -1;
+		svridx = -1;
+
+	if (contains_svr_name) {
+		ptr += MSVR_JID_NCHARS_SVR;
+		*ptr = '.';
+	}
 
 	return svridx;
 }

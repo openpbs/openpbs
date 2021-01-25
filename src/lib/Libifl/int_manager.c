@@ -142,9 +142,9 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 		return pbs_errno;
 
 	if (svr_conns) {
-		if (objtype == MGR_OBJ_JOB &&
-		    (start = get_job_location_hint(objname)) == -1)
-			start = 0;
+		if ((objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) &&
+			(start = get_job_resv_location_hint(objname)) == -1)
+		    start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
@@ -172,8 +172,20 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 						objname,
 						aoplp,
 						extend);
-			if (rc && objtype == MGR_OBJ_JOB && pbs_errno != PBSE_UNKJOBID)
-				break;
+
+			if (objtype == MGR_OBJ_JOB) {
+				if (rc == 0)
+					break;
+				else if (pbs_errno != PBSE_UNKJOBID)
+					break;
+			}
+
+			if (objtype == MGR_OBJ_RESV) {
+				if (rc == 0)
+					break;
+				else if (pbs_errno != PBSE_UNKRESVID)
+					break;
+			}
 		}
 
 		return rc;
