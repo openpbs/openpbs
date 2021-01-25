@@ -15,27 +15,27 @@ jobs:
     dependsOn: runcheck
     strategy:
       matrix:
-        C8:
+        "CentOS 8":
            OS_TYPE: "centos:8"
            PKG_INSTALL_CMD: "yum -y install python3"
            DOCKER_EXTRA_ARG: ""
            CI_CMD: "./ci --local"
-        S15:
+        "OpenSuse 15":
            OS_TYPE: "opensuse/leap:15"
            PKG_INSTALL_CMD: "zypper -n install python3"
            DOCKER_EXTRA_ARG: "-e LC_ALL=C.utf8"
            CI_CMD: "./ci --local"
-        U20:
+        "Ubuntu 20.04":
            OS_TYPE: "ubuntu:20.04"
            PKG_INSTALL_CMD: "apt-get -y update ; apt-get -y upgrade ; apt-get install -y python3"
            DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
            CI_CMD: "./ci --local"
-        C7_sanitize:
+        "CentOS 7 Sanitize":
            OS_TYPE: "centos:7"
            PKG_INSTALL_CMD: "yum -y install python3"
            DOCKER_EXTRA_ARG: "-e BUILD_MODE=sanitize -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8"
            CI_CMD: "./ci --local='sanitize'"
-        C7_kerberos:
+        "CentOS 7 Kerberos":
            OS_TYPE: "centos:7"
            PKG_INSTALL_CMD: "yum -y install python3"
            DOCKER_EXTRA_ARG: "-e BUILD_MODE=kerberos -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8"
