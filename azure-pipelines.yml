@@ -11,7 +11,7 @@ jobs:
       - bash: |
                sudo apt-get install -y pep8
                .github/runchecks
-  - job: pbs_build_test
+  - job: 
     dependsOn: runcheck
     strategy:
       matrix:
