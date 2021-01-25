@@ -74,6 +74,7 @@
 #include <unistd.h>
 #include <libpbs.h>
 #include <limits.h>
+#include <pbs_idx.h>
 #include <pbs_ifl.h>
 #include <pbs_internal.h>
 #include <pbs_sched.h>
@@ -978,17 +979,45 @@ file_exists(char *path)
 int
 is_same_host(char *host1, char *host2)
 {
-	char host1_full[PBS_MAXHOSTNAME + 1] = {'\0'};
-	char host2_full[PBS_MAXHOSTNAME + 1] = {'\0'};
+	char *host1_f = NULL;
+	char *host2_f = NULL;
+
+	static void *hostmap = NULL;
+
 	if (host1 == NULL || host2 == NULL)
 		return 0;
+
+	if (hostmap == NULL)
+		hostmap = pbs_idx_create(0, 0);
+
 	if (strcasecmp(host1, host2) == 0)
 		return 1;
-	if ((get_fullhostname(host1, host1_full, (sizeof(host1_full) - 1)) != 0)
-		|| (get_fullhostname(host2, host2_full, (sizeof(host2_full) - 1)) != 0))
+
+	pbs_idx_find(hostmap, (void **) &host1, (void **) &host1_f, NULL);
+	pbs_idx_find(hostmap, (void **) &host2, (void **) &host2_f, NULL);
+
+	if (host1_f == NULL) {
+		char host1_full[PBS_MAXHOSTNAME + 1];
+
+		if (get_fullhostname(host1, host1_full, PBS_MAXHOSTNAME) != 0 || host1_full[0] == '\0')
+			return 0;
+		host1_f = strdup(host1_full);
+		pbs_idx_insert(hostmap, host1, host1_f);
+	}
+	if (host2_f == NULL) {
+		char host2_full[PBS_MAXHOSTNAME + 1];
+
+		if (get_fullhostname(host2, host2_full, PBS_MAXHOSTNAME) != 0 || host2_full[0] == '\0')
+			return 0;
+		host2_f = strdup(host2_full);
+		pbs_idx_insert(hostmap, host2, host2_f);
+	}
+	if (host1_f == NULL || host2_f == NULL)
 		return 0;
-	if (strcasecmp(host1_full, host2_full) == 0)
+
+	if (strcasecmp(host1_f, host2_f) == 0)
 		return 1;
+
 	return 0;
 }
 

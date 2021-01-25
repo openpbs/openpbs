@@ -614,6 +614,10 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		if (time(NULL) < expiry)
 			ninfo->lic_lock = 1;
 	}
+
+	if (ninfo->lic_lock != 1)
+		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
+
 	return ninfo;
 }
 
@@ -964,6 +968,11 @@ remove_node_state(node_info *ninfo, const char *state)
 		&& !ninfo->is_unknown  && !ninfo->is_down && !ninfo->is_maintenance)
 		ninfo->is_free = 1;
 
+	if (ninfo->is_free)
+		ninfo->nscr &= ~NSCR_CYCLE_INELIGIBLE;
+	else
+		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
+
 	return 0;
 }
 
@@ -1031,8 +1040,11 @@ add_node_state(node_info *ninfo, const char *state)
 	}
 
 	/* Remove the free state unless it was specifically the state being added */
-	if (!set_free)
+	if (!set_free) {
 		ninfo->is_free = 0;
+		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
+	} else
+		ninfo->nscr &= ~NSCR_CYCLE_INELIGIBLE;
 
 	return 0;
 }
@@ -2249,10 +2261,11 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	} else
 		clear_schd_error(failerr);
 
-	/* clear the node scratch space for use for node searching */
-	for (i = 0; ninfo_arr[i] != NULL; i++) {
-		ninfo_arr[i]->nscr = NSCR_NONE;
-	}
+	/* Remove visited, scattered and ineligible bits from ncsr for node searching
+	 * Since statebusy is a per cycle bit, it shouldn't be changed
+	 */
+	for (i = 0; ninfo_arr[i] != NULL; i++)
+		ninfo_arr[i]->nscr &= ~(NSCR_VISITED | NSCR_SCATTERED | NSCR_INELIGIBLE);
 
 	pl = placespec;
 
@@ -5597,8 +5610,7 @@ check_node_eligibility_chunk(th_data_nd_eligible *data)
 		node_info *node;
 
 		node = ninfo_arr[i];
-		if (!(node->nscr & NSCR_INELIGIBLE)) {
-			clear_schd_error(err);
+		if (!node->nscr) {
 			if (is_vnode_eligible(node, resresv, pl, err) == 0) {
 				node->nscr |= NSCR_INELIGIBLE;
 				if (node->hostset != NULL) {
@@ -5621,6 +5633,7 @@ check_node_eligibility_chunk(th_data_nd_eligible *data)
 						copy_schd_error(misc_err, err);
 					schdlogerr(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, node->name, NULL, err);
 				}
+				clear_schd_error(err);
 			}
 		}
 	}

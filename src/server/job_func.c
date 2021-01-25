@@ -392,8 +392,6 @@ job_alloc(void)
 	}
 
 	set_jattr_str_slim(pj, JOB_ATR_server_inst_id, svr_inst_id, NULL);
-	free(svr_inst_id);
-
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
 	if (is_sattr_set(SVR_ATR_EligibleTimeEnable) && get_sattr_long(SVR_ATR_EligibleTimeEnable) == TRUE) {

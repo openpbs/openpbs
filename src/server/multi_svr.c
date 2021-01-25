@@ -286,23 +286,23 @@ init_msi()
  *
  * @return char *
  * @return NULL - failure
- * @retval !NULL - pointer to server_instance_id
+ * @retval !NULL - pointer to server_instance_id (do NOT free the return value)
  */
 char *
 gen_svr_inst_id(void)
 {
-	char svr_inst_name[PBS_MAXHOSTNAME + 1];
-	unsigned int svr_inst_port;
-	char *svr_inst_id = NULL;
+	static char *svr_inst_id = NULL;
 
+	if (svr_inst_id == NULL) {
+		unsigned int svr_inst_port;
+		char svr_inst_name[PBS_MAXHOSTNAME + 1];
 
-	if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
-        	get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
+		if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
+			get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
 
-	svr_inst_port = pbs_conf.batch_service_port;
-
-	pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
+		svr_inst_port = pbs_conf.batch_service_port;
+		pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
+	}
 
 	return svr_inst_id;
-
 }
