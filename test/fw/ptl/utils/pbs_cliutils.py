@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -60,26 +60,26 @@ class CliUtils(object):
         logging.INFOCLI = logging.INFO - 1
         logging.INFOCLI2 = logging.INFOCLI - 1
 
-        l = None
+        log_lvl = None
         level = str(level).upper()
         if level == 'INFO':
-            l = logging.INFO
+            log_lvl = logging.INFO
         elif level == 'INFOCLI':
-            l = logging.INFOCLI
+            log_lvl = logging.INFOCLI
         elif level == 'INFOCLI2':
-            l = logging.INFOCLI2
+            log_lvl = logging.INFOCLI2
         elif level == 'DEBUG':
-            l = logging.DEBUG
+            log_lvl = logging.DEBUG
         elif level == 'DEBUG2':
-            l = logging.DEBUG2
+            log_lvl = logging.DEBUG2
         elif level == 'WARNING':
-            l = logging.WARNING
+            log_lvl = logging.WARNING
         elif level == 'ERROR':
-            l = logging.ERROR
+            log_lvl = logging.ERROR
         elif level == 'FATAL':
-            l = logging.FATAL
+            log_lvl = logging.FATAL
 
-        return l
+        return log_lvl
 
     @staticmethod
     def check_bin(bin_name):
@@ -100,7 +100,7 @@ class CliUtils(object):
         try:
             import json
             return json.dumps(data, sort_keys=True, indent=4)
-        except:
+        except Exception:
             # first escape any existing double quotes
             _pre = str(data).replace('"', '\\"')
             # only then, replace the single quotes with double quotes

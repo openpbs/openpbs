@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -610,13 +610,15 @@ class DshUtils(object):
                 for k, v in conf.items():
                     if isinstance(v, list):
                         for eachprop in v:
-                            l = 'echo "%s %s" >> %s\n' % (str(k),
-                                                          str(eachprop),
-                                                          rhost)
-                            fd.write(l)
+                            fields = 'echo "%s %s" >> %s\n' % (
+                                str(k),
+                                str(eachprop),
+                                rhost)
+                            fd.write(fields)
                     else:
-                        l = 'echo "%s %s" >> %s\n' % (str(k), str(v), rhost)
-                        fd.write(l)
+                        fields = 'echo "%s %s" >> %s\n' % (str(k), str(v),
+                                                           rhost)
+                        fd.write(fields)
                 fd.write('%s 0600 %s\n' % (self.which(hostname, 'chmod',
                                                       level=logging.DEBUG2),
                                            rhost))

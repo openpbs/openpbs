@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -225,6 +225,7 @@ struct pbs_config
 	char *pbs_server_name;		/* name of PBS Server, usually hostname of host on which PBS server is executing */
 	unsigned int pbs_num_servers;	/* currently configured number of instances */
 	psi_t *psi;						/* array of pbs server instances loaded from comma separated host:port[,host:port] */
+	char *psi_str;			/* psi in string format */
 	char *cp_path;			/* path to local copy function */
 	char *scp_path;			/* path to ssh */
 	char *rcp_path;			/* path to pbs_rsh */
@@ -466,7 +467,7 @@ DECLDIR int      parse_depend_list(char *, char **, int);
 DECLDIR int      parse_stage_list(char *);
 DECLDIR int      prepare_path(char *, char*);
 DECLDIR void     prt_job_err(char *, int, char *);
-DECLDIR int		 set_attr(struct attrl **, char *, char *);
+DECLDIR int		 set_attr(struct attrl **, const char *, const char *);
 DECLDIR int      set_attr_resc(struct attrl **, char *, char *, char *);
 DECLDIR int      set_resources(struct attrl **, char *, int, char **);
 DECLDIR int      cnt2server(char *);
@@ -494,6 +495,10 @@ extern char *pbs_submit_with_cred(int, struct attropl *, char *,
 extern int pbs_query_max_connections(void);
 
 extern char *pbs_get_tmpdir(void);
+
+extern char *pbs_get_conf_var(char *);
+
+extern char *get_psi_str();
 
 extern FILE *pbs_popen(const char *, const char *);
 
@@ -543,11 +548,11 @@ extern int      parse_destination_id(char *, char **, char **);
 extern int      parse_stage_list(char *);
 extern int      prepare_path(char *, char*);
 extern void     prt_job_err(char *, int, char *);
-extern int     set_attr(struct attrl **, char *, char *);
+extern int     set_attr(struct attrl **, const char *, const char *);
 #ifndef pbs_get_dataservice_usr
 extern char*    pbs_get_dataservice_usr(char *, int);
 #endif
-extern char*	get_attr(struct attrl *, char *, char *);
+extern char*	get_attr(struct attrl *, const char *, const char *);
 extern int      set_resources(struct attrl **, char *, int, char **);
 extern int      cnt2server(char *server);
 extern int      cnt2server_extend(char *server, char *);

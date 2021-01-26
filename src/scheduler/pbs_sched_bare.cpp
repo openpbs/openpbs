@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -55,6 +55,7 @@
 #include "data_types.h"
 #include "fifo.h"
 #include "globals.h"
+#include "libpbs.h"
 #include "log.h"
 #include "resource.h"
 #include "server_info.h"
@@ -111,7 +112,8 @@ main_sched_loop_bare(int sd, server_info *sinfo)
 			snprintf(execvnode, sizeof(execvnode), "(%s:ncpus=1)", node->name);
 
 			/* Send the run request */
-			send_run_job(sd, 0, jobs[ij]->name, execvnode, node->svr_inst_id);
+			send_run_job(sd, 0, jobs[ij]->name, execvnode, node->svr_inst_id,
+					     jobs[ij]->job->svr_inst_id);
 
 			break;
 		}

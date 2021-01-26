@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -56,6 +56,7 @@
 #include <log.h>
 #include <pbs_share.h>
 #include <libutil.h>
+#include <libpbs.h>
 #include "config.h"
 #include "constant.h"
 #include "misc.h"
@@ -1595,3 +1596,4 @@ free_ptr_array(void *inp)
 		free(arr[i]);
 	free(arr);
 }
+

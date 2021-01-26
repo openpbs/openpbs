@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,6 +39,9 @@
 
 #include "pbs_ifl.h"
 #include "libpbs.h"
+#include "pbs_error.h"
+#include "dis.h"
+#include "pbs_share.h"
 
 /**
  * @brief
@@ -91,7 +94,7 @@ PBS_get_server(char *server_id_in, char *server_name_out, unsigned int *port)
  *	get one of the available connection from multisvr server list
  *
  * @param[in] svr_conns - pointer to array of server connections
- * 
+ *
  * @return int
  * @retval -1: error
  * @retval != -1 fd corresponding to the connection
@@ -113,7 +116,7 @@ get_available_conn(svr_conn_t **svr_conns)
  *	get random server sd - It will choose a random sd from available no of servers.
  *	If the randomly choosen connection is down, it will choose the first available conn.
  * @param[in] svr_conns - pointer to array of server connections
- * 
+ *
  * @return int
  * @retval -1: error
  * @retval != -1: fd corresponding to the connection
@@ -127,7 +130,7 @@ random_srv_conn(svr_conn_t **svr_conns)
 
 	if (svr_conns[ind] && svr_conns[ind]->state == SVR_CONN_STATE_UP)
 		return svr_conns[ind]->sd;
-		
+
 	return get_available_conn(svr_conns);
 }
 
@@ -137,11 +140,10 @@ random_srv_conn(svr_conn_t **svr_conns)
  *	based on server part in the object id.
 
  * @param[in] id - object id
- * 
+ *
  * @return int
  * @retval >= 0: start_ind - index where the request should be fired first
  * @retval < 0: could not find appropriate index
- * 
  */
 int
 starting_index(char *id)
@@ -165,4 +167,34 @@ starting_index(char *id)
 	}
 
 	return -1;
+}
+
+/**
+ * @brief encode the Preempt Jobs request for sending to the server.
+ *
+ * @param[in] sock - socket descriptor for the connection.
+ * @param[in] jobs - list of job ids.
+ *
+ * @return - error code while writing data to the socket.
+ */
+int
+encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
+{
+	int	i = 0;
+	int	rc = 0;
+	int	count = 0;
+
+	if (numofjobs == -1)
+		for (; jobs_list[count]; count++);
+	else
+		count = numofjobs;
+
+	if (((rc = diswui(sock, count)) != 0))
+		return rc;
+
+	for (i = 0; i < count; i++)
+		if ((rc = diswst(sock, jobs_list[i])) != 0)
+			return rc;
+
+	return rc;
 }

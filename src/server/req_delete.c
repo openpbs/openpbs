@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -554,9 +554,10 @@ req_deletejob(struct batch_request *preq)
 			/* If not deleteing running subjobs, delete2 to del parent   */
 
 			if (--preq->rq_refct == 0) {
-				if ((parent = find_job(jid)) != NULL)
+				if ((parent = find_job(jid)) != NULL) {
 					req_deletejob2(preq, parent);
-				else {
+					del_parent = 0;
+				} else {
 					preply->brp_un.brp_deletejoblist.tot_rpys++;
 					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 						reply_send(preq);
@@ -773,10 +774,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	} else if (((jt != IS_ARRAY_Range) && (jt != IS_ARRAY_Single)) &&
 		   (check_job_state(pjob, JOB_STATE_LTR_QUEUED) ||
 		    check_job_state(pjob, JOB_STATE_LTR_HELD))) {
-		struct depend *dp;
-		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
-		if (dp != NULL)
-			depend_runone_remove_dependency(pjob);
+		depend_runone_remove_dependency(pjob);
 	}
 
 	if (is_mgr && forcedel) {

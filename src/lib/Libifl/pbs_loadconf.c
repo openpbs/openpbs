@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -56,6 +56,7 @@
 #include "pbs_client_thread.h"
 #include "net_connect.h"
 #include "portability.h"
+#include "cmds.h"
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -100,6 +101,7 @@ struct pbs_config pbs_conf = {
 	NULL,					/* pbs_server_name */
 	0,					/* single pbs server instance by default */
 	NULL,					/* pbs_server_instances */
+	NULL,					/* pbs_server_instances str */
 	NULL,					/* cp_path */
 	NULL,					/* scp_path */
 	NULL,					/* rcp_path */
@@ -315,6 +317,7 @@ parse_psi(char *conf_value)
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
+	pbs_conf.psi_str = strdup(conf_value);
 
 	return 0;
 }
@@ -1176,6 +1179,87 @@ err:
 	pbs_conf.load_failed = 1;
 	(void)pbs_client_thread_unlock_conf();
 	return 0;
+}
+
+/**
+ * @brief
+ *	returns psi in string format
+ *
+ * @return char *
+ * @retval !NULL pointer psi string
+ * @retval NULL failure
+ */
+char *
+get_psi_str()
+{
+	return pbs_conf.psi_str;
+}
+
+/**
+ * @brief
+ *	Get conf paramter without calling pbs_loadconf
+ *	Used when only clients do not call pbs_loadconf
+ *	due to performance reasons.
+ *
+ * @param[in] conf_var_name - conf variable
+ *
+ * @note
+ * Although the function has a generic structure,
+ * make sure that the variable is compared within function.
+ * - return string has to be freed by the caller
+ *
+ * @return char *
+ * @retval !NULL pointer to the tmpdir string
+ * @retval NULL failure
+ */
+char *
+pbs_get_conf_var(char *conf_var_name)
+{
+	char *conf_val_out = NULL;
+	FILE *fp = NULL;
+	char *conf_file = NULL;
+	char *conf_name = NULL;
+	char *conf_value = NULL;
+	char *p = NULL;
+
+	/* If pbs_conf already been populated use that value. */
+	if (pbs_conf.loaded != 0) {
+		if (!strcmp(conf_var_name, PBS_CONF_SERVER_INSTANCES))
+			conf_val_out = get_psi_str();
+	}
+
+	if (conf_val_out)
+		return conf_val_out;
+
+	/* Next, try the environment. */
+	if ((p = getenv(conf_var_name)) != NULL) {
+		conf_val_out = strdup(p);
+	}
+
+	if (conf_val_out)
+		return conf_val_out;
+
+	/* Now try pbs.conf */
+	conf_file = pbs_get_conf_file();
+	if ((fp = fopen(conf_file, "r")) != NULL) {
+		while (parse_config_line(fp, &conf_name, &conf_value) != NULL) {
+			if ((conf_name == NULL) || (*conf_name == '\0'))
+				continue;
+			if ((conf_value == NULL) || (*conf_value == '\0'))
+				continue;
+			if (!strcmp(conf_name, conf_var_name)) {
+				conf_val_out = strdup(conf_value);
+			}
+		}
+		fclose(fp);
+	}
+	free(conf_file);
+	
+	if (conf_val_out)
+		return conf_val_out;
+
+	/* Finally, resort to the default. */
+	return NULL;
 }
 
 /**

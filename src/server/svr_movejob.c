@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -593,6 +593,8 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 
 	pattr = jobp->ji_wattr;
 	for (i = 0; i < (int) JOB_ATR_LAST; i++) {
+		if (i == JOB_ATR_server_inst_id)
+			continue;
 		if ((job_attr_def + i)->at_flags & resc_access_perm) {
 			(void)(job_attr_def + i)->at_encode(pattr + i, &attrl,
 				(job_attr_def + i)->at_name, NULL, encode_type,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -349,9 +349,7 @@ int PBSD_jscript_direct(int, char *, int, char **);
 int PBSD_copyhookfile(int, char *, int, char **);
 int PBSD_delhookfile(int, char *, int, char **);
 int PBSD_mgr_put(int, int, int, int, char *, struct attropl *, char *, int, char **);
-int PBSD_deljoblist_put(int, int, char **, int, char *, int, char **);
 int PBSD_manager(int, int, int, int, char *, struct attropl *, char *);
-struct batch_deljob_status *PBSD_deljoblist(int, int, char **, int, char *);
 int PBSD_msg_put(int, char *, int, char *, char *, int, char **);
 int PBSD_relnodes_put(int, char *, char *, char *, int, char **);
 int PBSD_py_spawn_put(int, char *, char **, char **, int, char **);
@@ -366,7 +364,6 @@ void PBSD_FreeReply(struct batch_reply *);
 struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 struct batch_status *PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object);
 struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *);
-preempt_job_info *PBSD_preempt_jobs(int, char **);
 struct batch_status *PBSD_status_get(int, struct batch_status **last);
 char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
 int decode_DIS_svrattrl(int, pbs_list_head *);
@@ -405,12 +402,15 @@ char *PBSD_modify_resv(int, char *, struct attropl *, char *);
 int PBSD_cred(int, char *, char *, int, char *, long, int, char **);
 int PBSD_server_ready(int);
 int tcp_send_auth_req(int, unsigned int, char *, char *, char *);
-void *get_conn_svr_instances(int);
+svr_conn_t **get_conn_svr_instances(int);
 int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 int get_svr_inst_fd(int vfd, char *svr_inst_id);
 int random_srv_conn(svr_conn_t **);
 int starting_index(char *);
 char *PBS_get_server(char *, char *, uint *);
+int encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs);
+int get_server_fd_from_jid(int c, char *jobid);
+int multi_svr_op(int fd);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -1502,15 +1502,19 @@ check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv
 nspec **
 check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err)
 {
-	nspec			**nspec_arr = NULL;
-	selspec			*spec = NULL;
-	place			*pl = NULL;
-	int			rc = 0;
-	char			*grouparr[2] = {0};
-	np_cache		*npc = NULL;
-	int			error = 0;
-	node_partition		**nodepart = NULL;
-	node_info		**ninfo_arr = NULL;
+	nspec **nspec_arr = NULL;
+	selspec *spec = NULL;
+	place *pl = NULL;
+	int rc = 0;
+	char *grouparr[2] = {0};
+	np_cache *npc = NULL;
+	int error = 0;
+	node_partition **nodepart = NULL;
+	node_info **ninfo_arr = NULL;
+	node_partition *msvr_pset[3];
+
+	if (!sc_attrs.do_not_span_psets)
+		flags |= SPAN_PSETS;
 
 	if (sinfo == NULL || resresv == NULL || err == NULL) {
 		if (err != NULL)
@@ -1529,6 +1533,8 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			return NULL;
 	}
 
+	get_resresv_spec(resresv, &spec, &pl);
+
 	/* Sets of nodes:
 	   * 1. job is in a reservation - use reservation nodes
 	   * 2. job or reservation has nodes -- use them
@@ -1538,20 +1544,18 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	   * node partition, therefore it falls in here
 	   */
 
-	/* if we're in a reservation, only check nodes assigned to the resv
-	 * and not worry about node grouping since the nodes for the reservation
-	 * are already in a group
-	 */
 	if (resresv->is_job && resresv->job->resv != NULL) {
+		/* if we're in a reservation, only check nodes assigned to the resv
+		 * and not worry about node grouping since the nodes for the reservation
+		 * are already in a group
+		 */
 		ninfo_arr = resresv->job->resv->resv->resv_nodes;
 		nodepart = NULL;
-	}
-
-	/* if we have nodes, use them
-	 * don't care about node grouping because nodes are already assigned
-	 * to the job.  We won't need to search for them.
-	 */
-	else if (resresv->ninfo_arr != NULL) {
+	} else if (resresv->ninfo_arr != NULL) {
+		/* if we have nodes, use them
+		 * don't care about node grouping because nodes are already assigned
+		 * to the job.  We won't need to search for them.
+		 */
 		ninfo_arr = resresv->ninfo_arr;
 		nodepart = NULL;
 	} else {
@@ -1566,12 +1570,33 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			/* if there are nodes assigned to the queue, then check those */
 			if (qinfo->has_nodes)
 				ninfo_arr = qinfo->nodes;
-			else
-				ninfo_arr = sinfo->unassoc_nodes;
-		} else
-			/* last up we're not in a queue with nodes -- use the unassociated nodes */
-			ninfo_arr = sinfo->unassoc_nodes;
+			else if (!(sinfo->svr_to_psets.empty())) {	/* Multi-server psets */
+				/* Find the pset of the server which owns the job */
+				for (auto &spset: sinfo->svr_to_psets) {
+					if (spset.svr_inst_id == resresv->job->svr_inst_id) {
+						msvr_pset[0] = spset.np;
+						if (!resresv->job->is_array && spec->total_chunks == 1) {
+							/* Allow job to be placed on nodes of other servers as well
+							 * For now, restricting job arrays and multi-chunk jobs
+							 * to nodes of just the local server
+							 */
+							msvr_pset[1] = sinfo->allpart;
+							msvr_pset[2] = NULL;
+						} else {
+							/* This prevents eval_selspec from considering all unassociated nodes */
+							flags &= ~SPAN_PSETS;
+							msvr_pset[1] = NULL;
+						}
+						nodepart = msvr_pset;
+						break;
+					}
+				}
+			}
+		}
 	}
+
+	if (ninfo_arr == NULL)
+		ninfo_arr = sinfo->unassoc_nodes;
 
 	if (resresv->node_set_str != NULL) {
 		/* Note that jobs inside reservations have their node_set
@@ -1604,11 +1629,8 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	if (ninfo_arr == NULL || error)
 		return NULL;
 
-	get_resresv_spec(resresv, &spec, &pl);
-
 	err->status_code = NOT_RUN;
-	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv,
-		flags, &nspec_arr, err);
+	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv, flags, &nspec_arr, err);
 
 	/* We can run, yippie! */
 	if (rc > 0)

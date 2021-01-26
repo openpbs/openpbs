@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -297,7 +297,7 @@ verify_resc_name(char *name)
  * @retval -2 when errors that got autocorrected
  */
 int
-verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, char *rescname, char *buf, int buflen, int autocorrect)
+verify_resc_type_and_flags(int resc_type, int *pflag_ir, int *presc_flag, const char *rescname, char *buf, int buflen, int autocorrect)
 {
 	char fchar;
 	int correction = 0;

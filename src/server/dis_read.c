@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -498,7 +498,7 @@ dis_request_read(int sfds, struct batch_request *request)
 		case PBS_BATCH_Rerun:
 			rc = decode_DIS_JobId(sfds, request->rq_ind.rq_commit);
 			break;
-			
+
 		case PBS_BATCH_DeleteJobList:
 			rc = decode_DIS_DelJobList(sfds, request);
 			break;

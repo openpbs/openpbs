@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -468,7 +468,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		/* Node State... i.e. offline down free etc */
 		if (!strcmp(attrp->name, ATTR_NODE_state))
 			set_node_info_state(ninfo, attrp->value);
-		
+
 		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
 			ninfo->svr_inst_id = string_dup(attrp->value);
 			if (ninfo->svr_inst_id == NULL) {
@@ -2478,7 +2478,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	}
 
 	if (!can_fit) {
-		if (!sc_attrs.do_not_span_psets) {
+		if (flags & SPAN_PSETS) {
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
 				"Request won't fit into any placement sets, will use all nodes");
 			resresv->can_not_fit = 1;

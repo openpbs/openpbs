@@ -1,4 +1,6 @@
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# coding: utf-8
+
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -35,29 +37,42 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-language: c
-sudo: required
-dist: trusty
-addons:
-  apt:
-    packages:
-      - docker-ce
-      - pep8
-services:
-  - docker
-env:
-  - OS_TYPE=centos:8
-  - OS_TYPE=opensuse/leap:15
-  - OS_TYPE=ubuntu:20.04
-before_install:
-  - .github/runchecks
-  - docker pull ${OS_TYPE}
-  - '[ "${OS_TYPE}" == "ubuntu:20.04" -o "${OS_TYPE}" == "debian:9" ] && export DOCKER_EXTRA_ARG="-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8" || true'
-  - '[ "${OS_TYPE}" == "centos:7" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8" || true'
-  - '[ "${OS_TYPE}" == "opensuse/leap:15" ] && export DOCKER_EXTRA_ARG="-e LC_ALL=C.utf8" || true'
-  - docker run -it -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ${DOCKER_EXTRA_ARG} ${OS_TYPE} /bin/bash
-  - docker ps -a
-  - export DOCKER_EXEC="docker exec -it ${DOCKER_EXTRA_ARG} -e BUILD_MODE="${BUILD_MODE}" --privileged pbsdev"
-install:
-  - '${DOCKER_EXEC} .travis/do.sh'
-script: true
+
+from tests.functional import *
+
+
+class TestQdel(TestFunctional):
+    """
+    This test suite contains tests for qdel
+    """
+
+    def test_qdel_with_server_tagged_in_jobid(self):
+        """
+        Test to make sure that qdel uses server tagged in jobid instead of
+        the PBS_SERVER conf setting
+        """
+        self.du.set_pbs_config(confs={'PBS_SERVER': 'not-a-server'})
+        j = Job(TEST_USER)
+        j.set_attributes({ATTR_q: 'workq@' + self.server.hostname})
+        jid = self.server.submit(j)
+        try:
+            self.server.delete(jid)
+        except PbsDeleteError as e:
+            self.assertFalse(
+                'Unknown Host' in e.msg[0],
+                "Error message is not expected as server name is"
+                "tagged in the jobid")
+        self.du.set_pbs_config(confs={'PBS_SERVER': self.server.hostname})
+
+    def test_qdel_unknown(self):
+        """
+        Test that qdel for an unknown job throws error saying the same
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.delete(jid, wait=True)
+        try:
+            self.server.delete(jid)
+            self.fail("qdel didn't throw 'Unknown job id' error")
+        except PbsDeleteError as e:
+            self.assertEqual("qdel: Unknown Job Id " + jid, e.msg[0])

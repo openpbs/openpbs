@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -63,8 +63,8 @@
  * @retval	pbs_error	error
  *
  */
-int
-__pbs_terminate(int c, int manner, char *extend)
+static int
+PBSD_terminate(int c, int manner, char *extend)
 {
 	struct batch_reply *reply;
 	int rc = 0;
@@ -111,4 +111,38 @@ __pbs_terminate(int c, int manner, char *extend)
 		return pbs_errno;
 
 	return rc;
+}
+
+
+/**
+ * @brief
+ *	-send termination batch_request to server.
+ *
+ * @param[in] c - communication handle
+ * @param[in] manner - manner in which server to be terminated
+ * @param[in] extend - extension string for request
+ *
+ * @return	int
+ * @retval	0		success
+ * @retval	pbs_error	error
+ *
+ */
+int
+__pbs_terminate(int c, int manner, char *extend)
+{
+	int rc = 0;
+	int final_rc = rc;
+	svr_conn_t **svr_conns = get_conn_svr_instances(c);
+	int i;
+
+	if (!svr_conns)
+		return PBSD_terminate(c, manner, extend);
+
+	for (i = 0; svr_conns[i]; i++) {
+		rc = PBSD_terminate(svr_conns[i]->sd, manner, extend);
+		if (rc != 0)
+			final_rc = rc;
+	}
+
+	return final_rc;
 }

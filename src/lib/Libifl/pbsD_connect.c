@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -417,7 +417,7 @@ err:
  *
  * @par MT-safe: Yes
  */
-void *
+svr_conn_t **
 get_conn_svr_instances(int parentfd)
 {
 	svr_conns_list_t *iter_conns = NULL;
@@ -1199,7 +1199,7 @@ send_register_sched(int sock, const char *sched_id)
 rerr:
 	pbs_disconnect(sock);
 	PBSD_FreeReply(reply);
-	return 0;	
+	return 0;
 }
 
 /**
@@ -1232,9 +1232,11 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 		return 0;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
-			return 0;	
-		if (send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
+		if (svr_conns_primary[i]->sd < 0 ||
+			send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
+			return 0;
+		if (svr_conns_secondary[i]->sd < 0 ||
+			send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
 			return 0;
 	}
 
@@ -1262,7 +1264,6 @@ get_svr_inst_fd(int vfd, char *svr_inst_id)
 	if (svr_conns == NULL)
 		return -1;
 
-		
 	/* In case of single server mode, svr_conns consists of only one entry */
 	if (!msvr_mode())
 		return svr_conns[0]->sd;
@@ -1271,11 +1272,94 @@ get_svr_inst_fd(int vfd, char *svr_inst_id)
 
 	if (svr_inst_name == NULL)
 		return -1;
-		
+
 	for (i = 0; svr_conns[i]; i++) {
 		if (is_same_host(svr_conns[i]->name, svr_inst_name) && (svr_inst_port == svr_conns[i]->port))
 			return svr_conns[i]->sd;
 	}
 
 	return -1;
+}
+
+/**
+ * @brief	Helper function to convert a server name to corresponding fd
+ *
+ * @param[in]	c - Cluster/virtual connection descriptor
+ * @param[in]	svrname - name of the server instance to get fd for
+ *
+ * @return	int
+ * @retval	fd of server
+ * @retval	-1 if not found
+ */
+static int
+server_name_to_fd(int c, char *svrname)
+{
+	svr_conn_t **conns = get_conn_svr_instances(c);
+	int i;
+
+	if (conns == NULL) {
+		pbs_errno = PBSE_NOCONNECTS;
+		return -1;
+	}
+	for (i = 0; i < get_num_servers(); i++) {
+		if (strcmp(conns[i]->name, svrname) == 0)
+			return conns[i]->sd;
+	}
+
+	return -1;
+}
+
+/**
+ * @brief	Get the server fd associated with a jobid
+ * @param[in]	c - virtual fd of the cluster
+ * @param[in]	jobid - id of the job
+ *
+ * @return	int
+ * @retval	fd of the server instance
+ * @retval	-1 for error
+ */
+int
+get_server_fd_from_jid(int c, char *jobid)
+{
+	char server_out[PBS_MAXSERVERNAME];
+	char job_id_out[PBS_MAXCLTJOBID];
+	int fd = -1;
+	static char *dflt_server = NULL;
+
+	server_out[0] = '\0';
+
+	if (dflt_server == NULL)
+		dflt_server = pbs_default();
+
+	/* Until we resolve jobid namespace for multi-server, each multi-server
+	 * will have a unique PBS_SERVER value, so server id can be derived from the jobid itself
+	 */
+	get_server(jobid, job_id_out, server_out);
+	if (server_out[0] == '\0' && dflt_server != NULL)
+		pbs_strncpy(server_out, dflt_server, sizeof(server_out));
+
+	if (server_out[0] != '\0')
+		fd = server_name_to_fd(c, server_out);
+
+	return fd;
+}
+
+/**
+ * @brief	To be used by IFL to check whether it should talk to multiple servers
+ *
+ * @param[in]	fd - the connection descriptor to check
+ *
+ * @return int
+ * @retval 1 for yes, 0 for no
+ */
+int
+multi_svr_op(int fd)
+{
+	svr_conn_t **conns = get_conn_svr_instances(fd);
+	int num_svrs = get_num_servers();
+
+	if (conns == NULL || num_svrs == 1 || fd == conns[0]->sd)
+		return FALSE;
+
+	return TRUE;
 }

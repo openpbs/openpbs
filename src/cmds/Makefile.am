@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -234,7 +234,9 @@ qstop_LDADD = ${common_libs}
 qstop_SOURCES = qstop.c ${common_sources}
 
 qsub_CPPFLAGS = ${common_cflags}
-qsub_LDADD = ${common_libs}
+qsub_LDADD = ${common_libs} \
+		-lssl \
+		-lcrypto
 qsub_SOURCES = qsub.c qsub_sup.c ${common_sources}
 
 qterm_CPPFLAGS = ${common_cflags}

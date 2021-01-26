@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_FAIRSHARE_H
 #define	_FAIRSHARE_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 /*
@@ -267,7 +264,4 @@ void calc_usage_factor(fairshare_head *tree);
 
 
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _FAIRSHARE_H */

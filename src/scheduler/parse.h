@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_PARSE_H
 #define	_PARSE_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 #include "globals.h"
@@ -99,7 +96,4 @@ int is_speccase_sort(char *sort_res, int sort_type);
 
 void free_sort_info(enum sort_info_type si_type);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _PARSE_H */

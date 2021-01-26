@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_FIFO_H
 #define	_FIFO_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include  <limits.h>
 #include "data_types.h"
@@ -203,7 +200,8 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  *	       first move it to the local server and then run it.
  *	       if it's a local job, just run it.
  */
-int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook, char *node_owner, schd_error *err);
+int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook,
+	    schd_error *err, char *svr_id_node);
 
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
@@ -258,9 +256,7 @@ int validate_running_user(char *exename);
 
 void clear_last_running();
 
-int send_run_job(int pbs_sd, int has_runjob_hook, char *jobid, char *execvnode, char *node_owner);
+int send_run_job(int virtual_sd, int has_runjob_hook, char *jobid, char *execvnode,
+		 char *svr_id_node, char *svr_id_job);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _FIFO_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -1654,7 +1654,7 @@ free_br(struct batch_request *preq)
 			break;
 		case PBS_BATCH_DeleteJobList:
 			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
-				free(preq->rq_ind.rq_deletejoblist.rq_jobslist);
+				free_string_array(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 			break;
 		case PBS_BATCH_CopyFiles:
 		case PBS_BATCH_DelFiles:

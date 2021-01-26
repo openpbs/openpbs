@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -511,7 +511,7 @@ class PBSService(PBSObject):
                     self.logger.info('FQDN name ' + self.fqdn + ' differs '
                                      'from name provided ' + self.hostname)
                     self.hostname = self.fqdn
-            except:
+            except Exception:
                 pass
         else:
             self.fqdn = self.hostname
@@ -1074,7 +1074,7 @@ class PBSService(PBSObject):
         """
         try:
             from ptl.utils.pbs_logutils import PBSLogUtils
-        except:
+        except Exception:
             _msg = 'error loading ptl.utils.pbs_logutils'
             raise ImportError(_msg)
 
@@ -1134,7 +1134,7 @@ class PBSService(PBSObject):
             # an open file descriptor, we close here but ignore errors in case
             # any were raised for all irrelevant cases
             lines.close()
-        except:
+        except Exception:
             pass
         if (rv is None and existence):
             _msg = infomsg + attemptmsg
@@ -1365,7 +1365,7 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore " +
                                               "configuration: %s" % k)
                             return False
-                    except:
+                    except Exception:
                         self.logger.error("Failed to restore " +
                                           "configuration: %s" % k)
                         return False
@@ -1398,7 +1398,7 @@ class PBSService(PBSObject):
                             self.logger.error("Failed to restore " +
                                               "configuration: %s" % k)
                             return False
-                    except:
+                    except Exception:
                         self.logger.error("Failed to restore " +
                                           "configuration: %s" % k)
                         return False

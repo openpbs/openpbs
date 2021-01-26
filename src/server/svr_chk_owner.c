@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -439,7 +439,7 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc, int *err)
 	if ((t == IS_ARRAY_NO) && (check_job_state(pjob, JOB_STATE_LTR_EXITING))) {
 
 		/* special case Deletejob with "force" */
-		if ((preq->rq_type == PBS_BATCH_DeleteJob) &&
+		if (((preq->rq_type == PBS_BATCH_DeleteJob) || (preq->rq_type == PBS_BATCH_DeleteJobList)) &&
 			(preq->rq_extend != NULL) &&
 			(strcmp(preq->rq_extend, "force") == 0)) {
 			return pjob;

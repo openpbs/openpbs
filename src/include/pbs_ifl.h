@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -529,16 +529,16 @@ struct attropl {
 };
 
 struct batch_status {
-	struct batch_status	*next;
-	char			*name;
-	struct attrl		*attribs;
-	char			*text;
+	struct batch_status *next;
+	char *name;
+	struct attrl *attribs;
+	char *text;
 };
 
 struct batch_deljob_status {
 	struct batch_deljob_status *next;
-	char	*name;
-	int	code;
+	char *name;
+	int code;
 };
 
 /* structure to hold an attribute that failed verification at ECL
