@@ -764,6 +764,11 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 	sched_cmd cmd;
 	int nsvrs = get_num_servers();
 	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
+	if (svr_conns == NULL) {
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+			"Unable to fetch secondary connections");
+		return 0;
+	}
 
 	for (i = 0; svr_conns[i]; i++) {
 		int rc;
