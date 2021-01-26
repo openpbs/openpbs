@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_PRIME_H
 #define	_PRIME_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "time.h"
 
@@ -110,7 +107,4 @@ int init_non_prime_time(struct status *, char *);
 time_t end_prime_status(time_t date);
 
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _PRIME_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_CONSTANT_H
 #define	_CONSTANT_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include <math.h>
 
@@ -594,8 +591,9 @@ enum check_flags {
 	ONLY_COMP_CONS = 128,
 	IGNORE_EQUIV_CLASS = 256,
 	USE_BUCKETS = 512,
-	NO_ALLPART = 1024
-	/* next flag 2048 */
+	NO_ALLPART = 1024,
+	SPAN_PSETS = 2048
+	/* next flag 4096 */
 };
 
 enum schd_error_args {
@@ -636,7 +634,4 @@ enum nscr_vals {
 	NSCR_INELIGIBLE = 4
 };
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _CONSTANT_H */

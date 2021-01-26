@@ -12,7 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -57,7 +57,7 @@ HAS_RTD = False
 try:
     import sphinx_rtd_theme
     HAS_RTD = True
-except:
+except Exception:
     HAS_RTD = False
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -249,7 +249,7 @@ latex_elements = {'papersize': 'a4paper', }
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [('index', 'PbsTestLab.tex', 'PbsTestLab Documentation',
-                    'Copyright (C) 1994-2020 Altair Engineering, Inc',
+                    'Copyright (C) 1994-2021 Altair Engineering, Inc',
                     'manual'), ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -278,7 +278,7 @@ latex_show_urls = 'True'
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [('index', 'pbstestlab', 'PbsTestLab Documentation',
-              ['Copyright (C) 1994-2020 Altair Engineering, Inc'], 1)]
+              ['Copyright (C) 1994-2021 Altair Engineering, Inc'], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -290,7 +290,7 @@ man_pages = [('index', 'pbstestlab', 'PbsTestLab Documentation',
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [('index', 'PbsTestLab', 'PbsTestLab Documentation',
-                      'Copyright (C) 1994-2020 Altair Engineering, Inc',
+                      'Copyright (C) 1994-2021 Altair Engineering, Inc',
                       'PbsTestLab', 'PBS Testing and Benchmarking\
                       Framework', 'Miscellaneous'), ]
 
@@ -338,6 +338,7 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('autodoc-skip-member', autodoc_skip_member)
+
 
 # Default autodoc members for API rst file
 autodoc_default_flags = ['members', 'no-undoc-members', 'no-private-members']

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -523,7 +523,7 @@ new_chunk_map() {
 		return NULL;
 	}
 
-	cmap->chunk = NULL;
+	cmap->chk = NULL;
 	cmap->bkt_cnts = NULL;
 	cmap->node_bits = pbs_bitmap_alloc(NULL, 1);
 	if (cmap->node_bits == NULL) {
@@ -576,7 +576,7 @@ log_chunk_map_array(resource_resv *resresv, chunk_map **cmap) {
 	for (i = 0; cmap[i] != NULL; i++) {
 		int total_chunks = 0;
 
-		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Chunk: %s", cmap[i]->chunk->str_chunk);
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Chunk: %s", cmap[i]->chk->str_chunk);
 
 		for (j = 0; cmap[i]->bkt_cnts[j] != NULL; j++) {
 			int chunk_count;
@@ -585,9 +585,9 @@ log_chunk_map_array(resource_resv *resresv, chunk_map **cmap) {
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, "Bucket %s can fit %d chunks", nbc->bkt->name, chunk_count);
 			total_chunks += chunk_count;
 		}
-		if (total_chunks < cmap[i]->chunk->num_chunks)
+		if (total_chunks < cmap[i]->chk->num_chunks)
 			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
-				"Found %d out of %d chunks needed", total_chunks, cmap[i]->chunk->num_chunks);
+				"Found %d out of %d chunks needed", total_chunks, cmap[i]->chk->num_chunks);
 	}
 }
 
@@ -652,7 +652,7 @@ bucket_match(chunk_map **cmap, resource_resv *resresv, schd_error *err)
 	}
 
 	for (i = 0; cmap[i] != NULL; i++) {
-		int num_chunks_needed = cmap[i]->chunk->num_chunks;
+		int num_chunks_needed = cmap[i]->chk->num_chunks;
 
 		if (cmap[i]->bkt_cnts == NULL)
 			break;
@@ -832,7 +832,7 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 	}
 
 	for (i = 0; cb_map[i] != NULL; i++) {
-		int chunks_needed = cb_map[i]->chunk->num_chunks;
+		int chunks_needed = cb_map[i]->chk->num_chunks;
 		for (j = pbs_bitmap_first_on_bit(cb_map[i]->node_bits); j >= 0;
 		     j = pbs_bitmap_next_on_bit(cb_map[i]->node_bits, j)) {
 			/* Find the bucket the node is in */
@@ -852,7 +852,7 @@ bucket_to_nspecs(status *policy, chunk_map **cb_map, resource_resv *resresv)
 			 * For the final chunk, we might allocate less.
 			 */
 			for( ; cnt > 0 && chunks_needed > 0; cnt--, chunks_needed--, n++) {
-				ns_arr[n] = chunk_to_nspec(policy, cb_map[i]->chunk, sinfo->unordered_nodes[j], resresv->aoename);
+				ns_arr[n] = chunk_to_nspec(policy, cb_map[i]->chk, sinfo->unordered_nodes[j], resresv->aoename);
 				if (ns_arr[n] == NULL) {
 					free_nspecs(ns_arr);
 					return NULL;
@@ -979,7 +979,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 			free_chunk_map_array(cb_map);
 			return NULL;
 		}
-		cb_map[i]->chunk = resresv->select->chunks[i];
+		cb_map[i]->chk = resresv->select->chunks[i];
 		cb_map[i]->bkt_cnts = static_cast<node_bucket_count **>(calloc(bucket_ct + 1, sizeof(node_bucket_count *)));
 		if (cb_map[i]->bkt_cnts == NULL) {
 			log_err(errno, __func__, MEM_ERR_MSG);
@@ -1021,7 +1021,7 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 		}
 
 		/* No buckets match or not enough nodes in the buckets: the job can't run */
-		if(b == 0 || total < cb_map[i]->chunk->num_chunks)
+		if(b == 0 || total < cb_map[i]->chk->num_chunks)
 			can_run = 0;
 	}
 	cb_map[i] = NULL;
@@ -1132,11 +1132,21 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 			 * use that error code
 			 */
 			move_schd_error(err, failerr);
-	}
-	else
-		return map_buckets(policy, sinfo->buckets, resresv, err);
+	} else if (!(sinfo->svr_to_psets.empty())) {
+		/* Find buckets associated with nodes of the server which owns the job */
+		for (auto &spset: sinfo->svr_to_psets) {
+			if (spset.svr_inst_id == resresv->job->svr_inst_id) {
+				nspec **nspecs;
 
-	return NULL;
+				nspecs = map_buckets(policy, spset.np->bkts, resresv, err);
+				if (nspecs != NULL)
+					return nspecs;
+				break;
+			}
+		}
+	}
+
+	return map_buckets(policy, sinfo->buckets, resresv, err);
 }
 
 /*

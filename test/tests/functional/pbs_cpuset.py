@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -64,7 +64,7 @@ class TestPbsCpuset(TestFunctional):
             if rc['rc'] == 0 and len(rc['out']) == 1:
                 try:
                     fsize = int(rc['out'][0])
-                except:
+                except Exception:
                     pass
             # 1073741824 == 1Gb
             if fsize > 1073741824:

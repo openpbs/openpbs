@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -76,6 +76,8 @@
 #include <log.h>
 #include <pbs_ifl.h>
 #include <pbs_internal.h>
+#include <libpbs.h>
+
 #include "config.h"
 #include "constant.h"
 #include "data_types.h"
@@ -91,6 +93,7 @@
 #include "sort.h"
 #include "buckets.h"
 
+#include <vector>
 
 /**
  * @brief

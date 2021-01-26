@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -774,10 +774,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	} else if (((jt != IS_ARRAY_Range) && (jt != IS_ARRAY_Single)) &&
 		   (check_job_state(pjob, JOB_STATE_LTR_QUEUED) ||
 		    check_job_state(pjob, JOB_STATE_LTR_HELD))) {
-		struct depend *dp;
-		dp = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
-		if (dp != NULL)
-			depend_runone_remove_dependency(pjob);
+		depend_runone_remove_dependency(pjob);
 	}
 
 	if (is_mgr && forcedel) {

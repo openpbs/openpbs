@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -51,6 +51,7 @@ extern "C" {
 #include <netinet/in.h>
 #include "log.h"
 #include "list_link.h"
+#include "avltree.h"
 
 #include "tpp.h"
 
@@ -301,9 +302,8 @@ enum TPP_MSG_TYPES {
 #define TPP_CMD_NET_RESTORE     9
 #define TPP_CMD_NET_DOWN        10
 #define TPP_CMD_WAKEUP          11
-#define TPP_CMD_FREECONN		12
-#define TPP_CMD_READ			13
-#define TPP_CMD_CONNECT			14
+#define TPP_CMD_READ			12
+#define TPP_CMD_CONNECT			13
 
 #define TPP_DEF_ROUTER_PORT     17001
 #define TPP_SCRATCHSIZE         8192

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     try:
         opts, args = getopt.getopt(
             sys.argv[1:], 'f:il:t:o:p:g:hLF', largs)
-    except:
+    except Exception:
         sys.stderr.write('Unrecognized option. Exiting\n')
         usage()
         sys.exit(1)
@@ -367,20 +367,20 @@ if __name__ == '__main__':
     if nosedebug:
         level = 'DEBUG'
 
-    l = CliUtils.get_logging_level(level)
+    log_lvl = CliUtils.get_logging_level(level)
     if logconf:
         logging.config.fileConfig(logconf)
     else:
-        logging.basicConfig(filename=outfile, filemode='w+', level=l,
-                            format=fmt)
+        logging.basicConfig(filename=outfile, filemode='w+',
+                            level=log_lvl, format=fmt)
 
     if outfile is not None:
         stream_hdlr = logging.StreamHandler()
-        stream_hdlr.setLevel(l)
+        stream_hdlr.setLevel(log_lvl)
         stream_hdlr.setFormatter(logging.Formatter(fmt))
         ptl_logger = logging.getLogger('ptl')
         ptl_logger.addHandler(stream_hdlr)
-        ptl_logger.setLevel(l)
+        ptl_logger.setLevel(log_lvl)
 
     pyver = platform.python_version()
     if minpyver is not None and LooseVersion(pyver) < LooseVersion(minpyver):
@@ -401,7 +401,7 @@ if __name__ == '__main__':
         tc_failure_threshold = int(tc_failure_threshold)
         if tc_failure_threshold < 0:
             raise ValueError
-    except:
+    except ValueError:
         _msg = 'Invalid value provided for testcase failure threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -411,7 +411,7 @@ if __name__ == '__main__':
         cumulative_tc_failure_threshold = int(cumulative_tc_failure_threshold)
         if cumulative_tc_failure_threshold < 0:
             raise ValueError
-    except:
+    except ValueError:
         _msg = 'Invalid value provided for cumulative-tc-failure-threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)
@@ -427,7 +427,7 @@ if __name__ == '__main__':
         max_postdata_threshold = int(max_postdata_threshold)
         if max_postdata_threshold < 0:
             raise ValueError
-    except:
+    except ValueError:
         _msg = 'Invalid value provided for max-postdata-threshold, '
         _msg += 'please provide integer'
         logging.error(_msg)

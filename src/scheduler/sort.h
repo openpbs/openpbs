@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_SORT_H
 #define	_SORT_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 /*
  *	compare two new numerical resource numbers
@@ -200,7 +197,4 @@ int cmp_resv_state(const void *r1, const void *r2);
  */
 void sort_jobs(status *policy, server_info *sinfo);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _SORT_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -602,8 +602,8 @@ extern int decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list,
 
 extern int is_attr(int, char *, int);
 
-extern int set_attr(struct attrl **attrib, char *attrib_name, char *attrib_value);
-extern int set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
+extern int set_attr(struct attrl **attrib, const char *attrib_name, const char *attrib_value);
+extern int set_attr_resc(struct attrl **attrib, const char *attrib_name, const char *attrib_resc, const char *attrib_value);
 
 extern svrattrl *make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags);
 extern void *cr_attrdef_idx(struct attribute_def *adef, int limit);

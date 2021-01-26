@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -50,10 +50,10 @@ import time
 try:
     from ptl.lib.pbs_ifl import *
     API_OK = True
-except:
+except Exception:
     try:
         from ptl.lib.pbs_ifl_mock import *
-    except:
+    except Exception:
         sys.stderr.write("failed to import pbs_ifl, run pbs_swigify " +
                          "to make it\n")
         raise ImportError

@@ -1,6 +1,6 @@
 
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -116,6 +116,7 @@ libpbs_sched_a_SOURCES = \
 	resource_resv.h \
 	resv_info.cpp \
 	resv_info.h \
+	sched_ifl_wrappers.cpp \
 	server_info.cpp \
 	server_info.h \
 	simulate.cpp \

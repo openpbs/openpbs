@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -216,7 +216,7 @@ gettimeofday(struct timeval *tp, struct timezone *tzp)
  */
 
 int
-set_msgdaemonname(char *ch)
+set_msgdaemonname(const char *ch)
 {
 	if(!(msg_daemonname = strdup(ch))) {
 		return 1;

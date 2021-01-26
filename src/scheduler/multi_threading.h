@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -41,9 +41,6 @@
 #ifndef SRC_SCHEDULER_MULTI_THREADING_H_
 #define SRC_SCHEDULER_MULTI_THREADING_H_
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
 #include "data_types.h"
 
 #define MT_CHUNK_SIZE_MIN 1024
@@ -54,7 +51,4 @@ void kill_threads(void);
 void *worker(void *);
 void queue_work_for_threads(th_task_info *task);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif /* SRC_SCHEDULER_MULTI_THREADING_H_ */
