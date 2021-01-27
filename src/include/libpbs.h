@@ -75,8 +75,6 @@ extern "C" {
 #define EOF (-1)
 #endif
 
-#define MSVR_JID_NCHARS_SVR	2	/* No. of chars reserved for svr instance in job ids for multi-server */
-
 /* enums for standard job files */
 enum job_file {
 	JScript,
