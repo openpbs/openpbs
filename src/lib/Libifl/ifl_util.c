@@ -152,13 +152,17 @@ get_job_location_hint(char *jobid)
 	int svridx = -1;
 	char *endptr = NULL;
 
-	if (jobid == NULL)
+	if (jobid == NULL || !msvr_mode())
 		return -1;
 
 	ptr = strchr(jobid, '.');
 	if (ptr == NULL)
 		return -1;
 	*ptr = '\0';
+	if (strlen(jobid) <= MSVR_JID_NCHARS_SVR) {	/* Minimum length of sequence will be MSVR_JID_NCHARS_SVR + 1 */
+		*ptr = '.';
+		return -1;
+	}
 	ptr -= MSVR_JID_NCHARS_SVR;
 	svridx = strtol(ptr, &endptr, 10);
 	ptr += MSVR_JID_NCHARS_SVR;
