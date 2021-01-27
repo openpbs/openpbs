@@ -784,13 +784,16 @@ void
 log_errf(int errnum, const char *routine, const char *fmt, ...)
 {
 	va_list args;
+	va_list args_copy;
 	int len;
 	char logbuf[LOG_BUF_SIZE];
 	char *buf;
 
 	va_start(args, fmt);
+	va_copy(args_copy, args);
 
-	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args_copy);
+	va_end(args_copy);
 
 	if (len >= sizeof(logbuf)) {
 		buf = pbs_asprintf_format(len, fmt, args);

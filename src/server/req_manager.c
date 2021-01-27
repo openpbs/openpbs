@@ -2762,7 +2762,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		if (tmpndlist != NULL) {
 			/*add in the new entry etc*/
 			pbsndlist = tmpndlist;
-			pnode->nd_index = svr_totnodes;
+			/* nd_index = 0 (regular node, single parent mom), nd_index = 1 (multiple parent moms, usually Cray) */
+			pnode->nd_index = 0;
 			pnode->nd_arr_index = svr_totnodes; /* this is only in mem, not from db */
 			pbsndlist[svr_totnodes++] = pnode;
 		} else {
