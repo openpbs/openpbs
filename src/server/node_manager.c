@@ -1078,21 +1078,6 @@ get_vnode_state_op(enum vnode_state_op op)
 	return "ND_state_unknown";
 }
 
-/**
- * @brief
- * 		Free a duplicated vnode
- *
- * @param[in]	vnode - the vnode to free
- *  
- * @return void
- */
-static void
-shallow_vnode_free(struct pbsnode *vnode)
-{
-	if (vnode) {
-		free(vnode);
-	}
-}
 
 /**
  * @brief
@@ -1119,13 +1104,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	/* 
 	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
-	if ((vnode_dup = malloc(sizeof(struct pbsnode)))) {
-		if (initialize_pbsnode(vnode_dup, strdup(vnode->nd_name), NTYPE_PBS) != PBSE_NONE) {
-			log_err(PBSE_INTERNAL, __func__, "vnode_dup initialization failed");
-			shallow_vnode_free(vnode_dup);
-			return NULL;
-		}
-	} else {
+	if ((vnode_dup = calloc(1, sizeof(struct pbsnode))) == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "vnode_dup alloc failed");
 		return NULL;
 	}
@@ -1133,11 +1112,8 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	/*
 	 * Copy vnode elements (same order as "struct pbsnode" element definition)
 	 */
-	if (vnode_dup->nd_moms) {
-		/* free the initialize_pbsnode() allocation before assigning */
-		free(vnode_dup->nd_moms);
-		vnode_dup->nd_moms = NULL;
-	}
+
+	vnode_dup->nd_name = vnode->nd_name;
 	vnode_dup->nd_moms = vnode->nd_moms;
 	vnode_dup->nd_nummoms = vnode->nd_nummoms;
 	vnode_dup->nd_nummslots = vnode->nd_nummslots;
@@ -1155,7 +1131,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_accted = vnode->nd_accted;
 	vnode_dup->nd_pque = vnode->nd_pque;
 	vnode_dup->newobj = vnode->newobj;
-	for (i = 0; i < (int)ND_ATR_LAST; i++) {
+	for (i = 0; i < ND_ATR_LAST; i++) {
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
 	}
 	return vnode_dup;
@@ -1325,7 +1301,7 @@ fn_fire_event:
 	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
 fn_free_and_return:
-	shallow_vnode_free(vnode_o);
+	free(vnode_o);
 	free_br(preq);
 }
 

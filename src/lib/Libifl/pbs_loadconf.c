@@ -277,6 +277,7 @@ parse_psi(char *conf_value)
 	char *svrname = NULL;
 	
 	free(pbs_conf.psi);
+	free(pbs_conf.psi_str);
 
 	if (conf_value == NULL)
 		return -1;

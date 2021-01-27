@@ -223,8 +223,10 @@ aggr_job_ct(struct batch_status *cur, struct batch_status *nxt)
 
 	if (orig_st_ct)
 		encode_states(orig_st_ct, cur_st_ct, nxt_st_ct);
-	if (tot_jobs_attr)
-		sprintf(tot_jobs_attr, "%ld", tot_jobs);
+	if (tot_jobs_attr) {
+		free(tot_jobs_attr);
+		pbs_asprintf(&tot_jobs_attr, "%ld", tot_jobs);
+	}
 }
 
 /**

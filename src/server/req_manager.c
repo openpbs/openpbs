@@ -2767,14 +2767,13 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			pnode->nd_arr_index = svr_totnodes; /* this is only in mem, not from db */
 			pbsndlist[svr_totnodes++] = pnode;
 		} else {
-			free_pnode(pnode);
 			free(pname);
+			free_pnode(pnode);
 			return (PBSE_SYSTEM);
 		}
 		if (initialize_pbsnode(pnode, pname, ntype) != PBSE_NONE) {
 			svr_totnodes--;
 			free_pnode(pnode);
-			free(pname);
 			return (PBSE_SYSTEM);
 		}
 
@@ -2783,7 +2782,6 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		if (create_subnode(pnode, NULL) == NULL) {
 			svr_totnodes--;
 			free_pnode(pnode);
-			free(pname);
 			return (PBSE_SYSTEM);
 		}
 
@@ -2792,7 +2790,6 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			if ((node_idx = pbs_idx_create(0, 0)) == NULL) {
 				svr_totnodes--;
 				free_pnode(pnode);
-				free(pname);
 				return (PBSE_SYSTEM);
 			}
 		}
@@ -2801,7 +2798,6 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		if (pbs_idx_insert(node_idx, pname, pnode) != PBS_IDX_RET_OK) {
 			svr_totnodes--;
 			free_pnode(pnode);
-			free(pname);
 			return (PBSE_SYSTEM);
 		}
 	} else if (nodup == TRUE) {

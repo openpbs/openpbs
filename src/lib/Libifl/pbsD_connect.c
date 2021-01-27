@@ -463,6 +463,9 @@ dealloc_conn_entry(int parentfd)
 
 			for (i = 0; iter_conns->conn_arr[i]; i++)
 				free(iter_conns->conn_arr[i]);
+			/* virtual fd */
+			if (i > 1)
+				closesocket(iter_conns->cfd);
 			free(iter_conns->conn_arr);
 			free(iter_conns);
 			break;

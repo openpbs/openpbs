@@ -530,12 +530,19 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 void
 free_pnode(struct pbsnode *pnode)
 {
-	if (pnode) {
-		(void)free(pnode->nd_name);
-		(void)free(pnode->nd_hostname);
-		(void)free(pnode->nd_moms);
-		(void)free(pnode); /* delete the pnode from memory */
+	int i;
+
+	if (!pnode)
+		return;
+
+	free(pnode->nd_name);
+	free(pnode->nd_hostname);
+	free(pnode->nd_moms);
+	/* free attributes */
+	for (i = 0; i < ND_ATR_LAST; i++) {
+		node_attr_def[i].at_free(&pnode->nd_attr[i]);
 	}
+	free(pnode); /* delete the pnode from memory */
 }
 
 /**
@@ -551,7 +558,7 @@ free_pnode(struct pbsnode *pnode)
 void
 effective_node_delete(struct pbsnode *pnode)
 {
-	int		 i, j;
+	int		 i;
 	struct pbssubn  *psubn;
 	struct pbssubn  *pnxt;
 	mom_svrinfo_t	*psvrmom;
@@ -567,12 +574,6 @@ effective_node_delete(struct pbsnode *pnode)
 
 	remove_from_unlicensed_node_list(pnode);
 	lic_released = release_node_lic(pnode);
-
-        /* free attributes */
-
-	for (i = 0; i < ND_ATR_LAST; i++) {
-		node_attr_def[i].at_free(&pnode->nd_attr[i]);
-	}
 
 	if (pnode->nd_nummoms > 1) {
 		/* unlink from mominfo for all parent Moms */
@@ -591,8 +592,8 @@ effective_node_delete(struct pbsnode *pnode)
 			remove_mom_from_vnodes(pnode->nd_moms[0]);
 
 			/* then delete the Mom */
-			for (j=0; psvrmom->msr_addrs[j]; j++) {
-				u_long	ipaddr = psvrmom->msr_addrs[j];
+			for (i = 0; psvrmom->msr_addrs[i]; i++) {
+				u_long ipaddr = psvrmom->msr_addrs[i];
 				if (ipaddr)
 					delete_iplist_element(pbs_iplist, ipaddr);
 			}
