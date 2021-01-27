@@ -98,6 +98,7 @@ class TestQsub_remove_files(TestFunctional):
             sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
         self.assertEqual(1, file_count)
 
+    @requirements(no_mom_on_server=False)
     def test_remove_files_error_file(self):
         """
         submit a job with -Re option and make sure the error file
@@ -108,7 +109,7 @@ class TestQsub_remove_files(TestFunctional):
         sub_dir = self.du.create_temp_dir(asuser=TEST_USER)
         mapping_dir = self.du.create_temp_dir(asuser=TEST_USER)
         self.mom.add_config(
-            {'$usecp': self.server.hostname + ':' + sub_dir +
+            {'$usecp': self.mom.hostname + ':' + sub_dir +
              ' ' + mapping_dir})
         self.mom.restart()
         jid = self.server.submit(j, submit_dir=sub_dir)
