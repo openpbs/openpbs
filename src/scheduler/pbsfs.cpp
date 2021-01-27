@@ -214,8 +214,10 @@ main(int argc, char *argv[])
 	if (parse_group(RESGROUP_FILE, conf.fairshare->root) == 0)
 		return 1;
 
-	if (flags & FS_TRIM_TREE)
+	if (flags & FS_TRIM_TREE) {
 		read_usage(USAGE_FILE, FS_TRIM, conf.fairshare);
+		conf.fairshare->last_decay = time(0);
+	}
 	else
 		read_usage(USAGE_FILE, 0, conf.fairshare);
 
@@ -228,8 +230,10 @@ main(int argc, char *argv[])
 		printf("Fairshare usage units are in: %s\n", conf.fairshare_res);
 		print_fairshare(conf.fairshare->root, -1);
 	}
-	else if (flags & FS_DECAY)
+	else if (flags & FS_DECAY) {
 		decay_fairshare_tree(conf.fairshare->root);
+		conf.fairshare->last_decay = time(0);
+	}
 	else if (flags & (FS_GET | FS_SET | FS_COMP)) {
 		ginfo = find_group_info(argv[optind], conf.fairshare->root);
 
