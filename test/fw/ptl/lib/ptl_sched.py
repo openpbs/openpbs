@@ -811,9 +811,6 @@ class Scheduler(PBSService):
             cmd += ['-I', self.sc_name]
         self.du.run_cmd(cmd=cmd, runas=self.user)
         self.parse_sched_config()
-        if self.platform == 'cray' or self.platform == 'craysim':
-            self.add_resource('vntype')
-            self.add_resource('hbmem')
         self.fairshare_tree = None
         self.resource_group = None
 
@@ -855,6 +852,9 @@ class Scheduler(PBSService):
                              uid=self.user)
 
         self.signal('-HUP')
+        if self.platform == 'cray' or self.platform == 'craysim':
+            self.add_resource('vntype')
+            self.add_resource('hbmem')
         # Revert fairshare usage
         self.revert_fairshare()
         return self.isUp()
