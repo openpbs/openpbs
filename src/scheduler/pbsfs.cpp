@@ -216,7 +216,7 @@ main(int argc, char *argv[])
 
 	if (flags & FS_TRIM_TREE) {
 		read_usage(USAGE_FILE, FS_TRIM, conf.fairshare);
-		conf.fairshare->last_decay = time(0);
+		conf.fairshare->last_decay = time(NULL);
 	}
 	else
 		read_usage(USAGE_FILE, 0, conf.fairshare);
@@ -232,7 +232,7 @@ main(int argc, char *argv[])
 	}
 	else if (flags & FS_DECAY) {
 		decay_fairshare_tree(conf.fairshare->root);
-		conf.fairshare->last_decay = time(0);
+		conf.fairshare->last_decay = time(NULL);
 	}
 	else if (flags & (FS_GET | FS_SET | FS_COMP)) {
 		ginfo = find_group_info(argv[optind], conf.fairshare->root);

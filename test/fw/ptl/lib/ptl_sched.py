@@ -810,7 +810,6 @@ class Scheduler(PBSService):
         if self.sc_name is not 'default':
             cmd += ['-I', self.sc_name]
         self.du.run_cmd(cmd=cmd, runas=self.user)
-        self.parse_sched_config()
         self.fairshare_tree = None
         self.resource_group = None
 
@@ -857,6 +856,7 @@ class Scheduler(PBSService):
             self.add_resource('hbmem')
         # Revert fairshare usage
         self.revert_fairshare()
+        self.parse_sched_config()
         return self.isUp()
 
     def create_scheduler(self, sched_home=None):
