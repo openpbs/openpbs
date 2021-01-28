@@ -90,7 +90,7 @@ class TestProvisioningJob(TestFunctional):
         TestFunctional.setUp(self)
         self.momA = self.moms.values()[0]
         self.hostA = self.momA.shortname
-        msg = ("We cannot provision on cpuset mom ,host has vnodes")
+        msg = ("We cannot provision on cpuset mom, host has vnodes")
         if self.momA.is_cpuset_mom():
             self.skipTest(msg)
         self.momA.delete_vnode_defs()
@@ -178,7 +178,7 @@ class TestProvisioningJob(TestFunctional):
             self.skip_test(reason=cmt)
         self.momB = self.moms.values()[1]
         self.hostB = self.momB.shortname
-        msg = ("We cannot provision on cpuset mom ,host has vnodes")
+        msg = ("We cannot provision on cpuset mom, host has vnodes")
         if self.momA.is_cpuset_mom() or self.momB.is_cpuset_mom():
             self.skipTest(msg)
         a = {'resources_available.aoe': 'osimage1'}
