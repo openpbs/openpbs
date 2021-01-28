@@ -134,7 +134,7 @@ e.accept()"""
         exp_hook_body = imp_hook_body
         attrs = {'event': 'queuejob'}
         self.server.create_import_hook(self.hook_name, attrs, hook_body)
-        fn = self.du.create_temp_file()
+        fn = self.du.create_temp_file(asuser=ROOT_USER)
         hook_attrs = 'application/x-config default %s' % fn
         rc = self.server.manager(MGR_CMD_EXPORT, HOOK, hook_attrs,
                                  self.hook_name)
