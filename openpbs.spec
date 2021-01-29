@@ -405,21 +405,21 @@ ldconfig %{_libdir}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall server \
-		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{defined have_systemd}
 fi
 
 %preun %{pbs_execution}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall execution \
-		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{defined have_systemd}
 fi
 
 %preun %{pbs_client}
 if [ "$1" != "1" ]; then
 	# This is an uninstall, not an upgrade.
 	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_preuninstall client \
-		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{defined have_systemd}
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{defined have_systemd}
 fi
 
 %postun %{pbs_server}
