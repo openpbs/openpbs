@@ -212,6 +212,40 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("Node;%s;node down" % mom,
                                   starttime=start_time)
 
+    def checkPreviousStateChain(self, start_time, end_time, mom):
+        # scoop up the last 2000 lines of the pbs server log
+        lines = self.server.log_lines(logtype=self.server,
+                                      starttime=start_time,
+                                      endtime=end_time,
+                                      host=self.server.hostname,
+                                      tail=True,
+                                      n=2000)
+        searchString = ";show_vnode_state;name=" + mom
+        self.logger.info('checkPreviousStateChain SearchString='+searchString+' start='+
+                         str(start_time)+' end='+str(end_time))
+        notFirst = False
+        previousState = None
+        for line in lines:
+            if searchString in line:
+                # found a candidate log entry
+                head, tail = line.rsplit(';', 1)
+                pairs = tail.split(' ')
+                lineDict = dict([key_value.split("=", 1) for key_value in pairs])
+                # check if the log entry was written during the specified time range 
+                if int(lineDict['v.lsct']) >= start_time and int(lineDict['v.lsct']) <= end_time:
+                    self.logger.debug('Examining line: ' + line)
+                    # compare the current v_o.state with the previous entry's v.state
+                    if notFirst:
+                        self.assertEqual(previousState, lineDict['v_o.state_hex'],
+                            'Node state chain mismatch! previousState=%s line=%s' %
+                            (previousState, line))
+                        self.logger.debug('Current and previous matched!')
+                    else:
+                        notFirst = True
+                        self.logger.debug('Setting notFirst!')
+                    # current state is now previousState for the next iteration
+                    previousState = lineDict['v.state_hex']
+                    
     def test_hook_state_changes_00(self):
         """
         Test: induce a variety of vnode state changes with debug turned on
@@ -238,10 +272,11 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for mom in self.server.moms.values():
             # State change test: mom stop
             start_time = int(time.time())
+            stateChainStartTime = start_time
             mom.stop()
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
-            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
+            self.server.log_match("v.state_hex=0x2",
                                   starttime=start_time)
 
             # State change test: mom start
@@ -249,7 +284,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             mom.start()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
+            self.server.log_match("v.state_hex=0x0",
                                   starttime=start_time)
 
             # State change test: mom restart
@@ -257,9 +292,9 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             mom.restart()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=True)
-            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
+            self.server.log_match("v.state_hex=0x2",
                                   starttime=start_time)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
+            self.server.log_match("v.state_hex=0x0",
                                   starttime=start_time)
 
             # State change test: take mom offline then online
@@ -271,7 +306,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x1 v_o.state_hex=0x0",
+            self.server.log_match("v.state_hex=0x1",
                                   starttime=start_time)
             # back online
             start_time = int(time.time())
@@ -281,7 +316,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x1",
+            self.server.log_match("v.state_hex=0x0",
                                   starttime=start_time)
 
             # State change test: create and release maintenance reservation
@@ -298,16 +333,15 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.logger.debug("rid=%s" % rid)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x2000 v_o.state_hex=0x0",
+            self.server.log_match("v.state_hex=0x2000",
                                   starttime=start_time)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x2000",
+            self.server.log_match("v.state_hex=0x0",
                                   starttime=start_time)
 
-            # State change test: create and delete vnode
-            # TODO: add impl
-
-            # State change test: induce ND_STATE_MAINTENANCE state
-            # TODO: add impl
+            # Verify each preceeding state matches the current previous state
+            stateChainEndTime = int(time.time())
+            self.checkPreviousStateChain(stateChainStartTime, stateChainEndTime,
+                                         mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
 
@@ -395,18 +429,24 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.logger.debug("    ***sigkilling mom:%s", mom.fqdn)
 
             start_time = int(time.time())
+            stateChainStartTime = start_time
             mom.signal('-KILL')
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
-            self.server.log_match("v.state_hex=0x2 v_o.state_hex=0x0",
+            self.server.log_match("v.state_hex=0x2",
                                   starttime=start_time)
 
             start_time = int(time.time())
             mom.start()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
+            self.server.log_match("v.state_hex=0x0",
                                   starttime=start_time)
+
+            # Verify each preceeding state matches the current previous state
+            stateChainEndTime = int(time.time())
+            self.checkPreviousStateChain(stateChainStartTime, stateChainEndTime,
+                                         mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
 
@@ -427,6 +467,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
         # stop the server and then start it
         start_time = int(time.time())
+        stateChainStartTime = start_time
         self.server.stop()
         self.server.start()
 
@@ -434,7 +475,11 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for mom in self.server.moms.values():
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0 v_o.state_hex=0x400",
+            self.server.log_match("v.state_hex=0x0",
                                   starttime=start_time)
+            # Verify each preceeding state matches the current previous state
+            stateChainEndTime = int(time.time())
+            self.checkPreviousStateChain(stateChainStartTime, stateChainEndTime,
+                                         mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))

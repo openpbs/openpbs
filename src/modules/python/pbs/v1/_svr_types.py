@@ -481,7 +481,7 @@ class _vnode():
             lst.append(_pbs_v1.ND_STATE_FREE)
             lst.append(_pbs_v1.ND_STATE_VNODE_AVAILABLE)
         else:
-            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+            lst = [mask for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
         return lst
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
