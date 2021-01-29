@@ -259,28 +259,26 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, void *padef_idx, 
 				/* for INCR case of entity limit, decode locally */
 				set_attr_generic(&pattr[index], &padef[index], pal->al_value, pal->al_resc, INCR);
 			} else {
-				int rc = set_attr_generic(&pattr[index], &padef[index], pal->al_value, pal->al_resc, INTERNAL);
-				if (! rc) {
-					int act_rc = 0;
-					if (padef[index].at_action)
-						if ((act_rc = (padef[index].at_action(&pattr[index], parent, ATR_ACTION_RECOV)))) {
-							log_errf(act_rc, __func__, "Action function failed for %s attr, errn %d", (padef+index)->at_name, act_rc);
-							for ( index++; index <= limit; index++) {
-								while (pal) {
-									tmp_pal = pal->al_sister;
-									free(pal);
-									pal = tmp_pal;
-								}
-								if (index < limit)
-									pal = palarray[index];
+				set_attr_generic(&pattr[index], &padef[index], pal->al_value, pal->al_resc, INTERNAL);
+				int act_rc = 0;
+				if (padef[index].at_action)
+					if ((act_rc = (padef[index].at_action(&pattr[index], parent, ATR_ACTION_RECOV)))) {
+						log_errf(act_rc, __func__, "Action function failed for %s attr, errn %d", (padef+index)->at_name, act_rc);
+						for ( index++; index <= limit; index++) {
+							while (pal) {
+								tmp_pal = pal->al_sister;
+								free(pal);
+								pal = tmp_pal;
 							}
-							free(palarray);
-							/* bailing out from this function */
-							/* any previously allocated attrs will be */
-							/* freed by caller (parent obj recov function) */
-							return -1;
+							if (index < limit)
+								pal = palarray[index];
 						}
-				}
+						free(palarray);
+						/* bailing out from this function */
+						/* any previously allocated attrs will be */
+						/* freed by caller (parent obj recov function) */
+						return -1;
+					}
 			}
 			(pattr+index)->at_flags = (pal->al_flags & ~ATR_VFLAG_MODIFY) | ATR_VFLAG_MODCACHE;
 

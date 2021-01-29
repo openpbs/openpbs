@@ -333,6 +333,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	}
 	set_nattr_str_slim(pnode, ND_ATR_server_inst_id, svr_inst_id, NULL);
 	(get_nattr(pnode, ND_ATR_server_inst_id))->at_flags |= ATR_VFLAG_DEFLT;
+	free(svr_inst_id);
 
 	set_nattr_short_slim(pnode, ND_ATR_ntype, pnode->nd_ntype, SET);
 

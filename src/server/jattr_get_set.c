@@ -53,7 +53,7 @@ attribute *
 get_jattr(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
-		return _get_attr_generic((attribute *)pjob->ji_wattr, attr_idx);
+		return _get_attr_by_idx((attribute *)pjob->ji_wattr, attr_idx);
 	return NULL;
 }
 

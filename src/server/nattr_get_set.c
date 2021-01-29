@@ -53,7 +53,7 @@ attribute *
 get_nattr(const struct pbsnode *pnode, int attr_idx)
 {
 	if (pnode != NULL)
-		return _get_attr_generic((attribute *)pnode->nd_attr, attr_idx);
+		return _get_attr_by_idx((attribute *)pnode->nd_attr, attr_idx);
 	return NULL;
 }
 

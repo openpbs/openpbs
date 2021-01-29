@@ -3367,8 +3367,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name, char *perf_label)
 		log_err(PBSE_INTERNAL, __func__,
 			"partially populated python queue object");
 	}
-	if (is_attr_set(qattr))
-		free_attr(que_attr_def, qattr, QA_ATR_JobsByState);
+	free_attr(que_attr_def, qattr, QA_ATR_JobsByState);
 
 	tmp_rc = pbs_python_mark_object_readonly(py_que);
 

@@ -1256,7 +1256,7 @@ receive_job_update(int stream, job *pjob)
 			continue;
 		}
 
-		errcode = set_jattr_generic(pjob, index, psatl->al_value, psatl->al_resc, INTERNAL);;
+		errcode = set_jattr_generic(pjob, index, psatl->al_value, psatl->al_resc, INTERNAL);
 		/* Unknown resources still get decoded */
 		/* under "unknown" resource def */
 		if ((errcode != 0) && (errcode != PBSE_UNKRESC)) {

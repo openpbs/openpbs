@@ -1738,8 +1738,7 @@ is_attr_set(const attribute *pattr)
 }
 
 /**
- * @brief	Update common attribute values independent of their type.
- * 		For example attribute flags.
+ * @brief	Common function to update attribute after set action performed.
  *
  * @param[in]	attr	-	pointer to the attribute
  *
@@ -1833,7 +1832,7 @@ decode_project(attribute *patr, char *name, char *rescn, char *val)
  *
  */
 attribute *
-_get_attr_generic(attribute *list, int attr_idx)
+_get_attr_by_idx(attribute *list, int attr_idx)
 {
 	return &(list[attr_idx]);
 }

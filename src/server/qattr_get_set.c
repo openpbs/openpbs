@@ -55,7 +55,7 @@ attribute *
 get_qattr(const pbs_queue *pq, int attr_idx)
 {
 	if (pq != NULL)
-		return _get_attr_generic((attribute *)pq->qu_attr, attr_idx);
+		return _get_attr_by_idx((attribute *)pq->qu_attr, attr_idx);
 	return NULL;
 }
 

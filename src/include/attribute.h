@@ -625,7 +625,7 @@ long get_attr_l(const attribute *pattr);
 char *get_attr_str(const attribute *pattr);
 struct array_strings *get_attr_arst(const attribute *pattr);
 int is_attr_set(const attribute *pattr);
-attribute *_get_attr_generic(attribute *list, int attr_idx);
+attribute *_get_attr_by_idx(attribute *list, int attr_idx);
 pbs_list_head get_attr_list(const attribute *pattr);
 void free_attr(attribute_def *attr_def, attribute *pattr, int attr_idx);
 

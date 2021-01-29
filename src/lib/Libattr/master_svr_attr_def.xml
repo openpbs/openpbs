@@ -90,7 +90,7 @@
    <attributes>
       <member_index>SVR_ATR_State</member_index>
       <member_name>ATTR_status</member_name>
-      <member_at_decode>decode_l</member_at_decode>
+      <member_at_decode>decode_null</member_at_decode>
       <member_at_encode>encode_svrstate</member_at_encode>
       <member_at_set>set_null</member_at_set>
       <member_at_comp>comp_l</member_at_comp>

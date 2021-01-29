@@ -455,12 +455,10 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 
 		oldeligflags = attr->at_flags;
 		mark_jattr_not_set(pjob, JOB_ATR_eligible_time);
-		attr->at_flags |= ATR_MOD_MCACHE;
 
 		attr = get_jattr(pjob, JOB_ATR_accrue_type);
 		oldatypflags = attr->at_flags;
 		mark_jattr_not_set(pjob, JOB_ATR_accrue_type);
-		attr->at_flags |= ATR_MOD_MCACHE;
 	}
 
 	if (status_attrib(pal, job_attr_idx, job_attr_def, pjob->ji_wattr, limit, preq->rq_perm, &pstat->brp_attr, bad))
