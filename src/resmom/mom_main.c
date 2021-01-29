@@ -7310,10 +7310,8 @@ main(int argc, char *argv[])
 
 #ifdef RLIMIT_NPROC
 		(void)getrlimit64(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
-		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1) {    /* set unlimited */
+		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1)    /* set unlimited */
 			perror(" setrlimit NPROC");
-			exit(1);
-		}
 #endif	/* RLIMIT_NPROC */
 #ifdef	RLIMIT_RSS
 		(void)setrlimit64(RLIMIT_RSS  , &rlimit);
@@ -7336,10 +7334,8 @@ main(int argc, char *argv[])
 		(void)setrlimit(RLIMIT_CPU,   &rlimit);
 #ifdef RLIMIT_NPROC
 		(void)getrlimit(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
-		if (setrlimit(RLIMIT_NPROC, &rlimit) == -1) {	  /* set unlimited */
+		if (setrlimit(RLIMIT_NPROC, &rlimit) == -1)	  /* set unlimited */
 			perror(" setrlimit NPROC");
-			exit(1);
-		}
 #endif	/* RLIMIT_NPROC */
 #ifdef	RLIMIT_RSS
 		(void)setrlimit(RLIMIT_RSS  , &rlimit);
