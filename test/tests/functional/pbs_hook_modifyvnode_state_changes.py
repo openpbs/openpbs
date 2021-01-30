@@ -231,8 +231,11 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 head, tail = line.rsplit(';', 1)
                 pairs = tail.split(' ')
                 lineDict = dict([key_value.split("=", 1) for key_value in pairs])
-                # check if the log entry was written during the specified time range 
-                if int(lineDict['v.lsct']) >= start_time and int(lineDict['v.lsct']) <= end_time:
+                # determine if the log entry is within the requested time range 
+                inTimeRange = int(lineDict['v.lsct']) >= start_time
+                inTimeRange = inTimeRange and int(lineDict['v.lsct']) <= end_time
+                self.logger.debug('inTimeRange='+str(inTimeRange))
+                if inTimeRange:
                     self.logger.debug('Examining line: ' + line)
                     # compare the current v_o.state with the previous entry's v.state
                     if notFirst:
