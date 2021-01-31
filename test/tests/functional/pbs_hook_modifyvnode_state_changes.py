@@ -410,11 +410,12 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
     @tags('smoke')
     def test_hook_state_changes_01(self):
         """
-        Test:  this will test four things:
-        1.  It will sigkill pbs_mom, look for the proper log messages.
-        2.  It will check the log for the proper hook messages
-        3.  It will bring up pbs_mom, look for the proper log messages.
-        4.  It will check the log for the proper hook messages
+        Test:  this will test four things for each mom:
+        1.  sigkill the mom
+        2.  check the log for expected messages
+        3.  start the mom
+        4.  check the log for the expected messages
+        5.  verify the unbroken chain of logged current/previous states
         """
 
         self.logger.debug("---- %s TEST STARTED ----" % get_method_name(self))
