@@ -98,7 +98,7 @@ class TestQsub_remove_files(TestFunctional):
             sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
         self.assertEqual(1, file_count)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_remove_files_error_file(self):
         """
         submit a job with -Re option and make sure the error file

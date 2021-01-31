@@ -62,7 +62,7 @@ class TestQsub_direct_write(TestFunctional):
             if total_ncpus < ncpus:
                 self.skip_test(reason="need %d available ncpus" % ncpus)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_when_job_succeeds(self):
         """
         submit a sleep job and make sure that the std_files
@@ -85,7 +85,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(2, file_count)
         self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_when_job_succeeds_controlled(self):
         """
         submit a sleep job and make sure that the std_files
@@ -115,7 +115,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(2, file_count)
         self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_output_file(self):
         """
         submit a sleep job and make sure that the output file
@@ -144,7 +144,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(1, file_count)
         self.server.expect(JOB, {ATTR_k: 'do'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_error_file(self):
         """
         submit a sleep job and make sure that the error file
@@ -173,7 +173,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(1, file_count)
         self.server.expect(JOB, {ATTR_k: 'de'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_error_custom_path(self):
         """
         submit a sleep job and make sure that the files
@@ -200,7 +200,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(2, file_count)
         self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_error_custom_dir(self):
         """
         submit a sleep job and make sure that the files
@@ -225,7 +225,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(2, file_count)
         self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_default_qsub_arguments(self):
         """
         submit a sleep job and make sure that the std_files
@@ -250,7 +250,7 @@ class TestQsub_direct_write(TestFunctional):
         self.assertEqual(2, file_count)
         self.server.expect(JOB, {ATTR_k: 'doe'}, id=jid)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_without_config_entry(self):
         """
         submit a sleep job and make sure that the std_files
@@ -310,7 +310,7 @@ class TestQsub_direct_write(TestFunctional):
                 'Cannot modify attribute while job running  Keep_Files'
                 in e.msg[0])
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_qrerun(self):
         """
         submit a sleep job and make sure that the std_files
@@ -340,7 +340,7 @@ class TestQsub_direct_write(TestFunctional):
             mapping_dir) if os.path.isfile(os.path.join(mapping_dir, name))])
         self.assertEqual(2, file_count)
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_job_array(self):
         """
         submit a job array and make sure that the std_files
@@ -370,7 +370,7 @@ class TestQsub_direct_write(TestFunctional):
                     raise self.failureException("std file " + f_name +
                                                 " not found")
 
-    @requirements(no_mom_on_server=False)
+    @requirements(mom_on_server=True)
     def test_direct_write_job_array_custom_dir(self):
         """
         submit a job array and make sure that the files

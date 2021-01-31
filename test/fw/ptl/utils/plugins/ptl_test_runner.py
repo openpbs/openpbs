@@ -676,7 +676,8 @@ class PTLTestRunner(Plugin):
         shortname = (socket.gethostname()).split('.', 1)[0]
         for key in ['servers', 'moms', 'comms', 'clients', 'nomom']:
             tparam_contents[key] = []
-        tparam_contents['no_mom_on_server'] = "not_set"
+        tparam_contents['mom_on_server'] = False
+        tparam_contents['no_mom_on_server'] = False
         tparam_contents['no_comm_on_server'] = False
         tparam_contents['no_comm_on_mom'] = False
         if self.param is not None:
@@ -694,6 +695,8 @@ class PTLTestRunner(Plugin):
                         tparam_contents['clients'] = hosts
                     elif k == 'nomom':
                         nomomlist = hosts
+                    elif k == 'mom_on_server':
+                        tparam_contents['mom_on_server'] = v
                     elif k == 'no_mom_on_server':
                         tparam_contents['no_mom_on_server'] = v
                     elif k == 'no_comm_on_mom':
@@ -729,6 +732,7 @@ class PTLTestRunner(Plugin):
         _moms = set(param_dic['moms'])
         _comms = set(param_dic['comms'])
         _nomom = set(param_dic['nomom'])
+        _mom_on_server = param_dic['mom_on_server']
         _no_mom_on_server = param_dic['no_mom_on_server']
         _no_comm_on_mom = param_dic['no_comm_on_mom']
         _no_comm_on_server = param_dic['no_comm_on_server']
@@ -829,18 +833,16 @@ class PTLTestRunner(Plugin):
                 logger.error(_msg)
                 return _msg
         if _moms & _servers:
-            if (eff_tc_req['no_mom_on_server'] and
-                eff_tc_req['no_mom_on_server'] != "not_set") or \
+            if eff_tc_req['no_mom_on_server'] or \
                (_nomom - _servers) or \
-               (_no_mom_on_server and
-                    _no_mom_on_server != "not_set"):
+               _no_mom_on_server:
                 _msg = 'no mom on server'
                 logger.error(_msg)
                 return _msg
         else:
-            if not (eff_tc_req['no_mom_on_server'] and
-                    _no_mom_on_server):
-                _msg = 'mom should be on server'
+            if eff_tc_req['mom_on_server'] or \
+               _mom_on_server:
+                _msg = 'mom on server'
                 logger.error(_msg)
                 return _msg
         if _comms & _servers:
