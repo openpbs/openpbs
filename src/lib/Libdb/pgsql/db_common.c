@@ -458,9 +458,11 @@ pbs_dataservice_control(char *cmd, char *pbs_ds_host, int pbs_ds_port)
 		}
 		if (oom_val != NULL) {
 			if ((fd = open(oom_file, O_TRUNC | O_WRONLY, 0600)) != -1) {
-				(void)write(fd, oom_val, strlen(oom_val));
+				if (write(fd, oom_val, strlen(oom_val)) == -1)
+					ret = PBS_DB_OOM_ERR;
 				close(fd);
-			}
+			} else
+				ret = PBS_DB_OOM_ERR;
 			free(oom_val);
 		}
 		sprintf(errfile, "%s/spool/pbs_ds_monitor_errfile", pbs_conf.pbs_home_path);
@@ -1349,6 +1351,10 @@ pbs_db_get_errmsg(int err_code, char **err_msg)
 
 	case PBS_DB_CONNFAILED:
 		*err_msg = strdup("Failed to connect to PBS dataservice");
+		break;
+
+	case PBS_DB_OOM_ERR:
+		*err_msg = strdup("Failed to protect PBS from Linux OOM killer. No access to OOM score file.");
 		break;
 
 	case PBS_DB_ERR:
