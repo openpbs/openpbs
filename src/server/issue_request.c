@@ -257,10 +257,9 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 				svrname = server_host;
 		}
 	}
-	if (comp_svraddr(pbs_server_addr, svrname) == 0)
+	if (comp_svraddr(pbs_server_addr, svrname, &svraddr) == 0)
 		return (issue_Drequest(PBS_LOCAL_CONNECTION, preq, replyfunc, 0, 0));
 
-	svraddr = get_hostaddr(svrname);
 	if (svraddr == (pbs_net_t)0) {
 		if (pbs_errno == PBS_NET_RC_RETRY)
 			/* Non fatal error - retry */
