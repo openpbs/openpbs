@@ -63,10 +63,8 @@ class TestMomMockRun(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        # This job should end in 20 seconds, let's sleep
-        msg = "This job should end in 20 seconds, let's sleep"
-        self.logger.info(msg)
-        time.sleep(22)
+        # Confirm job finish after 20 seconds
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=22)
 
         # Check accounting record for this job
         used_ncpus = "resources_used.ncpus=1"
