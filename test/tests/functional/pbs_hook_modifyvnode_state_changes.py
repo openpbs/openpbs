@@ -211,6 +211,28 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.server.log_match("Node;%s;node down" % mom,
                                   starttime=start_time)
 
+    def checkHex0(self, start_time):
+        self.server.log_match("v.state_hex=0x0",
+                              starttime=start_time)
+        self.server.log_match("v.state_strs=ND_STATE_FREE",
+                              starttime=start_time)
+        self.server.log_match("v.state_ints=0",
+                              starttime=start_time)
+    def checkHex2(self, start_time):
+        self.server.log_match("v.state_hex=0x2",
+                                starttime=start_time)
+        self.server.log_match("v.state_strs=ND_STATE_DOWN,ND_STATE_VNODE_UNAVAILABLE",
+                                starttime=start_time)
+        self.server.log_match("v.state_ints=2,409903",
+                                starttime=start_time)
+    def checkHex1(self, start_time):
+        self.server.log_match("v.state_hex=0x1",
+                                starttime=start_time)
+        self.server.log_match("v.state_strs=ND_STATE_OFFLINE,ND_STATE_VNODE_UNAVAILABLE",
+                                starttime=start_time)
+        self.server.log_match("v.state_ints=1,409903",
+                                starttime=start_time)
+
     def checkPreviousStateChain(self, start_time, end_time, mom):
         # scoop up the last 2000 lines of the pbs server log
         lines = self.server.log_lines(logtype=self.server,
@@ -278,26 +300,22 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             mom.stop()
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
-            self.server.log_match("v.state_hex=0x2",
-                                  starttime=start_time)
+            self.checkHex2(start_time)
 
             # State change test: mom start
             start_time = int(time.time())
             mom.start()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0",
-                                  starttime=start_time)
+            self.checkHex0(start_time)
 
             # State change test: mom restart
             start_time = int(time.time())
             mom.restart()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=True)
-            self.server.log_match("v.state_hex=0x2",
-                                  starttime=start_time)
-            self.server.log_match("v.state_hex=0x0",
-                                  starttime=start_time)
+            self.checkHex2(start_time)
+            self.checkHex0(start_time)
 
             # State change test: take mom offline then online
             # take offline
@@ -308,8 +326,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x1",
-                                  starttime=start_time)
+            self.checkHex1(start_time)
             # back online
             start_time = int(time.time())
             self.logger.debug("    ***online mom:%s" % mom)
@@ -318,8 +335,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 id=mom.shortname)
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0",
-                                  starttime=start_time)
+            self.checkHex0(start_time)
 
             # State change test: create and release maintenance reservation
             start_time = int(time.time())
@@ -337,8 +353,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                           check_down=False)
             self.server.log_match("v.state_hex=0x2000",
                                   starttime=start_time)
-            self.server.log_match("v.state_hex=0x0",
-                                  starttime=start_time)
+            self.checkHex0(start_time)
 
             # Verify each preceeding state matches the current previous state
             stateChainEndTime = int(time.time())
@@ -434,15 +449,13 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             mom.signal('-KILL')
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
-            self.server.log_match("v.state_hex=0x2",
-                                  starttime=start_time)
+            self.checkHex2(start_time)
 
             start_time = int(time.time())
             mom.start()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0",
-                                  starttime=start_time)
+            self.checkHex0(start_time)
 
             # Verify each preceeding state matches the current previous state
             stateChainEndTime = int(time.time())
@@ -476,8 +489,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for mom in self.server.moms.values():
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
-            self.server.log_match("v.state_hex=0x0",
-                                  starttime=start_time)
+            self.checkHex0(start_time)
             # Verify each preceeding state matches the current previous state
             stateChainEndTime = int(time.time())
             self.checkPreviousStateChain(stateChainStartTime, stateChainEndTime,
