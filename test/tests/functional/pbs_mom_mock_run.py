@@ -63,7 +63,7 @@ class TestMomMockRun(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        # Confirm job finish after 20 seconds
+        self.logger.info("Waiting until job finishes")
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=22)
 
         # Check accounting record for this job
