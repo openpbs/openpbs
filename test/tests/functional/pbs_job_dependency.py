@@ -278,7 +278,6 @@ e.accept()
         job = Job()
         job.set_sleep_time(5)
         j1 = self.server.submit(job)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1)
         self.server.expect(JOB, {ATTR_state: 'F'}, id=j1, extend='x')
         accept_msg = j1 + " Job has finished, dependency satisfied"
         reject_msg = j1 + " Finished job did not satisfy dependency"

@@ -384,9 +384,8 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.walltime': 3}
         j = Job(TEST_USER, attrs=a)
-        j.set_sleep_time(3)
+        j.set_sleep_time(10)
         jid1 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, 'queue', id=jid1, op=UNSET, offset=3)
         self.server.log_match(jid1 + ";Exit_status=0")
         j1 = Job(TEST_USER)
