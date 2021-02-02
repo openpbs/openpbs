@@ -43,6 +43,7 @@ import textwrap
 from pprint import pformat
 from tests.functional import *
 from ptl.utils.pbs_dshutils import get_method_name
+from ptl.lib.pbs_testlib import PBSInitServices
 
 
 node_states = {
@@ -189,6 +190,19 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         Job.dflt_attributes[ATTR_k] = 'oe'
+        self.turnOnMicrosecondLogging()
+
+    def turnOnMicrosecondLogging(self):
+        highres_val = self.du.parse_pbs_config()\
+        .get("PBS_LOG_HIGHRES_TIMESTAMP")
+        if highres_val != '1':
+            self.logger.info('Turning on hires logging')
+            a = {'PBS_LOG_HIGHRES_TIMESTAMP': 1}
+            self.du.set_pbs_config(self.server.hostname, confs=a, append=True)
+            PBSInitServices().restart()
+            self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
+        else:
+            self.logger.info('Hires logging is on')
 
     def checkLog(self, start_time, mom, check_up, check_down):
         self.server.log_match("set_vnode_state;vnode.state=",
@@ -260,8 +274,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 pairs = tail.split(' ')
                 line_dict = dict([key_value.split("=", 1) for key_value in pairs])
                 # determine if the log entry is within the requested time range 
-                in_time_range = int(line_dict['v.lsct']) >= start_time
-                in_time_range = in_time_range and int(line_dict['v.lsct']) <= end_time
+                in_time_range = float(line_dict['v.lsct']) >= start_time\
+                and float(line_dict['v.lsct']) <= end_time
                 self.logger.debug('in_time_range='+str(in_time_range))
                 if in_time_range:
                     self.logger.debug('Examining line: ' + line)
@@ -302,7 +316,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         # test effects of various state changes on each mom
         for mom in self.server.moms.values():
             # State change test: mom stop
-            start_time = int(time.time())
+            start_time = time.time()
             state_chain_start_time = start_time
             mom.stop()
             self.checkLog(start_time, mom.fqdn, check_up=False,
@@ -310,14 +324,14 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkNodeDown(start_time)
 
             # State change test: mom start
-            start_time = int(time.time())
+            start_time = time.time()
             mom.start()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
             self.checkNodeFree(start_time)
 
             # State change test: mom restart
-            start_time = int(time.time())
+            start_time = time.time()
             mom.restart()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=True)
@@ -326,7 +340,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # State change test: take mom offline then online
             # take offline
-            start_time = int(time.time())
+            start_time = time.time()
             self.logger.debug("    ***offline mom:%s" % mom)
             self.server.manager(MGR_CMD_SET, NODE, {'state': (INCR,
                                 'offline')},
@@ -335,7 +349,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                           check_down=False)
             self.checkNodeOffline(start_time)
             # back online
-            start_time = int(time.time())
+            start_time = time.time()
             self.logger.debug("    ***online mom:%s" % mom)
             self.server.manager(MGR_CMD_SET, NODE, {'state': (DECR,
                                 'offline')},
@@ -345,7 +359,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkNodeFree(start_time)
 
             # State change test: create and release maintenance reservation
-            start_time = int(time.time())
+            start_time = time.time()
             res_start_time = start_time + 15
             res_end_time = res_start_time + 1
             attrs = {
@@ -362,7 +376,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkNodeFree(start_time)
 
             # Verify each preceeding state matches the current previous state
-            state_chain_end_time = int(time.time())
+            state_chain_end_time = time.time()
             self.checkprevious_stateChain(state_chain_start_time, state_chain_end_time,
                                          mom.shortname)
 
@@ -417,7 +431,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.assertTrue(ret, "Could not create hook %s" % hook_name_00)
         ret = self.server.import_hook(hook_name_00, hook_body_00)
         for mom in self.server.moms.values():
-            start_time = int(time.time())
+            start_time = time.time()
             mom.restart()
             self.server.log_match("Node;%s;node up" % mom.fqdn,
                                   starttime=start_time)
@@ -450,21 +464,21 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         for mom in self.server.moms.values():
             self.logger.debug("    ***sigkilling mom:%s", mom.fqdn)
 
-            start_time = int(time.time())
+            start_time = time.time()
             state_chain_start_time = start_time
             mom.signal('-KILL')
             self.checkLog(start_time, mom.fqdn, check_up=False,
                           check_down=True)
             self.checkNodeDown(start_time)
 
-            start_time = int(time.time())
+            start_time = time.time()
             mom.start()
             self.checkLog(start_time, mom.fqdn, check_up=True,
                           check_down=False)
             self.checkNodeFree(start_time)
 
             # Verify each preceeding state matches the current previous state
-            state_chain_end_time = int(time.time())
+            state_chain_end_time = time.time()
             self.checkprevious_stateChain(state_chain_start_time, state_chain_end_time,
                                          mom.shortname)
 
@@ -486,7 +500,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         ret = self.server.import_hook(hook_name_00, hook_body_00)
 
         # stop the server and then start it
-        start_time = int(time.time())
+        start_time = time.time()
         state_chain_start_time = start_time
         self.server.stop()
         self.server.start()
@@ -497,7 +511,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                           check_down=False)
             self.checkNodeFree(start_time)
             # Verify each preceeding state matches the current previous state
-            state_chain_end_time = int(time.time())
+            state_chain_end_time = time.time()
             self.checkprevious_stateChain(state_chain_start_time, state_chain_end_time,
                                          mom.shortname)
 
