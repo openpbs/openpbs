@@ -470,7 +470,7 @@ class _vnode():
         if self.state == _pbs_v1.ND_STATE_FREE:
             lst.append('ND_STATE_FREE')
         else:
-            lst = [val for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+            lst = [val for (mask, val) in sorted(_pbs_v1.REVERSE_NODE_STATE.items()) if self.state & mask]
         return lst
 
     def extract_state_ints(self):
@@ -479,7 +479,7 @@ class _vnode():
         if self.state == _pbs_v1.ND_STATE_FREE:
             lst.append(_pbs_v1.ND_STATE_FREE)
         else:
-            lst = [mask for (mask, val) in _pbs_v1.REVERSE_NODE_STATE.items() if self.state & mask]
+            lst = [mask for (mask, val) in sorted(_pbs_v1.REVERSE_NODE_STATE.items()) if self.state & mask]
         return lst
 
 _vnode.name = PbsAttributeDescriptor(_vnode, 'name', "", (str,))
