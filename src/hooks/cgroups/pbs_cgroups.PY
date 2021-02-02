@@ -918,6 +918,16 @@ class HookUtils(object):
                 'name': 'provision',
                 'handler': None
             }
+            if hasattr(pbs, "RESV_END"):
+                self.hook_events[pbs.RESV_END] = {
+                'name': 'resv_end',
+                'handler': None
+                }
+            if hasattr(pbs, "RESV_BEGIN"):
+                self.hook_events[pbs.RESV_BEGIN] = {
+                'name': 'resv_begin',
+                'handler': None
+                }
             self.hook_events[pbs.EXECJOB_BEGIN] = {
                 'name': 'execjob_begin',
                 'handler': self._execjob_begin_handler
@@ -973,11 +983,6 @@ class HookUtils(object):
                 self.hook_events[pbs.EXECJOB_PRERESUME] = {
                     'name': 'execjob_preresume',
                     'handler': self._execjob_preresume_handler
-                }
-            if hasattr(pbs, "RESV_BEGIN"):
-                self.hook_events[pbs.RESV_BEGIN] = {
-                'name': 'resv_begin',
-                'handler': None
                 }
             self.hook_events[pbs.MOM_EVENTS] = {
                 'name': 'mom_events',
