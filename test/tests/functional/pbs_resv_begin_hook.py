@@ -51,6 +51,7 @@ def get_hook_body_reverse_node_state():
         pbs.logmsg(pbs.LOG_DEBUG, "key:%s value:%s" % (key, value))
     e.accept()
     """
+    import textwrap
     hook_body = textwrap.dedent(hook_body)
     return hook_body
 
@@ -473,8 +474,28 @@ if e.type == pbs.RESV_BEGIN:
         self.server.log_match(msg, tail=True, max_attempts=10,
                               existence=False)
 
-# Test Reverser
-    # @tag("hooks")
-    # def test_resv_state_reverser(self):
-    #     self.server.import_hook(self.hook_name, get_hook_body_reverse_node_state)
-    #     assert False
+    # Test Reverser
+    @tags("hooks")
+    def test_check_reservation_state_lookup(self):
+        """
+        Test: check for the existence and values of the
+        pbs.REVERSE_RESV_STTE dictionary
+
+        run a hook that converts reseration state change ints into a string, then search
+        for it in the server log.
+        """
+
+        self.add_pbs_python_path_to_sys_path()
+        import pbs
+        self.server.import_hook(self.hook_name, get_hook_body_reverse_node_state())
+        start_time = int(time.time())
+
+        duration = 30
+        offset = 10
+        rid = self.submit_resv(offset, duration)
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attrs, id=rid)
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+
+        for value, key in pbs.REVERSE_RESV_STATE.items():
+            self.server.log_match("key:%s value:%s" % (key, value), starttime=start_time)
