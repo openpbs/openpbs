@@ -250,7 +250,7 @@ class TestCgroupsHook(TestFunctional):
 
             self.logger.info("increase log level for mom and \
                              set polling intervals")
-            c = {'$logevent': '0xffffffff',
+            c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
                  '$min_check_poll': 8, '$max_check_poll': 12}
             mom.add_config(c)
 
@@ -1670,14 +1670,16 @@ if %s e.job.in_ms_mom():
         return None
 
     def find_main_cpath(self, cdir):
-        if os.path.isdir(cdir):
+        rc = self.du.isdir(hostname=self.hosts_list[0], path=cdir)
+        if rc:
             paths = ['pbs_jobs.service/jobid',
                      'pbs.service/jobid',
                      'pbs.slice',
                      'pbs']
             for p in paths:
                 cpath = os.path.join(cdir, p)
-                if os.path.isdir(cpath):
+                rc = self.du.isdir(hostname=self.hosts_list[0], path=cpath)
+                if rc:
                     return cpath
         return None
 
@@ -1749,7 +1751,8 @@ if %s e.job.in_ms_mom():
             count = 5
             while (count > 0):
                 r1 = self.du.run_cmd(cmd=['cat', svr_conf], sudo=True)
-                r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True)
+                r2 = self.du.run_cmd(cmd=['cat', mom_conf], sudo=True,
+                                     hosts=self.mom.shortname)
                 if r1['out'] != r2['out']:
                     self.logger.info('server & mom pbs_cgroups.CF differ')
                     time.sleep(2)
@@ -2205,7 +2208,7 @@ if %s e.job.in_ms_mom():
         fnma = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
         self.assertFalse(fnma is None, 'No job directory for memory subsystem')
         memscr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fna, fnma)],
-                                 as_script=True)
+                                 as_script=True, hosts=self.mom.shortname)
         memscr_out = memscr['out']
         self.logger.info('memscr_out:\n%s' % memscr_out)
         self.assertTrue('CpuIDs=0' in memscr_out)
@@ -2241,7 +2244,7 @@ if %s e.job.in_ms_mom():
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hosts_list[0])
         fnm = self.get_cgroup_job_dir('memory', jid, self.hosts_list[0])
         scr = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn, fnm)],
-                              as_script=True)
+                              as_script=True, hosts=self.mom.shortname)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
         self.assertTrue('CpuIDs=0' in scr_out)
@@ -2317,7 +2320,7 @@ if %s e.job.in_ms_mom():
         devd = self.paths[self.hosts_list[0]]['devices']
         scr = self.du.run_cmd(
             cmd=[self.check_dirs_script % (jid, devd)],
-            as_script=True)
+            as_script=True, hosts=self.mom.shortname)
         scr_out = scr['out']
         self.logger.info('scr_out:\n%s' % scr_out)
         # the config file named entries must be translated to major/minor
@@ -2328,14 +2331,14 @@ if %s e.job.in_ms_mom():
             self.du.run_cmd(cmd=['ls -al /dev/console'
                                  '| awk \'BEGIN {FS=" |,"} '
                                  '{print $5} {print $7}\''],
-                            as_script=True)
+                            as_script=True, hosts=self.hosts_list[0])
         (console_major, console_minor) = console_results['out']
         # only one line here
         tty0_major_results = \
             self.du.run_cmd(cmd=['ls -al /dev/tty0'
                                  '| awk \'BEGIN {FS=" |,"} '
                                  '{print $5}\''],
-                            as_script=True)
+                            as_script=True, hosts=self.hosts_list[0])
         tty0_major = tty0_major_results['out'][0]
         check_devices = ['b *:* rwm',
                          'c %s:%s rwm' % (console_major, console_minor),
@@ -2468,11 +2471,11 @@ if %s e.job.in_ms_mom():
         fn2 = self.get_cgroup_job_dir('cpuset', jid2, self.hosts_list[0])
         # Capture the output of cpuset_mem_script for both jobs
         scr1 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn1, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.mom.shortname)
         scr1_out = scr1['out']
         self.logger.info('scr1_out:\n%s' % scr1_out)
         scr2 = self.du.run_cmd(cmd=[self.cpuset_mem_script % (fn2, None)],
-                               as_script=True)
+                               as_script=True, hosts=self.mom.shortname)
         scr2_out = scr2['out']
         self.logger.info('scr2_out:\n%s' % scr2_out)
         # Ensure the CPU ID for each job differs
@@ -3290,7 +3293,7 @@ if %s e.job.in_ms_mom():
         self.load_config(self.cfg3
                          % ('', 'true', '', self.mem, '', self.swapctl, ''))
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
-                           id=self.hosts_list[0]+'[0]')
+                           id=self.hosts_list[0] + '[0]')
         socket1_found = False
         nodestat = self.server.status(NODE)
         total_kb = 0
@@ -3639,8 +3642,8 @@ if %s e.job.in_ms_mom():
                 "memory subsystem is not enabled for cgroups")
         if cpath is not None:
             cmd = ["rmdir", cpath]
+            self.du.run_cmd(cmd=cmd, sudo=True, hosts=self.hosts_list[0])
         self.logger.info("Removing %s" % cpath)
-        self.du.run_cmd(cmd=cmd, sudo=True)
         self.load_config(self.cfg6 % (self.mem, self.swapctl))
         # check where cpath is once more
         # since we loaded a new cgroup config file
@@ -3652,12 +3655,13 @@ if %s e.job.in_ms_mom():
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
         self.logger.info("looking for file %s" % fpath)
-        if os.path.isfile(fpath):
-            with open(fpath, 'r') as fd:
-                val = fd.read()
-                self.assertEqual(
-                    val.rstrip(), "1", "%s is not equal to 1"
-                    % val.rstrip())
+        rc = self.du.isfile(hostname=self.hosts_list[0], path=fpath)
+        if rc:
+            ret = self.du.cat(hostname=self.hosts_list[0], filename=fpath,
+                              logerr=False)
+            val = (' '.join(ret['out'])).strip()
+            self.assertEqual(
+                val, "1", "%s is not equal to 1" % val)
             self.logger.info("memory.use_hierarchy is enabled")
         else:
             self.assertFalse(1, "File %s not present" % fpath)
@@ -4842,7 +4846,7 @@ sleep 300
             cgreqsuffix = 'mb'
             cgreq = PbsTypeSize(str(cgreqval) + cgreqsuffix)
             vmemreqsize = PbsTypeSize("100mb") + cgreq
-            vmemreq = str(int(vmemreqsize.value / 1024))+'mb'
+            vmemreq = str(int(vmemreqsize.value / 1024)) + 'mb'
             self.logger.info('will submit jobs with 100mb mem and %s vmem'
                              % vmemreq)
             a = {'Resource_List.select':
@@ -5174,7 +5178,7 @@ sleep 300
                 self.logger.info('Thawing ' + freezer_state)
                 state = 'THAWED'
                 fn = self.du.create_temp_file(
-                     hostname=self.hosts_list[0], body=state)
+                    hostname=self.hosts_list[0], body=state)
                 self.du.run_copy(hosts=self.hosts_list[0], src=fn,
                                  dest=freezer_state, sudo=True,
                                  uid='root', gid='root',
