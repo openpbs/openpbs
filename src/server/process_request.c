@@ -1577,6 +1577,9 @@ free_br(struct batch_request *preq)
 		}
 
 		free(preq->tppcmd_msgid);
+		if (preq->rq_type == PBS_BATCH_DeleteJobList)
+			if (preq->rq_ind.rq_deletejoblist.rq_jobslist)
+				free_string_array(preq->rq_ind.rq_deletejoblist.rq_jobslist);
 		free(preq);
 		return;
 	}
