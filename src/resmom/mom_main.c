@@ -7274,7 +7274,6 @@ main(int argc, char *argv[])
 #if defined(RLIM64_INFINITY)
 	{
 		struct rlimit64 rlimit;
-		int curerror;
 
 		rlimit.rlim_cur = RLIM64_INFINITY;
 		rlimit.rlim_max = RLIM64_INFINITY;
@@ -7287,21 +7286,12 @@ main(int argc, char *argv[])
 				rlimit.rlim_cur = MIN_STACK_LIMIT;
 				rlimit.rlim_max = MIN_STACK_LIMIT;
 				if (setrlimit64(RLIMIT_STACK, &rlimit) == -1) {
-					char msgbuf[] = "Stack limit setting failed";
-					curerror = errno;
-					log_err(curerror, __func__, msgbuf);
-					sprintf(log_buffer, "%s errno=%d", msgbuf, curerror);
-					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+					perror("Stack limit setting failed");
 					exit(1);
 				}
 			}
 		} else {
-			char msgbuf[] = "Getting current Stack limit failed";
-
-			curerror = errno;
-			log_err(curerror, __func__, msgbuf);
-			snprintf(log_buffer, sizeof(log_buffer), "%s errno=%d", msgbuf, curerror);
-			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+			perror("Getting current Stack limit failed");
 			exit(1);
 		}
 
@@ -7310,11 +7300,8 @@ main(int argc, char *argv[])
 
 #ifdef RLIMIT_NPROC
 		(void)getrlimit64(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
-		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1) {     /* set unlimited */
-			char msgbuf[] = "setrlimit NPROC setting failed";
-			curerror = errno;
-			log_err(curerror, __func__, msgbuf);
-		}
+		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1)     /* set unlimited */
+			perror(" setrlimit NPROC");	/* Won't quit, will try to work within limits */
 #endif	/* RLIMIT_NPROC */
 #ifdef	RLIMIT_RSS
 		(void)setrlimit64(RLIMIT_RSS  , &rlimit);
@@ -7330,18 +7317,14 @@ main(int argc, char *argv[])
 #else	/* set rlimit 32 bit */
 	{
 		struct rlimit rlimit;
-		int curerror;
 
 		rlimit.rlim_cur = RLIM_INFINITY;
 		rlimit.rlim_max = RLIM_INFINITY;
 		(void)setrlimit(RLIMIT_CPU,   &rlimit);
 #ifdef RLIMIT_NPROC
 		(void)getrlimit(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
-		if (setrlimit(RLIMIT_NPROC, &rlimit) == -1) { 	  /* set unlimited */
-			char msgbuf[] = "setrlimit NPROC setting failed";
-			curerror = errno;
-			log_err(curerror, __func__, msgbuf);
-		}
+		if (setrlimit(RLIMIT_NPROC, &rlimit) == -1) 	  /* set unlimited */
+			perror(" setrlimit NPROC");	/* Won't quit, will try to work within limits */
 #endif	/* RLIMIT_NPROC */
 #ifdef	RLIMIT_RSS
 		(void)setrlimit(RLIMIT_RSS  , &rlimit);
@@ -7363,20 +7346,12 @@ main(int argc, char *argv[])
 				rlimit.rlim_cur = MIN_STACK_LIMIT;
 				rlimit.rlim_max = MIN_STACK_LIMIT;
 				if (setrlimit(RLIMIT_STACK, &rlimit) == -1) {
-					char msgbuf[] = "Stack limit setting failed";
-					curerror = errno;
-					log_err(curerror, __func__, msgbuf);
-					sprintf(log_buffer, "%s errno=%d", msgbuf, curerror);
-					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+					perror("Stack limit setting failed");
 					exit(1);
 				}
 			}
 		} else {
-			char msgbuf[] = "Getting current Stack limit failed";
-			curerror = errno;
-			log_err(curerror, __func__, msgbuf);
-			sprintf(log_buffer, "%s errno=%d", msgbuf, curerror);
-			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+			perror("Getting current Stack limit failed");
 			exit(1);
 		}
 #endif	/* not linux */
@@ -7386,11 +7361,11 @@ main(int argc, char *argv[])
 #endif /* !WIN32 */
 
 	if ((job_attr_idx = cr_attrdef_idx(job_attr_def, JOB_ATR_LAST)) == NULL) {
-		log_err(errno, __func__, "Failed creating job attribute search index");
+		perror("Failed creating job attribute search index");
 		return (-1);
 	}
 	if (cr_rescdef_idx(svr_resc_def, svr_resc_size) != 0) {
-		log_err(errno, __func__, "Failed creating resc definition search index");
+		perror("Failed creating resc definition search index");
 		return (-1);
 	}
 
