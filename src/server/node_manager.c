@@ -571,7 +571,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			((pat->at_flags & ATR_VFLAG_DEFLT) != 0)) {
 
 			/* default comment */
-			free_attr(&node_attr_def[(int)ND_ATR_Comment], pat, ND_ATR_Comment);
+			free_attr(node_attr_def, pat, ND_ATR_Comment);
 			if (txt)
 				set_attr_generic(pat, &node_attr_def[(int)ND_ATR_Comment], txt, NULL, INTERNAL);
 

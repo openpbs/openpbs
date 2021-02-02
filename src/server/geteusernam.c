@@ -321,7 +321,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	}
 
 	pattr = &objattrs[idx_euser];
-	free_attr(&obj_attr_def[idx_euser], pattr, idx_euser);
+	free_attr(obj_attr_def, pattr, idx_euser);
 	set_attr_generic(pattr, &obj_attr_def[idx_euser], puser, NULL, INTERNAL);
 
 	if (pwent != NULL) {
@@ -400,7 +400,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	}
 
 	pattr = attrry + idx_egroup;
-	free_attr(&obj_attr_def[idx_egroup], pattr, idx_egroup);
+	free_attr(obj_attr_def, pattr, idx_egroup);
 
 	if (addflags != 0) {
 		set_attr_generic(pattr, &obj_attr_def[idx_egroup], pgrpn, NULL, INTERNAL);
