@@ -481,7 +481,7 @@ main(int argc, char *argv[])
 		if (!conn) {
 			/* start db only if it was not already running */
 			failcode = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
-			if (failcode != 0) {
+			if (failcode != 0 && failcode != PBS_DB_OOM_ERR) {
 				if (failcode == -1)
 					pbs_db_get_errmsg(PBS_DB_ERR, &db_errmsg);
 				else
@@ -610,7 +610,7 @@ main(int argc, char *argv[])
 		}
 
 		failcode = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
-		if (failcode != 0) {
+		if (failcode != 0 && failcode != PBS_DB_OOM_ERR) {
 			pbs_db_get_errmsg(failcode, &db_errmsg);
 			if (db_errmsg)
 				fprintf(stderr, "%s: Failed to start PBS dataservice as new user:[%s]\n", prog, db_errmsg);
