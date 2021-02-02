@@ -50,12 +50,16 @@ else
         set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} | grep -m 1 lib$`
     endif
 endif
-if ( $?ptl_prefix_lib == 1 ) then
+if ( $?ptl_prefix_lib ) then
 	set python_dir=`/bin/ls -1 ${ptl_prefix_lib}`
 	set prefix=`dirname ${ptl_prefix_lib}`
 
 	setenv PATH ${prefix}/bin/:${PATH}
-	setenv PYTHONPATH ${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	if ( $?PYTHONPATH ) then
+		setenv PYTHONPATH ${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	else
+		setenv PYTHONPATH ${prefix}/lib/${python_dir}/site-packages/
+	endif
 	unset python_dir
 	unset prefix
 	unset ptl_prefix_lib
@@ -75,8 +79,13 @@ else
 			if ( $?PATH && -d ${PTL_PREFIX}/bin ) then
 				setenv PATH "${PATH}:${PTL_PREFIX}/bin"
 			endif
-			if ( $?PYTHONPATH && -d "${PTL_PREFIX}/lib/${python_dir}" ) then
-				setenv PYTHONPATH "${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+			if ( -d "${PTL_PREFIX}/lib/${python_dir}" ) then
+				if ( $?PYTHONPATH ) then
+					setenv PYTHONPATH "${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+				else
+					setenv PYTHONPATH "${PTL_PREFIX}/lib/${python_dir}"
+				endif
+			endif
 			endif
 		endif
 		unset __PBS_EXEC
