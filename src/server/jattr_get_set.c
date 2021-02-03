@@ -451,7 +451,7 @@ mark_jattr_not_set(job *pjob, int attr_idx)
 {
 	if (pjob != NULL) {
 		attribute *attr = get_jattr(pjob, attr_idx);
-		attr->at_flags = (attr->at_flags & ~ATR_VFLAG_SET) | ATR_MOD_MCACHE;
+		ATR_UNSET(attr);
 	}
 }
 
