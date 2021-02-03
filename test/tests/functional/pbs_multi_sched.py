@@ -744,9 +744,14 @@ class TestMultipleSchedulers(TestFunctional):
              'partition': 'P1'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
         # Set resources to node
+        if self.mom.is_cpuset_mom():
+            hostname = self.server.status(NODE)[1]['id']
+        else:
+            hostname = self.mom.shortname
+
         resc = {'resources_available.ncpus': 1,
                 'partition': 'P1'}
-        self.server.manager(MGR_CMD_SET, NODE, resc, self.mom.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, resc, hostname)
         # Add entry to the resource group of multisched 'sc1'
         self.scheds['sc1'].add_to_resource_group('grp1', 100, 'root', 60)
         self.scheds['sc1'].add_to_resource_group('grp2', 200, 'root', 40)
