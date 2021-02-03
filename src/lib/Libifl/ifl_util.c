@@ -135,9 +135,8 @@ random_srv_conn(svr_conn_t **svr_conns)
 }
 
 /**
- * @brief
- *	Process object id and decide on the server index
- *	based on server part in the object id.
+ * @brief	Get the server instance index from the jobid, which will act as a hint
+ * 			as to which server the job might possibly be located
 
  * @param[in] id - object id
  *
@@ -146,27 +145,32 @@ random_srv_conn(svr_conn_t **svr_conns)
  * @retval < 0: could not find appropriate index
  */
 int
-starting_index(char *id)
+get_job_location_hint(char *jobid)
 {
-	char job_id_out[PBS_MAXCLTJOBID];
-	char server_out[PBS_MAXSERVERNAME + 1];
-	char server_name[PBS_MAXSERVERNAME + 1];
-	uint server_port;
-	int i;
 	int nsvrs = get_num_servers();
+	char *ptr = NULL;
+	int svridx = -1;
+	char *endptr = NULL;
 
-	if ((get_server(id, job_id_out, server_out) == 0)) {
-		if (PBS_get_server(server_out, server_name, &server_port)) {
-			for (i = 0; i < nsvrs; i++) {
-				if (!strcmp(server_name, pbs_conf.psi[i].name) &&
-				    (server_port == pbs_conf.psi[i].port)) {
-					return i;
-				}
-			}
-		}
+	if (jobid == NULL || !msvr_mode())
+		return -1;
+
+	ptr = strchr(jobid, '.');
+	if (ptr == NULL)
+		return -1;
+	*ptr = '\0';
+	if (strlen(jobid) <= MSVR_JID_NCHARS_SVR) {	/* Minimum length of sequence will be MSVR_JID_NCHARS_SVR + 1 */
+		*ptr = '.';
+		return -1;
 	}
+	ptr -= MSVR_JID_NCHARS_SVR;
+	svridx = strtol(ptr, &endptr, 10);
+	ptr += MSVR_JID_NCHARS_SVR;
+	*ptr = '.';
+	if (*endptr != '\0' || svridx >= nsvrs)
+		return -1;
 
-	return -1;
+	return svridx;
 }
 
 /**

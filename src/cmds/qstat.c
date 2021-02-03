@@ -2931,7 +2931,7 @@ job_no_args:
 					break;
 				}
 				show_svr_inst_fail(conn, "qstat");
-				
+
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
 					p_server = pbs_statserver(conn, NULL, NULL);
