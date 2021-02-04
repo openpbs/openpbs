@@ -1042,7 +1042,6 @@ class PTLTestRunner(Plugin):
             self.logger.info('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
             for mom in self.param_dict['moms']:
-                self.logger.info(mom)
                 ret = du.run_cmd(mom, cmd=['echo', '$HOME'], sudo=True,
                                  runas=runas, logerr=False, as_script=True)
                 if ret['rc'] == 0:
