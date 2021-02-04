@@ -43,7 +43,6 @@ import textwrap
 from pprint import pformat
 from tests.functional import *
 from ptl.utils.pbs_dshutils import get_method_name
-from ptl.lib.pbs_testlib import PBSInitServices
 
 
 node_states = {
@@ -190,19 +189,6 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         Job.dflt_attributes[ATTR_k] = 'oe'
-        self.turnOnMicrosecondLogging()
-
-    def turnOnMicrosecondLogging(self):
-        highres_val = self.du.parse_pbs_config()\
-        .get("PBS_LOG_HIGHRES_TIMESTAMP")
-        if highres_val != '1':
-            self.logger.info('Turning on hires logging')
-            a = {'PBS_LOG_HIGHRES_TIMESTAMP': 1}
-            self.du.set_pbs_config(self.server.hostname, confs=a, append=True)
-            PBSInitServices().restart()
-            self.assertTrue(self.server.isUp(), 'Failed to restart PBS Daemons')
-        else:
-            self.logger.info('Hires logging is on')
 
     def checkLog(self, start_time, mom, check_up, check_down):
         self.server.log_match("set_vnode_state;vnode.state=",
@@ -232,6 +218,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                               starttime=start_time)
         self.server.log_match("v.state_ints=0",
                               starttime=start_time)
+
     def checkNodeDown(self, start_time):
         self.server.log_match("v.state_hex=0x2",
                                 starttime=start_time)
@@ -239,6 +226,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 starttime=start_time)
         self.server.log_match("v.state_ints=2,409903",
                                 starttime=start_time)
+
     def checkNodeOffline(self, start_time):
         self.server.log_match("v.state_hex=0x1",
                                 starttime=start_time)
@@ -246,6 +234,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 starttime=start_time)
         self.server.log_match("v.state_ints=1,409903",
                                 starttime=start_time)
+
     def checkNodeResvExclusive(self, start_time):
         self.server.log_match("v.state_hex=0x2000",
                                 starttime=start_time)
@@ -254,7 +243,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
         self.server.log_match("v.state_ints=8192",
                                 starttime=start_time)
 
-    def checkprevious_stateChain(self, start_time, end_time, mom):
+    def checkpreviousStateChain(self, start_time, end_time, mom):
         # scoop up the last 2000 lines of the pbs server log
         lines = self.server.log_lines(logtype=self.server,
                                       starttime=start_time,
@@ -263,7 +252,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                       tail=True,
                                       n=2000)
         search_string = ";show_vnode_state;name=" + mom
-        self.logger.info('checkprevious_stateChain search_string='+search_string+' start='+
+        self.logger.info('checkpreviousStateChain search_string='+search_string+' start='+
                          str(start_time)+' end='+str(end_time))
         not_first = False
         previous_state = None
@@ -275,13 +264,14 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                 line_dict = dict([key_value.split("=", 1) for key_value in pairs])
                 # determine if the log entry is within the requested time range 
                 in_time_range = float(line_dict['v.lsct']) >= start_time\
-                and float(line_dict['v.lsct']) <= end_time
+                    and float(line_dict['v.lsct']) <= end_time
                 self.logger.debug('in_time_range='+str(in_time_range))
                 if in_time_range:
                     self.logger.debug('Examining line: ' + line)
                     # compare the current v_o.state with the previous entry's v.state
                     if not_first:
-                        self.assertEqual(previous_state, line_dict['v_o.state_hex'],
+                        self.assertEqual(
+                            previous_state, line_dict['v_o.state_hex'],
                             'Node state chain mismatch! previous_state=%s line=%s' %
                             (previous_state, line))
                         self.logger.debug('Current and previous matched!')
@@ -377,7 +367,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkprevious_stateChain(state_chain_start_time, state_chain_end_time,
+            self.checkpreviousStateChain(state_chain_start_time, state_chain_end_time,
                                          mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
@@ -479,7 +469,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkprevious_stateChain(state_chain_start_time, state_chain_end_time,
+            self.checkpreviousStateChain(state_chain_start_time, state_chain_end_time,
                                          mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
@@ -512,7 +502,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkNodeFree(start_time)
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkprevious_stateChain(state_chain_start_time, state_chain_end_time,
+            self.checkpreviousStateChain(state_chain_start_time, state_chain_end_time,
                                          mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
