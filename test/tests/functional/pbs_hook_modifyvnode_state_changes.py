@@ -244,42 +244,46 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
                                 starttime=start_time)
 
     def checkpreviousStateChain(self, start_time, end_time, mom):
-        # scoop up the last 2000 lines of the pbs server log
-        lines = self.server.log_lines(logtype=self.server,
+        # Check the state change entries for the specified mom
+        search_string = ";show_vnode_state;name=" + mom
+        self.logger.info(
+            'checkpreviousStateChain search_string='+search_string+' start='+
+            str(start_time)+' end='+str(end_time))
+
+        # Retrieve requested entries from the last 2000 lines of the server log
+        lines = self.server.log_match(msg=search_string,
+                                      allmatch=True,
                                       starttime=start_time,
                                       endtime=end_time,
-                                      host=self.server.hostname,
                                       tail=True,
                                       n=2000)
-        search_string = ";show_vnode_state;name=" + mom
-        self.logger.info('checkpreviousStateChain search_string='+search_string+' start='+
-                         str(start_time)+' end='+str(end_time))
+
         not_first = False
         previous_state = None
-        for line in lines:
-            if search_string in line:
-                # found a candidate log entry
-                head, tail = line.rsplit(';', 1)
-                pairs = tail.split(' ')
-                line_dict = dict([key_value.split("=", 1) for key_value in pairs])
-                # determine if the log entry is within the requested time range 
-                in_time_range = float(line_dict['v.lsct']) >= start_time\
-                    and float(line_dict['v.lsct']) <= end_time
-                self.logger.debug('in_time_range='+str(in_time_range))
-                if in_time_range:
-                    self.logger.debug('Examining line: ' + line)
-                    # compare the current v_o.state with the previous entry's v.state
-                    if not_first:
-                        self.assertEqual(
-                            previous_state, line_dict['v_o.state_hex'],
-                            'Node state chain mismatch! previous_state=%s line=%s' %
-                            (previous_state, line))
-                        self.logger.debug('Current and previous matched!')
-                    else:
-                        not_first = True
-                        self.logger.debug('Setting not_first!')
-                    # current state is now previous_state for the next iteration
-                    previous_state = line_dict['v.state_hex']
+        previous_lsct = None
+        for tupleline in lines:
+            line = tupleline[1]
+            head, tail = line.rsplit(';', 1)
+            pairs = tail.split(' ')
+            line_dict = dict([key_value.split("=", 1) for key_value in pairs])
+            self.logger.debug('Examining line: ' + line)
+            if not_first:
+                # compare current "v_o" values with previous entry's "v" values
+                self.assertEqual(
+                    previous_state, line_dict['v_o.state_hex'],
+                    'Node state chain mismatch! previous_state=%s line=%s' %
+                    (previous_state, line))
+                self.assertEqual(
+                    previous_lsct, line_dict['v_o.lsct'],
+                    'Node lsct chain mismatch! previous_lsct=%s line=%s' %
+                    (previous_lsct, line))
+                self.logger.debug('Current and previous matched!')
+            else:
+                not_first = True
+                self.logger.debug('Setting not_first!')
+            # current values become the previous values for the next iteration
+            previous_state = line_dict['v.state_hex']
+            previous_lsct = line_dict['v.lsct']
                     
     def test_hook_state_changes_00(self):
         """
