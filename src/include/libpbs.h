@@ -405,7 +405,7 @@ svr_conn_t **get_conn_svr_instances(int);
 int pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn_id);
 int get_svr_inst_fd(int vfd, char *svr_inst_id);
 int random_srv_conn(svr_conn_t **);
-int starting_index(char *);
+int get_job_location_hint(char *);
 char *PBS_get_server(char *, char *, uint *);
 int encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs);
 int get_server_fd_from_jid(int c, char *jobid);

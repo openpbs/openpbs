@@ -364,6 +364,7 @@ pbs_list_head	svr_execjob_preresume_hooks;
 
 /* the task lists */
 pbs_list_head	task_list_immed;
+pbs_list_head	task_list_interleave;
 pbs_list_head	task_list_timed;
 pbs_list_head	task_list_event;
 
@@ -7310,9 +7311,10 @@ main(int argc, char *argv[])
 
 #ifdef RLIMIT_NPROC
 		(void)getrlimit64(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
-		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1) {    /* set unlimited */
-			perror(" setrlimit NPROC");
-			exit(1);
+		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1) {     /* set unlimited */
+			char msgbuf[] = "setrlimit NPROC setting failed";
+			curerror = errno;
+			log_err(curerror, __func__, msgbuf);
 		}
 #endif	/* RLIMIT_NPROC */
 #ifdef	RLIMIT_RSS
@@ -7336,9 +7338,10 @@ main(int argc, char *argv[])
 		(void)setrlimit(RLIMIT_CPU,   &rlimit);
 #ifdef RLIMIT_NPROC
 		(void)getrlimit(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
-		if (setrlimit(RLIMIT_NPROC, &rlimit) == -1) {	  /* set unlimited */
-			perror(" setrlimit NPROC");
-			exit(1);
+		if (setrlimit(RLIMIT_NPROC, &rlimit) == -1) { 	  /* set unlimited */
+			char msgbuf[] = "setrlimit NPROC setting failed";
+			curerror = errno;
+			log_err(curerror, __func__, msgbuf);
 		}
 #endif	/* RLIMIT_NPROC */
 #ifdef	RLIMIT_RSS
@@ -7911,6 +7914,7 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(task_list_immed);
 	CLEAR_HEAD(task_list_timed);
 	CLEAR_HEAD(task_list_event);
+	CLEAR_HEAD(task_list_interleave);
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 	CLEAR_HEAD(svr_allcreds);

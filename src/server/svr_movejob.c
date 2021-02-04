@@ -165,7 +165,7 @@ svr_movejob(job	*jobp, char *destination, struct batch_request *req)
 	if ((toserver = strchr(destination, '@')) != NULL) {
 		/* check to see if the part after '@' is this server */
 		int comp = -1;
-		comp = comp_svraddr(pbs_server_addr, parse_servername(++toserver, &port));
+		comp = comp_svraddr(pbs_server_addr, parse_servername(++toserver, &port), NULL);
 		if ((comp == 1) ||
 			(port != pbs_server_port_dis)) {
 			return (net_move(jobp, req));	/* not a local dest */

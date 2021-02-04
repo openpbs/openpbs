@@ -40,22 +40,26 @@
 
 # This file will set path variables in case of ptl installation
 if ( -f /etc/debian_version ) then
-    set __ptlpkgname=`dpkg -W -f='${binary:Package}\n' 2>/dev/null | grep -E '*-ptl$'`
+    set __ptlpkgname=`dpkg -W -f='${binary:Package}\n' | grep -E '*-ptl$'`
     if ( "x${__ptlpkgname}" != "x" ) then
-        set ptl_prefix_lib=`dpkg -L ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+        set ptl_prefix_lib=`dpkg -L ${__ptlpkgname} | grep -m 1 lib$`
     endif
 else
-    set __ptlpkgname=`rpm -qa 2>/dev/null | grep -E '*-ptl-[[:digit:]]'`
+    set __ptlpkgname=`rpm -qa | grep -E '*-ptl-[[:digit:]]'`
     if ( "x${__ptlpkgname}" != "x" ) then
-        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} 2>/dev/null | grep -m 1 lib$ 2>/dev/null`
+        set ptl_prefix_lib=`rpm -ql ${__ptlpkgname} | grep -m 1 lib$`
     endif
 endif
-if ( ! $?ptl_prefix_lib ) then
+if ( $?ptl_prefix_lib ) then
 	set python_dir=`/bin/ls -1 ${ptl_prefix_lib}`
 	set prefix=`dirname ${ptl_prefix_lib}`
 
-	setenv PATH=${prefix}/bin/:${PATH}
-	setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	setenv PATH ${prefix}/bin/:${PATH}
+	if ( $?PYTHONPATH ) then
+		setenv PYTHONPATH ${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	else
+		setenv PYTHONPATH ${prefix}/lib/${python_dir}/site-packages/
+	endif
 	unset python_dir
 	unset prefix
 	unset ptl_prefix_lib
@@ -73,10 +77,15 @@ else
 			set PTL_PREFIX=`dirname ${__PBS_EXEC}`/ptl
 			set python_dir=`/bin/ls -1 ${PTL_PREFIX}/lib`/site-packages
 			if ( $?PATH && -d ${PTL_PREFIX}/bin ) then
-				setenv export PATH="${PATH}:${PTL_PREFIX}/bin"
+				setenv PATH "${PATH}:${PTL_PREFIX}/bin"
 			endif
-			if ( $?PYTHONPATH && -d "${PTL_PREFIX}/lib/${python_dir}" ) then
-				setenv PYTHONPATH="${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+			if ( -d "${PTL_PREFIX}/lib/${python_dir}" ) then
+				if ( $?PYTHONPATH ) then
+					setenv PYTHONPATH "${PYTHONPATH}:${PTL_PREFIX}/lib/${python_dir}"
+				else
+					setenv PYTHONPATH "${PTL_PREFIX}/lib/${python_dir}"
+				endif
+			endif
 			endif
 		endif
 		unset __PBS_EXEC

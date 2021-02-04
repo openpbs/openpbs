@@ -1022,7 +1022,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 
 		if (alt_opt & ALT_DISPLAY_T) {
 			pc = get_attr(pstat->attribs, ATTR_state, NULL);
-			if (pc != NULL && (*pc == 'Q' || *pc == 'S'))
+			if (pc != NULL && (*pc == 'Q' || *pc == 'S' || *pc == 'B'))
 				timeval = cnvt_est_start_time(est_time, 0);
 			else
 				timeval = "--";
@@ -2931,7 +2931,7 @@ job_no_args:
 					break;
 				}
 				show_svr_inst_fail(conn, "qstat");
-				
+
 				if (strcmp(pbs_server, server_old) != 0) {
 					/* changing to a different server */
 					p_server = pbs_statserver(conn, NULL, NULL);

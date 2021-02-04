@@ -124,6 +124,8 @@ extern char *path_spool;
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
 extern char  server_name[];
+extern char server_host[];
+extern unsigned int pbs_server_port_dis;
 extern char *resc_in_err;
 #endif	/* PBS_MOM */
 
@@ -241,6 +243,74 @@ validate_perm_res_in_select(char *val, int val_exist)
 #define SET_RESC_SELECT	1
 #define SET_RESC_PLACE	2
 
+#ifndef PBS_MOM
+/**
+ * @brief	Calculate the index of the current server
+ *
+ * @param	void
+ *
+ * @return	int
+ * @retval	index of the server
+ * @retval	-1 if couldn't be determined
+ */
+static int
+get_server_index(void)
+{
+	int i;
+
+	for (i = 0; i < get_num_servers(); i++) {
+		if (pbs_conf.psi[i].port == pbs_server_port_dis && is_same_host(pbs_conf.psi[i].name, server_host))
+			return i;
+	}
+
+	return -1;
+}
+
+/**
+ * @brief	Generate and fill jobid of the new job
+ * 			Note: Consider directly modifying get_next_svr_sequence_id() if reservations
+ * 			also get sharded for multi-server
+ *
+ * @param[out]	jidbuf - buffer to fill job id in
+ * @param[in]	clusterid - cluster name (PBS_SERVER)
+ * @param[in]	jtype - job type (0 for normal job, 1 for job array)
+ *
+ * @return	int
+ * @retval	0 for Success
+ * @retval	1 for Failure
+ */
+static int
+generate_jobid(char *jidbuf, char *clusterid, int jtype)
+{
+	static int svr_id = -1;
+
+	if (jidbuf == NULL || server_name == NULL)
+		return 1;
+
+	if (get_num_servers() <= 1) { /* single server setup */
+		if (jtype == 0)
+			sprintf(jidbuf, "%lld.%s", next_svr_sequence_id, clusterid);
+		else
+			sprintf(jidbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
+	} else { /* multi-server setup */
+		if (svr_id == -1) {
+			svr_id = get_server_index();
+			if (svr_id == -1)
+				return 1;
+		}
+
+		/* For multi-server, last 'MSVR_JID_NCHARS_SVR' chars of numeric portion are reserved for server id */
+		if (jtype == 0)
+			sprintf(jidbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+		else
+			sprintf(jidbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+	}
+
+	return 0;
+}
+
+#endif /* #ifndef PBS_MOM */
+
 /**
  * @brief
  *		Queue Job Batch Request processing routine
@@ -265,7 +335,7 @@ req_quejob(struct batch_request *preq)
 #ifndef PBS_MOM
 	int set_project = 0;
 	int i;
-	char jidbuf[PBS_MAXSVRJOBID+1];
+	char jidbuf[PBS_MAXSVRJOBID + 1];
 	pbs_queue *pque;
 	char *qname;
 	char *result;
@@ -396,12 +466,9 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
-		if (i == 0) {	/* Normal job */
-			(void)sprintf(jidbuf, "%lld.%s",
-				next_svr_sequence_id, server_name);
-		} else {	/* Array Job */
-			(void)sprintf(jidbuf, "%lld[].%s",
-					next_svr_sequence_id, server_name);
+		if (generate_jobid(jidbuf, server_name, i) != 0) {
+			req_reject(PBSE_INTERNAL, 0, preq);
+			return;
 		}
 		jid = jidbuf;
 	}
