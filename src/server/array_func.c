@@ -73,6 +73,7 @@
 /* External data */
 extern char *msg_job_end_stat;
 extern int   resc_access_perm;
+extern time_t time_now;
 
 /*
  * list of job attributes to copy from the parent Array job
@@ -376,6 +377,8 @@ chk_array_doneness(job *parent)
 				}
 				free_br(preq);
 			}
+
+			(preq->rq_ind.rq_end).rq_pjob->ji_qs.ji_endtime = time_now;
 
 			/* if BEGUN, issue 'E' account record */
 			sprintf(acctbuf, msg_job_end_stat, parent->ji_qs.ji_un.ji_exect.ji_exitstat);

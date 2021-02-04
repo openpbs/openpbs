@@ -169,7 +169,7 @@ struct pbs_db_job_info {
 	INTEGER  ji_state;	/* Internal copy of state */
 	INTEGER  ji_substate;	/* job sub-state */
 	INTEGER  ji_svrflags;	/* server flags */
-	BIGINT   ji_stime;	/* time job started execution */
+	BIGINT   ji_stime;	/* time job started execution */	
 	char     ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
 	char     ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route */
 	INTEGER  ji_un_type;	/* job's queue type */
@@ -181,6 +181,7 @@ struct pbs_db_job_info {
 	char     ji_jid[8];	/* extended job save data */
 	INTEGER  ji_credtype;	/* credential type */
 	BIGINT   ji_qrank;	/* sort key for db query */
+	BIGINT   ji_endtime; /* time job ended execution */
 	pbs_db_attr_list_t db_attr_list; /* list of attributes for database */
 };
 typedef struct pbs_db_job_info pbs_db_job_info_t;

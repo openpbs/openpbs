@@ -126,6 +126,7 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 		dbjob->ji_substate  = get_job_substate(pjob);
 		dbjob->ji_svrflags  = pjob->ji_qs.ji_svrflags;
 		dbjob->ji_stime     = pjob->ji_qs.ji_stime;
+		dbjob->ji_endtime     = pjob->ji_qs.ji_endtime;
 		strcpy(dbjob->ji_queue, pjob->ji_qs.ji_queue);
 		strcpy(dbjob->ji_destin, pjob->ji_qs.ji_destin);
 		dbjob->ji_un_type   = pjob->ji_qs.ji_un_type;
@@ -181,6 +182,7 @@ db_to_job(job *pjob,  pbs_db_job_info_t *dbjob)
 
 	pjob->ji_qs.ji_svrflags = dbjob->ji_svrflags;
 	pjob->ji_qs.ji_stime = dbjob->ji_stime;
+	pjob->ji_qs.ji_endtime = dbjob->ji_endtime;
 	strcpy(pjob->ji_qs.ji_queue, dbjob->ji_queue);
 	strcpy(pjob->ji_qs.ji_destin, dbjob->ji_destin);
 	pjob->ji_qs.ji_fileprefix[0] = 0;

@@ -166,6 +166,7 @@ force_reque(job *pjob)
 		}
 		free_br(preq);
 	}
+	pjob->ji_qs.ji_endtime = time_now;
 	/* FIXME: end */
 	
 	pjob->ji_momhandle = -1;
