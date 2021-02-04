@@ -1041,23 +1041,25 @@ class PTLTestRunner(Plugin):
         for user in PBS_USERS:
             self.logger.info('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
-            hostname = (socket.gethostname()).split('.', 1)[0]
-            ret = du.run_cmd(hostname, cmd=['echo', '$HOME'], sudo=True,
-                             runas=runas, logerr=False, as_script=True)
-            if ret['rc'] == 0:
-                path = ret['out'][0].strip()
-            else:
-                return None
-            ftd = []
-            files = du.listdir(hostname, path=path, runas=user)
-            bn = os.path.basename
-            ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
-            ftd.extend([f for f in files if bn(f).startswith('STDIN')])
-            if len(ftd) > 1000:
-                for i in range(0, len(ftd), 1000):
-                    j = i + 1000
-                    du.rm(hostname, path=ftd[i:j], runas=user,
-                          force=True, level=logging.INFOCLI)
+            for mom in self.param_dict['moms']:
+                self.logger.info(mom)
+                ret = du.run_cmd(mom, cmd=['echo', '$HOME'], sudo=True,
+                                 runas=runas, logerr=False, as_script=True)
+                if ret['rc'] == 0:
+                    path = ret['out'][0].strip()
+                else:
+                    return None
+                ftd = []
+                files = du.listdir(mom, path=path, runas=user)
+                bn = os.path.basename
+                ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
+                ftd.extend([f for f in files if bn(f).startswith('STDIN')])
+
+                if len(ftd) > 1000:
+                    for i in range(0, len(ftd), 1000):
+                        j = i + 1000
+                        du.rm(mom, path=ftd[i:j], runas=user,
+                              force=True, level=logging.DEBUG)
 
         root_dir = os.sep
         dirlist = set([os.path.join(root_dir, 'tmp'),
