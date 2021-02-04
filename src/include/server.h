@@ -98,8 +98,6 @@ struct server {
 	time_t sv_hotcycle;		       /* if RECOV_HOT,time of last restart */
 	time_t sv_next_schedule;	   /* when to next run scheduler cycle */
 	int sv_jobstates[PBS_NUMJOBSTATE]; /* # of jobs per state */
-	char sv_jobstbuf[150];
-	char sv_license_ct_buf[150]; /* license_count buffer */
 	int sv_nseldft;		         /* num of elems in sv_seldft */
 	key_value_pair *sv_seldft;   /* defelts for job's -l select	*/
 
@@ -189,6 +187,19 @@ extern void *create_svr_entry(char *, unsigned int);
 extern int init_msi();
 extern void *create_svr_struct(struct sockaddr_in *);
 extern void *connect_to_peersvr(pbs_net_t, uint);
+
+attribute *get_sattr(int attr_idx);
+char *get_sattr_str(int attr_idx);
+struct array_strings *get_sattr_arst(int attr_idx);
+pbs_list_head get_sattr_list(int attr_idx);
+long get_sattr_long(int attr_idx);
+int set_sattr_generic(int attr_idx, char *val, char *rscn, enum batch_op op);
+int set_sattr_str_slim(int attr_idx, char *val, char *rscn);
+int set_sattr_l_slim(int attr_idx, long val, enum batch_op op);
+int set_sattr_b_slim(int attr_idx, long val, enum batch_op op);
+int set_sattr_c_slim(int attr_idx, char val, enum batch_op op);
+int is_sattr_set(int attr_idx);
+void free_sattr(int attr_idx);
 
 #ifdef	__cplusplus
 }

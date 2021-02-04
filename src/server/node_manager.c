@@ -453,8 +453,7 @@ get_addr_of_nodebyname(char *name, unsigned int *port)
 	nodename = parse_servername(name, NULL);
 	/* ignore the port which might have been found in the string */
 	np = find_nodebyname(nodename);
-	if ((np == 0) ||
-		((np->nd_attr[(int)ND_ATR_Mom].at_flags & ATR_VFLAG_SET) == 0))
+	if (np == 0 || is_nattr_set(np, ND_ATR_Mom) == 0)
 		return (0);
 	/* address and port from mom_svrinfo */
 	*port = np->nd_moms[0]->mi_port;
@@ -504,7 +503,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host,
 		"set_all_state;txt=%s mi_modtime=%ld", txt, pmom->mi_modtime);
-		
+
 	/* Set the inuse_flag based off the value of setwhen */
 	if (setwhen == Set_ALL_State_All_Down) {
 		inuse_flag = INUSE_DOWN;
@@ -555,8 +554,8 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			}
 		}
 
-		pvnd->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
-		pat = &pvnd->nd_attr[(int)ND_ATR_Comment];
+		post_attr_set(get_nattr(pvnd, ND_ATR_state));
+		pat = get_nattr(pvnd, ND_ATR_Comment);
 
 		/*
 		 * change the comment only if it is a default comment (set by
@@ -572,11 +571,10 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			((pat->at_flags & ATR_VFLAG_DEFLT) != 0)) {
 
 			/* default comment */
-			node_attr_def[(int)ND_ATR_Comment].at_free(pat);
-			if (txt) {
-				node_attr_def[(int)ND_ATR_Comment].at_decode(pat, NULL,
-					NULL, txt);
-			}
+			free_attr(node_attr_def, pat, ND_ATR_Comment);
+			if (txt)
+				set_attr_generic(pat, &node_attr_def[(int)ND_ATR_Comment], txt, NULL, INTERNAL);
+
 			if (do_set && (bits & INUSE_OFFLINE_BY_MOM)) {
 				/* this means not directly set by the server */
 				/* This means server did not set comment */
@@ -876,8 +874,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		account_job_update(pjob, PBS_ACCT_LAST);
 		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_END);
 
-		if (server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long &
-			PBSEVENT_JOB_USAGE) {
+		if (get_sattr_long(SVR_ATR_log_events) & PBSEVENT_JOB_USAGE) {
 			/* log events set to record usage */
 			log_event(PBSEVENT_JOB_USAGE, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, pjob->ji_acctrec);
@@ -1068,11 +1065,11 @@ char *
 get_vnode_state_op(enum vnode_state_op op)
 {
 	switch(op) {
-		case Nd_State_Set: 
+		case Nd_State_Set:
 			return "Nd_State_Set";
-		case Nd_State_Or: 
+		case Nd_State_Or:
 			return "Nd_State_Or";
-		case Nd_State_And: 
+		case Nd_State_And:
 			return "Nd_State_And";
 	}
 	return "ND_state_unknown";
@@ -1084,11 +1081,11 @@ get_vnode_state_op(enum vnode_state_op op)
  * 		Create a duplicate of the specified vnode
  *
  * @param[in]	vnode - the vnode to duplicate
- * 
+ *
  * @note
  *  Creates a shallow duplicate of struct * and char * members.
- *  
- * 
+ *
+ *
  * @return  duplicated vnode
  */
 static struct pbsnode *
@@ -1101,7 +1098,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 		return NULL;
 	}
 
-	/* 
+	/*
 	 * Allocate and initialize vnode_o, then copy vnode elements into vnode_o
 	 */
 	if ((vnode_dup = calloc(1, sizeof(struct pbsnode))) == NULL) {
@@ -1182,7 +1179,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		return;
 	}
 
-	/* 
+	/*
 	 * Create a duplicate of the vnode
 	 */
 	vnode_o = shallow_vnode_dup(pnode);
@@ -1220,19 +1217,11 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 
 	/* sync state attribute with nd_state */
 
-	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_long) {
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
-		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
-	}
+	if (pnode->nd_state != get_nattr_long(pnode, ND_ATR_state))
+		set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 
-	/* If the state has changed update the last change time */
-	if (vnode_o->nd_state != pnode->nd_state) {
-		char str_val[STR_TIME_SZ];
-		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
-		set_attr_generic(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
-			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val, NULL,
-			SET);
-	}
+	if (vnode_o->nd_state != pnode->nd_state)
+		set_nattr_l_slim(pnode, ND_ATR_last_state_change_time, time_int_val, SET);
 
 	/* Write the vnode state change event to server log */
 	last_time_int = (int)vnode_o->nd_attr[(int)ND_ATR_last_state_change_time].at_val.at_long;
@@ -1247,13 +1236,11 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
 			(pnode->nd_state == INUSE_PROV)) { /* INUSE_FREE is 0 */
 
-			attribute    *pala;
 			resource_def *prd;
 			resource     *prc;
 
-			pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 			prd = &svr_resc_def[RESC_VNTYPE];
-			if (pala && prd && (prc = find_resc_entry(pala, prd))) {
+			if (prd && (prc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prd))) {
 				if (strncmp(prc->rs_value.at_val.at_arst->as_string[0],
 					"cray_compute", 12) == 0)  {
 
@@ -1296,7 +1283,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		(void) vnode_available(pnode);
 	}
 
-fn_fire_event: 
+fn_fire_event:
 	/* Fire off the vnode state change event */
 	process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
@@ -1327,7 +1314,7 @@ fn_free_and_return:
 void
 vnode_available(struct pbsnode *np)
 {
-	struct resc_resv *presv;
+	resc_resv *presv;
 	struct resvinfo *rinfp;
 	struct resvinfo *rinfp_hd = NULL;
 
@@ -1380,20 +1367,13 @@ vnode_available(struct pbsnode *np)
 			 * unexpected re-entry into this handler. Since this is not
 			 * supposed to happen we only log it for now.
 			 */
-			attribute *rsv_attr = presv->ri_wattr;
 			/* If a standing reservation we print the execvnodes sequence
 			 * string for debugging purposes */
-			if (rsv_attr[RESV_ATR_resv_standing].at_val.at_long) {
-				snprintf(log_buffer, sizeof(log_buffer), "execvnodes sequence %s",
-					rsv_attr[RESV_ATR_resv_execvnodes].at_val.at_str);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-					presv->ri_qs.ri_resvID, log_buffer);
-
-			}
-			snprintf(log_buffer, sizeof(log_buffer), "vnodes in occurrence: %d; ",
-				presv->ri_vnodect);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-				presv->ri_qs.ri_resvID, log_buffer);
+			if (get_rattr_long(presv, RESV_ATR_resv_standing))
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+					presv->ri_qs.ri_resvID, "execvnodes sequence %s", get_rattr_str(presv, RESV_ATR_resv_execvnodes));
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				presv->ri_qs.ri_resvID, "vnodes in occurrence: %d; ", presv->ri_vnodect);
 		}
 	}
 
@@ -1424,7 +1404,7 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 {
 	char *nd_name;
 	char *resv_nodes;
-	struct resc_resv *presv;
+	resc_resv *presv;
 	struct resvinfo *rinfp;
 	struct resvinfo *rinfp_hd = NULL;
 	int *presv_state;
@@ -1462,9 +1442,9 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 
 		presv_state = &presv->ri_qs.ri_state;
 		presv_substate = &presv->ri_qs.ri_substate;
-		retry_time = presv->ri_wattr[RESV_ATR_retry].at_val.at_long;
-		resv_nodes = presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str;
-		resv_start_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+		retry_time = get_rattr_long(presv, RESV_ATR_retry);
+		resv_nodes = get_rattr_str(presv, RESV_ATR_resv_nodes);
+		resv_start_time = get_rattr_long(presv, RESV_ATR_start);
 		/* the start time of the soonest degraded occurrence */
 		degraded_time = presv->ri_degraded_time;
 		in_soonest_occr = find_vnode_in_execvnode(resv_nodes, np->nd_name);
@@ -1501,21 +1481,16 @@ vnode_unavailable(struct pbsnode *np, int account_vnode)
 			 * which the vnodes unavailable are associated to later occurrences
 			 */
 			if (presv->ri_vnodes_down > presv->ri_vnodect) {
-				attribute *rsv_attr = presv->ri_wattr;
 				/* If a standing reservation we print the execvnodes sequence
 				 * string for debugging purposes */
-				if (rsv_attr[RESV_ATR_resv_standing].at_val.at_long) {
-					snprintf(log_buffer, sizeof(log_buffer), " execvnodes sequence %s",
-						rsv_attr[RESV_ATR_resv_execvnodes].at_val.at_str);
-					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-						presv->ri_qs.ri_resvID, log_buffer);
-
-				}
-				snprintf(log_buffer, sizeof(log_buffer), "vnodes in occurrence: %d; "
-					"unavailable vnodes in reservation: %d",
+				if (get_rattr_arst(presv, RESV_ATR_resv_standing))
+					log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+						presv->ri_qs.ri_resvID, " execvnodes sequence %s",
+						get_rattr_str(presv, RESV_ATR_resv_execvnodes));
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+					presv->ri_qs.ri_resvID,
+					"vnodes in occurrence: %d; unavailable vnodes in reservation: %d",
 					presv->ri_vnodect, presv->ri_vnodes_down);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-					presv->ri_qs.ri_resvID, log_buffer);
 			}
 			presv->ri_vnodes_down++;
 		}
@@ -1577,7 +1552,7 @@ find_vnode_in_resvs(struct pbsnode *np, enum vnode_degraded_op degraded_op)
 		/* When processing an advance reservation, set the degraded time to be
 		 * the start time of the reservation and process the next reservation
 		 */
-		if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0) {
+		if (get_rattr_long(presv, RESV_ATR_resv_standing) == 0) {
 			for (pl = presv->ri_pbsnode_list; pl; pl=pl->next) {
 				if (np == pl->vnode)
 					break;
@@ -1585,7 +1560,7 @@ find_vnode_in_resvs(struct pbsnode *np, enum vnode_degraded_op degraded_op)
 			if (!pl)
 				continue;
 
-			presv->ri_degraded_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+			presv->ri_degraded_time = get_rattr_long(presv, RESV_ATR_start);
 			if (!match) {
 				rinfp->resvp = presv;
 				rinfp->next = NULL;
@@ -1607,8 +1582,7 @@ find_vnode_in_resvs(struct pbsnode *np, enum vnode_degraded_op degraded_op)
 			 * happen as the reservation should have been confirmed and the nodes
 			 * been assigned to it
 			 */
-			if ((presv->ri_wattr[RESV_ATR_resv_execvnodes].at_flags
-				& ATR_VFLAG_SET) == 0) {
+			if (is_rattr_set(presv, RESV_ATR_resv_execvnodes) == 0) {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_NOTICE,
 					presv->ri_qs.ri_resvID, "Reservation's execvnodes_seq are corrupted");
 				continue;
@@ -1695,10 +1669,10 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 	if (np == NULL)
 		return 0;
 
-	rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
-	tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
-	dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
-	execvnodes = presv->ri_wattr[RESV_ATR_resv_execvnodes].at_val.at_str;
+	rrule = get_rattr_str(presv, RESV_ATR_resv_rrule);
+	tz = get_rattr_str(presv, RESV_ATR_resv_timezone);
+	dtstart = get_rattr_long(presv, RESV_ATR_start);
+	execvnodes = get_rattr_str(presv, RESV_ATR_resv_execvnodes);
 
 	if ((short_execvnodes_seq = strdup(execvnodes)) == NULL)
 		return -1;
@@ -1709,8 +1683,8 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 		return -1;
 	}
 
-	ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
-	rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
+	ridx = get_rattr_long(presv, RESV_ATR_resv_idx);
+	rcount = get_rattr_long(presv, RESV_ATR_resv_count);
 	/* A reconfirmed degraded reservation reports the number of
 	 * reconfirmed occurrences from the time of degradation.
 	 */
@@ -1802,12 +1776,10 @@ unset_resv_retry(resc_resv *presv)
 	if (presv == NULL)
 		return;
 
-	if ((presv->ri_wattr[RESV_ATR_retry].at_flags & ATR_VFLAG_SET) == 0)
+	if (is_rattr_set(presv, RESV_ATR_retry) == 0)
 		return;
 
-	presv->ri_wattr[RESV_ATR_retry].at_val.at_long = 0;
-	presv->ri_wattr[RESV_ATR_retry].at_flags &= ~(ATR_VFLAG_SET);
-	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
+	set_rattr_l_slim(presv, RESV_ATR_retry, 0, SET);
 
 	presv->ri_resv_retry = 0;
 	presv->ri_degraded_time = 0;
@@ -1838,14 +1810,13 @@ set_resv_retry(resc_resv *presv, long retry_time)
 
 	if (presv == NULL)
 		return;
-		
+
 	if (presv->ri_resv_retry)
 		msg = "Next attempt to reconfirm reservation will be made on %s";
-	else	
+	else
 		msg = "An attempt to reconfirm reservation will be made on %s";
 
-	presv->ri_wattr[(int)RESV_ATR_retry].at_flags |= ATR_SET_MOD_MCACHE;
-	presv->ri_wattr[RESV_ATR_retry].at_val.at_long = retry_time;
+	set_rattr_l_slim(presv, RESV_ATR_retry, retry_time, SET);
 
 	presv->ri_resv_retry = retry_time;
 
@@ -2079,7 +2050,7 @@ stat_update(int stream)
 					free_jattr(pjob, JOB_ATR_resource_acct);
 					mark_jattr_not_set(pjob, JOB_ATR_resource_acct);
 				}
-				set_attr_with_attr(&job_attr_def[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource], INCR);
+				set_attr_with_attr(&job_attr_def[JOB_ATR_resource_acct], get_jattr(pjob, JOB_ATR_resource_acct), get_jattr(pjob, JOB_ATR_resource), INCR);
 
 
 				set_jattr_str_slim(pjob, JOB_ATR_exec_host_acct, get_jattr_str(pjob, JOB_ATR_exec_host), NULL);
@@ -2100,14 +2071,14 @@ stat_update(int stream)
 					set_jattr_str_slim(pjob, JOB_ATR_SchedSelect, schedselect_entry->al_value, NULL);
 
 					/* re-generate nodect */
-					set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect], &pjob->ji_wattr[(int)JOB_ATR_resource]);
+					set_chunk_sum(get_jattr(pjob, JOB_ATR_SchedSelect), get_jattr(pjob, JOB_ATR_resource));
 					set_resc_assigned((void *)pjob, 0, INCR);
 
 					prdefsl = &svr_resc_def[RESC_SELECT];
 					/* re-generate "select" resource */
-					presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+					presc = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), prdefsl);
 					if (presc == NULL)
-						presc = add_resource_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+						presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resource), prdefsl);
 					if (presc != NULL)
 						(void)prdefsl->rs_decode(&presc->rs_value, NULL, "select", schedselect_entry->al_value);
 					account_jobstr(pjob, PBS_ACCT_PRUNE);
@@ -2180,15 +2151,8 @@ stat_update(int stream)
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
 					LOG_DEBUG, pjob->ji_qs.ji_jobid,
 					"update from Mom without session id");
-			} else {
-				/* session id was set to same old value   */
-				/* so only need to save things to disk    */
-				/* if something other than the session id */
-				/* or resources_used was modified         */
-
-				pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags &= ~ATR_VFLAG_MODIFY;
-				job_save_db(pjob); /* job_save will save only if modified */
-			}
+			} else
+				job_save_db(pjob);
 		}
 		(void)free(rused.ru_comment);
 		rused.ru_comment = NULL;
@@ -2842,7 +2806,6 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 	char	*freed_vnode_list = NULL;
 	int	freed_sz = 0;
 	char	*new_exec_vnode = NULL;
-	attribute deallocated_attr;
 	char	*jobid;
 	pbs_sched *psched;
 
@@ -2889,12 +2852,11 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 						pmom->mi_host, log_buffer);
 	}
 
-	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
-	if ((freed_vnode_list != NULL) && (is_attr_set(&deallocated_attr))) {
+	if ((freed_vnode_list != NULL) && (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated))) {
 		char   err_msg[LOG_BUF_SIZE];
 
 		new_exec_vnode = delete_from_exec_vnode(
-				deallocated_attr.at_val.at_str,
+				get_jattr_str(pjob, JOB_ATR_exec_vnode_deallocated),
 				freed_vnode_list, err_msg, LOG_BUF_SIZE);
 
 		if (new_exec_vnode == NULL) {
@@ -3164,7 +3126,6 @@ setup_pnames(char *namestr)
 	attribute	*ppnames;
 	struct array_strings *pparst;
 	char		*workcopy;
-	attribute	 working;
 	int		resc_added = 0;
 
 	if ((namestr == NULL) || (*namestr == '\0'))
@@ -3178,7 +3139,7 @@ setup_pnames(char *namestr)
 	}
 	*newbuffer = '\0';
 
-	ppnames = &server.sv_attr[(int)SVR_ATR_PNames];
+	ppnames = get_sattr(SVR_ATR_PNames);
 	pparst  = ppnames->at_val.at_arst;
 	ps = workcopy;
 
@@ -3233,15 +3194,10 @@ setup_pnames(char *namestr)
 	if (newentries) {
 		int flag = 0;
 
-		if (((is_attr_set(ppnames)) == 0) ||
-			((ppnames->at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) ==
-			(ATR_VFLAG_SET|ATR_VFLAG_DEFLT)))
+		if (is_attr_set(ppnames) == 0 || (ppnames->at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET|ATR_VFLAG_DEFLT))
 			flag = ATR_VFLAG_DEFLT;
 
-		clear_attr(&working, &svr_attr_def[(int)SVR_ATR_PNames]);
-		svr_attr_def[(int)SVR_ATR_PNames].at_decode(&working, NULL, NULL, newbuffer);
-		svr_attr_def[(int)SVR_ATR_PNames].at_set(ppnames, &working, INCR);
-		svr_attr_def[(int)SVR_ATR_PNames].at_free(&working);
+		set_sattr_generic(SVR_ATR_PNames, newbuffer, NULL, INCR);
 		ppnames->at_flags |= flag;
 	}
 	free(workcopy);
@@ -3266,7 +3222,6 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 	int i;
 	int n;
 	mom_svrinfo_t *prmomsvr;
-	attribute      tmpmom;
 
 	if ((pnode == NULL) || (pmom == NULL))
 		return (PBSE_NONE);
@@ -3300,14 +3255,7 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 		pnode->nd_moms[pnode->nd_nummoms++] = pmom;
 
 		/* also add Mom's name to this vnode's Mom attribute */
-		clear_attr(&tmpmom, &node_attr_def[(int) ND_ATR_Mom]);
-		node_attr_def[(int) ND_ATR_Mom].at_decode(
-			&tmpmom, ATTR_NODE_Mom, NULL,
-			pmom->mi_host);
-		node_attr_def[(int) ND_ATR_Mom].at_set(
-			&pnode->nd_attr[(int) ND_ATR_Mom],
-			&tmpmom, INCR);
-		node_attr_def[(int) ND_ATR_Mom].at_free(&tmpmom);
+		set_nattr_generic(pnode, ND_ATR_Mom, pmom->mi_host, NULL, INCR);
 	}
 
 	/* Now set reverse linkage Mom -> node */
@@ -3542,11 +3490,10 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				continue;  /* seeing vnl update for node just updated, don't clear */
 
 			if (i != ND_ATR_ResourceAvail) {
-				if ((pnode->nd_attr[i].at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) {
-					node_attr_def[i].at_free(&pnode->nd_attr[i]);
-				}
-			} else if ((pnode->nd_attr[i].at_flags & ATR_VFLAG_SET) != 0) {
-				prs = (resource *)GET_NEXT(pnode->nd_attr[i].at_val.at_list);
+				if (((get_nattr(pnode, i))->at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) == (ATR_VFLAG_SET|ATR_VFLAG_DEFLT))
+					free_nattr(pnode, i);
+			} else if (is_nattr_set(pnode, i) != 0) {
+				prs = (resource *)GET_NEXT(get_nattr_list(pnode, i));
 				while (prs) {
 					if ((prs->rs_value.at_flags & ATR_VFLAG_DEFLT) &&
 						(prs->rs_defin != prdefhost) &&
@@ -3558,14 +3505,13 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			}
 		}
 
-		pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = VNS_DFLT_SHARED;
-		pnode->nd_attr[(int)ND_ATR_Sharing].at_flags = (ATR_VFLAG_SET |ATR_VFLAG_DEFLT);
-
+		set_nattr_l_slim(pnode, ND_ATR_Sharing, VNS_DFLT_SHARED, SET);
+		(get_nattr(pnode, ND_ATR_Sharing))->at_flags |= ATR_VFLAG_DEFLT;
 	}
 
 	/* set attributes/resources if they are default */
 
-	pRA = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
+	pRA = get_nattr(pnode, ND_ATR_ResourceAvail);
 
 	for (i = 0; i < pvnal->vnal_used; i++) {
 		psrp = VNAL_NODENUM(pvnal, i);
@@ -3597,9 +3543,8 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				continue;
 			}
 
-			if (from_hook && (strcasecmp(buf, ATTR_rescassn) == 0)) {
-				pRA = &pnode->nd_attr[(int)ND_ATR_ResourceAssn];
-			}
+			if (from_hook && (strcasecmp(buf, ATTR_rescassn) == 0))
+				pRA = get_nattr(pnode, ND_ATR_ResourceAssn);
 
 			/* Is the resource already defined? */
 			prdef = find_resc_def(svr_resc_def, resc);
@@ -3672,13 +3617,11 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 							/* changes survive */
 							/* server restart */
 							prs->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
-							prs->rs_value.at_flags |= ATR_SET_MOD_MCACHE;
-							if (psrp->vna_val[0] != '\0') {
+							post_attr_set(&prs->rs_value);
+							if (psrp->vna_val[0] != '\0')
 								prs->rs_value.at_flags |= (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
-							}
-						} else {
+						} else
 							prs->rs_value.at_flags |= ATR_VFLAG_DEFLT;
-						}
 						if (strcasecmp("ncpus", resc) == 0) {
 							/* if ncpus, adjust virtual/subnodes */
 							j = prs->rs_value.at_val.at_long;
@@ -3800,7 +3743,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					LOG_WARNING, pmom->mi_host, log_buffer);
 				continue;
 			}
-			pattr = &pnode->nd_attr[j];
+			pattr = get_nattr(pnode, j);
 			if (from_hook || ((pattr->at_flags & \
 			   (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) != ATR_VFLAG_SET)) {
 				/* if not from_hook, will only set attribute */
@@ -3810,8 +3753,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				/* if from_hook, we override values */
 				/* set externally. */
 
-				bad = node_attr_def[j].at_decode(pattr,
-					psrp->vna_name, NULL, psrp->vna_val);
+				bad = set_attr_generic(pattr, &node_attr_def[j], psrp->vna_val, NULL, INTERNAL);
 				if (bad != 0) {
 					snprintf(log_buffer, sizeof(log_buffer),
 						"Error %d decoding attribute %s "
@@ -3830,11 +3772,9 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					/* restart */
 
 					pattr->at_flags &= ~ATR_VFLAG_DEFLT;
-					pattr->at_flags |= ATR_SET_MOD_MCACHE;
-					if (psrp->vna_val[0] != '\0') {
-						pattr->at_flags |= \
-					       (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
-					}
+					post_attr_set(pattr);
+					if (psrp->vna_val[0] != '\0')
+						pattr->at_flags |= (ATR_VFLAG_SET|ATR_VFLAG_MODIFY);
 					snprintf(log_buffer,
 						sizeof(log_buffer),
 						"Updated vnode %s's "
@@ -3847,9 +3787,9 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 						PBS_EVENTCLASS_NODE, LOG_INFO,
 						pmom->mi_host, log_buffer);
 
-				} else {
+				} else
 					pattr->at_flags |= ATR_VFLAG_DEFLT;
-				}
+
 				if (strcasecmp(psrp->vna_name, ATTR_NODE_VnodePool) == 0) {
 					if ((bad = node_attr_def[j].at_action(pattr,
 					     pnode, ATR_ACTION_ALTER)) == 0) {
@@ -3960,7 +3900,6 @@ check_and_set_multivnode(struct pbsnode *pnode)
 	resource *prc;
 	resource *prc_i;
 	resource_def *prd;
-	attribute *pala;
 	char *host_str1 = NULL;
 
 	if (pnode == NULL)
@@ -3970,8 +3909,7 @@ check_and_set_multivnode(struct pbsnode *pnode)
 	if (prd == NULL)
 		return;
 
-	pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-	prc = find_resc_entry(pala, prd);
+	prc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prd);
 	if (prc == NULL) {
 		if (pnode->nd_hostname != NULL)
 			host_str1 = pnode->nd_hostname;
@@ -3987,8 +3925,7 @@ check_and_set_multivnode(struct pbsnode *pnode)
 			if (pbsndlist[i]->nd_state & INUSE_STALE)
 				continue;
 
-			pala = &pbsndlist[i]->nd_attr[(int)ND_ATR_ResourceAvail];
-			prc_i = find_resc_entry(pala, prd);
+			prc_i = find_resc_entry(get_nattr(pbsndlist[i], ND_ATR_ResourceAvail), prd);
 			if (prc_i == NULL) {
 				if (pbsndlist[i]->nd_hostname != NULL)
 					host_str2 = pbsndlist[i]->nd_hostname;
@@ -3997,18 +3934,13 @@ check_and_set_multivnode(struct pbsnode *pnode)
 				host_str2 = prc_i->rs_value.at_val.at_str;
 			}
 
-			if (host_str1 && host_str2 &&
-				!strcmp(host_str1, host_str2)) {
-				pala = &pbsndlist[i]->nd_attr[
-					(int) ND_ATR_in_multivnode_host];
-				(*pala).at_val.at_long = 1;
-				(*pala).at_flags = ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
+			if (host_str1 && host_str2 && !strcmp(host_str1, host_str2)) {
+				set_nattr_l_slim(pbsndlist[i], ND_ATR_in_multivnode_host, 1, SET);
+				(get_nattr(pbsndlist[i], ND_ATR_in_multivnode_host))->at_flags |= ATR_VFLAG_DEFLT;
 
 				/* DEFLT needed to reset on update */
-				pala = &pnode->nd_attr[
-					(int) ND_ATR_in_multivnode_host];
-				(*pala).at_val.at_long = 1;
-				(*pala).at_flags = ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
+				set_nattr_l_slim(pnode, ND_ATR_in_multivnode_host, 1, SET);
+				(get_nattr(pnode, ND_ATR_in_multivnode_host))->at_flags |= ATR_VFLAG_DEFLT;
 				break;
 			}
 		}
@@ -4451,8 +4383,7 @@ found:
 			if (psvrmom->msr_numvnds > 0) {
 				np = psvrmom->msr_children[0];	/* the "one" */
 				np->nd_ncpus = psvrmom->msr_pcpus;
-				np->nd_attr[(int)ND_ATR_pcpus].at_val.at_long = psvrmom->msr_pcpus;
-				np->nd_attr[(int)ND_ATR_pcpus].at_flags |= ATR_SET_MOD_MCACHE;
+				set_nattr_l_slim(np, ND_ATR_pcpus, psvrmom->msr_pcpus, SET);
 			}
 
 			i = disrui(stream, &ret);	/* num of avail CPUs on host */
@@ -4506,11 +4437,10 @@ found:
 					 * changed via a prior UPDATE2 (multi-vnode) message but the vnodedef file
 					 * has now been removed; hence this UPDATE message instead of UPDATE2.
 					 */
-					if ((np->nd_attr[(int)ND_ATR_Sharing].at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) != ATR_VFLAG_SET) {
+					if (((get_nattr(np, ND_ATR_Sharing))->at_flags & (ATR_VFLAG_SET|ATR_VFLAG_DEFLT)) != ATR_VFLAG_SET) {
 						/* unset or ATR_VFLAG_DEFLT is set */
-						np->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = (long)VNS_DFLT_SHARED;
-						np->nd_attr[(int)ND_ATR_Sharing].at_flags =
-							ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
+						set_nattr_l_slim(np, ND_ATR_Sharing, VNS_DFLT_SHARED, SET);
+						(get_nattr(np, ND_ATR_Sharing))->at_flags |= ATR_VFLAG_DEFLT;
 					}
 
 
@@ -4523,7 +4453,7 @@ found:
 						set_vnode_state(np, ~INUSE_STALE, Nd_State_And);
 					}
 
-					pala = &np->nd_attr[(int)ND_ATR_ResourceAvail];
+					pala = get_nattr(np, ND_ATR_ResourceAvail);
 
 					/* available cpus */
 					i = psvrmom->msr_acpus;
@@ -4667,7 +4597,7 @@ found:
 						LOG_INFO, pmom->mi_host, log_buffer);
 				}
 
-				pala = &np->nd_attr[(int)ND_ATR_ResourceAvail];
+				pala = get_nattr(np, ND_ATR_ResourceAvail);
 
 				prd = &svr_resc_def[RESC_ARCH];
 				prc = find_resc_entry(pala, prd);
@@ -4735,8 +4665,8 @@ found:
 				 * mode if needed.
 				 */
 
-				if (!(np->nd_attr[(int)ND_ATR_ResvEnable].at_flags & ATR_VFLAG_SET) ||
-					(np->nd_attr[(int)ND_ATR_ResvEnable].at_flags & ATR_VFLAG_DEFLT)) {
+				if (!((get_nattr(np, ND_ATR_ResvEnable))->at_flags & ATR_VFLAG_SET) ||
+					((get_nattr(np, ND_ATR_ResvEnable))->at_flags & ATR_VFLAG_DEFLT)) {
 
 					int change = 0;
 
@@ -4746,33 +4676,26 @@ found:
 					 * cycle harvesting?
 					 */
 					if (s & MOM_STATE_CONF_HARVEST) {
-						if (np->nd_attr[(int)ND_ATR_ResvEnable].at_val.at_long) {
-							np->nd_attr[(int)ND_ATR_ResvEnable].at_val.at_long = 0;
+						if (get_nattr_long(np, ND_ATR_ResvEnable)) {
+							set_nattr_l_slim(np, ND_ATR_ResvEnable, 0, SET);
 							change = 1;
 						}
 					} else {
-						if (!np->nd_attr[(int)ND_ATR_ResvEnable].at_val.at_long) {
-							np->nd_attr[(int)ND_ATR_ResvEnable].at_val.at_long = 1;
+						if (!get_nattr_long(np, ND_ATR_ResvEnable)) {
+							set_nattr_l_slim(np, ND_ATR_ResvEnable, 1, SET);
 							change = 1;
 						}
 					}
 
-					if (change || !(np->nd_attr[(int)ND_ATR_ResvEnable].at_flags & ATR_VFLAG_SET) || !(np->nd_attr[(int)ND_ATR_ResvEnable].at_flags & ATR_VFLAG_DEFLT))
-						np->nd_attr[(int)ND_ATR_ResvEnable].at_flags |= ATR_VFLAG_DEFLT | ATR_SET_MOD_MCACHE;
+					if (change || !((get_nattr(np, ND_ATR_ResvEnable))->at_flags & ATR_VFLAG_SET) || !((get_nattr(np, ND_ATR_ResvEnable))->at_flags & ATR_VFLAG_DEFLT))
+						(get_nattr(np, ND_ATR_ResvEnable))->at_flags |= ATR_VFLAG_DEFLT;
 				}
 
 				if (psvrmom->msr_pbs_ver != NULL) {
 
-					attribute *ap = &np->nd_attr[(int)ND_ATR_version];
-					attribute_def *adfp = &node_attr_def[(int)ND_ATR_version];
-
-					if (((is_attr_set(ap)) == 0) ||
-						(strcmp(psvrmom->msr_pbs_ver, ap->at_val.at_str) != 0)) {
-
-						adfp->at_free(ap);
-						ap->at_val.at_str = strdup(psvrmom->msr_pbs_ver);
-						ap->at_flags &= ~ATR_VFLAG_DEFLT;
-						mark_attr_set(ap);
+					if (is_nattr_set(np, ND_ATR_version) == 0 || strcmp(psvrmom->msr_pbs_ver, get_nattr_str(np, ND_ATR_version)) != 0) {
+						free_nattr(np, ND_ATR_version);
+						set_nattr_str_slim(np, ND_ATR_version, psvrmom->msr_pbs_ver, NULL);
 					}
 				}
 			}
@@ -6081,7 +6004,7 @@ build_execvnode(job *pjob, char *nds)
 	if (!pjob || !nds)
 		return NULL;
 
-	pschedselect = &pjob->ji_wattr[(int)JOB_ATR_SchedSelect];
+	pschedselect = get_jattr(pjob, JOB_ATR_SchedSelect);
 	if (!is_attr_set(pschedselect))
 		return (nds);
 
@@ -6381,7 +6304,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 		resource_def *prsdef;
 
 		pjob = (job *)pobj;
-		patresc = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		patresc = get_jattr(pjob, JOB_ATR_resource);
 
 		if (execvnod_in == NULL) {
 			execvnod_in = *hoststr;
@@ -6756,7 +6679,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						pnode->nd_nsnfree))
 				}
 			}
-			share_node = pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long;
+			share_node = get_nattr_long(pnode, ND_ATR_Sharing);
 			if (share_node == (int)VNS_FORCE_EXCL || share_node == (int)VNS_FORCE_EXCLHOST) {
 				set_vnode_state(pnode, INUSE_JOBEXCL, Nd_State_Or);
 			} else if (share_node == (int)VNS_IGNORE_EXCL) {
@@ -7182,7 +7105,7 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 
 	/* find the resources_assigned resource for the node */
 
-	pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAssn];
+	pattr = get_nattr(pnode, ND_ATR_ResourceAssn);
 	if ((presc = find_resc_entry(pattr, prdef)) == NULL) {
 		presc = add_resource_entry(pattr, prdef);
 		if (presc == NULL)
@@ -7255,10 +7178,10 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 		return;
 
 	if ((pjob != NULL) &&
-		(pexech == &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated])) {
+		(pexech == get_jattr(pjob, JOB_ATR_exec_vnode_deallocated))) {
 		char *pc;
-		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
-		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
+		sysru = get_sattr(SVR_ATR_resource_assn);
+		queru = get_qattr(pjob->ji_qhdr, QE_ATR_ResourceAssn);
 
 		pc = pexech->at_val.at_str;
 		while (*pc != '\0') {
@@ -7309,7 +7232,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					if (op == DECR) {
 						check_for_negative_resource(prdef, pr, NULL);
 					}
-					sysru->at_flags |= ATR_SET_MOD_MCACHE;
+					post_attr_set(sysru);
 				}
 
 				/* update queue attribute of resources assigned */
@@ -7325,7 +7248,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					if (op == DECR) {
 						check_for_negative_resource(prdef, pr, NULL);
 					}
-					queru->at_flags |= ATR_SET_MOD_MCACHE;
+					post_attr_set(queru);
 				}
 
 			}
@@ -7653,7 +7576,7 @@ set_old_subUniverse(resc_resv	*presv)
 	if (presv == NULL || svr_totnodes == 0)
 		return;
 
-	if (!(presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET)) {
+	if (!is_rattr_set(presv, RESV_ATR_resv_nodes)) {
 		return;
 	}
 
@@ -7666,7 +7589,7 @@ set_old_subUniverse(resc_resv	*presv)
 	/* duplicate the resv_nodes because assign_resv_resc will first free the
 	 * resv_nodes attribute before doing the allocation and setting the nodes
 	 */
-	sp = strdup(presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str);
+	sp = strdup(get_rattr_str(presv, RESV_ATR_resv_nodes));
 	if (sp == NULL) {
 		log_err(errno, __func__, "Could not allocate memory");
 		return;
@@ -7676,20 +7599,18 @@ set_old_subUniverse(resc_resv	*presv)
 	 * for those resources
 	 */
 	if ((rc=set_resc_deflt((void *)presv, RESC_RESV_OBJECT, NULL)) != 0) {
-		sprintf(log_buffer, "problem assigning default resource "
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE,
+			presv->ri_qs.ri_resvID, "problem assigning default resource "
 			"to reservation %d", rc);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV, LOG_NOTICE,
-			presv->ri_qs.ri_resvID, log_buffer);
 		free(sp);
 		return;
 	}
 	/* set the nodes on the reservation */
 	rc = assign_resv_resc(presv, sp, TRUE);
 	if (rc != PBSE_NONE) {
-		sprintf(log_buffer,
+		log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
+			LOG_NOTICE, presv->ri_qs.ri_resvID,
 			"problem assigning resource to reservation %d", rc);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_RESV,
-			LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 		free(sp);
 		return;
 	}
@@ -7815,7 +7736,6 @@ set_last_used_time_node(void *pobj, int type)
 	char		*last_pn = NULL;
 	struct pbsnode	*pnode;
 	int 		rc;
-	char		str_val[STR_TIME_SZ];
 	int 		time_int_val;
 
 	time_int_val = time_now;
@@ -7827,7 +7747,7 @@ set_last_used_time_node(void *pobj, int type)
 		resc_resv *presv;
 
 		presv = pobj;
-		pn = parse_plus_spec(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str, &rc);
+		pn = parse_plus_spec(get_rattr_str(presv, RESV_ATR_resv_nodes), &rc);
 	} else {
 		job *pjob;
 
@@ -7846,11 +7766,8 @@ set_last_used_time_node(void *pobj, int type)
 		if (last_pn == NULL || (cmp_ret = strcmp(pn, last_pn)) != 0 ) {
 			pnode = find_nodebyname(pn);
 			/* had better be the "natural" vnode with only the one parent */
-			if (pnode != NULL) {
-				snprintf(str_val, sizeof(str_val), "%d", time_int_val);
-				set_attr_generic(&(pnode->nd_attr[(int)ND_ATR_last_used_time]),
-						&node_attr_def[(int) ND_ATR_last_used_time], str_val, NULL, SET);
-			}
+			if (pnode != NULL)
+				set_nattr_l_slim(pnode, ND_ATR_last_used_time, time_int_val, SET);
 			node_save_db(pnode);
 		}
 		last_pn = pn;
@@ -7895,7 +7812,7 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 				if (prdef == NULL)
 					return 1;
 				if (prdef->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN)) {
-					presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+					presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef);
 					if (presc == NULL)
 						return 1;
 					if ((rc = prdef->rs_decode(&tmpattr, ATTR_rel_list, prdef->rs_name, pkvp[j].kv_val)) != 0)
@@ -7913,19 +7830,19 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 	 * queue/server level and add them to resource_release_list. Only do this if
 	 * restrict_res_to_release_on_suspend is set
 	 */
-	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
-		presc_sq = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+	if (is_sattr_set(SVR_ATR_restrict_res_to_release_on_suspend)) {
+		presc_sq = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 		for (;presc_sq != NULL; presc_sq = (resource *)GET_NEXT(presc_sq->rs_link)) {
 			prdef = presc_sq->rs_defin;
 			/* make sure it is a server/queue level consumable resource and not
 			* set in resource_released_list already
 			*/
 			if ((prdef->rs_flags & ATR_DFLAG_RASSN) &&
-				(find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef) == NULL)) {
-				for (j = 0; j < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; j++) {
-					if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[j],
-						prdef->rs_name) == 0) {
-						presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+				(find_resc_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef) == NULL)) {
+				struct array_strings *pval = get_sattr_arst(SVR_ATR_restrict_res_to_release_on_suspend);
+				for (j = 0; pval != NULL && j < pval->as_usedptr; j++) {
+					if (strcmp(pval->as_string[j], prdef->rs_name) == 0) {
+						presc = add_resource_entry(get_jattr(pjob, JOB_ATR_resc_released_list), prdef);
 						if (presc == NULL)
 							return 1;
 						prdef->rs_set(&presc->rs_value, &presc_sq->rs_value, op);
@@ -8030,8 +7947,8 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 {
 	long degraded_time;
 
-	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long == 0)
-		presv->ri_degraded_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	if ((degraded_time = get_rattr_long(presv, RESV_ATR_resv_standing)) == 0)
+		presv->ri_degraded_time = degraded_time;
 	else
 		find_degraded_occurrence(presv, pnode, Set_Degraded_Time);
 
@@ -8047,22 +7964,17 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 	 * which the vnodes unavailable are associated to later occurrences
 	 */
 	if (presv->ri_vnodes_down > presv->ri_vnodect) {
-		attribute *rsv_attr = presv->ri_wattr;
 		/* If a standing reservation we print the execvnodes sequence
 		 * string for debugging purposes
 		 */
-		if (rsv_attr[RESV_ATR_resv_standing].at_val.at_long) {
-			snprintf(log_buffer, sizeof(log_buffer), " execvnodes sequence %s",
-				rsv_attr[RESV_ATR_resv_execvnodes].at_val.at_str);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-				presv->ri_qs.ri_resvID, log_buffer);
+		if (get_rattr_long(presv, RESV_ATR_resv_standing))
+			log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				   presv->ri_qs.ri_resvID, " execvnodes sequence %s",
+				   get_rattr_str(presv, RESV_ATR_resv_execvnodes));
 
-		}
-		snprintf(log_buffer, sizeof(log_buffer), "vnodes in occurrence: %d; "
-			" unavailable vnodes in reservation: %d",
-			presv->ri_vnodect, presv->ri_vnodes_down);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
-			presv->ri_qs.ri_resvID, log_buffer);
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+			   presv->ri_qs.ri_resvID, "vnodes in occurrence: %d; unavailable vnodes in reservation: %d",
+			   presv->ri_vnodect, presv->ri_vnodes_down);
 	}
 	presv->ri_vnodes_down++;
 }
@@ -8079,7 +7991,7 @@ set_resv_for_degrade(struct pbsnode *pnode, resc_resv *presv)
 long determine_resv_retry(resc_resv *presv)
 {
 	long retry;
-	long resv_start = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	long resv_start = get_rattr_long(presv, RESV_ATR_start);
 
 	if (time_now < resv_start && time_now + resv_retry_time > resv_start)
 		retry = resv_start;

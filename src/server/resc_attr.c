@@ -155,7 +155,7 @@ set_node_ct(resource *pnodesp, attribute *pattr, void *pobj, int type, int actmo
 
 	nn = ctnodes(pnodesp->rs_value.at_val.at_str);
 	pnct->rs_value.at_val.at_long = nn;
-	pnct->rs_value.at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(&pnct->rs_value);
 
 	/* find the number of cpus specified in the node string */
 
@@ -188,7 +188,7 @@ set_node_ct(resource *pnodesp, attribute *pattr, void *pobj, int type, int actmo
 		/* ncpus is not set or not a new job (qalter being done) */
 		/* force ncpus to the correct thing */
 		pncpus->rs_value.at_val.at_long = nt;
-		pncpus->rs_value.at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(&pncpus->rs_value);
 	}
 
 
@@ -216,7 +216,7 @@ struct place_words {
  */
 
 int
-decode_place(struct attribute *patr, char *name, char *rescn, char *val)
+decode_place(attribute *patr, char *name, char *rescn, char *val)
 {
 #ifndef PBS_MOM
 	int   have_oneof = 0;
@@ -907,18 +907,18 @@ action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type,
 		/* Make sure soft_walltime < walltime */
 		if (walltime_def == NULL)
 			walltime_def = &svr_resc_def[RESC_WALLTIME];
-		entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], walltime_def);
+		entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), walltime_def);
 		if (entry != NULL) {
 			if (is_attr_set(&entry->rs_value)) {
 				if (walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) < 0)
 					return PBSE_BADATVAL;
 			}
 		}
-		
+
 		/* soft_walltime and STF jobs are incompatible */
 		if (min_walltime_def == NULL)
 			min_walltime_def = &svr_resc_def[RESC_MIN_WALLTIME];
-		entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], min_walltime_def);
+		entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), min_walltime_def);
 		if (entry != NULL) {
 			if (is_attr_set(&entry->rs_value))
 				return PBSE_SOFTWT_STF;
@@ -953,7 +953,7 @@ action_walltime(resource *presc, attribute *pattr, void *pobject, int type, int 
 		/* Make sure walltime > soft_walltime */
 		if (soft_walltime_def == NULL)
 			soft_walltime_def = &svr_resc_def[RESC_SOFT_WALLTIME];
-		entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], soft_walltime_def);
+		entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), soft_walltime_def);
 		if (entry != NULL) {
 			if (is_attr_set(&entry->rs_value)) {
 				if (soft_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) > 0)
@@ -999,7 +999,7 @@ action_min_walltime(resource *presc, attribute *pattr, void *pobject, int type, 
 		if (soft_walltime_def == NULL)
 			soft_walltime_def = &svr_resc_def[RESC_SOFT_WALLTIME];
 		if (soft_walltime_def != NULL) {
-			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], soft_walltime_def);
+			entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), soft_walltime_def);
 			if (entry != NULL) {
 				if (is_attr_set(&entry->rs_value))
 					return PBSE_SOFTWT_STF;
@@ -1010,7 +1010,7 @@ action_min_walltime(resource *presc, attribute *pattr, void *pobject, int type, 
 		if (max_walltime_def == NULL)
 			max_walltime_def = &svr_resc_def[RESC_MAX_WALLTIME];
 		if (max_walltime_def != NULL) {
-			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], max_walltime_def);
+			entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), max_walltime_def);
 			if (entry != NULL && (is_attr_set(&entry->rs_value)))
 				if (max_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) < 0)
 					return PBSE_MIN_GT_MAXWT;
@@ -1050,7 +1050,7 @@ action_max_walltime(resource *presc, attribute *pattr, void *pobj, int type, int
 		if (soft_walltime_def == NULL)
 			soft_walltime_def = &svr_resc_def[RESC_SOFT_WALLTIME];
 		if (soft_walltime_def != NULL) {
-			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], soft_walltime_def);
+			entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), soft_walltime_def);
 			if (entry != NULL) {
 				if (is_attr_set(&entry->rs_value))
 					return PBSE_SOFTWT_STF;
@@ -1061,7 +1061,7 @@ action_max_walltime(resource *presc, attribute *pattr, void *pobj, int type, int
 		if (min_walltime_def == NULL)
 			min_walltime_def = &svr_resc_def[RESC_MIN_WALLTIME];
 		if (min_walltime_def != NULL) {
-			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], min_walltime_def);
+			entry = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), min_walltime_def);
 			if (entry != NULL) {
 				if (is_attr_set(&entry->rs_value)) {
 					if (min_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) > 0)

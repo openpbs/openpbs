@@ -307,7 +307,7 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	if (outsideselect) {
-		presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], &svr_resc_def[RESC_SELECT]);
+		presc = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), &svr_resc_def[RESC_SELECT]);
 		if (presc && ((presc->rs_value.at_flags & ATR_VFLAG_DEFLT) == 0)) {
 			/* select is not a default, so reject qalter */
 			resc_in_err = strdup(outsideselect->rs_name);
@@ -338,8 +338,7 @@ req_modifyjob(struct batch_request *preq)
 
 	/* check if project attribute was requested to be modified to */
 	/* be the default project value */
-	if (mod_project && (pjob->ji_wattr[(int)JOB_ATR_project].at_flags & \
-							ATR_VFLAG_SET)) {
+	if (mod_project && is_jattr_set(pjob, JOB_ATR_project)) {
 
 		if (strcmp(get_jattr_str(pjob, JOB_ATR_project),
 			PBS_DEFAULT_PROJECT) == 0) {
@@ -355,8 +354,8 @@ req_modifyjob(struct batch_request *preq)
 		}
 	}
 
-	if (pjob->ji_wattr[(int)JOB_ATR_resource].at_flags & ATR_VFLAG_MODIFY) {
-		presc = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], &svr_resc_def[RESC_SELECT]);
+	if ((get_jattr(pjob, JOB_ATR_resource))->at_flags & ATR_VFLAG_MODIFY) {
+		presc = find_resc_entry(get_jattr(pjob, JOB_ATR_resource), &svr_resc_def[RESC_SELECT]);
 		if (presc && (presc->rs_value.at_flags & ATR_VFLAG_DEFLT)) {
 			/* changing Resource_List and select is a default   */
 			/* clear "select" so it is rebuilt inset_resc_deflt */
@@ -489,7 +488,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 
 	/* If resource limits are being changed ... */
 
-	changed_resc = newattr[(int)JOB_ATR_resource].at_flags & ATR_VFLAG_SET;
+	changed_resc = is_attr_set(&newattr[JOB_ATR_resource]);
 	if ((rc == 0) && (changed_resc != 0)) {
 
 		/* first, remove ATR_VFLAG_DEFLT from any value which was set */
@@ -520,8 +519,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 
 				/* regular user cannot raise the limits of a running job */
 
-				if ((comp_resc(&pjob->ji_wattr[(int)JOB_ATR_resource],
-					&newattr[(int)JOB_ATR_resource]) == -1) ||
+				if ((comp_resc(get_jattr(pjob, JOB_ATR_resource), &newattr[(int)JOB_ATR_resource]) == -1) ||
 					comp_resc_lt)
 					rc = PBSE_PERM;
 
@@ -603,7 +601,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 			 */
 			if (i == JOB_ATR_accrue_type)
 				continue;
-			job_attr_def[i].at_free(&pattr[i]);
+			free_attr(job_attr_def, &pattr[i], i);
 			if ((pre_copy[i].at_type == ATR_TYPE_LIST) ||
 				(pre_copy[i].at_type == ATR_TYPE_RESC)) {
 				list_move(&pre_copy[i].at_val.at_list,
@@ -646,7 +644,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	/* The action functions may have modified the attributes, need to set them to newattr2 */
 	for (i = 0; i < JOB_ATR_LAST; i++) {
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
-			job_attr_def[i].at_free(&pattr[i]);
+			free_attr(job_attr_def, &pattr[i], i);
 			switch (i) {
 				case JOB_ATR_state:
 					newstate = get_attr_c(&newattr[i]);
@@ -753,9 +751,9 @@ create_resv_destination(resc_resv *presv)
 	if (presv == NULL)
 		return NULL;
 	/* standing reservations format is <num>#<exec-vnode>{<num>} */
-	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long)
+	if (get_rattr_long(presv, RESV_ATR_resv_standing))
 	    format = "1#%s{0}";
-	pbs_asprintf(&destin, format, presv->ri_wattr[RESV_ATR_resv_nodes].at_val.at_str);
+	pbs_asprintf(&destin, format, get_rattr_str(presv, RESV_ATR_resv_nodes));
 	return destin;
 }
 
@@ -773,8 +771,8 @@ create_resv_confirm_req(resc_resv *presv)
 	confirm_req = alloc_br(PBS_BATCH_ConfirmResv);
 	if (confirm_req == NULL)
 		return NULL;
-	if (presv->ri_wattr[RESV_ATR_partition].at_flags & ATR_VFLAG_SET)
-		part = presv->ri_wattr[RESV_ATR_partition].at_val.at_str;
+	if (is_rattr_set(presv, RESV_ATR_partition))
+		part = get_rattr_str(presv, RESV_ATR_partition);
 	else
 		part = DEFAULT_PARTITION;
 
@@ -783,8 +781,8 @@ create_resv_confirm_req(resc_resv *presv)
 		return NULL;
 	}
 	pbs_strncpy(confirm_req->rq_ind.rq_run.rq_jid, presv->ri_qs.ri_resvID, sizeof(confirm_req->rq_ind.rq_run.rq_jid));
-	confirm_req->rq_ind.rq_run.rq_resch = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
-	if (presv->ri_wattr[RESV_ATR_resv_nodes].at_flags & ATR_VFLAG_SET) {
+	confirm_req->rq_ind.rq_run.rq_resch = get_rattr_long(presv, RESV_ATR_start);
+	if (is_rattr_set(presv, RESV_ATR_resv_nodes)) {
 		confirm_req->rq_ind.rq_run.rq_destin = create_resv_destination(presv);
 		if (confirm_req->rq_ind.rq_run.rq_destin == NULL) {
 			free_br(confirm_req);
@@ -807,31 +805,30 @@ void save_alter_reservation(resc_resv *presv) {
 	resource *resc = NULL, *pselect = NULL;
 	attribute atemp = {0};
 
-	alter_revert = &presv->ri_wattr[RESV_ATR_alter_revert];
-	if (alter_revert->at_flags & ATR_VFLAG_SET)
+	alter_revert = get_rattr(presv, RESV_ATR_alter_revert);
+	if (is_attr_set(alter_revert))
 		return;
 
 	presdef = &svr_resc_def[RESC_START_TIME];
 	resc = add_resource_entry(alter_revert, presdef);
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
-	atemp.at_val.at_long = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	atemp.at_val.at_long = get_rattr_long(presv, RESV_ATR_start);
 	presdef->rs_set(&resc->rs_value, &atemp, SET);
 
 	presdef = &svr_resc_def[RESC_WALLTIME];
 	resc = add_resource_entry(alter_revert, presdef);
-	atemp.at_val.at_long = presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
+	atemp.at_val.at_long = get_rattr_long(presv, RESV_ATR_duration);
 	presdef->rs_set(&resc->rs_value, &atemp, SET);
 
 	presdef = &svr_resc_def[RESC_SELECT];
-	pselect = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], presdef);
+	pselect = find_resc_entry(get_rattr(presv, RESV_ATR_resource), presdef);
 	resc = add_resource_entry(alter_revert, presdef);
 	atemp.at_type = ATR_TYPE_STR;
 	atemp.at_val.at_str = pselect->rs_value.at_val.at_str;
 	presdef->rs_set(&resc->rs_value, &atemp, SET);
 
-	resv_attr_def[RESV_ATR_SchedSelect_orig].at_set(&presv->ri_wattr[RESV_ATR_SchedSelect_orig],
-		&presv->ri_wattr[RESV_ATR_SchedSelect], SET);
+	set_rattr_str_slim(presv, RESV_ATR_SchedSelect_orig, get_rattr_str(presv, RESV_ATR_SchedSelect), NULL);
 }
 
 /**
@@ -845,52 +842,51 @@ void revert_alter_reservation(resc_resv *presv) {
 	resource_def *presdef = NULL;
 	resource *resc = NULL, *resc2 = NULL;
 	attribute atemp = {0};
+	attribute *resc_attr;
 	int state = 0;
 	int sub = 0;
 
-	alter_revert = &presv->ri_wattr[RESV_ATR_alter_revert];
-	if (!alter_revert->at_flags & ATR_VFLAG_SET)
+	alter_revert = get_rattr(presv, RESV_ATR_alter_revert);
+	if (!is_attr_set(alter_revert))
 		return;
 
 	/* revert start time */
 	presdef = &svr_resc_def[RESC_START_TIME];
 	resc = find_resc_entry(alter_revert, presdef);
-	resv_attr_def[RESV_ATR_start].at_set(&presv->ri_wattr[RESV_ATR_start], &resc->rs_value, SET);
+	set_rattr_l_slim(presv, RESV_ATR_start, get_attr_l(&resc->rs_value), SET);
 	presv->ri_qs.ri_stime = resc->rs_value.at_val.at_long;
 
 	/* revert duration and walltime */
 	presdef = &svr_resc_def[RESC_WALLTIME];
 	resc = find_resc_entry(alter_revert, presdef);
-	resv_attr_def[RESV_ATR_duration].at_set(&presv->ri_wattr[RESV_ATR_duration], &resc->rs_value, SET);
+	set_rattr_l_slim(presv, RESV_ATR_duration, get_attr_l(&resc->rs_value), SET);
 	presv->ri_qs.ri_duration = resc->rs_value.at_val.at_long;
 
-	resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], presdef);
-	presdef->rs_set(&resc->rs_value, &presv->ri_wattr[RESV_ATR_duration], SET);
+	resc_attr = get_rattr(presv, RESV_ATR_resource);
+	resc = find_resc_entry(resc_attr, presdef);
+	presdef->rs_set(&resc->rs_value, get_rattr(presv, RESV_ATR_duration), SET);
 
 
 	/* revert end time */
-	atemp.at_flags = ATR_VFLAG_SET;
-	atemp.at_type = ATR_TYPE_LONG;
-	atemp.at_val.at_long = presv->ri_wattr[RESV_ATR_start].at_val.at_long + presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
-	resv_attr_def[RESV_ATR_end].at_set(&presv->ri_wattr[RESV_ATR_end], &atemp, SET);
-	presv->ri_qs.ri_etime = atemp.at_val.at_long;
+	set_rattr_l_slim(presv, RESV_ATR_end, get_rattr_long(presv, RESV_ATR_start) + get_rattr_long(presv, RESV_ATR_duration), SET);
+	presv->ri_qs.ri_etime = get_rattr_long(presv, RESV_ATR_end);
 
 	/* revert resource_list.select */
 	presdef = &svr_resc_def[RESC_SELECT];
 	resc = find_resc_entry(alter_revert, presdef);
-	resc2 = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], presdef);
+	resc2 = find_resc_entry(resc_attr, presdef);
+	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_STR;
 	atemp.at_val.at_str = resc->rs_value.at_val.at_str;
 	presdef->rs_set(&resc2->rs_value, &atemp, SET);
 	presdef->rs_free(&resc->rs_value);
-	set_chunk_sum(&resc2->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
-	presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
-	set_attr_generic(&presv->ri_wattr[RESV_ATR_SchedSelect], &resv_attr_def[RESV_ATR_SchedSelect],
-			presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str, NULL, SET);
-	resv_attr_def[RESV_ATR_SchedSelect_orig].at_free(&presv->ri_wattr[RESV_ATR_SchedSelect_orig]);
+	set_chunk_sum(&resc2->rs_value, resc_attr);
+	post_attr_set(resc_attr);
+	set_rattr_str_slim(presv, RESV_ATR_SchedSelect, get_rattr_str(presv, RESV_ATR_SchedSelect_orig), NULL);
+	free_rattr(presv, RESV_ATR_SchedSelect_orig);
 
 	presv->ri_alter.ra_flags = 0;
-	resv_attr_def[RESV_ATR_alter_revert].at_free(alter_revert);
+	free_rattr(presv, RESV_ATR_alter_revert);
 
 	eval_resvState(presv, RESVSTATE_alter_failed, 0, &state, &sub);
 	/* While requesting alter, substate was retained, so we use the same here. */
@@ -908,26 +904,26 @@ void save_standing_reservation(resc_resv *presv) {
 	resource_def *presdef = NULL;
 	resource *resc = NULL;
 
-	standing = &presv->ri_wattr[RESV_ATR_standing_revert];
-	if (standing->at_flags & ATR_VFLAG_SET)
+	standing = get_rattr(presv, RESV_ATR_standing_revert);
+	if (is_attr_set(standing))
 		return;
 
-	standing->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(standing);
 
 	presdef = &svr_resc_def[RESC_START_TIME];
 	resc = add_resource_entry(standing, presdef);
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
-	atemp.at_val.at_long = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+	atemp.at_val.at_long = get_rattr_long(presv, RESV_ATR_start);
 	presdef->rs_set(&resc->rs_value, &atemp, SET);
 
 	presdef = &svr_resc_def[RESC_WALLTIME];
 	resc = add_resource_entry(standing, presdef);
-	atemp.at_val.at_long = presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
+	atemp.at_val.at_long = get_rattr_long(presv, RESV_ATR_duration);
 	presdef->rs_set(&resc->rs_value, &atemp, SET);
 
 	presdef = &svr_resc_def[RESC_SELECT];
-	resc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], presdef);
+	resc = find_resc_entry(get_rattr(presv, RESV_ATR_resource), presdef);
 	atemp.at_type = ATR_TYPE_STR;
 	atemp.at_val.at_str = resc->rs_value.at_val.at_str;
 	resc = add_resource_entry(standing, presdef);
@@ -993,7 +989,7 @@ req_modifyReservation(struct batch_request *preq)
 		return;
 	}
 
-	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_BEING_ALTERED) {
+	if (get_rattr_long(presv, RESV_ATR_state) == RESV_BEING_ALTERED) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
@@ -1004,22 +1000,21 @@ req_modifyReservation(struct batch_request *preq)
 			presv->ri_qp->qu_njstate[JOB_STATE_EXPIRED]);
 	}
 
-	is_standing = presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long;
+	is_standing = get_rattr_long(presv, RESV_ATR_resv_standing);
 	if (is_standing)
-		next_occr_start = get_occurrence(presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
-					presv->ri_wattr[RESV_ATR_start].at_val.at_long,
-					presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str, 2);
+		next_occr_start = get_occurrence(get_rattr_str(presv, RESV_ATR_resv_rrule),
+					get_rattr_long(presv, RESV_ATR_start),
+					get_rattr_str(presv, RESV_ATR_resv_timezone), 2);
 
 	resc_access_perm = preq->rq_perm;
 	resc_access_perm_save = resc_access_perm;
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
 	presv->ri_alter.ra_flags = 0;
-	presv->ri_alter.ra_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+	presv->ri_alter.ra_state = get_rattr_long(presv, RESV_ATR_state);
 
 	/* Only set this once to the original start/duration */
-	if (is_standing && !(presv->ri_wattr[RESV_ATR_standing_revert].at_flags & ATR_VFLAG_SET)) {
+	if (is_standing && !is_rattr_set(presv, RESV_ATR_standing_revert))
 		save_standing_reservation(presv);
-	}
 
 	while (psatl) {
 		long temp = 0;
@@ -1054,7 +1049,7 @@ req_modifyReservation(struct batch_request *preq)
 
 		switch (index) {
 			case RESV_ATR_start:
-				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) || !num_jobs) {
+				if (get_rattr_long(presv, RESV_ATR_state) != RESV_RUNNING || !num_jobs) {
 					temp = strtol(psatl->al_value, &end, 10);
 					if (temp > time(NULL)) {
 						if (!is_standing || (temp < next_occr_start)) {
@@ -1114,21 +1109,19 @@ req_modifyReservation(struct batch_request *preq)
 					req_reject(PBSE_BADATVAL, 0, preq);
 					return;
 				}
-				if (presv->ri_wattr[RESV_ATR_substate].at_val.at_long == RESV_IN_CONFLICT) {
+				if (get_rattr_long(presv, RESV_ATR_substate) == RESV_IN_CONFLICT)
 					return;
-				}
 				save_alter_reservation(presv);
 
 				send_to_scheduler = 1;
 				presv->ri_alter.ra_flags |= RESV_SELECT_MODIFIED;
-				presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], &svr_resc_def[RESC_SELECT]);
+				presc = find_resc_entry(get_rattr(presv, RESV_ATR_resource), &svr_resc_def[RESC_SELECT]);
 				if (presc == NULL) {
 					req_reject(PBSE_INTERNAL, 0, preq);
 					revert_alter_reservation(presv);
 					return;
 				}
-				resv_attr_def[RESV_ATR_SchedSelect_orig].at_set(&presv->ri_wattr[RESV_ATR_SchedSelect_orig],
-										&presv->ri_wattr[RESV_ATR_SchedSelect], SET);
+				set_rattr_str_slim(presv, RESV_ATR_SchedSelect_orig, get_rattr_str(presv, RESV_ATR_SchedSelect), NULL);
 				break;
 			default:
 				break;
@@ -1143,7 +1136,7 @@ req_modifyReservation(struct batch_request *preq)
 		return;
 	}
 
-	if (presv->ri_wattr[RESV_ATR_state].at_val.at_long == RESV_RUNNING && num_jobs) {
+	if (get_rattr_long(presv, RESV_ATR_state) == RESV_RUNNING && num_jobs) {
 		if ((presv->ri_alter.ra_flags & RESV_DURATION_MODIFIED) && (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED)) {
 			revert_alter_reservation(presv);
 			req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
@@ -1164,7 +1157,7 @@ req_modifyReservation(struct batch_request *preq)
 	}
 	resc_access_perm = resc_access_perm_save;
 
-	new_end_time = presv->ri_wattr[RESV_ATR_start].at_val.at_long + presv->ri_wattr[RESV_ATR_duration].at_val.at_long;
+	new_end_time = get_rattr_long(presv, RESV_ATR_start) + get_rattr_long(presv, RESV_ATR_duration);
 
 	if (is_standing && new_end_time >= next_occr_start) {
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
@@ -1175,14 +1168,14 @@ req_modifyReservation(struct batch_request *preq)
 	}
 
 	if (presv->ri_alter.ra_flags & RESV_SELECT_MODIFIED) {
-		presc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], &svr_resc_def[RESC_SELECT]);
-		make_schedselect(&presv->ri_wattr[(int) RESV_ATR_resource], presc, NULL, &presv->ri_wattr[(int) RESV_ATR_SchedSelect]);
-		if (is_select_smaller(presv->ri_wattr[RESV_ATR_SchedSelect_orig].at_val.at_str, presv->ri_wattr[RESV_ATR_SchedSelect].at_val.at_str) == 0) {
+		presc = find_resc_entry(get_rattr(presv, RESV_ATR_resource), &svr_resc_def[RESC_SELECT]);
+		make_schedselect(get_rattr(presv, RESV_ATR_resource), presc, NULL, get_rattr(presv, RESV_ATR_SchedSelect));
+		if (is_select_smaller(get_rattr_str(presv, RESV_ATR_SchedSelect_orig), get_rattr_str(presv, RESV_ATR_SchedSelect)) == 0) {
 			req_reject(PBSE_SELECT_NOT_SUBSET, 0, preq);
 			revert_alter_reservation(presv);
 			return;
 		}
-		rc = set_chunk_sum(&presc->rs_value, &presv->ri_wattr[RESV_ATR_resource]);
+		rc = set_chunk_sum(&presc->rs_value, get_rattr(presv, RESV_ATR_resource));
 		if (rc) {
 			req_reject(rc, 0, preq);
 			revert_alter_reservation(presv);
@@ -1200,7 +1193,7 @@ req_modifyReservation(struct batch_request *preq)
 				return;
 			}
 			/* walltime can change */
-			presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
+			post_attr_set(get_rattr(presv, RESV_ATR_resource));
 		}
 	}
 
@@ -1210,31 +1203,25 @@ req_modifyReservation(struct batch_request *preq)
 	 * If Authorized_Groups is modified, we need to update the queue's acl_groups and acl_group_enable
 	 * Authorized_Groups could be unset, so we need to update the queue accordingly, unsetting both acl_groups and acl_group_enable
 	 */
-	if (presv->ri_wattr[(int)RESV_ATR_auth_u].at_flags & ATR_VFLAG_MODIFY) {
+	if ((get_rattr(presv, RESV_ATR_auth_u))->at_flags & ATR_VFLAG_MODIFY) {
 		svrattrl *pattrl;
-		resv_attr_def[(int)RESV_ATR_auth_u].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_u], NULL, resv_attr_def[(int)RESV_ATR_auth_u].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
-		set_attr_generic(&presv->ri_qp->qu_attr[(int)QA_ATR_AclUsers], &que_attr_def[(int)QA_ATR_AclUsers], pattrl->al_atopl.value, NULL, SET);
+		resv_attr_def[(int)RESV_ATR_auth_u].at_encode(get_rattr(presv, RESV_ATR_auth_u), NULL, resv_attr_def[RESV_ATR_auth_u].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
+		set_qattr_str_slim(presv->ri_qp, QA_ATR_AclUsers, pattrl->al_atopl.value, NULL);
 		free(pattrl);
 	}
-	if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_MODIFY) {
-		if (presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags & ATR_VFLAG_SET) {
+	if ((get_rattr(presv, RESV_ATR_auth_g))->at_flags & ATR_VFLAG_MODIFY) {
+		if (is_rattr_set(presv, RESV_ATR_auth_g)) {
 			svrattrl *pattrl = NULL;
-			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(&presv->ri_wattr[(int)RESV_ATR_auth_g], NULL, resv_attr_def[(int)RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
-			set_attr_generic(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup], &que_attr_def[(int)QE_ATR_AclGroup], pattrl->al_atopl.value, NULL, SET);
-			if (!(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags & ATR_VFLAG_SET) ||
-				(presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long == 0)) {
-				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_val.at_long = 1;
-				presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_SET_MOD_MCACHE;
-			}
+			resv_attr_def[(int)RESV_ATR_auth_g].at_encode(get_rattr(presv, RESV_ATR_auth_g), NULL, resv_attr_def[RESV_ATR_auth_g].at_name, NULL, ATR_ENCODE_CLIENT, &pattrl);
+			set_qattr_str_slim(presv->ri_qp, QE_ATR_AclGroup, pattrl->al_atopl.value, NULL);
+			if (!is_qattr_set(presv->ri_qp, QE_ATR_AclGroupEnabled) || get_qattr_long(presv->ri_qp, QE_ATR_AclGroupEnabled) == 0)
+				set_qattr_l_slim(presv->ri_qp, QE_ATR_AclGroupEnabled, 1, SET);
 			que_save_db(presv->ri_qp);
 			free(pattrl);
 		} else {
-			resv_attr_def[(int)RESV_ATR_auth_g].at_free(&presv->ri_wattr[(int)RESV_ATR_auth_g]);
-			presv->ri_wattr[(int)RESV_ATR_auth_g].at_flags |= ATR_VFLAG_MODIFY;
-			que_attr_def[(int)QE_ATR_AclGroup].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup]);
-			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroup].at_flags |= ATR_VFLAG_MODIFY;
-			que_attr_def[(int)QE_ATR_AclGroupEnabled].at_free(&presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled]);
-			presv->ri_qp->qu_attr[(int)QE_ATR_AclGroupEnabled].at_flags |= ATR_VFLAG_MODIFY;
+			free_rattr(presv, RESV_ATR_auth_g);
+			free_qattr(presv->ri_qp, QE_ATR_AclGroup);
+			free_qattr(presv->ri_qp, QE_ATR_AclGroupEnabled);
 			que_save_db(presv->ri_qp);
 		}
 	}
@@ -1244,12 +1231,14 @@ req_modifyReservation(struct batch_request *preq)
 
 	sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter.ra_flags & RESV_START_TIME_MODIFIED) {
-		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_start].at_val.at_long));
+		long dt = get_rattr_long(presv, RESV_ATR_start);
+		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &dt));
 		log_len = strlen(log_buffer);
 		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len," start=%s", buf);
 	}
 	if (presv->ri_alter.ra_flags & RESV_END_TIME_MODIFIED) {
-		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_end].at_val.at_long));
+		long dt = get_rattr_long(presv, RESV_ATR_end);
+		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &dt));
 		log_len = strlen(log_buffer);
 		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len," end=%s", buf);
 	}
@@ -1290,8 +1279,7 @@ req_modifyReservation(struct batch_request *preq)
 			presv->ri_alter.ra_flags |= RESV_ALTER_FORCED;
 	}
 
-	if ((presv->ri_wattr[RESV_ATR_interactive].at_flags &
-		ATR_VFLAG_SET) == 0) {
+	if (is_rattr_set(presv, RESV_ATR_interactive) == 0) {
 		char buf1[PBS_MAXUSER + PBS_MAXHOSTNAME + 32] = {0};
 		/*Not "interactive" so don't wait on scheduler, reply now*/
 
@@ -1307,7 +1295,7 @@ req_modifyReservation(struct batch_request *preq)
 		/* Don't reply back until scheduler decides */
 		long dt;
 		presv->ri_brp = preq;
-		dt = presv->ri_wattr[RESV_ATR_interactive].at_val.at_long;
+		dt = get_rattr_long(presv, RESV_ATR_interactive);
 		/*reply with id and state no decision in +dt secs*/
 		(void)gen_future_reply(presv, dt);
 		(void)snprintf(buf, sizeof(buf), "requestor=%s@%s Interactive=%ld",

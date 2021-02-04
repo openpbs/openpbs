@@ -395,8 +395,7 @@ job_alloc(void)
 
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
-	if ((server.sv_attr[SVR_ATR_EligibleTimeEnable].at_flags & ATR_VFLAG_SET) &&
-	    server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == TRUE) {
+	if (is_sattr_set(SVR_ATR_EligibleTimeEnable) && get_sattr_long(SVR_ATR_EligibleTimeEnable) == TRUE) {
 		int elig_val;
 
 		elig_val = determine_accruetype(pj);
@@ -552,9 +551,8 @@ job_free(job *pj)
 		for (i = 0; i < pj->ji_numrescs; i++) {
 			free(pj->ji_resources[i].nodehost);
 			pj->ji_resources[i].nodehost = NULL;
-			if  (is_attr_set(&pj->ji_resources[i].nr_used) != 0) {
-				job_attr_def[(int)JOB_ATR_resc_used].at_free(&pj->ji_resources[i].nr_used);
-			}
+			if  (is_attr_set(&pj->ji_resources[i].nr_used) != 0)
+				free_attr(job_attr_def, &pj->ji_resources[i].nr_used, JOB_ATR_resc_used);
 		}
 		pj->ji_numrescs = 0;
 		free(pj->ji_resources);
@@ -623,7 +621,7 @@ job_init_wattr(job *pj)
 	int	i;
 
 	for (i=0; i<(int)JOB_ATR_LAST; i++) {
-		clear_attr(&pj->ji_wattr[i], &job_attr_def[i]);
+		clear_attr(get_jattr(pj, i), &job_attr_def[i]);
 	}
 }
 
@@ -1010,7 +1008,6 @@ job_purge(job *pjob)
 #ifdef	PBS_MOM
 	char namebuf[MAXPATHLEN + 1] = {'\0'};
 	int keeping = 0;
-	attribute *jrpattr = NULL;
 	char *taskdir_path = NULL;
 
 	pid_t pid = -1;
@@ -1160,17 +1157,17 @@ job_purge(job *pjob)
 
 	del_chkpt_files(pjob);
 
-	jrpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
 	/* remove stdout/err files if remove_files is set. */
-	if (is_attr_set(jrpattr)
+	if (is_jattr_set(pjob, JOB_ATR_remove)
 			&& (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK)) {
-		if (strchr(jrpattr->at_val.at_str, 'o')) {
+		char *remove = get_jattr_str(pjob, JOB_ATR_remove);
+		if (strchr(remove, 'o')) {
 			(void) strcpy(namebuf, std_file_name(pjob, StdOut, &keeping));
 			if (*namebuf && (unlink(namebuf) < 0))
 				if (errno != ENOENT)
 					log_err(errno, __func__, msg_err_purgejob);
 		}
-		if (strchr(jrpattr->at_val.at_str, 'e')) {
+		if (strchr(remove, 'e')) {
 			(void) strcpy(namebuf, std_file_name(pjob, StdErr, &keeping));
 			if (*namebuf && (unlink(namebuf) < 0))
 				if (errno != ENOENT)
@@ -1560,11 +1557,11 @@ update_resources_list(job *pjob, char *res_list_name,
 
 		if ((is_jattr_set(pjob, backup_res_list_index)) == 0) {
 			free_jattr(pjob, backup_res_list_index);
-			set_attr_with_attr(&job_attr_def[backup_res_list_index], &pjob->ji_wattr[backup_res_list_index], &pjob->ji_wattr[res_list_index], INCR);
+			set_attr_with_attr(&job_attr_def[backup_res_list_index], get_jattr(pjob, backup_res_list_index), get_jattr(pjob, res_list_index), INCR);
 
 		}
 
-		pr = (resource *)GET_NEXT(pjob->ji_wattr[res_list_index].at_val.at_list);
+		pr = (resource *)GET_NEXT(get_jattr_list(pjob, res_list_index));
 		while (pr != NULL) {
 			next = (resource *)GET_NEXT(pr->rs_link);
 			if (pr->rs_defin->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
@@ -1599,7 +1596,7 @@ update_resources_list(job *pjob, char *res_list_name,
 
 			if (prdef->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
 				presc = add_resource_entry(
-					&pjob->ji_wattr[res_list_index],
+					get_jattr(pjob, res_list_index),
 								prdef);
 				if (presc == NULL) {
 					snprintf(log_buffer,
@@ -1638,7 +1635,7 @@ update_resources_list(job *pjob, char *res_list_name,
 		/* this means no resources got freed during suspend */
 		/* let's put a dummy entry for ncpus=0 */
 		prdef = &svr_resc_def[RESC_NCPUS];
-		presc = add_resource_entry(&pjob->ji_wattr[res_list_index], prdef);
+		presc = add_resource_entry(get_jattr(pjob, res_list_index), prdef);
 		if (presc == NULL) {
 			log_err(PBSE_INTERNAL, __func__,
 				"failed to add ncpus in resource list");
@@ -1660,8 +1657,8 @@ update_resources_list_error:
 	free_jattr(pjob, backup_res_list_index);
 	mark_jattr_not_set(pjob, backup_res_list_index);
 	set_attr_with_attr(&job_attr_def[res_list_index],
-			&pjob->ji_wattr[res_list_index],
-			&pjob->ji_wattr[backup_res_list_index], INCR);
+			get_jattr(pjob, res_list_index),
+			get_jattr(pjob, backup_res_list_index), INCR);
 	return (1);
 }
 
@@ -1699,7 +1696,7 @@ resv_alloc(char *resvid)
 	 */
 	resvp->ri_qs.ri_rsversion = RSVERSION;
 	for (i = 0; i < RESV_ATR_LAST; i++)
-		clear_attr(&resvp->ri_wattr[i], &resv_attr_def[i]);
+		clear_rattr(resvp, i);
 
 	if ((dot = strchr(resvid, (int)'.')) != 0)
 		*dot = '\0';
@@ -1744,9 +1741,8 @@ resv_free(resc_resv *presv)
 
 	/* remove any malloc working attribute space */
 
-	for (i=0; i < (int)RESV_ATR_LAST; i++) {
-		resv_attr_def[i].at_free(&presv->ri_wattr[i]);
-	}
+	for (i=0; i < (int)RESV_ATR_LAST; i++)
+		free_rattr(presv, i);
 
 	/* delete any work task entries associated with the resv */
 
@@ -1855,8 +1851,7 @@ resv_purge(resc_resv *presv)
 		 * presv->ri_qp->qu_qs.qu_name value. The post_resv_purge()
 		 * function could modify it at any time. See SPID 352225.
 		 */
-		strcpy(preq->rq_ind.rq_manager.rq_objname,
-			presv->ri_wattr[RESV_ATR_queue].at_val.at_str);
+		strcpy(preq->rq_ind.rq_manager.rq_objname, get_rattr_str(presv, RESV_ATR_queue));
 
 		/* It is assumed that the prior check on permission was OK */
 		preq->rq_perm |= ATR_DFLAG_MGWR;
@@ -2013,7 +2008,6 @@ resv_abt(resc_resv *presv, char *text)
 void
 resv_exclusive_handler(resc_resv *presv)
 {
-	attribute	*patresc;
 	resource_def	*prsdef;
 	resource	*pplace;
 	pbsnode_list_t 	*pnl;
@@ -2021,9 +2015,8 @@ resv_exclusive_handler(resc_resv *presv)
 	int	share_resv = VNS_DFLT_SHARED;
 	char		*scdsel;
 
-	patresc = &presv->ri_wattr[(int) RESV_ATR_resource];
 	prsdef = &svr_resc_def[RESC_PLACE];
-	pplace = find_resc_entry(patresc, prsdef);
+	pplace = find_resc_entry(get_rattr(presv, RESV_ATR_resource), prsdef);
 	if (pplace && pplace->rs_value.at_val.at_str) {
 		if ((place_sharing_type(pplace->rs_value.at_val.at_str,
 			VNS_FORCE_EXCLHOST) != VNS_UNSET) ||
@@ -2038,12 +2031,12 @@ resv_exclusive_handler(resc_resv *presv)
 	}
 
 	if (share_resv != VNS_FORCE_EXCL) {
-		scdsel = presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_val.at_str;
+		scdsel = get_rattr_str(presv, RESV_ATR_SchedSelect);
 		if (scdsel && strstr(scdsel, "aoe="))
 			share_resv = VNS_FORCE_EXCL;
 	}
 	for (pnl = presv->ri_pbsnode_list; pnl != NULL; pnl= pnl->next) {
-		share_node = pnl->vnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long;
+		share_node = get_nattr_long(pnl->vnode, ND_ATR_Sharing);
 
 		/*
 		 * set node state to resv-exclusive if either node forces exclusive
@@ -2091,9 +2084,8 @@ find_aoe_from_request(resc_resv *presv)
 	if (presv == NULL)
 		return NULL;
 
-	if (presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_val.at_str) {
+	if ((q = get_rattr_str(presv, RESV_ATR_SchedSelect)) != NULL) {
 		/* just get first appearance of aoe */
-		q = presv->ri_wattr[(int)RESV_ATR_SchedSelect].at_val.at_str;
 		if ((p = strstr(q, "aoe=")) != NULL) {
 			p += 4; /* strlen("aoe=") = 4 */
 			/* get length of aoe name in i. */
@@ -2186,6 +2178,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 	char *prq_group;
 	int *prq_dir;
 	pbs_list_head *prq_pair;
+	attribute *attr;
 
 #ifndef PBS_MOM
 	/* if this is a sub job of an array job, then check to see if the */
@@ -2260,9 +2253,9 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 		strcpy(prq_jobid, pjob->ji_qs.ji_jobid);
 		get_jobowner(get_jattr_str(pjob, JOB_ATR_job_owner), prq_owner);
 		get_jobowner(get_jattr_str(pjob, JOB_ATR_euser), prq_user);
-		if ((pjob->ji_wattr[JOB_ATR_egroup].at_flags & ATR_VFLAG_DEFLT) == 0 &&
-			get_jattr_str(pjob, JOB_ATR_egroup) != 0)
-			strcpy(prq_group, get_jattr_str(pjob, JOB_ATR_egroup));
+		attr = get_jattr(pjob, JOB_ATR_egroup);
+		if ((attr->at_flags & ATR_VFLAG_DEFLT) == 0 && get_attr_str(attr) != 0)
+			strcpy(prq_group, get_attr_str(attr));
 		else
 			prq_group[0] = '\0';	/* default: use login group */
 
@@ -2318,7 +2311,6 @@ static int
 is_join(job *pjob, enum job_atr ati)
 {
 	char       key;
-	attribute *pattr;
 	char	  *pd;
 
 	if (ati == JOB_ATR_outpath)
@@ -2327,9 +2319,8 @@ is_join(job *pjob, enum job_atr ati)
 		key = 'e';
 	else
 		return (0);
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
-	if (is_attr_set(pattr)) {
-		pd = get_attr_str(pattr);
+	if (is_jattr_set(pjob, JOB_ATR_join)) {
+		pd = get_jattr_str(pjob, JOB_ATR_join);
 		if (pd && *pd && (*pd != 'n')) {
 			/* if not the first letter, and in list - is joined */
 			if ((*pd != key) && (strchr(pd+1, (int)key)))
@@ -2357,14 +2348,13 @@ cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
 {
 	char *from;
 	char  key;
-	attribute *jkpattr;
-	attribute *pathattr = &pjob->ji_wattr[(int)ati];
 	char *suffix;
 	char *to = NULL;
+	char *keep;
 
 	/* if the job is interactive, don't bother to return output file */
 
-	if (pjob->ji_wattr[JOB_ATR_interactive].at_flags && get_jattr_long(pjob, JOB_ATR_interactive))
+	if (is_jattr_set(pjob, JOB_ATR_interactive) && get_jattr_long(pjob, JOB_ATR_interactive))
 		return NULL;
 
 	/* set up depending on which file */
@@ -2377,8 +2367,7 @@ cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
 		suffix = JOB_STDOUT_SUFFIX;
 	}
 
-	if ((pathattr->at_flags & ATR_VFLAG_SET) == 0) { /* This shouldn't be */
-
+	if (!is_jattr_set(pjob, ati)) { /* This shouldn't be */
 		(void)sprintf(log_buffer, "%c file missing", key);
 		log_event(PBSEVENT_ERROR|PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 			LOG_INFO,  pjob->ji_qs.ji_jobid, log_buffer);
@@ -2395,10 +2384,7 @@ cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
 	 * the keep list, MOM has already placed the file in the user's HOME
 	 * directory.  It don't need to be copied.
 	 */
-
-	jkpattr = &pjob->ji_wattr[(int)JOB_ATR_keep];
-	if ((jkpattr->at_flags & ATR_VFLAG_SET) &&
-		strchr(jkpattr->at_val.at_str, key) && !strchr(jkpattr->at_val.at_str, 'd'))
+	if (is_jattr_set(pjob, JOB_ATR_keep) && strchr((keep = get_jattr_str(pjob, JOB_ATR_keep)), key) && !strchr(keep, 'd'))
 		return (preq);
 
 	/*
@@ -2407,19 +2393,14 @@ cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
 	 */
 	if (is_jattr_set(pjob, JOB_ATR_exit_status)) {
 		if (get_jattr_long(pjob, JOB_ATR_exit_status) == JOB_EXEC_OK) {
-			jkpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
-			if (is_attr_set(jkpattr) && (strchr(jkpattr->at_val.at_str, key)))
+			if (is_jattr_set(pjob, JOB_ATR_remove) && (strchr(get_jattr_str(pjob, JOB_ATR_remove), key)))
 				return (preq);
 		}
 	}
 
 	/* else go with the supplied name */
-
-	to = malloc(strlen(pathattr->at_val.at_str) + 1);
-	if (to) {
-		(void)strcpy(to, pathattr->at_val.at_str);
-
-	} else
+	to = strdup(get_jattr_str(pjob, ati));
+	if (to == NULL)
 		return (preq);	/* cannot continue with this one */
 
 	/* build up the name used by MOM as the from name */
@@ -2456,18 +2437,16 @@ cpy_stage(struct batch_request *preq, job *pjob, enum job_atr ati, int direction
 {
 	int		      i;
 	char		     *from;
-	attribute 	     *pattr;
 	struct array_strings *parst;
 	char 		     *plocal;
 	char		     *prmt;
 	char		     *to;
 
-	pattr = &pjob->ji_wattr[(int)ati];
-	if (is_attr_set(pattr)) {
+	if (is_jattr_set(pjob, ati)) {
 
 		/* at last, we know we have files to stage out/in */
 
-		parst = pattr->at_val.at_arst;
+		parst = get_jattr_arst(pjob, ati);
 		for (i = 0; i<parst->as_usedptr; ++i) {
 			plocal = parst->as_string[i];
 			prmt   = strchr(plocal, (int)'@');

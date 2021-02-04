@@ -561,8 +561,8 @@ process_request(int sfds)
 			"", msg_auth_request, request->rq_type, request->rq_user,
 			request->rq_host, conn->cn_physhost, sfds);
 
-		if (server.sv_attr[(int)SVR_ATR_acl_krb_realm_enable].at_val.at_long) {
-			if (acl_check(&server.sv_attr[(int)SVR_ATR_acl_krb_realms], conn->cn_credid, ACL_Host) == 0) {
+		if (get_sattr_long(SVR_ATR_acl_krb_realm_enable)) {
+			if (acl_check(get_sattr(SVR_ATR_acl_krb_realms), conn->cn_credid, ACL_Host) == 0) {
 				req_reject(PBSE_PERM, 0, request);
 				close_client(sfds);
 				return;
@@ -575,12 +575,11 @@ process_request(int sfds)
 #endif
 
 	/* is the request from a host acceptable to the server */
-	if ((access_by_krb == 0) && (server.sv_attr[(int)SVR_ATR_acl_host_enable].at_val.at_long)) {
+	if (access_by_krb == 0 && get_sattr_long(SVR_ATR_acl_host_enable)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;
-		if ((server.sv_attr[SVR_ATR_acl_host_moms_enable].at_flags & ATR_VFLAG_SET) &&
-			(server.sv_attr[(int)SVR_ATR_acl_host_moms_enable].at_val.at_long == 1)) {
+		if (is_sattr_set(SVR_ATR_acl_host_moms_enable) && get_sattr_long(SVR_ATR_acl_host_moms_enable) == 1) {
 			isanode = find_nodebyaddr(get_connectaddr(sfds));
 
 			if ((isanode != NULL) && (isanode->nd_state & INUSE_DELETED))
@@ -588,7 +587,7 @@ process_request(int sfds)
 		}
 
 		if (isanode == NULL) {
-			if ((acl_check(&server.sv_attr[(int)SVR_ATR_acl_hosts],
+			if ((acl_check(get_sattr(SVR_ATR_acl_hosts),
 				request->rq_host, ACL_Host) == 0) &&
 				(strcasecmp(server_host, request->rq_host) != 0)) {
 					req_reject(PBSE_BADHOST, 0, request);
@@ -653,7 +652,7 @@ process_request(int sfds)
 
 	/* if server shutting down, disallow new jobs and new running */
 
-	if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long > SV_STATE_RUN) {
+	if (get_sattr_long(SVR_ATR_State) > SV_STATE_RUN) {
 		switch (request->rq_type) {
 			case PBS_BATCH_AsyrunJob:
 			case PBS_BATCH_AsyrunJob_ack:

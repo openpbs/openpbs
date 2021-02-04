@@ -415,7 +415,7 @@ recov_sched_cb(pbs_db_obj_info_t *dbobj, int *refreshed)
 	if ((psched = sched_recov_db(dbsched->sched_name, NULL)) != NULL) {
 		if(!strncmp(dbsched->sched_name, PBS_DFLT_SCHED_NAME, strlen(PBS_DFLT_SCHED_NAME)))
 			dflt_scheduler = psched;
-		psched->sc_conn_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
+		psched->sc_conn_addr = get_hostaddr(get_sched_attr_str(psched, SCHED_ATR_SchedHost));
 		set_scheduler_flag(SCH_CONFIGURE, psched);
 		*refreshed = 1;
 	}

@@ -149,6 +149,11 @@ PyInit__pbs_ifl(void) {
 #endif
 
 int
+node_state(attribute *new, void *pnode, int actmode) {
+	return 0;
+}
+
+int
 set_resources_min_max(attribute *old, attribute *new, enum batch_op op) {
 	return (0);
 }
@@ -205,12 +210,12 @@ save_nodes_db(int flag, void *pmom) {
 }
 
 void
-update_state_ct(attribute *pattr, int *ct_array, char *buf) {
+update_state_ct(attribute *pattr, int *ct_array, attribute_def *attr_def) {
 	return;
 }
 
 void
-update_license_ct(attribute *pattr, char *buf) {
+update_license_ct() {
 	return;
 }
 
@@ -521,7 +526,7 @@ action_max_run_subjobs(attribute *pattr, void *pobject, int actmode)
 }
 
 int
-decode_rcost(struct attribute *patr, char *name, char *rescn, char *val) {
+decode_rcost(attribute *patr, char *name, char *rescn, char *val) {
 	return 0;
 }
 
@@ -532,7 +537,7 @@ encode_rcost(const attribute *attr, pbs_list_head *phead, char *atname,
 }
 
 int
-set_rcost(struct attribute *old, struct attribute *new, enum batch_op op) {
+set_rcost(attribute *old, attribute *new, enum batch_op op) {
 	return (0);
 }
 
@@ -593,7 +598,7 @@ comp_chkpnt(attribute *attr, attribute *with) {
 }
 
 int
-decode_depend(struct attribute *patr, char *name, char *rescn, char *val) {
+decode_depend(attribute *patr, char *name, char *rescn, char *val) {
 	return (0);
 }
 
@@ -604,17 +609,17 @@ encode_depend(const attribute *attr, pbs_list_head *phead, char *atname,
 }
 
 int
-set_depend(struct attribute *attr, struct attribute *new, enum batch_op op) {
+set_depend(attribute *attr, attribute *new, enum batch_op op) {
 	return (0);
 }
 
 int
-comp_depend(struct attribute *attr, struct attribute *with) {
+comp_depend(attribute *attr, attribute *with) {
 	return (-1);
 }
 
 void
-free_depend(struct attribute *attr) {
+free_depend(attribute *attr) {
 	return;
 }
 
@@ -659,7 +664,7 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode) {
 }
 
 int
-decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val) {
+decode_Mom_list(attribute *patr, char *name, char *rescn, char *val) {
 	return (0);
 }
 

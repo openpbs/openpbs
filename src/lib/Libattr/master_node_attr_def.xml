@@ -91,12 +91,24 @@
    <attributes>
       <member_index>ND_ATR_Mom</member_index>
       <member_name>ATTR_NODE_Mom</member_name>
-      <member_at_decode>decode_Mom_list</member_at_decode>
+      <member_at_decode>
+#ifndef PBS_MOM
+      decode_Mom_list
+#else
+      decode_null
+#endif
+      </member_at_decode>
       <member_at_encode>encode_arst</member_at_encode>
       <member_at_set>set_arst_uniq</member_at_set>
       <member_at_comp>comp_arst</member_at_comp>
       <member_at_free>free_arst</member_at_free>
-      <member_at_action>set_node_host_name</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      set_node_host_name
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>MGR_ONLY_SET</member_at_flags>
       <member_at_type>ATR_TYPE_ARST</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -113,7 +125,13 @@
       <member_at_set>set_l</member_at_set>
       <member_at_comp>comp_l</member_at_comp>
       <member_at_free>free_null</member_at_free>
-      <member_at_action>set_node_mom_port</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      set_node_mom_port
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR</member_at_flags>
       <member_at_type>ATR_TYPE_LONG</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -164,7 +182,15 @@
       <member_at_set>set_node_state</member_at_set>
       <member_at_comp>comp_null</member_at_comp>
       <member_at_free>free_null</member_at_free>
-      <member_at_action>node_state</member_at_action>
+      <member_at_action>
+#ifdef PBS_MOM
+      NULL_FUNC
+#elif PBS_PYTHON
+      NULL_FUNC
+#else
+      node_state
+#endif
+      </member_at_action>
       <member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
       <member_at_type>ATR_TYPE_SHORT</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -181,7 +207,13 @@
       <member_at_set>set_l</member_at_set>
       <member_at_comp>comp_l</member_at_comp>
       <member_at_free>free_null</member_at_free>
-      <member_at_action>node_pcpu_action</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_pcpu_action
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>READ_ONLY | ATR_DFLAG_SvWR</member_at_flags>
       <member_at_type>ATR_TYPE_LONG</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -334,7 +366,13 @@
       <member_at_set>set_resc</member_at_set>
       <member_at_comp>comp_resc</member_at_comp>
       <member_at_free>free_resc</member_at_free>
-      <member_at_action>node_np_action</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_np_action
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>NO_USER_SET</member_at_flags>
       <member_at_type>ATR_TYPE_RESC</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -368,7 +406,13 @@
       <member_at_set>set_str</member_at_set>
       <member_at_comp>comp_str</member_at_comp>
       <member_at_free>free_str</member_at_free>
-      <member_at_action>node_queue_action</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_queue_action
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>MGR_ONLY_SET</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -385,7 +429,13 @@
       <member_at_set>set_str</member_at_set>
       <member_at_comp>comp_str</member_at_comp>
       <member_at_free>free_str</member_at_free>
-      <member_at_action>node_comment</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_comment
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -453,7 +503,13 @@
       <member_at_set>set_b</member_at_set>
       <member_at_comp>comp_b</member_at_comp>
       <member_at_free>free_null</member_at_free>
-      <member_at_action>node_prov_enable_action</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_prov_enable_action
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
       <member_at_type>ATR_TYPE_BOOL</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -470,7 +526,13 @@
       <member_at_set>set_str</member_at_set>
       <member_at_comp>comp_str</member_at_comp>
       <member_at_free>free_str</member_at_free>
-      <member_at_action>node_current_aoe_action</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_current_aoe_action
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -547,7 +609,13 @@
       <member_at_set>set_str</member_at_set>
       <member_at_comp>comp_str</member_at_comp>
       <member_at_free>free_str</member_at_free>
-      <member_at_action>set_node_topology</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      set_node_topology
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>ATR_DFLAG_SSET | ATR_DFLAG_NOSAVM</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -560,7 +628,13 @@
       <member_at_set>set_l</member_at_set>
       <member_at_comp>comp_l</member_at_comp>
       <member_at_free>free_null</member_at_free>
-      <member_at_action>chk_vnode_pool</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      chk_vnode_pool
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>MGR_ONLY_SET</member_at_flags>
       <member_at_type>ATR_TYPE_LONG</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -577,7 +651,13 @@
       <member_at_set>set_b</member_at_set>
       <member_at_comp>comp_b</member_at_comp>
       <member_at_free>free_null</member_at_free>
-      <member_at_action>node_prov_enable_action</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      node_prov_enable_action
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>MGR_ONLY_SET | ATR_DFLAG_SSET</member_at_flags>
       <member_at_type>ATR_TYPE_BOOL</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
@@ -611,7 +691,13 @@
       <member_at_set>set_str</member_at_set>
       <member_at_comp>comp_str</member_at_comp>
       <member_at_free>free_str</member_at_free>
-      <member_at_action>action_node_partition</member_at_action>
+      <member_at_action>
+#ifndef PBS_MOM
+      action_node_partition
+#else
+      NULL_FUNC
+#endif
+      </member_at_action>
       <member_at_flags>ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>

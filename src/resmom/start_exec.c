@@ -304,8 +304,7 @@ check_pwd(job *pjob)
 
 	/* get the group and supplimentary under which the job is to be run */
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_egroup].at_flags &
-		(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_egroup)) {
 
 		/* execution group specified - not defaulting to login group */
 
@@ -601,16 +600,15 @@ open_pty(job *pjob)
 int
 is_joined(job *pjob)
 {
-	attribute *pattr;
+	char *join;
 
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
-	if (is_attr_set(pattr) && (pattr->at_val.at_str[0] != 'n')) {
-		if ((pattr->at_val.at_str[0] == 'o') &&
-			(strchr(pattr->at_val.at_str, (int)'e') != 0)) {
-			return 1;
-		} else if ((pattr->at_val.at_str[0] == 'e') &&
-			(strchr(pattr->at_val.at_str, (int)'e') != 0)) {
-			return -1;
+	if (is_jattr_set(pjob, JOB_ATR_join)) {
+		join = get_jattr_str(pjob, JOB_ATR_join);
+		if (join[0] != 'n') {
+			if (join[0] == 'o' && strchr(join, (int) 'e') != 0)
+				return 1;
+			else if (join[0] == 'e' && strchr(join, (int) 'e') != 0)
+				return -1;
 		}
 	}
 	return 0;
@@ -1449,7 +1447,7 @@ static int
 job_setup(job *pjob, struct passwd **pwdparm)
 {
 	struct passwd		*pwdp;
-	attribute		*pattr;
+	char *chkpnt;
 
 	/*
 	 * get the password entry for the user under which the job is to be run
@@ -1463,6 +1461,7 @@ job_setup(job *pjob, struct passwd **pwdparm)
 		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
 			LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
 		pjob->ji_qs.ji_stime = time_now; /* for walltime */
+		set_jattr_l_slim(pjob, JOB_ATR_stime, time_now, SET);
 		return JOB_EXEC_FAILUID;
 	}
 	pjob->ji_qs.ji_un.ji_momt.ji_exuid = pjob->ji_grpcache->gc_uid;
@@ -1492,18 +1491,16 @@ job_setup(job *pjob, struct passwd **pwdparm)
 	/* Is the job to be periodic checkpointed */
 
 	pjob->ji_chkpttype = PBS_CHECKPOINT_NONE;
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_chkpnt];
-	if (is_attr_set(pattr)) {
-		if ((*pattr->at_val.at_str == 'c') &&
-			(*(pattr->at_val.at_str+1) == '=')) {
+	if (is_jattr_set(pjob, JOB_ATR_chkpnt)) {
+		chkpnt = get_jattr_str(pjob, JOB_ATR_chkpnt);	
+		if ((*chkpnt == 'c') && (*(chkpnt+1) == '=')) {
 			/* has cpu checkpoint time in minutes, convert to seconds */
 			pjob->ji_chkpttype = PBS_CHECKPOINT_CPUT;
-			pjob->ji_chkpttime = atoi(pattr->at_val.at_str+2) * 60;
-		} else if ((*pattr->at_val.at_str == 'w') &&
-			(*(pattr->at_val.at_str+1) == '=')) {
+			pjob->ji_chkpttime = atoi(chkpnt+2) * 60;
+		} else if ((*chkpnt == 'w') && (*(chkpnt+1) == '=')) {
 			/* has checkpoint walltime in minutes, convert to seconds */
 			pjob->ji_chkpttype = PBS_CHECKPOINT_WALLT;
-			pjob->ji_chkpttime = atoi(pattr->at_val.at_str+2) * 60;
+			pjob->ji_chkpttime = atoi(chkpnt+2) * 60;
 		}
 		pjob->ji_chkptnext = pjob->ji_chkpttime;
 	}
@@ -1812,15 +1809,15 @@ record_finish_exec(int sd)
 	 * these are set so that it will
 	 * return them to the Server on the first update below
 	 */
-	pjob->ji_wattr[(int)JOB_ATR_errpath].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_outpath].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_altid].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_jobdir].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_altid2].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_acct_id].at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_errpath))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_outpath))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_session_id))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_altid))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_state))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_substate))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_jobdir))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_altid2))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_acct_id))->at_flags |= ATR_VFLAG_MODIFY;
 
 	enqueue_update_for_send(pjob, IS_RESCUSED);
 	next_sample_time = min_check_poll;
@@ -2309,10 +2306,10 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	if (pjob == NULL)
 		return (1);
 
-	exec_vnode_hookset = pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_HOOK;
-	schedselect_hookset = pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_HOOK;
-	exec_host_hookset = pjob->ji_wattr[JOB_ATR_exec_host].at_flags & ATR_VFLAG_HOOK;
-	exec_host2_hookset = pjob->ji_wattr[JOB_ATR_exec_host2].at_flags & ATR_VFLAG_HOOK;
+	exec_vnode_hookset = (get_jattr(pjob, JOB_ATR_exec_vnode))->at_flags & ATR_VFLAG_HOOK;
+	schedselect_hookset = (get_jattr(pjob, JOB_ATR_SchedSelect))->at_flags & ATR_VFLAG_HOOK;
+	exec_host_hookset = (get_jattr(pjob, JOB_ATR_exec_host))->at_flags & ATR_VFLAG_HOOK;
+	exec_host2_hookset = (get_jattr(pjob, JOB_ATR_exec_host2))->at_flags & ATR_VFLAG_HOOK;
 	if (!exec_vnode_hookset || !schedselect_hookset ||
 	   (!exec_host_hookset && !exec_host2_hookset)) {
 		return (1);
@@ -2369,12 +2366,12 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	}
 
 	/* clear the hook set flag since we've sent the update */
-	pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags &= ~ATR_VFLAG_HOOK;
+	(get_jattr(pjob, JOB_ATR_exec_vnode))->at_flags &= ~ATR_VFLAG_HOOK;
 	if (exec_host2_hookset)
-		pjob->ji_wattr[JOB_ATR_exec_host2].at_flags &= ~ATR_VFLAG_HOOK;
+		(get_jattr(pjob, JOB_ATR_exec_host2))->at_flags &= ~ATR_VFLAG_HOOK;
 	else
-		pjob->ji_wattr[JOB_ATR_exec_host].at_flags &= ~ATR_VFLAG_HOOK;
-	pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags &= ~ATR_VFLAG_HOOK;
+		(get_jattr(pjob, JOB_ATR_exec_host))->at_flags &= ~ATR_VFLAG_HOOK;
+	(get_jattr(pjob, JOB_ATR_SchedSelect))->at_flags &= ~ATR_VFLAG_HOOK;
 
 	if (pjob->ji_numnodes > 1) {
 		/* get cmd_ack from parent that it received
@@ -2509,8 +2506,8 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 
 	job_save(pjob);
 	/* set modify flag on the job attributes that will be sent to the server */
-	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_exec_vnode))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_SchedSelect))->at_flags |= ATR_VFLAG_MODIFY;
 	enqueue_update_for_send(pjob, IS_RESCUSED);
 
 	return (0);
@@ -2785,8 +2782,6 @@ finish_exec(job *pjob)
 	pbs_socklen_t		len;
 	int			is_interactive = 0;
 	int			numthreads;
-	attribute		*pattr;
-	attribute		*pattri;
 #if SHELL_INVOKE == 1
 	int			pipe_script[] = {-1, -1};
 #endif
@@ -2846,9 +2841,8 @@ finish_exec(job *pjob)
 	ptc = -1; /* No current master pty */
 
 	memset(&sjr, 0, sizeof(sjr));
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-	if (is_attr_set(pattr))
-		nodemux = (int)pattr->at_val.at_long;
+	if (is_jattr_set(pjob, JOB_ATR_nodemux))
+		nodemux = get_jattr_long(pjob, JOB_ATR_nodemux);
 
 
 	if ((i = job_setup(pjob, &pwdp)) != JOB_EXEC_OK) {
@@ -2905,8 +2899,7 @@ finish_exec(job *pjob)
 		port_err = (int)ntohs(saddr.sin_port);
 	}
 
-	pattri = &pjob->ji_wattr[(int)JOB_ATR_interactive];
-	if (is_attr_set(pattri) && pattri->at_val.at_long != 0) {
+	if (is_jattr_set(pjob, JOB_ATR_interactive) && get_jattr_long(pjob, JOB_ATR_interactive) != 0) {
 
 		is_interactive = 1;
 
@@ -2923,13 +2916,8 @@ finish_exec(job *pjob)
 		FDMOVE(ptc)
 
 		/* save pty name in job output/error file name */
-
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_outpath];
-		job_attr_def[(int)JOB_ATR_outpath].at_free(pattr);
-		set_attr_generic(pattr, &job_attr_def[JOB_ATR_outpath], pts_name, NULL, INTERNAL);
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_errpath];
-		job_attr_def[(int)JOB_ATR_errpath].at_free(pattr);
-		set_attr_generic(pattr, &job_attr_def[JOB_ATR_errpath], pts_name, NULL, INTERNAL);
+		set_jattr_str_slim(pjob, JOB_ATR_outpath, pts_name, NULL);
+		set_jattr_str_slim(pjob, JOB_ATR_errpath, pts_name, NULL);
 
 #if SHELL_INVOKE == 1
 	} else {
@@ -3145,6 +3133,7 @@ finish_exec(job *pjob)
 	}
 
 	pjob->ji_qs.ji_stime = time_now;
+	set_jattr_l_slim(pjob, JOB_ATR_stime, time_now, SET);
 	pjob->ji_sampletim  = time_now;
 
 	/*
@@ -3345,17 +3334,7 @@ finish_exec(job *pjob)
 		}
 
 		/* record job working directory in jobdir attribute */
-		if (sandbox_private) {
-			/* job is homed in jobdir */
-			decode_str(&pjob->ji_wattr[JOB_ATR_jobdir],
-				ATTR_jobdir, NULL, pbs_jobdir);
-		} else {
-			/* job is homed in user HOME */
-			decode_str(&pjob->ji_wattr[JOB_ATR_jobdir],
-				ATTR_jobdir, NULL, pwdp->pw_dir);
-		}
-		pjob->ji_wattr[(int)JOB_ATR_jobdir].at_flags =
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
+		set_jattr_str_slim(pjob, JOB_ATR_jobdir, sandbox_private ? pbs_jobdir : pwdp->pw_dir, NULL);
 #endif	/* SHELL_INVOKE */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -3463,7 +3442,7 @@ finish_exec(job *pjob)
 	/*
 	 * set up the Environmental Variables to be given to the job
 	 */
-	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
+	vstrs = get_jattr_arst(pjob, JOB_ATR_variables);
 	pjob->ji_env.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		EXTRA_ENV_PTRS;
 	pjob->ji_env.v_used   = 0;
@@ -3652,8 +3631,7 @@ finish_exec(job *pjob)
 
 		/* get host where qsub resides */
 
-		phost = arst_string("PBS_O_HOST",
-			&pjob->ji_wattr[(int)JOB_ATR_variables]);
+		phost = arst_string("PBS_O_HOST", get_jattr(pjob, JOB_ATR_variables));
 		if ((phost == NULL) ||
 			((phost = strchr(phost, (int)'=')) == NULL)) {
 			log_joberr(-1, __func__, "PBS_O_HOST not set",
@@ -3661,7 +3639,7 @@ finish_exec(job *pjob)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 		}
 
-		qsub_sock = conn_qsub(phost+1, pattri->at_val.at_long);
+		qsub_sock = conn_qsub(phost+1, get_jattr_long(pjob, JOB_ATR_interactive));
 		if (qsub_sock < 0) {
 			sprintf(log_buffer, "cannot open qsub sock for %s",
 				pjob->ji_qs.ji_jobid);
@@ -4215,10 +4193,8 @@ if (site_job_setup(pjob) != 0) {
 		 * Call decode_xml_arg_list to decode XML string
 		 * and store executable in shell and argument list in argv.
 		 */
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_executable];
-		pattri = &pjob->ji_wattr[(int)JOB_ATR_Arglist];
-		if (decode_xml_arg_list(pattr->at_val.at_str,
-			pattri->at_val.at_str, &shell, &argv) != 0) {
+		if (decode_xml_arg_list(get_jattr_str(pjob, JOB_ATR_executable),
+			get_jattr_str(pjob, JOB_ATR_Arglist), &shell, &argv) != 0) {
 			starter_return(upfds, downfds, JOB_EXEC_FAIL2, &sjr);
 		}
 		job_has_executable = 1;
@@ -4609,7 +4585,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	u_long	ipaddr;
 	struct	array_strings	*vstrs;
 	struct  startjob_rtn sjr;
-	attribute		*pattr;
 	char	*pbs_jobdir; /* staging and execution directory of this job */
 	int			hook_errcode = 0;
 	char			hook_msg[HOOK_MSG_SIZE+1];
@@ -4745,7 +4720,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	for (j=0, ebsize=0; envp[j]; j++)
 		ebsize += strlen(envp[j]);
-	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
+	vstrs = get_jattr_arst(pjob, JOB_ATR_variables);
 	pjob->ji_env.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		j + EXTRA_ENV_PTRS;
 	pjob->ji_env.v_used   = 0;
@@ -5032,10 +5007,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			(void)close(fd);
 	}
 
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
 	/* If nodemux is not already set by the caller, check job's JOB_ATR_nodemux attribute. */
-	if (!nodemux && (is_attr_set(pattr)))
-		nodemux = (int)pattr->at_val.at_long;
+	if (!nodemux && (is_jattr_set(pjob, JOB_ATR_nodemux)))
+		nodemux = get_jattr_long(pjob, JOB_ATR_nodemux);
 
 	if (pjob->ji_numnodes > 1) {
 		if (nodemux) {
@@ -6071,7 +6045,6 @@ start_exec(job *pjob)
 	}
 
 	if (nodenum > 1) {
-		attribute *pattr;
 		int nodemux = 0;
 		int mtfd = -1;
 		int com;
@@ -6095,9 +6068,8 @@ start_exec(job *pjob)
 		 * This is why pjob->ji_numnodes = pjob->numrescs + 1.
 		 */
 		CLEAR_HEAD(phead);
-		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {
-			(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
+			(void)(job_attr_def+i)->at_encode(get_jattr(pjob, i), &phead,
 				(job_attr_def+i)->at_name, NULL,
 				ATR_ENCODE_MOM, NULL);
 		}
@@ -6140,9 +6112,8 @@ start_exec(job *pjob)
 			}
 		}
 
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-		if (is_attr_set(pattr))
-			nodemux = (int)pattr->at_val.at_long;
+		if (is_jattr_set(pjob, JOB_ATR_nodemux))
+			nodemux = get_jattr_long(pjob, JOB_ATR_nodemux);
 
 		/*
 		 **		Send out a JOIN_JOB/RESTART message to all the MOM's in
@@ -6693,7 +6664,6 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	int   fds;
 	int   keeping = 0;
 	char *path;
-	attribute *patr;
 	struct stat sb;
 
 	if (!pjob)
@@ -6710,14 +6680,9 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	 * protected directory,  otherwise check others for security.
 	 */
 
-	patr = &pjob->ji_wattr[(int)JOB_ATR_interactive];
-	if (((is_attr_set(patr)) != 0) &&
-		(patr->at_val.at_long > 0)) {
-
+	if (is_jattr_set(pjob, JOB_ATR_interactive) != 0 && get_jattr_long(pjob, JOB_ATR_interactive) > 0)
 		fds = open_file_as_user(path, mode, 0644, exuid, exgid);
-
-	} else if (keeping) {
-
+	else if (keeping) {
 		/* The user is keeping the file in his Home directory or sandbox, */
 		/* both are safe and the file can be opened directly.             */
 		fds = open_file_as_user(path, mode, 0644, exuid, exgid);

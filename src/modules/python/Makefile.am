@@ -74,6 +74,11 @@ _pbs_v1_la_SOURCES = \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/setup_resc.c \
 	$(top_srcdir)/src/server/vnparse.c \
+	$(top_srcdir)/src/server/jattr_get_set.c \
+	$(top_srcdir)/src/server/sattr_get_set.c \
+	$(top_srcdir)/src/server/qattr_get_set.c \
+	$(top_srcdir)/src/server/nattr_get_set.c \
+	$(top_srcdir)/src/server/rattr_get_set.c \
 	pbs_v1_module_init.c
 _pbs_v1_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \

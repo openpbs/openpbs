@@ -73,12 +73,14 @@ pbs_mom_LDADD = \
 
 pbs_mom_SOURCES = \
 	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/node_attr_def.c \
 	$(top_builddir)/src/lib/Libattr/resc_def_all.c \
 	$(top_builddir)/src/lib/Libpython/shared_python_utils.c \
 	$(top_srcdir)/src/server/mom_info.c \
 	$(top_srcdir)/src/server/attr_recov.c \
 	$(top_srcdir)/src/server/dis_read.c \
 	$(top_srcdir)/src/server/jattr_get_set.c \
+	$(top_srcdir)/src/server/nattr_get_set.c \
 	$(top_srcdir)/src/server/job_func.c \
 	$(top_srcdir)/src/server/process_request.c \
 	$(top_srcdir)/src/server/reply_send.c \

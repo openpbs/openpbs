@@ -154,18 +154,14 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 		for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 				psched != NULL;
 				psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
-			attribute *jsf_attr = NULL;
-
-			jsf_attr = &(psched->sch_attr[SCHED_ATR_job_sort_formula]);
-			if (is_attr_set(jsf_attr)) {
-				if (strcmp(jsf_attr->at_val.at_str, formula) != 0)
+			if (is_sched_attr_set(psched, SCHED_ATR_job_sort_formula)) {
+				if (strcmp(get_sched_attr_str(psched, SCHED_ATR_job_sort_formula), formula) != 0)
 					return PBSE_SVR_SCHED_JSF_INCOMPAT;
 			}
 		}
 	} else {
 		/* Check if server's JSF is set to a different value */
-		if ((server.sv_attr[SVR_ATR_job_sort_formula].at_flags & ATR_VFLAG_SET) &&
-				strcmp(server.sv_attr[SVR_ATR_job_sort_formula].at_val.at_str, formula) != 0)
+		if (is_sattr_set(SVR_ATR_job_sort_formula) && strcmp(get_sattr_str(SVR_ATR_job_sort_formula), formula) != 0)
 			return PBSE_SVR_SCHED_JSF_INCOMPAT;
 	}
 
@@ -359,13 +355,13 @@ validate_job_formula(attribute *pattr, void *pobject, int actmode)
 			for (psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 					psched != NULL;
 					psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
-				rc = write_job_sort_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
+				rc = write_job_sort_formula(formula, get_sched_attr_str(psched, SCHED_ATR_sched_priv));
 				if (rc != PBSE_NONE)
 					goto validate_job_formula_exit;
 			}
 		} else {	/* Write formula to a specific sched's sched_priv */
 			psched = (pbs_sched *) pobject;
-			rc = write_job_sort_formula(formula, psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str);
+			rc = write_job_sort_formula(formula, get_sched_attr_str(psched, SCHED_ATR_sched_priv));
 			if (rc != PBSE_NONE)
 				goto validate_job_formula_exit;
 		}
@@ -427,9 +423,8 @@ sched_alloc(char *sched_name)
 
 	/* set the working attributes to "unspecified" */
 
-	for (i = 0; i < (int) SCHED_ATR_LAST; i++) {
-		clear_attr(&psched->sch_attr[i], &sched_attr_def[i]);
-	}
+	for (i = 0; i < (int) SCHED_ATR_LAST; i++)
+		clear_sched_attr(psched, i);
 
 	return (psched);
 }
@@ -469,15 +464,14 @@ pbs_sched *
 find_sched_from_partition(char *partition)
 {
 	pbs_sched *psched = NULL;
-	attribute *part_attr;
+
 	if (!partition)
 		return NULL;
 
 	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-		part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-		if (is_attr_set(part_attr)) {
-			if ((part_attr->at_val.at_str != NULL)
-			    && (!strcmp(partition, part_attr->at_val.at_str)))
+		if (is_sched_attr_set(psched, SCHED_ATR_partition)) {
+			char *value = get_sched_attr_str(psched, SCHED_ATR_partition);
+			if (value != NULL && !strcmp(partition, value))
 				return psched;
 		}
 	}
@@ -494,17 +488,11 @@ void
 sched_free(pbs_sched *psched)
 {
 	int i;
-	attribute *pattr;
-	attribute_def *pdef;
 
 	/* remove any malloc working attribute space */
 
-	for (i = 0; i < (int) SCHED_ATR_LAST; i++) {
-		pdef = &sched_attr_def[i];
-		pattr = &psched->sch_attr[i];
-
-		pdef->at_free(pattr);
-	}
+	for (i = 0; i < (int) SCHED_ATR_LAST; i++)
+		free_sched_attr(psched, i);
 
 	/* now free the main structure */
 	delete_link(&psched->sc_link);
@@ -599,8 +587,8 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 		while (psched != NULL) {
-			if (psched->sch_attr[SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) {
-				if (!strcmp(psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str, pattr->at_val.at_str)) {
+			if (is_sched_attr_set(psched, SCHED_ATR_sched_priv)) {
+				if (!strcmp(get_sched_attr_str(psched, SCHED_ATR_sched_priv), pattr->at_val.at_str)) {
 					if (psched != pobj) {
 						return PBSE_SCHED_PRIV_EXIST;
 					} else
@@ -639,8 +627,8 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
 		while (psched != NULL) {
-			if (psched->sch_attr[SCHED_ATR_sched_log].at_flags & ATR_VFLAG_SET) {
-				if (!strcmp(psched->sch_attr[SCHED_ATR_sched_log].at_val.at_str, pattr->at_val.at_str)) {
+			if (is_sched_attr_set(psched, SCHED_ATR_sched_log)) {
+				if (!strcmp(get_sched_attr_str(psched, SCHED_ATR_sched_log), pattr->at_val.at_str)) {
 					if (psched != pobj) {
 						return PBSE_SCHED_LOG_EXIST;
 					} else
@@ -671,9 +659,8 @@ int
 action_sched_iteration(attribute *pattr, void *pobj, int actmode)
 {
 	if (pobj == dflt_scheduler) {
-			server.sv_attr[SVR_ATR_scheduler_iteration].at_val.at_long = pattr->at_val.at_long;
-			server.sv_attr[SVR_ATR_scheduler_iteration].at_flags |= ATR_SET_MOD_MCACHE;
-			svr_save_db(&server);
+		set_sattr_l_slim(SVR_ATR_scheduler_iteration, pattr->at_val.at_long, SET);
+		svr_save_db(&server);
 	}
 	return PBSE_NONE;
 }
@@ -836,11 +823,11 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 		if (pobj == &server) {
 			/* set this attribute on main scheduler */
 			if (dflt_scheduler) {
-				sched_attr_def[(int) SCHED_ATR_scheduling].at_set(&dflt_scheduler->sch_attr[(int) SCHED_ATR_scheduling], pattr, SET);
+				set_attr_with_attr(&sched_attr_def[SCHED_ATR_scheduling], get_sched_attr(dflt_scheduler, SCHED_ATR_scheduling), pattr, SET);
 				sched_save_db(dflt_scheduler);
 			}
 		} else {
-			svr_attr_def[(int) SVR_ATR_scheduling].at_set(&server.sv_attr[SVR_ATR_scheduling], pattr, SET);
+			set_sattr_l_slim(SVR_ATR_scheduling, pattr->at_val.at_long, SET);
 			svr_save_db(&server);
 		}
 		if (actmode == ATR_ACTION_ALTER) {
@@ -869,88 +856,85 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 void
 set_sched_default(pbs_sched *psched, int from_scheduler)
 {
-	char *temp;
 	char dir_path[MAXPATHLEN +1] = {0};
 
 	if (!psched)
 		return;
 
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_sched_cycle_len]))
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_cycle_len]), &sched_attr_def[SCHED_ATR_sched_cycle_len], TOSTR(PBS_SCHED_CYCLE_LEN_DEFAULT), NULL, SET);
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_schediteration]))
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_schediteration]), &sched_attr_def[SCHED_ATR_schediteration], TOSTR(PBS_SCHEDULE_CYCLE), NULL, SET);
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_scheduling])) {
+	if (!is_sched_attr_set(psched, SCHED_ATR_sched_cycle_len))
+		set_sched_attr_l_slim(psched, SCHED_ATR_sched_cycle_len, PBS_SCHED_CYCLE_LEN_DEFAULT, SET);
+	if (!is_sched_attr_set(psched, SCHED_ATR_schediteration))
+		set_sched_attr_l_slim(psched, SCHED_ATR_schediteration, PBS_SCHEDULE_CYCLE, SET);
+	if (!is_sched_attr_set(psched, SCHED_ATR_scheduling)) {
 		if (psched != dflt_scheduler)
-			temp = "0";
+			set_sched_attr_b_slim(psched, SCHED_ATR_scheduling, FALSE, SET);
 		else
-			temp = "1";
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_scheduling]), &sched_attr_def[SCHED_ATR_scheduling], temp, NULL, SET);
+			set_sched_attr_b_slim(psched, SCHED_ATR_scheduling, TRUE, SET);
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_sched_state])) {
+	if (!is_sched_attr_set(psched, SCHED_ATR_sched_state)) {
 		if (psched != dflt_scheduler)
-			temp = SC_DOWN;
+			set_sched_attr_str_slim(psched, SCHED_ATR_sched_state, SC_DOWN, NULL);
 		else
-			temp = SC_IDLE;
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_state]), &sched_attr_def[SCHED_ATR_sched_state], temp, NULL, SET);
+			set_sched_attr_str_slim(psched, SCHED_ATR_sched_state, SC_IDLE, NULL);
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_sched_priv])) {
+	if (!is_sched_attr_set(psched, SCHED_ATR_sched_priv)) {
 		if (psched != dflt_scheduler)
 			(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_priv_%s", pbs_conf.pbs_home_path, psched->sc_name);
 		else
 			(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_priv", pbs_conf.pbs_home_path);
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_priv]), &sched_attr_def[SCHED_ATR_sched_priv], dir_path, NULL, SET);
+		set_sched_attr_str_slim(psched, SCHED_ATR_sched_priv, dir_path, NULL);
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_sched_log])) {
+	if (!is_sched_attr_set(psched, SCHED_ATR_sched_log)) {
 		if (psched != dflt_scheduler)
 			(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_logs_%s", pbs_conf.pbs_home_path, psched->sc_name);
 		else
 			(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_logs", pbs_conf.pbs_home_path);
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_sched_log]), &sched_attr_def[SCHED_ATR_sched_log], dir_path, NULL, SET);
+		set_sched_attr_str_slim(psched, SCHED_ATR_sched_log, dir_path, NULL);
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_log_events])) {
-		set_attr_l(&psched->sch_attr[SCHED_ATR_log_events], SCHED_LOG_DFLT, SET);
-		psched->sch_attr[SCHED_ATR_log_events].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_log_events)) {
+		set_sched_attr_l_slim(psched, SCHED_ATR_log_events, SCHED_LOG_DFLT, SET);
+		(get_sched_attr(psched, SCHED_ATR_log_events))->at_flags |= ATR_VFLAG_DEFLT;
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_queue_prio])) {
-		set_attr_l(&psched->sch_attr[SCHED_ATR_preempt_queue_prio], PBS_PREEMPT_QUEUE_PRIO_DEFAULT, SET);
-		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_queue_prio)) {
+		set_sched_attr_l_slim(psched, SCHED_ATR_preempt_queue_prio, PBS_PREEMPT_QUEUE_PRIO_DEFAULT, SET);
+		(get_sched_attr(psched, SCHED_ATR_preempt_queue_prio))->at_flags |= ATR_VFLAG_DEFLT;
 
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_prio])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_prio]), &sched_attr_def[SCHED_ATR_preempt_prio], PBS_PREEMPT_PRIO_DEFAULT, NULL, SET);
-		psched->sch_attr[SCHED_ATR_preempt_prio].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_prio)) {
+		set_sched_attr_str_slim(psched, SCHED_ATR_preempt_prio, PBS_PREEMPT_PRIO_DEFAULT, NULL);
+		(get_sched_attr(psched, SCHED_ATR_preempt_prio))->at_flags |= ATR_VFLAG_DEFLT;
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_order])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_order]), &sched_attr_def[SCHED_ATR_preempt_order], PBS_PREEMPT_ORDER_DEFAULT, NULL, SET);
-		action_sched_preempt_order(&psched->sch_attr[SCHED_ATR_preempt_order], psched, ATR_ACTION_ALTER);
-		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_SET_MOD_MCACHE | ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_order)) {
+		set_sched_attr_str_slim(psched, SCHED_ATR_preempt_order, PBS_PREEMPT_ORDER_DEFAULT, NULL);
+		action_sched_preempt_order(get_sched_attr(psched, SCHED_ATR_preempt_order), psched, ATR_ACTION_ALTER);
+		(get_sched_attr(psched, SCHED_ATR_preempt_order))->at_flags |= ATR_VFLAG_DEFLT;
 
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_preempt_sort])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_preempt_sort]), &sched_attr_def[SCHED_ATR_preempt_sort], PBS_PREEMPT_SORT_DEFAULT, NULL, SET);
-		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_preempt_sort)) {
+		set_sched_attr_str_slim(psched, SCHED_ATR_preempt_sort, PBS_PREEMPT_SORT_DEFAULT, NULL);
+		(get_sched_attr(psched, SCHED_ATR_preempt_sort))->at_flags |= ATR_VFLAG_DEFLT;
 
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_server_dyn_res_alarm])) {
-		set_attr_l(&psched->sch_attr[SCHED_ATR_server_dyn_res_alarm], PBS_SERVER_DYN_RES_ALARM_DEFAULT, SET);
-		psched->sch_attr[SCHED_ATR_server_dyn_res_alarm].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_server_dyn_res_alarm)) {
+		set_sched_attr_l_slim(psched, SCHED_ATR_server_dyn_res_alarm, PBS_SERVER_DYN_RES_ALARM_DEFAULT, SET);
+		(get_sched_attr(psched, SCHED_ATR_server_dyn_res_alarm))->at_flags |= ATR_VFLAG_DEFLT;
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_job_run_wait])) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait], RUN_WAIT_RUNJOB_HOOK, NULL, SET);
-		psched->sch_attr[SCHED_ATR_job_run_wait].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_job_run_wait)) {
+		set_sched_attr_str_slim(psched, SCHED_ATR_job_run_wait, RUN_WAIT_RUNJOB_HOOK, NULL);
+		(get_sched_attr(psched, SCHED_ATR_job_run_wait))->at_flags |= ATR_VFLAG_DEFLT;
 	}
-	if (!is_attr_set(&psched->sch_attr[SCHED_ATR_throughput_mode]) && strcmp(get_attr_str(&(psched->sch_attr[SCHED_ATR_job_run_wait])), RUN_WAIT_NONE)) {
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode], ATR_TRUE, NULL, SET);
-		psched->sch_attr[SCHED_ATR_throughput_mode].at_flags |= ATR_VFLAG_DEFLT;
+	if (!is_sched_attr_set(psched, SCHED_ATR_throughput_mode) && strcmp(get_sched_attr_str(psched, SCHED_ATR_job_run_wait), RUN_WAIT_NONE)) {
+		set_sched_attr_l_slim(psched, SCHED_ATR_throughput_mode, TRUE, SET);
+		(get_sched_attr(psched, SCHED_ATR_throughput_mode))->at_flags |= ATR_VFLAG_DEFLT;
 	}
 	if (psched == dflt_scheduler) {
-		if (!is_attr_set(&psched->sch_attr[SCHED_ATR_partition])) {
-			set_attr_generic(&(psched->sch_attr[SCHED_ATR_partition]), &sched_attr_def[SCHED_ATR_partition], DEFAULT_PARTITION, NULL, SET);
-			psched->sch_attr[SCHED_ATR_partition].at_flags |= ATR_VFLAG_DEFLT;
+		if (!is_sched_attr_set(psched, SCHED_ATR_partition)) {
+			set_sched_attr_str_slim(psched, SCHED_ATR_partition, DEFAULT_PARTITION, NULL);
+			(get_sched_attr(psched, SCHED_ATR_partition))->at_flags |= ATR_VFLAG_DEFLT;
 		}
-		if (!is_attr_set(&psched->sch_attr[SCHED_ATR_SchedHost])) {
-			set_attr_generic(&(psched->sch_attr[SCHED_ATR_SchedHost]), &sched_attr_def[SCHED_ATR_SchedHost], server_host, NULL, SET);
-			psched->sch_attr[SCHED_ATR_SchedHost].at_flags |= ATR_VFLAG_DEFLT;
+		if (!is_sched_attr_set(psched, SCHED_ATR_SchedHost)) {
+			set_sched_attr_str_slim(psched, SCHED_ATR_SchedHost, server_host, NULL);
+			(get_sched_attr(psched, SCHED_ATR_SchedHost))->at_flags |= ATR_VFLAG_DEFLT;
 			psched->sc_conn_addr = get_hostaddr(server_host);
 		}
 	}
@@ -977,7 +961,6 @@ int
 action_sched_partition(attribute *pattr, void *pobj, int actmode)
 {
 	pbs_sched* psched;
-	attribute *part_attr;
 
 	if (actmode == ATR_ACTION_RECOV)
 		return PBSE_NONE;
@@ -992,8 +975,7 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 		if (psched == pobj)
 			continue;
-		part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-		if (is_attr_set(part_attr) && (!strcmp(pattr->at_val.at_str, part_attr->at_val.at_str)))
+		if (is_sched_attr_set(psched, SCHED_ATR_partition) && !strcmp(pattr->at_val.at_str, get_sched_attr_str(psched, SCHED_ATR_partition)))
 			return PBSE_SCHED_PARTITION_ALREADY_EXISTS;
 	}
 
@@ -1069,10 +1051,9 @@ action_job_run_wait(attribute *pattr, void *pobj, int actmode)
 		psched = (pbs_sched *) pobj;
 		if (tp_val == NULL)
 			/* No equivalent value of 'none' for throughput_mode, so unset it */
-			clear_attr(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode]);
+			clear_sched_attr(psched, SCHED_ATR_throughput_mode);
 		else
-			set_attr_generic(&(psched->sch_attr[SCHED_ATR_throughput_mode]), &sched_attr_def[SCHED_ATR_throughput_mode],
-				tp_val, NULL, SET);
+			set_sched_attr_str_slim(psched, SCHED_ATR_throughput_mode, tp_val, NULL);
 	}
 
 	return PBSE_NONE;
@@ -1103,7 +1084,7 @@ action_throughput_mode(attribute *pattr, void *pobj, int actmode)
 		else
 			jrw_val = RUN_WAIT_EXECJOB_HOOK;
 
-		set_attr_generic(&(psched->sch_attr[SCHED_ATR_job_run_wait]), &sched_attr_def[SCHED_ATR_job_run_wait], jrw_val, NULL, SET);
+		set_sched_attr_str_slim(psched, SCHED_ATR_job_run_wait, jrw_val, NULL);
 	}
 
 	/* Log a message letting user know that this attribute is deprecated */

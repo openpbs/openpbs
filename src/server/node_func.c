@@ -39,7 +39,7 @@
 
 
 /**
- * 
+ *
  * @brief
  *		various functions dealing with nodes, properties and
  *		 the following global variables:
@@ -212,7 +212,7 @@ status_nodeattrib(svrattrl *pal, struct pbsnode *pnode, int limit, int priv, pbs
 				break;
 			}
 			if ((padef+index)->at_flags & priv) {
-				rc = (padef+index)->at_encode(&pnode->nd_attr[index],
+				rc = (padef+index)->at_encode(get_nattr(pnode, index),
 					phead,
 					(padef+index)->at_name, NULL,
 					ATR_ENCODE_CLIENT, NULL);
@@ -233,7 +233,7 @@ status_nodeattrib(svrattrl *pal, struct pbsnode *pnode, int limit, int priv, pbs
 		for (index = 0; index < limit; index++) {
 			if ((padef+index)->at_flags & priv) {
 				rc = (padef+index)->at_encode(
-					&pnode->nd_attr[index],
+					get_nattr(pnode, index),
 					phead, (padef+index)->at_name,
 					NULL, ATR_ENCODE_CLIENT, NULL);
 				if (rc < 0) {
@@ -322,43 +322,35 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	/* first, clear the attributes */
 
 	for (i = 0; i < ND_ATR_LAST; i++)
-		clear_attr(&pnode->nd_attr[i], &node_attr_def[i]);
+		clear_attr(get_nattr(pnode, i), &node_attr_def[i]);
 
 	/* then, setup certain attributes */
-
-	pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
-	pnode->nd_attr[(int)ND_ATR_state].at_flags = ATR_VFLAG_SET;
+	set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 
 	if ((svr_inst_id = gen_svr_inst_id()) == NULL) {
 		log_err(errno, __func__, "unable to get server_instance_id");
 		return (PBSE_SYSTEM);
 	}
-	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_val.at_str = svr_inst_id;
-	pnode->nd_attr[(int)ND_ATR_server_inst_id].at_flags = ATR_VFLAG_SET;
+	set_nattr_str_slim(pnode, ND_ATR_server_inst_id, svr_inst_id, NULL);
+	(get_nattr(pnode, ND_ATR_server_inst_id))->at_flags |= ATR_VFLAG_DEFLT;
+	free(svr_inst_id);
 
-	pnode->nd_attr[(int)ND_ATR_ntype].at_val.at_short = pnode->nd_ntype;
-	pnode->nd_attr[(int)ND_ATR_ntype].at_flags = ATR_VFLAG_SET;
+	set_nattr_short_slim(pnode, ND_ATR_ntype, pnode->nd_ntype, SET);
 
-	pnode->nd_attr[(int)ND_ATR_jobs].at_val.at_jinfo = pnode;
-	pnode->nd_attr[(int)ND_ATR_jobs].at_flags = ATR_VFLAG_SET;
+	set_nattr_jinfo(pnode, ND_ATR_jobs, pnode);
+	set_nattr_jinfo(pnode, ND_ATR_resvs, pnode);
 
-	pnode->nd_attr[(int)ND_ATR_resvs].at_val.at_jinfo = pnode;
-	pnode->nd_attr[(int)ND_ATR_resvs].at_flags = ATR_VFLAG_SET;
+	set_nattr_l_slim(pnode, ND_ATR_ResvEnable, 1, SET);
+	(get_nattr(pnode, ND_ATR_ResvEnable))->at_flags |= ATR_VFLAG_DEFLT;
 
-	pnode->nd_attr[(int)ND_ATR_ResvEnable].at_val.at_long = 1;
-	pnode->nd_attr[(int)ND_ATR_ResvEnable].at_flags =
-		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
+	set_nattr_str_slim(pnode, ND_ATR_version, "unavailable", NULL);
+	(get_nattr(pnode, ND_ATR_version))->at_flags |= ATR_VFLAG_DEFLT;
 
-	pnode->nd_attr[(int)ND_ATR_version].at_val.at_str = strdup("unavailable");
-	pnode->nd_attr[(int)ND_ATR_version].at_flags =
-		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
+	set_nattr_l_slim(pnode, ND_ATR_Sharing, VNS_DFLT_SHARED, SET);
+	(get_nattr(pnode, ND_ATR_Sharing))->at_flags |= ATR_VFLAG_DEFLT;
 
-	pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = (long)VNS_DFLT_SHARED;
-	pnode->nd_attr[(int)ND_ATR_Sharing].at_flags =
-		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
-
-	pat1 = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-	pat2 = &pnode->nd_attr[(int)ND_ATR_ResourceAssn];
+	pat1 = get_nattr(pnode, ND_ATR_ResourceAvail);
+	pat2 = get_nattr(pnode, ND_ATR_ResourceAssn);
 
 	prd  = &svr_resc_def[RESC_ARCH];
 	(void)add_resource_entry(pat1, prd);
@@ -397,7 +389,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	/* clear the modify flags */
 
 	for (i=0; i<(int)ND_ATR_LAST; i++)
-		pnode->nd_attr[i].at_flags &= ~ATR_VFLAG_MODIFY;
+		(get_nattr(pnode, i))->at_flags &= ~ATR_VFLAG_MODIFY;
 	return (PBSE_NONE);
 }
 
@@ -489,10 +481,7 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 
 	/* setup temp "Mom" attribute with the host name to remove */
 	clear_attr(&tmomattr, &node_attr_def[(int)ND_ATR_Mom]);
-	(void)node_attr_def[(int)ND_ATR_Mom].at_decode(&tmomattr,
-		ATTR_NODE_Mom,
-		NULL,
-		pmom->mi_host);
+	set_attr_generic(&tmomattr, &node_attr_def[(int)ND_ATR_Mom], pmom->mi_host, NULL, INTERNAL);
 
 	/* start index "invd" at 1 to skip natural vnode for this Mom */
 	for (ivnd=1; ivnd<psvrmom->msr_numvnds; ++ivnd) {
@@ -509,7 +498,7 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 				--pnode->nd_nummoms;
 				/* remove (decr) Mom host from Mom attrbute */
 				(void)node_attr_def[(int)ND_ATR_Mom].at_set(
-					&pnode->nd_attr[(int)ND_ATR_Mom],
+					get_nattr(pnode, ND_ATR_Mom),
 					&tmomattr, DECR);
 
 				break;
@@ -654,7 +643,7 @@ setup_notification()
 			continue;
 
 		set_vnode_state(pbsndlist[i], INUSE_DOWN, Nd_State_Or);
-		pbsndlist[i]->nd_attr[(int)ND_ATR_state].at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(get_nattr(pbsndlist[i], ND_ATR_state));
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
 			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
 		}
@@ -834,7 +823,6 @@ save_nodes_db(int changemodtime, void *p)
 	pbs_db_mominfo_time_t mom_tm = {0, 0};
 	pbs_db_obj_info_t obj;
 	int           num;
-	attribute    *pattr;
 	resource     *resc;
 	char         *rname;
 	resource_def *rscdef;
@@ -885,9 +873,8 @@ save_nodes_db(int changemodtime, void *p)
 	 * that possess a node_group_key resource
 	 */
 
-	if (server.sv_attr[SVR_ATR_NodeGroupKey].at_flags & ATR_VFLAG_SET  &&
-		server.sv_attr[SVR_ATR_NodeGroupKey].at_val.at_str)
-		rname = server.sv_attr[SVR_ATR_NodeGroupKey].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_NodeGroupKey))
+		rname = get_sattr_str(SVR_ATR_NodeGroupKey);
 	else
 		rname = NULL;
 
@@ -903,12 +890,11 @@ save_nodes_db(int changemodtime, void *p)
 
 		for (num=0; num<ND_ATR_LAST; num++) {
 
-			np->nd_attr[num].at_flags &= ~ATR_VFLAG_MODIFY;
+			(get_nattr(np, num))->at_flags &= ~ATR_VFLAG_MODIFY;
 
 			if (num == ND_ATR_ResourceAvail)
 				if (rname != NULL && rscdef != NULL) {
-					pattr = &np->nd_attr[ND_ATR_ResourceAvail];
-					if ((resc = find_resc_entry(pattr, rscdef)))
+					if ((resc = find_resc_entry(get_nattr(np, ND_ATR_ResourceAvail), rscdef)))
 						resc->rs_value.at_flags &= ~ATR_VFLAG_MODIFY;
 				}
 
@@ -1038,7 +1024,7 @@ setup_nodes()
 
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
-	
+
 	rc = pbs_db_search(conn, &obj, NULL, (query_cb_t)&recov_node_cb);
 	if (rc == -1) {
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
@@ -1180,7 +1166,7 @@ fix_indirect_resc_targets(struct pbsnode *psourcend, resource *psourcerc, int in
 		return -1;
 	}
 
-	ptargetrc = find_resc_entry(&pnode->nd_attr[index], psourcerc->rs_defin);
+	ptargetrc = find_resc_entry(get_nattr(pnode, index), psourcerc->rs_defin);
 	if (ptargetrc == NULL) {
 		sprintf(log_buffer, "resource %s on vnode points to missing resource on vnode %s", psourcerc->rs_defin->rs_name, pn+1);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_NODE, LOG_CRIT,
@@ -1197,13 +1183,13 @@ fix_indirect_resc_targets(struct pbsnode *psourcend, resource *psourcerc, int in
 		else
 			index = ND_ATR_ResourceAvail;
 
-		ptargetrc = find_resc_entry(&pnode->nd_attr[index], psourcerc->rs_defin);
+		ptargetrc = find_resc_entry(get_nattr(pnode, index), psourcerc->rs_defin);
 		if (!ptargetrc) {
 			/* For unset if the avail/assign counterpart is null, just return without creating the rescource.
 			* This happens only during node clean-up stage */
 			if (!set || index == ND_ATR_ResourceAvail)
 				return 0;
-			ptargetrc = add_resource_entry(&pnode->nd_attr[index], psourcerc->rs_defin);
+			ptargetrc = add_resource_entry(get_nattr(pnode, index), psourcerc->rs_defin);
 			if (!ptargetrc)
 				return PBSE_SYSTEM;
 		}
@@ -1236,7 +1222,6 @@ void
 indirect_target_check(struct work_task *ptask)
 {
 	int		 i;
-	attribute	*pattr;
 	struct pbsnode	*pnode;
 	resource	*presc;
 
@@ -1245,9 +1230,8 @@ indirect_target_check(struct work_task *ptask)
 		if (pnode->nd_state & INUSE_DELETED ||
 			pnode->nd_state & INUSE_STALE)
 			continue;
-		pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-		if (is_attr_set(pattr)) {
-			for (presc = (resource *)GET_NEXT(pattr->at_val.at_list);
+		if (is_nattr_set(pnode, ND_ATR_ResourceAvail)) {
+			for (presc = (resource *)GET_NEXT(get_nattr_list(pnode, ND_ATR_ResourceAvail));
 				presc;
 				presc = (resource *)GET_NEXT(presc->rs_link)) {
 
@@ -1298,10 +1282,10 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 
 	prdef = presc->rs_defin;
 
-	recover_ok = (server.sv_attr[(int)SVR_ATR_State].at_val.at_long == SV_STATE_INIT);	/* if true, then recoverying and targets may not yet be there */
+	recover_ok = (get_sattr_long(SVR_ATR_State) == SV_STATE_INIT);	/* if true, then recoverying and targets may not yet be there */
 	consumable = prdef->rs_flags & (ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN);
-	presc_avail = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAvail], prdef);
-	presc_assn = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAssn], prdef);
+	presc_avail = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prdef);
+	presc_assn = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAssn), prdef);
 
 	if (doit == 0) {	/* check for validity only this pass */
 
@@ -1333,7 +1317,7 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 			} else {
 
 				/* target resource must exist */
-				ptargetrc = find_resc_entry(&ptargetnd->nd_attr[(int)ND_ATR_ResourceAvail], prdef);
+				ptargetrc = find_resc_entry(get_nattr(ptargetnd, ND_ATR_ResourceAvail), prdef);
 				if (pnode == ptargetnd) {
 					/* target node may not be itself  */
 					if ((resc_in_err = strdup(prdef->rs_name)) == NULL)
@@ -1355,7 +1339,7 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 				/* resources_assigned */
 
 				if (consumable) {
-					ptargetrc = add_resource_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAssn], prdef);
+					ptargetrc = add_resource_entry(get_nattr(pnode, ND_ATR_ResourceAssn), prdef);
 					if (ptargetrc == NULL)
 						return PBSE_SYSTEM;
 				}
@@ -1481,9 +1465,9 @@ node_np_action(attribute *new, void *pobj, int actmode)
 		(presc->rs_value.at_flags & ATR_VFLAG_MODIFY)) {
 		if (pnode->nd_state & (INUSE_PROV | INUSE_WAIT_PROV))
 			return (PBSE_NODEPROV_NOACTION);
-		if ((pnode->nd_attr[(int) ND_ATR_Mom].at_flags & ATR_VFLAG_SET)
+		if (is_nattr_set(pnode, ND_ATR_Mom)
 			&& (!compare_short_hostname(
-			pnode->nd_attr[(int) ND_ATR_Mom].at_val.at_arst->as_string[0],
+			(get_nattr_arst(pnode, ND_ATR_Mom))->as_string[0],
 			server_host)))
 			return (PBSE_PROV_HEADERROR);
 	}
@@ -1556,7 +1540,7 @@ node_pcpu_action(attribute *new, void *pobj, int actmode)
 
 	/* now get ncpus */
 	prd = &svr_resc_def[RESC_NCPUS];
-	prc = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAvail], prd);
+	prc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prd);
 	if (prc == 0) {
 		return (0); /* if this error happens - ignore it */
 	}
@@ -1598,9 +1582,8 @@ mark_which_queues_have_nodes()
 
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
 	while (pque != NULL) {
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 0;
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags &= ~ATR_VFLAG_SET;
-		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags |= ATR_MOD_MCACHE;
+		set_qattr_l_slim(pque, QE_ATR_HasNodes, 0, SET);
+		ATR_UNSET(get_qattr(pque, QE_ATR_HasNodes));
 		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 	}
 
@@ -1608,8 +1591,7 @@ mark_which_queues_have_nodes()
 
 	for (i=0; i<svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_pque) {
-			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 1;
-			pbsndlist[i]->nd_pque->qu_attr[(int)QE_ATR_HasNodes].at_flags = ATR_SET_MOD_MCACHE;
+			set_qattr_l_slim(pbsndlist[i]->nd_pque, QE_ATR_HasNodes, 1, SET);
 			svr_quehasnodes = 1;
 		}
 	}
@@ -1644,9 +1626,9 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 			return (PBSE_UNKQUE);
 		} else if (pq->qu_qs.qu_type != QTYPE_Execution) {
 			return (PBSE_ATTRTYPE);
-		} else if ((pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) &&
-			(pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) &&
-			strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, pnode->nd_attr[ND_ATR_partition].at_val.at_str)) {
+		} else if (is_qattr_set(pq, QA_ATR_partition) &&
+			is_nattr_set(pnode, ND_ATR_partition) &&
+			strcmp(get_qattr_str(pq, QA_ATR_partition), get_nattr_str(pnode, ND_ATR_partition))) {
 			return PBSE_PARTITION_NOT_IN_QUE;
 		}
 		else {
@@ -1726,7 +1708,7 @@ is_vnode_up(char *nodename)
  */
 
 int
-decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
+decode_Mom_list(attribute *patr, char *name, char *rescn, char *val)
 {
 	int			  rc;
 	int			  ns;
@@ -2007,9 +1989,8 @@ set_node_topology(attribute *new, void *pobj, int op)
 			rc = PBSE_INTERNAL;
 	}
 
-	if (rc == PBSE_NONE) {
-		new->at_flags |= ATR_SET_MOD_MCACHE;
-	}
+	if (rc == PBSE_NONE)
+		post_attr_set(new);
 	return rc;
 #endif /* localmod 035 */
 }
@@ -2089,13 +2070,12 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 	if (strcmp(pattr->at_val.at_str, DEFAULT_PARTITION) == 0)
 		return PBSE_DEFAULT_PARTITION;
 
-	if (pnode->nd_attr[(int)ND_ATR_Queue].at_flags & ATR_VFLAG_SET) {
-		pq = find_queuebyname(pnode->nd_attr[(int)ND_ATR_Queue].at_val.at_str);
+	if (is_nattr_set(pnode, ND_ATR_Queue)) {
+		pq = find_queuebyname(get_nattr_str(pnode, ND_ATR_Queue));
 		if (pq == 0)
 			return PBSE_UNKQUE;
-		if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET &&
-				pattr->at_flags & ATR_VFLAG_SET) {
-			if (strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, pattr->at_val.at_str) != 0)
+		if (is_qattr_set(pq, QA_ATR_partition) && pattr->at_flags & ATR_VFLAG_SET) {
+			if (strcmp(get_qattr_str(pq, QA_ATR_partition), pattr->at_val.at_str) != 0)
 				return PBSE_QUE_NOT_IN_PARTITION;
 		}
 	}
@@ -2109,4 +2089,59 @@ action_node_partition(attribute *pattr, void *pobj, int actmode)
 		if (psn->jobs != NULL)
 			return PBSE_NODE_BUSY;
 	return PBSE_NONE;
+}
+
+
+/**
+ * @brief
+ * 	Set node 'pnode's state to either use the non-down or non-inuse node state value,
+ * 	or the value derived from the 'new' attribute state.
+ *
+ * @param[in] 		new - input attribute to derive state from
+ * @param[in/out]	pnode - node who state is being set.
+ * @param[in]		actmode - action mode: "NEW" or "ALTER"
+ *
+ * @return int
+ * @retval 0			if set normally
+ * @retval PBSE_NODESTALE	if pnode's state is INUSE_STALE
+ * @retval PBSE_NODEPROV	if pnode's state is INUSE_PROV
+ * 	   PBSE_INTERNAL	if 'actmode' is unrecognized
+ */
+
+int
+node_state(attribute *new, void *pnode, int actmode)
+{
+	int rc = 0;
+	struct pbsnode* np;
+	static unsigned long keep = ~(INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_SLEEP);
+
+
+	np = (struct pbsnode*)pnode;	/*because of def of at_action  args*/
+
+	/* cannot change state of stale node */
+	if (np->nd_state & INUSE_STALE)
+		return PBSE_NODESTALE;
+
+	/* cannot change state of provisioning node */
+	if (np->nd_state & INUSE_PROV)
+		return PBSE_NODEPROV;
+
+	switch (actmode) {
+
+		case ATR_ACTION_NEW:  /*derive attribute*/
+			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
+			break;
+
+		case ATR_ACTION_ALTER:
+			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
+			break;
+
+		default: rc = PBSE_INTERNAL;
+	}
+	/* Now that we are setting the node state, same state should also reflect on the mom */
+	if (np->nd_nummoms == 1) {
+		mom_svrinfo_t *pmom_svr = (mom_svrinfo_t *)np->nd_moms[0]->mi_data;
+		pmom_svr->msr_state = (pmom_svr->msr_state & keep) | new->at_val.at_long;
+	}
+	return rc;
 }

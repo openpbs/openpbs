@@ -955,7 +955,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				 * Set exit status for the job to SIGKILL as we will not be working with any obit.
 				 */
 				set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_exect.ji_exitstat, SET);
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
 			}
 
 			/* see if it has any dependencies */
@@ -1121,9 +1120,9 @@ req_deleteReservation(struct batch_request *preq)
 	/*ck_submitClient_needs_reply()*/
 	if (presv->ri_brp) {
 		if (presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
-			if ((presv->ri_wattr[RESV_ATR_interactive].at_flags & ATR_VFLAG_SET) &&
-				(presv->ri_wattr[RESV_ATR_interactive].at_val.at_long < 0) &&
-				(futuredr != 0)) {
+			if (is_rattr_set(presv, RESV_ATR_interactive) &&
+				get_rattr_long(presv, RESV_ATR_interactive) < 0 &&
+				futuredr != 0) {
 
 				sprintf(buf, "%s delete, wait period expired",
 					presv->ri_qs.ri_resvID);
@@ -1143,7 +1142,7 @@ req_deleteReservation(struct batch_request *preq)
 	sprintf(buf, "%s@%s", preq->rq_user, preq->rq_host);
 	sprintf(log_buffer, "requestor=%s", buf);
 
-	if (strcmp(presv->ri_wattr[RESV_ATR_resv_owner].at_val.at_str, buf))
+	if (strcmp(get_rattr_str(presv, RESV_ATR_resv_owner), buf))
 		account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
 	else
 		account_recordResv(PBS_ACCT_DRclient, presv, log_buffer);
@@ -1202,7 +1201,7 @@ req_deleteReservation(struct batch_request *preq)
 		int deleteProblem = 0;
 		job *pnxj;
 
-		if (presv->ri_qp->qu_attr[QA_ATR_Enabled].at_val.at_long) {
+		if (get_qattr_long(presv->ri_qp, QA_ATR_Enabled)) {
 
 			svrattrl *psatl;
 			newreq = alloc_br(PBS_BATCH_Manager);

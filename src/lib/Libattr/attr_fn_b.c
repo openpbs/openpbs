@@ -135,7 +135,7 @@ is_true_or_false(char *val)
  */
 
 int
-decode_b(struct attribute *patr, char *name, char *rescn, char *val)
+decode_b(attribute *patr, char *name, char *rescn, char *val)
 {
 	int i;
 
@@ -147,7 +147,7 @@ decode_b(struct attribute *patr, char *name, char *rescn, char *val)
 			patr->at_val.at_long = i;
 		else
 			return (PBSE_BADATVAL);
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 	}
 	return (0);
 }
@@ -221,7 +221,7 @@ encode_b(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname
  */
 
 int
-set_b(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_b(attribute *attr, attribute *new, enum batch_op op)
 {
 	assert(attr && new && (new->at_flags & ATR_VFLAG_SET));
 
@@ -242,7 +242,7 @@ set_b(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -260,7 +260,7 @@ set_b(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_b(struct attribute *attr, struct attribute *with)
+comp_b(attribute *attr, attribute *with)
 {
 	if (!attr || !with)
 		return (1);
@@ -307,6 +307,5 @@ set_attr_b(attribute *pattr, long val, enum batch_op op)
 		default:
 			return;
 	}
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(pattr);
 }
-

@@ -1816,8 +1816,8 @@ pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnode
 
 			if ((r_input2->vnodelist != NULL) &&
 			      in_string_list(noden, '+', r_input2->vnodelist) && (pnode != NULL) &&
-				(pnode->nd_attr[ND_ATR_ResourceAvail].at_flags & ATR_VFLAG_SET) != 0) {
-				for (prs = (resource *)GET_NEXT(pnode->nd_attr[ND_ATR_ResourceAvail].at_val.at_list); prs != NULL; prs = (resource *)GET_NEXT(prs->rs_link)) {
+				(is_nattr_set(pnode, ND_ATR_ResourceAvail) != 0)) {
+				for (prs = (resource *)GET_NEXT(get_nattr_list(pnode, ND_ATR_ResourceAvail)); prs != NULL; prs = (resource *)GET_NEXT(prs->rs_link)) {
 					if ((prdefvntype != NULL) &&
 						(prs->rs_defin == prdefvntype) &&
 						(is_attr_set(&prs->rs_value)) != 0) {

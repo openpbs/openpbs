@@ -340,8 +340,8 @@ tpp_request(int fd)
 	 * appear sluggish if not interleaved.
 	 *
 	 */
-	if (server.sv_attr[(int) SVR_ATR_rpp_max_pkt_check].at_flags & ATR_VFLAG_SET)
-		rpp_max_pkt_check = server.sv_attr[(int) SVR_ATR_rpp_max_pkt_check].at_val.at_long;
+	if (is_sattr_set(SVR_ATR_rpp_max_pkt_check))
+		rpp_max_pkt_check = get_sattr_long(SVR_ATR_rpp_max_pkt_check);
 
 	for (iloop = 0; iloop < rpp_max_pkt_check; iloop++) {
 		int	stream;
@@ -609,7 +609,7 @@ main(int argc, char **argv)
 	pbs_sched *psched;
 	char *keep_daemon_name = NULL;
 	pid_t sid = -1;
-	long *state;
+	long state;
 	time_t waittime;
 #ifdef _POSIX_MEMLOCK
 	int do_mlockall = 0;
@@ -735,7 +735,7 @@ main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "A:a:Cd:e:F:p:t:lL:M:NR:g:G:s:P:-:")) != -1) {
 		switch (c) {
 			case 'a':
-				if (decode_b(&server.sv_attr[(int)SVR_ATR_scheduling], NULL,
+				if (decode_b(get_sattr(SVR_ATR_scheduling), NULL,
 					NULL, optarg) != 0) {
 					(void)fprintf(stderr, "%s: bad -a option\n", argv[0]);
 					return (1);
@@ -932,9 +932,8 @@ main(int argc, char **argv)
 	 * set log_event_mask to point to the log_event attribute value so
 	 * it controls which events are logged.
 	 */
-	server.sv_attr[(int)SVR_ATR_log_events].at_val.at_long = PBSEVENT_MASK;
-	server.sv_attr[(int)SVR_ATR_log_events].at_flags = ATR_SET_MOD_MCACHE;
-	log_event_mask = &server.sv_attr[SVR_ATR_log_events].at_val.at_long;
+	set_sattr_l_slim(SVR_ATR_log_events, PBSEVENT_MASK, SET);
+	*log_event_mask = get_sattr_long(SVR_ATR_log_events);
 	(void)sprintf(path_log, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
 
 	(void)log_open(log_file, path_log);
@@ -1228,7 +1227,7 @@ main(int argc, char **argv)
 		(void)set_task(WORK_Timed, time_now, secondary_handshake, NULL);
 
 		svr_mailowner(0, 0, 1, log_buffer);
-		if (server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long) {
+		if (get_sattr_long(SVR_ATR_scheduling)) {
 			/* Bring up scheduler here */
 			if (dflt_scheduler->sc_primary_conn == -1) {
 				char **workenv;
@@ -1268,12 +1267,10 @@ main(int argc, char **argv)
 	 * following section constitutes the "main" loop of the server
 	 */
 
-	state  = &server.sv_attr[(int)SVR_ATR_State].at_val.at_long;
 	if (server_init_type == RECOV_HOT)
-		*state = SV_STATE_HOT;
+		set_sattr_l_slim(SVR_ATR_State, SV_STATE_HOT, SET);
 	else
-		*state = SV_STATE_RUN;
-
+		set_sattr_l_slim(SVR_ATR_State, SV_STATE_RUN, SET);
 
 	/* Can start the python interpreter this late, before the main loop,*/
 	/* which is when requests are actually read and processed           */
@@ -1325,7 +1322,7 @@ main(int argc, char **argv)
 	 * If state includes SV_STATE_PRIMDLY, stay in loop; this will be
 	 * cleared when Secondary Server responds to a request.
 	 */
-	while ((*state != SV_STATE_DOWN) && (*state != SV_STATE_SECIDLE)) {
+	while ((state = get_sattr_long(SVR_ATR_State)) != SV_STATE_DOWN && state != SV_STATE_SECIDLE) {
 
 		/*
 		 * double check that if we are an active Secondary Server, that
@@ -1336,7 +1333,7 @@ main(int argc, char **argv)
 			if (stat(path_secondaryact, &sb_sa) == -1) {
 				if (errno == ENOENT) {
 					/* file gone, restart to go idle */
-					server.sv_attr[(int)SVR_ATR_State].at_val.at_long = SV_STATE_SECIDLE;
+					set_sattr_l_slim(SVR_ATR_State, SV_STATE_SECIDLE, SET);
 					break;
 				}
 			}
@@ -1345,7 +1342,7 @@ main(int argc, char **argv)
 		/* first process any task whose time delay has expired */
 		waittime = next_task();
 
-		if (*state == SV_STATE_RUN) {	/* In normal Run State */
+		if ((state = get_sattr_long(SVR_ATR_State)) == SV_STATE_RUN) {	/* In normal Run State */
 
 			if (first_run) {
 
@@ -1371,7 +1368,7 @@ main(int argc, char **argv)
 							   "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
 					} else
 						psched->svr_do_schedule = SCH_SCHEDULE_NULL;
-				} else if (svr_unsent_qrun_req || (psched->svr_do_schedule != SCH_SCHEDULE_NULL && psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long)) {
+				} else if (svr_unsent_qrun_req || (psched->svr_do_schedule != SCH_SCHEDULE_NULL && get_sched_attr_long(psched, SCHED_ATR_scheduling))) {
 					/*
 					 * If svr_unsent_qrun_req is set to one there are pending qrun
 					 * request, then do schedule_jobs irrespective of the server scheduling
@@ -1380,12 +1377,12 @@ main(int argc, char **argv)
 					 * scheduling only if server scheduling is turned on.
 					 */
 
-					psched->sch_next_schedule = time_now + psched->sch_attr[SCHED_ATR_schediteration].at_val.at_long;
+					psched->sch_next_schedule = time_now + get_sched_attr_long(psched, SCHED_ATR_schediteration);
 					if (schedule_jobs(psched) == 0 && svr_unsent_qrun_req)
 						svr_unsent_qrun_req = 0;
 				}
 			}
-		} else if (*state == SV_STATE_HOT) {
+		} else if (state == SV_STATE_HOT) {
 
 			/* Are there HOT jobs to rerun */
 			/* only try every _CYCLE seconds */
@@ -1400,7 +1397,8 @@ main(int argc, char **argv)
 			if ((c == 0) ||
 				(time_now > server.sv_started + SVR_HOT_LIMIT)) {
 				server_init_type = RECOV_WARM;
-				*state = SV_STATE_RUN;
+				set_sattr_l_slim(SVR_ATR_State, SV_STATE_RUN, SET);
+				state = SV_STATE_RUN;
 			}
 		}
 
@@ -1429,7 +1427,7 @@ main(int argc, char **argv)
 			undolr();
 #endif
 
-		if (*state == SV_STATE_SHUTSIG)
+		if ((state = get_sattr_long(SVR_ATR_State)) == SV_STATE_SHUTSIG)
 			(void)svr_shutdown(SHUT_SIG);	/* caught sig */
 
 		/*
@@ -1437,12 +1435,14 @@ main(int argc, char **argv)
 		 * and all children are done, change state to DOWN
 		 */
 
-		if ((*state > SV_STATE_RUN) &&
-			(*state < SV_STATE_SECIDLE) &&
+		if ((state > SV_STATE_RUN) &&
+			(state < SV_STATE_SECIDLE) &&
 			(server.sv_jobstates[JOB_STATE_RUNNING] == 0) &&
 			(server.sv_jobstates[JOB_STATE_EXITING] == 0) &&
-			((void *)GET_NEXT(task_list_event) == NULL))
-			*state = SV_STATE_DOWN;
+			((void *)GET_NEXT(task_list_event) == NULL)) {
+			set_sattr_l_slim(SVR_ATR_State, SV_STATE_DOWN, SET);
+			state = SV_STATE_DOWN;
+		}
 	}
 	DBPRT(("Server out of main loop, state is %ld\n", *state))
 
@@ -1458,7 +1458,7 @@ main(int argc, char **argv)
 
 	/* if Moms are to to down as well, tell them */
 
-	if ((*state != SV_STATE_SECIDLE) && (shutdown_who & SHUT_WHO_MOM))
+	if (state != SV_STATE_SECIDLE && (shutdown_who & SHUT_WHO_MOM))
 		shutdown_nodes();
 
 	/* if brought up the DB, take it down */
@@ -1468,7 +1468,7 @@ main(int argc, char **argv)
 		/* we are the secondary server */
 		(void)unlink(path_secondaryact); /* remove file */
 
-		if ((*state == SV_STATE_SECIDLE) && (saved_takeover_req != NULL)) {
+		if (state == SV_STATE_SECIDLE && saved_takeover_req != NULL) {
 			/*
 			 * If we are the secondary server that is
 			 * going inactive AND there is a batch request struct,
@@ -1533,7 +1533,7 @@ main(int argc, char **argv)
 	(void)unlink(lockfile);
 	unload_auths();
 
-	if (*state == SV_STATE_SECIDLE) {
+	if (state == SV_STATE_SECIDLE) {
 		/*
 		 * Secondary Server going inactive, or the Primary needs to
 		 * recycle itself (found Secondary active);
