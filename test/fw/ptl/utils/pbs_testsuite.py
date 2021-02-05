@@ -1606,7 +1606,7 @@ class PBSTestSuite(unittest.TestCase):
         :param frequency: Frequency of monitoring
         :type frequency: int
         """
-        if self._procmon is not None:
+        if self._process_monitoring:
             self.logger.info('A process monitor is already instantiated')
             return
         self.logger.info('starting process monitoring of ' + name +
