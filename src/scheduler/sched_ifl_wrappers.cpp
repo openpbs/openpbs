@@ -69,7 +69,7 @@ send_run_job(int virtual_sd, int has_runjob_hook, char *jobid, char *execvnode,
 	char extend[PBS_MAXHOSTNAME + 6];
  	int job_owner_sd;
 
-	if (jobid == NULL || execvnode == NULL || svr_id_node == NULL || svr_id_job == NULL)
+	if (jobid == NULL || execvnode == NULL)
 		return 1;
 
   	job_owner_sd = get_svr_inst_fd(virtual_sd, svr_id_job);
