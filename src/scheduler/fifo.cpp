@@ -2884,6 +2884,7 @@ parse_sched_obj(int connector, struct batch_status *status)
 				MGR_CMD_UNSET, MGR_OBJ_SCHED,
 			const_cast<char *>(sc_name), attribs, NULL);
 		free(attribs->value);
+		free(attribs);
 		if (err) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				"Failed to update scheduler comment at the server");
