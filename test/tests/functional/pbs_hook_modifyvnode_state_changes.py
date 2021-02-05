@@ -373,7 +373,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkpreviousStateChain(state_chain_start_time, 
+            self.checkpreviousStateChain(state_chain_start_time,
                                          state_chain_end_time,
                                          mom.shortname)
 
@@ -476,7 +476,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkpreviousStateChain(state_chain_start_time, state_chain_end_time,
+            self.checkpreviousStateChain(state_chain_start_time,
+                                         state_chain_end_time,
                                          mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
@@ -509,7 +510,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             self.checkNodeFree(start_time)
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkpreviousStateChain(state_chain_start_time, state_chain_end_time,
+            self.checkpreviousStateChain(state_chain_start_time,
+                                         state_chain_end_time,
                                          mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
