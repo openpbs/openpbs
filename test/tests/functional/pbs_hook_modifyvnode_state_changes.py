@@ -221,33 +221,35 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
     def checkNodeDown(self, start_time):
         self.server.log_match("v.state_hex=0x2",
-                                starttime=start_time)
-        self.server.log_match("v.state_strs=ND_STATE_DOWN,ND_STATE_VNODE_UNAVAILABLE",
-                                starttime=start_time)
+                              starttime=start_time)
+        self.server.log_match(
+            "v.state_strs=ND_STATE_DOWN,ND_STATE_VNODE_UNAVAILABLE",
+            starttime=start_time)
         self.server.log_match("v.state_ints=2,409903",
-                                starttime=start_time)
+                              starttime=start_time)
 
     def checkNodeOffline(self, start_time):
         self.server.log_match("v.state_hex=0x1",
-                                starttime=start_time)
-        self.server.log_match("v.state_strs=ND_STATE_OFFLINE,ND_STATE_VNODE_UNAVAILABLE",
-                                starttime=start_time)
+                              starttime=start_time)
+        self.server.log_match(
+            "v.state_strs=ND_STATE_OFFLINE,ND_STATE_VNODE_UNAVAILABLE",
+            starttime=start_time)
         self.server.log_match("v.state_ints=1,409903",
-                                starttime=start_time)
+                              starttime=start_time)
 
     def checkNodeResvExclusive(self, start_time):
         self.server.log_match("v.state_hex=0x2000",
-                                starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("v.state_strs=ND_STATE_RESV_EXCLUSIVE",
-                                starttime=start_time)
+                              starttime=start_time)
         self.server.log_match("v.state_ints=8192",
-                                starttime=start_time)
+                              starttime=start_time)
 
     def checkpreviousStateChain(self, start_time, end_time, mom):
         # Check the state change entries for the specified mom
         search_string = ";show_vnode_state;name=" + mom
         self.logger.info(
-            'checkpreviousStateChain search_string='+search_string+' start='+
+            'checkpreviousStateChain search_string='+search_string+' start=' +
             str(start_time)+' end='+str(end_time))
 
         # Retrieve requested entries from the last 2000 lines of the server log
@@ -284,7 +286,7 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
             # current values become the previous values for the next iteration
             previous_state = line_dict['v.state_hex']
             previous_lsct = line_dict['v.lsct']
-                    
+
     def test_hook_state_changes_00(self):
         """
         Test: induce a variety of vnode state changes with debug turned on
@@ -371,7 +373,8 @@ class TestPbsModifyvnodeStateChanges(TestFunctional):
 
             # Verify each preceeding state matches the current previous state
             state_chain_end_time = time.time()
-            self.checkpreviousStateChain(state_chain_start_time, state_chain_end_time,
+            self.checkpreviousStateChain(state_chain_start_time, 
+                                         state_chain_end_time,
                                          mom.shortname)
 
         self.logger.debug("---- %s TEST ENDED ----" % get_method_name(self))
