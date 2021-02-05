@@ -270,6 +270,49 @@ class Wrappers(PBSService):
             return PTL_CLI
         return PTL_API
 
+    def set_connect_timeout(self, timeout=0):
+        """
+        Set server connection timeout
+        :param timeout: Timeout value
+        :type timeout: int
+        """
+        self._conn_timeout = timeout
+
+    def set_op_mode(self, mode):
+        """
+        set operating mode to one of either ``PTL_CLI`` or
+        ``PTL_API``.Returns the mode that was set which can
+        be different from the value requested, for example, if
+        requesting to set ``PTL_API``, in the absence of the
+        appropriate SWIG wrappers, the library will fall back to
+        ``CLI``, or if requesting ``PTL_CLI`` and there is no
+        ``PBS_EXEC`` on the system, None is returned.
+        :param mode: Operating mode
+        :type mode: str
+        """
+        if mode == PTL_API:
+            if self._conn is not None or self._conn < 0:
+                self._conn = None
+            if not API_OK:
+                self.logger.error(self.logprefix +
+                                  'API submission is not available')
+                return PTL_CLI
+        elif mode == PTL_CLI:
+            if ((not self.has_snap) and
+                not os.path.isdir(os.path.join(self.client_conf['PBS_EXEC'],
+                                               'bin'))):
+                self.logger.error(self.logprefix +
+                                  'PBS commands are not available')
+                return None
+        else:
+            self.logger.error(self.logprefix + "Unrecognized operating mode")
+            return None
+
+        self.ptl_conf['mode'] = mode
+        self.logger.info(self.logprefix + 'server operating mode set to ' +
+                         mode)
+        return mode
+
     def update_special_attr(self, obj_type, id=None):
         """
         Update special attributes(__special_attr) dictionary
@@ -489,44 +532,6 @@ class Wrappers(PBSService):
                     total[ky] = [bs['id']]
                 else:
                     total[ky] = [bs]
-
-    def counter(self, obj_type=None, attrib=None, id=None, extend=None,
-                op=None, attrop=None, bslist=None, level=logging.INFO,
-                idonly=True, grandtotal=False, db_access=None, runas=None,
-                resolve_indirectness=False):
-        """
-        Accumulate properties set on an object. For example, to
-        count number of free nodes:
-        ``server.counter(VNODE,{'state':'free'})``
-        :param obj_type: The type of object to query, one of the
-                         * objects
-        :param attrib: Attributes to query, can be a string, a
-                       list, a dictionary
-        :type attrib: str or list or dictionary
-        :param id: The id of the object to act upon
-        :param extend: The extended parameter to pass to the stat
-                       call
-        :param op: The operation used to match attrib to what is
-                   queried. SET or None
-        :type op: str or None
-        :param attrop: Operation on multiple attributes, either
-                       PTL_AND, PTL_OR
-        :param bslist: Optional, use a batch status dict list
-                       instead of an obj_type
-        :param idonly: if true, return the name/id of the matching
-                       objects
-        :type idonly: bool
-        :param db_access: credentials to access db, either a path
-                          to file or dictionary
-        :type db_access: str or dictionary
-        :param runas: run as user
-        :type runas: str or None
-        """
-        self.logit('counter: ', obj_type, attrib, id, level=level)
-        return self._filter(obj_type, attrib, id, extend, op, attrop, bslist,
-                            PTL_COUNTER, idonly, grandtotal, db_access,
-                            runas=runas,
-                            resolve_indirectness=resolve_indirectness)
 
     def _connect(self, hostname, attempt=1):
         if ((self._conn is None or self._conn < 0) or
@@ -1383,9 +1388,8 @@ class Wrappers(PBSService):
             if len(newattr) == 0:
                 newattr = attrib
 
-            statlist = [self.counter(obj_type, newattr, id, extend, op=op,
-                                     attrop=attrop, level=logging.DEBUG,
-                                     runas=runas)]
+            statlist = [self._filter(obj_type, newattr, id, extend, op=op,
+                                     attrop=attrop, runas=runas)]
         else:
             try:
                 statlist = self.status(obj_type, attrib, id=id,
