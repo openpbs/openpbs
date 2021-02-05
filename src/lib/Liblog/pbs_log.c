@@ -570,8 +570,8 @@ log_open_main(char *filename, char *directory, int silent)
 
 	pthread_once(&log_once_ctl, log_init); /* initialize mutex once */
 
-	if (log_opened > 0)
-		return (-1);	/* already open */
+	if (log_opened > 0)	/* Close existing log */
+		log_close(0);
 
 	if (locallog != 0 || syslogfac == 0) {
 
