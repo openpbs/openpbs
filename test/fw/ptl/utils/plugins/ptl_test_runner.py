@@ -1038,10 +1038,14 @@ class PTLTestRunner(Plugin):
     def _cleanup(self):
         self.logger.info('Cleaning up temporary files')
         du = DshUtils()
+        hosts = self.param_dict['moms']
+        for server in self.param_dict['servers']:
+            if server not in self.param_dict['moms']:
+                hosts.add(self.param_dict['servers'])
         for user in PBS_USERS:
             self.logger.info('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
-            for mom in self.param_dict['moms']:
+            for mom in hosts:
                 ret = du.run_cmd(mom, cmd=['echo', '$HOME'], sudo=True,
                                  runas=runas, logerr=False, as_script=True)
                 if ret['rc'] == 0:
