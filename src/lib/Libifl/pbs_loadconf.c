@@ -275,14 +275,19 @@ parse_psi(char *conf_value)
 	char **list;
 	int i;
 	char *svrname = NULL;
+	char *local_conf = NULL;
 
 	free(pbs_conf.psi);
 	free(pbs_conf.psi_str);
 
-	if (conf_value == NULL)
-		return -1;
+	if (conf_value == NULL) {
+		pbs_asprintf(&local_conf, "%s:%d", pbs_default(), pbs_conf.batch_service_port);
+		if (local_conf == NULL)
+			return -1;
+	} else
+		local_conf = conf_value;
 
-	list = break_comma_list(conf_value);
+	list = break_comma_list(local_conf);
 	if (list == NULL)
 		return -1;
 
@@ -290,7 +295,7 @@ parse_psi(char *conf_value)
 		;
 
 	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
-		fprintf(stderr, "Out of memory while parsing configuration %s", conf_value);
+		fprintf(stderr, "Out of memory while parsing configuration %s", local_conf);
 		free_string_array(list);
 		return -1;
 	}
@@ -314,7 +319,10 @@ parse_psi(char *conf_value)
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
-	pbs_conf.psi_str = strdup(conf_value);
+	pbs_conf.psi_str = strdup(local_conf);
+
+	if (conf_value == NULL)
+		free(local_conf);
 
 	return 0;
 }
@@ -1097,7 +1105,7 @@ __pbs_loadconf(int reload)
 
 	pbs_conf.loaded = 1;
 
-	if (parse_psi(psi_value ? psi_value : pbs_default()) == -1) {
+	if (parse_psi(psi_value) == -1) {
 		fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
 		free(psi_value);
 		goto err;
