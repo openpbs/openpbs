@@ -918,7 +918,6 @@ class TestTPP(TestFunctional):
         """
         Test for verifying the allowable values for PBS_COMM_LOG_EVENTS
         """
-        server_ip = socket.gethostbyname(self.server.hostname)
         a = [0, 511, "T"]
         for log_event in a:
             hook_name = "begin_" + str(log_event)
@@ -932,19 +931,19 @@ class TestTPP(TestFunctional):
                               conf_param=attrib)
             attrs = {'event': 'execjob_begin', 'enabled': 'True'}
             self.server.create_hook(hook_name, attrs)
-            exp_msg = ["MCAST packet from %s:15001" % server_ip,
+            exp_msg = ["MCAST packet from .*:15001",
                        "mcast done"]
             for msg in exp_msg:
                 self.comm.log_match(msg, existence=existence,
-                                    starttime=start_time)
+                                    starttime=start_time, regexp=True)
             self.server.import_hook(hook_name, body="import pbs")
             for msg in exp_msg:
                 self.comm.log_match(msg, existence=existence,
-                                    starttime=start_time)
+                                    starttime=start_time, regexp=True)
             self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
             for msg in exp_msg:
                 self.comm.log_match(msg, existence=existence,
-                                    starttime=start_time)
+                                    starttime=start_time, regexp=True)
 
     def common_steps_for_mom_pool_tests(self):
         """
