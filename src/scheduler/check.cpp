@@ -1059,6 +1059,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
+
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
 
@@ -1069,7 +1070,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 * didn't end up using it.  We have to check against perr, so we don't
 	 * free the caller's memory.
 	 */
-	if(err->status_code == SCHD_UNKWN && err != perr)
+	else if(err != perr)
 		free_schd_error(err);
 
 	return ns_arr;

@@ -40,6 +40,7 @@
 #ifndef	_MISC_H
 #define	_MISC_H
 
+#include <string>
 
 #include "data_types.h"
 #include "server_info.h"
@@ -72,7 +73,7 @@ int skip_line(char *line);
  *                   error will be printed after the message
  */
 void
-schdlogerr(int event, int event_class, int sev, const char *name, const char *text,
+schdlogerr(int event, int event_class, int sev, const std::string name, const char *text,
 	schd_error *err);
 
 /*
@@ -294,6 +295,7 @@ add_str_to_unique_array(char ***str_arr, char *str);
  */
 void free_ptr_array (void *inp);
 
-
+void log_eventf(int eventtype, int objclass, int sev, const std::string& objname, const char *fmt, ...);
+void log_event(int eventtype, int objclass, int sev, const std::string& objname, const char *text);
 
 #endif	/* _MISC_H */

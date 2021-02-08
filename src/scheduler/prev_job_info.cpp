@@ -75,89 +75,51 @@
  * @par	NOTE: jinfo_arr is modified
  *
  */
-prev_job_info *
-create_prev_job_info(resource_resv **jobs, int size)
+std::vector<prev_job_info>
+create_prev_job_info(resource_resv **jobs)
 {
-	prev_job_info *npji;		/* new prev_job_info array */
-	int local_size;		/* the size of the array */
+	std::vector<prev_job_info> npji;	/* new prev_job_info vector */
 	int i;
-
-	if (jobs == NULL)
-		return NULL;
-
-	if (size == UNSPECIFIED) {
-		for (i = 0; jobs[i] != NULL; i++)
-			;
-
-		local_size = i;
-	}
-	else
-		local_size = size;
-
-	if (local_size == 0)
-		return NULL;
-
-	if ((npji = static_cast<prev_job_info *>(calloc(local_size, sizeof(prev_job_info)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
 
 	for (i = 0; jobs[i] != NULL; i++) {
 		if(jobs[i]->job != NULL) {
-			npji[i].name = jobs[i]->name;
-			npji[i].resused = jobs[i]->job->resused;
-			npji[i].entity_name = string_dup(jobs[i]->job->ginfo->name);
+			prev_job_info pjinfo(jobs[i]->name, jobs[i]->job->ginfo->name, jobs[i]->job->resused);
 
-			/* so the memory is not freed at the end of the scheduling cycle */
-			jobs[i]->name = NULL;
+			/* resused is shallow copied, NULL it so it doesn't get freed at the end of the cycle */
 			jobs[i]->job->resused = NULL;
+
+			npji.push_back(pjinfo);
 		}
 	}
 
 	return npji;
 }
 
-/**
- * @brief
- *		free_prev_job_info - free a prev_job_info struct
- *
- * @param[in,out]	pjinfo	-	prev_job_info to free
- *
- * @return	nothing
- *
- */
-void
-free_prev_job_info(prev_job_info *pjinfo)
+prev_job_info::prev_job_info(const std::string& pname, char *ename, resource_req *rused): name(pname)
 {
-	if (pjinfo->name != NULL)
-		free(pjinfo->name);
+	entity_name = ename;
+	resused = rused;
+}
 
-	if (pjinfo->entity_name != NULL)
-		free(pjinfo->entity_name);
+prev_job_info::prev_job_info(const prev_job_info& opj): name(opj.name)
+{
+	entity_name = opj.entity_name;
+	resused = dup_resource_req_list(opj.resused);
+}
 
-	free_resource_req_list(pjinfo->resused);
+prev_job_info::prev_job_info(prev_job_info&& opj) noexcept: name(std::move(opj.name)), entity_name(std::move(opj.name))
+{
+	resused = opj.resused;
+	opj.resused = NULL;
 }
 
 /**
  * @brief
- *		free_pjobs - free a list of prev_job_info structs
- *
- * @param[in,out]	pjinfo_arr	-	array of prev_job_info structs to free
- * @param[in]	previous job info array.
- *
- * @return	nothing
+ *		prev_job_info destructor
  *
  */
-void
-free_pjobs(prev_job_info *pjinfo_arr, int size)
+prev_job_info::~prev_job_info()
 {
-	int i;
-
-	if (pjinfo_arr == NULL)
-		return;
-
-	for (i = 0; i < size; i++)
-		free_prev_job_info(&pjinfo_arr[i]);
-
-	free(pjinfo_arr);
+	free_resource_req_list(resused);
 }
+

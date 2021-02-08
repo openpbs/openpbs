@@ -87,7 +87,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 int send_job_updates(int pbs_sd, resource_resv *job);
 
 /* send delayed attributes to the server for a job */
-int send_attr_updates(int job_owner_sd, char *job_name, struct attrl *pattr);
+int send_attr_updates(int job_owner_sd, const std::string& job_name, struct attrl *pattr);
 
 preempt_job_info *send_preempt_jobs(int virtual_sd, char **preempt_jobs_list);
 
@@ -186,7 +186,7 @@ void set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
  *
  * return created subjob name
  */
-char *create_subjob_name(char *array_id, int index);
+std::string create_subjob_name(const std::string& array_id, int index);
 
 /*
  *	create_subjob_from_array - create a resource_resv structure for a subjob
@@ -194,8 +194,7 @@ char *create_subjob_name(char *array_id, int index);
  *				   will be in state 'Q'
  */
 resource_resv *
-create_subjob_from_array(resource_resv *array, int index, char
-	*subjob_name);
+create_subjob_from_array(resource_resv *array, int index, const std::string& subjob_name);
 
 /*
  *	update_array_on_run - update a job array object when a subjob is run

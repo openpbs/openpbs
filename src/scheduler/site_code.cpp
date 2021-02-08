@@ -2237,7 +2237,7 @@ count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
 		 * Skip nodes in unusable states.
 		 * (Unless jobs are still assigned to them.)
 		 */
-		if ((!node->is_pbsnode || node->is_down || node->is_offline)
+		if ((node->is_down || node->is_offline)
 			&&  (node->jobs == NULL || node->jobs[0] == NULL))
 			continue;
 #if	NAS_DONT_COUNT_EXEMPT

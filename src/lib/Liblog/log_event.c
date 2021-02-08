@@ -127,6 +127,52 @@ log_event(int eventtype, int objclass, int sev, const char *objname, const char 
 		log_record(eventtype, objclass, sev, objname, text);
 }
 
+
+/**
+ * @brief
+ *      do_log_eventf - helper function which does the actual logging
+ *
+ * @param[in] eventtype - event type
+ * @param[in] objclass - event object class
+ * @param[in] sev - indication for whether to syslogging enabled or not
+ * @param[in] objname - object name stating log msg related to which object
+ * @param[in] fmt - format string
+ * @param[in] ... - arguments to format string
+ *
+ * @return void
+ */
+
+void
+do_log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, va_list args)
+{
+	va_list args_copy;
+	int len;
+	char logbuf[LOG_BUF_SIZE];
+	char *buf;
+
+	if (will_log_event(eventtype) == 0)
+		return;
+
+	va_copy(args_copy, args);
+
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args_copy);
+	va_end(args_copy);
+
+	if (len >= sizeof(logbuf)) {
+		buf = pbs_asprintf_format(len, fmt, args);
+		if (buf == NULL) {
+			va_end(args);
+			return;
+		}
+	} else
+		buf = logbuf;
+
+	log_record(eventtype, objclass, sev, objname, buf);
+
+	if (len >= sizeof(logbuf))
+		free(buf);
+}
+
 /**
  * @brief
  * 	log_eventf - a combination of log_event() and printf()
@@ -144,33 +190,7 @@ void
 log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, ...)
 {
 	va_list args;
-	va_list args_copy;
-	int len;
-	char logbuf[LOG_BUF_SIZE];
-	char *buf;
-
-	if (will_log_event(eventtype) == 0)
-		return;
-
 	va_start(args, fmt);
-	va_copy(args_copy, args);
-
-	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args_copy);
-	va_end(args_copy);
-
-	if (len >= sizeof(logbuf)) {
-		buf = pbs_asprintf_format(len, fmt, args);
-		if (buf == NULL) {
-			va_end(args);
-			return;
-		}
-	}
-	else
-		buf = logbuf;
-
-	log_record(eventtype, objclass, sev, objname, buf);
-
-	if (len >= sizeof(logbuf))
-		free(buf);
+	do_log_eventf(eventtype, objclass, sev, objname, fmt, args);
 	va_end(args);
 }

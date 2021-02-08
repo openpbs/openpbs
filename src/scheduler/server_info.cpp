@@ -125,12 +125,13 @@
 #include "log.h"
 #include "pbs_share.h"
 #include "libpbs.h"
-#include "server_info.h"
+#include "pbs_entlim.h"
 #include "constant.h"
+#include "config.h"
+#include "server_info.h"
 #include "queue_info.h"
 #include "job_info.h"
 #include "misc.h"
-#include "config.h"
 #include "node_info.h"
 #include "globals.h"
 #include "resv_info.h"
@@ -146,7 +147,6 @@
 #include "simulate.h"
 #include "fairshare.h"
 #include "check.h"
-// #include "pbs_sched.h"
 #include "fifo.h"
 #include "buckets.h"
 #include "parse.h"
@@ -2050,7 +2050,7 @@ create_server_arrays(server_info *sinfo)
  * @retval	1	: job is running
  */
 int
-check_run_job(resource_resv *job, void *arg)
+check_run_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
 		return job->job->is_running;
@@ -2069,7 +2069,7 @@ check_run_job(resource_resv *job, void *arg)
  * @retval	1	: if job is exiting
  */
 int
-check_exit_job(resource_resv *job, void *arg)
+check_exit_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
 		return job->job->is_exiting;
@@ -2109,7 +2109,7 @@ check_run_resv(resource_resv *resv, void *arg)
  * @retval	0	: if job is not suspended
  */
 int
-check_susp_job(resource_resv *job, void *arg)
+check_susp_job(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL)
 		return job->job->is_suspended;
@@ -2129,7 +2129,7 @@ check_susp_job(resource_resv *job, void *arg)
  * @retval	0	: if job is not running
  */
 int
-check_job_running(resource_resv *job, void *arg)
+check_job_running(resource_resv *job, const void *arg)
 {
 	if (job->is_job && (job->job->is_running || job->job->is_exiting || job->job->is_userbusy))
 		return 1;
@@ -2149,7 +2149,7 @@ check_job_running(resource_resv *job, void *arg)
  * @retval	0	: if job is not running or not in a reservation
  */
 int
-check_running_job_in_reservation(resource_resv *job, void *arg)
+check_running_job_in_reservation(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv != NULL &&
 		(check_job_running(job, arg) == 1))
@@ -2170,7 +2170,7 @@ check_running_job_in_reservation(resource_resv *job, void *arg)
  * @retval	0	: if job is not running or in a reservation
  */
 int
-check_running_job_not_in_reservation(resource_resv *job, void *arg)
+check_running_job_not_in_reservation(resource_resv *job, const void *arg)
 {
 	if (job->is_job && job->job != NULL && job->job->resv == NULL &&
 		(check_job_running(job, arg) == 1))
@@ -2191,7 +2191,7 @@ check_running_job_not_in_reservation(resource_resv *job, void *arg)
  * @retval	0	: if reservation is not running on node passed in arg
  */
 int
-check_resv_running_on_node(resource_resv *resv, void *arg)
+check_resv_running_on_node(resource_resv *resv, const void *arg)
 {
 	if (resv->is_resv && resv->resv != NULL) {
 		if (resv->resv->is_running || resv->resv->resv_state == RESV_BEING_DELETED)
@@ -3223,7 +3223,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 				error = 1;
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 						"Resource %s is indirect, and does not exist on indirect node %s",
-						res->name, ninfo->name);
+						res->name, ninfo->name.c_str());
 			}
 		} else {
 			error = 1;
@@ -3528,7 +3528,7 @@ free_queue_list(queue_info *** queue_list)
  * @return	void
  */
 void
-create_total_counts(server_info *sinfo, queue_info * qinfo,
+create_total_counts(server_info *sinfo, queue_info *qinfo,
 	resource_resv *resresv, int mode)
 {
 	if (mode == SERVER || mode == ALL) {

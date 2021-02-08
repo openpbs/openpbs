@@ -43,20 +43,6 @@
 #include "data_types.h"
 
 /*
- *      new_resource_resv() - allocate and initialize a resource_resv struct
- */
-#ifdef NAS /* localmod 005 */
-resource_resv *new_resource_resv(void);
-#else
-resource_resv *new_resource_resv();
-#endif /* localmod 005 */
-
-/*
- *      free_resource_resv - free a resource resv strcture an all of it's ptrs
- */
-void free_resource_resv(resource_resv *resresv);
-
-/*
  * pthread routine to free resource_resv array chunk
  */
 void
@@ -72,7 +58,7 @@ void free_resource_resv_array(resource_resv **resresv);
  *      dup_resource_resv - duplicate a resource resv structure
  */
 resource_resv *dup_resource_resv(resource_resv *oresresv, server_info *nsinfo,
-		queue_info *nqinfo, schd_error *err);
+		queue_info *nqinfo, const std::string& name = {});
 
 /*
  * pthread routine for duping a chunk of resresvs
@@ -94,7 +80,9 @@ int is_resource_resv_valid(resource_resv *resresv, schd_error *err);
 /*
  *      find_resource_resv - find a resource_resv by name
  */
-resource_resv *find_resource_resv(resource_resv **resresv_arr, char *name);
+resource_resv *find_resource_resv(resource_resv **resresv_arr, const char *name);
+resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string& name);
+
 
 /*
  * find a resource_resv by unique numeric rank
@@ -105,7 +93,7 @@ resource_resv *find_resource_resv_by_indrank(resource_resv **resresv_arr, int in
 /**
  *  find_resource_resv_by_time - find a resource_resv by name and start time
  */
-resource_resv *find_resource_resv_by_time(resource_resv **resresv_arr, char *name, time_t start_time);
+resource_resv *find_resource_resv_by_time(resource_resv **resresv_arr, const std::string& name, time_t start_time);
 
 /*
  *      find_resource_req - find a resource_req from a resource_req list
@@ -216,7 +204,7 @@ void update_resresv_on_end(resource_resv *resresv, const char *job_state);
  */
 resource_resv **
 resource_resv_filter(resource_resv **resresv_arr, int size,
-	int (*filter_func)(resource_resv*, void*), void *arg, int flags);
+	int (*filter_func)(resource_resv *, const void *), const void *arg, int flags);
 
 
 /*

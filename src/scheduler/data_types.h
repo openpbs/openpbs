@@ -52,6 +52,8 @@
 #ifndef	_DATA_TYPES_H
 #define	_DATA_TYPES_H
 
+#include <vector>
+#include <string>
 
 #include <time.h>
 #include <pbs_ifl.h>
@@ -65,9 +67,12 @@
 #include "site_queue.h"
 #endif
 
+<<<<<<< HEAD
 #include <unordered_map>
 #include <string>
 
+=======
+>>>>>>> 5747272f... Partial C++ refactor of resource_resv and node_info
 struct server_info;
 struct state_count;
 struct queue_info;
@@ -587,12 +592,11 @@ struct job_info
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
 	unsigned int preempt;			/* preempt priority */
 	int peer_sd;			/* connection descriptor to peer server */
-	long long job_id;		/* numeric portion of the job id */
 	resource_req *resused;		/* a list of resources used */
 	group_info *ginfo;		/* the fair share node for the owner */
 
 	/* subjob information */
-	char *array_id;			/* job id of job array if we are a subjob */
+	std::string array_id;		/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
 	resource_resv *parent_job;	/* pointer to the parent array job */
 
@@ -627,17 +631,6 @@ struct job_info
 #endif
 };
 
-
-struct node_scratch
-{
-	unsigned int visited:1;		/* visited this node for this type of chunk*/
-	unsigned int scattered:1;	/* node allocated to a v/scatter request */
-	unsigned int ineligible:1;	/* node is ineligible for the job */
-	unsigned int to_be_sorted:1;	/* used for sorting of the nodes while
-					 * altering a reservation.
-					 */
-};
-
 struct node_info
 {
 	unsigned is_down:1;		/* node is down */
@@ -652,9 +645,6 @@ struct node_info
 	unsigned is_job_busy:1;	/* ntype = cluster all vp's allocated */
 	unsigned is_stale:1;		/* node is unknown by mom */
 	unsigned is_maintenance:1;	/* node is in maintenance */
-
-	/* node types */
-	unsigned is_pbsnode:1;	/* this is a PBS node */
 
 	/* license types */
 	unsigned lic_lock:1;		/* node has a node locked license */
@@ -682,7 +672,7 @@ struct node_info
 	/* sharing */
 	enum vnode_sharing sharing;	/* deflt or forced sharing/excl of the node */
 
-	char *name;			/* name of the node */
+	const std::string name;		/* name of the node */
 	char *mom;			/* host name on which mom resides */
 
 	char **jobs;			/* the name of the jobs currently on the node */
@@ -737,6 +727,9 @@ struct node_info
 	int node_ind;			/* node's index into sinfo->unordered_nodes */
 	node_partition **np_arr;	/* array of node partitions node is in */
 	char *svr_inst_id;
+
+	node_info(const std::string& name);
+	~node_info();
 };
 
 struct resv_info
@@ -769,22 +762,22 @@ struct resv_info
 };
 
 /* resource reservation - used for both jobs and advanced reservations */
-struct resource_resv
+struct resource_resv 
 {
-	unsigned can_not_run : 1;	/* res resv can not run this cycle */
-	unsigned can_never_run : 1;	/* res resv can never run and will be deleted */
-	unsigned can_not_fit : 1;	/* res resv can not fit into node group */
-	unsigned is_invalid : 1;	/* res resv is invalid and will be ignored */
-	unsigned is_peer_ob : 1;	/* res resv can from a peer server */
+	unsigned can_not_run:1;   /* res resv can not run this cycle */
+	unsigned can_never_run:1; /* res resv can never run and will be deleted */
+	unsigned can_not_fit:1;   /* res resv can not fit into node group */
+	unsigned is_invalid:1;    /* res resv is invalid and will be ignored */
+	unsigned is_peer_ob:1;    /* res resv can from a peer server */
 
-	unsigned is_job : 1;		/* res resv is a job */
-	unsigned is_prov_needed : 1;	/* res resv requires provisioning */
-	unsigned is_shrink_to_fit : 1;	/* res resv is a shrink-to-fit job */
-	unsigned is_resv : 1;		/* res resv is an advanced reservation */
+	unsigned is_job:1;	       /* res resv is a job */
+	unsigned is_prov_needed:1;   /* res resv requires provisioning */
+	unsigned is_shrink_to_fit:1; /* res resv is a shrink-to-fit job */
+	unsigned is_resv:1;	       /* res resv is an advanced reservation */
 
 	unsigned will_use_multinode:1;	/* res resv will use multiple nodes */
 
-	char *name;			/* name of res resv */
+	const std::string name;		/* name of res resv */
 	char *user;			/* username of the owner of the res resv */
 	char *group;			/* exec group of owner of res resv */
 	char *project;			/* exec project of owner of res resv */
@@ -825,6 +818,9 @@ struct resource_resv
 	int resresv_ind;		   /* resource_resv index in all_resresv array */
 	timed_event *run_event;		   /* run event in calendar */
 	timed_event *end_event;		   /* end event in calendar */
+
+	resource_resv(const char *rname);
+	~resource_resv();
 };
 
 struct resource_type
@@ -883,9 +879,13 @@ struct resdef
 
 struct prev_job_info
 {
-	char *name;			/* name of job */
-	char *entity_name;		/* fair share entity of job */
+	const std::string name;	/* name of job */
+	std::string entity_name;	/* fair share entity of job */
 	resource_req *resused;	/* resources used by the job */
+	prev_job_info(const std::string& pname, char *ename, resource_req *rused);
+	prev_job_info(const prev_job_info &);
+	prev_job_info(prev_job_info &&) noexcept;
+	~prev_job_info();
 };
 
 struct counts
@@ -1210,7 +1210,7 @@ struct event_list
 struct timed_event
 {
 	unsigned int disabled:1;	/* event is disabled - skip it in simulation */
-	const char *name;			/* [reference] name of event */
+	std::string name;	
 	enum timed_event_types event_type;
 	time_t event_time;
 	event_ptr_t *event_ptr;

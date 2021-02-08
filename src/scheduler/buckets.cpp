@@ -43,7 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <log.h>
 #include "data_types.h"
 #include "pbs_bitmap.h"
 #include "node_info.h"
@@ -57,6 +56,7 @@
 #include "sort.h"
 #include "node_partition.h"
 #include "check.h"
+#include <log.h>
 
 /* bucket_bitpool constructor */
 bucket_bitpool *
