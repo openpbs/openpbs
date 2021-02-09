@@ -272,7 +272,7 @@ parse_config_line(FILE *fp, char **key, char **val)
 int
 parse_psi(char *conf_value)
 {
-	char **list;
+	char **list = NULL;
 	int i;
 	char *svrname = NULL;
 	char *local_conf = NULL;
@@ -289,23 +289,21 @@ parse_psi(char *conf_value)
 
 	list = break_comma_list(local_conf);
 	if (list == NULL)
-		return -1;
+		goto err;
 
 	for (i = 0; list[i] != NULL; i++)
 		;
 
 	if (!(pbs_conf.psi = calloc(i, sizeof(psi_t)))) {
 		fprintf(stderr, "Out of memory while parsing configuration %s", local_conf);
-		free_string_array(list);
-		return -1;
+		goto err;
 	}
 
 	for (i = 0; list[i] != NULL; i++) {
 		svrname = parse_servername(list[i], &(pbs_conf.psi[i].port));
 		if (svrname == NULL) {
 			fprintf(stderr, "Error parsing PBS_SERVER_INSTANCES %s \n", list[i]);
-			free_string_array(list);
-			return -1;
+			goto err;
 		}
 		strcpy(pbs_conf.psi[i].name, svrname);
 
@@ -320,11 +318,14 @@ parse_psi(char *conf_value)
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
 	pbs_conf.psi_str = strdup(local_conf);
-
-	if (conf_value == NULL)
-		free(local_conf);
+	free(local_conf);
 
 	return 0;
+
+err:
+	free_string_array(list);
+	free(local_conf);
+	return -1;
 }
 
 
