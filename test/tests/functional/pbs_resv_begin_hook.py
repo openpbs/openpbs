@@ -37,7 +37,7 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-
+import textwrap
 from tests.functional import *
 
 
@@ -259,17 +259,18 @@ if e.type == pbs.RESV_BEGIN:
         reservation and verify the read permissions in the resvbegin hook.
         """
 
-        hook_script = """
-import pbs
-e=pbs.event()
+        hook_script = textwrap.dedent("""\
+            import pbs
+            e=pbs.event()
 
-pbs.logmsg(pbs.LOG_DEBUG, 'Reservation begin Hook name - %s' % e.hook_name)
+            pbs.logmsg(pbs.LOG_DEBUG, 'Reservation begin Hook name - %s' % e.hook_name)
 
-if e.type == pbs.RESV_BEGIN:
-    e.resv.resources_used.walltime = 10
-    pbs.logmsg(pbs.LOG_DEBUG, 'Reservation ID - %s' %
-    e.resv.resources_used.walltime)
-"""
+            if e.type == pbs.RESV_BEGIN:
+                pbs.logmsg(pbs.LOG_DEBUG, 'e.resv = %s' % e.resv.__dict__)
+                e.resv.resources_used.walltime = 10
+                pbs.logmsg(pbs.LOG_DEBUG, 'Reservation ID - %s' %
+                e.resv.resources_used.walltime)
+        """)
 
         self.server.import_hook(self.hook_name, hook_script)
 
