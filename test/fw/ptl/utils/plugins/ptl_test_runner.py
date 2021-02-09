@@ -1045,15 +1045,15 @@ class PTLTestRunner(Plugin):
         for user in PBS_USERS:
             self.logger.info('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
-            for mom in hosts:
-                ret = du.run_cmd(mom, cmd=['echo', '$HOME'], sudo=True,
+            for host in hosts:
+                ret = du.run_cmd(host, cmd=['echo', '$HOME'], sudo=True,
                                  runas=runas, logerr=False, as_script=True)
                 if ret['rc'] == 0:
                     path = ret['out'][0].strip()
                 else:
                     return None
                 ftd = []
-                files = du.listdir(mom, path=path, runas=user)
+                files = du.listdir(host, path=path, runas=user)
                 bn = os.path.basename
                 ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
                 ftd.extend([f for f in files if bn(f).startswith('STDIN')])
@@ -1061,7 +1061,7 @@ class PTLTestRunner(Plugin):
                 if len(ftd) > 1000:
                     for i in range(0, len(ftd), 1000):
                         j = i + 1000
-                        du.rm(mom, path=ftd[i:j], runas=user,
+                        du.rm(host, path=ftd[i:j], runas=user,
                               force=True, level=logging.DEBUG)
 
         root_dir = os.sep
