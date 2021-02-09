@@ -280,7 +280,6 @@ query_nodes(int pbs_sd, server_info *sinfo)
 			ATTR_maxuserrun,
 			ATTR_maxgrprun,
 			ATTR_queue,
-			ATTR_NODE_pcpus,
 			ATTR_p,
 			ATTR_NODE_Sharing,
 			ATTR_NODE_License,
@@ -518,11 +517,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		}
 		else if (!strcmp(attrp->name, ATTR_queue))
 			ninfo->queue_name = string_dup(attrp->value);
-		else if (!strcmp(attrp->name, ATTR_NODE_pcpus)) {
-			count = strtol(attrp->value, &endp, 10);
-			if (*endp == '\0')
-				ninfo->pcpus = count;
-		}
 		else if (!strcmp(attrp->name, ATTR_p)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -540,7 +534,6 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			switch (attrp->value[0]) {
 				case ND_LIC_TYPE_locked:
 					ninfo->lic_lock = 1;
-					sinfo->has_nonCPU_licenses = 1;
 					break;
 				case ND_LIC_TYPE_cloud:
 					check_expiry = 1;
@@ -630,10 +623,8 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		attrp = attrp->next;
 	}
 	if (check_expiry) {
-		if (time(NULL) < expiry) {
+		if (time(NULL) < expiry)
 			ninfo->lic_lock = 1;
-			sinfo->has_nonCPU_licenses = 1;
-		}
 	}
 	return ninfo;
 }
@@ -690,7 +681,6 @@ new_node_info()
 
 	nnode->priority = 0;
 
-	nnode->pcpus = 0;
 
 	nnode->rank = 0;
 
@@ -1530,7 +1520,6 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->sharing = onode->sharing;
 
 	nnode->lic_lock = onode->lic_lock;
-	nnode->pcpus = onode->pcpus;
 
 	nnode->rank = onode->rank;
 

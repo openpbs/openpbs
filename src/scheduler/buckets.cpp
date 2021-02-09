@@ -418,7 +418,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsi
 		queue_info *qinfo = NULL;
 		int node_ind = nodes[i]->node_ind;
 
-		if (nodes[i]->is_down || nodes[i]->is_offline || node_ind == -1)
+		if (nodes[i]->is_down || nodes[i]->is_offline || node_ind == -1 || nodes[i]->lic_lock == 0)
 			continue;
 
 		if (queues != NULL && nodes[i]->queue_name != NULL)
