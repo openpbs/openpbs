@@ -46,6 +46,6 @@
  *      create_prev_job_info - create the prev_job_info array from an array
  *                              of jobs
  */
-std::vector<prev_job_info> create_prev_job_info(resource_resv **resresv_arr);
+void create_prev_job_info(resource_resv **resresv_arr);
 
 #endif	/* _PREV_JOB_INFO_H */

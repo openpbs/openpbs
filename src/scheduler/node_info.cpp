@@ -3183,8 +3183,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 					if (failerr->status_code == SCHD_UNKWN)
 						copy_schd_error(failerr, err);
 				}
-			}
-			else {
+			} else {
 				ninfo_arr[i]->nscr |= NSCR_VISITED;
 				if (failerr->status_code == SCHD_UNKWN)
 					copy_schd_error(failerr, err);

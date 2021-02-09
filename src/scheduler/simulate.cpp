@@ -1381,7 +1381,7 @@ free_timed_event(timed_event *te)
 			((resource_resv *)te->event_ptr)->end_event = NULL;
 	}
 
-	free(te);
+	delete te;
 }
 
 /**

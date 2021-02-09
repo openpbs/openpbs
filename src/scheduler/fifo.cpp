@@ -1173,10 +1173,8 @@ end_cycle_tasks(server_info *sinfo)
 	int i;
 
 	/* keep track of update used resources for fairshare */
-	if (sinfo != NULL && sinfo->policy->fair_share) {
-		last_running.clear();
-		last_running = create_prev_job_info(sinfo->running_jobs);
-	}
+	if (sinfo != NULL && sinfo->policy->fair_share)
+		create_prev_job_info(sinfo->running_jobs);
 
 	/* we copied in conf.fairshare into sinfo at the start of the cycle,
 	 * we don't want to free it now, or we'd lose all fairshare data

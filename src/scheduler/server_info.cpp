@@ -120,12 +120,12 @@
 #include <signal.h>
 #include <sys/wait.h>
 
+#include "pbs_entlim.h"
 #include "pbs_ifl.h"
 #include "pbs_error.h"
 #include "log.h"
 #include "pbs_share.h"
 #include "libpbs.h"
-#include "pbs_entlim.h"
 #include "constant.h"
 #include "config.h"
 #include "server_info.h"

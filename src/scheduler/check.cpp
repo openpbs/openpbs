@@ -1623,7 +1623,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	if (ninfo_arr == NULL || error)
 		return NULL;
 
-	err->status_code = NOT_RUN;
 	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv, flags, &nspec_arr, err);
 
 	/* We can run, yippie! */

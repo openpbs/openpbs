@@ -59,27 +59,24 @@
 #include "job_info.h"
 #include "misc.h"
 #include "resource_resv.h"
+#include "globals.h"
 
 
 /**
  * @brief
- *		create_prev_job_info - create the prev_job_info array from an array
- *				of jobs
+ *		create_prev_job_info - create the prev_job_info array from an array of jobs
  *
- * @param[in,out]	jobs	-	job array
- * @param[in]	size	-	size of jinfo_arr or UNSPECIFIED if unknown
- *
- * @return	new prev_job_array
- * @retval	NULL	: on error
+ * @param[in]	jobs	-	job array
  *
  * @par	NOTE: jinfo_arr is modified
  *
  */
-std::vector<prev_job_info>
+void
 create_prev_job_info(resource_resv **jobs)
 {
-	std::vector<prev_job_info> npji;	/* new prev_job_info vector */
 	int i;
+
+	last_running.clear();
 
 	for (i = 0; jobs[i] != NULL; i++) {
 		if(jobs[i]->job != NULL) {
@@ -88,11 +85,9 @@ create_prev_job_info(resource_resv **jobs)
 			/* resused is shallow copied, NULL it so it doesn't get freed at the end of the cycle */
 			jobs[i]->job->resused = NULL;
 
-			npji.push_back(pjinfo);
+			last_running.push_back(pjinfo);
 		}
 	}
-
-	return npji;
 }
 
 prev_job_info::prev_job_info(const std::string& pname, char *ename, resource_req *rused): name(pname)
