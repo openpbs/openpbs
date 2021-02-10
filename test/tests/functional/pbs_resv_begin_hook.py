@@ -51,7 +51,6 @@ def get_hook_body_reverse_node_state():
         pbs.logmsg(pbs.LOG_DEBUG, "key:%s value:%s" % (key, value))
     e.accept()
     """
-    import textwrap
     hook_body = textwrap.dedent(hook_body)
     return hook_body
 
