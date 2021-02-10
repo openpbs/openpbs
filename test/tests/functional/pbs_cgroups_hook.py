@@ -1200,6 +1200,54 @@ sleep 300
     }
 }
 """
+        self.cfg14 = """{
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : false,
+    "vnode_per_numa_node"   : false,
+    "online_offlined_nodes" : false,
+    "use_hyperthreads"      : false,
+    "discover_gpus"         : %s,
+    "cgroup":
+    {
+        "cpuacct":
+        {
+            "enabled"         : true
+        },
+        "cpuset":
+        {
+            "enabled"         : false
+        },
+        "devices":
+        {
+            "enabled"         : %s,
+            "exclude_hosts"   : [],
+            "exclude_vntypes" : [],
+            "allow"           : [
+                "b *:* rwm",
+                ["console","rwm"],
+                ["tty0","rwm", "*"],
+                "c 1:* rwm",
+                "c 10:* rwm"
+            ]
+        },
+        "hugetlb":
+        {
+            "enabled"         : false
+        },
+        "memory":
+        {
+            "enabled"         : true
+        },
+        "memsw":
+        {
+            "enabled"         : false
+        }
+    }
+}
+"""
+
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the server log level
         a = {'log_events': '4095'}
@@ -1209,10 +1257,15 @@ sleep 300
         self.scheduler.set_sched_config(a)
         # Create resources
         attr = {'type': 'long', 'flag': 'nh'}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='nmics',
-                            logerr=False)
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus',
-                            logerr=False)
+
+        rss = self.server.status(RSC)
+        self.logger.info('resources on server are: %s' % str(rss))
+        if not next((item for item in rss if item['id'] == 'nmics'), None):
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id='nmics',
+                                logerr=False)
+        if not next((item for item in rss if item['id'] == 'ngpus'), None):
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id='ngpus',
+                                logerr=False)
         # Import the hook
         self.hook_file = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                       'lib',
@@ -2002,6 +2055,114 @@ if %s e.job.in_ms_mom():
             self.assertTrue(device in scr_out,
                             '"%s" not found in: %s' % (device, scr_out))
         self.logger.info('device_list check passed')
+
+    def test_devices_and_gpu_discovery(self):
+        """
+        Test to verify that if the device subsystem is enabled
+        and discover_gpus is true, _discover_gpus is called
+
+        The GPU tests should in theory make this redundant,
+        but they require a test harness that has GPUs. This test will
+        allow to see if the GPU discovery is at least called even when
+        the test harness has no GPUs.
+        """
+        if not self.paths[self.hosts_list[0]]['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg14 % ('true', 'true'))
+
+        # Restart mom for changes made by cgroups hook to take effect
+        begin = time.time()
+        # sleep 5s to ensure log matching will not catch older log lines
+        time.sleep(5)
+        self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, tail=False)
+
+        # These will throw an exception if the routines that should not
+        # have been called were called.
+        # n='ALL' is needed because the cgroup hook is so verbose
+        # that 50 lines will not suffice
+        self.moms_list[0].log_match('_discover_devices', starttime=begin,
+                                    existence=True, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
+                                    existence=True, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.logger.info('devices_and_gpu_discovery check passed')
+
+    def test_suppress_devices_discovery(self):
+        """
+        Test to verify that if the device subsystem is turned off,
+        neither _discover_devices nor _discover_gpus is called
+        """
+        if not self.paths[self.hosts_list[0]]['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg14 % ('true', 'false'))
+
+        # Restart mom for changes made by cgroups hook to take effect
+        begin = time.time()
+        # sleep 5s to ensure log matching will not catch older log lines
+        time.sleep(5)
+        self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, tail=False)
+
+        # These will throw an exception if the routines that should not
+        # have been called were called.
+        # n='ALL' is needed because the cgroup hook is so verbose
+        # that 50 lines will not suffice
+        self.moms_list[0].log_match('_discover_devices', starttime=begin,
+                                    existence=False, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.moms_list[0].log_match('_discover_gpus', starttime=begin,
+                                    existence=False, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.logger.info('suppress_devices_discovery check passed')
+
+    def test_suppress_gpu_discovery(self):
+        """
+        Test to verify that if the device subsystem is enabled
+        and discover_gpus is false, nvidia-smi is not called
+        discover_gpus is called but just returns {}
+        """
+        if not self.paths[self.hosts_list[0]]['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg14 % ('false', 'true'))
+
+        # Restart mom for changes made by cgroups hook to take effect
+        begin = time.time()
+        # sleep 5s to ensure log matching will not catch older log lines
+        time.sleep(5)
+        self.mom.restart()
+
+        # Make sure the MoM is restarted
+        self.moms_list[0].log_match('Hook handler returned success'
+                                    ' for exechost_startup',
+                                    starttime=begin, existence=True,
+                                    interval=1, tail=False)
+
+        # These will throw an exception if the routines that should not
+        # have been called were called.
+        # n='ALL' is needed because the cgroup hook is so verbose
+        # that 50 lines will not suffice
+        self.moms_list[0].log_match('_discover_devices', starttime=begin,
+                                    existence=True, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.moms_list[0].log_match('NVIDIA SMI', starttime=begin,
+                                    existence=False, max_attempts=2,
+                                    interval=1, tail=False, n='ALL')
+        self.logger.info('suppress_gpu_discovery check passed')
 
     def test_cgroup_cpuset(self):
         """
