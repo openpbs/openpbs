@@ -317,14 +317,17 @@ parse_psi(char *conf_value)
 	}
 	free_string_array(list);
 	pbs_conf.pbs_num_servers = i;
-	pbs_conf.psi_str = strdup(local_conf);
-	free(local_conf);
+	if (conf_value)
+		pbs_conf.psi_str = strdup(local_conf);
+	else
+		pbs_conf.psi_str = local_conf;
 
 	return 0;
 
 err:
 	free_string_array(list);
-	free(local_conf);
+	if (conf_value == NULL)
+		free(local_conf);
 	return -1;
 }
 
