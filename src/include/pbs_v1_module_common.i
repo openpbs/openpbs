@@ -102,6 +102,7 @@ pbs_list_head svr_management_hooks;
 pbs_list_head svr_modifyvnode_hooks;
 pbs_list_head svr_provision_hooks;
 pbs_list_head svr_periodic_hooks;
+pbs_list_head svr_resv_confirm_hooks;
 pbs_list_head svr_resv_begin_hooks;
 pbs_list_head svr_resv_end_hooks;
 pbs_list_head svr_execjob_begin_hooks;

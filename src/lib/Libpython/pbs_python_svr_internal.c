@@ -5897,7 +5897,36 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>", PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
   		    	goto event_set_exit;
    		}
+	} else if (hook_event == HOOK_EVENT_RESV_CONFIRM) {
+		/* Confirm uses rq_runjob, not rq_manage and sticks the reservation id in rq_jid */
+		struct rq_runjob *rqj = req_params->rq_run;
 
+		/* initialize event param to None */
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_RESV, Py_None);
+
+		if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
+			if (py_pbs_statobj != NULL) {
+				Py_XDECREF(py_rargs);  /* discard previously used value */
+				py_rargs = Py_BuildValue("(sss)", "resv", rqj->rq_jid,
+					pbs_conf.pbs_server_name); /* NEW ref */
+				py_resv = PyObject_Call(py_pbs_statobj, py_rargs,
+					NULL);/*NEW Reservation object*/
+				hook_set_mode = C_MODE; /* ensure still in C mode */
+			}
+		} else {
+			py_resv = _pps_helper_get_resv(NULL, rqj->rq_jid, perf_label);
+		}
+
+		if (!py_resv || (py_resv == Py_None)) {
+         		LOG_ERROR_ARG2("%s:failed to create resv %s's python resv object", PY_TYPE_EVENT, rqj->rq_jid);
+			goto event_set_exit;
+		}
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_RESV, py_resv);
+
+  	        if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set param attribute <%s>", PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
+  		    	goto event_set_exit;
+   		}
 	} else if( (hook_event == HOOK_EVENT_EXECJOB_BEGIN) || \
 		(hook_event == HOOK_EVENT_EXECJOB_RESIZE) || \
 		(hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) || \

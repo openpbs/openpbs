@@ -928,6 +928,11 @@ class HookUtils(object):
                 'name': 'resv_begin',
                 'handler': None
                 }
+            if hasattr(pbs, "RESV_CONFIRM"):
+                self.hook_events[pbs.RESV_CONFIRM] = {
+                'name': 'resv_confirm',
+                'handler': None
+                }
             self.hook_events[pbs.EXECJOB_BEGIN] = {
                 'name': 'execjob_begin',
                 'handler': self._execjob_begin_handler
