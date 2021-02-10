@@ -1572,7 +1572,9 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 				ninfo_arr = qinfo->nodes;
 		}
 
-		if (sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) { /* Multi-server psets */
+		/* Handle multi-server psets */
+		if (resresv->svr_inst_id != NULL &&
+		    sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
 			msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
 
 			/* Restrict job arrays and reservations to owner server */
