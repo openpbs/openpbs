@@ -550,16 +550,20 @@ class SmokeTest(PBSTestSuite):
         """
         Test to submit job with job script
         """
+        sleep_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'pbs_sleep')
+        script_body = sleep_cmd + ' 120'
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
-        j.create_script('pbs_sleep 120\n', hostname=self.server.client)
+        j.create_script(script_body, hostname=self.server.client)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.delete(id=jid, extend='force', wait=True)
         self.logger.info("Testing script with extension")
         j = Job(TEST_USER)
+
         fn = self.du.create_temp_file(hostname=self.server.client,
                                       suffix=".scr",
-                                      body="pbs_sleep 10",
+                                      body=script_body,
                                       asuser=str(TEST_USER))
         jid = self.server.submit(j, script=fn)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
