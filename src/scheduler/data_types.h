@@ -192,7 +192,7 @@ struct th_data_nd_eligible
 
 struct th_data_dup_nd_info
 {
-	bool error;
+	bool error:1;
 	node_info **onodes;
 	node_info **nnodes;
 	server_info *nsinfo;
@@ -203,7 +203,7 @@ struct th_data_dup_nd_info
 
 struct th_data_query_ninfo
 {
-	bool error;
+	bool error:1;
 	struct batch_status *nodes;
 	server_info *sinfo;
 	node_info **oarr;
@@ -220,7 +220,7 @@ struct th_data_free_ninfo
 
 struct th_data_dup_resresv
 {
-	bool error;
+	bool error:1;
 	resource_resv **oresresv_arr;
 	resource_resv **nresresv_arr;
 	server_info *nsinfo;
@@ -231,7 +231,7 @@ struct th_data_dup_resresv
 
 struct th_data_query_jinfo
 {
-	bool error;
+	bool error:1;
 	struct batch_status *jobs;
 	server_info *sinfo;
 	queue_info *qinfo;
@@ -279,13 +279,13 @@ struct state_count
 
 struct place
 {
-	bool free;		/* free placement */
-	bool pack;		/* pack placement */
-	bool scatter;		/* scatter placement */
-	bool vscatter;	/* scatter by vnode */
-	bool excl;		/* need nodes exclusively */
-	bool exclhost;	/* need whole hosts exclusively */
-	bool share;		/* will share nodes */
+	bool free:1;		/* free placement */
+	bool pack:1;		/* pack placement */
+	bool scatter:1;		/* scatter placement */
+	bool vscatter:1;	/* scatter by vnode */
+	bool excl:1;		/* need nodes exclusively */
+	bool exclhost:1;	/* need whole hosts exclusively */
+	bool share:1;		/* will share nodes */
 
 	char *group;			/* resource to node group by */
 };
@@ -309,23 +309,23 @@ struct selspec
 /* for description of these bits, check the PBS admin guide or scheduler IDS */
 struct status
 {
-	bool round_robin;		/* Round robin around queues */
-	bool by_queue;		/* schedule per-queue */
-	bool strict_fifo;		/* deprecated */
-	bool strict_ordering;
-	bool fair_share;
-	bool help_starving_jobs;
-	bool backfill;
-	bool sort_nodes;
-	bool backfill_prime;
-	bool preempting;
+	bool round_robin:1;		/* Round robin around queues */
+	bool by_queue:1;		/* schedule per-queue */
+	bool strict_fifo:1;		/* deprecated */
+	bool strict_ordering:1;
+	bool fair_share:1;
+	bool help_starving_jobs:1;
+	bool backfill:1;
+	bool sort_nodes:1;
+	bool backfill_prime:1;
+	bool preempting:1;
 #ifdef NAS /* localmod 034 */
-	bool shares_track_only;
+	bool shares_track_only:1;
 #endif /* localmod 034 */
 
-	bool is_prime;
-	bool is_ded_time;
-	bool sync_fairshare_files;	/* sync fairshare files to disk */
+	bool is_prime:1;
+	bool is_ded_time:1;
+	bool sync_fairshare_files:1;	/* sync fairshare files to disk */
 
 	struct sort_info *sort_by;		/* job sorting */
 	struct sort_info *node_sort;		/* node sorting */
@@ -362,11 +362,11 @@ struct status
  */
 struct schedattrs
 {
-	bool do_not_span_psets;
-	bool only_explicit_psets;
-	bool preempt_targets_enable;
-	bool sched_preempt_enforce_resumption;
-	bool throughput_mode;
+	bool do_not_span_psets:1;
+	bool only_explicit_psets:1;
+	bool preempt_targets_enable:1;
+	bool sched_preempt_enforce_resumption:1;
+	bool throughput_mode:1;
 	long attr_update_period;
 	char *comment;
 	char *job_sort_formula;
@@ -386,25 +386,27 @@ struct schedattrs
 
 struct server_info
 {
-	bool has_soft_limit;	/* server has a soft user/grp limit set */
-	bool has_hard_limit;	/* server has a hard user/grp limit set */
-	bool has_mult_express;	/* server has multiple express queues */
-	bool has_user_limit;	/* server has user hard or soft limit */
-	bool has_grp_limit;	/* server has group hard or soft limit */
-	bool has_proj_limit;	/* server has project hard or soft limit */
-	bool has_all_limit;	/* server has PBS_ALL limits set on it */
-	bool has_prime_queue;	/* server has a primetime queue */
-	bool has_ded_queue;	/* server has a dedtime queue */
-	bool has_nonprime_queue;	/* server has a non primetime queue */
-	bool node_group_enable;	/* is node grouping enabled */
-	bool has_nodes_assoc_queue; /* nodes are associates with queues */
-	bool has_multi_vnode;	/* server has at least one multi-vnoded MOM  */
-	bool has_runjob_hook;	/* server has at least 1 runjob hook enabled */
-	bool eligible_time_enable;/* controls if we accrue eligible_time  */
-	bool provision_enable;	/* controls if provisioning occurs */
-	bool power_provisioning;	/* controls if power provisioning occurs */
-	bool use_hard_duration;	/* use hard duration when creating the calendar */
-	bool pset_metadata_stale;	/* The placement set meta data is stale and needs to be regenerated before the next use */
+	bool has_soft_limit:1;	/* server has a soft user/grp limit set */
+	bool has_hard_limit:1;	/* server has a hard user/grp limit set */
+	bool has_mult_express:1;	/* server has multiple express queues */
+	bool has_user_limit:1;	/* server has user hard or soft limit */
+	bool has_grp_limit:1;	/* server has group hard or soft limit */
+	bool has_proj_limit:1;	/* server has project hard or soft limit */
+	bool has_all_limit:1;	/* server has PBS_ALL limits set on it */
+	bool has_prime_queue:1;	/* server has a primetime queue */
+	bool has_ded_queue:1;	/* server has a dedtime queue */
+	bool has_nonprime_queue:1;	/* server has a non primetime queue */
+	bool node_group_enable:1;	/* is node grouping enabled */
+	bool has_nodes_assoc_queue:1; /* nodes are associates with queues */
+	bool has_multi_vnode:1;	/* server has at least one multi-vnoded MOM  */
+	bool has_runjob_hook:1;	/* server has at least 1 runjob hook enabled */
+	bool eligible_time_enable:1;/* controls if we accrue eligible_time  */
+	bool provision_enable:1;	/* controls if provisioning occurs */
+	bool power_provisioning:1;	/* controls if power provisioning occurs */
+	bool has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
+	bool use_hard_duration:1;	/* use hard duration when creating the calendar */
+	bool pset_metadata_stale:1;	/* The placement set meta data is stale and needs to be regenerated before the next use */
+	char *name;			/* name of server */
 	struct schd_resource *res;	/* list of resources */
 	void *liminfo;			/* limit storage information */
 	int num_queues;			/* number of queues that reside on the server */
@@ -480,22 +482,22 @@ struct server_info
 
 struct queue_info
 {
-	bool is_started;		/* is queue started */
-	bool is_exec;		/* is the queue an execution queue */
-	bool is_route;		/* is the queue a routing queue */
-	bool is_ok_to_run;	/* is it ok to run jobs in this queue */
-	bool is_ded_queue;	/* only jobs in dedicated time */
-	bool is_prime_queue;	/* only run jobs in primetime */
-	bool is_nonprime_queue;	/* only run jobs in nonprimetime */
-	bool has_nodes;		/* does this queue have nodes assoc with it */
-	bool has_soft_limit;	/* queue has a soft user/grp limit set */
-	bool has_hard_limit;	/* queue has a hard user/grp limit set */
-	bool is_peer_queue;	/* queue is a peer queue */
-	bool has_resav_limit;	/* queue has resources_available limits */
-	bool has_user_limit;	/* queue has user hard or soft limit */
-	bool has_grp_limit;	/* queue has group hard or soft limit */
-	bool has_proj_limit;	/* queue has project hard or soft limit */
-	bool has_all_limit;	/* queue has PBS_ALL limits set on it */
+	bool is_started:1;		/* is queue started */
+	bool is_exec:1;		/* is the queue an execution queue */
+	bool is_route:1;		/* is the queue a routing queue */
+	bool is_ok_to_run:1;	/* is it ok to run jobs in this queue */
+	bool is_ded_queue:1;	/* only jobs in dedicated time */
+	bool is_prime_queue:1;	/* only run jobs in primetime */
+	bool is_nonprime_queue:1;	/* only run jobs in nonprimetime */
+	bool has_nodes:1;		/* does this queue have nodes assoc with it */
+	bool has_soft_limit:1;	/* queue has a soft user/grp limit set */
+	bool has_hard_limit:1;	/* queue has a hard user/grp limit set */
+	bool is_peer_queue:1;	/* queue is a peer queue */
+	bool has_resav_limit:1;	/* queue has resources_available limits */
+	bool has_user_limit:1;	/* queue has user hard or soft limit */
+	bool has_grp_limit:1;	/* queue has group hard or soft limit */
+	bool has_proj_limit:1;	/* queue has project hard or soft limit */
+	bool has_all_limit:1;	/* queue has PBS_ALL limits set on it */
 	struct server_info *server;	/* server where queue resides */
 	char *name;			/* queue name */
 	state_count sc;			/* number of jobs in different states */
@@ -507,9 +509,9 @@ struct queue_info
 	/* localmod 034 */
 	time_t max_borrow;		/* longest job that can borrow CPUs */
 	/* localmod 038 */
-	bool is_topjob_set_aside; /* draws topjobs from per_queues_topjobs */
+	bool is_topjob_set_aside:1; /* draws topjobs from per_queues_topjobs */
 	/* localmod 040 */
-	bool ignore_nodect_sort; /* job_sort_key nodect ignored in this queue */
+	bool ignore_nodect_sort:1; /* job_sort_key nodect ignored in this queue */
 #endif
 	int num_nodes;		/* number of nodes associated with queue */
 	struct schd_resource *qres;	/* list of resources on the queue */
@@ -539,34 +541,35 @@ struct queue_info
 	char *partition;		/* partition to which queue belongs to */
 };
 
-struct job_info
+struct 
+job_info
 {
-	bool is_queued;		/* state booleans */
-	bool is_running;
-	bool is_held;
-	bool is_waiting;
-	bool is_transit;
-	bool is_exiting;
-	bool is_suspended;
-	bool is_susp_sched;	/* job is suspended by scheduler */
-	bool is_userbusy;
-	bool is_begin;		/* job array 'B' state */
-	bool is_expired;		/* 'X' pseudo state for simulated job end */
-	bool is_checkpointed;	/* job has been checkpointed */
+	bool is_queued:1;		/* state booleans */
+	bool is_running:1;
+	bool is_held:1;
+	bool is_waiting:1;
+	bool is_transit:1;
+	bool is_exiting:1;
+	bool is_suspended:1;
+	bool is_susp_sched:1;	/* job is suspended by scheduler */
+	bool is_userbusy:1;
+	bool is_begin:1;		/* job array 'B' state */
+	bool is_expired:1;		/* 'X' pseudo state for simulated job end */
+	bool is_checkpointed:1;	/* job has been checkpointed */
 
-	bool can_not_preempt;	/* this job can not be preempted */
+	bool can_not_preempt:1;	/* this job can not be preempted */
 
-	bool can_checkpoint;	/* this job can be checkpointed */
-	bool can_requeue;	/* this job can be requeued */
-	bool can_suspend;	/* this job can be suspended */
+	bool can_checkpoint:1;	/* this job can be checkpointed */
+	bool can_requeue:1;	/* this job can be requeued */
+	bool can_suspend:1;	/* this job can be suspended */
 
-	bool is_starving;		/* job has waited passed starvation time */
-	bool is_array;		/* is the job a job array object */
-	bool is_subjob;		/* is a subjob of a job array */
+	bool is_starving:1;		/* job has waited passed starvation time */
+	bool is_array:1;		/* is the job a job array object */
+	bool is_subjob:1;		/* is a subjob of a job array */
 
-	bool is_provisioning;	/* job is provisioning */
-	bool is_preempted;	/* job is preempted */
-	bool topjob_ineligible;	/* Job is ineligible to be a top job */
+	bool is_provisioning:1;	/* job is provisioning */
+	bool is_preempted:1;	/* job is preempted */
+	bool topjob_ineligible:1;	/* Job is ineligible to be a top job */
 
 	char *job_name;			/* job name attribute (qsub -N) */
 	char *comment;			/* comment field of job */
@@ -625,29 +628,29 @@ struct job_info
 struct node_info
 {
 	public:
-	bool is_down;		/* node is down */
-	bool is_free;		/* node is free to run a job */
-	bool is_offline;	/* node is off-line */
-	bool is_unknown;	/* node is in an unknown state */
-	bool is_exclusive;	/* node is running in exclusive mode */
-	bool is_job_exclusive;	/* node is running in job-exclusive mode */
-	bool is_resv_exclusive;	/* node is reserved exclusively */
-	bool is_sharing;	/* node is running in job-sharing mode */
-	bool is_busy;		/* load on node is too high to schedule */
-	bool is_job_busy;	/* ntype = cluster all vp's allocated */
-	bool is_stale;		/* node is unknown by mom */
-	bool is_maintenance;	/* node is in maintenance */
+	bool is_down:1;		/* node is down */
+	bool is_free:1;		/* node is free to run a job */
+	bool is_offline:1;	/* node is off-line */
+	bool is_unknown:1;	/* node is in an unknown state */
+	bool is_exclusive:1;	/* node is running in exclusive mode */
+	bool is_job_exclusive:1;	/* node is running in job-exclusive mode */
+	bool is_resv_exclusive:1;	/* node is reserved exclusively */
+	bool is_sharing:1;	/* node is running in job-sharing mode */
+	bool is_busy:1;		/* load on node is too high to schedule */
+	bool is_job_busy:1;	/* ntype = cluster all vp's allocated */
+	bool is_stale:1;		/* node is unknown by mom */
+	bool is_maintenance:1;	/* node is in maintenance */
 
 	/* license types */
-	bool lic_lock;		/* node has a node locked license */
+	bool lic_lock:1;		/* node has a node locked license */
 
-	bool has_hard_limit;	/* node has a hard user/grp limit set */
-	bool no_multinode_jobs;	/* do not run multnode jobs on this node */
+	bool has_hard_limit:1;	/* node has a hard user/grp limit set */
+	bool no_multinode_jobs:1;	/* do not run multnode jobs on this node */
 
-	bool resv_enable;	/* is this node available for reservations */
-	bool provision_enable;	/* is this node available for provisioning */
+	bool resv_enable:1;	/* is this node available for reservations */
+	bool provision_enable:1;	/* is this node available for provisioning */
 
-	bool is_provisioning;	/* node is provisioning */
+	bool is_provisioning:1;	/* node is provisioning */
 	/* node in wait-provision is considered as node in provisioning state
 	 * nodes in provisioning and wait provisioning states cannot run job
 	 * NOTE:
@@ -656,10 +659,10 @@ struct node_info
 	 * since we can't make the other job wait. In another cycle, the node is
 	 * either free or provisioning, then, the case is clear.
 	 */
-	bool is_multivnoded;	/* multi vnode */
-	bool power_provisioning;	/* can this node can power provision */
-	bool is_sleeping;		/* node put to sleep through power on/off or ramp rate limit */
-	bool has_ghost_job;	/* race condition occurred: recalculate resources_assigned */
+	bool is_multivnoded:1;	/* multi vnode */
+	bool power_provisioning:1;	/* can this node can power provision */
+	bool is_sleeping:1;		/* node put to sleep through power on/off or ramp rate limit */
+	bool has_ghost_job:1;	/* race condition occurred: recalculate resources_assigned */
 
 	/* sharing */
 	enum vnode_sharing sharing;	/* deflt or forced sharing/excl of the node */
@@ -726,8 +729,8 @@ struct node_info
 
 struct resv_info
 {
-	bool is_standing;		/* set to 1 for a standing reservation */
-	bool is_running;		/* the reservation is running (not necessarily in the running state) */
+	bool is_standing:1;		/* set to 1 for a standing reservation */
+	bool is_running:1;		/* the reservation is running (not necessarily in the running state) */
 	char *queuename;		/* the name of the queue */
 	char *rrule;			/* recurrence rule for standing reservations */
 	char *execvnodes_seq;		/* sequence of execvnodes for standing resvs */
@@ -757,18 +760,18 @@ struct resv_info
 class resource_resv 
 {
 	public:
-	bool can_not_run;   /* res resv can not run this cycle */
-	bool can_never_run; /* res resv can never run and will be deleted */
-	bool can_not_fit;   /* res resv can not fit into node group */
-	bool is_invalid;    /* res resv is invalid and will be ignored */
-	bool is_peer_ob;    /* res resv can from a peer server */
+	bool can_not_run:1;   /* res resv can not run this cycle */
+	bool can_never_run:1; /* res resv can never run and will be deleted */
+	bool can_not_fit:1;   /* res resv can not fit into node group */
+	bool is_invalid:1;    /* res resv is invalid and will be ignored */
+	bool is_peer_ob:1;    /* res resv can from a peer server */
 
-	bool is_job;	       /* res resv is a job */
-	bool is_prov_needed;   /* res resv requires provisioning */
-	bool is_shrink_to_fit; /* res resv is a shrink-to-fit job */
-	bool is_resv;	       /* res resv is an advanced reservation */
+	bool is_job:1;	       /* res resv is a job */
+	bool is_prov_needed:1;   /* res resv requires provisioning */
+	bool is_shrink_to_fit:1; /* res resv is a shrink-to-fit job */
+	bool is_resv:1;	       /* res resv is an advanced reservation */
 
-	bool will_use_multinode;	/* res resv will use multiple nodes */
+	bool will_use_multinode:1;	/* res resv will use multiple nodes */
 
 	const std::string name;		/* name of res resv */
 	char *user;			/* username of the owner of the res resv */
@@ -819,17 +822,17 @@ class resource_resv
 struct resource_type
 {
 	/* non consumable - used for selection only (e.g. arch) */
-	bool is_non_consumable;
-	bool is_string;
-	bool is_boolean; /* value == 1 for true and 0 for false */
+	bool is_non_consumable:1;
+	bool is_string:1;
+	bool is_boolean:1; /* value == 1 for true and 0 for false */
 
 	/* consumable - numeric resource which is consumed and may have a max limit */
-	bool is_consumable;
-	bool is_num;
-	bool is_long;
-	bool is_float;
-	bool is_size;	/* all sizes are converted into kb */
-	bool is_time;
+	bool is_consumable:1;
+	bool is_num:1;
+	bool is_long:1;
+	bool is_float:1;
+	bool is_size:1;	/* all sizes are converted into kb */
+	bool is_time:1;
 };
 
 struct schd_resource
@@ -951,7 +954,7 @@ struct group_info
  */
 struct resresv_set
 {
-	bool can_not_run;		/* set can not run */
+	bool can_not_run:1;		/* set can not run */
 	schd_error *err;		/* reason why set can not run*/
 	char *user;			/* user of set, can be NULL */
 	char *group;			/* group of set, can be NULL */
@@ -964,8 +967,8 @@ struct resresv_set
 
 struct node_partition
 {
-	bool ok_break;	/* OK to break up chunks on this node part */
-	bool excl;		/* partition should be allocated exclusively */
+	bool ok_break:1;	/* OK to break up chunks on this node part */
+	bool excl:1;		/* partition should be allocated exclusively */
 	char *name;			/* res_name=res_val */
 	/* name of resource and value which define the node partition */
 	resdef *def;
@@ -1079,8 +1082,8 @@ struct peer_queue
 
 struct nspec
 {
-	bool end_of_chunk; /* used for putting parens into the execvnode */
-	bool go_provision; /* used to mark a node to be provisioned */
+	bool end_of_chunk:1; /* used for putting parens into the execvnode */
+	bool go_provision:1; /* used to mark a node to be provisioned */
 	int seq_num;			/* sequence number of chunk */
 	int sub_seq_num;		/* sub sequence number for sort stabilization */
 	node_info *ninfo;
@@ -1090,7 +1093,7 @@ struct nspec
 
 struct nameval
 {
-	bool is_set;
+	bool is_set:1;
 	char *str;
 	int value;
 };
@@ -1101,39 +1104,39 @@ struct config
 	 * prime_* is the prime time setting
 	 * non_prime_* is the non-prime setting
 	 */
-	bool prime_rr;		/* round robin through queues*/
-	bool non_prime_rr;
-	bool prime_bq;		/* by queue */
-	bool non_prime_bq;
-	bool prime_sf;		/* strict fifo */
-	bool non_prime_sf;
-	bool prime_so;		/* strict ordering */
-	bool non_prime_so;
-	bool prime_fs;		/* fair share */
-	bool non_prime_fs;
-	bool prime_hsv;		/* help starving jobs */
-	bool non_prime_hsv;
-	bool prime_bf;		/* back filling */
-	bool non_prime_bf;
-	bool prime_sn;		/* sort nodes by priority */
-	bool non_prime_sn;
-	bool prime_bp;		/* backfill around prime time */
-	bool non_prime_bp;	/* backfill around non prime time */
-	bool prime_pre;		/* preemptive scheduling */
-	bool non_prime_pre;
-	bool update_comments;	/* should we update comments or not */
-	bool prime_exempt_anytime_queues; /* backfill affects anytime queues */
-	bool assign_ssinodes;	/* assign the ssinodes resource */
-	bool preempt_starving;	/* once jobs become starving, it can preempt */
-	bool preempt_fairshare; /* normal jobs can preempt over usage jobs */
-	bool dont_preempt_starving; /* don't preempt staving jobs */
-	bool enforce_no_shares;	/* jobs with 0 shares don't run */
-	bool node_sort_unused;	/* node sorting by unused/assigned is used */
-	bool resv_conf_ignore;  /* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
-	bool allow_aoe_calendar;        /* allow jobs requesting aoe in calendar*/
+	bool prime_rr:1;		/* round robin through queues*/
+	bool non_prime_rr:1;
+	bool prime_bq:1;		/* by queue */
+	bool non_prime_bq:1;
+	bool prime_sf:1;		/* strict fifo */
+	bool non_prime_sf:1;
+	bool prime_so:1;		/* strict ordering */
+	bool non_prime_so:1;
+	bool prime_fs:1;		/* fair share */
+	bool non_prime_fs:1;
+	bool prime_hsv:1;		/* help starving jobs */
+	bool non_prime_hsv:1;
+	bool prime_bf:1;		/* back filling */
+	bool non_prime_bf:1;
+	bool prime_sn:1;		/* sort nodes by priority */
+	bool non_prime_sn:1;
+	bool prime_bp:1;		/* backfill around prime time */
+	bool non_prime_bp:1;	/* backfill around non prime time */
+	bool prime_pre:1;		/* preemptive scheduling */
+	bool non_prime_pre:1;
+	bool update_comments:1;	/* should we update comments or not */
+	bool prime_exempt_anytime_queues:1; /* backfill affects anytime queues */
+	bool assign_ssinodes:1;	/* assign the ssinodes resource */
+	bool preempt_starving:1;	/* once jobs become starving, it can preempt */
+	bool preempt_fairshare:1; /* normal jobs can preempt over usage jobs */
+	bool dont_preempt_starving:1; /* don't preempt staving jobs */
+	bool enforce_no_shares:1;	/* jobs with 0 shares don't run */
+	bool node_sort_unused:1;	/* node sorting by unused/assigned is used */
+	bool resv_conf_ignore:1;  /* if we want to ignore dedicated time when confirming reservations.  Move to enum if ever expanded */
+	bool allow_aoe_calendar:1;        /* allow jobs requesting aoe in calendar*/
 #ifdef NAS /* localmod 034 */
-	bool prime_sto	;	/* shares_track_only--no enforce shares */
-	bool non_prime_sto;
+	bool prime_sto	:1;	/* shares_track_only--no enforce shares */
+	bool non_prime_sto:1;
 #endif /* localmod 034 */
 
 	struct sort_info *prime_sort;		/* prime time sort */
@@ -1195,7 +1198,7 @@ struct rescheck
 
 struct event_list
 {
-	bool eol;		/* we've reached the end of time */
+	bool eol:1;		/* we've reached the end of time */
 	timed_event *events;		/* the calendar of events */
 	timed_event *next_event;	/* the next event to be performed */
 	timed_event *first_run_event;	/* The first run event in the calendar */
@@ -1204,7 +1207,7 @@ struct event_list
 
 struct timed_event
 {
-	bool disabled;	/* event is disabled - skip it in simulation */
+	bool disabled:1;	/* event is disabled - skip it in simulation */
 	std::string name;	
 	enum timed_event_types event_type;
 	time_t event_time;
