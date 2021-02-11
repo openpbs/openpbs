@@ -38,7 +38,8 @@
 # subject to Altair's trademark licensing policies.
 
 check_cgroup=$$
-cgpath=/sys/fs/cgroup/systemd/system.slice/pbs.service
+path=`awk '/cgroup/ {print $2; exit}' /proc/mounts`
+cgpath=$path/systemd/system.slice/pbs.service
 if [ -e $cgpath/cgroup.procs ]; then
     echo $check_cgroup > $cgpath/cgroup.procs
 fi
