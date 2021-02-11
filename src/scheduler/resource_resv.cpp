@@ -654,7 +654,7 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	return dup_resource_resv(oresresv, nsinfo, nqinfo, oresresv->name);
 }
 
-	resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string &name)
+resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string &name)
 {
 	int i;
 	if (resresv_arr == NULL || name.empty())
