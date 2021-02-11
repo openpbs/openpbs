@@ -80,7 +80,6 @@ int is_resource_resv_valid(resource_resv *resresv, schd_error *err);
 /*
  *      find_resource_resv - find a resource_resv by name
  */
-resource_resv *find_resource_resv(resource_resv **resresv_arr, const char *name);
 resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string& name);
 
 

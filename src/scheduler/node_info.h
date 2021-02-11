@@ -98,9 +98,7 @@ int is_node_timeshared(node_info *node, void *arg);
 /*
  *      find_node_info - find a node in the node array
  */
-node_info *find_node_info(node_info **ninfo_arr, const char *nodename);
 node_info *find_node_info(node_info **ninfo_arr, const std::string& nodename);
-
 
 /*
  *      dup_node_info - duplicate a node by creating a new one and coping all

@@ -448,7 +448,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 	int check_expiry = 0;
 	time_t expiry = 0;
 
-	if ((ninfo = new node_info(std::string(node->name))) == NULL)
+	if ((ninfo = new node_info(node->name)) == NULL)
 		return NULL;
 
 	attrp = node->attribs;
@@ -1088,32 +1088,6 @@ node_filter(node_info **nodes, int size,
 			new_nodes = new_nodes_tmp;
 	}
 	return new_nodes;
-}
-
-/**
- * @brief
- *		find_node_info - find a node in a node array
- *
- * @param[in]	nodename	-	the node to find
- * @param[in]	ninfo_arr	-	the array of nodes to look in
- *
- * @return	the node
- * @retval	NULL	: if not found
- *
- */
-node_info *
-find_node_info(node_info **ninfo_arr, const char *nodename)
-{
-	int i;
-
-	if (nodename == NULL || ninfo_arr == NULL)
-		return NULL;
-
-	for (i = 0; ninfo_arr[i] != NULL &&
-		strcmp(nodename, ninfo_arr[i]->name.c_str()) ; i++)
-		;
-
-	return ninfo_arr[i];
 }
 
 node_info *

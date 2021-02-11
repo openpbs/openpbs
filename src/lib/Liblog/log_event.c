@@ -160,10 +160,9 @@ do_log_eventf(int eventtype, int objclass, int sev, const char *objname, const c
 
 	if (len >= sizeof(logbuf)) {
 		buf = pbs_asprintf_format(len, fmt, args);
-		if (buf == NULL) {
-			va_end(args);
+		if (buf == NULL)
 			return;
-		}
+
 	} else
 		buf = logbuf;
 

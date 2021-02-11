@@ -73,7 +73,7 @@ int skip_line(char *line);
  *                   error will be printed after the message
  */
 void
-schdlogerr(int event, int event_class, int sev, const std::string name, const char *text,
+schdlogerr(int event, int event_class, int sev, const std::string& name, const char *text,
 	schd_error *err);
 
 /*

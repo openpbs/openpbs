@@ -132,11 +132,12 @@ void set_timed_event_disabled(timed_event *te, int disabled);
  *
  */
 timed_event *
-find_timed_event(timed_event *te_list, int ignore_disabled,
-	enum timed_event_types event_type, time_t event_time, const std::string& name = {});
-
-
-
+find_timed_event(timed_event *te_list, const std::string &name, int ignore_disabled,
+		 enum timed_event_types event_type, time_t event_time);
+timed_event *find_timed_event(timed_event *te_list, int ignore_disabled, enum timed_event_types event_type, time_t event_time);
+timed_event *find_timed_event(timed_event *te_list, enum timed_event_types event_type);
+timed_event *find_timed_event(timed_event *te_list, const std::string &name, enum timed_event_types event_type, time_t event_time);
+timed_event *find_timed_event(timed_event *te_list, time_t event_time);
 
 /*
  *      next_event - move an event_list to the next event and return it

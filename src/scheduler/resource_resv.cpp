@@ -123,7 +123,7 @@
  * @brief
  *		resource_resv constructor
  */
-resource_resv::resource_resv(const char *rname): name(rname) 
+resource_resv::resource_resv(const std::string& rname): name(rname) 
 {
 	user = NULL;
 	group = NULL;
@@ -543,13 +543,11 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 
 	if (!is_resource_resv_valid(oresresv, err)) {
 		schdlogerr(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SCHED, LOG_DEBUG, oresresv->name, "Can't dup resresv", err);
+		free_schd_error(err);
 		return NULL;
 	}
 
-	if (name.empty())
-		nresresv = new resource_resv(oresresv->name.c_str());
-	else
-		nresresv = new resource_resv(name.c_str());
+	nresresv = new resource_resv(name.c_str());
 
 	if (nresresv == NULL) {
 		free_schd_error(err);
@@ -650,39 +648,19 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	free_schd_error(err);
 	return nresresv;
 }
-
-/**
- * @brief
- * 		find a resource_resv by name
- *
- * @param[in]	resresv_arr	-	array of resource_resvs to search
- * @param[in]	name        -	name of resource_resv to find
- *
- * @return	resource_resv *
- * @retval	resource_resv if found
- * @retval	NULL	: if not found or on error
- *
- */
 resource_resv *
-find_resource_resv(resource_resv **resresv_arr, const char *name)
+dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqinfo)
 {
-	int i;
-	if (resresv_arr == NULL || name == NULL)
-		return NULL;
-
-	for (i = 0; resresv_arr[i] != NULL && resresv_arr[i]->name != name;i++)
-		;
-
-	return resresv_arr[i];
+	return dup_resource_resv(oresresv, nsinfo, nqinfo, oresresv->name);
 }
 
-resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string& name)
+	resource_resv *find_resource_resv(resource_resv **resresv_arr, const std::string &name)
 {
 	int i;
 	if (resresv_arr == NULL || name.empty())
 		return NULL;
 
-	for (i = 0; resresv_arr[i] != NULL && resresv_arr[i]->name != name;i++)
+	for (i = 0; resresv_arr[i] != NULL && resresv_arr[i]->name != name; i++)
 		;
 
 	return resresv_arr[i];

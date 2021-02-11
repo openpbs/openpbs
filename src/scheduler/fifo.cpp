@@ -346,7 +346,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			 * one and calculate a new value
 			 */
 
-			for (auto& lj: last_running) {
+			for (const auto& lj: last_running) {
 				user = find_alloc_ginfo(lj.entity_name.c_str(),
 							sinfo->fairshare->root);
 
@@ -1944,7 +1944,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		 * Note: We only ever look from now into the future
 		 */
 		nexte = get_next_event(sinfo->calendar);
-		if (find_timed_event(nexte, IGNORE_DISABLED_EVENTS, TIMED_NOEVENT, 0, topjob->name) != NULL)
+		if (find_timed_event(nexte, topjob->name, IGNORE_DISABLED_EVENTS, TIMED_NOEVENT, 0) != NULL)
 			return 1;
 	}
 	if ((nsinfo = dup_server_info(sinfo)) == NULL)

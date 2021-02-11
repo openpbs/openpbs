@@ -1430,7 +1430,7 @@ new_job_info()
 {
 	job_info *jinfo;
 
-	if ((jinfo = new job_info) == NULL) {
+	if ((jinfo = new job_info()) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}

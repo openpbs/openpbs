@@ -317,7 +317,7 @@ skip_line(char *line)
  *	@return nothing
  */
 void
-schdlogerr(int event, int event_class, int sev, const std::string name, const char *text,
+schdlogerr(int event, int event_class, int sev, const std::string& name, const char *text,
 	schd_error *err)
 {
 	char logbuf[MAX_LOG_SIZE];

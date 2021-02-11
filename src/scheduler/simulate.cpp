@@ -499,8 +499,8 @@ set_timed_event_disabled(timed_event *te, int disabled)
  *
  */
 timed_event *
-find_timed_event(timed_event *te_list, int ignore_disabled,
-	enum timed_event_types event_type, time_t event_time, const std::string& name)
+find_timed_event(timed_event *te_list, const std::string &name, int ignore_disabled,
+		 enum timed_event_types event_type, time_t event_time)
 {
 	timed_event *te;
 	int found_name = 0;
@@ -529,6 +529,27 @@ find_timed_event(timed_event *te_list, int ignore_disabled,
 
 	return te;
 }
+
+timed_event *find_timed_event(timed_event *te_list, int ignore_disabled, enum timed_event_types event_type, time_t event_time)
+{
+	return find_timed_event(te_list, "", ignore_disabled, event_type, event_time);
+}
+
+timed_event *find_timed_event(timed_event *te_list, enum timed_event_types event_type)
+{
+	return find_timed_event(te_list, "", 0, event_type, 0);
+}
+
+timed_event *find_timed_event(timed_event *te_list, const std::string& name, enum timed_event_types event_type, time_t event_time)
+{
+	return find_timed_event(te_list, name, 0, event_type, event_time);
+}
+
+timed_event *find_timed_event(timed_event *te_list, time_t event_time)
+{
+	return find_timed_event(te_list, "", 0, TIMED_NOEVENT, event_time);
+}
+
 /**
  * @brief
  * 		takes a timed_event and performs any actions
@@ -837,7 +858,7 @@ create_event_list(server_info *sinfo)
 	elist->events = create_events(sinfo);
 
 	elist->next_event = elist->events;
-	elist->first_run_event = find_timed_event(elist->events, 0, TIMED_RUN_EVENT, 0);
+	elist->first_run_event = find_timed_event(elist->events, TIMED_RUN_EVENT);
 	elist->current_time = &sinfo->server_time;
 	add_dedtime_events(elist, sinfo->policy);
 
@@ -993,10 +1014,9 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 	}
 
 	if (oelist->next_event != NULL) {
-		nelist->next_event = find_timed_event(nelist->events, 0,
+		nelist->next_event = find_timed_event(nelist->events, oelist->next_event->name,
 						      oelist->next_event->event_type,
-						      oelist->next_event->event_time,
-						      oelist->next_event->name);
+						      oelist->next_event->event_time);
 		if (nelist->next_event == NULL) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 			oelist->next_event->name, "can't find next event in duplicated list");
@@ -1007,10 +1027,8 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 
 	if (oelist->first_run_event != NULL) {
 		nelist->first_run_event =
-			find_timed_event(nelist->events, 0,
-					 TIMED_RUN_EVENT,
-					 oelist->first_run_event->event_time,
-					 oelist->first_run_event->name);
+			find_timed_event(nelist->events, oelist->first_run_event->name, TIMED_RUN_EVENT,
+					 oelist->first_run_event->event_time);
 		if (nelist->first_run_event == NULL) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, oelist->first_run_event->name,
 				"can't find first run event event in duplicated list");
@@ -1051,7 +1069,7 @@ new_timed_event()
 {
 	timed_event *te;
 
-	if ((te = new timed_event) == NULL) {
+	if ((te = new timed_event()) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1155,7 +1173,7 @@ dup_te_list(te_list *ote, timed_event *new_timed_event_list)
 	if(nte == NULL)
 		return NULL;
 
-	nte->event = find_timed_event(new_timed_event_list, 0, ote->event->event_type, ote->event->event_time, ote->event->name);
+	nte->event = find_timed_event(new_timed_event_list, ote->event->name, ote->event->event_type, ote->event->event_time);
 
 	return nte;
 }
@@ -1447,7 +1465,7 @@ add_event(event_list *calendar, timed_event *te)
 				calendar->next_event = te;
 			else if (te->event_time == calendar->next_event->event_time) {
 				calendar->next_event =
-					find_timed_event(calendar->events, 0, TIMED_NOEVENT, te->event_time);
+					find_timed_event(calendar->events, te->event_time);
 			}
 		}
 	}
@@ -1544,7 +1562,7 @@ delete_event(server_info *sinfo, timed_event *e)
 		calendar->next_event = e->next;
 
 	if (calendar->first_run_event == e)
-		calendar->first_run_event = find_timed_event(calendar->events, 0, TIMED_RUN_EVENT, 0);
+		calendar->first_run_event = find_timed_event(calendar->events, TIMED_RUN_EVENT);
 
 	if (e->prev == NULL)
 		calendar->events = e->next;

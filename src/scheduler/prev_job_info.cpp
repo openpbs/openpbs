@@ -102,10 +102,15 @@ prev_job_info::prev_job_info(const prev_job_info& opj): name(opj.name)
 	resused = dup_resource_req_list(opj.resused);
 }
 
-prev_job_info::prev_job_info(prev_job_info&& opj) noexcept: name(std::move(opj.name)), entity_name(std::move(opj.name))
+prev_job_info::prev_job_info(prev_job_info&& opj) noexcept: name(std::move(opj.name)), entity_name(std::move(opj.entity_name))
 {
 	resused = opj.resused;
 	opj.resused = NULL;
+}
+
+prev_job_info& prev_job_info::operator=(const prev_job_info& opj)
+{
+	return *this = prev_job_info(opj);
 }
 
 /**
