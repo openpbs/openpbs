@@ -1205,7 +1205,6 @@ new_server_info(int limallocflag)
 	sinfo->eligible_time_enable = 0;
 	sinfo->provision_enable = 0;
 	sinfo->power_provisioning = 0;
-	sinfo->has_nonCPU_licenses = 0;
 	sinfo->use_hard_duration = 0;
 	sinfo->pset_metadata_stale = 0;
 	sinfo->num_parts = 0;
@@ -2249,7 +2248,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->eligible_time_enable = osinfo->eligible_time_enable;
 	nsinfo->provision_enable = osinfo->provision_enable;
 	nsinfo->power_provisioning = osinfo->power_provisioning;
-	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
 	nsinfo->name = string_dup(osinfo->name);

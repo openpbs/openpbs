@@ -406,7 +406,6 @@ struct server_info
 	unsigned eligible_time_enable:1;/* controls if we accrue eligible_time  */
 	unsigned provision_enable:1;	/* controls if provisioning occurs */
 	unsigned power_provisioning:1;	/* controls if power provisioning occurs */
-	unsigned has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
 	unsigned use_hard_duration:1;	/* use hard duration when creating the calendar */
 	unsigned pset_metadata_stale:1;	/* The placement set meta data is stale and needs to be regenerated before the next use */
 	char *name;			/* name of server */
@@ -690,8 +689,6 @@ struct node_info
 	char **resvs;			/* the name of the reservations currently on the node */
 	resource_resv **job_arr;	/* ptrs to structs of the jobs on the node */
 	resource_resv **run_resvs_arr;	/* ptrs to structs of resvs holding resources on the node */
-
-	int pcpus;			/* the number of physical cpus */
 
 	/* This element is the server the node is associated with.  In the case
 	 * of a node which is part of an advanced reservation, the nodes are
