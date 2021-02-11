@@ -424,6 +424,7 @@ class TestPbsExecjobEnd(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
         # run job
         try:
+            now = time.time()
             # qrun will fail as it is discarding the job
             self.server.runjob(jid)
         except PbsRunError as e:
@@ -431,7 +432,6 @@ class TestPbsExecjobEnd(TestFunctional):
             self.assertTrue(
                 'qrun: Request invalid for state of job'
                 in e.msg[0])
-            now = time.time()
             self.mom.log_match("ending hook event EXECJOB_END",
                                starttime=now, interval=2)
             time.sleep(5)

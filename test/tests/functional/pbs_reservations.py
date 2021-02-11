@@ -407,7 +407,7 @@ class TestReservations(TestFunctional):
         Test that when a running degraded reservation is reconfirmed,
         make sure that only the nodes that unavailable are replaced
         """
-        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 5})
+        self.server.manager(MGR_CMD_SET, SERVER, {'reserve_retry_time': 15})
 
         a = {'resources_available.ncpus': 1}
         self.mom.create_vnodes(a, 5)
