@@ -183,12 +183,14 @@
       <member_at_comp>comp_null</member_at_comp>
       <member_at_free>free_null</member_at_free>
       <member_at_action>
-#ifdef PBS_MOM
-      NULL_FUNC
-#elif PBS_PYTHON
-      NULL_FUNC
-#else
+#ifndef PBS_MOM
+#ifndef PBS_PYTHON
       node_state
+#else
+      NULL_FUNC
+#endif
+#else
+      NULL_FUNC
 #endif
       </member_at_action>
       <member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
