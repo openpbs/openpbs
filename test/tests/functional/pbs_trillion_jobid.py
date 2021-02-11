@@ -146,7 +146,7 @@ exit 0
         restart_msg = 'Failed to restart PBS'
         self.assertTrue(self.server.isUp(), restart_msg)
 
-    def submit_job(self, sleep=10, lower=0,
+    def submit_job(self, sleep=100, lower=0,
                    upper=0, job_id=None, job_msg=None, verify=False):
         """
         Helper method to submit a normal/array job
