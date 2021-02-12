@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -380,14 +380,14 @@ class PbsTypeDuration(str):
         if isinstance(val, str):
             if ':' in val:
                 s = val.split(':')
-                l = len(s)
-                if l > 3:
+                fields = len(s)
+                if fields > 3:
                     raise ValueError
                 hr = mn = sc = 0
-                if l >= 2:
-                    sc = s[l - 1]
-                    mn = s[l - 2]
-                    if l == 3:
+                if fields >= 2:
+                    sc = s[fields - 1]
+                    mn = s[fields - 2]
+                    if fields == 3:
                         hr = s[0]
                 self.duration = int(hr) * 3600 + int(mn) * 60 + int(sc)
             elif val.isdigit():
@@ -578,7 +578,7 @@ class PbsTypeSelect(list):
             if 'mem' in k:
                 try:
                     v = PbsTypeSize(v).value
-                except:
+                except Exception:
                     # failed so we guessed wrong on the type
                     pass
             if isinstance(v, int) or v.isdigit():

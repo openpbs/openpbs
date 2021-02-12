@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -88,6 +88,7 @@ extern char	*msg_issuebad;
 extern char     *msg_norelytomom;
 extern char	*msg_err_malloc;
 
+extern pbs_net_t	 pbs_server_addr;
 extern int max_connection;
 
 /**
@@ -238,6 +239,7 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 	extern char primary_host[];
 	extern char server_host[];
 
+
 	(void)strcpy(preq->rq_host, servern);
 	preq->rq_fromsvr = 1;
 	preq->rq_perm = ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_SvWR;
@@ -255,6 +257,9 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 				svrname = server_host;
 		}
 	}
+	if (comp_svraddr(pbs_server_addr, svrname) == 0)
+		return (issue_Drequest(PBS_LOCAL_CONNECTION, preq, replyfunc, 0, 0));
+
 	svraddr = get_hostaddr(svrname);
 	if (svraddr == (pbs_net_t)0) {
 		if (pbs_errno == PBS_NET_RC_RETRY)

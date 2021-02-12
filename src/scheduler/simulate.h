@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_SIMULATE_H
 #define	_SIMULATE_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 #include "constant.h"
@@ -458,7 +455,4 @@ int add_te_list(te_list **tel, timed_event *te);
 int remove_te_list(te_list **tel, timed_event *e);
 
 
-#ifdef	__cplusplus
-}
-#endif
 #endif /* _SIMULATE_H */

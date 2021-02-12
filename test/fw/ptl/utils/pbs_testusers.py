@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -67,7 +67,7 @@ class PbsGroup(object):
         try:
             _group = grp.getgrnam(self.name)
             self.gid = _group.gr_gid
-        except:
+        except Exception:
             pass
 
         if users is None:
@@ -155,7 +155,7 @@ class PbsUser(object):
             self.gid = _user.pw_gid
             self.shell = _user.pw_shell
             self.gecos = _user.pw_gecos
-        except:
+        except Exception:
             pass
 
         if groups is None:

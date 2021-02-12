@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -487,6 +487,22 @@ set_tpp_config(struct pbs_config *pbs_conf, struct tpp_config *tpp_conf, char *n
 		free(routers);
 
 	return 0;
+}
+
+/* 
+ * free tpp conf member variables
+ * to be called before exit
+ * 
+ * @param[in] tpp_conf - pointer to the tpp conf structure
+ * 
+ */
+void
+free_tpp_config(struct tpp_config *tpp_conf)
+{
+	free(tpp_conf->routers);
+	free_string_array(tpp_conf->supported_auth_methods);
+	free(tpp_conf->node_name);
+	free_auth_config(tpp_conf->auth_config);
 }
 
 /**

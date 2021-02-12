@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -1129,7 +1129,7 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
  * @param[in] - n      - The node/position to start searching from
  * @param[in] - tfd    - The Virtual file descriptor
  * @param[out] - cmdval - Return the cmdval
- * @param[out] - data - Any data associated
+ * @param[out] - data - Return any data associated
  *
  * @par Side Effects:
  *	None
@@ -1150,15 +1150,16 @@ tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, short *cm
 		cmd = TPP_QUE_DATA(*n);
 		if (cmd && cmd->tfd == tfd) {
 			*n = tpp_que_del_elem(&mbox->mbox_queue, *n);
+			mbox->mbox_size -= cmd->sz;
 			if (cmdval)
 				*cmdval = cmd->cmdval;
-			*data = cmd->data;
+			if (data)
+				*data = cmd->data;
 			free(cmd);
 			ret = 0;
 			break;
 		}
 	}
-	mbox->mbox_size = 0;
 
 	tpp_unlock(&mbox->mbox_mutex);
 

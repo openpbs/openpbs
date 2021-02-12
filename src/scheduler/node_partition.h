@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_NODE_PARTITION_H
 #define _NODE_PARTITION_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include "data_types.h"
 #include <pbs_ifl.h>
@@ -238,7 +235,4 @@ void update_buckets_for_node(node_bucket **bkts, node_info *ninfo);
  */
 void update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _NODE_PARTITION_H */

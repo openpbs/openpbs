@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -227,7 +227,7 @@ case "$1" in
 		fi
 
 		# Check if PBS is running
-		${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
+		env -u PBS_SERVER_INSTANCES ${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
 		if [ $? -eq 0 ]; then
 			echo "PBS server is running. Cannot stop PBS Data Service now."
 			server_pid="`ps -ef | grep "pbs_server.bi[n]" | awk '{print $2}'`"

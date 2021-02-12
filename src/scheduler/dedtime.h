@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -39,9 +39,6 @@
 
 #ifndef	_DEDTIME_H
 #define	_DEDTIME_H
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #include <time.h>
 
@@ -76,7 +73,4 @@ int is_ded_time(time_t t);
  */
 struct timegap find_next_dedtime(time_t t);
 
-#ifdef	__cplusplus
-}
-#endif
 #endif	/* _DEDTIME_H */

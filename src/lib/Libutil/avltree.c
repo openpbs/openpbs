@@ -29,7 +29,7 @@
  **
  */
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -207,6 +207,22 @@ get_avl_tls(void)
 		pthread_setspecific(avl_tls_key, (void *) p_avl_tls);
 	}
 	return p_avl_tls;
+}
+
+
+/**
+ * @brief
+ *	Free the thread local storage used for avltree for this thread
+ */
+void
+free_avl_tls(void)
+{
+	avl_tls_t *p_avl_tls = NULL;
+
+	pthread_once(&avl_init_once, avl_init_func);
+
+	if ((p_avl_tls = (avl_tls_t *) pthread_getspecific(avl_tls_key))) 
+		free(p_avl_tls);
 }
 
 #define tind             (((avl_tls_t *) get_avl_tls())->__tind)

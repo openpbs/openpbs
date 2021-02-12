@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -417,7 +417,7 @@ err:
  *
  * @par MT-safe: Yes
  */
-void *
+svr_conn_t **
 get_conn_svr_instances(int parentfd)
 {
 	svr_conns_list_t *iter_conns = NULL;
@@ -1199,7 +1199,7 @@ send_register_sched(int sock, const char *sched_id)
 rerr:
 	pbs_disconnect(sock);
 	PBSD_FreeReply(reply);
-	return 0;	
+	return 0;
 }
 
 /**
@@ -1232,9 +1232,11 @@ pbs_register_sched(const char *sched_id, int primary_conn_id, int secondary_conn
 		return 0;
 
 	for (i = 0; i < get_num_servers(); i++) {
-		if (send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
+		if (svr_conns_primary[i]->sd < 0 ||
+			send_register_sched(svr_conns_primary[i]->sd, sched_id) == 0)
 			return 0;
-		if (send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
+		if (svr_conns_secondary[i]->sd < 0 ||
+			send_register_sched(svr_conns_secondary[i]->sd, sched_id) == 0)
 			return 0;
 	}
 
