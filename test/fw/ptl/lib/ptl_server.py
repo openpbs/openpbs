@@ -187,7 +187,7 @@ class Server(Wrappers):
         self.logit('counter: ', obj_type, attrib, id, level=level)
         return self._filter(obj_type, attrib, id, extend, op, attrop, bslist,
                             PTL_COUNTER, idonly, grandtotal, db_access,
-                            runas=runas,
+                            runas=runas, level=level,
                             resolve_indirectness=resolve_indirectness)
 
     def set_attributes(self, a={}):
