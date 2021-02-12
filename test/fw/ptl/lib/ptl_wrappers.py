@@ -369,13 +369,13 @@ class Wrappers(PBSService):
     def _filter(self, obj_type=None, attrib=None, id=None, extend=None,
                 op=None, attrop=None, bslist=None, mode=PTL_COUNTER,
                 idonly=True, grandtotal=False, db_access=None, runas=None,
-                resolve_indirectness=False):
+                resolve_indirectness=False, level=logging.DEBUG):
 
         if bslist is None:
             try:
                 _a = resolve_indirectness
                 tmp_bsl = self.status(obj_type, attrib, id,
-                                      level=logging.DEBUG, extend=extend,
+                                      level=level, extend=extend,
                                       db_access=db_access, runas=runas,
                                       resolve_indirectness=_a)
                 del _a
@@ -1389,7 +1389,8 @@ class Wrappers(PBSService):
                 newattr = attrib
 
             statlist = [self._filter(obj_type, newattr, id, extend, op=op,
-                                     attrop=attrop, runas=runas)]
+                                     attrop=attrop, runas=runas,
+                                     level=logging.DEBUG)]
         else:
             try:
                 statlist = self.status(obj_type, attrib, id=id,
