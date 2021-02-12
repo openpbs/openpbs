@@ -66,7 +66,7 @@ def get_hook_body(hook_msg):
         else:
             pbs.logjobmsg(job.id, 'endjob hook, resv:(None)')
         pbs.logjobmsg(job.id, 'endjob hook, job endtime:%%d' %%(job.endtime) )
-        #pbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(int(job.job_state), str(job.job_state)))
+        #spbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(int(job.job_state), str(job.job_state)))
         pbs.logjobmsg(job.id, 'endjob hook ended')
     except Exception as err:
         ty, _, tb = sys.exc_info()
@@ -173,9 +173,8 @@ class TestHookJob(TestFunctional):
         self.server.expect(JOB, {'job_state': 'B'}, jid)
 
         for i in range (1,(num_array_jobs+1)):
-            self.server.expect(JOB, {'job_state': 'R'}, 
-                               id=subjid[i], offset=20)                                                 
-            
+            self.server.expect(JOB, {'job_state': 'R'},
+                               id=subjid[i], offset=20)
         self.server.expect(JOB, {'job_state': 'F'}, extend='x',
                                 offset=4, id=jid, interval=5)
 
@@ -187,7 +186,7 @@ class TestHookJob(TestFunctional):
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
         self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
-    
+
     # TODO: add test for a job run under a reservation
     def test_hook_endjob_resv(self):
         """
