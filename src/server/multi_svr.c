@@ -790,7 +790,7 @@ clear_node_cache(server_t *psvr)
  * @return int 
  * @retval -1 : for error
  */
-int
+static int
 update_node_cache(int stream, struct batch_status *bstat)
 {
 	server_t *psvr;
@@ -843,8 +843,8 @@ find_alien_node(char *nodename)
  * @return int 
  * @retval PBSE_* : for failure
  */
-static int
-process_rply_status(int c)
+int
+process_status_reply(int c)
 {
 	struct batch_status *bstat;
 	int obj_type = -1;

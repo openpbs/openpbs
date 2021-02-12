@@ -274,6 +274,7 @@ cmp_sj_name(struct batch_status *a, struct batch_status *b)
  *
  * @param[in] sock - socket descriptor
  * @param[in] reply - pointer to batch_reply structure
+ * @param[in] prot - protocol type
  *
  * @return	int
  * @retval	-1	error

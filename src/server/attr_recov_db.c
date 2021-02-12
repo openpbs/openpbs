@@ -163,10 +163,10 @@ encode_attr_db(attribute_def *padef, attribute *pattr, int numattr, pbs_db_attr_
  *	Decode the list of attributes from the database to the regular attribute structure
  *
  * @param[in]	  parent - pointer to parent object
- * @param[in]	  attr_list - attribute list
+ * @param[in]	  attr_list - recovered/to be decoded attribute list
  * @param[in]     padef_idx - Search index of this attribute array
  * @param[in]	  padef - Address of parent's attribute definition array
- * @param[in/out] pattr - Address of the parent objects attribute array
+ * @param[in,out] pattr - Address of the parent objects attribute array
  * @param[in]	  limit - Number of attributes in the list
  * @param[in]	  unknown	- The index of the unknown attribute if any
  *

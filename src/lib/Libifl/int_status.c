@@ -641,7 +641,10 @@ PBSD_status_random(int c, int cmd, char *id, struct attrl *attrib, char *extend,
  * @brief
  *	Returns pointer to status record
  *
- * @param[in] c - index into connection table
+ * @param[in] c - connection socket
+ * @param[out] last - last batch status read
+ * @param[out] obj_type - object type
+ * @param[in] prot - protocol type
  *
  * @return returns a pointer to a batch_status structure
  * @retval pointer to batch status on SUCCESS

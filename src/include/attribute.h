@@ -598,7 +598,7 @@ extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 /* Functions used to save and recover the attributes from the database */
 extern int encode_single_attr_db(attribute_def *padef, attribute *pattr, pbs_db_attr_list_t *db_attr_list);
 extern int encode_attr_db(attribute_def *padef, attribute *pattr, int numattr,  pbs_db_attr_list_t *db_attr_list, int all);
-extern int decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list,
+extern int decode_attr_db(void *parent, pbs_list_head *attr_list,
 	void *padef_idx, attribute_def *padef, attribute *pattr, int limit, int unknown);
 
 extern int is_attr(int, char *, int);

@@ -207,7 +207,7 @@ void replyhello_psvr(void);
 void poke_peersvr(void);
 void mcast_resc_update_all(void *psvr);
 void clean_saved_rsc(void*);
-int update_node_cache(int stream, struct batch_status *bstat);
+int process_status_reply(int c);
 
 attribute *get_sattr(int attr_idx);
 char *get_sattr_str(int attr_idx);

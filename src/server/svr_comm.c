@@ -383,7 +383,7 @@ found:
 			break;
 
 		case PS_STAT_RPLY:
-			rc = process_rply_status(stream);
+			rc = process_status_reply(stream);
 			if (rc != 0)
 				goto err;
 			break;

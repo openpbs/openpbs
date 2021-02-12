@@ -64,6 +64,7 @@
  *
  * @param[in] sock - The socket fd to read from
  * @param[out] rc  - Return DIS error code
+ * @param[in] prot - protocol type
  *
  * @return Batch reply structure
  * @retval  !NULL - Success

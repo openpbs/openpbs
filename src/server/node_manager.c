@@ -1130,7 +1130,7 @@ shallow_vnode_dup(struct pbsnode *vnode)
 	vnode_dup->nd_state = vnode->nd_state;
 	vnode_dup->nd_ntype = vnode->nd_ntype;
 	vnode_dup->nd_pque = vnode->nd_pque;
-	vnode_dup->newobj = vnode->newobj;
+	vnode_dup->nd_svrflags = vnode->nd_svrflags;
 	for (i = 0; i < ND_ATR_LAST; i++) {
 		vnode_dup->nd_attr[i] = vnode->nd_attr[i];
 	}
@@ -6262,7 +6262,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 static void
 update_node_state(struct pbsnode *pnode, int share_job)
 {
-	int share_node = get_nattr(pnode, ND_ATR_Sharing);
+	int share_node = get_nattr_long(pnode, ND_ATR_Sharing);
 
 	if (share_node == (int) VNS_FORCE_EXCL || share_node == (int) VNS_FORCE_EXCLHOST) {
 		set_vnode_state(pnode, INUSE_JOBEXCL, Nd_State_Or);
@@ -6615,8 +6615,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						/* alien node */
 						(phowl+ndindex)->hw_natvn = (phowl+ndindex)->hw_pnd;
 						(phowl+ndindex)->hw_mom = NULL;
-						(phowl+ndindex)->hw_mom_host = (phowl+ndindex)->hw_pnd->nd_attr[ND_ATR_Mom].at_val.at_arst->as_string[0];
-						(phowl+ndindex)->hw_mom_port = (phowl+ndindex)->hw_pnd->nd_attr[ND_ATR_Port].at_val.at_long;
+						(phowl+ndindex)->hw_mom_host = get_nattr_arst((phowl+ndindex)->hw_pnd, ND_ATR_Mom)->as_string[0];
+						(phowl+ndindex)->hw_mom_port = get_nattr_long((phowl+ndindex)->hw_pnd, ND_ATR_Port);
 
 					}
 				} else if (objtype == JOB_OBJECT) {

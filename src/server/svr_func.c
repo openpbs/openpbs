@@ -420,7 +420,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			update_job_node_rassn(pjob, get_jattr(pjob, JOB_ATR_resc_released), op);
 		else
 			/* updating all resources from exec vnode attribute */
-			update_job_node_rassn(pjob, get_jattr(pjob, JOB_ATR_exec_vnode, op);
+			update_job_node_rassn(pjob, get_jattr(pjob, JOB_ATR_exec_vnode), op);
 		if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
 			update_job_node_rassn(pjob, get_jattr(pjob, JOB_ATR_exec_vnode_deallocated), op);
 		}
