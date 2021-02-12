@@ -367,3 +367,52 @@ class TestResvConfirmHook(TestFunctional):
               (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, max_attempts=10,
                               existence=False)
+
+    @tags('hooks')
+    @timeout(30)
+    def test_multiple_hooks(self):
+        """Define multiple hooks for the resv_confirm event and make sure
+        both get run.
+
+        """
+        test_hook_script_1 = textwrap.dedent("""\
+        import pbs
+        e=pbs.event()
+
+        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Confirm Hook name - %s' % e.hook_name)
+
+        if e.type == pbs.RESV_CONFIRM:
+            pbs.logmsg(pbs.LOG_DEBUG, 'Test 1 Reservation ID - %s' % e.resv.resvid)
+        """)
+
+        test_hook_script_2 = textwrap.dedent("""\
+        import pbs
+        e=pbs.event()
+
+        pbs.logmsg(pbs.LOG_DEBUG, 'Reservation Confirm Hook name - %s' % e.hook_name)
+
+        if e.type == pbs.RESV_CONFIRM:
+            pbs.logmsg(pbs.LOG_DEBUG, 'Test 2 Reservation ID - %s' % e.resv.resvid)
+        """)
+
+        attrs = {'event': 'resv_confirm'}
+        self.server.create_hook("test_hook_1", attrs)
+        self.server.create_hook("test_hook_2", attrs)
+        self.server.import_hook("test_hook_1", test_hook_script_1)
+        self.server.import_hook("test_hook_2", test_hook_script_2)
+
+        offset = 10
+        duration = 30
+        rid = self.submit_resv(offset, duration)
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attrs, id=rid)
+        attrs['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, attrs, id=rid, offset=10)
+
+        msg = 'Hook;Server@%s;Test 1 Reservation ID - %s' % \
+              (self.server.shortname, rid)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
+
+        msg = 'Hook;Server@%s;Test 2 Reservation ID - %s' % \
+              (self.server.shortname, rid)
+        self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
