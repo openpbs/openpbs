@@ -585,6 +585,9 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 	/* set the states accordingly */
 	set_job_state(pjob, newstate);
 	set_job_substate(pjob, newsubstate);
+	/* FIXME */
+	sprintf(log_buffer, "rq_endjob svr_setjobstate checkpoint 2");
+	log_err(-1, __func__, log_buffer);
 
 	/* eligible_time_enable */
 	if (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
@@ -605,8 +608,16 @@ svr_setjobstate(job *pjob, char newstate, int newsubstate)
 	}
 
 	if (pjob->newobj) /* object was never saved/loaded before, so new object */
+	{
+		/* FIXME */
+		sprintf(log_buffer, "rq_endjob svr_setjobstate checkpoint 4");
+		log_err(-1, __func__, log_buffer);
 		return 0;
+	}		
 
+	/* FIXME */
+	sprintf(log_buffer, "rq_endjob svr_setjobstate checkpoint 3");
+	log_err(-1, __func__, log_buffer);
 	return (job_save_db(pjob));
 }
 

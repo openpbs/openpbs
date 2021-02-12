@@ -329,6 +329,7 @@ end_job(job *pjob, int isexpress)
 	}
 
 	pjob->ji_qs.ji_endtime = time_now;
+	set_jattr_l_slim(pjob, JOB_ATR_endtime, pjob->ji_qs.ji_endtime, SET);
 
 	if (pjob->ji_momhandle != -1 && pjob->ji_mom_prot == PROT_TCP)
 		svr_disconnect(pjob->ji_momhandle);

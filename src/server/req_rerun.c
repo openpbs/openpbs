@@ -167,6 +167,7 @@ force_reque(job *pjob)
 		free_br(preq);
 	}
 	pjob->ji_qs.ji_endtime = time_now;
+	set_jattr_l_slim(pjob, JOB_ATR_endtime, pjob->ji_qs.ji_endtime, SET);
 	/* FIXME: end */
 	
 	pjob->ji_momhandle = -1;

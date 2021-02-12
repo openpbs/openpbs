@@ -357,28 +357,35 @@ chk_array_doneness(job *parent)
 		if (check_job_state(parent, JOB_STATE_LTR_BEGUN)) {
 			char acctbuf[40];
 
+			/* set parent endtime to time_now */
+			parent->ji_qs.ji_endtime = time_now;
+			set_jattr_l_slim(parent, JOB_ATR_endtime, parent->ji_qs.ji_endtime, SET);
+
 			/* Allocate space for the endjob hook event params */
 			preq = alloc_br(PBS_BATCH_EndJob);
-			(preq->rq_ind.rq_end).rq_pjob = parent;
-			
-			if (preq == NULL) {
-				log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");		
-			} else {
+			if (preq) {
+				(preq->rq_ind.rq_end).rq_pjob = parent;
+
+				/* update parent job state to 'F' */
+				sprintf(log_buffer, "rq_endjob svr_setjobstate update parent job state to 'F'");
+				log_err(-1, __func__, log_buffer);
+				svr_setjobstate(parent, JOB_STATE_LTR_FINISHED, JOB_SUBSTATE_FINISHED);
+
 				/*
 				* Call process_hooks
 				*/
 				rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 				if (rc == -1) {
-					sprintf(log_buffer, "rq_endjob process_hooks call failed");	
+					sprintf(log_buffer, "rq_endjob process_hooks call failed");
 					log_err(-1, __func__, log_buffer);
 				} else {
 					sprintf(log_buffer, "rq_endjob process_hooks call succeeded");
 					log_err(-1, __func__, log_buffer);
 				}
 				free_br(preq);
+			} else {
+				log_err(PBSE_INTERNAL, __func__, "rq_endjob alloc failed");
 			}
-
-			(preq->rq_ind.rq_end).rq_pjob->ji_qs.ji_endtime = time_now;
 
 			/* if BEGUN, issue 'E' account record */
 			sprintf(acctbuf, msg_job_end_stat, parent->ji_qs.ji_un.ji_exect.ji_exitstat);

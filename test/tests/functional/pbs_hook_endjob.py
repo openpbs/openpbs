@@ -1,6 +1,6 @@
 # coding: utf-8
 
-# Copyright (C) 1994-2020 Altair Engineering, Inc.
+# Copyright (C) 1994-2021 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -58,13 +58,15 @@ def get_hook_body(hook_msg):
     try:
         e = pbs.event()
         job = e.job
-        # print additional info        
+        # print additional info
         pbs.logmsg(pbs.LOG_DEBUG, '%s')
-        pbs.logjobmsg(job.id, 'executed endjob hook')    
+        pbs.logjobmsg(job.id, 'executed endjob hook')
         if hasattr(job, "resv"):
             pbs.logjobmsg(job.id, 'endjob hook, resv:%%s' %% (job.resv.id,))
         else:
             pbs.logjobmsg(job.id, 'endjob hook, resv:(None)')
+        pbs.logjobmsg(job.id, 'endjob hook, job endtime:%%d' %%(job.endtime) )
+        #pbs.logjobmsg(pbs.REVERSE_JOB_STATE.get(int(job.job_state), str(job.job_state)))
         pbs.logjobmsg(job.id, 'endjob hook ended')
     except Exception as err:
         ty, _, tb = sys.exc_info()
@@ -167,12 +169,12 @@ class TestHookJob(TestFunctional):
         for i in range (1,(num_array_jobs+1)):
             subjid.append( j.create_subjob_id(jid, i) )
 
-        # 1. check job array has begun            
+        # 1. check job array has begun
         self.server.expect(JOB, {'job_state': 'B'}, jid)
 
         for i in range (1,(num_array_jobs+1)):
             self.server.expect(JOB, {'job_state': 'R'}, 
-                               id=subjid[i], offset=20)            
+                               id=subjid[i], offset=20)                                                 
             
         self.server.expect(JOB, {'job_state': 'F'}, extend='x',
                                 offset=4, id=jid, interval=5)
@@ -180,7 +182,7 @@ class TestHookJob(TestFunctional):
         #self.server.delete(id=jid, extend='force', wait=True)
         self.server.log_match(
             "chk_array_doneness, rq_endjob process_hooks call succeeded",
-            starttime=start_time)
+            starttime=start_time, max_attempts=10, interval=1)
         ret = self.server.delete_hook(hook_name)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
         self.server.log_match(hook_msg, starttime=start_time)
