@@ -76,3 +76,29 @@ class TestQdel(TestFunctional):
             self.fail("qdel didn't throw 'Unknown job id' error")
         except PbsDeleteError as e:
             self.assertEqual("qdel: Unknown Job Id " + jid, e.msg[0])
+
+    def test_qdel_history_job(self):
+        """
+        Test deleting a history job after a custom resource is deleted
+        The deletion of the history job happens in teardown
+        """
+        self.server.add_resource('foo')
+        a = {'job_history_enable': 'True'}
+        rc = self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.assertEqual(rc, 0)        
+        hook_body = "import pbs\n"
+        hook_body += "e = pbs.event()\n"
+        hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
+        a = {'event': 'execjob_epilogue', 'enabled': 'True'}
+        self.server.create_import_hook("epi", a, hook_body)
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.log_match(jid + ";Exit_status=0", interval=2,
+                              max_attempts=8)
+        try:
+            rc = self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
+        except PbsManagerError as e:
+            m = "Resource busy on job"
+            self.assertIn(m, e.msg[0])
