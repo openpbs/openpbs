@@ -198,12 +198,10 @@ class Test_run_count(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: "R"},
                            id=j.create_subjob_id(jid, 2))
-        self.server.manager(MGR_CMD_SET, SCHED, {
-                            'scheduling': 'False'}, id=sched)
+        self.server.manager(MGR_CMD_SET, SCHED, {"scheduling": "false"})
         # Create an execjob_begin hook that rejects the job
         self.create_reject_begin_hook()
-        self.server.manager(MGR_CMD_SET, SCHED, {
-                            'scheduling': 'True'}, id=sched)
+        self.server.manager(MGR_CMD_SET, SCHED, {"scheduling": "true"})
         self.server.expect(JOB, {ATTR_state: "X"},
                            id=j.create_subjob_id(jid, 2))
 
