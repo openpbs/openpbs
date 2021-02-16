@@ -161,10 +161,10 @@ force_reque(job *pjob)
 	 	 */
 		rc = process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 		if (rc == -1) {
-			sprintf(log_buffer, "rq_endjob process_hooks call failed");
+			sprintf(log_buffer, "rq_endjob force_reque process_hooks call failed");
 			log_err(-1, __func__, log_buffer);
 		} else {
-			sprintf(log_buffer, "rq_endjob process_hooks call succeeded");
+			sprintf(log_buffer, "rq_endjob force_reque process_hooks call succeeded");
 			log_err(-1, __func__, log_buffer);
 		}
 		free_br(preq);

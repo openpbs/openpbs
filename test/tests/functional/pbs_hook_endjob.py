@@ -54,15 +54,18 @@ def get_hook_body(hook_msg):
     import time
 
     pbs.logmsg(pbs.LOG_DEBUG, "pbs.__file__:" + pbs.__file__)
-    
+
     try:
         e = pbs.event()
         job = e.job
         # print additional info
         pbs.logmsg(pbs.LOG_DEBUG, '%s')
         pbs.logjobmsg(job.id, 'executed endjob hook')
-        if hasattr(job, "resv"):
-            pbs.logjobmsg(job.id, 'endjob hook, resv:%%s' %% (job.resv.id,))
+        if hasattr(job, "resv") and job.resv:
+            pbs.logjobmsg(job.id, 'endjob hook, resv:%%s' %% (job.resv.resvid,))
+            pbs.logjobmsg(job.id, 'endjob hook, resv_nodes:%%s' %% (job.resv.resv_nodes,))
+            pbs.logjobmsg(job.id, 'endjob hook, resv_state:%%s' %% (job.resv.reserve_state,))
+            #pbs.logjobmsg(job.id, 'endjob hook, resv:%%s' %% (vars(job.resv),))
         else:
             pbs.logjobmsg(job.id, 'endjob hook, resv:(None)')
         pbs.logjobmsg(job.id, 'endjob hook, job endtime:%%d' %%(job.endtime) )
@@ -101,12 +104,12 @@ class TestHookJob(TestFunctional):
 
         return self.server.submit(r)
 
-    def test_hook_endjob_basic(self):
+    def test_hook_endjob_single(self):
         """
         By creating an import hook, it executes a job hook.
         """
         self.logger.info("**************** HOOK START ****************")
-        hook_name = "hook_endjob_basic"
+        hook_name = "hook_endjob_single"
         hook_msg = 'running %s' % hook_name
         hook_body = get_hook_body(hook_msg)
         attrs = {'event': 'endjob', 'enabled': 'True'}
@@ -222,7 +225,7 @@ class TestHookJob(TestFunctional):
         num_array_jobs = 2
         attr_j_str = '1-' + str(num_array_jobs)
         j = Job(TEST_USER, attrs={
-            ATTR_J: attr_j_str, 'Resource_List.select': 'ncpus=1', 
+            ATTR_J: attr_j_str, 'Resource_List.select': 'ncpus=1',
             ATTR_queue: resv_queue})
 
         j.set_sleep_time(4)
