@@ -190,7 +190,6 @@ class TestQstatFormats(TestFunctional):
         test qstat outputs job info in dsv format with default delimiter pipe
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
         self.parse_dsv(jid, "job")
@@ -213,7 +212,6 @@ class TestQstatFormats(TestFunctional):
         test qstat outputs job info in dsv format with semicolon as delimiter
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
         self.parse_dsv(jid, "job", ";")
@@ -236,7 +234,6 @@ class TestQstatFormats(TestFunctional):
         test qstat outputs job array info in dsv format with comma as delimiter
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         j.set_attributes({ATTR_J: '1-3'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "B"}, id=jid)
@@ -259,7 +256,6 @@ class TestQstatFormats(TestFunctional):
         test qstat outputs job info in dsv format with string as delimiter
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
         self.parse_dsv(jid, "job", "QWERTY")
@@ -282,7 +278,6 @@ class TestQstatFormats(TestFunctional):
         is equal to the one parsed from one line output.
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         time.sleep(1)
         qstat_cmd = os.path.join(
@@ -318,7 +313,6 @@ class TestQstatFormats(TestFunctional):
         python json module
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         [qstat_json_script, qstat_json_out] = [DshUtils().create_temp_file()
                                                for _ in range(2)]
@@ -345,7 +339,6 @@ class TestQstatFormats(TestFunctional):
         """
         ret = True
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                  'qstat') + ' -f ' + str(jid)
@@ -362,7 +355,6 @@ class TestQstatFormats(TestFunctional):
         super user and all attributes displayed in qstat are present in output
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(40)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
 
@@ -399,7 +391,6 @@ class TestQstatFormats(TestFunctional):
         present in the output
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid1 = self.server.submit(j)
         jid2 = self.server.submit(j)
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
@@ -423,7 +414,6 @@ class TestQstatFormats(TestFunctional):
         a = {'resources_available.ncpus': 4}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER)
-        j.set_sleep_time(100)
         jid = self.server.submit(j)
         jid2 = self.server.submit(j)
         jid3 = self.server.submit(j)
@@ -453,7 +443,6 @@ class TestQstatFormats(TestFunctional):
         normal user
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "R"}, id=jid)
         qstat_cmd_json = os.path.join(self.server.pbs_conf[
@@ -471,7 +460,6 @@ class TestQstatFormats(TestFunctional):
         Test json output of qstat -f of Job arrays is in valid format
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
         j.set_attributes({ATTR_J: '1-3'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': "B"}, id=jid)
@@ -601,7 +589,6 @@ class TestQstatFormats(TestFunctional):
 
         j = Job(self.du.get_current_user())
         j.preserve_env = True
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                       'qstat') + \
@@ -630,7 +617,6 @@ class TestQstatFormats(TestFunctional):
 
         j = Job(self.du.get_current_user())
         j.preserve_env = True
-        j.set_sleep_time(10)
         jid = self.server.submit(j)
         qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
                                       'qstat') + \
