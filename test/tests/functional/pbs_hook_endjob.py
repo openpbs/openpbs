@@ -187,7 +187,6 @@ class TestHookJob(TestFunctional):
         self.server.log_match(hook_msg, starttime=start_time)
         self.logger.info("**************** HOOK END ****************")
 
-    # TODO: add test for a job run under a reservation
     def test_hook_endjob_resv(self):
         """
         By creating an import hook, it executes a job hook.
@@ -214,8 +213,8 @@ class TestHookJob(TestFunctional):
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid1)
         resv_queue = rid1.split('.')[0]
-        self.server.status(RESV, 'resv_nodes')        
-        
+        self.server.status(RESV, 'resv_nodes')
+
         a = {'job_history_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         a = {'resources_available.ncpus': 1}
@@ -234,19 +233,19 @@ class TestHookJob(TestFunctional):
         #subjid.append(jid)
         for i in range (1,(num_array_jobs+1)):
             subjid.append( j.create_subjob_id(jid, i) )
-        
+
         self.logger.info('Sleeping until reservation starts')
         self.server.expect(RESV,
                            {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
                            id=rid1, offset=start_time - int(time.time()))
-        
-        # 1. check job array has begun            
+
+        # 1. check job array has begun
         self.server.expect(JOB, {'job_state': 'B'}, jid)
 
         for i in range (1,(num_array_jobs+1)):
-            self.server.expect(JOB, {'job_state': 'R'}, 
-                               id=subjid[i], offset=4)            
-            
+            self.server.expect(JOB, {'job_state': 'R'},
+                               id=subjid[i], offset=4)
+
         self.server.expect(JOB, {'job_state': 'F'}, extend='x',
                                 offset=4, id=jid, interval=5)
 
@@ -256,76 +255,6 @@ class TestHookJob(TestFunctional):
             starttime=start_time)
         ret = self.server.delete_hook(hook_name)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
-        self.server.log_match(hook_msg, starttime=start_time)
-        self.logger.info("**************** HOOK END ****************")
-    
-    # TODO: add test for a job run under a reservation
-    def test_hook_endjob_resv_2(self):
-        """
-        By creating an import hook, it executes a job hook.
-        """
-        self.logger.info("**************** HOOK START ****************")
-        hook_name = "hook_endjob_resv"
-        hook_msg = 'running %s' % hook_name
-        hook_body = get_hook_body(hook_msg)
-        attrs = {'event': 'endjob', 'enabled': 'True'}
-        start_time = time.time()
-
-        ret = self.server.create_hook(hook_name, attrs)
-        self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
-        ret = self.server.import_hook(hook_name, hook_body)
-        self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
-
-        a = {'reserve_retry_time': 5}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-
-        now = int(time.time())
-        start = now + 20
-        a = {'reserve_start': start, 'reserve_end': start + 60,
-             'Resource_List.select': '2:ncpus=1'}
-        R = Reservation(attrs=a)
-        rid = self.server.submit(R)
-        self.server.expect(RESV, {'reserve_state':
-                                  (MATCH_RE, 'RESV_CONFIRMED|2')}, id=rid)
-        resv_queue = rid.split('.')[0]      
-        
-        a = {'job_history_enable': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-        a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        num_array_jobs = 2
-        attr_j_str = '1-' + str(num_array_jobs)
-        j = Job(TEST_USER, attrs={
-            ATTR_J: attr_j_str, 'Resource_List.select': 'ncpus=1', 
-            ATTR_queue: resv_queue})
-
-        j.set_sleep_time(4)
-        jid = self.server.submit(j)
-
-        subjid = []
-        subjid.append(jid)
-        #subjid.append(jid)
-        for i in range (1,(num_array_jobs+1)):
-            subjid.append( j.create_subjob_id(jid, i) )
-        
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, offset=20)
-        
-        # 1. check job array has begun            
-        self.server.expect(JOB, {'job_state': 'B'}, jid)
-        
-        for i in range (1,(num_array_jobs+1)):
-            self.server.expect(JOB, {'job_state': 'Q'}, 
-                               id=subjid[i], offset=4)            
-            
-        self.server.expect(JOB, {'job_state': 'F'}, extend='x',
-                                offset=4, id=jid, interval=5)
-
-        #self.server.delete(id=jid, extend='force', wait=True)
-        self.server.log_match(
-            "chk_array_doneness, rq_endjob process_hooks call succeeded",
-            starttime=start_time)
-        ret = self.server.delete_hook(hook_name)
-        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
-        self.server.log_match(hook_msg, starttime=start_time)
+        self.server.log_match(hook_msg, starttime=start_time,
+                                max_attempts=10 )
         self.logger.info("**************** HOOK END ****************")
