@@ -337,6 +337,7 @@ resource_resv::~resource_resv()
 
 	if (end_event != NULL)
 		delete_event(server, end_event);
+}
 
 /**
  * @brief	pthread routine for duping a chunk of resresvs

@@ -657,8 +657,6 @@ node_info::node_info(const std::string& nname): name(nname)
 
 	priority = 0;
 
-	pcpus = 0;
-
 	rank = 0;
 
 	nodesig_ind = -1;

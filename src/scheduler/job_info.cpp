@@ -1227,15 +1227,9 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->qrank = -1;
 		}
 		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
-<<<<<<< HEAD
 			resresv->svr_inst_id = string_dup(attrp->value);
 			if (resresv->svr_inst_id == NULL) {
-				free_resource_resv(resresv);
-=======
-			resresv->job->svr_inst_id = string_dup(attrp->value);
-			if (resresv->job->svr_inst_id == NULL) {
 				delete resresv;
->>>>>>> 5747272f... Partial C++ refactor of resource_resv and node_info
 				return NULL;
 			}
 		}

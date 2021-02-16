@@ -752,7 +752,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		} else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
 			advresv->svr_inst_id = string_dup(attrp->value);
 			if (advresv->svr_inst_id == NULL) {
-				free_resource_resv(advresv);
+				delete advresv;
 				return NULL;
 			}
 		}
