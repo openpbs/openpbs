@@ -85,7 +85,7 @@ class TestQdel(TestFunctional):
         self.server.add_resource('foo')
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
-        self.assertEqual(rc, 0)        
+        self.assertEqual(rc, 0)
         hook_body = "import pbs\n"
         hook_body += "e = pbs.event()\n"
         hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
