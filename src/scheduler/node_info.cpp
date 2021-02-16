@@ -1090,6 +1090,14 @@ node_filter(node_info **nodes, int size,
 	return new_nodes;
 }
 
+/**
+ * @brief find a node by string
+ * @param[in] ninfo_arr - node array to search
+ * @param[in] nodename - name of node to searh for
+ * @return node_info *
+ * @retval found node
+ * @retval NULL if not found or on error
+ */
 node_info *
 find_node_info(node_info **ninfo_arr, const std::string& nodename)
 {
