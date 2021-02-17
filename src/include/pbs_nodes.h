@@ -200,7 +200,7 @@ struct	prop {
 };
 
 struct	jobinfo {
-	char	*job;
+	char		*job;
 	int		has_cpu;
 	size_t		mem;
 	struct	jobinfo	*next;

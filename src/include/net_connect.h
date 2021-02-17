@@ -85,7 +85,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 /* When protocol changes, increment the version
 * not to be changed lightly as it makes everything incompatable.
 */
-#define RM_PROTOCOL_VER	1	/* resmon protocol version number */
+#define	RM_PROTOCOL_VER	1	/* resmon protocol version number */
 #define	TM_PROTOCOL_VER	2	/* task manager protocol version number */
 #define	TM_PROTOCOL_OLD	1	/* old task manager protocol version number */
 #define	IM_PROTOCOL_VER	6	/* inter-mom protocol version number */
@@ -124,7 +124,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 /*
  **	Types of Peer Server messages (between Server and Server).
  */
-#define PS_CONNECT              1 /* hello from peer server  */
+#define PS_CONNECT		1 /* hello from peer server  */
 #define PS_RSC_UPDATE_FULL	2 /* hello from peer server  */
 #define PS_RSC_UPDATE		3 /* Peer server resource update */
 #define PS_RSC_UPDATE_ACK	4 /* Reply for peer server resource update */

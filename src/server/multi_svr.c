@@ -213,7 +213,6 @@ free_ru(psvr_ru_t *ru_head)
 
         for (ru_cur = ru_head; ru_cur; ru_cur = ru_nxt) {
 		ru_nxt = GET_NEXT(ru_cur->ru_link);
-		log_errf(-1, __func__, "itr...");
                 free(ru_cur->jobid);
 		free(ru_cur->execvnode);
 		free(ru_cur);
@@ -455,7 +454,7 @@ connect_to_peersvr(void *psvr)
 	if (send_hello(psvr) < 0)
 		return -1;
 
-	if (resc_upd_reqd)
+	if (resc_upd_reqd && svr_info->num_pending_rply)
 		mcast_resc_update_all(psvr);
 
 	return 0;

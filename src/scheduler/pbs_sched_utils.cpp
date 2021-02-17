@@ -590,7 +590,7 @@ connect_svrpool()
 			continue;
 		}
 
-		if (pbs_register_sched(sc_name, clust_primary_sock, clust_secondary_sock) == 0) {
+		if (pbs_register_sched(sc_name, clust_primary_sock, clust_secondary_sock) != 0) {
 			log_errf(pbs_errno, __func__, "Couldn't register the scheduler %s with the configured servers", sc_name);
 			/* wait for 2s for not to burn too much CPU, and then retry connection */
 			sleep(2);

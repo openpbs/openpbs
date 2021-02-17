@@ -129,12 +129,14 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	int sock;
 	mominfo_t *pmom = NULL;
 	conn_t *conn = NULL;
+	mom_svrinfo_t *pmsvrinfo;
 
 	/* First, determine if the request is to another server or ourselves */
 
 	if ((hostaddr == pbs_server_addr) && (port == pbs_server_port_dis))
 		return (PBS_LOCAL_CONNECTION);	/* special value for local */
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
+	pmsvrinfo = pmom->mi_data;
 
 	if (pmom && (port == pmom->mi_port)) {
 		if (is_peersvr(pmom)) {
@@ -142,10 +144,15 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 				pbs_errno = PBSE_NORELYMOM;
 				return (PBS_NET_RC_FATAL);
 			}
-		} else if ((((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)
-							&& (open_conn_stream(pmom) < 0)) {
-			pbs_errno = PBSE_NORELYMOM;
-			return (PBS_NET_RC_FATAL);
+		} else if (pmsvrinfo->msr_state & INUSE_DOWN) {
+			if ((pmsvrinfo->msr_state & INUSE_NEEDS_HELLOSVR) &&
+			    (open_conn_stream(pmom) < 0)) {
+				pbs_errno = PBSE_NORELYMOM;
+				return (PBS_NET_RC_FATAL);
+			} else {
+				pbs_errno = PBSE_NORELYMOM;
+				return (PBS_NET_RC_FATAL);
+			}
 		}
 	}
 

@@ -357,10 +357,12 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 		pmom = create_mom_entry(hostname, port);
 
 	if (pmom == NULL) {
+		free(pul);
 		return pmom;
 	}
 
 	if (pmom->mi_data != NULL) {
+		free(pul);
 		return pmom;	/* already there */
 	}
 

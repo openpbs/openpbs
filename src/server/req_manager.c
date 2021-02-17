@@ -2939,10 +2939,12 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 				 * Since we are going ahead nevertheless, we need to allocate
 				 * an "empty" pul list
 				 */
+				free(pul);
 				pul = malloc(sizeof(u_long) * (1));
 				pul[0] = 0;
 				ret = PBSE_UNKNODE; /* set return of function to this, so that error is logged */
 			} else {
+				free(pul);
 				effective_node_delete(pnode);
 				return (rc); /* return the error code from make_host_addresses_list */
 			}

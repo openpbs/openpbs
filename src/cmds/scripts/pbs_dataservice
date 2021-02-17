@@ -227,7 +227,7 @@ case "$1" in
 		fi
 
 		# Check if PBS is running
-		env -u PBS_SERVER_INSTANCES ${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
+		PBS_SERVER_INSTANCES="" ${PBS_EXEC}/bin/qstat -Bf >/dev/null 2>&1
 		if [ $? -eq 0 ]; then
 			echo "PBS server is running. Cannot stop PBS Data Service now."
 			server_pid="`ps -ef | grep "pbs_server.bi[n]" | awk '{print $2}'`"

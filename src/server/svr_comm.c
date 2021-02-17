@@ -103,10 +103,6 @@ void
 mcast_resc_update_all(void *psvr)
 {
 	struct work_task *ptask;
-	svrinfo_t *svr_info = ((server_t *) psvr)->mi_data;
-
-	if (!svr_info->num_pending_rply)
-		return;
 
 	if (mtfd_replyhello_psvr == -1) {
 		ptask = set_task(WORK_Immed, 0, mcast_msg, NULL);
