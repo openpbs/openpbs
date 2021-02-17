@@ -187,7 +187,7 @@ aggr_job_ct(struct batch_status *cur, struct batch_status *nxt)
 	long nxt_st_ct[MAX_STATE] = {0};
 	struct attrl *a = NULL;
 	struct attrl *b = NULL;
-	char *tot_jobs_attr = NULL;
+	struct attrl *tot_jobs_attr = NULL;
 	long tot_jobs = 0;
 	char *endp;
 	int found;
@@ -202,7 +202,7 @@ aggr_job_ct(struct batch_status *cur, struct batch_status *nxt)
 			orig_st_ct = &a->value;
 			found++;
 		} else if (a->name && strcmp(a->name, ATTR_total) == 0) {
-			tot_jobs_attr = a->value;
+			tot_jobs_attr = a;
 			tot_jobs += strtol(a->value, &endp, 10);
 			found++;
 		}
@@ -223,8 +223,10 @@ aggr_job_ct(struct batch_status *cur, struct batch_status *nxt)
 
 	if (orig_st_ct)
 		encode_states(orig_st_ct, cur_st_ct, nxt_st_ct);
-	if (tot_jobs_attr)
-		sprintf(tot_jobs_attr, "%ld", tot_jobs);
+	if (tot_jobs_attr) {
+		free(tot_jobs_attr->value);
+		pbs_asprintf(&(tot_jobs_attr->value), "%ld", tot_jobs);
+	}
 }
 
 /**
@@ -510,7 +512,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 		return NULL;
 
 	if (parent_object == MGR_OBJ_JOB) {
-		if ((start = starting_index(id)) == -1)
+		if ((start = get_job_location_hint(id)) == -1)
 			start = 0;
 		else
 			single_itr = 1;

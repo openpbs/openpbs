@@ -139,7 +139,6 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 {
 	unsigned int dum;
 	long t;
-	attribute *peh;
 	struct work_task *pwt;
 	int prot = PROT_TPP;
 
@@ -148,10 +147,10 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 		/* need to make connection, called from pbsd_init() */
 
 		if (pjob->ji_qs.ji_un.ji_exect.ji_momaddr == 0) {
-			peh = &pjob->ji_wattr[(int)JOB_ATR_exec_vnode];
-			if (!is_attr_set(peh) || peh->at_val.at_str == 0)
+			char *exec_vnode = get_jattr_str(pjob, JOB_ATR_exec_vnode);
+			if (!is_jattr_set(pjob, JOB_ATR_exec_vnode) || exec_vnode == NULL)
 				return -1;
-			pjob->ji_qs.ji_un.ji_exect.ji_momaddr = get_addr_of_nodebyname(peh->at_val.at_str, &dum);
+			pjob->ji_qs.ji_un.ji_exect.ji_momaddr = get_addr_of_nodebyname(exec_vnode, &dum);
 			if (pjob->ji_qs.ji_un.ji_exect.ji_momaddr == 0)
 				return -1;
 
@@ -234,7 +233,7 @@ rel_resc(job *pjob)
 	else {
 		pbs_queue *pq;
 		pq = find_queuebyname( pjob->ji_qs.ji_queue);
-		sprintf(log_buffer, "Unable to reach scheduler associated with partition %s", pq->qu_attr[QA_ATR_partition].at_val.at_str);
+		sprintf(log_buffer, "Unable to reach scheduler associated with partition %s", get_qattr_str(pq, QA_ATR_partition));
 		log_err(-1, __func__, log_buffer);
 	}
 }
@@ -297,7 +296,7 @@ end_job(job *pjob, int isexpress)
 	if (isexpress) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "express end of job");
 		/* see if have any dependencies */
-		if (pjob->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
+		if (is_jattr_set(pjob, JOB_ATR_depend))
 			(void)depend_on_term(pjob);
 
 		/* Set job's exec_vnodes with current time for last_used_time. */
@@ -315,8 +314,7 @@ end_job(job *pjob, int isexpress)
 	if (pjob->ji_acctrec)
 		rec = pjob->ji_acctrec;
 
-	if (server.sv_attr[SVR_ATR_log_events].at_val.at_long &
-		PBSEVENT_JOB_USAGE) {
+	if (get_sattr_long(SVR_ATR_log_events) & PBSEVENT_JOB_USAGE) {
 		/* log events set to record usage */
 		log_event(PBSEVENT_JOB_USAGE | PBSEVENT_JOB_USAGE,
 			PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -723,7 +721,7 @@ unset_extra_attributes(job *pjob)
 	if (is_jattr_set(pjob,  JOB_ATR_resource_orig)) {
 		free_jattr(pjob, JOB_ATR_resource);
 		mark_jattr_not_set(pjob, JOB_ATR_resource);
-		set_attr_with_attr(&job_attr_def[(int) JOB_ATR_resource],  &pjob->ji_wattr[(int) JOB_ATR_resource], &pjob->ji_wattr[(int) JOB_ATR_resource_orig], INCR);
+		set_attr_with_attr(&job_attr_def[(int) JOB_ATR_resource],  get_jattr(pjob, JOB_ATR_resource), get_jattr(pjob, JOB_ATR_resource_orig), INCR);
 
 		free_jattr(pjob, JOB_ATR_resource_orig);
 		mark_jattr_not_set(pjob, JOB_ATR_resource_orig);
@@ -1459,8 +1457,8 @@ job_obit(ruu *pruu, int stream)
 	pjob->ji_qs.ji_un.ji_exect.ji_exitstat = exitstatus;
 
 	/* set the Exit_status job attribute */
-	if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_flags & ATR_VFLAG_SET)
-		local_exitstatus = pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long;
+	if (is_jattr_set(pjob, JOB_ATR_exit_status))
+		local_exitstatus = get_jattr_long(pjob, JOB_ATR_exit_status);
 
 	if ((local_exitstatus == JOB_EXEC_HOOK_RERUN || local_exitstatus == JOB_EXEC_HOOK_DELETE) &&
 	    exitstatus != JOB_EXEC_FAILHOOK_RERUN && exitstatus != JOB_EXEC_FAILHOOK_DELETE)

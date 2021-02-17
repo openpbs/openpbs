@@ -93,13 +93,13 @@
  */
 
 int
-decode_c(struct attribute *patr, char *name, char *rescn, char *val)
+decode_c(attribute *patr, char *name, char *rescn, char *val)
 {
 	if ((val == NULL) || (strlen(val) == 0)) {
 		ATR_UNSET(patr);
 		patr->at_val.at_char = '\0';
 	} else {
-		patr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(patr);
 		patr->at_val.at_char = *val;
 	}
 	return (0);
@@ -167,7 +167,7 @@ encode_c(const attribute *attr, pbs_list_head *phead, char *atname, char *rsname
  */
 
 int
-set_c(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_c(attribute *attr, attribute *new, enum batch_op op)
 {
 	assert(attr && new && (new->at_flags & ATR_VFLAG_SET));
 
@@ -187,7 +187,7 @@ set_c(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -205,7 +205,7 @@ set_c(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_c(struct attribute *attr, struct attribute *with)
+comp_c(attribute *attr, attribute *with)
 {
 	if (!attr || !with)
 		return (-1);
@@ -256,7 +256,32 @@ set_attr_c(attribute *pattr, char value, enum batch_op op)
 			return;
 	}
 
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(pattr);
+}
+
+void
+set_attr_short(attribute *pattr, short value, enum batch_op op)
+{
+	if (pattr == NULL) {
+		log_err(-1, __func__, "Invalid pointer to attribute");
+		return;
+	}
+
+	switch (op) {
+		case SET:
+			pattr->at_val.at_short = value;
+			break;
+		case INCR:
+			pattr->at_val.at_short += value;
+			break;
+		case DECR:
+			pattr->at_val.at_short -= value;
+			break;
+		default:
+			return;
+	}
+
+	post_attr_set(pattr);
 }
 
 /**

@@ -89,6 +89,7 @@ pbs_server_bin_SOURCES = \
 	licensing_func.c \
 	mom_info.c \
 	multi_svr.c \
+	nattr_get_set.c \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \
@@ -96,8 +97,10 @@ pbs_server_bin_SOURCES = \
 	pbsd_init.c \
 	pbsd_main.c \
 	process_request.c \
+	qattr_get_set.c \
 	queue_func.c \
 	queue_recov_db.c \
+	rattr_get_set.c \
 	reply_send.c \
 	req_delete.c \
 	req_getcred.c \
@@ -122,6 +125,8 @@ pbs_server_bin_SOURCES = \
 	req_cred.c \
 	resc_attr.c \
 	run_sched.c \
+	sattr_get_set.c \
+	sched_attr_get_set.c \
 	sched_func.c \
 	setup_resc.c \
 	stat_job.c \

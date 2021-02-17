@@ -239,7 +239,7 @@ job_save_db(job *pjob)
 	char *conn_db_err = NULL;
 
 	old_mtime = get_jattr_long(pjob, JOB_ATR_mtime);
-	old_flags = pjob->ji_wattr[JOB_ATR_mtime].at_flags;
+	old_flags = (get_jattr(pjob, JOB_ATR_mtime))->at_flags;
 
 	if ((savetype = job_to_db(pjob, &dbjob)) == -1)
 		goto done;
@@ -258,7 +258,7 @@ done:
 	if (rc != 0) {
 		/* revert mtime, flags update */
 		set_jattr_l_slim(pjob, JOB_ATR_mtime, old_mtime, SET);
-		pjob->ji_wattr[JOB_ATR_mtime].at_flags = old_flags;
+		(get_jattr(pjob, JOB_ATR_mtime))->at_flags = old_flags;
 
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
 		log_errf(PBSE_INTERNAL, __func__, "Failed to save job %s %s", pjob->ji_qs.ji_jobid, conn_db_err? conn_db_err : "");
@@ -330,7 +330,7 @@ job_recov_db(char *jid, job *pjob)
 	int rc = -1;
 	void *conn = svr_db_conn;
 	char *conn_db_err = NULL;
-	
+
 	strcpy(dbjob.ji_jobid, jid);
 
 	rc = pbs_db_load_obj(conn, &obj);
@@ -452,9 +452,11 @@ resv_save_db(resc_resv *presv)
 	int rc = -1;
 	int old_mtime, old_flags;
 	char *conn_db_err = NULL;
+	attribute *mtime;
 
-	old_mtime = presv->ri_wattr[RESV_ATR_mtime].at_val.at_long;
-	old_flags = presv->ri_wattr[RESV_ATR_mtime].at_flags;
+	mtime = get_rattr(presv, RESV_ATR_mtime);
+	old_mtime = get_attr_l(mtime);
+	old_flags = mtime->at_flags;
 
 	if ((savetype = resv_to_db(presv, &dbresv)) == -1)
 		goto done;
@@ -463,8 +465,7 @@ resv_save_db(resc_resv *presv)
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
 
 	/* update mtime before save, so the same value gets to the DB as well */
-	presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = time_now;
-	presv->ri_wattr[RESV_ATR_mtime].at_flags |= ATR_SET_MOD_MCACHE;
+	set_rattr_l_slim(presv, RESV_ATR_mtime, time_now, SET);
 	if ((rc = pbs_db_save_obj(conn, &obj, savetype)) == 0)
 		presv->newobj = 0;
 
@@ -472,8 +473,8 @@ done:
 	free_db_attr_list(&dbresv.db_attr_list);
 
 	if (rc != 0) {
-		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long = old_mtime;
-		presv->ri_wattr[RESV_ATR_mtime].at_flags = old_flags;
+		set_attr_l(mtime, old_mtime, SET);
+		mtime->at_flags = old_flags;
 
 		pbs_db_get_errmsg(PBS_DB_ERR, &conn_db_err);
 		log_errf(PBSE_INTERNAL, __func__, "Failed to save resv %s %s", presv->ri_qs.ri_resvID, conn_db_err? conn_db_err : "");

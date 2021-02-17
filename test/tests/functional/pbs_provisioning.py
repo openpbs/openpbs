@@ -89,21 +89,12 @@ class TestProvisioningJob(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         self.momA = self.moms.values()[0]
-        serverA = (self.servers.values()[0]).shortname
         self.hostA = self.momA.shortname
-        msg = ("Server and Mom can't be on the same host. "
-               "Provide a mom not present on server host "
-               "while invoking the test: -p moms=<m1>")
-        if serverA == self.hostA:
+        msg = ("We cannot provision on cpuset mom, host has vnodes")
+        if self.momA.is_cpuset_mom():
             self.skipTest(msg)
         self.momA.delete_vnode_defs()
         self.logger.info(self.momA.shortname)
-
-        self.server.manager(
-            MGR_CMD_DELETE, NODE, None, "", runas=ROOT_USER)
-
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-
         a = {'provision_enable': 'true'}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
 
@@ -185,13 +176,13 @@ class TestProvisioningJob(TestFunctional):
         if len(self.moms) < 2:
             cmt = "need 2 non-server mom hosts: -p moms=<m1>:<m2>"
             self.skip_test(reason=cmt)
-
-        a = {'resources_available.aoe': 'osimage1'}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
-
         self.momB = self.moms.values()[1]
         self.hostB = self.momB.shortname
-        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
+        msg = ("We cannot provision on cpuset mom, host has vnodes")
+        if self.momA.is_cpuset_mom() or self.momB.is_cpuset_mom():
+            self.skipTest(msg)
+        a = {'resources_available.aoe': 'osimage1'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.hostA)
         self.server.expect(NODE, {'state': 'free'}, id=self.hostB)
         self.server.expect(NODE, {'state': 'free'}, id=self.hostA)
 

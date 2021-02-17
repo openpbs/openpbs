@@ -1093,7 +1093,9 @@ class HookUtils(object):
                 for key in cgroup.assigned_resources['device_names']:
                     if key.startswith('mic'):
                         mics.append(key[3:])
-                    elif key.startswith('nvidia'):
+                    elif (key.startswith('nvidia')
+                            and "gpu" in node.devices
+                            and key in node.devices['gpu']):
                         if 'uuid' in node.devices['gpu'][key]:
                             gpus.append(node.devices['gpu'][key]['uuid'])
                         if 'uuids' in node.devices['gpu'][key]:
@@ -1184,7 +1186,8 @@ class HookUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        'assigned_resources: %s' %
                        (cgroup.assigned_resources))
-            cgroup.setup_job_devices_env(node.devices['gpu'])
+            if "gpu" in node.devices:
+                cgroup.setup_job_devices_env(node.devices['gpu'])
         return True
 
     def _exechost_periodic_handler(self, event, cgroup, jobutil):
@@ -1341,7 +1344,9 @@ class HookUtils(object):
                 for key in cgroup.assigned_resources['device_names']:
                     if key.startswith('mic'):
                         mics.append(key[3:])
-                    elif key.startswith('nvidia'):
+                    elif (key.startswith('nvidia')
+                            and "gpu" in node.devices
+                            and key in node.devices['gpu']):
                         if 'uuid' in node.devices['gpu'][key]:
                             gpus.append(node.devices['gpu'][key]['uuid'])
                         if 'uuids' in node.devices['gpu'][key]:
@@ -1536,8 +1541,10 @@ class NodeUtils(object):
             self.numa_nodes = self._discover_numa_nodes()
         if devices is not None:
             self.devices = devices
-        else:
+        elif self.cfg['cgroup']['devices']['enabled']:
             self.devices = self._discover_devices()
+        else:
+            self.devices = {}
         # Add the devices count i.e. nmics and ngpus to the numa nodes
         self._add_device_counts_to_numa_nodes()
         # Information for offlining nodes
@@ -1854,7 +1861,10 @@ class NodeUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         gpus = {}
-        cmd = [self.cfg['nvidia-smi'], '-q', '-x']
+        if self.cfg['discover_gpus'] and self.cfg['nvidia-smi']:
+            cmd = [self.cfg['nvidia-smi'], '-q', '-x']
+        else:
+            return gpus
         pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
         time_start = time.time()
         mig_found = False
@@ -1953,8 +1963,8 @@ class NodeUtils(object):
         # +----------------------------------------------------+
         # |   0  MIG 1g.5gb       19        8          5:1     |
         r = re.compile(r'^\|\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+\S+\s+\|$')
-        for l in out:
-            match = r.match(l)
+        for out_line in out:
+            match = r.match(out_line)
             if not match:
                 continue
             gpu_num = int(match.group(1))
@@ -2004,8 +2014,8 @@ class NodeUtils(object):
         # |   0      7       MIG 1g.5gb       0         0          0:1     |
         r = re.compile(
             r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+(\S+\s+)?\|$')
-        for l in out:
-            match = r.match(l)
+        for out_line in out:
+            match = r.match(out_line)
             if not match:
                 continue
             gpu_num = int(match.group(1))
@@ -2481,6 +2491,9 @@ class NodeUtils(object):
                 vnode_key = vnode_name + '[%d]' % nnid
                 vnode_list[vnode_key] = pbs.vnode(vnode_name)
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
+                # ensure that if no devices were discovered that
+                # ngpus is set to 0; otherwise MoM may still use stale value
+                vnode_resc_avail['ngpus'] = 0
                 if (vntype and self.cfg['propagate_vntype_to_server']):
                     vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].items()):
@@ -2735,8 +2748,13 @@ class CgroupUtils(object):
         # but some of the code assumes only iterables are
         # in the "cgroup" dictionary,
         # without any guards to protect against extras!!
-        if "cgroup" in self.cfg and "enabled" in self.cfg['cgroup']:
+        if "enabled" in self.cfg['cgroup']:
             del self.cfg['cgroup']['enabled']
+
+        if not self.cfg['cgroup']['devices']['enabled']:
+            self.cfg['discover_gpus'] = False
+            pbs.logmsg(pbs.EVENT_DEBUG, 'discover_gpus set to False because '
+                       'devices subsystem is disabled')
 
         # Determine which subsystems we care about
         if subsystems is not None:
@@ -3141,6 +3159,7 @@ class CgroupUtils(object):
         defaults['cgroup_prefix'] = 'pbs_jobs'
         defaults['cgroup_lock_file'] = os.path.join(PBS_MOM_HOME, 'mom_priv',
                                                     'cgroups.lock')
+        defaults['discover_gpus'] = True
         defaults['nvidia-smi'] = os.path.join(os.sep, 'usr', 'bin',
                                               'nvidia-smi')
         defaults['exclude_hosts'] = []
@@ -4107,8 +4126,8 @@ class CgroupUtils(object):
             nmics = int(requested['nmics'])
             # Use a list comprehension to construct the mics list
             mics = [m.group(0)
-                    for l in available['devices']
-                    for m in [regex.search(l)] if m]
+                    for d in available['devices']
+                    for m in [regex.search(d)] if m]
             if nmics > len(mics):
                 pbs.logmsg(pbs.EVENT_DEBUG4, 'Insufficient nmics: %s/%s' %
                            (nmics, mics))
@@ -4127,8 +4146,8 @@ class CgroupUtils(object):
             ngpus = int(requested['ngpus'])
             # Use a list comprehension to construct the gpus list
             gpus = [m.group(0)
-                    for l in available['devices']
-                    for m in [regex.search(l)] if m]
+                    for d in available['devices']
+                    for m in [regex.search(d)] if m]
             if ngpus > len(gpus):
                 pbs.logmsg(pbs.EVENT_DEBUG4, 'Insufficient ngpus: %s/%s' %
                            (ngpus, gpus))

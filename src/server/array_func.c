@@ -531,8 +531,8 @@ setup_ajinfo(job *pjob, int mode)
 		return PBSE_BADATVAL;
 
 	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_ALTER)) {
-		if (server.sv_attr[(int) SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-			limit = server.sv_attr[(int) SVR_ATR_maxarraysize].at_val.at_long;
+		if (is_sattr_set(SVR_ATR_maxarraysize))
+			limit = get_sattr_long(SVR_ATR_maxarraysize);
 		else
 			limit = PBS_MAX_ARRAY_JOB_DFL; /* default limit 10000 */
 
@@ -730,16 +730,15 @@ create_subjob(job *parent, char *newjid, int *rc)
 	CLEAR_HEAD(attrl);
 	for (i = 0; attrs_to_copy[i] != JOB_ATR_LAST; i++) {
 		j    = (int)attrs_to_copy[i];
-		ppar = &parent->ji_wattr[j];
-		psub = &subj->ji_wattr[j];
+		ppar = get_jattr(parent, j);
+		psub = get_jattr(subj, j);
 		pdef = &job_attr_def[j];
 
 		if (pdef->at_encode(ppar, &attrl, pdef->at_name, NULL,
 			ATR_ENCODE_MOM, &psatl) > 0) {
 			for (psatl = (svrattrl *)GET_NEXT(attrl); psatl;
 				psatl = ((svrattrl *)GET_NEXT(psatl->al_link))) {
-				pdef->at_decode(psub, psatl->al_name, psatl->al_resc,
-					psatl->al_value);
+				set_attr_generic(psub, pdef, psatl->al_value, psatl->al_resc, INTERNAL);
 			}
 			/* carry forward the default bit if set */
 			psub->at_flags |= (ppar->at_flags & ATR_VFLAG_DEFLT);
@@ -760,7 +759,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	/* subjob needs to borrow eligible time from parent job array.
 	 * expecting only to accrue eligible_time and nothing else.
 	 */
-	if (server.sv_attr[(int)SVR_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+	if (get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) {
 
 		eligibletime = get_jattr_long(parent, JOB_ATR_eligible_time);
 

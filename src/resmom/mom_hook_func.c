@@ -165,7 +165,6 @@ static void
 fprintf_job_struct(FILE *fp, job *pjob)
 {
 	pbs_list_head	phead;
-	attribute	*pattr;
 	svrattrl	*psatl;
 	svrattrl	*ps;
 	int		i;
@@ -178,9 +177,8 @@ fprintf_job_struct(FILE *fp, job *pjob)
 
 	/* Now print job attributes and resources */
 	CLEAR_HEAD(phead);
-	pattr = pjob->ji_wattr;
 	for (i=0; i < (int)JOB_ATR_LAST; i++) {
-		(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
+		(void)(job_attr_def+i)->at_encode(get_jattr(pjob, i), &phead,
 			(job_attr_def+i)->at_name, NULL,
 			ATR_ENCODE_MOM, NULL);
 	}
@@ -303,7 +301,6 @@ fprint_joblist(FILE *fp, char *head_str, pbs_list_head *joblist)
 	job		*pjob;
 	int		i;
 	pbs_list_head	phead;
-	attribute	*pattr;
 	svrattrl	*psatl;
 	svrattrl	*ps;
 	char		*jobid;
@@ -319,9 +316,8 @@ fprint_joblist(FILE *fp, char *head_str, pbs_list_head *joblist)
 		jobid = pjob->ji_qs.ji_jobid;
 		/* Now print job attributes and resources */
 		CLEAR_HEAD(phead);
-		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {
-			(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
+			(void)(job_attr_def+i)->at_encode(get_jattr(pjob, i), &phead,
 				(job_attr_def+i)->at_name, NULL,
 				ATR_ENCODE_MOM, NULL);
 		}
@@ -1767,7 +1763,6 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	int   vn_fail_obj_len = strlen(EVENT_VNODELIST_FAIL_OBJECT);
 	int   job_obj_len = strlen(EVENT_JOBLIST_OBJECT);
 	int   index;
-	attribute_def	*pdef;
 	int	errcode;
 	vnl_t	*hvnlp = NULL;
 	vnl_t	*hvnlp_fail = NULL;
@@ -2273,11 +2268,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					}
 				}
 
-				pdef = &job_attr_def[index];
-
 				/* decode attribute */
-				errcode = pdef->at_decode(&pjob2->ji_wattr[index],
-					name_str, resc_str, data_value);
+				errcode = set_jattr_generic(pjob2, index, data_value, resc_str, INTERNAL);
 				/* unknown resources still get decoded */
 				/* using "unknown" placeholder resc def */
 				if ((errcode != 0) &&
@@ -2297,7 +2289,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					svrattrl *plist, *plist2, *plist_next;
 
 					prdef = &svr_resc_def[RESC_UNKN];
-					prsc = find_resc_entry(&pjob2->ji_wattr[index], prdef);
+					prsc = find_resc_entry(get_jattr(pjob2, index), prdef);
 
 					if ((prdef == NULL) || (prsc == NULL)) {
 						log_err(-1, __func__, "bad unknown resc");
@@ -2341,7 +2333,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					rd = find_resc_def(svr_resc_def, resc_str);
 					if (rd != NULL) {
 						pres = find_resc_entry(
-							&pjob2->ji_wattr[index],
+							get_jattr(pjob2, index),
 							rd);
 						if (pres != NULL) {
 							pres->rs_value.at_flags |=
@@ -2351,7 +2343,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				}
 				/* attributes in a hook should be flagged */
 				/* with ATR_VFLAG_HOOK                    */
-				pjob2->ji_wattr[index].at_flags |= ATR_VFLAG_HOOK;
+				(get_jattr(pjob2, index))->at_flags |= ATR_VFLAG_HOOK;
 			}
 
 		} if ((strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT,

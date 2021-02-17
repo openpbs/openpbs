@@ -161,7 +161,6 @@ static void
 distribute_licenseinfo(mominfo_t *pmom, int lic_count)
 {
 	int i;
-	char str_val[TEMP_BUF_LEN];
 	pbsnode *pnode = NULL;
 	int numvnds = ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds;
 	int lic_rem = lic_count % (numvnds - 1);
@@ -172,16 +171,10 @@ distribute_licenseinfo(mominfo_t *pmom, int lic_count)
 	for (i = 1; i < numvnds; i++) {
 		pnode = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
 		if (lic_rem) {
-			snprintf(str_val, sizeof(str_val), "%d", ((lic_count / (numvnds - 1)) + 1));
-			set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-						 &node_attr_def[ND_ATR_LicenseInfo],
-						 str_val, NULL, SET);
+			set_nattr_l_slim(pnode, ND_ATR_LicenseInfo, ((lic_count / (numvnds - 1)) + 1), SET);
 			lic_rem -= 1;
 		} else {
-			snprintf(str_val, sizeof(str_val), "%d", (lic_count / (numvnds - 1)));
-			set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-						 &node_attr_def[ND_ATR_LicenseInfo],
-						 str_val, NULL, SET);
+			set_nattr_l_slim(pnode, ND_ATR_LicenseInfo, (lic_count / (numvnds - 1)), SET);
 		}
 	}
 }
@@ -229,12 +222,12 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 
 	/*
  	 * Determine where to begin looking for socket licensed nodes:  if
- 	 * the natural vnode is for a Cray login node, the important nodes 
+ 	 * the natural vnode is for a Cray login node, the important nodes
  	 * are those for Cray compute nodes, which begin after the
  	 * login node (which is always the natural vnode and therefore
  	 * always first);  otherwise, we start looking at the beginning.
  	 */
-	pfrom_RA = &ptmp->nd_attr[(int) ND_ATR_ResourceAvail];
+	pfrom_RA = get_nattr(ptmp, ND_ATR_ResourceAvail);
 	if (((pfrom_RA->at_flags & ATR_VFLAG_SET) != 0) &&
 		((prc = find_resc_entry(pfrom_RA, prdefvntype)) != NULL) &&
 		((prc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
@@ -260,13 +253,12 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
 		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
 
-		if (n->nd_attr[ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET)
-			lic_count = n->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+		if (is_nattr_set(n, ND_ATR_LicenseInfo))
+			lic_count = get_nattr_long(n, ND_ATR_LicenseInfo);
 
-		if ((n->nd_attr[ND_ATR_License].at_flags & ATR_VFLAG_SET) &&
-			(n->nd_attr[ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked)) {
+		if (is_nattr_set(n, ND_ATR_License) && get_nattr_c(n, ND_ATR_License) == ND_LIC_TYPE_locked) {
 			pfrom_Lic = n;
-		} else 
+		} else
 			add_to_unlicensed_node_list(n);
 	}
 	if (node_index_start)
@@ -282,15 +274,10 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 	for (i = node_index_start;
 		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
 		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
-
-		set_attr_generic(&(n->nd_attr[ND_ATR_License]),
-					 &node_attr_def[ND_ATR_License],
-					 ND_LIC_locked_str, NULL, SET);
-		snprintf(log_buffer, sizeof(log_buffer),
-			"nd_attr[ND_ATR_License] copied from %s to %s",
+		set_nattr_c_slim(n, ND_ATR_License, ND_LIC_TYPE_locked, SET);
+		log_eventf(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
+			LOG_DEBUG, pmom->mi_host, "ND_ATR_License copied from %s to %s",
 			pfrom_Lic->nd_name, n->nd_name);
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
-			LOG_DEBUG, pmom->mi_host, log_buffer);
 	}
 }
 
@@ -307,11 +294,11 @@ propagate_licenses_to_vnodes(mominfo_t *pmom)
 void
 clear_node_lic_attrs(pbsnode *pnode, int clear_license_info)
 {
-	if (clear_license_info && (pnode->nd_attr[ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET))
-		clear_attr(&pnode->nd_attr[ND_ATR_LicenseInfo], &node_attr_def[ND_ATR_LicenseInfo]);
+	if (clear_license_info && is_nattr_set(pnode, ND_ATR_LicenseInfo))
+		clear_nattr(pnode, ND_ATR_LicenseInfo);
 
-	if (pnode->nd_attr[ND_ATR_License].at_flags & ATR_VFLAG_SET) {
-		clear_attr(&pnode->nd_attr[ND_ATR_License], &node_attr_def[ND_ATR_License]);
+	if (is_nattr_set(pnode, ND_ATR_License)) {
+		clear_nattr(pnode, ND_ATR_License);
 		pnode->nd_added_to_unlicensed_list = 0;
 	}
 }
@@ -328,16 +315,12 @@ clear_node_lic_attrs(pbsnode *pnode, int clear_license_info)
 void
 set_node_lic_info_attr(pbsnode *pnode)
 {
-	int state;
-	char str_val[20];
-	state = lic_needed_for_node(pnode->nd_lic_info);
+	int state = lic_needed_for_node(pnode->nd_lic_info);
 
 	if (state == -3)
 		return;
 	else {
-		snprintf(str_val, sizeof(str_val), "%d", state);
-		set_attr_generic(&(pnode->nd_attr[ND_ATR_LicenseInfo]),
-		&node_attr_def[ND_ATR_LicenseInfo], str_val, NULL, SET);
+		set_nattr_l_slim(pnode, ND_ATR_LicenseInfo, state, SET);
 		node_save_db(pnode);
 	}
 }
@@ -523,16 +506,14 @@ license_one_node(pbsnode *pnode)
 	set_node_lic_info_attr(pnode);
 
 	if (license_counts.licenses_global > 0 || license_counts.licenses_used > 0) {
-		if (pnode->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked) {
-			if (consume_licenses(pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long) == 0) {
-				set_attr_generic(&(pnode->nd_attr[ND_ATR_License]),
-					&node_attr_def[ND_ATR_License],
-					ND_LIC_locked_str, NULL, SET);
+		if (get_nattr_c(pnode, ND_ATR_License) != ND_LIC_TYPE_locked) {
+			if (consume_licenses(get_nattr_long(pnode, ND_ATR_LicenseInfo)) == 0) {
+				set_nattr_c_slim(pnode, ND_ATR_License, ND_LIC_TYPE_locked, SET);
 				update_license_highuse();
 			} else {
 				add_to_unlicensed_node_list(pnode);
-				if (is_attr_set(&(pnode->nd_attr[ND_ATR_LicenseInfo]))) {
-					licensing_control.licenses_total_needed += get_attr_l(&(pnode->nd_attr[ND_ATR_LicenseInfo]));
+				if (is_nattr_set(pnode, ND_ATR_LicenseInfo)) {
+					licensing_control.licenses_total_needed += get_nattr_long(pnode, ND_ATR_LicenseInfo);
 				}
 				if (get_more_licenses_task)
 					delete_task(get_more_licenses_task);
@@ -557,22 +538,15 @@ void
 release_lic_for_cray(struct pbsnode *pnode)
 {
 	int i;
-	attribute *ppnli;
-	attribute *ppnl;
 
 	for (i = 0; i < pnode->nd_nummoms; i++) {
 		if (((mom_svrinfo_t *) pnode->nd_moms[i]->mi_data)->msr_numvnds > 1) {
 			mom_svrinfo_t *mi_data = (mom_svrinfo_t *) pnode->nd_moms[i]->mi_data;
 			for (i = 1; i < mi_data->msr_numvnds; i++) {
 				pnode = mi_data->msr_children[i];
-				ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
-				ppnl = &pnode->nd_attr[(int) ND_ATR_License];
-
-				if ((ppnl->at_flags & ATR_VFLAG_SET) &&
-						(ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
-					clear_attr(&(pnode->nd_attr[(int) ND_ATR_License]),
-							&node_attr_def[(int) ND_ATR_License]);
-					return_licenses(ppnli->at_val.at_long);
+				if (is_nattr_set(pnode, ND_ATR_License) && get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_locked) {
+					clear_nattr(pnode, ND_ATR_License);
+					return_licenses(get_nattr_long(pnode, ND_ATR_LicenseInfo));
 				}
 			}
 			break;
@@ -595,12 +569,10 @@ license_nodes()
 	np = (pbsnode *) GET_NEXT(unlicensed_nodes_list);
 	while (np != NULL) {
 		pnext = (pbsnode *) GET_NEXT(np->un_lic_link);
-		if ((np->nd_attr[(int)ND_ATR_License].at_val.at_char != ND_LIC_TYPE_locked)) {
-			if (np->nd_attr[(int)ND_ATR_LicenseInfo].at_flags & ATR_VFLAG_SET) {
-				if (consume_licenses(np->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long) == 0) {
-					set_attr_generic(&(np->nd_attr[(int)ND_ATR_License]),
-						 &node_attr_def[(int)ND_ATR_License],
-						 ND_LIC_locked_str, NULL, SET);
+		if (get_nattr_c(np, ND_ATR_License) != ND_LIC_TYPE_locked) {
+			if (is_nattr_set(np, ND_ATR_LicenseInfo)) {
+				if (consume_licenses(get_nattr_long(np, ND_ATR_LicenseInfo)) == 0) {
+					set_nattr_c_slim(np, ND_ATR_License, ND_LIC_TYPE_locked, SET);
 					remove_from_unlicensed_node_list(np);
 				}
 			} else {
@@ -644,8 +616,8 @@ init_licensing(struct work_task *ptask)
  	 * as the license location has changed.
  	 */
 	memset(&license_counts, 0, sizeof(license_counts));
-	licensing_control.licenses_total_needed = 
-		licensing_control.licenses_checkout_time = 
+	licensing_control.licenses_total_needed =
+		licensing_control.licenses_checkout_time =
 			licensing_control.licenses_checked_out = 0;
 	licensing_control.expiry_warning_email_yday = -1;
 
@@ -679,12 +651,12 @@ init_licensing(struct work_task *ptask)
 	}
 	for (i = 0; i < svr_totnodes; i++) {
 	 	clear_node_lic_attrs(pbsndlist[i], 0);
-		if (is_attr_set(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]))) {
-			licensing_control.licenses_total_needed += get_attr_l(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]));
+		if (is_nattr_set(pbsndlist[i], ND_ATR_LicenseInfo)) {
+			licensing_control.licenses_total_needed += get_nattr_long(pbsndlist[i], ND_ATR_LicenseInfo);
 		} else {
 			if (pbsndlist[i]->nd_lic_info != NULL) {
 				set_node_lic_info_attr(pbsndlist[i]);
-				licensing_control.licenses_total_needed += get_attr_l(&(pbsndlist[i]->nd_attr[ND_ATR_LicenseInfo]));
+				licensing_control.licenses_total_needed += get_nattr_long(pbsndlist[i], ND_ATR_LicenseInfo);
 			}
 		}
 		add_to_unlicensed_node_list(pbsndlist[i]);
@@ -723,10 +695,6 @@ validate_sign(char *sign, struct pbsnode *pnode)
 	int ret;
 	time_t expiry = 0;
 	char **cred_list = break_delimited_str(sign, '_');
-	attribute *ppnl = &pnode->nd_attr[ND_ATR_License];
-	attribute *ppnli = &pnode->nd_attr[ND_ATR_LicenseInfo];
-	attribute_def *pnadl = &node_attr_def[ND_ATR_License];
-	attribute_def *pnadli = &node_attr_def[ND_ATR_LicenseInfo];
 
 	ret = checkkey(cred_list, pnode->nd_name, &expiry);
 	free_string_array(cred_list);
@@ -744,13 +712,12 @@ validate_sign(char *sign, struct pbsnode *pnode)
 					"Signature is valid till:%ld", expiry);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 						LOG_DEBUG, pnode->nd_name, log_buffer);
-			if ((ppnl->at_flags & ATR_VFLAG_SET) &&
-				(ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
-				return_licenses(ppnli->at_val.at_long);
-				clear_attr(ppnl, pnadl);
-				clear_attr(ppnli, pnadli);
+			if (is_nattr_set(pnode, ND_ATR_License) && get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_locked) {
+				return_licenses(get_nattr_long(pnode, ND_ATR_LicenseInfo));
+				clear_nattr(pnode, ND_ATR_License);
+				clear_nattr(pnode, ND_ATR_LicenseInfo);
 			}
-			set_attr_generic(ppnl, pnadl, ND_LIC_cloud_str, NULL, SET);
+			set_nattr_c_slim(pnode, ND_ATR_License, ND_LIC_TYPE_cloud, SET);
 			break;
 		case 1:
 			snprintf(log_buffer, sizeof(log_buffer),
@@ -826,17 +793,14 @@ release_node_lic(void *pobj)
 {
 	if (pobj) {
 		struct pbsnode *pnode = pobj;
-		attribute *ppnl = &pnode->nd_attr[ND_ATR_License];
-		attribute *ppnli = &pnode->nd_attr[ND_ATR_LicenseInfo];
 
-		licensing_control.licenses_total_needed -= pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long;
+		licensing_control.licenses_total_needed -= get_nattr_long(pnode, ND_ATR_LicenseInfo);
 
 		/* release license if node is locked */
-		if ((ppnl->at_val.at_char == ND_LIC_TYPE_locked) &&
-						(ppnli->at_flags & ATR_VFLAG_SET)) {
-			return_licenses(pnode->nd_attr[ND_ATR_LicenseInfo].at_val.at_long);
-			clear_attr(ppnl, &node_attr_def[ND_ATR_License]);
-			clear_attr(ppnli, &node_attr_def[ND_ATR_LicenseInfo]);
+		if (get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_locked && is_nattr_set(pnode, ND_ATR_LicenseInfo)) {
+			return_licenses(get_nattr_long(pnode, ND_ATR_LicenseInfo));
+			clear_nattr(pnode, ND_ATR_License);
+			clear_nattr(pnode, ND_ATR_LicenseInfo);
 			return 1;
 		}
 	}
@@ -853,22 +817,20 @@ release_node_lic(void *pobj)
  */
 void unset_signature(void *pobj, char *rs_name)
 {
-	attribute *ppnl;
 	struct pbsnode *pnode = pobj;
 
 	if (!pnode || !rs_name)
 		return;
 
 	if (!strcmp(rs_name, ND_RESC_LicSignature)) {
-		ppnl = &pnode->nd_attr[(int) ND_ATR_License];
-		if ((ppnl->at_flags & ATR_VFLAG_SET) && (ppnl->at_val.at_char == ND_LIC_TYPE_cloud))
-			clear_attr(ppnl, &node_attr_def[(int) ND_ATR_License]);
+		if (is_nattr_set(pnode, ND_ATR_License) && get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_cloud)
+			clear_nattr(pnode, ND_ATR_License);
 	}
 }
 
 /**
  * @brief
- *		unlicense_nodes	-	reset the ND_ATR_License value 
+ *		unlicense_nodes	-	reset the ND_ATR_License value
  *		of a socket-licensed node. if we don't have enough licenses.
  *
  * @return	void
@@ -887,11 +849,9 @@ unlicense_nodes(void)
 
 	for (i = 0; i < svr_totnodes; i++) {
 		np = pbsndlist[i];
-		if (np->nd_attr[ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked) {
-			clear_attr(&np->nd_attr[ND_ATR_License],
-				&node_attr_def[ND_ATR_License]);
-			clear_attr(&np->nd_attr[ND_ATR_LicenseInfo],
-				&node_attr_def[ND_ATR_LicenseInfo]);
+		if (get_nattr_c(np, ND_ATR_License) == ND_LIC_TYPE_locked) {
+			clear_nattr(np, ND_ATR_License);
+			clear_nattr(np, ND_ATR_LicenseInfo);
 			node_save_db(np);
 			if (first) {
 				first = 0;

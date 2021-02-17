@@ -473,12 +473,9 @@ query_server(status *pol, int pbs_sd)
 		 */
 		if (np != NULL) {
 			int i;
-			server_psets spset;
 
 			for (i = 0; i < sinfo->num_parts; i++) {
-				spset.svr_inst_id = np[i]->ninfo_arr[0]->svr_inst_id;
-				spset.np = np[i];
-				sinfo->svr_to_psets.push_back(spset);
+				sinfo->svr_to_psets[np[i]->ninfo_arr[0]->svr_inst_id] = np[i];
 			}
 		}
 		free(np);
@@ -982,18 +979,46 @@ find_resource(schd_resource *reslist, resdef *def)
 }
 
 /**
- * @brief	free server_psets vector
+ * @brief	free the sinfo->svr_to_psets map
+ * 			Note: this won't be needed once we convert node_partition to a class
  *
- * @param[out]	spsets - vector of server psets
+ * @param[out]	spsets - the sinfo->svr_to_psets map
  *
  * @return void
  */
 static void
-free_server_psets(std::vector<server_psets>& spsets)
+free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
 {
 	for (auto& spset: spsets) {
-		free_node_partition(spset.np);
+		free_node_partition(spset.second);
+		spset.second = NULL;
 	}
+}
+
+/**
+ * @brief	dup a sinfo->svr_to_psets map (deep copy)
+ * 			Note: this might not be needed once we convert node_partition to a class
+ *
+ * @param[in]	spsets - map of server psets
+ * @param[in]	sinfo - sinfo in the duplicated universe
+ *
+ * @return std::unordered_map<std::string, node_partition *>
+ * @retval An unordered_map containing copy of the input
+ */
+static std::unordered_map<std::string, node_partition *>
+dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, server_info *sinfo)
+{
+	std::unordered_map<std::string, node_partition *> newpset;
+
+	for (auto& spset: spsets) {
+		newpset[spset.first] = dup_node_partition(spset.second, sinfo);
+		if (newpset[spset.first] == NULL) {
+			free_server_psets(newpset);
+			return {};
+		}
+	}
+
+	return newpset;
 }
 
 /**
@@ -1180,7 +1205,6 @@ new_server_info(int limallocflag)
 	sinfo->eligible_time_enable = 0;
 	sinfo->provision_enable = 0;
 	sinfo->power_provisioning = 0;
-	sinfo->has_nonCPU_licenses = 0;
 	sinfo->use_hard_duration = 0;
 	sinfo->pset_metadata_stale = 0;
 	sinfo->num_parts = 0;
@@ -2224,7 +2248,6 @@ dup_server_info(server_info *osinfo)
 	nsinfo->eligible_time_enable = osinfo->eligible_time_enable;
 	nsinfo->provision_enable = osinfo->provision_enable;
 	nsinfo->power_provisioning = osinfo->power_provisioning;
-	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
 	nsinfo->name = string_dup(osinfo->name);
@@ -2399,8 +2422,8 @@ dup_server_info(server_info *osinfo)
 		}
 	}
 
-	/* Copy the vector of server psets */
-	nsinfo->svr_to_psets = osinfo->svr_to_psets;
+	/* Copy the map of server psets */
+	nsinfo->svr_to_psets = dup_server_psets(osinfo->svr_to_psets, nsinfo);
 
 	return nsinfo;
 }

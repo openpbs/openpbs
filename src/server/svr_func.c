@@ -221,7 +221,7 @@ encode_svrstate(const attribute *pattr, pbs_list_head *phead, char *atname, char
 
 	psname = svr_state_names[pattr->at_val.at_long];
 	if (pattr->at_val.at_long == SV_STATE_RUN) {
-		if (server.sv_attr[(int)SVR_ATR_scheduling].at_val.at_long == 0)
+		if (get_sattr_long(SVR_ATR_scheduling) == 0)
 			psname = svr_idle;
 		else if (dflt_scheduler && dflt_scheduler->sc_cycle_started == 1)
 			psname = svr_sched;
@@ -289,35 +289,35 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			return;			/* invalid op */
 		}
 
-		rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+		rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 		if ((check_job_substate(pjob, JOB_SUBSTATE_SUSPEND)) ||
 			(check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))) {
 			/* If resources_released attribute is not set for this suspended job then use release all
 			 * resources assigned to the job */
 			if ((is_jattr_set(pjob,  JOB_ATR_resc_released)) == 0)
-				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+				rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 			else {
 				/* Use resource_released_list for updating queue/server resources,
 				 * If resource_released_list is not present then create it by
 				 * using resources_released attribute.
 				 */
 				if (is_jattr_set(pjob,  JOB_ATR_resc_released_list))
-					rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+					rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 				else {
-					if (update_resources_rel(pjob, &pjob->ji_wattr[(int) JOB_ATR_resc_released], INCR) != 0)
-						rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+					if (update_resources_rel(pjob, get_jattr(pjob, JOB_ATR_resc_released), INCR) != 0)
+						rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 					else
-						rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+						rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 				}
 			}
 		} else {
 			/* If job is not suspended then just release all resources assigned to the job */
-			rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+			rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resource));
 			if (is_jattr_set(pjob,  JOB_ATR_resc_released_list))
-				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+				rescp = (resource *) GET_NEXT(get_jattr_list(pjob, JOB_ATR_resc_released_list));
 		}
-		sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
-		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
+		sysru = get_sattr(SVR_ATR_resource_assn);
+		queru = get_qattr(pjob->ji_qhdr, QE_ATR_ResourceAssn);
 
 		if (pjob->ji_myResv &&
 			(pjob->ji_myResv->ri_qs.ri_state == RESV_RUNNING ||
@@ -337,8 +337,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 		presv = (resc_resv *)pobj;
 		queru = NULL;
 		sysru = NULL;
-		rescp = (resource *)GET_NEXT(presv->ri_wattr[(int)RESV_ATR_resource]
-			.at_val.at_list);
+		rescp = (resource *)GET_NEXT(get_rattr_list(presv, RESV_ATR_resource));
 		if (presv->ri_parent != NULL &&
 			(presv->ri_parent->ri_qs.ri_state == RESV_RUNNING ||
 			presv->ri_parent->ri_qs.ri_state == RESV_DELETED ||
@@ -350,8 +349,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			 *Remark: The -server's- "resources_assigned" updates when the
 			 *parent starts running or is terminated
 			 */
-			sysru = &presv->
-				ri_parent->ri_qp->qu_attr[(int)QE_ATR_ResourceAssn];
+			sysru = get_qattr(presv->ri_parent->ri_qp, QE_ATR_ResourceAssn);
 		} else if (presv->ri_parent == NULL &&
 			(presv->ri_qs.ri_state == RESV_RUNNING ||
 			presv->ri_qs.ri_state == RESV_DELETED ||
@@ -364,7 +362,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			 *modified.  Otherwise the "queru" should be set NULL
 			 */
 
-			sysru = &server.sv_attr[(int)SVR_ATR_resource_assn];
+			sysru = get_sattr(SVR_ATR_resource_assn);
 		}
 	}
 
@@ -416,16 +414,16 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 
 	/* if a job, update resource_assigned at the node level */
 	if (objtype == 1)
-		update_node_rassn(&presv->ri_wattr[(int)RESV_ATR_resv_nodes], op);
+		update_node_rassn(get_rattr(presv, RESV_ATR_resv_nodes), op);
 	else if ((objtype == 0) && (pjob->ji_myResv == NULL)) {
 		if (is_jattr_set(pjob,  JOB_ATR_resc_released))
 			/* This is just the normal case when job was not suspended but trying to run| end */
-			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_resc_released], op);
+			update_node_rassn(get_jattr(pjob, JOB_ATR_resc_released), op);
 		else
 			/* updating all resources from exec vnode attribute */
-			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_exec_vnode], op);
+			update_node_rassn(get_jattr(pjob, JOB_ATR_exec_vnode), op);
 		if (is_jattr_set(pjob, JOB_ATR_exec_vnode_deallocated)) {
-			update_job_node_rassn(pjob, &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated], op);
+			update_job_node_rassn(pjob, get_jattr(pjob, JOB_ATR_exec_vnode_deallocated), op);
 		}
 	}
 }
@@ -446,7 +444,6 @@ int
 ck_chkpnt(attribute *pattr, void *pobject, int mode)
 {
 	char *val;
-	pbs_queue *pque;
 
 	val = pattr->at_val.at_str;
 	if (val == NULL)
@@ -477,11 +474,8 @@ ck_chkpnt(attribute *pattr, void *pobject, int mode)
 
 	/* If the checkpoint attribute is being altered, then check    */
 	/* against the queue's Checkpoint_min attribute as when queued */
-	if (mode == ATR_ACTION_ALTER) {
-		pque = ((job *)pobject)->ji_qhdr;
-
-		eval_chkpnt((job *)pobject, &pque->qu_attr[(int)QE_ATR_ChkptMin]);
-	}
+	if (mode == ATR_ACTION_ALTER)
+		eval_chkpnt((job *)pobject, get_qattr(((job *)pobject)->ji_qhdr, QE_ATR_ChkptMin));
 	return (0);
 }
 
@@ -585,9 +579,7 @@ action_reserve_retry_time(attribute *pattr, void *pobj, int actmode)
 
 		if (pattr->at_val.at_long <= 0)
 			return PBSE_BADATVAL;
-		server.sv_attr[(int) SVR_ATR_resv_retry_init].at_flags &= ~ATR_VFLAG_SET;
-		server.sv_attr[(int) SVR_ATR_resv_retry_init].at_flags |= ATR_MOD_MCACHE;
-
+		ATR_UNSET(get_sattr(SVR_ATR_resv_retry_init));
 		resv_retry_time = pattr->at_val.at_long;
 	}
 	return PBSE_NONE;
@@ -614,8 +606,7 @@ action_reserve_retry_init(attribute *pattr, void *pobj, int actmode)
 
 		if (pattr->at_val.at_long <= 0)
 			return PBSE_BADATVAL;
-		server.sv_attr[(int) SVR_ATR_resv_retry_time].at_val.at_long = pattr->at_val.at_long;
-		server.sv_attr[(int) SVR_ATR_resv_retry_time].at_flags |= ATR_SET_MOD_MCACHE;
+		set_sattr_l_slim(SVR_ATR_resv_retry_time, pattr->at_val.at_long, SET);
 
 		resv_retry_time = pattr->at_val.at_long;
 	}
@@ -719,8 +710,7 @@ action_svr_iteration(attribute *pattr, void *pobj, int mode)
 	/* set this attribute on main scheduler */
 	if (dflt_scheduler) {
 		if (mode == ATR_ACTION_NEW || mode == ATR_ACTION_ALTER || mode == ATR_ACTION_RECOV) {
-			dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = pattr->at_val.at_long;
-			dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |= ATR_SET_MOD_MCACHE;
+			set_sched_attr_l_slim(dflt_scheduler, SCHED_ATR_schediteration, pattr->at_val.at_long, SET);
 			sched_save_db(dflt_scheduler);
 		}
 	}
@@ -1397,7 +1387,7 @@ eligibletime_action(attribute *pattr, void *pobject, int actmode)
 
 		/* if scheduling is true, need to run the scheduling cycle */
 		/* so that, accrue type is determined for cases */
-		if (server.sv_attr[SVR_ATR_scheduling].at_val.at_long)
+		if (get_sattr_long(SVR_ATR_scheduling))
 			set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
 
 	}
@@ -1431,7 +1421,7 @@ decode_formula(attribute *patr, char *name, char *rescn, char *val)
 	int rc;
 
 	/* when we are coming up, we need to read from the server's database */
-	if (server.sv_attr[(int)SVR_ATR_State].at_val.at_long == SV_STATE_INIT)
+	if (get_sattr_long(SVR_ATR_State) == SV_STATE_INIT)
 		return decode_str(patr, name, rescn, val);
 
 	sprintf(pathbuf, "%s/%s", pbs_conf.pbs_home_path, FORMULA_ATTR_PATH);
@@ -1671,24 +1661,24 @@ entlim_resum(struct work_task *pwt)
 		/* server is the parent */
 		pque = NULL;
 		if (is_resc) {
-			pattr = &server.sv_attr[(int)SVR_ATR_max_queued_res];
-			pattr2 = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold_res];
+			pattr = get_sattr(SVR_ATR_max_queued_res);
+			pattr2 = get_sattr(SVR_ATR_queued_jobs_threshold_res);
 		}
 		else {
-			pattr = &server.sv_attr[(int)SVR_ATR_max_queued];
-			pattr2 = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold];
+			pattr = get_sattr(SVR_ATR_max_queued);
+			pattr2 = get_sattr(SVR_ATR_queued_jobs_threshold);
 		}
 		pj   = (job *)GET_NEXT(svr_alljobs);
 	} else {
 		/* a queue is the parent */
 		pque = (pbs_queue *)pobject;
 		if (is_resc) {
-			pattr = &pque->qu_attr[(int)QA_ATR_max_queued_res];
-			pattr2 = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold_res];
+			pattr = get_qattr(pque, QA_ATR_max_queued_res);
+			pattr2 = get_qattr(pque, QA_ATR_queued_jobs_threshold_res);
 		}
 		else {
-			pattr = &pque->qu_attr[(int)QA_ATR_max_queued];
-			pattr2 = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold];
+			pattr = get_qattr(pque, QA_ATR_max_queued);
+			pattr2 = get_qattr(pque, QA_ATR_queued_jobs_threshold);
 		}
 		pj = (job *)GET_NEXT(pque->qu_jobs);
 	}
@@ -2118,9 +2108,9 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pqueued_jobs_threshold = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold];
+		pqueued_jobs_threshold = get_qattr(pque, QA_ATR_queued_jobs_threshold);
 	else
-		pqueued_jobs_threshold = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold];
+		pqueued_jobs_threshold = get_sattr(SVR_ATR_queued_jobs_threshold);
 
 	if (!is_attr_set(pqueued_jobs_threshold)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -2302,9 +2292,9 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pmax_queued = &pque->qu_attr[(int)QA_ATR_max_queued];
+		pmax_queued = get_qattr(pque, QA_ATR_max_queued);
 	else
-		pmax_queued = &server.sv_attr[(int)SVR_ATR_max_queued];
+		pmax_queued = get_sattr(SVR_ATR_max_queued);
 
 	if (!is_attr_set(pmax_queued)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -2503,9 +2493,9 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_queued_jobs_threshold_res);
 	else
-		pmaxqresc = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold_res];
+		pmaxqresc = get_sattr(SVR_ATR_queued_jobs_threshold_res);
 
 	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -2514,9 +2504,9 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -2756,9 +2746,9 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 		pjob->ji_clterrmsg = NULL;
 	}
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_max_queued_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_max_queued_res);
 	else
-		pmaxqresc = &server.sv_attr[(int)SVR_ATR_max_queued_res];
+		pmaxqresc = get_sattr(SVR_ATR_max_queued_res);
 
 	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -2767,9 +2757,9 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -3217,9 +3207,9 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 		rev_op = INCR;
 
 	if (pque)
-		pqueued_jobs_threshold = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold];
+		pqueued_jobs_threshold = get_qattr(pque, QA_ATR_queued_jobs_threshold);
 	else
-		pqueued_jobs_threshold = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold];
+		pqueued_jobs_threshold = get_sattr(SVR_ATR_queued_jobs_threshold);
 
 	if (!is_attr_set(pqueued_jobs_threshold)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -3329,9 +3319,9 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 		rev_op = INCR;
 
 	if (pque)
-		pmax_queued = &pque->qu_attr[(int)QA_ATR_max_queued];
+		pmax_queued = get_qattr(pque, QA_ATR_max_queued);
 	else
-		pmax_queued = &server.sv_attr[(int)SVR_ATR_max_queued];
+		pmax_queued = get_sattr(SVR_ATR_max_queued);
 
 	if (!is_attr_set(pmax_queued)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -3514,9 +3504,9 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		rev_op = INCR;
 
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_queued_jobs_threshold_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_queued_jobs_threshold_res);
 	else
-		pmaxqresc = &server.sv_attr[(int)SVR_ATR_queued_jobs_threshold_res];
+		pmaxqresc = get_sattr(SVR_ATR_queued_jobs_threshold_res);
 
 	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -3525,9 +3515,9 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -3751,9 +3741,9 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		rev_op = INCR;
 
 	if (pque)
-		pmaxqresc = &pque->qu_attr[(int)QA_ATR_max_queued_res];
+		pmaxqresc = get_qattr(pque, QA_ATR_max_queued_res);
 	else
-		pmaxqresc = &server.sv_attr[(int)SVR_ATR_max_queued_res];
+		pmaxqresc = get_sattr(SVR_ATR_max_queued_res);
 
 	if (!is_attr_set(pmaxqresc)) {
 		ET_LIM_DBG("exiting, ret 0 [max_queued_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
@@ -3762,9 +3752,9 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
-		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_old = get_jattr(pjob, JOB_ATR_resource);
 	} else {
-		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pattr_new = get_jattr(pjob, JOB_ATR_resource);
 		pattr_old = NULL;	/* null */
 	}
 
@@ -4300,7 +4290,6 @@ free_pvnfo(struct prov_vnode_info *pvnfo)
 int
 check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 {
-	attribute		*pala;
 	resource_def		*prd;
 	resource		*prc;
 	struct array_strings 	*pas;
@@ -4309,13 +4298,10 @@ check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 	if (!pnode || !aoe_req)
 		return -1;
 
-	/* get the resources_available.aoe arst */
-	pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-
 	prd = &svr_resc_def[RESC_AOE];
 	if (prd == NULL)
 		return -1;
-	prc = find_resc_entry(pala, prd);
+	prc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prd);
 	if (prc) {
 		pas = prc->rs_value.at_val.at_arst;
 
@@ -4353,11 +4339,8 @@ check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 void
 disable_svr_prov()
 {
-	if (server.sv_attr[(int)SVR_ATR_ProvisionEnable].at_flags &
-		ATR_VFLAG_SET) {
-		server.sv_attr[(int)SVR_ATR_ProvisionEnable].at_val.at_long = 0;
-		server.sv_attr[(int)SVR_ATR_ProvisionEnable].at_flags = ATR_SET_MOD_MCACHE;
-	}
+	if (is_sattr_set(SVR_ATR_ProvisionEnable))
+		set_sattr_l_slim(SVR_ATR_ProvisionEnable, 0, SET);
 }
 
 /**
@@ -4469,7 +4452,6 @@ parse_prov_vnode(char *prov_vnode, exec_vnode_listtype *prov_vnodes)
 static int
 node_need_prov(struct pbsnode *pnode, char *aoe_name)
 {
-	attribute       *pattr;
 	resource        *presc;
 	resource_def    *prdef;
 	char		*aoe;	/* hold current_aoe of pnode */
@@ -4480,8 +4462,7 @@ node_need_prov(struct pbsnode *pnode, char *aoe_name)
 		return -1;
 
 	prdef = &svr_resc_def[RESC_AOE];
-	pattr = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
-	presc = find_resc_entry(pattr, prdef);
+	presc = find_resc_entry(get_nattr(pnode, ND_ATR_ResourceAvail), prdef);
 
 	/* if resources_available.aoe not set */
 	if (presc == NULL)
@@ -4494,7 +4475,7 @@ node_need_prov(struct pbsnode *pnode, char *aoe_name)
 		for (i = 0; i < pas->as_usedptr; i++) {
 			if (strcmp(pas->as_string[i], aoe_name) == 0) {  /* aoe is available */
 				/* if aoe is already instantiated */
-				aoe = pnode->nd_attr[(int)ND_ATR_current_aoe].at_val.at_str;
+				aoe = get_nattr_str(pnode, ND_ATR_current_aoe);
 				if (aoe != NULL) {
 					if (strcmp(aoe_name, aoe) == 0)
 						return 0;
@@ -4859,11 +4840,8 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 		} else {
 			/* check if node has the correct aoe or not */
 			current_aoe = NULL;
-			if (np->nd_attr[(int)ND_ATR_current_aoe].at_flags
-				& ATR_VFLAG_SET)
-				current_aoe =
-					np->nd_attr[(int)ND_ATR_current_aoe].
-				at_val.at_str;
+			if (is_nattr_set(np, ND_ATR_current_aoe))
+				current_aoe = get_nattr_str(np, ND_ATR_current_aoe);
 
 			if ((current_aoe == NULL) ||
 				strcmp(current_aoe,  aoe_req) != 0) {
@@ -5038,8 +5016,7 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 	}
 
 	/* unset the current aoe settings, as this may not be right now */
-	(void)node_attr_def[(int)ND_ATR_current_aoe].at_free(
-		&pnode->nd_attr[(int)ND_ATR_current_aoe]);
+	free_nattr(pnode, ND_ATR_current_aoe);
 
 	DBPRT(("%s: node=%s set to offline, resetting current_aoe\n",
 		__func__, pnode->nd_name))
@@ -5053,14 +5030,8 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 
 	if (comment != NULL) {
 		/* log msg about marking node as offline */
-		snprintf(log_buffer, sizeof(log_buffer), "Vnode %s: %s",
-			pnode->nd_name, comment);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-			LOG_NOTICE, msg_daemonname, log_buffer);
-
-		node_attr_def[(int)ND_ATR_Comment].at_decode(
-			&pnode->nd_attr[(int)ND_ATR_Comment],
-			ATTR_comment, NULL, comment);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_NOTICE, msg_daemonname, "Vnode %s: %s", pnode->nd_name, comment);
+		set_nattr_str_slim(pnode, ND_ATR_Comment, comment, NULL);
 	}
 
 }
@@ -5600,11 +5571,7 @@ prov_request_deferred(struct work_task *wtask)
 		}
 
 		/* Update Current aoe */
-		(void)node_attr_def[(int)ND_ATR_current_aoe].at_decode(
-			&pnode->nd_attr[(int)ND_ATR_current_aoe],
-			ATTR_NODE_current_aoe,
-			NULL,
-			prov_vnode_info->pvnfo_aoe_req);
+		set_nattr_str_slim(pnode, ND_ATR_current_aoe, prov_vnode_info->pvnfo_aoe_req, NULL);
 
 		DBPRT(("%s: node:%s current_aoe set: %s\n",
 			__func__, pnode->nd_name, prov_vnode_info->pvnfo_aoe_req))
@@ -5790,11 +5757,8 @@ set_srv_prov_attributes(void)
 	}
 
 	provision_timeout = phook->alarm;
-	server.sv_attr[(int)SVR_ATR_provision_timeout].at_val.at_long = provision_timeout;
-	server.sv_attr[(int)SVR_ATR_provision_timeout].at_flags |= ATR_SET_MOD_MCACHE;
-
-	server.sv_attr[(int)SVR_ATR_ProvisionEnable].at_val.at_long=1;
-	server.sv_attr[(int)SVR_ATR_ProvisionEnable].at_flags |= ATR_SET_MOD_MCACHE;
+	set_sattr_l_slim(SVR_ATR_provision_timeout, provision_timeout, SET);
+	set_sattr_l_slim(SVR_ATR_ProvisionEnable, 1, SET);
 #else
 	disable_svr_prov();
 	DBPRT(("%s: Python not enabled\n", __func__))
@@ -6077,8 +6041,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	 * This is now done earlier
 	 */
 	/* unset the current_aoe for the node here provisioning */
-	(void)node_attr_def[(int)ND_ATR_current_aoe].at_free(
-		&(pnode->nd_attr[(int)ND_ATR_current_aoe]));
+	free_nattr(pnode, ND_ATR_current_aoe);
 
 
 	/* write the node current_aoe */
@@ -6450,8 +6413,7 @@ set_srv_pwr_prov_attribute()
 		val = 1;
 
 	snprintf(str_val, sizeof(str_val), "%d", val);
-	set_attr_generic(&(server.sv_attr[(int)SVR_ATR_PowerProvisioning]),
-			&svr_attr_def[(int) SVR_ATR_PowerProvisioning], str_val, NULL, SET);
+	set_sattr_str_slim(SVR_ATR_PowerProvisioning, str_val, NULL);
 
 	/*
 	 * The enabled attribute is changed so send the attributes.
@@ -6509,15 +6471,15 @@ action_backfill_depth(attribute *pattr, void *pobj, int actmode) {
 int
 action_jobscript_max_size(attribute *pattr, void *pobj, int actmode)
 {
-	struct attribute attrib;
+	attribute attrib;
 	if (pattr == NULL)
 		return PBSE_NONE;
-	set_size(&attr_jobscript_max_size,pattr,SET);
-	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,"2gb");
+	set_attr_generic(&attrib, &svr_attr_def[SVR_ATR_jobscript_max_size], "2gb", NULL, INTERNAL);
 	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
-		if (comp_size(pattr,&attrib) > 0)
+		if (comp_size(pattr, &attrib) > 0)
 			return PBSE_BADJOBSCRIPTMAXSIZE;
 	}
+	set_size(&attr_jobscript_max_size, pattr,SET);
 	return PBSE_NONE;
 }
 
@@ -6568,15 +6530,10 @@ action_check_res_to_release(attribute *pattr, void *pobj, int actmode)
 void
 unset_jobscript_max_size(void)
 {
-	struct attribute attrib;
-	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
-	set_size(&attr_jobscript_max_size,&attrib,SET);
-
-	snprintf(log_buffer, sizeof(log_buffer),
-		"unsetting jobscript_max_size - reverting back to default val %s",
-		DFLT_JOBSCRIPT_MAX_SIZE);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-		LOG_NOTICE, msg_daemonname, log_buffer);
+	log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE, msg_daemonname,
+		   "unsetting jobscript_max_size - reverting back to default val %s",
+		   DFLT_JOBSCRIPT_MAX_SIZE);
+	set_attr_generic(&attr_jobscript_max_size, &svr_attr_def[SVR_ATR_jobscript_max_size], DFLT_JOBSCRIPT_MAX_SIZE, NULL, INTERNAL);
 }
 
 /**

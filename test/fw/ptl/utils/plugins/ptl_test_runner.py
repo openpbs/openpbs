@@ -70,7 +70,7 @@ from ptl.utils.pbs_dshutils import TimeOut
 from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
-from ptl.utils.pbs_testusers import PBS_ALL_USERS
+from ptl.utils.pbs_testusers import PBS_ALL_USERS, PBS_USERS, PbsUser
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
@@ -676,6 +676,7 @@ class PTLTestRunner(Plugin):
         shortname = (socket.gethostname()).split('.', 1)[0]
         for key in ['servers', 'moms', 'comms', 'clients', 'nomom']:
             tparam_contents[key] = []
+        tparam_contents['mom_on_server'] = False
         tparam_contents['no_mom_on_server'] = False
         tparam_contents['no_comm_on_server'] = False
         tparam_contents['no_comm_on_mom'] = False
@@ -694,6 +695,8 @@ class PTLTestRunner(Plugin):
                         tparam_contents['clients'] = hosts
                     elif k == 'nomom':
                         nomomlist = hosts
+                    elif k == 'mom_on_server':
+                        tparam_contents['mom_on_server'] = v
                     elif k == 'no_mom_on_server':
                         tparam_contents['no_mom_on_server'] = v
                     elif k == 'no_comm_on_mom':
@@ -729,6 +732,7 @@ class PTLTestRunner(Plugin):
         _moms = set(param_dic['moms'])
         _comms = set(param_dic['comms'])
         _nomom = set(param_dic['nomom'])
+        _mom_on_server = param_dic['mom_on_server']
         _no_mom_on_server = param_dic['no_mom_on_server']
         _no_comm_on_mom = param_dic['no_comm_on_mom']
         _no_comm_on_server = param_dic['no_comm_on_server']
@@ -833,6 +837,12 @@ class PTLTestRunner(Plugin):
                (_nomom - _servers) or \
                _no_mom_on_server:
                 _msg = 'no mom on server'
+                logger.error(_msg)
+                return _msg
+        else:
+            if eff_tc_req['mom_on_server'] or \
+               _mom_on_server:
+                _msg = 'mom on server'
                 logger.error(_msg)
                 return _msg
         if _comms & _servers:
@@ -1028,6 +1038,32 @@ class PTLTestRunner(Plugin):
     def _cleanup(self):
         self.logger.info('Cleaning up temporary files')
         du = DshUtils()
+        hosts = self.param_dict['moms']
+        for server in self.param_dict['servers']:
+            if server not in self.param_dict['moms']:
+                hosts.add(self.param_dict['servers'])
+        for user in PBS_USERS:
+            self.logger.info('Cleaning %s\'s home directory' % (str(user)))
+            runas = PbsUser.get_user(user)
+            for host in hosts:
+                ret = du.run_cmd(host, cmd=['echo', '$HOME'], sudo=True,
+                                 runas=runas, logerr=False, as_script=True)
+                if ret['rc'] == 0:
+                    path = ret['out'][0].strip()
+                else:
+                    return None
+                ftd = []
+                files = du.listdir(host, path=path, runas=user)
+                bn = os.path.basename
+                ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
+                ftd.extend([f for f in files if bn(f).startswith('STDIN')])
+
+                if len(ftd) > 1000:
+                    for i in range(0, len(ftd), 1000):
+                        j = i + 1000
+                        du.rm(host, path=ftd[i:j], runas=user,
+                              force=True, level=logging.DEBUG)
+
         root_dir = os.sep
         dirlist = set([os.path.join(root_dir, 'tmp'),
                        os.path.join(root_dir, 'var', 'tmp')])

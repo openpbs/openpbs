@@ -361,7 +361,7 @@ struct tree {
 };
 
 extern void *node_attr_idx;
-extern struct attribute_def node_attr_def[]; /* node attributes defs */
+extern attribute_def node_attr_def[]; /* node attributes defs */
 extern struct pbsnode **pbsndlist;           /* array of ptr to nodes  */
 extern int svr_totnodes;                     /* number of nodes (hosts) */
 extern struct tree *ipaddrs;
@@ -441,14 +441,15 @@ extern char *msg_daemonname;
 #define JOB_ACT_REQ_DEALLOCATE	2
 
 
+extern void remove_mom_from_pool(mominfo_t *);
+extern void mcast_moms();
+
 #ifndef PBS_MOM
 extern int node_save_db(struct pbsnode *pnode);
 struct pbsnode *node_recov_db(char *nd_name, struct pbsnode *pnode);
 extern int add_mom_to_pool(mominfo_t *);
-extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);
 extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
-extern void mcast_moms();
 #endif
 
 extern  int	   recover_vmap(void);
@@ -463,6 +464,24 @@ extern void		destroy_vmap(void *);
 extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
 extern  int		open_tppstream(mominfo_t *);
+
+
+attribute *get_nattr(const struct pbsnode *pnode, int attr_idx);
+char *get_nattr_str(const struct pbsnode *pnode, int attr_idx);
+struct array_strings *get_nattr_arst(const struct pbsnode *pnode, int attr_idx);
+pbs_list_head get_nattr_list(const struct pbsnode *pnode, int attr_idx);
+long get_nattr_long(const struct pbsnode *pnode, int attr_idx);
+char get_nattr_c(const struct pbsnode *pnode, int attr_idx);
+int set_nattr_generic(struct pbsnode *pnode, int attr_idx, char *val, char *rscn, enum batch_op op);
+int set_nattr_str_slim(struct pbsnode *pnode, int attr_idx, char *val, char *rscn);
+int set_nattr_l_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op);
+int set_nattr_b_slim(struct pbsnode *pnode, int attr_idx, long val, enum batch_op op);
+int set_nattr_c_slim(struct pbsnode *pnode, int attr_idx, char val, enum batch_op op);
+int set_nattr_short_slim(struct pbsnode *pnode, int attr_idx, short val, enum batch_op op);
+int is_nattr_set(const struct pbsnode *pnode, int attr_idx);
+void free_nattr(struct pbsnode *pnode, int attr_idx);
+void clear_nattr(struct pbsnode *pnode, int attr_idx);
+void set_nattr_jinfo(struct pbsnode *pnode, int attr_idx, struct pbsnode *val);
 
 #ifdef	__cplusplus
 }

@@ -120,7 +120,7 @@ set_allacl(attribute *, attribute *, enum batch_op,
  */
 
 int
-set_uacl(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_uacl(attribute *attr, attribute *new, enum batch_op op)
 {
 
 	return (set_allacl(attr, new, op, user_order));
@@ -146,7 +146,7 @@ set_uacl(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-set_gacl(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_gacl(attribute *attr, attribute *new, enum batch_op op)
 {
 
 	return (set_allacl(attr, new, op, group_order));
@@ -172,7 +172,7 @@ set_gacl(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-set_hostacl(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_hostacl(attribute *attr, attribute *new, enum batch_op op)
 {
 
 	return (set_allacl(attr, new, op, host_order));
@@ -333,7 +333,7 @@ chk_dup_acl(struct array_strings *old, struct array_strings *new)
  */
 
 static int
-set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int (*order_func)(char *, char *))
+set_allacl(attribute *attr, attribute *new, enum batch_op op, int (*order_func)(char *, char *))
 {
 	int	 i;
 	int	 j;
@@ -512,7 +512,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 

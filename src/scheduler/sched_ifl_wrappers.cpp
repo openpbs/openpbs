@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2020 Altair Engineering, Inc.
+ * Copyright (C) 1994-2021 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
  * This file is part of both the OpenPBS software ("OpenPBS")
@@ -69,7 +69,7 @@ send_run_job(int virtual_sd, int has_runjob_hook, char *jobid, char *execvnode,
 	char extend[PBS_MAXHOSTNAME + 6];
  	int job_owner_sd;
 
-	if (jobid == NULL || execvnode == NULL || svr_id_node == NULL || svr_id_job == NULL)
+	if (jobid == NULL || execvnode == NULL)
 		return 1;
 
   	job_owner_sd = get_svr_inst_fd(virtual_sd, svr_id_job);

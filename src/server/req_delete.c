@@ -80,6 +80,7 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 
+#define QDEL_BREAKER_SECS 5
 
 /* Global Data Items: */
 
@@ -109,6 +110,7 @@ static void post_delete_mom1(struct work_task *);
 static void post_deljobfromresv_req(struct work_task *);
 static void req_deletejob2(struct batch_request *preq, job *pjob);
 int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode);
+static void resume_deletion(struct work_task *ptask);
 
 /* Private Data Items */
 
@@ -117,6 +119,28 @@ static char *sigt  = "SIGTERM";
 static char *sigtj =  SIG_TermJob;
 static char *acct_fmt = "requestor=%s@%s";
 static int qdel_mail = 1; /* true: sending mail */
+
+
+/**
+ * @brief
+ * 	Service to resume the deletion - this is called from a work_interleave task 
+ *
+ * @param[in/out] preq - pointer to task structure
+ *
+ * @return void
+ */
+static void
+resume_deletion(struct work_task *ptask)
+{	
+	struct batch_request *preq = (struct batch_request *) ptask->wt_parm1;	
+
+	if (preq == NULL)
+		return;
+
+	preq->rq_ind.rq_deletejoblist.rq_resume = 1;
+	req_deletejob(preq);
+	return;
+}
 
 
 /**
@@ -334,8 +358,21 @@ decr_single_subjob_usage(job *parent)
 	parent->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob; /* setting arrayjob flag back */
 }
 
-
-int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
+/**
+ * @Brief
+ *		Updates the job's error code in reply structure by allocating 
+ *		batch_deljob_status struct. 
+ *
+ * @param[in]	jid	- job id.
+ * @param[in]	preq - pointer batch request structure
+ * @param[in]	errcode - Job's error code 
+ *
+ * @return	int
+ * @retval	0	- success in updating jobs status 
+ * @retval	!0	- failure to update status
+ */
+int 
+update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
 {
 	struct batch_deljob_status *pdelstat;
 	struct batch_reply *preply = &preq->rq_reply;
@@ -354,7 +391,6 @@ int update_deletejob_stat(char *jid, struct batch_request *preq, int errcode)
 	pdelstat->code = errcode;
 	pdelstat->next = preply->brp_un.brp_deletejoblist.brp_delstatc;
 	preply->brp_un.brp_deletejoblist.brp_delstatc = pdelstat;
-
 	preq->rq_reply.brp_count++;
 
 	return 0;
@@ -390,6 +426,9 @@ req_deletejob(struct batch_request *preq)
 	struct batch_reply *preply = &preq->rq_reply;
 	preply->brp_un.brp_deletejoblist.brp_delstatc = NULL;
 	preply->brp_count = 0;
+	int start_jobid = 0;
+	time_t end_time;
+	time_t begin_time = time(NULL);
 
 	if (preq->rq_type == PBS_BATCH_DeleteJobList) {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Delete;
@@ -399,10 +438,6 @@ req_deletejob(struct batch_request *preq)
 		jobids = break_comma_list(preq->rq_ind.rq_delete.rq_objname);
 		count = 1;
 	}
-
-	preply->brp_un.brp_deletejoblist.tot_jobs = count;
-	preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
-	preply->brp_un.brp_deletejoblist.tot_rpys = 0;
 
 	if (preq->rq_extend && strstr(preq->rq_extend, DELETEHISTORY))
 		delhist = 1;
@@ -416,7 +451,14 @@ req_deletejob(struct batch_request *preq)
 	else
 		qdel_mail = 1;
 
-	for (j = 0; j < count; j++) {
+	if (preq->rq_ind.rq_deletejoblist.rq_resume != 1) {
+		preply->brp_un.brp_deletejoblist.tot_jobs = count;
+		preply->brp_un.brp_deletejoblist.tot_arr_jobs = 0;
+		preply->brp_un.brp_deletejoblist.tot_rpys = 0;	
+	} else 
+		start_jobid = preq->rq_ind.rq_deletejoblist.jobid_to_resume;
+
+	for (j = start_jobid; j < count; j++) {
 		snprintf(jid, sizeof(jid), "%s", jobids[j]);
 		parent = chk_job_request(jid, preq, &jt, &err);
 		if (parent == NULL) {
@@ -502,6 +544,8 @@ req_deletejob(struct batch_request *preq)
 
 		} else if (jt == IS_ARRAY_ArrayJob) {
 			int del_parent = 1;
+			int start = parent->ji_ajinfo->tkm_start;
+			
 			/*
 			 * For array jobs the history is stored at the parent array level and also at the subjob level .
 			 * If the request is to delete the history of an array job then set  ji_deletehistory to 1 for
@@ -515,10 +559,22 @@ req_deletejob(struct batch_request *preq)
 
 			++preq->rq_refct;
 			preply->brp_un.brp_deletejoblist.tot_arr_jobs++;
+			
+			if (preq->rq_ind.rq_deletejoblist.rq_resume)
+				start = preq->rq_ind.rq_deletejoblist.subjobid_to_resume;
 
 			/* keep the array from being removed while we are looking at it */
 			parent->ji_ajinfo->tkm_flags |= TKMFLG_NO_DELETE;
-			for (i = parent->ji_ajinfo->tkm_start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+			for (i = start; i <= parent->ji_ajinfo->tkm_end; i += parent->ji_ajinfo->tkm_step) {
+				end_time = time(NULL);
+				if ((end_time - begin_time) > QDEL_BREAKER_SECS) {
+					preq->rq_ind.rq_deletejoblist.jobid_to_resume = j;
+					preq->rq_ind.rq_deletejoblist.subjobid_to_resume = i;
+					set_task(WORK_Interleave, 0, resume_deletion, preq); 
+					--preq->rq_refct;
+					preply->brp_un.brp_deletejoblist.tot_arr_jobs--;
+					return;
+				}
 				pjob = get_subjob_and_state(parent, i, &sjst, NULL);
 				if (sjst == JOB_STATE_LTR_UNKNOWN)
 					continue;
@@ -899,7 +955,6 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 				 * Set exit status for the job to SIGKILL as we will not be working with any obit.
 				 */
 				set_jattr_l_slim(pjob, JOB_ATR_exit_status, pjob->ji_qs.ji_un.ji_exect.ji_exitstat, SET);
-			pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags = ATR_SET_MOD_MCACHE;
 			}
 
 			/* see if it has any dependencies */
@@ -1065,9 +1120,9 @@ req_deleteReservation(struct batch_request *preq)
 	/*ck_submitClient_needs_reply()*/
 	if (presv->ri_brp) {
 		if (presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
-			if ((presv->ri_wattr[RESV_ATR_interactive].at_flags & ATR_VFLAG_SET) &&
-				(presv->ri_wattr[RESV_ATR_interactive].at_val.at_long < 0) &&
-				(futuredr != 0)) {
+			if (is_rattr_set(presv, RESV_ATR_interactive) &&
+				get_rattr_long(presv, RESV_ATR_interactive) < 0 &&
+				futuredr != 0) {
 
 				sprintf(buf, "%s delete, wait period expired",
 					presv->ri_qs.ri_resvID);
@@ -1087,7 +1142,7 @@ req_deleteReservation(struct batch_request *preq)
 	sprintf(buf, "%s@%s", preq->rq_user, preq->rq_host);
 	sprintf(log_buffer, "requestor=%s", buf);
 
-	if (strcmp(presv->ri_wattr[RESV_ATR_resv_owner].at_val.at_str, buf))
+	if (strcmp(get_rattr_str(presv, RESV_ATR_resv_owner), buf))
 		account_recordResv(PBS_ACCT_DRss, presv, log_buffer);
 	else
 		account_recordResv(PBS_ACCT_DRclient, presv, log_buffer);
@@ -1146,7 +1201,7 @@ req_deleteReservation(struct batch_request *preq)
 		int deleteProblem = 0;
 		job *pnxj;
 
-		if (presv->ri_qp->qu_attr[QA_ATR_Enabled].at_val.at_long) {
+		if (get_qattr_long(presv->ri_qp, QA_ATR_Enabled)) {
 
 			svrattrl *psatl;
 			newreq = alloc_br(PBS_BATCH_Manager);

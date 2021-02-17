@@ -570,8 +570,8 @@ log_open_main(char *filename, char *directory, int silent)
 
 	pthread_once(&log_once_ctl, log_init); /* initialize mutex once */
 
-	if (log_opened > 0)
-		return (-1);	/* already open */
+	if (log_opened > 0)	/* Close existing log */
+		log_close(0);
 
 	if (locallog != 0 || syslogfac == 0) {
 
@@ -784,13 +784,16 @@ void
 log_errf(int errnum, const char *routine, const char *fmt, ...)
 {
 	va_list args;
+	va_list args_copy;
 	int len;
 	char logbuf[LOG_BUF_SIZE];
 	char *buf;
 
 	va_start(args, fmt);
+	va_copy(args_copy, args);
 
-	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args);
+	len = vsnprintf(logbuf, sizeof(logbuf), fmt, args_copy);
+	va_end(args_copy);
 
 	if (len >= sizeof(logbuf)) {
 		buf = pbs_asprintf_format(len, fmt, args);

@@ -207,7 +207,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 			} else if (mailpoint != MAIL_ABORT)	/* not set, default to abort */
 				return;
 
-		} else if ((server.sv_attr[(int)SVR_ATR_mailfrom].at_flags & ATR_VFLAG_SET) == 0) {
+		} else if (!is_sattr_set(SVR_ATR_mailfrom)) {
 
 			/* not job related, must be system related;  not sent unless */
 			/* forced or if "mailfrom" attribute set         		 */
@@ -238,15 +238,15 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailer]))
-		mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailer))
+		mailer = get_sattr_str(SVR_ATR_mailer);
 	else
 		mailer = SENDMAIL_CMD;
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailfrom]))
-		mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailfrom))
+		mailfrom = get_sattr_str(SVR_ATR_mailfrom);
 	else
 		mailfrom = PBS_DEFAULT_MAIL;
 
@@ -261,7 +261,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			/* has mail user list, send to them rather than owner */
 
-			pas = pjob->ji_wattr[(int)JOB_ATR_mailuser].at_val.at_arst;
+			pas = get_jattr_arst(pjob, JOB_ATR_mailuser);
 			if (pas != NULL) {
 				for (i = 0; i < pas->as_usedptr; i++) {
 					addmailhost = 0;
@@ -417,10 +417,9 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	if (force != MAIL_FORCE) {
 		/*Not forcing out mail regardless of mailpoint */
 
-		if (presv->ri_wattr[(int)RESV_ATR_mailpnts].at_flags &ATR_VFLAG_SET) {
+		if (is_rattr_set(presv, RESV_ATR_mailpnts)) {
 			/*user has set one or mode mailpoints is this one included?*/
-			if (strchr(presv->ri_wattr[(int)RESV_ATR_mailpnts].at_val.at_str,
-				mailpoint) == NULL)
+			if (strchr(get_rattr_str(presv, RESV_ATR_mailpnts), mailpoint) == NULL)
 				return;
 		} else {
 			/*user hasn't bothered to set any mailpoints so default to
@@ -432,9 +431,8 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		}
 	}
 
-	if (presv->ri_wattr[(int)RESV_ATR_mailpnts].at_flags &ATR_VFLAG_SET) {
-		if (strchr(presv->ri_wattr[(int)RESV_ATR_mailpnts].at_val.at_str,
-			MAIL_NONE) != NULL)
+	if (is_rattr_set(presv, RESV_ATR_mailpnts)) {
+		if (strchr(get_rattr_str(presv, RESV_ATR_mailpnts), MAIL_NONE) != NULL)
 			return;
 	}
 
@@ -462,26 +460,26 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailer]))
-		mailer = server.sv_attr[(int)SVR_ATR_mailer].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailer))
+		mailer = get_sattr_str(SVR_ATR_mailer);
 	else
 		mailer = SENDMAIL_CMD;
 
 	/* Who is mail from, if SVR_ATR_mailfrom not set use default */
 
-	if (is_attr_set(&server.sv_attr[(int)SVR_ATR_mailfrom]))
-		mailfrom = server.sv_attr[(int)SVR_ATR_mailfrom].at_val.at_str;
+	if (is_sattr_set(SVR_ATR_mailfrom))
+		mailfrom = get_sattr_str(SVR_ATR_mailfrom);
 	else
 		mailfrom = PBS_DEFAULT_MAIL;
 
 	/* Who does the mail go to?  If mail-list, them; else owner */
 
 	*mailto = '\0';
-	if (presv->ri_wattr[(int)RESV_ATR_mailuser].at_flags & ATR_VFLAG_SET) {
+	if (is_rattr_set(presv, RESV_ATR_mailuser)) {
 
 		/* has mail user list, send to them rather than owner */
 
-		pas = presv->ri_wattr[(int)RESV_ATR_mailuser].at_val.at_arst;
+		pas = get_rattr_arst(presv, RESV_ATR_mailuser);
 		if (pas != NULL) {
 			for (i = 0; i < pas->as_usedptr; i++) {
 				addmailhost = 0;
@@ -513,7 +511,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 		/* no mail user list, just send to owner */
 
-		(void)pbs_strncpy(mailto, presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, sizeof(mailto));
+		(void)pbs_strncpy(mailto, get_rattr_str(presv, RESV_ATR_resv_owner), sizeof(mailto));
 		/* if pbs_mail_host_name is set in pbs.conf, then replace the */
 		/* host name with the name specified in pbs_mail_host_name    */
 		if (pbs_conf.pbs_mail_host_name) {
@@ -566,8 +564,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	}
 
 	fprintf(outmail, "PBS Reservation Id: %s\n", presv->ri_qs.ri_resvID);
-	fprintf(outmail, "Reservation Name:   %s\n",
-		presv->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str);
+	fprintf(outmail, "Reservation Name:   %s\n", get_rattr_str(presv, RESV_ATR_resv_name));
 	if (stdmessage)
 		fprintf(outmail, "%s\n", stdmessage);
 	if (text != NULL)

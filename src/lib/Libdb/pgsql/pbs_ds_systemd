@@ -38,10 +38,10 @@
 
 . ${PBS_CONF_FILE:-/etc/pbs.conf}
 
-is_systemd=0
-systemctl --version >/dev/null 2>&1
-if [ $? -eq 0 ] ; then
-    is_systemd=1
+is_systemd=1
+_status=$(systemctl is-system-running 2>/dev/null)
+if [ "x${_status}" == "xoffline" -o "x${_status}" == "xunknown" ] ; then
+    is_systemd=0
 fi
 if [ $is_systemd -eq 1 ] ; then
     SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`

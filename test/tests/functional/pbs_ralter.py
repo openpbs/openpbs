@@ -1348,7 +1348,7 @@ class TestPbsResvAlter(TestFunctional):
         This test checks the alter of reservation name.
         """
         duration = 30
-        offset = 10
+        offset = 20
 
         rid1 = self.submit_and_confirm_reservation(
             offset, duration)
@@ -1368,7 +1368,7 @@ class TestPbsResvAlter(TestFunctional):
         This test checks the user permissions for pbs_ralter.
         """
         duration = 30
-        offset = 5
+        offset = 20
         shift = 10
 
         rid1, start1, end1 = self.submit_and_confirm_reservation(

@@ -287,8 +287,8 @@ extern int   keepfiles_action(attribute *pattr, void *pobject, int actmode);
 extern int   removefiles_action(attribute *pattr, void *pobject, int actmode);
 
 /* Functions below exposed as they are now accessed by the Python hooks */
-extern void update_state_ct(attribute *, int *, char *);
-extern void update_license_ct(attribute *, char *);
+extern void update_state_ct(attribute *, int *, attribute_def *attr_def);
+extern void update_license_ct();
 
 #ifdef _PBS_JOB_H
 extern int job_set_wait(attribute *, void *, int);

@@ -107,6 +107,9 @@ struct rq_manage {
 struct rq_deletejoblist {
 	int rq_count;
 	char **rq_jobslist;
+	int rq_resume;
+	int jobid_to_resume;
+	int subjobid_to_resume;
 };
 
 /* Management - used by PBS_BATCH_Manager requests */

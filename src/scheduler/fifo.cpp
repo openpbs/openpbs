@@ -764,6 +764,11 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 	sched_cmd cmd;
 	int nsvrs = get_num_servers();
 	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
+	if (svr_conns == NULL) {
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+			"Unable to fetch secondary connections");
+		return 0;
+	}
 
 	for (i = 0; svr_conns[i]; i++) {
 		int rc;
@@ -1382,17 +1387,17 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
 				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 						  rjob->job->svr_inst_id);
+ 						  rjob->svr_inst_id);
 			}
 		} else
 			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 					  rjob->job->svr_inst_id);
+ 					  rjob->svr_inst_id);
 	}
 
 	if (rc) {
 		char buf[MAX_LOG_SIZE];
 		set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
-		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->job->svr_inst_id));
+		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->svr_inst_id));
 		if (errbuf == NULL)
 			errbuf = "";
 		set_schd_error_arg(err, ARG1, errbuf);
@@ -1510,7 +1515,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
 		if (pbs_sd != SIMULATE_SD) {
-			pbsrc = pbs_sigjob(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, const_cast<char *>("resume"), NULL);
+			pbsrc = pbs_sigjob(get_svr_inst_fd(pbs_sd, resresv->svr_inst_id), resresv->name, const_cast<char *>("resume"), NULL);
 			if (!pbsrc)
 				ret = 1;
 			else {
@@ -2879,6 +2884,7 @@ parse_sched_obj(int connector, struct batch_status *status)
 				MGR_CMD_UNSET, MGR_OBJ_SCHED,
 			const_cast<char *>(sc_name), attribs, NULL);
 		free(attribs->value);
+		free(attribs);
 		if (err) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				"Failed to update scheduler comment at the server");

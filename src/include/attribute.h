@@ -321,7 +321,7 @@ extern svrattrl *attrlist_alloc(int szname, int szresc, int szval);
 extern svrattrl *attrlist_create(char *aname, char *rname, int szval);
 extern void free_svrattrl(svrattrl *pal);
 extern void free_attrlist(pbs_list_head *attrhead);
-extern void free_svrcache(struct attribute *attr);
+extern void free_svrcache(attribute *attr);
 extern int  attr_atomic_set(svrattrl *plist, attribute *old,
 	attribute *nattr, void *adef_idx, attribute_def *pdef, int limit,
 	int unkn, int privil, int *badattr);
@@ -371,9 +371,9 @@ extern int  decode_sandbox(attribute *patr, char *name, char *rn, char *val);
 extern int  decode_project(attribute *patr, char *name, char *rn, char *val);
 extern int  decode_uacl(attribute *patr, char *name, char *rn, char *val);
 extern int  decode_unkn  (attribute *patr, char *name, char *rn, char *val);
-extern int  decode_nodes(struct attribute *, char *, char *, char *);
-extern int  decode_select(struct attribute *, char *, char *, char *);
-extern int  decode_Mom_list(struct attribute *, char *, char *, char *);
+extern int  decode_nodes(attribute *, char *, char *, char *);
+extern int  decode_select(attribute *, char *, char *, char *);
+extern int  decode_Mom_list(attribute *, char *, char *, char *);
 
 extern int encode_b(const attribute *attr, pbs_list_head *phead, char *atname,
 					char *rsname, int mode, svrattrl **rtnl);
@@ -425,8 +425,8 @@ extern int set_uacl  (attribute *attr, attribute *nattr, enum batch_op);
 extern int set_gacl  (attribute *attr, attribute *nattr, enum batch_op);
 extern int set_unkn(attribute *attr, attribute *nattr, enum batch_op);
 extern int set_depend(attribute *attr, attribute *nattr, enum batch_op);
-extern u_Long get_kilobytes_from_attr(struct attribute *);
-extern u_Long get_bytes_from_attr(struct attribute *);
+extern u_Long get_kilobytes_from_attr(attribute *);
+extern u_Long get_bytes_from_attr(attribute *);
 
 extern int   comp_b(attribute *attr, attribute *with);
 extern int   comp_c(attribute *attr, attribute *with);
@@ -595,10 +595,10 @@ extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 
 
 /* Functions used to save and recover the attributes from the database */
-extern int encode_single_attr_db(struct attribute_def *padef, struct attribute *pattr, pbs_db_attr_list_t *db_attr_list);
-extern int encode_attr_db(struct attribute_def *padef, struct attribute *pattr, int numattr,  pbs_db_attr_list_t *db_attr_list, int all);
+extern int encode_single_attr_db(attribute_def *padef, attribute *pattr, pbs_db_attr_list_t *db_attr_list);
+extern int encode_attr_db(attribute_def *padef, attribute *pattr, int numattr,  pbs_db_attr_list_t *db_attr_list, int all);
 extern int decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list,
-	void *padef_idx, struct attribute_def *padef, struct attribute *pattr, int limit, int unknown);
+	void *padef_idx, attribute_def *padef, attribute *pattr, int limit, int unknown);
 
 extern int is_attr(int, char *, int);
 
@@ -606,7 +606,7 @@ extern int set_attr(struct attrl **attrib, const char *attrib_name, const char *
 extern int set_attr_resc(struct attrl **attrib, const char *attrib_name, const char *attrib_resc, const char *attrib_value);
 
 extern svrattrl *make_attr(char *attr_name, char *attr_resc, char *attr_value, int attr_flags);
-extern void *cr_attrdef_idx(struct attribute_def *adef, int limit);
+extern void *cr_attrdef_idx(attribute_def *adef, int limit);
 
 /* Attr setters */
 int set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn, enum batch_op op);
@@ -614,14 +614,20 @@ int set_attr_with_attr(attribute_def *pdef, attribute *oattr, attribute *nattr, 
 void set_attr_l(attribute *pattr, long value, enum batch_op op);
 void set_attr_c(attribute *pattr, char value, enum batch_op op);
 void set_attr_b(attribute *pattr, long val, enum batch_op op);
+void set_attr_short(attribute *pattr, short value, enum batch_op op);
 void mark_attr_not_set(attribute *attr);
 void mark_attr_set(attribute *attr);
+void post_attr_set(attribute *attr);
 
 /* Attr getters */
 char get_attr_c(const attribute *pattr);
 long get_attr_l(const attribute *pattr);
 char *get_attr_str(const attribute *pattr);
+struct array_strings *get_attr_arst(const attribute *pattr);
 int is_attr_set(const attribute *pattr);
+attribute *_get_attr_by_idx(attribute *list, int attr_idx);
+pbs_list_head get_attr_list(const attribute *pattr);
+void free_attr(attribute_def *attr_def, attribute *pattr, int attr_idx);
 
 /* "type" to pass to acl_check() */
 #define ACL_Host  1

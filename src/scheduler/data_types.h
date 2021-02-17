@@ -65,7 +65,7 @@
 #include "site_queue.h"
 #endif
 
-#include <vector>
+#include <unordered_map>
 #include <string>
 
 struct server_info;
@@ -145,7 +145,6 @@ typedef struct th_data_free_ninfo th_data_free_ninfo;
 typedef struct th_data_dup_resresv th_data_dup_resresv;
 typedef struct th_data_query_jinfo th_data_query_jinfo;
 typedef struct th_data_free_resresv th_data_free_resresv;
-typedef struct server_psets server_psets;
 
 
 #ifdef NAS
@@ -407,7 +406,6 @@ struct server_info
 	unsigned eligible_time_enable:1;/* controls if we accrue eligible_time  */
 	unsigned provision_enable:1;	/* controls if provisioning occurs */
 	unsigned power_provisioning:1;	/* controls if power provisioning occurs */
-	unsigned has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
 	unsigned use_hard_duration:1;	/* use hard duration when creating the calendar */
 	unsigned pset_metadata_stale:1;	/* The placement set meta data is stale and needs to be regenerated before the next use */
 	char *name;			/* name of server */
@@ -477,7 +475,7 @@ struct server_info
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
-	std::vector<server_psets> svr_to_psets;
+	std::unordered_map<std::string, node_partition *> svr_to_psets;
 #ifdef NAS
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
@@ -575,7 +573,6 @@ struct job_info
 	unsigned topjob_ineligible:1;	/* Job is ineligible to be a top job */
 
 	char *job_name;			/* job name attribute (qsub -N) */
-	char *svr_inst_id;
 	char *comment;			/* comment field of job */
 	char *resv_id;			/* identifier of reservation job is in */
 	char *alt_id;			/* vendor assigned job identifier */
@@ -641,11 +638,6 @@ struct node_scratch
 					 */
 };
 
-struct server_psets {
-	std::string svr_inst_id;	/* server_instance_id (<hostname>:<port>) */
-	node_partition *np;	/* placement set of all nodes owned by this server */
-};
-
 struct node_info
 {
 	unsigned is_down:1;		/* node is down */
@@ -697,8 +689,6 @@ struct node_info
 	char **resvs;			/* the name of the reservations currently on the node */
 	resource_resv **job_arr;	/* ptrs to structs of the jobs on the node */
 	resource_resv **run_resvs_arr;	/* ptrs to structs of resvs holding resources on the node */
-
-	int pcpus;			/* the number of physical cpus */
 
 	/* This element is the server the node is associated with.  In the case
 	 * of a node which is part of an advanced reservation, the nodes are
@@ -824,6 +814,7 @@ struct resource_resv
 	job_info *job;			/* pointer to job specific structure */
 	resv_info *resv;		/* pointer to reservation specific structure */
 
+	char *svr_inst_id;		/* Server instance id of the job/reservation */
 	char *aoename;			   /* store name of aoe if requested */
 	char *eoename;			   /* store name of eoe if requested */
 	char **node_set_str;		   /* user specified node string */
