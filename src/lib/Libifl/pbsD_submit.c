@@ -91,8 +91,6 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 	char					*ret;
 	struct pbs_client_thread_context	*ptr;
 	struct cred_info			*cred_info;
-	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	c = random_srv_conn(svr_conns);
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -166,8 +164,9 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	struct cred_info *cred_info = NULL;
 	int commit_done = 0;
 	char *lextend = NULL;
+	int msvr = multi_svr_op(c);
 	svr_conn_t **svr_conns = get_conn_svr_instances(c);
-	c = random_srv_conn(svr_conns);
+	int random_svr_conn = random_srv_conn(c, svr_conns);
 
 	/* initialize the thread context data, if not already initialized */
 	if ((pbs_errno = pbs_client_thread_init_thread_context()) != 0)
@@ -180,7 +179,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 	}
 
 	/* first verify the attributes, if verification is enabled */
-	if (pbs_verify_attributes(c, PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+	if (pbs_verify_attributes(random_svr_conn, PBS_BATCH_QueueJob, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
 		goto error; /* pbs_errno is already set in this case */
 
 	/* lock pthread mutex here for this connection */
@@ -219,20 +218,13 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 			extend = EXTEND_OPT_IMPLICIT_COMMIT;
 	}	
 
-	if (destination != NULL && msvr_mode()) {
-		/* 
-		 * Reached here means job is submitted to non default queue
-		 * Also check if it is a reservation queue
-		 */
-		if (destination[0] == 'R' || destination[0] == 'S' || destination[0] == 'M') {
-			int start = 0;
-			if ((start = get_job_resv_location_hint(destination)) == -1) {
-				pbs_errno = PBSE_INTERNAL;
-				goto error;	
-			}
-			else
-				c = svr_conns[start]->sd;
-		}
+	c = random_svr_conn;	
+	if (msvr && destination) {
+		/* Reached here means job is submitted to non default queue */
+		int start;
+
+		if ((start = get_shard_obj_location_hint(destination, MGR_OBJ_RESV)) != -1)
+			c = svr_conns[start]->sd;
 	}
 	
 	/* Queue job with null string for job id */

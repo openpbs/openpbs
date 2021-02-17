@@ -285,26 +285,16 @@ generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 {
 	static int svr_id = -1;
 
-	if (idbuf == NULL || server_name == NULL)
+	if (idbuf == NULL || server_name == NULL || clusterid == NULL)
 		return 1;
 
 	if (get_num_servers() <= 1) { /* single server setup */
-		if (clusterid != NULL) {
-			if (objtype == 0)
-				sprintf(idbuf, "%lld.%s", next_svr_sequence_id, clusterid);
-			else if (objtype == 1)
-				sprintf(idbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
-			else if (objtype == 2)
-				sprintf(idbuf, "%c%lld.%s", resv_char, next_svr_sequence_id, clusterid);
-		} else {
-			if (objtype == 0)
-				sprintf(idbuf, "%lld", next_svr_sequence_id);
-			else if (objtype == 1)
-				sprintf(idbuf, "%lld[]", next_svr_sequence_id);
-			else if (objtype == 2)
-				sprintf(idbuf, "%c%lld", resv_char, next_svr_sequence_id);
-		}
-
+		if (objtype == 0)
+			sprintf(idbuf, "%lld.%s", next_svr_sequence_id, clusterid);
+		else if (objtype == 1)
+			sprintf(idbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
+		else if (objtype == 2)
+			sprintf(idbuf, "%c%lld.%s", resv_char, next_svr_sequence_id, clusterid);
 	} else { /* multi-server setup */
 		if (svr_id == -1) {
 			svr_id = get_server_index();
@@ -313,21 +303,12 @@ generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 		}
 
 		/* For multi-server, last 'MSVR_JID_NCHARS_SVR' chars of numeric portion are reserved for server id */
-		if (clusterid != NULL) {
-			if (objtype == 0)
-				sprintf(idbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-			else if (objtype == 1)
-				sprintf(idbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-			else if (objtype == 2)
-				sprintf(idbuf, "%c%lld%0*d.%s", resv_char, next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-		} else {
-			if (objtype == 0)
-				sprintf(idbuf, "%lld%0*d", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id);
-			else if (objtype == 1)
-				sprintf(idbuf, "%lld[]%0*d", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id);
-			else if (objtype == 2)
-				sprintf(idbuf, "%c%lld%0*d", resv_char, next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id);			
-		}
+		if (objtype == 0)
+			sprintf(idbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+		else if (objtype == 1)
+			sprintf(idbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+		else if (objtype == 2)
+			sprintf(idbuf, "%c%lld%0*d.%s", resv_char, next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
 	}
 
 	return 0;
@@ -2127,6 +2108,7 @@ req_resvSub(struct batch_request *preq)
 	int rc2 = 0;
 	char owner[PBS_MAXUSER + 1];
 	char *partition_name = NULL;
+	char *ptr = NULL;
 
 	if (preq->rq_extend && strchr(preq->rq_extend, 'm'))
 		is_maintenance = 1;
@@ -2224,10 +2206,15 @@ req_resvSub(struct batch_request *preq)
 	 * but the structure field would be an addition to the
 	 * "quick save" area of the server - can't do
 	 */
-	if (generate_objid(qbuf, NULL, 2, PBS_RESV_ID_CHAR) != 0) {
+	ptr = strchr(rid, '.');
+	if (ptr == NULL) {
 		req_reject(PBSE_INTERNAL, 0, preq);
 		return;
 	}
+
+	*ptr = '\0';
+	pbs_strncpy(qbuf, rid, sizeof(qbuf));
+	*ptr = '.';
 
 	/* does reservation already exist, check both old
 	 * and new reservations?

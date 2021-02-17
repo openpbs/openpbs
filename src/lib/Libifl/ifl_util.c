@@ -115,6 +115,8 @@ get_available_conn(svr_conn_t **svr_conns)
  * @brief
  *	get random server sd - It will choose a random sd from available no of servers.
  *	If the randomly choosen connection is down, it will choose the first available conn.
+ *      In case svr_conns is NULL it just returns fd
+ * @param[in] fd - virtual fd or the actual fd
  * @param[in] svr_conns - pointer to array of server connections
  *
  * @return int
@@ -122,9 +124,13 @@ get_available_conn(svr_conn_t **svr_conns)
  * @retval != -1: fd corresponding to the connection
  */
 int
-random_srv_conn(svr_conn_t **svr_conns)
+random_srv_conn(int fd, svr_conn_t **svr_conns)
 {
 	int ind = 0;
+
+	/* It is actual fd and hence return fd itself */
+	if (svr_conns == NULL)
+		return fd;
 
 	ind =  rand_num() % get_num_servers();
 
@@ -136,51 +142,63 @@ random_srv_conn(svr_conn_t **svr_conns)
 
 /**
  * @brief	Get the server instance index from the job/resv id, which will act as a hint
- * 		as to which server the job/reservation might possibly be located
- * 		This function also works even if object id does not contain pbs_server name
+ * 		as to which server the job/reservation might possibly be located.
+ * 		This function also works even if PBS_SERVER name is not part of obj_id.
+ * 		For example, obj_id can be "123.stblr3" or "123", "R123.stblr4" or "R123" where
+ * 		stblr3/stblr4 are PBS_SERVER names.
 
- * @param[in] id - object id
+ * @param[in] obj_id - job or resv object id
+ * @param[in] obj_type - job or resv object
  *
  * @return int
  * @retval >= 0: start_ind - index where the request should be fired first
  * @retval < 0: could not find appropriate index
  */
 int
-get_job_resv_location_hint(char *job_resv_id)
+get_shard_obj_location_hint(char *obj_id, int obj_type)
 {
 	int nsvrs = get_num_servers();
 	char *ptr = NULL;
+	char *ptr_idx = NULL;
 	int svridx = -1;
 	char *endptr = NULL;
-	int contains_svr_name = 1;
+	int id_len = 0;
 
-	if (job_resv_id == NULL || !msvr_mode())
+	if (obj_id == NULL || !msvr_mode())
 		return -1;
+
+	ptr = strchr(obj_id, '.');
+
+	if (ptr) {
+		/* obj_id contains PBS_SERVER name */
+		*ptr = '\0';
+	}
+
+	id_len = strlen(obj_id);
+
+	if (obj_type == MGR_OBJ_RESV) {
+		/* since first char of resv id is non numeric reduce id_len by 1 */
+		id_len--;
+	}
 
 	/* Minimum length of sequence will be MSVR_JID_NCHARS_SVR + 1 */
-	if (strlen(job_resv_id) <= MSVR_JID_NCHARS_SVR)
+	if (id_len <= MSVR_JID_NCHARS_SVR)
 		return -1;
-
-	ptr = strchr(job_resv_id, '.');
-	if (ptr == NULL) {
-		contains_svr_name = 0;
-		ptr = &job_resv_id[(strlen(job_resv_id) - 1)];
-	} else
-		ptr--;
 	
-	if (contains_svr_name)
-		*(ptr + 1) = '\0';
+	if (obj_type == MGR_OBJ_RESV) {
+		/* Restore id_len to original value */
+		id_len++;
+	}
 
-	ptr -= (MSVR_JID_NCHARS_SVR - 1);
-	svridx = strtol(ptr, &endptr, 10);
+	ptr_idx = &obj_id[id_len - MSVR_JID_NCHARS_SVR];
+
+	svridx = strtol(ptr_idx, &endptr, 10);
 
 	if (*endptr != '\0' || svridx >= nsvrs)
 		svridx = -1;
 
-	if (contains_svr_name) {
-		ptr += MSVR_JID_NCHARS_SVR;
+	if (ptr)
 		*ptr = '.';
-	}
 
 	return svridx;
 }

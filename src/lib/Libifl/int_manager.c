@@ -138,12 +138,12 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 			return pbs_errno;
 
 	/* now verify the attributes, if verification is enabled */
-	if ((pbs_verify_attributes(random_srv_conn(svr_conns), rq_type, objtype, command, aoplp)) != 0)
+	if ((pbs_verify_attributes(random_srv_conn(c, svr_conns), rq_type, objtype, command, aoplp)) != 0)
 		return pbs_errno;
 
 	if (svr_conns) {
 		if ((objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) &&
-			(start = get_job_resv_location_hint(objname)) == -1)
+			(start = get_shard_obj_location_hint(objname, objtype)) == -1)
 		    start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
@@ -173,19 +173,13 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 						aoplp,
 						extend);
 
-			if (objtype == MGR_OBJ_JOB) {
+			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) {
 				if (rc == 0)
 					break;
-				else if (pbs_errno != PBSE_UNKJOBID)
+				else if (pbs_errno != PBSE_UNKJOBID || pbs_errno != PBSE_UNKRESVID)
 					break;
 			}
-
-			if (objtype == MGR_OBJ_RESV) {
-				if (rc == 0)
-					break;
-				else if (pbs_errno != PBSE_UNKRESVID)
-					break;
-			}
+			
 		}
 
 		return rc;

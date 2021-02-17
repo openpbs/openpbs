@@ -70,20 +70,20 @@ __pbs_submit_resv(int c, struct attropl *attrib, char *extend)
 	struct attropl *pal;
 	int rc;
 	char *ret;
-	svr_conn_t **svr_conns;
 	char job_id_resv[PBS_MAXJOBNAME + 1];
+	int msvr = multi_svr_op(c);
 
 	job_id_resv[0] = '\0';
 	for (pal = attrib; pal; pal = pal->next) {
 		pal->op = SET;		/* force operator to SET */
-		if (msvr_mode()) {
+		if (msvr) {
 			if (strcmp(pal->name, ATTR_convert) == 0 || strcmp(pal->name, ATTR_resv_job) == 0) {
 				strcpy(job_id_resv, pal->value);
 			}
 		}
 	}
 
-	if (msvr_mode()) {
+	if (msvr) {
 		/* Job specific reservation */
 		if (job_id_resv[0] != '\0') {
 			/* Do a job stat to find out the server_instance_fd of
@@ -105,7 +105,7 @@ __pbs_submit_resv(int c, struct attropl *attrib, char *extend)
 			if (ss == NULL)
 				return NULL;
 
-			while (ss != NULL) {
+			if (ss != NULL) {
 				for (attr = ss->attribs; attr != NULL; attr = attr->next) {
 					if (strcmp(attr->name, ATTR_server_inst_id) == 0) { 
 						svr_inst_id = strdup(attr->value);
@@ -116,14 +116,14 @@ __pbs_submit_resv(int c, struct attropl *attrib, char *extend)
 						break;
 					}
 				}
-				ss = ss->next;
 			}    
 			c = get_svr_inst_fd(c, svr_inst_id);
 			free(svr_inst_id);
 			pbs_statfree(ss);
-		} else { /* Normal advanced or standing reservation */
-			svr_conns = get_conn_svr_instances(c);
-			c = random_srv_conn(svr_conns);
+		} else { 
+			/* Advanced or standing reservation */
+			svr_conn_t **svr_conns = get_conn_svr_instances(c);
+			c = random_srv_conn(c, svr_conns);
 		}
 
 	}

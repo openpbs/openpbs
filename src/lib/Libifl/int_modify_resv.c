@@ -89,17 +89,17 @@ PBSD_modify_resv(int connect, char *resv_id, struct attropl *attrib, char *exten
 		(rc = encode_DIS_ReqExtend(connect, extend))) {
 			if (set_conn_errtxt(connect, dis_emsg[rc]) != 0) {
 				pbs_errno = PBSE_SYSTEM;
-				(void)pbs_client_thread_unlock_connection(connect);
+				pbs_client_thread_unlock_connection(connect);
 				return NULL;
 			}
 			if (pbs_errno == PBSE_PROTOCOL) {
-				(void)pbs_client_thread_unlock_connection(connect);
+				pbs_client_thread_unlock_connection(connect);
 				return NULL;
 			}
 	}
 	if (dis_flush(connect)) {
 		pbs_errno = PBSE_PROTOCOL;
-		(void)pbs_client_thread_unlock_connection(connect);
+		pbs_client_thread_unlock_connection(connect);
 		return NULL;
 	}
 
