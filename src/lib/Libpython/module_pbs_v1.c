@@ -662,8 +662,9 @@ PyObject *
 pbs_v1_module_init(void)
 {
 
-	PyObject *m     = NULL; /* the module object, BORROWED ref */
+	PyObject *m     = NULL; /* the module object, NEW ref */
 	PyObject *mdict = NULL; /* the module object, BORROWED ref */
+	PyObject *py_types_module = NULL;
 
 	m = PyModule_Create(&pbs_v1_module);
 
@@ -676,9 +677,18 @@ pbs_v1_module_init(void)
 
 	mdict = PyModule_GetDict(m);
 
+	/* get svr types */
+	py_types_module = ppsvr_create_types_module();
+	if (py_types_module == NULL)
+		goto ERROR_EXIT;
 	if ((PyDict_SetItemString(mdict, "svr_types",
-		ppsvr_create_types_module())) == -1)
+		py_types_module)) == -1) {
+		Py_XDECREF(py_types_module);
 		return NULL;
+	}
+
+	Py_XDECREF(py_types_module);
+	
 	/* Add all our constants */
 	if (_pv1mod_insert_int_constants(mdict) == -1)
 		return NULL;
