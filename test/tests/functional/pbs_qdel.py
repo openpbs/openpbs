@@ -85,7 +85,6 @@ class TestQdel(TestFunctional):
         self.server.add_resource('foo')
         a = {'job_history_enable': 'True'}
         rc = self.server.manager(MGR_CMD_SET, SERVER, a)
-        self.assertEqual(rc, 0)
         hook_body = "import pbs\n"
         hook_body += "e = pbs.event()\n"
         hook_body += "e.job.resources_used[\"foo\"] = \"10\"\n"
@@ -95,10 +94,10 @@ class TestQdel(TestFunctional):
         j.set_sleep_time(10)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.server.log_match(jid + ";Exit_status=0", interval=2,
-                              max_attempts=8)
-        try:
-            rc = self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
-        except PbsManagerError as e:
-            m = "Resource busy on job"
-            self.assertIn(m, e.msg[0])
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid,
+                           extend='x', max_attempts=20)
+        msg = "Resource allowed to be deleted"
+        with self.assertRaises(PbsManagerError, msg=msg) as e:
+            self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
+        m = "Resource busy on job"
+        self.assertIn(m, e.exception.msg[0])
