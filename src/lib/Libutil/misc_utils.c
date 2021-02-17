@@ -1208,7 +1208,7 @@ break_comma_list(char *strlist)
  *
  */
 int
-is_string_in_arr(char **strarr, char *str)
+is_string_in_arr(char **strarr, const char *str)
 {
 	int ind;
 
@@ -1271,7 +1271,7 @@ dup_string_arr(char **strarr)
  * @retval	-1	: if not found
  */
 int
-find_string_idx(char **strarr, char *str)
+find_string_idx(char **strarr, const char *str)
 {
 	int i;
 	if (strarr == NULL || str == NULL)

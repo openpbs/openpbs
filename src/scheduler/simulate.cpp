@@ -499,8 +499,8 @@ set_timed_event_disabled(timed_event *te, int disabled)
  *
  */
 timed_event *
-find_timed_event(timed_event *te_list, int ignore_disabled, const char *name,
-	enum timed_event_types event_type, time_t event_time)
+find_timed_event(timed_event *te_list, const std::string &name, int ignore_disabled,
+		 enum timed_event_types event_type, time_t event_time)
 {
 	timed_event *te;
 	int found_name = 0;
@@ -514,7 +514,7 @@ find_timed_event(timed_event *te_list, int ignore_disabled, const char *name,
 		if (ignore_disabled && te->disabled)
 			continue;
 		found_name = found_type = found_time = 0;
-		if (name == NULL || strcmp(te->name, name) == 0)
+		if (name.empty() || te->name == name)
 			found_name = 1;
 
 		if (event_type == te->event_type || event_type == TIMED_NOEVENT)
@@ -529,6 +529,27 @@ find_timed_event(timed_event *te_list, int ignore_disabled, const char *name,
 
 	return te;
 }
+
+timed_event *find_timed_event(timed_event *te_list, int ignore_disabled, enum timed_event_types event_type, time_t event_time)
+{
+	return find_timed_event(te_list, "", ignore_disabled, event_type, event_time);
+}
+
+timed_event *find_timed_event(timed_event *te_list, enum timed_event_types event_type)
+{
+	return find_timed_event(te_list, "", 0, event_type, 0);
+}
+
+timed_event *find_timed_event(timed_event *te_list, const std::string& name, enum timed_event_types event_type, time_t event_time)
+{
+	return find_timed_event(te_list, name, 0, event_type, event_time);
+}
+
+timed_event *find_timed_event(timed_event *te_list, time_t event_time)
+{
+	return find_timed_event(te_list, "", 0, TIMED_NOEVENT, event_time);
+}
+
 /**
  * @brief
  * 		takes a timed_event and performs any actions
@@ -699,7 +720,7 @@ exists_resv_event(event_list *calendar, time_t end)
  *
  */
 time_t
-calc_run_time(char *name, server_info *sinfo, int flags)
+calc_run_time(const std::string& name, server_info *sinfo, int flags)
 {
 	time_t event_time = (time_t) 0;	/* time of the simulated event */
 	event_list *calendar;		/* calendar we are simulating in */
@@ -716,7 +737,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	unsigned int ok_flags = NO_ALLPART;
 	queue_info *qinfo = NULL;
 
-	if (name == NULL || sinfo == NULL)
+	if (name.empty() || sinfo == NULL)
 		return (time_t) -1;
 
 	event_time = sinfo->server_time;
@@ -837,7 +858,7 @@ create_event_list(server_info *sinfo)
 	elist->events = create_events(sinfo);
 
 	elist->next_event = elist->events;
-	elist->first_run_event = find_timed_event(elist->events, 0, NULL, TIMED_RUN_EVENT, 0);
+	elist->first_run_event = find_timed_event(elist->events, TIMED_RUN_EVENT);
 	elist->current_time = &sinfo->server_time;
 	add_dedtime_events(elist, sinfo->policy);
 
@@ -993,10 +1014,9 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 	}
 
 	if (oelist->next_event != NULL) {
-		nelist->next_event = find_timed_event(nelist->events, 0,
-			oelist->next_event->name,
-			oelist->next_event->event_type,
-			oelist->next_event->event_time);
+		nelist->next_event = find_timed_event(nelist->events, oelist->next_event->name,
+						      oelist->next_event->event_type,
+						      oelist->next_event->event_time);
 		if (nelist->next_event == NULL) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
 			oelist->next_event->name, "can't find next event in duplicated list");
@@ -1007,10 +1027,8 @@ dup_event_list(event_list *oelist, server_info *nsinfo)
 
 	if (oelist->first_run_event != NULL) {
 		nelist->first_run_event =
-		    find_timed_event(nelist->events, 0,
-				     oelist->first_run_event->name,
-				     TIMED_RUN_EVENT,
-				     oelist->first_run_event->event_time);
+			find_timed_event(nelist->events, oelist->first_run_event->name, TIMED_RUN_EVENT,
+					 oelist->first_run_event->event_time);
 		if (nelist->first_run_event == NULL) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING, oelist->first_run_event->name,
 				"can't find first run event event in duplicated list");
@@ -1051,13 +1069,12 @@ new_timed_event()
 {
 	timed_event *te;
 
-	if ((te = static_cast<timed_event *>(malloc(sizeof(timed_event)))) == NULL) {
+	if ((te = new timed_event()) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	te->disabled = 0;
-	te->name = NULL;
 	te->event_type = TIMED_NOEVENT;
 	te->event_time = 0;
 	te->event_ptr = NULL;
@@ -1156,7 +1173,7 @@ dup_te_list(te_list *ote, timed_event *new_timed_event_list)
 	if(nte == NULL)
 		return NULL;
 
-	nte->event = find_timed_event(new_timed_event_list, 0, ote->event->name, ote->event->event_type, ote->event->event_time);
+	nte->event = find_timed_event(new_timed_event_list, ote->event->name, ote->event->event_type, ote->event->event_time);
 
 	return nte;
 }
@@ -1382,7 +1399,7 @@ free_timed_event(timed_event *te)
 			((resource_resv *)te->event_ptr)->end_event = NULL;
 	}
 
-	free(te);
+	delete te;
 }
 
 /**
@@ -1448,8 +1465,7 @@ add_event(event_list *calendar, timed_event *te)
 				calendar->next_event = te;
 			else if (te->event_time == calendar->next_event->event_time) {
 				calendar->next_event =
-					find_timed_event(calendar->events, 0, NULL,
-					TIMED_NOEVENT, te->event_time);
+					find_timed_event(calendar->events, te->event_time);
 			}
 		}
 	}
@@ -1546,7 +1562,7 @@ delete_event(server_info *sinfo, timed_event *e)
 		calendar->next_event = e->next;
 
 	if (calendar->first_run_event == e)
-		calendar->first_run_event = find_timed_event(calendar->events, 0, NULL, TIMED_RUN_EVENT, 0);
+		calendar->first_run_event = find_timed_event(calendar->events, TIMED_RUN_EVENT);
 
 	if (e->prev == NULL)
 		calendar->events = e->next;
