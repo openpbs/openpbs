@@ -1041,7 +1041,7 @@ class PTLTestRunner(Plugin):
         hosts = self.param_dict['moms']
         for server in self.param_dict['servers']:
             if server not in self.param_dict['moms']:
-                hosts.add(self.param_dict['servers'])
+                hosts.update(self.param_dict['servers'])
         for user in PBS_USERS:
             self.logger.info('Cleaning %s\'s home directory' % (str(user)))
             runas = PbsUser.get_user(user)
