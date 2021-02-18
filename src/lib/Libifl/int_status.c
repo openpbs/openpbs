@@ -519,7 +519,7 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	}
 
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return NULL;
+		goto end;
 
 	for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
@@ -580,11 +580,12 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return NULL;
+		goto end;
 
 	if (rc)
 		pbs_errno = rc;
 
+end:
 	free(failed_conn);
 	return ret;
 }

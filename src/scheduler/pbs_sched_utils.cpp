@@ -122,7 +122,6 @@ extern char *msg_startup1;
 
 static pthread_mutex_t cleanup_lock;
 
-static void close_servers();
 static void reconnect_servers();
 static void sched_svr_init(void);
 static void connect_svrpool();
@@ -206,7 +205,6 @@ die(int sig)
 	else
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, "abnormal termination");
 
-	close_servers();
 	schedexit();
 
 	{
@@ -502,7 +500,7 @@ are_we_primary()
  *
  * @return void
  */
-static void
+void
 close_servers(void)
 {
 	int i;
@@ -1160,13 +1158,13 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 		}
 	}
 
-	close_servers();
 	schedexit();
 
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, "%s normal finish pid %ld", argv[0], (long) pid);
 	lock_out(lockfds, F_UNLCK);
 
 	unload_auths();
+	close_servers();
 	log_close(1);
 	exit(0);
 }

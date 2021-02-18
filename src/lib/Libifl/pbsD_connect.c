@@ -849,6 +849,7 @@ __pbs_disconnect(int connect)
 {
 	svr_conn_t **svr_conns = NULL;
 	int i;
+	int rc = 0;
 
 	if (connect <= 0)
 		return -1;
@@ -858,20 +859,20 @@ __pbs_disconnect(int connect)
 	if (svr_conns) {
 		for (i = 0; svr_conns[i]; i++) {
 			if (disconnect_from_server(svr_conns[i]->sd) != 0)
-				return -1;
+				rc = -1;
 
 			svr_conns[i]->sd = -1;
 			svr_conns[i]->state = SVR_CONN_STATE_DOWN;
 		}
 	} else {
 		/* fd doesn't belong to a multi-server setup */
-		disconnect_from_server(connect);
+		rc = disconnect_from_server(connect);
 	}
 
 	/* Destroy the connection cache associated with this set of connections */
 	dealloc_conn_entry(connect);
 
-	return 0;
+	return rc;
 }
 
 /**

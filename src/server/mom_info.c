@@ -267,6 +267,7 @@ delete_mom_entry(mominfo_t *pmom)
 	if (pmom->mi_data)
 		free(pmom->mi_data);
 
+	pbs_idx_destroy(pmom->rsc_idx);
 	delete_link(&pmom->mi_link);
 	memset(pmom, 0, sizeof(mominfo_t));
 	free(pmom);

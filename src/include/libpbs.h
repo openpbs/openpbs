@@ -312,7 +312,6 @@ struct batch_reply
 #define PBS_BATCH_ModifyVnode    	99
 #define PBS_BATCH_DeleteJobList  	100
 #define PBS_BATCH_ServerReady    	101
-#define PBS_BATCH_Resc_Update		102
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1

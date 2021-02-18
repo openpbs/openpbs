@@ -1153,9 +1153,14 @@ schedexit(void)
 
 		thid = (int *) pthread_getspecific(th_id_key);
 
-		if (*thid == 0)
+		if (*thid == 0) {
 			kill_threads();
+			close_servers();
+			return;
+		}
 	}
+
+	close_servers();
 }
 
 /**

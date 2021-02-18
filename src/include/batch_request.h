@@ -347,7 +347,6 @@ struct batch_request {
 		struct rq_hookfile rq_hookfile;
 		struct rq_preempt rq_preempt;
 		struct rq_cred rq_cred;
-		struct rq_rescupdate rq_rescupdate;
 	} rq_ind;
 };
 

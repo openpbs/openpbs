@@ -6182,6 +6182,16 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 	if (pnode->nd_svrflags & NODE_ALIEN)
 		return 0;
 
+	if ((svr_init == FALSE) && (pnode->nd_state & INUSE_JOBEXCL)) {
+		/* allocate node only if it is not occupied by other jobs */
+		for (snp = pnode->nd_psn; snp; snp = snp->next) {
+			for (jp = snp->jobs; jp; jp = jp->next) {
+				if (strcmp(jp->job, jobid))
+					return PBSE_RESCUNAV;
+			}
+		}
+	}
+
 	snp = pnode->nd_psn;
 	if (hw_ncpus == 0) {
 		/* setup jobinfo struture */
@@ -6416,10 +6426,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	char         *pc2;
 	int	      share_job = VNS_UNSET;
 	char         *vname;
-	struct jobinfo *jp;
 	resc_resv *presv = NULL;
 	int 	   tc;		/* num of nodes being allocated  */
-	struct pbssubn *snp;
 	struct pbsnode *pnode;
 	struct key_value_pair *pkvp;
 	struct howl {
@@ -6637,8 +6645,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						send_nodestat();
 						return (PBSE_UNKNODE);
 					}
-					if ((phowl+ndindex)->hw_mom)
-						(phowl+ndindex)->hw_mom =  pnode->nd_moms[0];
+					if ((phowl+ndindex)->hw_pnd->nd_moms)
+						(phowl+ndindex)->hw_mom =  (phowl+ndindex)->hw_pnd->nd_moms[0];
 					else {
 						(phowl+ndindex)->hw_mom_host = (phowl+ndindex)->hw_pnd->nd_attr[ND_ATR_Mom].at_val.at_str;
 						(phowl+ndindex)->hw_mom_port = (phowl+ndindex)->hw_pnd->nd_attr[ND_ATR_Port].at_val.at_long;
@@ -6755,21 +6763,10 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 
 			pnode = (phowl+i)->hw_pnd;
 
-			if ((svr_init == FALSE) && (pnode->nd_state & INUSE_JOBEXCL)) {
-				/* allocate node only if other users are this same job */
-				for (snp=pnode->nd_psn; snp; snp=snp->next) {
-					for (jp=snp->jobs; jp; jp=jp->next) {
-						if (find_job(jp->job) != pjob) {
-							rc = PBSE_RESCUNAV;
-							goto end;
-						}
-					}
-				}
-			}
-			else if ((svr_init == TRUE) &&
-				((check_job_substate(pjob, JOB_SUBSTATE_SUSPEND) ||
-				  check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))) &&
-				(is_jattr_set(pjob, JOB_ATR_resc_released)))
+			if ((svr_init == TRUE) &&
+			    ((check_job_substate(pjob, JOB_SUBSTATE_SUSPEND) ||
+			      check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))) &&
+			    (is_jattr_set(pjob, JOB_ATR_resc_released)))
 				/* No need to add suspended job to jobinfo structure and assign CPU slots to it*/
 				break;
 
