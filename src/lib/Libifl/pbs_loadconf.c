@@ -281,6 +281,9 @@ parse_psi(char *conf_value)
 	free(pbs_conf.psi_str);
 
 	if (conf_value == NULL) {
+		char *dfltsvr = pbs_default();
+		if (dfltsvr == NULL)
+			return -1;
 		pbs_asprintf(&local_conf, "%s:%d", pbs_default(), pbs_conf.batch_service_port);
 		if (local_conf == NULL)
 			return -1;
