@@ -261,3 +261,38 @@ class TestHookJob(TestFunctional):
         self.server.log_match(hook_msg, starttime=start_time,
                                 max_attempts=10 )
         self.logger.info("**************** HOOK END ****************")
+
+    def test_hook_endjob_reque(self):
+        """
+        By creating an import hook, it executes a job hook.
+        """
+        self.logger.info("**************** HOOK START ****************")
+        hook_name = "hook_endjob_reque"
+        hook_msg = 'running %s' % hook_name
+        hook_body = get_hook_body(hook_msg)
+        attrs = {'event': 'endjob', 'enabled': 'True'}
+        start_time = time.time()
+
+        ret = self.server.create_hook(hook_name, attrs)
+        self.assertEqual(ret, True, "Could not create hook %s" % hook_name)
+        ret = self.server.import_hook(hook_name, hook_body)
+        self.assertEqual(ret, True, "Could not import hook %s" % hook_name)
+
+        a = {'job_history_enable': 'True',
+            'job_requeue_timeout': 1}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        j = Job(TEST_USER, attrs={ATTR_N: 'job_requeue_timeout'})
+        j.set_sleep_time(4)
+        jid = self.server.submit(j)
+        self.server.rerunjob(jid, extend='force')
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid,
+                                max_attempts=10, interval=2)
+
+        self.server.expect(JOB, {'job_state': 'F'}, extend='x',
+                                offset=4, id=jid, max_attempts=10,
+                                interval=2)
+        ret = self.server.delete_hook(hook_name)
+        self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
+        self.server.log_match(hook_msg, starttime=start_time)
+        self.logger.info("**************** HOOK END ****************")
