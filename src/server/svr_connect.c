@@ -145,10 +145,11 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 				return (PBS_NET_RC_FATAL);
 			}
 		} else if (pmsvrinfo->msr_state & INUSE_DOWN) {
-			if ((pmsvrinfo->msr_state & INUSE_NEEDS_HELLOSVR) &&
-			    (open_conn_stream(pmom) < 0)) {
-				pbs_errno = PBSE_NORELYMOM;
-				return (PBS_NET_RC_FATAL);
+			if (pmsvrinfo->msr_state & INUSE_NEEDS_HELLOSVR) {
+				if (open_conn_stream(pmom) < 0) {
+					pbs_errno = PBSE_NORELYMOM;
+					return (PBS_NET_RC_FATAL);
+				}
 			} else {
 				pbs_errno = PBSE_NORELYMOM;
 				return (PBS_NET_RC_FATAL);
