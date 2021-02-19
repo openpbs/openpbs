@@ -728,12 +728,3 @@
    fun:dis_flush
    ...
 }
-{
-   From PBS - Suppress intentional unfreed memory of psi_str inside pbs_conf
-   Memcheck:Leak
-   fun:malloc
-   ...
-   fun:pbs_asprintf
-   fun:parse_psi
-   ...
-}
