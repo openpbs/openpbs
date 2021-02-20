@@ -222,6 +222,9 @@ char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 extern int pbs_asprintf(char **dest, const char *fmt, ...);
 extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
+int pbs_asprintcatf(char **dest, size_t *size, size_t *idx, const char *fmt, ...);
+
+
 /*
  * calculate the number of digits to the right of the decimal point in
  *        a floating point number.  This can be used in conjunction with
@@ -269,7 +272,7 @@ char **break_comma_list(char *list);
  *      break_delimited_str - break apart a delimited string into an array
  *                         of strings
  */
-char **break_delimited_str(char *list, char delim);
+char **break_delimited_str(const char *list, char delim);
 
 /*
  * find index of str in strarr

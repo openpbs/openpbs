@@ -60,6 +60,7 @@ pbs_server_bin_LDADD = \
 	$(top_builddir)/src/lib/Libsite/libsite.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
 	$(top_builddir)/src/lib/Libdb/libpbsdb.la \
+	$(top_builddir)/src/lib/Libapi/libapi.la \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Liblicensing/liblicensing.la \
 	@expat_lib@ \

@@ -343,7 +343,7 @@ attrlist_alloc(int szname, int szresc, int szval)
  */
 
 svrattrl *
-attrlist_create(char  *aname, char  *rname, int vsize)
+attrlist_create(const char  *aname, const char  *rname, int vsize)
 {
 	svrattrl *pal;
 	size_t	     asz;
@@ -1891,7 +1891,7 @@ free_attr(attribute_def *attr_def, attribute *pattr, int attr_idx)
 
 /**
  * @brief	Generic getter for attribute's list value
- * 
+ *
  *
  * @param[in]	pattr - pointer to the object
  *

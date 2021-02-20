@@ -324,7 +324,7 @@ query_server(status *pol, int pbs_sd)
 	for (const auto& rd : policy->resdef_to_check) {
 		if (!(rd == allres["host"] || rd == allres["vnode"]))
 			policy->resdef_to_check_no_hostvnode.insert(rd);
-		
+
 		if (rd->flags & ATR_DFLAG_RASSN)
 			policy->resdef_to_check_rassn.insert(rd);
 

@@ -98,7 +98,7 @@
 int
 decode_size(attribute *patr, char *name, char *rescn, char *val)
 {
-	int to_size(char *, struct size_value *);
+	int to_size(const char *, struct size_value *);
 
 	patr->at_val.at_size.atsv_num   = 0;
 	patr->at_val.at_size.atsv_shift = 0;
@@ -360,7 +360,7 @@ normalize_size(struct size_value *a, struct size_value *b, struct size_value *ta
  */
 
 int
-to_size(char *val, struct size_value *psize)
+to_size(const char *val, struct size_value *psize)
 {
 	int   havebw = 0;
 	char *pc;

@@ -344,7 +344,7 @@ req_quejob(struct batch_request *preq)
 
 #ifndef PBS_MOM		/* server server server server */
 
-	if (preq->prot != PROT_TPP) {
+	if (preq->prot != PROT_TPP && preq->rq_conn != PBS_LOCAL_CONNECTION) {
 		conn = get_conn(sock);
 
 		if (!conn) {
@@ -877,6 +877,9 @@ req_quejob(struct batch_request *preq)
 		if (conn) {
 			strcpy(buf, conn->cn_physhost);
 			set_jattr_str_slim(pj, JOB_ATR_submit_host, buf, NULL);
+		} else if (preq->rq_conn == PBS_LOCAL_CONNECTION) {
+			strcpy(buf, preq->rq_host);
+			set_jattr_str_slim(pj, JOB_ATR_submit_host, buf, NULL);
 		}
 
 		/* set create time */
@@ -889,11 +892,14 @@ req_quejob(struct batch_request *preq)
 		/* need to set certain environmental variables per POSIX */
 		strcpy(buf, pbs_o_que);
 		strcat(buf, pque->qu_qs.qu_name);
-		if (conn && get_variable(pj, pbs_o_host) == NULL) {
+		if (get_variable(pj, pbs_o_host) == NULL) {
 			strcat(buf, ",");
 			strcat(buf, pbs_o_host);
 			strcat(buf, "=");
-			strcat(buf, conn->cn_physhost);
+			if (conn)
+				strcat(buf, conn->cn_physhost);
+			else if (preq->rq_conn == PBS_LOCAL_CONNECTION)
+				strcat(buf, preq->rq_host);
 		}
 		set_jattr_generic(pj, JOB_ATR_variables, buf, NULL, INCR);
 

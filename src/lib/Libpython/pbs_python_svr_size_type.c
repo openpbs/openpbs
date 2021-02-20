@@ -81,7 +81,7 @@
 extern int  comp_size(attribute *, attribute *);
 extern void from_size(const struct size_value *, char *);
 extern int set_size(attribute *, attribute *, enum batch_op op);
-extern int to_size(char *, struct size_value *);
+extern int to_size(const char *, struct size_value *);
 extern int normalize_size(struct size_value *, struct size_value *,
 	struct size_value *, struct size_value *);
 

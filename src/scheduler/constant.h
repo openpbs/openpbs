@@ -37,8 +37,8 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#ifndef	_CONSTANT_H
-#define	_CONSTANT_H
+#ifndef	_PBS_CONSTANT_H
+#define	_PBS_CONSTANT_H
 
 #include <math.h>
 
@@ -637,4 +637,4 @@ enum nscr_vals {
 	NSCR_CYCLE_INELIGIBLE = 8
 };
 
-#endif	/* _CONSTANT_H */
+#endif	/* _PBS_CONSTANT_H */

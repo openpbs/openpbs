@@ -319,7 +319,7 @@ extern int  recov_attr_fs(int fd, void *parent, void *padef_idx, attribute_def *
 extern void free_null  (attribute *attr);
 extern void free_none  (attribute *attr);
 extern svrattrl *attrlist_alloc(int szname, int szresc, int szval);
-extern svrattrl *attrlist_create(char *aname, char *rname, int szval);
+extern svrattrl *attrlist_create(const char *aname, const char *rname, int szval);
 extern void free_svrattrl(svrattrl *pal);
 extern void free_attrlist(pbs_list_head *attrhead);
 extern void free_svrcache(attribute *attr);

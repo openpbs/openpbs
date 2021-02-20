@@ -577,22 +577,22 @@ wait_request(float waittime, void *priority_context)
 			em_event_t *pevents;
 			timeout = 0;
 #ifndef WIN32
-        		/* wait after unblocking signals in an atomic call */
-        		sigemptyset(&emptyset);
-        		pnfds = tpp_em_pwait(priority_context, &pevents, timeout, &emptyset);
-        		err = errno;
+			/* wait after unblocking signals in an atomic call */
+			sigemptyset(&emptyset);
+			pnfds = tpp_em_pwait(priority_context, &pevents, timeout, &emptyset);
+			err = errno;
 #else
-        		pnfds = tpp_em_wait(priority_context, &pevents, timeout);
-        		err = errno;
+			pnfds = tpp_em_wait(priority_context, &pevents, timeout);
+			err = errno;
 #endif /* WIN32 */
-                	for (i = 0; i < pnfds; i++) {
-                        	em_pfd = EM_GET_FD(pevents, i);
+			for (i = 0; i < pnfds; i++) {
+				em_pfd = EM_GET_FD(pevents, i);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-                                        LOG_DEBUG, __func__, "processing priority socket");
+					LOG_DEBUG, __func__, "processing priority socket");
 				if (process_socket(em_pfd) == -1) {
-                                	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-                                        	LOG_DEBUG, __func__, "process priority socket failed");
-                        	} else {
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+						LOG_DEBUG, __func__, "process priority socket failed");
+				} else {
 					prio_sock_processed = 1;
 				}
 			}

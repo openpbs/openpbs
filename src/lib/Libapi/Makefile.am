@@ -39,18 +39,11 @@
 
 #
 
-SUBDIRS = \
-	Libattr \
-	Libdb \
-	Liblog \
-	Libnet \
-	Libifl \
-	Libpbs \
-	Libpython \
-	Libsite \
-	Libsec \
-	Libtpp \
-	Libutil \
-	Libauth \
-	Liblicensing \
-	Libapi
+lib_LTLIBRARIES = libapi.la
+
+libapi_la_CPPFLAGS = \
+    -I$(top_srcdir)/src/include \
+    @KRB5_CFLAGS@
+
+libapi_la_SOURCES = \
+    pbs_api_wrapper.c

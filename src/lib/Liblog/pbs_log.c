@@ -38,7 +38,7 @@
  */
 
 /**
- * 
+ *
  * @brief
  *  contains functions to log error and event messages to
  *	the log file.
@@ -94,6 +94,7 @@ typedef struct {
 	struct tm ptm;
 	char microsec_buf[8];
 } ms_time; /* microsecond time stamp */
+
 
 char *msg_daemonname;
 
@@ -379,20 +380,20 @@ log_init(void)
 		return;
 	}
 
-	/* 
+	/*
 	 * atfork handlers are required for the logging layer
-	 * since child processes might still want to log in the 
+	 * since child processes might still want to log in the
 	 * child after fork, from the APP thread, then the APP thread
-	 * needs access to the log mutex - else if the fork happened 
+	 * needs access to the log mutex - else if the fork happened
 	 * when the TPP thread acquired the lock, then the APP thread
 	 * after fork can never acquire it (since the TPP thread would
 	 * be dead after fork - only the thread calling fork is duplicated
 	 * in the child process).
-	 * 
+	 *
 	 * Hence in the prefork handler, we acquire the lock - thus ensuring
-	 * that the TPP thread does not own it, and then post fork we unlock 
+	 * that the TPP thread does not own it, and then post fork we unlock
 	 * it both for the parent and child.
-	 *  
+	 *
 	 */
 #ifndef WIN32
 	/* for unix, set a pthread_atfork handler */
@@ -776,7 +777,7 @@ log_err(int errnum, const char *routine, const char *text)
  * @param[in] errnum - error number
  * @param[in] routine - error in which routine
  * @param[in] fmt - format string
- * @param[in] ... - arguments to format string * 
+ * @param[in] ... - arguments to format string *
  *
  */
 
@@ -956,9 +957,9 @@ get_timestamp(ms_time *mst)
  * 	log_record - log a critical error to the console
  *
  * @param[in] msg - log msg to be logged
- * 
+ *
  */
-void 
+void
 log_console_error(char *msg)
 {
 	FILE *errf;
@@ -988,7 +989,7 @@ log_console_error(char *msg)
  * See syslog(3) for details.
  *
  * Note: Do NOT call this function from log_open() or log_close() since log_record
- * acquires a mutex and calls log_open(), log_close(), making it a recursive call, 
+ * acquires a mutex and calls log_open(), log_close(), making it a recursive call,
  * and confusing the mutex. Rather call, log_record_inner() from log_open, log_close
  * etc
  */
@@ -1022,7 +1023,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	/* lock the file mutex */
 	if (log_mutex_lock() == 0) {
 		get_timestamp(&mst);
-		
+
 		/* Do we need to switch the log? */
 		if (log_auto_switch && (mst.ptm.tm_yday != log_open_day)) {
 			log_close(1);

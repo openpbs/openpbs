@@ -137,6 +137,7 @@ buildutils/py-compile
 buildutils/exclude_script
 buildutils/makedepend-sh
 buildutils/ylwrap
+*.dirstamp
 
 # Generated binaries
 

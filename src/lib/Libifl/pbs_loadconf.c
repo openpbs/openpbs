@@ -70,6 +70,7 @@ char *pbs_conf_env = "PBS_CONF_FILE";
 static char *pbs_loadconf_buf = NULL;
 static int   pbs_loadconf_len = 0;
 
+
 /*
  * Initialize the pbs_conf structure.
  *
@@ -259,10 +260,10 @@ parse_config_line(FILE *fp, char **key, char **val)
 
 /**
  * @brief frame the psi_t struct from svr instance id passed
- * 
+ *
  * @param[in,out] psi - server instance id
  * @param[in] svr_id - server instance id
- * @return int 
+ * @return int
  * @retval 0 - success
  * @retval !0 - failure
  */
@@ -294,9 +295,9 @@ frame_psi(psi_t *psi, char *svr_id)
 /**
  * @brief
  * parse_psi - parses the PBS_SERVER_INSTANCES
- *    
+ *
  * @param[in] conf_value  configuration value set in pbs.conf
- * 
+ *
  * @return int
  * @retval -1, For error
  * @retval 0, For success
@@ -1210,7 +1211,7 @@ err:
 		free_string_array(pbs_conf.supported_auth_methods);
 		pbs_conf.supported_auth_methods = NULL;
 	}
-	
+
 	if (psi_value != NULL)
 		free(psi_value);
 
@@ -1292,7 +1293,7 @@ pbs_get_conf_var(char *conf_var_name)
 		fclose(fp);
 	}
 	free(conf_file);
-	
+
 	if (conf_val_out)
 		return conf_val_out;
 

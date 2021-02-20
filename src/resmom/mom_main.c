@@ -614,7 +614,7 @@ extern	void	catch_child(int);
 extern	void	init_abort_jobs(int, pbs_list_head *);
 extern	void	scan_for_exiting(void);
 #ifdef NAS /* localmod 015 */
-extern	int	to_size(char *, struct size_value *);
+extern	int	to_size(const char *, struct size_value *);
 #endif /* localmod 015 */
 
 extern	void	cleanup_hooks_workdir(struct work_task *);

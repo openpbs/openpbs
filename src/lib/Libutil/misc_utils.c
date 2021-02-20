@@ -606,6 +606,69 @@ pbs_asprintf_exit:
 }
 
 /**
+ * @brief
+ *	concatenates formatted string to (dest) of size (size) at index (idx),
+ *	reallocating dest if needed.
+ *
+ * @param[in, out] dest - character pointer that will point to allocated
+ *			  space ** must be freed by caller **
+ * @param[in, out] size - size of dest. Will be modified if reallocated
+ * @param[in, out] idx - index at the end of the string.
+ * @param[in] fmt - format for printed string
+ * @param[in] ... - arguments to format string
+ *
+ * @return int
+ * @retval -1 - Error
+ * @retval >=0 - Length of new string, not including terminator
+ */
+int
+pbs_asprintcatf(char **dest, size_t *size, size_t *idx, const char *fmt, ...)
+{
+	va_list args;
+	int len;
+	size_t new_size = *size;
+	char * newbuf = NULL;
+
+	if (!dest)
+		return -1;
+	if (!fmt)
+		return -1;
+	va_start(args, fmt);
+
+	if (*dest == NULL)
+		*dest = malloc(new_size);
+	if (*dest == NULL) {
+		len = -1;
+		goto pbs_asprintcatf_exit;
+	}
+
+	len = pbs_asprintf_len(fmt, args);
+	if (len < 0)
+		goto pbs_asprintcatf_exit;
+
+	while (*idx + len > new_size) {
+		new_size *= 2;
+	}
+	if (new_size != *size) {
+		newbuf = realloc(*dest, new_size);
+		if (newbuf == NULL) {
+			len = -1;
+			goto pbs_asprintcatf_exit;
+		}
+		*size = new_size;
+		*dest = newbuf;
+	}
+
+	vsnprintf(*dest + *idx, len + 1, fmt, args);
+	*idx += len;
+
+pbs_asprintcatf_exit:
+	va_end(args);
+	return len;
+}
+
+
+/**
 
  * @brief
  *	Copies 'src' file  to 'dst' file.
@@ -1167,7 +1230,7 @@ in_string_list(char *str, char sep, char *string_list)
  *		The returned array of strings has to be freed by the caller.
  */
 char **
-break_delimited_str(char *strlist, char delim)
+break_delimited_str(const char *strlist, char delim)
 {
 	char sep[2] = {0};
 	int num_words = 1; /* number of words delimited by commas*/

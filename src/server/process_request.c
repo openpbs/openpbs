@@ -308,7 +308,7 @@ req_register_sched(conn_t *conn, struct batch_request *preq)
 			goto rerr;
 		}
 	}
-	
+
 	if (sched->sc_primary_conn != -1 && sched->sc_secondary_conn != -1) {
 		rc = PBSE_SCHEDCONNECTED;
 		goto rerr;
@@ -723,7 +723,8 @@ process_request(int sfds)
 static int
 set_to_non_blocking(conn_t *conn)
 {
-
+	if (!conn)
+		return 0;
 	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
 		int flg;
 		flg = fcntl(conn->cn_sock, F_GETFL);
@@ -994,13 +995,14 @@ dispatch_request(int sfds, struct batch_request *request)
 #ifndef PBS_MOM		/* Server Only Functions */
 
 		case PBS_BATCH_StatusJob:
-			if (set_to_non_blocking(conn) == -1) {
+			if (sfds != PBS_LOCAL_CONNECTION && set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
 			}
 			req_stat_job(request);
-			clear_non_blocking(get_conn(sfds));
+			if (sfds != PBS_LOCAL_CONNECTION)
+				clear_non_blocking(get_conn(sfds));
 			break;
 
 		case PBS_BATCH_StatusQue:
@@ -1572,7 +1574,7 @@ free_br(struct batch_request *preq)
 					preply->brp_un.brp_deletejoblist.tot_rpys += preply->brp_un.brp_deletejoblist.tot_arr_jobs ;
 					if (preply->brp_un.brp_deletejoblist.tot_rpys == preply->brp_un.brp_deletejoblist.tot_jobs)
 						reply_send(preq->rq_parentbr);
-				} else 
+				} else
 					reply_send(preq->rq_parentbr);
 			}
 		}

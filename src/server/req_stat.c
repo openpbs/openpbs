@@ -397,7 +397,7 @@ req_stat_job(struct batch_request *preq)
 				return;
 			}
 			pjob = (job *) GET_NEXT(type == 2 ? pjob->ji_jobque : pjob->ji_alljobs);
-			if (preply->brp_count >= MAX_JOBS_PER_REPLY && pjob) {
+			if (preply->brp_count >= MAX_JOBS_PER_REPLY && pjob && preq->rq_conn != PBS_LOCAL_CONNECTION) {
 				rc = reply_send_status_part(preq);
 				if (rc != PBSE_NONE)
 					return;
@@ -599,7 +599,7 @@ req_stat_node(struct batch_request *preq)
 		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 
 	} else {			/* get status of all nodes */
-	
+
 		for (i = 0; i < svr_totnodes; i++) {
 			pnode = pbsndlist[i];
 
@@ -800,12 +800,12 @@ req_stat_svr(struct batch_request *preq)
  * Replies back only if the server is in a consistent state.
  * Otherwise, it will leave a work task with the request in it
  * which will be converted to immediate when all acks are received.
- * 
+ *
  * Scheduler can proceed only when all the servers answers to this which
  * means the multi-svr cluster is in a consistent state.
  *
  * @param[in]	ptask	-	work task which contains the request
- * 
+ *
  * @return void
  */
 void

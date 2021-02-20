@@ -106,6 +106,7 @@
 #include <pbs_python.h>  /* for python interpreter */
 #include "pbs_undolr.h"
 #include "auth.h"
+#include "pbs_api_wrapper.h"
 
 #include "pbs_v1_module_common.i"
 
@@ -1318,6 +1319,8 @@ main(int argc, char **argv)
 	}
 	process_hooks(periodic_req, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
+	apiStart();
+
 	/*
 	 * main loop of server
 	 * stays in this loop until server's state is either
@@ -1450,6 +1453,8 @@ main(int argc, char **argv)
 		}
 	}
 	DBPRT(("Server out of main loop, state is %ld\n", state))
+
+	apiStop();
 
 	/* set the current seq id to the last id before final save */
 	server.sv_qs.sv_lastid = server.sv_qs.sv_jobidnumber;
