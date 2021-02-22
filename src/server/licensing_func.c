@@ -506,7 +506,7 @@ license_one_node(pbsnode *pnode)
 	set_node_lic_info_attr(pnode);
 
 	if (license_counts.licenses_global > 0 || license_counts.licenses_used > 0) {
-		if (get_nattr_c(pnode, ND_ATR_License) != ND_LIC_TYPE_locked) {
+		if ((get_nattr_c(pnode, ND_ATR_License) != ND_LIC_TYPE_locked) && (get_nattr_c(pnode, ND_ATR_License) != ND_LIC_TYPE_cloud)) {
 			if (consume_licenses(get_nattr_long(pnode, ND_ATR_LicenseInfo)) == 0) {
 				set_nattr_c_slim(pnode, ND_ATR_License, ND_LIC_TYPE_locked, SET);
 				update_license_highuse();
@@ -650,16 +650,18 @@ init_licensing(struct work_task *ptask)
 		return;
 	}
 	for (i = 0; i < svr_totnodes; i++) {
-	 	clear_node_lic_attrs(pbsndlist[i], 0);
-		if (is_nattr_set(pbsndlist[i], ND_ATR_LicenseInfo)) {
-			licensing_control.licenses_total_needed += get_nattr_long(pbsndlist[i], ND_ATR_LicenseInfo);
-		} else {
-			if (pbsndlist[i]->nd_lic_info != NULL) {
-				set_node_lic_info_attr(pbsndlist[i]);
+		if (get_nattr_c(pbsndlist[i], ND_ATR_License) != ND_LIC_TYPE_cloud) {
+			clear_node_lic_attrs(pbsndlist[i], 0);
+			if (is_nattr_set(pbsndlist[i], ND_ATR_LicenseInfo)) {
 				licensing_control.licenses_total_needed += get_nattr_long(pbsndlist[i], ND_ATR_LicenseInfo);
+			} else {
+				if (pbsndlist[i]->nd_lic_info != NULL) {
+					set_node_lic_info_attr(pbsndlist[i]);
+					licensing_control.licenses_total_needed += get_nattr_long(pbsndlist[i], ND_ATR_LicenseInfo);
+				}
 			}
+			add_to_unlicensed_node_list(pbsndlist[i]);
 		}
-		add_to_unlicensed_node_list(pbsndlist[i]);
 	}
 
 	/* Determine how many licenses we can check out */
@@ -793,7 +795,8 @@ release_node_lic(void *pobj)
 {
 	if (pobj) {
 		struct pbsnode *pnode = pobj;
-
+		if (get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_cloud)
+			return 0;
 		licensing_control.licenses_total_needed -= get_nattr_long(pnode, ND_ATR_LicenseInfo);
 
 		/* release license if node is locked */
@@ -823,8 +826,12 @@ void unset_signature(void *pobj, char *rs_name)
 		return;
 
 	if (!strcmp(rs_name, ND_RESC_LicSignature)) {
-		if (is_nattr_set(pnode, ND_ATR_License) && get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_cloud)
+		if (is_nattr_set(pnode, ND_ATR_License) && get_nattr_c(pnode, ND_ATR_License) == ND_LIC_TYPE_cloud) {
 			clear_nattr(pnode, ND_ATR_License);
+			if (is_nattr_set(pnode, ND_ATR_LicenseInfo))
+				licensing_control.licenses_total_needed += get_nattr_long(pnode, ND_ATR_LicenseInfo);
+			add_to_unlicensed_node_list(pnode);
+		}
 	}
 }
 
