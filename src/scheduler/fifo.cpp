@@ -1125,45 +1125,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 }
 
 /**
- * @brief	cleanup routine for scheduler exit
- *
- * @param	void
- *
- * @return void
- */
-void
-schedexit(void)
-{
-	int i;
-
-	/* close any open connections to peers */
-	for (i = 0; (i < NUM_PEERS) &&
-		(conf.peer_queues[i].local_queue != NULL); i++) {
-		if (conf.peer_queues[i].peer_sd >= 0) {
-			/* When peering "local", do not disconnect server */
-			if (conf.peer_queues[i].remote_server != NULL)
-				pbs_disconnect(conf.peer_queues[i].peer_sd);
-			conf.peer_queues[i].peer_sd = -1;
-		}
-	}
-
-	/* Kill all worker threads */
-	if (num_threads > 1) {
-		int *thid;
-
-		thid = (int *) pthread_getspecific(th_id_key);
-
-		if (*thid == 0) {
-			kill_threads();
-			close_servers();
-			return;
-		}
-	}
-
-	close_servers();
-}
-
-/**
  * @brief
  *		end_cycle_tasks - stuff which needs to happen at the end of a cycle
  *

@@ -126,6 +126,7 @@ static void reconnect_servers();
 static void sched_svr_init(void);
 static void connect_svrpool();
 static int schedule_wrapper(sched_cmd *cmd, int opt_no_restart);
+static void close_servers(void);
 
 typedef int (*schedule_func)(int, const sched_cmd *);
 
@@ -183,6 +184,45 @@ sigfunc_pipe(int sig)
 {
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "sigfunc_pipe", "We've received a sigpipe: The server probably died.");
 	got_sigpipe = 1;
+}
+
+/**
+ * @brief	cleanup routine for scheduler exit
+ *
+ * @param	void
+ *
+ * @return void
+ */
+static void
+schedexit(void)
+{
+	int i;
+
+	/* close any open connections to peers */
+	for (i = 0; (i < NUM_PEERS) &&
+		(conf.peer_queues[i].local_queue != NULL); i++) {
+		if (conf.peer_queues[i].peer_sd >= 0) {
+			/* When peering "local", do not disconnect server */
+			if (conf.peer_queues[i].remote_server != NULL)
+				pbs_disconnect(conf.peer_queues[i].peer_sd);
+			conf.peer_queues[i].peer_sd = -1;
+		}
+	}
+
+	/* Kill all worker threads */
+	if (num_threads > 1) {
+		int *thid;
+
+		thid = (int *) pthread_getspecific(th_id_key);
+
+		if (*thid == 0) {
+			kill_threads();
+			close_servers();
+			return;
+		}
+	}
+
+	close_servers();
 }
 
 /**
@@ -500,7 +540,7 @@ are_we_primary()
  *
  * @return void
  */
-void
+static void
 close_servers(void)
 {
 	int i;

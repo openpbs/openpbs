@@ -61,7 +61,8 @@ common_libs = \
 	@PYTHON_LIBS@ \
 	@libz_lib@ \
 	@libical_lib@ \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@libundolr_lib@
 
 libpbs_sched_a_CPPFLAGS = ${common_cflags}
 
@@ -133,11 +134,11 @@ sbin_PROGRAMS = pbs_sched pbsfs
 noinst_PROGRAMS = pbs_sched_bare
 
 pbs_sched_CPPFLAGS = ${common_cflags}
-pbs_sched_LDADD = ${common_libs} @libundolr_lib@
+pbs_sched_LDADD = ${common_libs}
 pbs_sched_SOURCES = pbs_sched.cpp
 
 pbs_sched_bare_CPPFLAGS = ${common_cflags}
-pbs_sched_bare_LDADD = ${common_libs} @libundolr_lib@
+pbs_sched_bare_LDADD = ${common_libs}
 pbs_sched_bare_SOURCES = pbs_sched_bare.cpp
 
 pbsfs_CPPFLAGS = ${common_cflags}

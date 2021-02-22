@@ -181,6 +181,19 @@ extern void			unlicense_nodes(void);
 extern void			set_sched_default(pbs_sched *, int from_scheduler);
 extern void			memory_debug_log(struct work_task *ptask);
 
+
+/* Multi-server specific structures */
+
+/* Resource update from peer server */
+struct resc_update {
+	char *jobid;
+	int op;
+	char *execvnode;
+	int share_job;
+	pbs_list_link ru_link;
+};
+typedef struct resc_update psvr_ru_t;
+
 /* multi-server gloabls and functions */
 
 extern pbs_list_head peersvrl;

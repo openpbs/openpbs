@@ -227,16 +227,6 @@ struct rq_defschrpy {
 	char *rq_txt;
 };
 
-/* Resource update from peer server */
-struct rq_rescupdate {
-	char *jobid;
-	int op;
-	char *execvnode;
-	int share_job;
-	pbs_list_link ru_link;
-};
-typedef struct rq_rescupdate psvr_ru_t;
-
 /* Copy/Delete Files (Server -> MOM Only) */
 
 #define STDJOBFILE 1

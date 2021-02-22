@@ -177,11 +177,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo, queue_info *q
 int update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err);
 
 /*
- * schedexit - cleanup routine for scheduler exit
- */
-void schedexit(void);
-
-/*
  *	end_cycle_tasks - stuff which needs to happen at the end of a cycle
  */
 void end_cycle_tasks(server_info *sinfo);
@@ -250,8 +245,6 @@ int scheduler_simulation_task(int pbs_sd, int debug);
 int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
-
-void close_servers(void);
 
 int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode,
 		 char *svr_id_node, char *svr_id_job);
