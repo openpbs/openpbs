@@ -364,7 +364,7 @@ found:
 			break;
 
 		case PS_RSC_UPDATE_FULL:
-			clean_saved_rsc(psvr->rsc_idx);
+			clean_saved_rsc(psvr->mi_rsc_idx);
 			rc = read_resc_update(stream, &ru_head);
 			if (rc != 0)
 				goto err;

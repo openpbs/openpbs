@@ -130,8 +130,8 @@ create_svr_entry(char *hostname, unsigned int port)
 	psvr->mi_rmport = port;
 	CLEAR_LINK(psvr->mi_link);
 	append_link(&peersvrl, &psvr->mi_link, psvr);
-	psvr->rsc_idx = NULL;
-	CLEAR_HEAD(psvr->node_list);
+	psvr->mi_rsc_idx = NULL;
+	CLEAR_HEAD(psvr->mi_node_list);
 
 	return psvr;
 
@@ -581,15 +581,15 @@ save_resc_update(void *pobj, psvr_ru_t *ru_new)
 	if (!ru_new || !ru_new->jobid)
 		return -1;
 
-	pbs_idx_find(psvr->rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
+	pbs_idx_find(psvr->mi_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
 	if (!ru_old && ru_new->op == INCR) {
 		delete_clear_link(&ru_new->ru_link);
-		if (!psvr->rsc_idx)
-			psvr->rsc_idx = pbs_idx_create(0, 0);
-		rc = pbs_idx_insert(psvr->rsc_idx, ru_new->jobid, ru_new);
-		pbs_idx_find(psvr->rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
+		if (!psvr->mi_rsc_idx)
+			psvr->mi_rsc_idx = pbs_idx_create(0, 0);
+		rc = pbs_idx_insert(psvr->mi_rsc_idx, ru_new->jobid, ru_new);
+		pbs_idx_find(psvr->mi_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
 	} else if (ru_old && ru_new->op == DECR) {
-		pbs_idx_delete(psvr->rsc_idx, ru_old->jobid);
+		pbs_idx_delete(psvr->mi_rsc_idx, ru_old->jobid);
 		delete_clear_link(&ru_old->ru_link);
 		free_ru(ru_old);
 	} else {
@@ -720,7 +720,7 @@ add_node_to_cache(server_t *psvr, pbs_node *pnode)
 		return;
 
 	CLEAR_LINK(pnode->nd_link);
-	append_link(&psvr->node_list, &pnode->nd_link, pnode);
+	append_link(&psvr->mi_node_list, &pnode->nd_link, pnode);
 	pbs_idx_insert(alien_node_idx, pnode->nd_name, pnode);
 }
 
@@ -772,7 +772,7 @@ clear_node_cache(server_t *psvr)
 	pbs_node *pnode;
 	pbs_node *nd_next;
 
-	for (pnode = GET_NEXT(psvr->node_list);
+	for (pnode = GET_NEXT(psvr->mi_node_list);
 	     pnode; pnode = nd_next) {
 		nd_next = GET_NEXT(pnode->nd_link);
 		CLEAR_LINK(pnode->nd_link);

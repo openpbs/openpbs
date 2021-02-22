@@ -184,8 +184,8 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_action = NULL;
 		pmom->mi_num_action = 0;
 		CLEAR_LINK(pmom->mi_link);
-		pmom->rsc_idx = pbs_idx_create(0, 0);
-		CLEAR_HEAD(pmom->node_list);
+		pmom->mi_rsc_idx = pbs_idx_create(0, 0);
+		CLEAR_HEAD(pmom->mi_node_list);
 #ifndef PBS_MOM
 		if (mom_hooks_seen_count() > 0) {
 			struct stat sbuf;
@@ -267,7 +267,7 @@ delete_mom_entry(mominfo_t *pmom)
 	if (pmom->mi_data)
 		free(pmom->mi_data);
 
-	pbs_idx_destroy(pmom->rsc_idx);
+	pbs_idx_destroy(pmom->mi_rsc_idx);
 	delete_link(&pmom->mi_link);
 	memset(pmom, 0, sizeof(mominfo_t));
 	free(pmom);

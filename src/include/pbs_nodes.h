@@ -89,8 +89,8 @@ struct mominfo {
 	mom_hook_action_t **mi_action;	/* pending hook copy/delete on mom */
 	int		mi_num_action; /* # of hook actions in mi_action */
 	pbs_list_link	mi_link; /* forward/backward links */
-	void		*rsc_idx; /* avl of resc updates based on job_id as the key */
-	pbs_list_head	node_list; /* list of nodes corresponding to this server */	
+	void		*mi_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
+	pbs_list_head	mi_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */	
 };
 typedef struct mominfo mominfo_t;
 typedef struct mominfo server_t;
@@ -120,7 +120,7 @@ struct mom_svrinfo {
 	struct job	**msr_jobindx;  /* index array of jobs on this Mom */
 	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
 	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
-	int		num_pending_rply; /* number of unacknowledged replied from this server */
+	int		num_pending_rply; /* number of unacknowledged replies from this server */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 typedef struct mom_svrinfo svrinfo_t;
