@@ -1114,7 +1114,7 @@ __pbs_loadconf(int reload)
 
 	if (!reload) {
 		if (parse_psi(psi_value) == -1) {
-			fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
+			fprintf(stderr, "Couldn't parse PBS_SERVER_INSTANCES\n");
 			free(psi_value);
 			goto err;
 		}
