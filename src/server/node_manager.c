@@ -669,9 +669,9 @@ node_down_requeue(struct work_task *pwt)
 
 			for (psn = np->nd_psn; psn; psn = psn->next) {
 				for (pjinfo = psn->jobs; pjinfo; pjinfo = pjinfo_nxt) {
-					pj = find_job(pjinfo->job);
+					pj = find_job(pjinfo->jobid);
 					pjinfo_nxt = pjinfo->next;
-					while (pjinfo_nxt && !strcmp(pjinfo_nxt->job, pj->ji_qs.ji_jobid)) {
+					while (pjinfo_nxt && !strcmp(pjinfo_nxt->jobid, pj->ji_qs.ji_jobid)) {
 						/* skip over next occurrence of same job in list*/
 						/* if it is deleted in discard_job(), we would	*/
 						/* have a pointer to nothingness		*/
@@ -996,7 +996,7 @@ momptr_down(mominfo_t *pmom, char *why)
 				/* find list of jobs on this sub-node */
 				/* first, how many are they */
 				for (pji = psn->jobs; pji; pji = pji->next) {
-					pj = find_job(pji->job);
+					pj = find_job(pji->jobid);
 					if (pj && pj->ji_discard)
 						++nj;
 				}
@@ -1007,7 +1007,7 @@ momptr_down(mominfo_t *pmom, char *why)
 					if (parray) {
 						i = 0;
 						for (pji = psn->jobs; pji; pji = pji->next) {
-							pj = find_job(pji->job);
+							pj = find_job(pji->jobid);
 							if (pj && pj->ji_discard) {
 								/* we only want one entry per job */
 								for (j=0; j<i; ++j) {
@@ -2574,7 +2574,7 @@ deallocate_job_from_node(char *jobid, struct pbsnode *pnode)
 
 		for (prev = NULL, jp = np->jobs; jp; jp = next) {
 			next = jp->next;
-			if (strcmp(jp->job, jobid)) {
+			if (strcmp(jp->jobid, jobid)) {
 				prev = jp;
 				still_has_jobs = 1; /* another job still here */
 				continue;
@@ -2594,6 +2594,7 @@ deallocate_job_from_node(char *jobid, struct pbsnode *pnode)
 						"CPU count incremented free more than total");
 				}
 			}
+			free(jp->jobid);
 			free(jp);
 			jp = NULL;
 		}
@@ -6186,7 +6187,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 		/* allocate node only if it is not occupied by other jobs */
 		for (snp = pnode->nd_psn; snp; snp = snp->next) {
 			for (jp = snp->jobs; jp; jp = jp->next) {
-				if (strcmp(jp->job, jobid))
+				if (strcmp(jp->jobid, jobid))
 					return PBSE_RESCUNAV;
 			}
 		}
@@ -6200,7 +6201,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 			jp->next = snp->jobs;
 			jp->has_cpu = 0; /* has no cpus allocatted */
 			snp->jobs = jp;
-			jp->job = strdup(jobid);
+			jp->jobid = strdup(jobid);
 		}
 	} else {
 		struct pbssubn *lst_sn;
@@ -6252,7 +6253,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 				jp->next = snp->jobs;
 				jp->has_cpu = 1; /* has a cpu allocatted */
 				snp->jobs = jp;
-				jp->job = strdup(jobid);
+				jp->jobid = strdup(jobid);
 			}
 			DBPRT(("set_node: node: %s/%ld to job %s, still free: %ld\n",
 			       pnode->nd_name, snp->index, jobid,

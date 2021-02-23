@@ -413,7 +413,7 @@ subnode_delete(struct pbssubn *psubn)
 
 	for (jip = psubn->jobs; jip; jip = jipt) {
 		jipt = jip->next;
-		free(jip->job);
+		free(jip->jobid);
 		free(jip);
 	}
 	psubn->jobs  = NULL;
