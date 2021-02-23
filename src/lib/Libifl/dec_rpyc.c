@@ -300,18 +300,16 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply, int prot)
 
 	/* first decode "header" consisting of protocol type and version */
 again:
-	if (prot == PROT_TCP) {
-		i = disrui(sock, &rc);
-		if (rc != 0)
-			return rc;
-		if (i != PBS_BATCH_PROT_TYPE)
-			return DIS_PROTO;
-		i = disrui(sock, &rc);
-		if (rc != 0)
-			return rc;
-		if (i != PBS_BATCH_PROT_VER)
-			return DIS_PROTO;
-	}
+	i = disrui(sock, &rc);
+	if (rc != 0)
+		return rc;
+	if (i != PBS_BATCH_PROT_TYPE)
+		return DIS_PROTO;
+	i = disrui(sock, &rc);
+	if (rc != 0)
+		return rc;
+	if (i != PBS_BATCH_PROT_VER)
+		return DIS_PROTO;
 
 	/* next decode code, auxcode and choice (union type identifier) */
 

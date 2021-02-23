@@ -256,6 +256,7 @@ encode_DIS_replyTPP(int sock, char *tppcmd_msgid, struct batch_reply *reply)
 	if (reply->brp_choice == BATCH_REPLY_CHOICE_Status) {
 		if ((rc = ps_compose(sock, PS_STAT_RPLY)) != DIS_SUCCESS)
 			return rc;
+		return encode_DIS_reply(sock, reply);
 	} else {
 		if ((rc = is_compose(sock, IS_CMD_REPLY)) != DIS_SUCCESS)
 		return rc;

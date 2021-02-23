@@ -136,9 +136,9 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	if ((hostaddr == pbs_server_addr) && (port == pbs_server_port_dis))
 		return (PBS_LOCAL_CONNECTION);	/* special value for local */
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
-	pmsvrinfo = pmom->mi_data;
 
 	if (pmom && (port == pmom->mi_port)) {
+		pmsvrinfo = pmom->mi_data;
 		if (is_peersvr(pmom)) {
 			if (connect_to_peersvr(pmom) < 0) {
 				pbs_errno = PBSE_NORELYMOM;

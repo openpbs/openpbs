@@ -57,6 +57,7 @@
 #include <time.h>
 #include "libpbs.h"
 #include "dis.h"
+#include "tpp.h"
 
 
 /**
@@ -89,17 +90,18 @@ PBSD_rdrpy_sock(int sock, int *rc, int prot)
 		old_timeout = pbs_tcp_timeout;
 		if (pbs_tcp_timeout < PBS_DIS_TCP_TIMEOUT_LONG)
 			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_LONG;
-	}
+	} else
+		DIS_tpp_funcs();
 
 	if ((*rc = decode_DIS_replyCmd(sock, reply, prot)) != 0) {
 		(void)free(reply);
 		pbs_errno = PBSE_PROTOCOL;
 		return NULL;
 	}
-	if (prot == PROT_TCP) {
-		dis_reset_buf(sock, DIS_READ_BUF);
+
+	dis_reset_buf(sock, DIS_READ_BUF);
+	if (prot == PROT_TCP)
 		pbs_tcp_timeout = old_timeout;
-	}
 
 	pbs_errno = reply->brp_code;
 	return reply;

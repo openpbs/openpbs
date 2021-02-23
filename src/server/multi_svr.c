@@ -583,11 +583,9 @@ save_resc_update(void *pobj, psvr_ru_t *ru_new)
 
 	pbs_idx_find(psvr->mi_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
 	if (!ru_old && ru_new->op == INCR) {
-		delete_clear_link(&ru_new->ru_link);
 		if (!psvr->mi_rsc_idx)
 			psvr->mi_rsc_idx = pbs_idx_create(0, 0);
 		rc = pbs_idx_insert(psvr->mi_rsc_idx, ru_new->jobid, ru_new);
-		pbs_idx_find(psvr->mi_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
 	} else if (ru_old && ru_new->op == DECR) {
 		pbs_idx_delete(psvr->mi_rsc_idx, ru_old->jobid);
 		delete_clear_link(&ru_old->ru_link);
