@@ -390,7 +390,6 @@ job_alloc(void)
 		free(pj);
 		return NULL;
 	}
-
 	set_jattr_str_slim(pj, JOB_ATR_server_inst_id, svr_inst_id, NULL);
 
 	/* if eligible_time_enable is not true, then job does not accrue eligible time */
@@ -1708,7 +1707,6 @@ resv_alloc(char *resvid)
 	}
 	set_attr_generic(&resvp->ri_wattr[RESV_ATR_server_inst_id],
 			 &resv_attr_def[RESV_ATR_server_inst_id], svr_inst_id, NULL, INTERNAL);
-	free(svr_inst_id);
 
 	/*
 	 * ignore first char in given id as it can change, see req_resvSub()
