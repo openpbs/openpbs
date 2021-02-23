@@ -78,6 +78,7 @@ typedef unsigned int	tm_task_id;
 #define	TM_ACK		111	/* tm_register event acknowledge */
 #define TM_FINALIZE	112	/* tm_finalize request, there is no reply */
 #define TM_ATTACH	113	/* tm_attach request */
+#define TM_SPAWN_MULTI	114	/* tm_spawn_multi request */
 #define TM_OKAY		  0
 
 

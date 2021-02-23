@@ -38,7 +38,7 @@
 .\"
 .TH TM 3 "24 February 2015" Local "PBS Professional"
 .SH NAME
-tm_init, tm_nodeinfo, tm_poll, tm_notify, tm_spawn, tm_kill, tm_obit, tm_taskinfo, tm_atnode, tm_rescinfo, tm_publish, tm_subscribe, tm_finalize, tm_attach \- task management API
+tm_init, tm_nodeinfo, tm_poll, tm_notify, tm_spawn, tm_spawn_multi, tm_kill, tm_obit, tm_taskinfo, tm_atnode, tm_rescinfo, tm_publish, tm_subscribe, tm_finalize, tm_attach \- task management API
 .SH SYNOPSIS
 .B
 #include <tm.h>
@@ -89,6 +89,24 @@ char \(**\(**envp;
 tm_node_id where;
 .br
 tm_task_id \(**tid;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_spawn_multi(argc, argv, envp, list_size, where, tids, event)
+.RS 6
+int argc;
+.br
+char \(**\(**argv;
+.br
+char \(**\(**envp;
+.br
+int list_size;
+.br
+tm_node_id where[];
+.br
+tm_task_id \(**tids;
 .br
 tm_event_t \(**event;
 .RE
@@ -355,10 +373,39 @@ is NULL terminated.  The argument
 .IR event
 points to a tm_event_t variable which is filled in with an event
 number.  When this event is returned by
-.B tm_poll ,
+.B tm_poll,
 the tm_task_id pointed to by
 .IR tid
 will contain the task id of the newly created task.
+.LP
+.B tm_spawn_multi(\|)
+sends a message to the MOMs to start a new task.  The array of node ids
+of the hosts to run the task is given by
+.IR where .
+The size of the array is specified in
+.IR list_size .
+The parameters
+.IR argc ,
+.IR argv
+and
+.IR envp
+specify the program to run and its arguments and environment very
+much like
+.B exec(\|).
+The full path of the program executable must be given by
+.IR argv[0]
+and the number of elements in the argv array is given by
+.IR argc .
+The array
+.IR envp
+is NULL terminated.  The argument
+.IR event
+points to a tm_event_t variable which is filled in with an event
+number.  When this event is returned by
+.B tm_poll,
+the tm_task_id pointed to by
+.IR tids
+will contain the task ids of the newly created tasks.
 .LP
 .B tm_kill(\|)
 sends a signal specified by

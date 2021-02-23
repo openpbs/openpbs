@@ -51,11 +51,14 @@
 #include "tm.h"
 #include <signal.h>
 
-int	   *ev;
-tm_event_t *events_spawn;
-tm_event_t *events_obit;
-int	    numnodes;
-tm_task_id *tid;
+int	   	*ev;
+int	    	numnodes;
+int		spawncount;
+tm_task_id 	*tid;
+tm_event_t 	*events_obit;
+tm_event_t 	*events_spawn;
+tm_node_id	*node_select = NULL;
+
 int	    verbose = 0;
 
 #ifndef WIN32
@@ -141,18 +144,17 @@ wait_for_task(int first, int *nspawned)
 			exit(2);
 		}
 
-		for (c = first; c < (first+nevents); ++c) {
-			if (eventpolled == *(events_spawn + c)) {
-				/* spawn event returned - register obit */
-				(*nspawned)--;
-				if (tm_errno) {
-					fprintf(stderr, "error %d on spawn\n",
-						tm_errno);
-					continue;
-				}
-				if (no_obit)
-					continue;
+		if (eventpolled == *(events_spawn)) {
+			/* spawn event returned - register obit */
+			if (tm_errno) {
+				fprintf(stderr, "error %d on spawn\n",
+					tm_errno);
+				continue;
+			}
+			if (no_obit)
+				continue;
 
+			for (c = 0; c < first+nevents; c++) {
 				rc = tm_obit(*(tid+c), ev+c, events_obit+c);
 				if (rc == TM_SUCCESS) {
 					if (*(events_obit+c) == TM_NULL_EVENT) {
@@ -169,15 +171,18 @@ wait_for_task(int first, int *nspawned)
 				} else if (verbose) {
 					fprintf(stderr, "%s: failed to register for task termination notice, task 0x%08X\n", id, c);
 				}
-
-
-			} else if (eventpolled == *(events_obit + c)) {
-				/* obit event, task exited */
-				nobits--;
-				*(tid+c) = TM_NULL_TASK;
-				if (verbose || *(ev+c) != 0) {
-					printf("%s: task 0x%08X exit status %d\n",
-						id, c, *(ev+c));
+				(*nspawned)--;
+			}
+		} else {
+			for (c = first; c < (first+nevents); ++c) {
+				if (eventpolled == *(events_obit + c)) {
+					/* obit event, task exited */
+					nobits--;
+					*(tid+c) = TM_NULL_TASK;
+					if (verbose || *(ev+c) != 0) {
+						printf("%s: task 0x%08X exit status %d\n",
+							id, c, *(ev+c));
+					}
 				}
 			}
 		}
@@ -199,7 +204,6 @@ main(int argc, char *argv[], char *envp[])
 	tm_node_id              *nodelist = NULL;
 	int                     start = 0;
 	int                     stop = 0;
-	int                     sync = 0;
 	char                    *pbs_environ = NULL;
 #ifndef WIN32
 	struct	sigaction	act;
@@ -228,9 +232,6 @@ main(int argc, char *argv[], char *envp[])
 					err = 1;
 				}
 				break;
-			case 's':
-				sync = 1;		/* force synchronous spawns */
-				break;
 			case 'v':
 				verbose = 1;	/* turn on verbose output */
 				break;
@@ -243,9 +244,9 @@ main(int argc, char *argv[], char *envp[])
 		}
 	}
 	if (err || (onenode >= 0 && ncopies >= 0) || (argc == optind)) {
-		fprintf(stderr, "Usage: %s [-c copies][-s][-v][-o]"
+		fprintf(stderr, "Usage: %s [-c copies][-v][-o]"
 			" -- program [args...]\n", argv[0]);
-		fprintf(stderr, "       %s [-n node_index][-s][-v][-o]"
+		fprintf(stderr, "       %s [-n node_index][-v][-o]"
 			" -- program [args...]\n", argv[0]);
 		fprintf(stderr, "       %s --version\n", argv[0]);
 		fprintf(stderr, "Where -c copies =  run a copy "
@@ -253,7 +254,6 @@ main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "      -n node_index = run a copy "
 			"of \"program\" on the \"node_index\"-th node,\n");
 
-		fprintf(stderr, "      -s = forces synchronous execution,\n");
 		fprintf(stderr, "      -v = forces verbose output.\n");
 		fprintf(stderr, "      -o = no obits are waited for.\n");
 
@@ -316,20 +316,25 @@ main(int argc, char *argv[], char *envp[])
 	max_events = (ncopies > numnodes) ? ncopies : numnodes;
 
 	/* malloc space for various arrays based on number of nodes/tasks */
-
 	tid = (tm_task_id *)calloc(max_events, sizeof(tm_task_id));
 	if (tid == NULL) {
 		fprintf(stderr, "%s: malloc of task ids failed\n", id);
 		return 1;
 	}
-	events_spawn = (tm_event_t *)calloc(max_events, sizeof(tm_event_t));
+	/* only creating one event regardless of ncopies/numnodes */
+	events_spawn = (tm_event_t *)calloc(1, sizeof(tm_event_t));
 	if (events_spawn == NULL) {
-		fprintf(stderr, "%s: out of memory\n", id);
+		fprintf(stderr, "%s: malloc of events failed\n", id);
 		return 1;
 	}
 	events_obit  = (tm_event_t *)calloc(max_events, sizeof(tm_event_t));
 	if (events_obit == NULL) {
 		fprintf(stderr, "%s: out of memory\n", id);
+		return 1;
+	}
+	node_select= (tm_node_id *)calloc(max_events, sizeof(tm_node_id));
+	if (node_select == NULL) {
+		fprintf(stderr, "%s: malloc of node selection array failed\n", id);
 		return 1;
 	}
 	ev = (int *)calloc(max_events, sizeof(int));
@@ -339,59 +344,49 @@ main(int argc, char *argv[], char *envp[])
 	}
 	for (c = 0; c < max_events; c++) {
 		*(tid + c)          = TM_NULL_TASK;
-		*(events_spawn + c) = TM_NULL_EVENT;
-		*(events_obit  + c) = TM_NULL_EVENT;
+		*(events_obit +c)  = TM_NULL_EVENT;
 		*(ev + c)	    = 0;
 	}
-
+	*(events_spawn)  = TM_NULL_EVENT;
 
 	/* Now spawn the program to where it goes */
-
 	if (onenode >= 0) {
-
 		/* Spawning one copy onto logical node "onenode" */
-
 		start = onenode;
 		stop  = onenode + 1;
 
 	} else if (ncopies >= 0) {
 		/* Spawn a copy of the program to the first "ncopies" nodes */
-
 		start = 0;
 		stop  = ncopies;
 	} else {
 		/* Spawn a copy on all nodes */
-
 		start = 0;
 		stop  = numnodes;
+	}
+
+	/* prepare the node selection array */
+	for (c = 0; c < (stop-start); ++c) {
+		nd = (start + c) % numnodes;
+		node_select[c] = nodelist[nd];
 	}
 
 #ifndef WIN32
 	sigprocmask(SIG_BLOCK, &allsigs, NULL);
 #endif
-
-	for (c = 0; c < (stop-start); ++c) {
-		nd = (start + c) % numnodes;
-		if ((rc = tm_spawn(argc-optind,
-			argv+optind,
-			NULL,
-			*(nodelist + nd),
-			tid + c,
-			events_spawn + c)) != TM_SUCCESS) {
-			fprintf(stderr, "%s: spawn failed on node %d err %s\n",
-				id, nd, get_ecname(rc));
-		} else {
-			if (verbose)
-				printf("%s: spawned task 0x%08X on logical node %d event %d\n", id, c, nd, *(events_spawn+c));
-			++nspawned;
-			if (sync)
-				wait_for_task(c, &nspawned); /* one at a time */
-		}
-
+	
+	spawncount = stop - start;
+	if ((rc = tm_spawn_multi(argc-optind, argv+optind, NULL, spawncount,
+				node_select, tid, events_spawn)) != TM_SUCCESS) {
+		fprintf(stderr, "%s: spawn_multi failed, err %s\n", id, get_ecname(rc));
+	} else {
+		if (verbose)
+			printf("%s: spawned task(s)\n", id);	
+		nspawned = spawncount;
 	}
 
-	if (sync == 0)
-		wait_for_task(0, &nspawned);	/* wait for all to finish */
+	wait_for_task(0, &nspawned);	/* wait for all to finish */
+
 #ifdef WIN32
 	/*
 	 * On Windows, in case of interactive jobs - pbs_demux is writing on stdout and stderr

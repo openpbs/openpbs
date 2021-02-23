@@ -218,6 +218,7 @@ del_event(event_info *ep)
 
 		case TM_INIT:
 		case TM_SPAWN:
+		case TM_SPAWN_MULTI:
 		case TM_ATTACH:
 		case TM_SIGNAL:
 		case TM_OBIT:
@@ -802,6 +803,84 @@ tm_nodeinfo(tm_node_id **list, int *nnodes)
  * @param[in] argc - argument count
  * @param[in] argv - argument list
  * @param[in] envp - environment variable list
+ * @param[in] list_size - number of nodes in where
+ * @param[in] where - job relative node ID(s)
+ * @param[out] tids - task ID(s)
+ * @param[out] event - event info
+ *
+ * @return	int
+ * @retval	TM_SUCCESS	success
+ * @retval	TM_ER*		error
+ *
+ */
+int
+tm_spawn_multi(int argc, char **argv, char **envp,
+		int list_size, tm_node_id where[], tm_task_id *tids,
+		tm_event_t *event)
+{
+	char		*cp;
+	int		i;
+
+	if (!init_done)
+		return TM_BADINIT;
+	if (argc <= 0 || argv == NULL || argv[0] == NULL || *argv[0] == '\0')
+		return TM_ENOTFOUND;
+	
+	if (list_size < 1)
+		return TM_EBADENVIRONMENT; 
+
+	*event = new_event();
+	if (startcom(TM_SPAWN_MULTI, *event) != DIS_SUCCESS)
+		return TM_ENOTCONNECTED;
+	
+	/* send list_size */
+	if (diswui(local_conn, list_size) != DIS_SUCCESS)
+		return TM_ENOTCONNECTED;
+	
+	/* send where */
+	for (i = 0; i < list_size; i++) {
+		if (diswui(local_conn, where[i]) != DIS_SUCCESS)
+			return TM_ENOTCONNECTED;
+	}
+
+	if (diswsi(local_conn, argc) != DIS_SUCCESS)	/* send argc */
+		return TM_ENOTCONNECTED;
+
+	/* send argv strings across */
+
+	for (i=0; i < argc; i++) {
+		cp = argv[i];
+		if (diswcs(local_conn, cp, strlen(cp)) != DIS_SUCCESS)
+			return TM_ENOTCONNECTED;
+	}
+
+	/* send envp strings across */
+	if (envp != NULL) {
+		for (i=0; (cp = envp[i]) != NULL; i++) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			/* never send KRB5CCNAME; it would rewrite the value on target host */
+			if (strncmp(envp[i], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+				continue;
+#endif
+			if (diswcs(local_conn, cp, strlen(cp)) != DIS_SUCCESS)
+				return TM_ENOTCONNECTED;
+		}
+	}
+	if (diswcs(local_conn, "", 0) != DIS_SUCCESS)
+		return TM_ENOTCONNECTED;
+	dis_flush(local_conn);
+	/* Passing the Mother Superior */
+	add_event(*event, where[0], TM_SPAWN_MULTI, (void *)tids);
+	return TM_SUCCESS;
+}
+
+/**
+ * @brief
+ *	-Starts <argv>[0] with environment <envp> at <where>.
+ *
+ * @param[in] argc - argument count
+ * @param[in] argv - argument list
+ * @param[in] envp - environment variable list
  * @param[in] where - job relative node
  * @param[out] tid - task id
  * @param[out] event - event info
@@ -1336,6 +1415,7 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	int		ret, mtype, nnodes;
 	int		prot, protver;
 	int		*obitvalp;
+	int		count = 0;
 	event_info	*ep = NULL;
 	tm_task_id	tid, *tidp;
 	tm_event_t	nevent;
@@ -1526,6 +1606,43 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 			}
 			tidp = (tm_task_id *)ep->e_info;
 			*tidp = new_task(tm_jobid, ep->e_node, tid);
+			break;
+
+		case TM_SPAWN_MULTI:
+			/*
+			** read (
+			** 	int		count
+			** 	tm_task_id	taskid 0
+			** 	tm_node_id	node 0
+			**	...
+			** 	tm_task_id	taskid count-1
+			** 	tm_node_id	node count-1
+			** )
+			*/
+			count = disrui(local_conn, &ret);
+			if (ret != DIS_SUCCESS) {
+				DBPRT(("%s: SPAWN_MULTI failed count\n", __func__))
+				goto err;
+			}
+			for (i = 0; i < count; i++) {
+				/*
+				** Read a task ID and node ID for each
+				** task that was spawned
+				*/
+				tid = disrui(local_conn, &ret);
+				if (ret != DIS_SUCCESS) {
+					DBPRT(("%s: SPAWN_MULTI failed tid\n", __func__))
+					goto err;
+				}
+
+				node = disrui(local_conn, &ret);
+				if (ret != DIS_SUCCESS) {
+					DBPRT(("%s: SPAWN_MULTI failed node\n", __func__))
+					goto err;
+				}
+				tidp = ((tm_task_id *)ep->e_info)+i;
+				*tidp = new_task(tm_jobid, node, tid);
+			}
 			break;
 
 		case TM_SIGNAL:

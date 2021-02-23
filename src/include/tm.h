@@ -100,6 +100,15 @@ tm_spawn(int		 argc,
 	tm_event_t	*event);
 
 int
+tm_spawn_multi(int	 argc,
+	char		*argv[],
+	char		*envp[],
+	int		list_size,
+	tm_node_id	where[],
+	tm_task_id	*tids,
+	tm_event_t	*event);
+
+int
 tm_kill(tm_task_id	tid,
 	int		sig,
 	tm_event_t	*event);

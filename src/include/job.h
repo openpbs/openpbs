@@ -296,6 +296,16 @@ typedef struct vmpiprocs {
 	long long	vn_accel_mem;	/* amt of accelerator memory wanted */
 } vmpiprocs;
 
+/* info needed to keep track of tasks for tm_multi_spawn/pbsdsh */
+struct job_multispawn_info {
+	int		ji_ident;
+	int		ji_num_sisters;
+	int		ji_taskid_index;
+	tm_task_id	*ji_taskid_list;
+	tm_node_id	*ji_nid_list;
+	struct job_multispawn_info *next;
+};
+
 /* the following enum defines if a node resource is to be reported by Mom */
 enum PBS_NodeRes_Status {
 	PBS_NODERES_ACTIVE,	/* resource reported from a non-released node */
@@ -492,6 +502,8 @@ struct job {
 	enum bg_hook_request ji_hook_running_bg_on; /* set when hook starts in the background*/
 	int		ji_msconnected; /* 0 - not connected, 1 - connected */
 	pbs_list_head	ji_multinodejobs;	/* links to recovered multinode jobs */
+	struct job_multispawn_info *ji_spawninfo;   /* pointer to information for multispawn */
+
 #else						    /* END Mom ONLY -  start Server ONLY */
 	struct batch_request *ji_pmt_preq; /* outstanding preempt job request for deleting jobs */
 	int ji_discarding;		   /* discarding job */
@@ -551,7 +563,6 @@ struct job {
 		char ji_fileprefix[PBS_JOBBASE + 1];  /* no longer used */
 		char ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
 		char ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route, MomS for execution */
-
 		int ji_un_type;				 /* type of ji_un union */
 		union {					 /* depends on type of queue currently in */
 			struct {			 /* if in execution queue .. */
@@ -746,6 +757,7 @@ typedef struct	infoent {
 #define IM_PMIX			26
 #define IM_RECONNECT_TO_MS			27
 #define IM_JOIN_RECOV_JOB		28
+#define IM_SPAWN_MULTI		29	
 
 #define IM_ERROR		99
 #define IM_ERROR2		100

@@ -357,6 +357,7 @@ job_alloc(void)
 	CLEAR_HEAD(pj->ji_multinodejobs);
 	pj->ji_extended.ji_ext.ji_stdout = 0;
 	pj->ji_extended.ji_ext.ji_stderr = 0;
+	pj->ji_spawninfo = NULL;
 #else	/* SERVER */
 	pj->ji_discarding = 0;
 	pj->ji_prunreq = NULL;
@@ -539,6 +540,8 @@ job_free(job *pj)
 
 #else	/* PBS_MOM  Mom Only */
 
+	struct job_multispawn_info	*tempinfo, *next; 
+
 	if (pj->ji_grpcache)
 		(void)free(pj->ji_grpcache);
 
@@ -584,6 +587,12 @@ job_free(job *pj)
 		job_free_extra(pj);
 
 	CLEAR_HEAD(pj->ji_multinodejobs);
+	tempinfo = pj->ji_spawninfo;
+	while (tempinfo != NULL) {
+		next = tempinfo->next;
+		free(tempinfo);
+		tempinfo = next;
+	}
 
 #ifdef WIN32
 	if (pj->ji_hJob) {

@@ -43,10 +43,10 @@
 
 .SH SYNOPSIS
 .B pbsdsh 
-[-c <copies>] [-s] [-v] [-o] -- <program> [<program args>]
+[-c <copies>] [-v] [-o] -- <program> [<program args>]
 .br
 .B pbsdsh 
-[-n <vnode index>] [-s] [-v] [-o] -- <program> [<program args>]
+[-n <vnode index>] [-v] [-o] -- <program> [<program args>]
 .br
 .B pbsdsh 
 --version
@@ -122,8 +122,6 @@ vnode allocated.  This option is mutually exclusive with
 .IP -o
 No obit request is made for spawned tasks.  The program does not wait for
 the tasks to finish.
-.IP -s
-Te program is run in turn on each vnode, one after the other.
 .IP -v
 Produces verbose output about error conditions and task exit status.
 

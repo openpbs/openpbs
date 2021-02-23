@@ -122,6 +122,8 @@ write_pipe_data(int upfds, void *data, int data_size);
 char task_fmt[] = "/%8.8X";
 extern void resume_multinode(job *pjob);
 
+static tm_task_id taskident;
+
 /* Function pointers
  **
  ** These are functions to provide extra interaction between mother
@@ -2199,6 +2201,7 @@ node_bailout(job *pjob, hnodent *np)
 				break;
 
 			case	IM_SPAWN_TASK:
+			case	IM_SPAWN_MULTI:
 			case	IM_GET_TASKS:
 			case	IM_SIGNAL_TASK:
 			case	IM_OBIT_TASK:
@@ -2974,6 +2977,15 @@ im_request(int stream, int version)
 	char			*nodehost = NULL;
 	char			timebuf[TIMEBUF_SIZE] = {0};
   	char			*delete_job_msg = NULL;
+	int			siscnt = 0;
+	int			list_size = 0;
+	int			created = 0;
+	tm_node_id		*node_list;
+	tm_task_id		*temptaskid;
+	tm_node_id		*tempnid;
+	tm_task_id		*taskidlist;
+	struct job_multispawn_info *tempinfo;
+	unsigned int		ident;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	if ((version != IM_PROTOCOL_VER) && (version != IM_OLD_PROTOCOL_VER)) {
@@ -3017,6 +3029,7 @@ im_request(int stream, int version)
 	BAIL("event")
 	fromtask = disrui(stream, &ret);
 	BAIL("fromtask")
+
 	switch (command) {
 
 		case IM_JOIN_RECOV_JOB:
@@ -3941,6 +3954,247 @@ join_err:
 			arrayfree(envp);
 			break;
 
+		case	IM_SPAWN_MULTI:
+			/*
+			 ** Sender is a MOM in a job that wants to start a task.
+			 ** I am MOM on the node that is to run the task.
+			 **
+			 ** auxiliary info (
+			 **	ident		tm_task_id
+			 **	list_size	int
+			 **	node_list 0	int
+			 **	...	
+			 **	node_list list_size-1	int
+			 **	parent vnode	tm_node_id
+			 **	argv 0		string
+			 **	...
+			 **	argv n		string
+			 **	null
+			 **	envp 0		string
+			 **	...
+			 **	envp m		string
+			 ** )
+			 */
+			created = 0;
+
+			/* Get the identifier */
+			ident = disrui(stream, &ret);
+			if (ret != DIS_SUCCESS)
+				goto done;
+		
+			/* Get the list_size */
+			list_size = disrui(stream, &ret);
+			if (ret != DIS_SUCCESS)
+				goto done;
+
+			/* Get the list of where to send executable */
+			node_list = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
+			assert(node_list);
+			for (i = 0; i < list_size; i++) {
+				node_list[i] = disrui(stream, &ret);
+				if (ret != DIS_SUCCESS) {
+					free(node_list);
+					goto err;
+				}
+			}
+			pvnodeid = disrsi(stream, &ret);
+			BAIL("SPAWN_MULTI pvnodeid")
+
+			if ((np = find_node(pjob, stream, pvnodeid)) == NULL) {
+				SEND_ERR(PBSE_BADHOST)
+				free(node_list);
+				break;
+			}
+
+			if( version == IM_OLD_PROTOCOL_VER) {
+				/*
+				 * The arg list is ended by an empty (zero length)
+				 * string.
+				 */
+				num = 4;
+				argv = (char **)calloc(sizeof(char *), num);
+				assert(argv);
+				for (i=0;; i++) {
+					if ((cp = disrst(stream, &ret)) == NULL)
+						break;
+					if (ret != DIS_SUCCESS)
+						break;
+					if (*cp == '\0') {
+						/* got a empty string, end of args lits */
+						free(cp);
+						break;
+					}
+					if (i == num-1) {
+						num *= 2;
+						argv = (char **)realloc(argv,
+						num*sizeof(char *));
+						assert(argv);
+					}
+					argv[i] = cp;
+				}
+			} else {
+			  	argc = disrui(stream, &ret);
+				if (ret != DIS_SUCCESS) {
+					sprintf(log_buffer, "SPAWN_MULTI read of argc");
+					free(node_list);
+					goto err;
+				}
+				argv = (char **)calloc(argc+1, sizeof(char *));
+				assert(argv);
+				for (i=0; i<argc; i++) {
+					argv[i] = disrst(stream, &ret);
+					if (ret != DIS_SUCCESS)
+						break;
+				}
+			}
+			argv[i] = NULL;
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				free(node_list);
+				sprintf(log_buffer, "SPAWN_MULTI read of argv array");
+				goto err;
+			}
+
+			num = 8;
+			envp = (char **)calloc(sizeof(char *), num);
+			assert(envp);
+			for (i=0;; i++) {
+				if ((cp = disrst(stream, &ret)) == NULL)
+					break;
+				if (ret != DIS_SUCCESS)
+					break;
+				if (*cp == '\0') {
+					free(cp);
+					break;
+				}
+				if (i == num-1) {
+					num *= 2;
+					envp = (char **)realloc(envp,
+						num*sizeof(char *));
+					assert(envp);
+				}
+				envp[i] = cp;
+			}
+			envp[i] = NULL;
+			if (ret != DIS_EOD) {
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+				sprintf(log_buffer, "SPAWN_MULTI read of envp array");
+				goto err;
+			}
+
+			/* Allocate a temporary place to store task IDs */
+                	taskidlist = (tm_task_id *)calloc(list_size, sizeof(tm_task_id));
+			assert(taskidlist);
+
+			/*
+			** Go through the list of nodes and do something
+			** when it's me, otherwise keep looking
+			*/
+			for (i = 0; i < list_size; i++) {
+				if (pjob->ji_nodeid != TO_PHYNODE(node_list[i])) {
+					continue;
+				}
+					
+#ifdef PMIX
+				pbs_pmix_register_client(pjob, node_list[i], &envp);
+#endif
+				if ((ptask = momtask_create(pjob)) == NULL) {
+					sprintf(log_buffer, "momtask_create "
+						"failed to create a new task\n");
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_JOB, LOG_DEBUG,
+						jobid, log_buffer);
+					break;
+				}
+				strcpy(ptask->ti_qs.ti_parentjobid, jobid);
+				ptask->ti_qs.ti_parentnode = pvnodeid;
+				ptask->ti_qs.ti_myvnode    = node_list[i];
+				ptask->ti_qs.ti_parenttask = fromtask;
+				if (task_save(ptask) == -1) {
+					sprintf(log_buffer, "unable to save "
+						"task info\n");
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_JOB, LOG_DEBUG,
+						jobid, log_buffer);
+					break;
+				}
+				errcode = start_process(ptask, argv, envp, false);
+				if (errcode != PBSE_NONE) {
+					sprintf(log_buffer, "start_process "
+						"failed with errcode %d\n",
+						errcode);
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_JOB, LOG_DEBUG,
+						jobid, log_buffer);
+					break;
+				} else {
+					/* store off the taskid to send all at once */
+					taskidlist[created] = ptask->ti_qs.ti_task;
+					created++;
+				}
+			} /* end of for loop of node_list */
+
+			/* We finished going through the node_list, now send im_compose IM_ALL_OKAY */
+			ret = im_compose(stream, jobid, cookie, IM_ALL_OKAY,
+					event, fromtask, IM_OLD_PROTOCOL_VER);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+				free(taskidlist);
+				break;
+			}
+
+			/* Send the identifier */
+			ret = diswsi(stream, ident);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+				free(taskidlist);
+				break;
+			}
+
+			/* Send the nodeid */
+			ret = diswsi(stream, pjob->ji_nodeid);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+				free(taskidlist);
+				break;
+			}
+
+			/* Send the num of tasks created */
+			ret = diswui(stream, created);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+				free(taskidlist);
+				break;
+			}
+
+			/* Send the taskids for the tasks created */
+			for (i = 0; i < created; i++) {
+				ret = diswui(stream, taskidlist[i]);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					free(node_list);
+					free(taskidlist);
+					break;
+				}
+			}
+				
+			arrayfree(argv);
+			arrayfree(envp);
+			free(node_list);
+			free(taskidlist);
+			break;
+
 		case	IM_GET_TASKS:
 			/*
 			 ** Sender is MOM which controls a task that wants to get
@@ -4719,6 +4973,100 @@ join_err:
 					(void)dis_flush(efd);
 					break;
 
+				case	IM_SPAWN_MULTI:
+					/*
+					 ** Sender is MOM responding to a "spawn_multi"
+					 ** request.
+					 ** The sender MoM sent a list of task IDs
+					 ** store them on the job struct with
+					 ** the sender's node ID.
+					 ** Once we have all expected task IDs send them
+					 **
+					 ** auxiliary info (
+					 **	ident		tm_task_id;
+					 **	tvnodeid	tm_node_id;
+					 **	created		int;
+					 **	taskid 0	tm_task_id;
+					 **	...
+					 **	taskid created-1	tm_task_id;
+					 ** )
+					 */
+					DBPRT(("%s: SPAWN_MULTI %s OKAY\n",
+						__func__, jobid))
+					
+					ident = disrui(stream, &ret);
+					assert(ident);
+
+					/* Get the info/pointer from the job */
+					for (tempinfo = pjob->ji_spawninfo; tempinfo != NULL; tempinfo = tempinfo->next) {
+						if (tempinfo->ji_ident == ident)
+							break;
+					}
+					if (tempinfo == NULL) {
+						sprintf(log_buffer, "Didn't find the spawninfo for the ident %d",ident);
+						log_err(-1, __func__, log_buffer);
+						break;
+					}
+					siscnt = tempinfo->ji_num_sisters;
+					index = tempinfo->ji_taskid_index;
+					temptaskid = tempinfo->ji_taskid_list;
+					assert(temptaskid);
+					tempnid = tempinfo->ji_nid_list;
+					assert(tempnid);
+
+					tvnodeid = disrui(stream, &ret);
+					BAIL("OK-SPAWN_MULTI tvnodeid")
+					created = disrui(stream, &ret);
+					BAIL("OK-SPAWN_MULTI created");
+					
+					/* 
+					** Store off the taskid to send all together
+					** after all tasks are created by all sisters
+					*/
+					for (i = 0; i < created; i++) {
+						taskid = disrui(stream, &ret);
+						BAIL("OK-SPAWN_MULTI taskid")
+						temptaskid[index] = taskid;
+						tempnid[index] = tvnodeid;
+						index++;
+					}
+					/* We heard back from one more sister */
+					siscnt--;
+
+					/* Don't reply until we heard back from all sisters */
+					if (siscnt != 0) {
+						tempinfo->ji_num_sisters = siscnt;
+						tempinfo->ji_taskid_index=index;
+						tempinfo->ji_taskid_list = temptaskid;
+						tempinfo->ji_nid_list = tempnid;
+						break;
+					}
+
+					/*
+					** At this point all sisters
+					** have reported back, time to reply
+					*/
+					ptask = task_check(pjob, efd, event_task);
+					if (ptask == NULL) {
+						break;
+					}
+					(void)tm_reply(efd, ptask->ti_protover,
+						TM_OKAY, event_client);
+	
+					/*
+					** First send the total number of taskids then
+					** do the write of taskid/nodeid in a loop
+					*/
+					(void)diswui(efd, index);
+					for (i = 0; i < index; i++) {
+						(void)diswui(efd, temptaskid[i]);
+						(void)diswui(efd, tempnid[i]);
+					}
+					(void)dis_flush(efd);
+					free(temptaskid);
+					free(tempnid);
+					break;
+
 				case	IM_GET_TASKS:
 					/*
 					 ** Sender is MOM giving a list of tasks which she
@@ -5247,6 +5595,7 @@ join_err:
 					break;
 
 				case	IM_SPAWN_TASK:
+				case	IM_SPAWN_MULTI:
 				case	IM_GET_TASKS:
 				case	IM_SIGNAL_TASK:
 				case	IM_OBIT_TASK:
@@ -5646,6 +5995,15 @@ tm_request(int fd, int version)
 	int				argc = 0;
 	int				found_empty_string = 0;
 	mom_hook_input_t		hook_input;
+	int 				list_size;
+	int				num = 0, mtfd = -1;
+	tm_node_id			*node_list;
+	eventent			*nep = NULL;
+	int				k,index, alreadyadded, momcnt = 0;
+	tm_task_id			*temptaskid;
+	tm_node_id			*tempnid;
+	tm_node_id			*streamlist;
+	struct job_multispawn_info	*tempinfo, *orig;
 
 	conn_t 	*conn = get_conn(fd);
 	if (!conn) {
@@ -6156,14 +6514,434 @@ aterr:
 			(void)dis_flush(fd);
 			goto err;
 
+		case TM_SPAWN_MULTI:
+			/*
+			 ** Spawn a task on the requested node.
+			 **
+			 **	read (
+			 **		list_size	int;
+			 **		where 0		int;
+			 **		...
+			 **		where list_size-1	int;
+			 **		argc		int;
+			 **		arg 0		string;
+			 **		...
+			 **		arg argc-1	string;
+			 **		env 0		string;
+			 **		...
+			 **		env m		string;
+			 **	)
+			 */
+			DBPRT(("%s: SPAWN_MULTI %s\n",
+				__func__, jobid))
+
+			/* Get the number of nodes */
+			list_size = disrui(fd, &ret);
+			if (ret != DIS_SUCCESS)
+				goto done;
+
+			/* Get the list of where to send the executable */
+			node_list = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
+			assert(node_list);
+
+			for (i = 0; i < list_size; i++) {
+				node_list[i] = disrui(fd, &ret);
+				if (ret != DIS_SUCCESS) {
+					free(node_list);
+					goto done;
+				}
+			}
+			argc = disrui(fd, &ret);
+			if (ret != DIS_SUCCESS)
+				goto done;
+			argv = (char **)calloc(argc + 1, sizeof(char *));
+			assert(argv);
+			for (i = 0; i < argc; i++) {
+				argv[i] = disrst(fd, &ret);
+				if (ret != DIS_SUCCESS) {
+					argv[i] = NULL;
+					arrayfree(argv);
+					free(node_list);
+					goto done;
+				}
+				if(strlen(argv[i]) == 0)
+				  	found_empty_string = 1;  /* arguments contains empty string, Used if spawn on another MOM*/
+			}
+			argv[i] = NULL;
+				
+			numele = 3;
+			envp = (char **)calloc(numele, sizeof(char *));
+			assert(envp);
+			for (i = 0; ; i++) {
+				char	*env;
+
+				env = disrst(fd, &ret);
+				if (ret != DIS_SUCCESS && ret != DIS_EOD) {
+					arrayfree(argv);
+					envp[i] = NULL;
+					arrayfree(envp);
+					free(node_list);
+					goto done;
+				}
+				if (env == NULL)
+					break;
+				if (*env == '\0') {
+					free(env);
+					break;
+				}
+				/*
+				 **	Need to remember extra slot for NULL
+				 **	at the end.  Thanks to Pete Wyckoff
+				 **	for finding this.
+				 */
+				if (i == numele-1) {
+					numele *= 2;
+					envp = (char **)realloc(envp,
+						numele*sizeof(char *));
+					assert(envp);
+				}
+				envp[i] = env;
+			}
+			envp[i] = NULL;
+			ret = DIS_SUCCESS;
+
+			tempinfo = (struct job_multispawn_info *)calloc(1, sizeof(struct job_multispawn_info));
+			assert(tempinfo);
+			temptaskid = (tm_task_id *)calloc(list_size, sizeof(tm_task_id));
+			assert(temptaskid);
+			tempnid = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
+			assert(tempnid);
+			streamlist = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
+			assert(streamlist);
+
+			taskident++;
+			
+			tempinfo->ji_ident = taskident;
+			index = 0;
+			
+			/* open the tpp mcast channel */
+			if ((mtfd = tpp_mcast_open()) == -1) {
+				sprintf(log_buffer, "mcast open failed");
+				log_joberr(-1, __func__, log_buffer, jobid);
+				free(node_list);
+				free(temptaskid);
+				free(tempnid);
+				free(streamlist);
+				goto err;
+			}
+
+			/* go through the list of nodes and send a request */
+			for (i = 0; i < list_size; i++) {
+				/* reset for each node in the list */
+				alreadyadded = 0;
+				tvnodeid = node_list[i];
+				/* check the node number is legal */
+				pnode = pjob->ji_vnods;
+				for (k = 0; k < pjob->ji_numvnod; k++, pnode++) {
+					if (pnode->vn_node == tvnodeid)
+						break;
+				}
+				if (k == pjob->ji_numvnod) {
+					sprintf(log_buffer, "node %d not found", tvnodeid);
+					log_joberr(-1, __func__, log_buffer, jobid);
+                			ret = tm_reply(fd, version, TM_ERROR, event);
+			                if (ret != DIS_SUCCESS) {
+						free(node_list);
+						free(temptaskid);
+						free(tempnid);
+						free(streamlist);
+                       				goto done;
+					}
+			                ret = diswsi(fd, TM_ENOTFOUND);
+			                if (ret != DIS_SUCCESS) {
+						free(node_list);
+						free(temptaskid);
+						free(tempnid);
+						free(streamlist);
+                       				goto done;
+					}
+        			}
+				phost = pnode->vn_host;
+				
+				/*
+				 ** If the spawn happens on me, just do it.
+				 */
+				if (pjob->ji_nodeid == TO_PHYNODE(tvnodeid)) {
+#ifdef PMIX
+					pbs_pmix_register_client(pjob, tvnodeid, &envp);
+#endif
+					ptask = momtask_create(pjob);
+					if (ptask != NULL) {
+						strcpy(ptask->ti_qs.ti_parentjobid, jobid);
+						ptask->ti_qs.ti_parentnode = myvnodeid;
+						ptask->ti_qs.ti_myvnode = tvnodeid;
+						ptask->ti_qs.ti_parenttask = fromtask;
+						if (task_save(ptask) != -1) {
+							ret = start_process(ptask, argv, envp, false);
+							if (ret == PBSE_SYSTEM) {
+								ptask->ti_qs.ti_status = TI_STATE_EXITED;
+							}
+						}
+					}
+					/* Save off the taskid to send all at once */
+					temptaskid[index] = ptask->ti_qs.ti_task;
+					tempnid[index] = tvnodeid;
+					index++;
+				} else {
+					/*
+					 ** Sending to another MOM.
+					 */
+					/* 
+					** Have we already added a stream for this mom?
+					** We don't want to open another stream to the same mom.
+					*/	
+					for (k = 0; k < momcnt; k++) {
+						if (tvnodeid == streamlist[k]) {
+							alreadyadded = 1;
+							break;
+						}
+					}
+
+					/* Open a stream to the mom if a stream isn't already open */
+					/* The host of the current vnode is phost, use phost */
+					if (phost->hn_stream == -1)
+						phost->hn_stream = tpp_open(phost->hn_host, phost->hn_port);
+					phost->hn_sister = SISTER_EOF;
+					if (phost->hn_stream < 0) {
+						sprintf(log_buffer, "tpp_open failed on %s:%d",
+							phost->hn_host, phost->hn_port);
+						log_joberr(-1, __func__, log_buffer, jobid);
+						continue;
+					}
+				
+					if (pbs_conf.pbs_use_mcast == 1 && !alreadyadded) {
+						/* add each of the tpp streams to the tpp mcast channel */
+						if (tpp_mcast_add_strm(mtfd, phost->hn_stream, FALSE) == -1) {
+							tpp_close(phost->hn_stream);
+							phost->hn_stream = -1;
+							sprintf(log_buffer, "mcast add node %d failed", tvnodeid);
+							log_joberr(-1, __func__, log_buffer, jobid);
+							continue;
+						}
+						/* add the mom to the list of moms who have streams added */
+						streamlist[momcnt] = tvnodeid;
+						momcnt++;
+					}
+					/* Add the IM_SPAWN_MULTI event to the list */	
+					if (nep == NULL) {
+						nep = event_alloc(pjob, IM_SPAWN_MULTI, fd, phost,
+							event, fromtask);
+						ep = nep;
+					} else {
+						ep = event_dup(nep, pjob, phost);
+					}
+					if (ep == NULL) {
+						sprintf(log_buffer, "failed to create event for %s",
+								phost->hn_host?phost->hn_host:"node");
+						log_err(errno, __func__, log_buffer);
+						tpp_close(phost->hn_stream);
+						phost->hn_stream = -1;
+						continue;
+					}	
+					phost->hn_sister = SISTER_OKAY;
+					num++;
+				} /* end of else case */
+			} /* end of looping through the nodes */
+
+			/* Save info off to the job struct */
+			tempinfo->ji_num_sisters = momcnt;
+			tempinfo->ji_taskid_list = temptaskid;
+			tempinfo->ji_nid_list = tempnid;
+			tempinfo->ji_taskid_index = index;
+			
+			if (num > 0) {
+				/* there's info to send to the sisters */
+				ret = im_compose(mtfd, pjob->ji_qs.ji_jobid,
+						get_jattr_str(pjob, JOB_ATR_Cookie),
+						IM_SPAWN_MULTI, ep->ee_event, fromtask,
+						found_empty_string ? IM_PROTOCOL_VER : IM_OLD_PROTOCOL_VER);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					free(node_list);
+					free(temptaskid);
+					free(tempnid);
+					free(streamlist);
+					tpp_mcast_close(mtfd);
+					goto done;
+				}
+			
+				/* send body of the message: 
+				** start with the identifier,
+				** then the number of items in node_list, 
+				** then send the list of where in a loop
+				** then argc, argv, env, etc.
+				*/
+				ret = diswui(mtfd, taskident);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					free(node_list);
+					free(temptaskid);
+					free(tempnid);
+					free(streamlist);
+					goto done;
+				}
+				ret = diswui(mtfd, list_size);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					free(node_list);
+					free(temptaskid);
+					free(tempnid);
+					free(streamlist);
+					goto done;
+				}
+				for (i = 0; i < list_size; i++) {
+					ret = diswui(mtfd, node_list[i]);
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
+						free(node_list);
+						free(temptaskid);
+						free(tempnid);
+						free(streamlist);
+						goto done;
+					}
+				}
+
+				ret = diswsi(mtfd, myvnodeid);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					free(node_list);
+					free(temptaskid);
+					free(tempnid);
+					free(streamlist);
+					goto done;
+				}
+				if (found_empty_string) {
+					ret = diswui(mtfd, argc);
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
+						free(node_list);
+						free(temptaskid);
+						free(tempnid);
+						free(streamlist);
+						goto done;
+					}
+					for (i = 0; i < argc; i++) {
+						ret = diswst(mtfd, argv[i]);
+						if (ret != DIS_SUCCESS) {
+							arrayfree(argv);
+							arrayfree(envp);
+							free(node_list);
+							free(temptaskid);
+							free(tempnid);
+							free(streamlist);
+							goto done;
+						}
+					}
+				} else {
+				  	for (i = 0; argv[i]; i++) {
+						ret = diswst(mtfd, argv[i]);
+						if (ret != DIS_SUCCESS) {
+							arrayfree(argv);
+							arrayfree(envp);
+							free(node_list);
+							free(temptaskid);
+							free(tempnid);
+							free(streamlist);
+							goto done;
+						}
+					}
+					ret = diswst(mtfd, "");
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
+						free(node_list);
+						free(temptaskid);
+						free(tempnid);
+						free(streamlist);
+						goto done;
+					}
+				}
+				for (i = 0; envp[i]; i++) {
+					ret = diswst(mtfd, envp[i]);
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
+						free(node_list);
+						free(temptaskid);
+						free(tempnid);
+						free(streamlist);
+						goto done;
+					}
+				}
+				ret = (dis_flush(mtfd) == -1) ?
+					DIS_NOCOMMIT : DIS_SUCCESS;
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					free(node_list);
+					free(temptaskid);
+					free(tempnid);
+					free(streamlist);
+					tpp_mcast_close(mtfd);
+					goto done;
+				}
+			}
+
+			/*
+			** If there is no need to send to sisters
+			** we can reply now, we're done
+			*/
+			if (momcnt == 0) {
+				(void)tm_reply(fd, version, i, event);
+				/* sending the number of task ids */
+				(void)diswui(fd, index);
+
+				/* send the task ID and the node it is on */
+				for (k = 0; k < index; k++) {
+					(void)diswui(fd, temptaskid[k]);
+					(void)diswui(fd, tempnid[k]);
+				}
+				(void)dis_flush(fd);
+				/* Reset the task counts */
+				tempinfo->ji_num_sisters = 0;
+				tempinfo->ji_taskid_index = 0;
+				/* These aren't needed anymore */
+				free(temptaskid);
+				free(tempnid);
+			}
+			tpp_mcast_close(mtfd);
+			if (pjob->ji_spawninfo == NULL) {
+				tempinfo->next = NULL;
+				pjob->ji_spawninfo = tempinfo;
+			} else {
+				orig = pjob->ji_spawninfo;	
+				tempinfo->next = orig;
+				pjob->ji_spawninfo = tempinfo;
+			}
+			arrayfree(argv);
+			arrayfree(envp);
+			free(node_list);
+			free(streamlist);
+			/* temptaskid and tempnid arrays are freed in IM_ALL_OKAY */
+			reply = FALSE;
+			goto done;
+			break;
+
 		default:
 			break;
 	}
 
 	/*
-	 ** All requests beside TM_INIT and TM_POSTINFO
+	 ** All requests beside TM_INIT and TM_POSTINFO 
 	 ** require a node number where the action will take place.
-	 ** Read that and check that it is legal.
+	 ** Technically TM_SPAWN_MULTI checks the nodes itself above.
+	 ** Read the node number and check that it is legal.
 	 **
 	 **	read (
 	 **		node number		int
