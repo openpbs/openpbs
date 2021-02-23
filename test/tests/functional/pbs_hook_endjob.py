@@ -181,10 +181,6 @@ class TestHookJob(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F'}, extend='x',
                                 offset=4, id=jid, interval=5)
 
-        #self.server.delete(id=jid, extend='force', wait=True)
-        self.server.log_match(
-            "chk_array_doneness, rq_endjob process_hooks call succeeded",
-            starttime=start_time, max_attempts=10, interval=1)
         ret = self.server.delete_hook(hook_name)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
         self.server.log_match(hook_msg, starttime=start_time)
@@ -252,10 +248,6 @@ class TestHookJob(TestFunctional):
         self.server.expect(JOB, {'job_state': 'F'}, extend='x',
                                 offset=4, id=jid, interval=5)
 
-        #self.server.delete(id=jid, extend='force', wait=True)
-        self.server.log_match(
-            "chk_array_doneness, rq_endjob process_hooks call succeeded",
-            starttime=start_time)
         ret = self.server.delete_hook(hook_name)
         self.assertEqual(ret, True, "Could not delete hook %s" % hook_name)
         self.server.log_match(hook_msg, starttime=start_time,

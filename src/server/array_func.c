@@ -378,9 +378,6 @@ chk_array_doneness(job *parent)
 				if (rc == -1) {
 					sprintf(log_buffer, "rq_endjob process_hooks call failed");
 					log_err(-1, __func__, log_buffer);
-				} else {
-					sprintf(log_buffer, "rq_endjob process_hooks call succeeded");
-					log_err(-1, __func__, log_buffer);
 				}
 				free_br(preq);
 			} else {
