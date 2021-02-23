@@ -1112,11 +1112,14 @@ __pbs_loadconf(int reload)
 
 	pbs_conf.loaded = 1;
 
-	if (parse_psi(psi_value) == -1) {
-		fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
-		free(psi_value);
-		goto err;
-	}
+	if (!reload) {
+		if (parse_psi(psi_value) == -1) {
+			fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
+			free(psi_value);
+			goto err;
+		}
+	} else
+		fprintf(stderr, "Warning: PBS_SERVER_INSTANCES will not be re-read from pbs.conf, restart to take effect\n");
 
 	if (pbs_client_thread_unlock_conf() != 0)
 		return 0;
