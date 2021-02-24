@@ -796,6 +796,10 @@ update_node_cache(int stream, struct batch_status *bstat)
 	if (!psvr)
 		return -1;
 
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+		"node stat update received from server %s port %d",
+		psvr->mi_host, psvr->mi_port);
+
 	/* DIFF_STAT TODO - this logic needs to be optimized after diff-stat */
 	clear_node_cache(psvr);
 
@@ -829,6 +833,7 @@ find_alien_node(char *nodename)
 		return NULL;
 	if (pbs_idx_find(alien_node_idx, (void **)&nodename, (void **)&node, NULL) != PBS_IDX_RET_OK)
 		return NULL;
+		
 	return node;
 }
 

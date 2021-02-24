@@ -1240,7 +1240,6 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @param[in]	execvnode	-	the execvnode to run a multi-node job on
  * @param[in]	has_runjob_hook	-	does server have a runjob hook?
  * @param[out]	err	-	error struct to return errors
- * @param[in]	svr_id_node	- id of the server which owns the first vnode of exec_vnode
  *
  *
  * @retval	0	: success
@@ -1248,8 +1247,7 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
  * @retval -1	: error
  */
 int
-run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err,
- 	char *svr_id_node)
+run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, schd_error *err)
 {
 	char buf[100];	/* used to assemble queue@localserver */
 	const char *errbuf;		/* comes from pbs_geterrmsg() */
@@ -1302,12 +1300,10 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 				if (strlen(timebuf) > 0)
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
-				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 						  rjob->svr_inst_id);
+				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, rjob->svr_inst_id);
 			}
 		} else
-			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 					  rjob->svr_inst_id);
+			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, rjob->svr_inst_id);
 	}
 
 	if (rc) {
@@ -1553,8 +1549,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 						execvnode != NULL ? execvnode : "(NULL)");
 					fflush(stdout);
 #endif /* localmod 031 */
-					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err,
-							ns[0]->ninfo->svr_inst_id);
+					pbsrc = run_job(pbs_sd, rr, execvnode, sinfo->has_runjob_hook, err);
 
 #ifdef NAS_CLUSTER /* localmod 125 */
 					ret = translate_runjob_return_code(pbsrc, resresv);

@@ -193,7 +193,7 @@ int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource
  *	       if it's a local job, just run it.
  */
 int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int had_runjob_hook,
-	    schd_error *err, char *svr_id_node);
+	    schd_error *err);
 
 /*
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
@@ -246,7 +246,6 @@ int set_validate_sched_attrs(int);
 
 int validate_running_user(char *exename);
 
-int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode,
-		 char *svr_id_node, char *svr_id_job);
+int send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char *execvnode, char *svr_id_job);
 
 #endif	/* _FIFO_H */

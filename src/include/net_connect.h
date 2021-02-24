@@ -125,7 +125,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
  **	Types of Peer Server messages (between Server and Server).
  */
 #define PS_CONNECT		1 /* hello from peer server  */
-#define PS_RSC_UPDATE_FULL	2 /* hello from peer server  */
+#define PS_RSC_UPDATE_FULL	2 /* complete resource update request  */
 #define PS_RSC_UPDATE		3 /* Peer server resource update */
 #define PS_RSC_UPDATE_ACK	4 /* Reply for peer server resource update */
 #define PS_STAT_RPLY		5 /* Asybchronous status reply */

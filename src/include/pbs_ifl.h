@@ -506,9 +506,6 @@ enum batch_op {	SET, UNSET, INCR, DECR,
 #define SUPPRESS_EMAIL  		"suppress_email"
 #define DELETEHISTORY			"deletehist"
 
-/* attributes that may be passsed by pbs_runjob() api to the server via its extend parameter*/
-
-#define SERVER_IDENTIFIER		"run_on"
 /*
  ** This structure is identical to attropl so they can be used
  ** interchangably.  The op field is not used.
