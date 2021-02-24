@@ -728,6 +728,16 @@ req_runjob(struct batch_request *preq)
 		reply_send(preq);
 	return;
 }
+
+static int
+save_subjob(job *pjob)
+{
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
+		return job_save_db(pjob);
+
+	return 0;
+}
+
 /**
  * @brief
  * 		req_runjob - service the Run Job and Asyc Run Job Requests
@@ -748,19 +758,8 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	/* Check if prov is required, if so, reply_ack and let prov finish */
 	/* else follow normal flow */
 	prov_rc = check_and_provision_job(preq, pjob, &need_prov);
-
-	/* In case of subjob, save it to the database now because
-	 * not saved to the database so far.
-	 */
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		if (job_save_db(pjob)) {
-			free_nodes(pjob);
-			req_reject(PBSE_SAVE_ERR, 0, preq);
-			return;
-		}
-	}
-
 	if (prov_rc) { /* problem with the request */
+		save_subjob(pjob);
 		free_nodes(pjob);
 		req_reject(prov_rc, 0, preq);
 		return;
@@ -771,7 +770,11 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		/* provisioning was needed and was qneueued successfully */
 		/* Allways send ack for prov jobs, even if not async run */
 		reply_ack(preq);
-		return;
+		if (save_subjob(pjob)) {
+			free_nodes(pjob);
+			req_reject(PBSE_SAVE_ERR, 0, preq);
+			return;
+		}
 	}
 
 	/* if need_prov ==0 then no prov required, so continue normal flow */
@@ -784,6 +787,8 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		}
 	}
 	if ((dest == NULL) || (*dest == '\0')) {
+		save_subjob(pjob);
+
 		/* Neither the run request nor the job specified an execvnode. */
 		free_nodes(pjob);
 		req_reject(PBSE_IVALREQ, 0, preq);
@@ -802,14 +807,20 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	rq_type = preq->rq_type;
 	if (preq && (rq_type == PBS_BATCH_AsyrunJob_ack)) {
 		reply_ack(preq);
-		preq = 0;	/* cleared so we don't try to reuse */
+		preq = NULL;	/* cleared so we don't try to reuse */
 	}
 
 	if (((rc = svr_startjob(pjob, preq)) != 0) &&
 		((rq_type == PBS_BATCH_AsyrunJob_ack) || preq)) {
+		save_subjob(pjob);
 		free_nodes(pjob);
-		if (preq)
-			req_reject(rc, 0, preq);
+		req_reject(rc, 0, preq);
+	}
+
+	/* if a subjob, the job wouldn't have gotten saved yet, let's save it now */
+	if (save_subjob(pjob)) {
+		free_nodes(pjob);
+		req_reject(PBSE_SAVE_ERR, 0, preq);
 	}
 }
 
