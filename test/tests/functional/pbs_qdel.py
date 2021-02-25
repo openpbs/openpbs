@@ -101,3 +101,4 @@ class TestQdel(TestFunctional):
             self.server.manager(MGR_CMD_DELETE, RSC, id="foo")
         m = "Resource busy on job"
         self.assertIn(m, e.exception.msg[0])
+        self.server.delete(jid, extend='deletehist')
