@@ -67,21 +67,6 @@ free_node_info_chunk(th_data_free_ninfo *data);
  */
 void free_nodes(node_info **ninfo_arr);
 
-
-/*
- *      new_node_info - allocates a new node_info
- */
-#ifdef NAS /* localmod 005 */
-node_info *new_node_info(void);
-#else
-node_info *new_node_info();
-#endif /* localmod 005 */
-
-/*
- *      free_node_info - frees memory used by a node_info
- */
-void free_node_info(node_info *ninfo);
-
 /*
  *      set_node_info_state - set a node state
  */
@@ -113,7 +98,7 @@ int is_node_timeshared(node_info *node, void *arg);
 /*
  *      find_node_info - find a node in the node array
  */
-node_info *find_node_info(node_info **ninfo_arr, char *nodename);
+node_info *find_node_info(node_info **ninfo_arr, const std::string& nodename);
 
 /*
  *      dup_node_info - duplicate a node by creating a new one and coping all
@@ -127,11 +112,6 @@ void dup_node_info_chunk(th_data_dup_nd_info *data);
  *      dup_nodes - duplicate an array of nodes
  */
 node_info **dup_nodes(node_info **onodes, server_info *nsinfo, unsigned int flags);
-
-/*
- *      set_node_type - set the node type bits
- */
-int set_node_type(node_info *ninfo, char *ntype);
 
 /*
  *      collect_jobs_on_nodes - collect all the jobs in the job array on the

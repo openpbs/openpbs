@@ -587,7 +587,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 			 * header.  We to continue adding valid jobs to our array.  We're
 			 * freeing what we allocated and ignoring this job completely.
 			 */
-			free_resource_resv(resresv);
+			delete resresv;
 			continue;
 		}
 
@@ -596,7 +596,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 			!resresv->job->is_suspended && !resresv->job->is_provisioning) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 				resresv->name, "Subjob found in undesirable state, ignoring this job");
-			free_resource_resv(resresv);
+			delete resresv;
 			continue;
 		}
 
@@ -1157,15 +1157,14 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 	char *endp;			/* used for strtol() */
 	resource_req *resreq;		/* resource_req list for resources requested  */
 
-	if ((resresv = new_resource_resv()) == NULL)
+	if ((resresv = new resource_resv(job->name)) == NULL)
 		return NULL;
 
 	if ((resresv->job = new_job_info()) ==NULL) {
-		free_resource_resv(resresv);
+		delete resresv;
 		return NULL;
 	}
 
-	resresv->name = string_dup(job->name);
 	resresv->rank = get_sched_rank();
 
 	attrp = job->attribs;
@@ -1177,17 +1176,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 	resresv->job->can_checkpoint = 1;	/* default can be checkpointed */
 	resresv->job->can_requeue = 1;		/* default can be requeued */
 	resresv->job->can_suspend = 1;		/* default can be suspended */
-
-	/* A Job identifier must be of the form <numeric>.<alpha> or
-	 * <numeric>[<numeric>].<alpha> in the case of job arrays, any other
-	 * form is considered malformed
-	 */
-	resresv->job->job_id = strtol(resresv->name, &endp, 10);
-	if ((*endp != '.') && (*endp != '[')) {
-		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
-		set_schd_error_arg(err, SPECMSG, "Malformed job identifier");
-		resresv->is_invalid = 1;
-	}
 
 	while (attrp != NULL && !resresv->is_invalid) {
 		clear_schd_error(err);
@@ -1241,7 +1229,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
 			resresv->svr_inst_id = string_dup(attrp->value);
 			if (resresv->svr_inst_id == NULL) {
-				free_resource_resv(resresv);
+				delete resresv;
 				return NULL;
 			}
 		}
@@ -1306,7 +1294,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		}
 #endif /* localmod 031 */
 		else if (!strcmp(attrp->name, ATTR_array_id))
-			resresv->job->array_id = string_dup(attrp->value);
+			resresv->job->array_id = attrp->value;
 		else if (!strcmp(attrp->name, ATTR_node_set))
 			resresv->node_set_str = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_array)) { /* array */
@@ -1345,7 +1333,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		} else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
 			if (resreq == NULL) {
-				free_resource_resv(resresv);
+				delete resresv;
 				return NULL;
 			}
 
@@ -1436,7 +1424,7 @@ new_job_info()
 {
 	job_info *jinfo;
 
-	if ((jinfo = static_cast<job_info *>(malloc(sizeof(job_info)))) == NULL) {
+	if ((jinfo = new job_info()) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1488,7 +1476,6 @@ new_job_info()
 	jinfo->resused = NULL;
 	jinfo->ginfo = NULL;
 
-	jinfo->array_id = NULL;
 	jinfo->array_index = UNSPECIFIED;
 	jinfo->parent_job = NULL;
 	jinfo->queued_subjobs = NULL;
@@ -1535,6 +1522,9 @@ new_job_info()
 void
 free_job_info(job_info *jinfo)
 {
+	if (jinfo == NULL)
+		return;
+	
 	if (jinfo->comment != NULL)
 		free(jinfo->comment);
 
@@ -1549,9 +1539,6 @@ free_job_info(job_info *jinfo)
 
 	if (jinfo->est_execvnode != NULL)
 		free(jinfo->est_execvnode);
-
-	if (jinfo->array_id != NULL)
-		free(jinfo->array_id);
 
 	if (jinfo->queued_subjobs != NULL)
 		free_range_list(jinfo->queued_subjobs);
@@ -1582,7 +1569,7 @@ free_job_info(job_info *jinfo)
 	if (jinfo->schedsel)
 		free(jinfo->schedsel);
 #endif
-	free(jinfo);
+	delete jinfo;
 }
 
 
@@ -1784,7 +1771,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, const char *attr_name,
 
 	if (pattr != NULL && (flags & UPDATE_NOW)) {
 		int rc;
-		rc = send_attr_updates(get_svr_inst_fd(pbs_sd, resresv->svr_inst_id), resresv->name, pattr);
+		rc = send_attr_updates(pbs_sd, resresv, pattr);
 		free_attrl_list(pattr);
 		return rc;
 	}
@@ -1828,7 +1815,7 @@ int send_job_updates(int pbs_sd, resource_resv *job)
 			return 0;
 	}
 
-	rc = send_attr_updates(get_svr_inst_fd(pbs_sd, job->svr_inst_id), job->name, job->job->attr_updates);
+	rc = send_attr_updates(pbs_sd, job, job->job->attr_updates);
 
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;
@@ -2787,7 +2774,6 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->preempt = ojinfo->preempt;
 	njinfo->preempt_status = ojinfo->preempt_status;
 	njinfo->peer_sd = ojinfo->peer_sd;
-	njinfo->job_id = ojinfo->job_id;
 	njinfo->est_start_time = ojinfo->est_start_time;
 	njinfo->formula_value = ojinfo->formula_value;
 	njinfo->est_execvnode = string_dup(ojinfo->est_execvnode);
@@ -2804,7 +2790,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->resused = dup_resource_req_list(ojinfo->resused);
 
 	njinfo->array_index = ojinfo->array_index;
-	njinfo->array_id = string_dup(ojinfo->array_id);
+	njinfo->array_id = ojinfo->array_id;
 	njinfo->queued_subjobs = dup_range_list(ojinfo->queued_subjobs);
 	njinfo->max_run_subjobs = ojinfo->max_run_subjobs;
 
@@ -2860,7 +2846,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
  * @return	0	: If job dos not fall into any of the preempt_targets
  */
 int
-preempt_job_set_filter(resource_resv *job, void *arg)
+preempt_job_set_filter(resource_resv *job, const void *arg)
 {
 	resource_req *req;
 	char **arglist;
@@ -3040,7 +3026,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		for (i = 0; i < no_of_jobs; i++) {
 			job = find_resource_resv_by_indrank(sinfo->running_jobs, -1, jobs[i]);
 			if (job != NULL) {
-				if ((preempt_jobs_list[i] = strdup(job->name)) == NULL) {
+				if ((preempt_jobs_list[i] = string_dup(job->name.c_str())) == NULL) {
 					log_err(errno, __func__, MEM_ERR_MSG);
 					free_string_array(preempt_jobs_list);
 					free(preempt_jobs_list);
@@ -3868,7 +3854,7 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
 
 	if (sinfo->qrun_job != NULL) {
 		if (job == sinfo->qrun_job ||
-		    (jinfo->is_subjob && (strcmp(jinfo->array_id, sinfo->qrun_job->name) == 0)))
+		    (jinfo->is_subjob && jinfo->array_id == sinfo->qrun_job->name))
 			jinfo->preempt_status |= PREEMPT_TO_BIT(PREEMPT_QRUN);
 	}
 
@@ -3930,27 +3916,19 @@ set_preempt_prio(resource_resv *job, queue_info *qinfo, server_info *sinfo)
  *
  * @return	created subjob name
  */
-char *
-create_subjob_name(char *array_id, int index)
+std::string
+create_subjob_name(const std::string& array_id, int index)
 {
-	int spn;
-	char *rest;
-	char tmpid[128];		/* hold job id and leading '[' */
-	char buf[1024];		/* buffer to hold new subjob identifer */
+	std::string subjob_id;
+	std::size_t brackets;
 
-	spn = strcspn(array_id, "[");
-	if (spn == 0)
-		return NULL;
+	subjob_id = array_id;
+	brackets = subjob_id.find("[]");
+	if (brackets == std::string::npos)
+		return std::string("");
+	subjob_id.insert(brackets + 1, std::to_string(index));
 
-	rest = array_id + spn + 1;
-
-	if (*rest != ']')
-		return NULL;
-
-	pbs_strncpy(tmpid, array_id, spn+2);
-	sprintf(buf, "%s%d%s", tmpid, index, rest);
-
-	return string_dup(buf);
+	return subjob_id;
 }
 
 /**
@@ -3968,7 +3946,7 @@ create_subjob_name(char *array_id, int index)
  *
  */
 resource_resv *
-create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
+create_subjob_from_array(resource_resv *array, int index, const std::string& subjob_name)
 {
 	resource_resv *subjob;	/* job_info structure for new subjob */
 	range *tmp;			/* a tmp ptr to hold the queued_indices ptr */
@@ -3988,7 +3966,7 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 	tmp = array->job->queued_subjobs;
 	array->job->queued_subjobs = NULL;
 
-	subjob = dup_resource_resv(array, array->server, array->job->queue, err);
+	subjob = dup_resource_resv(array, array->server, array->job->queue, subjob_name);
 
 	/* make a copy of dependent jobs */
 	subjob->job->depend_job_str = string_dup(array->job->depend_job_str);
@@ -4007,13 +3985,7 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 	subjob->job->is_queued = 1;
 	subjob->job->is_subjob = 1;
 	subjob->job->array_index = index;
-	subjob->job->array_id = string_dup(array->name);
-
-	free(subjob->name);
-	if (subjob_name != NULL)
-		subjob->name = subjob_name;
-	else
-		subjob->name = create_subjob_name(array->name, index);
+	subjob->job->array_id = array->name;
 
 	subjob->rank =  get_sched_rank();
 
@@ -4188,7 +4160,7 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 	queue_info *qinfo)
 {
 	int subjob_index;
-	char *subjob_name;
+	std::string subjob_name;
 	resource_resv *rresv = NULL;
 	resource_resv **tmparr = NULL;
 
@@ -4201,14 +4173,12 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 	subjob_index = range_next_value(array->job->queued_subjobs, -1);
 	if (subjob_index >= 0) {
 		subjob_name = create_subjob_name(array->name, subjob_index);
-		if (subjob_name != NULL) {
+		if (!subjob_name.empty()) {
 			if ((rresv = find_resource_resv(sinfo->jobs, subjob_name)) != NULL) {
-				free(subjob_name);
 				/* Set tmparr to something so we're not considered an error */
 				tmparr = sinfo->jobs;
 			}
-			else if ((rresv = create_subjob_from_array(array, subjob_index,
-				subjob_name)) != NULL) {
+			else if ((rresv = create_subjob_from_array(array, subjob_index, subjob_name)) != NULL) {
 				/* add_resresv_to_array calls realloc, so we need to treat this call
 				 * as a call to realloc.  Put it into a temp variable to check for NULL
 				 */
@@ -4784,7 +4754,7 @@ update_estimated_attrs(int pbs_sd, resource_resv *job,
 	}
 	else {
 		aflags = UPDATE_NOW;
-		if (job->job->array_id !=NULL)
+		if (!job->job->array_id.empty())
 			array = find_resource_resv(job->server->jobs, job->job->array_id);
 	}
 
@@ -5160,7 +5130,7 @@ extend_soft_walltime(resource_resv *resresv, time_t server_time)
  * @retval - 0 if job is not valid for preemption
  * @retval - 1 if the job is valid for preemption
  */
-static int cull_preemptible_jobs(resource_resv *job, void *arg)
+static int cull_preemptible_jobs(resource_resv *job, const void *arg)
 {
 	struct resresv_filter *inp;
 	int index;

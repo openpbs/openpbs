@@ -57,7 +57,7 @@ group_info *find_group_info(const char *name, group_info *root);
  *                        can not find the ginfo, then allocate a new one and
  *                        add it to the "unknown" group
  */
-group_info *find_alloc_ginfo(char *name, group_info *root);
+group_info *find_alloc_ginfo(const char *name, group_info *root);
 
 
 /*

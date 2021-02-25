@@ -271,12 +271,12 @@ char **break_delimited_str(char *list, char delim);
 /*
  * find index of str in strarr
  */
-int find_string_idx(char **strarr, char *str);
+int find_string_idx(char **strarr, const char *str);
 
 /*
  *	is_string_in_arr - Does a string exist in the given array?
  */
-int is_string_in_arr(char **strarr, char *str);
+int is_string_in_arr(char **strarr, const char *str);
 
 /*
  * Make copy of string array
