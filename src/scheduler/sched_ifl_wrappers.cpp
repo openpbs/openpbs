@@ -48,6 +48,7 @@
 #include "job_info.h"
 #include "misc.h"
 #include "log.h"
+#include "server_info.h"
 
 
 /**
@@ -73,9 +74,9 @@ send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char
 	if (jobid.empty() || execvnode == NULL)
 		return 1;
 
-  	job_owner_sd = get_svr_inst_fd(virtual_sd, svr_id_job);
+	job_owner_sd = get_svr_inst_fd(virtual_sd, svr_id_job);
 
-  	extend[0] = '\0';
+	extend[0] = '\0';
  	if (svr_id_node && svr_id_job && strcmp(svr_id_node, svr_id_job) != 0)
  		snprintf(extend, sizeof(extend), "%s=%s", SERVER_IDENTIFIER, svr_id_node);
 
@@ -91,8 +92,8 @@ send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char
  * @brief
  * 		send delayed attributes to the server for a job
  *
- * @param[in]	job_owner_sd	-	server connection descriptor of the job owner
- * @param[in]	job_name	-	name of job for pbs_asyalterjob()
+ * @param[in]	virtual_sd	-	virtual sd for the cluster
+ * @param[in]	resresv	-	resource_resv object for job
  * @param[in]	pattr	-	attrl list to update on the server
  *
  * @return	int
@@ -100,10 +101,12 @@ send_run_job(int virtual_sd, int has_runjob_hook, const std::string& jobid, char
  * @retval	0	failure to update
  */
 int
-send_attr_updates(int job_owner_sd, const std::string& job_name, struct attrl *pattr)
+send_attr_updates(int virtual_sd, resource_resv *resresv, struct attrl *pattr)
 {
 	const char *errbuf;
 	int one_attr = 0;
+	int job_owner_sd = get_svr_inst_fd(virtual_sd, resresv->svr_inst_id);
+	const std::string& job_name = resresv->name;
 
 	if (job_name.empty() || pattr == NULL)
 		return 0;
@@ -158,4 +161,22 @@ preempt_job_info *
 send_preempt_jobs(int virtual_sd, char **preempt_jobs_list)
 {
     return pbs_preempt_jobs(virtual_sd, preempt_jobs_list);
+}
+
+/**
+ * @brief	Wrapper for pbs_signaljob
+ *
+ * @param[in]	virtual_sd - virtual sd for the cluster
+ * @param[in]	resresv - resource_resv for the job to send signal to
+ * @param[in]	signal - the signal to send (e.g - "resume")
+ * @param[in]	extend - extend data for signaljob
+ *
+ * @return	preempt_job_info *
+ * @retval	return value of pbs_preempt_jobs
+ */
+int
+send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *extend)
+{
+	return pbs_sigjob(get_svr_inst_fd(virtual_sd, resresv->svr_inst_id),
+			  const_cast<char *>(resresv->name.c_str()), const_cast<char *>(signal), extend);
 }
