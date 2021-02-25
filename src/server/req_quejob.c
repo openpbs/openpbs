@@ -273,7 +273,7 @@ get_server_index(void)
  *
  * @param[out]	idbuf - buffer to fill job/resv id in
  * @param[in]	clusterid - cluster name (PBS_SERVER)
- * @param[in]	objtype - object type (0 for normal job, 1 for job array, 2 for reservation)
+ * @param[in]	objtype - object type which specifies whether it is a normal/array job or reservation
  * @param[in]	resv_char - character representing type of reservation
  *
  * @return	int
@@ -289,11 +289,11 @@ generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 		return 1;
 
 	if (get_num_servers() <= 1) { /* single server setup */
-		if (objtype == 0)
+		if (objtype == MGR_OBJ_JOB)
 			sprintf(idbuf, "%lld.%s", next_svr_sequence_id, clusterid);
-		else if (objtype == 1)
+		else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
 			sprintf(idbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
-		else if (objtype == 2)
+		else if (objtype == MGR_OBJ_RESV)
 			sprintf(idbuf, "%c%lld.%s", resv_char, next_svr_sequence_id, clusterid);
 	} else { /* multi-server setup */
 		if (svr_id == -1) {
@@ -303,11 +303,11 @@ generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 		}
 
 		/* For multi-server, last 'MSVR_JID_NCHARS_SVR' chars of numeric portion are reserved for server id */
-		if (objtype == 0)
+		if (objtype == MGR_OBJ_JOB)
 			sprintf(idbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-		else if (objtype == 1)
+		else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
 			sprintf(idbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-		else if (objtype == 2)
+		else if (objtype == MGR_OBJ_RESV)
 			sprintf(idbuf, "%c%lld%0*d.%s", resv_char, next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
 	}
 
@@ -446,7 +446,7 @@ req_quejob(struct batch_request *preq)
 		/* assign it a job id */
 
 		psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_queuejob.rq_attr);
-		i = 0;
+		i = MGR_OBJ_JOB;
 		while (psatl) {
 			/* Ensure that array_indices_submitted has a proper   */
 			/* value (non-"" and non-NULL) before asserting that  */
@@ -460,7 +460,7 @@ req_quejob(struct batch_request *preq)
 				ATTR_array_indices_submitted) &&
 				((psatl->al_value != NULL) &&
 				(psatl->al_value[0] != '\0'))) {
-				i = 1;
+				i = MGR_OBJ_JOBARRAY_PARENT;
 				break;
 			}
 			psatl = (svrattrl *)GET_NEXT(psatl->al_link);
@@ -2191,7 +2191,7 @@ req_resvSub(struct batch_request *preq)
 		/* Note: use server's job seq number generation mechanism */
 
 		created_here = RESV_SVFLG_HERE;
-		if (generate_objid(ridbuf, server_name, 2, PBS_RESV_ID_CHAR) != 0) {
+		if (generate_objid(ridbuf, server_name, MGR_OBJ_RESV, PBS_RESV_ID_CHAR) != 0) {
 			req_reject(PBSE_INTERNAL, 0, preq);
 			return;
 		}

@@ -174,9 +174,7 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 						extend);
 
 			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) {
-				if (rc == 0)
-					break;
-				else if (pbs_errno != PBSE_UNKJOBID || pbs_errno != PBSE_UNKRESVID)
+				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID))
 					break;
 			}
 			
