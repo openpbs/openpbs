@@ -83,7 +83,7 @@ dist_libexec_SCRIPTS = \
 	pbs_postinstall \
 	pbs_preuninstall \
 	pbs_posttrans \
-	pbs_wrap
+	pbs_reload
 
 dist_bin_SCRIPTS = \
 	pbs_topologyinfo \
