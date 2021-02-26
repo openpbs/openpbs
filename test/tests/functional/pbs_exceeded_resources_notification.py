@@ -68,7 +68,7 @@ class TestExceededResourcesNotification(TestFunctional):
                            "Hence this step would be skipped. "
                            "Please check manually." % mailfile)
 
-        ret = self.du.tail(filename=mailfile, sudo=True, option='-n 10')
+        ret = self.du.tail(filename=mailfile, runas=TEST_USER, option='-n 10')
         maillog = [x.strip() for x in ret['out']]
 
         self.assertIn('PBS Job Id: ' + jid, maillog)
@@ -81,8 +81,6 @@ class TestExceededResourcesNotification(TestFunctional):
 
         a = {'Resource_List.walltime': 1}
         j = Job(TEST_USER, a)
-
-        j.set_sleep_time(60)
 
         jid = self.server.submit(j)
         j_comment = '.* and exceeded resource walltime'
@@ -101,17 +99,11 @@ class TestExceededResourcesNotification(TestFunctional):
 
         self.mom.add_config({'$enforce mem': ''})
 
-        self.mom.stop()
-        self.mom.start()
+        self.mom.restart()
 
         a = {'Resource_List.walltime': 3600,
              'Resource_List.select': 'mem=1kb'}
         j = Job(TEST_USER, a)
-
-        test = []
-        test += ['#!/bin/bash']
-        test += ['tail -c 100K /dev/zero']
-        j.create_script(body=test)
 
         jid = self.server.submit(j)
         j_comment = '.* and exceeded resource mem'
@@ -134,8 +126,7 @@ class TestExceededResourcesNotification(TestFunctional):
              '$enforce average_trialperiod': '1',
              '$enforce cpuaverage': ''})
 
-        self.mom.stop()
-        self.mom.start()
+        self.mom.restart()
 
         a = {'Resource_List.walltime': 3600}
         j = Job(TEST_USER, a)
@@ -165,8 +156,7 @@ class TestExceededResourcesNotification(TestFunctional):
              '$enforce delta_cpufactor': '0.1',
              '$enforce cpuburst': ''})
 
-        self.mom.stop()
-        self.mom.start()
+        self.mom.restart()
 
         a = {'Resource_List.walltime': 3600}
         j = Job(TEST_USER, a)
