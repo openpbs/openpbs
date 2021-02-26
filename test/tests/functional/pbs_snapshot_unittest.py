@@ -257,7 +257,14 @@ class TestPBSSnapshot(TestFunctional):
                     # Find the common paths between 'server' & the file
                     common_path = os.path.commonprefix([file_fullpath,
                                                         svr_fullpath])
-                    self.assertEqual(os.path.basename(common_path), "server")
+                    try:
+                        self.assertEqual(os.path.basename(common_path), "server")
+                    except AssertionError:
+                        # Check if this was a core file, which would explain why it
+                        # it was captured
+                        if CORE_DIR in file_fullpath:
+                            continue
+                        raise
             # Check 3: qstat_Bf.out exists
             qstat_bf_out = os.path.join(snap_obj.snapdir, QSTAT_BF_PATH)
             self.assertTrue(os.path.isfile(qstat_bf_out))
