@@ -223,7 +223,10 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 		/* Reached here means job is submitted to non default queue */
 		int start;
 
-		if ((start = get_shard_obj_location_hint(destination, MGR_OBJ_RESV)) != -1)
+		/* Since this could be a reservation queue and reservation queues are not shared,
+		 * we try to find out which server this queue resides on
+		 */
+		if ((start = get_obj_location_hint(destination, MGR_OBJ_RESV)) != -1)
 			c = svr_conns[start]->sd;
 	}
 	

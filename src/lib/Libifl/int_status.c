@@ -398,23 +398,19 @@ end:
  * @brief
  * move_append_bs:
  *	append b to end of a. also remove references of b from its batch status
- * @param[in] b - batch status which needs to be appended to a
+ * @param[in] tail_a - pointer to the last element of a
  * @param[in,out] prev_b - previous list element of b for which references needs to be updated
+ * @param[in] b - batch status which needs to be appended to a
  * @param[in,out] head_a - reference to head element of list contains a. Reference is updated if a is null
  * @param[in,out] head_b - reference to head element of list contains b. Reference is updated if prev_b is null
  * 
  * @return void
  */
 static void
-move_append_bs(struct batch_status *b, struct batch_status *prev_b, struct batch_status **head_a, struct batch_status **head_b)
+move_append_bs(struct batch_status *tail_a, struct batch_status *prev_b, struct batch_status *b, struct batch_status **head_a, struct batch_status **head_b)
 {
-	struct batch_status *a = NULL;
-
-	for (a = *head_a; a->next; a = a->next)
-		;
-
-	if (a)
-		a->next = b;
+	if (tail_a)
+		tail_a->next = b;
 	else
 		*head_a = b;
 
@@ -439,11 +435,15 @@ move_append_bs(struct batch_status *b, struct batch_status *prev_b, struct batch
 static void
 aggregate_queue(struct batch_status *sv1, struct batch_status **sv2)
 {
-	struct batch_status *a = NULL, *b = NULL, *prev_b = NULL, *next_b = NULL;
+	struct batch_status *a = NULL;
+	struct batch_status *prev_a = NULL;
+	struct batch_status *b = NULL;
+	struct batch_status *prev_b = NULL;
+	struct batch_status *next_b = NULL;
 
 	for (b = *sv2; b; b = next_b) {
 		next_b = b->next;
-		for (a = sv1; a; a = a->next) {
+		for (a = sv1; a; prev_a = a, a = a->next) {
 			if (a->name && b->name && !strcmp(a->name, b->name)) {
 				aggr_job_ct(a, b);
 				aggr_resc_ct(a, b);
@@ -452,7 +452,7 @@ aggregate_queue(struct batch_status *sv1, struct batch_status **sv2)
 		}
 
 		if (!a)
-			move_append_bs(b, prev_b, &sv1, sv2);
+			move_append_bs(prev_a, prev_b, b, &sv1, sv2);
 		else
 			prev_b = b;
 	}
@@ -518,12 +518,11 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 	if (pbs_verify_attributes(random_srv_conn(c, svr_conns), cmd, parent_object, MGR_CMD_NONE, (struct attropl *) attrib) != 0)
 		return NULL;
 
-	if (parent_object == MGR_OBJ_JOB || parent_object == MGR_OBJ_RESV) {
-		if ((start = get_shard_obj_location_hint(id, parent_object)) == -1)
-			start = 0;
-		else
-			single_itr = 1;
-	}
+	if (c == svr_conns[0]->sd)
+		single_itr = 1;
+
+	if ((start = get_obj_location_hint(id, parent_object)) == -1)
+		start = 0;
 
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return NULL;
@@ -581,6 +580,9 @@ PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int 
 			}
 		} else if (!single_itr && (pbs_errno == PBSE_UNKQUE || pbs_errno == PBSE_UNKRESVID)) {
 			if (pbs_errno_clear_cnt < (nsvrs - 1)) {
+				/* As resv/resv queue is present only in one of the server-instances, we should consider
+				 * PBSE_UNKQUE/PBSE_UNKRESVID only when all instances raise this error and hence this code
+				 */
 				pbs_errno = PBSE_NONE;
 				pbs_errno_clear_cnt++;
 				continue;

@@ -155,7 +155,7 @@ random_srv_conn(int fd, svr_conn_t **svr_conns)
  * @retval < 0: could not find appropriate index
  */
 int
-get_shard_obj_location_hint(char *obj_id, int obj_type)
+get_obj_location_hint(char *obj_id, int obj_type)
 {
 	int nsvrs = get_num_servers();
 	char *ptr = NULL;
@@ -164,31 +164,18 @@ get_shard_obj_location_hint(char *obj_id, int obj_type)
 	char *endptr = NULL;
 	int id_len = 0;
 
-	if (obj_id == NULL || !msvr_mode())
+	if (obj_id == NULL || !msvr_mode() || (obj_type != MGR_OBJ_JOB && obj_type == MGR_OBJ_RESV))
 		return -1;
 
 	ptr = strchr(obj_id, '.');
 
-	if (ptr) {
-		/* obj_id contains PBS_SERVER name */
+	if (ptr) /* obj_id contains PBS_SERVER name */
 		*ptr = '\0';
-	}
 
 	id_len = strlen(obj_id);
 
-	if (obj_type == MGR_OBJ_RESV) {
-		/* since first char of resv id is non numeric reduce id_len by 1 */
-		id_len--;
-	}
-
-	/* Minimum length of sequence will be MSVR_JID_NCHARS_SVR + 1 */
-	if (id_len <= MSVR_JID_NCHARS_SVR)
+	if ((obj_type == MGR_OBJ_RESV && (id_len - 1) <= MSVR_JID_NCHARS_SVR) || id_len <= MSVR_JID_NCHARS_SVR)
 		return -1;
-	
-	if (obj_type == MGR_OBJ_RESV) {
-		/* Restore id_len to original value */
-		id_len++;
-	}
 
 	ptr_idx = &obj_id[id_len - MSVR_JID_NCHARS_SVR];
 
@@ -231,4 +218,61 @@ encode_DIS_JobsList(int sock, char **jobs_list, int numofjobs)
 			return rc;
 
 	return rc;
+}
+
+/**
+ * @brief
+ *	Finds server instance id associated with the given job and returns its fd
+ *
+ * @param[in]   c - socket on which connected
+ * @param[in]   job_id - job identifier
+ *
+ * @return int
+ * @retval SUCCESS returns fd of the server instance associated with the job_id
+ * @retval ERROR -1
+ */
+int
+get_job_svr_inst_id(int c, char *job_id)
+{
+	struct attrl *attr;
+	struct batch_status *ss = NULL;
+	char *svr_inst_id = NULL;
+	static struct attrl attribs[] = {
+		{	NULL,
+			ATTR_server_inst_id,
+			NULL,
+			"",
+			SET
+		}	
+	};
+
+	if (job_id == NULL)
+		return -1;
+
+	/* Do a job stat to find out the server_instance_fd of
+	 * the server instance where the job resides
+	 */
+	ss = pbs_statjob(c, job_id, attribs, NULL);
+	if (ss == NULL)
+		return -1;
+
+	if (ss != NULL) {
+		for (attr = ss->attribs; attr != NULL; attr = attr->next) {
+			if (strcmp(attr->name, ATTR_server_inst_id) == 0) { 
+				svr_inst_id = strdup(attr->value);
+				if (svr_inst_id == NULL) {
+					pbs_statfree(ss);
+					return -1;
+				}
+				break;
+			}
+		}
+	}   
+
+	c = get_svr_inst_fd(c, svr_inst_id);
+	free(svr_inst_id);
+	pbs_statfree(ss);
+
+	return c;
+	
 }

@@ -471,7 +471,7 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
-		if (generate_objid(jidbuf, server_name, i, ' ') != 0) {
+		if (generate_objid(jidbuf, server_name, i, '\0') != 0) {
 			req_reject(PBSE_INTERNAL, 0, preq);
 			return;
 		}

@@ -142,28 +142,17 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 		return pbs_errno;
 
 	if (svr_conns) {
-		if ((objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) &&
-			(start = get_shard_obj_location_hint(objname, objtype)) == -1)
+		/* For a single server cluster, instance fd and cluster fd are the same */
+		if (svr_conns[0]->sd == c)
+			return PBSD_manager_inner(c, rq_type, command, objtype, objname, aoplp, extend);
+
+		if ((start = get_obj_location_hint(objname, objtype)) == -1)
 		    start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
-
-			/*
-			* For a single server cluster, instance fd and cluster fd are the same. 
-			* Hence breaking the loop.
-			*/
-			if (svr_conns[i]->sd == c) {
-				return PBSD_manager_inner(svr_conns[i]->sd,
-							  rq_type,
-							  command,
-							  objtype,
-							  objname,
-							  aoplp,
-							  extend);
-			}
 
 			rc = PBSD_manager_inner(svr_conns[i]->sd,
 						rq_type,

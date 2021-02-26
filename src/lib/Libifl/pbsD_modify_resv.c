@@ -93,7 +93,7 @@ pbs_modify_resv(int c, char *resv_id, struct attropl *attrib, char *extend)
 			/* initiate the modification of the reservation  */
 			return PBSD_modify_resv(c, resv_id, attrib, extend);
 
-		if ((start = get_shard_obj_location_hint(resv_id, MGR_OBJ_RESV)) == -1)
+		if ((start = get_obj_location_hint(resv_id, MGR_OBJ_RESV)) == -1)
 			start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
