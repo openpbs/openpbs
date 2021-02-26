@@ -57,8 +57,10 @@ class TestMultiNodeJobsRestart(TestFunctional):
         momB = self.moms.values()[1]
 
         # Make sure moms are running with -p flag
-        momA.restart(args=['-p'])
-        momB.restart(args=['-p'])
+        momA.stop(sig='-INT')
+        momA.start(args=['-p'])
+        momB.stop(sig='-INT')
+        momB.start(args=['-p'])
 
         pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
                                    "bin", "pbsdsh")
@@ -70,8 +72,10 @@ class TestMultiNodeJobsRestart(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        momA.restart(args=['-p'])
-        momB.restart(args=['-p'])
+        momA.stop(sig='-INT')
+        momA.start(args=['-p'])
+        momB.stop(sig='-INT')
+        momB.start(args=['-p'])
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
@@ -105,8 +109,10 @@ class TestMultiNodeJobsRestart(TestFunctional):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        momA.restart(args=['-p'])
-        momB.restart(args=['-p'])
+        momA.stop(sig='-INT')
+        momA.start(args=['-p'])
+        momB.stop(sig='-INT')
+        momB.start(args=['-p'])
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
