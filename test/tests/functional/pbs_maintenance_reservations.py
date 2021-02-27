@@ -628,18 +628,12 @@ class TestMaintenanceReservations(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
-    @requirements(num_moms=2)
     def test_maintenance_degrade_reservation_jobs_dont_run(self):
         """
         Test if the reservation is degraded by overlapping
         maintenance reservation the jobs inside that degraded reservations do
-        not run when the reservation starts running.
-        Two moms (-p "servers=M1,moms=M1:M2") are needed for this test.
+        not run when the maintenance reservation starts running.
         """
-
-        if len(self.moms) != 2:
-            cmt = "need 2 mom hosts: -p servers=<m1>,moms=<m1>:<m2>"
-            self.skip_test(reason=cmt)
 
         now = int(time.time())
 
@@ -658,12 +652,16 @@ class TestMaintenanceReservations(TestFunctional):
         self.server.status(RESV, 'resv_nodes', id=rid1)
         resv_node_list = self.server.reservations[rid1].get_vnodes()
         resv_node = resv_node_list[0]
+        
+        # On a cpuset machine the resv_node could be a vnode,
+        # always pull the hostname from the node attribute
+        status = self.server.status(NODE, id=resv_node)
+        h2 = [status[0]['resources_available.host']]
 
         jid = self.server.submit(Job(attrs={ATTR_q: resv_name}))
 
         a2 = {'reserve_start': now + 35,
               'reserve_end': now + 1000}
-        h2 = [resv_node]
         r2 = Reservation(TEST_USER, attrs=a2, hosts=h2)
         rid2 = self.server.submit(r2)
 
@@ -679,7 +677,7 @@ class TestMaintenanceReservations(TestFunctional):
                            offset=offset)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': True})
-        a = {'comment': 'Can Never Run: Reservation is in an invalid state',
+        a = {'comment': 'Not Running: Queue not started.',
              'job_state': 'Q'}
         self.server.expect(JOB, a, id=jid)
 
