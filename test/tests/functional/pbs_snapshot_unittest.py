@@ -258,10 +258,11 @@ class TestPBSSnapshot(TestFunctional):
                     common_path = os.path.commonprefix([file_fullpath,
                                                         svr_fullpath])
                     try:
-                        self.assertEqual(os.path.basename(common_path), "server")
+                        self.assertEqual(os.path.basename(common_path),
+                                         "server")
                     except AssertionError:
-                        # Check if this was a core file, which would explain why it
-                        # it was captured
+                        # Check if this was a core file, which would
+                        # explain why it was captured
                         if CORE_DIR in file_fullpath:
                             continue
                         raise
