@@ -97,6 +97,11 @@ from ptl.lib.ptl_sched import Scheduler
 from ptl.lib.ptl_mom import MoM, get_mom_obj
 from ptl.lib.ptl_service import PBSService, PBSInitServices
 from ptl.lib.ptl_expect_action import ExpectActions
+try:
+    from nose.plugins.skip import SkipTest
+except ImportError:
+    class SkipTest(Exception):
+        pass
 
 
 class Wrappers(PBSService):
@@ -2190,6 +2195,18 @@ class Wrappers(PBSService):
         self._disconnect(c)
         return bs
 
+    def skipTest(self, reason=None):
+        """
+        Skip Test
+        :param reason: message to indicate why test is skipped
+        :type reason: str or None
+        """
+        if reason:
+            self.logger.warning('test skipped: ' + reason)
+        else:
+            reason = 'unknown'
+        raise SkipTest(reason)
+
     def manager(self, cmd, obj_type, attrib=None, id=None, extend=None,
                 level=logging.INFO, sudo=None, runas=None, logerr=True):
         """
@@ -2227,7 +2244,13 @@ class Wrappers(PBSService):
         :raises: PbsManagerError
         """
 
-        if cmd == MGR_CMD_SET and id is not None and obj_type == NODE:
+        if cmd == MGR_CMD_DELETE and obj_type == NODE:
+            for cmom, momobj in self.moms.items():
+                if momobj.is_cpuset_mom():
+                    self.skipTest("Do not delete nodes on cpuset moms")
+
+        if ((cmd == MGR_CMD_SET or cmd == MGR_CMD_CREATE) and
+                id is not None and obj_type == NODE):
             for cmom, momobj in self.moms.items():
                 cpuset_nodes = []
                 if momobj.is_cpuset_mom():
