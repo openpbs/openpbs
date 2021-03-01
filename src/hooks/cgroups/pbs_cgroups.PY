@@ -3567,7 +3567,7 @@ class CgroupUtils(object):
                         assigned[jobid][key]['limit_in_bytes'] = \
                             int(desc.readline())
                     if assigned[jobid][key]['limit_in_bytes'] == hpmem_avail:
-                        assigned[jobid][key]['limit_in_bytes'] == 0
+                        assigned[jobid][key]['limit_in_bytes'] = 0
                 elif key == 'devices':
                     path = self._cgroup_path(key, 'list', jobid)
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Devices path is %s' %
