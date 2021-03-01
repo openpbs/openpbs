@@ -2444,8 +2444,9 @@ class NodeUtils(object):
                 pbs.size(convert_size(val, 'mb'))
             if (self.cfg['cgroup']['memsw']['enabled']
                     and self.cfg['cgroup']['memsw']['manage_cgswap']):
-                host_resc_avail['cgswap'] = \
-                    host_resc_avail['vmem']-host_resc_avail['mem']
+                host_resc_avail['cgswap'] = max(0,
+                                                host_resc_avail['vmem']
+                                                - host_resc_avail['mem'])
         else:
             # set the value on the host to 0
             host_resc_avail['mem'] = pbs.size('0')
@@ -2585,8 +2586,9 @@ class NodeUtils(object):
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
                 if (self.cfg['cgroup']['memsw']['enabled']
                         and self.cfg['cgroup']['memsw']['manage_cgswap']):
-                    vnode_resc_avail['cgswap'] = (vnode_resc_avail['vmem']
-                                                  - vnode_resc_avail['mem'])
+                    vnode_resc_avail['cgswap'] = max(0,
+                                                     vnode_resc_avail['vmem']
+                                                     - vnode_resc_avail['mem'])
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s vnode_resc_avail: %s' %
                            (caller_name(), vnode_key, vnode_resc_avail))
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
