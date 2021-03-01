@@ -164,7 +164,7 @@ get_obj_location_hint(char *obj_id, int obj_type)
 	char *endptr = NULL;
 	int id_len = 0;
 
-	if (obj_id == NULL || !msvr_mode() || (obj_type != MGR_OBJ_JOB && obj_type == MGR_OBJ_RESV))
+	if (obj_id == NULL || !msvr_mode() || (obj_type != MGR_OBJ_JOB && obj_type != MGR_OBJ_RESV))
 		return -1;
 
 	ptr = strchr(obj_id, '.');
