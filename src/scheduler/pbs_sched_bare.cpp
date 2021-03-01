@@ -150,7 +150,7 @@ scheduling_cycle_bare(int sd, const sched_cmd *cmd)
 	else
 		send_job_attr_updates = 0;
 
-	update_cycle_status(&cstat, 0);
+	update_cycle_status(cstat, 0);
 
 	/* create the server / queue / job / node structures */
 	if ((sinfo = query_server(&cstat, sd)) == NULL) {

@@ -370,14 +370,10 @@ static void		*lim_dup_ctx(void *);
 static char		*lim_gengroupreskey(const char *);
 static char		*lim_genprojectreskey(const char *);
 static char		*lim_genuserreskey(const char *);
-static void		schderr_args_q(const char *, const char *, schd_error *);
-static void
-schderr_args_q_res(const char *, const char *, char *,
-	schd_error *);
+static void		schderr_args_q(const std::string& , const char *, schd_error *);
+static void 		schderr_args_q_res(const std::string&, const char *, char *, schd_error *);
 static void		schderr_args_server(const char *, schd_error *);
-static void
-schderr_args_server_res(const char *, const char *,
-	schd_error *);
+static void 		schderr_args_server_res(const char *, const char *, schd_error *);
 static sch_resource_t	lim_get(const char *, void *);
 static int		lim_setoldlimits(const struct attrl *, void *);
 static int		lim_setreslimits(const struct attrl *, void *);
@@ -3380,11 +3376,11 @@ lim_get(const char *param, void *ctx)
  * @param[out]	err	-	schd_error structure to return error information
  */
 static void
-schderr_args_q(const char *qname, const char *entity, schd_error *err)
+schderr_args_q(const std::string& qname, const char *entity, schd_error *err)
 {
-	set_schd_error_arg(err, ARG1, (char*)qname);
+	set_schd_error_arg(err, ARG1, qname.c_str());
 	if (entity != NULL)
-		set_schd_error_arg(err, ARG2, (char*)entity);
+		set_schd_error_arg(err, ARG2, entity);
 }
 
 /**
@@ -3397,11 +3393,11 @@ schderr_args_q(const char *qname, const char *entity, schd_error *err)
  * @param [out]	err	-	schd_error structure to return error information
  */
 static void
-schderr_args_q_res(const char *qname, const char *entity, char *res,
+schderr_args_q_res(const std::string& qname, const char *entity, char *res,
 	schd_error *err)
 {
-	set_schd_error_arg(err, ARG1, (char*)qname);
-	set_schd_error_arg(err, ARG2, (char*)res);
+	set_schd_error_arg(err, ARG1, qname.c_str());
+	set_schd_error_arg(err, ARG2, res);
 	if (entity != NULL)
 		set_schd_error_arg(err, ARG3, (char*)entity);
 }

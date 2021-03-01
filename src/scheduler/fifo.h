@@ -218,7 +218,7 @@ int should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *
  *	return nothing
  *
  */
-void update_cycle_status(struct status *policy, time_t current_time);
+void update_cycle_status(status& policy, time_t current_time);
 
 
 /*

@@ -111,6 +111,9 @@
  * 	set_current_eoe()
  *
  */
+
+#include <algorithm>
+
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -504,7 +507,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			ninfo->has_hard_limit = 1;
 		}
 		else if (!strcmp(attrp->name, ATTR_queue))
-			ninfo->queue_name = string_dup(attrp->value);
+			ninfo->queue_name = attrp->value;
 		else if (!strcmp(attrp->name, ATTR_p)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -672,7 +675,6 @@ node_info::node_info(const std::string& nname): name(nname)
 	run_resvs_arr = NULL;
 	res = NULL;
 	server = NULL;
-	queue_name = NULL;
 	group_counts = NULL;
 	user_counts = NULL;
 
@@ -838,7 +840,6 @@ free_nodes(node_info **ninfo_arr)
 node_info::~node_info()
 {
 	free(mom);
-	free(queue_name);
 	free_string_array(jobs);
 	free_string_array(resvs);
 	free(job_arr);
@@ -1407,7 +1408,7 @@ dup_node_info(node_info *onode, server_info *nsinfo, unsigned int flags)
 
 	nnode->server = nsinfo;
 	nnode->mom = string_dup(onode->mom);
-	nnode->queue_name = string_dup(onode->queue_name);
+	nnode->queue_name = onode->queue_name;
 
 	nnode->svr_inst_id = string_dup(onode->svr_inst_id);
 	nnode->is_down = onode->is_down;
@@ -2504,7 +2505,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		ns_head = *nspec_arr;
 
 		if (pl->scatter || pl->vscatter || pl->free) {
-			dselspec = dup_selspec(spec);
+			dselspec = new selspec(*spec);
 			if (dselspec == NULL)
 				return 0;
 		}
@@ -2572,8 +2573,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 					rc = 1;
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
-						dselspec->chunks[c]->req, UNSET_RES_ZERO,
-						NULL, INSUFFICIENT_RESOURCE, err))) {
+						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						for (k = 0; dninfo_arr[k] != NULL; k++)
 							dninfo_arr[k]->nscr &= ~NSCR_VISITED;
 						while (rc > 0 && dselspec->chunks[c]->num_chunks > 0) {
@@ -2638,8 +2638,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				for (c = 0; dselspec->chunks[c] != NULL && rc == 0; c++) {
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
-						dselspec->chunks[c]->req, UNSET_RES_ZERO,
-						NULL, INSUFFICIENT_RESOURCE, err))) {
+						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						if (dselspec->chunks[c]->num_chunks > 0) {
 							for (k = 0; dninfo_arr[k] != NULL; k++)
 								dninfo_arr[k]->nscr &= ~NSCR_VISITED;
@@ -2709,15 +2708,14 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 				dup_ninfo_arr = dup_nodes(hostsets[i]->ninfo_arr,
 					resresv->server, NO_FLAGS);
 				if (dup_ninfo_arr == NULL) {
-					free_selspec(dselspec);
+					delete dselspec;
 					return 0;
 				}
 
 				for (c = 0; dselspec->chunks[c] != NULL; c++) {
 					if ((hostsets[i]->free_nodes > 0)
 						&& (check_avail_resources(hostsets[i]->res,
-						dselspec->chunks[c]->req, UNSET_RES_ZERO,
-						NULL, INSUFFICIENT_RESOURCE, err))) {
+						dselspec->chunks[c]->req, UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err))) {
 						if (dselspec->chunks[c]->num_chunks >0) {
 							for (k = 0; dup_ninfo_arr[k] != NULL; k++)
 								dup_ninfo_arr[k]->nscr &= ~NSCR_VISITED;
@@ -2807,7 +2805,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 
 	if (dselspec != NULL)
-		free_selspec(dselspec);
+		delete dselspec;
 
 	if (tot == spec->total_chunks)
 		return 1;
@@ -2932,7 +2930,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 				 * of nodes.
 				 */
 				if (conf.provision_policy != AVOID_PROVISION &&
-					cstat.node_sort[0].res_name != NULL && conf.node_sort_unused)
+					!cstat.node_sort->empty() && conf.node_sort_unused)
 					qsort(nodes, tot_nodes, sizeof(node_info *), multi_node_sort);
 			}
 			chunks_needed--;
@@ -3395,7 +3393,7 @@ is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
 
 	if (specreq != NULL) {
 		if (check_avail_resources(node->res, specreq,
-				CHECK_ALL_BOOLS | ONLY_COMP_NONCONS | UNSET_RES_ZERO, NULL,
+				CHECK_ALL_BOOLS | ONLY_COMP_NONCONS | UNSET_RES_ZERO,
 				INSUFFICIENT_RESOURCE, err) == 0) {
 			return 0;
 		}
@@ -3729,7 +3727,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	noderes = ninfo->res;
 
 	min_chunks = check_avail_resources(noderes, resreq,
-		CHECK_ALL_BOOLS|UNSET_RES_ZERO, NULL, INSUFFICIENT_RESOURCE, err);
+		CHECK_ALL_BOOLS|UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err);
 
 	if (chunks != UNSPECIFIED && (min_chunks == SCHD_INFINITY || chunks < min_chunks))
 		min_chunks = chunks;
@@ -3821,8 +3819,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 						}
 						if (is_run_event) {
 							chunks = check_avail_resources(nres, resreq,
-								CHECK_ALL_BOOLS|UNSET_RES_ZERO, NULL,
-								INSUFFICIENT_RESOURCE, err);
+								CHECK_ALL_BOOLS|UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, err);
 							if (chunks < min_chunks)
 								min_chunks = chunks;
 						}
@@ -4023,7 +4020,7 @@ parse_selspec(char *select_spec)
 	if (select_spec == NULL)
 		return NULL;
 
-	if ((spec = new_selspec()) == NULL)
+	if ((spec = new selspec()) == NULL)
 		return NULL;
 
 	for (num_plus = 0, p = select_spec; *p != '\0'; p++) {
@@ -4034,7 +4031,7 @@ parse_selspec(char *select_spec)
 	/* num_plus + 2: 1 for the initial chunk 1 for the NULL ptr */
 	if ((spec->chunks = static_cast<chunk **>(calloc(num_plus + 2, sizeof(chunk *)))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
-		free_selspec(spec);
+		delete spec;
 	}
 
 	specbuf = string_dup(select_spec);
@@ -4061,15 +4058,16 @@ parse_selspec(char *select_spec)
 				if (req == NULL)
 					invalid = 1;
 				else  {
-						if (strcmp(req->name, "ncpus") == 0) {
-							/* Given: -l select=nchunk1:ncpus=Y + nchunk2:ncpus=Z +... */
-							/* Then: # of cpus = (nchunk1 * Y) + (nchunk2 * Z) + ... */
-							num_cpus += (num_chunks * req->amount);
-						}
-					if (!invalid && (req->type.is_boolean || conf.res_to_check == NULL ||
-						is_string_in_arr(conf.res_to_check, kv[i].kv_keyw))) {
-						if (!resdef_exists_in_array(spec->defs, req->def))
-							add_resdef_to_array(&(spec->defs), req->def);
+					if (strcmp(req->name, "ncpus") == 0) {
+						/* Given: -l select=nchunk1:ncpus=Y + nchunk2:ncpus=Z +... */
+						/* Then: # of cpus = (nchunk1 * Y) + (nchunk2 * Z) + ... */
+						num_cpus += (num_chunks * req->amount);
+					}
+					const auto& rtc = conf.res_to_check;
+					if (!invalid && (req->type.is_boolean || rtc.empty() ||
+						std::find(rtc.begin(), rtc.end(), kv[i].kv_keyw) != rtc.end())) {
+						if (std::find(spec->defs.begin(), spec->defs.end(), req->def) == spec->defs.end())
+							spec->defs.push_back(req->def);
 						if (req_head == NULL)
 							req_end = req_head = req;
 						else {
@@ -4111,7 +4109,7 @@ parse_selspec(char *select_spec)
 	free(kv);
 
 	if (invalid) {
-		free_selspec(spec);
+		delete spec;
 		if (tmpptr != NULL)
 			free(tmpptr);
 
@@ -4141,7 +4139,7 @@ int compare_chunk(chunk *c1, chunk *c2) {
 
 	if (c1->num_chunks != c2->num_chunks)
 		return 0;
-	if(compare_resource_req_list(c1->req, c2->req, NULL) == 0)
+	if(compare_resource_req_list(c1->req, c2->req, conf.resdef_to_check) == 0)
 		return 0;
 
 	return 1;
@@ -4990,7 +4988,7 @@ can_fit_on_vnode(resource_req *req, node_info **ninfo_arr)
 
 		if (is_vnode_eligible_chunk(req, ninfo_arr[i], NULL, dumperr)) {
 			if (check_avail_resources(ninfo_arr[i]->res, req,
-				UNSET_RES_ZERO, NULL, INSUFFICIENT_RESOURCE, NULL))
+				UNSET_RES_ZERO, INSUFFICIENT_RESOURCE, NULL))
 				return 1;
 		}
 	}

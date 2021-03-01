@@ -81,15 +81,14 @@
  * 	dup_chunk()
  * 	free_chunk_array()
  * 	free_chunk()
- * 	new_selspec()
- * 	dup_selspec()
- * 	free_selspec()
  * 	compare_res_to_str()
  * 	compare_non_consumable()
  * 	create_select_from_nspec()
  * 	in_runnable_state()
  *
  */
+
+#include <algorithm>
 
 #include <pbs_config.h>
 
@@ -318,8 +317,8 @@ resource_resv::~resource_resv()
 	free(group);
 	free(project);
 	free(nodepart_name);
-	free_selspec(select);
-	free_selspec(execselect);
+	delete select;
+	delete execselect;
 	free_place(place_spec);
 	free_resource_req_list(resreq);
 	free(ninfo_arr);
@@ -563,8 +562,10 @@ dup_resource_resv(resource_resv *oresresv, server_info *nsinfo, queue_info *nqin
 	nresresv->project = string_dup(oresresv->project);
 
 	nresresv->nodepart_name = string_dup(oresresv->nodepart_name);
-	nresresv->select = dup_selspec(oresresv->select); /* must come before calls to dup_nspecs() below */
-	nresresv->execselect = dup_selspec(oresresv->execselect);
+	if (oresresv->select != NULL)
+		nresresv->select = new selspec(*oresresv->select); /* must come before calls to dup_nspecs() below */
+	if (oresresv->execselect != NULL)
+		nresresv->execselect = new selspec(*oresresv->execselect);
 
 	nresresv->is_invalid = oresresv->is_invalid;
 	nresresv->can_not_fit = oresresv->can_not_fit;
@@ -972,7 +973,7 @@ resource_count *dup_resource_count_list(resource_count *orcount)
  *
  */
 resource_req *
-dup_selective_resource_req_list(resource_req *oreq, resdef **deflist)
+dup_selective_resource_req_list(resource_req *oreq, std::vector<resdef *>& deflist)
 {
 	resource_req *req;
 	resource_req *nreq;
@@ -983,7 +984,7 @@ dup_selective_resource_req_list(resource_req *oreq, resdef **deflist)
 	prev = NULL;
 
 	for (req = oreq; req != NULL; req = req->next) {
-		if (deflist == NULL || resdef_exists_in_array(deflist, req->def)) {
+		if (std::find(deflist.begin(), deflist.end(), req->def) != deflist.end()) {
 			if ((nreq = dup_resource_req(req)) != NULL) {
 				if (head == NULL)
 					head = nreq;
@@ -1494,7 +1495,7 @@ compare_resource_req(resource_req *req1, resource_req *req2) {
  * @retval 0 two lists are not equal
  */
 int
-compare_resource_req_list(resource_req *req1, resource_req *req2, resdef **comparr) {
+compare_resource_req_list(resource_req *req1, resource_req *req2, std::vector<resdef *>& comparr) {
 	resource_req *cur_req1;
 	resource_req *cur_req2;
 	resource_req *cur;
@@ -1509,7 +1510,7 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, resdef **compa
 		return 0;
 
 	for (cur_req1 = req1; ret1 && cur_req1 != NULL; cur_req1 = cur_req1->next) {
-		if (comparr == NULL || resdef_exists_in_array(comparr, cur_req1->def)) {
+		if (std::find(comparr.begin(), comparr.end(), cur_req1->def) != comparr.end()) {
 			cur = find_resource_req(req2, cur_req1->def);
 			if (cur == NULL)
 				ret1 = 0;
@@ -1519,7 +1520,7 @@ compare_resource_req_list(resource_req *req1, resource_req *req2, resdef **compa
 	}
 
 	for (cur_req2 = req2; ret2 && cur_req2 != NULL; cur_req2 = cur_req2->next) {
-		if (comparr == NULL || resdef_exists_in_array(comparr, cur_req2->def)) {
+		if (std::find(comparr.begin(), comparr.end(), cur_req2->def) != comparr.end()) {
 			cur = find_resource_req(req1, cur_req2->def);
 			if (cur == NULL)
 				ret2 = 0;
@@ -1690,7 +1691,7 @@ update_resresv_on_end(resource_resv *resresv, const char *job_state)
 				free(resresv->nodepart_name);
 				resresv->nodepart_name = NULL;
 			}
-			free_selspec(resresv->execselect);
+			delete resresv->execselect;
 			resresv->execselect = NULL;
 		}
 		/* We need to correct our calendar */
@@ -2235,83 +2236,42 @@ chunk *find_chunk_by_seq_num(chunk **chunks, int seq_num)
 }
 /**
  * @brief
- *		new_selspec - constructor for selspec
+ *		constructor for selspec
  *
  * @return	new selspec
  * @retval	NULL	: Fail
  */
-selspec *
-new_selspec()
+
+selspec::selspec()
 {
-	selspec *spec;
-
-	if ((spec = static_cast<selspec *>(malloc(sizeof(selspec)))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	spec->total_chunks = 0;
-	spec->total_cpus = 0;
-	spec->defs = NULL;
-	spec->chunks = NULL;
-
-	return spec;
+	total_chunks = 0;
+	total_cpus = 0;
+	chunks = NULL;
 }
 
 /**
  * @brief
- *		dup_selspec - copy constructor for selspec
+ *		copy constructor for selspec
  *
  * @param[in]	oldspec	-	old selspec to be copied
- *
- * @return	new selspec
- * @retval	NULL	: Fail
  */
-selspec *
-dup_selspec(selspec *oldspec)
+selspec::selspec(selspec& oldspec)
 {
-	selspec *newspec;
-
-	if (oldspec == NULL)
-		return NULL;
-
-	newspec = new_selspec();
-
-	if (newspec == NULL)
-		return NULL;
-
-	newspec->total_chunks = oldspec->total_chunks;
-	newspec->total_cpus = oldspec->total_cpus;
-	newspec->chunks = dup_chunk_array(oldspec->chunks);
-	newspec->defs = copy_resdef_array(oldspec->defs);
-
-	if (newspec->chunks == NULL || newspec->defs == NULL) {
-		free_selspec(newspec);
-		return NULL;
-	}
-
-	return newspec;
+	total_chunks = oldspec.total_chunks;
+	total_cpus = oldspec.total_cpus;
+	chunks = dup_chunk_array(oldspec.chunks);
+	defs = oldspec.defs;
 }
 
 /**
  * @brief
- *		free_selspec - destructor for selspec
- *
- * @param[in,out]	spec	-	selspec to be freed.
+ *		 - destructor for selspec
+
  */
-void
-free_selspec(selspec *spec)
+selspec::~selspec()
 {
-	if (spec == NULL)
-		return;
-
-	if (spec->defs != NULL)
-		free(spec->defs);
-
-	if (spec->chunks != NULL)
-		free_chunk_array(spec->chunks);
-
-	free(spec);
+	if (chunks != NULL)
+		free_chunk_array(chunks);
 }
 
 

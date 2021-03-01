@@ -537,8 +537,8 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					release_nodes(resresv_ocr);
 
 					if (resresv_ocr->resv->select_standing != NULL) {
-						free_selspec(resresv_ocr->select);
-						resresv_ocr->select = dup_selspec(resresv_ocr->resv->select_standing);
+						delete resresv_ocr->select;
+						resresv_ocr->select = new selspec(*resresv_ocr->resv->select_standing);
 					}
 
 					resresv_ocr->resv->orig_nspec_arr = parse_execvnode(
@@ -923,10 +923,10 @@ free_resv_info(resv_info *rinfo)
 		free(rinfo->partition);
 
 	if (rinfo->select_orig != NULL)
-		free_selspec(rinfo->select_orig);
+		delete rinfo->select_orig;
 
 	if (rinfo->select_standing != NULL)
-		free_selspec(rinfo->select_standing);
+		delete rinfo->select_standing;
 
 	if (rinfo->orig_nspec_arr != NULL)
 		free_nspecs(rinfo->orig_nspec_arr);
@@ -979,9 +979,9 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 	if (rinfo->partition != NULL)
 		nrinfo->partition = string_dup(rinfo->partition);
 	if (rinfo->select_orig != NULL)
-		nrinfo->select_orig = dup_selspec(rinfo->select_orig);
+		nrinfo->select_orig = new selspec(*rinfo->select_orig);
 	if (rinfo->select_standing != NULL)
-		nrinfo->select_standing = dup_selspec(rinfo->select_standing);
+		nrinfo->select_standing = new selspec(*rinfo->select_standing);
 
 	/* the queues may not be available right now.  If they aren't, we'll
 	 * catch this when we duplicate the queues
@@ -1179,8 +1179,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							if (nresv_copy == NULL)
 								break;
 							if (nresv_copy->resv->select_standing != NULL) {
-								free_selspec(nresv_copy->select);
-								nresv_copy->select = dup_selspec(nresv_copy->resv->select_standing);
+								delete nresv_copy->select;
+								nresv_copy->select = new selspec(*nresv_copy->resv->select_standing);
 							}
 						}
 						/* Duplication deep-copies node info array. This array gets
@@ -1552,7 +1552,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				if (nresv->resv->is_running) {
 					char *sel;
 					int ind;
-					free_selspec(nresv->execselect);
+					delete nresv->execselect;
 					/* Use resv->orig_nspec_arr over nspec_arr because
 					 * A) we modified it above in check_vnodes_unavailable() for reconfirmation
 					 * B) it will allow us to map the original select back to the new resv_nodes
