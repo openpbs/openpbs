@@ -1047,6 +1047,9 @@ class TestTPP(TestFunctional):
         Node 9 : Comm (self.hostI)
         """
         self.common_setup(no_mom_on_comm=True, req_moms=4, req_comms=5)
+        node_attr = {'resources_available.ncpus': '1'}
+        for mom in self.moms.values():
+            self.server.manager(MGR_CMD_SET, NODE, node_attr, id=mom.name)
         a = {'PBS_COMM_ROUTERS': self.hostA}
         comm_hosts = [self.hostF, self.hostG, self.hostH, self.hostI]
         for host in comm_hosts:
@@ -1074,7 +1077,7 @@ class TestTPP(TestFunctional):
         self.comm2.stop('-KILL')
         hosts = [self.hostB, self.hostC]
         for mom in hosts:
-            self.server.expect(NODE, {'state': 'free'}, id=mom)
+            self.server.expect(NODE, {'state': 'job-busy'}, id=mom)
         self.server.expect(JOB, exp_attr, id=jid)
         self.comm2.start()
         self.server.expect(JOB, 'queue', id=jid, op=UNSET, offset=30)
@@ -1093,7 +1096,7 @@ class TestTPP(TestFunctional):
         self.comm4.stop('-KILL')
         hosts = [self.hostD, self.hostE]
         for mom in hosts:
-            self.server.expect(NODE, {'state': 'free'}, id=mom)
+            self.server.expect(NODE, {'state': 'job-busy'}, id=mom)
         self.server.expect(RESV, resv_exp_attrib, rid)
         self.server.expect(JOB, exp_attr, id=jid)
         self.comm4.start()
