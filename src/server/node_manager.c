@@ -347,6 +347,7 @@ reply_hellosvr(int stream, int need_inv)
 	if ((ret = diswsi(stream, need_inv)) != DIS_SUCCESS)
 		return ret;
 
+	/* write no of servers first as we do not write clusteraddr in case of msvr_mode. */
 	if ((ret = diswsi(stream, get_num_servers())) != DIS_SUCCESS)
 		return ret;
 
@@ -3110,10 +3111,6 @@ mcast_msg(struct work_task *ptask)
 			tpp_mcast_close(mtfd_replyhello_noinv);
 			mtfd_replyhello = -1;
 			mtfd_replyhello_noinv = -1;
-			break;
-
-		case PS_CONNECT:
-			replyhello_psvr();
 			break;
 
 		default:
@@ -6166,6 +6163,10 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 /**
  * @brief assign jobs on each subnode of a node
  * 
+ * subnode is a structure corresponds to each cpu within a node.
+ * assign the jobid on them based on hw_ncpus count. subnodes will
+ * be created based on jobs if svr_init is TRUE.
+ * 
  * @param[in,out] pnode - node where jobs needs to be assigned
  * @param[in] hw_ncpus - number of cpus requested by the job
  * @param[in] jobid - job id going to land on the node
@@ -6266,6 +6267,8 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 
 /**
  * @brief update node state based on the job sharing type
+ * and node sharing type. For instance; 
+ * node-state is set to exclusive if either of them are exclusive.
  * 
  * @param[in,out] pnode - node for which state is updated
  * @param[in] share_job - job sharing type
@@ -6302,13 +6305,15 @@ update_node_state(struct pbsnode *pnode, int share_job)
 
 /**
  * @brief Determines job sharing type
+ * Job sharing type is determined based on the job placement directive
+ * which will be in the form of job's resource.
  * 
  * @param[in] pjob - job struct
  * @return int
  * @retval enum vnode_sharing
  */
 int
-job_sharing_type(struct job *pjob)
+get_job_share_type(struct job *pjob)
 {
 	attribute *patresc;	/* ptr to job/resv resource_list */
 	patresc = get_jattr(pjob, JOB_ATR_resource);
@@ -6482,12 +6487,17 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			return PBSE_BADNODESPEC;
 
 		if (!strlen(execvnod)) {
+			/* 
+			* We return from the function here with an error
+			* The job will be reattempted in the next few cycles once
+			* we get the reply from all peer servers and the alien nodes are cached.
+			*/
 			send_nodestat();
 			return PBSE_UNKNODE;
 		}
 
 		/* are we to allocate the nodes "excl" ? */
-		share_job = job_sharing_type(pjob);
+		share_job = get_job_share_type(pjob);
 
 	} else if (objtype == RESC_RESV_OBJECT) {
 		presv = (resc_resv *)pobj;

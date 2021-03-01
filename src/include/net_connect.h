@@ -128,7 +128,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define PS_RSC_UPDATE_FULL	2 /* complete resource update request  */
 #define PS_RSC_UPDATE		3 /* Peer server resource update */
 #define PS_RSC_UPDATE_ACK	4 /* Reply for peer server resource update */
-#define PS_STAT_RPLY		5 /* Asybchronous status reply */
+#define PS_STAT_RPLY		5 /* Asynchronous status reply */
 
 /* return codes for client_to_svr() */
 

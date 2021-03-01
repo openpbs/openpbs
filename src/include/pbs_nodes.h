@@ -120,7 +120,7 @@ struct mom_svrinfo {
 	struct job	**msr_jobindx;  /* index array of jobs on this Mom */
 	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
 	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
-	int		num_pending_rply; /* number of unacknowledged replies from this server */
+	int		pending_replies; /* number of unacknowledged replies from this server */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 typedef struct mom_svrinfo svrinfo_t;
@@ -258,7 +258,7 @@ struct pbsnode {
 	int nd_added_to_unlicensed_list;	/* To record if the node is added to the list of unlicensed node */
 	pbs_list_link un_lic_link;		/*Link to unlicense list */
 	int nd_svrflags;	/* server flags */
-	pbs_list_link nd_link;	/*Link to holding svr list */
+	pbs_list_link nd_link;	/* Link to holding svr list in case if this is an alien node */
 	attribute nd_attr[ND_ATR_LAST];
 };
 typedef struct pbsnode pbs_node;
@@ -468,7 +468,7 @@ extern int add_mom_to_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);
 extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
 extern void mcast_msg();
-int job_sharing_type(struct job *pjob);
+int get_job_share_type(struct job *pjob);
 #endif
 
 extern  int	   recover_vmap(void);

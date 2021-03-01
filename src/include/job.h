@@ -970,7 +970,7 @@ task_find	(job		*pjob,
 #define JOB_EXEC_KILL_MEM -27 /* job exec failed due to exceeding mem */
 #define JOB_EXEC_KILL_CPUT -28 /* job exec failed due to exceeding cput */
 #define JOB_EXEC_KILL_WALLTIME -29 /* job exec failed due to exceeding walltime */
-#define JOB_EXEC_JOINJOB	-30 /* Job exec failed due to join job error */
+#define JOB_EXEC_JOINJOB -30 /* Job exec failed due to join job error */
 
 /*
  * Fake "random" number added onto the end of the staging

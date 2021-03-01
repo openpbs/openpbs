@@ -797,6 +797,12 @@ req_stat_svr(struct batch_request *preq)
 /**
  * @brief
  * 		service the Server Ready request
+ * Replies back only if the server is in a consistent state.
+ * Otherwise, it will leave a work task with the request in it
+ * which will be converted to immediate when all acks are received.
+ * 
+ * Scheduler can proceed only when all the servers anwers to this which
+ * means the multi-svr cluster is in a consistent state.
  *
  * @param[in]	ptask	-	work task which contains the request
  * 

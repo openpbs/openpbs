@@ -37,7 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-
 /**
  *
  * @brief
@@ -45,21 +44,17 @@
  *
  */
 
+#include "batch_request.h"
+#include "dis.h"
+#include "log.h"
+#include "pbs_nodes.h"
+#include "server.h"
+#include "svrfunc.h"
+#include "tpp.h"
 
-#include	"dis.h"
-#include	"server.h"
-#include	"batch_request.h"
-#include	"tpp.h"
-#include	"log.h"
-#include	"pbs_nodes.h"
-#include	"svrfunc.h"
-
-
-extern	time_t	time_now;
-
+extern time_t time_now;
 
 static int mtfd_replyhello_psvr = -1;
-
 
 /**
  * @brief send a command using peer server protocol
@@ -96,6 +91,8 @@ err:
 
 /**
  * @brief mcast all the resource update to the needy
+ * It sets the work task to execute immediately to
+ * batch other peer server responses togethor. 
  * 
  * @param psvr 
  */
@@ -104,16 +101,17 @@ mcast_resc_update_all(void *psvr)
 {
 	struct work_task *ptask;
 
-	if (mtfd_replyhello_psvr == -1) {
-		ptask = set_task(WORK_Immed, 0, mcast_msg, NULL);
-		ptask->wt_aux = PS_CONNECT;
-	}
-
 	mcast_add(psvr, &mtfd_replyhello_psvr);
+
+	if (mtfd_replyhello_psvr != -1)
+		ptask = set_task(WORK_Immed, 0, replyhello_psvr, NULL);
 }
 
 /**
  * @brief encodes and send resource usage
+ * resource usage can be a single entry which corresponds to a job
+ * or a list which will be all resource updates which needs to be 
+ * broadcasted.
  * 
  * @param[in] c - connection stream
  * @param[in] psvr_ru - peer server update
@@ -130,9 +128,9 @@ send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 	server_t *psvr;
 
 	/* account messages sent */
-        for (psvr = GET_NEXT(peersvrl);
+	for (psvr = GET_NEXT(peersvrl);
 	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		((svrinfo_t *) (psvr->mi_data))->num_pending_rply += (incr_ct ? 1 : 0);
+		((svrinfo_t *) (psvr->mi_data))->pending_replies += (incr_ct ? 1 : 0);
 	}
 
 	if ((rc = diswsi(c, ct)) != 0)
@@ -164,6 +162,7 @@ err:
 
 /**
  * @brief read resource update info from socket
+ * resource update can be a single entry or a list.
  * 
  * @param[in] sock - connection socket
  * @param[in] ru_head - head of resource update head
@@ -177,17 +176,17 @@ read_resc_update(int sock, pbs_list_head *ru_head)
 	int ct;
 	size_t sz;
 	int i;
-        psvr_ru_t *ru_cur = NULL;
+	psvr_ru_t *ru_cur = NULL;
 
-        CLEAR_HEAD((*ru_head));
+	CLEAR_HEAD((*ru_head));
 
 	ct = disrsi(sock, &rc);
 
 	for (i = 0; i < ct; i++) {
-                ru_cur = calloc(1, sizeof(psvr_ru_t));
+		ru_cur = calloc(1, sizeof(psvr_ru_t));
 		ru_cur->jobid = disrcs(sock, &sz, &rc);
 		if (rc)
-                        goto err;
+			goto err;
 
 		ru_cur->op = disrsi(sock, &rc);
 		if (rc)
@@ -195,21 +194,21 @@ read_resc_update(int sock, pbs_list_head *ru_head)
 
 		ru_cur->execvnode = disrcs(sock, &sz, &rc);
 		if (rc)
-                        goto err;
+			goto err;
 
 		ru_cur->share_job = disrsi(sock, &rc);
 		if (rc)
 			goto err;
 
-                CLEAR_LINK(ru_cur->ru_link);
-                append_link(ru_head, &ru_cur->ru_link, ru_cur);
+		CLEAR_LINK(ru_cur->ru_link);
+		append_link(ru_head, &ru_cur->ru_link, ru_cur);
 	}
 
-        return 0;
+	return 0;
 
 err:
-        free_ru(ru_cur);
-        free_ru(GET_NEXT(*ru_head));
+	free_ru(ru_cur);
+	free_ru(GET_NEXT(*ru_head));
 	return -1;
 }
 
@@ -219,22 +218,27 @@ err:
  * 
  */
 void
-replyhello_psvr(void)
+replyhello_psvr(struct work_task *ptask)
 {
-        int rc;
+	int rc;
 
-        if (mtfd_replyhello_psvr != -1) {
-                rc = send_job_resc_updates(mtfd_replyhello_psvr);
+	if (!ptask)
+		return;
+
+	if (mtfd_replyhello_psvr != -1) {
+		rc = send_job_resc_updates(mtfd_replyhello_psvr);
 		if (rc != DIS_SUCCESS)
-                        close_streams(mtfd_replyhello_psvr, rc);
+			close_streams(mtfd_replyhello_psvr, rc);
 	}
 
-        tpp_mcast_close(mtfd_replyhello_psvr);
-        mtfd_replyhello_psvr = -1;
+	tpp_mcast_close(mtfd_replyhello_psvr);
+	mtfd_replyhello_psvr = -1;
 }
 
 /**
- * @brief send a node stat request to peer server
+ * @brief send a node stat request to peer servers
+ * stats only a few attributes. This request is asynchronous
+ * and server will process when it gets a PS_STAT_RPLY.
  * 
  */
 void
@@ -243,7 +247,7 @@ send_nodestat(void)
 	struct attrl *pat;
 	struct attrl *head;
 	struct attrl *tail;
-	struct attrl *tmp;
+	struct attrl *nxt;
 	int mtfd = open_ps_mtfd();
 	int rc;
 	static int time_last_sent = 0;
@@ -253,7 +257,7 @@ send_nodestat(void)
 		return;
 
 	time_last_sent = time_now;
-	
+
 	if (mtfd == -1)
 		return;
 
@@ -269,14 +273,13 @@ send_nodestat(void)
 	tail->next = pat;
 	tail = tail->next;
 
-	rc =  PBSD_status_put(mtfd,
-		PBS_BATCH_StatusNode,
-		"", head, NULL, PROT_TPP, NULL);
+	rc = PBSD_status_put(mtfd, PBS_BATCH_StatusNode,
+			     "", head, NULL, PROT_TPP, NULL);
 	if (rc)
 		close_streams(mtfd, rc);
 
-	for(pat = head; pat != NULL; pat = tmp) {
-		tmp = pat->next;
+	for (pat = head; pat; pat = nxt) {
+		nxt = pat->next;
 		free(pat);
 	}
 	tpp_mcast_close(mtfd);
@@ -292,25 +295,27 @@ send_nodestat(void)
  *
  * @param[in] stream  - TPP stream on which the request is arriving
  * @param[in] version - Version of protocol.
+ * 
+ * @see is_request
  *
  * @return none
  */
 void
 ps_request(int stream, int version)
 {
-        server_t        *psvr;
-        int             ret = 0;
-	int 		rc = 0;
-        int             command;
-        struct	sockaddr_in	*addr;
-        svrinfo_t *psvr_info;
-        pbs_list_head ru_head;
+	server_t *psvr;
+	int ret = 0;
+	int rc = 0;
+	int command;
+	struct sockaddr_in *addr;
+	svrinfo_t *psvr_info;
+	pbs_list_head ru_head;
 
-        DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
+	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	addr = tpp_getaddr(stream);
 	if (version != PS_PROTOCOL_VER) {
 		log_errf(-1, __func__, "protocol version %d unknown from %s",
-			version, netaddr(addr));
+			 version, netaddr(addr));
 		stream_eof(stream, 0, NULL);
 		return;
 	}
@@ -324,29 +329,35 @@ ps_request(int stream, int version)
 	if (ret != DIS_SUCCESS)
 		goto badcon;
 
-        if (command == PS_CONNECT) {
+	/*
+	* PS_CONNECT will be received in the following cases:
+    	* When a new server joins the cluster .
+    	* When an existing server gets restarted
+    	* When network fails and then server rejoins the cluster after the network recovery.
+	*/
+	if (command == PS_CONNECT) {
 		if ((psvr = get_peersvr(addr)) == NULL)
-                        goto badcon;
+			goto badcon;
 
-                log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, 
-                                "Peer server connected from %s", netaddr(addr));
-                psvr_info = psvr->mi_data;
+		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
+			   "Peer server connected from %s", netaddr(addr));
+		psvr_info = psvr->mi_data;
 		if (psvr_info->msr_stream >= 0 && psvr_info->msr_stream != stream) {
 			DBPRT(("%s: stream %d from %s:%d already open on %d\n",
-				__func__, stream, pmom->mi_host,
-				ntohs(addr->sin_port), psvr_info->msr_stream))
+			       __func__, stream, pmom->mi_host,
+			       ntohs(addr->sin_port), psvr_info->msr_stream))
 			tpp_close(psvr_info->msr_stream);
-			tdelete2((u_long)psvr_info->msr_stream, 0ul, &streams);
+			tdelete2((u_long) psvr_info->msr_stream, 0ul, &streams);
 		}
 		/* we save this stream for future communications */
 		psvr_info->msr_stream = stream;
 		psvr_info->msr_state &= ~INUSE_NEEDS_HELLOSVR;
-                tinsert2((u_long)stream, 0ul, psvr, &streams);
+		tinsert2((u_long) stream, 0ul, psvr, &streams);
 		tpp_eom(stream);
 		/* mcast reply togethor, but do not wait */
 		mcast_resc_update_all(psvr);
 		return;
-        } else if ((psvr = tfind2((u_long)stream, 0, &streams)) != NULL)
+	} else if ((psvr = tfind2((u_long) stream, 0, &streams)) != NULL)
 		goto found;
 
 badcon:
@@ -357,38 +368,38 @@ badcon:
 
 found:
 
-        switch (command) {
+	switch (command) {
 
-		case PS_RSC_UPDATE_ACK:
-			req_peer_svr_ack(stream);
-			break;
+	case PS_RSC_UPDATE_ACK:
+		req_peer_svr_ack(stream);
+		break;
 
-		case PS_RSC_UPDATE_FULL:
-			clean_saved_rsc(psvr->mi_rsc_idx);
-			rc = read_resc_update(stream, &ru_head);
-			if (rc != 0)
-				goto err;
-                        req_resc_update(stream, &ru_head, psvr);
-			break;
-
-		case PS_RSC_UPDATE:
-			rc = read_resc_update(stream, &ru_head);
-			if (rc != 0)
-				goto err;
-                        req_resc_update(stream, &ru_head, psvr);
-			break;
-
-		case PS_STAT_RPLY:
-			rc = process_status_reply(stream);
-			if (rc != 0)
-				goto err;
-			break;
-
-		default:
-			sprintf(log_buffer, "unknown command %d sent from %s",
-				command, psvr->mi_host);
-			log_err(-1, __func__, log_buffer);
+	case PS_RSC_UPDATE_FULL:
+		clean_saved_rsc(psvr->mi_rsc_idx);
+		rc = read_resc_update(stream, &ru_head);
+		if (rc != 0)
 			goto err;
+		req_resc_update(stream, &ru_head, psvr);
+		break;
+
+	case PS_RSC_UPDATE:
+		rc = read_resc_update(stream, &ru_head);
+		if (rc != 0)
+			goto err;
+		req_resc_update(stream, &ru_head, psvr);
+		break;
+
+	case PS_STAT_RPLY:
+		rc = process_status_reply(stream);
+		if (rc != 0)
+			goto err;
+		break;
+
+	default:
+		sprintf(log_buffer, "unknown command %d sent from %s",
+			command, psvr->mi_host);
+		log_err(-1, __func__, log_buffer);
+		goto err;
 	}
 
 	tpp_eom(stream);

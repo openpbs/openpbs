@@ -44,16 +44,15 @@
  *
  */
 
-#include	<netdb.h>
-#include	<arpa/inet.h>
-#include	"pbs_nodes.h"
-#include	"pbs_error.h"
-#include	"server.h"
-#include	"batch_request.h"
-#include	"svrfunc.h"
-#include	"pbs_nodes.h"
-#include	"tpp.h"
-#include	"avltree.h"
+#include "avltree.h"
+#include "batch_request.h"
+#include "pbs_error.h"
+#include "pbs_nodes.h"
+#include "server.h"
+#include "svrfunc.h"
+#include "tpp.h"
+#include <arpa/inet.h>
+#include <netdb.h>
 
 pbs_list_head peersvrl;
 static void *alien_node_idx;
@@ -74,7 +73,7 @@ get_peersvr(struct sockaddr_in *addr)
 	server_t *psvr;
 
 	psvr = tfind2(ntohl(addr->sin_addr.s_addr),
-			ntohs(addr->sin_port), &ipaddrs);
+		      ntohs(addr->sin_port), &ipaddrs);
 	if (psvr && psvr->mi_rmport == psvr->mi_port)
 		return psvr;
 
@@ -182,7 +181,7 @@ void *
 create_svr_struct(struct sockaddr_in *addr, char *hostname)
 {
 	server_t *psvr = NULL;
-	u_long	*pul = NULL;
+	u_long *pul = NULL;
 
 	if (!hostname && (hostname = get_hostname_from_addr(addr->sin_addr)) == NULL) {
 		log_errf(-1, __func__, "Failed initialization for peer server");
@@ -208,15 +207,15 @@ create_svr_struct(struct sockaddr_in *addr, char *hostname)
 void
 free_ru(psvr_ru_t *ru_head)
 {
-        psvr_ru_t *ru_cur;
+	psvr_ru_t *ru_cur;
 	psvr_ru_t *ru_nxt;
 
-        for (ru_cur = ru_head; ru_cur; ru_cur = ru_nxt) {
+	for (ru_cur = ru_head; ru_cur; ru_cur = ru_nxt) {
 		ru_nxt = GET_NEXT(ru_cur->ru_link);
-                free(ru_cur->jobid);
+		free(ru_cur->jobid);
 		free(ru_cur->execvnode);
 		free(ru_cur);
-        }
+	}
 }
 
 /**
@@ -231,12 +230,12 @@ free_ru(psvr_ru_t *ru_head)
 psvr_ru_t *
 init_ru(job *pjob, int op, char *exec_vnode)
 {
-	psvr_ru_t *psvr_ru = calloc(1, sizeof(psvr_ru_t));
+	psvr_ru_t *psvr_ru = pbs_calloc(1, sizeof(psvr_ru_t));
 
 	psvr_ru->jobid = strdup(pjob->ji_qs.ji_jobid);
 	psvr_ru->execvnode = strdup(exec_vnode);
 	psvr_ru->op = op;
-	psvr_ru->share_job = job_sharing_type(pjob);
+	psvr_ru->share_job = get_job_share_type(pjob);
 	CLEAR_LINK(psvr_ru->ru_link);
 
 	return psvr_ru;
@@ -275,7 +274,7 @@ clean_saved_rsc(void *idx)
 	psvr_ru_t *ru_cur;
 	void *idx_ctx = NULL;
 
-	while (pbs_idx_find(idx, NULL, (void **)&ru_cur, &idx_ctx) == PBS_IDX_RET_OK) {
+	while (pbs_idx_find(idx, NULL, (void **) &ru_cur, &idx_ctx) == PBS_IDX_RET_OK) {
 		reverse_resc_update(ru_cur);
 		free(ru_cur);
 	}
@@ -284,7 +283,8 @@ clean_saved_rsc(void *idx)
 
 /**
  * @brief send resource update for all the jobs
- * in the server which are running on alien nodes
+ * which has an update for peer server.
+ * Reset the pending_replies to zero before sending all updates.
  * 
  * @param[in] mtfd - multiplexed fd where resouce update needs to be sent
  * @return int 
@@ -306,12 +306,12 @@ send_job_resc_updates(int mtfd)
 	int i;
 
 	CLEAR_HEAD(ru_head);
-	
+
 	strms = tpp_mcast_members(mtfd, &count);
-	for(i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		if ((psvr = tfind2((u_long) strms[i], 0, &streams)) != NULL) {
 			psvr_info = psvr->mi_data;
-			psvr_info->num_pending_rply = 0;
+			psvr_info->pending_replies = 0;
 		}
 	}
 
@@ -356,8 +356,12 @@ req_peer_svr_ack(int conn)
 
 	if ((psvr = tfind2(conn, 0, &streams)) != NULL) {
 		svr_info = psvr->mi_data;
-		pending_rply = &svr_info->num_pending_rply;
-		*pending_rply -= 1;
+		pending_rply = &svr_info->pending_replies;
+		if (*pending_rply)
+			*pending_rply -= 1;
+		else
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT, __func__,
+				  "pending_rply went negative... Re-setting to zero");
 	} else {
 		log_errf(-1, __func__, "Resource update from unknown stream %d", conn);
 		return;
@@ -367,7 +371,7 @@ req_peer_svr_ack(int conn)
 		ptask = find_work_task(WORK_Deferred_Reply, NULL, req_stat_svr_ready);
 		if (ptask) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-					"All peer server acks received. Processing pbs_server_ready");
+				  "All peer server acks received. Processing pbs_server_ready");
 			convert_work_task(ptask, WORK_Immed);
 		}
 	}
@@ -413,7 +417,7 @@ send_hello(server_t *psvr)
 
 	svr_info->msr_state &= ~INUSE_NEEDS_HELLOSVR;
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, stream);
+		   msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, stream);
 	return 0;
 
 err:
@@ -454,7 +458,7 @@ connect_to_peersvr(void *psvr)
 	if (send_hello(psvr) < 0)
 		return -1;
 
-	if (resc_upd_reqd && svr_info->num_pending_rply)
+	if (resc_upd_reqd && svr_info->pending_replies)
 		mcast_resc_update_all(psvr);
 
 	return 0;
@@ -515,14 +519,13 @@ gen_svr_inst_id(void)
 	char *svr_inst_id = NULL;
 
 	if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
-        	get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
+		get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
 
 	svr_inst_port = pbs_conf.batch_service_port;
 
 	pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
 
 	return svr_inst_id;
-
 }
 
 /**
@@ -541,7 +544,7 @@ num_pending_peersvr_rply(void)
 	for (psvr = GET_NEXT(peersvrl);
 	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
 		svr_info = psvr->mi_data;
-		ct += svr_info->num_pending_rply;
+		ct += svr_info->pending_replies;
 	}
 
 	return ct;
@@ -549,7 +552,7 @@ num_pending_peersvr_rply(void)
 
 /**
  * @brief Go through peer server list and
- * poke if any of them is down
+ * poke if any of them is down.
  */
 void
 poke_peersvr(void)
@@ -617,10 +620,9 @@ req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
 	int op = 0;
 	int rc = 0;
 
-	for (ru_cur = GET_NEXT(*ru_head);
-	     ru_cur; ru_cur = ru_nxt) {
-		ru_nxt = GET_NEXT(ru_cur->ru_link);
+	for (ru_cur = GET_NEXT(*ru_head); ru_cur; ru_cur = ru_nxt) {
 
+		ru_nxt = GET_NEXT(ru_cur->ru_link);
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 			   "received update jobid=%s, op=%d, execvnode=%s",
 			   ru_cur->jobid, ru_cur->op, ru_cur->execvnode);
@@ -643,6 +645,11 @@ req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
 		}
 	}
 
+	/*
+	* INCR will result in over-consumption and DECR results in under-utilization.
+	* But an under-utilization can be filled in the very next scheduling cycle.
+	* So we are only bothering about INCR while sending an ACK.
+	*/
 	if (op == INCR)
 		send_command(stream, PS_RSC_UPDATE_ACK);
 }
@@ -660,8 +667,7 @@ open_ps_mtfd(void)
 	server_t *psvr;
 	svrinfo_t *psvr_info;
 
-	for (psvr = GET_NEXT(peersvrl);
-		psvr; psvr = GET_NEXT(psvr->mi_link)) {
+	for (psvr = GET_NEXT(peersvrl); psvr; psvr = GET_NEXT(psvr->mi_link)) {
 		psvr_info = psvr->mi_data;
 		if (psvr_info->msr_stream < 0) {
 			if (connect_to_peersvr(psvr) < 0)
@@ -737,7 +743,7 @@ init_node_from_bstat(struct batch_status *bstat, server_t *psvr)
 	pbs_list_head attrs;
 	struct batch_status *cur;
 
-	for (cur = bstat; cur; cur = bstat->next) {
+	for (cur = bstat; cur; cur = cur->next) {
 		pnode = calloc(1, sizeof(pbs_node));
 		pnode->nd_name = strdup(cur->name);
 		pnode->nd_svrflags |= NODE_ALIEN;
@@ -797,8 +803,8 @@ update_node_cache(int stream, struct batch_status *bstat)
 		return -1;
 
 	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-		"node stat update received from server %s port %d",
-		psvr->mi_host, psvr->mi_port);
+		   "node stat update received from server %s port %d",
+		   psvr->mi_host, psvr->mi_port);
 
 	/* DIFF_STAT TODO - this logic needs to be optimized after diff-stat */
 	clear_node_cache(psvr);
@@ -826,14 +832,14 @@ find_alien_node(char *nodename)
 	if (nodename == NULL)
 		return NULL;
 	if (*nodename == '(')
-		nodename++;	/* skip over leading paren */
-	if ((pslash = strchr(nodename, (int)'/')) != NULL)
+		nodename++; /* skip over leading paren */
+	if ((pslash = strchr(nodename, (int) '/')) != NULL)
 		*pslash = '\0';
 	if (alien_node_idx == NULL)
 		return NULL;
-	if (pbs_idx_find(alien_node_idx, (void **)&nodename, (void **)&node, NULL) != PBS_IDX_RET_OK)
+	if (pbs_idx_find(alien_node_idx, (void **) &nodename, (void **) &node, NULL) != PBS_IDX_RET_OK)
 		return NULL;
-		
+
 	return node;
 }
 

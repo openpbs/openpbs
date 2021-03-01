@@ -1039,6 +1039,9 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_ServerReady:
+			/* setting the request to ptask as req_stat_svr_ready
+			* only accepts work-task.
+			*/
 			ptask.wt_parm1 = request;
 			req_stat_svr_ready(&ptask);
 			break;

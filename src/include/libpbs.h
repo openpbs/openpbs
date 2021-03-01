@@ -365,7 +365,7 @@ void PBSD_FreeReply(struct batch_reply *);
 struct batch_status *PBSD_status(int, int, char *, struct attrl *, char *);
 struct batch_status *PBSD_status_random(int c, int function, char *id, struct attrl *attrib, char *extend, int parent_object);
 struct batch_status *PBSD_status_aggregate(int c, int cmd, char *id, void *attrib, char *extend, int parent_object, struct attrl *);
-struct batch_status *PBSD_status_get(int, struct batch_status **last, int *obj_type, int prot);
+struct batch_status *PBSD_status_get(int c, struct batch_status **last, int *obj_type, int prot);
 char *PBSD_queuejob(int, char *, char *, struct attropl *, char *, int, char **, int *);
 int decode_DIS_svrattrl(int, pbs_list_head *);
 int decode_DIS_attrl(int, struct attrl **);

@@ -216,7 +216,7 @@ void * get_peersvr_from_host_port(char *hostname, uint port);
 int send_command(int c, int msg);
 int send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct);
 void req_resc_update(int, pbs_list_head *, void *);
-void replyhello_psvr(void);
+void replyhello_psvr(struct work_task *);
 void poke_peersvr(void);
 void mcast_resc_update_all(void *psvr);
 void clean_saved_rsc(void*);
