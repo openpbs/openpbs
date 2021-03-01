@@ -244,27 +244,6 @@ validate_perm_res_in_select(char *val, int val_exist)
 #define SET_RESC_PLACE	2
 
 #ifndef PBS_MOM
-/**
- * @brief	Calculate the index of the current server
- *
- * @param	void
- *
- * @return	int
- * @retval	index of the server
- * @retval	-1 if couldn't be determined
- */
-static int
-get_server_index(void)
-{
-	int i;
-
-	for (i = 0; i < get_num_servers(); i++) {
-		if (pbs_conf.psi[i].port == pbs_server_port_dis && is_same_host(pbs_conf.psi[i].name, server_host))
-			return i;
-	}
-
-	return -1;
-}
 
 /**
  * @brief	Generate and fill jobid of the new job
@@ -303,7 +282,7 @@ generate_jobid(char *jidbuf, char *clusterid, int jtype)
 		if (jtype == 0)
 			sprintf(jidbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
 		else
-			sprintf(jidbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+			sprintf(jidbuf, "%lld%0*d[].%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
 	}
 
 	return 0;
