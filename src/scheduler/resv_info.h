@@ -118,4 +118,7 @@ int ralter_reduce_chunks(resource_resv *resv);
 /* Will we try and confirm this reservation in this cycle */
 int will_confirm(resource_resv *resv, time_t server_time);
 
+/* wrapper for pbs_confirmresv */
+int send_confirmresv(int virtual_sd, resource_resv *resv, const char *location, unsigned long start, const char *extend);
+
 #endif /* _RESV_INFO_H */
