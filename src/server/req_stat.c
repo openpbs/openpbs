@@ -831,6 +831,7 @@ req_stat_svr_ready(struct work_task *ptask)
 
 		poke_peersvr();
 
+		/* If pending acks are not down to 0, scheduler will be blocked */
 		if (num_pending_peersvr_rply() > 0) {
 
 			if (set_task(WORK_Deferred_Reply, preq->rq_conn, req_stat_svr_ready, (void *) preq) == NULL) {

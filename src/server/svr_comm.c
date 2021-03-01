@@ -113,6 +113,11 @@ mcast_resc_update_all(void *psvr)
  * or a list which will be all resource updates which needs to be 
  * broadcasted.
  * 
+ * We keep track of pending acks to know whether we are in a consistent
+ * state or not. This will be a deciding factor when serving PBS_BATCH_ServerReady
+ * 
+ * @see req_stat_svr_ready
+ * 
  * @param[in] c - connection stream
  * @param[in] psvr_ru - peer server update
  * @param[in] ct - count of total resource update packets
@@ -333,7 +338,7 @@ ps_request(int stream, int version)
 	* PS_CONNECT will be received in the following cases:
     	* When a new server joins the cluster .
     	* When an existing server gets restarted
-    	* When network fails and then server rejoins the cluster after the network recovery.
+    	* Upon a network failure recovery.
 	*/
 	if (command == PS_CONNECT) {
 		if ((psvr = get_peersvr(addr)) == NULL)

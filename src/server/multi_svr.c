@@ -553,6 +553,15 @@ num_pending_peersvr_rply(void)
 /**
  * @brief Go through peer server list and
  * poke if any of them is down.
+ * 
+ * If the application layer came to know about the network failure,
+ * it will close the peer server connection.
+ * The server will periodically attempt to re-connect and
+ * the initial exchange will get triggered upon reconnecting.
+ * 
+ * poke is one such re-connecting mechanism.
+ * Peer-server will also attempts to reconnect when it has some data
+ * to be sent to peer server in the form of resource usage / commands.
  */
 void
 poke_peersvr(void)
@@ -648,7 +657,7 @@ req_resc_update(int stream, pbs_list_head *ru_head, void *psvr)
 	/*
 	* INCR will result in over-consumption and DECR results in under-utilization.
 	* But an under-utilization can be filled in the very next scheduling cycle.
-	* So we are only bothering about INCR while sending an ACK.
+	* So we are only bothered about INCR while sending an ACK.
 	*/
 	if (op == INCR)
 		send_command(stream, PS_RSC_UPDATE_ACK);
@@ -696,6 +705,7 @@ mcast_resc_usage(psvr_ru_t *psvr_ru)
 	mtfd = open_ps_mtfd();
 
 	if (mtfd != -1) {
+		/* only INCR's added to pending acks count */
 		if (psvr_ru->op == INCR)
 			incr_ct++;
 
