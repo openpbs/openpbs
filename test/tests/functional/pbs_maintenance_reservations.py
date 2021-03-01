@@ -652,7 +652,7 @@ class TestMaintenanceReservations(TestFunctional):
         self.server.status(RESV, 'resv_nodes', id=rid1)
         resv_node_list = self.server.reservations[rid1].get_vnodes()
         resv_node = resv_node_list[0]
-        
+
         # On a cpuset machine the resv_node could be a vnode,
         # always pull the hostname from the node attribute
         status = self.server.status(NODE, id=resv_node)
