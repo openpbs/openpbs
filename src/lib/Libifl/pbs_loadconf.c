@@ -356,7 +356,9 @@ err:
  *	will be void. In that case, access to every pbs_conf.variable has to be
  *	synchronized against the reload of those variables.
  *
- * @param[in] reload		Whether to attempt a reload
+ * @param[in] reload	Whether to attempt a reload
+ * 						Note: The following parameters will not be reloaded:
+ * 						- PBS_SERVER_INSTANCES
  *
  * @return int
  * @retval 1 Success
