@@ -111,3 +111,59 @@ class Test_array_job_email(TestFunctional):
             self.server.submit(J)
         except PbsSubmitError as e:
             self.assertTrue(error_msg in e.msg[0])
+
+    def test_email_non_existent_user(self):
+        """
+        Verify when a job array is submitted with a valid and invalid
+        mail recipients and all file stageout attempts fails then
+        email should get delivered to valid recipient and no email
+        would be sent to invalid recipient.
+        """
+        non_existent_user = PbsAttribute.random_str(length=5)
+        non_existent_mailfile = os.path.join(os.sep, "var", "mail",
+                                            non_existent_user)
+        pbsuser_mailfile = os.path.join(os.sep, "var", "mail",
+                                       str(TEST_USER))
+
+        # Check mail file should exist for existent user
+        if not os.path.isfile(pbsuser_mailfile):
+            msg = "Skipping this test as Mail file '%s' " % pbsuser_mailfile
+            msg += "does not exist or mail is not setup."
+            self.skip_test(msg)
+
+        # Check non existent user mail file should not exist
+        self.assertFalse(os.path.isfile(non_existent_mailfile))
+
+        src_file = PbsAttribute.random_str(length=5)
+        stageout_path = os.path.join(os.sep, '1', src_file)
+        dest_file = stageout_path + '1'
+        if not os.path.isdir(stageout_path) and os.path.exists(src_file):
+            os.remove(src_file)
+
+        #Submit job with invalid stageout path
+        usermail_list = str(TEST_USER) + "," + non_existent_user
+        set_attrib =  {ATTR_stageout: stageout_path + '@' +
+                        self.mom.shortname + ':' + dest_file, ATTR_S: '/bin/bash',
+                        ATTR_M: usermail_list, ATTR_J: '1-2'}
+        j = Job()
+        j.set_attributes(set_attrib)
+        j.set_sleep_time(1)
+        jid = self.server.submit(j)
+        subjid = j.create_subjob_id(jid, 1)
+
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+        # Check stageout file should not be present
+        self.assertFalse(os.path.exists(dest_file))
+
+        # Check if mail is deliverd to valid user mail file
+        ret = self.du.cat(filename=pbsuser_mailfile, sudo=True)
+        maillog = [x.strip() for x in ret['out'][-50:]]
+
+        subjid = j.create_subjob_id(jid, 1)
+        msg = "PBS Job Id: " + subjid
+        err_msg = "%s msg not found in pbsuser's mail log" % msg
+        self.assertIn(msg, maillog, err_msg)
+
+        # Verify there should not be any email for invalid user
+        self.assertFalse(os.path.isfile(non_existent_mailfile))
