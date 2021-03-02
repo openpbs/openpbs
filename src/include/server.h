@@ -199,20 +199,11 @@ typedef struct resc_update psvr_ru_t;
 extern pbs_list_head peersvrl;
 
 struct svrinfo {
-	char		mi_host[PBS_MAXHOSTNAME+1]; /* hostname where mom is */
-	unsigned int	mi_port;	/* port to which Mom is listening */
-
-
-	unsigned long	ps_state;   /* peer server's state */
-	int		ps_stream;   /* TPP stream to peer server */
-	pbs_list_head	ps_deferred_cmds;	/* links to svr work_task list for TPP replies */
-	unsigned long	*ps_addrs;   /* IP addresses of host */
-
-
 	int		ps_pending_replies; /* number of unacknowledged replies from this server */
 	void		*ps_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
 	pbs_list_head	ps_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */
 };
+typedef struct svrinfo svrinfo_t;
 
 void *get_peersvr(struct sockaddr_in *);
 void *create_svr_entry(char *, unsigned int);

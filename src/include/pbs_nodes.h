@@ -78,7 +78,7 @@ enum nodeattr {
 /* Daemon info structure which are common for both mom and peer server */
 struct daemon_info {
 	unsigned long	dmn_state;   /* Daemon's state */
-	int		dmn_stream;   /* TPP stream to Mom */
+	int		dmn_stream;   /* TPP stream to service */
 	unsigned long	*dmn_addrs;   /* IP addresses of host */
 	pbs_list_head	dmn_deferred_cmds;	/* links to svr work_task list for TPP replies */
 };
@@ -124,9 +124,6 @@ struct mom_svrinfo {
 	struct job	**msr_jobindx;  /* index array of jobs on this Mom */
 	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
 	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
-	int		pending_replies; /* number of unacknowledged replies from this server */
-	void		*msr_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
-	pbs_list_head	msr_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 
@@ -434,7 +431,8 @@ extern  void	momptr_down(mominfo_t *, char *);
 extern  void	momptr_offline_by_mom(mominfo_t *, char *);
 extern  void	momptr_clear_offline_by_mom(mominfo_t *, char *);
 extern  void	   delete_mom_entry(mominfo_t *);
-extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *, int);
+extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *);
+extern  dmn_info_t* init_daemon_info(ulong *pul, uint port, mominfo_t *pmom);
 extern  void       delete_svrmom_entry(mominfo_t *);
 extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);

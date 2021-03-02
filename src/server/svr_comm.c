@@ -135,7 +135,7 @@ send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 	/* account messages sent */
 	for (psvr = GET_NEXT(peersvrl);
 	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		((svrinfo_t *) (psvr->mi_data))->pending_replies += (incr_ct ? 1 : 0);
+		((svrinfo_t *) (psvr->mi_data))->ps_pending_replies += (incr_ct ? 1 : 0);
 	}
 
 	if ((rc = diswsi(c, ct)) != 0)
@@ -383,7 +383,7 @@ found:
 		break;
 
 	case PS_RSC_UPDATE_FULL:
-		clean_saved_rsc(psvr_info->msr_rsc_idx);
+		clean_saved_rsc(psvr_info->ps_rsc_idx);
 		rc = read_resc_update(stream, &ru_head);
 		if (rc != 0)
 			goto err;

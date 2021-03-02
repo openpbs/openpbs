@@ -312,8 +312,19 @@ find_mom_entry(char *hostname, unsigned int port)
  * The following functions are used by the Server only !
  */
 
+/**
+ * @brief initialize daemon info structure
+ * This struct is common for all service end points
+ * inlcluding mom/peer-svr
+ * 
+ * @param[in] pul - list of IP addresses of host; will be freed on error
+ *			or saved in structure; caller must not free pul
+ * @param[in] port - port of service end point 
+ * @param[in] pmi - machine info struct
+ * @return dmn_info_t* 
+ */
 dmn_info_t*
-init_daemon_info(ulong *pul, uint port, mominfo_t *pmom)
+init_daemon_info(ulong *pul, uint port, mominfo_t *pmi)
 {
 	dmn_info_t *dmn_info = pbs_calloc(1, sizeof(dmn_info_t));
 
@@ -323,7 +334,7 @@ init_daemon_info(ulong *pul, uint port, mominfo_t *pmom)
 	dmn_info->dmn_addrs = pul;
 
 	while (*pul) {
-		tinsert2(*pul, port, pmom, &ipaddrs);
+		tinsert2(*pul, port, pmi, &ipaddrs);
 		pul++;
 	}
 
@@ -349,7 +360,6 @@ init_daemon_info(ulong *pul, uint port, mominfo_t *pmom)
  * @param[in]	port     - port number to which Mom will be listening
  * @param[in]	pul      - list of IP addresses of host; will be freed on error
  *			   				or saved in structure; caller must not free pul
- * @param[in]	is_peer_svr	- Peer server or mom
  *
  * @return	mominfo_t *
  * @retval	pointer to the created mominfo entry	- success
@@ -362,15 +372,12 @@ init_daemon_info(ulong *pul, uint port, mominfo_t *pmom)
  */
 
 mominfo_t *
-create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int is_peer_svr)
+create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 {
 	mominfo_t     *pmom;
 	mom_svrinfo_t *psvrmom;
 
-	if (is_peer_svr)
-		pmom = create_svr_entry(hostname, port);
-	else
-		pmom = create_mom_entry(hostname, port);
+	pmom = create_mom_entry(hostname, port);
 
 	if (pmom == NULL) {
 		free(pul);
@@ -384,7 +391,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 
 	psvrmom = (mom_svrinfo_t *)malloc(sizeof(mom_svrinfo_t));
 	if (!psvrmom) {
-		log_err(errno, "create_svrmom_entry", merr);
+		log_err(PBSE_SYSTEM, __func__, merr);
 		delete_mom_entry(pmom);
 		return NULL;
 	}
@@ -403,14 +410,11 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 	psvrmom->msr_numvslots = 1;
 	psvrmom->msr_vnode_pool = 0;
 	psvrmom->msr_has_inventory = 0;
-	psvrmom->pending_replies = 0;
-	psvrmom->msr_rsc_idx = pbs_idx_create(0, 0);
-	CLEAR_HEAD(psvrmom->msr_node_list);
 	psvrmom->msr_children =
 		(struct pbsnode **)calloc((size_t)(psvrmom->msr_numvslots),
 		sizeof(struct pbsnode *));
 	if (psvrmom->msr_children == NULL) {
-		log_err(errno, "create_svrmom_entry", merr);
+		log_err(errno, __func__, merr);
 		free(psvrmom);
 		delete_mom_entry(pmom);
 		return NULL;
@@ -459,16 +463,21 @@ open_conn_stream(mominfo_t *pmom)
 	return stream;
 }
 
+/**
+ * @brief free up daemon info struct and associated data
+ * 
+ * @param[in] pmi - mom/peer-svr struct
+ */
 void
-delete_daemon_info(mominfo_t *pmom)
+delete_daemon_info(mominfo_t *pmi)
 {
 	dmn_info_t *pdmninfo;
 	ulong *up;
 
-	if (!pmom || !pmom->mi_dmn_info)
+	if (!pmi || !pmi->mi_dmn_info)
 		return;
 
-	pdmninfo = pmom->mi_dmn_info;
+	pdmninfo = pmi->mi_dmn_info;
 
 	/* take stream out of tree */
 	tpp_close(pdmninfo->dmn_stream);
@@ -476,13 +485,13 @@ delete_daemon_info(mominfo_t *pmom)
 	if (pdmninfo->dmn_addrs) {
 		for (up = pdmninfo->dmn_addrs; *up; up++) {
 			/* del Mom's IP addresses from tree  */
-			tdelete2(*up, pmom->mi_port,  &ipaddrs);
+			tdelete2(*up, pmi->mi_port,  &ipaddrs);
 		}
 		free(pdmninfo->dmn_addrs);
 		pdmninfo->dmn_addrs = NULL;
 	}
 	free(pdmninfo);
-	pmom->mi_dmn_info = NULL;
+	pmi->mi_dmn_info = NULL;
 }
 
 
@@ -538,8 +547,6 @@ delete_svrmom_entry(mominfo_t *pmom)
 		}
 	}
 	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
-	pbs_idx_destroy(psvrmom->msr_rsc_idx);
-	delete_link(&psvrmom->msr_node_list);
 	delete_daemon_info(pmom);
 	delete_mom_entry(pmom);
 }

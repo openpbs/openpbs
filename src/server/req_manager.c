@@ -2957,7 +2957,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		nport = get_nattr_long(pnode, ND_ATR_Port);
 
-		if ((pmom = create_svrmom_entry(phost, nport, pul, 0)) == NULL) {
+		if ((pmom = create_svrmom_entry(phost, nport, pul)) == NULL) {
 			free(pul);
 			effective_node_delete(pnode);
 			return (PBSE_SYSTEM);
@@ -2971,7 +2971,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		}
 		smp = (mom_svrinfo_t *)(pmom->mi_data);
 		for (j = 0; pmom->mi_dmn_info->dmn_addrs[j]; j++) {
-			u_long ipaddr =  pmom->mi_dmn_info->dmn_addrs[j];
+			u_long ipaddr = pmom->mi_dmn_info->dmn_addrs[j];
 			if (insert_iplist_element(pbs_iplist, ipaddr)) {
 				delete_pbs_iplist(pbs_iplist);
 				return (PBSE_SYSTEM); /* No Memory */

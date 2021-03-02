@@ -155,21 +155,46 @@ get_hostname_from_addr(struct in_addr addr)
 void *
 create_svr_struct(struct sockaddr_in *addr, char *hostname)
 {
+	svrinfo_t *psvr_info;
 	server_t *psvr = NULL;
 	u_long *pul = NULL;
 
-	if (!hostname && (hostname = get_hostname_from_addr(addr->sin_addr)) == NULL) {
-		log_errf(-1, __func__, "Failed initialization for peer server");
+	if (!hostname && (hostname = get_hostname_from_addr(addr->sin_addr)) == NULL)
 		return NULL;
-	}
 
 	if (make_host_addresses_list(hostname, &pul))
 		return NULL;
-	if ((psvr = create_svrmom_entry(hostname, addr->sin_port, pul, 1)) == NULL) {
+
+	psvr = create_svr_entry(hostname, addr->sin_port);
+
+	if (psvr == NULL) {
 		free(pul);
-		log_errf(-1, __func__, "Failed initialization for peer server %s", hostname);
+		return psvr;
+	}
+
+	if (psvr->mi_data) {
+		free(pul);
+		return psvr;	/* already there */
+	}
+
+	psvr_info = malloc(sizeof(svrinfo_t));
+	if (!psvr_info) {
+		log_err(PBSE_SYSTEM, __func__, "malloc failed!");
+		delete_mom_entry(psvr);
 		return NULL;
 	}
+
+	psvr_info->ps_pending_replies = 0;
+	psvr_info->ps_rsc_idx = pbs_idx_create(0, 0);
+	CLEAR_HEAD(psvr_info->ps_node_list);
+
+	psvr->mi_data = psvr_info;
+
+	if (psvr->mi_dmn_info) {
+		free(pul);
+		return psvr;	/* already there */
+	}
+	psvr->mi_dmn_info = init_daemon_info(pul, addr->sin_port, psvr);
 
 	return psvr;
 }
@@ -286,7 +311,7 @@ send_job_resc_updates(int mtfd)
 	for (i = 0; i < count; i++) {
 		if ((psvr = tfind2((u_long) strms[i], 0, &streams)) != NULL) {
 			psvr_info = psvr->mi_data;
-			psvr_info->pending_replies = 0;
+			psvr_info->ps_pending_replies = 0;
 		}
 	}
 
@@ -331,7 +356,7 @@ req_peer_svr_ack(int conn)
 
 	if ((psvr = tfind2(conn, 0, &streams)) != NULL) {
 		svr_info = psvr->mi_data;
-		pending_rply = &svr_info->pending_replies;
+		pending_rply = &svr_info->ps_pending_replies;
 		if (*pending_rply)
 			*pending_rply -= 1;
 		else
@@ -381,22 +406,23 @@ send_connect(server_t *psvr)
 {
 	int rc;
 	dmn_info_t *dmn_info = psvr->mi_dmn_info;
+	int stream = dmn_info->dmn_stream;
 
 	if (!(dmn_info->dmn_state & INUSE_NEEDS_HELLOSVR))
 		return 0;
 
-	rc = send_command(dmn_info->dmn_stream, PS_CONNECT);
+	rc = send_command(stream, PS_CONNECT);
 	if (rc != DIS_SUCCESS)
 		goto err;
 
 	dmn_info->dmn_state &= ~INUSE_NEEDS_HELLOSVR;
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		   msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, dmn_info->dmn_stream);
+		   msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, stream);
 	return 0;
 
 err:
-	log_errf(errno, msg_daemonname, "Failed to send CONNECT to peer server %s at stream:%d", psvr->mi_host, dmn_info->dmn_stream);
-	tpp_close(dmn_info->dmn_stream);
+	log_errf(errno, msg_daemonname, "Failed to send CONNECT to peer server %s at stream:%d", psvr->mi_host, stream);
+	stream_eof(stream, rc, "write_err");
 	return -1;
 }
 
@@ -433,7 +459,7 @@ connect_to_peersvr(void *psvr)
 	if (send_connect(psvr) < 0)
 		return -1;
 
-	if (resc_upd_reqd && svr_info->pending_replies)
+	if (resc_upd_reqd && svr_info->ps_pending_replies)
 		mcast_resc_update_all(psvr);
 
 	return 0;
@@ -466,8 +492,11 @@ init_msi()
 		addr.sin_addr.s_addr = 0;
 		addr.sin_port = pbs_conf.psi[i].port;
 
-		if ((psvr = create_svr_struct(&addr, pbs_conf.psi[i].name)) == NULL)
+		if ((psvr = create_svr_struct(&addr, pbs_conf.psi[i].name)) == NULL) {
+			log_errf(PBSE_INTERNAL, __func__, "Failed initialization for peer server; name: %s, port: %d",
+				 pbs_conf.psi[i].name, pbs_conf.psi[i].port);
 			return -1;
+		}
 
 		if (connect_to_peersvr(psvr) != 0) {
 			log_errf(PBSE_INTERNAL, __func__, "Failed initialization for %s", pbs_conf.psi[i].name);
@@ -519,7 +548,7 @@ num_pending_peersvr_rply(void)
 	for (psvr = GET_NEXT(peersvrl);
 	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
 		svr_info = psvr->mi_data;
-		ct += svr_info->pending_replies;
+		ct += svr_info->ps_pending_replies;
 	}
 
 	return ct;
@@ -568,13 +597,13 @@ save_resc_update(void *pobj, psvr_ru_t *ru_new)
 	if (!ru_new || !ru_new->jobid)
 		return -1;
 
-	pbs_idx_find(psvr_info->msr_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
+	pbs_idx_find(psvr_info->ps_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
 	if (!ru_old && ru_new->op == INCR) {
-		if (!psvr_info->msr_rsc_idx)
-			psvr_info->msr_rsc_idx = pbs_idx_create(0, 0);
-		rc = pbs_idx_insert(psvr_info->msr_rsc_idx, ru_new->jobid, ru_new);
+		if (!psvr_info->ps_rsc_idx)
+			psvr_info->ps_rsc_idx = pbs_idx_create(0, 0);
+		rc = pbs_idx_insert(psvr_info->ps_rsc_idx, ru_new->jobid, ru_new);
 	} else if (ru_old && ru_new->op == DECR) {
-		pbs_idx_delete(psvr_info->msr_rsc_idx, ru_old->jobid);
+		pbs_idx_delete(psvr_info->ps_rsc_idx, ru_old->jobid);
 		delete_clear_link(&ru_old->ru_link);
 		free_ru(ru_old);
 	} else {
@@ -709,7 +738,7 @@ add_node_to_cache(server_t *psvr, pbs_node *pnode)
 	svrinfo_t *psvrinfo = psvr->mi_data;
 
 	CLEAR_LINK(pnode->nd_link);
-	append_link(&psvrinfo->msr_node_list, &pnode->nd_link, pnode);
+	append_link(&psvrinfo->ps_node_list, &pnode->nd_link, pnode);
 	pbs_idx_insert(alien_node_idx, pnode->nd_name, pnode);
 }
 
@@ -762,7 +791,7 @@ clear_node_cache(server_t *psvr)
 	pbs_node *nd_next;
 	svrinfo_t *psvrinfo = psvr->mi_data;
 
-	for (pnode = GET_NEXT(psvrinfo->msr_node_list); pnode; pnode = nd_next) {
+	for (pnode = GET_NEXT(psvrinfo->ps_node_list); pnode; pnode = nd_next) {
 		nd_next = GET_NEXT(pnode->nd_link);
 		CLEAR_LINK(pnode->nd_link);
 		pbs_idx_delete(alien_node_idx, pnode->nd_name);
