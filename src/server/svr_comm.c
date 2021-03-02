@@ -362,8 +362,10 @@ ps_request(int stream, int version)
 		/* mcast reply togethor, but do not wait */
 		mcast_resc_update_all(psvr);
 		return;
-	} else if ((psvr = tfind2((u_long) stream, 0, &streams)) != NULL)
+	} else if ((psvr = tfind2((u_long) stream, 0, &streams)) != NULL) {
+		psvr_info = psvr->mi_data;
 		goto found;
+	}
 
 badcon:
 	sprintf(log_buffer, "bad attempt to connect from %s", netaddr(addr));
@@ -380,7 +382,7 @@ found:
 		break;
 
 	case PS_RSC_UPDATE_FULL:
-		clean_saved_rsc(psvr->mi_rsc_idx);
+		clean_saved_rsc(psvr_info->msr_rsc_idx);
 		rc = read_resc_update(stream, &ru_head);
 		if (rc != 0)
 			goto err;

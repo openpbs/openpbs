@@ -355,7 +355,7 @@ typedef struct ajinfo {
  */
 
 struct jbdscrd {
-	struct	mominfo *jdcd_mom;	/* ptr to Mom */
+	struct	machine_info *jdcd_mom;	/* ptr to Mom */
 	int		 jdcd_state;	/* 0 - waiting on her */
 };
 #define JDCD_WAITING 0	/* still waiting to hear from this Mom */

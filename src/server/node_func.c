@@ -313,7 +313,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_nummoms = 0;
 	pnode->nd_svrflags |= NODE_NEWOBJ;
 	pnode->nd_lic_info = NULL;
-	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
+	pnode->nd_moms    = (mominfo_t **)calloc(1, sizeof(mominfo_t *));
 	if (pnode->nd_moms == NULL)
 		return (PBSE_SYSTEM);
 	pnode->nd_nummslots = 1;

@@ -80,7 +80,7 @@ enum nodeattr {
  *	to hold contact	information for an instance of a pbs_mom on a host
  */
 
-struct mominfo {
+struct machine_info {
 	char		mi_host[PBS_MAXHOSTNAME+1]; /* hostname where mom is */
 	unsigned int	mi_port;	/* port to which Mom is listening */
 	unsigned int	mi_rmport;	/* port for MOM RM */
@@ -88,12 +88,10 @@ struct mominfo {
 	void	       *mi_data;	/* daemon dependent substructure */
 	mom_hook_action_t **mi_action;	/* pending hook copy/delete on mom */
 	int		mi_num_action; /* # of hook actions in mi_action */
-	pbs_list_link	mi_link; /* forward/backward links */
-	void		*mi_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
-	pbs_list_head	mi_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */	
+	pbs_list_link	mi_link; /* forward/backward links */	
 };
-typedef struct mominfo mominfo_t;
-typedef struct mominfo server_t;
+typedef struct machine_info mominfo_t;
+typedef struct machine_info server_t;
 
 /*
  * The following structure is used by the Server for each Mom.
@@ -121,6 +119,8 @@ struct mom_svrinfo {
 	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
 	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
 	int		pending_replies; /* number of unacknowledged replies from this server */
+	void		*msr_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
+	pbs_list_head	msr_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 typedef struct mom_svrinfo svrinfo_t;
@@ -240,7 +240,7 @@ union ndu_ninfo {
  */
 struct pbsnode {
 	char *nd_name;		  /* vnode's name */
-	struct mominfo **nd_moms; /* array of parent Moms */
+	mominfo_t **nd_moms; /* array of parent Moms */
 	int nd_nummoms;		  /* number of Moms */
 	int nd_nummslots;	  /* number of slots in nd_moms */
 	int nd_index;		  /* global node index */
@@ -474,9 +474,9 @@ int get_job_share_type(struct job *pjob);
 extern  int	   recover_vmap(void);
 extern  void       delete_momvmap_entry(momvmap_t *);
 extern  momvmap_t *create_mommap_entry(char *, char *hostn, mominfo_t *, int);
-extern struct mominfo   *find_mom_by_vnodename(const char *);
-extern momvmap_t        *find_vmap_entry(const char *);
-extern mominfo_t *add_mom_data(const char *, void *);
+extern mominfo_t	*find_mom_by_vnodename(const char *);
+extern momvmap_t	*find_vmap_entry(const char *);
+extern mominfo_t	*add_mom_data(const char *, void *);
 extern mominfo_t	*find_mominfo(const char *);
 extern int		create_vmap(void **);
 extern void		destroy_vmap(void *);

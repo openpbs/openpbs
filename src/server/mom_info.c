@@ -184,8 +184,6 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_action = NULL;
 		pmom->mi_num_action = 0;
 		CLEAR_LINK(pmom->mi_link);
-		pmom->mi_rsc_idx = pbs_idx_create(0, 0);
-		CLEAR_HEAD(pmom->mi_node_list);
 #ifndef PBS_MOM
 		if (mom_hooks_seen_count() > 0) {
 			struct stat sbuf;
@@ -267,7 +265,6 @@ delete_mom_entry(mominfo_t *pmom)
 	if (pmom->mi_data)
 		free(pmom->mi_data);
 
-	pbs_idx_destroy(pmom->mi_rsc_idx);
 	delete_link(&pmom->mi_link);
 	memset(pmom, 0, sizeof(mominfo_t));
 	free(pmom);
@@ -393,6 +390,8 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul, int i
 	psvrmom->msr_vnode_pool = 0;
 	psvrmom->msr_has_inventory = 0;
 	psvrmom->pending_replies = 0;
+	psvrmom->msr_rsc_idx = pbs_idx_create(0, 0);
+	CLEAR_HEAD(psvrmom->msr_node_list);
 	psvrmom->msr_children =
 		(struct pbsnode **)calloc((size_t)(psvrmom->msr_numvslots),
 		sizeof(struct pbsnode *));
@@ -512,6 +511,8 @@ delete_svrmom_entry(mominfo_t *pmom)
 	}
 	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
 	psvrmom->msr_stream = -1; /* always set to -1 when deleted */
+	pbs_idx_destroy(psvrmom->msr_rsc_idx);
+	delete_link(&psvrmom->msr_node_list);
 	delete_mom_entry(pmom);
 }
 
@@ -842,7 +843,7 @@ find_vmap_entry(const char *vname)
 }
 
 
-struct mominfo *find_mom_by_vnodename(const char *vname)
+mominfo_t *find_mom_by_vnodename(const char *vname)
 {
 	momvmap_t	*pmap;
 

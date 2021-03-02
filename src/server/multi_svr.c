@@ -129,8 +129,6 @@ create_svr_entry(char *hostname, unsigned int port)
 	psvr->mi_rmport = port;
 	CLEAR_LINK(psvr->mi_link);
 	append_link(&peersvrl, &psvr->mi_link, psvr);
-	psvr->mi_rsc_idx = NULL;
-	CLEAR_HEAD(psvr->mi_node_list);
 
 	return psvr;
 
@@ -402,7 +400,7 @@ is_peersvr(void *pobj)
  * @retval	-1	- failure
  */
 static int
-send_hello(server_t *psvr)
+send_connect(server_t *psvr)
 {
 	int rc;
 	svrinfo_t *svr_info = psvr->mi_data;
@@ -455,7 +453,7 @@ connect_to_peersvr(void *psvr)
 	if (open_conn_stream(psvr) < 0)
 		return -1;
 
-	if (send_hello(psvr) < 0)
+	if (send_connect(psvr) < 0)
 		return -1;
 
 	if (resc_upd_reqd && svr_info->pending_replies)
@@ -588,18 +586,18 @@ save_resc_update(void *pobj, psvr_ru_t *ru_new)
 {
 	psvr_ru_t *ru_old = NULL;
 	int rc = 0;
-	server_t *psvr = pobj;
+	svrinfo_t *psvr_info = ((server_t *)pobj)->mi_data;
 
 	if (!ru_new || !ru_new->jobid)
 		return -1;
 
-	pbs_idx_find(psvr->mi_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
+	pbs_idx_find(psvr_info->msr_rsc_idx, (void **) &ru_new->jobid, (void **) &ru_old, NULL);
 	if (!ru_old && ru_new->op == INCR) {
-		if (!psvr->mi_rsc_idx)
-			psvr->mi_rsc_idx = pbs_idx_create(0, 0);
-		rc = pbs_idx_insert(psvr->mi_rsc_idx, ru_new->jobid, ru_new);
+		if (!psvr_info->msr_rsc_idx)
+			psvr_info->msr_rsc_idx = pbs_idx_create(0, 0);
+		rc = pbs_idx_insert(psvr_info->msr_rsc_idx, ru_new->jobid, ru_new);
 	} else if (ru_old && ru_new->op == DECR) {
-		pbs_idx_delete(psvr->mi_rsc_idx, ru_old->jobid);
+		pbs_idx_delete(psvr_info->msr_rsc_idx, ru_old->jobid);
 		delete_clear_link(&ru_old->ru_link);
 		free_ru(ru_old);
 	} else {
@@ -730,11 +728,13 @@ mcast_resc_usage(psvr_ru_t *psvr_ru)
 static void
 add_node_to_cache(server_t *psvr, pbs_node *pnode)
 {
-	if (!pnode)
+	if (!psvr || !pnode)
 		return;
 
+	svrinfo_t *psvrinfo = psvr->mi_data;
+
 	CLEAR_LINK(pnode->nd_link);
-	append_link(&psvr->mi_node_list, &pnode->nd_link, pnode);
+	append_link(&psvrinfo->msr_node_list, &pnode->nd_link, pnode);
 	pbs_idx_insert(alien_node_idx, pnode->nd_name, pnode);
 }
 
@@ -785,9 +785,9 @@ clear_node_cache(server_t *psvr)
 {
 	pbs_node *pnode;
 	pbs_node *nd_next;
+	svrinfo_t *psvrinfo = psvr->mi_data;
 
-	for (pnode = GET_NEXT(psvr->mi_node_list);
-	     pnode; pnode = nd_next) {
+	for (pnode = GET_NEXT(psvrinfo->msr_node_list); pnode; pnode = nd_next) {
 		nd_next = GET_NEXT(pnode->nd_link);
 		CLEAR_LINK(pnode->nd_link);
 		pbs_idx_delete(alien_node_idx, pnode->nd_name);

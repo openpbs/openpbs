@@ -3254,15 +3254,15 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 		if (pnode->nd_nummoms == pnode->nd_nummslots) {
 
 			/* need to expand the array to make room */
-			struct mominfo **tmpim;
+			mominfo_t **tmpim;
 
 			n = pnode->nd_nummslots;
 			if (n == 0)
 				n = 1;
 			else
 				n *= 2;
-			tmpim = (struct mominfo **)realloc(pnode->nd_moms,
-				n * sizeof(struct mominfo *));
+			tmpim = (mominfo_t **)realloc(pnode->nd_moms,
+				n * sizeof(mominfo_t *));
 			if (tmpim == NULL)
 				return (PBSE_SYSTEM);
 			pnode->nd_moms = tmpim;
