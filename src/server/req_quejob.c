@@ -271,27 +271,30 @@ get_server_index(void)
  * 			Note: Consider directly modifying get_next_svr_sequence_id() if reservations
  * 			also get sharded for multi-server
  *
- * @param[out]	jidbuf - buffer to fill job id in
+ * @param[out]	idbuf - buffer to fill job/resv id in
  * @param[in]	clusterid - cluster name (PBS_SERVER)
- * @param[in]	jtype - job type (0 for normal job, 1 for job array)
+ * @param[in]	objtype - object type which specifies whether it is a normal/array job or reservation
+ * @param[in]	resv_char - character representing type of reservation
  *
  * @return	int
  * @retval	0 for Success
  * @retval	1 for Failure
  */
 static int
-generate_jobid(char *jidbuf, char *clusterid, int jtype)
+generate_objid(char *idbuf, char *clusterid, int objtype, char resv_char)
 {
 	static int svr_id = -1;
 
-	if (jidbuf == NULL || server_name == NULL)
+	if (idbuf == NULL || server_name == NULL || clusterid == NULL)
 		return 1;
 
 	if (get_num_servers() <= 1) { /* single server setup */
-		if (jtype == 0)
-			sprintf(jidbuf, "%lld.%s", next_svr_sequence_id, clusterid);
-		else
-			sprintf(jidbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
+		if (objtype == MGR_OBJ_JOB)
+			sprintf(idbuf, "%lld.%s", next_svr_sequence_id, clusterid);
+		else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
+			sprintf(idbuf, "%lld[].%s", next_svr_sequence_id, clusterid);
+		else if (objtype == MGR_OBJ_RESV)
+			sprintf(idbuf, "%c%lld.%s", resv_char, next_svr_sequence_id, clusterid);
 	} else { /* multi-server setup */
 		if (svr_id == -1) {
 			svr_id = get_server_index();
@@ -300,10 +303,12 @@ generate_jobid(char *jidbuf, char *clusterid, int jtype)
 		}
 
 		/* For multi-server, last 'MSVR_JID_NCHARS_SVR' chars of numeric portion are reserved for server id */
-		if (jtype == 0)
-			sprintf(jidbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
-		else
-			sprintf(jidbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+		if (objtype == MGR_OBJ_JOB)
+			sprintf(idbuf, "%lld%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+		else if (objtype == MGR_OBJ_JOBARRAY_PARENT)
+			sprintf(idbuf, "%lld[]%0*d.%s", next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
+		else if (objtype == MGR_OBJ_RESV)
+			sprintf(idbuf, "%c%lld%0*d.%s", resv_char, next_svr_sequence_id, MSVR_JID_NCHARS_SVR, svr_id, clusterid);
 	}
 
 	return 0;
@@ -441,7 +446,7 @@ req_quejob(struct batch_request *preq)
 		/* assign it a job id */
 
 		psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_queuejob.rq_attr);
-		i = 0;
+		i = MGR_OBJ_JOB;
 		while (psatl) {
 			/* Ensure that array_indices_submitted has a proper   */
 			/* value (non-"" and non-NULL) before asserting that  */
@@ -455,7 +460,7 @@ req_quejob(struct batch_request *preq)
 				ATTR_array_indices_submitted) &&
 				((psatl->al_value != NULL) &&
 				(psatl->al_value[0] != '\0'))) {
-				i = 1;
+				i = MGR_OBJ_JOBARRAY_PARENT;
 				break;
 			}
 			psatl = (svrattrl *)GET_NEXT(psatl->al_link);
@@ -466,7 +471,7 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		created_here = JOB_SVFLG_HERE;
-		if (generate_jobid(jidbuf, server_name, i) != 0) {
+		if (generate_objid(jidbuf, server_name, i, '\0') != 0) {
 			req_reject(PBSE_INTERNAL, 0, preq);
 			return;
 		}
@@ -2103,6 +2108,7 @@ req_resvSub(struct batch_request *preq)
 	int rc2 = 0;
 	char owner[PBS_MAXUSER + 1];
 	char *partition_name = NULL;
+	char *ptr = NULL;
 
 	if (preq->rq_extend && strchr(preq->rq_extend, 'm'))
 		is_maintenance = 1;
@@ -2185,9 +2191,10 @@ req_resvSub(struct batch_request *preq)
 		/* Note: use server's job seq number generation mechanism */
 
 		created_here = RESV_SVFLG_HERE;
-		(void)snprintf(ridbuf, sizeof(ridbuf), "%c%lld.", PBS_RESV_ID_CHAR,
-				next_svr_sequence_id);
-		(void)strcat(ridbuf, server_name);
+		if (generate_objid(ridbuf, server_name, MGR_OBJ_RESV, PBS_RESV_ID_CHAR) != 0) {
+			req_reject(PBSE_INTERNAL, 0, preq);
+			return;
+		}
 		rid = ridbuf;
 	}
 
@@ -2199,9 +2206,15 @@ req_resvSub(struct batch_request *preq)
 	 * but the structure field would be an addition to the
 	 * "quick save" area of the server - can't do
 	 */
+	ptr = strchr(rid, '.');
+	if (ptr == NULL) {
+		req_reject(PBSE_INTERNAL, 0, preq);
+		return;
+	}
 
-	(void)snprintf(qbuf, sizeof(qbuf), "%c%lld", PBS_RESV_ID_CHAR,
-			next_svr_sequence_id);
+	*ptr = '\0';
+	pbs_strncpy(qbuf, rid, sizeof(qbuf));
+	*ptr = '.';
 
 	/* does reservation already exist, check both old
 	 * and new reservations?

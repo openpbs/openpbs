@@ -87,6 +87,7 @@
 #include "constant.h"
 #include "node_partition.h"
 #include "pbs_internal.h"
+#include "libpbs.h"
 
 /**
  * @brief
@@ -1710,8 +1711,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		snprintf(confirm_msg, LOG_BUF_SIZE, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
 			 sc_attrs.partition ? sc_attrs.partition : DEFAULT_PARTITION);
 
-		pbsrc = pbs_confirmresv(pbs_sd, const_cast<char *>(nresv_parent->name.c_str()), short_xc,
-			resv_start_time, confirm_msg);
+		pbsrc = send_confirmresv(pbs_sd, nresv_parent, short_xc, resv_start_time, confirm_msg);
 	}
 	else {
 		/* This message is sent to inform that we could not confirm the reservation.
@@ -1719,8 +1719,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * "null" is used satisfy the API but any string would do because we've
 		 * failed to confirm the reservation and no execvnodes were determined
 		 */
-		pbsrc = pbs_confirmresv(pbs_sd, const_cast<char *>(nresv_parent->name.c_str()), const_cast<char *>("null"),
-			resv_start_time, const_cast<char *>(PBS_RESV_CONFIRM_FAIL));
+		pbsrc = send_confirmresv(pbs_sd, nresv_parent, "null", resv_start_time, PBS_RESV_CONFIRM_FAIL);
 	}
 
 	/* Error handling first checks for the return code from the server and the
