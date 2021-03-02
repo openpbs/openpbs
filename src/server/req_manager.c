@@ -2125,7 +2125,7 @@ mgr_node_set(struct batch_request *preq)
 					int imom;
 					for (imom = 0; imom < pnode->nd_nummoms; ++imom) {
 						unsigned long mstate;
-						mstate = ((mom_svrinfo_t *)(pnode->nd_moms[imom]->mi_data))->msr_state;
+						mstate = pnode->nd_moms[imom]->mi_dmn_info->dmn_state;
 						if ((mstate & (INUSE_DOWN | INUSE_OFFLINE)) == 0)  {
 							/* If another mom is up (i.e. not down or offline)
 							 * then do not set the vnode state of the children
@@ -2970,8 +2970,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			}
 		}
 		smp = (mom_svrinfo_t *)(pmom->mi_data);
-		for (j = 0; smp->msr_addrs[j]; j++) {
-			u_long ipaddr = smp->msr_addrs[j];
+		for (j = 0; pmom->mi_dmn_info->dmn_addrs[j]; j++) {
+			u_long ipaddr =  pmom->mi_dmn_info->dmn_addrs[j];
 			if (insert_iplist_element(pbs_iplist, ipaddr)) {
 				delete_pbs_iplist(pbs_iplist);
 				return (PBSE_SYSTEM); /* No Memory */

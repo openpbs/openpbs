@@ -244,7 +244,7 @@ tinsert2(const u_long key1, const u_long key2, mominfo_t *momp, struct tree **ro
 	struct	tree	*q;
 
 	DBPRT(("tinsert2: %lu|%lu %s stream %d\n", key1, key2,
-		momp->mi_host, ((mom_svrinfo_t *)(momp->mi_data))->msr_stream))
+		momp->mi_host, momp->mi_dmn_info->dmn_stream))
 
 	if (rootp == NULL)
 		return;
@@ -493,15 +493,16 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	int		imom;
 	unsigned long	mstate;
 	mom_svrinfo_t  *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
+	dmn_info_t  *pdmn_info = pmom->mi_dmn_info;
 	struct pbsnode *pvnd;
 	attribute	*pat;
 	int		nchild;
 	unsigned long	inuse_flag = 0;
 
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
-		psvrmom->msr_state |= (bits & ~INUSE_STALE);
+		pdmn_info->dmn_state |= (bits & ~INUSE_STALE);
 	} else {
-		psvrmom->msr_state &= ~bits;
+		pdmn_info->dmn_state &= ~bits;
 	}
 
 	log_eventf(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host,
@@ -531,7 +532,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			((setwhen == Set_ALL_State_All_Down) ||
 			(setwhen == Set_All_State_All_Offline))) {
 			for (imom = 0; imom < pvnd->nd_nummoms; ++imom) {
-				mstate = ((mom_svrinfo_t *)(pvnd->nd_moms[imom]->mi_data))->msr_state;
+				mstate = pvnd->nd_moms[imom]->mi_dmn_info->dmn_state;
 				if ((mstate & inuse_flag) == 0) {
 					do_this_vnode = 0;
 					break;
@@ -657,7 +658,7 @@ node_down_requeue(struct work_task *pwt)
 	svmp->msr_wktask = 0;
 
 	/* is node still down? If not, leave jobs as is */
-	if ((svmp->msr_state & INUSE_DOWN) == 0)
+	if ((mp->mi_dmn_info->dmn_state & INUSE_DOWN) == 0)
 		return;
 
 	DBPRT(("node_down_requeue node still down\n"))
@@ -945,7 +946,7 @@ momptr_down(mominfo_t *pmom, char *why)
 	int		 is_provisioning = 0;
 	job 		*pj;
 
-	psvrmom->msr_state |= INUSE_DOWN;
+	pmom->mi_dmn_info->dmn_state |= INUSE_DOWN;
 
 	/* log message if node just down or been down for an hour */
 	/* mark mom down and vnodes down as well                  */
@@ -2454,7 +2455,7 @@ discard_job(job *pjob, char *txt, int noack)
 			}
 			if (i == nmom) {
 				(pdsc + nmom)->jdcd_mom = pnode->nd_moms[0];
-				if (((mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data))->msr_state & INUSE_DOWN)
+				if (pnode->nd_moms[0]->mi_dmn_info->dmn_state & INUSE_DOWN)
 					(pdsc + nmom)->jdcd_state = JDCD_DOWN;
 				else {
 					(pdsc + nmom)->jdcd_state = JDCD_WAITING;
@@ -2479,7 +2480,7 @@ discard_job(job *pjob, char *txt, int noack)
 	for (i = 0; i < nmom; i++) {
 		int s;
 
-		s = ((mom_svrinfo_t *)((pdsc + i)->jdcd_mom->mi_data))->msr_stream;
+		s = (pdsc + i)->jdcd_mom->mi_dmn_info->dmn_stream;
 		if ((s != -1) && ((pdsc + i)->jdcd_state != JDCD_DOWN)) {
 			send_discard_job(s, pjob->ji_qs.ji_jobid, rver, txt);
 			txt = NULL;	/* so one log message only */
@@ -2906,19 +2907,19 @@ stream_eof(int stream, int ret, char *msg)
 		log_errf(-1, __func__, "%s down", mp->mi_host);
 		if (msg == NULL)
 			msg = "communication closed";
-		/* Do not invoke for a peer server */
-		if (get_peersvr_from_host_port(mp->mi_host, mp->mi_port))
-			((mom_svrinfo_t *)(mp->mi_data))->msr_state |= 	INUSE_NEEDS_HELLOSVR;
+		/* Do not invoke momptr_down() for a peer server */
+		if (is_peersvr(mp))
+			mp->mi_dmn_info->dmn_state |= INUSE_NEEDS_HELLOSVR;
 		else
 			momptr_down(mp, msg);
 
 		/* Down node and all subnodes */
-		((mom_svrinfo_t *)(mp->mi_data))->msr_stream = -1;
+		mp->mi_dmn_info->dmn_stream = -1;
 
 		/* Since stream is now closed, reset the intermediate
 		 * state INUSE_INIT.
 		 */
-		((mom_svrinfo_t *) (mp->mi_data))->msr_state &= ~INUSE_INIT;
+		mp->mi_dmn_info->dmn_state &= ~INUSE_INIT;
 
 #ifdef NAS /* localmod 005 */
 		tdelete2((u_long)stream, 0ul, &streams);
@@ -2945,29 +2946,29 @@ mark_nodes_unknown(int all)
 	mominfo_t	*pmom;
 	int 		i;
 	int		stm;
-	mom_svrinfo_t  *psvrmom;
+	dmn_info_t  *pdmn_info;
 
 	DBPRT(("entering %s", __func__))
 
 	for (i = 0; i < mominfo_array_size; i++) {
 		if (mominfo_array[i]) {
 			pmom = mominfo_array[i];
-			psvrmom = pmom->mi_data;
+			pdmn_info = pmom->mi_dmn_info;
 
-			if ((psvrmom->msr_state & INUSE_INIT) || all == 1) {
+			if ((pdmn_info->dmn_state & INUSE_INIT) || all == 1) {
 				set_all_state(pmom, 1, INUSE_UNKNOWN, NULL, Set_All_State_Regardless);
-				stm = psvrmom->msr_stream;
+				stm = pdmn_info->dmn_stream;
 				if (stm >= 0) {
 					tpp_close(stm);
 					tdelete2((u_long)stm, 0, &streams);
 				}
-				psvrmom->msr_stream = -1;
+				pdmn_info->dmn_stream = -1;
 
 				/* Since stream is being closed, reset the intermediate
 				 * state INUSE_INIT.
 				 */
-				psvrmom->msr_state &= ~INUSE_INIT;
-				psvrmom->msr_state |= INUSE_UNKNOWN | INUSE_MARKEDDOWN;
+				pdmn_info->dmn_state &= ~INUSE_INIT;
+				pdmn_info->dmn_state |= INUSE_UNKNOWN | INUSE_MARKEDDOWN;
 			}
 		}
 	}
@@ -2987,12 +2988,12 @@ mark_nodes_unknown(int all)
 int
 mcast_add(mominfo_t *pmom, int *mtfd)
 {
-	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
+	dmn_info_t *pdmninfo = pmom->mi_dmn_info;
 	int rc = 0;
 
 	DBPRT(("%s: entered\n", __func__))
 
-	if (psvrmom->msr_stream < 0)
+	if (pdmninfo->dmn_stream < 0)
 		return -1;
 
 	/* open the tpp mcast channel here */
@@ -3001,15 +3002,15 @@ mcast_add(mominfo_t *pmom, int *mtfd)
 		return -1;
 	}
 
-	rc = tpp_mcast_add_strm(*mtfd, psvrmom->msr_stream);
+	rc = tpp_mcast_add_strm(*mtfd, pdmninfo->dmn_stream);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 				 "Failed to add mom at %s:%d to ping mcast", pmom->mi_host, pmom->mi_port);
 		log_err(-1, __func__, log_buffer);
-		tpp_close(psvrmom->msr_stream);
-		tdelete2((u_long)psvrmom->msr_stream, 0, &streams);
-		psvrmom->msr_stream = -1;
+		tpp_close(pdmninfo->dmn_stream);
+		tdelete2((u_long)pdmninfo->dmn_stream, 0, &streams);
+		pdmninfo->dmn_stream = -1;
 	}
 
 	return rc;
@@ -3031,7 +3032,7 @@ close_streams(int stm, int ret)
 	int		count = 0;
 	int		i;
 	mominfo_t	*pmom;
-	mom_svrinfo_t	*psvrmom;
+	dmn_info_t	*pdmninfo;
 	struct	sockaddr_in  *addr;
 
 	if (stm < 0)
@@ -3041,13 +3042,13 @@ close_streams(int stm, int ret)
 
 	for(i = 0; i < count; i++) {
 		if ((pmom = tfind2((u_long) strms[i], 0, &streams)) != NULL) {
-			psvrmom = (mom_svrinfo_t *) (pmom->mi_data);
+			pdmninfo = pmom->mi_dmn_info;
 			/* find the respective mom from the stream */
-			addr = tpp_getaddr(psvrmom->msr_stream);
+			addr = tpp_getaddr(pdmninfo->dmn_stream);
 			snprintf(log_buffer, sizeof(log_buffer), "%s %d to %s(%s)",
 				dis_emsg[ret], errno, pmom->mi_host, netaddr(addr));
 			log_err(-1, __func__, log_buffer);
-			stream_eof(psvrmom->msr_stream, ret, "ping no ack");
+			stream_eof(pdmninfo->dmn_stream, ret, "ping no ack");
 		}
 	}
 }
@@ -3063,7 +3064,7 @@ close_streams(int stm, int ret)
 void
 mcast_msg(struct work_task *ptask)
 {
-	mom_svrinfo_t	*psvrmom;
+	dmn_info_t *pdmninfo;
 	int i;
 	int ret;
 
@@ -3083,11 +3084,11 @@ mcast_msg(struct work_task *ptask)
 				if (!mominfo_array[i])
 					continue;
 
-				psvrmom = (mom_svrinfo_t *)(mominfo_array[i]->mi_data);
-				if ((psvrmom->msr_state & INUSE_NEED_ADDRS) && psvrmom->msr_stream >= 0) {
+				pdmninfo = mominfo_array[i]->mi_dmn_info;
+				if ((pdmninfo->dmn_state & INUSE_NEED_ADDRS) && pdmninfo->dmn_stream >= 0) {
 					mcast_add(mominfo_array[i], &mtfd);
-					if (psvrmom->msr_state & INUSE_MARKEDDOWN)
-						psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
+					if (pdmninfo->dmn_state & INUSE_MARKEDDOWN)
+						pdmninfo->dmn_state &= ~INUSE_MARKEDDOWN;
 					set_all_state(mominfo_array[i], 0, INUSE_DOWN | INUSE_NEED_ADDRS,
 										NULL, Set_All_State_Regardless);
 				}
@@ -4182,6 +4183,7 @@ is_request(int stream, int version)
 	resource		*prc;
 	mominfo_t		*pmom;
 	mom_svrinfo_t		*psvrmom;
+	dmn_info_t		*pdmninfo;
 	int			 s;
 	char			*val;
 	unsigned long		 oldstate;
@@ -4231,18 +4233,19 @@ is_request(int stream, int version)
 			LOG_NOTICE, pmom->mi_host, "Hello from MoM on port=%lu", port);
 
 		psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
-		psvrmom->msr_state |= INUSE_UNKNOWN;
-		if (psvrmom->msr_stream >= 0 && psvrmom->msr_stream != stream) {
+		pdmninfo = pmom->mi_dmn_info;
+		pdmninfo->dmn_state |= INUSE_UNKNOWN;
+		if (pdmninfo->dmn_stream >= 0 && pdmninfo->dmn_stream != stream) {
 			DBPRT(("%s: stream %d from %s:%d already open on %d\n",
 				__func__, stream, pmom->mi_host,
-				ntohs(addr->sin_port), psvrmom->msr_stream))
-			tpp_close(psvrmom->msr_stream);
-			tdelete2((u_long)psvrmom->msr_stream, 0ul, &streams);
+				ntohs(addr->sin_port), pdmninfo->dmn_stream))
+			tpp_close(pdmninfo->dmn_stream);
+			tdelete2((u_long)pdmninfo->dmn_stream, 0ul, &streams);
 		}
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
 		if (psvrmom->msr_numjobs > 0)
-			psvrmom->msr_state |= INUSE_NEED_CREDENTIALS;
+			pdmninfo->dmn_state |= INUSE_NEED_CREDENTIALS;
 #endif
 
 		if (psvrmom->msr_vnode_pool != 0) {
@@ -4267,9 +4270,9 @@ is_request(int stream, int version)
 		}
 
 		/* we save this stream for future communications */
-		psvrmom->msr_stream = stream;
-		psvrmom->msr_state |= INUSE_INIT;
-		psvrmom->msr_state &= ~INUSE_NEEDS_HELLOSVR;
+		pdmninfo->dmn_stream = stream;
+		pdmninfo->dmn_state |= INUSE_INIT;
+		pdmninfo->dmn_state &= ~INUSE_NEEDS_HELLOSVR;
 		tinsert2((u_long)stream, 0ul, pmom, &streams);
 		tpp_eom(stream);
 
@@ -4300,6 +4303,7 @@ badcon:
 
 found:
 	psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
+	pdmninfo = pmom->mi_dmn_info;
 
 	switch (command) {
 
@@ -4320,7 +4324,7 @@ found:
 				Set_All_State_Regardless);
 			set_all_state(pmom, 1, INUSE_DOWN|INUSE_INIT, NULL,
 				Set_ALL_State_All_Down);
-			if ((psvrmom->msr_state & INUSE_MARKEDDOWN) == 0)
+			if ((pdmninfo->dmn_state & INUSE_MARKEDDOWN) == 0)
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_INFO,
 					pmom->mi_host, "Setting host to Initialize");
 
@@ -4408,7 +4412,7 @@ found:
 			free(psvrmom->msr_arch);
 			psvrmom->msr_arch = val;
 
-			if ((psvrmom->msr_state & INUSE_MARKEDDOWN) == 0) {
+			if ((pdmninfo->dmn_state & INUSE_MARKEDDOWN) == 0) {
 				sprintf(log_buffer, "update%c state:%d ncpus:%ld",
 					command==IS_UPDATE ? ' ' : '2',
 					s, psvrmom->msr_pcpus);
@@ -4507,7 +4511,7 @@ found:
 					sprintf(log_buffer, "Mom reporting %lu vnodes as of %s", vnlp->vnl_used, ctime((time_t *)&vnlp->vnl_modtime));
 					*(log_buffer+strlen(log_buffer)-1) = '\0';
 
-					if ((psvrmom->msr_state & INUSE_MARKEDDOWN) == 0)
+					if ((pdmninfo->dmn_state & INUSE_MARKEDDOWN) == 0)
 						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_INFO, pmom->mi_host, log_buffer);
 					/*
 					 * If the vnode will have multiple
@@ -4706,9 +4710,9 @@ found:
 		if (command_orig == IS_REGISTERMOM) {
 			/* Mom is acknowledging the info sent by the Server */
 			/* Mark the Mom and associated vnodes as up */
-			oldstate = psvrmom->msr_state;
-			if (psvrmom->msr_state & INUSE_MARKEDDOWN)
-				psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
+			oldstate = pdmninfo->dmn_state;
+			if (pdmninfo->dmn_state & INUSE_MARKEDDOWN)
+				pdmninfo->dmn_state &= ~INUSE_MARKEDDOWN;
 
 			set_all_state(pmom, 0, INUSE_DOWN| INUSE_INIT,
 				NULL, Set_All_State_Regardless);
@@ -4724,7 +4728,7 @@ found:
 			psvrmom->msr_timedown = 0;
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
-			if (psvrmom->msr_state & INUSE_NEED_CREDENTIALS) {
+			if (pdmninfo->dmn_state & INUSE_NEED_CREDENTIALS) {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 					LOG_INFO, pmom->mi_host, "mom needs credentials");
 
@@ -4733,7 +4737,7 @@ found:
 						set_task(WORK_Immed, 0, svr_renew_job_cred, psvrmom->msr_jobindx[i]->ji_qs.ji_jobid);
 				}
 
-				psvrmom->msr_state &= ~INUSE_NEED_CREDENTIALS;
+				pdmninfo->dmn_state &= ~INUSE_NEED_CREDENTIALS;
 			}
 #endif
 		}
@@ -6148,7 +6152,7 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 		psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 
 		/* if first mom or mom with fewer jobs, go with her for now */
-		if (((psvrmom->msr_state & (INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM)) == 0) &&
+		if (((pmom->mi_dmn_info->dmn_state & (INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM)) == 0) &&
 			((psvrmom->msr_children[0]->nd_state & (INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM)) == 0)) {
 			/* this mom/natural-vnode is not down nor offline */
 			if ((rtnmom == NULL) || (nj > psvrmom->msr_numjobs)) {
@@ -7435,13 +7439,10 @@ mark_node_down(char *nodename, char *why)
 void
 momptr_offline_by_mom(mominfo_t *pmom, char *why)
 {
-	mom_svrinfo_t   *psvrmom;
 	if (pmom == NULL)
 		return;
 
-	psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
-
-	psvrmom->msr_state |= INUSE_OFFLINE_BY_MOM;
+	pmom->mi_dmn_info->dmn_state |= INUSE_OFFLINE_BY_MOM;
 
 	if ((why != NULL) && (why[0] != '\0'))
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
@@ -7533,7 +7534,7 @@ clear_node_offline_by_mom(char *nodename, char *why)
 void
 shutdown_nodes(void)
 {
-	mom_svrinfo_t		*psvrmom;
+	dmn_info_t		*pdmninfo;
 	int			i, ret;
 
 	DBPRT(("%s: entered\n", __func__))
@@ -7545,15 +7546,15 @@ shutdown_nodes(void)
 		if (pmom == NULL)
 			continue;
 
-		psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
-		if (psvrmom->msr_stream < 0)
+		pdmninfo = pmom->mi_dmn_info;
+		if (pdmninfo->dmn_stream < 0)
 			continue;
 
 		DBPRT(("%s: down %s\n", __func__, pmom->mi_host))
 
-		ret = is_compose(psvrmom->msr_stream, IS_SHUTDOWN);
+		ret = is_compose(pdmninfo->dmn_stream, IS_SHUTDOWN);
 		if (ret == DIS_SUCCESS) {
-			(void)dis_flush(psvrmom->msr_stream);
+			(void)dis_flush(pdmninfo->dmn_stream);
 		}
 	}
 }

@@ -81,29 +81,6 @@ get_peersvr(struct sockaddr_in *addr)
 }
 
 /**
- * @brief Get the peersvr from host & port values
- * 
- * @param[in] hostname 
- * @param[in] port 
- * @return peer server object, NULL if not found
- */
-void *
-get_peersvr_from_host_port(char *hostname, uint port)
-{
-	server_t *psvr;
-
-	for (psvr = GET_NEXT(peersvrl);
-	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		if (!strncmp(psvr->mi_host, hostname,
-			     sizeof(psvr->mi_host)) &&
-		    psvr->mi_port == port)
-			return psvr;
-	}
-
-	return NULL;
-}
-
-/**
  * @brief
  *	Create a peer server entry, 
  *	fill in structure and add to peer svr list
@@ -403,24 +380,23 @@ static int
 send_connect(server_t *psvr)
 {
 	int rc;
-	svrinfo_t *svr_info = psvr->mi_data;
-	int stream = svr_info->msr_stream;
+	dmn_info_t *dmn_info = psvr->mi_dmn_info;
 
-	if (!(svr_info->msr_state & INUSE_NEEDS_HELLOSVR))
+	if (!(dmn_info->dmn_state & INUSE_NEEDS_HELLOSVR))
 		return 0;
 
-	rc = send_command(stream, PS_CONNECT);
+	rc = send_command(dmn_info->dmn_stream, PS_CONNECT);
 	if (rc != DIS_SUCCESS)
 		goto err;
 
-	svr_info->msr_state &= ~INUSE_NEEDS_HELLOSVR;
+	dmn_info->dmn_state &= ~INUSE_NEEDS_HELLOSVR;
 	log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-		   msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, stream);
+		   msg_daemonname, "CONNECT sent to peer server %s at stream:%d", psvr->mi_host, dmn_info->dmn_stream);
 	return 0;
 
 err:
-	log_errf(errno, msg_daemonname, "Failed to send CONNECT to peer server %s at stream:%d", psvr->mi_host, stream);
-	tpp_close(stream);
+	log_errf(errno, msg_daemonname, "Failed to send CONNECT to peer server %s at stream:%d", psvr->mi_host, dmn_info->dmn_stream);
+	tpp_close(dmn_info->dmn_stream);
 	return -1;
 }
 
@@ -445,9 +421,10 @@ connect_to_peersvr(void *psvr)
 {
 	bool resc_upd_reqd = 0;
 	svrinfo_t *svr_info = ((server_t *) psvr)->mi_data;
+	dmn_info_t *dmn_info = ((server_t *) psvr)->mi_dmn_info;
 
-	if (svr_info->msr_stream < 0 ||
-	    (svr_info->msr_state & INUSE_NEEDS_HELLOSVR))
+	if (dmn_info->dmn_stream < 0 ||
+	    (dmn_info->dmn_state & INUSE_NEEDS_HELLOSVR))
 		resc_upd_reqd = 1;
 
 	if (open_conn_stream(psvr) < 0)
@@ -672,11 +649,9 @@ open_ps_mtfd(void)
 {
 	int mtfd = -1;
 	server_t *psvr;
-	svrinfo_t *psvr_info;
 
 	for (psvr = GET_NEXT(peersvrl); psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		psvr_info = psvr->mi_data;
-		if (psvr_info->msr_stream < 0) {
+		if (psvr->mi_dmn_info->dmn_stream < 0) {
 			if (connect_to_peersvr(psvr) < 0)
 				continue;
 		}

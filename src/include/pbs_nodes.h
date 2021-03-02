@@ -75,6 +75,15 @@ enum nodeattr {
 #define PBS_MAXNODENAME	79
 #endif
 
+/* Daemon info structure which are common for both mom and peer server */
+struct daemon_info {
+	unsigned long	dmn_state;   /* Daemon's state */
+	int		dmn_stream;   /* TPP stream to Mom */
+	unsigned long	*dmn_addrs;   /* IP addresses of host */
+	pbs_list_head	dmn_deferred_cmds;	/* links to svr work_task list for TPP replies */
+};
+typedef struct daemon_info dmn_info_t;
+
 /*
  * mominfo structure - used by both the Server and Mom
  *	to hold contact	information for an instance of a pbs_mom on a host
@@ -85,7 +94,8 @@ struct machine_info {
 	unsigned int	mi_port;	/* port to which Mom is listening */
 	unsigned int	mi_rmport;	/* port for MOM RM */
 	time_t		mi_modtime;	/* time configuration changed */
-	void	       *mi_data;	/* daemon dependent substructure */
+	dmn_info_t	*mi_dmn_info;	/* daemon specific data which are common for all */
+	void		*mi_data;	/* daemon dependent substructure */
 	mom_hook_action_t **mi_action;	/* pending hook copy/delete on mom */
 	int		mi_num_action; /* # of hook actions in mi_action */
 	pbs_list_link	mi_link; /* forward/backward links */	
@@ -99,18 +109,14 @@ typedef struct machine_info server_t;
  */
 
 struct mom_svrinfo {
-	unsigned long	msr_state;   /* Mom's state */
 	long		msr_pcpus;   /* number of physical cpus reported by Mom */
 	long		msr_acpus;   /* number of avail    cpus reported by Mom */
 	u_Long		msr_pmem;	   /* amount of physical mem  reported by Mom */
 	int		msr_numjobs; /* number of jobs on this node */
 	char		*msr_arch;	    /* reported "arch" */
 	char		*msr_pbs_ver;  /* mom's reported "pbs_version" */
-	int		msr_stream;   /* TPP stream to Mom */
 	time_t		msr_timedown; /* time Mom marked down */
 	struct work_task *msr_wktask;	/* work task for reque jobs */
-	pbs_list_head	msr_deferred_cmds;	/* links to svr work_task list for TPP replies */
-	unsigned long	*msr_addrs;   /* IP addresses of host */
 	int		msr_numvnds;  /* number of vnodes */
 	int		msr_numvslots; /* number of slots in msr_children */
 	struct pbsnode	**msr_children;  /* array of vnodes supported by Mom */
@@ -123,7 +129,6 @@ struct mom_svrinfo {
 	pbs_list_head	msr_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
-typedef struct mom_svrinfo svrinfo_t;
 
 struct vnpool_mom {
 	long			vnpm_vnode_pool;
@@ -272,7 +277,7 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 
 /*
  * The following INUSE_* flags are used for several structures
- * (subnode.inuse, node.nd_state, and mom_svrinfo.msr_state).
+ * (subnode.inuse, node.nd_state, and dmn_info.dmn_state).
  * The database schema stores node.nd_state as a 4 byte integer.
  * If more than 32 flags bits need to be added, the database schema will
  * need to be updated.  If not, the excess flags will be lost upon server restart

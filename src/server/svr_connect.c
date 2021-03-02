@@ -129,7 +129,7 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	int sock;
 	mominfo_t *pmom = NULL;
 	conn_t *conn = NULL;
-	mom_svrinfo_t *pmsvrinfo;
+	dmn_info_t *pdmninfo;
 
 	/* First, determine if the request is to another server or ourselves */
 
@@ -138,14 +138,14 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
 
 	if (pmom && (port == pmom->mi_port)) {
-		pmsvrinfo = pmom->mi_data;
+		pdmninfo = pmom->mi_dmn_info;
 		if (is_peersvr(pmom)) {
 			if (connect_to_peersvr(pmom) < 0) {
 				pbs_errno = PBSE_NORELYMOM;
 				return (PBS_NET_RC_FATAL);
 			}
-		} else if (pmsvrinfo->msr_state & INUSE_DOWN) {
-			if (pmsvrinfo->msr_state & INUSE_NEEDS_HELLOSVR) {
+		} else if (pdmninfo->dmn_state & INUSE_DOWN) {
+			if (pdmninfo->dmn_state & INUSE_NEEDS_HELLOSVR) {
 				if (open_conn_stream(pmom) < 0) {
 					pbs_errno = PBSE_NORELYMOM;
 					return (PBS_NET_RC_FATAL);
@@ -162,7 +162,7 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 			pbs_errno = PBSE_SYSTEM;
 			return (PBS_NET_RC_RETRY);
 		}
-		return ((mom_svrinfo_t *) (pmom->mi_data))->msr_stream;
+		return pmom->mi_dmn_info->dmn_stream;
 	}
 
 	/* obtain the connection to the other server */

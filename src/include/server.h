@@ -198,6 +198,22 @@ typedef struct resc_update psvr_ru_t;
 
 extern pbs_list_head peersvrl;
 
+struct svrinfo {
+	char		mi_host[PBS_MAXHOSTNAME+1]; /* hostname where mom is */
+	unsigned int	mi_port;	/* port to which Mom is listening */
+
+
+	unsigned long	ps_state;   /* peer server's state */
+	int		ps_stream;   /* TPP stream to peer server */
+	pbs_list_head	ps_deferred_cmds;	/* links to svr work_task list for TPP replies */
+	unsigned long	*ps_addrs;   /* IP addresses of host */
+
+
+	int		ps_pending_replies; /* number of unacknowledged replies from this server */
+	void		*ps_rsc_idx; /* avl of resc updates based on job_id as the key and psvr_ru_t as value */
+	pbs_list_head	ps_node_list; /* list of nodes corresponding to this server. Useful for clearing the nodes in case of an update */
+};
+
 void *get_peersvr(struct sockaddr_in *);
 void *create_svr_entry(char *, unsigned int);
 int init_msi();
@@ -212,7 +228,6 @@ int num_pending_peersvr_rply(void);
 psvr_ru_t *init_ru(job *pjob, int op, char *exec_vnode);
 void free_ru(psvr_ru_t *ru_head);
 int send_job_resc_updates(int);
-void * get_peersvr_from_host_port(char *hostname, uint port);
 int send_command(int c, int msg);
 int send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct);
 void req_resc_update(int, pbs_list_head *, void *);
@@ -221,6 +236,8 @@ void poke_peersvr(void);
 void mcast_resc_update_all(void *psvr);
 void clean_saved_rsc(void*);
 int process_status_reply(int c);
+
+/* end of multi-svr functions */
 
 attribute *get_sattr(int attr_idx);
 char *get_sattr_str(int attr_idx);

@@ -314,6 +314,7 @@ ps_request(int stream, int version)
 	int command;
 	struct sockaddr_in *addr;
 	svrinfo_t *psvr_info;
+	dmn_info_t *pdmn_info;
 	pbs_list_head ru_head;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -346,17 +347,17 @@ ps_request(int stream, int version)
 
 		log_eventf(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 			   "Peer server connected from %s", netaddr(addr));
-		psvr_info = psvr->mi_data;
-		if (psvr_info->msr_stream >= 0 && psvr_info->msr_stream != stream) {
+		pdmn_info = psvr->mi_dmn_info;
+		if (pdmn_info->dmn_stream >= 0 && pdmn_info->dmn_stream != stream) {
 			DBPRT(("%s: stream %d from %s:%d already open on %d\n",
 			       __func__, stream, pmom->mi_host,
-			       ntohs(addr->sin_port), psvr_info->msr_stream))
-			tpp_close(psvr_info->msr_stream);
-			tdelete2((u_long) psvr_info->msr_stream, 0ul, &streams);
+			       ntohs(addr->sin_port), pdmn_info->dmn_stream))
+			tpp_close(pdmn_info->dmn_stream);
+			tdelete2((u_long) pdmn_info->dmn_stream, 0ul, &streams);
 		}
 		/* we save this stream for future communications */
-		psvr_info->msr_stream = stream;
-		psvr_info->msr_state &= ~INUSE_NEEDS_HELLOSVR;
+		pdmn_info->dmn_stream = stream;
+		pdmn_info->dmn_state &= ~INUSE_NEEDS_HELLOSVR;
 		tinsert2((u_long) stream, 0ul, psvr, &streams);
 		tpp_eom(stream);
 		/* mcast reply togethor, but do not wait */

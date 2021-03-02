@@ -414,9 +414,9 @@ on_job_exit(struct work_task *ptask)
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
-		if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN))
+		if (!pmom || (pmom->mi_dmn_info->dmn_state & INUSE_DOWN))
 			return;
-		mom_tasklist_ptr = &(((mom_svrinfo_t *)(pmom->mi_data))->msr_deferred_cmds);
+		mom_tasklist_ptr = &pmom->mi_dmn_info->dmn_deferred_cmds;
 	}
 
 	switch (get_job_substate(pjob)) {
@@ -811,9 +811,9 @@ on_job_rerun(struct work_task *ptask)
 		pmom = tfind2((unsigned long) pjob->ji_qs.ji_un.ji_exect.ji_momaddr,
 			pjob->ji_qs.ji_un.ji_exect.ji_momport,
 			&ipaddrs);
-		if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN))
+		if (!pmom || (pmom->mi_dmn_info->dmn_state & INUSE_DOWN))
 			return;
-		mom_tasklist_ptr = &(((mom_svrinfo_t *)(pmom->mi_data))->msr_deferred_cmds);
+		mom_tasklist_ptr = &pmom->mi_dmn_info->dmn_deferred_cmds;
 	}
 
 	switch (get_job_substate(pjob)) {

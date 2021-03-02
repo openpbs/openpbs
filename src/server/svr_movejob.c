@@ -556,7 +556,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, int move_type, struct bat
 	}
 
 	pmom = tfind2(hostaddr, port, &ipaddrs);
-	if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)) {
+	if (!pmom || (pmom->mi_dmn_info->dmn_state & INUSE_DOWN)) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "Mom is down");
 		pbs_errno = PBSE_NORELYMOM;
 		goto send_err;

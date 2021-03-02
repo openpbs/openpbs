@@ -157,12 +157,12 @@ struct pbsnode *
 find_nodebyaddr(pbs_net_t addr)
 {
 	int i, j;
-	mom_svrinfo_t *psvrmom;
+	dmn_info_t *pdmninfo;
 
-	for (i=0; i<svr_totnodes; i++) {
-		psvrmom = (mom_svrinfo_t *)pbsndlist[i]->nd_moms[0]->mi_data;
-		for (j = 0; psvrmom->msr_addrs[j]; j++) {
-			if (addr == psvrmom->msr_addrs[j]) {
+	for (i = 0; i < svr_totnodes; i++) {
+		pdmninfo = pbsndlist[i]->nd_moms[0]->mi_dmn_info;
+		for (j = 0; pdmninfo->dmn_addrs[j]; j++) {
+			if (addr == pdmninfo->dmn_addrs[j]) {
 				return (pbsndlist[i]);
 			}
 		}
@@ -552,6 +552,7 @@ effective_node_delete(struct pbsnode *pnode)
 	struct pbssubn  *psubn;
 	struct pbssubn  *pnxt;
 	mom_svrinfo_t	*psvrmom;
+	dmn_info_t	*pdmninfo;
 	int		 iht;
 	int		 lic_released = 0;
 
@@ -570,6 +571,7 @@ effective_node_delete(struct pbsnode *pnode)
 		remove_vnode_from_moms(pnode);
 	} else if (pnode->nd_nummoms == 1) {
 		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data);
+		pdmninfo = pnode->nd_moms[0]->mi_dmn_info;
 		if (psvrmom->msr_children[0] == pnode) {
 			/*
 			 * This is the "natural" vnode for a Mom
@@ -582,8 +584,8 @@ effective_node_delete(struct pbsnode *pnode)
 			remove_mom_from_vnodes(pnode->nd_moms[0]);
 
 			/* then delete the Mom */
-			for (i = 0; psvrmom->msr_addrs[i]; i++) {
-				u_long ipaddr = psvrmom->msr_addrs[i];
+			for (i = 0; pdmninfo->dmn_addrs[i]; i++) {
+				u_long ipaddr = pdmninfo->dmn_addrs[i];
 				if (ipaddr)
 					delete_iplist_element(pbs_iplist, ipaddr);
 			}
@@ -646,7 +648,7 @@ setup_notification()
 		set_vnode_state(pbsndlist[i], INUSE_DOWN, Nd_State_Or);
 		post_attr_set(get_nattr(pbsndlist[i], ND_ATR_state));
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
-			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
+			((pbsndlist[i]->nd_moms[nmom]->mi_dmn_info))->dmn_state |= INUSE_NEED_ADDRS;
 		}
 	}
 
@@ -2138,8 +2140,8 @@ node_state(attribute *new, void *pnode, int actmode)
 	}
 	/* Now that we are setting the node state, same state should also reflect on the mom */
 	if (np->nd_nummoms == 1) {
-		mom_svrinfo_t *pmom_svr = (mom_svrinfo_t *)np->nd_moms[0]->mi_data;
-		pmom_svr->msr_state = (pmom_svr->msr_state & keep) | new->at_val.at_long;
+		dmn_info_t *pdmn_info = np->nd_moms[0]->mi_dmn_info;
+		pdmn_info->dmn_state = (pdmn_info->dmn_state & keep) | new->at_val.at_long;
 	}
 	return rc;
 }

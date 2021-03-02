@@ -5049,8 +5049,8 @@ add_pending_mom_hook_action(void *minfo, char *hookname, unsigned int action)
 		if (minfo_array[i] == NULL)
 			continue;
 
-		if ( !minfo_array[i]->mi_data ||
-				(((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
+		if (!minfo_array[i]->mi_data ||
+		    (minfo_array[i]->mi_dmn_info->dmn_state & (INUSE_UNKNOWN | INUSE_NEEDS_HELLOSVR))) {
 			continue;
 		}
 
@@ -5720,8 +5720,7 @@ del_deferred_hook_cmds(int index)
 			return;
 
 		/* get the task list */
-		ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
-					(pmom->mi_data))->msr_deferred_cmds));
+		ptask = (struct work_task *) GET_NEXT(pmom->mi_dmn_info->dmn_deferred_cmds);
 
 		while (ptask) {
 			/* no need to compare wt_event with handle, since the
@@ -5812,13 +5811,13 @@ sync_mom_hookfilesTPP(void *minfo)
 		if (minfo_array[i] == NULL)
 			continue;
 
-		conn = ((mom_svrinfo_t *) minfo_array[i]->mi_data)->msr_stream;
+		conn = minfo_array[i]->mi_dmn_info->dmn_stream;
 		if (conn == -1) {
 			skipped++;
 			continue;
 		}
 
-		if (((mom_svrinfo_t *) (minfo_array[i]->mi_data))->msr_state & INUSE_DOWN) {
+		if (minfo_array[i]->mi_dmn_info->dmn_state & INUSE_DOWN) {
 			skipped++;
 			continue;
 		}
@@ -6082,8 +6081,7 @@ clear_timed_out_reply_expected(long long int tid)
 						LOG_INFO, __func__, "timedout, clearing reply_expected for %d event[%lld] of %s hook for %s",
 						pact->reply_expected, tid, pact->hookname, pmom->mi_host);
 					/* get the task list */
-					ptask = (struct work_task *) GET_NEXT((((mom_svrinfo_t *)
-								(pmom->mi_data))->msr_deferred_cmds));
+					ptask = (struct work_task *) GET_NEXT(pmom->mi_dmn_info->dmn_deferred_cmds);
 
 					while (ptask) {
 						/* no need to compare wt_event with handle, since the
@@ -6262,13 +6260,13 @@ uc_delete_mom_hooks(void *minfo)
 				(phook->event & MOM_EVENTS)) {
 			msgid = NULL;
 			snprintf(hookfile, sizeof(hookfile), "%s%s", phook->hook_name, HOOK_FILE_SUFFIX);
-			PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, hookfile, PROT_TPP, &msgid);
+			PBSD_delhookfile(mom_info->mi_dmn_info->dmn_stream, hookfile, PROT_TPP, &msgid);
 			free(msgid);
 			msgid = NULL;
 		}
 		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
-	PBSD_delhookfile(((mom_svrinfo_t *) mom_info->mi_data)->msr_stream, PBS_RESCDEF, PROT_TPP, &msgid);
+	PBSD_delhookfile(mom_info->mi_dmn_info->dmn_stream, PBS_RESCDEF, PROT_TPP, &msgid);
 	free(msgid);
 	return;
 }
