@@ -121,9 +121,9 @@ class Test_array_job_email(TestFunctional):
         """
         non_existent_user = PbsAttribute.random_str(length=5)
         non_existent_mailfile = os.path.join(os.sep, "var", "mail",
-                                            non_existent_user)
+                                             non_existent_user)
         pbsuser_mailfile = os.path.join(os.sep, "var", "mail",
-                                       str(TEST_USER))
+                                        str(TEST_USER))
 
         # Check mail file should exist for existent user
         if not os.path.isfile(pbsuser_mailfile):
@@ -140,11 +140,12 @@ class Test_array_job_email(TestFunctional):
         if not os.path.isdir(stageout_path) and os.path.exists(src_file):
             os.remove(src_file)
 
-        #Submit job with invalid stageout path
+        # Submit job with invalid stageout path
         usermail_list = str(TEST_USER) + "," + non_existent_user
-        set_attrib =  {ATTR_stageout: stageout_path + '@' +
-                        self.mom.shortname + ':' + dest_file, ATTR_S: '/bin/bash',
-                        ATTR_M: usermail_list, ATTR_J: '1-2'}
+        set_attrib = {ATTR_stageout: stageout_path + '@' +
+                      self.mom.shortname + ':' + dest_file,
+                      ATTR_M: usermail_list, ATTR_J: '1-2',
+                      ATTR_S: '/bin/bash'}
         j = Job()
         j.set_attributes(set_attrib)
         j.set_sleep_time(1)
