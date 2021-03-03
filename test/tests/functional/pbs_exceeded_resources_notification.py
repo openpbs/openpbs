@@ -105,6 +105,11 @@ class TestExceededResourcesNotification(TestFunctional):
              'Resource_List.select': 'mem=1kb'}
         j = Job(TEST_USER, a)
 
+        test = []
+        test += ['#!/bin/bash']
+        test += ['tail -c 100K /dev/zero']
+        j.create_script(body=test)
+
         jid = self.server.submit(j)
         j_comment = '.* and exceeded resource mem'
         self.server.expect(JOB, {ATTR_state: "F",
