@@ -157,14 +157,14 @@ class Test_array_job_email(TestFunctional):
         # Check stageout file should not be present
         self.assertFalse(os.path.exists(dest_file))
 
-        # Check if mail is deliverd to valid user mail file
-        ret = self.du.cat(filename=pbsuser_mailfile, sudo=True)
-        maillog = [x.strip() for x in ret['out'][-50:]]
+        exp_msg = "PBS Job Id: " + subjid
+        err_msg = "%s msg not found in pbsuser's mail log" % exp_msg
 
-        subjid = j.create_subjob_id(jid, 1)
-        msg = "PBS Job Id: " + subjid
-        err_msg = "%s msg not found in pbsuser's mail log" % msg
-        self.assertIn(msg, maillog, err_msg)
+        # Check if mail is deliverd to valid user mail file
+        ret = self.du.tail(filename=pbsuser_mailfile, runas=TEST_USER,
+                           option="-n 50")
+        maillog = [x.strip() for x in ret['out']]
+        self.assertIn(exp_msg, maillog, err_msg)
 
         # Verify there should not be any email for invalid user
         self.assertFalse(os.path.isfile(non_existent_mailfile))
