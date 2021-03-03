@@ -94,6 +94,7 @@ typedef enum hook_user hook_user;
 #define HOOK_EVENT_MODIFYVNODE	0x400000
 #define HOOK_EVENT_RESV_BEGIN 0x800000
 #define HOOK_EVENT_RESV_CONFIRM 0x1000000
+#define HOOK_EVENT_MODIFYRESV 0x2000000
 
 
 /* mom hooks */
@@ -139,6 +140,7 @@ struct hook {
 	pbs_list_link	hi_queuejob_hooks;
 	pbs_list_link	hi_modifyjob_hooks;
 	pbs_list_link	hi_resvsub_hooks;
+	pbs_list_link	hi_modifyresv_hooks;
 	pbs_list_link	hi_movejob_hooks;
 	pbs_list_link	hi_runjob_hooks;
 	pbs_list_link	hi_management_hooks;
@@ -240,6 +242,7 @@ typedef struct hook hook;
 #define	HOOKSTR_QUEUEJOB	"queuejob"
 #define	HOOKSTR_MODIFYJOB	"modifyjob"
 #define	HOOKSTR_RESVSUB		"resvsub"
+#define	HOOKSTR_MODIFYRESV	"modifyresv"
 #define	HOOKSTR_MOVEJOB		"movejob"
 #define	HOOKSTR_RUNJOB		"runjob"
 #define HOOKSTR_PROVISION	"provision"
