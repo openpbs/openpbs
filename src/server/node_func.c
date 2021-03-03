@@ -361,7 +361,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	prd  = &svr_resc_def[RESC_NCPUS];
 	(void)add_resource_entry(pat1, prd);
 
-    if (get_num_servers() > 1) {
+    if (msvr_mode()) {
         resource *svr_nd_grp = NULL;
 
         /* Set the value of msvr_node_group to "server_id" where
