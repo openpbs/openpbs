@@ -985,7 +985,9 @@ class SmokeTest(PBSTestSuite):
         msg = "Checking the job state of %s, runs after %s is deleted" % (j3id,
                                                                           j4id)
         self.logger.info(msg)
-        self.server.deljob(id=j4id, wait=True)
+        attribs = self.server.status(JOB, 'job_state', id=j4id)
+        if attribs[0]['job_state'] == 'R':
+            self.server.deljob(id=j4id, wait=True)
         self.server.expect(JOB, {'job_state': 'R'}, id=j3id, max_attempts=30,
                            interval=2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30,
@@ -1022,7 +1024,9 @@ class SmokeTest(PBSTestSuite):
                                  max_attempts=10, interval=2)
 
         # Make sure we can qrun a job under the threshold
-        self.server.deljob(id=j3id, wait=True)
+        attribs = self.server.status(JOB, 'job_state', id=j3id)
+        if attribs[0]['job_state'] == 'R':
+            self.server.deljob(id=j3id, wait=True)
         rv = self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=j1id)
         self.server.runjob(jobid=j1id)
