@@ -166,7 +166,6 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID))
 					break;
 			}
-			
 		}
 
 		return rc;
