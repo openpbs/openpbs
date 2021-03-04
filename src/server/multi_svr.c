@@ -62,6 +62,7 @@ typedef struct peersvr_list {
 static struct peersvr_list *peersvrl;
 extern char server_host[PBS_MAXHOSTNAME + 1];
 extern unsigned int	pbs_server_port_dis;
+static int svridx = -1;
 
 /**
  * @brief
@@ -279,6 +280,18 @@ init_msi()
 {
 	peersvrl = NULL;
 
+	/* Determine the index of the server in PBS_SERVER_INSTANCES list */
+	if (svridx == -1) {
+		int i;
+		for (i = 0; i < get_num_servers(); i++) {
+			if (pbs_conf.psi[i].port == pbs_server_port_dis &&
+			    is_same_host(pbs_conf.psi[i].name, server_host)) {
+				svridx = i;
+				break;
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -316,23 +329,10 @@ gen_svr_inst_id(void)
  *
  * @return	int
  * @retval	index of the server
- * @retval	-1 if couldn't be determined
+ * @retval	-1 if couldn't be determined (see init_msi)
  */
 int
 get_server_index(void)
 {
-	static int svridx = -1;
-
-	if (svridx == -1) {
-		int i;
-		for (i = 0; i < get_num_servers(); i++) {
-			if (pbs_conf.psi[i].port == pbs_server_port_dis &&
-			    is_same_host(pbs_conf.psi[i].name, server_host)) {
-				svridx = i;
-				break;
-			}
-		}
-	}
-
 	return svridx;
 }
