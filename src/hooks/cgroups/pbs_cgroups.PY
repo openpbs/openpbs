@@ -2426,6 +2426,10 @@ class NodeUtils(object):
             if vmem < 0:
                 vmem = 0
             vmem -= vmem % (1024 * 1024)
+            # if there is no swap, trying to subtract vnode_hidden_mb
+            # will lower vmem under mem, do not allow
+            if vmem < mem:
+                vmem = mem
             vmem = pbs.size(convert_size(vmem, 'mb'))
             host_resc_avail['vmem'] = vmem
             pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
@@ -2444,9 +2448,17 @@ class NodeUtils(object):
                 pbs.size(convert_size(val, 'mb'))
             if (self.cfg['cgroup']['memsw']['enabled']
                     and self.cfg['cgroup']['memsw']['manage_cgswap']):
-                host_resc_avail['cgswap'] = max(0,
-                                                host_resc_avail['vmem']
-                                                - host_resc_avail['mem'])
+                # special case 0 cgswap because assigning a "0mb"
+                # pbs.size difference causes a bug
+                if vmem == mem:
+                    host_resc_avail['cgswap'] = pbs.size('0')
+                else:
+                    host_resc_avail['cgswap'] = (host_resc_avail['vmem']
+                                                 - host_resc_avail['mem'])
+            else:
+                # This unsets it if it was defined earlier and needs to
+                # disappear
+                host_resc_avail['cgswap'] = None
         else:
             # set the value on the host to 0
             host_resc_avail['mem'] = pbs.size('0')
@@ -2584,11 +2596,24 @@ class NodeUtils(object):
             for nnid in self.numa_nodes:
                 vnode_key = vnode_name + '[%d]' % nnid
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
+                # vmem can be smaller than mem if there is no swap, since
+                # we try to hide 1MB of swap from the server
+                if vnode_resc_avail['vmem'] < vnode_resc_avail['mem']:
+                    vnode_resc_avail['vmem'] = vnode_resc_avail['mem']
                 if (self.cfg['cgroup']['memsw']['enabled']
                         and self.cfg['cgroup']['memsw']['manage_cgswap']):
-                    vnode_resc_avail['cgswap'] = max(0,
-                                                     vnode_resc_avail['vmem']
-                                                     - vnode_resc_avail['mem'])
+                    # Special case 0 cgswap since a bug creates a crash when
+                    # the "0mb" pbs.size difference is assigned to the resource
+                    if vnode_resc_avail['vmem'] == vnode_resc_avail['mem']:
+                        vnode_resc_avail['cgswap'] = pbs.size('0')
+                    else:
+                        vnode_resc_avail['cgswap'] = \
+                            vnode_resc_avail['vmem'] - vnode_resc_avail['mem']
+                else:
+                    # This unsets it if it was defined earlier and needs to
+                    # disappear
+                    host_resc_avail['cgswap'] = None
+
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s vnode_resc_avail: %s' %
                            (caller_name(), vnode_key, vnode_resc_avail))
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
@@ -4787,17 +4812,17 @@ class CgroupUtils(object):
         # Calling node.get_memory_on_node etc. may give slightly different
         # results if kernel drivers have freshly reserved memory since
         # exechost_startup was called
-        mem_avail = None
+        mem_avail = 0
         filename = self._cgroup_path('memory', 'limit_in_bytes')
         if filename and os.path.isfile(filename):
             with open(filename) as desc:
                 mem_avail = int(desc.readline())
-        vmem_avail = None
+        vmem_avail = 0
         filename = self._cgroup_path('memsw', 'limit_in_bytes')
         if filename and os.path.isfile(filename):
             with open(filename) as desc:
                 vmem_avail = int(desc.readline())
-        hpmem_avail = None
+        hpmem_avail = 0
         filename = self._cgroup_path('hugetlb', 'limit_in_bytes')
         if filename and os.path.isfile(filename):
             with open(filename) as desc:
@@ -4805,6 +4830,9 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, "configure_job:"
                    " total host avail mem=%s vmem=%s hpmem=%s"
                    % (mem_avail, vmem_avail, hpmem_avail))
+
+        # Sanity check vmem_avail > mem_avail unnecessary
+        # -- by construction in exechost_startup
 
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         mem_enabled = 'memory' in self.subsystems
@@ -4815,37 +4843,29 @@ class CgroupUtils(object):
             if 'mem' in hostresc:
                 mem_requested = convert_size(hostresc['mem'], 'kb')
             mem_default = None
-            if mem_enabled:
-                mem_default = self.default('memory')
+            if mem_enabled and self.default('memory') is not None:
+                mem_default = size_as_int(self.default('memory'))
             # Initialize vmem variables
             vmem_requested = None
             if 'vmem' in hostresc:
                 vmem_requested = convert_size(hostresc['vmem'], 'kb')
             vmem_default = None
-            if vmem_enabled:
-                vmem_default = self.default('memsw')
+            if vmem_enabled and self.default('memsw') is not None:
+                vmem_default = size_as_int(self.default('memsw'))
+                if vmem_default > (vmem_avail - mem_avail):
+                    vmem_default = vmem_avail - mem_avail
             # Initialize softmem variables
             if 'soft_limit' in self.cfg['cgroup']['memory']:
                 softmem_enabled = self.cfg['cgroup']['memory']['soft_limit']
             else:
                 softmem_enabled = False
-            # Sanity check
-            if size_as_int(mem_avail) > size_as_int(vmem_avail):
-                pbs.logmsg(pbs.EVENT_SYSTEM,
-                           '%s: WARNING: mem_avail > vmem_avail' %
-                           caller_name())
-                pbs.logmsg(pbs.EVENT_SYSTEM,
-                           '%s: Check reserve_amount and reserve_percent' %
-                           caller_name())
-                # Increase vmem_avail to match mem_avail
-                vmem_avail = mem_avail
             # Determine the mem limit
             if mem_requested is not None:
                 # mem requested may not exceed available
-                if size_as_int(mem_requested) > size_as_int(mem_avail):
+                if size_as_int(mem_requested) > mem_avail:
                     raise JobValueError(
                         'mem requested (%s) exceeds mem available (%s)' %
-                        (mem_requested, mem_avail))
+                        (mem_requested, str(mem_avail)))
                 mem_limit = mem_requested
             else:
                 # mem was not requested
@@ -4857,16 +4877,16 @@ class CgroupUtils(object):
                             and "place" in job.Resource_List
                             and 'exclhost'
                                 in repr(job.Resource_List['place']))):
-                    mem_limit = mem_avail
+                    mem_limit = str(mem_avail)
                 else:
-                    mem_limit = mem_default
+                    mem_limit = str(mem_default)
             # Determine the vmem limit
             if vmem_requested is not None:
                 # vmem requested may not exceed available
-                if size_as_int(vmem_requested) > size_as_int(vmem_avail):
+                if size_as_int(vmem_requested) > vmem_avail:
                     raise JobValueError(
                         'vmem requested (%s) exceeds vmem available (%s)' %
-                        (vmem_requested, vmem_avail))
+                        (vmem_requested, str(vmem_avail)))
                 vmem_limit = vmem_requested
             else:
                 # vmem was not requested
@@ -4879,11 +4899,11 @@ class CgroupUtils(object):
                             and 'exclhost'
                                 in repr(job.Resource_List['place']))):
 
-                    vmem_limit = vmem_avail
+                    vmem_limit = str(vmem_avail)
                 else:
-                    vmem_limit = str(min(size_as_int(vmem_avail),
+                    vmem_limit = str(min(vmem_avail,
                                          size_as_int(mem_limit)
-                                         + size_as_int(vmem_default)))
+                                         + vmem_default))
             # Ensure vmem is at least as large as mem
             if size_as_int(vmem_limit) < size_as_int(mem_limit):
                 vmem_limit = mem_limit
@@ -4892,30 +4912,30 @@ class CgroupUtils(object):
                 softmem_limit = mem_limit
                 # The hard memory limit is assigned the lesser of the vmem
                 # limit and available memory
-                if size_as_int(vmem_limit) < size_as_int(mem_avail):
+                if size_as_int(vmem_limit) < mem_avail:
                     mem_limit = vmem_limit
                 else:
-                    mem_limit = mem_avail
+                    mem_limit = str(mem_avail)
             # Again, ensure vmem is at least as large as mem
             if size_as_int(vmem_limit) < size_as_int(mem_limit):
                 vmem_limit = mem_limit
             # Sanity checks when both memory and memsw are enabled
             if mem_enabled and vmem_enabled:
                 if vmem_requested is not None:
-                    if size_as_int(vmem_limit) > size_as_int(vmem_requested):
+                    if size_as_int(vmem_requested) < size_as_int(vmem_limit):
                         # The user requested an invalid limit
                         raise JobValueError(
-                            'vmem limit (%s) exceeds vmem requested (%s)' %
-                            (vmem_limit, vmem_requested))
+                            'vmem requested (%s) under minimum possible (%s)'
+                            % (vmem_requested, vmem_limit))
                 if size_as_int(vmem_limit) > size_as_int(mem_limit):
                     # This job may try to utilize swap
-                    if size_as_int(vmem_avail) <= size_as_int(mem_avail):
+                    if vmem_avail <= mem_avail:
                         # No swap available
                         if vmem_requested is not None:
                             raise CgroupLimitError('Job might utilize swap'
                                                    ' and no swap on host')
                         else:
-                            # It got its impossible vmem>mem from a default
+                            # It got an impossible vmem>mem
                             # undo that since there is no swap
                             vmem_limit = mem_limit
             # Assign mem and vmem
@@ -4942,10 +4962,12 @@ class CgroupUtils(object):
                                caller_name())
                     hostresc['vmem'] = pbs.size(vmem_limit)
         # Initialize hpmem variables
+        hpmem_default = None
+        hpmem_limit = None
         hpmem_enabled = 'hugetlb' in self.subsystems
         if hpmem_enabled:
-            hpmem_limit = None
-            hpmem_default = self.default('hugetlb')
+            if self.default('hugetlb') is not None:
+                hpmem_default = size_as_int(self.default('hugetlb'))
             if (hpmem_default is None
                     or not self.cfg['cgroup']['hugetlb']
                                    ['enforce_default']
@@ -4957,11 +4979,11 @@ class CgroupUtils(object):
             if 'hpmem' in hostresc:
                 hpmem_limit = convert_size(hostresc['hpmem'], 'kb')
             else:
-                hpmem_limit = hpmem_default
+                hpmem_limit = str(hpmem_default)
             # Assign hpmem
-            if size_as_int(hpmem_limit) > size_as_int(hpmem_avail):
+            if size_as_int(hpmem_limit) > hpmem_avail:
                 raise JobValueError('hpmem limit (%s) exceeds available (%s)' %
-                                    (hpmem_limit, hpmem_avail))
+                                    (hpmem_limit, str(hpmem_avail)))
             hostresc['hpmem'] = pbs.size(hpmem_limit)
         # Initialize cpuset variables
         cpuset_enabled = 'cpuset' in self.subsystems
