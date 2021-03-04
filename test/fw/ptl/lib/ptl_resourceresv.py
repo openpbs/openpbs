@@ -652,7 +652,8 @@ class InteractiveJob(threading.Thread):
             _p.sendline("exit")
             while True:
                 try:
-                    _p.read_nonblocking(timeout=5)
+                    # When -1 (default), use self.timeout
+                    _p.read_nonblocking()
                 except Exception:
                     break
             if _p.isalive():
