@@ -710,10 +710,15 @@ tpp_sock_resolve_host(char *host, int *count)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+	tpp_nslookup_mutex_lock();
+
 	if ((rc = getaddrinfo(host, NULL, &hints, &pai)) != 0) {
+		tpp_nslookup_mutex_unlock();
 		tpp_log(LOG_CRIT, NULL, "Error %d resolving %s", rc, host);
 		return NULL;
 	}
+	/* unlock nslook up mutex */
+	tpp_nslookup_mutex_unlock();
 
 	*count = 0;
 	for (aip = pai; aip != NULL; aip = aip->ai_next) {

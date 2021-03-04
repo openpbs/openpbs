@@ -2332,6 +2332,89 @@ tpp_set_logmask(long logmask)
 	tpp_log_event_mask = logmask;
 }
 
+/**
+ * @brief
+ *	Lock the mutex associated with tpp nslookup
+ *
+ * @return Error code
+ * @retval -1 - failure
+ * @retval  0 - success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+int
+tpp_nslookup_mutex_lock()
+{
+
+	if (pthread_mutex_lock(&tpp_nslookup_mutex) != 0)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Unlock the mutex associated with tpp nslookup
+ *
+ * @return Error code
+ * @retval -1 - failure
+ * @retval  0 - success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+int
+tpp_nslookup_mutex_unlock()
+{
+
+	if (pthread_mutex_unlock(&tpp_nslookup_mutex) != 0)
+		return -1;
+
+	return 0;
+}
+
+#ifndef WIN32
+
+/**
+ * @brief
+ *	wrapper function for tpp_nslookup_mutex_lock().
+ *
+ */
+void
+tpp_nslookup_atfork_prepare()
+{
+	tpp_nslookup_mutex_lock();
+}
+
+/**
+ * @brief
+ *	wrapper function for tpp_nslookup_mutex_unlock().
+ *
+ */
+void
+tpp_nslookup_atfork_parent()
+{
+	tpp_nslookup_mutex_unlock();
+}
+
+/**
+ * @brief
+ *	wrapper function for tpp_nslookup_mutex_unlock().
+ *
+ */
+void
+tpp_nslookup_atfork_child()
+{
+	tpp_nslookup_mutex_unlock();
+}
+#endif
 
 /**
  * @brief encrypt the pkt  with the authdata provided
