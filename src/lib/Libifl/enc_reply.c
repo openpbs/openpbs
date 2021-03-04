@@ -261,7 +261,8 @@ encode_DIS_replyTPP(int sock, char *tppcmd_msgid, struct batch_reply *reply)
 		if ((rc = is_compose(sock, IS_CMD_REPLY)) != DIS_SUCCESS)
 		return rc;
 
-		/* for IS_CMD_REPLY, also send across the tppcmd_msgid, so that
+		/* 
+		* for IS_CMD_REPLY, also send across the tppcmd_msgid, so that
 		* server can match the reply with the request it had sent earlier
 		*/
 		if ((rc = diswst(sock, tppcmd_msgid)) != DIS_SUCCESS)

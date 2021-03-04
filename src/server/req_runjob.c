@@ -303,7 +303,7 @@ need_to_run_elsewhere(struct batch_request *preq)
 		if (pnode = find_alien_node(vname))
 			svr_id = get_nattr_str(pnode, ND_ATR_server_inst_id);
 		else
-			send_nodestat();
+			send_nodestat_req();
 	}
 
 	free(vname);
@@ -1482,7 +1482,7 @@ post_sendmom(struct work_task *pwt)
 			r = SEND_JOB_HOOK_REJECT_DELETEJOB;
 			break;
 		case PBSE_SISCOMM:
-			send_nodestat();
+			send_nodestat_req();
 		default:
 			r = SEND_JOB_FATAL;
 			break;

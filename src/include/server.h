@@ -185,14 +185,14 @@ extern void			memory_debug_log(struct work_task *ptask);
 /* Multi-server specific structures */
 
 /* Resource update from peer server */
-struct resc_update {
-	char *jobid;
-	int op;
-	char *execvnode;
-	int share_job;
-	pbs_list_link ru_link;
+struct peersvr_resc_update {
+	char *jobid;	/* job id of the resource update */
+	int op;		/* operation which is performed; INCR/DECR */
+	char *execvnode;	/* execvnode of the job */
+	int share_job;	/* job share type based on job's placement directive */
+	pbs_list_link ru_link;	/* Link to the next element in the list */
 };
-typedef struct resc_update psvr_ru_t;
+typedef struct peersvr_resc_update psvr_ru_t;
 
 /* multi-server gloabls and functions */
 
@@ -209,24 +209,25 @@ void *get_peersvr(struct sockaddr_in *);
 void *create_svr_entry(char *, unsigned int);
 int init_msi();
 void *create_svr_struct(struct sockaddr_in *, char *);
-int connect_to_peersvr(void *psvr);
-bool is_peersvr(void *psvr);
-void mcast_resc_usage(psvr_ru_t *);
+int connect_to_peersvr(void *);
+bool is_peersvr(void *);
+void mcast_resc_usage(psvr_ru_t *, int);
 int open_ps_mtfd(void);
-void send_nodestat(void);
+void send_nodestat_req(void);
 void req_peer_svr_ack(int);
 int num_pending_peersvr_rply(void);
-psvr_ru_t *init_ru(job *pjob, int op, char *exec_vnode);
-void free_ru(psvr_ru_t *ru_head);
+psvr_ru_t *init_psvr_ru(job *, int, char *);
+void free_psvr_ru(psvr_ru_t *);
 int send_job_resc_updates(int);
-int send_command(int c, int msg);
-int send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct);
+int send_command(int, int);
+int send_resc_usage(int, psvr_ru_t *, int, int);
 void req_resc_update(int, pbs_list_head *, void *);
 void replyhello_psvr(struct work_task *);
 void poke_peersvr(void);
-void mcast_resc_update_all(void *psvr);
+void mcast_resc_update_all(void *);
 void clean_saved_rsc(void*);
-int process_status_reply(int c);
+int process_status_reply(int);
+void *get_peersvr_from_svrid(char *);
 
 /* end of multi-svr functions */
 

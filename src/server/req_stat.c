@@ -839,7 +839,7 @@ req_stat_svr_ready(struct work_task *ptask)
 				return;
 			}
 
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 				  "Server is not ready to serve scheduler stat request, Deferring reply.");
 			return;
 		}

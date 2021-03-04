@@ -194,9 +194,10 @@ is_compose_cmd(int stream, int command, char **ret_msgid)
 	if ((ret = is_compose(stream, command)) != DIS_SUCCESS)
 		return ret;
 
-	if (!ret_msgid)
+	/* Create a temp msg id, when there is no buffer passed */
+	if (ret_msgid == NULL)
 		ret = get_msgid(&temp_id);
-	else if (*ret_msgid == NULL || *ret_msgid[0] == '\0') /* NULL or empty id provided */
+	else if (*ret_msgid == NULL || *ret_msgid[0] == '\0') /* buffer passed but NULL or empty id provided */
 		if ((ret = get_msgid(ret_msgid)) != 0)
 			return ret;
 

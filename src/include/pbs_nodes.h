@@ -443,7 +443,7 @@ extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
 extern void	propagate_socket_licensing(mominfo_t *);
 extern void	update_jobs_on_node(char *, char *, int, int);
-extern int	mcast_add(mominfo_t *, int *);
+extern int	mcast_add(mominfo_t *, int *, bool);
 void		stream_eof(int, int, char *);
 
 extern char *msg_daemonname;

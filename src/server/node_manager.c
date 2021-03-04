@@ -2978,7 +2978,9 @@ mark_nodes_unknown(int all)
  * @brief The TPP multicast version for server -> mom.
  *
  * @param[in] pmom - The mom to ping
- * @param[in] mtfd  - The TPP channel to add moms for multicasting.
+ * @param[in] mtfd - The TPP channel to add moms for multicasting.
+ * @param[in] unique - Ensure only unique values are added.
+ * 
  * 
  * @return int
  * @retval 0: success
@@ -2986,10 +2988,15 @@ mark_nodes_unknown(int all)
  *
  */
 int
-mcast_add(mominfo_t *pmom, int *mtfd)
+mcast_add(mominfo_t *pmom, int *mtfd, bool unique)
 {
-	dmn_info_t *pdmninfo = pmom->mi_dmn_info;
+	dmn_info_t *pdmninfo;
 	int rc = 0;
+
+	if (!pmom)
+		return -1;
+
+	pdmninfo = pmom->mi_dmn_info;
 
 	DBPRT(("%s: entered\n", __func__))
 
@@ -2998,15 +3005,15 @@ mcast_add(mominfo_t *pmom, int *mtfd)
 
 	/* open the tpp mcast channel here */
 	if (*mtfd == -1 && (*mtfd = tpp_mcast_open()) == -1) {
-		log_err(-1, __func__, "Failed to open TPP mcast channel for mom pings");
+		log_err(-1, __func__, "Failed to open TPP mcast channel for broadcasting messages");
 		return -1;
 	}
 
-	rc = tpp_mcast_add_strm(*mtfd, pdmninfo->dmn_stream);
+	rc = tpp_mcast_add_strm(*mtfd, pdmninfo->dmn_stream, unique);
 
 	if (rc == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
-				 "Failed to add mom at %s:%d to ping mcast", pmom->mi_host, pmom->mi_port);
+				 "Failed to add service endpoint at %s:%d to mcast", pmom->mi_host, pmom->mi_port);
 		log_err(-1, __func__, log_buffer);
 		tpp_close(pdmninfo->dmn_stream);
 		tdelete2((u_long)pdmninfo->dmn_stream, 0, &streams);
@@ -3018,7 +3025,7 @@ mcast_add(mominfo_t *pmom, int *mtfd)
 
 /**
  * @brief
- * 		Mom multicast function to close all failed streams and close them
+ * 	Multicast function to close all failed streams and close them
  *
  * @param[in]	stm	- multi-cast stream where broadcast is attempted
  * @param[in]	ret	- failure return code
@@ -3048,7 +3055,7 @@ close_streams(int stm, int ret)
 			snprintf(log_buffer, sizeof(log_buffer), "%s %d to %s(%s)",
 				dis_emsg[ret], errno, pmom->mi_host, netaddr(addr));
 			log_err(-1, __func__, log_buffer);
-			stream_eof(pdmninfo->dmn_stream, ret, "ping no ack");
+			stream_eof(pdmninfo->dmn_stream, ret, "mcast failed!");
 		}
 	}
 }
@@ -3086,7 +3093,7 @@ mcast_msg(struct work_task *ptask)
 
 				pdmninfo = mominfo_array[i]->mi_dmn_info;
 				if ((pdmninfo->dmn_state & INUSE_NEED_ADDRS) && pdmninfo->dmn_stream >= 0) {
-					mcast_add(mominfo_array[i], &mtfd);
+					mcast_add(mominfo_array[i], &mtfd, FALSE);
 					if (pdmninfo->dmn_state & INUSE_MARKEDDOWN)
 						pdmninfo->dmn_state &= ~INUSE_MARKEDDOWN;
 					set_all_state(mominfo_array[i], 0, INUSE_DOWN | INUSE_NEED_ADDRS,
@@ -4278,9 +4285,9 @@ is_request(int stream, int version)
 
 		/* mcast reply togethor */
 		if (psvrmom->msr_vnode_pool <= 0 || psvrmom->msr_has_inventory)
-			mcast_add(pmom, &mtfd_replyhello);
+			mcast_add(pmom, &mtfd_replyhello, FALSE);
 		else
-			mcast_add(pmom, &mtfd_replyhello_noinv);
+			mcast_add(pmom, &mtfd_replyhello_noinv, FALSE);
 
 		if (reply_send_tm <= time_now) {
 			struct work_task *ptask;
@@ -6184,6 +6191,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 {
 	struct pbssubn *snp;
 	struct jobinfo *jp;
+	int rc = 0;
 
 	if (pnode->nd_svrflags & NODE_ALIEN)
 		return 0;
@@ -6207,7 +6215,11 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 			jp->has_cpu = 0; /* has no cpus allocatted */
 			snp->jobs = jp;
 			jp->jobid = strdup(jobid);
-		}
+			if (!jp->jobid)
+				rc = PBSE_SYSTEM;
+		} else
+			rc = PBSE_SYSTEM;
+		
 	} else {
 		struct pbssubn *lst_sn;
 		int ncpus;
@@ -6259,14 +6271,25 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 				jp->has_cpu = 1; /* has a cpu allocatted */
 				snp->jobs = jp;
 				jp->jobid = strdup(jobid);
+				if (!jp->jobid) {
+					rc = PBSE_SYSTEM;
+					goto end;
+				}
+			} else {
+				rc = PBSE_SYSTEM;
+				goto end;
 			}
+			
 			DBPRT(("set_node: node: %s/%ld to job %s, still free: %ld\n",
 			       pnode->nd_name, snp->index, jobid,
 			       pnode->nd_nsnfree))
 		}
 	}
 
-	return 0;
+end:
+	if (rc == PBSE_SYSTEM)
+		log_errf(rc, __func__, "Failed to allocate memory!");
+	return rc;
 }
 
 /**
@@ -6496,7 +6519,9 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			* The job will be reattempted in the next few cycles once
 			* we get the reply from all peer servers and the alien nodes are cached.
 			*/
-			send_nodestat();
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+				   pjob->ji_qs.ji_jobid, "Unkown node received");
+			send_nodestat_req();
 			return PBSE_UNKNODE;
 		}
 
@@ -6565,7 +6590,9 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			    (pnode = find_alien_node(vname)) == NULL) {
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
-				send_nodestat();
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+					   "Unkown node %s received", vname);
+				send_nodestat_req();
 				goto end;
 			}
 
@@ -6654,10 +6681,12 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						pehnxt++;
 					*pehnxt = '\0';
 					(phowl+ndindex)->hw_natvn = find_nodebyname(peh);
-					if ((phowl+ndindex)->hw_natvn == NULL) {
+					if ((phowl + ndindex)->hw_natvn == NULL) {
 						free(phowl);
 						free(execvncopy);
-						send_nodestat();
+						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+							   pjob->ji_qs.ji_jobid, "Unkown node %s received", peh);
+						send_nodestat_req();
 						return (PBSE_UNKNODE);
 					}
 					if ((phowl+ndindex)->hw_pnd->nd_moms)
@@ -7159,13 +7188,14 @@ check_for_negative_resource(resource_def *prdef, resource *presc, char *noden)
  * @param[in]	prdef	- resource structure which stores resource name
  * @param[in]	val	- resource value
  * @param[in]	hop	- always called with 0, this values checks for the level of indirectness.
+ * @param[out]	mtfd	- multicast fd to fill in peer svr streams in case of resc update
  *
  * @return	int
  * @retval	0	- success
  * @retval	!=0	- failure code
  */
 static int
-adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, char *val, int hop)
+adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, char *val, int hop, int *mtfd, job *pjob)
 {
 	pbsnode		*pnode;
 	resource	*presc;
@@ -7194,8 +7224,18 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 	/* find the node */
 
 	pnode = find_nodebyname(noden);
-	if (pnode == NULL)
+	if (pnode == NULL) {
+		if (pjob) {
+			pnode = find_alien_node(noden);
+			if (pnode) {
+				mcast_add(get_peersvr_from_svrid(get_nattr_str(pnode, ND_ATR_server_inst_id)), mtfd, TRUE);
+			} else
+				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+					pjob->ji_qs.ji_jobid, "Could not find node %s", noden);
+		}
+
 		return PBSE_UNKNODE;
+	}
 
 	/* find the resources_assigned resource for the node */
 
@@ -7211,7 +7251,7 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 		/* indirect reference to another vnode, recurse w/ that node */
 
 		noden = presc->rs_value.at_val.at_str + 1;
-		return (adj_resc_on_node(noden, aflag, op, prdef, val, ++hop));
+		return (adj_resc_on_node(noden, aflag, op, prdef, val, ++hop, mtfd, pjob));
 	}
 
 	/* decode the resource value and +/- it to the attribute */
@@ -7266,6 +7306,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	attribute	tmpattr;
 	int		nchunk = 0;
 	psvr_ru_t	*psvr_ru;
+	int		mtfd = -1;
 
 	/* Parse the exec_vnode string */
 
@@ -7306,11 +7347,11 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 					continue;
 				}
 
-				if ((rc = adj_resc_on_node(noden, asgn, op, prdef, pkvp[j].kv_val, 0)) != 0) {
+				if ((rc = adj_resc_on_node(noden, asgn, op, prdef, pkvp[j].kv_val, 0, &mtfd, pjob)) != 0) {
 					if (rc != PBSE_UNKNODE)
 						return;
 					if (pjob)
-						pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Broadcast_Rqd;
+						pjob->ji_qs.ji_svrflags |= JOB_SVFLG_RescUpdt_Rqd;
 				}
 				/* update system attribute of resources assigned */
 
@@ -7360,9 +7401,9 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 			return;
 	}
 
-	if (pjob && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Broadcast_Rqd)) {
-		psvr_ru = init_ru(pjob, op, pexech->at_val.at_str);
-		mcast_resc_usage(psvr_ru);
+	if (pjob && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd)) {
+		psvr_ru = init_psvr_ru(pjob, op, pexech->at_val.at_str);
+		mcast_resc_usage(psvr_ru, mtfd);
 		free(psvr_ru);
 	}
 
@@ -8027,6 +8068,8 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *keep_select, char *err_msg,
  * @brief
  *	Wrapper function to update_job_node_rassn() function.
  *
+ * @param[in]	pexech	- exec_vnode string
+ * @param[in]	op	- operator of type enum batch_op.
  */
 void
 update_node_rassn(attribute *pexech, enum batch_op op)
@@ -8034,6 +8077,15 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 	update_job_node_rassn(NULL, pexech, op);
 }
 
+/**
+ * @brief update the jid on the respective nodes in the execvnode string
+ * and update the state based on share_job value
+ * 
+ * @param[in] jid - job id
+ * @param[in] exec_vnode - execvnode string
+ * @param[in] op - operation INCR/DECR
+ * @param[in] share_job - job sharing type
+ */
 void
 update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
 {
@@ -8062,6 +8114,10 @@ update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
 				}
 				if (!strcmp(prdef->rs_name, "ncpus")) {
 					ncpus = strtol(pkvp[j].kv_val, NULL, 10);
+					if (ncpus < 0) {
+						log_err(PBSE_SYSTEM, "bad value for ncpus: %s\n", pkvp[j].kv_val);
+						ncpus = 0;
+					}
 					if (op == INCR) {
 						assign_jobs_on_subnode(pnode, ncpus, jid, 0, share_job);
 						update_node_state(pnode, share_job);

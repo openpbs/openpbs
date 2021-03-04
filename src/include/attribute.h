@@ -332,7 +332,7 @@ extern void attr_atomic_kill(attribute *temp, attribute_def *pdef, int);
 extern void attr_atomic_copy(attribute *old, attribute *nattr, attribute_def *pdef, int limit);
 
 extern int copy_svrattrl_list(pbs_list_head *from_phead, pbs_list_head *to_head);
-extern int copy_attrl_to_svrattrl(struct attrl *from_list, pbs_list_head *to_head);
+extern int convert_attrl_to_svrattrl(struct attrl *from_list, pbs_list_head *to_head);
 extern int  compare_svrattrl_list(pbs_list_head *list1, pbs_list_head *list2);
 extern svrattrl *find_svrattrl_list_entry(pbs_list_head *phead, char *name,
 	char *resc);

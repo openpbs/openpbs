@@ -1137,7 +1137,7 @@ send_sisters_job_update(job *pjob)
 		}
 		if (pbs_conf.pbs_use_mcast == 1) {
 			/* add each of the tpp streams to the tpp mcast channel */
-			if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+			if (tpp_mcast_add_strm(mtfd, np->hn_stream, FALSE) == -1) {
 				snprintf(log_buffer,
 					sizeof(log_buffer),
 					"mcast add to %s failed",
@@ -1530,7 +1530,7 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 			continue;
 
 		/* add each of the tpp streams to the tpp mcast channel */
-		if (tpp_mcast_add_strm(mtfd, np->hn_stream) == -1) {
+		if (tpp_mcast_add_strm(mtfd, np->hn_stream, FALSE) == -1) {
 			tpp_close(np->hn_stream);
 			np->hn_stream = -1;
 			continue;

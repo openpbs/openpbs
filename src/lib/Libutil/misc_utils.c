@@ -585,28 +585,6 @@ pbs_asprintf_exit:
 }
 
 /**
- * @brief internal calloc function.
- * It prints error to log_err and aborts the execution in case of failure
- * abort will dump core for inspecting stack trace.
- * 
- * @param[in] n - no of blocks to allocate
- * @param[in] amt - size of each block
- * @return void*
- * @reval !NULL - memory on successful allocation.
- */
-void *
-pbs_calloc(size_t n, size_t amt)
-{
-	void *v = calloc(n, amt);
-	if (!v) {
-		log_err(PBSE_SYSTEM, __func__, "Unable to allocate memory. Aborting...");
-		abort();
-	}
-	
-	return v;
-}
-
-/**
 
  * @brief
  *	Copies 'src' file  to 'dst' file.

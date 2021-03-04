@@ -5625,7 +5625,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 			return NULL;
 		}
 
-		if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn) != 0) {
+		if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn, FALSE) != 0) {
 			free(info);
 			free(dup_msgid);
 			return NULL;
@@ -5665,7 +5665,7 @@ check_add_hook_mcast_info(int conn, mominfo_t *minfo, char *hookname, int action
 		return NULL;
 	}
 
-	if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn) != 0) {
+	if (tpp_mcast_add_strm(g_hook_mcast_array[i].mconn, conn, FALSE) != 0) {
 		free(info);
 		return NULL;
 	}

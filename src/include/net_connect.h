@@ -94,9 +94,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define	PS_PROTOCOL_VER	1	/* peer-server protocol version number */
 
 
-/*
- **	Types of Inter Server messages (between Server and Mom).
- */
+/*	Types of Inter Server messages (between Server and Mom). */
 #define IS_NULL                         0
 #define IS_CMD                          1
 #define IS_CMD_REPLY                    2
@@ -121,9 +119,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_UPDATE_FROM_HOOK2            21 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
 #define IS_HELLOSVR                     22 /* hello send to server from mom to initiate a hello sequence */
 
-/*
- **	Types of Peer Server messages (between Server and Server).
- */
+/*	Types of Peer Server messages (between Server and Server). */
 #define PS_CONNECT		1 /* hello from peer server  */
 #define PS_RSC_UPDATE_FULL	2 /* complete resource update request  */
 #define PS_RSC_UPDATE		3 /* Peer server resource update */

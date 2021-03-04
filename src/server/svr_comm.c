@@ -101,7 +101,7 @@ mcast_resc_update_all(void *psvr)
 {
 	struct work_task *ptask;
 
-	mcast_add(psvr, &mtfd_replyhello_psvr);
+	mcast_add(psvr, &mtfd_replyhello_psvr, FALSE);
 
 	if (mtfd_replyhello_psvr != -1)
 		ptask = set_task(WORK_Immed, 0, replyhello_psvr, NULL);
@@ -212,8 +212,8 @@ read_resc_update(int sock, pbs_list_head *ru_head)
 	return 0;
 
 err:
-	free_ru(ru_cur);
-	free_ru(GET_NEXT(*ru_head));
+	free_psvr_ru(ru_cur);
+	free_psvr_ru(GET_NEXT(*ru_head));
 	return -1;
 }
 
@@ -247,7 +247,7 @@ replyhello_psvr(struct work_task *ptask)
  * 
  */
 void
-send_nodestat(void)
+send_nodestat_req(void)
 {
 	struct attrl *pat;
 	struct attrl *head;
@@ -265,6 +265,9 @@ send_nodestat(void)
 
 	if (mtfd == -1)
 		return;
+
+	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+			LOG_DEBUG, __func__, "Sending node stat to peer servers");
 
 	pat = calloc(1, sizeof(struct attrl));
 	pat->name = ATTR_NODE_Mom;

@@ -324,9 +324,11 @@ find_mom_entry(char *hostname, unsigned int port)
  * @return dmn_info_t* 
  */
 dmn_info_t*
-init_daemon_info(ulong *pul, uint port, mominfo_t *pmi)
+init_daemon_info(ulong *pul, uint port, struct machine_info *pmi)
 {
-	dmn_info_t *dmn_info = pbs_calloc(1, sizeof(dmn_info_t));
+	dmn_info_t *dmn_info = calloc(1, sizeof(dmn_info_t));
+	if (!dmn_info)
+		return NULL;
 
 	dmn_info->dmn_state =INUSE_UNKNOWN | INUSE_DOWN | INUSE_NEEDS_HELLOSVR;
 	dmn_info->dmn_stream  = -1;
@@ -339,6 +341,39 @@ init_daemon_info(ulong *pul, uint port, mominfo_t *pmi)
 	}
 
 	return dmn_info;
+}
+
+/**
+ * @brief free up daemon info struct and associated data
+ * 
+ * @param[in] pmi - mom/peer-svr struct
+ */
+void
+delete_daemon_info(struct machine_info *pmi)
+{
+	dmn_info_t *pdmninfo;
+	ulong *up;
+
+	if (!pmi || !pmi->mi_dmn_info)
+		return;
+
+	pdmninfo = pmi->mi_dmn_info;
+
+	/* take stream out of tree */
+	tpp_close(pdmninfo->dmn_stream);
+	tdelete2((unsigned long)pdmninfo->dmn_stream , 0, &streams);
+
+	if (pdmninfo->dmn_addrs) {
+		for (up = pdmninfo->dmn_addrs; *up; up++) {
+			/* del Mom's IP addresses from tree  */
+			tdelete2(*up, pmi->mi_port,  &ipaddrs);
+		}
+		free(pdmninfo->dmn_addrs);
+		pdmninfo->dmn_addrs = NULL;
+	}
+
+	free(pdmninfo);
+	pmi->mi_dmn_info = NULL;
 }
 
 /**
@@ -425,7 +460,13 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 		free(pul);
 		return pmom;	/* already there */
 	}
+	
 	pmom->mi_dmn_info = init_daemon_info(pul, port, pmom);
+	if (!pmom->mi_dmn_info) {
+		log_err(PBSE_SYSTEM, __func__, merr);
+		delete_svrmom_entry(pmom);
+		return NULL;
+	}
 
 	return pmom;
 }
@@ -462,38 +503,6 @@ open_conn_stream(mominfo_t *pmom)
 
 	return stream;
 }
-
-/**
- * @brief free up daemon info struct and associated data
- * 
- * @param[in] pmi - mom/peer-svr struct
- */
-void
-delete_daemon_info(mominfo_t *pmi)
-{
-	dmn_info_t *pdmninfo;
-	ulong *up;
-
-	if (!pmi || !pmi->mi_dmn_info)
-		return;
-
-	pdmninfo = pmi->mi_dmn_info;
-
-	/* take stream out of tree */
-	tpp_close(pdmninfo->dmn_stream);
-	tdelete2((unsigned long)pdmninfo->dmn_stream , 0, &streams);
-	if (pdmninfo->dmn_addrs) {
-		for (up = pdmninfo->dmn_addrs; *up; up++) {
-			/* del Mom's IP addresses from tree  */
-			tdelete2(*up, pmi->mi_port,  &ipaddrs);
-		}
-		free(pdmninfo->dmn_addrs);
-		pdmninfo->dmn_addrs = NULL;
-	}
-	free(pdmninfo);
-	pmi->mi_dmn_info = NULL;
-}
-
 
 /**
  * @brief

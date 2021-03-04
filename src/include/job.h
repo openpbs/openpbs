@@ -795,7 +795,7 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
-#define JOB_SVFLG_Broadcast_Rqd 0x400000 /* Broadcast of rsc usage is required */
+#define JOB_SVFLG_RescUpdt_Rqd 0x400000 /* Broadcast of rsc usage is required */
 
 #define MAIL_NONE  (int)'n'
 #define MAIL_ABORT (int)'a'

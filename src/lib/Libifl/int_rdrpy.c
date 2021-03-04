@@ -108,7 +108,7 @@ PBSD_rdrpy_sock(int sock, int *rc, int prot)
 }
 
 /**
- * @brief read a batch reply from the given connecction index
+ * @brief read a batch reply from the given connection index
  *
  * @param[in] c - The connection index to read from
  *
@@ -128,6 +128,7 @@ PBSD_rdrpy(int c)
 		pbs_errno = PBSE_SYSTEM;
 		return NULL;
 	}
+	/* PBSD_rdrpy() only handles TCP, hence passing PROT_TCP as prot */
 	reply = PBSD_rdrpy_sock(c, &rc, PROT_TCP);
 	if (reply == NULL) {
 		if (set_conn_errno(c, PBSE_PROTOCOL) != 0) {

@@ -666,12 +666,14 @@ PBSD_status_get(int c, struct batch_status **last, int *obj_type, int prot)
 		reply = PBSD_rdrpy_sock(c, &rc, prot);
 	
 	if (reply == NULL) {
-		pbs_errno = PBSE_PROTOCOL;
+		if (pbs_errno == PBSE_NONE)
+			pbs_errno = PBSE_PROTOCOL;
 		goto end;
 	} else if (reply->brp_choice != BATCH_REPLY_CHOICE_NULL  &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Text &&
 		reply->brp_choice != BATCH_REPLY_CHOICE_Status) {
-		pbs_errno = PBSE_PROTOCOL;
+		if (pbs_errno == PBSE_NONE)
+			pbs_errno = PBSE_PROTOCOL;
 		goto end;
 	} else if (get_conn_errno(c) == 0) {
 		rbsp = reply->brp_un.brp_statc;

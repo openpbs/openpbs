@@ -1620,7 +1620,9 @@ job_obit(ruu *pruu, int stream)
 					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_hook_reject_rerunjob);
 					DBPRT(("%s: MOM rejected job %s due to a hook.\n", __func__, pruu->ru_pjobid))
 				} else if (exitstatus == JOB_EXEC_JOINJOB) {
-					send_nodestat();
+					log_event(PBSEVENT_ERROR | PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+						  pjob->ji_qs.ji_jobid, "Mom rejected job due to join job error");
+					send_nodestat_req();
 					exitstatus = JOB_EXEC_RETRY;
 				}
 RetryJob:
