@@ -216,7 +216,6 @@ decode_attr_db(void *parent, pbs_db_attr_list_t *db_attr_list, void *padef_idx, 
 			} else {
 				snprintf(log_buffer,LOG_BUF_SIZE, "unknown attribute \"%s\" discarded", pal->al_name);
 				log_err(-1, __func__, log_buffer);
-				(void)free(pal);
 				continue;
 			}
 		}
