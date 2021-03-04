@@ -1120,8 +1120,7 @@ __pbs_loadconf(int reload)
 			free(psi_value);
 			goto err;
 		}
-	} else if (psi_value && (!pbs_conf.psi_str || strcmp(psi_value, pbs_conf.psi_str)))
-		fprintf(stderr, "Warning: PBS_SERVER_INSTANCES will not be re-read from pbs.conf, restart to take effect\n");
+	}
 
 	if (pbs_client_thread_unlock_conf() != 0)
 		return 0;
