@@ -99,7 +99,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         test = []
         test += ['#PBS -N NodeFailRequeueTest\n']
         test += ['echo Starting test at `date`\n']
-        test += ['sleep 5\n']
+        test += ['sleep 15\n']
 
         select = "vnode=" + self.hostA + "+vnode=" + self.hostB
         j1 = Job(TEST_USER, attrs={
@@ -129,7 +129,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         test = []
         test += ['#PBS -N JobEndTest\n']
         test += ['echo Starting test at `date`\n']
-        test += ['sleep 1\n']
+        test += ['sleep 15\n']
 
         select = "vnode=" + self.hostA + "+vnode=" + self.hostB
         j1 = Job(TEST_USER, attrs={
