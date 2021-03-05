@@ -280,7 +280,7 @@ parse_psi(char *conf_value)
 	free(pbs_conf.psi);
 	free(pbs_conf.psi_str);
 
-	if (conf_value == NULL) {
+	if (conf_value == NULL || conf_value[0] == '\0') {
 		char *dfltsvr = pbs_default();
 		if (dfltsvr == NULL)
 			return -1;
