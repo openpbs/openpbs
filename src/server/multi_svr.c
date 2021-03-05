@@ -279,16 +279,14 @@ int
 init_msi()
 {
 	peersvrl = NULL;
+	int i;
 
 	/* Determine the index of the server in PBS_SERVER_INSTANCES list */
-	if (svridx == -1) {
-		int i;
-		for (i = 0; i < get_num_servers(); i++) {
-			if (pbs_conf.psi[i].port == pbs_server_port_dis &&
-			    is_same_host(pbs_conf.psi[i].name, server_host)) {
-				svridx = i;
-				break;
-			}
+	for (i = 0; i < get_num_servers(); i++) {
+		if (pbs_conf.psi[i].port == pbs_server_port_dis &&
+		    is_same_host(pbs_conf.psi[i].name, server_host)) {
+			svridx = i;
+			break;
 		}
 	}
 
