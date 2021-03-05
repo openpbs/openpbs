@@ -6682,10 +6682,10 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					*pehnxt = '\0';
 					(phowl+ndindex)->hw_natvn = find_nodebyname(peh);
 					if ((phowl + ndindex)->hw_natvn == NULL) {
+						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+							pjob->ji_qs.ji_jobid, "Unkown node %s received", peh);
 						free(phowl);
 						free(execvncopy);
-						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-							   pjob->ji_qs.ji_jobid, "Unkown node %s received", peh);
 						send_nodestat_req();
 						return (PBSE_UNKNODE);
 					}
@@ -7230,8 +7230,7 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 			if (pnode) {
 				mcast_add(get_peersvr_from_svrid(get_nattr_str(pnode, ND_ATR_server_inst_id)), mtfd, TRUE);
 			} else
-				log_eventf(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-					pjob->ji_qs.ji_jobid, "Could not find node %s", noden);
+				return PBSE_UNKOBJ;
 		}
 
 		return PBSE_UNKNODE;
@@ -7307,6 +7306,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	int		nchunk = 0;
 	psvr_ru_t	*psvr_ru;
 	int		mtfd = -1;
+	bool		broadcast = FALSE;
 
 	/* Parse the exec_vnode string */
 
@@ -7348,10 +7348,13 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 				}
 
 				if ((rc = adj_resc_on_node(noden, asgn, op, prdef, pkvp[j].kv_val, 0, &mtfd, pjob)) != 0) {
-					if (rc != PBSE_UNKNODE)
+					if (rc != PBSE_UNKNODE && rc != PBSE_UNKOBJ)
 						return;
-					if (pjob)
+					if (pjob) {
 						pjob->ji_qs.ji_svrflags |= JOB_SVFLG_RescUpdt_Rqd;
+						if (rc == PBSE_UNKOBJ)
+							broadcast = TRUE;
+					}
 				}
 				/* update system attribute of resources assigned */
 
@@ -7402,7 +7405,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	}
 
 	if (pjob && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd)) {
-		psvr_ru = init_psvr_ru(pjob, op, pexech->at_val.at_str);
+		psvr_ru = init_psvr_ru(pjob, op, pexech->at_val.at_str, broadcast);
 		mcast_resc_usage(psvr_ru, mtfd);
 		free(psvr_ru);
 	}

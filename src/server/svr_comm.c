@@ -119,38 +119,50 @@ mcast_resc_update_all(void *psvr)
  * @param[in] c - connection stream
  * @param[in] psvr_ru - peer server update
  * @param[in] ct - count of total resource update packets
- * @param incr_ct - count of increment packets
+ * @param[in] incr_ct - count of increment packets
  * @return int
  * @retval !0 : DIS error code
  */
 int
-send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct)
+send_resc_usage(int mtfd, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 {
 	int rc;
 	psvr_ru_t *ru_cur = NULL;
 	server_t *psvr;
+	int i;
+	int count;
+	int *strms;
 
 	/* account messages sent */
-	for (psvr = GET_NEXT(peersvrl);
-	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		((svrinfo_t *) (psvr->mi_data))->ps_pending_replies += (incr_ct ? 1 : 0);
+	if (psvr_ru->broadcast) {
+		for (psvr = GET_NEXT(peersvrl);
+		     psvr; psvr = GET_NEXT(psvr->mi_link)) {
+			((svrinfo_t *) (psvr->mi_data))->ps_pending_replies += (incr_ct ? 1 : 0);
+		}
+	} else {
+		strms = tpp_mcast_members(mtfd, &count);
+
+		for (i = 0; i < count; i++) {
+			if ((psvr = tfind2((u_long) strms[i], 0, &streams)) != NULL)
+				((svrinfo_t *) (psvr->mi_data))->ps_pending_replies += (incr_ct ? 1 : 0);
+		}
 	}
 
-	if ((rc = diswsi(c, ct)) != 0)
+	if ((rc = diswsi(mtfd, ct)) != 0)
 		goto err;
 
 	for (ru_cur = psvr_ru; ru_cur; ru_cur = GET_NEXT(ru_cur->ru_link)) {
 		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			   __func__, "sending resc update jobid=%s, op=%d, execvnode=%s",
 			   ru_cur->jobid, ru_cur->op, ru_cur->execvnode);
-		if ((rc = diswcs(c, ru_cur->jobid, strlen(ru_cur->jobid)) != 0) ||
-		    (rc = diswsi(c, ru_cur->op) != 0) ||
-		    (rc = diswcs(c, ru_cur->execvnode, strlen(ru_cur->execvnode)) != 0) ||
-		    (rc = diswsi(c, ru_cur->share_job) != 0))
+		if ((rc = diswcs(mtfd, ru_cur->jobid, strlen(ru_cur->jobid)) != 0) ||
+		    (rc = diswsi(mtfd, ru_cur->op) != 0) ||
+		    (rc = diswcs(mtfd, ru_cur->execvnode, strlen(ru_cur->execvnode)) != 0) ||
+		    (rc = diswsi(mtfd, ru_cur->share_job) != 0))
 			goto err;
 	}
 
-	if ((rc = dis_flush(c)) != DIS_SUCCESS) {
+	if ((rc = dis_flush(mtfd)) != DIS_SUCCESS) {
 		pbs_errno = PBSE_PROTOCOL;
 		goto err;
 	}
@@ -158,8 +170,8 @@ send_resc_usage(int c, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 	return 0;
 err:
 	log_errf(pbs_errno, __func__, "%s from stream %d",
-		 dis_emsg[rc], c);
-	close_streams(c, rc);
+		 dis_emsg[rc], mtfd);
+	close_streams(mtfd, rc);
 	return rc;
 }
 

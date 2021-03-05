@@ -190,6 +190,7 @@ struct peersvr_resc_update {
 	int op;		/* operation which is performed; INCR/DECR */
 	char *execvnode;	/* execvnode of the job */
 	int share_job;	/* job share type based on job's placement directive */
+	int broadcast; /* whether to broad cast the resc update to all the peer servers */
 	pbs_list_link ru_link;	/* Link to the next element in the list */
 };
 typedef struct peersvr_resc_update psvr_ru_t;
@@ -215,8 +216,8 @@ void mcast_resc_usage(psvr_ru_t *, int);
 int open_ps_mtfd(void);
 void send_nodestat_req(void);
 void req_peer_svr_ack(int);
-int num_pending_peersvr_rply(void);
-psvr_ru_t *init_psvr_ru(job *, int, char *);
+void *pending_ack_svr(void);
+psvr_ru_t *init_psvr_ru(job *, int, char *, bool);
 void free_psvr_ru(psvr_ru_t *);
 int send_job_resc_updates(int);
 int send_command(int, int);

@@ -814,6 +814,7 @@ req_stat_svr_ready(struct work_task *ptask)
 	struct batch_request *preq;
 	struct batch_reply *preply;
 	conn_t *conn;
+	server_t *psvr;
 
 	/* allocate a reply structure and a status sub-structure */
 
@@ -832,15 +833,17 @@ req_stat_svr_ready(struct work_task *ptask)
 		poke_peersvr();
 
 		/* If pending acks are not down to 0, scheduler will be blocked */
-		if (num_pending_peersvr_rply() > 0) {
+		if ((psvr = pending_ack_svr())) {
 
 			if (set_task(WORK_Deferred_Reply, preq->rq_conn, req_stat_svr_ready, (void *) preq) == NULL) {
 				log_err(errno, __func__, "could not set_task");
 				return;
 			}
 
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
-				  "Server is not ready to serve scheduler stat request, Deferring reply.");
+			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				  "Server is not ready to serve scheduler stat request due to "
+				  "pending replies from peer server %s, Deferring reply.",
+				  psvr->mi_host);
 			return;
 		}
 	}

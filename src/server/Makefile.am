@@ -88,6 +88,7 @@ pbs_server_bin_SOURCES = \
 	job_route.c \
 	licensing_func.c \
 	mom_info.c \
+	daemon_info.c \
 	multi_svr.c \
 	nattr_get_set.c \
 	svr_comm.c \

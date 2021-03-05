@@ -285,12 +285,13 @@ free_psvr_ru(psvr_ru_t *ru_head)
  * 
  * @param[in] pjob - job pointer
  * @param[in] op - operation performed - INCR/DECR
- * @param exec_vnode - exec_vnode string
+ * @param[in] exec_vnode - exec_vnode string
+ * @param[in] broadcast - whether request needs to be broadcasted
  * @return psvr_ru_t* 
  * @retval NULL - on failure
  */
 psvr_ru_t *
-init_psvr_ru(job *pjob, int op, char *exec_vnode)
+init_psvr_ru(job *pjob, int op, char *exec_vnode, bool broadcast)
 {
 	psvr_ru_t *psvr_ru = calloc(1, sizeof(psvr_ru_t));
 	if (!psvr_ru)
@@ -307,6 +308,7 @@ init_psvr_ru(job *pjob, int op, char *exec_vnode)
 	psvr_ru->op = op;
 	psvr_ru->share_job = get_job_share_type(pjob);
 	CLEAR_LINK(psvr_ru->ru_link);
+	psvr_ru->broadcast = broadcast;
 
 	return psvr_ru;
 
@@ -395,7 +397,7 @@ send_job_resc_updates(int mtfd)
 	     pjob = GET_NEXT(pjob->ji_alljobs)) {
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd) &&
 		    (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescAssn)) {
-			psvr_ru = init_psvr_ru(pjob, INCR, pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str);
+			psvr_ru = init_psvr_ru(pjob, INCR, pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str, FALSE);
 			if (psvr_ru) {
 				append_link(&ru_head, &psvr_ru->ru_link, psvr_ru);
 				ct++;
@@ -448,7 +450,7 @@ req_peer_svr_ack(int conn)
 		return;
 	}
 
-	if (*pending_rply == 0 && num_pending_peersvr_rply() == 0) {
+	if (*pending_rply == 0 && pending_ack_svr() == NULL) {
 		ptask = find_work_task(WORK_Deferred_Reply, NULL, req_stat_svr_ready);
 		if (ptask) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
@@ -621,23 +623,24 @@ gen_svr_inst_id(void)
 }
 
 /**
- * @brief find the number of peer server replies
- * which needs to be ack'd
+ * @brief return the first peer-svr with pending replies
  * 
- * @return int 
+ * @return server_t *
+ * @retval !NULL - peer-svr
+ * @retval NULL - no reply pending
  */
-int
-num_pending_peersvr_rply(void)
+void *
+pending_ack_svr(void)
 {
 	server_t *psvr;
-	int ct = 0;
 
 	for (psvr = GET_NEXT(peersvrl);
 	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
-		ct += ((svrinfo_t *) psvr->mi_data)->ps_pending_replies;
+		if (((svrinfo_t *) psvr->mi_data)->ps_pending_replies)
+			return psvr;
 	}
 
-	return ct;
+	return NULL;
 }
 
 /**
