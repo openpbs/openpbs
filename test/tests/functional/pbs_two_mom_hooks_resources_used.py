@@ -96,15 +96,11 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         resources_used value to be present in the 'R' record.
         """
 
-        test = []
-        test += ['#PBS -N NodeFailRequeueTest\n']
-        test += ['echo Starting test at `date`\n']
-        test += ['sleep 15\n']
-
+        # Submit job
         select = "vnode=" + self.hostA + "+vnode=" + self.hostB
         j1 = Job(TEST_USER, attrs={
-            'Resource_List.select': select})
-        j1.create_script(body=test)
+             ATTR_N: 'NodeFailRequeueTest',
+             'Resource_List.select': select})
         jid1 = self.server.submit(j1)
 
         # Wait for the job to start running.
@@ -126,15 +122,12 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         resources_used.
         """
 
-        test = []
-        test += ['#PBS -N JobEndTest\n']
-        test += ['echo Starting test at `date`\n']
-        test += ['sleep 15\n']
-
+        # Submit job
         select = "vnode=" + self.hostA + "+vnode=" + self.hostB
         j1 = Job(TEST_USER, attrs={
-            'Resource_List.select': select})
-        j1.create_script(body=test)
+             ATTR_N: 'JobEndTest',
+             'Resource_List.select': select})
+        j1.set_sleep_time(15)
         jid1 = self.server.submit(j1)
 
         # Wait for the job to start running.
