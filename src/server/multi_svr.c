@@ -469,10 +469,7 @@ is_peersvr(void *pobj)
 {
 	server_t *psvr = pobj;
 
-	if (!psvr)
-		return;
-
-	return (psvr->mi_port == psvr->mi_rmport);
+	return (psvr && (psvr->mi_port == psvr->mi_rmport));
 }
 
 /**

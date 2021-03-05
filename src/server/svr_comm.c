@@ -99,12 +99,10 @@ err:
 void
 mcast_resc_update_all(void *psvr)
 {
-	struct work_task *ptask;
-
 	mcast_add(psvr, &mtfd_replyhello_psvr, FALSE);
 
 	if (mtfd_replyhello_psvr != -1)
-		ptask = set_task(WORK_Immed, 0, replyhello_psvr, NULL);
+		set_task(WORK_Immed, 0, replyhello_psvr, NULL);
 }
 
 /**

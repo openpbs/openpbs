@@ -487,6 +487,8 @@ extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
 extern  int		open_conn_stream(mominfo_t *);
 extern void		close_streams(int stm, int ret);
+extern void		delete_daemon_info(struct machine_info *pmi);
+extern dmn_info_t *	init_daemon_info(ulong *pul, uint port, struct machine_info *pmi);
 
 
 attribute *get_nattr(const struct pbsnode *pnode, int attr_idx);

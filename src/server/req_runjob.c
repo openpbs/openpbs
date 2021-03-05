@@ -300,7 +300,7 @@ need_to_run_elsewhere(struct batch_request *preq)
 	pnode = find_nodebyname(vname);
 
 	if (!pnode) {
-		if (pnode = find_alien_node(vname))
+		if ((pnode = find_alien_node(vname)))
 			svr_id = get_nattr_str(pnode, ND_ATR_server_inst_id);
 		else
 			send_nodestat_req();

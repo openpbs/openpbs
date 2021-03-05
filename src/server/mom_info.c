@@ -323,7 +323,7 @@ find_mom_entry(char *hostname, unsigned int port)
  * @param[in] pmi - machine info struct
  * @return dmn_info_t* 
  */
-dmn_info_t*
+dmn_info_t *
 init_daemon_info(ulong *pul, uint port, struct machine_info *pmi)
 {
 	dmn_info_t *dmn_info = calloc(1, sizeof(dmn_info_t));
@@ -460,7 +460,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 		free(pul);
 		return pmom;	/* already there */
 	}
-	
+
 	pmom->mi_dmn_info = init_daemon_info(pul, port, pmom);
 	if (!pmom->mi_dmn_info) {
 		log_err(PBSE_SYSTEM, __func__, merr);

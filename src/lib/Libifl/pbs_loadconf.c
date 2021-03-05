@@ -272,7 +272,7 @@ frame_psi(psi_t *psi, char *svr_id)
 	char *svrname;
 
 	if (!psi || !svr_id)
-		return NULL;
+		return -1;
 
 	svrname = parse_servername(svr_id, &psi->port);
 	if (svrname == NULL)
@@ -280,7 +280,7 @@ frame_psi(psi_t *psi, char *svr_id)
 
 	strcpy(psi->name, svrname);
 
-	if (psi->name == '\0') {
+	if (*psi->name == '\0') {
 		if (gethostname(psi->name, PBS_MAXHOSTNAME) == 0)
 			get_fullhostname(psi->name, psi->name, PBS_MAXHOSTNAME);
 	}
