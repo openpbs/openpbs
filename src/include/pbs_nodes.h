@@ -432,7 +432,6 @@ extern  void	momptr_offline_by_mom(mominfo_t *, char *);
 extern  void	momptr_clear_offline_by_mom(mominfo_t *, char *);
 extern  void	   delete_mom_entry(mominfo_t *);
 extern  mominfo_t *create_svrmom_entry(char *, unsigned int, unsigned long *);
-extern  dmn_info_t* init_daemon_info(ulong *pul, uint port, mominfo_t *pmom);
 extern  void       delete_svrmom_entry(mominfo_t *);
 extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);
