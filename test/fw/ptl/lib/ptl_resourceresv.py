@@ -642,8 +642,13 @@ class InteractiveJob(threading.Thread):
                 self.job.interactive_handle = None
                 return None
             self.logger.debug(_p.after.decode())
+            _to = 5
             for _l in _sc:
                 (cmd, out) = _l
+                if 'sleep ' in cmd:
+                    timev = cmd.split(' ')[1]
+                    if timev.isnumeric():
+                        _to = int(timev)
                 self.logger.info('sending: ' + cmd)
                 _p.sendline(cmd)
                 self.logger.info('expecting: ' + out)
@@ -652,7 +657,8 @@ class InteractiveJob(threading.Thread):
             _p.sendline("exit")
             while True:
                 try:
-                    _p.read_nonblocking(timeout=5)
+                    # timeout value is same as sleep time of job
+                    _p.read_nonblocking(timeout=_to)
                 except Exception:
                     break
             if _p.isalive():

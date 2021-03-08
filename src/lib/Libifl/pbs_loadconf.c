@@ -281,6 +281,9 @@ parse_psi(char *conf_value)
 	free(pbs_conf.psi_str);
 
 	if (conf_value == NULL) {
+		char *dfltsvr = pbs_default();
+		if (dfltsvr == NULL)
+			return -1;
 		pbs_asprintf(&local_conf, "%s:%d", pbs_default(), pbs_conf.batch_service_port);
 		if (local_conf == NULL)
 			return -1;
@@ -353,7 +356,9 @@ err:
  *	will be void. In that case, access to every pbs_conf.variable has to be
  *	synchronized against the reload of those variables.
  *
- * @param[in] reload		Whether to attempt a reload
+ * @param[in] reload	Whether to attempt a reload
+ * 						Note: The following parameters will not be reloaded:
+ * 						- PBS_SERVER_INSTANCES
  *
  * @return int
  * @retval 1 Success
@@ -1109,10 +1114,12 @@ __pbs_loadconf(int reload)
 
 	pbs_conf.loaded = 1;
 
-	if (parse_psi(psi_value) == -1) {
-		fprintf(stderr, "Couldn't find a valid server instance to connect to\n");
-		free(psi_value);
-		goto err;
+	if (!reload) {
+		if (parse_psi(psi_value) == -1) {
+			fprintf(stderr, "Couldn't parse PBS_SERVER_INSTANCES\n");
+			free(psi_value);
+			goto err;
+		}
 	}
 
 	if (pbs_client_thread_unlock_conf() != 0)

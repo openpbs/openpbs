@@ -138,32 +138,21 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 			return pbs_errno;
 
 	/* now verify the attributes, if verification is enabled */
-	if ((pbs_verify_attributes(random_srv_conn(svr_conns), rq_type, objtype, command, aoplp)) != 0)
+	if ((pbs_verify_attributes(random_srv_conn(c, svr_conns), rq_type, objtype, command, aoplp)) != 0)
 		return pbs_errno;
 
 	if (svr_conns) {
-		if (objtype == MGR_OBJ_JOB &&
-		    (start = get_job_location_hint(objname)) == -1)
-			start = 0;
+		/* For a single server cluster, instance fd and cluster fd are the same */
+		if (svr_conns[0]->sd == c)
+			return PBSD_manager_inner(c, rq_type, command, objtype, objname, aoplp, extend);
+
+		if ((start = get_obj_location_hint(objname, objtype)) == -1)
+		    start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {
 
 			if (!svr_conns[i] || svr_conns[i]->state != SVR_CONN_STATE_UP)
 				continue;
-
-			/*
-			* For a single server cluster, instance fd and cluster fd are the same. 
-			* Hence breaking the loop.
-			*/
-			if (svr_conns[i]->sd == c) {
-				return PBSD_manager_inner(svr_conns[i]->sd,
-							  rq_type,
-							  command,
-							  objtype,
-							  objname,
-							  aoplp,
-							  extend);
-			}
 
 			rc = PBSD_manager_inner(svr_conns[i]->sd,
 						rq_type,
@@ -172,8 +161,12 @@ PBSD_manager(int c, int rq_type, int command, int objtype, char *objname, struct
 						objname,
 						aoplp,
 						extend);
-			if (rc && objtype == MGR_OBJ_JOB && pbs_errno != PBSE_UNKJOBID)
-				break;
+
+			if (objtype == MGR_OBJ_JOB || objtype == MGR_OBJ_RESV) {
+				if (rc == PBSE_NONE || (pbs_errno != PBSE_UNKJOBID && pbs_errno != PBSE_UNKRESVID))
+					break;
+			}
+			
 		}
 
 		return rc;

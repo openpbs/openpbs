@@ -180,3 +180,23 @@ send_sigjob(int virtual_sd, resource_resv *resresv, const char *signal, char *ex
 	return pbs_sigjob(get_svr_inst_fd(virtual_sd, resresv->svr_inst_id),
 			  const_cast<char *>(resresv->name.c_str()), const_cast<char *>(signal), extend);
 }
+
+/**
+ * @brief	Wrapper for pbs_confirmresv
+ *
+ * @param[in]	virtual_sd - virtual sd for the cluster
+ * @param[in]	resv - resource_resv for the resv to send confirmation to
+ * @param[in] 	location - string of vnodes/resources to be allocated to the resv.
+ * @param[in] 	start - start time of reservation if non-zero
+ * @param[in] 	extend - extend data for pbs_confirmresv
+ *
+ * @return	int
+ * @retval	0	Success
+ * @retval	!0	error
+ */
+int
+send_confirmresv(int virtual_sd, resource_resv *resv, const char *location, unsigned long start, const char *extend)
+{
+	return pbs_confirmresv(get_svr_inst_fd(virtual_sd, resv->svr_inst_id),
+		const_cast<char *>(resv->name.c_str()), const_cast<char *>(location), start, const_cast<char *>(extend));	
+}

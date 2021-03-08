@@ -186,7 +186,7 @@ __runjob_helper(int c, char *jobid, char *location, char *extend, int req_type)
 		return (pbs_errno = PBSE_IVALREQ);
 
 	if (svr_conns) {
-		if ((start = get_job_location_hint(jobid)) == -1)
+		if ((start = get_obj_location_hint(jobid, MGR_OBJ_JOB)) == -1)
 			start = 0;
 
 		for (i = start, ct = 0; ct < nsvrs; i = (i + 1) % nsvrs, ct++) {

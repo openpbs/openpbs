@@ -265,6 +265,12 @@ upgrade_pbs_schema_from_v1_4_0() {
 		ALTER TABLE pbs.resv DROP COLUMN ri_un_type;
 		ALTER TABLE pbs.resv DROP COLUMN ri_fromsock;
 		ALTER TABLE pbs.resv DROP COLUMN ri_fromaddr;
+		ALTER TABLE pbs.server DROP COLUMN sv_numjobs;
+		ALTER TABLE pbs.server DROP COLUMN sv_numque;
+		ALTER TABLE pbs.server DROP COLUMN sv_svraddr;
+		ALTER TABLE pbs.server DROP COLUMN sv_svrport;
+		ALTER TABLE pbs.queue RENAME COLUMN qu_ctime to qu_creattm;
+		ALTER TABLE pbs.queue RENAME COLUMN qu_mtime to qu_savetm;
 		UPDATE pbs.info SET pbs_schema_version = '1.5.0';
 	EOF
 	ret=$?
