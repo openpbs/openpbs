@@ -190,7 +190,7 @@ struct peersvr_resc_update {
 	int op;		/* operation which is performed; INCR/DECR */
 	char *execvnode;	/* execvnode of the job */
 	int share_job;	/* job share type based on job's placement directive */
-	int broadcast; /* whether to broad cast the resc update to all the peer servers */
+	int broadcast; /* whether to broadcast the resc update to all the peer servers */
 	pbs_list_link ru_link;	/* Link to the next element in the list */
 };
 typedef struct peersvr_resc_update psvr_ru_t;

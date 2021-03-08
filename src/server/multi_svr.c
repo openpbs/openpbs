@@ -798,8 +798,13 @@ mcast_resc_usage(psvr_ru_t *psvr_ru, int mtfd)
 	int ret;
 	int incr_ct = 0;
 
-	if (!psvr_ru || mtfd == -1)
+	if (!psvr_ru)
 		return;
+
+	if (mtfd == -1 || psvr_ru->broadcast) {
+		tpp_mcast_close(mtfd);
+		mtfd = open_ps_mtfd();
+	}
 
 	/* only INCR's added to pending acks count */
 	if (psvr_ru->op == INCR)

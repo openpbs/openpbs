@@ -6575,19 +6575,20 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 
 	parentmom = NULL;	/* use for multi-mom vnodes		      */
 
-	chunk = parse_plus_spec_r(execvncopy, &last, &hasprn);
-
 	/* note: hasprn is set based on finding '(' or ')'
 	 *	> 0 = found '(' at start of substring
 	 *	= 0 = no parens or found both in one substring
 	 *	< 0 = found ')' at end of substring
 	 */
 
-	while (chunk) {
+	for (chunk = parse_plus_spec_r(execvncopy, &last, &hasprn);
+	     chunk; chunk = parse_plus_spec_r(last, &last, &hasprn)) {
 
 		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {
 			if ((pnode = find_nodebyname(vname)) == NULL &&
 			    (pnode = find_alien_node(vname)) == NULL) {
+				if (svr_init && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_RescUpdt_Rqd))
+					continue;
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
 				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
@@ -6605,29 +6606,29 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				for (i = 0; i < pnode->nd_nummoms; ++i) {
 
 					if ((pnode->nd_moms[i] != NULL) &&
-						(sync_mom_hookfiles_count(pnode->nd_moms[i]) > 0)) {
+					    (sync_mom_hookfiles_count(pnode->nd_moms[i]) > 0)) {
 						snprintf(log_buffer, sizeof(log_buffer),
-							"vnode %s's parent mom %s:%d has a pending copy hook or delete hook request", pnode->nd_name,  pnode->nd_moms[i]->mi_host,
-							pnode->nd_moms[i]->mi_port);
+							 "vnode %s's parent mom %s:%d has a pending copy hook or delete hook request", pnode->nd_name, pnode->nd_moms[i]->mi_host,
+							 pnode->nd_moms[i]->mi_port);
 						log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-							LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
+							  LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
 						break;
 					}
 				}
 			}
 
-			(phowl + ndindex)->hw_pnd   = pnode;
+			(phowl + ndindex)->hw_pnd = pnode;
 			(phowl + ndindex)->hw_ncpus = 0;
 			(phowl + ndindex)->hw_chunk = setck;
-			(phowl + ndindex)->hw_index = -1;	/* will fill in later */
+			(phowl + ndindex)->hw_index = -1; /* will fill in later */
 			(phowl + ndindex)->hw_htcpu = 0;
-			if (setck == 1) {	/* start of new chunk on host */
+			if (setck == 1) { /* start of new chunk on host */
 				if (mk_new_host) {
 
 					/* look up "natural" vnode name for either 'the Mom' */
 					/* or 'a Mom' for the real vnode.  This is used in   */
 					/* the exec_host string                              */
-					if (pnode->nd_nummoms > 1) {	/* multi-mom */
+					if (pnode->nd_nummoms > 1) { /* multi-mom */
 						parentmom = which_parent_mom(pnode, parentmom);
 						if (parentmom == NULL) {
 							/* cannot find a Mom that works */
@@ -6645,12 +6646,12 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 							parentmom_first = parentmom;
 
 						/* record "native" vnode for the chosen Mom */
-						(phowl+ndindex)->hw_natvn = ((struct mom_svrinfo *)(parentmom->mi_data))->msr_children[0];
-						(phowl+ndindex)->hw_mom = parentmom;
+						(phowl + ndindex)->hw_natvn = ((struct mom_svrinfo *) (parentmom->mi_data))->msr_children[0];
+						(phowl + ndindex)->hw_mom = parentmom;
 					} else if (pnode->nd_nummoms == 1) {
 						/* single parent Mom, just use her */
-						(phowl+ndindex)->hw_natvn = ((mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data))->msr_children[0];
-						(phowl+ndindex)->hw_mom = pnode->nd_moms[0];
+						(phowl + ndindex)->hw_natvn = ((mom_svrinfo_t *) (pnode->nd_moms[0]->mi_data))->msr_children[0];
+						(phowl + ndindex)->hw_mom = pnode->nd_moms[0];
 						if (parentmom_first == NULL)
 							parentmom_first = pnode->nd_moms[0];
 						/* if the first chunk goes to a single parent */
@@ -6660,14 +6661,12 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						if (parentmom == NULL)
 							parentmom = parentmom_first;
 
-
 					} else {
 						/* alien node */
-						(phowl+ndindex)->hw_natvn = (phowl+ndindex)->hw_pnd;
-						(phowl+ndindex)->hw_mom = NULL;
-						(phowl+ndindex)->hw_mom_host = get_nattr_arst((phowl+ndindex)->hw_pnd, ND_ATR_Mom)->as_string[0];
-						(phowl+ndindex)->hw_mom_port = get_nattr_long((phowl+ndindex)->hw_pnd, ND_ATR_Port);
-
+						(phowl + ndindex)->hw_natvn = (phowl + ndindex)->hw_pnd;
+						(phowl + ndindex)->hw_mom = NULL;
+						(phowl + ndindex)->hw_mom_host = get_nattr_arst((phowl + ndindex)->hw_pnd, ND_ATR_Mom)->as_string[0];
+						(phowl + ndindex)->hw_mom_port = get_nattr_long((phowl + ndindex)->hw_pnd, ND_ATR_Port);
 					}
 				} else if (objtype == JOB_OBJECT) {
 					/*
@@ -6680,23 +6679,23 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					while (*pehnxt && (*pehnxt != '/'))
 						pehnxt++;
 					*pehnxt = '\0';
-					(phowl+ndindex)->hw_natvn = find_nodebyname(peh);
+					(phowl + ndindex)->hw_natvn = find_nodebyname(peh);
 					if ((phowl + ndindex)->hw_natvn == NULL) {
 						log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
-							pjob->ji_qs.ji_jobid, "Unkown node %s received", peh);
+							   pjob->ji_qs.ji_jobid, "Unkown node %s received", peh);
 						free(phowl);
 						free(execvncopy);
 						send_nodestat_req();
 						return (PBSE_UNKNODE);
 					}
-					if ((phowl+ndindex)->hw_pnd->nd_moms)
-						(phowl+ndindex)->hw_mom =  (phowl+ndindex)->hw_pnd->nd_moms[0];
+					if ((phowl + ndindex)->hw_pnd->nd_moms)
+						(phowl + ndindex)->hw_mom = (phowl + ndindex)->hw_pnd->nd_moms[0];
 					else {
-						(phowl+ndindex)->hw_mom_host = (phowl+ndindex)->hw_pnd->nd_attr[ND_ATR_Mom].at_val.at_str;
-						(phowl+ndindex)->hw_mom_port = (phowl+ndindex)->hw_pnd->nd_attr[ND_ATR_Port].at_val.at_long;
+						(phowl + ndindex)->hw_mom_host = (phowl + ndindex)->hw_pnd->nd_attr[ND_ATR_Mom].at_val.at_str;
+						(phowl + ndindex)->hw_mom_port = (phowl + ndindex)->hw_pnd->nd_attr[ND_ATR_Port].at_val.at_long;
 					}
 					*pehnxt = '/';
-					(phowl+ndindex)->hw_index = atoi(++pehnxt);
+					(phowl + ndindex)->hw_index = atoi(++pehnxt);
 					while (*pehnxt && (*pehnxt != '+'))
 						pehnxt++;
 					if (*pehnxt == '+')
@@ -6704,25 +6703,24 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					else
 						peh = pehnxt;
 					if (parentmom_first == NULL)
-						parentmom_first = (phowl+ndindex)->hw_natvn->nd_moms[0];
+						parentmom_first = (phowl + ndindex)->hw_natvn->nd_moms[0];
 				}
 			}
 
 			/* set setck to indicate if next vnode starts a new chunk */
 			/* stays the same if hasprn == 0			  */
 			if (hasprn > 0)
-				setck = 0;	/* continuation of multi-vnode chunk  */
+				setck = 0; /* continuation of multi-vnode chunk  */
 			else if (hasprn < 0)
-				setck = 1;	/* end of multi-vnode chunk,start new */
-
+				setck = 1; /* end of multi-vnode chunk,start new */
 
 			for (i = 0; i < nelem; i++) {
 				if (strcasecmp("ncpus", (pkvp + i)->kv_keyw) == 0)
-					(phowl+ndindex)->hw_ncpus = atoi((pkvp+i)->kv_val);
+					(phowl + ndindex)->hw_ncpus = atoi((pkvp + i)->kv_val);
 				else {
-					if ((find_resc_def(svr_resc_def, (pkvp+i)->kv_keyw) == NULL) && (svr_init == FALSE)) {
+					if ((find_resc_def(svr_resc_def, (pkvp + i)->kv_keyw) == NULL) && (svr_init == FALSE)) {
 						free(execvncopy);
-						resc_in_err = strdup((pkvp+i)->kv_keyw);
+						resc_in_err = strdup((pkvp + i)->kv_keyw);
 						rc = PBSE_UNKRESC;
 						goto end;
 					}
@@ -6732,7 +6730,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			hostcpus += (phowl + ndindex)->hw_ncpus;
 
 			if (setck == 1) {
-				(phowl+ndindex)->hw_htcpu = hostcpus;
+				(phowl + ndindex)->hw_htcpu = hostcpus;
 				hostcpus = 0;
 			}
 
@@ -6743,7 +6741,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			goto end;
 		}
 
-		chunk = parse_plus_spec_r(last, &last, &hasprn);
 		ndindex++;
 	}
 
