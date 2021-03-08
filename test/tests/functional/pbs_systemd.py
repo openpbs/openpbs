@@ -122,11 +122,11 @@ class Test_systemd(TestFunctional):
         self.shutdown_all()
         rv = self.start_using_systemd()
         self.assertTrue(rv)
+        cmd = "systemctl reload pbs"
         # Mom
         self.mom.signal("-KILL")
         if self.mom.isUp(max_attempts=10):
             self.fail("MoM is still running")
-        cmd = "systemctl reload pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if self.mom.isUp(max_attempts=10):
             self.logger.info("MoM started and running")
@@ -136,7 +136,6 @@ class Test_systemd(TestFunctional):
         self.scheduler.signal("-KILL")
         if self.scheduler.isUp(max_attempts=10):
             self.fail("Sched is still running")
-        cmd = "systemctl reload pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if self.scheduler.isUp(max_attempts=10):
             self.logger.info("Sched started and running")
@@ -146,7 +145,6 @@ class Test_systemd(TestFunctional):
         self.comm.signal("-KILL")
         if self.comm.isUp(max_attempts=10):
             self.fail("Comm is still running")
-        cmd = "systemctl reload pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if self.comm.isUp(max_attempts=10):
             self.logger.info("Comm started and running")
@@ -156,7 +154,6 @@ class Test_systemd(TestFunctional):
         self.server.signal("-KILL")
         if self.server.isUp(max_attempts=10):
             self.fail("Server is still running")
-        cmd = "systemctl reload pbs"
         self.du.run_cmd(self.hostname, cmd, True)
         if self.server.isUp(max_attempts=10):
             self.logger.info("Server started and running")
