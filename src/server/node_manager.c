@@ -6591,8 +6591,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					continue;
 				free(execvncopy);
 				rc = PBSE_UNKNODE;
-				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
-					   "Unkown node %s received", vname);
+				log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+					   pjob->ji_qs.ji_jobid, "Unkown node received");
 				send_nodestat_req();
 				goto end;
 			}
