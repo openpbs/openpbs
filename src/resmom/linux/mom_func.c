@@ -56,7 +56,6 @@ extern int do_debug_report;
 extern int termin_child;
 extern int exiting_tasks;
 extern int next_sample_time;
-enum hup_action	call_hup;
 extern char	*log_file;
 extern char	*path_log;
 extern int mom_run_state;

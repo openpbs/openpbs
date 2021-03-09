@@ -63,8 +63,6 @@
 #include	"log.h"
 
 
-char	log_buffer[LOG_BUF_SIZE];
-
 extern	void	add_cmds(Tcl_Interp *interp);
 
 /**

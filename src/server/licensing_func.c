@@ -59,6 +59,7 @@
 
 pbs_licensing_control licensing_control;
 pbs_license_counts license_counts;
+pbs_list_head unlicensed_nodes_list;
 struct work_task *init_licensing_task;
 struct work_task *get_more_licenses_task;
 struct work_task *licenses_linger_time_task;
