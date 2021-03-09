@@ -207,7 +207,7 @@ local_move(job *jobp, struct batch_request *req)
 	char	  *destination = jobp->ji_qs.ji_destin;
 	int	   mtype;
 	long	newtype = -1;
-	long	time_usec;
+	unsigned long	time_usec;
 	struct timeval	tval;
 
 	/* search for destination queue */

@@ -682,7 +682,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	svrattrl  *psatl;
 	job 	  *subj;
 	long	   eligibletime;
-	long	    time_usec;
+	unsigned long	    time_usec;
 	struct timeval	    tval;
 	char path[MAXPATHLEN + 1];
 

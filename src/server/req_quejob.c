@@ -1721,7 +1721,7 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	int rc;
 	pbs_db_jobscr_info_t jobscr;
 	pbs_db_obj_info_t obj;
-	long time_usec;
+	unsigned long time_usec;
 	struct timeval tval;
 	void *conn = (void *) svr_db_conn;
 	char *runjob_extend = NULL;
