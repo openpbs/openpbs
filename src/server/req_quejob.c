@@ -1721,7 +1721,7 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	int rc;
 	pbs_db_jobscr_info_t jobscr;
 	pbs_db_obj_info_t obj;
-	unsigned long time_usec;
+	Long time_usec;
 	struct timeval tval;
 	void *conn = (void *) svr_db_conn;
 	char *runjob_extend = NULL;
@@ -1807,7 +1807,7 @@ req_commit_now(struct batch_request *preq,  job *pj)
 	gettimeofday(&tval, NULL);
 	time_usec = (tval.tv_sec * 1000000L) + tval.tv_usec;
 	/* set the queue rank attribute */
-	set_jattr_l_slim(pj, JOB_ATR_qrank, time_usec, SET);
+	set_jattr_ll_slim(pj, JOB_ATR_qrank, time_usec, SET);
 
 	if (preq->rq_type == PBS_BATCH_Commit)
 		runjob_extend = preq->rq_extend;

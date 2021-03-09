@@ -278,6 +278,44 @@ set_attr_l(attribute *pattr, long value, enum batch_op op)
 }
 
 /**
+ * @brief	Attribute setter function for long type values
+ *
+ * @param[in]	pattr	-	pointer to attribute being set
+ * @param[in]	value	-	value to be set
+ * @param[in]	op		-	operation to do
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+set_attr_ll(attribute *pattr, Long value, enum batch_op op)
+{
+	if (pattr == NULL) {
+		log_err(-1, __func__, "Invalid pointer to attribute");
+		return;
+	}
+
+	switch (op) {
+		case SET:
+			pattr->at_val.at_ll = value;
+			break;
+		case INCR:
+			pattr->at_val.at_ll += value;
+			break;
+		case DECR:
+			pattr->at_val.at_ll -= value;
+			break;
+		default:
+			return;
+	}
+
+	post_attr_set(pattr);
+}
+
+/**
  * @brief	Attribute getter function for long type values
  *
  * @param[in]	pattr	-	pointer to the attribute

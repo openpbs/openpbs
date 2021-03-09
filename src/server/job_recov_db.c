@@ -143,7 +143,7 @@ job_to_db(job *pjob, pbs_db_job_info_t *dbjob)
 		/* extended portion */
 		strcpy(dbjob->ji_jid, pjob->ji_extended.ji_ext.ji_jid);
 		dbjob->ji_credtype  = pjob->ji_extended.ji_ext.ji_credtype;
-		dbjob->ji_qrank = get_jattr_long(pjob, JOB_ATR_qrank);
+		dbjob->ji_qrank = get_jattr_ll(pjob, JOB_ATR_qrank);
 	}
 
 	return savetype;

@@ -224,6 +224,24 @@ comp_ll(attribute *attr, attribute *with)
 		return (0);
 }
 
+/**
+ * @brief	Attribute getter function for long long type values
+ *
+ * @param[in]	pattr	-	pointer to the attribute
+ *
+ * @return	long
+ * @retval	long value of the attribute
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ */
+Long
+get_attr_ll(const attribute *pattr)
+{
+	return  pattr->at_val.at_ll;
+}
+
+
 /*
  * free_ll - use free_null to (not) free space
  */
