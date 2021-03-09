@@ -133,7 +133,7 @@ que_alloc(char *name)
 
 	/* set the working attributes to "unspecified" */
 	for (i = 0; i < (int) QA_ATR_LAST; i++)
-		clear_attr(&pq->qu_attr[i], &que_attr_def[i]);
+		clear_attr(get_qattr(pq, i), &que_attr_def[i]);
 
 	return (pq);
 }
@@ -151,17 +151,11 @@ void
 que_free(pbs_queue *pq)
 {
 	int i;
-	attribute *pattr;
-	attribute_def *pdef;
 	key_value_pair *pkvp = NULL;
 
 	/* remove any malloc working attribute space */
-	for (i = 0; i < (int) QA_ATR_LAST; i++) {
-		pdef = &que_attr_def[i];
-		pattr = &pq->qu_attr[i];
-
-		pdef->at_free(pattr);
-	}
+	for (i = 0; i < (int) QA_ATR_LAST; i++)
+		free_qattr(pq, i);
 
 	/* free default chunks set on queue */
 	pkvp = pq->qu_seldft;
@@ -328,7 +322,7 @@ find_resvqueuebyname(char *quename)
 	for (pque = (pbs_queue *)GET_NEXT(svr_queues);
 		pque != NULL; pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 		if (pque->qu_resvp != NULL
-			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
+			&& (strcmp(qname, get_rattr_str(pque->qu_resvp, RESV_ATR_resv_name)) == 0))
 			break;
 	}
 	if (pc)
@@ -385,8 +379,8 @@ get_dfltque(void)
 {
 	pbs_queue *pq = NULL;
 
-	if (server.sv_attr[SVR_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
-		pq = find_queuebyname(server.sv_attr[SVR_ATR_dflt_que].at_val.at_str);
+	if (is_sattr_set(SVR_ATR_dflt_que))
+		pq = find_queuebyname(get_sattr_str(SVR_ATR_dflt_que));
 	return (pq);
 }
 
@@ -412,7 +406,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 	pbs_queue *pque = (pbs_queue *) pobject;
 	pbs_sched *psched;
 
-	if ((pque != NULL) && (server.sv_attr[SVR_ATR_EligibleTimeEnable].at_val.at_long == 1)) {
+	if (pque != NULL && get_sattr_long(SVR_ATR_EligibleTimeEnable) == 1) {
 
 		if (pattr->at_val.at_long == 0) { /* started = OFF */
 			/* queue stopped, start accruing eligible time */
@@ -455,11 +449,11 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 			}
 
 			/* if scheduling = True, notify scheduler to start */
-			if (server.sv_attr[SVR_ATR_scheduling].at_val.at_long) {
+			if (get_sattr_long(SVR_ATR_scheduling)) {
 				if (find_assoc_sched_pque(pque, &psched))
 					set_scheduler_flag(SCH_SCHEDULE_STARTQ, psched);
 				else {
-					sprintf(log_buffer, "No scheduler associated with the partition %s", pque->qu_attr[QA_ATR_partition].at_val.at_str);
+					sprintf(log_buffer, "No scheduler associated with the partition %s", get_qattr_str(pque, QA_ATR_partition));
 					log_err(-1, __func__, log_buffer);
 				}
 			}
@@ -500,10 +494,8 @@ action_queue_partition(attribute *pattr, void *pobj, int actmode)
 	for (i=0; i < svr_totnodes; i++) {
 		if (pbsndlist[i]->nd_pque) {
 			if (strcmp(pbsndlist[i]->nd_pque->qu_qs.qu_name, ((pbs_queue *) pobj)->qu_qs.qu_name) == 0) {
-				if ((pbsndlist[i]->nd_attr[ND_ATR_partition].at_flags) & ATR_VFLAG_SET &&
-						(pattr->at_flags) & ATR_VFLAG_SET)
-				if (strcmp(pbsndlist[i]->nd_attr[ND_ATR_partition].at_val.at_str,
-						pattr->at_val.at_str))
+				if (is_nattr_set(pbsndlist[i], ND_ATR_partition) && (pattr->at_flags) & ATR_VFLAG_SET)
+				if (strcmp(get_nattr_str(pbsndlist[i], ND_ATR_partition), pattr->at_val.at_str))
 					return PBSE_INVALID_PARTITION_QUE;
 			}
 		}

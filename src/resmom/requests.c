@@ -1026,7 +1026,7 @@ req_modifyjob(struct batch_request *preq)
 	if (rc) {
 		/* leave old values, free the new ones */
 		for (i=0; i<JOB_ATR_LAST; i++)
-			job_attr_def[i].at_free(newattr+i);
+			free_attr(job_attr_def, &newattr[i], i);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -1039,7 +1039,7 @@ req_modifyjob(struct batch_request *preq)
 			if (job_attr_def[i].at_action)
 				(void)job_attr_def[i].at_action(&newattr[i],
 					pjob, ATR_ACTION_ALTER);
-			job_attr_def[i].at_free(pattr+i);
+			free_attr(job_attr_def, &pattr[i], i);
 			if ((newattr[i].at_type == ATR_TYPE_LIST) ||
 				(newattr[i].at_type == ATR_TYPE_RESC)) {
 				list_move(&newattr[i].at_val.at_list,
@@ -1836,8 +1836,7 @@ terminate_job(job *pjob, int internal)
 		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_OVERLMT1;
 
 	/* set overlimit time stamp by adding kill_delay and time_now. */
-	pjob->ji_overlmt_timestamp = (time_now + pjob->ji_wattr \
-				[(int)JOB_ATR_job_kill_delay].at_val.at_long);
+	pjob->ji_overlmt_timestamp = time_now + get_jattr_long(pjob, JOB_ATR_job_kill_delay);
 	if ((chk_mom_action(TerminateAction) == Script) &&
 		((i = do_mom_action_script(TerminateAction, pjob, NULL, NULL,
 		post_terminate)) == 1)) {
@@ -3209,7 +3208,7 @@ req_cpyfile(struct batch_request *preq)
 		pair != 0;
 		pair = (struct rqfpair *)GET_NEXT(pair->fp_link), tot_copies++) {
 		if (copy_failed)
-			continue;	
+			continue;
 		DBPRT(("%s: local %s remote %s\n", __func__, pair->fp_local, pair->fp_rmt))
 
 		stage_inout.from_spool = 0;
@@ -3281,7 +3280,7 @@ req_cpyfile(struct batch_request *preq)
 
 	/* log the number of files/directories copied and the time it took */
 	copy_stop = copy_stop - copy_start;
-	
+
 #ifdef NAS /* localmod 005 */
 	sprintf(log_buffer, "Staged %d/%d items %s over %ld:%02ld:%02ld",
 		num_copies, tot_copies, (dir == STAGE_DIR_OUT) ? "out" : "in",
@@ -3914,9 +3913,7 @@ post_chkpt(job *pjob, int  ev)
 
 
 int
-local_checkpoint(job *pjob,
-	int abort,
-	struct batch_request *preq) /* may be null */
+local_checkpoint(job *pjob, int abort, struct batch_request *preq) /* may be null */
 {
 	svrattrl	*pal;
 	int		rc;
@@ -3982,13 +3979,9 @@ local_checkpoint(job *pjob,
 
 	clear_attr(&tmph, &job_attr_def[(int)JOB_ATR_hold]);
 	if (preq) {
-		pal = (svrattrl *)
-			GET_NEXT(preq->rq_ind.rq_hold.rq_orig.rq_attr);
-		if (pal) {
-			hok = job_attr_def[(int)JOB_ATR_hold].
-				at_decode(&tmph, pal->al_name,
-				NULL, pal->al_value);
-		}
+		pal = (svrattrl *) GET_NEXT(preq->rq_ind.rq_hold.rq_orig.rq_attr);
+		if (pal)
+			hok = set_attr_generic(&tmph, &job_attr_def[(int)JOB_ATR_hold], pal->al_value, NULL, INTERNAL);
 	}
 	rc = mom_checkpoint_job(pjob, abort);
 	if ((rc == 0) && (hok == 0))

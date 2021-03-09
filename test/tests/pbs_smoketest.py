@@ -550,16 +550,20 @@ class SmokeTest(PBSTestSuite):
         """
         Test to submit job with job script
         """
+        sleep_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'bin', 'pbs_sleep')
+        script_body = sleep_cmd + ' 120'
         j = Job(TEST_USER, attrs={ATTR_N: 'test'})
-        j.create_script('pbs_sleep 120\n', hostname=self.server.client)
+        j.create_script(script_body, hostname=self.server.client)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.delete(id=jid, extend='force', wait=True)
         self.logger.info("Testing script with extension")
         j = Job(TEST_USER)
+
         fn = self.du.create_temp_file(hostname=self.server.client,
                                       suffix=".scr",
-                                      body="pbs_sleep 10",
+                                      body=script_body,
                                       asuser=str(TEST_USER))
         jid = self.server.submit(j, script=fn)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
@@ -981,7 +985,12 @@ class SmokeTest(PBSTestSuite):
         msg = "Checking the job state of %s, runs after %s is deleted" % (j3id,
                                                                           j4id)
         self.logger.info(msg)
-        self.server.deljob(id=j4id, wait=True)
+        try:
+            self.server.deljob(id=j4id, wait=True, extend='force',
+                               runas=MGR_USER)
+        except PbsDeljobError as e:
+            self.assertIn(
+                'qdel: Unknown Job Id', e.msg[0])
         self.server.expect(JOB, {'job_state': 'R'}, id=j3id, max_attempts=30,
                            interval=2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30,
@@ -1016,9 +1025,13 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.log_match(j4id + ";Formula Evaluation = 9",
                                  regexp=True, starttime=self.server.ctime,
                                  max_attempts=10, interval=2)
-
+        try:
+            self.server.deljob(id=j3id, wait=True, extend='force',
+                               runas=MGR_USER)
+        except PbsDeljobError as e:
+            self.assertIn(
+                'qdel: Unknown Job Id', e.msg[0])
         # Make sure we can qrun a job under the threshold
-        self.server.deljob(id=j3id, wait=True)
         rv = self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=j1id)
         self.server.runjob(jobid=j1id)

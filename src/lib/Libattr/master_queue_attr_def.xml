@@ -157,11 +157,11 @@
     <attributes>
 	<member_index>QA_ATR_JobsByState</member_index>
 	<member_name>ATTR_count</member_name>		<!-- "state_count" -->
-	<member_at_decode>decode_null</member_at_decode>		<!--  note-use fixed memory in queue struct  -->
+	<member_at_decode>decode_str</member_at_decode>
 	<member_at_encode>encode_str</member_at_encode>
 	<member_at_set>set_null</member_at_set>
 	<member_at_comp>comp_str</member_at_comp>
-	<member_at_free>free_null</member_at_free>
+	<member_at_free>free_str</member_at_free>
 	<member_at_action>NULL_FUNC</member_at_action>
 	<member_at_flags>READ_ONLY</member_at_flags>
 	<member_at_type>ATR_TYPE_STR</member_at_type>

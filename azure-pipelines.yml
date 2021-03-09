@@ -1,51 +1,48 @@
-# C/C++ with GCC
-# Build your C/C++ project with GCC using make.
-# Add steps that publish test results, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
 pr:
   - master
   - release_*
 
 pool:
   vmImage: 'ubuntu-18.04'
-   
+
 jobs:
   - job: runcheck
     steps:
-      - bash: sudo apt-get install -y pep8
-      - bash: .github/runchecks
-
-  - job: c8_build_test
+      - bash: |
+               sudo apt-get install -y pep8
+               .github/runchecks
+  - job: 
     dependsOn: runcheck
+    strategy:
+      matrix:
+        "CentOS 8":
+           OS_TYPE: "centos:8"
+           PKG_INSTALL_CMD: "yum -y install python3"
+           DOCKER_EXTRA_ARG: ""
+           CI_CMD: "./ci --local"
+        "OpenSuse 15":
+           OS_TYPE: "opensuse/leap:15"
+           PKG_INSTALL_CMD: "zypper -n install python3"
+           DOCKER_EXTRA_ARG: "-e LC_ALL=C.utf8"
+           CI_CMD: "./ci --local"
+        "Ubuntu 20.04":
+           OS_TYPE: "ubuntu:20.04"
+           PKG_INSTALL_CMD: "apt-get -y update ; apt-get -y upgrade ; apt-get install -y python3"
+           DOCKER_EXTRA_ARG: "-e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8"
+           CI_CMD: "./ci --local"
+        "CentOS 7 Sanitize":
+           OS_TYPE: "centos:7"
+           PKG_INSTALL_CMD: "yum -y install python3"
+           DOCKER_EXTRA_ARG: "-e BUILD_MODE=sanitize -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8"
+           CI_CMD: "./ci --local='sanitize'"
+        "CentOS 7 Kerberos":
+           OS_TYPE: "centos:7"
+           PKG_INSTALL_CMD: "yum -y install python3"
+           DOCKER_EXTRA_ARG: "-e BUILD_MODE=kerberos -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8"
+           CI_CMD: "./ci --local"
     steps:
-    - bash: docker pull centos:8
-    - bash: docker run -it -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:8 /bin/bash
-    - bash: docker exec   --privileged pbsdev .travis/do.sh
-
-  - job: suse15_build_test
-    dependsOn: runcheck
-    steps:
-    - bash: docker pull opensuse/leap:15
-    - bash: docker run -it -e LC_ALL=C.utf8 -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) opensuse/leap:15 /bin/bash
-    - bash: docker exec  --privileged pbsdev .travis/do.sh
-
-  - job: u2004_build_test
-    dependsOn: runcheck
-    steps:
-    - bash: docker pull ubuntu:20.04
-    - bash: docker run -it  -e DEBIAN_FRONTEND=noninteractive -e LANGUAGE=C.UTF-8 -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) ubuntu:20.04 /bin/bash
-    - bash: docker exec   --privileged pbsdev .travis/do.sh
-
-  - job: c7_sanitize_build_test
-    dependsOn: runcheck
-    steps:
-    - bash: docker pull centos:7
-    - bash: docker run -it -e BUILD_MODE=sanitize -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8 -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:7 /bin/bash
-    - bash: docker exec   --privileged pbsdev .travis/do_sanitize_mode.sh
-    
-  - job: c7_kerberos_build
-    dependsOn: runcheck
-    steps:
-    - bash: docker pull centos:7
-    - bash: docker run -it -e BUILD_MODE=kerberos -e LC_ALL=en_US.utf-8 -e LANG=en_US.utf-8 -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) centos:7 /bin/bash
-    - bash: docker exec   --privileged pbsdev .travis/do.sh
+    - script: |
+             docker pull $(OS_TYPE)
+             docker run -it $(DOCKER_EXTRA_ARG) -d -h pbs.dev.local --name pbsdev -v $(pwd):$(pwd) --privileged -w $(pwd) $(OS_TYPE) /bin/bash 
+             docker exec pbsdev bash -c "$(PKG_INSTALL_CMD)"
+             docker exec --privileged pbsdev bash -c "pwd ; cd ci ;$(CI_CMD)"

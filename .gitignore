@@ -192,6 +192,7 @@ src/iff/pbs_iff
 src/mom_rcp/pbs_rcp
 src/resmom/pbs_mom
 src/scheduler/pbs_sched
+src/scheduler/pbs_sched_bare
 src/scheduler/pbsfs
 src/server/pbs_comm
 src/server/pbs_server.bin

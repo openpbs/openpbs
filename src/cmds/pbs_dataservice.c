@@ -112,6 +112,8 @@ main(int argc, char *argv[])
 
 	if (strcmp(sopt, PBS_DB_CONTROL_START) == 0) {
 		rc = pbs_start_db(conn_db_host, pbs_conf.pbs_data_service_port);
+		if (rc == PBS_DB_OOM_ERR)
+			rc = 0;	/* Ignore OOM access error */
 	} else if (strcmp(sopt, PBS_DB_CONTROL_STOP) == 0) {
 		rc = pbs_stop_db(conn_db_host, pbs_conf.pbs_data_service_port);
 	} else if (strcmp(sopt, PBS_DB_CONTROL_STATUS) == 0) {

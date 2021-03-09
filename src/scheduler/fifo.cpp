@@ -100,10 +100,6 @@
 #include "site_code.h"
 #endif
 
-/* a list of running jobs from the last scheduling cycle */
-static prev_job_info *last_running = NULL;
-static int last_running_size = 0;
-
 /**
  * @brief
  * 		initialize conf struct and parse conf files
@@ -324,9 +320,8 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 	char decayed = 0;		/* boolean: have we decayed usage? */
 	time_t t;			/* used in decaying fair share */
 	usage_t delta;			/* the usage between last sch cycle and now */
-	struct group_path *gpath;	/* used to update usage with delta */
 	static schd_error *err;
-	int i, j;
+	int i;
 
 	if (err == NULL) {
 		err = new_schd_error();
@@ -346,36 +341,30 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			remove(USAGE_TOUCH);
 			resort = 1;
 		}
-		if (last_running != NULL && sinfo->running_jobs != NULL) {
+		if (last_running.size() > 0 && sinfo->running_jobs != NULL) {
 			/* add the usage which was accumulated between the last cycle and this
 			 * one and calculate a new value
 			 */
 
-			for (i = 0; i < last_running_size ; i++) {
-				if (last_running[i].name != NULL) {
-					user = find_alloc_ginfo(last_running[i].entity_name,
-								sinfo->fairshare->root);
+			for (const auto& lj: last_running) {
+				user = find_alloc_ginfo(lj.entity_name.c_str(),
+							sinfo->fairshare->root);
 
-					if (user != NULL) {
-						for (j = 0; sinfo->running_jobs[j] != NULL &&
-						     strcmp(last_running[i].name, sinfo->running_jobs[j]->name); j++)
-							;
+				if (user != NULL) {
+					auto rj = find_resource_resv(sinfo->running_jobs, lj.name);
 
-						if (sinfo->running_jobs[j] != NULL &&
-							sinfo->running_jobs[j]->job != NULL) {
-							/* just in case the delta is negative just add 0 */
-							delta = formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], sinfo->running_jobs[j]->job->resused) -
-								formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], last_running[i].resused);
+					if (rj != NULL && rj->job != NULL) {
+						/* just in case the delta is negative just add 0 */
+						delta = formula_evaluate(conf.fairshare_res, rj, rj->job->resused) -
+							formula_evaluate(conf.fairshare_res, rj, lj.resused);
 
-							delta = IF_NEG_THEN_ZERO(delta);
+						delta = IF_NEG_THEN_ZERO(delta);
 
-							gpath = user->gpath;
-							while (gpath != NULL) {
-								gpath->ginfo->usage += delta;
-								gpath = gpath->next;
-							}
-							resort = 1;
-						}
+						;
+						for (auto gpath = user->gpath; gpath != NULL; gpath = gpath->next)
+							gpath->ginfo->usage += delta;
+
+						resort = 1;
 					}
 				}
 			}
@@ -405,7 +394,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 				sinfo->fairshare->last_decay) % conf.decay_time;
 		}
 
-		if (policy->sync_fairshare_files && (decayed || last_running != NULL)) {
+		if (policy->sync_fairshare_files && (decayed || !last_running.empty())) {
 			write_usage(USAGE_FILE, sinfo->fairshare);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 				  "Fairshare", "Usage Sync");
@@ -764,6 +753,11 @@ get_high_prio_cmd(int *is_conn_lost, sched_cmd *high_prior_cmd)
 	sched_cmd cmd;
 	int nsvrs = get_num_servers();
 	svr_conn_t **svr_conns = get_conn_svr_instances(clust_secondary_sock);
+	if (svr_conns == NULL) {
+		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
+			"Unable to fetch secondary connections");
+		return 0;
+	}
 
 	for (i = 0; svr_conns[i]; i++) {
 		int rc;
@@ -1180,7 +1174,7 @@ end_cycle_tasks(server_info *sinfo)
 
 	/* keep track of update used resources for fairshare */
 	if (sinfo != NULL && sinfo->policy->fair_share)
-		update_last_running(sinfo);
+		create_prev_job_info(sinfo->running_jobs);
 
 	/* we copied in conf.fairshare into sinfo at the start of the cycle,
 	 * we don't want to free it now, or we'd lose all fairshare data
@@ -1211,45 +1205,6 @@ end_cycle_tasks(server_info *sinfo)
 
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
 		"", "Leaving Scheduling Cycle");
-}
-
-/**
- * @brief
- *		update_last_running - update the last_running job array
- *			      keep the currently running jobs till next
- *			      scheduling cycle
- *
- * @param[in]	sinfo	-	the server of current jobs
- *
- * @return	success/failure
- *
- */
-int
-update_last_running(server_info *sinfo)
-{
-	free_pjobs(last_running, last_running_size);
-
-	last_running = create_prev_job_info(sinfo->running_jobs,
-		sinfo->sc.running);
-	last_running_size = sinfo->sc.running;
-
-	if (last_running == NULL)
-		return 0;
-
-	return 1;
-}
-
-/**
- * @brief clear and free the last running array
- *
- * @return void
- */
-void
-clear_last_running()
-{
-	free_pjobs(last_running, last_running_size);
-	last_running = NULL;
-	last_running_size = 0;
 }
 
 /**
@@ -1357,7 +1312,7 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 				rjob->server->name);
 		}
 
-		rc = pbs_movejob(rjob->job->peer_sd, rjob->name, buf, NULL);
+		rc = pbs_movejob(rjob->job->peer_sd, const_cast<char *>(rjob->name.c_str()), buf, NULL);
 
 		/*
 		 * After successful transfer of the peer job to local server,
@@ -1382,17 +1337,17 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int has_runjob_hook, s
 					log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name,
 						"Job will run for duration=%s", timebuf);
 				rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 						  rjob->job->svr_inst_id);
+ 						  rjob->svr_inst_id);
 			}
 		} else
 			rc = send_run_job(pbs_sd, has_runjob_hook, rjob->name, execvnode, svr_id_node,
- 					  rjob->job->svr_inst_id);
+ 					  rjob->svr_inst_id);
 	}
 
 	if (rc) {
 		char buf[MAX_LOG_SIZE];
 		set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
-		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->job->svr_inst_id));
+		errbuf = pbs_geterrmsg(get_svr_inst_fd(pbs_sd, rjob->svr_inst_id));
 		if (errbuf == NULL)
 			errbuf = "";
 		set_schd_error_arg(err, ARG1, errbuf);
@@ -1510,7 +1465,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
 		if (pbs_sd != SIMULATE_SD) {
-			pbsrc = pbs_sigjob(get_svr_inst_fd(pbs_sd, resresv->job->svr_inst_id), resresv->name, const_cast<char *>("resume"), NULL);
+			pbsrc = send_sigjob(pbs_sd, resresv, "resume", NULL);
 			if (!pbsrc)
 				ret = 1;
 			else {
@@ -1989,7 +1944,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 		 * Note: We only ever look from now into the future
 		 */
 		nexte = get_next_event(sinfo->calendar);
-		if (find_timed_event(nexte, IGNORE_DISABLED_EVENTS, topjob->name, TIMED_NOEVENT, 0) != NULL)
+		if (find_timed_event(nexte, topjob->name, IGNORE_DISABLED_EVENTS, TIMED_NOEVENT, 0) != NULL)
 			return 1;
 	}
 	if ((nsinfo = dup_server_info(sinfo)) == NULL)
@@ -2879,6 +2834,7 @@ parse_sched_obj(int connector, struct batch_status *status)
 				MGR_CMD_UNSET, MGR_OBJ_SCHED,
 			const_cast<char *>(sc_name), attribs, NULL);
 		free(attribs->value);
+		free(attribs);
 		if (err) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
 				"Failed to update scheduler comment at the server");

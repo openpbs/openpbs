@@ -1,6 +1,6 @@
-#!/bin/bash -xe
-
-# Copyright (C) 1994-2021 Altair Engineering, Inc.
+#!/bin/sh
+#
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -37,22 +37,10 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-if [ "x${BUILD_MODE}" != "xsanitize" ]; then
-   exit 0
+check_cgroup=$$
+path=`awk '/cgroup/ {print $2; exit}' /proc/mounts`
+cgpath=$path/systemd/system.slice/pbs.service
+if [ -e $cgpath/cgroup.procs ]; then
+    echo $check_cgroup > $cgpath/cgroup.procs
 fi
-. /etc/os-release
-if [ "x${ID}" == "xcentos" ]; then
-    yum -y install python3
-elif [ "x${ID}" == "xopensuse" -o "x${ID}" == "xopensuse-leap" ]; then
-    zypper -n install python3
-elif [ "x${ID}" == "xdebian" -o "x${ID}" == "xubuntu" ]; then
-    apt-get -y update
-    apt-get -y upgrade
-    apt-get install -y python3
-fi
-
-PBS_DIR=$(dirname $(readlink -f $(basename $0)))
-${PBS_DIR}/ci/ci --local="sanitize"
-if [ $? -ne 0 ];then
-    exit 1
-fi
+exec "$@"

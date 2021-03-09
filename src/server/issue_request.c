@@ -88,6 +88,7 @@ extern char	*msg_issuebad;
 extern char     *msg_norelytomom;
 extern char	*msg_err_malloc;
 
+extern pbs_net_t	 pbs_server_addr;
 extern int max_connection;
 
 /**
@@ -238,6 +239,7 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 	extern char primary_host[];
 	extern char server_host[];
 
+
 	(void)strcpy(preq->rq_host, servern);
 	preq->rq_fromsvr = 1;
 	preq->rq_perm = ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_SvWR;
@@ -255,7 +257,9 @@ issue_to_svr(char *servern, struct batch_request *preq, void (*replyfunc)(struct
 				svrname = server_host;
 		}
 	}
-	svraddr = get_hostaddr(svrname);
+	if (comp_svraddr(pbs_server_addr, svrname, &svraddr) == 0)
+		return (issue_Drequest(PBS_LOCAL_CONNECTION, preq, replyfunc, 0, 0));
+
 	if (svraddr == (pbs_net_t)0) {
 		if (pbs_errno == PBS_NET_RC_RETRY)
 			/* Non fatal error - retry */

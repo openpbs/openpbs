@@ -174,13 +174,13 @@ is_bad_dest(job	*jobp, char *dest)
 int
 default_router(job *jobp, struct pbs_queue *qp, long retry_time)
 {
-	struct array_strings *dest_attr = NULL;
+	struct array_strings *dests = NULL;
 	char		     *destination;
 	int		      last;
 
-	if (qp->qu_attr[(int)QR_ATR_RouteDestin].at_flags & ATR_VFLAG_SET) {
-		dest_attr = qp->qu_attr[(int)QR_ATR_RouteDestin].at_val.at_arst;
-		last = dest_attr->as_usedptr;
+	if (is_qattr_set(qp, QR_ATR_RouteDestin)) {
+		dests = get_qattr_arst(qp, QR_ATR_RouteDestin);
+		last = dests->as_usedptr;
 	} else
 		last = 0;
 
@@ -204,7 +204,7 @@ default_router(job *jobp, struct pbs_queue *qp, long retry_time)
 			}
 		}
 
-		destination = dest_attr->as_string[jobp->ji_lastdest++];
+		destination = dests->as_string[jobp->ji_lastdest++];
 
 		if (is_bad_dest(jobp, destination))
 			continue;
@@ -268,11 +268,11 @@ job_route(job *jobp)
 			break;			/* ok to try */
 
 		case JOB_STATE_LTR_HELD:
-			bad_state = !jobp->ji_qhdr->qu_attr[QR_ATR_RouteHeld].at_val.at_long;
+			bad_state = !get_qattr_long(jobp->ji_qhdr, QR_ATR_RouteHeld);
 			break;
 
 		case JOB_STATE_LTR_WAITING:
-			bad_state = !jobp->ji_qhdr->qu_attr[QR_ATR_RouteWaiting].at_val.at_long;
+			bad_state = !get_qattr_long(jobp->ji_qhdr, QR_ATR_RouteWaiting);
 			break;
 
 		case JOB_STATE_LTR_MOVED:
@@ -286,36 +286,30 @@ job_route(job *jobp)
 			return (0);
 
 		default:
-			(void)sprintf(log_buffer, "(%s) %s, state=%d",
+			log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				jobp->ji_qs.ji_jobid, "(%s) %s, state=%d",
 				__func__, msg_badstate, get_job_state(jobp));
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				jobp->ji_qs.ji_jobid, log_buffer);
 			return (0);
 	}
 
 	/* check the queue limits, can we route any (more) */
 
 	qp = jobp->ji_qhdr;
-	if (qp->qu_attr[(int)QA_ATR_Started].at_val.at_long == 0)
+	if (get_qattr_long(qp, QA_ATR_Started) == 0)
 		return (0);	/* queue not started - no routing */
 
-	if ((qp->qu_attr[(int)QA_ATR_MaxRun].at_flags & ATR_VFLAG_SET) &&
-		(qp->qu_attr[(int)QA_ATR_MaxRun].at_val.at_long <=
-		qp->qu_njstate[JOB_STATE_TRANSIT]))
+	if (is_qattr_set(qp, QA_ATR_MaxRun) && get_qattr_long(qp, QA_ATR_MaxRun) <= qp->qu_njstate[JOB_STATE_TRANSIT])
 		return (0);	/* max number of jobs being routed */
 
 	/* what is the retry time and life time of a job in this queue */
 
-	if (qp->qu_attr[(int)QR_ATR_RouteRetryTime].at_flags & ATR_VFLAG_SET)
-		retry_time = (long)time_now +
-			qp->qu_attr[(int)QR_ATR_RouteRetryTime].at_val.at_long;
+	if (is_qattr_set(qp, QR_ATR_RouteRetryTime))
+		retry_time = (long)time_now + get_qattr_long(qp, QR_ATR_RouteRetryTime);
 	else
 		retry_time = (long)time_now + PBS_NET_RETRY_TIME;
 
-	if (qp->qu_attr[(int)QR_ATR_RouteLifeTime].at_flags & ATR_VFLAG_SET)
-
-		life = jobp->ji_qs.ji_un.ji_routet.ji_quetime +
-			qp->qu_attr[(int)QR_ATR_RouteLifeTime].at_val.at_long;
+	if (is_qattr_set(qp, QR_ATR_RouteLifeTime))
+		life = jobp->ji_qs.ji_un.ji_routet.ji_quetime + get_qattr_long(qp, QR_ATR_RouteLifeTime);
 	else
 		life = 0;	/* forever */
 
@@ -328,7 +322,7 @@ job_route(job *jobp)
 	if (bad_state) 	/* not currently routing this job */
 		return (0);		   /* else ignore this job */
 
-	if (qp->qu_attr[(int)QR_ATR_AltRouter].at_val.at_long == 0)
+	if (get_qattr_long(qp, QR_ATR_AltRouter) == 0)
 		return (default_router(jobp, qp, retry_time));
 	else
 		return (site_alt_router(jobp, qp, retry_time));

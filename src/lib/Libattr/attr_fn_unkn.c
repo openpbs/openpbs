@@ -99,7 +99,7 @@
  */
 
 int
-decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
+decode_unkn(attribute *patr, char *name, char *rescn, char *value)
 {
 	svrattrl *entry;
 	size_t	     valln;
@@ -127,7 +127,7 @@ decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
 		memcpy(entry->al_value, value, valln);
 
 	append_link(&patr->at_val.at_list, &entry->al_link, entry);
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 	return (0);
 }
 
@@ -244,7 +244,7 @@ encode_unkn(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
 
 /*ARGSUSED*/
 int
-set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
+set_unkn(attribute *old, attribute *new, enum batch_op op)
 {
 	svrattrl *plist;
 	svrattrl *pnext;
@@ -258,7 +258,7 @@ set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
 		append_link(&old->at_val.at_list, &plist->al_link, plist);
 		plist = pnext;
 	}
-	old->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(old);
 	return (0);
 }
 
@@ -279,7 +279,7 @@ set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_unkn(struct attribute *attr, struct attribute *with)
+comp_unkn(attribute *attr, attribute *with)
 {
 	return (1);
 }

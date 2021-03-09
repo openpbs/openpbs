@@ -190,7 +190,7 @@ void close_conn(int socket);
 pbs_net_t get_connectaddr(int sock);
 int  get_connecthost(int sock, char *namebuf, int size);
 pbs_net_t get_hostaddr(char *hostname);
-int comp_svraddr(pbs_net_t, char *);
+int comp_svraddr(pbs_net_t, char *, pbs_net_t *);
 int  compare_short_hostname(char *shost, char *lhost);
 unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
 int  init_network(unsigned int port);

@@ -304,8 +304,7 @@ check_pwd(job *pjob)
 
 	/* get the group and supplimentary under which the job is to be run */
 
-	if ((pjob->ji_wattr[(int)JOB_ATR_egroup].at_flags &
-		(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET) {
+	if (is_jattr_set(pjob, JOB_ATR_egroup)) {
 
 		/* execution group specified - not defaulting to login group */
 
@@ -601,16 +600,15 @@ open_pty(job *pjob)
 int
 is_joined(job *pjob)
 {
-	attribute *pattr;
+	char *join;
 
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_join];
-	if (is_attr_set(pattr) && (pattr->at_val.at_str[0] != 'n')) {
-		if ((pattr->at_val.at_str[0] == 'o') &&
-			(strchr(pattr->at_val.at_str, (int)'e') != 0)) {
-			return 1;
-		} else if ((pattr->at_val.at_str[0] == 'e') &&
-			(strchr(pattr->at_val.at_str, (int)'e') != 0)) {
-			return -1;
+	if (is_jattr_set(pjob, JOB_ATR_join)) {
+		join = get_jattr_str(pjob, JOB_ATR_join);
+		if (join[0] != 'n') {
+			if (join[0] == 'o' && strchr(join, (int) 'e') != 0)
+				return 1;
+			else if (join[0] == 'e' && strchr(join, (int) 'e') != 0)
+				return -1;
 		}
 	}
 	return 0;
@@ -1449,7 +1447,7 @@ static int
 job_setup(job *pjob, struct passwd **pwdparm)
 {
 	struct passwd		*pwdp;
-	attribute		*pattr;
+	char *chkpnt;
 
 	/*
 	 * get the password entry for the user under which the job is to be run
@@ -1463,6 +1461,7 @@ job_setup(job *pjob, struct passwd **pwdparm)
 		log_event(PBSEVENT_JOB | PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB,
 			LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
 		pjob->ji_qs.ji_stime = time_now; /* for walltime */
+		set_jattr_l_slim(pjob, JOB_ATR_stime, time_now, SET);
 		return JOB_EXEC_FAILUID;
 	}
 	pjob->ji_qs.ji_un.ji_momt.ji_exuid = pjob->ji_grpcache->gc_uid;
@@ -1492,18 +1491,16 @@ job_setup(job *pjob, struct passwd **pwdparm)
 	/* Is the job to be periodic checkpointed */
 
 	pjob->ji_chkpttype = PBS_CHECKPOINT_NONE;
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_chkpnt];
-	if (is_attr_set(pattr)) {
-		if ((*pattr->at_val.at_str == 'c') &&
-			(*(pattr->at_val.at_str+1) == '=')) {
+	if (is_jattr_set(pjob, JOB_ATR_chkpnt)) {
+		chkpnt = get_jattr_str(pjob, JOB_ATR_chkpnt);	
+		if ((*chkpnt == 'c') && (*(chkpnt+1) == '=')) {
 			/* has cpu checkpoint time in minutes, convert to seconds */
 			pjob->ji_chkpttype = PBS_CHECKPOINT_CPUT;
-			pjob->ji_chkpttime = atoi(pattr->at_val.at_str+2) * 60;
-		} else if ((*pattr->at_val.at_str == 'w') &&
-			(*(pattr->at_val.at_str+1) == '=')) {
+			pjob->ji_chkpttime = atoi(chkpnt+2) * 60;
+		} else if ((*chkpnt == 'w') && (*(chkpnt+1) == '=')) {
 			/* has checkpoint walltime in minutes, convert to seconds */
 			pjob->ji_chkpttype = PBS_CHECKPOINT_WALLT;
-			pjob->ji_chkpttime = atoi(pattr->at_val.at_str+2) * 60;
+			pjob->ji_chkpttime = atoi(chkpnt+2) * 60;
 		}
 		pjob->ji_chkptnext = pjob->ji_chkpttime;
 	}
@@ -1812,15 +1809,15 @@ record_finish_exec(int sd)
 	 * these are set so that it will
 	 * return them to the Server on the first update below
 	 */
-	pjob->ji_wattr[(int)JOB_ATR_errpath].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_outpath].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_altid].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_state].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_jobdir].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_altid2].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_acct_id].at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_errpath))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_outpath))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_session_id))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_altid))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_state))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_substate))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_jobdir))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_altid2))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_acct_id))->at_flags |= ATR_VFLAG_MODIFY;
 
 	enqueue_update_for_send(pjob, IS_RESCUSED);
 	next_sample_time = min_check_poll;
@@ -2309,10 +2306,10 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	if (pjob == NULL)
 		return (1);
 
-	exec_vnode_hookset = pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_HOOK;
-	schedselect_hookset = pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_HOOK;
-	exec_host_hookset = pjob->ji_wattr[JOB_ATR_exec_host].at_flags & ATR_VFLAG_HOOK;
-	exec_host2_hookset = pjob->ji_wattr[JOB_ATR_exec_host2].at_flags & ATR_VFLAG_HOOK;
+	exec_vnode_hookset = (get_jattr(pjob, JOB_ATR_exec_vnode))->at_flags & ATR_VFLAG_HOOK;
+	schedselect_hookset = (get_jattr(pjob, JOB_ATR_SchedSelect))->at_flags & ATR_VFLAG_HOOK;
+	exec_host_hookset = (get_jattr(pjob, JOB_ATR_exec_host))->at_flags & ATR_VFLAG_HOOK;
+	exec_host2_hookset = (get_jattr(pjob, JOB_ATR_exec_host2))->at_flags & ATR_VFLAG_HOOK;
 	if (!exec_vnode_hookset || !schedselect_hookset ||
 	   (!exec_host_hookset && !exec_host2_hookset)) {
 		return (1);
@@ -2369,12 +2366,12 @@ send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
 	}
 
 	/* clear the hook set flag since we've sent the update */
-	pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags &= ~ATR_VFLAG_HOOK;
+	(get_jattr(pjob, JOB_ATR_exec_vnode))->at_flags &= ~ATR_VFLAG_HOOK;
 	if (exec_host2_hookset)
-		pjob->ji_wattr[JOB_ATR_exec_host2].at_flags &= ~ATR_VFLAG_HOOK;
+		(get_jattr(pjob, JOB_ATR_exec_host2))->at_flags &= ~ATR_VFLAG_HOOK;
 	else
-		pjob->ji_wattr[JOB_ATR_exec_host].at_flags &= ~ATR_VFLAG_HOOK;
-	pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags &= ~ATR_VFLAG_HOOK;
+		(get_jattr(pjob, JOB_ATR_exec_host))->at_flags &= ~ATR_VFLAG_HOOK;
+	(get_jattr(pjob, JOB_ATR_SchedSelect))->at_flags &= ~ATR_VFLAG_HOOK;
 
 	if (pjob->ji_numnodes > 1) {
 		/* get cmd_ack from parent that it received
@@ -2509,8 +2506,8 @@ get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
 
 	job_save(pjob);
 	/* set modify flag on the job attributes that will be sent to the server */
-	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
-	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_exec_vnode))->at_flags |= ATR_VFLAG_MODIFY;
+	(get_jattr(pjob, JOB_ATR_SchedSelect))->at_flags |= ATR_VFLAG_MODIFY;
 	enqueue_update_for_send(pjob, IS_RESCUSED);
 
 	return (0);
@@ -2785,8 +2782,6 @@ finish_exec(job *pjob)
 	pbs_socklen_t		len;
 	int			is_interactive = 0;
 	int			numthreads;
-	attribute		*pattr;
-	attribute		*pattri;
 #if SHELL_INVOKE == 1
 	int			pipe_script[] = {-1, -1};
 #endif
@@ -2846,9 +2841,8 @@ finish_exec(job *pjob)
 	ptc = -1; /* No current master pty */
 
 	memset(&sjr, 0, sizeof(sjr));
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-	if (is_attr_set(pattr))
-		nodemux = (int)pattr->at_val.at_long;
+	if (is_jattr_set(pjob, JOB_ATR_nodemux))
+		nodemux = get_jattr_long(pjob, JOB_ATR_nodemux);
 
 
 	if ((i = job_setup(pjob, &pwdp)) != JOB_EXEC_OK) {
@@ -2905,8 +2899,7 @@ finish_exec(job *pjob)
 		port_err = (int)ntohs(saddr.sin_port);
 	}
 
-	pattri = &pjob->ji_wattr[(int)JOB_ATR_interactive];
-	if (is_attr_set(pattri) && pattri->at_val.at_long != 0) {
+	if (is_jattr_set(pjob, JOB_ATR_interactive) && get_jattr_long(pjob, JOB_ATR_interactive) != 0) {
 
 		is_interactive = 1;
 
@@ -2923,13 +2916,8 @@ finish_exec(job *pjob)
 		FDMOVE(ptc)
 
 		/* save pty name in job output/error file name */
-
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_outpath];
-		job_attr_def[(int)JOB_ATR_outpath].at_free(pattr);
-		set_attr_generic(pattr, &job_attr_def[JOB_ATR_outpath], pts_name, NULL, INTERNAL);
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_errpath];
-		job_attr_def[(int)JOB_ATR_errpath].at_free(pattr);
-		set_attr_generic(pattr, &job_attr_def[JOB_ATR_errpath], pts_name, NULL, INTERNAL);
+		set_jattr_str_slim(pjob, JOB_ATR_outpath, pts_name, NULL);
+		set_jattr_str_slim(pjob, JOB_ATR_errpath, pts_name, NULL);
 
 #if SHELL_INVOKE == 1
 	} else {
@@ -3145,6 +3133,7 @@ finish_exec(job *pjob)
 	}
 
 	pjob->ji_qs.ji_stime = time_now;
+	set_jattr_l_slim(pjob, JOB_ATR_stime, time_now, SET);
 	pjob->ji_sampletim  = time_now;
 
 	/*
@@ -3345,17 +3334,7 @@ finish_exec(job *pjob)
 		}
 
 		/* record job working directory in jobdir attribute */
-		if (sandbox_private) {
-			/* job is homed in jobdir */
-			decode_str(&pjob->ji_wattr[JOB_ATR_jobdir],
-				ATTR_jobdir, NULL, pbs_jobdir);
-		} else {
-			/* job is homed in user HOME */
-			decode_str(&pjob->ji_wattr[JOB_ATR_jobdir],
-				ATTR_jobdir, NULL, pwdp->pw_dir);
-		}
-		pjob->ji_wattr[(int)JOB_ATR_jobdir].at_flags =
-			ATR_VFLAG_SET | ATR_VFLAG_MODIFY;
+		set_jattr_str_slim(pjob, JOB_ATR_jobdir, sandbox_private ? pbs_jobdir : pwdp->pw_dir, NULL);
 #endif	/* SHELL_INVOKE */
 
 #if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
@@ -3463,7 +3442,7 @@ finish_exec(job *pjob)
 	/*
 	 * set up the Environmental Variables to be given to the job
 	 */
-	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
+	vstrs = get_jattr_arst(pjob, JOB_ATR_variables);
 	pjob->ji_env.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		EXTRA_ENV_PTRS;
 	pjob->ji_env.v_used   = 0;
@@ -3652,8 +3631,7 @@ finish_exec(job *pjob)
 
 		/* get host where qsub resides */
 
-		phost = arst_string("PBS_O_HOST",
-			&pjob->ji_wattr[(int)JOB_ATR_variables]);
+		phost = arst_string("PBS_O_HOST", get_jattr(pjob, JOB_ATR_variables));
 		if ((phost == NULL) ||
 			((phost = strchr(phost, (int)'=')) == NULL)) {
 			log_joberr(-1, __func__, "PBS_O_HOST not set",
@@ -3661,7 +3639,7 @@ finish_exec(job *pjob)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 		}
 
-		qsub_sock = conn_qsub(phost+1, pattri->at_val.at_long);
+		qsub_sock = conn_qsub(phost+1, get_jattr_long(pjob, JOB_ATR_interactive));
 		if (qsub_sock < 0) {
 			sprintf(log_buffer, "cannot open qsub sock for %s",
 				pjob->ji_qs.ji_jobid);
@@ -4215,10 +4193,8 @@ if (site_job_setup(pjob) != 0) {
 		 * Call decode_xml_arg_list to decode XML string
 		 * and store executable in shell and argument list in argv.
 		 */
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_executable];
-		pattri = &pjob->ji_wattr[(int)JOB_ATR_Arglist];
-		if (decode_xml_arg_list(pattr->at_val.at_str,
-			pattri->at_val.at_str, &shell, &argv) != 0) {
+		if (decode_xml_arg_list(get_jattr_str(pjob, JOB_ATR_executable),
+			get_jattr_str(pjob, JOB_ATR_Arglist), &shell, &argv) != 0) {
 			starter_return(upfds, downfds, JOB_EXEC_FAIL2, &sjr);
 		}
 		job_has_executable = 1;
@@ -4609,7 +4585,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	u_long	ipaddr;
 	struct	array_strings	*vstrs;
 	struct  startjob_rtn sjr;
-	attribute		*pattr;
 	char	*pbs_jobdir; /* staging and execution directory of this job */
 	int			hook_errcode = 0;
 	char			hook_msg[HOOK_MSG_SIZE+1];
@@ -4745,7 +4720,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	for (j=0, ebsize=0; envp[j]; j++)
 		ebsize += strlen(envp[j]);
-	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
+	vstrs = get_jattr_arst(pjob, JOB_ATR_variables);
 	pjob->ji_env.v_ensize = vstrs->as_usedptr + num_var_else + num_var_env +
 		j + EXTRA_ENV_PTRS;
 	pjob->ji_env.v_used   = 0;
@@ -5032,10 +5007,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			(void)close(fd);
 	}
 
-	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
 	/* If nodemux is not already set by the caller, check job's JOB_ATR_nodemux attribute. */
-	if (!nodemux && (is_attr_set(pattr)))
-		nodemux = (int)pattr->at_val.at_long;
+	if (!nodemux && (is_jattr_set(pjob, JOB_ATR_nodemux)))
+		nodemux = get_jattr_long(pjob, JOB_ATR_nodemux);
 
 	if (pjob->ji_numnodes > 1) {
 		if (nodemux) {
@@ -5225,6 +5199,198 @@ nodes_free(job *pj)
 
 /**
  * @brief
+ *	Add a mom to a job, if the mom is not already present
+ *
+ * @param[in] pjob - job pointer
+ * @param[in] mname - mom name to add
+ * @param[in] port - mom port
+ * @param[in/out] mi - The last used index in the ji_hosts array 
+ * @param[out] mynp - Return pointer to a match with this host
+ *
+ * @return hnodent
+ * @retval - The hnodent structure matching the mname, port
+ * @retval - NULL - failure to add (get_fullhostname failed)
+ *
+ */
+hnodent *
+add_mom_to_job(job *pjob, char *mname, int port, int *mi, hnodent **mynp)
+{
+	int j;
+	int momindex = *mi;
+	hnodent *hp = NULL;
+
+	/*
+	* for the natural vnode in a set that satisfies a chunk,
+	* see if we have a hnodent entry for the parent Mom,
+	* if not add an entry
+	*/
+
+	/* see if we already have this mom */
+	for (j = 0; j < momindex; ++j) {
+		if ((strcmp(mname, pjob->ji_hosts[j].hn_host) == 0)
+			&& (port == pjob->ji_hosts[j].hn_port))
+			break;
+	}
+	hp = &pjob->ji_hosts[j];
+	if ((hp != NULL) && (j == momindex)) {
+		log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "Adding mom %s:%d to job", mname, port);
+		/* need to add entry */
+		hp->hn_node = momindex++;
+		hp->hn_host = strdup(mname);
+		if (hp->hn_host == NULL)
+			return (NULL);
+		hp->hn_port = port;
+		hp->hn_stream = -1;
+		hp->hn_eof_ts = 0; /* reset eof timestamp */
+		hp->hn_sister = SISTER_OKAY;
+		hp->hn_nprocs = 0;
+		hp->hn_vlnum = 0;
+		hp->hn_vlist = (host_vlist_t *)0;
+		hp->hn_vlist = NULL;
+		memset(&hp->hn_nrlimit, 0, sizeof(resc_limit_t));
+		CLEAR_HEAD(hp->hn_events);
+		/* mark next slot as the (current) end */
+		pjob->ji_hosts[momindex].hn_node = TM_ERROR_NODE;
+
+		if (hp->hn_port == pbs_rm_port) {
+			int hostmatch = 0;
+			static char node_name[PBS_MAXHOSTNAME + 1] = { '\0' };
+			static char canonical_name[PBS_MAXHOSTNAME + 1] = { '\0' };
+
+			/*
+			* The following block prevents us from having to employ
+			* yet another global variable to represent the hostname
+			* of the local node.
+			*/
+			if (pbs_conf.pbs_leaf_name) {
+				if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
+					/* PBS_LEAF_NAME has changed or node_name is uninitialized */
+					strncpy(node_name, pbs_conf.pbs_leaf_name, PBS_MAXHOSTNAME);
+					node_name[PBS_MAXHOSTNAME] = '\0';
+					/* Need to canonicalize PBS_LEAF_NAME */
+					if (get_fullhostname(node_name, canonical_name, (sizeof(canonical_name) - 1)) != 0) {
+						log_errf(errno, __func__, "Failed to get fullhostname from %s for job %s", node_name, pjob->ji_qs.ji_jobid);
+						node_name[0] = '\0';
+						canonical_name[0] = '\0';
+						return (NULL);
+					}
+				}
+			} else {
+				if (strcmp(mom_host, node_name) != 0) {
+					/* mom_host has changed or node_name is uninitialized */
+					strncpy(node_name, mom_host, PBS_MAXHOSTNAME);
+					node_name[PBS_MAXHOSTNAME] = '\0';
+					/* mom_host contains the canonical name */
+					strncpy(canonical_name, mom_host, PBS_MAXHOSTNAME);
+					canonical_name[PBS_MAXHOSTNAME] = '\0';
+				}
+			}
+
+			if (strcmp(hp->hn_host, node_name) == 0)
+				hostmatch = 1;
+			else {
+				char namebuf[PBS_MAXHOSTNAME + 1];
+				if (get_fullhostname(hp->hn_host, namebuf, (sizeof(namebuf) - 1)) != 0) {
+					log_errf(errno, __func__, "Failed to get fullhostname from %s for job %s", hp->hn_host, pjob->ji_qs.ji_jobid);
+					return (NULL);
+				}
+				if (strcmp(namebuf, canonical_name) == 0)
+					hostmatch = 1;
+			}
+
+			if (hostmatch) {
+				pjob->ji_nodeid = hp->hn_node;
+				if (mynp)
+					*mynp = hp;
+			}
+		}
+	}
+	*mi = momindex;
+	return hp;
+}
+
+/**
+ * @brief
+ *	Get the next "chunk" from the exechost(2) string
+ *
+ * @param[in] enable_exechost2 - is exec_host2 available?
+ * @param[in/out] ppeh - pointer to the current location in exechost(2) string
+ * @param[out] pport - pointer to the integer port variable to be returned
+ *
+ * @return char *
+ * @retval - the mom name 
+ * @retval - NULL - failure
+ *
+ */
+static char *
+get_next_exechost2(int enable_exechost2, char **ppeh, int *pport)
+{
+	static char *mname;
+	int port;
+	char *peh = *ppeh;
+	int n = 0;
+	static char natvnodename[PBS_MAXNODENAME + 1];
+	static char momname[PBS_MAXNODENAME + 1];
+	static char momport[10] = {0};
+	momvmap_t *pnat = NULL;
+
+	if (enable_exechost2 == 0) {
+		while ((*peh != '/') && (*peh != '\0') &&
+			(n < PBS_MAXNODENAME)) {
+			natvnodename[n++] = *peh++;
+		}
+		natvnodename[n] = '\0';
+	} else {
+		momport[0] = '\0';
+		while ((*peh != ':') && (*peh != '/') && (*peh != '\0') &&
+			(n < PBS_MAXNODENAME)) {
+			momname[n++] = *peh++;
+		}
+		momname[n] = '\0';
+		/* check if peh is colon, if so parse out port */
+		n = 0;
+		if (*peh == ':') {
+			peh++; /* skip first ':' character to get port number */
+			while ((*peh != '/') && (*peh != '\0') && (n < sizeof(momport)))
+				momport[n++] = *peh++;
+		}
+		momport[n] = '\0';
+	}
+
+	/* advance past the "+" to the next host */
+	while (*peh != '\0') {
+		if (*peh++ == '+')
+			break;
+	}
+
+	if (enable_exechost2 == 0) {
+		pnat = find_vmap_entry(natvnodename);
+		if (pnat != NULL) {
+			/* found a map entry */
+			mname = pnat->mvm_mom->mi_host;
+			port = pnat->mvm_mom->mi_port + 1; /* RM port */
+		} else {
+			/* no map entry, assume same vnode name is */
+			/* the host name and the port is standard  */
+			mname = natvnodename;
+			port = pbs_mom_port + 1; /* RM port */
+		}
+	} else {
+		mname = momname;
+		if (strlen(momport) > 0) {
+			port = atol(momport) + 1;
+		} else {
+			port = pbs_mom_port + 1;  /* RM port */
+		}
+	}
+
+	*pport = port;
+	*ppeh = peh;
+	return mname;
+}
+
+/**
+ * @brief
  *	job_nodes - process schedselect and exec_vnode to build mapping between
  *	chunks and allocated nodes/resources.
  *
@@ -5261,61 +5427,58 @@ nodes_free(job *pj)
 int
 job_nodes_inner(struct job *pjob, hnodent **mynp)
 {
-	char	*execvnode;
-	char	*schedselect;
-	int	 i, j, k, n;
+	char *execvnode;
+	char *schedselect;
+	int i, j, k;
 	hnodent *hp = NULL;
-	int	 hpn;
-	int	 momindex;
-	char	*mname;
-	char	 natvnodename[PBS_MAXNODENAME+1];
-	char	 momname[PBS_MAXNODENAME+1];
-	char     momport[10] = {0};
-	int	 nmoms;
+	int hpn;
+	int momindex;
+	char *mname;
+	int nmoms;
 	vmpiprocs *vmp;
 	momvmap_t *pmm = NULL;
 	mominfo_t *pmom;
-	momvmap_t *pnat = NULL;
-	char	*peh;
-	int	 port;
-	int	 nprocs;
-	int	 n_chunks;
-	int	 procindex;
-	int	 rc;
+
+	char *peh;
+	int port;
+	int nprocs;
+	int n_chunks;
+	int procindex;
+	int rc;
 	long long sz;
-	char	*tpc;
+	char *tpc;
 	resc_limit_t have;
 	resc_limit_t need;
-	int	 naccels = 0;	  /* naccelerators count */
-	int	 need_accel = 0;  /* accelerator needed in subchunk? */
+	int naccels = 0;		  /* naccelerators count */
+	int need_accel = 0;		  /* accelerator needed in subchunk? */
 	long long accel_mem = 0;  /* accel mem per exec_vnode key-value pair */
-	char 	*accel_model = NULL; /* accelerator model if set */
+	char *accel_model = NULL; /* accelerator model if set */
 
 	/* variables used in parsing the "exec_vnode" string */
-	int	 stop_on_paren;
-	char	*pndspec;
-	char	*elast;
-	int	 enelma;
-	char	*nodep;
-	static int	       ebuf_len = 0;
-	static char	      *ebuf = NULL;
-	static int	       enelmt = 0;
+	int stop_on_paren;
+	char *pndspec;
+	char *elast;
+	int enelma;
+	char *nodep;
+	static int ebuf_len = 0;
+	static char *ebuf = NULL;
+	static int enelmt = 0;
 	static key_value_pair *enkv = NULL;
 
 	/* variables used in parsing the "schedselect" string */
-	char	*psubspec;
-	char	*slast;
-	int	 snc;
-	int	 snelma;
-	static int	       sbuf_len = 0;
-	static char	      *sbuf = NULL;
-	static int	       snelmt = 0;
+	char *psubspec;
+	char *slast;
+	int snc;
+	int snelma;
+	static int sbuf_len = 0;
+	static char *sbuf = NULL;
+	static int snelmt = 0;
 	static key_value_pair *skv = NULL;
-	char	*save_ptr;	/* posn for strtok_r() */
-	int	n_assn_vnodes;
-	int	assn_index;
-	char	*tmp_str;
-	char	*evnode;
+	char *save_ptr; /* posn for strtok_r() */
+	int n_assn_vnodes;
+	int assn_index;
+	char *tmp_str;
+	char *evnode;
 
 	if (pjob == NULL)
 		return (PBSE_INTERNAL);
@@ -5345,6 +5508,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	if (peh == NULL)
 		return (PBSE_INTERNAL);
 
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "execvnode=%s", execvnode);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "schedselect=%s", schedselect);
+	log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "%s=%s", enable_exechost2 ? "exechost2" : "exechost", peh);
 
 	/* make sure parsing buffers are long enought */
 	if ((i = strlen(execvnode)) >= ebuf_len) {
@@ -5468,7 +5634,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	strcpy(ebuf, execvnode);
 	strcpy(sbuf, schedselect);
 
-
 	momindex  = 0;
 	procindex = 0;
 	assn_index = 0;
@@ -5564,179 +5729,42 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				need.rl_ncpus, (unsigned long) need.rl_mem))
 
 			/*
-			 * The "natural" vnode for the Mom who is managing
-			 * this chunk of resources can be determined by the
-			 * corresponding entry in exec_host.  We have to know which
-			 * Mom in case of multiple-Moms for the allocated vnodes
-			 */
-			n = 0;
-
-			if (enable_exechost2 == 0) {
-				while ((*peh != '/') && (*peh != '\0') &&
-					(n < PBS_MAXNODENAME)) {
-					natvnodename[n++] = *peh++;
-				}
-				natvnodename[n] = '\0';
-			} else {
-				momport[0] = '\0';
-				while ((*peh != ':') && (*peh != '/') && (*peh != '\0') &&
-					(n < PBS_MAXNODENAME)) {
-					momname[n++] = *peh++;
-				}
-				momname[n] = '\0';
-				/* check if peh is colon, if so parse out port */
-				n = 0;
-				if (*peh == ':') {
-					peh++; /* skip first ':' character to get port number */
-					while ((*peh != '/') && (*peh != '\0') && (n < sizeof(momport)))
-						momport[n++] = *peh++;
-				}
-				momport[n] = '\0';
-			}
-
-			/* advance past the "+" to the next host */
-			while (*peh != '\0') {
-				if (*peh++ == '+')
-					break;
-			}
-
-			if (enable_exechost2 == 0) {
-				pnat = find_vmap_entry(natvnodename);
-				if (pnat != NULL) {
-					/* found a map entry */
-					mname = pnat->mvm_mom->mi_host;
-					port = pnat->mvm_mom->mi_port + 1; /* RM port */
-				} else {
-					/* no map entry, assume same vnode name is */
-					/* the host name and the port is standard  */
-					mname = natvnodename;
-					port  = pbs_mom_port + 1; /* RM port */
-				}
-			} else {
-				mname = momname;
-				if (strlen(momport) > 0) {
-					port = atol(momport) + 1;
-				} else {
-					port = pbs_mom_port + 1;  /* RM port */
-				}
-			}
-			/*
-			 * for the natural vnode in a set that satisfies a chunk,
-			 * find see if we have a hnodent entry for the parent Mom,
-			 * if not add an entry
-			 */
-
-			/* see if we already have this mom */
-
-			for (j=0; j < momindex; ++j) {
-				if ((strcmp(mname, pjob->ji_hosts[j].hn_host)==0)
-					&& (port == pjob->ji_hosts[j].hn_port))
-					break;
-			}
-			hp = &pjob->ji_hosts[j];
-			if ((hp != NULL) && (j == momindex)) {
-				/* need to add entry */
-				hp->hn_node = momindex++;
-				hp->hn_host   = strdup(mname);
-				if (hp->hn_host == NULL)
-					return (PBSE_SYSTEM);
-				hp->hn_port   = port;
-				hp->hn_stream = -1;
-				hp->hn_eof_ts = 0; /* reset eof timestamp */
-				hp->hn_sister = SISTER_OKAY;
-				hp->hn_nprocs = 0;
-				hp->hn_vlnum  = 0;
-				hp->hn_vlist  = (host_vlist_t *)0;
-				hp->hn_vlist  = NULL;
-				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit_t));
-				CLEAR_HEAD(hp->hn_events);
-				/* mark next slot as the (current) end */
-				pjob->ji_hosts[momindex].hn_node = TM_ERROR_NODE;
-
-				if (hp->hn_port == pbs_rm_port) {
-					int hostmatch = 0;
-					static char node_name[PBS_MAXHOSTNAME + 1] = { '\0' };
-					static char canonical_name[PBS_MAXHOSTNAME + 1] = { '\0' };
-
-					/*
-					 * The following block prevents us from having to employ
-					 * yet another global variable to represent the hostname
-					 * of the local node.
-					 */
-					if (pbs_conf.pbs_leaf_name) {
-						if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
-							/* PBS_LEAF_NAME has changed or node_name is uninitialized */
-							pbs_strncpy(node_name, pbs_conf.pbs_leaf_name, sizeof(node_name));
-							/* Need to canonicalize PBS_LEAF_NAME */
-							if (get_fullhostname(node_name, canonical_name,
-									(sizeof(canonical_name) - 1)) != 0) {
-								sprintf(log_buffer,
-									"Failed to get fullhostname from %s for job %s",
-									node_name, pjob->ji_qs.ji_jobid);
-								log_err(errno, __func__, log_buffer);
-								node_name[0] = '\0';
-								canonical_name[0] = '\0';
-								return (PBSE_SYSTEM);
-							}
-						}
-					} else {
-						if (strcmp(mom_host, node_name) != 0) {
-							/* mom_host has changed or node_name is uninitialized */
-							pbs_strncpy(node_name, mom_host, sizeof(node_name));
-							/* mom_host contains the canonical name */
-							pbs_strncpy(canonical_name, mom_host, sizeof(canonical_name));
-						}
-					}
-
-					if (strcmp(hp->hn_host, node_name) == 0) {
-						hostmatch = 1;
-					} else {
-						char namebuf[PBS_MAXHOSTNAME + 1];
-
-						if (get_fullhostname(hp->hn_host, namebuf,
-								(sizeof(namebuf) - 1)) != 0) {
-
-							sprintf(log_buffer,
-								"Failed to get fullhostname from %s for job %s",
-								hp->hn_host, pjob->ji_qs.ji_jobid);
-							log_err(errno, __func__, log_buffer);
-							return (PBSE_SYSTEM);
-						}
-						if (strcmp(namebuf, canonical_name) == 0)
-							hostmatch = 1;
-					}
-
-					if (hostmatch) {
-						pjob->ji_nodeid = hp->hn_node;
-						if (mynp) {
-							*mynp = hp;
-						}
-					}
-				}
+			* The "natural" vnode for the Mom who is managing
+			* this chunk of resources can be determined by the
+			* corresponding entry in exec_host.  We have to know which
+			* Mom in case of multiple-Moms for the allocated vnodes
+			*/
+			mname = get_next_exechost2(enable_exechost2, &peh, &port);
+			hp = add_mom_to_job(pjob, mname, port, &momindex, mynp);
+			if (hp == NULL) {
+				log_err(errno, __func__, "Failed to add mom to job");
+				return (PBSE_SYSTEM);
 			}
 
 			/* now parse exec_vnode to match up alloc-ed with needed */
-
 			stop_on_paren = 0;
 
-			while ((pndspec = parse_plus_spec_r(elast, &elast, &hpn)) !=
-				NULL) {
-				int       vnncpus = 0;
-				long long ndmem   = 0;
+			while ((pndspec = parse_plus_spec_r(elast, &elast, &hpn)) != NULL) {
+				int vnncpus = 0;
+				long long ndmem = 0;
 
 				if (hpn > 0)		/* found open paren '(' */
 					stop_on_paren = 1;
 
-				rc = parse_node_resc_r(pndspec, &nodep, &enelma,
-					&enelmt, &enkv);
+				rc = parse_node_resc_r(pndspec, &nodep, &enelma, &enelmt, &enkv);
 
 				/* if no resources specified, skip it */
 				if (enelma == 0) {
 					stop_on_paren = 0;
-					DBPRT(("\t\tignoring vnode %s without resources\n", nodep))
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,  "Ignoring vnode %s without resources", nodep);
+					mname = get_next_exechost2(enable_exechost2, &peh, &port);
+					hp = add_mom_to_job(pjob, mname, port, &momindex, mynp);
+					if (hp == NULL) {
+						log_err(errno, __func__, "Failed to add mom to job");
+						return (PBSE_SYSTEM);
+					}
 					continue;       /* check next piece */
 				}
-
 
 				/* nodep = vnode name */
 				if (rc != 0) {
@@ -5768,6 +5796,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					if (enable_exechost2)
 #endif /* localmod 123 */
 					{
+						log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid,  "Creating entry for vnode=%s, mom=%s", nodep, mname);
 						pmm = create_mommap_entry(nodep, mname, pmom, 0);
 					} else {
 						pmm = create_mommap_entry(nodep, NULL, pmom, 0);
@@ -5777,9 +5806,10 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 						delete_mom_entry(pmom);
 						return PBSE_SYSTEM;
 					}
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-						LOG_DEBUG, nodep,
-						"implicitly added host to vmap");
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, nodep, "implicitly added host to vmap");
+				} else {
+					log_eventf(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, 
+							"Found! vnodemap entry for vnode=%s: mom-name=%s, hostname=%s", nodep, pmm->mvm_name, pmm->mvm_hostn);
 				}
 
 				/* for the allocated resc, add to hnodent resc_limit */
@@ -6015,7 +6045,6 @@ start_exec(job *pjob)
 	}
 
 	if (nodenum > 1) {
-		attribute *pattr;
 		int nodemux = 0;
 		int mtfd = -1;
 		int com;
@@ -6039,9 +6068,8 @@ start_exec(job *pjob)
 		 * This is why pjob->ji_numnodes = pjob->numrescs + 1.
 		 */
 		CLEAR_HEAD(phead);
-		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {
-			(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
+			(void)(job_attr_def+i)->at_encode(get_jattr(pjob, i), &phead,
 				(job_attr_def+i)->at_name, NULL,
 				ATR_ENCODE_MOM, NULL);
 		}
@@ -6084,9 +6112,8 @@ start_exec(job *pjob)
 			}
 		}
 
-		pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-		if (is_attr_set(pattr))
-			nodemux = (int)pattr->at_val.at_long;
+		if (is_jattr_set(pjob, JOB_ATR_nodemux))
+			nodemux = get_jattr_long(pjob, JOB_ATR_nodemux);
 
 		/*
 		 **		Send out a JOIN_JOB/RESTART message to all the MOM's in
@@ -6637,7 +6664,6 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	int   fds;
 	int   keeping = 0;
 	char *path;
-	attribute *patr;
 	struct stat sb;
 
 	if (!pjob)
@@ -6654,14 +6680,9 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 	 * protected directory,  otherwise check others for security.
 	 */
 
-	patr = &pjob->ji_wattr[(int)JOB_ATR_interactive];
-	if (((is_attr_set(patr)) != 0) &&
-		(patr->at_val.at_long > 0)) {
-
+	if (is_jattr_set(pjob, JOB_ATR_interactive) != 0 && get_jattr_long(pjob, JOB_ATR_interactive) > 0)
 		fds = open_file_as_user(path, mode, 0644, exuid, exgid);
-
-	} else if (keeping) {
-
+	else if (keeping) {
 		/* The user is keeping the file in his Home directory or sandbox, */
 		/* both are safe and the file can be opened directly.             */
 		fds = open_file_as_user(path, mode, 0644, exuid, exgid);

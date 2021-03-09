@@ -266,14 +266,13 @@ req_holdjob(struct batch_request *preq)
 void
 req_releasejob(struct batch_request *preq)
 {
-	int              jt;            /* job type */
-	char		 newstate;
-	int		 newsub;
-	long		 old_hold;
-	job		*pjob;
-	char		*pset;
-	int		 rc;
-
+	int jt; /* job type */
+	char newstate;
+	int newsub;
+	long old_hold;
+	job *pjob;
+	char *pset;
+	int rc;
 
 	pjob = chk_job_request(preq->rq_ind.rq_release.rq_objname, preq, &jt, NULL);
 	if (pjob == NULL)
@@ -301,9 +300,7 @@ req_releasejob(struct batch_request *preq)
 	/* all ok so far, unset the hold */
 
 	old_hold = get_jattr_long(pjob, JOB_ATR_hold);
-	rc = job_attr_def[(int)JOB_ATR_hold].
-		at_set(&pjob->ji_wattr[(int)JOB_ATR_hold],
-		&temphold, DECR);
+	rc = set_attr_with_attr(&job_attr_def[(int)JOB_ATR_hold], get_jattr(pjob, JOB_ATR_hold), &temphold, DECR);
 	if (rc) {
 		req_reject(rc, 0, preq);
 		return;
@@ -316,9 +313,9 @@ req_releasejob(struct batch_request *preq)
 #endif /* localmod 105 */
 #ifdef NAS /* localmod 105 */
 		{
-			attribute *etime = &pjob->ji_wattr[(int)JOB_ATR_etime];
+			attribute *etime = get_jattr(pjob, JOB_ATR_etime);
 			etime->at_val.at_long = time_now;
-			etime->at_flags |= ATR_SET_MOD_MCACHE;
+			post_attr_set(etime);
 #endif /* localmod 105 */
 		svr_evaljobstate(pjob, &newstate, &newsub, 0);
 		svr_setjobstate(pjob, newstate, newsub); /* saves job */
@@ -334,27 +331,23 @@ req_releasejob(struct batch_request *preq)
 				old_hold = get_jattr_long(psubjob, JOB_ATR_hold);
 				rc =
 #endif
-					job_attr_def[(int)JOB_ATR_hold].
-					at_set(&psubjob->ji_wattr[(int)JOB_ATR_hold],
-					&temphold, DECR);
+					set_attr_with_attr(&job_attr_def[(int)JOB_ATR_hold], get_jattr(psubjob, JOB_ATR_hold), &temphold, DECR);	
 #ifndef NAS /* localmod 105 Always reset etime on release */
 				if (!rc && (old_hold != get_jattr_long(psubjob, JOB_ATR_hold))) {
 #endif /* localmod 105 */
 #ifdef NAS /* localmod 105 */
 				{
-					attribute *etime = &psubjob->ji_wattr[(int)JOB_ATR_etime];
+					attribute *etime = get_jattr(psubjob, JOB_ATR_etime);
 					etime->at_val.at_long = time_now;
-					etime->at_flags |= ATR_SET_MOD_MCACHE;
+					post_attr_set(etime);
 #endif /* localmod 105 */
 					svr_evaljobstate(psubjob, &newstate, &newsub, 0);
 					svr_setjobstate(psubjob, newstate, newsub); /* saves job */
 				}
 				if (get_jattr_long(psubjob, JOB_ATR_hold) == HOLD_n)
 					free_jattr(psubjob, JOB_ATR_Comment);
-				(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user,
-					preq->rq_host);
-				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-					psubjob->ji_qs.ji_jobid, log_buffer);
+				(void)sprintf(log_buffer, msg_jobholdrel, pset, preq->rq_user, preq->rq_host);
+				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, psubjob->ji_qs.ji_jobid, log_buffer);
 			}
 		}
 	}

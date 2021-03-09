@@ -185,7 +185,7 @@ find_group_info(const char *name, group_info *root)
  *
  */
 group_info *
-find_alloc_ginfo(char *name, group_info *root)
+find_alloc_ginfo(const char *name, group_info *root)
 {
 	group_info *ginfo;		/* the found group or allocated group */
 

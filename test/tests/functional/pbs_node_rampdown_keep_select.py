@@ -301,7 +301,8 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         passed using the 'tc' argument
         """
         # 1. submit the job wih select spec
-        job = Job(TEST_USER, attrs={'Resource_List.select': tc.qsub_sel})
+        a = {'Resource_List.select': tc.qsub_sel, ATTR_S: '/bin/bash'}
+        job = Job(TEST_USER, attrs=a)
         if tc.use_script is True:
             job.create_script(self.jobscript)
         else:
@@ -342,6 +343,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
                                          runas=tc.rel_user)
             self.assertEqual(ret['rc'], 0)
         else:
+            time.sleep(2)
             self.server.sigjob(jid, 'INT')
 
         # 9. verify job state and attributes are as expected
@@ -450,7 +452,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         self.jobscript = \
             "#!/bin/sh\n" + \
             "trap 'pbs_release_nodes -k select=ncpus=2+ncpus=3:mpiprocs=2" + \
-            ";sleep 1000;exit 0' 2\n" + \
+            ";sleep 1000;exit 0' INT\n" + \
             "sleep 1000\n" + \
             "exit 0"
         self.test_basic_use_case_ncpus(use_script=True)
@@ -1230,7 +1232,7 @@ class TestPbsNodeRampDownKeepSelect(TestFunctional):
         self.jobscript = \
             "#!/bin/sh\n" + \
             "trap 'pbs_release_nodes -k 2" + \
-            ";sleep 1000;exit 0' 2\n" + \
+            ";sleep 1000;exit 0' INT\n" + \
             "sleep 1000\n" + \
             "exit 0"
         self.test_node_count(use_script=True)

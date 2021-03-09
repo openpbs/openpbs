@@ -498,7 +498,10 @@ static int
 status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 {
 	struct brp_status *pstat;
-	svrattrl	  *pal;
+	svrattrl *pal;
+	long total_jobs;
+	int rc = 0;
+	attribute *qattr;
 
 	if ((preq->rq_perm & ATR_DFLAG_RDACC) == 0)
 		return (PBSE_PERM);
@@ -506,16 +509,14 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	/* ok going to do status, update count and state counts from qu_qs */
 
 	if (!svr_chk_history_conf()) {
-		pque->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = pque->qu_numjobs;
+		total_jobs = pque->qu_numjobs;
 	} else {
-		pque->qu_attr[(int)QA_ATR_TotalJobs].at_val.at_long = pque->qu_numjobs -
-			(pque->qu_njstate[JOB_STATE_MOVED] + pque->qu_njstate[JOB_STATE_FINISHED] + pque->qu_njstate[JOB_STATE_EXPIRED]);
+		total_jobs = pque->qu_numjobs - (pque->qu_njstate[JOB_STATE_MOVED] + pque->qu_njstate[JOB_STATE_FINISHED] + pque->qu_njstate[JOB_STATE_EXPIRED]);
 	}
-	pque->qu_attr[(int)QA_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
+	set_qattr_l_slim(pque, QA_ATR_TotalJobs, total_jobs, SET);
 
-	update_state_ct(&pque->qu_attr[(int)QA_ATR_JobsByState],
-		pque->qu_njstate,
-		pque->qu_jobstbuf);
+	qattr = get_qattr(pque, QA_ATR_JobsByState);
+	update_state_ct(qattr, pque->qu_njstate, &que_attr_def[QA_ATR_JobsByState]);
 
 	/* allocate status sub-structure and fill in header portion */
 
@@ -535,9 +536,11 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 	if (status_attrib(pal, que_attr_idx, que_attr_def, pque->qu_attr, QA_ATR_LAST,
 		preq->rq_perm, &pstat->brp_attr, &bad))
-		return (PBSE_NOATTR);
+		rc = PBSE_NOATTR;
 
-	return (0);
+	if (is_attr_set(qattr))
+		free_attr(que_attr_def, qattr, QA_ATR_JobsByState);
+	return rc;
 }
 
 
@@ -654,20 +657,17 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	/* sync state attribute with nd_state */
 
-	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_long) {
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
-		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_MOD_MCACHE;
-	}
+	if (pnode->nd_state != get_nattr_long(pnode, ND_ATR_state))
+		set_nattr_l_slim(pnode, ND_ATR_state, pnode->nd_state, SET);
 
 	/*node is provisioning - mask out the DOWN/UNKNOWN flags while prov is on*/
-	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_long &
-		(INUSE_PROV | INUSE_WAIT_PROV)) {
-		old_nd_state = pnode->nd_attr[(int)ND_ATR_state].at_val.at_long;
+	if (get_nattr_long(pnode, ND_ATR_state) & (INUSE_PROV | INUSE_WAIT_PROV)) {
+		old_nd_state = get_nattr_long(pnode, ND_ATR_state);
 
 		/* don't want to show job-busy, job/resv-excl while provisioning */
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long &=
-			~(INUSE_DOWN | INUSE_UNKNOWN | INUSE_JOB |
-			INUSE_JOBEXCL | INUSE_RESVEXCL);
+		set_nattr_l_slim(pnode, ND_ATR_state,
+				 old_nd_state & ~(INUSE_DOWN | INUSE_UNKNOWN | INUSE_JOB | INUSE_JOBEXCL | INUSE_RESVEXCL),
+				 SET);
 	}
 
 	/*allocate status sub-structure and fill in header portion*/
@@ -697,8 +697,8 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	/*reverting back the state*/
 
-	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_long & INUSE_PROV)
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = old_nd_state ;
+	if (get_nattr_long(pnode, ND_ATR_state) & INUSE_PROV)
+		set_nattr_l_slim(pnode, ND_ATR_state, old_nd_state, SET);
 
 
 	return (rc);
@@ -731,7 +731,7 @@ update_isrunhook(attribute *pattr)
 
 	if (new_val != old_val) {
 		pattr->at_val.at_long = new_val;
-		pattr->at_flags |= ATR_SET_MOD_MCACHE;
+		post_attr_set(pattr);
 	}
 }
 
@@ -755,15 +755,10 @@ req_stat_svr(struct batch_request *preq)
 	conn_t *conn;
 
 	/* update count and state counts from sv_numjobs and sv_jobstates */
+	set_sattr_l_slim(SVR_ATR_TotalJobs, server.sv_qs.sv_numjobs, SET);
+	update_state_ct(get_sattr(SVR_ATR_JobsByState), server.sv_jobstates, &svr_attr_def[SVR_ATR_JobsByState]);
 
-	server.sv_attr[(int)SVR_ATR_TotalJobs].at_val.at_long = server.sv_qs.sv_numjobs;
-	server.sv_attr[(int)SVR_ATR_TotalJobs].at_flags |= ATR_SET_MOD_MCACHE;
-	update_state_ct(&server.sv_attr[(int)SVR_ATR_JobsByState],
-		server.sv_jobstates,
-		server.sv_jobstbuf);
-
-	update_license_ct(&server.sv_attr[(int)SVR_ATR_license_count],
-		server.sv_license_ct_buf);
+	update_license_ct();
 
 	conn = get_conn(preq->rq_conn);
 	if (!conn) {
@@ -772,7 +767,7 @@ req_stat_svr(struct batch_request *preq)
 	}
 	if (conn->cn_origin == CONN_SCHED_PRIMARY) {
 		/* Request is from sched so update "has_runjob_hook" */
-		update_isrunhook(&server.sv_attr[SVR_ATR_has_runjob_hook]);
+		update_isrunhook(get_sattr(SVR_ATR_has_runjob_hook));
 	}
 
 	/* allocate a reply structure and a status sub-structure */
@@ -957,18 +952,19 @@ req_stat_sched(struct batch_request *preq)
  *
  * @param[out]	pattr	-	queue or server attribute
  * @param[in]	ct_array	-	number of jobs per state
- * @param[out]	buf	-	job string buffer
+ * @param[in] attr_def - attribute def of pattr
  *
  * @par MT-safe: No
  */
 
 void
-update_state_ct(attribute *pattr, int *ct_array, char *buf)
+update_state_ct(attribute *pattr, int *ct_array, attribute_def *attr_def)
 {
 	static char *statename[] = { "Transit", "Queued", "Held", "Waiting",
 		"Running", "Exiting", "Expired", "Begun",
 		"Moved", "Finished" };
 	int  index;
+	char buf[BUF_SIZE];
 
 	buf[0] = '\0';
 	for (index=0; index < (PBS_NUMJOBSTATE); index++) {
@@ -979,30 +975,25 @@ update_state_ct(attribute *pattr, int *ct_array, char *buf)
 		sprintf(buf+strlen(buf), "%s:%d ", statename[index],
 			*(ct_array + index));
 	}
-	pattr->at_val.at_str = buf;
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	set_attr_generic(pattr, attr_def, buf, NULL, INTERNAL);
 }
 
 /**
  * @brief
- * 		update_license_ct - update the # of licenses (counters) in 'license_count'
- *			server attribute.
- *
- * @param[out]	pattr	-	server attribute.
- * @param[out]	buf	-	job string buffer
+ * 	update_license_ct - update the # of licenses (counters) in 'license_count' server attribute.
  */
-
 void
-update_license_ct(attribute *pattr, char *buf)
+update_license_ct(void)
 {
+	char buf[BUF_SIZE];
+
 	buf[0] = '\0';
-	sprintf(buf, "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
-			license_counts.licenses_global,
-			license_counts.licenses_local,
-			license_counts.licenses_used,
-			license_counts.licenses_high_use.lu_max_forever);
-	pattr->at_val.at_str = buf;
-	pattr->at_flags |= ATR_SET_MOD_MCACHE;
+	snprintf(buf, sizeof(buf), "Avail_Global:%ld Avail_Local:%ld Used:%ld High_Use:%d",
+		 license_counts.licenses_global,
+		 license_counts.licenses_local,
+		 license_counts.licenses_used,
+		 license_counts.licenses_high_use.lu_max_forever);
+	set_sattr_str_slim(SVR_ATR_license_count, buf, NULL);
 }
 
 /**
@@ -1144,7 +1135,7 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
 static int
 status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head *pstathd, int private)
 {
-	struct attribute   attr;
+	attribute   attr;
 	struct brp_status *pstat;
 
 	if (((prd->rs_flags & ATR_DFLAG_USRD) == 0) &&

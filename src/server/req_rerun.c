@@ -120,7 +120,7 @@ post_rerun(struct work_task *pwt)
 		}
 		else {
 			/* mom acknowledged to rerun the job, release depend hold on run-one dependency */
-			pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+			pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 			if (pdep != NULL)
 				depend_runone_release_all(pjob);
 		}
@@ -442,7 +442,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		 * force_reque will be called in post_discard_job,
 		 * after receiving IS_DISCARD_DONE from the MOM.
 		 */
-		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, &pjob->ji_wattr[(int)JOB_ATR_depend]);
+		pdep = find_depend(JOB_DEPEND_TYPE_RUNONE, get_jattr(pjob, JOB_ATR_depend));
 		if (pdep != NULL)
 			depend_runone_release_all(pjob);
 		reply_ack(preq);
@@ -481,11 +481,10 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	/* indefinitely; if it does, the scheduler would also hang on a */
 	/* requeue request  */
 	time_now = time(NULL);
-	if ((server.sv_attr[(int)SVR_ATR_JobRequeTimeout].at_flags & ATR_VFLAG_SET) == 0) {
+	if (!is_sattr_set(SVR_ATR_JobRequeTimeout))
 		rerun_to = time_now + PBS_DIS_TCP_TIMEOUT_RERUN;
-	} else {
-		rerun_to = time_now + server.sv_attr[(int)SVR_ATR_JobRequeTimeout].at_val.at_long;
-	}
+	else
+		rerun_to = time_now + get_sattr_long(SVR_ATR_JobRequeTimeout);
 	ptask = set_task(WORK_Timed, rerun_to, timeout_rerun_request, pjob);
 	if (ptask) {
 		/* this ensures that the ptask created gets cleared in case */

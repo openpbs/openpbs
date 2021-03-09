@@ -132,11 +132,12 @@ void set_timed_event_disabled(timed_event *te, int disabled);
  *
  */
 timed_event *
-find_timed_event(timed_event *te_list, int ignore_disabled, const char *name,
-	enum timed_event_types event_type, time_t event_time);
-
-
-
+find_timed_event(timed_event *te_list, const std::string &name, int ignore_disabled,
+		 enum timed_event_types event_type, time_t event_time);
+timed_event *find_timed_event(timed_event *te_list, int ignore_disabled, enum timed_event_types event_type, time_t event_time);
+timed_event *find_timed_event(timed_event *te_list, enum timed_event_types event_type);
+timed_event *find_timed_event(timed_event *te_list, const std::string &name, enum timed_event_types event_type, time_t event_time);
+timed_event *find_timed_event(timed_event *te_list, time_t event_time);
 
 /*
  *      next_event - move an event_list to the next event and return it
@@ -342,7 +343,7 @@ create_event(enum timed_event_types event_type,
  *	returns time_t of when the job will run
  *		or -1 on error
  */
-time_t calc_run_time(char *job_name, server_info *sinfo, int flags);
+time_t calc_run_time(const std::string& name, server_info *sinfo, int flags);
 
 /*
  *

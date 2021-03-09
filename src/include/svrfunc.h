@@ -68,6 +68,7 @@ extern int is_compose(int, int);
 extern int is_compose_cmd(int, int, char **);
 extern char *get_servername(unsigned int *);
 extern char *gen_svr_inst_id(void);
+extern int get_server_index(void);
 extern void process_Areply(int);
 extern void process_Dreply(int);
 extern void process_DreplyTPP(int);
@@ -287,8 +288,8 @@ extern int   keepfiles_action(attribute *pattr, void *pobject, int actmode);
 extern int   removefiles_action(attribute *pattr, void *pobject, int actmode);
 
 /* Functions below exposed as they are now accessed by the Python hooks */
-extern void update_state_ct(attribute *, int *, char *);
-extern void update_license_ct(attribute *, char *);
+extern void update_state_ct(attribute *, int *, attribute_def *attr_def);
+extern void update_license_ct();
 
 #ifdef _PBS_JOB_H
 extern int job_set_wait(attribute *, void *, int);

@@ -1059,6 +1059,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 
 	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
+
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
 
@@ -1069,7 +1070,7 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 * didn't end up using it.  We have to check against perr, so we don't
 	 * free the caller's memory.
 	 */
-	if(err->status_code == SCHD_UNKWN && err != perr)
+	else if(err != perr)
 		free_schd_error(err);
 
 	return ns_arr;
@@ -1570,28 +1571,21 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 			/* if there are nodes assigned to the queue, then check those */
 			if (qinfo->has_nodes)
 				ninfo_arr = qinfo->nodes;
-			else if (!(sinfo->svr_to_psets.empty())) {	/* Multi-server psets */
-				/* Find the pset of the server which owns the job */
-				for (auto &spset: sinfo->svr_to_psets) {
-					if (spset.svr_inst_id == resresv->job->svr_inst_id) {
-						msvr_pset[0] = spset.np;
-						if (!resresv->job->is_array && spec->total_chunks == 1) {
-							/* Allow job to be placed on nodes of other servers as well
-							 * For now, restricting job arrays and multi-chunk jobs
-							 * to nodes of just the local server
-							 */
-							msvr_pset[1] = sinfo->allpart;
-							msvr_pset[2] = NULL;
-						} else {
-							/* This prevents eval_selspec from considering all unassociated nodes */
-							flags &= ~SPAN_PSETS;
-							msvr_pset[1] = NULL;
-						}
-						nodepart = msvr_pset;
-						break;
-					}
-				}
+		}
+
+		/* Handle multi-server psets */
+		if (resresv->svr_inst_id != NULL &&
+		    sinfo->svr_to_psets.find(resresv->svr_inst_id) != sinfo->svr_to_psets.end()) {
+			msvr_pset[0] = sinfo->svr_to_psets[resresv->svr_inst_id];
+
+			/* Restrict job arrays and reservations to owner server */
+			if (resresv->is_resv || resresv->job->is_array)
+				msvr_pset[1] = NULL;
+			else {	/* If owner's nodes don't work, use all */
+				msvr_pset[1] = sinfo->allpart;
+				msvr_pset[2] = NULL;
 			}
+			nodepart = msvr_pset;
 		}
 	}
 
@@ -1629,7 +1623,6 @@ check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, re
 	if (ninfo_arr == NULL || error)
 		return NULL;
 
-	err->status_code = NOT_RUN;
 	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv, flags, &nspec_arr, err);
 
 	/* We can run, yippie! */

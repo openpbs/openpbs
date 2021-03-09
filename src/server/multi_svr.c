@@ -60,6 +60,9 @@ typedef struct peersvr_list {
 } peersvr_list_t;
 
 static struct peersvr_list *peersvrl;
+extern char server_host[PBS_MAXHOSTNAME + 1];
+extern unsigned int	pbs_server_port_dis;
+static int svridx = -1;
 
 /**
  * @brief
@@ -276,6 +279,16 @@ int
 init_msi()
 {
 	peersvrl = NULL;
+	int i;
+
+	/* Determine the index of the server in PBS_SERVER_INSTANCES list */
+	for (i = 0; i < get_num_servers(); i++) {
+		if (pbs_conf.psi[i].port == pbs_server_port_dis &&
+		    is_same_host(pbs_conf.psi[i].name, server_host)) {
+			svridx = i;
+			break;
+		}
+	}
 
 	return 0;
 }
@@ -283,26 +296,41 @@ init_msi()
 /**
  * @brief
  * 	Used to Create serverer_instance_id which is of the form server_instance_name:server_instance_port
- * 
+ *
  * @return char *
  * @return NULL - failure
- * @retval !NULL - pointer to server_instance_id
+ * @retval !NULL - pointer to server_instance_id (do NOT free the return value)
  */
 char *
 gen_svr_inst_id(void)
 {
-	char svr_inst_name[PBS_MAXHOSTNAME + 1];
-	unsigned int svr_inst_port;
-	char *svr_inst_id = NULL;
+	static char *svr_inst_id = NULL;
 
+	if (svr_inst_id == NULL) {
+		unsigned int svr_inst_port;
+		char svr_inst_name[PBS_MAXHOSTNAME + 1];
 
-	if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
-        	get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
+		if (gethostname(svr_inst_name, PBS_MAXHOSTNAME) == 0)
+			get_fullhostname(svr_inst_name, svr_inst_name, PBS_MAXHOSTNAME);
 
-	svr_inst_port = pbs_conf.batch_service_port;
-
-	pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
+		svr_inst_port = pbs_conf.batch_service_port;
+		pbs_asprintf(&svr_inst_id, "%s:%d", svr_inst_name, svr_inst_port);
+	}
 
 	return svr_inst_id;
+}
 
+/**
+ * @brief	Calculate the index of the current server
+ *
+ * @param	void
+ *
+ * @return	int
+ * @retval	index of the server
+ * @retval	-1 if couldn't be determined (see init_msi)
+ */
+int
+get_server_index(void)
+{
+	return svridx;
 }

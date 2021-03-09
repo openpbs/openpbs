@@ -521,8 +521,7 @@ close_servers(void)
 			free(qrun_list[i].jid);
 	}
 	free(qrun_list);
-
-	sched_svr_init();
+	qrun_list = NULL;
 
 	clust_primary_sock = -1;
 	clust_secondary_sock = -1;
@@ -574,10 +573,10 @@ connect_svrpool()
 		}
 
 		for (i = 0; svr_conns_primary[i] != NULL && svr_conns_secondary[i] != NULL; i++) {
-			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN)
-				clust_primary_sock = -1;
-			if (svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN)
-				clust_secondary_sock = -1;
+			if (svr_conns_primary[i]->state == SVR_CONN_STATE_DOWN ||
+			    svr_conns_secondary[i]->state == SVR_CONN_STATE_DOWN) {
+				break;
+			}
 		}
 
 		if (i != num_conf_svrs) {
@@ -585,6 +584,7 @@ connect_svrpool()
 			 * we should go to the top of the loop again and call pbs_connect
 			 * Also wait for 2s for not to burn too much CPU
 			 */
+			log_errf(pbs_errno, __func__, "Scheduler %s could not connect with all the configured servers", sc_name);
 			sleep(2);
 			close_servers();
 			continue;
@@ -601,11 +601,15 @@ connect_svrpool()
 		/* Reached here means everything is success, so we will break out of the loop */
 		break;
 	}
+	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED,
+		   LOG_INFO, msg_daemonname, "Connected to all the configured servers");
 
-	log_eventf(PBSEVENT_ADMIN | PBSEVENT_FORCE, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, "Connected to all the configured servers");
+	sched_svr_init();
+
 	for (i = 0; svr_conns_secondary[i] != NULL; i++) {
 		if (tpp_em_add_fd(poll_context, svr_conns_secondary[i]->sd, EM_IN | EM_HUP | EM_ERR) < 0) {
-			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s", svr_conns_secondary[i]->name);
+			log_errf(errno, __func__, "Couldn't add secondary connection to poll list for server %s",
+				 svr_conns_secondary[i]->name);
 			die(-1);
 		}
 	}
@@ -642,9 +646,12 @@ sched_svr_init(void)
 static void
 reconnect_servers()
 {
+	pthread_mutex_lock(&cleanup_lock);
 
 	close_servers();
 	connect_svrpool();
+	
+	pthread_mutex_unlock(&cleanup_lock);
 }
 
 /**
@@ -1114,7 +1121,6 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 
 	pthread_mutex_init(&cleanup_lock, &attr);
 
-	sched_svr_init();
 	connect_svrpool();
 
 	for (go = 1; go;) {

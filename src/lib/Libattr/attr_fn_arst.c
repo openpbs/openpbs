@@ -105,7 +105,7 @@
  *
  */
 static int
-decode_arst_direct(struct attribute *patr, char *val)
+decode_arst_direct(attribute *patr, char *val)
 {
 	unsigned long		 bksize;
 	int			 j;
@@ -185,7 +185,7 @@ decode_arst_direct(struct attribute *patr, char *val)
 
 	stp->as_usedptr = j;
 	stp->as_next = pc;
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 	patr->at_val.at_arst = stp;
 
 	if (sbufp != strbuf)	/* buffer on heap, not stack */
@@ -210,7 +210,7 @@ decode_arst_direct(struct attribute *patr, char *val)
  */
 
 int
-decode_arst(struct attribute *patr, char *name, char *rescn, char *val)
+decode_arst(attribute *patr, char *name, char *rescn, char *val)
 {
 	int	  rc;
 	attribute temp;
@@ -364,7 +364,7 @@ encode_arst(const attribute *attr, pbs_list_head *phead, char *atname, char *rsn
  */
 
 int
-set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_arst(attribute *attr, attribute *new, enum batch_op op)
 {
 	int	 i;
 	int	 j;
@@ -512,7 +512,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -530,7 +530,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
  */
 
 int
-comp_arst(struct attribute *attr, struct attribute *with)
+comp_arst(attribute *attr, attribute *with)
 {
 	int	i;
 	int	j;
@@ -572,7 +572,7 @@ comp_arst(struct attribute *attr, struct attribute *with)
  */
 
 void
-free_arst(struct attribute *attr)
+free_arst(attribute *attr)
 {
 	if ((attr->at_flags & ATR_VFLAG_SET) && (attr->at_val.at_arst)) {
 		(void)free(attr->at_val.at_arst->as_buf);
@@ -770,7 +770,7 @@ int	*pcnt;		/*where to return the value*/
  *
  */
 static int
-decode_arst_direct_bs(struct attribute *patr, char *val)
+decode_arst_direct_bs(attribute *patr, char *val)
 {
 	unsigned long		 bksize;
 	int			 j;
@@ -849,7 +849,7 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
 
 	stp->as_usedptr = j;
 	stp->as_next = pc;
-	patr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(patr);
 	patr->at_val.at_arst = stp;
 
 	if (sbufp != strbuf)	/* buffer on heap, not stack */
@@ -877,7 +877,7 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
  */
 
 int
-decode_arst_bs(struct attribute *patr, char *name, char *rescn, char *val)
+decode_arst_bs(attribute *patr, char *name, char *rescn, char *val)
 {
 	int	  rc;
 	attribute temp;
@@ -1047,7 +1047,7 @@ encode_arst_bs(const attribute *attr, pbs_list_head *phead, char *atname, char *
  */
 
 int
-set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
+set_arst_uniq(attribute *attr, attribute *new, enum batch_op op)
 {
 	int	 i;
 	int	 j;
@@ -1153,7 +1153,7 @@ set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
 		}
 	}
 
-	attr->at_flags |= ATR_SET_MOD_MCACHE;
+	post_attr_set(attr);
 	return (0);
 }
 
@@ -1184,4 +1184,10 @@ check_duplicates(struct array_strings *strarr)
 		}
 	}
 	return 0;
+}
+
+struct array_strings *
+get_attr_arst(const attribute *pattr)
+{
+	return pattr->at_val.at_arst;
 }

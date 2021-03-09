@@ -116,6 +116,7 @@ extern void log_err(int err, const char *func, const char *text);
 extern void log_errf(int errnum, const char *routine, const char *fmt, ...);
 extern void log_joberr(int err, const char *func, const char *text, const char *pjid);
 extern void log_event(int type, int objclass, int severity, const char *objname, const char *text);
+extern void do_log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, va_list args);
 extern void log_eventf(int eventtype, int objclass, int sev, const char *objname, const char *fmt, ...);
 extern int will_log_event(int type);
 extern void log_suspect_file(const char *func, const char *text, const char *file, struct stat *sb);

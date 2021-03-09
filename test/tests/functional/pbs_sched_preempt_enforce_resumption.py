@@ -187,12 +187,12 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
 
         j1 = Job(TEST_USER)
         j1.set_attributes({ATTR_l + '.select': '1:ncpus=4',
-                           ATTR_l + '.walltime': 30})
+                           ATTR_l + '.walltime': 90})
         jid1 = self.server.submit(j1)
 
         j2 = Job(TEST_USER)
         j2.set_attributes({ATTR_l + '.select': '1:ncpus=2',
-                           ATTR_l + '.walltime': 18})
+                           ATTR_l + '.walltime': 30})
         jid2 = self.server.submit(j2)
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -201,7 +201,7 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         j3 = Job(TEST_USER)
         j3.set_attributes({ATTR_l + '.select': '1:ncpus=2',
                            ATTR_q: 'expressq',
-                           ATTR_l + '.walltime': 20})
+                           ATTR_l + '.walltime': 50})
         jid3 = self.server.submit(j3)
 
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
@@ -209,9 +209,10 @@ class TestSchedPreemptEnforceResumption(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
 
         j4 = Job(TEST_USER)
+        j4.set_sleep_time(30)
         j4.set_attributes({ATTR_l + '.select': '1:ncpus=2',
                            ATTR_q: 'expressq',
-                           ATTR_l + '.walltime': 15})
+                           ATTR_l + '.walltime': 30})
         jid4 = self.server.submit(j4)
 
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)

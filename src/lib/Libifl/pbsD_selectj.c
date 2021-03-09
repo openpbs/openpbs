@@ -214,7 +214,7 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 	if (pbs_client_thread_init_thread_context() != 0)
 		return NULL;
 
-	if (pbs_verify_attributes(random_srv_conn(svr_conns), PBS_BATCH_SelectJobs, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
+	if (pbs_verify_attributes(random_srv_conn(c, svr_conns), PBS_BATCH_SelectJobs, MGR_OBJ_JOB, MGR_CMD_NONE, attrib) != 0)
 		return NULL;
 
 	if (pbs_client_thread_lock_connection(c) != 0)

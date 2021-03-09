@@ -170,7 +170,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         # submit a job with future time and should start whenever time hits
         future_tm = time.strftime(
             "%Y%m%d%H%M", time.localtime(
-                present_tm + 60))
+                present_tm + 120))
         j1 = Job(TEST_USER, {ATTR_a: future_tm})
         try:
             jid_1 = self.server.submit(j1)
@@ -178,8 +178,9 @@ bhtiusabsdlg' % (os.environ['HOME'])
             self.validate_error(e)
         self.server.expect(JOB, {'job_state': 'W'}, id=jid_1)
         self.logger.info(
-            'waiting for 60 seconds to run the job as it is a future job...')
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1, offset=60)
+            'waiting for 90 seconds to run the job as it is a future job...')
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_1, offset=90,
+                           interval=2)
 
         # submit a job with past time and should start right away
         past_tm = time.strftime(
