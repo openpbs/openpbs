@@ -4622,7 +4622,7 @@ sleep 300
 
         a = {'Resource_List.select':
              '1:ncpus=1:vnode=%s'
-             % self.mom.hostname}
+             % self.mom.shortname}
         if exclhost:
             a['Resource_List.place'] = 'exclhost'
 
