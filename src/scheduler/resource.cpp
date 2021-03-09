@@ -578,7 +578,7 @@ reset_global_resource_ptrs(void)
 	}
 	update_sorting_defs(SD_FREE);
 
-	clear_last_running();
+	last_running.clear();
 
 	/* The above references into this array.  We now free the memory */
 	if (allres != NULL) {

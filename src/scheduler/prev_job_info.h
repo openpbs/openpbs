@@ -46,15 +46,6 @@
  *      create_prev_job_info - create the prev_job_info array from an array
  *                              of jobs
  */
-prev_job_info *create_prev_job_info(resource_resv **resresv_arr, int size);
+void create_prev_job_info(resource_resv **resresv_arr);
 
-/*
- *      free_prev_job_info - free a prev_job_info struct
- */
-void free_prev_job_info(prev_job_info *pjinfo);
-
-/*
- *      free_pjobs - free a list of prev_job_info structs
- */
-void free_pjobs(prev_job_info *pjinfo_arr, int size);
 #endif	/* _PREV_JOB_INFO_H */

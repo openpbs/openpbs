@@ -87,6 +87,7 @@
 #include "constant.h"
 #include "node_partition.h"
 #include "pbs_internal.h"
+#include "libpbs.h"
 
 /**
  * @brief
@@ -234,7 +235,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 			ignore_resv = 1;
 		}
 		else if ((resresv->resv->resv_state == RESV_BEING_DELETED) && (resresv->resv->resv_nodes != NULL) &&
-			(!is_string_in_arr(resresv->resv->resv_nodes[0]->resvs, resresv->name))) {
+			(!is_string_in_arr(resresv->resv->resv_nodes[0]->resvs, resresv->name.c_str()))) {
 			log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 				resresv->name, "Reservation is being deleted and not present on node, ignoring this reservation");
 			ignore_resv = 1;
@@ -252,7 +253,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, err, START_WITH_JOB);
 				}
 			}
-			free_resource_resv(resresv);
+			delete resresv;
 			continue;
 		}
 
@@ -434,7 +435,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 					resresv->name, "Error processing standing reservation");
 				free(execvnodes_seq);
 				sinfo->num_resvs--;
-				free_resource_resv(resresv);
+				delete resresv;
 				continue;
 			}
 			/* unroll_execvnode_seq will destroy the first argument that is passed
@@ -468,7 +469,7 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				sizeof(resource_resv *) * (sinfo->num_resvs + 1)))) == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resource_resv_array(resresv_arr);
-				free_resource_resv(resresv);
+				delete resresv;
 				free_execvnode_seq(tofree);
 				free(execvnodes_seq);
 				free(execvnode_ptr);
@@ -506,11 +507,11 @@ query_reservations(int pbs_sd, server_info *sinfo, struct batch_status *resvs)
 				if (j == 0)
 					resresv_ocr = resresv;
 				else {
-					resresv_ocr = dup_resource_resv(resresv, sinfo, NULL, err);
+					resresv_ocr = dup_resource_resv(resresv, sinfo, NULL);
 					if (resresv_ocr == NULL) {
 						log_err(errno, __func__, "Error duplicating resource reservation");
 						free_resource_resv_array(resresv_arr);
-						free_resource_resv(resresv);
+						delete resresv;
 						free_execvnode_seq(tofree);
 						free(execvnodes_seq);
 						free(execvnode_ptr);
@@ -622,16 +623,15 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	if (resv == NULL)
 		return NULL;
 
-	if ((advresv = new_resource_resv()) == NULL)
+	if ((advresv = new resource_resv(resv->name)) == NULL)
 		return NULL;
 
 	if ((advresv->resv = new_resv_info()) == NULL) {
-		free_resource_resv(advresv);
+		delete  advresv;
 		return NULL;
 	}
 
 	attrp = resv->attribs;
-	advresv->name = string_dup(resv->name);
 	advresv->server = sinfo;
 	advresv->is_resv = 1;
 
@@ -712,7 +712,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		} else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(advresv->resreq, attrp->resource);
 			if (resreq == NULL) {
-				free_resource_resv(advresv);
+				delete advresv;
 				return NULL;
 			}
 
@@ -753,7 +753,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		} else if (!strcmp(attrp->name, ATTR_server_inst_id)) {
 			advresv->svr_inst_id = string_dup(attrp->value);
 			if (advresv->svr_inst_id == NULL) {
-				free_resource_resv(advresv);
+				delete advresv;
 				return NULL;
 			}
 		}
@@ -898,6 +898,9 @@ new_resv_info()
 void
 free_resv_info(resv_info *rinfo)
 {
+	if (rinfo == NULL)
+		return;
+	
 	if (rinfo->queuename != NULL)
 		free(rinfo->queuename);
 
@@ -1172,7 +1175,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 							/* For a new, unconfirmed, reservation, we duplicate the parent
 							 * reservation
 							 */
-							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL, err);
+							nresv_copy = dup_resource_resv(nresv_copy, sinfo, NULL);
 							if (nresv_copy == NULL)
 								break;
 							if (nresv_copy->resv->select_standing != NULL) {
@@ -1478,7 +1481,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				}
 				nresv = nresv_copy;
 			} else {
-				nresv_copy = dup_resource_resv(nresv, nsinfo, NULL, err);
+				nresv_copy = dup_resource_resv(nresv, nsinfo, NULL);
 
 				if (nresv_copy == NULL) {
 					rconf = RESV_CONFIRM_FAIL;
@@ -1491,7 +1494,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				 */
 				tmp_resresv = add_resresv_to_array(nsinfo->resvs, nresv, NO_FLAGS);
 				if (tmp_resresv == NULL) {
-					free_resource_resv(nresv);
+					delete nresv;
 					rconf = RESV_CONFIRM_FAIL;
 					break;
 				}
@@ -1499,7 +1502,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 
 				tmp_resresv = add_resresv_to_array(nsinfo->all_resresv, nresv, SET_RESRESV_INDEX);
 				if (tmp_resresv == NULL) {
-					free_resource_resv(nresv);
+					delete nresv;
 					rconf = RESV_CONFIRM_FAIL;
 					break;
 				}
@@ -1511,7 +1514,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv->name,
 					"Error determining if reservation can be confirmed: "
 					"String concatenation failed.");
-				free_resource_resv(nresv);
+				delete nresv;
 				free(tmp);
 				rconf = RESV_CONFIRM_FAIL;
 				break;
@@ -1708,8 +1711,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		snprintf(confirm_msg, LOG_BUF_SIZE, "%s:partition=%s", PBS_RESV_CONFIRM_SUCCESS,
 			 sc_attrs.partition ? sc_attrs.partition : DEFAULT_PARTITION);
 
-		pbsrc = pbs_confirmresv(pbs_sd, nresv_parent->name, short_xc,
-			resv_start_time, confirm_msg);
+		pbsrc = send_confirmresv(pbs_sd, nresv_parent, short_xc, resv_start_time, confirm_msg);
 	}
 	else {
 		/* This message is sent to inform that we could not confirm the reservation.
@@ -1717,8 +1719,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * "null" is used satisfy the API but any string would do because we've
 		 * failed to confirm the reservation and no execvnodes were determined
 		 */
-		pbsrc = pbs_confirmresv(pbs_sd, nresv_parent->name, const_cast<char *>("null"),
-			resv_start_time, const_cast<char *>(PBS_RESV_CONFIRM_FAIL));
+		pbsrc = send_confirmresv(pbs_sd, nresv_parent, "null", resv_start_time, PBS_RESV_CONFIRM_FAIL);
 	}
 
 	/* Error handling first checks for the return code from the server and the

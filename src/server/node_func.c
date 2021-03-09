@@ -298,6 +298,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	resource_def *prd;
 	resource     *presc;
 	char         *svr_inst_id;
+	static char ndgroupid[PBS_MAXHOSTNAME + 3] = {0};
 
 	pnode->nd_name    = pname;
 	pnode->nd_ntype   = ntype;
@@ -333,7 +334,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	}
 	set_nattr_str_slim(pnode, ND_ATR_server_inst_id, svr_inst_id, NULL);
 	(get_nattr(pnode, ND_ATR_server_inst_id))->at_flags |= ATR_VFLAG_DEFLT;
-	free(svr_inst_id);
 
 	set_nattr_short_slim(pnode, ND_ATR_ntype, pnode->nd_ntype, SET);
 
@@ -361,19 +361,18 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	prd  = &svr_resc_def[RESC_NCPUS];
 	(void)add_resource_entry(pat1, prd);
 
-	if (get_num_servers() > 1) {
-		resource *svr_nd_grp = NULL;
+    if (msvr_mode()) {
+        resource *svr_nd_grp = NULL;
 
-		/* Set the value of msvr_node_group to "server_id" where
-		 * server_id is the id of the server for the node */
-		prd = &svr_resc_def[RESC_MSVR_ND_GROUP];
-		if ((svr_nd_grp = add_resource_entry(pat1, prd)) != NULL) {
-			char buf[PBS_MAXHOSTNAME];
-
-			snprintf(buf, sizeof(buf), "%s", pbs_server_name);
-			decode_arst(&svr_nd_grp->rs_value, NULL, NULL, buf);
-		}
-	}
+        /* Set the value of msvr_node_group to "server_id" where
+         * server_id is the id of the server for the node */
+        prd = &svr_resc_def[RESC_MSVR_ND_GROUP];
+        if ((svr_nd_grp = add_resource_entry(pat1, prd)) != NULL) {
+            if (ndgroupid[0] == '\0')
+                snprintf(ndgroupid, sizeof(ndgroupid), "%d", get_server_index());
+            decode_arst(&svr_nd_grp->rs_value, NULL, NULL, ndgroupid);
+        }
+    }
 
 	/* add to resources_assigned any resource with ATR_DFLAG_FNASSN */
 	/* or  ATR_DFLAG_ANASSN set in the resource definition          */

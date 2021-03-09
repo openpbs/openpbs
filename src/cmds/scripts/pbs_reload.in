@@ -1,6 +1,6 @@
-
+#!/bin/sh
 #
-# Copyright (C) 1994-2021 Altair Engineering, Inc.
+# Copyright (C) 1994-2020 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of both the OpenPBS software ("OpenPBS")
@@ -37,74 +37,10 @@
 # "OpenPBS®", "PBS Professional®", and "PBS Pro™" and Altair's logos is
 # subject to Altair's trademark licensing policies.
 
-#
-
-libinitdir = $(libdir)/init.d
-
-dist_libinit_DATA = \
-	limits.pbs_mom \
-	limits.pbs_mom.compat \
-	limits.post_services \
-	limits.post_services.compat 
-
-libmpidir = $(libdir)/MPI
-
-dist_libmpi_DATA = \
-	pbsrun.ch_gm.init.in \
-	pbsrun.ch_mx.init.in \
-	pbsrun.gm_mpd.init.in \
-	pbsrun.intelmpi.init.in \
-	pbsrun.mpich2.init.in \
-	pbsrun.mvapich1.init.in \
-	pbsrun.mvapich2.init.in \
-	pbsrun.mx_mpd.init.in \
-	sgiMPI.awk
-
-pythonlibdir = $(libdir)/python
-
-dist_pythonlib_PYTHON = \
-	pbs_bootcheck.py \
-	pbs_topologyinfo.py
-
-sysprofiledir = /etc/profile.d
-
-dist_sysprofile_DATA = \
-	pbs.csh \
-	pbs.sh
-
-unitfiledir = @_unitdir@
-
-dist_unitfile_DATA = \
-	pbs.service
-
-dist_libexec_SCRIPTS = \
-	pbs_habitat \
-	pbs_init.d \
-	pbs_postinstall \
-	pbs_preuninstall \
-	pbs_posttrans \
-	pbs_reload
-
-dist_bin_SCRIPTS = \
-	pbs_topologyinfo \
-	printjob
-
-dist_sbin_SCRIPTS = \
-	pbs_dataservice \
-	pbs_ds_password \
-	pbs_server \
-	pbs_snapshot
-
-dist_sysconf_DATA = \
-	modulefile 
-
-CLEANFILES = \
-	pbs_init.d \
-	limits.pbs_mom \
-	limits.post_services
-
-limits.pbs_mom: $(srcdir)/limits.pbs_mom.compat
-	cp $? $@
-
-limits.post_services: $(srcdir)/limits.post_services.compat
-	cp $? $@
+check_cgroup=$$
+path=`awk '/cgroup/ {print $2; exit}' /proc/mounts`
+cgpath=$path/systemd/system.slice/pbs.service
+if [ -e $cgpath/cgroup.procs ]; then
+    echo $check_cgroup > $cgpath/cgroup.procs
+fi
+exec "$@"

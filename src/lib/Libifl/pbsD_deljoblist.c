@@ -62,17 +62,21 @@
 /**
  * @brief	Deallocate a svr_jobid_list_t list
  * @param[out]	list - the list to deallocate
+ * @param[in]	shallow - shallow free (don't free the individual jobids in the array)
  * @return	void
  */
 void
-free_svrjobidlist(svr_jobid_list_t *list)
+free_svrjobidlist(svr_jobid_list_t *list, int shallow)
 {
 	svr_jobid_list_t *iter_list = NULL;
 	svr_jobid_list_t *next = NULL;
 
 	for (iter_list = list; iter_list != NULL; iter_list = next) {
 		next = iter_list->next;
-		free(iter_list->jobids);
+		if (shallow)
+			free(iter_list->jobids);
+		else
+			free_str_array(iter_list->jobids);
 		free(iter_list);
 	}
 }
@@ -594,7 +598,7 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 	bcastjids = NULL;
 
 	if (msvr)
-		free_svrjobidlist(svr_jobid_list_hd);
+		free_svrjobidlist(svr_jobid_list_hd, 1);
 	else
 		free(svr_jobid_list_hd);
 
@@ -602,7 +606,7 @@ PBSD_deljoblist(int c, int function, char **jobids, int numjids, char *extend)
 
 err:
 	free(bcastjids);
-	free_svrjobidlist(svr_jobid_list_hd);
+	free_svrjobidlist(svr_jobid_list_hd, 1);
 	pbs_delstatfree(retlist);
 	return NULL;
 }

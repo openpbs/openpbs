@@ -3525,12 +3525,15 @@ check_resource_set_on_jobs_or_resvs(struct batch_request *preq, resource_def *pr
 	char *rmatch;
 	int rlen;
 	resource *presc;
+	resource *presc_list;
+	resource *presc_used;
 
 	/* Reject if resource is on a job and the type or flag are being modified */
 
 	for (pj = (job *)GET_NEXT(svr_alljobs); pj != NULL; pj = (job *)GET_NEXT(pj->ji_alljobs)) {
-		presc = get_resource(get_jattr(pj, JOB_ATR_resource), prdef);
-		if ((presc != NULL) && (mod == 1)) {
+		presc_list = get_resource(get_jattr(pj, JOB_ATR_resc_used), prdef);
+		presc_used = get_resource(get_jattr(pj, JOB_ATR_resource), prdef);
+		if (((presc_list != NULL) || presc_used != NULL ) && (mod == 1)) {
 			reply_text(preq, PBSE_RESCBUSY, "Resource busy on job");
 			return 1;
 		}

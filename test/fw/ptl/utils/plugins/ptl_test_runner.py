@@ -70,7 +70,7 @@ from ptl.utils.pbs_dshutils import TimeOut
 from ptl.utils.pbs_testsuite import (MINIMUM_TESTCASE_TIMEOUT,
                                      REQUIREMENTS_KEY, TIMEOUT_KEY)
 from ptl.utils.plugins.ptl_test_info import get_effective_reqs
-from ptl.utils.pbs_testusers import PBS_ALL_USERS
+from ptl.utils.pbs_testusers import PBS_ALL_USERS, PBS_USERS, PbsUser
 from io import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
@@ -1038,6 +1038,32 @@ class PTLTestRunner(Plugin):
     def _cleanup(self):
         self.logger.info('Cleaning up temporary files')
         du = DshUtils()
+        hosts = self.param_dict['moms']
+        for server in self.param_dict['servers']:
+            if server not in self.param_dict['moms']:
+                hosts.update(self.param_dict['servers'])
+        for user in PBS_USERS:
+            self.logger.info('Cleaning %s\'s home directory' % (str(user)))
+            runas = PbsUser.get_user(user)
+            for host in hosts:
+                ret = du.run_cmd(host, cmd=['echo', '$HOME'], sudo=True,
+                                 runas=runas, logerr=False, as_script=True)
+                if ret['rc'] == 0:
+                    path = ret['out'][0].strip()
+                else:
+                    return None
+                ftd = []
+                files = du.listdir(host, path=path, runas=user)
+                bn = os.path.basename
+                ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
+                ftd.extend([f for f in files if bn(f).startswith('STDIN')])
+
+                if len(ftd) > 1000:
+                    for i in range(0, len(ftd), 1000):
+                        j = i + 1000
+                        du.rm(host, path=ftd[i:j], runas=user,
+                              force=True, level=logging.DEBUG)
+
         root_dir = os.sep
         dirlist = set([os.path.join(root_dir, 'tmp'),
                        os.path.join(root_dir, 'var', 'tmp')])

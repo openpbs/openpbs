@@ -61,7 +61,7 @@
 #define MAX_TIME_DELAY_LEN 32
 #define GETOPT_ARGS "W:x"
 
-extern void free_svrjobidlist(svr_jobid_list_t *list);
+extern void free_svrjobidlist(svr_jobid_list_t *list, int shallow);
 extern int append_jobid(svr_jobid_list_t *svr, char *jobid);
 extern int add_jid_to_list_by_name(char *job_id, char *svrname, svr_jobid_list_t **svr_jobid_list_hd);
 
@@ -91,13 +91,13 @@ process_deljobstat(char *clusterid, struct batch_deljob_status **list, svr_jobid
 
 			/* Check if job was moved to a remote cluster */
 			if (locate_job(p_delstatus->name, clusterid, rmt_server)) {
-				if (add_jid_to_list_by_name(p_delstatus->name, rmt_server, rmtlist) != 0)
+				if (add_jid_to_list_by_name(strdup(p_delstatus->name), rmt_server, rmtlist) != 0)
 					return pbs_errno;
 				else {	/* Job found on remote server, let's remove it from error list */
 					if (prev != NULL)
-						*list = next;
-					else
 						prev->next = next;
+					else
+						*list = next;
 					p_delstatus->next = NULL;
 					pbs_delstatfree(p_delstatus);
 					p_delstatus = prev;
@@ -250,7 +250,7 @@ delete_jobs_for_cluster(char *clusterid, char **jobids, int numids, int dfltmail
 		}
 	}
 
-	free_svrjobidlist(rmtsvr_jobid_list);
+	free_svrjobidlist(rmtsvr_jobid_list, 0);
 	pbs_disconnect(connect);
 
 	return any_failed;
@@ -406,7 +406,7 @@ char **envp;
 		any_failed_local = delete_jobs_for_cluster(iter_list->svrname, iter_list->jobids,
 						     iter_list->total_jobs, dfltmail, warg);
 	}
-	free_svrjobidlist(jobsbycluster);
+	free_svrjobidlist(jobsbycluster, 1);
 	if (any_failed_local)
 		any_failed = any_failed_local;
 
