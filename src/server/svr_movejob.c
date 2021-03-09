@@ -207,7 +207,7 @@ local_move(job *jobp, struct batch_request *req)
 	char	  *destination = jobp->ji_qs.ji_destin;
 	int	   mtype;
 	long	newtype = -1;
-	long	time_msec;
+	long	time_usec;
 	struct timeval	tval;
 
 	/* search for destination queue */
@@ -248,9 +248,9 @@ local_move(job *jobp, struct batch_request *req)
 	pbs_strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME + 1);
 
 	gettimeofday(&tval, NULL);
-	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+	time_usec = (tval.tv_sec * 1000000L) + tval.tv_usec;
 
-	set_jattr_l_slim(jobp, JOB_ATR_qrank, time_msec, SET);
+	set_jattr_l_slim(jobp, JOB_ATR_qrank, time_usec, SET);
 
 	if (qp->qu_resvp) {
 		set_jattr_generic(jobp, JOB_ATR_reserve_ID, qp->qu_resvp->ri_qs.ri_resvID, NULL, INTERNAL);

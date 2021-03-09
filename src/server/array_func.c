@@ -682,7 +682,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	svrattrl  *psatl;
 	job 	  *subj;
 	long	   eligibletime;
-	long	    time_msec;
+	long	    time_usec;
 	struct timeval	    tval;
 	char path[MAXPATHLEN + 1];
 
@@ -770,9 +770,9 @@ create_subjob(job *parent, char *newjid, int *rc)
 	}
 
 	gettimeofday(&tval, NULL);
-	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+	time_usec = (tval.tv_sec * 1000000L) + tval.tv_usec;
 	/* set the queue rank attribute */
-	set_jattr_l_slim(subj, JOB_ATR_qrank, time_msec, SET);
+	set_jattr_l_slim(subj, JOB_ATR_qrank, time_usec, SET);
 	if (svr_enquejob(subj, NULL) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;
