@@ -537,6 +537,7 @@ if __name__ == '__main__':
     test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
     os.environ['NOSE_TESTMATCH'] = test_regex
     nose_config = PTLNoseConfig(
+        env=os.environ,
         log_format=fmt,
         outfile_handler=outfile_hdlr,
         plugins=PluginManager(plugins=plugins),
