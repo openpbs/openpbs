@@ -772,7 +772,6 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		reply_ack(preq);
 		if (save_subjob(pjob)) {
 			free_nodes(pjob);
-			req_reject(PBSE_SAVE_ERR, 0, preq);
 			return;
 		}
 	}
