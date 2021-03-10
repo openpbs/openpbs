@@ -179,7 +179,6 @@ force_reque(job *pjob)
 	free_jattr(pjob, JOB_ATR_exec_host);
 	free_jattr(pjob, JOB_ATR_exec_host2);
 	free_jattr(pjob, JOB_ATR_exec_vnode);
-	free_jattr(pjob, JOB_ATR_pset);
 	/* job dir has no meaning for re-queued jobs, so unset it */
 	free_jattr(pjob, JOB_ATR_jobdir);
 	unset_extra_attributes(pjob);

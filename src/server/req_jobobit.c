@@ -1106,7 +1106,6 @@ on_job_rerun(struct work_task *ptask)
 					free_jattr(pjob, JOB_ATR_exec_vnode);
 					free_jattr(pjob, JOB_ATR_exec_host);
 					free_jattr(pjob, JOB_ATR_exec_host2);
-					free_jattr(pjob, JOB_ATR_pset);
 				}
 				pjob->ji_momhandle = -1;
 				pjob->ji_mom_prot = PROT_INVALID;

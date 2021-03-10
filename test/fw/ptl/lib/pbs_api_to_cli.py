@@ -142,7 +142,6 @@ api_to_cli = {
     ATTR_ReqCred: 'require_cred',
     ATTR_runcount: 'W run_count=',
     ATTR_stime: 's',
-    ATTR_pset: 'pset',
     ATTR_executable: 'executable',
     ATTR_Arglist: 'argument_list',
     ATTR_version: 'pbs_version',
