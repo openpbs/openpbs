@@ -386,6 +386,8 @@ req_runjob(struct batch_request *preq)
 		return; /* note, req_reject already called */
 
 	if ((dest = need_to_run_elsewhere(preq))) {
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+			   jid, "Moving job to server %s in order to run", dest);
 		move_and_runjob(preq, parent, dest);
 		return;
 	}
