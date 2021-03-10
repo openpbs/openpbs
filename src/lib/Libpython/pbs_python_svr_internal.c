@@ -6644,6 +6644,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 	PyObject 		*py_resvlist = NULL;
 	PyObject 		*py_job_o = NULL;
 	PyObject 		*py_resv = NULL;
+	PyObject 		*py_resv_o = NULL;
 	char			*queue;
 	PyObject		*py_varlist = NULL;
 	PyObject		*py_varlist_o = NULL;
@@ -6916,6 +6917,48 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 
 			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
 			break;
+		case HOOK_EVENT_MODIFYRESV:
+
+			py_resv = _pbs_python_event_get_param(PY_EVENT_PARAM_RESV);
+			if (!py_resv) {
+				log_err(PBSE_INTERNAL, __func__,
+					"No resv parameter found for event!");
+				goto event_to_request_exit;
+			}
+
+			py_resv_o = _pbs_python_event_get_param(PY_EVENT_PARAM_RESV_O);
+			if (!py_resv_o) {
+				log_err(PBSE_INTERNAL, __func__,
+					"No resv_o parameter found for event!");
+				goto event_to_request_exit;
+			}
+
+			/* Need to check if ATTR_v (i.e. Variable_list) changed, and if */
+			/* so, needs to be sent with the MODIFYRESV request.	            */
+
+			if (PyObject_HasAttrString(py_resv, ATTR_v))
+				py_varlist = PyObject_GetAttrString(py_resv, ATTR_v); /* NEW */
+
+			if (PyObject_HasAttrString(py_resv_o, ATTR_v))
+				py_varlist_o = PyObject_GetAttrString(py_resv_o, ATTR_v);
+			/* NEW */
+
+			if ((py_varlist != NULL) && (py_varlist_o != NULL) &&
+				(PyObject_RichCompareBool(py_varlist, py_varlist_o, Py_EQ))) {
+				/* upon success, py_resv decreases ref count to py_varlist */
+				(void)PyObject_SetAttrString(py_resv, ATTR_v, Py_None);
+			}
+
+			Py_CLEAR(py_varlist);
+			Py_CLEAR(py_varlist_o);
+
+			if (pbs_python_populate_svrattrl_from_python_class(py_resv,
+				&((struct rq_manage *)(req_params->rq_manage))->rq_attr, NULL, 0) == -1) {
+				goto event_to_request_exit;
+			}
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_manage *)(req_params->rq_manage))->rq_attr);
+			break;
+
 		case HOOK_EVENT_MODIFYJOB:
 
 			py_job = _pbs_python_event_get_param(PY_EVENT_PARAM_JOB);
