@@ -431,7 +431,7 @@ parse_config(const char *fname)
 				} else if (!strcmp(config_name, PARSE_DEDICATED_PREFIX))
 					tmpconf.ded_prefix = config_value;
 				else if (!strcmp(config_name, PARSE_PRIMETIME_PREFIX))
-						tmpconf.pt_prefix = config_value;
+					tmpconf.pt_prefix = config_value;
 				else if (!strcmp(config_name, PARSE_NONPRIMETIME_PREFIX)) {
 					tmpconf.npt_prefix = config_value;
 				} else if (!strcmp(config_name, PARSE_SMP_CLUSTER_DIST)) {
@@ -860,7 +860,3 @@ preempt_cmp(const void *p1, const void *p2)
 			return 0;
 	}
 }
-
-peer_queue::peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {}
-timegap::timegap(time_t from, time_t to): from(from), to(to) {}
-dyn_res::dyn_res(const char *res, const char *cmdline, const char *fname): res(res), command_line(cmdline), script_name(fname) {}

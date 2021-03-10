@@ -1067,7 +1067,7 @@ struct timegap
 {
 	time_t from;
 	time_t to;
-	timegap(time_t from, time_t to);
+	timegap(time_t tfrom, time_t tto): from(tfrom), to(tto) {}
 };
 
 struct dyn_res
@@ -1075,7 +1075,7 @@ struct dyn_res
 	std::string res;
 	std::string command_line;
 	std::string script_name;
-	dyn_res(const char *, const char *, const char *);
+	dyn_res(const char *resource, const char *cmdline, const char *fname): res(resource), command_line(cmdline), script_name(fname) {}
 };
 
 struct peer_queue
@@ -1084,7 +1084,7 @@ struct peer_queue
 	const std::string remote_queue;
 	const std::string remote_server;
 	int peer_sd;
-	peer_queue(const char *, const char *, const char *);
+	peer_queue(const char *lqueue, const char *rqueue, const char *rserver): local_queue(lqueue), remote_queue(rqueue), remote_server(rserver) {}
 };
 
 struct nspec

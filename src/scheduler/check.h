@@ -41,6 +41,8 @@
 #ifndef	_CHECK_H
 #define	_CHECK_H
 
+#include <vector>
+
 #include "server_info.h"
 #include "queue_info.h"
 #include "job_info.h"
