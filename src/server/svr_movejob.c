@@ -204,11 +204,11 @@ int
 local_move(job *jobp, struct batch_request *req)
 {
 	pbs_queue *qp;
-	char	  *destination = jobp->ji_qs.ji_destin;
-	int	   mtype;
-	long	newtype = -1;
-	Long	time_usec;
-	struct timeval	tval;
+	char *destination = jobp->ji_qs.ji_destin;
+	int mtype;
+	long newtype = -1;
+	long long time_usec;
+	struct timeval tval;
 
 	/* search for destination queue */
 	if ((qp = find_queuebyname(destination)) == NULL) {

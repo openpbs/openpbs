@@ -162,7 +162,7 @@ enum attr_type {
 
 union attr_val {	      /* the attribute value	*/
 	long		      at_long;	/* long integer */
-	Long		      at_ll;	/* largest long integer */
+	long long		      at_ll;	/* largest long integer */
 	char		      at_char;	/* single character */
 	char 		     *at_str;	/* char string  */
 	struct array_strings *at_arst;	/* array of strings */
@@ -612,7 +612,7 @@ extern void *cr_attrdef_idx(attribute_def *adef, int limit);
 int set_attr_generic(attribute *pattr, attribute_def *pdef, char *value, char *rescn, enum batch_op op);
 int set_attr_with_attr(attribute_def *pdef, attribute *oattr, attribute *nattr, enum batch_op op);
 void set_attr_l(attribute *pattr, long value, enum batch_op op);
-void set_attr_ll(attribute *pattr, Long value, enum batch_op op);
+void set_attr_ll(attribute *pattr, long long value, enum batch_op op);
 void set_attr_c(attribute *pattr, char value, enum batch_op op);
 void set_attr_b(attribute *pattr, long val, enum batch_op op);
 void set_attr_short(attribute *pattr, short value, enum batch_op op);
@@ -623,7 +623,7 @@ void post_attr_set(attribute *attr);
 /* Attr getters */
 char get_attr_c(const attribute *pattr);
 long get_attr_l(const attribute *pattr);
-Long get_attr_ll(const attribute *pattr);
+long long get_attr_ll(const attribute *pattr);
 char *get_attr_str(const attribute *pattr);
 struct array_strings *get_attr_arst(const attribute *pattr);
 int is_attr_set(const attribute *pattr);

@@ -1220,7 +1220,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				resresv->qtime = -1;
 		}
 		else if (!strcmp(attrp->name, ATTR_qrank)) { /* queue rank */
-			Long qrank;
+			long long qrank;
 			qrank = strtoll(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				resresv->qrank = qrank;

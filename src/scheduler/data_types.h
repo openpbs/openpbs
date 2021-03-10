@@ -60,7 +60,6 @@
 #include <libutil.h>
 #include "constant.h"
 #include "config.h"
-#include "Long.h"
 #include "pbs_bitmap.h"
 #include "pbs_share.h"
 #include "range.h"
@@ -785,7 +784,7 @@ class resource_resv
 	int ec_index;			/* Index into server's job_set array*/
 
 	time_t qtime;			/* time res resv was submitted */
-	Long qrank;			/* time on which we might need to stabilize the sort */
+	long long qrank;			/* time on which we might need to stabilize the sort */
 	time_t start;			/* start time (UNDEFINED means no start time */
 	time_t end;			/* end time (UNDEFINED means no end time */
 	time_t duration;		/* duration of resource resv request */

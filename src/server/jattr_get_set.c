@@ -244,11 +244,11 @@ get_jattr_long(const job *pjob, int attr_idx)
  * @param[in]	pjob - pointer to the job
  * @param[in]	attr_idx - index of the attribute to return
  *
- * @return	long
- * @retval	long value of the attribute
+ * @return	long long
+ * @retval	long long value of the attribute
  * @retval	-1 if pjob is NULL
  */
-Long
+long long
 get_jattr_ll(const job *pjob, int attr_idx)
 {
 	if (pjob != NULL)
@@ -404,7 +404,7 @@ set_jattr_l_slim(job *pjob, int attr_idx, long val, enum batch_op op)
  * @retval	1 for failure
  */
 int
-set_jattr_ll_slim(job *pjob, int attr_idx, Long val, enum batch_op op)
+set_jattr_ll_slim(job *pjob, int attr_idx, long long val, enum batch_op op)
 {
 	if (pjob == NULL)
 		return 1;

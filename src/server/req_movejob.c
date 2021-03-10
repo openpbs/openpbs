@@ -202,13 +202,13 @@ req_movejob(struct batch_request *req)
 void
 req_orderjob(struct batch_request *req)
 {
-	int      jt1, jt2;            /* job type */
-	job	*pjob;
-	job	*pjob1;
-	job	*pjob2;
-	Long	 rank;
-	int	 rc;
-	char	 tmpqn[PBS_MAXQUEUENAME + 1];
+	int jt1, jt2; /* job type */
+	job *pjob;
+	job *pjob1;
+	job *pjob2;
+	long long rank;
+	int rc;
+	char tmpqn[PBS_MAXQUEUENAME + 1];
 
 	if ((pjob1 = chk_job_request(req->rq_ind.rq_move.rq_jid, req, &jt1, NULL)) == NULL)
 		return;

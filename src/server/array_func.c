@@ -672,18 +672,18 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 job *
 create_subjob(job *parent, char *newjid, int *rc)
 {
-	pbs_list_head  attrl;
-	int	   i;
-	int	   j;
-	char	  *index;
+	pbs_list_head attrl;
+	int i;
+	int j;
+	char *index;
 	attribute_def *pdef;
 	attribute *ppar;
 	attribute *psub;
-	svrattrl  *psatl;
-	job 	  *subj;
-	long	   eligibletime;
-	Long	    time_usec;
-	struct timeval	    tval;
+	svrattrl *psatl;
+	job *subj;
+	long eligibletime;
+	long long time_usec;
+	struct timeval tval;
 	char path[MAXPATHLEN + 1];
 
 	if (newjid == NULL) {

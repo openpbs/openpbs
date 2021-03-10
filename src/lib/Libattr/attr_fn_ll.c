@@ -102,7 +102,7 @@ decode_ll(attribute *patr, char *name, char *rescn, char *val)
 
 	if ((val != NULL) && (strlen(val) != 0)) {
 
-		patr->at_val.at_ll = (Long)strTouL(val, &pc, 0);
+		patr->at_val.at_ll = strtoll(val, &pc, 0);
 		if (*pc != '\0')
 			return (PBSE_BADATVAL);	 /* invalid string */
 		post_attr_set(patr);
@@ -238,7 +238,7 @@ comp_ll(attribute *attr, attribute *with)
  *
  */
 void
-set_attr_ll(attribute *pattr, Long value, enum batch_op op)
+set_attr_ll(attribute *pattr, long long value, enum batch_op op)
 {
 	if (pattr == NULL) {
 		log_err(-1, __func__, "Invalid pointer to attribute");
@@ -267,13 +267,13 @@ set_attr_ll(attribute *pattr, Long value, enum batch_op op)
  *
  * @param[in]	pattr	-	pointer to the attribute
  *
- * @return	long
- * @retval	long value of the attribute
+ * @return	long long
+ * @retval	long long value of the attribute
  *
  * @par MT-Safe: No
  * @par Side Effects: None
  */
-Long
+long long
 get_attr_ll(const attribute *pattr)
 {
 	return  pattr->at_val.at_ll;
