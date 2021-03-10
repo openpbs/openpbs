@@ -530,7 +530,8 @@ free_pnode(struct pbsnode *pnode)
 	free(pnode->nd_moms);
 	/* free attributes */
 	for (i = 0; i < ND_ATR_LAST; i++) {
-		node_attr_def[i].at_free(&pnode->nd_attr[i]);
+		if (is_attr_set(&pnode->nd_attr[i]))
+			node_attr_def[i].at_free(&pnode->nd_attr[i]);
 	}
 	free(pnode); /* delete the pnode from memory */
 }

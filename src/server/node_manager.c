@@ -6219,7 +6219,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 				rc = PBSE_SYSTEM;
 		} else
 			rc = PBSE_SYSTEM;
-		
+
 	} else {
 		struct pbssubn *lst_sn;
 		int ncpus;
@@ -6279,7 +6279,7 @@ assign_jobs_on_subnode(struct pbsnode *pnode, int hw_ncpus, char *jobid, int svr
 				rc = PBSE_SYSTEM;
 				goto end;
 			}
-			
+
 			DBPRT(("set_node: node: %s/%ld to job %s, still free: %ld\n",
 			       pnode->nd_name, snp->index, jobid,
 			       pnode->nd_nsnfree))
@@ -8100,7 +8100,9 @@ update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
 	long ncpus;
 	struct pbsnode *pnode;
 
-	for (chunk = parse_plus_spec(exec_vnode, &rc); chunk && !rc; chunk = parse_plus_spec(NULL, &rc)) {
+	for (chunk = parse_plus_spec(exec_vnode, &rc);
+	     chunk && !rc; chunk = parse_plus_spec(NULL, &rc)) {
+
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			if ((pnode = find_nodebyname(noden)) == NULL)
 				continue;
@@ -8109,9 +8111,9 @@ update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
 				if (prdef == NULL)
 					return;
 				/* skip all non-consumable resources (e.g. aoe) */
-				if ((prdef->rs_flags & asgn) == 0) {
+				if ((prdef->rs_flags & asgn) == 0)
 					continue;
-				}
+
 				if (!strcmp(prdef->rs_name, "ncpus")) {
 					ncpus = strtol(pkvp[j].kv_val, NULL, 10);
 					if (ncpus < 0) {
@@ -8121,16 +8123,11 @@ update_jobs_on_node(char *jid, char *exec_vnode, int op, int share_job)
 					if (op == INCR) {
 						assign_jobs_on_subnode(pnode, ncpus, jid, 0, share_job);
 						update_node_state(pnode, share_job);
-					}
-					else if (op == DECR) {
+					} else if (op == DECR)
 						deallocate_job_from_node(jid, pnode);
-					}
 				}
 			}
 		}
-		chunk = parse_plus_spec(NULL, &rc);
-		if (rc != 0)
-			return;
 	}
 }
 
