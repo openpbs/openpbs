@@ -1567,7 +1567,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
  						}
 					}
 
-					if (rr->nodepart_name != NULL) {
+					if (rr->nodepart_name != NULL && !msvr_mode()) {
 						if (array != NULL)
 							update_job_attr(pbs_sd, array, ATTR_pset, NULL,
 								array->nodepart_name, NULL, UPDATE_NOW);
