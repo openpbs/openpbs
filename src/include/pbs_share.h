@@ -92,7 +92,7 @@ extern "C" {
 #define COMMENTLEN_WIDE  111
 
 /* number of digits to print after the decimal point for floats */
-#define FLOAT_NUM_DIGITS 12
+#define FLOAT_NUM_DIGITS 4
 
 /* the size (in bytes) of a word.  All resources are kept in kilobytes
  * internally in the server.  If any specification is in words, it will be

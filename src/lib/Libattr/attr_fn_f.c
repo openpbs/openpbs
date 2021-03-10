@@ -104,7 +104,7 @@ decode_f(attribute *patr, char *name, char *rescn, char *val)
 	size_t	len;
 	if ((val != NULL) && ((len = strlen(val)) != 0)) {
 		char	*end;
-		double	fval;
+		float	fval;
 
 		errno = 0;
 		/*
@@ -112,7 +112,7 @@ decode_f(attribute *patr, char *name, char *rescn, char *val)
 		 * it is only available in C99 mode.  Use strtod instead.
 		 * @see https://lists.debian.org/debian-glibc/2004/02/msg00176.html
 		 */
-		fval = strtod(val, &end);
+		fval = (float)strtod(val, &end);
 		/* if any part of val is not converted or errno set, error */
 		if (&val[len] != end || errno != 0)
 			return (PBSE_BADATVAL);	 /* invalid string */
