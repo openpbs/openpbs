@@ -4525,12 +4525,12 @@ combine_nspec_array(nspec **nspec_arr)
 	for (i = 0; nspec_arr[i] != NULL; i++) {
 		auto numap = nspec_umap.find(nspec_arr[i]->ninfo->rank);
 		if (numap == nspec_umap.end()) {
-			nspec_umap[nspec_arr[i]->ninfo->rank] = nspec_arr[i];
 			new_nspec_arr[k++] = ns = new_nspec();
 			if (ns == NULL) {
 				free_nspecs(new_nspec_arr);
 				return NULL;
 			}
+			nspec_umap[nspec_arr[i]->ninfo->rank] = ns;
 
 			ns->end_of_chunk = 1;
 			ns->ninfo = nspec_arr[i]->ninfo;
