@@ -348,7 +348,7 @@ resource_req *create_resource_req(const char *name, const char *value);
  *
  * return converted select string
  */
-char *create_select_from_nspec(nspec **nspec_array);
+std::string create_select_from_nspec(nspec **nspec_array);
 
 /* function returns true if job/resv is in a state which it can be run */
 int in_runnable_state(resource_resv *resresv);

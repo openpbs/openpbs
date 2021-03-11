@@ -1589,12 +1589,9 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 			}
 		}
 		if (resresv->execselect == NULL) {
-			char *selectspec;
+			std::string selectspec;
 			selectspec = create_select_from_nspec(nspec_arr);
-			if (selectspec != NULL) {
-				resresv->execselect = parse_selspec(selectspec);
-				free(selectspec);
-			}
+			resresv->execselect = parse_selspec(selectspec);
 		}
 		if (resresv->job->dependent_jobs != NULL) {
 			for (i = 0; resresv->job->dependent_jobs[i] != NULL; i++) {
@@ -2390,11 +2387,10 @@ compare_non_consumable(schd_resource *res, resource_req *req)
  *
  * @return	converted select string
  */
-char *
+std::string
 create_select_from_nspec(nspec **nspec_array)
 {
-	char *select_spec = NULL;
-	int selsize = 0;
+	std::string select_spec;
 	char buf[2048];
 	resource_req *req;
 	int i;
@@ -2411,45 +2407,27 @@ create_select_from_nspec(nspec **nspec_array)
 		if (nspec_array[i]->resreq != NULL) {
 			if (nspec_array[i]->ninfo != NULL) {
 				snprintf(buf, sizeof(buf), "1:vnode=%s", nspec_array[i]->ninfo->name.c_str());
-				if (pbs_strcat(&select_spec, &selsize, buf) == NULL) {
-					if (selsize > 0)
-						free(select_spec);
-					return NULL;
-				}
+				select_spec += nspec_array[i]->ninfo->name;
 			} else {
 				/* We need the resources back, but not necessarily on the same node */
-				if (pbs_strcat(&select_spec, &selsize, "1") == NULL) {
-					if (selsize > 0)
-						free(select_spec);
-					return NULL;
-				}
+				select_spec += "1";
 			}
 			for (req = nspec_array[i]->resreq; req != NULL; req = req->next) {
 				char resstr[MAX_LOG_SIZE];
 
 				res_to_str_r(req, RF_REQUEST, resstr, sizeof(resstr));
 				if (resstr[0] == '\0') {
-					free(select_spec);
-					return NULL;
+					return {};
 				}
 				snprintf(buf, sizeof(buf), ":%s=%s", req->name, resstr);
-				if (pbs_strcat(&select_spec, &selsize, buf) == NULL) {
-					if (selsize > 0)
-						free(select_spec);
-					return NULL;
-				}
+				select_spec += buf;
 			}
-			if (pbs_strcat(&select_spec, &selsize, "+") == NULL) {
-				if (selsize > 0)
-					free(select_spec);
-				return NULL;
-			}
+			select_spec += "+";
 		}
 	}
-	if (select_spec != NULL) {
-		/* get rid of trailing '+' */
-		select_spec[strlen(select_spec) - 1] = '\0';
-	}
+
+	/* get rid of trailing '+' */
+	select_spec.pop_back();
 
 	return select_spec;
 }

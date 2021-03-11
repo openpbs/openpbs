@@ -3985,7 +3985,7 @@ parse_placespec(char *place_str)
  * @par MT-safe: Yes
  */
 selspec *
-parse_selspec(char *select_spec)
+parse_selspec(const std::string& sspec)
 {
 	/* select specs can be large.  We need to allocate a buffer large enough
 	 * to handle the spec.  We'll keep it around so we don't have to allocate
@@ -3996,7 +3996,7 @@ parse_selspec(char *select_spec)
 
 	selspec *spec;
 	int num_plus;
-	char *p;
+	const char *p;
 
 	char *tok;
 	char *endp = NULL;
@@ -4017,8 +4017,7 @@ parse_selspec(char *select_spec)
 	int i;
 	int n = 0;
 
-	if (select_spec == NULL)
-		return NULL;
+	const char *select_spec = sspec.c_str();
 
 	if ((spec = new selspec()) == NULL)
 		return NULL;

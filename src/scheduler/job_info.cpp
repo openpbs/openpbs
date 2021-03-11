@@ -561,7 +561,7 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		;
 
 	for (i = sidx, jidx = 0; i <= eidx && cur_job != NULL; cur_job = cur_job->next, i++) {
-		char *selectspec = NULL;
+		std::string selectspec;
 		resource_resv *resresv;
 		resource_req *req;
 		resource_req *walltime_req = NULL;
@@ -663,10 +663,8 @@ query_jobs_chunk(th_data_query_jinfo *data)
 		else if (resresv->nspec_arr != NULL)
 			selectspec = create_select_from_nspec(resresv->nspec_arr);
 
-		if (resresv->nspec_arr != NULL) {
+		if (resresv->nspec_arr != NULL)
 			resresv->execselect = parse_selspec(selectspec);
-			free(selectspec);
-		}
 
 		/* Find out if it is a shrink-to-fit job.
 		 * If yes, set the duration to max walltime.
@@ -4965,7 +4963,7 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
  */
 void create_res_released(status *policy, resource_resv *pjob)
 {
-	char *selectspec = NULL;
+	std::string selectspec ;
 	if (pjob->job->resreleased == NULL) {
 		pjob->job->resreleased = create_res_released_array(policy, pjob);
 		if (pjob->job->resreleased == NULL) {
@@ -4976,7 +4974,6 @@ void create_res_released(status *policy, resource_resv *pjob)
 	selectspec = create_select_from_nspec(pjob->job->resreleased);
 	delete pjob->execselect;
 	pjob->execselect = parse_selspec(selectspec);
-	free(selectspec);
 	return;
 }
 

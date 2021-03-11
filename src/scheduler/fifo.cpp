@@ -2003,16 +2003,15 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 				free_nspecs(bjob->nspec_arr);
 			bjob->nspec_arr = parse_execvnode(exec, sinfo, NULL);
 			if (bjob->nspec_arr != NULL) {
-				char *selectspec;
+				std::string selectspec;
 				if (bjob->ninfo_arr != NULL)
 					free(bjob->ninfo_arr);
 				bjob->ninfo_arr =
 					create_node_array_from_nspec(bjob->nspec_arr);
 				selectspec = create_select_from_nspec(bjob->nspec_arr);
-				if (selectspec != NULL) {
+				if (!selectspec.empty()) {
 					delete bjob->execselect;
 					bjob->execselect = parse_selspec(selectspec);
-					free(selectspec);
 				}
 			} else {
 				free_server(nsinfo);
