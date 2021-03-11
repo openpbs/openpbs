@@ -116,6 +116,7 @@ class TestNodeBuckets(TestFunctional):
 
         self.server.delete(jid, wait=True)
 
+    @timeout(900)
     def test_basic(self):
         """
         Request nodes of a specific color and make sure they are correctly
@@ -136,6 +137,7 @@ class TestNodeBuckets(TestFunctional):
             self.assertTrue('yellow' in
                             n[0]['resources_available.color'])
 
+    @timeout(900)
     def test_multi_bucket(self):
         """
         Request two different chunk types which need to be allocated from
@@ -160,6 +162,7 @@ class TestNodeBuckets(TestFunctional):
             n = self.server.status(NODE, id=nodes[i])
             self.assertTrue('blue' in n[0]['resources_available.color'])
 
+    @timeout(900)
     def test_multi_bucket2(self):
         """
         Request nodes from all 7 different buckets and see them allocated
@@ -202,6 +205,7 @@ class TestNodeBuckets(TestFunctional):
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid)
         self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
+    @timeout(900)
     def test_calendaring1(self):
         """
         Test to see that nodes that are used in the future for
@@ -247,6 +251,7 @@ class TestNodeBuckets(TestFunctional):
         self.server.expect(JOB, 'comment', op=SET, id=jid4, interval=1)
         self.scheduler.log_match(jid4 + ';Chunk: ' + chunk3, n=10000)
 
+    @timeout(900)
     def test_calendaring2(self):
         """
         Test that nodes that a reservation calendared on them later on
@@ -282,6 +287,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertTrue(vnode + '[2865]' in n, msg)
         self.assertTrue(vnode + '[2870]' in n, msg)
 
+    @timeout(900)
     def test_calendaring3(self):
         """
         Test that a future reservation's nodes are used first for a job
@@ -325,6 +331,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertTrue(vnode + '[2865]' in n, msg)
         self.assertTrue(vnode + '[2870]' in n, msg)
 
+    @timeout(900)
     def test_buckets_and_non(self):
         """
         Test that jobs requesting buckets and not requesting buckets
@@ -358,6 +365,7 @@ class TestNodeBuckets(TestFunctional):
         for n in nodes2:
             self.assertNotEqual(n, nodes1[0], msg)
 
+    @timeout(900)
     def test_not_buckets(self):
         """
         Test to make sure the jobs that should use the standard node searching
@@ -484,6 +492,7 @@ class TestNodeBuckets(TestFunctional):
                                vnodes_per_host=4)
         self.check_normal_path(sel='2:ncpus=8')
 
+    @timeout(900)
     def test_multi_vnode_resv(self):
         """
         Test that node buckets do not get in the way of running jobs on
@@ -528,6 +537,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(len(set(s)), 1,
                          "Job1 ran in more than one placement set")
 
+    @timeout (900)
     def test_bucket_sort(self):
         """
         Test if buckets are sorted properly: all of the yellow bucket
@@ -555,6 +565,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(c1, 'yellow', "Job didn't run on yellow nodes")
         self.assertEqual(c2, 'yellow', "Job didn't run on yellow nodes")
 
+    @timeout(900)
     def test_psets(self):
         """
         Test placement sets with node buckets
@@ -599,6 +610,7 @@ class TestNodeBuckets(TestFunctional):
         for node in used_nodes1:
             self.assertNotIn(node, used_nodes2, 'Jobs share nodes: ' + node)
 
+    @timeout(900)
     def test_psets_calendaring(self):
         """
         Test that jobs in the calendar fit within a placement set
@@ -662,6 +674,7 @@ class TestNodeBuckets(TestFunctional):
             self.assertNotIn(node, used_nodes3,
                              'Jobs will share nodes: ' + node)
 
+    @timeout(900)
     def test_psets_calendaring_resv(self):
         """
         Test that jobs do not run into a reservation and will correctly
@@ -698,6 +711,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(len(set(s)), 1,
                          "Job will run in more than one placement set")
 
+    @timeout(900)
     def test_place_group(self):
         """
         Test node buckets with place=group
@@ -720,6 +734,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(len(set(s)), 1,
                          "Job ran in more than one placement set")
 
+    @timeout(900)
     def test_psets_spanning(self):
         """
         Request more nodes than available in one placement set and see
@@ -768,6 +783,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertGreater(len(set(s)), 1,
                            "Job did not span properly")
 
+    @timeout(900)
     def test_psets_queue(self):
         """
         Test that placement sets work for nodes associated with queues
@@ -829,6 +845,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertGreater(len(set(s)), 1,
                            "Job did not span properly")
 
+    @timeout(900)
     def test_free(self):
         """
         Test that free placement works with the bucket code path
@@ -864,6 +881,7 @@ class TestNodeBuckets(TestFunctional):
         for node in n1:
             self.assertTrue(node not in n2, 'Jobs share nodes: ' + node)
 
+    @timeout(900)
     def test_queue_nodes(self):
         """
         Test that buckets work with nodes associated to a queue
@@ -903,6 +921,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertIn(v1, ev, msg)
         self.assertIn(v2, ev, msg)
 
+    @timeout(900)
     def test_booleans(self):
         """
         Test that booleans are correctly handled if not in the sched_config
@@ -938,6 +957,7 @@ class TestNodeBuckets(TestFunctional):
             self.server.expect(
                 NODE, 'resources_available.bool', op=UNSET, id=n)
 
+    @timeout(900)
     def test_last_pset_can_never_run(self):
         """
         Test that the job does not retain the error value of last placement
