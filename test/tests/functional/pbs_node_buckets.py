@@ -537,7 +537,7 @@ class TestNodeBuckets(TestFunctional):
         self.assertEqual(len(set(s)), 1,
                          "Job1 ran in more than one placement set")
 
-    @timeout (900)
+    @timeout(900)
     def test_bucket_sort(self):
         """
         Test if buckets are sorted properly: all of the yellow bucket
