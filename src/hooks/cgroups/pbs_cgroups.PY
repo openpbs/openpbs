@@ -5890,6 +5890,9 @@ def missing_str(memspecs):
             mem_size = pbs.size(memspecs['mem'])
             if mem_size > vmem_size:
                 event.reject("invalid specification: vmem>mem")
+            elif mem_size == vmem_size:
+                # Avoid creating a "0mb" pbs.size
+                return("cgswap=0b")
             else:
                 cgswap_size = vmem_size - mem_size
                 return ("cgswap="
@@ -5913,13 +5916,18 @@ def missing_str(memspecs):
     if 'vmem' in memspecs and 'cgswap' in memspecs:
         try:
             vmem_size = pbs.size(memspecs['vmem'])
-            cgswap_size = pbs.size(memspecs['cgswap'])
-            if cgswap_size >= vmem_size:
-                event.reject("invalid specification: mem<=0")
+            # Woraround for bug: no arithmetic on zero pbs.size
+            # since user may have specified e.g. "0mb" cgswap
+            if size_as_int(memspecs['cgswap']) == 0:
+                mem_size = vmem_size
+                return ("mem=" + str(mem_size))
             else:
-                mem_size = vmem_size - cgswap_size
-                return ("mem="
-                        + str(mem_size))
+                cgswap_size = pbs.size(memspecs['cgswap'])
+                if cgswap_size >= vmem_size:
+                    event.reject("invalid specification: mem<=0")
+                else:
+                    mem_size = vmem_size - cgswap_size
+                    return ("mem=" + str(mem_size))
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        str(traceback.format_exc().strip().splitlines()))
