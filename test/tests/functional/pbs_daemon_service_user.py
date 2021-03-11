@@ -69,6 +69,7 @@ class TestDaemonServiceUser(TestFunctional):
                 self.server.hostname,
                 confs='PBS_DAEMON_SERVICE_USER'
             )
+        self.server.restart()
         pbs_conf = self.du.parse_pbs_config(self.server.shortname)
         if setup_sched:
             sched_logs = os.path.join(pbs_conf['PBS_HOME'], 'sched_logs')
