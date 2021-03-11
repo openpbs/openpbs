@@ -261,9 +261,10 @@ class TestPBSSnapshot(TestFunctional):
                         self.assertEqual(os.path.basename(common_path),
                                          "server")
                     except AssertionError:
-                        # Check if this was a core file, which would
+                        # Check if this was a server core file, which would
                         # explain why it was captured
-                        if CORE_DIR in file_fullpath:
+                        svrcorepath = os.path.join(CORE_DIR, "server_priv")
+                        if svrcorepath in file_fullpath:
                             continue
                         raise
             # Check 3: qstat_Bf.out exists
