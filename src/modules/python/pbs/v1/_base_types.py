@@ -186,13 +186,20 @@ class PbsAttributeDescriptor():
 
         # if in Python (hook script mode), the hook writer has set value to
         # to None, meaning to unset the attribute.
+
+        try:
+            basestring
+        except Exception:
+            basestring = str
+
         if (value is None) and _pbs_v1.in_python_mode():
             set_value = ""
-        elif (value is None) or (value == "") \
-            or isinstance(value, self._value_type) \
-            or self._is_entity \
-            or (hasattr(obj, "_is_entity")
-                and getattr(obj, "_is_entity")):
+        elif ((value is None)
+              or (isinstance(value, basestring) and value == "")
+              or isinstance(value, self._value_type)
+              or self._is_entity
+              or (hasattr(obj, "_is_entity")
+                  and getattr(obj, "_is_entity"))):
 
             # no instantiation/transformation of value needed if matching
             # one of the following cases:
@@ -338,6 +345,14 @@ def to_bytes(sz):
     sl = len(s_str)
     if (s_str[sl - 1] == "k") or (s_str[sl - 1] == "K"):
         s_num = int(s_str.rstrip("kK")) * 1024
+    elif (s_str[sl - 1] == "m") or (s_str[sl - 1] == "M"):
+        s_num = int(s_str.rstrip("mM")) * 1024 * 1024
+    elif (s_str[sl - 1] == "g") or (s_str[sl - 1] == "G"):
+        s_num = int(s_str.rstrip("gG")) * 1024 * 1024 * 1024
+    elif (s_str[sl - 1] == "t") or (s_str[sl - 1] == "T"):
+        s_num = int(s_str.rstrip("tT")) * 1024 * 1024 * 1024 * 1024
+    elif (s_str[sl - 1] == "p") or (s_str[sl - 1] == "P"):
+        s_num = int(s_str.rstrip("pP")) * 1024 * 1024 * 1024 * 1024 * 1024
     else:
         s_num = int(s_str)
 
