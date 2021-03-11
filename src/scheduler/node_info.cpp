@@ -4505,12 +4505,11 @@ node_state_to_str(node_info *ninfo)
 nspec **
 combine_nspec_array(nspec **nspec_arr)
 {
-	int i, j, k;
-	resource_req *req_i;
-	resource_req *req_j;
+	int i, k;
 	int cnt;
 	nspec **new_nspec_arr;
 	nspec *ns;
+	std::unordered_map<int, nspec *> nspec_umap;
 
 	if (nspec_arr == NULL)
 		return NULL;
@@ -4522,48 +4521,38 @@ combine_nspec_array(nspec **nspec_arr)
 		return NULL;
 	}
 
+	k = 0;
 	for (i = 0; nspec_arr[i] != NULL; i++) {
-		int found = 0;
-		ns = NULL;
-		for (k = 0; new_nspec_arr[k] != NULL; k++)
-			if (new_nspec_arr[k]->ninfo == nspec_arr[i]->ninfo) {
-				found = 1;
-				break;
+		auto numap = nspec_umap.find(nspec_arr[i]->ninfo->rank);
+		if (numap == nspec_umap.end()) {
+			nspec_umap[nspec_arr[i]->ninfo->rank] = nspec_arr[i];
+			new_nspec_arr[k++] = ns = new_nspec();
+			if (ns == NULL) {
+				free_nspecs(new_nspec_arr);
+				return NULL;
 			}
-		if (found)
-			continue;
 
-		new_nspec_arr[k] = ns = new_nspec();
-		if (ns == NULL) {
-			free_nspecs(new_nspec_arr);
-			return NULL;
-		}
-
-		ns->end_of_chunk = 1;
-		ns->ninfo = nspec_arr[i]->ninfo;
-		ns->resreq = dup_resource_req_list(nspec_arr[i]->resreq);
-
-		for (j = i + 1; nspec_arr[j] != NULL; j++) {
-			if (nspec_arr[i]->resreq != NULL &&
-			    nspec_arr[i]->ninfo == nspec_arr[j]->ninfo) {
-
-				for (req_j = nspec_arr[j]->resreq; req_j != NULL; req_j = req_j->next) {
-					req_i = find_resource_req(ns->resreq, req_j->def);
-					if (req_i != NULL) {
-						/* we assume that if the resource is a boolean or a string
-						 * the value is either the same, or doesn't exist
-						 * so we don't need to do validity checking
-						 */
-						if (req_j->type.is_consumable)
-							req_i->amount += req_j->amount;
-						else if (req_j->type.is_string && req_i->res_str == NULL)
-							req_i->res_str = string_dup(req_j->res_str);
-					} else { /* nspec_arr[j] has a resource nspec_arr[i] does not */
-						resource_req *tmpreq;
-						tmpreq = dup_resource_req(req_j);
-						tmpreq->next = ns->resreq;
-						ns->resreq = tmpreq;
-					}
+			ns->end_of_chunk = 1;
+			ns->ninfo = nspec_arr[i]->ninfo;
+			ns->resreq = dup_resource_req_list(nspec_arr[i]->resreq);
+		} else {
+			ns = numap->second;
+			for (auto req_j = nspec_arr[i]->resreq; req_j != NULL; req_j = req_j->next) {
+				auto req_i = find_resource_req(ns->resreq, req_j->def);
+				if (req_i != NULL) {
+					/* we assume that if the resource is a boolean or a string
+					 * the value is either the same, or doesn't exist
+					 * so we don't need to do validity checking
+					 */
+					if (req_j->type.is_consumable)
+						req_i->amount += req_j->amount;
+					else if (req_j->type.is_string && req_i->res_str == NULL)
+						req_i->res_str = string_dup(req_j->res_str);
+				} else { /* nspec_arr[j] has a resource nspec_arr[i] does not */
+					resource_req *tmpreq;
+					tmpreq = dup_resource_req(req_j);
+					tmpreq->next = ns->resreq;
+					ns->resreq = tmpreq;
 				}
 			}
 		}
