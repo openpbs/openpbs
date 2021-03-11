@@ -354,7 +354,11 @@ class Job(ResourceResv):
         :param duration: The duration, in seconds, to sleep
         :type duration: int
         """
-        self.set_execargs('/bin/sleep', duration)
+        pbs_conf = DshUtils().parse_pbs_config()
+        exe_path = os.path.join(pbs_conf['PBS_EXEC'], 'bin', 'pbs_sleep')
+        if not os.path.isfile(exe_path):
+            exe_path = '/bin/sleep'
+        self.set_execargs(exe_path, duration)
 
     def set_execargs(self, executable, arguments=None):
         """
