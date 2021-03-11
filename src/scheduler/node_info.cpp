@@ -113,6 +113,7 @@
  */
 
 #include <algorithm>
+#include <unordered_map>
 
 #include <pbs_config.h>
 
@@ -4237,7 +4238,7 @@ create_execvnode(nspec **ns)
 		end_of_chunk = ns[i]->end_of_chunk;
 
 		req = ns[i]->resreq;
-		while (req  != NULL) {
+		while (req != NULL) {
 			if (req->type.is_consumable) {
 				if (pbs_strcat(&buf, &bufsize, ":") == NULL)
 					return NULL;
@@ -4252,7 +4253,7 @@ create_execvnode(nspec **ns)
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
 			}
-			else if (ns[i]->go_provision && strcmp(req->name, "aoe") ==0) {
+			else if (ns[i]->go_provision && strcmp(req->name, "aoe") == 0) {
 				strcpy(buf2, ":aoe=");
 				if (pbs_strcat(&buf, &bufsize, buf2) == NULL)
 					return NULL;
@@ -4584,9 +4585,10 @@ combine_nspec_array(nspec **nspec_arr)
 node_info **
 create_node_array_from_nspec(nspec **nspec_arr)
 {
+	std::unordered_map<std::string, node_info *> node_umap;
 	node_info **ninfo_arr;
+	int j = 0;
 	int count;
-	int i, j;
 
 	if (nspec_arr == NULL)
 		return NULL;
@@ -4598,22 +4600,17 @@ create_node_array_from_nspec(nspec **nspec_arr)
 		return NULL;
 	}
 
-	/* make ninfo_arr a searchable array */
-	ninfo_arr[0] = NULL;
-
-	for (i = 0, j = 0; nspec_arr[i] != NULL; i++) {
-		if (find_node_by_rank(ninfo_arr, nspec_arr[i]->ninfo->rank) == NULL) {
-			ninfo_arr[j] = nspec_arr[i]->ninfo;
-			j++;
-		}
+	for (int i = 0; nspec_arr[i] != NULL; i++) {
+		if (node_umap.find(nspec_arr[i]->ninfo->name) == node_umap.end())
+			node_umap[nspec_arr[i]->ninfo->name] = nspec_arr[i]->ninfo;
 	}
 
-	ninfo_arr[j] = NULL;
+	for (const auto& numap: node_umap)
+		ninfo_arr[j++] = numap.second;
 
 	return ninfo_arr;
 }
-
-/**
+	/**
  * @brief
  *	reorder the nodes for the avoid_provision or smp_cluster_dist policies
  *	or when the reservation is being altered without changing the source

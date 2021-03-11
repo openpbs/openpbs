@@ -2406,7 +2406,7 @@ create_select_from_nspec(nspec **nspec_array)
 		 */
 		if (nspec_array[i]->resreq != NULL) {
 			if (nspec_array[i]->ninfo != NULL) {
-				snprintf(buf, sizeof(buf), "1:vnode=%s", nspec_array[i]->ninfo->name.c_str());
+				select_spec += "1:vnode=";
 				select_spec += nspec_array[i]->ninfo->name;
 			} else {
 				/* We need the resources back, but not necessarily on the same node */
