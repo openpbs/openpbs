@@ -2104,7 +2104,7 @@ class TestReservations(TestFunctional):
         end = int(time.time()) + 61
         rid = self.submit_reservation(user=PBSROOT_USER,
                                       select='2:ncpus=2',
-                                      place='scatter',
+                                      place='vscatter',
                                       rrule='FREQ=MINUTELY;COUNT=2',
                                       start=start,
                                       end=end)
