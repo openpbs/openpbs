@@ -867,10 +867,8 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * qsub -l and resources with the ATTR_DFLAG_RASSN which the server
 		 * sums all the requested amounts in the select and sets job wide
 		 */
-		for (req = r->resreq; req != NULL; req = req->next) {
-			if (conf.resdef_to_check.find(req->def) != conf.resdef_to_check.end())
-				defset.insert(req->def);
-		}
+		for (req = r->resreq; req != NULL; req = req->next)
+			defset.insert(req->def);
 	}
 	return defset;
 }
