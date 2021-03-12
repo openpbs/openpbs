@@ -100,8 +100,6 @@ struct machine_info {
 	time_t		mi_modtime;	/* time configuration changed */
 	dmn_info_t	*mi_dmn_info;	/* daemon specific data which are common for all */
 	void		*mi_data;	/* daemon dependent substructure */
-	mom_hook_action_t **mi_action;	/* pending hook copy/delete on mom */
-	int		mi_num_action; /* # of hook actions in mi_action */
 	pbs_list_link	mi_link; /* forward/backward links */	
 };
 typedef struct machine_info mominfo_t;
@@ -128,6 +126,8 @@ struct mom_svrinfo {
 	struct job	**msr_jobindx;  /* index array of jobs on this Mom */
 	long		msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
 	int		msr_has_inventory; /* Tells whether mom is an inventory reporting mom */
+	mom_hook_action_t **msr_action;	/* pending hook copy/delete on mom */
+	int		msr_num_action;	/* # of hook actions in msr_action */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 

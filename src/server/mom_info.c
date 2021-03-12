@@ -182,8 +182,6 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_modtime = (time_t)0;
 		pmom->mi_dmn_info = NULL;
 		pmom->mi_data    = NULL;
-		pmom->mi_action = NULL;
-		pmom->mi_num_action = 0;
 		CLEAR_LINK(pmom->mi_link);
 #ifndef PBS_MOM
 		if (mom_hooks_seen_count() > 0) {
@@ -245,19 +243,6 @@ delete_mom_entry(mominfo_t *pmom)
 			mominfo_array[i] = NULL;
 			break;
 		}
-	}
-
-	if (pmom->mi_action != NULL) {
-
-#ifndef PBS_MOM
-		for (i=0; i < pmom->mi_num_action; ++i) {
-			if (pmom->mi_action[i] != NULL) {
-				free(pmom->mi_action[i]);
-				pmom->mi_action[i] = NULL;
-			}
-		}
-#endif
-		free(pmom->mi_action);
 	}
 
 	/* free the mi_data after all hook work is done, since the hook actions
@@ -390,6 +375,9 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 		delete_mom_entry(pmom);
 		return NULL;
 	}
+	psvrmom->msr_action = NULL;
+	psvrmom->msr_num_action = 0;
+
 	pmom->mi_data = psvrmom;	/* must be done before call tinsert2 */
 
 	if (pmom->mi_dmn_info) {
@@ -457,6 +445,7 @@ void
 delete_svrmom_entry(mominfo_t *pmom)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
+	int i;
 
 	if (psvrmom) {
 
@@ -468,6 +457,14 @@ delete_svrmom_entry(mominfo_t *pmom)
 		if (pmom->mi_dmn_info && !(pmom->mi_dmn_info->dmn_state & INUSE_UNKNOWN) && (mom_hooks_seen_count() > 0)) {
 			uc_delete_mom_hooks(pmom);
 		}
+
+		for (i = 0; i < psvrmom->msr_num_action; ++i) {
+			if (psvrmom->msr_action[i] != NULL) {
+				free(psvrmom->msr_action[i]);
+				psvrmom->msr_action[i] = NULL;
+			}
+		}
+		free(psvrmom->msr_action);
 #endif
 
 		if (psvrmom->msr_arch)
