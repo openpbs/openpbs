@@ -245,7 +245,8 @@ handle_missing_prime_info(void)
 
 	for (d = SUNDAY; d < HIGH_DAY; d++) {
 		if (conf.prime[d][PRIME].all + conf.prime[d][PRIME].none
-				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min == 0) {
+				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min
+				+ conf.prime[d][NON_PRIME].hour + conf.prime[d][NON_PRIME].min == 0) {
 			conf.prime[d][PRIME].all = TRUE;
 			conf.prime[d][PRIME].none = FALSE;
 			conf.prime[d][PRIME].hour = static_cast<unsigned int>(UNSPECIFIED);
