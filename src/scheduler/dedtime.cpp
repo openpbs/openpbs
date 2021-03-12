@@ -101,6 +101,7 @@ parse_ded_file(const char *filename)
 
 	// We are rereading the dedtime file.  The current dedtime might not exist any more.
 	cstat.is_ded_time = false;
+	conf.ded_time.clear();
 
 	while (fgets(line, 256, fp) != NULL) {
 		if (!skip_line(line)) {

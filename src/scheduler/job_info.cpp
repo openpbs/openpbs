@@ -86,8 +86,6 @@
  *
  */
 
-#include <algorithm>
-
 #include <pbs_config.h>
 
 #ifdef PYTHON

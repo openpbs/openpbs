@@ -42,8 +42,6 @@
  * This file contains functions related to scheduling
  */
 
-#include <algorithm>
-
 #include <pbs_config.h>
 
 #ifdef PYTHON

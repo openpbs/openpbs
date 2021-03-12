@@ -37,8 +37,6 @@
  * subject to Altair's trademark licensing policies.
  */
 
-#include <algorithm>
-
 #include <pbs_config.h>
 #include <stdio.h>
 #include <stdlib.h>

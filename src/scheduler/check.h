@@ -41,7 +41,7 @@
 #ifndef	_CHECK_H
 #define	_CHECK_H
 
-#include <vector>
+#include <unordered_set>
 
 #include "server_info.h"
 #include "queue_info.h"

@@ -112,7 +112,6 @@
  *
  */
 
-#include <algorithm>
 #include <unordered_map>
 
 #include <pbs_config.h>

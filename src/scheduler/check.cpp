@@ -68,8 +68,6 @@
  *
  */
 
-#include <algorithm>
-
 #include <pbs_config.h>
 
 #include <stdio.h>
