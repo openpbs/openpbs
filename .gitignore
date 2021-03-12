@@ -188,6 +188,7 @@ src/cmds/scripts/pbs_init.d
 src/cmds/scripts/pbs_poerun
 src/cmds/scripts/pbs_postinstall
 src/cmds/scripts/pbsrun.poe
+src/cmds/scripts/pbs_reload
 src/iff/pbs_iff
 src/mom_rcp/pbs_rcp
 src/resmom/pbs_mom
