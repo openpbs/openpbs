@@ -764,16 +764,17 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		req_reject(prov_rc, 0, preq);
 		return;
 	} else if (need_prov == 1) { /* prov required and request is fine */
+		if (save_subjob(pjob)) {
+			free_nodes(pjob);
+			return;
+		}
 		/* allocate resources right away */
 		set_resc_assigned((void *)pjob, 0,  INCR);
 
 		/* provisioning was needed and was qneueued successfully */
 		/* Allways send ack for prov jobs, even if not async run */
 		reply_ack(preq);
-		if (save_subjob(pjob)) {
-			free_nodes(pjob);
-			return;
-		}
+		return;
 	}
 
 	/* if need_prov ==0 then no prov required, so continue normal flow */
@@ -817,6 +818,10 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	}
 
 	/* if a subjob, the job wouldn't have gotten saved yet, let's save it now */
+	/* Note: we are saving it here and not before the call to svr_startjob because
+	 * svr_startjob calls svr_setjobstate, which write to db if the job's 'newobj' bit is
+	 * unset. That bit gets unset by job_save_db(), so we avoid calling job_save_db() for subjobs until here
+	 */
 	if (save_subjob(pjob)) {
 		free_nodes(pjob);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
