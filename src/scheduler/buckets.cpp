@@ -783,7 +783,7 @@ chunk_to_nspec(status *policy, chunk *chk, node_info *node, char *aoename)
 		}
 	}
 	for (cur_req = chk->req; cur_req != NULL; cur_req = cur_req->next) {
-		if (policy->resdef_to_check.find(cur_req->def) != policy->resdef_to_check.end() && cur_req->def->type.is_consumable) {
+		if (cur_req->def->type.is_consumable && policy->resdef_to_check.find(cur_req->def) != policy->resdef_to_check.end()) {
 			req = dup_resource_req(cur_req);
 			if (req == NULL) {
 				free_nspec(ns);

@@ -1302,7 +1302,9 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 	return num_chunk;
 }
 
-// overloaded check_avail_resources() that checks all resources
+/** @brief overloaded version of check_avail_resources() which matches all resources.  
+ * @see other function for argument description
+*/
 long long
 check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 		      unsigned int flags, enum sched_error_code fail_code, schd_error *perr)
