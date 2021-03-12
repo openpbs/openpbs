@@ -217,7 +217,7 @@ is_ded_time(time_t t)
  */
 struct timegap find_next_dedtime(time_t t)
 {
-	for (const auto& dt: conf.ded_time)
+	for (const auto& dt : conf.ded_time)
 		if (dt.to >= t)
 			return dt;
 

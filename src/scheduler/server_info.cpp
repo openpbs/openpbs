@@ -338,7 +338,7 @@ query_server(status *pol, int pbs_sd)
 
 	/* create res_to_check arrays based on current jobs/resvs */
 	policy->resdef_to_check = collect_resources_from_requests(sinfo->all_resresv);
-	for (const auto& rd: policy->resdef_to_check) {
+	for (const auto& rd : policy->resdef_to_check) {
 		if (!(rd == getallres(RES_HOST) || rd == getallres(RES_VNODE)))
 			policy->resdef_to_check_no_hostvnode.insert(rd);
 		
@@ -697,7 +697,7 @@ query_server_dyn_res(server_info *sinfo)
 	FILE *fp;			/* for popen() for res_assn */
 
 
-	for (const auto& dr: conf.dynamic_res) {
+	for (const auto& dr : conf.dynamic_res) {
 		res = find_alloc_resource_by_str(sinfo->res, dr.res);
 		if (res != NULL) {
 			int ret;
@@ -993,7 +993,7 @@ find_resource(schd_resource *reslist, resdef *def)
 static void
 free_server_psets(std::unordered_map<std::string, node_partition *>& spsets)
 {
-	for (auto& spset: spsets) {
+	for (auto& spset : spsets) {
 		free_node_partition(spset.second);
 		spset.second = NULL;
 	}
@@ -1014,7 +1014,7 @@ dup_server_psets(std::unordered_map<std::string, node_partition *>& spsets, serv
 {
 	std::unordered_map<std::string, node_partition *> newpset;
 
-	for (const auto& spset: spsets) {
+	for (const auto& spset : spsets) {
 		newpset[spset.first] = dup_node_partition(spset.second, sinfo);
 		if (newpset[spset.first] == NULL) {
 			free_server_psets(newpset);
@@ -3042,7 +3042,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, const char *job_s
 		qinfo = resresv->job->queue;
 		if (resresv->job != NULL && resresv->execselect != NULL) {
 			int need_metadata_update = 0;
-			for (const auto& sdef: resresv->execselect->defs) {
+			for (const auto& sdef : resresv->execselect->defs) {
 				const auto &rdc = policy->resdef_to_check;
 				if (rdc.find(sdef) == rdc.end()) {
 					policy->resdef_to_check.insert(sdef);

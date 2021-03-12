@@ -224,7 +224,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				/* get all the jobs which reside in the queue */
 				qinfo->jobs = query_jobs(policy, pbs_sd, qinfo, NULL, qinfo->name);
 
-				for (auto& pq: conf.peer_queues) {
+				for (auto& pq : conf.peer_queues) {
 					int peer_on = 1;
 
 					if (qinfo->name == pq.local_queue) {

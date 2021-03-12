@@ -3730,7 +3730,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 					 * restrict check on these vnodes to check only against non consumable resources
 					 */
 					if (policy->resdef_to_check_noncons.empty()) {
-						for (const auto& rtc: policy->resdef_to_check) {
+						for (const auto& rtc : policy->resdef_to_check) {
 							if (rtc->type.is_non_consumable)
 								policy->resdef_to_check_noncons.insert(rtc);
 						}

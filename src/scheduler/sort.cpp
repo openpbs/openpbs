@@ -508,7 +508,7 @@ multi_sort(resource_resv *r1, resource_resv *r2)
 {
 	int ret = 0;
 
-	for (const auto& si: *cstat.sort_by) {
+	for (const auto& si : *cstat.sort_by) {
 		ret = resresv_sort_cmp(r1, r2, si);
 		if (ret)
 			break;
@@ -555,7 +555,7 @@ multi_node_sort(const void *n1, const void *n2)
 {
 	int ret = 0;
 
-	for (const auto& si: *cstat.node_sort) {
+	for (const auto& si : *cstat.node_sort) {
 		ret = node_sort_cmp(n1, n2, si, SOBJ_NODE);
 		if (ret)
 			break;
@@ -580,7 +580,7 @@ multi_nodepart_sort(const void *n1, const void *n2)
 {
 	int ret = 0;
 
-	for (const auto& si: *cstat.node_sort) {
+	for (const auto& si : *cstat.node_sort) {
 		ret = node_sort_cmp(n1, n2, si, SOBJ_PARTITION);
 		if (ret)
 			break;
@@ -603,7 +603,7 @@ multi_bkt_sort(const void *b1, const void *b2)
 {
 	int ret = 0;
 
-	for (const auto& si: *cstat.node_sort) {
+	for (const auto& si : *cstat.node_sort) {
 		ret = node_sort_cmp(b1, b2, si, SOBJ_BUCKET);
 		if (ret)
 			break;

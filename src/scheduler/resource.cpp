@@ -658,7 +658,7 @@ create_resource_signature(schd_resource *reslist, std::unordered_set<resdef *>& 
 	sig_size = 1024;
 	sig[0] = '\0';
 
-	for (const auto& r: resources) {
+	for (const auto& r : resources) {
 		res = find_resource(reslist, r);
 		if (res != NULL) {
 			if (res->indirect_res != NULL) {
@@ -780,7 +780,7 @@ resstr_to_resdef(const std::unordered_set<std::string>& resstr)
 	std::unordered_set<resdef *> defs;
 	resdef *def;
 
-	for (const auto& str: resstr) {
+	for (const auto& str : resstr) {
 		def = find_resdef(allres, str);
 		if (def != NULL)
 			defs.insert(def);

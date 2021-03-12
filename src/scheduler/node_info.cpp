@@ -4592,7 +4592,7 @@ create_node_array_from_nspec(nspec **nspec_arr)
 			node_umap[nspec_arr[i]->ninfo->name] = nspec_arr[i]->ninfo;
 	}
 
-	for (const auto& numap: node_umap)
+	for (const auto& numap : node_umap)
 		ninfo_arr[j++] = numap.second;
 
 	return ninfo_arr;

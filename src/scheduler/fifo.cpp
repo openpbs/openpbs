@@ -345,7 +345,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			 * one and calculate a new value
 			 */
 
-			for (const auto& lj: last_running) {
+			for (const auto& lj : last_running) {
 				user = find_alloc_ginfo(lj.entity_name.c_str(), sinfo->fstree->root);
 
 				if (user != NULL) {
@@ -1177,7 +1177,7 @@ end_cycle_tasks(server_info *sinfo)
 	}
 
 	/* close any open connections to peers */
-	for (auto& pq: conf.peer_queues) {
+	for (auto& pq : conf.peer_queues) {
 		if (pq.peer_sd >= 0) {
 			/* When peering "local", do not disconnect server */
 			if (!pq.remote_server.empty())

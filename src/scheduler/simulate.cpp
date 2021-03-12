@@ -1731,7 +1731,7 @@ add_dedtime_events(event_list *elist, status *policy)
 		return 0;
 
 
-	for (const auto& dt: conf.ded_time) {
+	for (const auto& dt : conf.ded_time) {
 		te_start = create_event(TIMED_DED_START_EVENT, dt.from, policy, (event_func_t) dedtime_change, (void *) DEDTIME_START);
 		if (te_start == NULL)
 			return 0;
