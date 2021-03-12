@@ -99,10 +99,11 @@ get_peersvr_from_svrid(char *sv_id)
 		return NULL;
 
 	if (frame_psi(&psi, sv_id) != 0)
-		log_errf(PBSE_INTERNAL, __func__, "Failed to parse server instance id %s", sv_id);
+		log_errf(PBSE_INTERNAL, __func__,
+			 "Failed to parse server instance id %s", sv_id);
 
-	for (psvr = GET_NEXT(peersvrl);
-	     psvr; psvr = GET_NEXT(psvr->mi_link)) {
+	for (psvr = GET_NEXT(peersvrl); psvr; psvr = GET_NEXT(psvr->mi_link)) {
+		
 		if (is_same_host(psi.name, psvr->mi_host) &&
 		    psi.port == psvr->mi_port)
 			return psvr;

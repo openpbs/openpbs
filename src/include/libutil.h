@@ -219,8 +219,6 @@ char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 extern int pbs_asprintf(char **dest, const char *fmt, ...);
 extern char *pbs_asprintf_format(int len, const char *fmt, va_list args);
 
-extern void *pbs_calloc(size_t n, size_t amt);
-
 /*
  * calculate the number of digits to the right of the decimal point in
  *        a floating point number.  This can be used in conjunction with

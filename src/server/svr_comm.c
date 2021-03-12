@@ -135,8 +135,7 @@ send_resc_usage(int mtfd, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 
 	/* account messages sent */
 	if (psvr_ru->broadcast) {
-		for (psvr = GET_NEXT(peersvrl);
-		     psvr; psvr = GET_NEXT(psvr->mi_link)) {
+		for (psvr = GET_NEXT(peersvrl); psvr; psvr = GET_NEXT(psvr->mi_link)) {
 			((svrinfo_t *) (psvr->mi_data))->ps_pending_replies += (incr_ct ? 1 : 0);
 		}
 	} else {
@@ -169,8 +168,7 @@ send_resc_usage(int mtfd, psvr_ru_t *psvr_ru, int ct, int incr_ct)
 
 	return 0;
 err:
-	log_errf(pbs_errno, __func__, "%s from stream %d",
-		 dis_emsg[rc], mtfd);
+	log_errf(pbs_errno, __func__, "%s from stream %d", dis_emsg[rc], mtfd);
 	close_streams(mtfd, rc);
 	return rc;
 }
@@ -196,6 +194,8 @@ read_resc_update(int sock, pbs_list_head *ru_head)
 	CLEAR_HEAD((*ru_head));
 
 	ct = disrsi(sock, &rc);
+	if (rc)
+		goto err;
 
 	for (i = 0; i < ct; i++) {
 		ru_cur = calloc(1, sizeof(psvr_ru_t));
@@ -276,8 +276,8 @@ send_nodestat_req(void)
 	if (mtfd == -1)
 		return;
 
-	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, "Sending node stat to peer servers");
+	log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+		   __func__, "Sending node stat to peer servers");
 
 	pat = calloc(1, sizeof(struct attrl));
 	pat->name = ATTR_NODE_Mom;
@@ -291,8 +291,7 @@ send_nodestat_req(void)
 	tail->next = pat;
 	tail = tail->next;
 
-	rc = PBSD_status_put(mtfd, PBS_BATCH_StatusNode,
-			     "", head, NULL, PROT_TPP, NULL);
+	rc = PBSD_status_put(mtfd, PBS_BATCH_StatusNode, "", head, NULL, PROT_TPP, NULL);
 	if (rc)
 		close_streams(mtfd, rc);
 
@@ -333,8 +332,7 @@ ps_request(int stream, int version)
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	addr = tpp_getaddr(stream);
 	if (version != PS_PROTOCOL_VER) {
-		log_errf(-1, __func__, "protocol version %d unknown from %s",
-			 version, netaddr(addr));
+		log_errf(-1, __func__, "protocol version %d unknown from %s", version, netaddr(addr));
 		stream_eof(stream, 0, NULL);
 		return;
 	}
@@ -382,8 +380,7 @@ ps_request(int stream, int version)
 	}
 
 badcon:
-	sprintf(log_buffer, "bad attempt to connect from %s", netaddr(addr));
-	log_err(-1, __func__, log_buffer);
+	log_errf(-1, __func__, "bad attempt to connect from %s", netaddr(addr));
 	stream_eof(stream, 0, NULL);
 	return;
 

@@ -278,7 +278,7 @@ frame_psi(psi_t *psi, char *svr_id)
 	if (svrname == NULL)
 		return -1;
 
-	strcpy(psi->name, svrname);
+	strncpy(psi->name, svrname, sizeof(psi->name));
 
 	if (*psi->name == '\0') {
 		if (gethostname(psi->name, PBS_MAXHOSTNAME) == 0)
