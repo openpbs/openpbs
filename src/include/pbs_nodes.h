@@ -86,13 +86,17 @@ typedef struct daemon_info dmn_info_t;
 
 /*
  * mominfo structure - used by both the Server and Mom
- *	to hold contact	information for an instance of a pbs_mom on a host
+ *	to hold contact	information for an instance of a pbs_mom/pbs_server on a host
+ * The server used it to represent moms and peer-servers and the mom uses it to represent peer-moms.
+ * mi_data contains daemon-dependent sub-structure. 
+ * So it is different to represent a mom (mom_svrinfo_t), a peer-svr (svrinfo_t) and a peer-mom (mom_vninfo_t, when used inside mom code).
+ * mi_dmn_info represents the elements that are common for both mom and peer-svr. and only used within server code.
  */
 
 struct machine_info {
-	char		mi_host[PBS_MAXHOSTNAME+1]; /* hostname where mom is */
-	unsigned int	mi_port;	/* port to which Mom is listening */
-	unsigned int	mi_rmport;	/* port for MOM RM */
+	char		mi_host[PBS_MAXHOSTNAME+1]; /* hostname where service is */
+	unsigned int	mi_port;	/* port to which service is listening */
+	unsigned int	mi_rmport;	/* port for service RM */
 	time_t		mi_modtime;	/* time configuration changed */
 	dmn_info_t	*mi_dmn_info;	/* daemon specific data which are common for all */
 	void		*mi_data;	/* daemon dependent substructure */

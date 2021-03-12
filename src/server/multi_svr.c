@@ -703,8 +703,8 @@ save_resc_update(void *pobj, psvr_ru_t *ru_new)
 		free_psvr_ru(ru_old);
 	} else {
 		rc = PBSE_DUPRESC;
-		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_WARNING, __func__,
-			   "Duplicate resource update received for job %s , op=%d", ru_new->jobid, ru_new->op);
+		log_eventf(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_WARNING, ru_new->jobid,
+			   "Duplicate resource update received with op=%d", ru_new->op);
 		delete_clear_link(&ru_new->ru_link);
 		free_psvr_ru(ru_new);
 	}
